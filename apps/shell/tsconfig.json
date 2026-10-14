@@ -21,8 +21,6 @@
       "@settings/mfe/*": ["../mfe-settings/src/*"],
       "@dashboard/mfe": ["../mfe-dashboard/src/index.ts"],
       "@dashboard/mfe/*": ["../mfe-dashboard/src/*"],
-      "@survey/mfe": ["../mfe-survey/src/index.ts"],
-      "@survey/mfe/*": ["../mfe-survey/src/*"],
       "@keys/mfe": ["../mfe-keys/src/index.ts"],
       "@keys/mfe/*": ["../mfe-keys/src/*"],
       "@financial/mfe": ["../mfe-financial/src/index.ts"],

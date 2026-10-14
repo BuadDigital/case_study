@@ -16,7 +16,6 @@ import {
   inspectorFreePhotoUploader,
   inspectorFreePhotoUploaderLabel,
   inspectorPhotoStampText,
-  nextInspectorPhotoId,
   parseInspectorFreePhotoCategory,
   type InspectorFreePhoto,
   type InspectorFreePhotoUploader,
@@ -31,6 +30,8 @@ import {
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
 import { freePhotoRef } from "./InspectorDefinedPhotosSection";
+import { allocateInspectorPhotoId } from "../../lib/app-data/inspector-photo-id";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
 type ParentKey =
   | typeof INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR
@@ -51,7 +52,7 @@ export function InspectorPropertyPhotosSection({
   draft: InspectorWorkspaceDraft;
   disabled?: boolean;
   actor?: InspectorFreePhotoUploader;
-  onPatch: (patch: Partial<Pick<InspectorWorkspaceDraft, "freePhotos">>) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
   onDirty?: () => void;
   mobile?: boolean;
 }) {
@@ -142,18 +143,17 @@ export function InspectorPropertyPhotosSection({
   async function upload(files: File[], parent: ParentKey) {
     if (!canUpload || uploading) return false;
     setUploadingParent(parent);
-    let working = draft;
     let added = false;
     let lastError: string | null = null;
     let firstId: number | null = null;
     try {
       for (const file of files) {
-        const id = nextInspectorPhotoId(working);
+        const id = allocateInspectorPhotoId(draft);
         const result = await uploadInspectorPhotoFromFile(
           draft.taskId,
           freePhotoRef(id),
           file,
-          { draft: working },
+          { draft },
         );
         if (!result.ok) {
           lastError = result.error;
@@ -169,12 +169,12 @@ export function InspectorPropertyPhotosSection({
           uploadedBy: actor,
           ...result.attachment,
         };
-        working = { ...working, freePhotos: [...working.freePhotos, photo] };
+        // Appended to the draft as it is when the upload ends, so photos saved meanwhile elsewhere survive.
+        onPatch((current) => ({ freePhotos: [...current.freePhotos, photo] }));
         if (firstId === null) firstId = id;
         added = true;
       }
       if (added) {
-        onPatch({ freePhotos: working.freePhotos });
         onDirty?.();
         if (firstId !== null && actor === "inspector") {
           setClassifyParent(parent);

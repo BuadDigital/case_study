@@ -38,7 +38,7 @@ public class OptimisticConcurrencyConfigurationTests
         typeof(InspectorFeeLedger),
         typeof(PartyBillingStatement),
         typeof(PropertyFailure),
-        typeof(CaseStudyForm),
+        typeof(CaseStudyReport),
         typeof(ValuationRequest),
         typeof(ValuationComparableSelection),
         typeof(PropertyKeyRecord),

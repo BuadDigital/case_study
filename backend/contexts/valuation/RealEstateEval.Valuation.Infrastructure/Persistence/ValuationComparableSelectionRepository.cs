@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Domain;
 using RealEstateEval.Valuation.Infrastructure.Data;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Valuation.Infrastructure.Persistence;
@@ -243,4 +244,19 @@ public sealed class ValuationComparableSelectionRepository(ValuationDbContext db
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         db.SaveChangesAsync(cancellationToken);
+
+    public async Task<bool> TrySaveSeedAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+        catch (DbUpdateException exception) when (PostgresErrors.ViolatedUniqueIndex(exception) is not null)
+        {
+            foreach (var entry in db.ChangeTracker.Entries().Where(e => e.State == EntityState.Added).ToList())
+                entry.State = EntityState.Detached;
+            return false;
+        }
+    }
 }

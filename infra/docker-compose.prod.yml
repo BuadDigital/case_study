@@ -44,6 +44,16 @@ x-redis-env: &redis-env
   # lookup until its circuit breaker opens and the endpoint starts returning 500.
   Redis__ConnectionString: redis:6379
 
+x-database-env: &database-env
+  # Thirteen Npgsql pools at steady state, doubled during a rolling deploy.
+  # The first deploy that introduces the cap still overlaps the previous generation's
+  # 20-connection pools: 13×20 + 13×6 = 338, plus the migrator and 40 reserved.
+  # max_connections=500 covers that transition; later deploys only need 26×6.
+  Database__MaxPoolSize: "6"
+  Database__ServerMaxConnections: "500"
+  Database__ReservedServerConnections: "40"
+  Database__PeakApplicationPoolCount: "26"
+
 x-logging: &default-logging
   # Docker keeps container stdout forever by default: case-study alone wrote 260 MB in four
   # days (2026-09). Rotate at 10 MB x 3 files so each container is capped at ~30 MB on disk.
@@ -58,6 +68,7 @@ services:
     container_name: ree-prod-postgres
     restart: always
     logging: *default-logging
+    command: ["postgres", "-c", "max_connections=500"]
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
@@ -130,6 +141,7 @@ services:
     restart: "no"
     logging: *default-logging
     environment:
+      <<: *database-env
       # Deploys no longer re-seed the demo users (off since 2026-09-26). Users already in the
       # database stay. DbMigrate ignores this flag in Production anyway; to run the DataSeeder
       # once on purpose (demo users + its backfills):
@@ -154,12 +166,14 @@ services:
     restart: always
     logging: *default-logging
     environment:
-      <<: [*otel-env, *rabbit-env, *redis-env]
+      <<: [*otel-env, *rabbit-env, *redis-env, *database-env]
       ASPNETCORE_ENVIRONMENT: Production
       Database__MigrateOnStartup: "false"
-      # Passwordless Saudi-mobile login (shell OTP UI → POST /api/auth/login).
-      # Interim until real Saudi SMS OTP verify; keep true so number login works.
-      Auth__EnableDevLogin: "true"
+      # Mobile login: POST /api/auth/otp/request sends the code through OurSMS, otp/verify
+      # checks it strictly. Dev login (any code, POST /api/auth/login) stays off in production.
+      Auth__EnableDevLogin: "false"
+      Sms__OurSms__ApiKey: ${OURSMS_API_KEY:?Set OURSMS_API_KEY}
+      Sms__OurSms__Sender: ${OURSMS_SENDER:?Set OURSMS_SENDER}
       UpstreamServices__PlatformBaseUrl: http://platform:8080
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_prod_identity;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval
@@ -182,7 +196,7 @@ services:
     restart: always
     logging: *default-logging
     environment:
-      <<: [*otel-env, *rabbit-env, *redis-env]
+      <<: [*otel-env, *rabbit-env, *redis-env, *database-env]
       ASPNETCORE_ENVIRONMENT: Production
       Database__MigrateOnStartup: "false"
       Database__SeedDemoData: "false"
@@ -229,7 +243,7 @@ services:
     restart: always
     logging: *default-logging
     environment:
-      <<: [*otel-env, *rabbit-env, *redis-env]
+      <<: [*otel-env, *rabbit-env, *redis-env, *database-env]
       ASPNETCORE_ENVIRONMENT: Production
       UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
       UpstreamServices__IdentityBaseUrl: http://identity:8080
@@ -291,7 +305,7 @@ services:
     restart: always
     logging: *default-logging
     environment:
-      <<: [*otel-env, *rabbit-env, *redis-env]
+      <<: [*otel-env, *rabbit-env, *redis-env, *database-env]
       ASPNETCORE_ENVIRONMENT: Production
       UpstreamServices__IdentityBaseUrl: http://identity:8080
       UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
@@ -323,7 +337,7 @@ services:
     restart: always
     logging: *default-logging
     environment:
-      <<: [*otel-env, *rabbit-env, *redis-env]
+      <<: [*otel-env, *rabbit-env, *redis-env, *database-env]
       ASPNETCORE_ENVIRONMENT: Production
       UpstreamServices__AttachmentsBaseUrl: http://attachments:8080
       UpstreamServices__PlatformBaseUrl: http://platform:8080
@@ -359,7 +373,7 @@ services:
     restart: always
     logging: *default-logging
     environment:
-      <<: [*otel-env, *rabbit-env, *redis-env]
+      <<: [*otel-env, *rabbit-env, *redis-env, *database-env]
       ASPNETCORE_ENVIRONMENT: Production
       UpstreamServices__IdentityBaseUrl: http://identity:8080
       # Every failure action appends an audit row through Platform; without this the client
@@ -393,7 +407,7 @@ services:
     restart: always
     logging: *default-logging
     environment:
-      <<: [*otel-env, *rabbit-env, *redis-env]
+      <<: [*otel-env, *rabbit-env, *redis-env, *database-env]
       ASPNETCORE_ENVIRONMENT: Production
       UpstreamServices__IdentityBaseUrl: http://identity:8080
       UpstreamServices__CaseStudyBaseUrl: http://case-study:8080
@@ -426,7 +440,7 @@ services:
     restart: always
     logging: *default-logging
     environment:
-      <<: [*otel-env, *rabbit-env, *redis-env]
+      <<: [*otel-env, *rabbit-env, *redis-env, *database-env]
       ASPNETCORE_ENVIRONMENT: Production
       UpstreamServices__PlatformBaseUrl: http://platform:8080
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_ATTACHMENTS: Host=postgres;Port=5432;Database=realestate_eval_prod_attachments;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}

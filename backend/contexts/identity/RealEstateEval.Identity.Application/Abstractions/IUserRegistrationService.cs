@@ -4,8 +4,6 @@ namespace RealEstateEval.Identity.Application.Abstractions;
 
 public interface IUserRegistrationService
 {
-    Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(
-        CancellationToken cancellationToken = default);
 
     Task<UserInfoDto?> GetIdentityUserAsync(
         string userId,
@@ -26,12 +24,9 @@ public interface IUserRegistrationService
  /// <summary>Deletes all users created via registration (have a profile). Keeps seeded admin.</summary>
     Task<int> DeleteAllRegisteredAsync(CancellationToken cancellationToken = default);
 
-    Task<OrganizationOverviewDto> GetOrganizationOverviewAsync(
-        CancellationToken cancellationToken = default);
-
     /// <summary>
     /// Creates a staff account with required mobile. The holder signs in by phone
-    /// (OTP UI / future Saudi SMS OTP); no password or activation ticket is issued.
+    /// (OTP UI / future Saudi SMS OTP); nothing else is issued.
     /// </summary>
     Task<(CreateStaffUserResponseDto? Result, Dictionary<string, string>? Errors)> CreateStaffAsync(
         CreateStaffUserRequest request,

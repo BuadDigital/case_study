@@ -1,5 +1,5 @@
 /** Generic form bag used by intake / validation helpers (not user registration). */
-export type RegistrationFormData = Record<string, string>;
+type RegistrationFormData = Record<string, string>;
 
 export type FieldErrors = Record<string, string>;
 

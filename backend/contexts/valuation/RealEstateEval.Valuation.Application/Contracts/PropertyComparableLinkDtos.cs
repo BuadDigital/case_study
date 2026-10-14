@@ -1,5 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-
 namespace RealEstateEval.Valuation.Application.Contracts;
 
 public class PropertyComparableLinkItemDto
@@ -17,26 +15,5 @@ public class PropertyComparableLinkListDto
 {
     public Guid PropertyId { get; init; }
     public int LinkedCount { get; init; }
-    public bool MeetsMinimumForAppraisalPrep { get; init; }
-    public int MinimumRequired { get; init; }
     public IReadOnlyList<PropertyComparableLinkItemDto> Items { get; init; } = [];
-}
-
-public class LinkPropertyComparableRequest
-{
-    // AddValidation is off for this service, so these messages reach the caller verbatim.
-    [Required(ErrorMessage = "العقار مطلوب.")]
-    public Guid PropertyId { get; init; }
-
-    [Required(ErrorMessage = "العقار المقارن مطلوب.")]
-    public Guid ComparablePropertyId { get; init; }
-
-    [MaxLength(2000)]
-    public string? Description { get; init; }
-}
-
-public class PatchPropertyComparableLinkRequest
-{
-    [MaxLength(2000)]
-    public string? Description { get; init; }
 }

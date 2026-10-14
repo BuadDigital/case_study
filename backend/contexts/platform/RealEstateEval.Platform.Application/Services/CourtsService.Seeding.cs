@@ -78,7 +78,6 @@ public sealed partial class CourtsService
         if (_repo.HasPendingChanges())
         {
             await _repo.SaveChangesAsync(cancellationToken);
-            await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         }
     }
 }

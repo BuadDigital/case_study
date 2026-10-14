@@ -14,17 +14,10 @@ function orgWithReport(
     branding: {
       stampUrl: "",
       signatureUrl: "",
-      watermarkText: "",
-    },
-    communications: {
-      otpProvider: "dev-log",
-      defaultOtpChannel: "sms",
-      smtpPort: 587,
     },
     sla: { defaultBusinessDays: 4, privateSectorBusinessDays: 10 },
     valuation: {
       maxAdoptedComparables: 3,
-      comparableTimeGapMonths: 6,
       areaFactorPct: 5,
       annualMarketRatePct: 4,
       marketValueRoundDecimals: 4,

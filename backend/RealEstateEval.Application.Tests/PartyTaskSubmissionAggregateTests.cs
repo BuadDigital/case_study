@@ -127,15 +127,43 @@ public class PartyTaskSubmissionAggregateTests
     public void Report_issuance_final_requires_a_registered_code()
     {
         var row = ValuationReportIssuance.IssueDeposit(
-            Guid.NewGuid(), "{}", [1, 2, 3], "u1", Now);
+            Guid.NewGuid(), "{}", "u1", Now);
         Assert.Equal(ReportIssuanceStages.DepositIssued, RowStage(row));
 
-        Assert.NotNull(row.IssueFinal([9], Now));
+        Assert.NotNull(row.IssueFinal(Now));
 
-        Assert.Equal("رمز الإيداع مطلوب", row.RegisterCertificate("  ", null, null, null, "u2", Now));
-        Assert.Null(row.RegisterCertificate("QYM-1", "c.png", "image/png", [7], "u2", Now));
-        Assert.Null(row.IssueFinal([9], Now));
+        Assert.Equal("رمز الإيداع مطلوب", row.RegisterCertificate("  ", null, null, null, null, "u2", Now));
+        Assert.Null(row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", null, null, "u2", Now));
+        Assert.NotNull(row.IssueFinal(Now)); // a code without the certificate is not enough
+
+        Assert.Null(row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", Guid.NewGuid(), null, "u2", Now));
+        Assert.True(row.HasCertificate);
+        Assert.Null(row.IssueFinal(Now));
         Assert.Equal(ReportIssuanceStages.FinalIssued, RowStage(row));
+    }
+
+    [Fact]
+    public void Report_issuance_accepts_a_legacy_inline_certificate()
+    {
+        var row = ValuationReportIssuance.IssueDeposit(Guid.NewGuid(), "{}", "u1", Now);
+        Assert.Null(row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", null, [7], "u2", Now));
+        Assert.True(row.HasCertificate);
+        Assert.Null(row.IssueFinal(Now));
+    }
+
+    [Fact]
+    public void Report_issuance_final_pdf_is_current_only_for_the_code_it_printed()
+    {
+        var row = ValuationReportIssuance.IssueDeposit(Guid.NewGuid(), "{}", "u1", Now);
+        row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", Guid.NewGuid(), null, "u2", Now);
+        Assert.False(row.FinalPdfIsCurrent);
+
+        row.SetFinalPdf(Guid.NewGuid(), "QYM-1", Now);
+        Assert.True(row.FinalPdfIsCurrent);
+
+        // A code correction after the final issuance makes the stored PDF stale.
+        row.RegisterCertificate("QYM-2", null, null, null, null, "u2", Now);
+        Assert.False(row.FinalPdfIsCurrent);
     }
 
     private static string RowStage(ValuationReportIssuance row) =>

@@ -38,7 +38,7 @@ export function attachmentTypeKeyFromScope(scope: string | null | undefined): st
   return null;
 }
 
-export function attachmentLabelAr(typeKey: string | null | undefined): string {
+function attachmentLabelAr(typeKey: string | null | undefined): string {
   switch ((typeKey ?? "").trim().toLowerCase()) {
     case "deed":
       return "الصك";

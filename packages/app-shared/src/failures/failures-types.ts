@@ -27,7 +27,17 @@ export type FailureRecord = {
   specialist: string;
   createdAt: string;
   updatedAt: string;
+  /** The specialist lifted the survey freeze this failure caused (the failure itself stays open). */
+  surveyFreezeLiftedAt?: string | null;
+  surveyFreezeLiftReason?: string | null;
 };
+
+/** The survey freeze of this failure was lifted by the specialist. */
+export function isSurveyFreezeLifted(
+  failure: Pick<FailureRecord, "surveyFreezeLiftedAt">,
+): boolean {
+  return Boolean(failure.surveyFreezeLiftedAt?.trim());
+}
 
 export type CreateFailureInput = {
   poNumber: string;
@@ -45,14 +55,6 @@ export type CreateFailureInput = {
 export type ResolveFailureInput = {
   resolutionReason: string;
   continueInstructions: string;
-};
-
-export type BourseObstructionInput = {
-  poNumber: string;
-  propertyId: string;
-  deedNumber: string;
-  reason: string;
-  specialist: string;
 };
 
 export function isActiveFailureStatus(status: FailureStatus): boolean {

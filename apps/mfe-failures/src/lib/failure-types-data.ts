@@ -75,7 +75,7 @@ export const FAILURE_PROBLEM_TYPES: FailureProblemType[] = [
     categoryId: "access",
     label: "عدم تمكين دخول العقار",
     description:
-      "رفض دخول أو سكان بدون محظر تمكين أو عقد إيجار",
+      "رفض دخول أو سكان بدون محضر تمكين أو عقد إيجار",
     order: 8,
   },
   {
@@ -101,7 +101,7 @@ export const FAILURE_PROBLEM_TYPES: FailureProblemType[] = [
   },
 ];
 
-export function getFailureProblemType(
+function getFailureProblemType(
   id: string,
 ): FailureProblemType | undefined {
   return FAILURE_PROBLEM_TYPES.find((t) => t.id === id);
@@ -113,7 +113,7 @@ export function failureProblemTypeLabel(
 ): string {
   const type = getFailureProblemType(problemTypeId);
   if (type) return type.label;
-  return fallbackTitle?.trim() || "تعذر";
+  return fallbackTitle?.trim() || "تعذّر";
 }
 
 export const DEED_INACTIVE_RESOLVED_LABEL =

@@ -16,10 +16,17 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
 {
     private static readonly Guid SingletonId = Guid.Parse("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
 
+    // The government reviewer ("gov") is no longer a party (2026-10-04): the case
+    // specialist answers its questions. Leaving it out of this set drops it on every
+    // sanitise, so neither a saved nor a stored matrix can carry it.
     private static readonly HashSet<string> ValidPartyIds =
     [
-        "specA", "insp", "gov", "val", "eng", "sup",
+        "specA", "insp", "val", "eng", "sup",
     ];
+
+    // Question 4 «هل القطعة زائدة تنظيمية»: the government reviewer was its only party.
+    private const string ZoningSurplusQuestionKey = "deed_3";
+    private const string SpecialistPartyId = "specA";
 
     private static readonly HashSet<string> ValidRoleTypes =
     [
@@ -59,7 +66,7 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
         if (request.Matrix is null)
             throw new ArgumentException("matrix is required", nameof(request));
 
-        var sanitizedMatrix = SanitizeMatrix(request.Matrix);
+        var sanitizedMatrix = NormalizeMatrix(request.Matrix);
         var notes = request.Notes ?? new Dictionary<string, string>();
 
         var row = await _db.CaseStudyInfoRolesConfigs
@@ -97,6 +104,34 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
         return after;
     }
 
+    /// <summary>
+    /// Sanitises the matrix and keeps question 4 answerable. Applied on SAVE and on READ
+    /// (<see cref="ToDto"/>), so the live row — which still holds «gov» — needs no
+    /// migration: it reads clean immediately and is rewritten clean on the next save.
+    /// Idempotent. A matrix with no real role at all is left untouched, because the
+    /// frontend treats that as "not configured yet" and seeds its defaults.
+    /// </summary>
+    internal static Dictionary<string, Dictionary<string, string>> NormalizeMatrix(
+        Dictionary<string, Dictionary<string, string?>> matrix)
+    {
+        var result = SanitizeMatrix(matrix);
+
+        var hasAnyRole = result.Values.Any(row => row.Count > 0);
+        var zoningHasParty = result.TryGetValue(ZoningSurplusQuestionKey, out var zoning)
+                             && zoning.Count > 0;
+        if (hasAnyRole && !zoningHasParty)
+        {
+            // Without a party the specialist would no longer see the question and it
+            // would drop out of the 100% computation.
+            result[ZoningSurplusQuestionKey] = new Dictionary<string, string>
+            {
+                [SpecialistPartyId] = "primary",
+            };
+        }
+
+        return result;
+    }
+
     private static Dictionary<string, Dictionary<string, string>> SanitizeMatrix(
         Dictionary<string, Dictionary<string, string?>> matrix)
     {
@@ -127,9 +162,10 @@ public sealed class CaseStudyInfoRolesConfigService : ICaseStudyInfoRolesConfigS
 
     private static CaseStudyInfoRolesConfigDto ToDto(CaseStudyInfoRolesConfig row)
     {
-        var matrix = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string>>>(
+        var stored = JsonSerializer.Deserialize<Dictionary<string, Dictionary<string, string?>>>(
                          row.MatrixJson)
-                     ?? new Dictionary<string, Dictionary<string, string>>();
+                     ?? new Dictionary<string, Dictionary<string, string?>>();
+        var matrix = NormalizeMatrix(stored);
         var notes = JsonSerializer.Deserialize<Dictionary<string, string>>(row.NotesJson)
                     ?? new Dictionary<string, string>();
         return new CaseStudyInfoRolesConfigDto

@@ -27,15 +27,15 @@ export function joinContactPhones(phones: string[]): string {
     .join(" ");
 }
 
-export function phoneDigitCount(phone: string): number {
+function phoneDigitCount(phone: string): number {
   return phone.replace(/\D/g, "").length;
 }
 
-export function isValidPhone(phone: string): boolean {
+function isValidPhone(phone: string): boolean {
   return phoneDigitCount(phone) >= PHONE_MIN_DIGITS;
 }
 
-export function areValidContactPhones(phoneField: string): boolean {
+function areValidContactPhones(phoneField: string): boolean {
   const phones = splitContactPhones(phoneField);
   return phones.length > 0 && phones.every(isValidPhone);
 }
@@ -44,11 +44,11 @@ export function normalizePhoneInput(value: string): string {
   return value.replace(/\D/g, "").slice(0, 15);
 }
 
-export function normalizePhoneDigits(phone: string): string {
+function normalizePhoneDigits(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 
-export function isIncompleteMarkerPhone(phone: string): boolean {
+function isIncompleteMarkerPhone(phone: string): boolean {
   const digits = normalizePhoneDigits(phone);
   return (
     digits === INCOMPLETE_CONTACT_MARKER_PHONE ||

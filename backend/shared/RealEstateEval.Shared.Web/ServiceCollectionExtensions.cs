@@ -326,9 +326,7 @@ public static class ServiceCollectionExtensions
 
     public static string RequireConnectionString(
         IConfiguration configuration,
-        string? serviceName = null,
-        string envVarName = "REAL_ESTATE_EVAL_PG_CONNECTION_STRING",
-        IHostEnvironment? environment = null)
+        string? serviceName = null)
     {
         if (string.IsNullOrWhiteSpace(serviceName))
         {

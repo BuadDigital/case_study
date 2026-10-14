@@ -37,12 +37,14 @@ public static class FinancialDependencyInjection
         services.AddRemoteCaseStudy(configuration);
         services.AddHttpClient<ICaseStudyCommands, HttpCaseStudyCommands>();
         services.AddRemoteIdentityDirectory(configuration);
+        // Pricing audits go to the Platform ledger, where سجل التدقيق reads them.
+        services.AddRemoteAuditLogAppend(configuration);
         services.AddRemoteAttachmentLookup(configuration);
         services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
  // E6: Financial Host notifications were NullNotificationService(«residue until it exists
  // Dispatch” — now has a real Operations/Failures-style outbox, with reminders
  // The negotiation deadline and notices of outstanding fees actually arrive.
-        services.AddMessagingPersistence(configuration, connectionString);
+        services.AddMessagingPersistence(configuration);
         services.AddNotificationInfrastructure(configuration, environment);
         services.AddHttpClient<IOperationsTaskService, HttpOperationsTaskService>();
         services.AddInspectorFeeCollaborators();
@@ -66,8 +68,7 @@ public static class FinancialDependencyInjection
         services.AddScoped<IFinancialReportService, FinancialReportService>();
         services.AddScoped<IPartyFeePricingRepository, PartyFeePricingRepository>();
         services.AddScoped<IPartyFeePricingService, PartyFeePricingService>();
-        services.AddScoped<IIncentiveSuspensionService, IncentiveSuspensionService>();
-        services.AddScoped<IDiscountFlagService, DiscountFlagService>();
+
         return services;
     }
 
@@ -89,13 +90,7 @@ public static class FinancialDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        var financialConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Financial,
-            connectionString);
-        return services.AddBoundedContextPersistence<FinancialDbContext>(
-            configuration,
-            financialConnection);
+        return services.AddBoundedContextPersistence<FinancialDbContext>(configuration);
     }
 
 }

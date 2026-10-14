@@ -52,11 +52,14 @@ public static class WorkOrderPropertyWriteRules
             .GroupBy(kv => kv.Key)
             .ToDictionary(g => g.Key, g => g.First().Value);
 
-    /// <summary>The duplicate-deed probe both property validators need, over the loaded order.</summary>
+    /// <summary>
+    /// The duplicate-deed probe both property validators need, over the loaded order. Deeds are
+    /// compared normalised (DeedNumberRules): "123456", "123-456" and "١٢٣٤٥٦" are one deed.
+    /// </summary>
     public static Func<string, Guid?, bool> DeedTakenProbe(WorkOrder workOrder) =>
         (deed, excludeId) => workOrder.Properties.Any(p =>
             !p.IsRemoved
-            && p.DeedNumber.Trim() == deed.Trim()
+            && DeedNumberRules.EqualsNormalized(p.DeedNumber, deed)
             && (excludeId is null || p.Id != excludeId));
 
     /// <summary>Removal always needs a short, stated reason.</summary>
@@ -71,23 +74,6 @@ public static class WorkOrderPropertyWriteRules
     public static int ExpectedCountAfterRemoval(int expectedPropertyCount) =>
         Math.Max(1, expectedPropertyCount - 1);
 
-    /// <summary>An empty or literal-null map url clears the column.</summary>
-    public static (Dictionary<string, string>? Errors, string? Value) ValidateLocationMapUrl(
-        string? locationMapUrl)
-    {
-        var trimmed = locationMapUrl?.Trim() ?? "";
-        if (!string.IsNullOrEmpty(trimmed) && !DocumentaryWorkflowRules.HasLocationMapUrl(trimmed))
-        {
-            return (
-                new Dictionary<string, string>
-                {
-                    ["locationMapUrl"] = "رابط الموقع يجب أن يبدأ بـ http:// أو https://",
-                },
-                null);
-        }
-
-        return (null, string.IsNullOrEmpty(trimmed) ? null : trimmed);
-    }
 
     /// <summary>
     /// Validates the specialist-report wire bag and applies it to first-class columns
@@ -332,30 +318,12 @@ public static class WorkOrderPropertyWriteRules
         if (dto.Owners is not null)
         {
             var owners = dto.Owners
-                .Select(o => new DeedOwner(o.Name?.Trim() ?? "", o.SharePct))
+                .Select(o => new DeedOwner(o.Name?.Trim() ?? ""))
                 .Where(o => !string.IsNullOrWhiteSpace(o.Name))
                 .ToList();
-            // Soft draft: skip invalid owner sets rather than failing the whole autosave.
-            if (OwnershipTypeRules.ValidateOwners(owners) is null)
-            {
-                entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
-                if (owners.Count > 0)
-                    entity.OwnerName = owners[0].Name;
-            }
-        }
-
-        if (dto.OwnershipTypeIsManual)
-        {
-            if (OwnershipTypes.IsKnown(dto.OwnershipType))
-            {
-                entity.OwnershipType = dto.OwnershipType!.Trim().ToLowerInvariant();
-                entity.OwnershipTypeIsManual = true;
-            }
-        }
-        else
-        {
-            entity.OwnershipType = null;
-            entity.OwnershipTypeIsManual = false;
+            entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
+            if (owners.Count > 0)
+                entity.OwnerName = owners[0].Name;
         }
     }
 
@@ -367,7 +335,8 @@ public static class WorkOrderPropertyWriteRules
     public static (Dictionary<string, string>? Errors, bool BoundariesUnavailable) ApplyBourseRequest(
         WorkOrderProperty entity,
         UpdatePropertyBourseRequest request,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        string? completedByName = null)
     {
         entity.City = request.City.Trim();
         entity.Region = request.Region?.Trim();
@@ -383,36 +352,16 @@ public static class WorkOrderPropertyWriteRules
         entity.RestrictionType = NormalizeRestrictionType(request.RestrictionsPresent,request.RestrictionType);
         entity.RestrictionOtherReason = NormalizeRestrictionOtherReason(request.RestrictionsPresent, request.RestrictionType, request.RestrictionOtherReason);
 
- // owners+shares from the transcription; ownership type is editable-derived.
+ // owners from the transcription; the ownership type is derived from their count (never stored).
         if (request.Owners is not null)
         {
             var owners = request.Owners
-                .Select(o => new DeedOwner(o.Name?.Trim() ?? "", o.SharePct))
+                .Select(o => new DeedOwner(o.Name?.Trim() ?? ""))
                 .Where(o => !string.IsNullOrWhiteSpace(o.Name))
                 .ToList();
-            if (OwnershipTypeRules.ValidateOwners(owners) is { } ownersError)
-                return (new Dictionary<string, string> { ["owners"] = ownersError }, false);
             entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
             if (owners.Count > 0)
                 entity.OwnerName = owners[0].Name;
-        }
-
-        if (request.OwnershipTypeIsManual)
-        {
-            if (!OwnershipTypes.IsKnown(request.OwnershipType))
-            {
-                return (
-                    new Dictionary<string, string> { ["ownershipType"] = "نوع ملكية غير معروف" },
-                    false);
-            }
-
-            entity.OwnershipType = request.OwnershipType!.Trim().ToLowerInvariant();
-            entity.OwnershipTypeIsManual = true;
-        }
-        else
-        {
-            entity.OwnershipType = null;
-            entity.OwnershipTypeIsManual = false;
         }
 
         entity.BoundariesAvailability = request.BoundariesAvailability?.Trim();
@@ -430,9 +379,28 @@ public static class WorkOrderPropertyWriteRules
         {
             entity.BourseDataCompleted = true;
             entity.BourseCompletedAtUtc = nowUtc;
+            entity.BourseCompletedByName = NormalizeActorName(completedByName);
         }
 
         return (null, boundariesUnavailable);
+    }
+
+    /// <summary>«المدينة · الحي — أدخله الاسم»: the bourse milestone's detail line (null when nothing to say).</summary>
+    public static string? BourseTimelineDetail(string? city, string? district, string? completedByName)
+    {
+        var location = BourseTimelineLocation(city, district);
+        var by = NormalizeActorName(completedByName);
+        if (by is null) return string.IsNullOrEmpty(location) ? null : location;
+        var who = $"أدخله {by}";
+        return string.IsNullOrEmpty(location) ? who : $"{location} — {who}";
+    }
+
+    /// <summary>The display name stored beside the completion stamp: trimmed, bounded, null when empty.</summary>
+    public static string? NormalizeActorName(string? name)
+    {
+        var trimmed = name?.Trim();
+        if (string.IsNullOrEmpty(trimmed)) return null;
+        return trimmed.Length <= 128 ? trimmed : trimmed[..128];
     }
 
     private static void ApplyBoundaries(

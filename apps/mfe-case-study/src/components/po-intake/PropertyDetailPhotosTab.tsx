@@ -98,6 +98,7 @@ function PhotoTile({
     photo.dataUrl,
     handle?.taskId,
     handle?.photoRef,
+    handle?.attachment,
     handle?.attachment.attachmentId,
   ]);
 

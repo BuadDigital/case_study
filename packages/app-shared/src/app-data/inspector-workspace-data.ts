@@ -12,7 +12,12 @@ export const INSPECTOR_BOUNDARY_KEYS: InspectorBoundaryKey[] = [
 ];
 
 export type InspectorBoundaryMatch = {
-  matches: boolean;
+  /**
+   * Tri-state: `true` = مطابق، `false` = غير مطابق، `null` = untouched (the inspector has
+   * not answered yet — never defaulted to «matches»). The server only treats an explicit
+   * `false` as a mismatch, so `null` is wire-safe.
+   */
+  matches: boolean | null;
   mismatchNote: string;
   /** «نوع الواجهة» — facade finish on this side; options come from the report dictionary. */
   facade: string;
@@ -113,13 +118,36 @@ export const OCCUPANCY_DESCRIPTION_KEY = "occupancyDescription";
 /** `featurePhotoAttachments` slot for the «وصف العقار» alternative photo (components' details). */
 export const PROPERTY_DESCRIPTION_PHOTO_KEY = "propertyDescription";
 
+type InspectorPhotoRef =
+  | { fileName?: string | null; attachmentId?: string | null }
+  | null
+  | undefined;
+
+/**
+ * A photo counts as attached only with both a file name and a server attachment id — the
+ * server's `FieldInspectionSubmissionValidator.HasBoundAttachment`.
+ */
+export function isInspectorPhotoBound(photo: InspectorPhotoRef): boolean {
+  return Boolean(photo?.fileName?.trim()) && Boolean(photo?.attachmentId?.trim());
+}
+
+/**
+ * Saved on the device (has a file name) but never uploaded (no attachment id) — the server's
+ * `FieldInspectionPayloadAttachments.IsUnboundPhoto`.
+ */
+function isInspectorPhotoNotUploaded(photo: InspectorPhotoRef): boolean {
+  return Boolean(photo?.fileName?.trim()) && !photo?.attachmentId?.trim();
+}
+
 /** «وصف العقار» needs a written description or the components photo — at least one. */
 export function inspectorDescriptionMissing(draft: {
   propertyDescription: string;
-  featurePhotoAttachments: Record<string, { attachmentId?: string } | null>;
+  featurePhotoAttachments: Record<string, InspectorPhotoRef>;
 }): boolean {
   if ((draft.propertyDescription ?? "").trim()) return false;
-  return !draft.featurePhotoAttachments?.[PROPERTY_DESCRIPTION_PHOTO_KEY]?.attachmentId;
+  return !isInspectorPhotoBound(
+    draft.featurePhotoAttachments?.[PROPERTY_DESCRIPTION_PHOTO_KEY],
+  );
 }
 export const OCCUPANCY_DESCRIPTION_LABEL = "سبب الإشغال";
 
@@ -139,9 +167,6 @@ export const ACCESS_CONTACT_NATIONAL_ID_INVALID =
   "رقم الهوية يجب أن يتكون من 10 أرقام ويبدأ بـ 1 أو 2.";
 
 export const SITE_LOCATION_ACK_BUTTON_LABEL = "إقرار صحة الموقع";
-/** @deprecated Use SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE from site-location-ack-letter. */
-export const SITE_LOCATION_ACK_PENDING_MESSAGE =
-  "ثبّت الموقع أولاً عبر «تثبيت الموقع» قبل طباعة إقرار صحة الموقع.";
 
 /** Compose Infath / payload free-text from the contact fields. */
 export function composeAccessRouteDescription(input: {
@@ -180,7 +205,7 @@ export function isOccupied(featureValues: Record<string, string>): boolean {
   return (featureValues[OCCUPANCY_STATE_KEY] ?? "").trim() === "مشغول";
 }
 
-export function normalizeInspectorLandText(value: string): string {
+function normalizeInspectorLandText(value: string): string {
   return value
     .normalize("NFKC")
     .replace(/[\u064B-\u065F\u0670]/g, "")
@@ -269,10 +294,10 @@ export const PROPERTY_CLASSIFICATIONS = [
   "مرفق عام",
 ] as const;
 
-export type PropertyClassification = (typeof PROPERTY_CLASSIFICATIONS)[number];
+type PropertyClassification = (typeof PROPERTY_CLASSIFICATIONS)[number];
 
 /** Types under each classification — 47 unique values total. */
-export const PROPERTY_TYPES_BY_CLASSIFICATION: Record<
+const PROPERTY_TYPES_BY_CLASSIFICATION: Record<
   PropertyClassification,
   readonly string[]
 > = {
@@ -335,13 +360,14 @@ export const PROPERTY_TYPES_BY_CLASSIFICATION: Record<
   ],
 };
 
-/** Flat 47-type list (inspector «استخدام العقار», legacy single selects). */
-export const PROPERTY_USAGE_OPTIONS: readonly string[] =
-  PROPERTY_CLASSIFICATIONS.flatMap(
-    (c) => PROPERTY_TYPES_BY_CLASSIFICATION[c],
-  );
+/**
+ * Inspector «استخدام العقار»: the property classification the bourse inquiry recorded (أرض، مبنى مفرد،
+ * مجمع، وحدة داخل مبنى، مرفق عام) — the field is pre-answered from it. «الأصل محل التقييم» is the type.
+ * (It used to list all 47 types, which duplicated «الأصل محل التقييم» and could not take the bourse answer.)
+ */
+const PROPERTY_USAGE_OPTIONS: readonly string[] = PROPERTY_CLASSIFICATIONS;
 
-export function isPropertyClassification(
+function isPropertyClassification(
   value: string,
 ): value is PropertyClassification {
   return (PROPERTY_CLASSIFICATIONS as readonly string[]).includes(value.trim());
@@ -496,7 +522,7 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
 ];
 
 /** Building-only inspector rows — hidden on vacant land. */
-export const LAND_HIDDEN_INSPECTOR_FEATURE_KEYS = [
+const LAND_HIDDEN_INSPECTOR_FEATURE_KEYS = [
   "facade",
   "propertyCondition",
   "buildState",
@@ -574,7 +600,7 @@ export function sanitizeInspectorDraftForLand(
 }
 
 /** Residential / villa component rows — hidden for commercial shops. */
-export const SHOP_HIDDEN_INSPECTOR_COMPONENT_KEYS = [
+const SHOP_HIDDEN_INSPECTOR_COMPONENT_KEYS = [
   "roomCount",
   "hallCount",
   "unitCount",
@@ -593,7 +619,12 @@ const SHOP_HIDDEN_COMPONENT_KEY_SET = new Set<string>(
   SHOP_HIDDEN_INSPECTOR_COMPONENT_KEYS,
 );
 
-/** Commercial shop: PO type/classification or subject-asset shop. Land wins. */
+/**
+ * Commercial shop. Land wins. Like land, the inspector's «الأصل محل التقييم» wins once chosen —
+ * the server (`FieldInspectionSubmissionValidator.IsCommercialShopInspection`) reads only that
+ * answer, so a PO typed «محل تجاري» recorded as a villa is not a shop. PO type/classification
+ * only seed the form before the inspector answers.
+ */
 export function isCommercialShopInspectionContext(input: {
   classification?: string | null;
   propertyType?: string | null;
@@ -601,7 +632,10 @@ export function isCommercialShopInspectionContext(input: {
   vacantLand?: boolean;
 }): boolean {
   if (isLandInspectionContext(input)) return false;
-  return [input.assetSubject, input.classification, input.propertyType].some(
+  const origin = (input.assetSubject ?? "").trim();
+  // Server: subject contains «محل» and «تجار».
+  if (origin) return origin.includes("محل") && origin.includes("تجار");
+  return [input.classification, input.propertyType].some(
     (value) => Boolean(value && SHOP_SUBJECT_RE.test(value)),
   );
 }
@@ -610,7 +644,7 @@ export function isShopHiddenInspectorComponentKey(key: string): boolean {
   return SHOP_HIDDEN_COMPONENT_KEY_SET.has(key);
 }
 
-export function isLandHiddenInspectorFeatureKey(key: string): boolean {
+function isLandHiddenInspectorFeatureKey(key: string): boolean {
   return LAND_HIDDEN_FEATURE_KEY_SET.has(key);
 }
 
@@ -618,7 +652,7 @@ export function isLandHiddenInspectorFeatureKey(key: string): boolean {
  * Previously hidden from the inspector screen. Empty — those rows are back on
  * the field-inspection form (سور، تكييف، خزانات، تشجير، حالة المنطقة).
  */
-export const RETIRED_INSPECTOR_FEATURE_KEYS = new Set<string>([]);
+const RETIRED_INSPECTOR_FEATURE_KEYS = new Set<string>([]);
 
 /**
  * Retired for the field inspector — shown again in case-study specialist appraisal.
@@ -631,7 +665,7 @@ export function isInspectorRetiredFeatureKey(key: string): boolean {
   return RETIRED_INSPECTOR_FEATURE_KEYS.has(key);
 }
 
-export type InspectorFeatureFieldVisibilityOptions = {
+type InspectorFeatureFieldVisibilityOptions = {
   includeRetiredKeys?: readonly string[];
 };
 
@@ -659,9 +693,9 @@ export const INSPECTOR_SERVICE_OPTIONS = [
 ] as const;
 
 /** Specialist must attach proof from transaction photos when these services are selected. */
-export const SPECIALIST_PROOF_SERVICES = ["كهرباء", "ماء"] as const;
+const SPECIALIST_PROOF_SERVICES = ["كهرباء", "ماء"] as const;
 
-export type SpecialistProofService = (typeof SPECIALIST_PROOF_SERVICES)[number];
+type SpecialistProofService = (typeof SPECIALIST_PROOF_SERVICES)[number];
 
 export function isSpecialistProofService(
   label: string,
@@ -686,7 +720,7 @@ export const INSPECTOR_AMENITY_OPTIONS = [
 ] as const;
 
 /** Display wording per stored amenity — identical to the §15 report cells. */
-export const INSPECTOR_AMENITY_LABELS: Record<string, string> = {
+const INSPECTOR_AMENITY_LABELS: Record<string, string> = {
   مساجد: "جامع",
   مستشفيات: "مرفق طبي",
   "مرفق أمني": "مرفق أمني",
@@ -716,7 +750,7 @@ export const INSPECTOR_OBSERVATION_CATEGORIES = [
 ] as const;
 
 /** Slot stored in `definedPhotos` keyed by `service:…` / `amenity:…`. */
-export type ServiceAmenityPhotoKind = "service" | "amenity";
+type ServiceAmenityPhotoKind = "service" | "amenity";
 
 export type ServiceAmenityPhotoSlotDef = {
   id: string;
@@ -798,7 +832,7 @@ export function firstIncompleteServiceAmenitySlotId(draft: {
   return null;
 }
 
-export type InspectorFreePhotoCategory = {
+type InspectorFreePhotoCategory = {
   key: string;
   label: string;
   icon: string;
@@ -810,7 +844,7 @@ export const INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR = "interior";
 /** Kind tags nested under each parent. */
 export const INSPECTOR_FREE_PHOTO_CATEGORY_FACADE = "facade";
 export const INSPECTOR_FREE_PHOTO_CATEGORY_SERVICE = "service";
-export const INSPECTOR_FREE_PHOTO_CATEGORY_AMENITY = "amenity";
+const INSPECTOR_FREE_PHOTO_CATEGORY_AMENITY = "amenity";
 export const INSPECTOR_FREE_PHOTO_CATEGORY_OTHER = "other";
 
 export const INSPECTOR_FREE_PHOTO_PARENTS: InspectorFreePhotoCategory[] = [
@@ -885,7 +919,7 @@ export function parseInspectorFreePhotoCategory(
 }
 
 /** Leaf options for classify (nested under parents). */
-export const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] =
+const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] =
   INSPECTOR_FREE_PHOTO_PARENTS.flatMap((parent) =>
     INSPECTOR_FREE_PHOTO_KINDS.map((kind) => ({
       key: buildInspectorFreePhotoCategory(parent.key, kind.key),
@@ -895,7 +929,7 @@ export const INSPECTOR_FREE_PHOTO_CATEGORIES: InspectorFreePhotoCategory[] =
   );
 
 /** Older flat tags still display / count as tagged until reclassified. */
-export const INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES: InspectorFreePhotoCategory[] =
+const INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES: InspectorFreePhotoCategory[] =
   [
     ...INSPECTOR_FREE_PHOTO_PARENTS,
     ...INSPECTOR_FREE_PHOTO_KINDS,
@@ -921,19 +955,6 @@ export function inspectorFreePhotoCategoryMeta(
   return (
     INSPECTOR_FREE_PHOTO_CATEGORIES.find((cat) => cat.key === key) ??
     INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES.find((cat) => cat.key === key)
-  );
-}
-
-export type InspectorPrimaryFreePhotoCategory = string;
-
-/** True when the photo has a usable free-photo category (nested or parent/legacy). */
-export function isInspectorPrimaryFreePhotoCategory(
-  category: string | null | undefined,
-): category is InspectorPrimaryFreePhotoCategory {
-  if (!category?.trim()) return false;
-  if (parseInspectorFreePhotoCategory(category)) return true;
-  return INSPECTOR_FREE_PHOTO_LEGACY_CATEGORIES.some(
-    (cat) => cat.key === category,
   );
 }
 
@@ -1021,6 +1042,12 @@ export type InspectorWorkspaceDraft = {
   buildLicenseDate: string;
   /** checklist — is the site vacant land */
   vacantLand: boolean;
+  /**
+   * «هل في الأرض مبانٍ أو ملاحق تستحق التقييم؟» — meaningful only when the inspected asset is
+   * land; `""` = not answered (the server rejects an inspector submit then). `"yes"` makes the
+   * inventory table («جدول الحصر») mandatory even though the asset is land; `"no"` exempts it.
+   */
+  landHasValuableStructures: "" | "yes" | "no";
   /** Derived from reviewer delivery — updated on submit */
   keyAvailable: boolean;
   /** Client acknowledgment signature */
@@ -1044,6 +1071,11 @@ export type InspectorWorkspaceDraft = {
   violationsCount: string;
   violationsDescription: string;
   boundaryMatches: Record<InspectorBoundaryKey, InspectorBoundaryMatch>;
+  /**
+   * «هل حدود الصك مطابقة للطبيعة؟» — the inspector's explicit verdict; `""` = not chosen
+   * (never defaulted). `"yes"` means all four sides match; `"no"` needs ≥1 non-matching side.
+   */
+  deedMatchesNature: "" | "yes" | "no";
   services: string[];
   amenities: string[];
   propertyDescription: string;
@@ -1080,7 +1112,7 @@ export type InspectorWorkspaceDraft = {
   updatedAtUtc: string;
 };
 
-export type InspectorFieldProvenance = {
+type InspectorFieldProvenance = {
   writtenByName?: string;
   writtenByRole?: string;
   writtenAtUtc?: string;
@@ -1130,6 +1162,24 @@ export function patchAccessContact(
   };
 }
 
+/**
+ * The inspector's deed↔nature verdict for DISPLAY / proposal: the explicit
+ * `deedMatchesNature` wins. A legacy payload without the key is derived from the sides —
+ * any explicit non-match → «no»; all four explicitly matching → «yes»; an untouched table
+ * (any side still `null`) is unknown, never «matched» by default.
+ */
+export function effectiveDeedVerdict(
+  draft: Pick<InspectorWorkspaceDraft, "deedMatchesNature" | "boundaryMatches">,
+): "" | "yes" | "no" {
+  if (draft.deedMatchesNature === "yes" || draft.deedMatchesNature === "no") {
+    return draft.deedMatchesNature;
+  }
+  const rows = INSPECTOR_BOUNDARY_KEYS.map((key) => draft.boundaryMatches?.[key]);
+  if (rows.some((row) => row?.matches === false)) return "no";
+  if (rows.every((row) => row?.matches === true)) return "yes";
+  return "";
+}
+
 function emptyDefinedPhotos(): Record<string, InspectorDefinedPhotoSlot> {
   return {};
 }
@@ -1139,10 +1189,10 @@ function emptyBoundaryMatches(): Record<
   InspectorBoundaryMatch
 > {
   return {
-    north: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
-    south: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
-    east: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
-    west: { matches: true, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    north: { matches: null, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    south: { matches: null, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    east: { matches: null, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
+    west: { matches: null, mismatchNote: "", facade: "", deedDesc: "", deedLength: "" },
   };
 }
 
@@ -1211,6 +1261,7 @@ export function createInspectorWorkspaceDraft(input: {
     buildLicenseNumber: "",
     buildLicenseDate: "",
     vacantLand: false,
+    landHasValuableStructures: "",
     keyAvailable: false,
     clientDeclarationSigned: false,
     declarationPhoneSatisfied: false,
@@ -1231,6 +1282,7 @@ export function createInspectorWorkspaceDraft(input: {
     violationsCount: "",
     violationsDescription: "",
     boundaryMatches: emptyBoundaryMatches(),
+    deedMatchesNature: "",
     services: [],
     amenities: [],
     propertyDescription: "",
@@ -1286,10 +1338,10 @@ export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL =
 
 /** Specialist (supervisor) attestation — not the field inspector's reality pledge. */
 export const SPECIALIST_REVIEW_INSPECTOR_INPUTS_ACK =
-  "راجعت مدخلات المعاين وأؤكد أنها جاهزة وبدء عمل المقيّم";
+  "راجعت مدخلات المعاين وأؤكد أنها جاهزة";
 
 export const SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS =
-  "تم تأكيد مدخلات المعاين — يمكن للمقيم بدء التقييم";
+  "تم تأكيد مدخلات المعاين";
 
 /** True when a specialist stamped acceptance on the submitted package. */
 export function isInspectorWorkspaceAccepted(
@@ -1379,12 +1431,13 @@ export function reportInspectorPropertyDescription(
 
 /** Placeholder when the appraiser opens the report before specialist accept. */
 export const PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT =
-  "يظهر وصف العقار للمقيم بعد تأكيد الأخصائي لمدخلات المعاين.";
+  "يظهر وصف العقار للمقيّم بعد تأكيد الأخصائي لمدخلات المعاين.";
 
 /**
  * Inspector cannot edit after submit. Specialist may correct the package
- * while reviewing it, but accepting it locks the form — acceptance both
- * opens the path for the appraiser and closes out the specialist's review.
+ * while reviewing it, but accepting it locks the form — acceptance closes out
+ * the specialist's review (and releases the inspector's description to the
+ * appraiser); it does not gate the appraiser's start, which needs only submission.
  */
 export function isInspectorWorkspaceReviewLocked(
   draft: Pick<InspectorWorkspaceDraft, "status" | "acceptedAtUtc">,
@@ -1471,8 +1524,10 @@ export function mapPinPatchForActor(
     | "inspectorMapLongitude"
   >
 > {
-  const lat = nextLat.trim();
-  const lng = nextLng.trim();
+  // Typed coordinates go to the server as Latin text: its GPS check (invariant-culture parse)
+  // rejects «٢١٫٤٨» that the screen's parser accepts.
+  const lat = latinCoordinateText(nextLat);
+  const lng = latinCoordinateText(nextLng);
   const patch: Partial<
     Pick<
       InspectorWorkspaceDraft,
@@ -1490,6 +1545,10 @@ export function mapPinPatchForActor(
     patch.inspectorMapLongitude = lng;
   }
   return patch;
+}
+
+function latinCoordinateText(value: string): string {
+  return toLatinDigits(value).replace(/٫/g, ".").replace(/−/g, "-").trim();
 }
 
 export function restoreInspectorOriginalMapPin(
@@ -1517,7 +1576,7 @@ export function ensureInspectorOriginalMapOnSubmit(
   };
 }
 
-export function computeInspectorPhotoCoverage(
+function computeInspectorPhotoCoverage(
   draft: InspectorWorkspaceDraft,
   slotDefs?: ServiceAmenityPhotoSlotDef[],
 ): {
@@ -1562,7 +1621,7 @@ export function parseInspectorCount(value: string): number {
 }
 
 /** Parses a non-negative area in m² from inspector text input. */
-export function parseInspectorAreaSqm(value: string): number {
+function parseInspectorAreaSqm(value: string): number {
   const trimmed = value.trim().replace(/,/g, "");
   if (!trimmed) return 0;
   const n = Number(trimmed);
@@ -1617,12 +1676,58 @@ export function isInspectorPresenceToggleField(
 /** Multi-photo slot the «يوجد منقولات» photo control stores into (any one photo satisfies the gate). */
 export const MOVABLES_PHOTOS_SLOT_ID = "feature:movables";
 
-export function hasMovablesSlotPhoto(
+function hasMovablesSlotPhoto(
   draft: Pick<InspectorWorkspaceDraft, "definedPhotos">,
 ): boolean {
   return (draft.definedPhotos[MOVABLES_PHOTOS_SLOT_ID]?.photos ?? []).some(
-    (photo) => Boolean(photo.fileName?.trim()) && Boolean(photo.attachmentId),
+    isInspectorPhotoBound,
   );
+}
+
+export const INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE =
+  "يجب رفع الصور إلى الخادم قبل الإرسال";
+
+/** Where the first photo saved on the device but not uploaded sits. */
+export type InspectorPhotoNotUploadedLocation =
+  | { kind: "feature"; key: string }
+  | { kind: "component"; key: string }
+  | { kind: "defined"; slotId: string }
+  | { kind: "free"; photoId: number }
+  | { kind: "observation"; observationId: string };
+
+/**
+ * First photo saved but not uploaded, in every place the server checks
+ * (`FieldInspectionPayloadAttachments.HasPhotosWithoutServerAttachment`): feature proof photos,
+ * component photos, defined slots, free photos and observation photos.
+ */
+export function findInspectorPhotoNotUploaded(
+  draft: Pick<
+    InspectorWorkspaceDraft,
+    | "featurePhotoAttachments"
+    | "componentPhotoAttachments"
+    | "definedPhotos"
+    | "freePhotos"
+    | "observations"
+  >,
+): InspectorPhotoNotUploadedLocation | null {
+  for (const [key, photo] of Object.entries(draft.featurePhotoAttachments ?? {})) {
+    if (isInspectorPhotoNotUploaded(photo)) return { kind: "feature", key };
+  }
+  for (const [key, photo] of Object.entries(draft.componentPhotoAttachments ?? {})) {
+    if (isInspectorPhotoNotUploaded(photo)) return { kind: "component", key };
+  }
+  for (const [slotId, slot] of Object.entries(draft.definedPhotos ?? {})) {
+    if ((slot?.photos ?? []).some(isInspectorPhotoNotUploaded)) {
+      return { kind: "defined", slotId };
+    }
+  }
+  const free = (draft.freePhotos ?? []).find(isInspectorPhotoNotUploaded);
+  if (free) return { kind: "free", photoId: free.id };
+  const observation = (draft.observations ?? []).find((o) =>
+    isInspectorPhotoNotUploaded(o.photo),
+  );
+  if (observation) return { kind: "observation", observationId: observation.id };
+  return null;
 }
 
 export function listInspectorPhotoValidationIssues(
@@ -1660,7 +1765,7 @@ export function listInspectorPhotoValidationIssues(
     const value = draft.featureValues[field.key] ?? "";
     if (
       inspectorFeatureRequiresPhoto(field, value) &&
-      !draft.featurePhotoAttachments[field.key]?.attachmentId &&
+      !isInspectorPhotoBound(draft.featurePhotoAttachments[field.key]) &&
       !(field.key === MOVABLES_FEATURE_KEY && hasMovablesSlotPhoto(draft))
     ) {
       issues.push(`يجب إرفاق صورة توثيقية: ${field.label}`);
@@ -1670,7 +1775,7 @@ export function listInspectorPhotoValidationIssues(
   if (
     !isLand &&
     parseInspectorCount(draft.showroomCount) > 0 &&
-    !draft.componentPhotoAttachments.showroom?.attachmentId
+    !isInspectorPhotoBound(draft.componentPhotoAttachments.showroom)
   ) {
     issues.push("يجب إرفاق صورة المعرض");
   }
@@ -1679,7 +1784,7 @@ export function listInspectorPhotoValidationIssues(
     !isLand &&
     !isShop &&
     parseInspectorCount(draft.wellCount) > 0 &&
-    !draft.componentPhotoAttachments.well?.attachmentId
+    !isInspectorPhotoBound(draft.componentPhotoAttachments.well)
   ) {
     issues.push("يجب إرفاق صورة البئر");
   }
@@ -1703,11 +1808,8 @@ export function listInspectorPhotoValidationIssues(
   // Unapproved extras in a complete slot are also not a submit blocker —
   // slot completeness already requires an approved photo (or «غير متوفر»).
 
-  const hasLocalOnly = Object.values(draft.definedPhotos).some((slot) =>
-    slot.photos.some((p) => p.fileName && !p.attachmentId),
-  );
-  if (hasLocalOnly) {
-    issues.push("يجب رفع الصور إلى الخادم قبل الإرسال");
+  if (findInspectorPhotoNotUploaded(draft)) {
+    issues.push(INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE);
   }
 
   return issues;

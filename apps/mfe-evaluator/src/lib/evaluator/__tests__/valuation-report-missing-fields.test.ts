@@ -65,6 +65,25 @@ describe("markReportMissingFields — keyed cells", () => {
     );
   });
 
+  it("attributes the §06 property description to the specialist and the rest of the section to the inspector", () => {
+    const dom = doc(`
+      <section data-sec="6"><table>
+        <tr><td class="k">حالة العقار</td><td class="v">—</td><td class="k">وصف العقار</td><td class="v">—</td></tr>
+      </table></section>`);
+
+    const fields = markReportMissingFields(dom, fillWith());
+
+    expect(missing(dom)).toEqual([
+      { label: "حالة العقار", source: "inspector" },
+      { label: "وصف العقار", source: "specialist" },
+    ]);
+    const description = fields.find((f) => f.label === "وصف العقار");
+    expect(dom.getElementById(description!.targetId)?.getAttribute("title")).toBe(
+      "ناقص — اضغط لإشعار المسؤول (أخصائي دراسة الحالة)",
+    );
+    expect(readMissingCell(dom.getElementById(description!.targetId))?.cell.source).toBe("specialist");
+  });
+
   it("counts a label printed in two sections once and finds every copy for the notified mark", () => {
     const dom = doc(`
       <section data-sec="2"><table><tr><td class="k">اسم المالك</td><td class="v">—</td></tr></table></section>
@@ -242,5 +261,5 @@ describe("real template", () => {
     const embed = prepareValuationReportV3Html(raw, { live, markMissingFields: false }, "screen");
     expect(embed).not.toContain('data-rpt-missing="1"');
     expect(embed).toContain("تقرير تقييم عقار");
-  });
+  }, 30_000); // parses the full printed template — takes seconds under a parallel suite run
 });

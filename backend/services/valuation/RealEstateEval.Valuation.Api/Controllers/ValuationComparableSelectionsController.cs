@@ -138,7 +138,7 @@ public class ValuationComparableSelectionsController : ControllerBase
             comparablePropertyId,
             ct,
             selectionContext: selectionContext);
-        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        if (!ok) return this.BadRequestProblem(error ?? "تعذّر تنفيذ العملية.");
         return NoContent();
     }
 }

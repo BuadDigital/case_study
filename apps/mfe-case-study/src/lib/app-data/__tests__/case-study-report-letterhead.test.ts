@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { emptyCaseStudyFormDraft } from "../case-study-form-model";
-import { buildCaseStudyReportModel } from "../case-study-report-model";
+import { emptyCaseStudyReportDraft } from "../case-study-report-model";
+import { buildCaseStudyReportModel } from "../case-study-report-document-model";
 import { buildCaseStudyReportPrintHtml } from "../case-study-report-render";
 import type { WorkflowTask } from "../tasks";
 
@@ -20,7 +20,7 @@ const task: WorkflowTask = {
 };
 
 function model() {
-  return buildCaseStudyReportModel(emptyCaseStudyFormDraft("task-1"), null, task, null);
+  return buildCaseStudyReportModel(emptyCaseStudyReportDraft("task-1"), null, task, null);
 }
 
 describe("case-study report on the organisation letterhead", () => {

@@ -1,5 +1,5 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -30,13 +30,6 @@ export const INFATH_SEED_CLIENT_ID = "a1000001-0000-4000-8000-000000000001";
 /** Seeded Nabr Real Estate client — private-sector valuation report user. */
 export const NABR_SEED_CLIENT_ID = "a1000001-0000-4000-8000-000000000002";
 
-function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 export async function listClients(
   config: WorkOrdersApiConfig,
   includeInactive = false,
@@ -45,29 +38,11 @@ export async function listClients(
   try {
     const qs = includeInactive ? "?includeInactive=true" : "";
     const res = await fetch(`${base}/api/clients${qs}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: (await res.json()) as ClientDto[] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function getClient(
-  config: WorkOrdersApiConfig,
-  id: string,
-): Promise<ApiOk<ClientDto> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/clients/${encodeURIComponent(id)}`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as ClientDto };
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -81,7 +56,7 @@ export async function createClient(
   try {
     const res = await fetch(`${base}/api/clients`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -104,7 +79,7 @@ export async function updateClient(
   try {
     const res = await fetch(`${base}/api/clients/${encodeURIComponent(id)}`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -129,7 +104,7 @@ export async function deactivateClient(
       `${base}/api/clients/${encodeURIComponent(id)}/deactivate`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };

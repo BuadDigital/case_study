@@ -100,18 +100,6 @@ export function isListedQueueTask(
   return task.status === "open" || task.status === "blocked";
 }
 
-export function getSuspendedTransaction(
-  poNumber: string,
-  propertyId: string,
-): SuspendedTransaction | null {
-  const key = propertySuspensionKey(poNumber, propertyId);
-  return (
-    memoryList.find(
-      (item) => propertySuspensionKey(item.poNumber, item.propertyId) === key,
-    ) ?? null
-  );
-}
-
 /** Notifies listeners after `suspendFailure` updates the API. */
 export function notifySuspendedTransactionsChanged(): void {
   if (typeof window === "undefined") return;

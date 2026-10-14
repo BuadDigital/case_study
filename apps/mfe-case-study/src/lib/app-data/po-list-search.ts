@@ -2,23 +2,23 @@ import type { PoRow } from "@platform/app-shared/app-data/constants";
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 import type { PropertyListItem } from "@platform/app-shared/app-data/work-orders-read";
 
-export type PoListSearchMode = "all" | "po" | "deed" | "text";
+type PoListSearchMode = "all" | "po" | "deed" | "text";
 
-export type PoListSearchMatch = {
+type PoListSearchMatch = {
   mode: PoListSearchMode;
   deedNumber?: string;
   propertyId?: string;
   propertyArea?: string;
 };
 
-export type PoListFilteredRow = {
+type PoListFilteredRow = {
   row: PoRow;
   match: PoListSearchMatch | null;
   /** All deeds on this PO — for the deed column when listing PO rows. */
   deeds: PoDeedIndexEntry[];
 };
 
-export type PoListPropertyHit = {
+type PoListPropertyHit = {
   row: PoRow;
   deed: PoDeedIndexEntry;
   match: PoListSearchMatch;
@@ -32,7 +32,7 @@ function deedsForPo(poNumber: string, deedIndex: PoDeedIndexEntry[]) {
   return deedIndex.filter((entry) => entry.poNumber === poNumber);
 }
 
-export function buildPoListDisplay(
+function buildPoListDisplay(
   rows: PoRow[],
   query: string,
   deedIndex: PoDeedIndexEntry[],
@@ -83,7 +83,7 @@ export function buildPoListDisplay(
 }
 
 /** Normalize deed tokens for fuzzy compare (006, Deed 006, leading zeros). */
-export function normalizeDeedQuery(value: string): string {
+function normalizeDeedQuery(value: string): string {
   return toLatinDigits(value)
     .trim()
     .toLowerCase()
@@ -207,7 +207,7 @@ function bestDeedMatch(
   );
 }
 
-export function filterPoListRows(
+function filterPoListRows(
   rows: PoRow[],
   query: string,
   deedIndex: PoDeedIndexEntry[],

@@ -1,7 +1,7 @@
 import { downloadAttachmentBlobOnce } from "./attachment-blob-cache";
 import { prototypeModulesApiConfig } from "./modules-api-config";
 
-export type DocumentFileRef = {
+type DocumentFileRef = {
   fileName: string;
   dataUrl?: string;
   attachmentId?: string;

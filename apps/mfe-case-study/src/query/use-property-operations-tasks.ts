@@ -17,6 +17,9 @@ export function usePropertyOperationsTasks(
   const query = useOperationsTasksQuery({ live: options?.live ?? true });
   const tasks = query.data ?? [];
 
+  // Callers build `scope` inline, so it is a new object on every render; the three
+  // fields below are what the filters actually read.
+  /* eslint-disable react-hooks/exhaustive-deps */
   const propertyTasks = useMemo(
     () => filterOperationsTasksForProperty(tasks, scope),
     [tasks, scope.poNumber, scope.deedNumber, scope.deedDisplay],
@@ -31,6 +34,7 @@ export function usePropertyOperationsTasks(
     () => primaryCourtVisitTask(tasks, scope),
     [tasks, scope.poNumber, scope.deedNumber, scope.deedDisplay],
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return {
     ...query,

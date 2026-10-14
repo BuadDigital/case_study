@@ -2,14 +2,23 @@
 
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 
-export const DEED_STATUS_OPTIONS = ["فعال", "موقوف", "قيد التحقق"] as const;
+/** What the bourse save records for «الصك فعال» / «الصك غير فعال» (the latter no longer forces a تعذّر). */
+export const DEED_STATUS_ACTIVE = "فعال";
+export const DEED_STATUS_INACTIVE = "غير فعال";
+
+export const DEED_STATUS_OPTIONS = [
+  DEED_STATUS_ACTIVE,
+  DEED_STATUS_INACTIVE,
+  "موقوف",
+  "قيد التحقق",
+] as const;
 
 /** Bourse data — deed validity before path completion. */
 export type BourseDeedVitality = "active" | "inactive";
 
 export const BOURSE_DEED_VITALITY_ACTIVE = "الصك فعال";
 export const BOURSE_DEED_VITALITY_INACTIVE = "الصك غير فعال";
-export const BOURSE_OBSTRUCTION_LABEL = "متعذر";
+export const BOURSE_OBSTRUCTION_LABEL = "متعذّر";
 
 export const RESTRICTIONS_PRESENT_OPTIONS = [
   { value: "yes", label: "توجد قيود" },
@@ -109,6 +118,22 @@ export function propertyHasRegisteredTitle(property: {
   );
 }
 
+/**
+ * The deed's own kind is a registered title — the server's `DeedKindRules` reads only the stored
+ * deed kind (decisions log 8 and 18: each deed by its own kind), so a traditional deed that also
+ * carries a registration number is still traditional. The explicit kind wins; the registration
+ * number / identifier heuristics apply only while the deed kind is empty.
+ */
+export function propertyDeedKindIsRegisteredTitle(property: {
+  realEstateRegNumber: string;
+  identifierType: PropertyIdentifierType;
+  deedKind?: string | null;
+  suggestedDeedKind?: string | null;
+}): boolean {
+  const kind = (property.deedKind ?? "").trim();
+  return kind ? isRegisteredTitleDeedKind(kind) : propertyHasRegisteredTitle(property);
+}
+
 /** Approved subdivision: plan number and plot number are both present. */
 export function propertyHasApprovedOrganizationalPlan(property: {
   planNumber?: string | null;
@@ -175,7 +200,7 @@ export function parsePropertyIdentifierType(
 
 export function identifierTypeLabel(type: PropertyIdentifierType): string {
   if (type === "real_estate_reg") return "تسجيل عيني";
-  if (type === "bourse_inquiry") return "البورصة العقاريه";
+  if (type === "bourse_inquiry") return "البورصة العقارية";
   return "صك ملكية";
 }
 

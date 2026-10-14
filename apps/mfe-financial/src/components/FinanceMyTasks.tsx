@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useState, type ReactNode } from "react";
-import dynamic from "next/dynamic";
+import { Suspense, useCallback, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fmtMax } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
 import {
   loadPartyBillingReadyLines,
@@ -24,7 +24,9 @@ import {
   cn,
   GentleBusy,
   opsLetterCard,
+  QueryErrorState,
   opsPanelCard,
+  preloadableLazy,
 } from "@platform/ui-kit";
 import {
   buildFinanceMyTasks,
@@ -33,27 +35,27 @@ import {
 } from "../lib/finance-my-tasks";
 import { buildFinanceHref } from "../lib/finance-nav";
 
-const FinanceDisbursementCloseModal = dynamic(
-  () =>
-    import("./FinanceDisbursementCloseModal").then(
-      (m) => m.FinanceDisbursementCloseModal,
-    ),
-  { ssr: false },
+// preloadableLazy: a modal whose chunk was preloaded opens at once instead of
+// waiting out React's suspense throttle.
+const disbursementCloseModal = preloadableLazy(() =>
+  import("./FinanceDisbursementCloseModal").then(
+    (m) => m.FinanceDisbursementCloseModal,
+  ),
 );
-const FinanceVendorInvoiceMatchModal = dynamic(
-  () =>
-    import("./FinanceVendorInvoiceMatchModal").then(
-      (m) => m.FinanceVendorInvoiceMatchModal,
-    ),
-  { ssr: false },
+const vendorInvoiceMatchModal = preloadableLazy(() =>
+  import("./FinanceVendorInvoiceMatchModal").then(
+    (m) => m.FinanceVendorInvoiceMatchModal,
+  ),
 );
+const FinanceDisbursementCloseModal = disbursementCloseModal.Component;
+const FinanceVendorInvoiceMatchModal = vendorInvoiceMatchModal.Component;
 
 // Bundle is fetched on hover/focus of the open button instead of waiting for click
 // (bundle-preload).
 const preloadDisbursementCloseModal = () =>
-  void import("./FinanceDisbursementCloseModal");
+  void disbursementCloseModal.preload();
 const preloadVendorInvoiceMatchModal = () =>
-  void import("./FinanceVendorInvoiceMatchModal");
+  void vendorInvoiceMatchModal.preload();
 
 const EMPTY_STATEMENTS: PartyBillingStatementDto[] = [];
 
@@ -261,6 +263,12 @@ export function FinanceMyTasks() {
   );
 
   const kpi = useMemo(() => buildFinanceMyTasksKpis(tasks), [tasks]);
+  const failedQueries = [trackingQuery, readyQuery, statementsQuery].filter(
+    queryLoadFailed,
+  );
+  /** KPI tiles read «—» until every source loaded — never 0 on a failure. */
+  const kpiValue = (n: number) =>
+    pending || failedQueries.length ? "—" : n;
 
   const matchStatement = useMemo(
     () =>
@@ -338,7 +346,7 @@ export function FinanceMyTasks() {
             className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
-            {kpi.matchCount}
+            {kpiValue(kpi.matchCount)}
           </div>
           <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
@@ -362,11 +370,13 @@ export function FinanceMyTasks() {
             className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
-            {kpi.collectCount}
+            {kpiValue(kpi.collectCount)}
           </div>
           <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
-            <span dir="ltr">{fmtMax(kpi.collectAmountSar)}</span>
+            <span dir="ltr">
+              {pending || failedQueries.length ? "—" : fmtMax(kpi.collectAmountSar)}
+            </span>
             <span>ر.س</span>
           </div>
         </div>
@@ -387,7 +397,7 @@ export function FinanceMyTasks() {
             className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
-            {kpi.docsCount}
+            {kpiValue(kpi.docsCount)}
           </div>
           <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
@@ -410,7 +420,7 @@ export function FinanceMyTasks() {
             className="text-end text-[32px] font-extrabold leading-none text-heading"
             dir="ltr"
           >
-            {kpi.closeCount}
+            {kpiValue(kpi.closeCount)}
           </div>
           <div className="mt-2 flex items-center justify-end gap-1.5 text-[12px] text-[#a4a6ad]">
             <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#a4906f]" />
@@ -430,6 +440,18 @@ export function FinanceMyTasks() {
           <div className="px-5 py-[54px] text-center text-[14px] font-bold text-[#73767f]">
             <GentleBusy>جاري التحميل…</GentleBusy>
           </div>
+        </div>
+      ) : failedQueries.length ? (
+        <div className={cn(opsLetterCard, "rounded-xl border-border bg-surface")}>
+          <QueryErrorState
+            panel
+            line="تعذّر تحميل مهام المالية"
+            error={failedQueries[0]!.error}
+            onRetry={() => {
+              for (const q of failedQueries) void q.refetch();
+            }}
+            retrying={failedQueries.some((q) => q.isFetching)}
+          />
         </div>
       ) : tasks.length === 0 ? (
         <div className={cn(opsLetterCard, "rounded-xl border-border bg-surface")}>
@@ -479,23 +501,25 @@ export function FinanceMyTasks() {
 
       {/* Conditional mount — always mounting fetched both modal chunks on screen open
           despite code-splitting (bundle-conditional). */}
-      {matchStatementId ? (
-        <FinanceVendorInvoiceMatchModal
-          open={Boolean(matchStatementId)}
-          statement={matchStatement}
-          onClose={closeMatchModal}
-          onDone={invalidateBilling}
-          onMatched={goToCostsAfterMatch}
-        />
-      ) : null}
-      {closeStatementId ? (
-        <FinanceDisbursementCloseModal
-          open={Boolean(closeStatementId)}
-          statement={closeStatement}
-          onClose={closeCloseModal}
-          onDone={invalidateBilling}
-        />
-      ) : null}
+      <Suspense fallback={null}>
+        {matchStatementId ? (
+          <FinanceVendorInvoiceMatchModal
+            open={Boolean(matchStatementId)}
+            statement={matchStatement}
+            onClose={closeMatchModal}
+            onDone={invalidateBilling}
+            onMatched={goToCostsAfterMatch}
+          />
+        ) : null}
+        {closeStatementId ? (
+          <FinanceDisbursementCloseModal
+            open={Boolean(closeStatementId)}
+            statement={closeStatement}
+            onClose={closeCloseModal}
+            onDone={invalidateBilling}
+          />
+        ) : null}
+      </Suspense>
     </div>
   );
 }

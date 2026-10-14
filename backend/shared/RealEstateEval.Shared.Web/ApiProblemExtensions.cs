@@ -55,11 +55,6 @@ public static class ApiProblemExtensions
         string title = "Forbidden") =>
         BuildProblem(controller, StatusCodes.Status403Forbidden, title, detail);
 
-    public static ObjectResult GoneProblem(
-        this ControllerBase controller,
-        string detail,
-        string title = "Gone") =>
-        BuildProblem(controller, StatusCodes.Status410Gone, title, detail);
 
     public static ObjectResult WithProblemExtension(
         this ObjectResult result,

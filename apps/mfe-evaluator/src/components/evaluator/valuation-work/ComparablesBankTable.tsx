@@ -11,11 +11,11 @@ import {
   emptyComparableEntryDraft,
   firstComparableEntryError,
   firstComparableEntryErrorTarget,
-  parseComparableCoords,
   validateComparableEntry,
   type ComparableEntryDraft,
   type ComparableEntryFieldErrors,
 } from "@platform/app-shared/app-data/comparable-entry";
+import { parseLatLng } from "@platform/app-shared/domain/geo";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   AppModal,
@@ -34,19 +34,99 @@ import {
 import { Card } from "./atoms";
 import { ComparablesBankMoneyCells, ComparablesBankMoneyReadOnly } from "./ComparablesBankMoneyCells";
 import {
+  BANK_RADIUS_OPTIONS_KM,
   NEARBY_RADIUS_KM,
   sourceCardLine,
+  type BankBeyond,
   type BankDisplayRow,
 } from "./lib/bank-ranking";
 import { apiConfig } from "./lib/shell-utils";
 
-export type ComparablesBankRow = BankDisplayRow;
+type ComparablesBankRow = BankDisplayRow;
 
 /**
  * Nearby bank table — search and price/area drafts stay local so typing does
  * not re-render the valuation shell. «اضافة مقارن» writes to the shared bank.
  */
-export type ComparableBankSeed = {
+function radiusLabel(radiusKm: number | null): string {
+  return radiusKm == null ? "كل المقارنات المتاحة" : `ضمن ${radiusKm} كم`;
+}
+
+/** The smallest radius choice that reaches `nearestKm`; `null` (all) when none does. */
+function radiusReaching(nearestKm: number): number | null {
+  for (const option of BANK_RADIUS_OPTIONS_KM) {
+    if (option != null && option >= nearestKm) return option;
+  }
+  return null;
+}
+
+/**
+ * Empty table: say why and what to do next — never a dead end. A search with no hit offers to
+ * clear it; an empty radius says how many comparables lie farther (and how far the nearest is)
+ * with a one-click widen; an empty bank points at «إضافة مقارن».
+ */
+function BankEmptyState({
+  searching,
+  radiusKm,
+  beyond,
+  onClearSearch,
+  onWiden,
+  onAdd,
+}: {
+  searching: boolean;
+  radiusKm: number | null;
+  beyond?: BankBeyond;
+  onClearSearch: () => void;
+  onWiden?: (radiusKm: number | null) => void;
+  onAdd: () => void;
+}) {
+  if (searching) {
+    return (
+      <div className="grid justify-items-center gap-2.5">
+        <span>لا توجد نتائج مطابقة — جرّب كلمة أخرى (حي، نوع العقار أو رقم مرجعي).</span>
+        <Button type="button" size="sm" onClick={onClearSearch}>
+          مسح البحث
+        </Button>
+      </div>
+    );
+  }
+
+  const nearest = beyond?.nearestKm ?? null;
+  if (beyond && beyond.count > 0 && nearest != null && onWiden) {
+    const target = radiusReaching(nearest);
+    return (
+      <div className="grid justify-items-center gap-2.5">
+        <span className="font-semibold text-text-2">
+          لا توجد مقارنات {radiusLabel(radiusKm)} من موقع العقار.
+        </span>
+        <span>
+          يوجد {beyond.count} {beyond.count === 1 ? "مقارن أبعد" : "مقارنات أبعد"}، وأقربها على{" "}
+          {nearest.toFixed(1)} كم.
+        </span>
+        <div className="flex flex-wrap justify-center gap-2">
+          <Button type="button" size="sm" variant="primary" onClick={() => onWiden(target)}>
+            {target == null ? "اعرض الكل" : `وسّع النطاق إلى ${target} كم`}
+          </Button>
+          <Button type="button" size="sm" onClick={onAdd}>
+            إضافة مقارن
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid justify-items-center gap-2.5">
+      <span className="font-semibold text-text-2">لا توجد مقارنات في البنك لهذا الموقع بعد.</span>
+      <span>أضف مقارناً (مدينة + إحداثيات) ليظهر هنا ويمكنك اعتماده.</span>
+      <Button type="button" size="sm" variant="primary" onClick={onAdd}>
+        إضافة مقارن
+      </Button>
+    </div>
+  );
+}
+
+type ComparableBankSeed = {
   type?: string;
   city?: string;
   district?: string;
@@ -58,6 +138,9 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   rows,
   subjectSqm,
   distanceKm,
+  radiusKm = NEARBY_RADIUS_KM,
+  onRadiusChange,
+  beyond,
   onAdopt,
   onSearch,
   onSaveOverride,
@@ -69,6 +152,12 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   rows: ComparablesBankRow[];
   subjectSqm: number | null;
   distanceKm: Record<string, number>;
+  /** The radius around the property the table shows (3 km by default); `null` = all. */
+  radiusKm?: number | null;
+  /** Radius chips are shown only when this is given. */
+  onRadiusChange?: (radiusKm: number | null) => void;
+  /** What the chosen radius leaves out — drives the empty-state message. */
+  beyond?: BankBeyond;
   /** Resolves once the save (and the reload it triggers) settles — the checkbox reverts to
    * `rows` truth then. Adopting a comparable for the first time has no server round trip to
    * flip early on, so the checkbox owns its own optimistic draft meanwhile (rerender-defer-reads). */
@@ -207,8 +296,28 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
           <span className="hidden text-[11.5px] text-text-3 md:inline">
             {q.trim()
               ? "نتائج البحث في البنك — الأقرب أولاً"
-              : `ضمن ${NEARBY_RADIUS_KM} كم من موقع العقار — الأقرب أولاً`}
+              : `${radiusLabel(radiusKm)} من موقع العقار — الأقرب أولاً`}
           </span>
+          {onRadiusChange && !q.trim() ? (
+            <div className="flex items-center gap-1" role="group" aria-label="نطاق البحث حول العقار">
+              {BANK_RADIUS_OPTIONS_KM.map((option) => (
+                <button
+                  key={option ?? "all"}
+                  type="button"
+                  aria-pressed={option === radiusKm}
+                  onClick={() => onRadiusChange(option)}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition-colors",
+                    option === radiusKm
+                      ? "border-gold bg-gold-soft text-gold-d"
+                      : "border-border-md bg-surface text-text-2 hover:border-gold",
+                  )}
+                >
+                  {option == null ? "الكل" : `${option} كم`}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
@@ -266,7 +375,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
           draft={draft}
           disabled={saving}
           fieldErrors={fieldErrors}
-          subjectPin={parseComparableCoords(seed?.latitude, seed?.longitude)}
+          subjectPin={parseLatLng(seed?.latitude, seed?.longitude)}
           onChange={(next) => {
             setDraft(next);
             setFieldErrors({});
@@ -287,7 +396,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
               <Th className="min-w-[132px]">الرقم المرجعي</Th>
               <Th className="min-w-[100px] text-center">نوع العقار</Th>
               <Th className="min-w-[122px] text-center">نوع المقارن</Th>
-              <Th className="w-[112px] text-center">تاريخ المقارن</Th>
+              <Th className="w-[112px] text-center">تاريخ العملية</Th>
               <Th className="min-w-[96px] bg-gold-soft text-center">
                 سعر المتر
               </Th>
@@ -388,9 +497,14 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
             })}
             {rows.length === 0 ? (
               <TableEmptyRow colSpan={12}>
-                {q.trim()
-                  ? "لا نتائج مطابقة لهذا البحث"
-                  : `لا مقارنات ضمن ${NEARBY_RADIUS_KM} كم — اضغط «اضافة مقارن» (مدينة + إحداثيات).`}
+                <BankEmptyState
+                  searching={q.trim().length > 0}
+                  radiusKm={radiusKm}
+                  beyond={beyond}
+                  onClearSearch={() => setQ("")}
+                  onWiden={onRadiusChange}
+                  onAdd={openForm}
+                />
               </TableEmptyRow>
             ) : null}
           </TBody>

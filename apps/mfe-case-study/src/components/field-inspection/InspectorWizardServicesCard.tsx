@@ -19,6 +19,7 @@ import { withoutSpecialistProofSlots } from "./SpecialistServiceProofPhotoFields
 import { DESIGN_AMENITIES } from "./inspector-wizard-state";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
 export function InspectorWizardServicesCard({
   draft,
@@ -33,7 +34,7 @@ export function InspectorWizardServicesCard({
   fieldErrors: InspectorWorkspaceFieldErrors;
   serviceProofFromTransactionPhotos: boolean;
   transactionPhotos: PropertyDetailDocumentEntry[];
-  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
   return (
     <>

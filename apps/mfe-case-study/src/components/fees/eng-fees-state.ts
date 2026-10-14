@@ -8,14 +8,9 @@ import type {
   InspectorFeeRowDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
-import { fmtMax } from "@platform/app-shared/format/number";
 import { engFeeUiStatus } from "./EngOfficeFeesBillingTable";
 
 export type TabId = "action" | "ready" | "statements";
-
-export function fmtSar(n: number): string {
-  return `${fmtMax(n || 0, 3)} ر.س`;
-}
 
 
 export function deedParts(row: InspectorFeeRowDto): { deed: string; region: string } {

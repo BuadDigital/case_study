@@ -14,7 +14,12 @@ export type EvaluatorValuationReportPreviewProps = {
   property: PoPropertyIntake;
 };
 
-export type EvaluatorQueueStatusGroup =
+/** The case specialist's workspace for the valuation-report draft (read-only unless `canEdit`). */
+export type EvaluatorReportDraftPanelProps = EvaluatorValuationReportPreviewProps & {
+  canEdit: boolean;
+};
+
+type EvaluatorQueueStatusGroup =
   | "open"
   | "in_progress"
   | "submitted"
@@ -22,8 +27,6 @@ export type EvaluatorQueueStatusGroup =
   | "completed"
   | "blocked"
   | string;
-
-export type EvaluatorChecklistAnswersBridge = Record<string, unknown>;
 
 export type EvaluatorRuntimeBridge = {
   filterAppraiserListedTasks: (
@@ -69,14 +72,6 @@ export type EvaluatorRuntimeBridge = {
     dataUrl?: string;
     attachmentId?: string;
   } | null;
-  getCachedEvaluatorDepositCertificate: (
-    taskId: string,
-  ) => {
-    fileName: string;
-    mimeType?: string;
-    dataUrl?: string;
-    attachmentId?: string;
-  } | null;
   mergeEvaluatorChecklistFromCaseStudy: (
     checklist: unknown,
     answers: unknown,
@@ -96,6 +91,7 @@ export type EvaluatorRuntimeBridge = {
     options?: { overwriteLinked?: boolean },
   ) => Promise<void> | void;
   ValuationReportPreview?: ComponentType<EvaluatorValuationReportPreviewProps>;
+  ReportDraftPanel?: ComponentType<EvaluatorReportDraftPanelProps>;
 };
 
 let bridge: EvaluatorRuntimeBridge | null = null;

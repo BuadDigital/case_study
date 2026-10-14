@@ -50,21 +50,12 @@ function normalizeLoginResponse(raw: Record<string, unknown>): LoginResponse {
 async function fetchLoginSession(username: string): Promise<LoginResponse> {
   const phone = RELEASE_USER_PHONES[username];
   if (!phone) throw new Error(`No demo phone mapped for "${username}"`);
-  // `/api/auth/login` is the passwordless target shape; a gateway still running
-  // the password build rejects it, so fall back to `/api/auth/login-username`,
-  // which has always been passwordless. Works on either build.
-  let res = await fetch(`${API_BASE}/api/auth/login`, {
+  // Demo login is by seeded mobile only (`Auth:EnableDevLogin`).
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: phone }),
   });
-  if (!res.ok) {
-    res = await fetch(`${API_BASE}/api/auth/login-username`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: phone }),
-    });
-  }
   if (!res.ok) {
     const body = await res.text().catch(() => "");
     throw new Error(
@@ -288,7 +279,6 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "property-appraisal", title: "تقييم العقار" },
   { id: "active-survey", title: "الرفع المساحي" },
   { id: "system-fields-catalog", title: "قاموس الحقول المركزي" },
-  { id: "system-screen-catalog", title: "دليل الشاشات" },
   { id: "financial", title: "مهامي" },
   { id: "users", title: "المستخدمون" },
   { id: "fee-pricing", title: "التسعيرة" },

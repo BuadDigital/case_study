@@ -1,5 +1,5 @@
 import { saveCaseStudyInfoRoles } from "@platform/api-client";
-import { caseStudyInfoRolesApiConfig } from "../settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   mergeConfig,
   notifyCaseStudyInfoRolesChanged,
@@ -24,10 +24,10 @@ export async function seedCaseStudyInfoRolesDefaultsIfEmpty(): Promise<void> {
 export async function saveCaseStudyInfoRolesConfig(
   config: CaseStudyInfoRolesConfig,
 ): Promise<CaseStudyInfoRolesConfig | null> {
-  const apiConfig = caseStudyInfoRolesApiConfig();
-  if (!apiConfig) return null;
+  const api = apiConfig();
+  if (!api) return null;
 
-  const result = await saveCaseStudyInfoRoles(apiConfig, {
+  const result = await saveCaseStudyInfoRoles(api, {
     matrix: config.matrix,
     notes: config.notes,
   });

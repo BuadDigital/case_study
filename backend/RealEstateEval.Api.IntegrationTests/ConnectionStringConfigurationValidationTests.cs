@@ -1,6 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.FileProviders;
-using Microsoft.Extensions.Hosting;
 using RealEstateEval.Shared.Web;
 
 namespace RealEstateEval.Api.IntegrationTests;
@@ -21,13 +19,10 @@ public class ConnectionStringConfigurationValidationTests
                 })
                 .Build();
 
-            var environment = new TestHostEnvironment(Environments.Production);
-
             Assert.Throws<InvalidOperationException>(
                 () => ServiceCollectionExtensions.RequireConnectionString(
                     configuration,
-                    serviceName: ServiceDatabaseNames.Identity,
-                    environment: environment));
+                    serviceName: ServiceDatabaseNames.Identity));
         });
     }
 
@@ -43,35 +38,11 @@ public class ConnectionStringConfigurationValidationTests
                 })
                 .Build();
 
-            var environment = new TestHostEnvironment(Environments.Production);
             var value = ServiceCollectionExtensions.RequireConnectionString(
                 configuration,
-                serviceName: ServiceDatabaseNames.Identity,
-                environment: environment);
+                serviceName: ServiceDatabaseNames.Identity);
 
             Assert.Equal("Host=prod;Database=identity", value);
-        });
-    }
-
-    [Fact]
-    public void RequireConnectionString_rejects_default_connection_in_development()
-    {
-        WithClearedIdentityEnv(() =>
-        {
-            var configuration = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["ConnectionStrings:DefaultConnection"] = "Host=dev;Database=shared",
-                })
-                .Build();
-
-            var environment = new TestHostEnvironment(Environments.Development);
-
-            Assert.Throws<InvalidOperationException>(
-                () => ServiceCollectionExtensions.RequireConnectionString(
-                    configuration,
-                    serviceName: ServiceDatabaseNames.Identity,
-                    environment: environment));
         });
     }
 
@@ -91,13 +62,5 @@ public class ConnectionStringConfigurationValidationTests
                 Environment.SetEnvironmentVariable(name, previous);
             }
         }
-    }
-
-    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment
-    {
-        public string EnvironmentName { get; set; } = environmentName;
-        public string ApplicationName { get; set; } = nameof(ConnectionStringConfigurationValidationTests);
-        public string ContentRootPath { get; set; } = Directory.GetCurrentDirectory();
-        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
     }
 }

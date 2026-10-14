@@ -1,0 +1,602 @@
+{
+  "note": "The system's approved Arabic wording, one per concept. Reviewed on the «قاموس مصطلحات إجادة» page (https://claude.ai/artifact/Kb8WAt23Nth1sRtb2DTwvC) on 2026-10-08. `rejected` wordings are enforced by tests/architecture/approved-terms.test.ts; concepts still under review are not listed.",
+  "rules": [
+    "«تعذّر» and its forms keep the shadda (تعذّر، متعذّر، التعذّر).",
+    "The appraiser is «المقيّم» with a shadda (مقيم without it also means resident).",
+    "«محضر» (record) — «محظر» is a misspelling.",
+    "Placeholders end with «…»; in-progress messages end with «…» (جاري التحميل…)."
+  ],
+  "entries": [
+    {
+      "id": "sta-account-unlock-action",
+      "concept": "فك قفل الحساب",
+      "approved": "فك القفل",
+      "rejected": [
+        "تعذر فك قفل الحساب",
+        "فتح حساب مستخدم مقفل",
+        "فتح حساب مقفل"
+      ]
+    },
+    {
+      "id": "sta-under-study",
+      "concept": "قيد الدراسة",
+      "approved": "قيد الدراسة",
+      "rejected": [
+        "تحت الدراسة"
+      ]
+    },
+    {
+      "id": "sta-ready-for-enfaz",
+      "concept": "حالة أمر العمل: الدراسة مكتملة بانتظار الرفع على إنفاذ",
+      "approved": "جاهز للرفع على إنفاذ",
+      "rejected": [
+        "جاهز للرفع على انفاذ",
+        "جاهز للتسليم على إنفاذ"
+      ]
+    },
+    {
+      "id": "sta-failure-review",
+      "concept": "تعذّر قيد المراجعة عند المشرف",
+      "approved": "قيد المراجعة",
+      "rejected": [
+        "تعذر بانتظار المراجعة",
+        "عند مشرف دراسة الحالة"
+      ]
+    },
+    {
+      "id": "sta-offline-queued",
+      "concept": "بانتظار المزامنة (محفوظ على الجهاز)",
+      "approved": "بانتظار المزامنة",
+      "rejected": [
+        "ظروف معلّقة",
+        "ظروف معلّقة لم تُزامن",
+        "في طابور الحفظ",
+        "لا عناصر معلّقة",
+        "محفوظ على الجهاز",
+        "محفوظة للمزامنة"
+      ]
+    },
+    {
+      "id": "sta-report-approved-awaiting-deposit",
+      "concept": "معتمد — بانتظار رمز الإيداع",
+      "approved": "معتمد — بانتظار رمز الإيداع",
+      "rejected": [
+        "بانتظار الإيداع",
+        "بانتظار رمز الإيداع"
+      ]
+    },
+    {
+      "id": "act-replace-file",
+      "concept": "استبدال ملف أو صورة مرفوعة بأخرى",
+      "approved": "استبدال",
+      "rejected": [
+        "استبدال التوقيع",
+        "استبدال الصورة",
+        "استبدال الملف",
+        "استبدال خطاب التمكين المرفق",
+        "تغيير الصورة",
+        "تغيير الملف"
+      ]
+    },
+    {
+      "id": "act-login-required",
+      "concept": "يلزم تسجيل الدخول",
+      "approved": "يلزم تسجيل الدخول",
+      "rejected": [
+        "تحقق من تسجيل الدخول",
+        "تسجيل الدخول مطلوب",
+        "غير مصادق",
+        "يجب تسجيل الدخول",
+        "يجب تسجيل الدخول أولاً"
+      ]
+    },
+    {
+      "id": "act-session-expired",
+      "concept": "انتهاء الجلسة",
+      "approved": "انتهت الجلسة",
+      "rejected": [
+        "انتهت صلاحية الجلسة"
+      ]
+    },
+    {
+      "id": "act-relogin-prompt",
+      "concept": "دعوة لإعادة تسجيل الدخول",
+      "approved": "سجّل الدخول مجدداً",
+      "rejected": [
+        "أعد تسجيل الدخول"
+      ]
+    },
+    {
+      "id": "act-copied",
+      "concept": "تأكيد النسخ إلى الحافظة",
+      "approved": "تم النسخ / تعذّر النسخ",
+      "rejected": [
+        "تعذر النسخ التلقائي",
+        "تعذّر نسخ الإحداثيات",
+        "تعذّر نسخ النص",
+        "تم نسخ الإحداثيات",
+        "نُسخ"
+      ]
+    },
+    {
+      "id": "act-empty-no-results",
+      "concept": "لا نتائج مطابقة للبحث/التصفية",
+      "approved": "لا توجد نتائج مطابقة",
+      "rejected": [
+        "لا بنود مطابقة للبحث",
+        "لا توجد نتيجة",
+        "لا نتائج"
+      ]
+    },
+    {
+      "id": "rol-report-user",
+      "concept": "مستخدم التقرير",
+      "approved": "مستخدم التقرير",
+      "rejected": [
+        "اسم مستخدم تقرير التقييم",
+        "مستخدم تقرير التقييم",
+        "مستخدمو التقرير"
+      ]
+    },
+    {
+      "id": "rol-report-participants",
+      "concept": "المشاركون في إعداد التقرير",
+      "approved": "المشاركون في إعداد التقرير",
+      "rejected": [
+        "اسم العامل على التقرير",
+        "العاملون على التقرير",
+        "المشاركون النشطون",
+        "بيانات العاملين على التقرير",
+        "دور العامل على التقرير",
+        "عامل على التقرير"
+      ]
+    },
+    {
+      "id": "rol-court-eviction-record",
+      "concept": "محضر الإخلاء (مستند المحكمة)",
+      "approved": "محضر الإخلاء",
+      "rejected": [
+        "تمكين / محظر محكمة",
+        "محظر إخلاء"
+      ]
+    },
+    {
+      "id": "rol-page-po",
+      "concept": "أوامر العمل",
+      "approved": "أوامر العمل (PO)",
+      "rejected": [
+        "أوامر العمل والعقارات",
+        "قائمة أوامر العمل"
+      ]
+    },
+    {
+      "id": "rol-page-property-map",
+      "concept": "خريطة العقارات",
+      "approved": "خريطة العقارات",
+      "rejected": [
+        "خريطة المواقع المدروسة"
+      ]
+    },
+    {
+      "id": "pro-internal-delegation-letter",
+      "concept": "خطاب التكليف الداخلي (لزيارة المحكمة)",
+      "approved": "خطاب التكليف الداخلي",
+      "rejected": [
+        "خطاب تفويض داخلي"
+      ]
+    },
+    {
+      "id": "pro-unlisted-document",
+      "concept": "مستند غير معرّف (خارج قائمة المستندات)",
+      "approved": "مستند غير معرّف",
+      "rejected": [
+        "مستند إضافي",
+        "مستندات أخرى"
+      ]
+    },
+    {
+      "id": "pro-boundaries-document",
+      "concept": "مستند الحدود",
+      "approved": "مستند الحدود",
+      "rejected": [
+        "المستند الخارجي للحدود"
+      ]
+    },
+    {
+      "id": "pro-area-utilities",
+      "concept": "المرافق في منطقة العقار (للأرض)",
+      "approved": "المرافق في منطقة العقار",
+      "rejected": [
+        "مرافق منطقة الأرض",
+        "وضع المرافق / الخدمات"
+      ]
+    },
+    {
+      "id": "pro-maid-rooms",
+      "concept": "غرف الخدم",
+      "approved": "غرف الخدم",
+      "rejected": [
+        "عدد غرف الخادمة"
+      ]
+    },
+    {
+      "id": "pro-failure-noun",
+      "concept": "التعذّر",
+      "approved": "تعذّر",
+      "rejected": [
+        "عائق"
+      ]
+    },
+    {
+      "id": "val-reconciliation-process",
+      "concept": "ترجيح مؤشرات القيمة بين الأساليب",
+      "approved": "الترجيح",
+      "rejected": [
+        "ترجيح التقييم",
+        "حفظ التوفيق والرأي النهائي"
+      ]
+    },
+    {
+      "id": "val-comparable-weight",
+      "concept": "وزن المقارن في متوسط سعر المتر",
+      "approved": "الوزن النسبي",
+      "rejected": [
+        "الأوزان النسبية للعقارات المقارنة",
+        "مجموع الأوزان"
+      ]
+    },
+    {
+      "id": "val-weighted-value",
+      "concept": "مجموع المؤشرات بعد الترجيح",
+      "approved": "القيمة المرجّحة",
+      "rejected": []
+    },
+    {
+      "id": "val-transaction-date",
+      "concept": "تاريخ الصفقة أو العرض",
+      "approved": "تاريخ العملية",
+      "rejected": [
+        "تاريخ المقارن"
+      ]
+    },
+    {
+      "id": "val-external-obsolescence",
+      "concept": "التقادم الخارجي",
+      "approved": "التقادم الخارجي",
+      "rejected": []
+    },
+    {
+      "id": "val-economic-life",
+      "concept": "العمر الاقتصادي للمبنى",
+      "approved": "العمر الاقتصادي",
+      "rejected": [
+        "العمر الإفتراضي"
+      ]
+    },
+    {
+      "id": "val-fair-value-ifrs",
+      "concept": "القيمة العادلة وفق IFRS",
+      "approved": "القيمة العادلة (IFRS)",
+      "rejected": []
+    },
+    {
+      "id": "val-liquidation-basis-label",
+      "concept": "أساس قيمة التصفية",
+      "approved": "قيمة التصفية",
+      "rejected": []
+    },
+    {
+      "id": "val-valuation-purpose",
+      "concept": "الغرض من التقييم",
+      "approved": "الغرض من التقييم",
+      "rejected": [
+        "غرض التقييم"
+      ]
+    },
+    {
+      "id": "val-valuation-currency",
+      "concept": "عملة التقييم",
+      "approved": "عملة التقييم",
+      "rejected": []
+    },
+    {
+      "id": "val-misuse-market-approach-label",
+      "concept": "تسمية أسلوب السوق باسم طريقة",
+      "approved": "أسلوب السوق",
+      "rejected": []
+    },
+    {
+      "id": "val-misuse-cost-method-name",
+      "concept": "«طريقة التكلفة» اسمًا لطريقة",
+      "approved": "طريقة تكلفة الإحلال / طريقة المقاول",
+      "rejected": []
+    },
+    {
+      "id": "val-fee-deduction",
+      "concept": "ما يُحسم من أتعاب الطرف",
+      "approved": "الحسم",
+      "rejected": []
+    },
+    {
+      "id": "val-vat-label",
+      "concept": "ضريبة القيمة المضافة",
+      "approved": "ضريبة القيمة المضافة (15٪)",
+      "rejected": [
+        "ضريبة القيمة المضافة 15%",
+        "ضريبة القيمة المضافة 15٪"
+      ]
+    },
+    {
+      "id": "val-currency-symbol",
+      "concept": "رمز العملة بعد المبالغ",
+      "approved": "ر.س",
+      "rejected": []
+    },
+    {
+      "id": "val-price-per-sqm-unit",
+      "concept": "وحدة سعر المتر",
+      "approved": "ر.س/م²",
+      "rejected": [
+        "ريال / م²"
+      ]
+    },
+    {
+      "id": "val-area-unit",
+      "concept": "متر مربع",
+      "approved": "م²",
+      "rejected": [
+        "م2"
+      ]
+    },
+    {
+      "id": "sp-001",
+      "concept": "مكونات العقار",
+      "approved": "مكونات العقار",
+      "rejected": [
+        "مكوّنات العقار"
+      ]
+    },
+    {
+      "id": "sp-002",
+      "concept": "جاري التحميل…",
+      "approved": "جاري التحميل…",
+      "rejected": [
+        "جاري التحميل"
+      ]
+    },
+    {
+      "id": "sp-003",
+      "concept": "أرض",
+      "approved": "أرض",
+      "rejected": [
+        "ارض"
+      ]
+    },
+    {
+      "id": "sp-008",
+      "concept": "اسم المالك",
+      "approved": "اسم المالك",
+      "rejected": [
+        "إسم المالك"
+      ]
+    },
+    {
+      "id": "sp-009",
+      "concept": "تعذر",
+      "approved": "تعذّر",
+      "rejected": []
+    },
+    {
+      "id": "sp-010",
+      "concept": "حالة الإشغال",
+      "approved": "حالة الإشغال",
+      "rejected": [
+        "حالة الاشغال"
+      ]
+    },
+    {
+      "id": "sp-012",
+      "concept": "تعذر تنفيذ العملية",
+      "approved": "تعذّر تنفيذ العملية",
+      "rejected": []
+    },
+    {
+      "id": "sp-014",
+      "concept": "متعذر",
+      "approved": "متعذّر",
+      "rejected": []
+    },
+    {
+      "id": "sp-015",
+      "concept": "جاري الحفظ…",
+      "approved": "جاري الحفظ…",
+      "rejected": [
+        "جاري الحفظ"
+      ]
+    },
+    {
+      "id": "sp-016",
+      "concept": "تعذّر الاتصال بالخادم",
+      "approved": "تعذّر الاتصال بالخادم",
+      "rejected": [
+        "تعذر الاتصال بالخادم"
+      ]
+    },
+    {
+      "id": "sp-017",
+      "concept": "معلّق",
+      "approved": "معلّق",
+      "rejected": [
+        "معلق"
+      ]
+    },
+    {
+      "id": "sp-018",
+      "concept": "أرضي",
+      "approved": "أرضي",
+      "rejected": [
+        "ارضى"
+      ]
+    },
+    {
+      "id": "sp-020",
+      "concept": "ملغى",
+      "approved": "ملغى",
+      "rejected": [
+        "ملغي"
+      ]
+    },
+    {
+      "id": "sp-021",
+      "concept": "اعتماد",
+      "approved": "اعتماد",
+      "rejected": [
+        "إعتماد"
+      ]
+    },
+    {
+      "id": "sp-023",
+      "concept": "معرّف العقار مطلوب",
+      "approved": "معرّف العقار مطلوب",
+      "rejected": [
+        "معرف العقار مطلوب"
+      ]
+    },
+    {
+      "id": "sp-024",
+      "concept": "إلغاء",
+      "approved": "إلغاء",
+      "rejected": [
+        "الغاء"
+      ]
+    },
+    {
+      "id": "sp-026",
+      "concept": "اول",
+      "approved": "أول",
+      "rejected": []
+    },
+    {
+      "id": "sp-029",
+      "concept": "مبانٍ",
+      "approved": "مبانٍ",
+      "rejected": [
+        "مبان"
+      ]
+    },
+    {
+      "id": "sp-030",
+      "concept": "صفقة منفّذة",
+      "approved": "صفقة منفّذة",
+      "rejected": []
+    },
+    {
+      "id": "sp-032",
+      "concept": "الأول",
+      "approved": "الأول",
+      "rejected": [
+        "الاول"
+      ]
+    },
+    {
+      "id": "sp-033",
+      "concept": "البورصة العقارية",
+      "approved": "البورصة العقارية",
+      "rejected": [
+        "البورصة العقاريه"
+      ]
+    },
+    {
+      "id": "sp-036",
+      "concept": "الرفع على إنفاذ",
+      "approved": "الرفع على إنفاذ",
+      "rejected": [
+        "الرفع على انفاذ"
+      ]
+    },
+    {
+      "id": "sp-037",
+      "concept": "يوماً",
+      "approved": "يوماً",
+      "rejected": [
+        "يومًا"
+      ]
+    },
+    {
+      "id": "sp-040",
+      "concept": "مُسلَّمة",
+      "approved": "مُسلَّمة",
+      "rejected": [
+        "مسلَّمة"
+      ]
+    },
+    {
+      "id": "sp-041",
+      "concept": "معاملات معلقة",
+      "approved": "معاملات معلّقة",
+      "rejected": []
+    },
+    {
+      "id": "sp-042",
+      "concept": "اعتماد التقرير",
+      "approved": "اعتماد التقرير",
+      "rejected": [
+        "إعتماد التقرير"
+      ]
+    },
+    {
+      "id": "sp-044",
+      "concept": "أربعون",
+      "approved": "أربعون",
+      "rejected": [
+        "اربعون"
+      ]
+    },
+    {
+      "id": "sp-045",
+      "concept": "تعذّر تحميل بيانات الفوترة",
+      "approved": "تعذّر تحميل بيانات الفوترة",
+      "rejected": [
+        "تعذر تحميل بيانات الفوترة"
+      ]
+    },
+    {
+      "id": "sp-047",
+      "concept": "حي",
+      "approved": "حي",
+      "rejected": [
+        "حى"
+      ]
+    },
+    {
+      "id": "sp-048",
+      "concept": "تسجيل التعذر",
+      "approved": "تسجيل التعذّر",
+      "rejected": []
+    },
+    {
+      "id": "sp-049",
+      "concept": "معرف العقار غير صالح",
+      "approved": "معرّف العقار غير صالح",
+      "rejected": []
+    },
+    {
+      "id": "sp-050",
+      "concept": "تعذر إصدار الفاتورة",
+      "approved": "تعذّر إصدار الفاتورة",
+      "rejected": []
+    },
+    {
+      "id": "sp-051",
+      "concept": "تعذر حفظ المتابعة",
+      "approved": "تعذّر حفظ المتابعة",
+      "rejected": []
+    },
+    {
+      "id": "sp-052",
+      "concept": "تعذر حفظ الأتعاب",
+      "approved": "تعذّر حفظ الأتعاب",
+      "rejected": []
+    }
+  ]
+}

@@ -1,13 +1,6 @@
 import type { PageId, RoleId } from "@platform/types";
-import {
-  SYSTEM_FIELDS_GROUP,
-  SYSTEM_FIELDS_GROUP_ICON,
-  SYSTEM_FIELDS_NAV,
-  type SystemFieldsNavItem,
-  systemFieldsNavForRole,
-} from "./system-fields-nav";
+import { SYSTEM_FIELDS_NAV } from "./system-fields-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "./system-fields-catalog-nav";
-import { SYSTEM_SCREEN_CATALOG_NAV_ITEM } from "./system-screen-catalog-nav";
 
 export type SystemSettingsNavItem = {
   id: PageId;
@@ -40,8 +33,7 @@ export function organizationSettingsLeafTitle(tab: string | null | undefined): s
   if (tab === "evaluator") return "المقيّمون";
   if (tab === "branding") return "الهوية البصرية";
   if (tab === "report") return "تقرير التقييم المهني";
-  if (tab === "communications") return "الاتصالات";
-  if (tab === "sla") return "معايير المهل";
+  if (tab === "sla") return "وقت التنفيذ";
   return "بيانات المنشأة";
 }
 
@@ -57,11 +49,12 @@ const REPORT_ICON =
   "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8";
 const LISTS_ICON =
   "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M12 18v-6M9 15h6";
+const SLA_ICON = "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 6v6l4 2";
 const BRAND_ICON =
   "M4 16l4.6-4.6a2 2 0 0 1 2.8 0L16 16m-2-2 1.6-1.6a2 2 0 0 1 2.8 0L20 14M14 8h.01M6 20h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z";
 
 /** Settings tree v2 — sourced from the system-settings v2.dc.html TREE. */
-export const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
+const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
   {
     type: "group",
     id: "fields",
@@ -73,12 +66,6 @@ export const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
         SYSTEM_FIELDS_CATALOG_NAV_ITEM.label,
         SYSTEM_FIELDS_CATALOG_NAV_ITEM.icon,
       ),
-      leaf(
-        "screen-catalog",
-        SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
-        SYSTEM_SCREEN_CATALOG_NAV_ITEM.label,
-        SYSTEM_SCREEN_CATALOG_NAV_ITEM.icon,
-      ),
     ],
   },
   {
@@ -89,6 +76,7 @@ export const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
       leaf("org-data", "organization-settings", "بيانات المنشأة", ORG_ICON, ORG_HREF("company")),
       leaf("valuers", "organization-settings", "المقيّمون", USERS_ICON, ORG_HREF("evaluator")),
       leaf("brand", "organization-settings", "الهوية البصرية", BRAND_ICON, ORG_HREF("branding")),
+      leaf("sla", "organization-settings", "وقت التنفيذ", SLA_ICON, ORG_HREF("sla")),
     ],
   },
   {
@@ -144,7 +132,7 @@ function treeLeaves(nodes: SettingsNavTreeNode[]): SystemSettingsNavItem[] {
   return out;
 }
 
-export const SYSTEM_SETTINGS_PRIMARY_NAV: SystemSettingsNavItem[] = treeLeaves(
+const SYSTEM_SETTINGS_PRIMARY_NAV: SystemSettingsNavItem[] = treeLeaves(
   SYSTEM_SETTINGS_TREE,
 );
 
@@ -153,11 +141,6 @@ export const SYSTEM_SETTINGS_GROUP = "الإعدادات";
 export const SYSTEM_SETTINGS_GROUP_ICON =
   "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z";
 
-export {
-  SYSTEM_FIELDS_GROUP,
-  SYSTEM_FIELDS_GROUP_ICON,
-  type SystemFieldsNavItem,
-};
 
 export const SYSTEM_SETTINGS_PRIMARY_PAGE_IDS: PageId[] = [
   ...new Set(SYSTEM_SETTINGS_PRIMARY_NAV.map((n) => n.id)),
@@ -192,34 +175,11 @@ export function settingsNavTreeForRole(
   return out;
 }
 
-/** @deprecated flattened tree — use settingsNavTreeForRole */
-export function systemSettingsPrimaryNavForRole(
-  rolePages: PageId[],
-  role?: RoleId,
-): SystemSettingsNavItem[] {
-  return treeLeaves(settingsNavTreeForRole(rolePages, role));
-}
-
-export function systemSettingsFieldsNavForRole(
-  rolePages: PageId[],
-): SystemFieldsNavItem[] {
-  return systemFieldsNavForRole(rolePages).filter((item) => item.available);
-}
-
 export function isInSystemSettingsSection(
   page: PageId,
   _role?: RoleId,
 ): boolean {
   return SYSTEM_SETTINGS_PRIMARY_PAGE_IDS.includes(page);
-}
-
-export function showSystemSettingsGroup(
-  rolePages: PageId[],
-  role?: RoleId,
-): boolean {
-  return settingsNavTreeForRole(rolePages, role).some(
-    (node) => node.type !== "divider",
-  );
 }
 
 export function isSettingsNavItemActive(

@@ -85,8 +85,9 @@ public static class CaseStudyModel
             e.HasAllowedValues("WorkOrderProperties", nameof(WorkOrderProperty.RestrictionsPresent), TriStateAnswers);
             e.Property(x => x.InspectionScopeKey).HasMaxLength(16);
             e.Property(x => x.InspectionRestrictionReason).HasMaxLength(2000);
-            // comprehensive "Enfaz" upload.
+            // comprehensive "Enfaz" upload. The PO list buckets filter on the stamp.
             e.Property(x => x.EnfazHandoverByUserId).HasMaxLength(128);
+            e.HasIndex(x => x.EnfazHandoverAtUtc);
             e.Property(x => x.RemoteInspectionApprovedBy).HasMaxLength(128);
             e.Property(x => x.RequestNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentMandateNumber).HasMaxLength(64);
@@ -117,7 +118,7 @@ public static class CaseStudyModel
             e.Property(x => x.RestrictionType).HasMaxLength(128);
             e.Property(x => x.RestrictionOtherReason).HasMaxLength(500);
             e.Property(x => x.DeedOwnersJson).HasColumnType("jsonb");
-            e.Property(x => x.OwnershipType).HasMaxLength(32);
+            e.Property(x => x.BourseCompletedByName).HasMaxLength(128);
             e.Property(x => x.PlanNumber).HasMaxLength(128);
             e.Property(x => x.PlanName).HasMaxLength(256);
             e.Property(x => x.PlotNumber).HasMaxLength(128);
@@ -315,9 +316,9 @@ public static class CaseStudyModel
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        builder.Entity<CaseStudyForm>(e =>
+        builder.Entity<CaseStudyReport>(e =>
         {
-            MapTable(e, "CaseStudyForms", DatabaseSchemas.CaseStudy, ownsMigrations);
+            MapTable(e, "CaseStudyReports", DatabaseSchemas.CaseStudy, ownsMigrations);
             e.UseOptimisticConcurrency();
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.RequestNumber).HasMaxLength(128);
@@ -337,7 +338,7 @@ public static class CaseStudyModel
             e.Property(x => x.SigDate).HasMaxLength(32);
             e.Property(x => x.SpecialistReviewApprovedJson).HasColumnType("jsonb");
             e.Property(x => x.InfathLinkedAssets).HasMaxLength(8);
-            e.HasAllowedValues("CaseStudyForms", nameof(CaseStudyForm.InfathLinkedAssets), TriStateAnswers);
+            e.HasAllowedValues("CaseStudyReports", nameof(CaseStudyReport.InfathLinkedAssets), TriStateAnswers);
             e.Property(x => x.InfathLinkedDeedNumbers).HasMaxLength(512);
             e.Property(x => x.InfathLinkedAssetsNotes).HasMaxLength(4000);
             e.Property(x => x.InfathOtherNotes).HasMaxLength(4000);
@@ -345,8 +346,8 @@ public static class CaseStudyModel
             e.Property(x => x.DeedNatureMatchOutcome).HasMaxLength(32);
             e.Property(x => x.DeedNatureMatchNotes).HasMaxLength(4000);
             e.Property(x => x.PoNumber).HasMaxLength(64);
-            e.HasIndex(x => new { x.TaskId, x.IsPartyForm }).IsUnique();
-            e.HasAllowedValues("CaseStudyForms", nameof(CaseStudyForm.Status), CaseStudyFormStatuses.All);
+            e.HasIndex(x => new { x.TaskId, x.IsPartyContribution }).IsUnique();
+            e.HasAllowedValues("CaseStudyReports", nameof(CaseStudyReport.Status), CaseStudyReportStatuses.All);
             e.HasOne<WorkflowTask>()
                 .WithMany()
                 .HasForeignKey(x => x.TaskId)

@@ -3,7 +3,6 @@
 import {
   Activity,
   Suspense,
-  lazy,
   useCallback,
   useEffect,
   useRef,
@@ -24,6 +23,11 @@ import {
   CardTitle,
 } from "./atoms";
 import { ApproachSettingsSection } from "./ApproachSettingsSection";
+import { EngInfo } from "../EvaluatorHtmlPrimitives";
+import {
+  ASSET_TYPE_CHANGED_MESSAGE,
+  assetTypeChangedNeedsReview,
+} from "../../../lib/evaluator/inspector-data-changes";
 import { ComparablesBankTable } from "./ComparablesBankTable";
 import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
 import { fmt } from "./lib/shell-utils";
@@ -36,7 +40,15 @@ import { ApproachSummaryStrip } from "./ApproachSummaryStrip";
 import { deedNatureMatchGateDetail } from "./lib/deed-nature-match-gate";
 import { useValuationWorkData } from "./useValuationWorkData";
 import { useValuationWorkCommands } from "./useValuationWorkCommands";
+import { ValuationWorkErrorsProvider } from "./ValuationWorkErrors";
+import { ValuationWorkLoadingSkeleton } from "./ValuationWorkLoadingSkeleton";
 import { ValuationWorkReviewScreen } from "./ValuationWorkReviewScreen";
+import {
+  AdjustmentsMatrix,
+  CostApproachSection,
+  FinalOpinionSection,
+  usePreloadLaterWorkScreens,
+} from "./lazy-work-screens";
 import type { ValuationWorkShellProps } from "./ValuationWorkShell.types";
 
 export type { ValuationWorkShellProps } from "./ValuationWorkShell.types";
@@ -49,20 +61,6 @@ import type {
   ValuationWorkNavAvailability,
   ValuationWorkPropertyHint,
 } from "./lib/shell-state";
-
-const AdjustmentsMatrix = lazy(() =>
-  import("./AdjustmentsMatrix").then((m) => ({ default: m.AdjustmentsMatrix })),
-);
-const CostApproachSection = lazy(() =>
-  import("./CostApproachSection").then((m) => ({
-    default: m.CostApproachSection,
-  })),
-);
-const FinalOpinionSection = lazy(() =>
-  import("./FinalOpinionSection").then((m) => ({
-    default: m.FinalOpinionSection,
-  })),
-);
 
 /**
  * Appraiser valuation work shell — matches the sales-comparison valuation design docs.
@@ -125,8 +123,6 @@ export function ValuationWorkShell({
     landSelection,
     subjectArea,
     analysisNotes,
-    factorDefinitions,
-    catalogFactorOptions,
     approachSettings,
     settingsHydrateKey,
     cost,
@@ -150,8 +146,12 @@ export function ValuationWorkShell({
     narrativeDirty,
     bankRows,
     bankDistanceKm,
+    bankBeyond,
     landBankRows,
     landBankDistanceKm,
+    landBankBeyond,
+    bankRadiusKm,
+    setBankRadiusKm,
     subjectAreaNum,
     onSearchBank,
     reload,
@@ -216,6 +216,8 @@ export function ValuationWorkShell({
   visitedScreensRef.current.add(effectiveScreen);
   const screenMode = (id: ValuationWorkScreenId) =>
     !loading && effectiveScreen === id ? "visible" : "hidden";
+
+  usePreloadLaterWorkScreens(!loading);
 
   useEffect(() => {
     if (!screenControlled) return;
@@ -283,7 +285,7 @@ export function ValuationWorkShell({
             ...(marketAdopted > 0
               ? [
                   {
-                    label: "مجموع الأوزان",
+                    label: "مجموع الأوزان النسبية",
                     value: selection?.weightsSumTo100 ? "100٪" : "≠ 100٪",
                     tone: selection?.weightsSumTo100 ? ("heading" as const) : ("danger" as const),
                   },
@@ -306,6 +308,9 @@ export function ValuationWorkShell({
           rows={bankRows}
           subjectSqm={subjectAreaNum}
           distanceKm={bankDistanceKm}
+          radiusKm={bankRadiusKm}
+          onRadiusChange={setBankRadiusKm}
+          beyond={bankBeyond}
           onAdopt={onAdoptMarket}
           onSearch={onSearchBank}
           onSaveOverride={onSaveBankOverride}
@@ -327,8 +332,6 @@ export function ValuationWorkShell({
               city={property?.city}
               district={property?.district ?? districtHint}
               valuationDate={officialValuationDate ?? undefined}
-              factorDefinitions={factorDefinitions}
-              catalogFactors={catalogFactorOptions}
               subjectSpecs={subjectSpecs}
               canEditSubjectSpec
               dispatch={dispatchMarketMatrix}
@@ -396,14 +399,17 @@ export function ValuationWorkShell({
 
         {!buildingOnly ? (
         <>
-        <div className="mb-4 flex items-start gap-[11px] rounded-[10px] border border-border-md bg-gold-soft px-4 py-[13px]">
+        <div
+          id="cost-land-bank"
+          className="mb-4 flex items-start gap-[11px] rounded-[10px] border border-border-md bg-gold-soft px-4 py-[13px]"
+        >
           <span className="h-[30px] w-[3px] shrink-0 rounded-full bg-gold" />
           <div>
             <div className="text-[13px] font-extrabold text-heading">
               تقدير قيمة الأرض فضاءً
             </div>
             <div className="mt-0.5 text-[11.5px] font-normal text-gold-d">
-              مكوّن داخل أسلوب التكلفة — ناتجه قيمة الأرض ولا يدخل التوفيق بين
+              مكوّن داخل أسلوب التكلفة — ناتجه قيمة الأرض ولا يدخل الترجيح بين
               الأساليب. مقارناته أراضٍ خام مستقلة عن مقارنات أسلوب السوق.
             </div>
           </div>
@@ -413,6 +419,9 @@ export function ValuationWorkShell({
           rows={landBankRows}
           subjectSqm={cost?.landAreaSqm || subjectAreaNum}
           distanceKm={landBankDistanceKm}
+          radiusKm={bankRadiusKm}
+          onRadiusChange={setBankRadiusKm}
+          beyond={landBankBeyond}
           onAdopt={onAdoptLand}
           onSaveOverride={onSaveBankOverride}
           seed={comparableSeed}
@@ -433,8 +442,6 @@ export function ValuationWorkShell({
               city={property?.city}
               district={property?.district ?? districtHint}
               valuationDate={officialValuationDate ?? undefined}
-              factorDefinitions={factorDefinitions}
-              catalogFactors={catalogFactorOptions}
               dispatch={dispatchLandMatrix}
             />
           </Suspense>
@@ -476,195 +483,182 @@ export function ValuationWorkShell({
   }
 
   return (
-    <div dir="rtl" className="relative min-h-[480px]">
-      {!embeddedInTopTabs ? (
-        <div className={opsLetterCard}>
-          <nav className="flex flex-wrap gap-1.5 px-[22px] py-3">
-            {navItems
-              .filter((n) => n.show)
-              .map((n) => {
-                const active = effectiveScreen === n.id;
-                return (
-                  <button
-                    key={n.id}
-                    type="button"
-                    onClick={() => setScreen(n.id)}
-                    className={cn(
-                      "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-[12.5px] font-bold",
-                      active
-                        ? "border-ink bg-ink text-white"
-                        : "border-border-md bg-surface text-text",
-                    )}
-                  >
-                    {n.label}
-                    {n.badge != null ? (
-                      <span
-                        className={cn(
-                          "grid h-[17px] min-w-[17px] place-items-center rounded-full px-[5px] text-[9.5px] font-bold",
-                          active
-                            ? "bg-[rgba(200,181,145,.35)] text-white"
-                            : "bg-gold-soft text-gold-d",
-                        )}
-                      >
-                        {n.badge}
-                      </span>
-                    ) : null}
-                  </button>
-                );
-              })}
-          </nav>
-        </div>
-      ) : null}
-
-      {deedMatchPending ? (
-        <Card>
-          <CardPad>
-            <CardTitle>مطابقة الصك على الطبيعة لم تُحسم بعد</CardTitle>
-            <p className="m-0 text-[13px] leading-relaxed text-text">
-              صك تقليدي: أكمل التقييم الآن — إصدار التقرير ينتظر اعتماد دارس الحالة لمطابقة
-              المعاين أو المكتب الهندسي (أو الرفع المساحي السابق) من تبويب مدخلات المعاين.
-              {matchWaitDetail ? (
-                <span className="mt-1 block text-[12px] text-text-2">
-                  {matchWaitDetail}
-                </span>
-              ) : null}
-            </p>
-          </CardPad>
-        </Card>
-      ) : null}
-
-      <div
-        className={cn(
-          "relative pb-2",
-          embeddedInTopTabs ? "pt-0" : "py-[18px]",
-        )}
-      >
-        {error ? (
-          <p className="mb-3 text-[12.5px] text-red-text">
-            {error}
-          </p>
-        ) : null}
-        {loading ? (
-          // Placeholder skeleton sized like the real screen — no buttons/chips before data; no layout jump.
-          <div aria-busy="true" aria-label="جاري تحميل مساحة عمل التقييم">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className={cn(opsLetterCard, "mb-5")}
-              >
-                <div className="p-[18px_22px]">
-                  <div className="h-4 w-44 animate-pulse rounded-md bg-[var(--navy-soft)]" />
-                  <div className="mt-4 grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3">
-                    {[0, 1, 2].map((j) => (
-                      <div key={j} className="min-w-0">
-                        <div className="h-3 w-24 animate-pulse rounded bg-[var(--navy-soft)]" />
-                        <div className="mt-2 h-9 animate-pulse rounded-[var(--radius)] bg-[var(--navy-soft)]" />
-                      </div>
-                    ))}
-                  </div>
-                  {i === 2 ? (
-                    <div className="mt-4 h-24 animate-pulse rounded-[var(--radius)] bg-[var(--navy-soft)]" />
-                  ) : null}
-                </div>
-              </div>
-            ))}
+    <ValuationWorkErrorsProvider
+      fieldErrors={fieldErrors}
+      onScreenChange={setScreen}
+    >
+      <div dir="rtl" className="relative min-h-[480px]">
+        {!embeddedInTopTabs ? (
+          <div className={opsLetterCard}>
+            <nav className="flex flex-wrap gap-1.5 px-[22px] py-3">
+              {navItems
+                .filter((n) => n.show)
+                .map((n) => {
+                  const active = effectiveScreen === n.id;
+                  return (
+                    <button
+                      key={n.id}
+                      type="button"
+                      onClick={() => setScreen(n.id)}
+                      className={cn(
+                        "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-[12.5px] font-bold",
+                        active
+                          ? "border-ink bg-ink text-white"
+                          : "border-border-md bg-surface text-text",
+                      )}
+                    >
+                      {n.label}
+                      {n.badge != null ? (
+                        <span
+                          className={cn(
+                            "grid h-[17px] min-w-[17px] place-items-center rounded-full px-[5px] text-[9.5px] font-bold",
+                            active
+                              ? "bg-[rgba(200,181,145,.35)] text-white"
+                              : "bg-gold-soft text-gold-d",
+                          )}
+                        >
+                          {n.badge}
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+            </nav>
           </div>
         ) : null}
-        {visitedScreensRef.current.has("basic") ? (
-          <Activity mode={screenMode("basic")}>
-            <ApproachSettingsSection
-              valuationRequestId={valuationRequestId}
-              assignmentType={assignmentType}
-              settings={approachSettings}
-              hydrateKey={settingsHydrateKey}
-              saving={saving}
-              onSavingChange={setSaving}
-              onSettingsSaved={onSettingsSaved}
-              fieldErrors={fieldErrors}
-              onRetrospectiveDraftChange={onRetrospectiveDraftChange}
-              onDraftApproachesChange={onDraftApproachesChange}
-              hasMarketWork={visibleAdoptedMarket.length > 0}
-              hasCostWork={
-                (cost?.lines?.length ?? 0) > 0 || visibleAdoptedLand.length > 0
-              }
-            />
-          </Activity>
-        ) : null}
-        {visitedScreensRef.current.has("market") ? (
-          <Activity mode={screenMode("market")}>{renderMarket()}</Activity>
-        ) : null}
-        {visitedScreensRef.current.has("cost") ? (
-          <Activity mode={screenMode("cost")}>
-            {renderCost()}
-            {settingsSaved && costTab ? (
-              <Suspense fallback={<InlineLoadingSkeleton />}>
-                <CostApproachSection
-                  valuationRequestId={valuationRequestId}
-                  poNumber={poNumber}
-                  propertyId={propertyId}
-                  inspectionTaskId={inspectionTaskId}
-                  cost={cost}
-                  hydrateKey={costHydrateKey}
-                  buildingOnly={
-                    (approachSettings?.costScopeKey ?? "land_and_building") ===
-                    "building_only"
-                  }
-                  isApartmentProperty={(approachSettings?.propertyType ?? "").includes(
-                    "شقة",
-                  )}
-                  costBasisKey={approachSettings?.costBasisKey || "replacement"}
-                  saving={saving}
-                  locked={adjustmentsLocked}
-                  onSavingChange={setSaving}
-                  onCostSaved={onCostSaved}
-                />
-              </Suspense>
-            ) : null}
-          </Activity>
-        ) : null}
-        {!loading && effectiveScreen === "final" && !settingsSaved ? (
+
+        {deedMatchPending ? (
           <Card>
             <CardPad>
-              <p className="text-[13px] text-text-2">
-                ابدأ التقييم أولاً لفتح رأي القيمة النهائي.
+              <CardTitle>مطابقة الصك على الطبيعة لم تُحسم بعد</CardTitle>
+              <p className="m-0 text-[13px] leading-relaxed text-text">
+                صك تقليدي: أكمل التقييم الآن — إصدار التقرير ينتظر اعتماد دارس الحالة لمطابقة
+                المعاين أو المكتب الهندسي (أو الرفع المساحي السابق) من تبويب مدخلات المعاين.
+                {matchWaitDetail ? (
+                  <span className="mt-1 block text-[12px] text-text-2">
+                    {matchWaitDetail}
+                  </span>
+                ) : null}
               </p>
             </CardPad>
           </Card>
         ) : null}
-        {visitedScreensRef.current.has("final") ? (
-          <Activity mode={screenMode("final")}>
-            {settingsSaved ? (
-              <Suspense fallback={<InlineLoadingSkeleton />}>
-                <FinalOpinionSection
-                  valuationRequestId={valuationRequestId}
-                  recon={recon}
-                  gates={gates}
-                  cost={cost}
-                  hydrateKey={reconHydrateKey}
-                  buildingOnly={
-                    (approachSettings?.costScopeKey ?? "land_and_building") ===
-                    "building_only"
-                  }
-                  hasAdoptedMarket={visibleAdoptedMarket.length > 0}
-                  assignmentType={assignmentType}
-                  poNumber={poNumber}
-                  officialValuationDate={officialValuationDate}
-                  fieldErrors={fieldErrors}
-                  saving={saving}
-                  onSavingChange={setSaving}
-                  onReconSaved={onReconSaved}
-                  marketAnalysisText={marketTab ? (narrativeDirty ? analysisNotes : autoNarrative) : ""}
-                  costAnalysisEnabled={costTab}
-                  costBasisKey={approachSettings?.costBasisKey || "replacement"}
-                />
-              </Suspense>
-            ) : null}
-          </Activity>
-        ) : null}
-        {visitedScreensRef.current.has("review") ? (
-          <Activity mode={screenMode("review")}>{renderReview()}</Activity>
-        ) : null}
+
+        <div
+          className={cn(
+            "relative pb-2",
+            embeddedInTopTabs ? "pt-0" : "py-[18px]",
+          )}
+        >
+          {error ? (
+            <p className="mb-3 text-[12.5px] text-red-text">
+              {error}
+            </p>
+          ) : null}
+          {loading ? <ValuationWorkLoadingSkeleton /> : null}
+          {visitedScreensRef.current.has("basic") ? (
+            <Activity mode={screenMode("basic")}>
+              {assetTypeChangedNeedsReview({
+                changedGroups: draft?.inspectorDataChangedGroups,
+                settingsSaved,
+              }) ? (
+                <EngInfo variant="amber">{ASSET_TYPE_CHANGED_MESSAGE}</EngInfo>
+              ) : null}
+              <ApproachSettingsSection
+                valuationRequestId={valuationRequestId}
+                assignmentType={assignmentType}
+                settings={approachSettings}
+                hydrateKey={settingsHydrateKey}
+                saving={saving}
+                onSavingChange={setSaving}
+                onSettingsSaved={onSettingsSaved}
+                fieldErrors={fieldErrors}
+                onRetrospectiveDraftChange={onRetrospectiveDraftChange}
+                onDraftApproachesChange={onDraftApproachesChange}
+                hasMarketWork={visibleAdoptedMarket.length > 0}
+                hasCostWork={
+                  (cost?.lines?.length ?? 0) > 0 || visibleAdoptedLand.length > 0
+                }
+              />
+            </Activity>
+          ) : null}
+          {visitedScreensRef.current.has("market") ? (
+            <Activity mode={screenMode("market")}>{renderMarket()}</Activity>
+          ) : null}
+          {visitedScreensRef.current.has("cost") ? (
+            <Activity mode={screenMode("cost")}>
+              {renderCost()}
+              {settingsSaved && costTab ? (
+                <Suspense fallback={<InlineLoadingSkeleton />}>
+                  <CostApproachSection
+                    valuationRequestId={valuationRequestId}
+                    poNumber={poNumber}
+                    propertyId={propertyId}
+                    inspectionTaskId={inspectionTaskId}
+                    inspectorChangedGroups={draft?.inspectorDataChangedGroups}
+                    cost={cost}
+                    hydrateKey={costHydrateKey}
+                    buildingOnly={
+                      (approachSettings?.costScopeKey ?? "land_and_building") ===
+                      "building_only"
+                    }
+                    isApartmentProperty={(approachSettings?.propertyType ?? "").includes(
+                      "شقة",
+                    )}
+                    costBasisKey={approachSettings?.costBasisKey || "replacement"}
+                    saving={saving}
+                    locked={adjustmentsLocked}
+                    onSavingChange={setSaving}
+                    onCostSaved={onCostSaved}
+                  />
+                </Suspense>
+              ) : null}
+            </Activity>
+          ) : null}
+          {!loading && effectiveScreen === "final" && !settingsSaved ? (
+            <Card>
+              <CardPad>
+                <p className="text-[13px] text-text-2">
+                  ابدأ التقييم أولاً لفتح رأي القيمة النهائي.
+                </p>
+              </CardPad>
+            </Card>
+          ) : null}
+          {visitedScreensRef.current.has("final") ? (
+            <Activity mode={screenMode("final")}>
+              {settingsSaved ? (
+                <Suspense fallback={<InlineLoadingSkeleton />}>
+                  <FinalOpinionSection
+                    valuationRequestId={valuationRequestId}
+                    recon={recon}
+                    gates={gates}
+                    cost={cost}
+                    hydrateKey={reconHydrateKey}
+                    buildingOnly={
+                      (approachSettings?.costScopeKey ?? "land_and_building") ===
+                      "building_only"
+                    }
+                    hasAdoptedMarket={visibleAdoptedMarket.length > 0}
+                    assignmentType={assignmentType}
+                    poNumber={poNumber}
+                    officialValuationDate={officialValuationDate}
+                    fieldErrors={fieldErrors}
+                    saving={saving}
+                    onSavingChange={setSaving}
+                    onReconSaved={onReconSaved}
+                    marketAnalysisText={marketTab ? (narrativeDirty ? analysisNotes : autoNarrative) : ""}
+                    costAnalysisEnabled={costTab}
+                    costBasisKey={approachSettings?.costBasisKey || "replacement"}
+                  />
+                </Suspense>
+              ) : null}
+            </Activity>
+          ) : null}
+          {visitedScreensRef.current.has("review") ? (
+            <Activity mode={screenMode("review")}>{renderReview()}</Activity>
+          ) : null}
+        </div>
       </div>
-    </div>
+    </ValuationWorkErrorsProvider>
   );
 }

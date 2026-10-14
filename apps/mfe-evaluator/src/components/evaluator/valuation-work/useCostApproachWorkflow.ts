@@ -30,16 +30,22 @@ import {
   type CostApproachFields,
 } from "./lib/cost-approach-state";
 import { apiConfig } from "./lib/shell-utils";
+import { useCostInspectorSync } from "./useCostInspectorSync";
+import { useValuationWorkErrors } from "./ValuationWorkErrors";
 
-export type CostApproachWorkflowArgs = {
+type CostApproachWorkflowArgs = {
   valuationRequestId: string | null;
   poNumber?: string;
   propertyId: string;
   inspectionTaskId?: string | null;
+  /** Inspector-data groups changed since the appraiser last acknowledged (age → «طبّق عمر المعاين»). */
+  inspectorChangedGroups?: readonly string[] | null;
   cost: ValuationCostApproachDto | null;
   hydrateKey: number;
   buildingOnly: boolean;
   costBasisKey: string;
+  /** The appraiser's package is submitted: the numbers are closed (server-locked). */
+  locked?: boolean;
   onSavingChange: (saving: boolean) => void;
   onCostSaved: (dto: ValuationCostApproachDto) => void;
 };
@@ -54,14 +60,17 @@ export function useCostApproachWorkflow({
   poNumber,
   propertyId,
   inspectionTaskId = null,
+  inspectorChangedGroups = null,
   cost,
   hydrateKey,
   buildingOnly,
   costBasisKey,
+  locked = false,
   onSavingChange,
   onCostSaved,
 }: CostApproachWorkflowArgs) {
   const { showToast } = useToast();
+  const { reportSaveFailure, clearSaveErrors } = useValuationWorkErrors();
   const [costDraft, setCostDraft] = useState<ValuationCostLineDto[]>([]);
   const [fields, setFields] = useState<CostApproachFields>(EMPTY_COST_FIELDS);
   /** Drag a cost line to reorder within its group (drag-to-reorder from the interactive form). */
@@ -133,6 +142,23 @@ export function useCostApproachWorkflow({
     };
   }, [hydrateKey, cost, inspectionTaskId, poNumber, propertyId, showToast]);
 
+  const setActualAge = useCallback(
+    (age: string) => setField("actualAge", age),
+    [setField],
+  );
+  const inspectorSync = useCostInspectorSync({
+    poNumber,
+    propertyId,
+    inspectionTaskId,
+    hydrateKey,
+    costDraft,
+    setCostDraft,
+    fields,
+    setActualAge,
+    inspectorChangedGroups,
+    locked,
+  });
+
   const seedCostFromInventory = useCallback(async () => {
     const config = apiConfig();
     if (!config || !valuationRequestId || !poNumber) {
@@ -160,19 +186,21 @@ export function useCostApproachWorkflow({
     );
     onSavingChange(false);
     if (!res.ok) {
-      showToast(res.message ?? "تعذّر حفظ التكلفة", "error");
+      reportSaveFailure(res, "تعذّر حفظ التكلفة");
       return;
     }
+    clearSaveErrors();
     setCostDraft(res.data.lines);
     showToast("تم حفظ أسلوب التكلفة", "success");
     // Silent reload — no loading-skeleton flash after save (used to be a full reload).
     onCostSaved(res.data);
   }, [
+    clearSaveErrors,
     costDraft,
     fields,
     onCostSaved,
     onSavingChange,
-    showToast,
+    reportSaveFailure,
     valuationRequestId,
   ]);
 
@@ -279,6 +307,7 @@ export function useCostApproachWorkflow({
     moveCostLine,
     seedCostFromInventory,
     saveCost,
+    ...inspectorSync,
   };
 }
 

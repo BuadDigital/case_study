@@ -1,0 +1,163 @@
+{
+  "note": "Occurrences of replaced wordings deliberately left (see each reason). Counts may only go down — tests/architecture/approved-terms.test.ts.",
+  "allowed": {
+    "اربعون": {
+      "count": 1,
+      "reason": "parser input — must keep accepting the old spelling",
+      "where": [
+        "packages/app-shared/src/domain/courts/circuit-search.ts"
+      ]
+    },
+    "ارض": {
+      "count": 6,
+      "reason": "parser input — must keep accepting the old spelling",
+      "where": [
+        "apps/mfe-case-study/src/lib/app-data/inspector-bourse-prefill.ts",
+        "packages/app-shared/src/app-data/inspector-workspace-data.ts",
+        "backend/contexts/case-study/RealEstateEval.CaseStudy.Application/Rules/InspectedPropertyTypeRules.cs",
+        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationApproachSettings.cs",
+        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationMethodologyAlertRules.cs",
+        "backend/RealEstateEval.Application/Rules/FieldInspectionSubmissionValidator.cs"
+      ]
+    },
+    "ارضى": {
+      "count": 2,
+      "reason": "lookup key matched against the printed report template",
+      "where": [
+        "apps/mfe-evaluator/src/lib/evaluator/valuation-report-sheet-facts.ts",
+        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationReportFieldCostLineFlattenRules.cs"
+      ]
+    },
+    "اسم العامل على التقرير": {
+      "count": 1,
+      "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
+      "where": [
+        "packages/app-shared/src/app-data/property-fields-catalog.ts"
+      ]
+    },
+    "إسم المالك": {
+      "count": 1,
+      "reason": "المقياس field-mapping label",
+      "where": [
+        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationReportFieldCatalog.cs"
+      ]
+    },
+    "اسم مستخدم تقرير التقييم": {
+      "count": 2,
+      "reason": "lookup key matched against the printed report template",
+      "where": [
+        "apps/mfe-evaluator/src/lib/evaluator/valuation-report-fill-model.ts",
+        "apps/mfe-evaluator/src/lib/evaluator/valuation-report-missing-fields.ts"
+      ]
+    },
+    "الأوزان النسبية للعقارات المقارنة": {
+      "count": 2,
+      "reason": "lookup key matched against the printed report template",
+      "where": [
+        "apps/mfe-evaluator/src/lib/evaluator/valuation-report-missing-fields.ts",
+        "apps/mfe-evaluator/src/lib/evaluator/valuation-report-sheet-facts.ts"
+      ]
+    },
+    "الاول": {
+      "count": 1,
+      "reason": "parser input — must keep accepting the old spelling",
+      "where": [
+        "packages/app-shared/src/domain/courts/circuit-search.ts"
+      ]
+    },
+    "العاملون على التقرير": {
+      "count": 1,
+      "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
+      "where": [
+        "packages/app-shared/src/app-data/property-fields-catalog.ts"
+      ]
+    },
+    "العمر الإفتراضي": {
+      "count": 1,
+      "reason": "المقياس field-mapping label",
+      "where": [
+        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationReportFieldCatalog.cs"
+      ]
+    },
+    "الغاء": {
+      "count": 1,
+      "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
+      "where": [
+        "packages/ui-kit/src/lib/action-progress-message.ts"
+      ]
+    },
+    "بانتظار رمز الإيداع": {
+      "count": 3,
+      "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
+      "where": [
+        "apps/mfe-case-study/src/lib/app-data/property-detail-parties.ts",
+        "apps/mfe-case-study/src/views/active-transaction-queue-state.ts",
+        "packages/app-shared/src/workflow/report-draft-state.ts"
+      ]
+    },
+    "بيانات العاملين على التقرير": {
+      "count": 1,
+      "reason": "mirrors the Enfaz/Infath platform form",
+      "where": [
+        "apps/mfe-case-study/src/lib/app-data/infath-upload-model.ts"
+      ]
+    },
+    "حى": {
+      "count": 1,
+      "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
+      "where": [
+        "backend/contexts/valuation/RealEstateEval.Valuation.Application/Rules/ComparablePropertyListQueryRules.cs"
+      ]
+    },
+    "خريطة المواقع المدروسة": {
+      "count": 1,
+      "reason": "legacy alias kept so old links/titles still resolve",
+      "where": [
+        "apps/shell/src/lib/breadcrumb.ts"
+      ]
+    },
+    "خطاب تفويض داخلي": {
+      "count": 1,
+      "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
+      "where": [
+        "apps/mfe-case-study/src/lib/app-data/operations-task-display.ts"
+      ]
+    },
+    "دور العامل على التقرير": {
+      "count": 1,
+      "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
+      "where": [
+        "packages/app-shared/src/app-data/property-fields-catalog.ts"
+      ]
+    },
+    "غرض التقييم": {
+      "count": 1,
+      "reason": "المقياس field-mapping label",
+      "where": [
+        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationReportFieldCatalog.cs"
+      ]
+    },
+    "م2": {
+      "count": 1,
+      "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
+      "where": [
+        "backend/contexts/financial/RealEstateEval.Financial.Application/Rules/EngineeringSurveyFeeRules.cs"
+      ]
+    },
+    "مبان": {
+      "count": 2,
+      "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
+      "where": [
+        "packages/app-shared/src/domain/property-documents/property-document-types.ts",
+        "backend/shared/RealEstateEval.Shared.Contracts/Domain/PropertyDocumentTypes.cs"
+      ]
+    },
+    "مستخدمو التقرير": {
+      "count": 1,
+      "reason": "lookup key matched against the printed report template",
+      "where": [
+        "apps/mfe-evaluator/src/lib/evaluator/valuation-report-fill-model.ts"
+      ]
+    }
+  }
+}

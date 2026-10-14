@@ -108,7 +108,7 @@ export function DistributionPartiesForm({
 }: Props) {
   const { data: staffResult } = useDistributionAssigneesQuery();
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
   const loadError = staffResult?.loadError ?? null;
   const loadByAssignee = useMemo(
     () => buildAssigneeOpenLoadMap(workflowTasks),
@@ -181,12 +181,12 @@ export function DistributionPartiesForm({
           />
           <RegSelect
             id="dist_val_appraiser"
-            label="المقيم العقاري"
+            label="المقيّم العقاري"
             required
             disabled={readOnly}
             options={toOptions(valuators, loadByAssignee)}
             value={distribution.valuatorId}
-            placeholder="اختر المقيم…"
+            placeholder="اختر المقيّم…"
             onChange={(v) =>
               onPatch({ valuationDepartment: true, valuatorId: v })
             }

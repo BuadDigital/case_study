@@ -6,6 +6,7 @@
  * themselves are one file each (`FinanceRevenue*Table.tsx`).
  */
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import type { ReactNode } from "react";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
@@ -26,7 +27,7 @@ import {
   revenueAmountsFromRow,
   revenueStageEmptyHint,
 } from "../lib/finance-revenue-stages";
-import { fmtSar, textOrDash } from "../lib/finance-revenue-state";
+import { textOrDash } from "../lib/finance-revenue-state";
 import {
   finGroupRow,
   finMuted,
@@ -154,7 +155,7 @@ export function TotalFeesCell({ row }: { row: EnfazTrackingRowDto }) {
     <Td className="text-center">
       <span className="inline-flex items-center gap-2.5">
         <FeeFlags row={row} />
-        <span className={finNum}>{fmtSar(total)}</span>
+        <span className={finNum}>{fmtSar(total, { trim: "whole" })}</span>
       </span>
     </Td>
   );

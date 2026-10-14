@@ -119,7 +119,7 @@ public class InspectorFeesController : ControllerBase
             ctx.Department,
             ctx.CanManageAllDepartments);
         return row is null
-            ? this.BadRequestProblem("تعذر حفظ الأتعاب — تحقق من الحالة والحسم والاستبعاد.")
+            ? this.BadRequestProblem("تعذّر حفظ الأتعاب — تحقق من الحالة والحسم والاستبعاد.")
             : Ok(row);
     }
 
@@ -171,13 +171,6 @@ public class InspectorFeesController : ControllerBase
             ctx.Department,
             ctx.CanManageAllDepartments);
         return Ok(result);
-    }
-
-    [HttpPost("disbursement-batch")]
-    public ActionResult CreateDisbursementBatch([FromBody] CreateDisbursementBatchRequest? request)
-    {
- //path retired — party fees bill through statements.
-        return this.GoneProblem("إنشاء طلب صرف متوقف — البنود الجاهزة تُفوتر عبر كشف الأطراف.");
     }
 
     private static bool IsAuthorizedForAction(string action, ActorContext ctx)

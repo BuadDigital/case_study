@@ -31,7 +31,17 @@ public sealed partial class OrganizationSettingsService
             current.Valuers,
             userId,
             request.DisplayName ?? "",
-            StaffValuerRosterSyncRules.IsUpsert(mode));
+            StaffValuerRosterSyncRules.IsUpsert(mode),
+            new StaffValuerProfessional(
+                request.ReportRole,
+                request.MembershipCategory,
+                request.MembershipNumber,
+                request.MembershipExpiresAt,
+                request.LicenseNumber,
+                request.LicenseIssuedAt,
+                request.LicenseExpiresAt,
+                request.SignatureUrl,
+                request.LinkRosterRowId));
         return await SaveAsync(
             new SaveOrganizationSettingsRequest { Valuers = nextValuers },
             actorId,

@@ -1,11 +1,8 @@
 import type { NavItem, PageId, RoleDef, RoleId } from "@platform/types";
 import type { PropertyListRowStatus } from "@platform/api-client";
 import { ACTIVE_TRANSACTIONS_NAV } from "./active-transactions";
-import { SETTINGS_NAV } from "@platform/app-shared/app-data/settings-nav";
 import { SYSTEM_FIELDS_NAV } from "@platform/app-shared/app-data/system-fields-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "@platform/app-shared/app-data/system-fields-catalog-nav";
-import { SYSTEM_SCREEN_CATALOG_NAV_ITEM } from "@platform/app-shared/app-data/system-screen-catalog-nav";
-import { ORPHAN_SCREENS_PAGE_IDS } from "@platform/app-shared/app-data/orphan-screens-nav";
 import { SYSTEM_SETTINGS_PRIMARY_PAGE_IDS } from "./system-settings-nav";
 
 export type { NavItem, PageId, RoleDef, RoleId };
@@ -105,7 +102,7 @@ export const ROLES: Record<RoleId, RoleDef> = {
   },
   "real-estate-appraiser": {
     name: "عبدالله الكثيري",
-    dept: "مقيم عقاري",
+    dept: "مقيّم عقاري",
     init: "عك",
     bg: "var(--info-bg)",
     tc: "var(--info)",
@@ -219,19 +216,19 @@ export const NAV: NavItem[] = [
   },
   {
     id: "field-sync-board",
-    label: "ظروف معلّقة",
+    label: "ظروف بانتظار المزامنة",
     icon: "M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
     grp: "قسم دراسة الحالة",
   },
   {
     id: "failures",
-    label: "إدارة التعذرات",
+    label: "إدارة التعذّرات",
     icon: "M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z",
     grp: "قسم دراسة الحالة",
   },
   {
     id: "suspended-transactions",
-    label: "المعاملات المعلقة",
+    label: "المعاملات المعلّقة",
     icon: "M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z",
     grp: "قسم دراسة الحالة",
   },
@@ -260,12 +257,9 @@ export const ALL_PROTOTYPE_PAGES: PageId[] = [
   ...new Set<PageId>([
     ...NAV.map((n) => n.id),
     ...ACTIVE_TRANSACTIONS_NAV.map((n) => n.id),
-    ...SETTINGS_NAV.map((n) => n.id),
     ...SYSTEM_FIELDS_NAV.map((n) => n.id),
     ...SYSTEM_SETTINGS_PRIMARY_PAGE_IDS,
     SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
-    SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
-    ...ORPHAN_SCREENS_PAGE_IDS,
     // Finance hub lives in FinanceHtmlNav (not NAV[]) but is a real shell page.
     "financial",
   ]),
@@ -289,9 +283,9 @@ export const PAGE_TITLES: Record<PageId, string> = {
   favorites: "المفضلة",
   "bourse-inquiry": "استعلام بورصة",
   keys: "محفظة المفاتيح",
-  "field-sync-board": "ظروف معلّقة لم تُزامن",
-  failures: "إدارة التعذرات",
-  "suspended-transactions": "المعاملات المعلقة",
+  "field-sync-board": "ظروف بانتظار المزامنة",
+  failures: "إدارة التعذّرات",
+  "suspended-transactions": "المعاملات المعلّقة",
   "valuation-requests": "طلبات التقييم",
   "comparable-properties": "بنك المقارنات",
   "property-inspection": "معاينة العقار (يتيم)",
@@ -299,21 +293,18 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "operations-tasks": "المهام",
   "property-appraisal": "تقييم العقار",
   "active-survey": "الرفع المساحي",
-  survey: "مكاتب الرفع الهندسي",
   "party-fees": "فوترة الأتعاب",
   "system-fields-catalog": "قاموس الحقول المركزي",
-  "system-screen-catalog": "دليل الشاشات",
   financial: "المالية والفوترة",
   users: "المستخدمون",
   courts: "المحاكم والدوائر",
   "location-pending": "مراجعة المسميات",
-  "failure-types": "أنواع التعذرات",
+  "failure-types": "أنواع التعذّرات",
   "case-study-info-roles": "علاقة المستخدم بالمعلومة",
   "audit-log": "سجل التدقيق",
   "fee-pricing": "التسعيرة",
   "organization-settings": "بيانات المنشأة",
   "attachment-print-dictionary": "قوائم التقييم",
-  "difference-factor-catalog": "تعريفات عوامل الاختلاف",
   clients: "سجل العملاء",
   profile: "البروفايل",
 };
@@ -328,15 +319,15 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "active-distribution": "المعاملات النشطة / توزيع المعاملات",
   "active-case-study": "المعاملات النشطة / دراسة حالة العقارات",
   "system-upload": "المعاملات النشطة / الرفع على النظام",
-  po: "أوامر العمل",
+  po: "أوامر العمل (PO)",
   "all-transactions": "جميع المعاملات",
   "property-map": "خريطة العقارات",
   favorites: "المفضلة",
   "bourse-inquiry": "المعاملات النشطة / استعلام بورصة",
   keys: "محفظة المفاتيح",
-  "field-sync-board": "ظروف معلّقة",
-  failures: "إدارة التعذرات",
-  "suspended-transactions": "المعاملات المعلقة",
+  "field-sync-board": "ظروف بانتظار المزامنة",
+  failures: "إدارة التعذّرات",
+  "suspended-transactions": "المعاملات المعلّقة",
   "valuation-requests": "طلبات التقييم",
   "comparable-properties": "بنك المقارنات",
   "property-inspection": "معاينة العقار",
@@ -344,21 +335,18 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "operations-tasks": "المهام",
   "property-appraisal": "تقييم العقار",
   "active-survey": "الرفع المساحي",
-  survey: "مكاتب الرفع الهندسي",
   "party-fees": "المعاملات النشطة / فوترة الأتعاب",
   "system-fields-catalog": "قاموس الحقول المركزي",
-  "system-screen-catalog": "دليل الشاشات",
   financial: "المالية والفوترة",
   users: "المستخدمون",
   courts: "المحاكم والدوائر",
   "location-pending": "مراجعة المسميات",
-  "failure-types": "أنواع التعذرات",
+  "failure-types": "أنواع التعذّرات",
   "case-study-info-roles": "علاقة المستخدم بالمعلومة",
   "audit-log": "سجل التدقيق",
   "fee-pricing": "التسعيرة",
   "organization-settings": "بيانات المنشأة",
   "attachment-print-dictionary": "قوائم التقييم",
-  "difference-factor-catalog": "تعريفات عوامل الاختلاف",
   clients: "سجل العملاء",
   profile: "البروفايل",
 };
@@ -373,14 +361,17 @@ export type PoRow = {
   count: number;
   /** Deeds / properties actually registered. */
   registered: number;
-  /** Completed case studies. */
+  /** Properties handed over to Enfaz (delivered). */
   done: number;
   /**
    * Workflow progress 0–100 from the API (stages + parties).
    * When set, the list bar prefers this over done/expected.
    */
   progressPct?: number;
+  /** Billing-aware status — shown to Finance and management (`canSeeBillingStatuses`). */
   status: PoListStatus;
+  /** Study status alone — shown to every other role. */
+  studyStatus: PoListStatus;
   date: string;
   dueDate: string;
   specialist: string;
@@ -420,11 +411,7 @@ export type PropertyRow = {
   specialist: string;
 };
 
-export type TeamKind = "internal" | "freelance" | "external";
-
-export type TeamCardRow = [string, string, string, TeamKind, number];
-
-export type StaffUserDetail = {
+type StaffUserDetail = {
   section: string;
   label: string;
   value: string;
@@ -439,7 +426,6 @@ export type StaffUser = {
   userName?: string;
   distributionAssigneeId?: string;
   reviewerCityCoverage?: string[];
-  password?: string;
   type: "internal" | "freelance" | "external";
   phone?: string | null;
   roleId?: string | null;
@@ -461,24 +447,12 @@ export type StaffUser = {
   details?: StaffUserDetail[];
 };
 
-export type SurveyOfficeRow = {
-  name: string;
-  active: number;
-  doneMonth: number;
-  avgDays: string;
-  contract: string;
-  statusBusy: boolean;
-};
-
 export const VALID_PAGE_IDS = new Set<PageId>([
   ...NAV.map((n) => n.id),
   ...ACTIVE_TRANSACTIONS_NAV.map((n) => n.id),
-  ...SETTINGS_NAV.map((n) => n.id),
   ...SYSTEM_FIELDS_NAV.map((n) => n.id),
   ...SYSTEM_SETTINGS_PRIMARY_PAGE_IDS,
   SYSTEM_FIELDS_CATALOG_NAV_ITEM.id,
-  SYSTEM_SCREEN_CATALOG_NAV_ITEM.id,
-  ...ORPHAN_SCREENS_PAGE_IDS,
   "financial",
   "profile",
 ]);

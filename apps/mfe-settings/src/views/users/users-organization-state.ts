@@ -7,6 +7,11 @@
 import type { RoleId } from "@platform/types";
 import type { CreateStaffUserRequest } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import type {
+  OrganizationValuerRosterEntry,
+  StaffReportRole,
+  SyncStaffValuerRequest,
+} from "@platform/api-client";
 import {
   adminStaffRoleOptions,
   isSectionSupervisorRole,
@@ -191,7 +196,7 @@ export function canDeleteUser(
 export const STAFF_ROLE_CHANGE_SELF = "لا يمكن تغيير دورك بنفسك.";
 export const STAFF_ROLE_CHANGE_LAST_ADMIN = "لا يمكن إزالة آخر مسؤول نظام.";
 
-export function isPrivilegedStaffRole(roleId: string | null | undefined): boolean {
+function isPrivilegedStaffRole(roleId: string | null | undefined): boolean {
   const id = (roleId ?? "").trim().toLowerCase();
   return id === "cdo" || id === "admin";
 }
@@ -273,7 +278,7 @@ export function emptyUsersMessage(totalUsers: number): string {
 /* ---------- dialog copy & API error mapping ---------- */
 
 export const PROTECTED_ACCOUNT_TOAST = "لا يمكن تعطيل هذا الحساب.";
-const NETWORK_MESSAGE = "تعذر الاتصال بالخادم.";
+const NETWORK_MESSAGE = "تعذّر الاتصال بالخادم.";
 
 export function disableUserConfirmCopy(name: string) {
   return {
@@ -286,37 +291,37 @@ export function disableUserConfirmCopy(name: string) {
 type FailedResult = { kind: string; message?: string; errors?: FieldErrors };
 
 export function createUserErrorMessage(result: FailedResult): string {
-  return result.kind === "network" ? NETWORK_MESSAGE : "تعذر إنشاء المستخدم.";
+  return result.kind === "network" ? NETWORK_MESSAGE : "تعذّر إنشاء المستخدم.";
 }
 
 export function deleteUserErrorMessage(result: FailedResult): string {
   return result.kind === "validation"
-    ? (result.message ?? "تعذر تعطيل المستخدم.")
+    ? (result.message ?? "تعذّر تعطيل المستخدم.")
     : result.kind === "network"
       ? NETWORK_MESSAGE
-      : "تعذر تعطيل المستخدم.";
+      : "تعذّر تعطيل المستخدم.";
 }
 
 /** Field errors the edit modal renders when an update fails. */
 export function saveEditErrors(result: FailedResult): FieldErrors {
   if (result.kind === "validation" && result.errors) return result.errors;
   return {
-    _form: result.kind === "network" ? NETWORK_MESSAGE : "تعذر حفظ التعديلات.",
+    _form: result.kind === "network" ? NETWORK_MESSAGE : "تعذّر حفظ التعديلات.",
   };
 }
 
 export function reactivateErrorMessage(result: FailedResult): string {
   return result.kind === "validation"
-    ? (result.errors?._form ?? result.errors?.status ?? "تعذر تفعيل المستخدم.")
+    ? (result.errors?._form ?? result.errors?.status ?? "تعذّر تفعيل المستخدم.")
     : result.kind === "network"
       ? NETWORK_MESSAGE
-      : "تعذر تفعيل المستخدم.";
+      : "تعذّر تفعيل المستخدم.";
 }
 
 export function unlockErrorMessage(result: FailedResult): string {
   return result.kind === "network"
     ? NETWORK_MESSAGE
-    : (result.message ?? "تعذر فك قفل الحساب.");
+    : (result.message ?? "تعذّر فك قفل الحساب.");
 }
 
 export const USER_TOASTS = {
@@ -329,20 +334,100 @@ export const USER_TOASTS = {
     "تم حفظ الحساب، وتعذّر مزامنته مع سجل المقيّمين. أكمل الربط من شاشة المقيّمون.",
 } as const;
 
-export const APPRAISER_ROLE_ID = "real-estate-appraiser";
+const APPRAISER_ROLE_ID = "real-estate-appraiser";
 
-/** Linked roster row stays active for every non-disabled appraiser account. */
-export function staffValuerSyncMode(
-  roleId: string | null | undefined,
-  status: string | null | undefined,
-): "upsert" | "deactivate" {
-  if (roleId === APPRAISER_ROLE_ID && status !== "Disabled") return "upsert";
-  return "deactivate";
+/** Seat in the valuation report; "certified" is read-only here (chosen in بيانات المنشأة). */
+export type StaffReportSeat = StaffReportRole | "certified";
+
+/** «البيانات المهنية» on a user's card — what the valuers roster row carries. */
+export type StaffProfessional = {
+  reportRole: StaffReportSeat;
+  membershipCategory: string;
+  membershipNumber: string;
+  membershipExpiresAt: string;
+  licenseNumber: string;
+  licenseIssuedAt: string;
+  licenseExpiresAt: string;
+  signatureUrl: string;
+  /** Set when the account has no row yet and the admin picks an existing unlinked one. */
+  linkRosterRowId: string;
+};
+
+export const REPORT_ROLE_OPTIONS: { value: StaffReportRole; label: string }[] = [
+  { value: "none", label: "لا يظهر" },
+  { value: "valuer", label: "مقيّم عقاري" },
+  { value: "reviewer", label: "مقيّم عقاري مراجع" },
+  { value: "assistant", label: "مساعد مقيّم" },
+];
+
+/** A new appraiser account takes a seat at once; every other role stays out of the report. */
+export function defaultReportRole(roleId: string | null | undefined): StaffReportRole {
+  return roleId === APPRAISER_ROLE_ID ? "valuer" : "none";
 }
 
-export function shouldSyncStaffValuer(
-  beforeRoleId?: string | null,
-  afterRoleId?: string | null,
-): boolean {
-  return beforeRoleId === APPRAISER_ROLE_ID || afterRoleId === APPRAISER_ROLE_ID;
+export function rosterRowFor(
+  valuers: readonly OrganizationValuerRosterEntry[],
+  userId: string,
+): OrganizationValuerRosterEntry | null {
+  const id = userId.trim();
+  return valuers.find((v) => (v.staffUserId ?? "").trim() === id) ?? null;
+}
+
+function seatOf(row: OrganizationValuerRosterEntry | null, roleId: string | null | undefined): StaffReportSeat {
+  if (!row) return defaultReportRole(roleId);
+  if (row.role === "certified") return "certified";
+  if (!row.isActive) return "none";
+  return row.role === "reviewer" || row.role === "assistant" ? row.role : "valuer";
+}
+
+export function professionalFromRow(
+  row: OrganizationValuerRosterEntry | null,
+  roleId: string | null | undefined,
+): StaffProfessional {
+  return {
+    reportRole: seatOf(row, roleId),
+    membershipCategory: row?.membershipCategory ?? "",
+    membershipNumber: row?.membershipNumber ?? "",
+    membershipExpiresAt: row?.membershipExpiresAt ?? "",
+    licenseNumber: row?.licenseNumber ?? "",
+    licenseIssuedAt: row?.licenseIssuedAt ?? "",
+    licenseExpiresAt: row?.licenseExpiresAt ?? "",
+    signatureUrl: row?.signatureUrl ?? "",
+    linkRosterRowId: "",
+  };
+}
+
+/** Rows nobody's account owns yet — offered on a card that has no row of its own. */
+export function unlinkedRosterRows(
+  valuers: readonly OrganizationValuerRosterEntry[],
+): OrganizationValuerRosterEntry[] {
+  return valuers.filter((v) => !(v.staffUserId ?? "").trim());
+}
+
+export function professionalEquals(a: StaffProfessional, b: StaffProfessional): boolean {
+  return (Object.keys(a) as (keyof StaffProfessional)[]).every((k) => a[k].trim() === b[k].trim());
+}
+
+/** Everything the sync endpoint takes from the card; the certified seat is never sent from here. */
+export function professionalToSyncFields(
+  p: StaffProfessional,
+): Omit<SyncStaffValuerRequest, "userId" | "displayName" | "mode"> {
+  return {
+    ...(p.reportRole === "certified" ? {} : { reportRole: p.reportRole }),
+    membershipCategory: p.membershipCategory.trim(),
+    membershipNumber: p.membershipNumber.trim(),
+    membershipExpiresAt: p.membershipExpiresAt.trim(),
+    licenseNumber: p.licenseNumber.trim(),
+    licenseIssuedAt: p.licenseIssuedAt.trim(),
+    licenseExpiresAt: p.licenseExpiresAt.trim(),
+    signatureUrl: p.signatureUrl.trim(),
+    ...(p.linkRosterRowId.trim() ? { linkRosterRowId: p.linkRosterRowId.trim() } : {}),
+  };
+}
+
+/** A disabled account leaves the report; otherwise the server applies the seat it is sent. */
+export function staffValuerSyncMode(
+  status: string | null | undefined,
+): "upsert" | "deactivate" {
+  return status === "Disabled" ? "deactivate" : "upsert";
 }

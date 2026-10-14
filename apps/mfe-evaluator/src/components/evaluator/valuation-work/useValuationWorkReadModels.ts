@@ -47,6 +47,7 @@ export function useValuationWorkReadModels({
   resolveBankFetchOpts,
   applyBankResult,
   bankSearch,
+  bankRadiusKm,
 }: {
   hints: SubjectHints;
   loading: boolean;
@@ -56,6 +57,8 @@ export function useValuationWorkReadModels({
   candidates: ComparablePropertyDto[];
   bankSubjectCoords: SubjectCoords | null;
   bankSearch: string;
+  /** The radius the appraiser picked for the bank table; `null` = all. */
+  bankRadiusKm: number | null;
   subjectArea: string;
   analysisNotes: string;
   cost: ValuationCostApproachDto | null;
@@ -133,7 +136,11 @@ export function useValuationWorkReadModels({
     analysisNotes.trim() !== autoNarrative.trim();
 
   const searching = bankSearch.length > 0;
-  const { rows: bankRows, distances: bankDistanceKm } = useMemo(
+  const {
+    rows: bankRows,
+    distances: bankDistanceKm,
+    beyond: bankBeyond,
+  } = useMemo(
     () =>
       buildBankDisplayRows({
         selectionItems: selection?.items ?? [],
@@ -143,10 +150,12 @@ export function useValuationWorkReadModels({
         subjectSqm: parseSubjectAreaSqm(subjectArea, property?.area),
         limit: searching ? BANK_SEARCH_DISPLAY_LIMIT : BANK_DISPLAY_LIMIT,
         nearbyOnly: !searching,
+        radiusKm: bankRadiusKm,
       }),
     [
       selection?.items,
       candidates,
+      bankRadiusKm,
       subjectCity,
       subjectCoordsForBank,
       subjectArea,
@@ -160,7 +169,11 @@ export function useValuationWorkReadModels({
       candidates.filter((c) => isVacantLandComparable(c.comparablePropertyType)),
     [candidates],
   );
-  const { rows: landBankRows, distances: landBankDistanceKm } = useMemo(
+  const {
+    rows: landBankRows,
+    distances: landBankDistanceKm,
+    beyond: landBankBeyond,
+  } = useMemo(
     () =>
       buildBankDisplayRows({
         selectionItems: landSelection?.items ?? [],
@@ -170,8 +183,10 @@ export function useValuationWorkReadModels({
         subjectSqm: cost?.landAreaSqm ?? parseSubjectAreaSqm(subjectArea, property?.area),
         limit: searching ? BANK_SEARCH_DISPLAY_LIMIT : BANK_DISPLAY_LIMIT,
         nearbyOnly: !searching,
+        radiusKm: bankRadiusKm,
       }),
     [
+      bankRadiusKm,
       landSelection?.items,
       landCandidates,
       subjectCity,
@@ -219,8 +234,10 @@ export function useValuationWorkReadModels({
     narrativeDirty,
     bankRows,
     bankDistanceKm,
+    bankBeyond,
     landBankRows,
     landBankDistanceKm,
+    landBankBeyond,
     subjectAreaNum,
     onSearchBank,
   };

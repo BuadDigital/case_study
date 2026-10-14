@@ -5,7 +5,6 @@ import {
   clientFieldPolicyFor,
   formatPropertyDeedDisplay,
   hasBourseDetailFields,
-  isBourseInquiryIdentifier,
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
@@ -33,19 +32,7 @@ import {
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
 import { REG_BACK } from "@platform/app-shared/registration/registration-labels";
-import {
-  Button,
-  Card,
-  CardBody,
-  CardHeader,
-  FormDensityProvider,
-  InlineLoadingSkeleton,
-  Note,
-  PageShell,
-  PageShellHeader,
-  cn,
-  useToast,
-} from "@platform/ui-kit";
+import { Button, Card, CardBody, CardHeader, FormDensityProvider, InlineLoadingSkeleton, Note, PageShell, PageShellHeader, cn, useToast, confirmAction, promptAction } from "@platform/ui-kit";
 import { PoPropertyBourseForm } from "./PoPropertyBourseForm";
 import { PoPropertyEnfathForm } from "./PoPropertyDeedForm";
 import {
@@ -324,7 +311,6 @@ export function PoPropertyEdit({
 
     if (
       section === "enfath" &&
-      !isBourseInquiryIdentifier(property.identifierType) &&
       (await deedExistsInPo(poNumber, property.deedNumber, propertyId))
     ) {
       errors.deedNumber = "رقم الصك مسجّل مسبقاً في هذا أمر العمل";
@@ -376,20 +362,21 @@ export function PoPropertyEdit({
   }
 
   async function handleDelete() {
-    const reason = window.prompt("سبب الحذف (مطلوب):");
-    if (reason == null) return;
-    const trimmed = reason.trim();
-    if (!trimmed) {
-      showToast("سبب الحذف مطلوب", "error");
-      return;
-    }
-    if (
-      !window.confirm(
-        "حذف هذا العقار؟ يبقى في قائمة أمر العمل مع سبب الحذف، ولا يمكن التراجع.",
-      )
-    ) {
-      return;
-    }
+    const trimmed = await promptAction({
+      title: "حذف العقار",
+      label: "سبب الحذف",
+      required: true,
+      confirmLabel: "متابعة",
+      danger: true,
+    });
+    if (trimmed == null) return;
+    const confirmed = await confirmAction({
+      title: "حذف العقار",
+      message: "حذف هذا العقار؟ يبقى في قائمة أمر العمل مع سبب الحذف، ولا يمكن التراجع.",
+      confirmLabel: "حذف",
+      danger: true,
+    });
+    if (!confirmed) return;
     setSaving(true);
     const result = await removePropertyFromPo(poNumber, propertyId, trimmed);
     setSaving(false);

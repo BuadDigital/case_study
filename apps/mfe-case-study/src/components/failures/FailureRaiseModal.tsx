@@ -75,7 +75,7 @@ function FailureRaiseForm({
   const { execute: executeCreateFailure, loading: saving } = useIdempotentAction(
     useCallback(async (idempotencyKey: string) => {
       const input = pendingFailure.current;
-      if (!input) throw new Error("لا توجد بيانات تعذر");
+      if (!input) throw new Error("لا توجد بيانات تعذّر");
       return createFailure(input, idempotencyKey);
     }, []),
   );
@@ -118,17 +118,17 @@ function FailureRaiseForm({
         queryClient.invalidateQueries({ queryKey: appDataKeys.workflowTasks() }),
         queryClient.invalidateQueries({ queryKey: appDataKeys.poListRows() }),
       ]);
-      showToast("تم رفع التعذر — سيظهر لأخصائي دراسة الحالة.", "success");
+      showToast("تم رفع التعذّر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();
       onClose();
     } catch {
-      showToast("تعذّر تسجيل التعذر — حاول مرة أخرى", "error");
+      showToast("تعذّر تسجيل التعذّر — حاول مرة أخرى", "error");
     }
   }
 
   const title = deedNumber.trim()
-    ? `تسجيل تعذر — ${deedNumber.trim()}`
-    : "تسجيل تعذر";
+    ? `تسجيل تعذّر — ${deedNumber.trim()}`
+    : "تسجيل تعذّر";
 
   return (
     <AppModal
@@ -150,7 +150,7 @@ function FailureRaiseForm({
             showActionToast={false}
             onClick={() => void handleSubmit()}
           >
-            رفع التعذر
+            رفع التعذّر
           </Button>
         </>
       }

@@ -9,6 +9,7 @@ import {
   updateStaffUser,
   type CreateStaffUserRequest,
   type CreateStaffUserResult,
+  type SyncStaffValuerRequest,
   type DeleteStaffUserResult,
   type UnlockStaffUserResult,
   type UpdateStaffUserRequest,
@@ -52,8 +53,8 @@ export async function fetchStaffUsers(
   if (!result.ok) {
     const message =
       result.kind === "network"
-        ? "تعذر تحميل قائمة المستخدمين. تحقق من أن الخادم يعمل."
-        : "تعذر تحميل قائمة المستخدمين.";
+        ? "تعذّر تحميل قائمة المستخدمين. تحقق من أن الخادم يعمل."
+        : "تعذّر تحميل قائمة المستخدمين.";
     return { users: [], loadError: message };
   }
 
@@ -71,8 +72,8 @@ export async function fetchDistributionAssignees(): Promise<FetchStaffUsersResul
   if (!result.ok) {
     const message =
       result.kind === "network"
-        ? "تعذر تحميل قائمة المسؤولين. تحقق من أن الخادم يعمل."
-        : "تعذر تحميل قائمة المسؤولين.";
+        ? "تعذّر تحميل قائمة المسؤولين. تحقق من أن الخادم يعمل."
+        : "تعذّر تحميل قائمة المسؤولين.";
     return { users: [], loadError: message };
   }
 
@@ -115,11 +116,7 @@ export async function submitDeleteStaffUser(
   return deleteStaffUser(config, userId);
 }
 
-export async function submitSyncStaffValuer(body: {
-  userId: string;
-  displayName: string;
-  mode: "upsert" | "deactivate";
-}): Promise<boolean> {
+export async function submitSyncStaffValuer(body: SyncStaffValuerRequest): Promise<boolean> {
   const config = apiConfig();
   if (!config) return false;
   const result = await syncStaffValuer(config, body);

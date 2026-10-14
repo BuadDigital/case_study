@@ -27,10 +27,10 @@ import {
   emptyComparableEntryDraft,
   firstComparableEntryError,
   firstComparableEntryErrorTarget,
-  parseComparableCoords,
   validateComparableEntry,
   type ComparableEntryFieldErrors,
 } from "../../lib/comparable-entry";
+import { parseLatLng } from "@platform/app-shared/domain/geo";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import { ComparablePropertyEntryFields } from "../comparables/ComparablePropertyEntryFields";
 
@@ -118,7 +118,7 @@ export function FieldComparableCaptureSection({
     {},
   );
   const [formKey, setFormKey] = useState(0);
-  const subjectPin = parseComparableCoords(latitude, longitude);
+  const subjectPin = parseLatLng(latitude, longitude);
 
   const reload = useCallback(async () => {
     const config = workOrdersApiConfig();

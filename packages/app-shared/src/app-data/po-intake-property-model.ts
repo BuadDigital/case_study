@@ -53,10 +53,12 @@ export function propertyUiStatusLabel(status: PropertyUiStatus): string {
   switch (status) {
     case PropertyListRowStatuses.Progress:
       return "قيد العمل";
+    case PropertyListRowStatuses.Ready:
+      return "جاهز للرفع";
     case PropertyListRowStatuses.Done:
       return "مكتمل";
     case PropertyListRowStatuses.Fail:
-      return "متعذر";
+      return "متعذّر";
     case PropertyListRowStatuses.Incomplete:
       return "ناقص";
     default:
@@ -71,6 +73,7 @@ export function propertyUiStatusTone(
   if (status === PropertyListRowStatuses.Fail) return "red";
   if (
     status === PropertyListRowStatuses.Progress ||
+    status === PropertyListRowStatuses.Ready ||
     status === PropertyListRowStatuses.Incomplete
   )
     return "amber";
@@ -177,12 +180,10 @@ export type PoPropertyIntake = {
  /** traditional | registered_title ("" = use suggestion). */
   deedKind: string;
   suggestedDeedKind: string;
- /** JSON array [{name, sharePct}] (flat-draft representation). */
+ /** JSON array [{name}] (flat-draft representation). */
   ownersJson: string;
-  /** Effective ownership type from the API ("" until loaded). */
+  /** Ownership type derived by the API from the owners count ("" until loaded). */
   ownershipType: string;
-  suggestedOwnershipType: string;
-  ownershipTypeIsManual: boolean;
   restrictionsPresent: string;
   restrictionType: string;
   restrictionOtherReason: string;
@@ -247,6 +248,10 @@ export type PoPropertyIntake = {
   finishingType: string;
   finishingStructure: string;
   bourseDataCompleted: boolean;
+  /** Who completed the bourse inquiry ("" when unknown) — shown as the source of what it answered. */
+  bourseCompletedByName: string;
+  /** When the bourse inquiry was completed (ISO, "" when unknown). */
+  bourseCompletedAtUtc: string;
   /** Soft-deleted from active queues — still listed on PO properties. */
   isRemoved: boolean;
   removalReason: string;
@@ -312,8 +317,6 @@ export function emptyProperty(): PoPropertyIntake {
     suggestedDeedKind: "",
     ownersJson: "",
     ownershipType: "",
-    suggestedOwnershipType: "",
-    ownershipTypeIsManual: false,
     restrictionsPresent: "",
     restrictionType: "",
     restrictionOtherReason: "",
@@ -352,6 +355,8 @@ export function emptyProperty(): PoPropertyIntake {
     finishingType: "",
     finishingStructure: "",
     bourseDataCompleted: false,
+    bourseCompletedByName: "",
+    bourseCompletedAtUtc: "",
     isRemoved: false,
     removalReason: "",
     removedAtUtc: "",

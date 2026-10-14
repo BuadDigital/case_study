@@ -31,14 +31,11 @@ public class WorkOrderPropertyDto
     public string? DeedKindLabelAr { get; set; }
  /// <summary>Suggestion from the identifier type (real-estate registration → registered title).</summary>
     public string? SuggestedDeedKind { get; set; }
- /// <summary>Owners and Their Shares — deed transcription.</summary>
+ /// <summary>The deed owners (name only) — their count decides the ownership type.</summary>
     public List<DeedOwnerDto> Owners { get; set; } = [];
- /// <summary>Effective Ownership Type (manual override or derived).</summary>
+ /// <summary>Ownership Type derived from the owners count: absolute (one owner) or shared (several).</summary>
     public string? OwnershipType { get; set; }
     public string? OwnershipTypeLabelAr { get; set; }
- /// <summary>Derived suggestion (mortgage → mortgaged · shares → shared · else absolute).</summary>
-    public string? SuggestedOwnershipType { get; set; }
-    public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
     public string? RestrictionType { get; set; }
     public string? RestrictionOtherReason { get; set; }
@@ -85,6 +82,9 @@ public class WorkOrderPropertyDto
     public string? DeedOwnershipFileName { get; set; }
     public string? BourseDeedImageFileName { get; set; }
     public bool BourseDataCompleted { get; set; }
+    /// <summary>Read-only: who completed the bourse inquiry and when (UTC, ISO) - the source of what it answered.</summary>
+    public string? BourseCompletedByName { get; set; }
+    public string? BourseCompletedAtUtc { get; set; }
     public string? PlanNumber { get; set; }
     public string? PlanName { get; set; }
     public string? PlotNumber { get; set; }
@@ -227,11 +227,8 @@ public class UpdatePropertyBourseRequest
     public string? Area { get; set; }
     public string? DeedStatus { get; set; }
     public string? BourseDeedImageFileName { get; set; }
- /// <summary>Owners and Their Shares — replaces the whole list when provided.</summary>
+ /// <summary>The deed owners — replaces the whole list when provided.</summary>
     public List<DeedOwnerDto>? Owners { get; set; }
- /// <summary>Manual Ownership Type override; requires OwnershipTypeIsManual.</summary>
-    public string? OwnershipType { get; set; }
-    public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
     public string? RestrictionType { get; set; }
     public string? RestrictionOtherReason { get; set; }
@@ -284,13 +281,17 @@ public class WorkOrderListItemDto
     public int PropertyCount { get; set; }
  /// <summary>Property count from Infath at promulgation.</summary>
     public int ExpectedPropertyCount { get; set; }
+    /// <summary>Live properties handed over to Enfaz (delivered), or whose tasks were all cancelled.</summary>
     public int CompletedCount { get; set; }
     /// <summary>
     /// 0–100 workflow progress across live properties (stages + parties), for the list bar.
-    /// Distinct from <see cref="CompletedCount"/> (case-study forms submitted).
+    /// Distinct from <see cref="CompletedCount"/> (properties handed over).
     /// </summary>
     public int ProgressPct { get; set; }
+    /// <summary>Billing-aware status (<see cref="WorkOrderListStatus.Resolve"/>) — Finance and management read this one.</summary>
     public string Status { get; set; } = WorkOrderListStatus.New;
+    /// <summary>Study status alone (<see cref="WorkOrderListStatus.ResolveStudy"/>) — what every other role sees.</summary>
+    public string StudyStatus { get; set; } = WorkOrderListStatus.New;
     public string PromulgationDate { get; set; } = "";
     public string ReceivedFromEnfathAt { get; set; } = "";
     public string DueDateAt { get; set; } = "";
@@ -372,10 +373,6 @@ public class PriorDeedRegistrationDto
     public bool HasRequestNumber { get; set; } = true;
 }
 
-public class UpdateLocationMapUrlRequest
-{
-    public string? LocationMapUrl { get; set; }
-}
 
 public class UpdateSpecialistReportExtrasRequest
 {
@@ -448,10 +445,8 @@ public class PendingBoursePropertyDto
 
 // Courts-catalog DTOs moved to RealEstateEval.Platform.Application (A8).
 
-/// <summary>One deed owner (Owners and Their Shares) — share optional for single-owner deeds.</summary>
+/// <summary>One deed owner.</summary>
 public class DeedOwnerDto
 {
     public string Name { get; set; } = "";
- /// <summary>Share % in (0, 100]; null = unstated.</summary>
-    public decimal? SharePct { get; set; }
 }

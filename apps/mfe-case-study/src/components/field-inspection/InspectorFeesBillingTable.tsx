@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtMax, fmtSar } from "@platform/app-shared/format/number";
 import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -35,7 +36,7 @@ import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonM
 import { ENG_DISCOUNT_REASONS } from "@platform/app-shared/fees/party-fee-meta";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/app-data/po-intake-data";
 
-export type FeesBillingMode = "readonly" | "supervisor" | "finance";
+type FeesBillingMode = "readonly" | "supervisor" | "finance";
 
 /** Employee fee types can have agreed amount edited by supervisor. */
 function isEmployeeFeeType(inspectorType: string): boolean {
@@ -91,7 +92,7 @@ function Sar({
   return (
     <span className={cn("tabular-nums whitespace-nowrap", className)}>
       {prefix}
-      {AR_NUM.format(value)}{" "}
+      {fmtMax(value, 3)}{" "}
       <span className="text-[10px] font-normal text-text-3">ر.س</span>
     </span>
   );
@@ -627,7 +628,7 @@ export function InspectorFeesBillingTable({
                     <Sar value={row.netFeeSar} />
                     {row.supervisorDiscountSar > 0 ? (
                       <div className="mt-0.5 text-[10px] text-danger-text">
-                        حسم {AR_NUM.format(row.supervisorDiscountSar)}
+                        حسم {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
                       </div>
                     ) : null}
                   </div>

@@ -24,8 +24,28 @@ public static class FailureRecordRules
     /// <summary>A bourse obstruction is only filed with a reason.</summary>
     public static Dictionary<string, string>? ValidateBourseObstruction(BourseObstructionRequest request) =>
         string.IsNullOrWhiteSpace(request.Reason)
-            ? new Dictionary<string, string> { ["reason"] = "سبب التعذر مطلوب" }
+            ? new Dictionary<string, string> { ["reason"] = "سبب التعذّر مطلوب" }
             : null;
+
+    /// <summary>The shortest reason (trimmed) a survey-freeze lift is recorded with.</summary>
+    public const int MinSurveyFreezeLiftReasonLength = 10;
+
+    public const string LiftSurveyFreezeRoleDeniedAr = "فك تجميد الرفع المساحي متاح لأخصائي دراسة الحالة فقط";
+
+    /// <summary>Field errors of a lift request: the property must parse and the reason needs ten characters.</summary>
+    public static Dictionary<string, string> ValidateLiftSurveyFreeze(LiftSurveyFreezeRequest request)
+    {
+        var errors = new Dictionary<string, string>();
+        if (string.IsNullOrWhiteSpace(request.PoNumber))
+            errors["poNumber"] = "رقم أمر العمل مطلوب";
+        if (string.IsNullOrWhiteSpace(request.PropertyId))
+            errors["propertyId"] = "معرّف العقار مطلوب";
+        else if (!FailureRules.TryParsePropertyId(request.PropertyId, out _))
+            errors["propertyId"] = "معرّف العقار غير صالح";
+        if ((request.Reason ?? "").Trim().Length < MinSurveyFreezeLiftReasonLength)
+            errors["reason"] = "اكتب سبب فك التجميد (10 أحرف على الأقل)";
+        return errors;
+    }
 
     /// <summary>
     /// The property a failure is raised on must exist and must not have been removed from its
@@ -37,7 +57,7 @@ public static class FailureRecordRules
         if (properties.Count == 0)
             return new Dictionary<string, string> { ["propertyId"] = "العقار غير موجود" };
         if (properties[0].IsRemoved)
-            return new Dictionary<string, string> { ["propertyId"] = "لا يمكن تسجيل تعذر على عقار محذوف" };
+            return new Dictionary<string, string> { ["propertyId"] = "لا يمكن تسجيل تعذّر على عقار محذوف" };
         return null;
     }
 
@@ -91,5 +111,7 @@ public static class FailureRecordRules
         UpdatedAt = entity.UpdatedAtUtc.ToString("O"),
         SuspendedAt = entity.SuspendedAtUtc?.ToString("O"),
         SuspendedByUserId = entity.SuspendedByUserId,
+        SurveyFreezeLiftedAt = entity.SurveyFreezeLiftedAtUtc?.ToString("O"),
+        SurveyFreezeLiftReason = entity.SurveyFreezeLiftReason,
     };
 }

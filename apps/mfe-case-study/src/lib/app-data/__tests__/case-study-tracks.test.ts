@@ -207,7 +207,7 @@ describe("buildCaseStudyPartyAssignees", () => {
       assignedCaseStudyParties(plannedOnly, [plannedOnly], staff).map(
         (p) => p.role,
       ),
-    ).toEqual(["المكتب الهندسي", "المعاين", "المقيم"]);
+    ).toEqual(["المكتب الهندسي", "المعاين", "المقيّم"]);
 
     const noInspector = task({
       ...plannedOnly,
@@ -229,7 +229,7 @@ describe("buildCaseStudyPartyAssignees", () => {
     });
     expect(
       assignedCaseStudyParties(allThree, [allThree], staff).map((p) => p.role),
-    ).toEqual(["المكتب الهندسي", "المعاين", "المقيم"]);
+    ).toEqual(["المكتب الهندسي", "المعاين", "المقيّم"]);
   });
 });
 
@@ -294,6 +294,84 @@ describe("buildPropertyDetailTimelinePartyRows", () => {
     expect(byKey.inspection.badge).toBe("مكتمل");
     expect(byKey.survey.label).toBe("لم يُعيَّن");
     expect(byKey.survey.badge).toBe("معطّل");
+  });
+
+  it("names the specialist for a party that cannot see the parent nor list staff", () => {
+    const inspection = task({
+      id: "fi-1",
+      kind: "field-inspection",
+      parentTaskId: "parent-1",
+      assigneeRole: "field-inspector",
+      assigneeName: "أحمد سعيد",
+      assigneeId: "fi-ahmed",
+      caseSpecialistName: "محمد النفيعي",
+      distribution: {
+        governmentAuditor: false,
+        governmentAuditorId: "",
+        valuationDepartment: true,
+        inspectorId: "fi-ahmed",
+        valuatorId: "",
+        engineeringOffice: false,
+        engineeringOfficeId: "",
+        caseSpecialist: true,
+        caseSpecialistId: "cs-966500000015",
+      },
+    });
+
+    // The inspector's staff list is empty: the API refuses it to field roles.
+    const rows = buildPropertyDetailTimelinePartyRows({
+      task: inspection,
+      allTasks: [inspection],
+      staffUsers: [],
+    });
+
+    expect(rows.find((r) => r.key === "specialist")?.label).toBe("محمد النفيعي");
+  });
+
+  it("refines the appraiser's badge once his package is handed over", () => {
+    const appraisal = task({
+      id: "val-1",
+      kind: "property-appraisal",
+      parentTaskId: "parent-1",
+      assigneeRole: "real-estate-appraiser",
+      assigneeName: "مقيم عقاري",
+      assigneeId: "val-abdullah",
+      appraisalPackageStatus: "submitted",
+      distribution: {
+        governmentAuditor: false,
+        governmentAuditorId: "",
+        valuationDepartment: true,
+        inspectorId: "fi-ahmed",
+        valuatorId: "val-abdullah",
+        engineeringOffice: false,
+        engineeringOfficeId: "",
+        caseSpecialist: true,
+        caseSpecialistId: "cs-1",
+      },
+    });
+    const badgeFor = (appraisalInput?: {
+      packageSubmitted: boolean;
+      draft?: { status: "none" | "preparing" | "sent" | "approved"; reportStage: "draft" | "deposit_issued" | "final_issued" };
+    }) =>
+      buildPropertyDetailTimelinePartyRows({
+        task: caseStudyFamilyTaskForProperty("PO-1", "prop-1", [appraisal]) ?? null,
+        allTasks: [appraisal],
+        staffUsers: staff,
+        appraisal: appraisalInput,
+      }).find((r) => r.key === "appraisal")?.badge;
+
+    expect(badgeFor(undefined)).toBe("قيد التنفيذ");
+    expect(badgeFor({ packageSubmitted: false })).toBe("قيد التنفيذ");
+    expect(badgeFor({ packageSubmitted: true })).toBe("بانتظار المسودة");
+    expect(badgeFor({ packageSubmitted: true, draft: { status: "preparing", reportStage: "draft" } })).toBe(
+      "بانتظار المسودة",
+    );
+    expect(badgeFor({ packageSubmitted: true, draft: { status: "sent", reportStage: "draft" } })).toBe(
+      "بانتظار اعتماد المقيّم",
+    );
+    expect(
+      badgeFor({ packageSubmitted: true, draft: { status: "approved", reportStage: "deposit_issued" } }),
+    ).toBe("معتمد — بانتظار رمز الإيداع");
   });
 
   it("reads the mirrored survey flag when the sibling task is not visible", () => {

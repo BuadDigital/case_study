@@ -81,16 +81,16 @@ public sealed class HttpPoEnfazBillingService(
             http, httpContext, options.Value.FinancialBaseUrl,
             $"{Root}/{Uri.EscapeDataString(poNumber)}", Setting, cancellationToken);
 
-    public async Task<PoEnfazBillingDto?> SavePoBillingAsync(
+    public async Task<(PoEnfazBillingDto? Billing, string? Error)> SavePoBillingAsync(
         string poNumber,
         SavePoEnfazBillingRequest request,
         CancellationToken cancellationToken = default)
     {
-        var (dto, _) = await UpstreamJson.SendForResultAsync<PoEnfazBillingDto>(
+        var (dto, errors) = await UpstreamJson.SendForResultAsync<PoEnfazBillingDto>(
             http, httpContext, options.Value.FinancialBaseUrl, HttpMethod.Put,
             $"{Root}/{Uri.EscapeDataString(poNumber)}",
             request, Setting, cancellationToken);
-        return dto;
+        return (dto, FirstError(errors));
     }
 
     public Task<PropertyEnfazRevenueDto?> GetPropertyRevenueAsync(
@@ -204,8 +204,13 @@ public sealed class HttpPoEnfazBillingService(
     {
         var (result, errors) = await UpstreamJson.PostForResultAsync<T>(
             http, httpContext, options.Value.FinancialBaseUrl, path, body, Setting, cancellationToken);
+        return (result, FirstError(errors));
+    }
+
+    private static string? FirstError(Dictionary<string, string>? errors)
+    {
         if (errors is null || errors.Count == 0)
-            return (result, null);
-        return (result, errors.TryGetValue("_", out var message) ? message : errors.Values.First());
+            return null;
+        return errors.TryGetValue("_", out var message) ? message : errors.Values.First();
     }
 }

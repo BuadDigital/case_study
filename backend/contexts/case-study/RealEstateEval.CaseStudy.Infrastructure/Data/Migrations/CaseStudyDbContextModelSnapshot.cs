@@ -88,7 +88,7 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.ToTable("BuildingInventoryLines", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.CaseStudyForm", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.CaseStudyReport", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -162,7 +162,7 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
-                    b.Property<bool>("IsPartyForm")
+                    b.Property<bool>("IsPartyContribution")
                         .HasColumnType("boolean");
 
                     b.Property<string>("MeterNumber")
@@ -242,14 +242,14 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.HasKey("Id");
 
-                    b.HasIndex("TaskId", "IsPartyForm")
+                    b.HasIndex("TaskId", "IsPartyContribution")
                         .IsUnique();
 
-                    b.ToTable("CaseStudyForms", "case_study", t =>
+                    b.ToTable("CaseStudyReports", "case_study", t =>
                         {
-                            t.HasCheckConstraint("CK_CaseStudyForms_InfathLinkedAssets", "\"InfathLinkedAssets\" IS NULL OR \"InfathLinkedAssets\" IN ('', 'yes', 'no')");
+                            t.HasCheckConstraint("CK_CaseStudyReports_InfathLinkedAssets", "\"InfathLinkedAssets\" IS NULL OR \"InfathLinkedAssets\" IN ('', 'yes', 'no')");
 
-                            t.HasCheckConstraint("CK_CaseStudyForms_Status", "\"Status\" IS NULL OR \"Status\" IN ('new', 'draft', 'submitted', 'completed', 'done')");
+                            t.HasCheckConstraint("CK_CaseStudyReports_Status", "\"Status\" IS NULL OR \"Status\" IN ('new', 'draft', 'issued')");
                         });
                 });
 
@@ -897,6 +897,10 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<DateTime?>("BourseCompletedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("BourseCompletedByName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<bool>("BourseDataCompleted")
                         .HasColumnType("boolean");
 
@@ -1057,13 +1061,6 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
-                    b.Property<string>("OwnershipType")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<bool>("OwnershipTypeIsManual")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("PartitionMinutesDate")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
@@ -1165,16 +1162,16 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("SpecialistComponentsText")
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)");
+
                     b.Property<string>("SpecialistEsgJson")
                         .HasColumnType("jsonb");
 
                     b.Property<string>("SpecialistFinishingLevel")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
-
-                    b.Property<string>("SpecialistComponentsText")
-                        .HasMaxLength(8000)
-                        .HasColumnType("character varying(8000)");
 
                     b.Property<string>("SpecialistReportExtrasJson")
                         .HasColumnType("jsonb");
@@ -1225,6 +1222,8 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.HasIndex("CourtId");
 
                     b.HasIndex("DeedNumber");
+
+                    b.HasIndex("EnfazHandoverAtUtc");
 
                     b.HasIndex("ReferenceNumber");
 
@@ -1393,7 +1392,7 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Navigation("Property");
                 });
 
-            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.CaseStudyForm", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.CaseStudyReport", b =>
                 {
                     b.HasOne("RealEstateEval.CaseStudy.Domain.WorkflowTask", null)
                         .WithMany()

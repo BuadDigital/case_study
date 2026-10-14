@@ -13,7 +13,7 @@ import {
   getOrganizationBrandLogos,
 } from "@platform/api-client";
 
-export type BrandLogos = { color: string | null; white: string | null };
+type BrandLogos = { color: string | null; white: string | null };
 
 const STORAGE_KEY = "ree-brand-logos";
 const EMPTY: BrandLogos = { color: null, white: null };

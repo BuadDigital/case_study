@@ -2,7 +2,7 @@
  * Inspector fees API — per-property fee ledger persisted in PostgreSQL.
  */
 import { normalizeFieldErrors } from "./field-errors";
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
@@ -141,35 +141,6 @@ export type InspectorFeeTransitionRequest = {
   disbursementVoucher?: string;
 };
 
-export type BatchInspectorFeeTransitionRequest = {
-  workflowTaskIds: string[];
-  action: InspectorFeeAction;
-  reason?: string;
-  disbursementVoucher?: string;
-  disbursementBatchId?: string;
-};
-
-export type BatchInspectorFeeTransitionResponseDto = {
-  succeeded: InspectorFeeRowDto[];
-  failed: { workflowTaskId: string; error: string }[];
-  disbursementBatchId?: string | null;
-};
-
-/** @deprecated Use BatchInspectorFeeTransitionResponseDto */
-export type BatchInspectorFeeTransitionResult = BatchInspectorFeeTransitionResponseDto;
-
-export type InspectorFeeAuditEntryDto = {
-  id: string;
-  fromStatus: string;
-  fromStatusLabel: string;
-  toStatus: string;
-  toStatusLabel: string;
-  reason: string | null;
-  actorUserId: string;
-  actorLabel: string | null;
-  createdAtUtc: string;
-};
-
 export type ListInspectorFeesQuery = {
   assigneeId?: string;
   workflowTaskId?: string;
@@ -178,13 +149,6 @@ export type ListInspectorFeesQuery = {
   billingStatus?: InspectorFeeBillingStatus;
   returnTo?: "supervisor" | "office";
 };
-
-function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
 
 function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
   return {
@@ -311,7 +275,7 @@ export async function listInspectorFees(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/inspector-fees${queryString(query)}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -331,7 +295,7 @@ export async function patchInspectorFee(
   try {
     const res = await fetch(`${base}/api/inspector-fees/${workflowTaskId}`, {
       method: "PATCH",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -355,7 +319,7 @@ export async function transitionInspectorFee(
       `${base}/api/inspector-fees/${workflowTaskId}/transition`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -367,88 +331,6 @@ export async function transitionInspectorFee(
     }
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeRow(raw) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function batchTransitionInspectorFees(
-  config: InspectorFeesApiConfig,
-  body: BatchInspectorFeeTransitionRequest,
-): Promise<ApiOk<BatchInspectorFeeTransitionResponseDto> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/inspector-fees/batch-transition`, {
-      method: "POST",
-      headers: headers(config.token),
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "auth" };
-    if (!res.ok) {
-      return { ok: false, kind: "server", message: await readError(res) };
-    }
-    const raw = (await res.json()) as Record<string, unknown>;
-    const succeededRaw = (raw.succeeded ?? raw.Succeeded ?? []) as Record<
-      string,
-      unknown
-    >[];
-    const failedRaw = (raw.failed ?? raw.Failed ?? []) as Record<
-      string,
-      unknown
-    >[];
-    return {
-      ok: true,
-      data: {
-        succeeded: succeededRaw.map(normalizeRow),
-        failed: failedRaw.map((item) => ({
-          workflowTaskId: String(
-            item.workflowTaskId ?? item.WorkflowTaskId ?? "",
-          ),
-          error: String(item.error ?? item.Error ?? ""),
-        })),
-        disbursementBatchId: (raw.disbursementBatchId ??
-          raw.DisbursementBatchId ??
-          null) as string | null,
-      },
-    };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function listInspectorFeeTransitions(
-  config: InspectorFeesApiConfig,
-  workflowTaskId: string,
-): Promise<ApiOk<InspectorFeeAuditEntryDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/inspector-fees/${encodeURIComponent(workflowTaskId)}/transitions`,
-      { headers: headers(config.token) },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>[];
-    return {
-      ok: true,
-      data: raw.map((item) => ({
-        id: String(item.id ?? item.Id ?? ""),
-        fromStatus: String(item.fromStatus ?? item.FromStatus ?? ""),
-        fromStatusLabel: String(
-          item.fromStatusLabel ?? item.FromStatusLabel ?? "",
-        ),
-        toStatus: String(item.toStatus ?? item.ToStatus ?? ""),
-        toStatusLabel: String(item.toStatusLabel ?? item.ToStatusLabel ?? ""),
-        reason: (item.reason ?? item.Reason ?? null) as string | null,
-        actorUserId: String(item.actorUserId ?? item.ActorUserId ?? ""),
-        actorLabel: (item.actorLabel ?? item.ActorLabel ?? null) as
-          | string
-          | null,
-        createdAtUtc: String(item.createdAtUtc ?? item.CreatedAtUtc ?? ""),
-      })),
-    };
   } catch {
     return { ok: false, kind: "network" };
   }

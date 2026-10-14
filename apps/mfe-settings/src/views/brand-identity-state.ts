@@ -1,3 +1,4 @@
+import { filled } from "../lib/filled";
 /**
  * Pure decisions for the brand-identity screen: asset fallbacks, per-card fields, letterhead
  * geometry and margin checks, image checks, the stamp aspect lock, zoom fitting,
@@ -12,32 +13,21 @@ import {
 } from "@platform/api-client";
 
 export type BrandKey = "logo" | "stamp" | "sig" | "lh";
-export type BrandDirty = Record<BrandKey, boolean>;
 
 export const BRAND_KEYS: readonly BrandKey[] = ["logo", "stamp", "sig", "lh"];
-
-export const CLEAN_BRAND_DIRTY: BrandDirty = {
-  logo: false,
-  stamp: false,
-  sig: false,
-  lh: false,
-};
 
 export const BRAND_CARD_LABELS: Record<BrandKey, string> = {
   logo: "الشعار",
   stamp: "ختم المنشأة",
-  sig: "توقيع المقيم المعتمد",
+  sig: "توقيع المقيّم المعتمد",
   lh: "كليشة التقرير",
 };
 
 const D = BRAND_IDENTITY_DEFAULTS;
 
-export const A4_WIDTH_MM = 210;
+const A4_WIDTH_MM = 210;
 export const A4_HEIGHT_MM = 297;
 
-export function filled(value: string | null | undefined, fallback: string): string {
-  return value?.trim() ? value : fallback;
-}
 
 export function mm(n: number | null | undefined, fallback: number): number {
   const v = Number(n);
@@ -46,7 +36,7 @@ export function mm(n: number | null | undefined, fallback: number): number {
 
 /* ---------- per-card fields: one card is saved without another card's draft ---------- */
 
-export const BRAND_CARD_FIELDS: Record<BrandKey, readonly (keyof OrganizationBrandingSettings)[]> = {
+const BRAND_CARD_FIELDS: Record<BrandKey, readonly (keyof OrganizationBrandingSettings)[]> = {
   logo: ["logoColorUrl", "logoWhiteUrl", "logoVersion", "logoUpdatedAt", "logoUploadedBy"],
   stamp: ["stampUrl", "stampWidthCm", "stampHeightCm", "stampUpdatedAt", "stampUploadedBy"],
   sig: ["signatureUrl", "signatureWidthCm", "signatureHeightCm"],
@@ -78,7 +68,7 @@ export function withCardFields(
 /** Typing pause before a size or margin change is saved. */
 export const AUTOSAVE_DELAY_MS = 800;
 
-export type CardSaveState = "idle" | "pending" | "saving" | "saved" | "blocked" | "error";
+type CardSaveState = "idle" | "pending" | "saving" | "saved" | "blocked" | "error";
 export type CardSaveStatus = { state: CardSaveState; message?: string };
 
 export const IDLE_SAVE_STATUS: Record<BrandKey, CardSaveStatus> = {
@@ -238,7 +228,7 @@ export function lhGuideCssVars(view: BrandAssetView): Record<string, string> {
   return vars;
 }
 
-export type DragBox = {
+type DragBox = {
   top: number;
   left: number;
   right: number;
@@ -305,9 +295,6 @@ export function cmFromInput(value: string): number | null {
   return Math.round(n * 10) / 10;
 }
 
-/** Kept for the signature field. */
-export const signatureHeightFromInput = cmFromInput;
-
 function roundCm(n: number): number {
   return Math.min(20, Math.max(0.5, Math.round(n * 10) / 10));
 }
@@ -344,11 +331,11 @@ export type BrandUploadTargetId =
   | "signature"
   | "letterhead";
 
-export const BRAND_IMAGE_TYPES = ["image/png", "image/jpeg", "image/svg+xml"] as const;
+const BRAND_IMAGE_TYPES = ["image/png", "image/jpeg", "image/svg+xml"] as const;
 export const BRAND_IMAGE_ACCEPT = BRAND_IMAGE_TYPES.join(",");
 
 /** Same budgets as the server (`OrganizationBrandingRules`). */
-export const BRAND_IMAGE_MAX_BYTES: Record<BrandUploadTargetId, number> = {
+const BRAND_IMAGE_MAX_BYTES: Record<BrandUploadTargetId, number> = {
   logoColor: 512 * 1024,
   logoWhite: 512 * 1024,
   stamp: 1024 * 1024,
@@ -363,7 +350,7 @@ export function isUnsafeSvg(text: string): boolean {
   return UNSAFE_SVG.test(text);
 }
 
-export type BrandImageCandidate = {
+type BrandImageCandidate = {
   name: string;
   type: string;
   sizeBytes: number;
@@ -410,7 +397,7 @@ export function brandImageError(
 
 /* ---------- meta ---------- */
 
-export function hasCustomLogo(brand: OrganizationBrandingSettings): boolean {
+function hasCustomLogo(brand: OrganizationBrandingSettings): boolean {
   return Boolean(
     customBrandLogoUrl(brand.logoColorUrl, D.logoColorUrl) ||
       customBrandLogoUrl(brand.logoWhiteUrl, D.logoWhiteUrl),
@@ -491,7 +478,7 @@ export type BrandChangeContext = {
   saved: OrganizationBrandingSettings;
 };
 
-export type BrandUploadTarget = {
+type BrandUploadTarget = {
   key: BrandKey;
   label: string;
   hint: string;
@@ -533,7 +520,7 @@ export const BRAND_UPLOAD_TARGETS: Record<BrandUploadTargetId, BrandUploadTarget
   },
   signature: {
     key: "sig",
-    label: "توقيع المقيم المعتمد",
+    label: "توقيع المقيّم المعتمد",
     hint: "يُطبَّق التوقيع ومقاسه في A4 على كل تقرير جديد.",
     patch: (url) => ({ signatureUrl: url }),
   },
@@ -582,7 +569,7 @@ export const BRAND_RESET_TARGETS: Record<
 
 /* ---------- confirm-dialog copy ---------- */
 
-export type BrandConfirmCopy = { title: string; body: string; confirm: string };
+type BrandConfirmCopy = { title: string; body: string; confirm: string };
 
 export function uploadFileHint(name: string, kb: number): string {
   return `الملف: ${name} (${kb}KB).`;

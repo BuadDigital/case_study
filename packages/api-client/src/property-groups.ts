@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 
 /** Decision 20 — grouped-property linking (compound property). */
@@ -40,14 +40,6 @@ type Result<T> =
   | { ok: true; data: T }
   | { ok: false; kind: "auth" | "network" | "server"; message?: string };
 
-function headers(token: string): HeadersInit {
-  return {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 async function request<T>(
   config: PropertyGroupsApiConfig,
   path: string,
@@ -57,7 +49,7 @@ async function request<T>(
   try {
     const res = await fetch(`${base}${path}`, {
       ...init,
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) {

@@ -44,6 +44,7 @@ public class WorkflowStatusesTests
     public void Property_list_row_and_timeline_wire_constants_match_persisted_values()
     {
         Assert.Equal("new", PropertyListRowStatuses.New);
+        Assert.Equal("ready", PropertyListRowStatuses.Ready);
         Assert.Equal("fail", PropertyListRowStatuses.Fail);
         Assert.Equal("incomplete", PropertyListRowStatuses.Incomplete);
 

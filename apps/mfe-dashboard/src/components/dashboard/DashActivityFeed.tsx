@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { useSyncedNotifications } from "@platform/app-shared/notifications/useSyncedNotifications";
 import { filterNotificationsForRole } from "@platform/app-shared/notifications/role-notification-policy";
@@ -62,7 +62,7 @@ export function DashActivityFeed() {
   const router = useRouter();
   const { role } = useAuth();
   const { items: allItems, markRead, markAllRead } = useSyncedNotifications();
-  const now = useMemo(() => Date.now(), []);
+  const [now] = useState(() => Date.now());
 
   const items = useMemo(() => {
     return filterNotificationsForRole(role, allItems)

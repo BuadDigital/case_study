@@ -1,5 +1,5 @@
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 
 const DEFAULT_LIST_PAGE_SIZE = 500;
 
@@ -35,13 +35,6 @@ export type ListQueryParamValue =
   | readonly string[]
   | null
   | undefined;
-
-function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
 
 function isPagedResult<T>(data: unknown): data is PagedResultDto<T> {
   return (
@@ -108,7 +101,7 @@ async function requestPage<T>(
   const base = (config.baseUrl ?? getApiBase()).replace(/\/$/, "");
   const url = `${base}${path}${buildListQueryString(params)}`;
   try {
-    const res = await fetch(url, { headers: headers(config.token) });
+    const res = await fetch(url, { headers: authHeaders(config.token) });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
     const data = (await res.json()) as PagedResultDto<T> | T[];

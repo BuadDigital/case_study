@@ -21,6 +21,8 @@ import {
   inspectorBoolPillClass,
   listComponentBoolPhotoSlots,
 } from "./inspector-wizard-state";
+import { featurePhotoPatch } from "../../lib/app-data/inspector-workspace-model";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
 /** Read-view stand-in for a «on» pill — a check chip, not a toggle. */
 export function InspectorPresentChip({ label }: { label: string }) {
@@ -55,7 +57,7 @@ export function InspectorComponentBoolPills({
   editable: boolean;
   isLand: boolean;
   missingFeaturePhotoKey?: string;
-  onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
   const slots = listComponentBoolPhotoSlots(
     draft,
@@ -127,12 +129,7 @@ export function InspectorComponentBoolPills({
                             draft.taskId,
                             `feature:${slot.key}`,
                           );
-                          onPatch({
-                            featurePhotoAttachments: {
-                              ...draft.featurePhotoAttachments,
-                              [slot.key]: null,
-                            },
-                          });
+                          onPatch(featurePhotoPatch(slot.key, null));
                         }
                   }
                   onUpload={async (file) => {
@@ -143,12 +140,7 @@ export function InspectorComponentBoolPills({
                       { draft, deedNumber },
                     );
                     if (!result.ok) throw new Error(result.error);
-                    onPatch({
-                      featurePhotoAttachments: {
-                        ...draft.featurePhotoAttachments,
-                        [slot.key]: result.attachment,
-                      },
-                    });
+                    onPatch(featurePhotoPatch(slot.key, result.attachment));
                     return true;
                   }}
                 />

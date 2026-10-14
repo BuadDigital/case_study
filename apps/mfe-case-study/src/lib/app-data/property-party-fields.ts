@@ -21,12 +21,12 @@ import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
  * nesting — the same keys the server stamps provenance under.
  */
 
-export type PartyDataKind =
+type PartyDataKind =
   | "field-inspection"
   | "engineering-survey"
   | "property-appraisal";
 
-export type PartyFieldInput =
+type PartyFieldInput =
   | "text"
   | "date"
   | "textarea"
@@ -174,7 +174,7 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     text("jacuzziCount", "عدد الجاكوزي", true),
     text("diningCount", "عدد غرف الطعام", true),
     text("majlisCount", "عدد المجالس", true),
-    text("maidRoomCount", "عدد غرف الخادمة", true),
+    text("maidRoomCount", "عدد غرف الخدم", true),
     text("guardRoomCount", "عدد غرف الحارس", true),
     text("parkingCount", "عدد المواقف", true),
     text("playgroundCount", "عدد الملاعب", true),
@@ -188,6 +188,12 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     text("annexGroundCount", "عدد الملاحق الأرضية", true),
     readonly("buildingsTotal", "إجمالي مساحة المباني (م²)"),
     flag("vacantLand", "أرض فضاء"),
+    {
+      key: "landHasValuableStructures",
+      label: "مبانٍ أو ملاحق تستحق التقييم (أرض)",
+      input: "select",
+      options: ["yes", "no"],
+    },
     text("propertyAgeYears", L.propertyAge, true),
     text("buildLicenseNumber", L.buildLicenseNumber, true),
     date("buildLicenseDate", L.buildLicenseDate),
@@ -202,6 +208,12 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     area("districtProsCons", L.districtProsCons),
     area("assetNotes", L.assetNotes),
     ...MOVABLES_AND_OCCUPANCY_DEFS,
+    {
+      key: "deedMatchesNature",
+      label: "مطابقة الحدود للصك",
+      input: "select",
+      options: ["yes", "no"],
+    },
     ...BOUNDARY_MATCH_DEFS,
     chips("services", L.services, INSPECTOR_SERVICE_OPTIONS),
     chips("amenities", `${L.amenities} (المحيط المؤثر للعقار)`, INSPECTOR_AMENITY_OPTIONS, "أخرى"),
@@ -212,7 +224,7 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
   ],
 };
 
-export const ENGINEERING_SURVEY_SECTION: PartyDataSectionDef = {
+const ENGINEERING_SURVEY_SECTION: PartyDataSectionDef = {
   kind: "engineering-survey",
   title: "بيانات الرفع المساحي",
   roleLabel: "المكتب الهندسي",
@@ -252,7 +264,7 @@ export const ENGINEERING_SURVEY_SECTION: PartyDataSectionDef = {
   ],
 };
 
-export const PROPERTY_APPRAISAL_SECTION: PartyDataSectionDef = {
+const PROPERTY_APPRAISAL_SECTION: PartyDataSectionDef = {
   kind: "property-appraisal",
   title: "بيانات التقييم",
   roleLabel: "المقيّم",
@@ -269,14 +281,13 @@ export const PROPERTY_APPRAISAL_SECTION: PartyDataSectionDef = {
     text("appraiserAddress", L.appraiserAddress),
     text("appraiserPhone", L.appraiserPhone, true),
     text("reportIssueDate", L.reportIssueDate, true),
-    text("depositCode", L.depositCode, true),
     area("evaluatorNotes", "ملاحظات على العقار"),
     area("searchScopeNotes", L.searchScope),
     area("assetDataVarianceNotes", "ملاحظات التباين"),
     area("checklist.technical_notes_text", "ملاحظات فنية"),
     flag("assetDataConfirmed", L.assetDataConfirmed),
     flag("independenceDeclared", "إقرار الاستقلالية وعدم تضارب المصالح"),
-    readonly("reportWorkers", "العاملون على التقرير"),
+    readonly("reportWorkers", "المشاركون في إعداد التقرير"),
   ],
 };
 
@@ -290,9 +301,11 @@ export { INSPECTOR_OBSERVATION_CATEGORIES };
 
 const DEED_MATCH_LABELS: Record<string, string> = { yes: "نعم", no: "لا" };
 
-/** Arabic label for a stored option value (deed-match yes/no; amenities use the report wording). */
+/** Arabic label for a stored option value (deed-match / land-structures yes/no; amenities use the report wording). */
 export function partyOptionLabel(key: string, value: string): string {
-  if (key === "deedMatchesNature") return DEED_MATCH_LABELS[value] ?? value;
+  if (key === "deedMatchesNature" || key === "landHasValuableStructures") {
+    return DEED_MATCH_LABELS[value] ?? value;
+  }
   if (key === "amenities") return inspectorAmenityLabel(value);
   return value;
 }
@@ -307,7 +320,7 @@ const ROLE_LABELS: Record<string, string> = {
   cdo: "مسؤول التحول الرقمي",
 };
 
-export function partyRoleLabel(role: string | undefined): string {
+function partyRoleLabel(role: string | undefined): string {
   const key = role?.trim().toLowerCase() ?? "";
   return ROLE_LABELS[key] ?? "";
 }
@@ -385,7 +398,7 @@ export function partyProvenanceFor(
   return undefined;
 }
 
-export type PartyProvenanceLines = {
+type PartyProvenanceLines = {
   written: string | null;
   edited: string | null;
 };

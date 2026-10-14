@@ -1,4 +1,14 @@
 export { cn } from "./lib/cn";
+export { toArabicDigits, toLatinDigits } from "./lib/arabic-digits";
+export {
+  haversineKm,
+  haversineMeters,
+  parseCoordinate,
+  parseCoordinatePair,
+  parseLatLng,
+  type CoordinateAxis,
+  type LatLng,
+} from "./lib/geo";
 export {
   formControlClassName,
   formControlErrorClassName,
@@ -70,7 +80,6 @@ export {
   googleMapsApiKey,
   googleMapsSearchUrl,
   loadGoogleMapsApi,
-  parseCoord,
   reverseGeocodeLocation,
 } from "./lib/google-maps-loader";
 export type { ReverseGeocodeDetail } from "./lib/google-maps-loader";
@@ -86,6 +95,9 @@ export {
   useDeferredVisible,
   GENTLE_LOADING_DELAY_MS,
 } from "./hooks/use-deferred-visible";
+export { useIsHydrated } from "./hooks/use-is-hydrated";
+export { useSwapAnimation, SWAP_ANIMATION_MS } from "./hooks/use-swap-animation";
+export { preloadableLazy, whenIdle } from "./lib/preloadable-lazy";
 export { ToastProvider, useToast, useOptionalToast, type ToastTone } from "./components/Toast";
 export { progressMessageForActionLabel } from "./lib/action-progress-message";
 export { Input, type InputProps } from "./components/Input";
@@ -104,6 +116,12 @@ export {
 export { Card, CardBody, CardHeader } from "./components/Card";
 export { Badge, type BadgeTone, type BadgeProps } from "./components/Badge";
 export { Note } from "./components/Note";
+export {
+  QueryErrorState,
+  type QueryErrorStateProps,
+  queryErrorText,
+  QUERY_ERROR_DEFAULT_LINE,
+} from "./components/QueryErrorState";
 export { RowAttentionDot } from "./components/RowAttentionDot";
 export {
   PoNumber,
@@ -146,7 +164,6 @@ export {
   tdActionClassName,
   trHoverClassName,
 } from "./components/Table";
-export { formatRowAge, type RowAge } from "./lib/row-age";
 export {
   TabBar,
   type TabBarProps,
@@ -228,7 +245,6 @@ export {
   finStatusStyle,
   FIN_STATUS_STYLES,
   type StatusPillStyle,
-  type FinStatusTone,
 } from "./badges";
 export {
   LtrCode,
@@ -251,6 +267,16 @@ export {
   type RowMoreMenuItem,
 } from "./components/RowMoreMenu";
 export { AppModal, type AppModalProps } from "./components/AppModal";
+export {
+  ActionDialogHost,
+  alertAction,
+  confirmAction,
+  promptAction,
+  promptValidationMessage,
+  type AlertActionRequest,
+  type ConfirmActionRequest as ActionConfirmRequest,
+  type PromptActionRequest,
+} from "./components/ActionDialogs";
 export { SideSheet, type SideSheetProps } from "./components/SideSheet";
 export {
   TransactionRow,
@@ -265,11 +291,6 @@ export {
   FilterTag,
   type FilterTagProps,
 } from "./components/FilterChips";
-export {
-  BulkActionBar,
-  type BulkActionBarProps,
-  type BulkAction,
-} from "./components/BulkActionBar";
 export {
   KpiAlertIcon,
   KpiCheckIcon,

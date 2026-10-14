@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson } from "./parse-json";
 import type { ValuationSelectionsApiConfig } from "./valuation-comparable-selections";
@@ -50,14 +50,6 @@ type Result<T> =
       errors?: Record<string, string>;
     };
 
-function headers(token: string): HeadersInit {
-  return {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 function path(valuationRequestId: string): string {
   return `/api/valuation-requests/${encodeURIComponent(valuationRequestId)}/value-documents`;
 }
@@ -92,7 +84,7 @@ export async function getValuationValueDocuments(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}${path(valuationRequestId)}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
     });
     return await readResult(res);
   } catch {
@@ -110,7 +102,7 @@ export async function saveValuationValueDocuments(
   try {
     const res = await fetch(`${base}${path(valuationRequestId)}`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify({ uses }),
     });
     return await readResult(res);

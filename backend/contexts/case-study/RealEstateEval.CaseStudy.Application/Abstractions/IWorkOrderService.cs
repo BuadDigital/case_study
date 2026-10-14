@@ -67,12 +67,9 @@ public interface IWorkOrderService
         Guid propertyId,
         WorkOrderPropertyDto property,
         CancellationToken cancellationToken,
-        bool softDraft = false);
-    Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateLocationMapUrlAsync(
-        string poNumber,
-        Guid propertyId,
-        string? locationMapUrl,
-        CancellationToken cancellationToken);
+        bool softDraft = false,
+        string? actorName = null);
+
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateSpecialistReportExtrasAsync(
         string poNumber,
         Guid propertyId,
@@ -83,7 +80,8 @@ public interface IWorkOrderService
         string poNumber,
         Guid propertyId,
         UpdatePropertyBourseRequest request,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string? actorName = null);
     Task<(bool Ok, string? Error)> DeletePropertyAsync(
         string poNumber,
         Guid propertyId,

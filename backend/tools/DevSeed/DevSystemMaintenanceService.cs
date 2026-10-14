@@ -54,7 +54,7 @@ public sealed class DevSystemMaintenanceService : ISystemMaintenanceService
         {
             WorkOrdersDeleted = await caseStudy.WorkOrders.CountAsync(cancellationToken),
             WorkflowTasksDeleted = await caseStudy.WorkflowTasks.CountAsync(cancellationToken),
-            CaseStudyFormsDeleted = await caseStudy.CaseStudyForms.CountAsync(cancellationToken),
+            CaseStudyReportsDeleted = await caseStudy.CaseStudyReports.CountAsync(cancellationToken),
             CaseStudyInfoRolesConfigsDeleted =
                 await platform.CaseStudyInfoRolesConfigs.CountAsync(cancellationToken),
             PropertyFailuresDeleted = await failures.PropertyFailures.CountAsync(cancellationToken),
@@ -67,7 +67,6 @@ public sealed class DevSystemMaintenanceService : ISystemMaintenanceService
                 await platform.FieldDictionaryConfigs.CountAsync(cancellationToken),
             FailureTypesCatalogConfigsDeleted =
                 await failures.FailureTypesCatalogConfigs.CountAsync(cancellationToken),
-            SurveyOfficesDeleted = await operations.SurveyOffices.CountAsync(cancellationToken),
             ValuationRequestsDeleted = await valuation.ValuationRequests.CountAsync(cancellationToken),
             PropertyKeyRecordsDeleted = await operations.PropertyKeyRecords.CountAsync(cancellationToken),
             FinancialReportConfigsDeleted =

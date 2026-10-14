@@ -46,7 +46,7 @@ const PARTY_PAGE_IDS = new Set(
   Object.values(PARTY_TASK_PAGES).map((def) => def.pageId),
 );
 
-export type ActiveTransactionPageSituation = {
+type ActiveTransactionPageSituation = {
   cards: PageSituationCardDef[];
   values: PageSituationValues;
   ready: boolean;
@@ -57,7 +57,7 @@ export function useActiveTransactionPageSituation(
 ): ActiveTransactionPageSituation | null {
   const { role, viewerUserId, distributionAssigneeId } = useAppAccess();
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
   const cardsBase = pageId ? pageSituationCards(pageId) : null;
   const cards =
     pageId === "party-fees" && role === "engineering-office"
@@ -274,6 +274,9 @@ export function useActiveTransactionPageSituation(
       : Object.fromEntries(cards.map((card) => [card.key, undefined]));
 
     return { cards, values, ready };
+    // `computePageSituationValues` reads the party-submission cache, so the
+    // counter below is an invalidation key rather than an input.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     pageId,
     cards,

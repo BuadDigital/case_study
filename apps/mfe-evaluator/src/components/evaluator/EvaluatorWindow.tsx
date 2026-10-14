@@ -1,17 +1,20 @@
 "use client";
 
 import {
+  Button,
   InlineLoadingSkeleton,
   cn,
   opsWorkspaceCard,
+  useSwapAnimation,
   useToast,
 } from "@platform/ui-kit";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import { inspectionGateForAppraisal } from "../../lib/evaluator/evaluator-inspection-gate";
+import { STUDY_REPORT_NOT_ISSUED_MESSAGE } from "../../lib/evaluator/evaluator-inspection-gate";
 import { createEvaluatorDraft, emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
 import {
@@ -21,6 +24,7 @@ import {
 } from "../../lib/evaluator/evaluator-submission-model";
 import {
   hydrateEvaluatorSubmission,
+  mergeEvaluatorDraftPatches,
   updateEvaluatorDraft,
 } from "../../lib/evaluator/evaluator-submission-commands";
 import {
@@ -31,6 +35,7 @@ import {
 import { useEvaluatorSubmit } from "./useEvaluatorSubmit";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
 import { getAuthSession } from "@platform/auth-client";
+import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
 import type {
   EvaluatorChecklistAnswers,
   EvaluatorReportChoices,
@@ -58,12 +63,14 @@ import {
   visibleEvaluatorTabs,
 } from "./evaluator-window-tabs";
 import { EvaluatorWindowBanners, EvaluatorWindowSubmitBar, EvaluatorWindowTitle } from "./EvaluatorWindowBanners";
+import { InspectorChangedBanner } from "./InspectorChangedBanner";
 import {
   EvaluatorValuationReportOutputTabLazy as EvaluatorValuationReportOutputTab,
+  prefetchValuationReportOutputTab,
   preloadValuationReportOutputTab,
 } from "./EvaluatorWindowOutputTab";
 import {
-  invalidateEvaluatorReportOutput,
+  refreshEvaluatorReportOutputOnOpen,
   scheduleInvalidateEvaluatorReportOutput,
 } from "../../lib/evaluator/evaluator-report-output-cache";
 import { WORK_ORDER_PROPERTY_CHANGED_EVENT } from "@platform/app-shared/app-data/work-orders-api-config";
@@ -94,10 +101,6 @@ export function EvaluatorWindow({
   onBack?: () => void;
   embeddedInPropertyChrome?: boolean;
 }) {
-  const gate = useMemo(
-    () => inspectionGateForAppraisal(task, tasks),
-    [task, tasks],
-  );
   const { showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const assignedAppraiserName = useMemo(() => {
@@ -129,6 +132,12 @@ export function EvaluatorWindow({
     }),
   );
   const [draftLoading, setDraftLoading] = useState(true);
+  const [draftLoadError, setDraftLoadError] = useState<string | null>(null);
+  const [draftLoadAttempt, setDraftLoadAttempt] = useState(0);
+  // The party submission carries the flag too — fresher than the queue's task row.
+  const [studyReportIssuedFromServer, setStudyReportIssuedFromServer] = useState<
+    boolean | null
+  >(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] =
     useState<EvaluatorValidationErrors>(EMPTY_FIELD_ERRORS);
@@ -162,17 +171,22 @@ export function EvaluatorWindow({
   );
 
   const locked = isEvaluatorFormLocked(draft.status);
-  const formDisabled = locked || !gate.ready;
+  // No start gate: the appraiser drafts from the start; only the submit waits.
+  const formDisabled = locked;
+  // Only the SUBMIT waits for the specialist's study report; the form stays editable.
+  const studyReportPending =
+    task.studyReportIssued !== true && studyReportIssuedFromServer !== true;
 
   const visibleTabs = useMemo(
     () => visibleEvaluatorTabs(navAvail),
-    [navAvail.cost, navAvail.market],
+    [navAvail],
   );
 
-  useEffect(() => {
-    if (visibleTabs.some((t) => t.id === activeTab)) return;
+  // A tab can disappear when an approach is turned off — fall back during render
+  // so the window never paints an empty screen for one frame.
+  if (visibleTabs.length && !visibleTabs.some((t) => t.id === activeTab)) {
     setActiveTab(visibleTabs[0]?.id ?? "basic");
-  }, [activeTab, visibleTabs]);
+  }
 
   const persistDraft = useCallback(
     (
@@ -195,8 +209,6 @@ export function EvaluatorWindow({
         assetDataVarianceNotes: string;
         independenceDeclared: boolean;
         reportWorkers: EvaluatorReportWorker[];
-        depositCode: string;
-        depositCertificateFileName: string | null;
         reportChoices: EvaluatorReportChoices;
       }>,
       reportMetadata?: EvaluatorReportMetadata,
@@ -218,14 +230,40 @@ export function EvaluatorWindow({
     [locked, task.id, showToast],
   );
 
+  const pendingAutosaveRef = useRef<Parameters<typeof persistDraft>[0] | null>(
+    null,
+  );
+
   const scheduleAutosave = useCallback(
     (patch: Parameters<typeof persistDraft>[0]) => {
       editVersionRef.current += 1;
+      // Fold, don't replace: notes typed then a report choice within the debounce
+      // would otherwise send only the choice, and its response would wipe the notes.
+      pendingAutosaveRef.current = mergeEvaluatorDraftPatches(
+        pendingAutosaveRef.current,
+        patch,
+      );
       if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = setTimeout(() => persistDraft(patch), 400);
+      saveTimer.current = setTimeout(() => {
+        saveTimer.current = null;
+        const pending = pendingAutosaveRef.current;
+        pendingAutosaveRef.current = null;
+        if (pending) persistDraft(pending);
+      }, 400);
     },
     [persistDraft],
   );
+
+  /** Sends a debounced patch now — queued ahead of whatever write comes next. */
+  const flushPendingAutosave = useCallback(() => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    const pending = pendingAutosaveRef.current;
+    pendingAutosaveRef.current = null;
+    if (pending) persistDraft(pending);
+  }, [persistDraft]);
 
   useEffect(() => {
     let cancelled = false;
@@ -236,13 +274,15 @@ export function EvaluatorWindow({
       assignmentType: task.assignmentType,
     }).then((loaded) => {
       if (!cancelled) {
+        const cachedFlag = getCachedPartySubmission(task.id)?.studyReportIssued;
+        setStudyReportIssuedFromServer(
+          typeof cachedFlag === "boolean" ? cachedFlag : null,
+        );
         const summed = computePropertyTotal(
           loaded.landValue,
           loaded.buildingValue,
         );
-        const currentTotal = Number.parseFloat(
-          (loaded.evaluatorPrice || "0").replace(/,/g, ""),
-        );
+        const currentTotal = parseLocaleNumber(loaded.evaluatorPrice || "0");
         const reconciled =
           summed > 0 &&
           (!Number.isFinite(currentTotal) || currentTotal === 0)
@@ -261,17 +301,24 @@ export function EvaluatorWindow({
         }
         setDraftLoading(false);
       }
-    });
+    })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        // Without this the skeleton never clears; the form stays locked to edits
+        // it could not save (no cached draft), so say so instead of failing silently.
+        setDraftLoading(false);
+        setDraftLoadError(
+          err instanceof Error && err.message
+            ? err.message
+            : "تعذّر تحميل مسودة التقييم — تحقق من الاتصال وحاول مجدداً.",
+        );
+      });
     return () => {
       cancelled = true;
     };
-  }, [task.id, task.propertyId, task.poNumber]);
+  }, [task.id, task.propertyId, task.poNumber, task.assignmentType, draftLoadAttempt]);
 
-  useEffect(() => {
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-    };
-  }, []);
+  useEffect(() => flushPendingAutosave, [flushPendingAutosave]);
 
   // Fetch the report code while the appraiser works on the other tabs, so opening
   // «تقرير التقييم» waits only for its data — the hover preload fired too late to help.
@@ -280,14 +327,13 @@ export function EvaluatorWindow({
     return () => window.clearTimeout(id);
   }, []);
 
-  const { submit, submitBusy } = useEvaluatorSubmit({
+  const { submit, submitBusy, studyReportBlocked } = useEvaluatorSubmit({
     task,
     hostRef,
-    gate,
     locked,
     draft,
     setDraft,
-    saveTimer,
+    flushPendingAutosave,
     retrospectiveRef,
     specialistRef,
     setFormError,
@@ -296,15 +342,49 @@ export function EvaluatorWindow({
     showToast,
   });
 
+  /** What the report tab reads — the same inputs it is rendered with below. */
+  const reportOutputInput = useMemo(
+    () => ({
+      property: propertySummary?.property ?? null,
+      poNumber: draft.poNumber,
+      inspectionTaskId: propertySummary?.inspectionTaskId ?? null,
+      surveyTaskId: propertySummary?.surveyTaskId ?? null,
+    }),
+    [
+      propertySummary?.property,
+      propertySummary?.inspectionTaskId,
+      propertySummary?.surveyTaskId,
+      draft.poNumber,
+    ],
+  );
+
   const onTabChange = useCallback((id: string) => {
     const next = id as EvaluatorWindowTab;
     setActiveTab(next);
     // Pull a fresh report bundle when opening «تقرير التقييم» (same idea as ESG:
-    // never leave the appraiser staring at a cached fill after they just saved).
+    // never leave the appraiser staring at a cached fill after they just saved) —
+    // unless the hover prefetch just fetched it.
     if (next === "output") {
-      invalidateEvaluatorReportOutput(queryClient);
+      refreshEvaluatorReportOutputOnOpen(queryClient, {
+        propertyId: reportOutputInput.property?.id,
+        poNumber: reportOutputInput.poNumber,
+        inspectionTaskId: reportOutputInput.inspectionTaskId,
+        surveyTaskId: reportOutputInput.surveyTaskId,
+      });
     }
-  }, [queryClient]);
+  }, [queryClient, reportOutputInput]);
+
+  const onTabIntent = useCallback(
+    (id: string) => {
+      if (id === "output") {
+        prefetchValuationReportOutputTab(queryClient, reportOutputInput);
+      }
+    },
+    [queryClient, reportOutputInput],
+  );
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(panelRef, activeTab);
 
   // Property / inspection edits outside this window should refresh the report fill.
   useEffect(() => {
@@ -395,6 +475,24 @@ export function EvaluatorWindow({
     );
   }
 
+  if (draftLoadError) {
+    return (
+      <div className="flex flex-col items-start gap-2.5 py-4" role="alert">
+        <p className="text-[13px] text-danger-text">{draftLoadError}</p>
+        <Button
+          size="sm"
+          onClick={() => {
+            setDraftLoadError(null);
+            setDraftLoading(true);
+            setDraftLoadAttempt((n) => n + 1);
+          }}
+        >
+          إعادة المحاولة
+        </Button>
+      </div>
+    );
+  }
+
   const inspected = appraiserInspectionDone(task, tasks);
   const needsSurvey = appraiserNeedsSurvey(task, tasks);
   const surveyed = appraiserSurveyDone(task, tasks);
@@ -448,6 +546,7 @@ export function EvaluatorWindow({
             tabs={visibleTabs}
             active={activeTab}
             onChange={onTabChange}
+            onTabIntent={onTabIntent}
           />
         </div>
 
@@ -456,110 +555,125 @@ export function EvaluatorWindow({
             needsSurvey={needsSurvey}
             surveyed={surveyed}
             locked={locked}
-            gateReady={gate.ready}
+            studyReportPending={studyReportPending || studyReportBlocked}
+            finalIssued={task.status === "completed"}
             formError={formError}
           />
+          <InspectorChangedBanner
+            taskId={task.id}
+            draft={draft}
+            locked={locked}
+            setDraft={setDraft}
+            onError={(message) => showToast(message, "error")}
+          />
 
-          <div className={cn(formDisabled ? "opacity-75" : undefined)}>
-            {workVisited || isWorkScreen(activeTab) ? (
-              <Activity
-                mode={activeTab !== "output" ? "visible" : "hidden"}
-              >
-                <div className="flex flex-col">
-                  {workScreen === "basic" && property ? (
-                    <div className="order-1">
-                      <EvaluatorBasicDocumentsCard
-                        property={property}
-                        poNumber={draft.poNumber}
-                        surveyTaskId={summary.surveyTaskId ?? null}
-                        inspectionTaskId={summary.inspectionTaskId ?? null}
-                        appraisalTaskId={task.id}
-                      />
-                    </div>
-                  ) : null}
-                  <div
-                    className={cn(
-                      "mb-5",
-                      // «البيانات الأساسية»: documents + type, then approaches, then maps + property info.
-                      workScreen === "basic" ? "order-3 mt-3.5" : "order-1",
-                    )}
-                  >
-                    <EvaluatorValuationReportTab
-                      draft={draft}
-                      disabled={formDisabled}
-                      property={summary.property}
-                      inspectionTaskId={summary.inspectionTaskId}
-                      surveyTaskId={summary.surveyTaskId}
-                      appraisalTaskId={task.id}
-                      assignmentType={task.assignmentType}
-                      fieldErrors={fieldErrors}
-                      onChange={onReportChoicesChange}
-                      onDraftPatch={onDraftPatch}
-                      showPropertyMedia={workScreen === "basic"}
-                    />
-                  </div>
-                  <div className="order-2">
-                    {property?.id ? (
-                      <ValuationWorkShell
-                        propertyId={property.id}
-                        poNumber={draft.poNumber}
-                        assignmentType={task.assignmentType ?? undefined}
-                        districtHint={property.district}
-                        property={{
-                          area: property.area,
-                          district: property.district,
-                          city: property.city,
-                          deedNumber: property.deedNumber,
-                          propertyType: property.propertyType,
-                          classification: property.classification,
-                        }}
-                        intakeProperty={property}
-                        onFinalOpinionChange={syncFinalOpinion}
+          {/* The swap fade lives on its own wrapper: animating the locked form's
+              element would end by snapping from full opacity back to 75%. */}
+          <div ref={panelRef}>
+            <div className={cn(formDisabled ? "opacity-75" : undefined)}>
+              {workVisited || isWorkScreen(activeTab) ? (
+                <Activity
+                  mode={activeTab !== "output" ? "visible" : "hidden"}
+                >
+                  <div className="flex flex-col">
+                    {workScreen === "basic" && property ? (
+                      <div className="order-1">
+                        <EvaluatorBasicDocumentsCard
+                          property={property}
+                          poNumber={draft.poNumber}
+                          surveyTaskId={summary.surveyTaskId ?? null}
+                          inspectionTaskId={summary.inspectionTaskId ?? null}
+                          appraisalTaskId={task.id}
+                        />
+                      </div>
+                    ) : null}
+                    <div
+                      className={cn(
+                        "mb-5",
+                        // «البيانات الأساسية»: documents + type, then approaches, then maps + property info.
+                        workScreen === "basic" ? "order-3 mt-3.5" : "order-1",
+                      )}
+                    >
+                      <EvaluatorValuationReportTab
                         draft={draft}
                         disabled={formDisabled}
+                        property={summary.property}
+                        inspectionTaskId={summary.inspectionTaskId}
+                        surveyTaskId={summary.surveyTaskId}
+                        appraisalTaskId={task.id}
+                        assignmentType={task.assignmentType}
                         fieldErrors={fieldErrors}
+                        onChange={onReportChoicesChange}
                         onDraftPatch={onDraftPatch}
-                        onReportChoicesPatch={onReportChoicesPatch}
-                        onSubmit={() => void submit()}
-                        submitting={submitBusy}
-                        showSubmit={false}
-                        screen={workScreen}
-                        onScreenChange={onWorkScreenChange}
-                        embeddedInTopTabs
-                        onNavAvailabilityChange={onNavAvailabilityChange}
-                        onRetrospectiveDraftChange={onRetrospectiveDraftChange}
-                        onSpecialistDraftChange={onSpecialistDraftChange}
+                        showPropertyMedia={workScreen === "basic"}
                       />
-                    ) : (
-                      <p className="text-[13px] text-text-3">
-                        لا يتوفر عقار مرتبط لهذه المهمة.
-                      </p>
-                    )}
+                    </div>
+                    <div className="order-2">
+                      {property?.id ? (
+                        <ValuationWorkShell
+                          propertyId={property.id}
+                          poNumber={draft.poNumber}
+                          assignmentType={task.assignmentType ?? undefined}
+                          districtHint={property.district}
+                          property={{
+                            area: property.area,
+                            district: property.district,
+                            city: property.city,
+                            deedNumber: property.deedNumber,
+                            propertyType: property.propertyType,
+                            classification: property.classification,
+                          }}
+                          intakeProperty={property}
+                          onFinalOpinionChange={syncFinalOpinion}
+                          draft={draft}
+                          disabled={formDisabled}
+                          fieldErrors={fieldErrors}
+                          onDraftPatch={onDraftPatch}
+                          onReportChoicesPatch={onReportChoicesPatch}
+                          onSubmit={() => void submit()}
+                          submitting={submitBusy}
+                          showSubmit={false}
+                          screen={workScreen}
+                          onScreenChange={onWorkScreenChange}
+                          embeddedInTopTabs
+                          onNavAvailabilityChange={onNavAvailabilityChange}
+                          onRetrospectiveDraftChange={onRetrospectiveDraftChange}
+                          onSpecialistDraftChange={onSpecialistDraftChange}
+                        />
+                      ) : (
+                        <p className="text-[13px] text-text-3">
+                          لا يتوفر عقار مرتبط لهذه المهمة.
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Activity>
-            ) : null}
+                </Activity>
+              ) : null}
 
-            {visitedTabsRef.current.has("output") ? (
-              <Activity mode={activeTab === "output" ? "visible" : "hidden"}>
-                <EvaluatorValuationReportOutputTab
-                  draft={draft}
-                  property={summary.property}
-                  inspectionTaskId={summary.inspectionTaskId}
-                  surveyTaskId={summary.surveyTaskId}
-                  assignedAppraiserName={assignedAppraiserName}
-                  assignedAppraiserId={task.assigneeId}
-                  onReportChoicesPatch={onReportChoicesPatch}
-                  onNavigateTab={onTabChange}
-                />
-              </Activity>
-            ) : null}
+              {visitedTabsRef.current.has("output") ? (
+                <Activity mode={activeTab === "output" ? "visible" : "hidden"}>
+                  <EvaluatorValuationReportOutputTab
+                    draft={draft}
+                    property={summary.property}
+                    inspectionTaskId={summary.inspectionTaskId}
+                    surveyTaskId={summary.surveyTaskId}
+                    assignedAppraiserName={assignedAppraiserName}
+                    assignedAppraiserId={task.assigneeId}
+                    onReportChoicesPatch={onReportChoicesPatch}
+                    onNavigateTab={onTabChange}
+                  />
+                </Activity>
+              ) : null}
 
-            <EvaluatorWindowSubmitBar
-              visible={!formDisabled && activeTab === "review"}
-              submitBusy={submitBusy}
-              onSubmit={() => void submit()}
-            />
+              <EvaluatorWindowSubmitBar
+                visible={!formDisabled && activeTab === "review"}
+                submitBusy={submitBusy}
+                submitBlockedReason={
+                  studyReportPending ? STUDY_REPORT_NOT_ISSUED_MESSAGE : null
+                }
+                onSubmit={() => void submit()}
+              />
+            </div>
           </div>
         </div>
       </div>

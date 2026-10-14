@@ -112,54 +112,6 @@ public class FlatIncentivePricingTests
     }
 
     [Fact]
-    public async Task Creating_an_incentive_suspension_suspends_existing_suspendable_lines()
-    {
-        await using var store = new TestInspectorFeeServiceFactory.Store("flat-incentive");
-        await SeedFlatAssignmentAsync(store, amount: 200m, hasCompensation: true);
-        var taskId = Guid.NewGuid();
-        var now = DateTime.UtcNow;
-        store.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
-            WorkflowTaskKind.FieldInspection,
-            "PO-FLAT",
-            now,
-            assigneeRole: "field-inspector",
-            assigneeName: "معاين",
-            assigneeId: "insp-emp-1",
-            id: taskId,
-            status: WorkflowTaskStatus.Completed));
-        store.Fin.InspectorFeeLedgers.Add(new InspectorFeeLedger
-        {
-            WorkflowTaskId = taskId,
-            PoNumber = "PO-FLAT",
-            AssigneeId = "insp-emp-1",
-            InspectorType = InspectorFeeRules.TypeEmployee,
-            AgreedFeeSar = 200m,
-            BillingStatus = InspectorFeeBillingStatus.AtFinance,
-            AccruedAtUtc = now,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
-        await store.CaseStudy.SaveChangesAsync();
-        await store.Fin.SaveChangesAsync();
-
-        var (row, error) = await store.IncentiveSuspensions().CreateAsync(
-            new CreateIncentiveSuspensionRequest
-            {
-                AssigneeId = "insp-emp-1",
-                TransactionKey = "PO-FLAT",
-                Reason = "إيقاف على المعاملة",
-            },
-            "supervisor-1");
-
-        Assert.Null(error);
-        Assert.NotNull(row);
-        var ledger = await store.Fin.InspectorFeeLedgers.AsNoTracking()
-            .SingleAsync(l => l.WorkflowTaskId == taskId);
-        Assert.Equal(InspectorFeeBillingStatus.Suspended, ledger.BillingStatus);
-        Assert.Equal(InspectorFeeBillingStatus.AtFinance, ledger.PreSuspensionStatus);
-    }
-
-    [Fact]
     public void ResolveFromDto_reads_flat_amount_for_employees_only()
     {
         var flat = new PartyFeePricingDto

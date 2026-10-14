@@ -2,15 +2,18 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  getPropertyKeyGate,
   PropertyKeyGateSources,
   PropertyKeyHandedValues,
   PropertyKeysStatuses,
   type PropertyKeyGateDto,
 } from "@platform/api-client";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
+import { loadPropertyKeyGate } from "@platform/app-shared/offline/property-key-gate-offline";
 
+/**
+ * `data` is `null` without a modules-API session; a failed read surfaces as the query's error.
+ * Runs offline too (`networkMode: "always"`): an unreachable server answers from the device copy.
+ */
 export function usePropertyKeyGateQuery(params: {
   propertyId?: string | null;
   poNumber?: string | null;
@@ -28,19 +31,16 @@ export function usePropertyKeyGateQuery(params: {
       params.deedNumber ?? "",
       params.requestNumber ?? "",
     ],
-    queryFn: async (): Promise<PropertyKeyGateDto | null> => {
-      const config = prototypeModulesApiConfig();
-      if (!config) return null;
-      const result = await getPropertyKeyGate(config, {
+    // A failed read is an error, not «no gate»: the inspector's submit must not read it as «no key».
+    queryFn: (): Promise<PropertyKeyGateDto | null> =>
+      loadPropertyKeyGate({
         propertyId: params.propertyId,
         poNumber: params.poNumber,
         deedNumber: params.deedNumber,
         requestNumber: params.requestNumber,
-      });
-      if (!result.ok) return null;
-      return result.data;
-    },
+      }),
     enabled,
+    networkMode: "always",
     staleTime: 30_000,
   });
 }
@@ -62,7 +62,7 @@ export function keyHandedLabelAr(value: string): string {
 
 export function keyGateSourceLabelAr(source: string): string {
   if (source === PropertyKeyGateSources.Envelope) return "ظرف مفاتيح";
-  if (source === PropertyKeyGateSources.CourtAccess) return "تمكين / محظر محكمة";
+  if (source === PropertyKeyGateSources.CourtAccess) return "تمكين / محضر محكمة";
   if (source === PropertyKeyGateSources.Legacy) return "سجل قديم";
   if (source === PropertyKeyGateSources.None || !source.trim()) return "لا يوجد مصدر";
   return source;

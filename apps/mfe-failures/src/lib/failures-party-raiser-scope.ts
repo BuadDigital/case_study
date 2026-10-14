@@ -21,7 +21,7 @@ export function failureRaiserLabelForPartyRole(role: RoleId): string | null {
   return PARTY_SCOPED_FAILURE_RAISER[role] ?? null;
 }
 
-export function failuresForRaiserLabel(
+function failuresForRaiserLabel(
   items: FailureRecord[],
   label: string,
 ): FailureRecord[] {

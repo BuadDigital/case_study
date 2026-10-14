@@ -6,6 +6,7 @@ import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
 import {
   AUTO_AREA_KEY,
@@ -14,6 +15,7 @@ import {
   SEQUENTIAL_SET,
   factorDescriptor,
 } from "./factor-registry";
+import { weightsSumTo100 } from "./weights";
 
 export type MatrixAlert = { kind: "error" | "ok"; title: string; body: string };
 
@@ -40,7 +42,7 @@ export function matrixBasisView(
   let pricePerSqmDisplay: number | null = selection.weightedPricePerSqm ?? null;
   if (!isUnit) {
     // Transaction area (from the UI) wins over a stale server value when they differ.
-    const fromUi = Number(String(subjectArea ?? "").replace(",", "."));
+    const fromUi = parseLocaleNumber(subjectArea);
     const area =
       (Number.isFinite(fromUi) && fromUi > 0 ? fromUi : null) ??
       (selection.subjectAreaSqm != null && selection.subjectAreaSqm > 0
@@ -81,7 +83,7 @@ export function factorKeysFromLines(
   return keys;
 }
 
-export type MatrixFactorRows = {
+type MatrixFactorRows = {
   sequentialKeys: string[];
   /** Deletable sequential rows the evaluator removed — shown as restore chips. */
   removedSequential: string[];
@@ -108,19 +110,14 @@ export function matrixFactorRows(
 
 /** Catalog + default difference factors not already on the table — the “add factor” row options. */
 export function addableFactorOptions(
-  catalogFactors: { factorKey: string; labelAr: string }[] | undefined,
   differenceKeys: string[],
 ): { factorKey: string; labelAr: string }[] {
-  const byKey = new Map<string, { factorKey: string; labelAr: string }>();
+  const out: { factorKey: string; labelAr: string }[] = [];
   for (const [factorKey, d] of Object.entries(FACTOR_REGISTRY)) {
     if (d.sequential || factorKey === AUTO_AREA_KEY) continue;
-    byKey.set(factorKey, { factorKey, labelAr: d.label });
+    out.push({ factorKey, labelAr: d.label });
   }
-  for (const f of catalogFactors ?? []) {
-    if (SEQUENTIAL_SET.has(f.factorKey) || f.factorKey === AUTO_AREA_KEY) continue;
-    byKey.set(f.factorKey, f);
-  }
-  return [...byKey.values()].filter((f) => !differenceKeys.includes(f.factorKey));
+  return out.filter((f) => !differenceKeys.includes(f.factorKey));
 }
 
 export function afterWeightValue(item: ValuationComparableSelectionDto): number {
@@ -139,10 +136,10 @@ export function buildMatrixAlerts(
     (s, i) => s + (i.market?.effectiveWeightPct ?? 0),
     0,
   );
-  if (Math.round(weightsSum) !== 100) {
+  if (!weightsSumTo100(weightsSum)) {
     alerts.push({
       kind: "error",
-      title: `مجموع الأوزان ${Math.round(weightsSum * 100) / 100}٪ ≠ ١٠٠٪`,
+      title: `مجموع الأوزان النسبية ${Math.round(weightsSum * 100) / 100}٪ ≠ ١٠٠٪`,
       body: "عدّل الأوزان اليدوية أو أعد الضبط للاقتراح الآلي.",
     });
   }

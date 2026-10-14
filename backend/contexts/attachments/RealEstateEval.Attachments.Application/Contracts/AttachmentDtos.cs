@@ -22,6 +22,22 @@ public class FileAttachmentMetaDto
     public DateTime? ValueDocReviewedAtUtc { get; init; }
 }
 
+/// <summary>
+/// What the uploader of a «مستند ذو قيمة» sees of it: its name, file type and the specialist's decision
+/// (they open the file through the normal attachment download, which allows its own uploader).
+/// </summary>
+public sealed class OwnValuedDocumentDto
+{
+    public Guid Id { get; init; }
+    public required string Name { get; init; }
+    public required string FileName { get; init; }
+    public required string ContentType { get; init; }
+    /// <summary><c>ValueDocumentStatuses</c>: pending | approved | rejected.</summary>
+    public required string Status { get; init; }
+    public string? ReviewNote { get; init; }
+    public DateTime CreatedAtUtc { get; init; }
+}
+
 public sealed class AttachmentRefDto
 {
     public Guid Id { get; init; }

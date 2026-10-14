@@ -27,11 +27,6 @@ public interface ICourtsService
         string actorId,
         CancellationToken cancellationToken = default);
 
-    Task<(CourtDto? Court, string? Error)> SetCourtStatusAsync(
-        Guid id,
-        bool isActive,
-        string actorId,
-        CancellationToken cancellationToken = default);
 
     Task<(CourtCircuitDto? Circuit, string? Error)> CreateCircuitAsync(
         Guid courtId,

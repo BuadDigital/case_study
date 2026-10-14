@@ -31,7 +31,7 @@ public static class PropertyFailureStatus
         Approved => "معتمد",
         Returned => "مُعاد",
         Resolved => "محلول",
-        Suspended => "معلق",
+        Suspended => "معلّق",
         _ => status,
     };
 }

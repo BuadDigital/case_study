@@ -1,8 +1,10 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import {
   EmptyState,
   OperationalPanel,
+  QueryErrorState,
   QueueTableHint,
   SkeletonTableRows,
   StatusPill,
@@ -16,6 +18,7 @@ import {
   opsPanelCard,
   queueTableRowClassName,
 } from "@platform/ui-kit";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
 
 export function CourtVisitFeesPanel({
@@ -26,6 +29,14 @@ export function CourtVisitFeesPanel({
   const feesQuery = useCourtVisitFeesQuery({ creditAssigneeId });
   const rows = feesQuery.data ?? [];
   const ready = !feesQuery.isPending;
+  const loadError = queryLoadFailed(feesQuery) ? (
+    <QueryErrorState
+      line="تعذّر تحميل أتعاب الزيارة"
+      error={feesQuery.error}
+      onRetry={() => void feesQuery.refetch()}
+      retrying={feesQuery.isFetching}
+    />
+  ) : null;
 
   return (
     <div className="space-y-4">
@@ -44,6 +55,10 @@ export function CourtVisitFeesPanel({
             <TBody>
               {!ready ? (
                 <SkeletonTableRows rows={4} cols={5} />
+              ) : loadError ? (
+                <Tr hoverable={false}>
+                  <Td colSpan={5}>{loadError}</Td>
+                </Tr>
               ) : rows.length === 0 ? (
                 <Tr hoverable={false}>
                   <Td
@@ -73,7 +88,7 @@ export function CourtVisitFeesPanel({
                         {row.creditAssigneeName || row.creditAssigneeId || "—"}
                       </Td>
                       <Td className="tabular-nums font-extrabold text-heading">
-                        {row.amountSar.toLocaleString("ar-SA")} ر.س
+                        {fmtSar(row.amountSar, { digits: 3, trim: true })}
                       </Td>
                       <Td>
                         <StatusPill
@@ -99,6 +114,8 @@ export function CourtVisitFeesPanel({
                 />
               ))}
             </div>
+          ) : loadError ? (
+            <div className="px-3 py-6">{loadError}</div>
           ) : rows.length === 0 ? (
             <div className="px-3 py-10">
               <EmptyState line="لا بنود أتعاب زيارة بعد. تُستحق عند إنجاز مهمة زيارة محكمة (متعاون) ثم تظهر للمالية في التكاليف للصرف." />
@@ -140,7 +157,7 @@ export function CourtVisitFeesPanel({
                       <div className="flex justify-between gap-3 pt-0.5">
                         <span className="text-text-3">المبلغ</span>
                         <span className="tabular-nums font-extrabold text-heading">
-                          {row.amountSar.toLocaleString("ar-SA")} ر.س
+                          {fmtSar(row.amountSar, { digits: 3, trim: true })}
                         </span>
                       </div>
                     </div>

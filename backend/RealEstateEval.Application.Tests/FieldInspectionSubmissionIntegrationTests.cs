@@ -235,6 +235,50 @@ public class FieldInspectionSubmissionIntegrationTests
         Assert.Equal($"field-inspection-submitted-survey:{TaskId}", notice.Request.SourceEvent);
     }
 
+    [Fact]
+    public async Task Submit_tells_the_sibling_appraiser_the_inspector_delivered_without_a_start_signal()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var notifications = new RecordingNotificationService();
+        var service = CreateService(db, bundle.Failures, bundle.Ops, notifications);
+        var parentId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa0");
+        var appraisalId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaa4");
+
+        SeedInspectionTask(db, parentId);
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.PropertyAppraisal,
+            "PO-100",
+            DateTime.UtcNow,
+            title: "تقييم العقار",
+            assigneeRole: "real-estate-appraiser",
+            assigneeName: "المقيّم",
+            id: appraisalId,
+            propertyId: PropertyId,
+            assigneeId: "val-dist-1",
+            parentTaskId: parentId));
+        db.SaveChanges();
+        SeedAssigneeProfile(db, userId: "val-user-1", distributionAssigneeId: "val-dist-1");
+        SeedPhotoAttachments(db);
+
+        await service.SaveDraftAsync(
+            TaskId,
+            new SavePartyTaskSubmissionRequest { Payload = ParsePayload(MinimalValidPayload()) });
+
+        var (result, errors) = await service.SubmitAsync(TaskId);
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+        var notice = Assert.Single(notifications.Created);
+        Assert.Equal("val-user-1", notice.UserId);
+        Assert.Equal("سلّم المعاين المعاينة — راجع بياناتها", notice.Request.Title);
+        Assert.Equal("info", notice.Request.Tone);
+        Assert.DoesNotContain("بدء التقييم", notice.Request.Title + notice.Request.Body);
+        Assert.Contains("PO-100", notice.Request.Body);
+        Assert.Equal($"/property-appraisal/{appraisalId}", notice.Request.Href);
+        Assert.Equal($"field-inspection-submitted-appraiser:{TaskId}", notice.Request.SourceEvent);
+    }
+
     private static TestBoundedContexts.Bundle CreateDb() =>
         TestBoundedContexts.Create($"field-inspection-{Guid.NewGuid():N}");
 

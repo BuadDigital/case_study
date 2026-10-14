@@ -3,6 +3,7 @@
  * projection, the toolbar option lists and the small label helpers. No React,
  * no I/O.
  */
+import { fmtSar } from "@platform/app-shared/format/number";
 import type {
   MapBasemap,
   PropertyMapMarker,
@@ -74,7 +75,7 @@ export function nodeKey(point: {
 }
 
 /** The toolbar draft fields as one filter criteria object. */
-export type PropertyMapFilterDraft = {
+type PropertyMapFilterDraft = {
   query: string;
   city: string;
   kindCat: PropertyKindCat | "";
@@ -187,7 +188,7 @@ export function buildMapMarkers(
       layer: "comparables",
       approved: c.approved,
       title: `${c.comparableType} — ${c.operationType}`,
-      subtitle: `${c.city} · ${c.price != null ? c.price.toLocaleString("en-US") + " ريال" : ""}`,
+      subtitle: `${c.city} · ${c.price != null ? fmtSar(c.price, { digits: 3, trim: true }) : ""}`,
     });
   }
   return list;

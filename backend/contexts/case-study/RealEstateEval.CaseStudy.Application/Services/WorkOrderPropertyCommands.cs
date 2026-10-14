@@ -56,7 +56,6 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         var errors = WorkOrderValidator.ValidatePropertyEnfath(
             property,
             entity.AssignmentType,
-            entity.PoNumber,
             null,
             WorkOrderPropertyWriteRules.DeedTakenProbe(entity),
             SeedClientIds.ClientFieldPolicyForClient(
@@ -76,6 +75,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         mapped.ReferenceNumber = transactionReference;
         _db.AddProperty(mapped);
         await _db.SaveChangesAsync(cancellationToken);
+        // A property registered after the PO was created (the usual path) starts its timeline with the Enfaz receipt.
+        await _timeline.RecordManyAsync([WorkOrderService.EnfathReceivedEvent(entity, mapped.Id)], cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(mapped), null);
     }
 
@@ -84,7 +85,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         Guid propertyId,
         WorkOrderPropertyDto property,
         CancellationToken cancellationToken,
-        bool softDraft = false)
+        bool softDraft = false,
+        string? actorName = null)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
@@ -112,7 +114,6 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             var enfathErrors = WorkOrderValidator.ValidatePropertyEnfath(
                 property,
                 entity.AssignmentType,
-                entity.PoNumber,
                 propertyId,
                 WorkOrderPropertyWriteRules.DeedTakenProbe(entity),
                 SeedClientIds.ClientFieldPolicyForClient(
@@ -147,6 +148,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 WorkOrderPropertyWriteRules.ApplyPropertyBourse(existing, property);
                 existing.BourseDataCompleted = true;
                 existing.BourseCompletedAtUtc = _time.UtcNow();
+                existing.BourseCompletedByName = WorkOrderPropertyWriteRules.NormalizeActorName(actorName);
             }
             else
             {
@@ -207,35 +209,6 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         return (WorkOrderMapper.ToPropertyDto(saved), null);
     }
 
-    public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateLocationMapUrlAsync(
-        string poNumber,
-        Guid propertyId,
-        string? locationMapUrl,
-        CancellationToken cancellationToken)
-    {
-        var entity = await _loader.LoadAsync(poNumber, cancellationToken);
-        if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
-
-        var notEditable = WorkOrderPropertyWriteRules.FindEditableProperty(
-            entity,
-            propertyId,
-            out var existing);
-        if (notEditable is not null) return (null, notEditable);
-
-        var (urlErrors, url) = WorkOrderPropertyWriteRules.ValidateLocationMapUrl(locationMapUrl);
-        if (urlErrors is not null) return (null, urlErrors);
-
-        var previousLocationMapUrl = existing!.LocationMapUrl;
-        existing.LocationMapUrl = url;
-
-        await _db.SaveChangesAsync(cancellationToken);
-        await ApplyDocumentarySideEffectsAfterPropertySaveAsync(
-            entity,
-            existing,
-            previousLocationMapUrl,
-            cancellationToken);
-        return (WorkOrderMapper.ToPropertyDto(existing), null);
-    }
 
     public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateSpecialistReportExtrasAsync(
         string poNumber,
@@ -273,7 +246,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         string poNumber,
         Guid propertyId,
         UpdatePropertyBourseRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? actorName = null)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
@@ -292,10 +266,12 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         if (errors.Count > 0) return (null, errors);
 
         var bourseNow = _time.UtcNow();
+        var bourseWasCompleted = existing.BourseDataCompleted;
         var (applyErrors, boundariesUnavailable) = WorkOrderPropertyWriteRules.ApplyBourseRequest(
             existing!,
             request,
-            bourseNow);
+            bourseNow,
+            actorName);
         if (applyErrors is not null) return (null, applyErrors);
 
         await _db.SaveChangesAsync(cancellationToken);
@@ -317,15 +293,21 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         }
 
         var bourseNormPo = IWorkOrderLoader.NormalizePo(poNumber);
-        await _timeline.RecordAsync(
-            bourseNormPo,
-            propertyId,
-            "property-bourse",
-            "بيانات البورصة للعقار",
-            WorkOrderPropertyWriteRules.BourseTimelineLocation(existing!.City, existing.District),
-            PropertyTimelineTones.Done,
-            bourseNow,
-            cancellationToken);
+        // One milestone per COMPLETION: a re-save of a completed bourse adds nothing, a bourse redone after a
+        // revert adds a new row; a property held open on «الحدود غير متوفرة» is not completed, so no row.
+        if (existing!.BourseDataCompleted && !bourseWasCompleted)
+        {
+            await _timeline.RecordAsync(
+                bourseNormPo,
+                propertyId,
+                $"property-bourse:{bourseNow.Ticks}",
+                "إتمام استعلام البورصة",
+                WorkOrderPropertyWriteRules.BourseTimelineDetail(
+                    existing.City, existing.District, existing.BourseCompletedByName),
+                PropertyTimelineTones.Done,
+                bourseNow,
+                cancellationToken);
+        }
         var bourseDeedRef = existing.DeedNumber.Trim();
         await NotifyCdoPropertyMilestoneAsync(
             bourseNormPo,

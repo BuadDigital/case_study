@@ -9,7 +9,7 @@ import {
 } from "./CaseStudyReportFrame";
 import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
-import type { CaseStudyReportModel } from "../../lib/app-data/case-study-report-model";
+import type { CaseStudyReportModel } from "../../lib/app-data/case-study-report-document-model";
 
 type Props = {
   model: CaseStudyReportModel;

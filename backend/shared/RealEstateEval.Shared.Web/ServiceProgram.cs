@@ -12,8 +12,7 @@ if (module.ConnectionStringKey is { } key)
 {
     connectionString = ServiceCollectionExtensions.RequireConnectionString(
         builder.Configuration,
-        key,
-        environment: builder.Environment);
+        key);
 }
 
 module.ConfigureBuilder(builder, connectionString);

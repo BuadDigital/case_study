@@ -25,6 +25,56 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
             modelBuilder.HasSequence<int>("ValuationRequestDisplayId", "valuation")
                 .StartsAt(445L);
 
+            modelBuilder.Entity("RealEstateEval.Domain.CommandIdempotencyRecord", b =>
+                {
+                    b.Property<string>("ActorId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("HttpMethod")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("RequestPath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExecutionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<byte[]>("ResponseBody")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ActorId", "HttpMethod", "RequestPath", "IdempotencyKey");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.ToTable("CommandIdempotencyRecords", "messaging");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -930,10 +980,94 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         });
                 });
 
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReportDraft", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AppraiserNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("ApprovedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ApprovedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("ConformityConfirmedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ConformityConfirmedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReportDate")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.Property<DateTime?>("SentAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SentByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int?>("SnapshotHtmlBytes")
+                        .HasColumnType("integer");
+
+                    b.Property<byte[]>("SnapshotHtmlGz")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("SnapshotSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("SpecialistChoicesJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("SpecialistNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ValuationRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ValuationRequestId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("ValuationReportDrafts", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_ValuationReportDrafts_Status", "\"Status\" IS NULL OR \"Status\" IN ('preparing', 'sent', 'approved')");
+                        });
+                });
+
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReportIssuance", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("CertificateAttachmentId")
                         .HasColumnType("uuid");
 
                     b.Property<byte[]>("CertificateContent")
@@ -965,10 +1099,6 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
-                    b.Property<byte[]>("DepositPdf")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
                     b.Property<string>("DocumentJson")
                         .IsRequired()
                         .HasColumnType("jsonb");
@@ -976,8 +1106,15 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.Property<DateTime?>("FinalIssuedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<byte[]>("FinalPdf")
-                        .HasColumnType("bytea");
+                    b.Property<Guid?>("FinalPdfAttachmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("FinalPdfDepositCode")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime?>("FinalPdfGeneratedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("SupersededAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -1301,6 +1438,15 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .IsRequired();
 
                     b.Navigation("Reconciliation");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReportDraft", b =>
+                {
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", null)
+                        .WithMany()
+                        .HasForeignKey("ValuationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationReportIssuance", b =>

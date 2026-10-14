@@ -35,10 +35,13 @@ export function SpecialistValuationReportFinishingEditor({
   );
   const [invalid, setInvalid] = useState(false);
 
-  useEffect(() => {
+  // Another property means another saved level — read it before this paint.
+  const [levelForProperty, setLevelForProperty] = useState(propertyId);
+  if (levelForProperty !== propertyId) {
+    setLevelForProperty(propertyId);
     setLevel(loadSpecialistFinishingLevel(propertyId));
     setInvalid(false);
-  }, [propertyId]);
+  }
 
   useEffect(() => {
     const id = propertyId.trim();

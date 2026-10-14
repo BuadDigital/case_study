@@ -7,6 +7,16 @@ namespace RealEstateEval.Domain;
 /// </summary>
 public static class WorkflowTaskKindLabels
 {
+ /// <summary>The party's role name as the screens show it (المعاين الميداني، المقيّم العقاري …).</summary>
+    public static string RoleAr(WorkflowTaskKind kind) => kind switch
+    {
+        WorkflowTaskKind.FieldInspection => "المعاين الميداني",
+        WorkflowTaskKind.EngineeringSurvey => "المكتب الهندسي",
+        WorkflowTaskKind.PropertyAppraisal => "المقيّم العقاري",
+        WorkflowTaskKind.GovernmentReview => "المراجع الحكومي",
+        _ => "الطرف",
+    };
+
  /// <summary>Title of the Party Assigned event in the transaction timeline.</summary>
     public static string AssignedTitleAr(WorkflowTaskKind kind) => kind switch
     {
@@ -18,12 +28,17 @@ public static class WorkflowTaskKindLabels
         _ => "تعيين طرف",
     };
 
+ /// <summary>Timeline title when the final valuation report is issued and the appraisal task completes.</summary>
+    public const string AppraisalCompletedTitleAr = "إتمام التقييم العقاري";
+
  /// <summary>“Party Work Complete” event title — wire keys as stored in submissions.</summary>
     public static string SubmittedTitleAr(string kind) => kind switch
     {
         WorkflowTaskKindValues.FieldInspection => "إتمام المعاينة الميدانية",
         WorkflowTaskKindValues.EngineeringSurvey => "إتمام الرفع المساحي",
-        WorkflowTaskKindValues.PropertyAppraisal => "إتمام التقييم العقاري",
+        // The appraiser hands the package to the case specialist; the task completes later, at the
+        // final issuance of the valuation report (see <see cref="AppraisalCompletedTitleAr"/>).
+        WorkflowTaskKindValues.PropertyAppraisal => "تسليم المقيّم لتقييمه",
  // Legacy government-review submissions (product surface removed).
         WorkflowTaskKindValues.GovernmentReview => "إتمام المراجعة الحكومية",
         _ => "إتمام عمل الطرف",

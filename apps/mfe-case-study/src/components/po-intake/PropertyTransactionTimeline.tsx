@@ -11,10 +11,12 @@ import {
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { PropertyTimelineTones } from "@platform/api-client";
 import {
-  buildPropertyDetailTimeline,
   formatTimelineDate,
+  type PropertyTimelineEvent,
   type PropertyTimelineTone,
 } from "../../lib/app-data/property-detail-timeline";
+import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
+import { useReportDraftStates } from "@platform/app-shared/workflow/use-report-draft-states";
 import { buildPropertyDetailTimelinePartyRows } from "../../lib/app-data/property-detail-parties";
 import { formatDateAr } from "../../lib/app-data/po-intake-data";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
@@ -27,6 +29,8 @@ import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { WORK_ORDERS_CHANGED_EVENT } from "../../lib/work-orders-api-config";
 import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
+
+const EMPTY_EVENTS: PropertyTimelineEvent[] = [];
 
 function toneToDotClass(tone: PropertyTimelineTone): string {
   if (tone === PropertyTimelineTones.Done) return "bg-ink";
@@ -201,6 +205,23 @@ export function PropertyTransactionTimeline({
     };
   }, [inspectionTaskId, inspectionRevision]);
 
+  const appraisalPackageSubmitted = useMemo(
+    () =>
+      tasks.some(
+        (row) =>
+          row.kind === "property-appraisal" &&
+          row.propertyId === property.id &&
+          row.poNumber.trim() === poNumber &&
+          row.appraisalPackageStatus === "submitted",
+      ),
+    [tasks, property.id, poNumber],
+  );
+  // Where the report draft stands (valuation service) — only worth asking once the package is handed over.
+  const draftStateVersion = useReportDraftStates(
+    [property.id],
+    appraisalPackageSubmitted,
+  );
+
   const partyRows = useMemo(
     () =>
       buildPropertyDetailTimelinePartyRows({
@@ -208,18 +229,17 @@ export function PropertyTransactionTimeline({
         allTasks: tasks,
         staffUsers,
         inspectionSubmitted,
+        appraisal: {
+          packageSubmitted: appraisalPackageSubmitted,
+          draft: getReportDraftState(property.id),
+        },
       }),
-    [task, tasks, staffUsers, inspectionSubmitted],
+    // draftStateVersion: the draft state is read from the shared cache.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [task, tasks, staffUsers, inspectionSubmitted, appraisalPackageSubmitted, property.id, draftStateVersion],
   );
 
-  const displayEvents = useMemo(() => {
-    const fromApi = timelineQuery.data ?? [];
-    const events =
-      fromApi.length > 0
-        ? fromApi
-        : buildPropertyDetailTimeline({ record, property, tasks });
-    return [...events].reverse();
-  }, [timelineQuery.data, record, property, tasks]);
+  const displayEvents = timelineQuery.data ?? EMPTY_EVENTS;
 
   return (
     <aside
@@ -315,7 +335,7 @@ export function PropertyTransactionTimeline({
                     {event.title}
                   </div>
                   {event.detail?.trim() ? (
-                    <div className="truncate text-[10.5px] leading-snug text-text-2">
+                    <div className="line-clamp-3 text-[10.5px] leading-snug text-text-2">
                       {event.detail.trim()}
                     </div>
                   ) : null}

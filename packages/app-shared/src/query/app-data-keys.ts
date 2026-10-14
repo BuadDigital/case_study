@@ -4,9 +4,12 @@ export const appDataKeys = {
   /** One server page of the PO list — see docs/architecture/pagination-contract.md §1. */
   poListRowsPage: (query: Record<string, unknown>) =>
     [...appDataKeys.poListRows(), "page", query] as const,
-  /** The PO list KPI counts for one filter set — pagination-contract §1.1. */
+  /**
+   * The PO list KPI counts for one filter set — pagination-contract §1.1. Under the rows prefix
+   * so a work-order change (a handover, an intake) refreshes the band with the rows.
+   */
   poListCounts: (query: Record<string, unknown>) =>
-    [...appDataKeys.all, "po-list-counts", query] as const,
+    [...appDataKeys.poListRows(), "counts", query] as const,
   /** Prefix every party-billing read shares, so a write invalidates them all. */
   partyBilling: () => [...appDataKeys.all, "party-billing"] as const,
   /** One server page of statements — pagination-contract §9.1. */
@@ -49,7 +52,6 @@ export const appDataKeys = {
     [...appDataKeys.failures(), "page", query] as const,
   failureTypes: () => [...appDataKeys.all, "failure-types"] as const,
   fieldDictionary: () => [...appDataKeys.all, "field-dictionary"] as const,
-  surveyOffices: () => [...appDataKeys.all, "survey-offices"] as const,
   propertyKeys: () => [...appDataKeys.all, "property-keys"] as const,
   keyEnvelopes: () => [...appDataKeys.all, "key-envelopes"] as const,
   keyEnvelopeFees: () => [...appDataKeys.all, "key-envelope-fees"] as const,
@@ -58,7 +60,6 @@ export const appDataKeys = {
   valuationRequests: () => [...appDataKeys.all, "valuation-requests"] as const,
   suspendedTransactions: () =>
     [...appDataKeys.all, "suspended-transactions"] as const,
-  courtsCatalog: () => [...appDataKeys.all, "courts-catalog"] as const,
   caseStudyInfoRoles: () =>
     [...appDataKeys.all, "case-study-info-roles"] as const,
   staffUsers: () => [...appDataKeys.all, "staff-users"] as const,
@@ -66,6 +67,9 @@ export const appDataKeys = {
     [...appDataKeys.all, "distribution-assignees"] as const,
   propertyDetailPartySubmissions: (parentTaskId: string) =>
     [...appDataKeys.all, "property-detail-party-submissions", parentTaskId] as const,
+  /** The appraiser's saved submission for one appraisal task (`null` = none saved yet). */
+  evaluatorSubmission: (appraisalTaskId: string) =>
+    [...appDataKeys.all, "evaluator-submission", appraisalTaskId] as const,
   propertyTimeline: (poNumber: string, propertyId: string) =>
     [...appDataKeys.all, "property-timeline", poNumber, propertyId] as const,
   inspectorFees: (query: {
@@ -78,9 +82,9 @@ export const appDataKeys = {
   fieldInspectionWorkspaces: () =>
     [...appDataKeys.all, "field-inspection-workspaces"] as const,
   /** Every batch of case-study + party form drafts — invalidate here when a party form changes. */
-  caseStudyFormBatches: () =>
-    [...appDataKeys.all, "case-study-form-batches"] as const,
-  /** One `GET /api/case-study-forms/batch` for a sorted `\0`-joined set of parent task ids. */
-  caseStudyFormBatch: (parentTaskIdsKey: string) =>
-    [...appDataKeys.caseStudyFormBatches(), parentTaskIdsKey] as const,
+  caseStudyReportBatches: () =>
+    [...appDataKeys.all, "case-study-report-batches"] as const,
+  /** One `GET /api/case-study-reports/batch` for a sorted `\0`-joined set of parent task ids. */
+  caseStudyReportBatch: (parentTaskIdsKey: string) =>
+    [...appDataKeys.caseStudyReportBatches(), parentTaskIdsKey] as const,
 };

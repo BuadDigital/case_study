@@ -4,12 +4,12 @@
  */
 
 /** How the subject-property cell is filled on the factor row. */
-export type FactorSubjectCell = "valuation-date" | "ideal-area" | "location";
+type FactorSubjectCell = "valuation-date" | "ideal-area" | "location";
 
 /** Which note appears under the comparable cell on the factor row. */
-export type FactorCompNote = "deal-age" | "kind-suggested";
+type FactorCompNote = "deal-age" | "kind-suggested";
 
-export type FactorDescriptor = {
+type FactorDescriptor = {
   label: string;
   hint: string;
   tip: string;
@@ -33,7 +33,7 @@ export type FactorDescriptor = {
 export const AUTO_AREA_KEY = "area";
 
 /** Minted custom difference factors — key max 32, extra-catalog charset. */
-export const CUSTOM_FACTOR_PREFIX = "c_";
+const CUSTOM_FACTOR_PREFIX = "c_";
 export const CUSTOM_FACTOR_LABEL = "عامل مخصص";
 
 /** Client-minted custom row (`c_1`) or the reserved `custom` key. */
@@ -63,7 +63,7 @@ export const FACTOR_REGISTRY: Record<string, FactorDescriptor> = {
   market: {
     label: "تسوية ظروف السوق",
     hint: "تُدخل يدوياً — يظهر عمر الصفقة للاستدلال",
-    tip: "فرق الزمن بين تاريخ المقارن وتاريخ التقييم — يقدّرها المقيّم يدوياً.",
+    tip: "فرق الزمن بين تاريخ العملية وتاريخ التقييم — يقدّرها المقيّم يدوياً.",
     sequential: true,
     alwaysPresent: true,
     subjectCell: "valuation-date",

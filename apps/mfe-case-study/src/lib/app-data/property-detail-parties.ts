@@ -5,6 +5,10 @@ import {
   caseStudyFamilyParentId,
   type CaseStudyTrackState,
 } from "./case-study-tracks";
+import {
+  appraisalStageLabel,
+  type ReportDraftState,
+} from "@platform/app-shared/workflow/report-draft-state";
 import { assigneeLabel, getCaseSpecialists } from "./distribution-parties";
 import { migrateDistribution, type WorkflowTask } from "./tasks";
 
@@ -23,7 +27,7 @@ export type PropertyDetailPartyCard = {
   enabled: boolean;
 };
 
-export type PropertyDetailPartyStatusRow = {
+type PropertyDetailPartyStatusRow = {
   key: string;
   /** Display name of the assigned person/office (not the role title). */
   label: string;
@@ -46,6 +50,21 @@ function timelineBadgeForParty(
     return { badge: "قيد التنفيذ", badgeClass: "pd-badge-amber" };
   }
   return { badge: "لم يبدأ", badgeClass: "pd-badge-amber" };
+}
+
+/**
+ * Where the appraiser's report stands once he handed his package over, worded for whoever reads the rail:
+ * waiting for the specialist's draft, the draft waiting for his approval, approved waiting for the deposit code. Null: nothing finer than «in progress».
+ */
+function appraisalHandOverBadge(
+  appraisal: { packageSubmitted: boolean; draft?: ReportDraftState } | undefined,
+): { badge: string; badgeClass: PropertyDetailPartyStatusRow["badgeClass"] } | null {
+  if (!appraisal) return null;
+  const stage = appraisalStageLabel(appraisal.draft);
+  if (stage?.group === "approved") return { badge: "معتمد — بانتظار رمز الإيداع", badgeClass: "pd-badge-amber" };
+  if (stage?.group === "draft_sent") return { badge: "بانتظار اعتماد المقيّم", badgeClass: "pd-badge-amber" };
+  if (appraisal.packageSubmitted) return { badge: "بانتظار المسودة", badgeClass: "pd-badge-amber" };
+  return null;
 }
 
 /** Party cards for property detail — assigned work parties only (no case specialist). */
@@ -147,10 +166,14 @@ function timelineSpecialistRow(input: {
     };
   }
 
-  // Parent hidden from this viewer: the child still carries the distribution.
-  const name = assigneeLabel(
-    getCaseSpecialists(staffUsers),
-    migrateDistribution(task.distribution).caseSpecialistId,
+  // Parent hidden from this viewer: the server copies the specialist's name onto the child
+  // (parties cannot list staff); the staff lookup covers roles that can.
+  const name = (
+    task.caseSpecialistName ??
+    assigneeLabel(
+      getCaseSpecialists(staffUsers),
+      migrateDistribution(task.distribution).caseSpecialistId,
+    )
   ).trim();
   if (!name) return unassigned;
   return {
@@ -171,6 +194,8 @@ export function buildPropertyDetailTimelinePartyRows(input: {
    * in the list the rail has, so completion has to come from the package too.
    */
   inspectionSubmitted?: boolean;
+  /** The appraiser's package is handed over and where the report draft stands; refines his badge. */
+  appraisal?: { packageSubmitted: boolean; draft?: ReportDraftState };
 }): PropertyDetailPartyStatusRow[] {
   const { task, allTasks } = input;
   const assignees = task
@@ -195,11 +220,15 @@ export function buildPropertyDetailTimelinePartyRows(input: {
       enabled && party?.name && party.name !== "—"
         ? party.name
         : "لم يُعيَّن";
+    const handOver =
+      def.key === "appraisal" && enabled && state !== "done"
+        ? appraisalHandOverBadge(input.appraisal)
+        : null;
     return {
       key: def.key,
       label: name,
       role: def.role,
-      ...timelineBadgeForParty(enabled, state),
+      ...(handOver ?? timelineBadgeForParty(enabled, state)),
     };
   });
 

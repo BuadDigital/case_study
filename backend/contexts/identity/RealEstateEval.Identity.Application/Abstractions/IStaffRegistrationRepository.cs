@@ -34,13 +34,6 @@ public sealed record StaffProfileState
     public DateTime? UpdatedAtUtc { get; init; }
 }
 
-/// <summary>One profiled account and the identity roles it holds — the organization overview input.</summary>
-public sealed record StaffRoleMembership(
-    string UserId,
-    string DisplayName,
-    string JobTitle,
-    IReadOnlyList<string> SystemRoles);
-
 /// <summary>
 /// Persistence boundary for staff registration: the profile rows, the uniqueness guards, the
 /// refresh tokens a disable revokes, the yearly user reference, and the audit rows each write
@@ -54,8 +47,6 @@ public sealed record StaffRoleMembership(
 /// </remarks>
 public interface IStaffRegistrationRepository
 {
-    /// <summary>Active accounts offered by the development login switcher.</summary>
-    Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(CancellationToken cancellationToken);
 
     /// <summary>Identity-only projection: no profile join, for callers that just need a name.</summary>
     Task<UserInfoDto?> GetIdentityUserAsync(string userId, CancellationToken cancellationToken);
@@ -65,10 +56,6 @@ public interface IStaffRegistrationRepository
 
     /// <summary>Full staff item, with an identity-only fallback for unprofiled accounts.</summary>
     Task<UserListItemDto?> GetByUserIdAsync(string userId, CancellationToken cancellationToken);
-
-    /// <summary>Every profiled account with its identity roles — the organization overview input.</summary>
-    Task<IReadOnlyList<StaffRoleMembership>> ListStaffRoleMembershipsAsync(
-        CancellationToken cancellationToken);
 
     /// <summary>Ids of accounts that carry a profile, i.e. accounts created by registration.</summary>
     Task<IReadOnlyList<string>> ListProfiledUserIdsAsync(CancellationToken cancellationToken);

@@ -16,8 +16,13 @@ import {
   reactivateErrorMessage,
   ROLE_SELECT_OPTIONS,
   saveEditErrors,
-  shouldSyncStaffValuer,
+  defaultReportRole,
+  professionalEquals,
+  professionalFromRow,
+  professionalToSyncFields,
+  rosterRowFor,
   staffValuerSyncMode,
+  unlinkedRosterRows,
   statusLabel,
   statusTone,
   STAFF_ROLE_CHANGE_LAST_ADMIN,
@@ -240,36 +245,67 @@ describe("dialog copy and API error mapping", () => {
   });
 
   it("maps each failure kind to the screen's message", () => {
-    expect(createUserErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
-    expect(createUserErrorMessage({ kind: "server" })).toBe("تعذر إنشاء المستخدم.");
+    expect(createUserErrorMessage({ kind: "network" })).toBe("تعذّر الاتصال بالخادم.");
+    expect(createUserErrorMessage({ kind: "server" })).toBe("تعذّر إنشاء المستخدم.");
     expect(deleteUserErrorMessage({ kind: "validation", message: "v" })).toBe("v");
-    expect(deleteUserErrorMessage({ kind: "validation" })).toBe("تعذر تعطيل المستخدم.");
-    expect(deleteUserErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
+    expect(deleteUserErrorMessage({ kind: "validation" })).toBe("تعذّر تعطيل المستخدم.");
+    expect(deleteUserErrorMessage({ kind: "network" })).toBe("تعذّر الاتصال بالخادم.");
     expect(saveEditErrors({ kind: "validation", errors: { mobile: "e" } })).toEqual({ mobile: "e" });
-    expect(saveEditErrors({ kind: "network" })).toEqual({ _form: "تعذر الاتصال بالخادم." });
-    expect(saveEditErrors({ kind: "server" })).toEqual({ _form: "تعذر حفظ التعديلات." });
+    expect(saveEditErrors({ kind: "network" })).toEqual({ _form: "تعذّر الاتصال بالخادم." });
+    expect(saveEditErrors({ kind: "server" })).toEqual({ _form: "تعذّر حفظ التعديلات." });
     expect(reactivateErrorMessage({ kind: "validation", errors: { status: "s" } })).toBe("s");
     expect(reactivateErrorMessage({ kind: "validation", errors: { _form: "f", status: "s" } })).toBe("f");
-    expect(reactivateErrorMessage({ kind: "validation" })).toBe("تعذر تفعيل المستخدم.");
-    expect(reactivateErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
-    expect(unlockErrorMessage({ kind: "network" })).toBe("تعذر الاتصال بالخادم.");
+    expect(reactivateErrorMessage({ kind: "validation" })).toBe("تعذّر تفعيل المستخدم.");
+    expect(reactivateErrorMessage({ kind: "network" })).toBe("تعذّر الاتصال بالخادم.");
+    expect(unlockErrorMessage({ kind: "network" })).toBe("تعذّر الاتصال بالخادم.");
     expect(unlockErrorMessage({ kind: "validation", message: "u" })).toBe("u");
-    expect(unlockErrorMessage({ kind: "server" })).toBe("تعذر فك قفل الحساب.");
+    expect(unlockErrorMessage({ kind: "server" })).toBe("تعذّر فك قفل الحساب.");
   });
 });
 
 describe("staff valuer roster sync", () => {
-  it("upserts an active appraiser and deactivates everyone else", () => {
-    expect(staffValuerSyncMode("real-estate-appraiser", "Active")).toBe("upsert");
-    expect(staffValuerSyncMode("real-estate-appraiser", "Locked")).toBe("upsert");
-    expect(staffValuerSyncMode("real-estate-appraiser", "PendingActivation")).toBe("upsert");
-    expect(staffValuerSyncMode("real-estate-appraiser", "Disabled")).toBe("deactivate");
-    expect(staffValuerSyncMode("case-specialist", "Active")).toBe("deactivate");
+  it("only a disabled account leaves the report", () => {
+    expect(staffValuerSyncMode("Active")).toBe("upsert");
+    expect(staffValuerSyncMode("Locked")).toBe("upsert");
+    expect(staffValuerSyncMode("Disabled")).toBe("deactivate");
   });
 
-  it("syncs when the account is or was an appraiser", () => {
-    expect(shouldSyncStaffValuer(undefined, "real-estate-appraiser")).toBe(true);
-    expect(shouldSyncStaffValuer("real-estate-appraiser", "case-specialist")).toBe(true);
-    expect(shouldSyncStaffValuer("case-specialist", "cdo")).toBe(false);
+  it("a new appraiser takes a seat; everyone else starts out of the report", () => {
+    expect(defaultReportRole("real-estate-appraiser")).toBe("valuer");
+    expect(defaultReportRole("case-specialist")).toBe("none");
+    expect(defaultReportRole(null)).toBe("none");
+  });
+
+  it("reads the professional data off the linked roster row", () => {
+    const valuers = [
+      { id: "r1", nameAr: "سعد", role: "reviewer", isActive: true, staffUserId: "u1", membershipNumber: "77" },
+      { id: "r2", nameAr: "عماد", role: "certified", isActive: true, staffUserId: "u2" },
+      { id: "r3", nameAr: "هند", role: "valuer", isActive: false, staffUserId: "u3" },
+    ] as never[];
+    expect(rosterRowFor(valuers, "u1")?.id).toBe("r1");
+    expect(rosterRowFor(valuers, "nope")).toBeNull();
+    expect(unlinkedRosterRows([...valuers, { id: "r4", nameAr: "بلا حساب", role: "valuer", isActive: true } as never]).map((r) => r.id)).toEqual(["r4"]);
+    expect(professionalFromRow(rosterRowFor(valuers, "u1"), "case-specialist")).toMatchObject({
+      reportRole: "reviewer",
+      membershipNumber: "77",
+    });
+    expect(professionalFromRow(rosterRowFor(valuers, "u2"), null).reportRole).toBe("certified");
+    expect(professionalFromRow(rosterRowFor(valuers, "u3"), "real-estate-appraiser").reportRole).toBe("none");
+    expect(professionalFromRow(null, "real-estate-appraiser").reportRole).toBe("valuer");
+    expect(professionalFromRow(null, "field-inspector").reportRole).toBe("none");
+  });
+
+  it("sends every field and never the certified seat", () => {
+    const p = professionalFromRow(null, "real-estate-appraiser");
+    expect(professionalToSyncFields({ ...p, membershipNumber: " 9 " })).toMatchObject({
+      reportRole: "valuer",
+      membershipNumber: "9",
+      signatureUrl: "",
+    });
+    expect("reportRole" in professionalToSyncFields({ ...p, reportRole: "certified" })).toBe(false);
+    expect("linkRosterRowId" in professionalToSyncFields(p)).toBe(false);
+    expect(professionalToSyncFields({ ...p, linkRosterRowId: "r1" }).linkRosterRowId).toBe("r1");
+    expect(professionalEquals(p, { ...p, licenseNumber: " " })).toBe(true);
+    expect(professionalEquals(p, { ...p, licenseNumber: "1" })).toBe(false);
   });
 });

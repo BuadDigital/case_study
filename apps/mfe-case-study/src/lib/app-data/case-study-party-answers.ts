@@ -1,4 +1,4 @@
-import type { CaseStudyFormAnswer } from "./case-study-form-data";
+import type { CaseStudyReportAnswer } from "./case-study-report-data";
 import {
   CASE_STUDY_INFO_PARTIES,
   CASE_STUDY_INFO_ROLE_TYPES,
@@ -12,7 +12,7 @@ import {
 } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
-import { loadPartyCaseStudyFormDraft } from "./case-study-form-reads";
+import { loadPartyCaseStudyReportDraft } from "./case-study-report-reads";
 import type { WorkflowTask, WorkflowTaskKind } from "./tasks";
 
 export type PartyQuestionContribution = {
@@ -22,7 +22,7 @@ export type PartyQuestionContribution = {
   assigneeName: string;
   roleType: CaseStudyInfoRoleType | null;
   roleLabel: string | null;
-  answer: CaseStudyFormAnswer;
+  answer: CaseStudyReportAnswer;
   taskId: string;
   taskKind: WorkflowTaskKind;
   answeredByUserId?: string | null;
@@ -36,7 +36,7 @@ const KIND_PARTY_LABEL: Partial<
   Record<WorkflowTaskKind, { partyId: CaseStudyInfoPartyId | null; name: string; color: string }>
 > = {
   "field-inspection": { partyId: "insp", name: "المعاين العقاري", color: "#102b4e" },
-  "property-appraisal": { partyId: "val", name: "المقيم العقاري", color: "#DC2626" },
+  "property-appraisal": { partyId: "val", name: "المقيّم العقاري", color: "#DC2626" },
   "engineering-survey": { partyId: "eng", name: "المكتب الهندسي", color: "#D97706" },
 };
 
@@ -79,7 +79,7 @@ export async function collectPartyAnswersByQuestion(
   const drafts = await Promise.all(
     children.map((child) =>
       KIND_PARTY_LABEL[child.kind]
-        ? loadPartyCaseStudyFormDraft(child.id)
+        ? loadPartyCaseStudyReportDraft(child.id)
         : null,
     ),
   );

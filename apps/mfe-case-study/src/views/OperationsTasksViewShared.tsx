@@ -77,7 +77,7 @@ export type DraftFile = {
   contentType?: string;
 };
 
-export function filesFromList(list: FileList | null): DraftFile[] {
+function filesFromList(list: FileList | null): DraftFile[] {
   if (!list) return [];
   return Array.from(list).map((f) => ({ name: f.name, size: fmtFileSize(f.size), file: f }));
 }

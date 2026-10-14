@@ -39,7 +39,7 @@ export function markPrintFlow(dom: Document): string {
  * Runs in the print page. Plain ES5 on purpose — `valuationReportPaginateScript` ships this
  * function's own source, so it may not lean on imports.
  */
-export function paginateValuationReport(): void {
+function paginateValuationReport(): void {
   var meta = document.getElementById("rpt-meta") as HTMLTemplateElement | null;
 
   // A second run (after the fonts settled) starts from whole blocks again.

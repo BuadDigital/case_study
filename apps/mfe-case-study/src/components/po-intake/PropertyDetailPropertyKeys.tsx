@@ -71,11 +71,7 @@ export function PropertyDetailPropertyKeys({
     { live: true },
   );
 
-  const {
-    data: gate,
-    isLoading: gateLoading,
-    isFetching: gateFetching,
-  } = usePropertyKeyGateQuery({
+  const { data: gate, isLoading: gateLoading } = usePropertyKeyGateQuery({
     propertyId: property.id,
     poNumber,
     deedNumber,
@@ -83,7 +79,9 @@ export function PropertyDetailPropertyKeys({
     enabled: true,
   });
 
-  const loading = opsLoading || gateLoading || gateFetching;
+  // First load only — the tab re-subscribes (and may refetch) each time it is shown
+  // again; blanking it for a background refetch flashed the skeleton over cached data.
+  const loading = opsLoading || gateLoading;
 
   if (loading) return <InlineLoadingSkeleton />;
 

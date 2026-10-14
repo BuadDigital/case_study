@@ -24,6 +24,7 @@ import {
   INFAZ_UPLOAD_UNRESOLVED_POINTS,
 } from "./infath-upload-types";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { BuildingInventoryLineDto } from "@platform/api-client";
 import { infathBuildingAreasFromComponents } from "./specialist-components";
 import { fmt } from "@platform/app-shared/format/number";
@@ -131,8 +132,9 @@ function file(
   return txt(id, label, value, role, "file");
 }
 
+/** Typed text → number by the shared rule («12,5» → 12.5, «١٢٥٠» → 1250, units dropped). */
 function parseNumber(raw: string): number | null {
-  const n = Number.parseFloat(raw.replace(/[^\d.-]/g, ""));
+  const n = parseLocaleNumber(raw);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -198,8 +200,8 @@ function buildAttachments(
   const items: InfathUploadAttachment[] = [
     {
       id: "case-study",
-      name: "نموذج دراسة الحالة",
-      infathTarget: "نموذج دراسة الحالة",
+      name: "تقرير دراسة الحالة",
+      infathTarget: "تقرير دراسة الحالة",
       status: caseStudy?.dataUrl ? "ready" : "missing",
       document: caseStudy,
     },
@@ -248,7 +250,7 @@ function buildAttachments(
   return items;
 }
 
-export function isInfathFieldCopyable(field: InfathUploadField): boolean {
+function isInfathFieldCopyable(field: InfathUploadField): boolean {
   return (
     Boolean(field.value) &&
     (field.type === "text" || field.type === "area")
@@ -275,7 +277,7 @@ function computeStats(sections: InfathUploadSection[]): InfathUploadStats {
   return { conflicts, missing, unresolved, attachments };
 }
 
-export function countInfathCopyableFields(model: InfathUploadModel): number {
+function countInfathCopyableFields(model: InfathUploadModel): number {
   let total = 0;
   for (const section of model.sections) {
     for (const field of [...section.fields, ...section.areas]) {
@@ -284,6 +286,16 @@ export function countInfathCopyableFields(model: InfathUploadModel): number {
   }
   return total;
 }
+
+/**
+ * Report data the appraiser no longer types into the package: the certified appraiser's identity comes from the
+ * organization settings (the same identity the printed report carries).
+ */
+export type InfathReportContext = {
+  appraiserName?: string;
+  appraiserLicenseNumber?: string;
+  appraiserLicenseDate?: string;
+};
 
 export function buildInfathUploadModel(input: {
   record: PoIntakeRecord;
@@ -294,6 +306,8 @@ export function buildInfathUploadModel(input: {
   opsContext?: InfathOpsContext | null;
   /** The specialist's «جدول المكونات» — source of the building areas. */
   componentLines?: BuildingInventoryLineDto[] | null;
+  /** What the appraiser's old package used to carry, now read from where it lives (see InfathReportContext). */
+  reportContext?: InfathReportContext | null;
 }): InfathUploadModel {
   const { record, property, parties, documentSections } = input;
   const ops = input.opsContext ?? null;
@@ -302,6 +316,7 @@ export function buildInfathUploadModel(input: {
   const survey = partyPackageFeedsInfath(parties?.survey ?? null);
   const appraisal = partyPackageFeedsInfath(parties?.appraisal ?? null);
   const specialist = parties?.specialist ?? null;
+  const context = input.reportContext ?? null;
   // Building areas: the specialist's components table; the inspector's old fields only as fallback.
   const componentAreas = infathBuildingAreasFromComponents(input.componentLines ?? []);
   const areaField = (fromTable: string, label: string) =>
@@ -332,9 +347,21 @@ export function buildInfathUploadModel(input: {
   const zoneStatus = partyField(inspection, L.zoneStatus);
   const linkedAssetsAnswer = partyField(specialist, L.linkedAssets);
   const workerName =
-    partyField(appraisal, "عامل على التقرير") ||
+    partyField(appraisal, "المشارك في إعداد التقرير") ||
     partyField(appraisal, "المقيم العقاري") ||
-    partyField(appraisal, "اسم المقيّم");
+    partyField(appraisal, "اسم المقيّم") ||
+    context?.appraiserName?.trim() ||
+    "";
+  const workerLicense = context?.appraiserLicenseNumber?.trim() ?? "";
+  const licenseDateRaw = context?.appraiserLicenseDate?.trim() ?? "";
+  const workerLicenseDate = /^\d{4}-\d{2}-\d{2}/.test(licenseDateRaw)
+    ? formatDateAr(licenseDateRaw.slice(0, 10))
+    : licenseDateRaw;
+  const appraisalDocument = findDoc(
+    documentSections,
+    (n) => n.includes("تقييم"),
+    ["valuation-report"],
+  );
   const appraisalNotes = partyRemark(appraisal, "ملاحظات المقيّم");
   const keysReceived =
     ops?.keysStatus === PropertyKeysStatuses.Received ||
@@ -414,12 +441,10 @@ export function buildInfathUploadModel(input: {
         txt(
           "deposit-code",
           L.depositCode,
-          partyField(appraisal, L.depositCode) || ops?.depositCode?.trim() || "",
+          ops?.depositCode?.trim() || "",
           "EV",
           "text",
-          partyField(appraisal, L.depositCode) || ops?.depositCode?.trim()
-            ? ""
-            : "ms",
+          ops?.depositCode?.trim() ? "" : "ms",
         ),
         sel(
           "value-basis",
@@ -704,8 +729,8 @@ export function buildInfathUploadModel(input: {
       title: "بيانات العاملين على التقرير",
       fields: [
         txt("worker-name", "الاسم", workerName, "EV", "text", workerName ? "" : "ms"),
-        txt("worker-license", "رقم الترخيص", "", "EV", "text", workerName ? "" : "un"),
-        txt("worker-license-date", "تاريخ الترخيص", "", "EV", "text", workerName ? "" : "un"),
+        txt("worker-license", "رقم الترخيص", workerLicense, "EV", "text", workerLicense ? "" : "un"),
+        txt("worker-license-date", "تاريخ الترخيص", workerLicenseDate, "EV", "text", workerLicenseDate ? "" : "un"),
         file("worker-license-file", "مرفق الترخيص", "", "EV"),
       ],
       areas: [],
@@ -715,7 +740,12 @@ export function buildInfathUploadModel(input: {
       num: "٩",
       title: "نطاق البحث",
       fields: [],
-      areas: [area("search", L.searchScope, partyRemark(appraisal, L.searchScope) || appraisalNotes, "EV")],
+      areas: [area(
+          "search",
+          L.searchScope,
+          partyRemark(appraisal, L.searchScope) || appraisalNotes,
+          "EV",
+        )],
     },
     {
       id: "keys",
@@ -773,15 +803,15 @@ export function buildInfathUploadModel(input: {
           "signed-appraisal",
           L.signedAppraisal,
           partyField(appraisal, L.signedAppraisal) ||
-            partyField(appraisal, "تقرير التقييم"),
+            partyField(appraisal, "تقرير التقييم") ||
+            appraisalDocument?.fileName ||
+            "",
           "EV",
         ),
         file(
           "deposit-certificate",
           L.depositCertificate,
-          partyField(appraisal, L.depositCertificate) ||
-            ops?.depositCertificateName?.trim() ||
-            "",
+          ops?.depositCertificateName?.trim() || "",
           "EV",
         ),
       ],
@@ -817,7 +847,7 @@ export function buildInfathUploadModel(input: {
   const attachments = buildAttachments(
     documentSections,
     keysReceived,
-    partyField(appraisal, L.depositCertificate) || ops?.depositCertificateName,
+    ops?.depositCertificateName,
   );
   const stats = computeStats(sections);
 

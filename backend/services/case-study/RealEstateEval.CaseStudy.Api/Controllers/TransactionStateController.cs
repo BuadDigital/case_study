@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Shared.Web;
@@ -17,6 +18,12 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 [Authorize]
 public class TransactionStateController : ControllerBase
 {
+    public const string HandoverForbiddenAr =
+        "رفع المعاملة على إنفاذ لأخصائي دراسة الحالة فقط";
+
+    public const string ReturnForbiddenAr =
+        "استرجاع المعاملة من إنفاذ لأخصائي دراسة الحالة فقط";
+
     private readonly ITransactionStateService _state;
     private readonly IPermissionService _permissions;
 
@@ -46,6 +53,10 @@ public class TransactionStateController : ControllerBase
         Guid propertyId,
         CancellationToken ct)
     {
+        // The capability only reaches the door: handing over to Enfaz is the case specialist's call.
+        if (!PoRoleMatrixRules.CanHandOverToEnfaz(await ActorPrototypeRoleAsync(ct)))
+            return this.ForbiddenProblem(HandoverForbiddenAr);
+
         var (result, error) = await _state.RecordEnfazHandoverAsync(
             workOrderId,
             propertyId,
@@ -57,27 +68,39 @@ public class TransactionStateController : ControllerBase
     }
 
     /// <summary>
-    /// Supplemental Q-9 (R3): After uploading Enfaz — Audit Entry with Decision General Manager and its reason only;
-    /// It does not open anything (the actual recovery is through reopening the R2 rating).
+    /// The case specialist takes the transaction back from Enfaz: clears the handover stamp and,
+    /// as chosen, reopens the study report (and records the valuation request).
     /// </summary>
-    [HttpPost("post-enfaz-decision")]
+    [HttpPost("enfaz-return")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
-    public async Task<IActionResult> RecordPostEnfazDecision(
+    public async Task<ActionResult<TransactionStateDto>> ReturnFromEnfaz(
         Guid workOrderId,
         Guid propertyId,
-        [FromBody] PostEnfazDecisionRequest request,
+        [FromBody] ReturnFromEnfazRequest request,
         CancellationToken ct)
     {
-        var error = await _state.RecordPostEnfazDecisionAsync(
+        var userId = ActorClaims.Id(User);
+        var known = !string.IsNullOrWhiteSpace(userId) && userId != "unknown";
+        var permissions = known ? await _permissions.GetForUserIdAsync(userId, ct) : null;
+        var role = permissions?.PrototypeRole;
+        if (!PoRoleMatrixRules.CanReturnFromEnfaz(role))
+            return this.ForbiddenProblem(ReturnForbiddenAr);
+
+        var (result, errors) = await _state.ReturnFromEnfazAsync(
             workOrderId,
             propertyId,
-            request,
-            ActorClaims.Id(User),
-            await ActorPrototypeRoleAsync(ct),
+            request ?? new ReturnFromEnfazRequest(),
+            new CaseStudyReportActor
+            {
+                UserId = known ? userId : "",
+                DisplayName = ActorClaims.DisplayName(User),
+                PrototypeRole = role,
+                DistributionAssigneeId = permissions?.DistributionAssigneeId,
+            },
             ct);
-        if (error is not null)
-            return this.FieldErrorsProblem(new Dictionary<string, string> { ["_"] = error });
-        return NoContent();
+        if (errors is not null)
+            return this.FieldErrorsProblem(errors);
+        return Ok(result);
     }
 
     /// <summary>JWT carries identity roles (Editor/CDO), not prototype roles.</summary>

@@ -1,5 +1,4 @@
 import {
-  invalidControlClass,
   resolveFirstErrorMessage,
   resolveFirstErrorTarget,
   type FormErrorTarget,
@@ -74,8 +73,6 @@ export function evaluatorWorkScreenForErrorTarget(
   if (targetId && REVIEW_TARGET_IDS.has(targetId)) return "review";
   return "review";
 }
-
-export const EVALUATOR_INFATH_ERROR_KEYS = [] as const;
 
 const EVALUATOR_ERROR_KEYS = EVALUATOR_ERROR_TARGETS.map((t) => t.key);
 
@@ -159,9 +156,7 @@ export function validateEvaluatorSubmission(input: {
     }
   }
 
-  const priceRaw = evaluatorPrice.trim()
-    ? Number.parseFloat(evaluatorPrice.replace(/,/g, "").trim())
-    : NaN;
+  const priceRaw = parseEvaluatorAmount(evaluatorPrice) ?? NaN;
 
   if (!evaluatorPrice.trim() || !Number.isFinite(priceRaw) || priceRaw <= 0) {
     errors.evaluator_price =
@@ -173,6 +168,8 @@ export function validateEvaluatorSubmission(input: {
       "توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم».";
   }
 
+  // ESG is the appraiser's: «يوجد تأثير» needs its impact description before he can hand over. (The print
+  // attachments are the specialist's, in his report draft.)
   if (
     reportChoices &&
     esgGroupsMissingImpactDescription(reportChoices).length > 0
@@ -189,5 +186,3 @@ export function firstEvaluatorError(
 ): string | null {
   return resolveFirstErrorMessage(errors, EVALUATOR_ERROR_KEYS);
 }
-
-export { invalidControlClass as evaluatorInvalidControlClass };

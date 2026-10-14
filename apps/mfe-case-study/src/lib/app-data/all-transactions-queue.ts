@@ -4,6 +4,7 @@ import {
 } from "@platform/ui-kit";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
+import { isPartyTaskDone } from "@platform/app-shared/workflow/task-done";
 import { isTaskFailureObstructed } from "@platform/app-shared/workflow/task-failure-status";
 import {
   buildPrimaryDataTableRow,
@@ -14,12 +15,13 @@ import {
   taskKindLabel,
   type WorkflowTask,
 } from "./tasks";
+import { canReopenCaseStudyReport } from "./po-roles";
 import { poPropertyDetailPath, poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 
 /** Short phase labels matching Case Study.html `renderAllTransactions`. */
 export function allTransactionsPhaseLabel(task: WorkflowTask): string {
-  if (task.status === "completed" || task.phase === "done") return "مكتمل";
-  if (isTaskFailureObstructed(task)) return "تعذر";
+  if (isPartyTaskDone(task)) return "مكتمل";
+  if (isTaskFailureObstructed(task)) return "تعذّر";
   if (task.kind === "government-review") return "المراجعة الحكومية";
   if (task.kind === "field-inspection") return "معاينة العقار";
   if (task.kind === "property-appraisal") return "تقييم العقار";
@@ -28,7 +30,7 @@ export function allTransactionsPhaseLabel(task: WorkflowTask): string {
   if (task.phase === "bourse") return "البورصة";
   if (task.phase === "distribution") return "التوزيع";
   if (task.phase === "case-study") return "دراسة الحالة";
-  if (task.phase === "obstruction") return "تعذر";
+  if (task.phase === "obstruction") return "تعذّر";
   return taskKindLabel(task.kind);
 }
 
@@ -37,7 +39,7 @@ export function allTransactionsPhaseStyle(task: WorkflowTask): StatusPillStyle {
   if (label === "مكتمل") {
     return { base: "var(--success)", fg: "var(--success-text)" };
   }
-  if (label === "البورصة" || label === "تعذر") {
+  if (label === "البورصة" || label === "تعذّر") {
     return { base: "var(--amber)", fg: "var(--amber-text)" };
   }
   if (label === "البيانات الأولية") {
@@ -48,7 +50,7 @@ export function allTransactionsPhaseStyle(task: WorkflowTask): StatusPillStyle {
 }
 
 /** Deed cell: `Deed {n}` as in Case Study.html. */
-export function formatAllTransactionsDeedCell(deedOrSlot: string): string {
+function formatAllTransactionsDeedCell(deedOrSlot: string): string {
   const v = deedOrSlot.trim();
   if (!v || v === "—") return "—";
   if (v.startsWith("صك ")) return v;
@@ -80,7 +82,7 @@ export type AllTransactionsQueueRowMeta = {
 };
 
 /** Groups sibling workflow tasks that belong to the same property / slot. */
-export function allTransactionsPropertyGroupKey(
+function allTransactionsPropertyGroupKey(
   row: Pick<
     AllTransactionsQueueRowMeta,
     "poNumber" | "propertyId" | "deed" | "task"
@@ -97,9 +99,8 @@ export function allTransactionsPropertyGroupKey(
  * Relative progress along the case-study pipeline (higher = farther along).
  * Used to keep one row per property showing the latest stage reached.
  */
-export function allTransactionsStageProgress(task: WorkflowTask): number {
-  const completed =
-    task.status === "completed" || task.phase === "done";
+function allTransactionsStageProgress(task: WorkflowTask): number {
+  const completed = isPartyTaskDone(task);
 
   if (task.kind === "field-inspection") return completed ? 51 : 50.5;
   if (task.kind === "engineering-survey") return completed ? 56 : 55.5;
@@ -172,8 +173,7 @@ export function collapseAllTransactionsToLatestPhase(
   const collapsed: AllTransactionsQueueRowMeta[] = [];
   for (const group of groups.values()) {
     const allDone = group.every(
-      (row) =>
-        row.task.status === "completed" || row.task.phase === "done",
+      (row) => isPartyTaskDone(row.task),
     );
 
     const live = group.filter(
@@ -288,7 +288,7 @@ export function buildAllTransactionsRowMoreItems(options: {
   openTask: () => void;
   router: { push: (href: string) => void };
   viewerRole?: RoleId;
-  /** Opens the «Reopen transaction» modal for this row (completed tasks only). */
+  /** Opens the reopen dialog for this row (completed tasks only) — the report reopen for a case-study parent. */
   onReopenCompleted?: () => void;
 }): RowMoreMenuItem[] {
   const po = options.task.poNumber.trim();
@@ -313,15 +313,27 @@ export function buildAllTransactionsRowMoreItems(options: {
   if (
     options.task.status === "completed" &&
     options.onReopenCompleted &&
-    options.viewerRole &&
-    canReopenCompletedTransaction(options.viewerRole)
+    options.viewerRole
   ) {
-    items.push({
-      id: "reopen-completed",
-      label: "إعادة فتح المعاملة",
-      danger: true,
-      onClick: options.onReopenCompleted,
-    });
+    if (options.task.kind === "case-study-property") {
+      // The server refuses the generic reopen for a case-study parent — it reopens through the
+      // issued report, and only the case specialist may.
+      if (canReopenCaseStudyReport(options.viewerRole)) {
+        items.push({
+          id: "reopen-case-study-report",
+          label: "إعادة فتح تقرير الدراسة",
+          danger: true,
+          onClick: options.onReopenCompleted,
+        });
+      }
+    } else if (canReopenCompletedTransaction(options.viewerRole)) {
+      items.push({
+        id: "reopen-completed",
+        label: "إعادة فتح المعاملة",
+        danger: true,
+        onClick: options.onReopenCompleted,
+      });
+    }
   }
 
   if (propertyHref) {

@@ -42,31 +42,23 @@ export const INFATH_CLIENT_ID = "a1000001-0000-4000-8000-000000000001";
 const RIYADH_REGION_ID = "000000b1-0000-4000-8000-000000000001";
 const RIYADH_CITY_ID = "000000b2-0000-4000-8000-000000000001";
 
-/**
- * Passwordless demo login for API-driven fixture setup.
- * `/api/auth/login` is the target shape; a gateway that has not picked up the
- * passwordless AuthController yet still rejects it for a missing password, so
- * fall back to `/api/auth/login-username`, which has always been passwordless.
- */
+/** Demo login by seeded mobile for API-driven fixture setup (`Auth:EnableDevLogin`). */
 export async function apiLogin(username: string): Promise<string> {
   const phone = RELEASE_USER_PHONES[username];
   if (!phone) throw new Error(`No demo phone mapped for "${username}"`);
-  const failures: string[] = [];
-  for (const path of ["/api/auth/login", "/api/auth/login-username"]) {
-    const res = await fetch(`${API_BASE}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: phone }),
-    });
-    if (!res.ok) {
-      failures.push(`${path} -> HTTP ${res.status}`);
-      continue;
-    }
-    const body = (await res.json()) as { token?: string };
-    if (body.token) return body.token;
-    failures.push(`${path} -> 200 without a token`);
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: phone }),
+  });
+  if (!res.ok) {
+    throw new Error(`API login failed for "${username}": HTTP ${res.status}`);
   }
-  throw new Error(`API login failed for "${username}": ${failures.join(" | ")}`);
+  const body = (await res.json()) as { token?: string };
+  if (!body.token) {
+    throw new Error(`API login failed for "${username}": 200 without a token`);
+  }
+  return body.token;
 }
 
 export async function api<T = unknown>(
@@ -455,6 +447,15 @@ export async function submitFieldInspection(
         kitchen: "نعم",
       },
       featurePhotoAttachments,
+      // The submit gate: the inspector describes the property and says the deed's boundaries match the site.
+      propertyDescription: "فيلا سكنية من دورين وملحق",
+      deedMatchesNature: "yes",
+      boundaryMatches: {
+        north: { matches: true },
+        south: { matches: true },
+        east: { matches: true },
+        west: { matches: true },
+      },
       observations: [],
       services: [],
       amenities: [],
@@ -463,6 +464,35 @@ export async function submitFieldInspection(
     },
   });
   await apiOk(inspectorToken, "POST", `/api/party-task-submissions/${taskId}/submit`);
+}
+
+/**
+ * The specialist's «مكونات العقار» (text + a one-line building inventory): accepting the inspector's package
+ * needs both, so every journey that accepts one fills them first.
+ */
+export async function completeSpecialistComponents(
+  specialistToken: string,
+  poNumber: string,
+  propertyId: string,
+): Promise<void> {
+  await apiOk(
+    specialistToken,
+    "PUT",
+    `/api/work-orders/${encodeURIComponent(poNumber)}/properties/${propertyId}/building-inventory`,
+    {
+      componentsText: "فيلا من دورين وملحق وسور",
+      lines: [
+        {
+          sortOrder: 0,
+          structureKind: "floor",
+          label: "الدور الأرضي",
+          areaSqm: "200",
+          itemKey: "ground_floor",
+          unit: "sqm",
+        },
+      ],
+    },
+  );
 }
 
 /** Best-effort teardown so repeated local runs do not pile up POs. */

@@ -9,7 +9,7 @@ import {
   type BrandUploadTargetId,
 } from "./brand-identity-state";
 
-export type PickedBrandImage =
+type PickedBrandImage =
   | { ok: true; dataUrl: string; name: string; kb: number }
   | { ok: false; error: string };
 

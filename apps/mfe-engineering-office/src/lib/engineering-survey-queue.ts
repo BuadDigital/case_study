@@ -21,7 +21,7 @@ export function engineeringSurveyTaskStatusBadge(
   taskStatus?: string,
 ): { label: string; className: string } | null {
   if (taskStatus === "blocked") {
-    return { label: "متعذر", className: "b-fail" };
+    return { label: "متعذّر", className: "b-fail" };
   }
   if (taskStatus === "completed") {
     return { label: "مكتمل", className: "b-done" };

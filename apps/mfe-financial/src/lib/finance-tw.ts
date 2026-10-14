@@ -19,17 +19,17 @@ export const finContent =
 export const finStagePills = "mb-3.5 flex flex-wrap gap-[7px]";
 
 const finStagePillBase =
-  "inline-flex h-auto shrink-0 cursor-pointer items-center gap-[7px] rounded-full border border-solid px-[15px] py-[8px] text-[12.5px] font-bold leading-none transition-[background,color,border-color] duration-150";
+  "inline-flex h-auto shrink-0 cursor-pointer items-center gap-[7px] rounded-full border border-solid px-[15px] py-[8px] text-[12.5px] font-bold leading-none transition-[background-color,color,border-color,box-shadow,transform] duration-200 ease-out active:scale-[0.985] motion-reduce:transition-none motion-reduce:active:scale-100";
 
-export const finStagePill = `${finStagePillBase} border-[#ddd8cc] bg-surface text-text-2 hover:border-gold hover:text-heading`;
+export const finStagePill = `${finStagePillBase} border-[#ddd8cc] bg-surface text-text-2 hover:border-gold hover:bg-[color-mix(in_srgb,var(--gold)_6%,var(--surface))] hover:text-heading`;
 
 export const finStagePillOn = `${finStagePillBase} border-[#102B4E] bg-[#102B4E] text-white`;
 
 export const finStageCount =
-  "inline-grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-surface-2 px-[5px] text-[10.5px] font-bold leading-none tabular-nums text-text-3";
+  "inline-grid transition-colors duration-200 h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-surface-2 px-[5px] text-[10.5px] font-bold leading-none tabular-nums text-text-3";
 
 export const finStageCountOn =
-  "inline-grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-white/[0.22] px-[5px] text-[10.5px] font-bold leading-none tabular-nums text-white";
+  "inline-grid transition-colors duration-200 h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-white/[0.22] px-[5px] text-[10.5px] font-bold leading-none tabular-nums text-white";
 
 export const finSel = "relative flex shrink-0 items-center";
 

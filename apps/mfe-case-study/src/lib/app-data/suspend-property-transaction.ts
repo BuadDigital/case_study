@@ -31,7 +31,7 @@ export async function suspendPropertyTransaction(input: {
   if (!suspended.ok) {
     return {
       ok: false,
-      error: suspended.error || "تعذّر تعليق التعذر على الخادم",
+      error: suspended.error || "تعذّر تعليق التعذّر على الخادم",
     };
   }
 
@@ -44,7 +44,7 @@ export async function suspendPropertyTransaction(input: {
     return {
       ok: false,
       error:
-        "تم تعليق التعذر لكن تعذّر إيقاف مهام سير العمل المرتبطة — أعد المحاولة",
+        "تم تعليق التعذّر لكن تعذّر إيقاف مهام سير العمل المرتبطة — أعد المحاولة",
     };
   }
 

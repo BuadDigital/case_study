@@ -1,47 +1,33 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { 
-  Button, 
-  Label,
-  cn,
-  formControlClassName,
-  useToast,
-} from "@platform/ui-kit";
+import { useToast } from "@platform/ui-kit";
 import { SpecialistValuationReportInputs } from "../po-intake/SpecialistValuationReportInputs";
+import { ReturnInspectionDialog } from "../po-intake/ReturnInspectionDialog";
+import { returnInspectionSuccessMessage } from "../../lib/app-data/return-inspection-state";
 import { CaseStudyDeedNatureMatchReview } from "./CaseStudyDeedNatureMatchReview";
 import { PropertyDetailInspectionTab } from "../po-intake/PropertyDetailInspectionTab";
 import { EmptyState } from "../po-intake/PropertyDetailFields";
 import { findPropertyForTask } from "../../lib/app-data/my-task-row";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
-import {
-  CASE_STUDY_SPECIALIST_FEATURE_KEYS,
-  isInspectorWorkspaceAccepted,
+import { CASE_STUDY_SPECIALIST_FEATURE_KEYS, isInspectorWorkspaceAccepted,
   submittedInspectorAssetIsLand,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
   type InspectorWorkspaceStatus,
 } from "../../lib/app-data/inspector-workspace-data";
-import { reopenInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
-import {
-  buildPropertyDetailPartyCards,
-  type PropertyDetailPartyCard,
-} from "../../lib/app-data/property-detail-parties";
+import { buildPropertyDetailPartyCards, type PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
 import { listPropertyDetailPhotos } from "../../lib/app-data/property-detail-documents";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../../lib/app-data/inspector-workspace-model";
 import { migrateDistribution } from "../../lib/app-data/tasks";
-import {
-  loadSpecialistFinishingLevel,
-  saveSpecialistFinishingLevel,
-  specialistFinishingLevelForInspection,
-} from "../../lib/app-data/valuation-report-specialist-finishing";
+import { loadSpecialistFinishingLevel, saveSpecialistFinishingLevel, specialistFinishingLevelForInspection } from "../../lib/app-data/valuation-report-specialist-finishing";
 
-export function relatedTaskId(
+function relatedTaskId(
   tasks: WorkflowTask[],
   propertyId: string,
   kind: WorkflowTask["kind"],
@@ -63,20 +49,16 @@ export function CaseStudyAppraisalPanel({
   poNumber: string;
   tasks: WorkflowTask[];
   caseStudyTask: WorkflowTask;
-  /** True once a tab that shows transaction photos has been visited (fanout gate). */
   documentsEnabled: boolean;
 }) {
   const { showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
+  const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
   const [returnOpen, setReturnOpen] = useState(false);
-  const [returnNote, setReturnNote] = useState("");
-  const [returnError, setReturnError] = useState<string | null>(null);
-  const [returning, setReturning] = useState(false);
-  const [inspectionPackageStatus, setInspectionPackageStatus] =
-    useState<InspectorWorkspaceStatus | null>(null);
+  const [inspectionPackageStatus, setInspectionPackageStatus] = useState<InspectorWorkspaceStatus | null>(null);
   const [inspectionAssetSubject, setInspectionAssetSubject] = useState("");
   const [inspectionSnapshotLoaded, setInspectionSnapshotLoaded] = useState(false);
+  const [inspectionSnapshotTaskId, setInspectionSnapshotTaskId] = useState<string | null>(null);
   const [inspectionAccepted, setInspectionAccepted] = useState(false);
   const [inspectionReloadKey, setInspectionReloadKey] = useState(0);
 
@@ -120,22 +102,34 @@ export function CaseStudyAppraisalPanel({
   }, [caseStudyTask, tasks, staffUsers, inspectionTask]);
 
   useEffect(() => {
-    if (!inspectionTask) {
-      setInspectionPackageStatus(null);
-      setInspectionAssetSubject("");
-      setInspectionSnapshotLoaded(false);
-      setInspectionAccepted(false);
-      return;
-    }
+    if (!inspectionTask) return;
     let cancelled = false;
+    let requestVersion = 0;
     const load = () => {
-      void loadInspectorWorkspaceSnapshot(inspectionTask.id).then((draft) => {
-        if (cancelled) return;
-        setInspectionPackageStatus(draft?.status ?? null);
-        setInspectionAssetSubject(draft?.featureValues.assetSubject ?? "");
-        setInspectionSnapshotLoaded(true);
-        setInspectionAccepted(isInspectorWorkspaceAccepted(draft));
-      });
+      const version = ++requestVersion;
+      void loadInspectorWorkspaceSnapshot(inspectionTask.id)
+        .then((draft) => {
+          if (cancelled || version !== requestVersion) return;
+          setInspectionSnapshotTaskId(inspectionTask.id);
+          setInspectionPackageStatus(draft?.status ?? null);
+          setInspectionAssetSubject(draft?.featureValues.assetSubject ?? "");
+          setInspectionSnapshotLoaded(true);
+          setInspectionAccepted(isInspectorWorkspaceAccepted(draft));
+        })
+        .catch((error: unknown) => {
+          if (cancelled || version !== requestVersion) return;
+          setInspectionSnapshotTaskId(inspectionTask.id);
+          setInspectionPackageStatus(null);
+          setInspectionAssetSubject("");
+          setInspectionSnapshotLoaded(false);
+          setInspectionAccepted(false);
+          showToast(
+            error instanceof Error
+              ? error.message
+              : "تعذّر تحميل بيانات المعاينة",
+            "error",
+          );
+        });
     };
     load();
     const onChange = () => load();
@@ -147,33 +141,41 @@ export function CaseStudyAppraisalPanel({
         onChange,
       );
     };
-  }, [inspectionTask, inspectionReloadKey]);
+  }, [inspectionTask, inspectionReloadKey, showToast]);
 
-  const inspectionUsesLand = submittedInspectorAssetIsLand({
-    status: inspectionPackageStatus ?? "draft",
-    assetSubject: inspectionAssetSubject,
-    initialAssetSubject:
-      property.propertyType?.trim() || property.classification?.trim() || "",
-  });
-
-  useEffect(() => {
-    if (!inspectionSnapshotLoaded) return;
-    const stored = loadSpecialistFinishingLevel(property.id);
-    const applicable = specialistFinishingLevelForInspection(stored, {
-      status: inspectionPackageStatus ?? "draft",
-      assetSubject: inspectionAssetSubject,
+  const inspectionSnapshotIsCurrent = Boolean(inspectionTask) && inspectionSnapshotTaskId === inspectionTask?.id;
+  const currentInspectionPackageStatus = inspectionSnapshotIsCurrent ? inspectionPackageStatus : null;
+  const currentInspectionAssetSubject = inspectionSnapshotIsCurrent ? inspectionAssetSubject: "";
+  const currentInspectionSnapshotLoaded = inspectionSnapshotIsCurrent && inspectionSnapshotLoaded;
+  const currentInspectionAccepted = inspectionSnapshotIsCurrent && inspectionAccepted;
+  const inspectionAssetContext = useMemo( () => ({
+      status: currentInspectionPackageStatus ?? "draft",
+      assetSubject: currentInspectionAssetSubject,
       initialAssetSubject:
         property.propertyType?.trim() || property.classification?.trim() || "",
-    });
+    }),
+    [
+      currentInspectionAssetSubject,
+      currentInspectionPackageStatus,
+      property.classification,
+      property.propertyType,
+    ],
+  );
+  const inspectionUsesLand = submittedInspectorAssetIsLand(inspectionAssetContext);
+
+  useEffect(() => {
+    if (!currentInspectionSnapshotLoaded) return;
+    const stored = loadSpecialistFinishingLevel(property.id);
+    const applicable = specialistFinishingLevelForInspection(
+      stored,
+      inspectionAssetContext,
+    );
     if (!stored || applicable) return;
     saveSpecialistFinishingLevel(property.id, "");
   }, [
-    inspectionAssetSubject,
-    inspectionPackageStatus,
-    inspectionSnapshotLoaded,
-    property.classification,
+    currentInspectionSnapshotLoaded,
+    inspectionAssetContext,
     property.id,
-    property.propertyType,
   ]);
 
   const surveyTaskId = relatedTaskId(tasks, property.id, "engineering-survey");
@@ -200,36 +202,15 @@ export function CaseStudyAppraisalPanel({
     inspectionTaskId,
     enabled: documentsEnabled && Boolean(inspectionTask && inspectionCard),
   });
-  const transactionPhotos = useMemo(
-    () => listPropertyDetailPhotos(propertyDocumentSections),
+  const transactionPhotos = useMemo( () => listPropertyDetailPhotos(propertyDocumentSections),
     [propertyDocumentSections],
   );
 
+  /** Also after the inspection is accepted: the return withdraws the acceptance. */
   const canReturnToInspector =
     Boolean(inspectionTask) &&
-    (inspectionPackageStatus === "submitted" ||
+    (currentInspectionPackageStatus === "submitted" ||
       inspectionTask?.status === "completed");
-
-  async function handleReturnToInspector() {
-    if (!inspectionTask || returning) return;
-    const trimmed = returnNote.trim();
-    if (!trimmed) {
-      setReturnError("يجب إدخال سبب الإرجاع للتصحيح");
-      return;
-    }
-    setReturning(true);
-    setReturnError(null);
-    const reopened = await reopenInspectorWorkspace(inspectionTask.id, trimmed);
-    setReturning(false);
-    if (!reopened.ok) {
-      setReturnError(reopened.error);
-      return;
-    }
-    setReturnOpen(false);
-    setReturnNote("");
-    setInspectionReloadKey((n) => n + 1);
-    showToast("أُعيدت المعاينة للمعاين للتصحيح", "success");
-  }
 
   return (
     <div className="pt-5">
@@ -240,87 +221,54 @@ export function CaseStudyAppraisalPanel({
         surveyTaskId={surveyTaskId}
         inspectionTaskId={inspectionTaskId}
         engineeringAssigned={engineeringAssigned}
-        readOnly={caseStudyTask.status === "completed" || inspectionAccepted}
+        readOnly={caseStudyTask.status === "completed"}
       />
       <section className="mb-6">
         <div className="mb-3 flex flex-wrap items-center gap-2.5">
           <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
           <h3 className="m-0 text-[14px] font-extrabold text-heading"> معاينة العقار — مراجعة الاخصائي </h3>
           <span className="min-w-[1rem] flex-1 border-t border-border" aria-hidden />
-          {inspectionAccepted ? (
+          {currentInspectionAccepted ? (
             <span className="rounded-lg border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg px-3 py-1.5 text-[11.5px] font-semibold text-heading">
               مؤكَّدة — القسم مقفل
             </span>
           ) : null}
-          {canReturnToInspector && !returnOpen ? (
+          {canReturnToInspector ? (
             <button
               type="button"
               className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:rounded-[12px] max-lg:text-[13px]"
-              disabled={returning}
-              onClick={() => {
-                setReturnOpen(true);
-                setReturnError(null);
-              }}
+              onClick={() => setReturnOpen(true)}
             >
-              إعادة للتصحيح
+              {currentInspectionAccepted ? "إلغاء الاعتماد وإعادة للتصحيح" : "إعادة للتصحيح"}
             </button>
           ) : null}
         </div>
         <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
           أنت مشرف على ما كتبه المعاين: راجع وعدّل إن لزم. «
-          {SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL}» يقفل القسم ويفتح الحزمة
-          للمقيّم. «إعادة للتصحيح» ترجع المهمة للمعاين للتعديل من جديد.
+          {SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL}» يقفل هذا القسم ويفتح الحزمة
+          للمقيّم، أما «مطابقة الصك على الطبيعة» أعلاه فتبقى قابلة للتعديل حتى
+          إصدار تقرير دراسة الحالة. «إعادة للتصحيح» ترجع المهمة للمعاين للتعديل من جديد.
         </p>
 
-        {returnOpen ? (
-          <div className="mb-3.5 rounded-lg border border-border bg-surface px-3.5 py-3">
-            <Label htmlFor="cs-inspection-return-note" className="text-xs">
-              سبب الإرجاع للمعاين <span className="text-danger-text">*</span>
-            </Label>
-            <textarea
-              id="cs-inspection-return-note"
-              className={cn(formControlClassName, "mt-1 min-h-[72px] text-xs")}
-              value={returnNote}
-              onChange={(e) => setReturnNote(e.target.value)}
-              placeholder="صف ما يجب تصحيحه في تقرير المعاين…"
-            />
-            {returnError ? (
-              <p className="mt-1 mb-0 text-xs text-danger-text">{returnError}</p>
-            ) : null}
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                loading={returning}
-                showActionToast={false}
-                onClick={() => void handleReturnToInspector()}
-              >
-                تأكيد الإرجاع للمعاين
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                disabled={returning}
-                onClick={() => {
-                  setReturnOpen(false);
-                  setReturnError(null);
-                  setReturnNote("");
-                }}
-              >
-                إلغاء
-              </Button>
-            </div>
-          </div>
+        {inspectionTask ? (
+          <ReturnInspectionDialog
+            open={returnOpen}
+            inspectionTaskId={inspectionTask.id}
+            deedLabel={property.deedNumber}
+            onClose={() => setReturnOpen(false)}
+            onReturned={(result) => {
+              setInspectionReloadKey((n) => n + 1);
+              showToast(returnInspectionSuccessMessage(result), "success");
+            }}
+          />
         ) : null}
 
-        {inspectionPackageStatus === "submitted" &&
-        inspectionAssetSubject.trim() &&
-        inspectionAssetSubject.trim() !== property.propertyType?.trim() ? (
+        {currentInspectionPackageStatus === "submitted" &&
+        currentInspectionAssetSubject.trim() &&
+        currentInspectionAssetSubject.trim() !== property.propertyType?.trim() ? (
           <div className="mb-3 rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2 text-sm text-amber-text">
             النوع المبدئي: {property.propertyType || "—"} · النوع المعتمد
-            ميدانياً: {inspectionAssetSubject.trim()}
+            ميدانياً: {currentInspectionAssetSubject.trim()}
           </div>
         ) : null}
 

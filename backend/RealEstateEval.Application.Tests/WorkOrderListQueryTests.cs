@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Persistence;
@@ -31,7 +32,7 @@ public class WorkOrderListQueryTests
 
         var rows = await query.ListAsync(Staff());
 
-        Assert.Equal(["PO-004", "PO-003", "PO-002", "PO-001"], rows.Select(r => r.PoNumber));
+        Assert.Equal(["PO-004", "PO-003", "PO-002", "PO-001", "PO-005"], rows.Select(r => r.PoNumber));
     }
 
     [Fact]
@@ -45,7 +46,7 @@ public class WorkOrderListQueryTests
             new WorkOrderListQuery { Page = 2, PageSize = 2 },
             Staff());
 
-        Assert.Equal(4, page.TotalCount);
+        Assert.Equal(5, page.TotalCount);
         Assert.Equal(2, page.Page);
         Assert.Equal(2, page.PageSize);
         Assert.Equal(["PO-002", "PO-001"], page.Items.Select(r => r.PoNumber));
@@ -61,12 +62,12 @@ public class WorkOrderListQueryTests
         var ascending = await query.ListAsync(
             new WorkOrderListQuery { Sort = "po", Dir = "asc" },
             Staff());
-        Assert.Equal(["PO-001", "PO-002", "PO-003", "PO-004"], ascending.Select(r => r.PoNumber));
+        Assert.Equal(["PO-001", "PO-002", "PO-003", "PO-004", "PO-005"], ascending.Select(r => r.PoNumber));
 
         var byDue = await query.ListAsync(
             new WorkOrderListQuery { Sort = "due", Dir = "asc" },
             Staff());
-        Assert.Equal("PO-001", byDue[0].PoNumber);
+        Assert.Equal("PO-005", byDue[0].PoNumber);
     }
 
     [Fact]
@@ -80,7 +81,7 @@ public class WorkOrderListQueryTests
             new WorkOrderListQuery { Sort = "not-a-column", Dir = "sideways" },
             Staff());
 
-        Assert.Equal(["PO-004", "PO-003", "PO-002", "PO-001"], rows.Select(r => r.PoNumber));
+        Assert.Equal(["PO-004", "PO-003", "PO-002", "PO-001", "PO-005"], rows.Select(r => r.PoNumber));
     }
 
     [Fact]
@@ -100,6 +101,7 @@ public class WorkOrderListQueryTests
 
     [Theory]
     [InlineData(WorkOrderListStatus.New, "PO-001")]
+    [InlineData(WorkOrderListStatus.ReadyForEnfaz, "PO-005")]
     [InlineData(WorkOrderListStatus.Completed, "PO-003")]
     [InlineData(WorkOrderListStatus.Cancelled, "PO-004")]
     public async Task Status_filter_uses_the_same_buckets_the_list_shows(string status, string expected)
@@ -115,6 +117,41 @@ public class WorkOrderListQueryTests
         Assert.Equal(1, page.TotalCount);
         Assert.Equal(expected, page.Items.Single().PoNumber);
         Assert.Equal(status, page.Items.Single().Status);
+        Assert.Equal(status, page.Items.Single().StudyStatus);
+    }
+
+    /// <summary>The filter-only buckets: active = new + under_study + ready, closed = the rest.</summary>
+    [Fact]
+    public async Task Active_and_closed_buckets_split_the_list()
+    {
+        var bundle = CreateDb();
+        Seed(bundle.CaseStudy);
+        var query = CreateQuery(bundle);
+
+        var active = await query.ListAsync(
+            new WorkOrderListQuery { Status = WorkOrderListQueryRules.BucketActive, Sort = "po", Dir = "asc" },
+            Staff());
+        Assert.Equal(["PO-001", "PO-002", "PO-005"], active.Select(r => r.PoNumber));
+
+        var closed = await query.ListAsync(
+            new WorkOrderListQuery { Status = WorkOrderListQueryRules.BucketClosed, Sort = "po", Dir = "asc" },
+            Staff());
+        Assert.Equal(["PO-003", "PO-004"], closed.Select(r => r.PoNumber));
+    }
+
+    /// <summary>«المرفوعة»: the handover count, not the issued-report count.</summary>
+    [Fact]
+    public async Task Completed_count_is_the_number_of_properties_handed_over()
+    {
+        var bundle = CreateDb();
+        Seed(bundle.CaseStudy);
+        var query = CreateQuery(bundle);
+
+        var rows = (await query.ListAsync(Staff())).ToDictionary(r => r.PoNumber);
+
+        Assert.Equal(0, rows["PO-002"].CompletedCount);
+        Assert.Equal(1, rows["PO-003"].CompletedCount);
+        Assert.Equal(0, rows["PO-005"].CompletedCount);
     }
 
     [Fact]
@@ -212,8 +249,8 @@ public class WorkOrderListQueryTests
     };
 
  /// <summary>
- /// PO-001 new (no properties), PO-002 partly studied (estates, party assigned), PO-003 fully
- /// studied, PO-004 cancelled.
+ /// PO-001 new (no properties), PO-002 partly studied (estates, party assigned), PO-003 handed
+ /// over to Enfaz, PO-004 cancelled, PO-005 studied but not handed over (ready_for_enfaz).
  /// </summary>
     private static void Seed(CaseStudyDbContext db)
     {
@@ -221,6 +258,7 @@ public class WorkOrderListQueryTests
         var openProperty = Guid.Parse("22222222-2222-2222-2222-222222222222");
         var doneProperty = Guid.Parse("33333333-3333-3333-3333-333333333333");
         var cancelledProperty = Guid.Parse("44444444-4444-4444-4444-444444444444");
+        var readyProperty = Guid.Parse("55555555-5555-5555-5555-555555555555");
 
         db.WorkOrders.AddRange(
             Order("PO-001", Now.AddDays(-4), AssignmentType.Execution, "أحمد", expected: 2),
@@ -231,10 +269,12 @@ public class WorkOrderListQueryTests
                     Property(openProperty, "77124"),
                 ]),
             Order("PO-003", Now.AddDays(-2), AssignmentType.PrivateSector, "سلمى", expected: 1,
-                properties: [Property(doneProperty, "88001")]),
+                properties: [Property(doneProperty, "88001", handedOverAt: Now)]),
             Order("PO-004", Now.AddDays(-1), AssignmentType.Execution, "خالد", expected: 1,
                 lifecycle: WorkOrderLifecycleStatus.Cancelled,
-                properties: [Property(cancelledProperty, "99001")]));
+                properties: [Property(cancelledProperty, "99001")]),
+            Order("PO-005", Now.AddDays(-5), AssignmentType.Execution, "نورة", expected: 1,
+                properties: [Property(readyProperty, "66001")]));
 
         var studiedTask = WorkflowTask.Create(
             WorkflowTaskKind.CaseStudyProperty,
@@ -254,9 +294,19 @@ public class WorkOrderListQueryTests
             propertyId: doneProperty);
         doneTask.Complete(Now);
 
+        var readyTask = WorkflowTask.Create(
+            WorkflowTaskKind.CaseStudyProperty,
+            "PO-005",
+            Now,
+            title: "دراسة",
+            phase: WorkflowTaskPhase.CaseStudy,
+            propertyId: readyProperty);
+        readyTask.Complete(Now);
+
         db.WorkflowTasks.AddRange(
             studiedTask,
             doneTask,
+            readyTask,
             WorkflowTask.Create(
                 WorkflowTaskKind.CaseStudyProperty,
                 "PO-002",
@@ -302,10 +352,11 @@ public class WorkOrderListQueryTests
             Properties = properties ?? [],
         };
 
-    private static WorkOrderProperty Property(Guid id, string deedNumber) => new()
+    private static WorkOrderProperty Property(Guid id, string deedNumber, DateTime? handedOverAt = null) => new()
     {
         Id = id,
         DeedNumber = deedNumber,
+        EnfazHandoverAtUtc = handedOverAt,
     };
 
     private static TestBoundedContexts.Bundle CreateDb() =>

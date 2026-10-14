@@ -118,27 +118,6 @@ export async function mergePrefetchedOperationsTaskPatch<
   return merged;
 }
 
-export async function readPrefetchedPartySubmissions(): Promise<
-  Record<string, unknown> | null
-> {
-  const userId = currentOfflineUserId();
-  if (!userId) return null;
-  return readPrefetchedJson<Record<string, unknown>>(
-    PARTY_SUBMISSIONS_PREFETCH_ID(userId),
-  );
-}
-
-export async function readPrefetchedBasicDocMap(): Promise<
-  BasicDocPrefetchEntry[] | null
-> {
-  const userId = currentOfflineUserId();
-  if (!userId) return null;
-  const parsed = await readPrefetchedJson<{ entries?: BasicDocPrefetchEntry[] }>(
-    BASIC_DOCS_PREFETCH_ID(userId),
-  );
-  return parsed?.entries ?? null;
-}
-
 export async function readPrefetchedPoRecord<T>(
   poNumber: string,
 ): Promise<T | null> {

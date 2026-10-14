@@ -55,9 +55,6 @@ internal static class TestInspectorFeeServiceFactory
 
         public PartyFeePricingService Pricing() => TestPricing.Create(Fin);
 
-        public IncentiveSuspensionService IncentiveSuspensions() => new(Fin, new IdentityDirectory(Identity));
-
-        public DiscountFlagService DiscountFlags() => new(Fin, new CaseStudyLookup(CaseStudy));
 
         public InspectorFeeService Fees(
             INotificationService? notifications = null,
@@ -143,8 +140,14 @@ internal static class TestInspectorFeeServiceFactory
     public static PropertyTimelineService CreateTimeline(DbContext db, FailuresDbContext failures) =>
         new(ShareCaseStudy(db), new FailureLookup(failures));
 
-    public static WorkflowTaskShellPatcher CreateShellPatcher(DbContext db) =>
-        new(ShareCaseStudy(db));
+    public static WorkflowTaskShellPatcher CreateShellPatcher(
+        DbContext db,
+        INotificationService? notifications = null) =>
+        new(
+            ShareCaseStudy(db),
+            new WorkflowTaskPatchNotifier(
+                notifications ?? new NullNotificationService(),
+                CreateRecipients(db)));
 
     public static UserLabelLookup CreateLabels(DbContext db) =>
         new(ShareIdentity(db));

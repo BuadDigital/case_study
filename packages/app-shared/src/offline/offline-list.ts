@@ -1,7 +1,7 @@
 /** Default page window when the device pages a downloaded list itself. */
 const OFFLINE_PAGE_SIZE = 25;
 
-export type OfflineListPage<T> = {
+type OfflineListPage<T> = {
   rows: T[];
   totalCount: number;
   page: number;

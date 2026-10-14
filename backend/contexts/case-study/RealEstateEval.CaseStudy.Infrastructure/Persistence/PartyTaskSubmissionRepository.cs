@@ -91,6 +91,33 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
         return accepted.ToHashSet();
     }
 
+    public Task<bool> IsCaseStudyReportIssuedAsync(
+        Guid parentTaskId,
+        CancellationToken cancellationToken) =>
+        db.CaseStudyReports
+            .AsNoTracking()
+            .AnyAsync(
+                r => r.TaskId == parentTaskId
+                    && !r.IsPartyContribution
+                    && r.Status == CaseStudyReportStatuses.Issued,
+                cancellationToken);
+
+    public async Task<IReadOnlySet<Guid>> ListIssuedReportParentIdsAsync(
+        IReadOnlyCollection<Guid> parentTaskIds,
+        CancellationToken cancellationToken)
+    {
+        if (parentTaskIds.Count == 0) return new HashSet<Guid>();
+        var ids = parentTaskIds.Distinct().ToList();
+        var issued = await db.CaseStudyReports
+            .AsNoTracking()
+            .Where(r => ids.Contains(r.TaskId)
+                && !r.IsPartyContribution
+                && r.Status == CaseStudyReportStatuses.Issued)
+            .Select(r => r.TaskId)
+            .ToListAsync(cancellationToken);
+        return issued.ToHashSet();
+    }
+
     public Task<WorkOrderProperty?> GetPropertyWithContactsAsync(
         Guid propertyId,
         CancellationToken cancellationToken) =>
@@ -142,6 +169,19 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
             .AsNoTracking()
             .Include(p => p.BuildingInventoryLines)
             .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, WorkOrderProperty>> ListPropertiesWithInventoryAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken)
+    {
+        if (propertyIds.Count == 0) return new Dictionary<Guid, WorkOrderProperty>();
+        var ids = propertyIds.Distinct().ToList();
+        return await db.WorkOrderProperties
+            .AsNoTracking()
+            .Include(p => p.BuildingInventoryLines)
+            .Where(p => ids.Contains(p.Id))
+            .ToDictionaryAsync(p => p.Id, cancellationToken);
+    }
 
     public void Add(PartyTaskSubmission submission) => db.PartyTaskSubmissions.Add(submission);
 

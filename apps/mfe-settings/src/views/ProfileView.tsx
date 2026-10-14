@@ -32,14 +32,14 @@ export function ProfileView() {
         );
         if (cancelled) return;
         if (!profile) {
-          setError("تعذر تحميل البروفايل.");
+          setError("تعذّر تحميل البروفايل.");
           setUser(null);
           return;
         }
         setUser(profile);
       } catch {
         if (!cancelled) {
-          setError("تعذر تحميل البروفايل.");
+          setError("تعذّر تحميل البروفايل.");
           setUser(null);
         }
       } finally {

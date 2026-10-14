@@ -2,21 +2,26 @@ import { listComparableProperties,suggestComparablePropertiesByProximity,
   type ComparablePropertyDto,
   type ValuationComparableSelectionDto,
 } from "@platform/api-client";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 import { approximatePropertyGeo, hasDistrictGeo } from "@platform/app-shared/domain/property-geo";
 import { coordsFromLocationMapUrl } from "@platform/app-shared/domain/property-geo";
+import { haversineKm, parseLatLng } from "@platform/app-shared/domain/geo";
 
-export const BANK_CANDIDATE_POOL = 40;
+const BANK_CANDIDATE_POOL = 40;
 export const BANK_DISPLAY_LIMIT = 6;
 export const BANK_SEARCH_DISPLAY_LIMIT = 24;
-/** Prefer comps inside this radius when the subject has coordinates. */
-export const PREFERRED_RADIUS_KM = 3;
 /** Maximum distance from subject when coordinates are known. */
 export const NEARBY_RADIUS_KM = 3;
-/** Hide comparables farther than this from the subject when coords are known. */
-export const MAX_BANK_DISPLAY_DISTANCE_KM = 3;
-
-const EARTH_RADIUS_KM = 6371;
+/**
+ * How far the bank is searched around the subject. The table filters this pool by the radius the
+ * appraiser picked (3 km by default), so widening the radius never needs another request.
+ */
+const BANK_FETCH_RADIUS_KM = 50;
+/** Radius choices of the bank table — `null` is «الكل» (everything fetched). */
+export const BANK_RADIUS_OPTIONS_KM: readonly (number | null)[] = [3, 10, 25, null];
+/** What lies beyond the chosen radius: shown in the empty state so the appraiser knows where to go next. */
+export type BankBeyond = { count: number; nearestKm: number | null };
 
 export function sourceCardLine(comp: ComparablePropertyDto): string {
   const card = comp.sourceCard;
@@ -65,7 +70,7 @@ export function roundMoney(n: number): number {
 
 function amountOr(raw: string | null | undefined, fallback: number): number {
   if (raw == null || raw.trim() === "") return fallback;
-  const n = Number(raw.replace(",", "."));
+  const n = parseLocaleNumber(raw);
   return Number.isFinite(n) && n > 0 ? n : fallback;
 }
 
@@ -95,30 +100,8 @@ export function liveBankMoney(args: {
   };
 }
 
-export function haversineKm(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number,
-): number {
-  const φ1 = (lat1 * Math.PI) / 180;
-  const φ2 = (lat2 * Math.PI) / 180;
-  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
-  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
-  const a =
-    Math.sin(Δφ / 2) ** 2 +
-    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-  return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
 function hasUsableCoords(lat: number, lng: number): boolean {
-  return (
-    Number.isFinite(lat) &&
-    Number.isFinite(lng) &&
-    !(lat === 0 && lng === 0) &&
-    Math.abs(lat) <= 90 &&
-    Math.abs(lng) <= 180
-  );
+  return parseLatLng(lat, lng) != null;
 }
 
 function normalizeCity(city: string | null | undefined): string {
@@ -126,7 +109,7 @@ function normalizeCity(city: string | null | undefined): string {
 }
 
 /** Loose city match — handles short vs. full city names (e.g. "Makkah" vs "Makkah Al-Mukarramah"). */
-export function citiesMatch(
+function citiesMatch(
   a: string | null | undefined,
   b: string | null | undefined,
 ): boolean {
@@ -139,18 +122,19 @@ export function citiesMatch(
   return false;
 }
 
-/** Within NEARBY_RADIUS_KM when subject coords exist; same city otherwise. */
-export function isNearSubjectComparable(
+/** Within `radiusKm` (3 by default) when subject coords exist; same city otherwise. */
+function isNearSubjectComparable(
   comp: ComparablePropertyDto,
   subjectCity: string | null | undefined,
   distanceKm: number | null | undefined,
   subjectHasCoords = false,
+  radiusKm: number = NEARBY_RADIUS_KM,
 ): boolean {
   if (subjectHasCoords) {
     return (
       distanceKm != null &&
       Number.isFinite(distanceKm) &&
-      distanceKm <= NEARBY_RADIUS_KM
+      distanceKm <= radiusKm
     );
   }
 
@@ -158,7 +142,7 @@ export function isNearSubjectComparable(
   const compCity = normalizeCity(comp.city);
 
   if (distanceKm != null && Number.isFinite(distanceKm)) {
-    return distanceKm <= NEARBY_RADIUS_KM;
+    return distanceKm <= radiusKm;
   }
 
   if (city && compCity && citiesMatch(city, compCity)) return true;
@@ -178,12 +162,10 @@ export function filterSelectionNearSubject(
       subjectCoords &&
       hasUsableCoords(comp.latitude, comp.longitude)
     ) {
-      distanceKm = haversineKm(
-        subjectCoords.lat,
-        subjectCoords.lng,
-        comp.latitude,
-        comp.longitude,
-      );
+      distanceKm = haversineKm(subjectCoords, {
+        lat: comp.latitude,
+        lng: comp.longitude,
+      });
     }
     return isNearSubjectComparable(
       comp,
@@ -198,6 +180,7 @@ function filterNearSubject(
   items: RankedItem[],
   subjectCity: string | null | undefined,
   subjectCoords?: { lat: number; lng: number } | null,
+  radiusKm: number = NEARBY_RADIUS_KM,
 ): RankedItem[] {
   const subjectHasCoords = Boolean(subjectCoords);
   return items.filter((row) => {
@@ -207,18 +190,17 @@ function filterNearSubject(
       distanceKm == null &&
       hasUsableCoords(row.comparable.latitude, row.comparable.longitude)
     ) {
-      distanceKm = haversineKm(
-        subjectCoords.lat,
-        subjectCoords.lng,
-        row.comparable.latitude,
-        row.comparable.longitude,
-      );
+      distanceKm = haversineKm(subjectCoords, {
+        lat: row.comparable.latitude,
+        lng: row.comparable.longitude,
+      });
     }
     return isNearSubjectComparable(
       row.comparable,
       subjectCity,
       distanceKm,
       subjectHasCoords,
+      radiusKm,
     );
   });
 }
@@ -267,7 +249,7 @@ type RankedItem = {
 };
 
 /** Closest distance first, then closest area to the subject. */
-export function rankBankCandidates(
+function rankBankCandidates(
   items: RankedItem[],
   subjectSqm: number | null,
   limit = BANK_DISPLAY_LIMIT,
@@ -288,9 +270,6 @@ export function rankBankCandidates(
   return ranked.slice(0, limit).map((x) => x.comparable);
 }
 
-/** @deprecated Use rankBankCandidates — kept for older imports. */
-export const rankBankCandidatesByArea = rankBankCandidates;
-
 function attachDistances(
   comps: ComparablePropertyDto[],
   subjectLat: number,
@@ -304,7 +283,7 @@ function attachDistances(
     }
     return {
       comparable,
-      distanceKm: haversineKm(subjectLat, subjectLng, lat, lng),
+      distanceKm: haversineKm({ lat: subjectLat, lng: subjectLng }, { lat, lng }),
     };
   });
 }
@@ -389,6 +368,7 @@ async function listNearSubjectPool(
     attachDistances(rows, subjectCoords.lat, subjectCoords.lng),
     subjectCity,
     subjectCoords,
+    BANK_FETCH_RADIUS_KM,
   );
 }
 
@@ -396,14 +376,14 @@ export function parseSubjectAreaSqm(
   subjectAreaField: string,
   propertyArea?: string,
 ): number | null {
-  const fromUi = Number(String(subjectAreaField ?? "").replace(",", "."));
+  const fromUi = parseLocaleNumber(subjectAreaField);
   if (Number.isFinite(fromUi) && fromUi > 0) return fromUi;
-  const fromProp = Number(String(propertyArea ?? "").replace(",", "."));
+  const fromProp = parseLocaleNumber(propertyArea);
   if (Number.isFinite(fromProp) && fromProp > 0) return fromProp;
   return null;
 }
 
-export type BankCandidatesResult = {
+type BankCandidatesResult = {
   ok: boolean;
   data: ComparablePropertyDto[];
   distances: Record<string, number>;
@@ -455,7 +435,7 @@ export async function fetchBankCandidates(
       latitude: subjectCoords.lat,
       longitude: subjectCoords.lng,
       take: BANK_CANDIDATE_POOL,
-      maxDistanceKm: NEARBY_RADIUS_KM,
+      maxDistanceKm: BANK_FETCH_RADIUS_KM,
     });
 
     if (prox.ok && prox.data.items.length > 0) {
@@ -463,7 +443,7 @@ export async function fetchBankCandidates(
         comparable: row.comparable,
         distanceKm: row.distanceKm,
       }));
-      items = filterNearSubject(items, opts.city, subjectCoords);
+      items = filterNearSubject(items, opts.city, subjectCoords, BANK_FETCH_RADIUS_KM);
       if (items.length > 0) {
         return finalizeBankResultFromItems(items, opts.subjectSqm, subjectCoords);
       }
@@ -511,7 +491,9 @@ export function buildBankDisplayRows(opts: {
   subjectSqm?: number | null;
   limit?: number;
   nearbyOnly?: boolean;
-}): { rows: BankDisplayRow[]; distances: Record<string, number> } {
+  /** The radius the appraiser picked; `null` shows everything fetched. Default 3 km. */
+  radiusKm?: number | null;
+}): { rows: BankDisplayRow[]; distances: Record<string, number>; beyond: BankBeyond } {
   const limit = opts.limit ?? BANK_DISPLAY_LIMIT;
   const nearbyOnly = opts.nearbyOnly !== false;
   const itemByCompId = new Map<string, ValuationComparableSelectionDto>();
@@ -540,19 +522,40 @@ export function buildBankDisplayRows(opts: {
       opts.subjectCoords &&
       hasUsableCoords(comparable.latitude, comparable.longitude)
     ) {
-      distanceKm = haversineKm(
-        opts.subjectCoords.lat,
-        opts.subjectCoords.lng,
-        comparable.latitude,
-        comparable.longitude,
-      );
+      distanceKm = haversineKm(opts.subjectCoords, {
+        lat: comparable.latitude,
+        lng: comparable.longitude,
+      });
     }
     return { comparable, distanceKm };
   });
 
+  const radiusKm = opts.radiusKm === undefined ? NEARBY_RADIUS_KM : opts.radiusKm;
   const eligible = nearbyOnly
-    ? filterNearSubject(ranked, opts.subjectCity, opts.subjectCoords)
+    ? filterNearSubject(
+        ranked,
+        opts.subjectCity,
+        opts.subjectCoords,
+        radiusKm ?? BANK_FETCH_RADIUS_KM,
+      )
     : ranked;
+
+  // What the chosen radius leaves out, so an empty table can say where the nearest ones are.
+  const eligibleIds = new Set(eligible.map((row) => row.comparable.id));
+  const farther = nearbyOnly
+    ? ranked.filter(
+        (row) =>
+          !eligibleIds.has(row.comparable.id) &&
+          row.distanceKm != null &&
+          Number.isFinite(row.distanceKm),
+      )
+    : [];
+  const beyond: BankBeyond = {
+    count: farther.length,
+    nearestKm: farther.length
+      ? Math.min(...farther.map((row) => row.distanceKm as number))
+      : null,
+  };
 
   const ordered = [...eligible]
     .sort((a, b) => {
@@ -585,5 +588,5 @@ export function buildBankDisplayRows(opts: {
     };
   });
 
-  return { rows, distances };
+  return { rows, distances, beyond };
 }

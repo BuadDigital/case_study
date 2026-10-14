@@ -5,12 +5,12 @@
  * Full-bleed letterhead background + padded content clear of header/footer.
  */
 
-export const OFFICIAL_LETTER_NAVY = "#0F2A4E";
-export const OFFICIAL_LETTER_MUTED = "#555";
-export const OFFICIAL_LETTER_INK = "#1a1a1a";
+const OFFICIAL_LETTER_NAVY = "#0F2A4E";
+const OFFICIAL_LETTER_MUTED = "#555";
+const OFFICIAL_LETTER_INK = "#1a1a1a";
 
 /** Default pads that clear the Ejadah letterhead bands (mm). */
-export const OFFICIAL_LETTER_PAD = {
+const OFFICIAL_LETTER_PAD = {
   topMm: 50,
   bottomMm: 42,
   sideMm: 24,

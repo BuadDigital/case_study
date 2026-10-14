@@ -28,7 +28,7 @@ export function MatrixOutputsPanel({
           {fmt(weightedPricePerSqm)}
         </div>
         <div className="mt-[7px] text-[11.5px] font-normal text-text-3">
-          {isUnit ? "ريال / م²" : "ريال — متوسط مرجّح لقيم المقارنات"}
+          {isUnit ? "ر.س/م²" : "ر.س — متوسط مرجّح لقيم المقارنات"}
         </div>
         <div className="mt-[5px] text-[11.5px] font-bold text-gold-d">
           قيمة المتر المربع:{" "}
@@ -55,7 +55,7 @@ export function MatrixOutputsPanel({
             : "أساس الكل — بلا ضرب في المساحة (يساوي المتوسط المرجّح)"}
         </div>
         <div className="mt-[5px] text-[11.5px] font-normal text-text-3">
-          بلا تقريب هنا — التقريب مرة واحدة بعد التوفيق النهائي
+          بلا تقريب هنا — التقريب مرة واحدة بعد الترجيح النهائي
         </div>
       </div>
     </div>

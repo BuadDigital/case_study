@@ -57,7 +57,7 @@ export function useFailuresViewWorkflow() {
   const caseEditor = isCaseEditor(role);
   const supervisor = isSupervisor(role);
   // Server-paged rows (pagination-contract §5); `kpiItems` is the whole set the KPI band still needs.
-  const { rows, kpiItems, search, setSearch, setPage, pager, isFetched, isError, error, refetch } =
+  const { rows, rowsPage, kpiItems, search, setSearch, setPage, pager, isFetched, isError, error, refetch } =
     useFailuresListPage(role, highlightId);
   const { data: poRecords = [] } = usePoRecordsViaBridge();
   const specialistByPo = useMemo(
@@ -79,9 +79,16 @@ export function useFailuresViewWorkflow() {
   /** Sync guard — React state alone can miss two clicks in the same frame. */
   const busyLockRef = useRef(false);
 
+  // A highlighted failure opens itself, then the row is scrolled into view.
+  const highlightKey = highlightId && isFetched ? highlightId : "";
+  const [prevHighlightKey, setPrevHighlightKey] = useState(highlightKey);
+  if (prevHighlightKey !== highlightKey) {
+    setPrevHighlightKey(highlightKey);
+    if (highlightKey) setExpandedId(highlightKey);
+  }
+
   useEffect(() => {
     if (!highlightId || !isFetched) return;
-    setExpandedId(highlightId);
     const el = document.getElementById(`failure-${highlightId}`);
     if (!el) return;
     el.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -153,16 +160,16 @@ export function useFailuresViewWorkflow() {
   function handleSubmit(id: string) {
     void runOptimisticStatus(id, "review", () => submitFailureForReview(id), {
       busyKey: failureBusyKey(id, "submit"),
-      successToast: "تم تصعيد التعذر",
-      errorToast: "تعذّر إرسال التعذر للمراجعة — حاول مرة أخرى",
+      successToast: "تم تصعيد التعذّر",
+      errorToast: "تعذّر إرسال التعذّر للمراجعة — حاول مرة أخرى",
     });
   }
 
   function handleUpgrade(id: string) {
     void runOptimisticStatus(id, "internal", () => upgradeFailureToInternal(id), {
       busyKey: failureBusyKey(id, "upgrade"),
-      successToast: "تم تأكيد التعذر الداخلي",
-      errorToast: "تعذّر ترقية التعذر — حاول مرة أخرى",
+      successToast: "تم تأكيد التعذّر الداخلي",
+      errorToast: "تعذّر ترقية التعذّر — حاول مرة أخرى",
       extra: { severity: "internal" },
     });
   }
@@ -171,8 +178,8 @@ export function useFailuresViewWorkflow() {
     const note = supervisorNote[id] ?? "";
     void runOptimisticStatus(id, "approved", () => approveFailure(id, note), {
       busyKey: failureBusyKey(id, "approve"),
-      successToast: "تم اعتماد التعذر",
-      errorToast: "تعذّر اعتماد التعذر — حاول مرة أخرى",
+      successToast: "تم اعتماد التعذّر",
+      errorToast: "تعذّر اعتماد التعذّر — حاول مرة أخرى",
       extra: { finalNote: note },
     });
   }
@@ -181,8 +188,8 @@ export function useFailuresViewWorkflow() {
     const note = supervisorNote[id] ?? "";
     void runOptimisticStatus(id, "returned", () => returnFailure(id, note), {
       busyKey: failureBusyKey(id, "return"),
-      successToast: "أُعيد التعذر للأخصائي",
-      errorToast: "تعذّر إرجاع التعذر — حاول مرة أخرى",
+      successToast: "أُعيد التعذّر للأخصائي",
+      errorToast: "تعذّر إرجاع التعذّر — حاول مرة أخرى",
       extra: { finalNote: note },
     });
   }
@@ -226,8 +233,8 @@ export function useFailuresViewWorkflow() {
         }),
       {
         busyKey: failureBusyKey(id, "resolve"),
-        successToast: "تم حل التعذر",
-        errorToast: "تعذّر حل التعذر — حاول مرة أخرى",
+        successToast: "تم حل التعذّر",
+        errorToast: "تعذّر حل التعذّر — حاول مرة أخرى",
         extra: {
           resolutionReason: draft.reason,
           continueInstructions: draft.instructions,
@@ -264,6 +271,7 @@ export function useFailuresViewWorkflow() {
     highlightId,
     isDesktopViewport,
     rows,
+    rowsPage,
     search,
     setSearch,
     setPage,

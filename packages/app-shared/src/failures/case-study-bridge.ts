@@ -12,12 +12,12 @@ export type SuspendPropertyResult =
   | { ok: false; error: string };
 
 /** Only the PO fields consumers outside case-study read. */
-export type PoRecordRef = {
+type PoRecordRef = {
   poNumber: string;
   assignmentSpecialist?: string;
 };
 
-export type FailuresCaseStudyBridge = {
+type FailuresCaseStudyBridge = {
   suspendPropertyTransaction: (input: {
     failure: FailureRecord;
     supervisorNote: string;

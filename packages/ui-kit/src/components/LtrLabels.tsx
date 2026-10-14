@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes } from "react";
 import { cn } from "../lib/cn";
 
 /** LTR code/number for RTL tables (PO, invoice, deed). */
@@ -94,6 +94,3 @@ export function EmptyIconBuilding({ className }: { className?: string }) {
     </svg>
   );
 }
-
-/** Optional icon slot helper type for EmptyState children. */
-export type EmptyIcon = ReactNode;

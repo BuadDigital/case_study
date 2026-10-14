@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
 import type { FinancialRevenueRowStatus } from "./property-list-wire";
@@ -38,8 +38,8 @@ export type PartyFeePricingCategory =
   | "court-visit"
   | "field-inspector";
 
-export type PartyFeePricingKind = "tiered" | "party-rates" | "flat";
-export type PartyFeePricingManagedBy = "system-admin" | "supervisor";
+type PartyFeePricingKind = "tiered" | "party-rates" | "flat";
+type PartyFeePricingManagedBy = "system-admin" | "supervisor";
 
 export type PartyFeePricingTableSummaryDto = {
   id: string;
@@ -89,13 +89,6 @@ export type SetPartyFeePricingAssignmentsRequest = {
   assigneeIds: string[];
 };
 
-function headers(token: string): HeadersInit {
-  return {
-    Authorization: `Bearer ${token}`,
-    "Content-Type": "application/json",
-  };
-}
-
 function baseUrl(config: PrototypeModulesApiConfig): string {
   return config.baseUrl ?? getApiBase();
 }
@@ -116,7 +109,7 @@ export async function fetchFinancialSummary(
 ): Promise<PrototypeModulesResult<FinancialSummaryDto>> {
   try {
     const res = await fetch(`${baseUrl(config)}/api/financial/v1/summary`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     return readResult<FinancialSummaryDto>(res);
   } catch {
@@ -132,7 +125,7 @@ export async function fetchPartyFeePricingTables(
     const qs = category ? `?category=${encodeURIComponent(category)}` : "";
     const res = await fetch(
       `${baseUrl(config)}/api/financial/v1/party-fee-pricing/tables${qs}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     return readResult<PartyFeePricingTableSummaryDto[]>(res);
   } catch {
@@ -147,7 +140,7 @@ export async function fetchPartyFeePricingById(
   try {
     const res = await fetch(
       `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     return readResult<PartyFeePricingDto>(res);
   } catch {
@@ -162,7 +155,7 @@ export async function createPartyFeePricing(
   try {
     const res = await fetch(`${baseUrl(config)}/api/financial/v1/party-fee-pricing`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
     return readResult<PartyFeePricingDto>(res);
@@ -181,7 +174,7 @@ export async function savePartyFeePricing(
       `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -201,7 +194,7 @@ export async function revisePartyFeePricing(
       `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}/revision`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -218,7 +211,7 @@ export async function activatePartyFeePricing(
   try {
     const res = await fetch(
       `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}/activate`,
-      { method: "POST", headers: headers(config.token) },
+      { method: "POST", headers: authHeaders(config.token) },
     );
     return readResult<PartyFeePricingDto>(res);
   } catch {
@@ -236,7 +229,7 @@ export async function setPartyFeePricingAssignments(
       `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}/assignments`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -253,7 +246,7 @@ export async function deletePartyFeePricing(
   try {
     const res = await fetch(
       `${baseUrl(config)}/api/financial/v1/party-fee-pricing/${id}`,
-      { method: "DELETE", headers: headers(config.token) },
+      { method: "DELETE", headers: authHeaders(config.token) },
     );
     return readResult<void>(res);
   } catch {

@@ -13,15 +13,17 @@ import {
   boundariesMarkedUnavailable,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
-import type {
-  InspectorBoundaryKey,
-  InspectorWorkspaceDraft,
+import {
+  effectiveDeedVerdict,
+  type InspectorBoundaryKey,
+  type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import {
   InsCard,
   EDIT_CONTROL_CLASS,
 } from "../po-intake/PropertyDetailInspectionParts";
 import { INS_TD_CLASS, INS_TH_CLASS } from "./FieldInspectionWorkParts";
+import { InspectorDeedVerdict } from "./InspectorDeedVerdict";
 import { useFacadeOptions } from "../../query/use-facade-options";
 import { FALLBACK_FACADE_OPTIONS } from "./inspector-wizard-state";
 import {
@@ -44,6 +46,8 @@ export function InspectorBoundaryMatchTable({
 }) {
   const catalogFacadeOptions = useFacadeOptions();
   const facadeTypeOptions = catalogFacadeOptions ?? FALLBACK_FACADE_OPTIONS;
+  // Per-side verdicts + notes only under «غير مطابق» (explicit, or derived from a legacy payload).
+  const showMatchCols = effectiveDeedVerdict(draft) === "no";
 
   return (
     <>
@@ -65,6 +69,12 @@ export function InspectorBoundaryMatchTable({
               علّق بعدم المطابقة.
             </p>
           ) : null}
+          <InspectorDeedVerdict
+            draft={draft}
+            mobile={false}
+            readOnly={!editable}
+            onPatch={onPatch}
+          />
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] border-collapse text-xs">
               <thead>
@@ -75,8 +85,9 @@ export function InspectorBoundaryMatchTable({
                       "نوع الواجهة",
                       "الحد حسب الصك",
                       "الطول (م)",
-                      "مطابق للواقع",
-                      "ملاحظة عدم التطابق",
+                      ...(showMatchCols
+                        ? (["مطابق للواقع", "ملاحظة عدم التطابق"] as const)
+                        : []),
                     ] as const
                   ).map((h) => (
                     <th
@@ -95,7 +106,9 @@ export function InspectorBoundaryMatchTable({
                     "",
                   ) as InspectorBoundaryKey;
                   const match = draft.boundaryMatches[matchKey];
-                  const ok = match?.matches !== false;
+                  // Tri-state: an untouched side (null) is neither «مطابق» nor «غير مطابق».
+                  const ok = match?.matches === true;
+                  const bad = match?.matches === false;
                   const deedDesc = resolvedBoundaryDeedField(
                     match?.deedDesc,
                     property[row.descKey],
@@ -185,17 +198,19 @@ export function InspectorBoundaryMatchTable({
                           deedLength.trim() ? `${deedLength.trim()} م` : "—"
                         )}
                       </td>
+                      {showMatchCols ? (
+                        <>
                       <td className={cn(INS_TD_CLASS, "text-center")}>
                         {!editable ? (
                           <span
                             className={cn(
                               "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold",
-                              ok
-                                ? "bg-success-bg text-heading"
-                                : "bg-danger-bg text-danger-text",
+                              ok && "bg-success-bg text-heading",
+                              bad && "bg-danger-bg text-danger-text",
+                              !ok && !bad && "bg-surface-2 text-text-3",
                             )}
                           >
-                            {ok ? "مطابق" : "غير مطابق"}
+                            {ok ? "مطابق" : bad ? "غير مطابق" : "—"}
                           </span>
                         ) : (
                         <div className="inline-flex gap-1.5">
@@ -226,7 +241,7 @@ export function InspectorBoundaryMatchTable({
                             type="button"
                             className={cn(
                               "rounded-md border px-2.5 py-1 text-[11px] font-semibold",
-                              !ok
+                              bad
                                 ? "border-[color-mix(in_srgb,var(--danger)_35%,transparent)] bg-danger-bg text-danger-text"
                                 : "border-border bg-surface-2 text-text-3",
                             )}
@@ -248,7 +263,7 @@ export function InspectorBoundaryMatchTable({
                         )}
                       </td>
                       <td className={INS_TD_CLASS}>
-                        {!ok ? (
+                        {bad ? (
                           editable ? (
                           <input
                             className={cn(
@@ -280,6 +295,8 @@ export function InspectorBoundaryMatchTable({
                           <span className="text-text-3">—</span>
                         )}
                       </td>
+                        </>
+                      ) : null}
                     </tr>
                   );
                 })}

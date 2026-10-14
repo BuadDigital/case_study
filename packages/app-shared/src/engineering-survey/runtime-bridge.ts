@@ -26,7 +26,7 @@ export type EngineeringSurveyDocumentEntry = {
   attachment: CachedEngineeringSurveyFile;
 };
 
-export type EngineeringSurveySubmissionStatusRef =
+type EngineeringSurveySubmissionStatusRef =
   | "draft"
   | "submitted"
   | "returned"
@@ -44,7 +44,7 @@ export type EngineeringSurveySubmissionRef = {
   acceptedAtUtc?: string;
 };
 
-export type EngineeringSurveyRuntimeBridge = {
+type EngineeringSurveyRuntimeBridge = {
   loadEngineeringSurveySubmission: (
     taskId: string,
   ) => EngineeringSurveySubmissionRef | null;
@@ -99,10 +99,6 @@ export function getEngineeringSurveyRuntimeBridge(): EngineeringSurveyRuntimeBri
       "Engineering-survey runtime bridge is not registered. Wire it from the shell at boot.",
     );
   }
-  return bridge;
-}
-
-export function tryGetEngineeringSurveyRuntimeBridge(): EngineeringSurveyRuntimeBridge | null {
   return bridge;
 }
 

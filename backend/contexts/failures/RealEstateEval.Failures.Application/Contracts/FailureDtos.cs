@@ -20,6 +20,8 @@ public class FailureRecordDto
     public string UpdatedAt { get; set; } = "";
     public string? SuspendedAt { get; set; }
     public string? SuspendedByUserId { get; set; }
+    public string? SurveyFreezeLiftedAt { get; set; }
+    public string? SurveyFreezeLiftReason { get; set; }
 }
 
 public class CreateFailureRequest
@@ -59,6 +61,12 @@ public class FailurePropertyGatesDto
 {
     public bool HasActive { get; set; }
     public bool HasBlocking { get; set; }
+
+    /// <summary>
+    /// An active failure whose engineering-survey freeze has not been lifted. Nullable on the wire so
+    /// a newer client reading an older Failures host falls back to <see cref="HasActive"/>.
+    /// </summary>
+    public bool? SurveyFrozen { get; set; }
 }
 
 public class EnsureSystemInternalFailureRequest
@@ -85,4 +93,17 @@ public class ResolveEvictionHoldRequest
     public string PoNumber { get; set; } = "";
     public string PropertyId { get; set; } = "";
     public string Actor { get; set; } = "";
+}
+
+public class LiftSurveyFreezeRequest
+{
+    public string PoNumber { get; set; } = "";
+    public string PropertyId { get; set; } = "";
+    public string Reason { get; set; } = "";
+}
+
+public class LiftSurveyFreezeResultDto
+{
+    /// <summary>How many active failures of the property had their survey freeze lifted by this call.</summary>
+    public int Lifted { get; set; }
 }

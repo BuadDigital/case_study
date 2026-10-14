@@ -22,7 +22,7 @@ export function ValuationReportUserField({
   return (
     <RegSelect
       id={id}
-      label="مستخدم تقرير التقييم"
+      label="مستخدم التقرير"
       required
       value={NABR_SEED_CLIENT_ID}
       options={[

@@ -2,7 +2,7 @@ import type { UserListItem } from "@platform/types";
 import { getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 
-export type AuthApiConfig = {
+type AuthApiConfig = {
   baseUrl?: string;
   token: string;
 };
@@ -28,7 +28,7 @@ export type RefreshSessionResult =
     };
 
 /** Problem `code` the identity service returns when a disabled account tries to refresh. */
-export const ACCOUNT_DISABLED_CODE = "account-disabled";
+const ACCOUNT_DISABLED_CODE = "account-disabled";
 
 export type FetchMyProfileResult =
   | { ok: true; user: UserListItem }

@@ -10,15 +10,18 @@ import {
 } from "./tasks";
 
 /**
- * Derive Case Study.html PSTATUS for the property hero badge.
+ * Derive Case Study.html PSTATUS for the property hero badge. «مكتمل» is the Enfaz handover
+ * (the server's property-row status says `done`); an issued report alone is «جاهز للرفع».
  */
 export function derivePropertyUiStatus(input: {
   poNumber: string;
   property: PoPropertyIntake;
   tasks: WorkflowTask[];
   failures: FailureRecord[];
+  /** The property carries the Enfaz handover stamp (server property-row status `done`). */
+  handedOverToEnfaz?: boolean;
 }): PropertyUiStatus {
-  const { poNumber, property, tasks, failures } = input;
+  const { poNumber, property, tasks, failures, handedOverToEnfaz = false } = input;
   const propertyFailures = failuresForProperty(failures, {
     poNumber,
     propertyId: property.id,
@@ -44,7 +47,9 @@ export function derivePropertyUiStatus(input: {
   }
 
   if (parent.status === "completed" || parent.phase === "done") {
-    return PropertyListRowStatuses.Done;
+    return handedOverToEnfaz
+      ? PropertyListRowStatuses.Done
+      : PropertyListRowStatuses.Ready;
   }
 
   const children = childTasksForCaseStudyParent(parent.id, tasks);

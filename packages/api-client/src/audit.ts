@@ -1,7 +1,7 @@
 import { getApiBase } from "./api-base";
 import { ApiAuthError } from "./permissions";
 
-export type AuditLogApiConfig = {
+type AuditLogApiConfig = {
   baseUrl?: string;
   token: string;
 };
@@ -19,14 +19,14 @@ export type AuditLogDto = {
   createdAtUtc: string;
 };
 
-export type AuditLogPageDto = {
+type AuditLogPageDto = {
   items: AuditLogDto[];
   page: number;
   limit: number;
   total: number;
 };
 
-export type AuditLogFilters = {
+type AuditLogFilters = {
   entityType?: string;
   entityId?: string;
   action?: string;

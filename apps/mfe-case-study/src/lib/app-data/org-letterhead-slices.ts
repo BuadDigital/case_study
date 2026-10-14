@@ -76,32 +76,3 @@ export function orgLetterheadSliceCss(
     }
   `;
 }
-
-/** Content box inset to the white area between the four strips. */
-export function orgLetterheadContentCss(
-  layout: ReturnType<typeof orgLetterheadLayout>,
-  extra = "",
-): string {
-  const { headMm, footMm, startMm, endMm } = layout;
-  return `
-    .content {
-      position: absolute;
-      z-index: 1;
-      top: ${headMm}mm;
-      bottom: ${footMm}mm;
-      right: ${startMm}mm;
-      left: ${endMm}mm;
-      padding: 5mm 4mm;
-      overflow: hidden;
-      background: #fff;
-      ${extra}
-    }
-  `;
-}
-
-export const ORG_LETTERHEAD_SLICES_HTML = `
-    <div class="lh-slice lh-head"></div>
-    <div class="lh-slice lh-foot"></div>
-    <div class="lh-slice lh-start"></div>
-    <div class="lh-slice lh-end"></div>
-`;

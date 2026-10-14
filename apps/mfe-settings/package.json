@@ -7,14 +7,12 @@
   "exports": {
     ".": "./src/index.ts",
     "./query/settings-queries": "./src/query/settings-queries.ts",
-    "./lib/*": "./src/lib/*",
-    "./views/*": "./src/views/*"
+    "./lib/*": "./src/lib/*"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@case-study/mfe": "*",
     "@platform/api-client": "*",
     "@platform/app-shared": "*",
     "@platform/auth-client": "*",

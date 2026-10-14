@@ -12,6 +12,14 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
 {
     private const WorkflowTaskKind CaseStudyPropertyKind = WorkflowTaskKind.CaseStudyProperty;
 
+    /// <summary>Refusal pointing a case-study parent's reopening at the report's reopen action.</summary>
+    public const string CaseStudyParentReopenViaReportAr =
+        "إعادة فتح دراسة الحالة تتم من تقرير دراسة الحالة — افتح التقرير واختر «إعادة فتح التقرير»";
+
+    /// <summary>Refusal pointing an appraisal task's reopening at the package return / new version.</summary>
+    public const string AppraisalReopenViaPackageAr =
+        "يُعاد تقييم العقار للمقيّم بإرجاع حزمته للتصحيح، وبعد الإصدار النهائي بنسخة جديدة من الأخصائي";
+
     private readonly IWorkflowTaskLifecycleRepository _db;
     private readonly IInspectorFeeService _inspectorFees;
     private readonly IPropertyTimelineService _timeline;
@@ -19,6 +27,7 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
     private readonly IWorkflowTaskSlotSynchronizer _slots;
     private readonly INotificationService _notifications;
     private readonly INotificationRecipientResolver _recipients;
+    private readonly IWorkflowTaskPatchNotifier _patchNotifier;
     private readonly IAuditLogWriter _audit;
     private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
@@ -44,6 +53,7 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
         _slots = slots;
         _notifications = notifications;
         _recipients = recipients;
+        _patchNotifier = new WorkflowTaskPatchNotifier(notifications, recipients);
         _audit = audit;
         _auditLog = auditLog;
     }
@@ -175,19 +185,8 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
             _time.UtcNow());
         await _db.SaveChangesAsync(cancellationToken);
 
-        if (entity.PropertyId is Guid propertyId)
-        {
-            await _timeline.RecordAsync(
-                entity.PoNumber,
-                propertyId,
-                $"task:{entity.Id}:bourse-complete",
-                "اكتمال استعلام البورصة",
-                null,
-                PropertyTimelineTones.Done,
-                entity.UpdatedAtUtc,
-                cancellationToken);
-        }
-
+        // No timeline row here: the bourse milestone («إتمام استعلام البورصة») is recorded when the specialist
+        // completes the bourse data, with who did it — advancing the task is the same moment, not a second event.
         return WorkflowTaskMapper.ToDto(entity);
     }
 
@@ -199,56 +198,19 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
         var entity = await _db.GetTaskForUpdateAsync(id, cancellationToken);
         if (entity is null) return null;
 
-        var wasCaseStudyCompleted = WorkflowTaskLifecycleRules.IsCompletedCaseStudy(entity);
-        var wasBlocked = entity.Status == WorkflowTaskStatus.Blocked;
-        var previousAssigneeId = entity.AssigneeId;
-
-        entity.ApplyShellPatch(
-            phase: WorkflowTaskPhaseValues.ParseOptional(request.Phase),
-            status: request.Status is null ? null : WorkflowTaskStatusValues.Parse(request.Status),
-            title: request.Title,
-            assigneeRole: request.AssigneeRole,
-            assigneeName: request.AssigneeName,
-            assigneeId: request.AssigneeId,
-            assigneeIdProvided: request.AssigneeId is not null,
-            propertyId: string.IsNullOrWhiteSpace(request.PropertyId)
-                ? null
-                : Guid.Parse(request.PropertyId),
-            propertyIdProvided: request.PropertyId is not null,
-            obstructionReason: string.IsNullOrWhiteSpace(request.ObstructionReason)
-                ? null
-                : request.ObstructionReason,
-            obstructionReasonProvided: request.ObstructionReason is not null,
-            obstructionPriorPhase: WorkflowTaskPhaseValues.ParseOptional(request.ObstructionPriorPhase),
-            obstructionPriorPhaseProvided: request.ObstructionPriorPhase is not null,
-            distributionJson: request.Distribution is null
-                ? null
-                : WorkflowTaskMapper.SerializeDistribution(
-                    WorkflowTaskPhaseRules.NormalizeDistribution(request.Distribution)),
-            nowUtc: _time.UtcNow());
+        var before = WorkflowTaskShellPatch.Apply(entity, request, _time.UtcNow());
         await _db.SaveChangesAsync(cancellationToken);
 
-        if (!wasCaseStudyCompleted
+        // Fee accrual on completion is the lifecycle path's own side effect — the stream
+        // shell patcher never completes a case study.
+        if (!before.WasCompletedCaseStudy
             && WorkflowTaskLifecycleRules.IsCompletedCaseStudy(entity)
             && entity.PropertyId is Guid feePropertyId)
         {
             await _inspectorFees.EnsureLedgersForPropertyAsync(feePropertyId, cancellationToken);
         }
 
-        // Supervisor resolved an obstruction and handed the transaction back to
-        // the specialist (or re-targeted it to a new one) — they had no way to
-        // know it moved without a manual refresh before this.
-        if (WorkflowTaskLifecycleRules.ShouldNotifySpecialistReturned(entity, wasBlocked, previousAssigneeId))
-        {
-            await NotifyAssigneeAsync(
-                entity.Id,
-                entity.AssigneeId,
-                "معاملة أُعيدت إليك",
-                "أُعيدت المعاملة إليك بعد معالجة التعذر — تابع دراسة الحالة.",
-                "info",
-                $"case-study-returned:{entity.Id}:{entity.UpdatedAtUtc:O}",
-                cancellationToken);
-        }
+        await _patchNotifier.NotifyAfterPatchAsync(entity, before, cancellationToken);
 
         return WorkflowTaskMapper.ToDto(entity);
     }
@@ -278,6 +240,23 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
         if (entity.Status != WorkflowTaskStatus.Completed)
             return (null, Error("لا يمكن إعادة فتح معاملة غير مكتملة"));
 
+        // A case-study parent completes by issuing its report. Reopening only the task would leave
+        // «task open + report issued» — so that reopening goes through the report's own action.
+        if (entity.Kind == CaseStudyPropertyKind)
+            return (null, Error(CaseStudyParentReopenViaReportAr));
+
+        // The appraiser's task reopens together with its package (return for correction) or as a new
+        // version after the final issuance — reopening only the task would leave a locked package.
+        if (entity.Kind == WorkflowTaskKind.PropertyAppraisal)
+            return (null, Error(AppraisalReopenViaPackageAr));
+
+        // A transaction handed over to Enfaz is delivered: the specialist takes it back first.
+        if (entity.PropertyId is Guid handedOverPropertyId
+            && await _db.GetPropertyAsync(handedOverPropertyId, cancellationToken) is { IsHandedOverToEnfaz: true })
+        {
+            return (null, Error(PartyTaskSubmissionService.HandedOverToEnfazAr));
+        }
+
         entity.Reopen(_time.UtcNow());
 
         var detail = string.IsNullOrWhiteSpace(actorName) ? reason : $"{actorName}: {reason}";
@@ -291,10 +270,10 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
                 await _timeline.RecordAsync(
                     entity.PoNumber,
                     propertyId,
-                    $"task:{entity.Id}:reopened",
+                    $"task:{entity.Id}:reopened:{entity.UpdatedAtUtc.Ticks}",
                     "إعادة فتح المعاملة",
                     detail,
-                    PropertyTimelineTones.Active,
+                    PropertyTimelineTones.Warn,
                     entity.UpdatedAtUtc,
                     ct);
             }

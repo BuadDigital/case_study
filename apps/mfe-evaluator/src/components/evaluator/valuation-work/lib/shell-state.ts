@@ -1,25 +1,18 @@
 /**
  * Pure state helpers behind `ValuationWorkShell` — screen identity, the nav
- * model, the auto-generated adjustments narrative, the difference-factor
- * catalog projection and the small parsing utilities the workflow
- * hooks share. No React, no I/O.
+ * model, the auto-generated adjustments narrative and the small parsing
+ * utilities the workflow hooks share. No React, no I/O.
  */
 import type {
-  DifferenceFactorDefinitionDto,
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
-import {
-  AUTO_AREA_KEY,
-  SEQUENTIAL_SET,
-  factorIncludedByDefault,
-} from "./factor-registry";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { factorIncludedByDefault } from "./factor-registry";
 import { type lineForSave } from "./market-save-mappers";
 
 export const LAND_WITHIN_COST = "land_within_cost";
 export const MARKET_CONTEXT = "market";
-/** Interactive-form spec: “N of 5 adopted”. */
-export const MAX_ADOPTED_COMPARABLES = 5;
 
 export type ValuationWorkScreenId =
   | "basic"
@@ -42,16 +35,20 @@ export type ValuationWorkPropertyHint = {
   classification?: string | null;
 };
 
-export type ValuationWorkNavItem = {
+type ValuationWorkNavItem = {
   id: ValuationWorkScreenId;
   label: string;
   badge?: number;
   show: boolean;
 };
 
-/** Arabic decimal comma is accepted everywhere a number is typed. */
+/**
+ * Typed number → value via the shared locale rule ("1,250" → 1250, "12,5" → 12.5,
+ * Arabic digits, units). Blank stays 0 as callers have always relied on; junk is NaN.
+ */
 export function parseDecimal(raw: string | number): number {
-  return Number(String(raw).replace(",", "."));
+  if (typeof raw === "string" && raw.trim() === "") return 0;
+  return parseLocaleNumber(raw);
 }
 
 /** Official valuation date from saved settings — not from unsaved drafts. */
@@ -66,23 +63,6 @@ export function officialValuationDateOf(
 }
 
 /** Split the server catalog into tooltip definitions and the “add factor” menu. */
-export function buildFactorCatalog(factors: DifferenceFactorDefinitionDto[]): {
-  definitions: Record<string, string>;
-  addable: { factorKey: string; labelAr: string }[];
-} {
-  const definitions: Record<string, string> = {};
-  const addable: { factorKey: string; labelAr: string }[] = [];
-  for (const f of factors) {
-    if (!f.isActive) continue;
-    definitions[f.key] = f.excludesAr
-      ? `${f.definitionAr}\nلا يشمل: ${f.excludesAr}`
-      : f.definitionAr;
-    if (!SEQUENTIAL_SET.has(f.key) && f.key !== AUTO_AREA_KEY) {
-      addable.push({ factorKey: f.key, labelAr: f.labelAr });
-    }
-  }
-  return { definitions, addable };
-}
 
 /**
  * Interactive-form spec (buildNarrative): adjustments analysis lists only written
@@ -178,18 +158,4 @@ export function newAdjustmentLine(
     isIncluded: factorIncludedByDefault(factorKey),
     sortOrder,
   };
-}
-
-/** One-shot key so the far-comparable auto-unadopt does not loop on the same set. */
-export function farUnadoptSignature(
-  requestId: string,
-  farMarket: ValuationComparableSelectionDto[],
-  farLand: ValuationComparableSelectionDto[],
-): string {
-  const ids = (items: ValuationComparableSelectionDto[]) =>
-    items
-      .map((i) => i.comparablePropertyId)
-      .sort()
-      .join(",");
-  return `${requestId}:m${ids(farMarket)}:l${ids(farLand)}`;
 }

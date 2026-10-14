@@ -159,6 +159,7 @@ public static class ValuationModel
             e.Property(x => x.CertificateFileName).HasMaxLength(512);
             e.Property(x => x.CertificateContentType).HasMaxLength(128);
             e.Property(x => x.CertificateUploadedByUserId).HasMaxLength(128);
+            e.Property(x => x.FinalPdfDepositCode).HasMaxLength(128);
             e.Property(x => x.SupersededByUserId).HasMaxLength(128);
             e.Property(x => x.SupersededReason).HasMaxLength(1024);
             // R2: one current copy per request — superseded ("replaced by a newer copy") stays on file.
@@ -166,6 +167,27 @@ public static class ValuationModel
                 .IsUnique()
                 .HasFilter("\"SupersededAtUtc\" IS NULL");
             e.HasIndex(x => new { x.ValuationRequestId, x.Version }).IsUnique();
+            e.HasOne<ValuationRequest>()
+                .WithMany()
+                .HasForeignKey(x => x.ValuationRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // The report draft the case specialist prepares and the appraiser approves — one row per cycle.
+        builder.Entity<ValuationReportDraft>(e =>
+        {
+            e.ToTable("ValuationReportDrafts", DatabaseSchemas.Valuation);
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.SpecialistChoicesJson).HasColumnType("jsonb").IsRequired();
+            e.Property(x => x.SpecialistNote).HasMaxLength(2000);
+            e.Property(x => x.AppraiserNote).HasMaxLength(2000);
+            e.Property(x => x.ConformityConfirmedByUserId).HasMaxLength(128);
+            e.Property(x => x.SentByUserId).HasMaxLength(128);
+            e.Property(x => x.ApprovedByUserId).HasMaxLength(128);
+            e.Property(x => x.ReportDate).HasMaxLength(10);
+            e.Property(x => x.SnapshotSha256).HasMaxLength(64);
+            e.HasIndex(x => new { x.ValuationRequestId, x.Version }).IsUnique();
+            e.HasAllowedValues("ValuationReportDrafts", nameof(ValuationReportDraft.Status), ReportDraftStatuses.All);
             e.HasOne<ValuationRequest>()
                 .WithMany()
                 .HasForeignKey(x => x.ValuationRequestId)

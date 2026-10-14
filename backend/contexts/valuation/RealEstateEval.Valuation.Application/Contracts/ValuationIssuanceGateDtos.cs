@@ -38,5 +38,5 @@ public class ValuationIssuanceGatesDto
     public IReadOnlyList<ValuationMethodologyAlertItemDto> MethodologyAlerts { get; init; } = [];
     public int MethodologyAlertTriggeredCount { get; init; }
     public string MethodologyAlertsNoteAr { get; init; } =
-        "تنبيهات منهجية: 6 حاجبة · 6 بمبرر نصي · 5 بإقرار.";
+        "تنبيهات منهجية (20): 7 حاجبة · 8 بمبرر نصي إلزامي · 5 بإقرار.";
 }

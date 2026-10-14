@@ -1,5 +1,8 @@
 /** Studied-locations map logic — v2.0. Pure layer with no DOM. */
 
+import { fmtSar } from "@platform/app-shared/format/number";
+import { haversineKm } from "@platform/app-shared/domain/geo";
+
 export const POINT_FAMILIES = {
   property: "عقارات النظام",
   comparable: "مقارنات السوق",
@@ -31,8 +34,8 @@ export type LayerKey = keyof typeof LAYERS;
 export const WORKFLOW_STATUS = {
   in_progress: { key: "in_progress", label: "قيد العمل" },
   issued: { key: "issued", label: "صادر" },
-  infeasible_candidate: { key: "infeasible_candidate", label: "مرشح تعذر" },
-  infeasible: { key: "infeasible", label: "متعذر" },
+  infeasible_candidate: { key: "infeasible_candidate", label: "مرشح تعذّر" },
+  infeasible: { key: "infeasible", label: "متعذّر" },
 } as const;
 
 export type WorkflowStatusKey = keyof typeof WORKFLOW_STATUS;
@@ -95,11 +98,11 @@ export type DatePreset =
 export type PropertyKindCat = "أرض" | "مبنى";
 export type PropertyUsageCat = "سكني" | "تجاري" | "زراعي" | "خدمات" | "أخرى";
 
-export function isLandType(type: string | null | undefined): boolean {
+function isLandType(type: string | null | undefined): boolean {
   return (type || "").startsWith("أرض");
 }
 
-export function usageOf(type: string | null | undefined): PropertyUsageCat {
+function usageOf(type: string | null | undefined): PropertyUsageCat {
   const t = type || "";
   if (t.includes("سكني") || t === "فيلا" || t === "شقة") return "سكني";
   if (t.includes("تجاري") || t === "مستودع") return "تجاري";
@@ -126,9 +129,9 @@ export type FilterCriteria = {
   infeasOnly?: boolean;
 };
 
-export type DateRange = { from: Date | null; to: Date | null };
+type DateRange = { from: Date | null; to: Date | null };
 
-export const REPORT_VALIDITY_DAYS = 90;
+const REPORT_VALIDITY_DAYS = 90;
 
 export function isActive(r: Pick<MapPropertyRecord, "closedDate">): boolean {
   return !r.closedDate;
@@ -144,7 +147,7 @@ export function isReportExpired(
   return now > expiry;
 }
 
-export function hasCoords(r: { coords: MapCoords | null | undefined }): boolean {
+function hasCoords(r: { coords: MapCoords | null | undefined }): boolean {
   return r.coords != null && r.coords.lat != null && r.coords.lng != null;
 }
 
@@ -316,14 +319,14 @@ export function countWithoutCoords(list: { coords: MapCoords | null }[]): number
   return list.filter((x) => !hasCoords(x)).length;
 }
 
-export type MapSinglePoint = {
+type MapSinglePoint = {
   kind: "single";
   record: MapPropertyRecord;
   coords: MapCoords | null;
   active: boolean;
 };
 
-export type MapGroupPoint = {
+type MapGroupPoint = {
   kind: "group";
   groupId: string;
   members: MapPropertyRecord[];
@@ -393,17 +396,6 @@ export function computeStats(
   };
 }
 
-export function haversineKm(a: MapCoords, b: MapCoords): number {
-  const R = 6371;
-  const rad = (x: number) => (x * Math.PI) / 180;
-  const dLat = rad(b.lat - a.lat);
-  const dLng = rad(b.lng - a.lng);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-
 export function nearbyOf<T extends { id: string; coords: MapCoords | null }>(
   center: MapCoords,
   list: T[],
@@ -417,7 +409,7 @@ export function nearbyOf<T extends { id: string; coords: MapCoords | null }>(
     .sort((x, y) => x.distanceKm - y.distanceKm);
 }
 
-export function fmtDate(iso: string | null | undefined): string {
+function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "-";
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "-";
@@ -425,14 +417,9 @@ export function fmtDate(iso: string | null | undefined): string {
   return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())}`;
 }
 
-export function fmtMoney(v: number | null | undefined): string {
-  if (v == null) return "-";
-  return v.toLocaleString("en-US", { maximumFractionDigits: 2 }) + " ريال";
-}
+type MapCardRow = [string, string];
 
-export type MapCardRow = [string, string];
-
-export type PropertyMapCard = {
+type PropertyMapCard = {
   family: "property";
   active: boolean;
   workflowStatus: (typeof WORKFLOW_STATUS)[WorkflowStatusKey];
@@ -463,9 +450,9 @@ export function propertyCard(
       ["تاريخ الإغلاق", fmtDate(r.closedDate)],
       [
         "الرأي النهائي للقيمة",
-        r.workflowStatus === "issued" ? fmtMoney(r.finalValue) : "-",
+        r.workflowStatus === "issued" ? fmtSar(r.finalValue, { trim: true }) : "-",
       ],
-      ["المقيم", r.valuer || "-"],
+      ["المقيّم", r.valuer || "-"],
       ["مصدر الإحداثيات", r.coordsSource || "-"],
     ],
     actionId: r.id,
@@ -477,7 +464,7 @@ export function pricePerSqm(c: MapComparableRecord): number | null {
   return c.price / c.area;
 }
 
-export type ComparableMapCard = {
+type ComparableMapCard = {
   family: "comparable";
   approved: boolean;
   title: string;
@@ -499,10 +486,10 @@ export function comparableCard(c: MapComparableRecord): ComparableMapCard {
         c.operationType === "عرض" ? c.priceDescription || "-" : "-",
       ],
       ["تاريخ العملية", fmtDate(c.operationDate)],
-      ["السعر", fmtMoney(c.price)],
+      ["السعر", fmtSar(c.price, { trim: true })],
       [
         "سعر المتر (محسوب)",
-        ppsm != null ? fmtMoney(Math.round(ppsm)) : "-",
+        ppsm != null ? fmtSar(Math.round(ppsm), { trim: true }) : "-",
       ],
       ["المساحة", c.area != null ? c.area.toLocaleString("en-US") + " م²" : "-"],
       ["المصدر", c.source || "-"],

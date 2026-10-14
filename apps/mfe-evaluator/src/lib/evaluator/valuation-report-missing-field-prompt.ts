@@ -14,7 +14,7 @@ import {
   type ReportSettingsSection,
 } from "./valuation-report-missing-fields";
 
-export type MissingFieldResponsible = {
+type MissingFieldResponsible = {
   name: string;
   roleLabel: string;
   canNotify: boolean;
@@ -37,6 +37,9 @@ export function responsibleForMissingCell(
     case "inspector":
     case "survey":
       return sources ? sources[cell.source] : null;
+    case "specialist":
+      // The server resolves the work order's specialist under its "intake" source.
+      return sources ? sources.intake : null;
     case "org": {
       if (!editors || !cell.section) return null;
       const editor = editors[cell.section];

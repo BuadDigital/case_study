@@ -1,8 +1,6 @@
 import { getCaseStudyInfoRoles } from "@platform/api-client";
-import {
-  apiErrorMessage,
-  caseStudyInfoRolesApiConfig,
-} from "../settings-api-config";
+import { apiErrorMessage } from "@platform/app-shared/app-data/work-orders-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   emptyCaseStudyInfoRolesConfig,
   isStoredCaseStudyInfoRolesMatrixEmpty,
@@ -23,7 +21,7 @@ function seedDefaultsIfEmpty(): void {
 }
 
 export async function loadCaseStudyInfoRolesConfig(): Promise<CaseStudyInfoRolesConfig> {
-  const config = caseStudyInfoRolesApiConfig();
+  const config = apiConfig();
   if (!config) return emptyCaseStudyInfoRolesConfig();
 
   const result = await getCaseStudyInfoRoles(config);

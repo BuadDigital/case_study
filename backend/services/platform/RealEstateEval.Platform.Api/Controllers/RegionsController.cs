@@ -22,11 +22,6 @@ public class RegionsController : ControllerBase
         CancellationToken cancellationToken)
         => Ok(await _regions.ListSelectableRegionsAsync(cancellationToken));
 
- /// <summary>All active cities — pick city first, then fill region.</summary>
-    [HttpGet("cities/selectable")]
-    public async Task<ActionResult<IReadOnlyList<SelectableCityDto>>> AllSelectableCities(
-        CancellationToken cancellationToken)
-        => Ok(await _regions.ListAllSelectableCitiesAsync(cancellationToken));
 
     [HttpGet("{id:guid}/cities/selectable")]
     public async Task<ActionResult<IReadOnlyList<SelectableCityDto>>> SelectableCities(

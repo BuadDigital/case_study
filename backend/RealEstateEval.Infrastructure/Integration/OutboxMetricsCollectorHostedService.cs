@@ -9,7 +9,7 @@ using RealEstateEval.Infrastructure.Data;
 namespace RealEstateEval.Infrastructure.Integration;
 
 /// <summary>
-/// Polls the dispatcher-bound outbox for backlog gauges. Runs on Case Study and Valuation
+/// Polls the dispatcher-bound outbox for backlog gauges. Runs on Platform and Valuation
 /// only (the hosts that register <c>AddOutboxDispatcher</c>).
 /// </summary>
 public sealed class OutboxMetricsCollectorHostedService : BackgroundService

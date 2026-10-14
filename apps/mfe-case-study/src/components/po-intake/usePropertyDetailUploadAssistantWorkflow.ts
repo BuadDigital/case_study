@@ -12,12 +12,16 @@ import {
   copyInfathText,
   downloadInfathDocument,
   type InfathOpsContext,
+  type InfathReportContext,
 } from "../../lib/app-data/infath-upload-model";
 import type {
   InfathUploadAttachment,
   InfathUploadModel,
 } from "../../lib/app-data/infath-upload-types";
-import type { PropertyDetailDocumentSection } from "../../lib/app-data/property-detail-documents";
+import type {
+  PropertyDetailDocumentEntry,
+  PropertyDetailDocumentSection,
+} from "../../lib/app-data/property-detail-documents";
 import type { PropertyDetailPartySubmissionsMap } from "../../lib/app-data/property-detail-party-submissions";
 import {
   formatPropertyDeedDisplay,
@@ -25,17 +29,20 @@ import {
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
-import { getBuildingInventory, type BuildingInventoryLineDto } from "@platform/api-client";
+import {
+  downloadFinalReport,
+  getBuildingInventory,
+  getOrganizationSettings,
+  type BuildingInventoryLineDto,
+} from "@platform/api-client";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import {
   resolveEnvelopeIdFromSources,
   usePropertyKeyGateQuery,
 } from "../../query/use-property-key-gate-query";
-import { loadInfathDeposit } from "@platform/app-shared/app-data/infath-deposit";
+import { usePropertyReportDraftQuery } from "../../query/use-property-report-draft-query";
 import {
-  DEPOSIT_CERTIFICATE_FIELD_LABEL,
-  DEPOSIT_CODE_FIELD_LABEL,
-  appraisalFieldValue,
   collapsedSectionIds,
   copyToastPreview,
   courtVisitOpsFields,
@@ -47,7 +54,7 @@ import {
   type CopyKey,
 } from "./property-detail-upload-assistant-state";
 
-export type PropertyDetailEnfathUploadWorkflow = {
+type PropertyDetailEnfathUploadWorkflow = {
   model: InfathUploadModel;
   collapsedSections: Set<string>;
   copiedKeys: Set<CopyKey>;
@@ -59,6 +66,75 @@ export type PropertyDetailEnfathUploadWorkflow = {
   handleDownloadAttachment: (item: InfathUploadAttachment) => void;
   handleDownloadAll: () => void;
 };
+
+/** The certified appraiser's identity — the one the printed report carries (organization settings). */
+function useReportContext(): InfathReportContext | null {
+  const [context, setContext] = useState<InfathReportContext | null>(null);
+  useEffect(() => {
+    const config = apiConfig();
+    if (!config) return;
+    let cancelled = false;
+    void getOrganizationSettings(config).then((settings) => {
+      if (cancelled || !settings.ok) return;
+      const { evaluator, company } = settings.data;
+      setContext({
+        appraiserName: evaluator?.name?.trim() ?? "",
+        appraiserLicenseNumber: evaluator?.licenseNumber?.trim() ?? "",
+        // The report prints the practice-license date when the appraiser has none of his own.
+        appraiserLicenseDate:
+          evaluator?.licenseIssuedAt?.trim() || company?.practiceLicenseIssuedAt?.trim() || "",
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return context;
+}
+
+/** The generated final report as a downloadable document, once the server has it ready. */
+function useFinalReportDocument(
+  valuationRequestId: string | null | undefined,
+  finalReportStatus: string | undefined,
+  version: number | undefined,
+): PropertyDetailDocumentEntry | null {
+  const [document, setDocument] = useState<PropertyDetailDocumentEntry | null>(null);
+  useEffect(() => {
+    const config = apiConfig();
+    if (!config || !valuationRequestId || finalReportStatus !== "ready") {
+      setDocument(null);
+      return;
+    }
+    let cancelled = false;
+    void downloadFinalReport(config, valuationRequestId).then(async (res) => {
+      if (cancelled || !res.ok) return;
+      const dataUrl = await blobToDataUrl(res.data);
+      if (cancelled) return;
+      setDocument({
+        id: `final-report-${valuationRequestId}`,
+        name: "تقرير التقييم النهائي",
+        fileName: `final-report-v${version ?? 1}.pdf`,
+        source: "المقيّم العقاري",
+        kind: "pdf",
+        dataUrl,
+        documentTypeKey: "valuation-report",
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [valuationRequestId, finalReportStatus, version]);
+  return document;
+}
+
+function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
 
 export function usePropertyDetailEnfathUploadWorkflow({
   record,
@@ -86,10 +162,8 @@ export function usePropertyDetailEnfathUploadWorkflow({
     requestNumber: property.requestNumber.trim() || undefined,
   });
 
-  // Historical fallback only — nothing writes to this anymore now that the
-  // manual deposit-entry panel is gone; the evaluator's own report draft is
-  // the sole source going forward.
-  const depositDraft = useMemo(() => loadInfathDeposit(property.id), [property.id]);
+  // The deposit code and the certificate are recorded on the valuation report's issuance — nowhere else.
+  const { data: reportDraft } = usePropertyReportDraftQuery(property.id);
 
   const opsContext = useMemo((): InfathOpsContext => {
     const visit = primaryCourtVisit;
@@ -97,20 +171,15 @@ export function usePropertyDetailEnfathUploadWorkflow({
       keyGate,
       visit?.linkedEnvelopeId,
     );
-    const appraisalFields = parties?.appraisal?.fields;
     return {
       ...courtVisitOpsFields(visit),
       keysStatus: keyGate?.keysStatus ?? null,
       keyAvailable: keyGate?.keyAvailable,
       envelopeId,
-      depositCode:
-        appraisalFieldValue(appraisalFields, DEPOSIT_CODE_FIELD_LABEL) ??
-        depositDraft.depositCode,
-      depositCertificateName:
-        appraisalFieldValue(appraisalFields, DEPOSIT_CERTIFICATE_FIELD_LABEL) ??
-        depositDraft.depositCertificateName,
+      depositCode: reportDraft?.depositCode?.trim() ?? "",
+      depositCertificateName: reportDraft?.certificateFileName?.trim() ?? "",
     };
-  }, [primaryCourtVisit, keyGate, depositDraft, parties]);
+  }, [primaryCourtVisit, keyGate, reportDraft]);
 
   // Building areas come from the specialist's «جدول المكونات» (the inspector no longer enters them).
   const [componentLines, setComponentLines] = useState<BuildingInventoryLineDto[] | null>(null);
@@ -126,17 +195,33 @@ export function usePropertyDetailEnfathUploadWorkflow({
     };
   }, [poNumber, property.id]);
 
+  const reportContext = useReportContext();
+  const finalReportDocument = useFinalReportDocument(
+    reportDraft?.valuationRequestId,
+    reportDraft?.finalReportStatus,
+    reportDraft?.version,
+  );
+  // The generated final report is the «مرفق التقييم المعتمد»: it joins the property documents as the valuation report.
+  const sectionsWithFinalReport = useMemo(
+    () =>
+      finalReportDocument
+        ? [...documentSections, { id: "final-report", title: "التقرير النهائي", documents: [finalReportDocument] }]
+        : documentSections,
+    [documentSections, finalReportDocument],
+  );
+
   const model = useMemo(
     () =>
       buildInfathUploadModel({
         record,
         property,
         parties: parties ?? null,
-        documentSections,
+        documentSections: sectionsWithFinalReport,
         opsContext,
         componentLines,
+        reportContext,
       }),
-    [record, property, parties, documentSections, opsContext, componentLines],
+    [record, property, parties, sectionsWithFinalReport, opsContext, componentLines, reportContext],
   );
 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
@@ -164,7 +249,7 @@ export function usePropertyDetailEnfathUploadWorkflow({
     async (key: CopyKey, text: string) => {
       const copied = await copyInfathText(text);
       if (copied) markCopied(key, text);
-      else showToast("تعذّر نسخ النص — حاول يدوياً", "error");
+      else showToast("تعذّر النسخ — حاول يدوياً", "error");
     },
     [markCopied, showToast],
   );
@@ -173,7 +258,7 @@ export function usePropertyDetailEnfathUploadWorkflow({
     async (key: CopyKey, text: string) => {
       const copied = await copyInfathText(text);
       if (copied) markCopied(key, text);
-      else showToast("تعذّر نسخ النص — حاول يدوياً", "error");
+      else showToast("تعذّر النسخ — حاول يدوياً", "error");
     },
     [markCopied, showToast],
   );

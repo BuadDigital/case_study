@@ -41,6 +41,7 @@ import {
   InspectorMovablesPhotosField,
 } from "./InspectorMovablesPhotosField";
 import { movablesPhotosResetPatch } from "./inspector-wizard-state";
+import { bourseSourceNotes } from "../../lib/app-data/inspector-bourse-prefill";
 import {
   InspectorOccupancyDescriptionField,
 } from "./InspectorOccupancyDescriptionField";
@@ -70,6 +71,7 @@ import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { RoleId } from "@platform/types";
 import type { updateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
 import type { visibleInspectorFeatureFields } from "../../lib/app-data/inspector-workspace-data";
+import { featurePhotoPatch } from "../../lib/app-data/inspector-workspace-model";
 
 export function InspectorFeaturesSection({
   activeStep,
@@ -101,6 +103,7 @@ export function InspectorFeaturesSection({
   role: RoleId;
 }) {
   const liveDraft = draft;
+  const sourceNotes = bourseSourceNotes(draft.featureValues, property);
   return (
   <InspectorCard
     title={mobile ? "خصائص العقار" : "نموذج التحقق الميداني — خصائص العقار"}
@@ -168,6 +171,11 @@ export function InspectorFeaturesSection({
                   {field.shared ? (
                     <InsBadge label="مشترك" tone="purple" />
                   ) : null}
+                  {sourceNotes[field.key] ? (
+                    <span className="ms-1.5 text-[10px] font-normal text-text-3">
+                      {sourceNotes[field.key]}
+                    </span>
+                  ) : null}
                   {valueMissing ? (
                     <span className="ms-1.5 text-[10px] font-bold text-danger">
                       مطلوب
@@ -211,6 +219,9 @@ export function InspectorFeaturesSection({
                     )}
                   >
                     <option value="">— اختر —</option>
+                    {value && !field.options.includes(value) ? (
+                      <option value={value}>{value}</option>
+                    ) : null}
                     {field.options.map((opt) => (
                       <option key={opt} value={opt}>
                         {opt}
@@ -249,12 +260,7 @@ export function InspectorFeaturesSection({
                         ? undefined
                         : () => {
                             clearInspectorPhotoDataUrl(draft.taskId, photoRef);
-                            persist({
-                              featurePhotoAttachments: {
-                                ...draft.featurePhotoAttachments,
-                                [field.key]: null,
-                              },
-                            });
+                            persist(featurePhotoPatch(field.key, null));
                           }
                     }
                     onUpload={async (file) => {
@@ -270,12 +276,7 @@ export function InspectorFeaturesSection({
                       if (!result.ok) {
                         throw new Error(result.error);
                       }
-                      persist({
-                        featurePhotoAttachments: {
-                          ...draft.featurePhotoAttachments,
-                          [field.key]: result.attachment,
-                        },
-                      });
+                      persist(featurePhotoPatch(field.key, result.attachment));
                       return true;
                     }}
                   />
@@ -390,6 +391,11 @@ export function InspectorFeaturesSection({
           >
             <MobileFieldLabel shared={field.shared}>
               {field.label}
+              {sourceNotes[field.key] ? (
+                <span className="ms-1.5 text-[11px] font-normal text-text-3">
+                  {sourceNotes[field.key]}
+                </span>
+              ) : null}
               {valueMissing ? (
                 <span className="ms-1 text-[11px] font-bold text-danger">
                   (مطلوب)
@@ -412,7 +418,11 @@ export function InspectorFeaturesSection({
                   onPick={setFeatureValue}
                 />
                 <MobileSearchSelect
-                  options={field.options}
+                  options={
+                    value && !field.options.includes(value)
+                      ? [value, ...field.options]
+                      : field.options
+                  }
                   value={value}
                   disabled={locked}
                   onChange={setFeatureValue}
@@ -444,12 +454,7 @@ export function InspectorFeaturesSection({
                               draft.taskId,
                               photoRef,
                             );
-                            persist({
-                              featurePhotoAttachments: {
-                                ...draft.featurePhotoAttachments,
-                                [field.key]: null,
-                              },
-                            });
+                            persist(featurePhotoPatch(field.key, null));
                           }
                     }
                   />
@@ -473,12 +478,7 @@ export function InspectorFeaturesSection({
                       if (!result.ok) {
                         throw new Error(result.error);
                       }
-                      persist({
-                        featurePhotoAttachments: {
-                          ...draft.featurePhotoAttachments,
-                          [field.key]: result.attachment,
-                        },
-                      });
+                      persist(featurePhotoPatch(field.key, result.attachment));
                     }}
                   />
                 )}

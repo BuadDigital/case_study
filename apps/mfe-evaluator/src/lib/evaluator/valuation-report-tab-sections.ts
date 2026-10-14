@@ -1,6 +1,6 @@
 /** Report field sheet for the appraiser — order matches `docs/valuation-report-form/valuation-report-v3.dc.html`. */
 
-export type ReportTabField = {
+type ReportTabField = {
   id: string;
   label: string;
   /** Catalog keys from `ValuationReportFieldCatalog`. First filled wins. */
@@ -10,12 +10,12 @@ export type ReportTabField = {
   ltr?: boolean;
 };
 
-export type ReportTabTableCell = {
+type ReportTabTableCell = {
   keys?: readonly string[];
   text?: string;
 };
 
-export type ReportTabTable = {
+type ReportTabTable = {
   columns: readonly string[];
   rows: readonly {
     label?: string;
@@ -37,9 +37,9 @@ export type ReportTabSection = {
 export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
   {
     n: "01",
-    title: "هوية المقيم المعتمد",
+    title: "هوية المقيّم المعتمد",
     fields: [
-      { id: "valuer-name", label: "اسم المقيم المعتمد", keys: ["valuer.name_ar"] },
+      { id: "valuer-name", label: "اسم المقيّم المعتمد", keys: ["valuer.name_ar"] },
       {
         id: "valuer-license",
         label: "رقم ترخيص مزاولة المهنة",
@@ -68,7 +68,7 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
       },
       {
         id: "report-user",
-        label: "اسم مستخدم تقرير التقييم",
+        label: "مستخدم التقرير",
         keys: ["client_requesting_entity"],
       },
       {
@@ -249,7 +249,7 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
   {
     n: "10",
     title: "مكونات العقار",
-    hint: "وصف الأدوار من الحصر الميداني — يظهر للمقيم ولا يُعاد إدخاله.",
+    hint: "وصف الأدوار من الحصر الميداني — يظهر للمقيّم ولا يُعاد إدخاله.",
     tables: [
       {
         columns: ["الدور", "الوصف والاستخدام", "المساحة (م²)"],
@@ -751,7 +751,7 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
           },
           {
             cells: [
-              { text: "أسلوب التكلفة — طريقة التكلفة (الإحلال)" },
+              { text: "أسلوب التكلفة — طريقة تكلفة الإحلال" },
               { keys: ["recon.weight_cost_pct"] },
               { keys: ["recon.contrib_cost"] },
             ],
@@ -805,12 +805,12 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
   {
     n: "26",
     title: "المشاركون في إعداد التقرير",
-    hint: "ثلاثة ثابتون من سجل المقيّمين + الرابع من توزيع المعاملات (المقيم المسند).",
+    hint: "ثلاثة ثابتون من سجل المقيّمين + الرابع من توزيع المعاملات (المقيّم المسند).",
     fields: [
       { id: "worker-1", label: "المشارك الثابت 1", span: 2 },
       { id: "worker-2", label: "المشارك الثابت 2", span: 2 },
       { id: "worker-3", label: "المشارك الثابت 3", span: 2 },
-      { id: "worker-4", label: "المقيم المسند", span: 2 },
+      { id: "worker-4", label: "المقيّم المسند", span: 2 },
     ],
   },
   {
@@ -1046,7 +1046,7 @@ export function firstFilledValue(
   return parts[0] ?? "";
 }
 
-export type ReportTabLayer = "settings" | "intake" | "appraiser";
+type ReportTabLayer = "settings" | "intake" | "appraiser";
 
 const SETTINGS_SECTION_NS = new Set([
   "01",

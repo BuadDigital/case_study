@@ -24,7 +24,11 @@ import {
 } from "../../lib/app-data/po-intake-data";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
 import { caseStudyTaskForProperty } from "../../lib/app-data/tasks";
-import { useWorkflowTasksQuery } from "../../query/case-study-queries";
+import {
+  usePropertyListItemsQuery,
+  useWorkflowTasksQuery,
+} from "../../query/case-study-queries";
+import { PropertyListRowStatuses } from "@platform/api-client";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { derivePropertyUiStatus } from "../../lib/app-data/property-detail-ui-status";
 import { useFavoriteProperties } from "../../lib/app-data/favorite-properties";
@@ -214,6 +218,14 @@ export function PropertyDetailHero({
   const compact = useStickyCompact(heroRef, stickyCompact);
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const { data: failures = [] } = useFailuresQuery();
+  // The handover stamp reaches the browser as the server's property-row status.
+  const { data: propertyItems } = usePropertyListItemsQuery();
+  const handedOverToEnfaz =
+    propertyItems?.some(
+      (item) =>
+        item.propertyId === property.id &&
+        item.row.status === PropertyListRowStatuses.Done,
+    ) ?? false;
   const { isFavorite, toggleFavorite } = useFavoriteProperties();
   const titleDeed = deedTitle(property);
   const favorite = isFavorite(record.poNumber, property.id);
@@ -229,8 +241,9 @@ export function PropertyDetailHero({
         property,
         tasks,
         failures,
+        handedOverToEnfaz,
       }),
-    [record.poNumber, property, tasks, failures],
+    [record.poNumber, property, tasks, failures, handedOverToEnfaz],
   );
 
   const completion = useMemo(() => {

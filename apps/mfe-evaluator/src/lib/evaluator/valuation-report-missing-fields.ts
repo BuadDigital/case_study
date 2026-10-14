@@ -12,7 +12,13 @@ import {
   type ValuationReportLiveFill,
 } from "./valuation-report-fill-model";
 
-export type ReportFieldSource = "intake" | "inspector" | "survey" | "appraiser" | "org";
+type ReportFieldSource =
+  | "intake"
+  | "specialist"
+  | "inspector"
+  | "survey"
+  | "appraiser"
+  | "org";
 /** Evaluator window tabs that complete the appraiser's own report fields. */
 export type ReportAppraiserTab = "basic" | "market" | "cost" | "final" | "review";
 /** Organization-settings tabs that hold report values. */
@@ -20,13 +26,16 @@ export type ReportSettingsSection = "company" | "evaluator" | "report";
 
 export const REPORT_FIELD_SOURCES: Record<ReportFieldSource, { label: string }> = {
   intake: { label: "البيانات الأولية" },
+  // Report text the case specialist writes («مكونات العقار»); notified through the work
+  // order's specialist, the same recipient the server resolves for the intake source.
+  specialist: { label: "أخصائي دراسة الحالة" },
   inspector: { label: "المعاين الميداني" },
   survey: { label: "المكتب الهندسي" },
   appraiser: { label: "المقيّم" },
   org: { label: "إعدادات المنشأة" },
 };
 
-export const REPORT_APPRAISER_TAB_LABELS: Record<ReportAppraiserTab, string> = {
+const REPORT_APPRAISER_TAB_LABELS: Record<ReportAppraiserTab, string> = {
   basic: "البيانات الأساسية",
   market: "طريقة المقارنة",
   cost: "طريقة المقاول",
@@ -41,6 +50,7 @@ type FieldOrigin = {
 };
 
 const INTAKE: FieldOrigin = { source: "intake" };
+const SPECIALIST: FieldOrigin = { source: "specialist" };
 const INSPECTOR: FieldOrigin = { source: "inspector" };
 const SURVEY: FieldOrigin = { source: "survey" };
 const BASIC: FieldOrigin = { source: "appraiser", tab: "basic" };
@@ -81,7 +91,8 @@ const KEYED_FIELDS: Record<string, Record<string, FieldOrigin>> = {
   "6": {
     "نوع العقار": INSPECTOR,
     "حالة العقار": INSPECTOR,
-    "وصف العقار": INSPECTOR,
+    // «مكونات العقار» — since 2026-09-27 the specialist's text, not the inspector's.
+    "وصف العقار": SPECIALIST,
     "نوع الملكية": INTAKE,
     "هل يوجد منقولات": INSPECTOR,
     "وصف المنقولات": INSPECTOR,
@@ -214,7 +225,7 @@ function isEmptyValue(cell: Element): boolean {
   return !t || t === "—" || t === "-";
 }
 
-export function missingCellTitle(cell: ReportMissingCell): string {
+function missingCellTitle(cell: ReportMissingCell): string {
   if (cell.source === "appraiser" && cell.tab) {
     return `ناقص — اضغط للانتقال إلى «${REPORT_APPRAISER_TAB_LABELS[cell.tab]}»`;
   }
@@ -362,7 +373,7 @@ function markRecon(sec: Element, mark: MarkCell) {
 
 function markParticipants(sec: Element, mark: MarkCell) {
   const heading = [...sec.querySelectorAll("h2")].find((h) =>
-    text(h).includes("إعتماد"),
+    /[إا]عتماد/.test(text(h)),
   );
   const approval =
     heading?.nextElementSibling?.tagName === "TABLE"
@@ -506,7 +517,7 @@ export function readMissingCell(target: EventTarget | null): {
 }
 
 /** Marked cells grouped by source + label, first cell as target. */
-export function reportMissingFieldsFromRoot(root: ParentNode): ReportMissingField[] {
+function reportMissingFieldsFromRoot(root: ParentNode): ReportMissingField[] {
   const byKey = new Map<string, ReportMissingField>();
   root.querySelectorAll(MISSING_SELECTOR).forEach((el) => {
     const read = readMissingCell(el);

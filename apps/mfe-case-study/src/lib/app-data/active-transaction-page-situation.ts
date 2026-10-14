@@ -85,18 +85,18 @@ function partyCards(submittedLabel = "مُرسَلة"): PageSituationCardDef[] {
 function appraisalCards(): PageSituationCardDef[] {
   return [
     {
-      key: "ready",
-      label: "جاهزة للتقييم",
-      sub: "معاينة مكتملة — باشر التقييم",
-      tone: "blue",
-      icon: "play",
+      key: "drafting",
+      label: "قيد التقييم",
+      sub: "بانتظار إصدار الأخصائي لتقرير الدراسة",
+      tone: "warn",
+      icon: "clipboard",
     },
     {
-      key: "gated",
-      label: "تراقب تقدم الأطراف",
-      sub: "بانتظار اكتمال معاينة العقار",
-      tone: "warn",
-      icon: "clock",
+      key: "ready",
+      label: "جاهزة للتسليم",
+      sub: "صدر تقرير الدراسة — سلّم التقييم",
+      tone: "blue",
+      icon: "play",
     },
     {
       key: "submitted",
@@ -132,7 +132,7 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
         sub: "بيانات البورصة",
         tone: "green",
       },
-      { key: "obstructed", label: "تعذر", sub: "قيد المعالجة", tone: "red" },
+      { key: "obstructed", label: "تعذّر", sub: "قيد المعالجة", tone: "red" },
     ],
     "active-distribution": workflowCards("بانتظار التوزيع"),
     "active-case-study": workflowCards("دراسات مفتوحة"),
@@ -258,7 +258,7 @@ function openWorkflowTasks(tasks: WorkflowTask[]): WorkflowTask[] {
   return tasks.filter((t) => t.status === "open" || t.status === "blocked");
 }
 
-export function computeWorkflowPageSituation(
+function computeWorkflowPageSituation(
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
   now = new Date(),
@@ -293,7 +293,7 @@ export function computeWorkflowPageSituation(
   };
 }
 
-export function computePartySubmissionSituation(
+function computePartySubmissionSituation(
   tasks: WorkflowTask[],
   options?: {
     inspectionWorkspaces?: Map<string, FieldInspectionWorkspaceListItemDto>;
@@ -360,7 +360,7 @@ function classifyPartyTask(
   return "in_progress";
 }
 
-export function computeBourseSituation(input: {
+function computeBourseSituation(input: {
   pending: PendingBoursePropertyDto[];
   tasks: WorkflowTask[];
   poByNumber: Map<string, PoIntakeRecord>;
@@ -516,7 +516,7 @@ export function computeUnbilledFeeCount(rows: InspectorFeeRowDto[]): number {
   ).length;
 }
 
-export function filterTasksForPage(
+function filterTasksForPage(
   pageId: PageId,
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
@@ -661,9 +661,12 @@ export function computePageSituationValues(
 function computeAppraisalSituation(
   appraisalTasks: WorkflowTask[],
   allTasks: WorkflowTask[],
-): Pick<PageSituationValues, "ready" | "gated" | "submitted" | "reopened"> {
+): Pick<
+  PageSituationValues,
+  "drafting" | "ready" | "submitted" | "reopened"
+> {
+  let drafting = 0;
   let ready = 0;
-  let gated = 0;
   let submitted = 0;
   let reopened = 0;
 
@@ -673,7 +676,11 @@ function computeAppraisalSituation(
       | null
       | undefined;
     const st = sub?.status ?? "draft";
-    if (st === "submitted" || task.status === "completed") {
+    if (
+      st === "submitted" ||
+      task.appraisalPackageStatus === "submitted" ||
+      task.status === "completed"
+    ) {
       submitted += 1;
       continue;
     }
@@ -682,9 +689,10 @@ function computeAppraisalSituation(
       continue;
     }
     const group = appraiserQueueStatusGroup(task, allTasks);
+    // A not-yet-inspected appraisal is just «قيد التقييم» — no start gate.
     if (group === "ready") ready += 1;
-    else gated += 1;
+    else drafting += 1;
   }
 
-  return { ready, gated, submitted, reopened };
+  return { drafting, ready, submitted, reopened };
 }

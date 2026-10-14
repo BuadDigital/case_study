@@ -18,7 +18,7 @@ const IMAGE_EXTENSIONS = /\.(jpe?g|png|webp|gif)$/i;
 export const VALUED_DOCUMENT_FILE_ACCEPT =
   "application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp";
 
-export type ValuedDocumentUploadResult = { ok: true } | { ok: false; error: string };
+type ValuedDocumentUploadResult = { ok: true } | { ok: false; error: string };
 
 export function validateValuedDocumentUpload(
   name: string,

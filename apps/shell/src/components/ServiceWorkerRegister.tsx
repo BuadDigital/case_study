@@ -1,5 +1,6 @@
 "use client";
 
+import { alertAction } from "@platform/ui-kit";
 import { useEffect, useRef, useState } from "react";
 import { lastWarmedOfflinePlan } from "@/lib/offline-page-cache";
 
@@ -115,9 +116,10 @@ export function ServiceWorkerRegister() {
           className="min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-white"
           onClick={() => {
             if (readPendingCount() > 0) {
-              window.alert(
-                "هناك عناصر لم تُرفع بعد. أبقِ النظام مفتوحاً حتى تكتمل المزامنة قبل التحديث.",
-              );
+              void alertAction({
+                title: "تحديث التطبيق",
+                message: "هناك عناصر لم تُرفع بعد. أبقِ النظام مفتوحاً حتى تكتمل المزامنة قبل التحديث.",
+              });
               return;
             }
             const waiting = waitingRef.current;

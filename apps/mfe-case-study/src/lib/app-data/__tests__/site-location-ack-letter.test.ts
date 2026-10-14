@@ -74,6 +74,7 @@ describe("site location ack letter", () => {
     expect(letter.coords).toBe("21.5433, 39.1728");
     expect(letter.city).toBe("جدة");
     expect(letter.dateGreg).toContain("2026");
+    expect(letter.dateHijri).toBe("١٤٤٨/٤/٢ هـ");
   });
 
   it("renders branded HTML with acknowledgment copy", () => {

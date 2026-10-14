@@ -1,10 +1,10 @@
 import type { EnfazTrackingRowDto } from "@platform/api-client";
-import { fmt } from "@platform/app-shared/format/number";
 import {
   groupRowsByPo,
   revenueAmountsFromRow,
   revenueInPeriod,
   revenuePeriodDateIso,
+  revenueTotalsForRows,
 } from "./finance-revenue-stages";
 
 /**
@@ -12,12 +12,7 @@ import {
  * filtering, grouping, sorting, sums and the cell labels. No React, no DOM.
  */
 
-export type RevenuePeriod = "all" | "30" | "90";
-
-// Whole amounts without decimals; fractional with two — differs from shared fmtSar which always fixes decimals.
-export function fmtSar(n: number): string {
-  return `${fmt(n, n % 1 === 0 ? 0 : 2)} ر.س`;
-}
+type RevenuePeriod = "all" | "30" | "90";
 
 export function filterRows(
   rows: EnfazTrackingRowDto[],
@@ -76,19 +71,12 @@ export function knownFeesTotal(rows: EnfazTrackingRowDto[]): {
   feesSum: number;
   feesKnown: boolean;
 } {
-  let feesSum = 0;
-  let feesKnown = false;
-  for (const row of rows) {
-    const total = revenueAmountsFromRow(row).total;
-    if (total > 0) {
-      feesSum += total;
-      feesKnown = true;
-    }
-  }
-  return { feesSum, feesKnown };
+  const feesKnown = rows.some((row) => revenueAmountsFromRow(row).total > 0);
+  // Rows with no fees add nothing; VAT is rounded once per work order (as invoiced).
+  return { feesSum: feesKnown ? revenueTotalsForRows(rows).total : 0, feesKnown };
 }
 
-export type RevenueGroupSums = {
+type RevenueGroupSums = {
   base: number;
   vat: number;
   key: number;
@@ -97,18 +85,12 @@ export type RevenueGroupSums = {
 
 /** Column totals for a collapsible group (billing assistant / collection). */
 export function sumRevenueAmounts(rows: EnfazTrackingRowDto[]): RevenueGroupSums {
-  const sums: RevenueGroupSums = { base: 0, vat: 0, key: 0, gross: 0 };
-  for (const row of rows) {
-    const amounts = revenueAmountsFromRow(row);
-    sums.base += amounts.taxable;
-    sums.vat += amounts.vat;
-    sums.key += amounts.key;
-    sums.gross += amounts.total;
-  }
-  return sums;
+  // VAT on the group's total per work order, as the invoice charges it — not per line.
+  const t = revenueTotalsForRows(rows);
+  return { base: t.taxable, vat: t.vat, key: t.key, gross: t.total };
 }
 
-export type StudyRowStatus = { label: string; tone: "warning" | "default" };
+type StudyRowStatus = { label: string; tone: "warning" | "default" };
 
 /** Status pill under the fees of an under-study row. */
 export function studyRowStatus(row: EnfazTrackingRowDto): StudyRowStatus {

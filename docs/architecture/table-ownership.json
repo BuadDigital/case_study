@@ -35,11 +35,12 @@
       "extractedOn": "2026-07-30",
       "owner": "attachments",
       "schemas": [
-        "attachments"
+        "attachments",
+        "messaging"
       ],
       "migrations": "backend/contexts/attachments/RealEstateEval.Attachments.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "attachments",
-      "note": "Phase 1 extraction order, step 1. A8 physical move (2026-08-27): the DbContext, migrations, design-time factory, and persistence registration live in the Attachments context library; the shared model mapping stays global beside the frozen legacy context until it is archived."
+      "note": "Phase 1 extraction order, step 1. A8 physical move (2026-08-27): the DbContext, migrations, design-time factory, and persistence registration live in the Attachments context library. It also maps its owner-local messaging.CommandIdempotencyRecords table."
     },
     {
       "name": "PlatformDbContext",
@@ -73,11 +74,12 @@
       "extractedOn": "2026-07-30",
       "owner": "identity",
       "schemas": [
-        "identity"
+        "identity",
+        "messaging"
       ],
       "migrations": "backend/contexts/identity/RealEstateEval.Identity.Infrastructure/Data/Migrations",
       "migrationsHistorySchema": "identity",
-      "note": "Phase 1 extraction order, step 2. ASP.NET Identity stores and session/profile tables. Non-Identity APIs resolve permissions from JWT claims and no longer register Identity stores."
+      "note": "Phase 1 extraction order, step 2. ASP.NET Identity stores and session/profile tables, plus owner-local messaging.CommandIdempotencyRecords. Non-Identity APIs resolve permissions from JWT claims and no longer register Identity stores."
     },
     {
       "name": "FailuresDbContext",
@@ -137,7 +139,7 @@
       ],
       "migrations": "backend/RealEstateEval.Infrastructure/Data/Contexts/Messaging/Migrations",
       "migrationsHistorySchema": "messaging",
-      "note": "Phase 1 extraction order, step 5. Platform-owned notifications/push (D3) and migration stream for messaging tables. Outbox/inbox also mapped so Platform writes share one SaveChanges. After the Phase 4 cutover Case Study drains the dedicated messaging database via MessagingDbContext; Valuation drains its dedicated outbox from the valuation database (D5)."
+      "note": "Phase 1 extraction order, step 5. Platform-owned notifications/push (D3), migration stream, and dispatcher for the dedicated messaging database. Outbox/inbox also map here so Platform writes share one SaveChanges. Valuation drains its separate dedicated outbox from the valuation database (D5)."
     }
   ],
   "decisions": [
@@ -207,8 +209,8 @@
       "status": "approved",
       "decidedOn": "2026-07-30",
       "outcome": "per-producer outbox + per-consumer inbox",
-      "rationale": "Each producing context maps messaging.OutboxMessages and owns only the rows it inserts, so a business write and its event stay in one SaveChanges. Each consuming context maps messaging.ProcessedIntegrationEvents and owns the rows carrying its own Consumer value. The single Case Study dispatcher stays until the messaging slice; splitting dispatch is Phase 1 extraction step 5, and per-service claim isolation is a Phase 4 prerequisite.",
-      "note": "Consequence: messaging.OutboxMessages and messaging.ProcessedIntegrationEvents are the only tables allowed in more than one context. Their ownershipModel records that."
+      "rationale": "Each producing context maps messaging.OutboxMessages and owns only the rows it inserts, so a business write and its event stay in one SaveChanges. Each consuming context maps messaging.ProcessedIntegrationEvents and owns the rows carrying its own Consumer value. Platform owns and drains the dedicated messaging database; Valuation drains its separate local outbox. Concurrent replicas claim disjoint rows through leased FOR UPDATE SKIP LOCKED batches.",
+      "note": "Consequence: messaging.OutboxMessages, messaging.ProcessedIntegrationEvents, and owner-local messaging.CommandIdempotencyRecords may be mapped by more than one context. Their ownershipModel records that."
     },
     {
       "id": "D6",
@@ -372,6 +374,21 @@
       "transactionGroup": "identity.session",
       "decision": null,
       "note": "Written by AuthSessionService on the Identity host only."
+    },
+    {
+      "table": "LoginOtpCodes",
+      "schema": "identity",
+      "dbSet": "LoginOtpCodes",
+      "entity": "LoginOtpCode",
+      "owner": "identity",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "IdentityDbContext"
+      ],
+      "transactionGroup": "identity.session",
+      "decision": null,
+      "note": "SMS login codes (salted hash only). Written by LoginOtpService on the Identity host only."
     },
     {
       "table": "HrEmployeeProfiles",
@@ -539,10 +556,10 @@
       "note": "Highest-fan-in table: read or written by failures, operations, financial reporting, inspector fees, notifications, and the valuation event handler. Write path CaseStudyDbContext (A4)."
     },
     {
-      "table": "CaseStudyForms",
+      "table": "CaseStudyReports",
       "schema": "case_study",
-      "dbSet": "CaseStudyForms",
-      "entity": "CaseStudyForm",
+      "dbSet": "CaseStudyReports",
+      "entity": "CaseStudyReport",
       "owner": "case-study",
       "status": "approved",
       "ownershipModel": "single-owner",
@@ -719,21 +736,6 @@
       "note": null
     },
     {
-      "table": "CourtAuditLogs",
-      "schema": "platform",
-      "dbSet": "CourtAuditLogs",
-      "entity": "CourtAuditLog",
-      "owner": "platform",
-      "status": "approved",
-      "ownershipModel": "single-owner",
-      "contexts": [
-        "PlatformDbContext"
-      ],
-      "transactionGroup": "platform.courts",
-      "decision": null,
-      "note": null
-    },
-    {
       "table": "Regions",
       "schema": "platform",
       "dbSet": "Regions",
@@ -807,21 +809,6 @@
       "transactionGroup": "platform.config",
       "decision": null,
       "note": "Print-label dictionary for attachment types; consumed by attachments and valuation report generation."
-    },
-    {
-      "table": "DifferenceFactorCatalogConfigs",
-      "schema": "platform",
-      "dbSet": "DifferenceFactorCatalogConfigs",
-      "entity": "DifferenceFactorCatalogConfig",
-      "owner": "platform",
-      "status": "approved",
-      "ownershipModel": "single-owner",
-      "contexts": [
-        "PlatformDbContext"
-      ],
-      "transactionGroup": "platform.config",
-      "decision": null,
-      "note": "Valuation comparable adjustment factor catalog; consumed by valuation services."
     },
     {
       "table": "CaseStudyInfoRolesConfigs",
@@ -910,21 +897,6 @@
         "FailuresDbContext"
       ],
       "transactionGroup": "failures.catalog",
-      "decision": null,
-      "note": null
-    },
-    {
-      "table": "SurveyOffices",
-      "schema": "operations",
-      "dbSet": "SurveyOffices",
-      "entity": "SurveyOffice",
-      "owner": "operations",
-      "status": "approved",
-      "ownershipModel": "single-owner",
-      "contexts": [
-        "OperationsDbContext"
-      ],
-      "transactionGroup": "operations.reference",
       "decision": null,
       "note": null
     },
@@ -1152,6 +1124,21 @@
       "transactionGroup": "valuation.requests",
       "decision": null,
       "note": "ق-6: two-phase issuance — frozen report snapshot, deposit PDF, deposit certificate + code, final PDF."
+    },
+    {
+      "table": "ValuationReportDrafts",
+      "schema": "valuation",
+      "dbSet": "ValuationReportDrafts",
+      "entity": "ValuationReportDraft",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "The valuation-report draft per cycle: the specialist's report choices, send / approve state, and the approved printed report snapshot."
     },
     {
       "table": "ValuationReportPdfs",
@@ -1527,7 +1514,7 @@
       ],
       "transactionGroup": "messaging.outbox",
       "decision": "D5",
-      "note": "Each producing context owns the rows it inserts (D5). Platform uses MessagingDbContext; Case Study residual uses MessagingDbContext on the dedicated messaging database; Valuation uses ValuationDbContext on the dedicated valuation database and hosts its own dispatcher after the Phase 4 cutover."
+      "note": "Each producing context owns the rows it inserts (D5). Platform drains MessagingDbContext on the dedicated messaging database, including rows produced there by Case Study; Valuation uses ValuationDbContext on the dedicated valuation database and hosts its own dispatcher after the Phase 4 cutover."
     },
     {
       "table": "ProcessedIntegrationEvents",
@@ -1542,7 +1529,7 @@
       ],
       "transactionGroup": "messaging.inbox",
       "decision": "D5",
-      "note": "Per-consumer (D5). Platform prefers MessagingDbContext when registered; Case Study residual uses ApplicationDbContext."
+      "note": "Per-consumer (D5). Platform and Case Study consumers use MessagingDbContext; the Consumer key partitions their rows."
     },
     {
       "table": "CommandIdempotencyRecords",
@@ -1553,11 +1540,14 @@
       "status": "approved",
       "ownershipModel": "per-producer",
       "contexts": [
-        "MessagingDbContext"
+        "MessagingDbContext",
+        "IdentityDbContext",
+        "ValuationDbContext",
+        "AttachmentsDbContext"
       ],
       "transactionGroup": "messaging.idempotency",
       "decision": "D5",
-      "note": "ADR 0008 command idempotency. Shared messaging infrastructure on the same footing as the outbox: each producing service owns only the records it writes and inserts them in the same SaveChanges as the command they de-duplicate. Mapped by MessagingDbContext today; after the Phase 4 cutover each service keeps its own records on its own messaging database."
+      "note": "ADR 0008 command idempotency. Case Study, Platform, Financial, Operations, and Failures use the dedicated Messaging database. Identity, Valuation, and Attachments keep durable records in their owner databases so retries survive restarts and replicas without adding a cross-database dependency."
     },
     {
       "table": "UserNotifications",

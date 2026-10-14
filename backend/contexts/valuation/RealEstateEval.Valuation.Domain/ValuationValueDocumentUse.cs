@@ -153,17 +153,6 @@ public static class ValueDocumentUseRules
         return errors;
     }
 
-    /// <summary>
-    /// Indicators whose approach has since been enabled internally — the report would then carry
-    /// the same approach twice, so issuance stops until the appraiser resolves it.
-    /// </summary>
-    public static IReadOnlyList<ValuationValueDocumentUse> ConflictingIndicators(
-        IEnumerable<ValuationValueDocumentUse> uses,
-        IReadOnlyCollection<string> internalApproachKinds) =>
-        uses.Where(u => IsIndicator(u)
-                && internalApproachKinds.Contains(u.ApproachKey ?? "", StringComparer.OrdinalIgnoreCase))
-            .ToList();
-
     private static string NormalizeMethod(string method) =>
         string.Join(' ', method.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 }

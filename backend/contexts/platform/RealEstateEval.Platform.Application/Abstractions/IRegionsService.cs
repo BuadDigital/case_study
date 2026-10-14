@@ -10,8 +10,6 @@ public interface IRegionsService
     Task<IReadOnlyList<SelectableRegionDto>> ListSelectableRegionsAsync(
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<SelectableCityDto>> ListAllSelectableCitiesAsync(
-        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<SelectableCityDto>> SearchCitiesAsync(
         Guid regionId,

@@ -54,7 +54,7 @@ function formatWhen(raw: string | null | undefined): string {
   });
 }
 
-export type EngSurveyPendingAcceptRow = {
+type EngSurveyPendingAcceptRow = {
   taskId: string;
   poNumber: string;
   deedLabel: string;

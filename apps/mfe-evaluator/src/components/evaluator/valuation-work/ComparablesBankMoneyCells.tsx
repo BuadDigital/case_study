@@ -96,7 +96,9 @@ export function ComparablesBankMoneyCells({
     timer.current = setTimeout(flush, COMMIT_MS);
   }
 
-  useEffect(() => () => clearTimer(), []);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => () => flushRef.current(), []);
 
   return (
     <>

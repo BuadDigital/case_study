@@ -64,6 +64,7 @@ export function EligibleTable({
                     <button
                       type="button"
                       className={cn(opsBtnPrimary, "px-3 py-2 text-[11.5px]")}
+                      data-po-intent={row.poNumber}
                       onClick={() => onOpenPo(row.poNumber)}
                     >
                       مطابقة الأتعاب
@@ -73,6 +74,7 @@ export function EligibleTable({
                     type="button"
                     className={cn(opsBtnGhost, "h-auto px-[11px] py-2 text-[11.5px]")}
                     title="تحديث حالة المعاملة كما هي في منصة إنفاذ"
+                    data-po-intent={row.poNumber}
                     onClick={() => onOpenPo(row.poNumber)}
                   >
                     تحديث حالة إنفاذ

@@ -12,12 +12,11 @@ import {
   type DistributionAssignee,
 } from "../distribution-assignees";
 
-export type DistributionPartyAccount = {
+type DistributionPartyAccount = {
   assigneeId: string;
   name: string;
   subtitle: string;
   roleId: RoleId;
-  password: string;
   roleOptionGroup: string;
   roleOptionLabel: string;
   enabled?: boolean;
@@ -69,7 +68,6 @@ function staffToPartyAccount(
     name: staff.name,
     subtitle: staff.role,
     roleId,
-    password: "",
     roleOptionGroup: "",
     roleOptionLabel: staff.name,
   };

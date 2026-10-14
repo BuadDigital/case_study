@@ -31,22 +31,6 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
         _time = time ?? TimeProvider.System;
     }
 
-    public async Task<IReadOnlyList<DevLoginUserDto>> ListDevLoginUsersAsync(
-        CancellationToken cancellationToken)
-    {
-        return await (
-            from user in _db.Users.AsNoTracking()
-            join profile in _db.UserProfiles.AsNoTracking() on user.Id equals profile.UserId
-            where profile.Status == UserStatus.Active && user.UserName != null
-            orderby user.UserName == "sliman" ? 0 : 1, user.DisplayName
-            select new DevLoginUserDto
-            {
-                Username = user.UserName!,
-                Label = string.IsNullOrWhiteSpace(profile.JobTitle)
-                    ? user.DisplayName
-                    : $"{user.DisplayName} — {profile.JobTitle}",
-            }).ToListAsync(cancellationToken);
-    }
 
     public async Task<UserInfoDto?> GetIdentityUserAsync(
         string userId,
@@ -129,26 +113,6 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
         return RegistrationMapper.ToListItem(profile.User, profile, roles);
     }
 
-    public async Task<IReadOnlyList<StaffRoleMembership>> ListStaffRoleMembershipsAsync(
-        CancellationToken cancellationToken)
-    {
-        var rows = await _db.UserProfiles
-            .AsNoTracking()
-            .Include(p => p.User)
-            .ToListAsync(cancellationToken);
-
-        var rolesByUser = await RolesByUserAsync(
-            rows.Select(p => p.UserId).ToList(),
-            cancellationToken);
-
-        return rows
-            .Select(p => new StaffRoleMembership(
-                p.UserId,
-                p.User.DisplayName,
-                p.JobTitle,
-                rolesByUser.GetValueOrDefault(p.UserId, [])))
-            .ToList();
-    }
 
     public async Task<IReadOnlyList<string>> ListProfiledUserIdsAsync(
         CancellationToken cancellationToken) =>

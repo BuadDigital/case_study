@@ -8,23 +8,29 @@ import type {
   ValuationCostLineDto,
 } from "@platform/api-client";
 import { createClientId } from "@platform/app-shared/lib/create-client-id";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 
 import {
   COST_ITEM_OPTIONS,
   COST_UNIT_OPTIONS,
   INDIRECT_COST_ITEMS,
+  buildRatioApplies,
   costGroupOf,
   costLineComputed,
 } from "./cost-line-math";
 
 /** Per-item indirect draft: percentages stay strings so typing is lossless. */
-export type IndirectDraft = Record<string, { pct: string; rationale: string }>;
+type IndirectDraft = Record<string, { pct: string; rationale: string }>;
 
 export type CostApproachAlert = {
   kind: "error" | "warn" | "ok";
   title: string;
   body: string;
+  /** Control the appraiser has to fix — the alert is a link to it. */
+  targetId?: string;
+  /** Used when the control is not rendered (a collapsed row, a hidden section). */
+  fallbackTargetId?: string;
 };
 
 /** Every free-text/number field the cost screen edits, as typed strings. */
@@ -48,13 +54,13 @@ export type CostApproachFields = {
   costAnalysisNotes: string;
 };
 
-/** Arabic decimal comma is accepted everywhere a number is typed. */
+/** Typed number via the shared locale rule; blank or junk → 0. */
 export function costNum(raw: string): number {
-  return Number(String(raw).replace(",", ".")) || 0;
+  return parseLocaleNumber(raw) || 0;
 }
 
 /** Interactive-form starter values (التقييم بأسلوبي السوق والتكلفة). */
-export const DEFAULT_INDIRECT_PCTS: Record<string, string> = {
+const DEFAULT_INDIRECT_PCTS: Record<string, string> = {
   design_supervision: "3",
   licensing_fees: "3",
   project_management: "3",
@@ -63,12 +69,12 @@ export const DEFAULT_INDIRECT_PCTS: Record<string, string> = {
   developer_profit: "15",
 };
 
-export const DEFAULT_FINANCING_RATE = "5";
-export const DEFAULT_FINANCING_MONTHS = "18";
-export const DEFAULT_ACTUAL_AGE_YEARS = "10";
-export const DEFAULT_ECONOMIC_AGE_YEARS = "40";
+const DEFAULT_FINANCING_RATE = "5";
+const DEFAULT_FINANCING_MONTHS = "18";
+const DEFAULT_ACTUAL_AGE_YEARS = "10";
+const DEFAULT_ECONOMIC_AGE_YEARS = "40";
 
-export function defaultIndirectDraft(): IndirectDraft {
+function defaultIndirectDraft(): IndirectDraft {
   const draft: IndirectDraft = {};
   for (const item of INDIRECT_COST_ITEMS) {
     draft[item.key] = {
@@ -206,10 +212,13 @@ export function costLinesFromInventory(
     itemLabelAr: "",
     unit,
     unitLabelAr: COST_UNIT_OPTIONS.find((u) => u.key === unit)?.label ?? "م²",
-    buildRatioPct: l.buildRatioPct ?? null,
+    // The built-up ratio only counts on m² area lines — never seed it elsewhere.
+    buildRatioPct: buildRatioApplies({ itemKey, structureKind: l.structureKind || "other", unit })
+      ? (l.buildRatioPct ?? null)
+      : null,
     repeatedFloorCount: l.repeatedFloorCount ?? null,
     label: l.label,
-    areaSqm: Number(String(l.areaSqm ?? "0").replace(",", ".")) || 0,
+    areaSqm: parseLocaleNumber(l.areaSqm) || 0,
     unitCostSar: 0,
     lineTotal: 0,
     rationale: "",
@@ -217,6 +226,142 @@ export function costLinesFromInventory(
     sortOrder: i,
     };
   });
+}
+
+/* ─── Early seeds: the cost table follows the specialist's components table ─── */
+
+function inventoryAreaSqm(l: CostSeedInventoryLine): number {
+  return parseLocaleNumber(l.areaSqm) || 0;
+}
+
+const AREA_EPSILON = 0.005;
+
+type CostInventoryAreaChange = {
+  lineId: string;
+  inventoryLineId: string;
+  label: string;
+  fromSqm: number;
+  toSqm: number;
+};
+
+export type CostInventoryDrift = {
+  /** Inventory rows (with an id) no cost line points at yet. */
+  added: CostSeedInventoryLine[];
+  /** Cost lines whose inventory row is gone — reported only, never removed automatically. */
+  removed: ValuationCostLineDto[];
+  /** Linked lines whose quantity differs from the inventory row. */
+  changedArea: CostInventoryAreaChange[];
+  hasDrift: boolean;
+};
+
+/**
+ * How the cost draft has drifted from the specialist's components table. Only lines linked by
+ * `sourceInventoryLineId` can be compared; inventory rows without an id and cost lines the
+ * appraiser added himself (no link) never count as drift.
+ */
+export function costInventoryDrift(
+  lines: readonly ValuationCostLineDto[],
+  inventoryLines: readonly CostSeedInventoryLine[],
+): CostInventoryDrift {
+  const inventoryById = new Map<string, CostSeedInventoryLine>();
+  for (const inv of inventoryLines) {
+    const id = inv.id?.trim();
+    if (id) inventoryById.set(id, inv);
+  }
+  const linked = new Set<string>();
+  const removed: ValuationCostLineDto[] = [];
+  const changedArea: CostInventoryAreaChange[] = [];
+  for (const line of lines) {
+    const sourceId = line.sourceInventoryLineId?.trim();
+    if (!sourceId) continue;
+    linked.add(sourceId);
+    const inv = inventoryById.get(sourceId);
+    if (!inv) {
+      removed.push(line);
+      continue;
+    }
+    const toSqm = inventoryAreaSqm(inv);
+    if (Math.abs(toSqm - (line.areaSqm ?? 0)) > AREA_EPSILON) {
+      changedArea.push({
+        lineId: line.id,
+        inventoryLineId: sourceId,
+        label: line.label || inv.label,
+        fromSqm: line.areaSqm ?? 0,
+        toSqm,
+      });
+    }
+  }
+  const added = [...inventoryById.values()].filter(
+    (inv) => !linked.has(inv.id!.trim()),
+  );
+  return {
+    added,
+    removed,
+    changedArea,
+    hasDrift: added.length + removed.length + changedArea.length > 0,
+  };
+}
+
+/**
+ * A draft nobody has worked on: lines exist, every one came from the inventory, and no unit cost,
+ * rationale or exclusion was entered. Safe to rebuild from the inventory without asking.
+ */
+export function isUntouchedCostSeed(
+  lines: readonly ValuationCostLineDto[],
+): boolean {
+  return (
+    lines.length > 0 &&
+    lines.every(
+      (l) =>
+        Boolean(l.sourceInventoryLineId?.trim()) &&
+        (l.unitCostSar ?? 0) === 0 &&
+        !(l.rationale ?? "").trim() &&
+        l.isIncluded !== false,
+    )
+  );
+}
+
+/** Rebuilds an untouched seed from the current inventory, keeping the ids of lines that still match. */
+export function reseedUntouchedCostLines(
+  lines: readonly ValuationCostLineDto[],
+  inventoryLines: readonly CostSeedInventoryLine[],
+): ValuationCostLineDto[] {
+  const idBySource = new Map<string, string>();
+  for (const l of lines) {
+    const source = l.sourceInventoryLineId?.trim();
+    if (source) idBySource.set(source, l.id);
+  }
+  return costLinesFromInventory([...inventoryLines]).map((l) => {
+    const keep = l.sourceInventoryLineId
+      ? idBySource.get(l.sourceInventoryLineId.trim())
+      : undefined;
+    return keep ? { ...l, id: keep } : l;
+  });
+}
+
+/** Appends the inventory rows that have no cost line yet — nothing already entered is touched. */
+export function appendNewInventoryLines(
+  lines: readonly ValuationCostLineDto[],
+  added: readonly CostSeedInventoryLine[],
+): ValuationCostLineDto[] {
+  if (added.length === 0) return [...lines];
+  const seeded = costLinesFromInventory([...added]).map((l, i) => ({
+    ...l,
+    sortOrder: lines.length + i,
+  }));
+  return [...lines, ...seeded];
+}
+
+/** Takes the inventory's quantity for the changed lines; `unitCostSar` and everything else stay. */
+export function applyInventoryAreaChanges(
+  lines: readonly ValuationCostLineDto[],
+  changes: readonly CostInventoryAreaChange[],
+): ValuationCostLineDto[] {
+  if (changes.length === 0) return [...lines];
+  const toById = new Map(changes.map((c) => [c.lineId, c.toSqm]));
+  return lines.map((l) =>
+    toById.has(l.id) ? { ...l, areaSqm: toById.get(l.id)! } : l,
+  );
 }
 
 export function blankCostLine(
@@ -244,7 +389,7 @@ export function blankCostLine(
   };
 }
 
-export type CostLineTotals = {
+type CostLineTotals = {
   firstFloorLine: ValuationCostLineDto | null;
   computedLines: ReturnType<typeof costLineComputed>[];
   directTotal: number;
@@ -399,24 +544,31 @@ export function buildCostAlerts(
       kind: "error",
       title: "لا يوجد بند تكلفة",
       body: "يلزم بند واحد على الأقل في جدول التكلفة.",
+      targetId: "cost-lines",
     });
   if (extLifeLocal <= 0)
     alerts.push({
       kind: "error",
       title: "العمر الممتد صفر",
       body: "العمر الاقتصادي + التمديد يجب أن يكون أكبر من صفر.",
+      targetId: "cost-economicAge",
+      fallbackTargetId: "cost-age",
     });
   else if (actualLocal > extLifeLocal)
     alerts.push({
       kind: "error",
       title: "العمر الفعلي يتجاوز العمر الممتد",
       body: "الإهلاك المادي يتجاوز ١٠٠٪.",
+      targetId: "cost-actualAge",
+      fallbackTargetId: "cost-age",
     });
   if (totalDepLocal > 100)
     alerts.push({
       kind: "error",
       title: "مجموع التقادم يتجاوز ١٠٠٪",
       body: "راجع نسب التقادم الوظيفي والخارجي.",
+      targetId: "cost-functionalObs",
+      fallbackTargetId: "cost-age",
     });
   if (
     costDraft.some((l) => l.itemKey === "repeated_floors") &&
@@ -426,14 +578,17 @@ export function buildCostAlerts(
       kind: "error",
       title: "بند الأدوار المتكررة بلا «الدور الأول»",
       body: "كمية المتكررة تُشتقّ من مسطح الدور الأول — أعد إدراجه أو احذف بند المتكررة.",
+      targetId: "cost-lines",
     });
   if (costNum(fields.lifeExtension) > 0 && !fields.lifeExtensionBasis.trim())
     alerts.push({
       kind: "warn",
       title: "تمديد العمر مستخدم",
       body: "يلزم بيان أساس التمديد كتابةً.",
+      targetId: "cost-lifeExtensionBasis",
+      fallbackTargetId: "cost-age",
     });
-  for (const l of costDraft) {
+  for (const [lineIndex, l] of costDraft.entries()) {
     if (
       costGroupOf(l) === "extra" &&
       (l.label.trim() || l.itemKey !== "custom") &&
@@ -443,6 +598,8 @@ export function buildCostAlerts(
         kind: "warn",
         title: `بند إضافي بلا مبرر: ${costItemLabel(l)}`,
         body: "يلزم توثيق أساس التقدير — احتمال ازدواج مع ما هو مضمَّن في تكلفة المتر.",
+        targetId: `cost-line-${lineIndex}-rationale`,
+        fallbackTargetId: "cost-lines",
       });
     }
     if (
@@ -455,6 +612,8 @@ export function buildCostAlerts(
         kind: "warn",
         title: "تكلفة متر المتكررة تخالف الدور الأول",
         body: "التجاوز مسموح بمبرر مكتوب — دوّن سببه.",
+        targetId: `cost-line-${lineIndex}-rationale`,
+        fallbackTargetId: "cost-lines",
       });
     }
   }
@@ -466,33 +625,43 @@ export function buildCostAlerts(
       kind: "warn",
       title: "خصم تقييد الاستخدام بلا مبرر",
       body: "افتراضه صفر ولا يُملأ إلا بمبرر موثّق.",
+      targetId: "cost-useRestrictionRationale",
     });
   if (!buildingOnly && !landComplete)
     alerts.push({
       kind: "error",
       title: "قيمة الأرض غير مقدَّرة",
       body: "اعتمد مقارنات أراضٍ فضاء — مؤشر الأسلوب يبقى غير مكتمل بدونها.",
+      targetId: "cost-land-bank",
     });
+  const functionalUnjustified =
+    functionalLocal > 0 && !fields.functionalObsRationale.trim();
   if (
-    (functionalLocal > 0 && !fields.functionalObsRationale.trim()) ||
+    functionalUnjustified ||
     (externalLocal > 0 && !fields.externalObsRationale.trim())
   )
     alerts.push({
       kind: "warn",
       title: "تقادم وظيفي أو خارجي بلا مبرر",
       body: "يلزم مبرر مكتوب لكل نسبة تقادم غير مادية.",
+      targetId: functionalUnjustified
+        ? "cost-functionalObsRationale"
+        : "cost-externalObsRationale",
+      fallbackTargetId: "cost-age",
     });
   if (developerProfitPct < 10 || developerProfitPct > 20)
     alerts.push({
       kind: "warn",
       title: "أرباح المطور خارج النطاق",
       body: `النطاق المعتاد ١٠٪–٢٠٪، والحالي ${developerProfitPct}٪.`,
+      targetId: "cost-indirect",
     });
   if (indirectSumLocal > 45)
     alerts.push({
       kind: "warn",
       title: "النسب غير المباشرة مرتفعة",
       body: `المجموع ${(Math.round(indirectSumLocal * 100) / 100).toFixed(2)}٪ يتجاوز ٤٥٪.`,
+      targetId: "cost-indirect",
     });
   if (alerts.length === 0)
     alerts.push({
@@ -526,7 +695,7 @@ export function buildCostNarrative(
 ): string {
   const restrictionJust = fields.useRestrictionRationale.trim();
   return [
-    `طريقة التكلفة: ${costBasisKey === "reproduction" ? "إعادة الإنتاج" : "الإحلال"}.`,
+    `طريقة تكلفة ${costBasisKey === "reproduction" ? "إعادة الإنتاج" : "الإحلال"}.`,
     restrictionJust
       ? `خصم تقييد الاستخدام: ${fields.useRestrictionPct}٪ — ${restrictionJust}.`
       : null,
@@ -615,7 +784,7 @@ export function costSaveRequest(
       label: l.label,
       areaSqm: l.areaSqm,
       unit: l.unit || null,
-      buildRatioPct: l.buildRatioPct ?? null,
+      buildRatioPct: buildRatioApplies(l) ? (l.buildRatioPct ?? null) : null,
       repeatedFloorCount: l.repeatedFloorCount ?? null,
       unitCostSar: l.unitCostSar,
       rationale: l.rationale,

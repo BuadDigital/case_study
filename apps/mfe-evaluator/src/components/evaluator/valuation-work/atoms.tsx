@@ -46,54 +46,6 @@ export function FieldLabel({ children }: { children: ReactNode }) {
   );
 }
 
-/** Value-ledger row (invoiceRows) — label/note on the right, value on the left. */
-export function LedgerRow({
-  label,
-  note,
-  value,
-  valueClassName,
-  strong,
-}: {
-  label: string;
-  note?: string;
-  value: string;
-  valueClassName?: string;
-  strong?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-2.5 border-b border-border px-4 py-[11px]",
-        strong ? "bg-surface-2" : "bg-surface",
-      )}
-    >
-      <div>
-        <div
-          className={cn(
-            "text-[12.5px] text-heading",
-            strong ? "font-extrabold" : "font-bold",
-          )}
-        >
-          {label}
-        </div>
-        {note ? (
-          <div className="mt-0.5 text-[10.5px] text-text-3">{note}</div>
-        ) : null}
-      </div>
-      <span
-        dir="ltr"
-        className={cn(
-          "font-extrabold text-heading",
-          strong ? "text-[15px]" : "text-[13.5px]",
-          valueClassName,
-        )}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
-
 export function ToggleChip({
   active,
   onClick,

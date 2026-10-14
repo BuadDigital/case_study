@@ -55,16 +55,6 @@ async function idbSet(key: string, value: string): Promise<void> {
   });
 }
 
-async function idbDelete(key: string): Promise<void> {
-  const db = await openDb();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, "readwrite");
-    tx.objectStore(STORE).delete(key);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error ?? new Error("IndexedDB delete failed"));
-  });
-}
-
 /** In-memory mirror for sync reads used by existing call sites. */
 const memory = new Map<string, string>();
 const migratedLegacy = new Set<string>();
@@ -113,20 +103,6 @@ export function saveDomainStringSync(key: string, value: string): void {
   });
 }
 
-export function removeDomainStringSync(key: string): void {
-  memory.delete(key);
-  if (typeof window !== "undefined") {
-    try {
-      window.localStorage.removeItem(key);
-    } catch {
-      /* ignore */
-    }
-  }
-  void idbDelete(key).catch(() => {
-    /* ignore */
-  });
-}
-
 /** Hydrate memory from IndexedDB (call once at app boot). */
 export async function hydrateDomainStore(keys?: string[]): Promise<void> {
   if (typeof indexedDB === "undefined") return;
@@ -159,24 +135,6 @@ export async function hydrateDomainStore(keys?: string[]): Promise<void> {
     });
   } catch {
     /* private mode / blocked IDB — memory + legacy migration still work */
-  }
-}
-
-export async function loadDomainJson<T>(
-  key: string,
-  fallback: T,
-): Promise<T> {
-  try {
-    const raw = memory.get(key) ?? (await idbGet(key));
-    if (raw == null) {
-      const migrated = migrateLegacyLocalStorage(key);
-      if (migrated == null) return fallback;
-      return JSON.parse(migrated) as T;
-    }
-    memory.set(key, raw);
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
   }
 }
 

@@ -126,7 +126,7 @@ function RowStatusIcon({ row }: { row: PropertyDocumentChecklistRow }) {
   );
 }
 
-export function ChecklistRowView({
+function ChecklistRowView({
   row,
   canUpload,
   busy,

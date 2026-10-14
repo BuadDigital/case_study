@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ComparablePropertyDto } from "./comparable-properties";
 import { parseJson } from "./parse-json";
@@ -190,7 +190,7 @@ export type ValuationCostApproachDto = {
   lines: ValuationCostLineDto[];
 };
 
-export type ValuationIndirectCostItemDto = {
+type ValuationIndirectCostItemDto = {
   itemKey: string;
   labelAr: string;
   pct: number;
@@ -199,14 +199,14 @@ export type ValuationIndirectCostItemDto = {
   sortOrder: number;
 };
 
-export type SaveValuationIndirectCostItemRequest = {
+type SaveValuationIndirectCostItemRequest = {
   itemKey: string;
   pct: number;
   rationale?: string | null;
   sortOrder?: number;
 };
 
-export type SaveValuationCostLineRequest = {
+type SaveValuationCostLineRequest = {
   id?: string | null;
   sourceInventoryLineId?: string | null;
   structureKind: string;
@@ -275,7 +275,7 @@ export type ValuationValueDocumentAdditionDto = {
   value: number;
 };
 
-export type ValuationMethodologyAlertOverrideDto = {
+type ValuationMethodologyAlertOverrideDto = {
   code: string;
   overrideRationale?: string | null;
   acknowledged?: boolean;
@@ -310,7 +310,7 @@ export type ValuationReconciliationDto = {
   methodologyAlertOverrides?: ValuationMethodologyAlertOverrideDto[];
 };
 
-export type SaveValuationReconciliationMethodRequest = {
+type SaveValuationReconciliationMethodRequest = {
   id?: string | null;
   approachKind: string;
   weightPct: number;
@@ -330,13 +330,7 @@ export type SaveValuationReconciliationRequest = {
   methodologyAlertOverrides?: ValuationMethodologyAlertOverrideDto[] | null;
 };
 
-export type ValuationComparableSelectionItemRequest = {
-  comparablePropertyId: string;
-  sortOrder?: number;
-  isAdopted?: boolean;
-};
-
-export type SaveValuationComparableAdjustmentLineRequest = {
+type SaveValuationComparableAdjustmentLineRequest = {
   id?: string | null;
   factorKey: string;
   labelAr?: string | null;
@@ -470,12 +464,12 @@ type Result<T> =
       errors?: Record<string, string>;
     };
 
-function headers(token: string): HeadersInit {
-  return {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
+// Local-calendar today (YYYY-MM-DD). api-client cannot import app-shared (it depends on us), so this
+// mirrors todayIso there; toISOString would give yesterday between midnight and 03:00 Riyadh.
+function localTodayIso(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
 function firstValidationMessage(
@@ -495,7 +489,7 @@ export async function getOpenValuationRequestByProperty(
   try {
     const res = await fetch(
       `${base}/api/valuation-requests/open-by-property/${encodeURIComponent(propertyId)}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404 || res.status === 204) return { ok: true, data: null };
@@ -517,10 +511,10 @@ export async function ensureOpenValuationRequestByProperty(
   if (!open.ok && (open.kind === "auth" || open.kind === "network")) return open;
 
   try {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localTodayIso();
     const res = await fetch(`${base}/api/valuation-requests/ensure-open`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify({
         propId: body.propId,
         area: body.area.trim() || "—",
@@ -551,7 +545,7 @@ export async function listValuationComparableSelections(
     const q = qs.toString();
     const res = await fetch(
       `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections${q ? `?${q}` : ""}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -576,7 +570,7 @@ export async function setValuationComparableAdopted(
       `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${comparablePropertyId}/adopt?${qs}`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token, { accept: true }),
         body: JSON.stringify({ isAdopted, selectionContext }),
       },
     );
@@ -613,7 +607,7 @@ export async function saveValuationComparableMarket(
       `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${selectionId}/market`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token, { accept: true }),
         body: JSON.stringify(body),
       },
     );
@@ -676,7 +670,7 @@ export async function saveAdjustmentFactorRationale(
       `${base}/api/valuation-requests/${valuationRequestId}/adjustment-factor-rationale`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token, { accept: true }),
         body: JSON.stringify(body),
       },
     );
@@ -716,7 +710,7 @@ export async function saveValuationMarketApproach(
       `${base}/api/valuation-requests/${valuationRequestId}/market-approach`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token, { accept: true }),
         body: JSON.stringify(body),
       },
     );
@@ -754,7 +748,7 @@ export async function getValuationApproachSettings(
   try {
     const res = await fetch(
       `${base}/api/valuation-requests/${valuationRequestId}/approach-settings`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -776,7 +770,7 @@ export async function saveValuationApproachSettings(
       `${base}/api/valuation-requests/${valuationRequestId}/approach-settings`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token, { accept: true }),
         body: JSON.stringify(body),
       },
     );
@@ -811,7 +805,7 @@ export async function getValuationCostApproach(
   try {
     const res = await fetch(
       `${base}/api/valuation-requests/${valuationRequestId}/cost-approach`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -833,7 +827,7 @@ export async function saveValuationCostApproach(
       `${base}/api/valuation-requests/${valuationRequestId}/cost-approach`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token, { accept: true }),
         body: JSON.stringify(body),
       },
     );
@@ -868,7 +862,7 @@ export async function getValuationReconciliation(
   try {
     const res = await fetch(
       `${base}/api/valuation-requests/${valuationRequestId}/reconciliation`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -890,7 +884,7 @@ export async function saveValuationReconciliation(
       `${base}/api/valuation-requests/${valuationRequestId}/reconciliation`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token, { accept: true }),
         body: JSON.stringify(body),
       },
     );
@@ -959,153 +953,12 @@ export async function getValuationIssuanceGates(
   try {
     const res = await fetch(
       `${base}/api/valuation-requests/${valuationRequestId}/issuance-gates`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (!res.ok) return { ok: false, kind: "server" };
     return { ok: true, data: await parseJson<ValuationIssuanceGatesDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export type ValuationReportSectionDto = {
-  number: number;
-  key: string;
-  titleAr: string;
-  bodyKind: string;
-  included: boolean;
-  previewText?: string | null;
-  fields: Record<string, string | null | undefined>;
-};
-
-export type ValuationReportComparableRowDto = {
-  index: number;
-  comparablePropertyType: string;
-  transactionCell: string;
-  areaSqmDisplay: string;
-  transactionDateDisplay: string;
-  priceDisplay: string;
-  pricePerSqmDisplay: string;
-};
-
-export type ValuationReportAdjustmentRowDto = {
-  index: number;
-  comparableLabel: string;
-  sequentialPctDisplay: string;
-  differencePctDisplay: string;
-  weightPctDisplay: string;
-  adjustedPricePerSqmDisplay: string;
-};
-
-export type ValuationReportReconMethodRowDto = {
-  labelAr: string;
-  approachValueDisplay: string;
-  weightPctDisplay: string;
-  contributionDisplay: string;
-};
-
-export type ValuationReportPrintedAttachmentDto = {
-  attachmentId: string;
-  contentUrl: string;
-  contentType: string;
-  dictionaryTypeKey: string;
-  labelAr: string;
-  fileName: string;
-  reportSectionNumber: number;
-  isImage: boolean;
-  /** Field 11s — capture date, YYYY/MM/DD. */
-  capturedAtDisplay?: string | null;
-};
-
-export type ValuationReportDocumentDto = {
-  valuationRequestId: string;
-  propertyId: string;
-  displayId: string;
-  hasStructuresToValue: boolean;
-  marketApproachUsed: boolean;
-  costApproachUsed: boolean;
-  incomeApproachUsed: boolean;
-  reportNumber?: string | null;
-  reportDateDisplay: string;
- /** 90-day validity (advisory). */
-  validUntilDisplay?: string | null;
-  validityNoteAr?: string | null;
-  reportDateHijriDisplay?: string;
-  photoBudgetHintAr: string;
-  valuerWordPlain: string;
-  finalOpinionValue?: number | null;
-  finalOpinionDisplay?: string | null;
-  finalOpinionTafqit?: string | null;
-  weightedValueDisplay?: string | null;
-  methodsRationale?: string | null;
-  allowsIssuance: boolean;
-  textLayerNoteAr: string;
-  approvedTemplateUrl?: string;
-  /** Org-settings letterhead for the 3-slice render; null keeps the baked one. */
-  letterheadImageUrl?: string | null;
-  letterheadHeadMm?: number | null;
-  letterheadFootTopMm?: number | null;
-  letterheadPadMm?: number | null;
-  letterheadPadStartMm?: number | null;
-  stampWidthCm?: number | null;
-  stampHeightCm?: number | null;
-  marketMethodLabelAr: string;
-  costMethodLabelAr: string;
-  incomeMethodLabelAr: string;
-  weightedPricePerSqmDisplay?: string | null;
-  marketOpinionDisplay?: string | null;
-  subjectAreaSqmDisplay?: string | null;
-  landValueFromMarketDisplay?: string | null;
-  costOpinionWithLandDisplay?: string | null;
-  costOpinionBuildingsOnlyDisplay?: string | null;
-  comparables: ValuationReportComparableRowDto[];
-  adjustments: ValuationReportAdjustmentRowDto[];
-  reconciliationMethods: ValuationReportReconMethodRowDto[];
-  /** Set only with «مستند ذو قيمة» additions: the property value after the discount, unrounded. */
-  propertyValueAfterLiquidationDisplay?: string | null;
-  valueAdditions?: { labelAr: string; valueDisplay: string }[];
-  siteMapAttachments?: ValuationReportPrintedAttachmentDto[];
-  photoAttachments?: ValuationReportPrintedAttachmentDto[];
-  surveyAttachments?: ValuationReportPrintedAttachmentDto[];
-  deedAttachments?: ValuationReportPrintedAttachmentDto[];
-  sections: ValuationReportSectionDto[];
-};
-
-export async function getValuationReportDocument(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-): Promise<Result<ValuationReportDocumentDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/report-document`,
-      { headers: headers(config.token) },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<ValuationReportDocumentDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
-export async function getValuationReportPdf(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-): Promise<Result<Blob>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/report-document/pdf`,
-      { headers: { Authorization: `Bearer ${config.token}`, Accept: "application/pdf" } },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await res.blob() };
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -1124,32 +977,11 @@ export type ValuationReportIssuanceStateDto = {
   certificateFileName?: string | null;
   certificateUploadedAtUtc?: string | null;
   finalIssuedAtUtc?: string | null;
-  hasDepositPdf: boolean;
-  hasFinalPdf: boolean;
   /** Q-9 supplement (r2): active valuation round number — 1 before any reopen. */
   version: number;
   /** Count of superseded cancelled copies still kept on the transaction file. */
   supersededCount: number;
 };
-
-export async function getReportIssuanceState(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-): Promise<Result<ValuationReportIssuanceStateDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/report-issuance`,
-      { headers: headers(config.token) },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<ValuationReportIssuanceStateDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
 
 async function postIssuance(
   config: ValuationSelectionsApiConfig,
@@ -1159,22 +991,28 @@ async function postIssuance(
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 400) {
+    if (res.status === 400 || res.status === 403 || res.status === 409) {
       const payload = (await res.json().catch(() => null)) as {
-        errors?: Record<string, string>;
+        errors?: Record<string, string | string[]>;
         message?: string;
+        detail?: string;
       } | null;
+      const errors = Object.fromEntries(
+        Object.entries(payload?.errors ?? {}).map(([k, v]) => [k, Array.isArray(v) ? (v[0] ?? "") : v]),
+      );
       return {
         ok: false,
         kind: "validation",
-        message: payload?.errors
-          ? Object.values(payload.errors)[0]
-          : (payload?.message ?? "تعذّر تنفيذ خطوة الإصدار"),
-        errors: payload?.errors,
+        message:
+          Object.values(errors)[0] ??
+          payload?.detail ??
+          payload?.message ??
+          "تعذّر تنفيذ خطوة الإصدار",
+        errors,
       };
     }
     if (!res.ok) return { ok: false, kind: "server" };
@@ -1182,18 +1020,6 @@ async function postIssuance(
   } catch {
     return { ok: false, kind: "network" };
   }
-}
-
-/** Q-6-1: when gates complete — full freeze + generate deposit copy (code field empty). */
-export function issueDepositVersion(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-): Promise<Result<ValuationReportIssuanceStateDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  return postIssuance(
-    config,
-    `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/deposit`,
-  );
 }
 
 /** Q-6-3/4: record certificate and code — generates final copy with certificate/code page in meta. */
@@ -1232,23 +1058,3 @@ export function reopenReportIssuance(
   );
 }
 
-/** Download deposit copy or final PDF. */
-export async function getIssuancePdf(
-  config: ValuationSelectionsApiConfig,
-  valuationRequestId: string,
-  kind: "deposit" | "final",
-): Promise<Result<Blob>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/valuation-requests/${valuationRequestId}/report-issuance/${kind}-pdf`,
-      { headers: { Authorization: `Bearer ${config.token}`, Accept: "application/pdf" } },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await res.blob() };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}

@@ -21,6 +21,7 @@ import {
   api,
   apiLogin,
   apiOk,
+  completeSpecialistComponents,
   createDistributedTransaction,
   deleteWorkOrder,
   tinyPngBuffer,
@@ -205,6 +206,7 @@ test.describe("Field inspector: submit → specialist accept", () => {
     ).toBe(200);
 
     // ── 5. specialist accepts and sees the timeline entry ───────────────────
+    await completeSpecialistComponents(osamaToken, tx.poNumber, tx.propertyId);
     const accept = await api(
       osamaToken,
       "POST",
@@ -230,6 +232,6 @@ test.describe("Field inspector: submit → specialist accept", () => {
     await expect(rail.getByText("إتمام المعاينة الميدانية")).toBeVisible({
       timeout: 30_000,
     });
-    await expect(rail.getByText("استلام بيانات المعاينة")).toBeVisible();
+    await expect(rail.getByText("قبول الأخصائي لمخرجات المعاينة")).toBeVisible();
   });
 });

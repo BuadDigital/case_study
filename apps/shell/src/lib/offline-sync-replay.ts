@@ -18,6 +18,7 @@ import {
   patchOperationsTask,
   addOperationsTaskComment,
   upsertPropertyCourtAccess,
+  saveBuildingInventory,
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
@@ -152,6 +153,29 @@ function buildReplayDeps(userId: string): OfflineSyncDeps {
       if (!body) return invalidPayloadFailure("بيانات مسار الدخول غير صالحة");
       const result = await upsertPropertyCourtAccess(modulesConfig, body);
       if (!result.ok) return fail(userId, result.kind, "تعذّر حفظ مسار الدخول", true);
+      return { ok: true };
+    },
+    saveBuildingInventory: async (input) => {
+      if (!workOrdersConfig) return unauthenticatedReplayFailure();
+      const body = parseReplayPayload<
+        Parameters<typeof saveBuildingInventory>[3]
+      >(input.bodyJson);
+      if (!body) return invalidPayloadFailure("بيانات جدول الحصر غير صالحة");
+      const result = await saveBuildingInventory(
+        workOrdersConfig,
+        input.poNumber,
+        input.propertyId,
+        body,
+      );
+      if (!result.ok) {
+        // 403 / 400 («المعاينة أُرسلت…») never succeed on retry: refused, listed with the reason.
+        return fail(
+          userId,
+          result.kind,
+          result.errors?._ ?? "تعذّر حفظ جدول الحصر",
+          true,
+        );
+      }
       return { ok: true };
     },
     createKeyEnvelope: async (input) => {

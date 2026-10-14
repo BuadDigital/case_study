@@ -1,8 +1,7 @@
 "use client";
 
 import type { MutableRefObject, ReactNode } from "react";
-import { useCallback } from "react";
-import dynamic from "next/dynamic";
+import { useCallback, useRef } from "react";
 import {
   Button,
   cn,
@@ -14,18 +13,12 @@ import {
   QueueTableHint,
   StatusPill,
   TableFrame,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import {
   RemainingTimeCell,
   TickingRemainingTimeCell,
 } from "@case-study/mfe/components/ui/RemainingTimeCell";
-const CopyFromPriorTransactionModal = dynamic(
-  () =>
-    import("../components/po-intake/CopyFromPriorTransactionModal").then(
-      (m) => m.CopyFromPriorTransactionModal,
-    ),
-  { ssr: false },
-);
 import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
 import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
@@ -39,6 +32,10 @@ import { EngineeringSurveyQueueTable } from "./active-transaction-queue-engineer
 import { PrimaryQueueTable } from "./active-transaction-queue-primary-table";
 import { PropertyAppraisalQueueTable } from "./active-transaction-queue-property-appraisal-table";
 import { QueueFiltersToolbar } from "./active-transaction-queue-filters-toolbar";
+import {
+  CopyFromPriorTransactionModal,
+  usePreloadCopyFromPriorModal,
+} from "./active-transaction-queue-lazy";
 import type {
   ActiveQueueApi,
   ActiveTransactionQueueConfig,
@@ -72,11 +69,14 @@ const OFFLINE_EMPTY_HINT = "تُحمَّل مهامك إلى الجهاز تلق
 function QueuePager({
   pagination,
   onPageChange,
+  onPageIntent,
 }: {
   pagination: NonNullable<
     ReturnType<typeof useActiveTransactionQueueWorkflow>["pagination"]
   >;
   onPageChange: (page: number) => void;
+  /** Pointer / focus reached an arrow — warm that page before the click. */
+  onPageIntent: (page: number) => void;
 }) {
   const { totalCount, totalPages, safePage, rangeStart, rangeEnd, hasPrev, hasNext } =
     pagination;
@@ -98,6 +98,8 @@ function QueuePager({
           className="h-[30px] w-[30px] p-0 disabled:opacity-40"
           disabled={!hasPrev}
           onClick={() => onPageChange(safePage - 1)}
+          onPointerEnter={hasPrev ? () => onPageIntent(safePage - 1) : undefined}
+          onFocus={hasPrev ? () => onPageIntent(safePage - 1) : undefined}
           aria-label="الصفحة السابقة"
         >
           ‹
@@ -112,6 +114,8 @@ function QueuePager({
           className="h-[30px] w-[30px] p-0 disabled:opacity-40"
           disabled={!hasNext}
           onClick={() => onPageChange(safePage + 1)}
+          onPointerEnter={hasNext ? () => onPageIntent(safePage + 1) : undefined}
+          onFocus={hasNext ? () => onPageIntent(safePage + 1) : undefined}
           aria-label="الصفحة التالية"
         >
           ›
@@ -142,8 +146,12 @@ export function ActiveTransactionQueueView({
     queueLoadError,
     queueErrorMessage,
     queueReady,
+    queueShowsRows,
     queuePending,
     retryQueueLoad,
+    rowsSwapKey,
+    prefetchPage,
+    prefetchShowCompletedToggle,
     panelOpen,
     selectedTask,
     listed,
@@ -199,6 +207,12 @@ export function ActiveTransactionQueueView({
     confirmDialog,
     failureRaiseModal,
   } = useActiveTransactionQueueWorkflow({ config, queueApiRef });
+  usePreloadCopyFromPriorModal(Boolean(config.allowCopyFromPrior) && queueReady);
+  // Filter / page / «show completed» swaps fade the rows in (one tree mounts per viewport).
+  const tableSwapRef = useRef<HTMLDivElement>(null);
+  const mobileSwapRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(tableSwapRef, rowsSwapKey);
+  useSwapAnimation(mobileSwapRef, rowsSwapKey);
   // Field roles offline before anything was downloaded: say so plainly — never a
   // connection error, and never "no tasks" as if the queue were really empty (§4.2).
   const online = useOnlineStatus();
@@ -226,9 +240,9 @@ export function ActiveTransactionQueueView({
     [resolveTaskBadge, poByNumber],
   );
 
-  const queueToolbar = queueReady ? (
+  const queueToolbar = queueShowsRows ? (
     <QueueFiltersToolbar
-      queueReady={queueReady}
+      queueReady={queueShowsRows}
       isPartyQueueToggleTable={isPartyQueueToggleTable}
       isPropertyAppraisalTable={isPropertyAppraisalTable}
       isDistributionTable={isDistributionTable}
@@ -243,6 +257,7 @@ export function ActiveTransactionQueueView({
       assignmentTypes={assignmentTypes}
       showCompleted={showCompleted}
       onToggleShowCompleted={() => setShowCompleted((v) => !v)}
+      onShowCompletedIntent={prefetchShowCompletedToggle}
       groupByPo={groupByPo}
       groupGatherAnim={groupGatherAnim}
       onToggleGroupByPo={toggleGroupByPo}
@@ -256,7 +271,7 @@ export function ActiveTransactionQueueView({
   );
 
   const hasRail =
-    !useFullPage && queueReady && listed.length > 0 && Boolean(renderPanel);
+    !useFullPage && queueShowsRows && listed.length > 0 && Boolean(renderPanel);
 
   const queuePanel = (
         <OperationalPanel
@@ -282,7 +297,7 @@ export function ActiveTransactionQueueView({
                 إعادة المحاولة
               </Button>
             </div>
-          ) : queueReady && listed.length === 0 && !hasActiveQuery ? (
+          ) : queueShowsRows && listed.length === 0 && !hasActiveQuery ? (
             /* With server search a no-match page is also `listed.length === 0`;
                swapping in the whole-screen empty state would take the search box
                away with it, so it only replaces an genuinely empty queue.
@@ -300,7 +315,7 @@ export function ActiveTransactionQueueView({
             <>
               {queueToolbar}
               {isDesktopViewport === true ? null : isPropertyInspectionQueue ? (
-                <div className="pb-3 lg:hidden max-lg:px-0">
+                <div ref={mobileSwapRef} className="pb-3 lg:hidden max-lg:px-0">
                   <InspectorMobileQueue
                     tasks={filteredListed}
                     poByNumber={poByNumber}
@@ -315,6 +330,7 @@ export function ActiveTransactionQueueView({
                 </div>
               ) : (
                 <div
+                  ref={mobileSwapRef}
                   className="pb-3 lg:hidden max-lg:px-0"
                   onMouseEnter={preloadRowWork}
                   onFocus={preloadRowWork}
@@ -333,7 +349,11 @@ export function ActiveTransactionQueueView({
                     }
                   />
                   {paged && pagination ? (
-                    <QueuePager pagination={pagination} onPageChange={setPage} />
+                    <QueuePager
+                      pagination={pagination}
+                      onPageChange={setPage}
+                      onPageIntent={prefetchPage}
+                    />
                   ) : null}
                 </div>
               )}
@@ -348,59 +368,62 @@ export function ActiveTransactionQueueView({
                 onMouseEnter={preloadRowWork}
                 onFocus={preloadRowWork}
               >
-                {isAllTransactionsTable ? (
-                  <AllTransactionsQueueTable
-                    ctx={rowCtx}
-                    filteredMeta={filteredAllTxMeta}
-                    groupByPo={groupByPo}
-                    poGroups={allTxPoGroups}
-                    collapsedPo={collapsedPo}
-                    onToggleCollapsed={(po) =>
-                      setCollapsedPo((prev) => ({ ...prev, [po]: !prev[po] }))
-                    }
-                    onOpenPoProperties={(po) =>
-                      router.push(poPropertiesPath(po))
-                    }
-                  />
-                ) : isDistributionTable ? (
-                  <DistributionQueueTable
-                    ctx={rowCtx}
-                    showPartyColumns={showPartyColumns}
-                    disableRowOpen={Boolean(config.disableRowOpen)}
-                    filteredListed={filteredListed}
-                    poByNumber={poByNumber}
-                    tasks={tasks ?? EMPTY_TASKS}
-                    partyProgressByTask={partyProgressByTask}
-                    staffUsers={staffUsers}
-                    onRowClick={handleDistributionRowClick}
-                    openPropertyDetail={openPropertyDetailFromQueue}
-                  />
-                ) : isEngineeringSurveyTable ? (
-                  <EngineeringSurveyQueueTable
-                    ctx={rowCtx}
-                    filteredMeta={filteredPrimaryMeta}
-                    resolveTaskBadge={resolveTaskBadge}
-                    statusColumnLabel={config.statusColumnLabel}
-                  />
-                ) : isPropertyAppraisalTable ? (
-                  <PropertyAppraisalQueueTable
-                    ctx={rowCtx}
-                    filteredMeta={filteredPrimaryMeta}
-                    tasks={tasks ?? EMPTY_TASKS}
-                    staffUsers={staffUsers}
-                    partyProgressByTask={partyProgressByTask}
-                    openPropertyDetail={openPropertyDetailFromQueue}
-                    statusColumnLabel={config.statusColumnLabel}
-                  />
-                ) : (
-                  <PrimaryQueueTable
-                    ctx={rowCtx}
-                    filteredMeta={filteredPrimaryMeta}
-                    primaryHasLocation={primaryHasLocation}
-                    renderStatusOrRemaining={renderStatusOrRemaining}
-                    statusColumnLabel={config.statusColumnLabel}
-                  />
-                )}
+                {/* The swap fade lives on a wrapper: the table's own body dims while pending. */}
+                <div ref={tableSwapRef}>
+                  {isAllTransactionsTable ? (
+                    <AllTransactionsQueueTable
+                      ctx={rowCtx}
+                      filteredMeta={filteredAllTxMeta}
+                      groupByPo={groupByPo}
+                      poGroups={allTxPoGroups}
+                      collapsedPo={collapsedPo}
+                      onToggleCollapsed={(po) =>
+                        setCollapsedPo((prev) => ({ ...prev, [po]: !prev[po] }))
+                      }
+                      onOpenPoProperties={(po) =>
+                        router.push(poPropertiesPath(po))
+                      }
+                    />
+                  ) : isDistributionTable ? (
+                    <DistributionQueueTable
+                      ctx={rowCtx}
+                      showPartyColumns={showPartyColumns}
+                      disableRowOpen={Boolean(config.disableRowOpen)}
+                      filteredListed={filteredListed}
+                      poByNumber={poByNumber}
+                      tasks={tasks ?? EMPTY_TASKS}
+                      partyProgressByTask={partyProgressByTask}
+                      staffUsers={staffUsers}
+                      onRowClick={handleDistributionRowClick}
+                      openPropertyDetail={openPropertyDetailFromQueue}
+                    />
+                  ) : isEngineeringSurveyTable ? (
+                    <EngineeringSurveyQueueTable
+                      ctx={rowCtx}
+                      filteredMeta={filteredPrimaryMeta}
+                      resolveTaskBadge={resolveTaskBadge}
+                      statusColumnLabel={config.statusColumnLabel}
+                    />
+                  ) : isPropertyAppraisalTable ? (
+                    <PropertyAppraisalQueueTable
+                      ctx={rowCtx}
+                      filteredMeta={filteredPrimaryMeta}
+                      tasks={tasks ?? EMPTY_TASKS}
+                      staffUsers={staffUsers}
+                      partyProgressByTask={partyProgressByTask}
+                      openPropertyDetail={openPropertyDetailFromQueue}
+                      statusColumnLabel={config.statusColumnLabel}
+                    />
+                  ) : (
+                    <PrimaryQueueTable
+                      ctx={rowCtx}
+                      filteredMeta={filteredPrimaryMeta}
+                      primaryHasLocation={primaryHasLocation}
+                      renderStatusOrRemaining={renderStatusOrRemaining}
+                      statusColumnLabel={config.statusColumnLabel}
+                    />
+                  )}
+                </div>
                 <QueueTableHint
                   className={cn(
                     (config.pageId === "all-transactions" ||
@@ -417,7 +440,11 @@ export function ActiveTransactionQueueView({
                         : "اضغط الصف للفتح أو الإغلاق.")}
                 </QueueTableHint>
                 {paged && pagination ? (
-                  <QueuePager pagination={pagination} onPageChange={setPage} />
+                  <QueuePager
+                    pagination={pagination}
+                    onPageChange={setPage}
+                    onPageIntent={prefetchPage}
+                  />
                 ) : null}
               </TableFrame>
               )}

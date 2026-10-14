@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtSar } from "../format/number";
 import { useEffect, useMemo, useState } from "react";
 import {
   Button,
@@ -40,13 +41,18 @@ export function FeeDiscountModal({
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    if (!open || !row) return;
-    setAmount(String(row.supervisorDiscountSar || 0));
-    setReason(row.discountReason ?? "");
-    setError(false);
-    setBusy(false);
-  }, [open, row]);
+  // Opening on another row seeds that row’s saved discount.
+  const openedRow = open ? row : null;
+  const [seededRow, setSeededRow] = useState(openedRow);
+  if (seededRow !== openedRow) {
+    setSeededRow(openedRow);
+    if (openedRow) {
+      setAmount(String(openedRow.supervisorDiscountSar || 0));
+      setReason(openedRow.discountReason ?? "");
+      setError(false);
+      setBusy(false);
+    }
+  }
 
   const net = useMemo(() => {
     if (!row) return 0;
@@ -91,8 +97,7 @@ export function FeeDiscountModal({
         </ModalHeader>
         <ModalBody>
           <p className="mb-3 text-xs text-text-2">
-            {row.propertyLabel} · الأتعاب {row.agreedFeeSar.toLocaleString("ar-SA")}{" "}
-            ر.س
+            {row.propertyLabel} · الأتعاب {fmtSar(row.agreedFeeSar, { digits: 3, trim: true })}
           </p>
           <label className="mb-1 block text-xs text-text-2">
             قيمة الحسم (ر.س)
@@ -128,7 +133,7 @@ export function FeeDiscountModal({
           ) : null}
           <div className="flex items-center justify-between rounded-md bg-[color-mix(in_srgb,var(--warning-bg)_55%,var(--surface))] px-3 py-2 text-sm">
             <span className="text-text-2">الصافي بعد الحسم</span>
-            <strong>{net.toLocaleString("ar-SA")} ر.س</strong>
+            <strong>{fmtSar(net, { digits: 3, trim: true })}</strong>
           </div>
           <p className="mt-3 text-[11px] text-text-3">
             صلاحية الحسم للمشرف دون سقف · يُسجَّل في سجل التدقيق.

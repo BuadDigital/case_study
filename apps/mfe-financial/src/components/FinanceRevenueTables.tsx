@@ -16,7 +16,7 @@ export {
   RevenueStageEmpty,
   SearchIcon,
 } from "./FinanceRevenueTableParts";
-export { filterRows, fmtSar } from "../lib/finance-revenue-state";
+export { filterRows } from "../lib/finance-revenue-state";
 export { StudyTable } from "./FinanceRevenueStudyTable";
 export { EligibleTable } from "./FinanceRevenueEligibleTable";
 export { BillingAssistantTable } from "./FinanceRevenueBillingAssistantTable";

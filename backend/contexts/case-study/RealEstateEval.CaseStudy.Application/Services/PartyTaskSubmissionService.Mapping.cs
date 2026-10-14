@@ -48,7 +48,11 @@ public partial class PartyTaskSubmissionService
 
         dto.FieldInspectionCompleted = flags.Completed;
         if (entity.Kind == WorkflowTaskKindValues.PropertyAppraisal)
+        {
             dto.FieldInspectionAccepted = flags.Accepted;
+            dto.StudyReportIssued = await StudyReportIssuedForAsync(entity.WorkflowTaskId, cancellationToken);
+            await ApplyInspectorDataDigestAsync(dto, entity, cancellationToken);
+        }
 
         return dto;
     }

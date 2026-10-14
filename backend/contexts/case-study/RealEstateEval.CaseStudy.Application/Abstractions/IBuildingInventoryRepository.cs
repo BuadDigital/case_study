@@ -1,3 +1,4 @@
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
@@ -21,6 +22,16 @@ public interface IBuildingInventoryRepository
 
     /// <summary>Untracked re-read of the saved property with its inventory lines.</summary>
     Task<WorkOrderProperty> GetSavedPropertyWithLinesAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The field-inspection tasks of this property on <paramref name="poNumber"/> (cancelled ones
+    /// left out) with the assignee and the status of each task's party package — the facts the
+    /// inspector's inventory write access is decided from. Empty when none exists.
+    /// </summary>
+    Task<IReadOnlyList<FieldInspectionWriteFacts>> GetFieldInspectionWriteFactsAsync(
+        string poNumber,
         Guid propertyId,
         CancellationToken cancellationToken);
 

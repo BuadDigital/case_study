@@ -1,4 +1,5 @@
 /** Spell out SAR amounts for the "in words" display beside numeric fields. */
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
 const ONES = [
   "",
@@ -109,11 +110,8 @@ function integerToArabicWords(n: number): string {
 }
 
 function parseAmountNumber(raw: string): number | null {
-  const cleaned = raw.replace(/,/g, "").trim();
-  if (!cleaned) return null;
-  const n = Number.parseFloat(cleaned);
-  if (!Number.isFinite(n)) return null;
-  return n;
+  const n = parseLocaleNumber(raw);
+  return Number.isFinite(n) ? n : null;
 }
 
 /** Renders the amount in words in riyals (and halalas when fractional). */

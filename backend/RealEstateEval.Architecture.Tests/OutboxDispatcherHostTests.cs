@@ -3,14 +3,14 @@ using RealEstateEval.Architecture.Tests.Support;
 namespace RealEstateEval.Architecture.Tests;
 
 /// <summary>
-/// Each physical outbox database needs exactly one dispatcher. Case Study drains the
+/// Each physical outbox database needs exactly one dispatcher. Platform drains the
 /// dedicated messaging database; Valuation drains its dedicated database after the Phase 4
 /// cutover. A third host would double-publish or leave stranded rows.
 /// </summary>
 public class OutboxDispatcherHostTests
 {
     [Fact]
-    public void Case_study_and_valuation_register_AddOutboxDispatcher()
+    public void Platform_and_valuation_register_AddOutboxDispatcher()
     {
         var servicesRoot = RepoPaths.Combine("backend", "services");
         var hosts = new List<string>();
@@ -30,20 +30,20 @@ public class OutboxDispatcherHostTests
             hosts.Add(service);
         }
 
-        Assert.Equal(["case-study", "valuation"], hosts.OrderBy(x => x, StringComparer.Ordinal).ToArray());
+        Assert.Equal(["platform", "valuation"], hosts.OrderBy(x => x, StringComparer.Ordinal).ToArray());
     }
 
     [Fact]
     public void Each_dispatcher_binds_its_own_outbox_context()
     {
-        var caseStudy = File.ReadAllText(
-            RepoPaths.Combine("backend", "services", "case-study", "RealEstateEval.CaseStudy.Api", "ServiceModule.cs"));
+        var platform = File.ReadAllText(
+            RepoPaths.Combine("backend", "services", "platform", "RealEstateEval.Platform.Api", "ServiceModule.cs"));
         var valuation = File.ReadAllText(
             RepoPaths.Combine("backend", "services", "valuation", "RealEstateEval.Valuation.Api", "ServiceModule.cs"));
 
-        Assert.Contains("typeof(MessagingDbContext)", caseStudy, StringComparison.Ordinal);
+        Assert.Contains("typeof(MessagingDbContext)", platform, StringComparison.Ordinal);
         Assert.Contains("typeof(ValuationDbContext)", valuation, StringComparison.Ordinal);
-        Assert.DoesNotContain("typeof(ValuationDbContext)", caseStudy, StringComparison.Ordinal);
+        Assert.DoesNotContain("typeof(ValuationDbContext)", platform, StringComparison.Ordinal);
         Assert.DoesNotContain("typeof(MessagingDbContext)", valuation, StringComparison.Ordinal);
     }
 

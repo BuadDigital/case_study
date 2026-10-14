@@ -1,16 +1,21 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
+import { useCallback, useEffect, useRef } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   InlineLoadingSkeleton,
   cn,
   opsBtnPrimary,
   opsFldControl,
   opsWorkspaceCard,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import { ValuedDocumentUploadButton } from "@platform/app-shared/components/ValuedDocumentUploadButton";
 import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks";
 import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
+import { prefetchFailureTypes } from "@failures/mfe/query/failure-types-queries";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
 import { EngineeringSurveyPropertySummary } from "./EngineeringSurveyPropertySummary";
 import {
@@ -21,7 +26,11 @@ import {
   EngStatusPill,
   EngTabBar,
 } from "./EngineeringSurveyHtmlPrimitives";
-import { FailureRaisePanel } from "./EngineeringSurveyWorkParts";
+import {
+  FailureRaisePanel,
+  preloadFailureRaisePanel,
+  preloadSurveyWorkChunksWhenIdle,
+} from "./EngineeringSurveyWorkParts";
 import { EngineeringSurveyWorkBody } from "./EngineeringSurveyWorkBody";
 import { useEngineeringSurveyCommands } from "./useEngineeringSurveyCommands";
 import { useEngineeringSurveyData } from "./useEngineeringSurveyData";
@@ -81,12 +90,33 @@ export function EngineeringSurveyWorkPanel({
     handleStartSurvey,
   } = workflow;
 
+  const ready = Boolean(draft && localFields);
+  useEffect(() => {
+    if (!ready) return;
+    return preloadSurveyWorkChunksWhenIdle();
+  }, [ready]);
+
+  // «التعذرات» needs its panel code and the failure-type catalog — fetch both
+  // while the pointer is on its way.
+  const queryClient = useQueryClient();
+  const onTabIntent = useCallback(
+    (id: string) => {
+      if (id !== "failures") return;
+      preloadFailureRaisePanel();
+      prefetchFailureTypes(queryClient);
+    },
+    [queryClient],
+  );
+
+  const panelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(panelRef, workTab);
+
   if (!draft || !localFields) {
     return <InlineLoadingSkeleton className="my-2" />;
   }
 
   const feeAmountLabel = feeForTask
-    ? `${Number(feeForTask.netFeeSar ?? 0).toLocaleString("ar-SA")} ر.س`
+    ? fmtSar(feeForTask.netFeeSar, { digits: 3, trim: true })
     : "—";
 
   return (
@@ -96,6 +126,7 @@ export function EngineeringSurveyWorkPanel({
           <EngTabBar
             active={workTab}
             onChange={onWorkTabChange}
+            onTabIntent={onTabIntent}
             tabs={[
               { id: "property", label: "بيانات العقار" },
               { id: "survey", label: "الرفع المساحي" },
@@ -103,7 +134,7 @@ export function EngineeringSurveyWorkPanel({
               { id: "notes", label: "ملاحظة", dot: Boolean(savedNote) },
               {
                 id: "failures",
-                label: "التعذرات",
+                label: "التعذّرات",
                 badge: activeFailureCount,
               },
             ]}
@@ -134,133 +165,137 @@ export function EngineeringSurveyWorkPanel({
             </div>
           ) : null}
 
-          <div
-            className={cn(
-              formDisabled &&
-                workTab !== "property" &&
-                workTab !== "fees" &&
-                "pointer-events-none select-none opacity-75",
-              locked &&
-                workTab === "survey" &&
-                "rounded-[10px] bg-[#F1F5F9] p-3 grayscale-[0.35]",
-            )}
-          >
-            {workTab === "property" ? (
-              <EngineeringSurveyPropertySummary
-                property={property}
-                record={record ?? undefined}
-                deedNumber={deedNumber}
-              />
-            ) : null}
-
-            {workTab === "survey" ? (
-              <EngineeringSurveyWorkBody workflow={workflow} />
-            ) : null}
-
-            {workTab === "fees" ? (
-              <>
-                <EngSection>أتعاب الرفع المساحي</EngSection>
-                <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-                  <EngField label="قيمة الأتعاب" value={feeAmountLabel} />
-                  <EngField label="حالة الاستحقاق">
-                    {draft.status === "submitted" || locked ? (
-                      <EngStatusPill
-                        label="مستحقة بعد الإرسال"
-                        color={ENG_STATUS_COLORS.submitted}
-                      />
-                    ) : (
-                      <EngStatusPill
-                        label="تُستحق عند إرسال الرفع"
-                        color={ENG_STATUS_COLORS.pending}
-                      />
-                    )}
-                  </EngField>
-                  <EngField label="حالة الدفع">
-                    <EngStatusPill
-                      label={
-                        feeForTask?.billingStatus === "disbursed"
-                          ? "صُرفت"
-                          : "لم تُصرف"
-                      }
-                      color={
-                        feeForTask?.billingStatus === "disbursed"
-                          ? ENG_STATUS_COLORS.submitted
-                          : ENG_STATUS_COLORS.unpaid
-                      }
-                    />
-                  </EngField>
-                </div>
-                <EngInfo>
-                  تُستحق أتعاب الرفع المساحي للمكتب الهندسي عند إرسال المعاملة
-                  واعتمادها من أخصائي دراسة الحالة.
-                </EngInfo>
-              </>
-            ) : null}
-
-            {workTab === "notes" ? (
-              <>
-                <EngSection>ملاحظة على المعاملة</EngSection>
-                <textarea
-                  id="eng-workspace-note"
-                  className={cn(opsFldControl, "min-h-[120px] resize-y")}
-                  rows={5}
-                  disabled={!notesEditable}
-                  value={noteDraft}
-                  placeholder="اكتب ملاحظتك هنا…"
-                  onChange={(e) => setNoteDraft(e.target.value)}
+          {/* The swap fade lives on its own wrapper: animating the dimmed (75%)
+              panel itself would end by snapping from full opacity back down. */}
+          <div ref={panelRef}>
+            <div
+              className={cn(
+                formDisabled &&
+                  workTab !== "property" &&
+                  workTab !== "fees" &&
+                  "pointer-events-none select-none opacity-75",
+                locked &&
+                  workTab === "survey" &&
+                  "rounded-[10px] bg-[#F1F5F9] p-3 grayscale-[0.35]",
+              )}
+            >
+              {workTab === "property" ? (
+                <EngineeringSurveyPropertySummary
+                  property={property}
+                  record={record ?? undefined}
+                  deedNumber={deedNumber}
                 />
-                {notesEditable ? (
-                  <div className="mt-3">
-                    <button
-                      type="button"
-                      className={cn(
-                        opsBtnPrimary,
-                        "!px-[18px] !py-[7px] !text-xs",
-                      )}
-                      onClick={saveNote}
-                    >
-                      حفظ الملاحظة
-                    </button>
-                  </div>
-                ) : (
-                  <p className="mt-2 text-[11px] text-text-3">
-                    {viewOnly
-                      ? "وضع الاستعراض — لا يمكن التعديل."
-                      : "لا يمكن تعديل الملاحظة بعد إرسال المعاملة أو إغلاقها."}
-                  </p>
-                )}
-                {notesEditable && propertyId ? (
-                  <>
-                    <EngSection>مستندات ذات قيمة</EngSection>
-                    <EngInfo>
-                      مستند يحمل قيمة (مثل تقييم للآلات أو دراسة دخل) — يراجعه أخصائي دراسة الحالة
-                      ويقرر المقيّم أثره.
-                    </EngInfo>
-                    <div className="mt-2">
-                      <ValuedDocumentUploadButton poNumber={task.poNumber} propertyId={propertyId} />
-                    </div>
-                  </>
-                ) : null}
-              </>
-            ) : null}
+              ) : null}
 
-            {workTab === "failures" && propertyId ? (
-              <FailureRaisePanel
-                poNumber={task.poNumber}
-                propertyId={propertyId}
-                deedNumber={deedNumber}
-                specialist={task.assigneeName || def.assigneeSubtitle}
-                raisedByRole={failureRaiserRoleForParty(def)}
-                onSubmitted={onFailureSubmitted}
-                autoOpenRaise={false}
-                raiseDisabled={formDisabled}
-                raiseDisabledReason={
-                  viewOnly
-                    ? "وضع الاستعراض — لا يمكن تسجيل تعذر من هنا."
-                    : "لا يمكن تسجيل تعذر بعد إرسال المعاملة."
-                }
-              />
-            ) : null}
+              {workTab === "survey" ? (
+                <EngineeringSurveyWorkBody workflow={workflow} />
+              ) : null}
+
+              {workTab === "fees" ? (
+                <>
+                  <EngSection>أتعاب الرفع المساحي</EngSection>
+                  <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                    <EngField label="قيمة الأتعاب" value={feeAmountLabel} />
+                    <EngField label="حالة الاستحقاق">
+                      {draft.status === "submitted" || locked ? (
+                        <EngStatusPill
+                          label="مستحقة بعد الإرسال"
+                          color={ENG_STATUS_COLORS.submitted}
+                        />
+                      ) : (
+                        <EngStatusPill
+                          label="تُستحق عند إرسال الرفع"
+                          color={ENG_STATUS_COLORS.pending}
+                        />
+                      )}
+                    </EngField>
+                    <EngField label="حالة الدفع">
+                      <EngStatusPill
+                        label={
+                          feeForTask?.billingStatus === "disbursed"
+                            ? "صُرفت"
+                            : "لم تُصرف"
+                        }
+                        color={
+                          feeForTask?.billingStatus === "disbursed"
+                            ? ENG_STATUS_COLORS.submitted
+                            : ENG_STATUS_COLORS.unpaid
+                        }
+                      />
+                    </EngField>
+                  </div>
+                  <EngInfo>
+                    تُستحق أتعاب الرفع المساحي للمكتب الهندسي عند إرسال المعاملة
+                    واعتمادها من أخصائي دراسة الحالة.
+                  </EngInfo>
+                </>
+              ) : null}
+
+              {workTab === "notes" ? (
+                <>
+                  <EngSection>ملاحظة على المعاملة</EngSection>
+                  <textarea
+                    id="eng-workspace-note"
+                    className={cn(opsFldControl, "min-h-[120px] resize-y")}
+                    rows={5}
+                    disabled={!notesEditable}
+                    value={noteDraft}
+                    placeholder="اكتب ملاحظتك هنا…"
+                    onChange={(e) => setNoteDraft(e.target.value)}
+                  />
+                  {notesEditable ? (
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        className={cn(
+                          opsBtnPrimary,
+                          "!px-[18px] !py-[7px] !text-xs",
+                        )}
+                        onClick={saveNote}
+                      >
+                        حفظ الملاحظة
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-[11px] text-text-3">
+                      {viewOnly
+                        ? "وضع الاستعراض — لا يمكن التعديل."
+                        : "لا يمكن تعديل الملاحظة بعد إرسال المعاملة أو إغلاقها."}
+                    </p>
+                  )}
+                  {notesEditable && propertyId ? (
+                    <>
+                      <EngSection>مستندات ذات قيمة</EngSection>
+                      <EngInfo>
+                        مستند يحمل قيمة (مثل تقييم للآلات أو دراسة دخل) — يراجعه أخصائي دراسة الحالة
+                        ويقرر المقيّم أثره.
+                      </EngInfo>
+                      <div className="mt-2">
+                        <ValuedDocumentUploadButton poNumber={task.poNumber} propertyId={propertyId} />
+                      </div>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+
+              {workTab === "failures" && propertyId ? (
+                <FailureRaisePanel
+                  poNumber={task.poNumber}
+                  propertyId={propertyId}
+                  deedNumber={deedNumber}
+                  specialist={task.assigneeName || def.assigneeSubtitle}
+                  raisedByRole={failureRaiserRoleForParty(def)}
+                  onSubmitted={onFailureSubmitted}
+                  autoOpenRaise={false}
+                  raiseDisabled={formDisabled}
+                  raiseDisabledReason={
+                    viewOnly
+                      ? "وضع الاستعراض — لا يمكن تسجيل تعذّر من هنا."
+                      : "لا يمكن تسجيل تعذّر بعد إرسال المعاملة."
+                  }
+                />
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

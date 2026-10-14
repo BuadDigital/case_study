@@ -5,8 +5,10 @@
  * visibility, map-pin gating). No React, no I/O.
  */
 import {
+  INSPECTOR_BOUNDARY_KEYS,
   MOVABLES_DESCRIPTION_KEY,
   OCCUPANCY_DESCRIPTION_KEY,
+  effectiveDeedVerdict,
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
   type isLandInspectionContext,
@@ -14,7 +16,7 @@ import {
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 
-export type InspectorSaveChipSection = "location" | "access" | "photos";
+type InspectorSaveChipSection = "location" | "access" | "photos";
 
 /** Which step-1 save chip a draft field belongs to. */
 export const SAVE_CHIP_SECTION_BY_FIELD: Record<string, InspectorSaveChipSection> = {
@@ -87,6 +89,8 @@ const ERROR_LINK_TARGETS: {
         ? `ins-component-photo-${errors.missingComponentPhotoKey}`
         : "ins-components-section",
   },
+  { key: "landHasValuableStructures", targetId: "ins-land-structures" },
+  { key: "deedMatchesNature", targetId: "ins-deed-match" },
   {
     key: "boundaries",
     targetId: (errors) =>
@@ -169,6 +173,37 @@ export function boundaryMatchPatch(
       [key]: { ...draft.boundaryMatches[key], ...change },
     },
   };
+}
+
+export type DeedMatchVerdict = InspectorWorkspaceDraft["deedMatchesNature"];
+
+/**
+ * The inspector's verdict pill. «مطابق» sets all four sides to matching (notes cleared) in
+ * ONE patch; «غير مطابق» keeps the sides' answers (an untouched side starts as matching so the
+ * inspector only flips the sides that differ). The deed text/length/facade are never touched.
+ */
+export function deedVerdictPatch(
+  draft: Pick<InspectorWorkspaceDraft, "boundaryMatches">,
+  verdict: Exclude<DeedMatchVerdict, "">,
+): Pick<InspectorWorkspaceDraft, "boundaryMatches" | "deedMatchesNature"> {
+  const boundaryMatches = { ...draft.boundaryMatches };
+  for (const key of INSPECTOR_BOUNDARY_KEYS) {
+    const row = boundaryMatches[key];
+    boundaryMatches[key] =
+      verdict === "yes"
+        ? { ...row, matches: true, mismatchNote: "" }
+        : { ...row, matches: row.matches ?? true };
+  }
+  return { deedMatchesNature: verdict, boundaryMatches };
+}
+
+/** Headline of the read-only / summary view: «المعاين: مطابق / غير مطابق / لم يحدد». */
+export function deedVerdictHeadline(
+  draft: Pick<InspectorWorkspaceDraft, "deedMatchesNature" | "boundaryMatches">,
+): string {
+  const verdict = effectiveDeedVerdict(draft);
+  const label = verdict === "yes" ? "مطابق" : verdict === "no" ? "غير مطابق" : "لم يحدد";
+  return `المعاين: ${label}`;
 }
 
 /** Inspector-entered deed text wins; otherwise the specialist/PO value. */

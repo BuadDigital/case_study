@@ -71,10 +71,10 @@ export type CachedAssignmentDoc = {
   attachmentId?: string;
 };
 
-export type DocCacheResult = { ok: true } | { ok: false; error: string };
+type DocCacheResult = { ok: true } | { ok: false; error: string };
 
 /** Name + reason the server requires for a document outside the defined list («other»). */
-export type UnlistedDocumentDetails = {
+type UnlistedDocumentDetails = {
   customDocumentLabel: string;
   customDocumentReason: string;
 };
@@ -343,6 +343,19 @@ async function writeCachedDoc(
       };
     }
     payload.attachmentId = upload.data.id;
+    // The server stores a cleaned-up name («.az.pdf» → «az.pdf»); the property keeps whatever name the cache
+    // holds and later matches its documents by that name, so the cache must carry the stored one.
+    const storedName = upload.data.fileName?.trim();
+    if (storedName && storedName !== payload.fileName) {
+      const localName = payload.fileName;
+      payload.fileName = storedName;
+      if (!replaceAll) {
+        docCache.set(
+          key,
+          (docCache.get(key) ?? []).filter((d) => d.fileName !== localName),
+        );
+      }
+    }
     if (replaceAll) {
       setCachedDocs(key, [payload], generation);
     } else {
@@ -435,7 +448,26 @@ export function getCachedPropertyDocMatching(
   if (docs.length === 0) return null;
   const expected = expectedFileName?.trim();
   if (!expected) return docs[0] ?? null;
-  return docs.find((d) => d.fileName === expected) ?? null;
+  const expectedStored = storedFileNameOf(expected);
+  return (
+    docs.find(
+      (d) => d.fileName === expected || storedFileNameOf(d.fileName) === expectedStored,
+    ) ?? null
+  );
+}
+
+/**
+ * The name the attachments service keeps for an upload: no directory part, no reserved
+ * characters, no leading or trailing dots. Forms keep the name the user's file had, so lookups
+ * compare both sides in this form (a file called `.deed.pdf` is stored as `deed.pdf`).
+ */
+export function storedFileNameOf(name: string): string {
+  const base = name.trim().split(/[\\/:]/).pop() ?? "";
+  return base
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "")
+    .trim()
+    .replace(/^\.+|\.+$/g, "")
+    .trim();
 }
 
 async function hydrateOneMeta(

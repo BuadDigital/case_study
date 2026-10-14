@@ -18,14 +18,14 @@ public interface ITransactionStateService
         CancellationToken cancellationToken = default);
 
  /// <summary>
- /// Supplemental Q-9 (R3): After uploading Enfaz — Audit Entry with Decision General Manager and his reason exclusively;
- /// It does not open anything (actual retrieval from Enfaz passes R2 in evaluation).
+ /// The case specialist takes a handed-over transaction back from Enfaz: clears the handover
+ /// stamp and, as chosen, reopens the case-study report (and records the valuation request).
+ /// Errors carry Arabic field messages (<c>reason</c>, or <c>_</c>).
  /// </summary>
-    Task<string?> RecordPostEnfazDecisionAsync(
+    Task<(TransactionStateDto? Result, Dictionary<string, string>? Errors)> ReturnFromEnfazAsync(
         Guid workOrderId,
         Guid propertyId,
-        PostEnfazDecisionRequest request,
-        string? actorId,
-        string? actorRole,
+        ReturnFromEnfazRequest request,
+        CaseStudyReportActor actor,
         CancellationToken cancellationToken = default);
 }

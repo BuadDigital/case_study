@@ -23,6 +23,16 @@ public sealed class HttpFailureLookup(
         return gates.HasActive;
     }
 
+    public async Task<bool> HasSurveyFreezingAsync(
+        string poNumber,
+        string propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        var gates = await GatesAsync(poNumber, propertyId, cancellationToken);
+        // A Failures host from before the lift shipped sends no SurveyFrozen: every active failure froze then.
+        return gates.SurveyFrozen ?? gates.HasActive;
+    }
+
     public async Task<bool> HasBlockingAsync(
         string poNumber,
         string propertyId,

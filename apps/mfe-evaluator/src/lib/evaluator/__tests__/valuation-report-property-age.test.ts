@@ -23,6 +23,29 @@ describe("reportPropertyAgeYearsFromLicense", () => {
     expect(h!.getFullYear()).toBeLessThanOrEqual(2020);
   });
 
+  it.each([
+    ["30/02/2020", "impossible Gregorian day (used to roll to 01/03/2020)"],
+    ["2021-02-29", "29 Feb in a common year"],
+    ["31/04/2024 م", "31 April"],
+    ["1445/08/30 هـ", "30 Sha'ban 1445 — a 29-day month"],
+  ])("rejects %s (%s)", (raw) => {
+    expect(parseLicenseDateForAge(raw)).toBeNull();
+  });
+
+  it.each([
+    ["٢٩/٠٢/٢٠٢٠", 2020, 1, 29],
+    ["1445/09/01 هـ", 2024, 2, 11],
+    ["01/10/1445", 2024, 3, 10],
+  ])("reads %s as local noon %i-%i-%i", (raw, y, m, d) => {
+    const date = parseLicenseDateForAge(raw);
+    expect([date?.getFullYear(), date?.getMonth(), date?.getDate(), date?.getHours()]).toEqual([
+      y,
+      m,
+      d,
+      12,
+    ]);
+  });
+
   it("subtracts two years from the completed age and never goes below zero", () => {
     const now = new Date(2026, 8, 22, 12, 0, 0, 0); // 2026-09-22
     // License 2020-09-22 → 6 full years − 2 = 4

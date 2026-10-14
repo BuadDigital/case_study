@@ -15,6 +15,7 @@ import {
 } from "@platform/app-shared/app-data/party-submission-api";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import { formatDateAr } from "../../lib/app-data/po-intake-data";
+import { ReturnInspectionDialog } from "./ReturnInspectionDialog";
 
 function formatAcceptedDate(iso: string): string {
   const day = iso.trim().slice(0, 10);
@@ -39,6 +40,9 @@ export function PropertyDetailPartyPackageReview({
   returnSuccessToast = "أُعيدت الحزمة للتصحيح",
   hint,
   disabled,
+  hideAccept = false,
+  returnsInspection = false,
+  deedLabel,
   onChanged,
 }: {
   taskId: string | null | undefined;
@@ -55,6 +59,19 @@ export function PropertyDetailPartyPackageReview({
   /** Optional note under the actions (e.g. survey fee accrual). */
   hint?: string;
   disabled?: boolean;
+  /**
+   * No separate acceptance step (the appraisal package: the appraiser approves the report, the specialist
+   * only returns the package for correction or drafts the report from it).
+   */
+  hideAccept?: boolean;
+  /**
+   * The package is the field inspection: «إعادة للتصحيح» opens the return dialog (sections,
+   * affected parties, study-report decision) instead of the plain reason box. The survey and
+   * appraisal packages keep the plain reopen.
+   */
+  returnsInspection?: boolean;
+  /** Deed number shown in the return dialog (inspection only). */
+  deedLabel?: string;
   onChanged?: () => void;
 }) {
   const { showToast } = useToast();
@@ -76,12 +93,28 @@ export function PropertyDetailPartyPackageReview({
   const canReview = Boolean(taskId) && status === "submitted" && !disabled;
   const accepted =
     typeof acceptedAtUtc === "string" && acceptedAtUtc.trim().length > 0;
-  const canAccept = canReview && !accepted;
+  const canAccept = canReview && !accepted && !hideAccept;
   const canReturn = canReview && !accepted;
 
+  // Rendered on every path: the status flips to «reopened» when the return lands, and the
+  // dialog's per-party outcomes must stay on screen until the specialist closes it.
+  const inspectionReturnDialog =
+    returnsInspection && taskId ? (
+      <ReturnInspectionDialog
+        open={returnOpen}
+        inspectionTaskId={taskId}
+        deedLabel={deedLabel}
+        onClose={() => setReturnOpen(false)}
+        onReturned={() => {
+          showToast(returnSuccessToast, "success");
+          notifyTasksChanged();
+          onChanged?.();
+        }}
+      />
+    ) : null;
+
   if (!canReview && !accepted) {
-    if (status === "reopened") return null;
-    return null;
+    return inspectionReturnDialog;
   }
 
   async function handleAccept() {
@@ -134,7 +167,8 @@ export function PropertyDetailPartyPackageReview({
 
   return (
     <div className="mb-3.5">
-      {!returnOpen && canReview ? (
+      {inspectionReturnDialog}
+      {(!returnOpen || returnsInspection) && canReview ? (
         <div className="flex flex-wrap items-center justify-end gap-2">
           {accepted ? (
             <div className="me-auto rounded-lg border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg px-3 py-1.5 text-[11.5px] font-semibold text-heading max-lg:w-full">
@@ -185,7 +219,7 @@ export function PropertyDetailPartyPackageReview({
         </div>
       ) : null}
 
-      {returnOpen ? (
+      {returnOpen && !returnsInspection ? (
         <div className="rounded-lg border border-border bg-surface px-3.5 py-3">
           <Label htmlFor={`party-return-note-${taskId}`} className="text-xs">
             سبب الإرجاع للتصحيح <span className="text-danger-text">*</span>

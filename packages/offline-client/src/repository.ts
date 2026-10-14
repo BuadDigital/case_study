@@ -8,6 +8,7 @@ import {
 } from "./store";
 import {
   makeLocalAttachmentId,
+  type BuildingInventoryOutboxPayload,
   type OfflineDraftRecord,
 } from "./types";
 
@@ -53,6 +54,71 @@ export async function persistDraftLocally(input: {
     payloadJson: record.payloadJson,
   });
   return record;
+}
+
+/**
+ * Queues the inspector's «جدول الحصر» save. The PUT is a full replace of the property's
+ * lines, so a newer write supersedes every older one: it is folded into the row already
+ * waiting for the property (the last write wins) instead of queueing one copy per edit.
+ */
+export async function enqueueBuildingInventoryLocally(input: {
+  userId: string;
+  poNumber: string;
+  propertyId: string;
+  taskId?: string;
+  body: Record<string, unknown>;
+}): Promise<void> {
+  const payload: BuildingInventoryOutboxPayload = {
+    poNumber: input.poNumber,
+    propertyId: input.propertyId,
+    ...(input.taskId ? { taskId: input.taskId } : {}),
+    body: input.body,
+  };
+  const payloadJson = JSON.stringify(payload);
+  const waiting = (await listOutboxItems(input.userId)).find(
+    (item) =>
+      item.kind === "building-inventory-save" &&
+      item.targetId === input.propertyId &&
+      (item.status === "pending" ||
+        item.status === "failed" ||
+        item.status === "uploading"),
+  );
+  if (waiting) {
+    await saveOutboxItem({
+      ...waiting,
+      payloadJson,
+      status: "pending",
+      updatedAtUtc: new Date().toISOString(),
+    });
+    return;
+  }
+  await enqueueOutbox({
+    userId: input.userId,
+    kind: "building-inventory-save",
+    targetId: input.propertyId,
+    payloadJson,
+  });
+}
+
+/** The queued, not yet replayed «جدول الحصر» write of a property, when one is waiting. */
+export async function readQueuedBuildingInventory(
+  userId: string,
+  propertyId: string,
+): Promise<BuildingInventoryOutboxPayload | null> {
+  const waiting = (await listOutboxItems(userId)).find(
+    (item) =>
+      item.kind === "building-inventory-save" &&
+      item.targetId === propertyId &&
+      (item.status === "pending" ||
+        item.status === "failed" ||
+        item.status === "uploading"),
+  );
+  if (!waiting) return null;
+  try {
+    return JSON.parse(waiting.payloadJson) as BuildingInventoryOutboxPayload;
+  } catch {
+    return null;
+  }
 }
 
 export async function cachePrefetchAttachment(input: {

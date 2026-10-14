@@ -83,9 +83,9 @@ const PARTY_TASK_PAGES_MAP = {
     workTitle: "تقييم العقار",
     workIntro: "",
     saveLabel: "حفظ وإتمام التقييم",
-    completeTitle: "تم إرسال التقييم",
-    completeMessage: "اكتمل تقييم هذا العقار.",
-    assigneeSubtitle: "مقيم عقاري",
+    completeTitle: "تم تسليم التقييم",
+    completeMessage: "سُلِّم التقييم للأخصائي لإعداد مسودة التقرير — بياناته مقفلة حتى يُعاد للتصحيح.",
+    assigneeSubtitle: "مقيّم عقاري",
     icon: "M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11",
   },
   "active-survey": {
@@ -132,7 +132,7 @@ export function filterTasksForPartyKind(
 }
 
 /** Distributed party workflow roles (inspector, engineering office, appraiser, reviewer). */
-export const PARTY_WORKFLOW_ROLE_IDS: RoleId[] = [
+const PARTY_WORKFLOW_ROLE_IDS: RoleId[] = [
   "field-inspector",
   "engineering-office",
   "real-estate-appraiser",
@@ -141,12 +141,6 @@ export const PARTY_WORKFLOW_ROLE_IDS: RoleId[] = [
 
 export function isPartyWorkflowRole(role: RoleId): boolean {
   return PARTY_WORKFLOW_ROLE_IDS.includes(role);
-}
-
-export function partyTaskPageDefForKind(
-  kind: WorkflowTaskKind,
-): PartyTaskPageDef | null {
-  return Object.values(PARTY_TASK_PAGES).find((d) => d.kind === kind) ?? null;
 }
 
 /**

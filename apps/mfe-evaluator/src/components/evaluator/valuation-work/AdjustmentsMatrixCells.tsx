@@ -55,7 +55,6 @@ export function LabelCell({
   label,
   hint,
   tip,
-  definition,
   locked,
   pickable,
   picked,
@@ -75,7 +74,6 @@ export function LabelCell({
   label: string;
   hint?: string;
   tip?: string;
-  definition?: string;
   locked: boolean;
   pickable?: boolean;
   picked?: boolean;
@@ -109,7 +107,7 @@ export function LabelCell({
             />
           ) : (
             <div
-              title={tip || definition || undefined}
+              title={tip || undefined}
               className="cursor-default text-[12.5px] font-bold leading-[1.35] text-heading"
             >
               {label}
@@ -256,7 +254,9 @@ function AreaFactorInput({
     });
   }
 
-  useEffect(() => () => clearTimer(), []);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => () => flushRef.current(), []);
 
   return (
     <label className="mt-1.5 flex items-center gap-[7px]">
@@ -340,7 +340,9 @@ export function JustCell({
     });
   }
 
-  useEffect(() => () => clearTimer(), []);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => () => flushRef.current(), []);
 
   if (!factorKey || !onCommit) {
     return <td className={tdJustClass} />;
@@ -443,7 +445,9 @@ export function CompInput({
     });
   }
 
-  useEffect(() => () => clearTimer(), []);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => () => flushRef.current(), []);
 
   return (
     <td className={tdCellClass}>
@@ -591,7 +595,9 @@ export function WeightCell({
     });
   }
 
-  useEffect(() => () => clearTimer(), []);
+  const flushRef = useRef(flush);
+  flushRef.current = flush;
+  useEffect(() => () => flushRef.current(), []);
 
   return (
     <td className={tdCellClass}>

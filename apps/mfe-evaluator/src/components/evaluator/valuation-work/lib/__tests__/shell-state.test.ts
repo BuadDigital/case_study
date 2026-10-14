@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type {
-  DifferenceFactorDefinitionDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
 import {
   buildAutoNarrative,
-  buildFactorCatalog,
   isSeedMarketAnalysisNotes,
+  parseDecimal,
   SEED_MARKET_ANALYSIS_NOTES,
 } from "../shell-state";
 
@@ -32,6 +31,24 @@ const FACTOR_ROWS = [
   { factorKey: "type", labelAr: "تسوية نوع المقارن" },
   { factorKey: "financing", labelAr: "تسوية شروط التمويل" },
 ];
+
+describe("parseDecimal", () => {
+  it("uses the shared locale rule — thousands comma, decimal comma, Arabic digits, units", () => {
+    expect(parseDecimal("1,250")).toBe(1250);
+    expect(parseDecimal("12,5")).toBe(12.5);
+    expect(parseDecimal("1,25")).toBe(1.25);
+    expect(parseDecimal("١٬٢٥٠")).toBe(1250);
+    expect(parseDecimal("300 م²")).toBe(300);
+    expect(parseDecimal(42)).toBe(42);
+  });
+
+  it("keeps blank as 0 and junk as NaN", () => {
+    expect(parseDecimal("")).toBe(0);
+    expect(parseDecimal("  ")).toBe(0);
+    expect(parseDecimal("abc")).toBeNaN();
+    expect(parseDecimal("1,2,3")).toBeNaN();
+  });
+});
 
 describe("isSeedMarketAnalysisNotes", () => {
   it("detects the demo seed filler", () => {
@@ -81,29 +98,3 @@ describe("buildAutoNarrative", () => {
   });
 });
 
-function catalogFactor(
-  extra: Partial<DifferenceFactorDefinitionDto>,
-): DifferenceFactorDefinitionDto {
-  return {
-    key: "extra",
-    labelAr: "عامل إضافي",
-    definitionAr: "تعريف",
-    excludesAr: "",
-    sortOrder: 1,
-    isActive: true,
-    ...extra,
-  };
-}
-
-describe("buildFactorCatalog", () => {
-  it("keeps default difference factors in the addable list so a deleted row can return", () => {
-    const { addable } = buildFactorCatalog([
-      catalogFactor({ key: "location", labelAr: "الموقع" }),
-      catalogFactor({ key: "attraction", labelAr: "عامل الجذب للموقع" }),
-      catalogFactor({ key: "market", labelAr: "تسوية ظروف السوق" }),
-      catalogFactor({ key: "area", labelAr: "المساحة" }),
-      catalogFactor({ key: "inactive", labelAr: "مخفي", isActive: false }),
-    ]);
-    expect(addable.map((f) => f.factorKey)).toEqual(["location", "attraction"]);
-  });
-});

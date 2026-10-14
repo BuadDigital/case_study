@@ -9,9 +9,9 @@
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
-import { emptyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-model";
-import { loadPartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-reads";
-import { savePartyCaseStudyFormDraft } from "@case-study/mfe/lib/app-data/case-study-form-commands";
+import { emptyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-model";
+import { loadPartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-reads";
+import { savePartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-commands";
 import {
   declarationPhoneGate,
   hasAnyPartyPhone,
@@ -37,6 +37,7 @@ import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   firstEngineeringSurveyError,
   firstEngineeringSurveyErrorTarget,
+  normalizeEngineeringSurveyNumbers,
   validateEngineeringSurveySubmission,
   isPlattedPropertyWithPlot,
 } from "../lib/engineering-survey-validation";
@@ -115,7 +116,7 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
     }
     if (blockingFailure) {
       showToast(
-        `لا يمكن بدء الرفع المساحي — يوجد تعذر نشط: ${failureRecordTitle(blockingFailure)}`,
+        `لا يمكن بدء الرفع المساحي — يوجد تعذّر نشط: ${failureRecordTitle(blockingFailure)}`,
         "error",
       );
       setWorkTab("failures");
@@ -143,8 +144,8 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
       if (locked || viewOnly || !task.id) return;
 
       const partyDraft =
-        (await loadPartyCaseStudyFormDraft(task.id)) ??
-        emptyCaseStudyFormDraft(task.id, {
+        (await loadPartyCaseStudyReportDraft(task.id)) ??
+        emptyCaseStudyReportDraft(task.id, {
           propertyId,
           poNumber: task.poNumber,
         });
@@ -155,7 +156,7 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
       );
       if (!caseStudyAnswersChanged(partyDraft.answers, mergedAnswers)) return;
 
-      const saved = await savePartyCaseStudyFormDraft({
+      const saved = await savePartyCaseStudyReportDraft({
         ...partyDraft,
         answers: mergedAnswers,
       });
@@ -240,8 +241,9 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
       return false;
     }
 
-    // Ensure latest local text is on the server before finalize.
-    await updateEngineeringSurveyDraft(task.id, localFields);
+    // Ensure latest local text is on the server before finalize — numbers in Latin digits
+    // (Arabic digits, «٫» and grouping pass validation here but not the server's parser).
+    await updateEngineeringSurveyDraft(task.id, normalizeEngineeringSurveyNumbers(localFields));
 
     hostRef.current?.onSavingChange?.(true);
     setFormError(null);
@@ -285,12 +287,12 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
               `pin-mismatch:${propertyId}`,
             );
             showToast(
-              "اختلاف موقع العقار عن معاينة الميدان — سُجّل تعذر داخلي للمراجعة.",
+              "اختلاف موقع العقار عن معاينة الميدان — سُجّل تعذّر داخلي للمراجعة.",
               "error",
             );
           } catch {
             showToast(
-              "تم الإرسال، لكن تعذّر تسجيل تعذر اختلاف الموقع تلقائياً.",
+              "تم الإرسال، لكن تعذّر تسجيل تعذّر اختلاف الموقع تلقائياً.",
               "error",
             );
           }
@@ -299,7 +301,7 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
       hostRef.current?.onSubmitted?.();
       return true;
     }
-    const message = "تعذر إرسال الرفع المساحي — حاول مرة أخرى";
+    const message = "تعذّر إرسال الرفع المساحي — حاول مرة أخرى";
     setFormError(message);
     showToast(message, "error");
     return false;
@@ -312,8 +314,6 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
     documentaryGate,
     role,
     property,
-    property?.contacts,
-    property?.deedNumber,
     propertyId,
     failures,
     task.id,
@@ -411,7 +411,7 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
   };
 }
 
-export type EngineeringSurveyCommands = ReturnType<
+type EngineeringSurveyCommands = ReturnType<
   typeof useEngineeringSurveyCommands
 >;
 

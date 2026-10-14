@@ -12,8 +12,6 @@ export async function fetchEvaluatorSubmission(
   return dtoToSubmission(dto);
 }
 
-export const fetchEvaluatorSubmissionSnapshot = fetchEvaluatorSubmission;
-
 export async function prefetchEvaluatorSubmissions(
   taskIds: string[],
 ): Promise<void> {

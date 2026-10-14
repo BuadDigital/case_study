@@ -24,10 +24,8 @@ export {
   PARTY_SUBMISSIONS_PREFETCH_ID,
   WORKFLOW_TASKS_PREFETCH_ID,
   mergePrefetchedOperationsTaskPatch,
-  readPrefetchedBasicDocMap,
   readPrefetchedJson,
   readPrefetchedOperationsTasks,
-  readPrefetchedPartySubmissions,
   readPrefetchedPoRecord,
   readPrefetchedPoRecords,
   readPrefetchedWorkflowTasks,
@@ -44,7 +42,6 @@ export {
 } from "./media/process-evidence-photo";
 export {
   evaluatePhotoLocation,
-  parseCoord,
   photoLocationFlagLabel,
 } from "./media/photo-location";
 export {
@@ -82,11 +79,9 @@ export * from "./app-data/role-access";
 export * from "./app-data/runtime-access";
 export * from "./app-data/permissions-pages";
 export * from "./app-data/page-access";
-export * from "./app-data/settings-nav";
 export * from "./app-data/system-fields-nav";
 export * from "./app-data/system-settings-nav";
 export * from "./app-data/financial-nav";
-export * from "./app-data/orphan-screens-nav";
 export * from "./app-data/property-fields-catalog";
 export * from "./app-data/modules-api-config";
 export * from "./app-data/task-attachments-api";
@@ -95,7 +90,6 @@ export * from "./app-data/party-task-recall-model";
 export * from "./app-data/party-task-recall-reads";
 export * from "./app-data/party-task-recall-commands";
 export * from "./app-data/party-workflow-events";
-export * from "./app-data/screen-catalog";
 export { appDataKeys } from "./query/app-data-keys";
 export {
   optimisticPatchListItem,
@@ -105,6 +99,7 @@ export {
 export type { OptimisticPatchResult } from "./query/optimistic-list";
 export { usePermissionsQuery } from "./query/permissions-queries";
 export * from "./workflow/task-types";
+export * from "./workflow/task-done";
 export {
   registerEvaluatorRuntimeBridge,
   getEvaluatorRuntimeBridge,
@@ -118,5 +113,4 @@ export {
   saveDomainJsonSync,
   loadDomainStringSync,
   saveDomainStringSync,
-  removeDomainStringSync,
 } from "./storage/browser-domain-store";

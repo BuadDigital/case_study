@@ -3,9 +3,9 @@ import {
   createFailure as apiCreateFailure,
   deleteFailuresForPo as apiDeleteFailuresForPo,
   dtoToFailureRecord,
+  liftSurveyFreeze as apiLiftSurveyFreeze,
   listFailures,
   listFailuresPage,
-  reportBourseObstruction as apiReportBourseObstruction,
   resolveFailure as apiResolveFailure,
   returnFailure as apiReturnFailure,
   submitFailureForReview as apiSubmitFailureForReview,
@@ -24,7 +24,6 @@ import {
 } from "@platform/app-shared/app-data/work-orders-api-config";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
-  getCachedFailuresList,
   getCachedPropertyFailure,
   removeCachedFailuresForPo,
   setCachedFailuresList,
@@ -32,7 +31,6 @@ import {
 } from "./failures-cache";
 import { notifyFailuresChanged } from "./failures-events";
 import type {
-  BourseObstructionInput,
   CreateFailureInput,
   FailureRecord,
   FailureSeverity,
@@ -42,14 +40,14 @@ import type {
 
 export type { FailuresApiConfig };
 
-export function failuresApiConfig(): FailuresApiConfig | null {
+function failuresApiConfig(): FailuresApiConfig | null {
   return workOrdersApiConfig();
 }
 
 function requireFailuresApi(): FailuresApiConfig {
   const config = failuresApiConfig();
   if (!config) {
-    throw new Error("يجب تسجيل الدخول للوصول إلى التعذرات");
+    throw new Error("يلزم تسجيل الدخول للوصول إلى التعذّرات");
   }
   return config;
 }
@@ -61,6 +59,38 @@ function mapDto(dto: FailureRecordDto): FailureRecord {
     severity: raw.severity as FailureSeverity,
     status: raw.status as FailureStatus,
   };
+}
+
+export type LiftSurveyFreezeResult =
+  | { ok: true; lifted: number }
+  | { ok: false; error: string };
+
+/**
+ * «رفع تجميد الرفع المساحي» — the specialist only. The caller invalidates the failures queries
+ * (`invalidateFailuresRelated`) so the survey gate, which reads `surveyFreezeLiftedAt`, opens
+ * everywhere without a reload; the change events below refresh the non-query readers.
+ */
+export async function liftSurveyFreezeAsync(input: {
+  poNumber: string;
+  propertyId: string;
+  reason: string;
+}): Promise<LiftSurveyFreezeResult> {
+  const config = failuresApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await apiLiftSurveyFreeze(config, input);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        result.errors,
+        "تعذّر رفع تجميد الرفع المساحي",
+        result.message,
+      ),
+    };
+  }
+  notifyDownstreamChanges();
+  return { ok: true, lifted: result.data.lifted };
 }
 
 function notifyDownstreamChanges(): void {
@@ -75,28 +105,11 @@ function applyMutation(record: FailureRecord): FailureRecord {
   return record;
 }
 
-export async function loadFailuresFromBackend(): Promise<FailureRecord[]> {
-  const config = failuresApiConfig();
-  if (!config) return [];
-
-  const result = await listFailures(config);
-  if (result.ok) {
-    const mapped = result.data.map(mapDto);
-    setCachedFailuresList(mapped);
-    return mapped;
-  }
-
-  const cached = getCachedFailuresList();
-  if (cached.length > 0) return cached;
-
-  return [];
-}
-
 /** React Query loader — surfaces API failures. */
 export async function loadFailuresForQuery(): Promise<FailureRecord[]> {
   const config = failuresApiConfig();
   if (!config) {
-    throw new Error("يجب تسجيل الدخول للوصول إلى التعذرات");
+    throw new Error("يلزم تسجيل الدخول للوصول إلى التعذّرات");
   }
 
   const result = await listFailures(config);
@@ -106,7 +119,7 @@ export async function loadFailuresForQuery(): Promise<FailureRecord[]> {
     return mapped;
   }
 
-  throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل التعذرات"));
+  throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل التعذّرات"));
 }
 
 /**
@@ -119,7 +132,7 @@ export async function loadFailuresPageForQuery(
 ): Promise<PagedResultDto<FailureRecord>> {
   const config = failuresApiConfig();
   if (!config) {
-    throw new Error("يجب تسجيل الدخول للوصول إلى التعذرات");
+    throw new Error("يلزم تسجيل الدخول للوصول إلى التعذّرات");
   }
 
   const result = await listFailuresPage(config, query);
@@ -127,7 +140,7 @@ export async function loadFailuresPageForQuery(
     return { ...result.data, items: result.data.items.map(mapDto) };
   }
 
-  throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل التعذرات"));
+  throw new Error(apiErrorMessage(result.kind, "تعذّر تحميل التعذّرات"));
 }
 
 export function getPropertyFailureFromCache(
@@ -161,18 +174,6 @@ export async function createFailureAsync(
   );
   if (!result.ok) {
     throw new Error(`createFailure failed: ${result.kind}`);
-  }
-  return applyMutation(mapDto(result.data));
-}
-
-export async function reportBourseObstructionAsync(
-  input: BourseObstructionInput,
-): Promise<FailureRecord> {
-  const config = requireFailuresApi();
-
-  const result = await apiReportBourseObstruction(config, input);
-  if (!result.ok) {
-    throw new Error(`reportBourseObstruction failed: ${result.kind}`);
   }
   return applyMutation(mapDto(result.data));
 }

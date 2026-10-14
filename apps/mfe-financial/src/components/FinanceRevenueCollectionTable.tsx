@@ -101,6 +101,7 @@ export function CollectionTable({
                       <button
                         type="button"
                         className={cn(opsBtnPrimary, "px-3 py-[7px] text-[11.5px]")}
+                        data-po-intent={po}
                         onClick={() => onCollect(po)}
                       >
                         تسجيل التحويل
@@ -111,6 +112,7 @@ export function CollectionTable({
                           opsBtnGhost,
                           "h-auto px-[11px] py-[7px] text-[11.5px]",
                         )}
+                        data-po-intent={po}
                         onClick={() => onFollow(po)}
                       >
                         {followButtonLabel(fu)}

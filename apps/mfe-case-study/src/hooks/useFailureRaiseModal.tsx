@@ -12,7 +12,7 @@ import {
 } from "@failures/mfe/lib/failure-party-roles";
 import { FailureRaiseModal } from "../components/failures/FailureRaiseModal";
 
-export type FailureRaiseTarget = {
+type FailureRaiseTarget = {
   poNumber: string;
   propertyId: string;
   deedNumber?: string;

@@ -21,7 +21,7 @@ public sealed class PostgresFixture : IAsyncLifetime
         if (!DockerEnvironment.IsAvailable)
             return;
 
-        _container = new PostgreSqlBuilder("postgres:16-alpine")
+        _container = new PostgreSqlBuilder("postgres:17.5-alpine")
             .WithDatabase("realestate_eval_container_test")
             .WithUsername("postgres")
             .WithPassword("postgres")

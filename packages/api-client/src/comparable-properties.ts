@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson } from "./parse-json";
 import { fetchListPage, type PagedResultDto } from "./pagination";
@@ -133,12 +133,6 @@ export type ComparablePropertyListQuery = {
   dir?: "asc" | "desc";
 };
 
-/** The filter set without the page window — one query key per filter change. */
-export type ComparablePropertyListFilters = Omit<
-  ComparablePropertyListQuery,
-  "page" | "pageSize"
->;
-
 /** Every parameter of the list, in the order the endpoint documents them. */
 function comparablePropertyListParams(query: ComparablePropertyListQuery) {
   return {
@@ -200,14 +194,6 @@ type Result<T> =
       errors?: Record<string, string>;
     };
 
-function headers(token: string): HeadersInit {
-  return {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 
 export async function listComparableProperties(
   config: ComparablePropertiesApiConfig,
@@ -230,7 +216,7 @@ export async function listComparableProperties(
   try {
     const res = await fetch(
       `${base}/api/comparable-properties?${qs}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -275,7 +261,7 @@ export async function suggestComparablePropertiesByProximity(
   try {
     const res = await fetch(
       `${base}/api/comparable-properties/proximity-suggestions?${qs}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -296,7 +282,7 @@ export async function createComparableProperty(
   try {
     const res = await fetch(`${base}/api/comparable-properties`, {
       method: "POST",
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -339,41 +325,6 @@ export async function createComparableProperty(
   }
 }
 
-export async function updateComparableProperty(
-  config: ComparablePropertiesApiConfig,
-  id: string,
-  body: UpsertComparablePropertyRequest,
-): Promise<Result<ComparablePropertyDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/comparable-properties/${id}`, {
-      method: "PUT",
-      headers: headers(config.token),
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 400) {
-      const payload = (await res.json().catch(() => null)) as {
-        errors?: Record<string, string>;
-        error?: string;
-      } | null;
-      return {
-        ok: false,
-        kind: "validation",
-        message:
-          payload?.errors
-            ? Object.values(payload.errors)[0]
-            : payload?.error ?? "بيانات غير صالحة",
-        errors: payload?.errors,
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<ComparablePropertyDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 /** Q-3: human quality tags — set by an authorized user with reason; record stays tagged. */
 export async function setComparableQualityTags(
   config: ComparablePropertiesApiConfig,
@@ -384,7 +335,7 @@ export async function setComparableQualityTags(
   try {
     const res = await fetch(`${base}/api/comparable-properties/${id}/quality-tags`, {
       method: "PUT",
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -416,7 +367,7 @@ export async function deactivateComparableProperty(
   try {
     const res = await fetch(
       `${base}/api/comparable-properties/${id}/deactivate`,
-      { method: "POST", headers: headers(config.token) },
+      { method: "POST", headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -434,7 +385,7 @@ export async function reactivateComparableProperty(
   try {
     const res = await fetch(
       `${base}/api/comparable-properties/${id}/reactivate`,
-      { method: "POST", headers: headers(config.token) },
+      { method: "POST", headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };

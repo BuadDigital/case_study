@@ -1,5 +1,4 @@
 import {
-  circuitDisplayLabel,
   findLinkedCircuit,
   type CircuitSearchItem,
 } from "@platform/app-shared/domain/courts/circuit-search";
@@ -41,14 +40,4 @@ export function resolveSelectedCircuitId(input: {
   const linked = findLinkedCircuit(input.circuits, input.circuit);
   if (linked) return linked.id;
   return input.circuit.trim() ? CUSTOM_CIRCUIT_VALUE : "";
-}
-
-export function circuitOptionLabel(
-  circuits: readonly CircuitSearchItem[],
-  id: string,
-  fallback: string,
-): string {
-  const row = circuits.find((c) => c.id === id);
-  if (row) return circuitDisplayLabel(row);
-  return fallback.trim();
 }

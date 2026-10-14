@@ -328,7 +328,7 @@ public sealed class PropertyKeysService : IPropertyKeysService
         var key = row.PropertyId.Trim();
         var match = properties.FirstOrDefault(p =>
             p.PoNumber.Trim().Equals(po, StringComparison.OrdinalIgnoreCase) &&
-            (string.Equals(p.DeedNumber, key, StringComparison.OrdinalIgnoreCase) ||
+            (DeedNumberRules.EqualsNormalized(p.DeedNumber, key) ||
              string.Equals(p.Id.ToString(), key, StringComparison.OrdinalIgnoreCase)));
         var status = match?.DeedStatus?.Trim();
         return string.IsNullOrWhiteSpace(status) ? "—" : status;

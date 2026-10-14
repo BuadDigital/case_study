@@ -37,6 +37,7 @@ import {
 import { usePoRecordQuery } from "../query/case-study-queries";
 import {
   canShowPrimarySave,
+  canWorkTaskStep,
   DEED_VITALITY_REQUIRED_ERROR,
   DISTRIBUTION_SAVE_ERROR,
   newPropertyDraftKey,
@@ -90,10 +91,6 @@ export function useMyTaskWorkWorkflow({
   const [deedVitality, setDeedVitality] = useState<BourseDeedVitality | null>(
     null,
   );
-  const [obstructionReason, setObstructionReason] = useState("");
-  const [obstructionReasonError, setObstructionReasonError] = useState<
-    string | undefined
-  >();
   const [hasPriorSurvey, setHasPriorSurvey] = useState(false);
   const [distribution, setDistribution] = useState<TaskDistributionDraft>(
     () => migrateDistribution(task.distribution),
@@ -107,27 +104,32 @@ export function useMyTaskWorkWorkflow({
   const { data: poRecord, isFetched } = usePoRecordQuery(task.poNumber);
   const loading = !propertyHydrated;
 
-  useEffect(() => {
+  // The panel serves another task without remounting, so the task-scoped state is
+  // mirrored during render — no extra pass showing the previous task’s draft.
+  const [prevTaskId, setPrevTaskId] = useState(task.id);
+  const [prevDistribution, setPrevDistribution] = useState(task.distribution);
+  const [prevPhase, setPrevPhase] = useState(task.phase);
+  if (prevTaskId !== task.id || prevDistribution !== task.distribution) {
+    setPrevDistribution(task.distribution);
     setDistribution(migrateDistribution(task.distribution));
-  }, [task.id, task.distribution]);
-
-  useEffect(() => {
+  }
+  if (prevTaskId !== task.id || prevPhase !== task.phase) {
+    setPrevPhase(task.phase);
     setPhaseOverride(null);
-  }, [task.id, task.phase]);
+  }
+  if (prevTaskId !== task.id) {
+    setPrevTaskId(task.id);
+    setDeedVitality(null);
+  }
 
   const effectivePhase = phaseOverride ?? task.phase;
 
-  const { isSupervisor, isSpecialist, failureSpecialist } = taskWorkRoleFlags(role);
+  const roleFlags = taskWorkRoleFlags(role);
+  const { isSupervisor, isSpecialist, failureSpecialist } = roleFlags;
   const failureRaisedByRole =
     role === "section-supervisor"
       ? FAILURE_RAISER_SUPERVISOR
       : FAILURE_RAISER_SPECIALIST;
-
-  useEffect(() => {
-    setDeedVitality(null);
-    setObstructionReason("");
-    setObstructionReasonError(undefined);
-  }, [task.id]);
 
   // Flush or cancel the previous صك autosave when the panel switches tasks.
   useEffect(() => {
@@ -221,11 +223,6 @@ export function useMyTaskWorkWorkflow({
     [task.id, task.poNumber, task.propertyId],
   );
 
-  const onObstructionReasonChange = useCallback((value: string) => {
-    setObstructionReason(value);
-    setObstructionReasonError(undefined);
-  }, []);
-
   /** Picking «حالة الصك» clears its red mark and the matching top note. */
   const chooseDeedVitality = useCallback((value: BourseDeedVitality) => {
     setDeedVitality(value);
@@ -261,7 +258,7 @@ export function useMyTaskWorkWorkflow({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- sync when engineering unavailable
   }, [loading, task.phase, task.id, showEngineering, property.classification, property.identifierType, property.realEstateRegNumber, property.planNumber, property.plotNumber]);
 
-  const steps = resolveTaskWorkSteps(effectivePhase, layout, property.identifierType);
+  const steps = resolveTaskWorkSteps(effectivePhase);
   const fieldPolicy = clientFieldPolicyFor({
     clientId: poRecord?.clientId ?? "",
     reportUserClientIds: poRecord?.reportUserClientIds,
@@ -269,14 +266,12 @@ export function useMyTaskWorkWorkflow({
 
   const commands = useMyTaskWorkCommands({
     task,
-    role,
     property,
     assignmentType,
     fieldPolicy,
     distribution,
     showEngineering,
     deedVitality,
-    obstructionReason,
     linkedPropertyRemoved,
     staffUsers,
     steps,
@@ -284,7 +279,6 @@ export function useMyTaskWorkWorkflow({
     setFieldErrors,
     setSaving,
     setPhaseOverride,
-    setObstructionReasonError,
     setDistribution,
     onRefresh,
     onEnfathSaved,
@@ -292,14 +286,15 @@ export function useMyTaskWorkWorkflow({
 
   const submitBusy =
     saving || commands.bourseCompleting || commands.confirmingDistribution;
-  const showPrimarySave = canShowPrimarySave(task, steps.showCaseStudy, isSpecialist);
-  const saveLabel = taskWorkSaveLabel(steps, deedVitality);
+  const canWorkStep = canWorkTaskStep(steps, roleFlags);
+  const showPrimarySave = canShowPrimarySave(task, steps.showCaseStudy, canWorkStep);
+  const saveLabel = taskWorkSaveLabel(steps);
   const screen = resolveTaskWorkScreen({
     loading,
     linkedPropertyRemoved,
     task,
     showCaseStudy: steps.showCaseStudy,
-    isSpecialist,
+    isSpecialist: canWorkStep,
   });
 
   return {
@@ -315,9 +310,6 @@ export function useMyTaskWorkWorkflow({
     submitBusy,
     deedVitality,
     setDeedVitality: chooseDeedVitality,
-    obstructionReason,
-    onObstructionReasonChange,
-    obstructionReasonError,
     distribution,
     showEngineering,
     engineeringHint,

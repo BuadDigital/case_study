@@ -15,7 +15,7 @@ import {
   type StatusPillStyle,
 } from "@platform/ui-kit";
 
-export type ActiveQueueMobileCardTone = "new" | "pending" | "returned" | "done";
+type ActiveQueueMobileCardTone = "new" | "pending" | "returned" | "done";
 
 /** Timer sheet: subscribes to the clock itself so per-second updates stay inside the cell. */
 function TickingCardTimerText({
@@ -44,7 +44,7 @@ function TickingCardTimerText({
   );
 }
 
-export type ActiveQueueMobileCardMeta = {
+type ActiveQueueMobileCardMeta = {
   text: string;
   kind?: "po" | "place" | "type" | "plain";
 };
@@ -92,7 +92,7 @@ export type ActiveQueueMobileCardItem = {
 };
 
 /** Shared visual tokens — brand ink / gold / red (reuse in Failures, Fees, Ops). */
-export const queueMobileCardShellClassName = cn(
+const queueMobileCardShellClassName = cn(
   opsPanelCard,
   "group relative flex w-full min-w-0 max-w-full min-h-[84px] cursor-pointer items-stretch gap-3 overflow-hidden px-3.5 py-3.5",
   opsMobileShadow,
@@ -101,7 +101,7 @@ export const queueMobileCardShellClassName = cn(
   "hover:border-[color-mix(in_srgb,var(--border)_50%,var(--gold-2))] hover:shadow-[0_8px_24px_rgba(15,52,96,0.1)]",
 );
 
-export const queueMobileCardToneBorder: Record<
+const queueMobileCardToneBorder: Record<
   ActiveQueueMobileCardTone,
   string
 > = {
@@ -111,7 +111,7 @@ export const queueMobileCardToneBorder: Record<
   done: "border-s-[3px] border-s-ink",
 };
 
-export const queueMobileCardToneDot: Record<ActiveQueueMobileCardTone, string> =
+const queueMobileCardToneDot: Record<ActiveQueueMobileCardTone, string> =
   {
     new: "bg-ink shadow-[0_0_0_3px_color-mix(in_srgb,var(--ink)_14%,transparent)]",
     pending:
@@ -121,7 +121,7 @@ export const queueMobileCardToneDot: Record<ActiveQueueMobileCardTone, string> =
     done: "bg-ink shadow-[0_0_0_3px_color-mix(in_srgb,var(--ink)_14%,transparent)]",
   };
 
-export const queueMobileCardToneWash: Record<
+const queueMobileCardToneWash: Record<
   ActiveQueueMobileCardTone,
   string
 > = {
@@ -185,7 +185,7 @@ function barToneFromRatio(
   return "ok";
 }
 
-export function QueueMobileCardChevron({ expanded }: { expanded?: boolean }) {
+function QueueMobileCardChevron({ expanded }: { expanded?: boolean }) {
   return (
     <span
       className={cn(

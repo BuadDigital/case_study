@@ -94,10 +94,10 @@ test.describe("Engineering office: survey submit → specialist accept", () => {
     );
 
     // ── 2. coordinates (UI) ────────────────────────────────────────────────
-    const lat = page.locator("#eng-lat");
-    await expect(lat).toBeEditable({ timeout: 60_000 });
-    await lat.fill("24.7136");
-    await page.locator("#eng-lng").fill("46.6753");
+    // One «الإحداثيات» box (lat, lng) — the same control the inspector uses.
+    const coords = page.locator('input[placeholder="21.523339, 39.187743"]');
+    await expect(coords).toBeEditable({ timeout: 60_000 });
+    await coords.fill("24.7136, 46.6753");
 
     // ── 3. the PDF dropzone → chip (UI) ────────────────────────────────────
     const reportBox = page.locator("#eng-survey-report");
@@ -166,7 +166,7 @@ test.describe("Engineering office: survey submit → specialist accept", () => {
     if (!response) {
       const complaints = (await page.locator("body").innerText())
         .split("\n")
-        .filter((line) => /ارفع|أدخل|حدد|يجب|أكمل|تعذر/.test(line))
+        .filter((line) => /ارفع|أدخل|حدد|يجب|أكمل|تعذّ?ر/.test(line))
         .join(" | ")
         .replace(/\s+/g, " ")
         .trim();
@@ -187,7 +187,7 @@ test.describe("Engineering office: survey submit → specialist accept", () => {
     test.skip(
       !(await surveyPricingConfigured(adminToken)),
       "engineering-survey party-fee pricing has no area tiers in this environment — " +
-        "acceptance would fail with «تعذر تحديد الأتعاب من جدول التسعير — راجع ضبط الأسعار.»",
+        "acceptance would fail with «تعذّر تحديد الأتعاب من جدول التسعير — راجع ضبط الأسعار.»",
     );
 
     await loginAs(page, RELEASE_USERS.caseSpecialist);

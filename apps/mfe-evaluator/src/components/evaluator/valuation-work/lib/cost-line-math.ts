@@ -17,12 +17,21 @@ export {
   COST_UNIT_OPTIONS,
 } from "@platform/app-shared/domain/cost-items";
 
-export function costGroupOf(line: ValuationCostLineDto): "area" | "extra" {
+export function costGroupOf(
+  line: Pick<ValuationCostLineDto, "itemKey" | "structureKind">,
+): "area" | "extra" {
   // Custom line inherits its group from structureKind (floor = areas) — as in the interactive form.
   if (line.itemKey === "custom") {
     return line.structureKind === "floor" ? "area" : "extra";
   }
   return COST_GROUP1_KEYS.has(line.itemKey) ? "area" : "extra";
+}
+
+/** Built-up ratio counts only on m² lines of the area group — elsewhere it is not stored. */
+export function buildRatioApplies(
+  line: Pick<ValuationCostLineDto, "itemKey" | "structureKind" | "unit">,
+): boolean {
+  return costGroupOf(line) === "area" && (line.unit || "sqm") === "sqm";
 }
 
 /**
@@ -46,7 +55,7 @@ export function costLineComputed(
     : line.areaSqm;
   const inArea = costGroupOf(line) === "area";
   const bp = line.buildRatioPct;
-  const usesPct = inArea && (line.unit || "sqm") === "sqm";
+  const usesPct = buildRatioApplies(line);
   const qty =
     usesPct && bp != null && Number.isFinite(bp)
       ? (base * Math.min(Math.max(bp, 0), 100)) / 100

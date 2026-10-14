@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { Fragment, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
@@ -31,12 +32,8 @@ import {
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
-import { ymd as formatYmd } from "@platform/app-shared/format/date";
+import { todayIso, ymd as formatYmd } from "@platform/app-shared/format/date";
 import { opsLetterCard } from "../../lib/app-data/ops-tasks-tw";
-
-function fmtSar(n: number): string {
-  return `${Number(n || 0).toLocaleString("en-US")} ر.س`;
-}
 
 
 function statementStatusMeta(s: PartyBillingStatementDto): {
@@ -90,9 +87,7 @@ export function PartyOfficeBillingStatementsPanel({
   const [search, setSearch] = useState("");
   const [openRef, setOpenRef] = useState<string | null>(null);
   const [invoiceNo, setInvoiceNo] = useState("");
-  const [invoiceDate, setInvoiceDate] = useState(() =>
-    new Date().toISOString().slice(0, 10),
-  );
+  const [invoiceDate, setInvoiceDate] = useState(todayIso);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
@@ -139,7 +134,7 @@ export function PartyOfficeBillingStatementsPanel({
         return;
       }
       showToast(
-        `رُفعت الفاتورة — القيمة مقفلة ${fmtSar(s.totalNetSar)}`,
+        `رُفعت الفاتورة — القيمة مقفلة ${fmtSar(s.totalNetSar, { digits: 3, trim: true })}`,
         "success",
       );
       setInvoiceNo("");
@@ -274,7 +269,7 @@ export function PartyOfficeBillingStatementsPanel({
                         {s.lines.length} معاملات
                       </Td>
                       <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                        {fmtSar(s.totalNetSar)}
+                        {fmtSar(s.totalNetSar, { digits: 3, trim: true })}
                       </TdLtr>
                       <Td>
                         <StatusPill label={meta.label} style={meta.style} />
@@ -350,7 +345,7 @@ export function PartyOfficeBillingStatementsPanel({
                                     {line.billingStatusLabel || "—"}
                                   </span>
                                   <span className="font-bold text-heading">
-                                    {fmtSar(line.netFeeSar)}
+                                    {fmtSar(line.netFeeSar, { digits: 3, trim: true })}
                                   </span>
                                 </div>
                               ))}
@@ -363,7 +358,7 @@ export function PartyOfficeBillingStatementsPanel({
                               >
                                 <div className="text-[12px] font-semibold text-text">
                                   رفع فاتورة مطابقة للمسير (القيمة مقفلة{" "}
-                                  {fmtSar(s.totalNetSar)})
+                                  {fmtSar(s.totalNetSar, { digits: 3, trim: true })})
                                 </div>
                                 <label className="text-[12px] text-text-2">
                                   رقم الفاتورة *

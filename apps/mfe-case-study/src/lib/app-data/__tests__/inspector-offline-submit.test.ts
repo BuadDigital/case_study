@@ -1,6 +1,10 @@
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { closeOfflineDb, listOutboxItems } from "@platform/offline-client";
+import {
+  closeOfflineDb,
+  listOutboxItems,
+  OFFLINE_ACCESS_STORAGE_KEY,
+} from "@platform/offline-client";
 import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { setCache } from "../inspector-workspace-model";
 import { submitInspectorWorkspace } from "../inspector-workspace-commands";
@@ -16,6 +20,11 @@ beforeEach(async () => {
       user: { id: "inspector-1", displayName: "معاين" },
       expiresAtUtc: new Date(Date.now() + 3_600_000).toISOString(),
     }),
+  );
+  // Offline writes queue only for a field session this device has cached (offline-write.ts).
+  localStorage.setItem(
+    OFFLINE_ACCESS_STORAGE_KEY,
+    JSON.stringify({ userId: "inspector-1", permissions: { prototypeRole: "field-inspector" } }),
   );
   vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
 });

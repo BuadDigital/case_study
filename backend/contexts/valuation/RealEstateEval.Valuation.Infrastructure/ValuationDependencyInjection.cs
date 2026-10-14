@@ -32,20 +32,27 @@ public static class ValuationDependencyInjection
         services.AddRemoteCaseStudy(configuration);
         services.AddRemotePlatformCatalogs(configuration);
         services.AddRemoteAttachmentLookup(configuration);
+        // The deposit certificate and the generated final report are stored through the Attachments API.
+        services.AddRemoteAttachmentFileStore(configuration);
         services.AddRemoteAuditLogAppend(configuration);
  // The valuation-request write path: context, per-producer outbox publisher (D5),
  // HTTP PO-number lookup, and the request service.
         services.AddValuationPersistence(configuration, connectionString);
+        // Valuation already runs MessagingRetentionHostedService for its local outbox;
+        // that sweep also removes owner-local idempotency rows.
+        services.AddOwnerCommandIdempotencyPersistence<ValuationDbContext>(
+            configuration,
+            addRetentionHostedService: false);
         services.AddScoped<IValuationEventPublisher, ValuationOutboxPublisher>();
         services.AddScoped<IPropertyPoNumberLookup, RemotePropertyPoNumberLookup>();
         services.AddScoped<IValuationRequestService, ValuationRequestService>();
+        services.AddHttpClient<ICaseStudyRecallCommands, HttpCaseStudyRecallCommands>();
+        services.AddScoped<ValuationTimelineWriter>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
         services.AddScoped<IComparablePropertyRepository, ComparablePropertyRepository>();
         services.AddScoped<IComparablePropertyService, ComparablePropertyService>();
         services.AddScoped<PropertyComparableLinkService>();
         services.AddScoped<IPropertyComparableLinkService>(sp =>
-            sp.GetRequiredService<PropertyComparableLinkService>());
-        services.AddScoped<IPropertyComparableLinkLookup>(sp =>
             sp.GetRequiredService<PropertyComparableLinkService>());
         services.AddScoped<IValuationComparableSelectionRepository, ValuationComparableSelectionRepository>();
         services.AddScoped<IValuationComparableSelectionService, ValuationComparableSelectionService>();
@@ -61,11 +68,16 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
         // Q-6: two-phase issuance + deposit certificate.
         services.AddScoped<IValuationReportIssuanceService, ValuationReportIssuanceService>();
+        // The report draft: the specialist prepares, the appraiser approves (freezes the deposit copy).
+        services.AddScoped<IValuationReportDraftService, ValuationReportDraftService>();
         // Report PDF links: browser-rendered HTML → Gotenberg (Chromium) → stored PDF behind a signed key.
         services.Configure<PdfRendererOptions>(configuration.GetSection("PdfRenderer"));
         services.Configure<ReportPdfLinkOptions>(configuration.GetSection("ReportPdfLinks"));
         services.AddHttpClient<IHtmlPdfRenderer, GotenbergHtmlPdfRenderer>(client =>
             client.Timeout = TimeSpan.FromSeconds(180));
+        services.AddHttpClient<IPdfMerger, GotenbergPdfMerger>(client =>
+            client.Timeout = TimeSpan.FromSeconds(180));
+        services.AddScoped<IValuationFinalReportService, ValuationFinalReportService>();
         services.AddSingleton<IReportLinkSigner, ReportLinkSigner>();
         services.AddScoped<IValuationReportPdfService, ValuationReportPdfService>();
         services.AddScoped<IValuationRequestLookup, ValuationRequestLookup>();
@@ -81,13 +93,7 @@ public static class ValuationDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        var valuationConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Valuation,
-            connectionString);
-        return services.AddBoundedContextPersistence<ValuationDbContext>(
-            configuration,
-            valuationConnection);
+        return services.AddBoundedContextPersistence<ValuationDbContext>(configuration);
     }
 
 }

@@ -7,6 +7,7 @@
  */
 
 import dynamic from "next/dynamic";
+import { InlineLoadingSkeleton } from "@platform/ui-kit";
 import { registerEvaluatorRuntimeBridge } from "@platform/app-shared/party-appraisal/evaluator-runtime-bridge";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
@@ -15,7 +16,6 @@ import {
   isEvaluatorChecklistQuestionAssignedToAppraiser,
   mergeEvaluatorChecklistFromCaseStudy,
 } from "../lib/evaluator/evaluator-checklist-case-study-sync";
-import { getCachedEvaluatorDepositCertificate } from "../lib/evaluator/evaluator-deposit-attachments";
 import { findSiblingInspectionTask } from "../lib/evaluator/evaluator-inspection-gate";
 import {
   appraiserInspectionDone,
@@ -43,6 +43,12 @@ const ValuationReportPreview = dynamic(
       (m) => m.EvaluatorValuationReportPreview,
     ),
   { ssr: false, loading: () => ValuationReportLoading() },
+);
+
+/** The specialist's report-draft workspace (print attachments, send / withdraw). */
+const ReportDraftPanel = dynamic(
+  () => import("../components/evaluator/ReportDraftPanel").then((m) => m.ReportDraftPanel),
+  { ssr: false, loading: () => InlineLoadingSkeleton({}) },
 );
 
 let registered = false;
@@ -73,7 +79,6 @@ export function ensureEvaluatorRuntimeBridgeRegistered(): void {
       void prefetchEvaluatorReport(taskId);
     },
     getCachedEvaluatorReport,
-    getCachedEvaluatorDepositCertificate,
     mergeEvaluatorChecklistFromCaseStudy: (
       checklist,
       answers,
@@ -107,5 +112,6 @@ export function ensureEvaluatorRuntimeBridgeRegistered(): void {
       void syncEvaluatorChecklistFromPartyCaseStudy(taskId, options);
     },
     ValuationReportPreview,
+    ReportDraftPanel,
   });
 }

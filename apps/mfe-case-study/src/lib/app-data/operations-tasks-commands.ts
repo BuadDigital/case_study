@@ -95,7 +95,7 @@ export async function createOperationsTaskRecord(
   body: CreateOperationsTaskRequest,
 ): Promise<{ ok: true; task: OperationsTask } | { ok: false; error: string }> {
   const config = workOrdersApiConfig();
-  if (!config) return { ok: false, error: "تسجيل الدخول مطلوب" };
+  if (!config) return { ok: false, error: "يلزم تسجيل الدخول" };
   const result = await createOperationsTask(config, body);
   if (!result.ok) {
     return {
@@ -121,11 +121,11 @@ export async function patchOperationsTaskRecord(
 
   if ((!config || isBrowserOffline()) && userId && isOfflineFieldSession()) {
     const queued = await enqueueOperationsTaskPatch(id, body);
-    if (!queued) return { ok: false, error: "تسجيل الدخول مطلوب" };
+    if (!queued) return { ok: false, error: "يلزم تسجيل الدخول" };
     return { ok: true, task: await mergedTaskOrStub(id, body), queued: true };
   }
 
-  if (!config) return { ok: false, error: "تسجيل الدخول مطلوب" };
+  if (!config) return { ok: false, error: "يلزم تسجيل الدخول" };
 
   try {
     const result = await patchOperationsTask(config, id, body);
@@ -165,7 +165,7 @@ export async function reassignOperationsTaskRecord(
   body: ReassignOperationsTaskRequest,
 ): Promise<{ ok: true; task: OperationsTask } | { ok: false; error: string }> {
   const config = workOrdersApiConfig();
-  if (!config) return { ok: false, error: "تسجيل الدخول مطلوب" };
+  if (!config) return { ok: false, error: "يلزم تسجيل الدخول" };
   const result = await reassignOperationsTask(config, id, body);
   if (!result.ok) {
     return {
@@ -183,7 +183,7 @@ export async function remindOperationsTaskRecord(
   id: string,
 ): Promise<{ ok: true; task: OperationsTask } | { ok: false; error: string }> {
   const config = workOrdersApiConfig();
-  if (!config) return { ok: false, error: "تسجيل الدخول مطلوب" };
+  if (!config) return { ok: false, error: "يلزم تسجيل الدخول" };
   const result = await remindOperationsTask(config, id);
   if (!result.ok) {
     return {
@@ -211,11 +211,11 @@ export async function addOperationsTaskCommentRecord(
 
   if ((!config || isBrowserOffline()) && userId && isOfflineFieldSession()) {
     const queued = await enqueueOperationsTaskComment(id, text, kind, files);
-    if (!queued) return { ok: false, error: "تسجيل الدخول مطلوب" };
+    if (!queued) return { ok: false, error: "يلزم تسجيل الدخول" };
     return { ok: true, task: await cachedTaskOrStub(id), queued: true };
   }
 
-  if (!config) return { ok: false, error: "تسجيل الدخول مطلوب" };
+  if (!config) return { ok: false, error: "يلزم تسجيل الدخول" };
 
   try {
     const result = await addOperationsTaskComment(config, id, text, kind, files);

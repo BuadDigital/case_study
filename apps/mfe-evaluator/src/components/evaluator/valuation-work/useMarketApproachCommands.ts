@@ -19,12 +19,14 @@ import {
 import { parseDecimal } from "./lib/shell-state";
 import type { ComparableMarketSaver } from "./useComparableMarketSaver";
 import type { ValuationWorkData } from "./useValuationWorkData";
+import { useValuationWorkErrors } from "./ValuationWorkErrors";
 
 export function useMarketApproachCommands(
   data: ValuationWorkData,
   saver: ComparableMarketSaver,
 ) {
   const queryClient = useQueryClient();
+  const { reportSaveFailure } = useValuationWorkErrors();
   const {
     showToast,
     setSelection,
@@ -55,7 +57,7 @@ export function useMarketApproachCommands(
     );
     setSaving(false);
     if (!res.ok) {
-      showToast(res.message ?? errorMessage, "error");
+      reportSaveFailure(res, errorMessage);
       return false;
     }
     setSelection(res.data);

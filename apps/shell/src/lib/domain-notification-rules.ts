@@ -23,8 +23,8 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
   {
     event: FAILURE_TYPES_CHANGED_EVENT,
     notification: {
-      title: "تحديث أنواع التعذر",
-      body: "تم تعديل تصنيفات التعذر.",
+      title: "تحديث أنواع التعذّر",
+      body: "تم تعديل تصنيفات التعذّر.",
       tone: "info",
       href: "/failure-types",
       category: "system",
@@ -68,8 +68,8 @@ export const DOMAIN_NOTIFICATION_RULES: DomainNotificationRule[] = [
   {
     event: EVALUATOR_SUBMITTED_EVENT,
     notification: {
-      title: "إرسال تقرير مقيم",
-      body: "تم إرسال تقرير المقيم.",
+      title: "إرسال تقرير مقيّم",
+      body: "تم إرسال تقرير المقيّم.",
       tone: "success",
       href: "/property-appraisal",
       category: "workflow",

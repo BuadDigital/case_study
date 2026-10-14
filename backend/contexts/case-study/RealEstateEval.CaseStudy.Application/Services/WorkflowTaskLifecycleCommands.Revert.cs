@@ -46,6 +46,7 @@ public sealed partial class WorkflowTaskLifecycleCommands
 
             property.BourseDataCompleted = false;
             property.BourseCompletedAtUtc = null;
+            property.BourseCompletedByName = null;
         }
 
         var displacedAssigneeIds = new List<string>();
@@ -85,10 +86,10 @@ public sealed partial class WorkflowTaskLifecycleCommands
             await _timeline.RecordAsync(
                 entity.PoNumber,
                 timelinePropertyId,
-                $"task:{entity.Id}:phase-revert:{target.ToDbValue()}",
+                $"task:{entity.Id}:phase-revert:{target.ToDbValue()}:{entity.UpdatedAtUtc.Ticks}",
                 WorkflowTaskLifecycleRules.RevertTimelineLabel(target),
                 null,
-                PropertyTimelineTones.Active,
+                PropertyTimelineTones.Warn,
                 entity.UpdatedAtUtc,
                 cancellationToken);
         }

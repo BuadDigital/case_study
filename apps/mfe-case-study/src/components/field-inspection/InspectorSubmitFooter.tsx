@@ -73,7 +73,7 @@ export function InspectorSubmitFooter({
           showActionToast={false}
           onClick={openFailureRaise}
         >
-          <i className="ti ti-alert-triangle" aria-hidden /> تسجيل تعذر
+          <i className="ti ti-alert-triangle" aria-hidden /> تسجيل تعذّر
         </Button>
         {onSaveDraft ? (
           <Button

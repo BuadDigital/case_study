@@ -3,6 +3,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { LIVE_QUEUE_POLL_INTERVAL_MS } from "@platform/app-shared/query/live-query";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   loadCourtVisitFees,
   loadOperationsTasks,
@@ -50,7 +51,7 @@ export function useOperationsTasksFilteredQuery(
 }
 
 /** One server page of operations tasks — pagination-contract §3. */
-export function useOperationsTasksPageQuery(
+function useOperationsTasksPageQuery(
   query: OperationsTaskListQuery,
   options?: { live?: boolean; enabled?: boolean },
 ) {
@@ -124,5 +125,7 @@ export function useOperationsTaskStatusCounts(options: {
     inProgress: inProgressCount,
     paused: paused.data?.totalCount ?? 0,
     completed: completed.data?.totalCount ?? 0,
+    /** A count failed to load — the band shows «—» rather than 0. */
+    failed: [created, inProgress, paused, completed].some(queryLoadFailed),
   };
 }

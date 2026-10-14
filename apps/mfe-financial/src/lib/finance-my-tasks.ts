@@ -14,7 +14,7 @@ import {
 } from "./finance-revenue-stages";
 import { statementDisplayTotal } from "./finance-cost-parties";
 
-export type FinanceMyTaskKind =
+type FinanceMyTaskKind =
   | "revenue_match"
   | "revenue_invoice"
   | "revenue_collect"
@@ -23,7 +23,7 @@ export type FinanceMyTaskKind =
   | "cost_match_invoice"
   | "cost_close_statement";
 
-export type FinanceMyTaskDomain = "revenue" | "costs";
+type FinanceMyTaskDomain = "revenue" | "costs";
 
 /** My-tasks row — matches package design columns + KPI cards */
 export type FinanceMyTask = {

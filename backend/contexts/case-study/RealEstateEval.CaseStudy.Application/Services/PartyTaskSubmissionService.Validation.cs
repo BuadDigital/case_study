@@ -23,6 +23,19 @@ public partial class PartyTaskSubmissionService
         foreach (var (key, message) in documentary)
             errors[key] = message;
 
+        // The appraiser's submission is opened by the specialist issuing the case-study report.
+        // Hard block — deliberately outside the documentary gates, so no role bypasses it.
+        if (entity.Kind == WorkflowTaskKindValues.PropertyAppraisal)
+        {
+            var studyError = PartyTaskSubmissionRules.StudyReportGateError(
+                await StudyReportIssuedForAsync(entity.WorkflowTaskId, cancellationToken));
+            if (studyError is not null)
+            {
+                foreach (var (key, message) in studyError)
+                    errors[key] = message;
+            }
+        }
+
         if (errors.Count > 0)
             return errors;
 
@@ -47,6 +60,20 @@ public partial class PartyTaskSubmissionService
         return errors;
     }
 
+    /// <summary>
+    /// Whether the case-study report of the party task's parent is issued. A party task with no
+    /// parent cannot have one, so it reads as not issued — the gate fails closed.
+    /// </summary>
+    private async Task<bool> StudyReportIssuedForAsync(
+        Guid partyTaskId,
+        CancellationToken cancellationToken)
+    {
+        var facts = await _repo.ListTaskFactsAsync([partyTaskId], cancellationToken);
+        return facts.Count > 0
+            && facts[0].ParentTaskId is Guid parentTaskId
+            && await _repo.IsCaseStudyReportIssuedAsync(parentTaskId, cancellationToken);
+    }
+
     private async Task<Dictionary<string, string>> ValidateDocumentaryGatesAsync(
         PartyTaskSubmission entity,
         CancellationToken cancellationToken)
@@ -59,10 +86,17 @@ public partial class PartyTaskSubmissionService
             property = await _repo.GetPropertyWithContactsAsync(propertyId, cancellationToken);
 
         var propertyIdStr = entity.PropertyId?.ToString() ?? "";
-        var hasActiveFailure = await _failures.HasActiveFailureAsync(
-            entity.PoNumber ?? "",
-            propertyIdStr,
-            cancellationToken);
+        // The survey gate freezes only while the specialist has not lifted the failure's freeze;
+        // every other kind keeps the plain "a failure is active" meaning.
+        var hasActiveFailure = entity.Kind == WorkflowTaskKindValues.EngineeringSurvey
+            ? await _failures.HasSurveyFreezingFailureAsync(
+                entity.PoNumber ?? "",
+                propertyIdStr,
+                cancellationToken)
+            : await _failures.HasActiveFailureAsync(
+                entity.PoNumber ?? "",
+                propertyIdStr,
+                cancellationToken);
 
         using var doc = JsonDocument.Parse(entity.PayloadJson);
 

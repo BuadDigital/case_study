@@ -1,9 +1,9 @@
 import { mergeEvaluatorChecklistFromCaseStudy } from "../evaluator-bridge";
 import { loadCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-reads";
 import {
-  loadCaseStudyFormDraft,
-  loadPartyCaseStudyFormDraft,
-} from "./case-study-form-reads";
+  loadCaseStudyReportDraft,
+  loadPartyCaseStudyReportDraft,
+} from "./case-study-report-reads";
 import { loadInspectorWorkspaceSnapshot } from "./inspector-workspace-reads";
 import type { PropertyDetailPartyRoleKey } from "./property-detail-parties";
 import {
@@ -28,7 +28,7 @@ import type {
 } from "./property-detail-party-submission-types";
 import type { WorkflowTask } from "./tasks";
 
-export const PROPERTY_DETAIL_PARTY_ROLE_KEYS = [
+const PROPERTY_DETAIL_PARTY_ROLE_KEYS = [
   "specialist",
   "inspection",
   "survey",
@@ -58,7 +58,7 @@ export async function loadPropertyDetailPartySubmissions(input: {
 }
 
 /** Load submission snapshot for one party role on the property detail page. */
-export async function loadPropertyDetailPartySubmission(input: {
+async function loadPropertyDetailPartySubmission(input: {
   roleKey: PropertyDetailPartyRoleKey;
   parentTask: WorkflowTask | null;
   allTasks: WorkflowTask[];
@@ -70,7 +70,7 @@ export async function loadPropertyDetailPartySubmission(input: {
   }
 
   if (roleKey === "specialist") {
-    const draft = await loadCaseStudyFormDraft(parentTask.id);
+    const draft = await loadCaseStudyReportDraft(parentTask.id);
     if (!draft?.savedAtUtc) {
       return emptySubmission(roleKey, "لم يُقدَّم بعد");
     }
@@ -86,7 +86,7 @@ export async function loadPropertyDetailPartySubmission(input: {
     // The three are independent — parallelize instead of three sequential round-trips (async-parallel).
     const [submission, partyDraft, infoRoles] = await Promise.all([
       loadEvaluatorSubmissionSnapshot(child.id),
-      loadPartyCaseStudyFormDraft(child.id),
+      loadPartyCaseStudyReportDraft(child.id),
       loadCaseStudyInfoRolesConfig(),
     ]);
     if (!submission) {

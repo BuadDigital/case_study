@@ -1,23 +1,14 @@
 "use client";
 import { useEffect } from "react";
 import {
-  BOURSE_INQUIRY_IDENTIFIER_STATUS,
   sanitizePropertyIdentifierInput,
   type AssignmentType,
   type ClientFieldPolicy,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
-import {
-  Badge,
-  Card,
-  CardBody,
-  InfathSection,
-  Label,
-  Note,
-} from "@platform/ui-kit";
+import { InfathSection, Note } from "@platform/ui-kit";
 import { PoContactEditor } from "./PoContactEditor";
-import { PoPropertyEnfathBourseSections } from "./PoPropertyDeedBourseInquirySections";
 import { PoPropertyEnfathDeedSections } from "./PoPropertyDeedIdentifierSections";
 import { PoPropertyEnfathDocumentFields } from "./PoPropertyDeedDocumentFields";
 import { usePriorDeedAutofill } from "./usePriorDeedAutofill";
@@ -30,7 +21,6 @@ import {
   resolveAttachPo,
   resolvePriorExclusion,
   stageNoteText,
-  type EnfathFieldsMode,
   type PoPropertyPatch,
 } from "./po-property-deed-form-state";
 
@@ -49,10 +39,6 @@ type Props = {
   /** Which fields this client relationship requires — e.g. Nabr skips قرار الإسناد و اسم المالك. */
   fieldPolicy?: ClientFieldPolicy;
   showStageNote?: boolean;
-  /** Hide track-status / under-study UI for bourse inquiry (e.g. primary-data panel). */
-  hideBoursePathStatus?: boolean;
-  /** When set, only render identifier type selector (for bourse-inquiry fast path). */
-  fieldsMode?: EnfathFieldsMode;
 };
 
 export function PoPropertyEnfathForm({
@@ -65,8 +51,6 @@ export function PoPropertyEnfathForm({
   excludePoNumber,
   fieldPolicy,
   showStageNote = true,
-  hideBoursePathStatus = false,
-  fieldsMode = "all",
 }: Props) {
   const attachPo = resolveAttachPo(poNumber, excludePoNumber);
   const { priorExcludePo, priorExcludePropertyId } = resolvePriorExclusion({
@@ -76,9 +60,7 @@ export function PoPropertyEnfathForm({
   });
 
   const view = enfathFormVisibility({
-    fieldsMode,
     assignmentType,
-    identifierType: property.identifierType,
     realEstateRegNumber: property.realEstateRegNumber,
     hasRequestNumber: property.hasRequestNumber,
     fieldPolicy,
@@ -97,17 +79,12 @@ export function PoPropertyEnfathForm({
     );
   };
 
+  // Also heals stored rows still carrying the «bourse_inquiry» type.
   useEffect(() => {
-    if (fieldsMode !== "all") return;
     const nextType = derivedIdentifierType(property.realEstateRegNumber);
     if (property.identifierType === nextType) return;
     onPatch("identifierType", nextType);
-  }, [
-    fieldsMode,
-    property.realEstateRegNumber,
-    property.identifierType,
-    onPatch,
-  ]);
+  }, [property.realEstateRegNumber, property.identifierType, onPatch]);
 
   const { priorPo, priorFilled } = usePriorDeedAutofill({
     property,
@@ -123,23 +100,10 @@ export function PoPropertyEnfathForm({
     <>
       {showStageNote ? (
         <Note tone="info" className="mb-3">
-          {stageNoteText(view.isBourseId, view.hasRealEstateReg)}
+          {stageNoteText()}
         </Note>
       ) : null}
 
-      {view.isBourseId && !hideBoursePathStatus && !view.showBoursePrimary ? (
-        <Card className="mb-3.5">
-          <CardBody className="px-4 py-3.5">
-            <Label className="mb-2 block text-[11px]">حالة المسار</Label>
-            <Badge tone="warning" className="text-[13px] font-normal">
-              {BOURSE_INQUIRY_IDENTIFIER_STATUS}
-            </Badge>
-          </CardBody>
-        </Card>
-      ) : null}
-
-      {view.isIdentifierOnly ? null : (
-      <>
       {priorNotice ? (
         <Note tone="success" className="mb-3">
           <strong>صك متكرر</strong> — وُجدت بيانات في أمر العمل «{priorNotice}».
@@ -149,30 +113,18 @@ export function PoPropertyEnfathForm({
         </Note>
       ) : null}
 
-      {view.showBoursePrimary ? (
-        <PoPropertyEnfathBourseSections
-          property={property}
-          fieldErrors={fieldErrors}
-          onPatch={onPatch}
-          showCourt={view.showCourt}
-          showRequestNumber={view.showRequestNumber}
-          onDeedNumberChange={patchDeedNumber}
-          fieldPolicy={fieldPolicy}
-        />
-      ) : view.showDeedFields ? (
-        <PoPropertyEnfathDeedSections
-          property={property}
-          fieldErrors={fieldErrors}
-          onPatch={onPatch}
-          showCourt={view.showCourt}
-          showRequestNumber={view.showRequestNumber}
-          hasRealEstateReg={view.hasRealEstateReg}
-          hasRequestNumber={view.hasRequestNumber}
-          onDeedNumberChange={patchDeedNumber}
-          onRealEstateRegNumberChange={patchRealEstateRegNumber}
-          fieldPolicy={fieldPolicy}
-        />
-      ) : null}
+      <PoPropertyEnfathDeedSections
+        property={property}
+        fieldErrors={fieldErrors}
+        onPatch={onPatch}
+        showCourt={view.showCourt}
+        showRequestNumber={view.showRequestNumber}
+        hasRealEstateReg={view.hasRealEstateReg}
+        hasRequestNumber={view.hasRequestNumber}
+        onDeedNumberChange={patchDeedNumber}
+        onRealEstateRegNumberChange={patchRealEstateRegNumber}
+        fieldPolicy={fieldPolicy}
+      />
 
       <PoPropertyEnfathDocumentFields
         property={property}
@@ -202,8 +154,6 @@ export function PoPropertyEnfathForm({
         </InfathSection>
       </div>
       ) : null}
-      </>
-      )}
     </>
   );
 }

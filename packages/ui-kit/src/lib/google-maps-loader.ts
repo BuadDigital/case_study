@@ -5,11 +5,6 @@ export function googleMapsApiKey(): string | undefined {
   return key || undefined;
 }
 
-export function parseCoord(value: string): number | null {
-  const n = Number(value.trim());
-  return Number.isFinite(n) ? n : null;
-}
-
 export function googleMapsSearchUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 }
@@ -22,7 +17,7 @@ export type ReverseGeocodeDetail = {
   district?: string;
 };
 
-export type ReverseGeocodePayload = {
+type ReverseGeocodePayload = {
   locality?: string;
   city?: string;
   countryName?: string;

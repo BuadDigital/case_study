@@ -15,7 +15,7 @@ namespace RealEstateEval.Application.Tests;
 /// <summary>
 /// Pricing is configuration with direct financial effect. These tests prove that its tables,
 /// tier schedules, and assignment sets leave deliberate before/after evidence attributed to the
-/// actor, in the same context that commits the business change.
+/// actor, on the Platform ledger right after the business change commits.
 /// </summary>
 public class PartyFeePricingAuditTests
 {
@@ -23,7 +23,8 @@ public class PartyFeePricingAuditTests
     public async Task Creating_a_table_records_the_actor_and_complete_after_snapshot()
     {
         await using var db = CreateDb();
-        var service = TestPricing.Create(db);
+        var ledger = new RecordingAuditLogAppend();
+        var service = TestPricing.Create(db, audit: ledger);
 
         var created = await service.CreateAsync(
             new CreatePartyFeePricingTableRequest
@@ -33,7 +34,7 @@ public class PartyFeePricingAuditTests
             },
             actorId: "admin-1");
 
-        var audit = await db.Set<AuditLog>().SingleAsync(a =>
+        var audit = ledger.Entries.Single(a =>
             a.Action == "PRICING_TABLE_CREATED"
             && a.EntityId == created.Id.ToString());
         Assert.Equal("admin-1", audit.ActorId);
@@ -50,7 +51,8 @@ public class PartyFeePricingAuditTests
     public async Task Replacing_tiers_records_the_old_and_new_schedules()
     {
         await using var db = CreateDb();
-        var service = TestPricing.Create(db);
+        var ledger = new RecordingAuditLogAppend();
+        var service = TestPricing.Create(db, audit: ledger);
         await service.ListAsync();
         await service.SaveAsync(
             PartyFeePricingService.DefaultEngineeringTableId,
@@ -62,12 +64,12 @@ public class PartyFeePricingAuditTests
             EngineeringRequest((400m, 900m), (null, 1600m)),
             actorId: "pricing-admin");
 
-        var audit = await db.Set<AuditLog>()
+        var audit = ledger.Entries
             .Where(a =>
                 a.Action == "PRICING_TABLE_UPDATED"
                 && a.EntityId == PartyFeePricingService.DefaultEngineeringTableId.ToString())
             .OrderByDescending(a => a.CreatedAtUtc)
-            .FirstAsync();
+            .First();
         Assert.Equal("pricing-admin", audit.ActorId);
 
         using var before = JsonDocument.Parse(audit.BeforeJson);
@@ -84,7 +86,8 @@ public class PartyFeePricingAuditTests
     public async Task Reassigning_parties_records_the_category_before_and_after()
     {
         await using var db = CreateDb();
-        var service = TestPricing.Create(db);
+        var ledger = new RecordingAuditLogAppend();
+        var service = TestPricing.Create(db, audit: ledger);
         await service.ListAsync();
         var first = PartyFeePricingService.DefaultCourtVisitTableId;
         var second = await service.CreateAsync(
@@ -100,12 +103,12 @@ public class PartyFeePricingAuditTests
             ["reviewer-1", "reviewer-2"],
             actorId: "admin-2");
 
-        var audit = await db.Set<AuditLog>()
+        var audit = ledger.Entries
             .Where(a =>
                 a.Action == "PRICING_ASSIGNMENTS_REPLACED"
                 && a.EntityId == second.Id.ToString())
             .OrderByDescending(a => a.CreatedAtUtc)
-            .FirstAsync();
+            .First();
         Assert.Equal("admin-2", audit.ActorId);
         using var before = JsonDocument.Parse(audit.BeforeJson);
         using var after = JsonDocument.Parse(audit.AfterJson);

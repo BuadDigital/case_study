@@ -1,10 +1,11 @@
 "use client";
 
 /**
- * Step-2 card: the building licence and the inspection limits. Building areas and the
- * components table are the case specialist's now («مكونات العقار»), written from the
- * inspector's description text or photo. Lifted out of `FieldInspectionWorkBody` — same
- * markup, state stays with the workflow hook.
+ * Step-2 card: the building licence and the inspection limits. The inspector also fills the
+ * building inventory «جدول الحصر» (its own card, `InspectorInventoryCard`); the report's
+ * «مكونات العقار» text stays the case specialist's, written from the inspector's description
+ * text or photo. Lifted out of `FieldInspectionWorkBody` — same markup, state stays with the
+ * workflow hook.
  */
 import { cn, FormRow, Input } from "@platform/ui-kit";
 import { RegField } from "@platform/app-shared/registration/FormFields";

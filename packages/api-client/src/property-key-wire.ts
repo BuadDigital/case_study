@@ -1,12 +1,3 @@
-/** Wire values for PropertyKeyRecord.workflowStatus / list Status. */
-export const PropertyKeyWorkflowStatuses = {
-  Progress: "progress",
-  Done: "done",
-} as const;
-
-export type PropertyKeyWorkflowStatus =
-  (typeof PropertyKeyWorkflowStatuses)[keyof typeof PropertyKeyWorkflowStatuses];
-
 /** Gate + government-review payload keysStatus. */
 export const PropertyKeysStatuses = {
   Pending: "pending",
@@ -15,17 +6,11 @@ export const PropertyKeysStatuses = {
   Blocked: "blocked",
 } as const;
 
-export type PropertyKeysStatus =
-  (typeof PropertyKeysStatuses)[keyof typeof PropertyKeysStatuses];
-
 /** Gate keyHandedToInspector. */
 export const PropertyKeyHandedValues = {
   Yes: "yes",
   No: "no",
 } as const;
-
-export type PropertyKeyHandedValue =
-  (typeof PropertyKeyHandedValues)[keyof typeof PropertyKeyHandedValues];
 
 /** Property-key gate source. */
 export const PropertyKeyGateSources = {
@@ -34,6 +19,3 @@ export const PropertyKeyGateSources = {
   Legacy: "legacy",
   None: "none",
 } as const;
-
-export type PropertyKeyGateSource =
-  (typeof PropertyKeyGateSources)[keyof typeof PropertyKeyGateSources];

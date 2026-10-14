@@ -35,6 +35,7 @@ export function FinancePartyFeePricing() {
     showEmpty,
     selectValue,
     selectCategory,
+    prefetchCategory,
     selectTable,
     createTable,
     toggleAssignee,
@@ -65,7 +66,17 @@ export function FinancePartyFeePricing() {
               aria-selected={on}
               disabled={busy || saving}
               onClick={() => selectCategory(cat.id)}
-              className={on ? opsTfSegActive : opsTfSeg}
+              onPointerEnter={on ? undefined : () => prefetchCategory(cat.id)}
+              onFocus={on ? undefined : () => prefetchCategory(cat.id)}
+              className={cn(
+                on
+                  ? opsTfSegActive
+                  : cn(
+                      opsTfSeg,
+                      "enabled:hover:bg-[color-mix(in_srgb,var(--ink)_6%,var(--surface-2))] enabled:hover:text-heading",
+                    ),
+                "motion-reduce:transition-none",
+              )}
             >
               {cat.label}
             </button>

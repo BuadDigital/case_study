@@ -8,6 +8,7 @@
  */
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
 import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
@@ -25,7 +26,6 @@ import {
   buildPropertyDetailPartyCards,
   type PropertyDetailPartyCard,
 } from "../../lib/app-data/property-detail-parties";
-import { buildPropertyDetailTimeline } from "../../lib/app-data/property-detail-timeline";
 import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
 import { caseStudyTaskForProperty } from "../../lib/app-data/tasks";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
@@ -56,9 +56,16 @@ import {
   propertyDetailTabsForRole,
   type TabId,
 } from "./po-property-detail-tabs-state";
+import type { PropertyTimelineEvent } from "../../lib/app-data/property-detail-timeline";
 import type { PoPropertyDetailInspectorWorkspace } from "./PoPropertyDetailTabs";
+import {
+  preloadPropertyDetailTabChunks,
+  usePreloadPropertyDetailTabChunks,
+} from "./PropertyDetailTabChunks";
+import { propertyEnfazRevenueQueryOptions } from "./property-detail-finance-query";
 
 /** Tabs that render property documents or photos; opening one starts the attachment load. */
+const EMPTY_LOG_EVENTS: PropertyTimelineEvent[] = [];
 const PROPERTY_MEDIA_TABS: readonly TabId[] = ["documents", "photos", "enfath-upload"];
 
 export function usePoPropertyDetailTabsWorkflow({
@@ -74,8 +81,12 @@ export function usePoPropertyDetailTabsWorkflow({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { role } = useAppAccess();
   const visibleTabs = useMemo(() => propertyDetailTabsForRole(role), [role]);
+  usePreloadPropertyDetailTabChunks(
+    useMemo(() => visibleTabs.map((t) => t.id), [visibleTabs]),
+  );
   const showCaseStudySideRail = canViewPropertyTimelineRail(role);
   const initialTab = searchParams.get("tab");
   const inspectParam = searchParams.get("inspect");
@@ -114,20 +125,35 @@ export function usePoPropertyDetailTabsWorkflow({
     });
   };
 
-  useEffect(() => {
+  /**
+   * Pointer or keyboard focus reached a tab: fetch its code and, where it reads a
+   * query the page does not already hold, its data — so the click shows content.
+   */
+  const warmTab = (id: TabId) => {
+    preloadPropertyDetailTabChunks([id]);
+    if (id === "finance" && property.id) {
+      void queryClient.prefetchQuery(
+        propertyEnfazRevenueQueryOptions(poNumber, property.id),
+      );
+    }
+  };
+
+  // The URL (or the forced inspector workspace) owns the open tab — read during
+  // render so the first paint is already on the right tab.
+  const tabRequestKey = `${searchParams.toString()}|${workspaceForced}|${inspectorWorkspace?.forceEdit !== false}|${role}`;
+  const [prevTabRequestKey, setPrevTabRequestKey] = useState(tabRequestKey);
+  if (prevTabRequestKey !== tabRequestKey) {
+    setPrevTabRequestKey(tabRequestKey);
     if (workspaceForced) {
       setTab("inspection");
       setInspectEdit(inspectorWorkspace?.forceEdit !== false);
-      return;
+    } else {
+      const nextTab = searchParams.get("tab");
+      if (isAllowedPropertyTab(role, nextTab)) setTab(nextTab);
+      /* Input mode only when ?inspect=edit (from the button) — not merely opening the tab. */
+      setInspectEdit(searchParams.get("inspect") === "edit");
     }
-    const nextTab = searchParams.get("tab");
-    if (isAllowedPropertyTab(role, nextTab)) {
-      setTab(nextTab);
-    }
-    const nextInspect = searchParams.get("inspect");
-    /* Input mode only when ?inspect=edit (from the button) — not merely opening the tab. */
-    setInspectEdit(nextInspect === "edit");
-  }, [searchParams, workspaceForced, inspectorWorkspace?.forceEdit, role]);
+  }
 
   /** Active tab is derived during render — a role change moves the selection immediately without an extra pass. */
   const effectiveTab: TabId =
@@ -149,9 +175,12 @@ export function usePoPropertyDetailTabsWorkflow({
     visitedTabsRef.current.has(id),
   );
 
-  useEffect(() => {
+  // Another property carries its own “seen” marks.
+  const [seenForProperty, setSeenForProperty] = useState(property.id);
+  if (seenForProperty !== property.id) {
+    setSeenForProperty(property.id);
     setSeenTabs(loadSeenPropertyTabFingerprints(property.id));
-  }, [property.id]);
+  }
 
   const task = useMemo(
     () => caseStudyTaskForProperty(poNumber, property.id, tasks),
@@ -290,15 +319,7 @@ export function usePoPropertyDetailTabsWorkflow({
   );
 
   const logEventsQuery = usePropertyTimelineQuery(poNumber, property.id);
-  const fallbackLogEvents = useMemo(
-    () =>
-      [...buildPropertyDetailTimeline({ record, property, tasks })].reverse(),
-    [record, property, tasks, propertyFailures],
-  );
-  const logEvents =
-    logEventsQuery.data && logEventsQuery.data.length > 0
-      ? [...logEventsQuery.data].reverse()
-      : fallbackLogEvents;
+  const logEvents = logEventsQuery.data ?? EMPTY_LOG_EVENTS;
 
   const propertyFeeTasks = useMemo(
     () =>
@@ -419,6 +440,7 @@ export function usePoPropertyDetailTabsWorkflow({
     tabMode,
     visitedTabsRef,
     selectTab,
+    warmTab,
     replaceInspectQuery,
     inspectEdit,
     setInspectEdit,

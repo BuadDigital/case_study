@@ -16,16 +16,13 @@ import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { OfflineSyncCoordinator, OfflineSyncProvider } from "@/components/OfflineSyncCoordinator";
 import {
-  EngineeringSurveyTopbarActions,
-} from "@engineering-office/mfe/components/EngineeringSurveyTopbarActions";
-import {
   parseFinanceNavArea,
   showFinancialNavGroup,
 } from "@platform/app-shared/app-data/financial-nav";
 import { useFinanceNavBadges } from "@/lib/query/use-finance-nav-badges";
 import { useActiveTransactionNavBadges } from "@/lib/query/use-active-transaction-nav-badges";
 import { useFailuresNavBadge } from "@/lib/query/use-failures-nav-badge";
-import { PoNumber, cn } from "@platform/ui-kit";
+import { PoNumber, cn, useSwapAnimation } from "@platform/ui-kit";
 import { getAuthSession } from "@platform/auth-client";
 import { PullToRefreshIndicator, usePullToRefresh } from "@/components/PullToRefresh";
 import { useAppDataRefresh } from "@/hooks/useAppDataRefresh";
@@ -66,6 +63,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapsed();
   const contentRef = useRef<HTMLDivElement>(null);
+  // Every page change fades the content in — the same swap the in-page tabs use.
+  useSwapAnimation(contentRef, pathname);
   const { refresh } = useAppDataRefresh();
   // Read sessionStorage once per render cycle, not multiple times.
   const sessionUser = useMemo(() => getAuthSession()?.user, []);
@@ -269,9 +268,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <OfflineSyncCoordinator />
             <NotificationCenter />
             <div className="h-[26px] w-px shrink-0 bg-border-md max-lg:hidden" aria-hidden />
-            {onActiveSurveyPropertyDetail ? (
-              <EngineeringSurveyTopbarActions />
-            ) : null}
             <ProfileMenu
               chipName={chipName}
               initials={chipInitials}

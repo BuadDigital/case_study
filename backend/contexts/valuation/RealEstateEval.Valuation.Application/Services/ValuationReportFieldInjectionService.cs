@@ -20,7 +20,6 @@ public sealed class ValuationReportFieldInjectionService(
     ICaseStudyLookup caseStudy,
     IValuationPrintableAttachmentLookup attachments,
     IOrganizationSettingsService organizationSettings,
-    IValuationListsService valuationLists,
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
     IValuationReconciliationService reconciliation,
@@ -79,10 +78,9 @@ public sealed class ValuationReportFieldInjectionService(
         hasStructures = ValuationApproachSettingsRules.BuildingsValued(hasStructures, cost?.CostScopeKey);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var org = await organizationSettings.GetAsync(cancellationToken);
-        var valuationCatalog = await valuationLists.GetAsync(cancellationToken);
         var printable = await attachments.ListPrintableAsync(propertyId, cancellationToken);
 
-        var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
+        var today = RiyadhClock.Today(clock);
         var bag = BuildValueBag(
             vr,
             prop,
@@ -96,8 +94,7 @@ public sealed class ValuationReportFieldInjectionService(
             printable,
             hasStructures,
             deedNatureMatchOutcome,
-            today,
-            valuationCatalog);
+            today);
         var fields = new List<ValuationReportFieldDto>(ValuationReportFieldCatalog.Count);
         var valuesByFieldKey = new Dictionary<string, string>(StringComparer.Ordinal);
         var filled = 0;
@@ -181,8 +178,7 @@ public sealed class ValuationReportFieldInjectionService(
         IReadOnlyList<ReportAttachmentRef> printable,
         bool hasStructures,
         string deedNatureMatchOutcome,
-        DateOnly today,
-        ValuationListsDto? valuationCatalog = null)
+        DateOnly today)
     {
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
 
@@ -341,11 +337,7 @@ public sealed class ValuationReportFieldInjectionService(
                 .OrderBy(l => l.SortOrder)
                 .Select(l =>
                 {
-                    decimal.TryParse(
-                        l.AreaSqm,
-                        System.Globalization.NumberStyles.Number,
-                        System.Globalization.CultureInfo.InvariantCulture,
-                        out var area);
+                    LocaleNumber.TryParse(l.AreaSqm, out var area);
                     return new ValuationReportFieldCostLineLite(
                         l.StructureKind,
                         l.Label,

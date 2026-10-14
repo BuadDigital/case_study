@@ -1,33 +1,6 @@
 import type { PoPropertyIntake } from "./po-intake-data";
-import {
-  INSPECTOR_FEATURE_FIELDS,
-  type InspectorWorkspaceDraft,
-} from "./inspector-workspace-data";
-function mapPropertyTypeToAssetSubject(propertyType: string): string {
-  const t = propertyType.trim();
-  if (!t) return "";
-  const lower = t.toLowerCase();
-  if (lower.includes("فيلا") || lower.includes("villa")) return "فيلا";
-  if (lower.includes("أرض") || lower.includes("ارض") || lower.includes("land"))
-    return "أرض";
-  if (lower.includes("شقة") || lower.includes("apartment")) return "شقة";
-  if (lower.includes("عمارة") || lower.includes("building")) return "عمارة";
-  if (lower.includes("محل") || lower.includes("تجار")) return "محل تجاري";
-  if (lower.includes("مستودع") || lower.includes("warehouse")) return "مستودع";
-  return "";
-}
-
-function pickFeatureOption(
-  fieldKey: string,
-  raw: string,
-): string {
-  const field = INSPECTOR_FEATURE_FIELDS.find((f) => f.key === fieldKey);
-  if (!field || !raw.trim()) return "";
-  const match = field.options.find(
-    (opt) => opt === raw.trim() || raw.trim().includes(opt),
-  );
-  return match ?? "";
-}
+import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
+import { fillEmptyFeaturesFromBourse } from "./inspector-bourse-prefill";
 
 /** Prefill inspector featureValues and scalar fields from Enfath / PO property data. */
 export function applyEnfathPrefillToInspectorDraft(
@@ -36,22 +9,11 @@ export function applyEnfathPrefillToInspectorDraft(
 ): InspectorWorkspaceDraft {
   if (!property) return draft;
 
-  const featureValues = { ...draft.featureValues };
-  let changed = false;
-
-  const setFeature = (key: string, value: string) => {
-    if (!value || featureValues[key]?.trim()) return;
-    featureValues[key] = value;
-    changed = true;
-  };
-
-  setFeature("assetSubject", mapPropertyTypeToAssetSubject(property.propertyType));
-  setFeature(
-    "zoneStatus",
-    pickFeatureOption("zoneStatus", property.deedStatus),
-  );
-
-  const patch: Partial<InspectorWorkspaceDraft> = changed ? { featureValues } : {};
+  const withFeatures = fillEmptyFeaturesFromBourse(draft, property);
+  let changed = withFeatures !== draft;
+  const patch: Partial<InspectorWorkspaceDraft> = changed
+    ? { featureValues: withFeatures.featureValues }
+    : {};
 
   if (!draft.propertyDescription.trim()) {
     const parts = [

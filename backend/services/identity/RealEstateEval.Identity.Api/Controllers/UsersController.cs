@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -14,15 +13,8 @@ namespace RealEstateEval.Identity.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserRegistrationService _users;
-    private readonly IWebHostEnvironment _env;
 
-    public UsersController(
-        IUserRegistrationService users,
-        IWebHostEnvironment env)
-    {
-        _users = users;
-        _env = env;
-    }
+    public UsersController(IUserRegistrationService users) => _users = users;
 
     [HttpGet]
     public async Task<ActionResult<IReadOnlyList<UserListItemDto>>> List(
@@ -30,14 +22,6 @@ public class UsersController : ControllerBase
     {
         var list = await _users.ListAsync(cancellationToken);
         return Ok(list);
-    }
-
-    [HttpGet("organization")]
-    public async Task<ActionResult<OrganizationOverviewDto>> Organization(
-        CancellationToken cancellationToken)
-    {
-        var overview = await _users.GetOrganizationOverviewAsync(cancellationToken);
-        return Ok(overview);
     }
 
     [HttpPost]
@@ -76,7 +60,7 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
- /// <summary>Clears an Identity lockout after too many failed sign-in attempts.</summary>
+ /// <summary>Clears an Identity lockout so the holder can sign in again.</summary>
     [HttpPost("{id}/unlock")]
     public async Task<IActionResult> Unlock(
         string id,
@@ -90,22 +74,12 @@ public class UsersController : ControllerBase
         if (!ok)
             return this.FieldErrorsProblem(new Dictionary<string, string>
             {
-                ["_form"] = error ?? "تعذر فك قفل الحساب.",
+                ["_form"] = error ?? "تعذّر فك قفل الحساب.",
             });
 
         return NoContent();
     }
 
-    [HttpDelete("registered")]
-    public async Task<ActionResult<DeleteRegisteredUsersResponseDto>> DeleteAllRegistered(
-        CancellationToken cancellationToken)
-    {
-        if (!_env.IsDevelopment())
-            return NotFound();
-
-        var deleted = await _users.DeleteAllRegisteredAsync(cancellationToken);
-        return Ok(new DeleteRegisteredUsersResponseDto { DeletedCount = deleted });
-    }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(
@@ -122,7 +96,7 @@ public class UsersController : ControllerBase
         if (!ok)
             return this.FieldErrorsProblem(new Dictionary<string, string>
             {
-                ["_form"] = error ?? "تعذر تعطيل المستخدم.",
+                ["_form"] = error ?? "تعذّر تعطيل المستخدم.",
             });
 
         return NoContent();

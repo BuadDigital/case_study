@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn, useToast, GoogleMapPin } from "@platform/ui-kit";
+import { parseLatLng } from "@platform/app-shared/domain/geo";
 import {
   formatGeoDec,
   formatGeoDms,
@@ -13,22 +14,13 @@ const goldSoft = "rounded border border-border bg-surface-2";
 const INSPECTOR_PIN_PENDING_MESSAGE =
   "لم يتم تحديد الموقع من قبل المعاين بعد";
 
-function parseCoord(value: string | null | undefined): number | null {
-  const n = Number.parseFloat((value ?? "").trim().replace(",", "."));
-  return Number.isFinite(n) ? n : null;
-}
-
 /** Precise inspector/office pin only — never city/district approximate fallback. */
-export function resolvePropertyGlanceGeo(
+function resolvePropertyGlanceGeo(
   _property?: Pick<PoPropertyIntake, "city" | "deedNumber"> | null,
   latitude?: string | null,
   longitude?: string | null,
 ): { lat: number; lng: number } | null {
-  const lat = parseCoord(latitude);
-  const lng = parseCoord(longitude);
-  if (lat == null || lng == null) return null;
-  if (lat === 0 && lng === 0) return null;
-  return { lat, lng };
+  return parseLatLng(latitude, longitude);
 }
 
 /**
@@ -66,10 +58,10 @@ export function PropertyLocationMapGlance({
     try {
       await navigator.clipboard.writeText(dec);
       setCopied(true);
-      showToast("تم نسخ الإحداثيات", "success");
+      showToast("تم النسخ", "success");
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      showToast("تعذّر نسخ الإحداثيات", "error");
+      showToast("تعذّر النسخ", "error");
     }
   }
 

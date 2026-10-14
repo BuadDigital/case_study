@@ -75,7 +75,7 @@ export function FailuresViewResolveForm({
         disabled={!isResolveDraftComplete(draft) || busy}
         onClick={onSubmit}
       >
-        تأكيد الحل وإغلاق التعذر
+        تأكيد الحل وإغلاق التعذّر
       </Button>
     </div>
   );

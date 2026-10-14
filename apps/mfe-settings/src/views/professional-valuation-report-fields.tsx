@@ -1,5 +1,7 @@
 "use client";
 
+import { membershipLabel } from "../lib/valuation-lists-view-state";
+
 /**
  * Inline editors of `ProfessionalValuationReportView` — bullet list, paragraph,
  * finishing-spec cell, and the participants table. Presentation only.
@@ -11,7 +13,6 @@ import {
   FINISH_LABEL_RE,
   jobLabel,
   linesOf,
-  memLabel,
   slashDate,
 } from "./professional-valuation-report-state";
 
@@ -146,7 +147,7 @@ export function ParticipantsTable({
           <K>فئة العضوية</K>
           {rows.map((p) => (
             <td className="v" key={p.id}>
-              {memLabel(p.membershipCategory)}
+              {membershipLabel(p.membershipCategory)}
             </td>
           ))}
         </tr>

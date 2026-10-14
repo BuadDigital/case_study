@@ -1,11 +1,6 @@
-/** Finance screen routes — My Tasks · Revenue · Costs · party portals */
+/** Finance screen routes — My Tasks · Revenue · Costs */
 
-export type FinanceArea =
-  | "tasks"
-  | "revenue"
-  | "costs"
-  | "eng_portal"
-  | "inspector_portal";
+export type FinanceArea = "tasks" | "revenue" | "costs";
 
 export type RevenueStage =
   | "under_study"
@@ -28,7 +23,7 @@ export const REVENUE_STAGES: {
   label: string;
   actionOnly?: boolean;
 }[] = [
-  { id: "under_study", label: "تحت الدراسة" },
+  { id: "under_study", label: "قيد الدراسة" },
   { id: "eligible", label: "مؤهلة للفوترة", actionOnly: true },
   { id: "billing_assistant", label: "مساعد الفوترة", actionOnly: true },
   { id: "awaiting_collection", label: "بانتظار التحصيل", actionOnly: true },
@@ -55,7 +50,7 @@ export const COSTS_ACCOUNT_TABS: {
 ];
 
 /** Backward compatibility */
-export const COSTS_SECTIONS: {
+const COSTS_SECTIONS: {
   id: CostsSection;
   label: string;
   actionOnly?: boolean;
@@ -69,14 +64,7 @@ export const COSTS_SECTIONS: {
 ];
 
 export function parseFinanceArea(raw: string | null | undefined): FinanceArea {
-  if (
-    raw === "revenue" ||
-    raw === "costs" ||
-    raw === "tasks" ||
-    raw === "eng_portal" ||
-    raw === "inspector_portal"
-  )
-    return raw;
+  if (raw === "revenue" || raw === "costs" || raw === "tasks") return raw;
   return "tasks";
 }
 

@@ -27,9 +27,12 @@ export function PoIntakeModal({
   const form = usePoIntakeForm(onComplete);
   const [discardOpen, setDiscardOpen] = useState(false);
 
-  useEffect(() => {
+  // Reopening the modal always starts without the discard prompt.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (!open) setDiscardOpen(false);
-  }, [open]);
+  }
 
   function requestClose() {
     if (form.saving || discardOpen) return;

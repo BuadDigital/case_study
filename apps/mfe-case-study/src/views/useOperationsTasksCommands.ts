@@ -381,7 +381,7 @@ export function useOperationsTasksCommands(data: OperationsTasksData) {
   const openGovFailureRaise = useCallback(() => {
     if (govFailureTargets.length === 0) {
       showToast(
-        "لا يمكن تسجيل تعذر — اربط المهمة بأمر عمل وصك معروف في النظام",
+        "لا يمكن تسجيل تعذّر — اربط المهمة بأمر عمل وصك معروف في النظام",
         "error",
       );
       return;
@@ -401,7 +401,7 @@ export function useOperationsTasksCommands(data: OperationsTasksData) {
       if (!pause.ok) {
         showToast(
           pause.error ||
-            "رُفع التعذر لكن تعذّر إيقاف المهمة — أبلغ المشرف",
+            "رُفع التعذّر لكن تعذّر إيقاف المهمة — أبلغ المشرف",
           "error",
         );
       }

@@ -32,31 +32,6 @@ export function ValCard({
   );
 }
 
-/** Field-inspection `InsField` language — label above value, no boxed background. */
-export function ValField({
-  label,
-  value,
-  ltr,
-}: {
-  label: string;
-  value?: ReactNode;
-  ltr?: boolean;
-}) {
-  return (
-    <div className="min-w-0">
-      <div className="mb-1 text-[11px] font-semibold text-text-2">{label}</div>
-      <div
-        className={cn(
-          "text-[13px] font-semibold text-heading",
-          ltr && "[direction:ltr] text-start",
-        )}
-      >
-        {value ?? "—"}
-      </div>
-    </div>
-  );
-}
-
 export function ValFieldsGrid({
   children,
   min = 150,
@@ -144,22 +119,17 @@ export function ValStatusPill({
   return <StatusPill label={label} style={statusPillStyleFromColor(color)} />;
 }
 
-export const VAL_STATUS_COLORS = {
-  draft: "var(--gold)",
-  submitted: "#3f8f5f",
-  reopened: "#d9a441",
-  completed: "#3f8f5f",
-  gated: "#8a8d96",
-} as const;
-
 export function ValTabBar({
   tabs,
   active,
   onChange,
+  onTabIntent,
 }: {
   tabs: { id: string; label: string; hint?: string }[];
   active: string;
   onChange: (id: string) => void;
+  /** Pointer or keyboard focus reached a tab — warm what it needs before the click. */
+  onTabIntent?: (id: string) => void;
 }) {
   return (
     <div
@@ -177,16 +147,20 @@ export function ValTabBar({
             aria-label={tab.label}
             aria-selected={selected}
             onClick={() => onChange(tab.id)}
+            onPointerEnter={onTabIntent ? () => onTabIntent(tab.id) : undefined}
+            onFocus={onTabIntent ? () => onTabIntent(tab.id) : undefined}
             className={cn(
-              "flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-t-[3px] px-3.5 py-3 text-start font-inherit transition-colors",
+              "flex w-full cursor-pointer items-start gap-2.5 rounded-xl border border-t-[3px] px-3.5 py-3 text-start font-inherit",
+              "transition-[background-color,border-color,box-shadow,transform] duration-200 ease-out active:scale-[0.985]",
+              "motion-reduce:transition-none motion-reduce:active:scale-100",
               selected
-                ? "border-gold border-t-gold bg-[color-mix(in_srgb,var(--gold)_8%,var(--surface))]"
-                : "border-border border-t-border bg-surface",
+                ? "border-gold border-t-gold bg-[color-mix(in_srgb,var(--gold)_8%,var(--surface))] shadow-[0_6px_18px_-12px_color-mix(in_srgb,var(--gold)_70%,transparent)]"
+                : "border-border border-t-border bg-surface hover:border-border-md hover:border-t-[color-mix(in_srgb,var(--gold)_45%,var(--border))] hover:bg-surface-2",
             )}
           >
             <span
               className={cn(
-                "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums",
+                "grid size-[26px] shrink-0 place-items-center rounded-full text-[12px] font-bold tabular-nums transition-colors duration-200",
                 selected ? "bg-ink text-white" : "bg-surface-2 text-text-3",
               )}
             >
@@ -195,7 +169,7 @@ export function ValTabBar({
             <span className="min-w-0 flex-1 text-start">
               <span
                 className={cn(
-                  "block text-[13px] font-bold",
+                  "block text-[13px] font-bold transition-colors duration-200",
                   selected ? "text-gold-d" : "text-heading",
                 )}
               >
@@ -211,58 +185,5 @@ export function ValTabBar({
         );
       })}
     </div>
-  );
-}
-
-export function ValDepChip({
-  label,
-  ok,
-  title,
-}: {
-  label: string;
-  ok: boolean;
-  title?: string;
-}) {
-  return (
-    <span
-      title={title}
-      className={cn(
-        "inline-flex items-center gap-[7px] rounded-lg border px-[11px] py-1.5 text-[11px] font-bold",
-        ok
-          ? "border-[color-mix(in_srgb,#3f8f5f_30%,transparent)] bg-[color-mix(in_srgb,#3f8f5f_8%,transparent)] text-[#2f7a4d]"
-          : "border-border-md bg-surface-2 text-text-3",
-      )}
-    >
-      {ok ? (
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.4"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden
-        >
-          <path d="m5 13 4 4L19 7" />
-        </svg>
-      ) : (
-        <svg
-          width="12"
-          height="12"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          aria-hidden
-        >
-          <circle cx="12" cy="12" r="9" />
-          <path d="M12 7v5l3 2" />
-        </svg>
-      )}
-      {label}
-    </span>
   );
 }

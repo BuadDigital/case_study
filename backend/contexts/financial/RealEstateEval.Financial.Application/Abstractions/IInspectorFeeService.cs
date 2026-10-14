@@ -70,11 +70,6 @@ public interface IInspectorFeeService
         string? actorDepartment = null,
         bool canManageAllDepartments = false);
 
-    Task<CreateDisbursementBatchResponseDto> CreateDisbursementBatchAsync(
-        CreateDisbursementBatchRequest request,
-        string actorUserId,
-        string? actorAssigneeId,
-        CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<InspectorFeeAuditEntryDto>> ListTransitionsAsync(
         Guid workflowTaskId,
@@ -105,7 +100,11 @@ public interface IPoEnfazBillingService
 
     Task<PoEnfazBillingDto?> GetPoBillingAsync(string poNumber, CancellationToken cancellationToken = default);
 
-    Task<PoEnfazBillingDto?> SavePoBillingAsync(
+    /// <summary>
+    /// Saves the fee lines. Refused with an Arabic error once the PO's invoice is issued — the
+    /// invoice stamps its totals, so later edits would silently drift from it.
+    /// </summary>
+    Task<(PoEnfazBillingDto? Billing, string? Error)> SavePoBillingAsync(
         string poNumber,
         SavePoEnfazBillingRequest request,
         CancellationToken cancellationToken = default);

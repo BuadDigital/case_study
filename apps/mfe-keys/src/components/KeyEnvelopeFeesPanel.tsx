@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { useState } from "react";
 import {
   SkeletonTableRows,
@@ -134,7 +135,7 @@ export function KeyEnvelopeFeesPanel({
                     <TdLtr bare>
                       {priced ? (
                         <span className="text-[14px] font-extrabold tabular-nums text-heading">
-                          {row.feeAmountSar!.toLocaleString("ar-SA")} ر.س
+                          {fmtSar(row.feeAmountSar, { digits: 3, trim: true })}
                         </span>
                       ) : (
                         <span className="text-[12px] text-text-3">
@@ -245,7 +246,7 @@ export function KeyEnvelopeFeesPanel({
                         <div className="flex items-center justify-between gap-2">
                           {priced ? (
                             <span className="tabular-nums text-[15px] font-extrabold text-heading">
-                              {row.feeAmountSar!.toLocaleString("ar-SA")} ر.س
+                              {fmtSar(row.feeAmountSar, { digits: 3, trim: true })}
                             </span>
                           ) : (
                             <span className="text-[12.5px] text-text-3">

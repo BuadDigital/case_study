@@ -14,30 +14,10 @@ namespace RealEstateEval.Platform.Api.Controllers;
 [Authorize]
 public class CourtsController : ControllerBase
 {
-    private readonly ICourtsCatalogService _catalog;
     private readonly ICourtsService _courts;
 
-    public CourtsController(ICourtsCatalogService catalog, ICourtsService courts)
-    {
-        _catalog = catalog;
-        _courts = courts;
-    }
+    public CourtsController(ICourtsService courts) => _courts = courts;
 
- /// <summary>Legacy catalog list (city + court + circuits[]) for existing admin UI.</summary>
-    [HttpGet]
-    public async Task<ActionResult<IReadOnlyList<CourtCatalogEntryDto>>> List(
-        CancellationToken cancellationToken)
-        => Ok(await _catalog.ListAsync(cancellationToken));
-
-    [HttpPut]
-    [Authorize(Policy = CapabilityPolicyNames.ManageCourts)]
-    public async Task<ActionResult<IReadOnlyList<CourtCatalogEntryDto>>> ReplaceAll(
-        [FromBody] SaveCourtsCatalogRequest request,
-        CancellationToken cancellationToken)
-        => Ok(await _catalog.ReplaceAllAsync(
-            request,
-            ActorClaims.Id(User),
-            cancellationToken));
 
     [HttpGet("selectable")]
     public async Task<ActionResult<IReadOnlyList<SelectableCourtDto>>> Selectable(
@@ -101,20 +81,6 @@ public class AdminCourtsController : ControllerBase
         return Ok(court);
     }
 
-    [HttpPatch("{id:guid}/status")]
-    public async Task<ActionResult<object>> SetStatus(
-        Guid id,
-        [FromBody] SetActiveStatusRequest request,
-        CancellationToken cancellationToken)
-    {
-        var (court, error) = await _courts.SetCourtStatusAsync(
-            id,
-            request.IsActive,
-            ActorClaims.Id(User),
-            cancellationToken);
-        if (error is not null) return this.BadRequestProblem(error);
-        return Ok(new { id = court!.Id, isActive = court.IsActive });
-    }
 
     [HttpPost("{courtId:guid}/circuits")]
     public async Task<ActionResult<CourtCircuitDto>> CreateCircuit(

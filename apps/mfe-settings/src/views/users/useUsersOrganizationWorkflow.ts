@@ -6,10 +6,17 @@
  * dialogs they open. Pure rules live in `users-organization-state.ts`.
  */
 
-import { useDeferredValue, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { RoleId } from "@platform/types";
-import type { UpdateStaffUserRequest } from "@platform/api-client";
+import type {
+  OrganizationValuerRosterEntry,
+  UpdateStaffUserRequest,
+} from "@platform/api-client";
+import {
+  ensureOrganizationSettingsLoaded,
+  getCachedOrganizationSettings,
+} from "@platform/app-shared/organization/organization-settings-cache";
 import { useCapability } from "@platform/app-shared/components/Can";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
@@ -31,21 +38,25 @@ import {
   buildCreateStaffUserPayload,
   canDeleteUser,
   createUserErrorMessage,
+  defaultReportRole,
   deleteUserErrorMessage,
   disableUserConfirmCopy,
   EMPTY_STAFF_FORM,
   filterStaffUsers,
   PROTECTED_ACCOUNT_TOAST,
+  professionalToSyncFields,
   reactivateErrorMessage,
+  rosterRowFor,
   saveEditErrors,
   staffValuerSyncMode,
-  shouldSyncStaffValuer,
   unlockErrorMessage,
   USER_TOASTS,
   validateStaffForm,
   withoutFieldError,
   withoutRoleErrors,
   type StaffFormState,
+  type StaffProfessional,
+  type StaffReportSeat,
   type StaffStatusFilter,
 } from "./users-organization-state";
 
@@ -57,7 +68,7 @@ export function useUsersOrganizationWorkflow() {
   const canManage = useCapability("manage-users");
   const currentUserId = getAuthSession()?.user.id ?? null;
   const { data, isPending } = useStaffUsersQuery();
-  const users = data?.users ?? [];
+  const users = useMemo(() => data?.users ?? [], [data]);
   const loadError = data?.loadError ?? null;
 
   const [form, setForm] = useState<StaffFormState>(EMPTY_STAFF_FORM);
@@ -71,6 +82,13 @@ export function useUsersOrganizationWorkflow() {
   const [statusFilter, setStatusFilter] = useState<StaffStatusFilter>("all");
   const [adding, setAdding] = useState(false);
   const [confirm, setConfirm] = useState<ConfirmActionSpec | null>(null);
+  /** Roster rows (professional data) keyed by account — the users screen edits them through the sync endpoint. */
+  const [valuers, setValuers] = useState<OrganizationValuerRosterEntry[]>([]);
+  useEffect(() => {
+    void ensureOrganizationSettingsLoaded()
+      .then((settings) => setValuers(settings?.valuers ?? []))
+      .catch(() => undefined);
+  }, []);
   const [createdUser, setCreatedUser] = useState<{
     id: string;
     userName: string;
@@ -89,24 +107,43 @@ export function useUsersOrganizationWorkflow() {
   const invalidateUsers = () =>
     queryClient.invalidateQueries({ queryKey: appDataKeys.staffUsers() });
 
+  /**
+   * Carries the account into the valuers roster. With `professional` the card's fields are
+   * sent; otherwise only the seat (an existing row keeps its own). Nothing is sent for an
+   * account that has no row and no seat.
+   */
   async function syncValuerRoster(opts: {
     id: string;
     displayName: string;
-    roleId?: string | null;
     status?: string | null;
-    previousRoleId?: string | null;
+    roleId?: string | null;
+    professional?: StaffProfessional;
   }): Promise<void> {
-    if (!shouldSyncStaffValuer(opts.previousRoleId, opts.roleId)) return;
+    const row = rosterRowFor(valuers, opts.id);
+    const seat: StaffReportSeat = opts.professional
+      ? opts.professional.reportRole
+      : row
+        ? row.role === "certified"
+          ? "certified"
+          : "valuer"
+        : defaultReportRole(opts.roleId);
+    if (!row && !opts.professional && seat === "none") return;
     const ok = await submitSyncStaffValuer({
       userId: opts.id,
       displayName: opts.displayName,
-      mode: staffValuerSyncMode(opts.roleId, opts.status),
+      mode: staffValuerSyncMode(opts.status),
+      ...(opts.professional
+        ? professionalToSyncFields(opts.professional)
+        : seat === "certified" || row
+          ? {}
+          : { reportRole: seat }),
     });
     if (!ok) {
       showToast(USER_TOASTS.rosterSyncFailed, "error");
       return;
     }
     await refreshOrgCache().catch(() => undefined);
+    setValuers(getCachedOrganizationSettings()?.valuers ?? []);
   }
 
   function updateField<K extends keyof StaffFormState>(key: K, value: StaffFormState[K]) {
@@ -188,7 +225,6 @@ export function useUsersOrganizationWorkflow() {
         displayName: user.name,
         roleId: user.roleId,
         status: "Disabled",
-        previousRoleId: user.roleId,
       });
     } finally {
       setDeletingId(null);
@@ -199,22 +235,26 @@ export function useUsersOrganizationWorkflow() {
   async function onSaveEdit(
     userId: string,
     patch: UpdateStaffUserRequest,
+    professional?: StaffProfessional,
   ): Promise<FieldErrors | null> {
     setPendingActionId(userId);
     try {
-      const result = await submitUpdateStaffUser(userId, patch);
-      if (!result.ok) return saveEditErrors(result);
+      const before = users.find((row) => row.id === userId);
+      let displayName = before?.name ?? "";
+      let status: string | null | undefined = before?.status;
+      let roleId: string | null | undefined = before?.roleId;
+      if (Object.keys(patch).length > 0) {
+        const result = await submitUpdateStaffUser(userId, patch);
+        if (!result.ok) return saveEditErrors(result);
+        displayName = result.user.displayName;
+        status = result.user.status;
+        roleId = result.user.roleId;
+      }
 
       setEditingUser(null);
       await invalidateUsers();
       showToast(USER_TOASTS.edited, "success");
-      await syncValuerRoster({
-        id: result.user.id,
-        displayName: result.user.displayName,
-        roleId: result.user.roleId,
-        status: result.user.status,
-        previousRoleId: users.find((row) => row.id === userId)?.roleId,
-      });
+      await syncValuerRoster({ id: userId, displayName, status, roleId, professional });
       return null;
     } finally {
       setPendingActionId(null);
@@ -236,7 +276,6 @@ export function useUsersOrganizationWorkflow() {
         displayName: result.user.displayName,
         roleId: result.user.roleId,
         status: result.user.status,
-        previousRoleId: user.roleId,
       });
     } finally {
       setPendingActionId(null);
@@ -287,6 +326,7 @@ export function useUsersOrganizationWorkflow() {
     canManage,
     currentUserId,
     users,
+    valuers,
     loadError,
     isPending,
     filteredUsers,

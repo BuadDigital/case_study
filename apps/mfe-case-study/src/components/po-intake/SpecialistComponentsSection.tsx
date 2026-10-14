@@ -3,11 +3,15 @@
 /**
  * «مكونات العقار» — the case specialist's part of the property description:
  * the report text (written from what the inspector sent: text or a photographed sheet) and
- * the components table. The table is always listed and printed when filled; whether the
- * components are valued is the appraiser's scope choice (land only / buildings only / land
- * with buildings). Report text is required before accepting; the table is optional.
+ * the components table «جدول الحصر». The table is filled by the field inspector (he writes it
+ * on site, offline too); the specialist reviews and corrects it here. It is always listed and
+ * printed when filled, and mandatory — at least one line — for anything with buildings or
+ * annexes worth valuing before accepting (a land asset only when the inspector said it holds
+ * such structures). Whether the
+ * components are valued is the appraiser's scope choice. The report text is the specialist's
+ * own and is required before accepting.
  */
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   Button,
   FormGroup,
@@ -17,18 +21,10 @@ import {
   Textarea,
   useToast,
 } from "@platform/ui-kit";
-import {
-  getBuildingInventory,
-  saveBuildingInventory,
-  type BuildingInventoryLineDto,
-} from "@platform/api-client";
-import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
-import {
-  componentLinesIssue,
-  emptyComponentLine,
-} from "../../lib/app-data/specialist-components";
+import { SPECIALIST_COMPONENTS_TABLE_HINT } from "../../lib/app-data/specialist-components";
 import { SpecialistComponentsTable } from "./SpecialistComponentsTable";
 import { InsReadField } from "./PropertyDetailInspectionFields";
+import { useBuildingInventoryEditor } from "./useBuildingInventoryEditor";
 
 export function SpecialistComponentsSection({
   poNumber,
@@ -45,69 +41,24 @@ export function SpecialistComponentsSection({
   onSaved?: () => void;
 }) {
   const { showToast } = useToast();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [text, setText] = useState("");
-  const [lines, setLines] = useState<BuildingInventoryLineDto[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [dirty, setDirty] = useState(false);
+  const editor = useBuildingInventoryEditor({
+    actor: "specialist",
+    poNumber,
+    propertyId,
+    disabled,
+    autosave: false,
+  });
+  const { lines, loading, loadError, text, saving, dirty, error } = editor;
 
-  const reload = useCallback(async () => {
-    const config = workOrdersApiConfig();
-    if (!config || !propertyId) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const res = await getBuildingInventory(config, poNumber, propertyId);
-    setLoading(false);
-    if (!res.ok) {
-      setError("تعذّر تحميل مكونات العقار");
-      return;
-    }
-    setError(null);
-    setText(res.data.componentsText ?? "");
-    setLines(res.data.lines);
-    setDirty(false);
-  }, [poNumber, propertyId]);
-
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  const locked = Boolean(disabled) || saving;
+  const locked = Boolean(disabled) || saving || Boolean(loadError);
 
   async function save() {
-    const config = workOrdersApiConfig();
-    if (!config || disabled) return;
-    const issue = componentLinesIssue(lines);
-    if (issue) {
-      setError(issue);
-      showToast(issue, "error");
+    if (disabled) return;
+    const outcome = await editor.save();
+    if (!outcome.ok) {
+      if (outcome.message) showToast(outcome.message, "error");
       return;
     }
-    setSaving(true);
-    setError(null);
-    const res = await saveBuildingInventory(config, poNumber, propertyId, {
-      componentsText: text,
-      lines: lines.map((l, i) => ({ ...l, sortOrder: i })),
-    });
-    setSaving(false);
-    if (!res.ok) {
-      const msg =
-        res.kind === "forbidden"
-          ? "مكونات العقار يعبّيها أخصائي دراسة الحالة"
-          : res.errors?.lines ||
-            res.errors?.componentsText ||
-            Object.values(res.errors ?? {})[0] ||
-            "تعذّر حفظ مكونات العقار";
-      setError(msg);
-      showToast(msg, "error");
-      return;
-    }
-    setText(res.data.componentsText ?? "");
-    setLines(res.data.lines);
-    setDirty(false);
     showToast("تم حفظ مكونات العقار", "success");
     onSaved?.();
   }
@@ -146,21 +97,19 @@ export function SpecialistComponentsSection({
                 rows={5}
                 disabled={locked}
                 value={text}
-                onChange={(e) => {
-                  setText(e.target.value);
-                  setDirty(true);
-                }}
+                onChange={(e) => editor.setText(e.target.value)}
                 className="min-h-[110px] resize-y text-[13px]"
               />
             </FormGroup>
           )}
 
-          <div>
-            <p className="m-0 text-[12px] font-bold text-heading">جدول المكونات</p>
+          <div id="specialist-components-table">
+            <p className="m-0 text-[12px] font-bold text-heading">جدول الحصر</p>
             {disabled ? null : (
               <p className="m-0 mt-0.5 text-[11px] text-text-3">
-                اختياري — احصر المكونات (أدوار، ملاحق، سور…) عند الحاجة. تُطبع في التقرير،
-                والمقيّم يقرّر هل تدخل في القيمة.
+                يعبّئه المعاين من الموقع (أدوار، ملاحق، سور…) وتراجعه وتصحّحه هنا.{" "}
+                {SPECIALIST_COMPONENTS_TABLE_HINT} يُطبع في التقرير، والمقيّم يقرّر هل يدخل في
+                القيمة.
               </p>
             )}
           </div>
@@ -169,14 +118,8 @@ export function SpecialistComponentsSection({
               lines={lines}
               disabled={locked}
               readView={Boolean(disabled)}
-              onPatch={(index, next) => {
-                setLines((prev) => prev.map((l, i) => (i === index ? next : l)));
-                setDirty(true);
-              }}
-              onRemove={(index) => {
-                setLines((prev) => prev.filter((_, i) => i !== index));
-                setDirty(true);
-              }}
+              onPatch={editor.patchLine}
+              onRemove={editor.removeLine}
             />
           ) : (
             <p className="m-0 text-[12px] text-text-3">{disabled ? "لا توجد بنود." : "لا توجد بنود بعد."}</p>
@@ -184,15 +127,7 @@ export function SpecialistComponentsSection({
 
           {!disabled ? (
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                size="sm"
-                disabled={locked}
-                onClick={() => {
-                  setLines((prev) => [...prev, emptyComponentLine(prev.length)]);
-                  setDirty(true);
-                }}
-              >
+              <Button type="button" size="sm" disabled={locked} onClick={editor.addLine}>
                 إضافة بند
               </Button>
               <Button
@@ -209,7 +144,7 @@ export function SpecialistComponentsSection({
             </div>
           ) : null}
 
-          {error ? <Note tone="warn">{error}</Note> : null}
+          {error || loadError ? <Note tone="warn">{error ?? loadError}</Note> : null}
         </>
       )}
     </div>

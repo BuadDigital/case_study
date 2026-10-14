@@ -255,16 +255,6 @@ public class BoundaryRequestValidatorTests
         });
         Assert.Contains(circuit.Errors, e => e.PropertyName == "circuitNo");
         Assert.Contains(circuit.Errors, e => e.PropertyName == "circuitName");
-
-        var catalog = new CourtCatalogEntryDtoValidator().Validate(new CourtCatalogEntryDto
-        {
-            City = tooLongRegion,
-            Court = tooLongName,
-            Circuits = [tooLongCircuitNo],
-        });
-        Assert.Contains(catalog.Errors, e => e.PropertyName == "city");
-        Assert.Contains(catalog.Errors, e => e.PropertyName == "court");
-        Assert.Contains(catalog.Errors, e => e.PropertyName == "circuits[0]");
     }
 
     [Fact]
@@ -332,14 +322,6 @@ public class BoundaryRequestValidatorTests
         Assert.Contains(result.Errors, e => e.PropertyName == "sla.defaultBusinessDays");
     }
 
-    [Fact]
-    public void Test_communication_rejects_unknown_channel()
-    {
-        var result = new TestCommunicationRequestValidator().Validate(
-            new TestCommunicationRequest { Channel = "pigeon", Destination = "0500000011" });
-
-        Assert.Contains(result.Errors, e => e.PropertyName == "channel");
-    }
 
     [Fact]
     public void Ops_comment_rejects_empty_text_without_files()

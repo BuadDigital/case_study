@@ -79,12 +79,6 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    [Fact]
-    public async Task Dev_login_users_returns_404_when_passwordless_login_disabled()
-    {
-        var response = await _client.GetAsync("/api/auth/dev-login-users");
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-    }
 
     [Fact]
     public async Task Refresh_returns_a_new_session_for_a_valid_refresh_token()

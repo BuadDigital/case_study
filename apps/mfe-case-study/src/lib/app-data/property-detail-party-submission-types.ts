@@ -49,8 +49,6 @@ export type EvaluatorSubmissionSnapshot = {
   appraiserAddress?: string;
   appraiserPhone?: string;
   reportIssueDate?: string;
-  depositCode?: string;
-  depositCertificateFileName?: string | null;
   independenceDeclared?: boolean;
   reportWorkers?: {
     id?: string;

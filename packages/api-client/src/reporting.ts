@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import type { PrototypeModulesApiConfig, PrototypeModulesResult } from "./prototype-modules";
 
 export type ReportingTeamMemberDto = {
@@ -53,7 +53,7 @@ export type ReportingCompletionYearDto = {
   monthly: number[];
 };
 
-export type ReportingGovernmentReviewRowDto = {
+type ReportingGovernmentReviewRowDto = {
   taskId: string;
   poNumber: string;
   title: string;
@@ -61,7 +61,7 @@ export type ReportingGovernmentReviewRowDto = {
   status: string;
 };
 
-export type ReportingFailureRowDto = {
+type ReportingFailureRowDto = {
   id: string;
   poNumber: string;
   deedNumber: string;
@@ -71,7 +71,7 @@ export type ReportingFailureRowDto = {
   updatedAt: string;
 };
 
-export type ReportingPartyFeesOverviewDto = {
+type ReportingPartyFeesOverviewDto = {
   pendingSupervisorReview: number;
   atFinance: number;
   disbursementRequested: number;
@@ -82,7 +82,7 @@ export type ReportingPartyFeesOverviewDto = {
   recentRows: ReportingPartyFeeRowDto[];
 };
 
-export type ReportingPartyFeeRowDto = {
+type ReportingPartyFeeRowDto = {
   poNumber: string;
   propertyLabel: string;
   partyKindLabel: string;
@@ -91,7 +91,7 @@ export type ReportingPartyFeeRowDto = {
   netFeeSar: number;
 };
 
-export type FieldInspectionWorkspaceSummaryDto = {
+type FieldInspectionWorkspaceSummaryDto = {
   total: number;
   draft: number;
   reopened: number;
@@ -99,12 +99,6 @@ export type FieldInspectionWorkspaceSummaryDto = {
   photosPendingApproval: number;
   incompleteRequiredPhotos: number;
 };
-
-function headers(token: string): HeadersInit {
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-}
 
 function baseUrl(config: PrototypeModulesApiConfig): string {
   return config.baseUrl ?? getApiBase();
@@ -115,7 +109,7 @@ export async function fetchReportingDashboard(
 ): Promise<PrototypeModulesResult<ReportingDashboardDto>> {
   try {
     const res = await fetch(`${baseUrl(config)}/api/reporting/v1/dashboard`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { json: false }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };

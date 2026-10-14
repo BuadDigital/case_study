@@ -1,4 +1,5 @@
 import { pad2 } from "@platform/app-shared/format/date";
+import { isPartyTaskDone } from "@platform/app-shared/workflow/task-done";
 import {
   FAILURE_OBSTRUCTED_BADGE,
   isTaskFailureObstructed,
@@ -15,7 +16,7 @@ import {
   type WorkflowTask,
 } from "./tasks";
 
-export type TaskTableRow = {
+type TaskTableRow = {
   deedLabel: string;
   location: string;
   typeDisplay: string;
@@ -34,7 +35,7 @@ export type PrimaryDataTableRow = {
   remainingTime: RemainingTimeState;
 };
 
-export type DistributionTableRow = {
+type DistributionTableRow = {
   deedLabel: string;
   city: string;
   district: string;
@@ -126,7 +127,7 @@ export function remainingTimerTick(
 }
 
 /** Unregistered / bourse-inquiry slot — e.g. «Under study 1». */
-export function formatPropertySlotOnPo(
+function formatPropertySlotOnPo(
   task: WorkflowTask,
   _record?: PoIntakeRecord,
 ): string {
@@ -135,7 +136,7 @@ export function formatPropertySlotOnPo(
 }
 
 /** Deed/reg when registered; otherwise «Under study N» (not N/total). */
-export function formatPrimaryDataPropertyLabel(
+function formatPrimaryDataPropertyLabel(
   task: WorkflowTask,
   property: PoPropertyIntake | null,
   record: PoIntakeRecord | undefined,
@@ -200,7 +201,7 @@ export function findPropertyForTask(
   return record.properties.find((p) => p.id === task.propertyId) ?? null;
 }
 
-export function buildTaskTableRow(
+function buildTaskTableRow(
   task: WorkflowTask,
   property: PoPropertyIntake | null,
 ): TaskTableRow {
@@ -228,7 +229,7 @@ export function buildTaskTableRow(
 
   const deedStatus = property?.deedStatus?.trim() || "—";
 
-  if (task.status === "completed" || task.phase === "done") {
+  if (isPartyTaskDone(task)) {
     return {
       deedLabel,
       location,

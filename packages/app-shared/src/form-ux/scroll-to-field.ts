@@ -13,6 +13,9 @@ export type ScrollToFormFieldOptions = {
   retryMs?: number;
 };
 
+/** Smooth scrolling is async — re-measure after it settles. */
+const SETTLE_MS = 320;
+
 function findScrollContainer(target: HTMLElement): HTMLElement | null {
   let scrollContainer: HTMLElement | null = target.parentElement;
   while (scrollContainer) {
@@ -51,6 +54,14 @@ export function scrollToFormField(
       containerRect.top -
       centeredOffset;
     scrollContainer.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+    // Centering inside a table wrapper or panel does not help when that wrapper
+    // itself is off-screen — once it settles, pull the page to the field too.
+    window.setTimeout(() => {
+      const rect = target.getBoundingClientRect();
+      if (rect.top < 0 || rect.bottom > window.innerHeight) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }, SETTLE_MS);
   } else {
     target.scrollIntoView({ behavior: "smooth", block: "center" });
   }
@@ -91,12 +102,28 @@ export function scheduleScrollToFormField(
   delayMs = 60,
   options?: ScrollToFormFieldOptions,
 ): void {
-  if (!targetId || typeof window === "undefined") return;
+  scheduleScrollToFirstFormField(targetId ? [targetId] : [], delayMs, options);
+}
+
+/**
+ * Same deferral, but over an ordered list: the exact control first, then the
+ * container that holds it. A row/cell that is not rendered (collapsed card,
+ * virtualized table) falls back to the nearest ancestor that is.
+ */
+export function scheduleScrollToFirstFormField(
+  targetIds: readonly (string | null | undefined)[],
+  delayMs = 60,
+  options?: ScrollToFormFieldOptions,
+): void {
+  const ids = targetIds.filter((id): id is string => !!id);
+  if (ids.length === 0 || typeof window === "undefined") return;
   let remaining = options?.retries ?? DEFAULT_SCHEDULE_RETRIES;
   const retryMs = options?.retryMs ?? DEFAULT_RETRY_MS;
 
   const attempt = () => {
-    if (scrollToFormField(targetId, options)) return;
+    for (const id of ids) {
+      if (scrollToFormField(id, options)) return;
+    }
     if (remaining <= 0) return;
     remaining -= 1;
     window.setTimeout(attempt, retryMs);

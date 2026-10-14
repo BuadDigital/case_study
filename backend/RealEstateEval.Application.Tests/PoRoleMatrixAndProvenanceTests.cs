@@ -14,9 +14,94 @@ public class PoRoleMatrixRulesTests
     [InlineData("general-manager", false)]
     [InlineData("field-inspector", false)]
     [InlineData("cdo", true)]
+    [InlineData("", false)]
     public void CanEditProperty_matches_frontend(string role, bool expected)
     {
         Assert.Equal(expected, PoRoleMatrixRules.CanEditProperty(role));
+    }
+
+    [Theory]
+    [InlineData("case-specialist", true)]
+    [InlineData("section-supervisor", true)]
+    [InlineData("cdo", false)]
+    [InlineData("general-manager", false)]
+    [InlineData("field-inspector", false)]
+    [InlineData("real-estate-appraiser", false)]
+    public void CanReceivePo_is_specialist_and_supervisor_only(string role, bool expected)
+    {
+        Assert.Equal(expected, PoRoleMatrixRules.CanReceivePo(role));
+    }
+
+    [Theory]
+    [InlineData("section-supervisor", true)]
+    [InlineData("case-specialist", true)]
+    [InlineData("cdo", true)]
+    [InlineData("general-manager", false)]
+    [InlineData("field-inspector", false)]
+    public void CanRevertTaskPhase_is_specialist_cdo_and_supervisor(string role, bool expected)
+    {
+        Assert.Equal(expected, PoRoleMatrixRules.CanRevertTaskPhase(role));
+    }
+
+    [Theory]
+    [InlineData("case-specialist", true)]
+    [InlineData("section-supervisor", false)]
+    [InlineData("general-manager", false)]
+    [InlineData("cdo", false)]
+    [InlineData("real-estate-appraiser", false)]
+    [InlineData("", false)]
+    public void Specialist_decisions_belong_to_the_case_specialist_only(string role, bool expected)
+    {
+        Assert.Equal(expected, PoRoleMatrixRules.CanIssueCaseStudyReport(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanReopenCaseStudyReport(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanDecideAppraisalRecall(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanHandOverToEnfaz(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanReturnFromEnfaz(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanLiftSurveyFreeze(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanPrepareReportDraft(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanReopenValuationReport(role));
+    }
+
+    [Theory]
+    [InlineData("val-abdullah", "u-1", "val-abdullah", true)]
+    [InlineData("val-abdullah", "val-abdullah", null, true)]
+    [InlineData("val-abdullah", "u-1", "val-other", false)]
+    [InlineData("val-abdullah", "u-1", null, false)]
+    [InlineData(null, "u-1", "val-abdullah", false)]
+    [InlineData("  ", "u-1", "  ", false)]
+    public void The_report_draft_review_is_the_assigned_appraisers_alone(
+        string? assigneeId, string? userId, string? distributionId, bool expected)
+    {
+        Assert.Equal(expected, PoRoleMatrixRules.IsAssignedPartyUser(assigneeId, userId, distributionId));
+    }
+
+    [Theory]
+    // Neither phase nor status: open to every work-order manager.
+    [InlineData("general-manager", null, null, true)]
+    [InlineData("cdo", null, null, true)]
+    // The roles that run the lifecycle may move phase / status.
+    [InlineData("case-specialist", "done", "completed", true)]
+    [InlineData("section-supervisor", "bourse", "open", true)]
+    // GM / CDO only suspend.
+    [InlineData("cdo", null, "blocked", true)]
+    [InlineData("general-manager", null, "blocked", true)]
+    [InlineData("cdo", null, "completed", false)]
+    [InlineData("general-manager", "done", "completed", false)]
+    [InlineData("cdo", "bourse", "blocked", false)]
+    [InlineData("field-inspector", null, "blocked", false)]
+    // ... and resolve an obstruction: reopen to a working phase, never to «done».
+    [InlineData("cdo", "bourse", "open", true)]
+    [InlineData("general-manager", "case-study", "open", true)]
+    [InlineData("general-manager", null, "open", true)]
+    [InlineData("cdo", "done", "open", false)]
+    [InlineData("field-inspector", "bourse", "open", false)]
+    public void CanPatchTaskLifecycle_limits_phase_and_status_changes(
+        string role,
+        string? phase,
+        string? status,
+        bool expected)
+    {
+        Assert.Equal(expected, PoRoleMatrixRules.CanPatchTaskLifecycle(role, phase, status));
     }
 
     [Theory]
@@ -199,7 +284,7 @@ public class CaseStudyAnswerProvenanceTests
             ["deed_2"] = "B",
         };
 
-        var actor = new CaseStudyFormActor
+        var actor = new CaseStudyReportActor
         {
             UserId = "u-new",
             DisplayName = "جديد",

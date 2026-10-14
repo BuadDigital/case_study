@@ -31,8 +31,3 @@ public class FieldDictionaryAssignmentDto
     public bool Final { get; init; }
 }
 
-public class SaveFieldDictionaryStateRequest
-{
-    public IReadOnlyList<FieldDictionaryFieldDto> Fields { get; init; } = [];
-    public IReadOnlyList<string> Tags { get; init; } = [];
-}

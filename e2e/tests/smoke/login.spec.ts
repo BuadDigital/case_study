@@ -18,7 +18,7 @@ test.describe("login journey", () => {
       await otpBoxes.nth(i).fill(String(i + 1));
     }
     await expect(
-      page.getByRole("alert").filter({ hasText: /تعذر الاتصال|انتهت مهلة/ }),
+      page.getByRole("alert").filter({ hasText: /تعذّ?ر الاتصال|انتهت مهلة/ }),
     ).toBeVisible({ timeout: 15_000 });
   });
 });

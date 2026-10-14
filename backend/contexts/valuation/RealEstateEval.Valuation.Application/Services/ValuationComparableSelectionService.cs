@@ -53,7 +53,7 @@ public sealed partial class ValuationComparableSelectionService(
         var compIds = rows.Select(r => r.ComparablePropertyId).Distinct().ToList();
         var comps = await repo.GetComparablesAsync(compIds, cancellationToken);
 
-        var today = DateOnly.FromDateTime(_time.UtcNow());
+        var today = RiyadhClock.Today(_time);
         var header = await repo.GetMarketApproachAsync(valuationRequestId, cancellationToken);
         var factorRationales = await repo.ListFactorRationalesAsync(
             valuationRequestId, context, cancellationToken);
@@ -75,11 +75,12 @@ public sealed partial class ValuationComparableSelectionService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل المقارنات" });
         // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        if (await freeze.IsFrozenAsync(vr.Id, cancellationToken))
+        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
+        if (frozenMessage is not null)
         {
             return (
                 null,
-                new Dictionary<string, string> { ["_"] = ValuationReportFreezeRules.FrozenMessageAr });
+                new Dictionary<string, string> { ["_"] = frozenMessage });
         }
 
         var items = request.Items ?? [];
@@ -139,8 +140,9 @@ public sealed partial class ValuationComparableSelectionService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات");
         // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        if (await freeze.IsFrozenAsync(vr.Id, cancellationToken))
-            return (null, ValuationReportFreezeRules.FrozenMessageAr);
+        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
+        if (frozenMessage is not null)
+            return (null, frozenMessage);
 
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         var row = await repo.FindSelectionByComparableAsync(
@@ -200,8 +202,9 @@ public sealed partial class ValuationComparableSelectionService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (false, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات");
         // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        if (await freeze.IsFrozenAsync(vr.Id, cancellationToken))
-            return (false, ValuationReportFreezeRules.FrozenMessageAr);
+        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
+        if (frozenMessage is not null)
+            return (false, frozenMessage);
 
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         var row = await repo.FindSelectionByComparableAsync(
@@ -226,11 +229,12 @@ public sealed partial class ValuationComparableSelectionService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل التسويات" });
         // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        if (await freeze.IsFrozenAsync(vr.Id, cancellationToken))
+        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
+        if (frozenMessage is not null)
         {
             return (
                 null,
-                new Dictionary<string, string> { ["_"] = ValuationReportFreezeRules.FrozenMessageAr });
+                new Dictionary<string, string> { ["_"] = frozenMessage });
         }
 
         var row = await repo.FindSelectionAsync(valuationRequestId, selectionId, cancellationToken);
@@ -278,7 +282,7 @@ public sealed partial class ValuationComparableSelectionService(
             request,
             all,
             comps,
-            DateOnly.FromDateTime(_time.UtcNow()),
+            RiyadhClock.Today(_time),
             await repo.GetMarketApproachAsync(row.ValuationRequestId, cancellationToken),
             row.SelectionContext,
             factorRationales: []);
@@ -339,7 +343,8 @@ public sealed partial class ValuationComparableSelectionService(
         if (!added) return true;
 
         await EnsureMarketApproachHeaderAsync(request.Id, cancellationToken);
-        await repo.SaveChangesAsync(cancellationToken);
+        // The reconciliation read and the selections read both open a fresh request at once.
+        await repo.TrySaveSeedAsync(cancellationToken);
         return true;
     }
 }

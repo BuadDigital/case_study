@@ -57,7 +57,10 @@ public class WorkOrderListQueryRulesTests
     [Theory]
     [InlineData(WorkOrderListStatus.New, WorkOrderListStatusFilter.New)]
     [InlineData(WorkOrderListStatus.UnderStudy, WorkOrderListStatusFilter.UnderStudy)]
+    [InlineData(WorkOrderListStatus.ReadyForEnfaz, WorkOrderListStatusFilter.ReadyForEnfaz)]
     [InlineData(WorkOrderListStatus.Completed, WorkOrderListStatusFilter.Completed)]
+    [InlineData(WorkOrderListQueryRules.BucketActive, WorkOrderListStatusFilter.Active)]
+    [InlineData(WorkOrderListQueryRules.BucketClosed, WorkOrderListStatusFilter.Closed)]
     [InlineData(WorkOrderListStatus.Stopped, WorkOrderListStatusFilter.Stopped)]
     [InlineData(WorkOrderListStatus.Cancelled, WorkOrderListStatusFilter.Cancelled)]
     public void Status_buckets_map_one_to_one(string status, WorkOrderListStatusFilter expected)
@@ -67,13 +70,14 @@ public class WorkOrderListQueryRulesTests
 
     /// <summary>
     /// The invoice flag lives in Financial, so the two billing buckets widen to the study bucket
-    /// they refine. The client still narrows those two locally.
+    /// they refine — partially billed to every active row, since an invoiced order may be under
+    /// study or ready for the handover. The client still narrows those two locally.
     /// </summary>
     [Fact]
     public void Billing_buckets_widen_to_their_study_equivalent()
     {
         Assert.Equal(
-            WorkOrderListStatusFilter.UnderStudy,
+            WorkOrderListStatusFilter.Active,
             WorkOrderListQueryRules.ResolveStatus(WorkOrderListStatus.PartiallyBilled));
         Assert.Equal(
             WorkOrderListStatusFilter.Completed,

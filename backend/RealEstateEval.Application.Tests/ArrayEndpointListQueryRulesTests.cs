@@ -1,6 +1,6 @@
 using RealEstateEval.Failures.Application.Rules;
 using RealEstateEval.Failures.Domain;
-using RealEstateEval.Financial.Application.Rules;
+
 using RealEstateEval.Platform.Application.Rules;
 using RealEstateEval.Valuation.Application.Rules;
 
@@ -8,8 +8,8 @@ namespace RealEstateEval.Application.Tests;
 
 /// <summary>
 /// The pure half of the contract for the array endpoints added in
-/// docs/architecture/pagination-contract.md §§4-7: comparables, failures, notifications and the two
-/// financial ledgers. Same shared rules as the first three endpoints — an unknown sort key falls
+/// docs/architecture/pagination-contract.md §§4-6: comparables, failures and notifications.
+/// Same shared rules as the first three endpoints — an unknown sort key falls
 /// back to the default and never answers 400, and <c>dir</c> defaults to <c>desc</c>.
 /// </summary>
 public class ComparablePropertyListQueryRulesTests
@@ -176,47 +176,5 @@ public class NotificationListQueryRulesTests
         Assert.True(NotificationListQueryRules.ResolveUnread(true));
         Assert.False(NotificationListQueryRules.ResolveUnread(false));
         Assert.Null(NotificationListQueryRules.ResolveUnread(null));
-    }
-}
-
-public class FinancialLedgerListQueryRulesTests
-{
-    [Theory]
-    [InlineData("created", FinancialLedgerListSortKey.Created)]
-    [InlineData(" TRANSACTION ", FinancialLedgerListSortKey.TransactionKey)]
-    [InlineData("amount", FinancialLedgerListSortKey.Created)]
-    [InlineData(null, FinancialLedgerListSortKey.Created)]
-    public void Sort_keys_map_or_fall_back(string? sort, FinancialLedgerListSortKey expected)
-    {
-        Assert.Equal(expected, FinancialLedgerListQueryRules.ResolveSort(sort));
-    }
-
-    [Fact]
-    public void Every_allowed_sort_key_resolves_to_a_distinct_column()
-    {
-        var mapped = FinancialLedgerListQueryRules.AllowedSortKeys
-            .Select(FinancialLedgerListQueryRules.ResolveSort)
-            .ToList();
-
-        Assert.Equal(
-            FinancialLedgerListQueryRules.AllowedSortKeys.Count,
-            mapped.Distinct().Count());
-    }
-
-    [Theory]
-    [InlineData("asc", false)]
-    [InlineData("desc", true)]
-    [InlineData("", true)]
-    public void Direction_defaults_to_descending(string dir, bool expected)
-    {
-        Assert.Equal(expected, FinancialLedgerListQueryRules.ResolveDescending(dir));
-    }
-
-    [Fact]
-    public void Blank_exact_filters_and_search_mean_no_filter()
-    {
-        Assert.Null(FinancialLedgerListQueryRules.NormalizeExact(" "));
-        Assert.Null(FinancialLedgerListQueryRules.NormalizeSearch("\t"));
-        Assert.Equal("PO-9", FinancialLedgerListQueryRules.NormalizeExact(" PO-9 "));
     }
 }

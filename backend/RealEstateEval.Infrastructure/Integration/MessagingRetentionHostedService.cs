@@ -40,8 +40,9 @@ public sealed class MessagingRetentionOptions
 /// Sweeps the messaging tables that only ever grow: published and dead-lettered outbox rows,
 /// inbox dedupe rows, expired command-idempotency responses, and read notifications. Runs in the
 /// same host as the outbox dispatcher and drains the same <see cref="IOutboxContext"/>; the
-/// inbox, idempotency and notification tables exist only on <see cref="MessagingDbContext"/>,
-/// so a host draining another outbox (Valuation) sweeps its outbox alone.
+/// inbox and notification tables exist only on <see cref="MessagingDbContext"/>, while any
+/// owner context implementing <see cref="ICommandIdempotencyDbContext"/> sweeps its local
+/// command reservations too.
 /// </summary>
 public sealed class MessagingRetentionHostedService : BackgroundService
 {
@@ -122,6 +123,16 @@ public sealed class MessagingRetentionHostedService : BackgroundService
         var inboxDeleted = 0;
         var idempotencyDeleted = 0;
         var notificationsDeleted = 0;
+        if (db is ICommandIdempotencyDbContext idempotency)
+        {
+            var abandonedBefore = now.AddDays(-7);
+            idempotencyDeleted = await idempotency.CommandIdempotencyRecords
+                .Where(r =>
+                    (r.StatusCode != 0 && r.ExpiresAtUtc < now)
+                    || (r.StatusCode == 0 && r.CreatedAtUtc < abandonedBefore))
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
         if (db is MessagingDbContext messaging)
         {
             var inboxCutoff = now.AddDays(-Math.Max(1, _options.ProcessedInboxDays));
@@ -129,9 +140,6 @@ public sealed class MessagingRetentionHostedService : BackgroundService
 
             inboxDeleted = await messaging.ProcessedIntegrationEvents
                 .Where(e => e.ProcessedAtUtc < inboxCutoff)
-                .ExecuteDeleteAsync(cancellationToken);
-            idempotencyDeleted = await messaging.CommandIdempotencyRecords
-                .Where(r => r.ExpiresAtUtc < now)
                 .ExecuteDeleteAsync(cancellationToken);
             notificationsDeleted = await messaging.UserNotifications
                 .Where(n => n.ReadAtUtc != null && n.ReadAtUtc < readCutoff)

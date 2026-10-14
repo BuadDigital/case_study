@@ -72,7 +72,7 @@ public sealed class PriorValuationBankFeeder(
             Latitude = lat,
             Longitude = lon,
             AreaSqm = areaSqm,
-            TransactionDate = DateOnly.FromDateTime(now),
+            TransactionDate = RiyadhClock.DateOf(now),
             Price = finalValue,
             PricePerSqm = ComparablePropertyRules.ComputePricePerSqm(finalValue, areaSqm),
             City = context.City,

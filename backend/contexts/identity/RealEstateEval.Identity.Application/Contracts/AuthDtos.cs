@@ -2,13 +2,42 @@ using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateEval.Application.Contracts;
 
-/// <summary>Passwordless login — mobile (preferred) or username.</summary>
+/// <summary>Login — mobile (preferred) or username.</summary>
 public class UsernameLoginRequest
 {
     [Required]
     [MinLength(2)]
     [MaxLength(120)]
     public string Username { get; set; } = string.Empty;
+}
+
+/// <summary>Step 1 of mobile login: send the code.</summary>
+public class OtpRequestRequest
+{
+    [Required]
+    [MaxLength(20)]
+    public string Mobile { get; set; } = string.Empty;
+}
+
+/// <summary>Step 2 of mobile login: exchange the code for a session.</summary>
+public class OtpVerifyRequest
+{
+    [Required]
+    [MaxLength(20)]
+    public string Mobile { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(12)]
+    public string Code { get; set; } = string.Empty;
+}
+
+public class OtpRequestResponseDto
+{
+    /// <summary>Seconds before another code may be requested for this mobile.</summary>
+    public int RetryAfterSeconds { get; set; }
+    public int ExpiresInSeconds { get; set; }
+    /// <summary><c>sms</c> when a provider carried the code, <c>dev</c> when it only went to the log.</summary>
+    public string Delivery { get; set; } = string.Empty;
 }
 
 public class RefreshTokenRequest
@@ -35,8 +64,3 @@ public class UserInfoDto
     public string? JobTitle { get; set; }
 }
 
-public class DevLoginUserDto
-{
-    public string Username { get; set; } = string.Empty;
-    public string Label { get; set; } = string.Empty;
-}

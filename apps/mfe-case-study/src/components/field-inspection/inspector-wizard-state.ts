@@ -19,6 +19,7 @@ import {
   type ServiceAmenityPhotoSlotDef,
 } from "../../lib/app-data/inspector-workspace-data";
 import { approximatePropertyGeo } from "../../lib/app-data/po-intake-data";
+import { parseLatLng } from "@platform/app-shared/domain/geo";
 
 /** Amenity chips from the design file (extras entered elsewhere are preserved). */
 export const DESIGN_AMENITIES = [
@@ -40,7 +41,7 @@ export const COMPONENT_BOOL_KEYS = [
 ] as const;
 
 /** One yes/no pill of the components card plus its proof-photo state. */
-export type ComponentBoolPhotoSlot = {
+type ComponentBoolPhotoSlot = {
   key: string;
   label: string;
   on: boolean;
@@ -101,10 +102,7 @@ export function inspectorWizardMapGeo(
   draft: InspectorWorkspaceDraft,
   property: { city: string; district?: string; deedNumber: string },
 ): { lat: number; lng: number } | null {
-  const lat = Number(draft.mapLatitude);
-  const lng = Number(draft.mapLongitude);
-  if (Number.isFinite(lat) && Number.isFinite(lng)) return { lat, lng };
-  return approximatePropertyGeo(property);
+  return parseLatLng(draft.mapLatitude, draft.mapLongitude) ?? approximatePropertyGeo(property);
 }
 
 /** After the specialist pins — the inspector's original pin, for comparison only. */
@@ -121,10 +119,9 @@ export function inspectorReferenceMapPins(
   ) {
     return [];
   }
-  const lat = Number(draft.inspectorMapLatitude);
-  const lng = Number(draft.inspectorMapLongitude);
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return [];
-  return [{ lat, lng, title: "موقع المعاين الأصلي", label: "مع" }];
+  const original = parseLatLng(draft.inspectorMapLatitude, draft.inspectorMapLongitude);
+  if (!original) return [];
+  return [{ ...original, title: "موقع المعاين الأصلي", label: "مع" }];
 }
 
 /** Engineering-office pin for specialist comparison (when it differs from the active pin). */
@@ -134,13 +131,11 @@ export function engineeringOfficeContextPins(
   engineeringPin: { lat: number; lng: number } | null,
 ): GoogleMapContextPin[] {
   if (mapActor !== "specialist" || !engineeringPin) return [];
-  const activeLat = Number(draft.mapLatitude);
-  const activeLng = Number(draft.mapLongitude);
+  const active = parseLatLng(draft.mapLatitude, draft.mapLongitude);
   if (
-    Number.isFinite(activeLat) &&
-    Number.isFinite(activeLng) &&
-    Math.abs(activeLat - engineeringPin.lat) < 1e-5 &&
-    Math.abs(activeLng - engineeringPin.lng) < 1e-5
+    active &&
+    Math.abs(active.lat - engineeringPin.lat) < 1e-5 &&
+    Math.abs(active.lng - engineeringPin.lng) < 1e-5
   ) {
     return [];
   }

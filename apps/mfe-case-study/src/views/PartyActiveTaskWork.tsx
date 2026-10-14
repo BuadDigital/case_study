@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Activity,
   useCallback,
   useMemo,
   useRef,
@@ -8,12 +9,13 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { TaskCompletionSuccess } from "../components/party-tasks/TaskCompletionSuccess";
+import { PartyTaskSubmitDialog, type PartyTaskSubmitState } from "./PartyTaskSubmitDialog";
 import { TaskWorkChrome } from "../components/primary-data/TaskWorkChrome";
 import { FieldInspectionMobileShell } from "../components/field-inspection/FieldInspectionMobileShell";
 import {
   type FieldInspectionWorkHostRef,
 } from "../components/field-inspection/FieldInspectionWorkBody";
-import { PartyCaseStudyFormTab } from "../components/case-study/PartyCaseStudyFormTab";
+import { PartyCaseStudyReportTab } from "../components/case-study/PartyCaseStudyReportTab";
 import { PropertyDetailInspectionTab } from "../components/po-intake/PropertyDetailInspectionTab";
 import type { PropertyDetailPartyCard } from "../lib/app-data/property-detail-parties";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
@@ -53,6 +55,7 @@ import {
   PanelSkeleton,
   cn,
   opsContentPanel,
+  useSwapAnimation,
   useToast,
 } from "@platform/ui-kit";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
@@ -68,6 +71,8 @@ const PARTY_FAILURE_RAISE_KINDS = new Set([
 
 const LOADING_TEXT = "text-xs text-text-3";
 const TAB_CONTENT = "min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:p-5";
+const WORK_TAB =
+  "cursor-pointer border-none bg-transparent px-3.5 py-2.5 text-xs font-medium transition-[background-color,border-color,color] duration-200 ease-out hover:bg-surface-2 motion-reduce:transition-none";
 
 function PartyWorkTabs({
   workTab,
@@ -87,8 +92,10 @@ function PartyWorkTabs({
       <div className="flex flex-wrap border-b border-border bg-surface">
         <button
           type="button"
+          role="tab"
+          aria-selected={workTab === "task"}
           className={cn(
-            "cursor-pointer border-none bg-transparent px-3.5 py-2.5 text-xs font-medium transition-colors",
+            WORK_TAB,
             workTab === "task"
               ? "-mb-px border-b-2 border-b-primary font-semibold text-primary"
               : "text-text-2 hover:text-text",
@@ -99,15 +106,17 @@ function PartyWorkTabs({
         </button>
         <button
           type="button"
+          role="tab"
+          aria-selected={workTab === "case-study"}
           className={cn(
-            "cursor-pointer border-none bg-transparent px-3.5 py-2.5 text-xs font-medium transition-colors",
+            WORK_TAB,
             workTab === "case-study"
               ? "-mb-px border-b-2 border-b-primary font-semibold text-primary"
               : "text-text-2 hover:text-text",
           )}
           onClick={() => onSelect("case-study")}
         >
-          نموذج الدراسة
+          تقرير دراسة الحالة
         </button>
       </div>
     </nav>
@@ -203,6 +212,11 @@ export function PartyActiveTaskWork({
   const [saving, setSaving] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [workTab, setWorkTab] = useState<"task" | "case-study">("task");
+  // The case-study tab stays mounted once opened, so coming back skips its reload skeleton.
+  const [caseStudyTabOpened, setCaseStudyTabOpened] = useState(false);
+  if (workTab === "case-study" && !caseStudyTabOpened) setCaseStudyTabOpened(true);
+  const workTabPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(workTabPanelRef, workTab);
 
   const isAppraisal = def.kind === "property-appraisal";
   const isEngineeringSurvey = def.kind === "engineering-survey";
@@ -212,17 +226,45 @@ export function PartyActiveTaskWork({
   const surveyHostRef = useRef<PartyEngineeringSurveyWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
 
-  // Form UIs often already toast; avoid double toast for those paths.
-  evaluatorHostRef.current.onSubmitted = () =>
-    completePartyTaskSubmit(def.completeMessage, { showToast: false });
+  // The inspector and the appraiser see a sending dialog: loading while the send runs, then the result
+  // and one button back to the queue. A failure closes it — the reason is already on screen.
+  const [submitState, setSubmitState] = useState<PartyTaskSubmitState>("idle");
+  const sendingHost = {
+    onSubmitStarted: () => setSubmitState("sending"),
+    onSubmitFailed: () => setSubmitState("idle"),
+  };
+  const sentHost = () => {
+    setSubmitState("sent");
+    refresh();
+  };
+  evaluatorHostRef.current.onSubmitted = sentHost;
+  evaluatorHostRef.current.onSubmitStarted = sendingHost.onSubmitStarted;
+  evaluatorHostRef.current.onSubmitFailed = sendingHost.onSubmitFailed;
   evaluatorHostRef.current.onSavingChange = setSaving;
   // Engineering survey form does not toast on success — show completeMessage here.
   surveyHostRef.current.onSubmitted = () =>
     completePartyTaskSubmit(def.completeMessage, { showToast: true });
   surveyHostRef.current.onSavingChange = setSaving;
-  fieldInspectionHostRef.current.onSubmitted = () =>
-    completePartyTaskSubmit(def.completeMessage, { showToast: false });
+  fieldInspectionHostRef.current.onSubmitted = sentHost;
+  fieldInspectionHostRef.current.onSubmitStarted = sendingHost.onSubmitStarted;
+  fieldInspectionHostRef.current.onSubmitFailed = sendingHost.onSubmitFailed;
+  fieldInspectionHostRef.current.onSubmitQueued = () => {
+    setSubmitState("queued");
+    refresh();
+  };
   fieldInspectionHostRef.current.onSavingChange = setSaving;
+  const submitDialog = (
+    <PartyTaskSubmitDialog
+      state={submitState}
+      sendingText={isAppraisal ? "جاري اعتماد التقييم وإرساله للأخصائي…" : "جاري إرسال المعاينة…"}
+      sentText={
+        isAppraisal
+          ? "تم اعتماد التقييم وإرساله لأخصائي دراسة الحالة."
+          : "تم حفظ بيانات المعاينة وإرسالها."
+      }
+      onBack={exit}
+    />
+  );
 
   const isFieldInspectionPage = def.kind === "field-inspection";
   const { data: inspectionWorkspaces = [] } = useFieldInspectionWorkspacesQuery(
@@ -364,6 +406,7 @@ export function PartyActiveTaskWork({
 
     return (
       <>
+        {submitDialog}
         <div className="hidden h-full min-h-0 w-full flex-1 flex-col overflow-hidden lg:flex">
           {desktopStandalone}
         </div>
@@ -586,6 +629,7 @@ export function PartyActiveTaskWork({
             />
             <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
               <div className={opsContentPanel}>
+                {submitDialog}
                 {appraisalWork}
               </div>
               <PropertyTransactionTimeline
@@ -601,7 +645,7 @@ export function PartyActiveTaskWork({
     return (
       <TaskWorkChrome
         layout={layout}
-        title="المقيم العقاري — نافذة التقييم"
+        title="المقيّم العقاري — نافذة التقييم"
         saving={saving}
         onClose={exit}
         onSave={exit}
@@ -610,6 +654,7 @@ export function PartyActiveTaskWork({
         showFooter={false}
         scrollMode="document"
       >
+        {submitDialog}
         {appraisalWork}
       </TaskWorkChrome>
     );
@@ -632,8 +677,8 @@ export function PartyActiveTaskWork({
         onSelect={setWorkTab}
       />
 
-      {workTab === "task" ? (
-        <>
+      <div ref={workTabPanelRef}>
+        <Activity mode={workTab === "task" ? "visible" : "hidden"}>
           <Note tone="info">{def.workIntro}</Note>
           <PartyTaskFailureRaise
             def={def}
@@ -641,10 +686,13 @@ export function PartyActiveTaskWork({
             deedNumber={deedLabel}
             onSubmitted={refresh}
           />
-        </>
-      ) : (
-        <PartyCaseStudyFormTab def={def} childTask={task} />
-      )}
+        </Activity>
+        {caseStudyTabOpened ? (
+          <Activity mode={workTab === "case-study" ? "visible" : "hidden"}>
+            <PartyCaseStudyReportTab def={def} childTask={task} />
+          </Activity>
+        ) : null}
+      </div>
     </TaskWorkChrome>
   );
 }

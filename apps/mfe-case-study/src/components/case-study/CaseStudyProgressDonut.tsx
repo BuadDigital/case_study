@@ -1,7 +1,7 @@
 const DONUT_R = 14;
 const DONUT_CIRC = 2 * Math.PI * DONUT_R;
 
-export type CaseStudyProgressDonutProps = {
+type CaseStudyProgressDonutProps = {
   pct: number;
   color: string;
   label: string;

@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 
 export type RegionsApiConfig = {
@@ -73,14 +73,6 @@ export type ReviewLocationRequest = {
   mergeIntoId?: string;
 };
 
-function headers(token: string, json = false): HeadersInit {
-  return {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/json",
-    ...(json ? { "Content-Type": "application/json" } : {}),
-  };
-}
-
 export type SelectableRegionsResult =
   | { ok: true; regions: SelectableRegionDto[] }
   | { ok: false; kind: "auth" | "network" | "server" };
@@ -91,7 +83,7 @@ export async function listSelectableRegions(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/regions/selectable`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true, json: false }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -119,7 +111,7 @@ export async function listSelectableCities(
         : "";
     const res = await fetch(
       `${base}/api/regions/${encodeURIComponent(regionId)}/cities/selectable${qs}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true, json: false }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -147,7 +139,7 @@ export async function listSelectableDistricts(
         : "";
     const res = await fetch(
       `${base}/api/regions/cities/${encodeURIComponent(cityId)}/districts${qs}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token, { accept: true, json: false }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -170,7 +162,7 @@ export async function suggestLocation(
   try {
     const res = await fetch(`${base}/api/regions/suggest`, {
       method: "POST",
-      headers: headers(config.token, true),
+      headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -207,7 +199,7 @@ export async function listPendingLocations(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/regions/pending`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { accept: true, json: false }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -251,7 +243,7 @@ async function reviewPending(
       `${base}/api/regions/${kind}/${encodeURIComponent(id)}/review`,
       {
         method: "POST",
-        headers: headers(config.token, true),
+        headers: authHeaders(config.token, { accept: true }),
         body: JSON.stringify(body),
       },
     );

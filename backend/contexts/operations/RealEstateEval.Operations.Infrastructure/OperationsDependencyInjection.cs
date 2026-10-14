@@ -36,10 +36,9 @@ public static class OperationsDependencyInjection
         // Pure-host outbox for platform notification requests (mirrors AddFailuresInfrastructure) —
         // KeyEnvelopesService / PropertyAccessHoldService notify the case specialist and need
         // INotificationService + NotificationRecipientResolver to be resolvable here.
-        services.AddMessagingPersistence(configuration, connectionString);
+        services.AddMessagingPersistence(configuration);
         services.AddNotificationInfrastructure(configuration, environment);
         services.AddScoped<IKeyEntitlementLookup, KeyEnvelopeEntitlementLookup>();
-        services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
         services.AddScoped<IPropertyKeysService, PropertyKeysService>();
         services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
@@ -75,13 +74,7 @@ public static class OperationsDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        var operationsConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Operations,
-            connectionString);
-        return services.AddBoundedContextPersistence<OperationsDbContext>(
-            configuration,
-            operationsConnection);
+        return services.AddBoundedContextPersistence<OperationsDbContext>(configuration);
     }
 
 }

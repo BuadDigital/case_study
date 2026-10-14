@@ -88,9 +88,8 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
                 normalized, propertyIds, track: false, cancellationToken))
             .ToDictionary(x => x.PropertyId);
 
-        var taskStatuses = await LoadPropertyWorkStatusesAsync(normalized, propertyIds, cancellationToken);
+        var taskStatuses = await LoadPropertyWorkStatusesAsync(normalized, order.Properties, cancellationToken);
         var entitlements = await LoadKeyEntitlementsByPropertyAsync(
-            normalized,
             propertyIds,
             cancellationToken);
 
@@ -114,20 +113,27 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
             _time.UtcNow());
     }
 
-    public async Task<PoEnfazBillingDto?> SavePoBillingAsync(
+    public async Task<(PoEnfazBillingDto? Billing, string? Error)> SavePoBillingAsync(
         string poNumber,
         SavePoEnfazBillingRequest request,
         CancellationToken cancellationToken = default)
     {
         var normalized = poNumber.Trim();
+
+        // The screen only disables the inputs; the server is the lock. There is no reopen /
+        // cancel-invoice path, so an issued invoice freezes its lines for good.
+        var lockedError = PoEnfazInvoiceRules.LinesLockedError(
+            await _db.FindInvoiceAsync(normalized, track: false, cancellationToken));
+        if (lockedError is not null) return (null, lockedError);
+
         var order = await _lookup.GetWorkOrderForBillingAsync(normalized, cancellationToken);
-        if (order is null) return null;
+        if (order is null) return (null, null);
 
         var tasks = (await _lookup.ListWorkflowTasksByPoNumbersAsync([normalized], cancellationToken))
             .Select(s => s.ToWorkflowTask())
             .ToList();
         if (!PoEnfazWorkStatusRules.IsPoReadyForEnfazBilling(order.Properties, tasks))
-            return null;
+            return (null, null);
 
         var validPropertyIds = order.Properties.Select(p => p.Id).ToHashSet();
         var now = _time.UtcNow();
@@ -157,13 +163,12 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
         }
 
         var entitlements = await LoadKeyEntitlementsByPropertyAsync(
-            normalized,
             validPropertyIds.ToList(),
             cancellationToken);
         PoEnfazRevenueRules.LinkMissingEnvelopes(existingRows.Values, entitlements);
 
         await _db.SaveChangesAsync(cancellationToken);
-        return await GetPoBillingAsync(normalized, cancellationToken);
+        return (await GetPoBillingAsync(normalized, cancellationToken), null);
     }
 
     public async Task<PropertyEnfazRevenueDto?> GetPropertyRevenueAsync(
@@ -250,19 +255,22 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
 
     private async Task<Dictionary<Guid, (string Status, string Label)>> LoadPropertyWorkStatusesAsync(
         string poNumber,
-        IReadOnlyList<Guid> propertyIds,
+        IReadOnlyList<CaseStudyPropertySnapshotDto> properties,
         CancellationToken cancellationToken)
     {
+        var propertyIds = properties.Select(p => p.Id).ToList();
         var tasks = (await _lookup.ListWorkflowTasksByPoNumbersAsync([poNumber], cancellationToken))
             .Select(s => s.ToWorkflowTask())
             .Where(t => t.PropertyId != null && propertyIds.Contains(t.PropertyId.Value))
             .ToList();
 
-        return PoEnfazWorkStatusRules.ComputePropertyWorkStatuses(propertyIds, tasks);
+        return PoEnfazWorkStatusRules.ComputePropertyWorkStatuses(
+            propertyIds,
+            tasks,
+            PoEnfazWorkStatusRules.HandedOverIds(properties));
     }
 
     private async Task<Dictionary<Guid, PropertyKeyEntitlement>> LoadKeyEntitlementsByPropertyAsync(
-        string poNumber,
         IReadOnlyList<Guid> propertyIds,
         CancellationToken cancellationToken)
     {

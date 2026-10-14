@@ -41,9 +41,7 @@ public static class WorkOrderMapper
     public static WorkOrderPropertyDto ToPropertyDto(WorkOrderProperty p)
     {
         var owners = OwnershipTypeRules.ParseOwners(p.DeedOwnersJson);
-        var suggestedOwnership = OwnershipTypeRules.Suggest(owners, p.RestrictionType);
-        var effectiveOwnership = OwnershipTypeRules.Effective(
-            p.OwnershipTypeIsManual, p.OwnershipType, owners, p.RestrictionType);
+        var ownershipType = OwnershipTypeRules.FromOwners(owners);
 
         return new WorkOrderPropertyDto
         {
@@ -64,12 +62,10 @@ public static class WorkOrderMapper
             RealEstateRegDate = p.RealEstateRegDate,
             OwnerName = p.OwnerName,
             Owners = owners
-                .Select(o => new DeedOwnerDto { Name = o.Name, SharePct = o.SharePct })
+                .Select(o => new DeedOwnerDto { Name = o.Name })
                 .ToList(),
-            OwnershipType = effectiveOwnership,
-            OwnershipTypeLabelAr = OwnershipTypes.LabelAr(effectiveOwnership),
-            SuggestedOwnershipType = suggestedOwnership,
-            OwnershipTypeIsManual = p.OwnershipTypeIsManual,
+            OwnershipType = ownershipType,
+            OwnershipTypeLabelAr = OwnershipTypes.LabelAr(ownershipType),
             RestrictionsPresent = p.RestrictionsPresent,
             RestrictionType = p.RestrictionType,
             RestrictionOtherReason = p.RestrictionOtherReason,
@@ -115,6 +111,8 @@ public static class WorkOrderMapper
             DeedOwnershipFileName = p.DeedOwnershipFileName,
             BourseDeedImageFileName = p.BourseDeedImageFileName,
             BourseDataCompleted = p.BourseDataCompleted,
+            BourseCompletedByName = p.BourseCompletedByName,
+            BourseCompletedAtUtc = p.BourseCompletedAtUtc?.ToString("O"),
             PlanNumber = p.PlanNumber,
             PlanName = p.PlanName,
             PlotNumber = p.PlotNumber,
@@ -149,23 +147,21 @@ public static class WorkOrderMapper
     public static List<string> ParseFileNameList(string? stored) =>
         PropertyFileNameList.Parse(stored);
 
-    public static string? SerializeFileNameList(IEnumerable<string>? names) =>
-        PropertyFileNameList.Serialize(names);
-
     public static bool HasStoredFileNames(string? stored) =>
         PropertyFileNameList.HasAny(stored);
 
+    /// <param name="readyByProperty">Live property → its tasks are all complete (or it is closed).</param>
+    /// <param name="closedByProperty">Live property → handed over to Enfaz, or every task cancelled.</param>
     public static WorkOrderListItemDto ToListItem(
         WorkOrder entity,
-        IReadOnlyDictionary<Guid, bool>? studiedByProperty = null,
+        IReadOnlyDictionary<Guid, bool>? readyByProperty = null,
+        IReadOnlyDictionary<Guid, bool>? closedByProperty = null,
         bool hasEnfazInvoice = false,
         int progressPct = 0)
     {
         var liveProperties = entity.Properties.Where(p => !p.IsRemoved).ToList();
-        var studiedCount = liveProperties.Count(p =>
-            studiedByProperty is not null
-            && studiedByProperty.TryGetValue(p.Id, out var studied)
-            && studied);
+        var readyCount = liveProperties.Count(p => Flag(readyByProperty, p.Id));
+        var closedCount = liveProperties.Count(p => Flag(closedByProperty, p.Id));
 
         return new WorkOrderListItemDto
         {
@@ -173,14 +169,21 @@ public static class WorkOrderMapper
             AssignmentType = AssignmentTypeLabels.ToLabel(entity.AssignmentType),
             PropertyCount = liveProperties.Count,
             ExpectedPropertyCount = entity.ExpectedPropertyCount,
-            CompletedCount = studiedCount,
+            CompletedCount = closedCount,
             ProgressPct = Math.Clamp(progressPct, 0, 100),
             Status = WorkOrderListStatus.Resolve(
                 entity.LifecycleStatus,
                 entity.ExpectedPropertyCount,
                 liveProperties.Count,
-                studiedCount,
+                readyCount,
+                closedCount,
                 hasEnfazInvoice),
+            StudyStatus = WorkOrderListStatus.ResolveStudy(
+                entity.LifecycleStatus,
+                entity.ExpectedPropertyCount,
+                liveProperties.Count,
+                readyCount,
+                closedCount),
             PromulgationDate = entity.PromulgationDate.ToString("yyyy-MM-dd"),
             ReceivedFromEnfathAt = entity.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
             DueDateAt = entity.DueDateAt.ToString("yyyy-MM-dd"),
@@ -190,6 +193,9 @@ public static class WorkOrderMapper
             CreatedAtUtc = entity.CreatedAtUtc.ToString("O"),
         };
     }
+
+    private static bool Flag(IReadOnlyDictionary<Guid, bool>? flags, Guid propertyId) =>
+        flags is not null && flags.TryGetValue(propertyId, out var value) && value;
 
     public static PendingBoursePropertyDto ToPendingBourse(WorkOrderProperty p)
     {

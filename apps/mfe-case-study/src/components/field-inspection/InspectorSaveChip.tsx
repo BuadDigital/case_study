@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@platform/ui-kit";
 
-export type InspectorSaveState = "empty" | "draft" | "saved";
+type InspectorSaveState = "empty" | "draft" | "saved";
 
 /** Matches the design's saveChip: draft while typing, saved ~700ms after the last edit. */
 const SETTLE_MS = 700;

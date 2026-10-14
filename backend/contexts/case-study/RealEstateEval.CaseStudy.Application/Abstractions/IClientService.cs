@@ -13,14 +13,16 @@ public interface IClientService
 
     Task<(ClientDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         UpsertClientRequest request,
+        string actorId,
         CancellationToken cancellationToken);
 
     Task<(ClientDto? Result, Dictionary<string, string>? Errors)> UpdateAsync(
         Guid id,
         UpsertClientRequest request,
+        string actorId,
         CancellationToken cancellationToken);
 
-    Task<(bool Ok, string? Error)> DeactivateAsync(Guid id, CancellationToken cancellationToken);
+    Task<(bool Ok, string? Error)> DeactivateAsync(Guid id, string actorId, CancellationToken cancellationToken);
 
     Task EnsureSeedClientsAsync(CancellationToken cancellationToken);
 }

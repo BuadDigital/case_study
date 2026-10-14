@@ -9,6 +9,8 @@ import {
   approximatePropertyGeo,
   coordsFromLocationMapUrl,
 } from "@platform/app-shared/domain/property-geo";
+import { parseLatLng } from "@platform/app-shared/domain/geo";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-property-model";
 import type {
   MapComparableRecord,
@@ -19,7 +21,7 @@ import type {
 
 export { coordsFromLocationMapUrl };
 
-export type MapValuationOverlay = {
+type MapValuationOverlay = {
   valuationDate: string | null;
   issueDate: string | null;
   finalValue: number | null;
@@ -27,22 +29,10 @@ export type MapValuationOverlay = {
   issued: boolean;
 };
 
-export type MapLiveOverlays = {
+type MapLiveOverlays = {
   inspectorPins?: Map<string, MapCoords>;
   valuations?: Map<string, MapValuationOverlay>;
 };
-
-function parseCoordPair(
-  latRaw: string | number | null | undefined,
-  lngRaw: string | number | null | undefined,
-): MapCoords | null {
-  const lat = Number.parseFloat(String(latRaw ?? "").trim().replace(",", "."));
-  const lng = Number.parseFloat(String(lngRaw ?? "").trim().replace(",", "."));
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
-  if (lat === 0 && lng === 0) return null;
-  return { lat, lng };
-}
 
 function propertyKey(id: string | null | undefined): string {
   return (id ?? "").trim().toLowerCase();
@@ -55,7 +45,7 @@ export function inspectorPinsByPropertyId(
   for (const workspace of workspaces ?? []) {
     const key = propertyKey(workspace.propertyId);
     if (!key || out.has(key)) continue;
-    const coords = parseCoordPair(workspace.mapLatitude, workspace.mapLongitude);
+    const coords = parseLatLng(workspace.mapLatitude, workspace.mapLongitude);
     if (coords) out.set(key, coords);
   }
   return out;
@@ -156,7 +146,7 @@ function workflowForProperty(
 }
 
 function areaNumber(raw: string): number | null {
-  const n = Number.parseFloat(raw.replace(/,/g, "").trim());
+  const n = parseLocaleNumber(raw);
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
@@ -213,7 +203,7 @@ export function mapComparableDtosToMapRecords(
   return rows
     .filter((r) => r.isActive)
     .map((r) => {
-      const coords = parseCoordPair(String(r.latitude), String(r.longitude));
+      const coords = parseLatLng(r.latitude, r.longitude);
       return {
         id: r.id,
         refNo: r.referenceCode,

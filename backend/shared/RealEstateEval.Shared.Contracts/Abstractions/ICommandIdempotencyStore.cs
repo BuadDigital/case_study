@@ -7,24 +7,44 @@ namespace RealEstateEval.Application.Abstractions;
 /// </summary>
 public interface ICommandIdempotencyStore
 {
-    Task<CommandIdempotencyCachedResponse?> TryGetAsync(
-        string actorId,
-        string httpMethod,
-        string requestPath,
-        string idempotencyKey,
+    Task<CommandIdempotencyAcquireResult> TryAcquireAsync(
+        CommandIdempotencyRequestKey key,
+        TimeSpan processingLease,
         CancellationToken cancellationToken = default);
 
-    Task SaveAsync(
-        string actorId,
-        string httpMethod,
-        string requestPath,
-        string idempotencyKey,
+    Task<bool> CompleteAsync(
+        CommandIdempotencyRequestKey key,
+        string executionId,
         CommandIdempotencyCachedResponse response,
         TimeSpan ttl,
         CancellationToken cancellationToken = default);
+
+    Task ReleaseAsync(
+        CommandIdempotencyRequestKey key,
+        string executionId,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record CommandIdempotencyRequestKey(
+    string ActorId,
+    string HttpMethod,
+    string RequestPath,
+    string IdempotencyKey);
+
+public enum CommandIdempotencyAcquireStatus
+{
+    Acquired,
+    InProgress,
+    Replay,
+}
+
+public sealed record CommandIdempotencyAcquireResult(
+    CommandIdempotencyAcquireStatus Status,
+    string? ExecutionId = null,
+    CommandIdempotencyCachedResponse? Response = null);
 
 public sealed record CommandIdempotencyCachedResponse(
     int StatusCode,
     string? ContentType,
-    byte[] Body);
+    byte[] Body,
+    string? Location = null);

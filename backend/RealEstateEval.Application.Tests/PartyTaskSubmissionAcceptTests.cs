@@ -145,17 +145,99 @@ public class PartyTaskSubmissionAcceptTests
             PrototypeRole = "case-specialist",
         };
 
+        // Nothing written yet: both the text and the inventory table are reported at once.
         var (_, noText) = await service.AcceptAsync(TaskId, actor);
         Assert.Equal(SpecialistComponentsRules.TextRequired, noText!["componentsText"]);
+        Assert.Equal(SpecialistComponentsRules.InventoryRequired, noText["inventoryLines"]);
 
         var property = db.WorkOrderProperties.Single(p => p.Id == PropertyId);
         property.SpecialistComponentsText = "فيلا من دورين";
         db.SaveChanges();
-        // The components table is optional — report text alone clears the components gate.
+        // The text alone no longer clears the gate — a property with structures needs a table line.
+        var (_, noLines) = await service.AcceptAsync(TaskId, actor);
+        Assert.False(noLines!.ContainsKey("componentsText"));
+        Assert.Equal(SpecialistComponentsRules.InventoryRequired, noLines["inventoryLines"]);
+
+        db.BuildingInventoryLines.Add(new BuildingInventoryLine
+        {
+            Id = Guid.NewGuid(),
+            PropertyId = PropertyId,
+            StructureKind = "floor",
+            Label = "الدور الأرضي",
+        });
+        db.SaveChanges();
         var (result, errors) = await service.AcceptAsync(TaskId, actor);
         Assert.Null(errors);
         Assert.NotNull(result);
         Assert.False(string.IsNullOrWhiteSpace(result!.AcceptedAtUtc));
+    }
+
+    private async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> AcceptInspectedAsync(
+        string inspectedType,
+        string payloadJson)
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        SeedAcceptedableFieldInspection(db, payloadJson);
+        db.WorkOrderProperties.Add(new WorkOrderProperty
+        {
+            Id = PropertyId,
+            WorkOrderId = Guid.NewGuid(),
+            DeedNumber = "DEED-503",
+            PropertyType = inspectedType,
+            InspectedPropertyType = inspectedType,
+            SpecialistComponentsText = "وصف المكونات",
+        });
+        db.SaveChanges();
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
+
+        return await service.AcceptAsync(
+            TaskId,
+            new PartySubmissionActor
+            {
+                UserId = "specialist-1",
+                DisplayName = "أخصائي",
+                PrototypeRole = "case-specialist",
+            });
+    }
+
+    [Fact]
+    public async Task Accept_field_inspection_of_a_land_with_valuable_structures_requires_the_inventory_table()
+    {
+        var (result, errors) = await AcceptInspectedAsync("أرض", """{"landHasValuableStructures":"yes"}""");
+
+        Assert.Null(result);
+        Assert.Equal(SpecialistComponentsRules.InventoryRequired, errors!["inventoryLines"]);
+        Assert.False(errors.ContainsKey("componentsText"));
+    }
+
+    [Fact]
+    public async Task Accept_field_inspection_of_a_land_with_irrelevant_annexes_needs_no_inventory_table()
+    {
+        var (result, errors) = await AcceptInspectedAsync("أرض", """{"landHasValuableStructures":"no"}""");
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+    }
+
+    [Fact]
+    public async Task Accept_field_inspection_of_a_legacy_land_submission_without_the_answer_is_exempt()
+    {
+        var (result, errors) = await AcceptInspectedAsync("أرض", "{}");
+
+        Assert.Null(errors);
+        Assert.NotNull(result);
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("""{"landHasValuableStructures":"no"}""")]
+    public async Task Accept_field_inspection_of_a_non_land_asset_always_requires_the_inventory_table(string payloadJson)
+    {
+        var (result, errors) = await AcceptInspectedAsync("فيلا", payloadJson);
+
+        Assert.Null(result);
+        Assert.Equal(SpecialistComponentsRules.InventoryRequired, errors!["inventoryLines"]);
     }
 
     [Fact]

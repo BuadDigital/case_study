@@ -78,7 +78,11 @@ export function DualCalendarPickerPanel({
   const [yearPickerOpen, setYearPickerOpen] = useState(false);
   const selectedYearRef = useRef<HTMLButtonElement>(null);
 
-  useEffect(() => {
+  // Switching calendar or jumping to another date re-anchors the grid.
+  const viewKey = `${calendar}|${anchor.year}|${anchor.month}|${selected?.year ?? ""}-${selected?.month ?? ""}-${selected?.day ?? ""}`;
+  const [prevViewKey, setPrevViewKey] = useState(viewKey);
+  if (prevViewKey !== viewKey) {
+    setPrevViewKey(viewKey);
     const next = normalizeDualCalendarView(
       calendar,
       anchor.year,
@@ -88,7 +92,7 @@ export function DualCalendarPickerPanel({
     setViewYear(next.year);
     setViewMonth(next.month);
     setYearPickerOpen(false);
-  }, [anchor.year, anchor.month, calendar, selected]);
+  }
 
   useEffect(() => {
     if (!yearPickerOpen) return;

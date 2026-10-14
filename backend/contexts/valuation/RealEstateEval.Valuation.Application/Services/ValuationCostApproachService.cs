@@ -47,11 +47,12 @@ public sealed class ValuationCostApproachService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
         // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        if (await freeze.IsFrozenAsync(vr.Id, cancellationToken))
+        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
+        if (frozenMessage is not null)
         {
             return (
                 null,
-                new Dictionary<string, string> { ["_"] = ValuationReportFreezeRules.FrozenMessageAr });
+                new Dictionary<string, string> { ["_"] = frozenMessage });
         }
 
  // Q-2/Q-3 amended: cost tab is closed when the approach is off (bare land defaults it off;
@@ -342,7 +343,7 @@ public sealed class ValuationCostApproachService(
                 var effectiveUnitCost = CostApproachRules.InheritedUnitCost(
                     l.ItemKey, l.UnitCostSar, firstFloorUnitCost);
                 var effectiveQty = CostApproachRules.EffectiveQuantity(
-                    l.AreaSqm, l.Unit, l.BuildRatioPct);
+                    l.AreaSqm, l.Unit, l.BuildRatioPct, l.ItemKey, l.StructureKind);
                 return (Line: l,
                     EffectiveUnitCost: effectiveUnitCost,
                     Inherited: effectiveUnitCost != Math.Max(0m, l.UnitCostSar),

@@ -100,6 +100,8 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
         );
         setDraftReady(true);
       });
+    // Runs once on mount — the toast helper is stable for the page lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

@@ -6,10 +6,11 @@
  * filters, the KPI and mobile-card projections, and the delete flow. The view
  * consumes the returned bag and keeps JSX plus event wiring only.
  */
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   useShowAllEyeBlink,
   useToast,
@@ -54,16 +55,25 @@ export function useKeysViewWorkflow() {
 
   const envelopesQuery = useKeyEnvelopesQuery();
   const invalidateEnvelopes = useInvalidateKeyEnvelopes();
-  const envelopes = envelopesQuery.data ?? [];
-  const ready = !envelopesQuery.isPending;
+  const envelopes = useMemo(() => envelopesQuery.data ?? [], [envelopesQuery.data]);
+  const loadFailed = queryLoadFailed(envelopesQuery);
+  /** Loaded with data — a failed load keeps KPIs at «—» and swaps in the error state. */
+  const ready = !envelopesQuery.isPending && !loadFailed;
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [showOut, setShowOut] = useState(false);
   const { blink: eyeBlink, toggleOpen } = useShowAllEyeBlink();
-  const [listTab, setListTab] = useState<ListTab>("envelopes");
-  const [registerOpen, setRegisterOpen] = useState(false);
-  const [detailId, setDetailId] = useState<string | null>(null);
+  // Seeded from the URL so deep links (?envelope=, ?tab=fees, ?register=1) open on first load.
+  const [listTab, setListTab] = useState<ListTab>(() =>
+    listTabFromParam(searchParams.get("tab")),
+  );
+  const [registerOpen, setRegisterOpen] = useState(
+    () => searchParams.get("register") === "1" && canRegisterEnvelope,
+  );
+  const [detailId, setDetailId] = useState<string | null>(
+    () => searchParams.get("envelope")?.trim() || null,
+  );
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<KeyEnvelopeRow | null>(
     null,
@@ -73,14 +83,17 @@ export function useKeysViewWorkflow() {
   const registerTaskId = searchParams.get("task")?.trim() || undefined;
   const fromFees = searchParams.get("tab") === "fees";
 
-  useEffect(() => {
+  // The URL owns the tab, the register modal and the opened envelope.
+  const urlKey = `${searchParams.toString()}|${canRegisterEnvelope}`;
+  const [prevUrlKey, setPrevUrlKey] = useState(urlKey);
+  if (prevUrlKey !== urlKey) {
+    setPrevUrlKey(urlKey);
     setListTab(listTabFromParam(searchParams.get("tab")));
     if (searchParams.get("register") === "1" && canRegisterEnvelope) {
       setRegisterOpen(true);
     }
-    const envelope = searchParams.get("envelope")?.trim() || null;
-    setDetailId(envelope);
-  }, [searchParams, canRegisterEnvelope]);
+    setDetailId(searchParams.get("envelope")?.trim() || null);
+  }
 
   function openRegisterModal() {
     setRegisterOpen(true);
@@ -93,14 +106,14 @@ export function useKeysViewWorkflow() {
     }
   }
 
-  function openEnvelope(id: string) {
+  const openEnvelope = useCallback((id: string) => {
     const fromFeesTab = listTab === "fees" || fromFees;
     router.replace(
       keysListHref(
         fromFeesTab ? { tab: "fees", envelope: id } : { envelope: id },
       ),
     );
-  }
+  }, [listTab, fromFees, router]);
 
   function closeEnvelope() {
     router.replace(keysListHref(fromFees ? { tab: "fees" } : undefined));
@@ -155,7 +168,7 @@ export function useKeysViewWorkflow() {
       };
     });
     // Same deps as before the split: the cards follow the rows and the delete gate only.
-  }, [filtered, canRegisterEnvelope]);
+  }, [filtered, canRegisterEnvelope, openEnvelope]);
 
   async function confirmDeleteEnvelope() {
     const env = pendingDelete;
@@ -176,6 +189,10 @@ export function useKeysViewWorkflow() {
 
   return {
     ready,
+    loadFailed,
+    loadError: envelopesQuery.error,
+    retryLoad: () => void envelopesQuery.refetch(),
+    retrying: envelopesQuery.isFetching,
     kpis,
     filtered,
     mobileCardItems,
@@ -208,5 +225,3 @@ export function useKeysViewWorkflow() {
     canCollectFee,
   };
 }
-
-export type KeysViewWorkflow = ReturnType<typeof useKeysViewWorkflow>;

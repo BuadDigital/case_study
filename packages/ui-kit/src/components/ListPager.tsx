@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { cn } from "../lib/cn";
 import { Button } from "./Button";
 
@@ -90,10 +90,14 @@ export function ListPager({
   const end = rangeEnd ?? win.rangeEnd;
   const waiting = pending || ready === false;
 
+  // The box mirrors the active page; syncing during render keeps it from showing
+  // the previous number for one paint after the page changes elsewhere.
   const [pageDraft, setPageDraft] = useState(String(win.safePage));
-  useEffect(() => {
+  const [draftForPage, setDraftForPage] = useState(win.safePage);
+  if (draftForPage !== win.safePage) {
+    setDraftForPage(win.safePage);
     setPageDraft(String(win.safePage));
-  }, [win.safePage]);
+  }
 
   function commitPageDraft() {
     const n = Math.trunc(Number(pageDraft));

@@ -62,44 +62,20 @@ public sealed class UpdateCourtCircuitRequestValidator : AbstractValidator<Updat
     }
 }
 
-public sealed class SaveCourtsCatalogRequestValidator : AbstractValidator<SaveCourtsCatalogRequest>
-{
-    public SaveCourtsCatalogRequestValidator() =>
-        RuleForEach(x => x.Entries).SetValidator(new CourtCatalogEntryDtoValidator());
-}
-
-public sealed class CourtCatalogEntryDtoValidator : AbstractValidator<CourtCatalogEntryDto>
-{
-    public CourtCatalogEntryDtoValidator()
-    {
-        RuleFor(x => x.City).NotEmpty().MaximumLength(80)
-            .OverridePropertyName("city");
-        RuleFor(x => x.Court).NotEmpty().MaximumLength(150)
-            .OverridePropertyName("court");
-        RuleForEach(x => x.Circuits)
-            .NotEmpty()
-            .MaximumLength(50)
-            .OverridePropertyName("circuits");
-    }
-}
-
 public sealed class SaveOrganizationSettingsRequestValidator
     : AbstractValidator<SaveOrganizationSettingsRequest>
 {
     public SaveOrganizationSettingsRequestValidator()
     {
-        RuleFor(x => x.Sla!.DefaultBusinessDays).InclusiveBetween(1, 90)
+        RuleFor(x => x.Sla!.DefaultBusinessDays).InclusiveBetween(1, 60)
             .When(x => x.Sla is not null)
             .OverridePropertyName("sla.defaultBusinessDays");
-        RuleFor(x => x.Sla!.PrivateSectorBusinessDays).InclusiveBetween(1, 90)
+        RuleFor(x => x.Sla!.PrivateSectorBusinessDays).InclusiveBetween(1, 60)
             .When(x => x.Sla is not null)
             .OverridePropertyName("sla.privateSectorBusinessDays");
-        RuleFor(x => x.Valuation!.MaxAdoptedComparables).InclusiveBetween(1, 20)
+        RuleFor(x => x.Valuation!.MaxAdoptedComparables).InclusiveBetween(1, 3)
             .When(x => x.Valuation is not null)
             .OverridePropertyName("valuation.maxAdoptedComparables");
-        RuleFor(x => x.Valuation!.ComparableTimeGapMonths).InclusiveBetween(1, 60)
-            .When(x => x.Valuation is not null)
-            .OverridePropertyName("valuation.comparableTimeGapMonths");
         RuleFor(x => x.Valuation!.AreaFactorPct).InclusiveBetween(0.1m, 50m)
             .When(x => x.Valuation is not null)
             .OverridePropertyName("valuation.areaFactorPct");
@@ -109,35 +85,6 @@ public sealed class SaveOrganizationSettingsRequestValidator
         RuleFor(x => x.Valuation!.MarketValueRoundDecimals).InclusiveBetween(0, 6)
             .When(x => x.Valuation is not null)
             .OverridePropertyName("valuation.marketValueRoundDecimals");
-        RuleFor(x => x.Communications!.OtpProvider!)
-            .Must(v => v is "dev-log" or "sms" or "email")
-            .When(x => x.Communications is not null && !string.IsNullOrWhiteSpace(x.Communications.OtpProvider))
-            .OverridePropertyName("communications.otpProvider");
-        RuleFor(x => x.Communications!.EmailFrom!)
-            .Must(value => string.IsNullOrWhiteSpace(value) || FieldFormats.IsEmail(value))
-            .When(x => x.Communications?.EmailFrom is not null)
-            .WithMessage("صيغة البريد الإلكتروني غير صالحة.")
-            .OverridePropertyName("communications.emailFrom");
-        RuleFor(x => x.Communications!.SmtpPort).InclusiveBetween(1, 65535)
-            .When(x => x.Communications is not null)
-            .OverridePropertyName("communications.smtpPort");
     }
 }
 
-public sealed class TestCommunicationRequestValidator : AbstractValidator<TestCommunicationRequest>
-{
-    public TestCommunicationRequestValidator()
-    {
-        RuleFor(x => x.Channel)
-            .Must(v => v is "sms" or "email")
-            .WithMessage("قناة الاختبار غير مدعومة")
-            .OverridePropertyName("channel");
-        RuleFor(x => x.Destination).NotEmpty().MaximumLength(256)
-            .OverridePropertyName("destination");
-        RuleFor(x => x.Destination)
-            .Must(FieldFormats.IsEmail)
-            .When(x => x.Channel == "email")
-            .WithMessage("صيغة البريد الإلكتروني غير صالحة.")
-            .OverridePropertyName("destination");
-    }
-}

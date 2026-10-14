@@ -32,7 +32,7 @@ public class AnswerProvenanceEntryDto
 }
 
 /// <summary>Actor identity stamped by the API from JWT claims — never trust client bodies.</summary>
-public class CaseStudyFormActor
+public class CaseStudyReportActor
 {
     public string UserId { get; set; } = "";
     public string DisplayName { get; set; } = "";

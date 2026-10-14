@@ -157,7 +157,7 @@ export function navLabelClasses(rail = false) {
   return cn(rail && "lg:sr-only");
 }
 
-export function navChevronClasses(rail = false) {
+function navChevronClasses(rail = false) {
   return cn(rail && "lg:hidden");
 }
 
@@ -170,7 +170,7 @@ export function NavPending({ fallback = null }: { fallback?: React.ReactNode }) 
   const show = useDeferredVisible(pending);
   if (!show) return fallback;
   return (
-    <span className="ms-auto inline-flex items-center" aria-label="جاري التحميل">
+    <span className="ms-auto inline-flex items-center" aria-label="جاري التحميل…">
       <Spinner />
     </span>
   );

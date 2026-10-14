@@ -10,7 +10,6 @@
     "dev": "npm run dev -w @platform/shell",
     "typecheck:mfe-case-study": "npm run typecheck -w @case-study/mfe",
     "typecheck:mfe-dashboard": "npm run typecheck -w @dashboard/mfe",
-    "typecheck:mfe-survey": "npm run typecheck -w @survey/mfe",
     "typecheck:mfe-keys": "npm run typecheck -w @keys/mfe",
     "typecheck:mfe-financial": "npm run typecheck -w @financial/mfe",
     "typecheck:mfe-engineering-office": "npm run typecheck -w @engineering-office/mfe",
@@ -18,7 +17,7 @@
     "typecheck:mfe-failures": "npm run typecheck -w @failures/mfe",
     "typecheck:mfe-settings": "npm run typecheck -w @settings/mfe",
     "typecheck:mfe-valuation": "npm run typecheck -w @valuation/mfe",
-    "typecheck:mfes": "npm run typecheck:mfe-case-study && npm run typecheck:mfe-dashboard && npm run typecheck:mfe-survey && npm run typecheck:mfe-keys && npm run typecheck:mfe-financial && npm run typecheck:mfe-failures && npm run typecheck:mfe-engineering-office && npm run typecheck:mfe-evaluator && npm run typecheck:mfe-settings && npm run typecheck:mfe-valuation",
+    "typecheck:mfes": "npm run typecheck:mfe-case-study && npm run typecheck:mfe-dashboard && npm run typecheck:mfe-keys && npm run typecheck:mfe-financial && npm run typecheck:mfe-failures && npm run typecheck:mfe-engineering-office && npm run typecheck:mfe-evaluator && npm run typecheck:mfe-settings && npm run typecheck:mfe-valuation",
     "dev:local": "npm run dev:local -w @platform/shell",
     "dev:lan": "npm run dev:lan -w @platform/shell",
     "dev:stop": "npm run dev:stop -w @platform/shell",
@@ -46,12 +45,15 @@
     "test:e2e:install": "playwright install chromium",
     "test:unit": "vitest run",
     "lint:barrel-imports": "node scripts/check-barrel-imports.mjs",
-    "test:release": "dotnet test backend/RealEstateEval.slnx && npm run typecheck:mfes && node backend/scripts/release-verify.mjs && npm run test:unit && playwright test"
+    "test:release": "dotnet test backend/RealEstateEval.slnx && npm run typecheck:mfes && node backend/scripts/release-verify.mjs && npm run test:unit && playwright test",
+    "lint:hooks": "eslint --no-config-lookup --config eslint.config.mjs \"apps/*/src/**/*.ts\" \"apps/*/src/**/*.tsx\" \"packages/*/src/**/*.ts\" \"packages/*/src/**/*.tsx\""
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "16.3.3",
     "@playwright/test": "^1.61.0",
-    "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
+    "@typescript-eslint/parser": "^8.59.3",
+    "eslint-plugin-react-hooks": "^7.1.1",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^26.1.0",
     "vitest": "^4.1.11"

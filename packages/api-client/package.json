@@ -10,5 +10,8 @@
     "./push": "./src/push.ts",
     "./idempotency-key": "./src/idempotency-key.ts"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "dependencies": {
+    "@platform/types": "*"
+  }
 }

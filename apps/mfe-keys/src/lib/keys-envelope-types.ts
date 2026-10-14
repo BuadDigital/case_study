@@ -1,4 +1,4 @@
-export const KeyEnvelopeStatusValues = {
+const KeyEnvelopeStatusValues = {
   Reviewer: "reviewer",
   Assessor: "assessor",
   External: "external",
@@ -6,11 +6,11 @@ export const KeyEnvelopeStatusValues = {
   Cancelled: "cancelled",
 } as const;
 
-export type KeyEnvelopeStatus =
+type KeyEnvelopeStatus =
   | (typeof KeyEnvelopeStatusValues)[keyof typeof KeyEnvelopeStatusValues]
   | string;
 
-export const KeyReceiveScenarioValues = {
+const KeyReceiveScenarioValues = {
   Court: "court",
   Missing: "missing",
   ThirdParty: "third_party",
@@ -58,7 +58,7 @@ export type KeyEnvelopeHandoff = {
   createdAtUtc: string;
 };
 
-export type KeyEnvelopeTimelineEntry = {
+type KeyEnvelopeTimelineEntry = {
   id: string;
   eventType: string;
   summary: string;
@@ -216,7 +216,7 @@ export function isEnvelopeOutOfCustody(status: string): boolean {
   );
 }
 
-export const KeyAssignmentStatusValues = {
+const KeyAssignmentStatusValues = {
   Matched: "matched",
   Partial: "partial",
   Unmatched: "unmatched",
@@ -270,20 +270,20 @@ export function assignmentStatusColor(status: string): string {
   }
 }
 
-export const KeyHandoffKindValues = {
+const KeyHandoffKindValues = {
   Internal: "internal",
   External: "external",
   ReceiveBack: "receive_back",
   ReturnCourt: "return_court",
 } as const;
 
-export const KeyHandoffStatusValues = {
+const KeyHandoffStatusValues = {
   PendingConfirm: "pending_confirm",
   Confirmed: "confirmed",
   Completed: "completed",
 } as const;
 
-export const PropertyCourtAccessStatusValues = {
+const PropertyCourtAccessStatusValues = {
   EnabledNoKey: "enabled_no_key",
   SuspendedEviction: "suspended_eviction",
 } as const;
@@ -349,7 +349,7 @@ export function studyHoldLabel(status: string): string {
     case PropertyCourtAccessStatusValues.EnabledNoKey:
       return "تمكين بدون مفتاح";
     case PropertyCourtAccessStatusValues.SuspendedEviction:
-      return "معلّق — محظر إخلاء";
+      return "معلّق — محضر إخلاء";
     default:
       return "بدون قيد";
   }

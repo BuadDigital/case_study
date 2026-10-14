@@ -4,7 +4,7 @@
  * a data URL, and the <base> that resolved them is dropped.
  */
 
-export type InlinePrintAssetsOptions = {
+type InlinePrintAssetsOptions = {
   /** Resolves relative URLs; defaults to the document's <base href> or the page origin. */
   baseHref?: string;
   /** Bearer token for same-API resources such as `/api/attachments/{id}`. */
@@ -15,6 +15,8 @@ export type InlinePrintAssetsOptions = {
   fetchDataUrl?: (absoluteUrl: string) => Promise<string | null>;
   /** Reserved for tests — jsdom cannot parse into a detached document otherwise. */
   parser?: (html: string) => Document;
+  /** Called as each image / stylesheet / inline style finishes — the caller shows «n / m». */
+  onProgress?: (done: number, total: number) => void;
 };
 
 const CSS_URL_RE = /url\(\s*(['"]?)([^'")]+)\1\s*\)/g;
@@ -151,10 +153,25 @@ export async function inlinePrintHtmlAssets(
     );
   });
 
-  await Promise.all(jobs);
+  if (options.onProgress) {
+    const total = jobs.length;
+    let done = 0;
+    options.onProgress(0, total);
+    await Promise.all(
+      jobs.map((job) =>
+        job.finally(() => {
+          done += 1;
+          options.onProgress?.(done, total);
+        }),
+      ),
+    );
+  } else {
+    await Promise.all(jobs);
+  }
 
-  // External stylesheets and scripts have no place in a renderer without network access.
-  doc.querySelectorAll("link[rel='stylesheet'], link[rel='preconnect'], link[rel='preload'], script").forEach((el) => {
+  // External stylesheets and scripts have no place in a renderer without network access. Inline scripts stay:
+  // the print flow's own pagination script lays the sheets out and sets `data-rpt-ready`, which the renderer waits for.
+  doc.querySelectorAll("link[rel='stylesheet'], link[rel='preconnect'], link[rel='preload'], script[src]").forEach((el) => {
     el.remove();
   });
   doc.querySelectorAll("base").forEach((el) => el.remove());

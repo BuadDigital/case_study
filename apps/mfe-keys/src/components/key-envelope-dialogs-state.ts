@@ -19,7 +19,7 @@ import {
 /** Note stored with a full match — the field confirmation wording. */
 export const MATCHED_DEFAULT_NOTE = "فُتح العقار بالمفاتيح (تأكيد ميداني)";
 
-export type MatchResultValidation =
+type MatchResultValidation =
   | { ok: true; status: KeyAssignmentMatchStatus; note: string }
   | { ok: false; error: string };
 
@@ -97,7 +97,7 @@ export type CourtAccessDraft = {
   notes: string;
 };
 
-export type CourtAccessAttachmentKind = "enabling" | "eviction";
+type CourtAccessAttachmentKind = "enabling" | "eviction";
 
 export function initialCourtAccessDraft(
   current?: PropertyCourtAccessRow,

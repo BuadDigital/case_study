@@ -26,7 +26,6 @@ import {
   FINANCIAL_NAV_LEAVES,
   FINANCIAL_TOGGLE_LABEL,
   financialHref,
-  isFinanceCoreArea,
   isInFinancialSection,
   type FinanceNavArea,
 } from "@platform/app-shared/app-data/financial-nav";
@@ -214,7 +213,7 @@ export function FinanceHtmlNav({
   rail?: boolean;
 }) {
   const inSection = isInFinancialSection(currentPage);
-  const onCore = inSection && isFinanceCoreArea(activeArea);
+  const onCore = inSection;
   /** Expand the tree when working in My tasks / Revenue / Costs. */
   const [open, setOpen] = useState(onCore);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -378,7 +377,7 @@ export function ActiveTransactionsNavDropdown({
   );
 }
 
-export function SystemSettingsNavDropdown({
+function SystemSettingsNavDropdown({
   tree,
   currentPage,
   search,
@@ -404,7 +403,12 @@ export function SystemSettingsNavDropdown({
     return init;
   });
 
-  useEffect(() => {
+  // A new tree brings its groups collapsed, and the group holding the current page
+  // opens itself — both adjusted during render, before the rail paints.
+  const expandKey = `${tree.length}|${inSection}|${currentPage}|${search}`;
+  const [prevExpandKey, setPrevExpandKey] = useState(expandKey);
+  if (prevExpandKey !== expandKey) {
+    setPrevExpandKey(expandKey);
     setExpanded((prev) => {
       let changed = false;
       const next = { ...prev };
@@ -414,28 +418,20 @@ export function SystemSettingsNavDropdown({
           next[node.id] = false;
           changed = true;
         }
+        if (
+          inSection &&
+          node.items.some((item) =>
+            isSettingsNavItemActive(item, currentPage, "", search),
+          ) &&
+          next[node.id] !== true
+        ) {
+          next[node.id] = true;
+          changed = true;
+        }
       }
       return changed ? next : prev;
     });
-  }, [tree]);
-
-  useEffect(() => {
-    if (!inSection) return;
-    setExpanded((prev) => {
-      const next = { ...prev };
-      for (const node of tree) {
-        if (node.type !== "group") continue;
-        if (
-          node.items.some((item) =>
-            isSettingsNavItemActive(item, currentPage, "", search),
-          )
-        ) {
-          next[node.id] = true;
-        }
-      }
-      return next;
-    });
-  }, [currentPage, inSection, search, tree]);
+  }
 
   useRailFlyoutDismiss(open, rail, rootRef, setOpen);
 

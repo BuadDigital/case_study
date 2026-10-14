@@ -36,18 +36,6 @@ public static class MarketAdjustmentFactorKeys
         StreetCount,
     ];
 
-    /// <summary>Additional catalog — added from the interface when needed (includes ideal area and street lengths).</summary>
-    public static readonly string[] CatalogExtraDifferenceFactors =
-    [
-        IdealArea,
-        StreetLengths,
-        PlotShape,
-        Topography,
-        Zoning,
-        Services,
-        Restrictions,
-        Development,
-    ];
 
     public static string DefaultLabelAr(string key) => key switch
     {

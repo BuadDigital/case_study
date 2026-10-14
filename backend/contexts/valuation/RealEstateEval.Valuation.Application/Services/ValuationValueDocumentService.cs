@@ -44,8 +44,9 @@ public sealed class ValuationValueDocumentService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
-        if (await freeze.IsFrozenAsync(vr.Id, cancellationToken))
-            return (null, new Dictionary<string, string> { ["_"] = ValuationReportFreezeRules.FrozenMessageAr });
+        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
+        if (frozenMessage is not null)
+            return (null, new Dictionary<string, string> { ["_"] = frozenMessage });
 
         var onProperty = await documents.ListAsync(vr.PropertyId, cancellationToken);
         var internalKinds = await reconciliation.GetEnabledApproachKindsAsync(valuationRequestId, cancellationToken);

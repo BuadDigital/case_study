@@ -1,4 +1,5 @@
 export type {
+  BuildingInventoryOutboxPayload,
   OfflineDraftRecord,
   OfflineOutboxItem,
   OfflinePrefetchRecord,
@@ -46,7 +47,9 @@ export {
 } from "./lease";
 export {
   cachePrefetchAttachment,
+  enqueueBuildingInventoryLocally,
   enqueueSubmitLocally,
+  readQueuedBuildingInventory,
   persistAttachmentLocally,
   persistDraftLocally,
   readLocalDraftPayload,

@@ -8,5 +8,6 @@ public interface IValuationListsService
 
     Task<ValuationListsDto> SaveAsync(
         SaveValuationListsRequest request,
+        string actorId,
         CancellationToken cancellationToken = default);
 }

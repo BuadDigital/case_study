@@ -13,6 +13,7 @@ import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/insp
 import type { EvaluatorReportChoices } from "./evaluator-window-data";
 import { formatAmountNumberDisplay } from "./arabic-amount-words";
 import { costUnitLabel } from "@platform/app-shared/domain/cost-items";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
 export type SheetTableRow = {
   key: string;
@@ -24,7 +25,7 @@ export type SheetTableRow = {
   pairs?: Array<[string, string]>;
 };
 
-export type SheetAreaFacts = {
+type SheetAreaFacts = {
   ground: string;
   first: string;
   annex: string;
@@ -94,15 +95,6 @@ export function existsIf(
   return "";
 }
 
-export function countOrFlag(
-  count: string | null | undefined,
-  flag: string | null | undefined,
-): string {
-  const n = (count ?? "").trim();
-  if (n) return n;
-  return yesNoFromFlag(flag);
-}
-
 export function presentChip(
   selected: string[] | undefined,
   label: string,
@@ -164,7 +156,7 @@ export function areasFromInventory(
   const firstFloorArea = rows.find((l) => l.itemKey === "first_floor")?.areaSqm ?? "";
   const areaOf = (line: BuildingInventoryLineDto): string => {
     if (line.itemKey !== "repeated_floors") return lineArea(line);
-    const each = Number.parseFloat(String(firstFloorArea).replace(/,/g, ""));
+    const each = parseLocaleNumber(firstFloorArea);
     const count = Math.max(0, line.repeatedFloorCount ?? 0);
     return Number.isFinite(each) && each > 0 && count > 0 ? String(each * count) : "";
   };
@@ -196,7 +188,7 @@ export function areasFromInventory(
   const basement = pick("basement", ["قبو"], inspector?.basementTotal ?? "");
   const annexSum = rows
     .filter((l) => lineKind(l) === "annex")
-    .map((l) => Number.parseFloat((l.areaSqm ?? "").replace(/,/g, "")))
+    .map((l) => parseLocaleNumber(l.areaSqm ?? ""))
     .filter((n) => Number.isFinite(n) && n > 0)
     .reduce((a, b) => a + b, 0);
   const annexTotal =
@@ -209,7 +201,7 @@ export function areasFromInventory(
   for (const line of rows) {
     const kind = lineKind(line);
     if (kind !== "floor" && kind !== "annex" && kind !== "basement") continue;
-    const n = Number.parseFloat(areaOf(line).replace(/,/g, ""));
+    const n = parseLocaleNumber(areaOf(line));
     if (!Number.isFinite(n) || n <= 0) continue;
     builtSum += n;
     builtAny = true;
@@ -495,7 +487,7 @@ export function buildIndirectCostSheetRows(
 }
 
 /** Interactive form spec: up to 5 approved comparables print in full in the report. */
-export const MAX_REPORT_COMPARABLES = 5;
+const MAX_REPORT_COMPARABLES = 5;
 
 export function adoptedComparables(
   market: ValuationComparableSelectionListDto | null | undefined,

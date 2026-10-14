@@ -22,12 +22,12 @@ import {
 } from "./lib/market-commands-state";
 import type { ValuationWorkData } from "./useValuationWorkData";
 
-export type WriteContext = {
+type WriteContext = {
   config: NonNullable<ReturnType<typeof apiConfig>>;
   valuationRequestId: string;
 };
 
-export type FanOutSave = {
+type FanOutSave = {
   items: ValuationComparableSelectionDto[];
   linesFor: (item: ValuationComparableSelectionDto) => SavedLine[];
   extra?: Partial<SaveValuationComparableMarketRequest>;
@@ -45,7 +45,7 @@ function writeFailureMessage(
 ): string {
   const message = res.message?.trim();
   if (message) return message;
-  if (res.kind === "auth") return "انتهت الجلسة — أعد تسجيل الدخول";
+  if (res.kind === "auth") return "انتهت الجلسة — سجّل الدخول مجدداً";
   if (res.kind === "network") return "تعذّر الاتصال بالخادم";
   return fallback;
 }

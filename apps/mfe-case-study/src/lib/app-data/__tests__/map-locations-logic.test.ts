@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { haversineKm } from "@platform/app-shared/domain/geo";
 import {
   computeStats,
   filterComparables,
   filterProperties,
   groupForMap,
-  haversineKm,
   isActive,
   isReportExpired,
   nearbyOf,
@@ -361,7 +361,7 @@ describe("map-locations-logic", () => {
   it("builds a property card with workflow label", () => {
     const card = propertyCard(FIXTURE_PROPERTIES.find((r) => r.id === "T-0104")!);
     expect(card.family).toBe("property");
-    expect(card.workflowStatus.label).toBe("مرشح تعذر");
+    expect(card.workflowStatus.label).toBe("مرشح تعذّر");
     expect(card.active).toBe(true);
     expect(card.title).toContain("القيروان");
   });
@@ -381,9 +381,9 @@ describe("map-locations-logic", () => {
     expect(card.rows).toContainEqual(["تاريخ الإصدار", "2026/09/10"]);
     expect(card.rows).toContainEqual([
       "الرأي النهائي للقيمة",
-      "1,850,000 ريال",
+      "1,850,000 ر.س",
     ]);
-    expect(card.rows).toContainEqual(["المقيم", "م. خالد العتيبي"]);
+    expect(card.rows).toContainEqual(["المقيّم", "م. خالد العتيبي"]);
     expect(card.rows).toContainEqual(["مصدر الإحداثيات", "معاينة"]);
   });
 

@@ -4,7 +4,7 @@ import type {
 } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 
-export type DelegationLetterProperty = DelegationLetterPropertyDto;
+type DelegationLetterProperty = DelegationLetterPropertyDto;
 
 export type DelegationAgentInfo = DelegationLetterAgentDto;
 

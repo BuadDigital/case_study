@@ -1,11 +1,9 @@
-import { amountToArabicWords } from "./arabic-amount-words";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
+/** Typed amount via the shared locale rule; blank or not a number → null. */
 export function parseEvaluatorAmount(raw: string): number | null {
-  const cleaned = raw.replace(/,/g, "").trim();
-  if (!cleaned) return null;
-  const n = Number.parseFloat(cleaned);
-  if (!Number.isFinite(n)) return null;
-  return n;
+  const n = parseLocaleNumber(raw);
+  return Number.isFinite(n) ? n : null;
 }
 
 export function computePropertyTotal(
@@ -24,13 +22,4 @@ export function computeForcedSaleValue(
   const pct = parseEvaluatorAmount(discountPctRaw) ?? 0;
   const clamped = Math.min(100, Math.max(0, pct));
   return Math.round(total * (1 - clamped / 100) * 100) / 100;
-}
-
-/** Enfaz-style amount in words: zero shows "zero" only; non-zero includes riyals. */
-export function amountWordsOrZero(value: number | string): string {
-  const n =
-    typeof value === "number" ? value : parseEvaluatorAmount(value);
-  if (n == null) return "صفر";
-  if (n === 0) return "صفر";
-  return amountToArabicWords(n);
 }

@@ -148,7 +148,7 @@ public static class ComparableTransactionKinds
     public static string LabelAr(string value) => value switch
     {
         Offer => "عرض قائم",
-        Executed => "صفقة منفذة",
+        Executed => "صفقة منفّذة",
         _ => value,
     };
 }

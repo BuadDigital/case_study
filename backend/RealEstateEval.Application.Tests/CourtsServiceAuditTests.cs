@@ -1,11 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Platform.Infrastructure.Data.Contexts;
@@ -86,34 +82,6 @@ public class CourtsServiceAuditTests
         Assert.False(after.RootElement.TryGetProperty("city", out _));
     }
 
-    [Fact]
-    public async Task SetCourtStatusAsync_writes_activated_and_deactivated()
-    {
-        await using var db = CreateDb();
-        var service = CreateService(db);
-        var (created, _) = await service.CreateAsync(
-            new CreateCourtRequest
-            {
-                Name = "محكمة اختبار الحالة",
-                Region = "منطقة الاختبار",
-                City = "مدينة الحالة",
-                IsActive = true,
-            },
-            "actor-1");
-
-        db.AuditLogs.RemoveRange(db.AuditLogs);
-        await db.SaveChangesAsync();
-
-        await service.SetCourtStatusAsync(created!.Id, false, "actor-2");
-        await service.SetCourtStatusAsync(created.Id, true, "actor-3");
-
-        var audits = db.AuditLogs.OrderBy(a => a.CreatedAtUtc).ToList();
-        Assert.Equal(2, audits.Count);
-        Assert.Equal(CourtAuditActions.CourtDeactivated, audits[0].Action);
-        Assert.Equal(CourtAuditActions.CourtActivated, audits[1].Action);
-        Assert.Equal("actor-2", audits[0].ActorId);
-        Assert.Equal("actor-3", audits[1].ActorId);
-    }
 
     [Fact]
     public async Task Circuit_create_update_status_write_audit_events()
@@ -244,29 +212,8 @@ public class CourtsServiceAuditTests
 
     private static CourtsService CreateService(PlatformDbContext db)
     {
-        var cache = new ApiResponseCache(
-            new NullDistributedCache(),
-            Options.Create(new RedisCacheOptions { Enabled = false }),
-            NullLogger<ApiResponseCache>.Instance);
-        return new CourtsService(new CourtsRepository(db), cache, new AuditLogWriter());
+        return new CourtsService(new CourtsRepository(db), new AuditLogWriter());
     }
 
     private static PlatformDbContext CreateDb() => TestDatabases.Platform("courts-audit");
-
-    private sealed class NullDistributedCache : IDistributedCache
-    {
-        public byte[]? Get(string key) => null;
-        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) =>
-            Task.FromResult<byte[]?>(null);
-        public void Refresh(string key) { }
-        public Task RefreshAsync(string key, CancellationToken token = default) => Task.CompletedTask;
-        public void Remove(string key) { }
-        public Task RemoveAsync(string key, CancellationToken token = default) => Task.CompletedTask;
-        public void Set(string key, byte[] value, DistributedCacheEntryOptions options) { }
-        public Task SetAsync(
-            string key,
-            byte[] value,
-            DistributedCacheEntryOptions options,
-            CancellationToken token = default) => Task.CompletedTask;
-    }
 }

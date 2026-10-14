@@ -16,7 +16,7 @@ import { PropertyListRowStatuses } from "@platform/api-client";
  * (`_professional-ui-design - property-details2/Case Study.html`).
  */
 
-export const PP_FOOTER_HINT = "اضغط الصف لمعاينة تفاصيل العقار.";
+const PP_FOOTER_HINT = "اضغط الصف لمعاينة تفاصيل العقار.";
 
 /** HTML `typeTone` */
 export function assignmentTypeTone(type: string): string {
@@ -33,10 +33,12 @@ export function propertyWorkflowStatusStyle(
   switch (status) {
     case PropertyListRowStatuses.Done:
       return { label: "مكتمل", base: "#3f8f5f", fg: "#2f7a4d" };
+    case PropertyListRowStatuses.Ready:
+      return { label: "جاهز للرفع", base: "#d9a441", fg: "#b8791a" };
     case PropertyListRowStatuses.Fail:
     case "removed":
       return {
-        label: status === "removed" ? "محذوف" : "متعذر",
+        label: status === "removed" ? "محذوف" : "متعذّر",
         base: "#d9694f",
         fg: "#c0553d",
       };

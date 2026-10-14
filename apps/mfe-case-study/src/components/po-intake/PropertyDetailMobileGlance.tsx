@@ -121,11 +121,11 @@ export function PropertyDetailMobileGlance({
         ) : null}
         {canOpen("failures") ? (
           <GlanceChip
-            label="التعذرات"
+            label="التعذّرات"
             value={
               failureCount > 0
                 ? `${failureCount} مسجّل`
-                : "لا تعذرات"
+                : "لا تعذّرات"
             }
             tone={failureCount > 0 ? "amber" : "gray"}
             onClick={() => onOpenTab("failures")}

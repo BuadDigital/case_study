@@ -24,9 +24,9 @@ import { buildPoPropertyWorkspaceSegments } from "../../lib/po-chrome";
 import type { ShellRoute } from "./app-shell-nav-state";
 
 /** Minimal read surface of `URLSearchParams` so tests can pass a plain map. */
-export type SearchLike = { get(name: string): string | null };
+type SearchLike = { get(name: string): string | null };
 
-export type LeafChrome = { title: string; breadcrumb: string };
+type LeafChrome = { title: string; breadcrumb: string };
 
 /** Keys: leaf-only breadcrumb for envelope / fees subviews. */
 export function resolveKeysChrome(
@@ -100,7 +100,7 @@ export function isOnTaskWork(
   );
 }
 
-export type WorkspaceTaskRef = { poNumber: string; propertyId: string | undefined };
+type WorkspaceTaskRef = { poNumber: string; propertyId: string | undefined };
 
 /** The PO/property a workspace route param points at, or null when unknown. */
 export function pickWorkspaceTaskRef<

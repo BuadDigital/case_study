@@ -29,6 +29,19 @@ export function emptyCaseStudyInfoRolesConfig(): CaseStudyInfoRolesConfig {
   };
 }
 
+/** Parties accepted from stored data — the retired government reviewer («gov») is not one. */
+const KNOWN_PARTY_IDS: ReadonlySet<string> = new Set(
+  CASE_STUDY_INFO_PARTIES.map((party) => party.id),
+);
+
+/**
+ * Question 4 «هل القطعة زائدة تنظيمية» (`deed_3`): the government reviewer was its only
+ * party. A stored row that would be left without anyone gives it to the specialist as
+ * «أصيل», otherwise the question would drop out of the form and its 100% (mirrors the
+ * platform service's normalisation).
+ */
+const ZONING_SURPLUS_QUESTION_KEY = "deed_3";
+
 function normalizeMatrixFromSaved(
   saved: CaseStudyInfoRolesMatrix | undefined,
 ): CaseStudyInfoRolesMatrix {
@@ -39,10 +52,13 @@ function normalizeMatrixFromSaved(
       {};
     for (const [partyId, role] of Object.entries(row)) {
       if (!role || role === "none") continue;
+      if (!KNOWN_PARTY_IDS.has(partyId)) continue;
       clean[partyId as CaseStudyInfoPartyId] = role as CaseStudyInfoRoleType;
     }
     matrix[q.key] = clean;
   }
+  const zoning = matrix[ZONING_SURPLUS_QUESTION_KEY];
+  if (zoning && Object.keys(zoning).length === 0) zoning.specA = "primary";
   return matrix;
 }
 
@@ -51,7 +67,10 @@ export function isStoredCaseStudyInfoRolesMatrixEmpty(
 ): boolean {
   if (!saved || Object.keys(saved).length === 0) return true;
   return !Object.values(saved).some((row) =>
-    Object.values(row ?? {}).some((role) => role && role !== "none"),
+    Object.entries(row ?? {}).some(
+      ([partyId, role]) =>
+        KNOWN_PARTY_IDS.has(partyId) && role && role !== "none",
+    ),
   );
 }
 

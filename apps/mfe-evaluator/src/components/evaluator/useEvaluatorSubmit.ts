@@ -8,10 +8,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Dispatch, RefObject, SetStateAction } from "react";
-import {
-  getOpenValuationRequestByProperty,
-  getValuationIssuanceGates,
-} from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { useIdempotentAction } from "@platform/app-shared";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
@@ -29,17 +25,20 @@ import {
 } from "../../lib/evaluator/evaluator-validation";
 import { finalizeAppraiserSubmission } from "../../lib/evaluator/finalize-appraiser-submission";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
-import type { InspectionGateState } from "../../lib/evaluator/evaluator-inspection-gate";
+import { isStudyReportBlockMessage } from "../../lib/evaluator/evaluator-inspection-gate";
+import {
+  checkIssuanceGatesFailClosed,
+  readFreshStudyReportGate,
+} from "../../lib/evaluator/evaluator-submit-gates";
 import type { EvaluatorWindowTab } from "./evaluator-window-tabs";
 
 export function useEvaluatorSubmit({
   task,
   hostRef,
-  gate,
   locked,
   draft,
   setDraft,
-  saveTimer,
+  flushPendingAutosave,
   retrospectiveRef,
   specialistRef,
   setFormError,
@@ -49,11 +48,11 @@ export function useEvaluatorSubmit({
 }: {
   task: WorkflowTask;
   hostRef: EvaluatorWindowHostRefObject;
-  gate: InspectionGateState;
   locked: boolean;
   draft: EvaluatorSubmission;
   setDraft: Dispatch<SetStateAction<EvaluatorSubmission>>;
-  saveTimer: RefObject<ReturnType<typeof setTimeout> | null>;
+  /** Sends the debounced autosave now, so edits from the last 400ms reach the server before the submit. */
+  flushPendingAutosave: () => void;
   retrospectiveRef: RefObject<EvaluatorRetrospectiveDraft | null>;
   specialistRef: RefObject<EvaluatorSpecialistDraft | null>;
   setFormError: (message: string | null) => void;
@@ -62,6 +61,9 @@ export function useEvaluatorSubmit({
   showToast: (message: string, tone: "success" | "error") => void;
 }) {
   const [submitting, setSubmitting] = useState(false);
+  // Set when the study-report rule refused a submit (fresh read or server field error) — the
+  // window shows the same notice it shows while the report is not issued.
+  const [studyReportBlocked, setStudyReportBlocked] = useState(false);
 
   const { execute: executeAppraiserSubmit, loading: appraiserSubmitting } =
     useIdempotentAction(
@@ -72,13 +74,25 @@ export function useEvaluatorSubmit({
       ),
     );
 
+  // A new task flag (the specialist issued / reopened) supersedes an earlier refusal.
+  const [blockedForFlag, setBlockedForFlag] = useState(task.studyReportIssued);
+  if (blockedForFlag !== task.studyReportIssued) {
+    setBlockedForFlag(task.studyReportIssued);
+    setStudyReportBlocked(false);
+  }
+
   const submit = useCallback(async (): Promise<boolean> => {
     if (locked) return false;
-    if (!gate.ready) {
-      setFormError(gate.reason);
-      showToast(gate.reason, "error");
+    // The specialist's study report opens the appraiser's SUBMISSION. Fresh read, checked first —
+    // a stale list flag must not let a submit start (the server enforces it again regardless).
+    const studyGate = await readFreshStudyReportGate(task.id);
+    if (!studyGate.ready) {
+      setStudyReportBlocked(isStudyReportBlockMessage(studyGate.reason));
+      setFormError(studyGate.reason);
+      showToast(studyGate.reason, "error");
       return false;
     }
+    setStudyReportBlocked(false);
 
     const choices = draft.reportChoices;
     const methodOn = (key?: string) =>
@@ -111,42 +125,29 @@ export function useEvaluatorSubmit({
       return false;
     }
 
-    const session = getAuthSession();
-    if (session?.token && task.propertyId) {
-      try {
-        const open = await getOpenValuationRequestByProperty(
-          { token: session.token },
-          task.propertyId,
-        );
-        if (open.ok && open.data?.id) {
-          const gatesRes = await getValuationIssuanceGates(
-            { token: session.token },
-            open.data.id,
-          );
-          if (gatesRes.ok && !gatesRes.data.allowsIssuance) {
-            // Show every reason, not just the first — otherwise the appraiser fixes one,
-            // resubmits, hits the next, and repeats a trial-and-error loop.
-            const reasons = gatesRes.data.blockingReasonsAr;
-            const reasonText = reasons.length
-              ? reasons.slice(0, 4).join("؛ ") +
-                (reasons.length > 4 ? ` وغيرها (${reasons.length - 4} أخرى)` : "")
-              : "شروط الإصدار غير مستوفاة";
-            const message = `الاعتماد ممنوع — ${reasonText}`;
-            setFormError(message);
-            showToast(message, "error");
-            setActiveTab("review");
-            return false;
-          }
-        }
-      } catch {
-        // Gate check failed (network) — the server will still reject an incomplete issue later.
-      }
+    // Fail closed: a failed / throwing gate read blocks, it never lets the submit through.
+    const gates = await checkIssuanceGatesFailClosed({
+      token: getAuthSession()?.token,
+      propertyId: task.propertyId,
+    });
+    if (!gates.ok) {
+      setFormError(gates.message);
+      showToast(gates.message, "error");
+      if (gates.kind === "blocked") setActiveTab("review");
+      return false;
     }
 
-    if (saveTimer.current) {
-      clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-    }
+    flushPendingAutosave();
+
+    // Everything checkable up front has passed — a host with a sending dialog opens it now.
+    const dialogHost = Boolean(hostRef.current?.onSubmitStarted);
+    hostRef.current?.onSubmitStarted?.();
+    const refuse = (message: string) => {
+      setFormError(message);
+      showToast(message, "error");
+      hostRef.current?.onSubmitFailed?.();
+      return false;
+    };
 
     setSubmitting(true);
     hostRef.current?.onSavingChange?.(true);
@@ -165,41 +166,46 @@ export function useEvaluatorSubmit({
           valuationMethod: draft.valuationMethod,
           valueBasis: draft.valueBasis,
           demandLevel: draft.demandLevel,
-          depositCode: draft.depositCode,
-          depositCertificateFileName: draft.depositCertificateFileName,
+          // The ESG choices are saved after a short debounce — flush them with the submit, which
+          // locks the package right after.
+          reportChoices: draft.reportChoices,
         });
         if (updated) setDraft(updated);
       } catch (err: unknown) {
         if (err instanceof Error) console.warn("[evaluator] submit save failed:", err);
-        const message = "تعذّر حفظ مسودة التقييم — حاول مرة أخرى";
-        setFormError(message);
-        showToast(message, "error");
-        return false;
+        return refuse("تعذّر حفظ مسودة التقييم — حاول مرة أخرى");
       }
 
       const outcome = await executeAppraiserSubmit();
-      if (outcome.status === "skipped") return false;
+      if (outcome.status === "skipped") {
+        hostRef.current?.onSubmitFailed?.();
+        return false;
+      }
 
       const result = outcome.value;
       if (result.ok) {
         setDraft(result.submission);
-        showToast(
-          "تم اعتماد التقييم وإرساله لأخصائي دراسة الحالة.",
-          "success",
-        );
+        if (!dialogHost) {
+          showToast(
+            "تم اعتماد التقييم وإرساله لأخصائي دراسة الحالة.",
+            "success",
+          );
+        }
         hostRef.current?.onSubmitted?.();
         return true;
       }
-      setFormError(result.message);
-      showToast(result.message, "error");
-      return false;
+      if (isStudyReportBlockMessage(result.message)) setStudyReportBlocked(true);
+      return refuse(result.message);
+    } catch (err: unknown) {
+      // The dialog must not stay up on an unexpected error; the error itself is still thrown.
+      hostRef.current?.onSubmitFailed?.();
+      throw err;
     } finally {
       setSubmitting(false);
       hostRef.current?.onSavingChange?.(false);
     }
   }, [
     locked,
-    gate,
     task.id,
     task.propertyId,
     draft.evaluatorPrice,
@@ -212,15 +218,13 @@ export function useEvaluatorSubmit({
     draft.valuationMethod,
     draft.valueBasis,
     draft.demandLevel,
-    draft.depositCode,
-    draft.depositCertificateFileName,
     draft.reportChoices,
     hostRef,
     showToast,
     executeAppraiserSubmit,
     retrospectiveRef,
     specialistRef,
-    saveTimer,
+    flushPendingAutosave,
     setDraft,
     setFormError,
     setFieldErrors,
@@ -240,5 +244,5 @@ export function useEvaluatorSubmit({
     };
   }, [hostRef, submit]);
 
-  return { submit, submitBusy: submitting || appraiserSubmitting };
+  return { submit, submitBusy: submitting || appraiserSubmitting, studyReportBlocked };
 }

@@ -7,7 +7,7 @@ import {
   type PartyNoteRow,
 } from "../fees/EngineeringPartyNotesSection";
 
-export type PartyRemarksSection = {
+type PartyRemarksSection = {
   id: string;
   title: string;
   remarks: PartyNoteRow[];

@@ -1,5 +1,7 @@
 /** Approximate city/district centroids and map-URL coordinate parsing. */
 
+import { parseLatLng } from "./geo";
+
 export type MapCoords = { lat: number; lng: number };
 
 const CITY_GEO: Record<string, [number, number]> = {
@@ -87,18 +89,6 @@ export function approximatePropertyGeo(property: {
   };
 }
 
-function parseCoordPair(
-  latRaw: string | null | undefined,
-  lngRaw: string | null | undefined,
-): MapCoords | null {
-  const lat = Number.parseFloat((latRaw ?? "").trim().replace(",", "."));
-  const lng = Number.parseFloat((lngRaw ?? "").trim().replace(",", "."));
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
-  if (lat === 0 && lng === 0) return null;
-  return { lat, lng };
-}
-
 /** Extract lat/lng from a Google Maps URL when present. */
 export function coordsFromLocationMapUrl(
   url: string | null | undefined,
@@ -109,15 +99,15 @@ export function coordsFromLocationMapUrl(
     const u = new URL(raw);
     const q = u.searchParams.get("query") || u.searchParams.get("q");
     if (q) {
-      const m = q.match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
-      if (m) return parseCoordPair(m[1], m[2]);
+      const m = q.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+      if (m) return parseLatLng(m[1], m[2]);
     }
   } catch {
     /* not a URL — fall through */
   }
-  const at = raw.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
-  if (at) return parseCoordPair(at[1], at[2]);
-  const plain = raw.match(/(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)/);
-  if (plain) return parseCoordPair(plain[1], plain[2]);
+  const at = raw.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  if (at) return parseLatLng(at[1], at[2]);
+  const plain = raw.match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+  if (plain) return parseLatLng(plain[1], plain[2]);
   return null;
 }

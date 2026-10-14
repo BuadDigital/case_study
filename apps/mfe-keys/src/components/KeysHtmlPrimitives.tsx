@@ -70,10 +70,10 @@ export function KeysTabBar({
             type="button"
             onClick={() => onChange(tab.id)}
             className={cn(
-              "-mb-px cursor-pointer border-b-2 bg-transparent px-[15px] py-2.5 font-[inherit] text-[13px] font-semibold transition-[color,border-color]",
+              "-mb-px cursor-pointer border-b-2 bg-transparent px-[15px] py-2.5 font-[inherit] text-[13px] font-semibold transition-[color,border-color] duration-200 ease-out motion-reduce:transition-none",
               on
                 ? "border-gold text-gold-d"
-                : "border-transparent text-text-2 hover:text-heading",
+                : "border-transparent text-text-2 hover:border-border-md hover:text-heading",
             )}
           >
             {tab.label}

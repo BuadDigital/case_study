@@ -9,7 +9,8 @@
  * cards; the view consumes the returned bag and keeps JSX only.
  */
 import type { MutableRefObject } from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { QueueRowContext } from "./active-transaction-queue-tables-state";
 import {
   buildAllTxPoGroups,
@@ -22,6 +23,7 @@ import {
   useActiveTransactionQueueData,
 } from "./useActiveTransactionQueueData";
 import { useActiveTransactionQueueCommands } from "./useActiveTransactionQueueCommands";
+import { prefetchQueueTasks } from "./active-transaction-queue-prefetch";
 
 export { EMPTY_TASKS };
 
@@ -50,6 +52,9 @@ export function useActiveTransactionQueueWorkflow({
     page,
     setPage,
     isPagePlaceholder,
+    tasksPlaceholder,
+    serverQueryFor,
+    queueShowsRows,
     queueLoadError,
     queueErrorMessage,
     queueReady,
@@ -119,6 +124,40 @@ export function useActiveTransactionQueueWorkflow({
     (!isDistributionTable && !isPartyQueueToggleTable)
       ? preloadPoPropertyEnfathForm
       : undefined;
+
+  const queryClient = useQueryClient();
+  /** Pointer / focus on a pager arrow — warm that page so the click lands on cached rows. */
+  const prefetchPage = useCallback(
+    (target: number) => {
+      if (!paged || target < 1) return;
+      prefetchQueueTasks(queryClient, {
+        paged,
+        filters: serverQueryFor(showCompleted),
+        page: target,
+      });
+    },
+    [queryClient, paged, serverQueryFor, showCompleted],
+  );
+  /** Same for the other «show completed» position (a new server slice, page 1). */
+  const prefetchShowCompletedToggle = useCallback(() => {
+    prefetchQueueTasks(queryClient, {
+      paged,
+      filters: serverQueryFor(!showCompleted),
+      page: 1,
+    });
+  }, [queryClient, paged, serverQueryFor, showCompleted]);
+
+  /*
+   * Swap-fade key for the rows. Held while the previous rows stand in for a new
+   * server slice, so the fade plays when the new rows land, not at the click.
+   * Search is left out on purpose — typing must not pulse the table — and so is
+   * group-by-PO, whose group rows already play their own entrance.
+   */
+  const rowsFilterKey = `${statusFilter}|${typeFilter}|${showCompleted}|${page}`;
+  const [rowsSwapKey, setRowsSwapKey] = useState(rowsFilterKey);
+  if (!tasksPlaceholder && rowsSwapKey !== rowsFilterKey) {
+    setRowsSwapKey(rowsFilterKey);
+  }
 
   const allTxPoGroups = useMemo(() => {
     if (!isAllTransactionsTable || !groupByPo) return [];
@@ -192,6 +231,10 @@ export function useActiveTransactionQueueWorkflow({
     page,
     setPage,
     isPagePlaceholder,
+    queueShowsRows,
+    rowsSwapKey,
+    prefetchPage,
+    prefetchShowCompletedToggle,
     now,
     isDesktopViewport,
     queueLoadError,

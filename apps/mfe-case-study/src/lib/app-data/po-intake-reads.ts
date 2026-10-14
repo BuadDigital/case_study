@@ -14,6 +14,10 @@ import {
 import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
 import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
 import {
+  noteLiveRead,
+  noteSnapshotFallback,
+} from "@platform/app-shared/offline/snapshot-fallback";
+import {
   readPrefetchedPoRecord,
   readPrefetchedPoRecords,
 } from "@platform/app-shared/offline/prefetch-read";
@@ -45,10 +49,15 @@ export async function loadPoRecords(): Promise<PoIntakeRecord[]> {
   }
   try {
     const dtos = await loadWorkOrderDtos();
+    noteLiveRead("po-records");
     return mapWorkOrderDtosToPoRecords(dtos);
   } catch {
     const cached = await readPrefetchedPoRecords<PoIntakeRecord>();
-    if (cached.length || isOfflineFieldSession()) return cached;
+    if (cached.length || isOfflineFieldSession()) {
+      // Online but the server failed — the screen shows the downloaded copy.
+      if (cached.length) noteSnapshotFallback("po-records");
+      return cached;
+    }
     throw new Error("تعذّر تحميل أوامر العمل");
   }
 }
@@ -81,7 +90,7 @@ export async function findPriorDeedFull(
   );
   if (!result.ok) {
     if (result.kind === "auth") {
-      throw new Error("يجب تسجيل الدخول للبحث عن المعاملة السابقة");
+      throw new Error("يلزم تسجيل الدخول للبحث عن المعاملة السابقة");
     }
     if (result.kind === "forbidden") {
       throw new Error("غير مصرح لك بالبحث عن تسجيل سابق لنفس الصك");
@@ -117,7 +126,7 @@ export async function listPriorDeedsFull(
   );
   if (!result.ok) {
     if (result.kind === "auth") {
-      throw new Error("يجب تسجيل الدخول للبحث عن المعاملة السابقة");
+      throw new Error("يلزم تسجيل الدخول للبحث عن المعاملة السابقة");
     }
     if (result.kind === "forbidden") {
       throw new Error("غير مصرح لك بالبحث عن تسجيل سابق لنفس الصك");
@@ -159,15 +168,22 @@ export async function getPoRecord(
     if (!result.ok) {
       if (result.kind === "not_found") return null;
       const cached = await readPrefetchedPoRecord<PoIntakeRecord>(n);
-      if (cached) return cached;
+      if (cached) {
+        noteSnapshotFallback("po-record");
+        return cached;
+      }
       throw new Error(
         resolveApiError(result.kind, result.errors, "تعذّر تحميل أمر العمل"),
       );
     }
+    noteLiveRead("po-record");
     return dtoToRecord(result.data);
   } catch (err) {
     const cached = await readPrefetchedPoRecord<PoIntakeRecord>(n);
-    if (cached) return cached;
+    if (cached) {
+      noteSnapshotFallback("po-record");
+      return cached;
+    }
     if (err instanceof Error) throw err;
     throw new Error("تعذّر تحميل أمر العمل");
   }

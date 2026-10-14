@@ -32,10 +32,23 @@ public static class DependencyInjection
         services.AddOptions<DatabaseOptions>()
             .Bind(configuration.GetSection(DatabaseOptions.SectionName))
             .Validate(
+                o => o.MaxPoolSize > 0,
+                "Database:MaxPoolSize must be greater than zero.")
+            .Validate(
+                o => o.MinPoolSize >= 0 && o.MinPoolSize <= o.MaxPoolSize,
+                "Database:MinPoolSize must be between zero and Database:MaxPoolSize.")
+            .Validate(
                 o => environment is null
                     || environment.IsDevelopment()
                     || o.UnpaginatedListCap > 0,
                 "Database:UnpaginatedListCap must be greater than zero outside Development.")
+            .Validate(
+                o => environment is null
+                    || environment.IsDevelopment()
+                    || PostgresConnectionBudget.Fits(o),
+                "Database:MaxPoolSize exceeds the aggregate PostgreSQL connection budget. "
+                + "Check ServerMaxConnections, ReservedServerConnections, and "
+                + "PeakApplicationPoolCount.")
             .ValidateOnStart();
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IAuditLogWriter, AuditLogWriter>();
@@ -64,13 +77,10 @@ public static class DependencyInjection
  /// </summary>
     public static IServiceCollection AddBoundedContextPersistence<TContext>(
         this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
+        IConfiguration configuration)
         where TContext : DbContext
     {
-        var resolvedConnection = BoundedContextConnections.ForContext<TContext>(
-            configuration,
-            connectionString);
+        var resolvedConnection = BoundedContextConnections.ForContext<TContext>(configuration);
         var dbOptions = configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>()
             ?? new DatabaseOptions();
         var pooledConnectionString = NpgsqlConfiguration.EnhanceConnectionString(
@@ -189,18 +199,34 @@ public static class DependencyInjection
  /// </summary>
     public static IServiceCollection AddMessagingPersistence(
         this IServiceCollection services,
-        IConfiguration configuration,
-        string connectionString)
+        IConfiguration configuration)
     {
-        var messagingConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.Messaging);
-        services.AddBoundedContextPersistence<MessagingDbContext>(
-            configuration,
-            messagingConnection);
+        services.AddBoundedContextPersistence<MessagingDbContext>(configuration);
         // Durable Idempotency-Key replay across instances (ADR 0008).
         services.RemoveAll<ICommandIdempotencyStore>();
-        services.AddScoped<ICommandIdempotencyStore, EfCommandIdempotencyStore>();
+        services.AddScoped<
+            ICommandIdempotencyStore,
+            EfCommandIdempotencyStore<MessagingDbContext>>();
+        return services;
+    }
+
+    /// <summary>
+    /// Stores command reservations in the service owner's database without opening the
+    /// shared Messaging database. Used by owner-only hosts such as Identity, Valuation,
+    /// and Attachments.
+    /// </summary>
+    public static IServiceCollection AddOwnerCommandIdempotencyPersistence<TContext>(
+        this IServiceCollection services,
+        IConfiguration configuration,
+        bool addRetentionHostedService = true)
+        where TContext : DbContext, ICommandIdempotencyDbContext
+    {
+        services.RemoveAll<ICommandIdempotencyStore>();
+        services.AddScoped<ICommandIdempotencyStore, EfCommandIdempotencyStore<TContext>>();
+        services.AddOptions<MessagingRetentionOptions>()
+            .Bind(configuration.GetSection(MessagingRetentionOptions.SectionName));
+        if (addRetentionHostedService)
+            services.AddHostedService<CommandIdempotencyRetentionHostedService<TContext>>();
         return services;
     }
 
@@ -257,7 +283,7 @@ public static class DependencyInjection
 
  /// <summary>
  /// Polls <c>OutboxMessages</c> and publishes to RabbitMQ. Register once per physical
- /// outbox database (Case Study drains the dedicated messaging database; Valuation drains
+ /// outbox database (Platform drains the dedicated messaging database; Valuation drains
  /// its dedicated database after the Phase 4 cutover).
  /// </summary>
     public static IServiceCollection AddOutboxDispatcher(
@@ -309,7 +335,7 @@ public static class DependencyInjection
     }
 
  /// <summary>
- /// Event-owning hosts (case-study / valuation outbox drain, platform consumers) fail fast in Production
+ /// Event-owning hosts (Platform / Valuation outbox drains and Case Study publishing) fail fast in Production
  /// when the broker is disabled. Set <c>RabbitMQ:RequireEnabled=false</c> only in tests.
  /// </summary>
     public static IHostApplicationBuilder RequireEventBrokerInProduction(

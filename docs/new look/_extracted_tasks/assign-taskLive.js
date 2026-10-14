@@ -1,1 +1,0 @@
-function taskLive(){ return NOW + (Date.now() - BOOT); }

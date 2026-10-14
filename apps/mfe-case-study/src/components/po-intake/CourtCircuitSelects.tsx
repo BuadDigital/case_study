@@ -25,7 +25,7 @@ import {
   ModalOverlay,
   ModalTitle,
 } from "@platform/ui-kit";
-import { courtsApiConfig } from "@settings/mfe/lib/settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
   CUSTOM_CIRCUIT_VALUE,
@@ -72,7 +72,7 @@ export function CourtCircuitSelects({
 
   useEffect(() => {
     let cancelled = false;
-    const config = courtsApiConfig();
+    const config = apiConfig();
     if (!config) {
       setCourts([]);
       return;
@@ -104,7 +104,7 @@ export function CourtCircuitSelects({
       setCircuits([]);
       return;
     }
-    const config = courtsApiConfig();
+    const config = apiConfig();
     if (!config) {
       setCircuits([]);
       return;

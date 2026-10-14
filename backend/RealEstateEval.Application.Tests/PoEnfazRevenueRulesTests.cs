@@ -20,7 +20,9 @@ public class PoEnfazRevenueRulesTests
         string request = "",
         string deed = "D-1",
         string district = "",
-        Guid? id = null) => new()
+        Guid? id = null,
+        DateTime? handedOverAt = null,
+        bool removed = false) => new()
         {
             Id = id ?? Guid.NewGuid(),
             PoNumber = "PO-1",
@@ -29,6 +31,8 @@ public class PoEnfazRevenueRulesTests
             District = district,
             City = " الرياض ",
             Area = " 500 ",
+            EnfazHandoverAtUtc = handedOverAt,
+            IsRemoved = removed,
         };
 
     private static WorkflowTask TaskFor(Guid propertyId, WorkflowTaskStatus status) =>
@@ -85,7 +89,7 @@ public class PoEnfazRevenueRulesTests
     [Fact]
     public void Ready_summary_counts_done_and_cancelled_properties()
     {
-        var done = Property(id: Guid.NewGuid());
+        var done = Property(id: Guid.NewGuid(), handedOverAt: Now);
         var cancelled = Property(id: Guid.NewGuid());
 
         var summary = PoEnfazRevenueRules.ReadySummary(
@@ -111,6 +115,37 @@ public class PoEnfazRevenueRulesTests
 
         var untasked = Property(id: Guid.NewGuid());
         Assert.Null(PoEnfazRevenueRules.ReadySummary("PO-1", [untasked], []));
+    }
+
+    /// <summary>Finance starts at the Enfaz handover: a completed study that was not delivered is not billable.</summary>
+    [Fact]
+    public void A_po_whose_study_is_complete_but_not_handed_over_is_not_ready()
+    {
+        var studied = Property(id: Guid.NewGuid());
+        Assert.Null(PoEnfazRevenueRules.ReadySummary(
+            "PO-1", [studied], [TaskFor(studied.Id, WorkflowTaskStatus.Completed)]));
+
+        var delivered = Property(id: Guid.NewGuid(), handedOverAt: Now);
+        var summary = PoEnfazRevenueRules.ReadySummary(
+            "PO-1", [delivered], [TaskFor(delivered.Id, WorkflowTaskStatus.Completed)]);
+        Assert.NotNull(summary);
+        Assert.Equal(1, summary.DoneCount);
+    }
+
+    [Fact]
+    public void A_removed_property_never_blocks_readiness_nor_counts()
+    {
+        var delivered = Property(id: Guid.NewGuid(), handedOverAt: Now);
+        var removed = Property(id: Guid.NewGuid(), removed: true);
+
+        var summary = PoEnfazRevenueRules.ReadySummary(
+            "PO-1",
+            [delivered, removed],
+            [TaskFor(delivered.Id, WorkflowTaskStatus.Completed), TaskFor(removed.Id, WorkflowTaskStatus.Open)]);
+
+        Assert.NotNull(summary);
+        Assert.Equal(1, summary.DoneCount);
+        Assert.Equal(0, summary.CancelledCount);
     }
 
     // ---- entitlements + revenue line ----
@@ -288,6 +323,21 @@ public class PoEnfazRevenueRulesTests
         Assert.False(pending.EnfazFilled);
         Assert.Null(pending.InvoiceNumber);
         Assert.Null(pending.FinanceFlag);
+    }
+
+    /// <summary>The handover date is the completion date: the stall clock starts at delivery.</summary>
+    [Fact]
+    public void Tracking_row_dates_completion_at_the_enfaz_handover_when_recorded()
+    {
+        var handedOver = Now.AddDays(-1);
+        var property = Property();
+        property.BourseCompletedAtUtc = Now.AddDays(-30);
+        property.EnfazHandoverAtUtc = handedOver;
+
+        var row = PoEnfazRevenueRules.ToTrackingRow(
+            "PO-1", property, Done, null, Now.AddDays(-20), null, false, null, 0);
+
+        Assert.Equal(handedOver, row.CompletedAtUtc);
     }
 
     [Fact]

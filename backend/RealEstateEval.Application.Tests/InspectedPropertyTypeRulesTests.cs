@@ -68,6 +68,18 @@ public sealed class InspectedPropertyTypeRulesTests
     }
 
     [Fact]
+    public void NormalizePayloadForSubmission_PreservesTheLandStructuresAnswer()
+    {
+        const string payload =
+            """{"landHasValuableStructures":"yes","featureValues":{"assetSubject":"أرض","buildState":"جيد"}}""";
+
+        var result = InspectedPropertyTypeRules.NormalizePayloadForSubmission(payload, "أرض");
+
+        Assert.Contains("\"landHasValuableStructures\":\"yes\"", result);
+        Assert.Contains("\"buildState\":\"\"", result);
+    }
+
+    [Fact]
     public void FromPayload_DetectsStaffAttemptToChangeInspectorOwnedType()
     {
         const string submitted =

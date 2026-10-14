@@ -9,13 +9,12 @@ import type {
   InspectorFeeRowDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
-import { fmtMax } from "@platform/app-shared/format/number";
 
 export type IndividualFeesVariant = "field-inspection" | "court-visit";
 
 export type TabId = "action" | "tracking" | "ready" | "statements" | "visit-fees" | "key-fees";
 
-export type UiStatus =
+type UiStatus =
   | "needs_submit"
   | "draft_work"
   | "returned_to_party"
@@ -28,12 +27,6 @@ export type UiStatus =
   | "paid"
   | "suspended"
   | "other";
-
-
-export function fmtSar(n: number): string {
-  return `${fmtMax(n || 0, 3)} ر.س`;
-}
-
 
 export function deedParts(row: InspectorFeeRowDto): { deed: string; region: string } {
   const label = (row.propertyLabel || "").trim();
@@ -93,7 +86,7 @@ export function individualFeeUiStatus(row: InspectorFeeRowDto): UiStatus {
  * Finance → supervisor bounce is the supervisor queue (PartyFeesWorkspace returnedToSup),
  * not the individual party's action/tracking lane.
  */
-export function isSupervisorOnlyFeeStatus(st: UiStatus): boolean {
+function isSupervisorOnlyFeeStatus(st: UiStatus): boolean {
   return st === "returned_to_supervisor" || st === "inquiry_at_supervisor";
 }
 
@@ -267,7 +260,7 @@ export function ownLaneStatements(
   });
 }
 
-export type IndividualFeesKpi = {
+type IndividualFeesKpi = {
   outstanding: number;
   actionSar: number;
   readySar: number;

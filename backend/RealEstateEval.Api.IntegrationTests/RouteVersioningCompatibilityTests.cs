@@ -100,11 +100,9 @@ public sealed class RouteVersioningCompatibilityTests
     }
 
     [Theory]
-    [InlineData("/api/survey-offices")]
-    [InlineData("/api/survey-offices/v1")]
     [InlineData("/api/operations-tasks")]
     [InlineData("/api/operations-tasks/v1")]
-    public async Task Survey_offices_and_operations_tasks_canonical_and_v1_alias_routes_resolve(string path)
+    public async Task Operations_tasks_canonical_and_v1_alias_routes_resolve(string path)
     {
         using var factory = new OperationsRouteFactory();
         using var client = factory.CreateClient();

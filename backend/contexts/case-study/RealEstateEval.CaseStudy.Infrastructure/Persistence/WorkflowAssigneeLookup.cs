@@ -35,11 +35,14 @@ public sealed class WorkflowAssigneeLookup(CaseStudyDbContext caseStudy) : IWork
         IReadOnlyCollection<WorkflowTaskKind> taskKinds,
         CancellationToken cancellationToken)
     {
+        // The case-study parent completes when the specialist issues the study report, yet he still
+        // owns the transaction (valuation draft, Enfaz hand-over) — his notices must keep arriving.
+        // Party children stay «open only»: the appraiser's task is open until the final issuance.
         return await caseStudy.WorkflowTasks.AsNoTracking()
             .Where(scope)
             .Where(task =>
                 taskKinds.Contains(task.Kind)
-                && task.Status != WorkflowTaskStatus.Completed
+                && (task.Status != WorkflowTaskStatus.Completed || task.Kind == WorkflowTaskKind.CaseStudyProperty)
                 && task.Status != WorkflowTaskStatus.Cancelled
                 && task.AssigneeId != null
                 && task.AssigneeId != "")

@@ -18,7 +18,7 @@ const BASE = process.env.BASE ?? "http://127.0.0.1:3000";
 const API_HOST = process.env.API_HOST ?? "127.0.0.1";
 const GATEWAY = `http://${API_HOST}:5160`;
 const RUNS = Number(process.env.RUNS ?? 3);
-// Passwordless demo login (2026-09-04): the seeded mobile of osama (case specialist).
+// Demo login (2026-09-04): the seeded mobile of osama (case specialist).
 const USER_MOBILE = "500000004";
 const OUT =
   process.env.OUT ??
@@ -56,7 +56,6 @@ const ROUTE_TABLE = [
   ["/api/auth", "identity", 5161],
   ["/api/users", "identity", 5161],
   ["/api/permissions", "identity", 5161],
-  ["/api/survey-offices", "operations", 5163],
   ["/api/property-keys", "operations", 5163],
   ["/api/key-envelopes", "operations", 5163],
   ["/api/operations-tasks", "operations", 5163],
@@ -75,7 +74,6 @@ const ROUTE_TABLE = [
   ["/api/case-study-info-roles", "platform", 5168],
   ["/api/organization-settings", "platform", 5168],
   ["/api/valuation-lists", "platform", 5168],
-  ["/api/difference-factor-catalog", "platform", 5168],
   ["/api/attachment-print-dictionary", "platform", 5168],
   ["/api/field-sync-status", "platform", 5168],
   ["/api/audit-log", "platform", 5168],

@@ -2,8 +2,7 @@
  * Failures API — property failures (obstructions) persisted in PostgreSQL.
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 import { fetchListPage, type PagedResultDto } from "./pagination";
@@ -27,6 +26,9 @@ export type FailureRecordDto = {
   specialist: string;
   createdAt: string;
   updatedAt: string;
+  /** Set when the specialist lifted the survey freeze this failure caused (ISO UTC). */
+  surveyFreezeLiftedAt?: string | null;
+  surveyFreezeLiftReason?: string | null;
 };
 
 export type CreateFailureRequest = {
@@ -41,30 +43,10 @@ export type CreateFailureRequest = {
   specialist: string;
 };
 
-export type BourseObstructionRequest = {
-  poNumber: string;
-  propertyId: string;
-  deedNumber: string;
-  reason: string;
-  specialist: string;
-};
-
 export type ResolveFailureRequest = {
   resolutionReason: string;
   continueInstructions: string;
 };
-
-export type FailureNoteRequest = {
-  note: string;
-};
-
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
 
 /** Allowed `sort` keys — pagination-contract §5. Unknown keys fall back to `updated`. */
 export type FailureListSort = "updated" | "created" | "po" | "deed";
@@ -87,9 +69,6 @@ export type FailureListQuery = {
   poNumber?: string;
   problemTypeId?: string;
 };
-
-/** The filter set without the page window. */
-export type FailureListFilters = Omit<FailureListQuery, "page" | "pageSize">;
 
 function failureListParams(query?: FailureListQuery) {
   return {
@@ -125,7 +104,7 @@ export async function listFailures(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/failures`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -147,7 +126,7 @@ export async function getPropertyFailure(
   });
   try {
     const res = await fetch(`${base}/api/failures/property?${params}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404 || res.status === 204) return { ok: true, data: null };
@@ -172,7 +151,7 @@ async function postFailureAction(
   try {
     const res = await fetch(`${base}${path}`, {
       method: "POST",
-      headers: headers(config.token, idempotencyKey),
+      headers: authHeaders(config.token, { idempotencyKey }),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -196,16 +175,6 @@ export async function createFailure(
   | (ApiErr & { errors?: Record<string, string> })
 > {
   return postFailureAction(config, "/api/failures", request, idempotencyKey);
-}
-
-export async function reportBourseObstruction(
-  config: FailuresApiConfig,
-  request: BourseObstructionRequest,
-): Promise<
-  | ApiOk<FailureRecordDto>
-  | (ApiErr & { errors?: Record<string, string> })
-> {
-  return postFailureAction(config, "/api/failures/bourse-obstruction", request);
 }
 
 export async function upgradeFailureToInternal(
@@ -264,7 +233,7 @@ export async function deleteFailuresForPo(
       `${base}/api/failures/by-po/${encodeURIComponent(poNumber.trim())}`,
       {
         method: "DELETE",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -293,5 +262,52 @@ export function dtoToFailureRecord(dto: FailureRecordDto) {
     specialist: dto.specialist,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
+    surveyFreezeLiftedAt: dto.surveyFreezeLiftedAt ?? null,
+    surveyFreezeLiftReason: dto.surveyFreezeLiftReason ?? null,
   };
+}
+
+export type LiftSurveyFreezeRequest = {
+  poNumber: string;
+  propertyId: string;
+  /** At least 10 characters. */
+  reason: string;
+};
+
+/**
+ * The case specialist lifts the survey freeze on one property (the failure stays open) — the engineering
+ * office may then start the survey. Answers how many failures were lifted; a refusal carries its Arabic
+ * reason in `errors._`.
+ */
+export async function liftSurveyFreeze(
+  config: FailuresApiConfig,
+  request: LiftSurveyFreezeRequest,
+): Promise<
+  | ApiOk<{ lifted: number }>
+  | (ApiErr & { errors?: Record<string, string> })
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/failures/by-property/lift-survey-freeze`, {
+      method: "POST",
+      headers: authHeaders(config.token),
+      body: JSON.stringify(request),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403 || res.status === 400 || res.status === 409) {
+      const errors = await parseFieldErrorsFromResponse(res);
+      return {
+        ok: false,
+        kind: res.status === 403 ? "forbidden" : "validation",
+        errors,
+        message: errors._,
+      };
+    }
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    const body = (await res.json()) as { lifted?: number };
+    return { ok: true, data: { lifted: Number(body.lifted ?? 0) } };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
 }

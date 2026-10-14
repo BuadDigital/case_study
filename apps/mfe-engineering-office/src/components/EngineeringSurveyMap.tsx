@@ -5,8 +5,8 @@ import {
   googleMapsApiKey,
   googleMapsSearchUrl,
   loadGoogleMapsApi,
-  parseCoord,
 } from "../lib/google-maps-loader";
+import { parseLatLng } from "@platform/app-shared/domain/geo";
 import {
   Button,
   Skeleton,
@@ -35,13 +35,16 @@ export function EngineeringSurveyMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
+  const onCoordsChangeRef = useRef(onCoordsChange);
+  onCoordsChangeRef.current = onCoordsChange;
   const [mapError, setMapError] = useState<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
-  const lat = parseCoord(latitude);
-  const lng = parseCoord(longitude);
-  const hasPin = lat !== null && lng !== null;
+  const pin = parseLatLng(latitude, longitude);
+  const lat = pin?.lat ?? null;
+  const lng = pin?.lng ?? null;
+  const hasPin = pin !== null;
 
   useEffect(() => {
     if (!googleMapsApiKey()) {
@@ -87,13 +90,13 @@ export function EngineeringSurveyMap({
             marker.setPosition(pos);
             map.panTo(pos);
             if (map.getZoom()! < PIN_ZOOM) map.setZoom(PIN_ZOOM);
-            onCoordsChange(pos.lat().toFixed(6), pos.lng().toFixed(6));
+            onCoordsChangeRef.current(pos.lat().toFixed(6), pos.lng().toFixed(6));
           });
 
           marker.addListener("dragend", () => {
             const pos = marker.getPosition();
             if (!pos) return;
-            onCoordsChange(pos.lat().toFixed(6), pos.lng().toFixed(6));
+            onCoordsChangeRef.current(pos.lat().toFixed(6), pos.lng().toFixed(6));
           });
         }
 
@@ -102,7 +105,7 @@ export function EngineeringSurveyMap({
       })
       .catch(() => {
         if (!cancelled) {
-          setMapError("تعذر تحميل خريطة Google — تحقق من مفتاح API والاتصال.");
+          setMapError("تعذّر تحميل خريطة Google — تحقق من مفتاح API والاتصال.");
         }
       });
 

@@ -11,7 +11,6 @@ import { useMemo, useState } from "react";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
 import {
-  nextInspectorPhotoId,
   type InspectorDefinedPhotoSlot,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
@@ -22,6 +21,8 @@ import {
   inspectorPhotoAttachmentFromTransactionDoc,
   uploadInspectorPhotoFromFile,
 } from "../../lib/app-data/inspector-photo-upload";
+import { allocateInspectorPhotoId } from "../../lib/app-data/inspector-photo-id";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import { InspectorDefinedPhotoSlotList } from "./InspectorDefinedPhotoSlotList";
 import {
@@ -37,7 +38,6 @@ import {
 
 export { freePhotoRef } from "./inspector-wizard-state";
 
-type Patch = Partial<Pick<InspectorWorkspaceDraft, "definedPhotos">>;
 
 export function InspectorDefinedPhotosSection({
   draft,
@@ -49,7 +49,7 @@ export function InspectorDefinedPhotosSection({
 }: {
   draft: InspectorWorkspaceDraft;
   disabled?: boolean;
-  onPatch: (patch: Patch) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
   /** `desktop` = Case Study.html c9 tiles (100px); `mobile` = square photoTile grid. */
   layout?: "desktop" | "mobile";
   /** When set (case-study specialist), empty slots can pick from transaction images. */
@@ -61,6 +61,9 @@ export function InspectorDefinedPhotosSection({
 
   const cells = useMemo(
     () => listDefinedPhotoSlotCells(draft),
+    // The helper takes a `Pick` of exactly these fields — the whole draft would
+    // rebuild the grid on every keystroke elsewhere in the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [draft.services, draft.amenities, draft.definedPhotos],
   );
 
@@ -99,54 +102,47 @@ export function InspectorDefinedPhotosSection({
     slotId: string,
     updater: (slot: InspectorDefinedPhotoSlot) => InspectorDefinedPhotoSlot,
   ) {
-    const current = draft.definedPhotos[slotId] ?? emptyDefinedPhotoSlot();
-    onPatch({
-      definedPhotos: setDefinedPhotoSlot(draft.definedPhotos, slotId, updater(current)),
-    });
+    onPatch((current) => ({
+      definedPhotos: setDefinedPhotoSlot(
+        current.definedPhotos,
+        slotId,
+        updater(current.definedPhotos[slotId] ?? emptyDefinedPhotoSlot()),
+      ),
+    }));
   }
 
   async function uploadSlotPhotos(slotId: string, files: File[]) {
     if (disabled || uploading) return false;
     setUploading(true);
     let added = 0;
-    let workingDraft = draft;
     let lastError: string | null = null;
 
     try {
       for (const file of files) {
-        const nextId = nextInspectorPhotoId(workingDraft);
+        const nextId = allocateInspectorPhotoId(draft);
         const ref = slotPhotoRef(slotId, nextId);
         const result = await uploadInspectorPhotoFromFile(
           draft.taskId,
           ref,
           file,
-          { draft: workingDraft },
+          { draft },
         );
         if (!result.ok) {
           lastError = result.error;
           continue;
         }
 
-        const slot = workingDraft.definedPhotos[slotId] ?? emptyDefinedPhotoSlot();
+        // Added to the draft as it is when the upload ends — not to the copy this call started from, which
+        // would erase every photo another upload saved in the meantime.
         const nextPhoto: InspectorSlotPhoto = {
           id: nextId,
           approved: true,
           ...result.attachment,
         };
-        workingDraft = {
-          ...workingDraft,
-          definedPhotos: setDefinedPhotoSlot(
-            workingDraft.definedPhotos,
-            slotId,
-            definedSlotWithPhoto(slot, nextPhoto),
-          ),
-        };
+        patchDefinedPhotos(slotId, (slot) => definedSlotWithPhoto(slot, nextPhoto));
         added += 1;
       }
 
-      if (added > 0) {
-        onPatch({ definedPhotos: workingDraft.definedPhotos });
-      }
       if (lastError) throw new Error(lastError);
       return added > 0;
     } finally {
@@ -171,7 +167,7 @@ export function InspectorDefinedPhotosSection({
     doc: PropertyDetailDocumentEntry,
   ) {
     if (disabled) return;
-    const nextId = nextInspectorPhotoId(draft);
+    const nextId = allocateInspectorPhotoId(draft);
     const attachment = inspectorPhotoAttachmentFromTransactionDoc(
       draft.taskId,
       slotPhotoRef(slotId, nextId),

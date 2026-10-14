@@ -114,7 +114,7 @@ export function caseStudyAnswerKey(
 }
 
 /** Wizard steps for the case-study form. */
-export const CASE_STUDY_FORM_STEPS = [
+export const CASE_STUDY_REPORT_STEPS = [
   { id: 1, label: "بيانات الصك والعقار" },
   { id: 2, label: "الرفع المساحي والطبيعة" },
   { id: 3, label: "مكونات العقار" },

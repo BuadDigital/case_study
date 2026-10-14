@@ -1,8 +1,15 @@
+import { fmtSar, parseLocaleNumber } from "@platform/app-shared/format/number";
+import { roundSar, sumSar, toHalalas, vatSar } from "@platform/app-shared/format/money";
 import type {
   PoEnfazBillingDto,
   PoEnfazRevenueLineDto,
   SavePoEnfazBillingRequest,
 } from "@platform/api-client";
+import {
+  enfazInvoiceStatusLabel,
+  enfazInvoiceStatusTone,
+  type EnfazInvoiceStatusTone,
+} from "@platform/app-shared/fees/enfaz-invoice-status";
 
 /**
  * Pure decisions behind the Enfaz work-order billing screen
@@ -19,27 +26,26 @@ export type LineDraft = {
 
 export type LineDraftMap = Record<string, LineDraft>;
 
+/**
+ * A typed fee as the server keeps it: negatives clamp to 0 (PoEnfazRevenueRules) and the
+ * amount rounds to 2 decimals half away from zero (numeric(12,2)) — so screen = saved.
+ */
+export function draftFeeSar(raw: string | undefined): number {
+  const n = parseLocaleNumber(raw);
+  return n > 0 ? roundSar(n) : 0;
+}
+
 export function lineTotal(d: LineDraft | undefined): number {
   if (!d) return 0;
-  return (
-    (Number(d.caseStudyFee) || 0) +
-    (Number(d.surveyFee) || 0) +
-    (Number(d.keyFee) || 0)
+  return sumSar(
+    draftFeeSar(d.caseStudyFee),
+    draftFeeSar(d.surveyFee),
+    draftFeeSar(d.keyFee),
   );
 }
 
-export function invoiceStatusLabel(status: string | null | undefined): string {
-  switch (status) {
-    case "collected":
-      return "محصّلة";
-    case "partially_collected":
-      return "تحصيل جزئي";
-    case "issued":
-      return "صادرة";
-    default:
-      return "مُفوتَرة";
-  }
-}
+/** Shared with the supervisor tracking table — kept under this name for existing callers. */
+export const invoiceStatusLabel = enfazInvoiceStatusLabel;
 
 /** Editable copy of the saved lines — zero fees show as empty inputs. */
 export function draftFromBillingLines(
@@ -117,19 +123,22 @@ export function billingTotals(
   draft: LineDraftMap,
 ): BillingTotals {
   if (!lines) return EMPTY_BILLING_TOTALS;
-  let taxable = 0;
-  let key = 0;
+  let taxableHalalas = 0;
+  let keyHalalas = 0;
   let billable = 0;
   for (const line of lines) {
     const d = draft[line.propertyId];
     if (!d?.inc || line.workStatus !== "done") continue;
     billable += 1;
-    taxable += (Number(d.caseStudyFee) || 0) + (Number(d.surveyFee) || 0);
-    key += Number(d.keyFee) || 0;
+    taxableHalalas += toHalalas(draftFeeSar(d.caseStudyFee)) + toHalalas(draftFeeSar(d.surveyFee));
+    keyHalalas += toHalalas(draftFeeSar(d.keyFee));
   }
-  // 15% VAT on (valuation+survey) only — keys fees are VAT-inclusive
-  const vat = Math.round(taxable * 0.15 * 100) / 100;
-  return { taxable, key, vat, total: taxable + vat + key, billable, sub: taxable };
+  const taxable = taxableHalalas / 100;
+  const key = keyHalalas / 100;
+  // 15% VAT once on the work order's (valuation+survey) total — keys fees are VAT-inclusive
+  // (PoEnfazBillingDtoBuilder: Math.Round(taxable × 0.15, 2, AwayFromZero)).
+  const vat = vatSar(taxable);
+  return { taxable, key, vat, total: sumSar(taxable, vat, key), billable, sub: taxable };
 }
 
 /** The save request built from the draft — a missing draft line saves as zero fees, included. */
@@ -142,9 +151,9 @@ export function saveLinesRequest(
       const d = draft[line.propertyId];
       return {
         propertyId: line.propertyId,
-        caseStudyFeeSar: Number(d?.caseStudyFee) || 0,
-        surveyFeeSar: Number(d?.surveyFee) || 0,
-        keyFeeSar: Number(d?.keyFee) || 0,
+        caseStudyFeeSar: draftFeeSar(d?.caseStudyFee),
+        surveyFeeSar: draftFeeSar(d?.surveyFee),
+        keyFeeSar: draftFeeSar(d?.keyFee),
         keyEntitlementEnvelopeId: line.keyEntitlementEnvelopeId,
         includedInBilling: d?.inc ?? true,
       };
@@ -157,9 +166,10 @@ export function collectAmountDiffers(amount: number, remaining: number): boolean
   return remaining > 0 && Math.abs(amount - remaining) > 0.009;
 }
 
-export type InvoiceHeaderPill = {
+type InvoiceHeaderPill = {
   label: string;
-  tone: "danger" | "success" | "warning" | "default";
+  /** finStatusStyle draws "info" (an issued, uncollected invoice) like "default". */
+  tone: EnfazInvoiceStatusTone;
 };
 
 /** The pill beside the work-order number: invoice status, or the save / issue readiness. */
@@ -172,13 +182,7 @@ export function invoiceHeaderPill(
   if (billing.invoiceNumber) {
     return {
       label: `${invoiceStatusLabel(billing.invoiceStatus)}${billing.isOverdue ? " · متأخر" : ""} · ${billing.invoiceNumber}`,
-      tone: billing.isOverdue
-        ? "danger"
-        : billing.invoiceStatus === "collected"
-          ? "success"
-          : billing.invoiceStatus === "partially_collected"
-            ? "warning"
-            : "default",
+      tone: enfazInvoiceStatusTone(billing.invoiceStatus, billing.isOverdue),
     };
   }
   if (billing.poReadyForBilling) return { label: "جاهز للإصدار", tone: "default" };
@@ -197,12 +201,7 @@ export function billingActionHint(args: {
   return "احفظ ثم أصدر الفاتورة.";
 }
 
-/** «1,234.5 ر.س» with en-US grouping — the screen's amount format. */
-export function sarEn(n: number): string {
-  return `${n.toLocaleString("en-US")} ر.س`;
-}
-
 /** The confirm prompt when the entered collect amount differs from the balance. */
 export function collectMismatchPrompt(amount: number, remaining: number): string {
-  return `مبلغ التحويل (${amount.toLocaleString("en-US")} ر.س) يختلف عن المتبقي (${remaining.toLocaleString("en-US")} ر.س). المتابعة؟`;
+  return `مبلغ التحويل (${fmtSar(amount, { digits: 3, trim: true })}) يختلف عن المتبقي (${fmtSar(remaining, { digits: 3, trim: true })}). المتابعة؟`;
 }

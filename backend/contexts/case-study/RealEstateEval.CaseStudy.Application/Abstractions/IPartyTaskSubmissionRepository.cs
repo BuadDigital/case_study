@@ -53,6 +53,22 @@ public interface IPartyTaskSubmissionRepository
         IReadOnlyCollection<Guid> taskIds,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// True when the case-study (non-party) report of <paramref name="parentTaskId"/> is issued — the
+    /// fact that opens the appraiser's submission.
+    /// </summary>
+    Task<bool> IsCaseStudyReportIssuedAsync(
+        Guid parentTaskId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The parents among <paramref name="parentTaskIds"/> whose case-study report is issued — one query
+    /// for a whole list, so a queue never asks per row.
+    /// </summary>
+    Task<IReadOnlySet<Guid>> ListIssuedReportParentIdsAsync(
+        IReadOnlyCollection<Guid> parentTaskIds,
+        CancellationToken cancellationToken);
+
     /// <summary>Untracked property with its contacts and work order, for documentary gates.</summary>
     Task<WorkOrderProperty?> GetPropertyWithContactsAsync(
         Guid propertyId,
@@ -84,6 +100,14 @@ public interface IPartyTaskSubmissionRepository
     /// <summary>Property with its components table — read-only, for the acceptance gate.</summary>
     Task<WorkOrderProperty?> GetPropertyWithInventoryAsync(
         Guid propertyId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Properties by id with their components table — one batch read for the inspector-data digest of a
+    /// list (the appraiser's packages).
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, WorkOrderProperty>> ListPropertiesWithInventoryAsync(
+        IReadOnlyCollection<Guid> propertyIds,
         CancellationToken cancellationToken);
 
     void Add(PartyTaskSubmission submission);

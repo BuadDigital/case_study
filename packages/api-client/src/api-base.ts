@@ -1,3 +1,5 @@
+import { IDEMPOTENCY_HEADER } from "./idempotency-key";
+
 /** Private LAN host (Wi‑Fi demo) — not localhost and not a public DNS name. */
 function isPrivateLanHost(hostname: string): boolean {
   if (hostname === "localhost" || hostname === "127.0.0.1") return false;
@@ -30,4 +32,30 @@ export function getApiBase(): string {
 
   if (fromEnv) return fromEnv;
   return `http://127.0.0.1:${apiPort}`;
+}
+
+type AuthHeadersOptions = {
+  /** Send `Content-Type: application/json` (default true). */
+  json?: boolean;
+  /** Send `Accept: application/json` (default false). */
+  accept?: boolean;
+  /** Adds the `Idempotency-Key` header when non-empty. */
+  idempotencyKey?: string | null | undefined;
+};
+
+/**
+ * Request headers shared by every api-client module.
+ * `Authorization: Bearer <token>` is sent whenever a token string is given
+ * (an empty string still sends it); null/undefined omits it.
+ */
+export function authHeaders(
+  token: string | null | undefined,
+  opts: AuthHeadersOptions = {},
+): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (opts.accept) out.Accept = "application/json";
+  if (opts.json ?? true) out["Content-Type"] = "application/json";
+  if (token != null) out.Authorization = `Bearer ${token}`;
+  if (opts.idempotencyKey) out[IDEMPOTENCY_HEADER] = opts.idempotencyKey;
+  return out;
 }

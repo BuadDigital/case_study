@@ -16,6 +16,7 @@ import {
   cn,
 } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
 import {
   Card,
@@ -24,6 +25,7 @@ import {
 } from "./atoms";
 import { fmt } from "./lib/shell-utils";
 import { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
+import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import { ValueDocumentsPanel } from "./ValueDocumentsPanel";
 import { buildCostNarrative, costFieldsFromDto } from "./lib/cost-approach-state";
 import { analysesForRationale, appendAnalysesToRationale } from "./lib/final-opinion-state";
@@ -83,7 +85,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   assignmentType,
   poNumber,
   officialValuationDate,
-  fieldErrors,
+  fieldErrors: sendErrors,
   saving,
   onSavingChange,
   onReconSaved,
@@ -110,6 +112,9 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
   costAnalysisEnabled?: boolean;
   costBasisKey?: string;
 }) {
+  const { fieldErrors: workErrors, clearSaveErrors } = useValuationWorkErrors();
+  /** Send-time errors (snake_case keys) plus the last failed save (server keys). */
+  const fieldErrors = { ...sendErrors, ...workErrors };
   const workflow = useFinalOpinionWorkflow({
     valuationRequestId,
     recon,
@@ -171,13 +176,13 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
         <>
           <div className="mb-3 flex justify-between">
             <h2 className="m-0 text-[17px] font-extrabold text-heading">
-              التوفيق بين مؤشرات الأساليب
+              الترجيح بين مؤشرات الأساليب
             </h2>
             <span className="text-xs text-text-3">
               مجموع نسب المشاركة يجب أن يساوي ١٠٠٪
             </span>
           </div>
-          <Card className="mb-6">
+          <Card id="final-recon" className="mb-6">
             <Table className="min-w-[900px]">
               <THead>
                 <Tr hoverable={false}>
@@ -192,7 +197,11 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                 {reconMethods.map((m, idx) => {
                   const incomplete = !methodComplete(m.approachKind);
                   return (
-                    <Tr key={m.approachKind} hoverable={false}>
+                    <Tr
+                      key={m.approachKind}
+                      id={`final-method-${idx}`}
+                      hoverable={false}
+                    >
                       <Td>
                         <div className="font-bold text-heading">{m.labelAr}</div>
                         <div className="mt-0.5 text-[10.5px] text-text-3">
@@ -216,6 +225,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                       </Td>
                       <Td className="text-center">
                         <input
+                          id={`final-method-weight-${idx}`}
                           dir="ltr"
                           type="number"
                           min={0}
@@ -227,7 +237,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                               100,
                               Math.max(
                                 0,
-                                Number(e.target.value.replace(",", ".")) || 0,
+                                parseLocaleNumber(e.target.value) || 0,
                               ),
                             );
                             const next = [...reconMethods];
@@ -253,6 +263,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                             reconWeightsBad
                               ? "border-red bg-[rgba(192,85,61,.07)] text-red-text"
                               : "border-border-md bg-surface text-heading",
+                            fieldErrors[`methods[${idx}].weightPct`] &&
+                              invalidControlClass,
                           )}
                         />
                       </Td>
@@ -303,7 +315,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                 )}
               >
                 القيمة المرجّحة:{" "}
-                <span dir="ltr">{fmt(weightedLocal)}</span> ريال
+                <span dir="ltr">{fmt(weightedLocal)}</span> ر.س
               </span>
             </div>
           </Card>
@@ -401,7 +413,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         }
                         className={cn(
                           "ms-2 w-[58px] rounded-md border border-border-md bg-surface p-[5px] text-center text-xs font-bold text-heading",
-                          fieldErrors?.forced_sale_discount &&
+                          (fieldErrors.forced_sale_discount ||
+                            fieldErrors.liquidationDiscountPct) &&
                             invalidControlClass,
                         )}
                       />
@@ -425,7 +438,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         className="mb-1 block text-[12px] font-medium text-text"
                       >
                         مبرر معامل التصفية
-                        {Number(liquidationDiscountPct.replace(",", ".")) > 0 ? (
+                        {parseLocaleNumber(liquidationDiscountPct) > 0 ? (
                           <span className="text-danger-text"> *</span>
                         ) : null}
                       </label>
@@ -439,15 +452,18 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         placeholder="مثال: سيولة السوق خلال ٩٠ يوماً، ظروف البيع القسري…"
                         className={cn(
                           "w-full rounded-md border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-heading",
-                          fieldErrors?.liquidation_discount_rationale &&
+                          (fieldErrors.liquidation_discount_rationale ||
+                            fieldErrors.liquidationDiscountRationale) &&
                             invalidControlClass,
                         )}
                       />
-                      {fieldErrors?.liquidation_discount_rationale ? (
+                      {fieldErrors.liquidation_discount_rationale ||
+                      fieldErrors.liquidationDiscountRationale ? (
                         <p className="mt-1 mb-0 text-[11px] text-danger-text">
-                          {fieldErrors.liquidation_discount_rationale}
+                          {fieldErrors.liquidation_discount_rationale ||
+                            fieldErrors.liquidationDiscountRationale}
                         </p>
-                      ) : Number(liquidationDiscountPct.replace(",", ".")) >
+                      ) : parseLocaleNumber(liquidationDiscountPct) >
                         0 ? (
                         <p className="mt-1 mb-0 text-[10.5px] text-text-3">
                           مطلوب عند إدخال نسبة خصم أكبر من صفر.
@@ -480,6 +496,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                       تقريب القيمة
                     </span>
                     <input
+                      id="final-round-decimals"
                       dir="ltr"
                       type="number"
                       min={0}
@@ -487,7 +504,10 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                       step={1}
                       value={finalRoundDecimals}
                       onChange={(e) => setFinalRoundDecimals(e.target.value)}
-                      className="ms-2 w-[58px] rounded-md border border-border-md bg-surface p-[5px] text-center text-xs font-bold text-heading"
+                      className={cn(
+                        "ms-2 w-[58px] rounded-md border border-border-md bg-surface p-[5px] text-center text-xs font-bold text-heading",
+                        fieldErrors.finalRoundDecimals && invalidControlClass,
+                      )}
                     />
                   </td>
                   <td className="w-[150px] pe-0 ps-[18px]" />
@@ -506,7 +526,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                     {fmt(finalLocal)}
                   </td>
                   <td className="pb-0.5 pt-3 text-start text-[10.5px] text-text-3">
-                    ريال سعودي
+                    ر.س
                   </td>
                 </tr>
               </tbody>
@@ -516,9 +536,11 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                 {fieldErrors.evaluator_price}
               </p>
             ) : null}
-            {fieldErrors?.forced_sale_discount ? (
+            {fieldErrors.forced_sale_discount ||
+            fieldErrors.liquidationDiscountPct ? (
               <p className="mt-2 text-[11px] text-danger-text">
-                {fieldErrors.forced_sale_discount}
+                {fieldErrors.forced_sale_discount ||
+                  fieldErrors.liquidationDiscountPct}
               </p>
             ) : null}
 
@@ -539,19 +561,33 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               </button>
             </div>
             <textarea
+              id="final-methods-rationale"
               rows={6}
               value={methodsRationale}
-              onChange={(e) => setMethodsRationale(e.target.value)}
+              onChange={(e) => {
+                setMethodsRationale(e.target.value);
+                if (fieldErrors.methodsRationale) {
+                  clearSaveErrors("methodsRationale");
+                }
+              }}
               placeholder="اكتب مبرر الرأي النهائي هنا…"
-              className="w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text placeholder:text-text-3"
+              className={cn(
+                "w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text placeholder:text-text-3",
+                fieldErrors.methodsRationale && invalidControlClass,
+              )}
             />
+            {fieldErrors.methodsRationale ? (
+              <p className="mb-0 mt-1.5 text-[11px] text-danger-text">
+                {fieldErrors.methodsRationale}
+              </p>
+            ) : null}
 
             <div className="mt-[18px] flex flex-wrap gap-2.5">
             <PrimaryBtn
               disabled={saving || reconMethods.length === 0}
               onClick={() => void saveReconciliation()}
             >
-              {sole ? "حفظ الرأي النهائي" : "حفظ التوفيق والرأي النهائي"}
+              {sole ? "حفظ الرأي النهائي" : "حفظ الترجيح والرأي النهائي"}
             </PrimaryBtn>
           </div>
         </CardPad>

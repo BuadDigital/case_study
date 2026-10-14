@@ -21,13 +21,24 @@ const editors = {
 describe("report missing-field prompt", () => {
   it("names the person who supplies each kind of information", () => {
     const inspector = responsibleForMissingCell(
-      { label: "وصف العقار", source: "inspector" },
+      { label: "حالة العقار", source: "inspector" },
       sources,
       null,
     );
     expect(inspector?.name).toBe("أحمد سعيد");
-    expect(missingFieldPromptText({ label: "وصف العقار", source: "inspector" }, inspector!)).toBe(
-      "إشعار أحمد سعيد (المعاين) بنقص «وصف العقار»؟",
+    expect(missingFieldPromptText({ label: "حالة العقار", source: "inspector" }, inspector!)).toBe(
+      "إشعار أحمد سعيد (المعاين) بنقص «حالة العقار»؟",
+    );
+
+    // «وصف العقار» (مكونات العقار) is the specialist's text: the prompt names the work order's specialist.
+    const specialist = responsibleForMissingCell(
+      { label: "وصف العقار", source: "specialist" },
+      sources,
+      null,
+    );
+    expect(specialist).toEqual(sources.intake);
+    expect(missingFieldPromptText({ label: "وصف العقار", source: "specialist" }, specialist!)).toBe(
+      "إشعار أسامة الحربي (أخصائي الإسناد) بنقص «وصف العقار»؟",
     );
 
     const company = responsibleForMissingCell(

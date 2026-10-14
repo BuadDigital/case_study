@@ -8,11 +8,14 @@ import type {
   ValuationReconciliationMethodDto,
   ValuationValueDocumentAdditionDto,
 } from "@platform/api-client";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { roundHalfAwayFromZero } from "@platform/app-shared/format/money";
 import { valuePremiseKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 
 import { fmt } from "./shell-utils";
+import { weightsSumTo100 } from "./weights";
 
-export type FinalOpinionInputs = {
+type FinalOpinionInputs = {
   reconMethods: ValuationReconciliationMethodDto[];
   basisOfValueKey: string;
   basisOptions: { value: string; label: string }[];
@@ -26,7 +29,7 @@ export type FinalOpinionInputs = {
 };
 
 /** Reconciliation row of a «مستند ذو قيمة» indicator (`doc:{attachmentId}`). */
-export function isDocumentIndicatorKind(kind: string): boolean {
+function isDocumentIndicatorKind(kind: string): boolean {
   return kind.startsWith("doc:");
 }
 
@@ -47,7 +50,7 @@ export function finalOpinionComputed({
     const reconWeightsBad =
       reconMethods.length >= 2
       && included.length > 0
-      && Math.round(weightSumLocal) !== 100;
+      && !weightsSumTo100(weightSumLocal);
     // Interactive-form spec: values as-is (may be partial or negative) — adoption is the gate.
     // A sole method is always the full indicator (server forces weight 100 / included).
     const weightedLocal =
@@ -76,9 +79,11 @@ export function finalOpinionComputed({
           ? costComplete
           : hasAdoptedMarket;
     const isLiquidation = basisOfValueKey === "liquidation";
-    const discountPctNum = isLiquidation
-      ? Number(liquidationDiscountPct.replace(",", ".")) || 0
+    // Server ShouldApplyLiquidationDiscount: only a positive % applies, clamped to 0–100.
+    const discountPctRaw = isLiquidation
+      ? parseLocaleNumber(liquidationDiscountPct) || 0
       : 0;
+    const discountPctNum = discountPctRaw > 0 ? Math.min(discountPctRaw, 100) : 0;
     const forcedCut = (weightedLocal * discountPctNum) / 100;
     const decNum = Math.min(
       Math.max(Number.parseInt(finalRoundDecimals, 10) || 0, 0),
@@ -89,12 +94,16 @@ export function finalOpinionComputed({
     // are, and the total is rounded once.
     const propertyAfterDiscount = weightedLocal - forcedCut;
     const additionsTotal = additions.reduce((s, a) => s + (a.value || 0), 0);
-    const finalLocal =
-      Math.round((propertyAfterDiscount + additionsTotal) / roundPow) * roundPow;
+    // Server RoundFinal: decimal math, half away from zero — float noise (1365849.999…) is
+    // cleaned before rounding so the preview equals the saved value.
+    const finalLocal = roundHalfAwayFromZero(
+      propertyAfterDiscount + additionsTotal,
+      -decNum,
+    );
     const roundNote =
       decNum === 0
         ? "بلا تقريب — أقرب ريال"
-        : `مقرَّبة لأقرب ${fmt(roundPow)} ريال`;
+        : `مقرَّبة لأقرب ${fmt(roundPow)} ر.س`;
     const soleCost =
       reconMethods.length === 1 && reconMethods[0]?.approachKind === "cost";
     const soleDocument =
@@ -110,19 +119,19 @@ export function finalOpinionComputed({
     } else if (reconMethods.length === 1) {
       if (soleDocument) {
         linesOut.push(
-          `اعتُمد ${reconMethods[0].labelAr} وحده، بالقيمة الواردة في المستند. ولم يجرِ توفيق بين مؤشرات القيمة لاعتماد أسلوب واحد.`,
+          `اعتُمد ${reconMethods[0].labelAr} وحده، بالقيمة الواردة في المستند. ولم يجرِ ترجيح بين مؤشرات القيمة لاعتماد أسلوب واحد.`,
         );
       } else if (soleCost && !buildingOnly) {
         linesOut.push(
-          "اعتُمد أسلوب التكلفة. قُدّرت قيمة الأرض بطريقة المقارنات باعتبارها فضاء، وقُدّرت قيمة التحسينات بطريقة المقاول على أساس تكلفة الإحلال ناقصاً الإهلاك، والقيمة النهائية هي حاصل جمعهما. ولم يجرِ توفيق بين مؤشرات القيمة لاعتماد أسلوب واحد.",
+          "اعتُمد أسلوب التكلفة. قُدّرت قيمة الأرض بطريقة المقارنات باعتبارها فضاء، وقُدّرت قيمة التحسينات بطريقة المقاول على أساس تكلفة الإحلال ناقصاً الإهلاك، والقيمة النهائية هي حاصل جمعهما. ولم يجرِ ترجيح بين مؤشرات القيمة لاعتماد أسلوب واحد.",
         );
       } else if (soleCost) {
         linesOut.push(
-          "اعتُمد أسلوب التكلفة بنطاق «مبنى فقط»؛ القيمة = تكلفة الإحلال ناقصاً الإهلاك. ولم يجرِ توفيق بين مؤشرات القيمة لاعتماد أسلوب واحد.",
+          "اعتُمد أسلوب التكلفة بنطاق «مبنى فقط»؛ القيمة = تكلفة الإحلال ناقصاً الإهلاك. ولم يجرِ ترجيح بين مؤشرات القيمة لاعتماد أسلوب واحد.",
         );
       } else {
         linesOut.push(
-          "اعتُمد أسلوب السوق وحده، وقُدّرت القيمة بطريقة المقارنات. ولم يجرِ توفيق بين مؤشرات القيمة لاعتماد أسلوب واحد.",
+          "اعتُمد أسلوب السوق وحده، وقُدّرت القيمة بطريقة المقارنات. ولم يجرِ ترجيح بين مؤشرات القيمة لاعتماد أسلوب واحد.",
         );
       }
       linesOut.push(
@@ -167,12 +176,10 @@ export function finalOpinionComputed({
 }
 
 /** Last line of the auto opinion when «مستند ذو قيمة» amounts are added. */
-export const FINAL_TOTAL_OPINION_PREFIX = "القيمة النهائية الإجمالية:";
-
-export type FinalOpinionComputed = ReturnType<typeof finalOpinionComputed>;
+const FINAL_TOTAL_OPINION_PREFIX = "القيمة النهائية الإجمالية:";
 
 /** Auto-generated forced-sale discount sentence in the final-opinion narrative. */
-export const FORCED_SALE_DISCOUNT_OPINION_LINE_RE =
+const FORCED_SALE_DISCOUNT_OPINION_LINE_RE =
   /^طُبِّق خصم بيع قسري .+٪\.$/m;
 
 export function forcedSaleDiscountOpinionLine(pct: number): string {
@@ -258,7 +265,7 @@ export type AlertOverrideRecord = Record<
   { overrideRationale: string; acknowledged: boolean }
 >;
 
-export type ReconciliationDraft = {
+type ReconciliationDraft = {
   reconMethods: ValuationReconciliationMethodDto[];
   methodsRationale: string;
   finalRoundDecimals: string;
@@ -322,7 +329,7 @@ export function reconciliationSaveRequest(draft: ReconciliationDraft) {
     valuePremiseKey: draft.valuePremiseKey || null,
     liquidationDiscountPct:
       draft.basisOfValueKey === "liquidation"
-        ? Number(draft.liquidationDiscountPct.replace(",", ".")) || 0
+        ? parseLocaleNumber(draft.liquidationDiscountPct) || 0
         : 0,
     liquidationDiscountRationale:
       draft.basisOfValueKey === "liquidation"

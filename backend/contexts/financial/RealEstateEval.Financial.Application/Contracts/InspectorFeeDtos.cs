@@ -108,17 +108,6 @@ public class InspectorFeeAuditEntryDto
     public DateTime CreatedAtUtc { get; set; }
 }
 
-public class CreateDisbursementBatchRequest
-{
-    public IReadOnlyList<string> WorkflowTaskIds { get; init; } = [];
-}
-
-public class CreateDisbursementBatchResponseDto
-{
-    public string DisbursementBatchId { get; init; } = "";
-    public IReadOnlyList<InspectorFeeRowDto> Rows { get; init; } = [];
-    public IReadOnlyList<InspectorFeeTransitionErrorDto> Failed { get; init; } = [];
-}
 
 public class PoEnfazRevenueLineDto
 {

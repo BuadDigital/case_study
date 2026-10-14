@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -28,17 +29,25 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
 
     private readonly IPartyFeePricingRepository _db;
     private readonly IAuditLogWriter _audit;
+    private readonly IAuditLogAppend _auditAppend;
+    private readonly ILogger<PartyFeePricingService>? _logger;
     private readonly TimeProvider _time;
+    /// <summary>Rows built before a save; they go to the Platform ledger right after it commits.</summary>
+    private readonly List<AuditLog> _pendingAudits = [];
 
     public PartyFeePricingService(
         IPartyFeePricingRepository db,
         IAuditLogWriter audit,
-        TimeProvider? time = null)
+        IAuditLogAppend auditAppend,
+        TimeProvider? time = null,
+        ILogger<PartyFeePricingService>? logger = null)
     {
         _time = time ?? TimeProvider.System;
 
         _db = db;
         _audit = audit;
+        _auditAppend = auditAppend;
+        _logger = logger;
     }
 
     public async Task<IReadOnlyList<PartyFeePricingTableSummaryDto>> ListAsync(
@@ -128,7 +137,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
             table.Id,
             before: null,
             after: PartyFeePricingSnapshots.Snapshot(table));
-        await _db.SaveChangesAsync(cancellationToken);
+        await SaveAndAppendAuditsAsync(cancellationToken);
         return await ToDtoAsync(table, cancellationToken);
     }
 
@@ -144,7 +153,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
             await _db.AnyAssignmentsForTableAsync(id, cancellationToken));
         var before = PartyFeePricingSnapshots.Snapshot(table);
 
-        table.Name = PartyFeePricingRules.NormalizeName(request.Name, table.Category);
+        table.Name = PartyFeePricingRules.NormalizeName(request.Name);
         table.UpdatedAtUtc = _time.UtcNow();
         await ApplyRatesFromRequestAsync(table, request, cancellationToken);
 
@@ -155,7 +164,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
             table.Id,
             before,
             SnapshotFromTrackedState(table));
-        await _db.SaveChangesAsync(cancellationToken);
+        await SaveAndAppendAuditsAsync(cancellationToken);
         var reloaded = await LoadTableAsync(id, tracking: false, cancellationToken)
             ?? throw new KeyNotFoundException($"Pricing table {id} was not found after save.");
         return await ToDtoAsync(reloaded, cancellationToken);
@@ -217,7 +226,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
             categoryBefore,
             categoryAfter);
 
-        await _db.SaveChangesAsync(cancellationToken);
+        await SaveAndAppendAuditsAsync(cancellationToken);
 
         if (wasSourceActive)
         {
@@ -230,7 +239,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
                 revision.Id,
                 revisionBeforeActivate,
                 PartyFeePricingSnapshots.Snapshot(revision));
-            await _db.SaveChangesAsync(cancellationToken);
+            await SaveAndAppendAuditsAsync(cancellationToken);
         }
 
         var reloaded = await LoadTableAsync(revision.Id, tracking: false, cancellationToken)
@@ -272,7 +281,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
             }
 
             if (others.Count > 0)
-                await _db.SaveChangesAsync(ct);
+                await SaveAndAppendAuditsAsync(ct);
 
             if (!table.IsActive)
             {
@@ -284,7 +293,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
                     table.Id,
                     targetBefore,
                     PartyFeePricingSnapshots.Snapshot(table));
-                await _db.SaveChangesAsync(ct);
+                await SaveAndAppendAuditsAsync(ct);
             }
         }, cancellationToken);
 
@@ -334,7 +343,7 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
             table.Id,
             deletedSnapshot,
             after: null);
-        await _db.SaveChangesAsync(cancellationToken);
+        await SaveAndAppendAuditsAsync(cancellationToken);
         return true;
     }
 
@@ -392,13 +401,42 @@ public sealed partial class PartyFeePricingService : IPartyFeePricingService
         object? before,
         object? after)
     {
-        _db.AddAuditLog(_audit.Create(
+        _pendingAudits.Add(_audit.Create(
             PartyFeePricingRules.NormalizeActor(actorId),
             action,
             entityType,
             entityId.ToString(),
             before,
             after));
+    }
+
+    /// <summary>
+    /// Saves the pricing change, then appends the queued audit rows to the Platform ledger so
+    /// they show in سجل التدقيق. A ledger outage must not undo a saved pricing change, so a
+    /// failed append is logged and the rows are dropped.
+    /// </summary>
+    private async Task SaveAndAppendAuditsAsync(CancellationToken cancellationToken)
+    {
+        await _db.SaveChangesAsync(cancellationToken);
+        if (_pendingAudits.Count == 0) return;
+        var rows = _pendingAudits.ToList();
+        _pendingAudits.Clear();
+        foreach (var row in rows)
+        {
+            try
+            {
+                await _auditAppend.AppendAsync(row, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(
+                    ex,
+                    "Audit row {Action} for {EntityType} {EntityId} could not reach the Platform ledger.",
+                    row.Action,
+                    row.EntityType,
+                    row.EntityId);
+            }
+        }
     }
 
     private async Task<PartyFeePricingDto> ToDtoAsync(

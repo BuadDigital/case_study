@@ -11,7 +11,7 @@ function toArrayBuffer(bytes: Uint8Array): ArrayBuffer {
 }
 
 /** Web Crypto AES-GCM requires a secure context (HTTPS or localhost). */
-export function isWebCryptoAvailable(): boolean {
+function isWebCryptoAvailable(): boolean {
   return (
     typeof globalThis !== "undefined" &&
     typeof globalThis.crypto !== "undefined" &&
@@ -66,7 +66,7 @@ export function fromStoredKey(stored: StoredOfflineKey): OfflineKey | null {
   return null;
 }
 
-export type EncryptedPayload = {
+type EncryptedPayload = {
   iv: ArrayBuffer;
   ciphertext: ArrayBuffer;
 };

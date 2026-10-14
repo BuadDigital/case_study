@@ -5,10 +5,6 @@ export function setRuntimeCapabilities(capabilities: readonly string[]): void {
   runtimeCapabilities = capabilities;
 }
 
-export function getRuntimeCapabilities(): readonly string[] {
-  return runtimeCapabilities;
-}
-
 export function hasRuntimeCapability(capability: string): boolean {
   return runtimeCapabilities.includes(capability);
 }

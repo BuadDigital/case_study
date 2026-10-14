@@ -4,10 +4,7 @@ import {
   downloadEngineeringSurveyDocument,
   type EngineeringSurveyDocumentEntry,
 } from "../engineering-survey-bridge";
-import {
-  getCachedEvaluatorDepositCertificate,
-  getCachedEvaluatorReport,
-} from "../evaluator-bridge";
+import { getCachedEvaluatorReport } from "../evaluator-bridge";
 import {
   requestDocumentPreview,
   type DocumentPreviewItem,
@@ -61,7 +58,7 @@ export function inspectorFeaturePhotoLabel(key: string): string {
   return key.trim() || "حقل";
 }
 
-export function inspectorComponentPhotoLabel(key: string): string {
+function inspectorComponentPhotoLabel(key: string): string {
   const known = COMPONENT_PHOTO_LABEL_BY_KEY[key]?.trim();
   if (known) return known;
   return key.trim() || "صورة مكوّن";
@@ -274,7 +271,7 @@ export function collectIntakeDocuments(input: {
     pushEntry(docs, {
       id: `intake-other-${i}`,
       documentTypeKey: "unlisted",
-      name: "مستند إضافي",
+      name: "مستند غير معرّف",
       fileName: trimmed,
       source,
       kind: fileKind(trimmed, cached?.mimeType),
@@ -304,7 +301,7 @@ function mapEngineeringDoc(
   };
 }
 
-export function collectEngineeringDocuments(
+function collectEngineeringDocuments(
   surveyTaskId: string | null | undefined,
 ): PropertyDetailDocumentEntry[] {
   if (!surveyTaskId) return [];
@@ -313,7 +310,7 @@ export function collectEngineeringDocuments(
   );
 }
 
-export function collectAppraisalDocuments(
+function collectAppraisalDocuments(
   appraisalTaskId: string | null | undefined,
 ): PropertyDetailDocumentEntry[] {
   if (!appraisalTaskId) return [];
@@ -331,23 +328,12 @@ export function collectAppraisalDocuments(
       attachmentId: cached.attachmentId,
     });
   }
-  const deposit = getCachedEvaluatorDepositCertificate(appraisalTaskId);
-  if (deposit?.fileName?.trim()) {
-    docs.push({
-      id: "appraisal-deposit-certificate",
-      documentTypeKey: "deposit-certificate",
-      name: "شهادة الإيداع",
-      fileName: deposit.fileName.trim(),
-      source: "المقيّم العقاري",
-      kind: fileKind(deposit.fileName, deposit.mimeType),
-      dataUrl: deposit.dataUrl,
-      attachmentId: deposit.attachmentId,
-    });
-  }
+  // The deposit certificate and the generated final report are property attachments now (registry types
+  // «شهادة الإيداع» / «تقرير التقييم»): they reach the documents tab through the property's attachment list.
   return docs;
 }
 
-export function collectFieldInspectionDocuments(
+function collectFieldInspectionDocuments(
   inspectionTaskId: string | null | undefined,
 ): PropertyDetailDocumentEntry[] {
   if (!inspectionTaskId) return [];
@@ -495,7 +481,7 @@ export function collectFieldInspectionDocumentsFromSubmission(
 }
 
 /** Display order for property documents — one section per upload source. */
-export const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
+const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
   id: string;
   title: string;
 }[] = [
@@ -505,7 +491,7 @@ export const PROPERTY_DETAIL_DOCUMENT_SECTIONS: {
   { id: "inspection", title: "المعاين الميداني" },
 ];
 
-export const GOVERNED_DOCUMENTS_SECTION = {
+const GOVERNED_DOCUMENTS_SECTION = {
   id: "governed",
   title: "مستندات العقار",
 } as const;

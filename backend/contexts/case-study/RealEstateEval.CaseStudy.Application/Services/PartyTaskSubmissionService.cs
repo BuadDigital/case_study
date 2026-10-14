@@ -31,6 +31,10 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IAuditLogWriter _audit;
     private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
+    /// <summary>Absent in test compositions — the deposited-valuation check reads as «not deposited».</summary>
+    private readonly IValuationRequestService? _valuationRequests;
+    /// <summary>Absent in test compositions — a study-report reopen decision then fails closed.</summary>
+    private readonly ICaseStudyReportService? _reports;
 
     public PartyTaskSubmissionService(
         IPartyTaskSubmissionRepository repo,
@@ -44,9 +48,13 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         INotificationRecipientResolver recipients,
         IAuditLogWriter audit,
         IAuditLogAppend auditLog,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        IValuationRequestService? valuationRequests = null,
+        ICaseStudyReportService? reports = null)
     {
         _time = time ?? TimeProvider.System;
+        _valuationRequests = valuationRequests;
+        _reports = reports;
 
         _repo = repo;
         _failures = failures;
@@ -103,11 +111,19 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         // Batch sibling preview flags — a bounded number of queries per list, not per row.
         var flagsByTask = await LoadSiblingInspectionFlagsAsync(entities, cancellationToken);
         var inspectedProperties = await LoadInspectedPropertiesAsync(entities, cancellationToken);
+        var studyIssuedByTask = await LoadStudyReportIssuedAsync(entities, cancellationToken);
+        var inspectorPackages = await LoadInspectorPackagesForAppraisalsAsync(entities, cancellationToken);
         var result = new List<PartyTaskSubmissionDto>(entities.Count);
         foreach (var entity in entities)
         {
             var dto = PartyTaskSubmissionRules.ToDto(entity);
             ApplyInspectionFlags(dto, entity, flagsByTask);
+            if (entity.Kind == WorkflowTaskKindValues.PropertyAppraisal)
+            {
+                dto.StudyReportIssued = studyIssuedByTask.GetValueOrDefault(entity.WorkflowTaskId);
+                if (inspectorPackages.TryGetValue(entity.WorkflowTaskId, out var package))
+                    ApplyInspectorDigest(dto, entity.PayloadJson, package.PayloadJson, package.Property);
+            }
             ApplySourceFingerprint(dto, entity, inspectedProperties);
             result.Add(dto);
         }
@@ -153,6 +169,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             _repo.Add(entity);
         }
 
+        var payloadBeforeSave = entity.PayloadJson;
         var payloadJson = request.Payload.ValueKind == JsonValueKind.Undefined
             ? entity.PayloadJson
             : request.Payload.GetRawText();
@@ -206,6 +223,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             }
 
             await _repo.SaveChangesAsync(cancellationToken);
+            await AlertAppraiserInspectorDataChangedAsync(task, payloadBeforeSave, entity.PayloadJson, cancellationToken);
             return (await ToDtoAsync(entity, cancellationToken), null);
         }
 
@@ -226,6 +244,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
         await _repo.SaveChangesAsync(cancellationToken);
+        await AlertAppraiserInspectorDataChangedAsync(task, payloadBeforeSave, entity.PayloadJson, cancellationToken);
 
         // Staff corrections see the current source data; only the inspector's own save
         // (often an offline one replayed later) can be based on an older download.
@@ -306,6 +325,13 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
                         ct);
                 }
                 await _repo.SaveChangesAsync(ct);
+
+                // The appraiser's submission is a hand-over to the case specialist: his task stays
+                // open (his data locked) and completes only with the final issuance of the
+                // valuation report (ValuationReportWorkflowHandler).
+                if (task.Kind == WorkflowTaskKind.PropertyAppraisal)
+                    return;
+
                 await _tasks.PatchAsync(
                     taskId,
                     new PatchWorkflowTaskRequest
@@ -322,7 +348,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             await _timeline.RecordAsync(
                 task.PoNumber,
                 propertyId,
-                $"party:{taskId}:submitted",
+                $"party:{taskId}:submitted:{now.Ticks}",
                 WorkflowTaskKindLabels.SubmittedTitleAr(entity.Kind),
                 PartyTaskSubmissionRules.SubmittedActorLabel(entity, task),
                 "done",
@@ -359,9 +385,51 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (actor is not null && !PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
             return (null, Error("ليس لديك صلاحية إعادة فتح إرسال الطرف"));
 
+        // After the final issuance the valuation is closed: a plain reopen would leave a closed
+        // request behind an open package. That change is a new version (n+1) by the specialist.
+        if (task.Kind == WorkflowTaskKind.PropertyAppraisal && await AppraisalFinalIssuedAsync(task, cancellationToken))
+            return (null, Error(AppraisalFinalIssuedReopenForbiddenAr));
+        // Between the appraiser's approval and the final issuance the report is frozen as the deposit copy:
+        // returning the package would unlock numbers behind a frozen report — he withdraws his approval first.
+        if (task.Kind == WorkflowTaskKind.PropertyAppraisal && await AppraisalReportApprovedAsync(task, cancellationToken))
+            return (null, Error(AppraisalReportApprovedReopenForbiddenAr));
+
         var returnNote = request.ReturnNote?.Trim() ?? "";
         if (string.IsNullOrWhiteSpace(returnNote))
             return (null, new Dictionary<string, string> { ["returnNote"] = "ملاحظة الإرجاع مطلوبة" });
+
+        var reopened = await ReopenCoreAsync(taskId, task, returnNote, actor, cancellationToken);
+        if (reopened.Errors is null && task.PropertyId is Guid propertyId)
+        {
+            var at = _time.UtcNow();
+            await _timeline.RecordAsync(
+                task.PoNumber,
+                propertyId,
+                $"party:{taskId}:reopened:{at.Ticks}",
+                PartyTaskSubmissionRules.ReturnedForCorrectionTitle(task.Kind),
+                PartyTaskSubmissionRules.ReturnedForCorrectionDetail(actor?.DisplayName, returnNote),
+                PropertyTimelineTones.Warn,
+                at,
+                cancellationToken);
+        }
+
+        return reopened;
+    }
+
+    /// <summary>
+    /// The reopen itself, after the callers' guards: the package returns for correction and the task opens
+    /// again, together. Shared by the specialist's return and the new-version reopen of a deposited report.
+    /// </summary>
+    private async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> ReopenCoreAsync(
+        Guid taskId,
+        WorkflowTask task,
+        string returnNote,
+        PartySubmissionActor? actor,
+        CancellationToken cancellationToken)
+    {
+        // Delivered to Enfaz: nothing reopens until the specialist takes the transaction back.
+        if (await IsHandedOverToEnfazAsync(task, cancellationToken))
+            return (null, Error(HandedOverToEnfazAr));
 
         var entity = await _repo.GetSubmissionAsync(taskId, track: true, cancellationToken);
         if (entity is null)

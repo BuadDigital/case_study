@@ -44,8 +44,9 @@ public sealed partial class PoEnfazBillingService
             .Select(s => s.ToWorkflowTask())
             .Where(t => t.PropertyId != null && allPropertyIds.Contains(t.PropertyId.Value))
             .ToList();
-        var taskStatusesByPo = PoEnfazWorkStatusRules.BuildPropertyWorkStatusesByPo(allTasks);
-        var completedAtByProperty = PoEnfazWorkStatusRules.BuildPropertyCompletedAtById(allTasks);
+        var allProperties = orders.SelectMany(o => o.Properties).ToList();
+        var taskStatusesByPo = PoEnfazWorkStatusRules.BuildPropertyWorkStatusesByPo(allTasks, allProperties);
+        var completedAtByProperty = PoEnfazWorkStatusRules.BuildPropertyCompletedAtById(allTasks, allProperties);
 
         var now = _time.UtcNow();
         var rows = new List<EnfazTrackingRowDto>();

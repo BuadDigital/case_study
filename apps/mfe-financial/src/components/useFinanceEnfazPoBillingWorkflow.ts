@@ -8,14 +8,13 @@ import {
 } from "@platform/app-shared";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
-  loadPoEnfazBillingForQuery,
   savePoEnfazBillingData,
   issueEnfazInvoice,
   collectEnfazInvoice,
   downloadEnfazInvoicePdf,
   openEnfazAttachment,
 } from "@platform/app-shared/app-data/enfaz-billing-api";
-import { useToast } from "@platform/ui-kit";
+import { useToast, confirmAction } from "@platform/ui-kit";
 import type { EnfazReadyPoSummaryDto } from "@platform/api-client";
 import {
   billingTotals,
@@ -34,6 +33,7 @@ import {
   useEnfazReadyPosPageQuery,
   useListPageState,
 } from "../query/billing-list-page-queries";
+import { enfazPoBillingOptions } from "../query/enfaz-po-queries";
 
 const EMPTY_READY_SUMMARIES: EnfazReadyPoSummaryDto[] = [];
 
@@ -98,25 +98,31 @@ export function useFinanceEnfazPoBillingWorkflow({
     [readySummaries],
   );
 
-  useEffect(() => {
-    if (initialPo?.trim()) {
-      setSelectedPo(initialPo.trim());
-      return;
-    }
-    if (!selectedPo && readyPos.length > 0) setSelectedPo(readyPos[0]);
-  }, [initialPo, readyPos, selectedPo]);
+  // A PO handed in from outside wins; otherwise the first ready PO is preselected.
+  const requestedPo = initialPo?.trim() ?? "";
+  const [prevRequestedPo, setPrevRequestedPo] = useState(requestedPo);
+  if (prevRequestedPo !== requestedPo) {
+    setPrevRequestedPo(requestedPo);
+    if (requestedPo) setSelectedPo(requestedPo);
+  }
+  if (!requestedPo && !selectedPo && readyPos.length > 0) {
+    setSelectedPo(readyPos[0]);
+  }
 
   const { data: billing, isPending, isError, error, refetch } = useQuery({
-    queryKey: [...appDataKeys.all, "enfaz-billing", selectedPo],
-    queryFn: () => loadPoEnfazBillingForQuery(selectedPo!),
+    ...enfazPoBillingOptions(selectedPo),
     enabled: Boolean(selectedPo),
   });
 
-  useEffect(() => {
-    if (!billing) return;
-    setDraft(draftFromBillingLines(billing.lines));
-    setCollectAmount(defaultCollectAmount(billing));
-  }, [billing]);
+  // A reloaded billing sheet replaces the local draft.
+  const [draftFor, setDraftFor] = useState(billing);
+  if (draftFor !== billing) {
+    setDraftFor(billing);
+    if (billing) {
+      setDraft(draftFromBillingLines(billing.lines));
+      setCollectAmount(defaultCollectAmount(billing));
+    }
+  }
 
   const totals = useMemo(
     () => billingTotals(billing?.lines, draft),
@@ -184,8 +190,12 @@ export function useFinanceEnfazPoBillingWorkflow({
       return;
     }
     const owed = remainingToCollect(billing);
-    if (collectAmountDiffers(amount, owed) && typeof window !== "undefined") {
-      const ok = window.confirm(collectMismatchPrompt(amount, owed));
+    if (collectAmountDiffers(amount, owed)) {
+      const ok = await confirmAction({
+        title: "مبلغ التحصيل يختلف عن المستحق",
+        message: collectMismatchPrompt(amount, owed),
+        confirmLabel: "تسجيل التحصيل",
+      });
       if (!ok) return;
     }
     const outcome = await runCollect({
@@ -264,7 +274,3 @@ export function useFinanceEnfazPoBillingWorkflow({
     showReadyEmptyState,
   };
 }
-
-export type FinanceEnfazPoBillingWorkflow = ReturnType<
-  typeof useFinanceEnfazPoBillingWorkflow
->;

@@ -9,10 +9,9 @@
 import { useRef, useState } from "react";
 import { cn, useToast } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import {
-  nextInspectorPhotoId,
-  type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import { allocateInspectorPhotoId } from "../../lib/app-data/inspector-photo-id";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 import {
   clearInspectorPhotoDataUrl,
   uploadInspectorPhotoFromFile,
@@ -42,9 +41,7 @@ export function InspectorMovablesPhotosField({
   disabled?: boolean;
   /** Highlight after a failed save that asked for the photo. */
   invalid?: boolean;
-  onPatch: (
-    patch: Partial<Pick<InspectorWorkspaceDraft, "definedPhotos" | "featurePhotoAttachments">>,
-  ) => void;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { runWithUploadToast } = useToast();
@@ -63,26 +60,23 @@ export function InspectorMovablesPhotosField({
     if (disabled || uploading || files.length === 0) return;
     setUploading(true);
     try {
-      let workingDraft = draft;
       for (const file of files) {
-        const nextId = nextInspectorPhotoId(workingDraft);
+        const nextId = allocateInspectorPhotoId(draft);
         const ref = slotPhotoRef(MOVABLES_EXTRA_PHOTOS_SLOT_ID, nextId);
-        const result = await uploadInspectorPhotoFromFile(draft.taskId, ref, file, {
-          draft: workingDraft,
-        });
+        const result = await uploadInspectorPhotoFromFile(draft.taskId, ref, file, { draft });
         if (!result.ok) throw new Error(result.error);
-        const slot =
-          workingDraft.definedPhotos[MOVABLES_EXTRA_PHOTOS_SLOT_ID] ?? emptyDefinedPhotoSlot();
-        workingDraft = {
-          ...workingDraft,
+        // Added to the draft as it is when the upload ends, so photos saved meanwhile elsewhere survive.
+        onPatch((current) => ({
           definedPhotos: setDefinedPhotoSlot(
-            workingDraft.definedPhotos,
+            current.definedPhotos,
             MOVABLES_EXTRA_PHOTOS_SLOT_ID,
-            definedSlotWithPhoto(slot, { id: nextId, approved: true, ...result.attachment }),
+            definedSlotWithPhoto(
+              current.definedPhotos[MOVABLES_EXTRA_PHOTOS_SLOT_ID] ?? emptyDefinedPhotoSlot(),
+              { id: nextId, approved: true, ...result.attachment },
+            ),
           ),
-        };
+        }));
       }
-      onPatch({ definedPhotos: workingDraft.definedPhotos });
     } finally {
       setUploading(false);
     }
@@ -93,19 +87,23 @@ export function InspectorMovablesPhotosField({
       draft.taskId,
       slotPhotoRef(MOVABLES_EXTRA_PHOTOS_SLOT_ID, photoId),
     );
-    const slot = draft.definedPhotos[MOVABLES_EXTRA_PHOTOS_SLOT_ID] ?? emptyDefinedPhotoSlot();
-    onPatch({
+    onPatch((current) => ({
       definedPhotos: setDefinedPhotoSlot(
-        draft.definedPhotos,
+        current.definedPhotos,
         MOVABLES_EXTRA_PHOTOS_SLOT_ID,
-        definedSlotWithoutPhoto(slot, photoId),
+        definedSlotWithoutPhoto(
+          current.definedPhotos[MOVABLES_EXTRA_PHOTOS_SLOT_ID] ?? emptyDefinedPhotoSlot(),
+          photoId,
+        ),
       ),
-    });
+    }));
   }
 
   function removeLegacyProof() {
     clearInspectorPhotoDataUrl(draft.taskId, "feature:movables");
-    onPatch({ featurePhotoAttachments: { ...draft.featurePhotoAttachments, movables: null } });
+    onPatch((current) => ({
+      featurePhotoAttachments: { ...current.featurePhotoAttachments, movables: null },
+    }));
   }
 
   if (disabled && !hasAny) {

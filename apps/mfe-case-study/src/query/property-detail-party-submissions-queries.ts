@@ -16,7 +16,7 @@ import { TASKS_CHANGED_EVENT } from "./case-study-queries";
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
 
-export function propertyDetailPartySubmissionsQueryKey(parentTaskId: string) {
+function propertyDetailPartySubmissionsQueryKey(parentTaskId: string) {
   return appDataKeys.propertyDetailPartySubmissions(parentTaskId);
 }
 

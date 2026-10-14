@@ -48,17 +48,6 @@ public static class PlatformModel
             e.HasIndex(x => new { x.CourtId, x.CircuitNo }).IsUnique();
         });
 
-        builder.Entity<CourtAuditLog>(e =>
-        {
-            e.ToTable("CourtAuditLogs", DatabaseSchemas.Platform);
-            e.Property(x => x.Action).HasMaxLength(64).IsRequired();
-            e.Property(x => x.EntityType).HasMaxLength(32).IsRequired();
-            e.Property(x => x.ActorId).HasMaxLength(128).IsRequired();
-            e.Property(x => x.ChangesJson).HasColumnType("jsonb");
-            e.HasIndex(x => new { x.EntityType, x.EntityId });
-            e.HasIndex(x => x.TimestampUtc);
-            e.HasIndex(x => x.Action);
-        });
 
         builder.Entity<Region>(e =>
         {
@@ -144,18 +133,6 @@ public static class PlatformModel
             e.Property(x => x.CatalogJson).HasColumnType("jsonb");
         });
 
-        builder.Entity<DifferenceFactorCatalogConfig>(e =>
-        {
-            if (ownsMigrations)
-                e.ToTable("DifferenceFactorCatalogConfigs", DatabaseSchemas.Platform);
-            else
-                e.ToTable(
-                    "DifferenceFactorCatalogConfigs",
-                    DatabaseSchemas.Platform,
-                    t => t.ExcludeFromMigrations());
-
-            e.Property(x => x.CatalogJson).HasColumnType("jsonb");
-        });
 
         builder.Entity<CaseStudyInfoRolesConfig>(e =>
         {

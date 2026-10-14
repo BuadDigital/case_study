@@ -7,7 +7,7 @@ const API = (process.env.API_URL ?? "http://localhost:5160").replace(/\/$/, "");
 const USERNAME = process.env.ADMIN_USERNAME ?? "sliman";
 
 async function main() {
-  const loginRes = await fetch(`${API}/api/auth/login-username`, {
+  const loginRes = await fetch(`${API}/api/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username: USERNAME }),

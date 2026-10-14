@@ -8,12 +8,12 @@ namespace RealEstateEval.Application.Rules;
 public static class PricingErrors
 {
     public const string FeeUnresolved =
-        "تعذر تحديد الأتعاب من جدول التسعير — راجع ضبط الأسعار.";
+        "تعذّر تحديد الأتعاب من جدول التسعير — راجع ضبط الأسعار.";
 
  /// <summary>
  /// Engineering-survey fees are tiered by area. An empty/unparseable property area cannot
  /// pick a tier even when the office pricing table is fully configured.
  /// </summary>
     public const string PropertyAreaMissing =
-        "تعذر تحديد الأتعاب — مساحة العقار غير محددة أو غير صالحة. أدخل المساحة (م²) على العقار ثم أعد المحاولة.";
+        "تعذّر تحديد الأتعاب — مساحة العقار غير محددة أو غير صالحة. أدخل المساحة (م²) على العقار ثم أعد المحاولة.";
 }

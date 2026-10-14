@@ -1,6 +1,5 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
-import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import {
   buildListQueryString,
@@ -15,14 +14,6 @@ export type WorkOrdersApiConfig = {
   token: string;
 };
 
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
-
 export type PropertyContactDto = {
   name: string;
   role: string;
@@ -30,9 +21,8 @@ export type PropertyContactDto = {
   nationalId?: string;
 };
 
-export type DeedOwnerDto = {
+type DeedOwnerDto = {
   name: string;
-  sharePct?: number | null;
 };
 
 export type WorkOrderPropertyDto = {
@@ -53,12 +43,11 @@ export type WorkOrderPropertyDto = {
   deedKind?: string;
   deedKindLabelAr?: string;
   suggestedDeedKind?: string;
- /** Owners and their shares. */
+ /** The deed owners (names). */
   owners?: DeedOwnerDto[];
+  /** Derived by the server from the owners count: absolute (one owner) | shared (several). */
   ownershipType?: string;
   ownershipTypeLabelAr?: string;
-  suggestedOwnershipType?: string;
-  ownershipTypeIsManual?: boolean;
   restrictionsPresent?: string;
   restrictionType?: string;
   restrictionOtherReason?: string;
@@ -105,6 +94,9 @@ export type WorkOrderPropertyDto = {
   deedOwnershipFileName?: string;
   bourseDeedImageFileName?: string;
   bourseDataCompleted?: boolean;
+  /** Read-only: who completed the bourse inquiry and when — the source note of what it answered. */
+  bourseCompletedByName?: string | null;
+  bourseCompletedAtUtc?: string | null;
   planNumber?: string;
   planName?: string;
   plotNumber?: string;
@@ -154,10 +146,14 @@ export type WorkOrderListItemDto = {
   assignmentType: string;
   propertyCount: number;
   expectedPropertyCount: number;
+  /** Live properties handed over to Enfaz (delivered). */
   completedCount: number;
   /** 0–100 workflow progress for the list bar (stages + parties). */
   progressPct?: number;
+  /** Billing-aware status — Finance and management read this one. */
   status: string;
+  /** Study status alone (never a billing label) — what every other role sees. */
+  studyStatus?: string;
   promulgationDate: string;
   receivedFromEnfathAt: string;
   dueDateAt: string;
@@ -214,8 +210,6 @@ export type UpdatePropertyBourseRequest = {
   bourseDeedImageFileName?: string;
  /** replaces the whole owners list when provided. */
   owners?: DeedOwnerDto[];
-  ownershipType?: string;
-  ownershipTypeIsManual?: boolean;
   restrictionsPresent?: string;
   restrictionType?: string;
   restrictionOtherReason?: string;
@@ -362,11 +356,15 @@ export type WorkOrderListSort = "created" | "po" | "received" | "due";
 export type WorkOrderListStatusFilter =
   | "new"
   | "under_study"
+  | "ready_for_enfaz"
   | "completed"
   | "stopped"
   | "cancelled"
   | "partially_billed"
-  | "fully_billed";
+  | "fully_billed"
+  /** Filter-only buckets: every non-terminal / every terminal status. */
+  | "active"
+  | "closed";
 
 /** `GET /api/work-orders` query — pagination-contract §1. */
 export type WorkOrderListQuery = Omit<ListPageQuery, "sort"> & {
@@ -420,13 +418,13 @@ export type WorkOrderListCountsDto = {
   total: number;
   /** Rows visible to the actor with `q` / `status` / `type` ignored. */
   totalUnfiltered: number;
-  /** Rows whose PO list status is not terminal (the `new` + `under_study` buckets). */
+  /** Rows whose study status is not terminal (`new`, `under_study`, `ready_for_enfaz`). */
   active: number;
   /** `active` rows past their due date. */
   overdue: number;
   /** `active` rows due within the next two days. */
   dueSoon: number;
-  /** Live properties across all matched rows whose case study is done. */
+  /** Live properties across all matched rows handed over to Enfaz. */
   doneProperties: number;
 };
 
@@ -483,7 +481,7 @@ export async function getWorkOrderListCounts(
   });
   try {
     const res = await fetch(`${base}/api/work-orders/counts${qs}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -500,7 +498,7 @@ export async function listWorkOrdersWithDetails(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/work-orders/details`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -537,7 +535,7 @@ export async function listPropertyListItems(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/work-orders/property-rows`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -554,7 +552,7 @@ export async function listPendingBourseProperties(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/work-orders/properties/pending-bourse`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -573,7 +571,7 @@ export async function getWorkOrder(
   const encoded = encodeURIComponent(poNumber.trim());
   try {
     const res = await fetch(`${base}/api/work-orders/${encoded}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -595,7 +593,7 @@ export async function getPropertyTimeline(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${po}/properties/${prop}/timeline`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -615,7 +613,7 @@ export async function workOrderExists(
   try {
     const res = await fetch(
       `${base}/api/work-orders/exists?poNumber=${encodeURIComponent(poNumber.trim())}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -639,7 +637,7 @@ export async function findPriorDeed(
   }
   try {
     const res = await fetch(`${base}/api/work-orders/deeds/prior?${params}`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return parseForbidden(res);
@@ -672,7 +670,7 @@ export async function listPriorDeeds(
   try {
     const res = await fetch(
       `${base}/api/work-orders/deeds/prior/history?${params}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return parseForbidden(res);
@@ -697,7 +695,7 @@ export async function createWorkOrder(
   try {
     const res = await fetch(`${base}/api/work-orders`, {
       method: "POST",
-      headers: headers(config.token, idempotencyKey),
+      headers: authHeaders(config.token, { idempotencyKey }),
       body: JSON.stringify(payload),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -727,7 +725,7 @@ export async function updateWorkOrderHeader(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -755,7 +753,7 @@ export async function deleteWorkOrder(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}`,
-      { method: "DELETE", headers: headers(config.token) },
+      { method: "DELETE", headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) {
@@ -780,7 +778,7 @@ async function postWorkOrderLifecycleAction(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/${action}`,
-      { method: "POST", headers: headers(config.token) },
+      { method: "POST", headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) {
@@ -822,7 +820,7 @@ export async function addWorkOrderProperty(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -856,7 +854,7 @@ export async function updateWorkOrderProperty(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}${draftQs}`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(property),
       },
     );
@@ -888,7 +886,7 @@ export async function updateSpecialistReportExtras(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/specialist-report-extras`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -954,7 +952,7 @@ export async function getWorkOrderFieldSources(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/field-sources`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -987,7 +985,7 @@ export async function notifyIntakeFieldGap(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/notify-intake-gap`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -1030,7 +1028,7 @@ export async function completePropertyBourseData(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}/bourse`,
       {
         method: "PUT",
-        headers: headers(config.token, idempotencyKey),
+        headers: authHeaders(config.token, { idempotencyKey }),
         body: JSON.stringify(body),
       },
     );
@@ -1062,7 +1060,7 @@ export async function deleteWorkOrderProperty(
       `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties/${propertyId}`,
       {
         method: "DELETE",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify({ reason }),
       },
     );
@@ -1109,7 +1107,56 @@ export type TransactionStateDto = {
   allowsEnfazHandover: boolean;
   enfazHandoverAtUtc?: string | null;
   handoverPackageAr: string[];
+  /** The study report is issued (the specialist's gate before the Enfaz upload). */
+  studyReportIssued: boolean;
+  /** Why the handover is refused right now — empty when it is allowed. */
+  enfazBlockReasonsAr: string[];
+  /** Only on the answer of `enfaz-return`: what was done per part (study report / valuation). */
+  enfazReturnNoticesAr: string[];
 };
+
+function stringList(raw: unknown): string[] {
+  return Array.isArray(raw)
+    ? raw.filter((r): r is string => typeof r === "string" && r.trim().length > 0)
+    : [];
+}
+
+/** Fills the 2C fields a rolling-deploy older server does not send yet. */
+function normalizeTransactionState(raw: unknown): TransactionStateDto {
+  const row = raw as TransactionStateDto & {
+    studyReportIssued?: boolean;
+    enfazBlockReasonsAr?: string[];
+    enfazReturnNoticesAr?: string[];
+  };
+  return {
+    ...row,
+    studyReportIssued: row.studyReportIssued === true,
+    enfazBlockReasonsAr: stringList(row.enfazBlockReasonsAr),
+    enfazReturnNoticesAr: stringList(row.enfazReturnNoticesAr),
+  };
+}
+
+type TransactionStateFailure = {
+  ok: false;
+  kind: "auth" | "forbidden" | "server" | "network";
+  message?: string;
+};
+
+/** The server's specific refusal text: field error `_` first, then any field, then `message`. */
+async function transactionStateFailure(
+  res: Response,
+): Promise<TransactionStateFailure> {
+  const payload = (await res.json().catch(() => null)) as {
+    errors?: Record<string, string>;
+    message?: string;
+  } | null;
+  const errors = payload?.errors;
+  const message =
+    errors?._?.trim() ||
+    (errors ? Object.values(errors).find((v) => typeof v === "string" && v.trim()) : undefined) ||
+    payload?.message;
+  return { ok: false, kind: res.status === 403 ? "forbidden" : "server", message };
+}
 
 /** Q-9: transaction status grid — UI shows who waits on whom. */
 export async function getTransactionState(
@@ -1124,45 +1171,71 @@ export async function getTransactionState(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as TransactionStateDto };
+    return { ok: true, data: normalizeTransactionState(await res.json()) };
   } catch {
     return { ok: false, kind: "network" };
   }
 }
 
-/** Q-9 (second closing): upload transaction to Enfaz — after deposit certificate and parties complete. */
+/**
+ * Q-9 (second closing): upload transaction to Enfaz — specialist only. A refusal (study report not
+ * issued / valuation not closed / parties not complete) comes back as the server's own Arabic text.
+ */
 export async function recordEnfazHandover(
   config: WorkOrdersApiConfig,
   workOrderId: string,
   propertyId: string,
 ): Promise<
-  | { ok: true; data: TransactionStateDto }
-  | { ok: false; kind: "auth" | "server" | "network"; message?: string }
+  { ok: true; data: TransactionStateDto } | TransactionStateFailure
 > {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
       `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/enfaz-handover`,
-      { method: "POST", headers: headers(config.token) },
+      { method: "POST", headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) {
-      const payload = (await res.json().catch(() => null)) as {
-        errors?: Record<string, string>;
-        message?: string;
-      } | null;
-      return {
-        ok: false,
-        kind: "server",
-        message: payload?.errors ? Object.values(payload.errors)[0] : payload?.message,
-      };
-    }
-    return { ok: true, data: (await res.json()) as TransactionStateDto };
+    if (!res.ok) return transactionStateFailure(res);
+    return { ok: true, data: normalizeTransactionState(await res.json()) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+export type EnfazReturnRequest = {
+  /** At least 10 characters. */
+  reason: string;
+  reopenStudy: boolean;
+  reopenValuation: boolean;
+};
+
+/** Takes the transaction back from Enfaz — specialist only; clears the handover stamp. */
+export async function returnFromEnfaz(
+  config: WorkOrdersApiConfig,
+  workOrderId: string,
+  propertyId: string,
+  request: EnfazReturnRequest,
+): Promise<
+  { ok: true; data: TransactionStateDto } | TransactionStateFailure
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/enfaz-return`,
+      {
+        method: "POST",
+        headers: authHeaders(config.token),
+        body: JSON.stringify(request),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return transactionStateFailure(res);
+    return { ok: true, data: normalizeTransactionState(await res.json()) };
   } catch {
     return { ok: false, kind: "network" };
   }

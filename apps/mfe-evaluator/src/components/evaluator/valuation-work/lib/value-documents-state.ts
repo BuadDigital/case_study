@@ -8,8 +8,9 @@ import type {
   ValuationValueDocumentDto,
   ValueDocumentApproachKey,
 } from "@platform/api-client";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
-export type ValueDocumentEffectChoice = "none" | "indicator" | "addition";
+type ValueDocumentEffectChoice = "none" | "indicator" | "addition";
 
 export type ValueDocumentDraft = {
   effect: ValueDocumentEffectChoice;
@@ -20,7 +21,7 @@ export type ValueDocumentDraft = {
 
 export type ValueDocumentDrafts = Record<string, ValueDocumentDraft>;
 
-export const VALUE_DOCUMENT_APPROACHES: readonly {
+const VALUE_DOCUMENT_APPROACHES: readonly {
   key: ValueDocumentApproachKey;
   labelAr: string;
 }[] = [
@@ -59,7 +60,7 @@ export function draftsFromDocuments(
 }
 
 function parseAmount(raw: string): number {
-  const n = Number(raw.replace(/[,٬\s]/g, "").replace("٫", "."));
+  const n = parseLocaleNumber(raw);
   return Number.isFinite(n) ? n : 0;
 }
 

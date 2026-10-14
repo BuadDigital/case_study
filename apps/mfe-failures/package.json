@@ -16,10 +16,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@case-study/mfe": "*",
     "@platform/api-client": "*",
     "@platform/app-shared": "*",
     "@platform/types": "*",
+    "@platform/ui-kit": "*",
     "@tanstack/react-query": "^5.100.11"
   },
   "peerDependencies": {

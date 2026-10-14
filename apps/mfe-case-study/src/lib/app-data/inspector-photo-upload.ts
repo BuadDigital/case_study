@@ -23,7 +23,7 @@ import {
   processEvidencePhoto,
   type EvidencePhotoExif,
 } from "./process-evidence-photo";
-import { parseCoord } from "@platform/app-shared/media/photo-location";
+import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
 import {
   blobToDataUrl,
   fileToBase64,
@@ -40,7 +40,7 @@ const previewCache = new Map<string, string>();
 /** A photo asked for twice before its first fetch settles shares that fetch. */
 const inFlightPreviews = new Map<string, Promise<string | undefined>>();
 
-export function inspectorPhotoCacheKey(
+function inspectorPhotoCacheKey(
   taskId: string,
   photoRef: string,
 ): string {
@@ -219,7 +219,7 @@ export async function prefetchInspectorWorkspacePhotos(
   );
 }
 
-export type UploadInspectorPhotoOptions = {
+type UploadInspectorPhotoOptions = {
   /** Legacy prebuilt stamp; ignored when draft is provided. */
   stampText?: string;
   deedNumber?: string | null;
@@ -258,7 +258,7 @@ async function uploadInspectorPhotoOnline(
 ) {
   let config = await freshPrototypeModulesApiConfig();
   if (!config) {
-    throw new Error(apiErrorMessage("auth", "يجب تسجيل الدخول لرفع الصور."));
+    throw new Error(apiErrorMessage("auth", "يلزم تسجيل الدخول لرفع الصور."));
   }
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -289,7 +289,7 @@ async function uploadInspectorPhotoOnline(
     );
   }
 
-  throw new Error(apiErrorMessage("auth", "يجب تسجيل الدخول لرفع الصور."));
+  throw new Error(apiErrorMessage("auth", "يلزم تسجيل الدخول لرفع الصور."));
 }
 
 export async function uploadInspectorPhotoFromFile(
@@ -350,12 +350,16 @@ export async function uploadInspectorPhotoFromFile(
   }
 
   const bytes = await uploadFile.arrayBuffer();
+  const propertyPin = parsePlacedMapPin(
+    options?.draft?.mapLatitude,
+    options?.draft?.mapLongitude,
+  );
   const photoMetadata = {
     latitude: exif.latitude ?? null,
     longitude: exif.longitude ?? null,
     capturedAtUtc: exif.capturedAt ?? null,
-    propertyLatitude: parseCoord(options?.draft?.mapLatitude),
-    propertyLongitude: parseCoord(options?.draft?.mapLongitude),
+    propertyLatitude: propertyPin?.lat ?? null,
+    propertyLongitude: propertyPin?.lng ?? null,
   };
   try {
     const uploaded = await uploadAttachmentWithOfflineFallback({

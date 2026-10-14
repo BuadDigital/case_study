@@ -1,7 +1,7 @@
 /**
  * Field inspection workspaces API — denormalized reporting rows from PostgreSQL.
  */
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
 export type FieldInspectionWorkspacesApiConfig = WorkOrdersApiConfig;
@@ -23,12 +23,6 @@ export type FieldInspectionWorkspaceListItemDto = {
   mapLatitude?: number | null;
   mapLongitude?: number | null;
 };
-
-function headers(token: string): HeadersInit {
-  return {
-    Authorization: `Bearer ${token}`,
-  };
-}
 
 function normalizeListItem(
   raw: Record<string, unknown>,
@@ -79,7 +73,7 @@ export async function listFieldInspectionWorkspaces(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/field-inspection-workspaces`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token, { json: false }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };

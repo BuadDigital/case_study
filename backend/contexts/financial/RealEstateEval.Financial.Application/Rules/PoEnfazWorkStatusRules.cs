@@ -18,8 +18,14 @@ internal static class PoEnfazWorkStatusRules
         return flags.FirstOrDefault(f => f.PropertyId is null);
     }
 
+    /// <summary>
+    /// «تاريخ الاكتمال» per property: the Enfaz handover when recorded (the work is done only once
+    /// delivered), else the last completed task — the 30-day stall clock and the «completed» sort
+    /// read this.
+    /// </summary>
     internal static Dictionary<Guid, DateTime?> BuildPropertyCompletedAtById(
-        IReadOnlyList<WorkflowTask> tasks)
+        IReadOnlyList<WorkflowTask> tasks,
+        IReadOnlyList<CaseStudyPropertySnapshotDto> properties)
     {
         var result = new Dictionary<Guid, DateTime?>();
         foreach (var group in tasks
@@ -30,11 +36,15 @@ internal static class PoEnfazWorkStatusRules
             result[group.Key] = group.Max(t => t.UpdatedAtUtc);
         }
 
+        foreach (var property in properties.Where(p => p.EnfazHandoverAtUtc is not null))
+            result[property.Id] = property.EnfazHandoverAtUtc;
+
         return result;
     }
 
     internal static Dictionary<string, Dictionary<Guid, (string Status, string Label)>> BuildPropertyWorkStatusesByPo(
-        IReadOnlyList<WorkflowTask> tasks)
+        IReadOnlyList<WorkflowTask> tasks,
+        IReadOnlyList<CaseStudyPropertySnapshotDto> properties)
     {
         var byPo = tasks
             .GroupBy(t => t.PoNumber.Trim(), StringComparer.Ordinal)
@@ -48,15 +58,28 @@ internal static class PoEnfazWorkStatusRules
                 .Select(t => t.PropertyId!.Value)
                 .Distinct()
                 .ToList();
-            result[po] = ComputePropertyWorkStatuses(propertyIds, poTasks);
+            result[po] = ComputePropertyWorkStatuses(propertyIds, poTasks, HandedOverIds(properties));
         }
 
         return result;
     }
 
+    /// <summary>Properties carrying the Enfaz handover stamp.</summary>
+    internal static HashSet<Guid> HandedOverIds(IReadOnlyList<CaseStudyPropertySnapshotDto> properties) =>
+        properties
+            .Where(p => p.EnfazHandoverAtUtc is not null)
+            .Select(p => p.Id)
+            .ToHashSet();
+
+    /// <summary>
+    /// Work status of each property as Finance reads it: <c>done</c> only once the specialist
+    /// handed the transaction over to Enfaz (delivered); tasks complete but not yet handed over
+    /// stay <c>in_progress</c>; every task cancelled is <c>cancelled</c>.
+    /// </summary>
     internal static Dictionary<Guid, (string Status, string Label)> ComputePropertyWorkStatuses(
         IReadOnlyList<Guid> propertyIds,
-        IReadOnlyList<WorkflowTask> tasks)
+        IReadOnlyList<WorkflowTask> tasks,
+        IReadOnlySet<Guid> handedOverPropertyIds)
     {
         var result = new Dictionary<Guid, (string, string)>();
         foreach (var propertyId in propertyIds)
@@ -78,36 +101,39 @@ internal static class PoEnfazWorkStatusRules
                 continue;
             }
 
-            var active = propertyTasks.Where(t => t.Status != WorkflowTaskStatus.Cancelled).ToList();
-            var allDone = active.Count > 0 && active.All(t => t.Status == WorkflowTaskStatus.Completed);
-            var status = allDone ? InspectorFeeWorkStatuses.Done : InspectorFeeWorkStatuses.InProgress;
+            var status = handedOverPropertyIds.Contains(propertyId)
+                ? InspectorFeeWorkStatuses.Done
+                : InspectorFeeWorkStatuses.InProgress;
             result[propertyId] = (status, InspectorFeeBillingRules.WorkStatusLabel(status));
         }
 
         return result;
     }
 
+    /// <summary>
+    /// A work order can be matched and invoiced once every live property is delivered: handed
+    /// over to Enfaz, or every task on it cancelled. Removed properties are ignored; a live
+    /// property without any task is not delivered.
+    /// </summary>
     internal static bool IsPoReadyForEnfazBilling(
         IReadOnlyList<CaseStudyPropertySnapshotDto> properties,
         IReadOnlyList<WorkflowTask> poTasks)
     {
-        if (properties.Count == 0) return false;
+        var live = properties.Where(p => !p.IsRemoved).ToList();
+        if (live.Count == 0) return false;
 
-        foreach (var property in properties)
+        foreach (var property in live)
         {
+            if (property.EnfazHandoverAtUtc is not null)
+                continue;
+
             var propertyTasks = poTasks
                 .Where(t => t.PropertyId == property.Id)
                 .ToList();
             if (propertyTasks.Count == 0)
                 return false;
 
-            var active = propertyTasks
-                .Where(t => t.Status != WorkflowTaskStatus.Cancelled)
-                .ToList();
-            if (active.Count == 0)
-                continue;
-
-            if (!active.All(t => t.Status == WorkflowTaskStatus.Completed))
+            if (!propertyTasks.All(t => t.Status == WorkflowTaskStatus.Cancelled))
                 return false;
         }
 

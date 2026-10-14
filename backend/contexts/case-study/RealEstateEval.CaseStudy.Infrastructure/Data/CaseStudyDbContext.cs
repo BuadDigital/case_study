@@ -17,7 +17,7 @@ public sealed class CaseStudyDbContext(DbContextOptions<CaseStudyDbContext> opti
     public DbSet<BuildingInventoryLine> BuildingInventoryLines => Set<BuildingInventoryLine>();
     public DbSet<PropertyContact> PropertyContacts => Set<PropertyContact>();
     public DbSet<WorkflowTask> WorkflowTasks => Set<WorkflowTask>();
-    public DbSet<CaseStudyForm> CaseStudyForms => Set<CaseStudyForm>();
+    public DbSet<CaseStudyReport> CaseStudyReports => Set<CaseStudyReport>();
     public DbSet<PartyTaskSubmission> PartyTaskSubmissions => Set<PartyTaskSubmission>();
     public DbSet<FieldInspectionWorkspace> FieldInspectionWorkspaces =>
         Set<FieldInspectionWorkspace>();

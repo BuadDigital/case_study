@@ -23,7 +23,7 @@ import {
 } from "./valuation-report-property-attachments";
 
 /** Reorder / hide deed & survey pages from final-review row order + selection. */
-export function applyPrintAttachmentPagePlacement(
+function applyPrintAttachmentPagePlacement(
   dom: Document,
   printAttachmentOrder: string[] | null | undefined,
   printAttachmentKeys: string[] | null | undefined,
@@ -273,7 +273,7 @@ function ensureParticipantLabeledRow(
   return tr;
 }
 
-export type LiveFillParticipant = {
+type LiveFillParticipant = {
   name: string;
   title: string;
   category: string;
@@ -349,7 +349,7 @@ export function fillParticipants(
 
 export function fillApprovalTable(sec: Element, fill: ValuationReportLiveFill) {
   const heading = [...sec.querySelectorAll("h2")].find((h) =>
-    (h.textContent ?? "").includes("إعتماد"),
+    /[إا]عتماد/.test(h.textContent ?? ""),
   );
   const table = heading?.nextElementSibling;
   if (!table || table.tagName !== "TABLE") return;
@@ -1199,7 +1199,7 @@ export function fillFinishingLevelSection(
   });
 }
 
-export function fillGoogleMapHostSlot(
+function fillGoogleMapHostSlot(
   dom: Document,
   slotId: string,
   hostId: string,
@@ -1263,7 +1263,7 @@ export function fillGoogleMapHostSlot(
   fillImageSlot(dom, slotId, item, emptyLabel);
 }
 
-export function fillComparablesMapSlot(
+function fillComparablesMapSlot(
   dom: Document,
   item: ValuationReportSlotAttachment | null | undefined,
   pins: ComparablesMapPin[],

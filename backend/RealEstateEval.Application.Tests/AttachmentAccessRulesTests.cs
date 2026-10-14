@@ -114,11 +114,14 @@ public class AttachmentAccessRulesTests
     }
 
     [Fact]
-    public void Valued_document_uploader_outside_the_pair_loses_sight_of_it()
+    public void Valued_document_uploader_outside_the_pair_can_still_view_only_their_own()
     {
-        Assert.False(AttachmentAccessRules.Allows("insp-1", Valued, Actor("insp-1", "field-inspector")));
+        Assert.True(AttachmentAccessRules.Allows("insp-1", Valued, Actor("insp-1", "field-inspector")));
+        Assert.False(AttachmentAccessRules.Allows("insp-1", Valued, Actor("insp-2", "field-inspector")));
         Assert.False(AttachmentAccessRules.Allows(
-            "fin-1", Valued, Actor("fin-1", "financial-manager", PlatformCapabilities.ManageFinancial)));
+            "x", Valued, Actor("fin-1", "financial-manager", PlatformCapabilities.ManageFinancial)));
+        Assert.False(AttachmentAccessRules.Allows("insp-1", Valued, null));
+        // Deleting is still not theirs.
         Assert.False(AttachmentAccessRules.AllowsDelete("insp-1", Valued, Actor("insp-1", "field-inspector")));
     }
 

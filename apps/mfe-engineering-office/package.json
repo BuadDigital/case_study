@@ -18,9 +18,8 @@
     "@failures/mfe": "*",
     "@platform/api-client": "*",
     "@platform/app-shared": "*",
-    "@platform/types": "*",
-    "@tanstack/react-query": "^5.100.11",
-    "pdfjs-dist": "^6.1.200"
+    "@platform/ui-kit": "*",
+    "@tanstack/react-query": "^5.100.11"
   },
   "peerDependencies": {
     "next": ">=16",

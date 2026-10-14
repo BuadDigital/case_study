@@ -25,7 +25,7 @@ import {
   ModalOverlay,
   ModalTitle,
 } from "@platform/ui-kit";
-import { regionsApiConfig } from "@settings/mfe/lib/settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 
 type Props = {
@@ -79,11 +79,11 @@ export function RegionCitySelects({
 
   useEffect(() => {
     let cancelled = false;
-    const config = regionsApiConfig();
+    const config = apiConfig();
     if (!config) {
       setRegions([]);
       setRegionsLoading(false);
-      setCatalogError("يجب تسجيل الدخول لتحميل المناطق والمدن");
+      setCatalogError("يلزم تسجيل الدخول لتحميل المناطق والمدن");
       return;
     }
 
@@ -95,7 +95,7 @@ export function RegionCitySelects({
         setRegions([]);
         setCatalogError(
           result.kind === "auth"
-            ? "يجب تسجيل الدخول لتحميل المناطق والمدن"
+            ? "يلزم تسجيل الدخول لتحميل المناطق والمدن"
             : "تعذّر تحميل المناطق — تحقق من تشغيل الـ API",
         );
         return;
@@ -125,7 +125,7 @@ export function RegionCitySelects({
   const selectedDistrictId = property.districtId?.trim() ?? "";
 
   const loadCities = (regionId: string, query: string) => {
-    const config = regionsApiConfig();
+    const config = apiConfig();
     if (!config || !regionId) {
       setCities([]);
       setCitiesLoading(false);
@@ -146,7 +146,7 @@ export function RegionCitySelects({
   };
 
   const loadDistricts = (cityId: string, query: string) => {
-    const config = regionsApiConfig();
+    const config = apiConfig();
     if (!config || !cityId) {
       setDistricts([]);
       setDistrictsLoading(false);
@@ -266,9 +266,9 @@ export function RegionCitySelects({
     nameAr: string,
     forceCreate: boolean,
   ) => {
-    const config = regionsApiConfig();
+    const config = apiConfig();
     if (!config) {
-      setSuggestError("يجب تسجيل الدخول لإضافة مسمّى");
+      setSuggestError("يلزم تسجيل الدخول لإضافة مسمّى");
       return;
     }
     if (kind === "city" && !selectedRegionId) {
@@ -295,7 +295,7 @@ export function RegionCitySelects({
       setSuggestError(
         result.message ??
           (result.kind === "auth"
-            ? "يجب تسجيل الدخول"
+            ? "يلزم تسجيل الدخول"
             : "تعذّر إضافة المسمّى — حاول مرة أخرى"),
       );
       setSuggestPrompt(null);

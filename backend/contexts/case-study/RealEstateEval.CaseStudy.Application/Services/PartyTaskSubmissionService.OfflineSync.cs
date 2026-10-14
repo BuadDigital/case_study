@@ -21,6 +21,13 @@ public partial class PartyTaskSubmissionService
         (await _repo.ListPropertiesAsync([propertyId], cancellationToken))
             .GetValueOrDefault(propertyId);
 
+    /// <summary>The task's property carries the Enfaz handover stamp (Q-9: delivered, frozen).</summary>
+    private async Task<bool> IsHandedOverToEnfazAsync(
+        WorkflowTask task,
+        CancellationToken cancellationToken) =>
+        task.PropertyId is Guid propertyId
+        && await LoadSourcePropertyAsync(propertyId, cancellationToken) is { IsHandedOverToEnfaz: true };
+
     /// <summary>
     /// The field inspector's device prefetches the submission list; each package carries the
     /// source fingerprint it will send back with offline saves.

@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { ReportingCompletionYearDto } from "@platform/api-client";
 import { TrendChart } from "../../lib/dash-svg";
 
-import { cn, opsDashCard } from "@platform/ui-kit";
+import { cn, opsDashCard, useSwapAnimation } from "@platform/ui-kit";
 
 
 type Mode = "month" | "quarter";
@@ -51,6 +51,9 @@ export function DashTrendCard({
   const [mode, setMode] = useState<Mode>("month");
   const yearKeys = useMemo(() => years.map((y) => String(y.year)), [years]);
   const [enabled, setEnabled] = useState<Record<string, boolean>>({});
+  // Month ↔ quarter swaps the whole axis — fade it; the lines redraw themselves.
+  const chartRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(chartRef, mode);
 
   const activeYears = useMemo(() => {
     if (yearKeys.length === 0) return [];
@@ -119,11 +122,14 @@ export function DashTrendCard({
               key={m}
               type="button"
               onClick={() => setMode(m)}
+              aria-pressed={mode === m}
               className={cn(
-                "rounded-md border px-2.5 py-1 text-[11.5px] font-bold transition-colors",
+                "rounded-md border px-2.5 py-1 text-[11.5px] font-bold",
+                "transition-[background-color,border-color,color,transform] duration-200 ease-out active:scale-[0.985]",
+                "motion-reduce:transition-none motion-reduce:active:scale-100",
                 mode === m
                   ? "border-ink bg-ink text-white"
-                  : "border-border-md bg-surface text-text-2 hover:bg-surface-2",
+                  : "border-border-md bg-surface text-text-2 hover:bg-surface-2 hover:text-heading",
               )}
             >
               {label}
@@ -134,11 +140,14 @@ export function DashTrendCard({
               key={y}
               type="button"
               onClick={() => toggleYear(y)}
+              aria-pressed={activeYears.includes(y)}
               className={cn(
-                "rounded-md border px-2 py-1 text-[11.5px] font-bold transition-colors",
+                "rounded-md border px-2 py-1 text-[11.5px] font-bold",
+                "transition-[background-color,border-color,color,transform] duration-200 ease-out active:scale-[0.985]",
+                "motion-reduce:transition-none motion-reduce:active:scale-100",
                 activeYears.includes(y)
                   ? "border-transparent text-white"
-                  : "border-border-md bg-surface text-text-3",
+                  : "border-border-md bg-surface text-text-3 hover:bg-surface-2 hover:text-text-2",
               )}
               style={
                 activeYears.includes(y)
@@ -185,7 +194,9 @@ export function DashTrendCard({
             : "عدد العقارات المكتملة حسب شهر إغلاق دراسة الحالة."}
         </div>
       )}
-      <TrendChart labels={labels} series={series} />
+      <div ref={chartRef}>
+        <TrendChart labels={labels} series={series} />
+      </div>
     </div>
   );
 }

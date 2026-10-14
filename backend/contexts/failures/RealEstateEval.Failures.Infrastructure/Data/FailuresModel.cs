@@ -36,6 +36,8 @@ public static class FailuresModel
             e.Property(x => x.Status).HasMaxLength(32);
             e.Property(x => x.Specialist).HasMaxLength(256);
             e.Property(x => x.SuspendedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.SurveyFreezeLiftedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.SurveyFreezeLiftReason).HasMaxLength(4000);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => new { x.PoNumber, x.PropertyId });
  // The only status-only read is the suspended queue; a partial index holds just those rows.

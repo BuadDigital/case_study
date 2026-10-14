@@ -96,7 +96,7 @@ public static class PropertyListRowBuilder
             ? listed
             : Array.Empty<WorkflowTask>();
 
-        var fromTasks = ResolveStatusFromTasks(propertyTasks);
+        var fromTasks = ResolveStatusFromTasks(propertyTasks, prop.EnfazHandoverAtUtc is not null);
         var surveyFromTasks = ResolveKindStage(propertyTasks, WorkflowTaskKind.EngineeringSurvey);
         var valFromTasks = ResolveKindStage(propertyTasks, WorkflowTaskKind.PropertyAppraisal);
         var studyFromTasks = ResolveStudyStage(propertyTasks);
@@ -148,8 +148,15 @@ public static class PropertyListRowBuilder
         };
     }
 
-    private static string? ResolveStatusFromTasks(IReadOnlyList<WorkflowTask> propertyTasks)
+    /// <summary>
+    /// Overall status: «مكتمل» is the Enfaz handover (delivered), «جاهز للرفع» every task complete
+    /// but not handed over — the same rules as the PO list (PropertyDeliveryRules).
+    /// </summary>
+    private static string? ResolveStatusFromTasks(
+        IReadOnlyList<WorkflowTask> propertyTasks,
+        bool handedOverToEnfaz)
     {
+        if (handedOverToEnfaz) return PropertyListRowStatuses.Done;
         if (propertyTasks.Count == 0) return null;
 
         var active = propertyTasks
@@ -157,13 +164,8 @@ public static class PropertyListRowBuilder
             .ToList();
         if (active.Count == 0) return PropertyListRowStatuses.Fail;
 
- // "Completed" only when the case-study form is submitted to the system (case-study task done).
-        var parent = active.FirstOrDefault(t => t.Kind == WorkflowTaskKind.CaseStudyProperty);
-        if (parent is not null &&
-            (parent.Status == WorkflowTaskStatus.Completed || parent.Phase == WorkflowTaskPhase.Done))
-        {
-            return PropertyListRowStatuses.Done;
-        }
+        if (active.All(t => t.Status == WorkflowTaskStatus.Completed))
+            return PropertyListRowStatuses.Ready;
 
         var started = active.Any(t =>
             t.Status == WorkflowTaskStatus.Completed ||

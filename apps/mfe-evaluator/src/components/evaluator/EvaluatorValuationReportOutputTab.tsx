@@ -2,14 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { useQuery } from "@tanstack/react-query";
-import { Button } from "@platform/ui-kit";
+import { queryOptions, useQuery, type QueryClient } from "@tanstack/react-query";
+import { Button, GentleBusy, Spinner } from "@platform/ui-kit";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
 import {
   VALUATION_REPORT_HTML_DEFAULTS as REPORT_DEFAULTS,
   type OrganizationSettingsDto,
 } from "@platform/api-client";
-import { loadInfathDeposit } from "@platform/app-shared/app-data/infath-deposit";
 import { loadSpecialistFinishingLevel } from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
 import { isLandInspectionContext } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
@@ -38,6 +37,18 @@ import {
 } from "../../lib/evaluator/valuation-report-comparables-map";
 import { ComparablesGoogleMap } from "./ComparablesGoogleMap";
 import { ReportMissingFieldPrompt } from "./ReportMissingFieldPrompt";
+import { ReportDraftApprovalBar } from "./ReportDraftApprovalBar";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
+import { inlinePrintHtmlAssets } from "../../lib/evaluator/valuation-report-print-assets";
+import { useReportDraftByProperty } from "./useReportDraft";
+import { evaluatorReportOutputQueryKey } from "../../lib/evaluator/evaluator-report-output-cache";
+import {
+  applyReportDraftChoices,
+  overlayFromDraft,
+  depositCodeForPrint,
+  reportDateForPrint,
+  versionedReportNo,
+} from "../../lib/evaluator/report-draft-choices";
 import type { ReportAppraiserTab } from "../../lib/evaluator/valuation-report-missing-fields";
 import {
   EMPTY_INVENTORY_LINES,
@@ -49,6 +60,51 @@ import {
   finishingTextForReport,
   loadReportOutputBundle,
 } from "./evaluator-report-output-helpers";
+
+type ReportOutputInput = Parameters<typeof loadReportOutputBundle>[0];
+
+/** What the new print tab shows while the maps and the print HTML are still being prepared. */
+function writePrintPlaceholder(tab: Window): void {
+  try {
+    tab.document.open();
+    tab.document.write(
+      '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>تقرير التقييم</title></head>' +
+        '<body style="margin:0;display:grid;place-items:center;min-height:100vh;font-family:Tajawal,system-ui,sans-serif;color:#334;background:#f7f7f8">' +
+        '<p style="font-size:15px;margin:0">جاري تجهيز نسخة الطباعة… تُفتح نافذة الطباعة تلقائياً خلال ثوانٍ.</p>' +
+        "</body></html>",
+    );
+    tab.document.close();
+  } catch {
+    // A cross-origin or already-navigated tab: the placeholder is a courtesy, never a failure.
+  }
+}
+
+function reportOutputQueryOptions(input: ReportOutputInput) {
+  return queryOptions({
+    queryKey: evaluatorReportOutputQueryKey({
+      propertyId: input.property?.id,
+      poNumber: input.poNumber,
+      inspectionTaskId: input.inspectionTaskId,
+      surveyTaskId: input.surveyTaskId,
+    }),
+    queryFn: () => loadReportOutputBundle(input),
+    staleTime: 60_000,
+    gcTime: 10 * 60_000,
+  });
+}
+
+/**
+ * Start everything the report tab waits on — data bundle, template, organization
+ * settings — so a click right after hovering the tab opens on a filled report.
+ */
+export function prefetchValuationReportOutput(
+  queryClient: QueryClient,
+  input: ReportOutputInput,
+): void {
+  prefetchValuationReportTemplate();
+  void ensureOrganizationSettingsLoaded().catch(() => null);
+  void queryClient.prefetchQuery(reportOutputQueryOptions(input));
+}
 
 export function EvaluatorValuationReportOutputTab({
   draft,
@@ -89,30 +145,30 @@ export function EvaluatorValuationReportOutputTab({
   const clients = EMPTY_OUTPUT_CLIENTS;
   const [error, setError] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
+  // A rebuild while an older report is already on screen (the bundle refetched after a save).
+  const [refreshing, setRefreshing] = useState(false);
   /** Why the last print copy fell back from Google maps (Static Maps API not enabled on the key). */
   const [mapNotice, setMapNotice] = useState<string | null>(null);
+  // The specialist's report choices (the print attachments) overlay the appraiser's own; once the
+  // appraiser approved, the approved report date is the printed one.
+  const reportDraftQuery = useReportDraftByProperty(property?.id ?? draft.propertyId);
+  const reportDraft = reportDraftQuery.data ?? null;
+  const effectiveDraft = useMemo(
+    () => applyReportDraftChoices(draft, overlayFromDraft(reportDraft)),
+    [draft, reportDraft],
+  );
   const poQuery = usePoRecordQuery(draft.poNumber);
   const record = poQuery.data;
   const poKeys = assignmentValuationFromPo(record);
 
-  const outputQuery = useQuery({
-    queryKey: [
-      "evaluator-report-output",
-      property?.id ?? "",
-      draft.poNumber,
-      inspectionTaskId ?? "",
-      surveyTaskId ?? "",
-    ],
-    queryFn: () =>
-      loadReportOutputBundle({
-        property,
-        poNumber: draft.poNumber,
-        inspectionTaskId: inspectionTaskId ?? null,
-        surveyTaskId: surveyTaskId ?? null,
-      }),
-    staleTime: 60_000,
-    gcTime: 10 * 60_000,
-  });
+  const outputQuery = useQuery(
+    reportOutputQueryOptions({
+      property,
+      poNumber: draft.poNumber,
+      inspectionTaskId: inspectionTaskId ?? null,
+      surveyTaskId: surveyTaskId ?? null,
+    }),
+  );
   const outputBundle = outputQuery.data;
 
   // Derive directly from the bundle — previously 12 state mirrors from one effect, and a new
@@ -175,7 +231,10 @@ export function EvaluatorValuationReportOutputTab({
 
   /** Shared report request body for on-screen preview and print — was fully duplicated (~70 lines). */
   const buildReportMeta = useCallback(
-    (loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>) => {
+    (
+      loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>,
+      reportDateOverride?: string,
+    ) => {
       const ev = loaded?.evaluator ?? {};
       const company = loaded?.company ?? {};
       const practice = certifiedPracticeLicenseFromOrg({ company, evaluator: ev });
@@ -184,13 +243,12 @@ export function EvaluatorValuationReportOutputTab({
         property?.id ?? draft.propertyId,
       );
       return {
-        reportNo: draft.reportNo,
-        reportDate: draft.appraisalDate || draft.reportIssueDate,
-        // Deposit code: draft first, then what the Enfaz deposit screen saved for this property.
-        depositCode:
-          draft.depositCode || loadInfathDeposit(property?.id ?? "").depositCode,
+        reportNo: versionedReportNo(draft.reportNo, reportDraft?.version),
+        reportDate: reportDateOverride?.trim() || reportDateForPrint(draft, reportDraft),
+        // The deposit code is the one recorded with the deposit copy (the issuance is the only source).
+        depositCode: depositCodeForPrint(reportDraft),
         live: buildValuationReportLiveFill({
-          draft,
+          draft: effectiveDraft,
           // Unsaved settings follow the server defaults (same DTO), so the report and the
           // valuation screens agree on which approaches are in play.
           costApproachEnabled: Boolean(
@@ -285,6 +343,8 @@ export function EvaluatorValuationReportOutputTab({
       cost,
       deedSlot,
       draft,
+      effectiveDraft,
+      reportDraft,
       inspector,
       inventoryLines,
       landMarket,
@@ -312,6 +372,9 @@ export function EvaluatorValuationReportOutputTab({
     void ensureOrganizationSettingsLoaded()
       .then((loaded) => {
         if (cancelled) return null;
+        // An older report is on screen (the container mounts only with HTML): say it is being
+        // refreshed instead of swapping it silently.
+        if (reportRef.current) setRefreshing(true);
         if (loaded) setOrg(loaded);
         return fetchValuationReportV3Html(
           {
@@ -330,6 +393,9 @@ export function EvaluatorValuationReportOutputTab({
         if (!cancelled) {
           setError(arabicErrorMessage(err, "تعذّر تحميل تقرير التقييم"));
         }
+      })
+      .finally(() => {
+        if (!cancelled) setRefreshing(false);
       });
     return () => {
       cancelled = true;
@@ -340,10 +406,15 @@ export function EvaluatorValuationReportOutputTab({
 
   /** Print copy: report meta + §18/§33 Static Maps images, exactly as the browser prints it. */
   const preparePrintHtml = useCallback(
-    async (loaded: OrganizationSettingsDto | null) => {
-      const baseMeta = buildReportMeta(loaded);
+    async (
+      loaded: OrganizationSettingsDto | null,
+      reportDateOverride?: string,
+      onPhase?: (phase: string) => void,
+    ) => {
+      const baseMeta = buildReportMeta(loaded, reportDateOverride);
       let live = baseMeta.live;
       if (live) {
+        onPhase?.("تجهيز خرائط التقرير…");
         // Print cannot run Google Maps JS — fetch Static Maps images for §18 / §33 instead.
         const { diagnostics, ...mapSlots } = await materializePrintMapSlots({
           pins: live.comparablesMapPins ?? [],
@@ -381,6 +452,7 @@ export function EvaluatorValuationReportOutputTab({
         }
         setMapNotice(printMapsNotice(diagnostics));
       }
+      onPhase?.("بناء نسخة الطباعة…");
       const html = await fetchValuationReportV3Html(
         {
           ...baseMeta,
@@ -403,6 +475,8 @@ export function EvaluatorValuationReportOutputTab({
       setError("المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة");
       return;
     }
+    // The user lands on this tab at once; the maps and the print HTML take seconds — say so there.
+    writePrintPlaceholder(tab);
     setPrinting(true);
     try {
       const loaded = await ensureOrganizationSettingsLoaded({ force: true });
@@ -523,18 +597,54 @@ export function EvaluatorValuationReportOutputTab({
 
   return (
     <div className="min-w-0">
+      {showActions && reportDraft ? (
+        <ReportDraftApprovalBar
+          propertyId={property?.id ?? draft.propertyId}
+          draft={reportDraft}
+          buildApprovedHtml={async (reportDate, onPhase) => {
+            onPhase("تحميل بيانات المنشأة…");
+            const loaded = await ensureOrganizationSettingsLoaded({ force: true });
+            if (loaded) setOrg(loaded);
+            const { html } = await preparePrintHtml(loaded, reportDate, onPhase);
+            // The approved copy is kept and later rendered by the server (no network): letterhead, fonts and
+            // photos must travel inside it, exactly as the browser prints them.
+            const config = apiConfig();
+            onPhase("تضمين الصور والخطوط في النسخة…");
+            return inlinePrintHtmlAssets(html, {
+              token: config?.token,
+              apiBase: config?.baseUrl,
+              onProgress: (done, total) => {
+                if (total > 0) onPhase(`تضمين الصور والخطوط في النسخة… ${done} / ${total}`);
+              },
+            });
+          }}
+        />
+      ) : null}
       {showActions ? (
         <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
           <Button
             type="button"
             variant="outline"
             size="sm"
-            disabled={printing}
+            loading={printing}
             onClick={() => void print()}
           >
-            {printing ? "جاري التجهيز…" : "طباعة / PDF"}
+            {printing ? "جاري تجهيز نسخة الطباعة…" : "طباعة / PDF"}
           </Button>
         </div>
+      ) : null}
+      {refreshing ? (
+        <GentleBusy>
+          <p
+            className="mb-3 mt-0 flex items-center gap-2 text-[12px] text-text-2"
+            role="status"
+            aria-live="polite"
+            data-testid="report-refreshing"
+          >
+            <Spinner />
+            جاري تحديث التقرير بآخر الأرقام…
+          </p>
+        </GentleBusy>
       ) : null}
       {error ? (
         <p className="mb-3 mt-0 text-[13px] text-[#b42318]">{error}</p>
@@ -549,7 +659,8 @@ export function EvaluatorValuationReportOutputTab({
       ) : null}
       <div
         ref={reportRef}
-        className="rpt-ref min-w-0"
+        className={refreshing ? "rpt-ref min-w-0 opacity-60 transition-opacity" : "rpt-ref min-w-0"}
+        aria-busy={refreshing || undefined}
         dangerouslySetInnerHTML={{ __html: screenHtml }}
       />
       {showMissingFields ? (

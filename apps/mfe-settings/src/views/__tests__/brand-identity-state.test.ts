@@ -1,3 +1,4 @@
+import { filled } from "../../lib/filled";
 import { describe, expect, it } from "vitest";
 import { BRAND_IDENTITY_DEFAULTS, customBrandLogoUrl } from "@platform/api-client";
 import {
@@ -9,7 +10,6 @@ import {
   clampZoom,
   cmFromInput,
   dragToMm,
-  filled,
   fitZoom,
   isBrandCardDefault,
   isTypingTarget,

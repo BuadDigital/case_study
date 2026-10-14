@@ -8,12 +8,6 @@ import {
   type ValuationListItemDto,
 } from "@platform/api-client";
 
-export type ValuationListTab = {
-  id: string;
-  label: string;
-  kind: "table" | "ivs" | "photos" | "cert" | "parts";
-};
-
 export type AddItemDraft = {
   name: string;
   cells: string[];
@@ -21,7 +15,7 @@ export type AddItemDraft = {
   propertyTypeKeys: string[];
 };
 
-export const TABS: { id: string; label: string; kind: "table" | "ivs" | "photos" | "cert" | "parts" }[] = [
+export const TABS: { id: string; label: string; kind: "table" | "ivs" | "photos" }[] = [
   { id: "purposes", label: "أغراض التقييم", kind: "table" },
   { id: "valueBases", label: "أساس القيمة", kind: "table" },
   { id: "premises", label: "فرضية القيمة", kind: "table" },
@@ -31,8 +25,6 @@ export const TABS: { id: string; label: string; kind: "table" | "ivs" | "photos"
   { id: "glossary", label: "المصطلحات المهنية", kind: "table" },
   { id: "ivsStandards", label: "معايير التقييم الدولية", kind: "table" },
   { id: "attachments", label: "مرفقات التقرير", kind: "table" },
-  { id: "certValuer", label: "بيانات المقيم المعتمد", kind: "cert" },
-  { id: "participants", label: "المشاركون في إعداد التقرير", kind: "parts" },
   { id: "photos", label: "صفحات الصور", kind: "photos" },
   { id: "ivs", label: "تاريخ سريان المعايير", kind: "ivs" },
 ];
@@ -44,8 +36,8 @@ export const TABLE_META: Record<
   purposes: {
     addLabel: "إضافة غرض",
     addTitle: "إضافة غرض تقييم",
-    cols: ["الغرض", "أساس القيمة المعتاد", "الاستخدام"],
-    note: "الغرض المختار في المعاملة يُطبع في نطاق العمل، ويقترح أساس القيمة المعتاد له (قابل للتغيير من المقيم).",
+    cols: ["الغرض من التقييم", "أساس القيمة المعتاد", "الاستخدام"],
+    note: "الغرض المختار في المعاملة يُطبع في نطاق العمل، ويقترح أساس القيمة المعتاد له (قابل للتغيير من المقيّم).",
   },
   valueBases: {
     addLabel: "إضافة أساس قيمة",
@@ -63,13 +55,13 @@ export const TABLE_META: Record<
     addLabel: "إضافة طريقة",
     addTitle: "إضافة أسلوب/طريقة تقييم",
     cols: ["الطريقة", "الأسلوب", "الاستخدام"],
-    note: "لكل أسلوب تقييم طرقه — يختار المقيم في المعاملة الأسلوب ثم الطريقة، ويُطبع الاختيار في القسم «أسلوب وطريقة التقييم المستخدمة».",
+    note: "لكل أسلوب تقييم طرقه — يختار المقيّم في المعاملة الأسلوب ثم الطريقة، ويُطبع الاختيار في القسم «أسلوب وطريقة التقييم المستخدمة».",
   },
   comparables: {
     addLabel: "إضافة عنوان",
     addTitle: "إضافة عنوان مقارن",
     cols: ["العنوان", "مصدر التعبئة", "الاستخدام"],
-    note: "العناوين المطلوبة لكل عقار مقارن — تظهر أعمدةً في جدول «العقارات المقارنة» بالتقرير، ويعبئها المقيم لكل مقارن.",
+    note: "العناوين المطلوبة لكل عقار مقارن — تظهر أعمدةً في جدول «العقارات المقارنة» بالتقرير، ويعبئها المقيّم لكل مقارن.",
   },
   facades: {
     addLabel: "إضافة نوع واجهة",
@@ -109,7 +101,7 @@ export function listDataColumnLabels(listId: string): string[] {
   return TABLE_META[listId]?.cols ?? [];
 }
 
-export function listCellCount(listId: string): number {
+function listCellCount(listId: string): number {
   return Math.max(0, listDataColumnLabels(listId).length - 2);
 }
 

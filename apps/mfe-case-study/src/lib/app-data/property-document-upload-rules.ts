@@ -4,7 +4,7 @@
  * (`PropertyDocumentUploadRules` / `AttachmentUploadRules`) stays authoritative.
  */
 
-export const UNLISTED_LABEL_MIN_LENGTH = 2;
+const UNLISTED_LABEL_MIN_LENGTH = 2;
 export const UNLISTED_LABEL_MAX_LENGTH = 128;
 export const UNLISTED_REASON_MAX_LENGTH = 512;
 

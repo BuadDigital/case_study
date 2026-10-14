@@ -42,26 +42,3 @@ export function resolveFirstErrorMessage(
   }
   return null;
 }
-
-/** Non-empty string messages in `orderedKeys` order (deduped). */
-export function resolveAllErrorMessages(
-  errors: Record<string, unknown>,
-  orderedKeys: readonly string[],
-): string[] {
-  const list: string[] = [];
-  for (const key of orderedKeys) {
-    const value = errors[key];
-    if (isNonEmptyString(value) && !list.includes(value.trim())) {
-      list.push(value.trim());
-    }
-  }
-  return list;
-}
-
-/** True when any ordered key has a non-empty string error. */
-export function hasOrderedFieldErrors(
-  errors: Record<string, unknown>,
-  orderedKeys: readonly string[],
-): boolean {
-  return orderedKeys.some((key) => isNonEmptyString(errors[key]));
-}

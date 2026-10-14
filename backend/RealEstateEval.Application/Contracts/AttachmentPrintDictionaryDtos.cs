@@ -18,7 +18,3 @@ public class AttachmentPrintDictionaryDto
     public DateTime UpdatedAtUtc { get; init; }
 }
 
-public class SaveAttachmentPrintDictionaryRequest
-{
-    public IReadOnlyList<AttachmentPrintTypeDto>? Types { get; init; }
-}

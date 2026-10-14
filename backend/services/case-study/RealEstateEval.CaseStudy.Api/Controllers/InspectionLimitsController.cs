@@ -43,19 +43,4 @@ public class InspectionLimitsController : ControllerBase
             return this.FieldErrorsProblem(errors);
         return Ok(result);
     }
-
- /// <summary>Q-7 — “Who gives to whom” pending detail; Currently the report has no validity.</summary>
-    [HttpPost("approve-remote")]
-    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
-    public async Task<ActionResult<InspectionLimitsDto>> ApproveRemote(
-        string poNumber,
-        Guid propertyId,
-        CancellationToken ct)
-    {
-        var (result, error) = await _limits.ApproveRemoteAsync(
-            poNumber, propertyId, ActorClaims.Id(User), ct);
-        if (error is not null)
-            return this.BadRequestProblem(error);
-        return Ok(result);
-    }
 }

@@ -17,7 +17,8 @@
   "dependencies": {
     "@platform/api-client": "*",
     "@platform/app-shared": "*",
-    "@platform/types": "*",
+    "@platform/auth-client": "*",
+    "@platform/ui-kit": "*",
     "@settings/mfe": "*",
     "@tanstack/react-query": "^5.100.11"
   },

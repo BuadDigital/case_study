@@ -1,5 +1,7 @@
 "use client";
 
+import { filled } from "../lib/filled";
+
 import { pickImage, refreshOrgCache } from "../lib/org-settings-ui";
 import { todayIso } from "@platform/app-shared/format/date";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -11,8 +13,8 @@ import {
   saveOrganizationSettings,
   type OrganizationBrandingSettings,
   type OrganizationCompanySettings,
-  type OrganizationEvaluatorSettings,
   type OrganizationSettingsDto,
+  type OrganizationValuerRosterEntry,
 } from "@platform/api-client";
 import { useCapability } from "@platform/app-shared/components/Can";
 import {
@@ -37,13 +39,10 @@ import {
   opsDropzone,
   useToast,
 } from "@platform/ui-kit";
-import { organizationSettingsApiConfig } from "../lib/settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 const D = ORG_COMPANY_DEFAULTS;
 
-function filled(value: string | null | undefined, fallback: string): string {
-  return value?.trim() ? value : fallback;
-}
 
 
 function daysUntil(iso: string): number | null {
@@ -61,7 +60,8 @@ export function OrganizationDataView() {
   const canEdit = useCapability("manage-system-config");
   const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
   const [company, setCompany] = useState<OrganizationCompanySettings>(D);
-  const [evaluator, setEvaluator] = useState<OrganizationEvaluatorSettings>({});
+  /** Roster row chosen as المقيّم المعتمد; saved by moving the role, never by copying data. */
+  const [certifiedId, setCertifiedId] = useState<string>("");
   const [branding, setBranding] = useState<OrganizationBrandingSettings>(
     BRAND_IDENTITY_DEFAULTS,
   );
@@ -78,7 +78,7 @@ export function OrganizationDataView() {
   } | null>(null);
 
   const reload = useCallback(async () => {
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) {
       setLoading(false);
       setError("يلزم تسجيل الدخول");
@@ -94,7 +94,7 @@ export function OrganizationDataView() {
     setError(null);
     setOrg(res.data);
     setCompany(res.data.company);
-    setEvaluator(res.data.evaluator);
+    setCertifiedId(res.data.valuers.find((v) => v.role === "certified")?.id ?? "");
     setBranding(res.data.branding);
     setDirty(false);
     setStampDirty(false);
@@ -109,37 +109,18 @@ export function OrganizationDataView() {
     setDirty(true);
   };
 
-  const valuers = org?.valuers ?? [];
-  const certOptions = useMemo(() => {
-    const rows: { id: string; label: string; evaluator: OrganizationEvaluatorSettings }[] =
-      [];
-    const certName = filled(evaluator.name, "");
-    rows.push({
-      id: "certified",
-      label: certName
-        ? `${certName}${evaluator.membershipNumber ? ` — عضوية ${evaluator.membershipNumber}` : ""}`
-        : "المقيّم المعتمد الحالي",
-      evaluator,
-    });
-    for (const v of valuers) {
-      if (!v.isActive) continue;
-      rows.push({
-        id: v.id,
-        label: `${v.nameAr}${v.membershipNumber ? ` — عضوية ${v.membershipNumber}` : ""}`,
-        evaluator: {
-          name: v.nameAr,
-          licenseNumber: v.licenseNumber,
-          membershipNumber: v.membershipNumber,
-          membershipCategory: v.membershipCategory,
-          licenseExpiresAt: v.licenseExpiresAt,
-          membershipExpiresAt: v.membershipExpiresAt,
-        },
-      });
-    }
-    return rows;
-  }, [evaluator, valuers]);
-
-  const selectedCertId = filled(company.certifiedValuerId, "certified");
+  const valuers = useMemo(() => org?.valuers ?? [], [org]);
+  const certOptions = useMemo(
+    () =>
+      valuers
+        .filter((v) => v.isActive || v.id === certifiedId)
+        .map((v) => ({
+          id: v.id,
+          label: `${v.nameAr}${v.membershipNumber ? ` — عضوية ${v.membershipNumber}` : ""}`,
+        })),
+    [valuers, certifiedId],
+  );
+  const selectedCertId = certifiedId;
 
   const licExp = filled(company.practiceLicenseExpiresAt, D.practiceLicenseExpiresAt!);
   const licIssued = filled(
@@ -159,7 +140,7 @@ export function OrganizationDataView() {
   const licNo = filled(company.practiceLicenseNumber, D.practiceLicenseNumber!);
 
   async function persistCompany() {
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     setSaving(true);
     const nextCompany: OrganizationCompanySettings = {
@@ -181,25 +162,27 @@ export function OrganizationDataView() {
         company.practiceLicenseExpiresAt,
         D.practiceLicenseExpiresAt!,
       ),
-      certifiedValuerId: selectedCertId,
       address: filled(company.address, D.address!),
       email: "",
       phone: filled(company.phone, D.phone!),
       website: filled(company.website, D.website!),
     };
+    const storedCertifiedId = valuers.find((v) => v.role === "certified")?.id ?? "";
+    const nextValuers: OrganizationValuerRosterEntry[] | undefined =
+      certifiedId && certifiedId !== storedCertifiedId
+        ? valuers.map((v) => ({
+            ...v,
+            role:
+              v.id === certifiedId
+                ? "certified"
+                : v.role === "certified"
+                  ? "valuer"
+                  : v.role,
+          }))
+        : undefined;
     const res = await saveOrganizationSettings(config, {
       company: nextCompany,
-      evaluator: {
-        ...evaluator,
-        licenseNumber: filled(
-          evaluator.licenseNumber,
-          nextCompany.practiceLicenseNumber ?? "",
-        ),
-        licenseExpiresAt: filled(
-          nextCompany.practiceLicenseExpiresAt,
-          evaluator.licenseExpiresAt ?? "",
-        ),
-      },
+      ...(nextValuers ? { valuers: nextValuers } : {}),
     });
     setSaving(false);
     if (!res.ok) {
@@ -208,14 +191,14 @@ export function OrganizationDataView() {
     }
     setOrg(res.data);
     setCompany(res.data.company);
-    setEvaluator(res.data.evaluator);
+    setCertifiedId(res.data.valuers.find((v) => v.role === "certified")?.id ?? "");
     setDirty(false);
     await refreshOrgCache();
     showToast("تم الحفظ وقُيّد في سجل التدقيق.", "success");
   }
 
   async function persistStamp(next: OrganizationBrandingSettings) {
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     setSaving(true);
     const res = await saveOrganizationSettings(config, { branding: next });
@@ -355,10 +338,8 @@ export function OrganizationDataView() {
                 disabled={!canEdit}
                 value={selectedCertId}
                 onChange={(e) => {
-                  const id = e.target.value;
-                  const row = certOptions.find((o) => o.id === id);
-                  patchCompany({ certifiedValuerId: id });
-                  if (row) setEvaluator(row.evaluator);
+                  setCertifiedId(e.target.value);
+                  setDirty(true);
                 }}
               >
                 {certOptions.map((o) => (

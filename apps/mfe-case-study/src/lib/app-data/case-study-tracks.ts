@@ -22,7 +22,7 @@ export type CaseStudyTrackState =
   | typeof PropertyListRowStatuses.Progress
   | typeof PropertyListRowStatuses.Done;
 
-export type CaseStudyTrack = {
+type CaseStudyTrack = {
   id: string;
   label: string;
   state: CaseStudyTrackState;
@@ -40,7 +40,7 @@ const TRACK_KIND: Record<
   caseStudy: "parent",
 };
 
-export function trackStateFromTask(
+function trackStateFromTask(
   child: WorkflowTask | undefined,
   spawned: boolean,
 ): CaseStudyTrackState {
@@ -153,7 +153,7 @@ function familyPartyFlag(
  * assignee id is not enough. A named inspector, appraiser, or engineering
  * office on the distribution counts, as does a live child or a mirrored flag.
  */
-export function isPartyTrackAssigned(input: {
+function isPartyTrackAssigned(input: {
   trackId: string;
   distribution: TaskDistributionDraft;
   child?: WorkflowTask;
@@ -296,7 +296,7 @@ export type CaseStudyPartyAssignee = {
 const CASE_STUDY_PARTY_DEFS = [
   { trackId: "survey", shortLabel: "المكتب الهندسي", partyId: "eng" },
   { trackId: "inspection", shortLabel: "المعاين", partyId: "insp" },
-  { trackId: "appraisal", shortLabel: "المقيم", partyId: "val" },
+  { trackId: "appraisal", shortLabel: "المقيّم", partyId: "val" },
 ] as const;
 
 /**
@@ -362,7 +362,7 @@ export function buildCaseStudyPartyAssignees(
   });
 }
 
-export type AssignedCaseStudyParty = {
+type AssignedCaseStudyParty = {
   trackId: string;
   name: string;
   role: string;

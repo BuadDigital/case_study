@@ -8,8 +8,14 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@platform/ui-kit";
-import { poListStatusMeta, isPoListStatusTerminal } from "@platform/app-shared/app-data/po-list-status";
+import { useToast, confirmAction } from "@platform/ui-kit";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
+import {
+  isPoListStatusTerminal,
+  poListStatusMeta,
+  poListStatusOptions,
+} from "@platform/app-shared/app-data/po-list-status";
+import { canSeeBillingStatuses } from "@platform/app-shared/app-data/role-access";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import type { ActiveQueueMobileCardItem } from "@platform/app-shared/components/ActiveQueueMobileCards";
@@ -27,6 +33,7 @@ import {
 } from "../lib/app-data/po-list-search";
 import { buildPoListRowMoreItems } from "../lib/app-data/po-list-row-menu";
 import {
+  prefetchPoRecord,
   usePoListRowsPageQuery,
   usePropertyListItemsQuery,
   useWorkflowTasksQuery,
@@ -41,7 +48,7 @@ import {
 import { canManageOperationsTasks } from "../lib/app-data/operations-task-roles";
 import {
   buildPoListPageRows,
-  INITIAL_PO_LIST_QUERY,
+  initialPoListQuery,
   isPoListBillingBucket,
   poListBillingWindow,
   poListEmptyMessage,
@@ -53,6 +60,7 @@ import {
   PO_ASSIGNMENT_TYPE_OPTIONS,
   PO_LIST_PAGE_SIZE,
   registeredCountsByPo,
+  rowDisplayStatus,
   teamNamesByPo,
   toWorkOrderListCountsQuery,
   toWorkOrderListQuery,
@@ -69,6 +77,8 @@ export function usePoListWorkflow() {
   const showEdit = canEditPoHeader(role);
   const showDelete = canDeletePo(role);
   const showCreateOperationsTask = canManageOperationsTasks(role);
+  /** Billing labels are Finance's and management's; everyone else sees the study status. */
+  const billing = canSeeBillingStatuses(role);
   const { showToast } = useToast();
   const [deletingPo, setDeletingPo] = useState<string | null>(null);
   const [lifecyclePo, setLifecyclePo] = useState<string | null>(null);
@@ -77,7 +87,8 @@ export function usePoListWorkflow() {
   const intakeFromQuery = searchParams.get("intake") === "1";
   const [query, dispatchQuery] = useReducer(
     poListQueryReducer,
-    INITIAL_PO_LIST_QUERY,
+    role,
+    initialPoListQuery,
   );
   const { search, statusFilter, typeFilter, page } = query;
   const setSearch = (value: string) =>
@@ -88,10 +99,14 @@ export function usePoListWorkflow() {
     dispatchQuery({ type: "assignmentType", value });
   const setPage = (value: number) => dispatchQuery({ type: "page", page: value });
 
-  useEffect(() => {
-    if (!showIntake || !intakeFromQuery) return;
-    setIntakeOpenState(true);
-  }, [showIntake, intakeFromQuery]);
+  // `?intake=1` opens the modal — adjusted during render so it is already open on
+  // the first paint after the navigation.
+  const intakeRequested = showIntake && intakeFromQuery;
+  const [prevIntakeRequested, setPrevIntakeRequested] = useState(intakeRequested);
+  if (prevIntakeRequested !== intakeRequested) {
+    setPrevIntakeRequested(intakeRequested);
+    if (intakeRequested) setIntakeOpenState(true);
+  }
 
   /**
    * The query param stays on the URL while the modal is open and is dropped
@@ -121,11 +136,12 @@ export function usePoListWorkflow() {
     [query, debouncedSearch],
   );
 
+  const pageQuery = usePoListRowsPageQuery(serverQuery);
   const {
     data: pageResult,
     isPending: pagePending,
     isPlaceholderData,
-  } = usePoListRowsPageQuery(serverQuery);
+  } = pageQuery;
   // The KPI band and the empty-state copy are SQL COUNTs on the same filters —
   // no list is loaded for them any more (pagination-contract §1.1).
   const { data: counts } = useWorkOrderListCountsQuery(countsQuery);
@@ -194,15 +210,18 @@ export function usePoListWorkflow() {
       const { row: p, deedEntry, studied, expected, pct, urgent, target, rowKey } =
         poListRowView(entry, registeredByPo);
       const deedLabel = deedEntry?.deedNumber?.trim();
-      const statusMeta = poListStatusMeta(p.status);
-      const statusStyle = poStatusStyle(p.status);
+      const shownStatus = rowDisplayStatus(p, billing);
+      const statusMeta = poListStatusMeta(shownStatus);
+      const statusStyle = poStatusStyle(shownStatus);
       const tone: ActiveQueueMobileCardItem["tone"] = isPoListStatusTerminal(
-        p.status,
+        shownStatus,
       )
         ? "done"
         : urgent
           ? "returned"
-          : p.status === "under_study" || pct > 0
+          : shownStatus === "under_study" ||
+              shownStatus === "ready_for_enfaz" ||
+              pct > 0
             ? "pending"
             : "new";
       const specialist =
@@ -223,7 +242,7 @@ export function usePoListWorkflow() {
           specialist
             ? { text: specialist, kind: "place" as const }
             : {
-                text: `${studied}/${expected || p.count || 0} مكتمل`,
+                text: `${studied}/${expected || p.count || 0} مرفوع`,
                 kind: "plain" as const,
               },
         ],
@@ -253,9 +272,13 @@ export function usePoListWorkflow() {
         onOpen: () => router.push(target),
       };
     });
+    // The three lifecycle handlers below only touch stable setters, the toast and
+    // the query client, so the rows never capture stale state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     pageRows,
     registeredByPo,
+    billing,
     showEdit,
     showDelete,
     showCreateOperationsTask,
@@ -269,13 +292,13 @@ export function usePoListWorkflow() {
   }
 
   async function handleCancelPo(poNumber: string) {
-    if (
-      !window.confirm(
-        `إلغاء أمر العمل «${poNumber}»؟ سيُعرض كملغى في القائمة.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmAction({
+      title: "إلغاء أمر العمل",
+      message: `إلغاء أمر العمل «${poNumber}»؟ سيُعرض كملغى في القائمة.`,
+      confirmLabel: "إلغاء الأمر",
+      danger: true,
+    });
+    if (!ok) return;
     setLifecyclePo(poNumber);
     const result = await cancelPoRecord(poNumber);
     setLifecyclePo(null);
@@ -288,13 +311,12 @@ export function usePoListWorkflow() {
   }
 
   async function handleStopPo(poNumber: string) {
-    if (
-      !window.confirm(
-        `إيقاف أمر العمل «${poNumber}»؟ سيُعرض كمتوقف في القائمة.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmAction({
+      title: "إيقاف أمر العمل",
+      message: `إيقاف أمر العمل «${poNumber}»؟ سيُعرض كمتوقف في القائمة.`,
+      confirmLabel: "إيقاف",
+    });
+    if (!ok) return;
     setLifecyclePo(poNumber);
     const result = await stopPoRecord(poNumber);
     setLifecyclePo(null);
@@ -307,13 +329,13 @@ export function usePoListWorkflow() {
   }
 
   async function handleDeletePo(poNumber: string) {
-    if (
-      !window.confirm(
-        `حذف أمر العمل «${poNumber}» وجميع عقاراته؟ لا يمكن التراجع.`,
-      )
-    ) {
-      return;
-    }
+    const ok = await confirmAction({
+      title: "حذف أمر العمل",
+      message: `حذف أمر العمل «${poNumber}» وجميع عقاراته؟ لا يمكن التراجع.`,
+      confirmLabel: "حذف",
+      danger: true,
+    });
+    if (!ok) return;
     setDeletingPo(poNumber);
     const result = await deletePoRecord(poNumber);
     setDeletingPo(null);
@@ -338,6 +360,8 @@ export function usePoListWorkflow() {
     search,
     setSearch,
     searchModeLabel,
+    billing,
+    statusOptions: poListStatusOptions({ billing }),
     statusFilter,
     setStatusFilter,
     typeFilter,
@@ -350,6 +374,11 @@ export function usePoListWorkflow() {
     registeredByPo,
     propertyDeedView,
     statsReady,
+    /** The page failed with no rows to show — the view swaps in the error state. */
+    pageLoadFailed: queryLoadFailed(pageQuery),
+    pageLoadError: pageQuery.error,
+    retryPageLoad: () => void pageQuery.refetch(),
+    pageRetrying: pageQuery.isFetching,
     isPlaceholderData,
     kpi,
     mobileCardItems,
@@ -363,6 +392,8 @@ export function usePoListWorkflow() {
     handleCancelPo,
     handleStopPo,
     handleDeletePo,
+    /** Row hover: both screens a row opens read this PO's record — fetch it before the click. */
+    warmPo: (poNumber: string) => prefetchPoRecord(queryClient, poNumber),
     onIntakeComplete: (poNumber: string) => {
       setIntakeOpen(false);
       router.push(poPropertiesPath(poNumber));

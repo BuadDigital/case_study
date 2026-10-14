@@ -36,12 +36,12 @@ import type { DistributionAssignee } from "../lib/app-data/distribution-parties"
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
 
 /** Party account shape used for the "is this row mine" checks. */
-export type OperationsQueueAccount =
+type OperationsQueueAccount =
   | { assigneeId?: string | null; name?: string | null }
   | null
   | undefined;
 
-export type OperationsTaskFilters = {
+type OperationsTaskFilters = {
   statusFilter: string;
   scopeFilter: string;
   showAll: boolean;
@@ -69,7 +69,7 @@ export const INITIAL_OPERATIONS_TASK_QUERY: OperationsTaskQueryState = {
   showAll: false,
 };
 
-export type OperationsTaskQueryAction =
+type OperationsTaskQueryAction =
   | { type: "search"; value: string }
   | { type: "status"; value: string }
   | { type: "scope"; value: string }
@@ -149,11 +149,13 @@ export type OperationsTaskKpis = {
   paused: number;
   inProgress: number;
   completed: number;
+  /** Counts failed to load — show «—», never 0. */
+  failed?: boolean;
 };
 
 // Scope order is fixed — one module-level function instead of a closure allocated per comparison
 // (js-cache-function-results).
-export const taskStatusRank = (status: string) =>
+const taskStatusRank = (status: string) =>
   status === "paused" ? 1 : isTerminalOperationsTaskStatus(status) ? 2 : 0;
 
 /**
@@ -385,7 +387,7 @@ export function normalizeCourtVisitContacts(contacts: CourtVisitContactDraft[]) 
 }
 
 /** Per-deed statements with both a deed and a non-blank text. */
-export function courtVisitPerDeedEntries(perDeed: Record<string, string>) {
+function courtVisitPerDeedEntries(perDeed: Record<string, string>) {
   return Object.entries(perDeed)
     .map(([deed, text]) => ({ deed, text: text.trim() }))
     .filter((p) => p.deed && p.text);
@@ -407,7 +409,7 @@ export type CloseTaskForm = {
 };
 
 /** The validated close — the arguments `runStatus` receives. */
-export type CloseTaskSubmission = {
+type CloseTaskSubmission = {
   status: "completed" | "cancelled";
   closeComment?: string;
   files?: DraftFile[];
@@ -416,7 +418,7 @@ export type CloseTaskSubmission = {
   cancelReason?: string;
 };
 
-export type CloseTaskValidation =
+type CloseTaskValidation =
   | { ok: true; submission: CloseTaskSubmission }
   | { ok: false; error: string };
 
@@ -504,13 +506,13 @@ export function buildCloseTaskSubmission(
   };
 }
 
-export type OperationsTaskRowMenuViewer = {
+type OperationsTaskRowMenuViewer = {
   canCreate: boolean;
   canRemind: boolean;
   reviewerAccount: OperationsQueueAccount;
 };
 
-export type OperationsTaskRowMenuHandlers = {
+type OperationsTaskRowMenuHandlers = {
   showDetail: (task: OperationsTask) => void;
   /** «Confirm receipt» and «resume» both move the task to in_progress. */
   markInProgress: (task: OperationsTask) => void;
@@ -627,10 +629,10 @@ export function buildOperationsTaskRowMenu(
 // ---------------------------------------------------------------------------
 
 /** Countdown shape returned by `taskCountdown` — kept structural so tests need no clock. */
-export type TaskCountdownLike = { txt: string; over: boolean };
+type TaskCountdownLike = { txt: string; over: boolean };
 
 /** Mobile card tone: finished, urgent/overdue, in flight, or fresh. */
-export type OperationsTaskCardTone = "done" | "returned" | "pending" | "new";
+type OperationsTaskCardTone = "done" | "returned" | "pending" | "new";
 
 export function operationsTaskCardTone(
   task: Pick<OperationsTask, "status" | "priority">,
@@ -710,7 +712,7 @@ export function closeModalTitles(
       };
 }
 
-export type OperationsTaskReceiptCell =
+type OperationsTaskReceiptCell =
   | { kind: "hidden" }
   | { kind: "confirm" }
   | { kind: "label"; text: string; confirmed: boolean };
@@ -730,7 +732,7 @@ export function operationsTaskReceiptCell(
   return { kind: "label", text: confirmed ? "✓ مؤكَّد" : receipt, confirmed };
 }
 
-export type OperationsTaskDetailActions = {
+type OperationsTaskDetailActions = {
   close: boolean;
   pause: boolean;
   resume: boolean;

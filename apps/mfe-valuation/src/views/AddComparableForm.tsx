@@ -5,6 +5,7 @@
  * fields, saved straight into the company-wide bank.
  */
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { useMemo, useState } from "react";
 import {
   createComparableProperty,
@@ -42,9 +43,8 @@ import {
   emptyForm,
   formatLatLngPair,
   hasMapPin,
-  parseLatLngPair,
-  SAR_FORMAT,
 } from "./comparable-properties-state";
+import { parseCoordinatePair } from "@platform/app-shared/domain/geo";
 import { OpsIcon, PLUS_ICON } from "./ComparablesOpsIcon";
 
 export function AddComparableForm({
@@ -76,7 +76,7 @@ export function AddComparableForm({
     const parts = [
       form.comparablePropertyType || null,
       form.district || null,
-      form.price > 0 ? `${SAR_FORMAT.format(form.price)} ر.س` : null,
+      form.price > 0 ? fmtSar(form.price, { digits: 3, trim: true }) : null,
       form.areaSqm > 0 ? `${form.areaSqm} م²` : null,
     ].filter(Boolean);
     return parts.length > 0 ? parts.join(" · ") : "موقع المقارن الجديد";
@@ -117,14 +117,14 @@ export function AddComparableForm({
 
   function onCoordInputChange(raw: string) {
     setCoordInput(raw);
-    const parsed = parseLatLngPair(raw);
+    const parsed = parseCoordinatePair(raw);
     if (parsed) applyCoordsFromInput(parsed.lat, parsed.lng);
   }
 
   function onCoordInputBlur() {
     const trimmed = coordInput.trim();
     if (!trimmed) return;
-    const parsed = parseLatLngPair(trimmed);
+    const parsed = parseCoordinatePair(trimmed);
     if (!parsed) {
       showToast(
         "صيغة الإحداثيات غير صحيحة — استخدم: خط العرض، خط الطول",

@@ -8,12 +8,13 @@
  * list filters in `eng-fees-state.ts`; each tab body in a sibling component.
  */
 
-import { KpiBand, KpiCell } from "@platform/ui-kit";
+import { fmtSar } from "@platform/app-shared/format/number";
+import { useRef } from "react";
+import { KpiBand, KpiCell, useSwapAnimation } from "@platform/ui-kit";
 import { EngFeesHtmlTabs } from "./EngFeesHtmlTabs";
 import { EngFeesLedgerSection } from "./EngFeesLedgerSection";
 import { EngFeesStatementsSection } from "./EngFeesStatementsSection";
 import { EngFeesInvoiceModal } from "./EngFeesInvoiceModal";
-import { fmtSar } from "./eng-fees-state";
 import { useEngFeesWorkflow } from "./useEngFeesWorkflow";
 
 function CurrencyIcon({ className }: { className?: string }) {
@@ -111,6 +112,8 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
     closeStatementModal,
     showToast,
   } = useEngFeesWorkflow(assigneeId);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(panelRef, tab);
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -123,7 +126,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           label="إجمالي المستحق غير المفوتر"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.outstanding)}
+              {fmtSar(kpi.outstanding, { digits: 3, trim: true })}
             </span>
           }
           sub="كل استحقاقاتكم التي لم تُصرف بعد"
@@ -135,7 +138,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           label="بانتظار إفادتكم"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.pending)}
+              {fmtSar(kpi.pending, { digits: 3, trim: true })}
             </span>
           }
           sub="تعديلات تسعير تنتظر إفادتكم"
@@ -146,7 +149,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           label="جاهزة للفوترة"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.ready)}
+              {fmtSar(kpi.ready, { digits: 3, trim: true })}
             </span>
           }
           sub="تشمل المرحَّل — بانتظار كشف المحاسب"
@@ -158,7 +161,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           label="مفوترة / مدفوعة"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
-              {fmtSar(kpi.paid)}
+              {fmtSar(kpi.paid, { digits: 3, trim: true })}
             </span>
           }
           sub="إجمالي الكشوف المصروفة الموثَّقة"
@@ -185,47 +188,49 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
         ]}
       />
 
-      {tab !== "statements" ? (
-        <EngFeesLedgerSection
-          tab={tab}
-          search={search}
-          setSearch={setSearch}
-          stFilter={stFilter}
-          setStFilter={setStFilter}
-          filteredFees={filteredFees}
-          feesPending={feesPending}
-          busyId={busyId}
-          objectOpenId={objectOpenId}
-          setObjectOpenId={setObjectOpenId}
-          objectText={objectText}
-          setObjectText={setObjectText}
-          act={act}
-        />
-      ) : (
-        <>
-          <EngFeesStatementsSection
-            fnSearch={fnSearch}
-            setFnSearch={setFnSearch}
-            filteredFns={filteredFns}
-            openFn={openFn}
-            setOpenFn={setOpenFn}
-          />
-
-          <EngFeesInvoiceModal
-            openStatement={openStatement}
-            closeStatementModal={closeStatementModal}
-            invoiceNo={invoiceNo}
-            setInvoiceNo={setInvoiceNo}
-            invoiceDate={invoiceDate}
-            setInvoiceDate={setInvoiceDate}
-            invoiceFile={invoiceFile}
-            setInvoiceFile={setInvoiceFile}
+      <div ref={panelRef} className="flex flex-col gap-3.5">
+        {tab !== "statements" ? (
+          <EngFeesLedgerSection
+            tab={tab}
+            search={search}
+            setSearch={setSearch}
+            stFilter={stFilter}
+            setStFilter={setStFilter}
+            filteredFees={filteredFees}
+            feesPending={feesPending}
             busyId={busyId}
-            submitInvoice={submitInvoice}
-            showToast={showToast}
+            objectOpenId={objectOpenId}
+            setObjectOpenId={setObjectOpenId}
+            objectText={objectText}
+            setObjectText={setObjectText}
+            act={act}
           />
-        </>
-      )}
+        ) : (
+          <>
+            <EngFeesStatementsSection
+              fnSearch={fnSearch}
+              setFnSearch={setFnSearch}
+              filteredFns={filteredFns}
+              openFn={openFn}
+              setOpenFn={setOpenFn}
+            />
+
+            <EngFeesInvoiceModal
+              openStatement={openStatement}
+              closeStatementModal={closeStatementModal}
+              invoiceNo={invoiceNo}
+              setInvoiceNo={setInvoiceNo}
+              invoiceDate={invoiceDate}
+              setInvoiceDate={setInvoiceDate}
+              invoiceFile={invoiceFile}
+              setInvoiceFile={setInvoiceFile}
+              busyId={busyId}
+              submitInvoice={submitInvoice}
+              showToast={showToast}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

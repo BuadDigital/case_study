@@ -174,7 +174,7 @@ public class StaffProfileRulesTests
             User(),
             Stored());
 
-        var errors = StaffProfileRules.ValidateUpdateTarget(target, UserStatus.Active);
+        var errors = StaffProfileRules.ValidateUpdateTarget(target);
 
         Assert.Equal(message, errors[field]);
     }
@@ -187,7 +187,7 @@ public class StaffProfileRulesTests
             User(),
             Stored());
 
-        var errors = StaffProfileRules.ValidateUpdateTarget(target, UserStatus.Active);
+        var errors = StaffProfileRules.ValidateUpdateTarget(target);
 
         Assert.Equal("قيمة الأتعاب مطلوبة عند تفعيل التعويض.", errors["feeValueSar"]);
         Assert.Equal("المدينة مطلوبة لتفعيل الحساب.", errors["city"]);
@@ -201,12 +201,11 @@ public class StaffProfileRulesTests
             User(),
             Stored(status: UserStatus.PendingActivation));
 
-        var errors = StaffProfileRules.ValidateUpdateTarget(target, UserStatus.PendingActivation);
+        var errors = StaffProfileRules.ValidateUpdateTarget(target);
 
         Assert.Empty(errors);
         Assert.Empty(StaffProfileRules.ValidateUpdateTarget(
-            StaffProfileRules.ResolveUpdateTarget(new UpdateStaffUserRequest(), User(), Stored()),
-            UserStatus.Active));
+            StaffProfileRules.ResolveUpdateTarget(new UpdateStaffUserRequest(), User(), Stored())));
     }
 
     // ---- audit changes ----
@@ -296,35 +295,5 @@ public class StaffProfileRulesTests
             ["Editor"]);
         Assert.Empty(noStale);
         Assert.Empty(alreadyThere);
-    }
-
-    // ---- activation ----
-
-    [Fact]
-    public void Activation_is_blocked_for_disabled_or_locked_profiles_only()
-    {
-        Assert.True(StaffProfileRules.ProfileBlocksActivation(Stored(status: UserStatus.Disabled)));
-        Assert.True(StaffProfileRules.ProfileBlocksActivation(Stored(status: UserStatus.Locked)));
-        Assert.False(StaffProfileRules.ProfileBlocksActivation(Stored(status: UserStatus.PendingActivation)));
-        Assert.False(StaffProfileRules.ProfileBlocksActivation(null));
-    }
-
-    [Fact]
-    public void Only_pure_password_policy_failures_surface_their_detail()
-    {
-        var policy = StaffProfileRules.ActivationFailureMessage(
-        [
-            new StaffIdentityError("PasswordTooShort", "قصيرة"),
-            new StaffIdentityError("PasswordRequiresDigit", "بدون رقم"),
-        ]);
-        var mixed = StaffProfileRules.ActivationFailureMessage(
-        [
-            new StaffIdentityError("PasswordTooShort", "قصيرة"),
-            new StaffIdentityError("InvalidToken", "رمز"),
-        ]);
-
-        Assert.Equal("قصيرة بدون رقم", policy);
-        Assert.Equal("رمز التفعيل غير صالح أو منتهي الصلاحية.", mixed);
-        Assert.Equal(StaffProfileRules.ActivationGenericError, mixed);
     }
 }

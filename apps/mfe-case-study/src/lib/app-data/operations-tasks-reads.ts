@@ -14,6 +14,10 @@ import {
   savePrefetchedOperationsTasks,
 } from "@platform/app-shared/offline/prefetch-read";
 import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
+import {
+  noteLiveRead,
+  noteSnapshotFallback,
+} from "@platform/app-shared/offline/snapshot-fallback";
 import { offlineListPage } from "@platform/app-shared/offline/offline-list";
 import {
   resolveApiError,
@@ -54,7 +58,10 @@ export async function loadOperationsTasks(
     const result = await listOperationsTasks(config, query);
     if (!result.ok) {
       const cached = await readPrefetchedOperationsTasks<OperationsTask>();
-      if (cached) return filterPrefetchedOpsTasks(cached, query);
+      if (cached) {
+        noteSnapshotFallback("operations-tasks");
+        return filterPrefetchedOpsTasks(cached, query);
+      }
       throw new Error(
         result.message ??
           resolveApiError(result.kind, undefined, "تعذّر تحميل المهام"),
@@ -65,10 +72,15 @@ export async function loadOperationsTasks(
     if (userId && isCacheableOpsTaskQuery(query)) {
       await savePrefetchedOperationsTasks(result.data);
     }
+    noteLiveRead("operations-tasks");
     return result.data;
   } catch {
+    // Online but the server failed — the screen shows the downloaded copy.
     const cached = await readPrefetchedOperationsTasks<OperationsTask>();
-    if (cached) return filterPrefetchedOpsTasks(cached, query);
+    if (cached) {
+      noteSnapshotFallback("operations-tasks");
+      return filterPrefetchedOpsTasks(cached, query);
+    }
     if (isOfflineFieldSession()) return [];
     throw new Error("تعذّر تحميل المهام");
   }
@@ -101,7 +113,7 @@ export async function loadCourtVisitFees(query?: {
   return result.data;
 }
 
-export type OperationsTasksPage = {
+type OperationsTasksPage = {
   rows: OperationsTask[];
   totalCount: number;
   page: number;
@@ -123,12 +135,16 @@ export async function loadOperationsTasksPage(
   if (!result.ok) {
     const page =
       result.kind === "network" ? await offlineOperationsTasksPage(query) : null;
-    if (page) return page;
+    if (page) {
+      noteSnapshotFallback("operations-tasks-page");
+      return page;
+    }
     throw new Error(
       result.message ??
         resolveApiError(result.kind, undefined, "تعذّر تحميل المهام"),
     );
   }
+  noteLiveRead("operations-tasks-page");
   return {
     rows: result.data.items,
     totalCount: result.data.totalCount,

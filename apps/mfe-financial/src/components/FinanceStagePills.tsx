@@ -14,12 +14,15 @@ export function FinanceStagePills<T extends string>({
   items,
   active,
   onChange,
+  onTabIntent,
   counts,
   className,
 }: {
   items: { id: T; label: string }[];
   active: T;
   onChange: (id: T) => void;
+  /** Pointer or keyboard focus reached a tab — warm its data before the click. */
+  onTabIntent?: (id: T) => void;
   counts?: Partial<Record<T, number>>;
   className?: string;
 }) {
@@ -37,6 +40,12 @@ export function FinanceStagePills<T extends string>({
             data-no-action-toast
             className={isActive ? finStagePillOn : finStagePill}
             onClick={() => onChange(item.id)}
+            onPointerEnter={
+              onTabIntent && !isActive ? () => onTabIntent(item.id) : undefined
+            }
+            onFocus={
+              onTabIntent && !isActive ? () => onTabIntent(item.id) : undefined
+            }
           >
             <span className="whitespace-nowrap">{item.label}</span>
             {count != null ? (

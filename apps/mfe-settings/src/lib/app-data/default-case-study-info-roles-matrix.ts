@@ -14,32 +14,33 @@ function row(...entries: [CaseStudyInfoPartyId, CaseStudyInfoRoleType][]): Row {
 /**
  * Canonical matrix from docs/case-study-info-roles.md (37 questions).
  * Used as baseline when API config is empty or partial.
+ *
+ * The government reviewer is no longer a party: the case specialist answers
+ * the questions it used to hold (question 4 `deed_3` is the specialist's as
+ * «أصيل», with no extra approval step).
  */
 export function defaultCaseStudyInfoRolesMatrix(): DefaultCaseStudyInfoRolesMatrix {
   return {
     deed_0: row(["specA", "verify"]),
     deed_1: row(["insp", "secondary"], ["specA", "verify"]),
     deed_2: row(["insp", "secondary"], ["specA", "verify"]),
-    deed_3: row(["gov", "verify"]),
+    deed_3: row(["specA", "primary"]),
     deed_4: row(
       ["specA", "primary"],
       ["insp", "secondary"],
       ["val", "secondary"],
-      ["gov", "secondary"],
       ["sup", "verify"],
     ),
     deed_5: row(
       ["specA", "verify"],
       ["insp", "secondary"],
-      ["gov", "secondary"],
       ["sup", "verify"],
     ),
-    deed_6: row(["specA", "primary"], ["gov", "secondary"], ["sup", "verify"]),
+    deed_6: row(["specA", "primary"], ["sup", "verify"]),
     deed_7: row(
       ["specA", "primary"],
       ["insp", "secondary"],
       ["val", "verify"],
-      ["gov", "secondary"],
       ["eng", "verify"],
       ["sup", "verify"],
     ),

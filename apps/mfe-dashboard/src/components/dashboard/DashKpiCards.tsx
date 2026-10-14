@@ -113,7 +113,7 @@ export function DashKpiCards({
       >
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-[12px] font-semibold text-text-2">
-            تعذرات ومعلّقات
+            تعذّرات ومعلّقات
           </span>
         </div>
         <div className="flex items-end justify-between gap-2">
@@ -124,7 +124,7 @@ export function DashKpiCards({
             <div className="mt-1.5 truncate text-[11px] text-text-3">
               {pending
                 ? "…"
-                : `${kpis.failuresOpen} تعذر · ${kpis.stopped} متوقفة`}
+                : `${kpis.failuresOpen} تعذّر · ${kpis.stopped} متوقفة`}
             </div>
           </div>
           <RingCap

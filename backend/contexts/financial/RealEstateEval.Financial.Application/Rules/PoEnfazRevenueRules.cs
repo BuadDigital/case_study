@@ -39,8 +39,9 @@ public static class PoEnfazRevenueRules
             (InspectorFeeWorkStatuses.InProgress, InspectorFeeBillingRules.WorkStatusLabel(InspectorFeeWorkStatuses.InProgress)));
 
     /// <summary>
-    /// Ready POs with their done / cancelled property counts; null when the PO is not ready. A
-    /// property with no tasks counts as neither.
+    /// Ready POs with their delivered / cancelled property counts; null when the PO is not ready
+    /// (every live property handed over to Enfaz or fully cancelled). Removed properties are not
+    /// counted.
     /// </summary>
     public static EnfazReadyPoSummaryDto? ReadySummary(
         string poNumber,
@@ -52,16 +53,17 @@ public static class PoEnfazRevenueRules
 
         var done = 0;
         var cancelled = 0;
-        foreach (var property in properties)
+        foreach (var property in properties.Where(p => !p.IsRemoved))
         {
-            var propertyTasks = poTasks.Where(t => t.PropertyId == property.Id).ToList();
-            if (propertyTasks.Count == 0)
-                continue;
-
-            if (propertyTasks.All(t => t.Status == WorkflowTaskStatus.Cancelled))
-                cancelled += 1;
-            else
+            if (property.EnfazHandoverAtUtc is not null)
+            {
                 done += 1;
+                continue;
+            }
+
+            var propertyTasks = poTasks.Where(t => t.PropertyId == property.Id).ToList();
+            if (propertyTasks.Count > 0 && propertyTasks.All(t => t.Status == WorkflowTaskStatus.Cancelled))
+                cancelled += 1;
         }
 
         return new EnfazReadyPoSummaryDto
@@ -194,8 +196,8 @@ public static class PoEnfazRevenueRules
     }
 
     /// <summary>
-    /// One tracking row per property. The completion date is the bourse date, else the last
-    /// completed task, and only while the work is done.
+    /// One tracking row per property. The completion date is the Enfaz handover when recorded,
+    /// else the bourse date, else the last completed task — and only while the work is done.
     /// </summary>
     public static EnfazTrackingRowDto ToTrackingRow(
         string poNumber,
@@ -209,7 +211,7 @@ public static class PoEnfazRevenueRules
         int followupCount)
     {
         var filled = enfaz is not null && enfaz.IncludedInBilling && enfaz.TotalFeeSar > 0;
-        var completedAt = property.BourseCompletedAtUtc ?? taskCompletedAtUtc;
+        var completedAt = property.EnfazHandoverAtUtc ?? property.BourseCompletedAtUtc ?? taskCompletedAtUtc;
         if (work.Status != InspectorFeeWorkStatuses.Done)
             completedAt = null;
 

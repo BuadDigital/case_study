@@ -280,3 +280,52 @@ describe("إدراج التحليلات", () => {
   });
 });
 
+describe("finalOpinionComputed — matches the server's decimal math", () => {
+  function pair(
+    market: number,
+    marketPct: number,
+    cost: number,
+    costPct: number,
+    opts: { decimals?: string; basis?: string; discount?: string } = {},
+  ) {
+    return finalOpinionComputed({
+      reconMethods: [
+        method({ approachKind: "market", approachValue: market, weightPct: marketPct }),
+        method({ approachKind: "cost", labelAr: "التكلفة", approachValue: cost, weightPct: costPct }),
+      ],
+      basisOfValueKey: opts.basis ?? "market",
+      basisOptions: [{ value: opts.basis ?? "market", label: "x" }],
+      liquidationDiscountPct: opts.discount ?? "0",
+      finalRoundDecimals: opts.decimals ?? "0",
+      cost: null,
+      buildingOnly: false,
+      hasAdoptedMarket: true,
+    });
+  }
+
+  it("rounds the weighted value half away from zero despite float noise", () => {
+    // 1,304,295.6 + 61,554.4 = 1,365,850 → nearest 100 = 1,365,900 (was 1,365,800).
+    expect(pair(2_173_826, 60, 153_886, 40, { decimals: "2" }).finalLocal).toBe(1_365_900);
+    // 3,247,788.6 + 424,353.9 = 3,672,142.5 → 3,672,143.
+    expect(pair(4_639_698, 70, 1_414_513, 30).finalLocal).toBe(3_672_143);
+  });
+
+  it("accepts weights within ±0.05 of 100, like the server", () => {
+    expect(pair(1, 66.67, 1, 33.33).reconWeightsBad).toBe(false);
+    expect(pair(1, 66.67, 1, 33.28).reconWeightsBad).toBe(false); // 99.95
+    expect(pair(1, 66.67, 1, 33.38).reconWeightsBad).toBe(false); // 100.05
+    expect(pair(1, 66.5, 1, 33).reconWeightsBad).toBe(true); // 99.5 — Math.round passed it
+    expect(pair(1, 70, 1, 30.4).reconWeightsBad).toBe(true); // 100.4
+  });
+
+  it("applies the liquidation discount only when positive, capped at 100%", () => {
+    const negative = pair(1_000_000, 50, 1_000_000, 50, { basis: "liquidation", discount: "-10" });
+    expect(negative.discountPctNum).toBe(0);
+    expect(negative.finalLocal).toBe(1_000_000);
+    const over = pair(1_000_000, 50, 1_000_000, 50, { basis: "liquidation", discount: "150" });
+    expect(over.discountPctNum).toBe(100);
+    expect(over.finalLocal).toBe(0);
+    const ten = pair(1_000_000, 50, 1_000_000, 50, { basis: "liquidation", discount: "١٠" });
+    expect(ten.finalLocal).toBe(900_000);
+  });
+});

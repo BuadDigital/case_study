@@ -14,11 +14,6 @@ import {
 // Derived from the factor registry — add a factor there once and it flows here automatically.
 export const SEQUENTIAL_KEYS = SEQUENTIAL_SET;
 export const AUTO_AREA_KEYS = new Set([AUTO_AREA_KEY]);
-export const DEFAULT_DIFFERENCE_KEYS = new Set(
-  Object.entries(FACTOR_REGISTRY)
-    .filter(([k, d]) => !d.sequential && k !== AUTO_AREA_KEY)
-    .map(([k]) => k),
-);
 
 export const STANDARD_FACTORS: { factorKey: string; labelAr: string }[] =
   Object.entries(FACTOR_REGISTRY).map(([factorKey, d]) => ({

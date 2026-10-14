@@ -264,7 +264,7 @@ export function PropertyMapCanvasGoogle({
         failedRef.current = true;
         if (!cancelled && hostRef.current) {
           hostRef.current.textContent =
-            "تعذر تحميل خريطة Google — تحقق من مفتاح API وإعادة تشغيل الواجهة.";
+            "تعذّر تحميل خريطة Google — تحقق من مفتاح API وإعادة تشغيل الواجهة.";
         }
       });
 

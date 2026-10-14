@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Infrastructure.Persistence;
@@ -28,6 +29,7 @@ public class WorkOrderListCountsTests
     private static readonly Guid OpenProperty = Guid.Parse("22222222-2222-2222-2222-222222222222");
     private static readonly Guid DoneProperty = Guid.Parse("33333333-3333-3333-3333-333333333333");
     private static readonly Guid CancelledProperty = Guid.Parse("44444444-4444-4444-4444-444444444444");
+    private static readonly Guid ReadyProperty = Guid.Parse("55555555-5555-5555-5555-555555555555");
 
     [Fact]
     public async Task Unfiltered_counts_match_the_screens_kpi_band()
@@ -37,14 +39,15 @@ public class WorkOrderListCountsTests
 
         var counts = await CreateQuery(bundle).CountsAsync(WorkOrderListQuery.Empty, Staff());
 
-        Assert.Equal(5, counts.Total);
-        Assert.Equal(5, counts.TotalUnfiltered);
-        // new + under_study are the two non-terminal buckets.
-        Assert.Equal(2, counts.Active);
+        Assert.Equal(6, counts.Total);
+        Assert.Equal(6, counts.TotalUnfiltered);
+        // new + under_study + ready_for_enfaz are the non-terminal buckets.
+        Assert.Equal(3, counts.Active);
         Assert.Equal(1, counts.Overdue);
         Assert.Equal(1, counts.DueSoon);
-        // Studied live properties across every matched row, terminal ones included.
-        Assert.Equal(2, counts.DoneProperties);
+        // Live properties handed over to Enfaz across every matched row, terminal ones included —
+        // an issued report alone (PO-STUDY, PO-READY) is not delivery.
+        Assert.Equal(1, counts.DoneProperties);
     }
 
     /// <summary>Terminal rows never count as active, however overdue their due date is.</summary>
@@ -76,11 +79,40 @@ public class WorkOrderListCountsTests
             Staff());
 
         Assert.Equal(1, counts.Total);
-        Assert.Equal(5, counts.TotalUnfiltered);
+        Assert.Equal(6, counts.TotalUnfiltered);
         Assert.Equal(1, counts.Active);
         Assert.Equal(0, counts.Overdue);
         Assert.Equal(1, counts.DueSoon);
-        Assert.Equal(1, counts.DoneProperties);
+        Assert.Equal(0, counts.DoneProperties);
+    }
+
+    /// <summary>Every property deliverable, none delivered: the specialist's handover backlog.</summary>
+    [Fact]
+    public async Task Ready_for_enfaz_is_its_own_active_bucket()
+    {
+        var bundle = CreateDb();
+        Seed(bundle.CaseStudy);
+        var query = CreateQuery(bundle);
+
+        var ready = await query.CountsAsync(
+            new WorkOrderListQuery { Status = WorkOrderListStatus.ReadyForEnfaz },
+            Staff());
+        Assert.Equal(1, ready.Total);
+        Assert.Equal(1, ready.Active);
+        Assert.Equal(0, ready.DoneProperties);
+
+        var active = await query.CountsAsync(
+            new WorkOrderListQuery { Status = WorkOrderListQueryRules.BucketActive },
+            Staff());
+        Assert.Equal(3, active.Total);
+        Assert.Equal(3, active.Active);
+
+        var closed = await query.CountsAsync(
+            new WorkOrderListQuery { Status = WorkOrderListQueryRules.BucketClosed },
+            Staff());
+        Assert.Equal(3, closed.Total);
+        Assert.Equal(0, closed.Active);
+        Assert.Equal(1, closed.DoneProperties);
     }
 
     /// <summary>The billing labels widen exactly as they do on the list.</summary>
@@ -94,12 +126,21 @@ public class WorkOrderListCountsTests
         var partially = await query.CountsAsync(
             new WorkOrderListQuery { Status = WorkOrderListStatus.PartiallyBilled },
             Staff());
-        var underStudy = await query.CountsAsync(
-            new WorkOrderListQuery { Status = WorkOrderListStatus.UnderStudy },
+        var active = await query.CountsAsync(
+            new WorkOrderListQuery { Status = WorkOrderListQueryRules.BucketActive },
             Staff());
 
-        Assert.Equal(underStudy.Total, partially.Total);
-        Assert.Equal(underStudy.Active, partially.Active);
+        Assert.Equal(active.Total, partially.Total);
+        Assert.Equal(active.Active, partially.Active);
+
+        var fully = await query.CountsAsync(
+            new WorkOrderListQuery { Status = WorkOrderListStatus.FullyBilled },
+            Staff());
+        var completed = await query.CountsAsync(
+            new WorkOrderListQuery { Status = WorkOrderListStatus.Completed },
+            Staff());
+
+        Assert.Equal(completed.Total, fully.Total);
     }
 
     [Fact]
@@ -114,7 +155,7 @@ public class WorkOrderListCountsTests
 
         Assert.Equal(1, counts.Total);
         Assert.Equal(1, counts.Active);
-        Assert.Equal(5, counts.TotalUnfiltered);
+        Assert.Equal(6, counts.TotalUnfiltered);
     }
 
     /// <summary>Visibility is applied first, so the counters are the actor's, not the table's.</summary>
@@ -129,7 +170,7 @@ public class WorkOrderListCountsTests
         Assert.Equal(1, counts.Total);
         Assert.Equal(1, counts.TotalUnfiltered);
         Assert.Equal(1, counts.Active);
-        Assert.Equal(1, counts.DoneProperties);
+        Assert.Equal(0, counts.DoneProperties);
     }
 
     [Fact]
@@ -171,9 +212,12 @@ public class WorkOrderListCountsTests
  // under_study: two properties, one studied — due the day after tomorrow.
             Order("PO-STUDY", expected: 2, due: Today.AddDays(2),
                 properties: [Property(StudiedProperty, "77123"), Property(OpenProperty, "77124")]),
- // completed: the single expected property is studied. Overdue, but terminal.
+ // completed: the single expected property is handed over to Enfaz. Overdue, but terminal.
             Order("PO-DONE", expected: 1, due: Today.AddDays(-9),
-                properties: [Property(DoneProperty, "88001")]),
+                properties: [Property(DoneProperty, "88001", handedOverAt: Now)]),
+ // ready_for_enfaz: the study is complete but the handover is not recorded — still active.
+            Order("PO-READY", expected: 1, due: Today.AddDays(5),
+                properties: [Property(ReadyProperty, "66001")]),
             Order("PO-CANCELLED", expected: 1, due: Today.AddDays(-1),
                 lifecycle: WorkOrderLifecycleStatus.Cancelled,
                 properties: [Property(CancelledProperty, "99001")]),
@@ -184,6 +228,7 @@ public class WorkOrderListCountsTests
             StudyTask("PO-STUDY", StudiedProperty, completed: true),
             StudyTask("PO-STUDY", OpenProperty, completed: false),
             StudyTask("PO-DONE", DoneProperty, completed: true),
+            StudyTask("PO-READY", ReadyProperty, completed: true),
             StudyTask("PO-CANCELLED", CancelledProperty, completed: false),
  // Party row: the only thing that makes PO-STUDY visible to the inspector.
             WorkflowTask.Create(
@@ -234,10 +279,11 @@ public class WorkOrderListCountsTests
             Properties = properties ?? [],
         };
 
-    private static WorkOrderProperty Property(Guid id, string deedNumber) => new()
+    private static WorkOrderProperty Property(Guid id, string deedNumber, DateTime? handedOverAt = null) => new()
     {
         Id = id,
         DeedNumber = deedNumber,
+        EnfazHandoverAtUtc = handedOverAt,
     };
 
     private static PermissionsDto Staff() => new()

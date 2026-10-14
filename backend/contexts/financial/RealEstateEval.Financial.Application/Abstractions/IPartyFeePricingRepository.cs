@@ -140,8 +140,6 @@ public interface IPartyFeePricingRepository
     /// </summary>
     IReadOnlyList<PartyFeePricingTier> ListPendingTiers(Guid tableId);
 
-    /// <summary>Queues an audit row so it commits with the pricing change.</summary>
-    void AddAuditLog(AuditLog log);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);
 

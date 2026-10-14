@@ -1,12 +1,12 @@
-import { getFailureProblemType } from "./failure-types-data";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import {
   isActiveFailureStatus,
   isBlockingFailureStatus,
   isHistoricalFailureStatus,
+  isSurveyFreezeLifted,
 } from "@platform/app-shared/failures/failures-types";
 
-export type FailurePropertyRef = {
+type FailurePropertyRef = {
   poNumber: string;
   propertyId: string;
   deedNumber?: string;
@@ -14,7 +14,7 @@ export type FailurePropertyRef = {
 
 // Match without allocating objects — called for every (property × failure) when loading property lists,
 // and used to allocate Set + two arrays per comparison (js-perf).
-export function failureMatchesProperty(
+function failureMatchesProperty(
   failure: FailureRecord,
   ref: FailurePropertyRef,
 ): boolean {
@@ -81,6 +81,35 @@ export function blockingFailureForProperty(
   return newestMatchingFailure(failures, ref, isBlockingFailureStatus);
 }
 
+/**
+ * Active failures on the property that still freeze the survey: the specialist's lift
+ * (`surveyFreezeLiftedAt`) releases the freeze while the failure itself stays open.
+ */
+export function surveyFreezingFailuresForProperty(
+  failures: FailureRecord[],
+  ref: FailurePropertyRef,
+): FailureRecord[] {
+  const frozen: FailureRecord[] = [];
+  for (const failure of failures) {
+    if (!isActiveFailureStatus(failure.status)) continue;
+    if (isSurveyFreezeLifted(failure)) continue;
+    if (failureMatchesProperty(failure, ref)) frozen.push(failure);
+  }
+  return frozen;
+}
+
+/** The newest failure that freezes the survey on the property, or null (lifted ones do not count). */
+export function surveyFreezingFailureForProperty(
+  failures: FailureRecord[],
+  ref: FailurePropertyRef,
+): FailureRecord | null {
+  return newestMatchingFailure(
+    failures.filter((failure) => !isSurveyFreezeLifted(failure)),
+    ref,
+    isActiveFailureStatus,
+  );
+}
+
 export function historicalFailuresForProperty(
   failures: FailureRecord[],
   ref: FailurePropertyRef,
@@ -88,16 +117,4 @@ export function historicalFailuresForProperty(
   return failuresForProperty(failures, ref).filter((failure) =>
     isHistoricalFailureStatus(failure.status),
   );
-}
-
-function isKeyRelatedFailure(failure: FailureRecord): boolean {
-  const type = getFailureProblemType(failure.problemTypeId);
-  return type?.categoryId === "access";
-}
-
-export function keyFailuresForProperty(
-  failures: FailureRecord[],
-  ref: FailurePropertyRef,
-): FailureRecord[] {
-  return failuresForProperty(failures, ref).filter(isKeyRelatedFailure);
 }

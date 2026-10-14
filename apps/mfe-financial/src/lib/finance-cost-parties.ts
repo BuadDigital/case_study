@@ -6,6 +6,7 @@ import type {
   PartyBillingStatementDto,
 } from "@platform/api-client";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
+import { sumSar, vatSar } from "@platform/app-shared/format/money";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 
 export type FinanceCostParty = {
@@ -35,15 +36,20 @@ const TASK_KIND_AR: Record<string, string> = {
   valuation: "المقيّم",
 };
 
-function costTaxFactor(payeeType: "vendor" | "individual" | null): number {
-  return payeeType === "vendor" ? 1.15 : 1;
+/** VAT on a payee's net fees — 15% for a vendor, none for an individual. */
+export function costTaxSar(
+  net: number,
+  payeeType: "vendor" | "individual" | null,
+): number {
+  return payeeType === "vendor" ? vatSar(net) : 0;
 }
 
+/** Net + its VAT, from the same rounding as `costTaxSar` (net 1.5 → VAT 0.23, total 1.73). */
 export function applyCostTax(
   net: number,
   payeeType: "vendor" | "individual" | null,
 ): number {
-  return Math.round(net * costTaxFactor(payeeType) * 100) / 100;
+  return sumSar(net, costTaxSar(net, payeeType));
 }
 
 function costTaskKindLabel(kind: string | null | undefined): string {

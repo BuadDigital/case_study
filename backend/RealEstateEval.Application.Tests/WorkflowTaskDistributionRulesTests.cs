@@ -62,7 +62,7 @@ public class WorkflowTaskDistributionRulesTests
 
         var noValuator = Draft();
         noValuator.ValuatorId = "";
-        Assert.Equal("اختر المقيم العقاري.", WorkflowTaskDistributionRules.ConfirmAssigneeError(noValuator));
+        Assert.Equal("اختر المقيّم العقاري.", WorkflowTaskDistributionRules.ConfirmAssigneeError(noValuator));
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public class WorkflowTaskDistributionRulesTests
     // ---- timeline + notifications ----
 
     [Fact]
-    public void Confirm_timeline_lists_distribution_study_specialist_then_each_child()
+    public void Confirm_timeline_is_one_distribution_milestone_naming_every_party()
     {
         var propertyId = Guid.NewGuid();
         var parent = Parent(propertyId);
@@ -148,20 +148,15 @@ public class WorkflowTaskDistributionRulesTests
         var events = WorkflowTaskDistributionRules.ConfirmTimelineEvents(
             parent, propertyId, [inspection], caseSpecialistAssigned: true, Now);
 
-        Assert.Equal(
-            [
-                $"task:{parent.Id}:distribution",
-                $"task:{parent.Id}:case-study",
-                $"task:{parent.Id}:specialist-assigned",
-                $"party:{inspection.Id}:assigned",
-            ],
-            events.Select(e => e.EventKey));
-        Assert.Equal("تعيين المعاين الميداني", events[3].Title);
-        Assert.All(events, e => Assert.Equal(PropertyTimelineTones.Active, e.Tone));
+        var only = Assert.Single(events);
+        Assert.Equal($"task:{parent.Id}:distribution:{Now.Ticks}", only.EventKey);
+        Assert.Equal("توزيع المعاملة", only.Title);
+        Assert.Equal("أخصائي دراسة الحالة: سارة · المعاين الميداني: طرف", only.Detail);
+        Assert.Equal(PropertyTimelineTones.Done, only.Tone);
 
-        var withoutSpecialist = WorkflowTaskDistributionRules.ConfirmTimelineEvents(
+        var withoutParties = WorkflowTaskDistributionRules.ConfirmTimelineEvents(
             parent, propertyId, [], caseSpecialistAssigned: false, Now);
-        Assert.Equal(2, withoutSpecialist.Count);
+        Assert.Null(Assert.Single(withoutParties).Detail);
     }
 
     [Theory]

@@ -101,8 +101,6 @@ import { parseEvaluatorAmount } from "./value-estimation";
 
 const OWNERSHIP_LABELS: Record<string, string> = {
   absolute: "ملكية مطلقة",
-  mortgaged: "مرهون",
-  investment: "استثمار",
   shared: "مشاع",
 };
 
@@ -115,7 +113,7 @@ const MARKET_BASIS_DEFINITION =
 const LIQUIDATION_BASIS_DEFINITION =
   "قيمة التصفية هي المبلغ الإجمالي الذي يمكن تحقيقه عند بيع أصل أو مجموعة أصول بموجب بيع التصفية، وقد حُددت في هذا التقرير بموجب افتراض المعاملة المنظمة ذات فترة التسويق النموذجية (التصفية المنظمة) — انظر المعيار 102 — أسس القيمة، الملحق (أ)60.";
 
-export function slashReportDate(iso: string | null | undefined): string {
+function slashReportDate(iso: string | null | undefined): string {
   const t = (iso ?? "").trim();
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(t);
   return m ? `${m[1]}/${m[2]}/${m[3]}` : t;
@@ -141,19 +139,19 @@ export function assignmentValuationFromPo(
   };
 }
 
-export function labelForPurposeKey(key: string): string {
+function labelForPurposeKey(key: string): string {
   return VALUATION_PURPOSE_OPTIONS.find((o) => o.value === key)?.label ?? "";
 }
 
-export function labelForBasisKey(key: string): string {
+function labelForBasisKey(key: string): string {
   return VALUE_BASIS_OPTIONS.find((o) => o.value === key)?.label ?? "";
 }
 
-export function labelForPremiseKey(key: string): string {
+function labelForPremiseKey(key: string): string {
   return VALUE_PREMISE_OPTIONS.find((o) => o.value === key)?.label ?? "";
 }
 
-export function ownershipTypeDisplay(value: string | null | undefined): string {
+function ownershipTypeDisplay(value: string | null | undefined): string {
   const t = (value ?? "").trim();
   if (!t) return "";
   return OWNERSHIP_LABELS[t] ?? t;
@@ -218,7 +216,7 @@ export function slashDateFromIso(iso: string | null | undefined): string {
   return m ? `${m[1]}/${m[2]}/${m[3]}` : "";
 }
 
-export function firstFilled(
+function firstFilled(
   ...values: Array<string | null | undefined>
 ): string {
   for (const value of values) {
@@ -229,7 +227,7 @@ export function firstFilled(
 }
 
 /** Display ISO yyyy-MM-dd as yyyy/MM/dd; leave Hijri or already-slashed text. */
-export function displayLicenseDate(
+function displayLicenseDate(
   ...values: Array<string | null | undefined>
 ): string {
   const raw = firstFilled(...values);
@@ -675,9 +673,7 @@ export function buildValuationReportLiveFill(input: {
     "حالة العقار": dash(inspector?.featureValues?.propertyCondition),
     "حالة الصك": dash(property?.deedStatus),
     "نوع الملكية": dash(
-      ownershipTypeDisplay(
-        property?.ownershipType || property?.suggestedOwnershipType,
-      ),
+      ownershipTypeDisplay(property?.ownershipType),
     ),
     "هل يوجد منقولات": dash(inspector?.featureValues?.movables),
     "وصف المنقولات": inspector?.featureValues?.movables === "نعم"

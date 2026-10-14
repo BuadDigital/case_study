@@ -37,11 +37,11 @@ public sealed class WorkOrderRepository(CaseStudyDbContext db) : IWorkOrderRepos
         if (tasks.Count > 0)
         {
             var taskIds = tasks.Select(t => t.Id).ToList();
-            var forms = await db.CaseStudyForms
+            var forms = await db.CaseStudyReports
                 .Where(f => f.PoNumber == n || taskIds.Contains(f.TaskId))
                 .ToListAsync(cancellationToken);
             if (forms.Count > 0)
-                db.CaseStudyForms.RemoveRange(forms);
+                db.CaseStudyReports.RemoveRange(forms);
             var partySubs = await db.PartyTaskSubmissions
                 .Where(s => s.PoNumber == n || taskIds.Contains(s.WorkflowTaskId))
                 .ToListAsync(cancellationToken);
@@ -66,11 +66,11 @@ public sealed class WorkOrderRepository(CaseStudyDbContext db) : IWorkOrderRepos
         }
         else
         {
-            var forms = await db.CaseStudyForms
+            var forms = await db.CaseStudyReports
                 .Where(f => f.PoNumber == n)
                 .ToListAsync(cancellationToken);
             if (forms.Count > 0)
-                db.CaseStudyForms.RemoveRange(forms);
+                db.CaseStudyReports.RemoveRange(forms);
         }
 
         db.WorkOrders.Remove(workOrder);

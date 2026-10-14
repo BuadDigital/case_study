@@ -4,6 +4,8 @@ using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
+using RealEstateEval.Failures.Application.Rules;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.Failures.Application.Contracts;
@@ -116,7 +118,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.UpgradeToInternalAsync(id, cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن ترقية هذا التعذر");
+        if (dto is null) return this.BadRequestProblem("لا يمكن ترقية هذا التعذّر");
         return Ok(dto);
     }
 
@@ -127,7 +129,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.SubmitForReviewAsync(id, cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن إرسال هذا التعذر للمراجعة");
+        if (dto is null) return this.BadRequestProblem("لا يمكن إرسال هذا التعذّر للمراجعة");
         return Ok(dto);
     }
 
@@ -139,7 +141,7 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var dto = await _failures.SuspendAsync(id, request.Note, ActorClaims.Id(User), cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن تعليق هذا التعذر");
+        if (dto is null) return this.BadRequestProblem("لا يمكن تعليق هذا التعذّر");
         return Ok(dto);
     }
 
@@ -155,7 +157,7 @@ public class FailuresController : ControllerBase
             request,
             ActorClaims.Id(User),
             cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن حل هذا التعذر — تغيّرت حالته أو لم يعد موجوداً، حدّث الصفحة");
+        if (dto is null) return this.BadRequestProblem("لا يمكن حل هذا التعذّر — تغيّرت حالته أو لم يعد موجوداً، حدّث الصفحة");
         return Ok(dto);
     }
 
@@ -171,7 +173,7 @@ public class FailuresController : ControllerBase
             request.Note,
             ActorClaims.Id(User),
             cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن اعتماد هذا التعذر");
+        if (dto is null) return this.BadRequestProblem("لا يمكن اعتماد هذا التعذّر");
         return Ok(dto);
     }
 
@@ -187,8 +189,32 @@ public class FailuresController : ControllerBase
             request.Note,
             ActorClaims.Id(User),
             cancellationToken);
-        if (dto is null) return this.BadRequestProblem("لا يمكن إعادة هذا التعذر");
+        if (dto is null) return this.BadRequestProblem("لا يمكن إعادة هذا التعذّر");
         return Ok(dto);
+    }
+
+    /// <summary>
+    /// Lifts the engineering-survey freeze every active failure of the property puts on the survey
+    /// work; the failures themselves stay active. Any case specialist, by role (403 otherwise).
+    /// Idempotent — answers <c>{ lifted: n }</c> with the failures this call lifted.
+    /// </summary>
+    [HttpPost("by-property/lift-survey-freeze")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
+    public async Task<ActionResult<LiftSurveyFreezeResultDto>> LiftSurveyFreeze(
+        [FromBody] LiftSurveyFreezeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var actor = await ActorAsync(cancellationToken);
+        if (!PoRoleMatrixRules.CanLiftSurveyFreeze(actor?.PrototypeRole))
+            return this.ForbiddenProblem(FailureRecordRules.LiftSurveyFreezeRoleDeniedAr);
+
+        var (result, errors) = await _failures.LiftSurveyFreezeAsync(
+            request ?? new LiftSurveyFreezeRequest(),
+            ActorClaims.Id(User),
+            actor?.PrototypeRole,
+            cancellationToken);
+        if (errors is not null) return this.FieldErrorsProblem(errors);
+        return Ok(result);
     }
 
     [HttpDelete("by-po/{poNumber}")]

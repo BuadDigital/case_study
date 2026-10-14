@@ -15,7 +15,7 @@
 | File | Role |
 |------|------|
 | `EvaluatorWindow.tsx` | Upload form: PDF report, price, notes, validation, submit via `finalizeAppraiserSubmission` |
-| `AppraiserUploadTab.tsx` | Party work body: `EvaluatorWindow` + embedded `CaseStudyForm` (party advisory) |
+| `AppraiserUploadTab.tsx` | Party work body: `EvaluatorWindow` + embedded `CaseStudyReportEditor` (party advisory) |
 | `EvaluatorAdvisoryPanel.tsx` | Specialist view on `/case-study/[taskId]`: submitted appraisal, recall approve/reject, checklist |
 
 ### `lib/prototype/evaluator/` (11 files)
@@ -31,7 +31,7 @@
 | `evaluator-queue.ts` | Appraiser queue filter, open rules, status badges |
 | `appraiser-queue-row-menu.ts` | Row ⋮ items on `/property-appraisal` queue |
 | `appraiser-recall-menu-items.ts` | PO property row ⋮ recall items |
-| `finalize-appraiser-submission.ts` | Submit + sync party `CaseStudyForm` draft (`@case-study/mfe`) |
+| `finalize-appraiser-submission.ts` | Submit + sync party `CaseStudyReportEditor` draft (`@case-study/mfe`) |
 | `evaluator-window-host.ts` | Ref bridge types (`submit`, `onSubmitted`, `onSavingChange`) |
 
 ### Shell wiring (outside evaluator folders)
@@ -53,7 +53,7 @@
 | `views/PartyActiveTaskWork.tsx` | Appraisal footer, `evaluatorHostRef`, calls `renderAppraisalWork` / `isEvaluatorLocked` |
 | `views/PartyActiveTaskWorkPanel.tsx` | Thin panel wrapper |
 | `lib/case-study-evaluator-events.ts` | Duplicate event name — must stay in sync with evaluator storage |
-| `components/case-study/CaseStudyForm.tsx` | Listens to `EVALUATOR_SUBMISSION_CHANGED_EVENT` to refresh party answers |
+| `components/case-study/CaseStudyReportEditor.tsx` | Listens to `EVALUATOR_SUBMISSION_CHANGED_EVENT` to refresh party answers |
 
 ### Tangential shell references (not evaluator MFE scope)
 
@@ -105,11 +105,11 @@ apps/mfe-evaluator/
 |---------|-----|
 | `PartyActiveTaskWork` / `PartyActiveTaskView` | Generic party-queue + work panel for **all** party kinds |
 | `PartyAppraisalExtensions` **interface** | Case-study defines the injection contract; evaluator implements it |
-| `CaseStudyForm`, `CaseStudyWorkspaceView` | Case-study domain; appraiser **embeds** form, does not own it |
+| `CaseStudyReportEditor`, `CaseStudyWorkspaceView` | Case-study domain; appraiser **embeds** form, does not own it |
 | Workflow tasks, PO properties page shell | Transaction workflow core |
-| `loadPartyCaseStudyFormDraft` / `savePartyCaseStudyFormDraft` | Party answer persistence |
+| `loadPartyCaseStudyReportDraft` / `savePartyCaseStudyReportDraft` | Party answer persistence |
 
-**Rule:** `@evaluator/mfe` may depend on `@case-study/mfe` (for `WorkflowTask`, `CaseStudyForm`, draft APIs). `@case-study/mfe` must **not** depend on `@evaluator/mfe`.
+**Rule:** `@evaluator/mfe` may depend on `@case-study/mfe` (for `WorkflowTask`, `CaseStudyReportEditor`, draft APIs). `@case-study/mfe` must **not** depend on `@evaluator/mfe`.
 
 ---
 
@@ -131,7 +131,7 @@ apps/mfe-evaluator/
 │  EvaluatorAdvisoryPanel│         │         property-appraisal     │
 │  storage / queue / …   │         │         slots only             │
 └───────────┬────────────┘         └──────────────┬───────────────┘
-            │ finalizeAppraiserSubmission          │ CaseStudyForm
+            │ finalizeAppraiserSubmission          │ CaseStudyReportEditor
             │ (party draft read/write)             │ listens to event
             └──────────────────────────────────────┘
 ```
@@ -141,7 +141,7 @@ apps/mfe-evaluator/
 | Slot | Evaluator provides |
 |------|-------------------|
 | `appraisalExtensions.patchQueueConfig` | Appraiser filter, badges, row ⋮, refresh events |
-| `appraisalExtensions.renderAppraisalWork` | `AppraiserUploadTab` → `EvaluatorWindow` + `CaseStudyForm` |
+| `appraisalExtensions.renderAppraisalWork` | `AppraiserUploadTab` → `EvaluatorWindow` + `CaseStudyReportEditor` |
 | `appraisalExtensions.isEvaluatorLocked` | Read submission storage; lock after submit |
 | `PartyEvaluatorWorkHostRef.submit` | Wired by `EvaluatorWindow` via ref |
 
@@ -150,7 +150,7 @@ apps/mfe-evaluator/
 | Edge | Notes |
 |------|-------|
 | `finalize-appraiser-submission` → case-study draft APIs | Hard boundary; keep in evaluator MFE, import from `@case-study/mfe` |
-| `AppraiserUploadTab` → `CaseStudyForm` | Intentional embed; appraiser party answers live in case-study |
+| `AppraiserUploadTab` → `CaseStudyReportEditor` | Intentional embed; appraiser party answers live in case-study |
 | `EVALUATOR_SUBMISSION_CHANGED_EVENT` | Single source in `@evaluator/mfe`; case-study re-exports or imports constant |
 | `evaluator-inspection-gate` → `field-inspection` tasks | Workflow coupling stays; gate logic belongs in evaluator |
 
@@ -179,7 +179,7 @@ Do **after** E3–E6: optional collapse of `PartyActiveTaskViewHost` into a gene
 |-------|--------|
 | `PartyActiveTaskWork`, `PartyActiveTaskView`, `ActiveTransactionQueueView` | Shared party-queue framework — not appraiser-specific |
 | `PartyAppraisalExtensions` type definition | Stays in case-study as the injection interface |
-| `CaseStudyForm`, `CaseStudyWorkspaceView`, party draft storage | Case-study domain |
+| `CaseStudyReportEditor`, `CaseStudyWorkspaceView`, party draft storage | Case-study domain |
 | `ValuationRequestsView`, `FieldFormView` | Separate future `@valuation/mfe` (coordination / field inspector), per platform plan |
 | `GovernmentReviewView` party path | Different party kind; unchanged |
 | Nav / `PAGE_LABELS` / role → pages in `@platform/app-shared` | Host config |
@@ -194,7 +194,7 @@ Do **after** E3–E6: optional collapse of `PartyActiveTaskViewHost` into a gene
 ```text
 apps/
   shell/                 # host: wires evaluator extensions into routes
-  mfe-case-study/        # party queues + CaseStudyForm (no evaluator impl)
+  mfe-case-study/        # party queues + CaseStudyReportEditor (no evaluator impl)
   mfe-evaluator/         # NEW — property-appraisal work + advisory + recall
   (future)
   mfe-valuation/         # valuation-requests, field-form

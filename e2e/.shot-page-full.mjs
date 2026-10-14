@@ -21,7 +21,7 @@ await ctx.addInitScript((session) => {
 const page = await ctx.newPage();
 await page.goto(`${BASE}${process.env.PAGE_PATH}`, { waitUntil: "domcontentloaded", timeout: 120000 });
 await page.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => null);
-await page.waitForTimeout(3000);
+await page.waitForTimeout(Number(process.env.WAIT_MS || 3000));
 await page.screenshot({ path: `${SHOT_DIR}/${NAME}.png`, fullPage: true });
 fs.writeFileSync(`${SHOT_DIR}/${NAME}.txt`, await page.locator("body").innerText(), "utf8");
 console.log("saved", `${SHOT_DIR}/${NAME}.png`);

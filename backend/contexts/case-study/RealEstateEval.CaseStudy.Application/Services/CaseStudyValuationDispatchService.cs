@@ -106,7 +106,7 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
                 Type = type,
                 Appraiser = appraiser,
                 Status = ValuationRequestStatuses.Progress,
-                Date = _time.UtcNow().ToString("yyyy-MM-dd"),
+                Date = RiyadhClock.Today(_time).ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture),
             },
             cancellationToken);
 
@@ -151,10 +151,9 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
     {
         if (appraisalTask is null) return;
 
-        var reservedDate = DateOnly.TryParse(request.Date, out var parsed)
-            ? parsed
-            : DateOnly.FromDateTime(_time.UtcNow());
-        var reportNo = FormatReservedReportNumber(request.DisplayId, reservedDate);
+        var reportNo = FormatReservedReportNumber(
+            request.DisplayId,
+            ReservedReportYear(request.Date, _time.UtcNow()));
 
         var entity = await _db.GetSubmissionAsync(appraisalTask.Id, cancellationToken);
         var now = _time.UtcNow();
@@ -257,12 +256,30 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
     }
 
     /// <summary>Must stay aligned with <c>ValuationReportNumberRules.FormatReserved</c>.</summary>
-    private static string FormatReservedReportNumber(string displayId, DateOnly reservedDate)
+    /// <summary>
+    /// The report number's year: the request date's (ISO yyyy-MM-dd, first 10 characters, invariant
+    /// culture — never the server locale), else the Riyadh year of now.
+    /// </summary>
+    public static int ReservedReportYear(string? requestDate, DateTime nowUtc)
+    {
+        var text = (requestDate ?? "").Trim();
+        return text.Length >= 10
+            && DateOnly.TryParseExact(
+                text[..10],
+                "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.None,
+                out var parsed)
+            ? parsed.Year
+            : RiyadhClock.Year(nowUtc);
+    }
+
+    private static string FormatReservedReportNumber(string displayId, int reservedYear)
     {
         var digits = new string((displayId ?? "").Where(char.IsDigit).ToArray());
         var ordinal = int.TryParse(digits, out var n) && n > 0 ? n : 1;
  // Numbering workshop (bit item 3): unified pattern TQ-{year}-{5-digit seq}.
         return ReferenceNumbering.Format(
-            ReferenceNumbering.ValuationReport, reservedDate.Year, ordinal);
+            ReferenceNumbering.ValuationReport, reservedYear, ordinal);
     }
 }

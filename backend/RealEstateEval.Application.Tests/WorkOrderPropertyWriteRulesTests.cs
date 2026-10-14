@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.Domain;
@@ -64,6 +65,20 @@ public class WorkOrderPropertyWriteRulesTests
         Assert.False(probe("D-2", null));
     }
 
+    [Theory]
+    [InlineData("123456")]
+    [InlineData("123-456")]
+    [InlineData("١٢٣٤٥٦")]
+    public void Deed_probe_counts_the_same_deed_typed_differently_as_taken(string typed)
+    {
+        var kept = new WorkOrderProperty { Id = Guid.NewGuid(), DeedNumber = "123-456" };
+        var probe = WorkOrderPropertyWriteRules.DeedTakenProbe(OrderWith(kept));
+
+        Assert.True(probe(typed, null));
+        Assert.False(probe(typed, kept.Id));
+        Assert.False(probe("123457", null));
+    }
+
     [Fact]
     public void Merge_errors_keeps_the_first_message_per_field()
     {
@@ -99,19 +114,6 @@ public class WorkOrderPropertyWriteRulesTests
         Assert.Equal(after, WorkOrderPropertyWriteRules.ExpectedCountAfterRemoval(before));
     }
 
-    [Fact]
-    public void Location_map_url_must_be_http_or_empty()
-    {
-        Assert.Null(WorkOrderPropertyWriteRules.ValidateLocationMapUrl("   ").Errors);
-        Assert.Null(WorkOrderPropertyWriteRules.ValidateLocationMapUrl("   ").Value);
-
-        var bad = WorkOrderPropertyWriteRules.ValidateLocationMapUrl("maps.example");
-        Assert.Equal("رابط الموقع يجب أن يبدأ بـ http:// أو https://", bad.Errors!["locationMapUrl"]);
-
-        var good = WorkOrderPropertyWriteRules.ValidateLocationMapUrl(" https://maps.example/x ");
-        Assert.Null(good.Errors);
-        Assert.Equal("https://maps.example/x", good.Value);
-    }
 
     [Fact]
     public void Specialist_report_extras_accepts_json_or_clears()
@@ -316,48 +318,6 @@ public class WorkOrderPropertyWriteRulesTests
     }
 
     [Fact]
-    public void Bourse_request_rejects_an_unknown_manual_ownership_type()
-    {
-        var entity = new WorkOrderProperty { Id = Guid.NewGuid() };
-        var request = new UpdatePropertyBourseRequest
-        {
-            City = "الرياض",
-            District = "النرجس",
-            Classification = "سكني",
-            PropertyType = "أرض",
-            OwnershipTypeIsManual = true,
-            OwnershipType = "not-a-type",
-        };
-
-        var (errors, _) = WorkOrderPropertyWriteRules.ApplyBourseRequest(entity, request, DateTime.UtcNow);
-        Assert.Equal("نوع ملكية غير معروف", errors!["ownershipType"]);
-    }
-
-    [Fact]
-    public void Bourse_request_clears_a_derived_ownership_type()
-    {
-        var entity = new WorkOrderProperty
-        {
-            Id = Guid.NewGuid(),
-            OwnershipType = "absolute",
-            OwnershipTypeIsManual = true,
-        };
-        var request = new UpdatePropertyBourseRequest
-        {
-            City = "الرياض",
-            District = "النرجس",
-            Classification = "سكني",
-            PropertyType = "أرض",
-            OwnershipTypeIsManual = false,
-        };
-
-        WorkOrderPropertyWriteRules.ApplyBourseRequest(entity, request, DateTime.UtcNow);
-
-        Assert.Null(entity.OwnershipType);
-        Assert.False(entity.OwnershipTypeIsManual);
-    }
-
-    [Fact]
     public void Bourse_request_stores_named_owners_and_names_the_first_one()
     {
         var entity = new WorkOrderProperty { Id = Guid.NewGuid() };
@@ -369,9 +329,9 @@ public class WorkOrderPropertyWriteRulesTests
             PropertyType = "أرض",
             Owners =
             [
-                new DeedOwnerDto { Name = " سالم ", SharePct = 60 },
-                new DeedOwnerDto { Name = "  ", SharePct = 0 },
-                new DeedOwnerDto { Name = "نورة", SharePct = 40 },
+                new DeedOwnerDto { Name = " سالم " },
+                new DeedOwnerDto { Name = "  " },
+                new DeedOwnerDto { Name = "نورة" },
             ],
         };
 
@@ -379,7 +339,46 @@ public class WorkOrderPropertyWriteRulesTests
 
         Assert.Null(errors);
         Assert.Equal("سالم", entity.OwnerName);
-        Assert.NotNull(entity.DeedOwnersJson);
+        Assert.Equal(
+            ["سالم", "نورة"],
+            OwnershipTypeRules.ParseOwners(entity.DeedOwnersJson).Select(o => o.Name));
+        Assert.Equal(OwnershipTypes.Shared, WorkOrderMapper.ToPropertyDto(entity).OwnershipType);
+    }
+
+    [Fact]
+    public void Completing_the_bourse_records_who_did_it_and_a_held_one_records_nobody()
+    {
+        var request = new UpdatePropertyBourseRequest
+        {
+            City = "الرياض",
+            District = "النرجس",
+            Classification = "مبنى مفرد",
+            PropertyType = "فيلا",
+        };
+        var done = new WorkOrderProperty { Id = Guid.NewGuid() };
+        WorkOrderPropertyWriteRules.ApplyBourseRequest(done, request, DateTime.UtcNow, "  أسامة الصالحي ");
+        Assert.True(done.BourseDataCompleted);
+        Assert.Equal("أسامة الصالحي", done.BourseCompletedByName);
+
+        // Boundaries «غير متوفرة» hold the property open: nothing is completed, nobody is credited.
+        var held = new WorkOrderProperty { Id = Guid.NewGuid() };
+        WorkOrderPropertyWriteRules.ApplyBourseRequest(
+            held,
+            new UpdatePropertyBourseRequest
+            {
+                City = "الرياض",
+                District = "النرجس",
+                Classification = "مبنى مفرد",
+                PropertyType = "فيلا",
+                BoundariesAvailability = "no",
+            },
+            DateTime.UtcNow,
+            "أسامة الصالحي");
+        Assert.False(held.BourseDataCompleted);
+        Assert.Null(held.BourseCompletedByName);
+
+        Assert.Null(WorkOrderPropertyWriteRules.NormalizeActorName("   "));
+        Assert.Equal(128, WorkOrderPropertyWriteRules.NormalizeActorName(new string('م', 300))!.Length);
     }
 
     // ---- stored file-name column ----

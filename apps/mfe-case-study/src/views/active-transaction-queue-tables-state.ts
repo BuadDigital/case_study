@@ -37,7 +37,7 @@ export const EMPTY_PARTY_PROGRESS: Partial<Record<CaseStudyInfoPartyId, number>>
   {};
 
 export const ALL_TRANSACTIONS_SKELETON_COLS = 7;
-export const PRIMARY_SKELETON_COLS = 7;
+const PRIMARY_SKELETON_COLS = 7;
 export const PARTY_QUEUE_SKELETON_COLS = 7;
 /** Appraisal queue: deed, type, city/district, PO, assigned date, parties, status, actions. */
 export const APPRAISAL_QUEUE_SKELETON_COLS = 8;
@@ -92,7 +92,7 @@ export function formatEngSurveyRemaining(state: RemainingTimeState): {
  * has no contact number, stopped while a failure/return awaits handling, and
  * otherwise counts down.
  */
-export type EngSurveyRemainingMode = "paused" | "stopped" | "countdown";
+type EngSurveyRemainingMode = "paused" | "stopped" | "countdown";
 
 export function engSurveyRemainingMode(
   missingPhone: boolean,
@@ -172,7 +172,7 @@ export function resolveEngSurveyContact(
 }
 
 /** One avatar chip in the appraisal "parties" column. */
-export type AppraisalPartyDep = {
+type AppraisalPartyDep = {
   name: string;
   role: string;
   ok: boolean;

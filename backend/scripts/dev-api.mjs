@@ -8,6 +8,7 @@
  */
 import { spawn } from "node:child_process";
 import { execSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -77,6 +78,29 @@ const services = [
   },
 ];
 
+/**
+ * Secrets the services need locally but that must stay out of git (OurSMS key, …) live in
+ * backend/.env.local as KEY=VALUE lines; .gitignore already covers .env*.
+ */
+function localEnv() {
+  const file = path.join(root, "backend", ".env.local");
+  const env = { ...process.env };
+  if (!existsSync(file)) return env;
+  for (const raw of readFileSync(file, "utf8").split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eq = line.indexOf("=");
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    let value = line.slice(eq + 1).trim();
+    if (/^(["']).*\1$/.test(value)) value = value.slice(1, -1);
+    if (!(key in process.env)) env[key] = value;
+  }
+  console.log(`[dev-api] loaded backend/.env.local`);
+  return env;
+}
+
+const serviceEnv = localEnv();
 const children = [];
 
 function startService({ name, project }) {
@@ -84,7 +108,7 @@ function startService({ name, project }) {
   const runArgs = useWatch
     ? ["watch", "run", "--project", fullProject, "--launch-profile", "http", "--non-interactive"]
     : ["run", "--project", fullProject, "--launch-profile", "http", "--no-build"];
-  const child = spawn("dotnet", runArgs, { cwd: root, stdio: "inherit" });
+  const child = spawn("dotnet", runArgs, { cwd: root, stdio: "inherit", env: serviceEnv });
   child.on("exit", (code) => {
     console.error(`[${name}] exited with code ${code ?? "?"}`);
     shutdown(code ?? 1);

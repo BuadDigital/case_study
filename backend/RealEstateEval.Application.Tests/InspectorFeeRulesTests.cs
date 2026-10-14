@@ -117,6 +117,9 @@ public class InspectorFeeRulesTests
     [Theory]
     [InlineData("1200", true, 1200)]
     [InlineData("1,250.5", true, 1250.5)]
+    [InlineData("١٬٢٥٠ م²", true, 1250)]
+    [InlineData("12,5", true, 12.5)]
+    [InlineData("1,2,3", false, 0)]
     [InlineData("", false, 0)]
     [InlineData("0", false, 0)]
     public void Parses_property_area(string raw, bool ok, decimal expected)
@@ -233,12 +236,12 @@ public class InspectorFeeRulesTests
         Assert.Null(okError);
 
         Assert.False(InspectorFeeBillingRules.ValidateDiscount(401m, "سبب", 400m, out var overError));
-        Assert.Equal("الخصم لا يتجاوز الأتعاب المتفق عليها.", overError);
+        Assert.Equal("الحسم لا يتجاوز الأتعاب المتفق عليها.", overError);
 
         Assert.False(InspectorFeeBillingRules.ValidateDiscount(-1m, "سبب", 400m, out var negativeError));
-        Assert.Equal("الخصم لا يكون سالباً.", negativeError);
+        Assert.Equal("الحسم لا يكون سالباً.", negativeError);
 
         Assert.False(InspectorFeeBillingRules.ValidateDiscount(10m, "  ", 400m, out var reasonError));
-        Assert.Equal("يجب إدخال سبب الحسم عند تطبيق خصم.", reasonError);
+        Assert.Equal("يجب إدخال سبب الحسم عند تطبيق حسم.", reasonError);
     }
 }

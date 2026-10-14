@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Attachments.Application.Contracts;
 using RealEstateEval.Attachments.Application.Rules;
@@ -56,7 +57,28 @@ public sealed partial class AttachmentService
         row.ValueDocReviewedBy = actor?.UserId;
         row.ValueDocReviewedAtUtc = _time.UtcNow();
         await _db.SaveChangesAsync(cancellationToken);
+        await RecordTimelineAsync(
+            ValuedDocumentTimelineRules.Reviewed(
+                row.ScopeKey,
+                row.Id,
+                row.ValueDocStatus == ValueDocumentStatuses.Approved,
+                ValuedDocumentName(row),
+                row.ValueDocReviewNote,
+                row.ValueDocReviewedAtUtc.Value),
+            cancellationToken);
         return (await MetaWithPhotoAsync(row, cancellationToken), null);
+    }
+
+    private static string ValuedDocumentName(FileAttachment row) =>
+        string.IsNullOrWhiteSpace(row.CustomDocumentLabel) ? row.FileName : row.CustomDocumentLabel!;
+
+    /// <summary>A milestone on the property timeline — best effort, never fails the upload or the review.</summary>
+    private async Task RecordTimelineAsync(
+        PropertyTimelineRecordRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (request is null || _timeline is null) return;
+        await _timeline.RecordAsync(request, cancellationToken);
     }
 
     private static void ApplyDocumentType(FileAttachment row, ResolvedDocumentType resolved)

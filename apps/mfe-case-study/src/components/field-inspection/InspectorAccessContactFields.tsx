@@ -172,6 +172,9 @@ export function InspectorAccessContactFields({
     const next = draftContact(draft);
     if (!next.name || !isValidContactEntry(next)) return false;
     return !validContacts.some((c) => contactsMatch(next, c));
+    // `draftContact` reads the four access-contact fields only; depending on the
+    // whole draft would re-run this on every keystroke in the form.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     editable,
     draft.accessContactName,

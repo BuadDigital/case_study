@@ -130,7 +130,7 @@ export function ComparablesGoogleMap({
       })
       .catch(() => {
         if (!cancelled) {
-          setError("تعذر تحميل خريطة Google.");
+          setError("تعذّر تحميل خريطة Google.");
         }
       });
 

@@ -8,6 +8,9 @@ import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { prefetchPartySubmissionsForTasks } from "@platform/app-shared/app-data/party-submission-api";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
+import { prefetchBuildingInventories } from "@platform/app-shared/offline/building-inventory-offline";
+import { loadPropertyKeyGate } from "@platform/app-shared/offline/property-key-gate-offline";
 import {
   BASIC_DOC_PREFETCH_SCOPES,
   BASIC_DOCS_PREFETCH_ID,
@@ -185,6 +188,21 @@ export function FieldOfflinePrefetch() {
                 });
               }
             }),
+          );
+
+          // «جدول الحصر» of each assigned property, so the inspector can fill it offline.
+          await prefetchBuildingInventories(
+            workOrdersApiConfig(),
+            properties.slice(0, 40),
+          );
+
+          // The key status the inspector's submit sends — a device copy, so a cold start on site can submit.
+          await Promise.allSettled(
+            properties
+              .slice(0, 40)
+              .map((row) =>
+                loadPropertyKeyGate({ propertyId: row.propertyId, poNumber: row.poNumber }),
+              ),
           );
 
           const docEntries = await prefetchBasicDocBinaries({

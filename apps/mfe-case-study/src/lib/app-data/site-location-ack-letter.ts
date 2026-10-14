@@ -1,6 +1,10 @@
 import type { PoPropertyIntake } from "./po-intake-data";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
+import {
+  formatGregorianAsHijri,
+  HIJRI_LETTER_FORMAT,
+} from "@platform/app-shared/format/hijri";
 
 /** Fields for the contact-officer site-accuracy acknowledgment letter. */
 export type SiteLocationAckLetter = {
@@ -34,7 +38,7 @@ export const SITE_LOCATION_ACK_REQUIRES_NATIONAL_ID_MESSAGE =
 export const SITE_LOCATION_ACK_POPUP_BLOCKED_MESSAGE =
   "تعذّر فتح خطاب الإقرار — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.";
 
-export type SiteLocationAckPrintGate = {
+type SiteLocationAckPrintGate = {
   mapPinned: boolean;
   mapLatitude?: string | null;
   mapLongitude?: string | null;
@@ -65,24 +69,6 @@ function formatGregAr(d: Date): string {
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} م`;
 }
 
-function formatHijriAr(d: Date): string {
-  if (Number.isNaN(d.getTime())) return "—";
-  try {
-    const parts = new Intl.DateTimeFormat("ar-SA-u-ca-islamic-umalqura", {
-      year: "numeric",
-      month: "numeric",
-      day: "numeric",
-    }).formatToParts(d);
-    const y = parts.find((p) => p.type === "year")?.value;
-    const m = parts.find((p) => p.type === "month")?.value;
-    const day = parts.find((p) => p.type === "day")?.value;
-    if (y && m && day) return `${y}/${m}/${day} هـ`;
-  } catch {
-    /* fall through */
-  }
-  return "—";
-}
-
 function letterDate(draft: InspectorWorkspaceDraft): Date {
   const raw = draft.inspectionDate.trim();
   if (raw) {
@@ -102,7 +88,7 @@ export function buildSiteLocationAckLetter(
   const when = letterDate(draft);
   return {
     deedNumber: dash(property?.deedNumber),
-    dateHijri: formatHijriAr(when),
+    dateHijri: formatGregorianAsHijri(when, HIJRI_LETTER_FORMAT),
     dateGreg: formatGregAr(when),
     contactName: dash(draft.accessContactName),
     civilId: dash(draft.accessContactNationalId),

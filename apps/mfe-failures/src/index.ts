@@ -36,6 +36,5 @@ export * from "./lib/failure-types-model";
 export * from "./lib/failure-types-reads";
 export * from "./lib/failure-types-commands";
 export * from "./lib/failures-api";
-export { getCachedFailuresList } from "./lib/failures-cache";
 export { useFailuresQuery } from "./query/failures-queries";
 export * from "./query/failure-types-queries";

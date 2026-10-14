@@ -17,7 +17,7 @@ public sealed class WorkOrderListCountsDto
  /// </summary>
     public int TotalUnfiltered { get; set; }
 
- /// <summary>«أوامر نشطة» — rows whose PO list status is not terminal.</summary>
+ /// <summary>«أوامر نشطة» — rows whose study status is not terminal (new, under_study, ready_for_enfaz).</summary>
     public int Active { get; set; }
 
  /// <summary>«متأخرة عن الاستحقاق» — active rows whose due date is before today.</summary>
@@ -26,6 +26,6 @@ public sealed class WorkOrderListCountsDto
  /// <summary>«تستحق خلال 48 ساعة» — active rows due tomorrow or the day after.</summary>
     public int DueSoon { get; set; }
 
- /// <summary>«عقارات أُنجزت» — live properties with a finished case study, over all matched rows.</summary>
+ /// <summary>«عقارات رُفعت» — live properties handed over to Enfaz (or all tasks cancelled), over all matched rows.</summary>
     public int DoneProperties { get; set; }
 }

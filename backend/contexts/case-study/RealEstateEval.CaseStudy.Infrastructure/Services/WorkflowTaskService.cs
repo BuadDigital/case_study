@@ -101,6 +101,11 @@ public class WorkflowTaskService : IWorkflowTaskService
         CancellationToken cancellationToken = default) =>
         _lifecycle.RevertPhaseAsync(id, request, cancellationToken);
 
+    public Task<WorkflowTaskPatchStateDto?> GetPatchStateAsync(
+        Guid id,
+        CancellationToken cancellationToken = default) =>
+        _lifecycle.GetPatchStateAsync(id, cancellationToken);
+
     public Task<WorkflowTaskDto?> PatchAsync(
         Guid id,
         PatchWorkflowTaskRequest request,

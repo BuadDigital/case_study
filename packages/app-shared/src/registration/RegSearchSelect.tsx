@@ -11,7 +11,7 @@ import {
 } from "react";
 import { Input, cn } from "@platform/ui-kit";
 
-export type RegSearchSelectOption = {
+type RegSearchSelectOption = {
   value: string;
   label: string;
 };
@@ -102,13 +102,20 @@ export function RegSearchSelect({
 
   const rowCount = filtered.length + (showCreate ? 1 : 0);
 
-  useEffect(() => {
+  // A closed list forgets what was typed, and any new query starts at the first row.
+  const closedKey = `${open}|${value}`;
+  const [prevClosedKey, setPrevClosedKey] = useState(closedKey);
+  if (prevClosedKey !== closedKey) {
+    setPrevClosedKey(closedKey);
     if (!open) setQuery("");
-  }, [open, value]);
+  }
 
-  useEffect(() => {
+  const highlightKey = `${open}|${query}`;
+  const [prevHighlightKey, setPrevHighlightKey] = useState(highlightKey);
+  if (prevHighlightKey !== highlightKey) {
+    setPrevHighlightKey(highlightKey);
     setHighlight(0);
-  }, [query, open]);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -211,7 +218,7 @@ export function RegSearchSelect({
               <li className="px-2.5 py-2 text-[11px] text-text-3">جاري البحث…</li>
             ) : null}
             {!loading && filtered.length === 0 && !showCreate ? (
-              <li className="px-2.5 py-2 text-[11px] text-text-3">لا نتائج</li>
+              <li className="px-2.5 py-2 text-[11px] text-text-3">لا توجد نتائج مطابقة</li>
             ) : null}
             {filtered.map((opt, i) => (
               <li key={opt.value} role="option" aria-selected={opt.value === value}>

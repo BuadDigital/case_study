@@ -1,9 +1,9 @@
-export type PropertyFieldCatalogEntry = {
+type PropertyFieldCatalogEntry = {
   key: string;
   label: string;
 };
 
-export type PropertyFieldCatalogGroup = {
+type PropertyFieldCatalogGroup = {
   id: string;
   /** Source-owning role */
   sourceRole: string;
@@ -33,7 +33,7 @@ const poIntakeFields: PropertyFieldCatalogEntry[] = [
   { key: "assignmentDocFileNames", label: "قرار الإسناد" },
   { key: "deedOwnershipFileName", label: "صورة وثيقة التملك (الصك)" },
   { key: "bourseDeedImageFileName", label: "صورة الصك من البورصة" },
-  { key: "otherDocumentFileNames", label: "مستندات أخرى" },
+  { key: "otherDocumentFileNames", label: "مستندات غير معرّفة" },
   { key: "contactName", label: "ضابط الاتصال — الاسم" },
   { key: "contactRole", label: "ضابط الاتصال — الصفة" },
   { key: "contactPhone", label: "ضابط الاتصال — الجوال" },
@@ -50,13 +50,13 @@ const bourseFields: PropertyFieldCatalogEntry[] = [
   { key: "deedStatus", label: "حالة الصك" },
   { key: "restrictionsPresent", label: "القيود على العقار" },
   { key: "boundariesAvailability", label: "توفر الحدود" },
-  { key: "boundariesExternalDocName", label: "المستند الخارجي للحدود" },
+  { key: "boundariesExternalDocName", label: "مستند الحدود" },
   { key: "bourseDataCompleted", label: "اكتمال بيانات البورصة" },
 ];
 
 const bourseObstructionFields: PropertyFieldCatalogEntry[] = [
   { key: "deedVitality", label: "فعالية الصك (البورصة)" },
-  { key: "obstructionReason", label: "سبب التعذر — استعلام البورصة" },
+  { key: "obstructionReason", label: "سبب التعذّر — استعلام البورصة" },
 ];
 
 const propertyDetailFields: PropertyFieldCatalogEntry[] = [
@@ -303,7 +303,7 @@ const evaluatorFormKeyFields: PropertyFieldCatalogEntry[] = [
 const caseStudyMetaFields: PropertyFieldCatalogEntry[] = [
   { key: "requestNumber", label: "رقم الطلب" },
   { key: "requestDate", label: "تاريخ الطلب" },
-  { key: "deedNumber", label: "رقم الصك (نموذج الدراسة)" },
+  { key: "deedNumber", label: "رقم الصك (تقرير دراسة الحالة)" },
   { key: "deedRemarks", label: "ملاحظات قسم الصك" },
   { key: "surveyRemarks", label: "ملاحظات الرفع المساحي" },
   { key: "componentsRemarks", label: "ملاحظات مكونات العقار" },
@@ -405,19 +405,19 @@ const infathWorkerLicenseFields: PropertyFieldCatalogEntry[] = [
 ];
 
 const failuresFields: PropertyFieldCatalogEntry[] = [
-  { key: "failureTitle", label: "عنوان التعذر" },
+  { key: "failureTitle", label: "عنوان التعذّر" },
   { key: "problemTypeId", label: "نوع المشكلة" },
-  { key: "failureSeverity", label: "نوع التعذر (احتمالي / داخلي)" },
-  { key: "failureStatus", label: "حالة التعذر" },
-  { key: "raisedByRole", label: "الدور الرافع للتعذر" },
-  { key: "internalNote", label: "وصف داخلي / ملاحظة التعذر" },
+  { key: "failureSeverity", label: "نوع التعذّر (احتمالي / داخلي)" },
+  { key: "failureStatus", label: "حالة التعذّر" },
+  { key: "raisedByRole", label: "الدور الرافع للتعذّر" },
+  { key: "internalNote", label: "وصف داخلي / ملاحظة التعذّر" },
   { key: "finalNote", label: "قرار المشرف" },
   { key: "resolutionReason", label: "سبب الحل" },
   { key: "continueInstructions", label: "توجيه استمرار العمل" },
-  { key: "failureSpecialist", label: "أخصائي التعذر" },
-  { key: "failurePoNumber", label: "رقم أمر العمل (تعذر)" },
-  { key: "failurePropertyId", label: "معرّف العقار (تعذر)" },
-  { key: "failureDeedNumber", label: "رقم الصك (تعذر)" },
+  { key: "failureSpecialist", label: "أخصائي التعذّر" },
+  { key: "failurePoNumber", label: "رقم أمر العمل (تعذّر)" },
+  { key: "failurePropertyId", label: "معرّف العقار (تعذّر)" },
+  { key: "failureDeedNumber", label: "رقم الصك (تعذّر)" },
 ];
 
 const workflowMetaFields: PropertyFieldCatalogEntry[] = [
@@ -449,10 +449,10 @@ const partyPanelDerivedFields: PropertyFieldCatalogEntry[] = [
   { key: "partySignedDocs", label: "صور المستندات (لوحة الأطراف)" },
   { key: "partyPropertyPhotos", label: "صور العقار (لوحة الأطراف)" },
   { key: "partyKeysLocation", label: "المفاتيح / موقع الحفظ" },
-  { key: "partyAccessBlockFollowUp", label: "سبب التعذر / المتابعة" },
+  { key: "partyAccessBlockFollowUp", label: "سبب التعذّر / المتابعة" },
   { key: "partyValuationDepartment", label: "قسم التقييم (مفعّل)" },
   { key: "partyFieldInspector", label: "المعاين الميداني" },
-  { key: "partyAppraiser", label: "المقيم العقاري" },
+  { key: "partyAppraiser", label: "المقيّم العقاري" },
 ];
 
 const propertyDocumentsFields: PropertyFieldCatalogEntry[] = [
@@ -461,7 +461,7 @@ const propertyDocumentsFields: PropertyFieldCatalogEntry[] = [
   { key: "docDelegationLetter", label: "خطاب التكليف (مستند)" },
   { key: "docDeedOwnership", label: "صورة وثيقة التملك (مستند)" },
   { key: "docBoundariesExternal", label: "مستند الحدود (مستند)" },
-  { key: "docOtherIntake", label: "مستند إضافي (مستند)" },
+  { key: "docOtherIntake", label: "مستند غير معرّف (مستند)" },
   { key: "docSurveyReport", label: "تقرير الرفع المساحي (مستند)" },
   { key: "docSiteDeclarationLetter", label: "خطاب إقرار صحة الموقع (مستند)" },
   { key: "docAppraisalReport", label: "تقرير التقييم (مستند)" },
@@ -492,7 +492,7 @@ const governmentReviewerFields: PropertyFieldCatalogEntry[] = [
   { key: "keysStatus", label: "حالة المفاتيح" },
   { key: "handedToInspector", label: "تسليم المفاتيح للمعاين" },
   { key: "visitAssignee", label: "منفّذ الزيارة" },
-  { key: "accessBlockFollowUp", label: "سبب التعذر / المتابعة" },
+  { key: "accessBlockFollowUp", label: "سبب التعذّر / المتابعة" },
 ];
 
 const financeFields: PropertyFieldCatalogEntry[] = [
@@ -530,7 +530,7 @@ const backendApiFields: PropertyFieldCatalogEntry[] = [
   { key: "WorkOrderProperty.OwnerName", label: "اسم المالك (API)" },
   { key: "WorkOrderProperty.RestrictionsPresent", label: "القيود على العقار (API)" },
   { key: "WorkOrderProperty.BoundariesAvailability", label: "توفر الحدود (API)" },
-  { key: "WorkOrderProperty.BoundariesExternalDocName", label: "مستند الحدود الخارجي (API)" },
+  { key: "WorkOrderProperty.BoundariesExternalDocName", label: "مستند الحدود (API)" },
   { key: "WorkOrderProperty.City", label: "المدينة (API)" },
   { key: "WorkOrderProperty.District", label: "الحي (API)" },
   { key: "WorkOrderProperty.DeedStatus", label: "حالة الصك (API)" },
@@ -543,7 +543,7 @@ const backendApiFields: PropertyFieldCatalogEntry[] = [
   { key: "WorkOrderProperty.DelegationLetterFileName", label: "خطاب التكليف (API)" },
   { key: "WorkOrderProperty.DeedOwnershipFileName", label: "صورة وثيقة التملك (API)" },
   { key: "WorkOrderProperty.BourseDeedImageFileName", label: "صورة الصك من البورصة (API)" },
-  { key: "WorkOrderProperty.OtherDocumentFileNames", label: "مستندات أخرى (API)" },
+  { key: "WorkOrderProperty.OtherDocumentFileNames", label: "مستندات غير معرّفة (API)" },
   { key: "WorkOrderProperty.RealEstateRegFileName", label: "السجل العقاري (API)" },
   { key: "WorkOrderProperty.BourseDataCompleted", label: "اكتمال البورصة (API)" },
   { key: "PropertyContact.Name", label: "ضابط الاتصال — الاسم (API)" },
@@ -569,7 +569,7 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
   {
     id: "bourse-obstruction",
     sourceRole: "بورصة عقارية",
-    screen: "تعذر — صك غير فعال",
+    screen: "تعذّر — صك غير فعال",
     fields: bourseObstructionFields,
   },
   {
@@ -677,37 +677,37 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
   {
     id: "case-study-meta",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — بيانات عامة",
+    screen: "تقرير دراسة الحالة — بيانات عامة",
     fields: caseStudyMetaFields,
   },
   {
     id: "case-study-deed",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — الصك والعقار",
+    screen: "تقرير دراسة الحالة — الصك والعقار",
     fields: caseStudyDeedQuestions,
   },
   {
     id: "case-study-survey",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — الرفع المساحي",
+    screen: "تقرير دراسة الحالة — الرفع المساحي",
     fields: caseStudySurveyQuestions,
   },
   {
     id: "case-study-comp",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — مكونات العقار",
+    screen: "تقرير دراسة الحالة — مكونات العقار",
     fields: caseStudyComponentsQuestions,
   },
   {
     id: "case-study-occ",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — الإشغال والإيجار",
+    screen: "تقرير دراسة الحالة — الإشغال والإيجار",
     fields: caseStudyOccupancyQuestions,
   },
   {
     id: "case-study-extra",
     sourceRole: "أخصائي",
-    screen: "نموذج دراسة الحالة — ملاحظات إضافية",
+    screen: "تقرير دراسة الحالة — ملاحظات إضافية",
     fields: caseStudyExtraQuestions,
   },
   {
@@ -725,7 +725,7 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
   {
     id: "failures",
     sourceRole: "أخصائي / نظام",
-    screen: "التعذرات",
+    screen: "التعذّرات",
     fields: failuresFields,
   },
   {
@@ -772,17 +772,13 @@ export const PROPERTY_FIELDS_CATALOG: PropertyFieldCatalogGroup[] = [
   },
 ];
 
-export function propertyFieldsCatalogFlat(): PropertyFieldCatalogEntry[] {
+function propertyFieldsCatalogFlat(): PropertyFieldCatalogEntry[] {
   return PROPERTY_FIELDS_CATALOG.flatMap((g) => g.fields);
 }
 
 export function propertyFieldsCatalogTotalCount(): number {
   return propertyFieldsCatalogFlat().length;
 }
-
-export const PROPERTY_FIELDS_SOURCE_ROLES = [
-  ...new Set(PROPERTY_FIELDS_CATALOG.map((g) => g.sourceRole)),
-];
 
 export type FieldDictionaryStageId =
   | "primary"
@@ -793,7 +789,7 @@ export type FieldDictionaryStageId =
   | "engineering"
   | "finance";
 
-export type FieldDictionaryStage = {
+type FieldDictionaryStage = {
   id: FieldDictionaryStageId;
   label: string;
   groupIds: readonly string[];

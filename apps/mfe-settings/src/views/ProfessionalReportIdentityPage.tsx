@@ -1,5 +1,8 @@
 "use client";
 
+import { filled } from "../lib/filled";
+import { membershipLabel } from "../lib/valuation-lists-view-state";
+
 /**
  * First printed page of the professional valuation report settings: valuer
  * identity, scope of work, key inputs, finishing specs and the stamp block.
@@ -28,8 +31,6 @@ import {
   ParticipantsTable,
 } from "./professional-valuation-report-fields";
 import {
-  filled,
-  memLabel,
   slashDate,
 } from "./professional-valuation-report-state";
 
@@ -73,11 +74,11 @@ export function ProfessionalReportIdentityPage({
       <section className="rpt-page">
       <div className="rpt-title">تقرير تقييم عقار</div>
 
-      <Sec n="01" title="هوية المقيم المعتمد" open={isOpen("01")} onToggle={() => toggle("01")}>
+      <Sec n="01" title="هوية المقيّم المعتمد" open={isOpen("01")} onToggle={() => toggle("01")}>
         <table>
           <tbody>
             <tr>
-              <K>اسم المقيم المعتمد</K>
+              <K>اسم المقيّم المعتمد</K>
               <Auto>
                 يُعبَّأ من{" "}
                 <Link href={valuersHref} className="rpt-link">
@@ -154,16 +155,16 @@ export function ProfessionalReportIdentityPage({
               <Auto>يُعبَّأ تلقائيًا عند اعتماد قيمة العقار في النظام</Auto>
             </tr>
             <tr>
-              <K>مستخدمو التقرير</K>
-              <Auto>يُعبَّأ تلقائيًا من المعاملة — من حقل «مستخدمو التقرير» في النظام</Auto>
+              <K>مستخدم التقرير</K>
+              <Auto>يُعبَّأ تلقائيًا من المعاملة — من حقل «مستخدم التقرير» في النظام</Auto>
               <K>تاريخ المعاينة</K>
               <Auto>يُعبَّأ تلقائيًا عند إكمال المعاين دوره في النظام</Auto>
             </tr>
             <tr>
               <K>اسم المالك</K>
               <Auto>
-                ملكية مطلقة: مالك واحد بنسبة 100% (من حقل «اسم المالك» في النظام) · مشاع:
-                للمستخدم الخيار — كتابة اسم مالك واحد أو أي نص، أو إضافة الملاك مع نسب الملكية
+                من حقل «اسم المالك» في النظام (المالك الأول من قائمة الملاك) · وعند وجود أكثر من
+                مالك يكون نوع الملكية «مشاع»
               </Auto>
               <K>رقم الطلب</K>
               <Auto>يُعبَّأ تلقائيًا من المعاملة — من حقل «رقم الطلب» في النظام</Auto>
@@ -210,7 +211,7 @@ export function ProfessionalReportIdentityPage({
               <K>نوع العقار</K>
               <Auto>يُعبَّأ تلقائيًا من المعاملة — من حقل «نوع العقار» في النظام</Auto>
               <K>أساليب التقييم المستخدمة</K>
-              <Auto>يُعبَّأ عند اختيار المقيم أسلوب التقييم المناسب للعقار في المعاملة</Auto>
+              <Auto>يُعبَّأ عند اختيار المقيّم أسلوب التقييم المناسب للعقار في المعاملة</Auto>
             </tr>
           </tbody>
         </table>
@@ -231,7 +232,7 @@ export function ProfessionalReportIdentityPage({
             <li>
               أُعد هذا التقرير لاستخدام العميل (
               <span className="auto">
-                مستخدمو التقرير — يُؤخذ من حقل «مستخدمو التقرير» في النظام
+                مستخدم التقرير — يُؤخذ من حقل «مستخدم التقرير» في النظام
               </span>
               ) فقط، ولا يوجد مستخدمون آخرون للتقرير، ولا يجوز استخدامه من قبل مستخدم آخر إلا
               بإذن خطي موقع ومختوم بختم الشركة.
@@ -375,7 +376,7 @@ export function ProfessionalReportIdentityPage({
         </p>
         <ParticipantsTable rows={parts} branch={draft.valuationBranch} />
         <h2 className="rpt-h static">
-          <span className="n">27</span>إعتماد تقرير التقييم
+          <span className="n">27</span>اعتماد تقرير التقييم
         </h2>
         <p className="sysnote">
           بند ثابت — مصدره المقيّمون و{" "}
@@ -401,7 +402,7 @@ export function ProfessionalReportIdentityPage({
               <td className="v">{filled(draft.valuationBranch, D.valuationBranch)}</td>
               <K>فئة العضوية</K>
               <td className="v">
-                {memLabel(
+                {membershipLabel(
                   filled(ev.membershipCategory, String(htmlEv.membershipCategory ?? "")),
                 )}
               </td>

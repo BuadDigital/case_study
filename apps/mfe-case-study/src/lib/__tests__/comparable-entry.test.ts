@@ -9,41 +9,12 @@ import {
   comparableTypeForSave,
   emptyComparableEntryDraft,
   firstComparableEntryError,
-  parseComparableCoords,
-  parseCoordinatePair,
   contactNumbers,
   contactNumbersError,
   contactNumbersForSave,
   formatContactNumbersInput,
   validateComparableEntry,
 } from "../comparable-entry";
-
-describe("parseComparableCoords", () => {
-  it("rejects blanks and the 0,0 placeholder", () => {
-    expect(parseComparableCoords("", "")).toBeNull();
-    expect(parseComparableCoords("0", "0")).toBeNull();
-    expect(parseComparableCoords("24.84", "46.65")).toEqual({
-      lat: 24.84,
-      lng: 46.65,
-    });
-  });
-});
-
-describe("parseCoordinatePair", () => {
-  it("reads pasted map coordinates in the usual notations", () => {
-    const expected = { lat: 24.7136, lng: 46.6753 };
-    expect(parseCoordinatePair("24.7136, 46.6753")).toEqual(expected);
-    expect(parseCoordinatePair("24.7136 46.6753")).toEqual(expected);
-    expect(parseCoordinatePair("٢٤٫٧١٣٦، ٤٦٫٦٧٥٣")).toEqual(expected);
-  });
-
-  it("rejects partial, extra or off-earth values", () => {
-    expect(parseCoordinatePair("24.7136")).toBeNull();
-    expect(parseCoordinatePair("24.7, 46.6, 12")).toBeNull();
-    expect(parseCoordinatePair("240.7, 46.6")).toBeNull();
-    expect(parseCoordinatePair("abc, def")).toBeNull();
-  });
-});
 
 describe("contact numbers", () => {
   it("counts every 10 digits as one number", () => {

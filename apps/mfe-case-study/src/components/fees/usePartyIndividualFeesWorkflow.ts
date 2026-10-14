@@ -123,14 +123,17 @@ export function usePartyIndividualFeesWorkflow(
   const trackingRows = useMemo(() => trackingFeeRows(rows), [rows]);
   const readyRows = useMemo(() => readyFeeRows(rows), [rows]);
 
-  const feeBucketRows =
-    tab === "action"
-      ? actionRows
-      : tab === "tracking"
-        ? trackingRows
-        : tab === "ready"
-          ? readyRows
-          : [];
+  const feeBucketRows = useMemo(
+    () =>
+      tab === "action"
+        ? actionRows
+        : tab === "tracking"
+          ? trackingRows
+          : tab === "ready"
+            ? readyRows
+            : [],
+    [tab, actionRows, trackingRows, readyRows],
+  );
 
   const filteredFees = useMemo(
     () => filterFeeRows(feeBucketRows, deferredSearch, stFilter),

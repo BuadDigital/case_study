@@ -38,7 +38,7 @@ export function normalizeProperty(prop: PoPropertyIntake): PoPropertyIntake {
   };
 }
 
-export function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
+function normalizePoRecord(record: PoIntakeRecord): PoIntakeRecord {
   const receivedFromEnfathTime = record.receivedFromEnfathTime ?? "";
   const valuation = resolveAssignmentValuationKeys(record.assignmentType, {
     purposeKey: record.valuationPurposeKey,
@@ -89,8 +89,6 @@ export function dtoToProperty(
     suggestedDeedKind: dto.suggestedDeedKind ?? "",
     ownersJson: dto.owners?.length ? JSON.stringify(dto.owners) : "",
     ownershipType: dto.ownershipType ?? "",
-    suggestedOwnershipType: dto.suggestedOwnershipType ?? "",
-    ownershipTypeIsManual: Boolean(dto.ownershipTypeIsManual),
     restrictionsPresent: dto.restrictionsPresent ?? "",
     restrictionType: dto.restrictionType ?? "",
     restrictionOtherReason: dto.restrictionOtherReason ?? "",
@@ -148,6 +146,8 @@ export function dtoToProperty(
     finishingType: dto.finishingType ?? "",
     finishingStructure: dto.finishingStructure ?? "",
     bourseDataCompleted: dto.bourseDataCompleted ?? false,
+    bourseCompletedByName: dto.bourseCompletedByName?.trim() ?? "",
+    bourseCompletedAtUtc: dto.bourseCompletedAtUtc?.trim() ?? "",
     isRemoved: Boolean(dto.isRemoved),
     removalReason: dto.removalReason ?? "",
     removedAtUtc: dto.removedAtUtc ?? "",
@@ -261,10 +261,6 @@ export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
   return {
     ...propertyToEnfathDto(prop),
     owners: parseOwnersDraft(prop.ownersJson),
-    ownershipType: prop.ownershipTypeIsManual
-      ? prop.ownershipType || undefined
-      : undefined,
-    ownershipTypeIsManual: prop.ownershipTypeIsManual,
     restrictionsPresent: prop.restrictionsPresent || undefined,
     restrictionType: prop.restrictionType || undefined,
     restrictionOtherReason: prop.restrictionOtherReason || undefined,
@@ -320,8 +316,6 @@ export function propertyToBourseRequest(
     deedStatus: prop.deedStatus || undefined,
     bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
     owners: parseOwnersDraft(prop.ownersJson),
-    ownershipType: prop.ownershipTypeIsManual ? prop.ownershipType || undefined : undefined,
-    ownershipTypeIsManual: prop.ownershipTypeIsManual,
     restrictionsPresent: prop.restrictionsPresent || undefined,
     restrictionType: prop.restrictionType || undefined,
     restrictionOtherReason: prop.restrictionOtherReason || undefined,
@@ -350,17 +344,14 @@ export function propertyToBourseRequest(
 /** parse the flat-draft owners JSON into API rows (invalid JSON → undefined). */
 export function parseOwnersDraft(
   ownersJson: string,
-): { name: string; sharePct?: number | null }[] | undefined {
+): { name: string }[] | undefined {
   const raw = ownersJson.trim();
   if (!raw) return undefined;
   try {
-    const parsed = JSON.parse(raw) as { name?: string; sharePct?: number | null }[];
+    const parsed = JSON.parse(raw) as { name?: string }[];
     if (!Array.isArray(parsed)) return undefined;
     const rows = parsed
-      .map((o) => ({
-        name: String(o?.name ?? "").trim(),
-        sharePct: o?.sharePct == null ? null : Number(o.sharePct),
-      }))
+      .map((o) => ({ name: String(o?.name ?? "").trim() }))
       .filter((o) => o.name !== "");
     return rows.length > 0 ? rows : undefined;
   } catch {

@@ -7,7 +7,7 @@
  * `po-property-detail-tabs-state.ts`; lazy bodies in `PropertyDetailTabChunks`.
  */
 
-import { Activity } from "react";
+import { Activity, useRef } from "react";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import {
@@ -17,6 +17,7 @@ import {
   TabPanel,
   cn,
   opsContentPanel,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import { DetailBadge, EmptyState, ltrValueClass, SectionHeader } from "./PropertyDetailFields";
 import { PropertyDetailBasicTab } from "./PropertyDetailBasicTab";
@@ -48,7 +49,9 @@ import {
   PropertyDetailPropertyKeys,
 } from "./PropertyDetailTabChunks";
 import { usePoPropertyDetailTabsWorkflow } from "./usePoPropertyDetailTabsWorkflow";
-import { canEditProperty } from "../../lib/app-data/po-roles";
+import { canEditProperty, canHandOverToEnfaz } from "../../lib/app-data/po-roles";
+import { PropertyDetailEnfazHandoverCard } from "./PropertyDetailEnfazHandoverCard";
+import { PropertyFailureSurveyFreezeLift } from "./PropertyFailureSurveyFreezeLift";
 import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "../../lib/app-data/inspector-workspace-data";
 
 export type PoPropertyDetailInspectorWorkspace = {
@@ -86,6 +89,7 @@ export function PoPropertyDetailTabs({
     tabMode,
     visitedTabsRef,
     selectTab,
+    warmTab,
     replaceInspectQuery,
     inspectEdit,
     setInspectEdit,
@@ -117,6 +121,12 @@ export function PoPropertyDetailTabs({
     showDecree,
     inspectorWorkspace,
   });
+  // Wrapper, not the TabPanel: its padding changes per tab and must not animate.
+  const panelBodyRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(panelBodyRef, effectiveTab);
+  // Skeleton only until the first answer: a refetch (a party change, the tasks event,
+  // a tab shown again) keeps the submissions on screen instead of blanking them.
+  const partiesLoading = partySubmissionsQuery.isLoading;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -149,6 +159,7 @@ export function PoPropertyDetailTabs({
           <TabBar
             className="z-10 mx-[-20px] mb-0 flex flex-wrap gap-x-0.5 gap-y-0 overflow-visible whitespace-nowrap border-b border-border bg-transparent px-3.5 sm:px-3.5"
             aria-label="أقسام تفاصيل العقار"
+            indicator={false}
           >
             {visibleTabs.map((t) => {
               const active = effectiveTab === t.id;
@@ -161,6 +172,8 @@ export function PoPropertyDetailTabs({
                 <Tab
                   key={t.id}
                   active={active}
+                  onPointerEnter={() => warmTab(t.id)}
+                  onFocus={() => warmTab(t.id)}
                   onClick={() => {
                     selectTab(t.id);
                     if (workspaceForced) return;
@@ -195,6 +208,7 @@ export function PoPropertyDetailTabs({
               effectiveTab === "appraisal" && "pt-0",
             )}
           >
+          <div ref={panelBodyRef}>
           {visitedTabsRef.current.has("basic") ? (
             <Activity mode={tabMode("basic")}>
               <PropertyDetailBasicTab
@@ -230,7 +244,7 @@ export function PoPropertyDetailTabs({
             <Activity mode={tabMode("failures")}>
             {propertyFailures.length > 0 ? (
               <>
-                <SectionHeader>التعذرات المسجلة</SectionHeader>
+                <SectionHeader>التعذّرات المسجلة</SectionHeader>
                 {propertyFailures.map((failure: FailureRecord) => (
                   <div
                     key={failure.id}
@@ -255,6 +269,7 @@ export function PoPropertyDetailTabs({
                           ? ` · السبب: ${failure.internalNote}`
                           : null}
                       </div>
+                      <PropertyFailureSurveyFreezeLift failure={failure} />
                     </div>
                     <div className="flex shrink-0 items-center gap-1.5 max-lg:w-full max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1">
                       <DetailBadge tone="amber">
@@ -278,11 +293,11 @@ export function PoPropertyDetailTabs({
               </>
             ) : (
               <>
-                <SectionHeader>التعذرات المسجلة</SectionHeader>
+                <SectionHeader>التعذّرات المسجلة</SectionHeader>
                 <EmptyState
                   icon="⚠"
-                  title="لا توجد تعذرات"
-                  sub="لم يُسجَّل أي تعذر لهذا العقار."
+                  title="لا توجد تعذّرات"
+                  sub="لم يُسجَّل أي تعذّر لهذا العقار."
                 />
               </>
             )}
@@ -316,10 +331,7 @@ export function PoPropertyDetailTabs({
                 <PartyRoleDetailPanel
                   card={surveyCard}
                   submission={partySubmissionsQuery.data?.survey ?? null}
-                  loading={
-                    partySubmissionsQuery.isLoading ||
-                    partySubmissionsQuery.isFetching
-                  }
+                  loading={partiesLoading}
                 />
               </>
             ) : (
@@ -399,6 +411,7 @@ export function PoPropertyDetailTabs({
               tasks={tasks}
               appraisalCard={appraisalCard}
               submission={partySubmissionsQuery.data?.appraisal ?? null}
+              showReportDraft={false}
               onReviewChanged={() => {
                 void partySubmissionsQuery.refetch();
               }}
@@ -468,10 +481,7 @@ export function PoPropertyDetailTabs({
               task={task ?? null}
               parties={partySubmissionsQuery.data}
               documentSections={propertyDocumentSections}
-              loading={
-                partySubmissionsQuery.isLoading ||
-                partySubmissionsQuery.isFetching
-              }
+              loading={partiesLoading}
             />
             </Activity>
           ) : null}
@@ -490,18 +500,22 @@ export function PoPropertyDetailTabs({
             <Activity mode={tabMode("survey-notes")}>
               <PropertyDetailSurveyNotesTab
                 sections={partyRemarksSections}
-                loading={
-                  partySubmissionsQuery.isLoading ||
-                  partySubmissionsQuery.isFetching
-                }
+                loading={partiesLoading}
               />
             </Activity>
           ) : null}
+          </div>
           </TabPanel>
         </div>
 
         {showCaseStudySideRail ? (
-          <div className="sticky top-0">
+          <div className="sticky top-0 flex flex-col gap-3">
+            {canHandOverToEnfaz(role) ? (
+              <PropertyDetailEnfazHandoverCard
+                workOrderId={record.id}
+                propertyId={property.id}
+              />
+            ) : null}
             <PropertyTransactionTimeline record={record} property={property} />
           </div>
         ) : null}

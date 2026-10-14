@@ -674,48 +674,6 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                         });
                 });
 
-            modelBuilder.Entity("RealEstateEval.Operations.Domain.SurveyOffice", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<int>("ActiveCount")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("AvgDaysLabel")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("ContractLabel")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<int>("DoneMonth")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("StatusBusy")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SortOrder");
-
-                    b.ToTable("SurveyOffices", "operations");
-                });
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeAssignment", b =>
                 {

@@ -2,6 +2,9 @@ import type {
   ComparablePropertyDto,
   UpsertComparablePropertyRequest,
 } from "@platform/api-client";
+import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { parseLatLng, type LatLng } from "@platform/app-shared/domain/geo";
 
 export const COMPARABLE_SOURCE_OPTIONS = [
   { value: "listing_platform", label: "منصة عقارية" },
@@ -37,40 +40,7 @@ export type ComparableEntryDraft = {
   description: string;
 };
 
-export type ComparableSubjectPin = {
-  lat: number;
-  lng: number;
-};
-
-export function parseComparableCoords(
-  latitude?: string | null,
-  longitude?: string | null,
-): ComparableSubjectPin | null {
-  const lat = Number.parseFloat((latitude ?? "").replace(",", "."));
-  const lng = Number.parseFloat((longitude ?? "").replace(",", "."));
-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-  if (lat === 0 && lng === 0) return null;
-  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
-  return { lat, lng };
-}
-
-const ARABIC_INDIC_ZERO = 0x0660;
-
-/**
- * Reads a "lat, lng" pair typed or pasted from a map app (Google Maps copies "24.7136, 46.6753").
- * Accepts Arabic-Indic digits, «،» / «؛» separators and «٫» decimals; returns null when it is not a
- * valid on-earth pair.
- */
-export function parseCoordinatePair(text: string): ComparableSubjectPin | null {
-  const normalized = text
-    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - ARABIC_INDIC_ZERO))
-    .replace(/٫/g, ".")
-    .replace(/[،؛;]/g, ",")
-    .trim();
-  const parts = normalized.split(/\s*,\s*|\s+/).filter(Boolean);
-  if (parts.length !== 2) return null;
-  return parseComparableCoords(parts[0], parts[1]);
-}
+export type ComparableSubjectPin = LatLng;
 
 export function comparableKindFromType(
   type: string | null | undefined,
@@ -104,29 +74,6 @@ export function emptyComparableEntryDraft(): ComparableEntryDraft {
   };
 }
 
-export function comparableDtoToDraft(row: ComparablePropertyDto): ComparableEntryDraft {
-  const type = row.comparablePropertyType ?? "";
-  return {
-    kind: comparableKindFromType(type),
-    comparablePropertyType: type,
-    transactionKind: row.transactionKind === "executed" ? "executed" : "offer",
-    priceDescription: row.priceDescription === "som" ? "som" : "asking",
-    source: row.source || "other",
-    listingNumber: row.listingNumber ?? row.transactionReference ?? "",
-    advertiserPhone: row.advertiserPhone ?? "",
-    areaSqm: String(row.areaSqm ?? ""),
-    transactionDate: row.transactionDate ?? "",
-    price: String(row.price ?? ""),
-    city: row.city ?? "",
-    district: row.district ?? "",
-    planNumber: row.planNumber ?? "",
-    plotNumber: row.plotNumber ?? "",
-    latitude: String(row.latitude ?? ""),
-    longitude: String(row.longitude ?? ""),
-    description: row.description ?? "",
-  };
-}
-
 export function comparableTypeForSave(draft: ComparableEntryDraft): string {
   if (draft.kind === "land") {
     return draft.comparablePropertyType.trim() || LAND_COMPARABLE_TYPE;
@@ -138,7 +85,7 @@ export function comparableTypeForSave(draft: ComparableEntryDraft): string {
 }
 
 export function comparableLocationPinned(draft: ComparableEntryDraft): boolean {
-  return parseComparableCoords(draft.latitude, draft.longitude) != null;
+  return parseLatLng(draft.latitude, draft.longitude) != null;
 }
 
 export function comparablePlaceLine(draft: Pick<ComparableEntryDraft, "city" | "district">): string {
@@ -146,17 +93,16 @@ export function comparablePlaceLine(draft: Pick<ComparableEntryDraft, "city" | "
 }
 
 function positiveAmount(raw: string): boolean {
-  const n = Number(String(raw).replace(",", "."));
+  const n = parseLocaleNumber(raw);
   return Number.isFinite(n) && n > 0;
 }
 
 /** One contact number is 10 digits; the field takes several, each the next 10 digits. */
-export const CONTACT_NUMBER_DIGITS = 10;
-export const MAX_CONTACT_NUMBERS = 10;
+const CONTACT_NUMBER_DIGITS = 10;
+const MAX_CONTACT_NUMBERS = 10;
 
 function contactDigits(raw: string): string {
-  return raw
-    .replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+  return toLatinDigits(raw)
     .replace(/\D/g, "")
     .slice(0, CONTACT_NUMBER_DIGITS * MAX_CONTACT_NUMBERS);
 }
@@ -310,7 +256,7 @@ export function comparableDraftToUpsert(
   },
 ): UpsertComparablePropertyRequest {
   const executed = draft.transactionKind === "executed";
-  const coords = parseComparableCoords(draft.latitude, draft.longitude);
+  const coords = parseLatLng(draft.latitude, draft.longitude);
   return {
     comparablePropertyType: comparableTypeForSave(draft),
     transactionKind: draft.transactionKind,
@@ -321,9 +267,9 @@ export function comparableDraftToUpsert(
     advertiserPhone: contactNumbersForSave(draft.advertiserPhone),
     latitude: coords?.lat ?? 0,
     longitude: coords?.lng ?? 0,
-    areaSqm: Number(draft.areaSqm.replace(",", ".")) || 0,
+    areaSqm: parseLocaleNumber(draft.areaSqm) || 0,
     transactionDate: draft.transactionDate,
-    price: Number(draft.price.replace(",", ".")) || 0,
+    price: parseLocaleNumber(draft.price) || 0,
     city: draft.city.trim() || null,
     district: draft.district.trim(),
     planNumber: draft.planNumber.trim() || null,
@@ -341,14 +287,9 @@ export function comparableDealLabel(row: Pick<ComparablePropertyDto, "transactio
   return `عرض ${price}`;
 }
 
-export function formatComparableCoords(lat: number, lon: number): string {
-  if (!lat && !lon) return "—";
-  return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-}
-
 export function computedPricePerSqm(price: string, area: string): string {
-  const p = Number(price.replace(",", "."));
-  const a = Number(area.replace(",", "."));
+  const p = parseLocaleNumber(price);
+  const a = parseLocaleNumber(area);
   if (!a || !p) return "—";
   return (p / a).toFixed(2);
 }

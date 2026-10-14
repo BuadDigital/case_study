@@ -40,7 +40,7 @@ public class ClientsController : ControllerBase
         [FromBody] UpsertClientRequest request,
         CancellationToken cancellationToken)
     {
-        var (result, errors) = await _clients.CreateAsync(request, cancellationToken);
+        var (result, errors) = await _clients.CreateAsync(request, ActorClaims.Id(User), cancellationToken);
         if (errors is not null)
             return this.FieldErrorsProblem(errors);
         return CreatedAtAction(nameof(Get), new { id = result!.Id }, result);
@@ -52,7 +52,7 @@ public class ClientsController : ControllerBase
         [FromBody] UpsertClientRequest request,
         CancellationToken cancellationToken)
     {
-        var (result, errors) = await _clients.UpdateAsync(id, request, cancellationToken);
+        var (result, errors) = await _clients.UpdateAsync(id, request, ActorClaims.Id(User), cancellationToken);
         if (errors is not null)
             return this.FieldErrorsProblem(errors);
         return Ok(result);
@@ -61,8 +61,8 @@ public class ClientsController : ControllerBase
     [HttpPost("{id:guid}/deactivate")]
     public async Task<IActionResult> Deactivate(Guid id, CancellationToken cancellationToken)
     {
-        var (ok, error) = await _clients.DeactivateAsync(id, cancellationToken);
-        if (!ok) return this.BadRequestProblem(error ?? "تعذر تنفيذ العملية.");
+        var (ok, error) = await _clients.DeactivateAsync(id, ActorClaims.Id(User), cancellationToken);
+        if (!ok) return this.BadRequestProblem(error ?? "تعذّر تنفيذ العملية.");
         return NoContent();
     }
 }

@@ -1,4 +1,4 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { ApiAuthError } from "./permissions";
 import { fetchListPage, type PagedResultDto } from "./pagination";
@@ -10,7 +10,7 @@ export type NotificationsApiConfig = {
 };
 
 export type NotificationTone = "info" | "success" | "warn";
-export type NotificationWireTone = NotificationTone | "warning";
+type NotificationWireTone = NotificationTone | "warning";
 export type NotificationCategory =
   | "workflow"
   | "financial"
@@ -51,13 +51,6 @@ export type CreateUserNotificationRequest = {
   sourceEvent?: string;
 };
 
-function headers(token: string): HeadersInit {
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-}
-
 function baseUrl(config: NotificationsApiConfig): string {
   return config.baseUrl ?? getApiBase();
 }
@@ -66,7 +59,7 @@ export async function listNotifications(
   config: NotificationsApiConfig,
 ): Promise<UserNotificationDto[]> {
   const res = await fetch(`${baseUrl(config)}/api/notifications`, {
-    headers: headers(config.token),
+    headers: authHeaders(config.token),
   });
   if (res.status === 401) throw new ApiAuthError();
   if (!res.ok) throw new Error(`notifications ${res.status}`);
@@ -90,12 +83,6 @@ export type NotificationListQuery = {
   /** `true` → unread only; `false` → read only; omitted → both. */
   unread?: boolean;
 };
-
-/** The filter set without the page window. */
-export type NotificationListFilters = Omit<
-  NotificationListQuery,
-  "page" | "pageSize"
->;
 
 function notificationListParams(query?: NotificationListQuery) {
   return {
@@ -131,7 +118,7 @@ export async function createNotification(
 ): Promise<UserNotificationDto> {
   const res = await fetch(`${baseUrl(config)}/api/notifications`, {
     method: "POST",
-    headers: headers(config.token),
+    headers: authHeaders(config.token),
     body: JSON.stringify(request),
   });
   if (res.status === 401) throw new ApiAuthError();
@@ -145,7 +132,7 @@ export async function markNotificationRead(
 ): Promise<void> {
   const res = await fetch(`${baseUrl(config)}/api/notifications/${id}/read`, {
     method: "PATCH",
-    headers: headers(config.token),
+    headers: authHeaders(config.token),
   });
   if (res.status === 401) throw new ApiAuthError();
   if (res.status === 404) return;
@@ -157,7 +144,7 @@ export async function markAllNotificationsRead(
 ): Promise<void> {
   const res = await fetch(`${baseUrl(config)}/api/notifications/read-all`, {
     method: "POST",
-    headers: headers(config.token),
+    headers: authHeaders(config.token),
   });
   if (res.status === 401) throw new ApiAuthError();
   if (!res.ok) throw new Error(`notifications read-all ${res.status}`);
@@ -169,7 +156,7 @@ export async function deleteNotification(
 ): Promise<void> {
   const res = await fetch(`${baseUrl(config)}/api/notifications/${id}`, {
     method: "DELETE",
-    headers: headers(config.token),
+    headers: authHeaders(config.token),
   });
   if (res.status === 401) throw new ApiAuthError();
   if (res.status === 404) return;
@@ -181,7 +168,7 @@ export async function clearNotifications(
 ): Promise<void> {
   const res = await fetch(`${baseUrl(config)}/api/notifications`, {
     method: "DELETE",
-    headers: headers(config.token),
+    headers: authHeaders(config.token),
   });
   if (res.status === 401) throw new ApiAuthError();
   if (!res.ok) throw new Error(`notifications clear ${res.status}`);

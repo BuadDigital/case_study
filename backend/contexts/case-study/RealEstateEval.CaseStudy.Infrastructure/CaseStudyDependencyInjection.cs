@@ -42,10 +42,10 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IPropertyGroupService, PropertyGroupService>();
         services.AddWorkflowTaskCollaborators();
         services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
-        services.AddScoped<ICaseStudyFormRepository, CaseStudyFormRepository>();
-        services.AddScoped<ICaseStudyFormService, CaseStudyFormService>();
-        services.AddScoped<ICaseStudyFormBatchQuery, CaseStudyFormBatchQueryService>();
-        services.AddScoped<ICaseStudyFormBatchReadService, CaseStudyFormBatchReadService>();
+        services.AddScoped<ICaseStudyReportRepository, CaseStudyReportRepository>();
+        services.AddScoped<ICaseStudyReportService, CaseStudyReportService>();
+        services.AddScoped<ICaseStudyReportBatchQuery, CaseStudyReportBatchQueryService>();
+        services.AddScoped<ICaseStudyReportBatchReadService, CaseStudyReportBatchReadService>();
         services.AddScoped<ICaseStudyValuationDispatchRepository, CaseStudyValuationDispatchRepository>();
         services.AddScoped<ICaseStudyValuationDispatchService, CaseStudyValuationDispatchService>();
         services.AddScoped<IPartyTaskSubmissionRepository, PartyTaskSubmissionRepository>();
@@ -59,6 +59,7 @@ public static class CaseStudyDependencyInjection
         // Q-9: derived transaction-state machine + comprehensive Enfaz upload.
         services.AddScoped<ITransactionStateRepository, TransactionStateRepository>();
         services.AddScoped<ITransactionStateService, TransactionStateService>();
+        services.AddScoped<IWorkflowTaskPatchNotifier, WorkflowTaskPatchNotifier>();
         services.AddScoped<IWorkflowTaskShellPatcher, WorkflowTaskShellPatcher>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();
         return services;
@@ -132,13 +133,7 @@ public static class CaseStudyDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        var caseStudyConnection = BoundedContextConnections.Resolve(
-            configuration,
-            BoundedContextConnections.ServiceNames.CaseStudy,
-            connectionString);
-        services.AddBoundedContextPersistence<CaseStudyDbContext>(
-            configuration,
-            caseStudyConnection);
+        services.AddBoundedContextPersistence<CaseStudyDbContext>(configuration);
         return services;
     }
 

@@ -20,7 +20,7 @@ async function persistCatalog(catalog: FailureTypesCatalog): Promise<void> {
   const result = await saveFailureTypesCatalog(config, catalog);
   if (!result.ok) {
     throw new Error(
-      resolveApiError(result.kind, undefined, "تعذّر حفظ أنواع التعذر"),
+      resolveApiError(result.kind, undefined, "تعذّر حفظ أنواع التعذّر"),
     );
   }
 }

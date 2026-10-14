@@ -51,6 +51,31 @@ describe("API write repository", () => {
     expect(nativeFetch).toHaveBeenCalledTimes(2);
   });
 
+  it("waits for Retry-After and retries once when the same Idempotency-Key is still in progress", async () => {
+    vi.useFakeTimers();
+    const nativeFetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response("{}", {
+          status: 409,
+          headers: { "Idempotency-Key-In-Progress": "true", "Retry-After": "1" },
+        }),
+      )
+      .mockResolvedValueOnce(new Response("{}", { status: 201 }));
+    vi.stubGlobal("fetch", nativeFetch);
+
+    const pending = repositoryFetch("/api/resource", {
+      method: "POST",
+      body: JSON.stringify({ a: 1 }),
+    });
+    await vi.advanceTimersByTimeAsync(1_000);
+    const response = await pending;
+    vi.useRealTimers();
+
+    expect(response.status).toBe(201);
+    expect(nativeFetch).toHaveBeenCalledTimes(2);
+  });
+
   it("does not retry a domain 409 or a non-conflict failure", async () => {
     const nativeFetch = vi
       .fn()

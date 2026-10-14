@@ -130,11 +130,12 @@ public sealed partial class ValuationReconciliationService(
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
         // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        if (await freeze.IsFrozenAsync(vr.Id, cancellationToken))
+        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
+        if (frozenMessage is not null)
         {
             return (
                 null,
-                new Dictionary<string, string> { ["_"] = ValuationReportFreezeRules.FrozenMessageAr });
+                new Dictionary<string, string> { ["_"] = frozenMessage });
         }
 
         // Deed/nature match (traditional deed) is enforced at issuance only — the appraiser may
@@ -146,7 +147,7 @@ public sealed partial class ValuationReconciliationService(
         var errors = new Dictionary<string, string>();
 
         if (request.FinalRoundDecimals is < 0 or > 6)
-            errors["finalRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6 (تقريب لأقرب ١٠^ن ريال)";
+            errors["finalRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6 (تقريب لأقرب ١٠^ن ر.س)";
 
         if (request.LiquidationDiscountPct is < 0m or > 100m)
             errors["liquidationDiscountPct"] = "نسبة الخصم يجب أن تكون بين 0 و 100";

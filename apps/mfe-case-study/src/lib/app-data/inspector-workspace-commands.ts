@@ -5,7 +5,9 @@ import {
 import {
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
+  type ReturnInspectionRequest,
 } from "@platform/api-client";
+import { createKeyedWriteQueue } from "@platform/app-shared/lib/keyed-write-queue";
 import {
   clearLocalWorkingCopy,
   saveDraftWithOfflineFallback,
@@ -14,18 +16,22 @@ import {
 } from "@platform/app-shared/offline/offline-write";
 import {
   acceptPartySubmission,
-  reopenPartySubmission,
+  returnInspectionWithImpact,
   type PartyWorkMutationResult,
+  type ReturnInspectionMutationResult,
 } from "@platform/app-shared/app-data/party-submission-api";
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
 import {
   applyEnfathPrefillToInspectorDraft,
   inspectorDraftNeedsEnfathPrefill,
 } from "./inspector-deed-prefill";
+import { fillEmptyFeaturesFromBourse } from "./inspector-bourse-prefill";
 import {
   createInspectorWorkspaceDraft,
   inspectionCompletionStamp,
   inspectionStampFromNow,
+  isInspectorWorkspaceLocked,
+  MOVABLES_FEATURE_KEY,
   sanitizeInspectorDraftForLand,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
@@ -36,11 +42,21 @@ import {
   mergeInspectorWorkspacePatch,
   notifyChanged,
   payloadToDraft,
+  resolveInspectorWorkspacePatch,
   setCache,
   writeCache,
   type InspectorWorkspacePatch,
+  type InspectorWorkspacePatchInput,
 } from "./inspector-workspace-model";
 import { fetchInspectorWorkspace } from "./inspector-workspace-reads";
+
+/**
+ * Every inspector workspace PUT sends the whole draft with no version token, so the debounce, the
+ * map-pin flush, «حفظ», the load-time repair and submit run one at a time per task — otherwise an
+ * older PUT landing last on a slow link erases newer fields on the server. See keyed-write-queue.ts.
+ */
+const inspectorWriteQueue = createKeyedWriteQueue();
+
 
 /** Repair legacy/blank inspector coordinates by persisting the Jeddah defaults. */
 export async function migrateInspectorDefaultCoordsIfNeeded(
@@ -54,48 +70,80 @@ export async function migrateInspectorDefaultCoordsIfNeeded(
     return draft;
   }
   const defaults = jeddahDefaultCoords();
-  const next: InspectorWorkspaceDraft = {
-    ...draft,
-    mapLatitude: defaults.latitude,
-    mapLongitude: defaults.longitude,
-  };
-  const saved = await saveInspectorWorkspaceDraft(next);
-  return saved;
+  // Applied to the draft as it is when the PUT runs — a pin dropped meanwhile is kept.
+  return saveInspectorWorkspaceDraft(draft, (latest) =>
+    latest === draft || shouldUseJeddahDefaultCoords(latest.mapLatitude, latest.mapLongitude)
+      ? { ...latest, mapLatitude: defaults.latitude, mapLongitude: defaults.longitude }
+      : latest,
+  );
 }
 
-export async function getOrCreateInspectorWorkspace(input: {
+type InspectorWorkspaceLoadInput = {
   taskId: string;
   propertyId: string;
   poNumber: string;
   propertyDisplayId?: string;
   property?: import("./po-intake-data").PoPropertyIntake | null;
-}): Promise<InspectorWorkspaceDraft | null> {
+};
+
+/**
+ * «يوجد منقولات» left untouched means «لا»: the report prints «لا يوجد منقولات بالعقار» only for an
+ * explicit «لا», so an empty answer would otherwise print a dash. Never over an answer already given.
+ */
+export function withMovablesDefaultNo(draft: InspectorWorkspaceDraft): InspectorWorkspaceDraft {
+  if ((draft.featureValues[MOVABLES_FEATURE_KEY] ?? "").trim()) return draft;
+  return {
+    ...draft,
+    featureValues: { ...draft.featureValues, [MOVABLES_FEATURE_KEY]: "لا" },
+  };
+}
+
+/** The load-time repair (land sanitize, bourse fill, display id, stamp); the same object when nothing changes. */
+function repairLoadedInspectorDraft(
+  loaded: InspectorWorkspaceDraft,
+  input: InspectorWorkspaceLoadInput,
+): InspectorWorkspaceDraft {
+  let existing = sanitizeInspectorDraftForLand(loaded, {
+    classification: input.property?.classification,
+    propertyType: input.property?.propertyType,
+  });
+  // The bourse already answered the asset type / usage: fill what is still empty — also after the
+  // inspector has started — until he submits. Never over something he wrote.
+  if (!isInspectorWorkspaceLocked(existing.status)) {
+    existing = fillEmptyFeaturesFromBourse(existing, input.property);
+    existing = withMovablesDefaultNo(existing);
+  }
+  const stamp = inspectionStampFromNow();
+  const patch: Partial<InspectorWorkspaceDraft> = {};
+  if (input.propertyDisplayId && !existing.propertyDisplayId.trim()) {
+    patch.propertyDisplayId = input.propertyDisplayId;
+  }
+  if (!existing.inspectionDate.trim()) {
+    patch.inspectionDate = stamp.inspectionDate;
+  }
+  if (!existing.inspectionTime.trim()) {
+    patch.inspectionTime = stamp.inspectionTime;
+  }
+  return Object.keys(patch).length > 0 ? { ...existing, ...patch } : existing;
+}
+
+export async function getOrCreateInspectorWorkspace(
+  input: InspectorWorkspaceLoadInput,
+): Promise<InspectorWorkspaceDraft | null> {
   let existing = await fetchInspectorWorkspace(input.taskId);
   if (existing) {
     existing = await migrateInspectorDefaultCoordsIfNeeded(existing);
-    const beforeSanitize = existing;
-    existing = sanitizeInspectorDraftForLand(existing, {
-      classification: input.property?.classification,
-      propertyType: input.property?.propertyType,
-    });
-    const stamp = inspectionStampFromNow();
-    const patch: Partial<InspectorWorkspaceDraft> = {};
-    if (input.propertyDisplayId && !existing.propertyDisplayId.trim()) {
-      patch.propertyDisplayId = input.propertyDisplayId;
-    }
-    if (!existing.inspectionDate.trim()) {
-      patch.inspectionDate = stamp.inspectionDate;
-    }
-    if (!existing.inspectionTime.trim()) {
-      patch.inspectionTime = stamp.inspectionTime;
-    }
-    if (existing !== beforeSanitize || Object.keys(patch).length > 0) {
-      return saveInspectorWorkspaceDraft({ ...existing, ...patch });
+    const repaired = repairLoadedInspectorDraft(existing, input);
+    if (repaired !== existing) {
+      // Re-applied when the PUT runs, on top of whatever the inspector typed while it waited.
+      return saveInspectorWorkspaceDraft(repaired, (latest) =>
+        repairLoadedInspectorDraft(latest, input),
+      );
     }
     return existing;
   }
 
-  let draft = createInspectorWorkspaceDraft(input);
+  let draft = withMovablesDefaultNo(createInspectorWorkspaceDraft(input));
   if (input.property && inspectorDraftNeedsEnfathPrefill(draft)) {
     draft = applyEnfathPrefillToInspectorDraft(draft, input.property);
   }
@@ -103,7 +151,31 @@ export async function getOrCreateInspectorWorkspace(input: {
   return saved;
 }
 
-export async function saveInspectorWorkspaceDraft(
+/**
+ * Queues one whole-draft PUT for the task. When it RUNS it starts from the cached draft (every edit
+ * typed since lands there) unless `draft` is strictly newer, then applies `build`. A save that carries
+ * its own change (submit's original map pin, the load-time repair) must pass it as `build`: a change
+ * folded into `draft` beforehand is lost when the cache wins.
+ */
+export function saveInspectorWorkspaceDraft(
+  draft: InspectorWorkspaceDraft,
+  build?: (latest: InspectorWorkspaceDraft) => InspectorWorkspaceDraft,
+): Promise<InspectorWorkspaceDraft> {
+  return inspectorWriteQueue.enqueue(draft.taskId, () => {
+    const cached = loadInspectorWorkspace(draft.taskId);
+    const latest = cached && !isDraftNewerThan(draft, cached) ? cached : draft;
+    return putInspectorWorkspaceDraft(build ? build(latest) : latest);
+  });
+}
+
+/** A draft that replaced `sent` in the cache while its PUT was in flight — newer local edits win. */
+function editedSinceSent(sent: InspectorWorkspaceDraft): InspectorWorkspaceDraft | null {
+  const cached = loadInspectorWorkspace(sent.taskId);
+  return cached && cached !== sent && !isDraftNewerThan(sent, cached) ? cached : null;
+}
+
+/** One PUT of the whole draft; only ever run from the write queue. */
+async function putInspectorWorkspaceDraft(
   draft: InspectorWorkspaceDraft,
 ): Promise<InspectorWorkspaceDraft> {
   const config = workOrdersApiConfig();
@@ -119,6 +191,9 @@ export async function saveInspectorWorkspaceDraft(
     updatedAtUtc: new Date().toISOString(),
   });
   const payload = draftToPayload(nextDraft);
+  // Before the first await: edits typed while this PUT is in flight build on what it sends (the
+  // repair or submit's map pin included), and the response below can tell they came later.
+  setCache(nextDraft);
 
   if (!config) {
     const queued = await saveDraftWithOfflineFallback({
@@ -126,18 +201,16 @@ export async function saveInspectorWorkspaceDraft(
       kind: "field-inspection",
       payload,
       onlineSave: async () => {
-        throw new Error("تعذّر حفظ مسودة المعاينة — تحقق من تسجيل الدخول");
+        throw new Error("تعذّر حفظ مسودة المعاينة — يلزم تسجيل الدخول");
       },
     });
     if (queued.queued) {
-      const cached = loadInspectorWorkspace(draft.taskId);
-      if (cached && isDraftNewerThan(cached, nextDraft)) {
-        return cached;
-      }
+      const newer = editedSinceSent(nextDraft);
+      if (newer) return newer;
       writeCache(nextDraft);
       return nextDraft;
     }
-    throw new Error("تعذّر حفظ مسودة المعاينة — تحقق من تسجيل الدخول");
+    throw new Error("تعذّر حفظ مسودة المعاينة — يلزم تسجيل الدخول");
   }
 
   const queued = await saveDraftWithOfflineFallback({
@@ -162,22 +235,17 @@ export async function saveInspectorWorkspaceDraft(
         }
         throw err;
       }
-      const next = payloadToDraft(result.data, draft);
+      const next = payloadToDraft(result.data, nextDraft);
       void clearLocalWorkingCopy("field-inspection", draft.taskId, saveStartedAtUtc);
-      const cached = loadInspectorWorkspace(draft.taskId);
-      // A newer local edit may have landed while this request was in flight.
-      if (cached && isDraftNewerThan(cached, draft)) {
-        return;
-      }
+      // A newer local edit landed while this request was in flight: it stays, and its own save follows.
+      if (editedSinceSent(nextDraft)) return;
       writeCache(next);
     },
   });
 
   if (queued.queued) {
-    const cached = loadInspectorWorkspace(draft.taskId);
-    if (cached && isDraftNewerThan(cached, nextDraft)) {
-      return cached;
-    }
+    const newer = editedSinceSent(nextDraft);
+    if (newer) return newer;
     writeCache(nextDraft);
     return nextDraft;
   }
@@ -261,12 +329,14 @@ function scheduleDebouncedSave(
 
 export async function updateInspectorWorkspace(
   taskId: string,
-  patch: InspectorWorkspacePatch,
+  patchInput: InspectorWorkspacePatchInput,
   options?: { allowWhenSubmitted?: boolean; immediate?: boolean },
 ): Promise<InspectorWorkspaceDraft | null> {
   const current =
     loadInspectorWorkspace(taskId) ?? (await fetchInspectorWorkspace(taskId));
   if (!current) return null;
+  // Built from the cached draft as it is NOW — see InspectorWorkspacePatchInput.
+  const patch = resolveInspectorWorkspacePatch(current, patchInput);
   if (current.status === "submitted" && !options?.allowWhenSubmitted) {
     return current;
   }
@@ -300,7 +370,7 @@ export async function submitInspectorWorkspace(
   // Cheap session check before a network fetch that would be wasted without a session (async-cheap-condition-before-await).
   const config = workOrdersApiConfig();
   if (!config) {
-    return { ok: false, message: "يجب تسجيل الدخول أولاً" };
+    return { ok: false, message: "يلزم تسجيل الدخول" };
   }
   const current =
     loadInspectorWorkspace(taskId) ?? (await fetchInspectorWorkspace(taskId));
@@ -314,7 +384,23 @@ export async function submitInspectorWorkspace(
   // ق-10: stamp the on-site completion now, on the device — a submit queued offline
   // keeps this moment; the server's SubmittedAtUtc records the later upload separately.
   setCache(mergeInspectorWorkspacePatch(current, inspectionCompletionStamp()));
-  const saved = await flushInspectorWorkspaceSave(taskId) ?? current;
+  const flushed = await flushInspectorWorkspaceSave(taskId) ?? current;
+  // Queued behind every pending PUT, so none of them lands after the submit.
+  return inspectorWriteQueue.enqueue(taskId, () =>
+    submitFlushedInspectorWorkspace(config, taskId, flushed, idempotencyKey),
+  );
+}
+
+async function submitFlushedInspectorWorkspace(
+  config: NonNullable<ReturnType<typeof workOrdersApiConfig>>,
+  taskId: string,
+  flushed: InspectorWorkspaceDraft,
+  idempotencyKey: string | undefined,
+): Promise<
+  | { ok: true; draft: InspectorWorkspaceDraft; queued?: boolean }
+  | { ok: false; message: string; errors?: Record<string, string> }
+> {
+  const saved = loadInspectorWorkspace(taskId) ?? flushed;
   const payload = draftToPayload(saved);
 
   try {
@@ -367,16 +453,21 @@ export async function submitInspectorWorkspace(
   }
 }
 
-export async function reopenInspectorWorkspace(
+/**
+ * The specialist returns the inspection to the inspector together with the affected parties
+ * (batch 2C): one server transaction reopens / notifies the picked parties and, when the study
+ * report is issued, keeps or reopens it. Refreshes the inspector cache like the old plain reopen.
+ */
+export async function returnInspectorWorkspace(
   taskId: string,
-  returnNote: string,
-): Promise<PartyWorkMutationResult<InspectorWorkspaceDraft>> {
-  const reopened = await reopenPartySubmission(taskId, returnNote);
-  if (!reopened.ok) return { ok: false, error: reopened.error };
-  const next = payloadToDraft(reopened.data);
-  writeCache(next);
+  request: ReturnInspectionRequest,
+  idempotencyKey?: string,
+): Promise<ReturnInspectionMutationResult> {
+  const returned = await returnInspectionWithImpact(taskId, request, idempotencyKey);
+  if (!returned.ok) return returned;
+  writeCache(payloadToDraft(returned.data.inspection));
   notifyChanged();
-  return { ok: true, data: next };
+  return returned;
 }
 
 /** Specialist acceptance — stamps AcceptedAtUtc so data may feed Infath. */

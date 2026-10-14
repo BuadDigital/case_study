@@ -229,6 +229,24 @@ public static class CostLineItemKeys
         return IsKnown(v) ? v : Custom;
     }
 
+ /// <summary>
+ /// Group 1 (building floor areas) — a defined area item, or a custom line whose structure
+ /// kind is a floor (as in the interactive form). Everything else is group 2 (additions).
+ /// </summary>
+    public static bool IsAreaGroup(string? itemKey, string? structureKind)
+    {
+        var key = Normalize(itemKey);
+        if (key == Custom)
+        {
+            return string.Equals(
+                (structureKind ?? "").Trim(),
+                BuildingStructureKinds.Floor,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        return Group1.Contains(key);
+    }
+
     public static string LabelAr(string? value) => Normalize(value) switch
     {
         Basement => "القبو",
@@ -313,13 +331,26 @@ public static class CostApproachRules
         Math.Round(Math.Max(0m, areaSqm) * Math.Max(0m, unitCostSar), 2, MidpointRounding.AwayFromZero);
 
  /// <summary>
- /// Interactive model spec: build ratio applies to quantity for m² lines (empty = 100%) —
- /// "effective floor area" enters the total and building floor areas.
+ /// The build-ratio input exists only on m² lines of the area group (group 1); on any other
+ /// line a stored ratio (e.g. seeded from inventory onto an «other» line) is ignored.
  /// </summary>
-    public static decimal EffectiveQuantity(decimal quantity, string? unit, decimal? buildRatioPct)
+    public static bool BuildRatioApplies(string? itemKey, string? structureKind, string? unit) =>
+        CostLineItemKeys.IsAreaGroup(itemKey, structureKind)
+        && CostLineUnits.Normalize(unit) == CostLineUnits.Sqm;
+
+ /// <summary>
+ /// Interactive model spec: build ratio applies to quantity for area-group m² lines (empty =
+ /// 100%) — "effective floor area" enters the total and building floor areas.
+ /// </summary>
+    public static decimal EffectiveQuantity(
+        decimal quantity,
+        string? unit,
+        decimal? buildRatioPct,
+        string? itemKey,
+        string? structureKind)
     {
         var q = Math.Max(0m, quantity);
-        if (CostLineUnits.Normalize(unit) != CostLineUnits.Sqm) return q;
+        if (!BuildRatioApplies(itemKey, structureKind, unit)) return q;
         if (buildRatioPct is not { } bp) return q;
         var pct = Math.Clamp(bp, 0m, 100m);
         return Math.Round(q * pct / 100m, 2, MidpointRounding.AwayFromZero);
@@ -415,14 +446,11 @@ public static class CostApproachRules
 
     public static bool TryParseArea(string? areaText, out decimal area)
     {
+        // The one typed-number rule (LocaleNumber — same as the screens); a negative area is refused.
         area = 0m;
-        if (string.IsNullOrWhiteSpace(areaText)) return false;
-        var normalized = areaText.Trim().Replace(',', '.');
-        return decimal.TryParse(
-            normalized,
-            System.Globalization.NumberStyles.Number,
-            System.Globalization.CultureInfo.InvariantCulture,
-            out area) && area >= 0m;
+        if (!LocaleNumber.TryParse(areaText, out var parsed) || parsed < 0m) return false;
+        area = parsed;
+        return true;
     }
 
  // ─── indirect costs ───

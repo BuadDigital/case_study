@@ -1,16 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   StatusPill,
   cn,
   finStatusStyle,
   opsPanelCard,
   opsTfNote,
+  QueryErrorState,
+  useSwapAnimation,
 } from "@platform/ui-kit";
-import { useQuery } from "@tanstack/react-query";
-import { fmtMax } from "@platform/app-shared/format/number";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { fmtSar } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
@@ -28,14 +31,11 @@ import { FinanceStagePills } from "./FinanceStagePills";
 import { FinancePartyBillingStatements } from "./FinancePartyBillingStatements";
 import { FinanceExcludedCosts } from "./FinanceExcludedCosts";
 import { FinanceCostPartiesList } from "./FinanceCostPartiesList";
+import { prefetchCostsAccountTab } from "../query/costs-account-queries";
 
 const EMPTY_STAFF_USERS: StaffUser[] = [];
 
 // SAR suffix without forced fractional zeros — keep local to preserve the same display.
-function fmtSar(n: number) {
-  return `${fmtMax(n)} ر.س`;
-}
-
 function AccountHeader({ party }: { party: FinanceCostParty }) {
   const isVendor = party.payeeType === "vendor";
   const dueScaled = applyCostTax(party.dueSar, party.payeeType);
@@ -63,7 +63,7 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
             className="text-[13px] font-extrabold leading-tight text-heading"
             dir="ltr"
           >
-            {fmtSar(dueScaled)}
+            {fmtSar(dueScaled, { trim: true })}
           </span>
           <span className="text-[9.5px] text-text-3">مستحق — لم يُسجَّل</span>
         </div>
@@ -72,7 +72,7 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
             className="text-[13px] font-extrabold leading-tight text-heading"
             dir="ltr"
           >
-            {fmtSar(inStScaled)}
+            {fmtSar(inStScaled, { trim: true })}
           </span>
           <span className="text-[9.5px] text-text-3">
             {isVendor ? "في مسيرات صرف" : "في أوامر صرف"}
@@ -83,7 +83,7 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
             className="text-[13px] font-extrabold leading-tight text-heading"
             dir="ltr"
           >
-            {fmtSar(paidScaled)}
+            {fmtSar(paidScaled, { trim: true })}
           </span>
           <span className="text-[9.5px] text-text-3">مدفوع سابقاً</span>
         </div>
@@ -92,7 +92,7 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
             className="text-base font-extrabold leading-tight text-heading"
             dir="ltr"
           >
-            {fmtSar(party.balanceSar)}
+            {fmtSar(party.balanceSar, { trim: true })}
           </span>
           <span className="text-[9.5px] text-text-3">مستحق له الآن</span>
         </div>
@@ -232,6 +232,13 @@ export function FinanceCostsView({
     } as Partial<Record<CostsSection, number>>;
   }, [partyKey, readyQuery.data, statementsQuery.data, excludedCount]);
 
+  /** Ledger failed to load — header sums and badges would read 0. */
+  const ledgerFailed = [readyQuery, statementsQuery].filter(queryLoadFailed);
+
+  const queryClient = useQueryClient();
+  const tabPanelRef = useRef<HTMLDivElement>(null);
+  useSwapAnimation(tabPanelRef, accountSection);
+
   const partyName =
     activeParty?.name ??
     (focusPartyId ? resolvePartyName(focusPartyId, staffUsers) : "");
@@ -267,7 +274,19 @@ export function FinanceCostsView({
 
   return (
     <div>
-      <AccountHeader party={headerParty} />
+      {ledgerFailed.length ? (
+        <QueryErrorState
+          className="mb-3.5"
+          line="تعذّر تحميل حساب المستحق"
+          error={ledgerFailed[0]!.error}
+          onRetry={() => {
+            for (const q of ledgerFailed) void q.refetch();
+          }}
+          retrying={ledgerFailed.some((q) => q.isFetching)}
+        />
+      ) : (
+        <AccountHeader party={headerParty} />
+      )}
 
       <FinanceStagePills
         items={partyTabs}
@@ -277,45 +296,50 @@ export function FinanceCostsView({
           onSectionChange(id);
           if (id !== "statements" && id !== "dues") onFocusStatement(null);
         }}
-        counts={partyCounts}
+        onTabIntent={(id) =>
+          prefetchCostsAccountTab(queryClient, id, focusPartyId)
+        }
+        counts={ledgerFailed.length ? undefined : partyCounts}
       />
 
-      {accountSection === "dues" ||
-      accountSection === "statements" ||
-      accountSection === "paid" ? (
-        <>
-          {accountSection === "statements" || accountSection === "paid" ? (
-            <p className={cn(opsTfNote, "mb-3.5")}>
-              {accountSection === "paid"
-                ? headerParty.payeeType === "individual"
-                  ? "أوامر الصرف المدفوعة للأفراد — للمطابقة فقط: المعاملات وسند الصرف وإيصال التحويل."
-                  : "مسيرات الصرف المدفوعة — للمطابقة فقط: المعاملات وفاتورة المورّد وسند الصرف وإيصال التحويل."
-                : headerParty.payeeType === "individual"
-                  ? "أوامر صرف قيد الإجراء للأفراد — لا فاتورة. تحتاج توثيق الدفع ورفع إيصال التحويل. اضغط أمر الصرف لعرضه."
-                  : "مسيرات قيد الإجراء: «بانتظار فاتورة المورّد» · «فاتورة واردة — بانتظار المطابقة» · «مطابق — بانتظار توثيق الصرف». اضغط المسير لإكمال الإجراء."}
-            </p>
-          ) : null}
-          <FinancePartyBillingStatements
-            mode={
-              accountSection === "dues"
-                ? "dues"
-                : accountSection === "paid"
-                  ? "paid"
-                  : "statements"
-            }
-            assigneeId={focusPartyId}
-            focusStatementId={focusStatementId}
-            onFocusStatement={(id, partyId) =>
-              onFocusStatement(id, partyId ?? focusPartyId)
-            }
-            onCreatedStatement={() => onSectionChange("statements")}
-          />
-        </>
-      ) : null}
+      <div ref={tabPanelRef}>
+        {accountSection === "dues" ||
+        accountSection === "statements" ||
+        accountSection === "paid" ? (
+          <>
+            {accountSection === "statements" || accountSection === "paid" ? (
+              <p className={cn(opsTfNote, "mb-3.5")}>
+                {accountSection === "paid"
+                  ? headerParty.payeeType === "individual"
+                    ? "أوامر الصرف المدفوعة للأفراد — للمطابقة فقط: المعاملات وسند الصرف وإيصال التحويل."
+                    : "مسيرات الصرف المدفوعة — للمطابقة فقط: المعاملات وفاتورة المورّد وسند الصرف وإيصال التحويل."
+                  : headerParty.payeeType === "individual"
+                    ? "أوامر صرف قيد الإجراء للأفراد — لا فاتورة. تحتاج توثيق الدفع ورفع إيصال التحويل. اضغط أمر الصرف لعرضه."
+                    : "مسيرات قيد الإجراء: «بانتظار فاتورة المورّد» · «فاتورة واردة — بانتظار المطابقة» · «مطابق — بانتظار توثيق الصرف». اضغط المسير لإكمال الإجراء."}
+              </p>
+            ) : null}
+            <FinancePartyBillingStatements
+              mode={
+                accountSection === "dues"
+                  ? "dues"
+                  : accountSection === "paid"
+                    ? "paid"
+                    : "statements"
+              }
+              assigneeId={focusPartyId}
+              focusStatementId={focusStatementId}
+              onFocusStatement={(id, partyId) =>
+                onFocusStatement(id, partyId ?? focusPartyId)
+              }
+              onCreatedStatement={() => onSectionChange("statements")}
+            />
+          </>
+        ) : null}
 
-      {accountSection === "excluded" ? (
-        <FinanceExcludedCosts assigneeId={focusPartyId} />
-      ) : null}
+        {accountSection === "excluded" ? (
+          <FinanceExcludedCosts assigneeId={focusPartyId} />
+        ) : null}
+      </div>
     </div>
   );
 }

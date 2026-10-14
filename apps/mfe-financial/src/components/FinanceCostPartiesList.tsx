@@ -2,8 +2,9 @@
 
 import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { fmtMax } from "@platform/app-shared/format/number";
+import { fmtSar } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   loadPartyBillingReadyLines,
   loadPartyBillingStatements,
@@ -12,6 +13,7 @@ import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   EmptyState,
+  QueryErrorState,
   ListPager,
   StatusPill,
   TBody,
@@ -47,10 +49,6 @@ import {
 const EMPTY_STAFF_USERS: StaffUser[] = [];
 
 // SAR suffix without forced fractional zeros — keep local to preserve the same display.
-function fmtSar(n: number) {
-  return `${fmtMax(n)} ر.س`;
-}
-
 function SearchIcon() {
   return (
     <svg
@@ -151,6 +149,7 @@ export function FinanceCostPartiesList({
 
   const pending =
     readyQuery.isPending || statementsQuery.isPending;
+  const failedQueries = [readyQuery, statementsQuery].filter(queryLoadFailed);
 
   const selectParty = (p: FinanceCostParty) => {
     onSelectParty(
@@ -182,13 +181,25 @@ export function FinanceCostPartiesList({
           />
         </div>
         <span className={cn(finMuted, "text-[11.5px]")}>
-          {filtered.length} مستحق مسجّل
+          {failedQueries.length ? "—" : filtered.length} مستحق مسجّل
         </span>
       </div>
 
       {pending ? (
         <div className={opsLetterCard}>
           <EmptyState panel line="جاري التحميل…" />
+        </div>
+      ) : failedQueries.length ? (
+        <div className={opsLetterCard}>
+          <QueryErrorState
+            panel
+            line="تعذّر تحميل المستحقين"
+            error={failedQueries[0]!.error}
+            onRetry={() => {
+              for (const q of failedQueries) void q.refetch();
+            }}
+            retrying={failedQueries.some((q) => q.isFetching)}
+          />
         </div>
       ) : filtered.length === 0 ? (
         <div className={opsLetterCard}>
@@ -249,7 +260,7 @@ export function FinanceCostPartiesList({
                     className="text-center"
                     valueClassName="text-[14px] font-extrabold text-heading"
                   >
-                    {fmtSar(p.balanceSar)}
+                    {fmtSar(p.balanceSar, { trim: true })}
                   </TdLtr>
                   <Td className="text-center">
                     {p.pendingLines > 0 ? (

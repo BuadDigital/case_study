@@ -57,6 +57,8 @@ public class CaseStudyValuationContextLookupTests
 
         // Latest NON-party form wins; the newer party form must not.
         Assert.Equal("matched", context.DeedNatureMatchOutcome);
+        // The seeded latest non-party report is still «new»: the study report is not issued.
+        Assert.False(context.StudyReportIssued);
 
         Assert.Equal("مركز إنفاذ", context.ClientNameAr);
         Assert.Equal("Infath", context.ClientNameEn);
@@ -112,9 +114,72 @@ public class CaseStudyValuationContextLookupTests
         Assert.Null(bare.LatestWorkspace);
         Assert.Null(bare.InspectorPayloadJson);
         Assert.Null(bare.DeedNatureMatchOutcome);
+        Assert.False(bare.StudyReportIssued); // no report at all is «not issued», never «unknown»
         Assert.Null(bare.ClientNameAr);
         Assert.Empty(bare.BuildingInventoryLines);
         Assert.Empty(bare.ReportUserClientNamesAr);
+    }
+
+    [Fact]
+    public async Task Context_reports_the_study_report_issued_from_the_latest_non_party_row_only()
+    {
+        await using var cs = CreateDb();
+        Seed(cs);
+        var lookup = new CaseStudyLookup(cs);
+
+        // A newer ISSUED party contribution does not make the specialist's report issued.
+        var party = await cs.CaseStudyReports.SingleAsync(r => r.IsPartyContribution);
+        party.Status = CaseStudyReportStatuses.Issued;
+        await cs.SaveChangesAsync();
+        Assert.False((await lookup.GetValuationPropertyContextAsync(PropertyId))!.StudyReportIssued);
+
+        // The specialist's own report issued: true.
+        var report = await cs.CaseStudyReports.SingleAsync(r => !r.IsPartyContribution);
+        report.Status = CaseStudyReportStatuses.Issued;
+        await cs.SaveChangesAsync();
+        var context = await lookup.GetValuationPropertyContextAsync(PropertyId);
+        Assert.True(context!.StudyReportIssued);
+        Assert.Equal("matched", context.DeedNatureMatchOutcome);
+
+        // Reopened (draft) again: false.
+        report.Status = CaseStudyReportStatuses.Draft;
+        await cs.SaveChangesAsync();
+        Assert.False((await lookup.GetValuationPropertyContextAsync(PropertyId))!.StudyReportIssued);
+    }
+
+    [Fact]
+    public async Task Effective_type_follows_the_inspector_draft_until_a_submitted_type_exists()
+    {
+        await using var cs = CreateDb();
+        Seed(cs);
+        var lookup = new CaseStudyLookup(cs);
+
+        // Intake type only (the seeded draft names no asset type).
+        var intake = await lookup.GetValuationPropertyContextAsync(PropertyId);
+        Assert.Null(intake!.DraftInspectedPropertyType);
+        Assert.Equal("villa", intake.EffectivePropertyType());
+
+        // The inspector's draft states «أرض» — the unsaved approach defaults follow it.
+        var submission = await cs.PartyTaskSubmissions.SingleAsync(s => s.Id == SubmissionId);
+        submission.PayloadJson = """{"featureValues":{"assetSubject":"أرض"}}""";
+        await cs.SaveChangesAsync();
+        var draft = await lookup.GetValuationPropertyContextAsync(PropertyId);
+        Assert.Equal("أرض", draft!.DraftInspectedPropertyType);
+        Assert.Null(draft.InspectedPropertyType);
+        Assert.Equal("أرض", draft.EffectivePropertyType());
+
+        // A value outside the closed list is not a type.
+        submission.PayloadJson = """{"featureValues":{"assetSubject":"قصر"}}""";
+        await cs.SaveChangesAsync();
+        Assert.Equal("villa", (await lookup.GetValuationPropertyContextAsync(PropertyId))!.EffectivePropertyType());
+
+        // The submitted type wins over the draft; saved settings are never rewritten by this read.
+        submission.PayloadJson = """{"featureValues":{"assetSubject":"أرض"}}""";
+        var property = await cs.WorkOrderProperties.SingleAsync(p => p.Id == PropertyId);
+        property.InspectedPropertyType = "فيلا";
+        await cs.SaveChangesAsync();
+        var submitted = await lookup.GetValuationPropertyContextAsync(PropertyId);
+        Assert.Equal("فيلا", submitted!.EffectivePropertyType());
     }
 
     private static CaseStudyDbContext CreateDb()
@@ -196,22 +261,22 @@ public class CaseStudyValuationContextLookupTests
             WorkflowTaskId = Guid.NewGuid(),
             PayloadJson = """{"featureValues":{"buildState":"جيد"}}""",
         });
-        cs.CaseStudyForms.AddRange(
-            new CaseStudyForm
+        cs.CaseStudyReports.AddRange(
+            new CaseStudyReport
             {
                 Id = Guid.NewGuid(),
                 TaskId = Guid.NewGuid(),
                 PropertyId = PropertyId,
-                IsPartyForm = false,
+                IsPartyContribution = false,
                 DeedNatureMatchOutcome = "matched",
                 UpdatedAtUtc = new DateTime(2026, 8, 5, 0, 0, 0, DateTimeKind.Utc),
             },
-            new CaseStudyForm
+            new CaseStudyReport
             {
                 Id = Guid.NewGuid(),
                 TaskId = Guid.NewGuid(),
                 PropertyId = PropertyId,
-                IsPartyForm = true,
+                IsPartyContribution = true,
                 DeedNatureMatchOutcome = "mismatch",
                 UpdatedAtUtc = new DateTime(2026, 8, 12, 0, 0, 0, DateTimeKind.Utc),
             });

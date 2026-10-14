@@ -3,6 +3,7 @@ import { amountToArabicWords } from "../arabic-amount-words";
 import {
   computeForcedSaleValue,
   computePropertyTotal,
+  parseEvaluatorAmount,
 } from "../value-estimation";
 
 describe("amountToArabicWords", () => {
@@ -27,5 +28,14 @@ describe("value estimation math", () => {
 
   it("applies forced-sale discount", () => {
     expect(computeForcedSaleValue(1_000_000, "20")).toBe(800_000);
+  });
+
+  it("reads typed amounts with the shared locale rule", () => {
+    expect(parseEvaluatorAmount("1,250,000")).toBe(1_250_000);
+    expect(parseEvaluatorAmount("١٬٢٥٠٫٥")).toBe(1250.5);
+    expect(parseEvaluatorAmount("12,5")).toBe(12.5);
+    expect(parseEvaluatorAmount("")).toBeNull();
+    expect(parseEvaluatorAmount("abc")).toBeNull();
+    expect(computePropertyTotal("1,000,000", "٢٥٠٬٠٠٠")).toBe(1_250_000);
   });
 });

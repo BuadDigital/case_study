@@ -43,7 +43,7 @@ import {
   Tr,
   useToast,
 } from "@platform/ui-kit";
-import { courtsApiConfig } from "../lib/settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 const REGION_CITIES: Record<string, string[]> = {
   "منطقة مكة المكرمة": ["مكة المكرمة", "جدة", "الطائف"],
@@ -73,7 +73,7 @@ type CircuitModalState = {
 function resultMessage(result: CourtsAdminResult<unknown>): string {
   if (result.ok) return "";
   if (result.message) return result.message;
-  if (result.kind === "auth") return "يجب تسجيل الدخول أولاً";
+  if (result.kind === "auth") return "يلزم تسجيل الدخول";
   if (result.kind === "forbidden") return "لا تملك صلاحية إدارة المحاكم";
   if (result.kind === "network") return "تعذّر الاتصال بالخادم";
   if (result.kind === "not_found") return "السجل غير موجود";
@@ -271,7 +271,7 @@ export function CourtsView() {
 
   const loadCourts = useCallback(async () => {
     if (!authReady) return;
-    const config = courtsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     setLoading(true);
     const result = await listAdminCourts(config, { search: "", status: "all", limit: 200 });
@@ -292,7 +292,7 @@ export function CourtsView() {
 
   async function loadDetail(courtId: string, force = false) {
     if (!force && details[courtId]) return;
-    const config = courtsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     setBusyKey(`detail:${courtId}`);
     const result = await getAdminCourt(config, courtId);
@@ -315,7 +315,7 @@ export function CourtsView() {
       setNames((n) => ({ ...n, [court.id]: court.name }));
       return;
     }
-    const config = courtsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     setBusyKey(`name:${court.id}`);
     const result = await updateAdminCourt(config, court.id, {
@@ -335,7 +335,7 @@ export function CourtsView() {
   }
 
   async function saveCourt(draft: CourtDraftDto) {
-    const config = courtsApiConfig();
+    const config = apiConfig();
     if (!config || !courtModal) return;
     setBusyKey("court-form");
     const result =
@@ -353,7 +353,7 @@ export function CourtsView() {
   }
 
   async function saveCircuit(draft: CourtCircuitDraftDto) {
-    const config = courtsApiConfig();
+    const config = apiConfig();
     if (!config || !circuitModal) return;
     const { court, circuit, mode } = circuitModal;
     setBusyKey("circuit-form");
@@ -372,7 +372,7 @@ export function CourtsView() {
   }
 
   async function toggleCircuitStatus(court: AdminCourtDto, circuit: AdminCourtCircuitDto) {
-    const config = courtsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     setBusyKey(`circuit-status:${circuit.id}`);
     const result = await setAdminCourtCircuitStatus(

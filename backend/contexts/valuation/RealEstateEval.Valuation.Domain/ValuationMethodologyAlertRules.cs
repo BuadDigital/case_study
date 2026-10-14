@@ -292,7 +292,7 @@ public static class ValuationMethodologyAlertRules
                 resolutions),
 
             Eval(16, ValuationMethodologyAlertCodes.WeightsNot100,
-                "مجموع الأوزان ≠ ١٠٠٪",
+                "مجموع الأوزان النسبية ≠ ١٠٠٪",
                 true,
                 () => (input.MarketApproachRelevant
                        && input.AdoptedComparableCount > 0

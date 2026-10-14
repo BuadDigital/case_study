@@ -411,7 +411,7 @@ public sealed partial class OperationsTaskCommands : IOperationsTaskCommands
         bool courtVisit,
         CancellationToken cancellationToken)
     {
-        var year = now.Year;
+        var year = RiyadhClock.Year(now);
         var seq = await _repo.AllocateNextTaskSequenceAsync(year, now, cancellationToken);
         return (
             OperationsTaskCommandRules.DisplayId(year, seq),

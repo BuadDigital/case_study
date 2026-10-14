@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
   filterRows,
-  fmtSar,
   followButtonLabel,
   followupSuffix,
   knownFeesTotal,
@@ -41,13 +40,6 @@ function row(
     ...overrides,
   } as EnfazTrackingRowDto;
 }
-
-describe("fmtSar", () => {
-  it("drops decimals on whole amounts and keeps two otherwise", () => {
-    expect(fmtSar(1500)).toBe("1,500 ر.س");
-    expect(fmtSar(1500.5)).toBe("1,500.50 ر.س");
-  });
-});
 
 describe("textOrDash", () => {
   it("returns a dash for empty, null or whitespace", () => {
@@ -164,6 +156,21 @@ describe("sumRevenueAmounts", () => {
       row("b", { caseStudyFeeSar: 200, keyFeeSar: 30 }),
     ]);
     expect(sums).toEqual({ base: 400, vat: 60, key: 30, gross: 490 });
+  });
+
+  it("rounds VAT once per work order total, like the invoice", () => {
+    const sums = sumRevenueAmounts([
+      row("a", { caseStudyFeeSar: 100.5 }),
+      row("b", { caseStudyFeeSar: 100.5 }),
+    ]);
+    expect(sums).toEqual({ base: 201, vat: 30.15, key: 0, gross: 231.15 });
+    // Different work orders are separate invoices — each rounds its own VAT.
+    const twoPos = sumRevenueAmounts([
+      row("a", { caseStudyFeeSar: 100.5 }),
+      row("b", { poNumber: "PO-2", caseStudyFeeSar: 100.5 }),
+    ]);
+    expect(twoPos.vat).toBe(30.16);
+    expect(knownFeesTotal([row("a", { caseStudyFeeSar: 3500.5 })]).feesSum).toBe(4025.58);
   });
 
   it("is all zeros for an empty group", () => {

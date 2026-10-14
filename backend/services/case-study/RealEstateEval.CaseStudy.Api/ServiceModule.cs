@@ -5,7 +5,6 @@ using RealEstateEval.CaseStudy.Api.Integration;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
-using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Shared.Web;
@@ -28,8 +27,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddCaseStudyPersistence(builder.Configuration, connectionString!);
-        builder.Services.AddMessagingPersistence(builder.Configuration, connectionString!);
-        builder.Services.Configure<OutboxDispatcherOptions>(o => o.ContextType = typeof(MessagingDbContext));
+        builder.Services.AddMessagingPersistence(builder.Configuration);
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddCaseStudyInfrastructure(builder.Configuration, builder.Environment);
         // A8: Case Study boundary validators live in the context assembly.
@@ -39,7 +37,6 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         // No Identity EF / registration services on the request host — request paths use the
         // Identity HTTP directory; Dev seed runs through CreateIdentityMaintenanceProvider.
         builder.Services.AddIntegrationEventPublishing(builder.Configuration, builder.Environment);
-        builder.Services.AddOutboxDispatcher(builder.Configuration, builder.Environment);
         builder.Services.AddValuationIntegrationHandlers();
         builder.Services.AddIntegrationEventInbox();
         // A8: dead AddBlobStorage registration removed — nothing on this host resolves IBlobStorage.

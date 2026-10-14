@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useId, useLayoutEffect, useRef } from "react";
 
 // animejs is loaded on demand inside effects so it stays out of the initial bundle.
 type DashAnimation = { pause: () => void };
@@ -29,7 +29,7 @@ function MiniDonut({
   const off = cc * (1 - safe / 100);
   const ringRef = useRef<SVGCircleElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ringRef.current;
     if (!el) return;
     el.style.strokeDasharray = String(cc);
@@ -119,7 +119,7 @@ export function BigRing({ pct, color }: { pct: number; color: string }) {
   const off = c * (1 - safe / 100);
   const ringRef = useRef<SVGCircleElement>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const el = ringRef.current;
     if (!el) return;
     el.style.strokeDasharray = String(c);
@@ -204,6 +204,7 @@ export function TrendChart({
   const gid = useId().replace(/:/g, "");
   const rootRef = useRef<HTMLDivElement>(null);
   const seriesKey = series.map((s) => `${s.year}:${s.values.join(",")}`).join("|");
+  const labelsKey = labels.join(",");
   const W = 760;
   const H = 168;
   const padL = 30;
@@ -222,7 +223,7 @@ export function TrendChart({
   const X = (i: number) => padL + (n === 1 ? pw / 2 : (pw * i) / (n - 1));
   const Y = (v: number) => padT + ph * (1 - v / max);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = rootRef.current;
     if (!root) return;
 
@@ -292,7 +293,7 @@ export function TrendChart({
       cancelled = true;
       for (const a of anims) a.pause();
     };
-  }, [seriesKey, labels.join(",")]);
+  }, [seriesKey, labelsKey]);
 
   const linePath = (values: number[]) =>
     values

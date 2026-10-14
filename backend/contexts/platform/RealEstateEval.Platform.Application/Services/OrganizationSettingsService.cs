@@ -65,9 +65,6 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
     {
         var current = await GetInternalAsync(cancellationToken);
         var next = Merge(current, request);
-        ValidateSla(next.Sla);
-        ValidateCommunications(next.Communications);
-        ValidateValuation(next.Valuation);
         OrganizationBrandingRules.Validate(next.Branding);
 
         var row = await _repo.FindSettingsAsync(cancellationToken);
@@ -114,13 +111,6 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
         return MaskSecrets(next);
     }
 
-    private static void ValidateSla(OrganizationSlaSettingsDto sla)
-    {
-        if (sla.DefaultBusinessDays < 1 || sla.DefaultBusinessDays > 60)
-            throw new ArgumentOutOfRangeException(nameof(sla.DefaultBusinessDays), "مهلة التنفيذ يجب أن تكون بين 1 و 60 يوم عمل.");
-        if (sla.PrivateSectorBusinessDays < 1 || sla.PrivateSectorBusinessDays > 60)
-            throw new ArgumentOutOfRangeException(nameof(sla.PrivateSectorBusinessDays), "مهلة القطاع الخاص يجب أن تكون بين 1 و 60 يوم عمل.");
-    }
 
  /// <summary>
  /// Decision 23: Managed block = 6 fields (Professional Standards/Autonomy/Restrictions/Conditions/IVS/Glossary).
@@ -196,28 +186,6 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
             glossary = vr.Glossary ?? "",
         }, JsonOptions);
 
-    private static void ValidateValuation(OrganizationValuationSettingsDto v)
-    {
-        if (v.MaxAdoptedComparables is < 1 or > 20)
-            throw new ArgumentOutOfRangeException(nameof(v.MaxAdoptedComparables), "الحد الأقصى للمقارنات المعتمدة يجب أن يكون بين 1 و 20.");
-        if (v.ComparableTimeGapMonths is < 1 or > 60)
-            throw new ArgumentOutOfRangeException(nameof(v.ComparableTimeGapMonths), "عتبة الفارق الزمني يجب أن تكون بين 1 و 60 شهراً.");
-        if (v.AreaFactorPct is < 0.1m or > 50m)
-            throw new ArgumentOutOfRangeException(nameof(v.AreaFactorPct), "معامل المساحة يجب أن يكون بين 0.1 و 50٪.");
-        if (v.AnnualMarketRatePct is < 0m or > 50m)
-            throw new ArgumentOutOfRangeException(nameof(v.AnnualMarketRatePct), "معدل تغير السوق السنوي يجب أن يكون بين 0 و 50٪.");
-        if (v.MarketValueRoundDecimals is < 0 or > 6)
-            throw new ArgumentOutOfRangeException(nameof(v.MarketValueRoundDecimals), "أسّ تقريب قيمة السوق يجب أن يكون بين 0 و 6.");
-    }
-
-    private static void ValidateCommunications(OrganizationCommunicationsSettingsDto c)
-    {
-        var provider = (c.OtpProvider ?? "dev-log").Trim().ToLowerInvariant();
-        if (provider is not ("dev-log" or "sms" or "email"))
-            throw new ArgumentOutOfRangeException(nameof(c.OtpProvider), "مزوّد OTP غير معروف.");
-        if (c.SmtpPort is < 1 or > 65535)
-            throw new ArgumentOutOfRangeException(nameof(c.SmtpPort), "منفذ SMTP غير صالح.");
-    }
 
     private OrganizationSettingsDto Defaults() => new()
     {
@@ -225,7 +193,6 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
         Evaluator = new OrganizationEvaluatorSettingsDto(),
         Valuers = [],
         Branding = new OrganizationBrandingSettingsDto(),
-        Communications = new OrganizationCommunicationsSettingsDto(),
         Sla = new OrganizationSlaSettingsDto(),
         Valuation = new OrganizationValuationSettingsDto(),
         ValuationReport = NormalizeValuationReport(new OrganizationValuationReportSettingsDto()),
@@ -238,15 +205,16 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
         {
             var dto = JsonSerializer.Deserialize<OrganizationSettingsDto>(row.SettingsJson, JsonOptions)
                 ?? Defaults();
+            // Empty practice-license dates in old JSON blobs are filled here — UI defaults
+            // used to paint over nulls without ever writing them back to SettingsJson.
+            var company = NormalizeCompany(dto.Company);
+            var valuers = NormalizeValuers(dto.Valuers);
             return new OrganizationSettingsDto
             {
-                // Empty practice-license dates in old JSON blobs are filled here — UI defaults
-                // used to paint over nulls without ever writing them back to SettingsJson.
-                Company = NormalizeCompany(dto.Company),
-                Evaluator = dto.Evaluator ?? new OrganizationEvaluatorSettingsDto(),
-                Valuers = NormalizeValuers(dto.Valuers),
+                Company = company,
+                Evaluator = CertifiedValuerRules.DeriveEvaluator(valuers, dto.Evaluator, company),
+                Valuers = valuers,
                 Branding = dto.Branding ?? new OrganizationBrandingSettingsDto(),
-                Communications = NormalizeCommunications(dto.Communications),
                 Sla = NormalizeSla(dto.Sla),
                 Valuation = dto.Valuation ?? new OrganizationValuationSettingsDto(),
                 ValuationReport = NormalizeValuationReport(
@@ -263,7 +231,6 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
                 Evaluator = fallback.Evaluator,
                 Valuers = fallback.Valuers,
                 Branding = fallback.Branding,
-                Communications = fallback.Communications,
                 Sla = fallback.Sla,
                 Valuation = fallback.Valuation,
                 ValuationReport = fallback.ValuationReport,
@@ -272,28 +239,6 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
         }
     }
 
-    private static OrganizationCommunicationsSettingsDto NormalizeCommunications(
-        OrganizationCommunicationsSettingsDto? c) =>
-        c is null
-            ? new OrganizationCommunicationsSettingsDto()
-            : new OrganizationCommunicationsSettingsDto
-            {
-                OtpProvider = string.IsNullOrWhiteSpace(c.OtpProvider) ? "dev-log" : c.OtpProvider,
-                DefaultOtpChannel = string.IsNullOrWhiteSpace(c.DefaultOtpChannel)
-                    ? "sms"
-                    : c.DefaultOtpChannel,
-                SmsSenderId = c.SmsSenderId,
-                EmailFrom = c.EmailFrom,
-                SmsApiUrl = c.SmsApiUrl,
-                SmsApiKey = c.SmsApiKey,
-                SmsApiKeyConfigured = !string.IsNullOrWhiteSpace(c.SmsApiKey),
-                SmtpHost = c.SmtpHost,
-                SmtpPort = c.SmtpPort is < 1 or > 65535 ? 587 : c.SmtpPort,
-                SmtpUsername = c.SmtpUsername,
-                SmtpPassword = c.SmtpPassword,
-                SmtpPasswordConfigured = !string.IsNullOrWhiteSpace(c.SmtpPassword),
-            };
-
     private static OrganizationSettingsDto MaskSecrets(OrganizationSettingsDto dto) =>
         new()
         {
@@ -301,23 +246,6 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
             Evaluator = dto.Evaluator,
             Valuers = NormalizeValuers(dto.Valuers),
             Branding = dto.Branding,
-            Communications = new OrganizationCommunicationsSettingsDto
-            {
-                OtpProvider = dto.Communications.OtpProvider,
-                DefaultOtpChannel = dto.Communications.DefaultOtpChannel,
-                SmsSenderId = dto.Communications.SmsSenderId,
-                EmailFrom = dto.Communications.EmailFrom,
-                SmsApiUrl = dto.Communications.SmsApiUrl,
-                SmsApiKey = null,
-                SmsApiKeyConfigured = !string.IsNullOrWhiteSpace(dto.Communications.SmsApiKey)
-                    || dto.Communications.SmsApiKeyConfigured,
-                SmtpHost = dto.Communications.SmtpHost,
-                SmtpPort = dto.Communications.SmtpPort,
-                SmtpUsername = dto.Communications.SmtpUsername,
-                SmtpPassword = null,
-                SmtpPasswordConfigured = !string.IsNullOrWhiteSpace(dto.Communications.SmtpPassword)
-                    || dto.Communications.SmtpPasswordConfigured,
-            },
             Sla = dto.Sla,
             Valuation = dto.Valuation,
             ValuationReport = dto.ValuationReport,
@@ -377,22 +305,29 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
 
     private OrganizationSettingsDto Merge(
         OrganizationSettingsDto current,
-        SaveOrganizationSettingsRequest request) =>
-        new()
+        SaveOrganizationSettingsRequest request)
+    {
+        var company = NormalizeCompany(request.Company ?? current.Company);
+        var valuers = request.Valuers is null
+            ? NormalizeValuers(current.Valuers)
+            : NormalizeValuers(request.Valuers);
+        return new()
         {
-            Company = NormalizeCompany(request.Company ?? current.Company),
-            Evaluator = request.Evaluator ?? current.Evaluator,
-            Valuers = request.Valuers is null
-                ? NormalizeValuers(current.Valuers)
-                : NormalizeValuers(request.Valuers),
-            Branding = request.Branding ?? current.Branding,
-            Communications = MergeCommunications(current.Communications, request.Communications),
+            Company = company,
+            // Derived, never taken from the request: the certified roster row is the source.
+            Evaluator = CertifiedValuerRules.DeriveEvaluator(valuers, request.Evaluator ?? current.Evaluator, company),
+            Valuers = valuers,
+            Branding = CertifiedValuerRules.MirrorCertifiedSignature(
+                request.Branding ?? current.Branding,
+                valuers,
+                JsonOptions),
             Sla = NormalizeSla(request.Sla ?? current.Sla),
             Valuation = request.Valuation ?? current.Valuation,
             ValuationReport = NormalizeValuationReport(
                 request.ValuationReport ?? current.ValuationReport),
             UpdatedAtUtc = _time.UtcNow(),
         };
+    }
 
     /// <summary>
     /// Firm practice-license fields — same defaults as frontend ORG_COMPANY_DEFAULTS.
@@ -420,7 +355,6 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
             PracticeLicenseExpiresAt = string.IsNullOrWhiteSpace(c.PracticeLicenseExpiresAt)
                 ? "2027-03-10"
                 : c.PracticeLicenseExpiresAt.Trim(),
-            CertifiedValuerId = BlankToNull(c.CertifiedValuerId),
             Email = BlankToNull(c.Email),
             Phone = BlankToNull(c.Phone),
             Website = BlankToNull(c.Website),
@@ -467,31 +401,4 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
             dto.SpecialAssumptionLibrary).ToList(),
     };
 
-    private static OrganizationCommunicationsSettingsDto MergeCommunications(
-        OrganizationCommunicationsSettingsDto current,
-        OrganizationCommunicationsSettingsDto? incoming)
-    {
-        if (incoming is null) return current;
-        return new OrganizationCommunicationsSettingsDto
-        {
-            OtpProvider = string.IsNullOrWhiteSpace(incoming.OtpProvider)
-                ? current.OtpProvider
-                : incoming.OtpProvider,
-            DefaultOtpChannel = string.IsNullOrWhiteSpace(incoming.DefaultOtpChannel)
-                ? current.DefaultOtpChannel
-                : incoming.DefaultOtpChannel,
-            SmsSenderId = incoming.SmsSenderId ?? current.SmsSenderId,
-            EmailFrom = incoming.EmailFrom ?? current.EmailFrom,
-            SmsApiUrl = incoming.SmsApiUrl ?? current.SmsApiUrl,
-            SmsApiKey = string.IsNullOrWhiteSpace(incoming.SmsApiKey)
-                ? current.SmsApiKey
-                : incoming.SmsApiKey,
-            SmtpHost = incoming.SmtpHost ?? current.SmtpHost,
-            SmtpPort = incoming.SmtpPort > 0 ? incoming.SmtpPort : current.SmtpPort,
-            SmtpUsername = incoming.SmtpUsername ?? current.SmtpUsername,
-            SmtpPassword = string.IsNullOrWhiteSpace(incoming.SmtpPassword)
-                ? current.SmtpPassword
-                : incoming.SmtpPassword,
-        };
-    }
 }

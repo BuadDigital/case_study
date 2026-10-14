@@ -32,6 +32,15 @@ public class PropertyFailure
     public DateTime? SuspendedAtUtc { get; private set; }
  /// <summary>User id of who suspended. Null for historical rows that predate capture.</summary>
     public string? SuspendedByUserId { get; private set; }
+ /// <summary>
+ /// When the case specialist lifted the engineering-survey freeze this failure puts on the property.
+ /// Null while the freeze stands. The failure itself stays active; only the survey gate reads this.
+ /// </summary>
+    public DateTime? SurveyFreezeLiftedAtUtc { get; private set; }
+ /// <summary>User id of the specialist who lifted the survey freeze.</summary>
+    public string? SurveyFreezeLiftedByUserId { get; private set; }
+ /// <summary>The reason recorded with the lift (at least ten characters, enforced by the rule).</summary>
+    public string? SurveyFreezeLiftReason { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime UpdatedAtUtc { get; private set; }
 
@@ -93,6 +102,22 @@ public class PropertyFailure
         FinalNote = note.Trim();
         SuspendedAtUtc = nowUtc;
         SuspendedByUserId = string.IsNullOrWhiteSpace(actorUserId) ? null : actorUserId.Trim();
+        UpdatedAtUtc = nowUtc;
+        return true;
+    }
+
+ /// <summary>
+ /// Lifts the engineering-survey freeze while the failure stays active. Idempotent: an already
+ /// lifted failure keeps its first lift (who, when, why) and reports false; a failure that is no
+ /// longer active has nothing to lift.
+ /// </summary>
+    public bool LiftSurveyFreeze(string? userId, string reason, DateTime nowUtc)
+    {
+        if (SurveyFreezeLiftedAtUtc is not null) return false;
+        if (!PropertyFailureStatus.Active.Contains(Status)) return false;
+        SurveyFreezeLiftedAtUtc = nowUtc;
+        SurveyFreezeLiftedByUserId = string.IsNullOrWhiteSpace(userId) ? null : userId.Trim();
+        SurveyFreezeLiftReason = reason.Trim();
         UpdatedAtUtc = nowUtc;
         return true;
     }
@@ -197,7 +222,10 @@ public class PropertyFailure
         DateTime? suspendedAtUtc = null,
         string? suspendedByUserId = null,
         string resolutionReason = "",
-        string continueInstructions = "") =>
+        string continueInstructions = "",
+        DateTime? surveyFreezeLiftedAtUtc = null,
+        string? surveyFreezeLiftedByUserId = null,
+        string? surveyFreezeLiftReason = null) =>
         new()
         {
             Id = id,
@@ -216,6 +244,9 @@ public class PropertyFailure
             Specialist = specialist,
             SuspendedAtUtc = suspendedAtUtc,
             SuspendedByUserId = suspendedByUserId,
+            SurveyFreezeLiftedAtUtc = surveyFreezeLiftedAtUtc,
+            SurveyFreezeLiftedByUserId = surveyFreezeLiftedByUserId,
+            SurveyFreezeLiftReason = surveyFreezeLiftReason,
             CreatedAtUtc = createdAtUtc,
             UpdatedAtUtc = updatedAtUtc,
         };

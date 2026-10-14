@@ -35,7 +35,6 @@ public class OperationsApiAuthorizationTests : IClassFixture<OperationsApiFactor
     [InlineData("/api/property-keys")]
     [InlineData("/api/key-envelopes")]
     [InlineData("/api/key-envelopes/fee-report")]
-    [InlineData("/api/survey-offices")]
     [InlineData("/api/operations-tasks")]
     public async Task Anonymous_requests_are_rejected(string path)
     {
@@ -136,7 +135,7 @@ public class OperationsApiAuthorizationTests : IClassFixture<OperationsApiFactor
     [Fact]
     public async Task Unknown_tokens_are_not_authenticated()
     {
-        var response = await GetAsync("/api/survey-offices", "not-a-test-token");
+        var response = await GetAsync("/api/operations-tasks", "not-a-test-token");
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

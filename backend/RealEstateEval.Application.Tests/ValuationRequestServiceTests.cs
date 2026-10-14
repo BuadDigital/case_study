@@ -174,7 +174,6 @@ public class ValuationRequestServiceTests
         db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(
             requestId,
             "{}",
-            [1],
             "staff",
             new DateTime(2026, 9, 10, 8, 0, 0, DateTimeKind.Utc)));
         await db.SaveChangesAsync();

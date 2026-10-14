@@ -59,7 +59,7 @@ public static class DataSeeder
 
         if (await IsAlreadySeededAsync(services, cancellationToken))
         {
- // Keep seed passwords/profile fields in sync on every demo startup.
+ // Keep seed profile fields in sync on every demo startup.
             await EnsureLegacyAdminAsync(userManager);
             foreach (var staff in HrStaffSeeds)
                 await EnsureHrStaffAsync(userManager, identity, staff, cancellationToken);
@@ -129,22 +129,14 @@ public static class DataSeeder
         CancellationToken cancellationToken = default)
     {
         var userManager = services.GetRequiredService<UserManager<ApplicationUser>>();
-        var operations = services.GetRequiredService<OperationsDbContext>();
+        var failures = services.GetRequiredService<FailuresDbContext>();
 
         var markerUser = await userManager.FindByNameAsync("sliman");
         if (markerUser is null)
             return false;
 
-        return await operations.SurveyOffices.AnyAsync(cancellationToken);
+        return await failures.FailureTypesCatalogConfigs.AnyAsync(cancellationToken);
     }
-
- /// <summary>Re-insert demo survey/valuation rows after a full system reset.</summary>
-    public static Task ReseedPrototypeModuleDataAsync(
-        OperationsDbContext operations,
-        ValuationDbContext valuation,
-        FailuresDbContext failures,
-        CancellationToken cancellationToken = default) =>
-        EnsurePrototypeModuleDataAsync(operations, valuation, failures, cancellationToken);
 
  /// <summary>Re-create all seeded HR staff and proc demo accounts (idempotent).</summary>
     public static async Task ReseedAllDemoUsersAsync(
@@ -225,8 +217,6 @@ public static class DataSeeder
 
             "s.salhy@gmail.com",
 
-            "user1234",
-
             "سليمان الصالحي",
 
             "مسؤول التحول الرقمي (CDO)",
@@ -248,8 +238,6 @@ public static class DataSeeder
             "o.bamusa",
 
             "o.bamusa@ejadah.dev",
-
-            "user1234",
 
             "عمر باموسى",
 
@@ -273,8 +261,6 @@ public static class DataSeeder
 
             "emad@ejadah.dev",
 
-            "user1234",
-
             "عماد الرشيد",
 
             "المدير التنفيذي",
@@ -296,8 +282,6 @@ public static class DataSeeder
             "salam",
 
             "salam@ejadah.dev",
-
-            "user1234",
 
             "سالم الغريب",
 
@@ -321,8 +305,6 @@ public static class DataSeeder
 
             "abdulrahman@ejadah.dev",
 
-            "user1234",
-
             "عبدالرحمن النفيعي",
 
             "مشرف قسم دراسة الحالة",
@@ -344,8 +326,6 @@ public static class DataSeeder
             "osama",
 
             "osama@ejadah.dev",
-
-            "user1234",
 
             "أسامة الصالحي",
 
@@ -369,8 +349,6 @@ public static class DataSeeder
 
             "omar.hamrani@ejadah.dev",
 
-            "user1234",
-
             "عمر الحمراني",
 
             "أخصائي دراسة حالة",
@@ -393,8 +371,6 @@ public static class DataSeeder
 
             "ayman.mahfouz@ejadah.dev",
 
-            "user1234",
-
             "أيمن بن محفوظ",
 
             "أخصائي دراسة حالة",
@@ -416,8 +392,6 @@ public static class DataSeeder
             "mohammed_nafei",
 
             "mohammed.nafei@ejadah.dev",
-
-            "user1234",
 
             "محمد النفيعي",
 
@@ -443,8 +417,6 @@ public static class DataSeeder
 
             "feras@ejadah.dev",
 
-            "user1234",
-
             "فراس كمرين",
 
             "مراجع حكومي",
@@ -466,8 +438,6 @@ public static class DataSeeder
             "abdullah",
 
             "abdullah.kathiri@ejadah.dev",
-
-            "user1234",
 
             "عبدالله الكثيري",
 
@@ -491,8 +461,6 @@ public static class DataSeeder
 
             "ayman.majrashi@ejadah.dev",
 
-            "user1234",
-
             "أيمن أحمد مجرشي",
 
             "مقيم عقاري",
@@ -514,8 +482,6 @@ public static class DataSeeder
             "assaf",
 
             "mohammed.assaf@ejadah.dev",
-
-            "user1234",
 
             "محمد العساف",
 
@@ -539,8 +505,6 @@ public static class DataSeeder
 
             "ahmed@ejadah.dev",
 
-            "user1234",
-
             "أحمد سعيد",
 
             "معاين ميداني",
@@ -563,8 +527,6 @@ public static class DataSeeder
 
             "abdullah.abdulmane@ejadah.dev",
 
-            "user1234",
-
             "عبدالله عبدالمانع",
 
             "معاين ميداني",
@@ -586,8 +548,6 @@ public static class DataSeeder
             "eman",
 
             "eman@ejadah.dev",
-
-            "user1234",
 
             "إيمان النهدي",
 
@@ -615,8 +575,6 @@ public static class DataSeeder
 
         "survey.jeddah@ejadah.dev",
 
-        "user1234",
-
         "مكتب جدة للمساحة",
 
         "مكتب جدة للمساحة",
@@ -634,8 +592,6 @@ public static class DataSeeder
         string LoginUsername,
 
         string Email,
-
-        string Password,
 
         string DisplayName,
 
@@ -660,8 +616,6 @@ public static class DataSeeder
         string LoginUsername,
 
         string Email,
-
-        string Password,
 
         string UserName,
 
@@ -738,49 +692,6 @@ public static class DataSeeder
     private static string StaffIdentityEmail(string loginUsername) =>
         SaudiMobiles.InternalEmail(DemoMobileByLogin[loginUsername]);
 
- /// <summary>
- /// Applies <paramref name="password"/> through Identity's AddPasswordAsync.
- /// SeedDemoData is applied by the DbMigrate deploy job (not by Production app hosts);
- /// local seed passwords are intentionally
- /// simple, so validators are suspended only for this call.
- /// </summary>
-    private static async Task EnsureSeedPasswordAsync(
-        UserManager<ApplicationUser> userManager,
-        ApplicationUser user,
-        string password)
-    {
-        if (await userManager.CheckPasswordAsync(user, password))
-            return;
-
-        var validators = userManager.PasswordValidators.ToList();
-        userManager.PasswordValidators.Clear();
-        try
-        {
-            if (await userManager.HasPasswordAsync(user))
-            {
-                var remove = await userManager.RemovePasswordAsync(user);
-                if (!remove.Succeeded)
-                {
-                    throw new InvalidOperationException(
-                        "Failed to clear password for " + (user.Email ?? user.UserName) + ": "
-                        + string.Join("; ", remove.Errors.Select(e => e.Description)));
-                }
-            }
-
-            var add = await userManager.AddPasswordAsync(user, password);
-            if (!add.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    "Failed to seed password for " + (user.Email ?? user.UserName) + ": "
-                    + string.Join("; ", add.Errors.Select(e => e.Description)));
-            }
-        }
-        finally
-        {
-            foreach (var validator in validators)
-                userManager.PasswordValidators.Add(validator);
-        }
-    }
 
     private static async Task BackfillReviewerCityCoverageAsync(
         IdentityDbContext db,
@@ -1341,8 +1252,6 @@ public static class DataSeeder
 
         }
 
-        await EnsureSeedPasswordAsync(userManager, user, seed.Password);
-
 
 
         var roles = await userManager.GetRolesAsync(user);
@@ -1612,8 +1521,6 @@ public static class DataSeeder
 
         }
 
-        await EnsureSeedPasswordAsync(userManager, user, seed.Password);
-
 
 
         var roles = await userManager.GetRolesAsync(user);
@@ -1755,7 +1662,6 @@ public static class DataSeeder
     {
 
         const string email = "admin@local.dev";
-        const string password = "user1234";
 
         var user = await userManager.FindByEmailAsync(email);
         if (user is null)
@@ -1777,8 +1683,6 @@ public static class DataSeeder
             }
         }
 
-        await EnsureSeedPasswordAsync(userManager, user, password);
-
         var roles = await userManager.GetRolesAsync(user);
         if (!roles.Contains("Admin"))
             await userManager.AddToRoleAsync(user, "Admin");
@@ -1793,61 +1697,6 @@ public static class DataSeeder
     {
         await RemoveDemoPropertyKeyRecordsAsync(operations, cancellationToken);
 
-        if (!await operations.SurveyOffices.AnyAsync(cancellationToken))
-        {
-            var now = DateTime.UtcNow;
-            operations.SurveyOffices.AddRange(
-                new SurveyOffice
-                {
-                    Id = Guid.Parse("a1000001-0000-4000-8000-000000000001"),
-                    Name = "مكتب الرياض الهندسي",
-                    ActiveCount = 12,
-                    DoneMonth = 34,
-                    AvgDaysLabel = "3.2 يوم",
-                    ContractLabel = "اتفاقية سنوية",
-                    StatusBusy = false,
-                    SortOrder = 1,
-                    UpdatedAtUtc = now,
-                },
-                new SurveyOffice
-                {
-                    Id = Guid.Parse("a1000001-0000-4000-8000-000000000002"),
-                    Name = "مكتب جدة للمساحة",
-                    ActiveCount = 8,
-                    DoneMonth = 28,
-                    AvgDaysLabel = "2.8 يوم",
-                    ContractLabel = "اتفاقية سنوية",
-                    StatusBusy = false,
-                    SortOrder = 2,
-                    UpdatedAtUtc = now,
-                },
-                new SurveyOffice
-                {
-                    Id = Guid.Parse("a1000001-0000-4000-8000-000000000003"),
-                    Name = "مكتب مكة الهندسي",
-                    ActiveCount = 7,
-                    DoneMonth = 22,
-                    AvgDaysLabel = "3.5 يوم",
-                    ContractLabel = "اتفاقية سنوية",
-                    StatusBusy = false,
-                    SortOrder = 3,
-                    UpdatedAtUtc = now,
-                },
-                new SurveyOffice
-                {
-                    Id = Guid.Parse("a1000001-0000-4000-8000-000000000004"),
-                    Name = "مكتب الطائف التقني",
-                    ActiveCount = 4,
-                    DoneMonth = 14,
-                    AvgDaysLabel = "4.1 يوم",
-                    ContractLabel = "اتفاقية سنوية",
-                    StatusBusy = true,
-                    SortOrder = 4,
-                    UpdatedAtUtc = now,
-                });
-        }
-
-        await operations.SaveChangesAsync(cancellationToken);
 
         await valuation.SaveChangesAsync(cancellationToken);
 

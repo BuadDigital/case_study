@@ -6,6 +6,7 @@
  * the paged rows come from `useFailuresListPage`.
  */
 
+import { useRef } from "react";
 import {
   Button,
   ListPager,
@@ -13,6 +14,7 @@ import {
   OperationalPanel,
   PageShell,
   QueueTableHint,
+  useSwapAnimation,
 } from "@platform/ui-kit";
 import { FailuresViewKpiBand } from "./FailuresViewKpiBand";
 import { FailuresViewMobileCards } from "./FailuresViewMobileCards";
@@ -22,6 +24,9 @@ import { useFailuresViewWorkflow } from "./useFailuresViewWorkflow";
 
 export function FailuresView() {
   const wf = useFailuresViewWorkflow();
+  const rowsRef = useRef<HTMLDivElement>(null);
+  // Keyed on the page whose rows are shown — never on search keystrokes.
+  useSwapAnimation(rowsRef, wf.rowsPage);
 
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1 space-y-4">
@@ -29,7 +34,7 @@ export function FailuresView() {
         <Note tone="warn" className="mb-0">
           {wf.error instanceof Error
             ? wf.error.message
-            : "تعذّر تحميل التعذرات — حاول مرة أخرى"}
+            : "تعذّر تحميل التعذّرات — حاول مرة أخرى"}
           <div className="mt-2">
             <Button
               type="button"
@@ -49,15 +54,17 @@ export function FailuresView() {
       <FailuresViewToolbar wf={wf} />
 
       <OperationalPanel className="shrink-0 overflow-visible max-lg:border-0 max-lg:bg-transparent max-lg:shadow-none max-lg:rounded-none">
-        <FailuresViewTable wf={wf} />
-        <FailuresViewMobileCards wf={wf} />
+        <div ref={rowsRef}>
+          <FailuresViewTable wf={wf} />
+          <FailuresViewMobileCards wf={wf} />
+        </div>
       </OperationalPanel>
 
       <ListPager ready={wf.isFetched} {...wf.pager} onPageChange={wf.setPage} />
 
       <QueueTableHint className="hidden lg:block">
-        اضغط الصف لفتح التفاصيل والإجراءات. سجّل تعذراً جديداً من شاشة العقار
-        (⋮ → إبلاغ عن تعذر).
+        اضغط الصف لفتح التفاصيل والإجراءات. سجّل تعذّراً جديداً من شاشة العقار
+        (⋮ → إبلاغ عن تعذّر).
       </QueueTableHint>
     </PageShell>
   );

@@ -12,20 +12,21 @@ import {
   DEED_NATURE_MATCH_OPTIONS,
   deedNatureMatchRequiresNotes,
 } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
-import type { CaseStudyFormDraft } from "../../lib/app-data/case-study-form-model";
+import type { CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
 
 /**
- * Specialist review of deed↔nature match. Parties (inspector / engineering
- * office) or a prior survey propose; the specialist adopts or amends.
+ * Specialist review of deed↔nature match. Only the field inspector proposes;
+ * a prior survey and the engineering office's verdict are shown as context
+ * lines. The specialist adopts or amends.
  * Lives on تبويب مدخلات المعاين — the case-study report is issued after valuation.
  */
 const OUTCOME_HINTS: Record<string, string> = {
   matched:
-    "الصك يطابق الطبيعة — يُسمح بإكمال التقييم ورفع تقرير دراسة الحالة.",
+    "الصك يطابق الطبيعة — يُسمح بإكمال التقييم وإصدار تقرير دراسة الحالة.",
   differences:
-    "توجد فروق بين الصك والطبيعة — يلزم توضيحها أدناه، ويُوقف مسار التقييم حتى تُعالَج (مسار تعذر).",
+    "توجد فروق بين الصك والطبيعة — يلزم توضيحها أدناه، ويُوقف مسار التقييم حتى تُعالَج (مسار تعذّر).",
   impediment:
-    "المطابقة غير ممكنة أو الحالة مرشحة لتعذر — يلزم التوضيح، ويُوقف التقييم ودراسة الحالة (مسار تعذر).",
+    "المطابقة غير ممكنة أو الحالة مرشحة لتعذّر — يلزم التوضيح، ويُوقف التقييم ودراسة الحالة (مسار تعذّر).",
 };
 
 export function CaseStudyDeedNatureMatchSection({
@@ -36,15 +37,18 @@ export function CaseStudyDeedNatureMatchSection({
   notesInvalid,
   sourceLabelAr,
   suggestedOutcome,
+  infoLinesAr,
   onAdoptSuggestion,
 }: {
-  draft: Pick<CaseStudyFormDraft, "deedNatureMatchOutcome" | "deedNatureMatchNotes">;
+  draft: Pick<CaseStudyReportDraft, "deedNatureMatchOutcome" | "deedNatureMatchNotes">;
   disabled?: boolean;
-  onPatch: (patch: Partial<CaseStudyFormDraft>) => void;
+  onPatch: (patch: Partial<CaseStudyReportDraft>) => void;
   outcomeInvalid?: boolean;
   notesInvalid?: boolean;
   sourceLabelAr?: string;
   suggestedOutcome?: string;
+  /** Prior-survey / engineering-office context — shown, never proposed. */
+  infoLinesAr?: readonly string[];
   onAdoptSuggestion?: () => void;
 }) {
   const outcome = draft.deedNatureMatchOutcome ?? "";
@@ -69,14 +73,22 @@ export function CaseStudyDeedNatureMatchSection({
 
       <div className="grid gap-3.5 px-4 py-3.5">
         <Note tone="info">
-          الطرف يقترح، وأنت تختار نتيجة المراجعة. الاختيار يُحفظ مباشرة ويحدد هل
-          يستمر التقييم ودراسة الحالة أو يتحول لمسار تعذر.
+          المعاين يقترح، وأنت تختار نتيجة المراجعة. الاختيار يُحفظ مباشرة ويحدد هل
+          يستمر التقييم ودراسة الحالة أو يتحول لمسار تعذّر.
         </Note>
 
         {sourceLabelAr ? (
           <p className="m-0 text-[12px] leading-relaxed text-text-2">
             {sourceLabelAr}
           </p>
+        ) : null}
+
+        {infoLinesAr && infoLinesAr.length > 0 ? (
+          <ul className="m-0 grid list-none gap-1 p-0 text-[11.5px] leading-relaxed text-text-3">
+            {infoLinesAr.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
         ) : null}
 
         {canAdopt ? (
@@ -86,7 +98,7 @@ export function CaseStudyDeedNatureMatchSection({
             onClick={onAdoptSuggestion}
             className="w-fit cursor-pointer rounded-[var(--radius-sm)] border border-gold bg-gold-soft px-3 py-[7px] text-[12px] font-bold text-gold-d disabled:cursor-not-allowed disabled:opacity-55"
           >
-            قبول اقتراح الطرف كما هو
+            اعتماد اقتراح المعاين
           </button>
         ) : null}
 
@@ -102,6 +114,7 @@ export function CaseStudyDeedNatureMatchSection({
             className="flex flex-wrap gap-2"
             role="radiogroup"
             aria-label="نتيجة مطابقة الصك على الطبيعة"
+            aria-invalid={outcomeInvalid || undefined}
           >
             {DEED_NATURE_MATCH_OPTIONS.map((opt) => {
               const on = outcome === opt.value;
@@ -114,7 +127,6 @@ export function CaseStudyDeedNatureMatchSection({
                     on
                       ? "border-heading bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] text-on-ink"
                       : "border-border-md bg-surface text-text-2 hover:text-heading",
-                    outcomeInvalid && !on && invalidControlClass,
                     disabled && "cursor-not-allowed opacity-50",
                   )}
                 >
@@ -154,11 +166,11 @@ export function CaseStudyDeedNatureMatchSection({
               htmlFor="deed-nature-match-notes"
               className="text-[11px] text-text-2"
             >
-              ملاحظات الفروق / التعذر{" "}
+              ملاحظات الفروق / التعذّر{" "}
               <span className="text-danger-text">*</span>
             </Label>
             <p className="mb-1.5 mt-0 text-[11px] text-text-3">
-              إلزامية عند «فروق» أو «مرشح تعذر» — بدونها لا يُقبل رفع دراسة الحالة.
+              إلزامية عند «فروق» أو «مرشح تعذّر» — بدونها لا يُقبل إصدار تقرير دراسة الحالة.
             </p>
             <Textarea
               id="deed-nature-match-notes"
@@ -170,7 +182,7 @@ export function CaseStudyDeedNatureMatchSection({
                 onPatch({ deedNatureMatchNotes: e.target.value })
               }
               className={cn(notesInvalid && invalidControlClass)}
-              placeholder="صف الفرق أو سبب ترشيح التعذر…"
+              placeholder="صف الفرق أو سبب ترشيح التعذّر…"
             />
           </FormGroup>
         ) : null}

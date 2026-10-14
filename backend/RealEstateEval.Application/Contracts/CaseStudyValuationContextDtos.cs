@@ -33,8 +33,6 @@ public sealed class CaseStudyValuationPropertyContextDto
     public string? DeedDate { get; set; }
     public string? OwnerName { get; set; }
     public string? DeedOwnersJson { get; set; }
-    public string? OwnershipType { get; set; }
-    public bool OwnershipTypeIsManual { get; set; }
     public string? RestrictionsPresent { get; set; }
     public string? RestrictionType { get; set; }
     public string? RestrictionOtherReason { get; set; }
@@ -48,10 +46,20 @@ public sealed class CaseStudyValuationPropertyContextDto
     public string PropertyType { get; set; } = "";
     /// <summary>Type confirmed when the field inspector submitted the inspection.</summary>
     public string? InspectedPropertyType { get; set; }
+    /// <summary>
+    /// «الأصل محل التقييم» as the inspector's latest DRAFT states it (his package is not submitted yet,
+    /// so <see cref="InspectedPropertyType"/> is still empty). Lets the appraiser's unsaved approach
+    /// defaults follow the inspected type while the inspection is in progress; saved settings are never rewritten.
+    /// </summary>
+    public string? DraftInspectedPropertyType { get; set; }
+
+    /// <summary>Submitted inspected type, else the inspector's draft type, else the intake type.</summary>
     public string EffectivePropertyType() =>
-        string.IsNullOrWhiteSpace(InspectedPropertyType)
-            ? PropertyType.Trim()
-            : InspectedPropertyType.Trim();
+        !string.IsNullOrWhiteSpace(InspectedPropertyType)
+            ? InspectedPropertyType.Trim()
+            : !string.IsNullOrWhiteSpace(DraftInspectedPropertyType)
+                ? DraftInspectedPropertyType.Trim()
+                : PropertyType.Trim();
     public string? PlanNumber { get; set; }
     public string? PlanName { get; set; }
     public string? PlotNumber { get; set; }
@@ -99,6 +107,14 @@ public sealed class CaseStudyValuationPropertyContextDto
     /// <summary>DeedNatureMatchOutcome of the latest non-party case-study form; null when none.</summary>
     public string? DeedNatureMatchOutcome { get; set; }
 
+    /// <summary>
+    /// The latest non-party case-study report of the property is issued — a defensive mirror of the
+    /// appraiser's submit gate, enforced again at valuation issuance. False when there is no report;
+    /// null only when the case-study host that answered predates the field (rolling deploy), which the
+    /// gate reads as «unknown» and does not block.
+    /// </summary>
+    public bool? StudyReportIssued { get; set; }
+
     public string? ClientNameAr { get; set; }
     public string? ClientNameEn { get; set; }
     public IReadOnlyList<string> ReportUserClientNamesAr { get; set; } = [];
@@ -131,8 +147,6 @@ public sealed class CaseStudyValuationPropertyContextDto
         DeedDate = DeedDate,
         OwnerName = OwnerName,
         DeedOwnersJson = DeedOwnersJson,
-        OwnershipType = OwnershipType,
-        OwnershipTypeIsManual = OwnershipTypeIsManual,
         RestrictionsPresent = RestrictionsPresent,
         RestrictionType = RestrictionType,
         RestrictionOtherReason = RestrictionOtherReason,

@@ -3,7 +3,7 @@
 /** Revenue stage «تحت الدراسة» — rows grouped under their work order, «X of Y» from the whole set. */
 
 import { Fragment, useMemo } from "react";
-import { fmt } from "@platform/app-shared/format/number";
+import { fmt, fmtSar } from "@platform/app-shared/format/number";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
   StatusPill,
@@ -16,7 +16,6 @@ import {
 } from "@platform/ui-kit";
 import { revenueAmountsFromRow } from "../lib/finance-revenue-stages";
 import {
-  fmtSar,
   knownFeesTotal,
   rowsPerPo,
   studyGroups,
@@ -84,7 +83,7 @@ export function StudyTable({
                         </span>
                       </span>
                       <span className="text-[11px] leading-snug text-text-3">
-                        تحت الدراسة {studyInPo} من {totalInPo} معاملة في الطلب
+                        قيد الدراسة {studyInPo} من {totalInPo} معاملة في الطلب
                         {" — "}
                         أتعاب{" "}
                         <b className="font-bold text-heading" dir="ltr">
@@ -120,7 +119,7 @@ export function StudyTable({
                               <span className="inline-flex items-center gap-2.5">
                                 <FeeFlags row={row} />
                                 <span className={finNum}>
-                                  {total > 0 ? fmtSar(total) : "—"}
+                                  {total > 0 ? fmtSar(total, { trim: "whole" }) : "—"}
                                 </span>
                               </span>
                               <StatusPill

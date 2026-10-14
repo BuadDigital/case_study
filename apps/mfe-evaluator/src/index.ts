@@ -6,7 +6,6 @@ export { ensureEvaluatorRuntimeBridgeRegistered } from "./extensions/register-ev
 export { EvaluatorWindow } from "./components/evaluator/EvaluatorWindow";
 export { EvaluatorValuationReportTab } from "./components/evaluator/EvaluatorValuationReportTab";
 export { AppraiserUploadTab } from "./components/evaluator/AppraiserUploadTab";
-export { EvaluatorAdvisoryPanel } from "./components/evaluator/EvaluatorAdvisoryPanel";
 
 export { buildAppraiserRecallMenuItems } from "./lib/evaluator/appraiser-recall-menu-items";
 export { buildAppraiserQueueRowMoreItems } from "./lib/evaluator/appraiser-queue-row-menu";
@@ -36,7 +35,6 @@ export {
 } from "@platform/app-shared/app-data/party-task-recall-commands";
 export * from "./lib/evaluator/evaluator-validation";
 export * from "./lib/evaluator/evaluator-report-attachments";
-export * from "./lib/evaluator/evaluator-deposit-attachments";
 export * from "./lib/evaluator/valuation-report-number";
 export * from "./lib/evaluator/valuation-report-org-overlay";
 export * from "./lib/evaluator/evaluator-inspection-gate";
@@ -46,7 +44,6 @@ export * from "./lib/evaluator/finalize-appraiser-submission";
 export * from "./lib/evaluator/evaluator-checklist-case-study-sync";
 export * from "./lib/evaluator/arabic-amount-words";
 export * from "./lib/evaluator/value-estimation";
-export { ValueEstimationSection } from "./components/evaluator/ValueEstimationSection";
 export {
   InfathTextField,
   InfathTextAreaField,

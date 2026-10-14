@@ -20,7 +20,7 @@ import { todayIso } from "@platform/app-shared/format/date";
 import { useToast } from "@platform/ui-kit";
 import type { ConfirmActionSpec } from "../components/ConfirmActionModal";
 import { refreshOrgCache } from "../lib/org-settings-ui";
-import { organizationSettingsApiConfig } from "../lib/settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   AUTOSAVE_DELAY_MS,
   BRAND_CARD_LABELS,
@@ -91,7 +91,7 @@ export function useBrandIdentityWorkflow() {
   });
 
   const reload = useCallback(async () => {
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) {
       setLoading(false);
       setError(LOGIN_REQUIRED_MESSAGE);
@@ -129,7 +129,7 @@ export function useBrandIdentityWorkflow() {
         setCardStatus(key, { state: "blocked", message: blocker });
         return false;
       }
-      const config = organizationSettingsApiConfig();
+      const config = apiConfig();
       if (!config) return false;
 
       const revision = revisions.current[key];

@@ -147,6 +147,22 @@ public sealed class FailureRepository(FailuresDbContext failures) : IFailureRepo
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<PropertyFailure>> FindSurveyFreezingForPropertyAsync(
+        string poNumber,
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var po = poNumber.Trim();
+        return await failures.PropertyFailures
+            .Where(f =>
+                f.PoNumber == po
+                && f.PropertyId == propertyId
+                && ActiveStatuses.Contains(f.Status)
+                && f.SurveyFreezeLiftedAtUtc == null)
+            .OrderBy(f => f.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<PropertyFailure?> FindLatestUnresolvedAsync(
         string poNumber,
         Guid propertyId,

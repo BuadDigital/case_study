@@ -19,7 +19,7 @@ test.describe("CDO module smoke (all routes)", () => {
       const alert = page.getByRole("alert");
       if (await alert.count()) {
         const text = await alert.first().textContent();
-        expect(text).not.toMatch(/تعذر|خطأ|فشل|error/i);
+        expect(text).not.toMatch(/تعذّ?ر|خطأ|فشل|error/i);
       }
     });
   }

@@ -64,7 +64,7 @@ public class CaseStudyValuationDispatchTests
                 TaskId = ParentTaskId.ToString(),
                 PropertyId = PropertyId.ToString(),
                 PoNumber = "PO-900",
-                Status = "submitted",
+                Status = "issued",
             });
         Assert.Null(errors);
         Assert.NotNull(dto);
@@ -79,12 +79,12 @@ public class CaseStudyValuationDispatchTests
 
         var forms = CreateFormService(contexts);
 
-        var form = new CaseStudyFormDto
+        var form = new CaseStudyReportDto
         {
             TaskId = ParentTaskId.ToString(),
             PropertyId = PropertyId.ToString(),
             PoNumber = "PO-900",
-            Status = "submitted",
+            Status = "issued",
         };
 
         var (_, firstErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
@@ -94,7 +94,7 @@ public class CaseStudyValuationDispatchTests
         var (_, draftErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
         Assert.NotNull(draftErrors);
 
-        form.Status = "submitted";
+        form.Status = "issued";
         var (_, submitErrors) = await forms.SaveAsync(ParentTaskId, party: false, form);
         Assert.NotNull(submitErrors);
 
@@ -116,7 +116,7 @@ public class CaseStudyValuationDispatchTests
                 TaskId = ParentTaskId.ToString(),
                 PropertyId = PropertyId.ToString(),
                 PoNumber = "PO-900",
-                Status = "submitted",
+                Status = "issued",
             });
         Assert.Null(errors);
         Assert.NotNull(dto);
@@ -127,10 +127,10 @@ public class CaseStudyValuationDispatchTests
         Assert.Equal(WorkflowTaskPhase.Done, task.Phase);
     }
 
-    private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
+    private static CaseStudyReportService CreateFormService(TestDatabases.ContextSet contexts)
     {
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(contexts.CaseStudy);
-        return new CaseStudyFormService(new CaseStudyFormRepository(contexts.CaseStudy), workflow);
+        return new CaseStudyReportService(new CaseStudyReportRepository(contexts.CaseStudy), workflow);
     }
 
     private static CaseStudyValuationDispatchService CreateDispatch(TestDatabases.ContextSet contexts)

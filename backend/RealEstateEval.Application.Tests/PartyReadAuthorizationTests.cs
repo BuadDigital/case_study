@@ -230,14 +230,14 @@ public class PartyTaskSubmissionReadAuthorizationTests
 /// Case-study form reads. A party reaches the parent form through its own child task because the
 /// party workspace seeds itself from the specialist's answers.
 /// </summary>
-public class CaseStudyFormReadAuthorizationTests
+public class CaseStudyReportReadAuthorizationTests
 {
     private static readonly Guid ParentTaskId = Guid.Parse("cccccccc-0000-0000-0000-000000000001");
     private static readonly Guid PartyTaskId = Guid.Parse("cccccccc-0000-0000-0000-000000000002");
     private static readonly Guid ForeignPartyTaskId = Guid.Parse("cccccccc-0000-0000-0000-000000000003");
     private static readonly Guid PropertyId = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
 
-    private static readonly CaseStudyFormActor Party = new()
+    private static readonly CaseStudyReportActor Party = new()
     {
         UserId = "user-party",
         DisplayName = "طرف",
@@ -246,7 +246,7 @@ public class CaseStudyFormReadAuthorizationTests
     };
 
  /// <summary>A party on a different PO entirely — no task under this parent.</summary>
-    private static readonly CaseStudyFormActor Outsider = new()
+    private static readonly CaseStudyReportActor Outsider = new()
     {
         UserId = "user-unrelated",
         DisplayName = "طرف آخر",
@@ -307,7 +307,7 @@ public class CaseStudyFormReadAuthorizationTests
         var dto = await CreateFormService(contexts).GetAsync(
             ParentTaskId,
             party: false,
-            new CaseStudyFormActor { UserId = "staff", PrototypeRole = "case-specialist" });
+            new CaseStudyReportActor { UserId = "staff", PrototypeRole = "case-specialist" });
 
         Assert.NotNull(dto);
     }
@@ -321,7 +321,7 @@ public class CaseStudyFormReadAuthorizationTests
         var dto = await CreateFormService(contexts).GetAsync(
             ParentTaskId,
             party: false,
-            new CaseStudyFormActor { UserId = "staff", PrototypeRole = "case-specialist" });
+            new CaseStudyReportActor { UserId = "staff", PrototypeRole = "case-specialist" });
 
         Assert.NotNull(dto);
         Assert.Equal("new", dto!.Status);
@@ -371,30 +371,30 @@ public class CaseStudyFormReadAuthorizationTests
         var now = DateTime.UtcNow;
         SeedTasksOnly(db);
 
-        db.CaseStudyForms.AddRange(
-            new CaseStudyForm
+        db.CaseStudyReports.AddRange(
+            new CaseStudyReport
             {
                 Id = Guid.NewGuid(),
                 TaskId = ParentTaskId,
-                IsPartyForm = false,
+                IsPartyContribution = false,
                 Status = "draft",
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now,
             },
-            new CaseStudyForm
+            new CaseStudyReport
             {
                 Id = Guid.NewGuid(),
                 TaskId = PartyTaskId,
-                IsPartyForm = true,
+                IsPartyContribution = true,
                 Status = "draft",
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now,
             },
-            new CaseStudyForm
+            new CaseStudyReport
             {
                 Id = Guid.NewGuid(),
                 TaskId = ForeignPartyTaskId,
-                IsPartyForm = true,
+                IsPartyContribution = true,
                 Status = "draft",
                 CreatedAtUtc = now,
                 UpdatedAtUtc = now,
@@ -419,13 +419,13 @@ public class CaseStudyFormReadAuthorizationTests
             parentTaskId: parentTaskId);
 
     private static TestDatabases.ContextSet CreateContexts() =>
-        TestDatabases.Create("case-study-form-read");
+        TestDatabases.Create("case-study-report-read");
 
-    private static CaseStudyFormService CreateFormService(TestDatabases.ContextSet contexts)
+    private static CaseStudyReportService CreateFormService(TestDatabases.ContextSet contexts)
     {
         var db = contexts.CaseStudy;
-        return new CaseStudyFormService(
-            new CaseStudyFormRepository(db),
+        return new CaseStudyReportService(
+            new CaseStudyReportRepository(db),
             TestInspectorFeeServiceFactory.CreateWorkflow(db));
     }
 }

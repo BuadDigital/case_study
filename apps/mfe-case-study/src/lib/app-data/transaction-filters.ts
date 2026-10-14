@@ -31,7 +31,7 @@ export function taskMatchesPrimaryData(
   return task.phase === "enfath";
 }
 
-export function taskMatchesDistribution(
+function taskMatchesDistribution(
   task: WorkflowTask,
   poByNumber?: Map<string, PoIntakeRecord>,
 ): boolean {
@@ -50,7 +50,7 @@ export function filterTasksForDistribution(
   return tasks.filter((t) => taskMatchesDistribution(t, poByNumber));
 }
 
-export function taskMatchesBourseInquiry(
+function taskMatchesBourseInquiry(
   task: WorkflowTask,
   record: PoIntakeRecord | undefined,
 ): boolean {

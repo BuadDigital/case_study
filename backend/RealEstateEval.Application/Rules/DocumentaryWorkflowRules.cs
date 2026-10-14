@@ -64,7 +64,7 @@ public static class DocumentaryWorkflowRules
     {
         if (bypass) return null;
         if (hasActiveFailure)
-            return "الرفع المساحي مجمّد بسبب تعذر نشط على العقار.";
+            return "الرفع المساحي مجمّد بسبب تعذّر نشط على العقار.";
         if (!inspectionCompleted)
             return "لا يمكن بدء الرفع المساحي قبل اكتمال المعاينة الميدانية.";
         return null;

@@ -6,7 +6,7 @@ vi.mock("@platform/api-client", () => ({
   downloadAttachmentBlob: (...args: unknown[]) => downloadAttachmentBlob(...args),
 }));
 
-const { downloadAttachmentBlobOnce, clearAttachmentBlobCache, forgetAttachmentBlob } =
+const { downloadAttachmentBlobOnce, clearAttachmentBlobCache } =
   await import("../src/app-data/attachment-blob-cache");
 
 const config = { baseUrl: "http://test", token: "t" };
@@ -72,11 +72,11 @@ describe("downloadAttachmentBlobOnce", () => {
     expect(downloadAttachmentBlob).toHaveBeenCalledTimes(2);
   });
 
-  it("forgets an id on request", async () => {
+  it("forgets everything on clear (sign-in), so the next request hits the network", async () => {
     downloadAttachmentBlob.mockResolvedValue({ ok: true, data: new Blob(["x"]) });
 
     await downloadAttachmentBlobOnce(config, "id-6");
-    forgetAttachmentBlob("id-6");
+    clearAttachmentBlobCache();
     await downloadAttachmentBlobOnce(config, "id-6");
 
     expect(downloadAttachmentBlob).toHaveBeenCalledTimes(2);

@@ -1,5 +1,4 @@
-import { getApiBase } from "./api-base";
-import { withIdempotencyKey } from "./idempotency-key";
+import { authHeaders, getApiBase } from "./api-base";
 import {
   fetchListPage,
   type ListPageQuery,
@@ -119,48 +118,12 @@ export type CollectPoEnfazInvoiceRequest = {
   note?: string | null;
 };
 
-export type EnfazAgingBucketDto = {
-  key: string;
-  label: string;
-  invoiceCount: number;
-  outstandingSar: number;
-};
-
-export type EnfazAgingInvoiceRowDto = {
-  poNumber: string;
-  invoiceNumber: string;
-  status: string;
-  issuedAtUtc: string;
-  ageDays: number;
-  bucketKey: string;
-  bucketLabel: string;
-  totalSar: number;
-  collectedAmountSar: number;
-  outstandingSar: number;
-};
-
-export type EnfazAgingReportDto = {
-  asOfUtc: string;
-  totalOutstandingSar: number;
-  openInvoiceCount: number;
-  buckets: EnfazAgingBucketDto[];
-  invoices: EnfazAgingInvoiceRowDto[];
-};
-
 export type PropertyEnfazRevenueDto = {
   caseStudyFeeSar: number | null;
   surveyFeeSar: number | null;
   enfazFeeSar: number | null;
   hasEnfazRevenue: boolean;
 };
-
-function headers(token: string, idempotencyKey?: string): HeadersInit {
-  const base = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
-  return idempotencyKey ? withIdempotencyKey(base, idempotencyKey) : base;
-}
 
 function normalizeAttachmentIds(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -293,23 +256,6 @@ function normalizeTrackingRow(
   };
 }
 
-export async function listReadyEnfazPoSummaries(
-  config: EnfazBillingApiConfig,
-): Promise<ApiOk<EnfazReadyPoSummaryDto[]> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/enfaz-billing/ready-pos-summary`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>[];
-    return { ok: true, data: raw.map(normalizeReadySummary) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 function normalizeReadySummary(
   item: Record<string, unknown>,
 ): EnfazReadyPoSummaryDto {
@@ -404,7 +350,7 @@ export async function getPoEnfazBilling(
   try {
     const res = await fetch(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
@@ -427,7 +373,7 @@ export async function savePoEnfazBilling(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}`,
       {
         method: "PUT",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
     );
@@ -446,7 +392,7 @@ export async function listEnfazTracking(
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(`${base}/api/enfaz-billing/tracking`, {
-      headers: headers(config.token),
+      headers: authHeaders(config.token),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -466,7 +412,7 @@ export async function issuePoEnfazInvoice(
   try {
     const res = await fetch(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/issue-invoice`,
-      { method: "POST", headers: headers(config.token, idempotencyKey) },
+      { method: "POST", headers: authHeaders(config.token, { idempotencyKey }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -489,7 +435,7 @@ export async function collectPoEnfazInvoice(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/collect`,
       {
         method: "POST",
-        headers: headers(config.token, idempotencyKey),
+        headers: authHeaders(config.token, { idempotencyKey }),
         body: JSON.stringify(body),
       },
     );
@@ -521,64 +467,6 @@ export async function downloadPoEnfazInvoicePdf(
   }
 }
 
-export async function listEnfazAging(
-  config: EnfazBillingApiConfig,
-): Promise<ApiOk<EnfazAgingReportDto> | ApiErr> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/enfaz-billing/aging`, {
-      headers: headers(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>;
-    const bucketsRaw = (raw.buckets ?? raw.Buckets ?? []) as Record<
-      string,
-      unknown
-    >[];
-    const invoicesRaw = (raw.invoices ?? raw.Invoices ?? []) as Record<
-      string,
-      unknown
-    >[];
-    return {
-      ok: true,
-      data: {
-        asOfUtc: String(raw.asOfUtc ?? raw.AsOfUtc ?? ""),
-        totalOutstandingSar: Number(
-          raw.totalOutstandingSar ?? raw.TotalOutstandingSar ?? 0,
-        ),
-        openInvoiceCount: Number(
-          raw.openInvoiceCount ?? raw.OpenInvoiceCount ?? 0,
-        ),
-        buckets: bucketsRaw.map((b) => ({
-          key: String(b.key ?? b.Key ?? ""),
-          label: String(b.label ?? b.Label ?? ""),
-          invoiceCount: Number(b.invoiceCount ?? b.InvoiceCount ?? 0),
-          outstandingSar: Number(b.outstandingSar ?? b.OutstandingSar ?? 0),
-        })),
-        invoices: invoicesRaw.map((row) => ({
-          poNumber: String(row.poNumber ?? row.PoNumber ?? ""),
-          invoiceNumber: String(row.invoiceNumber ?? row.InvoiceNumber ?? ""),
-          status: String(row.status ?? row.Status ?? ""),
-          issuedAtUtc: String(row.issuedAtUtc ?? row.IssuedAtUtc ?? ""),
-          ageDays: Number(row.ageDays ?? row.AgeDays ?? 0),
-          bucketKey: String(row.bucketKey ?? row.BucketKey ?? ""),
-          bucketLabel: String(row.bucketLabel ?? row.BucketLabel ?? ""),
-          totalSar: Number(row.totalSar ?? row.TotalSar ?? 0),
-          collectedAmountSar: Number(
-            row.collectedAmountSar ?? row.CollectedAmountSar ?? 0,
-          ),
-          outstandingSar: Number(
-            row.outstandingSar ?? row.OutstandingSar ?? 0,
-          ),
-        })),
-      },
-    };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
-
 export async function getPropertyEnfazRevenue(
   config: EnfazBillingApiConfig,
   poNumber: string,
@@ -588,7 +476,7 @@ export async function getPropertyEnfazRevenue(
   try {
     const res = await fetch(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/properties/${propertyId}`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -641,7 +529,7 @@ export async function listEnfazFollowups(
   try {
     const res = await fetch(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/followups`,
-      { headers: headers(config.token) },
+      { headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
@@ -663,7 +551,7 @@ export async function addEnfazFollowup(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/followups`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify({
           channel: body.channel,
           notes: body.notes,
@@ -691,7 +579,7 @@ export async function setEnfazFinanceFlag(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/finance-flag`,
       {
         method: "POST",
-        headers: headers(config.token),
+        headers: authHeaders(config.token),
         body: JSON.stringify({
           flag: body.flag,
           propertyId: body.propertyId ?? null,
@@ -720,7 +608,7 @@ export async function clearEnfazFinanceFlag(
         : "";
     const res = await fetch(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/finance-flag${qs}`,
-      { method: "DELETE", headers: headers(config.token) },
+      { method: "DELETE", headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };

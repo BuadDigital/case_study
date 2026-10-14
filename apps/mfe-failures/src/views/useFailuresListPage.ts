@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { RoleId } from "@platform/types";
 import { useDebouncedValue } from "@platform/app-shared/hooks/use-debounced-value";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
@@ -39,10 +39,13 @@ export function useFailuresListPage(role: RoleId, highlightId: string | null) {
   // local filter pass (the deferred value would fire a request per keystroke).
   const debouncedSearch = useDebouncedValue(search, 300);
 
-  // A new search term restarts at page 1 (the old page may not exist).
-  useEffect(() => {
+  // A new search term restarts at page 1 (the old page may not exist). Adjusted
+  // during render instead of in an effect, so the list never paints the stale page.
+  const [pagedSearch, setPagedSearch] = useState(debouncedSearch);
+  if (pagedSearch !== debouncedSearch) {
+    setPagedSearch(debouncedSearch);
     setPage(1);
-  }, [debouncedSearch]);
+  }
 
   const whole = useFailuresQuery();
   const allItems = whole.data ?? EMPTY;
@@ -79,6 +82,15 @@ export function useFailuresListPage(role: RoleId, highlightId: string | null) {
   );
 
   const source = partyScoped ? whole : pageQuery;
+  // `isFetched` belongs to the new key's query, so it read false while the
+  // previous page was still on screen as placeholder — every page or search
+  // change blanked the table to skeleton rows despite `keepPreviousData`.
+  const ready = source.isFetched || source.isPlaceholderData;
+
+  // The page whose rows are on screen: follows `page` once its own rows land,
+  // so the swap fade plays on the new rows, not on the placeholder ones.
+  const [rowsPage, setRowsPage] = useState(page);
+  if (!source.isPlaceholderData && rowsPage !== page) setRowsPage(page);
   const refetchWhole = whole.refetch;
   const refetchPage = pageQuery.refetch;
   const refetch = useCallback(async () => {
@@ -98,7 +110,8 @@ export function useFailuresListPage(role: RoleId, highlightId: string | null) {
       rangeStart: cut.rangeStart,
       rangeEnd: cut.rangeEnd,
     },
-    isFetched: source.isFetched,
+    rowsPage,
+    isFetched: ready,
     isError: source.isError,
     error: source.error,
     refetch,

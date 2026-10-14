@@ -54,8 +54,7 @@ public static class BoundedContextConnections
 
     public static string Resolve(
         IConfiguration configuration,
-        string serviceName,
-        string? leftoverIgnored = null) =>
+        string serviceName) =>
         TryGetDedicated(configuration, serviceName)
         ?? throw new InvalidOperationException(
             $"Set {EnvVarFor(serviceName)} or ConnectionStrings:{serviceName}. "
@@ -89,18 +88,6 @@ public static class BoundedContextConnections
                 $"{contextType.Name} has no dedicated database.");
         return Resolve(configuration, serviceName);
     }
-
-    public static string ForContext(
-        IConfiguration configuration,
-        Type contextType,
-        string leftoverIgnored) =>
-        ForContext(configuration, contextType);
-
-    public static string ForContext<TContext>(
-        IConfiguration configuration,
-        string leftoverIgnored)
-        where TContext : DbContext =>
-        ForContext(configuration, typeof(TContext));
 
     public static string ForContext<TContext>(IConfiguration configuration)
         where TContext : DbContext =>

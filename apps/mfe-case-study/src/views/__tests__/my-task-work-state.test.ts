@@ -3,13 +3,13 @@ import { emptyProperty } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import {
   activeTaskWorkStep,
-  BOURSE_OBSTRUCTION_ACTION,
   BOURSE_SAVE_ACTION,
+  bourseDeedStatus,
   canRaiseFailure,
   canShowPrimarySave,
+  canWorkTaskStep,
   DISTRIBUTION_CONFIRM_ACTION,
   distributionValidationContext,
-  isBourseObstructionPath,
   newPropertyDraftKey,
   persistedEnfathProperty,
   removedPropertyNote,
@@ -36,58 +36,38 @@ function task(overrides: Record<string, unknown> = {}): WorkflowTask {
   } as unknown as WorkflowTask;
 }
 
-const noSteps = {
-  bourseInquiryFastPath: false,
-  bourseInquiryPanelOnly: false,
-  showEnfathStep: false,
-  showBourseStep: false,
-  showDistribution: false,
-  showCaseStudy: false,
-};
-
 describe("resolveTaskWorkSteps", () => {
-  it("a deed on «enfath» renders the Infath card only", () => {
-    expect(resolveTaskWorkSteps("enfath", "page", "deed")).toEqual({
-      ...noSteps,
+  it("each phase maps one-to-one onto its card — Infath, bourse, distribution, case study", () => {
+    expect(resolveTaskWorkSteps("enfath")).toEqual({
       showEnfathStep: true,
+      showBourseStep: false,
+      showDistribution: false,
+      showCaseStudy: false,
     });
-  });
-
-  it("a bourse inquiry on «enfath» takes the fast path: bourse card, not the Infath card", () => {
-    expect(resolveTaskWorkSteps("enfath", "page", "bourse_inquiry")).toEqual({
-      ...noSteps,
-      bourseInquiryFastPath: true,
+    expect(resolveTaskWorkSteps("bourse")).toMatchObject({
+      showEnfathStep: false,
       showBourseStep: true,
     });
-  });
-
-  it("in the primary-data panel the bourse inquiry stays on the Infath tab", () => {
-    expect(resolveTaskWorkSteps("enfath", "panel", "bourse_inquiry")).toEqual({
-      ...noSteps,
-      bourseInquiryFastPath: true,
-      bourseInquiryPanelOnly: true,
-      showEnfathStep: true,
-    });
-  });
-
-  it("later phases map one-to-one onto their card", () => {
-    expect(resolveTaskWorkSteps("bourse", "page", "deed").showBourseStep).toBe(true);
-    expect(resolveTaskWorkSteps("distribution", "page", "deed").showDistribution).toBe(true);
-    expect(resolveTaskWorkSteps("case-study", "page", "deed").showCaseStudy).toBe(true);
-    expect(activeTaskWorkStep(resolveTaskWorkSteps("case-study", "page", "deed"))).toBeNull();
+    expect(resolveTaskWorkSteps("distribution").showDistribution).toBe(true);
+    expect(resolveTaskWorkSteps("case-study").showCaseStudy).toBe(true);
+    expect(activeTaskWorkStep(resolveTaskWorkSteps("case-study"))).toBeNull();
   });
 });
 
 describe("save label and titles", () => {
-  const bourse = resolveTaskWorkSteps("bourse", "page", "deed");
-  const distribution = resolveTaskWorkSteps("distribution", "page", "deed");
+  const bourse = resolveTaskWorkSteps("bourse");
+  const distribution = resolveTaskWorkSteps("distribution");
 
-  it("follows the active step, with «غير فعال» routing the bourse save to the supervisor", () => {
-    expect(taskWorkSaveLabel(resolveTaskWorkSteps("enfath", "page", "deed"), null)).toBe("حفظ");
-    expect(taskWorkSaveLabel(bourse, "active")).toBe(BOURSE_SAVE_ACTION);
-    expect(taskWorkSaveLabel(bourse, "inactive")).toBe(BOURSE_OBSTRUCTION_ACTION);
-    expect(taskWorkSaveLabel(distribution, "inactive")).toBe(DISTRIBUTION_CONFIRM_ACTION);
-    expect(isBourseObstructionPath(distribution, "inactive")).toBe(false);
+  it("follows the active step — an inactive deed no longer reroutes the bourse save", () => {
+    expect(taskWorkSaveLabel(resolveTaskWorkSteps("enfath"))).toBe("حفظ");
+    expect(taskWorkSaveLabel(bourse)).toBe(BOURSE_SAVE_ACTION);
+    expect(taskWorkSaveLabel(distribution)).toBe(DISTRIBUTION_CONFIRM_ACTION);
+  });
+
+  it("records the deed status the specialist picked, defaulting to active", () => {
+    expect(bourseDeedStatus("active")).toBe("فعال");
+    expect(bourseDeedStatus("inactive")).toBe("غير فعال");
+    expect(bourseDeedStatus(null)).toBe("فعال");
   });
 
   it("names the panel step and keeps the deed in the page title", () => {
@@ -145,17 +125,46 @@ describe("footer decisions", () => {
   });
 
   it("offers «تسجيل تعذر» once a property exists on the bourse or distribution step", () => {
-    const bourse = resolveTaskWorkSteps("bourse", "page", "deed");
+    const bourse = resolveTaskWorkSteps("bourse");
     expect(canRaiseFailure(task(), bourse)).toBe(true);
-    expect(canRaiseFailure(task(), resolveTaskWorkSteps("distribution", "page", "deed"))).toBe(true);
-    expect(canRaiseFailure(task(), resolveTaskWorkSteps("enfath", "page", "deed"))).toBe(false);
+    expect(canRaiseFailure(task(), resolveTaskWorkSteps("distribution"))).toBe(true);
+    expect(canRaiseFailure(task(), resolveTaskWorkSteps("enfath"))).toBe(false);
     expect(canRaiseFailure(task({ propertyId: null }), bourse)).toBe(false);
   });
 });
 
+describe("canWorkTaskStep", () => {
+  const enfath = resolveTaskWorkSteps("enfath");
+  const bourse = resolveTaskWorkSteps("bourse");
+  const distribution = resolveTaskWorkSteps("distribution");
+
+  it("lets the case specialist and the CDO write the Infath and bourse steps, nobody else", () => {
+    const specialist = taskWorkRoleFlags("case-specialist");
+    const cdo = taskWorkRoleFlags("cdo");
+    expect(canWorkTaskStep(enfath, specialist)).toBe(true);
+    expect(canWorkTaskStep(bourse, specialist)).toBe(true);
+    expect(canWorkTaskStep(enfath, cdo)).toBe(true);
+    expect(canWorkTaskStep(bourse, cdo)).toBe(true);
+    expect(canWorkTaskStep(enfath, taskWorkRoleFlags("section-supervisor"))).toBe(false);
+  });
+
+  it("keeps the distribution step's audience unchanged", () => {
+    expect(canWorkTaskStep(distribution, taskWorkRoleFlags("cdo"))).toBe(true);
+    expect(canWorkTaskStep(distribution, taskWorkRoleFlags("case-specialist"))).toBe(true);
+    expect(canWorkTaskStep(distribution, taskWorkRoleFlags("section-supervisor"))).toBe(false);
+  });
+});
+
 describe("taskWorkRoleFlags", () => {
-  it("cdo is both supervisor and specialist; each other role is one or neither", () => {
-    expect(taskWorkRoleFlags("cdo")).toMatchObject({ isSupervisor: true, isSpecialist: true });
+  it("cdo is both supervisor and specialist and writes a property; each other role is one or neither", () => {
+    expect(taskWorkRoleFlags("cdo")).toMatchObject({
+      isSupervisor: true,
+      isSpecialist: true,
+      canEditProperty: true,
+    });
+    expect(taskWorkRoleFlags("general-manager").isSupervisor).toBe(true);
+    expect(taskWorkRoleFlags("case-specialist").canEditProperty).toBe(true);
+    expect(taskWorkRoleFlags("section-supervisor").canEditProperty).toBe(false);
     expect(taskWorkRoleFlags("section-supervisor")).toMatchObject({
       isSupervisor: true,
       isSpecialist: false,

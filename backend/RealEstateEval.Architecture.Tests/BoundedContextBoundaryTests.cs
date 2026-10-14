@@ -138,12 +138,10 @@ public class BoundedContextBoundaryTests
         {
             "AttachmentService",
             "CourtsService",
-            "CourtsCatalogService",
             "RegionsService",
             "FieldDictionaryService",
             "CaseStudyInfoRolesConfigService",
             "FailureTypesCatalogService",
-            "SurveyOfficesService",
             "NotificationService",
             "PushSubscriptionService",
             "ValuationRequestService",

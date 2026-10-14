@@ -4,12 +4,14 @@ import { useCallback, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   Button,
   cn,
   Note,
   PageGutter,
   PanelSkeleton,
+  QueryErrorState,
   RowMoreMenu,
   type RowMoreMenuItem,
   Table,
@@ -129,7 +131,8 @@ export function PoPropertiesPage({
     onSubmitted: bumpMenu,
   });
 
-  const { data: record, isPending } = usePoRecordQuery(poNumber);
+  const recordQuery = usePoRecordQuery(poNumber);
+  const { data: record, isPending } = recordQuery;
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
   const { data: propertyListItems = [] } = usePropertyListItemsQuery();
 
@@ -198,7 +201,6 @@ export function PoPropertiesPage({
       showEdit,
       showFailureRaise,
       router,
-      bumpMenu,
       buildPropertyRowMoreItems,
       menuRevision,
       openCopyModal,
@@ -210,6 +212,23 @@ export function PoPropertiesPage({
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
         <PanelSkeleton className="m-2" />
+      </div>
+    );
+  }
+
+  // A failed load is not «not found» — say so and offer a retry.
+  if (!record && queryLoadFailed(recordQuery)) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-bg">
+        <PageGutter className="py-6">
+          <QueryErrorState
+            panel
+            line="تعذّر تحميل أمر العمل"
+            error={recordQuery.error}
+            onRetry={() => void recordQuery.refetch()}
+            retrying={recordQuery.isFetching}
+          />
+        </PageGutter>
       </div>
     );
   }

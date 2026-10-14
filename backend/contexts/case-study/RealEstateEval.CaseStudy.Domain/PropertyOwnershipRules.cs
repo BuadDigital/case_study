@@ -3,70 +3,42 @@ using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Domain;
 
-/// <summary>One deed owner from the structured transcription (Owners and Their Shares).</summary>
-public sealed record DeedOwner(string Name, decimal? SharePct);
+/// <summary>One deed owner from the structured transcription (the owners list).</summary>
+public sealed record DeedOwner(string Name);
 
-/// <summary>Ownership Type values — absolute / mortgaged / investment / common.</summary>
+/// <summary>Ownership Type values — who owns the property: one owner (absolute) or several (shared).</summary>
 public static class OwnershipTypes
 {
     public const string Absolute = "absolute";
-    public const string Mortgaged = "mortgaged";
-    public const string Investment = "investment";
     public const string Shared = "shared";
 
     public static bool IsKnown(string? value) =>
-        (value ?? "").Trim().ToLowerInvariant() is Absolute or Mortgaged or Investment or Shared;
+        (value ?? "").Trim().ToLowerInvariant() is Absolute or Shared;
 
     public static string LabelAr(string? value) => (value ?? "").Trim().ToLowerInvariant() switch
     {
         Absolute => "ملكية مطلقة",
-        Mortgaged => "مرهون",
-        Investment => "استثمار",
         Shared => "مشاع",
         _ => "",
     };
 }
 
 /// <summary>
-/// Ownership Type derived from the structured deed transcription
-/// (editable-derived: the engine suggests, the valuer approves or overrides).
-/// Investment never appears on the deed, so it is manual-only.
+/// Ownership Type is derived from the owners list alone (decision 2026-10-06, supersedes the
+/// earlier four-value rule): one owner → absolute, more than one owner → shared. A mortgage is a
+/// restriction on the deed (see RestrictionType), not an ownership type; shares are not modelled.
 /// </summary>
 public static class OwnershipTypeRules
 {
     private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Web;
 
- /// <summary>
- /// Derivation order per the decision: mortgage registration ⟵ mortgaged · owners with shares ⟵ commons ·
- /// One owner, no restrictions ⟵ Absolute in principle.
- /// </summary>
-    public static string Suggest(
-        IReadOnlyList<DeedOwner> owners,
-        string? restrictionTypeCsv)
-    {
-        var restrictions = (restrictionTypeCsv ?? "")
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (restrictions.Contains("mortgaged", StringComparer.OrdinalIgnoreCase))
-            return OwnershipTypes.Mortgaged;
+    /// <summary>More than one named owner → shared; otherwise absolute (no owners yet counts as absolute).</summary>
+    public static string FromOwners(IReadOnlyList<DeedOwner> owners) =>
+        owners.Count(o => !string.IsNullOrWhiteSpace(o.Name)) > 1
+            ? OwnershipTypes.Shared
+            : OwnershipTypes.Absolute;
 
-        if (owners.Count > 1 || owners.Any(o => o.SharePct is > 0m and < 100m))
-            return OwnershipTypes.Shared;
-
-        return OwnershipTypes.Absolute;
-    }
-
- /// <summary>Effective value — manual override wins; otherwise the suggestion.</summary>
-    public static string Effective(
-        bool isManual,
-        string? manualValue,
-        IReadOnlyList<DeedOwner> owners,
-        string? restrictionTypeCsv)
-    {
-        if (isManual && OwnershipTypes.IsKnown(manualValue))
-            return (manualValue ?? "").Trim().ToLowerInvariant();
-        return Suggest(owners, restrictionTypeCsv);
-    }
-
+    /// <summary>Reads the stored owners JSON; a legacy <c>sharePct</c> key is ignored.</summary>
     public static IReadOnlyList<DeedOwner> ParseOwners(string? json)
     {
         if (string.IsNullOrWhiteSpace(json)) return [];
@@ -84,25 +56,8 @@ public static class OwnershipTypeRules
     {
         var cleaned = (owners ?? [])
             .Where(o => !string.IsNullOrWhiteSpace(o.Name))
-            .Select(o => new DeedOwner(o.Name.Trim(), o.SharePct))
+            .Select(o => new DeedOwner(o.Name.Trim()))
             .ToList();
         return cleaned.Count == 0 ? null : JsonSerializer.Serialize(cleaned, JsonOptions);
-    }
-
- /// <summary>Validation: names required, shares in (0,100], sum ≤ 100 (tolerance for thirds).</summary>
-    public static string? ValidateOwners(IReadOnlyList<DeedOwner> owners)
-    {
-        foreach (var o in owners)
-        {
-            if (string.IsNullOrWhiteSpace(o.Name))
-                return "اسم المالك مطلوب لكل سطر";
-            if (o.SharePct is <= 0m or > 100m)
-                return "حصة المالك يجب أن تكون أكبر من 0 وحتى 100";
-        }
-
-        var declared = owners.Where(o => o.SharePct is not null).Sum(o => o.SharePct!.Value);
-        if (declared > 100.01m)
-            return "مجموع الحصص يتجاوز 100٪";
-        return null;
     }
 }

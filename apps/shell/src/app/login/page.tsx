@@ -19,6 +19,7 @@ import {
   type AuthSession,
 } from "@platform/auth-client";
 import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
+import { clearAttachmentBlobCache } from "@platform/app-shared/app-data/attachment-blob-cache";
 import { cn, useToast } from "@platform/ui-kit";
 import { BrandLogo } from "@/components/views/BrandLogo";
 import {
@@ -49,6 +50,21 @@ type LoginResponse = {
 };
 
 type Step = "creds" | "otp";
+
+type OtpRequestResponse = {
+  retryAfterSeconds: number;
+  expiresInSeconds: number;
+  delivery: "sms" | "dev";
+};
+
+type OtpRequestResult =
+  | { ok: true; retryAfterSeconds: number }
+  | { ok: false; message: string; retryAfterSeconds?: number };
+
+const CONNECTION_FAILED =
+  typeof window !== "undefined" && !/localhost|127\.0\.0\.1/.test(window.location.hostname)
+    ? "تعذّر الاتصال بالخادم. على جهاز المضيف: شغّل npm run dev:api، وافتح المنفذين 3000 و5160 (open-firewall.ps1 كمسؤول)."
+    : "تعذّر الاتصال بالخادم. تأكد أن npm run dev:api يعمل على هذا الجهاز (المنفذ 5160).";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -121,8 +137,48 @@ export default function LoginPage() {
     return () => window.clearInterval(id);
   }, [otpTimerActive]);
 
-  function startOtpTimer() {
-    setResendLeft(30);
+  function startOtpTimer(seconds = 30) {
+    setResendLeft(Math.max(1, seconds));
+  }
+
+  /** Step 1: ask the server to text a code to the mobile. */
+  async function requestOtp(): Promise<OtpRequestResult> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 15_000);
+    try {
+      const res = await fetch(`${getApiBase()}/api/auth/otp/request`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mobile: mobileDigits }),
+        signal: controller.signal,
+      });
+      const data = (await res.json().catch(() => null)) as
+        | OtpRequestResponse
+        | { message?: string; retryAfterSeconds?: number }
+        | null;
+      if (res.ok && data && "retryAfterSeconds" in data) {
+        return { ok: true, retryAfterSeconds: data.retryAfterSeconds ?? 30 };
+      }
+      const message =
+        data && "message" in data && typeof data.message === "string"
+          ? data.message
+          : "تعذّر إرسال رمز التحقق. تأكد من رقم الجوال وحاول مجدداً.";
+      const retryAfterSeconds =
+        data && "retryAfterSeconds" in data && typeof data.retryAfterSeconds === "number"
+          ? data.retryAfterSeconds
+          : undefined;
+      return { ok: false, message, retryAfterSeconds };
+    } catch (err) {
+      const timedOut = err instanceof DOMException && err.name === "AbortError";
+      return {
+        ok: false,
+        message: timedOut
+          ? "انتهت مهلة الاتصال. تأكد أن الخادم يعمل (npm run dev:api) وانتظر حتى يظهر login-ready."
+          : CONNECTION_FAILED,
+      };
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   function resetOtp() {
@@ -138,14 +194,15 @@ export default function LoginPage() {
     setIdentifier(formatPhoneDisplay(digits));
   }
 
-  async function authenticate(): Promise<AuthSession | null> {
+  /** Step 2: exchange the code for a session. */
+  async function authenticate(code: string): Promise<AuthSession | null> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 10_000);
     try {
-      const res = await fetch(`${getApiBase()}/api/auth/login`, {
+      const res = await fetch(`${getApiBase()}/api/auth/otp/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: mobileDigits }),
+        body: JSON.stringify({ mobile: mobileDigits, code }),
         signal: controller.signal,
       });
       const data = (await res.json().catch(() => null)) as
@@ -157,7 +214,7 @@ export default function LoginPage() {
         const msg =
           data && "message" in data && typeof data.message === "string"
             ? data.message
-            : "تعذّر تسجيل الدخول. تأكد من رقم الجوال.";
+            : "الرمز غير صحيح أو انتهت صلاحيته.";
         setOtpError(msg);
         return null;
       }
@@ -180,9 +237,7 @@ export default function LoginPage() {
       setOtpError(
         timedOut
           ? "انتهت مهلة الاتصال. تأكد أن الخادم يعمل (npm run dev:api) وانتظر حتى يظهر login-ready."
-          : typeof window !== "undefined" && !/localhost|127\.0\.0\.1/.test(window.location.hostname)
-            ? "تعذر الاتصال بالخادم. على جهاز المضيف: شغّل npm run dev:api، وافتح المنفذين 3000 و5160 (open-firewall.ps1 كمسؤول)."
-            : "تعذر الاتصال بالخادم. تأكد أن npm run dev:api يعمل على هذا الجهاز (المنفذ 5160).",
+          : CONNECTION_FAILED,
       );
       return null;
     } finally {
@@ -208,8 +263,16 @@ export default function LoginPage() {
       return;
     }
 
+    flushSync(() => setLoading(true));
+    const sent = await requestOtp();
+    setLoading(false);
+    if (!sent.ok) {
+      setError(sent.message);
+      setMobileBad(sent.retryAfterSeconds === undefined);
+      return;
+    }
     resetOtp();
-    startOtpTimer();
+    startOtpTimer(sent.retryAfterSeconds);
     setStep("otp");
     window.setTimeout(() => otpRefs.current[0]?.focus(), 50);
   }
@@ -259,16 +322,11 @@ export default function LoginPage() {
   async function onOtpConfirm(codeOverride?: string) {
     const code = (codeOverride ?? otpValue).replace(NON_DIGIT_RE, "").slice(0, 6);
     if (code.length !== 6 || otpConfirmingRef.current) return;
-    if (code === "000000") {
-      setOtpBad(true);
-      setOtpError("الرمز غير صحيح، تأكد من الأرقام وحاول مجدداً");
-      return;
-    }
 
     otpConfirmingRef.current = true;
     flushSync(() => setLoading(true));
     try {
-      const session = await authenticate();
+      const session = await authenticate(code);
       if (!session) {
         setOtpBad(true);
         otpConfirmingRef.current = false;
@@ -281,6 +339,9 @@ export default function LoginPage() {
       );
       const path = from ?? (await resolvePostLoginPath(session.token));
       setLandingPath(path);
+      // An expired session lands here by client navigation, not a reload: drop the
+      // previous user's in-memory attachment bytes before the new user signs in.
+      clearAttachmentBlobCache();
       setAuthSession(session);
       showToast("تم تسجيل الدخول !", "success");
       router.replace(path);
@@ -294,10 +355,18 @@ export default function LoginPage() {
     showToast("الدخول بالبصمة غير مفعّل على هذا الجهاز بعد.", "info");
   }
 
-  function onResend() {
-    if (resendLeft > 0) return;
+  async function onResend() {
+    if (resendLeft > 0 || loading) return;
+    flushSync(() => setLoading(true));
+    const sent = await requestOtp();
+    setLoading(false);
     resetOtp();
-    startOtpTimer();
+    if (!sent.ok) {
+      setOtpError(sent.message);
+      if (sent.retryAfterSeconds) startOtpTimer(sent.retryAfterSeconds);
+      return;
+    }
+    startOtpTimer(sent.retryAfterSeconds);
     otpRefs.current[0]?.focus();
     showToast("أُعيد إرسال رمز التحقق.", "success");
   }
@@ -593,7 +662,7 @@ export default function LoginPage() {
                   type="button"
                   className={linkSm}
                   disabled={loading || resendLeft > 0}
-                  onClick={onResend}
+                  onClick={() => void onResend()}
                 >
                   إعادة إرسال الرمز
                 </button>

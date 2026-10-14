@@ -70,7 +70,7 @@ export function ValueDocumentsPanel({
     };
   }, [valuationRequestId, apply, reloadKey]);
 
-  const internal = data?.internalApproachKinds ?? [];
+  const internal = useMemo(() => data?.internalApproachKinds ?? [], [data]);
   const approaches = useMemo(() => availableDocumentApproaches(internal), [internal]);
   const errors = useMemo(
     () => (data ? valueDocumentDraftErrors(data.documents, drafts, internal) : {}),
@@ -84,6 +84,7 @@ export function ValueDocumentsPanel({
       poNumber={poNumber ?? ""}
       propertyId={propertyId ?? ""}
       disabled={disabled}
+      showOwnList={false}
       onUploaded={() => setReloadKey((k) => k + 1)}
     />
   );

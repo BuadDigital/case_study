@@ -56,7 +56,7 @@ export function filterOperationsTasksForProperty(
   });
 }
 
-export function isCourtVisitTask(task: OperationsTaskDto): boolean {
+function isCourtVisitTask(task: OperationsTaskDto): boolean {
   return task.type === "court_visit";
 }
 
@@ -86,7 +86,7 @@ export function primaryCourtVisitTask(
   return completed ?? visits[0] ?? null;
 }
 
-export const COURT_VISIT_RESULT_KIND_LABELS: Record<string, string> = {
+const COURT_VISIT_RESULT_KIND_LABELS: Record<string, string> = {
   received: "استُلم ظرف مفاتيح",
   other_party: "الظرف عند طرف آخر (إفادة الدائرة)",
   none: "لا يوجد ظرف / لم يُستلم",

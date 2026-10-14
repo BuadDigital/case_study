@@ -13,17 +13,21 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts;
 /// a row lives.
 /// </summary>
 public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> options)
-    : IdentityDbContext<ApplicationUser>(options)
+    : IdentityDbContext<ApplicationUser>(options), ICommandIdempotencyDbContext
 {
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<LoginOtpCode> LoginOtpCodes => Set<LoginOtpCode>();
     public DbSet<HrEmployeeProfile> HrEmployeeProfiles => Set<HrEmployeeProfile>();
     public DbSet<ProcServiceProviderProfile> ProcServiceProviderProfiles =>
         Set<ProcServiceProviderProfile>();
+    public DbSet<CommandIdempotencyRecord> CommandIdempotencyRecords =>
+        Set<CommandIdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
         builder.ApplyIdentityModel();
+        builder.ApplyCommandIdempotencyModel();
     }
 }

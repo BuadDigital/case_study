@@ -41,12 +41,15 @@ const KIND_LABELS: Record<string, string> = {
 export function FieldSyncSupervisorView() {
   const [rows, setRows] = useState<FieldSyncStatusDto[]>([]);
   const [loading, setLoading] = useState(true);
+  // After the first good load the minute poll and «تحديث» keep the table on
+  // screen (dimmed) instead of swapping it for the loading hint each time.
+  const [loadedOnce, setLoadedOnce] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     const session = getValidAuthSession();
     if (!session?.token) {
-      setError("يجب تسجيل الدخول");
+      setError("يلزم تسجيل الدخول");
       setLoading(false);
       return;
     }
@@ -63,6 +66,7 @@ export function FieldSyncSupervisorView() {
       return;
     }
     setRows(result.data);
+    setLoadedOnce(true);
     setLoading(false);
   }, []);
 
@@ -75,8 +79,8 @@ export function FieldSyncSupervisorView() {
   return (
     <PageShell variant="canvas" className="min-h-0 flex-1">
       <PageShellHeader
-        title="ظروف معلّقة لم تُزامن"
-        meta="كشف خلل — عناصر ميدانية معلّقة أكثر من ساعتين"
+        title="ظروف بانتظار المزامنة"
+        meta="كشف خلل — عناصر ميدانية بانتظار المزامنة أكثر من ساعتين"
         actions={
           <Button type="button" variant="outline" onClick={() => void refresh()}>
             تحديث
@@ -85,26 +89,26 @@ export function FieldSyncSupervisorView() {
       />
       <PageGutter className="space-y-4 pb-8">
         <Note tone="info" className="text-xs">
-          في الوضع الطبيعي تكون اللوحة فارغة. يظهر هنا المعاين/المراجع عندما يبقى
-          طابور الحفظ دون مزامنة أكثر من ساعتين (جهاز مطفأ · إغلاق قبل اكتمال الرفع ·
+          في الوضع الطبيعي تكون اللوحة فارغة. يظهر هنا المعاين/المراجع عندما تبقى
+          عناصره بانتظار المزامنة أكثر من ساعتين (جهاز مطفأ · إغلاق قبل اكتمال الرفع ·
           فشل شبكة).
         </Note>
 
-        {loading ? (
+        {loading && !loadedOnce ? (
           <PageLoadingHint />
         ) : error ? (
           <Note tone="danger">{error}</Note>
         ) : rows.length === 0 ? (
           <div className="rounded-xl border border-border bg-surface px-4 py-12 text-center text-sm text-text-2">
-            لا عناصر معلّقة — المزامنة الميدانية سليمة
+            لا عناصر بانتظار المزامنة — المزامنة الميدانية سليمة
           </div>
         ) : (
-          <Table framed className="min-w-[40rem] text-sm">
+          <Table framed className="min-w-[40rem] text-sm" pending={loading}>
             <THead>
               <Tr hoverable={false}>
                 <Th>المستخدم</Th>
                 <Th>الدور</Th>
-                <Th>معلّق</Th>
+                <Th>بانتظار المزامنة</Th>
                 <Th>العمر</Th>
                 <Th>الأنواع</Th>
                 <Th>آخر ظهور</Th>

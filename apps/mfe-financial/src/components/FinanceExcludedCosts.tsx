@@ -1,15 +1,14 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { formatSar } from "./FinancePartyBillingParts";
-import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import { loadInspectorFeesSummary } from "@platform/app-shared/app-data/inspector-fees-api";
-import { loadPartyBillingStatements } from "@platform/app-shared/app-data/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   EmptyState,
+  QueryErrorState,
   StatusPill,
   TBody,
   THead,
@@ -25,6 +24,10 @@ import {
   opsTfNote,
 } from "@platform/ui-kit";
 import { finGroupHead, finGroupTitle, finMuted } from "../lib/finance-tw";
+import {
+  financeExcludedFeesOptions,
+  financeExcludedStatementsOptions,
+} from "../query/costs-account-queries";
 
 /**
  * Excluded: written-off/excluded lines before entitlement + cancelled payrolls (log).
@@ -38,15 +41,8 @@ export function FinanceExcludedCosts({
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
 
-  const feesQuery = useQuery({
-    queryKey: [...appDataKeys.all, "inspector-fees", "finance-excluded"],
-    queryFn: () => loadInspectorFeesSummary({ submittedOnly: false }),
-  });
-
-  const statementsQuery = useQuery({
-    queryKey: [...appDataKeys.all, "party-billing", "statements", "excluded"],
-    queryFn: () => loadPartyBillingStatements(),
-  });
+  const feesQuery = useQuery(financeExcludedFeesOptions());
+  const statementsQuery = useQuery(financeExcludedStatementsOptions());
 
   const excludedLines = useMemo(
     () =>
@@ -78,6 +74,23 @@ export function FinanceExcludedCosts({
     return (
       <div className={opsLetterCard}>
         <EmptyState panel line="جاري التحميل…" />
+      </div>
+    );
+  }
+
+  const failed = [feesQuery, statementsQuery].filter(queryLoadFailed);
+  if (failed.length) {
+    return (
+      <div className={opsLetterCard}>
+        <QueryErrorState
+          panel
+          line="تعذّر تحميل المستبعدة"
+          error={failed[0]!.error}
+          onRetry={() => {
+            for (const q of failed) void q.refetch();
+          }}
+          retrying={failed.some((q) => q.isFetching)}
+        />
       </div>
     );
   }
@@ -143,7 +156,7 @@ export function FinanceExcludedCosts({
                       className="text-center"
                       valueClassName="text-[14px] font-extrabold text-heading"
                     >
-                      {formatSar(row.netFeeSar)}
+                      {fmtSar(row.netFeeSar, { trim: true })}
                     </TdLtr>
                     <Td>
                       <span className={finMuted}>
@@ -205,7 +218,7 @@ export function FinanceExcludedCosts({
                       className="text-center"
                       valueClassName="text-[14px] font-extrabold text-heading"
                     >
-                      {formatSar(s.totalNetSar)}
+                      {fmtSar(s.totalNetSar, { trim: true })}
                     </TdLtr>
                     <Td>
                       <span className={finMuted}>

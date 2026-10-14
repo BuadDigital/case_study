@@ -3,39 +3,98 @@ using RealEstateEval.Application.Abstractions;
 
 namespace RealEstateEval.Shared.Web.Middleware;
 
-/// <summary>Process-local fallback when messaging DB is not registered (e.g. identity-only hosts).</summary>
-public sealed class MemoryCommandIdempotencyStore(IMemoryCache cache) : ICommandIdempotencyStore
+/// <summary>Process-local fallback for hosts that do not register a durable owner store.</summary>
+public sealed class MemoryCommandIdempotencyStore(
+    IMemoryCache cache,
+    TimeProvider? time = null) : ICommandIdempotencyStore
 {
-    public Task<CommandIdempotencyCachedResponse?> TryGetAsync(
-        string actorId,
-        string httpMethod,
-        string requestPath,
-        string idempotencyKey,
+    private readonly object _gate = new();
+    private readonly TimeProvider _time = time ?? TimeProvider.System;
+
+    public Task<CommandIdempotencyAcquireResult> TryAcquireAsync(
+        CommandIdempotencyRequestKey key,
+        TimeSpan processingLease,
         CancellationToken cancellationToken = default)
     {
-        var key = CacheKey(actorId, httpMethod, requestPath, idempotencyKey);
-        cache.TryGetValue(key, out CommandIdempotencyCachedResponse? cached);
-        return Task.FromResult(cached);
+        var cacheKey = CacheKey(key);
+        var now = _time.GetUtcNow();
+        lock (_gate)
+        {
+            if (cache.TryGetValue(cacheKey, out Entry? existing)
+                && existing is not null
+                && existing.ExpiresAtUtc > now)
+            {
+                return Task.FromResult(existing.Response is null
+                    ? new CommandIdempotencyAcquireResult(CommandIdempotencyAcquireStatus.InProgress)
+                    : new CommandIdempotencyAcquireResult(
+                        CommandIdempotencyAcquireStatus.Replay,
+                        Response: existing.Response));
+            }
+
+            var executionId = Guid.NewGuid().ToString("N");
+            var hold = processingLease > TimeSpan.FromHours(24)
+                ? processingLease
+                : TimeSpan.FromHours(24);
+            cache.Set(
+                cacheKey,
+                new Entry(executionId, null, now.Add(hold)),
+                now.Add(hold));
+            return Task.FromResult(new CommandIdempotencyAcquireResult(
+                CommandIdempotencyAcquireStatus.Acquired,
+                executionId));
+        }
     }
 
-    public Task SaveAsync(
-        string actorId,
-        string httpMethod,
-        string requestPath,
-        string idempotencyKey,
+    public Task<bool> CompleteAsync(
+        CommandIdempotencyRequestKey key,
+        string executionId,
         CommandIdempotencyCachedResponse response,
         TimeSpan ttl,
         CancellationToken cancellationToken = default)
     {
-        var key = CacheKey(actorId, httpMethod, requestPath, idempotencyKey);
-        cache.Set(key, response, ttl);
+        var cacheKey = CacheKey(key);
+        var now = _time.GetUtcNow();
+        lock (_gate)
+        {
+            if (!cache.TryGetValue(cacheKey, out Entry? existing)
+                || existing?.ExecutionId != executionId
+                || existing.Response is not null)
+            {
+                return Task.FromResult(false);
+            }
+
+            cache.Set(
+                cacheKey,
+                new Entry(null, response, now.Add(ttl)),
+                now.Add(ttl));
+            return Task.FromResult(true);
+        }
+    }
+
+    public Task ReleaseAsync(
+        CommandIdempotencyRequestKey key,
+        string executionId,
+        CancellationToken cancellationToken = default)
+    {
+        var cacheKey = CacheKey(key);
+        lock (_gate)
+        {
+            if (cache.TryGetValue(cacheKey, out Entry? existing)
+                && existing?.ExecutionId == executionId
+                && existing.Response is null)
+            {
+                cache.Remove(cacheKey);
+            }
+        }
+
         return Task.CompletedTask;
     }
 
-    private static string CacheKey(
-        string actorId,
-        string httpMethod,
-        string requestPath,
-        string idempotencyKey) =>
-        $"cmd-idem:{actorId}:{httpMethod}:{requestPath}:{idempotencyKey}";
+    private static string CacheKey(CommandIdempotencyRequestKey key) =>
+        $"cmd-idem:{key.ActorId}:{key.HttpMethod}:{key.RequestPath}:{key.IdempotencyKey}";
+
+    private sealed record Entry(
+        string? ExecutionId,
+        CommandIdempotencyCachedResponse? Response,
+        DateTimeOffset ExpiresAtUtc);
 }

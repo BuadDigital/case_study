@@ -347,8 +347,14 @@ services:
       Jwt__Issuer: RealEstateEval
       Jwt__Audience: RealEstateEval
       Jwt__SigningKey: CHANGE_ME_DEV_ONLY_USE_64_CHARS_MINIMUM_FOR_HMAC_SHA256_SIGNING_KEY_0123456789ABCDEF
+      RabbitMQ__Host: rabbitmq
+      RabbitMQ__Port: 5672
+      RabbitMQ__UserName: dev
+      RabbitMQ__Password: dev
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       identity:
         condition: service_healthy

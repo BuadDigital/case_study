@@ -1,36 +1,133 @@
 "use client";
 
 /**
- * Valuers roster screen — composition only. Workflow lives in
- * `useValuersRosterWorkflow`; `ValuersRosterTable` renders the rows and the
- * shared `ConfirmActionModal` handles every confirm step.
+ * Valuers roster — a read-only view of who sits in the valuation report. Every
+ * row is a user account; the professional data and the report seat are edited
+ * on that user's card (المستخدمون), and the certified valuer is chosen in
+ * بيانات المنشأة. Nothing is added or deleted here.
  */
 
-import { Button, Input, Note, PageLoadingHint, PageShell, Spinner } from "@platform/ui-kit";
-import { ConfirmActionModal } from "../components/ConfirmActionModal";
-import { addValuerBlockedTitle } from "./valuers-roster-state";
-import { useValuersRosterWorkflow } from "./useValuersRosterWorkflow";
-import { ValuersRosterTable } from "./ValuersRosterTable";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  getOrganizationSettings,
+  type OrganizationValuerRosterEntry,
+} from "@platform/api-client";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
+import { todayIso } from "@platform/app-shared/format/date";
+import {
+  Badge,
+  Card,
+  Input,
+  Note,
+  PageLoadingHint,
+  PageShell,
+  Table,
+  TBody,
+  Td,
+  TdLtr,
+  Th,
+  THead,
+  Tr,
+} from "@platform/ui-kit";
+import {
+  catLabel,
+  certBlockMessage,
+  filterRoster,
+  isIsoDate,
+  isLinkedStaffValuer,
+  roleLabel,
+  ROSTER_TOASTS,
+  rosterEditHref,
+  rowStatus,
+  sigOk,
+  sortRoster,
+} from "./valuers-roster-state";
+
+function RosterRow({ v, today }: { v: OrganizationValuerRosterEntry; today: string }) {
+  const status = rowStatus(v, today);
+  const editHref = rosterEditHref(v);
+  const expiry = v.membershipExpiresAt?.trim() || "";
+  const expired = isIsoDate(expiry) && expiry < today;
+  return (
+    <Tr>
+      <Td className="font-semibold text-heading">
+        {v.nameAr}
+        {v.role === "certified" ? (
+          <Badge tone="info" className="ms-2">
+            المقيّم المعتمد
+          </Badge>
+        ) : null}
+      </Td>
+      <Td>
+        {isLinkedStaffValuer(v) ? (
+          <Badge tone="success">مرتبط بحساب</Badge>
+        ) : (
+          <Badge tone="warning" title="أضف الشخص من «المستخدمون» بنفس الاسم ليرتبط هذا الصف بحسابه">
+            بلا حساب
+          </Badge>
+        )}
+      </Td>
+      <Td>{roleLabel(v.role)}</Td>
+      <Td>{catLabel(v.membershipCategory)}</Td>
+      <TdLtr>{v.membershipNumber?.trim() || "—"}</TdLtr>
+      <TdLtr className={expired ? "text-danger-text" : undefined}>{expiry || "—"}</TdLtr>
+      <Td>
+        {v.role === "certified" ? (
+          sigOk(v) ? <Badge tone="success">مرفوع</Badge> : <Badge tone="danger">غير مرفوع</Badge>
+        ) : (
+          <span className="text-text-3">—</span>
+        )}
+      </Td>
+      <Td>
+        <Badge tone={status.tone} title={status.blockReason ?? undefined}>
+          {status.label}
+        </Badge>
+      </Td>
+      <Td>
+        {editHref ? (
+          <Link href={editHref} className="text-[12.5px] font-semibold text-primary">
+            تعديل
+          </Link>
+        ) : (
+          <span className="text-[12px] text-text-3">من المستخدمون</span>
+        )}
+      </Td>
+    </Tr>
+  );
+}
 
 export function ValuersRosterView() {
-  const workflow = useValuersRosterWorkflow();
-  const {
-    canEdit,
-    loading,
-    saving,
-    dirty,
-    error,
-    certMsg,
-    query,
-    setQuery,
-    editingId,
-    canAddValuer,
-    tryAddValuer,
-    modal,
-    closeModal,
-  } = workflow;
+  const [rows, setRows] = useState<OrganizationValuerRosterEntry[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const today = todayIso();
 
-  if (loading) {
+  const reload = useCallback(async () => {
+    const config = apiConfig();
+    if (!config) {
+      setError(ROSTER_TOASTS.loginRequired);
+      setRows([]);
+      return;
+    }
+    const res = await getOrganizationSettings(config);
+    if (!res.ok) {
+      setError(ROSTER_TOASTS.loadFailed);
+      setRows([]);
+      return;
+    }
+    setError(null);
+    setRows(sortRoster(res.data.valuers));
+  }, []);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const visible = useMemo(() => filterRoster(rows ?? [], query), [rows, query]);
+  const certMsg = rows ? certBlockMessage(rows, today) : "";
+
+  if (rows === null) {
     return (
       <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
         <PageLoadingHint className="py-20" />
@@ -40,11 +137,6 @@ export function ValuersRosterView() {
 
   return (
     <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-      {!canEdit ? (
-        <Note tone="warn" className="mb-3 max-w-[560px]">
-          الرابط صحيح، لكن دورك الحالي لا يملك صلاحية هذا البند. اطلب الصلاحية من مسؤول النظام.
-        </Note>
-      ) : null}
       {error ? <Note tone="warn">{error}</Note> : null}
       {certMsg ? (
         <Note tone="danger" className="mt-0">
@@ -52,10 +144,16 @@ export function ValuersRosterView() {
         </Note>
       ) : null}
       <Note className="mt-0">
-        هذا هو السجل الأساسي للمقيّمين — «المشاركون في إعداد التقرير» و«بيانات المقيم المعتمد» في
-        قوائم التقييم يُختاران من هذه القائمة. حساب «مقيم عقاري» يُنشأ من «المستخدمون» فيُفتح له صف
-        هنا؛ عضوية تقييم وتاريخ الانتهاء والتوقيع ودور السجل تُكمَّل في هذه الشاشة. ترخيص مزاولة
-        المنشأة يُقرأ من «بيانات المنشأة».
+        هذه قائمة من يظهر في تقرير التقييم. كل صف حساب مستخدم: الاسم والصفة في التقرير وبيانات
+        العضوية والترخيص تُعدَّل من بطاقته في{" "}
+        <Link href="/users" className="font-semibold text-primary">
+          «المستخدمون»
+        </Link>
+        ، والمقيّم المعتمد يُختار من{" "}
+        <Link href="/organization-settings?tab=company" className="font-semibold text-primary">
+          «بيانات المنشأة»
+        </Link>
+        . التوقيع يُطبع للمقيّم المعتمد فقط.
       </Note>
 
       <div className="mb-3 mt-3 flex flex-wrap gap-2.5">
@@ -65,36 +163,30 @@ export function ValuersRosterView() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        {canEdit ? (
-          <Button
-            variant="default"
-            disabled={!canAddValuer}
-            title={addValuerBlockedTitle(canAddValuer, editingId)}
-            onClick={() => tryAddValuer()}
-          >
-            إضافة مقيّم
-          </Button>
-        ) : null}
       </div>
 
-      <ValuersRosterTable workflow={workflow} />
-      <p className="mx-0.5 mt-2.5 text-[11.5px] text-text-3">
-        «تم» و«تعطيل» و«×» تحفظ مباشرة بعد التأكيد — لا حاجة لزر حفظ منفصل. أكمل بيانات كل مقيّم
-        فعّال قبل إضافة آخر. دور «مقيم معتمد» يُسند مرة ويُحجز.
-      </p>
-
-      {saving ? (
-        <div className="mt-3 flex items-center justify-end gap-2 text-[12px] text-text-3">
-          <Spinner />
-          جاري الحفظ…
-        </div>
-      ) : dirty ? (
-        <p className="mt-3 text-end text-[11.5px] text-amber-text">
-          تعديلات معلّقة — اضغط «تم» لحفظ الصف.
-        </p>
-      ) : null}
-
-      <ConfirmActionModal modal={modal} titleId="valuers-modal-title" onClose={closeModal} />
+      <Card className="overflow-hidden">
+        <Table className="min-w-[56rem] tabular-nums">
+          <THead>
+            <Tr hoverable={false}>
+              <Th>الاسم</Th>
+              <Th>الحساب</Th>
+              <Th>الصفة في التقرير</Th>
+              <Th>فئة العضوية</Th>
+              <Th>رقم العضوية</Th>
+              <Th>سريان العضوية</Th>
+              <Th>التوقيع</Th>
+              <Th>الحالة</Th>
+              <Th />
+            </Tr>
+          </THead>
+          <TBody>
+            {visible.map((v) => (
+              <RosterRow key={v.id} v={v} today={today} />
+            ))}
+          </TBody>
+        </Table>
+      </Card>
     </PageShell>
   );
 }

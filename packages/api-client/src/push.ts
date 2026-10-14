@@ -1,13 +1,13 @@
-import { getApiBase } from "./api-base";
+import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { ApiAuthError } from "./permissions";
 
-export type PushApiConfig = {
+type PushApiConfig = {
   baseUrl?: string;
   token: string;
 };
 
-export type PushConfigDto = {
+type PushConfigDto = {
   enabled: boolean;
   publicKey?: string | null;
 };
@@ -22,7 +22,7 @@ export type PushSubscriptionDto = {
   disabledAtUtc?: string | null;
 };
 
-export type RegisterPushSubscriptionRequest = {
+type RegisterPushSubscriptionRequest = {
   endpoint: string;
   p256dh: string;
   auth: string;
@@ -30,15 +30,9 @@ export type RegisterPushSubscriptionRequest = {
   deviceLabel?: string;
 };
 
-export type PushPreferenceDto = {
+type PushPreferenceDto = {
   pushEnabled: boolean;
 };
-
-function headers(token?: string): HeadersInit {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) h.Authorization = `Bearer ${token}`;
-  return h;
-}
 
 function baseUrl(config?: PushApiConfig): string {
   return config?.baseUrl ?? getApiBase();
@@ -48,7 +42,7 @@ export async function getPushConfig(
   config?: PushApiConfig,
 ): Promise<{ ok: true; data: PushConfigDto } | { ok: false }> {
   const res = await fetch(`${baseUrl(config)}/api/push/config`, {
-    headers: headers(config?.token),
+    headers: authHeaders(config?.token || undefined),
   });
   if (!res.ok) return { ok: false };
   return { ok: true, data: (await res.json()) as PushConfigDto };
@@ -58,7 +52,7 @@ export async function listPushSubscriptions(
   config: PushApiConfig,
 ): Promise<PushSubscriptionDto[]> {
   const res = await fetch(`${baseUrl(config)}/api/push/subscriptions`, {
-    headers: headers(config.token),
+    headers: authHeaders(config.token || undefined),
   });
   if (res.status === 401) throw new ApiAuthError();
   if (!res.ok) throw new Error(`push subscriptions ${res.status}`);
@@ -71,7 +65,7 @@ export async function registerPushSubscription(
 ): Promise<PushSubscriptionDto> {
   const res = await fetch(`${baseUrl(config)}/api/push/subscriptions`, {
     method: "POST",
-    headers: headers(config.token),
+    headers: authHeaders(config.token || undefined),
     body: JSON.stringify(request),
   });
   if (res.status === 401) throw new ApiAuthError();
@@ -85,7 +79,7 @@ export async function deletePushSubscription(
 ): Promise<void> {
   const res = await fetch(`${baseUrl(config)}/api/push/subscriptions`, {
     method: "DELETE",
-    headers: headers(config.token),
+    headers: authHeaders(config.token || undefined),
     body: JSON.stringify({ endpoint }),
   });
   if (res.status === 401) throw new ApiAuthError();
@@ -96,7 +90,7 @@ export async function getPushPreference(
   config: PushApiConfig,
 ): Promise<PushPreferenceDto> {
   const res = await fetch(`${baseUrl(config)}/api/push/preferences`, {
-    headers: headers(config.token),
+    headers: authHeaders(config.token || undefined),
   });
   if (res.status === 401) throw new ApiAuthError();
   if (!res.ok) throw new Error(`push preference ${res.status}`);
@@ -109,7 +103,7 @@ export async function setPushPreference(
 ): Promise<PushPreferenceDto> {
   const res = await fetch(`${baseUrl(config)}/api/push/preferences`, {
     method: "PUT",
-    headers: headers(config.token),
+    headers: authHeaders(config.token || undefined),
     body: JSON.stringify({ pushEnabled }),
   });
   if (res.status === 401) throw new ApiAuthError();

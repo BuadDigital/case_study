@@ -1,5 +1,6 @@
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Domain;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Operations.Application.Rules;
 
@@ -67,7 +68,7 @@ public static class KeyEnvelopeRegistrationRules
 
     public static bool IsDeedAlreadyAssigned(KeyEnvelope entity, string deed) =>
         entity.Assignments.Any(a =>
-            string.Equals(a.DeedNumber, deed, StringComparison.OrdinalIgnoreCase));
+            DeedNumberRules.EqualsNormalized(a.DeedNumber, deed));
 
     public static bool IsKnownHandoffKind(string kind) =>
         kind is KeyHandoffKinds.Internal

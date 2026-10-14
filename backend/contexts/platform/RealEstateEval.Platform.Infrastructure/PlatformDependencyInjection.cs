@@ -40,10 +40,8 @@ public static class PlatformDependencyInjection
             sp.GetRequiredService<AttachmentPrintDictionaryService>());
         services.AddScoped<IValuationListsService>(sp =>
             sp.GetRequiredService<AttachmentPrintDictionaryService>());
-        services.AddScoped<IDifferenceFactorCatalogService, DifferenceFactorCatalogService>();
         services.AddScoped<ICourtsRepository, CourtsRepository>();
         services.AddScoped<ICourtsService, CourtsService>();
-        services.AddScoped<ICourtsCatalogService, CourtsCatalogService>();
         services.AddScoped<ILocationCatalogRepository, LocationCatalogRepository>();
         services.AddSingleton<ILocationCatalogSeedSource, LocationCatalogSeedSource>();
         services.AddScoped<IRegionsService, RegionsService>();
@@ -51,7 +49,6 @@ public static class PlatformDependencyInjection
         services.AddScoped<IOrganizationSettingsRepository, OrganizationSettingsRepository>();
         services.AddScoped<IOrganizationSettingsService, OrganizationSettingsService>();
         services.AddScoped<IOrganizationSettingsGapService, OrganizationSettingsGapService>();
-        services.AddScoped<IOtpDeliveryService, OtpDeliveryService>();
         services.AddScoped<IFieldSyncStatusService, FieldSyncStatusService>();
         services.AddScoped<IAuditLogQueryService, AuditLogQueryService>();
         return services;
@@ -102,7 +99,7 @@ public static class PlatformDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
-        return services.AddBoundedContextPersistence<PlatformDbContext>(configuration, connectionString);
+        return services.AddBoundedContextPersistence<PlatformDbContext>(configuration);
     }
 
 }

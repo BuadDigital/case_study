@@ -8,6 +8,7 @@ import {
   EmptyState,
   InlineLoadingSkeleton,
   PageShell,
+  QueryErrorState,
   Spinner,
   useToast,
   opsBtnGhost,
@@ -27,6 +28,7 @@ import {
   opsTfNote,
 } from "@platform/ui-kit";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
 import {
@@ -66,7 +68,8 @@ export function FailureTypesView() {
   const queryClient = useQueryClient();
   const { role } = useAppAccess();
   const canEdit = canManageFailureTypes(role);
-  const { data: catalog, isFetched } = useFailureTypesQuery();
+  const catalogQuery = useFailureTypesQuery();
+  const { data: catalog, isFetched } = catalogQuery;
   const [categoryId, setCategoryId] = useState("");
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
@@ -93,10 +96,10 @@ export function FailureTypesView() {
       await refresh();
       setLabel("");
       setDescription("");
-      showToast("تمت إضافة نوع التعذر", "success");
+      showToast("تمت إضافة نوع التعذّر", "success");
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : "تعذّر إضافة نوع التعذر",
+        err instanceof Error ? err.message : "تعذّر إضافة نوع التعذّر",
         "error",
       );
     } finally {
@@ -113,7 +116,7 @@ export function FailureTypesView() {
       showToast("تم الحذف", "success");
     } catch (err) {
       showToast(
-        err instanceof Error ? err.message : "تعذّر حذف نوع التعذر",
+        err instanceof Error ? err.message : "تعذّر حذف نوع التعذّر",
         "error",
       );
     } finally {
@@ -153,6 +156,15 @@ export function FailureTypesView() {
       dir="rtl"
     >
       {!isFetched ? <InlineLoadingSkeleton className="mb-3" /> : null}
+      {queryLoadFailed(catalogQuery) ? (
+        <QueryErrorState
+          className={cn(opsLetterCard, "mb-3.5")}
+          line="تعذّر تحميل أنواع التعذّر"
+          error={catalogQuery.error}
+          onRetry={() => void catalogQuery.refetch()}
+          retrying={catalogQuery.isFetching}
+        />
+      ) : null}
 
       {!canEdit ? (
         <p className={cn(opsTfNote, "m-0 mb-3.5")}>
@@ -172,9 +184,9 @@ export function FailureTypesView() {
                 <OpsIcon path={PLUS_ICON} />
               </span>
               <div>
-                <div className={opsLetterTitle}>إضافة نوع تعذر</div>
+                <div className={opsLetterTitle}>إضافة نوع تعذّر</div>
                 <div className={opsLetterSub}>
-                  يُضاف النوع الجديد تحت التصنيف المحدد ويظهر فوراً في شاشات رفع التعذر
+                  يُضاف النوع الجديد تحت التصنيف المحدد ويظهر فوراً في شاشات رفع التعذّر
                 </div>
               </div>
             </div>

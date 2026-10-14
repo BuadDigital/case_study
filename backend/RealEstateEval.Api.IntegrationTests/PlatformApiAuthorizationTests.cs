@@ -30,7 +30,6 @@ public class PlatformApiAuthorizationTests : IClassFixture<PlatformApiFactory>
     [InlineData("/api/field-dictionary")]
     [InlineData("/api/case-study-info-roles")]
     [InlineData("/api/regions/selectable")]
-    [InlineData("/api/regions/cities/selectable")]
     public async Task Configuration_reads_require_authentication(string path)
     {
         var response = await _client.GetAsync(path);

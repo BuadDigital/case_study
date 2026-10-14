@@ -204,7 +204,7 @@ export function EditableFeaturePhotoCell({
           {!disabled ? (
             <button
               type="button"
-              title="استبدال الصورة"
+              title="استبدال"
               className="border-0 bg-transparent p-0 font-inherit text-[10.5px] font-semibold text-primary hover:underline"
               onClick={() => inputRef.current?.click()}
             >

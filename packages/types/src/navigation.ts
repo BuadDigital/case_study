@@ -20,10 +20,8 @@ export type PageId =
   | "operations-tasks"
   | "property-appraisal"
   | "active-survey"
-  | "survey"
   | "party-fees"
   | "system-fields-catalog"
-  | "system-screen-catalog"
   | "financial"
   | "users"
   | "courts"
@@ -34,7 +32,6 @@ export type PageId =
   | "fee-pricing"
   | "organization-settings"
   | "attachment-print-dictionary"
-  | "difference-factor-catalog"
   | "clients"
   | "field-sync-board"
   | "profile";

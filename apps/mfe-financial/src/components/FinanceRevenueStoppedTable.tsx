@@ -76,6 +76,7 @@ export function StoppedTable({
                   <button
                     type="button"
                     className={cn(opsBtnGhost, "h-auto px-3 py-[7px] text-[11.5px]")}
+                    data-po-intent={row.poNumber}
                     onClick={() => onRecall!(row.poNumber)}
                   >
                     استدعاء — تحديث الحالة

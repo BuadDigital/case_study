@@ -3,7 +3,11 @@ import type {
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
-import { isVacantLandComparable, resolveSubjectCoordsForBank } from "../bank-ranking";
+import {
+  isVacantLandComparable,
+  parseSubjectAreaSqm,
+  resolveSubjectCoordsForBank,
+} from "../bank-ranking";
 import {
   approachAvailability,
   approachWorkPresence,
@@ -305,6 +309,22 @@ describe("subjectAreaSyncPlan", () => {
         lastSyncKey: null,
       })?.body,
     ).toEqual({ subjectAreaSqm: 300, adjustmentBasis: "whole_property", analysisNotes: "n" });
+  });
+
+  it("reads a thousands comma and units the way the backend does (1,250 → 1250, not 1.25)", () => {
+    const plan = (transactionArea: string) =>
+      subjectAreaSyncPlan({ requestId: "r", transactionArea, selection, lastSyncKey: null })?.body
+        .subjectAreaSqm;
+    expect(plan("1,250")).toBe(1250);
+    expect(plan("1,250 م²")).toBe(1250);
+    expect(plan("١٬٢٥٠٫٥")).toBe(1250.5);
+    expect(plan("12,345,678")).toBe(12345678);
+  });
+
+  it("bank subject area falls back to the property's free-text area with the same rule", () => {
+    expect(parseSubjectAreaSqm("", "1,250 م²")).toBe(1250);
+    expect(parseSubjectAreaSqm("300,5", "1,250")).toBe(300.5);
+    expect(parseSubjectAreaSqm("", "")).toBeNull();
   });
 });
 

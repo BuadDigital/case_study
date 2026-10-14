@@ -7,7 +7,6 @@
  * the row whose assignee the reassign modal shows.
  */
 
-import dynamic from "next/dynamic";
 import { AppModal } from "@platform/ui-kit";
 import type { OperationsTask } from "../lib/app-data/operations-tasks-model";
 import {
@@ -20,16 +19,9 @@ import {
   PriorityModalBody,
 } from "./OperationsTasksPauseAndPriorityModals";
 import type { OperationsTasksWorkflow } from "./OperationsTasksViewShared";
+import { ReassignOperationsTaskModal } from "./OperationsTasksLazyModals";
 
-const ReassignOperationsTaskModal = dynamic(
-  () =>
-    import("../components/tasks/ReassignOperationsTaskModal").then(
-      (m) => m.ReassignOperationsTaskModal,
-    ),
-  { ssr: false },
-);
-
-export type OperationsTasksModalsProps = Pick<
+type OperationsTasksModalsProps = Pick<
   OperationsTasksWorkflow,
   | "applyPrioDueFromOffset"
   | "applyPriority"

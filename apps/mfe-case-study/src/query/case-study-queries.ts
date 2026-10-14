@@ -26,7 +26,7 @@ import {
   loadWorkflowTasksPage,
   syncTasksFromPoRecords,
 } from "../lib/app-data/tasks";
-import { loadCaseStudyFormDraftsForParents } from "../lib/app-data/case-study-form-reads";
+import { loadCaseStudyReportDraftsForParents } from "../lib/app-data/case-study-report-reads";
 import type {
   WorkflowTaskListFilters,
   WorkflowTaskListQuery,
@@ -191,20 +191,20 @@ export function usePoRecordQuery(poNumber: string | null) {
 
 /**
  * Case-study + party form drafts for a set of listed parents in one request
- * (`GET /api/case-study-forms/batch`). Keyed on the sorted, `\0`-joined parent id
+ * (`GET /api/case-study-reports/batch`). Keyed on the sorted, `\0`-joined parent id
  * set — a fresh `tasks` array identity does not refetch; only a different row set,
  * the stale window, the live poll or an explicit invalidation
- * (`appDataKeys.caseStudyFormBatches()`) does.
+ * (`appDataKeys.caseStudyReportBatches()`) does.
  */
-export function useCaseStudyFormBatchQuery(
+export function useCaseStudyReportBatchQuery(
   parentTaskIdsKey: string,
   options?: { live?: boolean; enabled?: boolean },
 ) {
   const live = options?.live === true && isFeatureEnabled("liveQueuePolling");
   return useQuery({
-    queryKey: appDataKeys.caseStudyFormBatch(parentTaskIdsKey),
+    queryKey: appDataKeys.caseStudyReportBatch(parentTaskIdsKey),
     queryFn: () =>
-      loadCaseStudyFormDraftsForParents(parentTaskIdsKey.split("\0")),
+      loadCaseStudyReportDraftsForParents(parentTaskIdsKey.split("\0")),
     enabled: (options?.enabled ?? true) && parentTaskIdsKey.length > 0,
     ...queryDefaults,
     // Rows keep their last progress while the next id set loads.

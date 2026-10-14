@@ -23,6 +23,17 @@ public static class PoEnfazInvoiceRules
             .Concat(billing.AttachmentIds)
             .Distinct(StringComparer.OrdinalIgnoreCase);
 
+    public const string LinesLockedAfterIssueAr = "لا يمكن تعديل بنود الفوترة بعد إصدار الفاتورة.";
+
+    /// <summary>
+    /// An issued invoice (it has a number) stamps the totals it was issued with, so the fee lines
+    /// behind it are frozen. Null while no invoice is issued.
+    /// </summary>
+    public static string? LinesLockedError(PoEnfazInvoice? invoice) =>
+        invoice is not null && !string.IsNullOrWhiteSpace(invoice.InvoiceNumber)
+            ? LinesLockedAfterIssueAr
+            : null;
+
     /// <summary>An issue (or re-issue) restates the totals and starts collection over.</summary>
     public static void ApplyIssue(
         PoEnfazInvoice invoice,

@@ -35,8 +35,11 @@ import {
   apiLogin,
   apiOk,
   clearPoIntakeDraft,
+  completeSpecialistComponents,
   deleteWorkOrder,
   distributeParties,
+  readPartyTasks,
+  submitFieldInspection,
   tinyPdfBuffer,
   tinyPngBuffer,
   today,
@@ -112,8 +115,10 @@ test.describe.configure({ mode: "serial" });
 test.describe("Full frontend walkthrough: intake → inspection → survey → valuation → billing", () => {
   test.skip(!ENABLED, "set WALKTHROUGH=1 to run the demonstration walkthrough");
 
-  const poNumber = uniquePoNumber();
-  const deedNumber = uniqueDeedNumber();
+  // WALK_PO + WALK_DEED resume a PO an earlier run already distributed (step 1 is then skipped).
+  const resumePo = process.env.WALK_PO?.trim() || "";
+  const poNumber = resumePo || uniquePoNumber();
+  const deedNumber = process.env.WALK_DEED?.trim() || uniqueDeedNumber();
   let osamaToken = "";
   let adminToken = "";
   let propertyId = "";
@@ -122,18 +127,26 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
   test.beforeAll(async () => {
     osamaToken = await apiLogin(RELEASE_USERS.caseSpecialist);
     adminToken = await apiLogin(RELEASE_USERS.cdo);
+    if (resumePo) {
+      parties = await readPartyTasks(osamaToken, poNumber);
+      propertyId = parties.parent.propertyId ?? "";
+      console.log(`\n  ▶ resuming walkthrough PO ${poNumber} / property ${propertyId}\n`);
+      return;
+    }
     // The intake modal autosaves a per-user draft and clears it only on save.
     await clearPoIntakeDraft(osamaToken);
     console.log(`\n  ▶ walkthrough PO ${poNumber} / deed ${deedNumber}\n`);
   });
 
   test.afterAll(async () => {
-    if (osamaToken) await deleteWorkOrder(osamaToken, poNumber);
+    // KEEP_PO=1 leaves the transaction in the dev DB to keep working on it by hand.
+    if (osamaToken && process.env.KEEP_PO !== "1") await deleteWorkOrder(osamaToken, poNumber);
   });
 
   test("1 · specialist opens the PO and distributes it to the three parties", async ({
     page,
   }) => {
+    test.skip(Boolean(resumePo), "resuming an already distributed PO");
     test.slow();
     await loginAs(page, RELEASE_USERS.caseSpecialist);
     await shot(page, "specialist-dashboard");
@@ -154,8 +167,11 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
       ),
       intake.getByRole("button", { name: "حفظ أمر العمل" }).click(),
     ]);
+    // The soft navigation lands after the server answers — on a dev server that is the
+    // first compile of the property page, well past the default 5 s.
     await expect(page).toHaveURL(
       new RegExp(`/po/${encodeURIComponent(poNumber)}/property$`),
+      { timeout: 90_000 },
     );
     await shot(page, "specialist-po-properties");
 
@@ -187,6 +203,20 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
   }) => {
     test.slow();
     await loginAs(page, RELEASE_USERS.fieldInspector);
+
+    if (process.env.INSPECTOR_VIA_API === "1") {
+      // The wizard script below predates the current three-step wizard; submit the
+      // package through the API and show the inspector's workspace as submitted.
+      const ahmedToken = await apiLogin(RELEASE_USERS.fieldInspector);
+      await submitFieldInspection(ahmedToken, parties.fieldInspection.id);
+      await page.goto(`/active-inspection/${parties.fieldInspection.id}`, {
+        waitUntil: "commit",
+      });
+      await expect(workspace(page)).toBeVisible({ timeout: 60_000 });
+      await page.waitForTimeout(4_000);
+      await shot(page, "inspector-submitted");
+      return;
+    }
 
     await page.goto("/active-inspection", { waitUntil: "commit" });
     const search = page.getByRole("searchbox", { name: "بحث المعاملات" });
@@ -290,7 +320,8 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
 
   test("3 · specialist accepts the inspection package", async ({ page }) => {
     test.slow();
-    // API: the «معاينة العقار» tab mounts no accept control.
+    // API: the «معاينة العقار» tab mounts no accept control (accepting needs the specialist's components first).
+    await completeSpecialistComponents(osamaToken, poNumber, propertyId);
     const accept = await api(
       osamaToken,
       "POST",
@@ -307,7 +338,7 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
     await expect(rail.getByText("إتمام المعاينة الميدانية")).toBeVisible({
       timeout: 60_000,
     });
-    await expect(rail.getByText("استلام بيانات المعاينة")).toBeVisible();
+    await expect(rail.getByText("قبول الأخصائي لمخرجات المعاينة")).toBeVisible();
     await shot(page, "specialist-inspection-tab");
   });
 
@@ -336,10 +367,10 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
       { timeout: 90_000 },
     );
 
-    const lat = page.locator("#eng-lat");
-    await expect(lat).toBeEditable({ timeout: 60_000 });
-    await lat.fill("24.7136");
-    await page.locator("#eng-lng").fill("46.6753");
+    // One «الإحداثيات» box (lat, lng) — the same control the inspector uses.
+    const coords = page.locator('input[placeholder="21.523339, 39.187743"]');
+    await expect(coords).toBeEditable({ timeout: 60_000 });
+    await coords.fill("24.7136, 46.6753");
 
     const reportBox = page.locator("#eng-survey-report");
     await reportBox.locator('input[type="file"]').setInputFiles({
@@ -350,6 +381,19 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
     await expect(reportBox.getByRole("button", { name: "حذف الملف" })).toBeVisible({
       timeout: 60_000,
     });
+
+    // Unplatted lots require a site-validity letter (plan + plot skip it).
+    const letterBox = page.locator("#eng-site-letter");
+    if (await letterBox.locator('input[type="file"]').count()) {
+      await letterBox.locator('input[type="file"]').setInputFiles({
+        name: "site-letter-walkthrough.pdf",
+        mimeType: "application/pdf",
+        buffer: tinyPdfBuffer(),
+      });
+      await expect(letterBox.getByRole("button", { name: "حذف الملف" })).toBeVisible({
+        timeout: 60_000,
+      });
+    }
 
     await page.locator("#eng-deed-matches").getByText("نعم", { exact: true }).click();
     const siteConfirm = page.locator("#eng-site-confirm input[type=checkbox]");
@@ -376,7 +420,7 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
     if (!response) {
       const complaints = (await page.locator("body").innerText())
         .split("\n")
-        .filter((line) => /ارفع|أدخل|حدد|يجب|أكمل|تعذر/.test(line))
+        .filter((line) => /ارفع|أدخل|حدد|يجب|أكمل|تعذّ?ر/.test(line))
         .join(" | ")
         .replace(/\s+/g, " ")
         .trim();

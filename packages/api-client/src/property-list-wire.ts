@@ -2,6 +2,9 @@
 export const PropertyListRowStatuses = {
   New: "new",
   Progress: "progress",
+  /** Every task complete; waiting for the specialist's Enfaz handover. */
+  Ready: "ready",
+  /** Handed over to Enfaz (overall status) — or the track's own task completed. */
   Done: "done",
   Fail: "fail",
   Incomplete: "incomplete",

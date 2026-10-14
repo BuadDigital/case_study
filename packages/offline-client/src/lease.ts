@@ -10,7 +10,7 @@ import {
   type OfflineLease,
 } from "./types";
 
-export type OfflineLeaseTickResult = {
+type OfflineLeaseTickResult = {
   lease: OfflineLease;
   warn1h: boolean;
   warn2h: boolean;

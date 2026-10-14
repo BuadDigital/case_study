@@ -1,5 +1,6 @@
 "use client";
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import {
   EmptyState,
   ListPager,
@@ -26,7 +27,6 @@ import {
   lineRefSub,
 } from "../lib/finance-cost-parties";
 import { finSearch, finSearchIcon } from "../lib/finance-tw";
-import { formatSar } from "./FinancePartyBillingParts";
 import type { PartyBillingStatementsWorkflow } from "./usePartyBillingStatementsWorkflow";
 
 /**
@@ -127,13 +127,14 @@ export function FinancePartyBillingDuesSection({
           تجهيز{" "}
           {readyLines[0]?.payeeType === "individual" ? "أمر صرف" : "مسير صرف"}
           {selected.size > 0
-            ? ` (${selected.size} — ${formatSar(
+            ? ` (${selected.size} — ${fmtSar(
                 applyCostTax(
                   selectedTotal,
                   readyLines[0]?.payeeType === "individual"
                     ? "individual"
                     : "vendor",
                 ),
+                { trim: true },
               )})`
             : ""}
         </button>
@@ -162,7 +163,7 @@ export function FinancePartyBillingDuesSection({
             panel
             line={
               deferredDuesSearch.trim()
-                ? "لا بنود مطابقة للبحث"
+                ? "لا توجد بنود مطابقة"
                 : "لا مستحقات قائمة — كل البنود مُدرجة في مستندات صرف"
             }
             hint="تظهر هنا بنود المعاينة والمراجعة والرفع المساحي بحالة جاهز أو مرحَّل."
@@ -271,12 +272,12 @@ export function FinancePartyBillingDuesSection({
                       className="text-center"
                       valueClassName="text-[12.5px] text-text-2"
                     >
-                      {formatSar(list)}
+                      {fmtSar(list, { trim: true })}
                     </TdLtr>
                     <Td className="text-center">
                       {ded > 0 ? (
                         <span className="text-xs font-bold text-[#c0553d] tabular-nums">
-                          −{formatSar(ded)}
+                          −{fmtSar(ded, { trim: true })}
                         </span>
                       ) : (
                         <span className="text-xs text-text-3">—</span>
@@ -286,7 +287,7 @@ export function FinancePartyBillingDuesSection({
                       className="text-center"
                       valueClassName="text-[13px] font-bold text-heading"
                     >
-                      {formatSar(line.netFeeSar)}
+                      {fmtSar(line.netFeeSar, { trim: true })}
                     </TdLtr>
                   </Tr>
                 );

@@ -25,16 +25,19 @@ public sealed partial class AttachmentService : IAttachmentService
     private readonly AttachmentsDbContext _db;
     private readonly IBlobStorage _blobs;
     private readonly TimeProvider _time;
+    private readonly IPropertyTimelineRecorder? _timeline;
 
     public AttachmentService(
         AttachmentsDbContext db,
         IBlobStorage blobs,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        IPropertyTimelineRecorder? timeline = null)
     {
         _time = time ?? TimeProvider.System;
 
         _db = db;
         _blobs = blobs;
+        _timeline = timeline;
     }
 
     public async Task<IReadOnlyList<FileAttachmentMetaDto>> ListAsync(
@@ -60,6 +63,39 @@ public sealed partial class AttachmentService : IAttachmentService
                 .Where(p => ids.Contains(p.PhotoId))
                 .ToDictionaryAsync(p => p.PhotoId, cancellationToken);
         return rows.Select(row => ToMeta(row, photos.GetValueOrDefault(row.Id))).ToList();
+    }
+
+    public async Task<IReadOnlyList<OwnValuedDocumentDto>> ListOwnValuedDocumentsAsync(
+        string scopeKey,
+        PermissionsDto? actor,
+        CancellationToken cancellationToken = default)
+    {
+        var userId = actor?.UserId;
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(scopeKey))
+            return [];
+
+        var key = scopeKey.Trim();
+        // The specialist / appraiser / CDO see every valued document of the property; anyone else only their own.
+        var seesAll = AttachmentAccessRules.AllowsValuedDocument(actor);
+        var rows = await _db.FileAttachments.AsNoTracking()
+            .Where(x => x.Scope == PropertyDocumentTypes.ValuedScope
+                && x.ScopeKey == key
+                && (seesAll || x.UploadedByUserId == userId))
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Take(MaxAttachmentsPerScope)
+            .ToListAsync(cancellationToken);
+        return rows
+            .Select(r => new OwnValuedDocumentDto
+            {
+                Id = r.Id,
+                Name = string.IsNullOrWhiteSpace(r.CustomDocumentLabel) ? r.FileName : r.CustomDocumentLabel!,
+                FileName = r.FileName,
+                ContentType = r.ContentType,
+                Status = string.IsNullOrWhiteSpace(r.ValueDocStatus) ? ValueDocumentStatuses.Pending : r.ValueDocStatus!,
+                ReviewNote = r.ValueDocReviewNote,
+                CreatedAtUtc = r.CreatedAtUtc,
+            })
+            .ToList();
     }
 
     public async Task<(byte[]? Content, FileAttachmentMetaDto? Meta)> GetContentAsync(
@@ -166,6 +202,14 @@ public sealed partial class AttachmentService : IAttachmentService
         }
 
         await _db.SaveChangesAsync(cancellationToken);
+        if (row.ValueDocStatus == ValueDocumentStatuses.Pending)
+        {
+            await RecordTimelineAsync(
+                ValuedDocumentTimelineRules.Uploaded(
+                    row.ScopeKey, row.Id, ValuedDocumentName(row), row.CreatedAtUtc),
+                cancellationToken);
+        }
+
         return (ToMeta(row), null);
     }
 

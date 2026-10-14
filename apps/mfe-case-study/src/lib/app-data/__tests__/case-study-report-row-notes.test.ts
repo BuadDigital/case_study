@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { emptyCaseStudyFormDraft } from "../case-study-form-model";
-import { buildCaseStudyReportModel } from "../case-study-report-model";
+import { emptyCaseStudyReportDraft } from "../case-study-report-model";
+import { buildCaseStudyReportModel } from "../case-study-report-document-model";
 import { buildCaseStudyReportBodyHtml } from "../case-study-report-render";
 import type { WorkflowTask } from "../tasks";
 
@@ -21,7 +21,7 @@ const task: WorkflowTask = {
 
 describe("case-study report row notes", () => {
   it("prints a per-row note under the question in the report", () => {
-    const draft = emptyCaseStudyFormDraft("task-1");
+    const draft = emptyCaseStudyReportDraft("task-1");
     draft.answers.deed_0 = "B";
     draft.answerNotes = { deed_0: "الحد الجنوبي أقصر من الصك" };
 
@@ -34,7 +34,7 @@ describe("case-study report row notes", () => {
   });
 
   it("replaces the extra-section placeholder when a row note exists", () => {
-    const draft = emptyCaseStudyFormDraft("task-1");
+    const draft = emptyCaseStudyReportDraft("task-1");
     draft.answers.extra_1 = "A";
     draft.answerNotes = { extra_1: "شقوق في الجدار الغربي" };
 

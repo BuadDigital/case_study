@@ -94,10 +94,13 @@ export function EngTabBar({
   tabs,
   active,
   onChange,
+  onTabIntent,
 }: {
   tabs: { id: string; label: string; dot?: boolean; badge?: number }[];
   active: string;
   onChange: (id: string) => void;
+  /** Pointer or keyboard focus reached a tab — warm what it needs before the click. */
+  onTabIntent?: (id: string) => void;
 }) {
   return (
     <div
@@ -114,10 +117,13 @@ export function EngTabBar({
             role="tab"
             aria-selected={on}
             onClick={() => onChange(tab.id)}
+            onPointerEnter={onTabIntent ? () => onTabIntent(tab.id) : undefined}
+            onFocus={onTabIntent ? () => onTabIntent(tab.id) : undefined}
             className={cn(
-              "relative mb-0 max-lg:min-h-0 cursor-pointer rounded-none border-0 border-b-0 bg-transparent px-2.5 py-[9px] font-[inherit] text-[12.5px] font-normal text-text-2 transition-[background,color] duration-150",
-              "hover:bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] hover:text-heading",
-              on && "!bg-ink !font-normal !text-white hover:!bg-ink hover:!text-white",
+              "relative mb-0 max-lg:min-h-0 cursor-pointer rounded-none border-0 border-b-0 bg-transparent px-2.5 py-[9px] font-[inherit] text-[12.5px] font-normal text-text-2",
+              "transition-[background-color,color,box-shadow] duration-200 ease-out motion-reduce:transition-none",
+              "hover:bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] hover:text-heading active:bg-[color-mix(in_srgb,var(--heading)_12%,transparent)]",
+              on && "!bg-ink !font-normal !text-white hover:!bg-ink hover:!text-white active:!bg-ink",
             )}
           >
             {tab.label}

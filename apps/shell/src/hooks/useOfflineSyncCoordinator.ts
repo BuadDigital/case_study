@@ -46,7 +46,7 @@ async function reportFieldSyncHeartbeat(
   if (report.pendingCount > 0) void requestBackgroundSync();
 }
 
-export type OfflineSyncCoordinatorState = {
+type OfflineSyncCoordinatorState = {
   /** False when the role never works offline or the session is gone — render nothing. */
   active: boolean;
   syncState: OfflineSyncState;

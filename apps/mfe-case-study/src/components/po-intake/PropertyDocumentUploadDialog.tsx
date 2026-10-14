@@ -55,14 +55,18 @@ export function PropertyDocumentUploadDialog({
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    if (!state) return;
-    setTypeKey(state.mode === "upload" ? (state.typeKey ?? "") : "");
-    setLabel(state.mode === "classify" ? (state.customLabel ?? "") : "");
-    setReason(state.mode === "classify" ? (state.customReason ?? "") : "");
-    setFile(null);
-    setError(null);
-  }, [state]);
+  // Every open of the dialog starts from the state it was opened with.
+  const [openedWith, setOpenedWith] = useState(state);
+  if (openedWith !== state) {
+    setOpenedWith(state);
+    if (state) {
+      setTypeKey(state.mode === "upload" ? (state.typeKey ?? "") : "");
+      setLabel(state.mode === "classify" ? (state.customLabel ?? "") : "");
+      setReason(state.mode === "classify" ? (state.customReason ?? "") : "");
+      setFile(null);
+      setError(null);
+    }
+  }
 
   if (!state) return null;
 

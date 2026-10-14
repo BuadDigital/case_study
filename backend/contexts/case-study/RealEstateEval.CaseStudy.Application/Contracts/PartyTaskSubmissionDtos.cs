@@ -29,10 +29,18 @@ public class PartyTaskSubmissionDto
     public bool? FieldInspectionCompleted { get; set; }
 
  /// <summary>
- /// Property-appraisal: sibling field-inspection package is specialist-accepted
- /// (authoritative for appraiser start). Also on WorkflowTaskDto list items.
+ /// Property-appraisal: sibling field-inspection package is specialist-accepted.
+ /// Informational only — acceptance does not gate the appraiser's start; readiness uses
+ /// <see cref="FieldInspectionCompleted"/> (the inspector submitted). Also on WorkflowTaskDto list items.
  /// </summary>
     public bool? FieldInspectionAccepted { get; set; }
+
+ /// <summary>
+ /// Property-appraisal: the specialist has issued the parent's case-study report — the fact that
+ /// opens the appraiser's submission (submit fails with field error <c>studyReport</c> otherwise).
+ /// Null for other kinds. Also on WorkflowTaskDto list items.
+ /// </summary>
+    public bool? StudyReportIssued { get; set; }
 
  /// <summary>
  /// Field-inspection: fingerprint of the property's specialist-owned source data as the
@@ -40,6 +48,20 @@ public class PartyTaskSubmissionDto
  /// made while the inspector worked offline alerts the specialist (spec §4.4).
  /// </summary>
     public string? SourceFingerprint { get; set; }
+
+ /// <summary>
+ /// Property-appraisal: encoded per-section fingerprint (<c>group:hash;group:hash</c>) of the sibling
+ /// inspector's package as the server holds it now. The appraiser's client stores the one he acknowledged
+ /// in his own payload under <c>inspectorDataSeen</c>. Null when there is no inspection package yet.
+ /// </summary>
+    public string? InspectorDataFingerprint { get; set; }
+
+ /// <summary>
+ /// Property-appraisal: the sections (<c>assetType, components, area, age, boundaries, location, photos,
+ /// narrative, services</c>) whose data differs from the acknowledged <c>inspectorDataSeen</c> baseline.
+ /// Empty when there is no baseline yet. Null for other kinds / no inspection package.
+ /// </summary>
+    public List<string>? InspectorDataChangedGroups { get; set; }
 
  /// <summary>
  /// Who wrote / last edited each payload field. Keys are top-level payload keys, or

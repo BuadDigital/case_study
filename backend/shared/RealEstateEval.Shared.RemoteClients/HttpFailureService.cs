@@ -218,6 +218,17 @@ public sealed class HttpFailureService(
             new FailureNoteRequest { Note = finalNote },
             cancellationToken);
 
+    // The upstream re-derives the actor and judges the role from the bearer header.
+    public Task<(LiftSurveyFreezeResultDto? Result, Dictionary<string, string>? Errors)> LiftSurveyFreezeAsync(
+        LiftSurveyFreezeRequest request,
+        string? actorUserId,
+        string? actorPrototypeRole,
+        CancellationToken cancellationToken = default) =>
+        PostForResultAsync<LiftSurveyFreezeResultDto>(
+            "/api/failures/by-property/lift-survey-freeze",
+            request,
+            cancellationToken);
+
     public Task DeleteForPoAsync(string poNumber, CancellationToken cancellationToken = default) =>
         UpstreamJson.DeleteAsync(
             http,

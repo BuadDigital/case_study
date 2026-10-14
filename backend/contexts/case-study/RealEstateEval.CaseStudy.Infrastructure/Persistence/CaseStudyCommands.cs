@@ -150,8 +150,8 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
         var propertyKey = request.PropertyId.Trim();
         var prop = order.Properties.FirstOrDefault(p =>
             p.Id.ToString() == propertyKey ||
-            p.DeedNumber == propertyKey ||
-            p.DeedNumber == request.DeedNumber.Trim());
+            DeedNumberRules.EqualsNormalized(p.DeedNumber, propertyKey) ||
+            DeedNumberRules.EqualsNormalized(p.DeedNumber, request.DeedNumber));
         if (prop is null && Guid.TryParse(propertyKey, out var gid))
             prop = order.Properties.FirstOrDefault(p => p.Id == gid);
         if (prop is null) return;
@@ -338,7 +338,7 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
             .Include(w => w.Properties)
             .FirstOrDefaultAsync(w => w.PoNumber == poNumber.Trim(), cancellationToken);
         var prop = order?.Properties.FirstOrDefault(p =>
-            p.DeedNumber == propertyId || p.Id.ToString() == propertyId);
+            DeedNumberRules.EqualsNormalized(p.DeedNumber, propertyId) || p.Id.ToString() == propertyId);
         return prop?.Id;
     }
 
@@ -375,6 +375,7 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
 
         property.BourseDataCompleted = false;
         property.BourseCompletedAtUtc = null;
+        property.BourseCompletedByName = null;
         await _caseStudy.SaveChangesAsync(cancellationToken);
     }
 }

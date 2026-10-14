@@ -1,4 +1,5 @@
 using RealEstateEval.Application;
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Notifications;
 using RealEstateEval.Shared.Contracts;
@@ -28,6 +29,7 @@ public sealed partial class RegionsService
 
         var action = LocationCatalogRules.NormalizeAction(request.Action);
         var now = _time.UtcNow();
+        var before = new { nameAr = city.NameAr, status = city.Status };
         if (LocationCatalogRules.IsApproveOrRename(action))
         {
             var name = LocationCatalogRules.ResolveReviewName(request.NameAr);
@@ -51,6 +53,10 @@ public sealed partial class RegionsService
 
         await _repo.SaveChangesAsync(cancellationToken);
         await InvalidateCatalogCache(cancellationToken);
+        await AppendReviewAuditAsync(
+            reviewerUserId, "LOCATION_CITY_REVIEWED", "city", city.Id, before,
+            new { action, nameAr = city.NameAr, status = city.Status, mergeIntoId = request.MergeIntoId },
+            cancellationToken);
 
         await NotifySuggesterAsync(city.CreatedByUserId, action, city.NameAr, "المدينة", city.Id, cancellationToken);
     }
@@ -68,6 +74,7 @@ public sealed partial class RegionsService
 
         var action = LocationCatalogRules.NormalizeAction(request.Action);
         var now = _time.UtcNow();
+        var before = new { nameAr = district.NameAr, status = district.Status };
         if (LocationCatalogRules.IsApproveOrRename(action))
         {
             var name = LocationCatalogRules.ResolveReviewName(request.NameAr);
@@ -86,9 +93,35 @@ public sealed partial class RegionsService
         }
 
         await _repo.SaveChangesAsync(cancellationToken);
+        await AppendReviewAuditAsync(
+            reviewerUserId, "LOCATION_DISTRICT_REVIEWED", "district", district.Id, before,
+            new { action, nameAr = district.NameAr, status = district.Status, mergeIntoId = request.MergeIntoId },
+            cancellationToken);
 
         await NotifySuggesterAsync(
             district.CreatedByUserId, action, district.NameAr, "الحي", district.Id, cancellationToken);
+    }
+
+    /// <summary>One row per reviewer decision; the row goes to the Platform ledger after the catalog save.</summary>
+    private async Task AppendReviewAuditAsync(
+        string reviewerUserId,
+        string action,
+        string entityType,
+        Guid entityId,
+        object before,
+        object after,
+        CancellationToken cancellationToken)
+    {
+        if (_auditWriter is null || _audit is null) return;
+        await _audit.AppendAsync(
+            _auditWriter.Create(
+                string.IsNullOrWhiteSpace(reviewerUserId) ? "system" : reviewerUserId.Trim(),
+                action,
+                entityType,
+                entityId.ToString(),
+                before,
+                after),
+            cancellationToken);
     }
 
     /// <summary>

@@ -388,6 +388,149 @@ public class PartyTaskSubmissionAuthorizationTests
         Assert.Null(dto);
     }
 
+    // ---------------------------------------------------------------- batch 2C: read rule by sibling kind
+
+    private static PartySubmissionActor AppraiserActor() => new()
+    {
+        UserId = "val-user",
+        DisplayName = "مقيم",
+        PrototypeRole = "real-estate-appraiser",
+        DistributionAssigneeId = "val-1",
+    };
+
+    private static PartySubmissionActor OfficeActor() => new()
+    {
+        UserId = "eo-user",
+        DisplayName = "مكتب",
+        PrototypeRole = "engineering-office",
+        DistributionAssigneeId = "eo-1",
+    };
+
+    /// <summary>
+    /// Parent + the inspection (id <see cref="TaskId"/>, package in <paramref name="packageStatus"/>, task in
+    /// <paramref name="taskState"/>: open | completed | cancelled) + the sibling appraisal («val-1») and survey («eo-1»).
+    /// </summary>
+    private static void SeedInspectionFamily(CaseStudyDbContext db, string taskState, string packageStatus)
+    {
+        var parentId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var inspection = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection, "PO-2C", now, title: "معاينة",
+            phase: WorkflowTaskPhase.Done, assigneeRole: "field-inspector", assigneeName: "معاين",
+            assigneeId: "fi-1", id: TaskId, parentTaskId: parentId, propertyId: PropertyId);
+        if (taskState == "completed") inspection.Complete(now);
+        if (taskState == "cancelled") inspection.Cancel(now);
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty, "PO-2C", now, title: "parent",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "case-specialist", assigneeName: "cs",
+                assigneeId: "cs-1", id: parentId, propertyId: PropertyId),
+            inspection,
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal, "PO-2C", now, title: "تقييم",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "real-estate-appraiser", assigneeName: "مقيم",
+                assigneeId: "val-1", parentTaskId: parentId, propertyId: PropertyId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.EngineeringSurvey, "PO-2C", now, title: "رفع",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "engineering-office", assigneeName: "مكتب",
+                assigneeId: "eo-1", parentTaskId: parentId, propertyId: PropertyId));
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = TaskId,
+            Kind = WorkflowTaskKindValues.FieldInspection,
+            Status = packageStatus,
+            PropertyId = PropertyId,
+            PoNumber = "PO-2C",
+            PayloadJson = """{"propertyDescription":"وصف"}""",
+            SubmittedAtUtc = packageStatus == PartyTaskSubmissionStatus.Submitted ? now : null,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        db.SaveChanges();
+    }
+
+    [Theory]
+    [InlineData("open", PartyTaskSubmissionStatus.Draft)]
+    [InlineData("open", PartyTaskSubmissionStatus.Reopened)]
+    [InlineData("completed", PartyTaskSubmissionStatus.Submitted)]
+    public async Task Get_lets_the_sibling_appraiser_read_a_non_cancelled_inspection_in_any_state(
+        string taskState, string packageStatus)
+    {
+        var db = CreateDb().CaseStudy;
+        SeedInspectionFamily(db, taskState, packageStatus);
+        var service = CreateService(db);
+
+        var dto = await service.GetAsync(TaskId, AppraiserActor());
+
+        Assert.NotNull(dto);
+        Assert.Equal(packageStatus, dto!.Status);
+        Assert.Contains("وصف", dto.Payload.GetRawText());
+    }
+
+    [Fact]
+    public async Task Get_denies_the_sibling_appraiser_a_cancelled_inspection()
+    {
+        var db = CreateDb().CaseStudy;
+        SeedInspectionFamily(db, "cancelled", PartyTaskSubmissionStatus.Draft);
+
+        Assert.Null(await CreateService(db).GetAsync(TaskId, AppraiserActor()));
+    }
+
+    [Theory]
+    [InlineData("open", PartyTaskSubmissionStatus.Draft, false)]
+    [InlineData("open", PartyTaskSubmissionStatus.Reopened, false)]
+    [InlineData("completed", PartyTaskSubmissionStatus.Submitted, true)]
+    public async Task Get_keeps_the_survey_office_read_completed_only(
+        string taskState, string packageStatus, bool readable)
+    {
+        var db = CreateDb().CaseStudy;
+        SeedInspectionFamily(db, taskState, packageStatus);
+
+        var dto = await CreateService(db).GetAsync(TaskId, OfficeActor());
+
+        Assert.Equal(readable, dto is not null);
+    }
+
+    [Fact]
+    public async Task List_batch_applies_the_same_rule_by_sibling_kind()
+    {
+        var db = CreateDb().CaseStudy;
+        SeedInspectionFamily(db, "open", PartyTaskSubmissionStatus.Draft);
+        var service = CreateService(db);
+
+        var forAppraiser = await service.ListForTasksAsync([TaskId], AppraiserActor());
+        var forOffice = await service.ListForTasksAsync([TaskId], OfficeActor());
+
+        Assert.Single(forAppraiser);
+        Assert.Empty(forOffice);
+    }
+
+    [Fact]
+    public async Task Sibling_appraiser_may_not_write_reopen_or_accept_the_inspection()
+    {
+        var db = CreateDb().CaseStudy;
+        SeedInspectionFamily(db, "completed", PartyTaskSubmissionStatus.Submitted);
+        var service = CreateService(db);
+        var payload = JsonDocument.Parse("""{"status":"submitted","propertyDescription":"تعديل"}""").RootElement;
+
+        var (saved, saveErrors) = await service.SaveDraftAsync(
+            TaskId, new SavePartyTaskSubmissionRequest { Payload = payload }, AppraiserActor());
+        var (reopened, reopenErrors) = await service.ReopenAsync(
+            TaskId, new ReopenPartyTaskSubmissionRequest { ReturnNote = "x" }, AppraiserActor());
+        var (accepted, acceptErrors) = await service.AcceptAsync(TaskId, AppraiserActor());
+        var (submitted, submitErrors) = await service.SubmitAsync(TaskId, AppraiserActor());
+
+        Assert.Null(saved);
+        Assert.Contains("صلاحية", saveErrors!["_"]);
+        Assert.Null(reopened);
+        Assert.Contains("صلاحية", reopenErrors!["_"]);
+        Assert.Null(accepted);
+        Assert.Contains("صلاحية", acceptErrors!["_"]);
+        Assert.Null(submitted);
+        Assert.Contains("صلاحية", submitErrors!["_"]);
+    }
+
     private static void SeedTask(CaseStudyDbContext db, string assigneeId)
     {
         var now = DateTime.UtcNow;

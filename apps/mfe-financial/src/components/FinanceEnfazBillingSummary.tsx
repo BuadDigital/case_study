@@ -5,10 +5,10 @@
  * the collected amount once issued, and the read-only key-envelope attachments.
  */
 
+import { fmtSar } from "@platform/app-shared/format/number";
 import type { PoEnfazBillingDto } from "@platform/api-client";
 import { cn, opsBtnGhost, opsPanelCard } from "@platform/ui-kit";
 import {
-  sarEn,
   type BillingTotals,
 } from "../lib/finance-enfaz-po-billing-state";
 
@@ -49,31 +49,31 @@ export function FinanceEnfazBillingSummary({
       </div>
       <SummaryRow
         label="إجمالي الأتعاب (تقييم + رفع)"
-        value={sarEn(issued ? billing.subtotalSar : totals.taxable)}
+        value={fmtSar(issued ? billing.subtotalSar : totals.taxable, { digits: 3, trim: true })}
       />
       {issued ? (
         <SummaryRow label="أتعاب المفاتيح (ضمن الإجمالي)" value="—" muted />
       ) : (
         <SummaryRow
           label="أتعاب المفاتيح (شاملة الضريبة)"
-          value={sarEn(totals.key)}
+          value={fmtSar(totals.key, { digits: 3, trim: true })}
         />
       )}
       <SummaryRow
-        label="ضريبة القيمة المضافة 15%"
-        value={sarEn(issued ? billing.vatSar : totals.vat)}
+        label="ضريبة القيمة المضافة (15٪)"
+        value={fmtSar(issued ? billing.vatSar : totals.vat, { digits: 3, trim: true })}
       />
       <div className="mt-1 flex justify-between border-t border-border pt-2 font-semibold text-heading">
         <span>الإجمالي المستحق</span>
         <span className="tabular-nums" dir="ltr">
-          {sarEn(issued ? billing.totalSar : totals.total)}
+          {fmtSar(issued ? billing.totalSar : totals.total, { digits: 3, trim: true })}
         </span>
       </div>
       {issued ? (
         <div className="mt-2 flex justify-between border-t border-border pt-2 text-text-2">
           <span>المحصّل</span>
           <span className="tabular-nums" dir="ltr">
-            {sarEn(billing.collectedAmountSar)}
+            {fmtSar(billing.collectedAmountSar, { digits: 3, trim: true })}
           </span>
         </div>
       ) : null}

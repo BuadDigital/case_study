@@ -15,13 +15,10 @@ export const DeedNatureMatchOutcomes = {
   Impediment: "impediment",
 } as const;
 
-export type DeedNatureMatchOutcome =
-  (typeof DeedNatureMatchOutcomes)[keyof typeof DeedNatureMatchOutcomes];
-
 export const DEED_NATURE_MATCH_OPTIONS = [
   { value: DeedNatureMatchOutcomes.Matched, label: "مطابق" },
   { value: DeedNatureMatchOutcomes.Differences, label: "فروق" },
-  { value: DeedNatureMatchOutcomes.Impediment, label: "مرشح تعذر" },
+  { value: DeedNatureMatchOutcomes.Impediment, label: "مرشح تعذّر" },
 ] as const;
 
 export function normalizeDeedNatureMatchOutcome(

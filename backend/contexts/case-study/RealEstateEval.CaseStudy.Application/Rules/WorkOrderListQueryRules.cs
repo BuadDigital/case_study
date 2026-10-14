@@ -13,16 +13,22 @@ public enum WorkOrderListSortKey
 
 /// <summary>
 /// Status buckets the PO list can filter on using Case Study data alone. The two billing labels
-/// (<c>partially_billed</c> / <c>fully_billed</c>) widen to their study equivalent because the
-/// invoice flag lives in the Financial context — see the contract doc.
+/// widen to their study equivalent because the invoice flag lives in the Financial context —
+/// <c>fully_billed</c> to <c>Completed</c>, <c>partially_billed</c> to <c>Active</c> (an invoiced
+/// order can still be under study or ready for the handover). See the contract doc.
 /// </summary>
 public enum WorkOrderListStatusFilter
 {
     New,
     UnderStudy,
+    ReadyForEnfaz,
     Completed,
     Stopped,
     Cancelled,
+    /// <summary>Every non-terminal bucket: new, under_study, ready_for_enfaz.</summary>
+    Active,
+    /// <summary>Every terminal bucket: completed, stopped, cancelled.</summary>
+    Closed,
 }
 
 /// <summary>
@@ -41,6 +47,10 @@ public static class WorkOrderListQueryRules
     public const string DirAscending = "asc";
     public const string DirDescending = "desc";
 
+    /// <summary>Filter-only buckets — never a row status.</summary>
+    public const string BucketActive = "active";
+    public const string BucketClosed = "closed";
+
     /// <summary>Newest work order first — the order the endpoint has always returned.</summary>
     public const string DefaultSort = SortCreated;
     public const bool DefaultDescending = true;
@@ -52,11 +62,14 @@ public static class WorkOrderListQueryRules
     [
         WorkOrderListStatus.New,
         WorkOrderListStatus.UnderStudy,
+        WorkOrderListStatus.ReadyForEnfaz,
         WorkOrderListStatus.Completed,
         WorkOrderListStatus.PartiallyBilled,
         WorkOrderListStatus.FullyBilled,
         WorkOrderListStatus.Stopped,
         WorkOrderListStatus.Cancelled,
+        BucketActive,
+        BucketClosed,
     ];
 
     /// <summary>Unknown keys fall back to the default; the endpoint never answers 400 on sort.</summary>
@@ -82,12 +95,14 @@ public static class WorkOrderListQueryRules
         Normalize(status) switch
         {
             WorkOrderListStatus.New => WorkOrderListStatusFilter.New,
-            WorkOrderListStatus.UnderStudy or WorkOrderListStatus.PartiallyBilled =>
-                WorkOrderListStatusFilter.UnderStudy,
+            WorkOrderListStatus.UnderStudy => WorkOrderListStatusFilter.UnderStudy,
+            WorkOrderListStatus.ReadyForEnfaz => WorkOrderListStatusFilter.ReadyForEnfaz,
             WorkOrderListStatus.Completed or WorkOrderListStatus.FullyBilled =>
                 WorkOrderListStatusFilter.Completed,
             WorkOrderListStatus.Stopped => WorkOrderListStatusFilter.Stopped,
             WorkOrderListStatus.Cancelled => WorkOrderListStatusFilter.Cancelled,
+            BucketActive or WorkOrderListStatus.PartiallyBilled => WorkOrderListStatusFilter.Active,
+            BucketClosed => WorkOrderListStatusFilter.Closed,
             _ => null,
         };
 

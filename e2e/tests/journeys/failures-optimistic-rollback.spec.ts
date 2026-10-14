@@ -62,18 +62,18 @@ test.describe("Failures optimistic rollback", () => {
     );
 
     await page.goto(`/failures?highlight=${FAILURE_ID}`, { waitUntil: "commit" });
-    await waitForPageTitle(page, "إدارة التعذرات");
+    await waitForPageTitle(page, "إدارة التعذّرات");
 
     const row = page.locator(`#failure-${FAILURE_ID}`);
     await expect(row).toBeVisible();
-    await expect(row.getByText("مراجعة")).toBeVisible();
+    await expect(row.getByText("قيد المراجعة")).toBeVisible();
 
-    await page.getByRole("button", { name: "اعتماد التعذر" }).click();
+    await page.getByRole("button", { name: "اعتماد التعذّر" }).click();
 
     await expect(
-      page.getByRole("status").filter({ hasText: "تعذّر اعتماد التعذر — حاول مرة أخرى" }),
+      page.getByRole("status").filter({ hasText: "تعذّر اعتماد التعذّر — حاول مرة أخرى" }),
     ).toBeVisible({ timeout: 10_000 });
-    await expect(row.getByText("مراجعة")).toBeVisible();
+    await expect(row.getByText("قيد المراجعة")).toBeVisible();
     // Scoped to the row: the KPI band's «معتمدة / تم الحل» label is a substring match.
     await expect(row.getByText("معتمد", { exact: true })).toHaveCount(0);
   });

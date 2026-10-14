@@ -20,7 +20,7 @@ import type { EngineeringSurveySubmission } from "./engineering-survey-data";
 export const LOCATION_PIN_MISMATCH_NOTE_PREFIX =
   "اختلاف موقع المعاين عن المكتب الهندسي";
 
-export type MapPin = { lat: number; lng: number };
+type MapPin = { lat: number; lng: number };
 
 export function isEngineeringDefaultPin(
   latitude: string,
@@ -34,7 +34,7 @@ export function isEngineeringDefaultPin(
 }
 
 /** Inspector original pin when the field inspector actually placed one. */
-export function inspectorOriginalPinOf(
+function inspectorOriginalPinOf(
   draft: Pick<
     InspectorWorkspaceDraft,
     | "inspectorMapLatitude"
@@ -62,7 +62,7 @@ export function engineeringActivePinOf(
   return parsePlacedMapPin(submission.latitude, submission.longitude);
 }
 
-export function engineeringInspectorReferencePinOf(
+function engineeringInspectorReferencePinOf(
   submission: Pick<
     EngineeringSurveySubmission,
     "inspectorReferenceLatitude" | "inspectorReferenceLongitude"
@@ -75,7 +75,7 @@ export function engineeringInspectorReferencePinOf(
   );
 }
 
-export function resolveSiblingInspectionTaskId(
+function resolveSiblingInspectionTaskId(
   surveyTask: WorkflowTask,
   tasks: WorkflowTask[],
 ): string | null {

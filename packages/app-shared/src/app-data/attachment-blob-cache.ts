@@ -62,12 +62,11 @@ export function downloadAttachmentBlobOnce(
   return entry.promise;
 }
 
-/** Drop one cached blob — after the attachment is deleted or replaced. */
-export function forgetAttachmentBlob(id: string): void {
-  entries.delete(id.trim());
-}
-
-/** Test seam: forget everything. */
+/**
+ * Forget everything. Called on sign-in: an expired session returns to /login by
+ * client navigation (no reload), so the next user in the same tab must not be
+ * served the previous user's bytes.
+ */
 export function clearAttachmentBlobCache(): void {
   entries.clear();
 }

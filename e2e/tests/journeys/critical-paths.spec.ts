@@ -25,9 +25,9 @@ test.describe("Failures module", () => {
   test("supervisor can open failures catalog", async ({ page }) => {
     await loginAs(page, RELEASE_USERS.caseSpecialist);
     await page.goto("/failures", { waitUntil: "commit" });
-    await waitForPageTitle(page, "إدارة التعذرات");
+    await waitForPageTitle(page, "إدارة التعذّرات");
     await page.goto("/failure-types", { waitUntil: "commit" });
-    await waitForPageTitle(page, "أنواع التعذرات");
+    await waitForPageTitle(page, "أنواع التعذّرات");
   });
 });
 
@@ -67,12 +67,10 @@ test.describe("Financial officer", () => {
 });
 
 test.describe("Settings catalog", () => {
-  test("CDO opens system field and screen catalogs", async ({ page }) => {
+  test("CDO opens the system field catalog", async ({ page }) => {
     await loginAs(page, RELEASE_USERS.cdo);
     await page.goto("/system-fields-catalog", { waitUntil: "commit" });
     await waitForPageTitle(page, "قاموس الحقول المركزي");
-    await page.goto("/system-screen-catalog", { waitUntil: "commit" });
-    await waitForPageTitle(page, "دليل الشاشات");
   });
 });
 

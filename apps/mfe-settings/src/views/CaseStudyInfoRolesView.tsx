@@ -1,16 +1,12 @@
 "use client";
 
+import { OpsIcon } from "../components/OpsIcon";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import {
-  cn,
-  EmptyState,
-  InlineLoadingSkeleton,
-  PageShell,
-  Spinner,
-  useToast,
-} from "@platform/ui-kit";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
+import { cn, EmptyState, InlineLoadingSkeleton, PageShell, QueryErrorState, Spinner, useSwapAnimation, useToast, confirmAction } from "@platform/ui-kit";
 import {
   CASE_STUDY_INFO_PARTIES,
   CASE_STUDY_INFO_ROLE_TYPES,
@@ -25,7 +21,7 @@ import {
   type CaseStudyInfoRolesConfig,
 } from "../lib/app-data/case-study-info-roles-model";
 import { saveCaseStudyInfoRolesConfig } from "../lib/app-data/case-study-info-roles-commands";
-import { apiErrorMessage } from "../lib/settings-api-config";
+import { apiErrorMessage } from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   setCaseStudyInfoRolesCache,
   useCaseStudyInfoRolesQuery,
@@ -40,12 +36,12 @@ import {
   opsLetterHead,
   opsLetterSub,
   opsLetterTitle,
-  opsPpBadge,
-  opsTfActions,
+  opsCountBadge,
+  opsTfActionsInline,
   opsTfLbl,
   opsTfSeg,
   opsTfSegActive,
-} from "../lib/settings-ops-tw";
+} from "@platform/ui-kit";
 
 const QUESTION_INDEX_BY_KEY = new Map(
   CASE_STUDY_QUESTION_CATALOG.map((q, i) => [q.key, i]),
@@ -57,23 +53,6 @@ const ROLE_TYPE_BY_ID = new Map(
 const FOLDER_ICON =
   "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z";
 
-function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d={path} />
-    </svg>
-  );
-}
 
 function setMatrixRole(
   config: CaseStudyInfoRolesConfig,
@@ -104,12 +83,15 @@ function questionStatus(
 
 export function CaseStudyInfoRolesView() {
   const queryClient = useQueryClient();
-  const { data: config, isFetched } = useCaseStudyInfoRolesQuery();
+  const rolesQuery = useCaseStudyInfoRolesQuery();
+  const { data: config, isFetched } = rolesQuery;
   const { showToast } = useToast();
   const [openId, setOpenId] = useState<string | null>(
     CASE_STUDY_QUESTION_CATALOG[0]?.key ?? null,
   );
   const [activeSec, setActiveSec] = useState(CASE_STUDY_INFO_SECTIONS[0]?.id);
+  const sectionCardRef = useRef<HTMLElement>(null);
+  useSwapAnimation(sectionCardRef, activeSec);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const saveQueueRef = useRef(Promise.resolve());
@@ -118,10 +100,10 @@ export function CaseStudyInfoRolesView() {
   );
 
   useEffect(() => {
+    // Captured now: the cleanup must clear the timers this mount created.
+    const timers = noteSaveTimersRef.current;
     return () => {
-      for (const timer of Object.values(noteSaveTimersRef.current)) {
-        clearTimeout(timer);
-      }
+      for (const timer of Object.values(timers)) clearTimeout(timer);
     };
   }, []);
 
@@ -196,6 +178,20 @@ export function CaseStudyInfoRolesView() {
     return { done, partial, empty, pct, total, answered };
   }, [config]);
 
+  if (queryLoadFailed(rolesQuery)) {
+    return (
+      <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
+        <QueryErrorState
+          panel
+          line="تعذّر تحميل أسئلة دراسة الحالة"
+          error={rolesQuery.error}
+          onRetry={() => void rolesQuery.refetch()}
+          retrying={rolesQuery.isFetching}
+        />
+      </PageShell>
+    );
+  }
+
   if (!isFetched || !config) {
     return (
       <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
@@ -251,7 +247,7 @@ export function CaseStudyInfoRolesView() {
               </div>
             </div>
           </div>
-          <span className={opsPpBadge}>{summary.total}</span>
+          <span className={opsCountBadge}>{summary.total}</span>
         </div>
         <div className="px-4 pb-[18px] pt-4 sm:px-[18px]">
           <div className="mb-3 h-2 overflow-hidden rounded-full bg-surface-2">
@@ -282,7 +278,7 @@ export function CaseStudyInfoRolesView() {
               </span>
             ))}
           </div>
-          <div className={opsTfActions}>
+          <div className={opsTfActionsInline}>
             <button
               type="button"
               className={opsBtnPrimary}
@@ -299,8 +295,15 @@ export function CaseStudyInfoRolesView() {
               type="button"
               className={opsBtnGhost}
               onClick={() => {
-                if (!window.confirm("إعادة تعيين جميع الاختيارات؟")) return;
-                applyConfig(() => emptyCaseStudyInfoRolesConfig());
+                void (async () => {
+                  const ok = await confirmAction({
+                    title: "إعادة التعيين",
+                    message: "إعادة تعيين جميع الاختيارات؟",
+                    confirmLabel: "إعادة التعيين",
+                    danger: true,
+                  });
+                  if (ok) applyConfig(() => emptyCaseStudyInfoRolesConfig());
+                })();
               }}
             >
               إعادة تعيين
@@ -310,7 +313,7 @@ export function CaseStudyInfoRolesView() {
       </section>
 
       <div className={cn(opsFilters, "mb-3.5")}>
-        <div className="inline-flex flex-wrap" role="tablist" aria-label="أقسام النموذج">
+        <div className="inline-flex flex-wrap" role="tablist" aria-label="أقسام التقرير">
           {CASE_STUDY_INFO_SECTIONS.map((sec) => {
             const qs = CASE_STUDY_QUESTION_CATALOG.filter(
               (q) => q.section === sec.id,
@@ -339,7 +342,7 @@ export function CaseStudyInfoRolesView() {
         </div>
       </div>
 
-      <section className={opsLetterCard}>
+      <section ref={sectionCardRef} className={opsLetterCard}>
         <div className={opsLetterHead}>
           <div className="flex items-center gap-[11px]">
             <span className={opsIconBoxGold}>
@@ -354,7 +357,7 @@ export function CaseStudyInfoRolesView() {
               </div>
             </div>
           </div>
-          <span className={opsPpBadge}>{secQuestions.length}</span>
+          <span className={opsCountBadge}>{secQuestions.length}</span>
         </div>
         <div className="px-4 pb-2 sm:px-[18px]">
           {secQuestions.length === 0 ? (

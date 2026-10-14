@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using RealEstateEval.Shared.Contracts;
 using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.Application;
@@ -25,6 +26,7 @@ public partial class WorkOrderService : IWorkOrderService
     private readonly IWorkOrderQuery _query;
     private readonly IWorkOrderPropertyCommands _properties;
     private readonly IOrganizationSettingsService? _organizationSettings;
+    private readonly ILogger<WorkOrderService>? _logger;
     private readonly TimeProvider _time;
 
     public WorkOrderService(
@@ -36,7 +38,8 @@ public partial class WorkOrderService : IWorkOrderService
         IWorkOrderQuery query,
         IWorkOrderPropertyCommands properties,
         IOrganizationSettingsService? organizationSettings = null,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        ILogger<WorkOrderService>? logger = null)
     {
         _time = time ?? TimeProvider.System;
 
@@ -48,6 +51,7 @@ public partial class WorkOrderService : IWorkOrderService
         _query = query;
         _properties = properties;
         _organizationSettings = organizationSettings;
+        _logger = logger;
     }
 
     public Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
@@ -137,12 +141,14 @@ public partial class WorkOrderService : IWorkOrderService
 
         var promulgation = DateOnly.Parse(request.PromulgationDate);
 
-        var seenDeeds = new HashSet<string>(StringComparer.Ordinal);
+        var seenDeeds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var prop in request.Properties)
         {
             var deed = prop.DeedNumber.Trim();
             if (string.IsNullOrEmpty(deed)) continue;
-            if (!seenDeeds.Add(deed))
+            // "123456", "123-456" and "١٢٣٤٥٦" are one deed.
+            var deedKey = DeedNumberRules.Normalize(deed);
+            if (deedKey.Length > 0 && !seenDeeds.Add(deedKey))
             {
                 return (null, new Dictionary<string, string>
                 {
@@ -153,7 +159,6 @@ public partial class WorkOrderService : IWorkOrderService
             var propErrors = WorkOrderValidator.ValidatePropertyEnfath(
                 prop,
                 assignmentType,
-                po,
                 null,
                 (_, _) => false,
                 SeedClientIds.ClientFieldPolicyForClient(request.ClientId, request.ReportUserClientIds));
@@ -201,30 +206,8 @@ public partial class WorkOrderService : IWorkOrderService
         _db.AddWorkOrder(workOrder);
         await _db.SaveChangesAsync(cancellationToken);
 
-        var enfathAt = workOrder.ReceivedFromEnfathAt.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var specialistDetail = string.IsNullOrWhiteSpace(workOrder.AssignmentSpecialist)
-            ? null
-            : $"أخصائي الإسناد: {workOrder.AssignmentSpecialist.Trim()}";
-        var dueAt = workOrder.DueDateAt.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
-        var timelineEvents = workOrder.Properties.SelectMany(prop => new[]
-        {
-            new PropertyTimelineRecordRequest(
-                po,
-                prop.Id,
-                "enfath",
-                "استلام من إنفاذ",
-                specialistDetail,
-                PropertyTimelineTones.Done,
-                enfathAt),
-            new PropertyTimelineRecordRequest(
-                po,
-                prop.Id,
-                "due",
-                "موعد الاستحقاق",
-                null,
-                PropertyTimelineTones.Muted,
-                dueAt),
-        }).ToList();
+        // The due date is not an event that happened: it lives in the «مواعيد مهمة» card, not on the timeline.
+        var timelineEvents = workOrder.Properties.Select(prop => EnfathReceivedEvent(workOrder, prop.Id)).ToList();
         await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
         await NotifySpecialistAssignedIfChangedAsync(
             po,
@@ -337,15 +320,10 @@ public partial class WorkOrderService : IWorkOrderService
         Guid propertyId,
         WorkOrderPropertyDto property,
         CancellationToken cancellationToken,
-        bool softDraft = false) =>
-        _properties.UpdatePropertyAsync(poNumber, propertyId, property, cancellationToken, softDraft);
+        bool softDraft = false,
+        string? actorName = null) =>
+        _properties.UpdatePropertyAsync(poNumber, propertyId, property, cancellationToken, softDraft, actorName);
 
-    public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateLocationMapUrlAsync(
-        string poNumber,
-        Guid propertyId,
-        string? locationMapUrl,
-        CancellationToken cancellationToken) =>
-        _properties.UpdateLocationMapUrlAsync(poNumber, propertyId, locationMapUrl, cancellationToken);
 
     public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateSpecialistReportExtrasAsync(
         string poNumber,
@@ -364,8 +342,9 @@ public partial class WorkOrderService : IWorkOrderService
         string poNumber,
         Guid propertyId,
         UpdatePropertyBourseRequest request,
-        CancellationToken cancellationToken) =>
-        _properties.CompleteBourseDataAsync(poNumber, propertyId, request, cancellationToken);
+        CancellationToken cancellationToken,
+        string? actorName = null) =>
+        _properties.CompleteBourseDataAsync(poNumber, propertyId, request, cancellationToken, actorName);
 
     public Task<(bool Ok, string? Error)> DeletePropertyAsync(
         string poNumber,
@@ -430,8 +409,14 @@ public partial class WorkOrderService : IWorkOrderService
                 settings.Sla.DefaultBusinessDays,
                 settings.Sla.PrivateSectorBusinessDays);
         }
-        catch
+        catch (Exception ex)
         {
+            // Intake must not block on settings, but a silent fallback hides a wrong deadline.
+            _logger?.LogWarning(
+                ex,
+                "Organization settings unavailable; work-order due date for {AssignmentType} falls back to the built-in {Days} business days.",
+                assignmentType,
+                AssignmentTypeRules.BusinessDaysRequired(assignmentType));
             return AssignmentTypeRules.BusinessDaysRequired(assignmentType);
         }
     }
@@ -440,5 +425,32 @@ public partial class WorkOrderService : IWorkOrderService
     {
         var trimmed = value?.Trim().ToLowerInvariant();
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
+
+    /// <summary>
+    /// The instant the order was received from Enfaz: its date plus the received time when the order carries
+    /// one (Riyadh time, UTC+3), otherwise the date alone at midnight UTC (shown on the timeline as a date only).
+    /// </summary>
+    internal static PropertyTimelineRecordRequest EnfathReceivedEvent(WorkOrder workOrder, Guid propertyId) =>
+        new(
+            workOrder.PoNumber,
+            propertyId,
+            "enfath",
+            "استلام أمر العمل من إنفاذ",
+            string.IsNullOrWhiteSpace(workOrder.AssignmentSpecialist)
+                ? null
+                : $"أخصائي الإسناد: {workOrder.AssignmentSpecialist.Trim()}",
+            PropertyTimelineTones.Done,
+            ReceivedFromEnfathInstant(workOrder.ReceivedFromEnfathAt, workOrder.ReceivedFromEnfathTime));
+
+    internal static DateTime ReceivedFromEnfathInstant(DateOnly date, string? receivedTime)
+    {
+        if (TimeOnly.TryParse(receivedTime?.Trim(), out var time))
+        {
+            var riyadh = date.ToDateTime(time, DateTimeKind.Unspecified);
+            return DateTime.SpecifyKind(riyadh.AddHours(-3), DateTimeKind.Utc);
+        }
+
+        return date.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
     }
 }

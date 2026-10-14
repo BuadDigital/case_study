@@ -57,7 +57,7 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
                 or InspectorFeeActions.OfficeDispute
                 or InspectorFeeActions.ResolveDispute)
         {
-            return "مسار الموظف لا يدعم خلاف التسعير — الخصم يُبلَّغ ويصبح جاهزاً مباشرة.";
+            return "مسار الموظف لا يدعم خلاف التسعير — الحسم يُبلَّغ ويصبح جاهزاً مباشرة.";
         }
 
         if (!InspectorFeeTransitionAuthorization.CanPerformAction(
