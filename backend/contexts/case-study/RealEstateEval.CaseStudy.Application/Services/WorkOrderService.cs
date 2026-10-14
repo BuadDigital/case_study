@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using RealEstateEval.Shared.Contracts;
 using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.Application;
@@ -25,6 +26,7 @@ public partial class WorkOrderService : IWorkOrderService
     private readonly IWorkOrderQuery _query;
     private readonly IWorkOrderPropertyCommands _properties;
     private readonly IOrganizationSettingsService? _organizationSettings;
+    private readonly ILogger<WorkOrderService>? _logger;
     private readonly TimeProvider _time;
 
     public WorkOrderService(
@@ -36,7 +38,8 @@ public partial class WorkOrderService : IWorkOrderService
         IWorkOrderQuery query,
         IWorkOrderPropertyCommands properties,
         IOrganizationSettingsService? organizationSettings = null,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        ILogger<WorkOrderService>? logger = null)
     {
         _time = time ?? TimeProvider.System;
 
@@ -48,6 +51,7 @@ public partial class WorkOrderService : IWorkOrderService
         _query = query;
         _properties = properties;
         _organizationSettings = organizationSettings;
+        _logger = logger;
     }
 
     public Task<IReadOnlyList<WorkOrderListItemDto>> ListAsync(
@@ -405,8 +409,14 @@ public partial class WorkOrderService : IWorkOrderService
                 settings.Sla.DefaultBusinessDays,
                 settings.Sla.PrivateSectorBusinessDays);
         }
-        catch
+        catch (Exception ex)
         {
+            // Intake must not block on settings, but a silent fallback hides a wrong deadline.
+            _logger?.LogWarning(
+                ex,
+                "Organization settings unavailable; work-order due date for {AssignmentType} falls back to the built-in {Days} business days.",
+                assignmentType,
+                AssignmentTypeRules.BusinessDaysRequired(assignmentType));
             return AssignmentTypeRules.BusinessDaysRequired(assignmentType);
         }
     }

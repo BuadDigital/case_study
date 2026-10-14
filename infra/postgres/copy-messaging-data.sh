@@ -6,7 +6,7 @@
 #
 # Run after the Valuation copy. Valuation outbox rows stay on the valuation
 # database (D5); this script drops any copied valuation.% outbox rows from the
-# target so the Case Study dispatcher cannot double-publish them.
+# target so the Platform dispatcher cannot double-publish them.
 #
 # Usage from repo root, against the compose Postgres:
 #   docker compose -f infra/docker-compose.yml exec -T postgres sh < infra/postgres/copy-messaging-data.sh

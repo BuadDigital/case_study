@@ -35,6 +35,8 @@ public sealed class CaseStudyPropertySnapshotDto
     public Guid WorkOrderId { get; set; }
     public string? Area { get; set; }
     public DateTime? BourseCompletedAtUtc { get; set; }
+    /// <summary>Q-9: when the specialist recorded the Enfaz handover (null = not delivered yet).</summary>
+    public DateTime? EnfazHandoverAtUtc { get; set; }
 }
 
 public sealed class CaseStudyWorkflowTaskSnapshotDto

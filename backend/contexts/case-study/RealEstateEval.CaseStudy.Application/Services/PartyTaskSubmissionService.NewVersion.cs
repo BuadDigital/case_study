@@ -28,6 +28,10 @@ public partial class PartyTaskSubmissionService
         if (task.Kind != WorkflowTaskKind.PropertyAppraisal)
             return (null, Error("النسخة الجديدة خاصة بتقييم العقار"));
 
+        // Delivered to Enfaz: the specialist takes the transaction back before any new version.
+        if (await IsHandedOverToEnfazAsync(task, cancellationToken))
+            return (null, Error(HandedOverToEnfazAr));
+
         // A retry after the package was already returned: only make sure the task is open again.
         if (!await IsSubmittedAsync(taskId, cancellationToken))
         {

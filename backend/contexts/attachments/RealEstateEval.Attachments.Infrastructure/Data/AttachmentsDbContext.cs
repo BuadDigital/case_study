@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Attachments.Domain;
+using RealEstateEval.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts;
 
@@ -10,11 +11,15 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts;
 /// the write path, not where a row lives.
 /// </summary>
 public sealed class AttachmentsDbContext(DbContextOptions<AttachmentsDbContext> options)
-    : DbContext(options)
+    : DbContext(options), ICommandIdempotencyDbContext
 {
     public DbSet<FileAttachment> FileAttachments => Set<FileAttachment>();
     public DbSet<PhotoMetadata> PhotoMetadata => Set<PhotoMetadata>();
+    public DbSet<CommandIdempotencyRecord> CommandIdempotencyRecords =>
+        Set<CommandIdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder) =>
-        builder.ApplyAttachmentsModel();
+        builder
+            .ApplyAttachmentsModel()
+            .ApplyCommandIdempotencyModel();
 }

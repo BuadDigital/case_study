@@ -1,5 +1,7 @@
 "use client";
 
+import { OpsIcon } from "../components/OpsIcon";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
@@ -19,7 +21,7 @@ import {
   type CaseStudyInfoRolesConfig,
 } from "../lib/app-data/case-study-info-roles-model";
 import { saveCaseStudyInfoRolesConfig } from "../lib/app-data/case-study-info-roles-commands";
-import { apiErrorMessage } from "../lib/settings-api-config";
+import { apiErrorMessage } from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   setCaseStudyInfoRolesCache,
   useCaseStudyInfoRolesQuery,
@@ -34,12 +36,12 @@ import {
   opsLetterHead,
   opsLetterSub,
   opsLetterTitle,
-  opsPpBadge,
-  opsTfActions,
+  opsCountBadge,
+  opsTfActionsInline,
   opsTfLbl,
   opsTfSeg,
   opsTfSegActive,
-} from "../lib/settings-ops-tw";
+} from "@platform/ui-kit";
 
 const QUESTION_INDEX_BY_KEY = new Map(
   CASE_STUDY_QUESTION_CATALOG.map((q, i) => [q.key, i]),
@@ -51,23 +53,6 @@ const ROLE_TYPE_BY_ID = new Map(
 const FOLDER_ICON =
   "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z";
 
-function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d={path} />
-    </svg>
-  );
-}
 
 function setMatrixRole(
   config: CaseStudyInfoRolesConfig,
@@ -262,7 +247,7 @@ export function CaseStudyInfoRolesView() {
               </div>
             </div>
           </div>
-          <span className={opsPpBadge}>{summary.total}</span>
+          <span className={opsCountBadge}>{summary.total}</span>
         </div>
         <div className="px-4 pb-[18px] pt-4 sm:px-[18px]">
           <div className="mb-3 h-2 overflow-hidden rounded-full bg-surface-2">
@@ -293,7 +278,7 @@ export function CaseStudyInfoRolesView() {
               </span>
             ))}
           </div>
-          <div className={opsTfActions}>
+          <div className={opsTfActionsInline}>
             <button
               type="button"
               className={opsBtnPrimary}
@@ -372,7 +357,7 @@ export function CaseStudyInfoRolesView() {
               </div>
             </div>
           </div>
-          <span className={opsPpBadge}>{secQuestions.length}</span>
+          <span className={opsCountBadge}>{secQuestions.length}</span>
         </div>
         <div className="px-4 pb-2 sm:px-[18px]">
           {secQuestions.length === 0 ? (

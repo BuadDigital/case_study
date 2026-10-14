@@ -3,6 +3,7 @@ import type { PoRow } from "@platform/app-shared/app-data/constants";
 import {
   buildPoListPageRows,
   INITIAL_PO_LIST_QUERY,
+  initialPoListQuery,
   isDueSoon,
   isDueUrgent,
   isPoListBillingBucket,
@@ -11,10 +12,12 @@ import {
   poListKpiFromCounts,
   poListQueryReducer,
   poListServerPagination,
+  poStatusStyle,
   PO_LIST_BILLING_PAGE_SIZE,
   PO_LIST_EMPTY_NO_MATCH,
   PO_LIST_EMPTY_NO_ROWS,
   PO_LIST_PAGE_SIZE,
+  rowDisplayStatus,
   toWorkOrderListCountsQuery,
   toWorkOrderListQuery,
   type PoListQueryState,
@@ -29,6 +32,7 @@ function poRow(id: string, over: Partial<PoRow> = {}): PoRow {
     registered: 2,
     done: 0,
     status: "under_study",
+    studyStatus: "under_study",
     date: "2026-01-01",
     dueDate: "2026-02-01",
     specialist: "سالم",
@@ -36,6 +40,43 @@ function poRow(id: string, over: Partial<PoRow> = {}): PoRow {
     ...over,
   } as PoRow;
 }
+
+describe("initialPoListQuery", () => {
+  it("opens the case specialist on the active orders, nearest due date first", () => {
+    expect(initialPoListQuery("case-specialist")).toEqual({
+      ...INITIAL_PO_LIST_QUERY,
+      statusFilter: "active",
+      sortKey: "due",
+      sortDir: "asc",
+    });
+  });
+
+  it("keeps the full list, newest first, for everyone else", () => {
+    expect(initialPoListQuery("section-supervisor")).toBe(INITIAL_PO_LIST_QUERY);
+    expect(initialPoListQuery("financial-officer")).toBe(INITIAL_PO_LIST_QUERY);
+  });
+});
+
+describe("rowDisplayStatus", () => {
+  const invoiced = poRow("PO-1", {
+    status: "partially_billed",
+    studyStatus: "ready_for_enfaz",
+  });
+
+  it("shows the billing label to the roles that read billing", () => {
+    expect(rowDisplayStatus(invoiced, true)).toBe("partially_billed");
+  });
+
+  it("shows the study status to everyone else — never a billing label", () => {
+    expect(rowDisplayStatus(invoiced, false)).toBe("ready_for_enfaz");
+    expect(rowDisplayStatus(poRow("PO-2", { status: "fully_billed", studyStatus: "completed" }), false))
+      .toBe("completed");
+  });
+
+  it("styles the handover backlog as live work", () => {
+    expect(poStatusStyle("ready_for_enfaz").live).toBe(true);
+  });
+});
 
 describe("poListQueryReducer", () => {
   it("clamps the page to 1 and keeps identity when unchanged", () => {
@@ -127,6 +168,14 @@ describe("toWorkOrderListQuery", () => {
       status: "new",
       type: "تركات",
     });
+  });
+
+  it("sends the filter-only buckets as plain status values with the normal page size", () => {
+    expect(
+      toWorkOrderListQuery({ ...INITIAL_PO_LIST_QUERY, statusFilter: "active" }),
+    ).toMatchObject({ page: 1, pageSize: PO_LIST_PAGE_SIZE, status: "active" });
+    expect(isPoListBillingBucket("active")).toBe(false);
+    expect(isPoListBillingBucket("closed")).toBe(false);
   });
 
   it("folds a deed query before sending it — the server `q` is a plain substring", () => {

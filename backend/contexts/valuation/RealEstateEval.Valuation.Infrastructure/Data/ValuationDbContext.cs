@@ -16,7 +16,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 /// </para>
 /// </summary>
 public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> options)
-    : DbContext(options), IOutboxContext
+    : DbContext(options), IOutboxContext, ICommandIdempotencyDbContext
 {
     public DbSet<ValuationRequest> ValuationRequests => Set<ValuationRequest>();
     public DbSet<ComparableProperty> ComparableProperties => Set<ComparableProperty>();
@@ -42,9 +42,12 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
     public DbSet<ValuationValueDocumentUse> ValuationValueDocumentUses => Set<ValuationValueDocumentUse>();
     public DbSet<EvaluatorRecallRecord> EvaluatorRecallRecords => Set<EvaluatorRecallRecord>();
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
+    public DbSet<CommandIdempotencyRecord> CommandIdempotencyRecords =>
+        Set<CommandIdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder) =>
         builder
             .ApplyValuationModel()
+            .ApplyCommandIdempotencyModel()
             .ApplyOutboxModel(ownsMigrations: false);
 }

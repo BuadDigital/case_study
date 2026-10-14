@@ -318,6 +318,9 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
                  {
                      "",
                      "?status=under_study",
+                     "?status=ready_for_enfaz",
+                     "?status=active",
+                     "?status=closed",
                      "?status=completed&type=%D8%AA%D9%86%D9%81%D9%8A%D8%B0",
                      "?q=001",
                  })
@@ -336,6 +339,9 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
                      "?page=1&pageSize=5&sort=due",
                      "?page=1&pageSize=5&status=new",
                      "?page=1&pageSize=5&status=under_study",
+                     "?page=1&pageSize=5&status=ready_for_enfaz",
+                     "?page=1&pageSize=5&status=active",
+                     "?page=1&pageSize=5&status=closed",
                      "?page=1&pageSize=5&status=completed",
                      "?page=1&pageSize=5&status=stopped",
                      "?page=1&pageSize=5&status=cancelled",
@@ -504,10 +510,6 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var dictionaryRequest = AuthorizedGet("/api/field-dictionary");
         var dictionary = await client.SendAsync(dictionaryRequest);
         Assert.Equal(HttpStatusCode.OK, dictionary.StatusCode);
-
-        using var factorsRequest = AuthorizedGet("/api/difference-factor-catalog");
-        var factors = await client.SendAsync(factorsRequest);
-        Assert.Equal(HttpStatusCode.OK, factors.StatusCode);
 
         using var rolesRequest = AuthorizedGet("/api/case-study-info-roles");
         var roles = await client.SendAsync(rolesRequest);
@@ -700,19 +702,8 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
     }
 
     [DockerFact]
-    public async Task Survey_offices_failure_catalog_and_dispatch_gates_execute()
+    public async Task Failure_catalog_and_dispatch_gates_execute()
     {
-        using var operationsFactory = Factory<OperationsMarker>("Operations");
-        using var operations = operationsFactory.CreateClient();
-
-        using var officesRequest = AuthorizedGet("/api/survey-offices");
-        var offices = await operations.SendAsync(officesRequest);
-        Assert.Equal(HttpStatusCode.OK, offices.StatusCode);
-
-        using var missingOffice = AuthorizedGet($"/api/survey-offices/{Guid.NewGuid():D}");
-        var office404 = await operations.SendAsync(missingOffice);
-        Assert.Equal(HttpStatusCode.NotFound, office404.StatusCode);
-
         using var failuresFactory = Factory<FailuresMarker>("Failures");
         using var failures = failuresFactory.CreateClient();
 

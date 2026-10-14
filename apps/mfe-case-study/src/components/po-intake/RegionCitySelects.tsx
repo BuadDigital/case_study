@@ -25,7 +25,7 @@ import {
   ModalOverlay,
   ModalTitle,
 } from "@platform/ui-kit";
-import { regionsApiConfig } from "@settings/mfe/lib/settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 
 type Props = {
@@ -79,7 +79,7 @@ export function RegionCitySelects({
 
   useEffect(() => {
     let cancelled = false;
-    const config = regionsApiConfig();
+    const config = apiConfig();
     if (!config) {
       setRegions([]);
       setRegionsLoading(false);
@@ -125,7 +125,7 @@ export function RegionCitySelects({
   const selectedDistrictId = property.districtId?.trim() ?? "";
 
   const loadCities = (regionId: string, query: string) => {
-    const config = regionsApiConfig();
+    const config = apiConfig();
     if (!config || !regionId) {
       setCities([]);
       setCitiesLoading(false);
@@ -146,7 +146,7 @@ export function RegionCitySelects({
   };
 
   const loadDistricts = (cityId: string, query: string) => {
-    const config = regionsApiConfig();
+    const config = apiConfig();
     if (!config || !cityId) {
       setDistricts([]);
       setDistrictsLoading(false);
@@ -266,7 +266,7 @@ export function RegionCitySelects({
     nameAr: string,
     forceCreate: boolean,
   ) => {
-    const config = regionsApiConfig();
+    const config = apiConfig();
     if (!config) {
       setSuggestError("يلزم تسجيل الدخول لإضافة مسمّى");
       return;

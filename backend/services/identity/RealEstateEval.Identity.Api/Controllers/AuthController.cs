@@ -14,22 +14,25 @@ public class AuthController : ControllerBase
     private readonly IAuthSessionService _sessions;
     private readonly IPermissionService _permissions;
     private readonly IUserRegistrationService _users;
+    private readonly ILoginOtpService _otp;
     private readonly IConfiguration _configuration;
 
     public AuthController(
         IAuthSessionService sessions,
         IPermissionService permissions,
         IUserRegistrationService users,
+        ILoginOtpService otp,
         IConfiguration configuration)
     {
         _sessions = sessions;
         _permissions = permissions;
         _users = users;
+        _otp = otp;
         _configuration = configuration;
     }
 
     /// <summary>
-    /// Passwordless login by mobile (preferred) or username. Gated by Auth:EnableDevLogin.
+    /// Login by mobile (preferred) or username. Gated by Auth:EnableDevLogin.
     /// </summary>
     [HttpPost("login")]
     [AllowAnonymous]
@@ -37,7 +40,7 @@ public class AuthController : ControllerBase
         [FromBody] UsernameLoginRequest request,
         CancellationToken cancellationToken)
     {
-        if (!IsPasswordlessLoginEnabled())
+        if (!IsDevLoginEnabled())
             return NotFound();
 
         if (!ModelState.IsValid)
@@ -51,6 +54,61 @@ public class AuthController : ControllerBase
             : Ok(session);
     }
 
+
+    /// <summary>
+    /// Mobile login, step 1: sends a one-time code by SMS. Answers the same for a mobile
+    /// without an account, so the endpoint does not reveal who is registered.
+    /// </summary>
+    [HttpPost("otp/request")]
+    [AllowAnonymous]
+    public async Task<ActionResult<OtpRequestResponseDto>> RequestOtp(
+        [FromBody] OtpRequestRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        var outcome = await _otp.RequestAsync(request.Mobile, cancellationToken);
+        var dto = new OtpRequestResponseDto
+        {
+            RetryAfterSeconds = outcome.RetryAfterSeconds,
+            ExpiresInSeconds = outcome.ExpiresInSeconds,
+            Delivery = outcome.Delivery,
+        };
+        return outcome.Status switch
+        {
+            OtpRequestStatus.Sent => Ok(dto),
+            OtpRequestStatus.Throttled => Problem(
+                    statusCode: StatusCodes.Status429TooManyRequests,
+                    title: "Too Many Requests",
+                    detail: $"أُرسل رمز قبل قليل — أعد المحاولة بعد {outcome.RetryAfterSeconds} ثانية.")
+                .WithProblemExtension(ApiProblemExtensions.LegacyMessageMember,
+                    $"أُرسل رمز قبل قليل — أعد المحاولة بعد {outcome.RetryAfterSeconds} ثانية.")
+                .WithProblemExtension("retryAfterSeconds", outcome.RetryAfterSeconds),
+            _ => Problem(
+                    statusCode: StatusCodes.Status503ServiceUnavailable,
+                    title: "SMS Unavailable",
+                    detail: "تعذّر إرسال رمز التحقق الآن، حاول بعد قليل.")
+                .WithProblemExtension(ApiProblemExtensions.LegacyMessageMember,
+                    "تعذّر إرسال رمز التحقق الآن، حاول بعد قليل."),
+        };
+    }
+
+    /// <summary>Mobile login, step 2: the code for a session. One message for every failure.</summary>
+    [HttpPost("otp/verify")]
+    [AllowAnonymous]
+    public async Task<ActionResult<LoginResponseDto>> VerifyOtp(
+        [FromBody] OtpVerifyRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        var outcome = await _otp.VerifyAsync(request.Mobile, request.Code, cancellationToken);
+        return outcome.Status == OtpVerifyStatus.Ok && outcome.Session is not null
+            ? Ok(outcome.Session)
+            : this.UnauthorizedProblem("الرمز غير صحيح أو انتهت صلاحيته.");
+    }
 
     /// <summary>
     /// Exchanges a refresh token for a fresh access token, re-reading roles and
@@ -97,7 +155,7 @@ public class AuthController : ControllerBase
         return NoContent();
     }
 
-    private bool IsPasswordlessLoginEnabled() =>
+    private bool IsDevLoginEnabled() =>
         _configuration.GetValue("Auth:EnableDevLogin", false);
 
     [HttpGet("me")]

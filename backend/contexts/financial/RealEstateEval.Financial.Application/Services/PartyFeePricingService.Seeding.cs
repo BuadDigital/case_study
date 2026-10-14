@@ -48,7 +48,7 @@ public sealed partial class PartyFeePricingService
                 any.Id,
                 before,
                 PartyFeePricingSnapshots.Snapshot(any));
-            await _db.SaveChangesAsync(cancellationToken);
+            await SaveAndAppendAuditsAsync(cancellationToken);
             return;
         }
 
@@ -76,7 +76,7 @@ public sealed partial class PartyFeePricingService
             table.Id,
             before: null,
             after: PartyFeePricingSnapshots.Snapshot(table));
-        await _db.SaveChangesAsync(cancellationToken);
+        await SaveAndAppendAuditsAsync(cancellationToken);
     }
 
     /// <summary>

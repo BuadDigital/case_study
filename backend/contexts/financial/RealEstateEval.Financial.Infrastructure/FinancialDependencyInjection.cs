@@ -37,6 +37,8 @@ public static class FinancialDependencyInjection
         services.AddRemoteCaseStudy(configuration);
         services.AddHttpClient<ICaseStudyCommands, HttpCaseStudyCommands>();
         services.AddRemoteIdentityDirectory(configuration);
+        // Pricing audits go to the Platform ledger, where سجل التدقيق reads them.
+        services.AddRemoteAuditLogAppend(configuration);
         services.AddRemoteAttachmentLookup(configuration);
         services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
  // E6: Financial Host notifications were NullNotificationService(«residue until it exists

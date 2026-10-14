@@ -427,6 +427,10 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         PartySubmissionActor? actor,
         CancellationToken cancellationToken)
     {
+        // Delivered to Enfaz: nothing reopens until the specialist takes the transaction back.
+        if (await IsHandedOverToEnfazAsync(task, cancellationToken))
+            return (null, Error(HandedOverToEnfazAr));
+
         var entity = await _repo.GetSubmissionAsync(taskId, track: true, cancellationToken);
         if (entity is null)
             return (null, Error("لا يوجد إرسال مُكتمل لإعادته"));
@@ -463,34 +467,6 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         await NotifyPartyReturnedForCorrectionAsync(task, returnNote, cancellationToken);
 
         return (await ToDtoAsync(entity, cancellationToken), null);
-    }
-
-    public const string AppraisalFinalIssuedReopenForbiddenAr =
-        "صدر التقرير النهائي — يُعدَّل بنسخة جديد من الأخصائي بعد إعادة فتح التقييم";
-
-    public const string AppraisalReportApprovedReopenForbiddenAr =
-        "اعتمد المقيّم تقرير التقييم — يسحب اعتماده أولاً قبل إعادة الحزمة للتصحيح";
-
-    /// <summary>The valuation request is open and its report is frozen as the deposit copy (approved, no final yet).</summary>
-    private async Task<bool> AppraisalReportApprovedAsync(WorkflowTask task, CancellationToken cancellationToken)
-    {
-        if (_valuationRequests is null || task.PropertyId is not Guid propertyId) return false;
-        var open = await _valuationRequests.GetOpenByPropertyAsync(propertyId.ToString("D"), cancellationToken);
-        return string.Equals(open?.ReportStage, ValuationReportStageWire.DepositIssued, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// The appraisal task is completed AND the property's valuation request is closed (the final
-    /// issuance happened). A completed task with a still-open request is a legacy transaction
-    /// (completed at hand-over) and stays reopenable. Absent valuation port reads as «not issued».
-    /// </summary>
-    private async Task<bool> AppraisalFinalIssuedAsync(WorkflowTask task, CancellationToken cancellationToken)
-    {
-        if (task.Status != WorkflowTaskStatus.Completed
-            || _valuationRequests is null
-            || task.PropertyId is not Guid propertyId)
-            return false;
-        return await _valuationRequests.GetOpenByPropertyAsync(propertyId.ToString("D"), cancellationToken) is null;
     }
 
     // B2: Acceptance stamp Go to root — PartyTaskSubmission.Accept.

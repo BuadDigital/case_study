@@ -1,5 +1,8 @@
 "use client";
 
+import { filled } from "../lib/filled";
+import { membershipLabel } from "../lib/valuation-lists-view-state";
+
 /**
  * First printed page of the professional valuation report settings: valuer
  * identity, scope of work, key inputs, finishing specs and the stamp block.
@@ -28,8 +31,6 @@ import {
   ParticipantsTable,
 } from "./professional-valuation-report-fields";
 import {
-  filled,
-  memLabel,
   slashDate,
 } from "./professional-valuation-report-state";
 
@@ -401,7 +402,7 @@ export function ProfessionalReportIdentityPage({
               <td className="v">{filled(draft.valuationBranch, D.valuationBranch)}</td>
               <K>فئة العضوية</K>
               <td className="v">
-                {memLabel(
+                {membershipLabel(
                   filled(ev.membershipCategory, String(htmlEv.membershipCategory ?? "")),
                 )}
               </td>

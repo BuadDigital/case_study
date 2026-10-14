@@ -15,7 +15,7 @@ export type AddItemDraft = {
   propertyTypeKeys: string[];
 };
 
-export const TABS: { id: string; label: string; kind: "table" | "ivs" | "photos" | "cert" | "parts" }[] = [
+export const TABS: { id: string; label: string; kind: "table" | "ivs" | "photos" }[] = [
   { id: "purposes", label: "أغراض التقييم", kind: "table" },
   { id: "valueBases", label: "أساس القيمة", kind: "table" },
   { id: "premises", label: "فرضية القيمة", kind: "table" },
@@ -25,8 +25,6 @@ export const TABS: { id: string; label: string; kind: "table" | "ivs" | "photos"
   { id: "glossary", label: "المصطلحات المهنية", kind: "table" },
   { id: "ivsStandards", label: "معايير التقييم الدولية", kind: "table" },
   { id: "attachments", label: "مرفقات التقرير", kind: "table" },
-  { id: "certValuer", label: "بيانات المقيّم المعتمد", kind: "cert" },
-  { id: "participants", label: "المشاركون في إعداد التقرير", kind: "parts" },
   { id: "photos", label: "صفحات الصور", kind: "photos" },
   { id: "ivs", label: "تاريخ سريان المعايير", kind: "ivs" },
 ];

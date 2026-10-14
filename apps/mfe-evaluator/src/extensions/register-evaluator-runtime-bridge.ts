@@ -7,6 +7,7 @@
  */
 
 import dynamic from "next/dynamic";
+import { InlineLoadingSkeleton } from "@platform/ui-kit";
 import { registerEvaluatorRuntimeBridge } from "@platform/app-shared/party-appraisal/evaluator-runtime-bridge";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import {
@@ -47,7 +48,7 @@ const ValuationReportPreview = dynamic(
 /** The specialist's report-draft workspace (print attachments, send / withdraw). */
 const ReportDraftPanel = dynamic(
   () => import("../components/evaluator/ReportDraftPanel").then((m) => m.ReportDraftPanel),
-  { ssr: false },
+  { ssr: false, loading: () => InlineLoadingSkeleton({}) },
 );
 
 let registered = false;

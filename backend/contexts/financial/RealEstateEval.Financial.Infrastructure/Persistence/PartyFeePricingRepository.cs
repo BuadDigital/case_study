@@ -222,8 +222,6 @@ public sealed class PartyFeePricingRepository : IPartyFeePricingRepository
             .OrderBy(t => t.SortOrder)
             .ToList();
 
-    public void AddAuditLog(AuditLog log) => _db.Set<AuditLog>().Add(log);
-
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         _db.SaveChangesAsync(cancellationToken);
 

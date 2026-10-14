@@ -251,47 +251,6 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
                     b.ToTable("Courts", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Platform.Domain.CourtAuditLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Action")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
-
-                    b.Property<string>("ActorId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<string>("ChangesJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<Guid>("EntityId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("EntityType")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
-                    b.Property<DateTime>("TimestampUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Action");
-
-                    b.HasIndex("TimestampUtc");
-
-                    b.HasIndex("EntityType", "EntityId");
-
-                    b.ToTable("CourtAuditLogs", "platform");
-                });
 
             modelBuilder.Entity("RealEstateEval.Platform.Domain.CourtCircuit", b =>
                 {
@@ -337,26 +296,6 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts.Platform.Migratio
                     b.ToTable("CourtCircuits", "platform");
                 });
 
-            modelBuilder.Entity("RealEstateEval.Platform.Domain.DifferenceFactorCatalogConfig", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CatalogJson")
-                        .IsRequired()
-                        .HasColumnType("jsonb");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("DifferenceFactorCatalogConfigs", "platform");
-                });
 
             modelBuilder.Entity("RealEstateEval.Platform.Domain.District", b =>
                 {

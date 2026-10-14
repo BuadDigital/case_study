@@ -16,11 +16,8 @@ import {
   savedLines,
   withAdoptionFlag,
 } from "./lib/market-commands-state";
-import {
-  LAND_WITHIN_COST,
-  MARKET_CONTEXT,
-  MAX_ADOPTED_COMPARABLES,
-} from "./lib/shell-state";
+import { LAND_WITHIN_COST, MARKET_CONTEXT } from "./lib/shell-state";
+import { getCachedOrganizationSettings } from "@platform/app-shared/organization/organization-settings-cache";
 import type { ComparableMarketSaver } from "./useComparableMarketSaver";
 import type { ValuationWorkData } from "./useValuationWorkData";
 
@@ -47,14 +44,19 @@ export function useComparablesCommands(
   ) {
     const ctx = writeContext();
     if (!ctx) return;
-    // Interactive-form spec: max 5 adopted comparables per table.
+    // Per-table cap from organization settings (وقت التنفيذ ← الحد الأقصى للمقارنات المعتمدة).
     if (isAdopted) {
+      const maxAdopted =
+        getCachedOrganizationSettings()?.valuation.maxAdoptedComparables ?? 3;
       const adoptedNow =
         context === MARKET_CONTEXT
           ? visibleAdoptedMarket.length
           : visibleAdoptedLand.length;
-      if (adoptedNow >= MAX_ADOPTED_COMPARABLES) {
-        showToast("الحد الأقصى ٥ مقارنات معتمدة — ألغِ اعتماد مقارن أولاً", "error");
+      if (adoptedNow >= maxAdopted) {
+        showToast(
+          `الحد الأقصى ${maxAdopted} مقارنات معتمدة — ألغِ اعتماد مقارن أولاً`,
+          "error",
+        );
         return;
       }
     }

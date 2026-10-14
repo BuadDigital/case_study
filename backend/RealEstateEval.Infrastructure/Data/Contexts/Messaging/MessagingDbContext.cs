@@ -10,12 +10,12 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// notification creates and their follow-up events stay in one <c>SaveChanges</c>.
 /// <para>
 /// Other producers still map <c>OutboxMessages</c> on their own contexts (Valuation).
-/// The Case Study outbox dispatcher claims rows through this context against the dedicated
+/// The Platform outbox dispatcher claims rows through this context against the dedicated
 /// messaging database after the Phase 4 cutover.
 /// </para>
 /// </summary>
 public sealed class MessagingDbContext(DbContextOptions<MessagingDbContext> options)
-    : DbContext(options), IOutboxContext
+    : DbContext(options), IOutboxContext, ICommandIdempotencyDbContext
 {
     public DbSet<OutboxMessage> OutboxMessages => Set<OutboxMessage>();
     public DbSet<ProcessedIntegrationEvent> ProcessedIntegrationEvents =>

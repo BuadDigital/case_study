@@ -16,6 +16,7 @@ public class ClientServiceTests
         var service = new ClientService(new FakeClientRepository());
         var (_, errors) = await service.CreateAsync(
             new UpsertClientRequest { NameAr = "  " },
+            "test-actor",
             CancellationToken.None);
 
         Assert.NotNull(errors);
@@ -28,6 +29,7 @@ public class ClientServiceTests
         var service = new ClientService(new FakeClientRepository());
         var (ok, error) = await service.DeactivateAsync(
             SeedClientIds.InfathAssignmentCenter,
+            "test-actor",
             CancellationToken.None);
 
         Assert.False(ok);
@@ -43,6 +45,7 @@ public class ClientServiceTests
 
         var (result, errors) = await service.CreateAsync(
             new UpsertClientRequest { NameAr = "عميل تجريبي", IsActive = true },
+            "test-actor",
             CancellationToken.None);
 
         Assert.Null(errors);

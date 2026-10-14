@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Suspense,
-  useCallback,
-  useEffect,
-  useRef,
-  type ComponentProps,
-} from "react";
+import { Suspense, useCallback, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   parseCostsSection,
@@ -26,8 +20,6 @@ import {
   whenIdle,
 } from "@platform/ui-kit";
 import { useFinanceTabCounts } from "../query/finance-tab-counts";
-import type { FinanceEngOfficePortal as EngOfficePortalType } from "./FinanceEngOfficePortal";
-import type { FinanceInspectorPortal as InspectorPortalType } from "./FinanceInspectorPortal";
 
 const areaChunkFallback = (
   <div className={opsLetterCard}>
@@ -44,21 +36,8 @@ const revenueView = preloadableLazy(() =>
 const costsView = preloadableLazy(() =>
   import("./FinanceCostsView").then((m) => m.FinanceCostsView),
 );
-// The portals take `props = {}`, which the generic cannot infer through.
-const engOfficePortal = preloadableLazy<
-  NonNullable<ComponentProps<typeof EngOfficePortalType>>
->(() =>
-  import("./FinanceEngOfficePortal").then((m) => m.FinanceEngOfficePortal),
-);
-const inspectorPortal = preloadableLazy<
-  NonNullable<ComponentProps<typeof InspectorPortalType>>
->(() =>
-  import("./FinanceInspectorPortal").then((m) => m.FinanceInspectorPortal),
-);
 const FinanceRevenueView = revenueView.Component;
 const FinanceCostsView = costsView.Component;
-const FinanceEngOfficePortal = engOfficePortal.Component;
-const FinanceInspectorPortal = inspectorPortal.Component;
 
 // Prefetch the route chunk on hover/focus of its tab (bundle-preload).
 export const FINANCE_AREA_CHUNK_PRELOAD: Partial<
@@ -66,8 +45,6 @@ export const FINANCE_AREA_CHUNK_PRELOAD: Partial<
 > = {
   revenue: revenueView.preload,
   costs: costsView.preload,
-  eng_portal: engOfficePortal.preload,
-  inspector_portal: inspectorPortal.preload,
 };
 
 export function FinanceWorkspace() {
@@ -191,20 +168,6 @@ export function FinanceWorkspace() {
               });
             }}
             excludedCount={counts.excludedCount}
-          />
-        ) : null}
-        {area === "eng_portal" ? (
-          <FinanceEngOfficePortal focusPartyId={focusParty} />
-        ) : null}
-        {area === "inspector_portal" ? (
-          <FinanceInspectorPortal
-            focusPartyId={focusParty}
-            onFocusParty={(id) =>
-              replaceParams({
-                area: "inspector_portal",
-                party: id,
-              })
-            }
           />
         ) : null}
       </Suspense>

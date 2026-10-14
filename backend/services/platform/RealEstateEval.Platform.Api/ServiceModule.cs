@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
+using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Web;
 using RealEstateEval.Platform.Api.Integration;
 using RealEstateEval.Shared.Web;
@@ -30,6 +31,9 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         // A8: Platform boundary validators moved out of the globally scanned assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<CreateCourtRequestValidator>();
         builder.Services.AddMessagingPersistence(builder.Configuration);
+        builder.Services.Configure<OutboxDispatcherOptions>(o =>
+            o.ContextType = typeof(MessagingDbContext));
+        builder.Services.AddOutboxDispatcher(builder.Configuration, builder.Environment);
         builder.Services.AddRemoteIdentityDirectory(builder.Configuration);
         builder.Services.AddRemoteWorkflowAssignees(builder.Configuration);
         builder.Services.AddPlatformNotificationInfrastructure(builder.Configuration, builder.Environment);

@@ -97,8 +97,4 @@ public sealed class CreateStaffUserResponseDto
     public required UserListItemDto User { get; init; }
     public required string UserName { get; init; }
 
-    /// <summary>
-    /// Always false: staff sign in by Saudi mobile (OTP UI / future SMS OTP); no password activation.
-    /// </summary>
-    public bool ActivationRequired { get; init; } = false;
 }

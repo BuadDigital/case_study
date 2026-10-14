@@ -114,6 +114,7 @@ export function CaseStudyDeedNatureMatchSection({
             className="flex flex-wrap gap-2"
             role="radiogroup"
             aria-label="نتيجة مطابقة الصك على الطبيعة"
+            aria-invalid={outcomeInvalid || undefined}
           >
             {DEED_NATURE_MATCH_OPTIONS.map((opt) => {
               const on = outcome === opt.value;
@@ -126,7 +127,6 @@ export function CaseStudyDeedNatureMatchSection({
                     on
                       ? "border-heading bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] text-on-ink"
                       : "border-border-md bg-surface text-text-2 hover:text-heading",
-                    outcomeInvalid && !on && invalidControlClass,
                     disabled && "cursor-not-allowed opacity-50",
                   )}
                 >

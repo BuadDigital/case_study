@@ -20,7 +20,8 @@
  *      arrays with no paging parameters. The only server-paged billing list is
  *      the work-order list with its «مفوتر جزئي» / «مفوتر بالكامل» buckets on
  *      /po — which eman cannot reach (ROLE_MODULE_PAGES gives her /financial
- *      only), so that half is asserted as the case specialist.
+ *      only), so paging is asserted as the case specialist and the billing
+ *      buckets (hidden from the specialist) as the CDO.
  */
 import { test, expect } from "@playwright/test";
 import { loginAs, RELEASE_USERS, waitForPageTitle } from "../../fixtures/auth";
@@ -222,9 +223,25 @@ test.describe("Finance: cost ledger and the server-paged billing list", () => {
     ).toBe(true);
     expect(await page.locator("tbody tr").count()).toBeLessThanOrEqual(10);
 
-    // The billing buckets are reachable from the same list.
+    // The case specialist works the study cycle only: the active bucket is there, the billing
+    // labels are not (they are Finance's and management's — asserted below as the CDO).
     const statusFilter = page.getByRole("combobox", { name: "تصفية الحالة" });
     await expect(statusFilter).toBeVisible();
+    await expect(statusFilter.locator("option", { hasText: "النشطة" })).toHaveCount(1);
+    await expect(
+      statusFilter.locator("option", { hasText: "مفوتر بالكامل" }),
+    ).toHaveCount(0);
+  });
+
+  test("management sees the billing buckets on the work-order list", async ({ page }) => {
+    test.slow();
+    await loginAs(page, RELEASE_USERS.cdo);
+
+    await page.goto("/po", { waitUntil: "commit" });
+    await waitForPageTitle(page, "أوامر العمل");
+
+    const statusFilter = page.getByRole("combobox", { name: "تصفية الحالة" });
+    await expect(statusFilter).toBeVisible({ timeout: 60_000 });
     await expect(
       statusFilter.locator("option", { hasText: "مفوتر بالكامل" }),
     ).toHaveCount(1);

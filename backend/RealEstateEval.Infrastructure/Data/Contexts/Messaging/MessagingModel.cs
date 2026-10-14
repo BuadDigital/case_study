@@ -9,7 +9,8 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// inbox per-consumer: every context that publishes maps <c>OutboxMessages</c> so a business
 /// write and the event it raises land in one <c>SaveChanges</c>, and every context that
 /// consumes maps <c>ProcessedIntegrationEvents</c> and owns the rows carrying its own
-/// consumer name. These are the only tables allowed in more than one context.
+/// consumer name. Command-idempotency records are likewise mapped by owner contexts that keep
+/// their reservations in their own databases.
 /// <para>
 /// Platform-owned notification / push tables (D3) are mapped here and by the legacy context
 /// for transitional dual write until owner APIs replace them.
@@ -74,7 +75,9 @@ public static class MessagingModel
             e.Property(x => x.HttpMethod).HasMaxLength(16);
             e.Property(x => x.RequestPath).HasMaxLength(512);
             e.Property(x => x.IdempotencyKey).HasMaxLength(128);
+            e.Property(x => x.ExecutionId).HasMaxLength(64);
             e.Property(x => x.ContentType).HasMaxLength(128);
+            e.Property(x => x.Location).HasMaxLength(2048);
             e.Property(x => x.ResponseBody).HasColumnType("bytea");
             e.HasIndex(x => x.ExpiresAtUtc);
         });

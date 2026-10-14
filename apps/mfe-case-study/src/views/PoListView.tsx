@@ -6,7 +6,6 @@
  * pure rules in `po-list-view-state.ts`; sub-components in `PoListViewParts`.
  */
 
-import { PO_LIST_STATUS_OPTIONS } from "@platform/app-shared/app-data/po-list-status";
 import {
   Button,
   cn,
@@ -47,6 +46,7 @@ import { PoIntakeModal } from "@case-study/mfe/components/po-intake/PoIntakeModa
 import {
   poListRowView,
   progFill,
+  rowDisplayStatus,
   teamMembersForRow,
   type StatusFilter,
 } from "./po-list-view-state";
@@ -74,6 +74,8 @@ export function PoListView() {
     search,
     setSearch,
     searchModeLabel,
+    billing,
+    statusOptions,
     statusFilter,
     setStatusFilter,
     typeFilter,
@@ -149,7 +151,7 @@ export function PoListView() {
             className="px-5 py-4"
             icon={<KpiCheckIcon />}
             iconClass="bg-[color-mix(in_srgb,var(--success)_16%,transparent)] text-success-text"
-            label="عقارات أُنجزت اليوم"
+            label="عقارات رُفعت على إنفاذ"
             value={kpi ? kpi.doneProps : "—"}
             valueClass="!text-success-text"
             sub="عبر جميع الأوامر"
@@ -192,7 +194,7 @@ export function PoListView() {
             },
             {
               key: "done",
-              label: "عقارات أُنجزت اليوم",
+              label: "عقارات رُفعت على إنفاذ",
               sub: "عبر جميع الأوامر",
               value: kpi ? kpi.doneProps : "—",
               icon: <KpiCheckIcon />,
@@ -239,14 +241,11 @@ export function PoListView() {
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               aria-label="تصفية الحالة"
             >
-              <option value="">جميع الحالات</option>
-              {PO_LIST_STATUS_OPTIONS.filter((o) => o.value !== "").map(
-                (option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ),
-              )}
+              {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </OperationalToolbarSelect>
             <OperationalToolbarSelect
               className="shrink-0 max-lg:min-h-11"
@@ -290,7 +289,7 @@ export function PoListView() {
                     </Th>
                     <Th>نوع الإسناد</Th>
                     <Th className="text-center">عدد الصكوك</Th>
-                    <Th className="text-center">المكتملة</Th>
+                    <Th className="text-center">المرفوعة</Th>
                     <Th>التقدم</Th>
                     <Th>الحالة</Th>
                     <Th>
@@ -412,7 +411,7 @@ export function PoListView() {
                             </div>
                           </Td>
                           <Td className="whitespace-nowrap">
-                            <PoStatusPill status={p.status} />
+                            <PoStatusPill status={rowDisplayStatus(p, billing)} />
                           </Td>
                           <TdLtr className="whitespace-nowrap text-[13px] text-text-2">
                             {p.date ? formatDateAr(p.date) : "—"}

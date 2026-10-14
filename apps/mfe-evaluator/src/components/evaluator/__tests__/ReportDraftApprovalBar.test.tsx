@@ -84,7 +84,7 @@ describe("ReportDraftApprovalBar", () => {
 
     await waitFor(() => expect(api.approveReportDraft).toHaveBeenCalledTimes(1));
     const today = new Date().toLocaleDateString("en-CA");
-    expect(buildApprovedHtml).toHaveBeenCalledWith(today);
+    expect(buildApprovedHtml).toHaveBeenCalledWith(today, expect.any(Function));
     expect(api.approveReportDraft).toHaveBeenCalledWith({ token: "t" }, "vr-1", { reportDate: today, html: "<p>report</p>" });
   });
 
@@ -234,7 +234,7 @@ describe("FinalReportDownload", () => {
     api.generateFinalReport.mockResolvedValue({ ok: true, data: { finalReportStatus: "ready" } });
     renderDownload(draft({ reportStage: "final_issued", finalReportStatus: "preparing" }));
 
-    expect(screen.getByText("ملف التقرير النهائي قيد الإعداد.")).toBeTruthy();
+    expect(screen.getByText(/ملف التقرير النهائي قيد الإعداد/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: /تنزيل التقرير النهائي/ })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "إعادة تجهيز الملف" }));

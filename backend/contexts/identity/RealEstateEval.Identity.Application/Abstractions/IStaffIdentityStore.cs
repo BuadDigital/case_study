@@ -11,7 +11,7 @@ public sealed record StaffIdentityUser(
     string? PhoneNumber,
     string DisplayName);
 
-/// <summary>A password-less account to create; the holder redeems an activation ticket for one.</summary>
+/// <summary>A staff account to create; sign-in is by Saudi mobile, so no credential is set.</summary>
 public sealed record NewStaffIdentityUser(
     string UserName,
     string Email,
@@ -53,7 +53,7 @@ public interface IStaffIdentityStore
 
     Task<IReadOnlyList<string>> GetRolesAsync(string userId, CancellationToken cancellationToken);
 
-    /// <summary>Creates the account with no password. The created id comes back on success.</summary>
+    /// <summary>Creates the account. The created id comes back on success.</summary>
     Task<(StaffIdentityUser? User, IReadOnlyList<StaffIdentityError> Errors)> CreateAsync(
         NewStaffIdentityUser user,
         CancellationToken cancellationToken);
@@ -80,7 +80,7 @@ public interface IStaffIdentityStore
         string userId,
         CancellationToken cancellationToken);
 
-    /// <summary>Clears any lockout end date and the failed-attempt counter.</summary>
+    /// <summary>Clears any lockout end date so the holder can sign in again.</summary>
     Task ClearLockoutAsync(string userId, CancellationToken cancellationToken);
 
     /// <summary>Locks the account out with no end date — the soft-disable half.</summary>

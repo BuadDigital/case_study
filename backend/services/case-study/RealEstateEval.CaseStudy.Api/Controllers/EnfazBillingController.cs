@@ -125,7 +125,7 @@ public class EnfazBillingController : ControllerBase
         var dto = await _billing.IssueInvoiceAsync(poNumber, ct);
         return dto is null
             ? this.BadRequestProblem(
-                "تعذّر إصدار الفاتورة — تحقق من اكتمال أمر العمل وتعبئة الأتعاب.")
+                "تعذّر إصدار الفاتورة — تحقق من رفع كل عقارات أمر العمل على إنفاذ وتعبئة الأتعاب.")
             : Ok(dto);
     }
 

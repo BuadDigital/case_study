@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
@@ -14,12 +15,13 @@ using RealEstateEval.Identity.Application.Abstractions;
 using RealEstateEval.Identity.Application.Services;
 using RealEstateEval.Infrastructure;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
+using RealEstateEval.Identity.Infrastructure.Sms;
 
 namespace RealEstateEval.Identity.Infrastructure;
 
 /// <summary>
 /// Context-local registration for the Identity bounded context (A8): auth sessions,
-/// passwordless login, JWT issuance, user registration, and database-backed permission
+/// phone login, JWT issuance, user registration, and database-backed permission
 /// resolution. The ASP.NET Identity stores, seed graph, and directory/label plumbing stay
 /// global — other contexts construct them directly.
 /// </summary>
@@ -41,6 +43,9 @@ public static class IdentityDependencyInjection
         services.AddScoped<IUserLabelLookup>(sp => sp.GetRequiredService<IIdentityDirectory>());
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthSessionService, AuthSessionService>();
+        // Hosts that call AddSmsDelivery first get the provider; tests and tools get the log sender.
+        services.TryAddScoped<ISmsSender, LoggingSmsSender>();
+        services.AddScoped<ILoginOtpService, LoginOtpService>();
         // Staff registration is a use case in Identity.Application; the two adapters below are
         // the only places it reaches IdentityDbContext and UserManager (solid-scorecard finding 1).
         services.AddScoped<IStaffRegistrationRepository, StaffRegistrationRepository>();
@@ -61,8 +66,43 @@ public static class IdentityDependencyInjection
         string connectionString)
     {
         services.AddIdentityPersistence(configuration, connectionString);
+        services.AddOwnerCommandIdempotencyPersistence<IdentityDbContext>(configuration);
         services.AddRemoteAuditLogAppend(configuration);
+        services.AddSmsDelivery(configuration);
         services.AddIdentityApplicationServices();
+        return services;
+    }
+
+    /// <summary>
+    /// SMS for the login code. With <c>Sms:OurSms:ApiKey</c> set the OurSMS client is used and
+    /// codes are checked strictly; without it the message goes to the log (see
+    /// <see cref="LoggingSmsSender"/>) and a dev-login host accepts any well-formed code.
+    /// </summary>
+    public static IServiceCollection AddSmsDelivery(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddOptions<OurSmsOptions>()
+            .Bind(configuration.GetSection(OurSmsOptions.SectionName))
+            .Validate(
+                o => !o.IsConfigured || !string.IsNullOrWhiteSpace(o.Sender),
+                "Sms:OurSms:Sender is required when Sms:OurSms:ApiKey is set.")
+            .Validate(
+                o => Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _),
+                "Sms:OurSms:BaseUrl must be an absolute URL.")
+            .ValidateOnStart();
+        var configured = !string.IsNullOrWhiteSpace(
+            configuration.GetSection(OurSmsOptions.SectionName)["ApiKey"]);
+        if (configured)
+        {
+            services.AddHttpClient<ISmsSender, OurSmsSender>((sp, client) =>
+                client.Timeout = TimeSpan.FromSeconds(Math.Clamp(
+                    sp.GetRequiredService<IOptions<OurSmsOptions>>().Value.TimeoutSeconds, 3, 60)));
+        }
+        else
+        {
+            services.AddScoped<ISmsSender, LoggingSmsSender>();
+        }
         return services;
     }
  /// <summary>Identity write context. A8 physical move: lives beside <see cref="IdentityDbContext"/>.</summary>
@@ -84,14 +124,8 @@ public static class IdentityDependencyInjection
             .AddIdentity<ApplicationUser, IdentityRole>(options =>
             {
                 options.User.RequireUniqueEmail = true;
-                options.Password.RequiredLength = 12;
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
-                options.Password.RequireNonAlphanumeric = true;
+                // Lockout is the soft-disable mechanism (LockOutIndefinitelyAsync); there is no credential to fail.
                 options.Lockout.AllowedForNewUsers = true;
-                options.Lockout.MaxFailedAccessAttempts = 5;
-                options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
             })
             .AddEntityFrameworkStores<IdentityDbContext>()
             .AddDefaultTokenProviders();

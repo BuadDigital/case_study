@@ -232,6 +232,6 @@ test.describe("Field inspector: submit → specialist accept", () => {
     await expect(rail.getByText("إتمام المعاينة الميدانية")).toBeVisible({
       timeout: 30_000,
     });
-    await expect(rail.getByText("استلام بيانات المعاينة")).toBeVisible();
+    await expect(rail.getByText("قبول الأخصائي لمخرجات المعاينة")).toBeVisible();
   });
 });

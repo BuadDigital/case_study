@@ -13,8 +13,7 @@ namespace RealEstateEval.Platform.Api.Controllers;
 [Authorize]
 public sealed class OrganizationSettingsController(
     IOrganizationSettingsService settings,
-    IOrganizationSettingsGapService gaps,
-    IOtpDeliveryService otpDelivery) : ControllerBase
+    IOrganizationSettingsGapService gaps) : ControllerBase
 {
     [HttpGet]
     public async Task<ActionResult<OrganizationSettingsDto>> Get(CancellationToken ct)
@@ -100,24 +99,4 @@ public sealed class OrganizationSettingsController(
         }
     }
 
-    [HttpPost("test-communication")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
-    public async Task<ActionResult<TestCommunicationResultDto>> TestCommunication(
-        [FromBody] TestCommunicationRequest request,
-        CancellationToken ct)
-    {
-        if (string.IsNullOrWhiteSpace(request.Destination))
-            return this.BadRequestProblem("أدخل وجهة الاختبار (جوال أو بريد).");
-
-        var result = await otpDelivery.SendTestAsync(
-            request.Channel,
-            request.Destination.Trim(),
-            ct);
-        return Ok(new TestCommunicationResultDto
-        {
-            Ok = result.Ok,
-            Provider = result.Provider,
-            Detail = result.Detail,
-        });
-    }
 }

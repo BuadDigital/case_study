@@ -228,6 +228,56 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                     b.ToTable("Users", "identity");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.CommandIdempotencyRecord", b =>
+                {
+                    b.Property<string>("ActorId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("HttpMethod")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("RequestPath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExecutionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<byte[]>("ResponseBody")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ActorId", "HttpMethod", "RequestPath", "IdempotencyKey");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.ToTable("CommandIdempotencyRecords", "messaging");
+                });
+
             modelBuilder.Entity("RealEstateEval.Domain.HrEmployeeProfile", b =>
                 {
                     b.Property<string>("UserId")
@@ -479,6 +529,58 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                         });
                 });
 
+            modelBuilder.Entity("RealEstateEval.Identity.Domain.LoginOtpCode", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime?>("ConsumedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Mobile")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("Mobile", "CreatedAtUtc");
+
+                    b.ToTable("LoginOtpCodes", "identity", t =>
+                        {
+                            t.HasCheckConstraint("CK_LoginOtpCodes_Attempts", "\"Attempts\" >= 0");
+                        });
+                });
+
             modelBuilder.Entity("RealEstateEval.Identity.Domain.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -607,6 +709,15 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Identity.Domain.LoginOtpCode", b =>
+                {
+                    b.HasOne("RealEstateEval.Domain.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RealEstateEval.Identity.Domain.RefreshToken", b =>

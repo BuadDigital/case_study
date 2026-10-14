@@ -19,11 +19,6 @@ public sealed class HttpAttachmentPrintDictionaryService(
             "UpstreamServices:PlatformBaseUrl",
             cancellationToken);
 
-    public Task<AttachmentPrintDictionaryDto> SaveAsync(
-        SaveAttachmentPrintDictionaryRequest request,
-        CancellationToken cancellationToken = default) =>
-        throw new InvalidOperationException(
-            "Print-dictionary writes belong on the Platform API.");
 }
 
 public sealed class HttpValuationListsService(
@@ -42,6 +37,7 @@ public sealed class HttpValuationListsService(
 
     public Task<ValuationListsDto> SaveAsync(
         SaveValuationListsRequest request,
+        string actorId,
         CancellationToken cancellationToken = default) =>
         throw new InvalidOperationException(
             "Valuation-lists writes belong on the Platform API.");

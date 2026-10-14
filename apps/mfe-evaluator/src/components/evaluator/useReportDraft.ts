@@ -27,6 +27,12 @@ export function useReportDraftByProperty(propertyId: string | null | undefined, 
     enabled: enabled && id.length > 0,
     staleTime: 15_000,
     refetchOnWindowFocus: true,
+    // The final PDF is generated after the deposit; while the server still says «preparing», poll so the
+    // download appears on its own instead of after a manual retry.
+    refetchInterval: (query) => {
+      const dto = query.state.data;
+      return dto?.reportStage === "final_issued" && dto.finalReportStatus === "preparing" ? 5_000 : false;
+    },
     queryFn: async (): Promise<ValuationReportDraftDto | null> => {
       const config = apiConfig();
       if (!config) return null;

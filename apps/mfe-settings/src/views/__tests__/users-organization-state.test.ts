@@ -16,8 +16,13 @@ import {
   reactivateErrorMessage,
   ROLE_SELECT_OPTIONS,
   saveEditErrors,
-  shouldSyncStaffValuer,
+  defaultReportRole,
+  professionalEquals,
+  professionalFromRow,
+  professionalToSyncFields,
+  rosterRowFor,
   staffValuerSyncMode,
+  unlinkedRosterRows,
   statusLabel,
   statusTone,
   STAFF_ROLE_CHANGE_LAST_ADMIN,
@@ -259,17 +264,48 @@ describe("dialog copy and API error mapping", () => {
 });
 
 describe("staff valuer roster sync", () => {
-  it("upserts an active appraiser and deactivates everyone else", () => {
-    expect(staffValuerSyncMode("real-estate-appraiser", "Active")).toBe("upsert");
-    expect(staffValuerSyncMode("real-estate-appraiser", "Locked")).toBe("upsert");
-    expect(staffValuerSyncMode("real-estate-appraiser", "PendingActivation")).toBe("upsert");
-    expect(staffValuerSyncMode("real-estate-appraiser", "Disabled")).toBe("deactivate");
-    expect(staffValuerSyncMode("case-specialist", "Active")).toBe("deactivate");
+  it("only a disabled account leaves the report", () => {
+    expect(staffValuerSyncMode("Active")).toBe("upsert");
+    expect(staffValuerSyncMode("Locked")).toBe("upsert");
+    expect(staffValuerSyncMode("Disabled")).toBe("deactivate");
   });
 
-  it("syncs when the account is or was an appraiser", () => {
-    expect(shouldSyncStaffValuer(undefined, "real-estate-appraiser")).toBe(true);
-    expect(shouldSyncStaffValuer("real-estate-appraiser", "case-specialist")).toBe(true);
-    expect(shouldSyncStaffValuer("case-specialist", "cdo")).toBe(false);
+  it("a new appraiser takes a seat; everyone else starts out of the report", () => {
+    expect(defaultReportRole("real-estate-appraiser")).toBe("valuer");
+    expect(defaultReportRole("case-specialist")).toBe("none");
+    expect(defaultReportRole(null)).toBe("none");
+  });
+
+  it("reads the professional data off the linked roster row", () => {
+    const valuers = [
+      { id: "r1", nameAr: "سعد", role: "reviewer", isActive: true, staffUserId: "u1", membershipNumber: "77" },
+      { id: "r2", nameAr: "عماد", role: "certified", isActive: true, staffUserId: "u2" },
+      { id: "r3", nameAr: "هند", role: "valuer", isActive: false, staffUserId: "u3" },
+    ] as never[];
+    expect(rosterRowFor(valuers, "u1")?.id).toBe("r1");
+    expect(rosterRowFor(valuers, "nope")).toBeNull();
+    expect(unlinkedRosterRows([...valuers, { id: "r4", nameAr: "بلا حساب", role: "valuer", isActive: true } as never]).map((r) => r.id)).toEqual(["r4"]);
+    expect(professionalFromRow(rosterRowFor(valuers, "u1"), "case-specialist")).toMatchObject({
+      reportRole: "reviewer",
+      membershipNumber: "77",
+    });
+    expect(professionalFromRow(rosterRowFor(valuers, "u2"), null).reportRole).toBe("certified");
+    expect(professionalFromRow(rosterRowFor(valuers, "u3"), "real-estate-appraiser").reportRole).toBe("none");
+    expect(professionalFromRow(null, "real-estate-appraiser").reportRole).toBe("valuer");
+    expect(professionalFromRow(null, "field-inspector").reportRole).toBe("none");
+  });
+
+  it("sends every field and never the certified seat", () => {
+    const p = professionalFromRow(null, "real-estate-appraiser");
+    expect(professionalToSyncFields({ ...p, membershipNumber: " 9 " })).toMatchObject({
+      reportRole: "valuer",
+      membershipNumber: "9",
+      signatureUrl: "",
+    });
+    expect("reportRole" in professionalToSyncFields({ ...p, reportRole: "certified" })).toBe(false);
+    expect("linkRosterRowId" in professionalToSyncFields(p)).toBe(false);
+    expect(professionalToSyncFields({ ...p, linkRosterRowId: "r1" }).linkRosterRowId).toBe("r1");
+    expect(professionalEquals(p, { ...p, licenseNumber: " " })).toBe(true);
+    expect(professionalEquals(p, { ...p, licenseNumber: "1" })).toBe(false);
   });
 });

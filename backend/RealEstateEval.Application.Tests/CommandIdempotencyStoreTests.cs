@@ -16,15 +16,21 @@ public class CommandIdempotencyStoreTests
     {
         using var cache = new MemoryCache(new MemoryCacheOptions());
         ICommandIdempotencyStore store = new MemoryCommandIdempotencyStore(cache);
+        var key = Key("user-1", "key-abcd-1234");
         var body = Encoding.UTF8.GetBytes("""{"ok":true}""");
-        var response = new CommandIdempotencyCachedResponse(200, "application/json", body);
+        var response = new CommandIdempotencyCachedResponse(
+            200,
+            "application/json",
+            body,
+            "/api/demo/1");
 
-        await store.SaveAsync("user-1", "POST", "/api/demo", "key-abcd-1234", response, TimeSpan.FromHours(1));
-        var replay = await store.TryGetAsync("user-1", "POST", "/api/demo", "key-abcd-1234");
+        await CompleteAsync(store, key, response);
+        var replay = await store.TryAcquireAsync(key, TimeSpan.FromMinutes(5));
 
-        Assert.NotNull(replay);
-        Assert.Equal(200, replay.StatusCode);
-        Assert.Equal(body, replay.Body);
+        Assert.Equal(CommandIdempotencyAcquireStatus.Replay, replay.Status);
+        Assert.Equal(200, replay.Response?.StatusCode);
+        Assert.Equal(body, replay.Response?.Body);
+        Assert.Equal("/api/demo/1", replay.Response?.Location);
     }
 
     [Fact]
@@ -34,41 +40,92 @@ public class CommandIdempotencyStoreTests
         ICommandIdempotencyStore store = new MemoryCommandIdempotencyStore(cache);
         var response = new CommandIdempotencyCachedResponse(201, "application/json", [1, 2, 3]);
 
-        await store.SaveAsync("user-a", "POST", "/api/demo", "key-abcd-1234", response, TimeSpan.FromHours(1));
+        await CompleteAsync(store, Key("user-a", "key-abcd-1234"), response);
 
-        Assert.Null(await store.TryGetAsync("user-b", "POST", "/api/demo", "key-abcd-1234"));
-        Assert.Null(await store.TryGetAsync("user-a", "POST", "/api/demo", "other-key-9999"));
-        Assert.NotNull(await store.TryGetAsync("user-a", "POST", "/api/demo", "key-abcd-1234"));
+        Assert.Equal(
+            CommandIdempotencyAcquireStatus.Acquired,
+            (await store.TryAcquireAsync(
+                Key("user-b", "key-abcd-1234"),
+                TimeSpan.FromMinutes(5))).Status);
+        Assert.Equal(
+            CommandIdempotencyAcquireStatus.Acquired,
+            (await store.TryAcquireAsync(
+                Key("user-a", "other-key-9999"),
+                TimeSpan.FromMinutes(5))).Status);
+        Assert.Equal(
+            CommandIdempotencyAcquireStatus.Replay,
+            (await store.TryAcquireAsync(
+                Key("user-a", "key-abcd-1234"),
+                TimeSpan.FromMinutes(5))).Status);
+    }
+
+    [Fact]
+    public async Task Memory_store_allows_only_one_in_flight_execution()
+    {
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        ICommandIdempotencyStore store = new MemoryCommandIdempotencyStore(cache);
+        var key = Key("user-1", "parallel-key-1");
+
+        var first = await store.TryAcquireAsync(key, TimeSpan.FromMinutes(5));
+        var second = await store.TryAcquireAsync(key, TimeSpan.FromMinutes(5));
+
+        Assert.Equal(CommandIdempotencyAcquireStatus.Acquired, first.Status);
+        Assert.Equal(CommandIdempotencyAcquireStatus.InProgress, second.Status);
+
+        await store.ReleaseAsync(key, first.ExecutionId!);
+        Assert.Equal(
+            CommandIdempotencyAcquireStatus.Acquired,
+            (await store.TryAcquireAsync(key, TimeSpan.FromMinutes(5))).Status);
     }
 
     [Fact]
     public async Task Ef_store_replays_saved_response()
     {
         await using var db = CreateDb();
-        ICommandIdempotencyStore store = new EfCommandIdempotencyStore(
+        ICommandIdempotencyStore store = new EfCommandIdempotencyStore<MessagingDbContext>(
             db,
-            NullLogger<EfCommandIdempotencyStore>.Instance);
-        var body = Encoding.UTF8.GetBytes("""{"invoice":"INV-1"}""");
-        var response = new CommandIdempotencyCachedResponse(200, "application/json", body);
-
-        await store.SaveAsync(
-            "actor-1",
-            "POST",
-            "/api/enfaz-billing/PO-1/collect",
-            "collect-key-01",
-            response,
-            TimeSpan.FromHours(24));
-
-        var replay = await store.TryGetAsync(
+            NullLogger<EfCommandIdempotencyStore<MessagingDbContext>>.Instance);
+        var key = new CommandIdempotencyRequestKey(
             "actor-1",
             "POST",
             "/api/enfaz-billing/PO-1/collect",
             "collect-key-01");
+        var body = Encoding.UTF8.GetBytes("""{"invoice":"INV-1"}""");
+        var response = new CommandIdempotencyCachedResponse(
+            200,
+            "application/json",
+            body,
+            "/api/enfaz-billing/invoices/INV-1");
 
-        Assert.NotNull(replay);
-        Assert.Equal(200, replay.StatusCode);
-        Assert.Equal("application/json", replay.ContentType);
-        Assert.Equal(body, replay.Body);
+        await CompleteAsync(store, key, response);
+        var replay = await store.TryAcquireAsync(key, TimeSpan.FromMinutes(5));
+
+        Assert.Equal(CommandIdempotencyAcquireStatus.Replay, replay.Status);
+        Assert.Equal(200, replay.Response?.StatusCode);
+        Assert.Equal("application/json", replay.Response?.ContentType);
+        Assert.Equal(body, replay.Response?.Body);
+        Assert.Equal("/api/enfaz-billing/invoices/INV-1", replay.Response?.Location);
+        Assert.Single(await db.CommandIdempotencyRecords.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Ef_store_reclaims_an_expired_in_progress_reservation()
+    {
+        await using var db = CreateDb();
+        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        ICommandIdempotencyStore store = new EfCommandIdempotencyStore<MessagingDbContext>(
+            db,
+            NullLogger<EfCommandIdempotencyStore<MessagingDbContext>>.Instance,
+            clock);
+        var key = Key("actor-1", "crashed-key-1");
+
+        var acquired = await store.TryAcquireAsync(key, TimeSpan.FromMinutes(5));
+        Assert.Equal(CommandIdempotencyAcquireStatus.Acquired, acquired.Status);
+        clock.Advance(TimeSpan.FromMinutes(10));
+
+        var reclaimed = await store.TryAcquireAsync(key, TimeSpan.FromMinutes(5));
+        Assert.Equal(CommandIdempotencyAcquireStatus.Acquired, reclaimed.Status);
+        Assert.NotEqual(acquired.ExecutionId, reclaimed.ExecutionId);
         Assert.Single(await db.CommandIdempotencyRecords.ToListAsync());
     }
 
@@ -77,52 +134,63 @@ public class CommandIdempotencyStoreTests
     {
         await using var db = CreateDb();
         var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
-        ICommandIdempotencyStore store = new EfCommandIdempotencyStore(
+        ICommandIdempotencyStore store = new EfCommandIdempotencyStore<MessagingDbContext>(
             db,
-            NullLogger<EfCommandIdempotencyStore>.Instance,
+            NullLogger<EfCommandIdempotencyStore<MessagingDbContext>>.Instance,
             clock);
+        var key = Key("actor-1", "expire-key-1");
 
-        await store.SaveAsync(
-            "actor-1",
-            "POST",
-            "/api/demo",
-            "expire-key-1",
+        await CompleteAsync(
+            store,
+            key,
             new CommandIdempotencyCachedResponse(200, null, []),
             TimeSpan.FromMinutes(5));
 
         clock.Advance(TimeSpan.FromMinutes(10));
 
-        Assert.Null(await store.TryGetAsync("actor-1", "POST", "/api/demo", "expire-key-1"));
+        Assert.Equal(
+            CommandIdempotencyAcquireStatus.Acquired,
+            (await store.TryAcquireAsync(key, TimeSpan.FromMinutes(5))).Status);
     }
 
     [Fact]
-    public async Task Ef_store_upsert_keeps_latest_body()
+    public async Task Ef_store_keeps_the_winning_completed_response()
     {
         await using var db = CreateDb();
-        ICommandIdempotencyStore store = new EfCommandIdempotencyStore(
+        ICommandIdempotencyStore store = new EfCommandIdempotencyStore<MessagingDbContext>(
             db,
-            NullLogger<EfCommandIdempotencyStore>.Instance);
+            NullLogger<EfCommandIdempotencyStore<MessagingDbContext>>.Instance);
+        var key = Key("actor-1", "same-key-12");
 
-        await store.SaveAsync(
-            "actor-1",
-            "POST",
-            "/api/demo",
-            "same-key-12",
+        await CompleteAsync(
+            store,
+            key,
             new CommandIdempotencyCachedResponse(200, null, [1]),
             TimeSpan.FromHours(1));
-        await store.SaveAsync(
-            "actor-1",
-            "POST",
-            "/api/demo",
-            "same-key-12",
-            new CommandIdempotencyCachedResponse(409, "application/json", [9]),
-            TimeSpan.FromHours(1));
 
-        var replay = await store.TryGetAsync("actor-1", "POST", "/api/demo", "same-key-12");
-        Assert.NotNull(replay);
-        Assert.Equal(409, replay.StatusCode);
-        Assert.Equal(new byte[] { 9 }, replay.Body);
+        var replay = await store.TryAcquireAsync(key, TimeSpan.FromMinutes(5));
+        Assert.Equal(CommandIdempotencyAcquireStatus.Replay, replay.Status);
+        Assert.Equal(200, replay.Response?.StatusCode);
+        Assert.Equal(new byte[] { 1 }, replay.Response?.Body);
         Assert.Single(await db.CommandIdempotencyRecords.ToListAsync());
+    }
+
+    private static CommandIdempotencyRequestKey Key(string actor, string key) =>
+        new(actor, "POST", "/api/demo", key);
+
+    private static async Task CompleteAsync(
+        ICommandIdempotencyStore store,
+        CommandIdempotencyRequestKey key,
+        CommandIdempotencyCachedResponse response,
+        TimeSpan? ttl = null)
+    {
+        var acquired = await store.TryAcquireAsync(key, TimeSpan.FromMinutes(5));
+        Assert.Equal(CommandIdempotencyAcquireStatus.Acquired, acquired.Status);
+        Assert.True(await store.CompleteAsync(
+            key,
+            acquired.ExecutionId!,
+            response,
+            ttl ?? TimeSpan.FromHours(1)));
     }
 
     private static MessagingDbContext CreateDb()

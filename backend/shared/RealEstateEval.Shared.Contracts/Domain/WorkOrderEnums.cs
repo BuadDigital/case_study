@@ -166,21 +166,29 @@ public static class WorkOrderListStatus
 {
     public const string New = "new";
     public const string UnderStudy = "under_study";
+    /// <summary>Every property is ready for the Enfaz handover (report issued, deposit done, parties complete) and at least one is not handed over yet.</summary>
+    public const string ReadyForEnfaz = "ready_for_enfaz";
     public const string Cancelled = "cancelled";
     public const string Stopped = "stopped";
+    /// <summary>Every property is handed over to Enfaz (delivered to the client).</summary>
     public const string Completed = "completed";
     public const string PartiallyBilled = "partially_billed";
     public const string FullyBilled = "fully_billed";
 
+ /// <summary>
+ /// The study status alone — what everyone outside Finance sees. Delivery is the Enfaz handover:
+ /// a work order is <c>completed</c> only when every live property carries the handover stamp.
+ /// </summary>
+ /// <param name="expectedPropertyCount">Properties promised by Enfaz at intake.</param>
  /// <param name="registeredCount">Properties on the PO that are not removed.</param>
- /// <param name="studiedCount">Properties whose case-study parent task is completed.</param>
- /// <param name="hasEnfazInvoice">True when an Enfaz invoice was issued for this PO.</param>
-    public static string Resolve(
+ /// <param name="readyCount">Live properties whose tasks are all complete or that are already closed.</param>
+ /// <param name="closedCount">Live properties handed over to Enfaz, or whose tasks are all cancelled.</param>
+    public static string ResolveStudy(
         string? lifecycleStatus,
         int expectedPropertyCount,
         int registeredCount,
-        int studiedCount,
-        bool hasEnfazInvoice = false)
+        int readyCount,
+        int closedCount)
     {
         var lifecycle = lifecycleStatus?.Trim();
         if (lifecycle == WorkOrderLifecycleStatus.Cancelled) return Cancelled;
@@ -188,19 +196,39 @@ public static class WorkOrderListStatus
 
         var expected = Math.Max(1, expectedPropertyCount);
         var registered = registeredCount;
-        var allRegistered = registered > 0 && registered >= expected;
-        var allStudied = allRegistered && studiedCount >= registered;
+        if (registered <= 0) return New;
 
- // Billing labels only when finance actually issued an invoice.
+        var allRegistered = registered >= expected;
+        if (allRegistered && closedCount >= registered) return Completed;
+        if (allRegistered && readyCount >= registered) return ReadyForEnfaz;
+        return UnderStudy;
+    }
+
+ /// <summary>
+ /// The billing-aware status Finance and management see: an issued Enfaz invoice relabels the
+ /// study status as <c>fully_billed</c> (delivered) or <c>partially_billed</c> (not yet).
+ /// </summary>
+ /// <param name="hasEnfazInvoice">True when an Enfaz invoice was issued for this PO.</param>
+    public static string Resolve(
+        string? lifecycleStatus,
+        int expectedPropertyCount,
+        int registeredCount,
+        int readyCount,
+        int closedCount,
+        bool hasEnfazInvoice = false)
+    {
+        var study = ResolveStudy(
+            lifecycleStatus,
+            expectedPropertyCount,
+            registeredCount,
+            readyCount,
+            closedCount);
+        if (study is Cancelled or Stopped) return study;
+
+        // Billing labels only when finance actually issued an invoice.
         if (hasEnfazInvoice)
-            return allStudied ? FullyBilled : PartiallyBilled;
+            return study == Completed ? FullyBilled : PartiallyBilled;
 
-        if (allStudied)
-            return Completed;
-
-        if (studiedCount > 0 || registered > 0)
-            return UnderStudy;
-
-        return New;
+        return study;
     }
 }

@@ -116,16 +116,8 @@ const AttachmentPrintDictionaryView = dynamic(
   () => import("@settings/mfe").then((m) => m.AttachmentPrintDictionaryView),
   { ssr: false, loading: MfeLoading },
 );
-const DifferenceFactorCatalogView = dynamic(
-  () => import("@settings/mfe").then((m) => m.DifferenceFactorCatalogView),
-  { ssr: false, loading: MfeLoading },
-);
 const SystemFieldsCatalogView = dynamic(
   () => import("@settings/mfe").then((m) => m.SystemFieldsCatalogView),
-  { ssr: false, loading: MfeLoading },
-);
-const SystemScreenCatalogView = dynamic(
-  () => import("@settings/mfe").then((m) => m.SystemScreenCatalogView),
   { ssr: false, loading: MfeLoading },
 );
 const CaseStudyInfoRolesView = dynamic(
@@ -144,10 +136,6 @@ const AuditLogView = dynamic(
 const FeePricingView = dynamic(
   () =>
     import("@/components/views/FeePricingView").then((m) => m.FeePricingView),
-  { ssr: false, loading: MfeLoading },
-);
-const SurveyView = dynamic(
-  () => import("@survey/mfe").then((m) => m.SurveyView),
   { ssr: false, loading: MfeLoading },
 );
 const PartyActiveTaskViewHost = dynamic(
@@ -176,7 +164,6 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "comparable-properties": ComparablePropertiesView,
   "operations-tasks": OperationsTasksView,
   "system-fields-catalog": SystemFieldsCatalogView,
-  "system-screen-catalog": SystemScreenCatalogView,
   financial: FinancialView,
   users: UsersView,
   profile: ProfileView,
@@ -185,13 +172,11 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "organization-settings": OrganizationSettingsView,
   clients: ClientsView,
   "attachment-print-dictionary": AttachmentPrintDictionaryView,
-  "difference-factor-catalog": DifferenceFactorCatalogView,
   "failure-types": FailureTypesView,
   "case-study-info-roles": CaseStudyInfoRolesView,
   "party-fees": PartyFeesView,
   "audit-log": AuditLogView,
   "fee-pricing": FeePricingView,
-  survey: SurveyView,
 };
 
 // Preload the page chunk on nav-link hover/focus — same import specs as
@@ -216,7 +201,6 @@ export const PAGE_CHUNK_PRELOAD: Partial<
   "comparable-properties": () => import("@valuation/mfe"),
   "operations-tasks": () => import("@case-study/mfe"),
   "system-fields-catalog": () => import("@settings/mfe"),
-  "system-screen-catalog": () => import("@settings/mfe"),
   financial: () => import("@financial/mfe"),
   users: () => import("@settings/mfe"),
   profile: () => import("@settings/mfe"),
@@ -225,13 +209,11 @@ export const PAGE_CHUNK_PRELOAD: Partial<
   "organization-settings": () => import("@settings/mfe"),
   clients: () => import("@settings/mfe"),
   "attachment-print-dictionary": () => import("@settings/mfe"),
-  "difference-factor-catalog": () => import("@settings/mfe"),
   "failure-types": () => import("@failures/mfe"),
   "case-study-info-roles": () => import("@settings/mfe"),
   "party-fees": () => import("@case-study/mfe"),
   "audit-log": () => import("@/components/views/AuditLogView"),
   "fee-pricing": () => import("@/components/views/FeePricingView"),
-  survey: () => import("@survey/mfe"),
 };
 
 for (const pageId of PARTY_TASK_PAGE_IDS) {

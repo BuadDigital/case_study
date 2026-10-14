@@ -54,8 +54,6 @@ type AdjustmentsMatrixProps = {
   city?: string;
   district?: string;
   valuationDate?: string;
-  factorDefinitions: Record<string, string>;
-  catalogFactors?: { factorKey: string; labelAr: string }[];
   /** subjSpec: subject-property description per difference factor. */
   subjectSpecs?: Record<string, string>;
   /** Market context can edit subject description; land-within-cost context cannot. */
@@ -79,8 +77,6 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   city,
   district,
   valuationDate,
-  factorDefinitions,
-  catalogFactors,
   subjectSpecs,
   canEditSubjectSpec,
   dispatch,
@@ -103,7 +99,6 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     selection,
     adopted,
     subjectArea,
-    catalogFactors,
     dispatch,
   });
   const { isUnit, areaMethod, areaFactor } = basisView;
@@ -259,7 +254,6 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     label={meta.label}
                     hint={meta.hint}
                     tip={meta.tip}
-                    definition={factorDefinitions[meta.label]}
                     locked={locked}
                     removable={deletable}
                     included={included}
@@ -427,7 +421,6 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     label={meta.label}
                     hint={meta.hint}
                     tip={meta.tip}
-                    definition={factorDefinitions[meta.label]}
                     locked={locked}
                     removable
                     included={included}

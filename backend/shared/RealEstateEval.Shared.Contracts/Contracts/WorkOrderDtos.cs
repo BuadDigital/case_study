@@ -281,13 +281,17 @@ public class WorkOrderListItemDto
     public int PropertyCount { get; set; }
  /// <summary>Property count from Infath at promulgation.</summary>
     public int ExpectedPropertyCount { get; set; }
+    /// <summary>Live properties handed over to Enfaz (delivered), or whose tasks were all cancelled.</summary>
     public int CompletedCount { get; set; }
     /// <summary>
     /// 0–100 workflow progress across live properties (stages + parties), for the list bar.
-    /// Distinct from <see cref="CompletedCount"/> (case-study forms submitted).
+    /// Distinct from <see cref="CompletedCount"/> (properties handed over).
     /// </summary>
     public int ProgressPct { get; set; }
+    /// <summary>Billing-aware status (<see cref="WorkOrderListStatus.Resolve"/>) — Finance and management read this one.</summary>
     public string Status { get; set; } = WorkOrderListStatus.New;
+    /// <summary>Study status alone (<see cref="WorkOrderListStatus.ResolveStudy"/>) — what every other role sees.</summary>
+    public string StudyStatus { get; set; } = WorkOrderListStatus.New;
     public string PromulgationDate { get; set; } = "";
     public string ReceivedFromEnfathAt { get; set; } = "";
     public string DueDateAt { get; set; } = "";

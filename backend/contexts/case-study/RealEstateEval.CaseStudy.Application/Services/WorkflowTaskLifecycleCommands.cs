@@ -250,6 +250,13 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
         if (entity.Kind == WorkflowTaskKind.PropertyAppraisal)
             return (null, Error(AppraisalReopenViaPackageAr));
 
+        // A transaction handed over to Enfaz is delivered: the specialist takes it back first.
+        if (entity.PropertyId is Guid handedOverPropertyId
+            && await _db.GetPropertyAsync(handedOverPropertyId, cancellationToken) is { IsHandedOverToEnfaz: true })
+        {
+            return (null, Error(PartyTaskSubmissionService.HandedOverToEnfazAr));
+        }
+
         entity.Reopen(_time.UtcNow());
 
         var detail = string.IsNullOrWhiteSpace(actorName) ? reason : $"{actorName}: {reason}";

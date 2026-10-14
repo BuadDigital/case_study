@@ -39,7 +39,6 @@ public static class OperationsDependencyInjection
         services.AddMessagingPersistence(configuration);
         services.AddNotificationInfrastructure(configuration, environment);
         services.AddScoped<IKeyEntitlementLookup, KeyEnvelopeEntitlementLookup>();
-        services.AddScoped<ISurveyOfficesService, SurveyOfficesService>();
         services.AddScoped<IPropertyKeysService, PropertyKeysService>();
         services.AddScoped<IPropertyKeyGateResolver, PropertyKeyGateResolver>();
         services.AddScoped<IPropertyAccessHoldService, PropertyAccessHoldService>();

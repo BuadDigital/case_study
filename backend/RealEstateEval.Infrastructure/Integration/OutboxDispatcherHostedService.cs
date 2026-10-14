@@ -11,7 +11,7 @@ using RealEstateEval.Application;
 namespace RealEstateEval.Infrastructure.Integration;
 
 /// <summary>
-/// Which <see cref="IOutboxContext"/> this dispatcher drains. Case Study binds
+/// Which <see cref="IOutboxContext"/> this dispatcher drains. Platform binds
 /// <c>MessagingDbContext</c> (dedicated messaging database after Phase 4). Valuation binds
 /// <c>ValuationDbContext</c> so its dedicated outbox is not left stranded.
 /// </summary>

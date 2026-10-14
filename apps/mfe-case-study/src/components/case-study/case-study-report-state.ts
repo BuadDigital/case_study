@@ -62,12 +62,8 @@ export function hydrateCaseStudyReportDraft(args: {
 }): { draft: CaseStudyReportDraft; parentSubmitted: boolean } {
   const { stored, parentDraft, seed, storageTaskId, isParty } = args;
   const base = stored ?? emptyCaseStudyReportDraft(storageTaskId, seed);
-  const mergedAnswers = isParty
-    ? { ...parentDraft?.answers, ...base.answers }
-    : base.answers;
-  const mergedNotes = isParty
-    ? { ...parentDraft?.answerNotes, ...base.answerNotes }
-    : base.answerNotes;
+  const mergedAnswers = isParty ? { ...parentDraft?.answers, ...base.answers } : base.answers;
+  const mergedNotes = isParty ? { ...parentDraft?.answerNotes, ...base.answerNotes } : base.answerNotes;
   const parentSubmitted = parentDraft?.status === "issued";
   return {
     parentSubmitted,

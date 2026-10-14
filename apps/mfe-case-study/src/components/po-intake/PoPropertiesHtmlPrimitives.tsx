@@ -33,6 +33,8 @@ export function propertyWorkflowStatusStyle(
   switch (status) {
     case PropertyListRowStatuses.Done:
       return { label: "مكتمل", base: "#3f8f5f", fg: "#2f7a4d" };
+    case PropertyListRowStatuses.Ready:
+      return { label: "جاهز للرفع", base: "#d9a441", fg: "#b8791a" };
     case PropertyListRowStatuses.Fail:
     case "removed":
       return {

@@ -27,7 +27,7 @@ vi.mock("../valuation-work/lib/shell-utils", () => ({
   apiConfig: () => ({ token: "t" }),
 }));
 vi.mock("@platform/app-shared/query/valuation-lists-query", () => ({
-  useValuationListsQuery: () => ({ data: undefined }),
+  useValuationListsQuery: () => ({ data: { lists: { attachments: [] } } }),
 }));
 vi.mock("../../../lib/case-study-bridge", () => ({
   usePropertyDetailDocuments: () => [],
@@ -86,7 +86,8 @@ describe("ReportDraftPanel (the specialist's side)", () => {
   it("shows nothing when the property has no valuation request", async () => {
     const { container } = renderPanel(null);
     await waitFor(() => expect(api.getReportDraftByProperty).toHaveBeenCalled());
-    expect(container.textContent).toBe("");
+    // The card shows a loading skeleton until the read settles, then nothing at all.
+    await waitFor(() => expect(container.textContent).toBe(""));
   });
 
   it("waits for the appraiser's hand-over before opening the draft", async () => {

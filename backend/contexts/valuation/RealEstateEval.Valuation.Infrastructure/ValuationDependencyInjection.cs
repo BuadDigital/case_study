@@ -38,6 +38,11 @@ public static class ValuationDependencyInjection
  // The valuation-request write path: context, per-producer outbox publisher (D5),
  // HTTP PO-number lookup, and the request service.
         services.AddValuationPersistence(configuration, connectionString);
+        // Valuation already runs MessagingRetentionHostedService for its local outbox;
+        // that sweep also removes owner-local idempotency rows.
+        services.AddOwnerCommandIdempotencyPersistence<ValuationDbContext>(
+            configuration,
+            addRetentionHostedService: false);
         services.AddScoped<IValuationEventPublisher, ValuationOutboxPublisher>();
         services.AddScoped<IPropertyPoNumberLookup, RemotePropertyPoNumberLookup>();
         services.AddScoped<IValuationRequestService, ValuationRequestService>();

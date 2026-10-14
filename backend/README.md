@@ -186,7 +186,7 @@ summary, and uploads the Cobertura reports as the `backend-coverage` artifact.
 ## Demo-user reseed tool
 
 `backend/scripts/reseed-ahmed-tool` (`ReseedAhmed`) restores demo HR and procurement
-accounts — password and profile fields — without wiping anything else. It must run from the
+accounts — profile fields and roles — without wiping anything else. It must run from the
 repository root, because it reads the Identity service's `appsettings*.json` for the
 connection string; the wrappers handle that:
 
@@ -232,13 +232,10 @@ JWT signing keys live only in `appsettings.Development.json` (and Compose env
 for local Docker). Base `appsettings.json` files carry Issuer/Audience only —
 Production must supply `JWT_SIGNING_KEY` / `Jwt:SigningKey` explicitly.
 
-Passwordless username login (`POST /api/auth/login`)
-requires **both** `ASPNETCORE_ENVIRONMENT=Development` **and**
-`Auth:EnableDevLogin=true`. Otherwise those endpoints return 404. Prefer
-`POST /api/auth/login` accepts email (preferred by the UI) or username plus password.
-Local seed accounts use the password set on each `HrStaffSeed` / `ProcProviderSeed`
-record (`user1234`). Demo seeding is rejected in Production and the normal production
-password policy remains unchanged.
+Login (`POST /api/auth/login`, Saudi mobile or username, no credential) requires
+`Auth:EnableDevLogin=true`; otherwise it returns 404. There are no passwords anywhere in
+the product: seed accounts carry none, and sign-in is by the seeded mobile number. Demo
+seeding is rejected in Production.
 
 ### Session tokens
 
@@ -260,15 +257,12 @@ Login returns a short-lived access token plus an opaque refresh token:
   access immediately should call `IAuthSessionService.RevokeAllForUserAsync` and rely
   on the short access-token window.
 
-### Staff sign-in (phone; no password activation)
+### Staff sign-in (phone)
 
-`POST /api/users` creates the account **without a password**, with required Saudi
-mobile, status **Active**. The response is `{ user, userName, activationRequired: false }`.
-The holder signs in at `/login` with the mobile number (OTP UI is interim theatre until
-Saudi SMS OTP is wired) via `POST /api/auth/login` (`Auth:EnableDevLogin`).
-
-Password activation tickets (`/activate`, `/api/auth/activate`,
-`/api/users/{id}/activation-ticket`) are removed from the product.
+`POST /api/users` creates the account with a required Saudi mobile and status **Active**.
+The response is `{ user, userName }`. The holder signs in at `/login` with the mobile
+number (OTP UI is interim theatre until Saudi SMS OTP is wired) via `POST /api/auth/login`
+(`Auth:EnableDevLogin`). Accounts have no password and no activation step.
 
 ## HTTP security (shared pipeline)
 
@@ -594,7 +588,8 @@ Case Study consumer completes `property-appraisal` tasks on report submitted; lo
 ### Delivery guarantees
 
 Writers stage events into `messaging.OutboxMessages` in the same transaction as the domain
-change. The dispatcher (case-study only) then delivers them **at least once**:
+change. Platform drains the dedicated Messaging outbox, while Valuation drains its local
+producer outbox. Both dispatchers deliver **at least once**:
 
 - **Claiming.** Each batch takes a two-minute lease using `FOR UPDATE SKIP LOCKED`, so
   multiple replicas claim disjoint rows instead of publishing the same event twice. A

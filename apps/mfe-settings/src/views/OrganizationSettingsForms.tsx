@@ -1,16 +1,13 @@
 "use client";
 
 /**
- * Generic settings-card bodies: the communications (OTP / SMS / SMTP) form
- * with its test-send row, and the SLA + valuation thresholds form. Both edit
+ * Generic settings-card body: the SLA + valuation thresholds form. It edits
  * the draft through the workflow's patch helpers.
  */
 
 import type { ReactNode } from "react";
 import {
-  Spinner,
   cn,
-  opsBtnGhost,
   opsFld,
   opsFldControl,
   opsFldFull,
@@ -45,126 +42,6 @@ function Field({
   );
 }
 
-export function OrganizationCommunicationsForm({
-  workflow,
-}: {
-  workflow: OrganizationSettingsWorkflow;
-}) {
-  const {
-    canEdit,
-    draft,
-    patchCommunications,
-    testDestination,
-    setTestDestination,
-    testing,
-    runTest,
-  } = workflow;
-  const c = draft.communications;
-  return (
-    <>
-      <p className={cn(opsTfNote, "m-0 mb-3.5")}>
-        واجهة موحّدة لإرسال OTP عبر الجوال. الافتراضي <code>dev-log</code>{" "}
-        يكتب الرمز في سجل الخادم. مفاتيح API لا تُعاد في الاستجابة — اترك
-        الحقل فارغاً للإبقاء على القيمة الحالية.
-      </p>
-      <div className={opsFormGrid}>
-        <Field id="org-otp-provider" label="مزوّد OTP">
-          <select
-            id="org-otp-provider"
-            className={opsFldControl}
-            value={c.otpProvider === "email" ? "sms" : c.otpProvider}
-            disabled={!canEdit}
-            onChange={(e) => patchCommunications({ otpProvider: e.target.value })}
-          >
-            <option value="dev-log">dev-log (تطوير)</option>
-            <option value="sms">sms</option>
-          </select>
-        </Field>
-        <Field id="org-otp-channel" label="قناة OTP الافتراضية">
-          <select
-            id="org-otp-channel"
-            className={opsFldControl}
-            value={c.defaultOtpChannel === "email" ? "sms" : c.defaultOtpChannel}
-            disabled={!canEdit}
-            onChange={(e) => patchCommunications({ defaultOtpChannel: e.target.value })}
-          >
-            <option value="sms">sms</option>
-          </select>
-        </Field>
-        <Field id="org-sms-sender" label="معرّف مرسل SMS">
-          <input
-            id="org-sms-sender"
-            className={opsFldControl}
-            dir="ltr"
-            value={c.smsSenderId ?? ""}
-            disabled={!canEdit}
-            onChange={(e) => patchCommunications({ smsSenderId: e.target.value })}
-          />
-        </Field>
-        <Field id="org-sms-api-url" label="عنوان API للرسائل (SMS)" full>
-          <input
-            id="org-sms-api-url"
-            className={opsFldControl}
-            dir="ltr"
-            placeholder="https://…"
-            value={c.smsApiUrl ?? ""}
-            disabled={!canEdit}
-            onChange={(e) => patchCommunications({ smsApiUrl: e.target.value })}
-          />
-        </Field>
-        <Field
-          id="org-sms-api-key"
-          full
-          label={
-            <>
-              مفتاح API للرسائل
-              {c.smsApiKeyConfigured ? " (محفوظ — اترك فارغاً للإبقاء)" : ""}
-            </>
-          }
-        >
-          <input
-            id="org-sms-api-key"
-            className={opsFldControl}
-            dir="ltr"
-            type="password"
-            autoComplete="new-password"
-            placeholder={c.smsApiKeyConfigured ? "••••••••" : ""}
-            value={c.smsApiKey ?? ""}
-            disabled={!canEdit}
-            onChange={(e) => patchCommunications({ smsApiKey: e.target.value })}
-          />
-        </Field>
-      </div>
-
-      <div className={cn(opsTfNote, "mt-4 flex flex-wrap items-end gap-2.5")}>
-        <div className={cn(opsFld, "min-w-[12rem] flex-1")}>
-          <label htmlFor="org-test-destination" className={opsTfLbl}>
-            وجهة اختبار (جوال)
-          </label>
-          <input
-            id="org-test-destination"
-            className={cn(opsFldControl, "bg-surface")}
-            dir="ltr"
-            value={testDestination}
-            disabled={!canEdit}
-            onChange={(e) => setTestDestination(e.target.value)}
-            placeholder="+9665…"
-          />
-        </div>
-        <button
-          type="button"
-          className={opsBtnGhost}
-          disabled={!canEdit || testing || !testDestination.trim()}
-          onClick={() => void runTest()}
-        >
-          {testing ? <Spinner /> : null}
-          <span>{testing ? "جاري الإرسال…" : "اختبار الإرسال"}</span>
-        </button>
-      </div>
-    </>
-  );
-}
-
 export function OrganizationSlaForm({
   workflow,
 }: {
@@ -176,7 +53,7 @@ export function OrganizationSlaForm({
     <>
       <p className={cn(opsTfNote, "m-0 mb-3.5")}>
         التعديل يسري على أوامر العمل الجديدة فقط. الجارية تحتفظ بمهلتها
-        المحسوبة عند الاستلام.
+        المحسوبة عند الاستلام. وأرقام التقييم تسري على التقييمات الجديدة فقط.
       </p>
       <div className={opsFormGrid}>
         <Field id="org-sla-default" label="أيام عمل — تنفيذ / تركات">
@@ -222,7 +99,7 @@ export function OrganizationSlaForm({
             className={opsFldControl}
             type="number"
             min={1}
-            max={20}
+            max={3}
             dir="ltr"
             value={String(valuation.maxAdoptedComparables)}
             disabled={!canEdit}

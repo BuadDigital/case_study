@@ -18,5 +18,14 @@ export default defineConfig({
     actionTimeout: 20_000,
     navigationTimeout: 60_000,
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        // SLOWMO=<ms> slows every action for a watched (--headed) demonstration run.
+        launchOptions: { slowMo: Number(process.env.SLOWMO ?? 0) || 0 },
+      },
+    },
+  ],
 });

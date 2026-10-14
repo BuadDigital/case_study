@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, cn, opsFldControl, promptAction, useToast } from "@platform/ui-kit";
+import { Button, InlineLoadingSkeleton, cn, opsFldControl, promptAction, useToast } from "@platform/ui-kit";
 import {
   reopenReportIssuance,
   saveReportDraftChoices,
@@ -76,7 +76,8 @@ export function ReportDraftPanel({
   const [choices, setChoices] = useState<SpecialistReportChoices | null>(null);
   const [conformity, setConformity] = useState(false);
   const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
+  // Which action is in flight — its button spins, the others stay disabled.
+  const [busy, setBusy] = useState<"send" | "withdraw" | "reopen" | null>(null);
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const seededRef = useRef(false);
   const dirtyRef = useRef(false);
@@ -183,7 +184,7 @@ export function ReportDraftPanel({
   const send = useCallback(async () => {
     const config = apiConfig();
     if (!config || !draft || !choices) return;
-    setBusy(true);
+    setBusy("send");
     try {
       // The server keeps what he last saved; flush a pending edit before sending.
       if (dirtyRef.current && !(await persist(choices))) return;
@@ -198,7 +199,7 @@ export function ReportDraftPanel({
       setDraft(res.data);
       showToast("أُرسلت مسودة التقرير للمقيّم", "success");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }, [choices, conformity, draft, note, persist, setDraft, showToast]);
 
@@ -211,7 +212,7 @@ export function ReportDraftPanel({
       confirmLabel: "سحب المسودة",
     });
     if (reason === null) return;
-    setBusy(true);
+    setBusy("withdraw");
     try {
       const res = await withdrawReportDraft(config, draft.valuationRequestId, reason.trim() || undefined);
       if (!res.ok) {
@@ -222,7 +223,7 @@ export function ReportDraftPanel({
       setDraft(res.data);
       showToast("سُحبت المسودة — يمكنك تعديلها وإعادة إرسالها", "success");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }, [draft, setDraft, showToast]);
 
@@ -239,7 +240,7 @@ export function ReportDraftPanel({
       confirmLabel: "فتح بنسخة جديدة",
     });
     if (reason === null) return;
-    setBusy(true);
+    setBusy("reopen");
     try {
       const res = await reopenReportIssuance(config, draft.valuationRequestId, reason.trim());
       if (!res.ok) {
@@ -251,11 +252,19 @@ export function ReportDraftPanel({
       notifyTasksChanged();
       showToast("فُتح التقرير بنسخة جديدة — عاد التقييم للمقيّم", "success");
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   }, [draft, propertyId, queryClient, showToast]);
 
-  if (draftQuery.isPending) return null;
+  const anyBusy = busy !== null;
+
+  if (draftQuery.isPending) {
+    return (
+      <ValCard title="مسودة تقرير التقييم">
+        <InlineLoadingSkeleton />
+      </ValCard>
+    );
+  }
   if (draftQuery.isError) {
     return (
       <p className="mb-3 mt-0 text-[12.5px] text-danger-text">
@@ -299,8 +308,15 @@ export function ReportDraftPanel({
 
       {canEdit && deposited ? (
         <div className="mb-3 flex justify-end">
-          <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void reopenAsNewVersion()}>
-            فتح التقرير بنسخة جديدة
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            loading={busy === "reopen"}
+            disabled={anyBusy}
+            onClick={() => void reopenAsNewVersion()}
+          >
+            {busy === "reopen" ? "جاري فتح النسخة الجديدة…" : "فتح التقرير بنسخة جديدة"}
           </Button>
         </div>
       ) : null}
@@ -321,13 +337,19 @@ export function ReportDraftPanel({
         <div className="flex flex-col gap-4">
           <div>
             <h4 className="mb-2 mt-0 text-[13px] font-extrabold text-heading">مرفقات التقرير</h4>
-            <ValuationReportAttachmentsEditor
-              rows={printRows}
-              selectedKeys={choices.printAttachmentKeys}
-              orderKeys={printOrderKeys}
-              disabled={!editable || busy}
-              onChange={patchChoices}
-            />
+            {valuationLists ? (
+              <ValuationReportAttachmentsEditor
+                rows={printRows}
+                selectedKeys={choices.printAttachmentKeys}
+                orderKeys={printOrderKeys}
+                disabled={!editable || anyBusy}
+                onChange={patchChoices}
+              />
+            ) : (
+              // The attachment catalog is what the rows are built from — without it the editor would
+              // claim «لا توجد مرفقات معرفة بعد» while it is still loading.
+              <InlineLoadingSkeleton />
+            )}
           </div>
 
           {editable ? (
@@ -337,7 +359,7 @@ export function ReportDraftPanel({
                   type="checkbox"
                   className="mt-0.5 size-4 shrink-0 accent-[var(--ink)]"
                   checked={conformity}
-                  disabled={busy}
+                  disabled={anyBusy}
                   onChange={(e) => setConformity(e.target.checked)}
                 />
                 <span>أؤكد أن التقييم مطابق لدراسة العقار</span>
@@ -347,7 +369,7 @@ export function ReportDraftPanel({
                 placeholder="ملاحظة للمقيّم (اختياري)"
                 value={note}
                 maxLength={2000}
-                disabled={busy}
+                disabled={anyBusy}
                 onChange={(e) => setNote(e.target.value)}
               />
               <div className="flex flex-wrap items-center justify-end gap-3">
@@ -366,10 +388,11 @@ export function ReportDraftPanel({
                   type="button"
                   variant="accent"
                   size="sm"
-                  disabled={busy || !conformity}
+                  loading={busy === "send"}
+                  disabled={anyBusy || !conformity}
                   onClick={() => void send()}
                 >
-                  إرسال المسودة للمقيّم
+                  {busy === "send" ? "جاري الإرسال…" : "إرسال المسودة للمقيّم"}
                 </Button>
               </div>
             </div>
@@ -377,8 +400,15 @@ export function ReportDraftPanel({
 
           {canEdit && status === "sent" ? (
             <div className="flex justify-end border-t border-border pt-3">
-              <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void withdraw()}>
-                سحب المسودة
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                loading={busy === "withdraw"}
+                disabled={anyBusy}
+                onClick={() => void withdraw()}
+              >
+                {busy === "withdraw" ? "جاري السحب…" : "سحب المسودة"}
               </Button>
             </div>
           ) : null}

@@ -24,6 +24,7 @@ public static class AttachmentsDependencyInjection
         string connectionString)
     {
         services.AddAttachmentsPersistence(configuration, connectionString);
+        services.AddOwnerCommandIdempotencyPersistence<AttachmentsDbContext>(configuration);
         services.AddRemotePlatformCatalogs(configuration);
         services.AddRemotePropertyTimelineRecorder(configuration);
         services.Configure<BlobStorageOptions>(configuration.GetSection("BlobStorage"));

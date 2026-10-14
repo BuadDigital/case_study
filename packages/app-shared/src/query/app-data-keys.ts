@@ -4,9 +4,12 @@ export const appDataKeys = {
   /** One server page of the PO list — see docs/architecture/pagination-contract.md §1. */
   poListRowsPage: (query: Record<string, unknown>) =>
     [...appDataKeys.poListRows(), "page", query] as const,
-  /** The PO list KPI counts for one filter set — pagination-contract §1.1. */
+  /**
+   * The PO list KPI counts for one filter set — pagination-contract §1.1. Under the rows prefix
+   * so a work-order change (a handover, an intake) refreshes the band with the rows.
+   */
   poListCounts: (query: Record<string, unknown>) =>
-    [...appDataKeys.all, "po-list-counts", query] as const,
+    [...appDataKeys.poListRows(), "counts", query] as const,
   /** Prefix every party-billing read shares, so a write invalidates them all. */
   partyBilling: () => [...appDataKeys.all, "party-billing"] as const,
   /** One server page of statements — pagination-contract §9.1. */
@@ -49,7 +52,6 @@ export const appDataKeys = {
     [...appDataKeys.failures(), "page", query] as const,
   failureTypes: () => [...appDataKeys.all, "failure-types"] as const,
   fieldDictionary: () => [...appDataKeys.all, "field-dictionary"] as const,
-  surveyOffices: () => [...appDataKeys.all, "survey-offices"] as const,
   propertyKeys: () => [...appDataKeys.all, "property-keys"] as const,
   keyEnvelopes: () => [...appDataKeys.all, "key-envelopes"] as const,
   keyEnvelopeFees: () => [...appDataKeys.all, "key-envelope-fees"] as const,

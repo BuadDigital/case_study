@@ -7,10 +7,10 @@ public static class PlatformPermissionCatalog
     [
         "dashboard", "active-primary-data", "active-distribution", "active-case-study",
         "system-upload",
-        "po", "all-transactions", "property-map", "favorites", "bourse-inquiry", "survey", "keys", "failures", "suspended-transactions",
+        "po", "all-transactions", "property-map", "favorites", "bourse-inquiry", "keys", "failures", "suspended-transactions",
         "valuation-requests", "comparable-properties", "property-inspection", "active-inspection", "operations-tasks",
         "property-appraisal", "active-survey", "party-fees",
-        "system-fields-catalog", "attachment-print-dictionary", "difference-factor-catalog", "system-screen-catalog", "financial",
+        "system-fields-catalog", "attachment-print-dictionary", "financial",
         "users", "courts", "failure-types", "case-study-info-roles",
         "audit-log", "fee-pricing", "organization-settings", "field-sync-board",
     ];

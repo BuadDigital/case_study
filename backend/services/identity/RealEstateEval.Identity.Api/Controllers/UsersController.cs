@@ -24,14 +24,6 @@ public class UsersController : ControllerBase
         return Ok(list);
     }
 
-    [HttpGet("organization")]
-    public async Task<ActionResult<OrganizationOverviewDto>> Organization(
-        CancellationToken cancellationToken)
-    {
-        var overview = await _users.GetOrganizationOverviewAsync(cancellationToken);
-        return Ok(overview);
-    }
-
     [HttpPost]
     public async Task<ActionResult<CreateStaffUserResponseDto>> Create(
         [FromBody] CreateStaffUserRequest request,
@@ -68,7 +60,7 @@ public class UsersController : ControllerBase
         return Ok(result);
     }
 
- /// <summary>Clears an Identity lockout after too many failed sign-in attempts.</summary>
+ /// <summary>Clears an Identity lockout so the holder can sign in again.</summary>
     [HttpPost("{id}/unlock")]
     public async Task<IActionResult> Unlock(
         string id,

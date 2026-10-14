@@ -72,8 +72,9 @@ public class PropertyListRowBuilderTests
     Assert.Equal(PropertyListRowStatuses.Fail, Assert.Single(items).Row.Status);
   }
 
+  /// <summary>An issued report is «جاهز للرفع»; only the Enfaz handover is «مكتمل».</summary>
   [Fact]
-  public void Build_marks_completed_case_study_as_done()
+  public void Build_marks_completed_case_study_as_ready_until_handed_over()
   {
     var propertyId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
     var order = new WorkOrder
@@ -113,8 +114,52 @@ public class PropertyListRowBuilderTests
       tasksByProperty);
 
     var row = Assert.Single(items).Row;
-    Assert.Equal(PropertyListRowStatuses.Done, row.Status);
+    Assert.Equal(PropertyListRowStatuses.Ready, row.Status);
     Assert.Equal(PropertyListRowStatuses.Done, row.Study);
+  }
+
+  [Fact]
+  public void Build_marks_handed_over_property_as_done()
+  {
+    var propertyId = Guid.Parse("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
+    var order = new WorkOrder
+    {
+      PoNumber = "PO-350",
+      Properties =
+      [
+        new WorkOrderProperty
+        {
+          Id = propertyId,
+          IdentifierType = PropertyIdentifierType.Deed,
+          DeedNumber = "790",
+          City = "الرياض",
+          Classification = "أرض",
+          PropertyType = "أرض",
+          BourseDataCompleted = true,
+          EnfazHandoverAtUtc = new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc),
+        },
+      ],
+    };
+
+    var tasksByProperty = new Dictionary<Guid, IReadOnlyList<WorkflowTask>>
+    {
+      [propertyId] =
+      [
+        Task(
+          WorkflowTaskKind.CaseStudyProperty,
+          "PO-350",
+          propertyId,
+          WorkflowTaskStatus.Completed,
+          WorkflowTaskPhase.Done),
+      ],
+    };
+
+    var items = RealEstateEval.CaseStudy.Infrastructure.Services.PropertyListRowBuilder.Build(
+      [order],
+      new HashSet<string>(StringComparer.Ordinal),
+      tasksByProperty);
+
+    Assert.Equal(PropertyListRowStatuses.Done, Assert.Single(items).Row.Status);
   }
 
   [Fact]

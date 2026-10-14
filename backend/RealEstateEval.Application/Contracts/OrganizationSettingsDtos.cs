@@ -6,7 +6,6 @@ public sealed class OrganizationSettingsDto
     public OrganizationEvaluatorSettingsDto Evaluator { get; init; } = new();
     public List<OrganizationValuerRosterEntryDto> Valuers { get; init; } = [];
     public OrganizationBrandingSettingsDto Branding { get; init; } = new();
-    public OrganizationCommunicationsSettingsDto Communications { get; init; } = new();
     public OrganizationSlaSettingsDto Sla { get; init; } = new();
     public OrganizationValuationSettingsDto Valuation { get; init; } = new();
     public OrganizationValuationReportSettingsDto ValuationReport { get; init; } = new();
@@ -53,7 +52,6 @@ public sealed class OrganizationCompanySettingsDto
     /// <summary>ISO date — expiration of the establishment’s license to practice.</summary>
     public string? PracticeLicenseExpiresAt { get; init; } = "2027-03-10";
     /// <summary>Certified Appraiser reference from the Appraiser registry (certified or row ID).</summary>
-    public string? CertifiedValuerId { get; init; }
     public string? Email { get; init; }
     public string? Phone { get; init; }
     public string? Website { get; init; }
@@ -105,10 +103,8 @@ public sealed class OrganizationBrandingSettingsDto
 {
     public string StampUrl { get; init; } = "/case-study/ejadah-stamp.svg";
     public string SignatureUrl { get; init; } = "/case-study/ejadah-signature.png";
-    public string? HeaderUrl { get; init; }
     /// <summary>Report letterhead image — sliced by Letterhead*Mm. Null keeps the template's baked letterhead.</summary>
     public string? LetterheadUrl { get; init; }
-    public string WatermarkText { get; init; } = "EJADAH";
 
     public string? LogoColorUrl { get; init; }
     public string? LogoWhiteUrl { get; init; }
@@ -134,25 +130,6 @@ public sealed class OrganizationBrandingSettingsDto
     public string? LetterheadUpdatedAt { get; init; }
 }
 
-public sealed class OrganizationCommunicationsSettingsDto 
-{
- /// <summary>dev-log | sms | email</summary>
-    public string OtpProvider { get; init; } = "dev-log";
-    public string DefaultOtpChannel { get; init; } = "sms";
-    public string? SmsSenderId { get; init; }
-    public string? EmailFrom { get; init; }
-    public string? SmsApiUrl { get; init; }
- /// <summary>Write-only on save; never returned in clear text from GET.</summary>
-    public string? SmsApiKey { get; init; }
-    public bool SmsApiKeyConfigured { get; init; }
-    public string? SmtpHost { get; init; }
-    public int SmtpPort { get; init; } = 587;
-    public string? SmtpUsername { get; init; }
- /// <summary>Write-only on save; never returned in clear text from GET.</summary>
-    public string? SmtpPassword { get; init; }
-    public bool SmtpPasswordConfigured { get; init; }
-}
-
 public sealed class OrganizationSlaSettingsDto
 {
     public int DefaultBusinessDays { get; init; } = 4;
@@ -162,11 +139,8 @@ public sealed class OrganizationSlaSettingsDto
 /// <summary>Valuation-engine settings — “adjustable maximum”.</summary>
 public sealed class OrganizationValuationSettingsDto
 {
- /// <summary>Max comparables that can be adopted per valuation (1–20).</summary>
+ /// <summary>Max comparables that can be adopted per valuation (1–3: the report template prints three); the evaluator reads it.</summary>
     public int MaxAdoptedComparables { get; init; } = 3;
-
- /// <summary>Kept for saved-settings compatibility. No longer drives a methodology alert.</summary>
-    public int ComparableTimeGapMonths { get; init; } = 6;
 
  /// <summary>Area normalization factor % per instance/multiplier (logic-normalizations, default 5).</summary>
     public decimal AreaFactorPct { get; init; } = 5m;
@@ -184,7 +158,6 @@ public sealed class SaveOrganizationSettingsRequest
     public OrganizationEvaluatorSettingsDto? Evaluator { get; init; }
     public List<OrganizationValuerRosterEntryDto>? Valuers { get; init; }
     public OrganizationBrandingSettingsDto? Branding { get; init; }
-    public OrganizationCommunicationsSettingsDto? Communications { get; init; }
     public OrganizationSlaSettingsDto? Sla { get; init; }
     public OrganizationValuationSettingsDto? Valuation { get; init; }
     public OrganizationValuationReportSettingsDto? ValuationReport { get; init; }
@@ -196,17 +169,17 @@ public sealed class SyncStaffValuerRequest
     public required string DisplayName { get; init; }
     /// <summary><c>upsert</c> creates/links an active valuer row; <c>deactivate</c> hides a linked row.</summary>
     public required string Mode { get; init; }
-}
 
-public sealed class TestCommunicationRequest
-{
-    public string Channel { get; init; } = "sms";
-    public string Destination { get; init; } = "";
-}
-
-public sealed class TestCommunicationResultDto
-{
-    public bool Ok { get; init; }
-    public string Provider { get; init; } = "";
-    public string? Detail { get; init; }
+    /// <summary>none | valuer | reviewer | assistant — the account's seat in the valuation report. Null keeps the stored seat.</summary>
+    public string? ReportRole { get; init; }
+    /// <summary>Taqeem credentials carried on the roster row; null keeps the stored value, blank clears it.</summary>
+    public string? MembershipCategory { get; init; }
+    public string? MembershipNumber { get; init; }
+    public string? MembershipExpiresAt { get; init; }
+    public string? LicenseNumber { get; init; }
+    public string? LicenseIssuedAt { get; init; }
+    public string? LicenseExpiresAt { get; init; }
+    public string? SignatureUrl { get; init; }
+    /// <summary>An unlinked roster row to claim for this account (names differ, same person).</summary>
+    public string? LinkRosterRowId { get; init; }
 }

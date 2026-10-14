@@ -262,6 +262,8 @@ jobs:
           WEB_PUSH_SUBJECT: ${{ secrets.WEB_PUSH_SUBJECT }}
           JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
           JWT_PREVIOUS_SIGNING_KEY: ${{ secrets.JWT_PREVIOUS_SIGNING_KEY }}
+          OURSMS_API_KEY: ${{ secrets.OURSMS_API_KEY }}
+          OURSMS_SENDER: ${{ secrets.OURSMS_SENDER }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           RABBITMQ_USER: ${{ secrets.RABBITMQ_USER }}
           RABBITMQ_PASSWORD: ${{ secrets.RABBITMQ_PASSWORD }}
@@ -270,7 +272,7 @@ jobs:
           username: ${{ secrets.HETZNER_SSH_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: ${{ secrets.HETZNER_SSH_PORT }}
-          envs: GHCR_TOKEN,GHCR_USER,IMAGE_OWNER,IMAGE_TAG,TLS_CERTIFICATE_PATH,TLS_PRIVATE_KEY_PATH,PUBLIC_APP_URL,WEB_PUSH_ENABLED,WEB_PUSH_PUBLIC_KEY,WEB_PUSH_PRIVATE_KEY,WEB_PUSH_SUBJECT,JWT_SIGNING_KEY,JWT_PREVIOUS_SIGNING_KEY,POSTGRES_PASSWORD,RABBITMQ_USER,RABBITMQ_PASSWORD
+          envs: GHCR_TOKEN,GHCR_USER,IMAGE_OWNER,IMAGE_TAG,TLS_CERTIFICATE_PATH,TLS_PRIVATE_KEY_PATH,PUBLIC_APP_URL,WEB_PUSH_ENABLED,WEB_PUSH_PUBLIC_KEY,WEB_PUSH_PRIVATE_KEY,WEB_PUSH_SUBJECT,JWT_SIGNING_KEY,JWT_PREVIOUS_SIGNING_KEY,OURSMS_API_KEY,OURSMS_SENDER,POSTGRES_PASSWORD,RABBITMQ_USER,RABBITMQ_PASSWORD
           # Rolling update waits on each service's health; allow more than the 10m default.
           command_timeout: 25m
           script: |
@@ -313,6 +315,8 @@ jobs:
             apply_secret WEB_PUSH_SUBJECT "${WEB_PUSH_SUBJECT:-}"
             apply_secret JWT_SIGNING_KEY "${JWT_SIGNING_KEY:-}"
             apply_secret JWT_PREVIOUS_SIGNING_KEY "${JWT_PREVIOUS_SIGNING_KEY:-}"
+            apply_secret OURSMS_API_KEY "${OURSMS_API_KEY:-}"
+            apply_secret OURSMS_SENDER "${OURSMS_SENDER:-}"
             apply_secret POSTGRES_PASSWORD "${POSTGRES_PASSWORD:-}"
             apply_secret RABBITMQ_USER "${RABBITMQ_USER:-}"
             apply_secret RABBITMQ_PASSWORD "${RABBITMQ_PASSWORD:-}"
@@ -344,6 +348,8 @@ jobs:
             }
 
             required_secret "JWT_SIGNING_KEY" "${JWT_SIGNING_KEY:-}"
+            required_secret "OURSMS_API_KEY" "${OURSMS_API_KEY:-}"
+            required_secret "OURSMS_SENDER" "${OURSMS_SENDER:-}"
             required_secret "POSTGRES_PASSWORD" "${POSTGRES_PASSWORD:-}"
             required_secret "RABBITMQ_USER" "${RABBITMQ_USER:-}"
             required_secret "RABBITMQ_PASSWORD" "${RABBITMQ_PASSWORD:-}"
@@ -419,8 +425,18 @@ jobs:
               chmod 600 .env
             fi
 
-            # Pull images, apply EF migrations (one-shot), then bring the stack up.
+            # Pull images, raise PostgreSQL capacity before the old 20-connection pools
+            # overlap the new generation, then apply EF migrations.
             docker compose -f docker-compose.prod.yml pull
+            # A changed postgres command recreates the container while the previous service
+            # generation is still serving: every pool drops once and reconnects, so a short
+            # burst of connection errors right here is expected, not a failed deploy.
+            echo "::notice::recreating postgres (max_connections) — expect one burst of reconnects"
+            if ! $COMPOSE up -d --wait --no-deps postgres; then
+              echo "::error::postgres failed to accept the connection budget"
+              $COMPOSE ps -a || true
+              exit 1
+            fi
             docker compose -f docker-compose.prod.yml run --rm migrate
             # Audit A-005: undo what earlier demo seeding left in live data (idempotent) and
             # print what still needs a person — see the [retire-demo] lines in this log.

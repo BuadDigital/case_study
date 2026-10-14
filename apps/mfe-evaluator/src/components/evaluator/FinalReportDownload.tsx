@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button, useToast } from "@platform/ui-kit";
+import { Button, Spinner, useToast } from "@platform/ui-kit";
 import {
   downloadFinalReport,
   generateFinalReport,
@@ -12,7 +12,8 @@ import { apiConfig } from "./valuation-work/lib/shell-utils";
 
 /**
  * The generated final report (the approved report with the deposit code in its headers + the certificate page).
- * Shown once the final copy is issued: download when ready, retry when the file is still being prepared.
+ * Shown once the final copy is issued: download when ready; while the file is still being prepared the draft
+ * query polls the server (see `useReportDraftByProperty`), and a retry re-asks for the render.
  */
 export function FinalReportDownload({
   propertyId,
@@ -75,15 +76,18 @@ export function FinalReportDownload({
 
   return (
     <div className="flex flex-wrap items-center gap-2" data-testid="final-report-download">
-      <span className="text-[12px] text-text-2">
-        {ready ? "ملف التقرير النهائي (التقرير + رمز الإيداع + شهادة الإيداع) جاهز." : "ملف التقرير النهائي قيد الإعداد."}
+      <span className="flex items-center gap-1.5 text-[12px] text-text-2" role="status" aria-live="polite">
+        {ready ? null : <Spinner />}
+        {ready
+          ? "ملف التقرير النهائي (التقرير + رمز الإيداع + شهادة الإيداع) جاهز."
+          : "ملف التقرير النهائي قيد الإعداد — يظهر زر التنزيل تلقائياً حين يجهز."}
       </span>
       {ready ? (
-        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void download()}>
-          تنزيل التقرير النهائي (PDF)
+        <Button type="button" variant="outline" size="sm" loading={busy} onClick={() => void download()}>
+          {busy ? "جاري التنزيل…" : "تنزيل التقرير النهائي (PDF)"}
         </Button>
       ) : (
-        <Button type="button" variant="outline" size="sm" disabled={busy} onClick={() => void retry()}>
+        <Button type="button" variant="outline" size="sm" loading={busy} onClick={() => void retry()}>
           {busy ? "جاري التجهيز…" : "إعادة تجهيز الملف"}
         </Button>
       )}

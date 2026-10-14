@@ -136,6 +136,56 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts.Attachments.Mi
                     b.ToTable("PhotoMetadata", "attachments");
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.CommandIdempotencyRecord", b =>
+                {
+                    b.Property<string>("ActorId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("HttpMethod")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("RequestPath")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ExecutionId")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Location")
+                        .HasMaxLength(2048)
+                        .HasColumnType("character varying(2048)");
+
+                    b.Property<byte[]>("ResponseBody")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("StatusCode")
+                        .HasColumnType("integer");
+
+                    b.HasKey("ActorId", "HttpMethod", "RequestPath", "IdempotencyKey");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.ToTable("CommandIdempotencyRecords", "messaging");
+                });
+
             modelBuilder.Entity("RealEstateEval.Attachments.Domain.PhotoMetadata", b =>
                 {
                     b.HasOne("RealEstateEval.Attachments.Domain.FileAttachment", null)

@@ -1,3 +1,4 @@
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Financial.Application.Services;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.Financial.Infrastructure.Persistence;
@@ -12,6 +13,13 @@ namespace RealEstateEval.Application.Tests;
 /// </summary>
 internal static class TestPricing
 {
-    public static PartyFeePricingService Create(FinancialDbContext financial, TimeProvider? time = null) =>
-        new(new PartyFeePricingRepository(financial), new AuditLogWriter(time), time);
+    public static PartyFeePricingService Create(
+        FinancialDbContext financial,
+        TimeProvider? time = null,
+        IAuditLogAppend? audit = null) =>
+        new(
+            new PartyFeePricingRepository(financial),
+            new AuditLogWriter(time),
+            audit ?? new RecordingAuditLogAppend(),
+            time);
 }

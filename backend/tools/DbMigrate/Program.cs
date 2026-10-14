@@ -66,7 +66,10 @@ if (!streamTypes.Select(type => type.Name)
 var streamConnections = new Dictionary<Type, string>();
 foreach (var type in streamTypes)
 {
-    streamConnections[type] = BoundedContextConnections.ForContext(configuration, type);
+    var connection = BoundedContextConnections.ForContext(configuration, type);
+    streamConnections[type] = NpgsqlConfiguration.EnhanceConnectionString(
+        connection,
+        configuration);
 }
 
 foreach (var connection in streamConnections.Values.Distinct(StringComparer.Ordinal))

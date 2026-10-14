@@ -1,8 +1,10 @@
 "use client";
 
+import { OpsIcon } from "../OpsIcon";
+
 import { useMemo, useRef, useState } from "react";
 import { PageShell, cn, opsFldControl, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterMeta, opsLetterSub, opsLetterTitle, opsTfSegRow, useSwapAnimation } from "@platform/ui-kit";
-import { opsTfSeg, opsTfSegActive } from "../../lib/settings-ops-tw";
+import { opsTfSeg, opsTfSegActive } from "@platform/ui-kit";
 import {
   FIELD_DICTIONARY_STAGES,
   fieldsForDictionaryStage,
@@ -10,23 +12,6 @@ import {
   type FieldDictionaryStageId,
 } from "@platform/app-shared/app-data/property-fields-catalog";
 
-function DictionaryIcon() {
-  return (
-    <svg
-      width={20}
-      height={20}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V4a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 4.5v15z" />
-    </svg>
-  );
-}
 
 export function FieldDictionaryTab() {
   const [stageId, setStageId] = useState<FieldDictionaryStageId>("primary");
@@ -75,7 +60,7 @@ export function FieldDictionaryTab() {
         <div className={opsLetterHead}>
           <div className="flex items-center gap-[11px]">
             <span className={opsIconBoxGold}>
-              <DictionaryIcon />
+              <OpsIcon path="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V4a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 4.5v15z" />
             </span>
             <div>
               <div className={opsLetterTitle}>قاموس الحقول المركزي</div>

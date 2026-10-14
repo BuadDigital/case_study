@@ -158,7 +158,7 @@ public sealed class AuthSessionService(
         if (userId is null)
             return false;
 
-        // Locked (failed passwords) is not disabled: that user may still sync after unlock.
+        // Locked is not disabled: that user may still sync after unlock.
         return await db.UserProfiles
             .AsNoTracking()
             .AnyAsync(

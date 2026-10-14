@@ -26,7 +26,6 @@
     "@platform/types": "*",
     "@platform/ui-kit": "*",
     "@settings/mfe": "*",
-    "@survey/mfe": "*",
     "@tabler/icons-webfont": "^3.31.0",
     "@tanstack/react-query": "^5.100.11",
     "@valuation/mfe": "*",

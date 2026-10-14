@@ -122,35 +122,6 @@ export async function saveFailureTypesCatalog(
   }
 }
 
-// --- Survey offices ---
-
-export type SurveyOfficeDto = {
-  id: string;
-  name: string;
-  active: number;
-  doneMonth: number;
-  avgDays: string;
-  contract: string;
-  statusBusy: boolean;
-  sortOrder: number;
-};
-
-export async function listSurveyOffices(
-  config: PrototypeModulesApiConfig,
-): Promise<PrototypeModulesResult<SurveyOfficeDto[]>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/survey-offices`, {
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = await parseJson<SurveyOfficeDto[]>(res);
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
-}
 
 // --- Valuation requests ---
 

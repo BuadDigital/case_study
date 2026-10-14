@@ -10,6 +10,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
 import {
   ensureOpenValuationRequestByProperty,
   listValuationComparableSelections,
@@ -54,7 +55,6 @@ import {
 } from "./lib/valuation-data-state";
 import { createReloadSequence, ignoreSideFailure, runReload } from "./lib/reload-sequence";
 import type { ReloadOptions, ReloadTicket } from "./lib/reload-sequence";
-import { useDifferenceFactorCatalog } from "./useDifferenceFactorCatalog";
 import { useValuationSectionSaves } from "./useValuationSectionSaves";
 import { useValuationWorkReadModels } from "./useValuationWorkReadModels";
 
@@ -104,7 +104,6 @@ export function useValuationWorkData({
   const [subjectArea, setSubjectArea] = useState("");
   const [adjustmentBasis, setAdjustmentBasis] = useState("price_per_sqm");
   const [analysisNotes, setAnalysisNotes] = useState("");
-  const { factorDefinitions, catalogFactorOptions } = useDifferenceFactorCatalog();
 
   const [approachSettings, setApproachSettings] =
     useState<ValuationApproachSettingsDto | null>(null);
@@ -414,6 +413,9 @@ export function useValuationWorkData({
   // the same property. Then refresh silently — a full load showed the skeleton and re-seeded
   // every section's drafts on each return.
   const fullLoadRef = useRef<{ propertyId: string; done: boolean } | null>(null);
+  // Warm the organization-settings cache so the adoption cap reads the saved value.
+  useEffect(() => void ensureOrganizationSettingsLoaded().catch(() => undefined), []);
+
   useEffect(() => {
     const last = fullLoadRef.current;
     if (last?.propertyId === propertyId) {
@@ -472,8 +474,6 @@ export function useValuationWorkData({
     setAdjustmentBasis,
     analysisNotes,
     setAnalysisNotes,
-    factorDefinitions,
-    catalogFactorOptions,
     approachSettings,
     settingsHydrateKey,
     cost,

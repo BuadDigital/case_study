@@ -38,14 +38,6 @@ public static class OperationsModel
         if (ownsMigrations)
             builder.ApplyReferenceSequenceModel(DatabaseSchemas.Operations);
 
-        builder.Entity<SurveyOffice>(e =>
-        {
-            MapTable(e, "SurveyOffices", DatabaseSchemas.Operations, ownsMigrations);
-            e.Property(x => x.Name).HasMaxLength(256);
-            e.Property(x => x.AvgDaysLabel).HasMaxLength(64);
-            e.Property(x => x.ContractLabel).HasMaxLength(128);
-            e.HasIndex(x => x.SortOrder);
-        });
 
         builder.Entity<PropertyKeyRecord>(e =>
         {

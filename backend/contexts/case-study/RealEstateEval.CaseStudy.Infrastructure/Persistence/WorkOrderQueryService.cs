@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using RealEstateEval.CaseStudy.Application.Mapping;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -153,35 +154,89 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
                 .CountAsync(cancellationToken),
             DoneProperties = await filtered
                 .SelectMany(w => w.Properties)
-                .Where(p => !p.IsRemoved && _db.WorkflowTasks.Any(t =>
-                    t.Kind == CaseStudyPropertyKind
-                    && t.PropertyId == p.Id
-                    && (t.Status == WorkflowTaskStatus.Completed
-                        || t.Phase == WorkflowTaskPhase.Done)))
+                .Where(p => !p.IsRemoved)
+                .Where(ClosedProperty())
                 .CountAsync(cancellationToken),
         };
     }
 
+ // ---- Delivery rules as EF expressions. Mirror PropertyDeliveryRules (in-memory) — change both.
+
+ /// <summary>Closed property: handed over to Enfaz, or every task cancelled. PropertyDeliveryRules.IsClosed.</summary>
+    private Expression<Func<WorkOrderProperty, bool>> ClosedProperty() => p =>
+        p.EnfazHandoverAtUtc != null
+        || (_db.WorkflowTasks.Any(t => t.PropertyId == p.Id)
+            && !_db.WorkflowTasks.Any(t =>
+                t.PropertyId == p.Id && t.Status != WorkflowTaskStatus.Cancelled));
+
+ /// <summary>No cancel / stop override on the order.</summary>
+    private static Expression<Func<WorkOrder, bool>> NoLifecycleOverride() => w =>
+        w.LifecycleStatus == null
+        || (w.LifecycleStatus != WorkOrderLifecycleStatus.Cancelled
+            && w.LifecycleStatus != WorkOrderLifecycleStatus.Stopped);
+
+ /// <summary>At least one live property, and as many as Enfaz promised (min 1).</summary>
+    private static Expression<Func<WorkOrder, bool>> AllExpectedRegistered() => w =>
+        w.Properties.Count(p => !p.IsRemoved) > 0
+        && w.Properties.Count(p => !p.IsRemoved)
+            >= (w.ExpectedPropertyCount < 1 ? 1 : w.ExpectedPropertyCount);
+
+ /// <summary>Every live property is closed (PropertyDeliveryRules.IsClosed, inlined for EF).</summary>
+    private Expression<Func<WorkOrder, bool>> EveryLivePropertyClosed() => w =>
+        !w.Properties.Any(p =>
+            !p.IsRemoved
+            && p.EnfazHandoverAtUtc == null
+            && (!_db.WorkflowTasks.Any(t => t.PropertyId == p.Id)
+                || _db.WorkflowTasks.Any(t =>
+                    t.PropertyId == p.Id && t.Status != WorkflowTaskStatus.Cancelled)));
+
+ /// <summary>Every live property is ready for the handover (PropertyDeliveryRules.IsReady, inlined for EF).</summary>
+    private Expression<Func<WorkOrder, bool>> EveryLivePropertyReady() => w =>
+        !w.Properties.Any(p =>
+            !p.IsRemoved
+            && p.EnfazHandoverAtUtc == null
+            && (!_db.WorkflowTasks.Any(t => t.PropertyId == p.Id)
+                || _db.WorkflowTasks.Any(t =>
+                    t.PropertyId == p.Id
+                    && t.Status != WorkflowTaskStatus.Cancelled
+                    && t.Status != WorkflowTaskStatus.Completed)));
+
+ /// <summary>WorkOrderListStatus.ResolveStudy == completed: no override, all registered, all closed.</summary>
+    private Expression<Func<WorkOrder, bool>> IsCompleted() =>
+        And(NoLifecycleOverride(), And(AllExpectedRegistered(), EveryLivePropertyClosed()));
+
+ /// <summary>WorkOrderListStatus.ResolveStudy == ready_for_enfaz: all registered, all ready, not all closed.</summary>
+    private Expression<Func<WorkOrder, bool>> IsReadyForEnfaz() =>
+        And(NoLifecycleOverride(),
+            And(AllExpectedRegistered(),
+                And(EveryLivePropertyReady(), Not(EveryLivePropertyClosed()))));
+
  /// <summary>
- /// Rows whose PO list status is not terminal — the screen's !isPoListStatusTerminal(status).
- /// cancelled / stopped are the lifecycle overrides; completed (and therefore fully_billed, which
- /// only refines it) is the count condition. new / under_study / partially_billed stay.
+ /// Rows whose study status is not terminal — the screen's !isPoListStatusTerminal(status):
+ /// no cancel / stop override and not completed. new / under_study / ready_for_enfaz (and
+ /// therefore partially_billed) stay.
  /// </summary>
     private IQueryable<WorkOrder> NotTerminal(IQueryable<WorkOrder> rows) =>
-        rows.Where(w =>
-            (w.LifecycleStatus == null
-                || (w.LifecycleStatus != WorkOrderLifecycleStatus.Cancelled
-                    && w.LifecycleStatus != WorkOrderLifecycleStatus.Stopped))
-            && !(w.Properties.Count(p => !p.IsRemoved) > 0
-                && w.Properties.Count(p => !p.IsRemoved)
-                    >= (w.ExpectedPropertyCount < 1 ? 1 : w.ExpectedPropertyCount)
-                && w.Properties.Count(p => !p.IsRemoved && _db.WorkflowTasks.Any(t =>
-                        t.Kind == CaseStudyPropertyKind
-                        && t.PoNumber == w.PoNumber
-                        && t.PropertyId == p.Id
-                        && (t.Status == WorkflowTaskStatus.Completed
-                            || t.Phase == WorkflowTaskPhase.Done)))
-                    >= w.Properties.Count(p => !p.IsRemoved)));
+        rows.Where(And(NoLifecycleOverride(), Not(IsCompleted())));
+
+    private static Expression<Func<T, bool>> And<T>(
+        Expression<Func<T, bool>> left,
+        Expression<Func<T, bool>> right)
+    {
+        var parameter = left.Parameters[0];
+        var rightBody = new ParameterReplacer(right.Parameters[0], parameter).Visit(right.Body);
+        return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(left.Body, rightBody), parameter);
+    }
+
+    private static Expression<Func<T, bool>> Not<T>(Expression<Func<T, bool>> expression) =>
+        Expression.Lambda<Func<T, bool>>(Expression.Not(expression.Body), expression.Parameters[0]);
+
+    private sealed class ParameterReplacer(ParameterExpression from, ParameterExpression to)
+        : ExpressionVisitor
+    {
+        protected override Expression VisitParameter(ParameterExpression node) =>
+            node == from ? to : base.VisitParameter(node);
+    }
 
     private IQueryable<WorkOrder> VisibleWorkOrders(HashSet<string>? visiblePos)
     {
@@ -223,9 +278,9 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
     }
 
  /// <summary>
- /// WorkOrderListStatus.Resolve expressed over Case Study columns only. The billed refinement
- /// needs the Financial invoice set, so the two billing buckets are widened to their study
- /// equivalent by WorkOrderListQueryRules.ResolveStatus.
+ /// WorkOrderListStatus.ResolveStudy expressed over Case Study columns only. The billed
+ /// refinement needs the Financial invoice set, so the two billing buckets are widened by
+ /// WorkOrderListQueryRules.ResolveStatus (partially_billed → Active, fully_billed → Completed).
  /// </summary>
     private IQueryable<WorkOrder> WhereStatus(
         IQueryable<WorkOrder> rows,
@@ -237,39 +292,24 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         if (status == WorkOrderListStatusFilter.Stopped)
             return rows.Where(w => w.LifecycleStatus == WorkOrderLifecycleStatus.Stopped);
 
-        rows = rows.Where(w =>
-            w.LifecycleStatus == null
-            || (w.LifecycleStatus != WorkOrderLifecycleStatus.Cancelled
-                && w.LifecycleStatus != WorkOrderLifecycleStatus.Stopped));
+        if (status == WorkOrderListStatusFilter.Closed)
+            return rows.Where(Not(And(NoLifecycleOverride(), Not(IsCompleted()))));
+
+        if (status == WorkOrderListStatusFilter.Active)
+            return NotTerminal(rows);
+
+        rows = rows.Where(NoLifecycleOverride());
 
         return status switch
         {
             WorkOrderListStatusFilter.New =>
                 rows.Where(w => w.Properties.Count(p => !p.IsRemoved) == 0),
-            WorkOrderListStatusFilter.Completed =>
-                rows.Where(w =>
-                    w.Properties.Count(p => !p.IsRemoved) > 0
-                    && w.Properties.Count(p => !p.IsRemoved)
-                        >= (w.ExpectedPropertyCount < 1 ? 1 : w.ExpectedPropertyCount)
-                    && w.Properties.Count(p => !p.IsRemoved && _db.WorkflowTasks.Any(t =>
-                            t.Kind == CaseStudyPropertyKind
-                            && t.PoNumber == w.PoNumber
-                            && t.PropertyId == p.Id
-                            && (t.Status == WorkflowTaskStatus.Completed
-                                || t.Phase == WorkflowTaskPhase.Done)))
-                        >= w.Properties.Count(p => !p.IsRemoved)),
+            WorkOrderListStatusFilter.Completed => rows.Where(IsCompleted()),
+            WorkOrderListStatusFilter.ReadyForEnfaz => rows.Where(IsReadyForEnfaz()),
             _ =>
-                rows.Where(w =>
-                    w.Properties.Count(p => !p.IsRemoved) > 0
-                    && !(w.Properties.Count(p => !p.IsRemoved)
-                            >= (w.ExpectedPropertyCount < 1 ? 1 : w.ExpectedPropertyCount)
-                        && w.Properties.Count(p => !p.IsRemoved && _db.WorkflowTasks.Any(t =>
-                                t.Kind == CaseStudyPropertyKind
-                                && t.PoNumber == w.PoNumber
-                                && t.PropertyId == p.Id
-                                && (t.Status == WorkflowTaskStatus.Completed
-                                    || t.Phase == WorkflowTaskPhase.Done)))
-                            >= w.Properties.Count(p => !p.IsRemoved))),
+                rows.Where(w => w.Properties.Count(p => !p.IsRemoved) > 0)
+                    .Where(Not(IsCompleted()))
+                    .Where(Not(IsReadyForEnfaz())),
         };
     }
 
@@ -521,14 +561,17 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
             .GroupBy(t => t.PropertyId!.Value)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<WorkflowTask>)g.ToList());
 
-        var studiedByProperty = caseStudyTasks
-            .Where(t => t.PropertyId.HasValue && t.Kind == CaseStudyPropertyKind)
-            .GroupBy(t => t.PropertyId!.Value)
-            .ToDictionary(
-                g => g.Key,
-                g => g.Any(t =>
-                    t.Status == WorkflowTaskStatus.Completed
-                    || t.Phase == WorkflowTaskPhase.Done));
+        // The same two delivery rules the SQL buckets apply (PropertyDeliveryRules).
+        var liveProperties = orders
+            .SelectMany(w => w.Properties)
+            .Where(p => !p.IsRemoved)
+            .ToList();
+        var readyByProperty = liveProperties.ToDictionary(
+            p => p.Id,
+            p => PropertyDeliveryRules.IsReady(p, tasksByProperty.GetValueOrDefault(p.Id, [])));
+        var closedByProperty = liveProperties.ToDictionary(
+            p => p.Id,
+            p => PropertyDeliveryRules.IsClosed(p, tasksByProperty.GetValueOrDefault(p.Id, [])));
 
         var billedPos = poNumbers.Count == 0
             ? new HashSet<string>(StringComparer.Ordinal)
@@ -545,7 +588,8 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
                 var progressPct = AveragePropertyProgressPct(w, tasksByProperty);
                 var item = WorkOrderMapper.ToListItem(
                     w,
-                    studiedByProperty,
+                    readyByProperty,
+                    closedByProperty,
                     billedPos.Contains(w.PoNumber.Trim()),
                     progressPct);
                 item.AssignmentSpecialist = PersonLabelResolver.ApplyResolved(

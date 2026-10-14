@@ -53,6 +53,8 @@ export function propertyUiStatusLabel(status: PropertyUiStatus): string {
   switch (status) {
     case PropertyListRowStatuses.Progress:
       return "قيد العمل";
+    case PropertyListRowStatuses.Ready:
+      return "جاهز للرفع";
     case PropertyListRowStatuses.Done:
       return "مكتمل";
     case PropertyListRowStatuses.Fail:
@@ -71,6 +73,7 @@ export function propertyUiStatusTone(
   if (status === PropertyListRowStatuses.Fail) return "red";
   if (
     status === PropertyListRowStatuses.Progress ||
+    status === PropertyListRowStatuses.Ready ||
     status === PropertyListRowStatuses.Incomplete
   )
     return "amber";

@@ -21,11 +21,17 @@ public sealed class AttachmentPrintDictionaryService
 
     private readonly PlatformDbContext _db;
     private readonly TimeProvider _time;
+    /// <summary>Absent only in tests that read the catalog; every save on the host records a row.</summary>
+    private readonly IAuditLogWriter? _audit;
 
-    public AttachmentPrintDictionaryService(PlatformDbContext db, TimeProvider? time = null)
+    public AttachmentPrintDictionaryService(
+        PlatformDbContext db,
+        TimeProvider? time = null,
+        IAuditLogWriter? audit = null)
     {
         _db = db;
         _time = time ?? TimeProvider.System;
+        _audit = audit;
     }
 
     public async Task<AttachmentPrintDictionaryDto> GetAsync(
@@ -35,15 +41,6 @@ public sealed class AttachmentPrintDictionaryService
         return ToPrintDto(catalog);
     }
 
-    public async Task<AttachmentPrintDictionaryDto> SaveAsync(
-        SaveAttachmentPrintDictionaryRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var catalog = await LoadAsync(cancellationToken);
-        catalog.Lists[ValuationListIds.Attachments] = FromPrintTypes(NormalizePrint(request.Types ?? []));
-        await PersistAsync(catalog, cancellationToken);
-        return ToPrintDto(catalog);
-    }
 
     async Task<ValuationListsDto> IValuationListsService.GetAsync(
         CancellationToken cancellationToken)
@@ -54,9 +51,11 @@ public sealed class AttachmentPrintDictionaryService
 
     async Task<ValuationListsDto> IValuationListsService.SaveAsync(
         SaveValuationListsRequest request,
+        string actorId,
         CancellationToken cancellationToken)
     {
         var catalog = await LoadAsync(cancellationToken);
+        var before = ToListsDto(catalog);
         if (!string.IsNullOrWhiteSpace(request.IvsEffectiveDate))
             catalog.IvsEffectiveDate = request.IvsEffectiveDate.Trim();
         if (request.PhotoPagesLand is >= 1 and <= 3)
@@ -74,6 +73,18 @@ public sealed class AttachmentPrintDictionaryService
             }
         }
 
+        var after = ToListsDto(catalog);
+        if (_audit is not null)
+        {
+            // Same SaveChanges as the catalog row, so the audit commits with the change.
+            _db.AuditLogs.Add(_audit.Create(
+                string.IsNullOrWhiteSpace(actorId) ? "system" : actorId.Trim(),
+                "VALUATION_LISTS_SAVED",
+                "valuation_lists",
+                SingletonId.ToString(),
+                before,
+                after));
+        }
         await PersistAsync(catalog, cancellationToken);
         return ToListsDto(catalog);
     }

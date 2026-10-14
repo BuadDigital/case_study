@@ -79,7 +79,6 @@ export * from "./app-data/role-access";
 export * from "./app-data/runtime-access";
 export * from "./app-data/permissions-pages";
 export * from "./app-data/page-access";
-export * from "./app-data/settings-nav";
 export * from "./app-data/system-fields-nav";
 export * from "./app-data/system-settings-nav";
 export * from "./app-data/financial-nav";
@@ -91,7 +90,6 @@ export * from "./app-data/party-task-recall-model";
 export * from "./app-data/party-task-recall-reads";
 export * from "./app-data/party-task-recall-commands";
 export * from "./app-data/party-workflow-events";
-export * from "./app-data/screen-catalog";
 export { appDataKeys } from "./query/app-data-keys";
 export {
   optimisticPatchListItem,

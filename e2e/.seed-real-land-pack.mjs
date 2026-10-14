@@ -113,13 +113,12 @@ function listFiles(dir, exts) {
 
 async function login(username) {
   const phone = PHONES[username];
-  for (const route of ["/api/auth/login", "/api/auth/login-username"]) {
-    const res = await fetch(`${API_BASE}${route}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username: phone }),
-    });
-    if (!res.ok) continue;
+  const res = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: phone }),
+  });
+  if (res.ok) {
     const body = await res.json();
     if (body.token) return body.token;
   }

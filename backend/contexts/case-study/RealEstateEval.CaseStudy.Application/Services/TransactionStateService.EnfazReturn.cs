@@ -71,10 +71,21 @@ public sealed partial class TransactionStateService
             if (valuationReopen is null)
                 return (null, Fail("تعذّر فتح تقرير التقييم بنسخة جديدة الآن — أعد المحاولة"));
 
+            // A delivered transaction refuses every party reopen (the appraiser's package included), so the
+            // stamp comes off before the cross-service call — and goes back on if Valuation refuses, which
+            // keeps the retry path («المعاملة مرفوعة») intact.
+            property.ClearEnfazHandover();
+            await db.SaveChangesAsync(cancellationToken);
+
             var (reopened, reopenError) = await valuationReopen.ReopenDepositedReportAsync(
                 propertyId, reason, cancellationToken);
             if (!reopened)
+            {
+                property.EnfazHandoverAtUtc = handoverBefore.at;
+                property.EnfazHandoverByUserId = handoverBefore.by;
+                await db.SaveChangesAsync(cancellationToken);
                 return (null, Fail(reopenError ?? "تعذّر فتح تقرير التقييم بنسخة جديدة"));
+            }
 
             valuationOutcome = "reopened_new_version";
             notices.Add("أُعيد فتح تقرير التقييم بنسخة جديدة — يعيد المقيّم تقييمه ثم يُعدّ الأخصائي المسودة ويودع من جديد");

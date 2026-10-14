@@ -55,7 +55,6 @@ export function LabelCell({
   label,
   hint,
   tip,
-  definition,
   locked,
   pickable,
   picked,
@@ -75,7 +74,6 @@ export function LabelCell({
   label: string;
   hint?: string;
   tip?: string;
-  definition?: string;
   locked: boolean;
   pickable?: boolean;
   picked?: boolean;
@@ -109,7 +107,7 @@ export function LabelCell({
             />
           ) : (
             <div
-              title={tip || definition || undefined}
+              title={tip || undefined}
               className="cursor-default text-[12.5px] font-bold leading-[1.35] text-heading"
             >
               {label}

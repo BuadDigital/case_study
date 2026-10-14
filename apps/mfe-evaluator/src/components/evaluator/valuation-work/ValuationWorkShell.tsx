@@ -123,8 +123,6 @@ export function ValuationWorkShell({
     landSelection,
     subjectArea,
     analysisNotes,
-    factorDefinitions,
-    catalogFactorOptions,
     approachSettings,
     settingsHydrateKey,
     cost,
@@ -334,8 +332,6 @@ export function ValuationWorkShell({
               city={property?.city}
               district={property?.district ?? districtHint}
               valuationDate={officialValuationDate ?? undefined}
-              factorDefinitions={factorDefinitions}
-              catalogFactors={catalogFactorOptions}
               subjectSpecs={subjectSpecs}
               canEditSubjectSpec
               dispatch={dispatchMarketMatrix}
@@ -446,8 +442,6 @@ export function ValuationWorkShell({
               city={property?.city}
               district={property?.district ?? districtHint}
               valuationDate={officialValuationDate ?? undefined}
-              factorDefinitions={factorDefinitions}
-              catalogFactors={catalogFactorOptions}
               dispatch={dispatchLandMatrix}
             />
           </Suspense>

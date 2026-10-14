@@ -17,7 +17,6 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts;
 public sealed class OperationsDbContext(DbContextOptions<OperationsDbContext> options)
     : DbContext(options)
 {
-    public DbSet<SurveyOffice> SurveyOffices => Set<SurveyOffice>();
     public DbSet<PropertyKeyRecord> PropertyKeyRecords => Set<PropertyKeyRecord>();
     public DbSet<KeyEnvelope> KeyEnvelopes => Set<KeyEnvelope>();
     public DbSet<KeyEnvelopeAssignment> KeyEnvelopeAssignments => Set<KeyEnvelopeAssignment>();

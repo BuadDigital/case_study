@@ -8,7 +8,7 @@ using RealEstateEval.Identity.Application.Rules;
 namespace RealEstateEval.Identity.Application.Services;
 
 /// <summary>
-/// Staff registration use case: create a password-less account (phone login),
+/// Staff registration use case: create an account (phone login, no credential),
 /// edit it, unlock, and soft-disable. Persistence goes through
 /// <see cref="IStaffRegistrationRepository"/> and ASP.NET Identity through
 /// <see cref="IStaffIdentityStore"/>, so this file holds rules only — no EF and no
@@ -71,7 +71,7 @@ public partial class UserRegistrationService : IUserRegistrationService
         {
             var userName = await AllocateUniqueUserNameAsync(normalizedMobile, ct);
 
-            // Password-less Identity user: sign-in is by Saudi mobile (OTP UI / future SMS OTP).
+            // Sign-in is by Saudi mobile (OTP UI / future SMS OTP); no credential is stored.
             var (user, createErrors) = await _accounts.CreateAsync(
                 new NewStaffIdentityUser(userName, normalizedEmail, displayName, normalizedMobile),
                 ct);
@@ -132,7 +132,6 @@ public partial class UserRegistrationService : IUserRegistrationService
             {
                 User = dto!,
                 UserName = userName,
-                ActivationRequired = false,
             }, (Dictionary<string, string>?)null));
         }, cancellationToken);
     }

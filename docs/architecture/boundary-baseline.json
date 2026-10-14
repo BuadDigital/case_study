@@ -481,10 +481,8 @@
     "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/PropertyKeysService.cs": [
       "operations"
     ],
-    "backend/contexts/operations/RealEstateEval.Operations.Infrastructure/Services/SurveyOfficesService.cs": [
-      "operations"
-    ],
     "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/AttachmentPrintDictionaryService.cs": [
+      "audit",
       "platform"
     ],
     "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/AuditLogQueryService.cs": [
@@ -499,10 +497,6 @@
       "platform"
     ],
     "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Persistence/CourtsRepository.cs": [
-      "audit",
-      "platform"
-    ],
-    "backend/contexts/platform/RealEstateEval.Platform.Infrastructure/Services/DifferenceFactorCatalogService.cs": [
       "audit",
       "platform"
     ],
@@ -571,6 +565,7 @@
       "attachments"
     ],
     "AttachmentPrintDictionaryService": [
+      "audit",
       "platform"
     ],
     "AttachmentService": [
@@ -617,9 +612,6 @@
     ],
     "DashboardOpsMetricsQueryService": [
       "case-study"
-    ],
-    "DifferenceFactorCatalogService": [
-      "platform"
     ],
     "DiscountFlagService": [
       "financial"
@@ -752,9 +744,6 @@
     ],
     "RegionsService": [
       "platform"
-    ],
-    "SurveyOfficesService": [
-      "operations"
     ],
     "TransactionStateService": [
       "case-study"

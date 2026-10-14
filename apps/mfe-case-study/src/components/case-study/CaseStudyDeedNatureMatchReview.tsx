@@ -116,9 +116,11 @@ export function CaseStudyDeedNatureMatchReview({
       if (!draft || locked || savingLock.current) return;
       savingLock.current = true;
       setSaving(true);
+      let rollbackDraft = draft;
       try {
         const latest =
           (await loadCaseStudyReportDraft(caseStudyTaskId)) ?? draft;
+        rollbackDraft = latest;
         if (latest.status === "issued") {
           setDraft(latest);
           showToast("التقرير صادر — المطابقة للعرض فقط", "error");
@@ -128,10 +130,17 @@ export function CaseStudyDeedNatureMatchReview({
         setDraft(next);
         const result = await saveCaseStudyReportDraft(next);
         if (!result.ok) {
+          setDraft(latest);
           showToast(result.error, "error");
           return;
         }
         if (result.draft) setDraft(result.draft);
+      } catch (err) {
+        setDraft(rollbackDraft);
+        showToast(
+          err instanceof Error ? err.message : "تعذّر حفظ نتيجة المطابقة",
+          "error",
+        );
       } finally {
         savingLock.current = false;
         setSaving(false);

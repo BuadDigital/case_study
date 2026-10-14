@@ -1,11 +1,6 @@
-/** Finance screen routes — My Tasks · Revenue · Costs · party portals */
+/** Finance screen routes — My Tasks · Revenue · Costs */
 
-export type FinanceArea =
-  | "tasks"
-  | "revenue"
-  | "costs"
-  | "eng_portal"
-  | "inspector_portal";
+export type FinanceArea = "tasks" | "revenue" | "costs";
 
 export type RevenueStage =
   | "under_study"
@@ -69,14 +64,7 @@ const COSTS_SECTIONS: {
 ];
 
 export function parseFinanceArea(raw: string | null | undefined): FinanceArea {
-  if (
-    raw === "revenue" ||
-    raw === "costs" ||
-    raw === "tasks" ||
-    raw === "eng_portal" ||
-    raw === "inspector_portal"
-  )
-    return raw;
+  if (raw === "revenue" || raw === "costs" || raw === "tasks") return raw;
   return "tasks";
 }
 

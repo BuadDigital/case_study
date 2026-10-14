@@ -13,8 +13,6 @@
       "@settings/mfe/*": ["../apps/mfe-settings/src/*"],
       "@dashboard/mfe": ["../apps/mfe-dashboard/src/index.ts"],
       "@dashboard/mfe/*": ["../apps/mfe-dashboard/src/*"],
-      "@survey/mfe": ["../apps/mfe-survey/src/index.ts"],
-      "@survey/mfe/*": ["../apps/mfe-survey/src/*"],
       "@keys/mfe": ["../apps/mfe-keys/src/index.ts"],
       "@keys/mfe/*": ["../apps/mfe-keys/src/*"],
       "@financial/mfe": ["../apps/mfe-financial/src/index.ts"],

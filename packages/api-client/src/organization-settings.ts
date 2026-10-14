@@ -16,7 +16,6 @@ export type OrganizationCompanySettings = {
   /** ISO date — firm practice-license issue date. */
   practiceLicenseIssuedAt?: string | null;
   practiceLicenseExpiresAt?: string | null;
-  certifiedValuerId?: string | null;
   email?: string | null;
   phone?: string | null;
   website?: string | null;
@@ -30,7 +29,6 @@ export const ORG_COMPANY_DEFAULTS: OrganizationCompanySettings = {
   practiceLicenseNumber: "1302",
   practiceLicenseIssuedAt: "2022-03-10",
   practiceLicenseExpiresAt: "2027-03-10",
-  certifiedValuerId: "certified",
   address: "الرياض — حي الصحافة، طريق الملك فهد، مبنى 7443",
   email: "info@ejadah.sa",
   phone: "+966114567890",
@@ -175,10 +173,8 @@ export const VALUER_ROSTER_HTML_DEFAULTS: OrganizationValuerRosterEntry[] = [
 export type OrganizationBrandingSettings = {
   stampUrl: string;
   signatureUrl: string;
-  headerUrl?: string | null;
   /** Report letterhead image — sliced by letterhead*Mm. */
   letterheadUrl?: string | null;
-  watermarkText: string;
   logoColorUrl?: string | null;
   logoWhiteUrl?: string | null;
   stampWidthCm?: number | null;
@@ -204,9 +200,7 @@ export type OrganizationBrandingSettings = {
 export const BRAND_IDENTITY_DEFAULTS: OrganizationBrandingSettings = {
   stampUrl: "/case-study/ejadah-stamp.svg",
   signatureUrl: "/case-study/ejadah-signature.png",
-  headerUrl: null,
   letterheadUrl: "/case-study/ejadah-letterhead.png",
-  watermarkText: "EJADAH",
   logoColorUrl: "/case-study/logo.svg",
   logoWhiteUrl: "/case-study/logo-sidebar.svg",
   stampWidthCm: 4,
@@ -227,21 +221,6 @@ export const BRAND_IDENTITY_DEFAULTS: OrganizationBrandingSettings = {
   letterheadUpdatedAt: "2026-06-19",
 };
 
-export type OrganizationCommunicationsSettings = {
-  otpProvider: string;
-  defaultOtpChannel: string;
-  smsSenderId?: string | null;
-  emailFrom?: string | null;
-  smsApiUrl?: string | null;
-  smsApiKey?: string | null;
-  smsApiKeyConfigured?: boolean;
-  smtpHost?: string | null;
-  smtpPort?: number;
-  smtpUsername?: string | null;
-  smtpPassword?: string | null;
-  smtpPasswordConfigured?: boolean;
-};
-
 export type OrganizationSlaSettings = {
   defaultBusinessDays: number;
   privateSectorBusinessDays: number;
@@ -250,8 +229,6 @@ export type OrganizationSlaSettings = {
 /** Configurable upper limit — P2-5 approved 2026-08-16. */
 type OrganizationValuationSettings = {
   maxAdoptedComparables: number;
-  /** Kept for saved-settings compatibility. No longer drives a methodology alert. */
-  comparableTimeGapMonths: number;
   /** Area adjustment factor % (adjustments logic). */
   areaFactorPct: number;
   /** Annual market-change rate % for market-conditions suggestion. */
@@ -392,7 +369,6 @@ export type OrganizationSettingsDto = {
   evaluator: OrganizationEvaluatorSettings;
   valuers: OrganizationValuerRosterEntry[];
   branding: OrganizationBrandingSettings;
-  communications: OrganizationCommunicationsSettings;
   sla: OrganizationSlaSettings;
   valuation: OrganizationValuationSettings;
   valuationReport: OrganizationValuationReportSettings;
@@ -404,7 +380,6 @@ export type SaveOrganizationSettingsRequest = {
   evaluator?: OrganizationEvaluatorSettings;
   valuers?: OrganizationValuerRosterEntry[];
   branding?: OrganizationBrandingSettings;
-  communications?: OrganizationCommunicationsSettings;
   sla?: OrganizationSlaSettings;
   valuation?: OrganizationValuationSettings;
   valuationReport?: OrganizationValuationReportSettings;
@@ -417,49 +392,6 @@ export type OrganizationSettingsResult<T> =
       kind: "network" | "server" | "auth" | "forbidden" | "validation";
       message?: string;
     };
-
-function normalizeCommunications(
-  communications: Record<string, unknown>,
-): OrganizationCommunicationsSettings {
-  return {
-    otpProvider: String(
-      communications.otpProvider ?? communications.OtpProvider ?? "dev-log",
-    ),
-    defaultOtpChannel: String(
-      communications.defaultOtpChannel ??
-        communications.DefaultOtpChannel ??
-        "sms",
-    ),
-    smsSenderId: (communications.smsSenderId ??
-      communications.SmsSenderId ??
-      null) as string | null,
-    emailFrom: (communications.emailFrom ??
-      communications.EmailFrom ??
-      null) as string | null,
-    smsApiUrl: (communications.smsApiUrl ??
-      communications.SmsApiUrl ??
-      null) as string | null,
-    smsApiKey: null,
-    smsApiKeyConfigured: Boolean(
-      communications.smsApiKeyConfigured ??
-        communications.SmsApiKeyConfigured ??
-        false,
-    ),
-    smtpHost: (communications.smtpHost ??
-      communications.SmtpHost ??
-      null) as string | null,
-    smtpPort: Number(communications.smtpPort ?? communications.SmtpPort ?? 587),
-    smtpUsername: (communications.smtpUsername ??
-      communications.SmtpUsername ??
-      null) as string | null,
-    smtpPassword: null,
-    smtpPasswordConfigured: Boolean(
-      communications.smtpPasswordConfigured ??
-        communications.SmtpPasswordConfigured ??
-        false,
-    ),
-  };
-}
 
 function normalizeValuers(raw: unknown): OrganizationValuerRosterEntry[] {
   if (!Array.isArray(raw)) return [];
@@ -547,9 +479,6 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
   const company = (raw.company ?? raw.Company ?? {}) as Record<string, unknown>;
   const evaluator = (raw.evaluator ?? raw.Evaluator ?? {}) as Record<string, unknown>;
   const branding = (raw.branding ?? raw.Branding ?? {}) as Record<string, unknown>;
-  const communications = (raw.communications ??
-    raw.Communications ??
-    {}) as Record<string, unknown>;
   const sla = (raw.sla ?? raw.Sla ?? {}) as Record<string, unknown>;
   const valuation = (raw.valuation ?? raw.Valuation ?? {}) as Record<string, unknown>;
 
@@ -583,7 +512,6 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
         ).trim();
         return v || ORG_COMPANY_DEFAULTS.practiceLicenseExpiresAt || null;
       })(),
-      certifiedValuerId: (company.certifiedValuerId ?? company.CertifiedValuerId ?? null) as string | null,
       email: (company.email ?? company.Email ?? null) as string | null,
       phone: (company.phone ?? company.Phone ?? null) as string | null,
       website: (company.website ?? company.Website ?? null) as string | null,
@@ -606,9 +534,7 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
           branding.SignatureUrl ??
           BRAND_IDENTITY_DEFAULTS.signatureUrl,
       ),
-      headerUrl: ( branding.headerUrl ?? branding.HeaderUrl ?? null ) as string | null,
       letterheadUrl: (branding.letterheadUrl ?? branding.LetterheadUrl ?? null) as | string | null,
-      watermarkText: String( branding.watermarkText ?? branding.WatermarkText ?? "EJADAH" ),
       logoColorUrl: (branding.logoColorUrl ?? branding.LogoColorUrl ?? null) as | string | null,
       logoWhiteUrl: (branding.logoWhiteUrl ?? branding.LogoWhiteUrl ?? null) as | string | null,
       stampWidthCm: numOr( branding.stampWidthCm ?? branding.StampWidthCm, BRAND_IDENTITY_DEFAULTS.stampWidthCm! ),
@@ -634,7 +560,6 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
       letterheadVersion: (branding.letterheadVersion ?? branding.LetterheadVersion ?? null) as string | null,
       letterheadUpdatedAt: (branding.letterheadUpdatedAt ?? branding.LetterheadUpdatedAt ?? null) as string | null,
     },
-    communications: normalizeCommunications(communications),
     sla: {
       defaultBusinessDays: Number(
         sla.defaultBusinessDays ?? sla.DefaultBusinessDays ?? 4,
@@ -646,9 +571,6 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
     valuation: {
       maxAdoptedComparables: Number(
         valuation.maxAdoptedComparables ?? valuation.MaxAdoptedComparables ?? 3,
-      ),
-      comparableTimeGapMonths: Number(
-        valuation.comparableTimeGapMonths ?? valuation.ComparableTimeGapMonths ?? 6,
       ),
       areaFactorPct: Number(
         valuation.areaFactorPct ?? valuation.AreaFactorPct ?? 5,
@@ -727,10 +649,24 @@ export async function saveOrganizationSettings(
   }
 }
 
+export type StaffReportRole = "none" | "valuer" | "reviewer" | "assistant";
+
 export type SyncStaffValuerRequest = {
   userId: string;
   displayName: string;
   mode: "upsert" | "deactivate";
+  /** Seat in the valuation report; omitted keeps the stored seat. */
+  reportRole?: StaffReportRole;
+  /** Taqeem credentials on the roster row; omitted keeps the stored value, "" clears it. */
+  membershipCategory?: string;
+  membershipNumber?: string;
+  membershipExpiresAt?: string;
+  licenseNumber?: string;
+  licenseIssuedAt?: string;
+  licenseExpiresAt?: string;
+  signatureUrl?: string;
+  /** An unlinked roster row to claim for this account. */
+  linkRosterRowId?: string;
 };
 
 export async function syncStaffValuer(
@@ -866,47 +802,3 @@ export async function notifyOrganizationSettingsGap(
   }
 }
 
-export async function testOrganizationCommunication(
-  config: OrganizationSettingsApiConfig,
-  body: { channel: string; destination: string },
-): Promise<
-  OrganizationSettingsResult<{ ok: boolean; provider: string; detail?: string | null }>
-> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/organization-settings/test-communication`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.token}`,
-      },
-      body: JSON.stringify(body),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (res.status === 400) {
-      const payload = (await res.json().catch(() => null)) as {
-        detail?: string;
-        error?: string;
-      } | null;
-      return {
-        ok: false,
-        kind: "validation",
-        message: payload?.detail ?? payload?.error ?? "بيانات غير صالحة",
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>;
-    return {
-      ok: true,
-      data: {
-        ok: Boolean(raw.ok ?? raw.Ok),
-        provider: String(raw.provider ?? raw.Provider ?? ""),
-        detail: (raw.detail ?? raw.Detail ?? null) as string | null,
-      },
-    };
-  } catch (err) {
-    if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
-    return { ok: false, kind: "network" };
-  }
-}

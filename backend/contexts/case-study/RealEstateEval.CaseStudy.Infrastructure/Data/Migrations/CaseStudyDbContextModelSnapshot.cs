@@ -1223,6 +1223,8 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.HasIndex("DeedNumber");
 
+                    b.HasIndex("EnfazHandoverAtUtc");
+
                     b.HasIndex("ReferenceNumber");
 
                     b.HasIndex("RegionId");

@@ -21,7 +21,6 @@ COPY apps/mfe-failures/package.json        ./apps/mfe-failures/
 COPY apps/mfe-financial/package.json       ./apps/mfe-financial/
 COPY apps/mfe-keys/package.json            ./apps/mfe-keys/
 COPY apps/mfe-settings/package.json        ./apps/mfe-settings/
-COPY apps/mfe-survey/package.json          ./apps/mfe-survey/
 COPY apps/mfe-valuation/package.json       ./apps/mfe-valuation/
 COPY packages/api-client/package.json      ./packages/api-client/
 COPY packages/app-shared/package.json      ./packages/app-shared/
@@ -72,7 +71,6 @@ COPY apps/mfe-failures/        ./apps/mfe-failures/
 COPY apps/mfe-financial/       ./apps/mfe-financial/
 COPY apps/mfe-keys/            ./apps/mfe-keys/
 COPY apps/mfe-settings/        ./apps/mfe-settings/
-COPY apps/mfe-survey/          ./apps/mfe-survey/
 COPY apps/mfe-valuation/       ./apps/mfe-valuation/
 
 # Copy the shell app itself

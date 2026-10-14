@@ -67,7 +67,6 @@ public sealed class DevSystemMaintenanceService : ISystemMaintenanceService
                 await platform.FieldDictionaryConfigs.CountAsync(cancellationToken),
             FailureTypesCatalogConfigsDeleted =
                 await failures.FailureTypesCatalogConfigs.CountAsync(cancellationToken),
-            SurveyOfficesDeleted = await operations.SurveyOffices.CountAsync(cancellationToken),
             ValuationRequestsDeleted = await valuation.ValuationRequests.CountAsync(cancellationToken),
             PropertyKeyRecordsDeleted = await operations.PropertyKeyRecords.CountAsync(cancellationToken),
             FinancialReportConfigsDeleted =

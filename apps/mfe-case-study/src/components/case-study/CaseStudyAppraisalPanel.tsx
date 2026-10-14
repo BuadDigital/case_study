@@ -58,6 +58,7 @@ export function CaseStudyAppraisalPanel({
   const [inspectionPackageStatus, setInspectionPackageStatus] = useState<InspectorWorkspaceStatus | null>(null);
   const [inspectionAssetSubject, setInspectionAssetSubject] = useState("");
   const [inspectionSnapshotLoaded, setInspectionSnapshotLoaded] = useState(false);
+  const [inspectionSnapshotTaskId, setInspectionSnapshotTaskId] = useState<string | null>(null);
   const [inspectionAccepted, setInspectionAccepted] = useState(false);
   const [inspectionReloadKey, setInspectionReloadKey] = useState(0);
 
@@ -101,22 +102,34 @@ export function CaseStudyAppraisalPanel({
   }, [caseStudyTask, tasks, staffUsers, inspectionTask]);
 
   useEffect(() => {
-    if (!inspectionTask) {
-      setInspectionPackageStatus(null);
-      setInspectionAssetSubject("");
-      setInspectionSnapshotLoaded(false);
-      setInspectionAccepted(false);
-      return;
-    }
+    if (!inspectionTask) return;
     let cancelled = false;
+    let requestVersion = 0;
     const load = () => {
-      void loadInspectorWorkspaceSnapshot(inspectionTask.id).then((draft) => {
-        if (cancelled) return;
-        setInspectionPackageStatus(draft?.status ?? null);
-        setInspectionAssetSubject(draft?.featureValues.assetSubject ?? "");
-        setInspectionSnapshotLoaded(true);
-        setInspectionAccepted(isInspectorWorkspaceAccepted(draft));
-      });
+      const version = ++requestVersion;
+      void loadInspectorWorkspaceSnapshot(inspectionTask.id)
+        .then((draft) => {
+          if (cancelled || version !== requestVersion) return;
+          setInspectionSnapshotTaskId(inspectionTask.id);
+          setInspectionPackageStatus(draft?.status ?? null);
+          setInspectionAssetSubject(draft?.featureValues.assetSubject ?? "");
+          setInspectionSnapshotLoaded(true);
+          setInspectionAccepted(isInspectorWorkspaceAccepted(draft));
+        })
+        .catch((error: unknown) => {
+          if (cancelled || version !== requestVersion) return;
+          setInspectionSnapshotTaskId(inspectionTask.id);
+          setInspectionPackageStatus(null);
+          setInspectionAssetSubject("");
+          setInspectionSnapshotLoaded(false);
+          setInspectionAccepted(false);
+          showToast(
+            error instanceof Error
+              ? error.message
+              : "تعذّر تحميل بيانات المعاينة",
+            "error",
+          );
+        });
     };
     load();
     const onChange = () => load();
@@ -128,33 +141,41 @@ export function CaseStudyAppraisalPanel({
         onChange,
       );
     };
-  }, [inspectionTask, inspectionReloadKey]);
+  }, [inspectionTask, inspectionReloadKey, showToast]);
 
-  const inspectionUsesLand = submittedInspectorAssetIsLand({
-    status: inspectionPackageStatus ?? "draft",
-    assetSubject: inspectionAssetSubject,
-    initialAssetSubject:
-      property.propertyType?.trim() || property.classification?.trim() || "",
-  });
-
-  useEffect(() => {
-    if (!inspectionSnapshotLoaded) return;
-    const stored = loadSpecialistFinishingLevel(property.id);
-    const applicable = specialistFinishingLevelForInspection(stored, {
-      status: inspectionPackageStatus ?? "draft",
-      assetSubject: inspectionAssetSubject,
+  const inspectionSnapshotIsCurrent = Boolean(inspectionTask) && inspectionSnapshotTaskId === inspectionTask?.id;
+  const currentInspectionPackageStatus = inspectionSnapshotIsCurrent ? inspectionPackageStatus : null;
+  const currentInspectionAssetSubject = inspectionSnapshotIsCurrent ? inspectionAssetSubject: "";
+  const currentInspectionSnapshotLoaded = inspectionSnapshotIsCurrent && inspectionSnapshotLoaded;
+  const currentInspectionAccepted = inspectionSnapshotIsCurrent && inspectionAccepted;
+  const inspectionAssetContext = useMemo( () => ({
+      status: currentInspectionPackageStatus ?? "draft",
+      assetSubject: currentInspectionAssetSubject,
       initialAssetSubject:
         property.propertyType?.trim() || property.classification?.trim() || "",
-    });
+    }),
+    [
+      currentInspectionAssetSubject,
+      currentInspectionPackageStatus,
+      property.classification,
+      property.propertyType,
+    ],
+  );
+  const inspectionUsesLand = submittedInspectorAssetIsLand(inspectionAssetContext);
+
+  useEffect(() => {
+    if (!currentInspectionSnapshotLoaded) return;
+    const stored = loadSpecialistFinishingLevel(property.id);
+    const applicable = specialistFinishingLevelForInspection(
+      stored,
+      inspectionAssetContext,
+    );
     if (!stored || applicable) return;
     saveSpecialistFinishingLevel(property.id, "");
   }, [
-    inspectionAssetSubject,
-    inspectionPackageStatus,
-    inspectionSnapshotLoaded,
-    property.classification,
+    currentInspectionSnapshotLoaded,
+    inspectionAssetContext,
     property.id,
-    property.propertyType,
   ]);
 
   const surveyTaskId = relatedTaskId(tasks, property.id, "engineering-survey");
@@ -188,7 +209,7 @@ export function CaseStudyAppraisalPanel({
   /** Also after the inspection is accepted: the return withdraws the acceptance. */
   const canReturnToInspector =
     Boolean(inspectionTask) &&
-    (inspectionPackageStatus === "submitted" ||
+    (currentInspectionPackageStatus === "submitted" ||
       inspectionTask?.status === "completed");
 
   return (
@@ -207,7 +228,7 @@ export function CaseStudyAppraisalPanel({
           <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
           <h3 className="m-0 text-[14px] font-extrabold text-heading"> معاينة العقار — مراجعة الاخصائي </h3>
           <span className="min-w-[1rem] flex-1 border-t border-border" aria-hidden />
-          {inspectionAccepted ? (
+          {currentInspectionAccepted ? (
             <span className="rounded-lg border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg px-3 py-1.5 text-[11.5px] font-semibold text-heading">
               مؤكَّدة — القسم مقفل
             </span>
@@ -218,7 +239,7 @@ export function CaseStudyAppraisalPanel({
               className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:rounded-[12px] max-lg:text-[13px]"
               onClick={() => setReturnOpen(true)}
             >
-              {inspectionAccepted ? "إلغاء الاعتماد وإعادة للتصحيح" : "إعادة للتصحيح"}
+              {currentInspectionAccepted ? "إلغاء الاعتماد وإعادة للتصحيح" : "إعادة للتصحيح"}
             </button>
           ) : null}
         </div>
@@ -242,12 +263,12 @@ export function CaseStudyAppraisalPanel({
           />
         ) : null}
 
-        {inspectionPackageStatus === "submitted" &&
-        inspectionAssetSubject.trim() &&
-        inspectionAssetSubject.trim() !== property.propertyType?.trim() ? (
+        {currentInspectionPackageStatus === "submitted" &&
+        currentInspectionAssetSubject.trim() &&
+        currentInspectionAssetSubject.trim() !== property.propertyType?.trim() ? (
           <div className="mb-3 rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2 text-sm text-amber-text">
             النوع المبدئي: {property.propertyType || "—"} · النوع المعتمد
-            ميدانياً: {inspectionAssetSubject.trim()}
+            ميدانياً: {currentInspectionAssetSubject.trim()}
           </div>
         ) : null}
 

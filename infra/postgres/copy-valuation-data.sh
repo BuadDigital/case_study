@@ -4,7 +4,7 @@
 # (DbMigrate update with REAL_ESTATE_EVAL_PG_CONNECTION_STRING_VALUATION set).
 #
 # Also copies this producer's outbox rows (EventType LIKE 'valuation.%') and parks
-# pending copies on the shared database so the Case Study dispatcher cannot
+# pending copies on the shared database so the Platform dispatcher cannot
 # double-publish after Valuation starts draining its own table.
 #
 # Usage from repo root, against the compose Postgres:

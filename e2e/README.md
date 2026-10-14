@@ -175,8 +175,9 @@ UI: `/financial`, the `التكاليف` payees area, and the engineering office
 account — its four account tabs, its `بحث المستحقات` ledger search, and the copy
 that names the survey line scope; plus the server-paged work-order/billing list
 on `/po` (range label, prev/next, `aria-current="page"`, a `pageSize=10`
-request, at most 10 rows on a page, and the `مفوتر بالكامل` billing bucket in
-the status filter).
+request, at most 10 rows on a page, and the `النشطة` bucket in the status
+filter — the billing buckets are hidden from the specialist, so `مفوتر بالكامل`
+is asserted in a second test as the CDO).
 
 API: the transaction, the field inspection, and the survey submission — each has
 its own UI journey.

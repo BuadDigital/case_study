@@ -1,5 +1,7 @@
 "use client";
 
+import { OpsIcon } from "../components/OpsIcon";
+
 import { useCallback, useEffect, useState } from "react";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
@@ -22,7 +24,7 @@ import {
   Tr,
   useToast,
 } from "@platform/ui-kit";
-import { regionsApiConfig } from "../lib/settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   opsBtnSm,
   opsBtnSmPrimary,
@@ -32,30 +34,13 @@ import {
   opsLetterHead,
   opsLetterSub,
   opsLetterTitle,
-  opsPpBadge,
+  opsCountBadge,
   opsTfNote,
-} from "../lib/settings-ops-tw";
+} from "@platform/ui-kit";
 
 const MAP_PIN_ICON =
   "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z";
 
-function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d={path} />
-    </svg>
-  );
-}
 
 function kindLabel(kind: string): string {
   return kind === "district" ? "حي" : "مدينة";
@@ -72,7 +57,7 @@ export function LocationsPendingView() {
 
   const load = useCallback(async () => {
     if (!authReady) return;
-    const config = regionsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     setLoading(true);
     const result = await listPendingLocations(config);
@@ -100,7 +85,7 @@ export function LocationsPendingView() {
     item: PendingLocationDto,
     action: "approve" | "rename",
   ) {
-    const config = regionsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     setBusyId(item.id);
     const nameAr =
@@ -150,7 +135,7 @@ export function LocationsPendingView() {
               </div>
             </div>
           </div>
-          <span className={opsPpBadge}>{items.length}</span>
+          <span className={opsCountBadge}>{items.length}</span>
         </div>
 
         {loadError ? (

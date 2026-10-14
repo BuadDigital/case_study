@@ -6,7 +6,6 @@
 const ACTION_AR: Record<string, string> = {
   CASE_STUDY_INFO_ROLES_SAVED: "تعديل من يجيب على أسئلة دراسة الحالة",
   FIELD_DICTIONARY_SAVED: "تعديل أسماء الحقول في النظام",
-  DIFFERENCE_FACTOR_CATALOG_SAVED: "تعديل قائمة عوامل الفروق",
   ORGANIZATION_SETTINGS_SAVED: "تعديل إعدادات الشركة",
   COURT_CATALOG_REPLACED: "تحديث قائمة المحاكم كاملة",
   COURT_CREATED: "إضافة محكمة",
@@ -30,6 +29,12 @@ const ACTION_AR: Record<string, string> = {
   PRICING_TABLE_DELETED: "حذف جدول أسعار",
   PRICING_ASSIGNMENTS_REPLACED: "تغيير من يُطبَّق عليهم جدول الأسعار",
   PRICING_ASSIGNMENTS_RELINKED: "إعادة ربط جدول الأسعار بأصحابه",
+  VALUATION_LISTS_SAVED: "تعديل قوائم التقييم",
+  LOCATION_CITY_REVIEWED: "مراجعة اقتراح مدينة",
+  LOCATION_DISTRICT_REVIEWED: "مراجعة اقتراح حي",
+  CLIENT_CREATED: "إضافة عميل",
+  CLIENT_UPDATED: "تعديل بيانات عميل",
+  CLIENT_DEACTIVATED: "تعطيل عميل",
   ENFAZ_INVOICE_COLLECTED: "تحصيل فاتورة من إنفاذ",
   BILLING_NEGOTIATION_DEADLINE: "انتهاء مهلة الاعتراض على الفاتورة",
   FEE_BILLING_TRANSITION: "تغيّر حالة فاتورة الأتعاب",
@@ -59,7 +64,6 @@ const ACTION_AR: Record<string, string> = {
 const ENTITY_AR: Record<string, string> = {
   case_study_info_roles: "أسئلة دراسة الحالة",
   field_dictionary: "أسماء الحقول",
-  difference_factor_catalog: "عوامل الفروق",
   organization_settings: "إعدادات الشركة",
   OrganizationSettings: "إعدادات الشركة",
   court: "محكمة",
@@ -69,6 +73,10 @@ const ENTITY_AR: Record<string, string> = {
   User: "مستخدم",
   pricing_table: "جدول أسعار",
   pricing_assignment: "ربط جدول الأسعار",
+  valuation_lists: "قوائم التقييم",
+  city: "مدينة",
+  district: "حي",
+  client: "عميل",
   PropertyFailure: "تعذّر",
   property_group: "مجموعة عقارات",
   WorkflowTask: "مهمة",
@@ -150,8 +158,7 @@ const ORG_SECTION_AR: { label: string; keys: string[] }[] = [
   { label: "المقيّمون", keys: ["evaluator", "valuers"] },
   { label: "تقرير التقييم المهني", keys: ["valuationReport"] },
   { label: "الهوية البصرية", keys: ["branding"] },
-  { label: "التواصل", keys: ["communications"] },
-  { label: "مهل التنفيذ", keys: ["sla"] },
+  { label: "وقت التنفيذ", keys: ["sla"] },
   { label: "إعدادات التقييم", keys: ["valuation"] },
 ];
 
@@ -423,12 +430,6 @@ export function auditDetailSummary(
     }
     case "FIELD_DICTIONARY_SAVED":
       return "تعديل أسماء الحقول في النظام";
-    case "DIFFERENCE_FACTOR_CATALOG_SAVED": {
-      const version = readNumber(afterObj, "version");
-      return version != null
-        ? `تعديل قائمة عوامل الفروق — الإصدار ${version}`
-        : "تعديل قائمة عوامل الفروق";
-    }
     case "failure.raised":
     case "failure.suspended":
     case "failure.resolved":

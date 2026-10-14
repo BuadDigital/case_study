@@ -32,10 +32,17 @@ export function CaseStudyInfathSpecialistSection({
 
       <div className="grid gap-3.5 px-4 py-3.5 sm:grid-cols-2">
         <FormGroup className="sm:col-span-2">
-          <Label className="mb-2 text-[11px] font-semibold text-text-2">
+          <Label
+            id="infath-linked-label"
+            className="mb-2 text-[11px] font-semibold text-text-2"
+          >
             {INFATH_FIELD_LABELS.linkedAssets}
           </Label>
-          <div className="flex flex-wrap gap-2">
+          <div
+            className="flex flex-wrap gap-2"
+            role="radiogroup"
+            aria-labelledby="infath-linked-label"
+          >
             {INFATH_YES_NO_OPTIONS.map((opt) => {
               const on = draft.infathLinkedAssets === opt.value;
               return (

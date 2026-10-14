@@ -85,8 +85,9 @@ public static class CaseStudyModel
             e.HasAllowedValues("WorkOrderProperties", nameof(WorkOrderProperty.RestrictionsPresent), TriStateAnswers);
             e.Property(x => x.InspectionScopeKey).HasMaxLength(16);
             e.Property(x => x.InspectionRestrictionReason).HasMaxLength(2000);
-            // comprehensive "Enfaz" upload.
+            // comprehensive "Enfaz" upload. The PO list buckets filter on the stamp.
             e.Property(x => x.EnfazHandoverByUserId).HasMaxLength(128);
+            e.HasIndex(x => x.EnfazHandoverAtUtc);
             e.Property(x => x.RemoteInspectionApprovedBy).HasMaxLength(128);
             e.Property(x => x.RequestNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentMandateNumber).HasMaxLength(64);

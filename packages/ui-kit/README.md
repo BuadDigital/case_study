@@ -64,7 +64,7 @@ Decide the context from the deliverable, never mix families in one artifact. Col
 ### Content fundamentals
 
 - Write formal, operational Arabic. Imperative labels («حفظ المعاملة», «إعادة المحاولة»), no pleasantries, no exclamation marks. Address the user in the second person, politely and directly; hints are short: «ستظهر المعاملات الجديدة هنا فور إسنادها».
-- Keep the status vocabulary fixed: جديد / قيد التنفيذ / قيد الدراسة / قيد المراجعة / مكتمل / متعذر / معتمد / معلّق / ناقص / محذوف. Say «متعذر» (obstructed), never «فشل». Render them with `StatusBadge`.
+- Keep the status vocabulary fixed: جديد / قيد التنفيذ / قيد الدراسة / قيد المراجعة / جاهز للرفع / مكتمل / متعذر / معتمد / معلّق / ناقص / محذوف. «مكتمل» on a transaction means handed over to Enfaz; the issued report alone is «جاهز للرفع». Say «متعذر» (obstructed), never «فشل». Render them with `StatusBadge`.
 - Errors are calm and actionable: «تعذّر تنفيذ العملية — حاول مرة أخرى». Loading reads «جاري التحميل»; progress toasts go «جارٍ الحفظ…» then «تم حفظ المعاملة».
 - Latin only for reference codes (`EJ-2026-0412`), bank names, and finance terms (`DSCR`): wrap them in `.lat`/a monospace-ish class and `<bdi>`. Counts and dates in Latin digits with `tabular-nums`.
 - No emoji anywhere. Icons are stroked SVGs.

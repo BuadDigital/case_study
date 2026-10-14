@@ -1,3 +1,4 @@
+import { filled } from "../lib/filled";
 /**
  * Pure decisions for the brand-identity screen: asset fallbacks, per-card fields, letterhead
  * geometry and margin checks, image checks, the stamp aspect lock, zoom fitting,
@@ -27,9 +28,6 @@ const D = BRAND_IDENTITY_DEFAULTS;
 const A4_WIDTH_MM = 210;
 export const A4_HEIGHT_MM = 297;
 
-export function filled(value: string | null | undefined, fallback: string): string {
-  return value?.trim() ? value : fallback;
-}
 
 export function mm(n: number | null | undefined, fallback: number): number {
   const v = Number(n);

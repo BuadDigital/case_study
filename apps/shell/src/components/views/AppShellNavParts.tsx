@@ -26,7 +26,6 @@ import {
   FINANCIAL_NAV_LEAVES,
   FINANCIAL_TOGGLE_LABEL,
   financialHref,
-  isFinanceCoreArea,
   isInFinancialSection,
   type FinanceNavArea,
 } from "@platform/app-shared/app-data/financial-nav";
@@ -214,7 +213,7 @@ export function FinanceHtmlNav({
   rail?: boolean;
 }) {
   const inSection = isInFinancialSection(currentPage);
-  const onCore = inSection && isFinanceCoreArea(activeArea);
+  const onCore = inSection;
   /** Expand the tree when working in My tasks / Revenue / Costs. */
   const [open, setOpen] = useState(onCore);
   const rootRef = useRef<HTMLDivElement>(null);

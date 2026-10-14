@@ -22,7 +22,6 @@ type AdjustmentsMatrixModelArgs = {
   selection: ValuationComparableSelectionListDto;
   adopted: ValuationComparableSelectionDto[];
   subjectArea: string;
-  catalogFactors?: { factorKey: string; labelAr: string }[];
   dispatch: MatrixDispatch;
 };
 
@@ -35,7 +34,6 @@ export function useAdjustmentsMatrixModel({
   selection,
   adopted,
   subjectArea,
-  catalogFactors,
   dispatch,
 }: AdjustmentsMatrixModelArgs) {
   /** Two-step delete — “Delete? ✓ ×” (one confirm slot at a time, as in the form). */
@@ -99,6 +97,6 @@ export function useAdjustmentsMatrixModel({
     removedSequential,
     differenceKeys,
     alerts: buildMatrixAlerts(adopted, pct),
-    addableFactors: addableFactorOptions(catalogFactors, differenceKeys),
+    addableFactors: addableFactorOptions(differenceKeys),
   };
 }

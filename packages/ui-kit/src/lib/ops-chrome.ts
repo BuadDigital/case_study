@@ -1,6 +1,6 @@
 /**
  * Shared ops UI chrome — letter cards, form fields, toolbar, ink/ghost buttons.
- * Prefer these over per-MFE copies (`ops-tasks-tw`, `settings-ops-tw`, `finance-tw` buttons).
+ * Prefer these over per-MFE copies (`ops-tasks-tw`, `finance-tw` buttons).
  * Aligns with `Button` (`primary` / `default`) and `tableFrameClassName`.
  */
 

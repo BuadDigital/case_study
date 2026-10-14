@@ -1,5 +1,7 @@
 "use client";
 
+import { filled } from "../lib/filled";
+
 /**
  * Professional valuation report settings — the printed report's standing texts,
  * edited section by section. The two printed pages are sibling components; pure
@@ -20,11 +22,10 @@ import {
 } from "@platform/api-client";
 import { useCapability } from "@platform/app-shared/components/Can";
 import { Button, Note, PageLoadingHint, PageShell, useToast } from "@platform/ui-kit";
-import { organizationSettingsApiConfig } from "../lib/settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import { refreshOrgCache } from "../lib/org-settings-ui";
 import {
   enabledList,
-  filled,
 } from "./professional-valuation-report-state";
 import { ProfessionalReportIdentityPage } from "./ProfessionalReportIdentityPage";
 import { ProfessionalReportTextsPage } from "./ProfessionalReportTextsPage";
@@ -42,7 +43,7 @@ export function ProfessionalValuationReportView() {
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) {
       setLoading(false);
       setError("يلزم تسجيل الدخول");
@@ -110,7 +111,7 @@ export function ProfessionalValuationReportView() {
   const ivs = enabledList(lists?.lists, "ivsStandards");
 
   async function persist() {
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     setSaving(true);
     const res = await saveOrganizationSettings(config, { valuationReport: draft });

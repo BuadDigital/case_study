@@ -2,7 +2,10 @@
 
 import { useMemo, useState } from "react";
 import type { RoleId } from "@platform/types";
-import type { UpdateStaffUserRequest } from "@platform/api-client";
+import type {
+  OrganizationValuerRosterEntry,
+  UpdateStaffUserRequest,
+} from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { adminStaffRoleOptions } from "@platform/app-shared/users/admin-staff-roles";
 import {
@@ -18,9 +21,14 @@ import {
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
 import {
+  professionalEquals,
+  professionalFromRow,
   staffRoleChangeBlocked,
   staffRoleSelectLocked,
+  unlinkedRosterRows,
+  type StaffProfessional,
 } from "../views/users/users-organization-state";
+import { StaffProfessionalFields } from "./StaffProfessionalFields";
 import {
   Button,
   ModalBody,
@@ -168,6 +176,8 @@ function buildPatch(
 export function EditStaffUserModal({
   user,
   users,
+  rosterRow,
+  valuers,
   viewerUserId,
   saving,
   onSubmit,
@@ -175,13 +185,25 @@ export function EditStaffUserModal({
 }: {
   user: StaffUser;
   users: StaffUser[];
+  /** The account's valuers-roster row, when it has one — source of «البيانات المهنية». */
+  rosterRow: OrganizationValuerRosterEntry | null;
+  /** The whole roster, to offer unlinked rows to a card without one. */
+  valuers: OrganizationValuerRosterEntry[];
   viewerUserId: string | null;
   saving: boolean;
-  onSubmit: (patch: UpdateStaffUserRequest) => Promise<FieldErrors | null>;
+  onSubmit: (
+    patch: UpdateStaffUserRequest,
+    professional: StaffProfessional,
+  ) => Promise<FieldErrors | null>;
   onClose: () => void;
 }) {
   const original = useMemo(() => initialForm(user), [user]);
   const [form, setForm] = useState<FormState>(original);
+  const originalPro = useMemo(
+    () => professionalFromRow(rosterRow, user.roleId),
+    [rosterRow, user.roleId],
+  );
+  const [pro, setPro] = useState<StaffProfessional>(originalPro);
   const [errors, setErrors] = useState<FieldErrors>({});
   const roleLockReason = staffRoleSelectLocked(viewerUserId, user, users);
 
@@ -204,7 +226,7 @@ export function EditStaffUserModal({
     }
 
     const patch = buildPatch(form, original);
-    if (Object.keys(patch).length === 0) {
+    if (Object.keys(patch).length === 0 && professionalEquals(pro, originalPro)) {
       setErrors({ _form: "لا توجد تغييرات لحفظها." });
       return;
     }
@@ -220,7 +242,7 @@ export function EditStaffUserModal({
       return;
     }
 
-    const serverErrors = await onSubmit(patch);
+    const serverErrors = await onSubmit(patch, pro);
     if (serverErrors) setErrors(serverErrors);
   }
 
@@ -409,6 +431,14 @@ export function EditStaffUserModal({
                 </>
               ) : null}
             </div>
+
+            <StaffProfessionalFields
+              value={pro}
+              onChange={setPro}
+              disabled={saving}
+              hasRow={rosterRow !== null}
+              unlinkedRows={unlinkedRosterRows(valuers)}
+            />
           </ModalBody>
 
           <ModalFooter className="justify-start">

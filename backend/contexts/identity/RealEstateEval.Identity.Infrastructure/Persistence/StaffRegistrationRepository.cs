@@ -113,26 +113,6 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
         return RegistrationMapper.ToListItem(profile.User, profile, roles);
     }
 
-    public async Task<IReadOnlyList<StaffRoleMembership>> ListStaffRoleMembershipsAsync(
-        CancellationToken cancellationToken)
-    {
-        var rows = await _db.UserProfiles
-            .AsNoTracking()
-            .Include(p => p.User)
-            .ToListAsync(cancellationToken);
-
-        var rolesByUser = await RolesByUserAsync(
-            rows.Select(p => p.UserId).ToList(),
-            cancellationToken);
-
-        return rows
-            .Select(p => new StaffRoleMembership(
-                p.UserId,
-                p.User.DisplayName,
-                p.JobTitle,
-                rolesByUser.GetValueOrDefault(p.UserId, [])))
-            .ToList();
-    }
 
     public async Task<IReadOnlyList<string>> ListProfiledUserIdsAsync(
         CancellationToken cancellationToken) =>

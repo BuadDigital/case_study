@@ -94,10 +94,10 @@ test.describe("Engineering office: survey submit → specialist accept", () => {
     );
 
     // ── 2. coordinates (UI) ────────────────────────────────────────────────
-    const lat = page.locator("#eng-lat");
-    await expect(lat).toBeEditable({ timeout: 60_000 });
-    await lat.fill("24.7136");
-    await page.locator("#eng-lng").fill("46.6753");
+    // One «الإحداثيات» box (lat, lng) — the same control the inspector uses.
+    const coords = page.locator('input[placeholder="21.523339, 39.187743"]');
+    await expect(coords).toBeEditable({ timeout: 60_000 });
+    await coords.fill("24.7136, 46.6753");
 
     // ── 3. the PDF dropzone → chip (UI) ────────────────────────────────────
     const reportBox = page.locator("#eng-survey-report");

@@ -88,7 +88,7 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
                 normalized, propertyIds, track: false, cancellationToken))
             .ToDictionary(x => x.PropertyId);
 
-        var taskStatuses = await LoadPropertyWorkStatusesAsync(normalized, propertyIds, cancellationToken);
+        var taskStatuses = await LoadPropertyWorkStatusesAsync(normalized, order.Properties, cancellationToken);
         var entitlements = await LoadKeyEntitlementsByPropertyAsync(
             propertyIds,
             cancellationToken);
@@ -255,15 +255,19 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
 
     private async Task<Dictionary<Guid, (string Status, string Label)>> LoadPropertyWorkStatusesAsync(
         string poNumber,
-        IReadOnlyList<Guid> propertyIds,
+        IReadOnlyList<CaseStudyPropertySnapshotDto> properties,
         CancellationToken cancellationToken)
     {
+        var propertyIds = properties.Select(p => p.Id).ToList();
         var tasks = (await _lookup.ListWorkflowTasksByPoNumbersAsync([poNumber], cancellationToken))
             .Select(s => s.ToWorkflowTask())
             .Where(t => t.PropertyId != null && propertyIds.Contains(t.PropertyId.Value))
             .ToList();
 
-        return PoEnfazWorkStatusRules.ComputePropertyWorkStatuses(propertyIds, tasks);
+        return PoEnfazWorkStatusRules.ComputePropertyWorkStatuses(
+            propertyIds,
+            tasks,
+            PoEnfazWorkStatusRules.HandedOverIds(properties));
     }
 
     private async Task<Dictionary<Guid, PropertyKeyEntitlement>> LoadKeyEntitlementsByPropertyAsync(

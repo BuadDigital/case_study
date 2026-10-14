@@ -100,6 +100,24 @@ public static class IdentityModel
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        builder.Entity<LoginOtpCode>(e =>
+        {
+            e.ToTable("LoginOtpCodes", DatabaseSchemas.Identity, t =>
+                t.HasCheckConstraint("CK_LoginOtpCodes_Attempts", "\"Attempts\" >= 0"));
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Mobile).HasMaxLength(20).IsRequired();
+            e.Property(x => x.UserId).HasMaxLength(ColumnLengths.UserId).IsRequired();
+            e.Property(x => x.CodeHash).HasMaxLength(64).IsRequired();
+            e.Property(x => x.Channel).HasMaxLength(16).IsRequired();
+            e.HasIndex(x => new { x.Mobile, x.CreatedAtUtc });
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => x.ExpiresAtUtc);
+            e.HasOne<ApplicationUser>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         builder.Entity<HrEmployeeProfile>(e =>
         {
             e.ToTable("HrEmployeeProfiles", DatabaseSchemas.Identity);

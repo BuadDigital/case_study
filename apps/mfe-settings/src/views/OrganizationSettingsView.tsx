@@ -1,5 +1,7 @@
 "use client";
 
+import { OpsIcon } from "../components/OpsIcon";
+
 /**
  * Organization settings shell — composition only. `useOrganizationSettingsWorkflow`
  * owns tab routing, the draft and save / test; delegated tabs (company,
@@ -23,20 +25,14 @@ import {
   opsLetterTitle,
   opsTfActions,
   opsTfNote,
-  opsTfSegRow,
   preloadableLazy,
   useSwapAnimation,
   whenIdle,
 } from "@platform/ui-kit";
-import { opsTfSeg, opsTfSegActive } from "../lib/settings-ops-tw";
-import {
-  OrganizationCommunicationsForm,
-  OrganizationSlaForm,
-} from "./OrganizationSettingsForms";
+import { OrganizationSlaForm } from "./OrganizationSettingsForms";
 import {
   formatUpdatedAt,
   TAB_META,
-  TABS,
   tabLabel,
   type TabId,
 } from "./organization-settings-state";
@@ -75,33 +71,11 @@ const OrganizationDataView = delegatedViews.company.Component;
 const ValuersRosterView = delegatedViews.evaluator.Component;
 const ProfessionalValuationReportView = delegatedViews.report.Component;
 
-function preloadDelegatedView(id: TabId) {
-  if (id in delegatedViews) {
-    void delegatedViews[id as keyof typeof delegatedViews].preload();
-  }
-}
 
 function preloadAllDelegatedViews() {
   for (const view of Object.values(delegatedViews)) void view.preload();
 }
 
-function TabIcon({ path, size = 20 }: { path: string; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d={path} />
-    </svg>
-  );
-}
 
 export function OrganizationSettingsView() {
   const workflow = useOrganizationSettingsWorkflow();
@@ -124,7 +98,7 @@ function OrganizationSettingsSection({
 }: {
   workflow: OrganizationSettingsWorkflow;
 }) {
-  const { canEdit, tab, setTab, draft, loading, saving, loadError, onSave } = workflow;
+  const { canEdit, tab, draft, loading, saving, loadError, onSave } = workflow;
 
   if (tab === "branding") {
     return <BrandIdentityView />;
@@ -169,34 +143,13 @@ function OrganizationSettingsSection({
         </p>
       ) : null}
 
-      {/* Settings sections — segmented buttons matching ops task pattern */}
-      <div
-        className={cn(opsTfSegRow, "mb-3.5")}
-        role="tablist"
-        aria-label="أقسام الإعدادات"
-      >
-        {TABS.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === item.id}
-            className={tab === item.id ? opsTfSegActive : opsTfSeg}
-            onClick={() => setTab(item.id)}
-            onPointerEnter={() => preloadDelegatedView(item.id)}
-            onFocus={() => preloadDelegatedView(item.id)}
-          >
-            {item.label}
-          </button>
-        ))}
-      </div>
 
       {/* Section card */}
       <section className={opsLetterCard}>
         <div className={opsLetterHead}>
           <div className="flex items-center gap-[11px]">
             <span className={opsIconBoxGold}>
-              <TabIcon path={active.icon} />
+              <OpsIcon path={active.icon} />
             </span>
             <div>
               <div className={opsLetterTitle}>{tabLabel(tab)}</div>
@@ -209,10 +162,6 @@ function OrganizationSettingsSection({
         </div>
 
         <div className="px-4 pb-[18px] pt-4 sm:px-[18px]">
-          {tab === "communications" ? (
-            <OrganizationCommunicationsForm workflow={workflow} />
-          ) : null}
-
           {tab === "sla" ? <OrganizationSlaForm workflow={workflow} /> : null}
 
           <Can capability="manage-system-config">

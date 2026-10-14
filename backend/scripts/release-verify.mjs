@@ -74,7 +74,7 @@ async function verifyRabbitMq() {
 }
 
 async function verifyLogin() {
-  const url = `http://${API_HOST}:5160/api/auth/login-username`;
+  const url = `http://${API_HOST}:5160/api/auth/login`;
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -83,18 +83,18 @@ async function verifyLogin() {
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
-      console.error(`  ✗ login-username HTTP ${res.status}`);
+      console.error(`  ✗ login HTTP ${res.status}`);
       return false;
     }
     const data = await res.json();
     if (!data?.token) {
-      console.error("  ✗ login-username missing token");
+      console.error("  ✗ login missing token");
       return false;
     }
-    console.log("  ✓ login-username (sliman)");
+    console.log("  ✓ login (sliman)");
     return true;
   } catch (err) {
-    console.error(`  ✗ login-username — ${err instanceof Error ? err.message : err}`);
+    console.error(`  ✗ login — ${err instanceof Error ? err.message : err}`);
     return false;
   }
 }

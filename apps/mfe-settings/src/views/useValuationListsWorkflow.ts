@@ -3,18 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  getOrganizationSettings,
   getValuationLists,
-  saveOrganizationSettings,
   saveValuationLists,
-  type OrganizationSettingsDto,
   type ValuationListItemDto,
   type ValuationListsDto,
 } from "@platform/api-client";
 import { syncValuationListsCache } from "@platform/app-shared/query/valuation-lists-query";
 import { useToast } from "@platform/ui-kit";
 
-import { organizationSettingsApiConfig } from "../lib/settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   TABLE_META,
   TABS,
@@ -33,7 +30,6 @@ export function useValuationListsWorkflow() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState("purposes");
   const [catalog, setCatalog] = useState<ValuationListsDto | null>(null);
-  const [org, setOrg] = useState<OrganizationSettingsDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,17 +51,14 @@ export function useValuationListsWorkflow() {
   }, []);
 
   const reload = useCallback(async () => {
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) {
       setLoading(false);
       setError("يلزم تسجيل الدخول");
       return;
     }
     setLoading(true);
-    const [listsRes, orgRes] = await Promise.all([
-      getValuationLists(config),
-      getOrganizationSettings(config),
-    ]);
+    const listsRes = await getValuationLists(config);
     setLoading(false);
     if (!listsRes.ok) {
       setError("تعذّر تحميل قوائم التقييم");
@@ -74,7 +67,6 @@ export function useValuationListsWorkflow() {
     setError(null);
     setCatalog(listsRes.data);
     syncValuationListsCache(queryClient, listsRes.data);
-    if (orgRes.ok) setOrg(orgRes.data);
   }, [queryClient]);
 
   useEffect(() => {
@@ -105,7 +97,7 @@ export function useValuationListsWorkflow() {
     next: ValuationListsDto,
     options?: { quiet?: boolean },
   ): Promise<boolean> {
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) return false;
     setSaving(true);
     const res = await saveValuationLists(config, {
@@ -190,31 +182,12 @@ export function useValuationListsWorkflow() {
     doDelete();
   }
 
-  async function persistOrg(next: OrganizationSettingsDto) {
-    const config = organizationSettingsApiConfig();
-    if (!config) return;
-    setSaving(true);
-    const res = await saveOrganizationSettings(config, {
-      evaluator: next.evaluator,
-      valuers: next.valuers,
-      valuationReport: next.valuationReport,
-    });
-    setSaving(false);
-    if (!res.ok) {
-      showToast(res.message ?? "تعذّر حفظ سجل المقيّمين", "error");
-      return;
-    }
-    setOrg(res.data);
-    showToast("تم الحفظ", "success");
-  }
-
   return {
     tab,
     setTab,
     meta,
     tableMeta,
     catalog,
-    org,
     rows,
     loading,
     saving,
@@ -231,7 +204,6 @@ export function useValuationListsWorkflow() {
     openAddModal,
     confirmAddItem,
     requestDeleteRow,
-    persistOrg,
     persistCatalog,
   };
 }

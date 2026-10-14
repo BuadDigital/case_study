@@ -1,26 +1,18 @@
 /**
  * Pure state helpers behind `ValuationWorkShell` — screen identity, the nav
- * model, the auto-generated adjustments narrative, the difference-factor
- * catalog projection and the small parsing utilities the workflow
- * hooks share. No React, no I/O.
+ * model, the auto-generated adjustments narrative and the small parsing
+ * utilities the workflow hooks share. No React, no I/O.
  */
 import type {
-  DifferenceFactorDefinitionDto,
   ValuationApproachSettingsDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
-import {
-  AUTO_AREA_KEY,
-  SEQUENTIAL_SET,
-  factorIncludedByDefault,
-} from "./factor-registry";
+import { factorIncludedByDefault } from "./factor-registry";
 import { type lineForSave } from "./market-save-mappers";
 
 export const LAND_WITHIN_COST = "land_within_cost";
 export const MARKET_CONTEXT = "market";
-/** Interactive-form spec: “N of 5 adopted”. */
-export const MAX_ADOPTED_COMPARABLES = 5;
 
 export type ValuationWorkScreenId =
   | "basic"
@@ -71,23 +63,6 @@ export function officialValuationDateOf(
 }
 
 /** Split the server catalog into tooltip definitions and the “add factor” menu. */
-export function buildFactorCatalog(factors: DifferenceFactorDefinitionDto[]): {
-  definitions: Record<string, string>;
-  addable: { factorKey: string; labelAr: string }[];
-} {
-  const definitions: Record<string, string> = {};
-  const addable: { factorKey: string; labelAr: string }[] = [];
-  for (const f of factors) {
-    if (!f.isActive) continue;
-    definitions[f.key] = f.excludesAr
-      ? `${f.definitionAr}\nلا يشمل: ${f.excludesAr}`
-      : f.definitionAr;
-    if (!SEQUENTIAL_SET.has(f.key) && f.key !== AUTO_AREA_KEY) {
-      addable.push({ factorKey: f.key, labelAr: f.labelAr });
-    }
-  }
-  return { definitions, addable };
-}
 
 /**
  * Interactive-form spec (buildNarrative): adjustments analysis lists only written

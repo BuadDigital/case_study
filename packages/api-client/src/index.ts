@@ -294,7 +294,6 @@ export {
   listKeyEnvelopeLinkedProperties,
   listKeyEnvelopes,
   listPropertyCourtAccess,
-  listSurveyOffices,
   listSuspendedTransactions,
   listValuationRequests,
   listValuationRequestMapOverlay,
@@ -343,7 +342,6 @@ export {
   type UpsertPropertyCourtAccessRequest,
   type PrototypeModulesApiConfig,
   type PrototypeModulesResult,
-  type SurveyOfficeDto,
   type SuspendedTransactionDto,
   type UploadAttachmentRequest,
   type ValuationRequestDto,
@@ -522,7 +520,7 @@ export {
   notifyOrganizationSettingsGap,
   saveOrganizationSettings,
   syncStaffValuer,
-  testOrganizationCommunication,
+  type StaffReportRole,
   type NotifyOrganizationSettingsGapRequest,
   type OrganizationSettingsSectionEditor,
   type OrganizationSettingsSectionEditorsDto,
@@ -531,7 +529,6 @@ export {
   isNoExternalSpecialistAssumption,
   applyIvsDateToStandards,
   type OrganizationBrandingSettings,
-  type OrganizationCommunicationsSettings,
   type OrganizationCompanySettings,
   type OrganizationEvaluatorSettings,
   type OrganizationValuerRosterEntry,
@@ -565,14 +562,6 @@ export {
   type ValuationListsDto,
   type ValuationListItemDto,
 } from "./valuation-lists";
-
-export {
-  getDifferenceFactorCatalog,
-  saveDifferenceFactorCatalog,
-  type DifferenceFactorCatalogApiConfig,
-  type DifferenceFactorCatalogDto,
-  type DifferenceFactorDefinitionDto,
-} from "./difference-factor-catalog";
 
 export {
   getPropertyGroup,

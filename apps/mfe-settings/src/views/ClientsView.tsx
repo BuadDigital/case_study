@@ -1,5 +1,7 @@
 "use client";
 
+import { OpsIcon } from "../components/OpsIcon";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   createClient,
@@ -13,7 +15,7 @@ import {
 } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
 import { Badge, cn, EmptyState, ModalBody, ModalCard, ModalClose, ModalFooter, ModalHeader, ModalOverlay, ModalTitle, PageShell, PageLoadingHint, Table, TBody, Td, TdLtr, Th, THead, Tr, useToast, confirmAction } from "@platform/ui-kit";
-import { organizationSettingsApiConfig } from "../lib/settings-api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   opsBtnGhost,
   opsBtnPrimary,
@@ -29,10 +31,10 @@ import {
   opsLetterHead,
   opsLetterSub,
   opsLetterTitle,
-  opsPpBadge,
+  opsCountBadge,
   opsTfLbl,
   opsTfNote,
-} from "../lib/settings-ops-tw";
+} from "@platform/ui-kit";
 
 type Draft = UpsertClientRequest & { id?: string };
 
@@ -40,23 +42,6 @@ const USERS_ICON =
   "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75";
 const PLUS_ICON = "M12 5v14M5 12h14";
 
-function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d={path} />
-    </svg>
-  );
-}
 
 function emptyDraft(): Draft {
   return {
@@ -92,7 +77,7 @@ export function ClientsView() {
   const [saving, setSaving] = useState(false);
 
   const reload = useCallback(async () => {
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) {
       setLoading(false);
       setError("يلزم تسجيل الدخول");
@@ -126,7 +111,7 @@ export function ClientsView() {
 
   async function persist() {
     if (!modal) return;
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     const nameAr = modal.nameAr.trim();
     if (!nameAr) {
@@ -174,7 +159,7 @@ export function ClientsView() {
       danger: true,
     });
     if (!confirmed) return;
-    const config = organizationSettingsApiConfig();
+    const config = apiConfig();
     if (!config) return;
     const res = await deactivateClient(config, row.id);
     if (!res.ok) {
@@ -228,7 +213,7 @@ export function ClientsView() {
                 إضافة عميل
               </button>
             </Can>
-            <span className={opsPpBadge}>{sorted.length}</span>
+            <span className={opsCountBadge}>{sorted.length}</span>
           </div>
         </div>
 

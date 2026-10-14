@@ -63,7 +63,7 @@ public sealed partial class PartyFeePricingService
             table.Id,
             categoryBefore,
             categoryAfter);
-        await _db.SaveChangesAsync(cancellationToken);
+        await SaveAndAppendAuditsAsync(cancellationToken);
 
         var reloaded = await LoadTableAsync(tableId, tracking: false, cancellationToken)
             ?? throw new KeyNotFoundException($"Pricing table {tableId} was not found after assign.");

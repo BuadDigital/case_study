@@ -66,6 +66,9 @@ public static class PropertyListRowStatuses
 {
     public const string New = "new";
     public const string Progress = "progress";
+    /// <summary>Every task complete; waiting for the specialist's Enfaz handover.</summary>
+    public const string Ready = "ready";
+    /// <summary>Handed over to Enfaz (the overall status) — or the track's own task completed.</summary>
     public const string Done = "done";
     public const string Fail = "fail";
     public const string Incomplete = "incomplete";

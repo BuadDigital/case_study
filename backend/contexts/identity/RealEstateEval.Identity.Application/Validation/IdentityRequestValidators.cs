@@ -16,6 +16,29 @@ public sealed class UsernameLoginRequestValidator : AbstractValidator<UsernameLo
             .OverridePropertyName("username");
 }
 
+public sealed class OtpRequestRequestValidator : AbstractValidator<OtpRequestRequest>
+{
+    public OtpRequestRequestValidator() =>
+        RuleFor(x => x.Mobile).NotEmpty().MaximumLength(20)
+            .Must(m => SaudiMobiles.Normalize(m) is not null)
+            .WithMessage("صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).")
+            .OverridePropertyName("mobile");
+}
+
+public sealed class OtpVerifyRequestValidator : AbstractValidator<OtpVerifyRequest>
+{
+    public OtpVerifyRequestValidator()
+    {
+        RuleFor(x => x.Mobile).NotEmpty().MaximumLength(20)
+            .Must(m => SaudiMobiles.Normalize(m) is not null)
+            .WithMessage("صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).")
+            .OverridePropertyName("mobile");
+        RuleFor(x => x.Code).NotEmpty().Matches(@"^\d{6}$")
+            .WithMessage("رمز التحقق مكوّن من ٦ أرقام.")
+            .OverridePropertyName("code");
+    }
+}
+
 public sealed class RefreshTokenRequestValidator : AbstractValidator<RefreshTokenRequest>
 {
     public RefreshTokenRequestValidator() =>

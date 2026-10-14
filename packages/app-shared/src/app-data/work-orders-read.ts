@@ -1,6 +1,6 @@
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import type { PoRow, PropertyRow } from "./constants";
-import { normalizePoListStatus } from "./po-list-status";
+import { normalizePoListStatus, studyStatusOf } from "./po-list-status";
 import type {
   PropertyListItemDto,
   WorkOrderDto,
@@ -38,6 +38,9 @@ function listItemToPoRow(item: WorkOrderListItemDto): PoRow {
     done: item.completedCount ?? 0,
     progressPct,
     status: normalizePoListStatus(item.status),
+    studyStatus: item.studyStatus
+      ? normalizePoListStatus(item.studyStatus)
+      : studyStatusOf(normalizePoListStatus(item.status)),
     date: item.receivedFromEnfathAt,
     dueDate: item.dueDateAt,
     specialist: specialist || "—",

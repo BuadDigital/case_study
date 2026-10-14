@@ -42,9 +42,7 @@ import {
   valuationListThClass,
 } from "../lib/valuation-lists-view-state";
 import {
-  CertValuerPanel,
   ListItemAddModal,
-  ParticipantsPanel,
   ValuationListColGroup,
 } from "./ValuationListsPanels";
 import { useValuationListsWorkflow } from "./useValuationListsWorkflow";
@@ -54,14 +52,13 @@ import { useValuationListsWorkflow } from "./useValuationListsWorkflow";
  * inline-editable table, plus the IVS date, photo pages, certified valuer and
  * report parts panels. All state lives in `useValuationListsWorkflow`.
  */
-export function ValuationListsView() {
+export function AttachmentPrintDictionaryView() {
   const {
     tab,
     setTab,
     meta,
     tableMeta,
     catalog,
-    org,
     rows,
     loading,
     saving,
@@ -78,7 +75,6 @@ export function ValuationListsView() {
     openAddModal,
     confirmAddItem,
     requestDeleteRow,
-    persistOrg,
     persistCatalog,
   } = useValuationListsWorkflow();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -187,14 +183,6 @@ export function ValuationListsView() {
                 </CardBody>
               </Card>
             </>
-          ) : null}
-
-          {meta.kind === "cert" && org ? (
-            <CertValuerPanel org={org} onSave={(next) => void persistOrg(next)} saving={saving} />
-          ) : null}
-
-          {meta.kind === "parts" && org ? (
-            <ParticipantsPanel org={org} onSave={(next) => void persistOrg(next)} saving={saving} />
           ) : null}
 
           {meta.kind === "table" && tableMeta ? (
@@ -402,5 +390,3 @@ export function ValuationListsView() {
     </PageShell>
   );
 }
-
-export { ValuationListsView as AttachmentPrintDictionaryView };

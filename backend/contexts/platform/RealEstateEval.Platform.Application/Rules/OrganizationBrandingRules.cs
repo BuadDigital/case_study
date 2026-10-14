@@ -64,7 +64,6 @@ public static partial class OrganizationBrandingRules
         Image(b.StampUrl, nameof(b.StampUrl), "ختم المنشأة", StampMaxBytes);
         Image(b.SignatureUrl, nameof(b.SignatureUrl), "توقيع المقيّم المعتمد", SignatureMaxBytes);
         Image(b.LetterheadUrl, nameof(b.LetterheadUrl), "كليشة التقرير", LetterheadMaxBytes);
-        Image(b.HeaderUrl, nameof(b.HeaderUrl), "ترويسة التقرير", StampMaxBytes);
     }
 
     /// <summary>Returns the rejection message for one image value, or null when it is acceptable.</summary>

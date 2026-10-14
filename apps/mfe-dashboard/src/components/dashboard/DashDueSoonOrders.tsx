@@ -75,7 +75,7 @@ export function DashDueSoonOrders({
                   <bdi>{o.id}</bdi>
                 </span>
                 <span className="ms-auto overflow-hidden text-ellipsis whitespace-nowrap text-[11.5px] text-text-3">
-                  {o.type} · {o.count} عقار · {o.done}/{o.count} منجز
+                  {o.type} · {o.count} عقار · {o.done}/{o.count} مرفوع
                 </span>
               </div>
               <span

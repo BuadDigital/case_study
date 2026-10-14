@@ -18,20 +18,17 @@ namespace RealEstateEval.Platform.Application.Services;
 public sealed partial class CourtsService : ICourtsService
 {
     private readonly ICourtsRepository _repo;
-    private readonly IResponseCache _cache;
     private readonly IAuditLogWriter _audit;
     private readonly TimeProvider _time;
 
     public CourtsService(
         ICourtsRepository repo,
-        IResponseCache cache,
         IAuditLogWriter audit,
         TimeProvider? time = null)
     {
         _time = time ?? TimeProvider.System;
 
         _repo = repo;
-        _cache = cache;
         _audit = audit;
     }
 
@@ -105,7 +102,6 @@ public sealed partial class CourtsService : ICourtsService
             CourtCatalogRules.CourtCreated(entity),
             cancellationToken);
         await _repo.SaveChangesAsync(cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToDto(entity, 0), null);
     }
 
@@ -150,7 +146,6 @@ public sealed partial class CourtsService : ICourtsService
         }
 
         await _repo.SaveChangesAsync(cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToDto(entity, entity.Circuits.Count), null);
     }
 
@@ -189,7 +184,6 @@ public sealed partial class CourtsService : ICourtsService
             CourtCatalogRules.CircuitCreated(entity),
             cancellationToken);
         await _repo.SaveChangesAsync(cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToCircuitDto(entity), null);
     }
 
@@ -233,7 +227,6 @@ public sealed partial class CourtsService : ICourtsService
         }
 
         await _repo.SaveChangesAsync(cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToCircuitDto(entity), null);
     }
 
@@ -261,7 +254,6 @@ public sealed partial class CourtsService : ICourtsService
             CourtCatalogRules.StatusChanged(before, isActive),
             cancellationToken);
         await _repo.SaveChangesAsync(cancellationToken);
-        await _cache.RemoveAsync(CacheKeys.CourtsCatalog, cancellationToken);
         return (ToCircuitDto(entity), null);
     }
 

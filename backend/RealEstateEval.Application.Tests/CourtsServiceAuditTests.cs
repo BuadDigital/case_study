@@ -1,11 +1,7 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
-using RealEstateEval.Infrastructure.Caching;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Platform.Infrastructure.Data.Contexts;
@@ -216,29 +212,8 @@ public class CourtsServiceAuditTests
 
     private static CourtsService CreateService(PlatformDbContext db)
     {
-        var cache = new ApiResponseCache(
-            new NullDistributedCache(),
-            Options.Create(new RedisCacheOptions { Enabled = false }),
-            NullLogger<ApiResponseCache>.Instance);
-        return new CourtsService(new CourtsRepository(db), cache, new AuditLogWriter());
+        return new CourtsService(new CourtsRepository(db), new AuditLogWriter());
     }
 
     private static PlatformDbContext CreateDb() => TestDatabases.Platform("courts-audit");
-
-    private sealed class NullDistributedCache : IDistributedCache
-    {
-        public byte[]? Get(string key) => null;
-        public Task<byte[]?> GetAsync(string key, CancellationToken token = default) =>
-            Task.FromResult<byte[]?>(null);
-        public void Refresh(string key) { }
-        public Task RefreshAsync(string key, CancellationToken token = default) => Task.CompletedTask;
-        public void Remove(string key) { }
-        public Task RemoveAsync(string key, CancellationToken token = default) => Task.CompletedTask;
-        public void Set(string key, byte[] value, DistributedCacheEntryOptions options) { }
-        public Task SetAsync(
-            string key,
-            byte[] value,
-            DistributedCacheEntryOptions options,
-            CancellationToken token = default) => Task.CompletedTask;
-    }
 }

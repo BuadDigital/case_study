@@ -14,7 +14,7 @@ export function DashCompletionCard({
   pending?: boolean;
 }) {
   const segs: [string, number, string][] = [
-    ["منجزة", model.pDone, "#3f8f5f"],
+    ["مرفوعة على إنفاذ", model.pDone, "#3f8f5f"],
     ["قيد الدراسة", model.pInProg, "var(--gold)"],
     ["غير مسجّلة", model.pNotReg, "#9aa3b2"],
   ];

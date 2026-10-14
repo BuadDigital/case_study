@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Platform.Api.Controllers;
 
@@ -19,11 +18,4 @@ public class AttachmentPrintDictionaryController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<AttachmentPrintDictionaryDto>> Get(CancellationToken ct)
         => Ok(await _catalog.GetAsync(ct));
-
-    [HttpPut]
-    [Authorize(Policy = CapabilityPolicyNames.ManageSystemConfig)]
-    public async Task<ActionResult<AttachmentPrintDictionaryDto>> Save(
-        [FromBody] SaveAttachmentPrintDictionaryRequest request,
-        CancellationToken ct)
-        => Ok(await _catalog.SaveAsync(request, ct));
 }

@@ -1,11 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type {
-  DifferenceFactorDefinitionDto,
   ValuationComparableSelectionDto,
 } from "@platform/api-client";
 import {
   buildAutoNarrative,
-  buildFactorCatalog,
   isSeedMarketAnalysisNotes,
   parseDecimal,
   SEED_MARKET_ANALYSIS_NOTES,
@@ -100,29 +98,3 @@ describe("buildAutoNarrative", () => {
   });
 });
 
-function catalogFactor(
-  extra: Partial<DifferenceFactorDefinitionDto>,
-): DifferenceFactorDefinitionDto {
-  return {
-    key: "extra",
-    labelAr: "عامل إضافي",
-    definitionAr: "تعريف",
-    excludesAr: "",
-    sortOrder: 1,
-    isActive: true,
-    ...extra,
-  };
-}
-
-describe("buildFactorCatalog", () => {
-  it("keeps default difference factors in the addable list so a deleted row can return", () => {
-    const { addable } = buildFactorCatalog([
-      catalogFactor({ key: "location", labelAr: "الموقع" }),
-      catalogFactor({ key: "attraction", labelAr: "عامل الجذب للموقع" }),
-      catalogFactor({ key: "market", labelAr: "تسوية ظروف السوق" }),
-      catalogFactor({ key: "area", labelAr: "المساحة" }),
-      catalogFactor({ key: "inactive", labelAr: "مخفي", isActive: false }),
-    ]);
-    expect(addable.map((f) => f.factorKey)).toEqual(["location", "attraction"]);
-  });
-});

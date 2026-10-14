@@ -149,7 +149,6 @@ public static class RemoteClientRegistration
         services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
         services.AddHttpClient<IPropertyKeyGateResolver, HttpPropertyKeyGateResolver>();
         services.AddHttpClient<IPropertyKeysService, HttpPropertyKeysService>();
-        services.AddHttpClient<ISurveyOfficesService, HttpSurveyOfficesService>();
         return services;
     }
 

@@ -6,7 +6,7 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Identity.Infrastructure.Data.Contexts;
-using RealEstateEval.Operations.Infrastructure.Data.Contexts;
+using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Api.ContainerTests;
 
@@ -46,7 +46,6 @@ public class SystemResetTests
         var result = await maintenance.ResetAllOperationalDataAsync();
 
  // The demo seed had populated these catalogs, so the reset must report wiping them.
-        Assert.True(result.SurveyOfficesDeleted > 0, "seeded survey offices were not counted");
         Assert.True(
             result.FailureTypesCatalogConfigsDeleted > 0,
             "seeded failure-types catalog was not counted");
@@ -57,12 +56,12 @@ public class SystemResetTests
             configuration, connectionString);
         await using var scope = resetProvider.CreateAsyncScope();
         var identity = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
-        var operations = scope.ServiceProvider.GetRequiredService<OperationsDbContext>();
+        var failures = scope.ServiceProvider.GetRequiredService<FailuresDbContext>();
         Assert.True(await identity.Users.AnyAsync(), "demo users were not reseeded");
-        Assert.True(await operations.SurveyOffices.AnyAsync(), "survey offices were not reseeded");
+        Assert.True(await failures.FailureTypesCatalogConfigs.AnyAsync(), "failure-types catalog was not reseeded");
 
  // Running the reset twice must not fail (the endpoint is retried freely in dev).
         var second = await maintenance.ResetAllOperationalDataAsync();
-        Assert.True(second.SurveyOfficesDeleted > 0);
+        Assert.True(second.FailureTypesCatalogConfigsDeleted > 0);
     }
 }

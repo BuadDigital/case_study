@@ -69,8 +69,6 @@ export type CreateStaffUserRequest = {
 export type CreateStaffUserResponse = {
   user: UserListItem;
   userName: string;
-  /** Accounts are created without a password; the holder sets one via an activation ticket. */
-  activationRequired: boolean;
 };
 
 export type CreateStaffUserResult =

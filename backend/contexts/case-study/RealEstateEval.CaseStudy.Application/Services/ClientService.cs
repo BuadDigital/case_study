@@ -8,7 +8,11 @@ using RealEstateEval.Application;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
-public class ClientService(IClientRepository clients, TimeProvider? time = null) : IClientService
+public class ClientService(
+    IClientRepository clients,
+    TimeProvider? time = null,
+    IAuditLogWriter? auditWriter = null,
+    IAuditLogAppend? audit = null) : IClientService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
@@ -66,6 +70,7 @@ public class ClientService(IClientRepository clients, TimeProvider? time = null)
 
     public async Task<(ClientDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         UpsertClientRequest request,
+        string actorId,
         CancellationToken cancellationToken)
     {
         var errors = Validate(request);
@@ -86,12 +91,14 @@ public class ClientService(IClientRepository clients, TimeProvider? time = null)
         };
         clients.Add(entity);
         await clients.SaveChangesAsync(cancellationToken);
+        await AppendAuditAsync(actorId, "CLIENT_CREATED", entity.Id, null, ToDto(entity), cancellationToken);
         return (ToDto(entity), null);
     }
 
     public async Task<(ClientDto? Result, Dictionary<string, string>? Errors)> UpdateAsync(
         Guid id,
         UpsertClientRequest request,
+        string actorId,
         CancellationToken cancellationToken)
     {
         var errors = Validate(request);
@@ -101,6 +108,7 @@ public class ClientService(IClientRepository clients, TimeProvider? time = null)
         if (entity is null)
             return (null, new Dictionary<string, string> { ["_"] = "العميل غير موجود" });
 
+        var before = ToDto(entity);
         entity.NameAr = request.NameAr.Trim();
         entity.NameEn = Normalize(request.NameEn);
         entity.IdentityNumber = Normalize(request.IdentityNumber);
@@ -109,11 +117,13 @@ public class ClientService(IClientRepository clients, TimeProvider? time = null)
         entity.IsActive = request.IsActive;
         entity.UpdatedAtUtc = _time.UtcNow();
         await clients.SaveChangesAsync(cancellationToken);
+        await AppendAuditAsync(actorId, "CLIENT_UPDATED", entity.Id, before, ToDto(entity), cancellationToken);
         return (ToDto(entity), null);
     }
 
     public async Task<(bool Ok, string? Error)> DeactivateAsync(
         Guid id,
+        string actorId,
         CancellationToken cancellationToken)
     {
         if (id == SeedClientIds.InfathAssignmentCenter)
@@ -123,10 +133,33 @@ public class ClientService(IClientRepository clients, TimeProvider? time = null)
 
         var entity = await clients.GetByIdAsync(id, track: true, cancellationToken);
         if (entity is null) return (false, "العميل غير موجود");
+        var before = ToDto(entity);
         entity.IsActive = false;
         entity.UpdatedAtUtc = _time.UtcNow();
         await clients.SaveChangesAsync(cancellationToken);
+        await AppendAuditAsync(actorId, "CLIENT_DEACTIVATED", entity.Id, before, ToDto(entity), cancellationToken);
         return (true, null);
+    }
+
+    /// <summary>Registry changes go to the Platform ledger after the client row is saved.</summary>
+    private async Task AppendAuditAsync(
+        string actorId,
+        string action,
+        Guid clientId,
+        ClientDto? before,
+        ClientDto after,
+        CancellationToken cancellationToken)
+    {
+        if (auditWriter is null || audit is null) return;
+        await audit.AppendAsync(
+            auditWriter.Create(
+                string.IsNullOrWhiteSpace(actorId) ? "system" : actorId.Trim(),
+                action,
+                "client",
+                clientId.ToString(),
+                before,
+                after),
+            cancellationToken);
     }
 
     private static Dictionary<string, string> Validate(UpsertClientRequest request)

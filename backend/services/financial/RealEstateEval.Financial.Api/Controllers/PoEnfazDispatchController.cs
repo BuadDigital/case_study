@@ -118,7 +118,7 @@ public sealed class PoEnfazDispatchController(
         var dto = await billing.IssueInvoiceAsync(poNumber, cancellationToken);
         return dto is null
             ? this.BadRequestProblem(
-                "تعذّر إصدار الفاتورة — تحقق من اكتمال أمر العمل وتعبئة الأتعاب.")
+                "تعذّر إصدار الفاتورة — تحقق من رفع كل عقارات أمر العمل على إنفاذ وتعبئة الأتعاب.")
             : Ok(dto);
     }
 

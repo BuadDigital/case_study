@@ -146,10 +146,14 @@ export type WorkOrderListItemDto = {
   assignmentType: string;
   propertyCount: number;
   expectedPropertyCount: number;
+  /** Live properties handed over to Enfaz (delivered). */
   completedCount: number;
   /** 0–100 workflow progress for the list bar (stages + parties). */
   progressPct?: number;
+  /** Billing-aware status — Finance and management read this one. */
   status: string;
+  /** Study status alone (never a billing label) — what every other role sees. */
+  studyStatus?: string;
   promulgationDate: string;
   receivedFromEnfathAt: string;
   dueDateAt: string;
@@ -352,11 +356,15 @@ export type WorkOrderListSort = "created" | "po" | "received" | "due";
 export type WorkOrderListStatusFilter =
   | "new"
   | "under_study"
+  | "ready_for_enfaz"
   | "completed"
   | "stopped"
   | "cancelled"
   | "partially_billed"
-  | "fully_billed";
+  | "fully_billed"
+  /** Filter-only buckets: every non-terminal / every terminal status. */
+  | "active"
+  | "closed";
 
 /** `GET /api/work-orders` query — pagination-contract §1. */
 export type WorkOrderListQuery = Omit<ListPageQuery, "sort"> & {
@@ -410,13 +418,13 @@ export type WorkOrderListCountsDto = {
   total: number;
   /** Rows visible to the actor with `q` / `status` / `type` ignored. */
   totalUnfiltered: number;
-  /** Rows whose PO list status is not terminal (the `new` + `under_study` buckets). */
+  /** Rows whose study status is not terminal (`new`, `under_study`, `ready_for_enfaz`). */
   active: number;
   /** `active` rows past their due date. */
   overdue: number;
   /** `active` rows due within the next two days. */
   dueSoon: number;
-  /** Live properties across all matched rows whose case study is done. */
+  /** Live properties across all matched rows handed over to Enfaz. */
   doneProperties: number;
 };
 

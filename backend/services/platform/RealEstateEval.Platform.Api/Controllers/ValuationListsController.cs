@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.Platform.Api.Controllers;
@@ -20,5 +21,5 @@ public class ValuationListsController(IValuationListsService catalog) : Controll
     public async Task<ActionResult<ValuationListsDto>> Save(
         [FromBody] SaveValuationListsRequest request,
         CancellationToken ct)
-        => Ok(await catalog.SaveAsync(request, ct));
+        => Ok(await catalog.SaveAsync(request, ActorClaims.Id(User), ct));
 }

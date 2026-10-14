@@ -10,7 +10,12 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast, confirmAction } from "@platform/ui-kit";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
-import { poListStatusMeta, isPoListStatusTerminal } from "@platform/app-shared/app-data/po-list-status";
+import {
+  isPoListStatusTerminal,
+  poListStatusMeta,
+  poListStatusOptions,
+} from "@platform/app-shared/app-data/po-list-status";
+import { canSeeBillingStatuses } from "@platform/app-shared/app-data/role-access";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import type { ActiveQueueMobileCardItem } from "@platform/app-shared/components/ActiveQueueMobileCards";
@@ -43,7 +48,7 @@ import {
 import { canManageOperationsTasks } from "../lib/app-data/operations-task-roles";
 import {
   buildPoListPageRows,
-  INITIAL_PO_LIST_QUERY,
+  initialPoListQuery,
   isPoListBillingBucket,
   poListBillingWindow,
   poListEmptyMessage,
@@ -55,6 +60,7 @@ import {
   PO_ASSIGNMENT_TYPE_OPTIONS,
   PO_LIST_PAGE_SIZE,
   registeredCountsByPo,
+  rowDisplayStatus,
   teamNamesByPo,
   toWorkOrderListCountsQuery,
   toWorkOrderListQuery,
@@ -71,6 +77,8 @@ export function usePoListWorkflow() {
   const showEdit = canEditPoHeader(role);
   const showDelete = canDeletePo(role);
   const showCreateOperationsTask = canManageOperationsTasks(role);
+  /** Billing labels are Finance's and management's; everyone else sees the study status. */
+  const billing = canSeeBillingStatuses(role);
   const { showToast } = useToast();
   const [deletingPo, setDeletingPo] = useState<string | null>(null);
   const [lifecyclePo, setLifecyclePo] = useState<string | null>(null);
@@ -79,7 +87,8 @@ export function usePoListWorkflow() {
   const intakeFromQuery = searchParams.get("intake") === "1";
   const [query, dispatchQuery] = useReducer(
     poListQueryReducer,
-    INITIAL_PO_LIST_QUERY,
+    role,
+    initialPoListQuery,
   );
   const { search, statusFilter, typeFilter, page } = query;
   const setSearch = (value: string) =>
@@ -201,15 +210,18 @@ export function usePoListWorkflow() {
       const { row: p, deedEntry, studied, expected, pct, urgent, target, rowKey } =
         poListRowView(entry, registeredByPo);
       const deedLabel = deedEntry?.deedNumber?.trim();
-      const statusMeta = poListStatusMeta(p.status);
-      const statusStyle = poStatusStyle(p.status);
+      const shownStatus = rowDisplayStatus(p, billing);
+      const statusMeta = poListStatusMeta(shownStatus);
+      const statusStyle = poStatusStyle(shownStatus);
       const tone: ActiveQueueMobileCardItem["tone"] = isPoListStatusTerminal(
-        p.status,
+        shownStatus,
       )
         ? "done"
         : urgent
           ? "returned"
-          : p.status === "under_study" || pct > 0
+          : shownStatus === "under_study" ||
+              shownStatus === "ready_for_enfaz" ||
+              pct > 0
             ? "pending"
             : "new";
       const specialist =
@@ -230,7 +242,7 @@ export function usePoListWorkflow() {
           specialist
             ? { text: specialist, kind: "place" as const }
             : {
-                text: `${studied}/${expected || p.count || 0} مكتمل`,
+                text: `${studied}/${expected || p.count || 0} مرفوع`,
                 kind: "plain" as const,
               },
         ],
@@ -266,6 +278,7 @@ export function usePoListWorkflow() {
   }, [
     pageRows,
     registeredByPo,
+    billing,
     showEdit,
     showDelete,
     showCreateOperationsTask,
@@ -347,6 +360,8 @@ export function usePoListWorkflow() {
     search,
     setSearch,
     searchModeLabel,
+    billing,
+    statusOptions: poListStatusOptions({ billing }),
     statusFilter,
     setStatusFilter,
     typeFilter,

@@ -8,7 +8,10 @@ import {
   isPoListStatusTerminal,
   poProgressPct,
   type PoListStatus,
+  type PoListStatusBucket,
 } from "@platform/app-shared/app-data/po-list-status";
+import type { RoleId } from "@platform/types";
+import { isCaseStudySpecialist } from "../lib/app-data/po-roles";
 import {
   poPropertiesPath,
   poPropertyPath,
@@ -29,7 +32,7 @@ import type { WorkflowTask } from "../lib/app-data/tasks";
 
 export type SortKey = "created" | "po" | "received" | "due";
 type SortDir = "asc" | "desc";
-export type StatusFilter = PoListStatus | "";
+export type StatusFilter = PoListStatusBucket | "";
 
 export const PO_LIST_PAGE_SIZE = 10;
 
@@ -61,6 +64,17 @@ export function progFill(pct: number): string {
   return "transparent";
 }
 
+/**
+ * The status a row shows: Finance and management read the billing-aware status, every other
+ * role the study status (never a billing label).
+ */
+export function rowDisplayStatus(
+  row: Pick<PoRow, "status" | "studyStatus">,
+  billing: boolean,
+): PoListStatus {
+  return billing ? row.status : row.studyStatus;
+}
+
 export function poStatusStyle(status: PoRow["status"]): {
   base: string;
   fg: string;
@@ -69,6 +83,8 @@ export function poStatusStyle(status: PoRow["status"]): {
   switch (status) {
     case "under_study":
       return { base: "var(--gold)", fg: "var(--gold-d)", live: true };
+    case "ready_for_enfaz":
+      return { base: "#d9a441", fg: "#b8791a", live: true };
     case "completed":
     case "fully_billed":
       return { base: "#3f8f5f", fg: "#2f7a4d", live: false };
@@ -195,6 +211,20 @@ export const INITIAL_PO_LIST_QUERY: PoListQueryState = {
   sortKey: "created",
   sortDir: "desc",
 };
+
+/**
+ * Where the screen opens. The case specialist lands on the orders that still need work, nearest
+ * due date first; everyone else keeps the full list, newest first.
+ */
+export function initialPoListQuery(role: RoleId): PoListQueryState {
+  if (!isCaseStudySpecialist(role)) return INITIAL_PO_LIST_QUERY;
+  return {
+    ...INITIAL_PO_LIST_QUERY,
+    statusFilter: "active",
+    sortKey: "due",
+    sortDir: "asc",
+  };
+}
 
 type PoListQueryAction =
   | { type: "page"; page: number }

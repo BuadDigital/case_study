@@ -34,24 +34,6 @@ public class GeneralAuditLogTests
         Assert.True(after.RootElement.GetProperty("enabled").GetBoolean());
     }
 
-    [Fact]
-    public async Task Field_dictionary_save_writes_actor_and_snapshots_atomically()
-    {
-        await using var db = TestDatabases.Platform("field-dictionary-audit");
-        var service = new FieldDictionaryService(db, new AuditLogWriter());
-
-        await service.SaveAsync(
-            new SaveFieldDictionaryStateRequest { Tags = ["legal"] },
-            "admin-1");
-
-        var audit = Assert.Single(db.AuditLogs);
-        Assert.Equal("admin-1", audit.ActorId);
-        Assert.Equal("FIELD_DICTIONARY_SAVED", audit.Action);
-        Assert.Equal("field_dictionary", audit.EntityType);
-        Assert.Equal("null", audit.BeforeJson);
-        using var after = JsonDocument.Parse(audit.AfterJson);
-        Assert.Equal("legal", after.RootElement.GetProperty("tags")[0].GetString());
-    }
 
     [Fact]
     public async Task Case_study_role_save_records_sanitized_configuration()
