@@ -101,7 +101,7 @@ export function InspectorAccessPhotosCards({
               />
             </div>
             <div>
-              <MobileFieldLabel>عرض الشارع الرئيسي (م)</MobileFieldLabel>
+              <MobileFieldLabel>عرض الشارع (م)</MobileFieldLabel>
               <Input
                 id="ins-street-width"
                 type="text"

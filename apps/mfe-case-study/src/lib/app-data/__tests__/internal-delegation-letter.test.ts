@@ -47,7 +47,6 @@ describe("internal delegation letter", () => {
       issuedAt: "2026-09-13",
       agent: {
         name: "وكيل",
-        nationality: "سعودي",
         nationalId: "1",
         mobile: "0500000000",
       },

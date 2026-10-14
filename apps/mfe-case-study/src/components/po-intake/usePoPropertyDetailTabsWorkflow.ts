@@ -311,11 +311,13 @@ export function usePoPropertyDetailTabsWorkflow({
   const partyRemarksSections = useMemo(
     () =>
       buildPartyRemarksSections({
+        workOrderDescription: record.workOrderDescription,
+        specialist: partySubmissionsQuery.data?.specialist ?? null,
         survey: partySubmissionsQuery.data?.survey ?? null,
         inspection: partySubmissionsQuery.data?.inspection ?? null,
         appraisal: partySubmissionsQuery.data?.appraisal ?? null,
       }),
-    [partySubmissionsQuery.data],
+    [partySubmissionsQuery.data, record.workOrderDescription],
   );
 
   const logEventsQuery = usePropertyTimelineQuery(poNumber, property.id);

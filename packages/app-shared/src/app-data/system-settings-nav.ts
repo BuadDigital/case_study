@@ -30,7 +30,6 @@ const ORG_HREF = (tab: string) => `/organization-settings?tab=${tab}`;
 
 /** Top-bar title based on `/organization-settings?tab=`. */
 export function organizationSettingsLeafTitle(tab: string | null | undefined): string {
-  if (tab === "evaluator") return "المقيّمون";
   if (tab === "branding") return "الهوية البصرية";
   if (tab === "report") return "تقرير التقييم المهني";
   if (tab === "sla") return "وقت التنفيذ";
@@ -74,7 +73,6 @@ const SYSTEM_SETTINGS_TREE: SettingsNavTreeNode[] = [
     label: "المنشأة",
     items: [
       leaf("org-data", "organization-settings", "بيانات المنشأة", ORG_ICON, ORG_HREF("company")),
-      leaf("valuers", "organization-settings", "المقيّمون", USERS_ICON, ORG_HREF("evaluator")),
       leaf("brand", "organization-settings", "الهوية البصرية", BRAND_ICON, ORG_HREF("branding")),
       leaf("sla", "organization-settings", "وقت التنفيذ", SLA_ICON, ORG_HREF("sla")),
     ],

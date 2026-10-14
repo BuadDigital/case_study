@@ -13,13 +13,11 @@ import {
 
 export type TabId =
   | "company"
-  | "evaluator"
   | "branding"
   | "sla"
   | "report";
 
 export const TABS: { id: TabId; label: string }[] = [
-  { id: "evaluator", label: "المقيّمون" },
   { id: "sla", label: "وقت التنفيذ" },
   { id: "report", label: "تقرير التقييم المهني" },
 ];

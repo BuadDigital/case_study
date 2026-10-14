@@ -918,6 +918,23 @@ export function buildFromFieldInspection(
       value: submission.assetNotes.trim(),
     });
   }
+  // «وصف المخالفات» and the per-side «ملاحظة عدم التطابق» are notes too — they used to
+  // stay inside the inspection tab only.
+  if (submission.violationsDescription?.trim()) {
+    remarks.push({ label: "وصف المخالفات", value: submission.violationsDescription.trim() });
+  }
+  const sideLabel: Record<string, string> = {
+    north: "الشمال",
+    south: "الجنوب",
+    east: "الشرق",
+    west: "الغرب",
+  };
+  for (const [side, match] of Object.entries(submission.boundaryMatches ?? {})) {
+    const note = match?.mismatchNote?.trim();
+    if (note) {
+      remarks.push({ label: `ملاحظة عدم تطابق حد ${sideLabel[side] ?? side}`, value: note });
+    }
+  }
 
   for (const obs of submission.observations) {
     if (!obs.text.trim()) continue;

@@ -71,7 +71,8 @@ export type CachedAssignmentDoc = {
   attachmentId?: string;
 };
 
-type DocCacheResult = { ok: true } | { ok: false; error: string };
+/** `fileName` is the name the server stored — the form keeps that one, not the local file's. */
+type DocCacheResult = { ok: true; fileName?: string } | { ok: false; error: string };
 
 /** Name + reason the server requires for a document outside the defined list («other»). */
 type UnlistedDocumentDetails = {
@@ -363,7 +364,7 @@ async function writeCachedDoc(
     }
   }
 
-  return { ok: true };
+  return { ok: true, fileName: payload.fileName };
 }
 
 export async function cacheAssignmentDoc(
@@ -416,6 +417,17 @@ export async function cacheBourseDeedImageDoc(
   });
 }
 
+/** «مستند الحدود» from the bourse step — one file, replaced on re-upload. */
+export async function cacheBoundariesDoc(
+  poNumber: string,
+  propertyId: string,
+  file: File,
+): Promise<DocCacheResult> {
+  return writeCachedDoc("boundaries", poNumber, propertyId, file, {
+    replaceAll: true,
+  });
+}
+
 /** «Other documents» are unlisted: the server keeps them for review with the name and reason. */
 export async function cacheOtherPropertyDoc(
   poNumber: string,
@@ -463,11 +475,39 @@ export function getCachedPropertyDocMatching(
  */
 export function storedFileNameOf(name: string): string {
   const base = name.trim().split(/[\\/:]/).pop() ?? "";
-  return base
+  const cleaned = base
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "")
     .trim()
     .replace(/^\.+|\.+$/g, "")
     .trim();
+  // The service keeps only the last 200 characters of a long name.
+  return cleaned.length > STORED_FILE_NAME_MAX ? cleaned.slice(-STORED_FILE_NAME_MAX) : cleaned;
+}
+
+const STORED_FILE_NAME_MAX = 200;
+
+/**
+ * Deletes every per-field document row of a property. Used for the client-side id a new
+ * property was uploaded under once its files were copied onto the server id, so nothing
+ * lingers under a key no screen will ever list.
+ */
+export async function discardPropertyDocuments(
+  poNumber: string,
+  propertyId: string,
+): Promise<void> {
+  if (!poNumber.trim() || !propertyId) return;
+  const config = prototypeModulesApiConfig();
+  if (!config) return;
+  await Promise.all(
+    PROPERTY_DOC_PREFETCH_KINDS.map((kind) =>
+      replaceScopeAttachments(API_SCOPE[kind], scopeKey(poNumber, propertyId)),
+    ),
+  );
+  for (const kind of PROPERTY_DOC_PREFETCH_KINDS) {
+    docCache.delete(cacheKey(kind, poNumber, propertyId));
+  }
+  forgetPropertyDocMetas(poNumber, propertyId);
+  notifyCacheListeners();
 }
 
 async function hydrateOneMeta(
@@ -791,6 +831,7 @@ export type ClonedPropertyDocNames = {
   realEstateRegFileName: string;
   deedOwnershipFileName: string;
   bourseDeedImageFileName: string;
+  boundariesExternalDocName: string;
 };
 
 /** When enfath auto-fill clones docs onto a client-only id, re-run after server insert. */
@@ -854,6 +895,7 @@ export async function clonePropertyDocumentsFromPrior(
     realEstateRegFileName: "",
     deedOwnershipFileName: "",
     bourseDeedImageFileName: "",
+    boundariesExternalDocName: "",
   };
   const fromPo = sourcePo.trim();
   const toPo = targetPo.trim();
@@ -920,9 +962,6 @@ export async function clonePropertyDocumentsFromPrior(
       cloneKind("bourse-deed"),
       cloneKind("boundaries"),
     ]);
-  // boundaries are stored by attachment only; external doc name is a separate text field.
-  void boundaries;
-
   return {
     assignmentDocFileNames: decree,
     delegationLetterFileNames: delegation,
@@ -930,6 +969,7 @@ export async function clonePropertyDocumentsFromPrior(
     realEstateRegFileName: registry[0] ?? "",
     deedOwnershipFileName: deedOwnership[0] ?? "",
     bourseDeedImageFileName: bourseDeed[0] ?? "",
+    boundariesExternalDocName: boundaries[0] ?? "",
   };
 }
 

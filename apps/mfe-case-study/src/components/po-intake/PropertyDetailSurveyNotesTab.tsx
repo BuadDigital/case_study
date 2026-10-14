@@ -14,8 +14,9 @@ type PartyRemarksSection = {
 };
 
 /**
- * Read-only notes board: remarks from engineering office, field inspector,
- * and appraiser (no compose / chat UI).
+ * Read-only notes board: what the intake wrote on the work order, the case
+ * specialist's remarks, and the engineering office, field inspector and
+ * appraiser remarks (no compose / chat UI).
  */
 export function PropertyDetailSurveyNotesTab({
   sections,
@@ -43,8 +44,8 @@ export function PropertyDetailSurveyNotesTab({
   if (filled.length === 0) {
     return (
       <EmptyState
-        title="لا توجد ملاحظات من الأطراف بعد"
-        sub="تظهر هنا ملاحظات المكتب الهندسي والمعاين الميداني والمقيّم العقاري عند كتابتها في مهامهم."
+        title="لا توجد ملاحظات بعد"
+        sub="تظهر هنا ملاحظات أمر العمل من البيانات الأولية، وملاحظات أخصائي دراسة الحالة والمكتب الهندسي والمعاين الميداني والمقيّم العقاري عند كتابتها."
       />
     );
   }
@@ -52,8 +53,8 @@ export function PropertyDetailSurveyNotesTab({
   return (
     <div className="grid gap-4">
       <p className="m-0 text-[12px] leading-relaxed text-text-3">
-        عرض فقط — ملاحظات الأطراف المعيّنين على المعاملة (بدون إمكانية الرد أو
-        الإنشاء من هنا).
+        عرض فقط — ملاحظات أمر العمل وملاحظات الأطراف المعيّنين على المعاملة
+        (بدون إمكانية الرد أو الإنشاء من هنا).
       </p>
       {filled.map((section) => (
         <EngineeringPartyNotesSection
@@ -66,13 +67,30 @@ export function PropertyDetailSurveyNotesTab({
   );
 }
 
-/** Build ordered sections for the notes tab from party submission remarks. */
+/**
+ * Build ordered sections for the notes tab: the work-order description typed on the
+ * intake screen first, then the specialist, then the three executing parties.
+ */
 export function buildPartyRemarksSections(input: {
+  /** «ملاحظات أو وصف عام لأمر العمل» from البيانات الأولية. */
+  workOrderDescription?: string | null;
+  specialist?: { remarks?: PartyNoteRow[] } | null;
   survey?: { remarks?: PartyNoteRow[] } | null;
   inspection?: { remarks?: PartyNoteRow[] } | null;
   appraisal?: { remarks?: PartyNoteRow[] } | null;
 }): PartyRemarksSection[] {
+  const description = input.workOrderDescription?.trim() ?? "";
   return [
+    {
+      id: "intake",
+      title: "ملاحظات أمر العمل (البيانات الأولية)",
+      remarks: description ? [{ label: "وصف أمر العمل", value: description }] : [],
+    },
+    {
+      id: "specialist",
+      title: "ملاحظات أخصائي دراسة الحالة",
+      remarks: input.specialist?.remarks ?? [],
+    },
     {
       id: "survey",
       title: "ملاحظات المكتب الهندسي",

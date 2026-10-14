@@ -103,6 +103,7 @@ export function DocumentFileLine({
 
 function rowStatusText(row: PropertyDocumentChecklistRow): string {
   if (row.documents.length > 0) return `${row.documents.length} مستند`;
+  if (row.brokenDocuments.length > 0) return "الملف غير موجود على الخادم — أعد رفعه";
   if (row.satisfiedBy) return `مستوفى عبر «${row.satisfiedBy}»`;
   if (row.missing) return "مطلوب — لم يُرفع بعد";
   return row.type.uploadableFromTab ? "لم يُرفع" : "يُرفع من الجهة المختصة";
@@ -117,11 +118,11 @@ function RowStatusIcon({ row }: { row: PropertyDocumentChecklistRow }) {
         "grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border text-[12px] font-bold",
         done &&
           "border-transparent bg-success-bg text-heading",
-        !done && row.missing && "border-red/30 bg-danger-bg text-danger-text",
-        !done && !row.missing && "border-border-md text-text-3",
+        !done && (row.missing || row.brokenDocuments.length > 0) && "border-red/30 bg-danger-bg text-danger-text",
+        !done && !row.missing && row.brokenDocuments.length === 0 && "border-border-md text-text-3",
       )}
     >
-      {done ? "✓" : row.missing ? "!" : "○"}
+      {done ? "✓" : row.missing || row.brokenDocuments.length > 0 ? "!" : "○"}
     </span>
   );
 }
@@ -143,7 +144,7 @@ function ChecklistRowView({
     <div
       className={cn(
         "rounded border border-border bg-surface-2 px-3 py-2.5",
-        row.missing && "border-red/30",
+        (row.missing || row.brokenDocuments.length > 0) && "border-red/30",
       )}
     >
       <div className="flex items-center justify-between gap-2.5">
@@ -157,7 +158,7 @@ function ChecklistRowView({
             <span
               className={cn(
                 "block text-[10.5px]",
-                row.missing ? "text-danger-text" : "text-text-3",
+                row.missing || row.brokenDocuments.length > 0 ? "text-danger-text" : "text-text-3",
               )}
             >
               {rowStatusText(row)}
@@ -179,6 +180,21 @@ function ChecklistRowView({
           </Button>
         ) : null}
       </div>
+      {row.brokenDocuments.length > 0 ? (
+        <ul className="mt-2 grid list-none gap-1 p-0">
+          {row.brokenDocuments.map((doc) => (
+            <li
+              key={doc.id}
+              className="rounded border border-red/30 bg-danger-bg px-2.5 py-1.5 text-[11px] text-danger-text"
+            >
+              <span className="font-semibold" dir="ltr">
+                {doc.fileName}
+              </span>{" "}
+              — مسجّل في «{doc.source}» لكن الملف لم يصل إلى الخادم. أعد رفعه من هناك.
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {row.documents.length > 0 ? (
         <div className="mt-2 grid gap-1.5">
           {row.documents.map((doc) => (
@@ -220,7 +236,7 @@ export function ChecklistRowsList({
 }) {
   const uploadedRows = groups
     .flatMap((group) => group.rows)
-    .filter((row) => row.documents.length > 0);
+    .filter((row) => row.documents.length > 0 || row.brokenDocuments.length > 0);
   if (uploadedRows.length === 0) return null;
   return (
     <section className="mb-3.5">

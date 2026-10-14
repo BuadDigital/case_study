@@ -18,6 +18,7 @@ import {
   validateUnlistedDocumentFields,
 } from "../../lib/app-data/property-document-upload-rules";
 import { PropertyFileUploadField } from "./PropertyFileUploadField";
+import { usePropertyDocUpload } from "./use-property-doc-upload";
 import {
   withoutFileName,
   type EnfathSectionProps,
@@ -29,6 +30,7 @@ export function PoPropertyUnlistedDocumentField({
   attachPo,
 }: Pick<EnfathSectionProps, "property" | "onPatch"> & { attachPo: string }) {
   const { showToast } = useToast();
+  const upload = usePropertyDocUpload();
   const [label, setLabel] = useState("");
   const [reason, setReason] = useState("");
 
@@ -73,6 +75,7 @@ export function PoPropertyUnlistedDocumentField({
         propertyId={property.id}
         docKind="other"
         multiple
+        uploading={upload.isUploading("other")}
         onUpload={(file) => {
           const problem = validateUnlistedDocumentFields(label, reason);
           if (problem) {
@@ -83,22 +86,24 @@ export function PoPropertyUnlistedDocumentField({
             showToast("احفظ العقار أولاً ثم ارفع المستند غير المعرّف", "error");
             return;
           }
-          onPatch("otherDocumentFileNames", [
-            ...property.otherDocumentFileNames,
-            file.name,
-          ]);
-          void cacheOtherPropertyDoc(attachPo, property.id, file, {
+          const details = {
             customDocumentLabel: label.trim(),
             customDocumentReason: reason.trim(),
-          })
-            .then((result) => {
-              if (!result.ok) showToast(result.error, "error");
-            })
-            .catch(() => {
-              showToast("تعذّر حفظ المستند غير المعرّف — حاول مرة أخرى", "error");
-            });
-          setLabel("");
-          setReason("");
+          };
+          void upload.run(
+            "other",
+            file,
+            () => cacheOtherPropertyDoc(attachPo, property.id, file, details),
+            (name) => {
+              onPatch("otherDocumentFileNames", [
+                ...property.otherDocumentFileNames.filter((n) => n !== name),
+                name,
+              ]);
+              setLabel("");
+              setReason("");
+            },
+            "تعذّر حفظ المستند غير المعرّف — حاول مرة أخرى",
+          );
         }}
         onRemove={(name) => {
           onPatch(

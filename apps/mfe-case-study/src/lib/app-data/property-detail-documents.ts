@@ -93,6 +93,19 @@ function pushEntry(
   list.push(entry);
 }
 
+/**
+ * Intake rows whose file never reached the server: the form names them, nothing can be
+ * opened. The documents tab shows these in red so the gap is visible instead of silent.
+ */
+export function collectMissingIntakeDocuments(input: {
+  property: PoPropertyIntake;
+  poNumber: string;
+}): PropertyDetailDocumentEntry[] {
+  return collectIntakeDocuments({ ...input, showDecree: true })
+    .filter((doc) => !isPropertyDetailDocumentAvailable(doc))
+    .map((doc) => ({ ...doc, fileMissing: true }));
+}
+
 /** Real file only — exclude name-only rows that render as empty placeholders. */
 export function isPropertyDetailDocumentAvailable(
   entry: PropertyDetailDocumentEntry,

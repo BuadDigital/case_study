@@ -146,6 +146,7 @@ describe("mergeClonedDocumentNames", () => {
     realEstateRegFileName: "old-reg.pdf",
     deedOwnershipFileName: "",
     bourseDeedImageFileName: "old-bourse.png",
+    boundariesExternalDocName: "",
     extra: 1,
   };
 
@@ -157,6 +158,7 @@ describe("mergeClonedDocumentNames", () => {
       realEstateRegFileName: "",
       deedOwnershipFileName: "new-deed.pdf",
       bourseDeedImageFileName: "",
+      boundariesExternalDocName: "bounds.pdf",
     });
     expect(merged).toEqual({
       assignmentDocFileNames: ["new-decree.pdf"],
@@ -165,6 +167,7 @@ describe("mergeClonedDocumentNames", () => {
       realEstateRegFileName: "old-reg.pdf",
       deedOwnershipFileName: "new-deed.pdf",
       bourseDeedImageFileName: "old-bourse.png",
+      boundariesExternalDocName: "bounds.pdf",
       extra: 1,
     });
     expect(next.assignmentDocFileNames).toEqual(["old-decree.pdf"]);

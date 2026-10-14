@@ -30,7 +30,6 @@ export function agentInfoFromStaff(
 ): DelegationAgentInfo {
   return {
     name: user?.name?.trim() || "—",
-    nationality: "—",
     nationalId: user?.nationalId?.trim() || "—",
     mobile: user?.phone?.trim() || "—",
   };

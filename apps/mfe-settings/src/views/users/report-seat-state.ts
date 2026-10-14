@@ -1,7 +1,8 @@
 /**
- * Pure decisions for the valuers roster view: row completeness and status, the
- * certified-valuer block message and the name filter. The roster is read-only
- * here — people and their professional data are edited on the users screen.
+ * Pure decisions about a person's seat in the valuation report, read from the
+ * organization roster row linked to their account: seat label, membership
+ * completeness, and the message that blocks issuing when the certified valuer
+ * is missing or invalid. No React.
  */
 
 import {
@@ -17,19 +18,14 @@ export function isIsoDate(value: string | null | undefined): boolean {
   return Boolean(value && ISO_DATE_RE.test(value));
 }
 
-export function roleLabel(role: string): string {
+export function reportSeatLabel(role: string): string {
   return VALUER_SYS_ROLES.find((r) => r.value === role)?.label ?? role;
 }
 
-export function isLinkedStaffValuer(row: OrganizationValuerRosterEntry): boolean {
-  return Boolean(row.staffUserId?.trim());
-}
-
-export function catLabel(value: string | null | undefined): string {
+export function membershipCategoryLabel(value: string | null | undefined): string {
   if (!value) return "—";
   return (
-    VALUER_ROSTER_MEMBERSHIP_OPTIONS.find((c) => c.value === value)?.label ??
-    value
+    VALUER_ROSTER_MEMBERSHIP_OPTIONS.find((c) => c.value === value)?.label ?? value
   );
 }
 
@@ -39,15 +35,12 @@ export function isStockSignatureUrl(url: string | null | undefined): boolean {
   return !u || u.endsWith("ejadah-signature.png");
 }
 
-export function sigOk(row: OrganizationValuerRosterEntry): boolean {
+export function signatureUploaded(row: OrganizationValuerRosterEntry): boolean {
   const u = row.signatureUrl?.trim();
   return Boolean(u) && !isStockSignatureUrl(u);
 }
 
-export function completenessGaps(
-  v: OrganizationValuerRosterEntry,
-  today: string,
-): string[] {
+export function seatGaps(v: OrganizationValuerRosterEntry, today: string): string[] {
   const gaps: string[] = [];
   if (!v.nameAr.trim()) gaps.push("الاسم");
   if (!v.role?.trim()) gaps.push("الصفة");
@@ -56,25 +49,22 @@ export function completenessGaps(
   if (!isIsoDate(v.membershipExpiresAt)) gaps.push("سريان العضوية");
   else if (v.membershipExpiresAt! < today) gaps.push("عضوية منتهية");
   // Only the certified valuer signs the report.
-  if (v.role === "certified" && !sigOk(v)) gaps.push("التوقيع");
+  if (v.role === "certified" && !signatureUploaded(v)) gaps.push("التوقيع");
   return gaps;
 }
 
-export function isRowComplete(v: OrganizationValuerRosterEntry, today: string): boolean {
-  return completenessGaps(v, today).length === 0;
-}
-
-type RosterRowStatus = {
+export type SeatStatus = {
   label: string;
   tone: BadgeTone;
   blockReason: string | null;
 };
 
-export function rowStatus(v: OrganizationValuerRosterEntry, today: string): RosterRowStatus {
+/** How a seated person's row reads on the users list. */
+export function seatStatus(v: OrganizationValuerRosterEntry, today: string): SeatStatus {
   if (!v.isActive) {
     return { label: "لا يظهر في التقرير", tone: "default", blockReason: null };
   }
-  const gaps = completenessGaps(v, today);
+  const gaps = seatGaps(v, today);
   if (gaps.length > 0) {
     return {
       label: "غير مكتمل",
@@ -85,7 +75,11 @@ export function rowStatus(v: OrganizationValuerRosterEntry, today: string): Rost
   return { label: "فعّال", tone: "success", blockReason: null };
 }
 
-export function certBlockMessage(rows: OrganizationValuerRosterEntry[], today: string): string {
+/** Empty when a valid certified valuer exists; otherwise why no report can be issued. */
+export function certifiedBlockMessage(
+  rows: readonly OrganizationValuerRosterEntry[],
+  today: string,
+): string {
   const c = rows.find((v) => v.role === "certified");
   if (!c) return "لم يُحدَّد مقيّم معتمد — يُمنع إصدار أي تقرير.";
   const reasons: string[] = [];
@@ -93,38 +87,20 @@ export function certBlockMessage(rows: OrganizationValuerRosterEntry[], today: s
   if (isIsoDate(c.membershipExpiresAt) && c.membershipExpiresAt! < today) {
     reasons.push("العضوية منتهية");
   }
-  if (!sigOk(c)) reasons.push("التوقيع غير مرفوع");
+  if (!signatureUploaded(c)) reasons.push("التوقيع غير مرفوع");
   return reasons.length
     ? `يُمنع إصدار أي تقرير — بيانات المقيّم المعتمد («${c.nameAr}») غير صالحة: ${reasons.join(" · ")}.`
     : "";
 }
 
-/** Certified first, then by name — the order the roster screen lists people in. */
-export function sortRoster(
-  rows: OrganizationValuerRosterEntry[],
-): OrganizationValuerRosterEntry[] {
-  return [...rows].sort((a, b) => {
-    if (a.role === "certified" && b.role !== "certified") return -1;
-    if (b.role === "certified" && a.role !== "certified") return 1;
-    return a.nameAr.localeCompare(b.nameAr, "ar");
-  });
+/** Accounts that currently hold a seat (active roster row linked to them). */
+export function seatedUserIds(
+  rows: readonly OrganizationValuerRosterEntry[],
+): Set<string> {
+  const ids = new Set<string>();
+  for (const v of rows) {
+    const id = v.staffUserId?.trim();
+    if (id && v.isActive) ids.add(id);
+  }
+  return ids;
 }
-
-export function filterRoster(
-  rows: OrganizationValuerRosterEntry[],
-  query: string,
-): OrganizationValuerRosterEntry[] {
-  const q = query.trim();
-  return rows.filter((v) => !q || v.nameAr.includes(q));
-}
-
-/** Where a row is edited: its account on the users screen, or nowhere until it is linked. */
-export function rosterEditHref(row: OrganizationValuerRosterEntry): string | null {
-  const id = row.staffUserId?.trim();
-  return id ? `/users?edit=${encodeURIComponent(id)}` : null;
-}
-
-export const ROSTER_TOASTS = {
-  loadFailed: "تعذّر تحميل سجل المقيّمين",
-  loginRequired: "يلزم تسجيل الدخول",
-} as const;

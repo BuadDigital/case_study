@@ -1003,7 +1003,6 @@ export type DelegationLetterPropertyDto = {
 
 export type DelegationLetterAgentDto = {
   name: string;
-  nationality: string;
   nationalId: string;
   mobile: string;
 };

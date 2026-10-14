@@ -17,3 +17,11 @@ describe("storedFileNameOf", () => {
     expect(storedFileNameOf("a/b/deed*.pdf")).toBe("deed.pdf");
   });
 });
+
+describe("storedFileNameOf — long names", () => {
+  it("keeps the last 200 characters like the attachments service", () => {
+    const long = "a".repeat(250) + ".pdf";
+    expect(storedFileNameOf(long)).toBe(long.slice(-200));
+    expect(storedFileNameOf("x".repeat(200))).toBe("x".repeat(200));
+  });
+});

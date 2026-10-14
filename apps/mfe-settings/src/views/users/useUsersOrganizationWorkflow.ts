@@ -33,6 +33,7 @@ import {
   submitUpdateStaffUser,
 } from "../../lib/users-api";
 import { useStaffUsersQuery } from "../../query/settings-queries";
+import { seatedUserIds } from "./report-seat-state";
 import {
   applyRoleChange,
   buildCreateStaffUserPayload,
@@ -98,9 +99,10 @@ export function useUsersOrganizationWorkflow() {
   // Input stays immediate; filtering is deferred one frame — pure local filter (rerender-use-deferred-value).
   const deferredSearch = useDeferredValue(search);
 
+  const seatedIds = useMemo(() => seatedUserIds(valuers), [valuers]);
   const filteredUsers = useMemo(
-    () => filterStaffUsers(users, deferredSearch, statusFilter),
-    [users, deferredSearch, statusFilter],
+    () => filterStaffUsers(users, deferredSearch, statusFilter, seatedIds),
+    [users, deferredSearch, statusFilter, seatedIds],
   );
 
   // Invalidation already refetches the active query — an extra refetch was a duplicate GET.

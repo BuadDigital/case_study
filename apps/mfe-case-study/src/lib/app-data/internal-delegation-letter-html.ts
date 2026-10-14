@@ -48,7 +48,6 @@ export function internalDelegationLetterHtml(
   const court = letter.court.trim() || "—";
   const circuit = letter.circuit.trim() || "—";
   const agentName = agent?.name?.trim() || "—";
-  const agentNationality = agent?.nationality?.trim() || "—";
   const agentId = agent?.nationalId?.trim() || "—";
   const agentMobile = agent?.mobile?.trim() || "—";
   const org = getCachedOrganizationSettings();
@@ -114,7 +113,6 @@ export function internalDelegationLetterHtml(
         <span class="b"> ${escapeHtml(companyName)} </span>
         سجل تجاري رقم <span class="b">${escapeHtml(companyCr)}</span>
         السيد <span class="b">${escapeHtml(agentName)}</span>
-        <span class="b">${escapeHtml(agentNationality)}</span> الجنسية،
         ويحمل الهوية الوطنية رقم <span class="b">${escapeHtml(agentId)}</span>
         ورقم جوال <span class="b">${escapeHtml(agentMobile)}</span>
         لاستلام <span class="b">مفاتيح العقارات</span> بمحافظة

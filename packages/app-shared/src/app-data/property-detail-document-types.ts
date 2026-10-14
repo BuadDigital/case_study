@@ -23,6 +23,8 @@ export type PropertyDetailDocumentEntry = {
   };
   /** Governed registry key (`property-document-types.ts`) the row belongs to. */
   documentTypeKey?: string;
+  /** The form names this file but the attachments service holds no copy of it. */
+  fileMissing?: boolean;
   /** Uploaded from the documents tab itself (scope `property-document`) — deletable there. */
   governed?: boolean;
   /** Documents outside the defined list: the uploader's name + reason. */

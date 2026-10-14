@@ -5,7 +5,7 @@ import { OpsIcon } from "../components/OpsIcon";
 /**
  * Organization settings shell — composition only. `useOrganizationSettingsWorkflow`
  * owns tab routing, the draft and save / test; delegated tabs (company,
- * evaluator, branding, report) render their own full screens, the rest use
+ * branding, report) render their own full screens, the rest use
  * the generic card with `OrganizationSettingsForms`.
  */
 
@@ -56,9 +56,6 @@ const delegatedViews = {
   company: preloadableLazy(() =>
     import("./OrganizationDataView").then((m) => m.OrganizationDataView),
   ),
-  evaluator: preloadableLazy(() =>
-    import("./ValuersRosterView").then((m) => m.ValuersRosterView),
-  ),
   report: preloadableLazy(() =>
     import("./ProfessionalValuationReportView").then(
       (m) => m.ProfessionalValuationReportView,
@@ -68,7 +65,6 @@ const delegatedViews = {
 
 const BrandIdentityView = delegatedViews.branding.Component;
 const OrganizationDataView = delegatedViews.company.Component;
-const ValuersRosterView = delegatedViews.evaluator.Component;
 const ProfessionalValuationReportView = delegatedViews.report.Component;
 
 
@@ -105,9 +101,6 @@ function OrganizationSettingsSection({
   }
   if (tab === "company") {
     return <OrganizationDataView />;
-  }
-  if (tab === "evaluator") {
-    return <ValuersRosterView />;
   }
   if (tab === "report") {
     return <ProfessionalValuationReportView />;

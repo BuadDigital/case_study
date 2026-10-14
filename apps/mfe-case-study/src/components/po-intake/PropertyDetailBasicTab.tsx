@@ -326,10 +326,6 @@ export function PropertyDetailBasicTab({
                   )}
                 />
                 <FieldBox
-                  label="الفروق / الملاحظات"
-                  emptyLabel="لا توجد فروق"
-                />
-                <FieldBox
                   label="تاريخ آخر تحديث"
                   ltr
                   value={

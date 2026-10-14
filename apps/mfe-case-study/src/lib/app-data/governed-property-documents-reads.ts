@@ -52,7 +52,11 @@ export function governedEntryFromMeta(
     kind: kindOf(meta),
     attachmentId: meta.id,
     documentTypeKey: type?.key,
-    governed: meta.scope === PROPERTY_DOCUMENT_GOVERNED_SCOPE,
+    // A row the tab reclassified keeps its intake scope but now carries a listed type; it
+    // must win over the per-field «unlisted» copy, so it counts as governed from here on.
+    governed:
+      meta.scope === PROPERTY_DOCUMENT_GOVERNED_SCOPE ||
+      (meta.scope === OTHER_DOCUMENTS_SCOPE && !isUnlisted && !isValued),
     unlisted: isUnlisted
       ? {
           customLabel,
