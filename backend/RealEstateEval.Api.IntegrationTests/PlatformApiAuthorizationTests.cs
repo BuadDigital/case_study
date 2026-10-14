@@ -38,7 +38,7 @@ public class PlatformApiAuthorizationTests : IClassFixture<PlatformApiFactory>
     }
 
     [Theory]
-    [InlineData("/api/field-dictionary")]
+    [InlineData("/api/valuation-lists")]
     [InlineData("/api/case-study-info-roles")]
     public async Task Configuration_writes_require_authentication(string path)
     {
@@ -48,7 +48,7 @@ public class PlatformApiAuthorizationTests : IClassFixture<PlatformApiFactory>
     }
 
     [Theory]
-    [InlineData("/api/field-dictionary")]
+    [InlineData("/api/valuation-lists")]
     [InlineData("/api/case-study-info-roles")]
     public async Task Configuration_writes_reject_a_signed_in_user(string path)
     {
@@ -58,7 +58,7 @@ public class PlatformApiAuthorizationTests : IClassFixture<PlatformApiFactory>
     }
 
     [Theory]
-    [InlineData("/api/field-dictionary")]
+    [InlineData("/api/valuation-lists")]
     [InlineData("/api/case-study-info-roles")]
     public async Task Other_administrative_capabilities_do_not_unlock_configuration(string path)
     {

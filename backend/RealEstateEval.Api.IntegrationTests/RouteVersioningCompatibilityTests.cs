@@ -74,8 +74,8 @@ public sealed class RouteVersioningCompatibilityTests
     [Theory]
     [InlineData("/api/notifications")]
     [InlineData("/api/notifications/v1")]
-    [InlineData("/api/courts")]
-    [InlineData("/api/courts/v1")]
+    [InlineData("/api/courts/selectable")]
+    [InlineData("/api/courts/v1/selectable")]
     public async Task Notifications_and_courts_canonical_and_v1_alias_routes_resolve(string path)
     {
         using var factory = new PlatformRouteFactory();
