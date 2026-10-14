@@ -74,9 +74,10 @@ public static class IdentityDependencyInjection
     }
 
     /// <summary>
-    /// SMS for the login code. With <c>Sms:OurSms:ApiKey</c> set the OurSMS client is used and
-    /// codes are checked strictly; without it the message goes to the log (see
-    /// <see cref="LoggingSmsSender"/>) and a dev-login host accepts any well-formed code.
+    /// SMS for the login code. With <c>Sms:OurSms:Enabled</c> (default) and an
+    /// <c>Sms:OurSms:ApiKey</c> the OurSMS client is used and codes are checked strictly;
+    /// otherwise the message goes to the log (see <see cref="LoggingSmsSender"/>) and a
+    /// dev-login host accepts any well-formed code.
     /// </summary>
     public static IServiceCollection AddSmsDelivery(
         this IServiceCollection services,
@@ -91,8 +92,9 @@ public static class IdentityDependencyInjection
                 o => Uri.TryCreate(o.BaseUrl, UriKind.Absolute, out _),
                 "Sms:OurSms:BaseUrl must be an absolute URL.")
             .ValidateOnStart();
-        var configured = !string.IsNullOrWhiteSpace(
-            configuration.GetSection(OurSmsOptions.SectionName)["ApiKey"]);
+        var section = configuration.GetSection(OurSmsOptions.SectionName);
+        var configured = section.GetValue("Enabled", true)
+            && !string.IsNullOrWhiteSpace(section["ApiKey"]);
         if (configured)
         {
             services.AddHttpClient<ISmsSender, OurSmsSender>((sp, client) =>

@@ -42,6 +42,14 @@ public class OurSmsSenderTests
     }
 
     [Fact]
+    public void A_disabled_provider_counts_as_not_configured_even_with_a_key()
+    {
+        Assert.True(new OurSmsOptions { ApiKey = "k", Sender = "S" }.IsConfigured);
+        Assert.False(new OurSmsOptions { ApiKey = "k", Sender = "S", Enabled = false }.IsConfigured);
+        Assert.False(new OurSmsOptions { Sender = "S" }.IsConfigured);
+    }
+
+    [Fact]
     public void Message_text_carries_the_code_and_the_lifetime()
     {
         var text = LoginOtpRules.MessageText("123456");

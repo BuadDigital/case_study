@@ -169,11 +169,14 @@ services:
       <<: [*otel-env, *rabbit-env, *redis-env, *database-env]
       ASPNETCORE_ENVIRONMENT: Production
       Database__MigrateOnStartup: "false"
-      # Mobile login: POST /api/auth/otp/request sends the code through OurSMS, otp/verify
-      # checks it strictly. Dev login (any code, POST /api/auth/login) stays off in production.
-      Auth__EnableDevLogin: "false"
-      Sms__OurSms__ApiKey: ${OURSMS_API_KEY:?Set OURSMS_API_KEY}
-      Sms__OurSms__Sender: ${OURSMS_SENDER:?Set OURSMS_SENDER}
+      # Mobile login runs through POST /api/auth/otp/request + otp/verify. OurSMS is wired and
+      # verified (2026-10-14) but switched OFF for now: the code goes to the log and any code is
+      # accepted (Auth__EnableDevLogin). To go live: Enabled "true", EnableDevLogin "false", and
+      # the OURSMS_API_KEY / OURSMS_SENDER secrets set.
+      Auth__EnableDevLogin: "true"
+      Sms__OurSms__Enabled: "false"
+      Sms__OurSms__ApiKey: ${OURSMS_API_KEY:-}
+      Sms__OurSms__Sender: ${OURSMS_SENDER:-}
       UpstreamServices__PlatformBaseUrl: http://platform:8080
       REAL_ESTATE_EVAL_PG_CONNECTION_STRING_IDENTITY: Host=postgres;Port=5432;Database=realestate_eval_prod_identity;Username=postgres;Password=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       Jwt__Issuer: RealEstateEval

@@ -348,8 +348,6 @@ jobs:
             }
 
             required_secret "JWT_SIGNING_KEY" "${JWT_SIGNING_KEY:-}"
-            required_secret "OURSMS_API_KEY" "${OURSMS_API_KEY:-}"
-            required_secret "OURSMS_SENDER" "${OURSMS_SENDER:-}"
             required_secret "POSTGRES_PASSWORD" "${POSTGRES_PASSWORD:-}"
             required_secret "RABBITMQ_USER" "${RABBITMQ_USER:-}"
             required_secret "RABBITMQ_PASSWORD" "${RABBITMQ_PASSWORD:-}"
