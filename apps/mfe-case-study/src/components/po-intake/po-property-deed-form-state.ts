@@ -127,7 +127,8 @@ type ClonedDocNameKeys =
   | "otherDocumentFileNames"
   | "realEstateRegFileName"
   | "deedOwnershipFileName"
-  | "bourseDeedImageFileName";
+  | "bourseDeedImageFileName"
+  | "boundariesExternalDocName";
 
 /**
  * After cloning attachment bytes from a prior property, prefer the cloned
@@ -156,6 +157,8 @@ export function mergeClonedDocumentNames<
       cloned.deedOwnershipFileName || next.deedOwnershipFileName,
     bourseDeedImageFileName:
       cloned.bourseDeedImageFileName || next.bourseDeedImageFileName,
+    boundariesExternalDocName:
+      cloned.boundariesExternalDocName || next.boundariesExternalDocName,
   };
 }
 

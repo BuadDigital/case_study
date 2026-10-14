@@ -12,6 +12,8 @@ import { useIdempotentAction } from "@platform/app-shared";
 import { DetailBadge, EmptyState } from "./PropertyDetailFields";
 import { SpecialistComponentsSection } from "./SpecialistComponentsSection";
 import { InspectorDescriptionReference } from "../field-inspection/InspectorDescriptionReference";
+import { inspectorReferenceDocuments } from "../field-inspection/InspectorTransactionDocumentsCard";
+import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import {
   approximatePropertyGeo,
   formatDateAr,
@@ -159,6 +161,23 @@ export function PropertyDetailInspectionTab({
 }) {
   const { showToast } = useToast();
   const { data: failures = [] } = useFailuresQuery();
+  // Step 1 of the inspector workspace shows the transaction's documents for reading on site.
+  const transactionDocumentSections = usePropertyDetailDocuments({
+    property,
+    showDecree: true,
+    poNumber: inspectionTask?.poNumber ?? "",
+    surveyTaskId: surveyTask?.id ?? null,
+    appraisalTaskId: null,
+    inspectionTaskId: null,
+    enabled: steps && Boolean(inspectionTask?.poNumber),
+  });
+  const transactionDocuments = useMemo(
+    () =>
+      inspectorReferenceDocuments(
+        transactionDocumentSections.flatMap((section) => section.documents),
+      ),
+    [transactionDocumentSections],
+  );
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -547,6 +566,7 @@ export function PropertyDetailInspectionTab({
           includeRetiredFeatureKeys={includeRetiredFeatureKeys}
           serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
           transactionPhotos={transactionPhotos}
+          transactionDocuments={transactionDocuments}
           locked={locked || !showEditFields}
           saving={submitBusy}
           fieldErrors={fieldErrors}

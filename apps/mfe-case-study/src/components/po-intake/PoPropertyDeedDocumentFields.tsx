@@ -2,8 +2,9 @@
 
 /**
  * Enfath form — property document uploads (delegation, registry, decree, deed
- * image, other). The attachment cache calls are the call sites of
- * `assignment-doc-attachments`; they are moved here verbatim.
+ * image, other). Each field writes its file name only after the attachments
+ * service stored the file (see `usePropertyDocUpload`); a failed upload leaves
+ * the field empty instead of a name nobody can open.
  */
 
 import { COMPACT_FORM_GRID_CLASS, cn, useFormDensity, useToast } from "@platform/ui-kit";
@@ -21,6 +22,7 @@ import {
   withoutFileName,
   type EnfathSectionProps,
 } from "./po-property-deed-form-state";
+import { usePropertyDocUpload } from "./use-property-doc-upload";
 
 export function PoPropertyEnfathDocumentFields({
   property,
@@ -43,6 +45,7 @@ export function PoPropertyEnfathDocumentFields({
 }) {
   const { showToast } = useToast();
   const compact = useFormDensity() === "compact";
+  const upload = usePropertyDocUpload();
 
   return (
     <div className={cn(compact ? cn(COMPACT_FORM_GRID_CLASS, "items-start") : "contents")}>
@@ -57,20 +60,22 @@ export function PoPropertyEnfathDocumentFields({
           docKind="delegation"
           multiple
           maxFiles={1}
+          uploading={upload.isUploading("delegation")}
           onTooManyFiles={() =>
             showToast("ممنوع إدخال أكثر من مستند واحد", "error")
           }
           onUpload={(file) => {
-            onPatch("delegationLetterFileNames", [file.name]);
-            if (attachPo) {
-              void cacheDelegationDoc(attachPo, property.id, file)
-                .then((result) => {
-                  if (!result.ok) showToast(result.error, "error");
-                })
-                .catch(() => {
-                  showToast("تعذّر حفظ مرفق التفويض — حاول مرة أخرى", "error");
-                });
+            if (!attachPo) {
+              onPatch("delegationLetterFileNames", [file.name]);
+              return;
             }
+            void upload.run(
+              "delegation",
+              file,
+              () => cacheDelegationDoc(attachPo, property.id, file),
+              (name) => onPatch("delegationLetterFileNames", [name]),
+              "تعذّر حفظ مرفق التفويض — حاول مرة أخرى",
+            );
           }}
           onRemove={(name) => {
             onPatch(
@@ -99,20 +104,19 @@ export function PoPropertyEnfathDocumentFields({
           attachPo={attachPo}
           propertyId={property.id}
           docKind="registry"
+          uploading={upload.isUploading("registry")}
           onUpload={(file) => {
-            onPatch("realEstateRegFileName", file.name);
-            if (attachPo) {
-              void cacheRegistryDoc(attachPo, property.id, file)
-                .then((result) => {
-                  if (!result.ok) showToast(result.error, "error");
-                })
-                .catch(() => {
-                  showToast(
-                    "تعذّر حفظ مرفق السجل العقاري — حاول مرة أخرى",
-                    "error",
-                  );
-                });
+            if (!attachPo) {
+              onPatch("realEstateRegFileName", file.name);
+              return;
             }
+            void upload.run(
+              "registry",
+              file,
+              () => cacheRegistryDoc(attachPo, property.id, file),
+              (name) => onPatch("realEstateRegFileName", name),
+              "تعذّر حفظ مرفق السجل العقاري — حاول مرة أخرى",
+            );
           }}
           onClear={() => {
             onPatch("realEstateRegFileName", "");
@@ -134,23 +138,22 @@ export function PoPropertyEnfathDocumentFields({
           docKind="decree"
           multiple
           maxFiles={1}
+          uploading={upload.isUploading("decree")}
           onTooManyFiles={() =>
             showToast("ممنوع إدخال أكثر من مستند واحد", "error")
           }
           onUpload={(file) => {
-            onPatch("assignmentDocFileNames", [file.name]);
-            if (attachPo) {
-              void cacheAssignmentDoc(attachPo, property.id, file)
-                .then((result) => {
-                  if (!result.ok) showToast(result.error, "error");
-                })
-                .catch(() => {
-                  showToast(
-                    "تعذّر حفظ مرفق قرار الإسناد — حاول مرة أخرى",
-                    "error",
-                  );
-                });
+            if (!attachPo) {
+              onPatch("assignmentDocFileNames", [file.name]);
+              return;
             }
+            void upload.run(
+              "decree",
+              file,
+              () => cacheAssignmentDoc(attachPo, property.id, file),
+              (name) => onPatch("assignmentDocFileNames", [name]),
+              "تعذّر حفظ مرفق قرار الإسناد — حاول مرة أخرى",
+            );
           }}
           onRemove={(name) => {
             onPatch(
@@ -174,20 +177,19 @@ export function PoPropertyEnfathDocumentFields({
           attachPo={attachPo}
           propertyId={property.id}
           docKind="deed"
+          uploading={upload.isUploading("deed")}
           onUpload={(file) => {
-            onPatch("deedOwnershipFileName", file.name);
-            if (attachPo) {
-              void cacheDeedOwnershipDoc(attachPo, property.id, file)
-                .then((result) => {
-                  if (!result.ok) showToast(result.error, "error");
-                })
-                .catch(() => {
-                  showToast(
-                    "تعذّر حفظ صورة وثيقة التملك — حاول مرة أخرى",
-                    "error",
-                  );
-                });
+            if (!attachPo) {
+              onPatch("deedOwnershipFileName", file.name);
+              return;
             }
+            void upload.run(
+              "deed",
+              file,
+              () => cacheDeedOwnershipDoc(attachPo, property.id, file),
+              (name) => onPatch("deedOwnershipFileName", name),
+              "تعذّر حفظ صورة وثيقة التملك — حاول مرة أخرى",
+            );
           }}
           onClear={() => {
             onPatch("deedOwnershipFileName", "");

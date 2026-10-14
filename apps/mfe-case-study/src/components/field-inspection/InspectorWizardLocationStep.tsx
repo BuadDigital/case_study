@@ -26,6 +26,8 @@ import {
 } from "./inspector-wizard-state";
 import { parseCoordinatePair } from "@platform/app-shared/domain/geo";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
+import { InspectorTransactionDocumentsCard } from "./InspectorTransactionDocumentsCard";
+import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
 import { InspectorAccessContactFields } from "./InspectorAccessContactFields";
 import { InspectorFeatureWizardFields } from "./InspectorFeatureWizardFields";
 import { bourseSourceNotes } from "../../lib/app-data/inspector-bourse-prefill";
@@ -64,6 +66,8 @@ export function InspectorWizardLocationStep({
   canAdoptEngineeringMap = false,
   onAdoptEngineeringMap,
   engineeringMapPin = null,
+  transactionDocuments = [],
+  transactionDocumentsLoading = false,
 }: {
   property: PoPropertyIntake;
   draft: InspectorWorkspaceDraft;
@@ -84,6 +88,9 @@ export function InspectorWizardLocationStep({
   canAdoptEngineeringMap?: boolean;
   onAdoptEngineeringMap?: () => void;
   engineeringMapPin?: { lat: number; lng: number } | null;
+  /** The transaction's documents (deed, delegation…) for reading on site. */
+  transactionDocuments?: PropertyDetailDocumentEntry[];
+  transactionDocumentsLoading?: boolean;
 }) {
   const { showToast } = useToast();
   const ackReady = canPrintSiteLocationAck({
@@ -268,6 +275,11 @@ export function InspectorWizardLocationStep({
         </div>
       </InsCard>
 
+      <InspectorTransactionDocumentsCard
+        documents={transactionDocuments}
+        loading={transactionDocumentsLoading}
+      />
+
       <InsCard title="خصائص العقار">
         <div id="ins-features-section">
           <InspectorFeatureWizardFields
@@ -303,7 +315,7 @@ export function InspectorWizardLocationStep({
             onChange={(v) => onPatch({ mainStreetName: v })}
           disabled={!editable} />
           <InsEditField
-            label="عرض الشارع الرئيسي (م)"
+            label="عرض الشارع (م)"
             value={draft.streetWidthM}
             ltr
             inputMode="decimal"

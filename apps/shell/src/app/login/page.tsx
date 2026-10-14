@@ -10,10 +10,7 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
-import {
-  getApiBase,
-  repositoryFetch as fetch,
-} from "@platform/api-client";
+import { requestLoginOtp, verifyLoginOtp } from "./login-otp-api";
 import {
   setAuthSession,
   type AuthSession,
@@ -41,30 +38,8 @@ import {
   stepTag,
 } from "./login-ui";
 
-type LoginResponse = {
-  token: string;
-  expiresAtUtc: string;
-  refreshToken?: string;
-  refreshTokenExpiresAtUtc?: string;
-  user: { id: string; displayName: string; jobTitle?: string };
-};
-
 type Step = "creds" | "otp";
 
-type OtpRequestResponse = {
-  retryAfterSeconds: number;
-  expiresInSeconds: number;
-  delivery: "sms" | "dev";
-};
-
-type OtpRequestResult =
-  | { ok: true; retryAfterSeconds: number }
-  | { ok: false; message: string; retryAfterSeconds?: number };
-
-const CONNECTION_FAILED =
-  typeof window !== "undefined" && !/localhost|127\.0\.0\.1/.test(window.location.hostname)
-    ? "تعذّر الاتصال بالخادم. على جهاز المضيف: شغّل npm run dev:api، وافتح المنفذين 3000 و5160 (open-firewall.ps1 كمسؤول)."
-    : "تعذّر الاتصال بالخادم. تأكد أن npm run dev:api يعمل على هذا الجهاز (المنفذ 5160).";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -142,44 +117,7 @@ export default function LoginPage() {
   }
 
   /** Step 1: ask the server to text a code to the mobile. */
-  async function requestOtp(): Promise<OtpRequestResult> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 15_000);
-    try {
-      const res = await fetch(`${getApiBase()}/api/auth/otp/request`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile: mobileDigits }),
-        signal: controller.signal,
-      });
-      const data = (await res.json().catch(() => null)) as
-        | OtpRequestResponse
-        | { message?: string; retryAfterSeconds?: number }
-        | null;
-      if (res.ok && data && "retryAfterSeconds" in data) {
-        return { ok: true, retryAfterSeconds: data.retryAfterSeconds ?? 30 };
-      }
-      const message =
-        data && "message" in data && typeof data.message === "string"
-          ? data.message
-          : "تعذّر إرسال رمز التحقق. تأكد من رقم الجوال وحاول مجدداً.";
-      const retryAfterSeconds =
-        data && "retryAfterSeconds" in data && typeof data.retryAfterSeconds === "number"
-          ? data.retryAfterSeconds
-          : undefined;
-      return { ok: false, message, retryAfterSeconds };
-    } catch (err) {
-      const timedOut = err instanceof DOMException && err.name === "AbortError";
-      return {
-        ok: false,
-        message: timedOut
-          ? "انتهت مهلة الاتصال. تأكد أن الخادم يعمل (npm run dev:api) وانتظر حتى يظهر login-ready."
-          : CONNECTION_FAILED,
-      };
-    } finally {
-      clearTimeout(timer);
-    }
-  }
+  const requestOtp = () => requestLoginOtp(mobileDigits);
 
   function resetOtp() {
     setOtp(["", "", "", "", "", ""]);
@@ -196,53 +134,12 @@ export default function LoginPage() {
 
   /** Step 2: exchange the code for a session. */
   async function authenticate(code: string): Promise<AuthSession | null> {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10_000);
-    try {
-      const res = await fetch(`${getApiBase()}/api/auth/otp/verify`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mobile: mobileDigits, code }),
-        signal: controller.signal,
-      });
-      const data = (await res.json().catch(() => null)) as
-        | LoginResponse
-        | { message?: string }
-        | null;
-
-      if (!res.ok) {
-        const msg =
-          data && "message" in data && typeof data.message === "string"
-            ? data.message
-            : "الرمز غير صحيح أو انتهت صلاحيته.";
-        setOtpError(msg);
-        return null;
-      }
-
-      if (!data || !("token" in data)) {
-        setOtpError("استجابة غير متوقعة من الخادم.");
-        return null;
-      }
-
-      return {
-        token: data.token,
-        user: data.user,
-        expiresAtUtc: data.expiresAtUtc,
-        refreshToken: data.refreshToken,
-        refreshTokenExpiresAtUtc: data.refreshTokenExpiresAtUtc,
-      } satisfies AuthSession;
-    } catch (err) {
-      console.error("login failed", err);
-      const timedOut = err instanceof DOMException && err.name === "AbortError";
-      setOtpError(
-        timedOut
-          ? "انتهت مهلة الاتصال. تأكد أن الخادم يعمل (npm run dev:api) وانتظر حتى يظهر login-ready."
-          : CONNECTION_FAILED,
-      );
+    const result = await verifyLoginOtp(mobileDigits, code);
+    if (!result.ok) {
+      setOtpError(result.message);
       return null;
-    } finally {
-      clearTimeout(timer);
     }
+    return result.session;
   }
 
   async function onCredsSubmit(e?: FormEvent) {

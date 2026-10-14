@@ -135,7 +135,7 @@ export function ProfessionalValuationReportView() {
   }
 
   const listsHref = "/attachment-print-dictionary";
-  const valuersHref = "/organization-settings?tab=evaluator";
+  const valuersHref = "/users";
   const orgHref = "/organization-settings?tab=company";
   const brandHref = "/organization-settings?tab=branding";
 

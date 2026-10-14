@@ -22,7 +22,7 @@ type MissingFieldResponsible = {
 
 const SETTINGS_SECTION_LABELS: Record<ReportSettingsSection, string> = {
   company: "بيانات المنشأة",
-  evaluator: "المقيّمون",
+  evaluator: "المستخدمون (البيانات المهنية)",
   report: "تقرير التقييم المهني",
 };
 

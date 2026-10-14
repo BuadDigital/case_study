@@ -21,7 +21,7 @@ describe("tabs", () => {
     expect(tabFromSearch("company")).toBe("company");
     expect(tabFromSearch("nope")).toBe("company");
     expect(tabFromSearch(null)).toBe("company");
-    expect(TABS.map((t) => t.id)).toEqual(["evaluator", "sla", "report"]);
+    expect(TABS.map((t) => t.id)).toEqual(["sla", "report"]);
     expect(TABS.some((t) => t.id === "branding")).toBe(false);
   });
 

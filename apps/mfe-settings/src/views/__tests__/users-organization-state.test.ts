@@ -230,6 +230,8 @@ describe("row presentation", () => {
     expect(filterStaffUsers(users, "", "on").map((u) => u.id)).toEqual(["a"]);
     expect(filterStaffUsers(users, "", "off").map((u) => u.id)).toEqual(["b", "c"]);
     expect(filterStaffUsers(users, " سع ", "all").map((u) => u.id)).toEqual(["a", "c"]);
+    expect(filterStaffUsers(users, "", "seated", new Set(["b", "d"])).map((u) => u.id)).toEqual(["b", "d"]);
+    expect(filterStaffUsers(users, "", "seated")).toEqual([]);
     expect(emptyUsersMessage(0)).toBe("لا يوجد مستخدمون بعد");
     expect(emptyUsersMessage(3)).toBe("لا يوجد مستخدمون مطابقون للبحث");
   });

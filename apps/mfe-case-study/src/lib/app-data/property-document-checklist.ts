@@ -22,6 +22,8 @@ export type PropertyDocumentChecklistRow = {
   label: string;
   required: boolean;
   documents: PropertyDetailDocumentEntry[];
+  /** Form names a file of this type that the server does not hold — re-upload needed. */
+  brokenDocuments: PropertyDetailDocumentEntry[];
   /** Label of another type whose document satisfies this requirement (bourse deed → deed). */
   satisfiedBy: string | null;
   missing: boolean;
@@ -113,6 +115,7 @@ export function buildPropertyDocumentChecklist(input: {
   const settings = settingsByKey(input.attachmentsList);
   const propertyType = input.propertyType?.trim() ?? "";
   const byType = new Map<string, PropertyDetailDocumentEntry[]>();
+  const brokenByType = new Map<string, PropertyDetailDocumentEntry[]>();
   const photos: PropertyDetailDocumentEntry[] = [];
   const unlisted: PropertyDetailDocumentEntry[] = [];
   const valued: PropertyDetailDocumentEntry[] = [];
@@ -120,6 +123,13 @@ export function buildPropertyDocumentChecklist(input: {
   for (const entry of dedupeDocumentEntries(input.entries)) {
     const type = findPropertyDocumentType(entry.documentTypeKey);
     if (!type) continue;
+    if (entry.fileMissing) {
+      // Named in the form, absent on the server: shown on its row, never counted as on file.
+      if (type.key !== UNLISTED_DOCUMENT_KEY && type.key !== VALUED_DOCUMENT_KEY) {
+        brokenByType.set(type.key, [...(brokenByType.get(type.key) ?? []), entry]);
+      }
+      continue;
+    }
     if (type.key === UNLISTED_DOCUMENT_KEY) unlisted.push(entry);
     else if (type.key === VALUED_DOCUMENT_KEY) valued.push(entry);
     else if (type.group === "photos") photos.push(entry);
@@ -149,16 +159,21 @@ export function buildPropertyDocumentChecklist(input: {
       (setting ? setting.isRequired : type.defaultRequired) &&
       (type.key !== "survey" || (input.propertyRequiresSurvey ?? true));
     const documents = byType.get(type.key) ?? [];
+    const brokenDocuments = brokenByType.get(type.key) ?? [];
     const satisfiedBy = documents.length === 0 ? (satisfiers.get(type.key) ?? null) : null;
     const row: PropertyDocumentChecklistRow = {
       type,
       label: typeLabel(type, settings),
       required,
       documents,
+      brokenDocuments,
       satisfiedBy,
       missing: required && documents.length === 0 && !satisfiedBy,
     };
-    return { row, visible: documents.length > 0 || (applies && enabled) };
+    return {
+      row,
+      visible: documents.length > 0 || brokenDocuments.length > 0 || (applies && enabled),
+    };
   };
 
   const groups = CHECKLIST_GROUPS.map((group) => {

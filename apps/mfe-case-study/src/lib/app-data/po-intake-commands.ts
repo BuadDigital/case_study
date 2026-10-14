@@ -234,6 +234,8 @@ async function applyClonedDocuments(
         cloned.deedOwnershipFileName || draft.deedOwnershipFileName,
       bourseDeedImageFileName:
         cloned.bourseDeedImageFileName || draft.bourseDeedImageFileName,
+      boundariesExternalDocName:
+        cloned.boundariesExternalDocName || draft.boundariesExternalDocName,
     };
   } catch {
     return draft;
@@ -390,12 +392,18 @@ function hasClonedNames(names: {
   realEstateRegFileName: string;
   deedOwnershipFileName: string;
   bourseDeedImageFileName: string;
+  boundariesExternalDocName: string;
 }): boolean {
   return (
     names.assignmentDocFileNames.length > 0 ||
     names.delegationLetterFileNames.length > 0 ||
     names.otherDocumentFileNames.length > 0 ||
-    Boolean(names.realEstateRegFileName || names.deedOwnershipFileName || names.bourseDeedImageFileName)
+    Boolean(
+      names.realEstateRegFileName ||
+        names.deedOwnershipFileName ||
+        names.bourseDeedImageFileName ||
+        names.boundariesExternalDocName,
+    )
   );
 }
 
@@ -427,9 +435,11 @@ export async function addPropertyToPo(
   // is copied onto it (prior PDFs from auto-fill first, then whatever the user attached by hand).
   if (provisionalId && provisionalId !== prop.id) {
     try {
-      const { clonePropertyDocumentsFromPrior, completePendingPriorDocumentClone } = await import(
-        "./assignment-doc-attachments"
-      );
+      const {
+        clonePropertyDocumentsFromPrior,
+        completePendingPriorDocumentClone,
+        discardPropertyDocuments,
+      } = await import("./assignment-doc-attachments");
       const recloned =
         (await completePendingPriorDocumentClone(provisionalId, poNumber, prop.id)) ??
         (await clonePropertyDocumentsFromPrior(poNumber, provisionalId, poNumber, prop.id));
@@ -454,6 +464,8 @@ export async function addPropertyToPo(
             recloned.deedOwnershipFileName || prop.deedOwnershipFileName,
           bourseDeedImageFileName:
             recloned.bourseDeedImageFileName || prop.bourseDeedImageFileName,
+          boundariesExternalDocName:
+            recloned.boundariesExternalDocName || prop.boundariesExternalDocName,
         };
         const resaved = await updatePropertyInPo(poNumber, prop.id, {
           ...property,
@@ -461,6 +473,8 @@ export async function addPropertyToPo(
           id: prop.id,
         });
         if (resaved.ok) prop = resaved.data;
+        // The copies live under the server id now; the client-id rows would never be listed again.
+        void discardPropertyDocuments(poNumber, provisionalId).catch(() => undefined);
       }
     } catch {
       /* file names from insert DTO still apply */

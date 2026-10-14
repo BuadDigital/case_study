@@ -13,7 +13,10 @@ import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 import { propertyRequiresSurvey } from "@platform/app-shared/app-data/po-intake-identifiers";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import type { PropertyDetailDocumentSection } from "../../lib/app-data/property-detail-documents";
+import {
+  collectMissingIntakeDocuments,
+  type PropertyDetailDocumentSection,
+} from "../../lib/app-data/property-detail-documents";
 import {
   canReviewValuedDocuments,
   canUploadPropertyDocuments,
@@ -68,6 +71,7 @@ export function usePropertyDocumentsWorkflow({
         entries: [
           ...sections.flatMap((section) => section.documents),
           ...(governed.data ?? []),
+          ...collectMissingIntakeDocuments({ property, poNumber }),
         ],
         attachmentsList,
         propertyType,

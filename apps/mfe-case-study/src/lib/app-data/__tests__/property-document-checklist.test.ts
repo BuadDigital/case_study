@@ -173,3 +173,24 @@ describe("propertyDocumentUploadOptions", () => {
     expect(keys.at(-1)).toBe("unlisted");
   });
 });
+
+describe("missing-file rows", () => {
+  it("shows a named-but-absent file on its row without counting it as on file", () => {
+    const checklist = buildPropertyDocumentChecklist({
+      entries: [doc("deed-a", "deed", { attachmentId: undefined, fileMissing: true })],
+    });
+    const row = checklist.groups.flatMap((g) => g.rows).find((r) => r.type.key === "deed");
+    expect(row).toBeDefined();
+    expect(row!.documents).toEqual([]);
+    expect(row!.brokenDocuments.map((d) => d.id)).toEqual(["deed-a"]);
+    expect(row!.missing).toBe(true);
+    expect(checklist.missingRequired).toContain(row!.label);
+  });
+
+  it("drops a missing unlisted file instead of listing a ghost", () => {
+    const checklist = buildPropertyDocumentChecklist({
+      entries: [doc("u1", "unlisted", { attachmentId: undefined, fileMissing: true })],
+    });
+    expect(checklist.unlisted).toEqual([]);
+  });
+});

@@ -13,7 +13,7 @@ import {
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import { Badge, Button } from "@platform/ui-kit";
 import { pickImage } from "../lib/org-settings-ui";
-import { roleLabel } from "../views/valuers-roster-state";
+import { reportSeatLabel } from "../views/users/report-seat-state";
 import {
   REPORT_ROLE_OPTIONS,
   type StaffProfessional,
@@ -53,7 +53,7 @@ export function StaffProfessionalFields({
             label="ربط بصف قائم في سجل المقيّمين"
             options={unlinkedRows.map((r) => ({
               value: r.id,
-              label: `${r.nameAr} — ${roleLabel(r.role)}`,
+              label: `${r.nameAr} — ${reportSeatLabel(r.role)}`,
             }))}
             value={value.linkRosterRowId}
             onChange={(v) => {

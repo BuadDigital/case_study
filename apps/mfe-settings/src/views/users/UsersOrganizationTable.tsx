@@ -22,15 +22,18 @@ import {
   Tr,
 } from "@platform/ui-kit";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import { todayIso } from "@platform/app-shared/format/date";
 import {
   deptLabel,
   emptyUsersMessage,
   formatLastLogin,
+  rosterRowFor,
   statusLabel,
   statusTone,
   userToggleLabel,
   type StaffStatusFilter,
 } from "./users-organization-state";
+import { reportSeatLabel, seatStatus } from "./report-seat-state";
 import type { UsersOrganizationWorkflow } from "./useUsersOrganizationWorkflow";
 
 // Prefetch on hover/focus — without it the user waits for the bundle after click
@@ -62,6 +65,7 @@ export function UsersOrganizationToolbar({
         <option value="all">كل الحالات</option>
         <option value="on">نشط</option>
         <option value="off">معطّل</option>
+        <option value="seated">يظهر في التقرير</option>
       </Select>
       {canManage ? (
         <Button variant="default" onClick={openAdd}>
@@ -79,9 +83,11 @@ function StaffUserRow({
   user: StaffUser;
   workflow: UsersOrganizationWorkflow;
 }) {
-  const { canManage, isRowBusy, setProfileUser, setEditingUser, onToggleUser } =
+  const { canManage, isRowBusy, setProfileUser, setEditingUser, onToggleUser, valuers } =
     workflow;
   const busy = isRowBusy(user);
+  const seat = rosterRowFor(valuers, user.id);
+  const seatState = seat ? seatStatus(seat, todayIso()) : null;
   return (
     <Tr hoverable={false}>
       <Td className="font-medium">
@@ -102,6 +108,26 @@ function StaffUserRow({
         ) : null}
       </Td>
       <Td>{user.role}</Td>
+      <Td className="whitespace-nowrap">
+        {seat && seatState ? (
+          <>
+            <Badge tone={seat.role === "certified" ? "info" : "default"}>
+              {reportSeatLabel(seat.role)}
+            </Badge>
+            {seatState.label !== "فعّال" ? (
+              <Badge
+                tone={seatState.tone}
+                className="ms-1"
+                title={seatState.blockReason ?? undefined}
+              >
+                {seatState.label}
+              </Badge>
+            ) : null}
+          </>
+        ) : (
+          <span className="text-text-3">—</span>
+        )}
+      </Td>
       <Td>{deptLabel(user)}</Td>
       <TdLtr bare>{formatLastLogin(user.lastLoginAtUtc)}</TdLtr>
       <Td>
@@ -151,6 +177,7 @@ export function UsersOrganizationTable({
             <Tr hoverable={false}>
               <Th>الاسم</Th>
               <Th>الدور</Th>
+              <Th>الصفة في التقرير</Th>
               <Th>القسم</Th>
               <Th>آخر دخول</Th>
               <Th>الحالة</Th>
@@ -159,7 +186,7 @@ export function UsersOrganizationTable({
           </THead>
           <TBody>
             {filteredUsers.length === 0 ? (
-              <TableEmptyRow colSpan={6}>{emptyUsersMessage(users.length)}</TableEmptyRow>
+              <TableEmptyRow colSpan={7}>{emptyUsersMessage(users.length)}</TableEmptyRow>
             ) : (
               filteredUsers.map((user) => (
                 <StaffUserRow key={user.id} user={user} workflow={workflow} />

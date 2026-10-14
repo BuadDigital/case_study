@@ -19,6 +19,7 @@ import {
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import {
+  cacheBoundariesDoc,
   cacheBourseDeedImageDoc,
   clearCachedPropertyDoc,
 } from "../../lib/app-data/assignment-doc-attachments";
@@ -31,6 +32,7 @@ import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySec
 import { PoPropertyGroupSection } from "./PoPropertyGroupSection";
 import { PoPropertyOwnersSection } from "./PoPropertyOwnersSection";
 import { PropertyFileUploadField } from "./PropertyFileUploadField";
+import { usePropertyDocUpload } from "./use-property-doc-upload";
 import { RegionCitySelects } from "./RegionCitySelects";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
@@ -68,6 +70,7 @@ export function PoPropertyBourseForm({
   onDeedVitalityChange,
 }: Props) {
   const { showToast } = useToast();
+  const upload = usePropertyDocUpload();
   const attachPo = poNumber?.trim() || "";
   const compactRegisteredTitle = propertyHasRegisteredTitle(property);
   const vitalityFlow = showDeedVitalityFlow && !compactRegisteredTitle;
@@ -223,20 +226,19 @@ export function PoPropertyBourseForm({
             attachPo={attachPo || undefined}
             propertyId={property.id}
             docKind="bourse-deed"
+            uploading={upload.isUploading("bourse-deed")}
             onUpload={(file) => {
-              onPatch("bourseDeedImageFileName", file.name);
-              if (attachPo) {
-                void cacheBourseDeedImageDoc(attachPo, property.id, file)
-                  .then((result) => {
-                    if (!result.ok) showToast(result.error, "error");
-                  })
-                  .catch(() => {
-                    showToast(
-                      "تعذّر حفظ صورة الصك من البورصة — حاول مرة أخرى",
-                      "error",
-                    );
-                  });
+              if (!attachPo) {
+                onPatch("bourseDeedImageFileName", file.name);
+                return;
               }
+              void upload.run(
+                "bourse-deed",
+                file,
+                () => cacheBourseDeedImageDoc(attachPo, property.id, file),
+                (name) => onPatch("bourseDeedImageFileName", name),
+                "تعذّر حفظ صورة الصك من البورصة — حاول مرة أخرى",
+              );
             }}
             onClear={() => {
               onPatch("bourseDeedImageFileName", "");
@@ -400,12 +402,34 @@ export function PoPropertyBourseForm({
             ) : null}
             {property.boundariesAvailability === "doc" ? (
               <div className="mt-3">
-                <RegField
+                <PropertyFileUploadField
                   id="boundaries_external"
-                  label="اسم مستند الحدود (اختياري)"
-                  value={property.boundariesExternalDocName}
+                  label="مستند الحدود (اختياري)"
+                  fileName={property.boundariesExternalDocName}
                   error={fieldErrors.boundariesExternalDocName}
-                  onChange={(v) => onPatch("boundariesExternalDocName", v)}
+                  attachPo={attachPo || undefined}
+                  propertyId={property.id}
+                  docKind="boundaries"
+                  uploading={upload.isUploading("boundaries")}
+                  onUpload={(file) => {
+                    if (!attachPo) {
+                      onPatch("boundariesExternalDocName", file.name);
+                      return;
+                    }
+                    void upload.run(
+                      "boundaries",
+                      file,
+                      () => cacheBoundariesDoc(attachPo, property.id, file),
+                      (name) => onPatch("boundariesExternalDocName", name),
+                      "تعذّر حفظ مستند الحدود — حاول مرة أخرى",
+                    );
+                  }}
+                  onClear={() => {
+                    onPatch("boundariesExternalDocName", "");
+                    if (attachPo) {
+                      clearCachedPropertyDoc("boundaries", attachPo, property.id);
+                    }
+                  }}
                 />
               </div>
             ) : null}

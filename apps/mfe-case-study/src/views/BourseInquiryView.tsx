@@ -223,9 +223,19 @@ export function BourseInquiryView() {
           setDeedVitality(null);
           setFailureModalOpen(false);
           const local = peekPropertyFieldAutosave(item.poNumber, item.propertyId);
-          if (local) {
-            setProperty({ ...local, id: item.propertyId });
-          }
+          // The form is on screen while the record loads; an upload made in that window must
+          // already carry the real property id, never the empty draft's random one.
+          setProperty(
+            local
+              ? { ...local, id: item.propertyId }
+              : {
+                  ...emptyProperty(),
+                  id: item.propertyId,
+                  deedNumber: item.deedNumber,
+                  ownerName: item.ownerName ?? "",
+                  requestNumber: item.requestNumber ?? "",
+                },
+          );
           const hit = await findPropertyInRecord(item.poNumber, item.propertyId);
           if (
             peekPropertyFieldAutosave(

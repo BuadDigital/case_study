@@ -58,6 +58,8 @@ export function InspectorWorkspaceWizard({
   includeRetiredFeatureKeys,
   serviceProofFromTransactionPhotos = false,
   transactionPhotos = [],
+  transactionDocuments = [],
+  transactionDocumentsLoading = false,
   locked,
   saving,
   fieldErrors = {},
@@ -90,6 +92,9 @@ export function InspectorWorkspaceWizard({
   /** Case-study specialist: proof photos for كهرباء/ماء from transaction images. */
   serviceProofFromTransactionPhotos?: boolean;
   transactionPhotos?: PropertyDetailDocumentEntry[];
+  /** Read-only transaction documents shown in step 1. */
+  transactionDocuments?: PropertyDetailDocumentEntry[];
+  transactionDocumentsLoading?: boolean;
   locked: boolean;
   saving: boolean;
   fieldErrors?: InspectorWorkspaceFieldErrors;
@@ -208,6 +213,8 @@ export function InspectorWorkspaceWizard({
               canAdoptEngineeringMap={canAdoptEngineeringMap}
               onAdoptEngineeringMap={onAdoptEngineeringMap}
               engineeringMapPin={engineeringMapPin}
+              transactionDocuments={transactionDocuments}
+              transactionDocumentsLoading={transactionDocumentsLoading}
             />
 
             {editable && !flat ? (

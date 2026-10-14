@@ -9,22 +9,17 @@ import {
 } from "../../lib/app-data/assignment-doc-attachments";
 import { AssignmentDocAttachment } from "./AssignmentDocAttachment";
 
-const ACCEPT =
-  "application/pdf,image/*,.pdf,.jpg,.jpeg,.png,.heic,.heif,.webp";
+// What the attachments service actually stores (it reads the bytes, not the extension):
+// PDF and JPG/PNG/GIF/WebP images. HEIC is refused here instead of after a failed upload.
+const ACCEPT = "application/pdf,image/jpeg,image/png,image/gif,image/webp,.pdf,.jpg,.jpeg,.png,.gif,.webp";
+const UNSUPPORTED_FILE_MESSAGE = "الصيغة غير مدعومة — ارفع PDF أو صورة JPG / PNG / WebP (HEIC غير مقبول).";
 
 function isAcceptedFile(file: File): boolean {
   const type = (file.type || "").toLowerCase();
-  if (type === "application/pdf" || type.startsWith("image/")) return true;
   const name = file.name.toLowerCase();
-  return (
-    name.endsWith(".pdf") ||
-    name.endsWith(".png") ||
-    name.endsWith(".jpg") ||
-    name.endsWith(".jpeg") ||
-    name.endsWith(".webp") ||
-    name.endsWith(".heic") ||
-    name.endsWith(".heif")
-  );
+  if (/\.(heic|heif)$/.test(name) || type === "image/heic" || type === "image/heif") return false;
+  if (type === "application/pdf" || type.startsWith("image/")) return true;
+  return /\.(pdf|png|jpe?g|gif|webp)$/.test(name);
 }
 
 export function PropertyFileUploadField({
@@ -43,6 +38,7 @@ export function PropertyFileUploadField({
   onClear,
   onRemove,
   onTooManyFiles,
+  uploading,
 }: {
   id: string;
   label: ReactNode;
@@ -64,6 +60,8 @@ export function PropertyFileUploadField({
   onRemove?: (fileName: string) => void;
   /** Called when the user picks more files than `maxFiles` allows. */
   onTooManyFiles?: () => void;
+  /** The file is on its way to the server; the picker waits and says so. */
+  uploading?: boolean;
 }) {
   const names = multiple
     ? (fileNames ?? []).map((n) => n.trim()).filter(Boolean)
@@ -81,7 +79,9 @@ export function PropertyFileUploadField({
   // Compact forms (تعديل العقار) show uploads as small square tiles instead of full-width bars.
   const tile = useFormDensity() === "compact";
   const [dragOver, setDragOver] = useState(false);
+  const [unsupported, setUnsupported] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const shownError = error ?? unsupported ?? undefined;
 
   const handleClearAll = () => {
     if (docKind && attachPo && propertyId) {
@@ -91,8 +91,13 @@ export function PropertyFileUploadField({
   };
 
   function applyFiles(list: FileList | File[] | null | undefined) {
-    const picked = Array.from(list ?? []).filter(isAcceptedFile);
-    if (picked.length === 0) return;
+    const all = Array.from(list ?? []);
+    const picked = all.filter(isAcceptedFile);
+    if (picked.length === 0) {
+      if (all.length > 0) setUnsupported(UNSUPPORTED_FILE_MESSAGE);
+      return;
+    }
+    setUnsupported(null);
 
     if (
       typeof maxFiles === "number" &&
@@ -128,7 +133,7 @@ export function PropertyFileUploadField({
     return (
       <div
         id={id}
-        className={cn("w-40 max-w-full", error && invalidControlClass)}
+        className={cn("w-40 max-w-full", shownError && invalidControlClass)}
       >
         <Label className="mb-1 line-clamp-2 min-h-[2rem] text-[11px]" htmlFor={fileInputId}>
           {label}
@@ -191,9 +196,10 @@ export function PropertyFileUploadField({
             aria-label={`${typeof label === "string" ? label : "مرفق"} — اختر ملفاً أو اسحبه هنا`}
             className={cn(
               "flex h-40 w-40 max-w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[10px] border-2 border-dashed p-2 text-center transition-[border-color,background]",
+              uploading && "pointer-events-none opacity-60",
               dragOver
                 ? "border-primary bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]"
-                : error
+                : shownError
                   ? "border-danger bg-danger-bg/30"
                   : "border-border-md bg-surface-2 hover:border-primary/50 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]",
             )}
@@ -241,7 +247,7 @@ export function PropertyFileUploadField({
               <path d="M9 15l3-3 3 3" />
             </svg>
             <span className="text-[12px] font-bold text-heading">
-              {dragOver ? "أفلِت الملف هنا" : "ارفع المستند"}
+              {uploading ? "جارٍ الرفع…" : dragOver ? "أفلِت الملف هنا" : "ارفع المستند"}
             </span>
             <span className="text-[10px] leading-snug text-text-3">
               PDF أو صورة
@@ -263,9 +269,9 @@ export function PropertyFileUploadField({
           onClick={(e) => e.stopPropagation()}
         />
 
-        {error ? (
+        {shownError ? (
           <p className="mt-1 text-[10px] text-danger-text" role="alert">
-            {error}
+            {shownError}
           </p>
         ) : null}
       </div>
@@ -275,7 +281,7 @@ export function PropertyFileUploadField({
   return (
     <div
       id={id}
-      className={cn("mt-2 w-full", error && invalidControlClass)}
+      className={cn("mt-2 w-full", shownError && invalidControlClass)}
     >
       <Label className="mb-1.5 text-[11px]" htmlFor={fileInputId}>
         {label}
@@ -330,9 +336,10 @@ export function PropertyFileUploadField({
           className={cn(
             "rounded-[10px] border-2 border-dashed p-4 text-center transition-[border-color,background]",
             "cursor-pointer",
+            uploading && "pointer-events-none opacity-60",
             dragOver
               ? "border-primary bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]"
-              : error
+              : shownError
                 ? "border-danger bg-danger-bg/30"
                 : "border-border-md bg-surface-2 hover:border-primary/50 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]",
           )}
@@ -391,7 +398,7 @@ export function PropertyFileUploadField({
             </svg>
           </div>
           <div className="mb-1 text-[12.5px] font-bold text-heading">
-            {dragOver ? "أفلِت الملف هنا" : pickerTitle}
+            {uploading ? "جارٍ الرفع…" : dragOver ? "أفلِت الملف هنا" : pickerTitle}
           </div>
           <div className="mb-3 text-[11px] leading-relaxed text-text-3">
             PDF أو صورة · اسحب الملف وأفلِته هنا، أو اختر من الجهاز
@@ -416,9 +423,9 @@ export function PropertyFileUploadField({
         onClick={(e) => e.stopPropagation()}
       />
 
-      {error ? (
+      {shownError ? (
         <p className="mt-1.5 text-[10px] text-danger-text" role="alert">
-          {error}
+          {shownError}
         </p>
       ) : null}
     </div>

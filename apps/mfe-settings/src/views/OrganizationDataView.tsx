@@ -4,6 +4,7 @@ import { filled } from "../lib/filled";
 
 import { pickImage, refreshOrgCache } from "../lib/org-settings-ui";
 import { todayIso } from "@platform/app-shared/format/date";
+import { certifiedBlockMessage } from "./users/report-seat-state";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -121,6 +122,10 @@ export function OrganizationDataView() {
     [valuers, certifiedId],
   );
   const selectedCertId = certifiedId;
+  const certifiedBlock = useMemo(
+    () => certifiedBlockMessage(valuers, todayIso()),
+    [valuers],
+  );
 
   const licExp = filled(company.practiceLicenseExpiresAt, D.practiceLicenseExpiresAt!);
   const licIssued = filled(
@@ -333,7 +338,7 @@ export function OrganizationDataView() {
               />
             </div>
             <div className="flex flex-col sm:col-span-2">
-              <Label size="field">المقيّم المعتمد (مرجع من سجل المقيّمين)</Label>
+              <Label size="field">المقيّم المعتمد</Label>
               <Select
                 disabled={!canEdit}
                 value={selectedCertId}
@@ -349,15 +354,17 @@ export function OrganizationDataView() {
                 ))}
               </Select>
               <p className="m-0 mt-1 text-[11px] text-text-3">
-                مرجع لا نسخة — بياناته تُقرأ من شاشة{" "}
-                <Link
-                  href="/organization-settings?tab=evaluator"
-                  className="font-semibold text-primary"
-                >
-                  «المقيّمون»
+                مرجع لا نسخة — بياناته وتوقيعه تُعدَّل من بطاقته في{" "}
+                <Link href="/users" className="font-semibold text-primary">
+                  «المستخدمون»
                 </Link>
                 .
               </p>
+              {certifiedBlock ? (
+                <Note tone="danger" className="mt-2">
+                  {certifiedBlock}
+                </Note>
+              ) : null}
             </div>
           </CardBody>
         </Card>

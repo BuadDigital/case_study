@@ -72,7 +72,7 @@ export const EMPTY_STAFF_FORM: StaffFormState = {
   nationalId: "",
 };
 
-export type StaffStatusFilter = "all" | "on" | "off";
+export type StaffStatusFilter = "all" | "on" | "off" | "seated";
 
 export function validateStaffForm(form: StaffFormState): FieldErrors {
   return mergeFieldErrors(
@@ -255,9 +255,11 @@ export function filterStaffUsers(
   users: StaffUser[],
   search: string,
   statusFilter: StaffStatusFilter,
+  seatedIds: ReadonlySet<string> = new Set(),
 ): StaffUser[] {
   const q = search.trim();
   return users.filter((user) => {
+    if (statusFilter === "seated" && !seatedIds.has(user.id)) return false;
     if (statusFilter === "on" && user.status !== "Active") return false;
     if (
       statusFilter === "off" &&

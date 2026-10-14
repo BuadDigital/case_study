@@ -6,7 +6,7 @@
  * component only decides which cards apply (land vs building, boundaries
  * availability, desktop vs mobile chrome) and wires the shared state through.
  */
-import { useRef, type ReactNode, type RefObject } from "react";
+import { useMemo, useRef, type ReactNode, type RefObject } from "react";
 
 import { cn, InlineLoadingSkeleton, Note, useSwapAnimation } from "@platform/ui-kit";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
@@ -19,6 +19,7 @@ import {
   visibleInspectorFeatureFields,
 } from "../../lib/app-data/inspector-workspace-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
+import { emptyProperty } from "../../lib/app-data/po-intake-data";
 import { FieldInspectionWorkHostRef } from "./FieldInspectionWorkParts";
 export type { FieldInspectionWorkHostRef } from "./FieldInspectionWorkParts";
 import {
@@ -38,12 +39,20 @@ import {
 import { InspectorFeaturesSection } from "./InspectorFeaturesSection";
 import { InspectorInventoryCard } from "./InspectorInventoryCard";
 import { InspectorLocationCard } from "./InspectorLocationCard";
+import {
+  InspectorTransactionDocumentsCard,
+  inspectorReferenceDocuments,
+} from "./InspectorTransactionDocumentsCard";
+import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import { InspectorObservationsSection } from "./InspectorObservationsSection";
 import { InspectorServicesCards } from "./InspectorServicesCards";
 import { InspectorStepNav } from "./InspectorStepNav";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
 import { inspectionContextOf } from "./field-inspection-work-state";
 import { useFieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
+
+/** Placeholder while the work order is still loading — the documents query stays disabled. */
+const EMPTY_PROPERTY_FOR_DOCS = emptyProperty();
 
 export function FieldInspectionWorkBody({
   def,
@@ -90,6 +99,23 @@ export function FieldInspectionWorkBody({
   } = workflow;
   const stepPanelRef = useRef<HTMLDivElement>(null);
   useSwapAnimation(stepPanelRef, activeStep);
+  // Step 1 shows the transaction's documents (deed, delegation…) for reading on site.
+  const transactionDocumentSections = usePropertyDetailDocuments({
+    property: property ?? EMPTY_PROPERTY_FOR_DOCS,
+    showDecree: true,
+    poNumber: task.poNumber,
+    surveyTaskId: null,
+    appraisalTaskId: null,
+    inspectionTaskId: null,
+    enabled: Boolean(property),
+  });
+  const transactionDocuments = useMemo(
+    () =>
+      inspectorReferenceDocuments(
+        transactionDocumentSections.flatMap((section) => section.documents),
+      ),
+    [transactionDocumentSections],
+  );
 
   if (!draft) {
     return <InlineLoadingSkeleton />;
@@ -149,6 +175,12 @@ export function FieldInspectionWorkBody({
             draft={draft}
             layout={layout}
             mobile={mobile}
+          />
+
+          <InspectorTransactionDocumentsCard
+            documents={transactionDocuments}
+            layout={layout}
+            hidden={activeStep !== 1}
           />
 
           <InspectorFeaturesSection
