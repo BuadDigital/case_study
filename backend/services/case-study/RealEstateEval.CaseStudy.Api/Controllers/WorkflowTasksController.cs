@@ -277,6 +277,7 @@ public class WorkflowTasksController : ControllerBase
             request,
             await ActorPrototypeRoleAsync(cancellationToken),
             ActorName(),
+            ActorId(),
             cancellationToken);
         if (errors is not null) return this.FieldErrorsProblem(errors);
         if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");

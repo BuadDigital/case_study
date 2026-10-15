@@ -5,7 +5,6 @@
  * engineering-office extras) and the created-account note (phone login ready).
  */
 
-import type { ReactNode } from "react";
 import type { RoleId } from "@platform/types";
 import { isSectionSupervisorRole } from "@platform/app-shared/users/admin-staff-roles";
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
@@ -27,17 +26,7 @@ import {
   type StaffFormState,
 } from "./users-organization-state";
 import type { UsersOrganizationWorkflow } from "./useUsersOrganizationWorkflow";
-
-function FormSectionLabel({ children }: { children: ReactNode }) {
-  return (
-    <div className="col-span-full sm:col-span-2">
-      <p className="m-0 flex items-center gap-2 border-b border-border pb-1.5 text-[11.5px] font-bold text-heading">
-        <span className="size-1.5 shrink-0 rounded-full bg-gold" aria-hidden />
-        {children}
-      </p>
-    </div>
-  );
-}
+import { FormSectionLabel } from "../../components/FormSectionLabel";
 
 export function AddStaffUserModal({ workflow }: { workflow: UsersOrganizationWorkflow }) {
   const {

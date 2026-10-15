@@ -49,6 +49,7 @@ const ACTION_AR: Record<string, string> = {
   "case-study.party-submission.accepted": "اعتماد العمل بعد المراجعة",
   "case-study.workflow-task.distribution-confirmed": "توزيع المهام على الأطراف",
   "case-study.workflow-task.reopened": "إعادة فتح مهمة",
+  "case-study.workflow-task.parties-redistributed": "تعديل إسناد الأطراف",
   "case-study.post-enfaz-decision.recorded": "تسجيل قرار بعد التسليم لإنفاذ",
   "case-study.enfaz-handover.cleared": "إلغاء تسليم الملف لإنفاذ",
   "case-study.report.issued": "إصدار تقرير دراسة الحالة",

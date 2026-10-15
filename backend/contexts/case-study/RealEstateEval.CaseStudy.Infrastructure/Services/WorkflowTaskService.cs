@@ -80,8 +80,9 @@ public class WorkflowTaskService : IWorkflowTaskService
         RedistributePartiesRequest request,
         string actorRole,
         string? actorName,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default) =>
-        _distribution.RedistributePartiesAsync(id, request, actorRole, actorName, cancellationToken);
+        _distribution.RedistributePartiesAsync(id, request, actorRole, actorName, actorUserId, cancellationToken);
 
     public Task<WorkflowTaskDto?> AdvanceAfterEnfathAsync(
         Guid id,

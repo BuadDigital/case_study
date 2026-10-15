@@ -185,10 +185,11 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         RedistributePartiesRequest request,
         string actorRole,
         string? actorName,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
-        if (!WorkflowTaskLifecycleRules.IsSectionSupervisorOrAbove(actorRole))
-            return (null, Error("إعادة إسناد الأطراف صلاحية مشرف القسم فأعلى"));
+        if (!WorkflowTaskLifecycleRules.CanRedistributeParties(actorRole))
+            return (null, Error("إعادة إسناد الأطراف صلاحية أخصائي دراسة الحالة أو مشرف القسم أو مسؤول التحول الرقمي"));
 
         var parent = await _caseStudy.GetTaskForUpdateAsync(id, cancellationToken);
         if (parent is null) return (null, null);
@@ -216,6 +217,13 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         var changed = new List<WorkflowTask>();
         var replaced = new List<(WorkflowTask Child, string AssigneeId)>();
         var timelineEvents = new List<PropertyTimelineRecordRequest>();
+        // Who held each seat before the change — the audit row shows the move, not just the result.
+        var before = new Dictionary<string, object?>
+        {
+            ["caseSpecialist"] = new { id = parent.AssigneeId, name = parent.AssigneeName },
+        };
+        foreach (var c in children)
+            before[c.Kind.ToString()] = new { id = c.AssigneeId, name = c.AssigneeName, status = c.Status.ToString() };
 
         if (distribution.CaseSpecialist)
         {
@@ -243,10 +251,18 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
             if (!spec.Enabled) continue;
 
             var child = children.FirstOrDefault(c => c.Kind == spec.Kind);
-            if (child is null || child.Status != WorkflowTaskStatus.Open) continue;
+            if (child is null) continue;
 
             var newAssigneeId = WorkflowTaskDistributionRules.NormalizeAssigneeId(spec.AssigneeId);
             if (string.Equals(child.AssigneeId, newAssigneeId, StringComparison.Ordinal)) continue;
+
+            // Only open party work moves to someone else; a finished (or cancelled) task keeps the
+            // name of whoever did it, and the caller is told instead of a silent no-op.
+            if (child.Status != WorkflowTaskStatus.Open)
+            {
+                return (null, Error(
+                    $"مهمة {WorkflowTaskKindLabels.RoleAr(child.Kind)} ليست مفتوحة — لا يمكن إعادة إسنادها بعد إنجازها أو إلغائها."));
+            }
 
             var newName = WorkflowTaskPhaseRules.ResolveName(names, spec.Kind, spec.FallbackName);
             // Captured before Assign overwrites it — the outgoing party has to be told too.
@@ -271,6 +287,29 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
 
         parent.SetDistribution(WorkflowTaskMapper.SerializeDistribution(distribution), now);
         await _caseStudy.SaveChangesAsync(cancellationToken);
+
+        var after = new Dictionary<string, object?>
+        {
+            ["caseSpecialist"] = new { id = parent.AssigneeId, name = parent.AssigneeName },
+        };
+        foreach (var c in children)
+            after[c.Kind.ToString()] = new { id = c.AssigneeId, name = c.AssigneeName, status = c.Status.ToString() };
+        await _auditLog.AppendAsync(_audit.Create(
+            actorId: string.IsNullOrWhiteSpace(actorUserId) ? "unknown" : actorUserId,
+            action: "case-study.workflow-task.parties-redistributed",
+            entityType: "WorkflowTask",
+            entityId: parent.Id.ToString("D"),
+            before: before,
+            after: new
+            {
+                parties = after,
+                poNumber = parent.PoNumber,
+                propertyId = parent.PropertyId,
+                actorName,
+                actorRole,
+                reason,
+                movedTasks = changed.Select(c => c.Kind.ToString()).ToArray(),
+            }), cancellationToken);
 
         if (timelineEvents.Count > 0)
             await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
