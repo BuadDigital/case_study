@@ -1,5 +1,6 @@
 /** PO intake — property boundary field keys and empty factory. */
 
+// Order is the one the deed and the screens read in: شمال، جنوب، شرق، غرب (Omar, 2026-10-15).
 export const PROPERTY_BOUNDARY_ROWS = [
   {
     descKey: "northBoundary",
@@ -9,18 +10,18 @@ export const PROPERTY_BOUNDARY_ROWS = [
     label: "الحد الشمالي",
   },
   {
-    descKey: "eastBoundary",
-    lenKey: "eastBoundaryLengthM",
-    typeKey: "eastBoundaryType",
-    facadeKey: "eastFacadeFinishing",
-    label: "الحد الشرقي",
-  },
-  {
     descKey: "southBoundary",
     lenKey: "southBoundaryLengthM",
     typeKey: "southBoundaryType",
     facadeKey: "southFacadeFinishing",
     label: "الحد الجنوبي",
+  },
+  {
+    descKey: "eastBoundary",
+    lenKey: "eastBoundaryLengthM",
+    typeKey: "eastBoundaryType",
+    facadeKey: "eastFacadeFinishing",
+    label: "الحد الشرقي",
   },
   {
     descKey: "westBoundary",

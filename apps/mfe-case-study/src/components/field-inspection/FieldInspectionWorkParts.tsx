@@ -108,10 +108,11 @@ export const BOUNDARY_ROW_MAP: Record<
   InspectorBoundaryKey,
   (typeof PROPERTY_BOUNDARY_ROWS)[number]
 > = {
-  north: PROPERTY_BOUNDARY_ROWS[0],
-  south: PROPERTY_BOUNDARY_ROWS[1],
-  east: PROPERTY_BOUNDARY_ROWS[2],
-  west: PROPERTY_BOUNDARY_ROWS[3],
+  // Looked up by field key, never by position — the rows' order is a display decision.
+  north: PROPERTY_BOUNDARY_ROWS.find((r) => r.descKey === "northBoundary")!,
+  south: PROPERTY_BOUNDARY_ROWS.find((r) => r.descKey === "southBoundary")!,
+  east: PROPERTY_BOUNDARY_ROWS.find((r) => r.descKey === "eastBoundary")!,
+  west: PROPERTY_BOUNDARY_ROWS.find((r) => r.descKey === "westBoundary")!,
 };
 
 /**

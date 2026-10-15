@@ -1,5 +1,7 @@
 import {
+  clearTaskScopedAttachmentPreview,
   clearTaskScopedAttachments,
+  deleteTaskScopedAttachment,
   downloadTaskAttachmentAsync,
   ensureTaskAttachmentPreview,
   getCachedTaskAttachment,
@@ -26,6 +28,34 @@ export type CachedEngineeringSurveyFile = {
 };
 
 export type EngineeringSurveyDocField = "surveyReport" | "siteLetter";
+
+/** Payload key of the PDFs appended to the survey report. */
+const EXTRA_REPORTS_KEY = "surveyReportExtraAttachments";
+
+function extraReportsFromPayload(payload: Record<string, unknown> | null | undefined): CachedEngineeringSurveyFile[] {
+  const raw = payload?.[EXTRA_REPORTS_KEY];
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter(
+      (r): r is CachedEngineeringSurveyFile =>
+        Boolean(r) && typeof r === "object" && typeof (r as { fileName?: unknown }).fileName === "string",
+    )
+    .filter((r) => Boolean(r.attachmentId) && r.fileName.trim().length > 0)
+    .map(stripDataUrl);
+}
+
+/** The PDFs appended beside the primary survey report, in upload order. */
+export function listEngineeringSurveyExtraReports(
+  taskId: string | null | undefined,
+): CachedEngineeringSurveyFile[] {
+  if (!taskId) return [];
+  const dto = getCachedPartySubmission(taskId);
+  if (dto?.payload) return extraReportsFromPayload(dto.payload);
+  const sub = loadEngineeringSurveySubmission(taskId) as
+    | (Record<string, unknown> & { surveyReportExtraAttachments?: unknown })
+    | null;
+  return extraReportsFromPayload(sub);
+}
 
 const MAX_SURVEY_REPORT_BYTES = 20 * 1024 * 1024;
 const MAX_SITE_LETTER_BYTES = 10 * 1024 * 1024;
@@ -171,8 +201,100 @@ export function listEngineeringSurveyDocuments(
       sub: attachment.fileName.trim(),
       attachment,
     });
+    if (field === "surveyReport") {
+      listEngineeringSurveyExtraReports(taskId).forEach((extra, index) => {
+        entries.push({
+          id: `eng-surveyReport-extra-${extra.attachmentId}`,
+          field,
+          name: `${FIELD_META.surveyReport.title} (ملحق ${index + 1})`,
+          sub: extra.fileName.trim(),
+          attachment: extra,
+        });
+      });
+    }
   }
   return entries;
+}
+
+/** Appends one more PDF to the survey report; the first file stays the required one. */
+export async function addEngineeringSurveyExtraReport(
+  taskId: string,
+  file: File,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!taskId) return { ok: false, error: "تعذّر حفظ الملف." };
+  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    return { ok: false, error: "يُقبل ملف PDF فقط." };
+  }
+  if (file.size > MAX_SURVEY_REPORT_BYTES) return { ok: false, error: "الحجم الأقصى 20 ميجابايت." };
+  const current = loadEngineeringSurveySubmission(taskId);
+  if (!current || current.status === "submitted") {
+    return { ok: false, error: "لا يمكن تعديل الرفع بعد الإرسال." };
+  }
+  if (!current.surveyReportFileName.trim()) {
+    return { ok: false, error: "ارفع التقرير المساحي الأساسي أولاً." };
+  }
+
+  const uploaded = await uploadTaskScopedAttachment(
+    FIELD_META.surveyReport.scope,
+    taskId,
+    file,
+    { keepOthers: true },
+  );
+  if (!uploaded?.attachmentId) {
+    return { ok: false, error: "تعذّر حفظ الملف عبر خدمة المرفقات." };
+  }
+  const attachment = stripDataUrl({
+    fileName: uploaded.fileName,
+    mimeType: uploaded.mimeType,
+    sizeBytes: uploaded.sizeBytes,
+    attachmentId: uploaded.attachmentId,
+  });
+
+  return enqueueEngineeringSurveyDraftWrite(taskId, async () => {
+    const latest = loadEngineeringSurveySubmission(taskId);
+    if (!latest || latest.status === "submitted") {
+      return { ok: false as const, error: "لا يمكن تعديل الرفع بعد الإرسال." };
+    }
+    const dto = getCachedPartySubmission(taskId);
+    const payload: Record<string, unknown> = {
+      ...(dto?.payload ?? {}),
+      ...latest,
+      [EXTRA_REPORTS_KEY]: [...extraReportsFromPayload(dto?.payload), attachment],
+      updatedAtUtc: new Date().toISOString(),
+    };
+    const saved = await persistPartySubmissionPayload(taskId, payload);
+    if (!saved) return { ok: false as const, error: "تعذّر حفظ الملف." };
+    notifyChanged();
+    return { ok: true as const };
+  });
+}
+
+/** Removes one appended PDF; the primary report is cleared through `clearEngineeringSurveyFile`. */
+export async function removeEngineeringSurveyExtraReport(
+  taskId: string,
+  attachmentId: string,
+): Promise<boolean> {
+  if (!taskId || !attachmentId) return false;
+  const current = loadEngineeringSurveySubmission(taskId);
+  if (!current || current.status === "submitted") return false;
+
+  await deleteTaskScopedAttachment(attachmentId);
+  return enqueueEngineeringSurveyDraftWrite(taskId, async () => {
+    const latest = loadEngineeringSurveySubmission(taskId) ?? current;
+    const dto = getCachedPartySubmission(taskId);
+    const payload: Record<string, unknown> = {
+      ...(dto?.payload ?? {}),
+      ...latest,
+      [EXTRA_REPORTS_KEY]: extraReportsFromPayload(dto?.payload).filter(
+        (r) => r.attachmentId !== attachmentId,
+      ),
+      updatedAtUtc: new Date().toISOString(),
+    };
+    const saved = await persistPartySubmissionPayload(taskId, payload);
+    if (!saved) return false;
+    notifyChanged();
+    return true;
+  });
 }
 
 export async function cacheEngineeringSurveyFile(
@@ -245,7 +367,15 @@ export async function clearEngineeringSurveyFile(
   if (!current || current.status === "submitted") return false;
 
   const meta = FIELD_META[field];
-  await clearTaskScopedAttachments(meta.scope, taskId);
+  const extras = field === "surveyReport" ? listEngineeringSurveyExtraReports(taskId) : [];
+  const primaryId = getEngineeringSurveyAttachment(taskId, field)?.attachmentId;
+  if (extras.length > 0 && primaryId) {
+    // Appended PDFs stay; only the primary row goes.
+    await deleteTaskScopedAttachment(primaryId);
+    await clearTaskScopedAttachmentPreview(meta.scope, taskId);
+  } else {
+    await clearTaskScopedAttachments(meta.scope, taskId);
+  }
 
   return enqueueEngineeringSurveyDraftWrite(taskId, async () => {
     const latest = loadEngineeringSurveySubmission(taskId) ?? current;
