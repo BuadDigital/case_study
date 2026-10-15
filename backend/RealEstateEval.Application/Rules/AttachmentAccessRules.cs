@@ -22,6 +22,35 @@ public static class AttachmentAccessRules
             ? AllowsValuedDocument(actor) || (actor is not null && IsUploader(uploadedByUserId, actor))
             : Allows(uploadedByUserId, actor);
 
+    /// <summary>
+    /// Read rule that also knows the row's scope. A party working the transaction (inspector,
+    /// engineering office, appraiser — anyone who submits party work) may read the property's
+    /// documents: deed, delegation letter, decree, registry, boundaries, survey files and the
+    /// documents-tab uploads. Nothing else opens up: valued documents keep their rule above, and
+    /// keys, finance, operations and inspection-photo scopes still need the uploader or a manager.
+    /// </summary>
+    public static bool Allows(
+        string uploadedByUserId,
+        string? scope,
+        string? scopeKey,
+        string? documentTypeKey,
+        PermissionsDto? actor)
+    {
+        if (Allows(uploadedByUserId, documentTypeKey, actor))
+            return true;
+        if (actor is null || PropertyDocumentTypes.IsValued(documentTypeKey))
+            return false;
+        return IsPropertyDocument(scope, scopeKey, documentTypeKey)
+            && actor.Capabilities.Contains(PlatformCapabilities.SubmitPartyWork, StringComparer.Ordinal);
+    }
+
+    /// <summary>A row the registry knows as one of the property's documents (not a party's photo).</summary>
+    public static bool IsPropertyDocument(string? scope, string? scopeKey, string? documentTypeKey)
+    {
+        var type = PropertyDocumentTypes.Resolve(documentTypeKey, scope, scopeKey);
+        return type is not null && type.Group != PropertyDocumentGroups.Photos;
+    }
+
     public static bool AllowsDelete(string uploadedByUserId, string? documentTypeKey, PermissionsDto? actor)
     {
         if (!PropertyDocumentTypes.IsValued(documentTypeKey))

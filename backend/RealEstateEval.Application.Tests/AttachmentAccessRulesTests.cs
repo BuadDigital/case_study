@@ -19,6 +19,30 @@ public class AttachmentAccessRulesTests
     }
 
     [Fact]
+    public void A_party_may_read_the_property_documents_but_not_other_scopes()
+    {
+        var inspector = new PermissionsDto
+        {
+            UserId = "fi-1",
+            PrototypeRole = "field-inspector",
+            Capabilities = [PlatformCapabilities.SubmitPartyWork, PlatformCapabilities.ManageAttachments],
+        };
+        // Intake documents uploaded by the specialist: readable.
+        Assert.True(AttachmentAccessRules.Allows("cs-1", "property-delegation", "PO-1:prop-1", null, inspector));
+        Assert.True(AttachmentAccessRules.Allows("cs-1", "property-bourse-deed", "PO-1:prop-1", null, inspector));
+        Assert.True(AttachmentAccessRules.Allows("cs-1", "property-document", "PO-1:prop-1", "building-permit", inspector));
+        Assert.True(AttachmentAccessRules.Allows("eo-1", "engineering-survey-report", "task-9", null, inspector));
+        // A valued document, another party's photo, keys and finance files: not opened by this rule.
+        Assert.False(AttachmentAccessRules.Allows("cs-1", "property-valued-document", "PO-1:prop-1", "valued-document", inspector));
+        Assert.False(AttachmentAccessRules.Allows("fi-2", "field-inspection-photo", "task-9:free:1", "inspection-photo", inspector));
+        Assert.False(AttachmentAccessRules.Allows("gr-1", "key-envelope-receipt", "REQ-1", null, inspector));
+        Assert.False(AttachmentAccessRules.Allows("fo-1", "eng-billing-transfer-receipt", "st-1", null, inspector));
+        // Without the party capability nothing changes.
+        var viewer = new PermissionsDto { UserId = "x", PrototypeRole = "government-reviewer", Capabilities = [] };
+        Assert.False(AttachmentAccessRules.Allows("cs-1", "property-delegation", "PO-1:prop-1", null, viewer));
+    }
+
+    [Fact]
     public void Allows_uploader_and_managers()
     {
         Assert.True(AttachmentAccessRules.Allows("owner-1", new PermissionsDto

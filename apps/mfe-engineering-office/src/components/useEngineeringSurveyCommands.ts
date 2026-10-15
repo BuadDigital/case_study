@@ -30,8 +30,10 @@ import {
   locationPinMismatchInternalNote,
 } from "../lib/engineering-survey-inspector-pin";
 import {
+  addEngineeringSurveyExtraReport,
   cacheEngineeringSurveyFile,
   clearEngineeringSurveyFile,
+  removeEngineeringSurveyExtraReport,
 } from "../lib/engineering-survey-attachments";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
@@ -386,6 +388,32 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
     });
   }
 
+  /** One more PDF beside the primary survey report. */
+  function onExtraReportPick(file: File | null) {
+    if (!file || formDisabled || !draft) return;
+    void runWithUploadToast(async () => {
+      const result = await addEngineeringSurveyExtraReport(draft.taskId, file);
+      if (!result.ok) {
+        setFormError(result.error);
+        throw new Error(result.error);
+      }
+      const next = loadEngineeringSurveySubmission(draft.taskId);
+      if (next) applyRemoteDraft(next);
+    });
+  }
+
+  function onExtraReportRemove(attachmentId: string) {
+    if (!draft || formDisabled) return;
+    void removeEngineeringSurveyExtraReport(draft.taskId, attachmentId).then((removed) => {
+      if (!removed) {
+        showToast("تعذّر حذف المرفق — حاول مرة أخرى", "error");
+        return;
+      }
+      const next = loadEngineeringSurveySubmission(draft.taskId);
+      if (next) applyRemoteDraft(next);
+    });
+  }
+
   function onFileClear(field: SurveyAttachmentField) {
     if (!draft || formDisabled) return;
     const { docField } = surveyAttachmentTarget(field);
@@ -408,6 +436,8 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
     handleChecklistChange,
     onFilePick,
     onFileClear,
+    onExtraReportPick,
+    onExtraReportRemove,
   };
 }
 

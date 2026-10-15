@@ -9,6 +9,7 @@ import {
 import { updateEngineeringSurveyDraft } from "../lib/engineering-survey-submission-commands";
 import { applyNatureBoundaryPatch, natureFieldsFromDeedForm } from "../lib/engineering-survey-nature-fields";
 import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
+import { EngExtraReportsList } from "./EngExtraReportsList";
 import {
   EngInfo,
   EngSection,
@@ -53,6 +54,8 @@ export function EngineeringSurveyWorkBody({
     showToast,
     onFilePick,
     onFileClear,
+    onExtraReportPick,
+    onExtraReportRemove,
     submit,
   } = workflow;
   if (!draft || !localFields) return null;
@@ -141,6 +144,14 @@ export function EngineeringSurveyWorkBody({
         onPick={(file) => onFilePick("surveyReportFileName", file)}
         onClear={() => onFileClear("surveyReportFileName")}
       />
+      {draft.surveyReportFileName ? (
+        <EngExtraReportsList
+          extras={draft.surveyReportExtraAttachments ?? []}
+          disabled={formDisabled}
+          onPick={onExtraReportPick}
+          onRemove={onExtraReportRemove}
+        />
+      ) : null}
 
       <EngSection>الحدود والأطوال (حسب الصك)</EngSection>
       <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">

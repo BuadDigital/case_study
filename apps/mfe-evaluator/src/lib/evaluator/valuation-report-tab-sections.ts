@@ -220,18 +220,18 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
           },
           {
             cells: [
-              { text: "الشرقية" },
-              { keys: ["east_boundary"] },
-              { keys: ["east_boundary_length_m"] },
-              { keys: ["finishing_facade_east"] },
-            ],
-          },
-          {
-            cells: [
               { text: "الجنوبية" },
               { keys: ["south_boundary"] },
               { keys: ["south_boundary_length_m"] },
               { keys: ["finishing_facade_south"] },
+            ],
+          },
+          {
+            cells: [
+              { text: "الشرقية" },
+              { keys: ["east_boundary"] },
+              { keys: ["east_boundary_length_m"] },
+              { keys: ["finishing_facade_east"] },
             ],
           },
           {
@@ -303,14 +303,14 @@ export const VALUATION_REPORT_TAB_SECTIONS: readonly ReportTabSection[] = [
         keys: ["finishing_facade_north"],
       },
       {
-        id: "fin-e",
-        label: "نوع الواجهة الشرقية",
-        keys: ["finishing_facade_east"],
-      },
-      {
         id: "fin-s",
         label: "نوع الواجهة الجنوبية",
         keys: ["finishing_facade_south"],
+      },
+      {
+        id: "fin-e",
+        label: "نوع الواجهة الشرقية",
+        keys: ["finishing_facade_east"],
       },
       {
         id: "fin-w",

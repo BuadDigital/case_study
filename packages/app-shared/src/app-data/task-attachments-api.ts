@@ -161,8 +161,13 @@ export async function uploadTaskScopedAttachment(
   scope: string,
   taskId: string,
   file: File,
+  options?: {
+    /** Keep the scope's other rows (a further file next to the first) instead of replacing them. */
+    keepOthers?: boolean;
+  },
 ): Promise<TaskAttachmentPreview | null> {
   if (!taskId) return null;
+  const keepOthers = options?.keepOthers === true;
 
   const preview: TaskAttachmentPreview = {
     fileName: file.name,
@@ -222,15 +227,30 @@ export async function uploadTaskScopedAttachment(
       return null;
     }
     preview.attachmentId = uploaded.attachmentId;
-    if (!uploaded.queued && config && !isBrowserOffline()) {
+    if (!keepOthers && !uploaded.queued && config && !isBrowserOffline()) {
       await replaceScopeAttachments(scope, taskId, uploaded.attachmentId);
     }
   } catch {
     return null;
   }
 
-  previewCache.set(cacheKey(scope, taskId), preview);
+  // The scope's one-slot preview cache belongs to the primary file; an appended file is
+  // previewed by its own id.
+  if (!keepOthers) previewCache.set(cacheKey(scope, taskId), preview);
   return preview;
+}
+
+/** Removes one row of a scope and leaves the rest (an appended file, never the primary slot). */
+export async function deleteTaskScopedAttachment(attachmentId: string): Promise<boolean> {
+  const config = prototypeModulesApiConfig();
+  if (!config || !attachmentId || attachmentId.startsWith("local:")) return false;
+  const result = await deleteAttachment(config, attachmentId);
+  return result.ok;
+}
+
+/** Forgets the scope's cached preview without touching the server rows. */
+export async function clearTaskScopedAttachmentPreview(scope: string, taskId: string): Promise<void> {
+  previewCache.delete(cacheKey(scope, taskId));
 }
 
 export async function clearTaskScopedAttachments(

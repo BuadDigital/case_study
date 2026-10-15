@@ -250,7 +250,7 @@ public sealed partial class AttachmentService : IAttachmentService
     }
 
     private static bool CanAccess(FileAttachment row, PermissionsDto? actor) =>
-        AttachmentAccessRules.Allows(row.UploadedByUserId, row.DocumentTypeKey, actor);
+        AttachmentAccessRules.Allows(row.UploadedByUserId, row.Scope, row.ScopeKey, row.DocumentTypeKey, actor);
 
     private static bool CanDelete(FileAttachment row, PermissionsDto? actor) =>
         AttachmentAccessRules.AllowsDelete(row.UploadedByUserId, row.DocumentTypeKey, actor);

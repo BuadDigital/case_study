@@ -130,8 +130,8 @@ const MOVABLES_AND_OCCUPANCY_DEFS: PartyFieldDef[] = [
 
 const BOUNDARY_SIDES: readonly { key: string; label: string }[] = [
   { key: "north", label: "الشمالي" },
-  { key: "east", label: "الشرقي" },
   { key: "south", label: "الجنوبي" },
+  { key: "east", label: "الشرقي" },
   { key: "west", label: "الغربي" },
 ];
 

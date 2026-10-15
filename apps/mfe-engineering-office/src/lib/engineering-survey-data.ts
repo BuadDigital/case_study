@@ -29,6 +29,13 @@ export type EngineeringSurveySubmissionStatus =
   | "submitted"
   | "reopened";
 
+export type EngineeringSurveyExtraReport = {
+  fileName: string;
+  mimeType: string;
+  sizeBytes?: number;
+  attachmentId: string;
+};
+
 export type EngineeringSurveySubmission = {
   taskId: string;
   propertyId: string;
@@ -42,6 +49,11 @@ export type EngineeringSurveySubmission = {
   inspectorReferenceLatitude?: string;
   inspectorReferenceLongitude?: string;
   surveyReportFileName: string;
+  /**
+   * Further PDFs of the survey report, uploaded beside the first one (which stays the required
+   * «التقرير المساحي»). Each row is an attachment of the same scope.
+   */
+  surveyReportExtraAttachments?: EngineeringSurveyExtraReport[];
   siteLetterFileName: string;
   siteConfirmed: boolean;
   /** Once true, clearing contact phone later must not re-lock declaration. */
