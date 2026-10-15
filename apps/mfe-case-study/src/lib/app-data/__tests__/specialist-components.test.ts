@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BuildingInventoryLineDto } from "@platform/api-client";
 import {
-  SPECIALIST_COMPONENTS_TABLE_REQUIRED,
   SPECIALIST_COMPONENTS_TEXT_REQUIRED,
   componentLineForItem,
   componentLineForTypedName,
@@ -29,26 +28,16 @@ describe("specialist components", () => {
     expect(componentLineForItem(emptyComponentLine(0), "custom").label).toBe("");
   });
 
-  it("gates acceptance on the report text first, then on the inventory table for structures", () => {
+  it("gates acceptance on the report text only — an empty inventory table never blocks", () => {
     // the text is always required, whatever the property is
-    expect(specialistComponentsMissing({ componentsText: " ", lines: [] }, true)).toBe(
-      SPECIALIST_COMPONENTS_TEXT_REQUIRED,
-    );
-    expect(specialistComponentsMissing({ componentsText: "", lines: [line("ground_floor", "200")] }, false)).toBe(
-      SPECIALIST_COMPONENTS_TEXT_REQUIRED,
-    );
-    // a building (or a plot with a guard room) without a single inventory line cannot be accepted
-    expect(specialistComponentsMissing({ componentsText: "فيلا", lines: [] }, true)).toBe(
-      SPECIALIST_COMPONENTS_TABLE_REQUIRED,
-    );
-    expect(
-      specialistComponentsMissing({ componentsText: "فيلا", lines: [line("ground_floor", "200")] }, true),
-    ).toBeNull();
-    // vacant land declared by the inspector is exempt from the table
-    expect(specialistComponentsMissing({ componentsText: "أرض فضاء", lines: [] }, false)).toBeNull();
+    expect(specialistComponentsMissing({ componentsText: " " })).toBe(SPECIALIST_COMPONENTS_TEXT_REQUIRED);
+    expect(specialistComponentsMissing({ componentsText: "" })).toBe(SPECIALIST_COMPONENTS_TEXT_REQUIRED);
+    // a building without a single inventory line is accepted (decision 2026-10-15)
+    expect(specialistComponentsMissing({ componentsText: "فيلا" })).toBeNull();
+    expect(specialistComponentsMissing({ componentsText: "أرض فضاء" })).toBeNull();
   });
 
-  it("a non-land asset always needs the table; a land asset only on the inspector's explicit yes (mirrors the server)", () => {
+  it("a non-land asset always shows the table; a land asset only on the inspector's explicit yes (mirrors the server)", () => {
     // non-land: required whatever the land answer says
     expect(inspectionHasStructures({ assetSubject: "فيلا" })).toBe(true);
     expect(inspectionHasStructures({ assetSubject: "فيلا", landHasValuableStructures: "no" })).toBe(true);

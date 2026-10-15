@@ -40,9 +40,8 @@ public partial class PartyTaskSubmissionService
         var actorUserId = PartyTaskSubmissionRules.AcceptActorUserId(actor);
         var alreadyAccepted = entity.AcceptedAtUtc is not null;
 
-        // The specialist turns the inspector's description into «مكونات العقار» (report text
-        // + inventory table, listed for anything with structures or annexes) before accepting
-        // the inspection; every missing part is reported at once.
+        // The specialist writes «مكونات العقار» (the report text) from the inspector's
+        // description before accepting the inspection. The inventory table is not a condition.
         if (!alreadyAccepted
             && task.Kind == WorkflowTaskKind.FieldInspection
             && task.PropertyId is Guid gatePropertyId)
@@ -50,9 +49,7 @@ public partial class PartyTaskSubmissionService
             var gateProperty = await _repo.GetPropertyWithInventoryAsync(gatePropertyId, cancellationToken);
             var missing = gateProperty is null
                 ? []
-                : SpecialistComponentsRules.MissingForAcceptance(
-                    gateProperty,
-                    SpecialistComponentsRules.ReadLandHasValuableStructures(entity.PayloadJson));
+                : SpecialistComponentsRules.MissingForAcceptance(gateProperty);
             if (missing.Count > 0)
                 return (null, missing);
         }

@@ -58,22 +58,12 @@ export function useCaseStudyReportIssue(
       draft,
       sectionQuestions,
       isQuestionVisible,
-      property,
-      isParty: false,
     });
     if (gate?.blocking) {
       setMissingAnswerKeys(gate.missingAnswerKeys ?? new Set());
-      setFormFieldErrors({
-        deedRemarks: gate.invalidDeedRemarks,
-        deedNature: gate.invalidDeedNature,
-        deedNatureNotes: gate.invalidDeedNatureNotes,
-      });
-      if (gate.invalidDeedNature || gate.invalidDeedNatureNotes) {
-        openCaseStudyAppraisalTab();
-      } else {
-        if (gate.step !== draft.currentStep) goStep(gate.step);
-        scheduleScrollToCaseStudyField(gate.targetId, 200);
-      }
+      setFormFieldErrors({ deedRemarks: gate.invalidDeedRemarks });
+      if (gate.step !== draft.currentStep) goStep(gate.step);
+      scheduleScrollToCaseStudyField(gate.targetId, 200);
       showToast(gate.message, "error");
       return;
     }
@@ -131,7 +121,6 @@ export function useCaseStudyReportIssue(
     saving,
     sectionQuestions,
     isQuestionVisible,
-    property,
     summary,
     goStep,
     setDraft,

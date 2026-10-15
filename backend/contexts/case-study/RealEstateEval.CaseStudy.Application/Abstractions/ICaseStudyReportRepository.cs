@@ -54,11 +54,6 @@ public interface ICaseStudyReportRepository
         Guid parentTaskId,
         CancellationToken cancellationToken);
 
-    /// <summary>Deed kind of the work-order property, or null when the row is missing.</summary>
-    Task<DeedKind?> GetPropertyDeedKindAsync(
-        Guid propertyId,
-        CancellationToken cancellationToken);
-
     /// <summary>
     /// The tracked property — reopening a report clears its Enfaz handover stamp, persisted on
     /// <see cref="SaveChangesAsync"/>. Null when the row is missing.

@@ -117,21 +117,15 @@ public partial class CaseStudyReportService
             return (ToDto(existing!), null);
         }
 
-        // Gate 2 — deed ↔ nature match.
-        var deedKind = DeedKind.Traditional;
-        if (propertyId is Guid matchPid && matchPid != Guid.Empty)
-        {
-            deedKind = await _db.GetPropertyDeedKindAsync(matchPid, cancellationToken)
-                ?? DeedKind.Traditional;
-        }
-
-        var matchErrors = CaseStudyReportDeedNatureMatchRules.ValidateForSubmit(
+        // The deed ↔ nature match is NOT an issue gate (decision 2026-10-15): the case-study
+        // report has nothing to do with the inspector's inputs. Only the field's own validity is
+        // checked (a known outcome token; notes when فروق / تعذّر), as on every save.
+        var matchErrors = CaseStudyReportDeedNatureMatchRules.ValidateForSave(
             report.DeedNatureMatchOutcome,
-            report.DeedNatureMatchNotes,
-            deedKind);
+            report.DeedNatureMatchNotes);
         if (matchErrors is not null) return (null, matchErrors);
 
-        // Gate 3 — 100% of the questions the matrix asks, from the answers in THIS request.
+        // Gate 2 — 100% of the questions the matrix asks, from the answers in THIS request.
         // With the lookup wired this fails closed (unreadable / empty matrix refuses the issue).
         if (_infoRoles is not null)
         {

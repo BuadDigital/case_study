@@ -145,27 +145,15 @@ public class PartyTaskSubmissionAcceptTests
             PrototypeRole = "case-specialist",
         };
 
-        // Nothing written yet: both the text and the inventory table are reported at once.
+        // Nothing written yet: only the report text is reported (the table is not a condition).
         var (_, noText) = await service.AcceptAsync(TaskId, actor);
         Assert.Equal(SpecialistComponentsRules.TextRequired, noText!["componentsText"]);
-        Assert.Equal(SpecialistComponentsRules.InventoryRequired, noText["inventoryLines"]);
+        Assert.Single(noText);
 
         var property = db.WorkOrderProperties.Single(p => p.Id == PropertyId);
         property.SpecialistComponentsText = "فيلا من دورين";
         db.SaveChanges();
-        // The text alone no longer clears the gate — a property with structures needs a table line.
-        var (_, noLines) = await service.AcceptAsync(TaskId, actor);
-        Assert.False(noLines!.ContainsKey("componentsText"));
-        Assert.Equal(SpecialistComponentsRules.InventoryRequired, noLines["inventoryLines"]);
-
-        db.BuildingInventoryLines.Add(new BuildingInventoryLine
-        {
-            Id = Guid.NewGuid(),
-            PropertyId = PropertyId,
-            StructureKind = "floor",
-            Label = "الدور الأرضي",
-        });
-        db.SaveChanges();
+        // The text alone clears the gate even though the table is still empty.
         var (result, errors) = await service.AcceptAsync(TaskId, actor);
         Assert.Null(errors);
         Assert.NotNull(result);
@@ -202,13 +190,12 @@ public class PartyTaskSubmissionAcceptTests
     }
 
     [Fact]
-    public async Task Accept_field_inspection_of_a_land_with_valuable_structures_requires_the_inventory_table()
+    public async Task Accept_field_inspection_of_a_land_with_valuable_structures_needs_no_inventory_table()
     {
         var (result, errors) = await AcceptInspectedAsync("أرض", """{"landHasValuableStructures":"yes"}""");
 
-        Assert.Null(result);
-        Assert.Equal(SpecialistComponentsRules.InventoryRequired, errors!["inventoryLines"]);
-        Assert.False(errors.ContainsKey("componentsText"));
+        Assert.Null(errors);
+        Assert.NotNull(result);
     }
 
     [Fact]
@@ -232,12 +219,13 @@ public class PartyTaskSubmissionAcceptTests
     [Theory]
     [InlineData("{}")]
     [InlineData("""{"landHasValuableStructures":"no"}""")]
-    public async Task Accept_field_inspection_of_a_non_land_asset_always_requires_the_inventory_table(string payloadJson)
+    public async Task Accept_field_inspection_of_a_non_land_asset_needs_no_inventory_table(string payloadJson)
     {
+        // Decision 2026-10-15: the table is not a condition for a building either.
         var (result, errors) = await AcceptInspectedAsync("فيلا", payloadJson);
 
-        Assert.Null(result);
-        Assert.Equal(SpecialistComponentsRules.InventoryRequired, errors!["inventoryLines"]);
+        Assert.Null(errors);
+        Assert.NotNull(result);
     }
 
     [Fact]

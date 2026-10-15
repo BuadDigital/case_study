@@ -397,6 +397,15 @@ jobs:
                 && $COMPOSE exec -T nginx nginx -s reload
             }
 
+            # rollout.sh calls this once a service's old containers are gone. nginx resolves
+            # gateway/frontend through Docker DNS and caches the answer for 5s, so without this
+            # a request in those seconds could still be sent to the removed container's address;
+            # a reload starts fresh workers with an empty resolver cache (in-flight requests
+            # finish on the old workers).
+            rollout_after_stop() {
+              $COMPOSE exec -T nginx nginx -s reload >/dev/null 2>&1
+            }
+
             rollback_to_previous() {
               if [ -z "$PREVIOUS_TAG" ] || [ "$PREVIOUS_TAG" = "$TAG" ]; then
                 echo "No previous deploy tag recorded; manual rollback required"
@@ -487,10 +496,16 @@ jobs:
 
             if ! curl --fail --silent --show-error --max-time 20 \
               "${PUBLIC_APP_URL%/}/" >/dev/null; then
+              echo "::error::Public site did not answer"
               SMOKE_FAILED=1
             fi
 
             if [ "$SMOKE_FAILED" -ne 0 ]; then
+              # Keep the evidence in this log: what nginx saw while the checks ran.
+              echo "--- nginx log (last 40 lines) ---"
+              $COMPOSE logs --no-color --tail 40 nginx 2>&1 || true
+              echo "--- frontend containers ---"
+              $COMPOSE ps frontend 2>&1 || true
               rollback_to_previous || true
               exit 1
             fi

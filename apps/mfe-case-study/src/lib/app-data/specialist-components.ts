@@ -1,9 +1,10 @@
 /**
  * «مكونات العقار» (pure helpers). Two parts with two owners:
  * - the report text is the case specialist's (his own text, printed as «وصف العقار»);
- * - the inventory table «جدول الحصر» is the inspector's (the specialist may correct it) and
- *   is mandatory for anything with buildings or annexes worth valuing (a land asset only when
- *   the inspector said it holds such structures).
+ * - the inventory table «جدول الحصر» is the inspector's (the specialist may correct it); it is
+ *   shown for anything with buildings or annexes worth valuing (a land asset only when the
+ *   inspector said it holds such structures) but is not a condition for accepting the
+ *   inspection (decision 2026-10-15).
  * The table uses the appraiser's direct-cost catalog so its lines drop straight into
  * «بنود التكلفة المباشرة»; see `SpecialistComponentsRules` on the server.
  */
@@ -19,12 +20,9 @@ import {
 export const SPECIALIST_COMPONENTS_TEXT_REQUIRED =
   "اكتب «مكونات العقار» للتقرير قبل قبول المعاينة";
 
-export const SPECIALIST_COMPONENTS_TABLE_REQUIRED =
-  "جدول الحصر إلزامي للمباني والملاحق (وللأرض التي فيها مبانٍ تستحق التقييم) قبل قبول المعاينة";
-
-/** Specialist-side hint under the inventory table: when it is mandatory. */
+/** Specialist-side hint under the inventory table: what it is for (it is not a condition). */
 export const SPECIALIST_COMPONENTS_TABLE_HINT =
-  "جدول الحصر إلزامي لكل عقار فيه مبانٍ أو ملاحق، وللأرض إن أفاد المعاين بوجود مبانٍ أو ملاحق تستحق التقييم؛ وإن كانت الملاحق لا تدخل في التقييم فتُوصف في حقل وصف العقار فقط.";
+  "يُعدّ لكل عقار فيه مبانٍ أو ملاحق تستحق التقييم، وللأرض إن أفاد المعاين بوجود مبانٍ أو ملاحق تستحق التقييم؛ وإن كانت الملاحق لا تدخل في التقييم فتُوصف في حقل وصف العقار فقط. ليس شرطاً لقبول المعاينة.";
 
 export function emptyComponentLine(sortOrder: number): BuildingInventoryLineDto {
   return {
@@ -110,8 +108,9 @@ export function inspectedAssetIsLand(assetSubject: string | null | undefined): b
 }
 
 /**
- * Does the property have buildings or annexes WORTH VALUING that the inventory table must
- * list? Every non-land asset does. An asset the inspector typed «أرض» does only when he
+ * Does the property have buildings or annexes WORTH VALUING that the inventory table lists
+ * (it decides whether the inspector sees the table; it is not an acceptance condition)?
+ * Every non-land asset does. An asset the inspector typed «أرض» does only when he
  * explicitly answered «نعم» to «هل في الأرض مبانٍ أو ملاحق تستحق التقييم؟»
  * (`landHasValuableStructures`); «لا», no answer, and a legacy land submission with no such key
  * are exempt (their annexes, if any, are just described in the description field). The intake
@@ -128,15 +127,12 @@ export function inspectionHasStructures(declaration: {
 
 /**
  * Mirrors `SpecialistComponentsRules.MissingForAcceptance` — null when the specialist may accept.
- * The report text is always required; the inventory table («جدول الحصر», filled by the
- * inspector) needs at least one line whenever the property has structures.
+ * Only the report text is required; an empty «جدول الحصر» never blocks acceptance.
  */
 export function specialistComponentsMissing(
-  inventory: Pick<BuildingInventoryDto, "componentsText" | "lines">,
-  hasStructures: boolean,
+  inventory: Pick<BuildingInventoryDto, "componentsText">,
 ): string | null {
   if (!(inventory.componentsText ?? "").trim()) return SPECIALIST_COMPONENTS_TEXT_REQUIRED;
-  if (hasStructures && inventory.lines.length === 0) return SPECIALIST_COMPONENTS_TABLE_REQUIRED;
   return null;
 }
 

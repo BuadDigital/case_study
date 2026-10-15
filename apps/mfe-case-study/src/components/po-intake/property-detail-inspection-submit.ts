@@ -22,11 +22,7 @@ import {
 } from "../../lib/app-data/valuation-report-specialist-finishing";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { getBuildingInventory } from "@platform/api-client";
-import {
-  inspectionHasStructures,
-  SPECIALIST_COMPONENTS_TABLE_REQUIRED,
-  specialistComponentsMissing,
-} from "../../lib/app-data/specialist-components";
+import { specialistComponentsMissing } from "../../lib/app-data/specialist-components";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import type { IdempotentActionResult } from "@platform/app-shared";
 
@@ -38,12 +34,11 @@ type InspectionSubmitResult =
 async function specialistComponentsMissingFor(
   poNumber: string,
   propertyId: string,
-  hasStructures: boolean,
 ): Promise<string | null> {
   const config = workOrdersApiConfig();
   if (!config || !poNumber || !propertyId) return null;
   const res = await getBuildingInventory(config, poNumber, propertyId);
-  return res.ok ? specialistComponentsMissing(res.data, hasStructures) : null;
+  return res.ok ? specialistComponentsMissing(res.data) : null;
 }
 
 export async function submitPropertyDetailInspection(input: {
@@ -102,26 +97,17 @@ export async function submitPropertyDetailInspection(input: {
         showToast(finishingError, "error");
         return;
       }
-      // «مكونات العقار» report text, and the inspector's «جدول الحصر» (≥ 1 line) for anything
-      // with buildings or annexes, before accepting. The server enforces the same rule
-      // (SpecialistComponentsRules).
+      // «مكونات العقار» report text before accepting; the inventory table is not a condition.
+      // The server enforces the same rule (SpecialistComponentsRules).
       const componentsError = await specialistComponentsMissingFor(
         inspectionTask.poNumber,
         property.id,
-        inspectionHasStructures({
-          assetSubject: draft.featureValues.assetSubject,
-          landHasValuableStructures: draft.landHasValuableStructures,
-        }),
       );
       if (componentsError) {
         setFormError(componentsError);
         showToast(componentsError, "error");
         document
-          .getElementById(
-            componentsError === SPECIALIST_COMPONENTS_TABLE_REQUIRED
-              ? "specialist-components-table"
-              : "specialist-components",
-          )
+          .getElementById("specialist-components")
           ?.scrollIntoView({ behavior: "smooth", block: "center" });
         return;
       }
