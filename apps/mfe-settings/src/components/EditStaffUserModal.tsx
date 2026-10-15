@@ -33,13 +33,14 @@ import {
   Button,
   ModalBody,
   ModalCard,
-  ModalClose,
   ModalFooter,
   ModalHeader,
   ModalOverlay,
   ModalTitle,
   Note,
+  cn,
 } from "@platform/ui-kit";
+import { FormSectionLabel } from "./FormSectionLabel";
 
 const ROLE_OPTIONS = adminStaffRoleOptions();
 const ROLE_SELECT_OPTIONS = ROLE_OPTIONS.map((o) => ({
@@ -247,42 +248,36 @@ export function EditStaffUserModal({
   }
 
   return (
-    <ModalOverlay role="presentation" onClick={onClose}>
+    <ModalOverlay
+      role="presentation"
+      onClick={() => {
+        if (saving) return;
+        onClose();
+      }}
+    >
       <ModalCard
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="edit-user-title"
-        className="max-w-2xl"
+        className="max-h-[90vh] w-full max-w-[640px] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal
+        aria-labelledby="edit-user-title"
       >
-        <form onSubmit={(e) => void handleSubmit(e)}>
-          <ModalHeader className="border-0 bg-ink text-white">
-            <span aria-hidden className="text-gold">
-              ✎
-            </span>
-            <ModalTitle id="edit-user-title" className="text-start text-white">
-              تعديل المستخدم
-            </ModalTitle>
-            <ModalClose
-              className="text-white/70 hover:bg-white/10 hover:text-white"
-              onClick={onClose}
-            >
-              ×
-            </ModalClose>
-          </ModalHeader>
-
-          <ModalBody className="max-h-[70vh] space-y-4 overflow-y-auto">
-            {errors._form ? (
-              <Note tone="danger" className="text-xs">
-                {errors._form}
-              </Note>
-            ) : null}
-
-            <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+        <ModalHeader>
+          <ModalTitle id="edit-user-title">تعديل المستخدم</ModalTitle>
+        </ModalHeader>
+        <ModalBody>
+          <p className="m-0 mb-3 text-[12px] text-text-3">
+            {user.name} · يدخل برقم الجوال. الصفة في تقرير التقييم والتوقيع في «البيانات المهنية»
+            أسفل النموذج.
+          </p>
+          <form id="edit-staff-user" onSubmit={(e) => void handleSubmit(e)}>
+            <div className="grid gap-x-4 gap-y-3.5 sm:grid-cols-2">
+              <FormSectionLabel>البيانات الأساسية</FormSectionLabel>
               <RegField
                 id="edit-displayName"
                 label="الاسم"
                 required
+                placeholder="الاسم الكامل"
                 value={form.displayName}
                 onChange={(v) => updateField("displayName", v)}
                 error={errors.displayName}
@@ -330,6 +325,7 @@ export function EditStaffUserModal({
                 id="edit-city"
                 label="المدينة"
                 required
+                placeholder="مثال: الرياض"
                 value={form.city}
                 onChange={(v) => updateField("city", v)}
                 error={errors.city}
@@ -346,22 +342,6 @@ export function EditStaffUserModal({
                   error={errors.department}
                 />
               ) : null}
-              <RegField
-                id="edit-nationalId"
-                label="رقم الهوية"
-                dir="ltr"
-                inputMode="numeric"
-                value={form.nationalId}
-                onChange={(v) => updateField("nationalId", v)}
-                error={errors.nationalId}
-              />
-              <RegField
-                id="edit-joinedAt"
-                label="تاريخ الالتحاق"
-                type="date"
-                value={form.joinedAt}
-                onChange={(v) => updateField("joinedAt", v)}
-              />
               {form.roleId === "field-inspector" ? (
                 <RegSelect
                   id="edit-inspectorType"
@@ -376,12 +356,31 @@ export function EditStaffUserModal({
                   error={errors.inspectorType}
                 />
               ) : null}
+              <FormSectionLabel>الهوية والالتحاق</FormSectionLabel>
+              <RegField
+                id="edit-nationalId"
+                label="رقم الهوية"
+                dir="ltr"
+                inputMode="numeric"
+                placeholder="1xxxxxxxxx"
+                value={form.nationalId}
+                onChange={(v) => updateField("nationalId", v)}
+                error={errors.nationalId}
+              />
+              <RegField
+                id="edit-joinedAt"
+                label="تاريخ الالتحاق"
+                type="date"
+                value={form.joinedAt}
+                onChange={(v) => updateField("joinedAt", v)}
+                hint="اختياري"
+              />
+              <FormSectionLabel>التعويض والفوترة</FormSectionLabel>
               <label
-                className={`flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-surface-2/50 px-3 py-2.5 text-xs font-medium text-text sm:col-span-2 ${
-                  form.hasCompensation
-                    ? "border-gold/40 bg-gold-soft text-heading"
-                    : ""
-                }`}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-surface-2/70 px-3 py-2.5 text-xs font-medium text-text sm:col-span-2",
+                  form.hasCompensation && "border-gold/40 bg-gold-soft text-heading",
+                )}
               >
                 <input
                   type="checkbox"
@@ -399,6 +398,8 @@ export function EditStaffUserModal({
                   label="قيمة الأتعاب (ر.س)"
                   required
                   type="number"
+                  dir="ltr"
+                  placeholder="0"
                   value={form.feeValueSar}
                   onChange={(v) => updateField("feeValueSar", v)}
                   error={errors.feeValueSar}
@@ -408,18 +409,22 @@ export function EditStaffUserModal({
                 id="edit-iban"
                 label="الآيبان"
                 dir="ltr"
+                placeholder="SAxxxxxxxxxxxxxxxxxxxxxx"
                 value={form.iban}
                 onChange={(v) => updateField("iban", v)}
                 error={errors.iban}
+                hint="اختياري — صيغة SA + 22 رقماً"
               />
               {form.roleId === "engineering-office" ? (
                 <>
+                  <FormSectionLabel>بيانات المكتب الهندسي</FormSectionLabel>
                   <RegField
                     id="edit-taxNumber"
                     label="الرقم الضريبي"
                     dir="ltr"
                     value={form.taxNumber}
                     onChange={(v) => updateField("taxNumber", v)}
+                    hint="اختياري"
                   />
                   <RegField
                     id="edit-commercialRegistration"
@@ -427,34 +432,33 @@ export function EditStaffUserModal({
                     dir="ltr"
                     value={form.commercialRegistration}
                     onChange={(v) => updateField("commercialRegistration", v)}
+                    hint="اختياري"
                   />
                 </>
               ) : null}
+              <StaffProfessionalFields
+                value={pro}
+                onChange={setPro}
+                disabled={saving}
+                hasRow={rosterRow !== null}
+                unlinkedRows={unlinkedRosterRows(valuers)}
+              />
             </div>
-
-            <StaffProfessionalFields
-              value={pro}
-              onChange={setPro}
-              disabled={saving}
-              hasRow={rosterRow !== null}
-              unlinkedRows={unlinkedRosterRows(valuers)}
-            />
-          </ModalBody>
-
-          <ModalFooter className="justify-start">
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={saving}
-              loading={saving}
-            >
-              حفظ التعديلات
-            </Button>
-            <Button type="button" variant="outline" onClick={onClose}>
-              إلغاء
-            </Button>
-          </ModalFooter>
-        </form>
+            {errors._form ? (
+              <Note tone="danger" className="mt-3 text-xs">
+                {errors._form}
+              </Note>
+            ) : null}
+          </form>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>
+            إغلاق
+          </Button>
+          <Button variant="primary" type="submit" form="edit-staff-user" loading={saving}>
+            حفظ التعديلات
+          </Button>
+        </ModalFooter>
       </ModalCard>
     </ModalOverlay>
   );

@@ -21,5 +21,6 @@ public interface IWorkflowTaskDistributionCommands
         RedistributePartiesRequest request,
         string actorRole,
         string? actorName,
+        string? actorUserId = null,
         CancellationToken cancellationToken = default);
 }

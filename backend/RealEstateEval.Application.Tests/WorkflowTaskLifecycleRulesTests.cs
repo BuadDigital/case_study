@@ -44,6 +44,19 @@ public class WorkflowTaskLifecycleRulesTests
         Assert.Equal(expected, WorkflowTaskLifecycleRules.IsSectionSupervisorOrAbove(role));
     }
 
+    [Theory]
+    [InlineData("cdo", true)]
+    [InlineData("section-supervisor", true)]
+    [InlineData("general-manager", true)]
+    [InlineData(" Case-Specialist ", true)]
+    [InlineData("real-estate-appraiser", false)]
+    [InlineData("field-inspector", false)]
+    [InlineData(null, false)]
+    public void Redistributing_parties_is_for_the_specialist_the_supervisor_and_the_cdo(string? role, bool expected)
+    {
+        Assert.Equal(expected, WorkflowTaskLifecycleRules.CanRedistributeParties(role));
+    }
+
     [Fact]
     public void Reason_must_be_present_and_at_most_500_characters()
     {

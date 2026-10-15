@@ -13,6 +13,7 @@ import {
 import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import { Badge, Button } from "@platform/ui-kit";
 import { pickImage } from "../lib/org-settings-ui";
+import { FormSectionLabel } from "./FormSectionLabel";
 import { reportSeatLabel } from "../views/users/report-seat-state";
 import {
   REPORT_ROLE_OPTIONS,
@@ -43,10 +44,11 @@ export function StaffProfessionalFields({
   const patch = (p: Partial<StaffProfessional>) => onChange({ ...value, ...p });
   const hasSignature = Boolean(value.signatureUrl.trim());
 
+  // Rendered inside the user form's two-column grid: the label spans it, the fields join it.
   return (
-    <section className="rounded-lg border border-border bg-surface-2 p-3 sm:p-4">
-      <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">البيانات المهنية</h3>
-      <div className="grid gap-x-4 gap-y-4 sm:grid-cols-2">
+    <>
+      <FormSectionLabel>البيانات المهنية</FormSectionLabel>
+      <div className="contents">
         {!hasRow && unlinkedRows.length > 0 ? (
           <RegSelect
             id="pro-linkRosterRowId"
@@ -164,7 +166,13 @@ export function StaffProfessionalFields({
               </span>
               <div className="flex flex-wrap items-center gap-2">
                 {hasSignature ? (
-                  <Badge tone="success">مرفوع</Badge>
+                  <span className="inline-flex h-16 min-w-[120px] max-w-[220px] items-center justify-center rounded-md border border-border bg-white px-2">
+                    <img
+                      src={value.signatureUrl}
+                      alt="التوقيع الحالي"
+                      className="max-h-14 max-w-full object-contain"
+                    />
+                  </span>
                 ) : (
                   <Badge tone="warning">غير مرفوع</Badge>
                 )}
@@ -193,6 +201,6 @@ export function StaffProfessionalFields({
           </>
         ) : null}
       </div>
-    </section>
+    </>
   );
 }

@@ -15,9 +15,17 @@ public static partial class WorkflowTaskLifecycleRules
     private static readonly HashSet<string> SectionSupervisorOrAboveRoles =
         new(StaffRoleIds.SectionSupervisorOrAbove, StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>Reopen / redistribute are section-supervisor-or-above actions.</summary>
+    /// <summary>Reopen is a section-supervisor-or-above action.</summary>
     public static bool IsSectionSupervisorOrAbove(string? actorRole) =>
         SectionSupervisorOrAboveRoles.Contains((actorRole ?? "").Trim());
+
+    /// <summary>
+    /// Redistributing the parties of a case-study transaction: the CDO, the section supervisor
+    /// and the case specialist who runs the file (decision 2026-10-15).
+    /// </summary>
+    public static bool CanRedistributeParties(string? actorRole) =>
+        IsSectionSupervisorOrAbove(actorRole)
+        || string.Equals((actorRole ?? "").Trim(), StaffRoleIds.CaseSpecialist, StringComparison.OrdinalIgnoreCase);
 
     public static string NormalizeReason(string? reason) => (reason ?? "").Trim();
 

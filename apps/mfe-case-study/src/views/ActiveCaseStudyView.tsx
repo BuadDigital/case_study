@@ -79,13 +79,15 @@ export function ActiveCaseStudyView() {
           open={redistributeTask !== null}
           task={redistributeTask}
           onClose={() => setRedistributeTask(null)}
-          onConfirm={async (distribution, reason, idempotencyKey) => {
+          onConfirm={async (distribution, reason, idempotencyKey, staffUsers) => {
             if (!redistributeTask) return;
+            // The directory resolves the new assignee's name; without it the server stored the
+            // generic role label («معاين ميداني») instead of the person.
             const result = await redistributeTaskParties(
               redistributeTask.id,
               distribution,
               reason,
-              [],
+              staffUsers,
               idempotencyKey,
             );
             if (!result.ok) {
