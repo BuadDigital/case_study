@@ -15,6 +15,10 @@
 #   ROLLOUT_HEALTH_TIMEOUT   seconds to wait for healthy (default: 180)
 #   ROLLOUT_DRAIN_SECONDS    old+new overlap before stop (default: 8; nginx re-resolves every 5s)
 #   ROLLOUT_STOP_TIMEOUT     graceful stop before SIGKILL (default: 30)
+#
+# Hook: if the caller defines a shell function `rollout_after_stop`, it runs (with the service
+# name) right after the old containers are gone. The deploy uses it to reload nginx, which
+# drops nginx's resolver cache so no request is sent to the removed container's address.
 
 : "${COMPOSE:=docker compose -f docker-compose.prod.yml}"
 : "${ROLLOUT_HEALTH_TIMEOUT:=180}"
@@ -116,6 +120,9 @@ rollout_service() {
     docker stop -t "$ROLLOUT_STOP_TIMEOUT" "$id" >/dev/null
     docker rm "$id" >/dev/null
   done
+  if command -v rollout_after_stop >/dev/null 2>&1; then
+    rollout_after_stop "$svc" || rollout_log "$svc" "after-stop hook failed (ignored)"
+  fi
   rollout_log "$svc" "rolled"
 }
 
