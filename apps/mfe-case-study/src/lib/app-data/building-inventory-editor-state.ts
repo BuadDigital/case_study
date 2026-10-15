@@ -105,7 +105,7 @@ export function inspectorInventoryVisible(declaration: {
 }
 
 export const INSPECTOR_INVENTORY_EMPTY_WARNING =
-  "جدول الحصر فارغ — أضف المباني والملاحق التي تستحق التقييم (ولو غرفة حارس)، فأخصائي دراسة الحالة يحتاج سطراً واحداً على الأقل قبل قبول المعاينة.";
+  "جدول الحصر فارغ — أضف المباني والملاحق التي تستحق التقييم (ولو غرفة حارس) ليبدأ منها المقيّم في بنود التكلفة.";
 
 /** One short line under the table: what happened to the typing. Null when there is nothing to say. */
 export function inventorySaveStatus(input: {

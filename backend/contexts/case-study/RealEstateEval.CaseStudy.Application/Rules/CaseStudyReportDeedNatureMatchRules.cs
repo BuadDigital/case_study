@@ -3,15 +3,13 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
-/// Deed↔nature match gate on case-study form save and submit.
-/// Draft saves allow Unset; unknown tokens are rejected; فروق/تعذر need notes.
-/// Submitting the case-study report for a traditional deed requires matched.
+/// Validity of the deed↔nature match field on the case-study report (save and issue alike):
+/// Unset is allowed, unknown tokens are rejected, فروق/تعذر need notes. The match is not a
+/// condition for issuing the report (decision 2026-10-15); the valuation side keeps its own
+/// rule (<see cref="DeedKindRules.AllowsValuationCalc"/>).
 /// </summary>
 public static class CaseStudyReportDeedNatureMatchRules
 {
-    public const string SubmitBlockedAr =
-        "بوابة المطابقة: لا يُرفع تقرير دراسة الحالة لصك تقليدي إلا بعد مخرج مطابق — الفروق والتعذّر مسار تعذّر.";
-
     public static Dictionary<string, string>? ValidateForSave(
         string? outcome,
         string? notes)
@@ -32,29 +30,6 @@ public static class CaseStudyReportDeedNatureMatchRules
             return new Dictionary<string, string>
             {
                 ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذّر»",
-            };
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Specialist report submit. Registered title skips. Traditional needs matched.
-    /// </summary>
-    public static Dictionary<string, string>? ValidateForSubmit(
-        string? outcome,
-        string? notes,
-        DeedKind deedKind)
-    {
-        var saveErrors = ValidateForSave(outcome, notes);
-        if (saveErrors is not null)
-            return saveErrors;
-
-        if (!DeedKindRules.AllowsCaseStudyReport(deedKind, outcome))
-        {
-            return new Dictionary<string, string>
-            {
-                ["_"] = SubmitBlockedAr,
             };
         }
 

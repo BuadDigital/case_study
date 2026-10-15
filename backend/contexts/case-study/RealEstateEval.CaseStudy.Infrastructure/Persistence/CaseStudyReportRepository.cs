@@ -87,17 +87,6 @@ public sealed class CaseStudyReportRepository(CaseStudyDbContext db) : ICaseStud
         CancellationToken cancellationToken) =>
         db.WorkOrderProperties.FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
 
-    public async Task<DeedKind?> GetPropertyDeedKindAsync(
-        Guid propertyId,
-        CancellationToken cancellationToken)
-    {
-        var kind = await db.WorkOrderProperties
-            .AsNoTracking()
-            .Where(p => p.Id == propertyId)
-            .Select(p => (DeedKind?)p.DeedKind)
-            .FirstOrDefaultAsync(cancellationToken);
-        return kind;
-    }
 
     public void AddForm(CaseStudyReport form) => db.CaseStudyReports.Add(form);
 

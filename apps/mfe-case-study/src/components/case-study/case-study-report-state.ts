@@ -1,13 +1,6 @@
 import { caseStudyAnswerKey, type CaseStudyReportAnswer, type CaseStudyQuestionSection } from "../../lib/app-data/case-study-report-data";
 import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
-import { CASE_STUDY_DEED_NATURE_MATCH_ID, 
-  CASE_STUDY_DEED_NATURE_NOTES_ID,
-  caseStudyQuestionTargetId,
-} from "../../lib/app-data/case-study-report-ux";
-import { deedNatureMatchAllowsDownstreamWork, deedNatureMatchRequiresNotes, isDeedNatureMatchChosen,
-  normalizeDeedNatureMatchOutcome,
-} from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
-import { propertyDeedKindIsRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
+import { caseStudyQuestionTargetId } from "../../lib/app-data/case-study-report-ux";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 
@@ -147,13 +140,11 @@ type CaseStudyReportScrollTarget = {
   targetId: string;
   step: number;
   message: string;
-  /** Blocks the issue — the deed-nature gate and, since the server enforces 100%, matrix gaps. */
+  /** Blocks the issue — since the server enforces 100%, matrix gaps. */
   blocking: boolean;
   /** Matrix gaps only: every unanswered visible question, to highlight. */
   missingAnswerKeys?: Set<string>;
   invalidDeedRemarks?: boolean;
-  invalidDeedNature?: boolean;
-  invalidDeedNatureNotes?: boolean;
 };
 
 /** Toast of the hard block — N answered of M visible questions. */
@@ -161,64 +152,17 @@ export function caseStudyIncompleteMessage(answered: number, total: number): str
   return `أجب عن كل الأسئلة الظاهرة (${answered} من ${total})`;
 }
 
-/** First incomplete control in form order: deed remarks, nature match, then matrix. */
+/**
+ * First incomplete control in form order: the matrix only. The deed ↔ nature match is not an
+ * issue condition (decision 2026-10-15): the case-study report does not depend on the
+ * inspector's inputs. Mirrors the server (CaseStudyReportService.Issue).
+ */
 export function firstCaseStudyReportScrollTarget(args: {
   draft: CaseStudyReportDraft;
   sectionQuestions: SectionQuestions;
   isQuestionVisible: QuestionVisibilityPredicate;
-  property: PoPropertyIntake | null;
-  isParty: boolean;
 }): CaseStudyReportScrollTarget | null {
-  const { draft, sectionQuestions, isQuestionVisible, property, isParty } = args;
-
-  if (!isParty) {
-    // Same rule as the server (DeedKindRules.AllowsCaseStudyReport): only the deed's own kind
-    // skips the gate â€” a registration number on a traditional deed does not.
-    const skipMatch =
-      property != null && propertyDeedKindIsRegisteredTitle(property);
-    if (!skipMatch) {
-      // Submit gate uses IsChosen (not IsKnown) — empty is draft-ok on the API.
-      const outcome = normalizeDeedNatureMatchOutcome(
-        draft.deedNatureMatchOutcome,
-      );
-      if (!isDeedNatureMatchChosen(outcome)) {
-        return {
-          targetId: CASE_STUDY_DEED_NATURE_MATCH_ID,
-          step: 0,
-          message: "أكّد مطابقة الصك على الطبيعة من تبويب مدخلات المعاين قبل إصدار تقرير دراسة الحالة.",
-          blocking: true,
-          invalidDeedNature: true,
-        };
-      }
-      if (
-        deedNatureMatchRequiresNotes(outcome) &&
-        !String(draft.deedNatureMatchNotes ?? "").trim()
-      ) {
-        return {
-          targetId: CASE_STUDY_DEED_NATURE_NOTES_ID,
-          step: 0,
-          message: "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذّر».",
-          blocking: true,
-          invalidDeedNatureNotes: true,
-        };
-      }
-      if (
-        !deedNatureMatchAllowsDownstreamWork(
-          false,
-          outcome,
-        )
-      ) {
-        return {
-          targetId: CASE_STUDY_DEED_NATURE_MATCH_ID,
-          step: 0,
-          message:
-            "مخرج المطابقة ليس مطابقًا — أكّد أو عدّل من تبويب مدخلات المعاين. الفروق والتعذّر مسار تعذّر.",
-          blocking: true,
-          invalidDeedNature: true,
-        };
-      }
-    }
-  }
+  const { draft, sectionQuestions, isQuestionVisible } = args;
 
   const { missing, firstMissingKey, firstMissingStep } =
     collectMissingCaseStudyAnswers(

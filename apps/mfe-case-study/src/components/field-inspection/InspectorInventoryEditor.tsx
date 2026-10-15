@@ -69,7 +69,7 @@ export function InspectorInventoryEditor({
     <div id="inspector-inventory" className="space-y-3">
       <p className="m-0 text-[11px] leading-relaxed text-text-2">
         اكتب كل مبنى أو ملحق أو سور في العقار بمساحته (الدور الأرضي، ملحق علوي، غرفة حارس…).
-        إلزامي لكل عقار فيه مبانٍ أو ملاحق تستحق التقييم. يُحفظ تلقائياً، وبلا اتصال يُرسل عند عودته.
+        يُحفظ تلقائياً، وبلا اتصال يُرسل عند عودته.
       </p>
 
       {editor.loading ? (

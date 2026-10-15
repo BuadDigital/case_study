@@ -22,7 +22,6 @@ public class DeedKindRulesTests
     {
         Assert.True(DeedKindRules.RequiresDeedNatureMatchGate(DeedKind.Traditional));
         Assert.Equal(allowed, DeedKindRules.AllowsValuationCalc(DeedKind.Traditional, outcome));
-        Assert.Equal(allowed, DeedKindRules.AllowsCaseStudyReport(DeedKind.Traditional, outcome));
     }
 
     [Fact]

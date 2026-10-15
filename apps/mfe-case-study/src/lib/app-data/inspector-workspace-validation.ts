@@ -293,7 +293,7 @@ export function validateInspectorWorkspace(
     requireDeedMatch?: boolean;
     /**
      * Mirrors the server on inspector submit: for an asset typed «أرض» the inspector must answer
-     * «هل في الأرض مبانٍ أو ملاحق تستحق التقييم؟» (it decides whether «جدول الحصر» is mandatory).
+     * «هل في الأرض مبانٍ أو ملاحق تستحق التقييم؟» (it decides whether «جدول الحصر» is shown).
      * Opt-in — only the inspector's own submit demands it, never the specialist's accept path.
      */
     requireLandStructures?: boolean;

@@ -1,4 +1,3 @@
-import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { describe, expect, it } from "vitest";
 import { emptyCaseStudyReportDraft } from "../../../lib/app-data/case-study-report-model";
 import { caseStudyAnswerKey } from "../../../lib/app-data/case-study-report-data";
@@ -8,8 +7,6 @@ import {
   firstMissingQuestionLocation,
   type SectionQuestions,
 } from "../case-study-report-state";
-import type { PoPropertyIntake } from "../../../lib/app-data/po-intake-data";
-import { CASE_STUDY_DEED_NATURE_MATCH_ID } from "../../../lib/app-data/case-study-report-ux";
 
 const sections: SectionQuestions = {
   deed: ["سؤال الصك"],
@@ -19,69 +16,7 @@ const sections: SectionQuestions = {
   extra: [],
 };
 
-const traditionalProperty = {
-  realEstateRegNumber: "",
-  identifierType: "deed",
-} as PoPropertyIntake;
-
-const registeredProperty = {
-  realEstateRegNumber: "1234567890",
-  identifierType: "real_estate_reg",
-} as PoPropertyIntake;
-
 describe("firstCaseStudyReportScrollTarget", () => {
-  it("sends the specialist to deed-nature match when the outcome is empty", () => {
-    const draft = emptyCaseStudyReportDraft("t1");
-    draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
-    draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
-    const hit = firstCaseStudyReportScrollTarget({
-      draft,
-      sectionQuestions: sections,
-      isQuestionVisible: () => true,
-      property: traditionalProperty,
-      isParty: false,
-    });
-    expect(hit?.targetId).toBe("cs-deed-nature-match");
-    expect(hit?.step).toBe(0);
-    expect(hit?.blocking).toBe(true);
-    expect(hit?.message).toMatch(/مدخلات المعاين/);
-  });
-
-  it("sends the specialist to match notes when فروق lacks an explanation", () => {
-    const draft = emptyCaseStudyReportDraft("t1");
-    draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
-    draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
-    draft.deedNatureMatchOutcome = DeedNatureMatchOutcomes.Differences;
-    const hit = firstCaseStudyReportScrollTarget({
-      draft,
-      sectionQuestions: sections,
-      isQuestionVisible: () => true,
-      property: traditionalProperty,
-      isParty: false,
-    });
-    expect(hit?.targetId).toBe("deed-nature-match-notes");
-    expect(hit?.step).toBe(0);
-    expect(hit?.blocking).toBe(true);
-  });
-
-  it("blocks the case-study report when the match is فروق with notes", () => {
-    const draft = emptyCaseStudyReportDraft("t1");
-    draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
-    draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
-    draft.deedNatureMatchOutcome = DeedNatureMatchOutcomes.Differences;
-    draft.deedNatureMatchNotes = "فرق في الحد الشمالي";
-    const hit = firstCaseStudyReportScrollTarget({
-      draft,
-      sectionQuestions: sections,
-      isQuestionVisible: () => true,
-      property: traditionalProperty,
-      isParty: false,
-    });
-    expect(hit?.targetId).toBe("cs-deed-nature-match");
-    expect(hit?.blocking).toBe(true);
-    expect(hit?.message).toMatch(/مسار تعذّر/);
-  });
-
   it("does not require deed remarks when غير مطابق has no note", () => {
     const draft = emptyCaseStudyReportDraft("t1");
     draft.answers[caseStudyAnswerKey("deed", 0)] = "B";
@@ -89,14 +24,13 @@ describe("firstCaseStudyReportScrollTarget", () => {
       draft,
       sectionQuestions: sections,
       isQuestionVisible: () => true,
-      property: traditionalProperty,
-      isParty: false,
     });
     expect(hit?.targetId).not.toBe("cs-deed-remarks");
     expect(hit?.invalidDeedRemarks).toBeFalsy();
   });
 
-  it("skips the nature-match gate for registered title", () => {
+  it("never asks for the deed-nature match: the case-study report does not depend on the inspector's inputs", () => {
+    // Decision 2026-10-15 — an empty outcome on a traditional deed used to block the issue.
     const draft = emptyCaseStudyReportDraft("t1");
     draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
     draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
@@ -105,47 +39,6 @@ describe("firstCaseStudyReportScrollTarget", () => {
         draft,
         sectionQuestions: sections,
         isQuestionVisible: () => true,
-        property: registeredProperty,
-        isParty: false,
-      }),
-    ).toBeNull();
-  });
-
-  it("keeps the gate for a traditional deed that also carries a registration number (server reads the deed kind only)", () => {
-    const draft = emptyCaseStudyReportDraft("t1");
-    draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
-    draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
-    const hit = firstCaseStudyReportScrollTarget({
-      draft,
-      sectionQuestions: sections,
-      isQuestionVisible: () => true,
-      property: {
-        realEstateRegNumber: "123",
-        identifierType: "deed",
-        deedKind: "traditional",
-      } as PoPropertyIntake,
-      isParty: false,
-    });
-    expect(hit?.targetId).toBe(CASE_STUDY_DEED_NATURE_MATCH_ID);
-    expect(hit?.blocking).toBe(true);
-    expect(hit?.invalidDeedNature).toBe(true);
-  });
-
-  it("skips the gate when the deed kind itself is a registered title", () => {
-    const draft = emptyCaseStudyReportDraft("t1");
-    draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
-    draft.answers[caseStudyAnswerKey("survey", 0)] = "A";
-    expect(
-      firstCaseStudyReportScrollTarget({
-        draft,
-        sectionQuestions: sections,
-        isQuestionVisible: () => true,
-        property: {
-          realEstateRegNumber: "",
-          identifierType: "deed",
-          deedKind: "registered_title",
-        } as PoPropertyIntake,
-        isParty: false,
       }),
     ).toBeNull();
   });
@@ -159,8 +52,6 @@ describe("firstCaseStudyReportScrollTarget matrix gaps", () => {
       draft,
       sectionQuestions: sections,
       isQuestionVisible: () => true,
-      property: registeredProperty,
-      isParty: false,
     });
     expect(hit?.blocking).toBe(true);
     expect(hit?.targetId).toBe(`cs-q-${caseStudyAnswerKey("survey", 0)}`);
@@ -179,23 +70,8 @@ describe("firstCaseStudyReportScrollTarget matrix gaps", () => {
       draft,
       sectionQuestions: sections,
       isQuestionVisible: (key) => key === caseStudyAnswerKey("deed", 0),
-      property: registeredProperty,
-      isParty: false,
     });
     expect(hit).toBeNull();
-  });
-
-  it("puts the deed-nature gate ahead of the matrix gaps", () => {
-    const draft = emptyCaseStudyReportDraft("t1");
-    const hit = firstCaseStudyReportScrollTarget({
-      draft,
-      sectionQuestions: sections,
-      isQuestionVisible: () => true,
-      property: traditionalProperty,
-      isParty: false,
-    });
-    expect(hit?.invalidDeedNature).toBe(true);
-    expect(hit?.missingAnswerKeys).toBeUndefined();
   });
 });
 

@@ -6,17 +6,17 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 /// <summary>
 /// «مكونات العقار» is the case specialist's: a report text written from the inspector's
 /// description (text or photo), plus a building-inventory table the appraiser's direct costs
-/// can start from. Before accepting the field inspection the report text is required, and so is
-/// a table with at least one line whenever the property has buildings or annexes worth valuing —
-/// every non-land asset, and a land asset only when the inspector answered «yes» to
-/// <see cref="LandHasValuableStructuresKey"/> (see <see cref="HasStructures"/>).
+/// can start from. Before accepting the field inspection the report text is required; the table
+/// is not a condition (decision 2026-10-15) — it is listed whenever the property has buildings or
+/// annexes worth valuing (every non-land asset, and a land asset only when the inspector answered
+/// «yes» to <see cref="LandHasValuableStructuresKey"/>, see <see cref="HasStructures"/>), and an
+/// empty table is simply a report and a cost approach without components.
 /// </summary>
 public static class SpecialistComponentsRules
 {
     public const int TextMaxLength = 8000;
 
     public const string TextKey = "componentsText";
-    public const string InventoryKey = "inventoryLines";
 
     /// <summary>
     /// Root-level inspector payload key: for an asset typed land, does the land hold buildings or
@@ -32,12 +32,10 @@ public static class SpecialistComponentsRules
 
     public const string TextRequired = "اكتب «مكونات العقار» للتقرير قبل قبول المعاينة";
 
-    public const string InventoryRequired =
-        "أضف إلى جدول الحصر بنداً واحداً على الأقل للمباني والملاحق قبل قبول المعاينة";
-
     /// <summary>
-    /// Whether the property has buildings or annexes worth valuing that the inventory table must
-    /// list. A non-land asset (or a property whose inspected type is not yet known) always does.
+    /// Whether the property has buildings or annexes worth valuing that the inventory table
+    /// lists (it decides whether the inspector sees the table at all; it is not an acceptance
+    /// condition). A non-land asset (or a property whose inspected type is not yet known) always does.
     /// An asset the inspector typed «أرض» does only when the inspector explicitly answered
     /// <see cref="LandStructuresYes"/> to <see cref="LandHasValuableStructuresKey"/>; «no», an
     /// empty answer, and a land submission with no such key at all (legacy — submitted before the
@@ -91,20 +89,15 @@ public static class SpecialistComponentsRules
     }
 
     /// <summary>
-    /// Every reason the field inspection cannot be accepted yet, keyed <see cref="TextKey"/> and
-    /// <see cref="InventoryKey"/>; empty when ready. <paramref name="landHasValuableStructures"/> is
-    /// the inspector's submitted land answer (see <see cref="HasStructures"/>).
+    /// Every reason the field inspection cannot be accepted yet, keyed <see cref="TextKey"/>;
+    /// empty when ready. Only the report text is a condition: an empty «جدول الحصر» does not
+    /// block acceptance for any asset type.
     /// </summary>
-    public static Dictionary<string, string> MissingForAcceptance(
-        WorkOrderProperty property,
-        string? landHasValuableStructures = null)
+    public static Dictionary<string, string> MissingForAcceptance(WorkOrderProperty property)
     {
         var missing = new Dictionary<string, string>();
         if (string.IsNullOrWhiteSpace(property.SpecialistComponentsText))
             missing[TextKey] = TextRequired;
-
-        if (HasStructures(property, landHasValuableStructures) && property.BuildingInventoryLines.Count == 0)
-            missing[InventoryKey] = InventoryRequired;
 
         return missing;
     }
