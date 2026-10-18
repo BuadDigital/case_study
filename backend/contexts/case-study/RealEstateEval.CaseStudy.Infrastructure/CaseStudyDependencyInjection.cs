@@ -40,6 +40,8 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IBuildingInventoryService, BuildingInventoryService>();
         services.AddScoped<IPropertyGroupRepository, PropertyGroupRepository>();
         services.AddScoped<IPropertyGroupService, PropertyGroupService>();
+        services.AddScoped<IInspectionPrefillFromSibling, InspectionPrefillFromSiblingService>();
+        services.AddScoped<IInspectionPhotoCopier, InspectionPhotoCopier>();
         services.AddWorkflowTaskCollaborators();
         services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
         services.AddScoped<ICaseStudyReportRepository, CaseStudyReportRepository>();
@@ -91,6 +93,7 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IInspectionLimitsRepository, InspectionLimitsRepository>();
         services.AddScoped<IInspectionLimitsService, InspectionLimitsService>();
         services.AddRemoteAttachmentLookup(configuration);
+        services.AddRemoteAttachmentScopeCopier(configuration);
         services.AddRemotePlatformCatalogs(configuration);
         services.AddRemoteValuationRequests(configuration);
         services.AddRemoteIdentityDirectory(configuration);

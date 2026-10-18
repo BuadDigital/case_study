@@ -8,10 +8,16 @@ namespace RealEstateEval.CaseStudy.Application.Abstractions;
 /// <summary>Property-level mutations and Enfath mapping for work orders.</summary>
 public interface IWorkOrderPropertyCommands
 {
+    /// <param name="softDraft">
+    /// True when the specialist has just opened an empty slot: the property is created with its
+    /// real id before anything is typed (no required-field gate), so uploads never need a
+    /// client-side id. The explicit حفظ still validates fully.
+    /// </param>
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> AddPropertyAsync(
         string poNumber,
         WorkOrderPropertyDto property,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        bool softDraft = false);
 
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(
         string poNumber,

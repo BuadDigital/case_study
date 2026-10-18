@@ -4,6 +4,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
@@ -12,7 +13,8 @@ namespace RealEstateEval.CaseStudy.Application.Services;
 /// grouped-property linking: the system suggests
 /// (same owner / same plan / adjacent plots / coordinate proximity), a human confirms,
 /// the confirmation is audited, and the link is reversible with a reason. Work orders
-/// stay administratively independent.
+/// stay administratively independent. At the link the two deeds' data is copied once into
+/// each other's empty slots (<see cref="PropertyGroupDataSyncRules"/>).
 /// </summary>
 public sealed class PropertyGroupService : IPropertyGroupService
 {
@@ -21,6 +23,7 @@ public sealed class PropertyGroupService : IPropertyGroupService
     private readonly IAuditLogWriter audit;
     private readonly IAuditLogAppend _auditLog;
     private readonly TimeProvider _time;
+    private readonly IInspectionPrefillFromSibling? _prefill;
 
     // A8: the PlatformDbContext convenience ctor is gone — compose PlatformAuditLogAppend
     // explicitly where needed (tests); DI uses the interface ctor below.
@@ -29,13 +32,15 @@ public sealed class PropertyGroupService : IPropertyGroupService
         IPropertyGroupRepository db,
         IAuditLogWriter audit,
         IAuditLogAppend auditLog,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        IInspectionPrefillFromSibling? prefill = null)
     {
         _time = time ?? TimeProvider.System;
 
         this.db = db;
         this.audit = audit;
         _auditLog = auditLog;
+        _prefill = prefill;
     }
 
     public async Task<PropertyGroupDto?> GetForPropertyAsync(
@@ -120,8 +125,8 @@ public sealed class PropertyGroupService : IPropertyGroupService
         if (propertyId == targetPropertyId)
             return (null, "لا يمكن ربط العقار بنفسه");
 
-        // Load pairs in two queries instead of four — same table, same shape.
-        var pair = await db.ListPropertiesByIdsAsync(
+        // Tracked with contacts: the link also fills each deed's empty slots from the other.
+        var pair = await db.ListPropertiesForUpdateAsync(
             [propertyId, targetPropertyId],
             cancellationToken);
         var subject = pair.FirstOrDefault(p => p.Id == propertyId);
@@ -187,6 +192,9 @@ public sealed class PropertyGroupService : IPropertyGroupService
             });
         }
 
+        // Decision 2026-10-15: the same data on both deeds — copied once, into empty slots only.
+        var linkSync = await SyncLinkedPairAsync(subject, target, now, cancellationToken);
+
         await db.SaveChangesAsync(cancellationToken);
 
  // Confirmation is human audited (stage 1).
@@ -196,8 +204,128 @@ public sealed class PropertyGroupService : IPropertyGroupService
             "property_group",
             groupId.ToString("D"),
             null,
-            new { propertyId, targetPropertyId, signals }), cancellationToken);
-        return (await BuildGroupDtoAsync(groupId, cancellationToken), null);
+            new
+            {
+                propertyId,
+                targetPropertyId,
+                signals,
+                copied = new
+                {
+                    toSubject = linkSync.SubjectFieldsFilled,
+                    toTarget = linkSync.TargetFieldsFilled,
+                    contactsToSubject = linkSync.ContactsCopiedToSubject,
+                    contactsToTarget = linkSync.ContactsCopiedToTarget,
+                    inspectorToSubject = linkSync.InspectorSlotsFilledOnSubject,
+                    inspectorToTarget = linkSync.InspectorSlotsFilledOnTarget,
+                },
+            }), cancellationToken);
+        return (await BuildGroupDtoAsync(groupId, cancellationToken, linkSync), null);
+    }
+
+    /// <summary>
+    /// Fills each deed's empty slots from the other: the shared intake / bourse fields, the
+    /// contacts (when one side has none) and the inspector's shared inputs (into a draft
+    /// inspection only — a submitted one is the inspector's word and is left alone).
+    /// </summary>
+    private async Task<PropertyGroupLinkSyncDto> SyncLinkedPairAsync(
+        WorkOrderProperty subject,
+        WorkOrderProperty target,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var subjectFilled = PropertyGroupDataSyncRules.FillEmptyFields(target, subject);
+        var targetFilled = PropertyGroupDataSyncRules.FillEmptyFields(subject, target);
+
+        var contactsToSubject = PropertyGroupDataSyncRules.ContactsToCopy(target, subject, now);
+        var contactsToTarget = PropertyGroupDataSyncRules.ContactsToCopy(subject, target, now);
+        foreach (var contact in contactsToSubject.Concat(contactsToTarget))
+            db.AddContact(contact);
+
+        var inspections = await db.ListFieldInspectionsForUpdateAsync(
+            [subject.Id, target.Id],
+            cancellationToken);
+        var inspectorToSubject = await FillDraftInspectionAsync(inspections, from: target.Id, into: subject.Id, now, cancellationToken);
+        var inspectorToTarget = await FillDraftInspectionAsync(inspections, from: subject.Id, into: target.Id, now, cancellationToken);
+
+        return new PropertyGroupLinkSyncDto
+        {
+            SubjectFieldsFilled = subjectFilled,
+            TargetFieldsFilled = targetFilled,
+            ContactsCopiedToSubject = contactsToSubject.Count > 0,
+            ContactsCopiedToTarget = contactsToTarget.Count > 0,
+            InspectorSlotsFilledOnSubject = inspectorToSubject,
+            InspectorSlotsFilledOnTarget = inspectorToTarget,
+        };
+    }
+
+    /// <summary>
+    /// Source: the sibling's inspection worth copying. Destination: a draft (or returned)
+    /// inspection of <paramref name="into"/> that was never accepted and holds no photo of its
+    /// own. Site inputs fill the empty slots; the photos are copied to the destination task when
+    /// the photo copier is wired. Returns how many slots and photos were filled.
+    /// </summary>
+    private async Task<int> FillDraftInspectionAsync(
+        IReadOnlyList<PartyTaskSubmission> inspections,
+        Guid from,
+        Guid into,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        var source = InspectionSiblingPrefillRules.ChooseSource(inspections.Where(s => s.PropertyId == from));
+        var destination = inspections
+            .Where(s => s.PropertyId == into && InspectionSiblingPrefillRules.MayPrefill(s))
+            .OrderByDescending(s => s.UpdatedAtUtc)
+            .FirstOrDefault();
+        if (source is null || destination is null) return 0;
+
+        var (json, filled) = PropertyGroupDataSyncRules.FillEmptyInspectorPayload(
+            source.PayloadJson,
+            destination.PayloadJson);
+        if (filled > 0) destination.PayloadJson = json;
+
+        var photos = _prefill is null
+            ? 0
+            : await _prefill.CopyPhotosIntoDraftAsync(source, destination, cancellationToken);
+        if (filled + photos == 0) return 0;
+
+        destination.UpdatedAtUtc = now;
+        return filled + photos;
+    }
+
+    public async Task<(FillPropertyGroupDocumentNamesResultDto? Result, string? Error)> FillDocumentNamesAsync(
+        Guid propertyId,
+        FillPropertyGroupDocumentNamesRequest request,
+        string actorId,
+        CancellationToken cancellationToken = default)
+    {
+        var property = await db.GetPropertyForUpdateAsync(propertyId, cancellationToken);
+        if (property is null)
+            return (null, "العقار غير موجود");
+
+        var filled = PropertyGroupDataSyncRules.FillEmptyDocumentNames(
+            property,
+            new PropertyGroupDataSyncRules.DocumentNames(
+                request.AssignmentDocFileNames,
+                request.DelegationLetterFileNames,
+                request.OtherDocumentFileNames,
+                request.RealEstateRegFileName,
+                request.DeedOwnershipFileName,
+                request.BourseDeedImageFileName,
+                request.BoundariesExternalDocName));
+        if (filled.Count > 0)
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            var actor = string.IsNullOrWhiteSpace(actorId) ? "unknown" : actorId;
+            await _auditLog.AppendAsync(audit.Create(
+                actor,
+                "PROPERTY_GROUP_DOCUMENTS_COPIED",
+                "work_order_property",
+                propertyId.ToString("D"),
+                null,
+                new { filled }), cancellationToken);
+        }
+
+        return (new FillPropertyGroupDocumentNamesResultDto { Filled = filled }, null);
     }
 
     public async Task<(PropertyGroupDto? Result, string? Error)> UnlinkAsync(
@@ -259,7 +387,8 @@ public sealed class PropertyGroupService : IPropertyGroupService
 
     private async Task<PropertyGroupDto?> BuildGroupDtoAsync(
         Guid groupId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        PropertyGroupLinkSyncDto? linkSync = null)
     {
         var group = await db.GetGroupAsync(groupId, cancellationToken);
         if (group is null) return null;
@@ -276,6 +405,7 @@ public sealed class PropertyGroupService : IPropertyGroupService
             Id = group.Id,
             Name = group.Name,
             CreatedAtUtc = group.CreatedAtUtc.ToString("o"),
+            LinkSync = linkSync,
             Members = members
                 .Select(m =>
                 {

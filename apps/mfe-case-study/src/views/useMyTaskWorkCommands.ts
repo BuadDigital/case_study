@@ -77,6 +77,8 @@ import {
 
 type MyTaskWorkCommandsInput = {
   task: WorkflowTask;
+  /** The property's real id: the task's, or the draft the workspace just created for the slot. */
+  propertyId: string | null;
   property: PoPropertyIntake;
   assignmentType: AssignmentType;
   fieldPolicy: ClientFieldPolicy;
@@ -104,7 +106,8 @@ type EnfathSaveErrors = { errors: FieldErrors; message: string };
 async function findEnfathSaveErrors(
   property: PoPropertyIntake,
   assignmentType: AssignmentType,
-  task: Pick<WorkflowTask, "poNumber" | "propertyId">,
+  task: Pick<WorkflowTask, "poNumber">,
+  propertyId: string | null,
   fieldPolicy: ClientFieldPolicy,
 ): Promise<EnfathSaveErrors | null> {
   const errors = mergePropertyEnfathValidation(property, assignmentType, fieldPolicy);
@@ -116,7 +119,7 @@ async function findEnfathSaveErrors(
     (await deedExistsInPo(
       task.poNumber,
       property.deedNumber.trim(),
-      task.propertyId,
+      propertyId ?? undefined,
     ))
   ) {
     const errors = { deedNumber: DUPLICATE_DEED_ERROR };
@@ -127,6 +130,7 @@ async function findEnfathSaveErrors(
 
 export function useMyTaskWorkCommands({
   task,
+  propertyId,
   property,
   assignmentType,
   fieldPolicy,
@@ -196,6 +200,7 @@ export function useMyTaskWorkCommands({
       property,
       assignmentType,
       task,
+      propertyId,
       fieldPolicy,
     );
     if (!invalid) return false;
@@ -213,8 +218,8 @@ export function useMyTaskWorkCommands({
     }
     if (await rejectIfEnfathInvalid()) return;
 
-    if (task.propertyId) {
-      await flushPropertyFieldAutosave(task.poNumber, task.propertyId);
+    if (propertyId) {
+      await flushPropertyFieldAutosave(task.poNumber, propertyId);
     }
 
     const persisted = persistedEnfathProperty(property);
@@ -222,13 +227,15 @@ export function useMyTaskWorkCommands({
     await runWithActionToast(ENFATH_SAVE_ACTION, async () => {
       setSaving(true);
       try {
-        const result = task.propertyId
-          ? await updatePropertyInPo(task.poNumber, task.propertyId, persisted)
+        // The property normally exists already (created when the slot was opened); the insert
+        // path remains only for a slot whose draft could not be created at the time.
+        const result = propertyId
+          ? await updatePropertyInPo(task.poNumber, propertyId, persisted)
           : await addPropertyToPo(task.poNumber, persisted, {
               assignToTaskId: task.id,
             });
         if (!result.ok) throw failure(result.error, result.errors);
-        if (!task.propertyId) {
+        if (!propertyId) {
           // Now has a real server id — drop the local-only pre-save draft.
           cancelPropertyFieldAutosave(task.poNumber, newPropertyDraftKey(task.id));
         }
@@ -276,21 +283,19 @@ export function useMyTaskWorkCommands({
       return;
     }
 
-    if (!task.propertyId) {
+    if (!propertyId) {
       setFormError(NO_LINKED_PROPERTY_ERROR);
       return;
     }
 
-    if (task.propertyId) {
-      await flushPropertyFieldAutosave(task.poNumber, task.propertyId);
-    }
+    await flushPropertyFieldAutosave(task.poNumber, propertyId);
 
     await runWithActionToast(BOURSE_SAVE_ACTION, async () => {
       setSaving(true);
       try {
         pendingBourseComplete.current = {
           poNumber: task.poNumber,
-          propertyId: task.propertyId!,
+          propertyId,
           property: compactRegisteredTitle
             ? property
             : { ...property, deedStatus: bourseDeedStatus(deedVitality) },

@@ -312,8 +312,9 @@ public partial class WorkOrderService : IWorkOrderService
     public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> AddPropertyAsync(
         string poNumber,
         WorkOrderPropertyDto property,
-        CancellationToken cancellationToken) =>
-        _properties.AddPropertyAsync(poNumber, property, cancellationToken);
+        CancellationToken cancellationToken,
+        bool softDraft = false) =>
+        _properties.AddPropertyAsync(poNumber, property, cancellationToken, softDraft);
 
     public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(
         string poNumber,

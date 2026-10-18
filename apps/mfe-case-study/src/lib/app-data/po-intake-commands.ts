@@ -1,4 +1,4 @@
-import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
+import { emptyProperty, type PoIntakeRecord, type PoPropertyIntake } from "./po-intake-data";
 import { deleteFailuresForPo } from "@failures/mfe/lib/failures-repository";
 import {
   advanceTaskAfterBourseForProperty,
@@ -10,6 +10,7 @@ import {
   syncTaskSlotsForPo,
 } from "./tasks";
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
+import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
   addWorkOrderProperty,
   cancelWorkOrder,
@@ -18,6 +19,7 @@ import {
   deletePoIntakeDraft,
   deleteWorkOrder,
   deleteWorkOrderProperty,
+  linkWorkflowTaskProperty,
   savePoIntakeDraft,
   stopWorkOrder,
   updateWorkOrderHeader,
@@ -385,26 +387,44 @@ export async function updatePoRecord(
   return { ok: true, data: saved };
 }
 
-function hasClonedNames(names: {
-  assignmentDocFileNames: string[];
-  delegationLetterFileNames: string[];
-  otherDocumentFileNames: string[];
-  realEstateRegFileName: string;
-  deedOwnershipFileName: string;
-  bourseDeedImageFileName: string;
-  boundariesExternalDocName: string;
-}): boolean {
-  return (
-    names.assignmentDocFileNames.length > 0 ||
-    names.delegationLetterFileNames.length > 0 ||
-    names.otherDocumentFileNames.length > 0 ||
-    Boolean(
-      names.realEstateRegFileName ||
-        names.deedOwnershipFileName ||
-        names.bourseDeedImageFileName ||
-        names.boundariesExternalDocName,
-    )
+/**
+ * Decision 2026-10-18: the specialist opened an empty slot. The server creates the property
+ * now — a draft with its real id — and points the slot at it, so every upload from the first
+ * second is stored under that id. No client-side ids, no copying on save.
+ */
+export async function createDraftPropertyForSlot(
+  poNumber: string,
+  taskId: string,
+): Promise<StorageOk<PoPropertyIntake> | StorageError> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+
+  const created = await addWorkOrderProperty(
+    config,
+    poNumber,
+    propertyToEnfathDto(emptyProperty(), { forInsert: true }),
+    { draft: true },
   );
+  if (!created.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(created.kind, created.errors, "تعذّر إنشاء سجل العقار — تحقق من الاتصال"),
+      errors: created.errors,
+    };
+  }
+  const prop = dtoToProperty(created.data, poNumber);
+
+  const linked = await linkWorkflowTaskProperty(config, taskId, prop.id);
+  if (!linked.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(linked.kind, linked.errors, "تعذّر ربط العقار بالمهمة"),
+      errors: linked.errors,
+    };
+  }
+  notifyTasksChanged();
+  notifyWorkOrdersChanged();
+  return { ok: true, data: prop };
 }
 
 export async function addPropertyToPo(
@@ -415,7 +435,6 @@ export async function addPropertyToPo(
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
-  const provisionalId = property.id?.trim() ?? "";
   const result = await addWorkOrderProperty(
     config,
     poNumber,
@@ -429,57 +448,7 @@ export async function addPropertyToPo(
     };
   }
 
-  let prop = dtoToProperty(result.data, poNumber);
-
-  // The server gives the property its own id, so every file uploaded in the form under the client-side id
-  // is copied onto it (prior PDFs from auto-fill first, then whatever the user attached by hand).
-  if (provisionalId && provisionalId !== prop.id) {
-    try {
-      const {
-        clonePropertyDocumentsFromPrior,
-        completePendingPriorDocumentClone,
-        discardPropertyDocuments,
-      } = await import("./assignment-doc-attachments");
-      const recloned =
-        (await completePendingPriorDocumentClone(provisionalId, poNumber, prop.id)) ??
-        (await clonePropertyDocumentsFromPrior(poNumber, provisionalId, poNumber, prop.id));
-      if (recloned && hasClonedNames(recloned)) {
-        prop = {
-          ...prop,
-          assignmentDocFileNames:
-            recloned.assignmentDocFileNames.length > 0
-              ? recloned.assignmentDocFileNames
-              : prop.assignmentDocFileNames,
-          delegationLetterFileNames:
-            recloned.delegationLetterFileNames.length > 0
-              ? recloned.delegationLetterFileNames
-              : prop.delegationLetterFileNames,
-          otherDocumentFileNames:
-            recloned.otherDocumentFileNames.length > 0
-              ? recloned.otherDocumentFileNames
-              : prop.otherDocumentFileNames,
-          realEstateRegFileName:
-            recloned.realEstateRegFileName || prop.realEstateRegFileName,
-          deedOwnershipFileName:
-            recloned.deedOwnershipFileName || prop.deedOwnershipFileName,
-          bourseDeedImageFileName:
-            recloned.bourseDeedImageFileName || prop.bourseDeedImageFileName,
-          boundariesExternalDocName:
-            recloned.boundariesExternalDocName || prop.boundariesExternalDocName,
-        };
-        const resaved = await updatePropertyInPo(poNumber, prop.id, {
-          ...property,
-          ...prop,
-          id: prop.id,
-        });
-        if (resaved.ok) prop = resaved.data;
-        // The copies live under the server id now; the client-id rows would never be listed again.
-        void discardPropertyDocuments(poNumber, provisionalId).catch(() => undefined);
-      }
-    } catch {
-      /* file names from insert DTO still apply */
-    }
-  }
+  const prop = dtoToProperty(result.data, poNumber);
 
   if (options?.assignToTaskId) {
     const advanced = await advanceTaskAfterEnfath(options.assignToTaskId, prop);

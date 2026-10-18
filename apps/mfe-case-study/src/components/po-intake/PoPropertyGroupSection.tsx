@@ -10,14 +10,35 @@ import {
   type PropertyGroupDto,
   type PropertyGroupSuggestionDto,
 } from "@platform/api-client";
+import {
+  copyGroupDocumentsBothWays,
+  linkSyncSummaryAr,
+} from "../../lib/app-data/property-group-link-sync";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 
 /**
  * Decision 20 — grouped property: the system suggests links (same owner / same plan /
  * adjacent plots / coordinate proximity), a human confirms (audited), and the link
  * is reversible with a reason. Work orders stay administratively independent.
+ *
+ * Decision 2026-10-15: confirming a link copies the two deeds' data into each other's empty
+ * slots, once — fields, contacts and the inspector's draft on the server; the documents here.
+ * The host flushes its pending edits before the link and reloads the deed after it.
  */
-export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
+export function PoPropertyGroupSection({
+  propertyId,
+  poNumber = "",
+  onBeforeLink,
+  onLinked,
+}: {
+  propertyId: string;
+  /** This deed's work order — needed to copy its documents to the linked deed and back. */
+  poNumber?: string;
+  /** Save what the host still holds unsaved, so the server copy sees the latest values. */
+  onBeforeLink?: () => Promise<void> | void;
+  /** The server filled this deed's empty slots: reload it before anyone types over them. */
+  onLinked?: () => Promise<void> | void;
+}) {
   const { showToast } = useToast();
   const [group, setGroup] = useState<PropertyGroupDto | null>(null);
   const [suggestions, setSuggestions] = useState<PropertyGroupSuggestionDto[]>([]);
@@ -45,17 +66,24 @@ export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
     void reload();
   }, [reload]);
 
-  function confirm(targetPropertyId: string) {
+  function confirm(targetPropertyId: string, targetPo: string) {
     const config = workOrdersApiConfig();
     if (!config) return;
     startTransition(async () => {
+      await onBeforeLink?.();
       const res = await confirmPropertyGroupLink(config, propertyId, targetPropertyId);
       if (!res.ok) {
         showToast(res.message ?? "تعذّر تأكيد الربط", "error");
         return;
       }
-      showToast("تم تأكيد الربط — مسجَّل في سجل التدقيق", "success");
-      await reload();
+      const documents = await copyGroupDocumentsBothWays({
+        subjectPo: poNumber,
+        subjectPropertyId: propertyId,
+        targetPo,
+        targetPropertyId,
+      });
+      showToast(linkSyncSummaryAr(res.data.linkSync, documents), "success");
+      await Promise.all([reload(), onLinked?.()]);
     });
   }
 
@@ -142,7 +170,7 @@ export function PoPropertyGroupSection({ propertyId }: { propertyId: string }) {
                   size="sm"
                   variant="primary"
                   disabled={isPending}
-                  onClick={() => confirm(s.propertyId)}
+                  onClick={() => confirm(s.propertyId, s.poNumber)}
                 >
                   تأكيد الربط
                 </Button>

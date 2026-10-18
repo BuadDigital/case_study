@@ -171,6 +171,15 @@ public class AdvanceTaskAfterBourseRequest
     public string DeedNumber { get; set; } = "";
 }
 
+/// <summary>
+/// Points an empty Enfath slot at the property draft the server just created for it (decision
+/// 2026-10-18: no client-side property ids). The slot stays in the Enfath phase.
+/// </summary>
+public class LinkTaskPropertyRequest
+{
+    public string PropertyId { get; set; } = "";
+}
+
 public class RevertWorkflowTaskPhaseRequest
 {
  /// <summary>Target phase: <c>enfath</c> or <c>bourse</c>.</summary>

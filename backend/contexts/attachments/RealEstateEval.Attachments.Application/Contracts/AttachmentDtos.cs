@@ -115,3 +115,27 @@ public class PhotoMetadataDto
     public double? DistanceM { get; init; }
     public string? Flag { get; init; }
 }
+
+/// <summary>
+/// Internal (owner-to-owner) request: copy every attachment of <see cref="Scope"/> whose scope
+/// key starts with <see cref="FromScopeKeyPrefix"/> to the same suffix under
+/// <see cref="ToScopeKeyPrefix"/> — the grouped property's inspection photos moving to the
+/// sibling deed's inspection task.
+/// </summary>
+public class CopyAttachmentScopeRequest
+{
+    [Required, MaxLength(64)]
+    public string Scope { get; init; } = "";
+    [Required, MaxLength(512)]
+    public string FromScopeKeyPrefix { get; init; } = "";
+    [Required, MaxLength(512)]
+    public string ToScopeKeyPrefix { get; init; } = "";
+}
+
+public class CopiedAttachmentDto
+{
+    public Guid FromId { get; init; }
+    public Guid ToId { get; init; }
+    public string ScopeKey { get; init; } = "";
+    public string FileName { get; init; } = "";
+}

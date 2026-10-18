@@ -32,6 +32,19 @@ public static class RemoteClientRegistration
     }
 
     /// <summary>
+    /// Scope copies (a grouped property's inspection photos) via the Attachments internal API.
+    /// Do not combine with <c>AddAttachmentsPersistence</c> on the same host.
+    /// </summary>
+    public static IServiceCollection AddRemoteAttachmentScopeCopier(
+        this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        services.AddUpstreamHttp(configuration);
+        services.AddHttpClient<IAttachmentScopeCopier, HttpAttachmentScopeCopier>();
+        return services;
+    }
+
+    /// <summary>
     /// Writes of system-generated files (a report's certificate, its final PDF) via the Attachments HTTP API.
     /// Do not combine with <c>AddAttachmentsPersistence</c> on the same host.
     /// </summary>

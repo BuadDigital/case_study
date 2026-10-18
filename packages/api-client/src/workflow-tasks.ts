@@ -290,6 +290,31 @@ export async function advanceWorkflowTaskAfterEnfath(
   }
 }
 
+/** Points an empty Enfath slot at the property draft just created for it (phase unchanged). */
+export async function linkWorkflowTaskProperty(
+  config: WorkOrdersApiConfig,
+  taskId: string,
+  propertyId: string,
+): Promise<ApiOk<WorkflowTaskDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/workflow-tasks/${taskId}/link-property`, {
+      method: "POST",
+      headers: authHeaders(config.token),
+      body: JSON.stringify({ propertyId }),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (res.status === 400) {
+      return { ok: false, kind: "validation", errors: await parseFieldErrorsFromResponse(res) };
+    }
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function advanceWorkflowTaskAfterBourse(
   config: WorkOrdersApiConfig,
   taskId: string,

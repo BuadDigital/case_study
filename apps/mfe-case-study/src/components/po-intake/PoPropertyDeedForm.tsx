@@ -39,6 +39,8 @@ type Props = {
   /** Which fields this client relationship requires — e.g. Nabr skips قرار الإسناد و اسم المالك. */
   fieldPolicy?: ClientFieldPolicy;
   showStageNote?: boolean;
+  /** The property has no server id yet (its draft could not be created): no file can be stored. */
+  uploadsDisabled?: boolean;
 };
 
 export function PoPropertyEnfathForm({
@@ -51,8 +53,9 @@ export function PoPropertyEnfathForm({
   excludePoNumber,
   fieldPolicy,
   showStageNote = true,
+  uploadsDisabled = false,
 }: Props) {
-  const attachPo = resolveAttachPo(poNumber, excludePoNumber);
+  const attachPo = uploadsDisabled ? "" : resolveAttachPo(poNumber, excludePoNumber);
   const { priorExcludePo, priorExcludePropertyId } = resolvePriorExclusion({
     poNumber,
     excludePoNumber,

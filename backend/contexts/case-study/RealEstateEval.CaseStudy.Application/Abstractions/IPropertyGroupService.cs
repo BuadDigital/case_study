@@ -25,4 +25,14 @@ public interface IPropertyGroupService
         string reason,
         string actorId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Records the names of documents the screen copied onto a deed of a group — empty name
+    /// slots only. Error when the property is missing.
+    /// </summary>
+    Task<(FillPropertyGroupDocumentNamesResultDto? Result, string? Error)> FillDocumentNamesAsync(
+        Guid propertyId,
+        FillPropertyGroupDocumentNamesRequest request,
+        string actorId,
+        CancellationToken cancellationToken = default);
 }

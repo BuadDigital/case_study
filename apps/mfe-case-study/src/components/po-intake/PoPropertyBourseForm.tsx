@@ -52,6 +52,10 @@ type Props = {
   showDeedVitalityFlow?: boolean;
   deedVitality?: BourseDeedVitality | null;
   onDeedVitalityChange?: (value: BourseDeedVitality) => void;
+  /** Grouped property: save pending edits before a link is confirmed … */
+  onGroupBeforeLink?: () => Promise<void> | void;
+  /** … and reload this deed after the server filled its empty slots from the linked one. */
+  onGroupLinked?: () => Promise<void> | void;
 };
 
 const pillClass = (selected: boolean) =>
@@ -68,6 +72,8 @@ export function PoPropertyBourseForm({
   showDeedVitalityFlow = false,
   deedVitality = null,
   onDeedVitalityChange,
+  onGroupBeforeLink,
+  onGroupLinked,
 }: Props) {
   const { showToast } = useToast();
   const upload = usePropertyDocUpload();
@@ -349,7 +355,12 @@ export function PoPropertyBourseForm({
           </InfathSection>
 
           <PoPropertyOwnersSection property={property} onPatch={onPatch} />
-          <PoPropertyGroupSection propertyId={property.id} />
+          <PoPropertyGroupSection
+            propertyId={property.id}
+            poNumber={attachPo}
+            onBeforeLink={onGroupBeforeLink}
+            onLinked={onGroupLinked}
+          />
 
           <InfathSection title="توفر الحدود" className="mt-3">
           <div

@@ -26,6 +26,7 @@ type PropertyFormProps = Pick<
   | "fieldErrors"
   | "patchProperty"
   | "replaceProperty"
+  | "uploadsDisabled"
 >;
 
 export function MyTaskWorkEnfathStep({
@@ -37,6 +38,7 @@ export function MyTaskWorkEnfathStep({
   fieldErrors,
   patchProperty,
   replaceProperty,
+  uploadsDisabled,
 }: PropertyFormProps) {
   return (
     <RegistrationFormCard
@@ -59,6 +61,7 @@ export function MyTaskWorkEnfathStep({
           onReplaceProperty={replaceProperty}
           poNumber={task.poNumber}
           excludePoNumber={task.poNumber}
+          uploadsDisabled={uploadsDisabled}
           showStageNote={layout !== "panel"}
         />
       </div>

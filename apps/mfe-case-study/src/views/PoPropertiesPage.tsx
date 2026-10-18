@@ -364,6 +364,12 @@ export function PoPropertiesPage({
                 const serverStatus =
                   statusByPropertyId.get(prop.id) ?? PropertyListRowStatuses.New;
                 const boursePending = !prop.bourseDataCompleted && !prop.isRemoved;
+                // A slot the specialist opened but has not saved yet (decision 2026-10-18:
+                // the property exists on the server from the first second).
+                const intakePending =
+                  boursePending &&
+                  !prop.deedNumber.trim() &&
+                  !prop.realEstateRegNumber.trim();
                 const locRaw = formatPropertyLocation(prop);
                 const location =
                   locRaw === "بانتظار البورصة"
@@ -378,13 +384,19 @@ export function PoPropertiesPage({
                 const label = deedLabel(prop);
                 const workflowStyle = prop.isRemoved
                   ? propertyWorkflowStatusStyle("removed")
-                  : boursePending
+                  : intakePending
                     ? {
-                        label: "بانتظار البورصة",
-                        base: "#a67c1a",
-                        fg: "#8a6a18",
+                        label: "بانتظار البيانات الأولية",
+                        base: "#7a7a7a",
+                        fg: "#5f5f5f",
                       }
-                    : propertyWorkflowStatusStyle(serverStatus);
+                    : boursePending
+                      ? {
+                          label: "بانتظار البورصة",
+                          base: "#a67c1a",
+                          fg: "#8a6a18",
+                        }
+                      : propertyWorkflowStatusStyle(serverStatus);
                 const deedSt = prop.deedStatus.trim();
 
                 return (

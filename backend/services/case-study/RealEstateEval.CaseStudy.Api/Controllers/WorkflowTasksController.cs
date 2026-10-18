@@ -137,6 +137,25 @@ public class WorkflowTasksController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// The specialist opened an empty slot: the property draft was just created with its real
+    /// id — point the slot at it (phase unchanged). Decision 2026-10-18.
+    /// </summary>
+    [HttpPost("{id:guid}/link-property")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<WorkflowTaskDto>> LinkProperty(
+        Guid id,
+        [FromBody] LinkTaskPropertyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
+        var (dto, error) = await _tasks.LinkPropertyAsync(id, request, cancellationToken);
+        if (error is not null) return this.BadRequestProblem(error);
+        return Ok(dto);
+    }
+
     [HttpPost("{id:guid}/advance-after-bourse")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkflowTaskDto>> AdvanceAfterBourse(

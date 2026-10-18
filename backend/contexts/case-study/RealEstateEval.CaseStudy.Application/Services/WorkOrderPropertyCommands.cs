@@ -48,20 +48,27 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
     public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> AddPropertyAsync(
         string poNumber,
         WorkOrderPropertyDto property,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool softDraft = false)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
 
-        var errors = WorkOrderValidator.ValidatePropertyEnfath(
-            property,
-            entity.AssignmentType,
-            null,
-            WorkOrderPropertyWriteRules.DeedTakenProbe(entity),
-            SeedClientIds.ClientFieldPolicyForClient(
-                entity.ClientId,
-                WorkOrderReportUsers.Parse(entity.ReportUserClientIdsJson)));
-        if (errors.Count > 0) return (null, errors);
+        // Decision 2026-10-18: a slot opened by the specialist becomes a real property at once
+        // (draft, no gate) so its documents are stored under the real id from the first upload;
+        // the explicit حفظ validates fully, as before.
+        if (!softDraft)
+        {
+            var errors = WorkOrderValidator.ValidatePropertyEnfath(
+                property,
+                entity.AssignmentType,
+                null,
+                WorkOrderPropertyWriteRules.DeedTakenProbe(entity),
+                SeedClientIds.ClientFieldPolicyForClient(
+                    entity.ClientId,
+                    WorkOrderReportUsers.Parse(entity.ReportUserClientIdsJson)));
+            if (errors.Count > 0) return (null, errors);
+        }
 
  // Never trust client ids on insert — draft ids make EF emit UPDATE and fail with 0 rows.
         property.Id = null;
