@@ -153,6 +153,46 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
         return WorkflowTaskMapper.ToDto(entity);
     }
 
+    public const string LinkTaskNotFoundAr = "المهمة غير موجودة";
+    public const string LinkNotAnEmptySlotAr = "هذه المهمة ليست خانة عقار فارغة في مرحلة إنفاذ";
+    public const string LinkPropertyNotInOrderAr = "العقار ليس من عقارات أمر العمل نفسه";
+
+    public async Task<(WorkflowTaskDto? Result, string? Error)> LinkPropertyAsync(
+        Guid id,
+        LinkTaskPropertyRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await _db.GetTaskForUpdateAsync(id, cancellationToken);
+        if (entity is null) return (null, LinkTaskNotFoundAr);
+        if (!Guid.TryParse(request.PropertyId, out var propertyId) || propertyId == Guid.Empty)
+            return (null, LinkPropertyNotInOrderAr);
+
+        // Already pointing at this property: nothing to do (a repeated open).
+        if (entity.PropertyId == propertyId)
+            return (WorkflowTaskMapper.ToDto(entity), null);
+
+        if (!entity.IsCaseStudyParent
+            || entity.Phase != WorkflowTaskPhase.Enfath
+            || entity.PropertyId is not null
+            || entity.Status != WorkflowTaskStatus.Open)
+        {
+            return (null, LinkNotAnEmptySlotAr);
+        }
+
+        var prop = await _db.GetPropertyAsync(propertyId, cancellationToken);
+        if (prop is null || prop.IsRemoved) return (null, LinkPropertyNotInOrderAr);
+        var order = await _db.GetWorkOrderWithPropertiesForUpdateAsync(entity.PoNumber, cancellationToken);
+        if (order is null || order.Id != prop.WorkOrderId) return (null, LinkPropertyNotInOrderAr);
+
+        entity.LinkProperty(
+            propertyId,
+            WorkflowTaskPhase.Enfath,
+            WorkflowTaskPhaseRules.PropertyTaskTitle(prop.DeedNumber, entity.PoNumber.Trim()),
+            _time.UtcNow());
+        await _db.SaveChangesAsync(cancellationToken);
+        return (WorkflowTaskMapper.ToDto(entity), null);
+    }
+
     public async Task<WorkflowTaskDto?> AdvanceAfterBourseAsync(
         Guid id,
         AdvanceTaskAfterBourseRequest request,

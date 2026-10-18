@@ -12,11 +12,37 @@ export type PropertyGroupMemberDto = {
   signalLabelsAr: string[];
 };
 
+/**
+ * What a link just copied between the two deeds (decision 2026-10-15: once, into empty slots
+ * only, both ways). "Subject" is the deed the link was confirmed from.
+ */
+export type PropertyGroupLinkSyncDto = {
+  subjectFieldsFilled: string[];
+  targetFieldsFilled: string[];
+  contactsCopiedToSubject: boolean;
+  contactsCopiedToTarget: boolean;
+  inspectorSlotsFilledOnSubject: number;
+  inspectorSlotsFilledOnTarget: number;
+};
+
 export type PropertyGroupDto = {
   id: string;
   name?: string | null;
   createdAtUtc: string;
   members: PropertyGroupMemberDto[];
+  /** Present on the reply to a link confirmation only. */
+  linkSync?: PropertyGroupLinkSyncDto | null;
+};
+
+/** Stored names of the documents the screen copied onto a linked deed. */
+export type FillPropertyGroupDocumentNamesRequest = {
+  assignmentDocFileNames: string[];
+  delegationLetterFileNames: string[];
+  otherDocumentFileNames: string[];
+  realEstateRegFileName: string;
+  deedOwnershipFileName: string;
+  bourseDeedImageFileName: string;
+  boundariesExternalDocName: string;
 };
 
 export type PropertyGroupSuggestionDto = {
@@ -89,6 +115,38 @@ export function confirmPropertyGroupLink(
   return request(config, `/api/property-groups/by-property/${propertyId}/link`, {
     method: "POST",
     body: JSON.stringify({ targetPropertyId }),
+  });
+}
+
+/** What the sibling deed's inspection gave this deed's inspection draft. */
+export type InspectionPrefillResultDto = {
+  prefilled: boolean;
+  slotsFilled: number;
+  photosLinked: number;
+  sourceTaskId?: string | null;
+  reason?: string | null;
+};
+
+/**
+ * First open of a grouped deed's inspection: start it from the sibling deed's inspection
+ * (site inputs + photos, copied and editable). Harmless when there is nothing to copy.
+ */
+export function prefillInspectionFromGroup(
+  config: PropertyGroupsApiConfig,
+  taskId: string,
+): Promise<Result<InspectionPrefillResultDto>> {
+  return request(config, `/api/property-groups/prefill-inspection/${taskId}`, { method: "POST" });
+}
+
+/** Records copied documents' names on a deed — empty name slots only; returns the slots filled. */
+export function fillPropertyGroupDocumentNames(
+  config: PropertyGroupsApiConfig,
+  propertyId: string,
+  names: FillPropertyGroupDocumentNamesRequest,
+): Promise<Result<{ filled: string[] }>> {
+  return request(config, `/api/property-groups/by-property/${propertyId}/document-names`, {
+    method: "POST",
+    body: JSON.stringify(names),
   });
 }
 

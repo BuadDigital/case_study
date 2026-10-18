@@ -61,7 +61,8 @@ public interface IWorkOrderService
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> AddPropertyAsync(
         string poNumber,
         WorkOrderPropertyDto property,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        bool softDraft = false);
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(
         string poNumber,
         Guid propertyId,

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
@@ -44,6 +45,35 @@ public sealed class PropertyGroupRepository(CaseStudyDbContext db) : IPropertyGr
         await db.WorkOrderProperties.AsNoTracking()
             .Where(p => propertyIds.Contains(p.Id))
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<WorkOrderProperty>> ListPropertiesForUpdateAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken) =>
+        await db.WorkOrderProperties
+            .Include(p => p.Contacts)
+            .Where(p => propertyIds.Contains(p.Id))
+            .ToListAsync(cancellationToken);
+
+    public Task<WorkOrderProperty?> GetPropertyForUpdateAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken) =>
+        db.WorkOrderProperties.FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
+
+    public async Task<IReadOnlyList<PartyTaskSubmission>> ListFieldInspectionsForUpdateAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken) =>
+        await db.PartyTaskSubmissions
+            .Where(s => s.Kind == WorkflowTaskKindValues.FieldInspection
+                && s.PropertyId != null
+                && propertyIds.Contains(s.PropertyId.Value))
+            .ToListAsync(cancellationToken);
+
+    public void AddContact(PropertyContact contact) => db.PropertyContacts.Add(contact);
+
+    public Task<WorkflowTask?> GetTaskAsync(Guid taskId, CancellationToken cancellationToken) =>
+        db.WorkflowTasks.AsNoTracking().FirstOrDefaultAsync(t => t.Id == taskId, cancellationToken);
+
+    public void AddSubmission(PartyTaskSubmission submission) => db.PartyTaskSubmissions.Add(submission);
 
     public async Task<IReadOnlyDictionary<Guid, string>> GetPoNumbersByWorkOrderIdsAsync(
         IReadOnlyCollection<Guid> workOrderIds,

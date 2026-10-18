@@ -15,6 +15,16 @@ public interface IWorkflowTaskLifecycleCommands
         AdvanceTaskAfterBourseRequest request,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Links an empty Enfath slot to its freshly created property draft without leaving the
+    /// phase. (null, error) when the slot is not an empty Enfath slot or the property is not
+    /// a live property of the slot's work order.
+    /// </summary>
+    Task<(WorkflowTaskDto? Result, string? Error)> LinkPropertyAsync(
+        Guid id,
+        LinkTaskPropertyRequest request,
+        CancellationToken cancellationToken = default);
+
     Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RevertPhaseAsync(
         Guid id,
         RevertWorkflowTaskPhaseRequest request,

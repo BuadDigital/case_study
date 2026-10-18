@@ -96,6 +96,12 @@ public class WorkflowTaskService : IWorkflowTaskService
         CancellationToken cancellationToken = default) =>
         _lifecycle.AdvanceAfterBourseAsync(id, request, cancellationToken);
 
+    public Task<(WorkflowTaskDto? Result, string? Error)> LinkPropertyAsync(
+        Guid id,
+        LinkTaskPropertyRequest request,
+        CancellationToken cancellationToken = default) =>
+        _lifecycle.LinkPropertyAsync(id, request, cancellationToken);
+
     public Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RevertPhaseAsync(
         Guid id,
         RevertWorkflowTaskPhaseRequest request,

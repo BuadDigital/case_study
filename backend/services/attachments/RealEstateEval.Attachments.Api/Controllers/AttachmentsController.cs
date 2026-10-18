@@ -149,6 +149,32 @@ public class AttachmentsController : ControllerBase
         return meta is null ? NotFound() : Ok(meta);
     }
 
+    /// <summary>
+    /// Owner-to-owner only (the gateway and nginx strip the dispatch marker from browser
+    /// traffic): copy one task's inspection photos to another task. The calling service has
+    /// already decided the copy is legitimate (grouped property), so no per-upload read rule
+    /// is applied here.
+    /// </summary>
+    [HttpPost("copy-scope")]
+    [RequireUpstreamDispatch]
+    [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
+    public async Task<ActionResult<IReadOnlyList<CopiedAttachmentDto>>> CopyScope(
+        [FromBody] CopyAttachmentScopeRequest request,
+        CancellationToken ct)
+    {
+        var userId = ActorClaims.Id(User);
+        if (userId is "unknown") userId = "";
+        var copied = await _attachments.CopyScopeAsync(request, userId, ct);
+        _logger.LogInformation(
+            "Copied {Count} attachments of scope {Scope} from {From} to {To} for user {UserId}",
+            copied.Count,
+            request.Scope,
+            request.FromScopeKeyPrefix,
+            request.ToScopeKeyPrefix,
+            userId);
+        return Ok(copied);
+    }
+
     [HttpGet("lookup")]
     [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
     public async Task<ActionResult<IReadOnlyList<AttachmentRefDto>>> Lookup(

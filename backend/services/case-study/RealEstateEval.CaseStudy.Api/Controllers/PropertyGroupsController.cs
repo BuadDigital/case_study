@@ -19,8 +19,34 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 public class PropertyGroupsController : ControllerBase
 {
     private readonly IPropertyGroupService _groups;
+    private readonly IInspectionPrefillFromSibling _prefill;
+    private readonly IPermissionService _permissions;
 
-    public PropertyGroupsController(IPropertyGroupService groups) => _groups = groups;
+    public PropertyGroupsController(
+        IPropertyGroupService groups,
+        IInspectionPrefillFromSibling prefill,
+        IPermissionService permissions)
+    {
+        _groups = groups;
+        _prefill = prefill;
+        _permissions = permissions;
+    }
+
+    /// <summary>
+    /// The inspector opens the inspection of a deed in a group for the first time: start it
+    /// from the sibling deed's inspection — site inputs and photos (copied, editable).
+    /// </summary>
+    [HttpPost("prefill-inspection/{taskId:guid}")]
+    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
+    public async Task<ActionResult<InspectionPrefillResultDto>> PrefillInspection(
+        Guid taskId,
+        CancellationToken ct)
+    {
+        var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
+        var (result, error) = await _prefill.PrefillAsync(taskId, actor, ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        return Ok(result);
+    }
 
     [HttpGet("by-property/{propertyId:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
@@ -50,6 +76,23 @@ public class PropertyGroupsController : ControllerBase
     {
         var (result, error) = await _groups.ConfirmLinkAsync(
             propertyId, request.TargetPropertyId, ActorClaims.Id(User), ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// After the screen copied the sibling deed's files onto this deed, record their stored
+    /// names — only into name slots that are still empty.
+    /// </summary>
+    [HttpPost("by-property/{propertyId:guid}/document-names")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<FillPropertyGroupDocumentNamesResultDto>> FillDocumentNames(
+        Guid propertyId,
+        [FromBody] FillPropertyGroupDocumentNamesRequest request,
+        CancellationToken ct)
+    {
+        var (result, error) = await _groups.FillDocumentNamesAsync(
+            propertyId, request, ActorClaims.Id(User), ct);
         if (error is not null) return this.BadRequestProblem(error);
         return Ok(result);
     }

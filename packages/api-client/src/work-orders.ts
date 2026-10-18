@@ -812,12 +812,17 @@ export async function addWorkOrderProperty(
   config: WorkOrdersApiConfig,
   poNumber: string,
   property: WorkOrderPropertyDto,
+  options?: {
+    /** Create the property before anything is typed (no required-field gate) — decision 2026-10-18. */
+    draft?: boolean;
+  },
 ): Promise<ApiOk<WorkOrderPropertyDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   const { id: _draftId, ...body } = property;
+  const draftQs = options?.draft ? "?draft=true" : "";
   try {
     const res = await fetch(
-      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties`,
+      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/properties${draftQs}`,
       {
         method: "POST",
         headers: authHeaders(config.token),

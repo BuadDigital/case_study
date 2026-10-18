@@ -8,10 +8,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import {
-  clonePropertyDocumentsFromPrior,
-  rememberPendingPriorDocumentClone,
-} from "../../lib/app-data/assignment-doc-attachments";
+import { clonePropertyDocumentsFromPrior } from "../../lib/app-data/assignment-doc-attachments";
 import { buildPropertyFromPriorDeed } from "../../lib/app-data/po-intake-model";
 import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
 import {
@@ -91,8 +88,6 @@ export function usePriorDeedAutofill({
                 property.id,
               );
               if (cancelled) return;
-              // First save may replace the client id with a server GUID — re-clone then.
-              rememberPendingPriorDocumentClone(property.id, hitPo, sourcePropId);
               next = mergeClonedDocumentNames(next, cloned);
             } catch {
               /* keep file-name hints from prior DTO even if byte clone fails */

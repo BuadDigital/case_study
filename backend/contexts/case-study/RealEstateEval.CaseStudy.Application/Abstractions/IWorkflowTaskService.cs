@@ -45,6 +45,10 @@ public interface IWorkflowTaskService
         Guid id,
         AdvanceTaskAfterBourseRequest request,
         CancellationToken cancellationToken = default);
+    Task<(WorkflowTaskDto? Result, string? Error)> LinkPropertyAsync(
+        Guid id,
+        LinkTaskPropertyRequest request,
+        CancellationToken cancellationToken = default);
     Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RevertPhaseAsync(
         Guid id,
         RevertWorkflowTaskPhaseRequest request,

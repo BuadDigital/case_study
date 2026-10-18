@@ -185,6 +185,19 @@ export function BourseInquiryView() {
     [selected],
   );
 
+  /** Grouped property: the server filled this deed's empty slots at the link — show them. */
+  const reloadSelectedProperty = useCallback(async () => {
+    if (!selected) return;
+    const hit = await findPropertyInRecord(selected.poNumber, selected.propertyId);
+    if (hit) setProperty({ ...hit.property, id: selected.propertyId });
+  }, [selected]);
+
+  const flushSelectedAutosave = useCallback(async () => {
+    if (selected) {
+      await flushPropertyFieldAutosave(selected.poNumber, selected.propertyId);
+    }
+  }, [selected]);
+
   const closeForm = useCallback(async () => {
     if (selected) {
       await flushPropertyFieldAutosave(selected.poNumber, selected.propertyId);
@@ -554,6 +567,8 @@ export function BourseInquiryView() {
                     poNumber={selected.poNumber}
                     showIntroNote={false}
                     showDeedVitalityFlow
+                    onGroupBeforeLink={flushSelectedAutosave}
+                    onGroupLinked={reloadSelectedProperty}
                     deedVitality={deedVitality}
                     onDeedVitalityChange={(value) => {
                       setDeedVitality(value);

@@ -51,4 +51,13 @@ public interface IAttachmentService
         ReviewValueDocumentRequest request,
         PermissionsDto? actor,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Server-side copy of a scope-key prefix (see <see cref="IAttachmentScopeCopier"/>); the
+    /// caller becomes the uploader of the copies. No read rule applies: trusted internal gate.
+    /// </summary>
+    Task<IReadOnlyList<CopiedAttachmentDto>> CopyScopeAsync(
+        CopyAttachmentScopeRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default);
 }

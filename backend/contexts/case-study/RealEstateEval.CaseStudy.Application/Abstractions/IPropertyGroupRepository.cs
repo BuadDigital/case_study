@@ -35,6 +35,26 @@ public interface IPropertyGroupRepository
         IReadOnlyCollection<Guid> propertyIds,
         CancellationToken cancellationToken);
 
+    /// <summary>Tracked properties with their contacts; edits persist on SaveChangesAsync.</summary>
+    Task<IReadOnlyList<WorkOrderProperty>> ListPropertiesForUpdateAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken);
+
+    /// <summary>Tracked property (no contacts), or null.</summary>
+    Task<WorkOrderProperty?> GetPropertyForUpdateAsync(Guid propertyId, CancellationToken cancellationToken);
+
+    /// <summary>Tracked field-inspection submissions of the properties, every status.</summary>
+    Task<IReadOnlyList<PartyTaskSubmission>> ListFieldInspectionsForUpdateAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken);
+
+    void AddContact(PropertyContact contact);
+
+    /// <summary>The workflow task, or null.</summary>
+    Task<WorkflowTask?> GetTaskAsync(Guid taskId, CancellationToken cancellationToken);
+
+    void AddSubmission(PartyTaskSubmission submission);
+
     Task<IReadOnlyDictionary<Guid, string>> GetPoNumbersByWorkOrderIdsAsync(
         IReadOnlyCollection<Guid> workOrderIds,
         CancellationToken cancellationToken);

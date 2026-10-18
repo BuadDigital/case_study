@@ -26,6 +26,7 @@ import {
   type PropertyIdentifierType,
 } from "../lib/app-data/po-intake-data";
 import { findPriorDeedFull } from "../lib/app-data/po-intake-reads";
+import { createDraftPropertyForSlot } from "../lib/app-data/po-intake-commands";
 import {
   engineeringOfficeAvailable,
   engineeringOfficeUnavailableReason,
@@ -50,6 +51,7 @@ import {
 } from "./my-task-work-state";
 import { useMyTaskWorkCommands } from "./useMyTaskWorkCommands";
 import {
+  cancelPropertyFieldAutosave,
   flushPropertyFieldAutosave,
   peekPropertyFieldAutosave,
   queuePropertyFieldAutosave,
@@ -99,7 +101,17 @@ export function useMyTaskWorkWorkflow({
   const [phaseOverride, setPhaseOverride] = useState<WorkflowTask["phase"] | null>(
     null,
   );
+  /**
+   * Decision 2026-10-18: an empty slot gets its property on the server the moment it is
+   * opened (a draft with its real id), so uploads never need a client-side id. The task list
+   * learns the id on its next refresh; until then it lives here.
+   */
+  const [draftPropertyId, setDraftPropertyId] = useState<string | null>(null);
+  const effectivePropertyId = task.propertyId ?? draftPropertyId;
   const hydratedPropertyKeyRef = useRef("");
+  /** What is on screen right now — read inside effects without re-running them on every keystroke. */
+  const propertyRef = useRef(property);
+  propertyRef.current = property;
 
   const { data: poRecord, isFetched } = usePoRecordQuery(task.poNumber);
   const loading = !propertyHydrated;
@@ -120,6 +132,7 @@ export function useMyTaskWorkWorkflow({
   if (prevTaskId !== task.id) {
     setPrevTaskId(task.id);
     setDeedVitality(null);
+    setDraftPropertyId(null);
   }
 
   const effectivePhase = phaseOverride ?? task.phase;
@@ -134,13 +147,13 @@ export function useMyTaskWorkWorkflow({
   // Flush or cancel the previous صك autosave when the panel switches tasks.
   useEffect(() => {
     const po = task.poNumber;
-    const propertyId = task.propertyId;
+    const propertyId = effectivePropertyId;
     return () => {
       if (propertyId) {
         void flushPropertyFieldAutosave(po, propertyId);
       }
     };
-  }, [task.id, task.poNumber, task.propertyId]);
+  }, [task.id, task.poNumber, effectivePropertyId]);
 
   useEffect(() => {
     if (!isFetched) return;
@@ -157,7 +170,14 @@ export function useMyTaskWorkWorkflow({
         task.propertyId,
         fromServer?.updatedAtUtc,
       );
-      const prop = local ?? fromServer ?? emptyProperty();
+      // The id on screen must be the task's real property id — never a client-side one: every
+      // upload is keyed by it. When the PO record has not caught up with a just-created draft,
+      // keep what is on screen (the draft itself) or start an empty form under the real id.
+      const onScreen = propertyRef.current;
+      const prop =
+        local ??
+        fromServer ??
+        (onScreen.id === task.propertyId ? onScreen : { ...emptyProperty(), id: task.propertyId });
       setProperty(prop);
       if (prop.deedNumber.trim()) {
         void findPriorDeedFull(prop.deedNumber.trim(), task.poNumber, prop.id)
@@ -166,24 +186,44 @@ export function useMyTaskWorkWorkflow({
       } else {
         setHasPriorSurvey(false);
       }
+    } else if (draftPropertyId) {
+      // The draft exists; the task list has not caught up with its id yet — keep the screen.
     } else {
-      const local = peekPropertyFieldAutosave(
-        task.poNumber,
-        newPropertyDraftKey(task.id),
-      );
-      setProperty(local ?? emptyProperty());
+      // An empty slot: create the property on the server first (real id from the first upload).
+      // Only when that fails (offline, server down) does the old local-only draft remain, with
+      // uploads switched off until the first حفظ creates the property.
+      let active = true;
       setHasPriorSurvey(false);
+      setPropertyHydrated(false);
+      void createDraftPropertyForSlot(task.poNumber, task.id).then((created) => {
+        if (!active) return;
+        if (created.ok) {
+          cancelPropertyFieldAutosave(task.poNumber, newPropertyDraftKey(task.id));
+          setDraftPropertyId(created.data.id);
+          setProperty(created.data);
+          onRefresh();
+        } else {
+          const local = peekPropertyFieldAutosave(task.poNumber, newPropertyDraftKey(task.id));
+          setProperty(local ?? emptyProperty());
+          setFormError(created.error);
+        }
+        setPropertyHydrated(true);
+      });
+      return () => {
+        active = false;
+      };
     }
     setPropertyHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- draftPropertyId only gates the empty-slot branch
   }, [isFetched, poRecord, task.id, task.propertyId, task.poNumber, task.assignmentType]);
 
   const exit = useCallback(() => {
-    if (task.propertyId) {
-      void flushPropertyFieldAutosave(task.poNumber, task.propertyId);
+    if (effectivePropertyId) {
+      void flushPropertyFieldAutosave(task.poNumber, effectivePropertyId);
     }
     if (onClose) onClose();
     else router.push(myTasksPath());
-  }, [onClose, router, task.poNumber, task.propertyId]);
+  }, [onClose, router, task.poNumber, effectivePropertyId]);
 
   const linkedPropertyRemoved = Boolean(property.isRemoved);
 
@@ -193,9 +233,9 @@ export function useMyTaskWorkWorkflow({
         const next = { ...p, [key]: value };
         queuePropertyFieldAutosave(
           task.poNumber,
-          task.propertyId ?? newPropertyDraftKey(task.id),
+          effectivePropertyId ?? newPropertyDraftKey(task.id),
           next,
-          { persistable: Boolean(task.propertyId) },
+          { persistable: Boolean(effectivePropertyId) },
         );
         return next;
       });
@@ -206,7 +246,7 @@ export function useMyTaskWorkWorkflow({
         return next;
       });
     },
-    [task.id, task.poNumber, task.propertyId],
+    [task.id, task.poNumber, effectivePropertyId],
   );
 
   const replaceProperty = useCallback(
@@ -215,12 +255,12 @@ export function useMyTaskWorkWorkflow({
       setFieldErrors({});
       queuePropertyFieldAutosave(
         task.poNumber,
-        task.propertyId ?? newPropertyDraftKey(task.id),
+        effectivePropertyId ?? newPropertyDraftKey(task.id),
         next,
-        { persistable: Boolean(task.propertyId) },
+        { persistable: Boolean(effectivePropertyId) },
       );
     },
-    [task.id, task.poNumber, task.propertyId],
+    [task.id, task.poNumber, effectivePropertyId],
   );
 
   /** Picking «حالة الصك» clears its red mark and the matching top note. */
@@ -266,6 +306,7 @@ export function useMyTaskWorkWorkflow({
 
   const commands = useMyTaskWorkCommands({
     task,
+    propertyId: effectivePropertyId,
     property,
     assignmentType,
     fieldPolicy,
@@ -303,6 +344,8 @@ export function useMyTaskWorkWorkflow({
     exit,
     onRefresh,
     property,
+    /** Uploads need the property's real id; without it (draft creation failed) they are off. */
+    uploadsDisabled: !effectivePropertyId,
     assignmentType,
     fieldPolicy,
     fieldErrors,

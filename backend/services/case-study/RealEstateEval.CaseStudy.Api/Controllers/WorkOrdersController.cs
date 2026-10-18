@@ -268,7 +268,8 @@ public class WorkOrdersController : ControllerBase
     public async Task<ActionResult<WorkOrderPropertyDto>> AddProperty(
         string poNumber,
         [FromBody] WorkOrderPropertyDto property,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] bool draft = false)
     {
         // Registering a property's initial data is the case specialist's, not the PO receiver's.
         var forbidden = await ForbidUnlessAsync(
@@ -280,7 +281,8 @@ public class WorkOrdersController : ControllerBase
         var (result, errors) = await _workOrders.AddPropertyAsync(
             poNumber,
             property,
-            cancellationToken);
+            cancellationToken,
+            softDraft: draft);
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
