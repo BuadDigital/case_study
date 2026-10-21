@@ -279,6 +279,9 @@ public static class FieldInspectionSubmissionValidator
         return issues;
     }
 
+    // PhotoOnYes = the proof photo BLOCKS submit. Omar 2026-10-21: a photo offered on a chosen
+    // component (مسبح، مصعد، قبو، مطبخ، مدخل سيارة، منقولات) is optional — the picker stays, nothing
+    // blocks; every row is false now (kept as a switch). Showroom / well photos are separate rules.
     private static readonly (string Key, string Label, bool PhotoOnYes, bool YesNo)[] FeaturePhotoFields =
     [
         ("assetSubject", "الأصل محل التقييم", false, false),
@@ -289,16 +292,16 @@ public static class FieldInspectionSubmissionValidator
         ("buildState", "حالة البناء", false, false),
         ("occupancyState", "حالة الإشغال", false, false),
         ("districtState", "حالة الحي", false, false),
-        ("movables", "يوجد منقولات", true, true),
-        ("carEntrance", "مدخل السيارة", true, true),
-        ("hasBasement", "يوجد قبو", true, true),
-        ("hasElevator", "يوجد مصعد", true, true),
-        ("hasPool", "يوجد مسبح", true, true),
+        ("movables", "يوجد منقولات", false, true),
+        ("carEntrance", "مدخل السيارة", false, true),
+        ("hasBasement", "يوجد قبو", false, true),
+        ("hasElevator", "يوجد مصعد", false, true),
+        ("hasPool", "يوجد مسبح", false, true),
         ("hasFence", "يوجد سور", false, true),
         ("hasCentralAc", "تكييف مركزي", false, true),
         ("hasTanks", "خزانات", false, true),
         ("hasLandscaping", "تشجير", false, true),
-        ("kitchen", "مطبخ", true, true),
+        ("kitchen", "مطبخ", false, true),
     ];
 
     private static bool FeatureRequiresPhoto(bool photoOnYes, bool yesNo, string value)

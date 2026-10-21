@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Shared.Web;
@@ -149,16 +150,24 @@ public class AttachmentsController : ControllerBase
         return meta is null ? NotFound() : Ok(meta);
     }
 
+    /// <summary>
+    /// References of the given ids. A person sees only the rows they may read; the service's own
+    /// token (a payload check behind a save) sees every row, as the in-process lookup does.
+    /// </summary>
     [HttpGet("lookup")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
+    [Authorize(Policy = CapabilityPolicyNames.CheckAttachmentRefs)]
     public async Task<ActionResult<IReadOnlyList<AttachmentRefDto>>> Lookup(
         [FromQuery] string ids,
         CancellationToken ct)
     {
         var parsed = ParseIds(ids);
+        if (IsServiceCaller()) return Ok(await _lookup.GetRefsAsync(parsed, actor: null, ct));
         var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
         return Ok(await _lookup.GetRefsAsync(parsed, actor, ct));
     }
+
+    private bool IsServiceCaller() =>
+        User.HasClaim(PlatformCapabilities.TokenUseClaimType, PlatformCapabilities.UpstreamServiceTokenUse);
 
     [HttpGet("for-property")]
     [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
@@ -174,9 +183,11 @@ public class AttachmentsController : ControllerBase
     }
 
     [HttpGet("{id:guid}/exists")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadAttachments)]
+    [Authorize(Policy = CapabilityPolicyNames.CheckAttachmentRefs)]
     public async Task<ActionResult<AttachmentExistsDto>> Exists(Guid id, CancellationToken ct)
     {
+        if (IsServiceCaller())
+            return Ok(new AttachmentExistsDto { Exists = await _lookup.ExistsAsync(id, actor: null, ct) });
         var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
         return Ok(new AttachmentExistsDto { Exists = await _lookup.ExistsAsync(id, actor, ct) });
     }

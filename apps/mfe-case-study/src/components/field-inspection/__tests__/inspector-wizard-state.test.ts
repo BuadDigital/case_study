@@ -69,9 +69,9 @@ describe("listComponentBoolPhotoSlots", () => {
     expect(pendingUpload.hasPhoto).toBe(false);
   });
 
-  it("never needs a picker for a field that does not require a photo on «نعم»", () => {
+  it("never offers a picker for a field with no photo on «نعم»", () => {
     const noPhotoFields: InspectorFeatureField[] = fields.map((f) =>
-      f.key === "hasPool" ? { ...f, photoOnYes: false } : f,
+      f.key === "hasPool" ? { ...f, photoOnYes: false, optionalPhoto: false } : f,
     );
     const slot = listComponentBoolPhotoSlots(
       draft({ hasPool: "نعم" }),

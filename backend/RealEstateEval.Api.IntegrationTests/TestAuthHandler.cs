@@ -27,6 +27,8 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
     public static readonly string FinancialToken = TokenFor(PlatformCapabilities.ManageFinancial);
     public static readonly string AttachmentsToken =
         TokenFor(PlatformCapabilities.ManageAttachments);
+    /// <summary>The service's own token (UpstreamServiceBearer): no capability, token-use upstream-service.</summary>
+    public const string UpstreamServiceToken = "upstream-service";
 
     private const string CapabilityTokenPrefix = "caps:";
     private const string ActorTokenPrefix = "actor:";
@@ -53,6 +55,18 @@ public sealed class TestAuthHandler : AuthenticationHandler<AuthenticationScheme
         }
 
         var token = header["Bearer ".Length..].Trim();
+        if (token == UpstreamServiceToken)
+        {
+            var service = new ClaimsIdentity(
+                [
+                    new Claim(ClaimTypes.NameIdentifier, "ree-upstream-service"),
+                    new Claim(PlatformCapabilities.TokenUseClaimType, PlatformCapabilities.UpstreamServiceTokenUse),
+                ],
+                TestScheme);
+            return Task.FromResult(AuthenticateResult.Success(
+                new AuthenticationTicket(new ClaimsPrincipal(service), TestScheme)));
+        }
+
         if (!TryReadCapabilities(token, out var capabilities))
             return Task.FromResult(AuthenticateResult.Fail("Unknown test token"));
 

@@ -84,6 +84,14 @@ public static class CapabilityPolicyNames
     public const string ReadAttachments = "Capability:read-attachments";
 
     /// <summary>
+    /// Attachment existence and references (id, scope, scope key — never the file). Everyone who
+    /// reads attachments, plus the service's own token: a service validating a payload asks
+    /// whether its photos exist at all, not whether the person saving may open each one
+    /// (an inspector saving a returned inspection that holds a photo the specialist added).
+    /// </summary>
+    public const string CheckAttachmentRefs = "Capability:check-attachment-refs";
+
+    /// <summary>
     /// Identity directory lookups that expose compensation or user-id resolution
     /// (and display-name labels used across queues).
     /// </summary>

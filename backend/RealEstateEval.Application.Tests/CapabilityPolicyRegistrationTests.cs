@@ -38,6 +38,7 @@ public class CapabilityPolicyRegistrationTests
                      CapabilityPolicyNames.ManagePartyFeePricing,
                      CapabilityPolicyNames.ReadCaseStudyWorkspace,
                      CapabilityPolicyNames.ReadAttachments,
+                     CapabilityPolicyNames.CheckAttachmentRefs,
                      CapabilityPolicyNames.ReadIdentityDirectory,
                      CapabilityPolicyNames.ReadPartyPayables,
                      CapabilityPolicyNames.ReadInspectionContext,
@@ -213,6 +214,11 @@ public class CapabilityPolicyRegistrationTests
             service, resource: null, CapabilityPolicyNames.ReadCaseStudyWorkspace)).Succeeded);
         Assert.False((await authorization.AuthorizeAsync(
             service, resource: null, CapabilityPolicyNames.ReadFinancialData)).Succeeded);
+        // Attachment references (never files): a payload check behind a save.
+        Assert.True((await authorization.AuthorizeAsync(
+            service, resource: null, CapabilityPolicyNames.CheckAttachmentRefs)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            service, resource: null, CapabilityPolicyNames.ReadAttachments)).Succeeded);
     }
 
     private static IAuthorizationService BuildAuthorizationService()
