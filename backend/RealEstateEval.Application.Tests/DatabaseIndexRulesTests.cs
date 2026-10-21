@@ -38,7 +38,8 @@ public class DatabaseIndexRulesTests
 
         Assert.NotNull(index);
         Assert.True(index.IsUnique);
-        Assert.Equal("\"Status\" <> 'done'", index.GetFilter());
+        // Phase 5: a request merged into the holder deed's one no longer holds the property either.
+        Assert.Equal("\"Status\" <> 'done' AND \"Status\" <> 'merged'", index.GetFilter());
         Assert.Equal(
             DatabaseIndexNames.ValuationRequestOpenPerProperty,
             index.GetDatabaseName());

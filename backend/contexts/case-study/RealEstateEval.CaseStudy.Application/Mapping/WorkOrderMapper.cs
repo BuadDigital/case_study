@@ -52,7 +52,11 @@ public static class WorkOrderMapper
             SuggestedDeedKind = DeedKindLabels.ToApiValue(
                 DeedKindLabels.SuggestFromIdentifier(p.IdentifierType)),
             DeedNumber = p.DeedNumber,
-            ReferenceNumber = p.ReferenceNumber,
+            TransactionId = p.TransactionId == Guid.Empty ? null : p.TransactionId,
+            TransactionDraftNumber = p.Transaction?.DraftNumber,
+            ReferenceNumber = p.Transaction?.ReferenceNumber,
+            TransactionLinkKind = p.Transaction?.LinkKind,
+            TransactionDeedCount = Math.Max(1, p.Transaction?.Properties.Count(d => !d.IsRemoved) ?? 1),
             RequestNumber = p.RequestNumber,
             HasRequestNumber = p.HasRequestNumber,
             AssignmentMandateNumber = p.AssignmentMandateNumber,
@@ -197,7 +201,7 @@ public static class WorkOrderMapper
     private static bool Flag(IReadOnlyDictionary<Guid, bool>? flags, Guid propertyId) =>
         flags is not null && flags.TryGetValue(propertyId, out var value) && value;
 
-    public static PendingBoursePropertyDto ToPendingBourse(WorkOrderProperty p)
+    public static PendingBoursePropertyDto ToPendingBourse(WorkOrderProperty p, string? transactionNumber = null)
     {
         return new PendingBoursePropertyDto
         {
@@ -212,6 +216,7 @@ public static class WorkOrderMapper
             ReceivedFromEnfathAt = p.WorkOrder.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
             DueDateAt = p.WorkOrder.DueDateAt.ToString("yyyy-MM-dd"),
             CreatedAtUtc = p.WorkOrder.CreatedAtUtc.ToString("O"),
+            TransactionNumber = transactionNumber ?? p.Transaction?.DisplayNumber,
         };
     }
 

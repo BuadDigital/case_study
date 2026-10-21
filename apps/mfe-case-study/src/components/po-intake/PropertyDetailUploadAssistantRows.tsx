@@ -32,11 +32,12 @@ function CopyButton({
   return (
     <Button
       type="button"
-      size="sm"
+      size="icon"
       variant="default"
       className={cn(
-        "h-8 w-8 shrink-0 p-0",
-        done && "border-success bg-success-bg text-success-text hover:bg-success-bg",
+        // `!` because the icon size already colours the svg (cn does not merge).
+        done &&
+          "border-success bg-success-bg hover:bg-success-bg [&>svg]:!text-success-text",
       )}
       title={title}
       aria-label={title}
@@ -57,12 +58,16 @@ function InfathFieldRow({
   field,
   isRefSection,
   copied,
+  justCopied,
   onCopy,
   onDownload,
 }: {
   field: InfathUploadField;
   isRefSection: boolean;
+  /** Copied at some point in this visit — the row keeps its tint. */
   copied: boolean;
+  /** Copied just now — the button shows its check for a moment. */
+  justCopied: boolean;
   onCopy: () => void;
   onDownload: () => void;
 }) {
@@ -75,7 +80,7 @@ function InfathFieldRow({
   if (fieldAction === "download") {
     action = <CopyButton file title="تحميل المرفق" onClick={onDownload} />;
   } else if (fieldAction === "copy") {
-    action = <CopyButton done={copied} title="نسخ" onClick={onCopy} />;
+    action = <CopyButton done={justCopied} title="نسخ" onClick={onCopy} />;
   }
 
   return (
@@ -114,16 +119,23 @@ function InfathFieldRow({
 function InfathAreaBlock({
   field,
   copied,
+  justCopied,
   onCopy,
 }: {
   field: InfathUploadField;
   copied: boolean;
+  justCopied: boolean;
   onCopy: () => void;
 }) {
   const hasValue = infathFieldHasValue(field.value);
 
   return (
-    <div className="rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 p-3">
+    <div
+      className={cn(
+        "rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 p-3",
+        copied && "border-primary/40 bg-info-bg/50",
+      )}
+    >
       {field.label ? (
         <div className="mb-2">
           <span className="text-[11px] font-semibold text-text-2">{field.label}</span>
@@ -134,7 +146,7 @@ function InfathAreaBlock({
           {hasValue ? field.value : INFATH_EMPTY_VALUE}
         </div>
         {hasValue ? (
-          <CopyButton done={copied} title="نسخ" onClick={onCopy} />
+          <CopyButton done={justCopied} title="نسخ" onClick={onCopy} />
         ) : null}
       </div>
     </div>
@@ -145,6 +157,7 @@ export function InfathSectionBlock({
   section,
   collapsed,
   copiedKeys,
+  flashKey = null,
   onToggle,
   onCopyField,
   onCopyArea,
@@ -153,6 +166,8 @@ export function InfathSectionBlock({
   section: InfathUploadSection;
   collapsed: boolean;
   copiedKeys: Set<CopyKey>;
+  /** The key copied within the last moment — its button shows the check. */
+  flashKey?: CopyKey | null;
   onToggle: () => void;
   onCopyField: (key: CopyKey, text: string) => void;
   onCopyArea: (key: CopyKey, text: string) => void;
@@ -206,6 +221,7 @@ export function InfathSectionBlock({
                 field={field}
                 isRefSection={isRef}
                 copied={copiedKeys.has(key)}
+                justCopied={flashKey === key}
                 onCopy={() => onCopyField(key, field.value)}
                 onDownload={() => onDownloadFile(field.value)}
               />
@@ -223,6 +239,7 @@ export function InfathSectionBlock({
                 key={key}
                 field={field}
                 copied={copiedKeys.has(key)}
+                justCopied={flashKey === key}
                 onCopy={() => onCopyArea(key, field.value)}
               />
             );

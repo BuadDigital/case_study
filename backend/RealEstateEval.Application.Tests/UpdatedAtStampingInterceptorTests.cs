@@ -16,22 +16,22 @@ public class UpdatedAtStampingInterceptorTests
             .AddInterceptors(new UpdatedAtStampingInterceptor(clock))
             .Options;
 
-        var groupId = Guid.NewGuid();
+        var contactId = Guid.NewGuid();
         await using (var db = new CaseStudyDbContext(options))
         {
-            db.PropertyGroups.Add(new PropertyGroup { Id = groupId, Name = "أ", CreatedAtUtc = clock.GetUtcNow().UtcDateTime });
+            db.PropertyContacts.Add(new PropertyContact { Id = contactId, PropertyId = Guid.NewGuid(), Name = "أ" });
             await db.SaveChangesAsync();
         }
 
         await using (var db = new CaseStudyDbContext(options))
         {
-            var group = await db.PropertyGroups.SingleAsync(g => g.Id == groupId);
-            Assert.Equal(new DateTime(2026, 9, 6, 10, 0, 0, DateTimeKind.Utc), group.UpdatedAtUtc);
+            var contact = await db.PropertyContacts.SingleAsync(c => c.Id == contactId);
+            Assert.Equal(new DateTime(2026, 9, 6, 10, 0, 0, DateTimeKind.Utc), contact.UpdatedAtUtc);
 
             clock.Advance(TimeSpan.FromMinutes(5));
-            group.Name = "ب";
+            contact.Name = "ب";
             await db.SaveChangesAsync();
-            Assert.Equal(new DateTime(2026, 9, 6, 10, 5, 0, DateTimeKind.Utc), group.UpdatedAtUtc);
+            Assert.Equal(new DateTime(2026, 9, 6, 10, 5, 0, DateTimeKind.Utc), contact.UpdatedAtUtc);
         }
     }
 

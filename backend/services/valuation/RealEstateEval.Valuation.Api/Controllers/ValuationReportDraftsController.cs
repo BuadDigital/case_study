@@ -55,6 +55,23 @@ public class ValuationReportDraftsController(
         CancellationToken ct) =>
         RunAsync(actor => drafts.WithdrawAsync(valuationRequestId, request, actor, ct), ct);
 
+    /// <summary>Fixes the report number PRV-… (through Case Study) before the printed copy is built for approval.</summary>
+    [HttpPost("report-number")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    public async Task<ActionResult<ValuationReportNumberDto>> EnsureReportNumber(Guid valuationRequestId, CancellationToken ct)
+    {
+        var actor = await ReportDraftActors.ResolveAsync(permissions, User, ct);
+        var (result, errors) = await drafts.EnsureReportNumberAsync(valuationRequestId, actor, ct);
+        if (errors is not null)
+        {
+            if (errors.TryGetValue(ReportDraftErrorKeys.Forbidden, out var forbidden))
+                return this.ForbiddenProblem(forbidden);
+            return this.FieldErrorsProblem(errors);
+        }
+
+        return result is null ? NotFound() : Ok(result);
+    }
+
     [HttpPost("approve")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     public Task<ActionResult<ValuationReportDraftDto>> Approve(

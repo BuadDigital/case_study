@@ -49,7 +49,6 @@ import {
   type InspectorWorkspacePatchInput,
 } from "./inspector-workspace-model";
 import { fetchInspectorWorkspace } from "./inspector-workspace-reads";
-import { prefillInspectionFromGroup } from "@platform/api-client";
 
 /**
  * Every inspector workspace PUT sends the whole draft with no version token, so the debounce, the
@@ -128,30 +127,10 @@ function repairLoadedInspectorDraft(
   return Object.keys(patch).length > 0 ? { ...existing, ...patch } : existing;
 }
 
-/**
- * Grouped property (decision 2026-10-18): before the first local draft is made, ask the server
- * to start this inspection from the sibling deed's inspection — site inputs and photos. Only
- * online, and only worth a round-trip when there is no draft yet; any failure means "nothing
- * to copy" and the empty draft is built as before.
- */
-async function prefillFromGroupSibling(taskId: string): Promise<InspectorWorkspaceDraft | null> {
-  if (typeof navigator !== "undefined" && navigator.onLine === false) return null;
-  const config = workOrdersApiConfig();
-  if (!config) return null;
-  try {
-    const res = await prefillInspectionFromGroup(config, taskId);
-    if (!res.ok || !res.data.prefilled) return null;
-    return await fetchInspectorWorkspace(taskId);
-  } catch {
-    return null;
-  }
-}
-
 export async function getOrCreateInspectorWorkspace(
   input: InspectorWorkspaceLoadInput,
 ): Promise<InspectorWorkspaceDraft | null> {
-  let existing =
-    (await fetchInspectorWorkspace(input.taskId)) ?? (await prefillFromGroupSibling(input.taskId));
+  let existing = await fetchInspectorWorkspace(input.taskId);
   if (existing) {
     existing = await migrateInspectorDefaultCoordsIfNeeded(existing);
     const repaired = repairLoadedInspectorDraft(existing, input);

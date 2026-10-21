@@ -572,7 +572,7 @@ describe("detail panel rules", () => {
     );
     expect(
       operationsTaskLinkChip(opsTask({ scope: "transaction", deeds: ["D-1"] })),
-    ).toBe("معاملة · صك D-1");
+    ).toBe("صك D-1");
   });
 
   it("flags overdue only for open, unpaused tasks", () => {

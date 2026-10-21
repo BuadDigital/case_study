@@ -39,6 +39,8 @@ function row(
     district: "—",
     phaseLabel,
     propertyId: "prop-1",
+    transactionNumber: null,
+    transactionDeedCount: 1,
     ...overrides,
   };
 }

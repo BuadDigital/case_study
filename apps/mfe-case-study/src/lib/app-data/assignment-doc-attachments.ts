@@ -863,60 +863,19 @@ export async function clonePropertyDocumentsFromPrior(
   const config = prototypeModulesApiConfig();
   if (!config) return empty;
 
-  return cloneAllPropertyDocKinds(config, fromPo, fromId, toPo, toId, "replace");
+  return cloneAllPropertyDocKinds(config, fromPo, fromId, toPo, toId);
 }
 
-/**
- * Grouped property (decision 2026-10-15): copy the sibling deed's files onto this deed for
- * every kind this deed has none of. Kinds that already hold a file are left exactly as they
- * are, so nothing a person uploaded is replaced. Returns the names copied (empty for kinds
- * skipped).
- */
-export async function clonePropertyDocumentsIntoEmptyKinds(
-  sourcePo: string,
-  sourcePropertyId: string,
-  targetPo: string,
-  targetPropertyId: string,
-): Promise<ClonedPropertyDocNames> {
-  const empty = emptyClonedNames();
-  const fromPo = sourcePo.trim();
-  const toPo = targetPo.trim();
-  const fromId = sourcePropertyId.trim();
-  const toId = targetPropertyId.trim();
-  if (!fromPo || !toPo || !fromId || !toId) return empty;
-  if (fromPo === toPo && fromId === toId) return empty;
-
-  const config = prototypeModulesApiConfig();
-  if (!config) return empty;
-
-  return cloneAllPropertyDocKinds(config, fromPo, fromId, toPo, toId, "fill-empty");
-}
-
-function emptyClonedNames(): ClonedPropertyDocNames {
-  return {
-    assignmentDocFileNames: [],
-    delegationLetterFileNames: [],
-    otherDocumentFileNames: [],
-    realEstateRegFileName: "",
-    deedOwnershipFileName: "",
-    bourseDeedImageFileName: "",
-    boundariesExternalDocName: "",
-  };
-}
-
-/** "replace" wipes the target kind first (a new transaction); "fill-empty" skips kinds the target already holds. */
-type CloneDocMode = "replace" | "fill-empty";
-
+/** Wipes each target kind first (a new transaction), then copies the source kind's files. */
 async function cloneAllPropertyDocKinds(
   config: NonNullable<ReturnType<typeof prototypeModulesApiConfig>>,
   fromPo: string,
   fromId: string,
   toPo: string,
   toId: string,
-  mode: CloneDocMode,
 ): Promise<ClonedPropertyDocNames> {
   const cloneKind = (kind: PropertyDocKind) =>
-    clonePropertyDocKind(config, kind, fromPo, fromId, toPo, toId, mode);
+    clonePropertyDocKind(config, kind, fromPo, fromId, toPo, toId);
   const [decree, delegation, other, registry, deedOwnership, bourseDeed, boundaries] =
     await Promise.all([
       cloneKind("decree"),
@@ -945,24 +904,17 @@ async function clonePropertyDocKind(
   fromId: string,
   toPo: string,
   toId: string,
-  mode: CloneDocMode,
 ): Promise<string[]> {
   const listed = await listAttachments(config, API_SCOPE[kind], scopeKey(fromPo, fromId));
   if (!listed.ok || listed.data.length === 0) return [];
 
   const targetCacheKey = cacheKey(kind, toPo, toId);
-  if (mode === "fill-empty") {
-    const held = await listAttachments(config, API_SCOPE[kind], scopeKey(toPo, toId));
-    // Unreadable target = unknown state: never copy onto it.
-    if (!held.ok || held.data.length > 0) return [];
-  } else {
-    // Wipe target scope first so we do not mix old and new names.
-    await replaceScopeAttachments(API_SCOPE[kind], scopeKey(toPo, toId));
-    bumpWriteGeneration(targetCacheKey);
-    forgetPropertyDocMetas(toPo, toId);
-    docCache.delete(targetCacheKey);
-    notifyCacheListeners();
-  }
+  // Wipe target scope first so we do not mix old and new names.
+  await replaceScopeAttachments(API_SCOPE[kind], scopeKey(toPo, toId));
+  bumpWriteGeneration(targetCacheKey);
+  forgetPropertyDocMetas(toPo, toId);
+  docCache.delete(targetCacheKey);
+  notifyCacheListeners();
 
   const names = await Promise.all(
     listed.data.map(async (meta) => {
@@ -988,12 +940,7 @@ async function clonePropertyDocKind(
       return upload.data.fileName || meta.fileName;
     }),
   );
-  const copied = names.filter((name): name is string => name !== null);
-  if (mode === "fill-empty" && copied.length > 0) {
-    forgetPropertyDocMetas(toPo, toId);
-    notifyCacheListeners();
-  }
-  return copied;
+  return names.filter((name): name is string => name !== null);
 }
 
 async function blobToBase64(blob: Blob): Promise<string> {

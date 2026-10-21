@@ -136,37 +136,6 @@ public static class ValuationReportSectionCatalog
         hasStructuresToValue ? "حتى 12 صورة (6 بالصفحة)" : "حتى 6 صور (أرض)";
 }
 
-/// <summary>
-/// Valuation report number — numbering workshop (bit item 3): unified pattern TQ-{year}-{5-digit seq}
-/// for numbers issued after activation; numbers frozen in Q-6 snapshots never change.
-/// </summary>
-public static class ValuationReportNumberRules
-{
-    /// <summary>Format: TQ-{yyyy}-{#####} (e.g. TQ-2026-00012).</summary>
-    public static string FormatIssued(DateOnly reportDate, int ordinal)
-    {
-        var n = ordinal < 1 ? 1 : ordinal;
-        return ReferenceNumbering.Format(ReferenceNumbering.ValuationReport, reportDate.Year, n);
-    }
-
-    /// <summary>
-    /// Preview number before issuance: same TQ date stamp, ordinal from display-id digits.
-    /// </summary>
-    public static string FormatTemporary(string displayId, DateOnly reportDate)
-    {
-        var digits = new string((displayId ?? "").Where(char.IsDigit).ToArray());
-        var ordinal = int.TryParse(digits, out var n) && n > 0 ? n : 1;
-        return FormatIssued(reportDate, ordinal);
-    }
-
-    /// <summary>
-    /// Number reserved when the appraisal task is spawned. Uses the request
-    /// (distribution) date so the TQ stamp does not change at later preview.
-    /// </summary>
-    public static string FormatReserved(string displayId, DateOnly reservedDate) =>
-        FormatTemporary(displayId, reservedDate);
-}
-
 /// <summary>report validity: 90 days from the report date. Advisory control, not a hard gate.</summary>
 public static class ValuationReportValidityRules
 {

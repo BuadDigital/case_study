@@ -14,6 +14,7 @@ import {
   FAILURE_OBSTRUCTED_BADGE,
   isTaskFailureObstructed,
 } from "@platform/app-shared/workflow/task-failure-status";
+import { transactionNumberOf } from "./transaction-number";
 
 export type QueueTaskStatusBadge = { label: string; className: string };
 
@@ -142,6 +143,8 @@ type DistributionQueueRowMeta = {
   propertyType: string;
   classification: string;
   assignmentType: string;
+  /** PR-… once official, else the D- draft number; null when the deed has no transaction yet. */
+  transactionNumber: string | null;
 };
 
 export function buildDistributionQueueRowMeta(
@@ -162,6 +165,8 @@ export function buildDistributionQueueRowMeta(
       classification: serverColumn(task.classification, row.classification),
       assignmentType:
         record?.assignmentType?.trim() || task.assignmentType?.trim() || "—",
+      transactionNumber:
+        transactionNumberOf(property) ?? task.transactionNumber ?? null,
     };
   });
 }
@@ -196,6 +201,7 @@ export function filterDistributionQueueRows(
         row.propertyType,
         row.classification,
         row.assignmentType,
+        row.transactionNumber ?? "",
       ]
         .join(" ")
         .toLowerCase();

@@ -21,6 +21,7 @@ export function LayerPill({
   count,
   color,
   diamond,
+  alert,
   menuOpen,
   onClick,
   onMenu,
@@ -30,6 +31,8 @@ export function LayerPill({
   count: number;
   color: string;
   diamond?: boolean;
+  /** The «التعذّرات» look: warning triangle, red fill when on and red outline when off. */
+  alert?: boolean;
   menuOpen: boolean;
   onClick: () => void;
   onMenu: () => void;
@@ -40,24 +43,41 @@ export function LayerPill({
       onClick={onClick}
       className={cn(
         "inline-flex h-[30px] items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-bold transition-colors",
-        active
-          ? "border-ink bg-ink text-white"
-          : "border-border-md bg-surface text-text-2 hover:border-gold hover:text-heading",
+        alert
+          ? active
+            ? "border-[#d9694f] bg-[#d9694f] text-white"
+            : "border-[color-mix(in_srgb,var(--danger)_40%,var(--border))] bg-surface text-danger"
+          : active
+            ? "border-ink bg-ink text-white"
+            : "border-border-md bg-surface text-text-2 hover:border-gold hover:text-heading",
       )}
     >
-      <span
-        className="inline-block size-[7px] shrink-0"
-        style={{
-          background: active ? "#c8b591" : color,
-          borderRadius: diamond ? 2 : 99,
-          transform: diamond ? "rotate(45deg)" : undefined,
-        }}
-      />
+      {alert ? (
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <path d="M12 9v4M12 17h.01" />
+        </svg>
+      ) : (
+        <span
+          className="inline-block size-[7px] shrink-0"
+          style={{
+            background: active ? "#c8b591" : color,
+            borderRadius: diamond ? 2 : 99,
+            transform: diamond ? "rotate(45deg)" : undefined,
+          }}
+        />
+      )}
       {label}
       <span
         className={cn(
           "grid min-w-[17px] place-items-center rounded-full px-1 text-[10px] font-bold",
-          active ? "bg-gold/25 text-gold" : "bg-gold-soft text-gold-d",
+          alert
+            ? active
+              ? "bg-white/25 text-white"
+              : "bg-danger-bg text-danger-text"
+            : active
+              ? "bg-gold/25 text-gold"
+              : "bg-gold-soft text-gold-d",
         )}
       >
         {count}
@@ -155,7 +175,7 @@ export function PickerList({
           const checked = !selectedKeys || selectedKeys.includes(key);
           const label =
             n.kind === "group"
-              ? `${head.refNo} — ${head.district}، ${head.city} (مجمع ${n.deedCount})`
+              ? `${head.transactionNumber ?? head.refNo} — ${head.district}، ${head.city} (${n.deedCount} صكوك)`
               : `${head.refNo} — ${head.district}، ${head.city}`;
           return (
             <div key={key} className="flex items-center gap-2 px-3.5 py-1.5 hover:bg-[#faf6ee]">

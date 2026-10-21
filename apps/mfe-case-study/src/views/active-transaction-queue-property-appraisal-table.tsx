@@ -44,6 +44,7 @@ import {
   queueRowClassName,
   QueueRowMoreCell,
 } from "./active-transaction-queue-row-parts";
+import { transactionNumberOf } from "../components/ui/TransactionNumberBadge";
 import { TeamStack } from "./PoListViewParts";
 
 type OpenPropertyDetail = (
@@ -102,6 +103,8 @@ const PropertyAppraisalRow = memo(function PropertyAppraisalRow({
       ctx={ctx}
       task={task}
       propertySlot={row.propertySlot}
+      transactionNumber={transactionNumberOf(property) ?? task.transactionNumber}
+      transactionDeedCount={property?.transactionDeedCount}
     />
   );
   return (

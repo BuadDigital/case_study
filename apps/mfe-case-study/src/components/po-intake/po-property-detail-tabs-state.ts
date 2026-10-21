@@ -4,25 +4,51 @@
  */
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 
+/**
+ * Decision 2026-10-19: the page is the transaction's (المعاملة). A tab is either about the
+ * transaction as a whole (its study, valuation, links, log, notes) or about one deed (its
+ * data, documents, survey, inspection, photos, court visits, keys, failures, Enfaz upload,
+ * finance). The order below is the single-deed order; a transaction with several deeds shows
+ * the transaction tabs first, then the deed tabs behind the deed switcher.
+ */
 export const TABS = [
-  { id: "basic", label: "البيانات الأساسية" },
-  { id: "documents", label: "مستندات العقار" },
-  { id: "linked", label: "العقارات المرتبطة" },
-  { id: "survey", label: "التقرير المساحي" },
-  { id: "inspection", label: "معاينة العقار" },
-  { id: "photos", label: "صور العقار" },
-  { id: "government", label: "المراجعات الحكومية" },
-  { id: "keys", label: "مفاتيح العقار" },
-  { id: "appraisal", label: "تقييم العقار" },
-  { id: "failures", label: "التعذّرات" },
-  { id: "report", label: "دراسة العقار" },
-  { id: "enfath-upload", label: "الرفع على إنفاذ" },
-  { id: "finance", label: "المالية" },
-  { id: "log", label: "السجل والتدقيق" },
-  { id: "survey-notes", label: "ملاحظات" },
+  { id: "basic", label: "البيانات الأساسية", scope: "deed" },
+  { id: "documents", label: "مستندات العقار", scope: "deed" },
+  { id: "linked", label: "العقارات المرتبطة", scope: "transaction" },
+  { id: "survey", label: "التقرير المساحي", scope: "deed" },
+  { id: "inspection", label: "معاينة العقار", scope: "deed" },
+  { id: "photos", label: "صور العقار", scope: "deed" },
+  { id: "government", label: "المراجعات الحكومية", scope: "deed" },
+  { id: "keys", label: "مفاتيح العقار", scope: "deed" },
+  { id: "appraisal", label: "تقييم العقار", scope: "transaction" },
+  { id: "failures", label: "التعذّرات", scope: "deed" },
+  { id: "report", label: "دراسة العقار", scope: "transaction" },
+  { id: "enfath-upload", label: "الرفع على إنفاذ", scope: "deed" },
+  { id: "finance", label: "المالية", scope: "deed" },
+  { id: "log", label: "السجل والتدقيق", scope: "transaction" },
+  { id: "survey-notes", label: "ملاحظات", scope: "transaction" },
 ] as const;
 
 export type TabId = (typeof TABS)[number]["id"];
+
+export type TabScope = (typeof TABS)[number]["scope"];
+
+export type PropertyDetailTab = (typeof TABS)[number];
+
+/**
+ * The tab bar's groups for a transaction with several deeds: transaction tabs first, then the
+ * deed tabs. Each group keeps the catalog order. A single-deed transaction uses the flat list.
+ */
+export function groupPropertyDetailTabs(
+  tabs: readonly PropertyDetailTab[],
+): { scope: TabScope; label: string; tabs: PropertyDetailTab[] }[] {
+  const transaction = tabs.filter((t) => t.scope === "transaction");
+  const deed = tabs.filter((t) => t.scope === "deed");
+  return [
+    { scope: "transaction", label: "المعاملة", tabs: transaction },
+    { scope: "deed", label: "الصك", tabs: deed },
+  ].filter((g) => g.tabs.length > 0) as { scope: TabScope; label: string; tabs: PropertyDetailTab[] }[];
+}
 
 /** Government reviewer: only the tabs they need for court-visit / keys work. */
 const GOVERNMENT_REVIEWER_TAB_IDS: readonly TabId[] = [
@@ -78,7 +104,7 @@ const ROLE_PROPERTY_DETAIL_TABS: Readonly< Partial<Record<string, readonly TabId
 
 export function propertyDetailTabsForRole(
   role: string,
-): readonly (typeof TABS)[number][] {
+): readonly PropertyDetailTab[] {
   const allowed = ROLE_PROPERTY_DETAIL_TABS[role];
   if (!allowed) return TABS;
   return TABS.filter((t) => (allowed as readonly string[]).includes(t.id));

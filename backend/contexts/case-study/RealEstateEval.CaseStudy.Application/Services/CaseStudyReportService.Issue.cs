@@ -51,6 +51,9 @@ public partial class CaseStudyReportService
         if (actor is not null && !PoRoleMatrixRules.CanIssueCaseStudyReport(actor.PrototypeRole))
             return (null, Fail(IssueRoleDeniedAr));
 
+        // Phase 4: the transaction's one study is issued from the holder deed's task, whichever deed asked.
+        taskId = await _db.ResolveStudyTaskIdAsync(taskId, cancellationToken);
+
         // Autosave / multi-tab can race on xmin — retry with a fresh load, like a plain save.
         const int maxAttempts = 3;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -95,11 +98,18 @@ public partial class CaseStudyReportService
 
         var propertyId = ResolvePropertyId(report, existing, task);
 
-        // Gate 1 — an active failure / blocked task. (Not the data gates: an issued report passed them.)
-        if (task.Status == WorkflowTaskStatus.Blocked
-            || await HasActiveFailureAsync(task, propertyId, cancellationToken))
+        // Phase 4: every live deed of the transaction completes with the one study (the holder first).
+        var parents = await _db.ListTransactionParentTasksAsync(taskId, cancellationToken);
+        if (parents.Count == 0) parents = [task];
+
+        // Gate 1 — an active failure / blocked task on ANY deed. (Not the data gates: an issued report passed them.)
+        foreach (var parent in parents)
         {
-            return (null, Fail(ActiveFailureBlocksIssueAr));
+            if (parent.Status == WorkflowTaskStatus.Blocked
+                || await HasActiveFailureAsync(parent, parent.Id == task.Id ? propertyId : parent.PropertyId, cancellationToken))
+            {
+                return (null, Fail(ActiveFailureBlocksIssueAr));
+            }
         }
 
         // Re-entry after a half-applied legacy issue: the report is issued but the parent is still
@@ -110,8 +120,11 @@ public partial class CaseStudyReportService
             await _db.ExecuteInTransactionAsync(
                 async ct =>
                 {
-                    await TryCompleteCaseStudyWorkflowTaskAsync(taskId, ct);
-                    await LockPartyContributionsAsync(taskId, healedAt, ct);
+                    foreach (var parent in parents)
+                    {
+                        await TryCompleteCaseStudyWorkflowTaskAsync(parent.Id, ct);
+                        await LockPartyContributionsAsync(parent.Id, healedAt, ct);
+                    }
                 },
                 cancellationToken);
             return (ToDto(existing!), null);
@@ -177,20 +190,34 @@ public partial class CaseStudyReportService
                 }
 
                 await _db.SaveChangesAsync(ct);
-                await TryCompleteCaseStudyWorkflowTaskAsync(taskId, ct);
-                await LockPartyContributionsAsync(taskId, now, ct);
 
-                if (_timeline is not null && propertyId is Guid timelinePropertyId)
+                // Decision 2026-10-19: issuing the study is one of the two moments that fix the
+                // transaction's official PR reference (the valuation approval is the other).
+                if (_transactions is not null && propertyId is Guid confirmPropertyId)
                 {
-                    await _timeline.RecordAsync(
-                        task.PoNumber,
-                        timelinePropertyId,
-                        $"case-study-report:{taskId}:issued:{now:O}",
-                        "إصدار تقرير دراسة الحالة",
-                        string.IsNullOrWhiteSpace(actor?.DisplayName) ? null : actor!.DisplayName.Trim(),
-                        PropertyTimelineTones.Done,
-                        now,
-                        ct);
+                    var (_, referenceError) = await _transactions.ConfirmOfficialReferenceAsync(confirmPropertyId, now, ct);
+                    if (referenceError is not null)
+                        throw new InvalidOperationException(referenceError);
+                }
+
+                foreach (var parent in parents)
+                {
+                    await TryCompleteCaseStudyWorkflowTaskAsync(parent.Id, ct);
+                    await LockPartyContributionsAsync(parent.Id, now, ct);
+
+                    var timelinePropertyId = parent.Id == task.Id ? propertyId : parent.PropertyId;
+                    if (_timeline is not null && timelinePropertyId is Guid timelineId)
+                    {
+                        await _timeline.RecordAsync(
+                            parent.PoNumber,
+                            timelineId,
+                            $"case-study-report:{taskId}:issued:{now:O}",
+                            "إصدار تقرير دراسة الحالة",
+                            string.IsNullOrWhiteSpace(actor?.DisplayName) ? null : actor!.DisplayName.Trim(),
+                            PropertyTimelineTones.Done,
+                            now,
+                            ct);
+                    }
                 }
             },
             cancellationToken);
@@ -226,6 +253,9 @@ public partial class CaseStudyReportService
     {
         if (actor is not null && !PoRoleMatrixRules.CanReopenCaseStudyReport(actor.PrototypeRole))
             return (null, Fail(ReopenRoleDeniedAr));
+
+        // Phase 4: reopening the transaction's one study, from whichever deed asked.
+        taskId = await _db.ResolveStudyTaskIdAsync(taskId, cancellationToken);
 
         const int maxAttempts = 3;
         for (var attempt = 1; attempt <= maxAttempts; attempt++)
@@ -278,14 +308,18 @@ public partial class CaseStudyReportService
             return (null, Fail("التقرير غير صادر — لا شيء لإعادة فتحه"));
 
         // A transaction handed over to Enfaz is frozen against reopening unless the specialist
-        // confirms taking it back (which clears the handover stamp).
+        // confirms taking it back (which clears the handover stamp). Phase 4: any deed of the
+        // transaction handed over freezes the one study.
         var propertyId = existing.PropertyId ?? task.PropertyId;
-        var handedOver = false;
-        if (propertyId is Guid handoverPropertyId && handoverPropertyId != Guid.Empty)
+        var parents = await _db.ListTransactionParentTasksAsync(taskId, cancellationToken);
+        if (parents.Count == 0) parents = [task];
+        var transactionDeeds = await _db.ListTransactionPropertiesForUpdateAsync(taskId, cancellationToken);
+        if (transactionDeeds.Count == 0 && propertyId is Guid lonePropertyId && lonePropertyId != Guid.Empty)
         {
-            var property = await _db.GetPropertyForUpdateAsync(handoverPropertyId, cancellationToken);
-            handedOver = property?.IsHandedOverToEnfaz == true;
+            var lone = await _db.GetPropertyForUpdateAsync(lonePropertyId, cancellationToken);
+            if (lone is not null) transactionDeeds = [lone];
         }
+        var handedOver = transactionDeeds.Any(p => p.IsHandedOverToEnfaz);
         if (handedOver && !clearEnfazHandover)
             return (null, new Dictionary<string, string> { [EnfazHandoverKey] = EnfazHandoverConfirmAr });
 
@@ -306,41 +340,54 @@ public partial class CaseStudyReportService
                 entity.SavedAtUtc = now;
                 entity.UpdatedAtUtc = now;
 
-                if (handedOver && propertyId is Guid clearPropertyId)
+                if (handedOver)
                 {
-                    var property = await _db.GetPropertyForUpdateAsync(clearPropertyId, ct);
-                    handoverCleared = property?.ClearEnfazHandover() == true;
+                    // The tracker was cleared above: re-read the deeds tracked and clear every stamp.
+                    var deeds = await _db.ListTransactionPropertiesForUpdateAsync(taskId, ct);
+                    if (deeds.Count == 0 && propertyId is Guid clearPropertyId)
+                    {
+                        var lone = await _db.GetPropertyForUpdateAsync(clearPropertyId, ct);
+                        if (lone is not null) deeds = [lone];
+                    }
+                    foreach (var deed in deeds)
+                    {
+                        if (deed.ClearEnfazHandover()) handoverCleared = true;
+                    }
                 }
 
                 await _db.SaveChangesAsync(ct);
 
-                // Parent: Completed → Open, back in the case-study phase. The domain Reopen sets the
-                // phase, the shell patch does not — so both fields are sent.
-                if (task.Status == WorkflowTaskStatus.Completed)
+                // Every deed's parent: Completed → Open, back in the case-study phase. The domain
+                // Reopen sets the phase, the shell patch does not — so both fields are sent.
+                foreach (var parent in parents)
                 {
-                    await _workflowTasks.PatchAsync(
-                        taskId,
-                        new PatchWorkflowTaskRequest
-                        {
-                            Status = WorkflowTaskStatusValues.Open,
-                            Phase = WorkflowTaskPhaseValues.CaseStudy,
-                        },
-                        ct);
-                }
+                    if (parent.Status == WorkflowTaskStatus.Completed)
+                    {
+                        await _workflowTasks.PatchAsync(
+                            parent.Id,
+                            new PatchWorkflowTaskRequest
+                            {
+                                Status = WorkflowTaskStatusValues.Open,
+                                Phase = WorkflowTaskPhaseValues.CaseStudy,
+                            },
+                            ct);
+                    }
 
-                await UnlockOpenPartyContributionsAsync(taskId, now, ct);
+                    await UnlockOpenPartyContributionsAsync(parent.Id, now, ct);
 
-                if (_timeline is not null && propertyId is Guid timelinePropertyId)
-                {
-                    await _timeline.RecordAsync(
-                        task.PoNumber,
-                        timelinePropertyId,
-                        $"case-study-report:{taskId}:reopened:{now:O}",
-                        "إعادة فتح تقرير دراسة الحالة",
-                        string.IsNullOrWhiteSpace(actor?.DisplayName) ? reason : $"{actor.DisplayName.Trim()} — {reason}",
-                        PropertyTimelineTones.Warn,
-                        now,
-                        ct);
+                    var timelinePropertyId = parent.Id == task.Id ? propertyId : parent.PropertyId;
+                    if (_timeline is not null && timelinePropertyId is Guid timelineId)
+                    {
+                        await _timeline.RecordAsync(
+                            parent.PoNumber,
+                            timelineId,
+                            $"case-study-report:{taskId}:reopened:{now:O}",
+                            "إعادة فتح تقرير دراسة الحالة",
+                            string.IsNullOrWhiteSpace(actor?.DisplayName) ? reason : $"{actor.DisplayName.Trim()} — {reason}",
+                            PropertyTimelineTones.Warn,
+                            now,
+                            ct);
+                    }
                 }
             },
             cancellationToken);

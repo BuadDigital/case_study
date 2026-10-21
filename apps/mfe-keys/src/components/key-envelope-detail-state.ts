@@ -4,6 +4,8 @@
  * validation / body building for a delivery handoff. No React, no I/O.
  */
 import {
+  KeyLocationValues,
+  envelopeHolderText,
   handoffKindColor,
   handoffKindLabel,
   handoffStateColor,
@@ -12,6 +14,7 @@ import {
   type KeyEnvelopeAssignment,
   type KeyEnvelopeHandoff,
   type KeyEnvelopeRow,
+  type KeyLocation,
   type PropertyCourtAccessRow,
 } from "../lib/keys-envelope-types";
 import { displayPersonName as sharedDisplayPersonName } from "@platform/app-shared/app-data/person-display-name";
@@ -126,9 +129,56 @@ export const MATCH_RESULT_TILES: {
   },
 ];
 
+/** Where the matching key went after the trial (decision 2026-10-20). */
+export const KEY_PLACE_TILES: {
+  id: KeyLocation;
+  label: string;
+  hint: string;
+  color: string;
+}[] = [
+  {
+    id: KeyLocationValues.InEnvelope,
+    label: "عاد إلى الظرف",
+    hint: "المفتاح المطابق مع بقية المفاتيح",
+    color: "#378add",
+  },
+  {
+    id: KeyLocationValues.WithUser,
+    label: "بقي معي",
+    hint: "أحتفظ بالمفتاح حتى تنتهي المعاينة",
+    color: "#2f7a4d",
+  },
+];
+
+/** The reviewer's correction choices for a deed's key place. */
+export const KEY_LOCATION_OPTIONS: { id: KeyLocation; label: string }[] = [
+  { id: KeyLocationValues.InEnvelope, label: "في الظرف" },
+  { id: KeyLocationValues.WithUser, label: "عند مستخدم" },
+  { id: KeyLocationValues.ReturnedCourt, label: "أُعيد للمحكمة" },
+  { id: KeyLocationValues.Missing, label: "مفقود" },
+];
+
+/** Header line for the custody panel: holder now, or the handoff still on its way. */
+export function custodyNowText(env: KeyEnvelopeRow): {
+  title: string;
+  since: string | null;
+  pending: string | null;
+} {
+  const pending = [...env.handoffs]
+    .reverse()
+    .find((h) => h.status === "pending_confirm");
+  return {
+    title: envelopeHolderText(env),
+    since: env.holderSinceUtc ? formatDate(env.holderSinceUtc) : null,
+    pending: pending
+      ? `في الطريق إلى ${displayPersonName(pending.toParty)} — سلّمه ${displayPersonName(pending.createdByName)} في ${formatDate(pending.createdAtUtc)}، بانتظار تأكيد الاستلام`
+      : null,
+  };
+}
+
 export const HANDOFF_NOTES_BY_KIND: Record<string, string> = {
   internal:
-    "التسليم الداخلي يُسجَّل بحالة «بانتظار التأكيد» ثم يؤكّده المعاين — وتنتقل العهدة إليه.",
+    "التسليم الداخلي يُسجَّل بحالة «بانتظار التأكيد» ثم يؤكّده المستلم — ولا تنتقل العهدة إليه قبل تأكيده.",
   external:
     "التسليم الخارجي يتطلب إثباتاً: صورة/مستند، أو بيانات التواصل للجهة.",
   return_court:

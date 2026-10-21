@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo, useState } from "react";
 import {
+  KeyLocations,
+  PropertyKeyGateSources,
   confirmKeyEnvelopeAssignment,
   confirmKeyEnvelopeHandoff,
   type PropertyKeyGateDto,
@@ -15,7 +17,6 @@ import {
   SectionHeader,
 } from "../po-intake/PropertyDetailFields";
 import {
-  keyHandedLabelAr,
   keysStatusLabelAr,
   usePropertyKeyGateQuery,
 } from "../../query/use-property-key-gate-query";
@@ -24,6 +25,11 @@ import {
   inspectorKeyGateStatus,
   type InspectorKeyGateStatus,
 } from "../../lib/app-data/inspector-key-gate";
+import {
+  envelopeHolderLabelAr,
+  keyHandedToInspectorText,
+  keyLocationLabelAr,
+} from "../../lib/app-data/property-key-custody";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 
 export type InspectorKeyAvailability = {
@@ -41,6 +47,13 @@ export type InspectorKeyAvailability = {
   assignmentStatus?: string | null;
   pendingHandoffId?: string | null;
   studyHoldStatus?: string;
+  /** Custody (decision 2026-10-20): who holds the envelope, where this deed's key is. */
+  envelopeHolderKind?: string | null;
+  envelopeHolderUserId?: string | null;
+  envelopeHolderLabel?: string | null;
+  keyLocation?: string | null;
+  keyHolderUserId?: string | null;
+  keyHolderLabel?: string | null;
 };
 
 function mapGate(
@@ -56,6 +69,12 @@ function mapGate(
     assignmentStatus: gate.assignmentStatus,
     pendingHandoffId: gate.pendingHandoffId,
     studyHoldStatus: gate.studyHoldStatus,
+    envelopeHolderKind: gate.envelopeHolderKind ?? null,
+    envelopeHolderUserId: gate.envelopeHolderUserId ?? null,
+    envelopeHolderLabel: gate.envelopeHolderLabel ?? null,
+    keyLocation: gate.keyLocation ?? null,
+    keyHolderUserId: gate.keyHolderUserId ?? null,
+    keyHolderLabel: gate.keyHolderLabel ?? null,
   };
 }
 
@@ -148,18 +167,27 @@ export function InspectorKeyStatusTab({
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const handedLabel = keyHandedLabelAr(keyHandedToInspector);
+  const handedLabel = keyHandedToInspectorText(
+    { ...availability, keyHandedToInspector },
+    { id: task.assigneeId ?? null, name: task.assigneeName ?? null },
+  ).text;
   const keysLabel = keysStatusLabelAr(keysStatus);
   const keyNotOnHand = !vacantLand && keyAvailable === false;
   const loadProblem = inspectorKeyGateProblem(availability.status);
+  const fromEnvelope = availability.source === PropertyKeyGateSources.Envelope;
 
-  const confirmAssignment = async (next: "matched" | "unmatched") => {
+  /** The trial result, and for a match where the key went (decision 2026-10-20). */
+  const confirmAssignment = async (
+    next: "matched" | "unmatched",
+    keyLocation: string | null = null,
+  ) => {
     const config = prototypeModulesApiConfig();
     if (!config || !envelopeId || !assignmentId) return;
     setBusy(true);
     setActionError(null);
     const result = await confirmKeyEnvelopeAssignment(config, envelopeId, assignmentId, {
       status: next,
+      keyLocation,
     });
     setBusy(false);
     if (!result.ok) {
@@ -199,6 +227,24 @@ export function InspectorKeyStatusTab({
       <FieldsGrid>
         <FieldBox label="حالة المفاتيح" value={keysLabel} />
         <FieldBox label="التسليم للمعاين" value={handedLabel} />
+        {fromEnvelope ? (
+          <>
+            <FieldBox
+              label="الظرف عند"
+              value={envelopeHolderLabelAr(
+                availability.envelopeHolderKind,
+                availability.envelopeHolderLabel,
+              )}
+            />
+            <FieldBox
+              label="مفتاح هذا الصك"
+              value={keyLocationLabelAr(
+                availability.keyLocation,
+                availability.keyHolderLabel,
+              )}
+            />
+          </>
+        ) : null}
         <div>
           <div className="mb-1 text-[11px] font-medium text-text-3">
             حالة الإسناد
@@ -234,9 +280,18 @@ export function InspectorKeyStatusTab({
             size="sm"
             loading={busy}
             showActionToast={false}
-            onClick={() => void confirmAssignment("matched")}
+            onClick={() => void confirmAssignment("matched", KeyLocations.InEnvelope)}
           >
-            مطابق
+            مطابق — عاد المفتاح للظرف
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            loading={busy}
+            showActionToast={false}
+            onClick={() => void confirmAssignment("matched", KeyLocations.WithUser)}
+          >
+            مطابق — المفتاح معي
           </Button>
           <Button
             type="button"

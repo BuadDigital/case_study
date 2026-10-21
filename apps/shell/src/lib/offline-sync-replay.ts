@@ -222,6 +222,7 @@ function buildReplayDeps(userId: string): OfflineSyncDeps {
         assignmentId?: string;
         status?: string;
         notes?: string | null;
+        keyLocation?: string | null;
       }>(input.payloadJson);
       if (!payload) return invalidPayloadFailure("بيانات تأكيد غير صالحة");
       if (!payload.assignmentId || !payload.status) {
@@ -231,7 +232,11 @@ function buildReplayDeps(userId: string): OfflineSyncDeps {
         modulesConfig,
         input.envelopeId,
         payload.assignmentId,
-        { status: payload.status, notes: payload.notes ?? null },
+        {
+          status: payload.status,
+          notes: payload.notes ?? null,
+          keyLocation: payload.keyLocation ?? null,
+        },
         input.idempotencyKey,
       );
       if (!result.ok) return fail(userId, result.kind, "تعذّر تأكيد الإسناد");

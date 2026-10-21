@@ -31,24 +31,23 @@ public class ValuationReportFrozenTextLayersTests
     }
 
     [Fact]
- // Numbering workshop (bit item 3): unified pattern TQ-{year}-{5-digit seq}.
-    public void Temporary_report_number_uses_tq_year_and_display_digits()
+    // Decision 2026-10-19: the report numbers derive from the transaction's PR root.
+    public void Report_numbers_derive_from_the_transaction_reference()
     {
-        var n = ValuationReportNumberRules.FormatTemporary("V-12", new DateOnly(2026, 8, 19));
-        Assert.Equal("TQ-2026-00012", n);
+        Assert.Equal("PRV-2026-00012", ReferenceNumbering.ValuationReportNumber("PR-2026-00012"));
+        Assert.Equal("PRC-2026-00012", ReferenceNumbering.CaseStudyReportNumber(" PR-2026-00012 "));
+        Assert.Null(ReferenceNumbering.ValuationReportNumber("TMP-26-00012"));
+        // Decision 2026-10-20: the printed form carries a two-digit year; the counters keep the full year.
+        Assert.Equal("PR-26-00123", ReferenceNumbering.Format(ReferenceNumbering.Property, 2026, 123));
+        Assert.Equal("TMP-26-00055", ReferenceNumbering.Format(ReferenceNumbering.TransactionDraft, 2026, 55));
+        Assert.Equal("PRV-26-00123", ReferenceNumbering.ValuationReportNumber("PR-26-00123"));
+        Assert.Null(ReferenceNumbering.ValuationReportNumber(null));
     }
 
     [Fact]
-    public void Reserved_report_number_uses_distribution_year_not_preview_day()
+    public void Report_number_version_suffix_starts_at_two()
     {
-        var n = ValuationReportNumberRules.FormatReserved("VR-12", new DateOnly(2026, 8, 1));
-        Assert.Equal("TQ-2026-00012", n);
-    }
-
-    [Fact]
-    public void Issued_report_number_matches_workshop_tq_format()
-    {
-        var n = ValuationReportNumberRules.FormatIssued(new DateOnly(2026, 8, 19), 1);
-        Assert.Equal("TQ-2026-00001", n);
+        Assert.Equal("PRV-2026-00001", ReferenceNumbering.WithVersion("PRV-2026-00001", 1));
+        Assert.Equal("PRV-2026-00001/2", ReferenceNumbering.WithVersion("PRV-2026-00001", 2));
     }
 }

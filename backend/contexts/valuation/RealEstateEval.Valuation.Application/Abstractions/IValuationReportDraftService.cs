@@ -45,6 +45,15 @@ public interface IValuationReportDraftService
         ReportDraftActor actor,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The report number PRV-… for the request: fixed already, or confirmed now through Case Study
+    /// (the transaction's official reference). Only the assigned appraiser, only once the draft was sent.
+    /// </summary>
+    Task<(ValuationReportNumberDto? Result, Dictionary<string, string>? Errors)> EnsureReportNumberAsync(
+        Guid valuationRequestId,
+        ReportDraftActor actor,
+        CancellationToken cancellationToken = default);
+
     /// <summary>The assigned appraiser approves the sent draft: the report freezes as the deposit copy (idempotent).</summary>
     Task<(ValuationReportDraftDto? Result, Dictionary<string, string>? Errors)> ApproveAsync(
         Guid valuationRequestId,

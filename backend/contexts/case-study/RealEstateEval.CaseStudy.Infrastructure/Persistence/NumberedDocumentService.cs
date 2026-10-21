@@ -6,13 +6,16 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 /// <summary>
-/// Decision 25 + numbering workshop: letter/case-study report takes its reference number at
-/// print time and is logged — the entry is immutable (reference ledger).
+/// Decision 25 + numbering workshop: a letter takes its LT number at print time. Decision
+/// 2026-10-19: the case-study report's number is PRC-… derived from the transaction's official
+/// reference, which is confirmed here if the report is the first approval. Both are logged as
+/// immutable ledger rows; asking for the same report number twice returns the same row.
 /// </summary>
 public sealed class NumberedDocumentService : INumberedDocumentService
 {
@@ -20,15 +23,18 @@ public sealed class NumberedDocumentService : INumberedDocumentService
 
     private readonly CaseStudyDbContext _caseStudy;
     private readonly TimeProvider _time;
+    private readonly ITransactionReferenceService _transactions;
 
     [ActivatorUtilitiesConstructor]
-    public NumberedDocumentService(CaseStudyDbContext caseStudy, TimeProvider? time = null)
+    public NumberedDocumentService(
+        CaseStudyDbContext caseStudy,
+        TimeProvider? time = null,
+        ITransactionReferenceService? transactions = null)
     {
         _time = time ?? TimeProvider.System;
-
         _caseStudy = caseStudy;
+        _transactions = transactions ?? new TransactionReferenceService(new TransactionRepository(caseStudy));
     }
-
 
     public async Task<(NumberedDocumentDto? Result, string? Error)> AllocateAsync(
         AllocateNumberedDocumentRequest request,
@@ -39,24 +45,39 @@ public sealed class NumberedDocumentService : INumberedDocumentService
         if (!NumberedDocumentKinds.IsValid(kind))
             return (null, "نوع المستند المرقّم غير مدعوم.");
 
-        var prefix = kind == NumberedDocumentKinds.Letter
-            ? ReferenceNumbering.Letter
-            : ReferenceNumbering.CaseStudyReport;
-
         var now = _time.UtcNow();
-        var (reference, error) = await ReferenceSequenceAllocator.AllocateYearlyAsync(
-            _caseStudy,
-            DatabaseSchemas.CaseStudy,
-            prefix,
-            now,
-            cancellationToken);
-        if (error is not null) return (null, error);
+        string reference;
+        if (kind == NumberedDocumentKinds.CaseStudyReport)
+        {
+            if (request.PropertyId is not Guid propertyId)
+                return (null, "رقم تقرير دراسة الحالة يحتاج العقار.");
+
+            var (root, confirmError) = await _transactions.ConfirmOfficialReferenceAsync(propertyId, now, cancellationToken);
+            if (confirmError is not null || string.IsNullOrWhiteSpace(root))
+                return (null, confirmError ?? "تعذّر تثبيت الرقم المرجعي.");
+            reference = ReferenceNumbering.CaseStudyReportNumber(root)!;
+
+            var existing = await _caseStudy.NumberedDocuments.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.ReferenceNumber == reference, cancellationToken);
+            if (existing is not null) return (ToDto(existing), null);
+        }
+        else
+        {
+            var (allocated, error) = await ReferenceSequenceAllocator.AllocateYearlyAsync(
+                _caseStudy,
+                DatabaseSchemas.CaseStudy,
+                ReferenceNumbering.Letter,
+                now,
+                cancellationToken);
+            if (error is not null) return (null, error);
+            reference = allocated!;
+        }
 
         var entity = new NumberedDocument
         {
             Id = Guid.NewGuid(),
             Kind = kind,
-            ReferenceNumber = reference!,
+            ReferenceNumber = reference,
             PoNumber = request.PoNumber?.Trim() ?? "",
             PropertyId = request.PropertyId,
             Title = request.Title?.Trim() ?? "",

@@ -2,11 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  getPropertyGroup,
-  type PriorDeedRegistrationDto,
-  type PropertyGroupMemberDto,
-} from "@platform/api-client";
+import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import {
   DetailBadge,
   EmptyState,
@@ -35,6 +31,14 @@ import {
 import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
 import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-model";
 import { deedsMatch, normalizeDeedNumber } from "../../lib/app-data/deed-number";
+import { useTransactionQuery } from "../../query/use-transaction-query";
+import { transactionDeedLabel } from "./TransactionDeedSwitcher";
+import { formatPoDisplay } from "../../lib/app-data/po-intake-data";
+import { TransactionMergeDialog, invalidateTransactionViews } from "./TransactionMergeDialog";
+import { isCaseStudySpecialist } from "../../lib/app-data/po-roles";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button, promptAction, useToast } from "@platform/ui-kit";
+import { unmergeTransactionDeed } from "@platform/api-client";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 
 type LinkedSamePo = {
@@ -132,8 +136,44 @@ export function PropertyDetailLinkedTab({
     [record.properties, property.id],
   );
 
+  // Decision 2026-10-19: the deeds of this transaction come first — they ARE the property.
+  const { data: transaction } = useTransactionQuery(property.id);
+  const transactionDeeds = useMemo(
+    () => (transaction?.deeds ?? []).filter((d) => d.propertyId !== property.id && !d.isRemoved),
+    [transaction, property.id],
+  );
+  const canMerge = isCaseStudySpecialist(role);
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [unmergingId, setUnmergingId] = useState<string | null>(null);
+
+  async function unmerge(deedPropertyId: string, label: string) {
+    const config = workOrdersApiConfig();
+    if (!config || !transaction || unmergingId) return;
+    const reason = await promptAction({
+      title: `إخراج الصك ${label} من المعاملة`,
+      message: "يفتح للصك معاملة مسودة جديدة بمعاينته. المبرر إلزامي ويُسجَّل في التدقيق.",
+      label: "مبرر الإخراج",
+      confirmLabel: "إخراج",
+      minLength: 5,
+    });
+    if (reason === null) return;
+    setUnmergingId(deedPropertyId);
+    try {
+      const res = await unmergeTransactionDeed(config, transaction.id, { propertyId: deedPropertyId, reason });
+      if (!res.ok) {
+        showToast(res.message ?? "تعذّر إخراج الصك", "error");
+        return;
+      }
+      invalidateTransactionViews(queryClient, transaction.deeds.map((d) => d.poNumber));
+      showToast(`أُخرج الصك ${label} إلى معاملة جديدة`, "success");
+    } finally {
+      setUnmergingId(null);
+    }
+  }
+
   const [priors, setPriors] = useState<LinkedPrior[]>([]);
-  const [groupMembers, setGroupMembers] = useState<PropertyGroupMemberDto[]>([]);
   const [declared, setDeclared] = useState<LinkedDeclared[]>([]);
   const [loading, setLoading] = useState(true);
   const [lookupError, setLookupError] = useState<string | null>(null);
@@ -251,33 +291,11 @@ export function PropertyDetailLinkedTab({
     };
   }, [loadKey, deedNumber, poNumber, caseStudyTask, property.id, record.properties]);
 
-  // Decision 20 — grouped property: human-confirmed links show here too, not only on
-  // the bourse screen. Fetched independently so a failure there does not drop the other links.
-  useEffect(() => {
-    let cancelled = false;
-    const config = workOrdersApiConfig();
-    if (!config || !property.id) {
-      setGroupMembers([]);
-      return;
-    }
-    void getPropertyGroup(config, property.id).then((res) => {
-      if (cancelled) return;
-      setGroupMembers(
-        res.ok && res.data
-          ? res.data.members.filter((m) => m.propertyId !== property.id)
-          : [],
-      );
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [property.id]);
-
   const linkCount =
+    transactionDeeds.length +
     samePoLinks.length +
     priors.length +
     declared.length +
-    groupMembers.length +
     propertyOpsTasks.length;
 
   const hasAny = linkCount > 0;
@@ -301,7 +319,7 @@ export function PropertyDetailLinkedTab({
           <EmptyState
             icon="🔗"
             title="لا توجد عقارات مرتبطة"
-            sub="يظهر هنا: أعضاء العقار المجمع، وعقارات أخرى على نفس أمر العمل، أو نفس الصك في أوامر عمل سابقة، أو أصول مرتبطة صرّح بها الأخصائي في دراسة الحالة، والمهام التشغيلية."
+            sub="يظهر هنا: صكوك هذه المعاملة، وعقارات أخرى على نفس أمر العمل، أو نفس الصك في أوامر عمل سابقة، أو أصول مرتبطة صرّح بها الأخصائي في دراسة الحالة، والمهام التشغيلية."
           />
         )}
         {record.expectedPropertyCount > record.properties.filter((p) => !p.isRemoved).length ? (
@@ -324,10 +342,93 @@ export function PropertyDetailLinkedTab({
       </SectionHeader>
       {lookupError ? <InfoBox icon="⚠">{lookupError}</InfoBox> : null}
       <InfoBox icon="ℹ">
-        الارتباطات تشمل أعضاء العقار المجمع المؤكَّدين، وعقارات نفس أمر العمل،
-        وتسجيلات سابقة لنفس الصك (كل الدراسات)، والأصول المرتبطة المصرّح بها في
-        دراسة الحالة، والمهام التشغيلية المرتبطة.
+        الارتباطات تشمل صكوك هذه المعاملة، وعقارات نفس أمر العمل، وتسجيلات
+        سابقة لنفس الصك (كل الدراسات)، والأصول المرتبطة المصرّح بها في دراسة
+        الحالة، والمهام التشغيلية المرتبطة.
       </InfoBox>
+
+      {transaction && (transactionDeeds.length > 0 || canMerge) ? (
+        <div className="mt-3">
+          <h4 className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[12px] font-semibold text-text">
+            <span>
+              صكوك هذه المعاملة ({transactionDeeds.length + 1})
+              <span className="ms-2 text-[11px] font-normal text-text-3">
+                <bdi dir="ltr">{transaction.displayNumber}</bdi>
+                {transaction.linkKindLabelAr ? ` · ${transaction.linkKindLabelAr}` : ""}
+              </span>
+            </span>
+            {canMerge ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="default"
+                disabled={Boolean(unmergingId)}
+                onClick={() => setMergeOpen(true)}
+              >
+                دمج صكوك في المعاملة
+              </Button>
+            ) : null}
+          </h4>
+          {transactionDeeds.length === 0 ? (
+            <p className="m-0 text-[12px] text-text-3">
+              المعاملة بصك واحد. يمكن ضم صكوك أخرى تمثل العقار نفسه متى اكتمل استعلام البورصة لها.
+            </p>
+          ) : (
+            <ul className="m-0 flex list-none flex-col gap-2 p-0">
+              {transactionDeeds.map((deed) => {
+                const label = transactionDeedLabel(deed);
+                return (
+                  <li key={deed.propertyId} className="m-0 flex items-stretch gap-2">
+                    <Link
+                      href={poPropertyPath(deed.poNumber, deed.propertyId)}
+                      className="flex min-w-0 flex-1 flex-col gap-1 rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3 no-underline transition-colors hover:border-primary-light hover:bg-info-bg"
+                    >
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="text-[13px] font-semibold text-primary-light">
+                          <bdi dir="ltr">{label}</bdi>
+                        </span>
+                        <DetailBadge tone="blue">صك في المعاملة</DetailBadge>
+                        {deed.deedKindLabelAr ? (
+                          <DetailBadge tone="gray">{deed.deedKindLabelAr}</DetailBadge>
+                        ) : null}
+                      </span>
+                      <span className="text-[11px] text-text-3">
+                        {formatPoDisplay(deed.poNumber)}
+                        {deed.city || deed.district
+                          ? ` · ${[deed.city, deed.district].filter(Boolean).join(" — ")}`
+                          : ""}
+                      </span>
+                    </Link>
+                    {canMerge && !transaction.referenceNumber ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="default"
+                        className="self-center"
+                        loading={unmergingId === deed.propertyId}
+                        disabled={Boolean(unmergingId)}
+                        showActionToast={false}
+                        title="إخراج الصك إلى معاملة مسودة جديدة — قبل تثبيت الرقم الرسمي فقط"
+                        onClick={() => void unmerge(deed.propertyId, label)}
+                      >
+                        إخراج
+                      </Button>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {canMerge && transaction ? (
+            <TransactionMergeDialog
+              open={mergeOpen}
+              transaction={transaction}
+              onClose={() => setMergeOpen(false)}
+              onMerged={() => setMergeOpen(false)}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-3">
         <h4 className="mb-2 flex items-center justify-between gap-2 text-[12px] font-semibold text-text">
@@ -374,40 +475,6 @@ export function PropertyDetailLinkedTab({
           </ul>
         )}
       </div>
-
-      {groupMembers.length > 0 ? (
-        <div className="mt-3">
-          <h4 className="mb-2 text-[12px] font-semibold text-text">
-            العقار المجمع ({groupMembers.length})
-          </h4>
-          <ul className="m-0 flex list-none flex-col gap-2 p-0">
-            {groupMembers.map((member) => (
-              <li key={member.propertyId} className="m-0">
-                <Link
-                  href={poPropertyPath(member.poNumber, member.propertyId)}
-                  className="flex flex-col gap-1 rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3.5 py-3 no-underline transition-colors hover:border-primary-light hover:bg-info-bg"
-                >
-                  <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-[13px] font-semibold text-primary-light">
-                      {member.deedNumber || member.poNumber}
-                    </span>
-                    <DetailBadge tone="blue">عقار مجمع</DetailBadge>
-                    {member.deedKind ? (
-                      <DetailBadge tone="gray">{member.deedKind}</DetailBadge>
-                    ) : null}
-                  </span>
-                  <span className="text-[11px] text-text-3">
-                    {member.poNumber}
-                    {member.signalLabelsAr.length > 0
-                      ? ` · ${member.signalLabelsAr.join(" · ")}`
-                      : ""}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
 
       {samePoLinks.length > 0 ? (
         <div className="mt-3">

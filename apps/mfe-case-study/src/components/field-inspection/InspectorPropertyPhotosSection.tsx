@@ -11,6 +11,7 @@ import {
   canDeleteInspectorFreePhoto,
   inspectorFreePhotoCategoryMeta,
   inspectorFreePhotoKindsForParent,
+  isApartmentInspectionContext,
   inspectorFreePhotoNeedsKind,
   inspectorFreePhotoParentKey,
   inspectorFreePhotoUploader,
@@ -63,6 +64,13 @@ export function InspectorPropertyPhotosSection({
   const [classifyParent, setClassifyParent] = useState<ParentKey | null>(null);
   const [classifyDataUrl, setClassifyDataUrl] = useState<string | undefined>();
   const stamp = inspectorPhotoStampText(draft);
+  // An apartment records no facades — no «واجهة» kind to tag a photo with.
+  const isApartment = isApartmentInspectionContext({
+    vacantLand: draft.vacantLand,
+    assetSubject: draft.featureValues.assetSubject,
+  });
+  const photoKindsFor = (parent: string | null | undefined) =>
+    inspectorFreePhotoKindsForParent(parent, { isApartment });
   const photos = draft.freePhotos;
   const canUpload = !disabled;
   const uploading = uploadingParent !== null;
@@ -312,7 +320,7 @@ export function InspectorPropertyPhotosSection({
       parentHint ??
       (inspectorFreePhotoParentKey(photo.category) as ParentKey | null);
     const parsed = parseInspectorFreePhotoCategory(photo.category);
-    const kindOptions = inspectorFreePhotoKindsForParent(parent);
+    const kindOptions = photoKindsFor(parent);
     const kindMeta = parsed
       ? kindOptions.find((k) => k.key === parsed.kind) ??
         INSPECTOR_FREE_PHOTO_KINDS.find((k) => k.key === parsed.kind)
@@ -543,12 +551,12 @@ export function InspectorPropertyPhotosSection({
           <div
             className={cn(
               "grid gap-2",
-              inspectorFreePhotoKindsForParent(classifyKindsParent).length > 3
+              photoKindsFor(classifyKindsParent).length > 3
                 ? "grid-cols-2"
                 : "grid-cols-3",
             )}
           >
-            {inspectorFreePhotoKindsForParent(classifyKindsParent).map((kind) => (
+            {photoKindsFor(classifyKindsParent).map((kind) => (
               <button
                 key={kind.key}
                 type="button"
@@ -582,12 +590,12 @@ export function InspectorPropertyPhotosSection({
                 <div
                   className={cn(
                     "grid gap-2",
-                    inspectorFreePhotoKindsForParent(parent.key).length > 3
+                    photoKindsFor(parent.key).length > 3
                       ? "grid-cols-2"
                       : "grid-cols-3",
                   )}
                 >
-                  {inspectorFreePhotoKindsForParent(parent.key).map((kind) => (
+                  {photoKindsFor(parent.key).map((kind) => (
                     <button
                       key={kind.key}
                       type="button"

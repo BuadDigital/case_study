@@ -35,6 +35,7 @@ public partial class CaseStudyReportService : ICaseStudyReportService
     /// <summary>Absent in test compositions — the active-failure gate is skipped (the Blocked task status still refuses).</summary>
     private readonly ICaseStudyFailureGate? _failureGate;
     private readonly ICaseStudyInfoRolesLookup? _infoRoles;
+    private readonly ITransactionReferenceService? _transactions;
 
     /// <param name="infoRoles">
     /// The info-roles matrix the 100% completeness rule reads. Production composition ALWAYS wires it
@@ -52,8 +53,10 @@ public partial class CaseStudyReportService : ICaseStudyReportService
         IAuditLogAppend? auditLog = null,
         IPropertyTimelineService? timeline = null,
         ICaseStudyFailureGate? failureGate = null,
-        ICaseStudyInfoRolesLookup? infoRoles = null)
+        ICaseStudyInfoRolesLookup? infoRoles = null,
+        ITransactionReferenceService? transactions = null)
     {
+        _transactions = transactions;
         _time = time ?? TimeProvider.System;
         _notifications = notifications;
         _recipients = recipients;
@@ -112,6 +115,9 @@ public partial class CaseStudyReportService : ICaseStudyReportService
         if (actor is not null && !await CanReadFormAsync(taskId, actor, cancellationToken))
             return null;
 
+        // Phase 4: the deed's study is its transaction's — the holder deed's parent task carries it.
+        if (!party) taskId = await _db.ResolveStudyTaskIdAsync(taskId, cancellationToken);
+
         var entity = await _db.GetFormAsync(taskId, party, track: false, cancellationToken);
         if (entity is not null)
             return ToDto(entity);
@@ -152,6 +158,9 @@ public partial class CaseStudyReportService : ICaseStudyReportService
         var statusErrors = ValidateClientStatus(form.Status);
         if (statusErrors is not null)
             return (null, statusErrors);
+
+        // Phase 4: a non-party save lands on the transaction's one study (the holder's task).
+        if (!party) taskId = await _db.ResolveStudyTaskIdAsync(taskId, cancellationToken);
 
         // Compat route (one release): a PUT that issues goes through the very same core as
         // POST /{taskId}/issue — role, failure, deed-nature, 100% — then ONE transaction. An already

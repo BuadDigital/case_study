@@ -21,7 +21,11 @@ import {
   type CaseStudyReportFrameHandle,
 } from "../case-study/CaseStudyReportFrame";
 import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-document-model";
-import type { CaseStudyReportSection } from "../../lib/app-data/case-study-report-document-model";
+import type {
+  CaseStudyReportDeeds,
+  CaseStudyReportSection,
+} from "../../lib/app-data/case-study-report-document-model";
+import { CaseStudyDeedsTable } from "../case-study/CaseStudyDeedsTable";
 import {
   CASE_STUDY_SECTION_REMARKS_HINT,
   type CaseStudyQuestionSection,
@@ -288,10 +292,14 @@ export function PropertyDetailCaseStudyReport({
   record,
   property,
   task,
+  deeds,
 }: {
   record: PoIntakeRecord;
   property: PoPropertyIntake;
+  /** The study's parent task — on a linked property, the holder deed's (phase 4). */
   task: WorkflowTask | null;
+  /** Phase 4: the transaction's deeds when it has several. */
+  deeds?: CaseStudyReportDeeds;
 }) {
   const { role } = useAppAccess();
   const { showToast } = useToast();
@@ -382,8 +390,8 @@ export function PropertyDetailCaseStudyReport({
 
   const reportModel = useMemo(() => {
     if (!task || !draft) return null;
-    return buildCaseStudyReportModel(draft, property, task, record);
-  }, [draft, property, record, task]);
+    return buildCaseStudyReportModel(draft, property, task, record, undefined, deeds);
+  }, [draft, property, record, task, deeds]);
 
   const showWorkspaceLink = useMemo(() => {
     if (!task) return false;
@@ -492,6 +500,12 @@ export function PropertyDetailCaseStudyReport({
           معاينة التقرير
         </button>
       </div>
+
+      {deeds ? (
+        <div className="mb-3">
+          <CaseStudyDeedsTable deeds={deeds} />
+        </div>
+      ) : null}
 
       <div className="grid gap-2">
         {reportModel.sections.map((section) => (

@@ -22,7 +22,7 @@ import { LayerPill } from "../components/property-map/PropertyMapPanels";
 import type { PropertyMapWorkflow } from "./usePropertyMapWorkflow";
 
 /**
- * Map toolbar — layer chips, the infeasible filter, the text/city/kind/usage
+ * Map toolbar — layer chips (incl. «التعذّرات»), the text/city/kind/usage
  * selects and the date popover. Every value and setter comes from the map
  * workflow.
  */
@@ -38,8 +38,6 @@ export function PropertyMapToolbar({
     openLayerPanel,
     partitioned,
     filteredComparables,
-    infeasOnly,
-    toggleInfeasibleOnly,
     query,
     setQuery,
     city,
@@ -77,32 +75,18 @@ export function PropertyMapToolbar({
                 ? partitioned.active.length
                 : chip.key === "archive"
                   ? partitioned.archive.length
-                  : filteredComparables.filter((c) => c.coords).length
+                  : chip.key === "failures"
+                    ? partitioned.failures.length
+                    : filteredComparables.filter((c) => c.coords).length
             }
             color={chip.color}
             diamond={chip.diamond}
+            alert={chip.alert}
             menuOpen={layerPanel === chip.key}
             onClick={() => toggleLayer(chip.key)}
             onMenu={() => openLayerPanel(chip.key)}
           />
         ))}
-        <button
-          type="button"
-          title="إظهار التعذّرات فقط (مرشح تعذّر + متعذّر)"
-          onClick={toggleInfeasibleOnly}
-          className={cn(
-            "inline-flex h-[30px] items-center gap-1.5 rounded-full border px-2.5 text-[11.5px] font-bold",
-            infeasOnly
-              ? "border-[#d9694f] bg-[#d9694f] text-white"
-              : "border-[color-mix(in_srgb,var(--danger)_40%,var(--border))] bg-surface text-danger",
-          )}
-        >
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-            <path d="M12 9v4M12 17h.01" />
-          </svg>
-          التعذّرات
-        </button>
       </div>
 
       <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">

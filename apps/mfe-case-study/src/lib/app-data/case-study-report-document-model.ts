@@ -22,6 +22,7 @@ import {
   type PoPropertyIntake,
 } from "./po-intake-data";
 import type { WorkflowTask } from "./tasks";
+import { fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
 
 type CaseStudyReportQuestionRow = {
   question: string;
@@ -56,6 +57,22 @@ type CaseStudyReportApproval = {
   requestNumber: string;
 };
 
+/** One deed of a linked property (decision 2026-10-19) as the report prints it. */
+export type CaseStudyReportDeedRow = {
+  propertyId: string;
+  /** Deed number, or the registry number when the deed is identified by one. */
+  label: string;
+  poNumber: string;
+  /** Area as entered on the deed; "—" when unknown. */
+  area: string;
+};
+
+export type CaseStudyReportDeeds = {
+  rows: CaseStudyReportDeedRow[];
+  /** Sum of the deed areas in m², formatted; "—" when any area is missing. */
+  totalArea: string;
+};
+
 export type CaseStudyReportModel = {
   title: string;
   providerName: string;
@@ -69,7 +86,52 @@ export type CaseStudyReportModel = {
   propertyType: string;
   sections: CaseStudyReportSection[];
   approval: CaseStudyReportApproval;
+  /**
+   * Phase 4: the deeds of a transaction with several — one study covers them all, so the
+   * report lists every deed and the total area. Absent for an ordinary one-deed property.
+   */
+  deeds?: CaseStudyReportDeeds;
 };
+
+/** The deeds table input: what the transaction endpoint returns per deed. */
+export type CaseStudyReportDeedSource = {
+  propertyId: string;
+  poNumber: string;
+  identifierType?: string;
+  deedNumber: string;
+  realEstateRegNumber?: string | null;
+  area?: string | null;
+  isRemoved?: boolean;
+};
+
+/**
+ * The deeds block for a transaction with several deeds; `undefined` for one deed (the
+ * report then reads as it always has). Removed deeds are left out.
+ */
+export function caseStudyReportDeeds(
+  deeds: readonly CaseStudyReportDeedSource[] | null | undefined,
+): CaseStudyReportDeeds | undefined {
+  const live = (deeds ?? []).filter((d) => !d.isRemoved);
+  if (live.length < 2) return undefined;
+  const rows: CaseStudyReportDeedRow[] = live.map((d) => {
+    const registry = d.realEstateRegNumber?.trim();
+    const label =
+      d.identifierType === "real_estate_reg" && registry
+        ? registry
+        : d.deedNumber.trim() || registry || "—";
+    return {
+      propertyId: d.propertyId,
+      label,
+      poNumber: d.poNumber.trim() ? formatPoDisplay(d.poNumber) : "—",
+      area: d.area?.trim() || "—",
+    };
+  });
+  const areas = live.map((d) => parseLocaleNumber(d.area ?? ""));
+  const totalArea = areas.every((a) => Number.isFinite(a))
+    ? `${fmtMax(areas.reduce((sum, a) => sum + a, 0), 2)} م²`
+    : "—";
+  return { rows, totalArea };
+}
 
 const SECTION_TITLES: Record<CaseStudyQuestionSection, string> = {
   deed: "بيانات الصك والعقار",
@@ -108,10 +170,14 @@ function buildCaseStudyReportApproval(
     "assignmentSpecialist" | "receivedFromEnfathAt" | "promulgationDate"
   > | null | undefined,
   draft: CaseStudyReportDraft,
+  deeds: CaseStudyReportDeeds | undefined,
 ): CaseStudyReportApproval {
-  const deedNumber = property
-    ? formatPropertyDeedDisplay(property)
-    : draft.deedNumber.trim() || "—";
+  // Several deeds: the report names them all — the study is one for the whole property.
+  const deedNumber = deeds
+    ? deeds.rows.map((d) => d.label).join(" ، ")
+    : property
+      ? formatPropertyDeedDisplay(property)
+      : draft.deedNumber.trim() || "—";
   const requestNumber = task.poNumber.trim()
     ? formatPoDisplay(task.poNumber)
     : draft.requestNumber.trim() || "—";
@@ -179,6 +245,7 @@ export function buildCaseStudyReportModel(
     | "promulgationDate"
   > | null | undefined,
   catalog: CaseStudyQuestionCatalog = DEFAULT_CASE_STUDY_QUESTION_CATALOG,
+  deeds?: CaseStudyReportDeeds,
 ): CaseStudyReportModel {
   const requestDateIso = resolveRequestDateIso(poRecord, draft);
   const approval = buildCaseStudyReportApproval(
@@ -186,6 +253,7 @@ export function buildCaseStudyReportModel(
     property,
     poRecord,
     draft,
+    deeds,
   );
   const assignmentSpecialist =
     poRecord?.assignmentSpecialist?.trim() || "—";
@@ -248,5 +316,6 @@ export function buildCaseStudyReportModel(
     propertyType: property ? formatPropertyTypeLine(property) : "",
     sections,
     approval,
+    deeds,
   };
 }

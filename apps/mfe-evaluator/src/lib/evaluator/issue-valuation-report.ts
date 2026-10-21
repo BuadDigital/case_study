@@ -3,7 +3,6 @@ import {
   type ValuationRequestLiteDto,
 } from "@platform/api-client";
 import { apiConfig } from "./api-config";
-import { reservedValuationReportNumber } from "./valuation-report-number";
 
 function openFailureMessage(
   kind: "auth" | "network" | "server" | "validation" | "not_found" | "conflict",
@@ -39,10 +38,4 @@ export async function ensureOpenValuationRequest(
     throw new Error(openFailureMessage(open.kind));
   }
   return open.data;
-}
-
-export function reservedNumberFromValuationRequest(
-  request: ValuationRequestLiteDto,
-): string {
-  return reservedValuationReportNumber(request.displayId, request.date);
 }

@@ -4,6 +4,7 @@ import {
   applyCourtAccessOption,
   attachmentTileTitle,
   buildCourtAccessBody,
+  buildReceiveBackBody,
   courtAccessAttachmentRemoved,
   courtAccessAttachmentUploaded,
   courtAccessSavedMessage,
@@ -74,6 +75,7 @@ describe("validateMatchResult", () => {
       ok: true,
       status: "partial",
       note: "شقة 3",
+      keyLocation: "in_envelope",
     });
   });
 
@@ -82,6 +84,7 @@ describe("validateMatchResult", () => {
       ok: true,
       status: "matched",
       note: MATCHED_DEFAULT_NOTE,
+      keyLocation: "in_envelope",
     });
   });
 });
@@ -258,5 +261,67 @@ describe("court access draft", () => {
       saved,
     );
     expect(cleared.enablingLetterAttachmentId).toBeNull();
+  });
+});
+
+describe("key place with the match result (decision 2026-10-20)", () => {
+  it("defaults a match to «back in the envelope» and keeps the chosen place", () => {
+    const back = validateMatchResult("matched", "");
+    expect(back.ok && back.keyLocation).toBe("in_envelope");
+    const kept = validateMatchResult("partial", "شقة 3 بلا مفتاح", "with_user");
+    expect(kept.ok && kept.keyLocation).toBe("with_user");
+  });
+
+  it("has no key to place when nothing matched", () => {
+    const none = validateMatchResult("unmatched", "لا مفتاح", "with_user");
+    expect(none.ok && none.keyLocation).toBeNull();
+    const missing = validateMatchResult("missing", "ضاع");
+    expect(missing.ok && missing.keyLocation).toBeNull();
+  });
+});
+
+describe("buildReceiveBackBody (decision 2026-10-20)", () => {
+  const withInspector = {
+    ...envelope([handoff({ toParty: "أحمد", toUserId: "ahmad" })]),
+    holderKind: "internal_user",
+    holderLabel: "أحمد",
+    createdByUserId: "rev-1",
+    createdByName: "سالم",
+  };
+
+  it("lets the reviewer receive at once — he is the receiver", () => {
+    const r = buildReceiveBackBody(withInspector, {
+      userId: "rev-1",
+      displayName: "سالم",
+      role: "government-reviewer",
+    });
+    expect(r.ok && r.immediate).toBe(true);
+    expect(r.ok && r.body).toEqual({
+      kind: "receive_back",
+      fromParty: "أحمد",
+      toParty: "سالم",
+      toUserId: "rev-1",
+      letterAttachmentId: null,
+      notes: null,
+    });
+  });
+
+  it("makes an inspector hand the envelope to the envelope's reviewer and wait", () => {
+    const r = buildReceiveBackBody(withInspector, {
+      userId: "ahmad",
+      displayName: "أحمد",
+      role: "field-inspector",
+    });
+    expect(r.ok && r.immediate).toBe(false);
+    expect(r.ok && r.body.toUserId).toBe("rev-1");
+    expect(r.ok && r.body.toParty).toBe("سالم");
+  });
+
+  it("refuses when the inspector's envelope has no known reviewer", () => {
+    const r = buildReceiveBackBody(
+      { ...withInspector, createdByUserId: null },
+      { userId: "ahmad", displayName: "أحمد", role: "field-inspector" },
+    );
+    expect(r.ok).toBe(false);
   });
 });

@@ -53,9 +53,9 @@ export const OPERATIONS_TASK_PRIORITY_COLORS: Record<string, string> = {
 };
 
 export const OPERATIONS_TASK_SCOPE_LABELS: Record<string, string> = {
-  transaction: "معاملة",
+  transaction: "صك",
   work_order: "أمر عمل",
-  multi: "عدة معاملات",
+  multi: "عدة صكوك",
   general: "عامة",
 };
 

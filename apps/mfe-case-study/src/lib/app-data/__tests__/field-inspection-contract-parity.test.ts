@@ -107,6 +107,18 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(errors.missingComponentPhotoKey).toBe("showroom");
   });
 
+  it("does not demand «الواجهة» for an apartment (the server never does)", () => {
+    const apartment = completeDraft();
+    apartment.featureValues.assetSubject = "شقة";
+    apartment.featureValues.facade = "";
+    expect(validateInspectorWorkspace(apartment).emptyFeatureKeys ?? []).not.toContain("facade");
+
+    const villa = completeDraft();
+    villa.featureValues.assetSubject = "فيلا";
+    villa.featureValues.facade = "";
+    expect(validateInspectorWorkspace(villa).emptyFeatureKeys ?? []).toContain("facade");
+  });
+
   it("does not demand a value for unselected yes/no presence pills", () => {
     const draft = completeDraft();
     draft.featureValues.assetSubject = "عمارة";

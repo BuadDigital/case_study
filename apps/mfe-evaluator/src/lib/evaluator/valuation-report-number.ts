@@ -1,34 +1,14 @@
-// Numbering workshop (decision item 3): unified pattern TQ-{year}-{5-digit sequence}. Frozen numbers
-// in Q-6 snapshots issued before rollout do not change — this format is for issues after only.
-// Must stay aligned with ValuationReportNumberRules on the server.
+// Decision 2026-10-19: the report number (PRV-{year}-{seq}) is never computed in the browser. It
+// derives from the transaction's official PR reference, confirmed by the server at the first
+// report approval, and reaches the screens as `reportNo` on the appraisal package and as
+// `reportNumber` on the report draft. Only the issue-date helper remains here.
 
 import { localDateIso } from "@platform/app-shared/format/date";
 
-export function formatValuationReportNumber(
-  issuedAt: Date,
-  ordinal: number,
-): string {
-  const n = Number.isFinite(ordinal) && ordinal >= 1 ? Math.floor(ordinal) : 1;
-  return `TQ-${issuedAt.getFullYear()}-${String(n).padStart(5, "0")}`;
-}
-
-/** Local calendar date — same calendar as the report number's year (UTC slipped a day after midnight). */
+/** Local calendar date — the report's own date (UTC slipped a day after midnight). */
 export function formatValuationReportIssueDateIso(issuedAt: Date = new Date()): string {
   return localDateIso(issuedAt);
 }
 
-/** Number reserved at distribution: TQ + request year + digits from VR-####. */
-export function reservedValuationReportNumber(
-  displayId: string,
-  requestDate: string,
-): string {
-  const digits = (displayId ?? "").replace(/\D/g, "");
-  const parsed = Number.parseInt(digits, 10);
-  const ordinal = Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
-  const trimmed = requestDate.trim();
-  const parts = /^(\d{4})-(\d{2})-(\d{2})/.exec(trimmed);
-  const issuedAt = parts
-    ? new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]))
-    : new Date();
-  return formatValuationReportNumber(issuedAt, ordinal);
-}
+/** What the screens show where the number will be, before the server fixed it. */
+export const REPORT_NUMBER_PENDING_AR = "يُثبَّت عند الاعتماد";

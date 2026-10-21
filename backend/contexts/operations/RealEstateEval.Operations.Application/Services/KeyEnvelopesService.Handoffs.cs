@@ -49,6 +49,10 @@ public sealed partial class KeyEnvelopesService
         }
 
         var now = _time.UtcNow();
+        // A receive-back the reviewer records himself is his own confirmation (he is the receiver).
+        var toUserId = Texts.NullIfBlank(request.ToUserId);
+        var actorIsReceiver = kind == KeyHandoffKinds.ReceiveBack
+            && (toUserId is null || string.Equals(toUserId, actorUserId, StringComparison.Ordinal));
         var handoff = new KeyEnvelopeHandoff
         {
             Id = Guid.NewGuid(),
@@ -56,20 +60,26 @@ public sealed partial class KeyEnvelopesService
             Kind = kind,
             FromParty = fromParty,
             ToParty = toParty,
-            ToUserId = Texts.NullIfBlank(request.ToUserId),
+            ToUserId = toUserId ?? (actorIsReceiver ? actorUserId : null),
             LetterNumber = Texts.NullIfBlank(request.LetterNumber),
             LetterAttachmentId = KeyEnvelopeRegistrationRules.EmptyToNull(request.LetterAttachmentId),
             Notes = Texts.NullIfBlank(request.Notes),
-            Status = KeyEnvelopeRegistrationRules.InitialHandoffStatus(kind),
+            Status = KeyEnvelopeRegistrationRules.InitialHandoffStatus(kind, actorIsReceiver),
             CreatedByUserId = actorUserId,
             CreatedByName = actorDisplayName.Trim(),
             CreatedAtUtc = now,
         };
 
-        if (kind != KeyHandoffKinds.Internal)
+        if (handoff.Status != KeyHandoffStatuses.PendingConfirm)
         {
-            KeyEnvelopeLifecycleRules.ApplyHandoffStatus(entity, kind);
+            // Custody moves now: the letter (external / court) or the reviewer's own receipt is the confirmation.
+            entity.ApplyConfirmedHandoff(handoff, now);
             handoff.ConfirmedAtUtc = now;
+            if (actorIsReceiver)
+            {
+                handoff.ConfirmedByUserId = actorUserId;
+                handoff.ConfirmedByName = actorDisplayName.Trim();
+            }
         }
 
         await _repo.AddHandoffAsync(handoff, cancellationToken);
@@ -85,8 +95,7 @@ public sealed partial class KeyEnvelopesService
 
         await SaveAndDetachAsync(cancellationToken);
 
-        var toUserId = Texts.NullIfBlank(request.ToUserId);
-        if (toUserId is not null)
+        if (toUserId is not null && handoff.Status == KeyHandoffStatuses.PendingConfirm)
         {
             await _notifications.CreateForUserAsync(
                 toUserId,
@@ -131,8 +140,10 @@ public sealed partial class KeyEnvelopesService
         handoff.ConfirmedByUserId = actorUserId;
         handoff.ConfirmedByName = actorDisplayName.Trim();
         handoff.ConfirmedAtUtc = now;
-        KeyEnvelopeLifecycleRules.ApplyHandoffStatus(entity, handoff.Kind);
-        entity.Touch(now);
+        // The receiver confirmed: custody status and holder move together.
+        if (handoff.Kind == KeyHandoffKinds.Internal && string.IsNullOrWhiteSpace(handoff.ToUserId))
+            handoff.ToUserId = actorUserId;
+        entity.ApplyConfirmedHandoff(handoff, now);
         await AddTimelineAsync(
             entity.Id,
             KeyEnvelopeTimelineEvents.HandoffConfirmed,

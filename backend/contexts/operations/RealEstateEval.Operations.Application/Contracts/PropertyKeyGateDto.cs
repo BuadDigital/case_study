@@ -23,4 +23,13 @@ public sealed class PropertyKeyGateDto
     public Guid? PendingHandoffId { get; init; }
     public string StudyHoldStatus { get; init; } = PropertyCourtAccessStatuses.None;
     public bool EnvelopeMissingWarning { get; init; }
+
+    // Custody (decision 2026-10-20): who holds the envelope and where this deed's key is. The
+    // screen compares the holder with the deed's own inspector — operations cannot see tasks.
+    public string? EnvelopeHolderKind { get; init; }
+    public string? EnvelopeHolderUserId { get; init; }
+    public string? EnvelopeHolderLabel { get; init; }
+    public string? KeyLocation { get; init; }
+    public string? KeyHolderUserId { get; init; }
+    public string? KeyHolderLabel { get; init; }
 }

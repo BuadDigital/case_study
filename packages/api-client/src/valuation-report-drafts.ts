@@ -12,6 +12,8 @@ export type ValuationReportDraftStatus = "none" | "preparing" | "sent" | "approv
  */
 export type ValuationReportDraftDto = {
   valuationRequestId: string;
+  /** PRV-… once the report was approved (or its number confirmed on the way to approval); null before. */
+  reportNumber?: string | null;
   draftId?: string | null;
   status: ValuationReportDraftStatus;
   /** Report cycle: 1 until a deposited report is reopened as a new version. */
@@ -154,6 +156,50 @@ export function withdrawReportDraft(
   note?: string,
 ): Promise<Result<ValuationReportDraftDto>> {
   return send(config, valuationRequestId, "/withdraw", "POST", { note });
+}
+
+export type ValuationReportNumberDto = {
+  valuationRequestId: string;
+  /** PRV-{year}-{seq}, derived from the transaction's official reference. */
+  reportNumber: string;
+};
+
+/**
+ * Fixes the report number before the approved copy is printed (decision 2026-10-19): the
+ * transaction's official PR reference is confirmed through Case Study and PRV-… returned. Idempotent.
+ */
+export async function ensureReportNumber(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+): Promise<Result<ValuationReportNumberDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}${path(valuationRequestId, "/report-number")}`, {
+      method: "POST",
+      headers: authHeaders(config.token, { accept: true }),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return { ok: false, kind: "forbidden", message: await problemMessage(res) };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) {
+      return { ok: false, kind: res.status >= 500 ? "server" : "validation", message: await problemMessage(res) };
+    }
+    const data = (await parseJson<ValuationReportNumberDto>(res)) ?? null;
+    if (!data?.reportNumber) return { ok: false, kind: "server" };
+    return { ok: true, data };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+async function problemMessage(res: Response): Promise<string | undefined> {
+  try {
+    const body = (await res.clone().json()) as { detail?: string; title?: string; errors?: Record<string, string> };
+    const firstError = body?.errors ? Object.values(body.errors).find((v) => typeof v === "string" && v) : undefined;
+    return body?.detail || firstError || body?.title || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The assigned appraiser approves the sent draft: the printed report as he saw it + its date. */

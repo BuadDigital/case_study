@@ -345,10 +345,17 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         // The client is part of the detail DTO (`ClientNameAr`): without the include the map and any other
         // reader of this list saw the client id but never its name.
         IQueryable<WorkOrder> query = _db.WorkOrders
-            .AsNoTracking()
+            // Identity resolution: the transaction → properties → transaction include is a cycle a
+            // plain no-tracking query refuses.
+            .AsNoTrackingWithIdentityResolution()
             .Include(w => w.Client)
             .Include(w => w.Properties)
             .ThenInclude(p => p.Contacts)
+            // The transaction with ALL its deeds (they may sit on other work orders): the deed
+            // count on the row is read from here.
+            .Include(w => w.Properties)
+            .ThenInclude(p => p.Transaction)
+            .ThenInclude(t => t!.Properties)
             .OrderByDescending(w => w.CreatedAtUtc);
 
         var visiblePos = await _visibility.ResolveVisiblePoNumbersAsync(actor, cancellationToken);
@@ -513,7 +520,17 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
             .Take(MaxDetailRows)
             .ToListAsync(cancellationToken);
 
-        return list.Select(WorkOrderMapper.ToPendingBourse).ToList();
+        // The transaction number as a separate lookup: a required navigation joins inner and
+        // would drop a deed whose transaction row is missing (older seeds, tests).
+        var transactionIds = list.Select(p => p.TransactionId).Distinct().ToList();
+        var numbers = await _db.Transactions.AsNoTracking()
+            .Where(t => transactionIds.Contains(t.Id))
+            .Select(t => new { t.Id, Number = t.ReferenceNumber ?? t.DraftNumber })
+            .ToDictionaryAsync(t => t.Id, t => t.Number, cancellationToken);
+
+        return list
+            .Select(p => WorkOrderMapper.ToPendingBourse(p, numbers.GetValueOrDefault(p.TransactionId)))
+            .ToList();
     }
 
     public async Task<WorkOrderDto> WithResolvedSpecialistAsync(

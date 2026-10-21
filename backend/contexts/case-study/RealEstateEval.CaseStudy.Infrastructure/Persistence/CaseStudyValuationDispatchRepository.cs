@@ -36,6 +36,15 @@ public sealed class CaseStudyValuationDispatchRepository(CaseStudyDbContext db)
         db.WorkOrderProperties.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
 
+    public async Task<(Guid HolderPropertyId, IReadOnlyList<Guid> SiblingPropertyIds)> GetTransactionDeedsAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var holder = await StudyHolder.HolderPropertyAsync(db, propertyId, cancellationToken);
+        var deeds = await StudyHolder.TransactionPropertyIdsAsync(db, propertyId, cancellationToken);
+        return (holder, deeds.Where(id => id != propertyId).ToList());
+    }
+
     public Task<PartyTaskSubmission?> GetSubmissionAsync(
         Guid workflowTaskId,
         CancellationToken cancellationToken) =>

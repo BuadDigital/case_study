@@ -1,3 +1,4 @@
+using RealEstateEval.Domain;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Domain;
 
@@ -96,8 +97,11 @@ public static class OperationsTaskCommandRules
             ? "⏰ تذكير تلقائي ضمن ساعات العمل (المنفّذ والمنشئ)."
             : "🔔 تم إرسال تذكير فوري إلى المنفّذ.";
 
-    public static string DisplayId(int year, int sequence) => $"T-{year}-{sequence:D4}";
+    /// <summary>Operations task id: T-26-0007 (two-digit year, decision 2026-10-20).</summary>
+    public static string DisplayId(int year, int sequence) =>
+        $"T-{ReferenceNumbering.ShortYear(year)}-{sequence:D4}";
 
+    /// <summary>Court-visit reference CV-26-0007 — Latin only; no reference carries an Arabic prefix.</summary>
     public static string? Reference(int year, int sequence, bool courtVisit) =>
-        courtVisit ? $"خ.ت-{year}-{sequence:D4}" : null;
+        courtVisit ? $"CV-{ReferenceNumbering.ShortYear(year)}-{sequence:D4}" : null;
 }

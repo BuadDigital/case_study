@@ -652,74 +652,6 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.ToTable("PropertyContacts", "case_study");
                 });
 
-            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyGroup", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("PropertyGroups", "case_study");
-                });
-
-            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyGroupMember", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("LinkedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("LinkedByUserId")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<Guid>("PropertyId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("SuggestionSignals")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<string>("UnlinkReason")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<DateTime?>("UnlinkedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("UnlinkedByUserId")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GroupId");
-
-                    b.HasIndex("PropertyId", "IsActive");
-
-                    b.ToTable("PropertyGroupMembers", "case_study");
-                });
-
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyTimelineEntry", b =>
                 {
                     b.Property<Guid>("Id")
@@ -769,6 +701,75 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.HasIndex("PoNumber", "PropertyId", "OccurredAtUtc");
 
                     b.ToTable("PropertyTimelineEntries", "case_study");
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.Transaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ConfirmedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DraftNumber")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("LinkKind")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("LinkReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime?>("MergedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("MergedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid?>("MergedIntoTransactionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReferenceNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid?>("StudyHolderPropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DraftNumber")
+                        .IsUnique();
+
+                    b.HasIndex("MergedIntoTransactionId");
+
+                    b.HasIndex("ReferenceNumber")
+                        .IsUnique();
+
+                    b.HasIndex("StudyHolderPropertyId");
+
+                    b.ToTable("Transactions", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_Transactions_LinkKind", "\"LinkKind\" IS NULL OR \"LinkKind\" IN ('one_building', 'contract')");
+                        });
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrder", b =>
@@ -1101,10 +1102,6 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
-                    b.Property<string>("ReferenceNumber")
-                        .HasMaxLength(32)
-                        .HasColumnType("character varying(32)");
-
                     b.Property<string>("Region")
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
@@ -1182,6 +1179,9 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasColumnType("jsonb")
                         .HasDefaultValue("{}");
 
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("UninspectedUnitsJson")
                         .HasColumnType("jsonb");
 
@@ -1225,11 +1225,11 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                     b.HasIndex("EnfazHandoverAtUtc");
 
-                    b.HasIndex("ReferenceNumber");
-
                     b.HasIndex("RegionId");
 
                     b.HasIndex("RequestNumber");
+
+                    b.HasIndex("TransactionId");
 
                     b.HasIndex("WorkOrderId", "DeedNumber");
 
@@ -1436,23 +1436,6 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Navigation("Property");
                 });
 
-            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyGroupMember", b =>
-                {
-                    b.HasOne("RealEstateEval.CaseStudy.Domain.PropertyGroup", "Group")
-                        .WithMany("Members")
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", null)
-                        .WithMany()
-                        .HasForeignKey("PropertyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Group");
-                });
-
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyTimelineEntry", b =>
                 {
                     b.HasOne("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", null)
@@ -1460,6 +1443,14 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasForeignKey("PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.Transaction", b =>
+                {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.Transaction", null)
+                        .WithMany()
+                        .HasForeignKey("MergedIntoTransactionId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrder", b =>
@@ -1474,11 +1465,19 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrderProperty", b =>
                 {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.Transaction", "Transaction")
+                        .WithMany("Properties")
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.HasOne("RealEstateEval.CaseStudy.Domain.WorkOrder", "WorkOrder")
                         .WithMany("Properties")
                         .HasForeignKey("WorkOrderId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Transaction");
 
                     b.Navigation("WorkOrder");
                 });
@@ -1496,9 +1495,9 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .OnDelete(DeleteBehavior.Cascade);
                 });
 
-            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.PropertyGroup", b =>
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.Transaction", b =>
                 {
-                    b.Navigation("Members");
+                    b.Navigation("Properties");
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrder", b =>

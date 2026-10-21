@@ -10,11 +10,13 @@ public static class ValuationRequestStatuses
     public const string Progress = "progress";
     public const string Done = "done";
     public const string Failed = "fail";
+    public const string Merged = "merged";
 
     public static string ToDbValue(this ValuationRequestStatus status) => status switch
     {
         ValuationRequestStatus.Done => Done,
         ValuationRequestStatus.Failed => Failed,
+        ValuationRequestStatus.Merged => Merged,
         _ => Progress,
     };
 
@@ -25,6 +27,7 @@ public static class ValuationRequestStatuses
             case Progress: status = ValuationRequestStatus.Progress; return true;
             case Done: status = ValuationRequestStatus.Done; return true;
             case Failed: status = ValuationRequestStatus.Failed; return true;
+            case Merged: status = ValuationRequestStatus.Merged; return true;
             default: status = ValuationRequestStatus.Progress; return false;
         }
     }

@@ -340,7 +340,8 @@ public class ValuationDepositAndNewVersionTests
             caseStudy: lookup,
             caseStudyCommands: caseStudy);
         var service = new ValuationReportDraftService(
-            contexts.Valuation, issuance, lookup, events, new FixedClock(new DateTimeOffset(2026, 10, 5, 9, 0, 0, TimeSpan.Zero)));
+            contexts.Valuation, issuance, lookup, events, new FixedClock(new DateTimeOffset(2026, 10, 5, 9, 0, 0, TimeSpan.Zero)),
+            caseStudyCommands: new FakeCaseStudyCommands());
         return new Rig(contexts, requestId, propertyId, taskId, service, issuance, caseStudy, audit);
     }
 

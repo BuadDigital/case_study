@@ -54,10 +54,14 @@ public sealed class CaseStudyDispatchPostgresTests : IAsyncLifetime
             DueDateAt = new DateOnly(2026, 9, 1),
             CreatedAtUtc = DateTime.UtcNow,
         });
+        // Decision 2026-10-19: every deed sits under a transaction (FK enforced on Postgres).
+        var transaction = Transaction.CreateDraft($"TMP-26-{Random.Shared.Next(10000, 99999)}", DateTime.UtcNow);
+        cs.Transactions.Add(transaction);
         cs.WorkOrderProperties.Add(new WorkOrderProperty
         {
             Id = _propertyId,
             WorkOrderId = workOrderId,
+            TransactionId = transaction.Id,
             DeedNumber = "D-DSP-1",
             City = "الرياض",
             District = "حي الياسمين",

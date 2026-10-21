@@ -15,6 +15,7 @@ import {
 } from "../../lib/app-data/po-intake-data";
 import {
   effectiveDeedVerdict,
+  isApartmentInspectionContext,
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
@@ -28,6 +29,7 @@ import { useFacadeOptions } from "../../query/use-facade-options";
 import { FALLBACK_FACADE_OPTIONS } from "./inspector-wizard-state";
 import {
   boundaryMatchPatch,
+  inspectionContextOf,
   resolvedBoundaryDeedField,
 } from "./field-inspection-work-state";
 
@@ -48,6 +50,8 @@ export function InspectorBoundaryMatchTable({
   const facadeTypeOptions = catalogFacadeOptions ?? FALLBACK_FACADE_OPTIONS;
   // Per-side verdicts + notes only under «غير مطابق» (explicit, or derived from a legacy payload).
   const showMatchCols = effectiveDeedVerdict(draft) === "no";
+  // An apartment records no facades — no «نوع الواجهة» column.
+  const showFacade = !isApartmentInspectionContext(inspectionContextOf(draft, property));
 
   return (
     <>
@@ -82,7 +86,7 @@ export function InspectorBoundaryMatchTable({
                   {(
                     [
                       "الجهة",
-                      "نوع الواجهة",
+                      ...(showFacade ? (["نوع الواجهة"] as const) : []),
                       "الحد حسب الصك",
                       "الطول (م)",
                       ...(showMatchCols
@@ -126,6 +130,7 @@ export function InspectorBoundaryMatchTable({
                       <td className={cn(INS_TD_CLASS, "font-bold text-heading")}>
                         {row.label}
                       </td>
+                      {showFacade ? (
                       <td className={INS_TD_CLASS}>
                         {editable ? (
                         <Select
@@ -153,6 +158,7 @@ export function InspectorBoundaryMatchTable({
                           facade.trim() || "—"
                         )}
                       </td>
+                      ) : null}
                       <td className={INS_TD_CLASS}>
                         {editable ? (
                           <input

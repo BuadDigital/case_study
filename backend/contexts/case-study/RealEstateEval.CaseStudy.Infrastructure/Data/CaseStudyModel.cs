@@ -55,6 +55,29 @@ public static class CaseStudyModel
             e.HasIndex(x => x.ClientId);
         });
 
+        builder.Entity<Transaction>(e =>
+        {
+            MapTable(e, "Transactions", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.UseOptimisticConcurrency();
+            e.Property(x => x.DraftNumber).HasMaxLength(32).IsRequired();
+            e.Property(x => x.ReferenceNumber).HasMaxLength(32);
+            e.Property(x => x.LinkKind).HasMaxLength(32);
+            e.Property(x => x.LinkReason).HasMaxLength(2000);
+            e.Property(x => x.MergedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.HasIndex(x => x.StudyHolderPropertyId);
+            e.HasIndex(x => x.DraftNumber).IsUnique();
+            e.HasIndex(x => x.ReferenceNumber).IsUnique();
+            e.HasIndex(x => x.MergedIntoTransactionId);
+            e.HasAllowedValues(
+                "Transactions",
+                nameof(Transaction.LinkKind),
+                [TransactionLinkKinds.OneBuilding, TransactionLinkKinds.Contract]);
+            e.HasOne<Transaction>()
+                .WithMany()
+                .HasForeignKey(x => x.MergedIntoTransactionId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
         builder.Entity<Client>(e =>
         {
             MapTable(e, "Clients", DatabaseSchemas.CaseStudy, ownsMigrations);
@@ -72,8 +95,11 @@ public static class CaseStudyModel
  // Edited from intake, bourse, inspection and specialist screens; a stale save must 409
  // rather than silently overwrite another user's answers.
             e.UseOptimisticConcurrency();
-            e.Property(x => x.ReferenceNumber).HasMaxLength(32);
-            e.HasIndex(x => x.ReferenceNumber);
+            e.HasOne(x => x.Transaction)
+                .WithMany(t => t.Properties)
+                .HasForeignKey(x => x.TransactionId)
+                .OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => x.TransactionId);
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.DeedKind)
                 .HasConversion<int>();
@@ -183,31 +209,6 @@ public static class CaseStudyModel
             e.Property(x => x.ProvenanceJson).HasColumnType("jsonb").HasDefaultValue("{}");
             e.HasIndex(x => x.PropertyId);
             e.HasIndex(x => new { x.PropertyId, x.SortOrder });
-        });
-
-        builder.Entity<PropertyGroup>(e =>
-        {
-            MapTable(e, "PropertyGroups", DatabaseSchemas.CaseStudy, ownsMigrations);
-            e.Property(x => x.Name).HasMaxLength(256);
-            e.HasMany(x => x.Members)
-                .WithOne(x => x.Group!)
-                .HasForeignKey(x => x.GroupId)
-                .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        builder.Entity<PropertyGroupMember>(e =>
-        {
-            MapTable(e, "PropertyGroupMembers", DatabaseSchemas.CaseStudy, ownsMigrations);
-            e.Property(x => x.LinkedByUserId).HasMaxLength(128).IsRequired();
-            e.Property(x => x.SuggestionSignals).HasMaxLength(512);
-            e.Property(x => x.UnlinkReason).HasMaxLength(2000);
-            e.Property(x => x.UnlinkedByUserId).HasMaxLength(128);
-            e.HasIndex(x => x.GroupId);
-            e.HasIndex(x => new { x.PropertyId, x.IsActive });
-            e.HasOne<WorkOrderProperty>()
-                .WithMany()
-                .HasForeignKey(x => x.PropertyId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<PropertyContact>(e =>

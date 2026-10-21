@@ -103,7 +103,7 @@ export function CreateTaskLinkScopeFields({
 
       {scope === "transaction" && selectedPo ? (
         <div className={opsFldFull}>
-          <label className={opsTfLblInFld}>المعاملة (الصك) *</label>
+          <label className={opsTfLblInFld}>الصك *</label>
           <select
             className={opsFldControl}
             value={deed}

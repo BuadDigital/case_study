@@ -119,6 +119,19 @@ public sealed class CaseStudyValuationPropertyContextDto
     public string? ClientNameEn { get; set; }
     public IReadOnlyList<string> ReportUserClientNamesAr { get; set; } = [];
 
+    // Phase 5 (decision 2026-10-19): the transaction above the deeds. One valuation covers every
+    // deed, so the report lists them all; empty for a host that predates the field.
+    public Guid? TransactionId { get; set; }
+    /// <summary>PR-… once confirmed, else the D- draft number.</summary>
+    public string? TransactionNumber { get; set; }
+    public string? TransactionLinkKind { get; set; }
+    /// <summary>The deed whose tasks carry the transaction's study and valuation.</summary>
+    public Guid? StudyHolderPropertyId { get; set; }
+    public IReadOnlyList<CaseStudyTransactionDeedDto> TransactionDeeds { get; set; } = [];
+
+    /// <summary>True when the transaction has several live deeds (a linked property).</summary>
+    public bool IsLinkedProperty => TransactionDeeds.Count(d => !d.IsRemoved) > 1;
+
     public Domain.DeedKind DeedKindValue() =>
         DeedKindLabels.TryParseApiValue(DeedKind, out var parsed)
             ? parsed
@@ -190,6 +203,59 @@ public sealed class CaseStudyValuationPropertyContextDto
             .Select(line => line.ToLine(Id))
             .ToList(),
     };
+}
+
+/// <summary>One deed of the transaction as the valuation report prints it.</summary>
+public sealed class CaseStudyTransactionDeedDto
+{
+    public Guid PropertyId { get; set; }
+    public string PoNumber { get; set; } = "";
+    public string IdentifierType { get; set; } = "";
+    public string DeedNumber { get; set; } = "";
+    public string? DeedDate { get; set; }
+    public string? RealEstateRegNumber { get; set; }
+    public string? RealEstateRegDate { get; set; }
+    public string? Area { get; set; }
+    public string? OwnerName { get; set; }
+    public string? PlotNumber { get; set; }
+    public string? PlanNumber { get; set; }
+    public bool IsRemoved { get; set; }
+
+    /// <summary>Registry number when the deed is identified by one, else the deed number.</summary>
+    public string Label()
+    {
+        var registry = RealEstateRegNumber?.Trim();
+        if (IdentifierType == "real_estate_reg" && !string.IsNullOrWhiteSpace(registry)) return registry!;
+        return !string.IsNullOrWhiteSpace(DeedNumber) ? DeedNumber.Trim() : registry ?? "";
+    }
+
+    /// <summary>The registry date for a registry deed, else the deed date.</summary>
+    public string? DateLabel() =>
+        IdentifierType == "real_estate_reg" && !string.IsNullOrWhiteSpace(RealEstateRegDate)
+            ? RealEstateRegDate
+            : DeedDate;
+}
+
+/// <summary>How a linked property's deeds print in one report cell (decision 2026-10-19).</summary>
+public static class CaseStudyTransactionDeedRules
+{
+    public const string Separator = " ، ";
+
+    /// <summary>Every live deed's label joined; null when the transaction is not a linked property.</summary>
+    public static string? JoinedLabels(IReadOnlyList<CaseStudyTransactionDeedDto> deeds)
+    {
+        var live = deeds.Where(d => !d.IsRemoved).Select(d => d.Label()).Where(l => l.Length > 0).ToList();
+        return live.Count > 1 ? string.Join(Separator, live) : null;
+    }
+
+    /// <summary>Every distinct live deed date joined, in deed order; null when not a linked property.</summary>
+    public static string? JoinedDates(IReadOnlyList<CaseStudyTransactionDeedDto> deeds)
+    {
+        var live = deeds.Where(d => !d.IsRemoved).ToList();
+        if (live.Count < 2) return null;
+        var dates = live.Select(d => d.DateLabel()?.Trim() ?? "").Select(d => d.Length == 0 ? "—" : d).ToList();
+        return string.Join(Separator, dates);
+    }
 }
 
 public sealed class CaseStudyBuildingInventoryLineDto

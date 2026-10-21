@@ -67,10 +67,25 @@ public sealed class ValuationRequestService : IValuationRequestService
         if (key == Guid.Empty) return null;
 
         var row = await _db.ValuationRequests.AsNoTracking()
-            .Where(x => x.PropertyId == key && x.Status != ValuationRequestStatus.Done)
+            .Where(x => x.PropertyId == key
+                && x.Status != ValuationRequestStatus.Done
+                && x.Status != ValuationRequestStatus.Merged)
             .OrderByDescending(x => x.UpdatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
-        if (row is null) return null;
+        if (row is null)
+        {
+            // Phase 5: a merged deed's valuation lives on the holder deed's request. It counts
+            // as the deed's open request while the holder's is open, and as closed afterwards.
+            var holderId = await _db.ValuationRequests.AsNoTracking()
+                .Where(x => x.PropertyId == key && x.Status == ValuationRequestStatus.Merged)
+                .OrderByDescending(x => x.UpdatedAtUtc)
+                .Select(x => x.MergedIntoRequestId)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (holderId is not Guid holder) return null;
+            row = await _db.ValuationRequests.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == holder, cancellationToken);
+            if (row is null || !row.IsOpen) return null;
+        }
 
         // One light read: Case Study refuses to reopen the appraiser's package while the report is frozen.
         var stage = await _db.ValuationReportIssuances.AsNoTracking()
@@ -344,6 +359,7 @@ public sealed class ValuationRequestService : IValuationRequestService
             ? RiyadhClock.DateOf(at).ToString("yyyy-MM-dd")
             : null,
         ReportStage = overlay.ReportStage,
+        MergedIntoRequestId = row.MergedIntoRequestId,
     };
 
     private readonly record struct RequestMapOverlay(

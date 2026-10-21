@@ -1,6 +1,6 @@
 import type { PageId, RoleId } from "@platform/types";
 import { CASE_STUDY_READY_NAV } from "@platform/types";
-import type { WorkflowTask } from "../workflow/task-types";
+import { isFoldedCaseStudyTask, type WorkflowTask } from "../workflow/task-types";
 import { PARTY_ACTIVE_TRANSACTIONS_NAV } from "./party-task-pages";
 
 /** Sidebar items under Active Transactions. */
@@ -37,6 +37,8 @@ const CASE_STUDY_ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
 
 function taskMatchesCaseStudy(task: WorkflowTask): boolean {
   if (task.kind !== "case-study-property") return false;
+  // Phase 4: one study per transaction — a deed folded into another deed's study is not a row.
+  if (isFoldedCaseStudyTask(task)) return false;
   return task.phase === "case-study" || task.phase === "done";
 }
 
@@ -49,6 +51,7 @@ export function filterTasksForCaseStudy(
 /** Properties ready for packing/upload on the system (Enfath handoff). */
 function taskMatchesSystemUpload(task: WorkflowTask): boolean {
   // Only properties whose case-study form was completed/accepted — not open studies.
+  // Every deed of a transaction is uploaded to Enfaz on its own, so folded deeds stay listed here.
   if (task.kind !== "case-study-property") return false;
   return task.status === "completed";
 }

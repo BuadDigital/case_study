@@ -7,7 +7,7 @@
  * `po-property-detail-tabs-state.ts`; lazy bodies in `PropertyDetailTabChunks`.
  */
 
-import { Activity, useRef } from "react";
+import { Activity, useMemo, useRef } from "react";
 import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import {
@@ -31,10 +31,14 @@ import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { propertyTabHasNewDot } from "../../lib/app-data/property-detail-local-ui";
 import { DocumentsTab } from "./PropertyDetailDocumentsTab";
 import {
+  groupPropertyDetailTabs,
   isAllowedPropertyTab,
   logIconClass,
   logIconGlyph,
+  type PropertyDetailTab,
 } from "./po-property-detail-tabs-state";
+import { useTransactionQuery } from "../../query/use-transaction-query";
+import { caseStudyReportDeeds } from "../../lib/app-data/case-study-report-document-model";
 import {
   PartyRoleDetailPanel,
   PropertyDetailAppraisalTab,
@@ -128,6 +132,26 @@ export function PoPropertyDetailTabs({
   // a tab shown again) keeps the submissions on screen instead of blanking them.
   const partiesLoading = partySubmissionsQuery.isLoading;
 
+  // Decision 2026-10-19: a transaction with several deeds shows two tab levels — the
+  // transaction's tabs, then this deed's behind the switcher in the hero. One deed: flat bar.
+  const { data: transaction } = useTransactionQuery(property.id);
+  const deedCount = transaction?.deedCount ?? property.transactionDeedCount ?? 1;
+  // Phase 4: the study (and its report) lives on the holder deed's parent task.
+  const holderTaskId = transaction?.studyHolderTaskId?.trim();
+  const studyTask =
+    (holderTaskId ? tasks.find((t) => t.id === holderTaskId) : undefined) ?? task ?? null;
+  const reportDeeds = useMemo(() => caseStudyReportDeeds(transaction?.deeds), [transaction]);
+  const tabGroups: { label: string | null; tabs: readonly PropertyDetailTab[] }[] =
+    deedCount > 1
+      ? groupPropertyDetailTabs(visibleTabs).map((g) => ({
+          label:
+            g.scope === "deed"
+              ? `الصك ${property.deedNumber.trim() || property.realEstateRegNumber.trim() || ""}`.trim()
+              : g.label,
+          tabs: g.tabs,
+        }))
+      : [{ label: null, tabs: visibleTabs }];
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <PropertyDetailMobileGlance
@@ -161,7 +185,20 @@ export function PoPropertyDetailTabs({
             aria-label="أقسام تفاصيل العقار"
             indicator={false}
           >
-            {visibleTabs.map((t) => {
+            {tabGroups.flatMap((group, groupIndex) => [
+              group.label ? (
+                <span
+                  key={`group:${group.label}`}
+                  className={cn(
+                    "mb-0 inline-flex items-center self-stretch px-2 py-[9px] text-[11px] font-bold text-text-3",
+                    groupIndex > 0 && "ms-2 border-s border-border ps-3",
+                  )}
+                  aria-hidden
+                >
+                  {group.label}
+                </span>
+              ) : null,
+              ...group.tabs.map((t) => {
               const active = effectiveTab === t.id;
               const hasNew = propertyTabHasNewDot(
                 t.id,
@@ -199,7 +236,8 @@ export function PoPropertyDetailTabs({
                   {t.label}
                 </Tab>
               );
-            })}
+              }),
+            ])}
           </TabBar>
 
           <TabPanel
@@ -398,7 +436,8 @@ export function PoPropertyDetailTabs({
               <PropertyDetailCaseStudyReport
                 record={record}
                 property={property}
-                task={task ?? null}
+                task={studyTask}
+                deeds={reportDeeds}
               />
             </Activity>
           ) : null}
@@ -453,6 +492,14 @@ export function PoPropertyDetailTabs({
                         </div>
                         <div className="flex flex-wrap gap-2 text-[11px] text-text-2 [&>span+span]:before:mx-2 [&>span+span]:before:text-text-3 [&>span+span]:before:content-['·']">
                           <span>{formatTimelineDate(event.at)}</span>
+                          {event.deedLabel ? (
+                            <span>
+                              صك{" "}
+                              <bdi dir="ltr" className={ltrValueClass}>
+                                {event.deedLabel}
+                              </bdi>
+                            </span>
+                          ) : null}
                           {event.detail ? <span>{event.detail}</span> : null}
                         </div>
                       </div>
@@ -469,6 +516,7 @@ export function PoPropertyDetailTabs({
               <PropertyDetailPropertyKeys
                 poNumber={poNumber}
                 property={property}
+                inspectionTask={inspectionTask}
               />
             </Activity>
           ) : null}

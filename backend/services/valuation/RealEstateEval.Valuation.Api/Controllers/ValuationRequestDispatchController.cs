@@ -14,8 +14,24 @@ namespace RealEstateEval.Valuation.Api.Controllers;
 [Route("api/valuation-request-dispatch")]
 [Authorize]
 [RequireUpstreamDispatch]
-public sealed class ValuationRequestDispatchController(IValuationRequestService service) : ControllerBase
+public sealed class ValuationRequestDispatchController(
+    IValuationRequestService service,
+    IValuationRequestFolding folding) : ControllerBase
 {
+    /// <summary>Phase 5: the merged deeds' open requests fold into the holder deed's request.</summary>
+    [HttpPost("fold")]
+    public async Task<ActionResult<FoldValuationRequestsResultDto>> Fold(
+        [FromBody] FoldValuationRequestsRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await folding.FoldAsync(request, cancellationToken));
+
+    /// <summary>Phase 5: a deed taken out of a transaction gets its own request back.</summary>
+    [HttpPost("unfold")]
+    public async Task<ActionResult<FoldValuationRequestsResultDto>> Unfold(
+        [FromBody] UnfoldValuationRequestRequest request,
+        CancellationToken cancellationToken) =>
+        Ok(await folding.UnfoldAsync(request, cancellationToken));
+
     [HttpGet("open-by-property/{propertyId}")]
     public async Task<ActionResult<ValuationRequestDto>> GetOpenByProperty(
         string propertyId,

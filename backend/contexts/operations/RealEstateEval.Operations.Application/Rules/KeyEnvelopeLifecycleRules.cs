@@ -36,6 +36,22 @@ public static class KeyEnvelopeLifecycleRules
         _ => status,
     };
 
+    public static string KeyLocationLabel(string? location) => location switch
+    {
+        KeyLocations.WithUser => "عند مستخدم",
+        KeyLocations.ReturnedCourt => "أُعيد للمحكمة",
+        KeyLocations.Missing => "مفقود",
+        _ => "في الظرف",
+    };
+
+    /// <summary>Every deed of ours was tried and every matching key is back in the envelope, returned or lost.</summary>
+    public static bool ReadyForCourtReturn(KeyEnvelope envelope) =>
+        envelope.Status == KeyEnvelopeStatuses.Reviewer
+        && envelope.Assignments.Count > 0
+        && envelope.Assignments.All(a =>
+            KeyAssignmentStatuses.IsConfirmResult(a.Status)
+            && a.KeyLocation != KeyLocations.WithUser);
+
     public static string HandoffSummary(string kind, string from, string to) => kind switch
     {
         KeyHandoffKinds.Internal => $"تسليم داخلي: {from} → {to}",

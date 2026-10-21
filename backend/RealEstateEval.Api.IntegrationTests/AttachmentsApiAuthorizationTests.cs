@@ -312,12 +312,6 @@ internal sealed class StubAttachmentService : IAttachmentService
         PermissionsDto? actor,
         CancellationToken cancellationToken = default)
         => Task.FromResult<(FileAttachmentMetaDto?, string?)>((null, null));
-
-    public Task<IReadOnlyList<CopiedAttachmentDto>> CopyScopeAsync(
-        CopyAttachmentScopeRequest request,
-        string actorUserId,
-        CancellationToken cancellationToken = default)
-        => Task.FromResult<IReadOnlyList<CopiedAttachmentDto>>([]);
 }
 
 internal sealed class SeededAttachmentLookup : IAttachmentLookup

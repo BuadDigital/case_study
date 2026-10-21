@@ -69,6 +69,15 @@ export type WorkflowTaskDto = {
   district?: string | null;
   propertyType?: string | null;
   classification?: string | null;
+  /** The property's transaction number (PR-… once confirmed, else the D- draft), joined server-side. */
+  transactionNumber?: string | null;
+  /** The property's transaction id, joined server-side. */
+  transactionId?: string | null;
+  /**
+   * Phase 4: the deed whose case-study parent carries the transaction's one study, when it is
+   * another deed than this task's. A case-study row with this set is folded into that study.
+   */
+  transactionStudyHolderPropertyId?: string | null;
 };
 
 export type ConfirmTaskDistributionResponseDto = {

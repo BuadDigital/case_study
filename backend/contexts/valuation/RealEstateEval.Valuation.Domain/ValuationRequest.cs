@@ -24,12 +24,54 @@ public class ValuationRequest
     public DateOnly RequestDate { get; private set; }
     public DateTime UpdatedAtUtc { get; private set; }
 
+    /// <summary>
+    /// The report number PRV-{year}-{seq}, derived from the transaction's official reference the
+    /// moment the appraiser approves the report (decision 2026-10-19). Null until then; never
+    /// changes afterwards (a reopened report keeps the number and takes a version suffix).
+    /// </summary>
+    public string? ReportNumber { get; private set; }
+
+    public void AssignReportNumber(string reportNumber, DateTime nowUtc)
+    {
+        var trimmed = (reportNumber ?? "").Trim();
+        if (trimmed.Length == 0 || !string.IsNullOrWhiteSpace(ReportNumber)) return;
+        ReportNumber = trimmed;
+        UpdatedAtUtc = nowUtc;
+    }
+
+    /// <summary>
+    /// Phase 5 (decision 2026-10-19): the deed was merged into another deed's transaction and this
+    /// request folded into the holder deed's one. Null unless <see cref="Status"/> is Merged.
+    /// </summary>
+    public Guid? MergedIntoRequestId { get; private set; }
+
+    /// <summary>Folds an open request into the holder's; a closed request is left alone.</summary>
+    public bool MarkMerged(Guid? holderRequestId, DateTime nowUtc)
+    {
+        if (Status == ValuationRequestStatus.Done) return false;
+        if (Status == ValuationRequestStatus.Merged && MergedIntoRequestId == holderRequestId) return false;
+        Status = ValuationRequestStatus.Merged;
+        MergedIntoRequestId = holderRequestId;
+        UpdatedAtUtc = nowUtc;
+        return true;
+    }
+
+    /// <summary>The deed left the transaction: its request is its own again.</summary>
+    public bool Unmerge(DateTime nowUtc)
+    {
+        if (Status != ValuationRequestStatus.Merged) return false;
+        Status = ValuationRequestStatus.Progress;
+        MergedIntoRequestId = null;
+        UpdatedAtUtc = nowUtc;
+        return true;
+    }
+
  /// <summary>
- /// Anything other than <see cref="ValuationRequestStatus.Done"/> counts as open and holds the
- /// property, including an impediment. The partial unique index on ValuationRequests encodes
- /// the same rule.
+ /// Anything other than <see cref="ValuationRequestStatus.Done"/> or <see cref="ValuationRequestStatus.Merged"/>
+ /// counts as open and holds the property, including an impediment. The partial unique index on
+ /// ValuationRequests encodes the same rule.
  /// </summary>
-    public bool IsOpen => Status != ValuationRequestStatus.Done;
+    public bool IsOpen => Status is not (ValuationRequestStatus.Done or ValuationRequestStatus.Merged);
 
     public static ValuationRequest Create(
         Guid id,

@@ -52,6 +52,7 @@ import {
   type PropertyMapLayerPanel,
   type PropertyMapSelection,
 } from "../lib/app-data/property-map-view-state";
+import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 
 /**
  * Owns the property map screen: the two live sources, the layer/filter/
@@ -65,6 +66,7 @@ export function usePropertyMapWorkflow() {
   const { data: poRecords } = poRecordsQuery;
   const { data: inspectionWorkspaces = [] } = useFieldInspectionWorkspacesQuery();
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
+  const { data: failures = [] } = useFailuresQuery();
   const { data: valuationRequests = [] } = useQuery({
     queryKey: ["property-map", "valuation-overlay"],
     queryFn: async () => {
@@ -83,8 +85,9 @@ export function usePropertyMapWorkflow() {
           valuationsByPropertyId(valuationRequests),
           workflowTasks,
         ),
+        failures,
       }),
-    [poRecords, inspectionWorkspaces, valuationRequests, workflowTasks],
+    [poRecords, inspectionWorkspaces, valuationRequests, workflowTasks, failures],
   );
   const { data: liveComparables = [] } = useQuery({
     queryKey: ["property-map", "comparables"],
@@ -101,6 +104,7 @@ export function usePropertyMapWorkflow() {
   const [layers, setLayers] = useState<Record<LayerKey, boolean>>({
     active: true,
     archive: false,
+    failures: true,
     comparables: false,
   });
   const [query, setQuery] = useState("");
@@ -112,13 +116,13 @@ export function usePropertyMapWorkflow() {
   const [dateTo, setDateTo] = useState("");
   const [dateLabel, setDateLabel] = useState("");
   const [dateOpen, setDateOpen] = useState(false);
-  const [infeasOnly, setInfeasOnly] = useState(false);
   const [operationType, setOperationType] = useState("");
   const [approvedOnly, setApprovedOnly] = useState(false);
   const [selection, setSelection] = useState<PropertyMapSelection>(null);
   const [layerPanel, setLayerPanel] = useState<PropertyMapLayerPanel>(null);
   const [activeSel, setActiveSel] = useState<string[] | null>(null);
   const [archiveSel, setArchiveSel] = useState<string[] | null>(null);
+  const [failuresSel, setFailuresSel] = useState<string[] | null>(null);
   const [compSel, setCompSel] = useState<string[] | null>(null);
   const [basemap, setBasemap] = useState<PropertyMapBasemap>("osm");
   const [command, setCommand] = useState<MapViewCommand | null>(null);
@@ -145,7 +149,6 @@ export function usePropertyMapWorkflow() {
         datePreset,
         dateFrom,
         dateTo,
-        infeasOnly,
         operationType,
         approvedOnly,
       }),
@@ -157,7 +160,6 @@ export function usePropertyMapWorkflow() {
       datePreset,
       dateFrom,
       dateTo,
-      infeasOnly,
       operationType,
       approvedOnly,
     ],
@@ -184,6 +186,10 @@ export function usePropertyMapWorkflow() {
     () => groupForMap(partitioned.archive),
     [partitioned.archive],
   );
+  const failuresGrouped = useMemo(
+    () => groupForMap(partitioned.failures),
+    [partitioned.failures],
+  );
 
   const shownActive = useMemo(() => {
     if (!layers.active) return [];
@@ -199,9 +205,16 @@ export function usePropertyMapWorkflow() {
       : archiveGrouped;
   }, [layers.archive, archiveGrouped, archiveSel]);
 
+  const shownFailures = useMemo(() => {
+    if (!layers.failures) return [];
+    return failuresSel
+      ? failuresGrouped.filter((p) => failuresSel.includes(nodeKey(p)))
+      : failuresGrouped;
+  }, [layers.failures, failuresGrouped, failuresSel]);
+
   const grouped = useMemo(
-    () => [...shownActive, ...shownArchive],
-    [shownActive, shownArchive],
+    () => [...shownActive, ...shownArchive, ...shownFailures],
+    [shownActive, shownArchive, shownFailures],
   );
 
   const comparableChoices = useMemo(
@@ -356,17 +369,6 @@ export function usePropertyMapWorkflow() {
     setDateTo("");
     setDateLabel("");
     setDateOpen(false);
-    setInfeasOnly(false);
-  }
-
-  /** The alert chip forces both property layers on so the results are visible. */
-  function toggleInfeasibleOnly() {
-    setInfeasOnly((v) => {
-      const next = !v;
-      if (next)
-        setLayers((prev) => ({ ...prev, active: true, archive: true }));
-      return next;
-    });
   }
 
   function selectComparable(record: MapComparableRecord) {
@@ -391,7 +393,9 @@ export function usePropertyMapWorkflow() {
       ? activeGrouped
       : layerPanel === "archive"
         ? archiveGrouped
-        : [];
+        : layerPanel === "failures"
+          ? failuresGrouped
+          : [];
 
   return {
     // The transactions source failed — an empty map would read as «no properties».
@@ -415,8 +419,6 @@ export function usePropertyMapWorkflow() {
     dateLabel,
     dateOpen,
     setDateOpen,
-    infeasOnly,
-    toggleInfeasibleOnly,
     operationType,
     setOperationType,
     approvedOnly,
@@ -424,7 +426,7 @@ export function usePropertyMapWorkflow() {
     cities,
     yearOpts,
     hasFilters: hasActiveMapFilters(
-      { query, city, kindCat, usage, dateFrom, dateTo, datePreset, infeasOnly },
+      { query, city, kindCat, usage, dateFrom, dateTo, datePreset },
       dateLabel,
     ),
     applyDatePreset,
@@ -442,6 +444,8 @@ export function usePropertyMapWorkflow() {
     setActiveSel,
     archiveSel,
     setArchiveSel,
+    failuresSel,
+    setFailuresSel,
     compSel,
     setCompSel,
     selection,

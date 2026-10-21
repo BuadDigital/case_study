@@ -1,4 +1,7 @@
-import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import {
+  isFoldedAppraisalTask,
+  type WorkflowTask,
+} from "@platform/app-shared/workflow/task-types";
 import { isVisibleInAppraiserQueue } from "./evaluator-submission-model";
 import { appraiserQueueStatusBadge } from "./evaluator-readiness";
 
@@ -13,6 +16,8 @@ export function filterAppraiserListedTasks(
 ): WorkflowTask[] {
   return tasks.filter((t) => {
     if (t.kind !== "property-appraisal") return false;
+    // Phase 5: one valuation per transaction — a deed folded into another deed's valuation is not a row.
+    if (isFoldedAppraisalTask(t)) return false;
     return isVisibleInAppraiserQueue(t.id, t.status, {
       showSubmitted: options?.showCompleted,
     });

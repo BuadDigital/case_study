@@ -171,8 +171,9 @@ describe("filterKeyEnvelopes", () => {
     expect(filterKeyEnvelopes(rows, { ...opts, query: "ke-2026-00007" })).toHaveLength(2);
   });
 
-  it("search text falls back to the derived reference when unnumbered", () => {
-    expect(envelopeSearchText(rows[1]!)).toContain("ENV-2026-");
+  it("an unnumbered envelope says so instead of showing a made-up reference", () => {
+    expect(envelopeSearchText(rows[1]!)).toContain("بلا رقم");
+    expect(envelopeSearchText(rows[1]!)).not.toContain("ENV-");
   });
 });
 

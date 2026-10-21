@@ -14,6 +14,7 @@ import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-
 import {
   inspectorPhotoCoverageLabel,
   inspectorPhotoStampText,
+  isApartmentInspectionContext,
   isCommercialShopInspectionContext,
   isLandInspectionContext,
   visibleInspectorFeatureFields,
@@ -126,7 +127,9 @@ export function FieldInspectionWorkBody({
   const context = inspectionContextOf(draft, property);
   const isLandInspection = isLandInspectionContext(context);
   const isShopInspection = isCommercialShopInspectionContext(context);
-  const featureFields = visibleInspectorFeatureFields(isLandInspection);
+  const featureFields = visibleInspectorFeatureFields(isLandInspection, {
+    isApartment: isApartmentInspectionContext(context),
+  });
   const submitFromHost = () => void hostRef.current?.submit?.();
   const saveDraftFromHost = () => void saveDraft();
 

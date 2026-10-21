@@ -24,6 +24,7 @@ public static class ValuationModel
             e.Property(x => x.Area).HasMaxLength(128);
             e.Property(x => x.PropertyType).HasMaxLength(128);
             e.Property(x => x.Appraiser).HasMaxLength(256);
+            e.Property(x => x.ReportNumber).HasMaxLength(32);
             e.Property(x => x.Status)
                 .HasConversion(DomainEnumConverters.ValuationRequestStatus)
                 .HasMaxLength(32);
@@ -34,12 +35,13 @@ public static class ValuationModel
  // enforces it against concurrent inserts and serves the "is one already open?" probe.
             e.HasIndex(x => x.PropertyId)
                 .IsUnique()
-                .HasFilter($"\"Status\" <> '{ValuationRequestStatuses.Done}'")
+                .HasFilter($"\"Status\" <> '{ValuationRequestStatuses.Done}' AND \"Status\" <> '{ValuationRequestStatuses.Merged}'")
                 .HasDatabaseName(DatabaseIndexNames.ValuationRequestOpenPerProperty);
+            e.HasIndex(x => x.MergedIntoRequestId);
             e.HasAllowedValues(
                 "ValuationRequests",
                 nameof(ValuationRequest.Status),
-                [ValuationRequestStatuses.Progress, ValuationRequestStatuses.Done, ValuationRequestStatuses.Failed]);
+                [ValuationRequestStatuses.Progress, ValuationRequestStatuses.Done, ValuationRequestStatuses.Failed, ValuationRequestStatuses.Merged]);
         });
 
         builder.Entity<EvaluatorRecallRecord>(e =>

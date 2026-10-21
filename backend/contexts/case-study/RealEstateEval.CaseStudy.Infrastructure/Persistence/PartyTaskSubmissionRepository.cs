@@ -91,31 +91,19 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
         return accepted.ToHashSet();
     }
 
-    public Task<bool> IsCaseStudyReportIssuedAsync(
+    // Phase 4: the deed's study is its transaction's (the holder deed's report).
+    public async Task<bool> IsCaseStudyReportIssuedAsync(
         Guid parentTaskId,
         CancellationToken cancellationToken) =>
-        db.CaseStudyReports
-            .AsNoTracking()
-            .AnyAsync(
-                r => r.TaskId == parentTaskId
-                    && !r.IsPartyContribution
-                    && r.Status == CaseStudyReportStatuses.Issued,
-                cancellationToken);
+        (await StudyHolder.IssuedParentTaskIdsAsync(db, [parentTaskId], cancellationToken)).Contains(parentTaskId);
 
     public async Task<IReadOnlySet<Guid>> ListIssuedReportParentIdsAsync(
         IReadOnlyCollection<Guid> parentTaskIds,
         CancellationToken cancellationToken)
     {
         if (parentTaskIds.Count == 0) return new HashSet<Guid>();
-        var ids = parentTaskIds.Distinct().ToList();
-        var issued = await db.CaseStudyReports
-            .AsNoTracking()
-            .Where(r => ids.Contains(r.TaskId)
-                && !r.IsPartyContribution
-                && r.Status == CaseStudyReportStatuses.Issued)
-            .Select(r => r.TaskId)
-            .ToListAsync(cancellationToken);
-        return issued.ToHashSet();
+        // Phase 4: a parent counts as issued when its transaction's study (the holder's) is issued.
+        return await StudyHolder.IssuedParentTaskIdsAsync(db, parentTaskIds, cancellationToken);
     }
 
     public Task<WorkOrderProperty?> GetPropertyWithContactsAsync(

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Services;
@@ -188,6 +189,51 @@ public class CaseStudyValuationContextLookupTests
             .UseInMemoryDatabase($"valuation-context-{Guid.NewGuid():N}")
             .Options;
         return new CaseStudyDbContext(options);
+    }
+
+    /// <summary>Phase 5: a linked property's context names the transaction and every deed in it.</summary>
+    [Fact]
+    public async Task Context_carries_the_transaction_and_its_deeds_for_a_linked_property()
+    {
+        await using var cs = CreateDb();
+        Seed(cs);
+        var transaction = Transaction.CreateDraft("TMP-26-00007", DateTime.UtcNow);
+        transaction.LinkKind = TransactionLinkKinds.OneBuilding;
+        transaction.StudyHolderPropertyId = PropertyId;
+        cs.Transactions.Add(transaction);
+        var holder = await cs.WorkOrderProperties.SingleAsync(p => p.Id == PropertyId);
+        holder.TransactionId = transaction.Id;
+        holder.DeedDate = "1440/01/01";
+        var siblingOrder = Guid.NewGuid();
+        cs.WorkOrders.Add(new WorkOrder { Id = siblingOrder, PoNumber = "PO-901", CreatedAtUtc = DateTime.UtcNow.AddDays(1) });
+        cs.WorkOrderProperties.Add(new WorkOrderProperty
+        {
+            Id = Guid.NewGuid(),
+            WorkOrderId = siblingOrder,
+            TransactionId = transaction.Id,
+            IdentifierType = PropertyIdentifierType.RealEstateRegistration,
+            RealEstateRegNumber = "REG-7",
+            RealEstateRegDate = "1441/02/02",
+            Area = "300",
+        });
+        await cs.SaveChangesAsync();
+
+        var context = await new CaseStudyLookup(cs).GetValuationPropertyContextAsync(PropertyId);
+
+        Assert.NotNull(context);
+        Assert.True(context.IsLinkedProperty);
+        Assert.Equal(transaction.Id, context.TransactionId);
+        Assert.Equal("TMP-26-00007", context.TransactionNumber);
+        Assert.Equal(TransactionLinkKinds.OneBuilding, context.TransactionLinkKind);
+        Assert.Equal(PropertyId, context.StudyHolderPropertyId);
+        Assert.Equal(new[] { "D-100", "REG-7" }, context.TransactionDeeds.Select(d => d.Label()).ToArray());
+        Assert.Equal("D-100 ، REG-7", CaseStudyTransactionDeedRules.JoinedLabels(context.TransactionDeeds));
+        Assert.Equal("1440/01/01 ، 1441/02/02", CaseStudyTransactionDeedRules.JoinedDates(context.TransactionDeeds));
+
+        // An ordinary property: no joined cells, the single deed prints as before.
+        var alone = await new CaseStudyLookup(cs).GetValuationPropertyContextAsync(Guid.NewGuid());
+        Assert.Null(alone);
+        Assert.Null(CaseStudyTransactionDeedRules.JoinedLabels([context.TransactionDeeds[0]]));
     }
 
     private static void Seed(CaseStudyDbContext cs)

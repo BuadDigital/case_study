@@ -78,6 +78,34 @@ function renderCommissionTable(model: CaseStudyReportModel): string {
   return `<div class="csrd-section"><table class="csrd-table"><tbody>
     <tr class="csrd-sec-hdr"><td colspan="2">بيانات التعميد</td></tr>
     ${rows.join("")}
+  </tbody></table></div>${renderDeedsTable(model)}`;
+}
+
+/** Phase 4: a linked property lists every deed of the transaction and the total area. */
+function renderDeedsTable(model: CaseStudyReportModel): string {
+  const deeds = model.deeds;
+  if (!deeds || deeds.rows.length < 2) return "";
+  const esc = escapeCaseStudyReportHtml;
+  const rows = deeds.rows
+    .map(
+      (d, i) => `<tr>
+        <td class="csrd-yn">${i + 1}</td>
+        <td class="csrd-ltr">${esc(d.label)}</td>
+        <td class="csrd-ltr">${esc(d.poNumber)}</td>
+        <td class="csrd-ltr">${esc(d.area)}</td>
+      </tr>`,
+    )
+    .join("");
+  return `<div class="csrd-section"><table class="csrd-table"><tbody>
+    <tr class="csrd-sec-hdr"><td colspan="4">صكوك العقار (${deeds.rows.length})</td></tr>
+    <tr class="csrd-col-hdr">
+      <th class="csrd-yn" style="width:12mm">#</th>
+      <th>${PROPERTY_IDENTIFIER_COLUMN_LABEL}</th>
+      <th>أمر العمل</th>
+      <th>المساحة</th>
+    </tr>
+    ${rows}
+    <tr class="csrd-notes-row"><td colspan="3"><span class="csrd-notes-label">المساحة الكلية</span></td><td class="csrd-ltr csrd-bold">${esc(deeds.totalArea)}</td></tr>
   </tbody></table></div>`;
 }
 

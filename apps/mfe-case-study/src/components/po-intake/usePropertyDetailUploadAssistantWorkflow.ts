@@ -43,6 +43,7 @@ import {
 } from "../../query/use-property-key-gate-query";
 import { usePropertyReportDraftQuery } from "../../query/use-property-report-draft-query";
 import {
+  COPIED_FLASH_MS,
   collapsedSectionIds,
   copyToastPreview,
   courtVisitOpsFields,
@@ -57,7 +58,10 @@ import {
 type PropertyDetailEnfathUploadWorkflow = {
   model: InfathUploadModel;
   collapsedSections: Set<string>;
+  /** Every key copied in this visit — the rows keep their tint as a progress marker. */
   copiedKeys: Set<CopyKey>;
+  /** The key copied within the last `COPIED_FLASH_MS` — only its button shows the check. */
+  flashKey: CopyKey | null;
   toggleSection: (sectionId: string) => void;
   setAllCollapsed: (collapse: boolean) => void;
   handleCopyField: (key: CopyKey, text: string) => Promise<void>;
@@ -228,6 +232,8 @@ export function usePropertyDetailEnfathUploadWorkflow({
     () => new Set(),
   );
   const [copiedKeys, setCopiedKeys] = useState<Set<CopyKey>>(() => new Set());
+  const [flashKey, setFlashKey] = useState<CopyKey | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { showToast } = useToast();
   const initializedCollapseRef = useRef(false);
 
@@ -237,9 +243,22 @@ export function usePropertyDetailEnfathUploadWorkflow({
     setCollapsedSections(initialCollapsedSectionIds(model.sections));
   }, [model.sections]);
 
+  useEffect(
+    () => () => {
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+    },
+    [],
+  );
+
   const markCopied = useCallback(
     (key: CopyKey, text: string) => {
       setCopiedKeys((prev) => withCopiedKey(prev, key));
+      setFlashKey(key);
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => {
+        flashTimer.current = null;
+        setFlashKey((current) => (current === key ? null : current));
+      }, COPIED_FLASH_MS);
       showToast(`تم النسخ: ${copyToastPreview(text)}`);
     },
     [showToast],
@@ -319,6 +338,7 @@ export function usePropertyDetailEnfathUploadWorkflow({
     model,
     collapsedSections,
     copiedKeys,
+    flashKey,
     toggleSection,
     setAllCollapsed,
     handleCopyField,

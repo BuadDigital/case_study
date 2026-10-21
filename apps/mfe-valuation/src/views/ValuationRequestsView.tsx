@@ -83,7 +83,7 @@ const mobileLoadingSkeleton = (
   </div>
 );
 
-type StatusFilter = "all" | "progress" | "done" | "fail";
+type StatusFilter = "all" | "progress" | "done" | "fail" | "merged";
 
 export function ValuationRequestsView() {
   const router = useRouter();
@@ -318,6 +318,7 @@ export function ValuationRequestsView() {
                 <option value="progress">قيد التنفيذ</option>
                 <option value="done">مكتمل</option>
                 <option value="fail">متعذّر</option>
+                <option value="merged">مدمجة في معاملة أخرى</option>
               </select>
             </div>
           </div>
@@ -446,7 +447,9 @@ export function ValuationRequestsView() {
                     ? "border-s-red"
                     : v.status === "done"
                       ? "border-s-ink"
-                      : "border-s-gold";
+                      : v.status === "merged"
+                        ? "border-s-border-md"
+                        : "border-s-gold";
                 return (
                   <li
                     key={v.recordId}

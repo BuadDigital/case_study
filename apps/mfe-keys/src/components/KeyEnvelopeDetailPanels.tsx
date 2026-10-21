@@ -5,7 +5,9 @@
  * takes the envelope plus already-derived rows and reports interactions back
  * up — all tab, modal and command state stays in the parent.
  */
+import { useState } from "react";
 import {
+  Select,
   Spinner,
   StatusPill,
   TBody,
@@ -25,21 +27,28 @@ import {
 } from "@platform/ui-kit";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe/lib/app-data/po-intake-data";
 import {
+  KeyLocationValues,
   assignmentStatusColor,
   assignmentStatusLabel,
+  keyLocationColor,
+  keyLocationLabel,
+  otherKeysInEnvelope,
   studyHoldLabel,
   timelineEventLabel,
   type KeyEnvelopeAssignment,
   type KeyEnvelopeLinkedProperty,
   type KeyEnvelopeRow,
+  type KeyLocation,
   type PropertyCourtAccessRow,
 } from "../lib/keys-envelope-types";
 import { KeyEnvelopeAttachmentPreview } from "./KeyEnvelopeAttachmentPreview";
 import { KeysStatusPill } from "./KeysHtmlPrimitives";
 import { FileIcon, HandoffIcon } from "./KeyEnvelopeDetailIcons";
 import {
+  KEY_LOCATION_OPTIONS,
   assignmentConfirmedByText,
   buildCustodyChain,
+  custodyNowText,
   displayPersonName,
   formatDate,
   poForAssignment,
@@ -48,19 +57,159 @@ import {
   timelineEventColor,
 } from "./key-envelope-detail-state";
 
+export type SetKeyLocationHandler = (
+  assignment: KeyEnvelopeAssignment,
+  keyLocation: KeyLocation,
+  holder?: { userId?: string | null; label?: string | null },
+) => void;
+
+/**
+ * The reviewer's correction of where a deed's matching key is (decision 2026-10-20):
+ * a place, plus the inspector when the key is with someone. Shown once the deed was tried.
+ */
+function KeyLocationEditor({
+  assignment,
+  inspectors,
+  busy,
+  onSave,
+  onCancel,
+}: {
+  assignment: KeyEnvelopeAssignment;
+  inspectors: { id: string; name: string }[];
+  busy: boolean;
+  onSave: SetKeyLocationHandler;
+  onCancel: () => void;
+}) {
+  const [location, setLocation] = useState<KeyLocation>(
+    (assignment.keyLocation as KeyLocation | undefined) ??
+      KeyLocationValues.InEnvelope,
+  );
+  const [userId, setUserId] = useState(assignment.keyHolderUserId ?? "");
+  const withUser = location === KeyLocationValues.WithUser;
+  const chosen = inspectors.find((i) => i.id === userId);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Select
+        aria-label="مكان المفتاح"
+        className="h-[30px] min-w-[130px] py-0 text-[12px]"
+        value={location}
+        onChange={(e) => setLocation(e.target.value as KeyLocation)}
+      >
+        {KEY_LOCATION_OPTIONS.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.label}
+          </option>
+        ))}
+      </Select>
+      {withUser ? (
+        <Select
+          aria-label="من يحمل المفتاح"
+          className="h-[30px] min-w-[150px] py-0 text-[12px]"
+          value={userId}
+          onChange={(e) => setUserId(e.target.value)}
+        >
+          <option value="">اختر المستخدم…</option>
+          {inspectors.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.name}
+            </option>
+          ))}
+        </Select>
+      ) : null}
+      <button
+        type="button"
+        disabled={busy || (withUser && !userId)}
+        className={cn(opsAccentBtnSm, "inline-flex h-[30px] items-center gap-1")}
+        onClick={() =>
+          onSave(
+            assignment,
+            location,
+            withUser ? { userId, label: chosen?.name ?? null } : undefined,
+          )
+        }
+      >
+        {busy ? <Spinner /> : null}
+        حفظ
+      </button>
+      <button
+        type="button"
+        disabled={busy}
+        className={cn(opsBtnGhost, "h-[30px] px-2.5 text-[12px]")}
+        onClick={onCancel}
+      >
+        إلغاء
+      </button>
+    </div>
+  );
+}
+
+function KeyLocationCell({
+  assignment,
+  canEdit,
+  busy,
+  inspectors,
+  onSetKeyLocation,
+}: {
+  assignment: KeyEnvelopeAssignment;
+  canEdit: boolean;
+  busy: boolean;
+  inspectors: { id: string; name: string }[];
+  onSetKeyLocation?: SetKeyLocationHandler;
+}) {
+  const [editing, setEditing] = useState(false);
+  if (assignment.status === "pending") {
+    return <span className="text-[11.5px] text-text-3">— بعد التجربة</span>;
+  }
+  if (editing && onSetKeyLocation) {
+    return (
+      <KeyLocationEditor
+        assignment={assignment}
+        inspectors={inspectors}
+        busy={busy}
+        onSave={(a, loc, holder) => {
+          setEditing(false);
+          onSetKeyLocation(a, loc, holder);
+        }}
+        onCancel={() => setEditing(false)}
+      />
+    );
+  }
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <KeysStatusPill
+        label={keyLocationLabel(assignment.keyLocation, assignment.keyHolderLabel)}
+        color={keyLocationColor(assignment.keyLocation)}
+      />
+      {canEdit && onSetKeyLocation ? (
+        <button
+          type="button"
+          disabled={busy}
+          className="text-[11.5px] font-semibold text-[var(--gold-d)] underline-offset-2 hover:underline disabled:opacity-60"
+          onClick={() => setEditing(true)}
+        >
+          تعديل
+        </button>
+      ) : null}
+    </span>
+  );
+}
 
 export function AssignmentsPanel({
   env,
   rows,
   canEdit,
   busy,
+  inspectors = [],
   onMatch,
+  onSetKeyLocation,
 }: {
   env: KeyEnvelopeRow;
   rows: KeyEnvelopeAssignment[];
   canEdit: boolean;
   busy: boolean;
+  inspectors?: { id: string; name: string }[];
   onMatch: (a: KeyEnvelopeAssignment) => void;
+  onSetKeyLocation?: SetKeyLocationHandler;
 }) {
   if (rows.length === 0) {
     return (
@@ -69,17 +218,19 @@ export function AssignmentsPanel({
       </div>
     );
   }
+  const otherKeys = otherKeysInEnvelope(env);
 
   return (
     <>
       <TableFrame className="hidden lg:block">
-        <Table className="min-w-[780px]">
+        <Table className="min-w-[900px]">
           <THead>
             <Tr hoverable={false}>
               <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
               <Th>العقار</Th>
               <Th>أمر العمل</Th>
               <Th>حالة التجربة</Th>
+              <Th>مكان مفتاحه الآن</Th>
               <Th>ملاحظة</Th>
               <Th className="text-center">تأكيد ميداني</Th>
             </Tr>
@@ -106,6 +257,15 @@ export function AssignmentsPanel({
                     <KeysStatusPill
                       label={assignmentStatusLabel(a.status)}
                       color={color}
+                    />
+                  </Td>
+                  <Td>
+                    <KeyLocationCell
+                      assignment={a}
+                      canEdit={canEdit}
+                      busy={busy}
+                      inspectors={inspectors}
+                      onSetKeyLocation={onSetKeyLocation}
                     />
                   </Td>
                   <Td>
@@ -174,6 +334,16 @@ export function AssignmentsPanel({
                     {poForAssignment(env, a)}
                   </span>
                 </div>
+                <div className="flex justify-between gap-3">
+                  <span className="text-text-3">مكان مفتاحه الآن</span>
+                  <KeyLocationCell
+                    assignment={a}
+                    canEdit={canEdit}
+                    busy={busy}
+                    inspectors={inspectors}
+                    onSetKeyLocation={onSetKeyLocation}
+                  />
+                </div>
                 {a.notes ? (
                   <div className="pt-1 text-text-2">{a.notes}</div>
                 ) : null}
@@ -200,6 +370,13 @@ export function AssignmentsPanel({
           );
         })}
       </ul>
+
+      {otherKeys > 0 ? (
+        <div className={cn(opsPanelNote, "mt-3")}>
+          في الظرف {otherKeys} مفاتيح أخرى لم تفتح أيًّا من صكوكنا — تبقى معه
+          وتعود مع الظرف إلى المحكمة.
+        </div>
+      ) : null}
     </>
   );
 }
@@ -216,9 +393,37 @@ export function CustodyPanel({
   onConfirm: (handoffId: string) => void;
 }) {
   const chain = buildCustodyChain(env);
+  const now = custodyNowText(env);
 
   return (
     <div>
+      <div
+        className={cn(
+          opsSurfaceCard,
+          "mb-3 flex flex-wrap items-center justify-between gap-3 px-[22px] py-3.5",
+        )}
+      >
+        <div>
+          <div className="text-[11.5px] text-text-3">الظرف الآن عند</div>
+          <div className="mt-0.5 text-[15px] font-extrabold text-heading">
+            {now.title}
+          </div>
+          {now.since ? (
+            <div className="mt-0.5 text-[12px] text-text-3">
+              منذ <span dir="ltr">{now.since}</span>
+            </div>
+          ) : null}
+        </div>
+        {now.pending ? (
+          <div className="rounded-lg bg-[color-mix(in_srgb,#b58a3c_12%,transparent)] px-3 py-2 text-[12.5px] font-semibold text-[#8a5e14]">
+            {now.pending}
+          </div>
+        ) : env.readyForCourtReturn ? (
+          <div className="rounded-lg bg-[color-mix(in_srgb,#2f7a4d_12%,transparent)] px-3 py-2 text-[12.5px] font-semibold text-[#2f7a4d]">
+            جُرِّبت كل صكوكنا وعادت مفاتيحها — الظرف جاهز للإرجاع إلى المحكمة.
+          </div>
+        ) : null}
+      </div>
       <div className="mb-3 text-[13px] font-extrabold text-heading">
         سلسلة العهدة (من استلم ومن سلّم)
       </div>
@@ -268,7 +473,7 @@ export function CustodyPanel({
                     onClick={() => onConfirm(item.handoff!.id)}
                   >
                     {busy ? <Spinner /> : null}
-                    تأكيد استلام المعاين
+                    تأكيد الاستلام
                   </button>
                 </div>
               ) : null}

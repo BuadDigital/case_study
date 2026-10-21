@@ -45,6 +45,7 @@ public sealed class ValuationReportDocumentService(
         string? clientNameAr = null;
         IReadOnlyList<string> reportUserNames = [];
         AssignmentType? assignmentType = null;
+        IReadOnlyList<CaseStudyTransactionDeedDto> transactionDeeds = [];
         var propertyGuid = vr.PropertyId;
         if (propertyGuid != Guid.Empty)
         {
@@ -54,6 +55,7 @@ public sealed class ValuationReportDocumentService(
             if (context is not null)
             {
                 prop = context.ToProperty();
+                transactionDeeds = context.TransactionDeeds;
                 workspace = context.LatestWorkspace?.ToWorkspace();
                 // Building-mode facts come from the inspector's submission (single source).
                 inspector = InspectorPayloadFacts.Parse(context.InspectorPayloadJson);
@@ -115,7 +117,6 @@ public sealed class ValuationReportDocumentService(
 
         // Report date = approval date (fixed on the approved draft), else today in Riyadh; validity counts from it.
         var today = await ApprovedReportDateAsync(vr.Id, cancellationToken) ?? RiyadhClock.Today(clock);
-        var reservedDate = vr.RequestDate;
         var sections = visible.Select(def =>
         {
             var title = ValuationReportSectionCatalog.DisplayTitleAr(def, hasStructures);
@@ -137,7 +138,8 @@ public sealed class ValuationReportDocumentService(
                 complianceRestricted,
                 approachSettings,
                 assignmentType,
-                valuationCatalog);
+                valuationCatalog,
+                transactionDeeds);
             return new ValuationReportSectionDto
             {
                 Number = def.Number,
@@ -246,7 +248,8 @@ public sealed class ValuationReportDocumentService(
             MarketApproachUsed = marketUsed,
             CostApproachUsed = costUsed,
             IncomeApproachUsed = incomeUsed,
-            ReportNumber = ValuationReportNumberRules.FormatReserved(vr.DisplayId, reservedDate),
+            // Decision 2026-10-19: PRV-… fixed at approval; empty until then (the screen says so).
+            ReportNumber = vr.ReportNumber ?? "",
             ReportDateDisplay = ValuationReportDisplayRules.FormatGregorianDate(today),
             ValidUntilDisplay = ValuationReportDisplayRules.FormatGregorianDate(
                 ValuationReportValidityRules.ValidUntil(today)),

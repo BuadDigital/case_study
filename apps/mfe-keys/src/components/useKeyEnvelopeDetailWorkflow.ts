@@ -16,13 +16,16 @@ import {
   confirmEnvelopeHandoff,
   loadKeyEnvelope,
   loadPropertyCourtAccess,
+  setEnvelopeKeyLocation,
 } from "../lib/keys-envelope-api";
 import {
   assignmentStatusLabel,
+  keyLocationLabel,
   type KeyAssignmentMatchStatus,
   type KeyEnvelopeAssignment,
   type KeyEnvelopeLinkedProperty,
   type KeyEnvelopeRow,
+  type KeyLocation,
   type PropertyCourtAccessRow,
 } from "../lib/keys-envelope-types";
 import {
@@ -64,8 +67,15 @@ export function useKeyEnvelopeDetailWorkflow({
     assignmentId: string;
     status: KeyAssignmentMatchStatus;
     notes?: string;
+    keyLocation?: KeyLocation | null;
   } | null>(null);
   const pendingHandoffId = useRef<string | null>(null);
+  const pendingKeyLocation = useRef<{
+    assignmentId: string;
+    keyLocation: KeyLocation;
+    keyHolderUserId?: string | null;
+    keyHolderLabel?: string | null;
+  } | null>(null);
 
   const { execute: executeConfirmAssignment, loading: confirmingAssignment } =
     useIdempotentAction(
@@ -77,6 +87,25 @@ export function useKeyEnvelopeDetailWorkflow({
           pending.assignmentId,
           pending.status,
           pending.notes,
+          idempotencyKey,
+          pending.keyLocation,
+        );
+      }, [env]),
+    );
+
+  const { execute: executeSetKeyLocation, loading: settingKeyLocation } =
+    useIdempotentAction(
+      useCallback(async (idempotencyKey: string) => {
+        const pending = pendingKeyLocation.current;
+        if (!env || !pending) throw new Error("لا يوجد إسناد لتحديث مكان مفتاحه");
+        return setEnvelopeKeyLocation(
+          env.id,
+          pending.assignmentId,
+          {
+            keyLocation: pending.keyLocation,
+            keyHolderUserId: pending.keyHolderUserId ?? null,
+            keyHolderLabel: pending.keyHolderLabel ?? null,
+          },
           idempotencyKey,
         );
       }, [env]),
@@ -91,7 +120,8 @@ export function useKeyEnvelopeDetailWorkflow({
       }, [env]),
     );
 
-  const commandBusy = busy || confirmingAssignment || confirmingHandoff;
+  const commandBusy =
+    busy || confirmingAssignment || confirmingHandoff || settingKeyLocation;
 
   const onBackRef = useRef(onBack);
   onBackRef.current = onBack;
@@ -152,11 +182,12 @@ export function useKeyEnvelopeDetailWorkflow({
     assignmentId: string,
     status: KeyAssignmentMatchStatus,
     notes?: string,
+    keyLocation?: KeyLocation | null,
   ) {
     if (!env) return;
     const deed =
       env.assignments.find((a) => a.id === assignmentId)?.deedNumber ?? "";
-    pendingAssignment.current = { assignmentId, status, notes };
+    pendingAssignment.current = { assignmentId, status, notes, keyLocation };
     const outcome = await executeConfirmAssignment();
     if (outcome.status === "skipped") return;
     const result = outcome.value;
@@ -173,6 +204,35 @@ export function useKeyEnvelopeDetailWorkflow({
       onChanged();
       return;
     }
+    await refresh(result.data);
+  }
+
+  /** The reviewer corrects where a deed's matching key is (decision 2026-10-20). */
+  async function handleSetKeyLocation(
+    assignmentId: string,
+    keyLocation: KeyLocation,
+    holder?: { userId?: string | null; label?: string | null },
+  ) {
+    if (!env) return;
+    const deed =
+      env.assignments.find((a) => a.id === assignmentId)?.deedNumber ?? "";
+    pendingKeyLocation.current = {
+      assignmentId,
+      keyLocation,
+      keyHolderUserId: holder?.userId ?? null,
+      keyHolderLabel: holder?.label ?? null,
+    };
+    const outcome = await executeSetKeyLocation();
+    if (outcome.status === "skipped") return;
+    const result = outcome.value;
+    if (!result.ok) {
+      showToast(result.error, "error");
+      return;
+    }
+    showToast(
+      `مفتاح الصك ${deed}: ${keyLocationLabel(keyLocation, holder?.label)}.`,
+      "success",
+    );
     await refresh(result.data);
   }
 
@@ -222,6 +282,7 @@ export function useKeyEnvelopeDetailWorkflow({
     staffLoadError,
     sortedAssignments,
     handleConfirmAssignment,
+    handleSetKeyLocation,
     handleConfirmHandoff,
     handleCourtAccessSaved,
     handleHandoffDone,

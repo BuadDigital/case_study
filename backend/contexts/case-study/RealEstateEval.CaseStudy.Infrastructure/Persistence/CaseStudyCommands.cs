@@ -4,6 +4,9 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
+using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Rules;
+using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.CaseStudy.Domain;
 
@@ -13,11 +16,76 @@ public sealed class CaseStudyCommands : ICaseStudyCommands
 {
     private readonly CaseStudyDbContext _caseStudy;
     private readonly TimeProvider _time;
+    private readonly ITransactionReferenceService _transactions;
 
-    public CaseStudyCommands(CaseStudyDbContext caseStudy, TimeProvider? time = null)
+    public CaseStudyCommands(
+        CaseStudyDbContext caseStudy,
+        TimeProvider? time = null,
+        ITransactionReferenceService? transactions = null)
     {
         _caseStudy = caseStudy;
         _time = time ?? TimeProvider.System;
+        _transactions = transactions ?? new TransactionReferenceService(new TransactionRepository(caseStudy));
+    }
+
+    public async Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        var now = _time.UtcNow();
+        var (reference, error) = await _transactions.ConfirmOfficialReferenceAsync(propertyId, now, cancellationToken);
+        if (error is not null || string.IsNullOrWhiteSpace(reference))
+            return (null, error ?? "تعذّر تثبيت الرقم المرجعي.");
+
+        var transaction = await _transactions.GetForPropertyAsync(propertyId, cancellationToken);
+        var reportNo = ReferenceNumbering.ValuationReportNumber(reference)!;
+
+        // The appraisal package carries the report number for the print and the Enfaz sheet —
+        // on every deed of the transaction (phase 5: one report, uploaded to Enfaz per deed).
+        var deedIds = await StudyHolder.TransactionPropertyIdsAsync(_caseStudy, propertyId, cancellationToken);
+        var appraisalTasks = await _caseStudy.WorkflowTasks.AsNoTracking()
+            .Where(t => t.PropertyId != null
+                && deedIds.Contains(t.PropertyId.Value)
+                && t.Kind == WorkflowTaskKind.PropertyAppraisal
+                && t.Status != WorkflowTaskStatus.Cancelled)
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+        foreach (var task in appraisalTasks)
+        {
+            var submission = await _caseStudy.PartyTaskSubmissions
+                .FirstOrDefaultAsync(s => s.WorkflowTaskId == task.Id, cancellationToken);
+            if (submission is null)
+            {
+                _caseStudy.PartyTaskSubmissions.Add(new PartyTaskSubmission
+                {
+                    Id = Guid.NewGuid(),
+                    WorkflowTaskId = task.Id,
+                    Kind = WorkflowTaskKindValues.PropertyAppraisal,
+                    PropertyId = task.PropertyId,
+                    PoNumber = task.PoNumber,
+                    Status = PartyTaskSubmissionStatus.Draft,
+                    PayloadJson = AppraisalPayloadReportNumber.Seed(task, reportNo),
+                    CreatedAtUtc = now,
+                    UpdatedAtUtc = now,
+                });
+            }
+            else
+            {
+                submission.PayloadJson = AppraisalPayloadReportNumber.Stamp(submission.PayloadJson, reportNo, task);
+                submission.UpdatedAtUtc = now;
+            }
+        }
+
+        if (appraisalTasks.Count > 0)
+            await _caseStudy.SaveChangesAsync(cancellationToken);
+
+        return (new CaseStudyTransactionNumbersDto
+        {
+            TransactionId = transaction?.Id ?? Guid.Empty,
+            ReferenceNumber = reference,
+            CaseStudyReportNumber = ReferenceNumbering.CaseStudyReportNumber(reference) ?? "",
+            ValuationReportNumber = reportNo,
+        }, null);
     }
 
     public async Task<(string? Reference, string? Error)> AllocateDocumentReferenceAsync(

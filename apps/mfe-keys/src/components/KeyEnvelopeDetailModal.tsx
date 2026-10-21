@@ -16,8 +16,10 @@ import {
 } from "@platform/ui-kit";
 import {
   envelopeDisplayRef,
+  envelopeHolderText,
   envelopeStatusColor,
   envelopeStatusLabel,
+  otherKeysInEnvelope,
   scenarioColor,
   scenarioLabel,
 } from "../lib/keys-envelope-types";
@@ -79,6 +81,7 @@ export function KeyEnvelopeDetailPage({
     staffLoadError,
     sortedAssignments,
     handleConfirmAssignment,
+    handleSetKeyLocation,
     handleConfirmHandoff,
     handleCourtAccessSaved,
     handleHandoffDone,
@@ -146,6 +149,21 @@ export function KeyEnvelopeDetailPage({
               ) : null}
             </div>
 
+            {env.readyForCourtReturn && env.status === "reviewer" ? (
+              <div
+                className="mt-3.5 flex items-center gap-[11px] rounded-[10px] px-[22px] py-3 text-[12.5px] font-semibold leading-relaxed"
+                style={{
+                  background: "color-mix(in srgb, #2f7a4d 10%, transparent)",
+                  color: "#2f7a4d",
+                }}
+              >
+                <span>
+                  جُرِّبت كل صكوكنا وعادت مفاتيحها المطابقة — الظرف جاهز
+                  للإرجاع إلى المحكمة.
+                </span>
+              </div>
+            ) : null}
+
             {env.countMismatch ? (
               <div
                 className="mt-3.5 flex items-center gap-[11px] rounded-[10px] px-[22px] py-3 text-[12.5px] font-semibold leading-relaxed"
@@ -174,8 +192,16 @@ export function KeyEnvelopeDetailPage({
               <KeysPpCell label="مستلم الظرف">
                 {displayPersonName(env.createdByName)}
               </KeysPpCell>
+              <KeysPpCell label="عند من الآن">
+                {envelopeHolderText(env)}
+              </KeysPpCell>
               <KeysPpCell label="عدد المفاتيح">
                 <span className="tabular-nums">{env.keysCountActual}</span>
+                {otherKeysInEnvelope(env) > 0 ? (
+                  <span className="ms-1 text-[11px] text-text-3">
+                    (منها {otherKeysInEnvelope(env)} لا تخص صكوكنا)
+                  </span>
+                ) : null}
               </KeysPpCell>
               <KeysPpCell label="الصكوك المرتبطة بالطلب">
                 <span className="tabular-nums">{env.assignments.length}</span>
@@ -259,7 +285,11 @@ export function KeyEnvelopeDetailPage({
                 rows={sortedAssignments}
                 canEdit={canEdit}
                 busy={commandBusy}
+                inspectors={fieldInspectors}
                 onMatch={(a) => setMatchTarget(a)}
+                onSetKeyLocation={(a, loc, holder) =>
+                  void handleSetKeyLocation(a.id, loc, holder)
+                }
               />
             ) : null}
             {tab === "custody" ? (
@@ -288,8 +318,13 @@ export function KeyEnvelopeDetailPage({
           deed={matchTarget.deedNumber}
           busy={commandBusy}
           onClose={() => setMatchTarget(null)}
-          onSave={(status, note) =>
-            void handleConfirmAssignment(matchTarget.id, status, note)
+          onSave={(status, note, keyLocation) =>
+            void handleConfirmAssignment(
+              matchTarget.id,
+              status,
+              note,
+              keyLocation,
+            )
           }
         />
       ) : null}

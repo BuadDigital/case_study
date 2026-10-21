@@ -32,6 +32,7 @@ import {
   uniqueSortedPoOrder,
 } from "../lib/app-data/all-transactions-queue";
 import { appraiserQueueStatusGroup } from "../lib/evaluator-bridge";
+import { transactionNumberOf } from "../lib/app-data/transaction-number";
 
 export const APPRAISAL_STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "drafting", label: "قيد التقييم — بانتظار إصدار الدراسة" },
@@ -544,7 +545,9 @@ export function filterAppraisalRowMeta({
       const cityDistrict = [meta.row.city, meta.row.district]
         .filter((v) => v && v !== "—")
         .join(" — ");
-      const hay = `${meta.row.deedLabel} ${cityDistrict} ${meta.row.propertySlot}`;
+      const transactionNumber =
+        transactionNumberOf(meta.property) ?? meta.task.transactionNumber ?? "";
+      const hay = `${meta.row.deedLabel} ${cityDistrict} ${meta.row.propertySlot} ${transactionNumber}`;
       if (!hay.includes(q)) return false;
     }
     if (statusValue) {

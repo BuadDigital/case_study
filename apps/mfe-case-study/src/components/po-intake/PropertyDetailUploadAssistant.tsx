@@ -79,6 +79,7 @@ export function PropertyDetailEnfathUpload({
             section={section}
             collapsed={flow.collapsedSections.has(section.id)}
             copiedKeys={flow.copiedKeys}
+            flashKey={flow.flashKey}
             onToggle={() => flow.toggleSection(section.id)}
             onCopyField={flow.handleCopyField}
             onCopyArea={flow.handleCopyArea}

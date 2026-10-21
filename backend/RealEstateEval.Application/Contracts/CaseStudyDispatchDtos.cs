@@ -154,6 +154,18 @@ public sealed class BackfillCaseStudyPropertyAreaRequest
     public decimal AreaM2 { get; set; }
 }
 
+/// <summary>
+/// The deed's transaction numbers after its official reference was confirmed (decision
+/// 2026-10-19): PR root and the two report numbers derived from it.
+/// </summary>
+public sealed class CaseStudyTransactionNumbersDto
+{
+    public Guid TransactionId { get; set; }
+    public string ReferenceNumber { get; set; } = "";
+    public string CaseStudyReportNumber { get; set; } = "";
+    public string ValuationReportNumber { get; set; } = "";
+}
+
 public sealed class CaseStudyWorkOrderIdDto
 {
     public Guid? Id { get; set; }

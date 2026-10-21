@@ -160,6 +160,131 @@ public class KeyEnvelopesServiceTests
             "معاين");
         Assert.Null(confirmError);
         Assert.Equal(KeyEnvelopeStatuses.Assessor, confirmed!.Status);
+        // Custody (decision 2026-10-20): the holder moves only with the receiver's confirmation.
+        Assert.Equal(KeyHolderKinds.InternalUser, confirmed.HolderKind);
+        Assert.Equal("insp-1", confirmed.HolderUserId);
+        Assert.NotNull(confirmed.HolderSinceUtc);
+    }
+
+    [Fact]
+    public async Task A_receive_back_the_reviewer_records_himself_returns_custody_at_once()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var service = CreateService(bundle);
+        var envelope = await CreateCourtEnvelopeAsync(db, service);
+        await HandToInspectorAsync(service, envelope.Id, "insp-1");
+
+        var (back, error) = await service.CreateHandoffAsync(
+            envelope.Id,
+            new CreateKeyEnvelopeHandoffRequest
+            {
+                Kind = KeyHandoffKinds.ReceiveBack,
+                FromParty = "معاين",
+                ToParty = "مراجع",
+            },
+            "rev-1",
+            "مراجع");
+
+        Assert.Null(error);
+        Assert.Equal(KeyHandoffStatuses.Completed, back!.Handoffs[0].Status);
+        Assert.Equal(KeyEnvelopeStatuses.Reviewer, back.Status);
+        Assert.Equal(KeyHolderKinds.Reviewer, back.HolderKind);
+        Assert.Equal("rev-1", back.HolderUserId);
+    }
+
+    [Fact]
+    public async Task A_receive_back_recorded_by_the_inspector_waits_for_the_reviewer()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var service = CreateService(bundle);
+        var envelope = await CreateCourtEnvelopeAsync(db, service);
+        await HandToInspectorAsync(service, envelope.Id, "insp-1");
+
+        var (back, error) = await service.CreateHandoffAsync(
+            envelope.Id,
+            new CreateKeyEnvelopeHandoffRequest
+            {
+                Kind = KeyHandoffKinds.ReceiveBack,
+                FromParty = "معاين",
+                ToParty = "مراجع",
+                ToUserId = "rev-1",
+            },
+            "insp-1",
+            "معاين");
+        Assert.Null(error);
+        Assert.Equal(KeyHandoffStatuses.PendingConfirm, back!.Handoffs[0].Status);
+        Assert.Equal(KeyHolderKinds.InternalUser, back.HolderKind);
+
+        var (confirmed, confirmError) = await service.ConfirmHandoffAsync(envelope.Id, back.Handoffs[0].Id, "rev-1", "مراجع");
+        Assert.Null(confirmError);
+        Assert.Equal(KeyEnvelopeStatuses.Reviewer, confirmed!.Status);
+        Assert.Equal(KeyHolderKinds.Reviewer, confirmed.HolderKind);
+    }
+
+    [Fact]
+    public async Task The_trial_result_records_where_the_matching_key_went_and_the_reviewer_can_correct_it()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var service = CreateService(bundle);
+        var envelope = await CreateCourtEnvelopeAsync(db, service);
+        var assignmentId = envelope.Assignments[0].Id;
+
+        var (kept, error) = await service.ConfirmAssignmentAsync(
+            envelope.Id,
+            assignmentId,
+            new ConfirmKeyAssignmentRequest { Status = KeyAssignmentStatuses.Matched, KeyLocation = KeyLocations.WithUser },
+            "insp-1",
+            "معاين أحمد");
+        Assert.Null(error);
+        var row = kept!.Assignments[0];
+        Assert.Equal(KeyLocations.WithUser, row.KeyLocation);
+        Assert.Equal("insp-1", row.KeyHolderUserId);
+        Assert.Equal("معاين أحمد", row.KeyHolderLabel);
+        Assert.False(kept.ReadyForCourtReturn);
+
+        var (back, backError) = await service.SetAssignmentKeyLocationAsync(
+            envelope.Id,
+            assignmentId,
+            new SetKeyLocationRequest { KeyLocation = KeyLocations.InEnvelope },
+            "rev-1",
+            "مراجع");
+        Assert.Null(backError);
+        Assert.Equal(KeyLocations.InEnvelope, back!.Assignments[0].KeyLocation);
+        Assert.Null(back.Assignments[0].KeyHolderUserId);
+        Assert.True(back.ReadyForCourtReturn);
+        Assert.Contains(back.Timeline, t => t.EventType == KeyEnvelopeTimelineEvents.KeyLocationChanged);
+
+        // A lost key defaults to «missing» without the inspector saying so.
+        var (lost, lostError) = await service.ConfirmAssignmentAsync(
+            envelope.Id,
+            assignmentId,
+            new ConfirmKeyAssignmentRequest { Status = KeyAssignmentStatuses.Missing, Notes = "لم يُعثر عليه" },
+            "insp-1",
+            "معاين أحمد");
+        Assert.Null(lostError);
+        Assert.Equal(KeyLocations.Missing, lost!.Assignments[0].KeyLocation);
+    }
+
+    private static async Task HandToInspectorAsync(KeyEnvelopesService service, Guid envelopeId, string inspectorId)
+    {
+        var (handed, error) = await service.CreateHandoffAsync(
+            envelopeId,
+            new CreateKeyEnvelopeHandoffRequest
+            {
+                Kind = KeyHandoffKinds.Internal,
+                FromParty = "مراجع",
+                ToParty = "معاين",
+                ToUserId = inspectorId,
+            },
+            "rev-1",
+            "مراجع");
+        Assert.Null(error);
+        var (confirmed, confirmError) = await service.ConfirmHandoffAsync(envelopeId, handed!.Handoffs[0].Id, inspectorId, "معاين");
+        Assert.Null(confirmError);
+        Assert.Equal(KeyHolderKinds.InternalUser, confirmed!.HolderKind);
     }
 
     [Fact]
@@ -367,6 +492,10 @@ public class KeyEnvelopesServiceTests
         Assert.True(gate.KeyAvailable);
         Assert.Equal("yes", gate.KeyHandedToInspector);
         Assert.Equal("received", gate.KeysStatus);
+        // Custody (decision 2026-10-20): the screen compares the holder with the deed's inspector.
+        Assert.Equal(KeyHolderKinds.InternalUser, gate.EnvelopeHolderKind);
+        Assert.Equal("insp-1", gate.EnvelopeHolderUserId);
+        Assert.Equal(KeyLocations.InEnvelope, gate.KeyLocation);
     }
 
     [Fact]

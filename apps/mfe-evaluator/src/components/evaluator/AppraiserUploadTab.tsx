@@ -1,7 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { PanelSkeleton } from "@platform/ui-kit";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
-import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import { holderAppraisalTaskFor, type WorkflowTask } from "@platform/app-shared/workflow/task-types";
+import { propertyAppraisalWorkspacePath } from "@platform/app-shared/domain/po-routes";
 import { EvaluatorWindow } from "./EvaluatorWindow";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
 import type { EvaluatorPropertySummary } from "./EvaluatorPropertyTab";
@@ -24,9 +28,19 @@ export function AppraiserUploadTab({
   onBack?: () => void;
   embeddedInPropertyChrome?: boolean;
 }) {
+  const router = useRouter();
   const { data: tasks } = useWorkflowTasksQuery();
   const liveTask =
     tasks?.find((t) => t.id === childTask.id) ?? childTask;
+
+  // Phase 5 (decision 2026-10-19): one valuation per transaction. A deed folded into another
+  // deed's valuation opens the holder deed's appraisal workspace instead of its own.
+  const holderTask = holderAppraisalTaskFor(liveTask, tasks ?? []);
+  useEffect(() => {
+    if (!holderTask) return;
+    router.replace(propertyAppraisalWorkspacePath(holderTask.id));
+  }, [holderTask, router]);
+  if (holderTask) return <PanelSkeleton />;
 
   return (
     <EvaluatorWindow

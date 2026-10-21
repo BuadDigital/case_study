@@ -34,6 +34,8 @@ import { canReopenCaseStudyReport } from "../../lib/app-data/po-roles";
 import { enfazCardState } from "../../lib/app-data/enfaz-handover-state";
 import { useTransactionStateQuery } from "../../query/use-transaction-state-query";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import type { CaseStudyReportDeeds } from "../../lib/app-data/case-study-report-document-model";
+import { CaseStudyDeedsTable } from "./CaseStudyDeedsTable";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { CaseStudyReportReopenDialog } from "./CaseStudyReportReopenDialog";
 import {
@@ -71,6 +73,8 @@ type Props = {
    * handed over to Enfaz (specialist only; without it the dialog waits for the server's refusal).
    */
   workOrderId?: string;
+  /** Phase 4: the transaction's deeds when it has several — the form and report list them. */
+  deeds?: CaseStudyReportDeeds;
 };
 
 /**
@@ -91,6 +95,7 @@ export function CaseStudyReportEditor({
   partyAdvisory = false,
   forceReadOnly = false,
   workOrderId,
+  deeds,
 }: Props) {
   const data = useCaseStudyReportData({
     taskId,
@@ -104,6 +109,7 @@ export function CaseStudyReportEditor({
     parentFormTaskId,
     partyAdvisory,
     forceReadOnly,
+    deeds,
   });
   const commands = useCaseStudyReportCommands(data);
   const stepPanelRef = useRef<HTMLDivElement>(null);
@@ -357,6 +363,7 @@ export function CaseStudyReportEditor({
           <div ref={stepPanelRef} className="flex flex-col gap-3.5">
             {step === 0 && sectionHasVisibleQuestions("deed") ? (
               <div className="flex flex-col gap-3.5">
+                {!isParty && deeds ? <CaseStudyDeedsTable deeds={deeds} /> : null}
                 <CaseStudyMatrixTable
                   section="deed"
                   sectionTitle="بيانات الصك والعقار"

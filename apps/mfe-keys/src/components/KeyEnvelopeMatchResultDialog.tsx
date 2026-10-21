@@ -2,15 +2,58 @@
 
 /**
  * Field match result for one deed — the tile picker plus the note that is
- * mandatory for anything but a full match. Validation lives in
+ * mandatory for anything but a full match, and, for a match, where the
+ * matching key went afterwards (decision 2026-10-20). Validation lives in
  * `key-envelope-dialogs-state`; the parent persists the chosen status.
  */
 import { useState } from "react";
 import { Button, Input, Label, cn } from "@platform/ui-kit";
-import type { KeyAssignmentMatchStatus } from "../lib/keys-envelope-types";
-import { MATCH_RESULT_TILES } from "./key-envelope-detail-state";
-import { validateMatchResult } from "./key-envelope-dialogs-state";
+import type {
+  KeyAssignmentMatchStatus,
+  KeyLocation,
+} from "../lib/keys-envelope-types";
+import { KEY_PLACE_TILES, MATCH_RESULT_TILES } from "./key-envelope-detail-state";
+import {
+  matchResultHasKeyToPlace,
+  validateMatchResult,
+} from "./key-envelope-dialogs-state";
 import { DialogErrorBanner, SaveCheckIcon } from "./KeyEnvelopeDialogShared";
+
+function TileButton({
+  on,
+  color,
+  label,
+  hint,
+  onClick,
+}: {
+  on: boolean;
+  color: string;
+  label: string;
+  hint: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "flex min-h-[52px] items-center gap-3 rounded-xl border-[1.5px] px-3.5 py-2.5 text-start font-[inherit] transition-all duration-100",
+        on ? "border-[var(--gold)] bg-[var(--gold-soft)]" : "border-border-md bg-surface-2",
+      )}
+      onClick={onClick}
+    >
+      <span
+        className="size-3.5 shrink-0 rounded-full border-2"
+        style={{ borderColor: color, background: on ? color : "transparent" }}
+      />
+      <span>
+        <span className="block text-[13.5px] font-extrabold" style={{ color }}>
+          {label}
+        </span>
+        <span className="mt-px block text-[11.5px] text-text-3">{hint}</span>
+      </span>
+    </button>
+  );
+}
 
 export function MatchResultModal({
   deed,
@@ -21,9 +64,14 @@ export function MatchResultModal({
   deed: string;
   busy: boolean;
   onClose: () => void;
-  onSave: (status: KeyAssignmentMatchStatus, note?: string) => void;
+  onSave: (
+    status: KeyAssignmentMatchStatus,
+    note?: string,
+    keyLocation?: KeyLocation | null,
+  ) => void;
 }) {
   const [sel, setSel] = useState<KeyAssignmentMatchStatus | "">("");
+  const [keyPlace, setKeyPlace] = useState<KeyLocation | "">("");
   const [note, setNote] = useState("");
   const [err, setErr] = useState("");
 
@@ -67,46 +115,38 @@ export function MatchResultModal({
           <div>
             <Label>نتيجة تجربة المفاتيح ميدانياً *</Label>
             <div className="mt-1.5 grid gap-2">
-              {MATCH_RESULT_TILES.map((t) => {
-                const on = sel === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={cn(
-                      "flex min-h-[52px] items-center gap-3 rounded-xl border-[1.5px] px-3.5 py-2.5 text-start font-[inherit] transition-all duration-100",
-                      on
-                        ? "border-[var(--gold)] bg-[var(--gold-soft)]"
-                        : "border-border-md bg-surface-2",
-                    )}
-                    onClick={() => {
-                      setSel(t.id);
-                      setErr("");
-                    }}
-                  >
-                    <span
-                      className="size-3.5 shrink-0 rounded-full border-2"
-                      style={{
-                        borderColor: t.color,
-                        background: on ? t.color : "transparent",
-                      }}
-                    />
-                    <span>
-                      <span
-                        className="block text-[13.5px] font-extrabold"
-                        style={{ color: t.color }}
-                      >
-                        {t.label}
-                      </span>
-                      <span className="mt-px block text-[11.5px] text-text-3">
-                        {t.hint}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })}
+              {MATCH_RESULT_TILES.map((t) => (
+                <TileButton
+                  key={t.id}
+                  on={sel === t.id}
+                  color={t.color}
+                  label={t.label}
+                  hint={t.hint}
+                  onClick={() => {
+                    setSel(t.id);
+                    setErr("");
+                  }}
+                />
+              ))}
             </div>
           </div>
+          {matchResultHasKeyToPlace(sel) ? (
+            <div>
+              <Label>أين المفتاح المطابق الآن؟</Label>
+              <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
+                {KEY_PLACE_TILES.map((t) => (
+                  <TileButton
+                    key={t.id}
+                    on={(keyPlace || "in_envelope") === t.id}
+                    color={t.color}
+                    label={t.label}
+                    hint={t.hint}
+                    onClick={() => setKeyPlace(t.id)}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
           {sel && sel !== "matched" ? (
             <div>
               <Label htmlFor="kr-note">ملاحظة *</Label>
@@ -134,12 +174,12 @@ export function MatchResultModal({
             loading={busy}
             showActionToast={false}
             onClick={() => {
-              const result = validateMatchResult(sel, note);
+              const result = validateMatchResult(sel, note, keyPlace);
               if (!result.ok) {
                 setErr(result.error);
                 return;
               }
-              onSave(result.status, result.note);
+              onSave(result.status, result.note, result.keyLocation);
             }}
           >
             <SaveCheckIcon />

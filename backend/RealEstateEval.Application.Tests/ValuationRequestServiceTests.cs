@@ -201,11 +201,101 @@ public class ValuationRequestServiceTests
         Assert.Null(open.IssueDate);
     }
 
-    private static ValuationRequest OpenRequest(Guid id, string displayId) =>
+    // ------------------------------------------------------------ phase 5: one valuation per transaction
+
+    [Fact]
+    public async Task Fold_marks_the_moved_deeds_requests_merged_into_the_holders_and_open_by_property_follows_it()
+    {
+        await using var db = CreateDb();
+        var holderProperty = Guid.Parse("11111111-1111-4111-8111-111111111111");
+        var movedProperty = Guid.Parse("22222222-2222-4222-8222-222222222222");
+        var holderRequest = Guid.Parse("a1000001-0000-4000-8000-000000000010");
+        var movedRequest = Guid.Parse("a1000001-0000-4000-8000-000000000011");
+        db.ValuationRequests.Add(OpenRequest(holderRequest, "VR-600", holderProperty));
+        db.ValuationRequests.Add(OpenRequest(movedRequest, "VR-601", movedProperty));
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+        var folding = new ValuationRequestFoldingService(db);
+
+        var folded = await folding.FoldAsync(new FoldValuationRequestsRequest
+        {
+            PropertyIds = [movedProperty, Guid.NewGuid()],
+            HolderPropertyId = holderProperty,
+        });
+
+        Assert.Equal(1, folded.FoldedCount);
+        Assert.Equal(holderRequest, folded.HolderRequestId);
+        var row = await db.ValuationRequests.AsNoTracking().SingleAsync(x => x.Id == movedRequest);
+        Assert.Equal(ValuationRequestStatus.Merged, row.Status);
+        Assert.Equal(holderRequest, row.MergedIntoRequestId);
+        Assert.False(row.IsOpen);
+
+        // The moved deed's "open request" is now the holder's — the gates that read it keep working.
+        var open = await service.GetOpenByPropertyAsync(movedProperty.ToString("D"));
+        Assert.Equal("VR-600", open!.DisplayId);
+        Assert.Contains("merged", (await service.ListAsync()).Select(x => x.Status));
+        Assert.Equal(holderRequest, (await service.GetAsync(movedRequest))!.MergedIntoRequestId);
+
+        // Idempotent.
+        var again = await folding.FoldAsync(new FoldValuationRequestsRequest
+        {
+            PropertyIds = [movedProperty],
+            HolderPropertyId = holderProperty,
+        });
+        Assert.Equal(0, again.FoldedCount);
+    }
+
+    [Fact]
+    public async Task A_merged_deed_reads_as_closed_once_the_holders_request_is_done_and_unfold_reopens_it()
+    {
+        await using var db = CreateDb();
+        var holderProperty = Guid.Parse("33333333-3333-4333-8333-333333333333");
+        var movedProperty = Guid.Parse("44444444-4444-4444-8444-444444444444");
+        var holderRequest = Guid.Parse("a1000001-0000-4000-8000-000000000012");
+        var movedRequest = Guid.Parse("a1000001-0000-4000-8000-000000000013");
+        db.ValuationRequests.Add(OpenRequest(holderRequest, "VR-610", holderProperty));
+        db.ValuationRequests.Add(OpenRequest(movedRequest, "VR-611", movedProperty));
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+        var folding = new ValuationRequestFoldingService(db);
+        await folding.FoldAsync(new FoldValuationRequestsRequest
+        {
+            PropertyIds = [movedProperty],
+            HolderPropertyId = holderProperty,
+        });
+
+        var holder = await db.ValuationRequests.SingleAsync(x => x.Id == holderRequest);
+        holder.SubmitReport(DateTime.UtcNow);
+        await db.SaveChangesAsync();
+        Assert.Null(await service.GetOpenByPropertyAsync(movedProperty.ToString("D")));
+
+        var unfolded = await folding.UnfoldAsync(new UnfoldValuationRequestRequest { PropertyId = movedProperty });
+
+        Assert.Equal(1, unfolded.FoldedCount);
+        var row = await db.ValuationRequests.AsNoTracking().SingleAsync(x => x.Id == movedRequest);
+        Assert.Equal(ValuationRequestStatus.Progress, row.Status);
+        Assert.Null(row.MergedIntoRequestId);
+        Assert.Equal("VR-611", (await service.GetOpenByPropertyAsync(movedProperty.ToString("D")))!.DisplayId);
+        Assert.Equal(0, (await folding.UnfoldAsync(new UnfoldValuationRequestRequest { PropertyId = movedProperty })).FoldedCount);
+    }
+
+    [Fact]
+    public void A_closed_request_is_never_folded()
+    {
+        var row = ValuationRequest.Create(
+            Guid.NewGuid(), "VR-620", Guid.NewGuid(), "جدة", "فيلا", "مقيم", "2026-06-25", DateTime.UtcNow,
+            ValuationRequestStatus.Done);
+        Assert.False(row.MarkMerged(Guid.NewGuid(), DateTime.UtcNow));
+        Assert.Equal(ValuationRequestStatus.Done, row.Status);
+        Assert.Equal("merged", ValuationRequestStatus.Merged.ToDbValue());
+        Assert.Equal(ValuationRequestStatus.Merged, ValuationRequestStatuses.Parse("merged"));
+    }
+
+    private static ValuationRequest OpenRequest(Guid id, string displayId, Guid? propertyId = null) =>
         ValuationRequest.Create(
             id,
             displayId,
-            Guid.NewGuid(),
+            propertyId ?? Guid.NewGuid(),
             "جدة",
             "فيلا",
             "مقيم",

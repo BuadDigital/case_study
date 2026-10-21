@@ -198,6 +198,23 @@ public class CapabilityPolicyRegistrationTests
         Assert.False(result.Succeeded);
     }
 
+    [Fact]
+    public async Task The_service_token_reads_the_identity_directory_and_nothing_else()
+    {
+        // Event consumers resolve notification recipients with the service's own token.
+        var authorization = BuildAuthorizationService();
+        var service = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(PlatformCapabilities.TokenUseClaimType, PlatformCapabilities.UpstreamServiceTokenUse)],
+            authenticationType: "test"));
+
+        Assert.True((await authorization.AuthorizeAsync(
+            service, resource: null, CapabilityPolicyNames.ReadIdentityDirectory)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            service, resource: null, CapabilityPolicyNames.ReadCaseStudyWorkspace)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            service, resource: null, CapabilityPolicyNames.ReadFinancialData)).Succeeded);
+    }
+
     private static IAuthorizationService BuildAuthorizationService()
     {
         var services = new ServiceCollection();

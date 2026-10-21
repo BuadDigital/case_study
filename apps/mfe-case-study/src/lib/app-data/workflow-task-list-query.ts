@@ -25,6 +25,7 @@ export type WorkflowTaskFilterRow = {
   district?: string;
   propertyType?: string;
   classification?: string;
+  transactionNumber?: string;
 };
 
 /** Splits a CSV filter into its tokens; blanks are dropped, as on the server. */
@@ -82,6 +83,7 @@ export function matchesWorkflowTaskFilters(
       task.district ?? "",
       task.propertyType ?? "",
       task.classification ?? "",
+      task.transactionNumber ?? "",
     ].join(" ");
     if (!hay.includes(q)) return false;
   }

@@ -18,6 +18,10 @@ import {
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
+import {
+  TransactionNumberBadge,
+  transactionNumberOf,
+} from "../components/ui/TransactionNumberBadge";
 import type { RemainingTimeState } from "../lib/app-data/my-task-row";
 import type { PrimaryQueueRowMeta } from "../lib/app-data/active-queue-list-filters";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
@@ -71,6 +75,12 @@ const PrimaryQueueRow = memo(function PrimaryQueueRow({
           tone={isStudyLabel ? "gold" : "primary"}
           rtl={isStudyLabel}
           trailing={rowAttentionTrailing(ctx, task)}
+          subtitle={
+            <TransactionNumberBadge
+              number={transactionNumberOf(property) ?? task.transactionNumber}
+              deedCount={property?.transactionDeedCount}
+            />
+          }
         />
       </Td>
       <Td className="text-text-2">

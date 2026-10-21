@@ -21,6 +21,13 @@ export const LAYERS = {
     family: "property" as const,
     defaultOn: false,
   },
+  /** Properties with an open failure (مرشح تعذّر / متعذّر) — their own layer, out of active/archive. */
+  failures: {
+    key: "failures",
+    label: "التعذّرات",
+    family: "property" as const,
+    defaultOn: true,
+  },
   comparables: {
     key: "comparables",
     label: "مقارنات السوق",
@@ -54,6 +61,8 @@ export type MapPropertyRecord = {
   client: string;
   assignmentType: string;
   workflowStatus: WorkflowStatusKey;
+  /** Title of the property's open failure (التعذّر), when there is one. */
+  failureTitle?: string | null;
   openedDate: string | null;
   valuationDate: string | null;
   issueDate: string | null;
@@ -62,7 +71,10 @@ export type MapPropertyRecord = {
   valuer: string | null;
   coords: MapCoords | null;
   coordsSource: string | null;
+  /** The transaction (المعاملة) id: deeds sharing it cluster into one point. */
   propertyGroupId: string | null;
+  /** PR-… once confirmed, else the D- draft number. */
+  transactionNumber?: string | null;
   poNumber?: string;
   propertyId?: string;
 };
@@ -126,7 +138,6 @@ export type FilterCriteria = {
   approvedOnly?: boolean;
   kindCat?: PropertyKindCat | "";
   usage?: PropertyUsageCat | "";
-  infeasOnly?: boolean;
 };
 
 type DateRange = { from: Date | null; to: Date | null };
@@ -151,13 +162,24 @@ function hasCoords(r: { coords: MapCoords | null | undefined }): boolean {
   return r.coords != null && r.coords.lat != null && r.coords.lng != null;
 }
 
+/** A property with an open failure — drawn on the «التعذّرات» layer, not with active/archive. */
+export function isFailureRecord(r: Pick<MapPropertyRecord, "workflowStatus">): boolean {
+  return r.workflowStatus === "infeasible" || r.workflowStatus === "infeasible_candidate";
+}
+
+/** Each property lands in exactly one layer: failures first, then active (not closed) or archive. */
 export function partitionProperties(records: MapPropertyRecord[]) {
   const active: MapPropertyRecord[] = [];
   const archive: MapPropertyRecord[] = [];
+  const failures: MapPropertyRecord[] = [];
   let activeNoCoords = 0;
   let archiveNoCoords = 0;
+  let failuresNoCoords = 0;
   for (const r of records) {
-    if (isActive(r)) {
+    if (isFailureRecord(r)) {
+      if (hasCoords(r)) failures.push(r);
+      else failuresNoCoords += 1;
+    } else if (isActive(r)) {
       if (hasCoords(r)) active.push(r);
       else activeNoCoords += 1;
     } else if (hasCoords(r)) {
@@ -166,7 +188,7 @@ export function partitionProperties(records: MapPropertyRecord[]) {
       archiveNoCoords += 1;
     }
   }
-  return { active, archive, activeNoCoords, archiveNoCoords };
+  return { active, archive, failures, activeNoCoords, archiveNoCoords, failuresNoCoords };
 }
 
 function startOfDay(d: Date): Date {
@@ -260,13 +282,6 @@ export function filterProperties(
     if (c.usage && usageOf(r.propertyType) !== c.usage) return false;
     if (c.assignmentType && r.assignmentType !== c.assignmentType) return false;
     if (
-      c.infeasOnly &&
-      r.workflowStatus !== "infeasible" &&
-      r.workflowStatus !== "infeasible_candidate"
-    ) {
-      return false;
-    }
-    if (
       c.workflowStatuses?.length &&
       !c.workflowStatuses.includes(r.workflowStatus)
     ) {
@@ -277,7 +292,7 @@ export function filterProperties(
     if (
       q &&
       !normalize(
-        [r.deedNo, r.refNo, r.district, r.client, r.city].join(" "),
+        [r.deedNo, r.refNo, r.transactionNumber ?? "", r.district, r.client, r.city].join(" "),
       ).includes(q)
     ) {
       return false;
@@ -354,14 +369,24 @@ export function groupForMap(records: MapPropertyRecord[]): MapGroupedPoint[] {
       });
     }
   }
-  const grouped: MapGroupPoint[] = [...groups.values()].map((members) => ({
-    kind: "group",
-    groupId: members[0]!.propertyGroupId!,
-    members,
-    deedCount: members.length,
-    active: members.some(isActive),
-    coords: members[0]!.coords,
-  }));
+  const grouped: MapGroupPoint[] = [];
+  for (const members of groups.values()) {
+    // A transaction with one deed on the map is an ordinary point, not a one-member cluster.
+    if (members.length < 2) {
+      const only = members[0]!;
+      singles.push({ kind: "single", record: only, coords: only.coords, active: isActive(only) });
+      continue;
+    }
+    grouped.push({
+      kind: "group",
+      groupId: members[0]!.propertyGroupId!,
+      members,
+      deedCount: members.length,
+      active: members.some(isActive),
+      // The first deed that was actually located; a deed without coordinates must not hide the rest.
+      coords: members.find((m) => m.coords)?.coords ?? null,
+    });
+  }
   return [...singles, ...grouped];
 }
 
@@ -442,6 +467,7 @@ export function propertyCard(
     rows: [
       ["الرقم المرجعي", r.refNo],
       ["رقم الصك", r.deedNo],
+      ...(r.failureTitle ? ([["التعذّر", r.failureTitle]] as MapCardRow[]) : []),
       ["العميل", r.client],
       ["نوع الإسناد", r.assignmentType],
       ["المساحة", r.area != null ? r.area.toLocaleString("en-US") + " م²" : "-"],

@@ -194,12 +194,15 @@ public partial class WorkOrderService : IWorkOrderService
         {
             propDto.Id = null;
             var mappedProperty = _properties.MapPropertyEnfath(propDto, workOrder.Id, forInsert: true);
- // Numbering workshop (decision items 2 and 5): transaction reference number assigned on intake.
-            var (transactionReference, referenceError) =
-                await _db.AllocateTransactionReferenceAsync(_time.UtcNow(), cancellationToken);
+            // Decision 2026-10-19: every deed opens its own draft transaction (D- number); the
+            // official PR reference comes at the first report approval, never at intake.
+            var now = _time.UtcNow();
+            var (draftNumber, referenceError) =
+                await _db.AllocateTransactionDraftNumberAsync(now, cancellationToken);
             if (referenceError is not null)
                 return (null, new Dictionary<string, string> { ["_"] = referenceError });
-            mappedProperty.ReferenceNumber = transactionReference;
+            mappedProperty.Transaction = Transaction.CreateDraft(draftNumber!, now);
+            mappedProperty.TransactionId = mappedProperty.Transaction.Id;
             workOrder.Properties.Add(mappedProperty);
         }
 

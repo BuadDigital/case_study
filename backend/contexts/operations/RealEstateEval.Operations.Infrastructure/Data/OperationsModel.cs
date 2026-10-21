@@ -77,6 +77,12 @@ public static class OperationsModel
             e.HasIndex(x => x.RevenueEntitlementAtUtc);
             e.HasIndex(x => x.OperationsTaskId);
             e.HasAllowedValues("KeyEnvelopes", nameof(KeyEnvelope.Status), KeyEnvelopeStatuses.All);
+            // Custody (decision 2026-10-20): the holder moves on confirmed receipt only.
+            e.Property(x => x.HolderKind).HasMaxLength(32).HasDefaultValue(KeyHolderKinds.Reviewer);
+            e.Property(x => x.HolderUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.HolderLabel).HasMaxLength(256);
+            e.HasIndex(x => x.HolderUserId);
+            e.HasAllowedValues("KeyEnvelopes", nameof(KeyEnvelope.HolderKind), KeyHolderKinds.All);
             e.HasNonNegative("KeyEnvelopes", nameof(KeyEnvelope.FeeAmountSar));
             e.HasMany(x => x.Assignments)
                 .WithOne(x => x.Envelope!)
@@ -107,6 +113,13 @@ public static class OperationsModel
                 "KeyEnvelopeAssignments",
                 nameof(KeyEnvelopeAssignment.Status),
                 KeyAssignmentStatuses.All);
+            e.Property(x => x.KeyLocation).HasMaxLength(32).HasDefaultValue(KeyLocations.InEnvelope);
+            e.Property(x => x.KeyHolderUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.KeyHolderLabel).HasMaxLength(256);
+            e.HasAllowedValues(
+                "KeyEnvelopeAssignments",
+                nameof(KeyEnvelopeAssignment.KeyLocation),
+                KeyLocations.All);
         });
 
         builder.Entity<KeyEnvelopeHandoff>(e =>

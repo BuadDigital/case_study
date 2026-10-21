@@ -5,6 +5,7 @@ import type { ValuationReportDraftDto } from "@platform/api-client";
 
 const api = vi.hoisted(() => ({
   approveReportDraft: vi.fn(),
+  ensureReportNumber: vi.fn(),
   withdrawReportDraftApproval: vi.fn(),
   registerDepositCertificate: vi.fn(),
   downloadFinalReport: vi.fn(),
@@ -74,6 +75,7 @@ describe("ReportDraftApprovalBar", () => {
   });
 
   it("approves with today's date — there is no date to pick", async () => {
+    api.ensureReportNumber.mockResolvedValue({ ok: true, data: { valuationRequestId: "vr-1", reportNumber: "PRV-2026-00007" } });
     api.approveReportDraft.mockResolvedValue({ ok: true, data: draft({ status: "approved", reportStage: "deposit_issued" }) });
     const { buildApprovedHtml } = renderBar(draft({ status: "sent" }));
 
@@ -84,7 +86,9 @@ describe("ReportDraftApprovalBar", () => {
 
     await waitFor(() => expect(api.approveReportDraft).toHaveBeenCalledTimes(1));
     const today = new Date().toLocaleDateString("en-CA");
-    expect(buildApprovedHtml).toHaveBeenCalledWith(today, expect.any(Function));
+    // Decision 2026-10-19: the report number is fixed on the server before the copy is printed.
+    expect(api.ensureReportNumber).toHaveBeenCalledWith({ token: "t" }, "vr-1");
+    expect(buildApprovedHtml).toHaveBeenCalledWith(today, expect.any(Function), "PRV-2026-00007");
     expect(api.approveReportDraft).toHaveBeenCalledWith({ token: "t" }, "vr-1", { reportDate: today, html: "<p>report</p>" });
   });
 
@@ -98,7 +102,19 @@ describe("ReportDraftApprovalBar", () => {
     expect(api.approveReportDraft).not.toHaveBeenCalled();
   });
 
+  it("stops before building the copy when the report number cannot be fixed", async () => {
+    api.ensureReportNumber.mockResolvedValue({ ok: false, kind: "validation", message: "تعذّر تثبيت رقم التقرير من خدمة دراسة الحالة" });
+    const { buildApprovedHtml } = renderBar(draft({ status: "sent" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "اعتماد التقرير" }));
+
+    await waitFor(() => expect(toast.showToast).toHaveBeenCalledWith("تعذّر تثبيت رقم التقرير من خدمة دراسة الحالة", "error"));
+    expect(buildApprovedHtml).not.toHaveBeenCalled();
+    expect(api.approveReportDraft).not.toHaveBeenCalled();
+  });
+
   it("reports a refused approval without changing the draft", async () => {
+    api.ensureReportNumber.mockResolvedValue({ ok: true, data: { valuationRequestId: "vr-1", reportNumber: "PRV-2026-00007" } });
     api.approveReportDraft.mockResolvedValue({ ok: false, kind: "validation", message: "تاريخ الاعتماد غير صحيح" });
     renderBar(draft({ status: "sent" }));
 

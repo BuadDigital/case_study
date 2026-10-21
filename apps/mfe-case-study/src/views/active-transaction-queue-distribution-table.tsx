@@ -19,6 +19,10 @@ import {
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
+import {
+  TransactionNumberBadge,
+  transactionNumberOf,
+} from "../components/ui/TransactionNumberBadge";
 import { PartyAssigneeCell } from "../components/ui/PartyAssigneeCell";
 import {
   buildDistributionTableRow,
@@ -91,6 +95,12 @@ const DistributionQueueRow = memo(function DistributionQueueRow({
       loading={ctx.isTaskOpening(task.id)}
       labelClassName={INSPECTION_TABLE_TYPE.deed}
       trailing={rowAttentionTrailing(ctx, task)}
+      subtitle={
+        <TransactionNumberBadge
+          number={transactionNumberOf(property) ?? task.transactionNumber}
+          deedCount={property?.transactionDeedCount}
+        />
+      }
     />
   );
   return (

@@ -11,6 +11,8 @@ import {
 } from "@platform/app-shared/domain/property-geo";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
+import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-property-model";
 import type {
   MapComparableRecord,
@@ -32,6 +34,8 @@ type MapValuationOverlay = {
 type MapLiveOverlays = {
   inspectorPins?: Map<string, MapCoords>;
   valuations?: Map<string, MapValuationOverlay>;
+  /** Every failure (التعذّرات) — the map marks a property from its newest unresolved one. */
+  failures?: FailureRecord[];
 };
 
 function propertyKey(id: string | null | undefined): string {
@@ -132,11 +136,33 @@ export function resolveLivePropertyCoords(
   return { coords: null, coordsSource: null };
 }
 
+/** The property's newest failure that is not resolved — the one that decides its map status. */
+function openFailureFor(
+  failures: FailureRecord[] | undefined,
+  poNumber: string,
+  property: PoPropertyIntake,
+): FailureRecord | null {
+  if (!failures?.length) return null;
+  const matched = failuresForProperty(failures, {
+    poNumber,
+    propertyId: property.id,
+    deedNumber: property.deedNumber,
+  });
+  return matched.find((failure) => failure.status !== "resolved") ?? null;
+}
+
+/**
+ * «متعذّر»: removed, or its failure was approved / suspended the transaction.
+ * «مرشح تعذّر»: a failure still in draft, review or returned to the specialist, or an inactive deed.
+ */
 function workflowForProperty(
   property: PoPropertyIntake,
   overlay: MapValuationOverlay | undefined,
+  failure: FailureRecord | null,
 ): WorkflowStatusKey {
   if (property.isRemoved) return "infeasible";
+  if (failure?.status === "approved" || failure?.status === "suspended") return "infeasible";
+  if (failure) return "infeasible_candidate";
   const vitality = property.deedStatus.trim();
   if (vitality === "غير فعال" || vitality.toLowerCase() === "inactive") {
     return "infeasible_candidate";
@@ -164,7 +190,8 @@ export function mapPoRecordsToMapProperties(
         property,
         overlays.inspectorPins?.get(key) ?? null,
       );
-      const workflowStatus = workflowForProperty(property, valuation);
+      const failure = openFailureFor(overlays.failures, record.poNumber, property);
+      const workflowStatus = workflowForProperty(property, valuation, failure);
       out.push({
         id: property.id,
         refNo: record.poNumber,
@@ -177,6 +204,7 @@ export function mapPoRecordsToMapProperties(
         client: (record.clientNameAr ?? "").trim() || "—",
         assignmentType: record.assignmentType || "—",
         workflowStatus,
+        failureTitle: failure?.title.trim() || null,
         openedDate: record.createdAtUtc?.slice(0, 10) || null,
         valuationDate: valuation?.valuationDate ?? null,
         issueDate: valuation?.issueDate ?? null,
@@ -187,7 +215,11 @@ export function mapPoRecordsToMapProperties(
         valuer: valuation?.valuer ?? null,
         coords,
         coordsSource,
-        propertyGroupId: null,
+        // Decision 2026-10-19: deeds of one transaction cluster into one point. A transaction
+        // with one deed stays a single (groupForMap turns one-member groups back into singles).
+        propertyGroupId: property.transactionId?.trim() || null,
+        transactionNumber:
+          property.referenceNumber?.trim() || property.transactionDraftNumber?.trim() || null,
         poNumber: record.poNumber,
         propertyId: property.id,
       });

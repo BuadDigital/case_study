@@ -4,6 +4,7 @@ using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
+using RealEstateEval.Application.Authorization;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -57,7 +58,7 @@ internal sealed class UpstreamServiceBearer
                 new(JwtRegisteredClaimNames.Sub, "ree-upstream-service"),
                 new("displayName", "REE Upstream Service"),
                 new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
-                new("tokenUse", "upstream-service"),
+                new(PlatformCapabilities.TokenUseClaimType, PlatformCapabilities.UpstreamServiceTokenUse),
             };
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
             var jwt = new JwtSecurityToken(

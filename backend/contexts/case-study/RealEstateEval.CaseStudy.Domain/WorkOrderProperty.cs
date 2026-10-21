@@ -7,8 +7,9 @@ public class WorkOrderProperty : ITrackUpdatedAt
     public DateTime UpdatedAtUtc { get; set; }
     public Guid Id { get; set; }
     public Guid WorkOrderId { get; set; }
- /// <summary>Numbering shop: Internal transaction reference number TX-{year}-{sequence 5}.</summary>
-    public string? ReferenceNumber { get; set; }
+    /// <summary>The transaction (المعاملة) this deed belongs to — the reference above the deed.</summary>
+    public Guid TransactionId { get; set; }
+    public Transaction? Transaction { get; set; }
     public PropertyIdentifierType IdentifierType { get; set; }
  /// <summary>Deed kind — traditional / registered title.</summary>
     public DeedKind DeedKind { get; set; } = DeedKind.Traditional;

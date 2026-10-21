@@ -34,6 +34,11 @@ public static class KeyEnvelopeMapper
         CreatedAtUtc = row.CreatedAtUtc,
         UpdatedAtUtc = row.UpdatedAtUtc,
         OperationsTaskId = row.OperationsTaskId,
+        HolderKind = row.HolderKind,
+        HolderUserId = row.HolderUserId,
+        HolderLabel = row.HolderLabel,
+        HolderSinceUtc = row.HolderSinceUtc,
+        ReadyForCourtReturn = KeyEnvelopeLifecycleRules.ReadyForCourtReturn(row),
         Assignments = row.Assignments
             .OrderBy(a => a.DeedNumber)
             .Select(a => new KeyEnvelopeAssignmentDto
@@ -45,6 +50,10 @@ public static class KeyEnvelopeMapper
                 Notes = a.Notes,
                 ConfirmedByName = a.ConfirmedByName,
                 ConfirmedAtUtc = a.ConfirmedAtUtc,
+                KeyLocation = a.KeyLocation,
+                KeyHolderUserId = a.KeyHolderUserId,
+                KeyHolderLabel = a.KeyHolderLabel,
+                KeyLocationAtUtc = a.KeyLocationAtUtc,
             })
             .ToList(),
         Handoffs = row.Handoffs

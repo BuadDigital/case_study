@@ -19,6 +19,7 @@ import {
   ACCESS_ROUTE_DESCRIPTION_REQUIRED,
   MOVABLES_DESCRIPTION_KEY,
   OCCUPANCY_DESCRIPTION_KEY,
+  isApartmentInspectionContext,
   isCommercialShopInspectionContext,
   isLandInspectionContext,
   isMovablesPresent,
@@ -318,6 +319,12 @@ export function validateInspectorWorkspace(
   });
   const featureFields = visibleInspectorFeatureFields(isLand, {
     includeRetiredKeys: options?.includeRetiredFeatureKeys,
+    isApartment: isApartmentInspectionContext({
+      vacantLand: submission.vacantLand,
+      assetSubject: submission.featureValues.assetSubject,
+      classification: options?.classification,
+      propertyType: options?.propertyType,
+    }),
   });
   if (!submission.inspectionDate.trim()) {
     errors.inspectionDate = "تاريخ المعاينة مطلوب";

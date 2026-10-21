@@ -25,9 +25,14 @@ public sealed class WorkOrderLoader : IWorkOrderLoader
         IQueryable<WorkOrder> q = _db.WorkOrders
             .Include(w => w.Client)
             .Include(w => w.Properties)
-            .ThenInclude(p => p.Contacts);
+            .ThenInclude(p => p.Contacts)
+            .Include(w => w.Properties)
+            .ThenInclude(p => p.Transaction)
+            .ThenInclude(t => t!.Properties);
 
-        if (asNoTracking) q = q.AsNoTracking();
+        // Identity resolution: the transaction → properties → transaction include is a cycle a
+        // plain no-tracking query refuses.
+        if (asNoTracking) q = q.AsNoTrackingWithIdentityResolution();
 
         return await q.FirstOrDefaultAsync(w => w.PoNumber == po, cancellationToken);
     }

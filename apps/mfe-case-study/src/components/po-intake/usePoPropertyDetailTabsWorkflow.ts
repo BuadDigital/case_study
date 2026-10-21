@@ -26,7 +26,7 @@ import {
   buildPropertyDetailPartyCards,
   type PropertyDetailPartyCard,
 } from "../../lib/app-data/property-detail-parties";
-import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
+import { usePropertyOrTransactionTimeline } from "../../query/use-transaction-query";
 import { caseStudyTaskForProperty } from "../../lib/app-data/tasks";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
 import {
@@ -320,7 +320,8 @@ export function usePoPropertyDetailTabsWorkflow({
     [partySubmissionsQuery.data, record.workOrderDescription],
   );
 
-  const logEventsQuery = usePropertyTimelineQuery(poNumber, property.id);
+  // Decision 2026-10-19: the log is the transaction's when it has several deeds.
+  const { query: logEventsQuery } = usePropertyOrTransactionTimeline(poNumber, property);
   const logEvents = logEventsQuery.data ?? EMPTY_LOG_EVENTS;
 
   const propertyFeeTasks = useMemo(

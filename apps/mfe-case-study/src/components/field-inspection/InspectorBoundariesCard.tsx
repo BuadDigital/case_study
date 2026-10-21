@@ -10,6 +10,7 @@ import { cn, formControlClassName, Input, Select, Textarea } from "@platform/ui-
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   effectiveDeedVerdict,
+  isApartmentInspectionContext,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
@@ -28,6 +29,7 @@ import {
 import {
   boundaryDeedDisplay,
   boundaryMatchPatch,
+  inspectionContextOf,
   resolvedBoundaryDeedField,
 } from "./field-inspection-work-state";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
@@ -50,6 +52,8 @@ export function InspectorBoundariesCard({
 }) {
   // Per-side toggles + notes exist only under «غير مطابق» (explicit, or derived from a legacy payload).
   const showMatchRows = effectiveDeedVerdict(draft) === "no";
+  // An apartment records no facades — no «نوع الواجهة» per side.
+  const showFacade = !isApartmentInspectionContext(inspectionContextOf(draft, property));
   return (
     <div id="ins-boundaries-section">
     <InspectorCard
@@ -144,26 +148,30 @@ export function InspectorBoundariesCard({
                   )
                 }
               />
-              <MobileFieldLabel>نوع الواجهة</MobileFieldLabel>
-              <Select
-                aria-label={`نوع الواجهة — ${row.label}`}
-                value={facade}
-                disabled={locked}
-                className={cn(mobileControlClassName, "mb-2.5")}
-                onChange={(e) =>
-                  persist(boundaryMatchPatch(draft, key, { facade: e.target.value }))
-                }
-              >
-                <option value="">— اختر —</option>
-                {facade && !facadeTypeOptions.includes(facade) ? (
-                  <option value={facade}>{facade}</option>
-                ) : null}
-                {facadeTypeOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </Select>
+              {showFacade ? (
+                <>
+                  <MobileFieldLabel>نوع الواجهة</MobileFieldLabel>
+                  <Select
+                    aria-label={`نوع الواجهة — ${row.label}`}
+                    value={facade}
+                    disabled={locked}
+                    className={cn(mobileControlClassName, "mb-2.5")}
+                    onChange={(e) =>
+                      persist(boundaryMatchPatch(draft, key, { facade: e.target.value }))
+                    }
+                  >
+                    <option value="">— اختر —</option>
+                    {facade && !facadeTypeOptions.includes(facade) ? (
+                      <option value={facade}>{facade}</option>
+                    ) : null}
+                    {facadeTypeOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </Select>
+                </>
+              ) : null}
               {showMatchRows ? (
                 <MobilePills
                   options={["مطابق", "عدم تطابق"]}
@@ -206,33 +214,39 @@ export function InspectorBoundariesCard({
             id={`ins-boundary-${key}`}
             className={cn(
               "grid grid-cols-1 items-start gap-3 border-b border-border py-2.5 last:border-b-0",
-              showMatchRows
-                ? "md:grid-cols-[90px_150px_1fr_90px_minmax(200px,250px)]"
-                : "md:grid-cols-[90px_150px_1fr_90px]",
+              showFacade
+                ? showMatchRows
+                  ? "md:grid-cols-[90px_150px_1fr_90px_minmax(200px,250px)]"
+                  : "md:grid-cols-[90px_150px_1fr_90px]"
+                : showMatchRows
+                  ? "md:grid-cols-[90px_1fr_90px_minmax(200px,250px)]"
+                  : "md:grid-cols-[90px_1fr_90px]",
             )}
           >
             <span className="text-xs font-semibold text-text-2">
               {row.label}
             </span>
-            <Select
-              aria-label={`نوع الواجهة — ${row.label}`}
-              value={facade}
-              disabled={locked}
-              className="text-[11.5px]"
-              onChange={(e) =>
-                persist(boundaryMatchPatch(draft, key, { facade: e.target.value }))
-              }
-            >
-              <option value="">— اختر —</option>
-              {facade && !facadeTypeOptions.includes(facade) ? (
-                <option value={facade}>{facade}</option>
-              ) : null}
-              {facadeTypeOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </Select>
+            {showFacade ? (
+              <Select
+                aria-label={`نوع الواجهة — ${row.label}`}
+                value={facade}
+                disabled={locked}
+                className="text-[11.5px]"
+                onChange={(e) =>
+                  persist(boundaryMatchPatch(draft, key, { facade: e.target.value }))
+                }
+              >
+                <option value="">— اختر —</option>
+                {facade && !facadeTypeOptions.includes(facade) ? (
+                  <option value={facade}>{facade}</option>
+                ) : null}
+                {facadeTypeOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
             {locked ? (
               <span className="text-xs">{deed.desc}</span>
             ) : (

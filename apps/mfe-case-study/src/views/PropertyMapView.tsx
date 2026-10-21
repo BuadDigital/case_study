@@ -56,6 +56,8 @@ export function PropertyMapView() {
     activeSel,
     setActiveSel,
     archiveSel,
+    failuresSel,
+    setFailuresSel,
     setArchiveSel,
     compSel,
     setCompSel,
@@ -163,17 +165,35 @@ export function PropertyMapView() {
           </LayerSidePanel>
         ) : null}
 
-        {layerPanel === "active" || layerPanel === "archive" ? (
+        {layerPanel === "active" || layerPanel === "archive" || layerPanel === "failures" ? (
           <LayerSidePanel
-            title={layerPanel === "active" ? "العقارات النشطة" : "العقارات المكتملة"}
+            title={
+              layerPanel === "active"
+                ? "العقارات النشطة"
+                : layerPanel === "archive"
+                  ? "العقارات المكتملة"
+                  : "التعذّرات"
+            }
             wide
             onHide={() => hideLayer(layerPanel)}
             onClose={() => setLayerPanel(null)}
           >
             <PickerList
               nodes={pickerNodes}
-              selectedKeys={layerPanel === "active" ? activeSel : archiveSel}
-              onSelectedKeys={layerPanel === "active" ? setActiveSel : setArchiveSel}
+              selectedKeys={
+                layerPanel === "active"
+                  ? activeSel
+                  : layerPanel === "archive"
+                    ? archiveSel
+                    : failuresSel
+              }
+              onSelectedKeys={
+                layerPanel === "active"
+                  ? setActiveSel
+                  : layerPanel === "archive"
+                    ? setArchiveSel
+                    : setFailuresSel
+              }
               onZoom={(point) => {
                 if (point.kind === "group") {
                   setSelection({
@@ -208,7 +228,7 @@ export function PropertyMapView() {
                   <Badge tone="danger">تجاوز صلاحية الـ90 يوماً</Badge>
                 ) : null}
                 {selection.groupCount ? (
-                  <Badge tone="warning">عقار مجمع — {selection.groupCount} صكوك</Badge>
+                  <Badge tone="warning">معاملة بعدة صكوك — {selection.groupCount} صكوك</Badge>
                 ) : null}
               </>
             }

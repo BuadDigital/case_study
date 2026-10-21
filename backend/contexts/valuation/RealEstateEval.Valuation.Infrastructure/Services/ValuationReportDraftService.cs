@@ -27,9 +27,12 @@ public sealed partial class ValuationReportDraftService(
     IValuationEventPublisher events,
     TimeProvider? time = null,
     IValuationFinalReportService? finalReports = null,
-    ValuationTimelineWriter? timeline = null)
+    ValuationTimelineWriter? timeline = null,
+    ICaseStudyCommands? caseStudyCommands = null)
     : IValuationReportDraftService
 {
+    public const string ReportNumberUnavailableAr = "تعذّر تثبيت رقم التقرير من خدمة دراسة الحالة — أعد المحاولة";
+
     public const string PrepareForbiddenAr = "إعداد مسودة تقرير التقييم للأخصائي فقط";
     public const string ReviewForbiddenAr = "اعتماد تقرير التقييم للمقيّم المُسنَد للعقار فقط";
     public const string PackageNotSubmittedAr = "سلّم المقيّم تقييمه للأخصائي أولاً";
@@ -55,7 +58,7 @@ public sealed partial class ValuationReportDraftService(
             && issuance is null
             && (draft is null || draft.IsPreparing);
         var version = draft?.Version ?? await NextVersionAsync(valuationRequestId, cancellationToken);
-        return ToDto(valuationRequestId, draft, packageStatus, canPrepare, issuance, version);
+        return ToDto(valuationRequestId, draft, packageStatus, canPrepare, issuance, version, vr.ReportNumber);
     }
 
     public async Task<ValuationReportDraftDto?> GetByPropertyAsync(
