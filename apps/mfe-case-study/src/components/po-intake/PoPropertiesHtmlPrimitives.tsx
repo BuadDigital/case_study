@@ -136,7 +136,8 @@ export function PpSummary({
 }) {
   return (
     <div
-      className="mt-4 flex flex-wrap gap-0 border-t border-border pt-3.5"
+      // Phones: a 2×2 grid — the divided row wrapped its 4th cell onto a broken line.
+      className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-border pt-3.5 sm:flex sm:flex-wrap sm:gap-0"
       aria-label={ariaLabel}
     >
       {children}
@@ -156,10 +157,10 @@ export function PpCell({
   return (
     <div
       className={cn(
-        "px-[18px]",
+        "min-w-0 sm:px-[18px]",
         first
-          ? "ps-0 pe-[18px]"
-          : "border-s border-border",
+          ? "sm:ps-0 sm:pe-[18px]"
+          : "sm:border-s sm:border-border",
       )}
     >
       <div className="mb-0.5 text-[11px] text-text-3">{label}</div>
@@ -225,6 +226,6 @@ export function PpEmpty({
 
 export function PpFooterHint({ children = PP_FOOTER_HINT }: { children?: ReactNode }) {
   return (
-    <p className="m-0 px-1 pb-0 pt-3 text-[11.5px] text-text-3">{children}</p>
+    <p className="m-0 px-1 pb-0 pt-3 text-[11.5px] text-text-3 max-sm:hidden">{children}</p>
   );
 }

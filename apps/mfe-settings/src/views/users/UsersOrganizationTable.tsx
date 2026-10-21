@@ -10,6 +10,8 @@ import {
   Button,
   Card,
   Input,
+  MobileRecordCard,
+  MobileRecordList,
   Select,
   PageLoadingHint,
   Table,
@@ -22,6 +24,7 @@ import {
   Tr,
 } from "@platform/ui-kit";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { todayIso } from "@platform/app-shared/format/date";
 import {
   deptLabel,
@@ -50,15 +53,18 @@ export function UsersOrganizationToolbar({
 }) {
   const { canManage, search, setSearch, statusFilter, setStatusFilter, openAdd } = workflow;
   return (
-    <div className="mb-3 flex flex-wrap gap-2.5">
+    <div className="mb-3 flex flex-wrap gap-2.5 max-lg:grid max-lg:grid-cols-2">
       <Input
-        className="h-[34px] max-w-[260px] py-0 text-[12.5px] leading-[34px]"
+        className="h-[34px] max-w-[260px] py-0 text-[12.5px] leading-[34px] max-lg:col-span-2 max-lg:h-11 max-lg:max-w-none max-lg:text-[14px] max-lg:leading-[44px]"
         placeholder="بحث بالاسم…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
       />
       <Select
-        className="h-[34px] max-w-[170px] py-0 text-[12.5px] leading-[34px]"
+        className={
+          "h-[34px] max-w-[170px] py-0 text-[12.5px] leading-[34px] max-lg:h-11 max-lg:max-w-none max-lg:text-[14px] max-lg:leading-[44px]" +
+          (canManage ? "" : " max-lg:col-span-2")
+        }
         value={statusFilter}
         onChange={(e) => setStatusFilter(e.target.value as StaffStatusFilter)}
       >
@@ -68,11 +74,118 @@ export function UsersOrganizationToolbar({
         <option value="seated">يظهر في التقرير</option>
       </Select>
       {canManage ? (
-        <Button variant="default" onClick={openAdd}>
+        <Button variant="default" className="max-lg:h-11 max-lg:w-full" onClick={openAdd}>
           إضافة مستخدم
         </Button>
       ) : null}
     </div>
+  );
+}
+
+/** Report seat badges — shared by the table row and the phone card. */
+function SeatBadges({ user, workflow }: { user: StaffUser; workflow: UsersOrganizationWorkflow }) {
+  const seat = rosterRowFor(workflow.valuers, user.id);
+  const seatState = seat ? seatStatus(seat, todayIso()) : null;
+  if (!seat || !seatState) return <span className="text-text-3">—</span>;
+  return (
+    <>
+      <Badge tone={seat.role === "certified" ? "info" : "default"}>
+        {reportSeatLabel(seat.role)}
+      </Badge>
+      {seatState.label !== "فعّال" ? (
+        <Badge
+          tone={seatState.tone}
+          className="ms-1"
+          title={seatState.blockReason ?? undefined}
+        >
+          {seatState.label}
+        </Badge>
+      ) : null}
+    </>
+  );
+}
+
+function StaffUserActions({
+  user,
+  workflow,
+  phone = false,
+}: {
+  user: StaffUser;
+  workflow: UsersOrganizationWorkflow;
+  /** Phone card: full-width 44px buttons instead of the table's small ghost ones. */
+  phone?: boolean;
+}) {
+  const { canManage, isRowBusy, setEditingUser, onToggleUser } = workflow;
+  if (!canManage) return null;
+  const busy = isRowBusy(user);
+  const variant = phone ? "default" : "ghost";
+  const size = phone ? "lg" : "sm";
+  return (
+    <>
+      <Button
+        variant={variant}
+        size={size}
+        onClick={() => setEditingUser(user)}
+        onMouseEnter={preloadEditStaffUserModal}
+        onFocus={preloadEditStaffUserModal}
+      >
+        تعديل
+      </Button>
+      {phone ? null : " "}
+      <Button
+        variant={variant}
+        size={size}
+        loading={busy}
+        disabled={busy}
+        onClick={() => onToggleUser(user)}
+      >
+        {userToggleLabel(user.status)}
+      </Button>
+    </>
+  );
+}
+
+/** Phones: one record card per user — the 7-column table clipped status and actions. */
+function StaffUserCard({
+  user,
+  workflow,
+}: {
+  user: StaffUser;
+  workflow: UsersOrganizationWorkflow;
+}) {
+  const seated = Boolean(rosterRowFor(workflow.valuers, user.id));
+  return (
+    <MobileRecordCard
+      title={user.name}
+      onOpen={() => workflow.setProfileUser(user)}
+      status={<Badge tone={statusTone(user.status)}>{statusLabel(user.status)}</Badge>}
+      fields={[
+        { label: "الدور", value: user.role || "—" },
+        { label: "القسم", value: deptLabel(user) },
+        { label: "آخر دخول", ltr: true, value: formatLastLogin(user.lastLoginAtUtc) },
+        ...(user.referenceNumber
+          ? [{ label: "الرقم المرجعي", ltr: true, value: user.referenceNumber }]
+          : []),
+        ...(seated
+          ? [
+              {
+                label: "الصفة في التقرير",
+                wide: true,
+                value: (
+                  <span className="inline-flex flex-wrap items-center gap-1">
+                    <SeatBadges user={user} workflow={workflow} />
+                  </span>
+                ),
+              },
+            ]
+          : []),
+      ]}
+      actions={
+        workflow.canManage ? (
+          <StaffUserActions user={user} workflow={workflow} phone />
+        ) : undefined
+      }
+    />
   );
 }
 
@@ -83,11 +196,7 @@ function StaffUserRow({
   user: StaffUser;
   workflow: UsersOrganizationWorkflow;
 }) {
-  const { canManage, isRowBusy, setProfileUser, setEditingUser, onToggleUser, valuers } =
-    workflow;
-  const busy = isRowBusy(user);
-  const seat = rosterRowFor(valuers, user.id);
-  const seatState = seat ? seatStatus(seat, todayIso()) : null;
+  const { setProfileUser } = workflow;
   return (
     <Tr hoverable={false}>
       <Td className="font-medium">
@@ -109,24 +218,7 @@ function StaffUserRow({
       </Td>
       <Td>{user.role}</Td>
       <Td className="whitespace-nowrap">
-        {seat && seatState ? (
-          <>
-            <Badge tone={seat.role === "certified" ? "info" : "default"}>
-              {reportSeatLabel(seat.role)}
-            </Badge>
-            {seatState.label !== "فعّال" ? (
-              <Badge
-                tone={seatState.tone}
-                className="ms-1"
-                title={seatState.blockReason ?? undefined}
-              >
-                {seatState.label}
-              </Badge>
-            ) : null}
-          </>
-        ) : (
-          <span className="text-text-3">—</span>
-        )}
+        <SeatBadges user={user} workflow={workflow} />
       </Td>
       <Td>{deptLabel(user)}</Td>
       <TdLtr bare>{formatLastLogin(user.lastLoginAtUtc)}</TdLtr>
@@ -134,28 +226,7 @@ function StaffUserRow({
         <Badge tone={statusTone(user.status)}>{statusLabel(user.status)}</Badge>
       </Td>
       <Td className="whitespace-nowrap">
-        {canManage ? (
-          <>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setEditingUser(user)}
-              onMouseEnter={preloadEditStaffUserModal}
-              onFocus={preloadEditStaffUserModal}
-            >
-              تعديل
-            </Button>{" "}
-            <Button
-              variant="ghost"
-              size="sm"
-              loading={busy}
-              disabled={busy}
-              onClick={() => onToggleUser(user)}
-            >
-              {userToggleLabel(user.status)}
-            </Button>
-          </>
-        ) : null}
+        <StaffUserActions user={user} workflow={workflow} />
       </Td>
     </Tr>
   );
@@ -167,11 +238,28 @@ export function UsersOrganizationTable({
   workflow: UsersOrganizationWorkflow;
 }) {
   const { users, isPending, filteredUsers } = workflow;
+  const isDesktopViewport = useViewportDesktop();
   return (
-    <Card className="overflow-hidden">
+    <>
       {isPending && users.length === 0 ? (
-        <PageLoadingHint />
+        <Card className="overflow-hidden">
+          <PageLoadingHint />
+        </Card>
       ) : (
+        <>
+          {isDesktopViewport === true ? null : (
+            <MobileRecordList
+              className="lg:hidden"
+              isEmpty={filteredUsers.length === 0}
+              empty={emptyUsersMessage(users.length)}
+            >
+              {filteredUsers.map((user) => (
+                <StaffUserCard key={user.id} user={user} workflow={workflow} />
+              ))}
+            </MobileRecordList>
+          )}
+          {isDesktopViewport === false ? null : (
+        <Card className="overflow-hidden max-lg:hidden">
         <Table className="tabular-nums">
           <THead>
             <Tr hoverable={false}>
@@ -194,7 +282,10 @@ export function UsersOrganizationTable({
             )}
           </TBody>
         </Table>
+        </Card>
+          )}
+        </>
       )}
-    </Card>
+    </>
   );
 }

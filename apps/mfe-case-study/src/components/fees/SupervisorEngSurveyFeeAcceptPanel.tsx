@@ -8,6 +8,8 @@
 import { useCallback, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  MobileRecordCard,
+  MobileRecordList,
   SkeletonTableRows,
   Table,
   TableEmptyRow,
@@ -166,24 +168,102 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
     }
   }
 
+  // The row's accept / return controls — shared by the table and the phone card.
+  const renderAction = (row: EngSurveyPendingAcceptRow) => {
+    const busy = busyId === row.taskId;
+    const returning = returnForId === row.taskId;
+    return returning ? (
+      <div className="flex min-w-[200px] flex-col gap-2">
+        <textarea
+          className={cn(
+            formControlClassName,
+            "min-h-[56px] text-[11.5px]",
+          )}
+          placeholder="سبب الإرجاع للتصحيح…"
+          value={returnNote}
+          disabled={busy}
+          onChange={(e) => setReturnNote(e.target.value)}
+        />
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            type="button"
+            disabled={busy}
+            className="cursor-pointer rounded-lg border-none bg-ink px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50 max-lg:min-h-11 max-lg:px-4 max-lg:text-[13px]"
+            onClick={() => void handleReturn(row.taskId)}
+          >
+            تأكيد الإرجاع
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            className="cursor-pointer rounded-lg border border-border-md bg-surface px-3 py-1.5 text-[11px] font-bold text-text-2 disabled:opacity-50 max-lg:min-h-11 max-lg:px-4 max-lg:text-[13px]"
+            onClick={() => {
+              setReturnForId(null);
+              setReturnNote("");
+              setRowError(null);
+            }}
+          >
+            إلغاء
+          </button>
+        </div>
+      </div>
+    ) : (
+      <div className="flex flex-wrap gap-1.5">
+        <button
+          type="button"
+          disabled={busy}
+          className="cursor-pointer whitespace-nowrap rounded-lg border-none bg-ink px-[11px] py-1.5 text-[11px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.55)] disabled:opacity-50 max-lg:min-h-11 max-lg:px-4 max-lg:text-[13px]"
+          onClick={() => void handleAccept(row.taskId)}
+        >
+          قبول المخرجات
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          className="cursor-pointer whitespace-nowrap rounded-lg border border-border-md bg-surface px-[11px] py-1.5 text-[11px] font-bold text-text-2 disabled:opacity-50 max-lg:min-h-11 max-lg:px-4 max-lg:text-[13px]"
+          onClick={() => {
+            setReturnForId(row.taskId);
+            setReturnNote("");
+            setRowError(null);
+          }}
+        >
+          إرجاع للتصحيح
+        </button>
+      </div>
+    );
+  };
+
   const loading =
     tasksPending || (Boolean(tasks?.length) && pendingLoading && !isFetched);
 
   if (loading) {
     return (
-      <TableFrame>
+      <>
+      <MobileRecordList className="lg:hidden" isEmpty empty="جاري التحميل…">
+        {null}
+      </MobileRecordList>
+      <TableFrame className="max-lg:hidden">
         <Table pending className="min-w-[760px]">
           <TBody>
             <SkeletonTableRows rows={3} cols={5} />
           </TBody>
         </Table>
       </TableFrame>
+      </>
     );
   }
 
   if (pending.length === 0) {
     return (
-      <TableFrame>
+      <>
+      <MobileRecordList
+        className="lg:hidden"
+        isEmpty
+        empty="لا رفوعات مساحية بانتظار القبول."
+      >
+        {null}
+      </MobileRecordList>
+      <TableFrame className="max-lg:hidden">
         <Table className="min-w-[760px]">
           <TBody>
             <TableEmptyRow colSpan={5}>
@@ -192,6 +272,7 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
           </TBody>
         </Table>
       </TableFrame>
+      </>
     );
   }
 
@@ -202,7 +283,28 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
           {rowError}
         </p>
       ) : null}
-      <TableFrame>
+      {/* Phones: one card per survey upload; accept / return under the details. */}
+      <MobileRecordList className="lg:hidden">
+        {pending.map((row) => (
+          <MobileRecordCard
+            key={row.taskId}
+            tone={returnForId === row.taskId ? "red" : "gold"}
+            title={<bdi dir="ltr" className="tabular-nums">{row.deedLabel}</bdi>}
+            subtitle={<PoNumber value={row.poNumber} link />}
+            fields={[
+              { label: "المكتب", value: row.assigneeName },
+              {
+                label: "تاريخ الإرسال",
+                ltr: true,
+                value: formatWhen(row.submittedAtUtc),
+              },
+            ]}
+          >
+            {renderAction(row)}
+          </MobileRecordCard>
+        ))}
+      </MobileRecordList>
+      <TableFrame className="max-lg:hidden">
         <Table className="min-w-[760px]">
           <THead>
             <Tr hoverable={false}>
@@ -215,8 +317,6 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
           </THead>
           <TBody>
             {pending.map((row) => {
-              const busy = busyId === row.taskId;
-              const returning = returnForId === row.taskId;
               return (
                 <Tr key={row.taskId}>
                   <Td>
@@ -235,65 +335,7 @@ export function SupervisorEngSurveyFeeAcceptPanel() {
                     {formatWhen(row.submittedAtUtc)}
                   </TdLtr>
                   <Td>
-                    {returning ? (
-                      <div className="flex min-w-[200px] flex-col gap-2">
-                        <textarea
-                          className={cn(
-                            formControlClassName,
-                            "min-h-[56px] text-[11.5px]",
-                          )}
-                          placeholder="سبب الإرجاع للتصحيح…"
-                          value={returnNote}
-                          disabled={busy}
-                          onChange={(e) => setReturnNote(e.target.value)}
-                        />
-                        <div className="flex flex-wrap gap-1.5">
-                          <button
-                            type="button"
-                            disabled={busy}
-                            className="cursor-pointer rounded-lg border-none bg-ink px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
-                            onClick={() => void handleReturn(row.taskId)}
-                          >
-                            تأكيد الإرجاع
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy}
-                            className="cursor-pointer rounded-lg border border-border-md bg-surface px-3 py-1.5 text-[11px] font-bold text-text-2 disabled:opacity-50"
-                            onClick={() => {
-                              setReturnForId(null);
-                              setReturnNote("");
-                              setRowError(null);
-                            }}
-                          >
-                            إلغاء
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className="cursor-pointer whitespace-nowrap rounded-lg border-none bg-ink px-[11px] py-1.5 text-[11px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.55)] disabled:opacity-50"
-                          onClick={() => void handleAccept(row.taskId)}
-                        >
-                          قبول المخرجات
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          className="cursor-pointer whitespace-nowrap rounded-lg border border-border-md bg-surface px-[11px] py-1.5 text-[11px] font-bold text-text-2 disabled:opacity-50"
-                          onClick={() => {
-                            setReturnForId(row.taskId);
-                            setReturnNote("");
-                            setRowError(null);
-                          }}
-                        >
-                          إرجاع للتصحيح
-                        </button>
-                      </div>
-                    )}
+                    {renderAction(row)}
                   </Td>
                 </Tr>
               );

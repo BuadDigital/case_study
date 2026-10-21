@@ -289,7 +289,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             hideShellTopbar || currentPage === "property-map"
               ? /* Party work page owns scroll (back/title card inside). */
                 "flex flex-col overflow-hidden"
-              : "overflow-x-hidden overflow-y-auto max-lg:pb-[env(safe-area-inset-bottom)]",
+              : "overflow-x-hidden overflow-y-auto max-lg:pb-[var(--browser-bar-inset)]",
           )}
         >
           {!contentScrollLocked ? (

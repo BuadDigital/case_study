@@ -435,7 +435,7 @@ export function ActiveQueueMobileCards({
                     <RowMoreMenu items={item.moreItems} />
                   </div>
                 ) : (
-                  <span className="size-7" aria-hidden />
+                  <span className="size-7 max-lg:size-11" aria-hidden />
                 )}
                 <QueueMobileCardChevron expanded={item.expanded} />
               </div>

@@ -7,6 +7,7 @@ import type {
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 
 import { fmt } from "./lib/shell-utils";
 import {
@@ -21,12 +22,9 @@ import {
 import type { MatrixDispatch } from "./lib/matrix-actions";
 import { afterWeightValue } from "./lib/adjustments-matrix-state";
 import {
-  AddFactorRow,
   CompInput,
   CompReadonly,
-  InlineDraftInput,
   JustCell,
-  LabelCell,
   SubjCell,
   WeightCell,
   effArea,
@@ -40,7 +38,13 @@ import {
   thCompBaseClass,
   thCompClass,
 } from "./AdjustmentsMatrixCells";
+import {
+  AddFactorRow,
+  InlineDraftInput,
+  LabelCell,
+} from "./AdjustmentsMatrixFactorCells";
 import { MatrixAlertsPanel, MatrixOutputsPanel } from "./AdjustmentsMatrixPanels";
+import { AdjustmentsMatrixPhone } from "./AdjustmentsMatrixPhone";
 import { useAdjustmentsMatrixModel } from "./useAdjustmentsMatrixModel";
 
 
@@ -82,6 +86,13 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   dispatch,
   children,
 }: AdjustmentsMatrixProps) {
+  const desktop = useViewportDesktop();
+  const model = useAdjustmentsMatrixModel({
+    selection,
+    adopted,
+    subjectArea,
+    dispatch,
+  });
   const {
     confirmDelete,
     setConfirmDelete,
@@ -95,12 +106,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     differenceKeys,
     alerts,
     addableFactors,
-  } = useAdjustmentsMatrixModel({
-    selection,
-    adopted,
-    subjectArea,
-    dispatch,
-  });
+  } = model;
   const { isUnit, areaMethod, areaFactor } = basisView;
 
   if (adopted.length === 0) {
@@ -113,16 +119,16 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
 
   return (
     <div id="mx-adjustments">
-      <div className="mb-3 flex items-center justify-between gap-4">
+      <div className="mb-3 flex items-center justify-between gap-4 max-lg:flex-col max-lg:items-stretch max-lg:gap-2.5">
         <div className="flex items-center gap-2.5">
           <h2 className="m-0 text-[17px] font-extrabold text-heading">
             جدول التسويات
           </h2>
-          <span className="text-[12px] font-normal text-text-3">
+          <span className="text-[12px] font-normal text-text-3 max-lg:hidden">
             مرّر على اسم البند لقراءة تعريفه وحدوده
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-lg:[&>button]:min-h-11 max-lg:[&>button]:flex-1 max-lg:[&>button]:justify-center">
           {removedSequential.map((k) => (
             <button
               key={k}
@@ -148,7 +154,28 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
         </div>
       </div>
 
-      <div className={panelCardClass}>
+      {/* Phones: basis picker, one factor-controls card, one card per comparable —
+          not the 1100px factor × comparable grid scrolled sideways. */}
+      {desktop !== true ? (
+        <AdjustmentsMatrixPhone
+          className="mb-6 lg:hidden"
+          adopted={adopted}
+          locked={locked}
+          saving={saving}
+          subjectArea={subjectArea}
+          idealArea={idealArea}
+          city={city}
+          district={district}
+          valuationDate={valuationDate}
+          subjectSpecs={subjectSpecs}
+          canEditSubjectSpec={canEditSubjectSpec}
+          dispatch={dispatch}
+          model={model}
+        />
+      ) : null}
+
+      {desktop !== false ? (
+      <div className={cn(panelCardClass, "max-lg:hidden")}>
         <Table className="min-w-[1100px]">
           <thead>
             <tr>
@@ -643,6 +670,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
           </tbody>
         </Table>
       </div>
+      ) : null}
 
       <MatrixOutputsPanel
         basisView={basisView}

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   EmptyIconSearch,
   EmptyState,
+  MobileSectionPicker,
   StatusPill,
   cn,
   statusPillStyleFromColor,
@@ -61,7 +62,16 @@ export function KeysTabBar({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className="mb-4 flex flex-wrap gap-1 border-b border-border">
+    <>
+    {/* Phones: the wrapping tab row becomes one section picker. */}
+    <MobileSectionPicker
+      className="mb-4 lg:hidden"
+      title="القسم"
+      sections={tabs}
+      active={active}
+      onChange={onChange}
+    />
+    <div className="mb-4 flex flex-wrap gap-1 border-b border-border max-lg:hidden">
       {tabs.map((tab) => {
         const on = active === tab.id;
         return (
@@ -86,6 +96,7 @@ export function KeysTabBar({
         );
       })}
     </div>
+    </>
   );
 }
 

@@ -179,6 +179,19 @@ export {
 } from "./components/StatCard";
 export { KpiBand, KpiCell } from "./components/KpiBand";
 export { MobileKpiStatCards } from "./components/MobileKpiStatCards";
+export { BottomSheet, type BottomSheetProps } from "./components/BottomSheet";
+export {
+  MobileSectionPicker,
+  type MobileSection,
+  type MobileSectionPickerProps,
+} from "./components/MobileSectionPicker";
+export {
+  MobileRecordCard,
+  MobileRecordList,
+  type MobileRecordCardProps,
+  type MobileRecordField,
+  type MobileRecordTone,
+} from "./components/MobileRecordCard";
 export {
   InfathTextField,
   type InfathTextFieldProps,

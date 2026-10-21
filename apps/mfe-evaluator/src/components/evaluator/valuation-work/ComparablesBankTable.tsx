@@ -16,11 +16,14 @@ import {
   type ComparableEntryFieldErrors,
 } from "@platform/app-shared/app-data/comparable-entry";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   AppModal,
   Button,
   cn,
+  MobileRecordCard,
+  MobileRecordList,
   Table,
   TableEmptyRow,
   TBody,
@@ -34,13 +37,15 @@ import {
 import { Card } from "./atoms";
 import { ComparablesBankMoneyCells, ComparablesBankMoneyReadOnly } from "./ComparablesBankMoneyCells";
 import {
+  areaRatio,
+  areaRatioValue,
   BANK_RADIUS_OPTIONS_KM,
   NEARBY_RADIUS_KM,
   sourceCardLine,
   type BankBeyond,
   type BankDisplayRow,
 } from "./lib/bank-ranking";
-import { apiConfig } from "./lib/shell-utils";
+import { apiConfig, fmt } from "./lib/shell-utils";
 
 type ComparablesBankRow = BankDisplayRow;
 
@@ -126,6 +131,33 @@ function BankEmptyState({
   );
 }
 
+function distanceLabel(km: number | undefined): string {
+  return km != null && Number.isFinite(km) ? `${km.toFixed(km < 1 ? 2 : 1)} كم` : "—";
+}
+
+/** «اعتماد» checkbox — table cell and phone card share the optimistic-draft wiring. */
+function AdoptCheckbox({
+  checked,
+  pending,
+  onToggle,
+  className,
+}: {
+  checked: boolean;
+  pending: boolean;
+  onToggle: (next: boolean) => void;
+  className?: string;
+}) {
+  return (
+    <input
+      type="checkbox"
+      checked={checked}
+      disabled={pending}
+      onChange={(e) => onToggle(e.target.checked)}
+      className={cn("cursor-pointer accent-[var(--ink)] disabled:cursor-wait", className)}
+    />
+  );
+}
+
 type ComparableBankSeed = {
   type?: string;
   city?: string;
@@ -176,6 +208,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   onCreated?: () => void;
 }) {
   const { showToast } = useToast();
+  const desktop = useViewportDesktop();
   const [q, setQ] = useState("");
   // Optimistic checkbox draft, keyed by comparable id — cleared once onAdopt settles and
   // `rows` (server truth) catches up. Only a brand-new adoption lacks an earlier optimistic
@@ -223,6 +256,17 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
     const t = window.setTimeout(() => onSearchRef.current?.(q), 280);
     return () => window.clearTimeout(t);
   }, [q]);
+
+  function toggleAdopt(compId: string, next: boolean) {
+    setPendingAdopt((prev) => new Map(prev).set(compId, next));
+    void onAdopt(compId, next).finally(() => {
+      setPendingAdopt((prev) => {
+        const copy = new Map(prev);
+        copy.delete(compId);
+        return copy;
+      });
+    });
+  }
 
   function openForm() {
     const next = emptyComparableEntryDraft();
@@ -289,7 +333,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   return (
     <>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <h2 className="m-0 text-[17px] font-extrabold text-heading">
             بنك المقارنات
           </h2>
@@ -299,7 +343,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
               : `${radiusLabel(radiusKm)} من موقع العقار — الأقرب أولاً`}
           </span>
           {onRadiusChange && !q.trim() ? (
-            <div className="flex items-center gap-1" role="group" aria-label="نطاق البحث حول العقار">
+            <div className="flex flex-wrap items-center gap-1" role="group" aria-label="نطاق البحث حول العقار">
               {BANK_RADIUS_OPTIONS_KM.map((option) => (
                 <button
                   key={option ?? "all"}
@@ -307,7 +351,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                   aria-pressed={option === radiusKm}
                   onClick={() => onRadiusChange(option)}
                   className={cn(
-                    "rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition-colors",
+                    "rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition-colors max-lg:min-h-11 max-lg:px-3.5 max-lg:text-[12.5px]",
                     option === radiusKm
                       ? "border-gold bg-gold-soft text-gold-d"
                       : "border-border-md bg-surface text-text-2 hover:border-gold",
@@ -319,7 +363,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
             </div>
           ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 max-lg:w-full max-lg:[&>*]:flex-1">
           <Button
             type="button"
             size="sm"
@@ -335,7 +379,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
               placeholder="بحث حي / نوع / رقم مرجعي"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              className="w-[248px] rounded-lg border border-border-md bg-surface px-3.5 py-2 text-[13px] font-medium text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]"
+              className="min-w-0 rounded-lg border max-lg:min-h-11 max-lg:basis-full max-lg:text-[16px] lg:w-[248px] border-border-md bg-surface px-3.5 py-2 text-[13px] font-medium text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]"
             />
           ) : (
             <span className="text-[12px] text-text-3">
@@ -388,7 +432,95 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
         onStay={() => setDiscardOpen(false)}
         onLeave={closeForm}
       />
-      <Card className="mb-6">
+      {/* Phones: one card per comparable — the 12-column table ran 1180px wide.
+          Price / unit / area stay editable as full-width inputs. */}
+      {desktop !== true ? (
+        <MobileRecordList
+          className="mb-6 lg:hidden"
+          isEmpty={rows.length === 0}
+          empty={
+            <BankEmptyState
+              searching={q.trim().length > 0}
+              radiusKm={radiusKm}
+              beyond={beyond}
+              onClearSearch={() => setQ("")}
+              onWiden={onRadiusChange}
+              onAdd={openForm}
+            />
+          }
+        >
+          {rows.map((row) => {
+            const pending = pendingAdopt.get(row.comp.id);
+            const adopted = pending ?? row.adopted;
+            const comp = row.comp;
+            const readOnlyRatio = areaRatioValue(subjectSqm, comp.areaSqm);
+            return (
+              <MobileRecordCard
+                key={row.key}
+                tone={adopted ? "gold" : undefined}
+                className={cn(adopted && "bg-gold-soft")}
+                title={<bdi dir="ltr" className="text-gold-d">{comp.referenceCode}</bdi>}
+                subtitle={[comp.comparablePropertyType, comp.district].filter(Boolean).join(" · ")}
+                status={
+                  <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[11.5px] font-medium text-text-2">
+                    {comp.transactionKindLabelAr}
+                  </span>
+                }
+                fields={[
+                  { label: "تاريخ العملية", value: comp.transactionDate?.slice(0, 10) || "—", ltr: true },
+                  { label: "المسافة", value: distanceLabel(distanceKm[comp.id]), ltr: true },
+                  ...(row.item
+                    ? []
+                    : [
+                        { label: "سعر المتر", value: fmt(comp.pricePerSqm), ltr: true },
+                        { label: "سعر العقار", value: fmt(comp.price), ltr: true },
+                        { label: "المساحة (م²)", value: fmt(comp.areaSqm), ltr: true },
+                        {
+                          label: "نسبة المساحة",
+                          value: (
+                            <span className={cn(readOnlyRatio != null && readOnlyRatio >= 2 && "text-red-text")}>
+                              {areaRatio(subjectSqm, comp.areaSqm)}
+                            </span>
+                          ),
+                          ltr: true,
+                        },
+                      ]),
+                  { label: "المصدر", value: sourceCardLine(comp), wide: true },
+                ]}
+                actions={
+                  <label
+                    className={cn(
+                      "flex cursor-pointer items-center gap-2.5 rounded-[10px] border px-3 text-[13px] font-bold",
+                      adopted ? "border-gold bg-surface text-gold-d" : "border-border-md bg-surface text-text-2",
+                    )}
+                  >
+                    <AdoptCheckbox
+                      checked={adopted}
+                      pending={pending !== undefined}
+                      onToggle={(next) => toggleAdopt(comp.id, next)}
+                      className="size-5"
+                    />
+                    {adopted ? "معتمد في التقييم" : "اعتماد المقارن"}
+                  </label>
+                }
+              >
+                {row.item ? (
+                  <ComparablesBankMoneyCells
+                    touch
+                    item={row.item}
+                    comp={comp}
+                    subjectSqm={subjectSqm}
+                    onSaveOverride={onSaveOverride}
+                  />
+                ) : null}
+              </MobileRecordCard>
+            );
+          })}
+        </MobileRecordList>
+      ) : null}
+
+      {desktop !== false ? (
+      <Card className="mb-6 max-lg:hidden">
         <Table className="min-w-[1180px]" wrapClassName="rounded-xl">
           <THead>
             <Tr hoverable={false}>
@@ -419,23 +551,11 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                 className={cn(adopted && "bg-gold-soft")}
               >
                 <Td className="text-center">
-                  <input
-                    type="checkbox"
+                  <AdoptCheckbox
                     checked={adopted}
-                    disabled={pending !== undefined}
-                    onChange={(e) => {
-                      const next = e.target.checked;
-                      const compId = row.comp.id;
-                      setPendingAdopt((prev) => new Map(prev).set(compId, next));
-                      void onAdopt(compId, next).finally(() => {
-                        setPendingAdopt((prev) => {
-                          const copy = new Map(prev);
-                          copy.delete(compId);
-                          return copy;
-                        });
-                      });
-                    }}
-                    className="size-[17px] cursor-pointer accent-[var(--ink)] disabled:cursor-wait"
+                    pending={pending !== undefined}
+                    onToggle={(next) => toggleAdopt(row.comp.id, next)}
+                    className="size-[17px]"
                   />
                 </Td>
                 <TdLtr
@@ -469,19 +589,12 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                     subjectSqm={subjectSqm}
                   />
                 )}
-                {(() => {
-                  const km = distanceKm[row.comp.id];
-                  return (
-                    <TdLtr
-                      bare
-                      className="text-center text-[12.5px] text-text-2"
-                    >
-                      {km != null && Number.isFinite(km)
-                        ? `${km.toFixed(km < 1 ? 2 : 1)} كم`
-                        : "—"}
-                    </TdLtr>
-                  );
-                })()}
+                <TdLtr
+                  bare
+                  className="text-center text-[12.5px] text-text-2"
+                >
+                  {distanceLabel(distanceKm[row.comp.id])}
+                </TdLtr>
                 <Td>
                   <span className="truncate text-[13px] text-text-2">
                     {row.comp.district}
@@ -510,6 +623,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
           </TBody>
         </Table>
       </Card>
+      ) : null}
     </>
   );
 });

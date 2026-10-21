@@ -1,8 +1,10 @@
 "use client";
 
+import { Fragment } from "react";
 import {
   Button,
   FormGroup,
+  MobileRecordCard,
   Spinner,
   cn,
   opsBtnGhost,
@@ -20,6 +22,67 @@ import {
 import { num, tierFromValue } from "../lib/party-fee-pricing-state";
 import { MoneyInput } from "./FinancePartyFeePricingParts";
 import type { FinancePartyFeePricingWorkflow } from "./useFinancePartyFeePricingWorkflow";
+
+type TierKind = "from" | "max" | "fee";
+
+/**
+ * One tier control — «من» (locked on the first tier), «حتى» («فأكثر» on the
+ * last) or «أتعاب». Shared by the desktop tier row and the phone tier card;
+ * `idSuffix` keeps ids unique while both are mounted.
+ */
+function TierControl({
+  workflow,
+  index,
+  kind,
+  idSuffix = "",
+}: {
+  workflow: FinancePartyFeePricingWorkflow;
+  index: number;
+  kind: TierKind;
+  idSuffix?: string;
+}) {
+  const { draft, locked, updateTier, updateTierFrom } = workflow;
+  const tier = draft.areaTiers[index]!;
+  const isLast = index === draft.areaTiers.length - 1;
+  if (kind === "from") {
+    return (
+      <MoneyInput
+        id={`tier-from-${index}${idSuffix}`}
+        value={tierFromValue(draft.areaTiers, index)}
+        locked={locked || index === 0}
+        onChange={(n) => updateTierFrom(index, n)}
+      />
+    );
+  }
+  if (kind === "max") {
+    return isLast ? (
+      <div className="flex h-10 items-center text-[13px] font-medium text-text-2">
+        فأكثر
+      </div>
+    ) : (
+      <MoneyInput
+        id={`tier-max-${index}${idSuffix}`}
+        value={tier.maxAreaM2 ?? 0}
+        locked={locked}
+        onChange={(n) => updateTier(index, { maxAreaM2: n })}
+      />
+    );
+  }
+  return (
+    <MoneyInput
+      id={`tier-fee-${index}${idSuffix}`}
+      value={tier.feeSar}
+      locked={locked}
+      onChange={(n) => updateTier(index, { feeSar: n })}
+    />
+  );
+}
+
+const TIER_LABELS: Record<TierKind, string> = {
+  from: "من",
+  max: "حتى",
+  fee: "أتعاب",
+};
 
 /**
  * The pricing table editor — identity, tiers and the per-party rates, plus the
@@ -47,8 +110,6 @@ export function FinancePartyFeePricingEditor({
     openAssign,
     removeTable,
     save,
-    updateTier,
-    updateTierFrom,
     addTier,
     removeTier,
   } = workflow;
@@ -177,73 +238,69 @@ export function FinancePartyFeePricingEditor({
 
               <div className="space-y-2.5">
                 {draft.areaTiers.map((tier, index) => {
-                  const isLast = index === draft.areaTiers.length - 1;
-                  return (
-                    <div
-                      key={`${tier.sortOrder}-${index}`}
-                      className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2.5 rounded-[10px] border border-border bg-surface px-3.5 py-3.5 sm:gap-3.5 sm:px-4"
+                  const removeButton = canEdit ? (
+                    <button
+                      type="button"
+                      title="حذف الشريحة"
+                      disabled={locked || draft.areaTiers.length <= 1}
+                      onClick={() => removeTier(index)}
+                      className="flex h-10 w-9 items-center justify-center rounded-md text-text-3 hover:bg-danger-bg hover:text-danger-text disabled:opacity-30"
                     >
-                      <div>
-                        <span className={cn(opsTfLbl, "mb-1.5")}>
-                          من
-                        </span>
-                        <MoneyInput
-                          id={`tier-from-${index}`}
-                          value={tierFromValue(draft.areaTiers, index)}
-                          locked={locked || index === 0}
-                          onChange={(n) => updateTierFrom(index, n)}
-                        />
-                      </div>
-                      <div>
-                        <span className={cn(opsTfLbl, "mb-1.5")}>
-                          حتى
-                        </span>
-                        {isLast ? (
-                          <div className="flex h-10 items-center text-[13px] font-medium text-text-2">
-                            فأكثر
+                      ×
+                    </button>
+                  ) : null;
+                  return (
+                    <Fragment key={`${tier.sortOrder}-${index}`}>
+                      {/* Phones: one editable card per tier — من / حتى side by side, أتعاب full width. */}
+                      <MobileRecordCard
+                        className="lg:hidden"
+                        title={`شريحة ${index + 1}`}
+                        actions={
+                          canEdit ? (
+                            <button
+                              type="button"
+                              disabled={locked || draft.areaTiers.length <= 1}
+                              onClick={() => removeTier(index)}
+                              className="inline-flex items-center rounded-[9px] border border-border-md bg-surface px-3.5 text-[12.5px] font-semibold text-[#d9694f] enabled:active:bg-danger-bg disabled:opacity-40"
+                            >
+                              حذف الشريحة
+                            </button>
+                          ) : undefined
+                        }
+                      >
+                        <div className="grid grid-cols-2 gap-2.5">
+                          {(["from", "max", "fee"] as const).map((kind) => (
+                            <div
+                              key={kind}
+                              className={cn("min-w-0", kind === "fee" && "col-span-2")}
+                            >
+                              <span className={cn(opsTfLbl, "mb-1.5")}>
+                                {TIER_LABELS[kind]}
+                              </span>
+                              <TierControl
+                                workflow={workflow}
+                                index={index}
+                                kind={kind}
+                                idSuffix="-m"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </MobileRecordCard>
+                      <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-end gap-2.5 rounded-[10px] border border-border bg-surface px-3.5 py-3.5 max-lg:hidden sm:gap-3.5 sm:px-4">
+                        {(["from", "max", "fee"] as const).map((kind) => (
+                          <div key={kind}>
+                            <span className={cn(opsTfLbl, "mb-1.5")}>
+                              {TIER_LABELS[kind]}
+                            </span>
+                            <TierControl workflow={workflow} index={index} kind={kind} />
                           </div>
-                        ) : (
-                          <MoneyInput
-                            id={`tier-max-${index}`}
-                            value={tier.maxAreaM2 ?? 0}
-                            locked={locked}
-                            onChange={(n) =>
-                              updateTier(index, { maxAreaM2: n })
-                            }
-                          />
-                        )}
+                        ))}
+                        <div className="pb-0.5">
+                          {removeButton ?? <span className="inline-block w-9" />}
+                        </div>
                       </div>
-                      <div>
-                        <span className={cn(opsTfLbl, "mb-1.5")}>
-                          أتعاب
-                        </span>
-                        <MoneyInput
-                          id={`tier-fee-${index}`}
-                          value={tier.feeSar}
-                          locked={locked}
-                          onChange={(n) =>
-                            updateTier(index, { feeSar: n })
-                          }
-                        />
-                      </div>
-                      <div className="pb-0.5">
-                        {canEdit ? (
-                          <button
-                            type="button"
-                            title="حذف الشريحة"
-                            disabled={
-                              locked || draft.areaTiers.length <= 1
-                            }
-                            onClick={() => removeTier(index)}
-                            className="flex h-10 w-9 items-center justify-center rounded-md text-text-3 hover:bg-danger-bg hover:text-danger-text disabled:opacity-30"
-                          >
-                            ×
-                          </button>
-                        ) : (
-                          <span className="inline-block w-9" />
-                        )}
-                      </div>
-                    </div>
+                    </Fragment>
                   );
                 })}
               </div>

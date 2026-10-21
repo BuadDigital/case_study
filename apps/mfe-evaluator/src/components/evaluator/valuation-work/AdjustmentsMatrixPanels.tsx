@@ -16,8 +16,9 @@ export function MatrixOutputsPanel({
 }) {
   const { isUnit, pricePerSqmDisplay, opinionRaw } = basisView;
   return (
-    <div className={cn(panelCardClass, "flex items-stretch")}>
-      <div className="flex-1 border-e border-border px-[22px] py-[18px]">
+    // Phones stack the two figures; side by side each got ~150px.
+    <div className={cn(panelCardClass, "flex items-stretch max-lg:flex-col")}>
+      <div className="flex-1 border-border px-[22px] py-[18px] max-lg:border-b max-lg:px-4 lg:border-e">
         <div className="mb-[9px] text-[12px] font-medium text-text-2">
           {isUnit ? "قيمة المتر بعد التسوية" : "قيمة العقار بعد التسوية"}
         </div>
@@ -38,7 +39,7 @@ export function MatrixOutputsPanel({
           ر.س/م²
         </div>
       </div>
-      <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px]">
+      <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px] max-lg:px-4">
         <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />
         <div className="mb-[9px] text-[12px] font-bold text-heading">
           {isUnit ? "قيمة الأرض قبل التقريب" : "قيمة العقار قبل التقريب"}

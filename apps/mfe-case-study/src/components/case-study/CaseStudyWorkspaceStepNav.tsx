@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@platform/ui-kit";
+import { cn, MobileSectionPicker } from "@platform/ui-kit";
 
 export type CaseStudyWorkspaceTab = "study" | "appraisal" | "valuation";
 
@@ -12,24 +12,29 @@ const CASE_STUDY_WORKSPACE_STEPS: {
   id: CaseStudyWorkspaceTab;
   number: number;
   title: string;
+  /** Phone segmented-control label (≤14 chars so the three fit side by side). */
+  short: string;
   hint: string;
 }[] = [
   {
     id: "study",
     number: 1,
     title: "تقرير دراسة الحالة",
+    short: "دراسة الحالة",
     hint: "أسئلة دراسة الحالة وإجابات الأطراف",
   },
   {
     id: "appraisal",
     number: 2,
     title: "مدخلات المعاين",
+    short: "مدخلات المعاين",
     hint: "مراجعة بيانات المعاين ومطابقة الصك ومدخلات التقرير",
   },
   {
     id: "valuation",
     number: 3,
     title: "مدخلات التقييم",
+    short: "مدخلات التقييم",
     hint: "تقرير المقيّم — مراجعة الأخصائي واعتماده",
   },
 ];
@@ -46,12 +51,35 @@ export function CaseStudyWorkspaceStepNav({
   onIntent?: (tab: CaseStudyWorkspaceTab) => void;
   className?: string;
 }) {
+  const activeStep =
+    CASE_STUDY_WORKSPACE_STEPS.find((s) => s.id === active) ??
+    CASE_STUDY_WORKSPACE_STEPS[0];
   return (
+    <>
+    {/* Phones: a segmented control + the active section's hint, not three stacked cards. */}
+    <div className={cn("mb-3 lg:hidden", className)}>
+      <MobileSectionPicker
+        title="أقسام دراسة الحالة"
+        sections={CASE_STUDY_WORKSPACE_STEPS.map((s) => ({
+          id: s.id,
+          label: s.short,
+        }))}
+        active={active}
+        onChange={(id) => {
+          const tab = id as CaseStudyWorkspaceTab;
+          onIntent?.(tab);
+          onSelect(tab);
+        }}
+      />
+      <p className="m-0 mt-1.5 px-1 text-[11.5px] leading-relaxed text-text-3">
+        {activeStep.hint}
+      </p>
+    </div>
     <div
       role="tablist"
       aria-label="أقسام دراسة الحالة"
       className={cn(
-        "mb-3 grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3",
+        "mb-3 grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3 max-lg:hidden",
         className,
       )}
     >
@@ -102,5 +130,6 @@ export function CaseStudyWorkspaceStepNav({
         );
       })}
     </div>
+    </>
   );
 }

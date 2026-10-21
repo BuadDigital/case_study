@@ -100,7 +100,7 @@ export function AppShellSidebar({
       {mobileNavOpen ? (
         <button
           type="button"
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-x-0 top-0 z-40 h-lvh bg-black/50 lg:hidden"
           aria-label="إغلاق القائمة"
           onClick={onCloseMobileNav}
         />
@@ -111,11 +111,12 @@ export function AppShellSidebar({
         className={cn(
           "group/sidebar flex h-full min-h-0 w-sidebar shrink-0 flex-col overflow-hidden border-s border-white/[0.06] bg-sidebar text-white [color-scheme:dark]",
           "transition-[width] duration-200 ease-out",
-          "max-lg:fixed max-lg:inset-y-0 max-lg:start-0 max-lg:z-50 max-lg:w-sidebar max-lg:shadow-xl max-lg:transition-transform max-lg:duration-200 max-lg:ease-out",
-          "max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[env(safe-area-inset-bottom)]",
+          "max-lg:fixed max-lg:top-0 max-lg:h-lvh max-lg:max-h-none max-lg:start-0 max-lg:z-50 max-lg:w-sidebar max-lg:transition-transform max-lg:duration-200 max-lg:ease-out",
+          "max-lg:pt-[env(safe-area-inset-top)] max-lg:pb-[var(--browser-bar-inset)]",
           /* Off-canvas: start edge — LTR slides left, RTL slides right. */
+          // Shadow only while open — closed off-canvas, it leaked a grey strip onto the page edge.
           mobileNavOpen
-            ? "max-lg:translate-x-0"
+            ? "max-lg:translate-x-0 max-lg:shadow-xl"
             : "max-lg:pointer-events-none max-lg:ltr:-translate-x-full max-lg:rtl:translate-x-full",
           "lg:translate-x-0 lg:pointer-events-auto",
           desktopRail && "lg:w-sidebar-collapsed",

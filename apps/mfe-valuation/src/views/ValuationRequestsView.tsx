@@ -12,7 +12,7 @@ import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
 } from "@platform/app-shared/app-data/work-orders-api-config";
-import { Button, KpiAlertIcon, KpiBand, KpiCell, KpiCheckIcon, KpiClipboardIcon, KpiClockIcon, MobileKpiStatCards, Note, QueryErrorState, ReportPageBody, SkeletonTableRows, StatusBadge, SubpageHeader, SubpagePanel, TBody, THead, Table, TableFrame, Td, TdLtr, Th, Tr, cn, opsMobileCard, opsSkeletonCard, useSwapAnimation, useToast, promptAction } from "@platform/ui-kit";
+import { Button, KpiAlertIcon, KpiBand, KpiCell, KpiCheckIcon, KpiClipboardIcon, KpiClockIcon, MobileKpiStatCards, MobileRecordCard, MobileRecordList, Note, QueryErrorState, ReportPageBody, SkeletonTableRows, StatusBadge, SubpageHeader, SubpagePanel, TBody, THead, Table, TableFrame, Td, TdLtr, Th, Tr, cn, opsSkeletonCard, useSwapAnimation, useToast, promptAction } from "@platform/ui-kit";
 import type { RoleId } from "@platform/types";
 import {
   useSubmitValuationImpedimentMutation,
@@ -292,7 +292,8 @@ export function ValuationRequestsView() {
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2.5">
+          {/* Phones: search and status filter stacked, each full width. */}
+          <div className="flex flex-wrap items-center gap-2.5 max-lg:w-full max-lg:flex-col max-lg:items-stretch">
             <div className="relative flex items-center">
               <span className="pointer-events-none absolute start-3 text-text-3">
                 <SearchIcon />
@@ -303,7 +304,7 @@ export function ValuationRequestsView() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="رقم الطلب أو الصك أو أمر العمل..."
                 className={cn(
-                  "w-[240px] rounded-lg border border-border-md bg-surface py-[9px] pe-3.5 ps-9 text-[13px] outline-none transition",
+                  "w-[240px] max-lg:min-h-11 max-lg:w-full rounded-lg border border-border-md bg-surface py-[9px] pe-3.5 ps-9 text-[13px] outline-none transition",
                   "focus:border-gold focus:shadow-[0_0_0_3px_rgba(164,144,111,.22)]",
                 )}
               />
@@ -312,7 +313,7 @@ export function ValuationRequestsView() {
               <select
                 value={status}
                 onChange={(e) => setStatus(e.target.value as StatusFilter)}
-                className="appearance-none rounded-lg border border-border-md bg-surface px-3.5 py-[9px] pe-9 text-[13px] outline-none"
+                className="appearance-none rounded-lg border border-border-md bg-surface px-3.5 py-[9px] pe-9 text-[13px] outline-none max-lg:min-h-11 max-lg:w-full"
               >
                 <option value="all">جميع الحالات</option>
                 <option value="progress">قيد التنفيذ</option>
@@ -439,77 +440,79 @@ export function ValuationRequestsView() {
               لا توجد نتائج مطابقة
             </div>
           ) : (
-            <ul className="m-0 flex list-none flex-col gap-3 p-0">
+            <MobileRecordList>
               {rows.map((v) => {
                 const property = propertiesById.get(v.propId);
-                const tone =
-                  v.status === "fail"
-                    ? "border-s-red"
-                    : v.status === "done"
-                      ? "border-s-ink"
-                      : v.status === "merged"
-                        ? "border-s-border-md"
-                        : "border-s-gold";
+                const canView = mgr && v.status === "progress";
+                const canImpede = isApp && v.status === "progress";
                 return (
-                  <li
+                  <MobileRecordCard
                     key={v.recordId}
-                    className={cn(
-                      cn(opsMobileCard, "overflow-hidden border-s-[3px]"),
-                      // Unbounded list — skip layout/paint for off-screen rows
-                      // (rendering-content-visibility; no gates or measurements).
-                      "[content-visibility:auto] [contain-intrinsic-size:auto_130px]",
-                      tone,
-                    )}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="text-[14px] font-bold text-heading">
-                          {v.id}
-                        </div>
-                        <div className="mt-0.5">
+                    // Unbounded list — skip layout/paint for off-screen rows
+                    // (rendering-content-visibility; no gates or measurements).
+                    className="[content-visibility:auto] [contain-intrinsic-size:auto_190px]"
+                    tone={
+                      v.status === "fail"
+                        ? "red"
+                        : v.status === "done"
+                          ? "ink"
+                          : v.status === "merged"
+                            ? "muted"
+                            : "gold"
+                    }
+                    title={<bdi dir="ltr">{v.id}</bdi>}
+                    status={<StatusBadge status={v.status} />}
+                    fields={[
+                      {
+                        label: "العقار",
+                        value: (
                           <RequestPropertyCell
                             property={property}
                             propertiesLoaded={propertiesLoaded}
                           />
-                        </div>
-                      </div>
-                      <StatusBadge status={v.status} />
-                    </div>
-                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] text-text-2">
-                      <span>{v.area || "—"}</span>
-                      <span>{valuationRequestTypeLabel(v.type, property)}</span>
-                      <span>{v.appraiser || "بدون مقيّم"}</span>
-                    </div>
-                    <div className="mt-2.5 flex flex-wrap gap-2">
-                      {isApp && v.status === "progress" ? (
+                        ),
+                      },
+                      { label: "المنطقة", value: v.area || "—" },
+                      {
+                        label: "النوع",
+                        value: valuationRequestTypeLabel(v.type, property),
+                      },
+                      {
+                        label: "المقيّم المُسند",
+                        value: v.appraiser || "بدون مقيّم",
+                      },
+                      { label: "التاريخ", value: v.date || "—", ltr: true },
+                    ]}
+                    actions={
+                      canImpede || canView ? (
                         <>
-                          <Button
-                            size="sm"
-                            variant="danger"
-                            className="min-h-11"
-                            loading={submitImpediment.isPending}
-                            showActionToast={false}
-                            onClick={() => void handleImpediment(v.recordId)}
-                          >
-                            تعذّر
-                          </Button>
+                          {canImpede ? (
+                            <Button
+                              variant="danger"
+                              className="min-h-11"
+                              loading={submitImpediment.isPending}
+                              showActionToast={false}
+                              onClick={() => void handleImpediment(v.recordId)}
+                            >
+                              تعذّر
+                            </Button>
+                          ) : null}
+                          {canView ? (
+                            <Button
+                              className="min-h-11"
+                              disabled={openingPropId === v.propId}
+                              onClick={() => void handleViewRequest(v.propId)}
+                            >
+                              عرض
+                            </Button>
+                          ) : null}
                         </>
-                      ) : null}
-                      {mgr && v.status === "progress" ? (
-                        <Button
-                          size="sm"
-                          className="min-h-11"
-                          disabled={openingPropId === v.propId}
-                          onClick={() => void handleViewRequest(v.propId)}
-                        >
-                          عرض
-                        </Button>
-                      ) : null}
-                    </div>
-                  </li>
+                      ) : undefined
+                    }
+                  />
                 );
               })}
-            </ul>
+            </MobileRecordList>
           )}
         </div>
         )}

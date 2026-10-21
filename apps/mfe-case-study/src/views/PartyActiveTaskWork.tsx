@@ -10,6 +10,7 @@ import {
 import { useRouter } from "next/navigation";
 import { TaskCompletionSuccess } from "../components/party-tasks/TaskCompletionSuccess";
 import { PartyTaskSubmitDialog, type PartyTaskSubmitState } from "./PartyTaskSubmitDialog";
+import { PartyTaskFailureRaise, PartyWorkTabs } from "./PartyActiveTaskWorkTabs";
 import { TaskWorkChrome } from "../components/primary-data/TaskWorkChrome";
 import { FieldInspectionMobileShell } from "../components/field-inspection/FieldInspectionMobileShell";
 import {
@@ -53,101 +54,15 @@ import {
   Note,
   PageShell,
   PanelSkeleton,
-  cn,
   opsContentPanel,
   useSwapAnimation,
   useToast,
 } from "@platform/ui-kit";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
-import { FailureRaisePanel } from "@failures/mfe/components/failures/FailureRaisePanel";
-import { failureRaiserRoleForParty } from "@failures/mfe/lib/failure-party-roles";
-
-const PARTY_FAILURE_RAISE_KINDS = new Set([
-  "field-inspection",
-  "property-appraisal",
-  "engineering-survey",
-]);
 
 const LOADING_TEXT = "text-xs text-text-3";
 const TAB_CONTENT = "min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:p-5";
-const WORK_TAB =
-  "cursor-pointer border-none bg-transparent px-3.5 py-2.5 text-xs font-medium transition-[background-color,border-color,color] duration-200 ease-out hover:bg-surface-2 motion-reduce:transition-none";
-
-function PartyWorkTabs({
-  workTab,
-  workTitle,
-  onSelect,
-}: {
-  workTab: "task" | "case-study";
-  workTitle: string;
-  onSelect: (tab: "task" | "case-study") => void;
-}) {
-  return (
-    <nav
-      className="mb-3 overflow-hidden rounded-xl border border-border"
-      aria-label="أقسام المهمة"
-      role="tablist"
-    >
-      <div className="flex flex-wrap border-b border-border bg-surface">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={workTab === "task"}
-          className={cn(
-            WORK_TAB,
-            workTab === "task"
-              ? "-mb-px border-b-2 border-b-primary font-semibold text-primary"
-              : "text-text-2 hover:text-text",
-          )}
-          onClick={() => onSelect("task")}
-        >
-          {workTitle}
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={workTab === "case-study"}
-          className={cn(
-            WORK_TAB,
-            workTab === "case-study"
-              ? "-mb-px border-b-2 border-b-primary font-semibold text-primary"
-              : "text-text-2 hover:text-text",
-          )}
-          onClick={() => onSelect("case-study")}
-        >
-          تقرير دراسة الحالة
-        </button>
-      </div>
-    </nav>
-  );
-}
-
-function PartyTaskFailureRaise({
-  def,
-  task,
-  deedNumber,
-  onSubmitted,
-}: {
-  def: PartyTaskPageDef;
-  task: WorkflowTask;
-  deedNumber: string;
-  onSubmitted?: () => void;
-}) {
-  if (!task.propertyId || !PARTY_FAILURE_RAISE_KINDS.has(task.kind)) {
-    return null;
-  }
-  return (
-    <FailureRaisePanel
-      poNumber={task.poNumber}
-      propertyId={task.propertyId}
-      deedNumber={deedNumber}
-      specialist={task.assigneeName || def.assigneeSubtitle}
-      raisedByRole={failureRaiserRoleForParty(def)}
-      onSubmitted={onSubmitted}
-    />
-  );
-}
 
 export function PartyActiveTaskWork({
   def,

@@ -6,6 +6,7 @@ import {
   type TransactionDeedDto,
 } from "@platform/api-client";
 import { fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
+import { MobileRecordCard, MobileRecordList } from "@platform/ui-kit";
 import { ValCard } from "./EvaluatorHtmlPrimitives";
 
 /** Sum of the deed areas in m², or "—" when any deed has none. */
@@ -42,7 +43,30 @@ export function EvaluatorLinkedDeedsCard({
         ) : null}
         . يُقيَّم العقار كاملاً بتقرير واحد يذكر كل الصكوك.
       </p>
-      <table className="w-full table-fixed border-collapse overflow-hidden rounded-[10px] border border-border">
+      {/* Phones: a card per deed + the total — five fixed columns clipped the deed numbers. */}
+      <MobileRecordList className="lg:hidden">
+        {deeds.map((d, i) => (
+          <MobileRecordCard
+            key={d.propertyId}
+            title={
+              <>
+                <span className="me-1.5 text-text-3">{i + 1}.</span>
+                <bdi dir="ltr">{transactionDeedLabelOf(d)}</bdi>
+              </>
+            }
+            fields={[
+              { label: "تاريخه", value: transactionDeedDateOf(d) || "—", ltr: true },
+              { label: "أمر العمل", value: d.poNumber, ltr: true },
+              { label: "المساحة", value: d.area?.trim() || "—", ltr: true },
+            ]}
+          />
+        ))}
+        <div className="flex items-center justify-between gap-3 rounded-[12px] bg-surface-2 px-4 py-3 text-[12.5px] font-bold text-heading">
+          <span>المساحة الكلية</span>
+          <bdi dir="ltr">{linkedDeedsTotalArea(deeds)}</bdi>
+        </div>
+      </MobileRecordList>
+      <table className="w-full table-fixed border-collapse overflow-hidden rounded-[10px] border border-border max-lg:hidden">
         <thead>
           <tr>
             <th className="w-8 border-b border-border bg-surface-2 px-2 py-2 text-center text-[11px] font-bold text-text-2">#</th>

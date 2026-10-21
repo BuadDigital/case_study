@@ -133,7 +133,7 @@ export function ListPager({
           type="text"
           inputMode="numeric"
           aria-label="رقم الصفحة"
-          className="h-[30px] w-11 rounded-[9px] border border-border-md bg-surface text-center text-[13px] text-text tabular-nums outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-55"
+          className="h-[30px] w-11 max-lg:h-11 rounded-[9px] border border-border-md bg-surface text-center text-[13px] text-text tabular-nums outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-55"
           value={pageDraft}
           disabled={waiting}
           onChange={(e) => setPageDraft(e.target.value.replace(/\D/g, ""))}
@@ -152,7 +152,7 @@ export function ListPager({
           type="button"
           size="sm"
           variant="default"
-          className="h-[30px] w-[30px] p-0 disabled:opacity-40"
+          className="h-[30px] w-[30px] p-0 disabled:opacity-40 max-lg:h-11 max-lg:w-11"
           disabled={win.safePage <= 1}
           onClick={() => onPageChange(win.safePage - 1)}
           aria-label="الصفحة السابقة"
@@ -164,7 +164,7 @@ export function ListPager({
           type="button"
           size="sm"
           variant="default"
-          className="h-[30px] w-[30px] p-0 disabled:opacity-40"
+          className="h-[30px] w-[30px] p-0 disabled:opacity-40 max-lg:h-11 max-lg:w-11"
           disabled={win.safePage >= win.totalPages}
           onClick={() => onPageChange(win.safePage + 1)}
           aria-label="الصفحة التالية"

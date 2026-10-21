@@ -19,6 +19,12 @@ export function DashCompletionCard({
     ["غير مسجّلة", model.pNotReg, "#9aa3b2"],
   ];
   const total = model.pTotal || 1;
+  const stats = [
+    [pending ? "—" : String(model.pTotal), "إجمالي العقارات"],
+    [pending ? "—" : `${model.regPct}%`, "نسبة التسجيل"],
+    [pending ? "—" : model.avgPerPo, "متوسط/أمر"],
+    [pending ? "—" : String(model.remaining), "متبقٍ"],
+  ] as const;
 
   return (
     <div className={opsDashCard}>
@@ -33,8 +39,11 @@ export function DashCompletionCard({
           جميع المعاملات
         </Link>
       </div>
-      <div className="flex items-center gap-[18px]">
-        <BigRing pct={pending ? 0 : model.compPct} color="#3f8f5f" />
+      {/* Phones: ring on top, the bar + legend full width under it. */}
+      <div className="flex items-center gap-[18px] max-lg:flex-col max-lg:items-stretch">
+        <div className="flex shrink-0 justify-center">
+          <BigRing pct={pending ? 0 : model.compPct} color="#3f8f5f" />
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex h-4 overflow-hidden rounded-full bg-surface-2">
             {segs.map(([label, n, color]) => {
@@ -72,20 +81,31 @@ export function DashCompletionCard({
           </div>
         </div>
       </div>
-      <div className="mt-4 flex gap-2 border-t border-border pt-3.5">
-        {(
-          [
-            [pending ? "—" : String(model.pTotal), "إجمالي العقارات"],
-            [pending ? "—" : `${model.regPct}%`, "نسبة التسجيل"],
-            [pending ? "—" : model.avgPerPo, "متوسط/أمر"],
-            [pending ? "—" : String(model.remaining), "متبقٍ"],
-          ] as const
-        ).map(([v, l]) => (
+      {/* Desktop: the four stats in one ruled row. */}
+      <div className="mt-4 flex gap-2 border-t border-border pt-3.5 max-lg:hidden">
+        {stats.map(([v, l]) => (
           <div key={l} className="flex-1 text-center">
             <div className="text-[19px] font-extrabold leading-none text-heading">
               {v}
             </div>
             <div className="mt-1 text-[11px] text-text-3">{l}</div>
+          </div>
+        ))}
+      </div>
+      {/* Phones: a 2×2 grid of separate stat tiles under the ring + legend. */}
+      <div className="mt-4 grid grid-cols-2 gap-2.5 lg:hidden">
+        {stats.map(([v, l]) => (
+          <div
+            key={l}
+            className="min-w-0 rounded-[12px] border border-border bg-surface px-3 py-3 text-center"
+          >
+            <div
+              dir="ltr"
+              className="text-[22px] font-extrabold leading-none tabular-nums text-heading"
+            >
+              {v}
+            </div>
+            <div className="mt-1.5 text-[11.5px] text-text-3">{l}</div>
           </div>
         ))}
       </div>

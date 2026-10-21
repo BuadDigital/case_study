@@ -1,4 +1,4 @@
-import { cn } from "@platform/ui-kit";
+import { cn, MobileSectionPicker } from "@platform/ui-kit";
 import {
   finStageCount,
   finStageCountOn,
@@ -17,6 +17,7 @@ export function FinanceStagePills<T extends string>({
   onTabIntent,
   counts,
   className,
+  pickerTitle = "المرحلة",
 }: {
   items: { id: T; label: string }[];
   active: T;
@@ -25,9 +26,24 @@ export function FinanceStagePills<T extends string>({
   onTabIntent?: (id: T) => void;
   counts?: Partial<Record<T, number>>;
   className?: string;
+  /** Phone picker caption / sheet title. */
+  pickerTitle?: string;
 }) {
   return (
-    <div className={cn(finStagePills, className)} role="tablist">
+    <>
+    {/* Phones: a section picker, not the pill row wrapped over several lines. */}
+    <MobileSectionPicker
+      className={cn("mb-3.5 lg:hidden", className)}
+      title={pickerTitle}
+      sections={items.map((item) => ({
+        id: item.id,
+        label: item.label,
+        count: counts?.[item.id],
+      }))}
+      active={active}
+      onChange={(id) => onChange(id as T)}
+    />
+    <div className={cn(finStagePills, "max-lg:hidden", className)} role="tablist">
       {items.map((item) => {
         const count = counts?.[item.id];
         const isActive = active === item.id;
@@ -60,5 +76,6 @@ export function FinanceStagePills<T extends string>({
         );
       })}
     </div>
+    </>
   );
 }

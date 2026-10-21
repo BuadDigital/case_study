@@ -1,6 +1,6 @@
 "use client";
 
-import { Note, Spinner, cn, opsBtnGhost, opsBtnPrimary, opsFldControl, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterSub, opsLetterTitle, opsTfNote, opsTfSeg, opsTfSegActive, opsTfSegRow } from "@platform/ui-kit";
+import { MobileSectionPicker, Note, Spinner, cn, opsBtnGhost, opsBtnPrimary, opsFldControl, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterSub, opsLetterTitle, opsTfNote, opsTfSeg, opsTfSegActive, opsTfSegRow } from "@platform/ui-kit";
 
 import { CATEGORIES, PRICING_ICON } from "../lib/party-fee-pricing-state";
 import { OpsIcon, PricingAssignModal } from "./FinancePartyFeePricingParts";
@@ -50,9 +50,23 @@ export function FinancePartyFeePricing() {
         </p>
       ) : null}
 
+      {/* Phones: a category picker instead of the segment row. */}
+      <MobileSectionPicker
+        className="mb-3.5 lg:hidden"
+        title="فئة التسعيرة"
+        sections={CATEGORIES.map((cat) => ({
+          id: cat.id,
+          label: cat.label,
+          disabled: busy || saving,
+        }))}
+        active={selectedCategory}
+        onChange={(id) =>
+          selectCategory(id as (typeof CATEGORIES)[number]["id"])
+        }
+      />
       {/* Category — segmented buttons in task style */}
       <div
-        className={cn(opsTfSegRow, "mb-3.5")}
+        className={cn(opsTfSegRow, "mb-3.5 max-lg:hidden")}
         role="tablist"
         aria-label="فئة التسعيرة"
       >

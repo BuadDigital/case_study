@@ -359,7 +359,8 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
           <div
             id="as-approaches"
             className={cn(
-              "mb-4 grid grid-cols-3 gap-3 rounded-[10px]",
+              // Phones: one approach card per line, not three ~100px columns.
+              "mb-4 grid grid-cols-3 gap-3 rounded-[10px] max-lg:grid-cols-1",
               approachesError && invalidControlClass,
             )}
           >
