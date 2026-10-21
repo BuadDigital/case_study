@@ -82,7 +82,11 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
             foreach (var t in row.Timeline)
                 CollectUserIdCandidate(ids, null, t.ActorName);
             foreach (var a in row.Assignments)
+            {
                 CollectUserIdCandidate(ids, null, a.ConfirmedByName);
+                CollectUserIdCandidate(ids, a.KeyHolderUserId, a.KeyHolderLabel);
+            }
+            CollectUserIdCandidate(ids, row.HolderUserId, row.HolderLabel);
         }
 
         if (ids.Count == 0) return rows;
@@ -126,6 +130,14 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
             CreatedByName = Fix(row.CreatedByName, row.CreatedByUserId),
             CreatedAtUtc = row.CreatedAtUtc,
             UpdatedAtUtc = row.UpdatedAtUtc,
+            OperationsTaskId = row.OperationsTaskId,
+            HolderKind = row.HolderKind,
+            HolderUserId = row.HolderUserId,
+            HolderLabel = string.IsNullOrWhiteSpace(row.HolderLabel)
+                ? row.HolderLabel
+                : Fix(row.HolderLabel, row.HolderUserId),
+            HolderSinceUtc = row.HolderSinceUtc,
+            ReadyForCourtReturn = row.ReadyForCourtReturn,
             LinkedProperties = row.LinkedProperties,
             Handoffs = row.Handoffs.Select(h => new KeyEnvelopeHandoffDto
             {
@@ -164,6 +176,12 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
                     ? a.ConfirmedByName
                     : Fix(a.ConfirmedByName),
                 ConfirmedAtUtc = a.ConfirmedAtUtc,
+                KeyLocation = a.KeyLocation,
+                KeyHolderUserId = a.KeyHolderUserId,
+                KeyHolderLabel = string.IsNullOrWhiteSpace(a.KeyHolderLabel)
+                    ? a.KeyHolderLabel
+                    : Fix(a.KeyHolderLabel, a.KeyHolderUserId),
+                KeyLocationAtUtc = a.KeyLocationAtUtc,
             }).ToList(),
         }).ToList();
     }

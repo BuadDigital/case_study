@@ -64,9 +64,11 @@ public static class ValuationReportFieldBuilder
         bool complianceRestricted = false,
         ValuationApproachSettings? approachSettings = null,
         AssignmentType? assignmentType = null,
-        ValuationListsDto? valuationCatalog = null)
+        ValuationListsDto? valuationCatalog = null,
+        IReadOnlyList<CaseStudyTransactionDeedDto>? transactionDeeds = null)
     {
         inspector ??= new InspectorPayloadFacts();
+        transactionDeeds ??= [];
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
         var adopted = (market?.Items ?? []).Where(i => i.IsAdopted).OrderBy(i => i.SortOrder).ToList();
         var basisLabel = !string.IsNullOrWhiteSpace(recon?.BasisOfValueLabelAr)
@@ -162,7 +164,11 @@ public static class ValuationReportFieldBuilder
                 break;
 
             case ValuationReportSectionKeys.SubjectAsset:
-                d["deedNumber"] = prop?.DeedNumber;
+                // Phase 5: a linked property names every deed of the transaction.
+                d["deedNumber"] = CaseStudyTransactionDeedRules.JoinedLabels(transactionDeeds) ?? prop?.DeedNumber;
+                d["deedCount"] = transactionDeeds.Count(x => !x.IsRemoved) > 1
+                    ? transactionDeeds.Count(x => !x.IsRemoved).ToString()
+                    : null;
                 d["deedKind"] = prop is null
                     ? null
                     : DeedKindLabels.ToApiValue(prop.DeedKind);

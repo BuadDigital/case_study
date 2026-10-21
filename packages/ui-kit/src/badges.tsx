@@ -128,6 +128,8 @@ const STATUS_MAP: Record<string, readonly [string, BadgeTone]> = {
   pending: ["معلّق", "info"],
   under_study: ["قيد الدراسة", "warning"],
   removed: ["محذوف", "danger"],
+  /** Phase 5: a valuation request folded into the holder deed's request of a linked property. */
+  merged: ["مدمجة", "info"],
 };
 
 export type StatusBadgeProps = {

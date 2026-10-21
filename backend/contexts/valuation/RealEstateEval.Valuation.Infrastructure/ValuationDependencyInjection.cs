@@ -46,7 +46,11 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationEventPublisher, ValuationOutboxPublisher>();
         services.AddScoped<IPropertyPoNumberLookup, RemotePropertyPoNumberLookup>();
         services.AddScoped<IValuationRequestService, ValuationRequestService>();
+        // Phase 5: merge / unmerge of transactions folds the deeds' requests into the holder's.
+        services.AddScoped<IValuationRequestFolding, ValuationRequestFoldingService>();
         services.AddHttpClient<ICaseStudyRecallCommands, HttpCaseStudyRecallCommands>();
+        // Decision 2026-10-19: the report number is drawn from the transaction's PR root owned by Case Study.
+        services.AddHttpClient<ICaseStudyCommands, HttpCaseStudyCommands>();
         services.AddScoped<ValuationTimelineWriter>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
         services.AddScoped<IComparablePropertyRepository, ComparablePropertyRepository>();

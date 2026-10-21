@@ -313,6 +313,8 @@ export {
   requestEvaluatorRecallApi,
   saveFailureTypesCatalog,
   setAttachmentDocumentType,
+  setKeyEnvelopeAssignmentKeyLocation,
+  type SetKeyLocationRequest,
   reviewValueDocument,
   type ReviewValueDocumentRequest,
   uploadAttachment,
@@ -349,6 +351,8 @@ export {
 } from "./prototype-modules";
 
 export {
+  KeyHolderKinds,
+  KeyLocations,
   PropertyKeyGateSources,
   PropertyKeyHandedValues,
   PropertyKeysStatuses,
@@ -565,22 +569,6 @@ export {
 } from "./valuation-lists";
 
 export {
-  getPropertyGroup,
-  suggestPropertyGroupLinks,
-  confirmPropertyGroupLink,
-  unlinkPropertyGroup,
-  fillPropertyGroupDocumentNames,
-  prefillInspectionFromGroup,
-  type FillPropertyGroupDocumentNamesRequest,
-  type InspectionPrefillResultDto,
-  type PropertyGroupDto,
-  type PropertyGroupLinkSyncDto,
-  type PropertyGroupMemberDto,
-  type PropertyGroupSuggestionDto,
-  type PropertyGroupsApiConfig,
-} from "./property-groups";
-
-export {
   listClients,
   createClient,
   updateClient,
@@ -625,6 +613,24 @@ export {
   type NumberedDocumentKind,
   type NumberedDocumentsApiConfig,
 } from "./numbered-documents";
+
+export {
+  getTransaction,
+  getTransactionByProperty,
+  getTransactionTimeline,
+  linkedPropertyDeeds,
+  mergeTransactions,
+  searchTransactionDeeds,
+  transactionDeedDateOf,
+  transactionDeedLabelOf,
+  unmergeTransactionDeed,
+  type TransactionDeedDto,
+  type TransactionDeedSearchHitDto,
+  type TransactionDetailDto,
+  type TransactionDto,
+  type TransactionLinkKind,
+  type TransactionTimelineEventDto,
+} from "./transactions";
 
 export {
   listPropertyComparableLinks,
@@ -686,6 +692,7 @@ export {
 export {
   approveReportDraft,
   downloadFinalReport,
+  ensureReportNumber,
   generateFinalReport,
   getReportDraftByProperty,
   listReportDraftStates,
@@ -697,6 +704,7 @@ export {
   type ReportDraftStateDto,
   type ValuationReportDraftDto,
   type ValuationReportDraftStatus,
+  type ValuationReportNumberDto,
 } from "./valuation-report-drafts";
 
 export {

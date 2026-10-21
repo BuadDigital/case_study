@@ -20,6 +20,7 @@ import { formatPoDisplay } from "../lib/app-data/po-intake-data";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 import { allTransactionsPhaseStyle } from "../lib/app-data/all-transactions-queue";
+import { transactionNumberOf } from "../components/ui/TransactionNumberBadge";
 import type {
   AllTransactionsRowMeta,
   PrimaryRowMeta,
@@ -67,6 +68,9 @@ export function buildQueueMobileCardItems({
     return filteredAllTxMeta.map((meta) => {
       const metaLines = [
         { text: formatPoDisplay(meta.poNumber), kind: "po" as const },
+        meta.transactionNumber
+          ? { text: meta.transactionNumber, kind: "po" as const }
+          : null,
         meta.city !== "—" ? { text: meta.city, kind: "place" as const } : null,
         meta.district !== "—"
           ? { text: meta.district, kind: "place" as const }
@@ -101,10 +105,15 @@ export function buildQueueMobileCardItems({
             ? row.deedLabel
             : `صك ${row.deedLabel}`
           : `مهمة ${task.id}`;
+      const transactionNumber =
+        transactionNumberOf(property) ?? task.transactionNumber;
       const meta = [
         disableRowOpen
           ? null
           : { text: formatPoDisplay(task.poNumber), kind: "po" as const },
+        transactionNumber
+          ? { text: transactionNumber, kind: "po" as const }
+          : null,
         row.city !== "—" ? { text: row.city, kind: "place" as const } : null,
         row.district !== "—"
           ? { text: row.district, kind: "place" as const }
@@ -142,8 +151,13 @@ export function buildQueueMobileCardItems({
         : null,
       row.district !== "—" ? row.district : null,
     ].filter(Boolean);
+    const transactionNumber =
+      transactionNumberOf(property) ?? task.transactionNumber;
     const meta = [
       { text: formatPoDisplay(task.poNumber), kind: "po" as const },
+      transactionNumber
+        ? { text: transactionNumber, kind: "po" as const }
+        : null,
       row.city !== "—" ? { text: row.city, kind: "place" as const } : null,
       flags.isPropertyAppraisalTable &&
       row.propertyType &&

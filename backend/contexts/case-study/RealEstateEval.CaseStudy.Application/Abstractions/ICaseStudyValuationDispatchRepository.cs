@@ -20,6 +20,14 @@ public interface ICaseStudyValuationDispatchRepository
 
     Task<WorkOrderProperty?> GetPropertyAsync(Guid propertyId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The holder deed of the property's transaction and the other live deeds in it
+    /// (the property itself and none when it is alone).
+    /// </summary>
+    Task<(Guid HolderPropertyId, IReadOnlyList<Guid> SiblingPropertyIds)> GetTransactionDeedsAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken);
+
     /// <summary>Tracked submission for the task; edits are persisted by <see cref="SaveChangesAsync"/>.</summary>
     Task<PartyTaskSubmission?> GetSubmissionAsync(
         Guid workflowTaskId,

@@ -20,9 +20,12 @@ public sealed partial class TransactionStateService(
     IAuditLogWriter? audit = null,
     IAuditLogAppend? auditLog = null,
     ICaseStudyReportService? caseStudyReports = null,
-    IValuationReportReopenCommands? valuationReopen = null)
+    IValuationReportReopenCommands? valuationReopen = null,
+    ITransactionReferenceService? transactions = null)
     : ITransactionStateService
 {
+    public const string ReferenceBeforeHandoverAr = "تعذّر تثبيت الرقم المرجعي قبل الرفع — أعد المحاولة";
+
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
  /// <summary>R3 is consistent with Q-8-2: Reason for Decision is at least 10 characters (JustificationRules in evaluation context).</summary>
@@ -53,6 +56,16 @@ public sealed partial class TransactionStateService(
         var blockReasons = TransactionStateRules.EnfazHandoverBlockReasonsAr(input);
         if (blockReasons.Count > 0)
             return (null, EnfazHandoverBlockedAr(blockReasons));
+
+        // Decision 2026-10-20: a deed never goes to Enfaz under a temporary number. The first report
+        // approval normally fixed the PR root; this is the safety net for anything that slipped past.
+        if (transactions is not null)
+        {
+            var (_, referenceError) = await transactions.ConfirmOfficialReferenceAsync(
+                propertyId, _time.UtcNow(), cancellationToken);
+            if (referenceError is not null)
+                return (null, $"{ReferenceBeforeHandoverAr} ({referenceError})");
+        }
 
         property.EnfazHandoverAtUtc = _time.UtcNow();
         property.EnfazHandoverByUserId = recordedByUserId;

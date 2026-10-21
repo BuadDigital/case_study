@@ -28,4 +28,12 @@ public sealed class ValuationReportWorkflowTaskLookup(CaseStudyDbContext db)
                 cancellationToken);
         return new OpenAppraisalTaskRef(task.Id, task.PoNumber, submitted);
     }
+
+    public async Task<IReadOnlyList<Guid>> ListSiblingDeedIdsAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var ids = await StudyHolder.TransactionPropertyIdsAsync(db, propertyId, cancellationToken);
+        return ids.Where(id => id != propertyId).ToList();
+    }
 }

@@ -69,6 +69,7 @@ const CLUSTER_COLORS: Record<LayerKey, { bg: string; ring: string; fg: string }>
   active: { bg: "#12284C", ring: "rgba(164,144,111,.5)", fg: "#c8b591" },
   archive: { bg: "#8a8d96", ring: "rgba(138,141,150,.35)", fg: "#fff" },
   comparables: { bg: "#a4906f", ring: "rgba(164,144,111,.35)", fg: "#fff" },
+  failures: { bg: "#d9694f", ring: "rgba(217,105,79,.35)", fg: "#fff" },
 };
 
 type LeafletNS = typeof import("leaflet") & {
@@ -218,10 +219,11 @@ export function PropertyMapCanvas({
     const counts: Record<LayerKey, number> = {
       active: 0,
       archive: 0,
+      failures: 0,
       comparables: 0,
     };
 
-    (["active", "archive", "comparables"] as LayerKey[]).forEach((key) => {
+    (["active", "archive", "failures", "comparables"] as LayerKey[]).forEach((key) => {
       groups[key]?.clearLayers();
     });
 
@@ -240,7 +242,7 @@ export function PropertyMapCanvas({
       });
       const marker = L.marker([m.coords.lat, m.coords.lng], {
         icon,
-        zIndexOffset: isSel ? 600 : 0,
+        zIndexOffset: isSel ? 3000 : m.layer === "failures" ? 2500 : 0,
       });
       marker.on("click", (ev) => {
         L.DomEvent.stopPropagation(ev);
@@ -257,7 +259,7 @@ export function PropertyMapCanvas({
       marker.addTo(group);
     }
 
-    (["active", "archive", "comparables"] as LayerKey[]).forEach((key) => {
+    (["active", "archive", "failures", "comparables"] as LayerKey[]).forEach((key) => {
       const group = groups[key];
       if (!group) return;
       const on = counts[key] > 0;
@@ -304,6 +306,7 @@ export function PropertyMapCanvas({
       groupsRef.current = {
         active: makeClusterGroup(L, "active"),
         archive: makeClusterGroup(L, "archive"),
+        failures: makeClusterGroup(L, "failures"),
         comparables: makeClusterGroup(L, "comparables"),
       };
       mapRef.current = map;

@@ -13,6 +13,7 @@ import {
 } from "../map-live-records";
 import type { PoIntakeRecord } from "../po-intake-property-model";
 import { emptyProperty } from "../po-intake-property-model";
+import type { FailureRecord, FailureStatus } from "@platform/app-shared/failures/failures-types";
 
 function sampleRecord(propertyId = "prop-1"): PoIntakeRecord[] {
   const prop = {
@@ -161,5 +162,60 @@ describe("map-live-records", () => {
     expect(mapped[0]!.valuer).toBe("أ. فهد الشمري");
     expect(mapped[0]!.workflowStatus).toBe("in_progress");
     expect(mapped[0]!.finalValue).toBeNull();
+  });
+});
+
+describe("map status from the property's failures (التعذّرات)", () => {
+  function failure(status: FailureStatus, over: Partial<FailureRecord> = {}): FailureRecord {
+    return {
+      id: `f-${status}`,
+      poNumber: "PO-100",
+      propertyId: "prop-1",
+      deedNumber: "310112003308",
+      title: "مفتاح العقار لا يفتح",
+      problemTypeId: "",
+      severity: "internal",
+      raisedByRole: "",
+      internalNote: "",
+      finalNote: "",
+      resolutionReason: "",
+      continueInstructions: "",
+      status,
+      specialist: "",
+      createdAt: "2026-10-01T08:00:00Z",
+      updatedAt: "2026-10-01T08:00:00Z",
+      ...over,
+    };
+  }
+  const statusWith = (failures: FailureRecord[]) =>
+    mapPoRecordsToMapProperties(sampleRecord(), { failures })[0]!;
+
+  it.each<[FailureStatus, string]>([
+    ["internal", "infeasible_candidate"],
+    ["review", "infeasible_candidate"],
+    ["returned", "infeasible_candidate"],
+    ["approved", "infeasible"],
+    ["suspended", "infeasible"],
+    ["resolved", "in_progress"],
+  ])("a %s failure marks the property %s", (status, expected) => {
+    expect(statusWith([failure(status)]).workflowStatus).toBe(expected);
+  });
+
+  it("shows the open failure's title and none once it is resolved", () => {
+    expect(statusWith([failure("internal")]).failureTitle).toBe("مفتاح العقار لا يفتح");
+    expect(statusWith([failure("resolved")]).failureTitle).toBeNull();
+  });
+
+  it("ignores failures of another work order", () => {
+    expect(statusWith([failure("approved", { poNumber: "PO-999" })]).workflowStatus).toBe(
+      "in_progress",
+    );
+  });
+
+  it("matches a failure recorded against the deed number", () => {
+    expect(
+      statusWith([failure("review", { propertyId: "", deedNumber: "310112003308" })])
+        .workflowStatus,
+    ).toBe("infeasible_candidate");
   });
 });

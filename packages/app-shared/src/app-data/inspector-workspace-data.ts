@@ -224,6 +224,15 @@ export function textLooksLikeVacantLand(
   return normalized.includes("ارض") || /\bland\b/.test(normalized);
 }
 
+/** «شقة» / «شقة سكنية» / «شقق» — an apartment records no facades. */
+export function textLooksLikeApartment(
+  value: string | null | undefined,
+): boolean {
+  const normalized = normalizeInspectorLandText(value ?? "");
+  if (!normalized) return false;
+  return /شق[ةهق]/.test(normalized) || /\b(apartment|flat)\b/.test(normalized);
+}
+
 /**
  * The inspector owns the submitted subject-asset value. Before submission,
  * consumers must keep using the transaction's initial type.
@@ -271,6 +280,11 @@ export function patchInspectorFeatureValues(
   }
   if (key === "assetSubject" && textLooksLikeVacantLand(next)) {
     for (const hidden of LAND_HIDDEN_INSPECTOR_FEATURE_KEYS) {
+      values[hidden] = "";
+    }
+  }
+  if (key === "assetSubject" && textLooksLikeApartment(next)) {
+    for (const hidden of APARTMENT_HIDDEN_INSPECTOR_FEATURE_KEYS) {
       values[hidden] = "";
     }
   }
@@ -562,19 +576,24 @@ export function isLandInspectionContext(input: {
   );
 }
 
-/** Drop leftover building-only values/photos so they cannot fail validation. */
+/**
+ * Drop values/photos the asset type does not record so they cannot fail validation or print:
+ * building-only rows on vacant land, every facade (direction + boundary facade type) on an apartment.
+ */
 export function sanitizeInspectorDraftForLand(
   draft: InspectorWorkspaceDraft,
   options?: { classification?: string | null; propertyType?: string | null },
 ): InspectorWorkspaceDraft {
-  if (
-    !isLandInspectionContext({
-      vacantLand: draft.vacantLand,
-      assetSubject: draft.featureValues.assetSubject,
-      classification: options?.classification,
-      propertyType: options?.propertyType,
-    })
-  ) {
+  const context = {
+    vacantLand: draft.vacantLand,
+    assetSubject: draft.featureValues.assetSubject,
+    classification: options?.classification,
+    propertyType: options?.propertyType,
+  };
+  if (isApartmentInspectionContext(context)) {
+    return sanitizeInspectorDraftForApartment(draft);
+  }
+  if (!isLandInspectionContext(context)) {
     return draft;
   }
 
@@ -644,6 +663,61 @@ export function isShopHiddenInspectorComponentKey(key: string): boolean {
   return SHOP_HIDDEN_COMPONENT_KEY_SET.has(key);
 }
 
+/** An apartment's facades are not recorded — neither the direction row nor the boundary facade type. */
+const APARTMENT_HIDDEN_INSPECTOR_FEATURE_KEYS = ["facade"] as const;
+
+const APARTMENT_HIDDEN_FEATURE_KEY_SET = new Set<string>(
+  APARTMENT_HIDDEN_INSPECTOR_FEATURE_KEYS,
+);
+
+/**
+ * Apartment («شقة»). Land wins. Like land and shop, the inspector's «الأصل محل التقييم» wins once
+ * chosen; PO type/classification («شقة سكنية») only seed the form before the inspector answers.
+ */
+export function isApartmentInspectionContext(input: {
+  classification?: string | null;
+  propertyType?: string | null;
+  assetSubject?: string | null;
+  vacantLand?: boolean;
+}): boolean {
+  if (isLandInspectionContext(input)) return false;
+  const origin = (input.assetSubject ?? "").trim();
+  if (origin) return textLooksLikeApartment(origin);
+  return [input.classification, input.propertyType].some((value) =>
+    textLooksLikeApartment(value),
+  );
+}
+
+function sanitizeInspectorDraftForApartment(
+  draft: InspectorWorkspaceDraft,
+): InspectorWorkspaceDraft {
+  const featureValues = { ...draft.featureValues };
+  const featurePhotoAttachments = { ...draft.featurePhotoAttachments };
+  let changed = false;
+  for (const key of APARTMENT_HIDDEN_INSPECTOR_FEATURE_KEYS) {
+    if (featureValues[key]) {
+      featureValues[key] = "";
+      changed = true;
+    }
+    if (featurePhotoAttachments[key]) {
+      delete featurePhotoAttachments[key];
+      changed = true;
+    }
+  }
+  let boundaryMatches = draft.boundaryMatches;
+  if (INSPECTOR_BOUNDARY_KEYS.some((side) => boundaryMatches?.[side]?.facade)) {
+    boundaryMatches = { ...boundaryMatches };
+    for (const side of INSPECTOR_BOUNDARY_KEYS) {
+      if (boundaryMatches[side]?.facade) {
+        boundaryMatches[side] = { ...boundaryMatches[side], facade: "" };
+      }
+    }
+    changed = true;
+  }
+  if (!changed) return draft;
+  return { ...draft, featureValues, featurePhotoAttachments, boundaryMatches };
+}
+
 function isLandHiddenInspectorFeatureKey(key: string): boolean {
   return LAND_HIDDEN_FEATURE_KEY_SET.has(key);
 }
@@ -667,6 +741,8 @@ export function isInspectorRetiredFeatureKey(key: string): boolean {
 
 type InspectorFeatureFieldVisibilityOptions = {
   includeRetiredKeys?: readonly string[];
+  /** Apartment: no facade row (`isApartmentInspectionContext`). */
+  isApartment?: boolean;
 };
 
 export function visibleInspectorFeatureFields(
@@ -678,7 +754,8 @@ export function visibleInspectorFeatureFields(
     (field) =>
       (includeRetired.has(field.key) ||
         !RETIRED_INSPECTOR_FEATURE_KEYS.has(field.key)) &&
-      (!isLand || !isLandHiddenInspectorFeatureKey(field.key)),
+      (!isLand || !isLandHiddenInspectorFeatureKey(field.key)) &&
+      (!options?.isApartment || !APARTMENT_HIDDEN_FEATURE_KEY_SET.has(field.key)),
   );
 }
 
@@ -883,11 +960,12 @@ export const INSPECTOR_FREE_PHOTO_KINDS: InspectorFreePhotoCategory[] = [
   },
 ];
 
-/** Interior shots do not use the facade kind. */
+/** Interior shots do not use the facade kind; an apartment records no facade at all. */
 export function inspectorFreePhotoKindsForParent(
   parent: string | null | undefined,
+  options?: { isApartment?: boolean },
 ): readonly InspectorFreePhotoCategory[] {
-  if (parent === INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR) {
+  if (parent === INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR || options?.isApartment) {
     return INSPECTOR_FREE_PHOTO_KINDS.filter(
       (kind) => kind.key !== INSPECTOR_FREE_PHOTO_CATEGORY_FACADE,
     );

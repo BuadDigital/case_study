@@ -11,6 +11,7 @@ import {
 function mapStatus(status: string): VrRow["status"] {
   if (status === "done") return "done";
   if (status === "fail") return "fail";
+  if (status === "merged") return "merged";
   return "progress";
 }
 

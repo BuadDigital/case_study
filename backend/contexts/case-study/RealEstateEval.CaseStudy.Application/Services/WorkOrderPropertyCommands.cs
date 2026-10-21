@@ -74,12 +74,14 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         property.Id = null;
 
         var mapped = MapPropertyEnfath(property, entity.Id, forInsert: true);
- // Numbering workshop (decision items 2 and 5): transaction reference number assigned on add.
-        var (transactionReference, referenceError) =
-            await _db.AllocateTransactionReferenceAsync(_time.UtcNow(), cancellationToken);
+        // Decision 2026-10-19: a deed added later opens its own draft transaction as well.
+        var now = _time.UtcNow();
+        var (draftNumber, referenceError) =
+            await _db.AllocateTransactionDraftNumberAsync(now, cancellationToken);
         if (referenceError is not null)
             return (null, new Dictionary<string, string> { ["_"] = referenceError });
-        mapped.ReferenceNumber = transactionReference;
+        mapped.Transaction = Transaction.CreateDraft(draftNumber!, now);
+        mapped.TransactionId = mapped.Transaction.Id;
         _db.AddProperty(mapped);
         await _db.SaveChangesAsync(cancellationToken);
         // A property registered after the PO was created (the usual path) starts its timeline with the Enfaz receipt.

@@ -45,6 +45,62 @@ public class KeyEnvelope
  /// <summary>Optional link to the court_visit operations task that received this envelope.</summary>
     public Guid? OperationsTaskId { get; set; }
 
+    /// <summary>
+    /// Custody (decision 2026-10-20): who physically holds the envelope right now. The envelope is
+    /// the custody unit — keys are unlabeled and move with it — and the holder changes only when a
+    /// receipt is confirmed (internal / receive-back) or a letter closes it (external / court).
+    /// </summary>
+    public string HolderKind { get; set; } = KeyHolderKinds.Reviewer;
+    public string? HolderUserId { get; set; }
+    public string? HolderLabel { get; set; }
+    public DateTime? HolderSinceUtc { get; set; }
+
+    /// <summary>A handoff that reached its receiver: custody status and holder move together.</summary>
+    public void ApplyConfirmedHandoff(KeyEnvelopeHandoff handoff, DateTime nowUtc)
+    {
+        ApplyHandoffKind(handoff.Kind);
+        switch (handoff.Kind)
+        {
+            case KeyHandoffKinds.Internal:
+                HolderKind = KeyHolderKinds.InternalUser;
+                HolderUserId = handoff.ToUserId;
+                HolderLabel = handoff.ToParty;
+                break;
+            case KeyHandoffKinds.External:
+                HolderKind = KeyHolderKinds.External;
+                HolderUserId = null;
+                HolderLabel = handoff.ToParty;
+                break;
+            case KeyHandoffKinds.ReturnCourt:
+                HolderKind = KeyHolderKinds.Court;
+                HolderUserId = null;
+                HolderLabel = handoff.ToParty;
+                break;
+            default:
+                HolderKind = KeyHolderKinds.Reviewer;
+                HolderUserId = handoff.ToUserId;
+                HolderLabel = handoff.ToParty;
+                break;
+        }
+        HolderSinceUtc = nowUtc;
+        UpdatedAtUtc = nowUtc;
+    }
+
+    /// <summary>Where the deed's matching key is after the field trial (per deed — keys carry no tag).</summary>
+    public void SetAssignmentKeyLocation(
+        KeyEnvelopeAssignment assignment,
+        string location,
+        string? holderUserId,
+        string? holderLabel,
+        DateTime nowUtc)
+    {
+        assignment.KeyLocation = location;
+        assignment.KeyHolderUserId = location == KeyLocations.WithUser ? holderUserId : null;
+        assignment.KeyHolderLabel = location == KeyLocations.WithUser ? holderLabel : null;
+        assignment.KeyLocationAtUtc = nowUtc;
+        UpdatedAtUtc = nowUtc;
+    }
+
     public List<KeyEnvelopeAssignment> Assignments { get; set; } = [];
     public List<KeyEnvelopeHandoff> Handoffs { get; set; } = [];
     public List<KeyEnvelopeTimelineEntry> Timeline { get; set; } = [];
@@ -157,6 +213,41 @@ public static class KeyEnvelopeStatuses
     public static readonly IReadOnlyList<string> All = [Reviewer, Assessor, External, Returned];
 }
 
+/// <summary>Who holds the envelope (decision 2026-10-20).</summary>
+public static class KeyHolderKinds
+{
+    /// <summary>With the government reviewer (the office).</summary>
+    public const string Reviewer = "reviewer";
+    /// <summary>With a system user — an inspector or appraiser — identified by <c>HolderUserId</c>.</summary>
+    public const string InternalUser = "internal_user";
+    /// <summary>With an outside party, delivered under a letter.</summary>
+    public const string External = "external";
+    /// <summary>Returned to the court.</summary>
+    public const string Court = "court";
+
+    public static readonly IReadOnlyList<string> All = [Reviewer, InternalUser, External, Court];
+
+    public static bool IsValid(string? kind) => kind is Reviewer or InternalUser or External or Court;
+}
+
+/// <summary>Where a deed's matching key is after the field trial (decision 2026-10-20).</summary>
+public static class KeyLocations
+{
+    public const string InEnvelope = "in_envelope";
+    public const string WithUser = "with_user";
+    public const string ReturnedCourt = "returned_court";
+    public const string Missing = "missing";
+
+    public static readonly IReadOnlyList<string> All = [InEnvelope, WithUser, ReturnedCourt, Missing];
+
+    public static bool IsValid(string? location) =>
+        location is InEnvelope or WithUser or ReturnedCourt or Missing;
+
+    /// <summary>What a trial result implies when the inspector says nothing about the key's place.</summary>
+    public static string DefaultFor(string assignmentStatus) =>
+        assignmentStatus == KeyAssignmentStatuses.Missing ? Missing : InEnvelope;
+}
+
 public static class KeyReceiveScenarios
 {
  /// <summary>A - The keys to the court.</summary>
@@ -179,6 +270,12 @@ public class KeyEnvelopeAssignment
     public string? ConfirmedByUserId { get; set; }
     public string? ConfirmedByName { get; set; }
     public DateTime? ConfirmedAtUtc { get; set; }
+
+    /// <summary>Where the deed's matching key is now — set at the trial, adjustable by the reviewer.</summary>
+    public string KeyLocation { get; set; } = KeyLocations.InEnvelope;
+    public string? KeyHolderUserId { get; set; }
+    public string? KeyHolderLabel { get; set; }
+    public DateTime? KeyLocationAtUtc { get; set; }
 
     public KeyEnvelope? Envelope { get; set; }
 }
@@ -273,6 +370,8 @@ public static class KeyEnvelopeTimelineEvents
  /// <summary>Key Receipt Revenue Accrual Indicator — No amount.</summary>
     public const string RevenueEntitlement = "revenue_entitlement";
     public const string StatusChanged = "status_changed";
+    /// <summary>The reviewer corrected where a deed's key is (decision 2026-10-20).</summary>
+    public const string KeyLocationChanged = "key_location_changed";
 }
 
 /// <summary>Entry path independent of the envelope: access enablement / eviction record.</summary>

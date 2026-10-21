@@ -185,16 +185,23 @@ public class KeyEnvelopeRegistrationRulesTests
         Assert.Equal(
             KeyHandoffStatuses.Completed,
             KeyEnvelopeRegistrationRules.InitialHandoffStatus(KeyHandoffKinds.External));
+        // Decision 2026-10-20: a receive-back waits for the receiver unless the reviewer records it himself.
+        Assert.Equal(
+            KeyHandoffStatuses.PendingConfirm,
+            KeyEnvelopeRegistrationRules.InitialHandoffStatus(KeyHandoffKinds.ReceiveBack));
         Assert.Equal(
             KeyHandoffStatuses.Completed,
-            KeyEnvelopeRegistrationRules.InitialHandoffStatus(KeyHandoffKinds.ReceiveBack));
+            KeyEnvelopeRegistrationRules.InitialHandoffStatus(KeyHandoffKinds.ReceiveBack, actorIsReceiver: true));
+        Assert.Equal(
+            KeyHandoffStatuses.PendingConfirm,
+            KeyEnvelopeRegistrationRules.InitialHandoffStatus(KeyHandoffKinds.Internal, actorIsReceiver: true));
     }
 
     [Fact]
     public void ValidateHandoffConfirmation_OnlyPendingInternalHandoffs()
     {
         Assert.Equal(
-            "التأكيد مطلوب للتسليم الداخلي فقط",
+            "التأكيد مطلوب للتسليم الداخلي والاسترجاع فقط",
             KeyEnvelopeRegistrationRules.ValidateHandoffConfirmation(new KeyEnvelopeHandoff
             {
                 Kind = KeyHandoffKinds.External,

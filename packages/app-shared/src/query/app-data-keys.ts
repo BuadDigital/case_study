@@ -72,6 +72,12 @@ export const appDataKeys = {
     [...appDataKeys.all, "evaluator-submission", appraisalTaskId] as const,
   propertyTimeline: (poNumber: string, propertyId: string) =>
     [...appDataKeys.all, "property-timeline", poNumber, propertyId] as const,
+  /** The transaction (المعاملة) a deed belongs to, with all its deeds. */
+  transactionByProperty: (propertyId: string) =>
+    [...appDataKeys.all, "transaction", "by-property", propertyId] as const,
+  /** One timeline for every deed of a transaction. */
+  transactionTimeline: (transactionId: string) =>
+    [...appDataKeys.all, "transaction-timeline", transactionId] as const,
   inspectorFees: (query: {
     assigneeId?: string;
     workflowTaskId?: string;

@@ -79,18 +79,39 @@ public static class KeyEnvelopeRegistrationRules
     /// <summary>HTML parity: only external delivery requires a proof letter.</summary>
     public static bool NeedsDeliveryLetter(string kind) => kind == KeyHandoffKinds.External;
 
-    /// <summary>Internal handoffs wait for the receiver's confirmation; the rest complete at once.</summary>
-    public static string InitialHandoffStatus(string kind) =>
-        kind == KeyHandoffKinds.Internal
-            ? KeyHandoffStatuses.PendingConfirm
-            : KeyHandoffStatuses.Completed;
+    /// <summary>
+    /// The receiver confirms (decision 2026-10-20): an internal handoff waits for the inspector; a
+    /// receive-back recorded by someone other than the reviewer waits for the reviewer; one the
+    /// reviewer records himself is his own confirmation. External and court deliveries complete
+    /// at once — the letter is the confirmation.
+    /// </summary>
+    public static string InitialHandoffStatus(string kind, bool actorIsReceiver = false) =>
+        kind switch
+        {
+            KeyHandoffKinds.Internal => KeyHandoffStatuses.PendingConfirm,
+            KeyHandoffKinds.ReceiveBack => actorIsReceiver
+                ? KeyHandoffStatuses.Completed
+                : KeyHandoffStatuses.PendingConfirm,
+            _ => KeyHandoffStatuses.Completed,
+        };
+
+    public static bool AwaitsReceiverConfirmation(string kind) =>
+        kind is KeyHandoffKinds.Internal or KeyHandoffKinds.ReceiveBack;
 
     public static string? ValidateHandoffConfirmation(KeyEnvelopeHandoff handoff)
     {
-        if (handoff.Kind != KeyHandoffKinds.Internal)
-            return "التأكيد مطلوب للتسليم الداخلي فقط";
+        if (!AwaitsReceiverConfirmation(handoff.Kind))
+            return "التأكيد مطلوب للتسليم الداخلي والاسترجاع فقط";
         if (handoff.Status != KeyHandoffStatuses.PendingConfirm)
             return "المناولة مؤكدة مسبقاً";
         return null;
+    }
+
+    /// <summary>Key-location fields of a trial result; null when acceptable.</summary>
+    public static string? ValidateKeyLocation(string? location)
+    {
+        var value = (location ?? "").Trim().ToLowerInvariant();
+        if (value.Length == 0) return null;
+        return KeyLocations.IsValid(value) ? null : "مكان المفتاح غير صالح";
     }
 }

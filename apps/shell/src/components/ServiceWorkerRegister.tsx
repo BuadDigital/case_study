@@ -1,8 +1,9 @@
 "use client";
 
-import { alertAction } from "@platform/ui-kit";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { lastWarmedOfflinePlan } from "@/lib/offline-page-cache";
+import { shouldApplyUpdate, type SwUpdateMoment } from "@/lib/sw-update-policy";
 
 /** Set per build in next.config — a new value installs a fresh worker with fresh caches. */
 const SW_URL = `/sw.js?v=${encodeURIComponent(
@@ -28,15 +29,54 @@ function shouldRegisterServiceWorker(): boolean {
 }
 
 /**
- * Registers the service worker and offers each new build through a banner.
- * The page reloads only after the user accepts, so a deploy never interrupts a form,
- * and never while offline outbox items are still pending.
+ * Registers the service worker and applies each new build silently (decision 2026-10-19: the
+ * «تحديث الآن» banner is gone). The waiting worker takes over at the first moment nobody is
+ * typing — right at load, on the next screen change, or when the tab goes to the background —
+ * and never while offline outbox items are still pending. The new worker warms the offline
+ * pages before it takes over, so a field user keeps a complete offline copy.
  */
 export function ServiceWorkerRegister() {
-  const [updateReady, setUpdateReady] = useState(false);
+  const pathname = usePathname();
   const waitingRef = useRef<ServiceWorker | null>(null);
   /** First install also fires controllerchange (clients.claim) — only reload for an accepted update. */
   const reloadOnControllerChangeRef = useRef(false);
+  const applyingRef = useRef(false);
+  /** The screen the update became ready on — a change of it is the "navigation" moment. */
+  const readyOnPathRef = useRef<string | null>(null);
+
+  const tryApply = (moment: SwUpdateMoment) => {
+    const waiting = waitingRef.current;
+    if (!waiting || applyingRef.current) return;
+    if (!shouldApplyUpdate({ moment, pendingOfflineItems: readPendingCount() })) return;
+    applyingRef.current = true;
+    reloadOnControllerChangeRef.current = true;
+    const plan = lastWarmedOfflinePlan();
+    void (async () => {
+      if (plan && plan.urls.length > 0) {
+        await new Promise<void>((resolve) => {
+          const done = () => {
+            navigator.serviceWorker.removeEventListener("message", onMsg);
+            resolve();
+          };
+          const onMsg = (event: MessageEvent) => {
+            if (event.data?.type === "WARM_OFFLINE_PAGES_DONE") done();
+          };
+          navigator.serviceWorker.addEventListener("message", onMsg);
+          waiting.postMessage({
+            type: "WARM_OFFLINE_PAGES",
+            urls: plan.urls,
+            landing: plan.landing,
+          });
+          window.setTimeout(done, 15_000);
+        });
+      }
+      waiting.postMessage({ type: "SKIP_WAITING" });
+    })();
+  };
+  const tryApplyRef = useRef(tryApply);
+  useEffect(() => {
+    tryApplyRef.current = tryApply;
+  });
 
   useEffect(() => {
     if (!shouldRegisterServiceWorker()) return;
@@ -49,15 +89,25 @@ export function ServiceWorkerRegister() {
       window.location.reload();
     };
 
+    const markReady = (worker: ServiceWorker, moment: SwUpdateMoment) => {
+      waitingRef.current = worker;
+      readyOnPathRef.current = window.location.pathname;
+      tryApplyRef.current(moment);
+    };
+
     const onUpdateFound = () => {
       const installing = registration?.installing;
       if (!installing) return;
       installing.addEventListener("statechange", () => {
         if (installing.state !== "installed") return;
         if (!navigator.serviceWorker.controller) return;
-        waitingRef.current = registration?.waiting ?? installing;
-        setUpdateReady(true);
+        // Ready mid-session: wait for the next screen change or a hidden tab.
+        markReady(registration?.waiting ?? installing, "hidden");
       });
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") tryApplyRef.current("hidden");
     };
 
     const run = () => {
@@ -69,8 +119,8 @@ export function ServiceWorkerRegister() {
           registration = reg;
           reg.addEventListener("updatefound", onUpdateFound);
           if (reg.waiting && navigator.serviceWorker.controller) {
-            waitingRef.current = reg.waiting;
-            setUpdateReady(true);
+            // A build that arrived while the tab was closed: nothing is on screen yet.
+            markReady(reg.waiting, "load");
           }
           reg.update().catch(() => {});
         })
@@ -78,10 +128,8 @@ export function ServiceWorkerRegister() {
           /* SW optional — app still works without installability */
         });
 
-      navigator.serviceWorker.addEventListener(
-        "controllerchange",
-        onControllerChange,
-      );
+      navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+      document.addEventListener("visibilitychange", onVisibilityChange);
     };
 
     // Registration competes with hydration — defer it off the critical path.
@@ -98,62 +146,17 @@ export function ServiceWorkerRegister() {
       cancelled = true;
       cancelSchedule();
       registration?.removeEventListener("updatefound", onUpdateFound);
-      navigator.serviceWorker.removeEventListener(
-        "controllerchange",
-        onControllerChange,
-      );
+      navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 
-  if (!updateReady) return null;
+  // The employee moved to another screen: the next page can be the new build.
+  useEffect(() => {
+    if (!waitingRef.current) return;
+    if (readyOnPathRef.current === null || readyOnPathRef.current === pathname) return;
+    tryApplyRef.current("navigation");
+  }, [pathname]);
 
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-[70] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      <div className="mx-auto flex max-w-lg items-center justify-between gap-3 rounded-2xl border border-border-md bg-surface px-4 py-3 shadow-lg">
-        <p className="m-0 text-sm text-text-1">يتوفر تحديث للتطبيق</p>
-        <button
-          type="button"
-          className="min-h-11 rounded-xl bg-ink px-4 text-sm font-semibold text-white"
-          onClick={() => {
-            if (readPendingCount() > 0) {
-              void alertAction({
-                title: "تحديث التطبيق",
-                message: "هناك عناصر لم تُرفع بعد. أبقِ النظام مفتوحاً حتى تكتمل المزامنة قبل التحديث.",
-              });
-              return;
-            }
-            const waiting = waitingRef.current;
-            const plan = lastWarmedOfflinePlan();
-            reloadOnControllerChangeRef.current = true;
-            void (async () => {
-              if (waiting && plan && plan.urls.length > 0) {
-                await new Promise<void>((resolve) => {
-                  const done = () => {
-                    navigator.serviceWorker.removeEventListener(
-                      "message",
-                      onMsg,
-                    );
-                    resolve();
-                  };
-                  const onMsg = (event: MessageEvent) => {
-                    if (event.data?.type === "WARM_OFFLINE_PAGES_DONE") done();
-                  };
-                  navigator.serviceWorker.addEventListener("message", onMsg);
-                  waiting.postMessage({
-                    type: "WARM_OFFLINE_PAGES",
-                    urls: plan.urls,
-                    landing: plan.landing,
-                  });
-                  window.setTimeout(done, 15_000);
-                });
-              }
-              waiting?.postMessage({ type: "SKIP_WAITING" });
-            })();
-          }}
-        >
-          تحديث الآن
-        </button>
-      </div>
-    </div>
-  );
+  return null;
 }

@@ -88,6 +88,42 @@ public sealed class CaseStudyReportRepository(CaseStudyDbContext db) : ICaseStud
         db.WorkOrderProperties.FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
 
 
+    public Task<Guid> ResolveStudyTaskIdAsync(Guid taskId, CancellationToken cancellationToken) =>
+        StudyHolder.HolderTaskAsync(db, taskId, cancellationToken);
+
+    public async Task<IReadOnlyList<WorkflowTask>> ListTransactionParentTasksAsync(
+        Guid holderTaskId,
+        CancellationToken cancellationToken)
+    {
+        var holder = await GetTaskAsync(holderTaskId, cancellationToken);
+        if (holder?.PropertyId is not Guid propertyId) return holder is null ? [] : [holder];
+
+        var propertyIds = await StudyHolder.TransactionPropertyIdsAsync(db, propertyId, cancellationToken);
+        var tasks = await db.WorkflowTasks.AsNoTracking()
+            .Where(t => t.Kind == WorkflowTaskKind.CaseStudyProperty
+                && t.ParentTaskId == null
+                && t.PropertyId != null
+                && propertyIds.Contains(t.PropertyId.Value)
+                && t.Status != WorkflowTaskStatus.Cancelled)
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+        // One parent per deed (the newest), the holder first.
+        var perDeed = tasks.GroupBy(t => t.PropertyId!.Value).Select(g => g.First()).ToList();
+        return perDeed.OrderBy(t => t.Id == holderTaskId ? 0 : 1).ToList();
+    }
+
+    public async Task<IReadOnlyList<WorkOrderProperty>> ListTransactionPropertiesForUpdateAsync(
+        Guid holderTaskId,
+        CancellationToken cancellationToken)
+    {
+        var holder = await GetTaskAsync(holderTaskId, cancellationToken);
+        if (holder?.PropertyId is not Guid propertyId) return [];
+        var propertyIds = await StudyHolder.TransactionPropertyIdsAsync(db, propertyId, cancellationToken);
+        return await db.WorkOrderProperties
+            .Where(p => propertyIds.Contains(p.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public void AddForm(CaseStudyReport form) => db.CaseStudyReports.Add(form);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>

@@ -40,7 +40,60 @@ export type KeyEnvelopeAssignment = {
   notes?: string | null;
   confirmedByName?: string | null;
   confirmedAtUtc?: string | null;
+  /** in_envelope | with_user | returned_court | missing — where the deed's matching key is now. */
+  keyLocation?: string;
+  keyHolderUserId?: string | null;
+  keyHolderLabel?: string | null;
+  keyLocationAtUtc?: string | null;
 };
+
+/** Where a deed's matching key may be (decision 2026-10-20). */
+export const KeyLocationValues = {
+  InEnvelope: "in_envelope",
+  WithUser: "with_user",
+  ReturnedCourt: "returned_court",
+  Missing: "missing",
+} as const;
+
+export type KeyLocation =
+  (typeof KeyLocationValues)[keyof typeof KeyLocationValues];
+
+export function keyLocationLabel(
+  location: string | null | undefined,
+  holderLabel?: string | null,
+): string {
+  switch (location) {
+    case KeyLocationValues.WithUser:
+      return holderLabel?.trim() ? `عند ${holderLabel.trim()}` : "عند مستخدم";
+    case KeyLocationValues.ReturnedCourt:
+      return "أُعيد للمحكمة";
+    case KeyLocationValues.Missing:
+      return "مفقود";
+    default:
+      return "في الظرف";
+  }
+}
+
+export function keyLocationColor(location: string | null | undefined): string {
+  switch (location) {
+    case KeyLocationValues.WithUser:
+      return "#2f7a4d";
+    case KeyLocationValues.ReturnedCourt:
+      return "#8a8d96";
+    case KeyLocationValues.Missing:
+      return "#c0553d";
+    default:
+      return "#378add";
+  }
+}
+
+/** Who holds the envelope (decision 2026-10-20). */
+export const KeyHolderKindValues = {
+  Reviewer: "reviewer",
+  InternalUser: "internal_user",
+  External: "external",
+  Court: "court",
+} as const;
 
 export type KeyEnvelopeHandoff = {
   id: string;
@@ -86,14 +139,51 @@ export type KeyEnvelopeRow = {
   feeGenerated: boolean;
   feeAmountSar?: number | null;
   revenueEntitlementAtUtc?: string | null;
+  createdByUserId?: string | null;
   createdByName: string;
   createdAtUtc: string;
   operationsTaskId?: string | null;
+  /** reviewer | internal_user | external | court — who holds the envelope now. */
+  holderKind?: string;
+  holderUserId?: string | null;
+  holderLabel?: string | null;
+  holderSinceUtc?: string | null;
+  /** Every deed tried and every matching key back, returned or lost. */
+  readyForCourtReturn?: boolean;
   assignments: KeyEnvelopeAssignment[];
   handoffs: KeyEnvelopeHandoff[];
   timeline: KeyEnvelopeTimelineEntry[];
   linkedProperties: KeyEnvelopeLinkedProperty[];
 };
+
+/** «عند من الآن»: the holder as a short phrase, from the holder fields (status-based fallback for old rows). */
+export function envelopeHolderText(
+  env: Pick<KeyEnvelopeRow, "holderKind" | "holderLabel" | "status" | "court" | "createdByName">,
+): string {
+  const label = env.holderLabel?.trim();
+  switch (env.holderKind) {
+    case KeyHolderKindValues.InternalUser:
+      return label || "مستخدم داخلي";
+    case KeyHolderKindValues.External:
+      return label ? `طرف خارجي: ${label}` : "طرف خارجي";
+    case KeyHolderKindValues.Court:
+      return label || env.court || "المحكمة";
+    case KeyHolderKindValues.Reviewer:
+      return label || env.createdByName?.trim() || "المراجع الحكومي";
+    default:
+      return envelopeStatusLabel(env.status);
+  }
+}
+
+/** The envelope's keys that opened none of our deeds: the actual count minus the deeds that matched. */
+export function otherKeysInEnvelope(
+  env: Pick<KeyEnvelopeRow, "keysCountActual" | "assignments">,
+): number {
+  const matched = env.assignments.filter(
+    (a) => a.status === "matched" || a.status === "partial",
+  ).length;
+  return Math.max(0, env.keysCountActual - matched);
+}
 
 export type KeyEnvelopeFeeReportRow = {
   envelopeId: string;
@@ -189,24 +279,21 @@ export function scenarioColor(scenario: string): string {
   }
 }
 
-const NON_DIGIT_PATTERN = /\D/g;
 
-/** Display ref like HTML `keyRef` → ENV-2026-NNN */
+/** What an envelope without a server reference shows — never a composed number that reads like one. */
+export const ENVELOPE_NO_REFERENCE_LABEL = "بلا رقم";
+
+/**
+ * The envelope's reference KE-YY-##### as the server allocated it at registration (decision
+ * 2026-10-20: no made-up fallback — an old envelope that was never numbered says so).
+ */
 export function envelopeDisplayRef(
-  id: string,
-  createdAtUtc?: string,
+  _id: string,
+  _createdAtUtc?: string,
   referenceNumber?: string | null,
 ): string {
- // Numbering workshop: real KE-{year}-{5-digit seq} from server takes precedence; the old
- // GUID composition remains a fallback for records not yet numbered.
   const real = referenceNumber?.trim();
-  if (real) return real;
-  const digits = id.replace(NON_DIGIT_PATTERN, "");
-  const n = (digits.slice(-3) || "1").padStart(3, "0");
-  const year = createdAtUtc
-    ? new Date(createdAtUtc).getFullYear() || 2026
-    : 2026;
-  return `ENV-${year}-${n}`;
+  return real || ENVELOPE_NO_REFERENCE_LABEL;
 }
 
 export function isEnvelopeOutOfCustody(status: string): boolean {
@@ -375,6 +462,8 @@ export function timelineEventLabel(eventType: string): string {
       return "استحقاق إيراد استلام المفاتيح";
     case "status_changed":
       return "تغيير الحالة";
+    case "key_location_changed":
+      return "تحديث مكان المفتاح";
     default: {
       // Fallback: humanize snake_case codes instead of showing English raw keys
       const raw = eventType.trim();

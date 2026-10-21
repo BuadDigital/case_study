@@ -145,9 +145,11 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageFinancial,
                     PlatformCapabilities.ManageOperations)));
 
+ // Also the service's own token: event consumers (notification recipients by role/assignee)
+ // resolve users here with no person behind the call.
             options.AddPolicy(
                 CapabilityPolicyNames.ReadIdentityDirectory,
-                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                policy => policy.RequireAssertion(ctx => IsUpstreamService(ctx) || HasAnyCapability(
                     ctx,
                     PlatformCapabilities.ManageWorkOrders,
                     PlatformCapabilities.ManageOperations,
@@ -177,6 +179,12 @@ public static class AuthorizationExtensions
 
         return services;
     }
+
+    /// <summary>The token a service mints for its own background calls (<c>UpstreamServiceBearer</c>).</summary>
+    private static bool IsUpstreamService(AuthorizationHandlerContext context) =>
+        context.User.HasClaim(
+            PlatformCapabilities.TokenUseClaimType,
+            PlatformCapabilities.UpstreamServiceTokenUse);
 
     private static bool HasAnyCapability(
         AuthorizationHandlerContext context,

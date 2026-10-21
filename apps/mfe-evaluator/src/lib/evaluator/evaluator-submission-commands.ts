@@ -10,14 +10,11 @@ import {
   EVALUATOR_SUBMITTED_EVENT,
 } from "@platform/app-shared/app-data/party-workflow-events";
 import { loadPartyCaseStudyReportDraft } from "../../lib/case-study-bridge";
-import { ensureOpenValuationRequestByProperty } from "@platform/api-client";
 import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
 import {
   createEvaluatorDraft,
   type EvaluatorSubmission,
 } from "./evaluator-window-data";
-import { reservedValuationReportNumber } from "./valuation-report-number";
-import { apiConfig } from "./api-config";
 import {
   dtoToSubmission,
   loadEvaluatorSubmission,
@@ -56,45 +53,17 @@ async function hydrateNow(input: {
     await fetchPartySubmission(input.taskId),
     input.assignmentType,
   );
+  // Decision 2026-10-19: no report number is reserved here — the server stamps PRV-… on the
+  // package when the transaction's official reference is confirmed at approval.
   const draft = existing ?? createEvaluatorDraft(input);
   if (!existing) {
     const saved = await saveEvaluatorSubmission(draft);
     if (!saved) {
       throw new Error("تعذّر حفظ مسودة التقييم — تحقق من الاتصال وحاول مجدداً.");
     }
-    return stampReservedReportNumber(saved);
+    return saved;
   }
-  return stampReservedReportNumber(existing);
-}
-
-async function stampReservedReportNumber(
-  submission: EvaluatorSubmission,
-): Promise<EvaluatorSubmission> {
-  if (submission.reportNo.trim() || !submission.propertyId.trim()) {
-    return submission;
-  }
-  const config = apiConfig();
-  if (!config) return submission;
-  try {
-    const open = await ensureOpenValuationRequestByProperty(
-      config,
-      {
-        propId: submission.propertyId,
-        area: "—",
-        type: "—",
-        appraiser: "—",
-      },
-    );
-    if (!open.ok) return submission;
-    const reportNo = reservedValuationReportNumber(open.data.displayId, open.data.date);
-    if (!reportNo.trim()) return submission;
-    const saved = await saveEvaluatorSubmission({ ...submission, reportNo });
-    return saved ?? { ...submission, reportNo };
-  } catch (err) {
-    // Best-effort report-number reservation — failure does not block opening the draft, but is no longer silent.
-    console.warn("تعذّر حجز رقم تقرير التقييم", err);
-    return submission;
-  }
+  return existing;
 }
 
 export function syncEvaluatorChecklistFromPartyCaseStudy(

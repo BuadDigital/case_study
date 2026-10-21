@@ -9,6 +9,14 @@ public static class PlatformCapabilities
 {
     public const string ClaimType = "capability";
 
+    /// <summary>
+    /// Marks the token a service mints for its own owner-to-owner calls outside an HTTP request
+    /// (event consumers, hosted sweeps). It carries no capability claims; the read-lookup
+    /// policies that background work needs accept it explicitly.
+    /// </summary>
+    public const string TokenUseClaimType = "tokenUse";
+    public const string UpstreamServiceTokenUse = "upstream-service";
+
     public const string ManageUsers = "manage-users";
     public const string ManageSystemConfig = "manage-system-config";
     public const string ResetSystemData = "reset-system-data";

@@ -4,17 +4,23 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Shared.Web;
-using RealEstateEval.Shared.Web.Authorization;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
+/// <summary>
+/// Owner-to-owner lookup: who holds the open tasks of a property/PO, for notification routing.
+/// Its main caller is the Platform event consumer, which runs with the service's own token and
+/// no capability claims — so, like the other dispatch routes, it is gated by
+/// <see cref="RequireUpstreamDispatchAttribute"/> (browsers cannot send that header) instead of
+/// a capability policy, which turned every such event into a 403 and a dead letter.
+/// </summary>
 [ApiController]
 [Route("api/workflow-assignees")]
 [Authorize]
+[RequireUpstreamDispatch]
 public sealed class WorkflowAssigneesController(IWorkflowAssigneeLookup lookup) : ControllerBase
 {
     [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]
     public async Task<ActionResult<WorkflowAssigneeIdsDto>> Get(
         [FromQuery] Guid? propertyId,
         [FromQuery] string? poNumber,

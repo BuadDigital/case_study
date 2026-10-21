@@ -33,6 +33,8 @@ import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { derivePropertyUiStatus } from "../../lib/app-data/property-detail-ui-status";
 import { useFavoriteProperties } from "../../lib/app-data/favorite-properties";
 import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
+import { useTransactionQuery } from "../../query/use-transaction-query";
+import { TransactionDeedSwitcher } from "./TransactionDeedSwitcher";
 
 /** Deed number, or the real-estate registry number when the property is identified by one. */
 function deedTitle(
@@ -227,6 +229,18 @@ export function PropertyDetailHero({
         item.row.status === PropertyListRowStatuses.Done,
     ) ?? false;
   const { isFavorite, toggleFavorite } = useFavoriteProperties();
+  // Decision 2026-10-19: the page is the transaction's; its deeds (when several) sit in the switcher.
+  const { data: transaction } = useTransactionQuery(property.id);
+  const transactionNumber =
+    transaction?.displayNumber?.trim() ||
+    property.referenceNumber?.trim() ||
+    property.transactionDraftNumber?.trim() ||
+    "";
+  const transactionConfirmed = Boolean(
+    transaction?.referenceNumber?.trim() || property.referenceNumber?.trim(),
+  );
+  const transactionDeeds = transaction?.deeds ?? [];
+  const multiDeed = (transaction?.deedCount ?? property.transactionDeedCount ?? 1) > 1;
   const titleDeed = deedTitle(property);
   const favorite = isFavorite(record.poNumber, property.id);
   const locationLine = formatPropertyLocation(property);
@@ -342,6 +356,13 @@ export function PropertyDetailHero({
                   {titleDeed}
                 </bdi>
               </h1>
+              {multiDeed && transactionDeeds.length > 1 ? (
+                <TransactionDeedSwitcher
+                  deeds={transactionDeeds}
+                  currentPropertyId={property.id}
+                  compact={compact}
+                />
+              ) : null}
               {/* HTML badge colors: deed=gold, assignment=teal, work=amber */}
               <span
                 className={cn(
@@ -385,14 +406,27 @@ export function PropertyDetailHero({
               compact ? "gap-3" : "gap-[18px] pt-1.5",
             )}
           >
-            {property.referenceNumber?.trim() ? (
+            {transactionNumber ? (
               <div className={cn("text-start", compact && "hidden")}>
                 <div className="text-[10.5px] text-text-3">رقم المعاملة</div>
-                <div className="text-[15px] font-bold tabular-nums text-heading">
+                <div
+                  className="text-[15px] font-bold tabular-nums text-heading"
+                  // Decision 2026-10-20: the TMP- prefix says the number is temporary; no badge.
+                  title={
+                    transactionConfirmed
+                      ? "الرقم المرجعي الرسمي للمعاملة"
+                      : "رقم مؤقت — يُثبَّت الرقم الرسمي PR عند اعتماد أول تقرير"
+                  }
+                >
                   <bdi dir="ltr" className={ltrValueClass}>
-                    {property.referenceNumber.trim()}
+                    {transactionNumber}
                   </bdi>
                 </div>
+                {multiDeed && transaction ? (
+                  <div className="mt-0.5 text-[10.5px] text-text-2">
+                    {transaction.linkKindLabelAr || "عدة صكوك"} · {transaction.deedCount} صكوك
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {property.requestNumber.trim() ? (

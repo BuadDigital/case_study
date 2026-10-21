@@ -44,6 +44,10 @@ import { PoNumber } from "../components/ui/PoNumber";
 import { TickingRemainingTimeCell } from "../components/ui/RemainingTimeCell";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
 import {
+  TransactionNumberBadge,
+  transactionNumberOf,
+} from "../components/ui/TransactionNumberBadge";
+import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
 } from "@platform/app-shared/components/ActiveQueueMobileCards";
@@ -398,6 +402,10 @@ export function SuspendedTransactionsView() {
                     ) : (
                       sortedItems.map((item) => {
                         const record = poByNumber.get(item.poNumber.trim());
+                        const property =
+                          record?.properties.find(
+                            (p) => p.id === item.propertyId,
+                          ) ?? null;
                         const assignmentType =
                           record?.assignmentType?.trim() || "—";
                         const assignmentSpecialist =
@@ -424,6 +432,12 @@ export function SuspendedTransactionsView() {
                                 label={deedLabel(item, record)}
                                 loading={openingId === item.id}
                                 labelClassName="text-[13px] font-medium"
+                                subtitle={
+                                  <TransactionNumberBadge
+                                    number={transactionNumberOf(property)}
+                                    deedCount={property?.transactionDeedCount}
+                                  />
+                                }
                               />
                             </Td>
                             <Td className="text-text-2">

@@ -33,15 +33,16 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IWorkOrderPropertyCommands, WorkOrderPropertyCommands>();
         services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
         services.AddScoped<IWorkOrderService, WorkOrderService>();
+        // Decision 2026-10-19: the transaction above the deeds and its D- / PR numbers.
+        services.AddScoped<ITransactionRepository, TransactionRepository>();
+        services.AddScoped<ITransactionReferenceService, TransactionReferenceService>();
+        services.AddScoped<ITransactionQuery, TransactionQueryService>();
+        services.AddScoped<ITransactionCommands, TransactionCommandService>();
         services.AddScoped<IFieldGapNotificationService, FieldGapNotificationService>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<IBuildingInventoryRepository, BuildingInventoryRepository>();
         services.AddScoped<IBuildingInventoryService, BuildingInventoryService>();
-        services.AddScoped<IPropertyGroupRepository, PropertyGroupRepository>();
-        services.AddScoped<IPropertyGroupService, PropertyGroupService>();
-        services.AddScoped<IInspectionPrefillFromSibling, InspectionPrefillFromSiblingService>();
-        services.AddScoped<IInspectionPhotoCopier, InspectionPhotoCopier>();
         services.AddWorkflowTaskCollaborators();
         services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
         services.AddScoped<ICaseStudyReportRepository, CaseStudyReportRepository>();
@@ -93,7 +94,6 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IInspectionLimitsRepository, InspectionLimitsRepository>();
         services.AddScoped<IInspectionLimitsService, InspectionLimitsService>();
         services.AddRemoteAttachmentLookup(configuration);
-        services.AddRemoteAttachmentScopeCopier(configuration);
         services.AddRemotePlatformCatalogs(configuration);
         services.AddRemoteValuationRequests(configuration);
         services.AddRemoteIdentityDirectory(configuration);

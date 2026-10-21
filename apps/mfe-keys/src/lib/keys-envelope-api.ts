@@ -10,12 +10,14 @@ import {
   listKeyEnvelopes,
   listPropertyCourtAccess,
   markKeyReceiptFeeCollected,
+  setKeyEnvelopeAssignmentKeyLocation,
   uploadAttachment,
   upsertPropertyCourtAccess,
   type CreateKeyEnvelopeHandoffRequest,
   type CreateKeyEnvelopeRequest,
   type KeyEnvelopeDto,
   type PropertyCourtAccessDto,
+  type SetKeyLocationRequest,
   type UpsertPropertyCourtAccessRequest,
 } from "@platform/api-client";
 import { apiErrorMessage, resolveApiError, type MutationResult, } from "@platform/app-shared/app-data/work-orders-api-config";
@@ -58,9 +60,15 @@ function mapEnvelope(dto: KeyEnvelopeDto): KeyEnvelopeRow {
     feeGenerated: dto.feeGenerated,
     feeAmountSar: dto.feeAmountSar,
     revenueEntitlementAtUtc: dto.revenueEntitlementAtUtc ?? null,
+    createdByUserId: dto.createdByUserId ?? null,
     createdByName: dto.createdByName,
     createdAtUtc: dto.createdAtUtc,
     operationsTaskId: dto.operationsTaskId ?? null,
+    holderKind: dto.holderKind ?? "reviewer",
+    holderUserId: dto.holderUserId ?? null,
+    holderLabel: dto.holderLabel ?? null,
+    holderSinceUtc: dto.holderSinceUtc ?? null,
+    readyForCourtReturn: dto.readyForCourtReturn ?? false,
     assignments: dto.assignments ?? [],
     handoffs: dto.handoffs ?? [],
     timeline: dto.timeline ?? [],
@@ -509,9 +517,11 @@ export async function confirmEnvelopeAssignment(
   status: KeyAssignmentMatchStatus,
   notes?: string,
   idempotencyKey?: string,
+  /** Where the matching key went after the trial (decision 2026-10-20); empty = back in the envelope. */
+  keyLocation?: string | null,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
-  const body = { assignmentId, status, notes: notes ?? null };
+  const body = { assignmentId, status, notes: notes ?? null, keyLocation: keyLocation ?? null };
   const userId = currentOfflineUserId();
   if ((!config || isBrowserOffline()) && userId && isOfflineFieldSession()) {
     await enqueueKeyEnvelopeWrite(
@@ -528,7 +538,7 @@ export async function confirmEnvelopeAssignment(
       config,
       envelopeId,
       assignmentId,
-      { status, notes: notes ?? null },
+      { status, notes: notes ?? null, keyLocation: keyLocation ?? null },
       idempotencyKey,
     );
     if (!result.ok) {
@@ -559,6 +569,26 @@ export async function confirmEnvelopeAssignment(
       error: err instanceof Error ? err.message : "تعذّر تحديث الإسناد",
     };
   }
+}
+
+/** The reviewer corrects where a deed's key is (decision 2026-10-20). Online only — a desk action. */
+export async function setEnvelopeKeyLocation(
+  envelopeId: string,
+  assignmentId: string,
+  body: SetKeyLocationRequest,
+  idempotencyKey?: string,
+): Promise<MutationResult<KeyEnvelopeRow>> {
+  const config = prototypeModulesApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await setKeyEnvelopeAssignmentKeyLocation(
+    config,
+    envelopeId,
+    assignmentId,
+    body,
+    idempotencyKey,
+  );
+  if (!result.ok) return fail(result, "تعذّر تحديث مكان المفتاح");
+  return { ok: true, data: mapEnvelope(result.data) };
 }
 
 export async function createEnvelopeHandoff(

@@ -43,6 +43,7 @@ import {
   queueRowClassName,
   QueueRowMoreCell,
 } from "./active-transaction-queue-row-parts";
+import { transactionNumberOf } from "../components/ui/TransactionNumberBadge";
 
 function ContactOfficerCell({ contact }: { contact: EngSurveyContact }) {
   if (contact.name === "—") {
@@ -151,6 +152,10 @@ const EngineeringSurveyRow = memo(function EngineeringSurveyRow({
           task={task}
           propertySlot={row.propertySlot}
           propertyType={propertyTypeLabel(property)}
+          transactionNumber={
+            transactionNumberOf(property) ?? task.transactionNumber
+          }
+          transactionDeedCount={property?.transactionDeedCount}
         />
       </Td>
       <Td className="text-[13px] text-text-2">{cityDistrict || "—"}</Td>

@@ -17,6 +17,7 @@ import { DetailBadge } from "../po-intake/PropertyDetailFields";
 import { type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
   isLandInspectionContext,
+  isApartmentInspectionContext,
   isCommercialShopInspectionContext,
   resolvedInspectorAssetSubject,
   submittedInspectorAssetIsLand,
@@ -149,17 +150,26 @@ export function InspectorWorkspaceWizard({
     classification: property.classification,
     propertyType: property.propertyType,
   });
+  const isApartment = isApartmentInspectionContext({
+    vacantLand: draft.vacantLand,
+    assetSubject: serviceProofFromTransactionPhotos
+      ? roleOwnedAssetSubject
+      : draft.featureValues.assetSubject,
+    classification: property.classification,
+    propertyType: property.propertyType,
+  });
   const featureFields = useMemo(
     () =>
       visibleInspectorFeatureFields(isLand, {
         includeRetiredKeys: includeRetiredFeatureKeys,
+        isApartment,
       }).filter(
         (f) =>
           !COMPONENT_BOOL_KEYS.includes(
             f.key as (typeof COMPONENT_BOOL_KEYS)[number],
           ),
       ),
-    [isLand, includeRetiredFeatureKeys],
+    [isLand, isApartment, includeRetiredFeatureKeys],
   );
 
   function advance() {

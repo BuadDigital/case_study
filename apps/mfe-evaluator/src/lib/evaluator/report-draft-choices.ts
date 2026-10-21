@@ -78,13 +78,13 @@ export function reportDateForPrint(
   return submission.appraisalDate || submission.reportIssueDate;
 }
 
-/** The report number printed on the report: a new version (n+1) keeps the number and adds «نسخة n». */
+/** The report number printed on the report: a new version (n+1) keeps the number and adds «/n» (PRV-2026-00123/2). */
 export function versionedReportNo(
   reportNo: string | null | undefined,
   version: number | null | undefined,
 ): string {
   const base = (reportNo ?? "").trim();
-  return base && version != null && version > 1 ? `${base} نسخة ${version}` : base;
+  return base && version != null && version > 1 ? `${base}/${version}` : base;
 }
 
 /** The deposit code printed on the report: the one recorded with the deposit copy — nowhere else keeps it. */

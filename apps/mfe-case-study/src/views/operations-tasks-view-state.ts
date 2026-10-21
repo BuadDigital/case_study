@@ -675,9 +675,10 @@ export function operationsTaskCardLinkMeta(
 
 /** «النطاق / الربط» cell on the detail header. */
 export function operationsTaskLinkChip(task: OperationsTask): string {
-  return task.scope === "general"
-    ? "غير مرتبطة — مهمة مستقلة"
-    : `${operationsTaskScopeLabel(task.scope)} · ${operationsTaskLinkLabel(task)}`;
+  if (task.scope === "general") return "غير مرتبطة — مهمة مستقلة";
+  // A deed-scoped task's link already reads «صك …»; repeating the scope word would say it twice.
+  if (task.scope === "transaction") return operationsTaskLinkLabel(task);
+  return `${operationsTaskScopeLabel(task.scope)} · ${operationsTaskLinkLabel(task)}`;
 }
 
 /** Past due while still open — a paused task never counts as overdue. */

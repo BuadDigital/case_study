@@ -24,15 +24,11 @@ public sealed class TransactionStateRepository(CaseStudyDbContext db) : ITransac
             .Where(t => t.PropertyId == propertyId)
             .ToListAsync(cancellationToken);
 
-    public Task<bool> IsCaseStudyReportIssuedAsync(
+    // Phase 4: the deed's study is its transaction's (the holder deed's report).
+    public async Task<bool> IsCaseStudyReportIssuedAsync(
         Guid parentTaskId,
         CancellationToken cancellationToken) =>
-        db.CaseStudyReports.AsNoTracking()
-            .AnyAsync(
-                r => r.TaskId == parentTaskId
-                    && !r.IsPartyContribution
-                    && r.Status == CaseStudyReportStatuses.Issued,
-                cancellationToken);
+        (await StudyHolder.IssuedParentTaskIdsAsync(db, [parentTaskId], cancellationToken)).Contains(parentTaskId);
 
     public Task<bool> IsPartyPackageSubmittedAsync(
         Guid workflowTaskId,

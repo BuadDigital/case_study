@@ -44,7 +44,10 @@ import {
   loadPartyCaseStudyReportDraftOrThrow,
 } from "../../lib/app-data/case-study-report-reads";
 import { saveCaseStudyReportDraft } from "../../lib/app-data/case-study-report-commands";
-import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-document-model";
+import {
+  buildCaseStudyReportModel,
+  type CaseStudyReportDeeds,
+} from "../../lib/app-data/case-study-report-document-model";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
@@ -76,6 +79,8 @@ type CaseStudyReportDataArgs = {
   parentFormTaskId?: string;
   partyAdvisory: boolean;
   forceReadOnly: boolean;
+  /** Phase 4: the transaction's deeds when it has several — the report lists them all. */
+  deeds?: CaseStudyReportDeeds;
 };
 
 export function useCaseStudyReportData({
@@ -90,6 +95,7 @@ export function useCaseStudyReportData({
   parentFormTaskId,
   partyAdvisory,
   forceReadOnly,
+  deeds,
 }: CaseStudyReportDataArgs) {
   const isParty = variant === "party" && partyId && partyChildTaskId;
   const viewerPartyId: CaseStudyInfoPartyId = isParty ? partyId! : "specA";
@@ -432,8 +438,8 @@ export function useCaseStudyReportData({
   );
 
   const reportModel = useMemo(
-    () => buildCaseStudyReportModel(draft, property, task, poRecord, questionCatalog),
-    [draft, property, task, poRecord, questionCatalog],
+    () => buildCaseStudyReportModel(draft, property, task, poRecord, questionCatalog, deeds),
+    [draft, property, task, poRecord, questionCatalog, deeds],
   );
 
   return {

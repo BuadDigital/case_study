@@ -103,7 +103,62 @@ export type WorkflowTask = {
   district?: string;
   propertyType?: string;
   classification?: string;
+  /** The property's transaction number (PR-… once confirmed, else the D- draft), joined server-side. */
+  transactionNumber?: string;
+  /** The property's transaction id, joined server-side. */
+  transactionId?: string;
+  /**
+   * Phase 4: set when another deed of the same transaction holds the one study — this
+   * case-study row is folded into it and hidden from the study queues.
+   */
+  transactionStudyHolderPropertyId?: string;
 };
+
+/**
+ * Phases 4–5: a task on a deed whose transaction's study and valuation live on another deed
+ * (the holder). The server sets the holder on every task of such a deed.
+ */
+export function isFoldedTransactionTask(
+  task: Pick<WorkflowTask, "propertyId" | "transactionStudyHolderPropertyId">,
+): boolean {
+  const holder = task.transactionStudyHolderPropertyId?.trim();
+  return Boolean(holder) && holder !== task.propertyId;
+}
+
+/** Phase 4: a case-study row whose transaction's study lives on another deed's task. */
+export function isFoldedCaseStudyTask(
+  task: Pick<WorkflowTask, "kind" | "propertyId" | "transactionStudyHolderPropertyId">,
+): boolean {
+  return task.kind === "case-study-property" && isFoldedTransactionTask(task);
+}
+
+/** Phase 5: an appraisal row whose transaction's valuation lives on the holder deed's task. */
+export function isFoldedAppraisalTask(
+  task: Pick<WorkflowTask, "kind" | "propertyId" | "transactionStudyHolderPropertyId">,
+): boolean {
+  return task.kind === "property-appraisal" && isFoldedTransactionTask(task);
+}
+
+/**
+ * Phase 5: the holder deed's appraisal task that a folded appraisal task redirects to; null
+ * when the task is not folded or the holder's task is not in the list.
+ */
+export function holderAppraisalTaskFor(
+  task: Pick<WorkflowTask, "id" | "kind" | "propertyId" | "transactionStudyHolderPropertyId">,
+  tasks: readonly Pick<WorkflowTask, "id" | "kind" | "propertyId" | "status">[],
+): Pick<WorkflowTask, "id" | "kind" | "propertyId" | "status"> | null {
+  if (!isFoldedAppraisalTask(task)) return null;
+  const holder = task.transactionStudyHolderPropertyId!.trim();
+  return (
+    tasks.find(
+      (t) =>
+        t.kind === "property-appraisal" &&
+        t.propertyId === holder &&
+        t.status !== "cancelled" &&
+        t.id !== task.id,
+    ) ?? null
+  );
+}
 
 export function notifyTasksChanged(): void {
   if (typeof window === "undefined") return;

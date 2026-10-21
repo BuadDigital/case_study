@@ -121,10 +121,11 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
                 .OrderByDescending(h => h.CreatedAtUtc)
                 .FirstOrDefault();
 
-            var handed = envelope.Status is KeyEnvelopeStatuses.Assessor or KeyEnvelopeStatuses.External
-                || envelope.Handoffs.Any(h =>
-                    h.Kind == KeyHandoffKinds.Internal
-                    && h.Status is KeyHandoffStatuses.Confirmed or KeyHandoffStatuses.Completed);
+            // Custody (decision 2026-10-20): the key reads as handed when the envelope is with a
+            // system user or this deed's own key is kept by one. Which user is the deed's inspector
+            // is for the screen to compare — the holder is exposed beside the flag.
+            var keyWithUser = assignment?.KeyLocation == KeyLocations.WithUser;
+            var handed = envelope.HolderKind == KeyHolderKinds.InternalUser || keyWithUser;
 
             var keysStatus = envelope.ReceiveScenario is KeyReceiveScenarios.Court
                 or KeyReceiveScenarios.ThirdParty
@@ -158,6 +159,12 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
                 PendingHandoffId = pendingHandoff?.Id,
                 StudyHoldStatus = access?.StudyHoldStatus ?? PropertyCourtAccessStatuses.None,
                 EnvelopeMissingWarning = false,
+                EnvelopeHolderKind = envelope.HolderKind,
+                EnvelopeHolderUserId = envelope.HolderUserId,
+                EnvelopeHolderLabel = envelope.HolderLabel,
+                KeyLocation = assignment?.KeyLocation,
+                KeyHolderUserId = assignment?.KeyHolderUserId,
+                KeyHolderLabel = assignment?.KeyHolderLabel,
             };
         }
 

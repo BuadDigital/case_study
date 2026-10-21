@@ -4,6 +4,7 @@ import {
   normalizePropertyTimelineTone,
   type PropertyTimelineEventDto,
   type PropertyTimelineTone,
+  type TransactionTimelineEventDto,
 } from "@platform/api-client";
 
 export type { PropertyTimelineTone };
@@ -14,7 +15,22 @@ export type PropertyTimelineEvent = {
   title: string;
   detail?: string;
   tone: PropertyTimelineTone;
+  /** On a transaction timeline: the deed the event belongs to. */
+  propertyId?: string;
+  /** On a transaction timeline: the deed's label (deed / registry number). */
+  deedLabel?: string;
 };
+
+/** A transaction timeline: the deeds' events merged by the server, each tagged with its deed. */
+export function mapTransactionTimelineDtos(
+  events: TransactionTimelineEventDto[],
+): PropertyTimelineEvent[] {
+  return mapPropertyTimelineDtos(events).map((e, i) => ({
+    ...e,
+    propertyId: events[i]?.propertyId?.trim() || undefined,
+    deedLabel: events[i]?.deedLabel?.trim() || undefined,
+  }));
+}
 
 /**
  * The server's milestones, in the order it sends them (oldest first) — one row per business step.

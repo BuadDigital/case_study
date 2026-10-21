@@ -350,9 +350,6 @@
     "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PartyTaskSubmissionService.cs": [
       "case_study"
     ],
-    "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PropertyGroupService.cs": [
-      "case_study"
-    ],
     "backend/contexts/case-study/RealEstateEval.CaseStudy.Infrastructure/Services/PropertyTimelineService.cs": [
       "case_study"
     ],
@@ -726,9 +723,6 @@
     ],
     "PropertyComparableLinkService": [
       "valuation"
-    ],
-    "PropertyGroupService": [
-      "case-study"
     ],
     "PropertyKeyGateResolver": [
       "operations"

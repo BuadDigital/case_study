@@ -21,6 +21,7 @@ import {
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
+import { TransactionNumberBadge } from "../components/ui/TransactionNumberBadge";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
 import { allTransactionsPhaseStyle } from "../lib/app-data/all-transactions-queue";
 import type { AllTransactionsRowMeta } from "./active-transaction-queue-state";
@@ -57,6 +58,12 @@ const AllTransactionsRow = memo(function AllTransactionsRow({
           label={meta.deedCell}
           loading={ctx.isTaskOpening(meta.task.id)}
           trailing={rowAttentionTrailing(ctx, meta.task)}
+          subtitle={
+            <TransactionNumberBadge
+              number={meta.transactionNumber}
+              deedCount={meta.transactionDeedCount}
+            />
+          }
         />
       </Td>
       <Td>

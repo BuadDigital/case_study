@@ -1216,6 +1216,9 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<Guid?>("MergedIntoRequestId")
+                        .HasColumnType("uuid");
+
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("uuid");
 
@@ -1223,6 +1226,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .IsRequired()
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("ReportNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
 
                     b.Property<DateOnly>("RequestDate")
                         .HasColumnType("date");
@@ -1247,14 +1254,16 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .IsUnique()
                         .HasDatabaseName("IX_ValuationRequests_DisplayId");
 
+                    b.HasIndex("MergedIntoRequestId");
+
                     b.HasIndex("PropertyId")
                         .IsUnique()
                         .HasDatabaseName("IX_ValuationRequests_PropertyId_Open")
-                        .HasFilter("\"Status\" <> 'done'");
+                        .HasFilter("\"Status\" <> 'done' AND \"Status\" <> 'merged'");
 
                     b.ToTable("ValuationRequests", "valuation", t =>
                         {
-                            t.HasCheckConstraint("CK_ValuationRequests_Status", "\"Status\" IS NULL OR \"Status\" IN ('progress', 'done', 'fail')");
+                            t.HasCheckConstraint("CK_ValuationRequests_Status", "\"Status\" IS NULL OR \"Status\" IN ('progress', 'done', 'fail', 'merged')");
                         });
                 });
 

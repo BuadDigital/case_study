@@ -451,6 +451,21 @@
       "note": "Work-order client records; write path CaseStudyDbContext (A4)."
     },
     {
+      "table": "Transactions",
+      "schema": "case_study",
+      "dbSet": "Transactions",
+      "entity": "Transaction",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Decision 2026-10-19: the transaction (المعاملة) above the deeds — draft D- number at intake, official PR reference at the first report approval; 1..n WorkOrderProperties. Write path CaseStudyDbContext."
+    },
+    {
       "table": "WorkOrderProperties",
       "schema": "case_study",
       "dbSet": "WorkOrderProperties",
@@ -494,36 +509,6 @@
       "transactionGroup": "case-study.work-order",
       "decision": null,
       "note": "Write path CaseStudyDbContext (A4)."
-    },
-    {
-      "table": "PropertyGroups",
-      "schema": "case_study",
-      "dbSet": "PropertyGroups",
-      "entity": "PropertyGroup",
-      "owner": "case-study",
-      "status": "approved",
-      "ownershipModel": "single-owner",
-      "contexts": [
-        "CaseStudyDbContext"
-      ],
-      "transactionGroup": "case-study.work-order",
-      "decision": null,
-      "note": "Groups multiple properties under one work order; write path CaseStudyDbContext (A4)."
-    },
-    {
-      "table": "PropertyGroupMembers",
-      "schema": "case_study",
-      "dbSet": "PropertyGroupMembers",
-      "entity": "PropertyGroupMember",
-      "owner": "case-study",
-      "status": "approved",
-      "ownershipModel": "single-owner",
-      "contexts": [
-        "CaseStudyDbContext"
-      ],
-      "transactionGroup": "case-study.work-order",
-      "decision": null,
-      "note": "Membership rows linking properties to PropertyGroups; write path CaseStudyDbContext (A4)."
     },
     {
       "table": "PropertyTimelineEntries",

@@ -62,6 +62,25 @@ public interface ICaseStudyReportRepository
         Guid propertyId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Phase 4: the case-study parent task that carries the study for this one — the holder deed's
+    /// parent when the deed shares a transaction with others, else the task itself.
+    /// </summary>
+    Task<Guid> ResolveStudyTaskIdAsync(Guid taskId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Every live case-study parent task of the transaction the holder task belongs to (the holder
+    /// included), untracked. A task alone in its transaction yields just itself.
+    /// </summary>
+    Task<IReadOnlyList<WorkflowTask>> ListTransactionParentTasksAsync(
+        Guid holderTaskId,
+        CancellationToken cancellationToken);
+
+    /// <summary>Tracked live deeds of the holder task's transaction (for the Enfaz handover clear on reopen).</summary>
+    Task<IReadOnlyList<WorkOrderProperty>> ListTransactionPropertiesForUpdateAsync(
+        Guid holderTaskId,
+        CancellationToken cancellationToken);
+
     void AddForm(CaseStudyReport form);
 
     /// <summary>Throws <see cref="PersistenceConcurrencyException"/> when the write lost a race.</summary>

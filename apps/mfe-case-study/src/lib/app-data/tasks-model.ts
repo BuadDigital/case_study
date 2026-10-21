@@ -159,6 +159,9 @@ export function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
     district: dto.district?.trim() || undefined,
     propertyType: dto.propertyType?.trim() || undefined,
     classification: dto.classification?.trim() || undefined,
+    transactionNumber: dto.transactionNumber?.trim() || undefined,
+    transactionId: dto.transactionId?.trim() || undefined,
+    transactionStudyHolderPropertyId: dto.transactionStudyHolderPropertyId?.trim() || undefined,
   };
 }
 

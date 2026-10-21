@@ -14,8 +14,16 @@ public class PropertyContactDto
 public class WorkOrderPropertyDto
 {
     public Guid? Id { get; set; }
- /// <summary>Numbering Shop: Internal transaction reference number TX-{year}-{sequence 5} — owned by the server, not written by the client.</summary>
+    /// <summary>The transaction (المعاملة) this deed belongs to — server-owned, never written by the client.</summary>
+    public Guid? TransactionId { get; set; }
+    /// <summary>Transaction draft number TMP-{YY}-{seq} — shown until the official reference exists.</summary>
+    public string? TransactionDraftNumber { get; set; }
+    /// <summary>Transaction official reference PR-{year}-{seq} — null until the first report approval.</summary>
     public string? ReferenceNumber { get; set; }
+    /// <summary>How the transaction's deeds are linked (one_building | contract); null for a single deed.</summary>
+    public string? TransactionLinkKind { get; set; }
+    /// <summary>Deeds in the transaction (1 for an ordinary property).</summary>
+    public int TransactionDeedCount { get; set; } = 1;
     public string IdentifierType { get; set; } = "deed";
     public string DeedNumber { get; set; } = "";
     public string? RequestNumber { get; set; }
@@ -441,6 +449,8 @@ public class PendingBoursePropertyDto
     public string DueDateAt { get; set; } = "";
  /// <summary>PO creation time (UTC ISO) — used for newest-first queue order.</summary>
     public string CreatedAtUtc { get; set; } = "";
+    /// <summary>The deed's transaction number: PR-… once confirmed, else the D- draft number.</summary>
+    public string? TransactionNumber { get; set; }
 }
 
 // Courts-catalog DTOs moved to RealEstateEval.Platform.Application (A8).

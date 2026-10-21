@@ -217,6 +217,8 @@ public class ValuationReportDraftServiceTests
         Assert.True(approved.HasSnapshot);
         Assert.Equal(64, approved.SnapshotSha256!.Length);
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(rig.Contexts.Valuation, rig.RequestId));
+        // Decision 2026-10-19: the approval fixes the report number from the transaction's PR root.
+        Assert.Equal("PRV-2026-00001", approved.ReportNumber);
 
         Assert.Contains(
             NoticePayloads(rig),
@@ -397,7 +399,8 @@ public class ValuationReportDraftServiceTests
         return new Rig(
             contexts, requestId,
             new ValuationReportDraftService(
-                contexts.Valuation, issuance, lookup, events, new FixedClock(ClockNow), timeline: timeline));
+                contexts.Valuation, issuance, lookup, events, new FixedClock(ClockNow), timeline: timeline,
+                caseStudyCommands: new FakeCaseStudyCommands()));
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider

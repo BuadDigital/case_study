@@ -149,7 +149,11 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                         || p.City.Contains(search)
                         || p.District.Contains(search)
                         || p.PropertyType.Contains(search)
-                        || p.Classification.Contains(search))));
+                        || p.Classification.Contains(search)
+                        || _caseStudy.Transactions.Any(t =>
+                            t.Id == p.TransactionId
+                            && ((t.ReferenceNumber != null && t.ReferenceNumber.Contains(search))
+                                || t.DraftNumber.Contains(search))))));
         }
 
         return SortTasks(rows, query);
@@ -249,6 +253,13 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                         p.District,
                         p.PropertyType,
                         p.Classification,
+                        // A correlated lookup, not the navigation: a required navigation joins
+                        // inner and would drop a deed whose transaction row is missing.
+                        TransactionNumber = _caseStudy.Transactions
+                            .Where(t => t.Id == p.TransactionId)
+                            .Select(t => t.ReferenceNumber ?? t.DraftNumber)
+                            .FirstOrDefault(),
+                        p.TransactionId,
                     })
                     .FirstOrDefault(),
                 ParentDistributionJson = t.ParentTaskId == null
@@ -259,6 +270,14 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                         .FirstOrDefault(),
             })
             .ToListAsync(cancellationToken);
+
+        // Phase 4: which deed of each row's transaction holds the study (null = the deed itself).
+        var propertyIdsForHolder = projected
+            .Where(r => r.Task.PropertyId is not null)
+            .Select(r => r.Task.PropertyId!.Value)
+            .Distinct()
+            .ToList();
+        var holderByProperty = await StudyHolder.HolderPropertyMapAsync(_caseStudy, propertyIdsForHolder, cancellationToken);
 
         return projected
             .Select(row =>
@@ -273,6 +292,14 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                 dto.District = row.Property.District;
                 dto.PropertyType = row.Property.PropertyType;
                 dto.Classification = row.Property.Classification;
+                dto.TransactionNumber = row.Property.TransactionNumber;
+                dto.TransactionId = row.Property.TransactionId == Guid.Empty ? null : row.Property.TransactionId;
+                if (row.Task.PropertyId is Guid propertyId
+                    && holderByProperty.TryGetValue(propertyId, out var holder)
+                    && holder != propertyId)
+                {
+                    dto.TransactionStudyHolderPropertyId = holder;
+                }
                 return dto;
             })
             .ToList();
@@ -462,12 +489,8 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
 
         // The appraiser's submission opens when the specialist issues the parent's case-study
         // report: ONE query over the parent ids already built above (appraisal rows and the parents).
-        var issuedParentIds = (await _caseStudy.CaseStudyReports.AsNoTracking()
-                .Where(r => parentIds.Contains(r.TaskId)
-                    && !r.IsPartyContribution
-                    && r.Status == CaseStudyReportStatuses.Issued)
-                .Select(r => r.TaskId)
-                .ToListAsync(cancellationToken))
+        // Phase 4: a parent counts as issued when its transaction's study (the holder's) is issued.
+        var issuedParentIds = (await StudyHolder.IssuedParentTaskIdsAsync(_caseStudy, parentIds.ToList(), cancellationToken))
             .Select(id => id.ToString())
             .ToHashSet(StringComparer.Ordinal);
 

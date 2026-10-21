@@ -18,7 +18,7 @@ import type {
   PropertyUsageCat,
   groupForMap,
 } from "./map-locations-logic";
-import { countWithoutCoords } from "./map-locations-logic";
+import { countWithoutCoords, isFailureRecord } from "./map-locations-logic";
 
 export type MapGroupedPoint = ReturnType<typeof groupForMap>[number];
 
@@ -45,10 +45,12 @@ export const LAYER_CHIPS: {
   label: string;
   color: string;
   diamond?: boolean;
+  alert?: boolean;
 }[] = [
   { key: "active", label: "العقارات النشطة", color: "#12284C" },
   { key: "archive", label: "العقارات المكتملة", color: "#8a8d96" },
   { key: "comparables", label: "أرشيف المقارنات", color: "#a4906f", diamond: true },
+  { key: "failures", label: "التعذّرات", color: "#d9694f", alert: true },
 ];
 
 export function workflowTone(key: MapPropertyRecord["workflowStatus"]) {
@@ -83,7 +85,6 @@ type PropertyMapFilterDraft = {
   datePreset: DatePreset;
   dateFrom: string;
   dateTo: string;
-  infeasOnly: boolean;
   operationType: string;
   approvedOnly: boolean;
 };
@@ -99,7 +100,6 @@ export function mapFilterCriteria(
     datePreset: draft.datePreset,
     dateFrom: draft.dateFrom ? new Date(draft.dateFrom) : null,
     dateTo: draft.dateTo ? new Date(`${draft.dateTo}T23:59:59`) : null,
-    infeasOnly: draft.infeasOnly || undefined,
     operationType: draft.operationType || undefined,
     approvedOnly: draft.approvedOnly || undefined,
   };
@@ -109,7 +109,7 @@ export function mapFilterCriteria(
 export function hasActiveMapFilters(
   draft: Pick<
     PropertyMapFilterDraft,
-    "query" | "city" | "kindCat" | "usage" | "dateFrom" | "dateTo" | "datePreset" | "infeasOnly"
+    "query" | "city" | "kindCat" | "usage" | "dateFrom" | "dateTo" | "datePreset"
   >,
   dateLabel: string,
 ): boolean {
@@ -121,8 +121,7 @@ export function hasActiveMapFilters(
     dateLabel ||
     draft.dateFrom ||
     draft.dateTo ||
-    (draft.datePreset && draft.datePreset !== "all") ||
-    draft.infeasOnly
+    (draft.datePreset && draft.datePreset !== "all")
   );
 }
 
@@ -138,13 +137,6 @@ export function recordsOfGrouped(
   return list;
 }
 
-function isInfeasible(record: MapPropertyRecord): boolean {
-  return (
-    record.workflowStatus === "infeasible" ||
-    record.workflowStatus === "infeasible_candidate"
-  );
-}
-
 /** Grouped points and comparables projected to canvas markers. */
 export function buildMapMarkers(
   grouped: MapGroupedPoint[],
@@ -158,10 +150,10 @@ export function buildMapMarkers(
       list.push({
         id: `p:${point.record.id}`,
         coords,
-        layer: point.active ? "active" : "archive",
+        layer: isFailureRecord(point.record) ? "failures" : point.active ? "active" : "archive",
         pulse: point.active,
         archived: !point.active,
-        infeasible: isInfeasible(point.record),
+        infeasible: isFailureRecord(point.record),
         title: point.record.refNo,
         subtitle: `${point.record.city} · ${point.record.district} · ${point.record.propertyType}`,
       });
@@ -170,12 +162,12 @@ export function buildMapMarkers(
       list.push({
         id: `g:${point.groupId}`,
         coords,
-        layer: point.active ? "active" : "archive",
+        layer: isFailureRecord(head) ? "failures" : point.active ? "active" : "archive",
         pulse: point.active,
         archived: !point.active,
-        infeasible: isInfeasible(head),
+        infeasible: isFailureRecord(head),
         count: point.deedCount,
-        title: `${point.deedCount} صكوك — ${head.city}`,
+        title: `${head.transactionNumber ?? head.refNo} — ${point.deedCount} صكوك`,
         subtitle: `${head.city} · ${head.district} · ${head.propertyType}`,
       });
     }
@@ -226,12 +218,13 @@ export function selectedMarkerId(
 /** “No coordinates” footer text — only the layers currently switched on. */
 export function noCoordsSummary(
   layers: Record<LayerKey, boolean>,
-  partitioned: { activeNoCoords: number; archiveNoCoords: number },
+  partitioned: { activeNoCoords: number; archiveNoCoords: number; failuresNoCoords: number },
   filteredComparables: MapComparableRecord[],
 ): string[] {
   const parts: string[] = [];
   if (layers.active) parts.push(`نشط ${partitioned.activeNoCoords}`);
   if (layers.archive) parts.push(`أرشيف ${partitioned.archiveNoCoords}`);
+  if (layers.failures) parts.push(`تعذّر ${partitioned.failuresNoCoords}`);
   if (layers.comparables)
     parts.push(`مقارنات ${countWithoutCoords(filteredComparables)}`);
   return parts;

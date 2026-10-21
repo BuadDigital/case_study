@@ -1,5 +1,3 @@
-using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -10,12 +8,21 @@ using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
+/// <summary>
+/// Opens the valuation request when the appraisal task is spawned. The report number is no
+/// longer reserved here (decision 2026-10-19): it is PRV-… derived from the transaction's
+/// official reference, stamped on the appraisal package when that reference is confirmed.
+/// One valuation per transaction (phase 5) whatever the order: since 2026-10-20 a transaction
+/// may be merged before distribution, so a folded deed distributed later folds into the
+/// holder's request, and the holder's request, once opened, gathers its siblings.
+/// </summary>
 public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispatchService
 {
     private readonly ICaseStudyValuationDispatchRepository _db;
     private readonly IValuationRequestService _valuationRequests;
     private readonly IPropertyTimelineService _timeline;
     private readonly ILogger<CaseStudyValuationDispatchService> _logger;
+    private readonly IValuationRequestFolding? _folding;
     private readonly TimeProvider _time;
 
     public CaseStudyValuationDispatchService(
@@ -23,7 +30,8 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
         IValuationRequestService valuationRequests,
         IPropertyTimelineService timeline,
         ILogger<CaseStudyValuationDispatchService> logger,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        IValuationRequestFolding? folding = null)
     {
         _time = time ?? TimeProvider.System;
 
@@ -31,6 +39,33 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
         _valuationRequests = valuationRequests;
         _timeline = timeline;
         _logger = logger;
+        _folding = folding;
+    }
+
+    /// <summary>
+    /// Folds the transaction's requests onto the holder's: a sibling deed's own request (or one
+    /// folded before the holder had any) points at the holder's open request. Idempotent.
+    /// </summary>
+    private async Task FoldTransactionAsync(
+        Guid propertyId,
+        Guid holderPropertyId,
+        IReadOnlyList<Guid> siblingIds,
+        CancellationToken cancellationToken)
+    {
+        if (_folding is null || siblingIds.Count == 0) return;
+        var folded = propertyId == holderPropertyId
+            ? siblingIds.ToList()
+            : [propertyId];
+        try
+        {
+            await _folding.FoldAsync(
+                new FoldValuationRequestsRequest { PropertyIds = folded, HolderPropertyId = holderPropertyId },
+                cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "CaseStudyValuationDispatch: folding the transaction of {PropertyId} failed", propertyId);
+        }
     }
 
     public async Task TryCreateWhenAppraisalSpawnedAsync(
@@ -74,6 +109,11 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
 
         var propertyKey = propertyId.ToString("D");
         var appraisalTask = await _db.GetLatestAppraisalChildAsync(parentTaskId, cancellationToken);
+        var (holderPropertyId, siblingIds) = await _db.GetTransactionDeedsAsync(propertyId, cancellationToken);
+
+        // A folded deed first re-points any request it already has (folded before the holder had one).
+        if (propertyId != holderPropertyId)
+            await FoldTransactionAsync(propertyId, holderPropertyId, siblingIds, cancellationToken);
 
         var alreadyOpen = await _valuationRequests.GetOpenByPropertyAsync(propertyKey, cancellationToken);
         if (alreadyOpen is not null)
@@ -81,10 +121,8 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
             _logger.LogInformation(
                 "CaseStudyValuationDispatch: open valuation request already exists for property {PropertyId}",
                 propertyId);
-            await ReserveReportNumberOnAppraisalDraftAsync(
-                appraisalTask,
-                alreadyOpen,
-                cancellationToken);
+            if (propertyId == holderPropertyId)
+                await FoldTransactionAsync(propertyId, holderPropertyId, siblingIds, cancellationToken);
             return;
         }
 
@@ -116,133 +154,27 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
                 "CaseStudyValuationDispatch: skipped for property {PropertyId} ({Error})",
                 propertyId,
                 error);
-            created = await _valuationRequests.GetOpenByPropertyAsync(propertyKey, cancellationToken);
-            if (created is null) return;
-        }
-        else
-        {
-            _logger.LogInformation(
-                "CaseStudyValuationDispatch: created {DisplayId} for property {PropertyId} from task {TaskId}",
-                created.DisplayId,
-                propertyId,
-                parentTaskId);
-
-            await _timeline.RecordAsync(
-                parent.PoNumber,
-                propertyId,
-                $"valuation-request:{created.Id}:created",
-                "فتح مسار التقييم",
-                appraiser,
-                PropertyTimelineTones.Done,
-                _time.UtcNow(),
-                cancellationToken);
+            return;
         }
 
-        await ReserveReportNumberOnAppraisalDraftAsync(
-            appraisalTask,
-            created,
-            cancellationToken);
-    }
-
-    private async Task ReserveReportNumberOnAppraisalDraftAsync(
-        WorkflowTask? appraisalTask,
-        ValuationRequestDto request,
-        CancellationToken cancellationToken)
-    {
-        if (appraisalTask is null) return;
-
-        var reportNo = FormatReservedReportNumber(
-            request.DisplayId,
-            ReservedReportYear(request.Date, _time.UtcNow()));
-
-        var entity = await _db.GetSubmissionAsync(appraisalTask.Id, cancellationToken);
-        var now = _time.UtcNow();
-        if (entity is null)
-        {
-            entity = new PartyTaskSubmission
-            {
-                Id = Guid.NewGuid(),
-                WorkflowTaskId = appraisalTask.Id,
-                Kind = WorkflowTaskKindValues.PropertyAppraisal,
-                PropertyId = appraisalTask.PropertyId,
-                PoNumber = appraisalTask.PoNumber,
-                Status = PartyTaskSubmissionStatus.Draft,
-                PayloadJson = SeedAppraisalPayload(appraisalTask, reportNo),
-                CreatedAtUtc = now,
-                UpdatedAtUtc = now,
-            };
-            _db.AddSubmission(entity);
-        }
-        else
-        {
-            entity.PayloadJson = MergeReportNo(entity.PayloadJson, reportNo, appraisalTask);
-            entity.UpdatedAtUtc = now;
-        }
-
-        await _db.SaveChangesAsync(cancellationToken);
         _logger.LogInformation(
-            "CaseStudyValuationDispatch: reserved {ReportNo} on appraisal task {TaskId}",
-            reportNo,
-            appraisalTask.Id);
-    }
+            "CaseStudyValuationDispatch: created {DisplayId} for property {PropertyId} from task {TaskId}",
+            created.DisplayId,
+            propertyId,
+            parentTaskId);
 
-    private static string SeedAppraisalPayload(WorkflowTask appraisalTask, string reportNo)
-    {
-        var payload = new Dictionary<string, object?>
-        {
-            ["taskId"] = appraisalTask.Id.ToString("D"),
-            ["propertyId"] = appraisalTask.PropertyId?.ToString("D") ?? "",
-            ["poNumber"] = appraisalTask.PoNumber ?? "",
-            ["status"] = PartyTaskSubmissionStatus.Draft,
-            ["reportNo"] = reportNo,
-        };
-        return JsonSerializer.Serialize(payload);
-    }
+        // Holder: gather the siblings' requests; folded deed: its new request joins the holder's.
+        await FoldTransactionAsync(propertyId, holderPropertyId, siblingIds, cancellationToken);
 
-    private static string MergeReportNo(string payloadJson, string reportNo, WorkflowTask appraisalTask)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(
-                string.IsNullOrWhiteSpace(payloadJson) ? "{}" : payloadJson);
-            if (doc.RootElement.ValueKind != JsonValueKind.Object)
-                return SeedAppraisalPayload(appraisalTask, reportNo);
-
-            using var stream = new MemoryStream();
-            using (var writer = new Utf8JsonWriter(stream))
-            {
-                writer.WriteStartObject();
-                var wroteReportNo = false;
-                foreach (var prop in doc.RootElement.EnumerateObject())
-                {
-                    if (prop.NameEquals("reportNo"))
-                    {
-                        wroteReportNo = true;
-                        var existing = prop.Value.ValueKind == JsonValueKind.String
-                            ? prop.Value.GetString()
-                            : null;
-                        writer.WriteString(
-                            "reportNo",
-                            string.IsNullOrWhiteSpace(existing) ? reportNo : existing.Trim());
-                    }
-                    else
-                    {
-                        prop.WriteTo(writer);
-                    }
-                }
-
-                if (!wroteReportNo)
-                    writer.WriteString("reportNo", reportNo);
-
-                writer.WriteEndObject();
-            }
-
-            return Encoding.UTF8.GetString(stream.ToArray());
-        }
-        catch (JsonException)
-        {
-            return SeedAppraisalPayload(appraisalTask, reportNo);
-        }
+        await _timeline.RecordAsync(
+            parent.PoNumber,
+            propertyId,
+            $"valuation-request:{created.Id}:created",
+            "فتح مسار التقييم",
+            appraiser,
+            PropertyTimelineTones.Done,
+            _time.UtcNow(),
+            cancellationToken);
     }
 
     private static string ResolveArea(WorkOrderProperty? property)
@@ -253,33 +185,5 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
         if (!string.IsNullOrWhiteSpace(property.District))
             return property.District.Trim();
         return "—";
-    }
-
-    /// <summary>Must stay aligned with <c>ValuationReportNumberRules.FormatReserved</c>.</summary>
-    /// <summary>
-    /// The report number's year: the request date's (ISO yyyy-MM-dd, first 10 characters, invariant
-    /// culture — never the server locale), else the Riyadh year of now.
-    /// </summary>
-    public static int ReservedReportYear(string? requestDate, DateTime nowUtc)
-    {
-        var text = (requestDate ?? "").Trim();
-        return text.Length >= 10
-            && DateOnly.TryParseExact(
-                text[..10],
-                "yyyy-MM-dd",
-                System.Globalization.CultureInfo.InvariantCulture,
-                System.Globalization.DateTimeStyles.None,
-                out var parsed)
-            ? parsed.Year
-            : RiyadhClock.Year(nowUtc);
-    }
-
-    private static string FormatReservedReportNumber(string displayId, int reservedYear)
-    {
-        var digits = new string((displayId ?? "").Where(char.IsDigit).ToArray());
-        var ordinal = int.TryParse(digits, out var n) && n > 0 ? n : 1;
- // Numbering workshop (bit item 3): unified pattern TQ-{year}-{5-digit seq}.
-        return ReferenceNumbering.Format(
-            ReferenceNumbering.ValuationReport, reservedYear, ordinal);
     }
 }

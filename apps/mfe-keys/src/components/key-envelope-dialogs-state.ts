@@ -5,28 +5,46 @@
  * Delivery validation stays in `key-envelope-detail-state`.
  */
 import type { UpsertPropertyCourtAccessRequest } from "@platform/api-client";
-import type {
-  KeyAssignmentMatchStatus,
-  KeyEnvelopeHandoff,
-  KeyEnvelopeRow,
-  PropertyCourtAccessRow,
+import type { RoleId } from "@platform/types";
+import {
+  KeyLocationValues,
+  type KeyAssignmentMatchStatus,
+  type KeyEnvelopeHandoff,
+  type KeyEnvelopeRow,
+  type KeyLocation,
+  type PropertyCourtAccessRow,
 } from "../lib/keys-envelope-types";
 import {
   deliverHandoffKindLabel,
   displayPersonName,
+  type DeliverHandoffBody,
 } from "./key-envelope-detail-state";
 
 /** Note stored with a full match — the field confirmation wording. */
 export const MATCHED_DEFAULT_NOTE = "فُتح العقار بالمفاتيح (تأكيد ميداني)";
 
 type MatchResultValidation =
-  | { ok: true; status: KeyAssignmentMatchStatus; note: string }
+  | {
+      ok: true;
+      status: KeyAssignmentMatchStatus;
+      note: string;
+      /** Where the matching key went (decision 2026-10-20); only a match or partial match has one to place. */
+      keyLocation: KeyLocation | null;
+    }
   | { ok: false; error: string };
+
+/** A match (full or partial) leaves a key to place; the server defaults the rest. */
+export function matchResultHasKeyToPlace(
+  selected: KeyAssignmentMatchStatus | "",
+): boolean {
+  return selected === "matched" || selected === "partial";
+}
 
 /** A tile must be chosen; anything but a full match needs a note. */
 export function validateMatchResult(
   selected: KeyAssignmentMatchStatus | "",
   note: string,
+  keyPlace: KeyLocation | "" = "",
 ): MatchResultValidation {
   if (!selected) return { ok: false, error: "اختر نتيجة المطابقة أولاً." };
   if (selected !== "matched" && !note.trim()) {
@@ -40,7 +58,68 @@ export function validateMatchResult(
     ok: true,
     status: selected,
     note: selected === "matched" ? MATCHED_DEFAULT_NOTE : note.trim(),
+    keyLocation: matchResultHasKeyToPlace(selected)
+      ? keyPlace || KeyLocationValues.InEnvelope
+      : null,
   };
+}
+
+/** Roles that receive the envelope back as its custodian; everyone else hands it to the reviewer. */
+export function receivesAsReviewer(role: RoleId): boolean {
+  return role === "government-reviewer" || role === "section-supervisor";
+}
+
+/**
+ * The receive-back handoff (decision 2026-10-20). The reviewer who records it is its
+ * receiver, so the server completes it at once; an inspector records a handoff to the
+ * envelope's reviewer, which waits for that reviewer's confirmation.
+ */
+export function buildReceiveBackBody(
+  env: KeyEnvelopeRow,
+  viewer: { userId: string | null; displayName: string | null; role: RoleId },
+): { ok: true; body: DeliverHandoffBody; immediate: boolean } | { ok: false; error: string } {
+  const fromParty =
+    env.holderLabel?.trim() || receiveHolderLabel(env, undefined);
+  if (receivesAsReviewer(viewer.role)) {
+    if (!viewer.userId) return { ok: false, error: "تعذّر التعرف على حسابك." };
+    return {
+      ok: true,
+      immediate: true,
+      body: {
+        kind: "receive_back",
+        fromParty,
+        toParty: viewer.displayName?.trim() || "المراجع الحكومي",
+        toUserId: viewer.userId,
+        letterAttachmentId: null,
+        notes: null,
+      },
+    };
+  }
+  const reviewerId = env.createdByUserId?.trim();
+  if (!reviewerId) {
+    return { ok: false, error: "لا يُعرف مراجع هذا الظرف — يسجّل المراجع الاستلام من جهته." };
+  }
+  return {
+    ok: true,
+    immediate: false,
+    body: {
+      kind: "receive_back",
+      fromParty,
+      toParty: env.createdByName?.trim() || "المراجع الحكومي",
+      toUserId: reviewerId,
+      letterAttachmentId: null,
+      notes: null,
+    },
+  };
+}
+
+export function receiveBackSuccessMessage(
+  requestNumber: string,
+  immediate: boolean,
+): string {
+  return immediate
+    ? `عاد الظرف ${requestNumber} إلى عهدتك.`
+    : `سُجّل تسليم الظرف ${requestNumber} إلى المراجع — بانتظار تأكيده.`;
 }
 
 /** The latest handoff still waiting on the clerk's confirmation. */

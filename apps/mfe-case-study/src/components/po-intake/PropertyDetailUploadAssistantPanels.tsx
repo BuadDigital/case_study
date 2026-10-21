@@ -55,8 +55,7 @@ function InfathAttachmentRow({
       </Badge>
       <Button
         type="button"
-        size="sm"
-        className="h-8 w-8 shrink-0 p-0"
+        size="icon"
         disabled={!ready}
         onClick={() => onDownload(item)}
         aria-label={`تحميل ${item.name}`}

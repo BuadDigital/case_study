@@ -123,6 +123,19 @@ public class WorkflowTaskDto
 
  /// <inheritdoc cref="DeedNumber"/>
     public string? Classification { get; set; }
+
+    /// <summary>The property's transaction number (PR-… once confirmed, else the D- draft), joined like the five columns above.</summary>
+    public string? TransactionNumber { get; set; }
+
+    /// <summary>The property's transaction id, joined like the five columns above.</summary>
+    public Guid? TransactionId { get; set; }
+
+    /// <summary>
+    /// Phase 4: the deed whose case-study parent carries the transaction's one study. Null for a
+    /// single-deed transaction (the deed itself). A case-study row whose property is not the holder
+    /// is folded into the holder's study and hidden from the study queues.
+    /// </summary>
+    public Guid? TransactionStudyHolderPropertyId { get; set; }
 }
 
 public class PatchWorkflowTaskDistributionRequest

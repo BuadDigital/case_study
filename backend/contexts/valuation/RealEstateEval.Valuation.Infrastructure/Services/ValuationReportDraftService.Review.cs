@@ -45,6 +45,11 @@ public sealed partial class ValuationReportDraftService
         if (!ValuationReportDraft.IsApprovalDate(request.ReportDate, _time.GetUtcNow().UtcDateTime))
             return (null, Error(ValuationReportDraft.ReportDateNotTodayAr));
 
+        // Decision 2026-10-19: the approval is one of the two moments that fix the transaction's
+        // official reference; the report number PRV-… derives from it and must exist before the copy freezes.
+        var (_, numberError) = await EnsureReportNumberCoreAsync(vr, cancellationToken);
+        if (numberError is not null) return (null, Error(numberError));
+
         // The report freezes as the deposit copy (gates, hand-over check and snapshot live there). A
         // retry after a failed second save finds the copy already issued and only completes the approval.
         if (!await ValuationReportFreeze.IsFrozenAsync(db, valuationRequestId, cancellationToken))
@@ -117,6 +122,55 @@ public sealed partial class ValuationReportDraftService
                 po, vr.PropertyId, vr.Id, actor.DisplayName, draft.AppraiserNote, _time.GetUtcNow().UtcDateTime),
             cancellationToken);
         return (await GetAsync(valuationRequestId, cancellationToken), null);
+    }
+
+    public async Task<(ValuationReportNumberDto? Result, Dictionary<string, string>? Errors)> EnsureReportNumberAsync(
+        Guid valuationRequestId,
+        ReportDraftActor actor,
+        CancellationToken cancellationToken = default)
+    {
+        var vr = await db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
+        if (vr is null) return (null, Error("طلب التقييم غير موجود"));
+        if (!await IsAssignedAppraiserAsync(vr.PropertyId, actor, cancellationToken))
+            return (null, Forbidden(ReviewForbiddenAr));
+
+        var draft = await CurrentDraftAsync(valuationRequestId, tracked: false, cancellationToken);
+        // The number is fixed only on the way to approval: a draft not yet sent has no claim on it.
+        if (string.IsNullOrWhiteSpace(vr.ReportNumber) && (draft is null || !draft.IsSent))
+            return (null, Error(ValuationReportDraft.NotSentAr));
+
+        var (number, error) = await EnsureReportNumberCoreAsync(vr, cancellationToken);
+        if (error is not null) return (null, Error(error));
+        return (new ValuationReportNumberDto { ValuationRequestId = vr.Id, ReportNumber = number! }, null);
+    }
+
+    /// <summary>
+    /// The request's report number: already fixed, or confirmed now through the Case Study
+    /// owner call (which draws the transaction's PR reference if it had none). Saves.
+    /// </summary>
+    private async Task<(string? Number, string? Error)> EnsureReportNumberCoreAsync(
+        ValuationRequest vr,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(vr.ReportNumber)) return (vr.ReportNumber, null);
+        if (caseStudyCommands is null) return (null, ReportNumberUnavailableAr);
+
+        CaseStudyTransactionNumbersDto? numbers;
+        try
+        {
+            var (result, error) = await caseStudyCommands.ConfirmTransactionReferenceAsync(vr.PropertyId, cancellationToken);
+            if (error is not null || result is null) return (null, error ?? ReportNumberUnavailableAr);
+            numbers = result;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return (null, ReportNumberUnavailableAr);
+        }
+
+        if (string.IsNullOrWhiteSpace(numbers.ValuationReportNumber)) return (null, ReportNumberUnavailableAr);
+        vr.AssignReportNumber(numbers.ValuationReportNumber, _time.GetUtcNow().UtcDateTime);
+        await db.SaveChangesAsync(cancellationToken);
+        return (vr.ReportNumber, null);
     }
 
     /// <summary>A report-cycle milestone on the property timeline — best effort, never fails the step.</summary>
@@ -214,7 +268,8 @@ public sealed partial class ValuationReportDraftService
         string packageStatus,
         bool canPrepare,
         ValuationReportIssuance? issuance,
-        int version)
+        int version,
+        string? reportNumber)
     {
         var stage = issuance is null
             ? ReportIssuanceStages.Draft
@@ -224,6 +279,7 @@ public sealed partial class ValuationReportDraftService
             return new ValuationReportDraftDto
             {
                 ValuationRequestId = valuationRequestId,
+                ReportNumber = reportNumber,
                 Version = version,
                 PackageStatus = packageStatus,
                 CanPrepare = canPrepare,
@@ -240,6 +296,7 @@ public sealed partial class ValuationReportDraftService
         return new ValuationReportDraftDto
         {
             ValuationRequestId = valuationRequestId,
+            ReportNumber = reportNumber,
             DraftId = draft.Id,
             Status = draft.Status,
             Version = draft.Version,

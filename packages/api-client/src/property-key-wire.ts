@@ -19,3 +19,19 @@ export const PropertyKeyGateSources = {
   Legacy: "legacy",
   None: "none",
 } as const;
+
+/** Who holds the key envelope now (decision 2026-10-20). */
+export const KeyHolderKinds = {
+  Reviewer: "reviewer",
+  InternalUser: "internal_user",
+  External: "external",
+  Court: "court",
+} as const;
+
+/** Where a deed's matching key is after the field trial (decision 2026-10-20). */
+export const KeyLocations = {
+  InEnvelope: "in_envelope",
+  WithUser: "with_user",
+  ReturnedCourt: "returned_court",
+  Missing: "missing",
+} as const;

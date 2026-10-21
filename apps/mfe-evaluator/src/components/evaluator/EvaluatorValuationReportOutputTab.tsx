@@ -14,6 +14,7 @@ import { isLandInspectionContext } from "@platform/app-shared/app-data/inspector
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { openHtmlDocumentInNewTab } from "@platform/app-shared/media/open-html-document";
 import { usePoRecordQuery } from "../../lib/case-study-bridge";
+import { useLinkedPropertyDeeds } from "../../query/transaction-query";
 import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
@@ -160,6 +161,8 @@ export function EvaluatorValuationReportOutputTab({
   const poQuery = usePoRecordQuery(draft.poNumber);
   const record = poQuery.data;
   const poKeys = assignmentValuationFromPo(record);
+  // Phase 5: a linked property's report names every deed of the transaction.
+  const linkedDeeds = useLinkedPropertyDeeds(property?.id ?? draft.propertyId);
 
   const outputQuery = useQuery(
     reportOutputQueryOptions({
@@ -234,6 +237,7 @@ export function EvaluatorValuationReportOutputTab({
     (
       loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>,
       reportDateOverride?: string,
+      reportNoOverride?: string,
     ) => {
       const ev = loaded?.evaluator ?? {};
       const company = loaded?.company ?? {};
@@ -243,7 +247,12 @@ export function EvaluatorValuationReportOutputTab({
         property?.id ?? draft.propertyId,
       );
       return {
-        reportNo: versionedReportNo(draft.reportNo, reportDraft?.version),
+        // The number the server fixed (approval hands it over; the draft DTO carries it afterwards),
+        // else what the package holds; nothing is computed in the browser.
+        reportNo: versionedReportNo(
+          reportNoOverride?.trim() || reportDraft?.reportNumber?.trim() || draft.reportNo,
+          reportDraft?.version,
+        ),
         reportDate: reportDateOverride?.trim() || reportDateForPrint(draft, reportDraft),
         // The deposit code is the one recorded with the deposit copy (the issuance is the only source).
         depositCode: depositCodeForPrint(reportDraft),
@@ -262,6 +271,7 @@ export function EvaluatorValuationReportOutputTab({
           costBasisKey: approachSettings?.costBasisKey,
           record,
           property,
+          transactionDeeds: linkedDeeds,
           inspector,
           inventoryLines,
           specialistComponentsText,
@@ -348,6 +358,7 @@ export function EvaluatorValuationReportOutputTab({
       inspector,
       inventoryLines,
       landMarket,
+      linkedDeeds,
       listLabels,
       specialistComponentsText,
       market,
@@ -410,8 +421,9 @@ export function EvaluatorValuationReportOutputTab({
       loaded: OrganizationSettingsDto | null,
       reportDateOverride?: string,
       onPhase?: (phase: string) => void,
+      reportNoOverride?: string,
     ) => {
-      const baseMeta = buildReportMeta(loaded, reportDateOverride);
+      const baseMeta = buildReportMeta(loaded, reportDateOverride, reportNoOverride);
       let live = baseMeta.live;
       if (live) {
         onPhase?.("تجهيز خرائط التقرير…");
@@ -601,11 +613,11 @@ export function EvaluatorValuationReportOutputTab({
         <ReportDraftApprovalBar
           propertyId={property?.id ?? draft.propertyId}
           draft={reportDraft}
-          buildApprovedHtml={async (reportDate, onPhase) => {
+          buildApprovedHtml={async (reportDate, onPhase, reportNumber) => {
             onPhase("تحميل بيانات المنشأة…");
             const loaded = await ensureOrganizationSettingsLoaded({ force: true });
             if (loaded) setOrg(loaded);
-            const { html } = await preparePrintHtml(loaded, reportDate, onPhase);
+            const { html } = await preparePrintHtml(loaded, reportDate, onPhase, reportNumber);
             // The approved copy is kept and later rendered by the server (no network): letterhead, fonts and
             // photos must travel inside it, exactly as the browser prints them.
             const config = apiConfig();

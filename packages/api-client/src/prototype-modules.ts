@@ -136,6 +136,8 @@ export type ValuationRequestDto = {
   date: string;
   finalOpinionValue?: number | null;
   issueDate?: string | null;
+  /** Phase 5: on a `merged` request, the holder deed's request that carries the valuation. */
+  mergedIntoRequestId?: string | null;
 };
 
 async function fetchValuationRequestList(
@@ -210,6 +212,11 @@ export type KeyEnvelopeAssignmentDto = {
   notes?: string | null;
   confirmedByName?: string | null;
   confirmedAtUtc?: string | null;
+  /** in_envelope | with_user | returned_court | missing — where the deed's matching key is now. */
+  keyLocation?: string;
+  keyHolderUserId?: string | null;
+  keyHolderLabel?: string | null;
+  keyLocationAtUtc?: string | null;
 };
 
 export type KeyEnvelopeHandoffDto = {
@@ -261,6 +268,13 @@ export type KeyEnvelopeDto = {
   createdAtUtc: string;
   updatedAtUtc: string;
   operationsTaskId?: string | null;
+  /** reviewer | internal_user | external | court — who holds the envelope now (decision 2026-10-20). */
+  holderKind?: string;
+  holderUserId?: string | null;
+  holderLabel?: string | null;
+  holderSinceUtc?: string | null;
+  /** Every deed tried and every matching key back, returned or lost. */
+  readyForCourtReturn?: boolean;
   assignments: KeyEnvelopeAssignmentDto[];
   handoffs: KeyEnvelopeHandoffDto[];
   timeline: KeyEnvelopeTimelineEntryDto[];
@@ -298,6 +312,13 @@ export type PropertyKeyGateDto = {
   pendingHandoffId?: string | null;
   studyHoldStatus: string;
   envelopeMissingWarning: boolean;
+  /** Custody (decision 2026-10-20): who holds the envelope and where this deed's key is. */
+  envelopeHolderKind?: string | null;
+  envelopeHolderUserId?: string | null;
+  envelopeHolderLabel?: string | null;
+  keyLocation?: string | null;
+  keyHolderUserId?: string | null;
+  keyHolderLabel?: string | null;
 };
 
 export type PropertyCourtAccessDto = {
@@ -354,6 +375,17 @@ export type ConfirmKeyAssignmentRequest = {
     | "missing"
     | string;
   notes?: string | null;
+  /** Where the matching key went after the trial; empty = back in the envelope (missing for «missing»). */
+  keyLocation?: string | null;
+  keyHolderUserId?: string | null;
+  keyHolderLabel?: string | null;
+};
+
+/** The reviewer corrects where a deed's key is (decision 2026-10-20). */
+export type SetKeyLocationRequest = {
+  keyLocation: string;
+  keyHolderUserId?: string | null;
+  keyHolderLabel?: string | null;
 };
 
 export type CreateKeyEnvelopeHandoffRequest = {
@@ -640,6 +672,21 @@ export async function confirmKeyEnvelopeAssignment(
   return keyEnvelopeMutation(
     config,
     `/api/key-envelopes/${envelopeId}/assignments/${assignmentId}/confirm`,
+    { method: "POST", body: JSON.stringify(body) },
+    idempotencyKey,
+  );
+}
+
+export async function setKeyEnvelopeAssignmentKeyLocation(
+  config: PrototypeModulesApiConfig,
+  envelopeId: string,
+  assignmentId: string,
+  body: SetKeyLocationRequest,
+  idempotencyKey?: string,
+): Promise<PrototypeModulesResult<KeyEnvelopeDto>> {
+  return keyEnvelopeMutation(
+    config,
+    `/api/key-envelopes/${envelopeId}/assignments/${assignmentId}/key-location`,
     { method: "POST", body: JSON.stringify(body) },
     idempotencyKey,
   );

@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { AppModal, Button, Input, Label, Select, Textarea, cn } from "@platform/ui-kit";
+import { AppModal, Button, Input, Label, Textarea, cn } from "@platform/ui-kit";
 import {
   UNLISTED_DOCUMENT_KEY,
   VALUED_DOCUMENT_KEY,
@@ -21,6 +21,7 @@ import {
   validateUnlistedDocumentFields,
   validateValuedDocumentName,
 } from "../../lib/app-data/property-document-upload-rules";
+import { PropertyDocumentTypePicker } from "./PropertyDocumentTypePicker";
 
 export type PropertyDocumentDialogState =
   | { mode: "upload"; typeKey?: string }
@@ -76,7 +77,6 @@ export function PropertyDocumentUploadDialog({
   const option = offered.find((o) => o.key === typeKey);
   const isUnlisted = typeKey === UNLISTED_DOCUMENT_KEY;
   const isValued = typeKey === VALUED_DOCUMENT_KEY;
-  const groupTitles = [...new Set(offered.map((o) => o.groupTitle))];
 
   async function submit() {
     if (!state) return;
@@ -150,27 +150,16 @@ export function PropertyDocumentUploadDialog({
           <Label className="mb-1 text-[11px]" htmlFor="property-document-type">
             نوع المستند *
           </Label>
-          <Select
+          <PropertyDocumentTypePicker
             id="property-document-type"
+            options={offered}
             value={typeKey}
-            onChange={(e) => {
-              setTypeKey(e.target.value);
+            disabled={busy}
+            onChange={(key) => {
+              setTypeKey(key);
               setError(null);
             }}
-          >
-            <option value="">— اختر من القائمة المعرّفة —</option>
-            {groupTitles.map((title) => (
-              <optgroup key={title} label={title}>
-                {offered
-                  .filter((o) => o.groupTitle === title)
-                  .map((o) => (
-                    <option key={o.key} value={o.key}>
-                      {o.label}
-                    </option>
-                  ))}
-              </optgroup>
-            ))}
-          </Select>
+          />
         </div>
 
         {isUnlisted ? (

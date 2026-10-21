@@ -21,6 +21,12 @@ import {
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import {
+  envelopeHolderLabelAr,
+  keyHandedToInspectorText,
+  keyLocationLabelAr,
+} from "../../lib/app-data/property-key-custody";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
+import {
   courtVisitResultKindLabel,
 } from "../../lib/app-data/operations-task-property-scope";
 import {
@@ -29,7 +35,6 @@ import {
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
 import {
   keyGateSourceLabelAr,
-  keyHandedLabelAr,
   keysStatusLabelAr,
   resolveEnvelopeIdFromSources,
   usePropertyKeyGateQuery,
@@ -48,13 +53,17 @@ function keysBadgeTone(status: string): BadgeTone {
 
 /**
  * Property keys — listens to key-envelope gate + court_visit ops (linked envelope).
+ * «تسليم للمعاين» compares the envelope holder, or the deed's key holder, with this
+ * deed's inspection task assignee (decision 2026-10-20).
  */
 export function PropertyDetailPropertyKeys({
   poNumber,
   property,
+  inspectionTask = null,
 }: {
   poNumber: string;
   property: PoPropertyIntake;
+  inspectionTask?: WorkflowTask | null;
 }) {
   const { role } = useAppAccess();
   const canCreateOps = canManageOperationsTasks(role);
@@ -94,7 +103,16 @@ export function PropertyDetailPropertyKeys({
 
   const keysStatus = gate?.keysStatus ?? "";
   const keysLabel = keysStatusLabelAr(keysStatus);
-  const handedLabel = keyHandedLabelAr(gate?.keyHandedToInspector ?? "");
+  const handed = keyHandedToInspectorText(gate, {
+    id: inspectionTask?.assigneeId ?? null,
+    name: inspectionTask?.assigneeName ?? null,
+  });
+  const handedLabel = handed.text;
+  const holderLabel = envelopeHolderLabelAr(
+    gate?.envelopeHolderKind,
+    gate?.envelopeHolderLabel,
+  );
+  const keyPlaceLabel = keyLocationLabelAr(gate?.keyLocation, gate?.keyHolderLabel);
   const sourceLabel = keyGateSourceLabelAr(gate?.source ?? "none");
 
   const primaryVisit = primaryCourtVisit;
@@ -173,6 +191,12 @@ export function PropertyDetailPropertyKeys({
       </div>
 
       <FieldsGrid>
+        {gate?.source === PropertyKeyGateSources.Envelope ? (
+          <>
+            <FieldBox label="الظرف عند" value={holderLabel} emptyLabel="—" />
+            <FieldBox label="مفتاح هذا الصك" value={keyPlaceLabel} emptyLabel="—" />
+          </>
+        ) : null}
         <FieldBox
           label="رقم الطلب"
           value={gate?.requestNumber?.trim() || requestNumber || "—"}

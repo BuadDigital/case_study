@@ -24,7 +24,7 @@ import { caseStudyFamilyTaskForProperty } from "../../lib/app-data/tasks";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
 import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../../lib/app-data/inspector-workspace-model";
 import { TASKS_CHANGED_EVENT } from "../../query/case-study-queries";
-import { usePropertyTimelineQuery } from "../../query/use-property-timeline-query";
+import { usePropertyOrTransactionTimeline } from "../../query/use-transaction-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { WORK_ORDERS_CHANGED_EVENT } from "../../lib/work-orders-api-config";
 import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
@@ -146,14 +146,13 @@ export function PropertyTransactionTimeline({
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const poNumber = record.poNumber.trim();
-  const timelineQuery = usePropertyTimelineQuery(poNumber, property.id);
+  // Decision 2026-10-19: a transaction with several deeds has one timeline for all of them.
+  const { query: timelineQuery, invalidationKey } = usePropertyOrTransactionTimeline(poNumber, property);
   const queryClient = useQueryClient();
 
   const [inspectionRevision, setInspectionRevision] = useState(0);
   const invalidateTimeline = () => {
-    void queryClient.invalidateQueries({
-      queryKey: appDataKeys.propertyTimeline(poNumber, property.id),
-    });
+    void queryClient.invalidateQueries({ queryKey: invalidationKey });
   };
   useWindowEvents({
     [TASKS_CHANGED_EVENT]: invalidateTimeline,
@@ -339,8 +338,18 @@ export function PropertyTransactionTimeline({
                       {event.detail.trim()}
                     </div>
                   ) : null}
-                  <div className="text-[10px] text-text-3 [direction:ltr] [unicode-bidi:isolate]">
-                    {formatTimelineDate(event.at)}
+                  <div className="flex flex-wrap gap-x-2 text-[10px] text-text-3">
+                    <span className="[direction:ltr] [unicode-bidi:isolate]">
+                      {formatTimelineDate(event.at)}
+                    </span>
+                    {event.deedLabel ? (
+                      <span>
+                        صك{" "}
+                        <bdi dir="ltr" className={ltrValueClass}>
+                          {event.deedLabel}
+                        </bdi>
+                      </span>
+                    ) : null}
                   </div>
                 </div>
               </div>

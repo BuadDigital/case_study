@@ -145,6 +145,22 @@ public class KeyEnvelopesController : ControllerBase
         return Ok(envelope);
     }
 
+    /// <summary>Decision 2026-10-20: where a deed's matching key is now (it came back, went to court, is lost).</summary>
+    [HttpPost("{id:guid}/assignments/{assignmentId:guid}/key-location")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
+    public async Task<ActionResult<KeyEnvelopeDto>> SetKeyLocation(
+        Guid id,
+        Guid assignmentId,
+        [FromBody] SetKeyLocationRequest request,
+        CancellationToken ct)
+    {
+        var (envelope, error) = await _envelopes.SetAssignmentKeyLocationAsync(
+            id, assignmentId, request, ActorId(), ActorName(), ct);
+        if (error is not null)
+            return ProblemForServiceError(error);
+        return Ok(envelope);
+    }
+
     [HttpPost("{id:guid}/handoffs")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
     public async Task<ActionResult<KeyEnvelopeDto>> CreateHandoff(

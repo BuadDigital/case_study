@@ -392,7 +392,8 @@ export type VrRow = {
   area: string;
   type: string;
   appraiser: string;
-  status: "done" | "progress" | "fail";
+  /** `merged` (phase 5): the deed's valuation continues on the holder deed's request. */
+  status: "done" | "progress" | "fail" | "merged";
   date: string;
 };
 

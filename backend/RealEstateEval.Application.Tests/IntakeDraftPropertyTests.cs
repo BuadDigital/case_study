@@ -56,7 +56,10 @@ public class IntakeDraftPropertyTests
         Assert.Equal(order.Id, row.WorkOrderId);
         Assert.Equal("", row.DeedNumber);
         Assert.False(row.BourseDataCompleted);
-        Assert.False(string.IsNullOrWhiteSpace(row.ReferenceNumber));
+        // Decision 2026-10-19: a draft transaction (D- number) opens with the deed; no official PR yet.
+        var transaction = bundle.CaseStudy.Transactions.Single(t => t.Id == row.TransactionId);
+        Assert.StartsWith("TMP-", transaction.DraftNumber);
+        Assert.Null(transaction.ReferenceNumber);
     }
 
     [Fact]

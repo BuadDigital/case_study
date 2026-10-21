@@ -8,10 +8,20 @@ namespace RealEstateEval.Valuation.Application.Contracts;
 /// draft (the appraiser has not handed over yet, or the specialist has not started) reads as
 /// <see cref="Status"/> <c>none</c> with <see cref="PackageStatus"/> telling why.
 /// </summary>
+/// <summary>The request's report number once fixed (decision 2026-10-19: PRV-… from the transaction's PR root).</summary>
+public class ValuationReportNumberDto
+{
+    public Guid ValuationRequestId { get; init; }
+    public string ReportNumber { get; init; } = "";
+}
+
 public class ValuationReportDraftDto
 {
     public Guid ValuationRequestId { get; init; }
     public Guid? DraftId { get; init; }
+
+    /// <summary>PRV-… once the report was approved (or its number confirmed on the way to approval); null before.</summary>
+    public string? ReportNumber { get; init; }
 
     /// <summary>none | preparing | sent | approved.</summary>
     public string Status { get; init; } = "none";

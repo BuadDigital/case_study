@@ -7,6 +7,7 @@ import type { RoleId } from "@platform/types";
 import type { ActiveQueueMobileCardItem } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import {
   envelopeDisplayRef,
+  envelopeHolderText,
   isEnvelopeOutOfCustody,
   type KeyEnvelopeRow,
 } from "../lib/keys-envelope-types";
@@ -109,11 +110,12 @@ export function computeKeysKpis(envelopes: KeyEnvelopeRow[]): KeysKpis {
   return { total, delivered, inCustody, active, pendingMatch, readyToDeliver };
 }
 
-/** Reference, request, court, circuit and every deed — what the search box matches. */
+/** Reference, request, court, circuit, holder and every deed — what the search box matches. */
 export function envelopeSearchText(env: KeyEnvelopeRow): string {
   const deeds = env.assignments.map((a) => a.deedNumber).join(" ");
   const ref = envelopeDisplayRef(env.id, env.createdAtUtc, env.referenceNumber);
-  return `${ref} ${env.requestNumber} ${env.court} ${env.circuit} ${deeds}`;
+  const holder = env.holderLabel?.trim() ?? "";
+  return `${ref} ${env.requestNumber} ${env.court} ${env.circuit} ${deeds} ${holder}`;
 }
 
 /** A status filter shows exactly that custody; «all» hides out-of-custody rows unless the eye is open. */
@@ -145,11 +147,11 @@ export function envelopeCardTone(
   return env.receiveScenario ? "pending" : "new";
 }
 
-/** Court · request (or circuit) · keys and deeds — inspector wording on mobile. */
+/** Court · request (or circuit) · keys and deeds · holder when known — inspector wording on mobile. */
 export function envelopeCardMeta(
   env: KeyEnvelopeRow,
 ): NonNullable<ActiveQueueMobileCardItem["meta"]> {
-  return [
+  const meta: NonNullable<ActiveQueueMobileCardItem["meta"]> = [
     {
       text: env.court?.trim() || "بدون محكمة",
       kind: "place" as const,
@@ -165,4 +167,8 @@ export function envelopeCardMeta(
       kind: "type" as const,
     },
   ];
+  if (env.holderKind) {
+    meta.push({ text: `عند: ${envelopeHolderText(env)}`, kind: "plain" as const });
+  }
+  return meta;
 }

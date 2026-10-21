@@ -1,8 +1,10 @@
 "use client";
 
 /**
- * Receive envelope — confirms the pending handoff so custody returns to the
- * clerk (shown while the status is not «with clerk»).
+ * Receive envelope (decision 2026-10-20). With a handoff waiting on the viewer it
+ * confirms that handoff. Otherwise it records a receive-back: the reviewer
+ * receives at once (he is the receiver), an inspector hands the envelope to the
+ * envelope's reviewer and waits for that reviewer's confirmation.
  */
 import { useCallback } from "react";
 import {
@@ -14,14 +16,20 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { useIdempotentAction } from "@platform/app-shared";
-import { confirmEnvelopeHandoff } from "../lib/keys-envelope-api";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import {
+  confirmEnvelopeHandoff,
+  createEnvelopeHandoff,
+} from "../lib/keys-envelope-api";
 import type { KeyEnvelopeRow } from "../lib/keys-envelope-types";
 import {
+  buildReceiveBackBody,
   findPendingHandoff,
+  receiveBackSuccessMessage,
   receiveHolderLabel,
   receiveSuccessMessage,
 } from "./key-envelope-dialogs-state";
-import { DialogHeader } from "./KeyEnvelopeDialogShared";
+import { DialogErrorBanner, DialogHeader } from "./KeyEnvelopeDialogShared";
 
 export function ReceiveEnvelopeModal({
   env,
@@ -37,8 +45,17 @@ export function ReceiveEnvelopeModal({
   onDone: (next: KeyEnvelopeRow) => Promise<void>;
 }) {
   const { showToast } = useToast();
+  const { role, viewerUserId, viewerDisplayName } = useAppAccess();
   const pending = findPendingHandoff(env);
-  const holder = receiveHolderLabel(env, pending);
+  const holder = env.holderLabel?.trim() || receiveHolderLabel(env, pending);
+  const receiveBack = pending
+    ? null
+    : buildReceiveBackBody(env, {
+        userId: viewerUserId,
+        displayName: viewerDisplayName,
+        role,
+      });
+  const blocked = receiveBack && !receiveBack.ok ? receiveBack.error : "";
 
   const { execute: executeReceive, loading: receiving } = useIdempotentAction(
     useCallback(
@@ -46,14 +63,21 @@ export function ReceiveEnvelopeModal({
         // Read the pending handoff again here: the dialog may have been open while
         // the envelope changed under it.
         const target = findPendingHandoff(env);
-        if (!target) throw new Error("لا توجد مناولة بانتظار التأكيد");
-        return confirmEnvelopeHandoff(env.id, target.id, idempotencyKey);
+        if (target) return confirmEnvelopeHandoff(env.id, target.id, idempotencyKey);
+        const built = buildReceiveBackBody(env, {
+          userId: viewerUserId,
+          displayName: viewerDisplayName,
+          role,
+        });
+        if (!built.ok) throw new Error(built.error);
+        return createEnvelopeHandoff(env.id, built.body, idempotencyKey);
       },
-      [env],
+      [env, role, viewerUserId, viewerDisplayName],
     ),
   );
 
   const buttonBusy = busy || receiving;
+  const immediate = receiveBack?.ok ? receiveBack.immediate : true;
 
   return (
     <ModalOverlay onClick={onClose}>
@@ -65,7 +89,8 @@ export function ReceiveEnvelopeModal({
           title={<>استلام الظرف — {env.requestNumber}</>}
           onClose={onClose}
         />
-        <ModalBody className="px-5 py-5">
+        <ModalBody className="space-y-3 px-5 py-5">
+          <DialogErrorBanner error={blocked} />
           <div className="flex items-start gap-3">
             <span className="grid size-10 shrink-0 place-items-center rounded-[10px] bg-[color-mix(in_srgb,#378add_14%,transparent)] text-[#378add]">
               <svg
@@ -82,11 +107,30 @@ export function ReceiveEnvelopeModal({
             </span>
             <div>
               <div className="mb-1 text-[14px] font-extrabold text-heading">
-                تأكيد استلام الظرف {env.requestNumber}
+                {pending
+                  ? `تأكيد استلام الظرف ${env.requestNumber}`
+                  : immediate
+                    ? `استلام الظرف ${env.requestNumber} إلى عهدتي`
+                    : `تسليم الظرف ${env.requestNumber} إلى المراجع`}
               </div>
               <div className="text-[12.5px] leading-relaxed text-text-2">
-                الظرف بعهدة <b>{holder}</b> — يكفي تأكيد الاستلام لتعود العهدة
-                إليك ويوثَّق ذلك في السجل.
+                {pending ? (
+                  <>
+                    مناولة إلى <b>{pending.toParty}</b> بانتظار تأكيد الاستلام —
+                    بالتأكيد تنتقل العهدة إلى المستلم ويوثَّق ذلك في السجل.
+                  </>
+                ) : immediate ? (
+                  <>
+                    الظرف الآن عند <b>{holder}</b> — بتسجيل الاستلام تعود العهدة
+                    إليك فورًا ويوثَّق ذلك في السجل.
+                  </>
+                ) : (
+                  <>
+                    الظرف بعهدتك ويُسلَّم إلى المراجع{" "}
+                    <b>{env.createdByName || "المراجع الحكومي"}</b> — تبقى
+                    المناولة بانتظار تأكيده، ولا تنتقل العهدة قبل ذلك.
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -103,13 +147,9 @@ export function ReceiveEnvelopeModal({
           <Button
             variant="primary"
             loading={buttonBusy}
-            disabled={!pending}
+            disabled={Boolean(blocked)}
             showActionToast={false}
             onClick={async () => {
-              if (!pending) {
-                showToast("لا توجد مناولة بانتظار التأكيد.", "error");
-                return;
-              }
               onBusy(true);
               try {
                 const outcome = await executeReceive();
@@ -119,7 +159,12 @@ export function ReceiveEnvelopeModal({
                   showToast(result.error, "error");
                   return;
                 }
-                showToast(receiveSuccessMessage(env.requestNumber), "success");
+                showToast(
+                  pending
+                    ? receiveSuccessMessage(env.requestNumber)
+                    : receiveBackSuccessMessage(env.requestNumber, immediate),
+                  "success",
+                );
                 if (result.queued) {
                   await onDone({ ...env });
                   return;
@@ -130,7 +175,11 @@ export function ReceiveEnvelopeModal({
               }
             }}
           >
-            تأكيد الاستلام
+            {pending
+              ? "تأكيد الاستلام"
+              : immediate
+                ? "تسجيل الاستلام"
+                : "تسليم إلى المراجع"}
           </Button>
         </ModalFooter>
       </ModalCard>

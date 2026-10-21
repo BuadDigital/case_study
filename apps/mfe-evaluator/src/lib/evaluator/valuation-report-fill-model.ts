@@ -24,6 +24,7 @@ import {
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   reportInspectorPropertyDescription,
+  isApartmentInspectionContext,
   isLandInspectionContext,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
@@ -38,6 +39,9 @@ import {
   ORG_COMPANY_DEFAULTS,
   type ClientDto,
   type OrganizationValuerRosterEntry,
+  type TransactionDeedDto,
+  transactionDeedDateOf,
+  transactionDeedLabelOf,
   type ValuationComparableSelectionListDto,
   type ValuationCostApproachDto,
   type ValuationReconciliationDto,
@@ -455,6 +459,8 @@ export type ValuationReportLiveFill = {
   /** §25 liquidation discount printed (liquidation basis or discount applied in reconciliation). */
   liquidationDiscountOn?: boolean;
   isLand: boolean;
+  /** An apartment records no facades — the facade rows and the boundaries «الواجهات» column are not printed. */
+  isApartment?: boolean;
   propertyDescription: string;
   reportWorkers: EvaluatorReportWorker[];
   /** §26 — assigned appraiser from work-order dispatch (fourth column). */
@@ -526,6 +532,14 @@ export function buildValuationReportLiveFill(input: {
   costBasisKey?: string | null;
   record?: PoIntakeRecord | null;
   property?: PoPropertyIntake | null;
+  /**
+   * Phase 5 (decision 2026-10-19): the live deeds of a linked property, in transaction order.
+   * Two or more → the deed cells name them all; empty / one → the property's own deed prints.
+   */
+  transactionDeeds?: readonly Pick<
+    TransactionDeedDto,
+    "identifierType" | "deedNumber" | "deedDate" | "realEstateRegNumber" | "realEstateRegDate" | "isRemoved"
+  >[] | null;
   inspector?: InspectorWorkspaceDraft | null;
   inventoryLines?: BuildingInventoryLineDto[] | null;
   /** «مكونات العقار» by the case specialist — printed verbatim as «وصف العقار». */
@@ -590,6 +604,15 @@ export function buildValuationReportLiveFill(input: {
   finishingLevel?: "" | "luxury" | "medium" | "ordinary" | "none";
 }): ValuationReportLiveFill {
   const { draft, record, property, inspector } = input;
+  const linkedDeeds = (input.transactionDeeds ?? []).filter((d) => !d.isRemoved);
+  const linkedDeedLabels =
+    linkedDeeds.length > 1
+      ? linkedDeeds.map(transactionDeedLabelOf).join(" ، ")
+      : "";
+  const linkedDeedDates =
+    linkedDeeds.length > 1
+      ? linkedDeeds.map((d) => transactionDeedDateOf(d) || "—").join(" ، ")
+      : "";
   const keys = assignmentValuationFromPo(record);
   const sub = subClientIdFromReportUsers(record?.reportUserClientIds);
   const purpose =
@@ -623,7 +646,7 @@ export function buildValuationReportLiveFill(input: {
   const price = (draft.evaluatorPrice ?? "").trim();
   const priceN = parseEvaluatorAmount(price);
   const isLiquidation = keys.valueBasisKey === "liquidation";
-  const isLand = isLandInspectionContext({
+  const assetContext = {
     vacantLand: inspector?.vacantLand,
     assetSubject:
       property?.inspectedPropertyType ??
@@ -632,7 +655,9 @@ export function buildValuationReportLiveFill(input: {
     propertyType:
       property?.effectivePropertyType ??
       property?.propertyType,
-  });
+  };
+  const isLand = isLandInspectionContext(assetContext);
+  const isApartment = isApartmentInspectionContext(assetContext);
   const licenseDateRaw = (inspector?.buildLicenseDate ?? "").trim();
   const licenseDate =
     slashReportDate(licenseDateRaw) || licenseDateRaw;
@@ -698,8 +723,8 @@ export function buildValuationReportLiveFill(input: {
       property?.classification || inspector?.featureValues?.propertyUsage,
     ),
     "إحداثيات الموقع": dash(coordsLabel),
-    "رقم الصك": dash(property?.deedNumber),
-    "تاريخ الصك": dash(property?.deedDate),
+    "رقم الصك": dash(linkedDeedLabels || property?.deedNumber),
+    "تاريخ الصك": dash(linkedDeedDates || property?.deedDate),
     "رقم رخصة البناء": dash(inspector?.buildLicenseNumber),
     "تاريخ رخصة البناء": dash(licenseDate),
     ...(isLand
@@ -1358,6 +1383,7 @@ export function buildValuationReportLiveFill(input: {
     isLiquidation,
     liquidationDiscountOn: liqOn,
     isLand,
+    isApartment,
     propertyDescription: reportPropertyDescription(input.specialistComponentsText, inspector),
     reportWorkers: draft.reportWorkers ?? [],
     assignedAppraiserName: (input.assignedAppraiserName ?? "").trim(),

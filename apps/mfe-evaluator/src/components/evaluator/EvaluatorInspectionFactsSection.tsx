@@ -6,6 +6,7 @@ import {
 
 import { useEffect, useState } from "react";
 import {
+  isApartmentInspectionContext,
   isCommercialShopInspectionContext,
   isLandInspectionContext,
   type InspectorWorkspaceDraft,
@@ -138,7 +139,12 @@ export function EvaluatorInspectionFactsSection({
     vacantLand: workspace?.vacantLand,
     assetSubject: workspace?.featureValues?.assetSubject,
   });
-  const features = visibleInspectorFeatureFields(isLand).flatMap((field) => {
+  const features = visibleInspectorFeatureFields(isLand, {
+    isApartment: isApartmentInspectionContext({
+      vacantLand: workspace?.vacantLand,
+      assetSubject: workspace?.featureValues?.assetSubject,
+    }),
+  }).flatMap((field) => {
     const rows = [
       {
         label: field.label,

@@ -89,6 +89,46 @@ public class ValuationIntegrationHandlerTests
     Assert.Equal(WorkflowTaskStatus.Completed, task.Status);
   }
 
+  /// <summary>
+  /// Phase 5 (decision 2026-10-19): one valuation per transaction — the final issuance on the holder
+  /// deed also completes the other deeds' appraisal tasks, whose packages were never submitted.
+  /// </summary>
+  [Fact]
+  public async Task ValuationReportSubmitted_completes_the_sibling_deeds_appraisal_tasks_too()
+  {
+    await using var db = CreateDb();
+    SeedOpenAppraisalTask(db);
+    var siblingProperty = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc");
+    var siblingTask = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd");
+    var transaction = Transaction.CreateDraft("TMP-26-00001", DateTime.UtcNow);
+    transaction.StudyHolderPropertyId = PropertyId;
+    db.Transactions.Add(transaction);
+    db.WorkOrderProperties.AddRange(
+      new WorkOrderProperty { Id = PropertyId, TransactionId = transaction.Id, DeedNumber = "1" },
+      new WorkOrderProperty { Id = siblingProperty, TransactionId = transaction.Id, DeedNumber = "2" });
+    db.WorkflowTasks.Add(WorkflowTask.Create(
+      WorkflowTaskKind.PropertyAppraisal,
+      "PO-101",
+      DateTime.UtcNow,
+      title: "تقييم العقار",
+      phase: WorkflowTaskPhase.Done,
+      id: siblingTask,
+      propertyId: siblingProperty));
+    db.SaveChanges();
+
+    var handler = new ValuationReportWorkflowHandler(
+      new ValuationReportWorkflowTaskLookup(TestInspectorFeeServiceFactory.ShareCaseStudy(db)),
+      TestInspectorFeeServiceFactory.CreateWorkflow(db),
+      NullLogger<ValuationReportWorkflowHandler>.Instance);
+
+    await handler.HandleAsync(
+      new ValuationReportSubmittedPayload(Guid.NewGuid(), PropertyId.ToString(), "VR-102", "عبدالله الكثيري"),
+      CancellationToken.None);
+
+    Assert.Equal(WorkflowTaskStatus.Completed, (await db.WorkflowTasks.AsNoTracking().SingleAsync(t => t.Id == AppraisalTaskId)).Status);
+    Assert.Equal(WorkflowTaskStatus.Completed, (await db.WorkflowTasks.AsNoTracking().SingleAsync(t => t.Id == siblingTask)).Status);
+  }
+
  /// <summary>
  /// D5 makes the outbox per-producer: the Valuation publisher must write through the Valuation
  /// context, and the row must be visible in the shared messaging table either way.

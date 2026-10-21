@@ -162,8 +162,16 @@ export function formatPropertyTypeLine(property: Pick<
 
 export type PoPropertyIntake = {
   id: string;
-  /** Numbering workshop: internal transaction reference TX-{year}-{5-digit seq}. */
+  /** The transaction (المعاملة) this deed belongs to. */
+  transactionId?: string | null;
+  /** Transaction draft number TMP-{YY}-{seq}, shown until the official reference exists. */
+  transactionDraftNumber?: string | null;
+  /** Transaction official reference PR-{year}-{seq}; null until the first report approval. */
   referenceNumber?: string | null;
+  /** one_building | contract; null for a single deed. */
+  transactionLinkKind?: string | null;
+  /** Deeds in the transaction (1 for an ordinary property). */
+  transactionDeedCount?: number;
   identifierType: PropertyIdentifierType;
   deedNumber: string;
   requestNumber: string;

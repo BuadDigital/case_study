@@ -49,6 +49,25 @@ public sealed class HttpCaseStudyCommands(
             new BackfillCaseStudyPropertyAreaRequest { AreaM2 = areaM2 },
             Setting,
             cancellationToken);
+
+    public async Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        var (body, errors) = await UpstreamJson.PostForResultAsync<CaseStudyTransactionNumbersDto>(
+            http,
+            httpContext,
+            options.Value.CaseStudyBaseUrl,
+            $"/api/case-study-dispatch/properties/{propertyId:D}/confirm-reference",
+            new { },
+            Setting,
+            cancellationToken);
+        if (errors is { Count: > 0 })
+            return (null, errors.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "تعذّر تثبيت الرقم المرجعي.");
+        return string.IsNullOrWhiteSpace(body?.ReferenceNumber)
+            ? (null, "تعذّر تثبيت الرقم المرجعي.")
+            : (body, null);
+    }
 }
 
 /// <summary>Failures-host HTTP client for the Case Study failure side effects (A9).</summary>

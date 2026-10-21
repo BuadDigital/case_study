@@ -138,16 +138,6 @@ public class RiyadhClockTests
         Assert.Null(ValuationReportDraft.ApprovedDateOf(ReportDraftStatuses.Approved, null));
     }
 
-    [Theory]
-    [InlineData("2026-12-31", 2026)]
-    [InlineData("2026-12-31T22:30:00Z", 2026)]
-    [InlineData("31/12/2026", 2027)]
-    [InlineData(null, 2027)]
-    public void Reserved_report_year_reads_iso_then_falls_back_to_riyadh_year(string? date, int year)
-    {
-        Assert.Equal(year, CaseStudyValuationDispatchService.ReservedReportYear(date, NewYearsEveUtc));
-    }
-
     private sealed class FixedTime(DateTime utc) : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(utc);

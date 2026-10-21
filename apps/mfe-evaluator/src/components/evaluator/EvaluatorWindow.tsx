@@ -74,6 +74,9 @@ import {
   scheduleInvalidateEvaluatorReportOutput,
 } from "../../lib/evaluator/evaluator-report-output-cache";
 import { WORK_ORDER_PROPERTY_CHANGED_EVENT } from "@platform/app-shared/app-data/work-orders-api-config";
+import { linkedPropertyDeeds, transactionDeedLabelOf } from "@platform/api-client";
+import { useTransactionByPropertyQuery } from "../../query/transaction-query";
+import { EvaluatorLinkedDeedsCard } from "./EvaluatorLinkedDeedsCard";
 
 /** Same event string as case-study `FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT`. */
 const FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT =
@@ -342,6 +345,10 @@ export function EvaluatorWindow({
     showToast,
   });
 
+  const { data: transaction } = useTransactionByPropertyQuery(
+    propertySummary?.property?.id ?? task.propertyId,
+  );
+
   /** What the report tab reads — the same inputs it is rendered with below. */
   const reportOutputInput = useMemo(
     () => ({
@@ -515,6 +522,12 @@ export function EvaluatorWindow({
   };
 
   const property = summary.property;
+  // Phase 5: a linked property is valued as one — the title and the basic screen name every deed.
+  const linkedDeeds = linkedPropertyDeeds(transaction);
+  const titleDeedLabel =
+    linkedDeeds.length > 1
+      ? linkedDeeds.map(transactionDeedLabelOf).join(" ، ")
+      : deedLabel;
   const workVisited = WORK_SCREENS.some((id) =>
     visitedTabsRef.current.has(id),
   );
@@ -526,7 +539,7 @@ export function EvaluatorWindow({
     <div className="flex min-w-0 flex-col overflow-x-hidden">
       <EvaluatorWindowTitle
         embedded={embeddedInPropertyChrome}
-        deedLabel={deedLabel}
+        deedLabel={titleDeedLabel}
         deedNumber={summary.deedNumber}
       />
 
@@ -578,6 +591,11 @@ export function EvaluatorWindow({
                   <div className="flex flex-col">
                     {workScreen === "basic" && property ? (
                       <div className="order-1">
+                        <EvaluatorLinkedDeedsCard
+                          deeds={linkedDeeds}
+                          linkKindLabel={transaction?.linkKindLabelAr}
+                          transactionNumber={transaction?.displayNumber}
+                        />
                         <EvaluatorBasicDocumentsCard
                           property={property}
                           poNumber={draft.poNumber}

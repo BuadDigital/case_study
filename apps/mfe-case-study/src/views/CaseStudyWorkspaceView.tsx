@@ -13,7 +13,9 @@ import {
   useSwapAnimation,
 } from "@platform/ui-kit";
 import { CaseStudyReportEditor } from "../components/case-study/CaseStudyReportEditor";
-import { CaseStudyAppraisalPanel } from "../components/case-study/CaseStudyAppraisalPanel";
+import { CaseStudyAppraisalDeedsPanel } from "../components/case-study/CaseStudyAppraisalDeedsPanel";
+import { caseStudyReportDeeds } from "../lib/app-data/case-study-report-document-model";
+import { useTransactionQuery } from "../query/use-transaction-query";
 import { CaseStudyWorkspaceStepNav, type CaseStudyWorkspaceTab } from "../components/case-study/CaseStudyWorkspaceStepNav";
 import {
   PropertyDetailAppraisalTab,
@@ -25,7 +27,7 @@ import { PropertyDetailEnfazHandoverCard } from "../components/po-intake/Propert
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { canHandOverToEnfaz } from "../lib/app-data/po-roles";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
-import { activeCaseStudyPath } from "../lib/my-task-routes";
+import { activeCaseStudyPath, caseStudyWorkspacePath } from "../lib/my-task-routes";
 import { poPropertiesPath, poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { findPropertyForTask } from "../lib/app-data/my-task-row";
 import { canOpenCaseStudyWorkspace } from "../lib/app-data/viewer-task-access";
@@ -226,6 +228,17 @@ export function CaseStudyWorkspaceView({
     return record.properties.findIndex((p) => p.id === property.id);
   }, [record, property]);
 
+  // Phase 4 (decision 2026-10-19): one study per transaction. A deed folded into another
+  // deed's study opens that deed's workspace — the server resolves writes the same way.
+  const { data: transaction, isFetched: transactionFetched } = useTransactionQuery(property?.id);
+  const holderTaskId = transaction?.studyHolderTaskId?.trim() || null;
+  const redirectToHolder = Boolean(holderTaskId && holderTaskId !== taskId);
+  useEffect(() => {
+    if (!redirectToHolder || !holderTaskId) return;
+    router.replace(caseStudyWorkspacePath(holderTaskId));
+  }, [redirectToHolder, holderTaskId, router]);
+  const reportDeeds = useMemo(() => caseStudyReportDeeds(transaction?.deeds), [transaction]);
+
   /** Deep-link from party-submit notification: open valuation when a report awaits review. */
   const partySubmissionsForGate = usePropertyDetailPartySubmissionsQuery({
     parentTask: task,
@@ -269,10 +282,13 @@ export function CaseStudyWorkspaceView({
     !hasLoadError &&
     (loading ||
       shouldRedirect ||
+      redirectToHolder ||
       !task ||
       !record ||
       !property ||
-      propertyIndex < 0);
+      propertyIndex < 0 ||
+      // The deeds table and the holder redirect both wait for the transaction (not for a failure).
+      (Boolean(property) && !transactionFetched));
 
   usePreloadWorkspacePanels(!waitingForWorkspace);
 
@@ -348,17 +364,19 @@ export function CaseStudyWorkspaceView({
                     poRecord={record}
                     requestDateSeed={record.receivedFromEnfathAt}
                     workOrderId={record.id}
+                    deeds={reportDeeds}
                   />
                 </Activity>
               ) : null}
               {visitedTabs.has("appraisal") ? (
                 <Activity mode={workspaceTab === "appraisal" ? "visible" : "hidden"}>
-                  <CaseStudyAppraisalPanel
+                  <CaseStudyAppraisalDeedsPanel
                     property={property}
                     poNumber={record.poNumber}
                     tasks={tasks ?? []}
                     caseStudyTask={task}
                     documentsEnabled={propertyMediaVisited}
+                    transaction={transaction}
                   />
                 </Activity>
               ) : null}

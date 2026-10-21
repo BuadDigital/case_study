@@ -74,7 +74,11 @@ export function dtoToProperty(
 ): PoPropertyIntake {
   const property = normalizeProperty({
     id: String(dto.id ?? ""),
+    transactionId: dto.transactionId ?? null,
+    transactionDraftNumber: dto.transactionDraftNumber ?? null,
     referenceNumber: dto.referenceNumber ?? null,
+    transactionLinkKind: dto.transactionLinkKind ?? null,
+    transactionDeedCount: dto.transactionDeedCount ?? 1,
     identifierType: parsePropertyIdentifierType(dto.identifierType),
     deedNumber: dto.deedNumber ?? "",
     requestNumber: dto.requestNumber ?? "",

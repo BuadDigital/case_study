@@ -92,6 +92,24 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                     b.Property<bool>("FeeGenerated")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("HolderKind")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("reviewer");
+
+                    b.Property<string>("HolderLabel")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<DateTime?>("HolderSinceUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("HolderUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<int>("KeysCountActual")
                         .HasColumnType("integer");
 
@@ -149,6 +167,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.HasIndex("CreatedAtUtc");
 
+                    b.HasIndex("HolderUserId");
+
                     b.HasIndex("OperationsTaskId");
 
                     b.HasIndex("ReferenceNumber");
@@ -160,6 +180,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                     b.ToTable("KeyEnvelopes", "operations", t =>
                         {
                             t.HasCheckConstraint("CK_KeyEnvelopes_FeeAmountSar_NonNegative", "\"FeeAmountSar\" IS NULL OR \"FeeAmountSar\" >= 0");
+
+                            t.HasCheckConstraint("CK_KeyEnvelopes_HolderKind", "\"HolderKind\" IS NULL OR \"HolderKind\" IN ('reviewer', 'internal_user', 'external', 'court')");
 
                             t.HasCheckConstraint("CK_KeyEnvelopes_Status", "\"Status\" IS NULL OR \"Status\" IN ('reviewer', 'assessor', 'external', 'returned')");
                         });
@@ -190,6 +212,24 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                     b.Property<Guid>("EnvelopeId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("KeyHolderLabel")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("KeyHolderUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("KeyLocation")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasDefaultValue("in_envelope");
+
+                    b.Property<DateTime?>("KeyLocationAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Notes")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -216,6 +256,8 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
 
                     b.ToTable("KeyEnvelopeAssignments", "operations", t =>
                         {
+                            t.HasCheckConstraint("CK_KeyEnvelopeAssignments_KeyLocation", "\"KeyLocation\" IS NULL OR \"KeyLocation\" IN ('in_envelope', 'with_user', 'returned_court', 'missing')");
+
                             t.HasCheckConstraint("CK_KeyEnvelopeAssignments_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending', 'matched', 'partial', 'unmatched', 'unmatched_inspected', 'missing')");
                         });
                 });
@@ -673,7 +715,6 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                             t.HasCheckConstraint("CK_PropertyKeyRecords_WorkflowStatus", "\"WorkflowStatus\" IS NULL OR \"WorkflowStatus\" IN ('progress', 'done')");
                         });
                 });
-
 
             modelBuilder.Entity("RealEstateEval.Operations.Domain.KeyEnvelopeAssignment", b =>
                 {

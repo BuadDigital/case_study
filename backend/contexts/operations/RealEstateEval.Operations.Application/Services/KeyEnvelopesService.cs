@@ -264,6 +264,9 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
         if (!KeyAssignmentStatuses.IsConfirmResult(status))
             return (null, "حالة الإسناد غير صالحة — اختر نتيجة المطابقة الميدانية");
 
+        var locationError = KeyEnvelopeRegistrationRules.ValidateKeyLocation(request.KeyLocation);
+        if (locationError is not null) return (null, locationError);
+
         var now = _time.UtcNow();
         var deedNumber = assignment.DeedNumber;
         var unmatchedPropertyId = assignment.PropertyId;
@@ -274,10 +277,26 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
             actorUserId,
             actorDisplayName.Trim(),
             now);
+
+        // Decision 2026-10-20: the trial also says where the matching key went. Keys carry no tag,
+        // so this is the only identity a key ever gets — the deed it opened.
+        var location = (request.KeyLocation ?? "").Trim().ToLowerInvariant();
+        if (location.Length == 0) location = KeyLocations.DefaultFor(status);
+        var holderUserId = location == KeyLocations.WithUser
+            ? (Texts.NullIfBlank(request.KeyHolderUserId) ?? actorUserId)
+            : null;
+        var holderLabel = location == KeyLocations.WithUser
+            ? await _people.ResolvePartyLabelAsync(
+                Texts.NullIfBlank(request.KeyHolderLabel) ?? actorDisplayName,
+                holderUserId,
+                cancellationToken)
+            : null;
+        entity.SetAssignmentKeyLocation(assignment, location, holderUserId, holderLabel, now);
+
         await AddTimelineAsync(
             entity.Id,
             KeyEnvelopeTimelineEvents.AssignmentConfirmed,
-            $"تأكيد ميداني للصك {deedNumber}: {KeyEnvelopeLifecycleRules.AssignmentResultTimelineLabel(status)}",
+            $"تأكيد ميداني للصك {deedNumber}: {KeyEnvelopeLifecycleRules.AssignmentResultTimelineLabel(status)} — المفتاح {KeyLocationSummary(location, holderLabel)}",
             actorUserId,
             actorDisplayName,
             now,
@@ -305,6 +324,54 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
 
         return (await GetAsync(envelopeId, cancellationToken), null);
     }
+
+    /// <summary>The reviewer corrects where a deed's key is (it came back, it was returned to court, it is lost).</summary>
+    public async Task<(KeyEnvelopeDto? Envelope, string? Error)> SetAssignmentKeyLocationAsync(
+        Guid envelopeId,
+        Guid assignmentId,
+        SetKeyLocationRequest request,
+        string actorUserId,
+        string actorDisplayName,
+        CancellationToken cancellationToken = default)
+    {
+        actorDisplayName = await _people.ResolveActorDisplayNameAsync(
+            actorUserId,
+            actorDisplayName,
+            cancellationToken);
+        var entity = await LoadTrackedAsync(envelopeId, cancellationToken);
+        if (entity is null) return (null, "الظرف غير موجود");
+
+        var assignment = entity.Assignments.FirstOrDefault(a => a.Id == assignmentId);
+        if (assignment is null) return (null, "الإسناد غير موجود");
+
+        var location = (request.KeyLocation ?? "").Trim().ToLowerInvariant();
+        if (!KeyLocations.IsValid(location)) return (null, "مكان المفتاح غير صالح");
+        if (location == KeyLocations.WithUser && string.IsNullOrWhiteSpace(request.KeyHolderUserId)
+            && string.IsNullOrWhiteSpace(request.KeyHolderLabel))
+            return (null, "حدد من يحمل المفتاح");
+
+        var now = _time.UtcNow();
+        var holderUserId = location == KeyLocations.WithUser ? Texts.NullIfBlank(request.KeyHolderUserId) : null;
+        var holderLabel = location == KeyLocations.WithUser
+            ? await _people.ResolvePartyLabelAsync(request.KeyHolderLabel, holderUserId, cancellationToken)
+            : null;
+        entity.SetAssignmentKeyLocation(assignment, location, holderUserId, holderLabel, now);
+        await AddTimelineAsync(
+            entity.Id,
+            KeyEnvelopeTimelineEvents.KeyLocationChanged,
+            $"مفتاح الصك {assignment.DeedNumber}: {KeyLocationSummary(location, holderLabel)}",
+            actorUserId,
+            actorDisplayName,
+            now,
+            cancellationToken);
+        await SaveAndDetachAsync(cancellationToken);
+        return (await GetAsync(envelopeId, cancellationToken), null);
+    }
+
+    private static string KeyLocationSummary(string location, string? holderLabel) =>
+        location == KeyLocations.WithUser && !string.IsNullOrWhiteSpace(holderLabel)
+            ? $"عند {holderLabel}"
+            : KeyEnvelopeLifecycleRules.KeyLocationLabel(location);
 
     private Task SaveAndDetachAsync(CancellationToken cancellationToken) =>
         _repo.SaveAndDetachAsync(cancellationToken);

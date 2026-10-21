@@ -368,7 +368,8 @@ public class ValuationFinalReportTests
         var renderer = new FakeRenderer();
         var merger = new FakeMerger();
         var finalReports = new ValuationFinalReportService(contexts.Valuation, renderer, merger, files, clock);
-        var service = new ValuationReportDraftService(contexts.Valuation, issuance, lookup, events, clock, finalReports);
+        var service = new ValuationReportDraftService(
+            contexts.Valuation, issuance, lookup, events, clock, finalReports, caseStudyCommands: new FakeCaseStudyCommands());
         return new Rig(contexts, requestId, propertyId, service, finalReports, files, renderer, merger);
     }
 

@@ -67,9 +67,9 @@ describe("report draft choices", () => {
   });
 
   it("a new version keeps the report number and adds the version", () => {
-    expect(versionedReportNo("VR-123", 1)).toBe("VR-123");
-    expect(versionedReportNo("VR-123", undefined)).toBe("VR-123");
-    expect(versionedReportNo("VR-123", 2)).toBe("VR-123 نسخة 2");
+    expect(versionedReportNo("PRV-2026-00123", 1)).toBe("PRV-2026-00123");
+    expect(versionedReportNo("PRV-2026-00123", undefined)).toBe("PRV-2026-00123");
+    expect(versionedReportNo("PRV-2026-00123", 2)).toBe("PRV-2026-00123/2");
     expect(versionedReportNo("", 2)).toBe("");
   });
 

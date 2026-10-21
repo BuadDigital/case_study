@@ -1,9 +1,10 @@
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>
-/// The one read the <c>ValuationReportSubmitted</c> handler needs: which property-appraisal task
-/// is still open for a property and whether the appraiser handed his package over. Keeps the
-/// integration handler off the persistence session.
+/// The reads the <c>ValuationReportSubmitted</c> handler needs: which property-appraisal task
+/// is still open for a property and whether the appraiser handed his package over, and which
+/// other deeds share the property's transaction (phase 5: one valuation closes them all). Keeps
+/// the integration handler off the persistence session.
 /// </summary>
 public interface IValuationReportWorkflowTaskLookup
 {
@@ -12,6 +13,12 @@ public interface IValuationReportWorkflowTaskLookup
     /// <paramref name="propertyId"/>, or null when there is none.
     /// </summary>
     Task<OpenAppraisalTaskRef?> FindOpenAppraisalTaskAsync(Guid propertyId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The other live deeds of the property's transaction (the property itself excluded); empty
+    /// for an ordinary one-deed property.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> ListSiblingDeedIdsAsync(Guid propertyId, CancellationToken cancellationToken);
 }
 
 /// <param name="TaskId">The open appraisal task.</param>

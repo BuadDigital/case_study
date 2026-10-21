@@ -235,6 +235,23 @@ public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : Contr
         return Ok(new CaseStudyDocumentReferenceDto { Reference = reference ?? "" });
     }
 
+    /// <summary>
+    /// Valuation calls this when the appraiser approves the report: the deed's transaction takes
+    /// its official PR reference (if it had none) and the PRV report number is returned and stamped
+    /// on the appraisal package.
+    /// </summary>
+    [HttpPost("properties/{propertyId:guid}/confirm-reference")]
+    public async Task<ActionResult<CaseStudyTransactionNumbersDto>> ConfirmTransactionReference(
+        Guid propertyId,
+        [FromServices] ICaseStudyCommands commands,
+        CancellationToken cancellationToken)
+    {
+        var (result, error) = await commands.ConfirmTransactionReferenceAsync(propertyId, cancellationToken);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return Ok(result);
+    }
+
     [HttpPost("properties/{propertyId:guid}/backfill-area")]
     public async Task<IActionResult> BackfillPropertyArea(
         Guid propertyId,

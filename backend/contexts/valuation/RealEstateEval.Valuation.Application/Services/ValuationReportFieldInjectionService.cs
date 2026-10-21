@@ -48,6 +48,7 @@ public sealed class ValuationReportFieldInjectionService(
         InspectorPayloadFacts inspector = new();
         Client? client = null;
         var deedNatureMatchOutcome = DeedNatureMatchOutcomes.Unset;
+        IReadOnlyList<CaseStudyTransactionDeedDto> deeds = [];
         var propertyGuid = vr.PropertyId;
         if (propertyGuid != Guid.Empty)
         {
@@ -57,6 +58,7 @@ public sealed class ValuationReportFieldInjectionService(
             if (context is not null)
             {
                 prop = context.ToProperty();
+                deeds = context.TransactionDeeds;
                 workspace = context.LatestWorkspace?.ToWorkspace();
                 inspector = InspectorPayloadFacts.Parse(context.InspectorPayloadJson);
                 deedNatureMatchOutcome = context.DeedNatureMatchOutcome ?? "";
@@ -94,7 +96,8 @@ public sealed class ValuationReportFieldInjectionService(
             printable,
             hasStructures,
             deedNatureMatchOutcome,
-            today);
+            today,
+            deeds);
         var fields = new List<ValuationReportFieldDto>(ValuationReportFieldCatalog.Count);
         var valuesByFieldKey = new Dictionary<string, string>(StringComparer.Ordinal);
         var filled = 0;
@@ -178,8 +181,10 @@ public sealed class ValuationReportFieldInjectionService(
         IReadOnlyList<ReportAttachmentRef> printable,
         bool hasStructures,
         string deedNatureMatchOutcome,
-        DateOnly today)
+        DateOnly today,
+        IReadOnlyList<CaseStudyTransactionDeedDto>? deeds = null)
     {
+        deeds ??= [];
         var d = new Dictionary<string, string?>(StringComparer.Ordinal);
 
         void Put(string key, string? value) => d[key] = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
@@ -215,8 +220,9 @@ public sealed class ValuationReportFieldInjectionService(
         Put("plot_number", prop?.PlotNumber);
         Put("property_block_number", prop?.BlockNumber);
         Put("owner_name", prop?.OwnerName);
-        Put("deed_number", prop?.DeedNumber);
-        Put("deed_date_h", prop?.DeedDate);
+        // Phase 5: a linked property prints every deed of the transaction in the deed cells.
+        Put("deed_number", CaseStudyTransactionDeedRules.JoinedLabels(deeds) ?? prop?.DeedNumber);
+        Put("deed_date_h", CaseStudyTransactionDeedRules.JoinedDates(deeds) ?? prop?.DeedDate);
         Put("partition_minutes_number", prop?.PartitionMinutesNumber);
         if (!string.IsNullOrWhiteSpace(prop?.PartitionMinutesDate))
             Put("partition_minutes_date", prop!.PartitionMinutesDate);

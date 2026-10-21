@@ -144,8 +144,37 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
                 .FirstOrDefaultAsync(cancellationToken);
         }
 
+        // Phase 4: the deed's study is its transaction's — read the holder deed's report.
+        var studyPropertyId = await StudyHolder.HolderPropertyAsync(caseStudy, propertyId, cancellationToken);
+
+        // Phase 5: the transaction and every deed in it — one valuation report lists them all.
+        var transaction = property.TransactionId == Guid.Empty
+            ? null
+            : await caseStudy.Transactions.AsNoTrackingWithIdentityResolution()
+                .Include(t => t.Properties)
+                .ThenInclude(p => p.WorkOrder)
+                .FirstOrDefaultAsync(t => t.Id == property.TransactionId, cancellationToken);
+        var transactionDeeds = (transaction?.Properties ?? [])
+            .OrderBy(p => p.WorkOrder?.CreatedAtUtc ?? DateTime.MaxValue)
+            .ThenBy(p => p.DeedNumber, StringComparer.Ordinal)
+            .Select(p => new CaseStudyTransactionDeedDto
+            {
+                PropertyId = p.Id,
+                PoNumber = p.WorkOrder?.PoNumber.Trim() ?? "",
+                IdentifierType = PropertyIdentifierTypeLabels.ToApiValue(p.IdentifierType),
+                DeedNumber = p.DeedNumber,
+                DeedDate = p.DeedDate,
+                RealEstateRegNumber = p.RealEstateRegNumber,
+                RealEstateRegDate = p.RealEstateRegDate,
+                Area = p.Area,
+                OwnerName = p.OwnerName,
+                PlotNumber = p.PlotNumber,
+                PlanNumber = p.PlanNumber,
+                IsRemoved = p.IsRemoved,
+            })
+            .ToList();
         var latestReport = await caseStudy.CaseStudyReports.AsNoTracking()
-            .Where(f => f.PropertyId == propertyId && !f.IsPartyContribution)
+            .Where(f => f.PropertyId == studyPropertyId && !f.IsPartyContribution)
             .OrderByDescending(f => f.UpdatedAtUtc)
             .Select(f => new { f.DeedNatureMatchOutcome, f.Status })
             .FirstOrDefaultAsync(cancellationToken);
@@ -269,6 +298,11 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
                 },
             InspectorPayloadJson = inspectorPayloadJson,
             DeedNatureMatchOutcome = deedNatureMatchOutcome,
+            TransactionId = transaction?.Id,
+            TransactionNumber = transaction?.DisplayNumber,
+            TransactionLinkKind = transaction?.LinkKind,
+            StudyHolderPropertyId = transaction is null ? null : (TransactionStudyRules.Holder(transaction)?.Id ?? studyPropertyId),
+            TransactionDeeds = transactionDeeds,
             StudyReportIssued = studyReportIssued,
             ClientNameAr = clientNameAr,
             ClientNameEn = clientNameEn,

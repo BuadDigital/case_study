@@ -90,6 +90,25 @@ public sealed class ValuationReportWorkflowHandler
             return;
         }
 
+        await CompleteAsync(task, propertyId, payload.DisplayId, cancellationToken);
+
+        // Phase 5 (decision 2026-10-19): one valuation per transaction — the final issuance on the
+        // holder deed closes the appraisal task of every other deed too. Their packages were
+        // never submitted (the holder's was), so the submitted check does not apply to them.
+        foreach (var siblingId in await _tasksLookup.ListSiblingDeedIdsAsync(propertyId, cancellationToken))
+        {
+            var sibling = await _tasksLookup.FindOpenAppraisalTaskAsync(siblingId, cancellationToken);
+            if (sibling is null) continue;
+            await CompleteAsync(sibling, siblingId, payload.DisplayId, cancellationToken);
+        }
+    }
+
+    private async Task CompleteAsync(
+        OpenAppraisalTaskRef task,
+        Guid propertyId,
+        string displayId,
+        CancellationToken cancellationToken)
+    {
         await _tasks.PatchAsync(
             task.TaskId,
             new PatchWorkflowTaskRequest
@@ -106,7 +125,7 @@ public sealed class ValuationReportWorkflowHandler
                 propertyId,
                 $"appraisal:{task.TaskId}:final-issued:{_time.GetUtcNow().UtcDateTime.Ticks}",
                 WorkflowTaskKindLabels.AppraisalCompletedTitleAr,
-                $"صدر التقرير النهائي ({payload.DisplayId}) — اكتمل تقييم العقار",
+                $"صدر التقرير النهائي ({displayId}) — اكتمل تقييم العقار",
                 "done",
                 _time.GetUtcNow().UtcDateTime,
                 cancellationToken);
@@ -115,6 +134,6 @@ public sealed class ValuationReportWorkflowHandler
         _logger.LogInformation(
             "ValuationReportSubmitted: completed workflow task {TaskId} for VR {DisplayId}",
             task.TaskId,
-            payload.DisplayId);
+            displayId);
     }
 }

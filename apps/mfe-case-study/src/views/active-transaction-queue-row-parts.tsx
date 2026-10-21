@@ -17,6 +17,7 @@ import {
   TdAction,
 } from "@platform/ui-kit";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
+import { TransactionNumberBadge } from "../components/ui/TransactionNumberBadge";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 import type { QueueRowContext } from "./active-transaction-queue-tables-state";
 
@@ -55,11 +56,16 @@ export function PartyQueueDeedCell({
   task,
   propertySlot,
   propertyType,
+  transactionNumber,
+  transactionDeedCount,
 }: {
   ctx: QueueRowContext;
   task: WorkflowTask;
   propertySlot: string;
   propertyType?: string;
+  /** PR-… / D-… shown under the property type; hidden when empty. */
+  transactionNumber?: string | null;
+  transactionDeedCount?: number | null;
 }) {
   return (
     <InteractiveDeedCell
@@ -69,11 +75,17 @@ export function PartyQueueDeedCell({
       labelClassName="text-[13.5px] justify-end"
       trailing={rowAttentionTrailing(ctx, task)}
       subtitle={
-        propertyType ? (
-          <span className="text-[11.5px] font-normal text-text-3 no-underline">
-            {propertyType}
-          </span>
-        ) : null
+        <>
+          {propertyType ? (
+            <span className="text-[11.5px] font-normal text-text-3 no-underline">
+              {propertyType}
+            </span>
+          ) : null}
+          <TransactionNumberBadge
+            number={transactionNumber}
+            deedCount={transactionDeedCount}
+          />
+        </>
       }
     />
   );

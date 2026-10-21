@@ -6,13 +6,8 @@ import {
   submitEvaluatorSubmission,
   syncEvaluatorChecklistFromPartyCaseStudy,
 } from "./evaluator-submission-commands";
-import {
-  ensureOpenValuationRequest,
-  reservedNumberFromValuationRequest,
-} from "./issue-valuation-report";
-import {
-  formatValuationReportIssueDateIso,
-} from "./valuation-report-number";
+import { ensureOpenValuationRequest } from "./issue-valuation-report";
+import { formatValuationReportIssueDateIso } from "./valuation-report-number";
 import { clearPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-model";
 import type { EvaluatorSubmission } from "./evaluator-window-data";
 
@@ -26,7 +21,7 @@ export async function finalizeAppraiserSubmission(
   idempotencyKey?: string,
 ): Promise<FinalizeAppraiserResult> {
   // Fresh study-report flag BEFORE any side effect (checklist sync write, valuation-request
-  // open / report-number reservation, draft save). Fails closed on an unreadable flag.
+  // open, draft save). Fails closed on an unreadable flag.
   const studyGate = await readFreshStudyReportGate(appraisalTaskId);
   if (!studyGate.ready) return { ok: false, message: studyGate.reason };
 
@@ -40,21 +35,15 @@ export async function finalizeAppraiserSubmission(
   const current = loadEvaluatorSubmission(appraisalTaskId);
   if (current && current.status !== "submitted" && current.status !== "completed") {
     const issuedAt = new Date();
-    let reportNo = current.reportNo.trim();
-    if (current.status === "reopened" || !reportNo) {
-      // Report number from server sequence (valuation request id VR-####) —
-      // local browser counter is a last-resort fallback when the service is down.
-      try {
-        const open = await ensureOpenValuationRequest({
-          propertyId: current.propertyId,
-        });
-        reportNo = reservedNumberFromValuationRequest(open);
-      } catch {
-        return {
-          ok: false,
-          message: "تعذّر حجز رقم التقرير من الخادم. أعد المحاولة.",
-        };
-      }
+    // The valuation request must be open for the package to land on; the report number is NOT
+    // drawn here (decision 2026-10-19): the server fixes PRV-… when the report is approved.
+    try {
+      await ensureOpenValuationRequest({ propertyId: current.propertyId });
+    } catch {
+      return {
+        ok: false,
+        message: "تعذّر فتح طلب التقييم على الخادم. أعد المحاولة.",
+      };
     }
     const reportIssueDate =
       current.status === "reopened" || !current.reportIssueDate.trim()
@@ -67,13 +56,12 @@ export async function finalizeAppraiserSubmission(
 
     const prepared = await saveEvaluatorSubmission({
       ...current,
-      reportNo,
       reportIssueDate,
       appraisalDate,
       updatedAtUtc: issuedAt.toISOString(),
     });
     if (!prepared) {
-      return { ok: false, message: "تعذّر تثبيت رقم التقرير قبل الإرسال." };
+      return { ok: false, message: "تعذّر تثبيت تاريخ التقرير قبل الإرسال." };
     }
   }
 

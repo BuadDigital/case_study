@@ -743,11 +743,6 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
             $"/api/work-orders/PO-F6-MISSING/properties/{Guid.NewGuid():D}/inspection-limits");
         var limits = await client.SendAsync(limitsRequest);
         Assert.Equal(HttpStatusCode.NotFound, limits.StatusCode);
-
-        using var groupRequest = AuthorizedGet(
-            $"/api/property-groups/by-property/{Guid.NewGuid():D}");
-        var group = await client.SendAsync(groupRequest);
-        Assert.Equal(HttpStatusCode.OK, group.StatusCode);
     }
 
     [DockerFact]
@@ -816,15 +811,8 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Contains("شروط التمويل مماثلة لكل المقارنات", savedBody);
         Assert.Contains("financing", savedBody);
 
-        // Q-6: Draft — Incomplete, nothing issued yet.
-        using var stateRequest = AuthorizedGet(
-            $"/api/valuation-requests/{valuationRequestId:D}/report-issuance");
-        var state = await client.SendAsync(stateRequest);
-        Assert.Equal(HttpStatusCode.OK, state.StatusCode);
-        using var stateDoc = JsonDocument.Parse(await state.Content.ReadAsStringAsync());
-        Assert.Equal("draft", stateDoc.RootElement.GetProperty("stage").GetString());
-        Assert.False(stateDoc.RootElement.GetProperty("allowsDepositIssue").GetBoolean());
-
+        // Q-6 (2026-10-05): the issuance state is read through the report draft — the old
+        // GET report-issuance route is gone, so the draft below is the only state read.
         // The report draft starts empty: nothing was handed over, so the specialist cannot prepare it yet.
         using var draftRequest = AuthorizedGet(
             $"/api/valuation-requests/{valuationRequestId:D}/report-draft");

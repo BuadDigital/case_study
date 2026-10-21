@@ -29,6 +29,40 @@ public class ValuationRequestDto
     /// (what Case Study needs to refuse reopening an approved package); null elsewhere.
     /// </summary>
     public string? ReportStage { get; init; }
+
+    /// <summary>
+    /// Phase 5: set on a <c>merged</c> request — the holder deed's request that carries the
+    /// valuation of this deed's transaction. Null otherwise.
+    /// </summary>
+    public Guid? MergedIntoRequestId { get; init; }
+}
+
+/// <summary>
+/// Phase 5 (decision 2026-10-19): the deeds moved into a transaction by a merge. Their open
+/// valuation requests fold into the holder deed's request; one valuation per transaction.
+/// </summary>
+public sealed class FoldValuationRequestsRequest
+{
+    [Required]
+    public List<Guid> PropertyIds { get; init; } = [];
+
+    /// <summary>The deed whose request carries the transaction's valuation.</summary>
+    [Required]
+    public Guid HolderPropertyId { get; init; }
+}
+
+/// <summary>Phase 5: a deed taken out of a transaction — its merged request reopens on its own.</summary>
+public sealed class UnfoldValuationRequestRequest
+{
+    [Required]
+    public Guid PropertyId { get; init; }
+}
+
+/// <summary>What a fold / unfold changed.</summary>
+public sealed class FoldValuationRequestsResultDto
+{
+    public int FoldedCount { get; init; }
+    public Guid? HolderRequestId { get; init; }
 }
 
 /// <summary>

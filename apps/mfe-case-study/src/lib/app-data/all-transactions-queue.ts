@@ -17,6 +17,7 @@ import {
 } from "./tasks";
 import { canReopenCaseStudyReport } from "./po-roles";
 import { poPropertyDetailPath, poPropertiesPath } from "@platform/app-shared/domain/po-routes";
+import { transactionNumberOf } from "./transaction-number";
 
 /** Short phase labels matching Case Study.html `renderAllTransactions`. */
 export function allTransactionsPhaseLabel(task: WorkflowTask): string {
@@ -79,17 +80,25 @@ export type AllTransactionsQueueRowMeta = {
   district: string;
   phaseLabel: string;
   propertyId?: string;
+  /** PR-… once official, else the D- draft number; null when the deed has no transaction yet. */
+  transactionNumber: string | null;
+  transactionDeedCount: number;
 };
 
-/** Groups sibling workflow tasks that belong to the same property / slot. */
+/**
+ * Groups sibling workflow tasks that belong to the same property / slot — and, since phase 4,
+ * every deed of a transaction with several deeds into one row (the transaction is the property).
+ */
 function allTransactionsPropertyGroupKey(
   row: Pick<
     AllTransactionsQueueRowMeta,
-    "poNumber" | "propertyId" | "deed" | "task"
+    "poNumber" | "propertyId" | "deed" | "task" | "transactionDeedCount"
   >,
 ): string {
   const po = row.poNumber.trim();
   const propertyId = row.propertyId?.trim();
+  const transactionId = row.task.transactionId?.trim();
+  if (transactionId && row.transactionDeedCount > 1) return `tx::${transactionId}`;
   if (propertyId) return `${po}::prop::${propertyId}`;
   const deed = row.deed.trim() || "—";
   return `${po}::deed::${deed}::ord::${row.task.propertyOrdinal}`;
@@ -222,6 +231,9 @@ export function buildAllTransactionsQueueRowMeta(
       district: row.district,
       phaseLabel,
       propertyId: property?.id ?? task.propertyId,
+      transactionNumber:
+        transactionNumberOf(property) ?? task.transactionNumber ?? null,
+      transactionDeedCount: property?.transactionDeedCount ?? 1,
     };
   });
   return collapseAllTransactionsToLatestPhase(rows);
@@ -253,6 +265,7 @@ export function filterAllTransactionsQueueRows(
         row.city,
         row.district,
         row.phaseLabel,
+        row.transactionNumber ?? "",
       ]
         .join(" ")
         .toLowerCase();

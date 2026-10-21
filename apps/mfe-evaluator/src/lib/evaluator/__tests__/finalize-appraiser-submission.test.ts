@@ -28,7 +28,6 @@ vi.mock("../evaluator-submission-commands", () => ({
 }));
 vi.mock("../issue-valuation-report", () => ({
   ensureOpenValuationRequest: (...a: unknown[]) => ensureOpen(...a),
-  reservedNumberFromValuationRequest: () => "VR-0001",
   snapshotIssuedValuationReport: (...a: unknown[]) => snapshot(...a),
 }));
 vi.mock("@platform/app-shared/app-data/party-task-recall-model", () => ({

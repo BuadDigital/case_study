@@ -9,6 +9,7 @@ import {
   isReportExpired,
   nearbyOf,
   partitionProperties,
+  isFailureRecord,
   pricePerSqm,
   propertyCard,
   resolveDateRange,
@@ -288,7 +289,7 @@ describe("map-locations-logic", () => {
     expect(part.activeNoCoords).toBe(1);
     expect(part.active.every((r) => r.coords)).toBe(true);
     expect(part.archive.every((r) => r.coords && r.closedDate)).toBe(true);
-    expect(part.active.length + part.archive.length + part.activeNoCoords).toBe(
+    expect(part.active.length + part.archive.length + part.failures.length + part.activeNoCoords + part.archiveNoCoords + part.failuresNoCoords).toBe(
       FIXTURE_PROPERTIES.length,
     );
   });
@@ -301,6 +302,21 @@ describe("map-locations-logic", () => {
     expect(cluster.groupId).toBe("G-11");
     expect(cluster.deedCount).toBe(2);
     expect(cluster.active).toBe(true);
+  });
+
+  // Decision 2026-10-19: every deed carries its transaction id, so a one-deed transaction must
+  // stay an ordinary point, and a cluster takes the first located deed's coordinates.
+  it("keeps a one-deed transaction as a single point and locates a cluster by its first located deed", () => {
+    const [a, b] = FIXTURE_PROPERTIES;
+    const lone = { ...a!, propertyGroupId: "TX-LONE" };
+    expect(groupForMap([lone]).map((p) => p.kind)).toEqual(["single"]);
+
+    const unlocated = { ...a!, id: "x1", propertyGroupId: "TX-2", coords: null };
+    const located = { ...b!, id: "x2", propertyGroupId: "TX-2" };
+    const cluster = groupForMap([unlocated, located]).find((p) => p.kind === "group");
+    expect(cluster?.kind).toBe("group");
+    if (cluster?.kind !== "group") return;
+    expect(cluster.coords).toEqual(located.coords);
   });
 
   it("filters by city and search query with Arabic normalization", () => {
@@ -387,22 +403,21 @@ describe("map-locations-logic", () => {
     expect(card.rows).toContainEqual(["مصدر الإحداثيات", "معاينة"]);
   });
 
-  it("filters land vs building and infeasible workflow", () => {
+  it("filters land vs building and by usage", () => {
     const lands = filterProperties(FIXTURE_PROPERTIES, { kindCat: "أرض" });
     expect(lands.every((r) => r.propertyType.startsWith("أرض"))).toBe(true);
     const buildings = filterProperties(FIXTURE_PROPERTIES, { kindCat: "مبنى" });
     expect(buildings.every((r) => !r.propertyType.startsWith("أرض"))).toBe(true);
-    const inf = filterProperties(FIXTURE_PROPERTIES, { infeasOnly: true });
-    expect(inf.length).toBeGreaterThan(0);
-    expect(
-      inf.every(
-        (r) =>
-          r.workflowStatus === "infeasible" ||
-          r.workflowStatus === "infeasible_candidate",
-      ),
-    ).toBe(true);
     const residential = filterProperties(FIXTURE_PROPERTIES, { usage: "سكني" });
     expect(residential.some((r) => r.propertyType === "فيلا")).toBe(true);
+  });
+
+  it("puts every failed property on the «التعذّرات» layer and nowhere else", () => {
+    const part = partitionProperties(FIXTURE_PROPERTIES);
+    expect(part.failures.length).toBeGreaterThan(0);
+    expect(part.failures.every(isFailureRecord)).toBe(true);
+    expect(part.active.some(isFailureRecord)).toBe(false);
+    expect(part.archive.some(isFailureRecord)).toBe(false);
   });
 
   it("haversine is symmetric and zero for identical points", () => {

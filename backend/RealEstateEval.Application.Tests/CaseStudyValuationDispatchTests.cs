@@ -41,9 +41,8 @@ public class CaseStudyValuationDispatchTests
         Assert.Equal("عبدالله الكثيري", vr.Appraiser);
         Assert.StartsWith("VR-", vr.DisplayId);
 
-        var draft = await contexts.CaseStudy.PartyTaskSubmissions.SingleAsync();
-        Assert.Equal(AppraisalTaskId, draft.WorkflowTaskId);
-        Assert.Contains("\"reportNo\":\"TQ", draft.PayloadJson, StringComparison.Ordinal);
+        // Decision 2026-10-19: no report number is reserved at dispatch — it is fixed at approval.
+        Assert.Equal(0, await contexts.CaseStudy.PartyTaskSubmissions.CountAsync());
 
         var outbox = await contexts.Messaging.OutboxMessages.SingleAsync();
         Assert.Equal(IntegrationEventTypes.ValuationRequestCreated, outbox.EventType);
@@ -127,6 +126,92 @@ public class CaseStudyValuationDispatchTests
         Assert.Equal(WorkflowTaskPhase.Done, task.Phase);
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_transaction_merged_before_distribution_keeps_one_valuation_whatever_the_order(bool siblingFirst)
+    {
+        // Omar 2026-10-20: merging needs only the bourse stage, so the deeds may be distributed after it.
+        await using var contexts = TestDatabases.Create("case-study-valuation-merged");
+        SeedWorkflow(contexts.CaseStudy);
+        var (siblingId, siblingParentId) = SeedSiblingInTransaction(contexts.CaseStudy);
+
+        var dispatch = CreateDispatch(contexts);
+        if (siblingFirst)
+        {
+            await dispatch.TryCreateWhenAppraisalSpawnedAsync(siblingParentId);
+            await dispatch.TryCreateWhenAppraisalSpawnedAsync(ParentTaskId);
+        }
+        else
+        {
+            await dispatch.TryCreateWhenAppraisalSpawnedAsync(ParentTaskId);
+            await dispatch.TryCreateWhenAppraisalSpawnedAsync(siblingParentId);
+        }
+
+        var rows = await contexts.Valuation.ValuationRequests.AsNoTracking().ToListAsync();
+        var holderRequest = Assert.Single(rows, r => r.PropertyId == PropertyId);
+        Assert.Equal(ValuationRequestStatus.Progress, holderRequest.Status);
+        Assert.All(rows.Where(r => r.PropertyId == siblingId), r =>
+        {
+            Assert.Equal(ValuationRequestStatus.Merged, r.Status);
+            Assert.Equal<Guid?>(holderRequest.Id, r.MergedIntoRequestId);
+        });
+
+        var service = CreateValuation(contexts);
+        var openForSibling = await service.GetOpenByPropertyAsync(siblingId.ToString("D"));
+        Assert.Equal<Guid?>(holderRequest.Id, openForSibling?.Id);
+    }
+
+    private static (Guid SiblingId, Guid SiblingParentId) SeedSiblingInTransaction(CaseStudyDbContext db)
+    {
+        var now = DateTime.UtcNow;
+        var siblingId = Guid.NewGuid();
+        var siblingParentId = Guid.NewGuid();
+        var transaction = Transaction.CreateDraft("TMP-26-00900", now);
+        transaction.StudyHolderPropertyId = PropertyId;
+        transaction.LinkKind = TransactionLinkKinds.OneBuilding;
+        db.Transactions.Add(transaction);
+        var holder = db.WorkOrderProperties.Single(p => p.Id == PropertyId);
+        holder.TransactionId = transaction.Id;
+        db.WorkOrderProperties.Add(new WorkOrderProperty
+        {
+            Id = siblingId,
+            WorkOrderId = WorkOrderId,
+            TransactionId = transaction.Id,
+            City = "جدة",
+            PropertyType = "فيلا",
+            DeedNumber = "1234567891",
+        });
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty,
+                "PO-900",
+                now,
+                title: "دراسة حالة",
+                phase: WorkflowTaskPhase.CaseStudy,
+                id: siblingParentId,
+                propertyId: siblingId),
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal,
+                "PO-900",
+                now,
+                title: "تقييم عقاري",
+                phase: WorkflowTaskPhase.Done,
+                assigneeName: "عبدالله الكثيري",
+                propertyId: siblingId,
+                parentTaskId: siblingParentId));
+        db.SaveChanges();
+        return (siblingId, siblingParentId);
+    }
+
+    private static ValuationRequestService CreateValuation(TestDatabases.ContextSet contexts) =>
+        new(
+            contexts.Valuation,
+            new ValuationOutboxPublisher(
+                contexts.Valuation,
+                NullLogger<ValuationOutboxPublisher>.Instance),
+            new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy));
+
     private static CaseStudyReportService CreateFormService(TestDatabases.ContextSet contexts)
     {
         var workflow = TestInspectorFeeServiceFactory.CreateWorkflow(contexts.CaseStudy);
@@ -136,17 +221,12 @@ public class CaseStudyValuationDispatchTests
     private static CaseStudyValuationDispatchService CreateDispatch(TestDatabases.ContextSet contexts)
     {
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(contexts.CaseStudy);
-        var valuation = new ValuationRequestService(
-            contexts.Valuation,
-            new ValuationOutboxPublisher(
-                contexts.Valuation,
-                NullLogger<ValuationOutboxPublisher>.Instance),
-            new CaseStudyPropertyPoNumberLookup(contexts.CaseStudy));
         return new CaseStudyValuationDispatchService(
             new CaseStudyValuationDispatchRepository(contexts.CaseStudy),
-            valuation,
+            CreateValuation(contexts),
             timeline,
-            NullLogger<CaseStudyValuationDispatchService>.Instance);
+            NullLogger<CaseStudyValuationDispatchService>.Instance,
+            folding: new ValuationRequestFoldingService(contexts.Valuation));
     }
 
     private static void SeedWorkflow(CaseStudyDbContext db)

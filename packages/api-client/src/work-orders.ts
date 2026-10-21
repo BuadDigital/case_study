@@ -27,8 +27,16 @@ type DeedOwnerDto = {
 
 export type WorkOrderPropertyDto = {
   id?: string;
-  /** Numbering workshop: internal transaction ref TX-{year}-{5-digit seq} — owned by the server. */
+  /** The transaction (المعاملة) this deed belongs to — server-owned. */
+  transactionId?: string | null;
+  /** Transaction draft number TMP-{YY}-{seq}, shown until the official reference exists. */
+  transactionDraftNumber?: string | null;
+  /** Transaction official reference PR-{year}-{seq}; null until the first report approval. */
   referenceNumber?: string | null;
+  /** How the transaction's deeds are linked: one_building | contract; null for a single deed. */
+  transactionLinkKind?: string | null;
+  /** Deeds in the transaction (1 for an ordinary property). */
+  transactionDeedCount?: number;
   identifierType: string;
   deedNumber: string;
   requestNumber?: string;
@@ -322,6 +330,8 @@ export type PendingBoursePropertyDto = {
   dueDateAt: string;
   /** PO creation time (ISO) — newest-first queue order. */
   createdAtUtc?: string;
+  /** The deed's transaction number: PR-… once confirmed, else the D- draft number. */
+  transactionNumber?: string | null;
 };
 
 export type ApiOk<T> = { ok: true; data: T };

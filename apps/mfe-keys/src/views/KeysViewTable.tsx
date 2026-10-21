@@ -22,6 +22,7 @@ import {
 import { KeysEmpty, KeysStatusPill } from "../components/KeysHtmlPrimitives";
 import {
   envelopeDisplayRef,
+  envelopeHolderText,
   envelopeStatusColor,
   envelopeStatusLabel,
   isEnvelopeOutOfCustody,
@@ -101,15 +102,16 @@ export function KeysViewTable({
             <Th className="text-center">الصكوك</Th>
             <Th>سيناريو الاستلام</Th>
             <Th>العهدة</Th>
+            <Th>عند من الآن</Th>
             <ThAction aria-hidden />
           </Tr>
         </THead>
         <TBody>
           {!ready ? (
-            <SkeletonTableRows rows={6} cols={8} />
+            <SkeletonTableRows rows={6} cols={9} />
           ) : rows.length === 0 ? (
             <Tr hoverable={false}>
-              <Td colSpan={8} className="!border-b-0 !p-0">
+              <Td colSpan={9} className="!border-b-0 !p-0">
                 <KeysEmpty
                   title="لا توجد ظروف مطابقة"
                   sub="جرّب تعديل البحث أو الفلاتر"
@@ -183,6 +185,11 @@ export function KeysViewTable({
                       label={envelopeStatusLabel(env.status)}
                       color={envelopeStatusColor(env.status)}
                     />
+                  </Td>
+                  <Td>
+                    <span className="text-[12.5px] font-semibold text-text-2">
+                      {envelopeHolderText(env)}
+                    </span>
                   </Td>
                   <TdAction className="text-text-3">
                     <ChevronIcon />

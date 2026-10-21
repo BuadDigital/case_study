@@ -26,12 +26,20 @@ const sizeClasses = {
   default: "h-[38px] gap-2 px-[18px] text-sm",
   sm: "h-8 gap-1.5 px-3.5 text-xs",
   lg: "h-11 gap-2 px-[18px] text-sm",
+  /**
+   * Square icon-only button (32px): no padding, one 18px glyph in the heading
+   * colour at stroke 2.25 so it reads on a white row. Pass `aria-label`. This is
+   * the one home for icon buttons — a `p-0` on top of `sm` lost to its `px-3.5`
+   * and squeezed the svg to ~1px (the «invisible» copy icon, 2026-10-20).
+   */
+  icon: "h-8 w-8 shrink-0 p-0 text-xs [&>svg]:h-[18px] [&>svg]:w-[18px] [&>svg]:shrink-0 [&>svg]:stroke-[2.25] [&>svg]:text-heading",
 } as const;
 
 const iconSizeClasses = {
   default: "[&>svg]:h-4 [&>svg]:w-4",
   sm: "[&>svg]:h-3.5 [&>svg]:w-3.5",
   lg: "[&>svg]:h-4 [&>svg]:w-4",
+  icon: "",
 } as const;
 
 export type ButtonVariant = keyof typeof variantClasses;

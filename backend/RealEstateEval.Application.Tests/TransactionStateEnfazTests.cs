@@ -61,6 +61,31 @@ public class TransactionStateEnfazTests
         Assert.Contains("شهادة الإيداع", error);
     }
 
+    /// <summary>Decision 2026-10-20: a deed never goes to Enfaz under a temporary number.</summary>
+    [Fact]
+    public async Task The_handover_fixes_the_official_reference_when_it_is_still_temporary()
+    {
+        await using var rig = Arrange(studyIssued: true);
+        var transaction = Transaction.CreateDraft("TMP-26-00009", DateTime.UtcNow);
+        rig.Db.Transactions.Add(transaction);
+        (await rig.Db.WorkOrderProperties.SingleAsync(p => p.Id == PropertyId)).TransactionId = transaction.Id;
+        await rig.Db.SaveChangesAsync();
+        rig.Db.ChangeTracker.Clear();
+        var service = new TransactionStateService(
+            new TransactionStateRepository(rig.Db),
+            new FakeValuationRequests(open: false),
+            TestInspectorFeeServiceFactory.CreateTimeline(rig.Db),
+            transactions: new TransactionReferenceService(new TransactionRepository(rig.Db)));
+
+        var (result, error) = await service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "specialist-1");
+
+        Assert.Null(error);
+        Assert.NotNull(result!.EnfazHandoverAtUtc);
+        var confirmed = await rig.Db.Transactions.AsNoTracking().SingleAsync(t => t.Id == transaction.Id);
+        Assert.StartsWith("PR-", confirmed.ReferenceNumber);
+        Assert.NotNull(confirmed.ConfirmedAtUtc);
+    }
+
     [Fact]
     public async Task The_handover_is_recorded_when_everything_is_in_place()
     {

@@ -39,6 +39,15 @@ public interface IKeyEnvelopesService
         string actorDisplayName,
         CancellationToken cancellationToken = default);
 
+    /// <summary>The reviewer corrects where a deed's matching key is (decision 2026-10-20).</summary>
+    Task<(KeyEnvelopeDto? Envelope, string? Error)> SetAssignmentKeyLocationAsync(
+        Guid envelopeId,
+        Guid assignmentId,
+        SetKeyLocationRequest request,
+        string actorUserId,
+        string actorDisplayName,
+        CancellationToken cancellationToken = default);
+
     Task<(KeyEnvelopeDto? Envelope, string? Error)> CreateHandoffAsync(
         Guid envelopeId,
         CreateKeyEnvelopeHandoffRequest request,

@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, Spinner, cn, confirmAction, opsFldControl, promptAction, useToast } from "@platform/ui-kit";
 import {
   approveReportDraft,
+  ensureReportNumber,
   registerDepositCertificate,
   withdrawReportDraftApproval,
   type ValuationReportDraftDto,
@@ -63,8 +64,15 @@ export function ReportDraftApprovalBar({
 }: {
   propertyId: string;
   draft: ValuationReportDraftDto;
-  /** Builds the printed report with the approval date (the browser's own print HTML); reports its steps. */
-  buildApprovedHtml: (reportDate: string, onPhase: (phase: string) => void) => Promise<string>;
+  /**
+   * Builds the printed report with the approval date and the report number the server just fixed
+   * (the browser's own print HTML); reports its steps.
+   */
+  buildApprovedHtml: (
+    reportDate: string,
+    onPhase: (phase: string) => void,
+    reportNumber: string,
+  ) => Promise<string>;
 }) {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -103,9 +111,17 @@ export function ReportDraftApprovalBar({
     // The report date is the approval date, taken once so the printed copy and the record agree.
     const reportDate = todayIso();
     setBusy("approve");
-    setPhase("تجهيز نسخة التقرير…");
+    setPhase("تثبيت رقم التقرير…");
     try {
-      const html = await buildApprovedHtml(reportDate, setPhase);
+      // Decision 2026-10-19: the number is fixed first (PRV-… from the transaction's PR root) so the
+      // printed copy carries it; without it nothing is approved.
+      const numbered = await ensureReportNumber(config, draft.valuationRequestId);
+      if (!numbered.ok) {
+        showToast(numbered.message ?? "تعذّر تثبيت رقم التقرير", "error");
+        return;
+      }
+      setPhase("تجهيز نسخة التقرير…");
+      const html = await buildApprovedHtml(reportDate, setPhase, numbered.data.reportNumber);
       setPhase("رفع نسخة التقرير المعتمدة…");
       const res = await approveReportDraft(config, draft.valuationRequestId, { reportDate, html });
       if (!res.ok) {

@@ -24,6 +24,7 @@ const CLUSTER_COLORS: Record<LayerKey, { bg: string; ring: string; fg: string }>
   active: { bg: "#12284C", ring: "rgba(164,144,111,.5)", fg: "#c8b591" },
   archive: { bg: "#8a8d96", ring: "rgba(138,141,150,.35)", fg: "#fff" },
   comparables: { bg: "#a4906f", ring: "rgba(164,144,111,.35)", fg: "#fff" },
+  failures: { bg: "#d9694f", ring: "rgba(217,105,79,.35)", fg: "#fff" },
 };
 
 /** Google map styles matching the three existing basemap buttons. */
@@ -118,13 +119,13 @@ function clusterRenderer(g: typeof google, kind: LayerKey): Renderer {
           scaledSize: new g.maps.Size(box, box),
           anchor: new g.maps.Point(c, c),
         },
-        zIndex: 1000 + count,
+        zIndex: (kind === "failures" ? 2000 : 1000) + count,
       });
     },
   };
 }
 
-const LAYERS: LayerKey[] = ["active", "archive", "comparables"];
+const LAYERS: LayerKey[] = ["active", "archive", "failures", "comparables"];
 
 export function PropertyMapCanvasGoogle({
   markers,
@@ -177,6 +178,7 @@ export function PropertyMapCanvasGoogle({
     const byLayer: Record<LayerKey, google.maps.Marker[]> = {
       active: [],
       archive: [],
+      failures: [],
       comparables: [],
     };
     const selected = selectedRef.current;
@@ -186,7 +188,8 @@ export function PropertyMapCanvasGoogle({
       const marker = new g.maps.Marker({
         position: { lat: m.coords.lat, lng: m.coords.lng },
         icon: pinIcon(g, m, isSel),
-        zIndex: isSel ? 600 : undefined,
+        // Failure pins sit above the other layers' clusters at the same spot.
+        zIndex: isSel ? 3000 : m.layer === "failures" ? 2500 : undefined,
         title: m.title ? [m.title, m.subtitle].filter(Boolean).join(" — ") : undefined,
       });
       marker.addListener("click", () => onSelectRef.current(m.id));

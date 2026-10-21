@@ -263,6 +263,12 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
     removeSections(dom, ["20"]);
   }
 
+  if (fill.isApartment) {
+    // An apartment records no facades — nothing to print, nothing to mark missing.
+    removeLabeledPairs(dom, FACADE_LABELS);
+    removeFacadeColumn(dom);
+  }
+
   if (!fill.isLand) return;
   // Building-only sections — vacant land has no on-site meters/utilities table either.
   // §10 «مكونات العقار» stays when the specialist listed components (a fence, a room…).
@@ -280,19 +286,23 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
       "حالة العقار",
       "حالة الإشغال",
       "العمر الفعلي",
-      "تشطيب الواجهات",
-      "نوع الواجهة الشمالية",
-      "نوع الواجهة الشرقية",
-      "نوع الواجهة الجنوبية",
-      "نوع الواجهة الغربية",
-      "تشطيب الواجهة الشمالية",
-      "تشطيب الواجهة الشرقية",
-      "تشطيب الواجهة الجنوبية",
-      "تشطيب الواجهة الغربية",
+      ...FACADE_LABELS,
     ]),
   );
   removeFacadeColumn(dom);
 }
+
+const FACADE_LABELS = new Set([
+  "تشطيب الواجهات",
+  "نوع الواجهة الشمالية",
+  "نوع الواجهة الشرقية",
+  "نوع الواجهة الجنوبية",
+  "نوع الواجهة الغربية",
+  "تشطيب الواجهة الشمالية",
+  "تشطيب الواجهة الشرقية",
+  "تشطيب الواجهة الجنوبية",
+  "تشطيب الواجهة الغربية",
+]);
 
 export function applyValuationReportLiveFill(
   dom: Document,
