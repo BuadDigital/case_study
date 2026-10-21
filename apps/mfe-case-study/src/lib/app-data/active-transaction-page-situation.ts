@@ -149,18 +149,7 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
         sub: SUB_TODAY,
         tone: "warn",
       },
-      {
-        key: "doneToday",
-        label: "—",
-        sub: "مخصصة للحزمة",
-        tone: "green",
-      },
-      {
-        key: "overdue",
-        label: "—",
-        sub: "—",
-        tone: "red",
-      },
+      // Only two cards: «doneToday» / «overdue» had no metric behind them (always 0, label «—»).
     ],
     "property-inspection": partyCards("مكتملة"),
     "active-inspection": partyCards("مكتملة"),

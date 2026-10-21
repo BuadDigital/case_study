@@ -91,3 +91,6 @@ docs/architecture/*
 !docs/architecture/table-ownership.json
 # The approved Arabic wording and its baseline — read by tests/architecture/approved-terms.test.ts.
 !docs/terms/
+
+# Claude Code local settings and skills — per-developer, not shared.
+.claude/

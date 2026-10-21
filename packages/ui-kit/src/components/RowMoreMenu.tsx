@@ -168,7 +168,7 @@ function computeMenuStyle(
 
 const moreBtnClass = (open: boolean) =>
   cn(
-    "inline-grid h-8 w-8 place-items-center rounded-lg border border-transparent bg-transparent text-text-2 outline-none transition-[background,color,border-color] duration-150 hover:border-border-md hover:bg-surface-2 hover:text-heading",
+    "inline-grid h-8 w-8 max-lg:h-11 max-lg:w-11 place-items-center rounded-lg border border-transparent bg-transparent text-text-2 outline-none transition-[background,color,border-color] duration-150 hover:border-border-md hover:bg-surface-2 hover:text-heading",
     open && "border-border-md bg-surface-2 text-heading",
   );
 

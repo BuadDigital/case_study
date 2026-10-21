@@ -8,6 +8,9 @@ import {
 import { getValidAuthSession } from "@platform/auth-client";
 import {
   Button,
+  cn,
+  MobileRecordCard,
+  MobileRecordList,
   Note,
   PageGutter,
   PageShell,
@@ -32,6 +35,19 @@ const KIND_LABELS: Record<string, string> = {
   "key-envelope-handoff-create": "مناولة مفاتيح",
   "key-envelope-handoff-confirm": "تأكيد مناولة",
 };
+
+/** Display values for one device row — shared by the table and the phone cards. */
+function syncRowView(row: FieldSyncStatusDto) {
+  return {
+    name: row.displayName?.trim() || row.userId,
+    role: row.roleId || "—",
+    age: row.ageHours != null ? `${row.ageHours} س` : "—",
+    kinds: row.kinds.map((k) => KIND_LABELS[k] ?? k).join(" · ") || "—",
+    lastSeen: row.lastSeenAtUtc
+      ? new Date(row.lastSeenAtUtc).toLocaleString("ar-SA")
+      : "—",
+  };
+}
 
 /**
  * Supervisor board — "pending envelopes not yet synced".
@@ -103,44 +119,73 @@ export function FieldSyncSupervisorView() {
             لا عناصر بانتظار المزامنة — المزامنة الميدانية سليمة
           </div>
         ) : (
-          <Table framed className="min-w-[40rem] text-sm" pending={loading}>
-            <THead>
-              <Tr hoverable={false}>
-                <Th>المستخدم</Th>
-                <Th>الدور</Th>
-                <Th>بانتظار المزامنة</Th>
-                <Th>العمر</Th>
-                <Th>الأنواع</Th>
-                <Th>آخر ظهور</Th>
-              </Tr>
-            </THead>
-            <TBody>
-              {rows.map((row) => (
-                <Tr key={row.id} hoverable={false}>
-                  <Td className="font-medium text-text-1">
-                    {row.displayName?.trim() || row.userId}
-                  </Td>
-                  <Td className="text-text-2">{row.roleId || "—"}</Td>
-                  <TdLtr bare className="tabular-nums">
-                    {row.pendingCount}
-                  </TdLtr>
-                  <Td className="text-amber-700">
-                    {row.ageHours != null ? `${row.ageHours} س` : "—"}
-                  </Td>
-                  <Td className="text-text-2">
-                    {row.kinds
-                      .map((k) => KIND_LABELS[k] ?? k)
-                      .join(" · ") || "—"}
-                  </Td>
-                  <TdLtr bare className="text-text-3">
-                    {row.lastSeenAtUtc
-                      ? new Date(row.lastSeenAtUtc).toLocaleString("ar-SA")
-                      : "—"}
-                  </TdLtr>
-                </Tr>
-              ))}
-            </TBody>
-          </Table>
+          <>
+            {/* Phones: one card per device — the 40rem table scrolled sideways. */}
+            <MobileRecordList
+              className={cn(
+                "lg:hidden transition-opacity",
+                loading && "opacity-60",
+              )}
+            >
+              {rows.map((row) => {
+                const v = syncRowView(row);
+                return (
+                  <MobileRecordCard
+                    key={row.id}
+                    tone="gold"
+                    title={v.name}
+                    subtitle={v.role}
+                    fields={[
+                      {
+                        label: "بانتظار المزامنة",
+                        value: row.pendingCount,
+                        ltr: true,
+                      },
+                      {
+                        label: "العمر",
+                        value: <span className="text-amber-700">{v.age}</span>,
+                      },
+                      { label: "الأنواع", value: v.kinds, wide: true },
+                      { label: "آخر ظهور", value: v.lastSeen, ltr: true, wide: true },
+                    ]}
+                  />
+                );
+              })}
+            </MobileRecordList>
+            <div className="max-lg:hidden">
+              <Table framed className="min-w-[40rem] text-sm" pending={loading}>
+                <THead>
+                  <Tr hoverable={false}>
+                    <Th>المستخدم</Th>
+                    <Th>الدور</Th>
+                    <Th>بانتظار المزامنة</Th>
+                    <Th>العمر</Th>
+                    <Th>الأنواع</Th>
+                    <Th>آخر ظهور</Th>
+                  </Tr>
+                </THead>
+                <TBody>
+                  {rows.map((row) => {
+                    const v = syncRowView(row);
+                    return (
+                      <Tr key={row.id} hoverable={false}>
+                        <Td className="font-medium text-text-1">{v.name}</Td>
+                        <Td className="text-text-2">{v.role}</Td>
+                        <TdLtr bare className="tabular-nums">
+                          {row.pendingCount}
+                        </TdLtr>
+                        <Td className="text-amber-700">{v.age}</Td>
+                        <Td className="text-text-2">{v.kinds}</Td>
+                        <TdLtr bare className="text-text-3">
+                          {v.lastSeen}
+                        </TdLtr>
+                      </Tr>
+                    );
+                  })}
+                </TBody>
+              </Table>
+            </div>
+          </>
         )}
       </PageGutter>
     </PageShell>

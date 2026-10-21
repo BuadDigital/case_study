@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { ComparablePropertyDto, ValuationComparableSelectionDto } from "@platform/api-client";
 import { Td, TdLtr, cn } from "@platform/ui-kit";
 import {
@@ -16,13 +16,40 @@ const COMMIT_MS = 350;
 
 const inputClass =
   "w-full rounded-md border px-2 py-1.5 text-center text-[13px] font-bold outline-none";
+/** Phone card: full width, 44px tall, 16px so iOS never zooms on focus. */
+const touchInputClass =
+  "min-h-11 w-full rounded-[9px] border px-3 py-2 text-center text-[16px] font-extrabold outline-none";
+
+/** A table cell, or — on the phone card — a labelled block holding the same input. */
+function MoneySlot({
+  touch,
+  label,
+  tdClassName,
+  children,
+}: {
+  touch?: boolean;
+  label: string;
+  tdClassName: string;
+  children: ReactNode;
+}) {
+  if (!touch) return <Td className={tdClassName}>{children}</Td>;
+  return (
+    <label className="block min-w-0">
+      <span className="mb-1 block text-[11px] font-medium text-text-3">{label}</span>
+      {children}
+    </label>
+  );
+}
 
 export function ComparablesBankMoneyCells({
   item,
   comp,
   subjectSqm,
   onSaveOverride,
+  touch,
 }: {
+  /** Phone card: labelled full-width inputs in a 2-column grid instead of table cells. */
+  touch?: boolean;
   item: ValuationComparableSelectionDto;
   comp: ComparablePropertyDto;
   subjectSqm: number | null;
@@ -100,9 +127,10 @@ export function ComparablesBankMoneyCells({
   flushRef.current = flush;
   useEffect(() => () => flushRef.current(), []);
 
-  return (
+  const ratioWarn = ratio != null && ratio >= 2;
+  const cells = (
     <>
-      <Td className="bg-gold-soft text-center">
+      <MoneySlot touch={touch} label="سعر المتر" tdClassName="bg-gold-soft text-center">
         <input
           dir="ltr"
           inputMode="decimal"
@@ -129,15 +157,14 @@ export function ComparablesBankMoneyCells({
             }
           }}
           className={cn(
-            inputClass,
-            "w-[96px] text-[14px] font-extrabold",
+            touch ? touchInputClass : cn(inputClass, "w-[96px] text-[14px] font-extrabold"),
             item.priceOverrideSar != null
               ? "border-border-md bg-surface text-heading"
               : "border-border bg-surface-2 text-heading",
           )}
         />
-      </Td>
-      <Td className="text-center">
+      </MoneySlot>
+      <MoneySlot touch={touch} label="سعر العقار" tdClassName="text-center">
         <input
           dir="ltr"
           inputMode="decimal"
@@ -161,15 +188,14 @@ export function ComparablesBankMoneyCells({
             }
           }}
           className={cn(
-            inputClass,
-            "w-[104px] text-[13.5px] font-extrabold",
+            touch ? touchInputClass : cn(inputClass, "w-[104px] text-[13.5px] font-extrabold"),
             item.priceOverrideSar != null
               ? "border-border-md bg-surface text-heading"
               : "border-border bg-surface-2 text-text-2",
           )}
         />
-      </Td>
-      <Td className="text-center">
+      </MoneySlot>
+      <MoneySlot touch={touch} label="المساحة (م²)" tdClassName="text-center">
         <input
           dir="ltr"
           inputMode="decimal"
@@ -193,30 +219,50 @@ export function ComparablesBankMoneyCells({
             }
           }}
           className={cn(
-            inputClass,
-            "w-[84px]",
+            touch ? touchInputClass : cn(inputClass, "w-[84px]"),
             item.areaOverrideSqm != null
               ? "border-border-md bg-surface text-heading"
               : "border-border bg-surface-2 text-text-2",
           )}
         />
-      </Td>
-      <TdLtr
-        bare
-        className={cn(
-          "text-center text-[13.5px] font-bold",
-          ratio != null && ratio >= 2 ? "text-red-text" : "text-heading",
-        )}
-        title={
-          ratio != null && ratio >= 2
-            ? "نسبة ≥ ٢ — تُفعِّل طريقة المضاعف على الجدول كاملاً"
-            : undefined
-        }
-      >
-        {areaRatio(subjectSqm, live.area)}
-      </TdLtr>
+      </MoneySlot>
+      {touch ? (
+        <div className="min-w-0">
+          <span className="mb-1 block text-[11px] font-medium text-text-3">نسبة المساحة</span>
+          <bdi
+            dir="ltr"
+            className={cn(
+              "flex min-h-11 items-center justify-center rounded-[9px] bg-surface-2 text-[15px] font-bold tabular-nums",
+              ratioWarn ? "text-red-text" : "text-heading",
+            )}
+          >
+            {areaRatio(subjectSqm, live.area)}
+          </bdi>
+          {ratioWarn ? (
+            <span className="mt-1 block text-[10.5px] text-red-text">
+              نسبة ≥ ٢ — تُفعِّل طريقة المضاعف على الجدول كاملاً
+            </span>
+          ) : null}
+        </div>
+      ) : (
+        <TdLtr
+          bare
+          className={cn(
+            "text-center text-[13.5px] font-bold",
+            ratioWarn ? "text-red-text" : "text-heading",
+          )}
+          title={
+            ratioWarn
+              ? "نسبة ≥ ٢ — تُفعِّل طريقة المضاعف على الجدول كاملاً"
+              : undefined
+          }
+        >
+          {areaRatio(subjectSqm, live.area)}
+        </TdLtr>
+      )}
     </>
   );
+  return touch ? <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">{cells}</div> : cells;
 }
 
 export function ComparablesBankMoneyReadOnly({

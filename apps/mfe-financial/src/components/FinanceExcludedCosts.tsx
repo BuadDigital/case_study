@@ -8,6 +8,8 @@ import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   EmptyState,
+  MobileRecordCard,
+  MobileRecordList,
   QueryErrorState,
   StatusPill,
   TBody,
@@ -28,6 +30,23 @@ import {
   financeExcludedFeesOptions,
   financeExcludedStatementsOptions,
 } from "../query/costs-account-queries";
+
+/** Why a line left the payout cycle (table cell and phone card). */
+function excludedReason(row: {
+  exclusionReason?: string | null;
+  lastTransitionReason?: string | null;
+  excludedFromBatch: boolean;
+}) {
+  return (
+    row.exclusionReason?.trim() ||
+    row.lastTransitionReason?.trim() ||
+    (row.excludedFromBatch ? "مستبعد من الصرف" : "صافي صفر")
+  );
+}
+
+const cancelledPill = (
+  <StatusPill label="ملغى" style={finStatusStyle("cancelled")} />
+);
 
 /**
  * Excluded: written-off/excluded lines before entitlement + cancelled payrolls (log).
@@ -125,7 +144,23 @@ export function FinanceExcludedCosts({
               </span>
             </h3>
           </div>
-          <TableFrame>
+          {/* Phones: one card per line instead of the 5-column table. */}
+          <MobileRecordList className="lg:hidden">
+            {excludedLines.map((row) => (
+              <MobileRecordCard
+                key={row.workflowTaskId}
+                tone="muted"
+                title={resolvePartyName(row.assigneeId, staffUsers)}
+                subtitle={row.propertyLabel || "—"}
+                fields={[
+                  { label: "أمر العمل", ltr: true, value: row.poNumber },
+                  { label: "الصافي", ltr: true, value: fmtSar(row.netFeeSar, { trim: true }) },
+                  { label: "السبب", value: excludedReason(row), wide: true },
+                ]}
+              />
+            ))}
+          </MobileRecordList>
+          <TableFrame className="max-lg:hidden">
             <Table>
               <THead>
                 <Tr hoverable={false}>
@@ -159,13 +194,7 @@ export function FinanceExcludedCosts({
                       {fmtSar(row.netFeeSar, { trim: true })}
                     </TdLtr>
                     <Td>
-                      <span className={finMuted}>
-                        {row.exclusionReason?.trim() ||
-                          row.lastTransitionReason?.trim() ||
-                          (row.excludedFromBatch
-                            ? "مستبعد من الصرف"
-                            : "صافي صفر")}
-                      </span>
+                      <span className={finMuted}>{excludedReason(row)}</span>
                     </Td>
                   </Tr>
                 ))}
@@ -185,7 +214,26 @@ export function FinanceExcludedCosts({
               </span>
             </h3>
           </div>
-          <TableFrame>
+          <MobileRecordList className="lg:hidden">
+            {cancelledStatements.map((s) => (
+              <MobileRecordCard
+                key={s.id}
+                tone="muted"
+                title={
+                  <bdi dir="ltr" className="text-gold-d">
+                    {s.referenceNumber}
+                  </bdi>
+                }
+                subtitle={resolvePartyName(s.assigneeId, staffUsers)}
+                status={cancelledPill}
+                fields={[
+                  { label: "المبلغ", ltr: true, value: fmtSar(s.totalNetSar, { trim: true }) },
+                  { label: "سبب الإلغاء", value: (s.cancelReason ?? "").trim() || "—", wide: true },
+                ]}
+              />
+            ))}
+          </MobileRecordList>
+          <TableFrame className="max-lg:hidden">
             <Table>
               <THead>
                 <Tr hoverable={false}>
@@ -206,7 +254,7 @@ export function FinanceExcludedCosts({
                         >
                           {s.referenceNumber}
                         </span>
-                        <StatusPill label="ملغى" style={finStatusStyle("cancelled")} />
+                        {cancelledPill}
                       </span>
                     </Td>
                     <Td>

@@ -9,6 +9,7 @@ import { exportRowsToCsv } from "@platform/app-shared/export/export-csv";
 import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { Can } from "@platform/app-shared/components/Can";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import {
   cn,
@@ -73,6 +74,7 @@ export function AuditLogView() {
     }
     return map;
   }, [displayName, staffResult?.users, user?.displayName, user?.id]);
+  const isDesktopViewport = useViewportDesktop();
   const [entries, setEntries] = useState<AuditLogDto[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -204,7 +206,48 @@ export function AuditLogView() {
           <EmptyState line="لا توجد أحداث مسجّلة بعد." />
         </section>
       ) : (
-        <TableFrame className={opsLetterCard}>
+        <>
+          {isDesktopViewport === true ? null : (
+            // Phones: one card per event — the 5-column table clipped «الإجراء».
+            <ul className="m-0 flex list-none flex-col gap-2 p-0 lg:hidden">
+              {entries.map((entry) => (
+                <li
+                  key={entry.id}
+                  className="rounded-[12px] border border-border bg-surface px-3.5 py-3"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="min-w-0 text-[13.5px] font-bold text-heading">
+                      {auditActionLabel(entry.action)}
+                    </span>
+                    <span
+                      className="shrink-0 text-[11.5px] font-semibold text-text-2"
+                      title={entry.actorId}
+                    >
+                      {auditActorLabel(
+                        entry.actorId,
+                        actorNames,
+                        entry.actorDisplayName,
+                      )}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-[12px] text-text-3">
+                    <bdi>{formatAt(entry.createdAtUtc)}</bdi>
+                  </div>
+                  <div
+                    className="mt-1 truncate text-[12.5px] text-text-2"
+                    title={`${entry.entityType} · ${entry.entityId}`}
+                  >
+                    {auditEntityLabel(entry.entityType, entry.entityId)}
+                  </div>
+                  <p className="m-0 mt-1 line-clamp-3 text-[12.5px] leading-snug text-text-2">
+                    {auditDetailSummary(entry.action, entry.before, entry.after)}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          )}
+          {isDesktopViewport === false ? null : (
+        <TableFrame className={cn(opsLetterCard, "hidden lg:block")}>
           <Table wrapClassName="min-w-[860px]">
             <THead>
               <Tr hoverable={false}>
@@ -260,6 +303,8 @@ export function AuditLogView() {
             </TBody>
           </Table>
         </TableFrame>
+          )}
+        </>
       )}
     </PageShell>
   );

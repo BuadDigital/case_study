@@ -4,6 +4,8 @@ import { fmtSar } from "@platform/app-shared/format/number";
 import {
   EmptyState,
   ListPager,
+  MobileRecordCard,
+  MobileRecordList,
   TBody,
   THead,
   Table,
@@ -28,6 +30,87 @@ import {
 } from "../lib/finance-cost-parties";
 import { finSearch, finSearchIcon } from "../lib/finance-tw";
 import type { PartyBillingStatementsWorkflow } from "./usePartyBillingStatementsWorkflow";
+
+type DueLine = PartyBillingStatementsWorkflow["filteredDues"][number];
+
+/** Per-line facts the table row and the phone card both read. */
+function dueLineMeta(line: DueLine) {
+  return {
+    age: daysSinceIsoCost(line.accruedAtUtc ?? line.updatedAtUtc),
+    ded: line.supervisorDiscountSar || 0,
+    list: line.agreedFeeSar || line.netFeeSar,
+    selectable: line.netFeeSar > 0,
+    rowKey: `${line.workflowTaskId}:${line.propertyId ?? "po"}`,
+  };
+}
+
+/** Selection checkbox, or a dashed box for a zero-net line (table cell and phone card). */
+function DueLineCheck({
+  line,
+  on,
+  toggle,
+}: {
+  line: DueLine;
+  on: boolean;
+  toggle: (line: DueLine) => void;
+}) {
+  return line.netFeeSar > 0 ? (
+    <input
+      type="checkbox"
+      className={opsCheckInput}
+      checked={on}
+      onChange={() => toggle(line)}
+      onClick={(e) => e.stopPropagation()}
+      aria-label="تحديد البند"
+    />
+  ) : (
+    <span
+      className="inline-block h-[17px] w-[17px] shrink-0 rounded-[5px] border-2 border-dashed border-border-md"
+      title="صافي صفر"
+    />
+  );
+}
+
+/** Region/kind line + age, or the zero-net note (table cell and phone card subtitle). */
+function DueLineSub({ line }: { line: DueLine }) {
+  const { age, selectable } = dueLineMeta(line);
+  return (
+    <span className="text-[11px] text-text-3">
+      {lineRefSub(line)}
+      {selectable && age != null ? (
+        <>
+          {" · "}
+          <span
+            className={
+              age > 30
+                ? "font-semibold text-[#a5432e]"
+                : "font-semibold text-text-3"
+            }
+          >
+            منذ {age} يوماً
+          </span>
+        </>
+      ) : null}
+      {!selectable ? (
+        <span className="font-bold text-[#8a5e14]">
+          {" "}
+          · صافي صفر — يُقفل بتسوية
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+/** «تعديل التسعير» — the supervisor discount or «—» (table cell and phone card). */
+function DueDiscount({ ded }: { ded: number }) {
+  return ded > 0 ? (
+    <span className="text-xs font-bold text-[#c0553d] tabular-nums">
+      −{fmtSar(ded, { trim: true })}
+    </span>
+  ) : (
+    <span className="text-xs text-text-3">—</span>
+  );
+}
 
 /**
  * Outstanding dues: search, group select and the selectable line table over
@@ -170,7 +253,44 @@ export function FinancePartyBillingDuesSection({
           />
         </div>
       ) : (
-        <TableFrame>
+        <>
+        {/* Phones: selectable cards (tap or checkbox) — the toolbar above keeps «تحديد الكل» and «تجهيز». */}
+        <MobileRecordList className="lg:hidden">
+          {filteredDues.map((line) => {
+            const on = selected.has(line.workflowTaskId);
+            const { ded, list, selectable, rowKey } = dueLineMeta(line);
+            return (
+              <MobileRecordCard
+                key={rowKey}
+                tone={on ? "ink" : selectable ? undefined : "muted"}
+                className={cn(
+                  !selectable && "opacity-70",
+                  on && "bg-[color-mix(in_srgb,var(--ink)_5%,var(--surface))]",
+                )}
+                onOpen={selectable ? () => toggle(line) : undefined}
+                title={
+                  <span className="inline-flex items-center gap-2.5">
+                    <DueLineCheck line={line} on={on} toggle={toggle} />
+                    <bdi dir="ltr" className="text-[13px] font-bold text-gold-d">
+                      {lineRefMain(line)}
+                    </bdi>
+                  </span>
+                }
+                subtitle={<DueLineSub line={line} />}
+                fields={[
+                  { label: "سعر الجدول", ltr: true, value: fmtSar(list, { trim: true }) },
+                  { label: "تعديل التسعير", value: <DueDiscount ded={ded} /> },
+                  {
+                    label: "الصافي",
+                    ltr: true,
+                    value: fmtSar(line.netFeeSar, { trim: true }),
+                  },
+                ]}
+              />
+            );
+          })}
+        </MobileRecordList>
+        <TableFrame className="max-lg:hidden">
           <Table wrapClassName="max-h-[calc(100vh-290px)] overflow-auto">
             <THead>
               <Tr hoverable={false}>
@@ -190,13 +310,7 @@ export function FinancePartyBillingDuesSection({
             <TBody>
               {filteredDues.map((line) => {
                 const on = selected.has(line.workflowTaskId);
-                const age = daysSinceIsoCost(
-                  line.accruedAtUtc ?? line.updatedAtUtc,
-                );
-                const ded = line.supervisorDiscountSar || 0;
-                const list = line.agreedFeeSar || line.netFeeSar;
-                const selectable = line.netFeeSar > 0;
-                const rowKey = `${line.workflowTaskId}:${line.propertyId ?? "po"}`;
+                const { ded, list, selectable, rowKey } = dueLineMeta(line);
                 return (
                   <Tr
                     key={rowKey}
@@ -219,21 +333,7 @@ export function FinancePartyBillingDuesSection({
                     }}
                   >
                     <Td>
-                      {selectable ? (
-                        <input
-                          type="checkbox"
-                          className={opsCheckInput}
-                          checked={on}
-                          onChange={() => toggle(line)}
-                          onClick={(e) => e.stopPropagation()}
-                          aria-label="تحديد البند"
-                        />
-                      ) : (
-                        <span
-                          className="inline-block h-[17px] w-[17px] rounded-[5px] border-2 border-dashed border-border-md"
-                          title="صافي صفر"
-                        />
-                      )}
+                      <DueLineCheck line={line} on={on} toggle={toggle} />
                     </Td>
                     <Td>
                       <div className="flex w-full min-w-0 flex-col items-stretch gap-0.5 text-start">
@@ -243,29 +343,7 @@ export function FinancePartyBillingDuesSection({
                         >
                           {lineRefMain(line)}
                         </span>
-                        <span className="text-[11px] text-text-3">
-                          {lineRefSub(line)}
-                          {selectable && age != null ? (
-                            <>
-                              {" · "}
-                              <span
-                                className={
-                                  age > 30
-                                    ? "font-semibold text-[#a5432e]"
-                                    : "font-semibold text-text-3"
-                                }
-                              >
-                                منذ {age} يوماً
-                              </span>
-                            </>
-                          ) : null}
-                          {!selectable ? (
-                            <span className="font-bold text-[#8a5e14]">
-                              {" "}
-                              · صافي صفر — يُقفل بتسوية
-                            </span>
-                          ) : null}
-                        </span>
+                        <DueLineSub line={line} />
                       </div>
                     </Td>
                     <TdLtr
@@ -275,13 +353,7 @@ export function FinancePartyBillingDuesSection({
                       {fmtSar(list, { trim: true })}
                     </TdLtr>
                     <Td className="text-center">
-                      {ded > 0 ? (
-                        <span className="text-xs font-bold text-[#c0553d] tabular-nums">
-                          −{fmtSar(ded, { trim: true })}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-text-3">—</span>
-                      )}
+                      <DueDiscount ded={ded} />
                     </Td>
                     <TdLtr
                       className="text-center"
@@ -295,6 +367,7 @@ export function FinancePartyBillingDuesSection({
             </TBody>
           </Table>
         </TableFrame>
+        </>
       )}
       {!readyQuery.isPending && duesTotalCount > 0 ? (
         <ListPager

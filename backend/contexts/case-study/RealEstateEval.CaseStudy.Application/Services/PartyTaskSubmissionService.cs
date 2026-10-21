@@ -266,15 +266,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (!PartyTaskSubmissionRules.IsPartySubmissionKind(task.Kind))
             return (null, Error("نوع المهمة غير مدعوم"));
 
-        if (actor is not null
-            && !PoRoleMatrixRules.CanWritePartyTask(
-                actor.PrototypeRole,
-                task.AssigneeId,
-                actor.UserId,
-                actor.DistributionAssigneeId))
-        {
+        if (!PartyTaskSubmissionRules.MaySubmit(actor, task))
             return (null, Error("ليس لديك صلاحية إرسال هذه المهمة"));
-        }
 
         var entity = await _repo.GetSubmissionAsync(taskId, track: true, cancellationToken);
         if (entity is null)

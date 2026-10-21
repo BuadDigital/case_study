@@ -19,6 +19,7 @@ import {
   tdJustClass,
   noteClass,
   cellInputBaseClass,
+  cellInputTouchClass,
   panelCardClass,
 } from "./AdjustmentsMatrixCells.styles";
 
@@ -37,6 +38,7 @@ export {
   tdJustClass,
   noteClass,
   cellInputBaseClass,
+  cellInputTouchClass,
   panelCardClass,
 };
 
@@ -47,249 +49,16 @@ export {
  * (rerender-defer-reads). No data fetching, no matrix rules.
  */
 
+/**
+ * `touch` — the same cell for the phone cards: a `<div>` (with `className`)
+ * instead of a `<td>`, full-width inputs and 44px buttons. Same draft/commit
+ * logic, so a phone edit saves exactly like a table edit.
+ */
+export type TouchProps = { touch?: boolean; className?: string };
+
 /* ─── Module-level cell components —
    Defining them inside the parent remounts them on every render
    (lost input focus + noticeable lag) — rerender-no-inline-components. ─── */
-
-export function LabelCell({
-  label,
-  hint,
-  tip,
-  locked,
-  pickable,
-  picked,
-  onPick,
-  removable,
-  included,
-  onToggle,
-  offNote,
-  areaFactor,
-  onAreaFactorChange,
-  deleteKey,
-  confirmDelete,
-  onConfirmDelete,
-  onDelete,
-  onRenameLabel,
-}: {
-  label: string;
-  hint?: string;
-  tip?: string;
-  locked: boolean;
-  pickable?: boolean;
-  picked?: boolean;
-  onPick?: () => void;
-  removable?: boolean;
-  included?: boolean;
-  onToggle?: () => void;
-  offNote?: string;
-  /** Present only on the area row — “adjustment % per multiple / ratio”. */
-  areaFactor?: number;
-  onAreaFactorChange?: (value: string) => Promise<boolean> | void;
-  /** Two-step delete: × → “Delete? ✓ ×”. */
-  deleteKey?: string;
-  confirmDelete?: string | null;
-  onConfirmDelete?: (key: string | null) => void;
-  onDelete?: () => void;
-  /** Custom difference factor — the name is typed in the label cell. */
-  onRenameLabel?: (text: string) => void;
-}) {
-  return (
-    <td className={tdLabelClass}>
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          {onRenameLabel ? (
-            <InlineDraftInput
-              disabled={locked}
-              placeholder="اسم العامل…"
-              value={label}
-              onCommit={onRenameLabel}
-              className="w-full rounded-[7px] border border-dashed border-border-md bg-surface px-2 py-1 text-[12.5px] font-bold text-heading"
-            />
-          ) : (
-            <div
-              title={tip || undefined}
-              className="cursor-default text-[12.5px] font-bold leading-[1.35] text-heading"
-            >
-              {label}
-            </div>
-          )}
-          {hint ? (
-            <div className="mt-px text-[10.5px] font-normal leading-[1.4] text-text-3">
-              {hint}
-            </div>
-          ) : null}
-        </div>
-        {pickable ? (
-          <button
-            type="button"
-            tabIndex={-1}
-            title={
-              picked
-                ? "الأساس المعتمد في التسويات"
-                : "اعتماد هذا الأساس في التسويات"
-            }
-            disabled={locked}
-            onClick={onPick}
-            className={cn(
-              "ms-auto grid size-6 shrink-0 cursor-pointer place-items-center rounded-full border text-[13px] font-bold leading-none text-gold-d disabled:cursor-not-allowed",
-              picked ? "border-gold bg-gold-soft" : "border-border bg-surface",
-            )}
-          >
-            {picked ? "●" : ""}
-          </button>
-        ) : null}
-        {removable ? (
-          <button
-            type="button"
-            tabIndex={-1}
-            title={
-              included === false
-                ? "تفعيل احتساب البند"
-                : "استبعاد البند من الاحتساب"
-            }
-            disabled={locked}
-            onClick={onToggle}
-            className={cn(
-              "grid size-6 shrink-0 cursor-pointer place-items-center rounded-[7px] border text-[13px] font-bold leading-none text-gold-d disabled:cursor-not-allowed",
-              included === false
-                ? "border-border bg-surface"
-                : "border-gold bg-gold-soft",
-            )}
-          >
-            {included === false ? "" : "✓"}
-          </button>
-        ) : null}
-        {deleteKey && onDelete && onConfirmDelete ? (
-          confirmDelete === deleteKey ? (
-            <span className="inline-flex shrink-0 items-center gap-1">
-              <span className="text-[10.5px] font-bold text-danger">
-                حذف؟
-              </span>
-              <button
-                type="button"
-                tabIndex={-1}
-                title="تأكيد الحذف"
-                disabled={locked}
-                onClick={() => {
-                  onConfirmDelete(null);
-                  onDelete();
-                }}
-                className="grid size-[22px] cursor-pointer place-items-center rounded-[7px] border border-danger bg-danger-bg text-[12px] font-bold leading-none text-danger-text disabled:cursor-not-allowed"
-              >
-                ✓
-              </button>
-              <button
-                type="button"
-                tabIndex={-1}
-                title="إلغاء"
-                onClick={() => onConfirmDelete(null)}
-                className="grid size-[22px] cursor-pointer place-items-center rounded-[7px] border border-border bg-surface text-[12px] font-bold leading-none text-text-2"
-              >
-                ×
-              </button>
-            </span>
-          ) : (
-            <button
-              type="button"
-              tabIndex={-1}
-              title="حذف البند من الجدول"
-              disabled={locked}
-              onClick={() => onConfirmDelete(deleteKey)}
-              className="grid size-6 shrink-0 cursor-pointer place-items-center rounded-[7px] border border-border bg-surface text-[13px] font-bold leading-none text-text-3 disabled:cursor-not-allowed"
-            >
-              ×
-            </button>
-          )
-        ) : null}
-      </div>
-      {offNote ? (
-        <div className="mt-[3px] text-[10.5px] font-semibold text-danger">
-          {offNote}
-        </div>
-      ) : null}
-      {areaFactor != null && onAreaFactorChange ? (
-        <AreaFactorInput
-          value={areaFactor}
-          locked={locked}
-          onCommit={onAreaFactorChange}
-        />
-      ) : null}
-    </td>
-  );
-}
-
-function AreaFactorInput({
-  value,
-  locked,
-  onCommit,
-}: {
-  value: number;
-  locked: boolean;
-  onCommit: (raw: string) => Promise<boolean> | void;
-}) {
-  const committed = String(value);
-  const [draft, setDraft] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pending = useRef<string | null>(null);
-  const text = draft ?? committed;
-
-  function clearTimer() {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-  }
-
-  function flush() {
-    const raw = pending.current;
-    pending.current = null;
-    clearTimer();
-    if (raw == null) return;
-    if (raw === committed) {
-      setDraft(null);
-      return;
-    }
-    void Promise.resolve(onCommit(raw)).then((ok) => {
-      if (ok !== false) setDraft((d) => (d === raw ? null : d));
-    });
-  }
-
-  const flushRef = useRef(flush);
-  flushRef.current = flush;
-  useEffect(() => () => flushRef.current(), []);
-
-  return (
-    <label className="mt-1.5 flex items-center gap-[7px]">
-      <span className="text-[10.5px] font-medium text-gold-d">
-        نسبة التسوية لكل مثل أو مضاعف (٪)
-      </span>
-      <input
-        dir="ltr"
-        inputMode="decimal"
-        enterKeyHint="next"
-        type="text"
-        disabled={locked}
-        value={text}
-        onChange={(e) => {
-          const raw = e.target.value;
-          setDraft(raw);
-          pending.current = raw;
-          clearTimer();
-          timer.current = setTimeout(flush, COMMIT_MS);
-        }}
-        onKeyDown={(e) =>
-          commitKeys(e, flush, () => {
-            pending.current = null;
-            clearTimer();
-            setDraft(null);
-          })
-        }
-        onBlur={flush}
-        className="w-16 rounded-[7px] border border-border-md bg-surface px-[7px] py-[5px] text-center text-[12px] font-bold text-heading"
-      />
-    </label>
-  );
-}
 
 export function SubjCell({ value, note }: { value: string; note?: string }) {
   return (
@@ -306,7 +75,9 @@ export function JustCell({
   value,
   locked,
   onCommit,
-}: {
+  touch,
+  className,
+}: TouchProps & {
   factorKey?: string;
   value?: string;
   locked?: boolean;
@@ -345,10 +116,11 @@ export function JustCell({
   useEffect(() => () => flushRef.current(), []);
 
   if (!factorKey || !onCommit) {
-    return <td className={tdJustClass} />;
+    return touch ? null : <td className={tdJustClass} />;
   }
+  const Wrap = touch ? "div" : "td";
   return (
-    <td className={tdJustClass}>
+    <Wrap className={touch ? className : tdJustClass}>
       <input
         type="text"
         value={text}
@@ -369,9 +141,12 @@ export function JustCell({
           })
         }
         onBlur={flush}
-        className="w-full rounded-[7px] border border-border bg-surface px-2.5 py-[7px] text-[12px] font-medium text-text"
+        className={cn(
+          "w-full rounded-[7px] border border-border bg-surface px-2.5 py-[7px] font-medium text-text",
+          touch ? "min-h-11 text-[16px]" : "text-[12px]",
+        )}
       />
-    </td>
+    </Wrap>
   );
 }
 
@@ -409,7 +184,9 @@ export function CompInput({
   note,
   extra,
   onCommit,
-}: {
+  touch,
+  className,
+}: TouchProps & {
   cellKey: string;
   value: string;
   disabled: boolean;
@@ -449,8 +226,9 @@ export function CompInput({
   flushRef.current = flush;
   useEffect(() => () => flushRef.current(), []);
 
+  const Wrap = touch ? "div" : "td";
   return (
-    <td className={tdCellClass}>
+    <Wrap className={touch ? className : tdCellClass}>
       <input
         dir="ltr"
         inputMode="decimal"
@@ -474,7 +252,7 @@ export function CompInput({
         }
         onBlur={flush}
         className={cn(
-          cellInputBaseClass,
+          touch ? cellInputTouchClass : cellInputBaseClass,
           muted || auto
             ? "border-border text-gold-d"
             : "border-border-md text-heading",
@@ -483,76 +261,7 @@ export function CompInput({
       />
       {note ? <div className={noteClass}>{note}</div> : null}
       {extra}
-    </td>
-  );
-}
-
-/** Text field with a local draft — commits on blur only when changed (comp/subject description). */
-export function InlineDraftInput({
-  value,
-  disabled,
-  placeholder,
-  className,
-  onCommit,
-  hintUntilFocus = false,
-}: {
-  value: string;
-  disabled?: boolean;
-  placeholder?: string;
-  className?: string;
-  onCommit: (text: string) => void;
-  /** Spec hint: hide the current text on focus and restore it if nothing was typed. */
-  hintUntilFocus?: boolean;
-}) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const [focused, setFocused] = useState(false);
-  const [edited, setEdited] = useState(false);
-  const display = draft ?? (hintUntilFocus && focused ? "" : value);
-  return (
-    <input
-      type="text"
-      disabled={disabled}
-      placeholder={focused ? undefined : placeholder}
-      value={display}
-      onFocus={() => {
-        setFocused(true);
-        if (hintUntilFocus && draft == null) setDraft("");
-      }}
-      onChange={(e) => {
-        setEdited(true);
-        setDraft(e.target.value);
-      }}
-      onKeyDown={(e) =>
-        commitKeys(e, () => {
-          setFocused(false);
-          if (draft == null) return;
-          if (hintUntilFocus && !edited) {
-            setDraft(null);
-            return;
-          }
-          const text = draft;
-          setDraft(null);
-          setEdited(false);
-          if (text !== value) onCommit(text);
-        })
-      }
-      onBlur={() => {
-        setFocused(false);
-        if (draft == null) return;
-        if (hintUntilFocus && !edited) {
-          setDraft(null);
-          return;
-        }
-        const text = draft;
-        setDraft(null);
-        setEdited(false);
-        if (text !== value) onCommit(text);
-      }}
-      className={cn(
-        className,
-        focused ? "placeholder:opacity-0" : hintUntilFocus && value && "text-text-3",
-      )}
-    />
+    </Wrap>
   );
 }
 
@@ -563,7 +272,9 @@ export function WeightCell({
   suggestedNote,
   locked,
   onCommit,
-}: {
+  touch,
+  className,
+}: TouchProps & {
   value: string;
   manual: boolean | undefined;
   suggestedNote: string;
@@ -599,8 +310,9 @@ export function WeightCell({
   flushRef.current = flush;
   useEffect(() => () => flushRef.current(), []);
 
+  const Wrap = touch ? "div" : "td";
   return (
-    <td className={tdCellClass}>
+    <Wrap className={touch ? className : tdCellClass}>
       <input
         dir="ltr"
         inputMode="decimal"
@@ -624,69 +336,13 @@ export function WeightCell({
         }
         onBlur={flush}
         className={cn(
-          cellInputBaseClass,
+          touch ? cellInputTouchClass : cellInputBaseClass,
           manual
             ? "border-border-md bg-surface text-heading"
             : "border-border bg-surface-2 text-gold-d",
         )}
       />
       <div className={noteClass}>{manual ? "تجاوز يدوي" : suggestedNote}</div>
-    </td>
-  );
-}
-
-export function AddFactorRow({
-  options,
-  locked,
-  colSpan,
-  onAdd,
-  onAddCustom,
-}: {
-  options: { factorKey: string; labelAr: string }[];
-  locked: boolean;
-  colSpan: number;
-  onAdd: (factorKey: string, labelAr: string) => void;
-  onAddCustom: () => void;
-}) {
-  return (
-    <tr className="bg-surface-2">
-      <td colSpan={colSpan} className="px-4 py-2.5">
-        <div className="flex items-center gap-2.5">
-          <span className="text-[12px] font-semibold text-text-2">
-            إضافة عامل اختلاف
-          </span>
-          {options.length > 0 ? (
-            <select
-              disabled={locked}
-              value=""
-              onChange={(e) => {
-                const key = e.target.value;
-                const opt = options.find((o) => o.factorKey === key);
-                if (opt) onAdd(opt.factorKey, opt.labelAr);
-              }}
-              className="min-w-[180px] rounded-[var(--radius-sm)] border border-border-md bg-surface px-2.5 py-[7px] text-[12.5px] text-heading"
-            >
-              <option value="" disabled>
-                اختر من القائمة…
-              </option>
-              {options.map((o) => (
-                <option key={o.factorKey} value={o.factorKey}>
-                  {o.labelAr}
-                </option>
-              ))}
-            </select>
-          ) : null}
-          <button
-            type="button"
-            tabIndex={-1}
-            disabled={locked}
-            onClick={onAddCustom}
-            className="cursor-pointer rounded-[var(--radius-sm)] border-none bg-ink px-3.5 py-[7px] text-[12.5px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-55"
-          >
-            إضافة
-          </button>
-        </div>
-      </td>
-    </tr>
+    </Wrap>
   );
 }

@@ -1,20 +1,37 @@
 "use client";
 
 import { Fragment, type DragEvent } from "react";
-import { invalidControlClass } from "@platform/app-shared/form-ux";
-import { parseLocaleNumber } from "@platform/app-shared/format/number";
-import { TBody, THead, Table, Td, Th, Tr, cn } from "@platform/ui-kit";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
+import {
+  TBody,
+  THead,
+  Table,
+  Td,
+  Th,
+  Tr,
+  cn,
+} from "@platform/ui-kit";
 
 import { Card } from "./atoms";
-import {
-  COST_GROUP1_KEYS,
-  COST_ITEM_OPTIONS,
-  COST_UNIT_OPTIONS,
-  costGroupOf,
-} from "./lib/cost-line-math";
+import { costGroupOf } from "./lib/cost-line-math";
 import { fmt } from "./lib/shell-utils";
 import type { CostApproachWorkflow } from "./useCostApproachWorkflow";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
+import {
+  AddCostLineSelect,
+  COST_GROUPS,
+  CostLineBuildRatioInput,
+  CostLineNameField,
+  CostLineQtyInput,
+  CostLineQtyNote,
+  CostLineRationaleInput,
+  CostLineTotal,
+  CostLineUnitCostInput,
+  CostLineUnitSelect,
+  DirectTotalFooter,
+  costLineEditor,
+} from "./CostApproachLineEditors";
+import { CostApproachLinesPhone } from "./CostApproachLinesPhone";
 
 const COLS = 8;
 const cell = "px-3 py-2 align-middle";
@@ -90,7 +107,8 @@ function DragHandle({
 /**
  * Direct cost lines table — two groups (building areas, extras) with
  * drag-to-reorder, hover-insert and a ghost “choose item” row per group.
- * Column widths and colspans match the interactive-form HTML.
+ * Column widths and colspans match the interactive-form HTML. Phones get
+ * `CostApproachLinesPhone` instead of the 1160px table.
  */
 export function CostApproachLinesTable({
   workflow,
@@ -99,26 +117,32 @@ export function CostApproachLinesTable({
   workflow: CostApproachWorkflow;
   saving: boolean;
 }) {
+  const desktop = useViewportDesktop();
   const {
     costDraft,
     dragCostId,
     setDragCostId,
     totals,
-    derived,
-    usedItemKeys,
-    ghostOptionsFor,
-    patchLine,
-    addCostLine,
     removeCostLine,
     insertCostLineAfter,
     moveCostLine,
   } = workflow;
-  const { computedLines, areaSubtotal, extraSubtotal, directTotal } = totals;
-  const { indirectSumLocal } = derived;
+  const { areaSubtotal, extraSubtotal, directTotal } = totals;
 
   const { fieldErrors } = useValuationWorkErrors();
   return (
-    <Card id="cost-lines" className="mb-6 !overflow-visible">
+    <>
+    {desktop !== true ? (
+      <CostApproachLinesPhone
+        className="lg:hidden"
+        workflow={workflow}
+        saving={saving}
+        // Both trees mount only before the viewport is known — keep ids unique then.
+        idPrefix={desktop === false ? "cost-line" : "m-cost-line"}
+      />
+    ) : null}
+    {desktop !== false ? (
+    <Card id="cost-lines" className="mb-6 !overflow-visible max-lg:hidden">
       <Table
         className="min-w-[1160px] table-fixed"
         wrapClassName="!overflow-y-visible"
@@ -155,12 +179,9 @@ export function CostApproachLinesTable({
           </Tr>
         </THead>
         <TBody>
-          {(
-            [
-              ["area", "مسطحات المبنى والأدوار", areaSubtotal, false],
-              ["extra", "تكاليف وتجهيزات إضافية", extraSubtotal, true],
-            ] as const
-          ).map(([group, groupTitle, subtotal, borderedTop]) => (
+          {COST_GROUPS.map(([group, groupTitle, borderedTop]) => {
+            const subtotal = group === "area" ? areaSubtotal : extraSubtotal;
+            return (
             <Fragment key={group}>
               <Tr hoverable={false}>
                 <Td
@@ -190,42 +211,7 @@ export function CostApproachLinesTable({
               </Tr>
               {costDraft.map((line, idx) => {
                 if (costGroupOf(line) !== group) return null;
-                const comp = computedLines[idx]!;
-                const patch = (partial: Parameters<typeof patchLine>[1]) =>
-                  patchLine(idx, partial);
-                const lineError = (field: string) =>
-                  fieldErrors[`lines[${idx}].${field}`];
-                const nameOptions = COST_ITEM_OPTIONS.filter(
-                  (o) =>
-                    o.key === line.itemKey ||
-                    o.key === "custom" ||
-                    (!usedItemKeys.has(o.key) &&
-                      (group === "area"
-                        ? COST_GROUP1_KEYS.has(o.key)
-                        : !COST_GROUP1_KEYS.has(o.key))),
-                );
-                const applyItem = (value: string) => {
-                  if (!value) return;
-                  if (value === "custom" || value === "__write") {
-                    patch({
-                      itemKey: "custom",
-                      label: line.itemKey === "custom" ? line.label : "",
-                    });
-                    return;
-                  }
-                  const opt = COST_ITEM_OPTIONS.find((o) => o.key === value);
-                  patch({
-                    itemKey: value,
-                    unit: opt?.unit ?? line.unit,
-                    areaSqm:
-                      (opt?.unit ?? line.unit) === "lump" ? 1 : line.areaSqm,
-                    repeatedFloorCount:
-                      value === "repeated_floors"
-                        ? (line.repeatedFloorCount ?? 2)
-                        : null,
-                    label: opt?.label ?? line.label,
-                  });
-                };
+                const ed = costLineEditor(workflow, fieldErrors, idx, group, "cost-line");
                 return (
                   <Fragment key={line.id}>
                     <Tr
@@ -253,205 +239,24 @@ export function CostApproachLinesTable({
                         />
                       </Td>
                       <Td className="px-4 py-2">
-                        {line.itemKey === "custom" ? (
-                          <>
-                            <input
-                              id={`cost-line-${idx}-label`}
-                              value={line.label}
-                              placeholder="اكتب اسم البند…"
-                              onChange={(e) => patch({ label: e.target.value })}
-                              className={cn(
-                                "w-full rounded-[7px] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] font-bold text-heading",
-                                lineError("label") && invalidControlClass,
-                              )}
-                            />
-                            {!line.label.trim() ? (
-                              <select
-                                value=""
-                                onChange={(e) => applyItem(e.target.value)}
-                                className="mt-1 w-full cursor-pointer rounded-[7px] border border-dashed border-border bg-surface-2 px-[9px] py-1.5 text-[11px] font-medium text-gold-d"
-                              >
-                                <option value="">أو اختر من القائمة…</option>
-                                {nameOptions
-                                  .filter((o) => o.key !== "custom")
-                                  .map((o) => (
-                                    <option key={o.key} value={o.key}>
-                                      {o.label}
-                                    </option>
-                                  ))}
-                              </select>
-                            ) : null}
-                          </>
-                        ) : (
-                          <select
-                            value={line.itemKey || "custom"}
-                            onChange={(e) => applyItem(e.target.value)}
-                            className="w-full cursor-pointer rounded-[7px] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] font-bold text-heading"
-                          >
-                            {nameOptions.map((o) => (
-                              <option key={o.key} value={o.key}>
-                                {o.key === "custom" ? "✎ كتابة اسم آخر…" : o.label}
-                              </option>
-                            ))}
-                          </select>
-                        )}
+                        <CostLineNameField {...ed} />
                       </Td>
                       <Td className="whitespace-nowrap px-2 py-2 text-center">
-                        {comp.isLump ? (
-                          <span className="text-[13px] font-bold text-text-3">
-                            مبلغ مقطوع
-                          </span>
-                        ) : (
-                          <input
-                            id={`cost-line-${idx}-${
-                              comp.isRepeated ? "repeatedFloorCount" : "areaSqm"
-                            }`}
-                            dir="ltr"
-                            title={
-                              comp.isRepeated
-                                ? "عدد الأدوار المتكررة"
-                                : undefined
-                            }
-                            value={
-                              comp.isRepeated
-                                ? String(line.repeatedFloorCount ?? 2)
-                                : String(line.areaSqm)
-                            }
-                            onChange={(e) => {
-                              const raw = e.target.value;
-                              if (comp.isRepeated) {
-                                patch({
-                                  repeatedFloorCount:
-                                    Number.parseInt(raw.replace(/[^\d]/g, ""), 10) ||
-                                    0,
-                                });
-                                return;
-                              }
-                              patch({ areaSqm: parseLocaleNumber(raw) || 0 });
-                            }}
-                            className={cn(
-                              "inline-block w-[66px] rounded-[7px] border border-border-md px-1 py-2 text-center text-[12.5px] font-bold",
-                              comp.isRepeated
-                                ? "bg-surface-2 text-gold-d"
-                                : "bg-surface text-heading",
-                              (lineError("areaSqm") ||
-                                lineError("repeatedFloorCount")) &&
-                                invalidControlClass,
-                            )}
-                          />
-                        )}
-                        {comp.usesPct ? (
-                          <input
-                            id={`cost-line-${idx}-buildRatioPct`}
-                            dir="ltr"
-                            title="نسبة البناء"
-                            value={
-                              line.buildRatioPct == null
-                                ? ""
-                                : String(line.buildRatioPct)
-                            }
-                            placeholder="100"
-                            onChange={(e) => {
-                              const raw = e.target.value.replace(/[^\d.]/g, "");
-                              patch({ buildRatioPct: raw ? Number(raw) : null });
-                            }}
-                            className={cn(
-                              "ms-[5px] inline-block w-[54px] rounded-[7px] border border-dashed border-border-md bg-surface-2 px-0.5 py-2 text-center text-[11.5px] font-bold text-gold-d",
-                              lineError("buildRatioPct") && invalidControlClass,
-                            )}
-                          />
-                        ) : null}
-                        {comp.usesPct &&
-                        line.buildRatioPct != null &&
-                        line.buildRatioPct !== 100 ? (
-                          <div className="mt-[3px] text-[10px] text-gold-d">
-                            المسطح <span dir="ltr">{fmt(comp.qty, 1)}</span> م²
-                          </div>
-                        ) : comp.isRepeated ? (
-                          <div className="mt-[3px] text-[10px] text-text-3">
-                            الكمية <span dir="ltr">{fmt(comp.qty, 1)}</span> م²
-                          </div>
-                        ) : null}
+                        <CostLineQtyInput {...ed} />
+                        {ed.comp.usesPct ? <CostLineBuildRatioInput {...ed} /> : null}
+                        <CostLineQtyNote {...ed} />
                       </Td>
                       <Td className={cellCenter}>
-                        <select
-                          id={`cost-line-${idx}-unit`}
-                          value={line.unit || "sqm"}
-                          onChange={(e) =>
-                            patch({
-                              unit: e.target.value,
-                              areaSqm: e.target.value === "lump" ? 1 : line.areaSqm,
-                            })
-                          }
-                          className={cn(
-                            "cursor-pointer rounded-[7px] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-text",
-                            lineError("unit") && invalidControlClass,
-                          )}
-                        >
-                          {COST_UNIT_OPTIONS.map((o) => (
-                            <option key={o.key} value={o.key}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
+                        <CostLineUnitSelect {...ed} />
                       </Td>
                       <Td className={cellCenter}>
-                        <input
-                          id={`cost-line-${idx}-unitCostSar`}
-                          dir="ltr"
-                          value={comp.inherited ? "" : String(line.unitCostSar)}
-                          placeholder={
-                            comp.inherited ? String(comp.uc) : undefined
-                          }
-                          onChange={(e) =>
-                            patch({
-                              unitCostSar:
-                                parseLocaleNumber(e.target.value) || 0,
-                            })
-                          }
-                          className={cn(
-                            "w-[110px] rounded-[7px] border p-2 text-center text-[13px] font-bold",
-                            comp.inherited
-                              ? "border-border bg-surface-2 text-gold-d"
-                              : "border-border-md bg-surface text-heading",
-                            lineError("unitCostSar") && invalidControlClass,
-                          )}
-                        />
-                        {comp.inherited ? (
-                          <div className="mt-[3px] text-[10px] text-text-3">
-                            موروثة من الدور الأول
-                          </div>
-                        ) : null}
+                        <CostLineUnitCostInput {...ed} />
                       </Td>
                       <Td className={cellCenter}>
-                        <span
-                          dir="ltr"
-                          className="text-sm font-extrabold text-heading"
-                        >
-                          {fmt(comp.rawTotal)}
-                        </span>
-                        {comp.rawTotal > 0 && comp.qty > 0 ? (
-                          <div className="mt-[3px] text-[10px] text-text-3">
-                            <span dir="ltr">
-                              {fmt(
-                                (comp.rawTotal * (1 + indirectSumLocal / 100)) /
-                                  comp.qty,
-                              )}
-                            </span>
-                          </div>
-                        ) : null}
+                        <CostLineTotal {...ed} />
                       </Td>
                       <Td className="px-3 py-2">
-                        <input
-                          id={`cost-line-${idx}-rationale`}
-                          value={line.rationale}
-                          onChange={(e) => patch({ rationale: e.target.value })}
-                          placeholder="أساس التقدير…"
-                          className={cn(
-                            "w-full rounded-[7px] border border-border bg-surface px-2.5 py-2 text-xs font-medium text-text",
-                            lineError("rationale") && invalidControlClass,
-                          )}
-                        />
+                        <CostLineRationaleInput {...ed} />
                       </Td>
                       <Td className="w-12 px-2 py-2 text-center">
                         <button
@@ -475,56 +280,20 @@ export function CostApproachLinesTable({
               <Tr hoverable={false} className="h-14 bg-[#fcfbf8]">
                 <Td className="w-[34px] px-1 py-2" />
                 <Td className="px-4 py-2">
-                  <select
-                    value=""
-                    onChange={(e) => {
-                      if (!e.target.value) return;
-                      if (e.target.value === "__custom") {
-                        addCostLine({
-                          structureKind: group === "area" ? "floor" : "other",
-                        });
-                        return;
-                      }
-                      const opt = COST_ITEM_OPTIONS.find(
-                        (o) => o.key === e.target.value,
-                      );
-                      if (!opt) return;
-                      addCostLine({
-                        itemKey: opt.key,
-                        label: opt.label,
-                        unit: opt.unit,
-                        areaSqm: opt.unit === "lump" ? 1 : 0,
-                        repeatedFloorCount:
-                          opt.key === "repeated_floors" ? 2 : null,
-                      });
-                    }}
-                    className="w-full cursor-pointer rounded-[7px] border border-dashed border-border-md bg-surface px-2.5 py-2 text-[12.5px] font-bold text-gold-d"
-                  >
-                    <option value="">اختر البند</option>
-                    <option value="__custom">+ بند مخصص…</option>
-                    {ghostOptionsFor(group).map((o) => (
-                      <option key={o.key} value={o.key}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
+                  <AddCostLineSelect group={group} workflow={workflow} />
                 </Td>
                 <Td colSpan={6} className="px-3 py-2 text-[11px] text-text-3">
                   تُفتح بقية الحقول بعد اختيار البند
                 </Td>
               </Tr>
             </Fragment>
-          ))}
+            );
+          })}
         </TBody>
       </Table>
-      <div className="flex items-center justify-between gap-4 border-t border-border bg-surface-2 px-4 py-3">
-        <span className="text-xs font-medium text-text-2">
-          مجموع البنود = التكلفة المباشرة
-        </span>
-        <span dir="ltr" className="text-base font-extrabold text-heading">
-          {fmt(directTotal)}
-        </span>
-      </div>
+      <DirectTotalFooter directTotal={directTotal} />
     </Card>
+    ) : null}
+    </>
   );
 }

@@ -1,7 +1,10 @@
 "use client";
 
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import {
   Input,
+  MobileRecordCard,
+  MobileRecordList,
   TBody,
   THead,
   Table,
@@ -28,17 +31,23 @@ function YesNoToggle({
   value,
   disabled,
   onChange,
+  block,
 }: {
   name: string;
   value: boolean | null;
   disabled?: boolean;
   onChange: (next: boolean) => void;
+  /** Phone card: full width, 44px-tall halves. */
+  block?: boolean;
 }) {
   return (
     <div
       role="radiogroup"
       aria-label="نعم أو لا"
-      className="inline-flex rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface-2 p-0.5"
+      className={cn(
+        "inline-flex rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface-2 p-0.5",
+        block && "flex w-full",
+      )}
     >
       {(
         [
@@ -58,6 +67,7 @@ function YesNoToggle({
             onClick={() => onChange(v)}
             className={cn(
               "min-w-[44px] rounded-[calc(var(--radius-DEFAULT)-2px)] border border-transparent px-2.5 py-1.5 text-[12px] font-semibold transition-colors",
+              block && "min-h-11 flex-1 text-[13px]",
               "disabled:cursor-not-allowed disabled:opacity-55",
               on
                 ? v
@@ -74,6 +84,167 @@ function YesNoToggle({
   );
 }
 
+/** The follow-up a «نعم» opens under some items — shared by the table row and the phone card. */
+function ChecklistRowExtra({
+  qid,
+  idPrefix,
+  checklist,
+  disabled,
+  fieldErrors,
+  onChange,
+  phone,
+}: {
+  qid: ChecklistKey;
+  /** Keeps input ids unique while the table and the cards are both mounted. */
+  idPrefix: string;
+  checklist: EvaluatorChecklistAnswers;
+  disabled?: boolean;
+  fieldErrors?: Record<string, string>;
+  onChange: (patch: Partial<EvaluatorChecklistAnswers>) => void;
+  /** Phone card: the nested نعم/لا spans the card width. */
+  phone?: boolean;
+}) {
+  return (
+    qid === "q_shared_deed" && checklist.q_shared_deed === true ? (
+      <div
+        className={cn(
+          opsFieldBox,
+          "mt-3 space-y-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
+        )}
+      >
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-[12px] font-bold text-heading">
+            نطاق الملكية <span className="text-danger-text">*</span>
+          </span>
+          <div
+            role="radiogroup"
+            aria-label="نطاق الملكية"
+            className="inline-flex flex-wrap gap-1.5 max-lg:flex max-lg:w-full"
+          >
+            {(
+              [
+                ["full", "كامل المساحة"],
+                ["part", "جزء محدد"],
+              ] as const
+            ).map(([v, label]) => {
+              const on = checklist.shared_deed_scope === v;
+              return (
+                <button
+                  key={v}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  disabled={disabled}
+                  onClick={() => onChange({ shared_deed_scope: v })}
+                  className={cn(
+                    "rounded-[var(--radius-DEFAULT)] border px-3 py-1.5 text-[12px] font-semibold transition-colors max-lg:min-h-11 max-lg:flex-1",
+                    "disabled:cursor-not-allowed disabled:opacity-55",
+                    on
+                      ? "border-gold bg-gold-soft text-gold-d"
+                      : "border-border-md bg-surface text-text-2 hover:border-gold hover:text-gold-d",
+                  )}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        {checklist.shared_deed_scope === "part" ? (
+          <div className="lg:max-w-[280px]">
+            <label
+              htmlFor={`${idPrefix}-shared-deed-pct`}
+              className="mb-1.5 block text-[12px] font-semibold text-text-2"
+            >
+              نسبة الملكية <span className="text-danger-text">*</span>
+              <span className="ms-1 font-normal text-text-3">
+                (مثال: 3/8 أو 37.5%)
+              </span>
+            </label>
+            <Input
+              id={`${idPrefix}-shared-deed-pct`}
+              dir="ltr"
+              disabled={disabled}
+              hasError={Boolean(fieldErrors?.shared_deed_percentage)}
+              value={checklist.shared_deed_percentage}
+              onChange={(e) =>
+                onChange({ shared_deed_percentage: e.target.value })
+              }
+            />
+            {fieldErrors?.shared_deed_percentage ? (
+              <p className="mt-1 m-0 text-xs text-danger-text">
+                {fieldErrors.shared_deed_percentage}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+        {fieldErrors?.shared_deed_scope ? (
+          <p className="m-0 text-xs text-danger-text">
+            {fieldErrors.shared_deed_scope}
+          </p>
+        ) : null}
+      </div>
+    ) : qid === "q_lease_exists" &&
+      checklist.q_lease_exists === true ? (
+      <div
+        className={cn(
+          opsFieldBox,
+          "mt-3 flex flex-wrap items-center gap-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
+        )}
+      >
+        <span className="text-[12px] font-bold text-heading">
+          هل عقد الإيجار ساري المفعول؟{" "}
+          <span className="text-danger-text">*</span>
+        </span>
+        <YesNoToggle
+          block={phone}
+          name={`${idPrefix}q_lease`}
+          value={checklist.q_lease_active}
+          disabled={disabled}
+          onChange={(v) => onChange({ q_lease_active: v })}
+        />
+        {fieldErrors?.q_lease_active ? (
+          <p className="m-0 w-full text-xs text-danger-text">
+            {fieldErrors.q_lease_active}
+          </p>
+        ) : null}
+      </div>
+    ) : qid === "q_technical_notes_exists" &&
+      checklist.q_technical_notes_exists === true ? (
+      <div
+        className={cn(
+          opsFieldBox,
+          "mt-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
+        )}
+      >
+        <label
+          htmlFor={`${idPrefix}-technical-notes`}
+          className="mb-1.5 block text-[12px] font-semibold text-text-2"
+        >
+          وصف الملاحظات الفنية{" "}
+          <span className="text-danger-text">*</span>
+        </label>
+        <Textarea
+          id={`${idPrefix}-technical-notes`}
+          rows={2}
+          disabled={disabled}
+          hasError={Boolean(fieldErrors?.technical_notes_text)}
+          value={checklist.technical_notes_text}
+          onChange={(e) =>
+            onChange({ technical_notes_text: e.target.value })
+          }
+          className="bg-surface"
+        />
+        {fieldErrors?.technical_notes_text ? (
+          <p className="mt-1 m-0 text-xs text-danger-text">
+            {fieldErrors.technical_notes_text}
+          </p>
+        ) : null}
+      </div>
+    ) : null
+  );
+}
+
 export function EvaluatorChecklistTab({
   checklist,
   disabled,
@@ -87,10 +258,13 @@ export function EvaluatorChecklistTab({
   fieldErrors?: Record<string, string>;
   onChange: (patch: Partial<EvaluatorChecklistAnswers>) => void;
 }) {
+  const desktop = useViewportDesktop();
   const rows = [
     ...EVALUATOR_SIMPLE_QUESTIONS,
     ...EVALUATOR_CONDITIONAL_QUESTIONS,
   ];
+  const setAnswer = (id: ChecklistKey, v: boolean) =>
+    onChange({ [id]: v } as Partial<EvaluatorChecklistAnswers>);
 
   return (
     <div>
@@ -101,7 +275,51 @@ export function EvaluatorChecklistTab({
         </p>
       ) : null}
 
-      <div className={opsLetterCard}>
+      {/* Phones: one card per item — question on top, a full-width نعم/لا under it,
+          then the follow-up fields the answer opens. */}
+      {desktop !== true ? (
+        <MobileRecordList className="lg:hidden">
+          {rows.map((q, idx) => {
+            const val = checklist[q.id] as boolean | null;
+            const rowError = fieldErrors?.[q.id];
+            return (
+              <MobileRecordCard
+                key={q.id}
+                tone={rowError ? "red" : val === null ? "gold" : undefined}
+                title={
+                  <span className="font-medium">
+                    <bdi className="me-1.5 tabular-nums text-text-3">{idx + 1}.</bdi>
+                    {q.label}
+                  </span>
+                }
+              >
+                <YesNoToggle
+                  block
+                  name={`mvalq_${String(q.id)}`}
+                  value={val}
+                  disabled={disabled}
+                  onChange={(v) => setAnswer(q.id, v)}
+                />
+                {rowError ? (
+                  <p className="mt-1.5 m-0 text-xs text-danger-text">{rowError}</p>
+                ) : null}
+                <ChecklistRowExtra
+                  qid={q.id}
+                  idPrefix="mval"
+                  phone
+                  checklist={checklist}
+                  disabled={disabled}
+                  fieldErrors={fieldErrors}
+                  onChange={onChange}
+                />
+              </MobileRecordCard>
+            );
+          })}
+        </MobileRecordList>
+      ) : null}
+
+      {desktop !== false ? (
+      <div className={cn(opsLetterCard, "max-lg:hidden")}>
         <Table wrapClassName="rounded-[var(--radius-lg)]">
           <THead>
             <Tr hoverable={false}>
@@ -115,143 +333,16 @@ export function EvaluatorChecklistTab({
               const val = checklist[q.id] as boolean | null;
               const rowError = fieldErrors?.[q.id];
 
-              const extra =
-                q.id === "q_shared_deed" && checklist.q_shared_deed === true ? (
-                  <div
-                    className={cn(
-                      opsFieldBox,
-                      "mt-3 space-y-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
-                    )}
-                  >
-                    <div className="flex flex-wrap items-center gap-3">
-                      <span className="text-[12px] font-bold text-heading">
-                        نطاق الملكية <span className="text-danger-text">*</span>
-                      </span>
-                      <div
-                        role="radiogroup"
-                        aria-label="نطاق الملكية"
-                        className="inline-flex flex-wrap gap-1.5"
-                      >
-                        {(
-                          [
-                            ["full", "كامل المساحة"],
-                            ["part", "جزء محدد"],
-                          ] as const
-                        ).map(([v, label]) => {
-                          const on = checklist.shared_deed_scope === v;
-                          return (
-                            <button
-                              key={v}
-                              type="button"
-                              role="radio"
-                              aria-checked={on}
-                              disabled={disabled}
-                              onClick={() => onChange({ shared_deed_scope: v })}
-                              className={cn(
-                                "rounded-[var(--radius-DEFAULT)] border px-3 py-1.5 text-[12px] font-semibold transition-colors",
-                                "disabled:cursor-not-allowed disabled:opacity-55",
-                                on
-                                  ? "border-gold bg-gold-soft text-gold-d"
-                                  : "border-border-md bg-surface text-text-2 hover:border-gold hover:text-gold-d",
-                              )}
-                            >
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    {checklist.shared_deed_scope === "part" ? (
-                      <div className="max-w-[280px]">
-                        <label
-                          htmlFor="val-shared-deed-pct"
-                          className="mb-1.5 block text-[12px] font-semibold text-text-2"
-                        >
-                          نسبة الملكية <span className="text-danger-text">*</span>
-                          <span className="ms-1 font-normal text-text-3">
-                            (مثال: 3/8 أو 37.5%)
-                          </span>
-                        </label>
-                        <Input
-                          id="val-shared-deed-pct"
-                          dir="ltr"
-                          disabled={disabled}
-                          hasError={Boolean(fieldErrors?.shared_deed_percentage)}
-                          value={checklist.shared_deed_percentage}
-                          onChange={(e) =>
-                            onChange({ shared_deed_percentage: e.target.value })
-                          }
-                        />
-                        {fieldErrors?.shared_deed_percentage ? (
-                          <p className="mt-1 m-0 text-xs text-danger-text">
-                            {fieldErrors.shared_deed_percentage}
-                          </p>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    {fieldErrors?.shared_deed_scope ? (
-                      <p className="m-0 text-xs text-danger-text">
-                        {fieldErrors.shared_deed_scope}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : q.id === "q_lease_exists" &&
-                  checklist.q_lease_exists === true ? (
-                  <div
-                    className={cn(
-                      opsFieldBox,
-                      "mt-3 flex flex-wrap items-center gap-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
-                    )}
-                  >
-                    <span className="text-[12px] font-bold text-heading">
-                      هل عقد الإيجار ساري المفعول؟{" "}
-                      <span className="text-danger-text">*</span>
-                    </span>
-                    <YesNoToggle
-                      name="valq_lease"
-                      value={checklist.q_lease_active}
-                      disabled={disabled}
-                      onChange={(v) => onChange({ q_lease_active: v })}
-                    />
-                    {fieldErrors?.q_lease_active ? (
-                      <p className="m-0 w-full text-xs text-danger-text">
-                        {fieldErrors.q_lease_active}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : q.id === "q_technical_notes_exists" &&
-                  checklist.q_technical_notes_exists === true ? (
-                  <div
-                    className={cn(
-                      opsFieldBox,
-                      "mt-3 border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_6%,transparent)]",
-                    )}
-                  >
-                    <label
-                      htmlFor="val-technical-notes"
-                      className="mb-1.5 block text-[12px] font-semibold text-text-2"
-                    >
-                      وصف الملاحظات الفنية{" "}
-                      <span className="text-danger-text">*</span>
-                    </label>
-                    <Textarea
-                      id="val-technical-notes"
-                      rows={2}
-                      disabled={disabled}
-                      hasError={Boolean(fieldErrors?.technical_notes_text)}
-                      value={checklist.technical_notes_text}
-                      onChange={(e) =>
-                        onChange({ technical_notes_text: e.target.value })
-                      }
-                      className="bg-surface"
-                    />
-                    {fieldErrors?.technical_notes_text ? (
-                      <p className="mt-1 m-0 text-xs text-danger-text">
-                        {fieldErrors.technical_notes_text}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null;
+              const extra = (
+                <ChecklistRowExtra
+                  qid={q.id}
+                  idPrefix="val"
+                  checklist={checklist}
+                  disabled={disabled}
+                  fieldErrors={fieldErrors}
+                  onChange={onChange}
+                />
+              );
 
               return (
                 <Tr key={q.id} hoverable={!disabled}>
@@ -275,11 +366,7 @@ export function EvaluatorChecklistTab({
                         name={`valq_${String(q.id)}`}
                         value={val}
                         disabled={disabled}
-                        onChange={(v) =>
-                          onChange({
-                            [q.id]: v,
-                          } as Partial<EvaluatorChecklistAnswers>)
-                        }
+                        onChange={(v) => setAnswer(q.id, v)}
                       />
                     </div>
                   </Td>
@@ -289,6 +376,7 @@ export function EvaluatorChecklistTab({
           </TBody>
         </Table>
       </div>
+      ) : null}
     </div>
   );
 }

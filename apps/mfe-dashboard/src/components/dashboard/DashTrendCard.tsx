@@ -4,7 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import type { ReportingCompletionYearDto } from "@platform/api-client";
 import { TrendChart } from "../../lib/dash-svg";
 
-import { cn, opsDashCard, useSwapAnimation } from "@platform/ui-kit";
+import { cn, MobileSectionPicker, opsDashCard, useSwapAnimation } from "@platform/ui-kit";
 
 
 type Mode = "month" | "quarter";
@@ -111,7 +111,7 @@ export function DashTrendCard({
     <div className={opsDashCard}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h3 className="m-0 text-[14px] font-bold text-heading">اتجاه الإنجاز</h3>
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 max-lg:hidden">
           {(
             [
               ["month", "شهري"],
@@ -161,6 +161,38 @@ export function DashTrendCard({
               {y}
             </button>
           ))}
+        </div>
+      </div>
+      {/* Phones: a full-width period switch and 44px year toggles, not the desktop pill row. */}
+      <div className="mb-3 flex flex-col gap-2 lg:hidden">
+        <MobileSectionPicker
+          title="الفترة"
+          sections={[
+            { id: "month", label: "شهري" },
+            { id: "quarter", label: "ربعي" },
+          ]}
+          active={mode}
+          onChange={(id) => setMode(id as Mode)}
+        />
+        <div className="flex gap-2" role="group" aria-label="السنوات">
+          {yearKeys.map((y) => {
+            const on = activeYears.includes(y);
+            return (
+              <button
+                key={y}
+                type="button"
+                onClick={() => toggleYear(y)}
+                aria-pressed={on}
+                className={cn(
+                  "flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-[10px] border text-[13px] font-bold tabular-nums",
+                  on ? "border-transparent text-white" : "border-border-md bg-surface text-text-3",
+                )}
+                style={on ? { background: colorByYear[y], borderColor: colorByYear[y] } : undefined}
+              >
+                {y}
+              </button>
+            );
+          })}
         </div>
       </div>
       {growth && !empty ? (

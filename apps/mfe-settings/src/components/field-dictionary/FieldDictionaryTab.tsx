@@ -3,7 +3,7 @@
 import { OpsIcon } from "../OpsIcon";
 
 import { useMemo, useRef, useState } from "react";
-import { PageShell, cn, opsFldControl, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterMeta, opsLetterSub, opsLetterTitle, opsTfSegRow, useSwapAnimation } from "@platform/ui-kit";
+import { MobileSectionPicker, PageShell, cn, opsFldControl, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterMeta, opsLetterSub, opsLetterTitle, opsTfSegRow, useSwapAnimation } from "@platform/ui-kit";
 import { opsTfSeg, opsTfSegActive } from "@platform/ui-kit";
 import {
   FIELD_DICTIONARY_STAGES,
@@ -37,8 +37,16 @@ export function FieldDictionaryTab() {
       variant="canvas"
       className="gap-0 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6"
     >
+      {/* Phones: the stage tabs collapse into one picker (bottom sheet). */}
+      <MobileSectionPicker
+        className="mb-3.5 lg:hidden"
+        title="المرحلة"
+        sections={FIELD_DICTIONARY_STAGES.map((item) => ({ id: item.id, label: item.label }))}
+        active={stageId}
+        onChange={(id) => setStageId(id as FieldDictionaryStageId)}
+      />
       <div
-        className={cn(opsTfSegRow, "mb-3.5")}
+        className={cn(opsTfSegRow, "mb-3.5 max-lg:hidden")}
         role="tablist"
         aria-label="مراحل قاموس الحقول"
       >
@@ -78,7 +86,7 @@ export function FieldDictionaryTab() {
         <div className="px-4 pb-[18px] pt-4 sm:px-[18px]">
           <div className="mb-3.5 flex flex-wrap items-center gap-2">
             <input
-              className={cn(opsFldControl, "max-w-xs")}
+              className={cn(opsFldControl, "max-w-xs max-lg:min-h-11 max-lg:w-full max-lg:max-w-none")}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="ابحث في حقول هذا القسم…"
@@ -106,6 +114,13 @@ export function FieldDictionaryTab() {
                     </span>
                     <span className="min-w-0 flex-1 text-[13px] font-medium text-text">
                       {field.label}
+                      {/* Phones: the field key sits under its label instead of being hidden. */}
+                      <bdi
+                        dir="ltr"
+                        className="mt-0.5 block font-mono text-[10.5px] font-normal text-text-3 [overflow-wrap:anywhere] sm:hidden"
+                      >
+                        {field.key}
+                      </bdi>
                     </span>
                     <span
                       dir="ltr"

@@ -23,6 +23,9 @@ import {
   Tr,
   cn,
   GentleBusy,
+  MobileKpiStatCards,
+  MobileRecordCard,
+  MobileRecordList,
   opsLetterCard,
   QueryErrorState,
   opsPanelCard,
@@ -82,6 +85,45 @@ function KpiIco({
   );
 }
 
+/** KPI icon — «بانتظار المطابقة» (desktop slab and phone cards). */
+function MatchIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M9 11l3 3L22 4" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** KPI icon — «فواتير بانتظار التحصيل» (desktop slab and phone cards). */
+function CardIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="2" y="5" width="20" height="14" rx="2" />
+      <path d="M2 10h20" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** KPI icon — «مستندات قيد الإجراء» (desktop slab and phone cards). */
+function DocIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinejoin="round" />
+      <path d="M14 2v6h6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** KPI icon — «بانتظار توثيق الصرف» (desktop slab and phone cards). */
+function MoneyIcon({ size = 15 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 function DomainChip({ domain }: { domain: "revenue" | "costs" }) {
   const isRev = domain === "revenue";
   return (
@@ -131,13 +173,15 @@ function AgeBlock({
   );
 }
 
-
-function TaskRow({
+/** The task's «open» — a modal for statement matching/closing, otherwise a link (table cell and phone card). */
+function TaskOpenAction({
   task,
   onOpen,
+  className,
 }: {
   task: FinanceMyTask;
   onOpen: (task: FinanceMyTask) => void;
+  className?: string;
 }) {
   const opensModal =
     task.kind === "cost_match_invoice" || task.kind === "cost_close_statement";
@@ -146,6 +190,99 @@ function TaskRow({
       ? preloadVendorInvoiceMatchModal
       : preloadDisbursementCloseModal;
 
+  return opensModal ? (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[12px] font-bold text-text transition-colors hover:text-heading",
+        className,
+      )}
+      onClick={() => onOpen(task)}
+      onMouseEnter={preloadModal}
+      onFocus={preloadModal}
+    >
+      {task.openLabel}
+      <span className="text-[14px] leading-none" aria-hidden>
+        ›
+      </span>
+    </button>
+  ) : (
+    <Link
+      href={task.href}
+      className={cn(
+        "inline-flex items-center gap-1 text-[12px] font-bold text-text no-underline transition-colors hover:text-heading",
+        className,
+      )}
+    >
+      {task.openLabel}
+      <span className="text-[14px] leading-none" aria-hidden>
+        ›
+      </span>
+    </Link>
+  );
+}
+
+/** Phone card for one task — every table column as a labelled field. */
+function TaskCard({
+  task,
+  onOpen,
+}: {
+  task: FinanceMyTask;
+  onOpen: (task: FinanceMyTask) => void;
+}) {
+  const urgent = task.ageDays != null && task.ageDays >= 30;
+  return (
+    <MobileRecordCard
+      tone={urgent ? "red" : undefined}
+      title={task.title}
+      subtitle={
+        <>
+          <bdi dir="ltr" className="font-bold text-gold-d">
+            {task.reference}
+          </bdi>
+          {task.subject && task.subject !== task.reference
+            ? ` · ${task.subject}`
+            : null}
+        </>
+      }
+      status={<DomainChip domain={task.domain} />}
+      fields={[
+        { label: "المبلغ ر.س", ltr: true, value: fmtMax(task.amountSar) },
+        {
+          label: "العمر",
+          value:
+            task.ageDays == null ? (
+              "—"
+            ) : (
+              <span className={cn(urgent && "text-[#a5432e]")}>
+                <bdi dir="ltr" className="tabular-nums">
+                  {task.ageNote ?? task.ageDays}
+                </bdi>
+                {task.ageNote ? null : " يوم"}
+              </span>
+            ),
+        },
+        { label: "ما يلزم لإتمامه", value: task.requirement, wide: true },
+        { label: "ينتقل إلى", value: task.movesTo, wide: true },
+      ]}
+      actions={
+        <TaskOpenAction
+          task={task}
+          onOpen={onOpen}
+          className="rounded-[10px] border border-solid border-border-md bg-surface px-3"
+        />
+      }
+    />
+  );
+}
+
+function TaskRow({
+  task,
+  onOpen,
+}: {
+  task: FinanceMyTask;
+  onOpen: (task: FinanceMyTask) => void;
+}) {
   return (
     <Tr hoverable={false}>
       <Td>
@@ -191,30 +328,7 @@ function TaskRow({
         <AgeBlock days={task.ageDays} note={task.ageNote} />
       </Td>
       <Td className="text-center">
-        {opensModal ? (
-          <button
-            type="button"
-            className="inline-flex cursor-pointer items-center gap-1 border-none bg-transparent p-0 text-[12px] font-bold text-text transition-colors hover:text-heading"
-            onClick={() => onOpen(task)}
-            onMouseEnter={preloadModal}
-            onFocus={preloadModal}
-          >
-            {task.openLabel}
-            <span className="text-[14px] leading-none" aria-hidden>
-              ›
-            </span>
-          </button>
-        ) : (
-          <Link
-            href={task.href}
-            className="inline-flex items-center gap-1 text-[12px] font-bold text-text no-underline transition-colors hover:text-heading"
-          >
-            {task.openLabel}
-            <span className="text-[14px] leading-none" aria-hidden>
-              ›
-            </span>
-          </Link>
-        )}
+        <TaskOpenAction task={task} onOpen={onOpen} />
       </Td>
     </Tr>
   );
@@ -329,14 +443,57 @@ export function FinanceMyTasks() {
 
   return (
     <div>
-      <div className={cn(opsLetterCard, "mb-6 flex flex-wrap rounded-xl border-border bg-surface")}>
+      {/* Phones: 2×2 stat cards — the 160px-min slab cells stacked over 1.5 screens. */}
+      <MobileKpiStatCards
+        className="mb-4"
+        items={[
+          {
+            key: "match",
+            icon: <MatchIcon size={18} />,
+            iconClass: "bg-[color-mix(in_srgb,#a4906f_12%,transparent)] text-heading",
+            label: "بانتظار المطابقة",
+            value: kpiValue(kpi.matchCount),
+            sub: "من الإيرادات",
+          },
+          {
+            key: "collect",
+            icon: <CardIcon size={18} />,
+            iconClass: "bg-gold-soft text-gold-d",
+            tone: "gold",
+            label: "فواتير بانتظار التحصيل",
+            value: kpiValue(kpi.collectCount),
+            sub: (
+              <>
+                <bdi dir="ltr">
+                  {pending || failedQueries.length ? "—" : fmtMax(kpi.collectAmountSar)}
+                </bdi>{" "}
+                ر.س
+              </>
+            ),
+          },
+          {
+            key: "docs",
+            icon: <DocIcon size={18} />,
+            iconClass: "bg-[color-mix(in_srgb,#a4906f_12%,transparent)] text-heading",
+            label: "مستندات قيد الإجراء",
+            value: kpiValue(kpi.docsCount),
+            sub: "من التكاليف",
+          },
+          {
+            key: "close",
+            icon: <MoneyIcon size={18} />,
+            iconClass: "bg-[color-mix(in_srgb,#a4906f_12%,transparent)] text-heading",
+            label: "بانتظار توثيق الصرف",
+            value: kpiValue(kpi.closeCount),
+            sub: "سند + مرجع + إيصال",
+          },
+        ]}
+      />
+      <div className={cn(opsLetterCard, "mb-6 hidden flex-wrap rounded-xl border-border bg-surface lg:flex")}>
         <div className="relative min-w-[160px] flex-1 border-e border-[#ece8df] px-6 py-5 last:border-e-0 before:absolute before:inset-y-0 before:start-0 before:w-[3px] before:bg-[#a4906f] before:content-['']">
           <div className="mb-3.5 flex items-center gap-2.5">
             <KpiIco>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M9 11l3 3L22 4" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <MatchIcon />
             </KpiIco>
             <span className="text-[12.5px] font-medium text-[#73767f]">
               بانتظار المطابقة
@@ -357,10 +514,7 @@ export function FinanceMyTasks() {
         <div className="min-w-[160px] flex-1 border-e border-[#ece8df] px-6 py-5 last:border-e-0">
           <div className="mb-3.5 flex items-center gap-2.5">
             <KpiIco gold>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <rect x="2" y="5" width="20" height="14" rx="2" />
-                <path d="M2 10h20" strokeLinecap="round" />
-              </svg>
+              <CardIcon />
             </KpiIco>
             <span className="text-[12.5px] font-medium text-[#73767f]">
               فواتير بانتظار التحصيل
@@ -384,10 +538,7 @@ export function FinanceMyTasks() {
         <div className="min-w-[160px] flex-1 border-e border-[#ece8df] px-6 py-5 last:border-e-0">
           <div className="mb-3.5 flex items-center gap-2.5">
             <KpiIco>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinejoin="round" />
-                <path d="M14 2v6h6" strokeLinejoin="round" />
-              </svg>
+              <DocIcon />
             </KpiIco>
             <span className="text-[12.5px] font-medium text-[#73767f]">
               مستندات قيد الإجراء
@@ -408,9 +559,7 @@ export function FinanceMyTasks() {
         <div className="min-w-[160px] flex-1 border-e border-[#ece8df] px-6 py-5 last:border-e-0">
           <div className="mb-3.5 flex items-center gap-2.5">
             <KpiIco>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <MoneyIcon />
             </KpiIco>
             <span className="text-[12.5px] font-medium text-[#73767f]">
               بانتظار توثيق الصرف
@@ -465,7 +614,14 @@ export function FinanceMyTasks() {
           </div>
         </div>
       ) : (
-        <TableFrame>
+        <>
+        {/* Phones: one card per task — the 7-column table ran off-screen. */}
+        <MobileRecordList className="lg:hidden">
+          {tasks.map((task) => (
+            <TaskCard key={task.id} task={task} onOpen={handleOpen} />
+          ))}
+        </MobileRecordList>
+        <TableFrame className="max-lg:hidden">
           <Table wrapClassName="max-h-[calc(100vh-280px)] overflow-auto">
             <THead>
               <Tr hoverable={false}>
@@ -497,6 +653,7 @@ export function FinanceMyTasks() {
             </TBody>
           </Table>
         </TableFrame>
+        </>
       )}
 
       {/* Conditional mount — always mounting fetched both modal chunks on screen open

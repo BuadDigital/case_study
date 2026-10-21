@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Button,
+  MobileRecordCard,
+  MobileRecordList,
   Spinner,
   Table,
   TBody,
@@ -83,6 +85,19 @@ function cellValue(
       return "—";
   }
 }
+
+/** Numbers, dates, IDs and coordinates read left-to-right on the phone card. */
+const LTR_COLUMN_KEYS = new Set([
+  "listing_no",
+  "phone",
+  "area",
+  "deal_date",
+  "price",
+  "unit_price",
+  "plan_no",
+  "plot",
+  "coords",
+]);
 
 /**
  * Optional field capture during inspection. Rows enter the company bank
@@ -212,6 +227,7 @@ export function FieldComparableCaptureSection({
           type="button"
           size="sm"
           variant="primary"
+          className="max-lg:min-h-11 max-lg:w-full"
           onClick={() => {
             setOpen((v) => {
               if (!v) {
@@ -250,6 +266,7 @@ export function FieldComparableCaptureSection({
               loading={saving}
               disabled={saving || disabled}
               showActionToast={false}
+              className="max-lg:min-h-11 max-lg:w-full"
               onClick={() => void save()}
             >
               حفظ في بنك العقارات
@@ -258,14 +275,38 @@ export function FieldComparableCaptureSection({
         </div>
       ) : null}
 
-      <div className="mt-3 overflow-x-auto">
+      <div className="mt-3 overflow-x-auto max-lg:overflow-visible">
         {loading ? (
           <div className="flex items-center justify-center gap-2 py-6 text-text-3">
             <Spinner />
             <span className="text-[12px]">جاري تحميل المقارنات…</span>
           </div>
         ) : (
-          <Table>
+          <>
+          {/* Phones: one card per comparable, every configured column as a field. */}
+          <MobileRecordList
+            className="lg:hidden"
+            isEmpty={tableRows.length === 0}
+            empty={disabled ? "لا توجد مقارنات مسجّلة." : "لا توجد مقارنات بعد — اضغط «إضافة مقارن»."}
+          >
+            {tableRows.map(({ key, row, description }) => {
+              const [titleCol, ...restCols] = cols;
+              return (
+                <MobileRecordCard
+                  key={key}
+                  title={titleCol ? cellValue(titleCol.key, row, description) : comparableDealLabel(row)}
+                  subtitle={titleCol ? titleCol.name : undefined}
+                  fields={restCols.map((col) => ({
+                    label: col.name,
+                    value: cellValue(col.key, row, description),
+                    ltr: LTR_COLUMN_KEYS.has(col.key),
+                    wide: col.key === "comp_desc" || col.key === "coords",
+                  }))}
+                />
+              );
+            })}
+          </MobileRecordList>
+          <Table wrapClassName="max-lg:hidden">
             <THead>
               <Tr>
                 {cols.map((col) => (
@@ -298,6 +339,7 @@ export function FieldComparableCaptureSection({
               )}
             </TBody>
           </Table>
+          </>
         )}
       </div>
     </div>

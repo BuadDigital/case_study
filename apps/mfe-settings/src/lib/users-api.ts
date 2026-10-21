@@ -17,7 +17,10 @@ import {
 } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { userListItemToStaff } from "@platform/app-shared/users/user-mappers";
-import { hasRuntimeCapability } from "@platform/app-shared/app-data/runtime-access";
+import {
+  canListDistributionAssignees,
+  hasRuntimeCapability,
+} from "@platform/app-shared/app-data/runtime-access";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 type FetchStaffUsersResult = {
@@ -41,9 +44,7 @@ export async function fetchStaffUsers(
   const canManageUsers =
     options?.canManageUsers ?? hasRuntimeCapability("manage-users");
   const canListAssignees =
-    options?.canListDistributionAssignees ??
-    (hasRuntimeCapability("manage-work-orders") ||
-      hasRuntimeCapability("manage-operations"));
+    options?.canListDistributionAssignees ?? canListDistributionAssignees();
 
   const result = canManageUsers
     ? await listUsers(config)

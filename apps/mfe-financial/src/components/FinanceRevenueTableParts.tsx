@@ -12,7 +12,9 @@ import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
   DeedLabel,
   EmptyState,
+  MobileRecordCard,
   PoLabel,
+  type MobileRecordField,
   THead,
   Td,
   TdLtr,
@@ -148,16 +150,86 @@ export function CompletedAtCell({ iso }: { iso: string | null | undefined }) {
   );
 }
 
-/** Fee flags + the row's total, as the eligible / collected tables show it. */
-export function TotalFeesCell({ row }: { row: EnfazTrackingRowDto }) {
+/** Fee flags + the row's total (table cell and phone card field). */
+export function TotalFeesValue({ row }: { row: EnfazTrackingRowDto }) {
   const total = revenueAmountsFromRow(row).total;
   return (
+    <span className="inline-flex items-center gap-2.5">
+      <FeeFlags row={row} />
+      <span className={finNum}>{fmtSar(total, { trim: "whole" })}</span>
+    </span>
+  );
+}
+
+/** Fee flags + the row's total, as the eligible / collected tables show it. */
+export function TotalFeesCell({ row }: { row: EnfazTrackingRowDto }) {
+  return (
     <Td className="text-center">
-      <span className="inline-flex items-center gap-2.5">
-        <FeeFlags row={row} />
-        <span className={finNum}>{fmtSar(total, { trim: "whole" })}</span>
-      </span>
+      <TotalFeesValue row={row} />
     </Td>
+  );
+}
+
+/** City + completion date — the phone-card fields most stage tables share. */
+export function revenueCityDateFields(row: EnfazTrackingRowDto): MobileRecordField[] {
+  return [
+    { label: "المدينة", value: textOrDash(row.city) },
+    { label: "تاريخ الاكتمال", ltr: true, value: formatDateEn(row.completedAtUtc) },
+  ];
+}
+
+/**
+ * Phone counterpart of `GroupHeaderRow` — a full-width toggle above the
+ * group's cards, with the group's actions (if any) as full-width buttons.
+ */
+export function MobileGroupHeader({
+  open,
+  onToggle,
+  actions,
+  children,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="rounded-[14px] border border-border bg-surface-2">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={onToggle}
+        className="flex min-h-12 w-full cursor-pointer items-start gap-2.5 border-none bg-transparent px-3.5 py-3 text-start"
+      >
+        <span className="mt-0.5">
+          <Chevron open={open} />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col gap-1">{children}</span>
+      </button>
+      {actions ? (
+        <div className="flex gap-2 px-3.5 pb-3 [&>*]:min-h-10 [&>*]:flex-1 [&>*]:justify-center">
+          {actions}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Phone counterpart of a group-totals row — a muted summary card under the group's cards. */
+export function MobileTotalsCard({
+  title,
+  fields,
+}: {
+  title: ReactNode;
+  fields: MobileRecordField[];
+}) {
+  return (
+    <MobileRecordCard
+      tone="gold"
+      className="bg-[color-mix(in_srgb,var(--gold)_7%,var(--surface))]"
+      title={title}
+      fields={fields}
+    />
   );
 }
 

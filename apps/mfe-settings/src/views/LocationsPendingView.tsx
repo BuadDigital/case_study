@@ -2,7 +2,7 @@
 
 import { OpsIcon } from "../components/OpsIcon";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   listPendingLocations,
@@ -14,6 +14,8 @@ import {
   Badge,
   cn,
   EmptyState,
+  MobileRecordCard,
+  MobileRecordList,
   PageShell,
   PageLoadingHint,
   Table,
@@ -44,6 +46,10 @@ const MAP_PIN_ICON =
 
 function kindLabel(kind: string): string {
   return kind === "district" ? "حي" : "مدينة";
+}
+
+function KindBadge({ kind }: { kind: string }) {
+  return <Badge tone={kind === "district" ? "info" : "primary"}>{kindLabel(kind)}</Badge>;
 }
 
 export function LocationsPendingView() {
@@ -111,6 +117,42 @@ export function LocationsPendingView() {
     await load();
   }
 
+  /** The rename draft input wiring (table cell and phone card). */
+  function renameInputProps(item: PendingLocationDto) {
+    return {
+      value: renameDrafts[item.id] ?? item.nameAr,
+      onChange: (e: ChangeEvent<HTMLInputElement>) =>
+        setRenameDrafts((prev) => ({
+          ...prev,
+          [item.id]: e.target.value,
+        })),
+    };
+  }
+
+  /** Approve / rename-and-approve (table cell and phone card). */
+  function reviewActions(item: PendingLocationDto) {
+    return (
+      <>
+        <button
+          type="button"
+          className={opsBtnSmPrimary}
+          disabled={busyId === item.id}
+          onClick={() => void review(item, "approve")}
+        >
+          {busyId === item.id ? "…" : "اعتماد"}
+        </button>
+        <button
+          type="button"
+          className={opsBtnSm}
+          disabled={busyId === item.id}
+          onClick={() => void review(item, "rename")}
+        >
+          تصحيح واعتماد
+        </button>
+      </>
+    );
+  }
+
   return (
     <PageShell
       variant="canvas"
@@ -135,7 +177,11 @@ export function LocationsPendingView() {
               </div>
             </div>
           </div>
-          <span className={opsCountBadge}>{items.length}</span>
+          <span className={opsCountBadge}>
+            <bdi dir="ltr" className="tabular-nums">{items.length}</bdi>
+            {/* Phones stretch the badge into a full-width bar — a bare number reads as noise. */}
+            <span className="ms-1 lg:hidden">موقع</span>
+          </span>
         </div>
 
         {loadError ? (
@@ -148,7 +194,36 @@ export function LocationsPendingView() {
         ) : items.length === 0 && !loadError ? (
           <EmptyState line="لا توجد مسميات بانتظار المراجعة." />
         ) : !loading && !loadError ? (
-          <Table className="min-w-[720px] tabular-nums">
+          <>
+          {/* Phones: one card per pending name — the 720px table scrolled sideways. */}
+          <MobileRecordList className="px-4 py-3 lg:hidden" isEmpty={false}>
+            {items.map((item) => (
+              <MobileRecordCard
+                key={`${item.kind}-${item.id}`}
+                title={item.nameAr}
+                subtitle={
+                  item.rawInput && item.rawInput !== item.nameAr
+                    ? `المدخل: ${item.rawInput}`
+                    : undefined
+                }
+                status={<KindBadge kind={item.kind} />}
+                fields={[
+                  { label: "النطاق", value: item.scopeLabel || "—" },
+                  { label: "الاستخدام", value: item.usageCount, ltr: true },
+                ]}
+                actions={reviewActions(item)}
+              >
+                <label className="flex min-w-0 flex-col gap-1">
+                  <span className="text-[11.5px] font-medium text-text-3">تصحيح الاسم</span>
+                  <input
+                    className={cn(opsFldControl, "min-h-11 w-full text-[14px]")}
+                    {...renameInputProps(item)}
+                  />
+                </label>
+              </MobileRecordCard>
+            ))}
+          </MobileRecordList>
+          <Table className="min-w-[720px] tabular-nums" wrapClassName="max-lg:hidden">
             <THead>
                 <Tr hoverable={false}>
                   <Th>النوع</Th>
@@ -163,11 +238,7 @@ export function LocationsPendingView() {
                 {items.map((item) => (
                   <Tr key={`${item.kind}-${item.id}`} hoverable={false}>
                     <Td>
-                      <Badge
-                        tone={item.kind === "district" ? "info" : "primary"}
-                      >
-                        {kindLabel(item.kind)}
-                      </Badge>
+                      <KindBadge kind={item.kind} />
                     </Td>
                     <Td>
                       <div className="font-semibold text-heading">
@@ -184,39 +255,19 @@ export function LocationsPendingView() {
                     <Td>
                       <input
                         className={cn(opsFldControl, "min-w-[140px] text-xs")}
-                        value={renameDrafts[item.id] ?? item.nameAr}
-                        onChange={(e) =>
-                          setRenameDrafts((prev) => ({
-                            ...prev,
-                            [item.id]: e.target.value,
-                          }))
-                        }
+                        {...renameInputProps(item)}
                       />
                     </Td>
                     <Td>
                       <div className="flex flex-wrap gap-1.5">
-                        <button
-                          type="button"
-                          className={opsBtnSmPrimary}
-                          disabled={busyId === item.id}
-                          onClick={() => void review(item, "approve")}
-                        >
-                          {busyId === item.id ? "…" : "اعتماد"}
-                        </button>
-                        <button
-                          type="button"
-                          className={opsBtnSm}
-                          disabled={busyId === item.id}
-                          onClick={() => void review(item, "rename")}
-                        >
-                          تصحيح واعتماد
-                        </button>
+                        {reviewActions(item)}
                       </div>
                     </Td>
                   </Tr>
                 ))}
               </TBody>
             </Table>
+          </>
         ) : null}
       </section>
     </PageShell>

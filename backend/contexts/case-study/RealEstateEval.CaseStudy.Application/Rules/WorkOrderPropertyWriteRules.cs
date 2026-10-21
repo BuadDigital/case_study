@@ -395,6 +395,26 @@ public static class WorkOrderPropertyWriteRules
         return string.IsNullOrEmpty(location) ? who : $"{location} — {who}";
     }
 
+    /// <summary>
+    /// «أخصائي الإسناد: …  — أدخله الاسم»: the Enfaz-receipt milestone's detail — the order's assignment
+    /// specialist and who registered it, either part dropped when unknown (null when both are).
+    /// </summary>
+    public static string? EnfathReceivedTimelineDetail(string? assignmentSpecialist, string? receivedByName)
+    {
+        var specialist = assignmentSpecialist?.Trim();
+        var specialistPart = string.IsNullOrEmpty(specialist) ? null : $"أخصائي الإسناد: {specialist}";
+        var who = PrimaryDataTimelineDetail(receivedByName);
+        if (specialistPart is null) return who;
+        return who is null ? specialistPart : $"{specialistPart} — {who}";
+    }
+
+    /// <summary>«أدخله الاسم»: the primary-data milestone's detail line, like the bourse one (null without a name).</summary>
+    public static string? PrimaryDataTimelineDetail(string? completedByName)
+    {
+        var by = NormalizeActorName(completedByName);
+        return by is null ? null : $"أدخله {by}";
+    }
+
     /// <summary>The display name stored beside the completion stamp: trimmed, bounded, null when empty.</summary>
     public static string? NormalizeActorName(string? name)
     {

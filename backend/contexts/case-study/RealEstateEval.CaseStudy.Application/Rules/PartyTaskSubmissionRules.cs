@@ -60,6 +60,27 @@ public static class PartyTaskSubmissionRules
         return actor is null || canAssigneeWrite || staffMayCorrect;
     }
 
+    /// <summary>
+    /// Submitting mirrors <see cref="MayWriteDraft"/>: the assignee submits their own package, and
+    /// case staff holding the field-inspection correction right may submit a field inspection they
+    /// corrected — the specialist's «تأكيد مدخلات المعاين» submits before it accepts, including a
+    /// package returned for correction.
+    /// </summary>
+    public static bool MaySubmit(PartySubmissionActor? actor, WorkflowTask task)
+    {
+        if (actor is null) return true;
+        if (PoRoleMatrixRules.CanWritePartyTask(
+                actor.PrototypeRole,
+                task.AssigneeId,
+                actor.UserId,
+                actor.DistributionAssigneeId))
+        {
+            return true;
+        }
+        return task.Kind == WorkflowTaskKind.FieldInspection
+            && StaffMayCorrectPartyPackage(actor, task);
+    }
+
     /// <summary>Acceptance is stamped with the actor's user id, or «system» when there is none.</summary>
     public static string AcceptActorUserId(PartySubmissionActor actor) =>
         string.IsNullOrWhiteSpace(actor.UserId) ? "system" : actor.UserId;

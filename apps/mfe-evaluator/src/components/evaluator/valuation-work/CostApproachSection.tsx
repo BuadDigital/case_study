@@ -139,7 +139,8 @@ export const CostApproachSection = memo(function CostApproachSection({
         />
       ) : null}
 
-      <div className="mb-6 grid grid-cols-[1.2fr_1fr] gap-[18px]">
+      {/* Phones stack the indirect-costs and age cards instead of two ~150px columns. */}
+      <div className="mb-6 grid grid-cols-[1.2fr_1fr] gap-[18px] max-lg:grid-cols-1">
         <CostIndirectCard
           fields={fields}
           setField={setField}

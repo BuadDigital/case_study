@@ -16,10 +16,14 @@ import { supervisingDepartmentLabel } from "@platform/app-shared/users/admin-sta
 import { getAuthSession } from "@platform/auth-client";
 import {
   Badge,
+  MobileRecordCard,
+  MobileRecordList,
+  MobileSectionPicker,
   Spinner,
   TBody,
   THead,
   Table,
+  TableFrame,
   Td,
   TdLtr,
   Th,
@@ -292,7 +296,15 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
         </Badge>
       </div>
 
-      <div className="flex flex-wrap gap-2 border-b border-border pb-2.5">
+      {/* Phones: the wrapping tab buttons become one section picker. */}
+      <MobileSectionPicker
+        className="lg:hidden"
+        title="الملف"
+        sections={tabs}
+        active={effectiveTab}
+        onChange={(id) => setTab(id as ProfileTab)}
+      />
+      <div className="flex flex-wrap gap-2 border-b border-border pb-2.5 max-lg:hidden">
         {tabs.map((item) => (
           <button
             key={item.id}
@@ -416,7 +428,33 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             ) : activityRows.length === 0 ? (
               <p className="text-[12px] text-text-3">لا توجد أعمال منجزة ظاهرة لهذا المستخدم.</p>
             ) : (
-              <Table framed className="min-w-[560px]">
+              <>
+              {/* Phones: one card per completed task. */}
+              <MobileRecordList className="lg:hidden" isEmpty={false}>
+                {activityRows.map((row) => (
+                  <MobileRecordCard
+                    key={row.workflowTaskId}
+                    title={<bdi dir="ltr" className="tabular-nums">{row.poNumber || "—"}</bdi>}
+                    subtitle={row.taskKind || "—"}
+                    status={
+                      <Badge tone="default">
+                        {row.workStatusLabel || row.billingStatusLabel}
+                      </Badge>
+                    }
+                    fields={[
+                      {
+                        label: "تاريخ الإنجاز",
+                        value: formatAt(
+                          row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc,
+                        ),
+                        ltr: true,
+                      },
+                    ]}
+                  />
+                ))}
+              </MobileRecordList>
+              <TableFrame className="max-lg:hidden">
+              <Table className="min-w-[560px]">
                 <THead>
                   <Tr hoverable={false}>
                     <Th>أمر العمل</Th>
@@ -438,6 +476,8 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
                   ))}
                 </TBody>
               </Table>
+              </TableFrame>
+              </>
             )}
           </section>
           </Activity>
@@ -469,7 +509,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
         {visitedTabsRef.current.has("financial") && showFinancial ? (
           <Activity mode={tabMode("financial")}>
           <section className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <ProfileField
                 label="المستحق"
                 value={fmtSar(financialSummary.due, { digits: 3, trim: true })}
@@ -494,7 +534,24 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
             ) : feeRows.length === 0 ? (
               <p className="text-[12px] text-text-3">لا توجد بنود مالية لهذا المستخدم.</p>
             ) : (
-              <Table framed className="min-w-[640px]">
+              <>
+              {/* Phones: one card per fee line — the 640px table scrolled sideways. */}
+              <MobileRecordList className="lg:hidden" isEmpty={false}>
+                {feeRows.map((row) => (
+                  <MobileRecordCard
+                    key={row.workflowTaskId}
+                    title={<bdi dir="ltr" className="tabular-nums">{row.poNumber || "—"}</bdi>}
+                    status={<Badge tone="default">{row.billingStatusLabel}</Badge>}
+                    fields={[
+                      { label: "الصافي", value: fmtMax(row.netFeeSar, 3), ltr: true },
+                      { label: "المدفوع", value: fmtMax(row.paidAmountSar, 3), ltr: true },
+                      { label: "آخر تحديث", value: formatAt(row.updatedAtUtc), ltr: true, wide: true },
+                    ]}
+                  />
+                ))}
+              </MobileRecordList>
+              <TableFrame className="max-lg:hidden">
+              <Table className="min-w-[640px]">
                 <THead>
                   <Tr hoverable={false}>
                     <Th>أمر العمل</Th>
@@ -516,6 +573,8 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
                   ))}
                 </TBody>
               </Table>
+              </TableFrame>
+              </>
             )}
           </section>
           </Activity>

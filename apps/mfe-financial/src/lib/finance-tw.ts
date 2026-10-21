@@ -11,9 +11,9 @@ export const finFldLbl = "text-[12px] font-semibold text-text-2";
 export const finShell =
   "flex min-h-0 flex-1 flex-col bg-bg font-sans text-text";
 
-/** .content { padding: 26px 30px 44px } */
+/** .content { padding: 26px 30px 44px } — phones rely on the canvas's 16px gutter alone. */
 export const finContent =
-  "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-[30px] py-[26px] pb-11";
+  "flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto px-0 pt-1 pb-11 sm:px-[30px] sm:pt-[26px]";
 
 /* —— stage pills — pixel-match HTML data-rvtab —— */
 export const finStagePills = "mb-3.5 flex flex-wrap gap-[7px]";

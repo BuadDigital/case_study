@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
-import { cn, EmptyState, InlineLoadingSkeleton, PageShell, QueryErrorState, Spinner, useSwapAnimation, useToast, confirmAction } from "@platform/ui-kit";
+import { cn, EmptyState, MobileSectionPicker, InlineLoadingSkeleton, PageShell, QueryErrorState, Spinner, useSwapAnimation, useToast, confirmAction } from "@platform/ui-kit";
 import {
   CASE_STUDY_INFO_PARTIES,
   CASE_STUDY_INFO_ROLE_TYPES,
@@ -41,6 +41,7 @@ import {
   opsTfLbl,
   opsTfSeg,
   opsTfSegActive,
+  opsTfSegRow,
 } from "@platform/ui-kit";
 
 const QUESTION_INDEX_BY_KEY = new Map(
@@ -214,6 +215,15 @@ export function CaseStudyInfoRolesView() {
     if (s === "done") secDone++;
   }
 
+  const sectionTabs = CASE_STUDY_INFO_SECTIONS.map((sec) => {
+    const qs = CASE_STUDY_QUESTION_CATALOG.filter((q) => q.section === sec.id);
+    let answeredCount = 0;
+    for (const q of qs) {
+      if (questionStatus(config, q.key) !== "empty") answeredCount++;
+    }
+    return { sec, answeredCount, total: qs.length };
+  });
+
   return (
     <PageShell
       variant="canvas"
@@ -313,15 +323,19 @@ export function CaseStudyInfoRolesView() {
       </section>
 
       <div className={cn(opsFilters, "mb-3.5")}>
-        <div className="inline-flex flex-wrap" role="tablist" aria-label="أقسام التقرير">
-          {CASE_STUDY_INFO_SECTIONS.map((sec) => {
-            const qs = CASE_STUDY_QUESTION_CATALOG.filter(
-              (q) => q.section === sec.id,
-            );
-            let answeredCount = 0;
-            for (const q of qs) {
-              if (questionStatus(config, q.key) !== "empty") answeredCount++;
-            }
+        {/* Phones: the five section tabs collapse into one picker (bottom sheet). */}
+        <MobileSectionPicker
+          className="lg:hidden"
+          title="قسم التقرير"
+          sections={sectionTabs.map(({ sec, answeredCount, total }) => ({
+            id: sec.id,
+            label: `${sec.label} · ${answeredCount}/${total}`,
+          }))}
+          active={activeSec ?? ""}
+          onChange={(id) => setActiveSec(id as typeof activeSec)}
+        />
+        <div className={cn(opsTfSegRow, "max-lg:hidden")} role="tablist" aria-label="أقسام التقرير">
+          {sectionTabs.map(({ sec, answeredCount, total }) => {
             const active = activeSec === sec.id;
             return (
               <button
@@ -334,7 +348,7 @@ export function CaseStudyInfoRolesView() {
               >
                 {sec.label}
                 <span className="ms-1.5 opacity-70">
-                  {answeredCount}/{qs.length}
+                  {answeredCount}/{total}
                 </span>
               </button>
             );
@@ -391,10 +405,11 @@ export function CaseStudyInfoRolesView() {
                       <span className="block text-[13.5px] font-bold leading-snug text-heading">
                         {q.text}
                       </span>
-                      <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {/* Phones: whole chips (never split mid-text), 12px text, 36px tall. */}
+                      <span className="mt-1 flex flex-wrap items-center gap-1.5 max-lg:mt-2">
                         <span
                           className={cn(
-                            "inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-bold",
+                            "inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[10.5px] font-bold max-lg:min-h-9 max-lg:px-3 max-lg:text-[12px]",
                             status === "done" && "bg-gold-soft text-gold-d",
                             status === "partial" &&
                               "bg-surface-2 text-text-2",
@@ -410,7 +425,7 @@ export function CaseStudyInfoRolesView() {
                         {chips.map(({ party, role }) => (
                           <span
                             key={party.id}
-                            className="rounded-[8px] border border-border-md bg-surface-2 px-2 py-0.5 text-[10.5px] font-semibold text-text-2"
+                            className="rounded-[8px] border border-border-md bg-surface-2 px-2 py-0.5 text-[10.5px] font-semibold text-text-2 max-lg:inline-flex max-lg:min-h-9 max-lg:max-w-full max-lg:items-center max-lg:overflow-hidden max-lg:text-ellipsis max-lg:whitespace-nowrap max-lg:px-2.5 max-lg:text-[12px]"
                           >
                             {party.name} · {role.label}
                           </span>
@@ -449,7 +464,7 @@ export function CaseStudyInfoRolesView() {
                               </span>
                               {currentRole ? (
                                 <span
-                                  className="shrink-0 rounded-[7px] px-1.5 py-0.5 text-[10px] font-bold"
+                                  className="shrink-0 rounded-[7px] px-1.5 py-0.5 text-[10px] font-bold max-lg:px-2 max-lg:text-[12px]"
                                   style={{
                                     background: currentRole.bg,
                                     color: currentRole.color,
@@ -459,7 +474,8 @@ export function CaseStudyInfoRolesView() {
                                 </span>
                               ) : null}
                             </div>
-                            <div className="flex flex-col gap-1" role="radiogroup" aria-label={party.name}>
+                            {/* Phones: the four roles sit 2×2 as 44px targets; desktop keeps the stack. */}
+                            <div className="grid grid-cols-2 gap-1.5 lg:flex lg:flex-col lg:gap-1" role="radiogroup" aria-label={party.name}>
                               {CASE_STUDY_INFO_ROLE_TYPES.map((rt) => {
                                 const sel = currentRoleId === rt.id;
                                 return (
@@ -469,7 +485,7 @@ export function CaseStudyInfoRolesView() {
                                     role="radio"
                                     aria-checked={sel}
                                     className={cn(
-                                      "flex w-full cursor-pointer items-center gap-1.5 rounded-[8px] border px-2 py-1.5 text-right font-[inherit] text-[11.5px] font-semibold transition-colors",
+                                      "flex min-h-11 w-full cursor-pointer items-center gap-1.5 rounded-[8px] border px-2 py-2 text-right font-[inherit] text-[13px] font-semibold transition-colors lg:min-h-0 lg:py-1.5 lg:text-[11.5px]",
                                       sel
                                         ? "border-current shadow-[inset_0_0_0_1px_currentColor]"
                                         : "border-border-md bg-surface-2 text-text-2 hover:border-gold hover:bg-gold-soft/40",

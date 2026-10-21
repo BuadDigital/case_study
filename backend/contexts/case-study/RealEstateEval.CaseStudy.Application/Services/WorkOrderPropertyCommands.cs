@@ -49,7 +49,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         string poNumber,
         WorkOrderPropertyDto property,
         CancellationToken cancellationToken,
-        bool softDraft = false)
+        bool softDraft = false,
+        string? actorName = null)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
@@ -85,7 +86,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         _db.AddProperty(mapped);
         await _db.SaveChangesAsync(cancellationToken);
         // A property registered after the PO was created (the usual path) starts its timeline with the Enfaz receipt.
-        await _timeline.RecordManyAsync([WorkOrderService.EnfathReceivedEvent(entity, mapped.Id)], cancellationToken);
+        await _timeline.RecordManyAsync([WorkOrderService.EnfathReceivedEvent(entity, mapped.Id, actorName)], cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(mapped), null);
     }
 
@@ -198,7 +199,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 propertyId,
                 "property-enfath",
                 "إتمام البيانات الأولية",
-                null,
+                WorkOrderPropertyWriteRules.PrimaryDataTimelineDetail(actorName),
                 PropertyTimelineTones.Done,
                 _time.UtcNow(),
                 cancellationToken);

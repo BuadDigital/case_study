@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useLayoutEffect, useRef } from "react";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 
 // animejs is loaded on demand inside effects so it stays out of the initial bundle.
 type DashAnimation = { pause: () => void };
@@ -107,7 +108,7 @@ export function RingCap({
   return (
     <div className="flex flex-col items-center gap-1">
       <MiniDonut pct={pct} color={color} />
-      <span className="whitespace-nowrap text-[9px] text-text-3">{cap}</span>
+      <span className="whitespace-nowrap text-[10.5px] text-text-3">{cap}</span>
     </div>
   );
 }
@@ -205,9 +206,12 @@ export function TrendChart({
   const rootRef = useRef<HTMLDivElement>(null);
   const seriesKey = series.map((s) => `${s.year}:${s.values.join(",")}`).join("|");
   const labelsKey = labels.join(",");
-  const W = 760;
-  const H = 168;
-  const padL = 30;
+  // Phones draw at phone width: the 760-wide box shrank its 10-unit labels to ~4px.
+  const compact = useViewportDesktop() === false;
+  const W = compact ? 360 : 760;
+  const H = compact ? 200 : 168;
+  const fontSize = compact ? 12 : 10;
+  const padL = compact ? 24 : 30;
   const padR = 14;
   const padT = 12;
   const padB = 26;
@@ -348,7 +352,7 @@ export function TrendChart({
                 x={padL - 6}
                 y={y + 3}
                 textAnchor="end"
-                fontSize="10"
+                fontSize={fontSize}
                 fill="var(--text-3)"
               >
                 {val}
@@ -368,18 +372,21 @@ export function TrendChart({
             data-trend-line=""
           />
         ))}
-        {labels.map((lab, i) => (
+        {labels.map((lab, i) =>
+          // Phones: every other month — 12 labels in 360 units ran into each other.
+          compact && labels.length > 6 && i % 2 === 1 ? null : (
           <text
             key={lab + i}
             x={X(i)}
             y={H - 8}
             textAnchor="middle"
-            fontSize="10"
+            fontSize={fontSize}
             fill="var(--text-3)"
           >
             {lab}
           </text>
-        ))}
+          ),
+        )}
       </svg>
       <div
         data-trend-dot=""
