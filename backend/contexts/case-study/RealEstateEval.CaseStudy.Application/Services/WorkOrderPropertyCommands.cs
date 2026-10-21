@@ -198,7 +198,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 propertyId,
                 "property-enfath",
                 "إتمام البيانات الأولية",
-                null,
+                WorkOrderPropertyWriteRules.PrimaryDataTimelineDetail(actorName),
                 PropertyTimelineTones.Done,
                 _time.UtcNow(),
                 cancellationToken);
