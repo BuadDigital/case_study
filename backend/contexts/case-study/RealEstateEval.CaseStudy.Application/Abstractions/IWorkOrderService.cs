@@ -52,7 +52,8 @@ public interface IWorkOrderService
         CancellationToken cancellationToken);
     Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         CreateWorkOrderRequest request,
-        CancellationToken cancellationToken);
+        CancellationToken cancellationToken,
+        string? actorName = null);
     Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> UpdateHeaderAsync(
         string poNumber,
         UpdateWorkOrderHeaderRequest request,
@@ -62,7 +63,8 @@ public interface IWorkOrderService
         string poNumber,
         WorkOrderPropertyDto property,
         CancellationToken cancellationToken,
-        bool softDraft = false);
+        bool softDraft = false,
+        string? actorName = null);
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(
         string poNumber,
         Guid propertyId,
