@@ -77,7 +77,7 @@ export function KeysViewToolbar({
           type="button"
           className={cn(
             opsBtnGhost,
-            "show-all-btn-motion h-[38px] px-3.5 text-[12.5px] max-lg:flex-1",
+            "show-all-btn-motion h-[38px] whitespace-nowrap px-3.5 text-[12.5px] max-lg:flex-1",
           )}
           onClick={onToggleShowOut}
         >

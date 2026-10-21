@@ -150,7 +150,7 @@ export function DashActivityFeed() {
               >
                 <DashActivityIconSvg name={ic} />
               </span>
-              <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[12.5px] leading-normal text-text">
+              <span className="line-clamp-2 min-w-0 flex-1 text-[12.5px] leading-normal text-text sm:line-clamp-none sm:overflow-hidden sm:text-ellipsis sm:whitespace-nowrap">
                 {displayText(item)}
               </span>
               {isNew ? (

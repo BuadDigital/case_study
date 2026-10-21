@@ -262,6 +262,57 @@ export function PoPropertiesPage({
     : false;
   const typeTone = assignmentTypeTone(record.assignmentType);
 
+  /** Per-property display values shared by the desktop table and the phone cards. */
+  const rowView = (prop: PoPropertyIntake) => {
+    const serverStatus =
+      statusByPropertyId.get(prop.id) ?? PropertyListRowStatuses.New;
+    const boursePending = !prop.bourseDataCompleted && !prop.isRemoved;
+    // A slot the specialist opened but has not saved yet (decision 2026-10-18:
+    // the property exists on the server from the first second).
+    const intakePending =
+      boursePending &&
+      !prop.deedNumber.trim() &&
+      !prop.realEstateRegNumber.trim();
+    const locRaw = formatPropertyLocation(prop);
+    const location =
+      locRaw === "بانتظار البورصة"
+        ? "بانتظار البورصة"
+        : locRaw || "—";
+    const typeLine = formatPropertyTypeLine(prop);
+    const typeDisplay =
+      boursePending && !hasBourseDetailFields(prop)
+        ? "—"
+        : typeLine || "—";
+    const detailHref = poPropertyPath(poNumber, prop.id);
+    const label = deedLabel(prop);
+    const workflowStyle = prop.isRemoved
+      ? propertyWorkflowStatusStyle("removed")
+      : intakePending
+        ? {
+            label: "بانتظار البيانات الأولية",
+            base: "#7a7a7a",
+            fg: "#5f5f5f",
+          }
+        : boursePending
+          ? {
+              label: "بانتظار البورصة",
+              base: "#a67c1a",
+              fg: "#8a6a18",
+            }
+          : propertyWorkflowStatusStyle(serverStatus);
+    const deedSt = prop.deedStatus.trim();
+
+    return {
+      boursePending,
+      location,
+      typeDisplay,
+      detailHref,
+      label,
+      workflowStyle,
+      deedSt,
+    };
+  };
+
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-bg px-4 py-5 max-lg:px-3 sm:px-[30px] sm:py-[26px]">
       <PpHead>
@@ -347,120 +398,136 @@ export function PoPropertiesPage({
           <PpEmpty />
         )
       ) : (
-        <TableFrame>
-          <Table className="min-w-[720px]">
-            <THead>
-              <Tr hoverable={false}>
-                <Th>رقم الصك</Th>
-                <Th>الموقع</Th>
-                <Th>{PROPERTY_TYPE_USAGE_LABEL}</Th>
-                <Th>حالة الصك</Th>
-                <Th>الحالة</Th>
-                <ThAction aria-hidden />
-              </Tr>
-            </THead>
-            <TBody>
-              {visibleProperties.map((prop, index) => {
-                const serverStatus =
-                  statusByPropertyId.get(prop.id) ?? PropertyListRowStatuses.New;
-                const boursePending = !prop.bourseDataCompleted && !prop.isRemoved;
-                // A slot the specialist opened but has not saved yet (decision 2026-10-18:
-                // the property exists on the server from the first second).
-                const intakePending =
-                  boursePending &&
-                  !prop.deedNumber.trim() &&
-                  !prop.realEstateRegNumber.trim();
-                const locRaw = formatPropertyLocation(prop);
-                const location =
-                  locRaw === "بانتظار البورصة"
-                    ? "بانتظار البورصة"
-                    : locRaw || "—";
-                const typeLine = formatPropertyTypeLine(prop);
-                const typeDisplay =
-                  boursePending && !hasBourseDetailFields(prop)
-                    ? "—"
-                    : typeLine || "—";
-                const detailHref = poPropertyPath(poNumber, prop.id);
-                const label = deedLabel(prop);
-                const workflowStyle = prop.isRemoved
-                  ? propertyWorkflowStatusStyle("removed")
-                  : intakePending
-                    ? {
-                        label: "بانتظار البيانات الأولية",
-                        base: "#7a7a7a",
-                        fg: "#5f5f5f",
-                      }
-                    : boursePending
-                      ? {
-                          label: "بانتظار البورصة",
-                          base: "#a67c1a",
-                          fg: "#8a6a18",
-                        }
-                      : propertyWorkflowStatusStyle(serverStatus);
-                const deedSt = prop.deedStatus.trim();
-
-                return (
-                  <Tr
-                    key={prop.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => {
-                      router.push(detailHref);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        router.push(detailHref);
-                      }
-                    }}
+        <>
+          {/* Phones: one card per property — the 720px table hid its columns off-screen. */}
+          <ul className="m-0 flex list-none flex-col gap-2 p-0 sm:hidden">
+            {visibleProperties.map((prop, index) => {
+              const { location, typeDisplay, detailHref, label, workflowStyle, deedSt, boursePending } =
+                rowView(prop);
+              return (
+                <li
+                  key={prop.id}
+                  className="relative rounded-[12px] border border-border bg-surface px-3.5 py-3"
+                >
+                  <button
+                    type="button"
+                    className="block w-full cursor-pointer border-0 bg-transparent p-0 text-start font-[inherit]"
+                    onClick={() => router.push(detailHref)}
                   >
-                    <Td>
+                    <div className="pe-8">
                       <PpDeedCell index={index + 1} deed={label} />
-                    </Td>
-                    <Td className="text-text-2">
-                      <span className="truncate">{location}</span>
-                    </Td>
-                    <Td>
-                      {boursePending && !hasBourseDetailFields(prop) ? (
-                        <span className="text-text-2">—</span>
-                      ) : (
-                        <span className="truncate">{typeDisplay}</span>
-                      )}
-                    </Td>
-                    <Td>
-                      {boursePending || !deedSt ? (
-                        <span className="text-text-2">—</span>
-                      ) : (
+                    </div>
+                    <div className="mt-1.5 text-[12.5px] text-text-2">{location}</div>
+                    {typeDisplay !== "—" ? (
+                      <div className="mt-0.5 text-[12.5px] text-text-2">{typeDisplay}</div>
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                      <PpStatus label={workflowStyle.label} style={workflowStyle} />
+                      {!boursePending && deedSt ? (
                         <PpStatus label={deedSt} style={deedStatusStyle(deedSt)} />
-                      )}
-                    </Td>
-                    <Td>
-                      <div className="flex min-w-0 flex-col items-start gap-0.5">
-                        <PpStatus
-                          label={workflowStyle.label}
-                          style={workflowStyle}
-                        />
-                        {prop.isRemoved && prop.removalReason.trim() ? (
-                          <span className="text-[11px] font-medium text-[#c0553d]">
-                            {prop.removalReason.trim()}
-                          </span>
-                        ) : null}
-                      </div>
-                    </Td>
-                    <TdAction
-                      className="overflow-visible"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {showRowMenu ? (
-                        <RowMoreMenu items={resolveRowMoreItems(prop)} />
                       ) : null}
-                    </TdAction>
-                  </Tr>
-                );
-              })}
-            </TBody>
-          </Table>
-        </TableFrame>
+                    </div>
+                    {prop.isRemoved && prop.removalReason.trim() ? (
+                      <div className="mt-1 text-[11px] font-medium text-[#c0553d]">
+                        {prop.removalReason.trim()}
+                      </div>
+                    ) : null}
+                  </button>
+                  {showRowMenu ? (
+                    <div className="absolute end-2 top-2">
+                      <RowMoreMenu items={resolveRowMoreItems(prop)} />
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+          <TableFrame className="hidden sm:block">
+            <Table className="min-w-[720px]">
+              <THead>
+                <Tr hoverable={false}>
+                  <Th>رقم الصك</Th>
+                  <Th>الموقع</Th>
+                  <Th>{PROPERTY_TYPE_USAGE_LABEL}</Th>
+                  <Th>حالة الصك</Th>
+                  <Th>الحالة</Th>
+                  <ThAction aria-hidden />
+                </Tr>
+              </THead>
+              <TBody>
+                {visibleProperties.map((prop, index) => {
+                  const {
+                    boursePending,
+                    location,
+                    typeDisplay,
+                    detailHref,
+                    label,
+                    workflowStyle,
+                    deedSt,
+                  } = rowView(prop);
+                  return (
+                    <Tr
+                      key={prop.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => {
+                        router.push(detailHref);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          router.push(detailHref);
+                        }
+                      }}
+                    >
+                      <Td>
+                        <PpDeedCell index={index + 1} deed={label} />
+                      </Td>
+                      <Td className="text-text-2">
+                        <span className="truncate">{location}</span>
+                      </Td>
+                      <Td>
+                        {boursePending && !hasBourseDetailFields(prop) ? (
+                          <span className="text-text-2">—</span>
+                        ) : (
+                          <span className="truncate">{typeDisplay}</span>
+                        )}
+                      </Td>
+                      <Td>
+                        {boursePending || !deedSt ? (
+                          <span className="text-text-2">—</span>
+                        ) : (
+                          <PpStatus label={deedSt} style={deedStatusStyle(deedSt)} />
+                        )}
+                      </Td>
+                      <Td>
+                        <div className="flex min-w-0 flex-col items-start gap-0.5">
+                          <PpStatus
+                            label={workflowStyle.label}
+                            style={workflowStyle}
+                          />
+                          {prop.isRemoved && prop.removalReason.trim() ? (
+                            <span className="text-[11px] font-medium text-[#c0553d]">
+                              {prop.removalReason.trim()}
+                            </span>
+                          ) : null}
+                        </div>
+                      </Td>
+                      <TdAction
+                        className="overflow-visible"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {showRowMenu ? (
+                          <RowMoreMenu items={resolveRowMoreItems(prop)} />
+                        ) : null}
+                      </TdAction>
+                    </Tr>
+                  );
+                })}
+              </TBody>
+            </Table>
+          </TableFrame>
+        </>
       )}
 
       {visibleProperties.length > 0 ? <PpFooterHint /> : null}

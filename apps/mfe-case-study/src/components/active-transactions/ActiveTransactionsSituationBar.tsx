@@ -233,7 +233,7 @@ function MobileSituationStatCard({
         <div className="mt-1.5 text-[12px] font-semibold leading-snug text-text">
           {card.label}
         </div>
-        <div className="mt-0.5 truncate text-[10.5px] text-text-3">
+        <div className="mt-0.5 line-clamp-2 text-[11px] leading-snug text-text-3">
           {card.sub}
         </div>
       </div>
@@ -329,7 +329,8 @@ export function ActiveTransactionsSituationBar({
       <KpiBand className="mb-3 hidden lg:flex">{desktopCells}</KpiBand>
 
       {/* Mobile: HTML inspector separate stat cards (2×2). */}
-      <div className="mb-3 grid min-w-0 max-w-full grid-cols-2 gap-2.5 lg:hidden">
+      {/* An odd last card spans the row instead of leaving half of it empty. */}
+      <div className="mb-3 grid min-w-0 max-w-full grid-cols-2 gap-2.5 lg:hidden [&>*:last-child:nth-child(odd)]:col-span-2">
         {effectiveCards.map((card, index) => (
           <MobileSituationStatCard
             key={card.key}

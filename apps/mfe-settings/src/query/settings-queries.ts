@@ -7,6 +7,7 @@ import {
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { getAuthSession } from "@platform/auth-client";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { canListDistributionAssignees } from "@platform/app-shared/app-data/runtime-access";
 import type { CaseStudyInfoRolesConfig } from "../lib/app-data/case-study-info-roles-model";
 import { loadCaseStudyInfoRolesConfig } from "../lib/app-data/case-study-info-roles-reads";
 import {
@@ -30,19 +31,19 @@ export function useStaffUsersQuery() {
   const { authReady, capabilities } = useAppAccess();
   const userId = getAuthSession()?.user.id ?? "anonymous";
   const canManageUsers = capabilities.includes("manage-users");
-  // List is authorized on the API via manage-work-orders | manage-operations.
-  // Always attempt distribution-assignees when not a users-admin so we never
-  // cache a silent empty list while capabilities are still hydrating.
+  // authReady means capabilities are resolved, so the assignee gate is final —
+  // finance has neither list and must not ask (the API answers 403).
+  const canListAssignees = canListDistributionAssignees(capabilities);
   return useQuery({
     queryKey: [
       ...appDataKeys.staffUsers(),
       userId,
-      canManageUsers ? "manage" : "assignees",
+      canManageUsers ? "manage" : canListAssignees ? "assignees" : "none",
     ],
     queryFn: () =>
       fetchStaffUsers({
         canManageUsers,
-        canListDistributionAssignees: true,
+        canListDistributionAssignees: canListAssignees,
       }),
     enabled: authReady,
     ...queryDefaults,

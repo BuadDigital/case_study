@@ -20,7 +20,13 @@ import {
   partyFeePricingTablesQueryKey,
 } from "@financial/mfe/lib/financial-api";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import {
+  canManageFailures,
+  canManageWorkOrders,
+  canReadCaseStudyWorkspace,
+} from "@platform/app-shared/app-data/runtime-access";
 import { useEffect } from "react";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 
 const STALE_MS = 60_000;
 
@@ -33,8 +39,11 @@ export function prefetchPrototypePage(
   page: PageId,
 ): void {
   const opts = prefetchOpts();
+  // Warm only what this role may read — a refused prefetch is a wasted 403.
+  const readsWorkOrders = canReadCaseStudyWorkspace();
 
   const prefetchTasksAndPos = () => {
+    if (!readsWorkOrders) return;
     void queryClient.prefetchQuery({
       queryKey: appDataKeys.poRecords(),
       queryFn: loadPoRecordsWithTaskSync,
@@ -49,6 +58,7 @@ export function prefetchPrototypePage(
 
   const prefetchActiveTransactionsSituation = () => {
     prefetchTasksAndPos();
+    if (!readsWorkOrders) return;
     void queryClient.prefetchQuery({
       queryKey: appDataKeys.poListRows(),
       queryFn: loadPoListRows,
@@ -65,6 +75,7 @@ export function prefetchPrototypePage(
       });
       break;
     case "po":
+      if (!readsWorkOrders) break;
       void queryClient.prefetchQuery({
         queryKey: appDataKeys.poListRows(),
         queryFn: loadPoListRows,
@@ -112,6 +123,7 @@ export function prefetchPrototypePage(
       break;
     case "bourse-inquiry":
       prefetchActiveTransactionsSituation();
+      if (!canManageWorkOrders()) break;
       void queryClient.prefetchQuery({
         queryKey: appDataKeys.pendingBourseItems(),
         queryFn: loadPendingBourseItems,
@@ -127,6 +139,7 @@ export function prefetchPrototypePage(
       break;
     case "suspended-transactions":
       prefetchActiveTransactionsSituation();
+      if (!canManageFailures()) break;
       void queryClient.prefetchQuery({
         queryKey: appDataKeys.suspendedTransactions(),
         queryFn: loadSuspendedTransactions,
@@ -176,24 +189,47 @@ export function prefetchPrototypePage(
 /**
  * Warm cache on app boot in two tiers so the most-needed data (work orders,
  * tasks) loads first without competing with the dashboard's reporting call and
- * secondary data.
+ * secondary data. Runs once permissions resolve (`CorePrototypePrefetch`), so
+ * each tier warms only what the role may read.
  */
 export function prefetchCorePrototypeData(queryClient: QueryClient): void {
   const opts = prefetchOpts();
+  const readsWorkOrders = canReadCaseStudyWorkspace();
 
   // Tier 1 — data needed by the sidebar badges and most pages.
-  void queryClient.prefetchQuery({ queryKey: appDataKeys.poListRows(), queryFn: loadPoListRows, ...opts });
-  void queryClient.prefetchQuery({ queryKey: appDataKeys.propertyListItems(), queryFn: loadPropertyListItems, ...opts });
-  void queryClient.prefetchQuery({ queryKey: appDataKeys.poRecords(), queryFn: loadPoRecordsWithTaskSync, ...opts });
-  void queryClient.prefetchQuery({ queryKey: appDataKeys.workflowTasks(), queryFn: () => loadWorkflowTasksForQuery(), ...opts });
+  if (readsWorkOrders) {
+    void queryClient.prefetchQuery({ queryKey: appDataKeys.poListRows(), queryFn: loadPoListRows, ...opts });
+    void queryClient.prefetchQuery({ queryKey: appDataKeys.propertyListItems(), queryFn: loadPropertyListItems, ...opts });
+    void queryClient.prefetchQuery({ queryKey: appDataKeys.poRecords(), queryFn: loadPoRecordsWithTaskSync, ...opts });
+    void queryClient.prefetchQuery({ queryKey: appDataKeys.workflowTasks(), queryFn: () => loadWorkflowTasksForQuery(), ...opts });
+  }
   void queryClient.prefetchQuery({ queryKey: appDataKeys.failures(), queryFn: loadFailuresQuery, ...opts });
 
   // Tier 2 — secondary data that can wait until the UI has settled.
   setTimeout(() => {
-    void queryClient.prefetchQuery({ queryKey: appDataKeys.pendingBourseItems(), queryFn: loadPendingBourseItems, ...opts });
+    if (canManageWorkOrders()) {
+      void queryClient.prefetchQuery({ queryKey: appDataKeys.pendingBourseItems(), queryFn: loadPendingBourseItems, ...opts });
+    }
     void queryClient.prefetchQuery({ queryKey: appDataKeys.failureTypes(), queryFn: loadFailureTypesCatalog, ...opts });
     void queryClient.prefetchQuery({ queryKey: ["reporting", "dashboard"], queryFn: loadReportingDashboard, ...opts });
   }, 1_500);
+}
+
+/** Boot prefetch, deferred until the role's capabilities are known. */
+export function useCorePrototypePrefetch(): void {
+  const queryClient = useQueryClient();
+  const { authReady } = useAppAccess();
+
+  useEffect(() => {
+    if (!authReady) return;
+    const run = () => prefetchCorePrototypeData(queryClient);
+    if (typeof requestIdleCallback !== "undefined") {
+      const id = requestIdleCallback(run, { timeout: 2_000 });
+      return () => cancelIdleCallback(id);
+    }
+    const timer = setTimeout(run, 250);
+    return () => clearTimeout(timer);
+  }, [queryClient, authReady]);
 }
 
 export function useAppAccessDataSync(): void {

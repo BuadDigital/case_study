@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  MobileRecordCard,
   StatusPill,
   cn,
   finStatusStyle,
@@ -43,7 +44,38 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
   const paidScaled = applyCostTax(party.paidSar, party.payeeType);
 
   return (
-    <div className={cn(opsPanelCard, "mb-2.5 flex flex-wrap items-center gap-3.5 px-3.5 py-2.5")}>
+    <>
+    {/* Phones: the payee as one card — its four balances as labelled fields, not a wrapped strip. */}
+    <MobileRecordCard
+      className="mb-2.5 lg:hidden"
+      tone="gold"
+      title={party.name}
+      subtitle={
+        <bdi dir="ltr" className="text-[11px]">
+          {party.assigneeId.slice(0, 12)}
+        </bdi>
+      }
+      status={
+        <span className="flex flex-col items-end gap-1">
+          <StatusPill label={party.taskKindLabel} style={finStatusStyle("default")} />
+          <StatusPill
+            label={party.payeeTypeLabel}
+            style={finStatusStyle(isVendor ? "default" : "individual")}
+          />
+        </span>
+      }
+      fields={[
+        { label: "مستحق له الآن", ltr: true, value: fmtSar(party.balanceSar, { trim: true }) },
+        { label: "مستحق — لم يُسجَّل", ltr: true, value: fmtSar(dueScaled, { trim: true }) },
+        {
+          label: isVendor ? "في مسيرات صرف" : "في أوامر صرف",
+          ltr: true,
+          value: fmtSar(inStScaled, { trim: true }),
+        },
+        { label: "مدفوع سابقاً", ltr: true, value: fmtSar(paidScaled, { trim: true }) },
+      ]}
+    />
+    <div className={cn(opsPanelCard, "mb-2.5 flex flex-wrap items-center gap-3.5 px-3.5 py-2.5 max-lg:hidden")}>
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <span className="text-[14.5px] font-extrabold text-heading">
           {party.name}
@@ -98,6 +130,7 @@ function AccountHeader({ party }: { party: FinanceCostParty }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
@@ -289,6 +322,7 @@ export function FinanceCostsView({
       )}
 
       <FinanceStagePills
+        pickerTitle="القسم"
         items={partyTabs}
         active={accountSection}
         onChange={(id) => {

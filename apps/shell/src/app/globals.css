@@ -182,6 +182,32 @@ html:has(#app) body {
   min-height: 0;
 }
 
+/*
+ * Phones: fill the whole screen (100lvh), not only the part above Safari's bars.
+ * At 100% / 100dvh iOS Safari left a strip under the app painted with the page
+ * background — even the drawer's dark overlay stopped short of it. Bottom padding
+ * on the scroll surfaces (--browser-bar-inset) keeps the last row above the bar.
+ */
+@supports (height: 100lvh) {
+  @media (max-width: 1023.98px) {
+    html:has(#app),
+    html:has(#app) body,
+    #app {
+      height: 100lvh;
+      max-height: 100lvh;
+    }
+
+    /* The off-canvas drawer is fixed — let it reach the bottom edge too. */
+    #sidebar {
+      max-height: none;
+    }
+  }
+}
+
+:root {
+  --browser-bar-inset: max(env(safe-area-inset-bottom), calc(100lvh - 100dvh));
+}
+
 #sidebar,
 #main {
   min-height: 0;

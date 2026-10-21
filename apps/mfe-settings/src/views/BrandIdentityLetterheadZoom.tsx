@@ -37,7 +37,7 @@ export function BrandLetterheadZoom({ workflow }: { workflow: BrandIdentityWorkf
 
   return (
     <div
-      className="fixed inset-0 z-[1400] grid place-items-center p-6"
+      className="fixed inset-0 z-[1400] grid place-items-center p-6 max-lg:p-0"
       style={{ background: "rgba(16,43,78,.45)" }}
       role="dialog"
       aria-modal
@@ -45,7 +45,7 @@ export function BrandLetterheadZoom({ workflow }: { workflow: BrandIdentityWorkf
     >
       <div
         ref={zoomRef}
-        className="flex max-h-[94vh] items-start gap-4 rounded-xl bg-surface p-4"
+        className="flex max-h-[94vh] items-start gap-4 rounded-xl bg-surface p-4 max-lg:size-full max-lg:max-h-none max-lg:flex-col max-lg:items-stretch max-lg:overflow-y-auto max-lg:rounded-none max-lg:pb-[max(1rem,env(safe-area-inset-bottom))]"
         style={lhGuideCssVars(view) as CSSProperties}
       >
         <div className="flex flex-col gap-2">
@@ -71,7 +71,7 @@ export function BrandLetterheadZoom({ workflow }: { workflow: BrandIdentityWorkf
           </div>
           <div
             ref={frameRef}
-            className="relative h-[78vh] w-[min(720px,58vw)] overflow-hidden border border-border-md bg-surface-2"
+            className="relative h-[78vh] w-[min(720px,58vw)] overflow-hidden border border-border-md bg-surface-2 max-lg:h-[55dvh] max-lg:w-full"
           >
             <div
               ref={paperRef}
@@ -141,7 +141,8 @@ export function BrandLetterheadZoom({ workflow }: { workflow: BrandIdentityWorkf
             </div>
           </div>
         </div>
-        <div className="flex w-[190px] shrink-0 flex-col gap-2">
+        {/* Phones: the margin panel stacks under the page preview at full width. */}
+        <div className="flex w-[190px] shrink-0 flex-col gap-2 max-lg:w-full">
           <div className="text-[13px] font-bold text-heading">ضبط هوامش الكليشة</div>
           <LetterheadMarginFields workflow={workflow} disabled={!canEdit} bindDragInput />
           {marginError ? (

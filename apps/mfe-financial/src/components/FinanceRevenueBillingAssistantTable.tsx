@@ -6,6 +6,8 @@ import { Fragment, useMemo } from "react";
 import { fmt } from "@platform/app-shared/format/number";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
+  MobileRecordCard,
+  MobileRecordList,
   TBody,
   Table,
   TableFrame,
@@ -26,11 +28,62 @@ import {
   DeedCell,
   FeeFlags,
   GroupHeaderRow,
+  MobileGroupHeader,
+  MobileTotalsCard,
   RevenueTableHead,
   TotalsBlankCell,
   TotalsLabelCell,
   TotalsValueCell,
 } from "./FinanceRevenueTableParts";
+
+/** Row checkbox (table cell and the leading element of a phone card's title). */
+function RowCheck({
+  row,
+  on,
+  onToggle,
+}: {
+  row: EnfazTrackingRowDto;
+  on: boolean;
+  onToggle: (propertyId: string) => void;
+}) {
+  return (
+    <input
+      type="checkbox"
+      className={opsCheckInput}
+      checked={on}
+      onChange={() => onToggle(row.propertyId)}
+      onClick={(e) => e.stopPropagation()}
+      aria-label={`تحديد ${row.deedNumber}`}
+    />
+  );
+}
+
+/** «أمر العمل …» + «N معاملة · الإجمالي المستحق …» (desktop header row and phone header). */
+function PoGroupTitle({
+  poNumber,
+  count,
+  gross,
+}: {
+  poNumber: string;
+  count: number;
+  gross: number;
+}) {
+  return (
+    <>
+      <span className="text-[12.5px] font-extrabold text-heading">
+        أمر العمل{" "}
+        <span dir="ltr">{poNumber}</span>
+      </span>
+      <span className="text-[11px] text-text-3">
+        {count} معاملة · الإجمالي المستحق{" "}
+        <b className="text-heading" dir="ltr">
+          {fmt(gross, 2)}
+        </b>{" "}
+        ر.س
+      </span>
+    </>
+  );
+}
 
 export function BillingAssistantTable({
   rows,
@@ -49,7 +102,67 @@ export function BillingAssistantTable({
   const groups = useMemo(() => groupRowsByPo(rows), [rows]);
 
   return (
-    <TableFrame>
+    <>
+    {/* Phones: a collapsible header per work order over selectable deed cards
+        (tap or checkbox) and a work-order totals card — every column kept. */}
+    <div className="flex min-w-0 flex-col gap-2.5 lg:hidden">
+      {groups.map(({ poNumber, rows: group }) => {
+        const open = collapsed[poNumber] === true;
+        const sums = sumRevenueAmounts(group);
+        return (
+          <div key={poNumber} className="flex min-w-0 flex-col gap-2">
+            <MobileGroupHeader open={open} onToggle={() => onToggleGroup(poNumber)}>
+              <PoGroupTitle poNumber={poNumber} count={group.length} gross={sums.gross} />
+            </MobileGroupHeader>
+            {open ? (
+              <MobileRecordList>
+                {group.map((row) => {
+                  const a = revenueAmountsFromRow(row);
+                  const on = !!selected[row.propertyId];
+                  return (
+                    <MobileRecordCard
+                      key={row.propertyId}
+                      tone={on ? "ink" : undefined}
+                      className={cn(
+                        on && "bg-[color-mix(in_srgb,var(--ink)_5%,var(--surface))]",
+                      )}
+                      onOpen={() => onToggle(row.propertyId)}
+                      title={
+                        <span className="inline-flex items-center gap-2.5">
+                          <RowCheck row={row} on={on} onToggle={onToggle} />
+                          <DeedCell deed={row.deedNumber} />
+                        </span>
+                      }
+                      status={<FeeFlags row={row} />}
+                      fields={[
+                        { label: "مساحة الأرض (م²)", ltr: true, value: textOrDash(row.landArea) },
+                        { label: "مسطح البناء (م²)", ltr: true, value: "—" },
+                        { label: "أتعاب المفاتيح", ltr: true, value: fmt(a.key, 2) },
+                        { label: "الأتعاب", ltr: true, value: fmt(a.taxable, 2) },
+                        { label: "الضريبة", ltr: true, value: fmt(a.vat, 2) },
+                        { label: "شاملة الضريبة", ltr: true, value: fmt(a.withVat, 2) },
+                        { label: "الإجمالي المستحق", ltr: true, value: fmt(a.total, 2), wide: true },
+                      ]}
+                    />
+                  );
+                })}
+                <MobileTotalsCard
+                  title="إجمالي أمر العمل"
+                  fields={[
+                    { label: "أتعاب المفاتيح", ltr: true, value: fmt(sums.key, 2) },
+                    { label: "الأتعاب", ltr: true, value: fmt(sums.base, 2) },
+                    { label: "الضريبة", ltr: true, value: fmt(sums.vat, 2) },
+                    { label: "شاملة الضريبة", ltr: true, value: fmt(sums.base + sums.vat, 2) },
+                    { label: "الإجمالي المستحق", ltr: true, value: fmt(sums.gross, 2), wide: true },
+                  ]}
+                />
+              </MobileRecordList>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+    <TableFrame className="max-lg:hidden">
       <Table className="min-w-[1080px]">
         <RevenueTableHead
           firstStart={false}
@@ -78,17 +191,11 @@ export function BillingAssistantTable({
                   <div className="flex w-full flex-wrap items-center justify-between gap-2.5">
                     <span className="inline-flex flex-wrap items-center gap-[9px]">
                       <Chevron open={open} />
-                      <span className="text-[12.5px] font-extrabold text-heading">
-                        أمر العمل{" "}
-                        <span dir="ltr">{poNumber}</span>
-                      </span>
-                      <span className="text-[11px] text-text-3">
-                        {group.length} معاملة · الإجمالي المستحق{" "}
-                        <b className="text-heading" dir="ltr">
-                          {fmt(sums.gross, 2)}
-                        </b>{" "}
-                        ر.س
-                      </span>
+                      <PoGroupTitle
+                        poNumber={poNumber}
+                        count={group.length}
+                        gross={sums.gross}
+                      />
                     </span>
                   </div>
                 </GroupHeaderRow>
@@ -115,14 +222,7 @@ export function BillingAssistantTable({
                           }}
                         >
                           <Td className="text-center">
-                            <input
-                              type="checkbox"
-                              className={opsCheckInput}
-                              checked={on}
-                              onChange={() => onToggle(row.propertyId)}
-                              onClick={(e) => e.stopPropagation()}
-                              aria-label={`تحديد ${row.deedNumber}`}
-                            />
+                            <RowCheck row={row} on={on} onToggle={onToggle} />
                           </Td>
                           <Td className="text-center">
                             <DeedCell deed={row.deedNumber} />
@@ -189,5 +289,6 @@ export function BillingAssistantTable({
         </TBody>
       </Table>
     </TableFrame>
+    </>
   );
 }

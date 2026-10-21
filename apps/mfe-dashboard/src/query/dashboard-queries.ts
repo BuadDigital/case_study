@@ -23,10 +23,11 @@ const GC_MS = 10 * 60_000;
 const queryDefaults = { staleTime: STALE_MS, gcTime: GC_MS };
 
 /** PO list rows for dashboard stats — shared prototype query keys. */
-export function usePoListRowsQuery() {
+export function usePoListRowsQuery(enabled = true) {
   return useQuery({
     queryKey: appDataKeys.poListRows(),
     queryFn: loadPoListRows,
+    enabled,
     ...queryDefaults,
   });
 }

@@ -160,13 +160,18 @@ export const opsLetterSub = "text-[12px] leading-relaxed text-text-3";
 
 export const opsLetterMeta = "text-[12px] font-semibold text-text-3";
 
-const opsTfSegBase = "cursor-pointer border px-[15px] py-[9px] font-[inherit] text-[12.5px] font-semibold transition-[background-color,color,border-color] duration-200 ease-out motion-reduce:transition-none first:rounded-s-[9px] last:rounded-e-[9px] not-first:border-s-0";
+const opsTfSegBase = "shrink-0 whitespace-nowrap cursor-pointer border px-[15px] py-[9px] font-[inherit] text-[12.5px] font-semibold transition-[background-color,color,border-color] duration-200 ease-out motion-reduce:transition-none first:rounded-s-[9px] last:rounded-e-[9px] not-first:border-s-0";
 
 export const opsTfSeg = `${opsTfSegBase} border-border-md bg-surface-2 text-text-2 hover:bg-row-hover hover:text-heading`;
 
 export const opsTfSegActive = `${opsTfSegBase} border-ink bg-ink text-white`;
 
-export const opsTfSegRow = "inline-flex flex-wrap";
+/**
+ * Joined segments. Phones: one row that scrolls sideways — wrapping broke the joined
+ * borders into ragged rows and pushed the last segment past the edge.
+ */
+export const opsTfSegRow =
+  "inline-flex max-w-full overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:flex-wrap";
 
 export const opsModalClose = "grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-[9px] border-none bg-surface-2 p-0 font-[inherit] text-[15px] leading-none text-text-2 transition-[background,color] hover:bg-row-hover hover:text-heading";
 

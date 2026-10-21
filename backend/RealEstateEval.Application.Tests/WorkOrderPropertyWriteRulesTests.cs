@@ -148,6 +148,14 @@ public class WorkOrderPropertyWriteRulesTests
     }
 
     [Fact]
+    public void Primary_data_timeline_detail_names_who_entered_it()
+    {
+        Assert.Equal("أدخله عمر الحمراني", WorkOrderPropertyWriteRules.PrimaryDataTimelineDetail(" عمر الحمراني "));
+        Assert.Null(WorkOrderPropertyWriteRules.PrimaryDataTimelineDetail("  "));
+        Assert.Null(WorkOrderPropertyWriteRules.PrimaryDataTimelineDetail(null));
+    }
+
+    [Fact]
     public void Bourse_timeline_location_joins_the_non_empty_parts()
     {
         Assert.Equal("الرياض · النرجس", WorkOrderPropertyWriteRules.BourseTimelineLocation(" الرياض ", "النرجس"));

@@ -10,7 +10,12 @@
 
 import { fmtSar } from "@platform/app-shared/format/number";
 import { useRef } from "react";
-import { KpiBand, KpiCell, useSwapAnimation } from "@platform/ui-kit";
+import {
+  KpiBand,
+  KpiCell,
+  MobileKpiStatCards,
+  useSwapAnimation,
+} from "@platform/ui-kit";
 import { EngFeesHtmlTabs } from "./EngFeesHtmlTabs";
 import { EngFeesLedgerSection } from "./EngFeesLedgerSection";
 import { EngFeesStatementsSection } from "./EngFeesStatementsSection";
@@ -117,8 +122,50 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
 
   return (
     <div className="flex flex-col gap-3.5">
+      {/* Phones: 2×2 KPI cards instead of the four-cell desktop slab. */}
+      <MobileKpiStatCards
+        className="mb-0"
+        items={[
+          {
+            key: "outstanding",
+            icon: <CurrencyIcon />,
+            iconClass: "bg-gold-soft text-gold-d",
+            tone: "gold",
+            label: "إجمالي المستحق غير المفوتر",
+            value: fmtSar(kpi.outstanding, { digits: 3, trim: true }),
+            sub: "كل استحقاقاتكم التي لم تُصرف بعد",
+          },
+          {
+            key: "pending",
+            icon: <ClockIcon />,
+            iconClass: "bg-[color-mix(in_srgb,#d9a441_14%,transparent)] text-[#8a5e14]",
+            tone: "gold",
+            label: "بانتظار إفادتكم",
+            value: fmtSar(kpi.pending, { digits: 3, trim: true }),
+            sub: "تعديلات تسعير تنتظر إفادتكم",
+          },
+          {
+            key: "ready",
+            icon: <CardIcon />,
+            iconClass: "bg-navy-soft text-heading",
+            tone: "ink",
+            label: "جاهزة للفوترة",
+            value: fmtSar(kpi.ready, { digits: 3, trim: true }),
+            sub: "تشمل المرحَّل — بانتظار كشف المحاسب",
+          },
+          {
+            key: "paid",
+            icon: <CurrencyIcon />,
+            iconClass: "bg-[color-mix(in_srgb,#3f8f5f_14%,transparent)] text-heading",
+            tone: "ink",
+            label: "مفوترة / مدفوعة",
+            value: fmtSar(kpi.paid, { digits: 3, trim: true }),
+            sub: "إجمالي الكشوف المصروفة الموثَّقة",
+          },
+        ]}
+      />
       {/* Case Study.html `.kpi` */}
-      <KpiBand className="mb-1">
+      <KpiBand className="mb-1 hidden lg:flex">
         <KpiCell
           first
           icon={<CurrencyIcon />}

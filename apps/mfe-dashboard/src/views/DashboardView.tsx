@@ -7,6 +7,8 @@ import type {
 } from "@platform/api-client";
 import type { PoRow } from "@platform/app-shared/app-data/constants";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { canReadCaseStudyWorkspace } from "@platform/app-shared/app-data/runtime-access";
 import { cn, QueryErrorState, ReportPageBody } from "@platform/ui-kit";
 import { DashActionQueue } from "../components/dashboard/DashActionQueue";
 import { DashActivityFeed } from "../components/dashboard/DashActivityFeed";
@@ -37,7 +39,11 @@ const EMPTY_STAGE_DWELL: ReportingStageDwellDto[] = [];
  * Dashboard — matches Case Study.html `renderDashboard()`.
  */
 export function DashboardView() {
-  const poQuery = usePoListRowsQuery();
+  const { capabilities } = useAppAccess();
+  // Finance reads the reporting snapshot but not work orders (API 403) — the
+  // PO-derived cards are left out for it instead of showing «—» as a failure.
+  const readsWorkOrders = canReadCaseStudyWorkspace(capabilities);
+  const poQuery = usePoListRowsQuery(readsWorkOrders);
   const tasksQuery = useDashboardOpsTasksQuery();
   const failuresQuery = useDashboardOpenFailuresCountQuery();
   const reportingQuery = useReportingDashboardQuery();
@@ -62,7 +68,7 @@ export function DashboardView() {
     [opsTasks],
   );
   const activeOrders = useMemo(() => activePoOrders(rows), [rows]);
-  const pending = poPending || tasksPending || failPending;
+  const pending = (readsWorkOrders && poPending) || tasksPending || failPending;
 
   const kpis = useMemo(
     () => buildDashKpis(rows, openTasks, failuresOpen),
@@ -83,18 +89,24 @@ export function DashboardView() {
           retrying={retrying}
         />
       ) : null}
-      <DashKpiCards kpis={kpis} pending={pending || kpisFailed} />
+      {readsWorkOrders ? (
+        <DashKpiCards kpis={kpis} pending={pending || kpisFailed} />
+      ) : null}
       <DashActivityFeed />
       <div className={cn(dashGrid, "mb-4")}>
         <DashActionQueue tasks={openTasks} failed={tasksFailed} />
-        <DashDueSoonOrders orders={activeOrders} failed={poFailed} />
+        {readsWorkOrders ? (
+          <DashDueSoonOrders orders={activeOrders} failed={poFailed} />
+        ) : null}
       </div>
       <div className={cn(dashGrid, "mb-4")}>
         <DashTrendCard
           years={reporting?.completionTrend ?? EMPTY_COMPLETION_TREND}
           pending={reportingPending || reportingFailed}
         />
-        <DashCompletionCard model={completion} pending={poPending || poFailed} />
+        {readsWorkOrders ? (
+          <DashCompletionCard model={completion} pending={poPending || poFailed} />
+        ) : null}
       </div>
       <DashDwellSlaCard
         rows={reporting?.stageDwell ?? EMPTY_STAGE_DWELL}

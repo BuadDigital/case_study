@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useRef, type ReactNode } from "react";
+import type { ValuationListItemDto } from "@platform/api-client";
 import {
   Button,
   Card,
@@ -9,6 +10,9 @@ import {
   CardHeader,
   Input,
   Label,
+  MobileRecordCard,
+  MobileRecordList,
+  MobileSectionPicker,
   ModalBody,
   ModalCard,
   ModalFooter,
@@ -46,6 +50,132 @@ import {
   ValuationListColGroup,
 } from "./ValuationListsPanels";
 import { useValuationListsWorkflow } from "./useValuationListsWorkflow";
+
+type PatchRow = (id: string, patch: Partial<ValuationListItemDto>) => void;
+
+/** Phone-card field control: full width, label above, 44px tall. */
+const phoneFieldClass = "h-11 w-full min-w-0 text-[14px]";
+
+/**
+ * The editable middle columns of one list row — the attachments list has a
+ * required select + property-types input, every other list plain text cells.
+ * Shared by the table cells and the phone card (`variant` sets the chrome).
+ */
+function listRowMiddleEditors(
+  tab: string,
+  row: ValuationListItemDto,
+  patchRow: PatchRow,
+  variant: "cell" | "card",
+): ReactNode[] {
+  const card = variant === "card";
+  if (tab === "attachments") {
+    return [
+      <Select
+        key="required"
+        className={card ? phoneFieldClass : "h-8 w-full min-w-0 text-[12.5px]"}
+        value={row.isRequired ? "yes" : "no"}
+        onChange={(e) =>
+          patchRow(row.id, {
+            isRequired: e.target.value === "yes",
+            cells: [
+              e.target.value === "yes" ? "إلزامي" : "اختياري",
+              row.cells[1] ?? "الكل",
+            ],
+          })
+        }
+      >
+        <option value="yes">إلزامي</option>
+        <option value="no">اختياري</option>
+      </Select>,
+      <Input
+        key="types"
+        className={card ? phoneFieldClass : "h-8 w-full min-w-0 text-[12.5px]"}
+        value={row.propertyTypeKeys.join("، ") || row.cells[1] || "الكل"}
+        onChange={(e) => {
+          const keys = e.target.value
+            .split(PROPERTY_TYPE_SPLIT_RE)
+            .map((s) => s.trim())
+            .filter((s) => s && s !== "الكل");
+          patchRow(row.id, {
+            propertyTypeKeys: keys,
+            cells: [row.isRequired ? "إلزامي" : "اختياري", keys.length ? keys.join("، ") : "الكل"],
+          });
+        }}
+      />,
+    ];
+  }
+  return rowCellsForList(tab, row).map((cell, idx) => {
+    const onChange = (value: string) => {
+      const cells = rowCellsForList(tab, row);
+      cells[idx] = value;
+      patchRow(row.id, { cells });
+    };
+    return card ? (
+      <Input
+        key={`${row.id}-c-${idx}`}
+        className={phoneFieldClass}
+        value={cell}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    ) : (
+      <input
+        key={`${row.id}-c-${idx}`}
+        value={cell}
+        onChange={(e) => onChange(e.target.value)}
+        className={valuationListInlineInputClassName()}
+      />
+    );
+  });
+}
+
+/** Phones: one editable card per list item — the fixed table squeezed every input. */
+function ListItemPhoneCard({
+  tab,
+  row,
+  patchRow,
+  onDelete,
+}: {
+  tab: string;
+  row: ValuationListItemDto;
+  patchRow: PatchRow;
+  onDelete: () => void;
+}) {
+  const labels = listDataColumnLabels(tab);
+  const middleLabels = labels.slice(1, -1);
+  const usageLabel = labels[labels.length - 1] ?? "الاستخدام";
+  const changed = row.name !== row.defaultName;
+  const editors = listRowMiddleEditors(tab, row, patchRow, "card");
+  return (
+    <MobileRecordCard
+      tone={changed ? "gold" : undefined}
+      title={row.name || row.defaultName || "—"}
+      subtitle={changed ? `الافتراضي: ${row.defaultName}` : undefined}
+      fields={[{ label: usageLabel, value: row.usage, ltr: true }]}
+      actions={
+        <Button variant="dangerOutline" size="lg" className="w-full" onClick={onDelete}>
+          حذف
+        </Button>
+      }
+    >
+      <div className="flex flex-col gap-2.5">
+        <label className="flex min-w-0 flex-col gap-1">
+          <span className="text-[11.5px] font-medium text-text-3">{labels[0] ?? "الاسم"}</span>
+          <Input
+            className={cn(phoneFieldClass, "font-medium")}
+            value={row.name}
+            onChange={(e) => patchRow(row.id, { name: e.target.value })}
+          />
+        </label>
+        {editors.map((editor, idx) => (
+          <label key={`${row.id}-m-${idx}`} className="flex min-w-0 flex-col gap-1">
+            <span className="text-[11.5px] font-medium text-text-3">{middleLabels[idx] ?? ""}</span>
+            {editor}
+          </label>
+        ))}
+      </div>
+    </MobileRecordCard>
+  );
+}
 
 /**
  * Valuation lists / attachment print dictionary — a tab per catalogue with an
@@ -92,8 +222,17 @@ export function AttachmentPrintDictionaryView() {
     <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
       {error ? <Note tone="warn" className="mb-3">{error}</Note> : null}
 
+      {/* Phones: the side list-menu becomes a section picker above full-width cards. */}
+      <MobileSectionPicker
+        className="mb-3 lg:hidden"
+        title="القائمة"
+        sections={TABS.map((item) => ({ id: item.id, label: item.label }))}
+        active={tab}
+        onChange={setTab}
+      />
+
       <div className="flex items-start gap-4">
-        <nav className="flex w-[190px] shrink-0 flex-col gap-1.5" aria-label="قوائم التقييم">
+        <nav className="flex w-[190px] shrink-0 flex-col gap-1.5 max-lg:hidden" aria-label="قوائم التقييم">
           {TABS.map((item) => {
             const active = item.id === tab;
             return (
@@ -187,10 +326,11 @@ export function AttachmentPrintDictionaryView() {
 
           {meta.kind === "table" && tableMeta ? (
             <>
-              <div className="mb-3 flex flex-wrap gap-2.5">
+              <div className="mb-3 flex flex-wrap gap-2.5 max-lg:flex-col">
                 <Button
                   variant="default"
                   size="sm"
+                  className="max-lg:h-11 max-lg:w-full max-lg:text-sm"
                   onClick={openAddModal}
                 >
                   {tableMeta.addLabel}
@@ -198,6 +338,7 @@ export function AttachmentPrintDictionaryView() {
                 <Button
                   variant="ghost"
                   size="sm"
+                  className="max-lg:h-11 max-lg:w-full max-lg:border-border-md max-lg:text-sm"
                   onClick={() => {
                     const changed = rows.filter(
                       (r) => r.name !== r.defaultName,
@@ -225,7 +366,22 @@ export function AttachmentPrintDictionaryView() {
                   استعادة الافتراضي
                 </Button>
               </div>
-              <TableFrame className="w-full">
+              <MobileRecordList
+                className="lg:hidden"
+                isEmpty={rows.length === 0}
+                empty="لا توجد عناصر في هذه القائمة."
+              >
+                {rows.map((row) => (
+                  <ListItemPhoneCard
+                    key={row.id}
+                    tab={tab}
+                    row={row}
+                    patchRow={patchRow}
+                    onDelete={() => requestDeleteRow(row)}
+                  />
+                ))}
+              </MobileRecordList>
+              <TableFrame className="w-full max-lg:hidden">
                 <Table className="table-fixed">
                   <ValuationListColGroup tab={tab} />
                   <THead>
@@ -272,58 +428,11 @@ export function AttachmentPrintDictionaryView() {
                               </div>
                             ) : null}
                           </Td>
-                          {tab === "attachments" ? (
-                            <>
-                              <Td className="min-w-0 align-middle">
-                                <Select
-                                  className="h-8 w-full min-w-0 text-[12.5px]"
-                                  value={row.isRequired ? "yes" : "no"}
-                                  onChange={(e) =>
-                                    patchRow(row.id, {
-                                      isRequired: e.target.value === "yes",
-                                      cells: [
-                                        e.target.value === "yes" ? "إلزامي" : "اختياري",
-                                        row.cells[1] ?? "الكل",
-                                      ],
-                                    })
-                                  }
-                                >
-                                  <option value="yes">إلزامي</option>
-                                  <option value="no">اختياري</option>
-                                </Select>
-                              </Td>
-                              <Td className="min-w-0 align-middle">
-                                <Input
-                                  className="h-8 w-full min-w-0 text-[12.5px]"
-                                  value={row.propertyTypeKeys.join("، ") || row.cells[1] || "الكل"}
-                                  onChange={(e) => {
-                                    const keys = e.target.value
-                                      .split(PROPERTY_TYPE_SPLIT_RE)
-                                      .map((s) => s.trim())
-                                      .filter((s) => s && s !== "الكل");
-                                    patchRow(row.id, {
-                                      propertyTypeKeys: keys,
-                                      cells: [row.isRequired ? "إلزامي" : "اختياري", keys.length ? keys.join("، ") : "الكل"],
-                                    });
-                                  }}
-                                />
-                              </Td>
-                            </>
-                          ) : (
-                            rowCellsForList(tab, row).map((cell, idx) => (
-                              <Td key={`${row.id}-c-${idx}`} className="min-w-0 align-middle">
-                                <input
-                                  value={cell}
-                                  onChange={(e) => {
-                                    const cells = rowCellsForList(tab, row);
-                                    cells[idx] = e.target.value;
-                                    patchRow(row.id, { cells });
-                                  }}
-                                  className={valuationListInlineInputClassName()}
-                                />
-                              </Td>
-                            ))
-                          )}
+                          {listRowMiddleEditors(tab, row, patchRow, "cell").map((editor, idx) => (
+                            <Td key={`${row.id}-c-${idx}`} className="min-w-0 align-middle">
+                              {editor}
+                            </Td>
+                          ))}
                           <Td className="text-center align-middle">
                             <bdi className="font-mono tabular-nums">{row.usage}</bdi>
                           </Td>

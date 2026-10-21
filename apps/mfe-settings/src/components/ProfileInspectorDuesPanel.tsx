@@ -21,9 +21,12 @@ import type {
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   Badge,
+  MobileRecordCard,
+  MobileRecordList,
   QueryErrorState,
   Spinner,
   Table,
+  TableFrame,
   TBody,
   Td,
   TdLtr,
@@ -241,7 +244,33 @@ export function ProfileInspectorDuesPanel({ user }: { user: StaffUser }) {
   }
 
   return (
-    <Table framed className="min-w-[560px]">
+    <>
+    {/* Phones: one card per due line — the 560px table scrolled sideways. */}
+    <MobileRecordList className="lg:hidden" isEmpty={false}>
+      {rows.map((row) => (
+        <MobileRecordCard
+          key={row.id}
+          tone={row.st === "due" ? "gold" : undefined}
+          title={
+            <bdi dir="ltr" className="text-gold-d tabular-nums">
+              {row.ref}
+            </bdi>
+          }
+          subtitle={row.detail}
+          status={<Badge tone={ST_TONE[row.st]}>{ST_LABEL[row.st]}</Badge>}
+          fields={[
+            { label: "تاريخ الاستحقاق", value: dmy(row.atIso), ltr: true },
+            {
+              label: "المبلغ",
+              value: fmtSar(row.amount, { digits: 3, trim: true }),
+              ltr: true,
+            },
+          ]}
+        />
+      ))}
+    </MobileRecordList>
+    <TableFrame className="max-lg:hidden">
+    <Table className="min-w-[560px]">
       <THead>
         <Tr hoverable={false}>
           <Th>المرجع</Th>
@@ -275,5 +304,7 @@ export function ProfileInspectorDuesPanel({ user }: { user: StaffUser }) {
         ))}
       </TBody>
     </Table>
+    </TableFrame>
+    </>
   );
 }

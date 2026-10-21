@@ -17,6 +17,7 @@ import {
 } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 
 import {
   Card,
@@ -27,47 +28,23 @@ import { fmt } from "./lib/shell-utils";
 import { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import { ValueDocumentsPanel } from "./ValueDocumentsPanel";
+import {
+  OpinionInvoiceRow,
+  invoiceInputClass,
+  invoiceLabelTdClass,
+  invoiceNoteTdClass,
+  invoiceTrClass,
+  invoiceValueTdClass,
+} from "./FinalOpinionInvoice";
+import {
+  ReconMethodsPhone,
+  ReconRationaleInput,
+  ReconWeightInput,
+  reconMethodNote,
+  type ReconMethod,
+} from "./FinalOpinionPhone";
 import { buildCostNarrative, costFieldsFromDto } from "./lib/cost-approach-state";
 import { analysesForRationale, appendAnalysesToRationale } from "./lib/final-opinion-state";
-
-/** Invoice line from the interactive-form spec — label | value | note. */
-function OpinionInvoiceRow({
-  label,
-  note,
-  value,
-  strong,
-  valueClassName,
-}: {
-  label: string;
-  note?: string;
-  value: string;
-  strong?: boolean;
-  valueClassName?: string;
-}) {
-  return (
-    <tr className="border-b border-dashed border-border">
-      <td
-        className={cn(
-          "w-px whitespace-nowrap py-2 text-start text-[12.5px] text-heading",
-          strong ? "font-extrabold" : "font-medium",
-        )}
-      >
-        {label}
-      </td>
-      <td
-        dir="ltr"
-        className={cn(
-          "w-[150px] py-2 pe-0 ps-[18px] text-start font-bold text-heading",
-          strong ? "text-[14px] font-extrabold" : "text-[13.5px]",
-          valueClassName,
-        )}
-      >
-        {value}
-      </td>
-      <td className="py-2 text-start text-[10.5px] text-text-3">{note}</td>
-    </tr>
-  );
-}
 
 /**
  * Final-opinion screen — reconciliation table and the value-opinion card.
@@ -151,7 +128,32 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
     methodComplete,
     saveReconciliation,
   } = workflow;
+  const desktop = useViewportDesktop();
   const additions = recon?.additions ?? [];
+  const setMethodWeight = (idx: number, raw: number) => {
+    const next = [...reconMethods];
+    next[idx] = { ...reconMethods[idx]!, weightPct: raw, isIncluded: raw > 0 };
+    // Exactly two methods — the other's share auto-fills so they always sum to 100.
+    if (reconMethods.length === 2) {
+      const otherIdx = idx === 0 ? 1 : 0;
+      const otherWeight = 100 - raw;
+      next[otherIdx] = {
+        ...next[otherIdx]!,
+        weightPct: otherWeight,
+        isIncluded: otherWeight > 0,
+      };
+    }
+    setReconMethods(next);
+  };
+  const setMethodRationale = (idx: number, text: string) => {
+    const next = [...reconMethods];
+    next[idx] = { ...reconMethods[idx]!, rationale: text };
+    setReconMethods(next);
+  };
+  const methodShare = (m: ReconMethod) =>
+    fmt(m.isIncluded ? (m.approachValue * m.weightPct) / 100 : 0);
+  // Phone ids take the error-scroll targets once the table is not mounted.
+  const phoneIdPrefix = desktop === false ? "" : "m-";
   // «تحليل التكلفة»: the appraiser's text when edited, else the generated one — as on طريقة المقاول.
   const analysesText = useMemo(() => {
     let costText = "";
@@ -174,7 +176,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
       />
       {!sole ? (
         <>
-          <div className="mb-3 flex justify-between">
+          <div className="mb-3 flex flex-wrap justify-between gap-x-4 gap-y-1">
             <h2 className="m-0 text-[17px] font-extrabold text-heading">
               الترجيح بين مؤشرات الأساليب
             </h2>
@@ -182,7 +184,25 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               مجموع نسب المشاركة يجب أن يساوي ١٠٠٪
             </span>
           </div>
-          <Card id="final-recon" className="mb-6">
+          {/* Phones: one card per approach — the 900px table ran off-screen. */}
+          {desktop !== true ? (
+            <ReconMethodsPhone
+              id={desktop === false ? "final-recon" : undefined}
+              idPrefix={phoneIdPrefix}
+              methods={reconMethods}
+              buildingOnly={buildingOnly}
+              methodComplete={methodComplete}
+              methodShare={methodShare}
+              reconWeightsBad={reconWeightsBad}
+              weightSumLocal={weightSumLocal}
+              weightedLocal={weightedLocal}
+              fieldErrors={fieldErrors}
+              onWeightChange={setMethodWeight}
+              onRationaleChange={setMethodRationale}
+            />
+          ) : null}
+          {desktop !== false ? (
+          <Card id="final-recon" className="mb-6 max-lg:hidden">
             <Table className="min-w-[900px]">
               <THead>
                 <Tr hoverable={false}>
@@ -205,13 +225,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                       <Td>
                         <div className="font-bold text-heading">{m.labelAr}</div>
                         <div className="mt-0.5 text-[10.5px] text-text-3">
-                          {m.valueDocumentAttachmentId
-                            ? "قيمة واردة في مستند ذي قيمة — أثره من «مرفقات التقرير»"
-                            : m.approachKind === "cost"
-                              ? buildingOnly
-                                ? "مبنى فقط — تكلفة الإحلال ناقصاً الإهلاك"
-                                : "قيمة الأرض + تكلفة الإحلال − الإهلاك"
-                              : "مؤشر قيمة من طريقة المقارنة"}
+                          {reconMethodNote(m, buildingOnly)}
                         </div>
                       </Td>
                       <Td className="text-center font-extrabold">
@@ -224,73 +238,25 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         )}
                       </Td>
                       <Td className="text-center">
-                        <input
+                        <ReconWeightInput
                           id={`final-method-weight-${idx}`}
-                          dir="ltr"
-                          type="number"
-                          min={0}
-                          max={100}
-                          step={5}
-                          value={m.weightPct}
-                          onChange={(e) => {
-                            const raw = Math.min(
-                              100,
-                              Math.max(
-                                0,
-                                parseLocaleNumber(e.target.value) || 0,
-                              ),
-                            );
-                            const next = [...reconMethods];
-                            next[idx] = {
-                              ...m,
-                              weightPct: raw,
-                              isIncluded: raw > 0,
-                            };
-                            // Exactly two methods — the other's share auto-fills so they always sum to 100.
-                            if (reconMethods.length === 2) {
-                              const otherIdx = idx === 0 ? 1 : 0;
-                              const otherWeight = 100 - raw;
-                              next[otherIdx] = {
-                                ...next[otherIdx],
-                                weightPct: otherWeight,
-                                isIncluded: otherWeight > 0,
-                              };
-                            }
-                            setReconMethods(next);
-                          }}
-                          className={cn(
-                            "w-[82px] rounded-[7px] border p-2 text-center font-bold",
-                            reconWeightsBad
-                              ? "border-red bg-[rgba(192,85,61,.07)] text-red-text"
-                              : "border-border-md bg-surface text-heading",
-                            fieldErrors[`methods[${idx}].weightPct`] &&
-                              invalidControlClass,
-                          )}
+                          m={m}
+                          bad={reconWeightsBad}
+                          invalid={Boolean(fieldErrors[`methods[${idx}].weightPct`])}
+                          onChange={(raw) => setMethodWeight(idx, raw)}
                         />
                       </Td>
                       <Td className="text-center font-extrabold">
                         {incomplete ? (
                           <span className="text-text-3">—</span>
                         ) : (
-                          <span dir="ltr">
-                            {fmt(
-                              m.isIncluded
-                                ? (m.approachValue * m.weightPct) / 100
-                                : 0,
-                            )}
-                          </span>
+                          <span dir="ltr">{methodShare(m)}</span>
                         )}
                       </Td>
                       <Td>
-                        <input
-                          value={m.rationale ?? ""}
-                          onChange={(e) => {
-                            const next = [...reconMethods];
-                            next[idx] = { ...m, rationale: e.target.value };
-                            setReconMethods(next);
-                          }}
-                          placeholder="مبرر نسبة المشاركة…"
-                          className="w-full rounded-[7px] border border-border px-2.5 py-2 text-xs"
+                        <ReconRationaleInput
+                          m={m}
+                          onChange={(text) => setMethodRationale(idx, text)}
                         />
                       </Td>
                     </Tr>
@@ -319,6 +285,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               </span>
             </div>
           </Card>
+          ) : null}
         </>
       ) : null}
 
@@ -342,8 +309,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               </div>
             </div>
 
-            <table className="w-full border-collapse">
-              <tbody>
+            <table className="w-full border-collapse max-lg:block">
+              <tbody className="max-lg:block">
                 {soleCost && !buildingOnly ? (
                   <>
                     <OpinionInvoiceRow
@@ -395,8 +362,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                   />
                 ) : null}
                 {isLiquidation ? (
-                  <tr className="border-b border-dashed border-border">
-                    <td className="w-px whitespace-nowrap py-1.5 text-start">
+                  <tr className={invoiceTrClass}>
+                    <td className={cn(invoiceLabelTdClass, "py-1.5")}>
                       <span className="text-[12.5px] font-medium text-text">
                         − خصم البيع القسري
                       </span>
@@ -412,7 +379,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                           setLiquidationDiscountPct(e.target.value)
                         }
                         className={cn(
-                          "ms-2 w-[58px] rounded-md border border-border-md bg-surface p-[5px] text-center text-xs font-bold text-heading",
+                          invoiceInputClass,
                           (fieldErrors.forced_sale_discount ||
                             fieldErrors.liquidationDiscountPct) &&
                             invalidControlClass,
@@ -421,18 +388,18 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                     </td>
                     <td
                       dir="ltr"
-                      className="w-[150px] py-1.5 pe-0 ps-[18px] text-start text-[13.5px] font-bold text-red-text"
+                      className={cn(invoiceValueTdClass, "py-1.5 text-[13.5px] font-bold text-red-text")}
                     >
                       −{fmt(forcedCut)}
                     </td>
-                    <td className="py-1.5 text-start text-[10.5px] text-text-3">
+                    <td className={cn(invoiceNoteTdClass, "py-1.5")}>
                       ٪ من القيمة قبل الخصم
                     </td>
                   </tr>
                 ) : null}
                 {isLiquidation ? (
-                  <tr className="border-b border-dashed border-border">
-                    <td colSpan={3} className="py-2 text-start">
+                  <tr className={invoiceTrClass}>
+                    <td colSpan={3} className="py-2 text-start max-lg:col-span-2 max-lg:p-0">
                       <label
                         htmlFor="final-inf-discount-rationale"
                         className="mb-1 block text-[12px] font-medium text-text"
@@ -451,7 +418,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         }
                         placeholder="مثال: سيولة السوق خلال ٩٠ يوماً، ظروف البيع القسري…"
                         className={cn(
-                          "w-full rounded-md border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-heading",
+                          "w-full rounded-md border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-heading max-lg:min-h-11 max-lg:text-[16px]",
                           (fieldErrors.liquidation_discount_rationale ||
                             fieldErrors.liquidationDiscountRationale) &&
                             invalidControlClass,
@@ -490,8 +457,8 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                     ))}
                   </>
                 ) : null}
-                <tr className="border-b border-dashed border-border">
-                  <td className="w-px whitespace-nowrap py-1.5 text-start">
+                <tr className={invoiceTrClass}>
+                  <td className={cn(invoiceLabelTdClass, "py-1.5")}>
                     <span className="text-[12.5px] font-medium text-text">
                       تقريب القيمة
                     </span>
@@ -505,27 +472,27 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                       value={finalRoundDecimals}
                       onChange={(e) => setFinalRoundDecimals(e.target.value)}
                       className={cn(
-                        "ms-2 w-[58px] rounded-md border border-border-md bg-surface p-[5px] text-center text-xs font-bold text-heading",
+                        invoiceInputClass,
                         fieldErrors.finalRoundDecimals && invalidControlClass,
                       )}
                     />
                   </td>
-                  <td className="w-[150px] pe-0 ps-[18px]" />
-                  <td className="py-1.5 text-start text-[10.5px] text-text-3">
+                  <td className={invoiceValueTdClass} />
+                  <td className={cn(invoiceNoteTdClass, "py-1.5")}>
                     {roundNote}
                   </td>
                 </tr>
-                <tr className="border-t-2 border-gold">
-                  <td className="w-px whitespace-nowrap pb-0.5 pt-3 text-start text-[13.5px] font-extrabold text-heading">
+                <tr className="border-t-2 border-gold max-lg:grid max-lg:grid-cols-[minmax(0,1fr)_auto] max-lg:items-baseline max-lg:gap-x-2 max-lg:pt-3">
+                  <td className={cn(invoiceLabelTdClass, "pb-0.5 pt-3 text-[13.5px] font-extrabold text-heading")}>
                     {additions.length > 0 ? "= القيمة الإجمالية" : "= القيمة النهائية"}
                   </td>
                   <td
                     dir="ltr"
-                    className="w-[150px] pb-0.5 pe-0 ps-[18px] pt-2.5 text-start text-[26px] font-extrabold leading-[1.15] text-heading"
+                    className={cn(invoiceValueTdClass, "pb-0.5 pt-2.5 text-[26px] font-extrabold leading-[1.15] text-heading")}
                   >
                     {fmt(finalLocal)}
                   </td>
-                  <td className="pb-0.5 pt-3 text-start text-[10.5px] text-text-3">
+                  <td className={cn(invoiceNoteTdClass, "pb-0.5 pt-3 max-lg:text-end")}>
                     ر.س
                   </td>
                 </tr>
@@ -555,7 +522,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                 onClick={() =>
                   setMethodsRationale(appendAnalysesToRationale(methodsRationale, analysesText))
                 }
-                className="rounded-md border border-border-md bg-surface px-2.5 py-1 text-[11px] font-bold text-heading disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-md border border-border-md bg-surface px-2.5 py-1 text-[11px] font-bold text-heading disabled:cursor-not-allowed disabled:opacity-50 max-lg:min-h-11 max-lg:shrink-0 max-lg:px-3.5 max-lg:text-[12.5px]"
               >
                 إدراج التحليلات
               </button>
@@ -572,7 +539,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               }}
               placeholder="اكتب مبرر الرأي النهائي هنا…"
               className={cn(
-                "w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text placeholder:text-text-3",
+                "w-full resize-y rounded-[9px] border border-border bg-surface-2 px-3.5 py-3 text-[12.5px] font-medium leading-[1.9] text-text placeholder:text-text-3 max-lg:text-[16px]",
                 fieldErrors.methodsRationale && invalidControlClass,
               )}
             />

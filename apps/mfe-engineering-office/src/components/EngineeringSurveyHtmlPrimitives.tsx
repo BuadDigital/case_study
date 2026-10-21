@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import {
+  MobileSectionPicker,
   StatusPill,
   cn,
   opsBtnPrimary,
@@ -103,8 +104,26 @@ export function EngTabBar({
   onTabIntent?: (id: string) => void;
 }) {
   return (
+    <>
+    {/* Phones: a section picker, not the desktop underline tab row wrapping over lines.
+        The picker has no dot slot, so a dotted tab carries a «•» after its label. */}
+    <MobileSectionPicker
+      className="mb-[18px] lg:hidden"
+      title="قسم الرفع المساحي"
+      sections={tabs.map((t) => ({
+        id: t.id,
+        label: t.dot ? `${t.label} •` : t.label,
+        count: t.badge && t.badge > 0 ? t.badge : undefined,
+        warn: true,
+      }))}
+      active={active}
+      onChange={(id) => {
+        onTabIntent?.(id);
+        onChange(id);
+      }}
+    />
     <div
-      className="z-10 mx-[-20px] mb-[18px] flex flex-wrap gap-x-0.5 gap-y-0 overflow-visible whitespace-nowrap border-b border-border bg-transparent px-3.5 sm:px-3.5"
+      className="z-10 mx-[-20px] mb-[18px] flex flex-wrap gap-x-0.5 gap-y-0 overflow-visible whitespace-nowrap border-b border-border bg-transparent px-3.5 max-lg:hidden sm:px-3.5"
       role="tablist"
       aria-label="أقسام مساحة عمل الرفع المساحي"
     >
@@ -142,6 +161,7 @@ export function EngTabBar({
         );
       })}
     </div>
+    </>
   );
 }
 

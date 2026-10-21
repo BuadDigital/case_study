@@ -41,6 +41,16 @@ const htmlNumInput =
   "rounded-[7px] border border-border-md bg-surface p-[7px] text-center text-[13px] font-bold text-heading";
 const htmlJustInput =
   "min-w-0 flex-1 rounded-[7px] border border-dashed border-border bg-surface-2 px-[9px] py-1.5 text-[11.5px] font-medium text-text-2";
+/** Phones: 44px-tall inputs with 16px text (no iOS focus zoom). */
+const touchInput = "max-lg:min-h-11 max-lg:text-[16px]";
+/**
+ * Phones re-flow a «label · justification · value» line into a grid: the label
+ * on its own row, then the justification and the number side by side — the
+ * fixed 150–170px label column left no room for the inputs on a phone.
+ */
+const phoneRowGrid =
+  "max-lg:grid max-lg:grid-cols-[minmax(0,1fr)_auto] max-lg:items-center max-lg:gap-x-2 max-lg:gap-y-1.5";
+const phoneRowLabel = "max-lg:col-span-2 max-lg:w-auto";
 
 /** Land value — compact HTML strip: discount, rationale, optional share, rates. */
 export function CostLandValueCard({
@@ -83,7 +93,7 @@ export function CostLandValueCard({
               className={cn(htmlNumInput, "w-[90px] p-2")}
             />
           </label>
-          <label className="flex min-w-[220px] flex-1 flex-col gap-1.5">
+          <label className="flex min-w-[220px] flex-1 flex-col gap-1.5 max-lg:min-w-full">
             <FieldLabel>مبرر التقييد</FieldLabel>
             <input
               id="cost-useRestrictionRationale"
@@ -162,8 +172,8 @@ export function CostIndirectCard({
           {INDIRECT_COST_ITEMS.map((item) => {
             const pctNum = costNum(fields.indirectDraft[item.key]?.pct ?? "0");
             return (
-              <div key={item.key} className="flex items-center gap-2.5">
-                <span className="w-[170px] shrink-0 text-[12.5px] font-medium text-text-2">
+              <div key={item.key} className={cn("flex items-center gap-2.5", phoneRowGrid)}>
+                <span className={cn("w-[170px] shrink-0 text-[12.5px] font-medium text-text-2", phoneRowLabel)}>
                   {item.label}
                 </span>
                 <input
@@ -172,9 +182,9 @@ export function CostIndirectCard({
                   onChange={(e) =>
                     setIndirect(item.key, { rationale: e.target.value })
                   }
-                  className={htmlJustInput}
+                  className={cn(htmlJustInput, touchInput, "max-lg:col-span-2")}
                 />
-                <span className="w-[110px] shrink-0 text-end text-[11.5px] font-medium text-text-3">
+                <span className="w-[110px] shrink-0 text-end text-[11.5px] font-medium text-text-3 max-lg:w-auto max-lg:text-start">
                   <span dir="ltr">{fmt((directTotal * pctNum) / 100)}</span> ر.س.
                 </span>
                 <input
@@ -185,19 +195,19 @@ export function CostIndirectCard({
                   step={1}
                   value={fields.indirectDraft[item.key]?.pct ?? "0"}
                   onChange={(e) => setIndirect(item.key, { pct: e.target.value })}
-                  className={cn(htmlNumInput, "w-[70px] shrink-0")}
+                  className={cn(htmlNumInput, "w-[70px] shrink-0", touchInput, "max-lg:w-20")}
                 />
               </div>
             );
           })}
-          <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5">
+          <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5 max-lg:flex-col max-lg:items-stretch max-lg:gap-2">
             <div>
               <div className="text-[12.5px] font-medium text-text-2">التمويل</div>
               <div className="mt-0.5 text-[10.5px] font-normal text-text-3">
                 معدل سنوي × (المدة ÷ ١٢) × ٥٠٪ = {finPct}٪
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 max-lg:[&>input]:min-h-11 max-lg:[&>input]:flex-1 max-lg:[&>input]:text-[16px]">
               <span
                 dir="ltr"
                 className="min-w-24 text-end text-[11.5px] font-medium text-text-3"
@@ -315,8 +325,8 @@ export function CostAgeCard({
         </div>
         <div className="flex flex-col gap-2.5">
           {AGE_ROWS.map(({ label, value, justification }) => (
-            <div key={label} className="flex items-center gap-2.5">
-              <span className="w-[150px] shrink-0 text-[12.5px] font-medium text-text-2">
+            <div key={label} className={cn("flex items-center gap-2.5", phoneRowGrid)}>
+              <span className={cn("w-[150px] shrink-0 text-[12.5px] font-medium text-text-2", phoneRowLabel)}>
                 {label}
               </span>
               <input
@@ -324,7 +334,7 @@ export function CostAgeCard({
                 placeholder="مبرر التقدير…"
                 value={fields[justification]}
                 onChange={(e) => setField(justification, e.target.value)}
-                className={htmlJustInput}
+                className={cn(htmlJustInput, touchInput)}
               />
               <input
                 id={`cost-${value}`}
@@ -337,6 +347,8 @@ export function CostAgeCard({
                 className={cn(
                   htmlNumInput,
                   "w-[78px] shrink-0",
+                  touchInput,
+                  "max-lg:w-20",
                   fieldErrors[COST_FIELD_ERROR_KEYS[value] ?? value] &&
                     invalidControlClass,
                 )}
@@ -404,8 +416,9 @@ export function CostResultsCard({
   const perSqm = (value: number) => (buildAreaLocal > 0 ? fmt(value / buildAreaLocal) : "—");
   return (
     <Card className="mb-6">
-      <div className="flex items-stretch">
-        <div className="flex-1 border-e border-border px-[22px] py-[18px]">
+      {/* Phones stack the two figures. */}
+      <div className="flex items-stretch max-lg:flex-col">
+        <div className="flex-1 border-border px-[22px] py-[18px] max-lg:border-b max-lg:px-4 lg:border-e">
           <div className="mb-[9px] text-[12px] font-medium text-text-2">
             قيمة متر المباني بعد الإهلاك
           </div>
@@ -420,7 +433,7 @@ export function CostResultsCard({
             قبل الإهلاك: <span dir="ltr">{perSqm(totalCostLocal)}</span> ر.س/م²
           </div>
         </div>
-        <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px]">
+        <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px] max-lg:px-4">
           <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />
           <div className="mb-[9px] text-[12px] font-bold text-heading">
             قيمة المباني قبل التقريب

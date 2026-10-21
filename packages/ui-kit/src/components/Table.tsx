@@ -275,7 +275,11 @@ export function TableEmptyRow({
         colSpan={colSpan}
         className="!py-10 text-center text-[13px] text-text-3"
       >
-        <GentleLoadingCopy>{children}</GentleLoadingCopy>
+        {/* A wide table (min-w) on a phone centred the message off-screen — a blank box.
+            Cap it to the visible width from the row's start edge and keep it there on scroll. */}
+        <div className="sticky start-0 w-[calc(100vw-3rem)] max-w-full">
+          <GentleLoadingCopy>{children}</GentleLoadingCopy>
+        </div>
       </Td>
     </Tr>
   );

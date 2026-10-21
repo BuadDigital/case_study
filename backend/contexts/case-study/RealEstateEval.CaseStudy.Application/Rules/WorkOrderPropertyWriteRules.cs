@@ -395,6 +395,13 @@ public static class WorkOrderPropertyWriteRules
         return string.IsNullOrEmpty(location) ? who : $"{location} — {who}";
     }
 
+    /// <summary>«أدخله الاسم»: the primary-data milestone's detail line, like the bourse one (null without a name).</summary>
+    public static string? PrimaryDataTimelineDetail(string? completedByName)
+    {
+        var by = NormalizeActorName(completedByName);
+        return by is null ? null : $"أدخله {by}";
+    }
+
     /// <summary>The display name stored beside the completion stamp: trimmed, bounded, null when empty.</summary>
     public static string? NormalizeActorName(string? name)
     {

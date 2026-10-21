@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { PoRow } from "@platform/app-shared/app-data/constants";
@@ -54,19 +55,48 @@ export function DashDueSoonOrders({
         dueSoon.map(({ o, dueTs }) => {
           const dleft = daysUntilDue(dueTs, today);
           const chip = formatDueChip(dleft);
+          const chipStyle = {
+            background: `color-mix(in srgb, ${chip.color} 13%, transparent)`,
+            color: chip.color,
+          };
+          const open = () => router.push(`/po/${encodeURIComponent(o.id)}/property`);
           return (
+            <Fragment key={o.id}>
+            {/* Phones: two lines per order — the one-line desktop row cut its details off. */}
+            <button
+              type="button"
+              onClick={open}
+              className="flex w-full flex-col gap-1 border-0 border-b border-border bg-transparent px-0 py-3 text-start font-[inherit] last:border-b-0 active:bg-row-hover lg:hidden"
+            >
+              <span className="flex w-full items-center gap-2">
+                <span className="min-w-0 flex-1 text-[14px] font-bold text-heading">
+                  <bdi>{o.id}</bdi>
+                </span>
+                <span
+                  className="shrink-0 rounded-full px-2.5 py-[3px] text-[11.5px] font-bold whitespace-nowrap"
+                  style={chipStyle}
+                >
+                  {chip.text}
+                </span>
+              </span>
+              <span className="flex w-full items-center gap-2 text-[12.5px] text-text-2">
+                <span className="min-w-0 flex-1">
+                  {o.type} · {o.count} عقار · {o.done}/{o.count} مرفوع
+                </span>
+                <bdi dir="ltr" className="shrink-0 tabular-nums text-text-3">
+                  {formatDateLtr(o.dueDate)}
+                </bdi>
+              </span>
+            </button>
             <div
-              key={o.id}
-              className={cn(dashLine, "cursor-pointer")}
+              className={cn(dashLine, "cursor-pointer max-lg:hidden")}
               role="button"
               tabIndex={0}
-              onClick={() =>
-                router.push(`/po/${encodeURIComponent(o.id)}/property`)
-              }
+              onClick={open}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
                   e.preventDefault();
-                  router.push(`/po/${encodeURIComponent(o.id)}/property`);
+                  open();
                 }
               }}
             >
@@ -94,6 +124,7 @@ export function DashDueSoonOrders({
                 {chip.text}
               </span>
             </div>
+            </Fragment>
           );
         })
       )}
