@@ -17,7 +17,8 @@ public interface IWorkOrderPropertyCommands
         string poNumber,
         WorkOrderPropertyDto property,
         CancellationToken cancellationToken,
-        bool softDraft = false);
+        bool softDraft = false,
+        string? actorName = null);
 
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(
         string poNumber,

@@ -124,7 +124,8 @@ public partial class WorkOrderService : IWorkOrderService
 
     public async Task<(WorkOrderDto? Result, Dictionary<string, string>? Errors)> CreateAsync(
         CreateWorkOrderRequest request,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? actorName = null)
     {
         var headerErrors = WorkOrderValidator.ValidateHeader(request);
         if (headerErrors.Count > 0) return (null, headerErrors);
@@ -210,7 +211,7 @@ public partial class WorkOrderService : IWorkOrderService
         await _db.SaveChangesAsync(cancellationToken);
 
         // The due date is not an event that happened: it lives in the «مواعيد مهمة» card, not on the timeline.
-        var timelineEvents = workOrder.Properties.Select(prop => EnfathReceivedEvent(workOrder, prop.Id)).ToList();
+        var timelineEvents = workOrder.Properties.Select(prop => EnfathReceivedEvent(workOrder, prop.Id, actorName)).ToList();
         await _timeline.RecordManyAsync(timelineEvents, cancellationToken);
         await NotifySpecialistAssignedIfChangedAsync(
             po,
@@ -316,8 +317,9 @@ public partial class WorkOrderService : IWorkOrderService
         string poNumber,
         WorkOrderPropertyDto property,
         CancellationToken cancellationToken,
-        bool softDraft = false) =>
-        _properties.AddPropertyAsync(poNumber, property, cancellationToken, softDraft);
+        bool softDraft = false,
+        string? actorName = null) =>
+        _properties.AddPropertyAsync(poNumber, property, cancellationToken, softDraft, actorName);
 
     public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(
         string poNumber,
@@ -435,15 +437,17 @@ public partial class WorkOrderService : IWorkOrderService
     /// The instant the order was received from Enfaz: its date plus the received time when the order carries
     /// one (Riyadh time, UTC+3), otherwise the date alone at midnight UTC (shown on the timeline as a date only).
     /// </summary>
-    internal static PropertyTimelineRecordRequest EnfathReceivedEvent(WorkOrder workOrder, Guid propertyId) =>
+    internal static PropertyTimelineRecordRequest EnfathReceivedEvent(
+        WorkOrder workOrder,
+        Guid propertyId,
+        string? receivedByName = null) =>
         new(
             workOrder.PoNumber,
             propertyId,
             "enfath",
             "استلام أمر العمل من إنفاذ",
-            string.IsNullOrWhiteSpace(workOrder.AssignmentSpecialist)
-                ? null
-                : $"أخصائي الإسناد: {workOrder.AssignmentSpecialist.Trim()}",
+            WorkOrderPropertyWriteRules.EnfathReceivedTimelineDetail(
+                workOrder.AssignmentSpecialist, receivedByName),
             PropertyTimelineTones.Done,
             ReceivedFromEnfathInstant(workOrder.ReceivedFromEnfathAt, workOrder.ReceivedFromEnfathTime));
 
