@@ -8,6 +8,7 @@ import { ensureKeyEnvelopeFeesPanelRegistered } from "@keys/mfe/extensions/regis
 import { ensureFailuresCaseStudyBridgeRegistered } from "@case-study/mfe/extensions/register-failures-bridge";
 import { ensureEvaluatorCaseStudyBridgeRegistered } from "@case-study/mfe/extensions/register-evaluator-case-study-bridge";
 import { hydrateDomainStore } from "@platform/app-shared/storage/browser-domain-store";
+import { useCorePrototypePrefetch } from "@/lib/query/app-data-queries";
 
 // Sync registration before any case-study queue/detail code runs.
 ensureEvaluatorRuntimeBridgeRegistered();
@@ -22,8 +23,9 @@ ensureFailuresCaseStudyBridgeRegistered();
 // Supplies inspector/PO/form helpers + UI slots to the evaluator MFE.
 ensureEvaluatorCaseStudyBridgeRegistered();
 
-/** Hydrates domain IndexedDB once per app session. */
+/** Hydrates domain IndexedDB once per app session and warms the role's core data. */
 export function PlatformRuntimeBootstrap() {
+  useCorePrototypePrefetch();
   useEffect(() => {
     void hydrateDomainStore();
   }, []);

@@ -5,6 +5,7 @@ import { useQuery, type QueryClient } from "@tanstack/react-query";
 import type { RoleId } from "@platform/types";
 import type { FinanceNavArea } from "@platform/app-shared/app-data/financial-nav";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { canReadCaseStudyWorkspace } from "@platform/app-shared/app-data/runtime-access";
 import {
   loadWorkflowTasksForQuery,
   type WorkflowTask,
@@ -77,6 +78,8 @@ export function useAppShellChrome({
   const { data: workspaceTasks } = useQuery({
     queryKey: appDataKeys.workflowTasks(),
     queryFn: () => loadWorkflowTasksForQuery(),
+    // Finance has no task read (API 403); its chrome never shows a task workspace.
+    enabled: canReadCaseStudyWorkspace(),
     staleTime: 60_000,
     gcTime: 10 * 60_000,
     select: selectWorkspaceTasks,
