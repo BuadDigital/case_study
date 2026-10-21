@@ -160,6 +160,31 @@ public class AttachmentsApiAuthorizationTests
     }
 
     [Fact]
+    public async Task Lookup_answers_every_ref_to_the_service_token_and_nothing_else_opens()
+    {
+        // 2026-10-21: a save validating its photos asks with the service's own token, so a photo the
+        // specialist added to a returned inspection is not reported as missing to the inspector.
+        using var lookup = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/attachments/lookup?ids={SeededAttachmentLookup.OwnAttachmentId:D},{SeededAttachmentLookup.ForeignAttachmentId:D}");
+        lookup.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer",
+            TestAuthHandler.UpstreamServiceToken);
+        var response = await _client.SendAsync(lookup);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, (await DeserializeRefListAsync(response)).Count);
+
+        // The file itself and property listings stay closed to the service token.
+        using var forProperty = new HttpRequestMessage(
+            HttpMethod.Get,
+            "/api/attachments/for-property?propertyId=prop-1");
+        forProperty.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
+            "Bearer",
+            TestAuthHandler.UpstreamServiceToken);
+        Assert.Equal(HttpStatusCode.Forbidden, (await _client.SendAsync(forProperty)).StatusCode);
+    }
+
+    [Fact]
     public async Task List_allows_user_with_attachment_capability()
     {
         using var request = new HttpRequestMessage(

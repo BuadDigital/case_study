@@ -36,16 +36,21 @@ internal static class UpstreamJson
 {
     public static JsonSerializerOptions JsonOpts => OwnerApiJson.Options;
 
+    /// <param name="asService">
+    /// Send the service's own token instead of the caller's: a system check (actor = none)
+    /// must not be filtered by what the person behind the request may open.
+    /// </param>
     public static async Task<T> GetAsync<T>(
         HttpClient http,
         IHttpContextAccessor httpContext,
         string? baseUrl,
         string path,
         string settingName,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool asService = false)
     {
         var value = await GetOrDefaultAsync<T>(
-            http, httpContext, baseUrl, path, settingName, cancellationToken, allowNotFound: false);
+            http, httpContext, baseUrl, path, settingName, cancellationToken, allowNotFound: false, asService);
         if (value is null)
             throw new InvalidOperationException($"Empty {settingName} response for {path}.");
         return value;
@@ -58,7 +63,8 @@ internal static class UpstreamJson
         string path,
         string settingName,
         CancellationToken cancellationToken,
-        bool allowNotFound = true)
+        bool allowNotFound = true,
+        bool asService = false)
     {
         var root = (baseUrl ?? "").TrimEnd('/');
         if (string.IsNullOrWhiteSpace(root))
@@ -68,7 +74,7 @@ internal static class UpstreamJson
         }
 
         using var request = new HttpRequestMessage(HttpMethod.Get, $"{root}{path}");
-        ForwardAuthorization(httpContext, request);
+        ForwardAuthorization(httpContext, request, asService);
         using var response = await http.SendAsync(request, cancellationToken);
         if (allowNotFound && response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return default;
@@ -233,9 +239,16 @@ internal static class UpstreamJson
         response.EnsureSuccessStatusCode();
     }
 
-    private static void ForwardAuthorization(IHttpContextAccessor httpContext, HttpRequestMessage request)
+    private static void ForwardAuthorization(
+        IHttpContextAccessor httpContext,
+        HttpRequestMessage request,
+        bool asService = false)
     {
-        var authorization = httpContext.HttpContext?.Request.Headers.Authorization.ToString();
+        var authorization = asService
+            ? UpstreamServiceBearer.Ambient?.GetAuthorizationHeader()
+            : null;
+        if (string.IsNullOrWhiteSpace(authorization))
+            authorization = httpContext.HttpContext?.Request.Headers.Authorization.ToString();
         if (string.IsNullOrWhiteSpace(authorization))
             authorization = UpstreamServiceBearer.Ambient?.GetAuthorizationHeader();
         if (!string.IsNullOrWhiteSpace(authorization))

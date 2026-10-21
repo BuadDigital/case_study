@@ -145,6 +145,18 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageFinancial,
                     PlatformCapabilities.ManageOperations)));
 
+            options.AddPolicy(
+                CapabilityPolicyNames.CheckAttachmentRefs,
+                policy => policy.RequireAssertion(ctx => IsUpstreamService(ctx) || HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageAttachments,
+                    PlatformCapabilities.ManageWorkOrders,
+                    PlatformCapabilities.SubmitPartyWork,
+                    PlatformCapabilities.ManageValuationRequests,
+                    PlatformCapabilities.SubmitValuationReport,
+                    PlatformCapabilities.ManageFinancial,
+                    PlatformCapabilities.ManageOperations)));
+
  // Also the service's own token: event consumers (notification recipients by role/assignee)
  // resolve users here with no person behind the call.
             options.AddPolicy(

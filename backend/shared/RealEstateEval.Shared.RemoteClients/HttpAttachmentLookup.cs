@@ -11,19 +11,23 @@ public sealed class HttpAttachmentLookup(
     IHttpContextAccessor httpContext,
     IOptions<UpstreamServicesOptions> options) : IAttachmentLookup
 {
+    // actor = null is a system check, as in the in-process lookup: it goes out with the service's
+    // own token so the attachments service answers for every row, not only the ones the person
+    // behind this request may open (2026-10-21: an inspector saving a returned inspection was told
+    // the specialist's photo «does not exist»). A non-null actor keeps the caller's token.
     public async Task<bool> ExistsAsync(
         Guid id,
         PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
-        _ = actor;
         var body = await UpstreamJson.GetAsync<AttachmentExistsDto>(
             http,
             httpContext,
             options.Value.AttachmentsBaseUrl,
             $"/api/attachments/{id:D}/exists",
             "UpstreamServices:AttachmentsBaseUrl",
-            cancellationToken);
+            cancellationToken,
+            asService: actor is null);
         return body.Exists;
     }
 
@@ -32,7 +36,6 @@ public sealed class HttpAttachmentLookup(
         PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
-        _ = actor;
         var all = new List<AttachmentRefDto>();
         foreach (var chunk in QueryIdBatch.OfGuids(ids))
         {
@@ -42,7 +45,8 @@ public sealed class HttpAttachmentLookup(
                 options.Value.AttachmentsBaseUrl,
                 $"/api/attachments/lookup?ids={QueryIdBatch.JoinEscaped(chunk)}",
                 "UpstreamServices:AttachmentsBaseUrl",
-                cancellationToken);
+                cancellationToken,
+                asService: actor is null);
             all.AddRange(list);
         }
 

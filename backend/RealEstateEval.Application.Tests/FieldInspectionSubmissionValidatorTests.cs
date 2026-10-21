@@ -186,19 +186,25 @@ public class FieldInspectionSubmissionValidatorTests
         Assert.Equal("يجب إرفاق صورة المعرض", errors["componentPhotos"]);
     }
 
-    [Fact]
-    public void Validate_requires_feature_photo_when_value_is_yes()
+    [Theory]
+    [InlineData("kitchen")]
+    [InlineData("hasPool")]
+    [InlineData("hasElevator")]
+    [InlineData("hasBasement")]
+    [InlineData("carEntrance")]
+    public void A_photo_on_a_chosen_component_is_optional(string key)
     {
+        // Omar 2026-10-21: the picker is offered on «نعم», nothing blocks the submit.
         var json = MinimalValidPayload().Replace(
             "\"featureValues\": {}",
-            """
-            "featureValues": { "kitchen": "نعم" }
+            $$"""
+            "featureValues": { "{{key}}": "نعم" }
             """);
 
         using var doc = JsonDocument.Parse(json);
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
 
-        Assert.Contains("توثيقية", errors["featurePhotos"]);
+        Assert.DoesNotContain("featurePhotos", errors.Keys);
     }
 
     [Fact]
@@ -217,7 +223,7 @@ public class FieldInspectionSubmissionValidatorTests
     }
 
     [Fact]
-    public void Validate_requires_movables_photo_when_slot_is_empty()
+    public void Movables_with_an_empty_photo_slot_is_accepted()
     {
         var json = MinimalValidPayload()
             .Replace("\"featureValues\": {}", """ "featureValues": { "movables": "نعم", "movablesDescription": "أثاث" } """)
@@ -228,7 +234,7 @@ public class FieldInspectionSubmissionValidatorTests
         using var doc = JsonDocument.Parse(json);
         var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement);
 
-        Assert.Contains("توثيقية", errors["featurePhotos"]);
+        Assert.DoesNotContain("featurePhotos", errors.Keys);
     }
 
     [Fact]

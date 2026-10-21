@@ -103,7 +103,10 @@ export type InspectorFeatureField = {
   label: string;
   options: readonly string[];
   photoOnYes: boolean;
-  /** Offer a proof-photo picker on «نعم» without blocking submit. */
+  /**
+   * Offer a proof-photo picker on «نعم» without blocking submit. Omar 2026-10-21: every
+   * component choice carries it — a photo on a chosen component is never mandatory.
+   */
   optionalPhoto?: boolean;
   shared?: boolean;
 };
@@ -474,30 +477,35 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
     label: "يوجد منقولات",
     options: ["نعم", "لا"],
     photoOnYes: true,
+    optionalPhoto: true,
   },
   {
     key: "carEntrance",
     label: "مدخل السيارة",
     options: ["نعم", "لا"],
     photoOnYes: true,
+    optionalPhoto: true,
   },
   {
     key: "hasBasement",
     label: "يوجد قبو",
     options: ["نعم", "لا"],
     photoOnYes: true,
+    optionalPhoto: true,
   },
   {
     key: "hasElevator",
     label: "يوجد مصعد",
     options: ["نعم", "لا"],
     photoOnYes: true,
+    optionalPhoto: true,
   },
   {
     key: "hasPool",
     label: "يوجد مسبح",
     options: ["نعم", "لا"],
     photoOnYes: true,
+    optionalPhoto: true,
   },
   {
     key: "hasFence",
@@ -532,6 +540,7 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
     label: "مطبخ",
     options: ["نعم", "لا"],
     photoOnYes: true,
+    optionalPhoto: true,
   },
 ];
 
