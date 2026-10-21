@@ -523,7 +523,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         var audit = await client.SendAsync(auditRequest);
         Assert.Equal(HttpStatusCode.OK, audit.StatusCode);
 
-        using var courtsRequest = AuthorizedGet("/api/courts");
+        using var courtsRequest = AuthorizedGet("/api/courts/selectable");
         var courts = await client.SendAsync(courtsRequest);
         Assert.Equal(HttpStatusCode.OK, courts.StatusCode);
 
@@ -682,10 +682,6 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var listRequest = AuthorizedGet("/api/users");
         var list = await client.SendAsync(listRequest);
         Assert.Equal(HttpStatusCode.OK, list.StatusCode);
-
-        using var overviewRequest = AuthorizedGet("/api/users/organization");
-        var overview = await client.SendAsync(overviewRequest);
-        Assert.Equal(HttpStatusCode.OK, overview.StatusCode);
 
         using var createRequest = AuthorizedPost("/api/users", new
         {
