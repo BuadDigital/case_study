@@ -5,6 +5,8 @@
 import { useMemo } from "react";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
+  MobileRecordCard,
+  MobileRecordList,
   TBody,
   Table,
   TableFrame,
@@ -22,7 +24,42 @@ import {
   PoCell,
   RevenueTableHead,
   TotalFeesCell,
+  TotalFeesValue,
+  revenueCityDateFields,
 } from "./FinanceRevenueTableParts";
+
+/** «مطابقة الأتعاب» (until Enfaz is filled) + «تحديث حالة إنفاذ» (table cell and phone card). */
+function EligibleActions({
+  row,
+  onOpenPo,
+}: {
+  row: EnfazTrackingRowDto;
+  onOpenPo: (po: string) => void;
+}) {
+  return (
+    <>
+      {!row.enfazFilled ? (
+        <button
+          type="button"
+          className={cn(opsBtnPrimary, "px-3 py-2 text-[11.5px]")}
+          data-po-intent={row.poNumber}
+          onClick={() => onOpenPo(row.poNumber)}
+        >
+          مطابقة الأتعاب
+        </button>
+      ) : null}
+      <button
+        type="button"
+        className={cn(opsBtnGhost, "h-auto px-[11px] py-2 text-[11.5px]")}
+        title="تحديث حالة المعاملة كما هي في منصة إنفاذ"
+        data-po-intent={row.poNumber}
+        onClick={() => onOpenPo(row.poNumber)}
+      >
+        تحديث حالة إنفاذ
+      </button>
+    </>
+  );
+}
 
 export function EligibleTable({
   rows,
@@ -34,7 +71,24 @@ export function EligibleTable({
   const sorted = useMemo(() => sortByCompletedDesc(rows), [rows]);
 
   return (
-    <TableFrame>
+    <>
+    {/* Phones: one card per row, actions as full-width buttons. */}
+    <MobileRecordList className="lg:hidden">
+      {sorted.map((row) => (
+        <MobileRecordCard
+          key={`${row.poNumber}-${row.propertyId}`}
+          tone={!row.enfazFilled ? "gold" : undefined}
+          title={<PoCell po={row.poNumber} />}
+          subtitle={<DeedCell deed={row.deedNumber} />}
+          fields={[
+            ...revenueCityDateFields(row),
+            { label: "إجمالي الأتعاب", value: <TotalFeesValue row={row} />, wide: true },
+          ]}
+          actions={<EligibleActions row={row} onOpenPo={onOpenPo} />}
+        />
+      ))}
+    </MobileRecordList>
+    <TableFrame className="max-lg:hidden">
       <Table className="min-w-[820px]">
         <RevenueTableHead
           heads={[
@@ -60,25 +114,7 @@ export function EligibleTable({
               <TotalFeesCell row={row} />
               <Td className="text-center">
                 <div className="flex flex-wrap items-center justify-center gap-1.5">
-                  {!row.enfazFilled ? (
-                    <button
-                      type="button"
-                      className={cn(opsBtnPrimary, "px-3 py-2 text-[11.5px]")}
-                      data-po-intent={row.poNumber}
-                      onClick={() => onOpenPo(row.poNumber)}
-                    >
-                      مطابقة الأتعاب
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    className={cn(opsBtnGhost, "h-auto px-[11px] py-2 text-[11.5px]")}
-                    title="تحديث حالة المعاملة كما هي في منصة إنفاذ"
-                    data-po-intent={row.poNumber}
-                    onClick={() => onOpenPo(row.poNumber)}
-                  >
-                    تحديث حالة إنفاذ
-                  </button>
+                  <EligibleActions row={row} onOpenPo={onOpenPo} />
                 </div>
               </Td>
             </Tr>
@@ -86,5 +122,6 @@ export function EligibleTable({
         </TBody>
       </Table>
     </TableFrame>
+    </>
   );
 }

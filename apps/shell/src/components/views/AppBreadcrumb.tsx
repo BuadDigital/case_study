@@ -60,9 +60,17 @@ export function AppBreadcrumb({
         return (
           <span
             key={`${segment.label}-${index}`}
-            className="inline-flex items-center gap-[5px]"
+            // Phones: only the current page — the full trail wrapped onto two lines.
+            className={cn(
+              "inline-flex items-center gap-[5px] whitespace-nowrap",
+              !isCurrent && "max-sm:hidden",
+            )}
           >
-            {showSep ? <BreadcrumbChevron /> : null}
+            {showSep ? (
+              <span className="inline-flex max-sm:hidden">
+                <BreadcrumbChevron />
+              </span>
+            ) : null}
             {isCurrent || !segment.href ? (
               <span className={cn(isCurrent && "font-bold text-gold-d")}>
                 <BreadcrumbLabel segment={segment} />

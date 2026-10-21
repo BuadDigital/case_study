@@ -32,7 +32,7 @@ export function DashKpiCards({
             <div className="text-[28px] font-extrabold leading-none text-heading">
               {v(kpis.activeOrders)}
             </div>
-            <div className="mt-1.5 truncate text-[11px] text-text-3">
+            <div className="mt-1.5 text-[11px] text-text-3 max-sm:line-clamp-2 sm:truncate">
               {pending
                 ? "…"
                 : kpis.atRisk
@@ -63,7 +63,7 @@ export function DashKpiCards({
             <div className="text-[28px] font-extrabold leading-none text-heading">
               {v(kpis.propsLeft)}
             </div>
-            <div className="mt-1.5 truncate text-[11px] text-text-3">
+            <div className="mt-1.5 text-[11px] text-text-3 max-sm:line-clamp-2 sm:truncate">
               {pending ? "…" : `من ${kpis.totalProps} عقاراً`}
             </div>
           </div>
@@ -90,7 +90,7 @@ export function DashKpiCards({
             <div className="text-[28px] font-extrabold leading-none text-heading">
               {v(kpis.openTasks)}
             </div>
-            <div className="mt-1.5 truncate text-[11px] text-text-3">
+            <div className="mt-1.5 text-[11px] text-text-3 max-sm:line-clamp-2 sm:truncate">
               {pending
                 ? "…"
                 : kpis.overdueTasks
@@ -121,7 +121,7 @@ export function DashKpiCards({
             <div className="text-[28px] font-extrabold leading-none text-heading">
               {v(kpis.failuresOpen + kpis.stopped)}
             </div>
-            <div className="mt-1.5 truncate text-[11px] text-text-3">
+            <div className="mt-1.5 text-[11px] text-text-3 max-sm:line-clamp-2 sm:truncate">
               {pending
                 ? "…"
                 : `${kpis.failuresOpen} تعذّر · ${kpis.stopped} متوقفة`}

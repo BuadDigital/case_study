@@ -110,10 +110,12 @@ export function PushNotificationSettings() {
           {error}
         </Note>
       ) : null}
-      <label className="mt-3 flex min-h-11 items-center justify-between gap-3 text-sm">
+      {/* Phones: the whole row is the 44px tap target, framed so it reads as one control. */}
+      <label className="mt-3 flex min-h-11 cursor-pointer items-center justify-between gap-3 text-sm max-lg:rounded-[10px] max-lg:border max-lg:border-border-md max-lg:bg-surface max-lg:px-3.5 max-lg:font-semibold">
         <span>تفعيل الإشعارات</span>
         <input
           type="checkbox"
+          className="size-4 shrink-0 cursor-pointer accent-gold-d max-lg:size-6"
           checked={enabled}
           disabled={busy}
           onChange={(event) => {

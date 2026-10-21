@@ -6,6 +6,7 @@
  * Presentational; every change dispatches to `createOperationsTaskReducer`.
  */
 import type { Dispatch } from "react";
+import { cn, MobileSectionPicker } from "@platform/ui-kit";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import type { DistributionAssignee } from "../lib/app-data/distribution-parties";
 import type { groupAssigneesForSelect } from "../lib/app-data/operations-task-assignees";
@@ -41,17 +42,74 @@ export function SegRow({
   onChange: (id: string) => void;
 }) {
   return (
-    <div className={opsTfSegRow}>
-      {options.map((opt) => (
-        <button
-          key={opt.id}
-          type="button"
-          className={value === opt.id ? opsTfSegActive : opsTfSeg}
-          onClick={() => onChange(opt.id)}
-        >
-          {opt.label}
-        </button>
-      ))}
+    <>
+      <PhoneChoice options={options} value={value} onChange={onChange} />
+      <div className={cn(opsTfSegRow, "max-lg:hidden")}>
+        {options.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            className={value === opt.id ? opsTfSegActive : opsTfSeg}
+            onClick={() => onChange(opt.id)}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/**
+ * Phone counterpart of a form segment row (`lg:hidden`): ≤3 options are a
+ * full-width segmented control; 4+ short options become a 2-column grid of
+ * 44px buttons — every choice stays one tap away instead of a sideways scroll
+ * or a sheet stacked over the modal.
+ */
+export function PhoneChoice({
+  options,
+  value,
+  onChange,
+  title,
+}: {
+  options: { id: string; label: string }[];
+  value: string;
+  onChange: (id: string) => void;
+  title?: string;
+}) {
+  if (options.length <= 3) {
+    return (
+      <MobileSectionPicker
+        className="lg:hidden"
+        title={title}
+        sections={options}
+        active={value}
+        onChange={onChange}
+      />
+    );
+  }
+  return (
+    <div className="grid w-full grid-cols-2 gap-1.5 lg:hidden" role="radiogroup" aria-label={title}>
+      {options.map((opt) => {
+        const on = value === opt.id;
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            onClick={() => onChange(opt.id)}
+            className={cn(
+              "min-h-11 rounded-[10px] border px-2 text-[13px] font-semibold transition-colors",
+              on
+                ? "border-ink bg-ink text-white"
+                : "border-border-md bg-surface-2 text-text-2 active:bg-row-hover",
+            )}
+          >
+            {opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

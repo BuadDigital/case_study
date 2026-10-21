@@ -4,6 +4,8 @@ import { fmtSar } from "@platform/app-shared/format/number";
 import {
   EmptyState,
   ListPager,
+  MobileRecordCard,
+  MobileRecordList,
   StatusPill,
   TBody,
   THead,
@@ -36,6 +38,23 @@ import {
 import type { PartyBillingMode } from "../lib/party-billing-statements-state";
 import { FinancePartyBillingStatementDetail } from "./FinancePartyBillingStatementDetail";
 import type { PartyBillingStatementsWorkflow } from "./usePartyBillingStatementsWorkflow";
+
+type Statement = PartyBillingStatementsWorkflow["statements"][number];
+
+/** Closed → issued → created date, en-GB, «—» without one (table cell and phone card). */
+function statementDate(s: Statement) {
+  const dateIso = s.closedAtUtc ?? s.issuedAtUtc ?? s.createdAtUtc;
+  return dateIso ? new Date(dateIso).toLocaleDateString("en-GB") : "—";
+}
+
+function StatementStatusPill({ statement }: { statement: Statement }) {
+  return (
+    <StatusPill
+      label={partyBillingWorkflowLabel(statement)}
+      style={finStatusStyle(partyBillingWorkflowTone(statement))}
+    />
+  );
+}
 
 /**
  * Statement list — one server page (pagination-contract §9.1) with the shared
@@ -105,7 +124,36 @@ export function FinancePartyBillingStatementsSection({
           aria-busy={statementsQuery.isPlaceholderData || undefined}
         >
           <div className="min-w-0">
-          <TableFrame>
+          {/* Phones: one tappable card per statement — opens it like the table row. */}
+          <MobileRecordList className="lg:hidden">
+            {statements.map((s) => {
+              const active = (focusStatementId ?? selectedStatementId) === s.id;
+              return (
+                <MobileRecordCard
+                  key={s.id}
+                  tone={active ? "gold" : undefined}
+                  className={cn(active && finRowActive)}
+                  onOpen={() => selectStatement(s.id)}
+                  title={
+                    <bdi dir="ltr" className="text-gold-d">
+                      {s.referenceNumber}
+                    </bdi>
+                  }
+                  status={<StatementStatusPill statement={s} />}
+                  fields={[
+                    { label: "التاريخ", ltr: true, value: statementDate(s) },
+                    { label: "المعاملات", value: `${s.lines.length} معاملة` },
+                    {
+                      label: "الإجمالي",
+                      ltr: true,
+                      value: fmtSar(statementDisplayTotal(s), { trim: true }),
+                    },
+                  ]}
+                />
+              );
+            })}
+          </MobileRecordList>
+          <TableFrame className="max-lg:hidden">
             <Table>
               <THead>
                 <Tr hoverable={false}>
@@ -120,10 +168,6 @@ export function FinancePartyBillingStatementsSection({
                 {statements.map((s) => {
                   const active =
                     (focusStatementId ?? selectedStatementId) === s.id;
-                  const dateIso =
-                    s.closedAtUtc ??
-                    s.issuedAtUtc ??
-                    s.createdAtUtc;
                   return (
                     <Tr
                       key={s.id}
@@ -148,9 +192,7 @@ export function FinancePartyBillingStatementsSection({
                         className="text-center"
                         valueClassName="text-[11.5px] text-text-2"
                       >
-                        {dateIso
-                          ? new Date(dateIso).toLocaleDateString("en-GB")
-                          : "—"}
+                        {statementDate(s)}
                       </TdLtr>
                       <Td className="text-center">
                         <span className="text-xs text-text-2">
@@ -164,10 +206,7 @@ export function FinancePartyBillingStatementsSection({
                         {fmtSar(statementDisplayTotal(s), { trim: true })}
                       </TdLtr>
                       <Td className="text-center">
-                        <StatusPill
-                          label={partyBillingWorkflowLabel(s)}
-                          style={finStatusStyle(partyBillingWorkflowTone(s))}
-                        />
+                        <StatementStatusPill statement={s} />
                       </Td>
                     </Tr>
                   );
@@ -207,12 +246,7 @@ export function FinancePartyBillingStatementsSection({
                         — {fmtSar(statementDisplayTotal(selectedStatement), { trim: true })}
                       </div>
                     </div>
-                    <StatusPill
-                      label={partyBillingWorkflowLabel(selectedStatement)}
-                      style={finStatusStyle(
-                        partyBillingWorkflowTone(selectedStatement),
-                      )}
-                    />
+                    <StatementStatusPill statement={selectedStatement} />
                   </div>
                   <p className={finMuted}>
                     افتح تبويب «مسيرات وأوامر صرف» داخل حساب المستحق للتفاصيل

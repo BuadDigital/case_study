@@ -3,6 +3,8 @@
 import { fmtSar } from "@platform/app-shared/format/number";
 import {
   Input,
+  MobileRecordCard,
+  MobileRecordList,
   StatusPill,
   TBody,
   THead,
@@ -126,7 +128,26 @@ export function FinancePartyBillingStatementDetail({
               ? "أمر الصرف"
               : "مسير الصرف"}
           </div>
-          <TableFrame className="rounded-[12px]">
+          {/* Phones: one card per line instead of the 3-column table. */}
+          <MobileRecordList className="p-2.5 lg:hidden">
+            {selectedStatement.lines.map((line) => (
+              <MobileRecordCard
+                key={line.id}
+                title={
+                  <bdi dir="ltr" className="text-gold-d">
+                    {line.propertyLabel || line.poNumber || "—"}
+                  </bdi>
+                }
+                subtitle={line.poNumber ? `أمر عمل ${line.poNumber}` : undefined}
+                status={
+                  <bdi dir="ltr" className="text-[13px] font-bold text-heading tabular-nums">
+                    {fmtSar(line.netFeeSar, { trim: true })}
+                  </bdi>
+                }
+              />
+            ))}
+          </MobileRecordList>
+          <TableFrame className="rounded-[12px] max-lg:hidden">
             <Table wrapClassName="max-h-[220px] overflow-auto">
               <THead>
                 <Tr hoverable={false}>

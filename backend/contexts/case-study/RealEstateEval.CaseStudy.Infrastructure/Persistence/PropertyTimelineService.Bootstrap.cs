@@ -38,9 +38,8 @@ public sealed partial class PropertyTimelineService
             propertyId,
             "enfath",
             "استلام أمر العمل من إنفاذ",
-            string.IsNullOrWhiteSpace(order.AssignmentSpecialist)
-                ? null
-                : $"أخصائي الإسناد: {order.AssignmentSpecialist.Trim()}",
+            // Who registered the order is not stored, so a rebuilt row names the specialist only.
+            WorkOrderPropertyWriteRules.EnfathReceivedTimelineDetail(order.AssignmentSpecialist, null),
             PropertyTimelineTones.Done,
             DateOnlyToUtc(order.ReceivedFromEnfathAt),
             recordedAt);

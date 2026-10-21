@@ -13,6 +13,8 @@ import {
 import {
   Button,
   Input,
+  MobileRecordCard,
+  MobileRecordList,
   OperationalToolbarSearch,
   PageToolbar,
   SkeletonTableRows,
@@ -69,6 +71,9 @@ function statementStatusMeta(s: PartyBillingStatementDto): {
     style: { base: "#6b7c8f", fg: "#4a5568" },
   };
 }
+
+const STATEMENTS_FOOTER =
+  "دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من البرنامج المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة وإيصال التحويل والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع المشرف قبل إحالتها للمالية.";
 
 /**
  * Case Study.html `renderEngFees` statements tab — expandable statement rows,
@@ -170,6 +175,169 @@ export function PartyOfficeBillingStatementsPanel({
 
   const pending = isPending && !isFetched;
 
+  // Shared by the table row and the phone card.
+  const renderPayout = (s: PartyBillingStatementDto, wrap = false) =>
+    s.status === "closed" && s.paidAtUtc ? (
+      <span className="inline-flex min-w-0 flex-col gap-px">
+        <span>
+          صُرف {formatYmd(s.paidAtUtc)}
+          {s.externalInvoiceNumber ? (
+            <>
+              {" "}
+              — فاتورة{" "}
+              <b dir="ltr">{s.externalInvoiceNumber}</b>
+            </>
+          ) : null}
+        </span>
+        <span className={cn("text-text-3", !wrap && "truncate")}>
+          {s.transferReceiptAttachmentId ? (
+            <button
+              type="button"
+              className="border-none bg-transparent p-0 text-start font-[inherit] text-[11px] text-text-3 underline-offset-2 hover:underline"
+              onClick={(e) => {
+                e.stopPropagation();
+                void viewReceipt(
+                  s.transferReceiptAttachmentId!,
+                );
+              }}
+            >
+              📎 إيصال التحويل
+              {s.transferReceiptRef
+                ? ` · مرجع ${s.transferReceiptRef}`
+                : ""}
+            </button>
+          ) : s.transferReceiptRef ? (
+            <>📎 مرجع {s.transferReceiptRef}</>
+          ) : (
+            "موثَّق الصرف"
+          )}
+        </span>
+      </span>
+    ) : (
+      "بانتظار الصرف"
+    );
+
+  const renderDetail = (s: PartyBillingStatementDto) => (
+    <>
+      <div className="mb-2 text-[11.5px] font-bold text-text-2">
+        معاملات الكشف {s.referenceNumber}
+      </div>
+      <div className="grid gap-1.5">
+        {s.lines.map((line) => (
+          <div
+            key={line.id}
+            className="grid grid-cols-2 items-center gap-2.5 lg:grid-cols-[minmax(115px,1fr)_minmax(105px,1.1fr)_minmax(85px,.8fr)_minmax(85px,.8fr)] rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
+          >
+            <span
+              dir="ltr"
+              className="text-start font-bold text-gold-d lg:text-end"
+            >
+              {line.propertyLabel}
+            </span>
+            <span className="text-text-2">
+              {line.poNumber || "—"}
+            </span>
+            <span className="text-[11px] text-text-3">
+              {line.billingStatusLabel || "—"}
+            </span>
+            <span className="font-bold text-heading">
+              {fmtSar(line.netFeeSar, { digits: 3, trim: true })}
+            </span>
+          </div>
+        ))}
+      </div>
+      {s.status === "issued" &&
+      s.payeeType !== "individual" ? (
+        <div
+          className="mt-3 flex flex-col gap-2 rounded border border-border bg-surface-2 p-3"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="text-[12px] font-semibold text-text">
+            رفع فاتورة مطابقة للمسير (القيمة مقفلة{" "}
+            {fmtSar(s.totalNetSar, { digits: 3, trim: true })})
+          </div>
+          <label className="text-[12px] text-text-2">
+            رقم الفاتورة *
+            <Input
+              className="mt-1"
+              value={invoiceNo}
+              onChange={(e) => setInvoiceNo(e.target.value)}
+              dir="ltr"
+            />
+          </label>
+          <label className="text-[12px] text-text-2">
+            تاريخ الفاتورة
+            <Input
+              className="mt-1"
+              type="date"
+              value={invoiceDate}
+              onChange={(e) =>
+                setInvoiceDate(e.target.value)
+              }
+            />
+          </label>
+          <VendorInvoicePdfField
+            busy={busyId === s.id}
+            disabled={busyId === s.id}
+            file={invoiceFile}
+            onPick={setInvoiceFile}
+            onClear={() => setInvoiceFile(null)}
+          />
+          <button
+            type="button"
+            disabled={
+              busyId === s.id ||
+              !invoiceFile ||
+              !invoiceNo.trim()
+            }
+            className="mt-0.5 w-full cursor-pointer rounded-lg border-none bg-[var(--ink,#102B4E)] px-4 py-2.5 text-[13px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
+            onClick={() => void submitInvoice(s)}
+          >
+            {busyId === s.id
+              ? "جاري الإرسال…"
+              : "إرسال الفاتورة"}
+          </button>
+        </div>
+      ) : null}
+      {s.status === "invoice_received" ? (
+        <div className="mt-2 text-[12px] text-text-2">
+          فاتورة {s.vendorInvoiceNumber} تحت المراجعة من
+          المالية
+          {s.vendorInvoiceMatched
+            ? " — طُوبقت"
+            : " — بانتظار المطابقة"}
+        </div>
+      ) : null}
+      {s.rejectedInvoices?.length ? (
+        <div className="mt-2 text-[11px] text-danger">
+          آخر إعادة:{" "}
+          {
+            s.rejectedInvoices[
+              s.rejectedInvoices.length - 1
+            ]?.reason
+          }
+        </div>
+      ) : null}
+      {s.status === "closed" &&
+      s.transferReceiptAttachmentId ? (
+        <div className="mt-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              void viewReceipt(
+                s.transferReceiptAttachmentId!,
+              )
+            }
+          >
+            عرض / تنزيل إيصال التحويل
+          </Button>
+        </div>
+      ) : null}
+    </>
+  );
+
   return (
     <section className={opsLetterCard}>
       <div className="px-4 pb-4 pt-1 sm:px-[18px]">
@@ -194,7 +362,54 @@ export function PartyOfficeBillingStatementsPanel({
           </div>
         </PageToolbar>
 
-        <TableFrame>
+        {/* Phones: one card per statement; tap to expand its lines and invoice upload. */}
+        <MobileRecordList
+          className="mt-3 lg:hidden"
+          isEmpty={filtered.length === 0}
+          empty={pending ? "جاري التحميل…" : "لا توجد كشوف مطابقة."}
+        >
+          {filtered.map((s) => {
+            const open = openRef === s.referenceNumber;
+            const meta = statementStatusMeta(s);
+            return (
+              <MobileRecordCard
+                key={s.id}
+                tone={open ? "gold" : undefined}
+                onOpen={() => setOpenRef(open ? null : s.referenceNumber)}
+                title={<bdi dir="ltr" className="tabular-nums">{s.referenceNumber}</bdi>}
+                status={<StatusPill label={meta.label} style={meta.style} />}
+                fields={[
+                  {
+                    label: "تاريخ الإصدار",
+                    ltr: true,
+                    value: formatYmd(s.issuedAtUtc ?? s.createdAtUtc),
+                  },
+                  {
+                    label: "الإجمالي",
+                    ltr: true,
+                    value: fmtSar(s.totalNetSar, { digits: 3, trim: true }),
+                  },
+                  { label: "المعاملات", value: `${s.lines.length} معاملات` },
+                  { label: "الصرف", wide: true, value: renderPayout(s, true) },
+                ]}
+              >
+                {open ? (
+                  <div
+                    className="rounded-[10px] bg-surface-2 p-2.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {renderDetail(s)}
+                  </div>
+                ) : (
+                  <span className="text-[11.5px] text-text-3">اضغط لعرض المعاملات</span>
+                )}
+              </MobileRecordCard>
+            );
+          })}
+        </MobileRecordList>
+        <p className="m-0 mt-3 text-[12px] text-text-3 lg:hidden">{STATEMENTS_FOOTER}</p>
+
+        <TableFrame className="max-lg:hidden">
         <Table className="w-full min-w-[820px]" pending={pending}>
           <THead>
             <Tr hoverable={false}>
@@ -222,7 +437,6 @@ export function PartyOfficeBillingStatementsPanel({
               filtered.map((s) => {
                 const open = openRef === s.referenceNumber;
                 const meta = statementStatusMeta(s);
-                const paidLabel = formatYmd(s.paidAtUtc);
                 return (
                   <Fragment key={s.id}>
                     <Tr
@@ -275,45 +489,7 @@ export function PartyOfficeBillingStatementsPanel({
                         <StatusPill label={meta.label} style={meta.style} />
                       </Td>
                       <Td className="text-[11px] text-text-2">
-                        {s.status === "closed" && s.paidAtUtc ? (
-                          <span className="inline-flex min-w-0 flex-col gap-px">
-                            <span>
-                              صُرف {paidLabel}
-                              {s.externalInvoiceNumber ? (
-                                <>
-                                  {" "}
-                                  — فاتورة{" "}
-                                  <b dir="ltr">{s.externalInvoiceNumber}</b>
-                                </>
-                              ) : null}
-                            </span>
-                            <span className="truncate text-text-3">
-                              {s.transferReceiptAttachmentId ? (
-                                <button
-                                  type="button"
-                                  className="border-none bg-transparent p-0 text-start font-[inherit] text-[11px] text-text-3 underline-offset-2 hover:underline"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    void viewReceipt(
-                                      s.transferReceiptAttachmentId!,
-                                    );
-                                  }}
-                                >
-                                  📎 إيصال التحويل
-                                  {s.transferReceiptRef
-                                    ? ` · مرجع ${s.transferReceiptRef}`
-                                    : ""}
-                                </button>
-                              ) : s.transferReceiptRef ? (
-                                <>📎 مرجع {s.transferReceiptRef}</>
-                              ) : (
-                                "موثَّق الصرف"
-                              )}
-                            </span>
-                          </span>
-                        ) : (
-                          "بانتظار الصرف"
-                        )}
+                        {renderPayout(s)}
                       </Td>
                     </Tr>
                     {open ? (
@@ -323,122 +499,7 @@ export function PartyOfficeBillingStatementsPanel({
                           className="!bg-surface-2 !p-0 border-b border-border"
                         >
                           <div className="px-[18px] py-3">
-                            <div className="mb-2 text-[11.5px] font-bold text-text-2">
-                              معاملات الكشف {s.referenceNumber}
-                            </div>
-                            <div className="grid gap-1.5">
-                              {s.lines.map((line) => (
-                                <div
-                                  key={line.id}
-                                  className="grid grid-cols-[minmax(115px,1fr)_minmax(105px,1.1fr)_minmax(85px,.8fr)_minmax(85px,.8fr)] items-center gap-2.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
-                                >
-                                  <span
-                                    dir="ltr"
-                                    className="text-end font-bold text-gold-d"
-                                  >
-                                    {line.propertyLabel}
-                                  </span>
-                                  <span className="text-text-2">
-                                    {line.poNumber || "—"}
-                                  </span>
-                                  <span className="text-[11px] text-text-3">
-                                    {line.billingStatusLabel || "—"}
-                                  </span>
-                                  <span className="font-bold text-heading">
-                                    {fmtSar(line.netFeeSar, { digits: 3, trim: true })}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                            {s.status === "issued" &&
-                            s.payeeType !== "individual" ? (
-                              <div
-                                className="mt-3 flex flex-col gap-2 rounded border border-border bg-surface-2 p-3"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="text-[12px] font-semibold text-text">
-                                  رفع فاتورة مطابقة للمسير (القيمة مقفلة{" "}
-                                  {fmtSar(s.totalNetSar, { digits: 3, trim: true })})
-                                </div>
-                                <label className="text-[12px] text-text-2">
-                                  رقم الفاتورة *
-                                  <Input
-                                    className="mt-1"
-                                    value={invoiceNo}
-                                    onChange={(e) => setInvoiceNo(e.target.value)}
-                                    dir="ltr"
-                                  />
-                                </label>
-                                <label className="text-[12px] text-text-2">
-                                  تاريخ الفاتورة
-                                  <Input
-                                    className="mt-1"
-                                    type="date"
-                                    value={invoiceDate}
-                                    onChange={(e) =>
-                                      setInvoiceDate(e.target.value)
-                                    }
-                                  />
-                                </label>
-                                <VendorInvoicePdfField
-                                  busy={busyId === s.id}
-                                  disabled={busyId === s.id}
-                                  file={invoiceFile}
-                                  onPick={setInvoiceFile}
-                                  onClear={() => setInvoiceFile(null)}
-                                />
-                                <button
-                                  type="button"
-                                  disabled={
-                                    busyId === s.id ||
-                                    !invoiceFile ||
-                                    !invoiceNo.trim()
-                                  }
-                                  className="mt-0.5 w-full cursor-pointer rounded-lg border-none bg-[var(--ink,#102B4E)] px-4 py-2.5 text-[13px] font-bold text-white disabled:cursor-not-allowed disabled:opacity-45"
-                                  onClick={() => void submitInvoice(s)}
-                                >
-                                  {busyId === s.id
-                                    ? "جاري الإرسال…"
-                                    : "إرسال الفاتورة"}
-                                </button>
-                              </div>
-                            ) : null}
-                            {s.status === "invoice_received" ? (
-                              <div className="mt-2 text-[12px] text-text-2">
-                                فاتورة {s.vendorInvoiceNumber} تحت المراجعة من
-                                المالية
-                                {s.vendorInvoiceMatched
-                                  ? " — طُوبقت"
-                                  : " — بانتظار المطابقة"}
-                              </div>
-                            ) : null}
-                            {s.rejectedInvoices?.length ? (
-                              <div className="mt-2 text-[11px] text-danger">
-                                آخر إعادة:{" "}
-                                {
-                                  s.rejectedInvoices[
-                                    s.rejectedInvoices.length - 1
-                                  ]?.reason
-                                }
-                              </div>
-                            ) : null}
-                            {s.status === "closed" &&
-                            s.transferReceiptAttachmentId ? (
-                              <div className="mt-2">
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() =>
-                                    void viewReceipt(
-                                      s.transferReceiptAttachmentId!,
-                                    )
-                                  }
-                                >
-                                  عرض / تنزيل إيصال التحويل
-                                </Button>
-                              </div>
-                            ) : null}
+                            {renderDetail(s)}
                           </div>
                         </Td>
                       </Tr>
@@ -450,10 +511,7 @@ export function PartyOfficeBillingStatementsPanel({
           </TBody>
         </Table>
         <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
-          دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من البرنامج
-          المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة وإيصال التحويل
-          والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع المشرف قبل إحالتها
-          للمالية.
+          {STATEMENTS_FOOTER}
         </div>
       </TableFrame>
       </div>

@@ -201,7 +201,8 @@ public class WorkOrdersController : ControllerBase
 
         var (result, errors) = await _workOrders.CreateAsync(
             request,
-            cancellationToken);
+            cancellationToken,
+            actorName: ActorClaims.DisplayName(User));
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);
         return CreatedAtAction(nameof(Get), new { poNumber = result!.PoNumber }, result);
@@ -282,7 +283,8 @@ public class WorkOrdersController : ControllerBase
             poNumber,
             property,
             cancellationToken,
-            softDraft: draft);
+            softDraft: draft,
+            actorName: ActorClaims.DisplayName(User));
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();

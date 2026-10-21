@@ -15,6 +15,8 @@ import {
   EmptyState,
   QueryErrorState,
   ListPager,
+  MobileRecordCard,
+  MobileRecordList,
   StatusPill,
   TBody,
   THead,
@@ -77,6 +79,23 @@ function PayeeChip({ party }: { party: FinanceCostParty }) {
       label={party.payeeTypeLabel || (isInd ? "فرد" : "مورّد")}
       style={finStatusStyle(isInd ? "individual" : "default")}
     />
+  );
+}
+
+/** «مستحقات قائمة» — ready lines, open payrolls, or settled (table cell and phone card). */
+function PartyOpenDues({ party: p }: { party: FinanceCostParty }) {
+  return p.pendingLines > 0 ? (
+    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#8a5e14]">
+      <span className="h-[7px] w-[7px] rounded-full bg-[#d9a441]" />
+      {p.pendingLines} بند جاهز
+    </span>
+  ) : p.openStatements > 0 ? (
+    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#1f3a5f]">
+      <span className="h-[7px] w-[7px] rounded-full bg-heading" />
+      {p.openStatements} مسير/أمر
+    </span>
+  ) : (
+    <span className="text-[11.5px] text-text-3">مسوّى</span>
   );
 }
 
@@ -210,7 +229,40 @@ export function FinanceCostPartiesList({
           />
         </div>
       ) : (
-        <TableFrame>
+        <>
+        {/* Phones: one tappable card per payee — the 8-column table ran off-screen. */}
+        <MobileRecordList className="lg:hidden">
+          {pageRows.map((p) => (
+            <MobileRecordCard
+              key={p.assigneeId}
+              tone={p.pendingLines > 0 ? "gold" : undefined}
+              onOpen={() => selectParty(p)}
+              title={p.name}
+              subtitle={
+                <bdi dir="ltr" className="text-[11px] font-bold">
+                  {p.assigneeId.slice(0, 10)}
+                </bdi>
+              }
+              status={<PayeeChip party={p} />}
+              fields={[
+                {
+                  label: "مستحق له",
+                  ltr: true,
+                  value: fmtSar(p.balanceSar, { trim: true }),
+                },
+                { label: "مستحقات قائمة", value: <PartyOpenDues party={p} /> },
+                {
+                  label: "المهمة",
+                  value: (
+                    <StatusPill label={p.taskKindLabel} style={finStatusStyle("default")} />
+                  ),
+                },
+                { label: "الجوال", ltr: true, value: "—" },
+              ]}
+            />
+          ))}
+        </MobileRecordList>
+        <TableFrame className="max-lg:hidden">
           <Table>
             <THead>
               <Tr hoverable={false}>
@@ -263,19 +315,7 @@ export function FinanceCostPartiesList({
                     {fmtSar(p.balanceSar, { trim: true })}
                   </TdLtr>
                   <Td className="text-center">
-                    {p.pendingLines > 0 ? (
-                      <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#8a5e14]">
-                        <span className="h-[7px] w-[7px] rounded-full bg-[#d9a441]" />
-                        {p.pendingLines} بند جاهز
-                      </span>
-                    ) : p.openStatements > 0 ? (
-                      <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#1f3a5f]">
-                        <span className="h-[7px] w-[7px] rounded-full bg-heading" />
-                        {p.openStatements} مسير/أمر
-                      </span>
-                    ) : (
-                      <span className="text-[11.5px] text-text-3">مسوّى</span>
-                    )}
+                    <PartyOpenDues party={p} />
                   </Td>
                   <Td className="text-center">
                     <svg
@@ -300,6 +340,7 @@ export function FinanceCostPartiesList({
             </TBody>
           </Table>
         </TableFrame>
+        </>
       )}
       {!pending && filtered.length > 0 ? (
         <ListPager

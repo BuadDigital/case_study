@@ -440,6 +440,7 @@ export function OrganizationDataView() {
             <Button
               variant="primary"
               size="sm"
+              className="max-lg:h-11 max-lg:w-full max-lg:text-sm"
               disabled={!canEdit || !stampDirty || saving}
               onClick={() =>
                 setModal({
@@ -498,7 +499,12 @@ export function OrganizationDataView() {
               تعديل غير محفوظ
             </span>
           ) : null}
-          <Button variant="primary" loading={saving} onClick={() => void persistCompany()}>
+          <Button
+            variant="primary"
+            className="max-lg:h-11 max-lg:w-full"
+            loading={saving}
+            onClick={() => void persistCompany()}
+          >
             حفظ
           </Button>
         </div>

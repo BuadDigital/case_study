@@ -4,6 +4,8 @@
 
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
+  MobileRecordCard,
+  MobileRecordList,
   StatusPill,
   TBody,
   Table,
@@ -21,7 +23,38 @@ import {
   DeedCell,
   PoCell,
   RevenueTableHead,
+  revenueCityDateFields,
 } from "./FinanceRevenueTableParts";
+
+function OverduePill({ className }: { className?: string }) {
+  return (
+    <StatusPill
+      label="متأخر"
+      style={finStatusStyle("danger")}
+      className={cn("text-[10px]", className)}
+    />
+  );
+}
+
+/** «استدعاء — تحديث الحالة» button (table cell and phone card). */
+function RecallButton({
+  po,
+  onRecall,
+}: {
+  po: string;
+  onRecall: (po: string) => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cn(opsBtnGhost, "h-auto px-3 py-[7px] text-[11.5px]")}
+      data-po-intent={po}
+      onClick={() => onRecall(po)}
+    >
+      استدعاء — تحديث الحالة
+    </button>
+  );
+}
 
 export function StoppedTable({
   rows,
@@ -36,7 +69,31 @@ export function StoppedTable({
   const reasonHead = mode === "excluded" ? "سبب الاستبعاد" : "سبب التوقف";
   const showAction = mode === "stopped" && onRecall != null;
   return (
-    <TableFrame>
+    <>
+    {/* Phones: one card per row; the reason gets a full-width field. */}
+    <MobileRecordList className="lg:hidden">
+      {rows.map((row) => (
+        <MobileRecordCard
+          key={`${row.poNumber}-${row.propertyId}`}
+          tone={row.isOverdue ? "red" : undefined}
+          title={<PoCell po={row.poNumber} />}
+          subtitle={<DeedCell deed={row.deedNumber} />}
+          status={row.isOverdue ? <OverduePill /> : undefined}
+          fields={[
+            ...revenueCityDateFields(row),
+            { label: reasonHead, value: stoppedReasonLabel(row), wide: true },
+          ]}
+          actions={
+            showAction ? <RecallButton po={row.poNumber} onRecall={onRecall} /> : undefined
+          }
+        >
+          {showAction ? null : (
+            <span className="text-[12px] text-text-3">عرض فقط</span>
+          )}
+        </MobileRecordCard>
+      ))}
+    </MobileRecordList>
+    <TableFrame className="max-lg:hidden">
       <Table className="min-w-[820px]">
         <RevenueTableHead
           heads={[
@@ -53,13 +110,7 @@ export function StoppedTable({
             <Tr key={`${row.poNumber}-${row.propertyId}`}>
               <Td className="text-center">
                 <PoCell po={row.poNumber} />
-                {row.isOverdue ? (
-                  <StatusPill
-                    label="متأخر"
-                    style={finStatusStyle("danger")}
-                    className="ms-1.5 text-[10px]"
-                  />
-                ) : null}
+                {row.isOverdue ? <OverduePill className="ms-1.5" /> : null}
               </Td>
               <Td className="text-center">
                 <DeedCell deed={row.deedNumber} />
@@ -73,14 +124,7 @@ export function StoppedTable({
               </Td>
               <Td className="text-center">
                 {showAction ? (
-                  <button
-                    type="button"
-                    className={cn(opsBtnGhost, "h-auto px-3 py-[7px] text-[11.5px]")}
-                    data-po-intent={row.poNumber}
-                    onClick={() => onRecall!(row.poNumber)}
-                  >
-                    استدعاء — تحديث الحالة
-                  </button>
+                  <RecallButton po={row.poNumber} onRecall={onRecall} />
                 ) : (
                   <span className="text-[12px] text-text-3">عرض فقط</span>
                 )}
@@ -90,5 +134,6 @@ export function StoppedTable({
         </TBody>
       </Table>
     </TableFrame>
+    </>
   );
 }

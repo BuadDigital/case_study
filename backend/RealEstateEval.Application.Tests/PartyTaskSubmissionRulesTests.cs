@@ -79,6 +79,24 @@ public class PartyTaskSubmissionRulesTests
         Assert.True(PartyTaskSubmissionRules.MayWriteDraft(Actor("case-specialist", "other"), task, true));
     }
 
+    [Fact]
+    public void Submit_is_for_the_assignee_or_staff_correcting_a_field_inspection()
+    {
+        var inspection = MakeTask(assigneeId: "fi-1");
+
+        Assert.True(PartyTaskSubmissionRules.MaySubmit(null, inspection));
+        Assert.True(PartyTaskSubmissionRules.MaySubmit(Actor("field-inspector", "fi-1"), inspection));
+        Assert.False(PartyTaskSubmissionRules.MaySubmit(Actor("field-inspector", "other"), inspection));
+        // «تأكيد مدخلات المعاين» — the specialist submits before accepting.
+        Assert.True(PartyTaskSubmissionRules.MaySubmit(Actor("case-specialist", "other"), inspection));
+
+        // Survey and appraisal stay with their party.
+        var survey = MakeTask(WorkflowTaskKind.EngineeringSurvey, assigneeId: "eo-1");
+        Assert.False(PartyTaskSubmissionRules.MaySubmit(Actor("case-specialist", "other"), survey));
+        var appraisal = MakeTask(WorkflowTaskKind.PropertyAppraisal, assigneeId: "ap-1");
+        Assert.False(PartyTaskSubmissionRules.MaySubmit(Actor("case-specialist", "other"), appraisal));
+    }
+
     // ---- labels ----
 
     [Fact]

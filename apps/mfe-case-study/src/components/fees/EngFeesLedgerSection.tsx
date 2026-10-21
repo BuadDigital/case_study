@@ -8,6 +8,8 @@
 import { fmtSar } from "@platform/app-shared/format/number";
 import {
   cn,
+  MobileRecordCard,
+  MobileRecordList,
   StatusPill,
   Table,
   TableEmptyRow,
@@ -38,6 +40,101 @@ import {
   opsToolbar,
 } from "../../lib/app-data/ops-tasks-tw";
 
+type FeeAct = (
+  row: InspectorFeeRowDto,
+  action: InspectorFeeAction,
+  extra?: { reason?: string },
+) => Promise<void>;
+
+/** The office's accept / dispute controls for one fee (table cell and phone card). */
+function OfficeFeeAction({
+  row,
+  st,
+  busy,
+  objOpen,
+  objectText,
+  setObjectText,
+  setObjectOpenId,
+  act,
+}: {
+  row: InspectorFeeRowDto;
+  st: ReturnType<typeof engFeeUiStatus>;
+  busy: boolean;
+  objOpen: boolean;
+  objectText: string;
+  setObjectText: (v: string) => void;
+  setObjectOpenId: (v: string | null) => void;
+  act: FeeAct;
+}) {
+  return (
+    <>
+    {st === "pending_office" ? (
+      <div className="flex w-full flex-col gap-1.5">
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            disabled={
+              busy || !row.canOfficeApproveDiscount
+            }
+            className="cursor-pointer whitespace-nowrap rounded-lg border-none bg-ink px-[11px] py-1 text-[11px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.6)] disabled:opacity-50 max-lg:min-h-11 max-lg:px-4 max-lg:text-[13px]"
+            onClick={() =>
+              void act(row, "office-approve-discount")
+            }
+          >
+            قبول
+          </button>
+          <button
+            type="button"
+            disabled={busy || !row.canOfficeDispute}
+            className="cursor-pointer whitespace-nowrap rounded-lg border border-[color-mix(in_srgb,#d9694f_40%,transparent)] bg-surface px-[11px] py-1 text-[11px] font-bold text-[#a5432e] disabled:opacity-50 max-lg:min-h-11 max-lg:px-4 max-lg:text-[13px]"
+            onClick={() => {
+              setObjectOpenId(
+                objOpen ? null : row.workflowTaskId,
+              );
+              setObjectText("");
+            }}
+          >
+            تحفّظ
+          </button>
+        </div>
+        {objOpen ? (
+          <div>
+            <textarea
+              rows={2}
+              value={objectText}
+              onChange={(e) =>
+                setObjectText(e.target.value)
+              }
+              placeholder="مبررات التحفّظ (إلزامي)…"
+              className="w-full resize-y rounded-lg border border-border-md bg-surface-2 px-3 py-2 text-[11.5px] text-text outline-none"
+            />
+            <button
+              type="button"
+              disabled={busy || !objectText.trim()}
+              className="mt-[5px] cursor-pointer rounded-lg border-none bg-ink px-3 py-[5px] text-[11px] font-bold text-white disabled:opacity-50 max-lg:min-h-11 max-lg:px-4 max-lg:text-[13px]"
+              onClick={() => {
+                if (!objectText.trim()) return;
+                void act(row, "office-dispute", {
+                  reason: objectText.trim(),
+                });
+              }}
+            >
+              إرسال التحفّظ
+            </button>
+          </div>
+        ) : null}
+      </div>
+    ) : (
+      <span className="text-[11px] text-text-3">
+        {st === "dispute"
+          ? "قيد المعالجة"
+          : "لا إجراء مطلوب"}
+      </span>
+    )}
+    </>
+  );
+}
+
 export function EngFeesLedgerSection({
   tab,
   search,
@@ -65,11 +162,7 @@ export function EngFeesLedgerSection({
   setObjectOpenId: (v: string | null) => void;
   objectText: string;
   setObjectText: (v: string) => void;
-  act: (
-    row: InspectorFeeRowDto,
-    action: InspectorFeeAction,
-    extra?: { reason?: string },
-  ) => Promise<void>;
+  act: FeeAct;
 }) {
   return (
     <>
@@ -138,7 +231,66 @@ export function EngFeesLedgerSection({
       </div>
     </div>
 
-    <TableFrame>
+    {/* Phones: one card per fee — the 7-column ledger would scroll sideways. */}
+    <MobileRecordList
+      className="lg:hidden"
+      isEmpty={filteredFees.length === 0}
+      empty={feesPending ? "جاري التحميل…" : "لا توجد بنود مطابقة."}
+    >
+      {filteredFees.map((row) => {
+        const st = engFeeUiStatus(row);
+        const meta = statusMeta(st);
+        const { deed, region } = deedParts(row);
+        const ded = row.supervisorDiscountSar > 0;
+        return (
+          <MobileRecordCard
+            key={row.workflowTaskId}
+            tone={st === "pending_office" ? "gold" : st === "dispute" ? "red" : undefined}
+            title={<bdi dir="ltr" className="tabular-nums">{deed}</bdi>}
+            subtitle={region}
+            status={<StatusPill label={meta.label} style={meta.style} />}
+            fields={[
+              {
+                label: "تاريخ القبول",
+                ltr: true,
+                value: formatYmd(
+                  row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc,
+                ),
+              },
+              {
+                label: "الصافي",
+                ltr: true,
+                value: fmtSar(row.netFeeSar, { digits: 3, trim: true }),
+              },
+              {
+                label: "سعر الجدول",
+                ltr: true,
+                value: fmtSar(row.agreedFeeSar, { digits: 3, trim: true }),
+              },
+              {
+                label: "تعديل التسعير ومبرره",
+                value: ded
+                  ? `− ${fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}${row.discountReason ? ` · ${row.discountReason}` : ""}`
+                  : "بسعر الجدول",
+              },
+            ]}
+          >
+            <OfficeFeeAction
+              row={row}
+              st={st}
+              busy={busyId === row.workflowTaskId}
+              objOpen={objectOpenId === row.workflowTaskId}
+              objectText={objectText}
+              setObjectText={setObjectText}
+              setObjectOpenId={setObjectOpenId}
+              act={act}
+            />
+          </MobileRecordCard>
+        );
+      })}
+    </MobileRecordList>
+
+    <TableFrame className="max-lg:hidden">
       <Table className="min-w-[920px]">
         <THead>
           <Tr hoverable={false}>
@@ -218,69 +370,16 @@ export function EngFeesLedgerSection({
                     <StatusPill label={meta.label} style={meta.style} />
                   </Td>
                   <Td className="overflow-visible">
-                    {st === "pending_office" ? (
-                      <div className="flex w-full flex-col gap-1.5">
-                        <div className="flex gap-1.5">
-                          <button
-                            type="button"
-                            disabled={
-                              busy || !row.canOfficeApproveDiscount
-                            }
-                            className="cursor-pointer whitespace-nowrap rounded-lg border-none bg-ink px-[11px] py-1 text-[11px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.6)] disabled:opacity-50"
-                            onClick={() =>
-                              void act(row, "office-approve-discount")
-                            }
-                          >
-                            قبول
-                          </button>
-                          <button
-                            type="button"
-                            disabled={busy || !row.canOfficeDispute}
-                            className="cursor-pointer whitespace-nowrap rounded-lg border border-[color-mix(in_srgb,#d9694f_40%,transparent)] bg-surface px-[11px] py-1 text-[11px] font-bold text-[#a5432e] disabled:opacity-50"
-                            onClick={() => {
-                              setObjectOpenId(
-                                objOpen ? null : row.workflowTaskId,
-                              );
-                              setObjectText("");
-                            }}
-                          >
-                            تحفّظ
-                          </button>
-                        </div>
-                        {objOpen ? (
-                          <div>
-                            <textarea
-                              rows={2}
-                              value={objectText}
-                              onChange={(e) =>
-                                setObjectText(e.target.value)
-                              }
-                              placeholder="مبررات التحفّظ (إلزامي)…"
-                              className="w-full resize-y rounded-lg border border-border-md bg-surface-2 px-3 py-2 text-[11.5px] text-text outline-none"
-                            />
-                            <button
-                              type="button"
-                              disabled={busy || !objectText.trim()}
-                              className="mt-[5px] cursor-pointer rounded-lg border-none bg-ink px-3 py-[5px] text-[11px] font-bold text-white disabled:opacity-50"
-                              onClick={() => {
-                                if (!objectText.trim()) return;
-                                void act(row, "office-dispute", {
-                                  reason: objectText.trim(),
-                                });
-                              }}
-                            >
-                              إرسال التحفّظ
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <span className="text-[11px] text-text-3">
-                        {st === "dispute"
-                          ? "قيد المعالجة"
-                          : "لا إجراء مطلوب"}
-                      </span>
-                    )}
+                    <OfficeFeeAction
+                      row={row}
+                      st={st}
+                      busy={busy}
+                      objOpen={objOpen}
+                      objectText={objectText}
+                      setObjectText={setObjectText}
+                      setObjectOpenId={setObjectOpenId}
+                      act={act}
+                    />
                   </Td>
                 </Tr>
               );

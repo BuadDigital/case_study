@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   createAdminCourt,
@@ -23,6 +23,8 @@ import {
   Card,
   Input,
   Label,
+  MobileRecordCard,
+  MobileRecordList,
   ModalBody,
   ModalCard,
   ModalFooter,
@@ -36,6 +38,7 @@ import {
   Spinner,
   Table,
   TableEmptyRow,
+  TableFrame,
   TBody,
   Td,
   Th,
@@ -255,6 +258,10 @@ function CircuitFormModal({
   );
 }
 
+function ActiveBadge({ active }: { active: boolean }) {
+  return <Badge tone={active ? "success" : "default"}>{active ? "ساري" : "معطّل"}</Badge>;
+}
+
 export function CourtsView() {
   const { authReady, hasCapability } = useAppAccess();
   const canEdit = hasCapability("courts.manage");
@@ -392,6 +399,40 @@ export function CourtsView() {
 
   const circuitsDetail = circuitsCourt ? details[circuitsCourt.id] : undefined;
 
+  /** Inline court-name editor wiring — saved on blur (table cell and phone card). */
+  function courtNameInputProps(court: AdminCourtDto) {
+    return {
+      value: names[court.id] ?? court.name,
+      disabled: busyKey === `name:${court.id}`,
+      onChange: (e: ChangeEvent<HTMLInputElement>) =>
+        setNames((n) => ({ ...n, [court.id]: e.target.value })),
+      onBlur: () => void persistName(court),
+    };
+  }
+
+  /** Edit / toggle one circuit (table cell and phone card). */
+  function circuitActions(court: AdminCourtDto, circuit: AdminCourtCircuitDto) {
+    return (
+      <>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setCircuitModal({ mode: "edit", court, circuit })}
+        >
+          تعديل
+        </Button>{" "}
+        <Button
+          variant="ghost"
+          size="sm"
+          loading={busyKey === `circuit-status:${circuit.id}`}
+          onClick={() => void toggleCircuitStatus(court, circuit)}
+        >
+          {circuit.isActive ? "تعطيل" : "تفعيل"}
+        </Button>
+      </>
+    );
+  }
+
   return (
     <PageShell variant="canvas" className="gap-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6" dir="rtl">
       {!canEdit && authReady ? (
@@ -413,7 +454,40 @@ export function CourtsView() {
         {loading && courts.length === 0 ? (
           <PageLoadingHint />
         ) : (
-          <Table className="tabular-nums">
+          <>
+          {/* Phones: one card per court — the name stays editable at full width. */}
+          <MobileRecordList
+            className="p-3 lg:hidden"
+            isEmpty={courts.length === 0}
+            empty="لا توجد محاكم بعد"
+          >
+            {courts.map((court) => (
+              <MobileRecordCard
+                key={court.id}
+                tone={court.isActive ? undefined : "muted"}
+                title={court.name}
+                subtitle={court.city}
+                status={<ActiveBadge active={court.isActive} />}
+                fields={[
+                  { label: "الدوائر", value: court.circuitsCount, ltr: true },
+                  { label: "الاستخدام", value: "—" },
+                ]}
+                actions={
+                  <Button variant="default" size="sm" onClick={() => void openCircuits(court)}>
+                    عرض الدوائر ({court.circuitsCount})
+                  </Button>
+                }
+              >
+                {canEdit ? (
+                  <label className="flex min-w-0 flex-col gap-1">
+                    <span className="text-[11.5px] font-medium text-text-3">اسم المحكمة</span>
+                    <Input className="h-11 w-full text-[14px]" {...courtNameInputProps(court)} />
+                  </label>
+                ) : null}
+              </MobileRecordCard>
+            ))}
+          </MobileRecordList>
+          <Table className="tabular-nums" wrapClassName="max-lg:hidden">
             <THead>
               <Tr hoverable={false}>
                 <Th>المحكمة</Th>
@@ -432,12 +506,7 @@ export function CourtsView() {
                     <Td className="min-w-[220px]">
                       {canEdit ? (
                         <input
-                          value={names[court.id] ?? court.name}
-                          disabled={busyKey === `name:${court.id}`}
-                          onChange={(e) =>
-                            setNames((n) => ({ ...n, [court.id]: e.target.value }))
-                          }
-                          onBlur={() => void persistName(court)}
+                          {...courtNameInputProps(court)}
                           className="w-full border-0 border-b border-transparent bg-transparent p-0.5 font-[inherit] text-[13px] font-medium text-text outline-none focus:border-gold"
                         />
                       ) : (
@@ -458,15 +527,14 @@ export function CourtsView() {
                       <bdi>—</bdi>
                     </Td>
                     <Td>
-                      <Badge tone={court.isActive ? "success" : "default"}>
-                        {court.isActive ? "ساري" : "معطّل"}
-                      </Badge>
+                      <ActiveBadge active={court.isActive} />
                     </Td>
                   </Tr>
                 ))
               )}
             </TBody>
           </Table>
+          </>
         )}
       </Card>
       <p className="mx-0.5 mt-2.5 text-[11.5px] text-text-3">
@@ -507,7 +575,22 @@ export function CourtsView() {
                   لا توجد دوائر لهذه المحكمة.
                 </p>
               ) : (
-                <Table framed className="tabular-nums">
+                <>
+                {/* Phones: one card per circuit instead of the 4-column table. */}
+                <MobileRecordList className="lg:hidden" isEmpty={false}>
+                  {circuitsDetail.circuits.map((circuit) => (
+                    <MobileRecordCard
+                      key={circuit.id}
+                      tone={circuit.isActive ? undefined : "muted"}
+                      title={<bdi className="tabular-nums">{circuit.circuitNo}</bdi>}
+                      subtitle={circuit.circuitName || "—"}
+                      status={<ActiveBadge active={circuit.isActive} />}
+                      actions={canEdit ? circuitActions(circuitsCourt, circuit) : undefined}
+                    />
+                  ))}
+                </MobileRecordList>
+                <TableFrame className="max-lg:hidden">
+                <Table className="tabular-nums">
                   <THead>
                     <Tr hoverable={false}>
                       <Th>رقم الدائرة</Th>
@@ -522,43 +605,17 @@ export function CourtsView() {
                         <Td className="font-medium">{circuit.circuitNo}</Td>
                         <Td>{circuit.circuitName || "—"}</Td>
                         <Td>
-                          <Badge tone={circuit.isActive ? "success" : "default"}>
-                            {circuit.isActive ? "ساري" : "معطّل"}
-                          </Badge>
+                          <ActiveBadge active={circuit.isActive} />
                         </Td>
                         <Td className="whitespace-nowrap">
-                          {canEdit ? (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  setCircuitModal({
-                                    mode: "edit",
-                                    court: circuitsCourt,
-                                    circuit,
-                                  })
-                                }
-                              >
-                                تعديل
-                              </Button>{" "}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                loading={busyKey === `circuit-status:${circuit.id}`}
-                                onClick={() =>
-                                  void toggleCircuitStatus(circuitsCourt, circuit)
-                                }
-                              >
-                                {circuit.isActive ? "تعطيل" : "تفعيل"}
-                              </Button>
-                            </>
-                          ) : null}
+                          {canEdit ? circuitActions(circuitsCourt, circuit) : null}
                         </Td>
                       </Tr>
                     ))}
                   </TBody>
                 </Table>
+                </TableFrame>
+                </>
               )}
             </ModalBody>
             <ModalFooter>

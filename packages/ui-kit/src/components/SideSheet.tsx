@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useId, useRef } from "react";
+import { useId, useRef } from "react";
 import { cn } from "../lib/cn";
 import { ModalClose } from "./Modal";
+import { useSheetDialog } from "./use-sheet-dialog";
 
 export type SideSheetProps = {
   open: boolean;
@@ -44,76 +45,7 @@ export function SideSheet({
 }: SideSheetProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
-  const openerRef = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  useEffect(() => {
-    if (!open) return;
-    const prevBody = document.body.style.overflow;
-    const prevHtml = document.documentElement.style.overflow;
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prevBody;
-      document.documentElement.style.overflow = prevHtml;
-    };
-  }, [open]);
-
-  // Remember the "تصفية" trigger and give it focus back once the sheet closes.
-  useEffect(() => {
-    if (!open) return;
-    openerRef.current = document.activeElement as HTMLElement | null;
-    return () => {
-      openerRef.current?.focus?.();
-      openerRef.current = null;
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        onCloseRef.current();
-        return;
-      }
-      if (e.key !== "Tab") return;
-      const root = panelRef.current;
-      if (!root) return;
-      const focusables = Array.from(
-        root.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        ),
-      );
-      if (focusables.length === 0) {
-        e.preventDefault();
-        root.focus();
-        return;
-      }
-      const first = focusables[0];
-      const last = focusables[focusables.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      const insideRoot = !!active && root.contains(active);
-      if (e.shiftKey) {
-        if (!insideRoot || active === first) {
-          e.preventDefault();
-          last.focus();
-        }
-      } else {
-        if (!insideRoot || active === last) {
-          e.preventDefault();
-          first.focus();
-        }
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    panelRef.current?.focus();
-  }, [open]);
+  useSheetDialog(open, onClose, panelRef);
 
   if (!open) return null;
 
@@ -139,7 +71,9 @@ export function SideSheet({
           <h2 id={titleId} className="m-0 flex-1 text-[15px] font-semibold text-text">
             {title}
           </h2>
-          <ModalClose onClick={onClose} aria-label="إغلاق" />
+          <ModalClose onClick={onClose} aria-label="إغلاق">
+            ×
+          </ModalClose>
         </header>
         <div className="min-h-0 flex-1 overflow-y-auto p-4">{children}</div>
         {footer ? (

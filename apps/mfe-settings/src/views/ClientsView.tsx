@@ -14,7 +14,7 @@ import {
   type UpsertClientRequest,
 } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
-import { Badge, cn, EmptyState, ModalBody, ModalCard, ModalClose, ModalFooter, ModalHeader, ModalOverlay, ModalTitle, PageShell, PageLoadingHint, Table, TBody, Td, TdLtr, Th, THead, Tr, useToast, confirmAction } from "@platform/ui-kit";
+import { Badge, cn, EmptyState, MobileRecordCard, MobileRecordList, ModalBody, ModalCard, ModalClose, ModalFooter, ModalHeader, ModalOverlay, ModalTitle, PageShell, PageLoadingHint, Table, TBody, Td, TdLtr, Th, THead, Tr, useToast, confirmAction } from "@platform/ui-kit";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   opsBtnGhost,
@@ -64,6 +64,63 @@ function toDraft(row: ClientDto): Draft {
     email: row.email ?? "",
     isActive: row.isActive,
   };
+}
+
+/** Seed-client markers — shared by the table row and the phone card. */
+function ClientSeedBadges({ row }: { row: ClientDto }) {
+  if (row.id === INFATH_SEED_CLIENT_ID) {
+    return (
+      <Badge className="mt-1" tone="default">
+        إنفاذ (بذرة)
+      </Badge>
+    );
+  }
+  if (row.id === NABR_SEED_CLIENT_ID) {
+    return (
+      <div className="mt-1 flex flex-wrap gap-1">
+        <Badge tone="default">نبر (بذرة)</Badge>
+        <Badge tone="default">فرعي لإنفاذ</Badge>
+      </div>
+    );
+  }
+  return null;
+}
+
+function ClientStatusBadge({ row }: { row: ClientDto }) {
+  return (
+    <Badge tone={row.isActive ? "success" : "default"}>
+      {row.isActive ? "نشط" : "معطّل"}
+    </Badge>
+  );
+}
+
+/** Edit / deactivate — the seed clients can never be deactivated. */
+function ClientRowActions({
+  row,
+  canEdit,
+  onEdit,
+  onDeactivate,
+}: {
+  row: ClientDto;
+  canEdit: boolean;
+  onEdit: () => void;
+  onDeactivate: () => void;
+}) {
+  if (!canEdit) return null;
+  return (
+    <>
+      <button type="button" className={opsBtnSmPrimary} onClick={onEdit}>
+        تعديل
+      </button>
+      {row.isActive &&
+      row.id !== INFATH_SEED_CLIENT_ID &&
+      row.id !== NABR_SEED_CLIENT_ID ? (
+        <button type="button" className={opsBtnSm} onClick={onDeactivate}>
+          تعطيل
+        </button>
+      ) : null}
+    </>
+  );
 }
 
 export function ClientsView() {
@@ -213,7 +270,11 @@ export function ClientsView() {
                 إضافة عميل
               </button>
             </Can>
-            <span className={opsCountBadge}>{sorted.length}</span>
+            <span className={opsCountBadge}>
+              <bdi dir="ltr" className="tabular-nums">{sorted.length}</bdi>
+              {/* Phones stretch the badge into a full-width bar — a bare number reads as noise. */}
+              <span className="ms-1 lg:hidden">عميل</span>
+            </span>
           </div>
         </div>
 
@@ -227,7 +288,40 @@ export function ClientsView() {
         ) : sorted.length === 0 && !error ? (
           <EmptyState line="لا يوجد عملاء بعد." />
         ) : !loading && !error ? (
-          <Table className="min-w-[720px] tabular-nums">
+          <>
+          {/* Phones: one card per client — the 720px table scrolled sideways. */}
+          <MobileRecordList className="px-4 py-3 lg:hidden" isEmpty={false}>
+            {sorted.map((row) => (
+              <MobileRecordCard
+                key={row.id}
+                tone={row.isActive ? undefined : "muted"}
+                title={row.nameAr}
+                subtitle={
+                  row.nameEn ? <bdi dir="ltr">{row.nameEn}</bdi> : undefined
+                }
+                status={<ClientStatusBadge row={row} />}
+                fields={[
+                  { label: "الهوية / السجل", value: row.identityNumber || "—", ltr: true },
+                  { label: "الهاتف", value: row.phone || "—", ltr: true },
+                ]}
+                actions={
+                  canEdit ? (
+                    <ClientRowActions
+                      row={row}
+                      canEdit={canEdit}
+                      onEdit={() => setModal(toDraft(row))}
+                      onDeactivate={() => void onDeactivate(row)}
+                    />
+                  ) : undefined
+                }
+              >
+                {row.id === INFATH_SEED_CLIENT_ID || row.id === NABR_SEED_CLIENT_ID ? (
+                  <ClientSeedBadges row={row} />
+                ) : null}
+              </MobileRecordCard>
+            ))}
+          </MobileRecordList>
+          <Table className="min-w-[720px] tabular-nums" wrapClassName="max-lg:hidden">
             <THead>
                 <Tr hoverable={false}>
                   <Th>الاسم</Th>
@@ -247,53 +341,28 @@ export function ClientsView() {
                           {row.nameEn}
                         </div>
                       ) : null}
-                      {row.id === INFATH_SEED_CLIENT_ID ? (
-                        <Badge className="mt-1" tone="default">
-                          إنفاذ (بذرة)
-                        </Badge>
-                      ) : row.id === NABR_SEED_CLIENT_ID ? (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          <Badge tone="default">نبر (بذرة)</Badge>
-                          <Badge tone="default">فرعي لإنفاذ</Badge>
-                        </div>
-                      ) : null}
+                      <ClientSeedBadges row={row} />
                     </Td>
                     <TdLtr bare>{row.identityNumber || "—"}</TdLtr>
                     <TdLtr bare>{row.phone || "—"}</TdLtr>
                     <Td>
-                      <Badge tone={row.isActive ? "success" : "default"}>
-                        {row.isActive ? "نشط" : "معطّل"}
-                      </Badge>
+                      <ClientStatusBadge row={row} />
                     </Td>
                     <Td>
                       <div className="flex flex-wrap gap-2">
-                        {canEdit ? (
-                          <button
-                            type="button"
-                            className={opsBtnSmPrimary}
-                            onClick={() => setModal(toDraft(row))}
-                          >
-                            تعديل
-                          </button>
-                        ) : null}
-                        {canEdit &&
-                        row.isActive &&
-                        row.id !== INFATH_SEED_CLIENT_ID &&
-                        row.id !== NABR_SEED_CLIENT_ID ? (
-                          <button
-                            type="button"
-                            className={opsBtnSm}
-                            onClick={() => void onDeactivate(row)}
-                          >
-                            تعطيل
-                          </button>
-                        ) : null}
+                        <ClientRowActions
+                          row={row}
+                          canEdit={canEdit}
+                          onEdit={() => setModal(toDraft(row))}
+                          onDeactivate={() => void onDeactivate(row)}
+                        />
                       </div>
                     </Td>
                   </Tr>
                 ))}
               </TBody>
             </Table>
+          </>
         ) : null}
       </section>
 

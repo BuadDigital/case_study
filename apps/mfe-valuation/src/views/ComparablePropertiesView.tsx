@@ -41,6 +41,10 @@ import {
 import { BANK_ICON, OpsIcon } from "./ComparablesOpsIcon";
 import { AddComparableForm } from "./AddComparableForm";
 import { TagEditorRow } from "./TagEditorRow";
+import {
+  ComparableBankPhoneList,
+  ComparableBankPhoneToolbar,
+} from "./ComparablePropertiesPhone";
 
 /**
  * Company-wide comparable bank CRUD.
@@ -169,7 +173,16 @@ export function ComparablePropertiesView() {
         <InlineLoadingSkeleton className="mb-3" />
       ) : null}
 
-      <div className={opsToolbar}>
+      <ComparableBankPhoneToolbar
+        q={q}
+        onQ={setQ}
+        showInactive={showInactive}
+        onShowInactive={setShowInactive}
+        showForm={showForm}
+        onReload={() => void reload()}
+        onToggleForm={() => setShowForm((v) => !v)}
+      />
+      <div className={cn(opsToolbar, "max-lg:hidden")}>
         <div className="flex min-w-0 flex-1 flex-wrap items-end gap-2.5">
           <div className={cn(opsFld, "min-w-[12rem] flex-1")}>
             <label htmlFor="comparables_bank_q" className={opsTfLbl}>
@@ -261,6 +274,20 @@ export function ComparablePropertiesView() {
             // The fade sits on a wrapper: the list's own loading dim would snap.
             <div ref={listRef}>
               <div className={cn(loading && "opacity-60")}>
+              <ComparableBankPhoneList
+                rows={rows}
+                tagEditId={tagEditId}
+                onToggleTag={(id) =>
+                  setTagEditId((cur) => (cur === id ? null : id))
+                }
+                onDeactivate={(id) => void onDeactivate(id)}
+                onReactivate={(id) => void onReactivate(id)}
+                onTagSaved={() => {
+                  setTagEditId(null);
+                  void reload();
+                }}
+              />
+              <div className="max-lg:hidden">
                 {rows.map((row) => (
                   <div
                     key={row.id}
@@ -270,7 +297,8 @@ export function ComparablePropertiesView() {
                       !row.isActive && "opacity-60",
                     )}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    {/* Phones: actions drop under the details so the text keeps the full width. */}
+                    <div className="flex flex-col gap-2.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className="text-[13.5px] font-bold text-heading">
@@ -305,9 +333,15 @@ export function ComparablePropertiesView() {
                             : ""}{" "}
                           · {row.district}
                           {row.city ? ` · ${row.city}` : ""} ·{" "}
-                          {row.transactionDate} · {row.areaSqm} م² ·{" "}
-                          {fmtSar(row.price, { digits: 3, trim: true })} ·{" "}
-                          {fmtSar(row.pricePerSqm, { digits: 3, trim: true })}/م²
+                          <bdi className="whitespace-nowrap">{row.transactionDate}</bdi> ·{" "}
+                          <bdi className="whitespace-nowrap">{row.areaSqm} م²</bdi> ·{" "}
+                          <bdi className="whitespace-nowrap">
+                            {fmtSar(row.price, { digits: 3, trim: true })}
+                          </bdi>{" "}
+                          ·{" "}
+                          <bdi className="whitespace-nowrap">
+                            {fmtSar(row.pricePerSqm, { digits: 3, trim: true })}/م²
+                          </bdi>
                         </div>
                         <div className="mt-0.5 text-[11px] text-text-3">
                           المصدر: {row.sourceCard.intakeChannelLabelAr} ·{" "}
@@ -329,7 +363,7 @@ export function ComparablePropertiesView() {
                           </div>
                         ) : null}
                       </div>
-                      <div className="flex shrink-0 flex-wrap gap-1.5">
+                      <div className="flex shrink-0 flex-wrap gap-1.5 max-sm:[&>*]:flex-1 max-sm:[&>*]:justify-center">
                         <button
                           type="button"
                           className={opsBtnGhost}
@@ -372,6 +406,7 @@ export function ComparablePropertiesView() {
                     ) : null}
                   </div>
                 ))}
+              </div>
               </div>
             </div>
           )}

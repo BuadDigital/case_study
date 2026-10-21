@@ -19,6 +19,7 @@ import {
   cn,
   KpiBand,
   KpiCell,
+  MobileKpiStatCards,
   QueueTableHint,
   StatusPill,
   Table,
@@ -32,7 +33,6 @@ import {
   Tr,
   useSwapAnimation,
 } from "@platform/ui-kit";
-import { openPartyBillingAttachment } from "@platform/app-shared/app-data/party-billing-statements-api";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { KeyEnvelopeFeesPanel } from "./KeyEnvelopeFeesPanelSlot";
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
@@ -52,6 +52,12 @@ import {
   type IndividualFeesVariant,
 } from "./party-individual-fees-state";
 import { usePartyIndividualFeesWorkflow } from "./usePartyIndividualFeesWorkflow";
+import {
+  FeeRowAction,
+  PartyFeesPhoneList,
+  PartyStatementsPhoneList,
+  StatementLinesDetail,
+} from "./PartyIndividualFeesParts";
 
 export type { IndividualFeesVariant };
 
@@ -149,7 +155,48 @@ export function PartyIndividualFeesHtmlScreen({
 
   return (
     <div className="flex flex-col gap-3.5">
-      <KpiBand className="mb-1">
+      <MobileKpiStatCards
+        className="mb-0"
+        items={[
+          {
+            key: "outstanding",
+            icon: <CurrencyIcon />,
+            iconClass: "bg-gold-soft text-gold-d",
+            tone: "gold",
+            label: "إجمالي المستحق غير المصروف",
+            value: fmtSar(kpi.outstanding, { digits: 3, trim: true }),
+            sub: copy.outstandingSub,
+          },
+          {
+            key: "action",
+            icon: <ClockIcon />,
+            iconClass: "bg-[color-mix(in_srgb,#d9a441_14%,transparent)] text-[#8a5e14]",
+            tone: "gold",
+            label: copy.actionKpiLabel,
+            value: fmtSar(kpi.actionSar, { digits: 3, trim: true }),
+            sub: copy.actionKpiSub,
+          },
+          {
+            key: "ready",
+            icon: <CardIcon />,
+            iconClass: "bg-navy-soft text-heading",
+            tone: "ink",
+            label: copy.readyKpiLabel,
+            value: fmtSar(kpi.readySar, { digits: 3, trim: true }),
+            sub: copy.readyKpiSub,
+          },
+          {
+            key: "paid",
+            icon: <CurrencyIcon />,
+            iconClass: "bg-[color-mix(in_srgb,#3f8f5f_14%,transparent)] text-heading",
+            tone: "ink",
+            label: copy.paidKpiLabel,
+            value: fmtSar(kpi.paidSar, { digits: 3, trim: true }),
+            sub: copy.paidKpiSub,
+          },
+        ]}
+      />
+      <KpiBand className="mb-1 hidden lg:flex">
         <KpiCell
           first
           icon={<CurrencyIcon />}
@@ -287,7 +334,15 @@ export function PartyIndividualFeesHtmlScreen({
               </div>
             </div>
 
-            <TableFrame>
+            <PartyFeesPhoneList
+              rows={filteredFees}
+              pending={feesPending}
+              copy={copy}
+              busyId={busyId}
+              onSubmit={(row) => void act(row, "submit-to-supervisor")}
+            />
+
+            <TableFrame className="max-lg:hidden">
               <Table className="min-w-[920px]">
                 <THead>
                   <Tr hoverable={false}>
@@ -371,41 +426,12 @@ export function PartyIndividualFeesHtmlScreen({
                             <StatusPill label={meta.label} style={meta.style} />
                           </Td>
                           <Td className="overflow-visible">
-                            {st === "needs_submit" ? (
-                              <button
-                                type="button"
-                                disabled={busy || !row.canSubmitToSupervisor}
-                                className="cursor-pointer whitespace-nowrap rounded-lg border-none bg-ink px-[11px] py-1 text-[11px] font-bold text-white shadow-[0_6px_16px_-8px_rgba(18,40,76,.6)] disabled:opacity-50"
-                                onClick={() =>
-                                  void act(row, "submit-to-supervisor")
-                                }
-                              >
-                                رفع للمشرف
-                              </button>
-                            ) : st === "sup_review" ? (
-                              <span className="text-[11px] text-text-3">
-                                بانتظار الاعتماد
-                              </span>
-                            ) : st === "returned_to_party" ||
-                              st === "inquiry_to_party" ? (
-                              <span className="text-[11px] text-text-3">
-                                راجع الملاحظات وأعِد الرفع
-                              </span>
-                            ) : st === "draft_work" ? (
-                              <span className="text-[11px] text-text-3">
-                                بعد إنجاز العمل يظهر للرفع
-                              </span>
-                            ) : st === "at_finance" || st === "listed" ? (
-                              <span className="text-[11px] text-text-3">
-                                المالية تتولى أمر الصرف
-                              </span>
-                            ) : st === "paid" ? (
-                              <span className="text-[11px] font-semibold text-heading">
-                                ✓ مصروف
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-text-3">—</span>
-                            )}
+                            <FeeRowAction
+                              row={row}
+                              st={st}
+                              busy={busy}
+                              onSubmit={() => void act(row, "submit-to-supervisor")}
+                            />
                           </Td>
                         </Tr>
                       );
@@ -450,7 +476,15 @@ export function PartyIndividualFeesHtmlScreen({
               </div>
             </div>
 
-            <TableFrame>
+            <PartyStatementsPhoneList
+              statements={filteredFns}
+              openFn={openFn}
+              setOpenFn={setOpenFn}
+              footer={copy.statementsFooter}
+              onError={(e) => showToast(e, "error")}
+            />
+
+            <TableFrame className="max-lg:hidden">
               <Table className="min-w-[820px]">
                 <THead>
                   <Tr hoverable={false}>
@@ -513,43 +547,10 @@ export function PartyIndividualFeesHtmlScreen({
                                 colSpan={6}
                                 className="bg-surface-2 !py-3"
                               >
-                                <div className="mb-2 text-[11.5px] font-bold text-text-2">
-                                  بنود {s.referenceNumber}
-                                </div>
-                                <div className="grid gap-1.5">
-                                  {s.lines.map((line) => (
-                                    <div
-                                      key={line.id}
-                                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface px-3 py-1.5 text-[12px]"
-                                    >
-                                      <span
-                                        dir="ltr"
-                                        className="font-bold text-gold-d"
-                                      >
-                                        {line.propertyLabel}
-                                      </span>
-                                      <span className="font-bold text-heading">
-                                        {fmtSar(line.netFeeSar, { digits: 3, trim: true })}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                                {s.transferReceiptAttachmentId ? (
-                                  <button
-                                    type="button"
-                                    className="mt-2 cursor-pointer border-none bg-transparent p-0 text-[12px] text-primary underline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      void openPartyBillingAttachment(
-                                        s.transferReceiptAttachmentId!,
-                                      ).then((r) => {
-                                        if (!r.ok) showToast(r.error, "error");
-                                      });
-                                    }}
-                                  >
-                                    عرض إيصال التحويل
-                                  </button>
-                                ) : null}
+                                <StatementLinesDetail
+                                  s={s}
+                                  onError={(e) => showToast(e, "error")}
+                                />
                               </Td>
                             </Tr>
                           ) : null}

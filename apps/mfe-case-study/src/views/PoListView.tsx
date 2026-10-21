@@ -502,7 +502,7 @@ export function PoListView() {
                   type="button"
                   size="sm"
                   variant="default"
-                  className="h-[30px] w-[30px] p-0 disabled:opacity-40"
+                  className="h-[30px] w-[30px] p-0 disabled:opacity-40 max-lg:h-11 max-lg:w-11"
                   disabled={safePage <= 1}
                   onClick={() => setPage(safePage - 1)}
                   aria-label="الصفحة السابقة"
@@ -527,7 +527,7 @@ export function PoListView() {
                           type="button"
                           size="sm"
                           variant={n === safePage ? "primary" : "default"}
-                          className="h-[30px] min-w-[30px] px-1.5"
+                          className="h-[30px] min-w-[30px] px-1.5 max-lg:h-11 max-lg:min-w-11"
                           aria-current={n === safePage ? "page" : undefined}
                           onClick={() => setPage(n)}
                         >
@@ -540,7 +540,7 @@ export function PoListView() {
                   type="button"
                   size="sm"
                   variant="default"
-                  className="h-[30px] w-[30px] p-0 disabled:opacity-40"
+                  className="h-[30px] w-[30px] p-0 disabled:opacity-40 max-lg:h-11 max-lg:w-11"
                   disabled={safePage >= totalPages}
                   onClick={() => setPage(safePage + 1)}
                   aria-label="الصفحة التالية"

@@ -444,6 +444,27 @@ jobs:
               $COMPOSE ps -a || true
               exit 1
             fi
+            # Back up every database before migrate / retire-demo-data change anything: several
+            # migrations drop data and their Down() cannot bring it back, so this dump is the only
+            # way back. A failed dump stops the deploy before anything is changed.
+            BACKUP_DIR="/app/backups/$(date -u +%Y%m%dT%H%M%SZ)-$TAG"
+            mkdir -p "$BACKUP_DIR"
+            chmod 700 /app/backups "$BACKUP_DIR"
+            for db in identity platform attachments case_study operations financial valuation failures messaging; do
+              name="realestate_eval_prod_$db"
+              exists="$($COMPOSE exec -T postgres psql -U postgres -tAc "SELECT 1 FROM pg_database WHERE datname = '$name'")"
+              if [ "$exists" != "1" ]; then
+                echo "backup: $name does not exist yet, skipped"
+                continue
+              fi
+              if ! $COMPOSE exec -T postgres pg_dump -U postgres -Fc -d "$name" > "$BACKUP_DIR/$name.dump"; then
+                echo "::error::backup of $name failed — nothing was migrated"
+                exit 1
+              fi
+            done
+            echo "::notice::databases backed up to $BACKUP_DIR"
+            # Keep the 10 most recent backups.
+            ls -1d /app/backups/*/ | sort -r | tail -n +11 | xargs -r rm -rf
             docker compose -f docker-compose.prod.yml run --rm migrate
             # Audit A-005: undo what earlier demo seeding left in live data (idempotent) and
             # print what still needs a person — see the [retire-demo] lines in this log.

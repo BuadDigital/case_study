@@ -67,4 +67,7 @@ export const tdJustClass = "min-w-[230px] border-b border-s border-border px-3 p
 export const noteClass = "mt-[3px] text-[10px] font-normal text-text-3";
 export const cellInputBaseClass =
   "w-24 rounded-[7px] border px-2 py-[7px] text-center text-[13px] font-bold";
+/** Phone card input: full width, 44px tall, 16px text so iOS never zooms on focus. */
+export const cellInputTouchClass =
+  "min-h-11 w-full rounded-[9px] border px-3 py-2 text-center text-[16px] font-bold";
 export const panelCardClass = cn(opsLetterCard, "mb-6");

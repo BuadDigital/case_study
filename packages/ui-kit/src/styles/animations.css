@@ -128,6 +128,15 @@
   }
 }
 
+@keyframes ui-bottomsheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
 @layer utilities {
   /* Modals: backdrop only — card appears instantly (no scale/bounce) */
   .ui-animate-modal-overlay {
@@ -146,6 +155,11 @@
   /* SideSheet panel entrance */
   .ui-animate-sidesheet-in {
     animation: ui-sidesheet-in var(--motion-slow) var(--ease-out-quart) both;
+  }
+
+  /* Phone bottom sheet — slides up from the bottom edge */
+  .ui-animate-bottomsheet-in {
+    animation: ui-bottomsheet-in var(--motion-slow) var(--ease-out-quart) both;
   }
 
   /* Table / KPI skeleton placeholders */
@@ -208,6 +222,7 @@
   .ui-animate-fade-in,
   .ui-animate-toast-in,
   .ui-animate-sidesheet-in,
+  .ui-animate-bottomsheet-in,
   .ui-queue-row-opening,
   tr.ui-queue-row-opening > td,
   tr.ui-queue-row-opening > th,

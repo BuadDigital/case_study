@@ -11,6 +11,10 @@ import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
+  canManageWorkOrders,
+  canReadCaseStudyWorkspace,
+} from "@platform/app-shared/app-data/runtime-access";
+import {
   loadPoListCounts,
   loadPoListRowsPage,
 } from "@platform/app-shared/app-data/work-orders-read";
@@ -79,11 +83,13 @@ export function prefetchPoRecord(queryClient: QueryClient, poNumber: string): vo
 }
 
 export function useWorkflowTasksQuery(options?: { live?: boolean }) {
+  const { authReady, capabilities } = useAppAccess();
   const live =
     options?.live === true && isFeatureEnabled("liveQueuePolling");
   return useQuery({
     queryKey: appDataKeys.workflowTasks(),
     queryFn: () => loadWorkflowTasksForQuery(),
+    enabled: authReady && canReadCaseStudyWorkspace(capabilities),
     ...queryDefaults,
     refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
   });
@@ -94,15 +100,17 @@ export function usePoRecordsQuery() {
   return useQuery({
     queryKey: [...appDataKeys.poRecords(), capabilities.join(",")],
     queryFn: loadPoRecordsWithTaskSync,
-    enabled: authReady,
+    enabled: authReady && canReadCaseStudyWorkspace(capabilities),
     ...queryDefaults,
   });
 }
 
 export function usePendingBourseItemsQuery() {
+  const { authReady, capabilities } = useAppAccess();
   return useQuery({
     queryKey: appDataKeys.pendingBourseItems(),
     queryFn: loadPendingBourseItems,
+    enabled: authReady && canManageWorkOrders(capabilities),
     ...queryDefaults,
   });
 }
@@ -141,6 +149,7 @@ export function useWorkflowTasksFilteredQuery(
   filters: WorkflowTaskListFilters,
   options?: { live?: boolean; enabled?: boolean },
 ) {
+  const { authReady, capabilities } = useAppAccess();
   const live = options?.live === true && isFeatureEnabled("liveQueuePolling");
   // An empty filter set is the same request the shell prefetches — share its
   // cache entry instead of opening a second identical one.
@@ -150,7 +159,10 @@ export function useWorkflowTasksFilteredQuery(
       ? appDataKeys.workflowTasksFiltered(filters)
       : appDataKeys.workflowTasks(),
     queryFn: () => loadWorkflowTasksForQuery(narrowed ? filters : undefined),
-    enabled: options?.enabled ?? true,
+    enabled:
+      (options?.enabled ?? true) &&
+      authReady &&
+      canReadCaseStudyWorkspace(capabilities),
     ...queryDefaults,
     placeholderData: keepPreviousData,
     refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,

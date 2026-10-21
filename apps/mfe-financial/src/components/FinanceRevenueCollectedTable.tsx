@@ -4,6 +4,8 @@
 
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
+  MobileRecordCard,
+  MobileRecordList,
   StatusPill,
   TBody,
   Table,
@@ -23,11 +25,39 @@ import {
   PoCell,
   RevenueTableHead,
   TotalFeesCell,
+  TotalFeesValue,
+  revenueCityDateFields,
 } from "./FinanceRevenueTableParts";
+
+const collectedPill = (
+  <StatusPill label="محصّلة" style={finStatusStyle("success")} />
+);
 
 export function CollectedTable({ rows }: { rows: EnfazTrackingRowDto[] }) {
   return (
-    <TableFrame>
+    <>
+    {/* Phones: one card per row — the 8-column table ran off-screen. */}
+    <MobileRecordList className="lg:hidden">
+      {rows.map((row) => (
+        <MobileRecordCard
+          key={`${row.poNumber}-${row.propertyId}`}
+          title={<PoCell po={row.poNumber} />}
+          subtitle={<DeedCell deed={row.deedNumber} />}
+          status={collectedPill}
+          fields={[
+            ...revenueCityDateFields(row),
+            { label: "إجمالي الأتعاب", value: <TotalFeesValue row={row} /> },
+            {
+              label: "الفاتورة",
+              ltr: true,
+              value: `${textOrDash(row.invoiceNumber)} · ${formatDateEn(row.invoiceIssuedAtUtc)}`,
+            },
+            { label: "تاريخ التحويل", ltr: true, value: "—" },
+          ]}
+        />
+      ))}
+    </MobileRecordList>
+    <TableFrame className="max-lg:hidden">
       <Table className="min-w-[960px]">
         <RevenueTableHead
           heads={[
@@ -66,13 +96,12 @@ export function CollectedTable({ rows }: { rows: EnfazTrackingRowDto[] }) {
               <TdLtr className="text-center" valueClassName={finMuted}>
                 —
               </TdLtr>
-              <Td className="text-center">
-                <StatusPill label="محصّلة" style={finStatusStyle("success")} />
-              </Td>
+              <Td className="text-center">{collectedPill}</Td>
             </Tr>
           ))}
         </TBody>
       </Table>
     </TableFrame>
+    </>
   );
 }

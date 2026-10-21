@@ -2,7 +2,14 @@
 
 /** Operations-tasks pause and change-priority modal bodies. */
 
-import { Input, Note, Spinner, Textarea } from "@platform/ui-kit";
+import {
+  cn,
+  Input,
+  MobileSectionPicker,
+  Note,
+  Spinner,
+  Textarea,
+} from "@platform/ui-kit";
 import type { OperationsTask } from "../lib/app-data/operations-tasks-model";
 import {
   OPERATIONS_TASK_PRIORITY_COLORS,
@@ -112,7 +119,17 @@ export function PriorityModalBody({
       </div>
       <div>
         <span className={opsTfLbl}>الأولوية الجديدة</span>
-        <div className={opsTfSegRow}>
+        {/* Phones: full-width segmented control instead of the sideways-scrolling row. */}
+        <MobileSectionPicker
+          className="lg:hidden"
+          title="الأولوية الجديدة"
+          sections={Object.entries(OPERATIONS_TASK_PRIORITY_LABELS).map(
+            ([id, label]) => ({ id, label }),
+          )}
+          active={prioValue}
+          onChange={setPrioValue}
+        />
+        <div className={cn(opsTfSegRow, "max-lg:hidden")}>
           {Object.entries(OPERATIONS_TASK_PRIORITY_LABELS).map(([id, label]) => (
             <button
               key={id}

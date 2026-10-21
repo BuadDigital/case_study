@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn } from "@platform/ui-kit";
+import { cn, MobileSectionPicker } from "@platform/ui-kit";
 import {
   opsIconBoxGold,
   opsLetterSub,
@@ -52,8 +52,21 @@ export function EngFeesHtmlTabs({
   className?: string;
 }) {
   return (
+    <>
+    {/* Phones: a section picker, not the desktop segment row squeezed sideways. */}
+    <MobileSectionPicker
+      className={cn("mb-3.5 lg:hidden", className)}
+      sections={tabs.map((t) => ({
+        id: t.id,
+        label: t.label,
+        count: t.count,
+        warn: t.countWarnWhenActive,
+      }))}
+      active={active}
+      onChange={onChange}
+    />
     <div
-      className={cn(opsTfSegRow, "mb-3.5 flex-wrap gap-0", className)}
+      className={cn(opsTfSegRow, "mb-3.5 gap-0 max-lg:hidden", className)}
       role="tablist"
     >
       {tabs.map((tab) => {
@@ -90,6 +103,7 @@ export function EngFeesHtmlTabs({
         );
       })}
     </div>
+    </>
   );
 }
 

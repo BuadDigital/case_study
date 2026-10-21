@@ -220,6 +220,54 @@ public class PartyTaskSubmissionAuthorizationTests
     }
 
     [Fact]
+    public async Task Submit_lets_case_specialist_submit_a_field_inspection_returned_for_correction()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        SeedTask(db, assigneeId: "dist-inspector");
+        SeedDraftSubmission(db);
+        var service = CreateService(db);
+
+        // «تأكيد مدخلات المعاين» submits before it accepts — the specialist is not the assignee.
+        var (_, errors) = await service.SubmitAsync(
+            TaskId,
+            new PartySubmissionActor
+            {
+                UserId = "staff-1",
+                DisplayName = "أخصائي",
+                PrototypeRole = "case-specialist",
+                DistributionAssigneeId = null,
+            });
+
+        Assert.False(
+            errors is not null && errors.Values.Any(e => e.Contains("صلاحية")),
+            "case specialist was refused the submit: " + string.Join(" | ", errors?.Values.ToArray() ?? []));
+    }
+
+    [Fact]
+    public async Task Submit_still_forbids_an_unassigned_party()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        SeedTask(db, assigneeId: "dist-owner");
+        SeedDraftSubmission(db);
+        var service = CreateService(db);
+
+        var (result, errors) = await service.SubmitAsync(
+            TaskId,
+            new PartySubmissionActor
+            {
+                UserId = "user-other",
+                DisplayName = "آخر",
+                PrototypeRole = "field-inspector",
+                DistributionAssigneeId = "dist-other",
+            });
+
+        Assert.Null(result);
+        Assert.Contains("صلاحية", errors!["_"]);
+    }
+
+    [Fact]
     public async Task Accept_forbids_party_role()
     {
         var bundle = CreateDb();
@@ -589,6 +637,24 @@ public class PartyTaskSubmissionAuthorizationTests
         });
         db.SaveChanges();
         fin.SaveChanges();
+    }
+
+    private static void SeedDraftSubmission(CaseStudyDbContext db)
+    {
+        var now = DateTime.UtcNow;
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = TaskId,
+            Kind = WorkflowTaskKindValues.FieldInspection,
+            Status = PartyTaskSubmissionStatus.Draft,
+            PropertyId = PropertyId,
+            PoNumber = "PO-AUTH",
+            PayloadJson = """{"status":"draft"}""",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        db.SaveChanges();
     }
 
     private static TestBoundedContexts.Bundle CreateDb() =>
