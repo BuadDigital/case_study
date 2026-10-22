@@ -8,6 +8,7 @@ import {
   approximatePropertyGeo,
   hasCityGeo,
   hasDistrictGeo,
+  normalizePlaceName,
 } from "@platform/app-shared/domain/property-geo";
 import { coordsFromLocationMapUrl } from "@platform/app-shared/domain/property-geo";
 import { haversineKm, parseLatLng } from "@platform/app-shared/domain/geo";
@@ -109,11 +110,8 @@ function hasUsableCoords(lat: number, lng: number): boolean {
 }
 
 function normalizeCity(city: string | null | undefined): string {
-  // «محافظة الخرج» and «الخرج» name the same place: the administrative prefix is not part of the city.
-  return (city ?? "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .replace(/^(محافظة|مدينة)\s+/u, "");
+  // The backend's place-name folding: «محافظة الخرج» = «الخرج», «الأحساء» = «الاحساء».
+  return normalizePlaceName(city);
 }
 
 /** Loose city match — handles short vs. full city names (e.g. "Makkah" vs "Makkah Al-Mukarramah"). */
@@ -125,8 +123,9 @@ function citiesMatch(
   const nb = normalizeCity(b);
   if (!na || !nb) return true;
   if (na === nb) return true;
-  if (na.includes("مكة") && nb.includes("مكة")) return true;
-  if (na.includes("المدينة") && nb.includes("المدينة")) return true;
+  // Folded spellings: ة→ه, so «مكة» / «المدينة» appear as «مكه» / «المدينه».
+  if (na.includes("مكه") && nb.includes("مكه")) return true;
+  if (na.includes("المدينه") && nb.includes("المدينه")) return true;
   return false;
 }
 
