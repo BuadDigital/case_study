@@ -42,7 +42,14 @@ describe("bank subject location", () => {
   });
 
   it("does not place a property of an unknown city in central Riyadh", () => {
-    expect(resolveSubjectCoordsForBank({ city: "الخرج", district: "مشرف" })).toBeNull();
+    expect(resolveSubjectCoordsForBank({ city: "قرية غير مدرجة", district: "مشرف" })).toBeNull();
+  });
+
+  it("without a pin places an Al-Kharj property in Al-Kharj", () => {
+    const at = resolveSubjectCoordsForBank({ city: "محافظة الخرج", district: "مشرف", deedNumber: "611508007272" });
+    expect(at).not.toBeNull();
+    expect(at!.lat).toBeCloseTo(AL_KHARJ_PIN.lat, 0);
+    expect(at!.lng).toBeCloseTo(AL_KHARJ_PIN.lng, 0);
   });
 
   it("still approximates a city with a known centroid", () => {
