@@ -26,9 +26,22 @@ describe("PO intake frontend/backend rule parity", () => {
       realEstateRegNumber: "12345",
       city: "الرياض",
       district: "العليا",
+      area: "500",
     };
 
     expect(validatePropertyBourseFields(property)).toEqual({});
+  });
+
+  it("requires a positive land area with the backend's messages, registered titles included", () => {
+    const base = { ...emptyProperty(), city: "الخرج", district: "مشرف", bourseDeedImageFileName: "deed.pdf" };
+    const registered = { ...base, identifierType: "real_estate_reg" as const, realEstateRegNumber: "12345" };
+
+    expect(validatePropertyBourseFields({ ...base, area: "" }).area).toBe("مساحة الأرض مطلوبة لإتمام البورصة");
+    expect(validatePropertyBourseFields({ ...registered, area: "" }).area).toBe("مساحة الأرض مطلوبة لإتمام البورصة");
+    expect(validatePropertyBourseFields({ ...base, area: "0" }).area).toBe("مساحة الأرض يجب أن تكون رقماً أكبر من صفر");
+    for (const ok of ["500", "1,250", "٩٠٠", "312.5 م²"]) {
+      expect(validatePropertyBourseFields({ ...base, area: ok }).area).toBeUndefined();
+    }
   });
 
   it("matches the backend whole-field incomplete-contact marker check", () => {
