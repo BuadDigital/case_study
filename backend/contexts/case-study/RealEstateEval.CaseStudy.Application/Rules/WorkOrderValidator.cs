@@ -127,6 +127,16 @@ public static class WorkOrderValidator
         || !string.IsNullOrWhiteSpace(realEstateRegNumber);
 
  /// <summary>Real Estate Exchange stage — Real Estate Exchange query.</summary>
+    public const string BourseAreaRequiredAr = "مساحة الأرض مطلوبة لإتمام البورصة";
+    public const string BourseAreaInvalidAr = "مساحة الأرض يجب أن تكون رقماً أكبر من صفر";
+
+    /// <summary>Null when the bourse land area is a positive number; otherwise the Arabic message.</summary>
+    public static string? BourseAreaError(string? area)
+    {
+        if (string.IsNullOrWhiteSpace(area)) return BourseAreaRequiredAr;
+        return LocaleNumber.TryParse(area, out var m2) && m2 > 0m ? null : BourseAreaInvalidAr;
+    }
+
     public static Dictionary<string, string> ValidatePropertyBourse(
         UpdatePropertyBourseRequest dto,
         bool compactRegisteredTitle = false)
@@ -137,6 +147,12 @@ public static class WorkOrderValidator
             errors["city"] = "المدينة مطلوبة";
         if (string.IsNullOrWhiteSpace(dto.District))
             errors["district"] = "الحي مطلوب";
+        // The land area is the valuation basis (land value, area ratios, survey pricing). It used to be
+        // optional, so bourses closed without it and the appraiser's land value stayed «غير مكتمل».
+        // Same number rule as the survey pricing (LocaleNumber, > 0) — registered titles included.
+        var areaError = BourseAreaError(dto.Area);
+        if (areaError is not null)
+            errors["area"] = areaError;
         if (compactRegisteredTitle)
             return errors;
         if (string.IsNullOrWhiteSpace(dto.BourseDeedImageFileName))

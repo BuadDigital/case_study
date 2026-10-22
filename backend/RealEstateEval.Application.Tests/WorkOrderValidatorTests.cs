@@ -479,6 +479,7 @@ public class WorkOrderValidatorTests
         Assert.Contains("city", errors.Keys);
         Assert.Contains("district", errors.Keys);
         Assert.Contains("bourseDeedImageFileName", errors.Keys);
+        Assert.Contains("area", errors.Keys);
         Assert.DoesNotContain("classification", errors.Keys);
         Assert.DoesNotContain("propertyType", errors.Keys);
     }
@@ -491,10 +492,47 @@ public class WorkOrderValidatorTests
             {
                 City = "Riyadh",
                 District = "Al Olaya",
+                Area = "500",
             },
             compactRegisteredTitle: true);
 
         Assert.Empty(errors);
+    }
+
+    [Theory]
+    [InlineData(null, WorkOrderValidator.BourseAreaRequiredAr)]
+    [InlineData("  ", WorkOrderValidator.BourseAreaRequiredAr)]
+    [InlineData("0", WorkOrderValidator.BourseAreaInvalidAr)]
+    [InlineData("-5", WorkOrderValidator.BourseAreaInvalidAr)]
+    [InlineData("مساحة", WorkOrderValidator.BourseAreaInvalidAr)]
+    public void ValidatePropertyBourse_requires_a_positive_land_area(string? area, string expected)
+    {
+        // A bourse closed without the land area left the appraiser's land value «غير مكتمل».
+        var deed = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
+        {
+            City = "الخرج", District = "مشرف", BourseDeedImageFileName = "deed.pdf", Area = area,
+        });
+        var registeredTitle = WorkOrderValidator.ValidatePropertyBourse(
+            new UpdatePropertyBourseRequest { City = "الخرج", District = "مشرف", Area = area },
+            compactRegisteredTitle: true);
+
+        Assert.Equal(expected, deed["area"]);
+        Assert.Equal(expected, registeredTitle["area"]);
+    }
+
+    [Theory]
+    [InlineData("500")]
+    [InlineData("1,250")]
+    [InlineData("٩٠٠")]
+    [InlineData("312.5 م²")]
+    public void ValidatePropertyBourse_accepts_the_area_as_the_screens_type_it(string area)
+    {
+        var errors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest
+        {
+            City = "الخرج", District = "مشرف", BourseDeedImageFileName = "deed.pdf", Area = area,
+        });
+
+        Assert.DoesNotContain("area", errors.Keys);
     }
 
     [Fact]
