@@ -35,27 +35,21 @@ describe("bank subject location", () => {
       resolveSubjectCoordsForBank({
         latitude: AL_KHARJ_PIN.lat,
         longitude: AL_KHARJ_PIN.lng,
-        city: "الخرج",
-        district: "مشرف",
       }),
     ).toEqual(AL_KHARJ_PIN);
   });
 
-  it("does not place a property of an unknown city in central Riyadh", () => {
-    expect(resolveSubjectCoordsForBank({ city: "قرية غير مدرجة", district: "مشرف" })).toBeNull();
+  it("falls back to the intake map link", () => {
+    expect(
+      resolveSubjectCoordsForBank({
+        locationMapUrl: `https://www.google.com/maps?q=${AL_KHARJ_PIN.lat},${AL_KHARJ_PIN.lng}`,
+      }),
+    ).toEqual(AL_KHARJ_PIN);
   });
 
-  it("without a pin places an Al-Kharj property in Al-Kharj", () => {
-    const at = resolveSubjectCoordsForBank({ city: "محافظة الخرج", district: "مشرف", deedNumber: "611508007272" });
-    expect(at).not.toBeNull();
-    expect(at!.lat).toBeCloseTo(AL_KHARJ_PIN.lat, 0);
-    expect(at!.lng).toBeCloseTo(AL_KHARJ_PIN.lng, 0);
-  });
-
-  it("still approximates a city with a known centroid", () => {
-    const riyadh = resolveSubjectCoordsForBank({ city: "الرياض", deedNumber: "123" });
-    expect(riyadh).not.toBeNull();
-    expect(riyadh!.lat).toBeCloseTo(24.71, 1);
+  it("never guesses a location without a pin or a map link", () => {
+    expect(resolveSubjectCoordsForBank({})).toBeNull();
+    expect(resolveSubjectCoordsForBank({ latitude: 0, longitude: 0 })).toBeNull();
   });
 
   it("from the Al-Kharj pin shows the Al-Kharj comparables, not Riyadh's", () => {

@@ -15,29 +15,12 @@ export const LAND_COMPARABLES_MAP_HOST_ID = "ejada-land-comps-map-host";
 export const SATELLITE_MAP_HOST_ID = "ejada-satellite-map-host";
 export const CLOSEUP_MAP_HOST_ID = "ejada-closeup-map-host";
 
-/** Subject property pin: inspector coords first, then optional city fallback. */
+/** Subject property pin: the inspector's coords only — the report never prints a guessed location. */
 export function resolveSubjectMapCoords(input: {
   subjectLat?: string | number | null;
   subjectLng?: string | number | null;
-  city?: string | null;
-  fallbackLat?: number | null;
-  fallbackLng?: number | null;
 }): { lat: number; lng: number } | null {
-  const subject = parseLatLng(input.subjectLat, input.subjectLng);
-  if (subject) return subject;
-
-  const fbLat = input.fallbackLat;
-  const fbLng = input.fallbackLng;
-  if (
-    fbLat != null &&
-    fbLng != null &&
-    Number.isFinite(fbLat) &&
-    Number.isFinite(fbLng) &&
-    !(fbLat === 0 && fbLng === 0)
-  ) {
-    return { lat: fbLat, lng: fbLng };
-  }
-  return null;
+  return parseLatLng(input.subjectLat, input.subjectLng);
 }
 
 export function formatSubjectCoordsLabel(lat: number, lng: number): string {
@@ -47,9 +30,6 @@ export function formatSubjectCoordsLabel(lat: number, lng: number): string {
 export function collectComparablesMapPins(input: {
   subjectLat?: string | number | null;
   subjectLng?: string | number | null;
-  city?: string | null;
-  fallbackLat?: number | null;
-  fallbackLng?: number | null;
   comps?: Array<{
     latitude?: number | null;
     longitude?: number | null;

@@ -37,7 +37,6 @@ export function InspectorLocationCard({
   mapPinned,
   mobile,
   persist,
-  property,
   requestMapMove,
   saveState,
   setMapPinned,
@@ -53,7 +52,6 @@ export function InspectorLocationCard({
   | "mapPinEpoch"
   | "mapPinned"
   | "persist"
-  | "property"
   | "requestMapMove"
   | "saveState"
   | "setMapPinned"
@@ -218,7 +216,6 @@ export function InspectorLocationCard({
         key={`${draft.mapLatitude},${draft.mapLongitude},${mapPinEpoch}`}
         latitude={draft.mapLatitude}
         longitude={draft.mapLongitude}
-        property={property}
         heightClass={mobile ? "h-[180px] rounded-xl" : "h-[200px]"}
         interactive={!locked && !mapPinned}
         onCoordsChange={

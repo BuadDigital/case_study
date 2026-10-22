@@ -57,23 +57,15 @@ describe("map-live-records", () => {
     ).toEqual({ lat: 24.7136, lng: 46.6753 });
   });
 
-  it("falls back to city centroid when no map URL", () => {
-    const { coords, coordsSource } = resolveLivePropertyCoords({
-      city: "الرياض",
-      deedNumber: "123",
-      locationMapUrl: "",
-    });
-    expect(coords).not.toBeNull();
-    expect(coordsSource).toBe("تقريبي (مدينة)");
+  it("gives no location without a pin or a map link — never a guess from the city", () => {
+    const { coords, coordsSource } = resolveLivePropertyCoords({ locationMapUrl: "" });
+    expect(coords).toBeNull();
+    expect(coordsSource).toBeNull();
   });
 
-  it("prefers the inspector pin over the city centroid", () => {
+  it("prefers the inspector pin over the map link", () => {
     const { coords, coordsSource } = resolveLivePropertyCoords(
-      {
-        city: "الرياض",
-        deedNumber: "123",
-        locationMapUrl: "",
-      },
+      { locationMapUrl: "https://www.google.com/maps/search/?api=1&query=24.7136,46.6753" },
       { lat: 21.5433, lng: 39.1728 },
     );
     expect(coords).toEqual({ lat: 21.5433, lng: 39.1728 });
@@ -86,7 +78,7 @@ describe("map-live-records", () => {
     expect(mapped[0]!.poNumber).toBe("PO-100");
     expect(mapped[0]!.propertyId).toBe("prop-1");
     expect(mapped[0]!.refNo).toBe("PO-100");
-    expect(mapped[0]!.coords).not.toBeNull();
+    expect(mapped[0]!.coords).toBeNull(); // no pin, no map link
     expect(mapped[0]!.workflowStatus).toBe("in_progress");
   });
 

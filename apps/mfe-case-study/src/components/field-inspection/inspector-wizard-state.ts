@@ -18,7 +18,6 @@ import {
   type InspectorWorkspaceDraft,
   type ServiceAmenityPhotoSlotDef,
 } from "../../lib/app-data/inspector-workspace-data";
-import { approximatePropertyGeo } from "../../lib/app-data/po-intake-data";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
 
 /** Amenity chips from the design file (extras entered elsewhere are preserved). */
@@ -97,12 +96,11 @@ export function inspectorBoolPillClass(on: boolean) {
   );
 }
 
-/** Draft coords when both are numeric, else the approximate property location. */
+/** Draft coords when both are numeric — no guessed location; the map opens on the Kingdom until pinned. */
 export function inspectorWizardMapGeo(
   draft: InspectorWorkspaceDraft,
-  property: { city: string; district?: string; deedNumber: string },
 ): { lat: number; lng: number } | null {
-  return parseLatLng(draft.mapLatitude, draft.mapLongitude) ?? approximatePropertyGeo(property);
+  return parseLatLng(draft.mapLatitude, draft.mapLongitude);
 }
 
 /** After the specialist pins — the inspector's original pin, for comparison only. */

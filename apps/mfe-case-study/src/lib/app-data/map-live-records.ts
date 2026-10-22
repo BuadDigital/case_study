@@ -5,11 +5,7 @@ import type {
   FieldInspectionWorkspaceListItemDto,
   ValuationRequestDto,
 } from "@platform/api-client";
-import {
-  approximatePropertyGeo,
-  coordsFromLocationMapUrl,
-} from "@platform/app-shared/domain/property-geo";
-import { parseLatLng } from "@platform/app-shared/domain/geo";
+import { coordsFromLocationMapUrl, parseLatLng } from "@platform/app-shared/domain/geo";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
@@ -125,14 +121,13 @@ export function fillValuersFromAppraisalTasks(
 }
 
 export function resolveLivePropertyCoords(
-  property: Pick<PoPropertyIntake, "city" | "deedNumber" | "locationMapUrl">,
+  property: Pick<PoPropertyIntake, "locationMapUrl">,
   inspectorPin?: MapCoords | null,
 ): { coords: MapCoords | null; coordsSource: string | null } {
   if (inspectorPin) return { coords: inspectorPin, coordsSource: "معاينة" };
   const fromUrl = coordsFromLocationMapUrl(property.locationMapUrl);
   if (fromUrl) return { coords: fromUrl, coordsSource: "رابط الموقع" };
-  const approx = approximatePropertyGeo(property);
-  if (approx) return { coords: approx, coordsSource: "تقريبي (مدينة)" };
+  // No guess from the city name: a property without a real location stays off the map.
   return { coords: null, coordsSource: null };
 }
 

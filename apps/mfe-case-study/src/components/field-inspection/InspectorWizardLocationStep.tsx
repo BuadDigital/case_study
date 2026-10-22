@@ -100,8 +100,8 @@ export function InspectorWizardLocationStep({
     status: draft.status,
   });
   const mapGeo = useMemo(
-    () => inspectorWizardMapGeo(draft, property),
-    [draft, property],
+    () => inspectorWizardMapGeo(draft),
+    [draft],
   );
   const contextPins = useMemo(
     () => [
