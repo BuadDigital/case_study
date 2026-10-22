@@ -39,6 +39,8 @@ public sealed partial class ValuationReportDraftService
         if (html.Length == 0) return (null, Error(ValuationReportDraft.SnapshotRequiredAr));
         if (html.Length > ValuationReportPdfRules.MaxHtmlBytes)
             return (null, Error("حجم التقرير المطبوع أكبر من المسموح"));
+        if (!ReportDepositCodeRewriter.HasDepositCodeLine(html))
+            return (null, Error(ReportDepositCodeRewriter.MissingLineAr));
         // Checked before the deposit copy is issued: a refused approval must leave nothing frozen.
         if (!DateOnly.TryParseExact(request.ReportDate?.Trim(), "yyyy-MM-dd", out _))
             return (null, Error(ValuationReportDraft.ReportDateInvalidAr));
