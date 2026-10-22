@@ -182,27 +182,31 @@ public sealed partial class PoEnfazBillingService : IPoEnfazBillingService
         return PoEnfazRevenueRules.PropertyRevenue(row);
     }
 
-    public async Task<PoEnfazBillingDto?> IssueInvoiceAsync(
+    public async Task<(PoEnfazBillingDto? Billing, string? Error)> IssueInvoiceAsync(
         string poNumber,
         CancellationToken cancellationToken = default)
     {
         var normalized = poNumber.Trim();
         var billing = await GetPoBillingAsync(normalized, cancellationToken);
-        if (billing is null || !billing.PoReadyForBilling || billing.SubtotalSar <= 0)
-            return null;
+        if (billing is null)
+            return (null, PoEnfazInvoiceRules.NotReadyError);
+        var existing = await _db.FindInvoiceAsync(normalized, track: true, cancellationToken);
+        var blocked = PoEnfazInvoiceRules.IssueBlockedReason(
+            existing, billing.PoReadyForBilling, billing.SubtotalSar);
+        if (blocked is not null)
+            return (null, blocked);
 
         var invoiceNumber = PoEnfazInvoiceRules.InvoiceNumber(normalized, _time.UtcNow());
         var now = _time.UtcNow();
         var attachmentIdsJson = PoEnfazBillingDtoBuilder.SerializeAttachmentIds(
             PoEnfazInvoiceRules.IssueAttachmentIds(billing));
-        var existing = await _db.FindInvoiceAsync(normalized, track: true, cancellationToken);
         var invoice = existing ?? new PoEnfazInvoice { PoNumber = normalized };
         PoEnfazInvoiceRules.ApplyIssue(invoice, billing, invoiceNumber, now, attachmentIdsJson);
         if (existing is null)
             _db.AddInvoice(invoice);
 
         await _db.SaveChangesAsync(cancellationToken);
-        return await GetPoBillingAsync(normalized, cancellationToken);
+        return (await GetPoBillingAsync(normalized, cancellationToken), null);
     }
 
     public async Task<(PoEnfazBillingDto? Billing, string? Error)> CollectInvoiceAsync(

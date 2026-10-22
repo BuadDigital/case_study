@@ -115,11 +115,10 @@ public sealed class PoEnfazDispatchController(
         string poNumber,
         CancellationToken cancellationToken)
     {
-        var dto = await billing.IssueInvoiceAsync(poNumber, cancellationToken);
-        return dto is null
-            ? this.BadRequestProblem(
-                "تعذّر إصدار الفاتورة — تحقق من رفع كل عقارات أمر العمل على إنفاذ وتعبئة الأتعاب.")
-            : Ok(dto);
+        var (dto, error) = await billing.IssueInvoiceAsync(poNumber, cancellationToken);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpPost("{poNumber}/collect")]
