@@ -31,4 +31,13 @@ public interface IValuationRequestService
         Guid id,
         ValuationImpedimentRequest request,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// none | preparing | ready for the property's latest issued valuation report; null when it has
+    /// none or the status cannot be read (callers then do not block on it).
+    /// </summary>
+    Task<string?> GetFinalReportStatusByPropertyAsync(
+        string propertyId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<string?>(null);
 }

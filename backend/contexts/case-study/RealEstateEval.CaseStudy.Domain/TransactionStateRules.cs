@@ -216,6 +216,17 @@ public static class TransactionStateRules
 
     public const string AlreadyHandedOverAr = "المعاملة مرفوعة على إنفاذ سلفاً";
 
+    /// <summary>The final valuation report heads the Enfaz package; the handover waits for its PDF.</summary>
+    public const string FinalReportNotReadyAr =
+        "التقرير النهائي للتقييم قيد الإعداد — لا يمكن الرفع على إنفاذ قبل جاهزيته";
+
+    /// <summary>
+    /// Refuse the handover while an issued final report is still being prepared. No issued report
+    /// (null / «none») is left to the stage gates; an unreadable status does not block.
+    /// </summary>
+    public static bool FinalReportBlocksHandover(string? finalReportStatus) =>
+        string.Equals(finalReportStatus, "preparing", StringComparison.Ordinal);
+
     /// <summary>
     /// Why the handover cannot be recorded right now, in the words the specialist reads: every
     /// missing condition, not just the first. Empty exactly when <see cref="AllowsEnfazHandover"/>.
