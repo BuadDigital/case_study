@@ -49,7 +49,6 @@ import {
   useInspectorPhotoDropZone,
 } from "../../lib/app-data/inspector-photo-drop";
 import {
-  approximatePropertyGeo,
   boundariesMarkedUnavailable,
   formatPropertyDeedDisplay,
   PROPERTY_BOUNDARY_ROWS,
@@ -228,26 +227,19 @@ export type FieldInspectionWorkHostRef = {
 export function MobileInspectMap({
   latitude,
   longitude,
-  property,
   heightClass = "h-[180px]",
   interactive = false,
   onCoordsChange,
 }: {
   latitude: string;
   longitude: string;
-  property?: PoPropertyIntake | null;
   heightClass?: string;
   interactive?: boolean;
   onCoordsChange?: (lat: number, lng: number) => void;
 }) {
   const pin = parseLatLng(latitude, longitude);
-  const hasPin = pin != null;
-  const fallback =
-    !hasPin && property
-      ? approximatePropertyGeo(property)
-      : null;
-  const lat = pin ? pin.lat : fallback?.lat;
-  const lng = pin ? pin.lng : fallback?.lng;
+  const lat = pin?.lat;
+  const lng = pin?.lng;
   const picking = Boolean(interactive && onCoordsChange);
   if (lat == null || lng == null) {
     if (!picking) {

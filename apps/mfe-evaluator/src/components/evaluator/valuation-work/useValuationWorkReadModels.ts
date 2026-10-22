@@ -88,25 +88,14 @@ export function useValuationWorkReadModels({
     [selection],
   );
 
-  const { city: subjectCity, district: subjectDistrict } = subjectIdentity(hints);
+  const { city: subjectCity } = subjectIdentity(hints);
   const subjectCoordsForBank = useMemo(
     () =>
       bankSubjectCoords ??
       resolveSubjectCoordsForBank({
-        city: subjectCity || undefined,
-        district: subjectDistrict || undefined,
-        deedNumber:
-          property?.deedNumber || intakeProperty?.deedNumber || undefined,
         locationMapUrl: intakeProperty?.locationMapUrl,
       }),
-    [
-      bankSubjectCoords,
-      subjectCity,
-      subjectDistrict,
-      property?.deedNumber,
-      intakeProperty?.deedNumber,
-      intakeProperty?.locationMapUrl,
-    ],
+    [bankSubjectCoords, intakeProperty?.locationMapUrl],
   );
 
   const visibleAdoptedMarket = adoptedMarket;

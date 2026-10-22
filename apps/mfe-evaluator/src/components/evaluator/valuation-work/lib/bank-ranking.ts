@@ -4,14 +4,12 @@ import { listComparableProperties,suggestComparablePropertiesByProximity,
 } from "@platform/api-client";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { normalizeArabicSearchText } from "@platform/app-shared/domain/courts/circuit-search";
 import {
-  approximatePropertyGeo,
-  hasCityGeo,
-  hasDistrictGeo,
-  normalizePlaceName,
-} from "@platform/app-shared/domain/property-geo";
-import { coordsFromLocationMapUrl } from "@platform/app-shared/domain/property-geo";
-import { haversineKm, parseLatLng } from "@platform/app-shared/domain/geo";
+  coordsFromLocationMapUrl,
+  haversineKm,
+  parseLatLng,
+} from "@platform/app-shared/domain/geo";
 
 const BANK_CANDIDATE_POOL = 40;
 export const BANK_DISPLAY_LIMIT = 6;
@@ -110,8 +108,8 @@ function hasUsableCoords(lat: number, lng: number): boolean {
 }
 
 function normalizeCity(city: string | null | undefined): string {
-  // The backend's place-name folding: «محافظة الخرج» = «الخرج», «الأحساء» = «الاحساء».
-  return normalizePlaceName(city);
+  // «محافظة الخرج» = «الخرج»: the administrative prefix is not part of the city.
+  return normalizeArabicSearchText((city ?? "").trim().replace(/^(محافظة|مدينة)\s+/u, ""));
 }
 
 /** Loose city match — handles short vs. full city names (e.g. "Makkah" vs "Makkah Al-Mukarramah"). */
@@ -212,45 +210,17 @@ function filterNearSubject(
   });
 }
 
+/**
+ * The subject's real location only — the inspector's pin, else the intake map link. No guess from
+ * the city name: a guessed centroid (central Riyadh for an unknown city) ranked the wrong comparables
+ * as nearby; without a location the bank matches on the city instead.
+ */
 export function resolveSubjectCoordsForBank(opts: {
   latitude?: number | null;
   longitude?: number | null;
   locationMapUrl?: string | null;
-  city?: string | null;
-  district?: string | null;
-  deedNumber?: string | null;
 }): { lat: number; lng: number } | null {
-  if (
-    opts.latitude != null &&
-    opts.longitude != null &&
-    hasUsableCoords(opts.latitude, opts.longitude)
-  ) {
-    return { lat: opts.latitude, lng: opts.longitude };
-  }
-
-  const fromUrl = coordsFromLocationMapUrl(opts.locationMapUrl);
-  if (fromUrl) return fromUrl;
-
-  const city = opts.city?.trim();
-  const district = opts.district?.trim();
-  const deedNumber = opts.deedNumber?.trim() || city || "";
-
-  if (city && district && hasDistrictGeo(city, district)) {
-    return approximatePropertyGeo({ city, district, deedNumber });
-  }
-
-  // Only a city with a known centroid may stand in for the pin. Any other city used to fall back
-  // to central Riyadh, so an Al-Kharj property ranked Riyadh comparables as «1.8 كم» away and hid
-  // its own; without a usable location the bank matches on the city instead.
-  if (city && hasCityGeo(city)) {
-    return approximatePropertyGeo({
-      city,
-      district: district || undefined,
-      deedNumber,
-    });
-  }
-
-  return null;
+  return parseLatLng(opts.latitude, opts.longitude) ?? coordsFromLocationMapUrl(opts.locationMapUrl);
 }
 
 type RankedItem = {

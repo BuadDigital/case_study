@@ -14,11 +14,7 @@ import { SpecialistComponentsSection } from "./SpecialistComponentsSection";
 import { InspectorDescriptionReference } from "../field-inspection/InspectorDescriptionReference";
 import { inspectorReferenceDocuments } from "../field-inspection/InspectorTransactionDocumentsCard";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
-import {
-  approximatePropertyGeo,
-  formatDateAr,
-  type PoPropertyIntake,
-} from "../../lib/app-data/po-intake-data";
+import { formatDateAr, type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
   mergeInspectorWorkspacePatch,
@@ -270,12 +266,10 @@ export function PropertyDetailInspectionTab({
     if (editMode) setFieldErrors({});
   }
 
-  const mapGeo = useMemo(() => {
-    return (
-      parsePlacedMapPin(draft?.mapLatitude, draft?.mapLongitude) ??
-      approximatePropertyGeo(property)
-    );
-  }, [draft, property]);
+  const mapGeo = useMemo(
+    () => parsePlacedMapPin(draft?.mapLatitude, draft?.mapLongitude),
+    [draft],
+  );
 
   const locked = Boolean(
     draft &&
