@@ -202,14 +202,22 @@ public class ValuationFinalReportTests
     }
 
     [Fact]
-    public async Task A_report_without_the_code_line_is_not_turned_into_a_final_pdf()
+    public async Task A_report_without_the_code_line_is_refused_at_approval_and_nothing_freezes()
     {
-        await using var rig = await ArrangeApprovedAsync("<html><body><p>no header here</p></body></html>");
+        // Such a copy could never become the final PDF (it stayed «قيد الإعداد» forever), so the
+        // approval refuses it up front instead of freezing it.
+        await using var rig = Arrange();
+        var choices = System.Text.Json.JsonDocument.Parse("{}").RootElement.Clone();
+        await rig.Service.SaveChoicesAsync(rig.RequestId, new SaveReportDraftChoicesRequest { Choices = choices }, Specialist);
+        await rig.Service.SendAsync(rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = true }, Specialist);
 
-        var (state, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        var (approved, errors) = await rig.Service.ApproveAsync(
+            rig.RequestId,
+            new ApproveReportDraftRequest { ReportDate = "2026-10-05", Html = "<html><body><p>no header here</p></body></html>" },
+            Appraiser);
 
-        Assert.Null(errors);
-        Assert.Equal(FinalReportStatuses.Preparing, state!.FinalReportStatus);
+        Assert.Null(approved);
+        Assert.Contains(ReportDepositCodeRewriter.MissingLineAr, errors!.Values);
         Assert.Empty(rig.Renderer.Rendered);
     }
 

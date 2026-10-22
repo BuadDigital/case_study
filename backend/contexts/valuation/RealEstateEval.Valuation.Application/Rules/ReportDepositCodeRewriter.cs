@@ -12,6 +12,15 @@ public static partial class ReportDepositCodeRewriter
 {
     public const string Label = "رمز إيداع التقرير:";
 
+    public const string MissingLineAr =
+        "نسخة التقرير لا تحتوي سطر «رمز إيداع التقرير» في رأس الصفحات — أعد تحميل التقرير ثم اعتمده.";
+
+    /// <summary>
+    /// Approval must freeze a copy the final report can be built from: without a deposit-code line in a
+    /// page header the final PDF would stay «قيد الإعداد» forever.
+    /// </summary>
+    public static bool HasDepositCodeLine(string html) => Apply(html, "-").Replaced > 0;
+
     /// <summary>The page headers (<c>.pg-meta</c>) the code was written into.</summary>
     public readonly record struct Result(string Html, int Replaced);
 

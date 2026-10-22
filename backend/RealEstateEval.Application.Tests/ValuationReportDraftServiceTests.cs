@@ -27,7 +27,8 @@ public class ValuationReportDraftServiceTests
     /// <summary>The approval date is today's date: tests run on a fixed clock (2026-10-05, Riyadh).</summary>
     private static readonly DateTimeOffset ClockNow = new(2026, 10, 5, 9, 0, 0, TimeSpan.Zero);
 
-    private const string Html = "<html dir=\"rtl\"><body>تقرير التقييم</body></html>";
+    // A printed report as the browser builds it: the deposit-code line sits in each page header.
+    private const string Html = "<html dir=\"rtl\"><body><div class=\"pg-meta\">رقم التقرير: 1<br>رمز إيداع التقرير:</div>تقرير التقييم</body></html>";
 
     private static readonly ReportDraftActor Specialist = new()
     {
@@ -226,7 +227,7 @@ public class ValuationReportDraftServiceTests
 
         // A repeated approval is a no-op that keeps the first snapshot.
         var (again, againErrors) = await rig.Service.ApproveAsync(
-            rig.RequestId, new ApproveReportDraftRequest { ReportDate = "2026-10-04", Html = "<p>other</p>" }, Appraiser);
+            rig.RequestId, new ApproveReportDraftRequest { ReportDate = "2026-10-04", Html = "<div class=\"pg-meta\">رقم التقرير: 1<br>رمز إيداع التقرير:</div><p>other</p>" }, Appraiser);
         Assert.Null(againErrors);
         Assert.Equal("2026-10-05", again!.ReportDate);
     }
