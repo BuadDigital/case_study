@@ -28,7 +28,7 @@ import {
 } from "../../lib/evaluator/inspector-data-changes";
 
 /** Same event string as case-study `FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT`. */
-const FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT = "field-inspection-submission-changed";
+export const FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT = "field-inspection-submission-changed";
 const REFRESH_MIN_GAP_MS = 20_000;
 
 export function useInspectorChangedBanner({
