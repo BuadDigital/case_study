@@ -4,7 +4,11 @@ import { listComparableProperties,suggestComparablePropertiesByProximity,
 } from "@platform/api-client";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
-import { approximatePropertyGeo, hasDistrictGeo } from "@platform/app-shared/domain/property-geo";
+import {
+  approximatePropertyGeo,
+  hasCityGeo,
+  hasDistrictGeo,
+} from "@platform/app-shared/domain/property-geo";
 import { coordsFromLocationMapUrl } from "@platform/app-shared/domain/property-geo";
 import { haversineKm, parseLatLng } from "@platform/app-shared/domain/geo";
 
@@ -105,7 +109,11 @@ function hasUsableCoords(lat: number, lng: number): boolean {
 }
 
 function normalizeCity(city: string | null | undefined): string {
-  return (city ?? "").trim().replace(/\s+/g, " ");
+  // «محافظة الخرج» and «الخرج» name the same place: the administrative prefix is not part of the city.
+  return (city ?? "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/^(محافظة|مدينة)\s+/u, "");
 }
 
 /** Loose city match — handles short vs. full city names (e.g. "Makkah" vs "Makkah Al-Mukarramah"). */
@@ -232,7 +240,10 @@ export function resolveSubjectCoordsForBank(opts: {
     return approximatePropertyGeo({ city, district, deedNumber });
   }
 
-  if (city) {
+  // Only a city with a known centroid may stand in for the pin. Any other city used to fall back
+  // to central Riyadh, so an Al-Kharj property ranked Riyadh comparables as «1.8 كم» away and hid
+  // its own; without a usable location the bank matches on the city instead.
+  if (city && hasCityGeo(city)) {
     return approximatePropertyGeo({
       city,
       district: district || undefined,

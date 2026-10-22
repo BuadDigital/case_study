@@ -43,6 +43,11 @@ function districtGeoKey(city: string, district: string): string {
 }
 
 /** True when city+district resolves to a known centroid (not city-only fallback). */
+/** True when the city has a known centroid — callers can avoid the Riyadh default for other cities. */
+export function hasCityGeo(city: string): boolean {
+  return Boolean(CITY_GEO[city.trim()]);
+}
+
 export function hasDistrictGeo(city: string, district: string): boolean {
   const c = city.trim();
   const d = district.trim();

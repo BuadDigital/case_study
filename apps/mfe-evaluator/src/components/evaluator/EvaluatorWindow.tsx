@@ -77,10 +77,7 @@ import { WORK_ORDER_PROPERTY_CHANGED_EVENT } from "@platform/app-shared/app-data
 import { linkedPropertyDeeds, transactionDeedLabelOf } from "@platform/api-client";
 import { useTransactionByPropertyQuery } from "../../query/transaction-query";
 import { EvaluatorLinkedDeedsCard } from "./EvaluatorLinkedDeedsCard";
-
-/** Same event string as case-study `FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT`. */
-const FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT =
-  "field-inspection-submission-changed";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "./useInspectorChangedBanner";
 
 export type { EvaluatorWindowTab } from "./evaluator-window-tabs";
 
@@ -630,6 +627,7 @@ export function EvaluatorWindow({
                       {property?.id ? (
                         <ValuationWorkShell
                           propertyId={property.id}
+                          inspectionTaskId={propertySummary?.inspectionTaskId ?? null}
                           poNumber={draft.poNumber}
                           assignmentType={task.assignmentType ?? undefined}
                           districtHint={property.district}

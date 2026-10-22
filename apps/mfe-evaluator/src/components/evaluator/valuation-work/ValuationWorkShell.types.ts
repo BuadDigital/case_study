@@ -20,7 +20,11 @@ export type ValuationWorkShellProps = {
   poNumber?: string;
   assignmentType?: string;
   districtHint?: string;
-  /** Field-inspection task — seeds cost actual age from the inspector package. */
+  /**
+   * Field-inspection task — seeds cost actual age from the inspector package, and its map pin is
+   * where the comparables bank measures distance from. Without it the bank guessed the location
+   * from the city name (central Riyadh for a city it did not know, e.g. الخرج).
+   */
   inspectionTaskId?: string | null;
   onFinalOpinionChange?: FinalOpinionChangeHandler;
   property?: ValuationWorkPropertyHint;
