@@ -34,7 +34,24 @@ public static class PoEnfazInvoiceRules
             ? LinesLockedAfterIssueAr
             : null;
 
-    /// <summary>An issue (or re-issue) restates the totals and starts collection over.</summary>
+    public const string NotReadyError =
+        "تعذّر إصدار الفاتورة — تحقق من رفع كل عقارات أمر العمل على إنفاذ وتعبئة الأتعاب.";
+
+    public const string AlreadyIssuedError =
+        "الفاتورة صادرة سلفاً — لا يمكن إعادة إصدارها بعد الإصدار.";
+
+    /// <summary>
+    /// One invoice per PO: once issued (whatever its collection state) it is never issued again —
+    /// a second issue used to reset the collected amount to 0 under a new invoice number.
+    /// </summary>
+    public static string? IssueBlockedReason(PoEnfazInvoice? existing, bool readyForBilling, decimal subtotalSar)
+    {
+        if (existing is not null && PoEnfazInvoiceStatus.All.Contains(existing.Status))
+            return AlreadyIssuedError;
+        return readyForBilling && subtotalSar > 0 ? null : NotReadyError;
+    }
+
+    /// <summary>Stamps a first issue: the totals, a fresh number, and collection starting at zero.</summary>
     public static void ApplyIssue(
         PoEnfazInvoice invoice,
         PoEnfazBillingDto billing,
