@@ -541,7 +541,7 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
       { waitUntil: "commit" },
     );
     await expect(
-      page.getByText(ASSIGNEE_NAMES.engineeringOffice).first(),
+      page.getByText(ASSIGNEE_NAMES.engineeringOffice).filter({ visible: true }).first(),
     ).toBeVisible({ timeout: 60_000 });
     await shot(page, "finance-dues-ledger");
   });
