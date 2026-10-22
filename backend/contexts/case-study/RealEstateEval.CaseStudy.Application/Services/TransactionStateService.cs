@@ -57,6 +57,11 @@ public sealed partial class TransactionStateService(
         if (blockReasons.Count > 0)
             return (null, EnfazHandoverBlockedAr(blockReasons));
 
+        var finalReportStatus = await valuationRequests.GetFinalReportStatusByPropertyAsync(
+            propertyId.ToString(), cancellationToken);
+        if (TransactionStateRules.FinalReportBlocksHandover(finalReportStatus))
+            return (null, TransactionStateRules.FinalReportNotReadyAr);
+
         // Decision 2026-10-20: a deed never goes to Enfaz under a temporary number. The first report
         // approval normally fixed the PR root; this is the safety net for anything that slipped past.
         if (transactions is not null)

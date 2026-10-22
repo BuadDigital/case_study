@@ -10,6 +10,15 @@ namespace RealEstateEval.Application.Contracts;
 
 // Survey-office and property-key DTOs moved to RealEstateEval.Operations.Application (A8).
 
+/// <summary>
+/// The property's final valuation report: <c>none</c> | <c>preparing</c> | <c>ready</c>, or null when the
+/// property has no issued report. Case study reads it before the Enfaz handover.
+/// </summary>
+public class PropertyFinalReportStatusDto
+{
+    public string? FinalReportStatus { get; init; }
+}
+
 public class ValuationRequestDto
 {
     public Guid Id { get; init; }

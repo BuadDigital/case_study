@@ -59,6 +59,23 @@ public sealed class ValuationRequestService : IValuationRequestService
         return ToDto(row, OverlayFor(overlays, id));
     }
 
+    public async Task<string?> GetFinalReportStatusByPropertyAsync(
+        string propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        var key = NormalizePropertyId(propertyId);
+        if (key == Guid.Empty) return null;
+
+        var requestIds = _db.ValuationRequests.AsNoTracking()
+            .Where(x => x.PropertyId == key)
+            .Select(x => x.Id);
+        var issuance = await _db.ValuationReportIssuances.AsNoTracking()
+            .Where(x => requestIds.Contains(x.ValuationRequestId))
+            .OrderByDescending(x => x.DepositIssuedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        return issuance?.FinalReportStatus;
+    }
+
     public async Task<ValuationRequestDto?> GetOpenByPropertyAsync(
         string propertyId,
         CancellationToken cancellationToken = default)

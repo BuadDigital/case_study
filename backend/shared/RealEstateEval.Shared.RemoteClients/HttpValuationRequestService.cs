@@ -25,6 +25,17 @@ public sealed class HttpValuationRequestService(
             "UpstreamServices:ValuationBaseUrl",
             cancellationToken);
 
+    public async Task<string?> GetFinalReportStatusByPropertyAsync(
+        string propertyId,
+        CancellationToken cancellationToken = default) =>
+        (await UpstreamJson.GetOrDefaultAsync<PropertyFinalReportStatusDto>(
+            http,
+            httpContext,
+            options.Value.ValuationBaseUrl,
+            $"/api/valuation-request-dispatch/final-report-status-by-property/{Uri.EscapeDataString(propertyId)}",
+            "UpstreamServices:ValuationBaseUrl",
+            cancellationToken))?.FinalReportStatus;
+
     public Task<ValuationRequestDto?> GetOpenByPropertyAsync(
         string propertyId,
         CancellationToken cancellationToken = default) =>

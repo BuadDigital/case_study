@@ -87,6 +87,30 @@ public class TransactionStateEnfazTests
     }
 
     [Fact]
+    public async Task The_handover_waits_while_the_final_report_is_being_prepared()
+    {
+        // The final valuation report heads the Enfaz package — it used to go out before its PDF existed.
+        await using var rig = Arrange(studyIssued: true, finalReportStatus: "preparing");
+
+        var (result, error) = await rig.Service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "specialist-1");
+
+        Assert.Null(result);
+        Assert.Equal(TransactionStateRules.FinalReportNotReadyAr, error);
+        Assert.Null((await rig.Property()).EnfazHandoverAtUtc);
+    }
+
+    [Fact]
+    public async Task The_handover_goes_through_once_the_final_report_is_ready()
+    {
+        await using var rig = Arrange(studyIssued: true, finalReportStatus: "ready");
+
+        var (_, error) = await rig.Service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "specialist-1");
+
+        Assert.Null(error);
+        Assert.NotNull((await rig.Property()).EnfazHandoverAtUtc);
+    }
+
+    [Fact]
     public async Task The_handover_is_recorded_when_everything_is_in_place()
     {
         await using var rig = Arrange(studyIssued: true);
@@ -352,7 +376,11 @@ public class TransactionStateEnfazTests
 
     // ------------------------------------------------------------ arrangement
 
-    private static Rig Arrange(bool studyIssued = true, bool valuationOpen = false, bool handedOver = false)
+    private static Rig Arrange(
+        bool studyIssued = true,
+        bool valuationOpen = false,
+        bool handedOver = false,
+        string? finalReportStatus = null)
     {
         var contexts = TestDatabases.Create("enfaz-return");
         var db = contexts.CaseStudy;
@@ -411,7 +439,7 @@ public class TransactionStateEnfazTests
         var valuationReopen = new RecordingValuationReopen();
         var service = new TransactionStateService(
             new TransactionStateRepository(db),
-            new FakeValuationRequests(valuationOpen),
+            new FakeValuationRequests(valuationOpen, finalReportStatus),
             TestInspectorFeeServiceFactory.CreateTimeline(db),
             audit: new AuditLogWriter(),
             auditLog: audit,
@@ -503,8 +531,12 @@ public class TransactionStateEnfazTests
             throw new NotSupportedException();
     }
 
-    private sealed class FakeValuationRequests(bool open) : IValuationRequestService
+    private sealed class FakeValuationRequests(bool open, string? finalReportStatus = null) : IValuationRequestService
     {
+        public Task<string?> GetFinalReportStatusByPropertyAsync(
+            string propertyId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(finalReportStatus);
+
         public Task<ValuationRequestDto?> GetOpenByPropertyAsync(
             string propertyId, CancellationToken cancellationToken = default) =>
             Task.FromResult(open
