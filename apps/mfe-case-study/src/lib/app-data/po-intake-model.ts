@@ -232,6 +232,9 @@ export function propertyToEnfathDto(
     district: prop.district.trim() || undefined,
     classification: prop.classification.trim() || undefined,
     propertyType: prop.propertyType.trim() || undefined,
+    // The server writes both from this payload too — omitting them wiped a bourse-step area/deed status.
+    area: prop.area.trim() || undefined,
+    deedStatus: prop.deedStatus.trim() || undefined,
     court: prop.court || undefined,
     circuit: prop.circuit || undefined,
     courtId: prop.courtId?.trim() || undefined,
