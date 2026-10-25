@@ -85,6 +85,17 @@ public static class ValuationReportStageWire
     public const string FinalIssued = "final_issued";
 }
 
+/// <summary>
+/// Wire values of <see cref="PropertyFinalReportStatusDto.FinalReportStatus"/> — the same strings as the
+/// valuation context's final-report statuses, stated here for the services that only see the DTO.
+/// </summary>
+public static class FinalReportStatusWire
+{
+    public const string None = "none";
+    public const string Preparing = "preparing";
+    public const string Ready = "ready";
+}
+
 public class SaveValuationRequestRequest
 {
     [MaxLength(64)]

@@ -298,8 +298,6 @@ export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
     partitionMinutesDate: prop.partitionMinutesDate || undefined,
     finishingType: prop.finishingType || undefined,
     finishingStructure: prop.finishingStructure || undefined,
-    deedStatus: prop.deedStatus || undefined,
-    area: prop.area || undefined,
     bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
     city: prop.city.trim(),
     district: prop.district.trim(),

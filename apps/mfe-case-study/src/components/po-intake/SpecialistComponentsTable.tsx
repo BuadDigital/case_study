@@ -5,7 +5,6 @@
  * «بنود التكلفة المباشرة» (no prices: those are the appraiser's). Lines drop into the
  * appraiser's cost table as they are.
  */
-import type { ReactNode } from "react";
 import {
   Button,
   Input,
@@ -27,6 +26,7 @@ import {
   componentLineAcceptsBuildRatio,
   componentLineForTypedName,
 } from "../../lib/app-data/specialist-components";
+import { PhoneField } from "./PhoneField";
 
 function LineProvenance({ line }: { line: BuildingInventoryLineDto }) {
   const { written, edited } = partyProvenanceLines(line.provenance ?? undefined);
@@ -60,16 +60,6 @@ function readLineView(line: BuildingInventoryLineDto) {
     unit: COST_UNIT_OPTIONS.find((u) => u.key === (line.unit || "sqm"))?.label ?? "—",
     notes: line.notes?.trim() || "—",
   };
-}
-
-/** Phone field: label above a full-width control. */
-function PhoneField({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <span className="text-[11px] font-medium text-text-3">{label}</span>
-      {children}
-    </div>
-  );
 }
 
 /** View-only rendering: plain text cells, no controls. */

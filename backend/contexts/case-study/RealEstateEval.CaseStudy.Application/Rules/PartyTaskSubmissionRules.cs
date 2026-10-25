@@ -66,20 +66,12 @@ public static class PartyTaskSubmissionRules
     /// corrected — the specialist's «تأكيد مدخلات المعاين» submits before it accepts, including a
     /// package returned for correction.
     /// </summary>
-    public static bool MaySubmit(PartySubmissionActor? actor, WorkflowTask task)
-    {
-        if (actor is null) return true;
-        if (PoRoleMatrixRules.CanWritePartyTask(
-                actor.PrototypeRole,
-                task.AssigneeId,
-                actor.UserId,
-                actor.DistributionAssigneeId))
-        {
-            return true;
-        }
-        return task.Kind == WorkflowTaskKind.FieldInspection
-            && StaffMayCorrectPartyPackage(actor, task);
-    }
+    public static bool MaySubmit(PartySubmissionActor? actor, WorkflowTask task) =>
+        MayWriteDraft(
+            actor,
+            task,
+            staffMayCorrect: task.Kind == WorkflowTaskKind.FieldInspection
+                && StaffMayCorrectPartyPackage(actor, task));
 
     /// <summary>Acceptance is stamped with the actor's user id, or «system» when there is none.</summary>
     public static string AcceptActorUserId(PartySubmissionActor actor) =>

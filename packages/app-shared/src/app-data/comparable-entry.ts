@@ -2,7 +2,7 @@ import type {
   ComparablePropertyDto,
   UpsertComparablePropertyRequest,
 } from "@platform/api-client";
-import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { isPositiveLocaleNumber, parseLocaleNumber } from "@platform/app-shared/format/number";
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 import { parseLatLng, type LatLng } from "@platform/app-shared/domain/geo";
 
@@ -90,11 +90,6 @@ export function comparableLocationPinned(draft: ComparableEntryDraft): boolean {
 
 export function comparablePlaceLine(draft: Pick<ComparableEntryDraft, "city" | "district">): string {
   return [draft.city.trim(), draft.district.trim()].filter(Boolean).join(" · ");
-}
-
-function positiveAmount(raw: string): boolean {
-  const n = parseLocaleNumber(raw);
-  return Number.isFinite(n) && n > 0;
 }
 
 /** One contact number is 10 digits; the field takes several, each the next 10 digits. */
@@ -189,11 +184,11 @@ export function validateComparableEntry(
     errors.kind = "اختر نوع المقارن (أرض أو مبنى)";
   }
 
-  if (!positiveAmount(draft.price)) {
+  if (!isPositiveLocaleNumber(draft.price)) {
     errors.price = "أدخل سعراً أكبر من صفر";
   }
 
-  if (!positiveAmount(draft.areaSqm)) {
+  if (!isPositiveLocaleNumber(draft.areaSqm)) {
     errors.areaSqm = "أدخل مساحة أكبر من صفر";
   }
 

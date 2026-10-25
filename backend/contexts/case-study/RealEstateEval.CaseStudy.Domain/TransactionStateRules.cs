@@ -1,3 +1,4 @@
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Domain;
@@ -225,7 +226,7 @@ public static class TransactionStateRules
     /// (null / «none») is left to the stage gates; an unreadable status does not block.
     /// </summary>
     public static bool FinalReportBlocksHandover(string? finalReportStatus) =>
-        string.Equals(finalReportStatus, "preparing", StringComparison.Ordinal);
+        string.Equals(finalReportStatus, FinalReportStatusWire.Preparing, StringComparison.Ordinal);
 
     /// <summary>
     /// Why the handover cannot be recorded right now, in the words the specialist reads: every

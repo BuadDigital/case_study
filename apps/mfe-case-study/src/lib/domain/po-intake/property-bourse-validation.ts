@@ -3,7 +3,7 @@ import {
   parseRestrictionTypes,
   propertyHasRegisteredTitle,
 } from "../../app-data/po-intake-data";
-import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { isPositiveLocaleNumber } from "@platform/app-shared/format/number";
 import {
   collectRequiredErrors,
   mergeFieldErrors,
@@ -19,8 +19,7 @@ const BOUNDARIES_VALUES = new Set(["deed", "bourse", "doc", "no"]);
  */
 export function bourseAreaError(area: string | null | undefined): string | null {
   if (!area?.trim()) return "مساحة الأرض مطلوبة لإتمام البورصة";
-  const m2 = parseLocaleNumber(area);
-  return Number.isFinite(m2) && m2 > 0 ? null : "مساحة الأرض يجب أن تكون رقماً أكبر من صفر";
+  return isPositiveLocaleNumber(area) ? null : "مساحة الأرض يجب أن تكون رقماً أكبر من صفر";
 }
 
 export function validatePropertyBourseFields(

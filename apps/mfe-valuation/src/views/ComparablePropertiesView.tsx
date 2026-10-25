@@ -42,6 +42,12 @@ import { BANK_ICON, OpsIcon } from "./ComparablesOpsIcon";
 import { AddComparableForm } from "./AddComparableForm";
 import { TagEditorRow } from "./TagEditorRow";
 import {
+  comparableDeactivateBtn,
+  comparableReactivateBtn,
+  comparableSourceText,
+  comparableStatusPills,
+} from "./comparable-row-parts";
+import {
   ComparableBankPhoneList,
   ComparableBankPhoneToolbar,
 } from "./ComparablePropertiesPhone";
@@ -305,26 +311,7 @@ export function ComparablePropertiesView() {
                             {row.referenceCode} · {row.comparablePropertyType}
                             {row.usage ? ` (${row.usage})` : ""}
                           </span>
-                          {row.reliabilityTag !== "normal" ? (
-                            <span className="inline-flex items-center rounded-full bg-gold-soft px-2 py-0.5 text-[10.5px] font-bold text-gold-d">
-                              {row.reliabilityTagLabelAr}
-                            </span>
-                          ) : null}
-                          {row.isDuplicateTagged ? (
-                            <span className="inline-flex items-center rounded-full bg-gold-soft px-2 py-0.5 text-[10.5px] font-bold text-gold-d">
-                              مكرر
-                            </span>
-                          ) : null}
-                          {row.duplicateSuspect && !row.isDuplicateTagged ? (
-                            <span className="inline-flex items-center rounded-full border border-border-md px-2 py-0.5 text-[10.5px] font-semibold text-text-2">
-                              اشتباه تكرار
-                            </span>
-                          ) : null}
-                          {!row.isActive ? (
-                            <span className="inline-flex items-center rounded-full bg-surface-2 px-2 py-0.5 text-[10.5px] font-semibold text-text-3">
-                              معطّل
-                            </span>
-                          ) : null}
+                          {comparableStatusPills(row)}
                         </div>
                         <div className="mt-0.5 text-[11.5px] leading-relaxed text-text-3">
                           {row.transactionKindLabelAr}
@@ -344,15 +331,7 @@ export function ComparablePropertiesView() {
                           </bdi>
                         </div>
                         <div className="mt-0.5 text-[11px] text-text-3">
-                          المصدر: {row.sourceCard.intakeChannelLabelAr} ·{" "}
-                          {row.sourceCard.freshnessLabelAr}
-                          {row.sourceCard.fromPriorDeal
-                            ? ` · من معاملة سابقة${
-                                row.sourceCard.sourceWorkOrderNumber
-                                  ? ` (${row.sourceCard.sourceWorkOrderNumber})`
-                                  : ""
-                              }`
-                            : ""}
+                          المصدر: {comparableSourceText(row)}
                         </div>
                         {row.tagRationale ? (
                           <div className="mt-0.5 text-[11px] text-text-3">
@@ -378,7 +357,7 @@ export function ComparablePropertiesView() {
                         {row.isActive ? (
                           <button
                             type="button"
-                            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-[#d9694f] transition-colors enabled:hover:border-[#d9694f]/40 enabled:hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-50"
+                            className={comparableDeactivateBtn}
                             onClick={() => void onDeactivate(row.id)}
                           >
                             تعطيل
@@ -386,7 +365,7 @@ export function ComparablePropertiesView() {
                         ) : (
                           <button
                             type="button"
-                            className="inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-gold-d transition-colors enabled:hover:border-gold/40 enabled:hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50"
+                            className={comparableReactivateBtn}
                             onClick={() => void onReactivate(row.id)}
                           >
                             تفعيل

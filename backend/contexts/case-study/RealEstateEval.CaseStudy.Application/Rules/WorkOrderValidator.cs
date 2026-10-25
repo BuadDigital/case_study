@@ -134,7 +134,7 @@ public static class WorkOrderValidator
     public static string? BourseAreaError(string? area)
     {
         if (string.IsNullOrWhiteSpace(area)) return BourseAreaRequiredAr;
-        return LocaleNumber.TryParse(area, out var m2) && m2 > 0m ? null : BourseAreaInvalidAr;
+        return LocaleNumber.TryParsePositive(area, out _) ? null : BourseAreaInvalidAr;
     }
 
     public static Dictionary<string, string> ValidatePropertyBourse(

@@ -49,6 +49,31 @@ public class LocaleNumberTests
         Assert.Null(LocaleNumber.ParseOrNull(null));
     }
 
+    [Theory]
+    [InlineData("500", 500)]
+    [InlineData("١٢٣٫٥ م²", 123.5)]
+    [InlineData("1,250", 1250)]
+    [InlineData("0.5", 0.5)]
+    public void Positive_text_parses_to_its_value(string input, double expected)
+    {
+        Assert.True(LocaleNumber.TryParsePositive(input, out var value));
+        Assert.Equal((decimal)expected, value);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("0")]
+    [InlineData("-5")]
+    [InlineData("abc")]
+    [InlineData("1,2,3")]
+    public void Zero_negative_and_non_numbers_are_not_positive_and_leave_zero(string? input)
+    {
+        Assert.False(LocaleNumber.TryParsePositive(input, out var value));
+        Assert.Equal(0m, value);
+    }
+
     [Fact]
     public void Other_unicode_digits_are_not_numbers()
     {

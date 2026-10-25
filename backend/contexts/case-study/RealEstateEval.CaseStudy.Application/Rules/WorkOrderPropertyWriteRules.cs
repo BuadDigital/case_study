@@ -391,7 +391,7 @@ public static class WorkOrderPropertyWriteRules
         var location = BourseTimelineLocation(city, district);
         var by = NormalizeActorName(completedByName);
         if (by is null) return string.IsNullOrEmpty(location) ? null : location;
-        var who = $"أدخله {by}";
+        var who = EnteredByText(by);
         return string.IsNullOrEmpty(location) ? who : $"{location} — {who}";
     }
 
@@ -412,8 +412,11 @@ public static class WorkOrderPropertyWriteRules
     public static string? PrimaryDataTimelineDetail(string? completedByName)
     {
         var by = NormalizeActorName(completedByName);
-        return by is null ? null : $"أدخله {by}";
+        return by is null ? null : EnteredByText(by);
     }
+
+    /// <summary>«أدخله الاسم» — the one wording of who entered a milestone, shared by every timeline detail line.</summary>
+    private static string EnteredByText(string name) => $"أدخله {name}";
 
     /// <summary>The display name stored beside the completion stamp: trimmed, bounded, null when empty.</summary>
     public static string? NormalizeActorName(string? name)

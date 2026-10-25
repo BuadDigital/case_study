@@ -23,14 +23,12 @@ import {
   opsTfLbl,
 } from "../lib/comparables-ops-tw";
 import { TagEditorRow } from "./TagEditorRow";
-
-const pill =
-  "inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-bold";
-
-const deactivateBtn =
-  "inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-[#d9694f] transition-colors enabled:hover:border-[#d9694f]/40 enabled:hover:bg-danger-bg disabled:cursor-not-allowed disabled:opacity-50";
-const reactivateBtn =
-  "inline-flex cursor-pointer items-center gap-1.5 rounded-[9px] border border-border-md bg-surface px-3.5 py-2 font-[inherit] text-[12.5px] font-semibold text-gold-d transition-colors enabled:hover:border-gold/40 enabled:hover:bg-gold-soft disabled:cursor-not-allowed disabled:opacity-50";
+import {
+  comparableDeactivateBtn,
+  comparableReactivateBtn,
+  comparableSourceText,
+  comparableStatusPills,
+} from "./comparable-row-parts";
 
 export function ComparableBankPhoneToolbar({
   q,
@@ -91,44 +89,9 @@ export function ComparableBankPhoneToolbar({
 }
 
 function statusPills(row: ComparablePropertyDto) {
-  const pills = [
-    row.reliabilityTag !== "normal" ? (
-      <span key="rel" className={cn(pill, "bg-gold-soft text-gold-d")}>
-        {row.reliabilityTagLabelAr}
-      </span>
-    ) : null,
-    row.isDuplicateTagged ? (
-      <span key="dup" className={cn(pill, "bg-gold-soft text-gold-d")}>
-        مكرر
-      </span>
-    ) : null,
-    row.duplicateSuspect && !row.isDuplicateTagged ? (
-      <span
-        key="sus"
-        className={cn(pill, "border border-border-md font-semibold text-text-2")}
-      >
-        اشتباه تكرار
-      </span>
-    ) : null,
-    !row.isActive ? (
-      <span key="off" className={cn(pill, "bg-surface-2 font-semibold text-text-3")}>
-        معطّل
-      </span>
-    ) : null,
-  ].filter(Boolean);
-  if (pills.length === 0) return undefined;
+  const pills = comparableStatusPills(row);
+  if (!pills) return undefined;
   return <div className="flex max-w-[9rem] flex-wrap justify-end gap-1">{pills}</div>;
-}
-
-function sourceText(row: ComparablePropertyDto) {
-  const c = row.sourceCard;
-  let text = `${c.intakeChannelLabelAr} · ${c.freshnessLabelAr}`;
-  if (c.fromPriorDeal) {
-    text += ` · من معاملة سابقة${
-      c.sourceWorkOrderNumber ? ` (${c.sourceWorkOrderNumber})` : ""
-    }`;
-  }
-  return text;
 }
 
 function rowFields(row: ComparablePropertyDto): MobileRecordField[] {
@@ -149,7 +112,7 @@ function rowFields(row: ComparablePropertyDto): MobileRecordField[] {
       value: `${fmtSar(row.pricePerSqm, { digits: 3, trim: true })}/م²`,
       ltr: true,
     },
-    { label: "المصدر", value: sourceText(row), wide: true },
+    { label: "المصدر", value: comparableSourceText(row), wide: true },
   ];
   if (row.tagRationale) {
     fields.push({
@@ -205,7 +168,7 @@ export function ComparableBankPhoneList({
               {row.isActive ? (
                 <button
                   type="button"
-                  className={deactivateBtn}
+                  className={comparableDeactivateBtn}
                   onClick={() => onDeactivate(row.id)}
                 >
                   تعطيل
@@ -213,7 +176,7 @@ export function ComparableBankPhoneList({
               ) : (
                 <button
                   type="button"
-                  className={reactivateBtn}
+                  className={comparableReactivateBtn}
                   onClick={() => onReactivate(row.id)}
                 >
                   تفعيل
