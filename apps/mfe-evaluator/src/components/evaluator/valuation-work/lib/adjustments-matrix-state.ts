@@ -139,7 +139,7 @@ export function buildMatrixAlerts(
   if (!weightsSumTo100(weightsSum)) {
     alerts.push({
       kind: "error",
-      title: `مجموع الأوزان النسبية ${Math.round(weightsSum * 100) / 100}٪ ≠ ١٠٠٪`,
+      title: `مجموع الأوزان النسبية ${Math.round(weightsSum * 100) / 100}٪ ≠ 100٪`,
       body: "عدّل الأوزان اليدوية أو أعد الضبط للاقتراح الآلي.",
     });
   }
@@ -149,14 +149,14 @@ export function buildMatrixAlerts(
     alerts.push({
       kind: "error",
       title: `المقارن ${c.comparable.referenceCode} — مجموع التسويات ${formatPct(c.market?.sumDifferencePct ?? 0)}`,
-      body: "تجاوز ±٤٠٪ — التبرير إلزامي، مع مراجعة صلاحية المقارن أصلاً.",
+      body: "تجاوز ±40٪ — التبرير إلزامي، مع مراجعة صلاحية المقارن أصلاً.",
     });
   }
   if (alerts.length === 0) {
     alerts.push({
       kind: "ok",
       title: "لا تنبيهات",
-      body: "الأوزان مضبوطة على ١٠٠٪ ولا مقارن تجاوز حدود التسوية.",
+      body: "الأوزان مضبوطة على 100٪ ولا مقارن تجاوز حدود التسوية.",
     });
   }
   return alerts;

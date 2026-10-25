@@ -135,7 +135,7 @@ export function finalOpinionComputed({
         );
       }
       linesOut.push(
-        `مؤشر ${reconMethods[0].labelAr}: ${fmt(reconMethods[0].approachValue)} ر.س بوزن ١٠٠٪.`,
+        `مؤشر ${reconMethods[0].labelAr}: ${fmt(reconMethods[0].approachValue)} ر.س بوزن 100٪.`,
       );
     } else {
       for (const m of reconMethods) {

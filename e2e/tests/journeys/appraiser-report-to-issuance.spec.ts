@@ -1,7 +1,8 @@
 /**
  * Appraiser (abdullah) opens the valuation workspace and saves a draft; the case
- * specialist (osama) then reads the property's «تقييم العقار» tab, where the
- * report draft is prepared once the appraiser hands his package over.
+ * specialist (osama) then reads the property's «تقييم العقار» tab (the report
+ * as the appraiser sees it) and the case-study workspace's «مدخلات التقييم»
+ * section, where the report draft is prepared once the appraiser hands over.
  *
  * UI-driven:  the evaluator workspace — «بدء التقييم» (the first real save,
  *             PUT …/approach-settings), the screen tabs it unlocks
@@ -126,7 +127,8 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
     // Issuance no longer lives on this screen: the gates card moved off the
     // final-opinion screen and the Q-6 cycle is part of «المراجعة النهائية».
     await tabs.getByRole("tab", { name: "المراجعة النهائية" }).click();
-    await expect(page.getByText("الافتراضات الخاصة").first()).toBeVisible({
+    // The tab's own hint («الافتراضات الخاصة وإرسال التقييم») is a hidden phone-only copy — match the card heading.
+    await expect(page.getByRole("heading", { name: "الافتراضات الخاصة", exact: true })).toBeVisible({
       timeout: 60_000,
     });
   });
@@ -148,7 +150,17 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
       "GET",
       `/api/valuation-report-drafts/states?propertyIds=${tx.propertyId}`,
     );
-    expect(states).toEqual([{ propertyId: tx.propertyId, status: "none", reportStage: "draft" }]);
+    // progressPct is the appraiser's progress ladder (AppraiserProgressRules): 0, or
+    // Started = 10 once «بدء التقييم» ran above — never HandedOver (75) or later.
+    expect(states).toEqual([
+      {
+        propertyId: tx.propertyId,
+        status: "none",
+        reportStage: "draft",
+        progressPct: expect.any(Number),
+      },
+    ]);
+    expect([0, 10]).toContain((states[0] as { progressPct: number }).progressPct);
 
     const base = `/api/valuation-requests/${draft.valuationRequestId}`;
     // The specialist cannot prepare the draft: nothing was handed over.
@@ -172,11 +184,14 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
     expect(download.ok).toBe(false);
   });
 
-  test("specialist opens the property's «تقييم العقار» tab and sees the draft waiting for the hand-over", async ({
+  test("specialist sees the report draft waiting for the hand-over in «مدخلات التقييم»", async ({
     page,
   }) => {
     test.slow();
     await loginAs(page, RELEASE_USERS.caseSpecialist);
+
+    // The property's «تقييم العقار» tab shows the valuation report exactly as the
+    // appraiser sees it (read-only); the draft workspace is not mounted there.
     await page.goto(
       `/po/${encodeURIComponent(tx.poNumber)}/property/${tx.propertyId}?tab=appraisal`,
       { waitUntil: "commit" },
@@ -184,6 +199,19 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
     await expect(
       page.getByRole("tab", { name: "تقييم العقار", exact: true }),
     ).toHaveAttribute("aria-selected", "true", { timeout: 90_000 });
+    await expect(page.getByText("تقرير تقييم عقار").first()).toBeVisible({ timeout: 90_000 });
+    await expect(page.getByRole("heading", { name: "مسودة تقرير التقييم" })).toHaveCount(0);
+
+    // The draft lives in the case-study workspace's «مدخلات التقييم» section
+    // (PropertyDetailAppraisalTab with showReportDraft).
+    await page.goto(`/case-study/${encodeURIComponent(tx.parent.id)}`, {
+      waitUntil: "commit",
+    });
+    const sections = page.getByRole("tablist", { name: "أقسام دراسة الحالة" });
+    const valuationTab = sections.getByRole("tab", { name: /مدخلات التقييم/ });
+    await expect(valuationTab).toBeVisible({ timeout: 90_000 });
+    await valuationTab.click();
+    await expect(valuationTab).toHaveAttribute("aria-selected", "true");
 
     // The report-draft panel: nothing to prepare until the appraiser hands his package over.
     await expect(page.getByRole("heading", { name: "مسودة تقرير التقييم" })).toBeVisible({

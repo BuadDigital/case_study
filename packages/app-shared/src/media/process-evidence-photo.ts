@@ -173,7 +173,7 @@ export function buildEvidenceStampLines(input: {
   if (input.capturedAt) {
     const d = new Date(input.capturedAt);
     if (!Number.isNaN(d.getTime())) {
-      when = d.toLocaleString("ar-SA", { hour12: false });
+      when = d.toLocaleString("ar-SA-u-nu-latn", { hour12: false });
     }
   }
   if (!when) {

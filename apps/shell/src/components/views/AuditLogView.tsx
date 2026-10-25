@@ -43,9 +43,9 @@ import {
 } from "@/lib/audit-log-labels";
 
 // Hoisted: constructing Intl.DateTimeFormat per row is expensive.
-// Weekday first: «الأربعاء، ٣٠‏/٩‏/٢٠٢٦، ٣:٣٣ م». The calendar is pinned to
+// Weekday first: «الأربعاء، 30‏/9‏/2026، 3:33 م» (Latin digits). The calendar is pinned to
 // Gregorian so the row reads the same on every runtime.
-const AT_FORMATTER = new Intl.DateTimeFormat("ar-SA-u-ca-gregory", {
+const AT_FORMATTER = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", {
   weekday: "long",
   year: "numeric",
   month: "numeric",

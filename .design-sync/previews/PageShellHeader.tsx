@@ -5,7 +5,7 @@ export function Default() {
     <div style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
       <PageShellHeader
         title="قائمة أوامر العمل"
-        meta={<span>٣٢ أمر عمل نشط اليوم</span>}
+        meta={<span>32 أمر عمل نشط اليوم</span>}
         actions={
           <Button variant="primary" size="sm">
             أمر عمل جديد

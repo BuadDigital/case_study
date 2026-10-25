@@ -195,14 +195,14 @@ public static class ValuationMethodologyAlertRules
                 "العمر الفعلي يتجاوز العمر الممتد",
                 costOn && input.ActualAgeYears is not null && (input.ExtendedLifeYears ?? 0m) > 0m,
                 () => input.ActualAgeYears! > input.ExtendedLifeYears!,
-                "الإهلاك المادي > ١٠٠٪ — العمر الفعلي يتجاوز الممتد",
+                "الإهلاك المادي > 100٪ — العمر الفعلي يتجاوز الممتد",
                 resolutions),
 
             Eval(4, ValuationMethodologyAlertCodes.ObsolescenceOver100,
-                "مجموع التقادم يتجاوز ١٠٠٪",
+                "مجموع التقادم يتجاوز 100٪",
                 costOn && input.TotalObsolescencePct is not null,
                 () => input.TotalObsolescencePct! > 100m,
-                "مجموع التقادم > ١٠٠٪ — راجع الوظيفي والخارجي",
+                "مجموع التقادم > 100٪ — راجع الوظيفي والخارجي",
                 resolutions),
 
             Eval(5, ValuationMethodologyAlertCodes.NegativeValues, "قيم سالبة",
@@ -274,14 +274,14 @@ public static class ValuationMethodologyAlertRules
                 costOn && input.DeveloperProfitPct is not null,
                 () => input.DeveloperProfitPct is { } p
                       && (p < DeveloperProfitMinPct || p > DeveloperProfitMaxPct),
-                "أرباح المطور خارج ١٠٪–٢٠٪",
+                "أرباح المطور خارج 10٪–20٪",
                 resolutions),
 
             Eval(14, ValuationMethodologyAlertCodes.IndirectRatesHigh,
                 "النسب غير المباشرة مرتفعة",
                 costOn && input.IndirectRatesSumPct is not null,
                 () => input.IndirectRatesSumPct is { } s && s > IndirectRatesWarnPct,
-                "مجموع النسب غير المباشرة > ٤٥٪",
+                "مجموع النسب غير المباشرة > 45٪",
                 resolutions),
 
             Eval(15, ValuationMethodologyAlertCodes.NoAdoptedComparables,
@@ -292,7 +292,7 @@ public static class ValuationMethodologyAlertRules
                 resolutions),
 
             Eval(16, ValuationMethodologyAlertCodes.WeightsNot100,
-                "مجموع الأوزان النسبية ≠ ١٠٠٪",
+                "مجموع الأوزان النسبية ≠ 100٪",
                 true,
                 () => (input.MarketApproachRelevant
                        && input.AdoptedComparableCount > 0
@@ -302,10 +302,10 @@ public static class ValuationMethodologyAlertRules
                 resolutions),
 
             Eval(17, ValuationMethodologyAlertCodes.LargeAdjustments,
-                "مجموع التسويات > ٤٠٪",
+                "مجموع التسويات > 40٪",
                 input.MarketApproachRelevant && comps.Count > 0,
                 () => comps.Any(c => c.ExceedsLargeAdjustmentThreshold),
-                "تجاوز عتبة ±٤٠٪ على مجموع عوامل الاختلاف — التبرير إلزامي مع مراجعة صلاحية المقارن",
+                "تجاوز عتبة ±40٪ على مجموع عوامل الاختلاف — التبرير إلزامي مع مراجعة صلاحية المقارن",
                 resolutions),
 
  // Decision 24 — evaluated only after inspection scope is captured (inspection-boundaries feature).
@@ -321,11 +321,11 @@ public static class ValuationMethodologyAlertRules
                 resolutions),
 
             Eval(19, ValuationMethodologyAlertCodes.FewAdoptedComparables,
-                "أقل من ٣ مقارنات معتمدة",
+                "أقل من 3 مقارنات معتمدة",
                 input.MarketApproachRelevant,
                 () => input.AdoptedComparableCount is > 0
                           and < MinComparablesWithoutRationale,
-                "المقارنات المعتمدة أقل من ٣ — برّر الاكتفاء",
+                "المقارنات المعتمدة أقل من 3 — برّر الاكتفاء",
                 resolutions),
 
  // Q-7 — hard gate: certified-valuer approval for "remote desktop" scope.

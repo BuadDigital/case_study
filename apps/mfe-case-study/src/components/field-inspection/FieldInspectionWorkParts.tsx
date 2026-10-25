@@ -235,7 +235,7 @@ export function MobileInspectMap({
 
 export function arabicStepLabel(step: number | string): string {
   const n = typeof step === "number" ? step : Number.parseInt(String(step), 10);
-  const map = ["١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩", "١٠"];
+  const map = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
   if (Number.isFinite(n) && n >= 1 && n <= 10) return map[n - 1]!;
   return String(step);
 }

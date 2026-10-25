@@ -214,7 +214,7 @@ export function dualCalendarMonthLabel(
   month: number,
 ): string {
   if (kind === "gregorian") {
-    return new Intl.DateTimeFormat("ar-SA", {
+    return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
       month: "long",
       calendar: "gregory",
     }).format(new Date(year, month - 1, 15));

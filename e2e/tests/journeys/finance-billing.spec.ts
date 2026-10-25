@@ -88,6 +88,15 @@ test.describe("Finance: cost ledger and the server-paged billing list", () => {
       contentType: "application/pdf",
       contentBase64: TINY_PDF_BASE64,
     });
+    // The fixture property is unplatted (no plan/plot), so the survey submit
+    // requires the site-validity letter too («خطاب الموقع مطلوب»).
+    await uploadAttachment(officeToken, {
+      scope: "engineering-site-letter",
+      scopeKey: tx.engineeringSurvey.id,
+      fileName: "site-letter-e2e.pdf",
+      contentType: "application/pdf",
+      contentBase64: TINY_PDF_BASE64,
+    });
     await apiOk(
       officeToken,
       "PUT",
@@ -97,6 +106,7 @@ test.describe("Finance: cost ledger and the server-paged billing list", () => {
           latitude: "24.7136",
           longitude: "46.6753",
           surveyReportFileName: "survey-report-e2e.pdf",
+          siteLetterFileName: "site-letter-e2e.pdf",
           siteConfirmed: true,
         },
       },
@@ -205,16 +215,18 @@ test.describe("Finance: cost ledger and the server-paged billing list", () => {
     await page.goto("/po", { waitUntil: "commit" });
     await waitForPageTitle(page, "أوامر العمل");
 
-    // docs/new-look ListPager: total + range first («N نتيجة · start–end»),
-    // then a type-to-jump «صفحة [ N ] من M» field — no numbered page strip.
-    const rangeLabel = page.getByText(/[\d,]+\s+نتيجة\s+·\s+\d+–\d+/).first();
+    // PoListView's own pager (not the ui-kit ListPager): «عرض start–end من N نتيجة»,
+    // prev/next arrows and a numbered page strip with the current page marked.
+    const rangeLabel = page.getByText(/عرض\s+1–\d+\s+من\s+[\d,]+\s+نتيجة/).first();
     await expect(rangeLabel).toBeVisible({ timeout: 60_000 });
     await expect(
       page.getByRole("button", { name: "الصفحة السابقة" }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: "الصفحة التالية" })).toBeVisible();
-    // The jump-to-page field reflects the current page.
-    await expect(page.getByLabel("رقم الصفحة").first()).toHaveValue("1");
+    // The page strip reflects the current page.
+    await expect(
+      page.getByRole("button", { name: "1", exact: true }).filter({ visible: true }),
+    ).toHaveAttribute("aria-current", "page");
 
     // PO_LIST_PAGE_SIZE = 10, and the server clamps rather than ignores it.
     expect(

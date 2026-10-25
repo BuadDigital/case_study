@@ -204,7 +204,7 @@ export function CostIndirectCard({
             <div>
               <div className="text-[12.5px] font-medium text-text-2">التمويل</div>
               <div className="mt-0.5 text-[10.5px] font-normal text-text-3">
-                معدل سنوي × (المدة ÷ ١٢) × ٥٠٪ = {finPct}٪
+                معدل سنوي × (المدة ÷ 12) × 50٪ = {finPct}٪
               </div>
             </div>
             <div className="flex items-center gap-2 max-lg:[&>input]:min-h-11 max-lg:[&>input]:flex-1 max-lg:[&>input]:text-[16px]">
@@ -256,7 +256,7 @@ export function CostIndirectCard({
           </div>
           {indirectSumLocal > 45 ? (
             <div className="text-[11.5px] font-semibold text-[#c0553d]">
-              مجموع النسب غير المباشرة يتجاوز ٤٥٪ — يستلزم مراجعة
+              مجموع النسب غير المباشرة يتجاوز 45٪ — يستلزم مراجعة
             </div>
           ) : null}
           <div className="flex items-center justify-between gap-3 rounded-[9px] border border-border bg-surface-2 px-[13px] py-[11px]">
@@ -306,7 +306,7 @@ const AGE_ROWS: {
   },
 ];
 
-/** Age and depreciation inputs, with live results underneath (form spec §٢٫٤). */
+/** Age and depreciation inputs, with live results underneath (form spec §2.4). */
 export function CostAgeCard({
   fields,
   setField,

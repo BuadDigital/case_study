@@ -149,7 +149,7 @@ export function OrganizationSlaForm({
             }
           />
         </Field>
-        <Field id="org-value-round" label="أسّ تقريب قيمة السوق (١٠^ن) — منطق التسويات">
+        <Field id="org-value-round" label="أسّ تقريب قيمة السوق (10^ن) — منطق التسويات">
           <input
             id="org-value-round"
             className={opsFldControl}

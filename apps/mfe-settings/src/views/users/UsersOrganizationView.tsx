@@ -75,7 +75,7 @@ export function UsersOrganizationView() {
       <UsersOrganizationToolbar workflow={workflow} />
       <UsersOrganizationTable workflow={workflow} />
       <p className="mx-0.5 mt-2.5 text-[11.5px] text-text-3">
-        ٨ أدوار معرّفة مسبقاً بصلاحياتها — تحرير الأدوار نفسها غير متاح في هذه المرحلة.
+        8 أدوار معرّفة مسبقاً بصلاحياتها — تحرير الأدوار نفسها غير متاح في هذه المرحلة.
       </p>
 
       <div className="mt-6">

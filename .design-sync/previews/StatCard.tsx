@@ -9,11 +9,11 @@ export function Default() {
       </StatCard>
       <StatCard accent="green">
         <StatLabel>قيمة التقييمات المكتملة</StatLabel>
-        <StatValue value="٢٫٤م ر.س" />
+        <StatValue value="2.4م ر.س" />
       </StatCard>
       <StatCard accent="amber">
         <StatLabel>متوسط زمن الإنجاز</StatLabel>
-        <StatValue value="٣ أيام" />
+        <StatValue value="3 أيام" />
       </StatCard>
     </StatGrid>
   );

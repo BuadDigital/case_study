@@ -251,19 +251,19 @@ export function formatTaskDueLabel(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   try {
-    const date = new Intl.DateTimeFormat("ar-SA", {
+    const date = new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
       year: "numeric",
       month: "short",
       day: "numeric",
     }).format(d);
-    const time = new Intl.DateTimeFormat("ar-SA", {
+    const time = new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
     }).format(d);
     return `${date} · ${time}`;
   } catch {
-    return d.toLocaleString("ar");
+    return d.toLocaleString("ar-u-nu-latn");
   }
 }
 

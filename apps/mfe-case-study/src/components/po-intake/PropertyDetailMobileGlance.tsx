@@ -12,6 +12,7 @@ import {
   operationsTaskTypeLabel,
 } from "../../lib/app-data/operations-task-display";
 import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-model";
+import { filterOperationsTasksForProperty } from "../../lib/app-data/operations-task-property-scope";
 import {
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
@@ -47,25 +48,10 @@ export function PropertyDetailMobileGlance({
   const deedNumber = property.deedNumber.trim();
   const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
 
-  const propertyOpsTasks = useMemo(() => {
-    return opsTasks.filter((t) => {
-      if (t.poNumber?.trim() === poNumber) {
-        if (t.scope === "work_order" || t.scope === "multi") return true;
-        if (t.scope === "transaction") {
-          return t.deeds.some(
-            (d) =>
-              d === deedDisplay || d === deedNumber || d.includes(deedNumber),
-          );
-        }
-      }
-      return t.deeds.some(
-        (d) =>
-          d === deedDisplay ||
-          d === deedNumber ||
-          (deedNumber && d.includes(deedNumber)),
-      );
-    });
-  }, [opsTasks, poNumber, deedDisplay, deedNumber]);
+  const propertyOpsTasks = useMemo(
+    () => filterOperationsTasksForProperty(opsTasks, { poNumber, deedNumber, deedDisplay }),
+    [opsTasks, poNumber, deedDisplay, deedNumber],
+  );
 
   const activeOps = propertyOpsTasks.filter(isActiveOperationsTask);
   const primaryOps = activeOps[0] ?? propertyOpsTasks[0] ?? null;

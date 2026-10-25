@@ -3,10 +3,11 @@
  * specialist (osama) accepts the package.
  *
  * UI-driven:  the /active-inspection queue (search + open the task), the whole
- *             three-step inspector wizard — GPS, access-contact block, feature
- *             values, the two proof photos that the validator demands
- *             (الواجهة / حالة البناء) uploaded through the real file inputs —
- *             the confirmation checkbox and «حفظ وإرسال»; and the specialist's
+ *             three-step inspector wizard — step 1 «الموقع والتصوير» (GPS pin,
+ *             «خصائص العقار», access-contact block), step 2 «بيانات العقار»
+ *             (description, component pills with a proof photo uploaded through
+ *             the real file input, the deed-boundaries verdict), step 3 the
+ *             confirmation checkbox and «حفظ وإرسال»; and the specialist's
  *             property-detail timeline.
  * API-driven: (a) building the distributed transaction under test, and
  *             (b) the specialist's ACCEPT. There is no accept control on the
@@ -44,15 +45,15 @@ async function attachFeaturePhoto(ws: Locator, key: string) {
     mimeType: "image/png",
     buffer: tinyPngBuffer(),
   });
-  // The cell flips to a ✓ + "مرفقة" only after the upload round-trips.
-  await expect(cell.getByText("مرفقة")).toBeVisible({ timeout: 30_000 });
+  // Once the upload round-trips the picker becomes a thumbnail with «استبدال».
+  await expect(cell.getByRole("button", { name: "استبدال" })).toBeVisible({
+    timeout: 30_000,
+  });
 }
 
 /**
- * carEntrance / hasBasement / hasElevator / hasPool / kitchen are rendered in
- * «مكوّنات العقار» as toggle pills that cycle "" → نعم → لا, and the validator
- * demands a value for each. Answering نعم would demand a proof photo that the
- * desktop wizard renders no control for, so every one of them is set to لا.
+ * The yes/no component pills (step 2 «مكوّنات العقار», and «يوجد منقولات» in
+ * step 1) cycle "" → نعم → لا. Each is answered explicitly with «لا».
  */
 async function answerComponentPillNo(ws: Locator, label: string) {
   const pill = ws.getByRole("button", { name: label, exact: true });
@@ -106,16 +107,38 @@ test.describe("Field inspector: submit → specialist accept", () => {
     const ws = workspace(page);
     await expect(ws).toBeVisible({ timeout: 60_000 });
 
-    // ── 2. step 1 — location and access contact (UI) ────────────────────────
+    // ── 2. step 1 «الموقع والتصوير» — pin, features, access contact (UI) ──
     const coords = ws.locator('input[placeholder="21.523339, 39.187743"]');
     await expect(coords).toBeVisible({ timeout: 30_000 });
     await coords.fill("24.7136, 46.6753");
+    await expect(coords).toHaveValue("24.7136, 46.6753");
     await ws.getByRole("button", { name: "تثبيت الموقع", exact: true }).click();
     const moveDialog = page.getByRole("dialog", { name: "تأكيد تحريك الموقع" });
     if (await moveDialog.isVisible().catch(() => false)) {
       await page.getByRole("button", { name: "تثبيت الموقع الجديد" }).click();
     }
-    await expect(coords).toHaveValue("24.7136, 46.6753");
+    // Pinning swaps the coordinates input for a read-only value and a status chip.
+    await expect(ws.getByRole("status").filter({ hasText: "تم تثبيت الموقع" })).toBeVisible();
+    await expect(ws.locator("#ins-map-coords")).toHaveText("24.7136, 46.6753");
+
+    // «خصائص العقار» now lives on step 1: every non-yes/no feature needs a value.
+    await ws.locator("#ins-feature-select-assetSubject").selectOption("فيلا");
+    await ws.locator("#ins-feature-select-facade").selectOption("شمالية");
+    // «استخدام العقار» lists the bourse classifications (أرض / مبنى مفرد / …).
+    await ws.locator("#ins-feature-select-propertyUsage").selectOption("مبنى مفرد");
+    for (const [key, value] of [
+      ["zoneStatus", "غير موقوفة"],
+      ["propertyCondition", "مستخدم"],
+      ["buildState", "جيد"],
+      ["occupancyState", "شاغر"],
+      ["districtState", "جديد"],
+    ] as const) {
+      await ws
+        .locator(`#ins-feature-${key}`)
+        .getByRole("button", { name: value, exact: true })
+        .click();
+    }
+    await answerComponentPillNo(ws, "يوجد منقولات");
 
     await ws.locator("#ins-access-name").fill("ضابط اتصال آلي");
     await ws.locator("#ins-access-phone").fill("0555000111");
@@ -123,49 +146,27 @@ test.describe("Field inspector: submit → specialist accept", () => {
 
     await ws.getByRole("button", { name: "حفظ ومتابعة" }).click();
 
-    // ── 3. step 2 — property features + the two required proof photos (UI) ──
-    await expect(ws.locator("#ins-feature-select-assetSubject")).toBeVisible({
-      timeout: 30_000,
-    });
-    await ws.locator("#ins-feature-select-assetSubject").selectOption("فيلا");
-    await ws.locator("#ins-feature-select-propertyUsage").selectOption("سكني");
+    // ── 3. step 2 «بيانات العقار» — description, components, boundaries (UI) ─
+    const description = ws.locator("#ins-desc");
+    await expect(description).toBeVisible({ timeout: 30_000 });
+    await description.fill("فيلا سكنية من دورين وملحق");
 
-    // الواجهة and حالة البناء are `photoOnYes` closed lists: choosing any value
-    // makes a proof photo mandatory, and only then does the cell appear.
-    await ws.locator("#ins-feature-select-facade").selectOption("شمالية");
-    await attachFeaturePhoto(ws, "facade");
-
-    await ws
-      .locator("#ins-feature-buildState")
-      .getByRole("button", { name: "جيد", exact: true })
-      .click();
-    await attachFeaturePhoto(ws, "buildState");
-
-    await ws
-      .locator("#ins-feature-occupancyState")
-      .getByRole("button", { name: "شاغر", exact: true })
-      .click();
-    await ws
-      .locator("#ins-feature-districtState")
-      .getByRole("button", { name: "جديد", exact: true })
-      .click();
-    await ws
-      .locator("#ins-feature-zoneStatus")
-      .getByRole("button", { name: "غير موقوفة", exact: true })
-      .click();
-
-    // Every yes/no feature has to carry a value, and "نعم" would demand a proof
-    // photo the desktop wizard offers no control for — answer them all "لا".
-    for (const label of [
-      "يوجد منقولات",
-      "مدخل السيارة",
-      "يوجد قبو",
-      "يوجد مصعد",
-      "يوجد مسبح",
-      "مطبخ",
-    ]) {
+    // «مدخل السيارة» answered «نعم» offers a proof photo — upload it through the
+    // real file input; the remaining component pills are answered «لا».
+    const carEntrance = ws.getByRole("button", { name: "مدخل السيارة", exact: true });
+    await carEntrance.click();
+    await expect(carEntrance).toHaveClass(/bg-ink/);
+    await attachFeaturePhoto(ws, "carEntrance");
+    for (const label of ["يوجد قبو", "يوجد مصعد", "يوجد مسبح", "مطبخ"]) {
       await answerComponentPillNo(ws, label);
     }
+
+    // «هل حدود الصك مطابقة للطبيعة؟» — the inspector's explicit verdict.
+    const verdict = ws.getByRole("radiogroup", { name: "مطابقة حدود الصك للطبيعة" });
+    await verdict.getByRole("radio", { name: "مطابق", exact: true }).click();
+    await expect(
+      verdict.getByRole("radio", { name: "مطابق", exact: true }),
+    ).toHaveAttribute("aria-checked", "true");
 
     await ws.getByRole("button", { name: "حفظ ومتابعة" }).click();
 

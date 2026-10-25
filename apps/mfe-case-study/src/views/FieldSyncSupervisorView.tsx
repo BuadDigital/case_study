@@ -44,7 +44,7 @@ function syncRowView(row: FieldSyncStatusDto) {
     age: row.ageHours != null ? `${row.ageHours} س` : "—",
     kinds: row.kinds.map((k) => KIND_LABELS[k] ?? k).join(" · ") || "—",
     lastSeen: row.lastSeenAtUtc
-      ? new Date(row.lastSeenAtUtc).toLocaleString("ar-SA")
+      ? new Date(row.lastSeenAtUtc).toLocaleString("ar-SA-u-nu-latn")
       : "—",
   };
 }

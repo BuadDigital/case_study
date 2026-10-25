@@ -146,7 +146,7 @@ export function validateRegisterForm(state: RegisterFormState): string | null {
   if (source === "missing") {
     if (actual < 0) return "عدد المفاتيح غير صالح.";
   } else if (actual < 1) {
-    return "عدد المفاتيح الفعلي يجب أن يكون ١ على الأقل.";
+    return "عدد المفاتيح الفعلي يجب أن يكون 1 على الأقل.";
   }
   if (source === "court" && !state.photo?.attachmentId) {
     return "صورة الظرف مطلوبة لإثبات أتعاب الاستلام.";

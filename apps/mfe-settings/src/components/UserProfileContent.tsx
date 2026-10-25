@@ -13,6 +13,7 @@ import {
   type PartyOfficeBillingStatementsPanelProps,
 } from "@platform/app-shared/party-appraisal/billing-statements-slot";
 import { supervisingDepartmentLabel } from "@platform/app-shared/users/admin-staff-roles";
+import { INSPECTOR_TYPE_OPTIONS } from "../views/users/users-organization-state";
 import { getAuthSession } from "@platform/auth-client";
 import {
   Badge,
@@ -113,7 +114,7 @@ function isFieldInspectorProfile(user: StaffUser): boolean {
 function formatAt(iso: string | null | undefined): string {
   if (!iso) return "—";
   try {
-    return new Intl.DateTimeFormat("ar-SA", {
+    return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
       dateStyle: "short",
       timeStyle: "short",
     }).format(new Date(iso));
@@ -152,6 +153,17 @@ function completedRows(rows: InspectorFeeRowDto[]): InspectorFeeRowDto[] {
   );
 }
 
+/** Detail rows the «البيانات الأساسية» block already shows (role, phone, city, department). */
+const SHOWN_IN_BASICS = new Set(["الدور", "الجوال", "المدينة", "الإدارة"]);
+
+/** Codes the server sends as values, in Arabic. */
+function detailValueLabel(label: string, value: string): string {
+  if (label === "نوع المعاين") {
+    return INSPECTOR_TYPE_OPTIONS.find((o) => o.value === value)?.label ?? value;
+  }
+  return value;
+}
+
 export function UserProfileContent({ user }: { user: StaffUser }) {
   const showFinancial = Boolean(user.hasCompensation);
   const showEngStatements = isEngineeringOfficeProfile(user);
@@ -165,8 +177,10 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
     const map = new Map<string, { label: string; value: string }[]>();
     for (const field of user.details ?? []) {
       if (/إيميل|بريد/i.test(field.label)) continue;
+      // The basic block already shows these, in Arabic — the details carry the raw codes.
+      if (SHOWN_IN_BASICS.has(field.label)) continue;
       const list = map.get(field.section) ?? [];
-      list.push({ label: field.label, value: field.value });
+      list.push({ label: field.label, value: detailValueLabel(field.label, field.value) });
       map.set(field.section, list);
     }
     return [...map.entries()];

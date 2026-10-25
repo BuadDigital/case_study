@@ -148,9 +148,11 @@ export async function loginViaUi(page: Page, username: string) {
   const otpBoxes = page.locator('[aria-label^="رقم التحقق"]');
   await expect(otpBoxes).toHaveCount(6);
 
+  // The form exchanges the code at /api/auth/otp/verify (login-otp-api.ts); on a
+  // dev host (`Auth:EnableDevLogin`) a seeded demo mobile accepts any 6 digits.
   const responsePromise = page.waitForResponse(
     (res) =>
-      res.url().includes("/api/auth/login") &&
+      res.url().includes("/api/auth/otp/verify") &&
       res.request().method() === "POST",
     { timeout: 60_000 },
   );
@@ -258,7 +260,7 @@ export async function waitForPageTitle(page: Page, text: string) {
   );
 }
 
-/** Every shell module route — mirrors ALL_PROTOTYPE_PAGES. */
+/** Every shell module route — mirrors ALL_PROTOTYPE_PAGES; titles spelled as PAGE_TITLES (with the shadda). */
 export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "dashboard", title: "لوحة التحكم" },
   { id: "active-primary-data", title: "البيانات الأولية" },
@@ -270,8 +272,8 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "property-map", title: "خريطة العقارات" },
   { id: "bourse-inquiry", title: "استعلام بورصة" },
   { id: "keys", title: "محفظة المفاتيح" },
-  { id: "failures", title: "إدارة التعذرات" },
-  { id: "suspended-transactions", title: "المعاملات المعلقة" },
+  { id: "failures", title: "إدارة التعذّرات" },
+  { id: "suspended-transactions", title: "المعاملات المعلّقة" },
   { id: "valuation-requests", title: "طلبات التقييم" },
   { id: "property-inspection", title: "معاينة العقار (يتيم)" },
   { id: "active-inspection", title: "معاينة العقار" },
@@ -284,7 +286,7 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "fee-pricing", title: "التسعيرة" },
   { id: "courts", title: "المحاكم والدوائر" },
   { id: "location-pending", title: "مراجعة المسميات" },
-  { id: "failure-types", title: "أنواع التعذرات" },
+  { id: "failure-types", title: "أنواع التعذّرات" },
   { id: "case-study-info-roles", title: "علاقة المستخدم بالمعلومة" },
 ];
 

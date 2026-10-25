@@ -97,7 +97,7 @@ public sealed partial class RegionsService : IRegionsService
         await EnsureSeededAsync(cancellationToken);
         var raw = (request.NameAr ?? "").Trim();
         if (!LocationNameNormalizer.LooksLikeArabicName(raw))
-            throw new InvalidOperationException("الاسم يجب أن يكون بالعربية (٢–١٥٠ حرفاً).");
+            throw new InvalidOperationException("الاسم يجب أن يكون بالعربية (2–150 حرفاً).");
 
         var kind = LocationCatalogRules.NormalizeKind(request.Kind);
         var search = LocationNameNormalizer.Normalize(raw);

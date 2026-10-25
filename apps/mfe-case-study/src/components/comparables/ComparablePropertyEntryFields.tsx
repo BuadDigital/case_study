@@ -610,8 +610,8 @@ export function ComparablePropertyEntryFields({
         />
         <p className="mb-0 mt-1 text-[11px] text-text-3">
           {draft.advertiserPhone.trim()
-            ? `${contactNumbers(draft.advertiserPhone).length} رقم — كل ١٠ أرقام رقم مستقل`
-            : "كل ١٠ أرقام تُحتسب رقم تواصل مستقلاً"}
+            ? `${contactNumbers(draft.advertiserPhone).length} رقم — كل 10 أرقام رقم مستقل`
+            : "كل 10 أرقام تُحتسب رقم تواصل مستقلاً"}
         </p>
       </Field>
       <Field label="رقم المخطط">

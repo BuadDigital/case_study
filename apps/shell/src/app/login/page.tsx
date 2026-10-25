@@ -148,13 +148,13 @@ export default function LoginPage() {
     setMobileBad(false);
 
     if (mobileDigits.length < 9) {
-      setError("أدخل رقم جوال صحيح مكوّناً من ٩ أرقام بعد +966");
+      setError("أدخل رقم جوال صحيح مكوّناً من 9 أرقام بعد +966");
       setMobileBad(true);
       mobileRef.current?.focus();
       return;
     }
     if (!/^5/.test(mobileDigits)) {
-      setError("رقم الجوال السعودي يبدأ بالرقم ٥");
+      setError("رقم الجوال السعودي يبدأ بالرقم 5");
       setMobileBad(true);
       mobileRef.current?.focus();
       return;
@@ -456,7 +456,7 @@ export default function LoginPage() {
                 >
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
-                الجلسة الآمنة تنتهي تلقائياً بعد ٣ ساعات
+                الجلسة الآمنة تنتهي تلقائياً بعد 3 ساعات
               </div>
             </section>
           ) : null}
@@ -514,7 +514,7 @@ export default function LoginPage() {
                 أدخل رمز التحقق
               </h1>
               <p className="mb-[26px] text-[15px] leading-[1.7] text-text-2">
-                أرسلنا رمزاً مكوّناً من ٦ أرقام عبر رسالة نصية إلى{" "}
+                أرسلنا رمزاً مكوّناً من 6 أرقام عبر رسالة نصية إلى{" "}
                 <span className="inline-block font-bold text-text [direction:ltr]">
                   {otpTarget}
                 </span>
@@ -573,7 +573,7 @@ export default function LoginPage() {
                 onClick={() => {
                   if (otpValue.replace(NON_DIGIT_RE, "").length !== 6) {
                     setOtpBad(true);
-                    setOtpError("أدخل رمز التحقق كاملاً (٦ أرقام) ثم أكّد الدخول");
+                    setOtpError("أدخل رمز التحقق كاملاً (6 أرقام) ثم أكّد الدخول");
                     const empty = otp.findIndex((d) => !d);
                     otpRefs.current[empty === -1 ? 0 : empty]?.focus();
                     return;

@@ -9,7 +9,7 @@ namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 [ApiController]
 [Route("api/suspended-transactions")]
-[Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
+[Authorize(Policy = CapabilityPolicyNames.ReadSuspendedTransactions)]
 public class SuspendedTransactionsController : ControllerBase
 {
     private readonly ISuspendedTransactionsService _suspended;

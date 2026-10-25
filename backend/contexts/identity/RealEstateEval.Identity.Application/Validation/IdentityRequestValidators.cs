@@ -34,7 +34,7 @@ public sealed class OtpVerifyRequestValidator : AbstractValidator<OtpVerifyReque
             .WithMessage("صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).")
             .OverridePropertyName("mobile");
         RuleFor(x => x.Code).NotEmpty().Matches(@"^\d{6}$")
-            .WithMessage("رمز التحقق مكوّن من ٦ أرقام.")
+            .WithMessage("رمز التحقق مكوّن من 6 أرقام.")
             .OverridePropertyName("code");
     }
 }

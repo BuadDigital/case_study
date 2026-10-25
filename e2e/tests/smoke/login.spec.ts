@@ -10,7 +10,9 @@ test.describe("login journey", () => {
   });
 
   test("login page shows error when API is unreachable", async ({ page }) => {
-    await page.route("**/api/auth/login", (route) => route.abort());
+    // The code is exchanged at /api/auth/otp/verify (login-otp-api.ts); the
+    // request step still reaches the server so the OTP screen opens.
+    await page.route("**/api/auth/otp/verify", (route) => route.abort());
     await page.goto("/login", { waitUntil: "domcontentloaded" });
     await submitMobileStep(page, "500000001");
     const otpBoxes = page.locator('[aria-label^="رقم التحقق"]');

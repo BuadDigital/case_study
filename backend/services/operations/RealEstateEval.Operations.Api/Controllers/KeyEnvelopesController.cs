@@ -16,15 +16,8 @@ namespace RealEstateEval.Operations.Api.Controllers;
 public class KeyEnvelopesController : ControllerBase
 {
     private readonly IKeyEnvelopesService _envelopes;
-    private readonly IPropertyKeyGateResolver _gates;
 
-    public KeyEnvelopesController(
-        IKeyEnvelopesService envelopes,
-        IPropertyKeyGateResolver gates)
-    {
-        _envelopes = envelopes;
-        _gates = gates;
-    }
+    public KeyEnvelopesController(IKeyEnvelopesService envelopes) => _envelopes = envelopes;
 
     private string ActorId() => ActorClaims.Id(User);
 
@@ -63,15 +56,6 @@ public class KeyEnvelopesController : ControllerBase
             return ProblemForServiceError(error);
         return Ok(row);
     }
-
-    [HttpGet("gate")]
-    public async Task<ActionResult<PropertyKeyGateDto>> Gate(
-        [FromQuery] Guid? propertyId,
-        [FromQuery] string? poNumber,
-        [FromQuery] string? deedNumber,
-        [FromQuery] string? requestNumber,
-        CancellationToken ct)
-        => Ok(await _gates.ResolveAsync(propertyId, poNumber, deedNumber, requestNumber, ct));
 
     [HttpGet("court-access")]
     public async Task<ActionResult<IReadOnlyList<PropertyCourtAccessDto>>> CourtAccess(

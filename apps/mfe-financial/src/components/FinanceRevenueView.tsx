@@ -265,8 +265,8 @@ export function FinanceRevenueView({
             aria-label="الفترة"
           >
             <option value="all">كل الفترات</option>
-            <option value="30">آخر ٣٠ يوماً</option>
-            <option value="90">آخر ٩٠ يوماً</option>
+            <option value="30">آخر 30 يوماً</option>
+            <option value="90">آخر 90 يوماً</option>
           </select>
           <span className={finCaret} aria-hidden>
             ▾
