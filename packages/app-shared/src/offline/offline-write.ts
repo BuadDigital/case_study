@@ -95,35 +95,34 @@ async function queueDraftOrRethrow(
   }
 }
 
-export async function saveDraftWithOfflineFallback(input: {
+/**
+ * The online write of a party submission, with the field-session fallback: offline (or a
+ * connectivity failure) puts it in the local queue instead; a non-field user only goes online.
+ * A successful online write clears the queued saves of the task.
+ */
+async function writeWithOfflineFallback(input: {
   taskId: string;
-  kind: OfflineDraftRecord["kind"];
-  payload: unknown;
-  onlineSave: () => Promise<void>;
+  online: () => Promise<void>;
+  queueLocally: (userId: string) => Promise<void>;
+  offlineError: string;
 }): Promise<{ queued: boolean }> {
   const userId = currentOfflineUserId();
   if (!userId) {
-    await input.onlineSave();
+    await input.online();
     return { queued: false };
   }
 
   const queueable = canQueueOfflineWrites(userId);
   if (isBrowserOffline()) {
     if (!queueable) {
-      throw new Error("تعذّر حفظ التغييرات دون اتصال");
+      throw new Error(input.offlineError);
     }
-    await persistDraftLocally({
-      userId,
-      taskId: input.taskId,
-      kind: input.kind,
-      payload: input.payload,
-    });
-    await beginOfflineLease(userId);
+    await input.queueLocally(userId);
     return { queued: true };
   }
 
   try {
-    await input.onlineSave();
+    await input.online();
     if (queueable) {
       await deleteOutboxItemsByKind(
         userId,
@@ -134,7 +133,21 @@ export async function saveDraftWithOfflineFallback(input: {
     return { queued: false };
   } catch (err) {
     if (!queueable) throw err;
-    return queueDraftOrRethrow(err, async () => {
+    return queueDraftOrRethrow(err, () => input.queueLocally(userId));
+  }
+}
+
+export async function saveDraftWithOfflineFallback(input: {
+  taskId: string;
+  kind: OfflineDraftRecord["kind"];
+  payload: unknown;
+  onlineSave: () => Promise<void>;
+}): Promise<{ queued: boolean }> {
+  return writeWithOfflineFallback({
+    taskId: input.taskId,
+    online: input.onlineSave,
+    offlineError: "تعذّر حفظ التغييرات دون اتصال",
+    queueLocally: async (userId) => {
       await persistDraftLocally({
         userId,
         taskId: input.taskId,
@@ -142,8 +155,8 @@ export async function saveDraftWithOfflineFallback(input: {
         payload: input.payload,
       });
       await beginOfflineLease(userId);
-    });
-  }
+    },
+  });
 }
 
 export async function submitWithOfflineFallback(input: {
@@ -153,45 +166,11 @@ export async function submitWithOfflineFallback(input: {
   onlineSubmit: () => Promise<void>;
   idempotencyKey?: string;
 }): Promise<{ queued: boolean }> {
-  const userId = currentOfflineUserId();
-  if (!userId) {
-    await input.onlineSubmit();
-    return { queued: false };
-  }
-
-  const queueable = canQueueOfflineWrites(userId);
-  if (isBrowserOffline()) {
-    if (!queueable) {
-      throw new Error("تعذّر إرسال المهمة دون اتصال");
-    }
-    await persistDraftLocally({
-      userId,
-      taskId: input.taskId,
-      kind: input.kind,
-      payload: input.payload,
-    });
-    await enqueueSubmitLocally({
-      userId,
-      taskId: input.taskId,
-      idempotencyKey: input.idempotencyKey,
-    });
-    await beginOfflineLease(userId);
-    return { queued: true };
-  }
-
-  try {
-    await input.onlineSubmit();
-    if (queueable) {
-      await deleteOutboxItemsByKind(
-        userId,
-        "party-submission-save",
-        input.taskId,
-      );
-    }
-    return { queued: false };
-  } catch (err) {
-    if (!queueable) throw err;
-    return queueDraftOrRethrow(err, async () => {
+  return writeWithOfflineFallback({
+    taskId: input.taskId,
+    online: input.onlineSubmit,
+    offlineError: "تعذّر إرسال المهمة دون اتصال",
+    queueLocally: async (userId) => {
       await persistDraftLocally({
         userId,
         taskId: input.taskId,
@@ -204,8 +183,8 @@ export async function submitWithOfflineFallback(input: {
         idempotencyKey: input.idempotencyKey,
       });
       await beginOfflineLease(userId);
-    });
-  }
+    },
+  });
 }
 
 export async function uploadAttachmentWithOfflineFallback(input: {

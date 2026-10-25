@@ -2,16 +2,7 @@
 
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  AppModal,
-  Button,
-  Label,
-  Note,
-  Textarea,
-  cn,
-  useToast,
-} from "@platform/ui-kit";
-import { invalidControlClass } from "@platform/app-shared/form-ux";
+import { Button, Note, useToast } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { formatDateAr } from "@platform/app-shared/format/date";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
@@ -23,6 +14,7 @@ import {
   surveyFreezeLiftView,
   surveyFreezeLiftedText,
 } from "../../lib/app-data/survey-freeze-lift-state";
+import { ReasonConfirmModal, RequiredReasonField } from "./ReasonConfirmModal";
 
 /**
  * «رفع تجميد الرفع المساحي» on one failure of a property — the case specialist lifts the freeze an
@@ -108,62 +100,26 @@ function LiftDialog({
   }
 
   return (
-    <AppModal
-      open
+    <ReasonConfirmModal
       title="رفع تجميد الرفع المساحي"
       subtitle="يبقى التعذّر مفتوحاً، ويُسمح لمكتب الهندسة ببدء الرفع المساحي. يُسجَّل القرار في سجل التدقيق ويُشعَر المكلّف بالمسح."
-      onClose={() => {
-        if (!busy) onClose();
-      }}
-      maxWidthPx={470}
-      look="ops-html"
-      footer={
-        <div className="flex w-full justify-end gap-2.5">
-          <Button variant="default" showActionToast={false} disabled={busy} onClick={onClose}>
-            إلغاء
-          </Button>
-          <Button
-            variant="primary"
-            showActionToast={false}
-            loading={busy}
-            onClick={() => void submit()}
-          >
-            رفع التجميد
-          </Button>
-        </div>
-      }
+      confirmLabel="رفع التجميد"
+      busy={busy}
+      onClose={onClose}
+      onConfirm={() => void submit()}
     >
-      <div className="flex flex-col gap-3">
-        <div>
-          <Label
-            htmlFor={`survey-freeze-lift-reason-${failure.id}`}
-            className="mb-1.5 text-[11px] font-semibold text-text-2"
-          >
-            السبب ({SURVEY_FREEZE_LIFT_REASON_MIN_LENGTH} أحرف على الأقل){" "}
-            <span className="text-danger-text">*</span>
-          </Label>
-          <Textarea
-            id={`survey-freeze-lift-reason-${failure.id}`}
-            rows={3}
-            value={reason}
-            aria-invalid={reasonError ? true : undefined}
-            className={cn(
-              "rounded-[10px] border-border-md bg-surface",
-              reasonError && invalidControlClass,
-            )}
-            onChange={(e) => {
-              setReason(e.target.value);
-              if (reasonError) setReasonError(null);
-            }}
-          />
-          {reasonError ? (
-            <Note tone="danger" className="mt-2">
-              {reasonError}
-            </Note>
-          ) : null}
-        </div>
-        {serverError ? <Note tone="warn">{serverError}</Note> : null}
-      </div>
-    </AppModal>
+      <RequiredReasonField
+        id={`survey-freeze-lift-reason-${failure.id}`}
+        label="السبب"
+        minLength={SURVEY_FREEZE_LIFT_REASON_MIN_LENGTH}
+        value={reason}
+        error={reasonError}
+        onChange={(value) => {
+          setReason(value);
+          if (reasonError) setReasonError(null);
+        }}
+      />
+      {serverError ? <Note tone="warn">{serverError}</Note> : null}
+    </ReasonConfirmModal>
   );
 }

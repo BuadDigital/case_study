@@ -7,6 +7,10 @@ namespace RealEstateEval.Financial.Application.Abstractions;
 /// </summary>
 public interface IInspectorFeeSummaryQuery
 {
+ /// <summary>
+ /// Set <paramref name="hideDisputed"/> for a finance-only actor: a line under pricing dispute must
+ /// not reach finance in any response, counts included, until operations resolves it.
+ /// </summary>
     Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
         string? workflowTaskId,

@@ -23,11 +23,8 @@ import {
   getValuators,
   type DistributionAssignee,
 } from "../../lib/app-data/distribution-parties";
-import {
-  buildAssigneeOpenLoadMap,
-  openLoadForAssignee,
-  withOpenLoadLabel,
-} from "../../lib/app-data/distribution-load";
+import { buildAssigneeOpenLoadMap } from "../../lib/app-data/distribution-load";
+import { assigneeLoadOptions } from "../../lib/app-data/distribution-assignee-options";
 import {
   migrateDistribution,
   type TaskDistributionDraft,
@@ -72,20 +69,6 @@ function partyLockReason(
   const state =
     child.status === "completed" ? "مكتملة" : child.status === "cancelled" ? "مُلغاة" : "متوقفة";
   return `مهمة ${label} ${state} — لا يمكن إعادة إسنادها.`;
-}
-
-function toOptions(
-  list: { id: string; name: string; subtitle?: string }[],
-  loadByAssignee: Map<string, number>,
-) {
-  return list.map((a) => {
-    const base = a.subtitle ? `${a.name} — ${a.subtitle}` : a.name;
-    const count = openLoadForAssignee(loadByAssignee, a.id);
-    return {
-      value: a.id,
-      label: withOpenLoadLabel(base, count),
-    };
-  });
 }
 
 /**
@@ -292,7 +275,7 @@ export function RedistributePartiesModal({
                   id="redist_person"
                   label="المسؤول"
                   required
-                  options={toOptions(activeRole.people, loadByAssignee)}
+                  options={assigneeLoadOptions(activeRole.people, loadByAssignee)}
                   value={activeRole.currentId}
                   disabled={Boolean(activeRole.lockedReason)}
                   placeholder={`اختر ${activeRole.label}…`}

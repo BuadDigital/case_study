@@ -190,6 +190,13 @@ function namesMatch(a: string, b: string): boolean {
   return short.every((t) => long.includes(t));
 }
 
+/** The first row holding a `td.k` label cell that reads `label`. */
+function rowWithLabel<T extends Element>(rows: T[], label: string): T | undefined {
+  return rows.find((r) =>
+    [...r.querySelectorAll("td.k")].some((td) => normName(td.textContent ?? "") === label),
+  );
+}
+
 function valueCellsAfterLabel(row: Element, label: string): Element[] {
   const cells = [...row.children];
   const out: Element[] = [];
@@ -305,16 +312,8 @@ function applySignatures(
 
   for (const table of dom.querySelectorAll("table")) {
     const rows = [...table.querySelectorAll("tr")];
-    const nameRow = rows.find((r) =>
-      [...r.querySelectorAll("td.k")].some(
-        (td) => normName(td.textContent ?? "") === "الاسم",
-      ),
-    );
-    const sigRow = rows.find((r) =>
-      [...r.querySelectorAll("td.k")].some(
-        (td) => normName(td.textContent ?? "") === "التوقيع",
-      ),
-    );
+    const nameRow = rowWithLabel(rows, "الاسم");
+    const sigRow = rowWithLabel(rows, "التوقيع");
     if (!nameRow || !sigRow) continue;
     const names = valueCellsAfterLabel(nameRow, "الاسم");
     const sigCells = valueCellsAfterLabel(sigRow, "التوقيع");
@@ -358,16 +357,8 @@ function applySignatures(
   const approveTable = approve?.nextElementSibling;
   if (approveTable?.tagName === "TABLE") {
     const rows = [...approveTable.querySelectorAll("tr")];
-    const nameRow = rows.find((r) =>
-      [...r.querySelectorAll("td.k")].some(
-        (td) => normName(td.textContent ?? "") === "الاسم",
-      ),
-    );
-    const sigRow = rows.find((r) =>
-      [...r.querySelectorAll("td.k")].some(
-        (td) => normName(td.textContent ?? "") === "التوقيع",
-      ),
-    );
+    const nameRow = rowWithLabel(rows, "الاسم");
+    const sigRow = rowWithLabel(rows, "التوقيع");
     const cell = valueCellsAfterLabel(sigRow ?? approveTable, "التوقيع")[0];
     if (cell) {
       const existing = cell.querySelector("img");

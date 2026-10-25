@@ -34,9 +34,7 @@ public sealed class HttpKeyReceiptFeeChargeService(
             $"{Root}/{envelopeId:D}/collect",
             new MarkKeyReceiptFeeCollectedRequest { InvoiceReference = invoiceReference },
             Setting, cancellationToken);
-        if (errors is null || errors.Count == 0)
-            return (row, null);
-        return (row, errors.TryGetValue("_", out var message) ? message : errors.Values.First());
+        return (row, UpstreamJson.FirstError(errors));
     }
 
     public async Task<IReadOnlyList<PoEnfazKeyRevenueLineDto>> ListKeyRevenueLinesAsync(

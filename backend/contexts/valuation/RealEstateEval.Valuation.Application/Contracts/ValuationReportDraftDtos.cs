@@ -79,13 +79,6 @@ public class ReportDraftStateDto
     public int ProgressPct { get; init; }
 }
 
-/// <summary>Where the generated final PDF stands after a (re)generation attempt.</summary>
-public class FinalReportStatusDto
-{
-    /// <summary>none | preparing | ready.</summary>
-    public string FinalReportStatus { get; init; } = "none";
-}
-
 /// <summary>The specialist saves his report choices (only while the draft is being prepared).</summary>
 public class SaveReportDraftChoicesRequest
 {

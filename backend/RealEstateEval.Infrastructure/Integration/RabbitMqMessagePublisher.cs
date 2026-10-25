@@ -69,16 +69,8 @@ public sealed class RabbitMqMessagePublisher : IDisposable
                 return;
         }
 
-        var factory = new ConnectionFactory
-        {
-            HostName = _options.Host,
-            Port = _options.Port,
-            UserName = _options.UserName,
-            Password = _options.Password,
-            VirtualHost = _options.VirtualHost,
-        };
-
-        var connection = await factory.CreateConnectionAsync(cancellationToken);
+        var connection = await RabbitMqTopology.CreateConnectionFactory(_options)
+            .CreateConnectionAsync(cancellationToken);
         var channel = await connection.CreateChannelAsync(cancellationToken: cancellationToken);
         await channel.ExchangeDeclareAsync(
             _options.Exchange,

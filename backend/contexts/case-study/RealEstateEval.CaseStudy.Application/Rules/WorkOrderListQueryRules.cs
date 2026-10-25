@@ -1,4 +1,5 @@
 using RealEstateEval.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
@@ -74,7 +75,7 @@ public static class WorkOrderListQueryRules
 
     /// <summary>Unknown keys fall back to the default; the endpoint never answers 400 on sort.</summary>
     public static WorkOrderListSortKey ResolveSort(string? sort) =>
-        Normalize(sort) switch
+        ListQueryText.Normalize(sort) switch
         {
             SortPo => WorkOrderListSortKey.PoNumber,
             SortReceived => WorkOrderListSortKey.ReceivedFromEnfath,
@@ -83,16 +84,11 @@ public static class WorkOrderListQueryRules
         };
 
     public static bool ResolveDescending(string? dir) =>
-        Normalize(dir) switch
-        {
-            DirAscending => false,
-            DirDescending => true,
-            _ => DefaultDescending,
-        };
+        ListQueryText.ResolveDescending(dir, DefaultDescending);
 
     /// <summary>Null means "no status filter"; an unrecognised value is ignored, not an error.</summary>
     public static WorkOrderListStatusFilter? ResolveStatus(string? status) =>
-        Normalize(status) switch
+        ListQueryText.Normalize(status) switch
         {
             WorkOrderListStatus.New => WorkOrderListStatusFilter.New,
             WorkOrderListStatus.UnderStudy => WorkOrderListStatusFilter.UnderStudy,
@@ -140,7 +136,5 @@ public static class WorkOrderListQueryRules
     public static DateOnly DueSoonUpperBound(DateOnly today) => today.AddDays(DueSoonWindowDays);
 
     public static string? NormalizeSearch(string? q) =>
-        string.IsNullOrWhiteSpace(q) ? null : q.Trim();
-
-    private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? "";
+        ListQueryText.NormalizeSearch(q);
 }

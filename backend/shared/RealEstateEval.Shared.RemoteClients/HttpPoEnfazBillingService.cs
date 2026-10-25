@@ -90,7 +90,7 @@ public sealed class HttpPoEnfazBillingService(
             http, httpContext, options.Value.FinancialBaseUrl, HttpMethod.Put,
             $"{Root}/{Uri.EscapeDataString(poNumber)}",
             request, Setting, cancellationToken);
-        return (dto, FirstError(errors));
+        return (dto, UpstreamJson.FirstError(errors));
     }
 
     public Task<PropertyEnfazRevenueDto?> GetPropertyRevenueAsync(
@@ -204,13 +204,6 @@ public sealed class HttpPoEnfazBillingService(
     {
         var (result, errors) = await UpstreamJson.PostForResultAsync<T>(
             http, httpContext, options.Value.FinancialBaseUrl, path, body, Setting, cancellationToken);
-        return (result, FirstError(errors));
-    }
-
-    private static string? FirstError(Dictionary<string, string>? errors)
-    {
-        if (errors is null || errors.Count == 0)
-            return null;
-        return errors.TryGetValue("_", out var message) ? message : errors.Values.First();
+        return (result, UpstreamJson.FirstError(errors));
     }
 }

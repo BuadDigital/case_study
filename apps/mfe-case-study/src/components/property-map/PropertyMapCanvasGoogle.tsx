@@ -4,11 +4,15 @@ import { useEffect, useRef } from "react";
 import { MarkerClusterer, type Renderer } from "@googlemaps/markerclusterer";
 import { loadGoogleMapsApi } from "@platform/ui-kit";
 import type { LayerKey } from "../../lib/app-data/map-locations-logic";
-import type {
-  MapBasemap,
-  MapViewCommand,
-  PropertyMapMarker,
-} from "./PropertyMapCanvas";
+import {
+  CLUSTER_COLORS,
+  SAUDI_CENTER,
+  SAUDI_ZOOM,
+  type MapBasemap,
+  type PropertyMapCanvasProps,
+  type PropertyMapMarker,
+} from "./property-map-shared";
+import { PropertyMapChrome } from "./PropertyMapChrome";
 
 /**
  * Google replacement for the map canvas (was Leaflet). Same contract: same props and same
@@ -16,16 +20,6 @@ import type {
  * instead of HTML because classic markers do not accept an element — only the halo pulse
  * and pin drop remain, keeping all color/shape/badge semantics.
  */
-
-export const SAUDI_CENTER: [number, number] = [24.2, 45.0];
-export const SAUDI_ZOOM = 6;
-
-const CLUSTER_COLORS: Record<LayerKey, { bg: string; ring: string; fg: string }> = {
-  active: { bg: "#12284C", ring: "rgba(164,144,111,.5)", fg: "#c8b591" },
-  archive: { bg: "#8a8d96", ring: "rgba(138,141,150,.35)", fg: "#fff" },
-  comparables: { bg: "#a4906f", ring: "rgba(164,144,111,.35)", fg: "#fff" },
-  failures: { bg: "#d9694f", ring: "rgba(217,105,79,.35)", fg: "#fff" },
-};
 
 /** Google map styles matching the three existing basemap buttons. */
 const MAP_TYPE: Record<MapBasemap, string> = {
@@ -136,16 +130,7 @@ export function PropertyMapCanvasGoogle({
   onBackgroundClick,
   onBasemapChange,
   onRecenter,
-}: {
-  markers: PropertyMapMarker[];
-  selectedId: string | null;
-  basemap: MapBasemap;
-  command: MapViewCommand | null;
-  onSelect: (id: string) => void;
-  onBackgroundClick: () => void;
-  onBasemapChange: (basemap: MapBasemap) => void;
-  onRecenter: () => void;
-}) {
+}: PropertyMapCanvasProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const gRef = useRef<typeof google | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -336,38 +321,12 @@ export function PropertyMapCanvasGoogle({
         className="absolute inset-0 h-full w-full bg-[#e9e6df] text-center text-[12px] text-[#6b7c8a]"
         dir="ltr"
       />
-      <div className="ejada-map-chrome pointer-events-none absolute right-3 top-[92px] z-[5] flex flex-col gap-1.5 opacity-40 transition-opacity hover:opacity-100 focus-within:opacity-100">
-        <button
-          type="button"
-          title="إعادة توسيط الخريطة"
-          aria-label="إعادة توسيط الخريطة"
-          onClick={onRecenter}
-          className="pointer-events-auto grid size-[34px] place-items-center rounded-[4px] border-2 border-black/20 bg-white text-[#12284C] shadow-sm"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-          </svg>
-        </button>
-        <div className="pointer-events-auto flex flex-col overflow-hidden rounded-md border-2 border-black/20 bg-white">
-          {BASEMAP_BUTTONS.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              title={b.label}
-              aria-label={b.label}
-              aria-pressed={basemap === b.id}
-              onClick={() => onBasemapChange(b.id)}
-              className="grid size-[30px] place-items-center border-t border-[#ece8df] first:border-t-0"
-              style={{
-                background: basemap === b.id ? "#12284C" : "#fff",
-                color: basemap === b.id ? "#c8b591" : "#3a3f4d",
-              }}
-              dangerouslySetInnerHTML={{ __html: b.icon }}
-            />
-          ))}
-        </div>
-      </div>
+      <PropertyMapChrome
+        className="ejada-map-chrome pointer-events-none absolute right-3 top-[92px] z-[5] flex flex-col gap-1.5 opacity-40 transition-opacity hover:opacity-100 focus-within:opacity-100"
+        basemap={basemap}
+        onBasemapChange={onBasemapChange}
+        onRecenter={onRecenter}
+      />
     </div>
   );
 }
@@ -379,21 +338,3 @@ function escapeText(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
-
-const BASEMAP_BUTTONS: { id: MapBasemap; label: string; icon: string }[] = [
-  {
-    id: "carto",
-    label: "فاتح",
-    icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"></path></svg>',
-  },
-  {
-    id: "osm",
-    label: "شوارع",
-    icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 22 9 2M15 2l5 20"></path><path d="M12 6v2M12 12v2M12 18v2"></path></svg>',
-  },
-  {
-    id: "satellite",
-    label: "قمر صناعي",
-    icon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>',
-  },
-];

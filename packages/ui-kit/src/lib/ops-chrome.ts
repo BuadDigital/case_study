@@ -176,3 +176,10 @@ export const opsTfSegRow =
 export const opsModalClose = "grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-[9px] border-none bg-surface-2 p-0 font-[inherit] text-[15px] leading-none text-text-2 transition-[background,color] hover:bg-row-hover hover:text-heading";
 
 export const opsModalFooter = "flex shrink-0 flex-wrap justify-end gap-2.5 border-t border-border bg-surface-2 px-4 py-3.5 max-lg:sticky max-lg:bottom-0 max-lg:pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:px-[22px]";
+
+/** Phone segmented control (`MobileSectionPicker`, radio rows): the track, each cell, and its on / off state. */
+export const opsPhoneSegTrack = "flex w-full gap-1 rounded-[12px] border border-border bg-surface-2 p-1";
+export const opsPhoneSegCell =
+  "min-h-11 min-w-0 flex-1 rounded-[9px] px-2 text-[13px] font-semibold transition-colors duration-200 disabled:cursor-not-allowed";
+export const opsPhoneSegOn = "bg-ink text-white shadow-sm";
+export const opsPhoneSegOff = "text-text-2 active:bg-row-hover";

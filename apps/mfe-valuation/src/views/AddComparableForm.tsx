@@ -15,12 +15,13 @@ import {
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   cn,
-  googleMapsSearchUrl,
+  type GoogleMapLocationDetail,
   GoogleMapPin,
+  googleMapsSearchUrl,
+  OpsIcon,
   reverseGeocodeLocation,
   Spinner,
   useToast,
-  type GoogleMapLocationDetail,
 } from "@platform/ui-kit";
 import {
   opsBtnPrimary,
@@ -45,7 +46,7 @@ import {
   hasMapPin,
 } from "./comparable-properties-state";
 import { parseCoordinatePair } from "@platform/app-shared/domain/geo";
-import { OpsIcon, PLUS_ICON } from "./ComparablesOpsIcon";
+import { PLUS_ICON } from "./ComparablesOpsIcon";
 
 export function AddComparableForm({
   onCreated,

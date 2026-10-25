@@ -1,6 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Operations.Application.Abstractions;
 
 namespace RealEstateEval.Operations.Infrastructure.Services;
@@ -10,54 +10,17 @@ namespace RealEstateEval.Operations.Infrastructure.Services;
 /// re-projecting all envelopes and possibly writing per screen poll. A short
 /// interval keeps the keys screen fresh after envelope confirmations.
 /// </summary>
-public sealed class PropertyKeysProjectionHostedService : BackgroundService
+public sealed class PropertyKeysProjectionHostedService(
+    IServiceScopeFactory scopeFactory,
+    ILogger<PropertyKeysProjectionHostedService> logger)
+    : PeriodicSweepHostedService(scopeFactory, logger)
 {
-    private static readonly TimeSpan InitialDelay = TimeSpan.FromSeconds(15);
-    private static readonly TimeSpan Interval = TimeSpan.FromSeconds(60);
+    protected override TimeSpan InitialDelay { get; } = TimeSpan.FromSeconds(15);
 
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<PropertyKeysProjectionHostedService> _logger;
+    protected override TimeSpan Interval { get; } = TimeSpan.FromSeconds(60);
 
-    public PropertyKeysProjectionHostedService(
-        IServiceScopeFactory scopeFactory,
-        ILogger<PropertyKeysProjectionHostedService> logger)
-    {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-    }
+    protected override string SweepName => "Property keys projection sweep";
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        try
-        {
-            await Task.Delay(InitialDelay, stoppingToken);
-        }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-        {
-            return;
-        }
-
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                using var scope = _scopeFactory.CreateScope();
-                var keys = scope.ServiceProvider.GetRequiredService<IPropertyKeysService>();
-                await keys.SyncProjectionAsync(stoppingToken);
-            }
-            catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
-            {
-                _logger.LogWarning(ex, "Property keys projection sweep failed");
-            }
-
-            try
-            {
-                await Task.Delay(Interval, stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-        }
-    }
+    protected override Task SweepAsync(IServiceProvider services, CancellationToken cancellationToken) =>
+        services.GetRequiredService<IPropertyKeysService>().SyncProjectionAsync(cancellationToken);
 }

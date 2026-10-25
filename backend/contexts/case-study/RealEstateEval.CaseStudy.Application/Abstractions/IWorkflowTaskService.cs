@@ -1,94 +1,10 @@
 using RealEstateEval.Application.Contracts;
-using RealEstateEval.CaseStudy.Application.Contracts;
-using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
+/// <summary>The workflow-task façade: query, distribution and lifecycle, plus the slot sync.</summary>
 public interface IWorkflowTaskService
+    : IWorkflowTaskQuery, IWorkflowTaskDistributionCommands, IWorkflowTaskLifecycleCommands
 {
-    Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
-        PermissionsDto? actor = null,
-        CancellationToken cancellationToken = default);
-    Task<PagedResultDto<WorkflowTaskDto>> ListPagedAsync(
-        int? page,
-        int? pageSize,
-        PermissionsDto? actor = null,
-        CancellationToken cancellationToken = default);
-    Task<IReadOnlyList<WorkflowTaskDto>> ListAsync(
-        WorkflowTaskListQuery query,
-        PermissionsDto? actor,
-        CancellationToken cancellationToken = default);
-    Task<PagedResultDto<WorkflowTaskDto>> ListPagedAsync(
-        WorkflowTaskListQuery query,
-        PermissionsDto? actor,
-        CancellationToken cancellationToken = default);
-    Task<bool> IsAssignedToAsync(
-        Guid id,
-        string assigneeId,
-        CancellationToken cancellationToken = default);
     Task<IReadOnlyList<WorkflowTaskDto>> SyncFromWorkOrdersAsync(CancellationToken cancellationToken = default);
-    Task<WorkflowTaskDto?> PatchDistributionAsync(
-        Guid id,
-        TaskDistributionDraftDto distribution,
-        CancellationToken cancellationToken = default);
-    Task<(ConfirmTaskDistributionResponseDto? Result, IReadOnlyDictionary<string, string>? Errors)>
-        ConfirmDistributionAsync(
-            Guid id,
-            ConfirmTaskDistributionRequest request,
-            string? actorUserId = null,
-            CancellationToken cancellationToken = default);
-    Task<WorkflowTaskDto?> AdvanceAfterEnfathAsync(
-        Guid id,
-        AdvanceTaskAfterEnfathRequest request,
-        CancellationToken cancellationToken = default);
-    Task<WorkflowTaskDto?> AdvanceAfterBourseAsync(
-        Guid id,
-        AdvanceTaskAfterBourseRequest request,
-        CancellationToken cancellationToken = default);
-    Task<(WorkflowTaskDto? Result, string? Error)> LinkPropertyAsync(
-        Guid id,
-        LinkTaskPropertyRequest request,
-        CancellationToken cancellationToken = default);
-    Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RevertPhaseAsync(
-        Guid id,
-        RevertWorkflowTaskPhaseRequest request,
-        CancellationToken cancellationToken = default);
-    /// <summary>Kind / status / phase of a task for the generic patch guard; null when it does not exist.</summary>
-    Task<WorkflowTaskPatchStateDto?> GetPatchStateAsync(
-        Guid id,
-        CancellationToken cancellationToken = default);
-    Task<WorkflowTaskDto?> PatchAsync(
-        Guid id,
-        PatchWorkflowTaskRequest request,
-        CancellationToken cancellationToken = default);
-    Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteForPoAsync(
-        string poNumber,
-        CancellationToken cancellationToken = default);
-    Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteForPropertyAsync(
-        string poNumber,
-        Guid propertyId,
-        int expectedPropertyCount = 1,
-        CancellationToken cancellationToken = default);
- /// <summary>Delete a case-study slot/transaction (linked property marked removed with reason if provided).</summary>
-    Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteCaseStudySlotAsync(
-        Guid id,
-        DeleteCaseStudySlotRequest request,
-        CancellationToken cancellationToken = default);
-
-    Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> ReopenCompletedAsync(
-        Guid id,
-        ReopenCompletedWorkflowTaskRequest request,
-        string actorRole,
-        string? actorName,
-        string? actorUserId = null,
-        CancellationToken cancellationToken = default);
-
- /// <summary>Updates case-study party assignment (existing subtasks) without fully reopening distribution.</summary>
-    Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(
-        Guid id,
-        RedistributePartiesRequest request,
-        string actorRole,
-        string? actorName,
-        string? actorUserId = null,
-        CancellationToken cancellationToken = default);
 }

@@ -3,11 +3,11 @@
 import type { ReactNode } from "react";
 import {
   MobileSectionPicker,
-  StatusPill,
+  OpsInfoNote,
+  OpsSectionTitle,
   cn,
-  opsFieldBox,
   opsWorkCard,
-  statusPillStyleFromColor,
+  type OpsInfoNoteVariant,
 } from "@platform/ui-kit";
 
 /** Field-inspection `InsCard` language — aligns evaluator input sections with the rest of the app. */
@@ -54,74 +54,28 @@ export function ValFieldsGrid({
 }
 
 export function EngSection({ children }: { children: ReactNode }) {
-  return (
-    <div className="mb-2.5 mt-[18px] border-b border-border pb-[7px] text-[13px] font-bold text-heading first:mt-0">
-      {children}
-    </div>
-  );
+  return <OpsSectionTitle className="first:mt-0">{children}</OpsSectionTitle>;
 }
 
 export function EngInfo({
   children,
-  variant = "gold",
+  variant,
 }: {
   children: ReactNode;
-  variant?: "gold" | "amber" | "red";
+  variant?: OpsInfoNoteVariant;
 }) {
-  const styles =
-    variant === "amber"
-      ? "border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg text-amber-text"
-      : variant === "red"
-        ? "border-[color-mix(in_srgb,var(--danger)_40%,var(--border))] bg-danger-bg text-danger-text"
-        : "border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] text-text-2";
   return (
-    <div
-      className={cn(
-        "mb-3.5 rounded-lg border px-3 py-2.5 text-[11.5px] leading-[1.7]",
-        styles,
-      )}
-    >
+    <OpsInfoNote variant={variant} className="mb-3.5">
       {children}
-    </div>
+    </OpsInfoNote>
   );
 }
 
-export function EngField({
-  label,
-  value,
-  ltr,
-  children,
-}: {
-  label: string;
-  value?: ReactNode;
-  ltr?: boolean;
-  children?: ReactNode;
-}) {
-  return (
-    <div className={opsFieldBox}>
-      <div className="mb-[3px] text-[10.5px] text-text-3">{label}</div>
-      <div
-        className={cn(
-          "text-[12.5px] font-semibold text-text",
-          ltr && "text-end [direction:ltr]",
-        )}
-      >
-        {children ?? value ?? "—"}
-      </div>
-    </div>
-  );
-}
-
-export function ValStatusPill({
-  label,
-  color,
-}: {
-  label: string;
-  /** CSS color matching HTML `pill(t,c)` — GOLD/NAVY/GREEN/AMBER/GRAY */
-  color: string;
-}) {
-  return <StatusPill label={label} style={statusPillStyleFromColor(color)} />;
-}
+// `ValStatusPill` color: CSS color matching HTML `pill(t,c)` — GOLD/NAVY/GREEN/AMBER/GRAY.
+export {
+  OpsReadField as EngField,
+  ColorStatusPill as ValStatusPill,
+} from "@platform/ui-kit";
 
 export function ValTabBar({
   tabs,

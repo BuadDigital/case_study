@@ -84,6 +84,7 @@ import { TransactionNumberBadge } from "../components/ui/TransactionNumberBadge"
 import { canEditProperty } from "../lib/app-data/po-roles";
 import { bourseDeedStatus, DEED_VITALITY_REQUIRED_ERROR } from "./my-task-work-state";
 import { useConfirmActionDialog } from "../components/ConfirmActionDialog";
+import { useFailureRaiseModal } from "../hooks/useFailureRaiseModal";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
@@ -197,6 +198,31 @@ export function BourseInquiryView() {
     setDeedVitality(null);
     setFailureModalOpen(false);
   }, [selected]);
+
+  /** «تسجيل تعذّر» from the row ⋮ menu — the row may not be the open one. */
+  const menuFailureKey = useRef<string | null>(null);
+  const { openFailureRaise, failureRaiseModal } = useFailureRaiseModal({
+    onSubmitted: () => {
+      if (selected && menuFailureKey.current === itemKey(selected)) {
+        void closeForm();
+      }
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: appDataKeys.failures() }),
+        refresh(),
+      ]);
+    },
+  });
+  const registerFailureFor = useCallback(
+    (item: PendingBoursePropertyDto) =>
+      (info: Parameters<typeof openFailureRaise>[0]) => {
+        menuFailureKey.current = itemKey(item);
+        openFailureRaise({
+          ...info,
+          deedNumber: info.deedNumber?.trim() || item.deedNumber,
+        });
+      },
+    [itemKey, openFailureRaise],
+  );
 
   const openItem = useCallback(
     async (item: PendingBoursePropertyDto) => {
@@ -325,15 +351,15 @@ export function BourseInquiryView() {
   const hasRail = isFetched && items.length > 0;
   const panelOpen = Boolean(selected);
 
-  const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
-    return items.map((item) => {
-      const deedLabel = formatPendingBourseDeedDisplay(item);
+  /** ⋮ menu of one queue row — the phone card and the table row share it. */
+  const moreItemsFor = useCallback(
+    (item: (typeof items)[number]): ReturnType<typeof buildBourseQueueRowMoreItems> => {
       const task = caseStudyTaskForProperty(
         item.poNumber,
         item.propertyId,
         workflowTasks,
       );
-      const moreItems = task
+      return task
         ? buildBourseQueueRowMoreItems({
             task,
             propertyId: item.propertyId,
@@ -346,6 +372,7 @@ export function BourseInquiryView() {
             allowDeleteTransaction: true,
             viewerRole: role,
             confirmAction: confirm,
+            onRegisterFailure: registerFailureFor(item),
           })
         : [
             {
@@ -360,6 +387,14 @@ export function BourseInquiryView() {
                 router.push(poPropertyPath(item.poNumber, item.propertyId)),
             },
           ];
+    },
+    [workflowTasks, openItem, router, refresh, showToast, role, confirm, registerFailureFor],
+  );
+
+  const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
+    return items.map((item) => {
+      const deedLabel = formatPendingBourseDeedDisplay(item);
+      const moreItems = moreItemsFor(item);
       return {
         id: `${item.poNumber}-${item.propertyId}`,
         title: deedLabel.startsWith("صك") ? deedLabel : `صك ${deedLabel}`,
@@ -379,17 +414,7 @@ export function BourseInquiryView() {
         loading: isItemOpening(item),
       };
     });
-  }, [
-    items,
-    workflowTasks,
-    router,
-    refresh,
-    showToast,
-    role,
-    isItemOpening,
-    confirm,
-    openItem,
-  ]);
+  }, [items, isItemOpening, openItem, moreItemsFor]);
 
   const queuePanel = (
         <OperationalPanel
@@ -435,40 +460,7 @@ export function BourseInquiryView() {
                         selected?.poNumber === item.poNumber &&
                         selected?.propertyId === item.propertyId;
                       const deedLabel = formatPendingBourseDeedDisplay(item);
-                      const task = caseStudyTaskForProperty(
-                        item.poNumber,
-                        item.propertyId,
-                        workflowTasks,
-                      );
-                      const moreItems = task
-                        ? buildBourseQueueRowMoreItems({
-                            task,
-                            propertyId: item.propertyId,
-                            openTask: () => void openItem(item),
-                            router,
-                            refreshQueue: () => {
-                              void refresh();
-                            },
-                            showToast,
-                            allowDeleteTransaction: true,
-                            viewerRole: role,
-                            confirmAction: confirm,
-                          })
-                        : [
-                            {
-                              id: "open",
-                              label: "فتح المعاملة",
-                              onClick: () => void openItem(item),
-                            },
-                            {
-                              id: "property-detail",
-                              label: "تفاصيل العقار",
-                              onClick: () =>
-                                router.push(
-                                  poPropertyPath(item.poNumber, item.propertyId),
-                                ),
-                            },
-                          ];
+                      const moreItems = moreItemsFor(item);
 
                       return (
                         <Tr
@@ -686,6 +678,7 @@ export function BourseInquiryView() {
         sidePanel={sidePanel}
       />
       {confirmDialog}
+      {failureRaiseModal}
     </>
   );
 }

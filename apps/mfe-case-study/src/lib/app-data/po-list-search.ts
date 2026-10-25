@@ -32,18 +32,21 @@ function deedsForPo(poNumber: string, deedIndex: PoDeedIndexEntry[]) {
   return deedIndex.filter((entry) => entry.poNumber === poNumber);
 }
 
+/** Rows with no query: one PO row each, with its deed metadata. */
+function plainPoRows(rows: PoRow[], deedIndex: PoDeedIndexEntry[]): PoListDisplayItem[] {
+  return rows.map((row) => ({
+    view: "po" as const,
+    item: { row, match: null, deeds: deedsForPo(row.id, deedIndex) },
+  }));
+}
+
 function buildPoListDisplay(
   rows: PoRow[],
   query: string,
   deedIndex: PoDeedIndexEntry[],
 ): PoListDisplayItem[] {
   const q = query.trim();
-  if (!q) {
-    return rows.map((row) => ({
-      view: "po" as const,
-      item: { row, match: null, deeds: deedsForPo(row.id, deedIndex) },
-    }));
-  }
+  if (!q) return plainPoRows(rows, deedIndex);
 
   const mode = classifyPoListSearch(q);
   if (mode === "deed") {
@@ -310,12 +313,7 @@ export function buildPoListPageDisplay(
   deedIndex: PoDeedIndexEntry[],
 ): PoListDisplayItem[] {
   const q = query.trim();
-  if (!q) {
-    return rows.map((row) => ({
-      view: "po" as const,
-      item: { row, match: null, deeds: deedsForPo(row.id, deedIndex) },
-    }));
-  }
+  if (!q) return plainPoRows(rows, deedIndex);
 
   const mode = classifyPoListSearch(q);
   if (mode === "deed") return buildPoListDisplay(rows, q, deedIndex);

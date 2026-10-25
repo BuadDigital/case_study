@@ -4,7 +4,12 @@ import type { ReactNode } from "react";
 import {
   MobileRecordCard,
   MobileRecordList,
+  PhoneField,
   cn,
+  opsPhoneSegCell,
+  opsPhoneSegOff,
+  opsPhoneSegOn,
+  opsPhoneSegTrack,
   opsWorkCard,
 } from "@platform/ui-kit";
 import type { ValuationComparableSelectionDto } from "@platform/api-client";
@@ -23,7 +28,7 @@ import {
 import type { MatrixDispatch } from "./lib/matrix-actions";
 import { afterWeightValue } from "./lib/adjustments-matrix-state";
 import {
-  CompInput,
+  FactorPctInput,
   JustCell,
   WeightCell,
   effArea,
@@ -32,6 +37,7 @@ import {
   noteClass,
   pct,
   pctClass,
+  sequentialCompNote,
 } from "./AdjustmentsMatrixCells";
 import {
   AddFactorControls,
@@ -73,24 +79,8 @@ export type AdjustmentsMatrixPhoneProps = {
 const sectionTitleClass = "m-0 mb-2 text-[13px] font-bold text-heading";
 const factorBlockClass =
   "border-b border-border py-3 first:pt-0 last:border-b-0 last:pb-0";
-const slotLabelClass = "mb-1 text-[11.5px] font-semibold text-text-2";
 
 /** Label above one comparable's full-width input. */
-function PhoneSlot({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
-  return (
-    <div className="min-w-0">
-      <div className={slotLabelClass}>{label}</div>
-      {children}
-    </div>
-  );
-}
-
 /** One computed (read-only) line of a comparable card. */
 function PhoneTotal({
   label,
@@ -191,7 +181,7 @@ export function AdjustmentsMatrixPhone({
         <div
           role="radiogroup"
           aria-label="أساس التسويات"
-          className="flex gap-1 rounded-[12px] border border-border bg-surface-2 p-1"
+          className={opsPhoneSegTrack}
         >
           {(
             [
@@ -208,12 +198,7 @@ export function AdjustmentsMatrixPhone({
                 aria-checked={on}
                 disabled={locked}
                 onClick={() => void dispatch({ type: "change-basis", basis })}
-                className={cn(
-                  "min-h-11 flex-1 rounded-[9px] px-2 text-[13px] font-semibold transition-colors disabled:cursor-not-allowed",
-                  on
-                    ? "bg-ink text-white shadow-sm"
-                    : "text-text-2 active:bg-row-hover",
-                )}
+                className={cn(opsPhoneSegCell, on ? opsPhoneSegOn : opsPhoneSegOff)}
               >
                 {label}
               </button>
@@ -329,10 +314,7 @@ export function AdjustmentsMatrixPhone({
             );
           } else if (subjEditable) {
             subject = (
-              <label className="mt-2 block">
-                <span className={cn(slotLabelClass, "block")}>
-                  وصف العقار محل التقييم
-                </span>
+              <PhoneField as="label" label="وصف العقار محل التقييم" className="mt-2">
                 <InlineDraftInput
                   disabled={locked}
                   placeholder="وصف العقار…"
@@ -346,7 +328,7 @@ export function AdjustmentsMatrixPhone({
                   }
                   className="min-h-11 w-full rounded-[9px] border border-dashed border-border-md bg-surface px-3 text-[16px] font-bold text-gold-d"
                 />
-              </label>
+              </PhoneField>
             );
           }
           return (
@@ -474,33 +456,18 @@ export function AdjustmentsMatrixPhone({
                     factorKey,
                   );
                   return (
-                    <PhoneSlot key={factorKey} label={`${meta.label} (٪)`}>
-                      <CompInput
+                    <PhoneField key={factorKey} label={`${meta.label} (٪)`}>
+                      <FactorPctInput
                         touch
-                        cellKey={`${item.id}:${factorKey}`}
-                        value={String(linePct(item, factorKey))}
-                        disabled={locked || !included2}
-                        muted={!included2}
-                        note={
-                          desc?.compNote === "deal-age"
-                            ? `عمر الصفقة ${item.market?.dealAgeMonths ?? "—"} شهراً`
-                            : desc?.compNote === "kind-suggested"
-                              ? item.comparable.transactionKindLabelAr
-                              : undefined
-                        }
-                        onCommit={
-                          included2
-                            ? (_key, raw) =>
-                                dispatch({
-                                  type: "save-cell",
-                                  item,
-                                  factorKey,
-                                  raw,
-                                })
-                            : undefined
-                        }
+                        item={item}
+                        factorKey={factorKey}
+                        value={linePct(item, factorKey)}
+                        included={included2}
+                        locked={locked}
+                        dispatch={dispatch}
+                        note={sequentialCompNote(desc, item)}
                       />
-                    </PhoneSlot>
+                    </PhoneField>
                   );
                 })}
 
@@ -522,24 +489,15 @@ export function AdjustmentsMatrixPhone({
                   const line = lineOf(item, factorKey);
                   const cellKey = `${item.id}:${factorKey}`;
                   return (
-                    <PhoneSlot key={factorKey} label={`${meta.label} (٪)`}>
-                      <CompInput
+                    <PhoneField key={factorKey} label={`${meta.label} (٪)`}>
+                      <FactorPctInput
                         touch
-                        cellKey={cellKey}
-                        value={String(linePct(item, factorKey))}
-                        disabled={locked || !included}
-                        muted={!included}
-                        onCommit={
-                          included
-                            ? (_key, raw) =>
-                                dispatch({
-                                  type: "save-cell",
-                                  item,
-                                  factorKey,
-                                  raw,
-                                })
-                            : undefined
-                        }
+                        item={item}
+                        factorKey={factorKey}
+                        value={linePct(item, factorKey)}
+                        included={included}
+                        locked={locked}
+                        dispatch={dispatch}
                         note={
                           desc?.subjectCell === "location"
                             ? `${item.comparable.district || "—"} · ${city || ""}`
@@ -565,7 +523,7 @@ export function AdjustmentsMatrixPhone({
                           ) : null
                         }
                       />
-                    </PhoneSlot>
+                    </PhoneField>
                   );
                 })}
 
@@ -583,7 +541,7 @@ export function AdjustmentsMatrixPhone({
                   />
                 </div>
 
-                <PhoneSlot label="الوزن النسبي (٪) · مقترح آلياً وقابل للتعديل">
+                <PhoneField label="الوزن النسبي (٪) · مقترح آلياً وقابل للتعديل">
                   <WeightCell
                     touch
                     value={weightDisplay}
@@ -599,7 +557,7 @@ export function AdjustmentsMatrixPhone({
                       })
                     }
                   />
-                </PhoneSlot>
+                </PhoneField>
 
                 <PhoneTotal
                   strong

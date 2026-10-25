@@ -34,6 +34,29 @@ import {
 } from "./field-inspection-work-state";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
 
+/** «نوع الواجهة» options — a value saved under an older list stays selectable. */
+function FacadeTypeOptions({
+  value,
+  options,
+}: {
+  value: string;
+  options: readonly string[];
+}) {
+  return (
+    <>
+      <option value="">— اختر —</option>
+      {value && !options.includes(value) ? (
+        <option value={value}>{value}</option>
+      ) : null}
+      {options.map((opt) => (
+        <option key={opt} value={opt}>
+          {opt}
+        </option>
+      ))}
+    </>
+  );
+}
+
 export function InspectorBoundariesCard({
   activeStep,
   draft,
@@ -160,15 +183,7 @@ export function InspectorBoundariesCard({
                       persist(boundaryMatchPatch(draft, key, { facade: e.target.value }))
                     }
                   >
-                    <option value="">— اختر —</option>
-                    {facade && !facadeTypeOptions.includes(facade) ? (
-                      <option value={facade}>{facade}</option>
-                    ) : null}
-                    {facadeTypeOptions.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
+                    <FacadeTypeOptions value={facade} options={facadeTypeOptions} />
                   </Select>
                 </>
               ) : null}
@@ -236,15 +251,7 @@ export function InspectorBoundariesCard({
                   persist(boundaryMatchPatch(draft, key, { facade: e.target.value }))
                 }
               >
-                <option value="">— اختر —</option>
-                {facade && !facadeTypeOptions.includes(facade) ? (
-                  <option value={facade}>{facade}</option>
-                ) : null}
-                {facadeTypeOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
+                <FacadeTypeOptions value={facade} options={facadeTypeOptions} />
               </Select>
             ) : null}
             {locked ? (

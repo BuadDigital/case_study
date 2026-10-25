@@ -22,8 +22,8 @@ import {
 import type { MatrixDispatch } from "./lib/matrix-actions";
 import { afterWeightValue } from "./lib/adjustments-matrix-state";
 import {
-  CompInput,
   CompReadonly,
+  FactorPctInput,
   JustCell,
   SubjCell,
   WeightCell,
@@ -33,6 +33,7 @@ import {
   panelCardClass,
   pct,
   pctClass,
+  sequentialCompNote,
   tdSubjClass,
   thBandClass,
   thCompBaseClass,
@@ -321,38 +322,18 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                         : undefined
                     }
                   />
-                  {adopted.map((item) => {
-                    const line = lineOf(item, factorKey);
-                    const included2 = lineIsIncluded(line, factorKey);
-                    const cellKey = `${item.id}:${factorKey}`;
-                    return (
-                      <CompInput
-                        key={item.id}
-                        cellKey={cellKey}
-                        value={String(linePct(item, factorKey))}
-                        disabled={locked || !included2}
-                        muted={!included2}
-                        note={
-                          desc?.compNote === "deal-age"
-                            ? `عمر الصفقة ${item.market?.dealAgeMonths ?? "—"} شهراً`
-                            : desc?.compNote === "kind-suggested"
-                              ? item.comparable.transactionKindLabelAr
-                              : undefined
-                        }
-                        onCommit={
-                          included2
-                            ? (_key, raw) =>
-                                dispatch({
-                                  type: "save-cell",
-                                  item,
-                                  factorKey,
-                                  raw,
-                                })
-                            : undefined
-                        }
-                      />
-                    );
-                  })}
+                  {adopted.map((item) => (
+                    <FactorPctInput
+                      key={item.id}
+                      item={item}
+                      factorKey={factorKey}
+                      value={linePct(item, factorKey)}
+                      included={lineIsIncluded(lineOf(item, factorKey), factorKey)}
+                      locked={locked}
+                      dispatch={dispatch}
+                      note={sequentialCompNote(desc, item)}
+                    />
+                  ))}
                   <JustCell
                     factorKey={factorKey}
                     value={justValue(factorKey)}
@@ -489,26 +470,16 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                   )}
                   {adopted.map((item) => {
                     const line = lineOf(item, factorKey);
-                    const cellKey = `${item.id}:${factorKey}`;
-                    const descKey = `${cellKey}:desc`;
+                    const descKey = `${item.id}:${factorKey}:desc`;
                     return (
-                      <CompInput
+                      <FactorPctInput
                         key={item.id}
-                        cellKey={cellKey}
-                        value={String(linePct(item, factorKey))}
-                        disabled={locked || !included}
-                        muted={!included}
-                        onCommit={
-                          included
-                            ? (_key, raw) =>
-                                dispatch({
-                                  type: "save-cell",
-                                  item,
-                                  factorKey,
-                                  raw,
-                                })
-                            : undefined
-                        }
+                        item={item}
+                        factorKey={factorKey}
+                        value={linePct(item, factorKey)}
+                        included={included}
+                        locked={locked}
+                        dispatch={dispatch}
                         note={
                           desc?.subjectCell === "location"
                             ? `${item.comparable.district || "—"} · ${city || ""}`

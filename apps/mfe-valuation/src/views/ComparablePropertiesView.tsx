@@ -20,6 +20,7 @@ import {
   cn,
   EmptyState,
   InlineLoadingSkeleton,
+  OpsIcon,
   PageShell,
   useSwapAnimation,
   useToast,
@@ -38,7 +39,7 @@ import {
   opsTfLbl,
   opsToolbar,
 } from "../lib/comparables-ops-tw";
-import { BANK_ICON, OpsIcon } from "./ComparablesOpsIcon";
+import { BANK_ICON } from "./ComparablesOpsIcon";
 import { AddComparableForm } from "./AddComparableForm";
 import { TagEditorRow } from "./TagEditorRow";
 import {

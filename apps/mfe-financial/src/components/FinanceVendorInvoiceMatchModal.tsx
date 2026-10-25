@@ -17,11 +17,8 @@ import {
 import {
   ModalBody,
   ModalCard,
-  ModalClose,
   ModalFooter,
-  ModalHeader,
   ModalOverlay,
-  ModalTitle,
   cn,
   opsBtnGhost,
   opsBtnPrimary,
@@ -30,17 +27,9 @@ import {
   opsTfNote,
   useToast,
 } from "@platform/ui-kit";
+import { StatementModalError, StatementModalHeader } from "./FinanceStatementModalParts";
 import { statementDisplayTotal } from "../lib/finance-cost-parties";
-
-function formatInvoiceDate(raw: string | null | undefined): string {
-  if (!raw?.trim()) return "—";
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return raw.trim();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import { formatInvoiceDate } from "./FinancePartyBillingParts";
 
 function attachmentLabel(s: PartyBillingStatementDto): string {
   const no = (s.vendorInvoiceNumber || "").trim();
@@ -169,34 +158,16 @@ function FinanceVendorInvoiceMatchForm({
         className="max-w-[640px] rounded-2xl border border-border shadow-[0_24px_60px_-18px_rgba(16,43,78,0.5)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <ModalHeader className="justify-between gap-3 px-[22px] py-4">
-          <div className="min-w-0 text-start">
-            <ModalTitle
-              id="vendor-inv-match-title"
-              className="text-start text-base font-extrabold text-heading"
-            >
-              مطابقة فاتورة المورّد – {statement.referenceNumber}
-            </ModalTitle>
-          </div>
-          <ModalClose
-            disabled={busy}
-            onClick={onClose}
-            aria-label="إغلاق"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] border-none bg-surface-2 text-[15px] text-text-2 hover:bg-[#faf6ee] hover:text-heading"
-          >
-            ✕
-          </ModalClose>
-        </ModalHeader>
+        <StatementModalHeader
+          titleId="vendor-inv-match-title"
+          closeDisabled={busy}
+          onClose={onClose}
+        >
+          مطابقة فاتورة المورّد – {statement.referenceNumber}
+        </StatementModalHeader>
 
         <ModalBody className="max-h-[76vh] px-[22px] py-5">
-          {err ? (
-            <div
-              className="mb-4 rounded-[10px] border border-[color-mix(in_srgb,#d9694f_30%,transparent)] bg-[color-mix(in_srgb,#d9694f_12%,transparent)] px-[13px] py-2.5 text-[12.5px] font-semibold leading-[1.7] text-[#a32d2d]"
-              role="alert"
-            >
-              {err}
-            </div>
-          ) : null}
+          <StatementModalError message={err} />
 
           <p className={cn(opsTfNote, "mb-4 text-center")}>
             الفاتورة للقراءة فقط وقيمتها مقفلة على المسير. الإعادة للتصحيح

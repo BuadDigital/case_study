@@ -7,8 +7,9 @@
  */
 
 import { Can } from "@platform/app-shared/components/Can";
-import { Button, Note, PageLoadingHint, PageShell } from "@platform/ui-kit";
+import { Button, PageShell } from "@platform/ui-kit";
 import { ConfirmActionModal } from "../components/ConfirmActionModal";
+import { SettingsAccessNotes, SettingsLoadingShell } from "../components/SettingsPageParts";
 import { BrandA4Preview } from "./BrandIdentityA4Preview";
 import {
   BrandLogoCard,
@@ -24,21 +25,12 @@ export function BrandIdentityView() {
   const { canEdit, loading, busy, error, previewOpen, zoom, modal, closeModal } = workflow;
 
   if (loading) {
-    return (
-      <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-        <PageLoadingHint className="py-20" />
-      </PageShell>
-    );
+    return <SettingsLoadingShell />;
   }
 
   return (
     <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-      {!canEdit ? (
-        <Note tone="warn" className="mb-3 max-w-[560px]">
-          الرابط صحيح، لكن دورك الحالي لا يملك صلاحية هذا البند. اطلب الصلاحية من مسؤول النظام.
-        </Note>
-      ) : null}
-      {error ? <Note tone="warn">{error}</Note> : null}
+      <SettingsAccessNotes canEdit={canEdit} error={error} />
 
       <div className="mx-0.5 mb-4 flex flex-wrap items-center justify-between gap-2">
         <p className="m-0 text-[11.5px] leading-relaxed text-text-3">

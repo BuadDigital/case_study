@@ -19,16 +19,9 @@ public sealed partial class ValuationComparableSelectionService
         var vr = await repo.GetRequestAsync(valuationRequestId, cancellationToken);
         if (vr is null)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
-        if (vr.Status == ValuationRequestStatus.Done)
-            return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
-        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
-        if (frozenMessage is not null)
-        {
-            return (
-                null,
-                new Dictionary<string, string> { ["_"] = frozenMessage });
-        }
+        var blocked = await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل", cancellationToken);
+        if (blocked is not null)
+            return (null, new Dictionary<string, string> { ["_"] = blocked });
 
         var errors = ValuationComparableSelectionRequestRules.ValidateMarketApproach(request);
         if (errors is not null) return (null, errors);

@@ -24,10 +24,8 @@ public sealed partial class ValuationReportDraftService
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
-        var vr = await db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
-        if (vr is null) return (null, Error("طلب التقييم غير موجود"));
-        if (!await IsAssignedAppraiserAsync(vr.PropertyId, actor, cancellationToken))
-            return (null, Forbidden(ReviewForbiddenAr));
+        var (vr, refused) = await FindForAssignedAppraiserAsync(valuationRequestId, actor, cancellationToken);
+        if (vr is null) return (null, refused);
 
         var draft = await CurrentDraftAsync(valuationRequestId, tracked: true, cancellationToken);
         if (draft is { IsApproved: true })
@@ -92,10 +90,8 @@ public sealed partial class ValuationReportDraftService
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
-        var vr = await db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
-        if (vr is null) return (null, Error("طلب التقييم غير موجود"));
-        if (!await IsAssignedAppraiserAsync(vr.PropertyId, actor, cancellationToken))
-            return (null, Forbidden(ReviewForbiddenAr));
+        var (vr, refused) = await FindForAssignedAppraiserAsync(valuationRequestId, actor, cancellationToken);
+        if (vr is null) return (null, refused);
 
         var draft = await CurrentDraftAsync(valuationRequestId, tracked: true, cancellationToken);
         if (draft is null || !draft.IsApproved)
@@ -131,10 +127,8 @@ public sealed partial class ValuationReportDraftService
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
-        var vr = await db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
-        if (vr is null) return (null, Error("طلب التقييم غير موجود"));
-        if (!await IsAssignedAppraiserAsync(vr.PropertyId, actor, cancellationToken))
-            return (null, Forbidden(ReviewForbiddenAr));
+        var (vr, refused) = await FindForAssignedAppraiserAsync(valuationRequestId, actor, cancellationToken);
+        if (vr is null) return (null, refused);
 
         var draft = await CurrentDraftAsync(valuationRequestId, tracked: false, cancellationToken);
         // The number is fixed only on the way to approval: a draft not yet sent has no claim on it.
@@ -199,6 +193,19 @@ public sealed partial class ValuationReportDraftService
         {
             return PackageStatusUnknown;
         }
+    }
+
+    /// <summary>The tracked request, or the refusal when it is missing or the actor is not its assigned appraiser.</summary>
+    private async Task<(ValuationRequest? Request, Dictionary<string, string>? Errors)> FindForAssignedAppraiserAsync(
+        Guid valuationRequestId,
+        ReportDraftActor actor,
+        CancellationToken cancellationToken)
+    {
+        var vr = await db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
+        if (vr is null) return (null, Error("طلب التقييم غير موجود"));
+        if (!await IsAssignedAppraiserAsync(vr.PropertyId, actor, cancellationToken))
+            return (null, Forbidden(ReviewForbiddenAr));
+        return (vr, null);
     }
 
     /// <summary>Only the appraiser assigned to the property — no supervisor / CDO override.</summary>

@@ -148,6 +148,24 @@ async function readJson<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
+/** A failed write as `server`, carrying the body's `{ error }` text when it has one. */
+async function serverErrorFromBody(res: Response): Promise<ApiErr> {
+  const payload = (await readJson<{ error?: string }>(res).catch(
+    () => ({ error: undefined }),
+  ));
+  return { ok: false, kind: "server", message: payload.error };
+}
+
+/** An operations-task write's answer: 401 → auth, 404 → not_found, other failures → server. */
+async function readOperationsTaskWrite(
+  res: Response,
+): Promise<ApiOk<OperationsTaskDto> | ApiErr> {
+  if (res.status === 401) return { ok: false, kind: "auth" };
+  if (res.status === 404) return { ok: false, kind: "not_found" };
+  if (!res.ok) return serverErrorFromBody(res);
+  return { ok: true, data: await readJson<OperationsTaskDto>(res) };
+}
+
 function buildQuery(params: Record<string, string | undefined>): string {
   const q = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
@@ -277,12 +295,7 @@ export async function createOperationsTask(
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) {
-      const payload = (await readJson<{ error?: string }>(res).catch(
-        () => ({ error: undefined }),
-      ));
-      return { ok: false, kind: "server", message: payload.error };
-    }
+    if (!res.ok) return await serverErrorFromBody(res);
     return { ok: true, data: await readJson<OperationsTaskDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -301,15 +314,7 @@ export async function patchOperationsTask(
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) {
-      const payload = (await readJson<{ error?: string }>(res).catch(
-        () => ({ error: undefined }),
-      ));
-      return { ok: false, kind: "server", message: payload.error };
-    }
-    return { ok: true, data: await readJson<OperationsTaskDto>(res) };
+    return await readOperationsTaskWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -330,15 +335,7 @@ export async function addOperationsTaskComment(
       headers: authHeaders(config.token, { idempotencyKey }),
       body: JSON.stringify({ text, kind, files }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) {
-      const payload = (await readJson<{ error?: string }>(res).catch(
-        () => ({ error: undefined }),
-      ));
-      return { ok: false, kind: "server", message: payload.error };
-    }
-    return { ok: true, data: await readJson<OperationsTaskDto>(res) };
+    return await readOperationsTaskWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -359,15 +356,7 @@ export async function reassignOperationsTask(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) {
-      const payload = (await readJson<{ error?: string }>(res).catch(
-        () => ({ error: undefined }),
-      ));
-      return { ok: false, kind: "server", message: payload.error };
-    }
-    return { ok: true, data: await readJson<OperationsTaskDto>(res) };
+    return await readOperationsTaskWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -388,15 +377,7 @@ export async function remindOperationsTask(
         body: JSON.stringify(body ?? {}),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) {
-      const payload = (await readJson<{ error?: string }>(res).catch(
-        () => ({ error: undefined }),
-      ));
-      return { ok: false, kind: "server", message: payload.error };
-    }
-    return { ok: true, data: await readJson<OperationsTaskDto>(res) };
+    return await readOperationsTaskWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }

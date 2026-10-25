@@ -21,14 +21,13 @@ import {
   opsMobileCard,
   opsSkeletonCard,
   type StatusPillStyle,
-  useToast,
 } from "@platform/ui-kit";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   type InspectorFeeAction,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
-import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
+import { useFeeTransition } from "./useFeeLedgerWrites";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
 import { fmtSar } from "@platform/app-shared/format/number";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/app-data/po-intake-data";
@@ -161,10 +160,9 @@ export function EngOfficeFeesBillingTable({
   onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
+  const { showToast, busyId, runFeeTransition } = useFeeTransition();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [disputeRow, setDisputeRow] = useState<InspectorFeeRowDto | null>(null);
 
   const invalidate = useCallback(async () => {
@@ -197,26 +195,11 @@ export function EngOfficeFeesBillingTable({
     });
   }, [scoped, search, statusFilter]);
 
-  const act = async (
+  const act = (
     row: InspectorFeeRowDto,
     action: InspectorFeeAction,
     extra?: { reason?: string },
-  ) => {
-    setBusyId(row.workflowTaskId);
-    try {
-      const result = await runInspectorFeeTransition(row.workflowTaskId, {
-        action,
-        reason: extra?.reason,
-      });
-      if (result.ok) {
-        await invalidate();
-        return;
-      }
-      showToast(result.error || "تعذّر تنفيذ الإجراء — حاول مرة أخرى", "error");
-    } finally {
-      setBusyId(null);
-    }
-  };
+  ) => runFeeTransition(row, action, extra, invalidate);
 
   const statusOptions =
     tab === "action"

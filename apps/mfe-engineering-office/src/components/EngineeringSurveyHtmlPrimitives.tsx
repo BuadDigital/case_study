@@ -1,83 +1,33 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useRef, useState } from "react";
 import {
   MobileSectionPicker,
-  StatusPill,
+  OpsInfoNote,
   cn,
   opsBtnPrimary,
-  opsFieldBox,
-  statusPillStyleFromColor,
+  useFileDropZone,
+  type OpsInfoNoteVariant,
 } from "@platform/ui-kit";
 
-export function EngSection({ children }: { children: ReactNode }) {
-  return (
-    <div className="mb-2.5 mt-[18px] border-b border-border pb-[7px] text-[13px] font-bold text-heading">
-      {children}
-    </div>
-  );
-}
+export {
+  OpsSectionTitle as EngSection,
+  OpsReadField as EngField,
+  ColorStatusPill as EngStatusPill,
+} from "@platform/ui-kit";
 
 export function EngInfo({
   children,
-  variant = "gold",
+  variant,
 }: {
   children: ReactNode;
-  variant?: "gold" | "amber" | "red";
+  variant?: OpsInfoNoteVariant;
 }) {
-  const styles =
-    variant === "amber"
-      ? "border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg text-amber-text"
-      : variant === "red"
-        ? "border-[color-mix(in_srgb,var(--danger)_40%,var(--border))] bg-danger-bg text-danger-text"
-        : "border-[color-mix(in_srgb,var(--gold)_28%,transparent)] bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] text-text-2";
   return (
-    <div
-      className={cn(
-        "mb-3 rounded-lg border px-3 py-2.5 text-[11.5px] leading-[1.7]",
-        styles,
-      )}
-    >
+    <OpsInfoNote variant={variant} className="mb-3">
       {children}
-    </div>
+    </OpsInfoNote>
   );
-}
-
-export function EngField({
-  label,
-  value,
-  ltr,
-  children,
-}: {
-  label: string;
-  value?: ReactNode;
-  ltr?: boolean;
-  children?: ReactNode;
-}) {
-  return (
-    <div className={opsFieldBox}>
-      <div className="mb-[3px] text-[10.5px] text-text-3">{label}</div>
-      <div
-        className={cn(
-          "text-[12.5px] font-semibold text-text",
-          ltr && "text-end [direction:ltr]",
-        )}
-      >
-        {children ?? value ?? "—"}
-      </div>
-    </div>
-  );
-}
-
-export function EngStatusPill({
-  label,
-  color,
-}: {
-  label: string;
-  color: string;
-}) {
-  return <StatusPill label={label} style={statusPillStyleFromColor(color)} />;
 }
 
 export const ENG_STATUS_COLORS = {
@@ -184,9 +134,6 @@ export function EngUploadBox({
   onClear: () => void;
   error?: string;
 }) {
-  const [dragOver, setDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
   function isPdfFile(file: File): boolean {
     const type = (file.type || "").toLowerCase();
     if (type === "application/pdf") return true;
@@ -198,6 +145,11 @@ export function EngUploadBox({
     if (!file || !isPdfFile(file)) return;
     onPick(file);
   }
+
+  const { dragOver, inputRef, zoneProps } = useFileDropZone({
+    onFiles: pickFromList,
+    isolate: "drag",
+  });
 
   return (
     <div id={id}>
@@ -215,36 +167,7 @@ export function EngUploadBox({
             error &&
               "border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
           )}
-          onClick={() => inputRef.current?.click()}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              inputRef.current?.click();
-            }
-          }}
-          onDragEnter={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOver(true);
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOver(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            // Avoid flicker when leaving into a child element.
-            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            setDragOver(false);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOver(false);
-            pickFromList(e.dataTransfer.files);
-          }}
+          {...zoneProps}
         >
           <div className="mb-[3px] text-xs font-bold text-text-2">{title}</div>
           <div className="mb-2.5 text-[11px] text-text-3">

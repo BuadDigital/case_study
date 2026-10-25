@@ -183,12 +183,8 @@ public sealed class ValuationApproachSettingsService(
         if (propertyGuid == Guid.Empty)
             return (false, AssignmentType.Execution, vr.PropertyType);
         var context = await caseStudy.GetValuationPropertyContextAsync(propertyGuid, cancellationToken);
-        var hasStructures = string.Equals(
-            context?.HasStructuresToValue.Trim(),
-            "yes",
-            StringComparison.OrdinalIgnoreCase);
         return (
-            hasStructures,
+            context?.HasStructures() ?? false,
             context?.AssignmentTypeValue() ?? AssignmentType.Execution,
             context?.EffectivePropertyType() ?? vr.PropertyType);
     }

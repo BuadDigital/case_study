@@ -84,10 +84,10 @@ public sealed class RateLimitingOptions
             Auth = ReadWindow(
                 section.GetSection("Auth"),
                 defaultPermitLimit: isDevelopment ? 1_000 : 10),
-            AuthPathPrefixes = ReadPathPrefixes(
+            AuthPathPrefixes = PathPrefixConfiguration.Read(
                 section.GetSection("AuthPathPrefixes"),
                 DefaultAuthPathPrefixes),
-            ExemptPathPrefixes = ReadPathPrefixes(
+            ExemptPathPrefixes = PathPrefixConfiguration.Read(
                 section.GetSection("ExemptPathPrefixes"),
                 DefaultExemptPathPrefixes),
             ClientAddressHeaderName = ReadHeaderName(
@@ -152,29 +152,6 @@ public sealed class RateLimitingOptions
     {
         var configured = section[key];
         return string.IsNullOrWhiteSpace(configured) ? fallback : configured.Trim();
-    }
-
-    private static IReadOnlyList<string> ReadPathPrefixes(
-        IConfiguration section,
-        string[] fallback)
-    {
-        var configured = section.Get<string[]>();
-        var source = configured is { Length: > 0 } ? configured : fallback;
-
-        var prefixes = new List<string>(source.Length);
-        foreach (var entry in source)
-        {
-            if (string.IsNullOrWhiteSpace(entry))
-                continue;
-
-            var normalized = entry.Trim().TrimEnd('/');
-            if (!normalized.StartsWith('/'))
-                normalized = "/" + normalized;
-
-            prefixes.Add(normalized);
-        }
-
-        return prefixes;
     }
 }
 

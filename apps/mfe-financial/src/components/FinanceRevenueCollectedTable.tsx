@@ -19,12 +19,10 @@ import { formatDateEn } from "../lib/finance-revenue-stages";
 import { textOrDash } from "../lib/finance-revenue-state";
 import { finMuted } from "../lib/finance-tw";
 import {
-  CityCell,
-  CompletedAtCell,
   DeedCell,
   PoCell,
+  RevenueLeadCells,
   RevenueTableHead,
-  TotalFeesCell,
   TotalFeesValue,
   revenueCityDateFields,
 } from "./FinanceRevenueTableParts";
@@ -74,15 +72,7 @@ export function CollectedTable({ rows }: { rows: EnfazTrackingRowDto[] }) {
         <TBody>
           {rows.map((row) => (
             <Tr key={`${row.poNumber}-${row.propertyId}`}>
-              <Td className="text-center">
-                <PoCell po={row.poNumber} />
-              </Td>
-              <Td className="text-center">
-                <DeedCell deed={row.deedNumber} />
-              </Td>
-              <CityCell row={row} />
-              <CompletedAtCell iso={row.completedAtUtc} />
-              <TotalFeesCell row={row} />
+              <RevenueLeadCells row={row} />
               <Td className="text-center">
                 <div className="flex flex-col items-center gap-0.5">
                   <span className="text-xs font-bold text-text" dir="ltr">

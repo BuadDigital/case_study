@@ -5,10 +5,7 @@
  * Lifted out of `FieldInspectionWorkBody` as one self-contained section —
  * same markup, state stays with the parent.
  */
-import {
-  clearInspectorPhotoDataUrl,
-  uploadInspectorPhotoFromFile,
-} from "../../lib/app-data/inspector-photo-upload";
+import { clearInspectorPhotoDataUrl } from "../../lib/app-data/inspector-photo-upload";
 import {
   isShopHiddenInspectorComponentKey,
   parseInspectorCount,
@@ -24,12 +21,7 @@ import {
   MobileFieldLabel,
   MobilePills,
 } from "./InspectMobileControls";
-import {
-  InspectorPhotoFilePicker,
-} from "./InspectorPhotoFilePicker";
-import {
-  InspectorStampedPhotoThumb,
-} from "./InspectorStampedPhotoThumb";
+import { InspectorPhotoThumbOrPicker } from "./InspectorPhotoThumbOrPicker";
 import {
   RegField,
 } from "@platform/app-shared/registration/FormFields";
@@ -207,49 +199,23 @@ export function InspectorComponentsSection({
                     "rounded-md p-0.5",
                 )}
               >
-                {attachment?.fileName ? (
-                  <InspectorStampedPhotoThumb
-                    compact
-                    stamp={photoStamp}
-                    taskId={draft.taskId}
-                    photoRef={photoRef}
-                    attachment={attachment}
-                    onClear={
-                      locked
-                        ? undefined
-                        : () => {
-                            clearInspectorPhotoDataUrl(
-                              draft.taskId,
-                              photoRef,
-                            );
-                            persist(componentPhotoPatch(photoMeta.photoKey, null));
-                          }
-                    }
-                  />
-                ) : (
-                  <InspectorPhotoFilePicker
-                    label={photoMeta.photoLabel}
-                    disabled={locked}
-                    className="w-auto"
-                    onFilesSelected={async (files) => {
-                      const file = files[0];
-                      if (!file) return false;
-                      const result = await uploadInspectorPhotoFromFile(
-                        draft.taskId,
-                        photoRef,
-                        file,
-                        {
-                          draft: liveDraft,
-                          deedNumber: property?.deedNumber,
-                        },
-                      );
-                      if (!result.ok) {
-                        throw new Error(result.error);
-                      }
-                      persist(componentPhotoPatch(photoMeta.photoKey, result.attachment));
-                    }}
-                  />
-                )}
+                <InspectorPhotoThumbOrPicker
+                  compact
+                  stamp={photoStamp}
+                  taskId={draft.taskId}
+                  photoRef={photoRef}
+                  attachment={attachment}
+                  disabled={locked}
+                  pickerLabel={photoMeta.photoLabel}
+                  pickerClassName="w-auto"
+                  uploadContext={{
+                    draft: liveDraft,
+                    deedNumber: property?.deedNumber,
+                  }}
+                  onAttachmentChange={(photo) =>
+                    persist(componentPhotoPatch(photoMeta.photoKey, photo))
+                  }
+                />
               </div>
             ) : null}
           </div>

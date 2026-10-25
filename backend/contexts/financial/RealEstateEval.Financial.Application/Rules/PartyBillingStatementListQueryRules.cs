@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Financial.Application.Contracts;
 using RealEstateEval.Financial.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Financial.Application.Rules;
 
@@ -39,7 +40,7 @@ public static class PartyBillingStatementListQueryRules
 
     /// <summary>Unknown keys fall back to the default; the endpoint never answers 400 on sort.</summary>
     public static PartyBillingStatementListSortKey ResolveSort(string? sort) =>
-        Normalize(sort) switch
+        ListQueryText.Normalize(sort) switch
         {
             SortIssued => PartyBillingStatementListSortKey.Issued,
             SortClosed => PartyBillingStatementListSortKey.Closed,
@@ -49,12 +50,7 @@ public static class PartyBillingStatementListQueryRules
         };
 
     public static bool ResolveDescending(string? dir) =>
-        Normalize(dir) switch
-        {
-            DirAscending => false,
-            DirDescending => true,
-            _ => DefaultDescending,
-        };
+        ListQueryText.ResolveDescending(dir, DefaultDescending);
 
     /// <summary>
     /// CSV of persisted statuses. <c>null</c> means "no status filter" (blank input). Unknown
@@ -75,10 +71,10 @@ public static class PartyBillingStatementListQueryRules
     }
 
     public static string? NormalizeExact(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        ListQueryText.NormalizeExact(value);
 
     public static string? NormalizeSearch(string? q) =>
-        string.IsNullOrWhiteSpace(q) ? null : q.Trim();
+        ListQueryText.NormalizeSearch(q);
 
     /// <summary>The persistence filter a request resolves to — every member is already normalised.</summary>
     public static PartyBillingStatementListFilterQuery ToFilter(PartyBillingStatementListQuery query) =>
@@ -87,6 +83,4 @@ public static class PartyBillingStatementListQueryRules
             ResolveStatuses(query.Status),
             query.IssuedOrLaterOnly,
             NormalizeSearch(query.Q));
-
-    private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? "";
 }

@@ -246,28 +246,33 @@ export async function runClosePartyBillingStatement(
   return { ok: true, statement: result.data };
 }
 
-export async function uploadPartyBillingTransferReceipt(
+type BillingUploadResult =
+  | { ok: true; id: string; fileName: string }
+  | { ok: false; error: string };
+
+/** Upload one statement file under its billing scope (the statement id is the scope key). */
+async function uploadBillingStatementFile(
+  scope: string,
   statementId: string,
   file: File,
-): Promise<
-  | { ok: true; id: string; fileName: string }
-  | { ok: false; error: string }
-> {
+  defaultContentType: string,
+  failMessage: string,
+): Promise<BillingUploadResult> {
   const config = prototypeModulesApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
   const upload = await uploadAttachment(config, {
-    scope: ENG_BILLING_TRANSFER_RECEIPT_SCOPE,
+    scope,
     scopeKey: statementId.trim() || "draft",
     fileName: file.name,
-    contentType: file.type || "application/octet-stream",
+    contentType: file.type || defaultContentType,
     contentBase64: await fileToBase64(file),
   });
 
   if (!upload.ok) {
     return {
       ok: false,
-      error: resolveApiError(upload.kind, undefined, "تعذّر رفع إيصال التحويل"),
+      error: resolveApiError(upload.kind, undefined, failMessage),
     };
   }
 
@@ -278,36 +283,30 @@ export async function uploadPartyBillingTransferReceipt(
   };
 }
 
-export async function uploadPartyBillingVendorInvoice(
+export function uploadPartyBillingTransferReceipt(
   statementId: string,
   file: File,
-): Promise<
-  | { ok: true; id: string; fileName: string }
-  | { ok: false; error: string }
-> {
-  const config = prototypeModulesApiConfig();
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+): Promise<BillingUploadResult> {
+  return uploadBillingStatementFile(
+    ENG_BILLING_TRANSFER_RECEIPT_SCOPE,
+    statementId,
+    file,
+    "application/octet-stream",
+    "تعذّر رفع إيصال التحويل",
+  );
+}
 
-  const upload = await uploadAttachment(config, {
-    scope: PARTY_BILLING_VENDOR_INVOICE_SCOPE,
-    scopeKey: statementId.trim() || "draft",
-    fileName: file.name,
-    contentType: file.type || "application/pdf",
-    contentBase64: await fileToBase64(file),
-  });
-
-  if (!upload.ok) {
-    return {
-      ok: false,
-      error: resolveApiError(upload.kind, undefined, "تعذّر رفع فاتورة المورّد"),
-    };
-  }
-
-  return {
-    ok: true,
-    id: upload.data.id,
-    fileName: upload.data.fileName,
-  };
+export function uploadPartyBillingVendorInvoice(
+  statementId: string,
+  file: File,
+): Promise<BillingUploadResult> {
+  return uploadBillingStatementFile(
+    PARTY_BILLING_VENDOR_INVOICE_SCOPE,
+    statementId,
+    file,
+    "application/pdf",
+    "تعذّر رفع فاتورة المورّد",
+  );
 }
 
 export async function openPartyBillingAttachment(

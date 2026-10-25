@@ -67,32 +67,62 @@ export function queuedSubmissionStatus(payload: unknown): "draft" | "reopened" {
   return status === "reopened" ? "reopened" : "draft";
 }
 
+/** Cache and return the stand-in for a package that sits in the device queue. */
+function cacheQueuedSubmission(
+  taskId: string,
+  kind: PartyTaskSubmissionDto["kind"],
+  payload: Record<string, unknown>,
+): PartyTaskSubmissionDto {
+  const local: PartyTaskSubmissionDto = {
+    taskId,
+    kind,
+    status: queuedSubmissionStatus(payload),
+    payload,
+    updatedAtUtc: new Date().toISOString(),
+  };
+  setCachedPartySubmission(local, taskId);
+  return local;
+}
+
+/** The device's copy of a task's package: the queued draft, else the prefetched one. */
+async function loadDeviceSubmission(
+  taskId: string,
+): Promise<PartyTaskSubmissionDto | null> {
+  const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
+    "field-inspection",
+    taskId,
+  );
+  if (queued) {
+    return cacheQueuedSubmission(taskId, detectSubmissionKind(queued), queued);
+  }
+  const prefetched = await loadSubmissionFromPrefetch(taskId);
+  if (prefetched) {
+    setCachedPartySubmission(prefetched, taskId);
+    return prefetched;
+  }
+  return null;
+}
+
+/** An online save/submit failure; only network and server failures may fall back to the queue. */
+function onlineWriteError(
+  result: { kind: string; errors?: Record<string, unknown> },
+  fallback: string,
+): Error & { offlineQueueable?: boolean } {
+  const err = new Error(
+    resolveApiError(result.kind, result.errors, fallback),
+  ) as Error & { offlineQueueable?: boolean };
+  if (result.kind !== "network" && result.kind !== "server") {
+    err.offlineQueueable = false;
+  }
+  return err;
+}
+
 export async function fetchPartySubmission(
   taskId: string,
 ): Promise<PartyTaskSubmissionDto | null> {
   const config = workOrdersApiConfig();
   if (!config || isBrowserOffline()) {
-    const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
-      "field-inspection",
-      taskId,
-    );
-    if (queued) {
-      const local: PartyTaskSubmissionDto = {
-        taskId,
-        kind: detectSubmissionKind(queued),
-        status: queuedSubmissionStatus(queued),
-        payload: queued,
-        updatedAtUtc: new Date().toISOString(),
-      };
-      setCachedPartySubmission(local, taskId);
-      return local;
-    }
-    const prefetched = await loadSubmissionFromPrefetch(taskId);
-    if (prefetched) {
-      setCachedPartySubmission(prefetched, taskId);
-      return prefetched;
-    }
-    return getCachedPartySubmission(taskId);
+    return (await loadDeviceSubmission(taskId)) ?? getCachedPartySubmission(taskId);
   }
   const result = await getPartyTaskSubmission(config, taskId);
   if (result.ok) {
@@ -104,26 +134,8 @@ export async function fetchPartySubmission(
     return result.data;
   }
   if (result.kind === "not_found" || result.kind === "network") {
-    const queued = await loadQueuedDraftPayload<Record<string, unknown>>(
-      "field-inspection",
-      taskId,
-    );
-    if (queued) {
-      const local: PartyTaskSubmissionDto = {
-        taskId,
-        kind: detectSubmissionKind(queued),
-        status: queuedSubmissionStatus(queued),
-        payload: queued,
-        updatedAtUtc: new Date().toISOString(),
-      };
-      setCachedPartySubmission(local, taskId);
-      return local;
-    }
-    const prefetched = await loadSubmissionFromPrefetch(taskId);
-    if (prefetched) {
-      setCachedPartySubmission(prefetched, taskId);
-      return prefetched;
-    }
+    const onDevice = await loadDeviceSubmission(taskId);
+    if (onDevice) return onDevice;
   }
   if (result.kind === "not_found") {
     setCachedPartySubmission(null, taskId);
@@ -150,16 +162,7 @@ export async function persistPartySubmissionPayload(
       },
     });
     if (queued.queued) {
-      const now = new Date().toISOString();
-      const local: PartyTaskSubmissionDto = {
-        taskId,
-        kind,
-        status: queuedSubmissionStatus(payload),
-        payload,
-        updatedAtUtc: now,
-      };
-      setCachedPartySubmission(local, taskId);
-      return { ok: true, data: local };
+      return { ok: true, data: cacheQueuedSubmission(taskId, kind, payload) };
     }
     return { ok: false, error: apiErrorMessage("auth") };
   }
@@ -171,29 +174,12 @@ export async function persistPartySubmissionPayload(
       payload,
       onlineSave: async () => {
         const result = await savePartyTaskSubmission(config, taskId, payload);
-        if (!result.ok) {
-          const err = new Error(
-            resolveApiError(result.kind, result.errors, "تعذّر حفظ مسودة المهمة"),
-          ) as Error & { offlineQueueable?: boolean };
-          if (result.kind !== "network" && result.kind !== "server") {
-            err.offlineQueueable = false;
-          }
-          throw err;
-        }
+        if (!result.ok) throw onlineWriteError(result, "تعذّر حفظ مسودة المهمة");
         setCachedPartySubmission(result.data, taskId);
       },
     });
     if (queued.queued) {
-      const now = new Date().toISOString();
-      const local: PartyTaskSubmissionDto = {
-        taskId,
-        kind,
-        status: queuedSubmissionStatus(payload),
-        payload,
-        updatedAtUtc: now,
-      };
-      setCachedPartySubmission(local, taskId);
-      return { ok: true, data: local };
+      return { ok: true, data: cacheQueuedSubmission(taskId, kind, payload) };
     }
     return {
       ok: true,
@@ -245,15 +231,7 @@ export async function submitPartySubmission(
       idempotencyKey,
       onlineSubmit: async () => {
         const result = await submitPartyTaskSubmission(config, taskId, idempotencyKey);
-        if (!result.ok) {
-          const err = new Error(
-            resolveApiError(result.kind, result.errors, "تعذّر إرسال مهمة الطرف"),
-          ) as Error & { offlineQueueable?: boolean };
-          if (result.kind !== "network" && result.kind !== "server") {
-            err.offlineQueueable = false;
-          }
-          throw err;
-        }
+        if (!result.ok) throw onlineWriteError(result, "تعذّر إرسال مهمة الطرف");
         setCachedPartySubmission(result.data, taskId);
       },
     });

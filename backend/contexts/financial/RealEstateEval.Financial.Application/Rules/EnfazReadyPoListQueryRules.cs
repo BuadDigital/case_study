@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Financial.Application.Rules;
 
@@ -33,22 +34,17 @@ public static class EnfazReadyPoListQueryRules
     public static IReadOnlyList<string> AllowedSortKeys { get; } = [SortCreated, SortPo];
 
     public static EnfazReadyPoListSortKey ResolveSort(string? sort) =>
-        Normalize(sort) switch
+        ListQueryText.Normalize(sort) switch
         {
             SortPo => EnfazReadyPoListSortKey.PoNumber,
             _ => EnfazReadyPoListSortKey.Created,
         };
 
     public static bool ResolveDescending(string? dir) =>
-        Normalize(dir) switch
-        {
-            DirAscending => false,
-            DirDescending => true,
-            _ => DefaultDescending,
-        };
+        ListQueryText.ResolveDescending(dir, DefaultDescending);
 
     public static string? NormalizeSearch(string? q) =>
-        string.IsNullOrWhiteSpace(q) ? null : q.Trim();
+        ListQueryText.NormalizeSearch(q);
 
     public static bool Matches(EnfazReadyPoSummaryDto row, string search) =>
         !string.IsNullOrEmpty(row.PoNumber)
@@ -74,6 +70,4 @@ public static class EnfazReadyPoListQueryRules
             _ => descending ? rows.ToList() : rows.Reverse().ToList(),
         };
     }
-
-    private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? "";
 }

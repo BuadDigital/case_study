@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Shared.Contracts;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 
@@ -41,14 +42,12 @@ public sealed class ValuationReportWorkflowHandler
     {
         using var doc = JsonDocument.Parse(payloadJson);
         var root = doc.RootElement;
-        var eventType = root.TryGetProperty("eventType", out var et)
-            ? et.GetString()
-            : root.GetProperty("EventType").GetString();
+        var eventType = IntegrationEventEnvelopeReader.ReadEventType(root);
 
         if (!string.Equals(eventType, IntegrationEventTypes.ValuationReportSubmitted, StringComparison.Ordinal))
             return;
 
-        var payloadElement = root.TryGetProperty("payload", out var p) ? p : root.GetProperty("Payload");
+        var payloadElement = IntegrationEventEnvelopeReader.ReadPayload(root);
         var payload = payloadElement.Deserialize<ValuationReportSubmittedPayload>(JsonOpts);
         if (payload is null)
         {

@@ -9,6 +9,12 @@ import type {
   InspectorFeeRowDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
+import { feeRowMatchesSearch, feeStatementMeta } from "./fee-screen-state";
+
+export {
+  deedParts,
+  filterFeeStatements as filterStatements,
+} from "./fee-screen-state";
 
 export type IndividualFeesVariant = "field-inspection" | "court-visit";
 
@@ -27,25 +33,6 @@ type UiStatus =
   | "paid"
   | "suspended"
   | "other";
-
-export function deedParts(row: InspectorFeeRowDto): { deed: string; region: string } {
-  const label = (row.propertyLabel || "").trim();
-  const sep = label.includes("—")
-    ? "—"
-    : label.includes("–")
-      ? "–"
-      : label.includes(" - ")
-        ? " - "
-        : null;
-  if (sep) {
-    const [a, ...rest] = label.split(sep);
-    return {
-      deed: a.trim() || label,
-      region: rest.join(sep).trim() || row.poNumber || "—",
-    };
-  }
-  return { deed: label || "—", region: row.poNumber || "—" };
-}
 
 /**
  * Individual-party status bucket (not eng office-review).
@@ -156,22 +143,7 @@ export function statementMeta(s: PartyBillingStatementDto): {
   label: string;
   style: StatusPillStyle;
 } {
-  if (s.status === "closed") {
-    return {
-      label: s.statusLabel || "مدفوع",
-      style: { base: "#3f8f5f", fg: "#2f7a4d" },
-    };
-  }
-  if (s.status === "issued" || s.status === "invoice_received") {
-    return {
-      label: s.statusLabel || "صادر",
-      style: { base: "#22406e", fg: "#102B4E" },
-    };
-  }
-  return {
-    label: s.statusLabel || "مسودة",
-    style: { base: "#6b7c8f", fg: "#4a5568" },
-  };
+  return feeStatementMeta(s, "مدفوع");
 }
 
 export const COPY: Record<
@@ -357,22 +329,6 @@ export function filterFeeRows(
   return rows.filter((row) => {
     const st = individualFeeUiStatus(row);
     if (stFilter && st !== stFilter) return false;
-    if (!q) return true;
-    const { deed, region } = deedParts(row);
-    return `${deed} ${region} ${row.poNumber}`.toLowerCase().includes(q);
+    return feeRowMatchesSearch(row, q);
   });
-}
-
-/** Payment-order search — reference number or any line's property label. */
-export function filterStatements(
-  statements: PartyBillingStatementDto[],
-  search: string,
-): PartyBillingStatementDto[] {
-  const q = search.trim().toLowerCase();
-  if (!q) return statements;
-  return statements.filter(
-    (s) =>
-      s.referenceNumber.toLowerCase().includes(q) ||
-      s.lines.some((l) => (l.propertyLabel || "").toLowerCase().includes(q)),
-  );
 }

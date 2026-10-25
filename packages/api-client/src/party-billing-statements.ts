@@ -8,6 +8,7 @@ import {
   type PagedResultDto,
 } from "./pagination";
 import { repositoryFetch as fetch } from "./write-repository";
+import { readErrorText } from "./parse-json";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
 export type PartyBillingStatementsApiConfig = WorkOrdersApiConfig;
@@ -274,15 +275,6 @@ function queryString(params: {
   return q ? `?${q}` : "";
 }
 
-async function readError(res: Response): Promise<string> {
-  try {
-    const body = (await res.json()) as Record<string, unknown>;
-    return String(body.error ?? body.Error ?? `HTTP ${res.status}`);
-  } catch {
-    return `HTTP ${res.status}`;
-  }
-}
-
 function httpErr(res: Response, message?: string): ApiErr {
   if (res.status === 401) return { ok: false, kind: "auth", message };
   if (res.status === 404) return { ok: false, kind: "not_found", message };
@@ -503,7 +495,7 @@ async function postStatementAction(
         body: body === undefined ? undefined : JSON.stringify(body),
       },
     );
-    if (!res.ok) return httpErr(res, await readError(res));
+    if (!res.ok) return httpErr(res, await readErrorText(res));
     return { ok: true, data: normalizeStatement(asRecord(await res.json())) };
   } catch {
     return { ok: false, kind: "network" };

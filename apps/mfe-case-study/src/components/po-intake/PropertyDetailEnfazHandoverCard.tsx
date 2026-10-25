@@ -7,14 +7,11 @@ import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
   AppModal,
   Button,
-  Label,
   Note,
-  Textarea,
   cn,
   opsPanelCard,
   useToast,
 } from "@platform/ui-kit";
-import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   canHandOverToEnfaz,
@@ -38,6 +35,7 @@ import {
 } from "../../query/use-transaction-state-query";
 import { useConfirmActionDialog } from "../ConfirmActionDialog";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
+import { ReasonConfirmModal, RequiredReasonField } from "./ReasonConfirmModal";
 
 /**
  * «التسليم على إنفاذ» — the case specialist's card on the property detail rail. Shows the stage
@@ -281,94 +279,58 @@ function EnfazReturnDialog({
   }
 
   return (
-    <AppModal
-      open
+    <ReasonConfirmModal
       title="إعادة من إنفاذ"
       subtitle="يُلغى ختم التسليم على إنفاذ ويُسجَّل في سجل التدقيق والجدول الزمني."
-      onClose={() => {
-        if (!busy) onClose();
-      }}
-      maxWidthPx={470}
-      look="ops-html"
-      footer={
-        <div className="flex w-full justify-end gap-2.5">
-          <Button variant="default" showActionToast={false} disabled={busy} onClick={onClose}>
-            إلغاء
-          </Button>
-          <Button
-            variant="primary"
-            showActionToast={false}
-            loading={busy}
-            onClick={() => void submit()}
-          >
-            تأكيد الإعادة
-          </Button>
-        </div>
-      }
+      confirmLabel="تأكيد الإعادة"
+      busy={busy}
+      onClose={onClose}
+      onConfirm={() => void submit()}
     >
-      <div className="flex flex-col gap-3">
-        <div>
-          <Label
-            htmlFor="enfaz-return-reason"
-            className="mb-1.5 text-[11px] font-semibold text-text-2"
-          >
-            سبب الإعادة ({ENFAZ_RETURN_REASON_MIN_LENGTH} أحرف على الأقل){" "}
-            <span className="text-danger-text">*</span>
-          </Label>
-          <Textarea
-            id="enfaz-return-reason"
-            rows={3}
-            value={reason}
-            aria-invalid={error?.field === "reason" ? true : undefined}
-            className={cn(
-              "rounded-[10px] border-border-md bg-surface",
-              error?.field === "reason" && invalidControlClass,
-            )}
+      <RequiredReasonField
+        id="enfaz-return-reason"
+        label="سبب الإعادة"
+        minLength={ENFAZ_RETURN_REASON_MIN_LENGTH}
+        value={reason}
+        error={error?.field === "reason" ? error.text : null}
+        onChange={(value) => {
+          setReason(value);
+          if (error?.field === "reason") setError(null);
+        }}
+      />
+
+      <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
+        <legend className="mb-1 p-0 text-[11px] font-semibold text-text-2">
+          ما الذي يُعاد؟
+        </legend>
+        <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-heading">
+          <input
+            type="checkbox"
+            checked={reopenStudy}
+            disabled={busy}
             onChange={(e) => {
-              setReason(e.target.value);
-              if (error?.field === "reason") setError(null);
+              setReopenStudy(e.target.checked);
+              if (error?.field === "choice") setError(null);
             }}
           />
-          {error?.field === "reason" ? (
-            <Note tone="danger" className="mt-2">
-              {error.text}
-            </Note>
-          ) : null}
-        </div>
+          <span>إعادة فتح تقرير الدراسة</span>
+        </label>
+        <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-heading">
+          <input
+            type="checkbox"
+            checked={reopenValuation}
+            disabled={busy}
+            onChange={(e) => {
+              setReopenValuation(e.target.checked);
+              if (error?.field === "choice") setError(null);
+            }}
+          />
+          <span>إعادة التقييم</span>
+        </label>
+        {error?.field === "choice" ? <Note tone="danger">{error.text}</Note> : null}
+      </fieldset>
 
-        <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
-          <legend className="mb-1 p-0 text-[11px] font-semibold text-text-2">
-            ما الذي يُعاد؟
-          </legend>
-          <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-heading">
-            <input
-              type="checkbox"
-              checked={reopenStudy}
-              disabled={busy}
-              onChange={(e) => {
-                setReopenStudy(e.target.checked);
-                if (error?.field === "choice") setError(null);
-              }}
-            />
-            <span>إعادة فتح تقرير الدراسة</span>
-          </label>
-          <label className="flex cursor-pointer items-center gap-2 text-[12.5px] text-heading">
-            <input
-              type="checkbox"
-              checked={reopenValuation}
-              disabled={busy}
-              onChange={(e) => {
-                setReopenValuation(e.target.checked);
-                if (error?.field === "choice") setError(null);
-              }}
-            />
-            <span>إعادة التقييم</span>
-          </label>
-          {error?.field === "choice" ? <Note tone="danger">{error.text}</Note> : null}
-        </fieldset>
-
-        {error?.field === "server" ? <Note tone="warn">{error.text}</Note> : null}
-      </div>
-    </AppModal>
+      {error?.field === "server" ? <Note tone="warn">{error.text}</Note> : null}
+    </ReasonConfirmModal>
   );
 }

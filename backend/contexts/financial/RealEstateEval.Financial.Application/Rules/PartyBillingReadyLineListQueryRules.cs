@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Financial.Application.Rules;
 
@@ -37,7 +38,7 @@ public static class PartyBillingReadyLineListQueryRules
         [SortUpdated, SortAccrued, SortNet, SortPo];
 
     public static PartyBillingReadyLineListSortKey ResolveSort(string? sort) =>
-        Normalize(sort) switch
+        ListQueryText.Normalize(sort) switch
         {
             SortAccrued => PartyBillingReadyLineListSortKey.Accrued,
             SortNet => PartyBillingReadyLineListSortKey.NetFee,
@@ -46,27 +47,22 @@ public static class PartyBillingReadyLineListQueryRules
         };
 
     public static bool ResolveDescending(string? dir) =>
-        Normalize(dir) switch
-        {
-            DirAscending => false,
-            DirDescending => true,
-            _ => DefaultDescending,
-        };
+        ListQueryText.ResolveDescending(dir, DefaultDescending);
 
     public static string? NormalizeExact(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        ListQueryText.NormalizeExact(value);
 
     public static string? NormalizeSearch(string? q) =>
-        string.IsNullOrWhiteSpace(q) ? null : q.Trim();
+        ListQueryText.NormalizeSearch(q);
 
     /// <summary>
     /// The dues screen's haystack: property label, PO number and workflow task id, case-insensitive
     /// substring.
     /// </summary>
     public static bool Matches(PartyBillingReadyLineDto line, string search) =>
-        Contains(line.PropertyLabel, search)
-        || Contains(line.PoNumber, search)
-        || Contains(line.WorkflowTaskId, search);
+        ListQueryText.Contains(line.PropertyLabel, search)
+        || ListQueryText.Contains(line.PoNumber, search)
+        || ListQueryText.Contains(line.WorkflowTaskId, search);
 
     /// <summary>Search then sort, with the property label then the task id as tiebreakers.</summary>
     public static List<PartyBillingReadyLineDto> Apply(
@@ -79,12 +75,12 @@ public static class PartyBillingReadyLineListQueryRules
         var descending = ResolveDescending(query.Dir);
         IOrderedEnumerable<PartyBillingReadyLineDto> ordered = ResolveSort(query.Sort) switch
         {
-            PartyBillingReadyLineListSortKey.Accrued => Order(
+            PartyBillingReadyLineListSortKey.Accrued => ListQueryText.Order(
                 filtered, line => line.AccruedAtUtc ?? line.UpdatedAtUtc ?? DateTime.MaxValue, descending),
-            PartyBillingReadyLineListSortKey.NetFee => Order(filtered, line => line.NetFeeSar, descending),
-            PartyBillingReadyLineListSortKey.PoNumber => Order(
+            PartyBillingReadyLineListSortKey.NetFee => ListQueryText.Order(filtered, line => line.NetFeeSar, descending),
+            PartyBillingReadyLineListSortKey.PoNumber => ListQueryText.Order(
                 filtered, line => line.PoNumber ?? "", descending, StringComparer.Ordinal),
-            _ => Order(
+            _ => ListQueryText.Order(
                 filtered, line => line.UpdatedAtUtc ?? line.AccruedAtUtc ?? DateTime.MinValue, descending),
         };
 
@@ -93,17 +89,4 @@ public static class PartyBillingReadyLineListQueryRules
             .ThenBy(line => line.WorkflowTaskId, StringComparer.Ordinal)
             .ToList();
     }
-
-    private static IOrderedEnumerable<T> Order<T, TKey>(
-        IEnumerable<T> rows,
-        Func<T, TKey> key,
-        bool descending,
-        IComparer<TKey>? comparer = null) =>
-        descending ? rows.OrderByDescending(key, comparer) : rows.OrderBy(key, comparer);
-
-    private static bool Contains(string? haystack, string needle) =>
-        !string.IsNullOrEmpty(haystack)
-        && haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);
-
-    private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? "";
 }

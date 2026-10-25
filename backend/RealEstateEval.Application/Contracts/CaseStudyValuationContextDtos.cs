@@ -88,6 +88,10 @@ public sealed class CaseStudyValuationPropertyContextDto
     public string? FinishingStructure { get; set; }
     public string HasStructuresToValue { get; set; } = "";
 
+    /// <summary>The scoping answer «are there buildings/structures to value?» is yes.</summary>
+    public bool HasStructures() =>
+        string.Equals(HasStructuresToValue.Trim(), "yes", StringComparison.OrdinalIgnoreCase);
+
  /// <summary>«مكونات العقار» written by the case specialist — the report's «وصف العقار».</summary>
     public string? SpecialistComponentsText { get; set; }
 

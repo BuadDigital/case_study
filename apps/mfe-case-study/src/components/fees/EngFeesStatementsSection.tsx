@@ -5,7 +5,6 @@
  * statements table; clicking a row opens `EngFeesInvoiceModal`.
  */
 
-import { fmtSar } from "@platform/app-shared/format/number";
 import {
   cn,
   MobileRecordCard,
@@ -15,8 +14,6 @@ import {
   TableEmptyRow,
   TableFrame,
   TBody,
-  Td,
-  TdLtr,
   Th,
   THead,
   Tr,
@@ -25,6 +22,11 @@ import type { PartyBillingStatementDto } from "@platform/api-client";
 import { ymd as formatYmd } from "@platform/app-shared/format/date";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { statementMeta } from "./eng-fees-state";
+import {
+  FeeSearchIcon,
+  StatementRowCells,
+  statementCardFields,
+} from "./FeeLedgerParts";
 
 const STATEMENTS_FOOTER =
   "دورة الكشف: مسودة ← صادر ← محال للمالية ← مصروف. الفاتورة تصدر من البرنامج المحاسبي خارج النظام، ويُوثَّق الصرف هنا برقم الفاتورة وإيصال التحويل والتاريخ. البنود المتحفَّظ عليها تُعالَج بالتنسيق مع المشرف قبل إحالتها للمالية.";
@@ -93,21 +95,7 @@ export function EngFeesStatementsSection({
 
       <div className="mb-3.5 flex flex-wrap items-center gap-2.5">
         <div className="relative flex min-w-0 flex-1 items-center">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="pointer-events-none absolute start-3 text-text-3"
-            aria-hidden
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
+          <FeeSearchIcon />
           <input
             type="search"
             value={fnSearch}
@@ -137,20 +125,7 @@ export function EngFeesStatementsSection({
               onOpen={() => setOpenFn(s.referenceNumber)}
               title={<bdi dir="ltr" className="tabular-nums">{s.referenceNumber}</bdi>}
               status={<StatusPill label={meta.label} style={meta.style} />}
-              fields={[
-                {
-                  label: "تاريخ الإصدار",
-                  ltr: true,
-                  value: formatYmd(s.issuedAtUtc ?? s.createdAtUtc),
-                },
-                {
-                  label: "الإجمالي",
-                  ltr: true,
-                  value: fmtSar(s.totalNetSar, { digits: 3, trim: true }),
-                },
-                { label: "المعاملات", value: `${s.lines.length} معاملات` },
-                { label: "الصرف", wide: true, value: <StatementPayout s={s} wrap /> },
-              ]}
+              fields={statementCardFields(s, <StatementPayout s={s} wrap />, true)}
             />
           );
         })}
@@ -198,24 +173,11 @@ export function EngFeesStatementsSection({
                       }
                     }}
                   >
-                    <TdLtr valueClassName="font-bold text-gold-d text-[12.5px]">
-                      {s.referenceNumber}
-                    </TdLtr>
-                    <TdLtr valueClassName="text-[12px] text-text-2">
-                      {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
-                    </TdLtr>
-                    <Td className="text-[12.5px]">
-                      {s.lines.length} معاملات
-                    </Td>
-                    <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                      {fmtSar(s.totalNetSar, { digits: 3, trim: true })}
-                    </TdLtr>
-                    <Td>
-                      <StatusPill label={meta.label} style={meta.style} />
-                    </Td>
-                    <Td className="text-[11px] text-text-2">
-                      <StatementPayout s={s} />
-                    </Td>
+                    <StatementRowCells
+                      s={s}
+                      meta={meta}
+                      payout={<StatementPayout s={s} />}
+                    />
                   </Tr>
                 );
               })

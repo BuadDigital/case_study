@@ -7,19 +7,15 @@ import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { allocateNumberedDocument } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
-  Button,
   cn,
   InlineLoadingSkeleton,
-  ModalBody,
-  ModalHeader,
-  ModalOverlay,
-  ModalTitle,
   useToast,
 } from "@platform/ui-kit";
 import {
   CaseStudyReportFrame,
   type CaseStudyReportFrameHandle,
 } from "../case-study/CaseStudyReportFrame";
+import { CaseStudyReportPreviewModal } from "../case-study/CaseStudyReportPreviewModal";
 import { buildCaseStudyReportModel } from "../../lib/app-data/case-study-report-document-model";
 import type {
   CaseStudyReportDeeds,
@@ -519,44 +515,17 @@ export function PropertyDetailCaseStudyReport({
       </div>
 
       {previewOpen ? (
-        <ModalOverlay
-          className="z-[var(--z-lightbox)] items-start overflow-y-auto p-6 px-4 print:absolute print:inset-0 print:overflow-visible print:bg-white print:p-0"
-          onClick={() => setPreviewOpen(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-label="معاينة تقرير دراسة الحالة"
+        <CaseStudyReportPreviewModal
+          onClose={() => setPreviewOpen(false)}
+          onPrint={() => void printReport()}
         >
-          <div
-            className="w-[210mm] max-w-full overflow-hidden rounded-xl bg-surface-2 shadow-lg print:rounded-none print:shadow-none"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <ModalHeader className="print:hidden border-b border-border bg-surface px-3.5 py-2.5">
-              <ModalTitle className="text-start text-[13px]">
-                معاينة التقرير النهائي
-              </ModalTitle>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  size="sm"
-                  variant="primary"
-                  onClick={() => void printReport()}
-                >
-                  طباعة / PDF
-                </Button>
-                <Button size="sm" onClick={() => setPreviewOpen(false)}>
-                  إغلاق
-                </Button>
-              </div>
-            </ModalHeader>
-            <ModalBody className="p-0">
-              <CaseStudyReportFrame
-                ref={reportFrameRef}
-                model={reportModel}
-                referenceNumber={reportReference}
-                onLoad={onReportFrameLoad}
-              />
-            </ModalBody>
-          </div>
-        </ModalOverlay>
+          <CaseStudyReportFrame
+            ref={reportFrameRef}
+            model={reportModel}
+            referenceNumber={reportReference}
+            onLoad={onReportFrameLoad}
+          />
+        </CaseStudyReportPreviewModal>
       ) : null}
     </>
   );

@@ -21,6 +21,14 @@ export type CaseStudyInfoRolesResult =
   | { ok: true; config: CaseStudyInfoRolesConfigDto }
   | { ok: false; kind: "auth" | "network" | "server" };
 
+/** The answer of both GET and PUT: 401 → auth, other failures → server, else the saved config. */
+async function readInfoRolesResult(res: Response): Promise<CaseStudyInfoRolesResult> {
+  if (res.status === 401) return { ok: false, kind: "auth" };
+  if (!res.ok) return { ok: false, kind: "server" };
+  const data = (await res.json()) as CaseStudyInfoRolesConfigDto;
+  return { ok: true, config: data };
+}
+
 export async function getCaseStudyInfoRoles(
   config: CaseStudyInfoRolesApiConfig,
 ): Promise<CaseStudyInfoRolesResult> {
@@ -29,10 +37,7 @@ export async function getCaseStudyInfoRoles(
     const res = await fetch(`${base}/api/case-study-info-roles`, {
       headers: authHeaders(config.token),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = (await res.json()) as CaseStudyInfoRolesConfigDto;
-    return { ok: true, config: data };
+    return await readInfoRolesResult(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -49,10 +54,7 @@ export async function saveCaseStudyInfoRoles(
       headers: authHeaders(config.token),
       body: JSON.stringify(request),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = (await res.json()) as CaseStudyInfoRolesConfigDto;
-    return { ok: true, config: data };
+    return await readInfoRolesResult(res);
   } catch {
     return { ok: false, kind: "network" };
   }

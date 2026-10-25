@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -9,6 +8,7 @@ using RealEstateEval.Domain;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 using RealEstateEval.Infrastructure.Notifications;
+using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Operations.Application.Abstractions;
 using RealEstateEval.Operations.Application.Contracts;
 
@@ -19,64 +19,29 @@ namespace RealEstateEval.Financial.Infrastructure.Services;
 /// The scan only reads live values: the time limit expires when an “objector” exits or the opponent changes
 /// It eliminates pending reminders — no off-the-book status.
 /// </summary>
-public sealed class BillingNegotiationDeadlineHostedService : BackgroundService
+public sealed class BillingNegotiationDeadlineHostedService : PeriodicSweepHostedService
 {
-    private static readonly TimeSpan InitialDelay = TimeSpan.FromSeconds(30);
-    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(10);
-
     private const string AuditAction = "BILLING_NEGOTIATION_DEADLINE";
     private const string AuditEntityType = "inspector_fee_ledger";
 
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<BillingNegotiationDeadlineHostedService> _logger;
     private readonly TimeProvider _time;
 
     public BillingNegotiationDeadlineHostedService(
         IServiceScopeFactory scopeFactory,
         ILogger<BillingNegotiationDeadlineHostedService> logger,
         TimeProvider? time = null)
+        : base(scopeFactory, logger)
     {
         _time = time ?? TimeProvider.System;
-
-        _scopeFactory = scopeFactory;
-        _logger = logger;
     }
 
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        try
-        {
-            await Task.Delay(InitialDelay, stoppingToken);
-        }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-        {
-            return;
-        }
+    protected override TimeSpan InitialDelay { get; } = TimeSpan.FromSeconds(30);
 
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                using var scope = _scopeFactory.CreateScope();
-                await SweepAsync(scope.ServiceProvider, stoppingToken);
-            }
-            catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
-            {
-                _logger.LogWarning(ex, "Billing negotiation deadline sweep failed");
-            }
+    protected override TimeSpan Interval { get; } = TimeSpan.FromMinutes(10);
 
-            try
-            {
-                await Task.Delay(Interval, stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-        }
-    }
+    protected override string SweepName => "Billing negotiation deadline sweep";
 
-    private async Task SweepAsync(IServiceProvider services, CancellationToken cancellationToken)
+    protected override async Task SweepAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
         var financial = services.GetRequiredService<FinancialDbContext>();
         var notifications = services.GetRequiredService<INotificationService>();

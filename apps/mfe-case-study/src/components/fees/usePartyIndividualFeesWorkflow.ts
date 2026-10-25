@@ -6,17 +6,15 @@
  * write. The screen consumes the returned bag and keeps JSX only; pure rules
  * live in `party-individual-fees-state.ts`.
  */
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useDeferredValue, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { listKeyEnvelopeFeeReport } from "@platform/api-client";
-import { useToast } from "@platform/ui-kit";
 import type {
   InspectorFeeAction,
   InspectorFeeRowDto,
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import { loadPartyBillingStatements } from "@platform/app-shared/app-data/party-billing-statements-api";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
 import { useInspectorFeesQuery } from "../../query/inspector-fees-queries";
@@ -35,13 +33,13 @@ import {
   type IndividualFeesVariant,
   type TabId,
 } from "./party-individual-fees-state";
+import { useFeeLedgerWrites } from "./useFeeLedgerWrites";
 
 export function usePartyIndividualFeesWorkflow(
   assigneeId: string | undefined,
   variant: IndividualFeesVariant,
 ) {
-  const queryClient = useQueryClient();
-  const { showToast } = useToast();
+  const { showToast, busyId, invalidate, runFeeTransition } = useFeeLedgerWrites();
   const copy = COPY[variant];
   const isCourtVisit = variant === "court-visit";
   const showVisitKey = isCourtVisit;
@@ -52,7 +50,6 @@ export function usePartyIndividualFeesWorkflow(
   const [stFilter, setStFilter] = useState("");
   const [fnSearch, setFnSearch] = useState("");
   const [openFn, setOpenFn] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
 
   // Inspector: ledger path. Reviewer: CourtVisitFeeCharges only (no court-visit taskKind on the ledger).
   const { data: summary, isPending: feesPending } = useInspectorFeesQuery(
@@ -145,36 +142,12 @@ export function usePartyIndividualFeesWorkflow(
     [statements, fnSearch],
   );
 
-  const invalidate = useCallback(async () => {
-    // Two independent keys — in parallel (async-parallel).
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: [...appDataKeys.all, "inspector-fees"],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: [...appDataKeys.all, "party-billing"],
-      }),
-    ]);
-  }, [queryClient]);
-
-  const act = async (
+  const act = (
     row: InspectorFeeRowDto,
     action: InspectorFeeAction,
     extra?: { reason?: string },
-  ) => {
-    setBusyId(row.workflowTaskId);
-    try {
-      const result = await runInspectorFeeTransition(row.workflowTaskId, {
-        action,
-        reason: extra?.reason,
-      });
-      if (!result.ok) {
-        showToast(
-          result.error || "تعذّر تنفيذ الإجراء — حاول مرة أخرى",
-          "error",
-        );
-        return;
-      }
+  ) =>
+    runFeeTransition(row, action, extra, async () => {
       showToast(
         action === "submit-to-supervisor"
           ? "رُفع للمشرف بنجاح"
@@ -182,10 +155,7 @@ export function usePartyIndividualFeesWorkflow(
         "success",
       );
       await invalidate();
-    } finally {
-      setBusyId(null);
-    }
-  };
+    });
 
   const onTabChange = (id: string) => {
     setTab(id as TabId);

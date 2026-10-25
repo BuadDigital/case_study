@@ -7,16 +7,14 @@
  * only; pure rules live in `eng-fees-state.ts`.
  */
 import { fmtSar } from "@platform/app-shared/format/number";
-import { useCallback, useDeferredValue, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@platform/ui-kit";
+import { useDeferredValue, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import type {
   InspectorFeeAction,
   InspectorFeeRowDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
 import {
   loadPartyBillingStatements,
   runSubmitVendorInvoice,
@@ -32,17 +30,17 @@ import {
   filterEngStatements,
   type TabId,
 } from "./eng-fees-state";
+import { useFeeLedgerWrites } from "./useFeeLedgerWrites";
 
 export function useEngFeesWorkflow(assigneeId: string | undefined) {
-  const queryClient = useQueryClient();
-  const { showToast } = useToast();
+  const { showToast, busyId, setBusyId, invalidate, runFeeTransition } =
+    useFeeLedgerWrites();
   const [tab, setTab] = useState<TabId>("action");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [stFilter, setStFilter] = useState("");
   const [fnSearch, setFnSearch] = useState("");
   const [openFn, setOpenFn] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [objectOpenId, setObjectOpenId] = useState<string | null>(null);
   const [objectText, setObjectText] = useState("");
   const [invoiceNo, setInvoiceNo] = useState("");
@@ -107,43 +105,16 @@ export function useEngFeesWorkflow(assigneeId: string | undefined) {
     [statements, fnSearch],
   );
 
-  const invalidate = useCallback(async () => {
-    // Two independent keys — in parallel (async-parallel).
-    await Promise.all([
-      queryClient.invalidateQueries({
-        queryKey: [...appDataKeys.all, "inspector-fees"],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: [...appDataKeys.all, "party-billing"],
-      }),
-    ]);
-  }, [queryClient]);
-
-  const act = async (
+  const act = (
     row: InspectorFeeRowDto,
     action: InspectorFeeAction,
     extra?: { reason?: string },
-  ) => {
-    setBusyId(row.workflowTaskId);
-    try {
-      const result = await runInspectorFeeTransition(row.workflowTaskId, {
-        action,
-        reason: extra?.reason,
-      });
-      if (!result.ok) {
-        showToast(
-          result.error || "تعذّر تنفيذ الإجراء — حاول مرة أخرى",
-          "error",
-        );
-        return;
-      }
+  ) =>
+    runFeeTransition(row, action, extra, async () => {
       await invalidate();
       setObjectOpenId(null);
       setObjectText("");
-    } finally {
-      setBusyId(null);
-    }
-  };
+    });
 
   const submitInvoice = async (s: PartyBillingStatementDto) => {
     if (!invoiceNo.trim()) {

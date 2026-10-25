@@ -20,27 +20,9 @@ import type { DistributionAssignee } from "@case-study/mfe/lib/distribution-assi
 import { num } from "../lib/party-fee-pricing-state";
 
 /**
- * Presentational pieces of the party fee pricing screen — the header icon, the
- * money input and the assignee picker modal.
+ * Presentational pieces of the party fee pricing screen — the money input and
+ * the assignee picker modal.
  */
-
-export function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d={path} />
-    </svg>
-  );
-}
 
 export function MoneyInput({
   id,

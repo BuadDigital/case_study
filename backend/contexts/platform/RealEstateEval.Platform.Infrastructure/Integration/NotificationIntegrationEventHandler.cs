@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Shared.Contracts;
 
@@ -44,9 +45,7 @@ public sealed class NotificationIntegrationEventHandler
     {
         using var doc = JsonDocument.Parse(payloadJson);
         var root = doc.RootElement;
-        var eventType = root.TryGetProperty("eventType", out var et)
-            ? et.GetString()
-            : root.GetProperty("EventType").GetString();
+        var eventType = IntegrationEventEnvelopeReader.ReadEventType(root);
 
         var eventId = root.TryGetProperty("eventId", out var eid)
             ? eid.GetString()
@@ -54,7 +53,7 @@ public sealed class NotificationIntegrationEventHandler
 
         if (string.IsNullOrWhiteSpace(eventType)) return;
 
-        var payloadElement = root.TryGetProperty("payload", out var p) ? p : root.GetProperty("Payload");
+        var payloadElement = IntegrationEventEnvelopeReader.ReadPayload(root);
 
         if (string.Equals(eventType, IntegrationEventTypes.NotificationUsersRequested, StringComparison.Ordinal))
         {

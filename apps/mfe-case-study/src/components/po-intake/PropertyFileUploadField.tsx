@@ -1,7 +1,14 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
-import { Button, Label, cn, useFormDensity } from "@platform/ui-kit";
+import { useState, type ReactNode } from "react";
+import {
+  Button,
+  Label,
+  UploadFileIcon,
+  cn,
+  useFileDropZone,
+  useFormDensity,
+} from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   clearCachedPropertyDoc,
@@ -78,9 +85,7 @@ export function PropertyFileUploadField({
 
   // Compact forms (تعديل العقار) show uploads as small square tiles instead of full-width bars.
   const tile = useFormDensity() === "compact";
-  const [dragOver, setDragOver] = useState(false);
   const [unsupported, setUnsupported] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const shownError = error ?? unsupported ?? undefined;
 
   const handleClearAll = () => {
@@ -119,6 +124,12 @@ export function PropertyFileUploadField({
       onUpload(picked[0]!);
     }
   }
+
+  // Only the full-width bar stops its click, key and drag events at the zone.
+  const { dragOver, inputRef, openPicker, zoneProps } = useFileDropZone({
+    onFiles: applyFiles,
+    isolate: tile ? "none" : "all",
+  });
 
   const pickerTitle = hasFiles && !multiple
     ? "استبدال"
@@ -170,7 +181,7 @@ export function PropertyFileUploadField({
                     variant="ghost"
                     size="sm"
                     className="h-auto px-1.5 text-[11px] text-primary"
-                    onClick={() => inputRef.current?.click()}
+                    onClick={openPicker}
                   >
                     استبدال
                   </Button>
@@ -203,49 +214,9 @@ export function PropertyFileUploadField({
                   ? "border-danger bg-danger-bg/30"
                   : "border-border-md bg-surface-2 hover:border-primary/50 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]",
             )}
-            onClick={() => inputRef.current?.click()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                inputRef.current?.click();
-              }
-            }}
-            onDragEnter={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragOver(true);
-            }}
-            onDragLeave={(e) => {
-              e.preventDefault();
-              if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-              setDragOver(false);
-            }}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDragOver(false);
-              applyFiles(e.dataTransfer.files);
-            }}
+            {...zoneProps}
           >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="text-primary"
-              aria-hidden
-            >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <path d="M14 2v6h6" />
-              <path d="M12 18v-6" />
-              <path d="M9 15l3-3 3 3" />
-            </svg>
+            <UploadFileIcon size={22} className="text-primary" aria-hidden />
             <span className="text-[12px] font-bold text-heading">
               {uploading ? "جارٍ الرفع…" : dragOver ? "أفلِت الملف هنا" : "ارفع المستند"}
             </span>
@@ -343,59 +314,13 @@ export function PropertyFileUploadField({
                 ? "border-danger bg-danger-bg/30"
                 : "border-border-md bg-surface-2 hover:border-primary/50 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]",
           )}
-          onClick={(e) => {
-            e.stopPropagation();
-            inputRef.current?.click();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              e.stopPropagation();
-              inputRef.current?.click();
-            }
-          }}
-          onDragEnter={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOver(true);
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOver(true);
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            setDragOver(false);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOver(false);
-            applyFiles(e.dataTransfer.files);
-          }}
+          {...zoneProps}
         >
           <div
             className="mx-auto mb-2.5 grid h-10 w-10 place-items-center rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-primary"
             aria-hidden
           >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <path d="M14 2v6h6" />
-              <path d="M12 18v-6" />
-              <path d="M9 15l3-3 3 3" />
-            </svg>
+            <UploadFileIcon />
           </div>
           <div className="mb-1 text-[12.5px] font-bold text-heading">
             {uploading ? "جارٍ الرفع…" : dragOver ? "أفلِت الملف هنا" : pickerTitle}

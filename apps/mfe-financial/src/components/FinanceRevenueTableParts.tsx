@@ -170,6 +170,23 @@ export function TotalFeesCell({ row }: { row: EnfazTrackingRowDto }) {
   );
 }
 
+/** The leading cells of the eligible / collected tables: PO, deed, city, completion date, fees. */
+export function RevenueLeadCells({ row }: { row: EnfazTrackingRowDto }) {
+  return (
+    <>
+      <Td className="text-center">
+        <PoCell po={row.poNumber} />
+      </Td>
+      <Td className="text-center">
+        <DeedCell deed={row.deedNumber} />
+      </Td>
+      <CityCell row={row} />
+      <CompletedAtCell iso={row.completedAtUtc} />
+      <TotalFeesCell row={row} />
+    </>
+  );
+}
+
 /** City + completion date — the phone-card fields most stage tables share. */
 export function revenueCityDateFields(row: EnfazTrackingRowDto): MobileRecordField[] {
   return [

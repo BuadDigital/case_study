@@ -21,13 +21,11 @@ import {
   KpiCell,
   MobileKpiStatCards,
   QueueTableHint,
-  StatusPill,
   Table,
   TableEmptyRow,
   TableFrame,
   TBody,
   Td,
-  TdLtr,
   Th,
   THead,
   Tr,
@@ -45,7 +43,6 @@ import {
   opsToolbar,
 } from "../../lib/app-data/ops-tasks-tw";
 import {
-  deedParts,
   individualFeeUiStatus,
   statementMeta,
   statusMeta,
@@ -53,71 +50,21 @@ import {
 } from "./party-individual-fees-state";
 import { usePartyIndividualFeesWorkflow } from "./usePartyIndividualFeesWorkflow";
 import {
+  FeeLedgerTable,
+  FeeLedgerToolbar,
+  StatementRowCells,
+} from "./FeeLedgerParts";
+import {
   FeeRowAction,
+  partyFeeDate,
+  partyFeeRowKey,
   PartyFeesPhoneList,
   PartyStatementsPhoneList,
   StatementLinesDetail,
 } from "./PartyIndividualFeesParts";
+import { CardIcon, ClockIcon, CurrencyIcon } from "./FeeKpiIcons";
 
 export type { IndividualFeesVariant };
-
-function CurrencyIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className={className}
-      aria-hidden
-    >
-      <line x1="12" y1="1" x2="12" y2="23" />
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-    </svg>
-  );
-}
-
-function ClockIcon() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M12 22a10 10 0 1 0-10-10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
-}
-
-function CardIcon() {
-  return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <rect x="2" y="5" width="20" height="14" rx="2" />
-      <line x1="2" y1="10" x2="22" y2="10" />
-    </svg>
-  );
-}
 
 export function PartyIndividualFeesHtmlScreen({
   assigneeId,
@@ -274,65 +221,33 @@ export function PartyIndividualFeesHtmlScreen({
               }
             />
 
-            <div className={opsToolbar}>
-              <div className={opsFilters}>
-                <div className="relative flex items-center">
-                  <svg
-                    width="15"
-                    height="15"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="pointer-events-none absolute start-3 text-text-3"
-                    aria-hidden
-                  >
-                    <circle cx="11" cy="11" r="8" />
-                    <path d="m21 21-4.3-4.3" />
-                  </svg>
-                  <input
-                    type="search"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="رقم الصك أو المدينة أو الحي…"
-                    aria-label="بحث الأتعاب"
-                    className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
-                  />
-                </div>
-                <div className="relative flex items-center">
-                  <select
-                    value={stFilter}
-                    onChange={(e) => setStFilter(e.target.value)}
-                    aria-label="تصفية الحالة"
-                    className={cn(opsFldControl, "cursor-pointer")}
-                  >
-                    <option value="">جميع الحالات</option>
-                    {tab === "action" ? (
-                      <option value="needs_submit">جاهز للرفع</option>
-                    ) : null}
-                    {tab === "tracking" ? (
-                      <>
-                        <option value="draft_work">بانتظار العمل</option>
-                        <option value="returned_to_party">مُعاد إليكم</option>
-                        <option value="inquiry_to_party">استفسار بانتظار ردكم</option>
-                        <option value="sup_review">عند المشرف</option>
-                        <option value="suspended">موقوف</option>
-                      </>
-                    ) : null}
-                    {tab === "ready" ? (
-                      <>
-                        <option value="at_finance">لدى المالية</option>
-                        <option value="listed">في أمر صرف</option>
-                        <option value="paid">مصروف</option>
-                      </>
-                    ) : null}
-                  </select>
-                </div>
-                <span className={opsListCount}>{filteredFees.length} بند</span>
-              </div>
-            </div>
+            <FeeLedgerToolbar
+              search={search}
+              setSearch={setSearch}
+              stFilter={stFilter}
+              setStFilter={setStFilter}
+              count={filteredFees.length}
+            >
+              {tab === "action" ? (
+                <option value="needs_submit">جاهز للرفع</option>
+              ) : null}
+              {tab === "tracking" ? (
+                <>
+                  <option value="draft_work">بانتظار العمل</option>
+                  <option value="returned_to_party">مُعاد إليكم</option>
+                  <option value="inquiry_to_party">استفسار بانتظار ردكم</option>
+                  <option value="sup_review">عند المشرف</option>
+                  <option value="suspended">موقوف</option>
+                </>
+              ) : null}
+              {tab === "ready" ? (
+                <>
+                  <option value="at_finance">لدى المالية</option>
+                  <option value="listed">في أمر صرف</option>
+                  <option value="paid">مصروف</option>
+                </>
+              ) : null}
+            </FeeLedgerToolbar>
 
             <PartyFeesPhoneList
               rows={filteredFees}
@@ -342,107 +257,35 @@ export function PartyIndividualFeesHtmlScreen({
               onSubmit={(row) => void act(row, "submit-to-supervisor")}
             />
 
-            <TableFrame className="max-lg:hidden">
-              <Table className="min-w-[920px]">
-                <THead>
-                  <Tr hoverable={false}>
-                    <Th>الصك</Th>
-                    <Th>{copy.dateCol}</Th>
-                    <Th>سعر الجدول</Th>
-                    <Th>تعديل / مبرر</Th>
-                    <Th>الصافي</Th>
-                    <Th>الحالة</Th>
-                    <Th>{copy.actionCol}</Th>
-                  </Tr>
-                </THead>
-                <TBody>
-                  {feesPending && filteredFees.length === 0 ? (
-                    <TableEmptyRow colSpan={7}>جاري التحميل…</TableEmptyRow>
-                  ) : filteredFees.length === 0 ? (
-                    <TableEmptyRow colSpan={7}>لا توجد بنود مطابقة.</TableEmptyRow>
-                  ) : (
-                    filteredFees.map((row) => {
-                      const st = individualFeeUiStatus(row);
-                      const meta = statusMeta(st);
-                      const { deed, region } = deedParts(row);
-                      const ded = row.supervisorDiscountSar > 0;
-                      const busy = busyId === row.workflowTaskId;
-                      return (
-                        <Tr
-                          key={
-                            row.id ||
-                            `${row.workflowTaskId}-${row.billingStatus}-${row.netFeeSar}`
-                          }
-                        >
-                          <Td>
-                            <div className="flex min-w-0 flex-col gap-0.5">
-                              <span
-                                dir="ltr"
-                                className="inline-block text-start text-[13px] font-bold tabular-nums text-gold-d [unicode-bidi:isolate]"
-                              >
-                                {deed}
-                              </span>
-                              <span className="text-[11px] text-text-3">
-                                {region}
-                              </span>
-                            </div>
-                          </Td>
-                          <TdLtr valueClassName="text-[12px] text-text-2">
-                            {formatYmd(
-                              row.workSubmittedAtUtc ??
-                                row.accruedAtUtc ??
-                                row.updatedAtUtc,
-                            )}
-                          </TdLtr>
-                          <TdLtr valueClassName="text-[12.5px] text-text-2">
-                            {fmtSar(row.agreedFeeSar, { digits: 3, trim: true })}
-                          </TdLtr>
-                          <Td>
-                            {ded ? (
-                              <span
-                                className="inline-flex min-w-0 max-w-full items-center gap-1.5"
-                                title={row.discountReason ?? undefined}
-                              >
-                                <span
-                                  dir="ltr"
-                                  className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e] [unicode-bidi:isolate]"
-                                >
-                                  − {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
-                                </span>
-                                <span className="truncate text-[10.5px] text-text-3">
-                                  {row.discountReason || ""}
-                                </span>
-                              </span>
-                            ) : (
-                              <span className="text-[11px] text-text-3">
-                                بسعر الجدول
-                              </span>
-                            )}
-                          </Td>
-                          <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                            {fmtSar(row.netFeeSar, { digits: 3, trim: true })}
-                          </TdLtr>
-                          <Td>
-                            <StatusPill label={meta.label} style={meta.style} />
-                          </Td>
-                          <Td className="overflow-visible">
-                            <FeeRowAction
-                              row={row}
-                              st={st}
-                              busy={busy}
-                              onSubmit={() => void act(row, "submit-to-supervisor")}
-                            />
-                          </Td>
-                        </Tr>
-                      );
-                    })
-                  )}
-                </TBody>
-              </Table>
-              <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
-                {copy.roleLabel}: {copy.statementsFooter}
-              </div>
-            </TableFrame>
+            <FeeLedgerTable
+              rows={filteredFees}
+              pending={feesPending}
+              columns={{
+                date: copy.dateCol,
+                discount: "تعديل / مبرر",
+                action: copy.actionCol,
+              }}
+              rowKey={partyFeeRowKey}
+              rowDate={partyFeeDate}
+              rowStatus={(row) => {
+                const st = individualFeeUiStatus(row);
+                return { st, meta: statusMeta(st) };
+              }}
+              renderAction={(row, st) => (
+                <FeeRowAction
+                  row={row}
+                  st={st}
+                  busy={busyId === row.workflowTaskId}
+                  onSubmit={() => void act(row, "submit-to-supervisor")}
+                />
+              )}
+              discountFullWidth
+              footer={
+                <div className="border-t border-border px-4 py-[11px] text-[12px] text-text-3">
+                  {copy.roleLabel}: {copy.statementsFooter}
+                </div>
+              }
+            />
           </>
         ) : null}
 
@@ -517,29 +360,15 @@ export function PartyIndividualFeesHtmlScreen({
                               setOpenFn(open ? null : s.referenceNumber)
                             }
                           >
-                            <TdLtr valueClassName="font-bold text-gold-d text-[12.5px]">
-                              {s.referenceNumber}
-                            </TdLtr>
-                            <TdLtr valueClassName="text-[12px] text-text-2">
-                              {formatYmd(s.issuedAtUtc ?? s.createdAtUtc)}
-                            </TdLtr>
-                            <Td className="text-[12.5px]">
-                              {s.lines.length} معاملات
-                            </Td>
-                            <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                              {fmtSar(s.totalNetSar, { digits: 3, trim: true })}
-                            </TdLtr>
-                            <Td>
-                              <StatusPill
-                                label={meta.label}
-                                style={meta.style}
-                              />
-                            </Td>
-                            <Td className="text-[11px] text-text-2">
-                              {s.status === "closed" && s.paidAtUtc
-                                ? `صُرف ${formatYmd(s.paidAtUtc)}`
-                                : "بانتظار الصرف"}
-                            </Td>
+                            <StatementRowCells
+                              s={s}
+                              meta={meta}
+                              payout={
+                                s.status === "closed" && s.paidAtUtc
+                                  ? `صُرف ${formatYmd(s.paidAtUtc)}`
+                                  : "بانتظار الصرف"
+                              }
+                            />
                           </Tr>
                           {open ? (
                             <Tr hoverable={false}>

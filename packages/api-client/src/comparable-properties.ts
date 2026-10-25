@@ -359,14 +359,16 @@ export async function setComparableQualityTags(
   }
 }
 
-export async function deactivateComparableProperty(
+/** POST a bodiless state action (`deactivate` / `reactivate`) on one comparable. */
+async function postComparableAction(
   config: ComparablePropertiesApiConfig,
   id: string,
+  action: "deactivate" | "reactivate",
 ): Promise<Result<null>> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
-      `${base}/api/comparable-properties/${id}/deactivate`,
+      `${base}/api/comparable-properties/${id}/${action}`,
       { method: "POST", headers: authHeaders(config.token, { accept: true }) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -377,20 +379,16 @@ export async function deactivateComparableProperty(
   }
 }
 
+export async function deactivateComparableProperty(
+  config: ComparablePropertiesApiConfig,
+  id: string,
+): Promise<Result<null>> {
+  return postComparableAction(config, id, "deactivate");
+}
+
 export async function reactivateComparableProperty(
   config: ComparablePropertiesApiConfig,
   id: string,
 ): Promise<Result<null>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/comparable-properties/${id}/reactivate`,
-      { method: "POST", headers: authHeaders(config.token, { accept: true }) },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: null };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return postComparableAction(config, id, "reactivate");
 }

@@ -53,17 +53,9 @@ import {
   workOrdersApiConfig,
 } from "../work-orders-api-config";
 
-export async function savePoRecord(
-  record: PoIntakeRecord,
-  idempotencyKey?: string,
-): Promise<StorageOk<PoIntakeRecord> | StorageError> {
-  const config = workOrdersApiConfig();
-  if (!config) {
-    return { ok: false, error: apiErrorMessage("auth") };
-  }
-
-  const result = await createWorkOrder(config, {
-    poNumber: record.poNumber.trim(),
+/** The PO header fields — sent the same way on create and on header edit. */
+function workOrderHeaderFields(record: PoIntakeRecord) {
+  return {
     assignmentType: record.assignmentType,
     promulgationDate: record.promulgationDate,
     receivedFromEnfathTime: record.receivedFromEnfathTime || undefined,
@@ -77,6 +69,21 @@ export async function savePoRecord(
     valuationPurposeKey: record.valuationPurposeKey || undefined,
     basisOfValueKey: record.basisOfValueKey || undefined,
     valuePremiseKey: record.valuePremiseKey || undefined,
+  };
+}
+
+export async function savePoRecord(
+  record: PoIntakeRecord,
+  idempotencyKey?: string,
+): Promise<StorageOk<PoIntakeRecord> | StorageError> {
+  const config = workOrdersApiConfig();
+  if (!config) {
+    return { ok: false, error: apiErrorMessage("auth") };
+  }
+
+  const result = await createWorkOrder(config, {
+    poNumber: record.poNumber.trim(),
+    ...workOrderHeaderFields(record),
     properties: record.properties.map((p) =>
       propertyToEnfathDto(p, { forInsert: true }),
     ),
@@ -354,21 +361,11 @@ export async function updatePoRecord(
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
 
-  const result = await updateWorkOrderHeader(config, record.poNumber, {
-    assignmentType: record.assignmentType,
-    promulgationDate: record.promulgationDate,
-    receivedFromEnfathTime: record.receivedFromEnfathTime || undefined,
-    assignmentSpecialist: record.assignmentSpecialist.trim() || undefined,
-    assignmentSpecialistEmail: record.assignmentSpecialistEmail.trim() || undefined,
-    expectedPropertyCount: record.expectedPropertyCount,
-    propertiesRegion: record.propertiesRegion.trim() || undefined,
-    workOrderDescription: record.workOrderDescription.trim() || undefined,
-    clientId: record.clientId.trim(),
-    reportUserClientIds: record.reportUserClientIds ?? [],
-    valuationPurposeKey: record.valuationPurposeKey || undefined,
-    basisOfValueKey: record.basisOfValueKey || undefined,
-    valuePremiseKey: record.valuePremiseKey || undefined,
-  });
+  const result = await updateWorkOrderHeader(
+    config,
+    record.poNumber,
+    workOrderHeaderFields(record),
+  );
 
   if (!result.ok) {
     return {

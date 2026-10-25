@@ -35,11 +35,15 @@ import {
   Note,
   PageShell,
   Select,
-  PageLoadingHint,
   cn,
   opsDropzone,
   useToast,
 } from "@platform/ui-kit";
+import {
+  SettingsAccessNotes,
+  SettingsLoadingShell,
+  SettingsSaveBar,
+} from "../components/SettingsPageParts";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 const D = ORG_COMPANY_DEFAULTS;
@@ -219,21 +223,12 @@ export function OrganizationDataView() {
   }
 
   if (loading) {
-    return (
-      <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-        <PageLoadingHint className="py-20" />
-      </PageShell>
-    );
+    return <SettingsLoadingShell />;
   }
 
   return (
     <PageShell variant="canvas" className="gap-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6" dir="rtl">
-      {!canEdit ? (
-        <Note tone="warn" className="mb-3 max-w-[560px]">
-          الرابط صحيح، لكن دورك الحالي لا يملك صلاحية هذا البند. اطلب الصلاحية من مسؤول النظام.
-        </Note>
-      ) : null}
-      {error ? <Note tone="warn">{error}</Note> : null}
+      <SettingsAccessNotes canEdit={canEdit} error={error} />
 
       <div
         className="mb-4 flex items-center gap-2.5 rounded-lg px-3.5 py-2.5 text-[12.5px] font-medium"
@@ -492,22 +487,12 @@ export function OrganizationDataView() {
       </div>
 
       {canEdit ? (
-        <div className="mt-4 flex flex-wrap items-center justify-end gap-2.5">
-          {dirty ? (
-            <span className="flex items-center gap-1.5 text-[11.5px] text-amber-text">
-              <span className="size-1.5 rounded-full bg-warning" />
-              تعديل غير محفوظ
-            </span>
-          ) : null}
-          <Button
-            variant="primary"
-            className="max-lg:h-11 max-lg:w-full"
-            loading={saving}
-            onClick={() => void persistCompany()}
-          >
-            حفظ
-          </Button>
-        </div>
+        <SettingsSaveBar
+          dirty={dirty}
+          saving={saving}
+          onSave={() => void persistCompany()}
+          buttonClassName="max-lg:h-11 max-lg:w-full"
+        />
       ) : null}
 
       {modal ? (

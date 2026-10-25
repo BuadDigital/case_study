@@ -182,19 +182,6 @@ public class PartyTaskSubmissionsController : ControllerBase
         return Ok(result);
     }
 
-    private async Task<PartySubmissionActor> ResolveActorAsync(CancellationToken ct)
-    {
-        var userId = ActorClaims.Id(User);
-        var permissions = string.IsNullOrWhiteSpace(userId) || userId == "unknown"
-            ? null
-            : await _permissions.GetForUserIdAsync(userId, ct);
-
-        return new PartySubmissionActor
-        {
-            UserId = userId == "unknown" ? "" : userId,
-            DisplayName = ActorClaims.DisplayName(User),
-            PrototypeRole = permissions?.PrototypeRole,
-            DistributionAssigneeId = permissions?.DistributionAssigneeId,
-        };
-    }
+    private Task<PartySubmissionActor> ResolveActorAsync(CancellationToken ct) =>
+        PartySubmissionActors.ResolveAsync(User, _permissions, ct);
 }

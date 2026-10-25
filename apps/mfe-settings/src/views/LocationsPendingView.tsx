@@ -1,6 +1,5 @@
 "use client";
 
-import { OpsIcon } from "../components/OpsIcon";
 
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -16,8 +15,9 @@ import {
   EmptyState,
   MobileRecordCard,
   MobileRecordList,
-  PageShell,
+  OpsIcon,
   PageLoadingHint,
+  PageShell,
   Table,
   TBody,
   Td,

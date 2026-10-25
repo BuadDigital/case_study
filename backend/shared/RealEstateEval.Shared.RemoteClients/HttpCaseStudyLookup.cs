@@ -242,50 +242,38 @@ public sealed class HttpCaseStudyLookup(
     private static string JoinKinds(IReadOnlyList<WorkflowTaskKind> kinds) =>
         string.Join(",", kinds.Select(k => k.ToDbValue()));
 
-    private async Task<IReadOnlyList<T>> GetListByGuidQueryAsync<T>(
+    private Task<IReadOnlyList<T>> GetListByGuidQueryAsync<T>(
         string pathBeforeIds,
         IReadOnlyList<Guid> ids,
-        CancellationToken cancellationToken)
-    {
-        var chunks = QueryIdBatch.OfGuids(ids);
-        if (chunks.Count == 0)
-            return [];
-        if (chunks.Count == 1)
-            return await GetListAsync<T>(
-                pathBeforeIds + QueryIdBatch.JoinEscaped(chunks[0]),
-                cancellationToken);
+        CancellationToken cancellationToken) =>
+        GetListByChunksAsync<T>(
+            pathBeforeIds,
+            QueryIdBatch.OfGuids(ids).Select(chunk => QueryIdBatch.JoinEscaped(chunk)).ToList(),
+            cancellationToken);
 
-        var all = new List<T>();
-        foreach (var chunk in chunks)
-        {
-            all.AddRange(await GetListAsync<T>(
-                pathBeforeIds + QueryIdBatch.JoinEscaped(chunk),
-                cancellationToken));
-        }
-
-        return all;
-    }
-
-    private async Task<IReadOnlyList<T>> GetListByStringQueryAsync<T>(
+    private Task<IReadOnlyList<T>> GetListByStringQueryAsync<T>(
         string pathBeforeIds,
         IEnumerable<string?> values,
+        CancellationToken cancellationToken) =>
+        GetListByChunksAsync<T>(
+            pathBeforeIds,
+            QueryIdBatch.OfStrings(values).Select(chunk => QueryIdBatch.JoinEscaped(chunk)).ToList(),
+            cancellationToken);
+
+    /// <summary>One GET per escaped id chunk, the rows concatenated in chunk order.</summary>
+    private async Task<IReadOnlyList<T>> GetListByChunksAsync<T>(
+        string pathBeforeIds,
+        IReadOnlyList<string> escapedChunks,
         CancellationToken cancellationToken)
     {
-        var chunks = QueryIdBatch.OfStrings(values);
-        if (chunks.Count == 0)
+        if (escapedChunks.Count == 0)
             return [];
-        if (chunks.Count == 1)
-            return await GetListAsync<T>(
-                pathBeforeIds + QueryIdBatch.JoinEscaped(chunks[0]),
-                cancellationToken);
+        if (escapedChunks.Count == 1)
+            return await GetListAsync<T>(pathBeforeIds + escapedChunks[0], cancellationToken);
 
         var all = new List<T>();
-        foreach (var chunk in chunks)
-        {
-            all.AddRange(await GetListAsync<T>(
-                pathBeforeIds + QueryIdBatch.JoinEscaped(chunk),
-                cancellationToken));
-        }
+        foreach (var chunk in escapedChunks)
+            all.AddRange(await GetListAsync<T>(pathBeforeIds + chunk, cancellationToken));
 
         return all;
     }

@@ -6,7 +6,7 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * Shared modal-sheet behaviour (`SideSheet`, `BottomSheet`): locks page scroll,
+ * Shared modal-sheet behaviour (`AppModal`, `SideSheet`): locks page scroll,
  * focuses the panel, traps Tab inside it, closes on Escape, and hands focus
  * back to the element that opened it.
  */

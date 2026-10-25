@@ -45,32 +45,10 @@ import {
   finMuted,
   finRowActive,
   finSearch,
-  finSearchIcon,
 } from "../lib/finance-tw";
+import { SearchIcon } from "./FinanceRevenueTableParts";
 
 const EMPTY_STAFF_USERS: StaffUser[] = [];
-
-// SAR suffix without forced fractional zeros — keep local to preserve the same display.
-function SearchIcon() {
-  return (
-    <svg
-      className={finSearchIcon}
-      width="15"
-      height="15"
-      viewBox="0 0 24 24"
-      fill="none"
-      aria-hidden
-    >
-      <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M20 20l-3.5-3.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
 
 function PayeeChip({ party }: { party: FinanceCostParty }) {
   const isInd = party.payeeType === "individual";

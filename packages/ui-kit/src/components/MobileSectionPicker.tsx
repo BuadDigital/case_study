@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { cn } from "../lib/cn";
-import { BottomSheet } from "./BottomSheet";
+import { opsPhoneSegCell, opsPhoneSegOff, opsPhoneSegOn, opsPhoneSegTrack } from "../lib/ops-chrome";
+import { AppModal } from "./AppModal";
 
 export type MobileSection = {
   id: string;
@@ -51,7 +52,7 @@ function CountBadge({ count, warn, on }: { count: number; warn?: boolean; on?: b
  *
  * - ≤3 short sections: a full-width segmented control, equal cells, 44px tall.
  * - More: one full-width button showing the current section and its count;
- *   tapping it opens a bottom sheet listing every section.
+ *   tapping it opens an `AppModal` (a bottom-docked sheet on phones) listing every section.
  */
 export function MobileSectionPicker({
   sections,
@@ -72,10 +73,7 @@ export function MobileSectionPicker({
       <div
         role="tablist"
         aria-label={title}
-        className={cn(
-          "flex w-full gap-1 rounded-[12px] border border-border bg-surface-2 p-1",
-          className,
-        )}
+        className={cn(opsPhoneSegTrack, className)}
       >
         {sections.map((s) => {
           const on = s.id === active;
@@ -88,9 +86,9 @@ export function MobileSectionPicker({
               disabled={s.disabled}
               onClick={() => onChange(s.id)}
               className={cn(
-                "flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-[9px] px-2 text-center text-[13px] font-semibold leading-tight transition-colors duration-200",
-                "disabled:cursor-not-allowed disabled:opacity-50",
-                on ? "bg-ink text-white shadow-sm" : "text-text-2 active:bg-row-hover",
+                opsPhoneSegCell,
+                "flex items-center justify-center gap-1.5 text-center leading-tight disabled:opacity-50",
+                on ? opsPhoneSegOn : opsPhoneSegOff,
               )}
             >
               <span className="min-w-0">{s.label}</span>
@@ -137,8 +135,8 @@ export function MobileSectionPicker({
           <path d="m6 9 6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
-      <BottomSheet open={open} title={title} onClose={() => setOpen(false)}>
-        <ul className="m-0 list-none p-2" role="listbox" aria-label={title}>
+      <AppModal open={open} title={title} onClose={() => setOpen(false)}>
+        <ul className="-m-2 list-none p-0" role="listbox" aria-label={title}>
           {sections.map((s) => {
             const on = s.id === active;
             return (
@@ -174,7 +172,7 @@ export function MobileSectionPicker({
             );
           })}
         </ul>
-      </BottomSheet>
+      </AppModal>
     </>
   );
 }

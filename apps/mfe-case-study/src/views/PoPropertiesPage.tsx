@@ -8,6 +8,8 @@ import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import {
   Button,
   cn,
+  MobileRecordCard,
+  MobileRecordList,
   Note,
   PageGutter,
   PanelSkeleton,
@@ -400,48 +402,40 @@ export function PoPropertiesPage({
       ) : (
         <>
           {/* Phones: one card per property — the 720px table hid its columns off-screen. */}
-          <ul className="m-0 flex list-none flex-col gap-2 p-0 sm:hidden">
+          <MobileRecordList className="sm:hidden">
             {visibleProperties.map((prop, index) => {
               const { location, typeDisplay, detailHref, label, workflowStyle, deedSt, boursePending } =
                 rowView(prop);
               return (
-                <li
+                <MobileRecordCard
                   key={prop.id}
-                  className="relative rounded-[12px] border border-border bg-surface px-3.5 py-3"
-                >
-                  <button
-                    type="button"
-                    className="block w-full cursor-pointer border-0 bg-transparent p-0 text-start font-[inherit]"
-                    onClick={() => router.push(detailHref)}
-                  >
-                    <div className="pe-8">
-                      <PpDeedCell index={index + 1} deed={label} />
-                    </div>
-                    <div className="mt-1.5 text-[12.5px] text-text-2">{location}</div>
-                    {typeDisplay !== "—" ? (
-                      <div className="mt-0.5 text-[12.5px] text-text-2">{typeDisplay}</div>
-                    ) : null}
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                      <PpStatus label={workflowStyle.label} style={workflowStyle} />
-                      {!boursePending && deedSt ? (
-                        <PpStatus label={deedSt} style={deedStatusStyle(deedSt)} />
-                      ) : null}
-                    </div>
-                    {prop.isRemoved && prop.removalReason.trim() ? (
-                      <div className="mt-1 text-[11px] font-medium text-[#c0553d]">
-                        {prop.removalReason.trim()}
+                  title={<PpDeedCell index={index + 1} deed={label} />}
+                  subtitle={location}
+                  status={
+                    showRowMenu ? (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <RowMoreMenu items={resolveRowMoreItems(prop)} />
                       </div>
+                    ) : undefined
+                  }
+                  fields={typeDisplay !== "—" ? [{ label: "النوع", value: typeDisplay }] : undefined}
+                  onOpen={() => router.push(detailHref)}
+                >
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <PpStatus label={workflowStyle.label} style={workflowStyle} />
+                    {!boursePending && deedSt ? (
+                      <PpStatus label={deedSt} style={deedStatusStyle(deedSt)} />
                     ) : null}
-                  </button>
-                  {showRowMenu ? (
-                    <div className="absolute end-2 top-2">
-                      <RowMoreMenu items={resolveRowMoreItems(prop)} />
+                  </div>
+                  {prop.isRemoved && prop.removalReason.trim() ? (
+                    <div className="mt-1 text-[11px] font-medium text-[#c0553d]">
+                      {prop.removalReason.trim()}
                     </div>
                   ) : null}
-                </li>
+                </MobileRecordCard>
               );
             })}
-          </ul>
+          </MobileRecordList>
           <TableFrame className="hidden sm:block">
             <Table className="min-w-[720px]">
               <THead>

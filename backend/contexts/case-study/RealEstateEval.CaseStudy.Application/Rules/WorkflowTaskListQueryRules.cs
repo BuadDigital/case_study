@@ -1,4 +1,5 @@
 using RealEstateEval.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
@@ -47,7 +48,7 @@ public static class WorkflowTaskListQueryRules
         [SortCreated, SortUpdated, SortPo, SortPoReceived, SortPoCreated, SortDeed, SortCity];
 
     public static WorkflowTaskListSortKey ResolveSort(string? sort) =>
-        Normalize(sort) switch
+        ListQueryText.Normalize(sort) switch
         {
             "updated" => WorkflowTaskListSortKey.Updated,
             "po" => WorkflowTaskListSortKey.PoNumber,
@@ -59,12 +60,7 @@ public static class WorkflowTaskListQueryRules
         };
 
     public static bool ResolveDescending(string? dir) =>
-        Normalize(dir) switch
-        {
-            DirAscending => false,
-            DirDescending => true,
-            _ => DefaultDescending,
-        };
+        ListQueryText.ResolveDescending(dir, DefaultDescending);
 
     /// <summary>Recognised kinds only; an all-unknown list yields an empty filter (no narrowing).</summary>
     public static IReadOnlyList<WorkflowTaskKind> ResolveKinds(string? kinds) =>
@@ -81,10 +77,10 @@ public static class WorkflowTaskListQueryRules
         [WorkflowTaskStatus.Open, WorkflowTaskStatus.Blocked];
 
     public static string? NormalizeExact(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        ListQueryText.NormalizeExact(value);
 
     public static string? NormalizeSearch(string? q) =>
-        string.IsNullOrWhiteSpace(q) ? null : q.Trim();
+        ListQueryText.NormalizeSearch(q);
 
     private delegate bool TryParse<T>(string? value, out T parsed);
 
@@ -101,6 +97,4 @@ public static class WorkflowTaskListQueryRules
 
         return parsed;
     }
-
-    private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? "";
 }

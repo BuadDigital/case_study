@@ -55,6 +55,14 @@ export function activeValuationListOptions(
     .map((row) => ({ value: row.key, label: row.name }));
 }
 
+/** The answer of both GET and PUT: 401 → auth, 403 → forbidden, other failures → server. */
+async function readListsResult(res: Response): Promise<Result<ValuationListsDto>> {
+  if (res.status === 401) return { ok: false, kind: "auth" };
+  if (res.status === 403) return { ok: false, kind: "forbidden" };
+  if (!res.ok) return { ok: false, kind: "server" };
+  return { ok: true, data: normalize(await parseJson<ValuationListsDto>(res)) };
+}
+
 export async function getValuationLists(
   config: ValuationListsApiConfig,
 ): Promise<Result<ValuationListsDto>> {
@@ -63,10 +71,7 @@ export async function getValuationLists(
     const res = await fetch(`${base}/api/valuation-lists`, {
       headers: authHeaders(config.token, { accept: true }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: normalize(await parseJson<ValuationListsDto>(res)) };
+    return await readListsResult(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -88,10 +93,7 @@ export async function saveValuationLists(
       headers: authHeaders(config.token, { accept: true }),
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: normalize(await parseJson<ValuationListsDto>(res)) };
+    return await readListsResult(res);
   } catch {
     return { ok: false, kind: "network" };
   }

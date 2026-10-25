@@ -19,20 +19,23 @@ export const PARTY_MATRIX_SHORT: Record<PartyMatrixKey, string> = {
 
 type MatrixRowStatus = "pending" | "consensus" | "conflict";
 
+/** The report's answer codes and the matrix's Y/N/NA — one table, read both ways. */
+const ANSWER_YN: [CaseStudyReportAnswer, MatrixYn][] = [
+  ["A", "Y"],
+  ["B", "N"],
+  ["NA", "NA"],
+];
+const YN_BY_ANSWER = new Map(ANSWER_YN);
+const ANSWER_BY_YN = new Map(ANSWER_YN.map(([answer, yn]) => [yn, answer]));
+
 export function answerToYn(
   value: CaseStudyReportAnswer | null | undefined,
 ): MatrixYn | null {
-  if (value === "A") return "Y";
-  if (value === "B") return "N";
-  if (value === "NA") return "NA";
-  return null;
+  return (value && YN_BY_ANSWER.get(value)) ?? null;
 }
 
 export function ynToAnswer(value: MatrixYn | null): CaseStudyReportAnswer | null {
-  if (value === "Y") return "A";
-  if (value === "N") return "B";
-  if (value === "NA") return "NA";
-  return null;
+  return (value && ANSWER_BY_YN.get(value)) ?? null;
 }
 
 export function contributionsToPartyAnswers(
@@ -49,20 +52,16 @@ export function contributionsToPartyAnswers(
   return out;
 }
 
-export function getMatrixRowStatus(
-  answers: Partial<Record<PartyMatrixKey, MatrixYn>>,
-): MatrixRowStatus {
-  const vals = Object.values(answers);
-  if (vals.length === 0) return "pending";
-  const distinct = new Set(vals);
-  if (distinct.size > 1) return "conflict";
-  return "consensus";
-}
-
-export function getMatrixConsensus(
-  answers: Partial<Record<PartyMatrixKey, MatrixYn>>,
-): MatrixYn | null {
-  const vals = Object.values(answers);
-  if (vals.length === 0) return null;
-  return vals.every((v) => v === vals[0]) ? vals[0]! : null;
+/**
+ * Do the parties agree? No answers → pending; all the same → consensus on that answer;
+ * otherwise conflict.
+ */
+export function matrixAgreement(answers: Partial<Record<PartyMatrixKey, MatrixYn>>): {
+  status: MatrixRowStatus;
+  consensus: MatrixYn | null;
+} {
+  const distinct = new Set(Object.values(answers));
+  if (distinct.size === 0) return { status: "pending", consensus: null };
+  if (distinct.size > 1) return { status: "conflict", consensus: null };
+  return { status: "consensus", consensus: [...distinct][0]! };
 }

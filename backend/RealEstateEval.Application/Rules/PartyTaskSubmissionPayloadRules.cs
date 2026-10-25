@@ -120,11 +120,7 @@ public static class PartyTaskSubmissionPayloadRules
     {
         try
         {
-            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson, JsonOpts)
-                       ?? new Dictionary<string, JsonElement>();
-            var mutable = dict.ToDictionary(
-                kv => kv.Key,
-                kv => (object?)DeserializeElement(kv.Value));
+            var mutable = ReadTopLevel(payloadJson);
             mutable["status"] = status;
             mutable["submittedAtUtc"] = submittedAt.ToString("O");
             mutable["updatedAtUtc"] = submittedAt.ToString("O");
@@ -181,11 +177,7 @@ public static class PartyTaskSubmissionPayloadRules
     {
         try
         {
-            var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson, JsonOpts)
-                       ?? new Dictionary<string, JsonElement>();
-            var mutable = dict.ToDictionary(
-                kv => kv.Key,
-                kv => (object?)DeserializeElement(kv.Value));
+            var mutable = ReadTopLevel(payloadJson);
             mutable["status"] = PartyTaskSubmissionStatus.Reopened;
             mutable["returnNote"] = returnNote;
             mutable["submittedAtUtc"] = null;
@@ -196,6 +188,16 @@ public static class PartyTaskSubmissionPayloadRules
         {
             return payloadJson;
         }
+    }
+
+    /// <summary>The payload's top-level members as plain values, ready to be changed and re-serialised.</summary>
+    private static Dictionary<string, object?> ReadTopLevel(string payloadJson)
+    {
+        var dict = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(payloadJson, JsonOpts)
+                   ?? new Dictionary<string, JsonElement>();
+        return dict.ToDictionary(
+            kv => kv.Key,
+            kv => (object?)DeserializeElement(kv.Value));
     }
 
     public static object? DeserializeElement(JsonElement element) =>

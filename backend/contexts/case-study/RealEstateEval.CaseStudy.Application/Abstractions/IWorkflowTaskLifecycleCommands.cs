@@ -40,6 +40,7 @@ public interface IWorkflowTaskLifecycleCommands
         PatchWorkflowTaskRequest request,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Delete a case-study slot/transaction (linked property marked removed with reason if provided).</summary>
     Task<(bool Ok, IReadOnlyDictionary<string, string>? Errors)> DeleteCaseStudySlotAsync(
         Guid id,
         DeleteCaseStudySlotRequest request,

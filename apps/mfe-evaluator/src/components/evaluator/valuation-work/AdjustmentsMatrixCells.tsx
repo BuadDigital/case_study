@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import type { ValuationComparableSelectionDto } from "@platform/api-client";
 import { cn } from "@platform/ui-kit";
+import type { factorDescriptor } from "./lib/factor-registry";
+import type { MatrixDispatch } from "./lib/matrix-actions";
 import {
-  COMMIT_MS,
-  commitKeys,
   pct,
   pctClass,
   effPrice,
@@ -22,6 +23,7 @@ import {
   cellInputTouchClass,
   panelCardClass,
 } from "./AdjustmentsMatrixCells.styles";
+import { useMatrixCellDraft } from "./useMatrixCellDraft";
 
 export {
   pct,
@@ -84,36 +86,10 @@ export function JustCell({
   /** Commits while typing (debounced) and on Tab/blur; returning false keeps the draft (save failed). */
   onCommit?: (factorKey: string, text: string) => Promise<boolean> | void;
 }) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pending = useRef<string | null>(null);
-  const committed = value ?? "";
-  const text = draft ?? committed;
-
-  function clearTimer() {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-  }
-
-  function flush() {
-    const raw = pending.current;
-    pending.current = null;
-    clearTimer();
-    if (raw == null || !factorKey || !onCommit) return;
-    if (raw === committed) {
-      setDraft(null);
-      return;
-    }
-    void Promise.resolve(onCommit(factorKey, raw)).then((ok) => {
-      if (ok !== false) setDraft((d) => (d === raw ? null : d));
-    });
-  }
-
-  const flushRef = useRef(flush);
-  flushRef.current = flush;
-  useEffect(() => () => flushRef.current(), []);
+  const { text, change, flush, onKeyDown } = useMatrixCellDraft(
+    value ?? "",
+    factorKey && onCommit ? (raw) => onCommit(factorKey, raw) : undefined,
+  );
 
   if (!factorKey || !onCommit) {
     return touch ? null : <td className={tdJustClass} />;
@@ -126,20 +102,8 @@ export function JustCell({
         value={text}
         disabled={locked}
         placeholder="مبرر عامل التسوية"
-        onChange={(e) => {
-          const raw = e.target.value;
-          setDraft(raw);
-          pending.current = raw;
-          clearTimer();
-          timer.current = setTimeout(flush, COMMIT_MS);
-        }}
-        onKeyDown={(e) =>
-          commitKeys(e, flush, () => {
-            pending.current = null;
-            clearTimer();
-            setDraft(null);
-          })
-        }
+        onChange={(e) => change(e.target.value)}
+        onKeyDown={onKeyDown}
         onBlur={flush}
         className={cn(
           "w-full rounded-[7px] border border-border bg-surface px-2.5 py-[7px] font-medium text-text",
@@ -197,34 +161,10 @@ export function CompInput({
   /** Commits while typing (debounced) and on Tab/blur; returning false keeps the draft. */
   onCommit?: (key: string, raw: string) => Promise<boolean> | void;
 }) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pending = useRef<string | null>(null);
-
-  function clearTimer() {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-  }
-
-  function flush() {
-    const raw = pending.current;
-    pending.current = null;
-    clearTimer();
-    if (raw == null) return;
-    if (raw === value || !onCommit) {
-      setDraft(null);
-      return;
-    }
-    void Promise.resolve(onCommit(cellKey, raw)).then((ok) => {
-      if (ok !== false) setDraft((d) => (d === raw ? null : d));
-    });
-  }
-
-  const flushRef = useRef(flush);
-  flushRef.current = flush;
-  useEffect(() => () => flushRef.current(), []);
+  const { text, change, flush, onKeyDown } = useMatrixCellDraft(
+    value,
+    onCommit ? (raw) => onCommit(cellKey, raw) : undefined,
+  );
 
   const Wrap = touch ? "div" : "td";
   return (
@@ -235,21 +175,9 @@ export function CompInput({
         enterKeyHint="next"
         type="text"
         disabled={disabled}
-        value={draft ?? value}
-        onChange={(e) => {
-          const raw = e.target.value;
-          setDraft(raw);
-          pending.current = raw;
-          clearTimer();
-          timer.current = setTimeout(flush, COMMIT_MS);
-        }}
-        onKeyDown={(e) =>
-          commitKeys(e, flush, () => {
-            pending.current = null;
-            clearTimer();
-            setDraft(null);
-          })
-        }
+        value={text}
+        onChange={(e) => change(e.target.value)}
+        onKeyDown={onKeyDown}
         onBlur={flush}
         className={cn(
           touch ? cellInputTouchClass : cellInputBaseClass,
@@ -263,6 +191,65 @@ export function CompInput({
       {extra}
     </Wrap>
   );
+}
+
+/**
+ * A comparable's percentage on one factor row (table cell or phone field). Saves through the
+ * matrix dispatch; read-only and muted while the factor is excluded.
+ */
+export function FactorPctInput({
+  item,
+  factorKey,
+  value,
+  included,
+  locked,
+  dispatch,
+  note,
+  extra,
+  touch,
+}: {
+  touch?: boolean;
+  item: ValuationComparableSelectionDto;
+  factorKey: string;
+  value: number;
+  included: boolean;
+  locked: boolean;
+  dispatch: MatrixDispatch;
+  note?: string;
+  extra?: ReactNode;
+}) {
+  return (
+    <CompInput
+      touch={touch}
+      cellKey={`${item.id}:${factorKey}`}
+      value={String(value)}
+      disabled={locked || !included}
+      muted={!included}
+      note={note}
+      extra={extra}
+      onCommit={
+        included
+          ? (_key, raw) =>
+              dispatch({
+                type: "save-cell",
+                item,
+                factorKey,
+                raw,
+              })
+          : undefined
+      }
+    />
+  );
+}
+
+/** Note under a market-conditions cell: the deal's age, or the comparable's transaction kind. */
+export function sequentialCompNote(
+  desc: ReturnType<typeof factorDescriptor>,
+  item: ValuationComparableSelectionDto,
+): string | undefined {
+  if (desc?.compNote === "deal-age") return `عمر الصفقة ${item.market?.dealAgeMonths ?? "—"} شهراً`;
+  if (desc?.compNote === "kind-suggested") return item.comparable.transactionKindLabelAr;
+  return undefined;
 }
 
 /** Relative-weight cell with its local draft — same blur-commit contract. */
@@ -281,34 +268,7 @@ export function WeightCell({
   locked: boolean;
   onCommit: (raw: string) => Promise<boolean> | void;
 }) {
-  const [draft, setDraft] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pending = useRef<string | null>(null);
-
-  function clearTimer() {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-  }
-
-  function flush() {
-    const raw = pending.current;
-    pending.current = null;
-    clearTimer();
-    if (raw == null) return;
-    if (raw === value) {
-      setDraft(null);
-      return;
-    }
-    void Promise.resolve(onCommit(raw)).then((ok) => {
-      if (ok !== false) setDraft((d) => (d === raw ? null : d));
-    });
-  }
-
-  const flushRef = useRef(flush);
-  flushRef.current = flush;
-  useEffect(() => () => flushRef.current(), []);
+  const { text, change, flush, onKeyDown } = useMatrixCellDraft(value, onCommit);
 
   const Wrap = touch ? "div" : "td";
   return (
@@ -319,21 +279,9 @@ export function WeightCell({
         enterKeyHint="next"
         type="text"
         disabled={locked}
-        value={draft ?? value}
-        onChange={(e) => {
-          const raw = e.target.value;
-          setDraft(raw);
-          pending.current = raw;
-          clearTimer();
-          timer.current = setTimeout(flush, COMMIT_MS);
-        }}
-        onKeyDown={(e) =>
-          commitKeys(e, flush, () => {
-            pending.current = null;
-            clearTimer();
-            setDraft(null);
-          })
-        }
+        value={text}
+        onChange={(e) => change(e.target.value)}
+        onKeyDown={onKeyDown}
         onBlur={flush}
         className={cn(
           touch ? cellInputTouchClass : cellInputBaseClass,

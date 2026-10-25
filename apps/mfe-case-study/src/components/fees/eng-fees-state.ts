@@ -9,25 +9,14 @@ import type {
   PartyBillingStatementDto,
 } from "@platform/api-client";
 import { engFeeUiStatus } from "./EngOfficeFeesBillingTable";
+import { feeRowMatchesSearch, feeStatementMeta } from "./fee-screen-state";
+
+export {
+  deedParts,
+  filterFeeStatements as filterEngStatements,
+} from "./fee-screen-state";
 
 export type TabId = "action" | "ready" | "statements";
-
-
-export function deedParts(row: InspectorFeeRowDto): { deed: string; region: string } {
-  const label = (row.propertyLabel || "").trim();
-  const sep = label.includes("—")
-    ? "—"
-    : label.includes("–")
-      ? "–"
-      : label.includes(" - ")
-        ? " - "
-        : null;
-  if (sep) {
-    const [a, ...rest] = label.split(sep);
-    return { deed: a.trim() || label, region: rest.join(sep).trim() || row.poNumber || "—" };
-  }
-  return { deed: label || "—", region: row.poNumber || "—" };
-}
 
 export function statusMeta(st: ReturnType<typeof engFeeUiStatus>): {
   label: string;
@@ -66,24 +55,8 @@ export function statementMeta(s: PartyBillingStatementDto): {
   label: string;
   style: StatusPillStyle;
 } {
-  if (s.status === "closed") {
-    return {
-      label: s.statusLabel || "مصروف",
-      style: { base: "#3f8f5f", fg: "#2f7a4d" },
-    };
-  }
-  if (s.status === "issued" || s.status === "invoice_received") {
-    return {
-      label: s.statusLabel || "صادر",
-      style: { base: "#22406e", fg: "#102B4E" },
-    };
-  }
-  return {
-    label: s.statusLabel || "مسودة",
-    style: { base: "#6b7c8f", fg: "#4a5568" },
-  };
+  return feeStatementMeta(s, "مصروف");
 }
-
 
 /** Tab badge counts — action lane vs. ready-to-bill lane. */
 export function engFeeTabCounts(rows: InspectorFeeRowDto[]): {
@@ -116,22 +89,6 @@ export function filterEngFeeRows(
         : st === "ready" || st === "carried";
     if (!inTab) return false;
     if (stFilter && st !== stFilter) return false;
-    if (!q) return true;
-    const { deed, region } = deedParts(row);
-    return `${deed} ${region} ${row.poNumber}`.toLowerCase().includes(q);
+    return feeRowMatchesSearch(row, q);
   });
-}
-
-/** Statement search — reference number or any line's property label. */
-export function filterEngStatements(
-  statements: PartyBillingStatementDto[],
-  search: string,
-): PartyBillingStatementDto[] {
-  const q = search.trim().toLowerCase();
-  if (!q) return statements;
-  return statements.filter(
-    (s) =>
-      s.referenceNumber.toLowerCase().includes(q) ||
-      s.lines.some((l) => (l.propertyLabel || "").toLowerCase().includes(q)),
-  );
 }

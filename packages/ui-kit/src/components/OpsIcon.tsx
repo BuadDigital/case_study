@@ -1,4 +1,4 @@
-/** 24×24 stroked path icon for the settings letter-card headers. */
+/** 24×24 stroked path icon for ops card headers and toolbars — one inline SVG driven by a path constant. */
 export function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
   return (
     <svg

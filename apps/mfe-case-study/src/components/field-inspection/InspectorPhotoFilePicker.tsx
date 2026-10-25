@@ -11,6 +11,7 @@ import {
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
 } from "../../lib/app-data/inspector-photo-drop";
+import { TransactionPhotoPickGrid } from "./TransactionPhotoPickGrid";
 
 const UPLOAD_BTN =
   "inline-flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-border-md bg-surface px-2.5 py-2 text-[11px] text-text-2 hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-60 max-lg:min-h-12 max-lg:rounded-xl max-lg:text-[13px] max-lg:font-semibold";
@@ -111,45 +112,11 @@ export function InspectorPhotoFilePicker({
         </Button>
       }
     >
-      {availableTransactionPhotos.length === 0 ? (
-        <p className="m-0 text-[13px] text-text-3">
-          لا توجد صور متاحة في مستندات المعاملة بعد.
-        </p>
-      ) : (
-        <div className="grid max-h-[min(420px,60vh)] grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 overflow-y-auto">
-          {availableTransactionPhotos.map((photo) => (
-            <button
-              key={photo.id}
-              type="button"
-              className="overflow-hidden rounded-lg border border-border bg-surface-2 p-0 text-start hover:border-gold"
-              onClick={() => handleTransactionPick(photo)}
-            >
-              <div className="relative h-[88px] w-full bg-surface-2">
-                {photo.dataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={photo.dataUrl}
-                    alt={photo.name}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-[11px] text-text-3">
-                    معاينة
-                  </div>
-                )}
-              </div>
-              <div className="px-2 py-1.5">
-                <div className="truncate text-[11px] font-semibold text-heading">
-                  {photo.name}
-                </div>
-                <div className="truncate text-[10px] text-text-3">
-                  {photo.source}
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
+      <TransactionPhotoPickGrid
+        photos={availableTransactionPhotos}
+        emptyText="لا توجد صور متاحة في مستندات المعاملة بعد."
+        onPick={handleTransactionPick}
+      />
     </AppModal>
   );
 

@@ -66,15 +66,7 @@ internal static class UpstreamJson
         bool allowNotFound = true,
         bool asService = false)
     {
-        var root = (baseUrl ?? "").TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(root))
-        {
-            throw new InvalidOperationException(
-                $"{settingName} is required when using an owner HTTP lookup.");
-        }
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"{root}{path}");
-        ForwardAuthorization(httpContext, request, asService);
+        using var request = CreateRequest(httpContext, baseUrl, HttpMethod.Get, path, settingName, asService: asService);
         using var response = await http.SendAsync(request, cancellationToken);
         if (allowNotFound && response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return default;
@@ -90,15 +82,7 @@ internal static class UpstreamJson
         string settingName,
         CancellationToken cancellationToken)
     {
-        var root = (baseUrl ?? "").TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(root))
-        {
-            throw new InvalidOperationException(
-                $"{settingName} is required when using an owner HTTP lookup.");
-        }
-
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"{root}{path}");
-        ForwardAuthorization(httpContext, request);
+        using var request = CreateRequest(httpContext, baseUrl, HttpMethod.Get, path, settingName);
         using var response = await http.SendAsync(request, cancellationToken);
         if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
             return null;
@@ -116,17 +100,7 @@ internal static class UpstreamJson
         string settingName,
         CancellationToken cancellationToken)
     {
-        var root = (baseUrl ?? "").TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(root))
-        {
-            throw new InvalidOperationException(
-                $"{settingName} is required when using an owner HTTP lookup.");
-        }
-
-        using var request = new HttpRequestMessage(method, $"{root}{path}");
-        ForwardAuthorization(httpContext, request);
-        if (body is not null)
-            request.Content = JsonContent.Create(body);
+        using var request = CreateRequest(httpContext, baseUrl, method, path, settingName, body);
         using var response = await http.SendAsync(request, cancellationToken);
         if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
         {
@@ -150,17 +124,7 @@ internal static class UpstreamJson
         string settingName,
         CancellationToken cancellationToken)
     {
-        var root = (baseUrl ?? "").TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(root))
-        {
-            throw new InvalidOperationException(
-                $"{settingName} is required when using an owner HTTP lookup.");
-        }
-
-        using var request = new HttpRequestMessage(HttpMethod.Post, $"{root}{path}");
-        ForwardAuthorization(httpContext, request);
-        if (body is not null)
-            request.Content = JsonContent.Create(body);
+        using var request = CreateRequest(httpContext, baseUrl, HttpMethod.Post, path, settingName, body);
         using var response = await http.SendAsync(request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
@@ -186,17 +150,7 @@ internal static class UpstreamJson
         string settingName,
         CancellationToken cancellationToken)
     {
-        var root = (baseUrl ?? "").TrimEnd('/');
-        if (string.IsNullOrWhiteSpace(root))
-        {
-            throw new InvalidOperationException(
-                $"{settingName} is required when using an owner HTTP lookup.");
-        }
-
-        using var request = new HttpRequestMessage(method, $"{root}{path}");
-        ForwardAuthorization(httpContext, request);
-        if (body is not null)
-            request.Content = JsonContent.Create(body);
+        using var request = CreateRequest(httpContext, baseUrl, method, path, settingName, body);
         using var response = await http.SendAsync(request, cancellationToken);
         if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
         {
@@ -226,6 +180,30 @@ internal static class UpstreamJson
         string settingName,
         CancellationToken cancellationToken)
     {
+        using var request = CreateRequest(httpContext, baseUrl, HttpMethod.Delete, path, settingName);
+        using var response = await http.SendAsync(request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>The owner's general refusal (<c>_</c>) when it sent one, else its first field error.</summary>
+    public static string? FirstError(Dictionary<string, string>? errors) =>
+        errors is null || errors.Count == 0
+            ? null
+            : errors.TryGetValue("_", out var message) ? message : errors.Values.First();
+
+    /// <summary>
+    /// The request to <c>{baseUrl}{path}</c>: the caller's authorization forwarded and the JSON body
+    /// attached when there is one. Throws when the owner's base URL is not configured.
+    /// </summary>
+    private static HttpRequestMessage CreateRequest(
+        IHttpContextAccessor httpContext,
+        string? baseUrl,
+        HttpMethod method,
+        string path,
+        string settingName,
+        object? body = null,
+        bool asService = false)
+    {
         var root = (baseUrl ?? "").TrimEnd('/');
         if (string.IsNullOrWhiteSpace(root))
         {
@@ -233,10 +211,11 @@ internal static class UpstreamJson
                 $"{settingName} is required when using an owner HTTP lookup.");
         }
 
-        using var request = new HttpRequestMessage(HttpMethod.Delete, $"{root}{path}");
-        ForwardAuthorization(httpContext, request);
-        using var response = await http.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        var request = new HttpRequestMessage(method, $"{root}{path}");
+        ForwardAuthorization(httpContext, request, asService);
+        if (body is not null)
+            request.Content = JsonContent.Create(body);
+        return request;
     }
 
     private static void ForwardAuthorization(

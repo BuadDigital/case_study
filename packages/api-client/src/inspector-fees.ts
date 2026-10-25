@@ -4,16 +4,8 @@
 import { normalizeFieldErrors } from "./field-errors";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
+import { readErrorText } from "./parse-json";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
-
-async function readError(res: Response): Promise<string> {
-  try {
-    const body = (await res.json()) as Record<string, unknown>;
-    return String(body.error ?? body.Error ?? `HTTP ${res.status}`);
-  } catch {
-    return `HTTP ${res.status}`;
-  }
-}
 
 /** Prefer field errors when present; otherwise surface `{ error }` like eng-billing. */
 async function readMutationError(res: Response): Promise<ApiErr> {
@@ -327,7 +319,7 @@ export async function transitionInspectorFee(
     if (res.status === 403) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (!res.ok) {
-      return { ok: false, kind: "server", message: await readError(res) };
+      return { ok: false, kind: "server", message: await readErrorText(res) };
     }
     const raw = (await res.json()) as Record<string, unknown>;
     return { ok: true, data: normalizeRow(raw) };

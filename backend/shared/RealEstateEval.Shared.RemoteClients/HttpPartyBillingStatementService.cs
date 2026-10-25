@@ -221,8 +221,6 @@ public sealed class HttpPartyBillingStatementService(
     {
         var (result, errors) = await UpstreamJson.PostForResultAsync<T>(
             http, httpContext, options.Value.FinancialBaseUrl, path, body, Setting, cancellationToken);
-        if (errors is null || errors.Count == 0)
-            return (result, null);
-        return (result, errors.TryGetValue("_", out var message) ? message : errors.Values.First());
+        return (result, UpstreamJson.FirstError(errors));
     }
 }

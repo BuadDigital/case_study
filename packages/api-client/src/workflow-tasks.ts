@@ -89,6 +89,23 @@ async function readJson<T>(res: Response): Promise<T> {
   return (await res.json()) as T;
 }
 
+/**
+ * A workflow-task write's answer: 401 → auth, 404 → not_found, 400 → validation with the
+ * field errors when the endpoint reports them, any other failure → server; else the JSON body.
+ */
+async function readTaskWrite<T>(
+  res: Response,
+  options: { fieldErrorsOn400?: boolean } = {},
+): Promise<ApiOk<T> | ApiErr> {
+  if (res.status === 401) return { ok: false, kind: "auth" };
+  if (res.status === 404) return { ok: false, kind: "not_found" };
+  if (options.fieldErrorsOn400 && res.status === 400) {
+    return { ok: false, kind: "validation", errors: await parseFieldErrorsFromResponse(res) };
+  }
+  if (!res.ok) return { ok: false, kind: "server" };
+  return { ok: true, data: await readJson<T>(res) };
+}
+
 /** Allowed `sort` keys — pagination-contract §2. Unknown keys fall back to `created`. */
 export type WorkflowTaskListSort =
   | "created"
@@ -195,10 +212,7 @@ export async function patchWorkflowTaskDistribution(
         body: JSON.stringify({ distribution }),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+    return await readTaskWrite<WorkflowTaskDto>(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -224,14 +238,7 @@ export async function confirmWorkflowTaskDistribution(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (res.status === 400) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await readJson<ConfirmTaskDistributionResponseDto>(res) };
+    return await readTaskWrite<ConfirmTaskDistributionResponseDto>(res, { fieldErrorsOn400: true });
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -257,14 +264,7 @@ export async function redistributeWorkflowTaskParties(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (res.status === 400) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+    return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -290,10 +290,7 @@ export async function advanceWorkflowTaskAfterEnfath(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+    return await readTaskWrite<WorkflowTaskDto>(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -312,13 +309,7 @@ export async function linkWorkflowTaskProperty(
       headers: authHeaders(config.token),
       body: JSON.stringify({ propertyId }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (res.status === 400) {
-      return { ok: false, kind: "validation", errors: await parseFieldErrorsFromResponse(res) };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+    return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -339,10 +330,7 @@ export async function advanceWorkflowTaskAfterBourse(
         body: JSON.stringify({ deedNumber }),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+    return await readTaskWrite<WorkflowTaskDto>(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -363,17 +351,7 @@ export async function revertWorkflowTaskPhase(
         body: JSON.stringify({ targetPhase }),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (res.status === 400) {
-      return {
-        ok: false,
-        kind: "validation",
-        errors: await parseFieldErrorsFromResponse(res),
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+    return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -421,17 +399,7 @@ export async function reopenCompletedWorkflowTask(
         body: JSON.stringify({ reason }),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (res.status === 400) {
-      return {
-        ok: false,
-        kind: "validation",
-        errors: await parseFieldErrorsFromResponse(res),
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await readJson<WorkflowTaskDto>(res) };
+    return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
   } catch {
     return { ok: false, kind: "network" };
   }

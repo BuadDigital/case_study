@@ -1,130 +1,22 @@
 "use client";
 
 /**
- * Presentational pieces of `PoListView` — the portal hover card, the team
- * avatar stack, the status pill, and the toolbar/empty-state icons. No queries
+ * Presentational pieces of `PoListView` — the portal hover card (re-exported
+ * from `components/ui/HoverPortalCard`), the team avatar stack, the status pill, and the toolbar/empty-state icons. No queries
  * and no writes; rules live in `po-list-view-state.ts`.
  */
 
-import {
-  useLayoutEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
-import { createPortal } from "react-dom";
 import type { PoRow } from "@platform/app-shared/app-data/constants";
 import { poListStatusMeta } from "@platform/app-shared/app-data/po-list-status";
-import { cn, StatusPill, useIsHydrated } from "@platform/ui-kit";
+import { cn, StatusPill } from "@platform/ui-kit";
+import { HoverPortalCard } from "../components/ui/HoverPortalCard";
 import {
   poStatusStyle,
   TEAM_COLORS,
   teamInitial,
 } from "./po-list-view-state";
 
-const PO_TOOLTIP_GAP = 8;
-const PO_TOOLTIP_VIEWPORT_MARGIN = 8;
-
-function computeHoverCardStyle(
-  trigger: HTMLElement,
-  card: HTMLElement,
-  align: "start" | "end" = "start",
-): CSSProperties {
-  const rect = trigger.getBoundingClientRect();
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const cardWidth = card.offsetWidth;
-  const cardHeight = card.offsetHeight;
-
-  let left = align === "end" ? rect.right - cardWidth : rect.left;
-  left = Math.max(
-    PO_TOOLTIP_VIEWPORT_MARGIN,
-    Math.min(left, vw - cardWidth - PO_TOOLTIP_VIEWPORT_MARGIN),
-  );
-
-  let top = rect.bottom + PO_TOOLTIP_GAP;
-  if (top + cardHeight > vh - PO_TOOLTIP_VIEWPORT_MARGIN) {
-    const above = rect.top - cardHeight - PO_TOOLTIP_GAP;
-    if (above >= PO_TOOLTIP_VIEWPORT_MARGIN) top = above;
-  }
-
-  return {
-    position: "fixed",
-    top,
-    left,
-    zIndex: 1200,
-  };
-}
-
-export function HoverPortalCard({
-  children,
-  content,
-  align = "start",
-  panelClassName,
-  triggerClassName,
-}: {
-  children: ReactNode;
-  content: ReactNode;
-  align?: "start" | "end";
-  panelClassName: string;
-  triggerClassName?: string;
-}) {
-  const triggerRef = useRef<HTMLSpanElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [open, setOpen] = useState(false);
-  const mounted = useIsHydrated();
-  const [cardStyle, setCardStyle] = useState<CSSProperties>({});
-
-  useLayoutEffect(() => {
-    if (!open || !triggerRef.current || !cardRef.current) return;
-
-    let raf = 0;
-    const placeCard = () => {
-      if (!triggerRef.current || !cardRef.current) return;
-      setCardStyle(
-        computeHoverCardStyle(triggerRef.current, cardRef.current, align),
-      );
-    };
-
-    placeCard();
-    raf = requestAnimationFrame(placeCard);
-    window.addEventListener("resize", placeCard);
-    // passive: listener does not block scroll — lets the browser skip waiting on it (client-passive-event-listeners).
-    window.addEventListener("scroll", placeCard, { capture: true, passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener("resize", placeCard);
-      window.removeEventListener("scroll", placeCard, { capture: true });
-    };
-  }, [align, content, open]);
-
-  const card = open ? (
-    <div
-      ref={cardRef}
-      className={panelClassName}
-      style={cardStyle}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
-      {content}
-    </div>
-  ) : null;
-
-  return (
-    <>
-      <span
-        ref={triggerRef}
-        className={cn("inline-block w-fit", triggerClassName)}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-      >
-        {children}
-      </span>
-      {mounted && card ? createPortal(card, document.body) : null}
-    </>
-  );
-}
+export { HoverPortalCard };
 
 type TeamStackMember = string | { name: string; role?: string };
 

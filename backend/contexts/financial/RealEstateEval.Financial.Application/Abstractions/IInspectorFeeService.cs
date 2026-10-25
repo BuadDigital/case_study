@@ -1,10 +1,11 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Financial.Application.Abstractions;
 
 namespace RealEstateEval.Application.Abstractions;
 
-public interface IInspectorFeeService
+public interface IInspectorFeeService : IInspectorFeeSummaryQuery
 {
     Task EnsureLedgersForTasksAsync(
         IEnumerable<WorkflowTask> tasks,
@@ -21,25 +22,6 @@ public interface IInspectorFeeService
     Task<(InspectorFeeRowDto? Row, string? Error)> AccrueEngineeringSurveyFeeAsync(
         Guid workflowTaskId,
         string actorUserId,
-        CancellationToken cancellationToken = default);
-
- /// <summary>
- /// Set <paramref name="hideDisputed"/> for a finance-only actor: a line under pricing dispute must
- /// not reach finance in any response, counts included, until operations resolves it.
- /// </summary>
-    Task<InspectorFeesSummaryDto> GetSummaryAsync(
-        string? assigneeId,
-        string? workflowTaskId,
-        bool submittedOnly,
-        string? taskKind = null,
-        string? billingStatus = null,
-        string? returnTo = null,
-        bool hideDisputed = false,
-        CancellationToken cancellationToken = default,
-        string? supervisingDepartment = null);
-
-    Task<InspectorFeeRowDto?> GetByWorkflowTaskIdAsync(
-        Guid workflowTaskId,
         CancellationToken cancellationToken = default);
 
     Task<InspectorFeeRowDto?> PatchAsync(
@@ -69,11 +51,6 @@ public interface IInspectorFeeService
         CancellationToken cancellationToken = default,
         string? actorDepartment = null,
         bool canManageAllDepartments = false);
-
-
-    Task<IReadOnlyList<InspectorFeeAuditEntryDto>> ListTransitionsAsync(
-        Guid workflowTaskId,
-        CancellationToken cancellationToken = default);
 
     Task DeleteForWorkflowTaskIdsAsync(
         IEnumerable<Guid> workflowTaskIds,

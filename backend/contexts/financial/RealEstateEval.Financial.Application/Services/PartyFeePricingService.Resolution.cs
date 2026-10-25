@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Financial.Application.Rules;
+using RealEstateEval.Financial.Domain;
 
 namespace RealEstateEval.Financial.Application.Services;
 
@@ -47,15 +48,9 @@ public sealed partial class PartyFeePricingService
 
         if (!string.IsNullOrEmpty(trimmed))
         {
-            var assignedTableId = await _db.FindAssignedTableIdAsync(
-                category, trimmed, cancellationToken);
-
-            if (assignedTableId is Guid tableId)
-            {
-                var assigned = await LoadTableAsync(tableId, tracking: false, cancellationToken);
-                if (PartyFeePricingRules.IsUsableEmployeeIncentiveTable(assigned))
-                    return await ToDtoAsync(assigned!, cancellationToken);
-            }
+            var assigned = await LoadAssignedTableAsync(category, trimmed, cancellationToken);
+            if (PartyFeePricingRules.IsUsableEmployeeIncentiveTable(assigned))
+                return await ToDtoAsync(assigned!, cancellationToken);
         }
 
         var flat = await _db.FindFlatTableWithAmountAsync(category, cancellationToken);
@@ -73,15 +68,9 @@ public sealed partial class PartyFeePricingService
 
         if (!string.IsNullOrEmpty(trimmed))
         {
-            var assignedTableId = await _db.FindAssignedTableIdAsync(
-                category, trimmed, cancellationToken);
-
-            if (assignedTableId is Guid tableId)
-            {
-                var assigned = await LoadTableAsync(tableId, tracking: false, cancellationToken);
-                if (assigned is not null)
-                    return await ToDtoAsync(assigned, cancellationToken);
-            }
+            var assigned = await LoadAssignedTableAsync(category, trimmed, cancellationToken);
+            if (assigned is not null)
+                return await ToDtoAsync(assigned, cancellationToken);
 
             if (!PartyFeePricingRules.AllowsCategoryDefaultFallback(category))
                 return null;
@@ -89,5 +78,17 @@ public sealed partial class PartyFeePricingService
 
         var fallback = await _db.FindActiveTableAsync(category, cancellationToken);
         return fallback is null ? null : await ToDtoAsync(fallback, cancellationToken);
+    }
+
+    /// <summary>The table explicitly assigned to the assignee for the category; null when none.</summary>
+    private async Task<PartyFeePricingTable?> LoadAssignedTableAsync(
+        string category,
+        string assigneeId,
+        CancellationToken cancellationToken)
+    {
+        var assignedTableId = await _db.FindAssignedTableIdAsync(category, assigneeId, cancellationToken);
+        return assignedTableId is Guid tableId
+            ? await LoadTableAsync(tableId, tracking: false, cancellationToken)
+            : null;
     }
 }

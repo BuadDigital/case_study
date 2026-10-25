@@ -13,12 +13,14 @@ export type ListUsersResult =
   | { ok: true; users: UserListItem[] }
   | { ok: false; kind: "network" | "server" };
 
-export async function listUsers(
+/** GET a user list; a non-array body reads as an empty list. */
+async function fetchUserList(
   config: UsersApiConfig,
+  path: string,
 ): Promise<ListUsersResult> {
   const base = config.baseUrl ?? getApiBase();
   try {
-    const res = await fetch(`${base}/api/users`, {
+    const res = await fetch(`${base}${path}`, {
       headers: authHeaders(config.token),
     });
     if (!res.ok) {
@@ -31,22 +33,16 @@ export async function listUsers(
   }
 }
 
+export async function listUsers(
+  config: UsersApiConfig,
+): Promise<ListUsersResult> {
+  return fetchUserList(config, "/api/users");
+}
+
 export async function listDistributionAssignees(
   config: UsersApiConfig,
 ): Promise<ListUsersResult> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/users/distribution-assignees`, {
-      headers: authHeaders(config.token),
-    });
-    if (!res.ok) {
-      return { ok: false, kind: "server" };
-    }
-    const users = (await res.json()) as UserListItem[];
-    return { ok: true, users: Array.isArray(users) ? users : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  return fetchUserList(config, "/api/users/distribution-assignees");
 }
 
 export type CreateStaffUserRequest = {
