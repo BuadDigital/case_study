@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from "react";
 import { COMMIT_MS, commitKeys } from "./AdjustmentsMatrixCells.styles";
 
 /**
@@ -38,9 +38,8 @@ export function useMatrixCellDraft(
     });
   }
 
-  const flushRef = useRef(flush);
-  flushRef.current = flush;
-  useEffect(() => () => flushRef.current(), []);
+  const flushOnUnmount = useEffectEvent(flush);
+  useEffect(() => () => flushOnUnmount(), []);
 
   function change(raw: string) {
     setDraft(raw);

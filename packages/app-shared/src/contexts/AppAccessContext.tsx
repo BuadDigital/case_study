@@ -110,6 +110,19 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
 
   const authReady = hasSession && permissionsResolved;
 
+  const viewerUserId = session?.user.id ?? null;
+  const viewerDisplayName =
+    permissions?.displayName?.trim() ||
+    session?.user.displayName?.trim() ||
+    null;
+  const viewerJobTitle =
+    permissions?.jobTitle?.trim() ||
+    session?.user.jobTitle?.trim() ||
+    null;
+  const distributionAssigneeId =
+    permissions?.distributionAssigneeId?.trim() || null;
+  const department = permissions?.department?.trim() || null;
+
   const value = useMemo<Ctx>(
     () => ({
       role,
@@ -118,17 +131,11 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
       retryPermissions: () => {
         void refetch();
       },
-      viewerUserId: session?.user.id ?? null,
-      viewerDisplayName:
-        permissions?.displayName?.trim() ||
-        session?.user.displayName?.trim() ||
-        null,
-      viewerJobTitle:
-        permissions?.jobTitle?.trim() ||
-        session?.user.jobTitle?.trim() ||
-        null,
-      distributionAssigneeId: permissions?.distributionAssigneeId?.trim() || null,
-      department: permissions?.department?.trim() || null,
+      viewerUserId,
+      viewerDisplayName,
+      viewerJobTitle,
+      distributionAssigneeId,
+      department,
       rolePages,
       capabilities,
       hasCapability: (capability) => capabilities.includes(capability),
@@ -138,13 +145,11 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
       authReady,
       permissionsFailed,
       refetch,
-      session?.user.id,
-      session?.user.displayName,
-      session?.user.jobTitle,
-      permissions?.displayName,
-      permissions?.jobTitle,
-      permissions?.distributionAssigneeId,
-      permissions?.department,
+      viewerUserId,
+      viewerDisplayName,
+      viewerJobTitle,
+      distributionAssigneeId,
+      department,
       rolePages,
       capabilities,
     ],

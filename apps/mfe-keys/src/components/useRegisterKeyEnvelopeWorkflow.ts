@@ -95,12 +95,16 @@ export function useRegisterKeyEnvelopeWorkflow({
   }, []);
 
   const requestNumber = form.requestNumber;
+  // Too short to look up: drop the linked properties (adjusted during render, not in the effect).
+  if (
+    requestNumber.trim().length < LINKED_LOOKUP_MIN_CHARS &&
+    linked.length > 0
+  ) {
+    setLinked([]);
+  }
   useEffect(() => {
     const trimmed = requestNumber.trim();
-    if (trimmed.length < LINKED_LOOKUP_MIN_CHARS) {
-      setLinked([]);
-      return;
-    }
+    if (trimmed.length < LINKED_LOOKUP_MIN_CHARS) return;
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void (async () => {

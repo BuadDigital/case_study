@@ -147,12 +147,13 @@ export function EvaluatorWindow({
     market: false,
     cost: false,
   });
-  const visitedTabsRef = useRef<Set<EvaluatorWindowTab>>(new Set());
-  visitedTabsRef.current.add(activeTab);
-  const lastWorkScreenRef = useRef<ValuationWorkScreenId>(
+  // Tabs opened so far and the last work screen — recorded during render (state, not refs).
+  const [visitedTabs, setVisitedTabs] = useState(() => new Set<EvaluatorWindowTab>([activeTab]));
+  if (!visitedTabs.has(activeTab)) setVisitedTabs(new Set(visitedTabs).add(activeTab));
+  const [lastWorkScreen, setLastWorkScreen] = useState<ValuationWorkScreenId>(
     isWorkScreen(initialTab) ? initialTab : "basic",
   );
-  if (isWorkScreen(activeTab)) lastWorkScreenRef.current = activeTab;
+  if (isWorkScreen(activeTab) && lastWorkScreen !== activeTab) setLastWorkScreen(activeTab);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editVersionRef = useRef(0);
   const retrospectiveRef = useRef<EvaluatorRetrospectiveDraft | null>(null);
@@ -525,12 +526,8 @@ export function EvaluatorWindow({
     linkedDeeds.length > 1
       ? linkedDeeds.map(transactionDeedLabelOf).join(" ، ")
       : deedLabel;
-  const workVisited = WORK_SCREENS.some((id) =>
-    visitedTabsRef.current.has(id),
-  );
-  const workScreen = isWorkScreen(activeTab)
-    ? activeTab
-    : lastWorkScreenRef.current;
+  const workVisited = WORK_SCREENS.some((id) => visitedTabs.has(id));
+  const workScreen = isWorkScreen(activeTab) ? activeTab : lastWorkScreen;
 
   return (
     <div className="flex min-w-0 flex-col overflow-x-hidden">
@@ -666,7 +663,7 @@ export function EvaluatorWindow({
                 </Activity>
               ) : null}
 
-              {visitedTabsRef.current.has("output") ? (
+              {visitedTabs.has("output") ? (
                 <Activity mode={activeTab === "output" ? "visible" : "hidden"}>
                   <EvaluatorValuationReportOutputTab
                     draft={draft}

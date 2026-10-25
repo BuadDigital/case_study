@@ -104,15 +104,21 @@ export function EvaluatorInspectionFactsSection({
     null,
   );
   const [loading, setLoading] = useState(Boolean(inspectionTaskId));
-
-  useEffect(() => {
-    let cancelled = false;
+  // A new task id resets the section during render; the effect only fetches.
+  const [prevTaskId, setPrevTaskId] = useState(inspectionTaskId);
+  if (prevTaskId !== inspectionTaskId) {
+    setPrevTaskId(inspectionTaskId);
     if (!inspectionTaskId) {
       setWorkspace(null);
       setLoading(false);
-      return;
+    } else {
+      setLoading(true);
     }
-    setLoading(true);
+  }
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!inspectionTaskId) return;
     void fetchInspectorWorkspace(inspectionTaskId)
       .then((draft) => {
         if (!cancelled) {

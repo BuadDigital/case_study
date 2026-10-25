@@ -5,6 +5,7 @@
  * Case-study must not import `@keys/mfe` (it would re-create the cycle).
  */
 
+import { createElement } from "react";
 import {
   tryGetKeyEnvelopeFeesPanel,
   type KeyEnvelopeFeesPanelProps,
@@ -13,5 +14,6 @@ import {
 export function KeyEnvelopeFeesPanel(props: KeyEnvelopeFeesPanelProps) {
   const Panel = tryGetKeyEnvelopeFeesPanel();
   if (!Panel) return null;
-  return <Panel {...props} />;
+  // The shell registers one module-level component (stable identity), not one created per render.
+  return createElement(Panel, props);
 }

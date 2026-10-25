@@ -9,6 +9,7 @@
  * This hook owns the state all of them mutate.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { useQueryClient } from "@tanstack/react-query";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
 import {
@@ -82,8 +83,7 @@ export function useValuationWorkData({
 }: ValuationWorkDataParams) {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const onFinalOpinionChangeRef = useRef(onFinalOpinionChange);
-  onFinalOpinionChangeRef.current = onFinalOpinionChange;
+  const onFinalOpinionChangeRef = useLatestRef(onFinalOpinionChange);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -214,8 +214,7 @@ export function useValuationWorkData({
 
   // Only the latest reload, still on the property it started for, writes state.
   const [reloadSeq] = useState(createReloadSequence);
-  const propertyIdRef = useRef(propertyId);
-  propertyIdRef.current = propertyId;
+  const propertyIdRef = useLatestRef(propertyId);
 
   const load = useCallback(
     async (ticket: ReloadTicket) => {
@@ -393,11 +392,10 @@ export function useValuationWorkData({
         setLoading(false); // a rejected call must not leave the skeleton up forever
         setError("تعذّر تحميل بيانات التقييم — أعد المحاولة");
       }),
-    [load, propertyId, reloadSeq],
+    [load, propertyId, propertyIdRef, reloadSeq],
   );
 
-  const reloadRef = useRef(reload);
-  reloadRef.current = reload;
+  const reloadRef = useLatestRef(reload);
 
   const sectionSaves = useValuationSectionSaves({
     setCost,
@@ -429,7 +427,7 @@ export function useValuationWorkData({
     void reloadRef.current().finally(() => {
       current.done = true;
     });
-  }, [propertyId]);
+  }, [propertyId, reloadRef]);
 
   const { settingsSaved, marketEnabled, costEnabled } =
     approachAvailability(approachSettings);

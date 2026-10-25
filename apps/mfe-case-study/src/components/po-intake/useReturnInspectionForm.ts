@@ -54,10 +54,16 @@ export function useReturnInspectionForm({
   const requestRef = useRef<ReturnInspectionRequest | null>(null);
 
   const sectionsKey = sections.join(",");
-  useEffect(() => {
-    let cancelled = false;
+  // Each new impact request shows as loading during render, before the effect fetches it.
+  const impactRequestKey = [inspectionTaskId, sectionsKey, impactRetry].join("|");
+  const [impactRequestedFor, setImpactRequestedFor] = useState(impactRequestKey);
+  if (impactRequestedFor !== impactRequestKey) {
+    setImpactRequestedFor(impactRequestKey);
     setImpactLoading(true);
     setImpactError(null);
+  }
+  useEffect(() => {
+    let cancelled = false;
     void fetchReturnImpact(inspectionTaskId, sectionsKey ? sectionsKey.split(",") : []).then(
       (loaded) => {
         if (cancelled) return;

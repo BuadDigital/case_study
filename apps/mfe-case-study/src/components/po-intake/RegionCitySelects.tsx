@@ -81,14 +81,13 @@ export function RegionCitySelects({
     let cancelled = false;
     const config = apiConfig();
     if (!config) {
-      setRegions([]);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no API session: the regions load ends here with its sign-in message; the fetch path sets state in its callbacks
       setRegionsLoading(false);
       setCatalogError("يلزم تسجيل الدخول لتحميل المناطق والمدن");
       return;
     }
 
-    setRegionsLoading(true);
-    setCatalogError(null);
+    // Mount-only: the list is already empty, loading and without an error.
     void listSelectableRegions(config).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
@@ -166,19 +165,23 @@ export function RegionCitySelects({
     });
   };
 
+  // No region / city: its list empties during render, before the effects below would run.
+  const [listsFor, setListsFor] = useState([selectedRegionId, selectedCityId]);
+  if (listsFor[0] !== selectedRegionId || listsFor[1] !== selectedCityId) {
+    setListsFor([selectedRegionId, selectedCityId]);
+    if (!selectedRegionId && listsFor[0] !== selectedRegionId) setCities([]);
+    if (!selectedCityId && listsFor[1] !== selectedCityId) setDistricts([]);
+  }
+
   useEffect(() => {
-    if (!selectedRegionId) {
-      setCities([]);
-      return;
-    }
+    if (!selectedRegionId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loadCities() is the shared catalog search (also run while typing); it raises its loading flag before the request
     loadCities(selectedRegionId, "");
   }, [selectedRegionId]);
 
   useEffect(() => {
-    if (!selectedCityId) {
-      setDistricts([]);
-      return;
-    }
+    if (!selectedCityId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loadDistricts() is the shared catalog search (also run while typing); it raises its loading flag before the request
     loadDistricts(selectedCityId, "");
   }, [selectedCityId]);
 

@@ -114,12 +114,17 @@ export function PropertyDetailBasicTab({
     longitude: string;
   } | null>(null);
 
+  // No inspection task: no pin — cleared during render, before the effect would run.
+  const pinTaskId = inspectionTaskId?.trim() ?? "";
+  const [pinFor, setPinFor] = useState(pinTaskId);
+  if (pinFor !== pinTaskId) {
+    setPinFor(pinTaskId);
+    if (!pinTaskId) setInspectorMapPin(null);
+  }
+
   useEffect(() => {
     const taskId = inspectionTaskId?.trim();
-    if (!taskId) {
-      setInspectorMapPin(null);
-      return;
-    }
+    if (!taskId) return;
     let cancelled = false;
     void loadInspectorWorkspaceSnapshot(taskId).then((draft) => {
       if (cancelled) return;

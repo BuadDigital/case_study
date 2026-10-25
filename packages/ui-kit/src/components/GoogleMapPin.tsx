@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useInsertionEffect, useRef, useState } from "react";
 import { cn } from "../lib/cn";
 import {
   googleMapsApiKey,
@@ -102,20 +102,24 @@ export function GoogleMapPin({
   const infoRef = useRef<google.maps.InfoWindow | null>(null);
   const contextMarkersRef = useRef<google.maps.Marker[]>([]);
   const picking = Boolean(interactive && !disabled && onCoordsChange);
+  // Latest props for map listeners and the async map init — refreshed after each render
+  // (before layout effects), not during it.
   const pickingRef = useRef(picking);
-  pickingRef.current = picking;
   const onCoordsChangeRef = useRef(onCoordsChange);
-  onCoordsChangeRef.current = onCoordsChange;
   const onLocationDetailRef = useRef(onLocationDetail);
-  onLocationDetailRef.current = onLocationDetail;
   const resolvePlaceRef = useRef(resolvePlace);
-  resolvePlaceRef.current = resolvePlace;
   const pinLabelRef = useRef(pinLabel);
-  pinLabelRef.current = pinLabel;
   const coordsRef = useRef({ lat, lng });
-  coordsRef.current = { lat, lng };
   const initialCenterRef = useRef(initialCenter);
-  initialCenterRef.current = initialCenter;
+  useInsertionEffect(() => {
+    pickingRef.current = picking;
+    onCoordsChangeRef.current = onCoordsChange;
+    onLocationDetailRef.current = onLocationDetail;
+    resolvePlaceRef.current = resolvePlace;
+    pinLabelRef.current = pinLabel;
+    coordsRef.current = { lat, lng };
+    initialCenterRef.current = initialCenter;
+  });
   const [mapReady, setMapReady] = useState(false);
   /** Bumped when the network returns after an offline failure — reloads the map. */
   const [loadAttempt, setLoadAttempt] = useState(0);

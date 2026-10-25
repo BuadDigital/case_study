@@ -106,6 +106,7 @@ export function OrganizationDataView() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- server fetch: reload() is shared with the retry/refresh handlers and flips loading/error before its first await
     void reload();
   }, [reload]);
 

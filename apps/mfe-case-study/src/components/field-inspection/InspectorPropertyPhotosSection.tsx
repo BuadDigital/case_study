@@ -110,16 +110,29 @@ export function InspectorPropertyPhotosSection({
   );
   const classifyRefKey = classifyPhoto ? freePhotoRef(classifyPhoto.id) : null;
 
-  useEffect(() => {
+  // A new photo to classify: clear the preview or show its cached copy during render — only a
+  // fetch waits for the effect below.
+  const [classifyShownFor, setClassifyShownFor] = useState<
+    readonly [string, typeof classifyPhoto, string | null] | null
+  >(null);
+  if (
+    !classifyShownFor ||
+    classifyShownFor[0] !== draft.taskId ||
+    classifyShownFor[1] !== classifyPhoto ||
+    classifyShownFor[2] !== classifyRefKey
+  ) {
+    setClassifyShownFor([draft.taskId, classifyPhoto, classifyRefKey]);
     if (!classifyPhoto || !classifyRefKey) {
       setClassifyDataUrl(undefined);
-      return;
+    } else {
+      const cached = getInspectorPhotoDataUrl(draft.taskId, classifyRefKey);
+      if (cached) setClassifyDataUrl(cached);
     }
-    const cached = getInspectorPhotoDataUrl(draft.taskId, classifyRefKey);
-    if (cached) {
-      setClassifyDataUrl(cached);
-      return;
-    }
+  }
+
+  useEffect(() => {
+    if (!classifyPhoto || !classifyRefKey) return;
+    if (getInspectorPhotoDataUrl(draft.taskId, classifyRefKey)) return;
     let cancelled = false;
     void prefetchInspectorPhoto(draft.taskId, classifyRefKey, classifyPhoto).then(
       (url) => {
@@ -535,7 +548,6 @@ export function InspectorPropertyPhotosSection({
         }
       >
         {classifyDataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={classifyDataUrl}
             alt={classifyPhoto?.fileName ?? "صورة العقار"}

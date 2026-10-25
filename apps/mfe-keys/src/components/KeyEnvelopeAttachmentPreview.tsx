@@ -71,20 +71,29 @@ export function KeyEnvelopeAttachmentPreview({
   attKind?: keyof typeof KEY_ATT_COLORS;
   icon?: ReactNode;
 }) {
-  const [state, setState] = useState<PreviewState>({ status: "idle" });
+  const previewId = attachmentId.trim();
+  /** Request this load belongs to — a result for an older attachment / label is ignored. */
+  const requestKey = JSON.stringify([previewId, label]);
+  const [loaded, setLoaded] = useState<{
+    key: string;
+    state: PreviewState;
+  } | null>(null);
+  const state: PreviewState = !previewId
+    ? { status: "idle" }
+    : loaded?.key === requestKey
+      ? loaded.state
+      : { status: "loading" };
 
   const resolvedColor = attKind ? KEY_ATT_COLORS[attKind] : chipColor;
   const chipIcon =
     icon ?? (attKind === "photo" ? <ImageIcon /> : <FileIcon />);
 
   useEffect(() => {
-    const id = attachmentId.trim();
-    if (!id) {
-      setState({ status: "idle" });
-      return;
-    }
+    const id = previewId;
+    if (!id) return;
     let cancelled = false;
-    setState({ status: "loading" });
+    const setState = (next: PreviewState) =>
+      setLoaded({ key: requestKey, state: next });
     void (async () => {
       const config = prototypeModulesApiConfig();
       if (!config) {
@@ -118,7 +127,7 @@ export function KeyEnvelopeAttachmentPreview({
     return () => {
       cancelled = true;
     };
-  }, [attachmentId, label]);
+  }, [previewId, label, requestKey]);
 
   function openFull(preview: TaskAttachmentPreview) {
     if (!preview.dataUrl) return;

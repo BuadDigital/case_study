@@ -21,6 +21,19 @@ const PROCESS_NAMES = [
 ];
 
 function stopOnWindows() {
+  // First the `dotnet watch` / `dotnet run` wrappers: a watcher whose app is killed starts it
+  // again, and the restarted gateway then fights the new one for :5160 («address already in use»).
+  const wrappers = String.raw`
+    Get-CimInstance Win32_Process |
+      Where-Object { $_.Name -eq 'dotnet.exe' -and $_.CommandLine -match 'RealEstateEval\.[\w.]+\.csproj' } |
+      ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+  `;
+  try {
+    execSync(`powershell -NoProfile -Command "${wrappers.replace(/\n/g, " ")}"`, { stdio: "ignore" });
+  } catch {
+    // none running
+  }
+
   for (const name of PROCESS_NAMES) {
     try {
       execSync(`taskkill /F /IM ${name}.exe`, { stdio: "ignore" });

@@ -8,6 +8,7 @@ import {
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
 import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
   OFFLINE_PENDING_EVENT,
   OFFLINE_SYNC_EVENT,
@@ -72,8 +73,7 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
   const wasVisibleRef = useRef(visible);
   /** Starts true: opening the app is a first connection too (device may have been offline). */
   const wasOfflineRef = useRef(true);
-  const heartbeatMetaRef = useRef({ displayName, role, user });
-  heartbeatMetaRef.current = { displayName, role, user };
+  const heartbeatMetaRef = useLatestRef({ displayName, role, user });
   const [syncState, setSyncState] = useState<OfflineSyncState>("synced");
   const [pending, setPending] = useState(0);
   const [pendingItems, setPendingItems] = useState<OfflineOutboxItem[]>([]);
@@ -206,7 +206,7 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
     report();
     const timer = window.setInterval(report, FIELD_SYNC_HEARTBEAT_INTERVAL_MS);
     return () => window.clearInterval(timer);
-  }, [capable, isAuthenticated, online, user?.id]);
+  }, [capable, isAuthenticated, online, user?.id, heartbeatMetaRef]);
 
   useEffect(() => {
     if (!capable) return;

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
   Button,
   GoogleMapPin,
@@ -115,8 +116,7 @@ export function ComparablePropertyEntryFields({
   );
   const [coordsText, setCoordsText] = useState("");
   const [coordsError, setCoordsError] = useState<string | null>(null);
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
+  const draftRef = useLatestRef(draft);
   const patch = <K extends keyof ComparableEntryDraft>(
     key: K,
     value: ComparableEntryDraft[K],

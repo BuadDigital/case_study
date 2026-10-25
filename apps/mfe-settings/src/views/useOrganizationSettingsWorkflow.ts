@@ -61,6 +61,7 @@ export function useOrganizationSettingsWorkflow() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- server fetch: refresh() is shared with the retry/refresh handlers and flips loading/error before its first await
     void refresh();
   }, [refresh]);
 

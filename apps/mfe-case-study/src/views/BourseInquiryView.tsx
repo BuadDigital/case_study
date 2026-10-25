@@ -199,11 +199,14 @@ export function BourseInquiryView() {
     setFailureModalOpen(false);
   }, [selected]);
 
-  /** «تسجيل تعذّر» from the row ⋮ menu — the row may not be the open one. */
-  const menuFailureKey = useRef<string | null>(null);
+  /**
+   * «تسجيل تعذّر» from the row ⋮ menu — the row may not be the open one. State, not a ref:
+   * the row menus are built during render.
+   */
+  const [menuFailureKey, setMenuFailureKey] = useState<string | null>(null);
   const { openFailureRaise, failureRaiseModal } = useFailureRaiseModal({
     onSubmitted: () => {
-      if (selected && menuFailureKey.current === itemKey(selected)) {
+      if (selected && menuFailureKey === itemKey(selected)) {
         void closeForm();
       }
       void Promise.all([
@@ -215,7 +218,7 @@ export function BourseInquiryView() {
   const registerFailureFor = useCallback(
     (item: PendingBoursePropertyDto) =>
       (info: Parameters<typeof openFailureRaise>[0]) => {
-        menuFailureKey.current = itemKey(item);
+        setMenuFailureKey(itemKey(item));
         openFailureRaise({
           ...info,
           deedNumber: info.deedNumber?.trim() || item.deedNumber,

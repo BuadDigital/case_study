@@ -57,10 +57,8 @@ export function useBrandLetterheadZoom({
 
   // Open: fit the page, lock body scroll, Space pans, Esc closes.
   useEffect(() => {
-    if (!open) {
-      setPan(false);
-      return;
-    }
+    // Closed: nothing to do — `closeZoom` (the only way to close) already cleared `pan`.
+    if (!open) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const frame = window.requestAnimationFrame(fit);

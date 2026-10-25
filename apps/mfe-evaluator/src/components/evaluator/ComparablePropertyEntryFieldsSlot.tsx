@@ -1,5 +1,6 @@
 "use client";
 
+import { createElement } from "react";
 import type { ComparablePropertyEntryFieldsProps } from "@platform/app-shared/evaluator/comparable-entry-fields-slot";
 import { tryGetComparablePropertyEntryFields } from "@platform/app-shared/evaluator/comparable-entry-fields-slot";
 
@@ -7,7 +8,8 @@ import { tryGetComparablePropertyEntryFields } from "@platform/app-shared/evalua
 export function ComparablePropertyEntryFields(
   props: ComparablePropertyEntryFieldsProps,
 ) {
-  const Panel = tryGetComparablePropertyEntryFields();
-  if (!Panel) return null;
-  return <Panel {...props} />;
+  const panel = tryGetComparablePropertyEntryFields();
+  if (!panel) return null;
+  // The shell registers one module-level component (stable identity), not one created per render.
+  return createElement(panel, props);
 }

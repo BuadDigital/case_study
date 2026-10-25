@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import "leaflet/dist/leaflet.css";
 import type { LayerKey } from "../../lib/app-data/map-locations-logic";
 import { escapeHtml } from "@platform/app-shared/lib/html-escape";
@@ -154,19 +155,14 @@ export function PropertyMapCanvas({
   const groupsRef = useRef<Partial<Record<LayerKey, import("leaflet").LayerGroup>>>({});
   const tilesRef = useRef<import("leaflet").TileLayer | null>(null);
   const LRef = useRef<LeafletNS | null>(null);
-  const markersRef = useRef(markers);
-  const selectedRef = useRef(selectedId);
-  const onSelectRef = useRef(onSelect);
-  const onBackgroundClickRef = useRef(onBackgroundClick);
+  const markersRef = useLatestRef(markers);
+  const selectedRef = useLatestRef(selectedId);
+  const onSelectRef = useLatestRef(onSelect);
+  const onBackgroundClickRef = useLatestRef(onBackgroundClick);
   const lastCommandSeq = useRef(0);
   const introPlayed = useRef(false);
 
-  markersRef.current = markers;
-  selectedRef.current = selectedId;
-  onSelectRef.current = onSelect;
-  onBackgroundClickRef.current = onBackgroundClick;
-
-  const paint = () => {
+  const paint = useEffectEvent(() => {
     const L = LRef.current;
     const current = mapRef.current;
     const groups = groupsRef.current;
@@ -227,7 +223,7 @@ export function PropertyMapCanvas({
     });
 
     introPlayed.current = true;
-  };
+  });
 
   useEffect(() => {
     const host = hostRef.current;
@@ -290,7 +286,7 @@ export function PropertyMapCanvas({
       tilesRef.current = null;
       LRef.current = null;
     };
-  }, []);
+  }, [onBackgroundClickRef]);
 
   useEffect(() => {
     paint();
@@ -333,7 +329,7 @@ export function PropertyMapCanvas({
       withCoords.map((m) => [m.coords.lat, m.coords.lng] as [number, number]),
     );
     map.fitBounds(bounds.pad(0.18), { maxZoom: 12, animate: true, padding: [60, 60] });
-  }, [command]);
+  }, [command, markersRef]);
 
   return (
     <div

@@ -23,16 +23,29 @@ export function useInspectorPhotoDataUrl(
       : undefined,
   );
 
-  useEffect(() => {
+  // New inputs: clear, or take the cached copy, during render — only a fetch waits for the effect.
+  const [shownFor, setShownFor] = useState<
+    readonly [boolean, string | undefined, string | undefined, typeof photo] | null
+  >(null);
+  if (
+    !shownFor ||
+    shownFor[0] !== active ||
+    shownFor[1] !== taskId ||
+    shownFor[2] !== photoRef ||
+    shownFor[3] !== photo
+  ) {
+    setShownFor([active, taskId, photoRef, photo]);
     if (!active || taskId === undefined || !photoRef || !photo) {
       setDataUrl(undefined);
-      return;
+    } else {
+      const cached = getInspectorPhotoDataUrl(taskId, photoRef);
+      if (cached) setDataUrl(cached);
     }
-    const cached = getInspectorPhotoDataUrl(taskId, photoRef);
-    if (cached) {
-      setDataUrl(cached);
-      return;
-    }
+  }
+
+  useEffect(() => {
+    if (!active || taskId === undefined || !photoRef || !photo) return;
+    if (getInspectorPhotoDataUrl(taskId, photoRef)) return;
     let cancelled = false;
     void prefetchInspectorPhoto(taskId, photoRef, photo)
       .then((url) => {

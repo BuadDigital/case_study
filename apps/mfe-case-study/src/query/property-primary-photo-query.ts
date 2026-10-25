@@ -11,7 +11,8 @@
  * once everything is hydrated. Both the metadata and the blob land in the same
  * caches the full prefetch reads, so opening a media tab later reuses them.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
   hydrateCachedPropertyDocPreview,
   primePropertyDocMetadata,
@@ -50,8 +51,7 @@ export function usePropertyPrimaryPhoto(input: {
       }),
     );
   // Live ref so the effect keys on primary keys, not on the property object's identity.
-  const pickRef = useRef(pick);
-  pickRef.current = pick;
+  const pickRef = useLatestRef(pick);
 
   const [photo, setPhoto] = useState<PropertyDetailDocumentEntry | null>(() =>
     enabled ? pick() : null,
@@ -105,11 +105,11 @@ export function usePropertyPrimaryPhoto(input: {
   }, [
     enabled,
     // Property key, not identity — see usePropertyDetailDocuments.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     property.id,
     showDecree,
     poNumber,
     inspectionTaskId,
+    pickRef,
   ]);
 
   return photo;

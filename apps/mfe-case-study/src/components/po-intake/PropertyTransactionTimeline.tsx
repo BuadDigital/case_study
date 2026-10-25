@@ -185,12 +185,16 @@ export function PropertyTransactionTimeline({
   }, [tasks, property.id, poNumber]);
 
   const [inspectionSubmitted, setInspectionSubmitted] = useState(false);
+  // No inspection task: not submitted — reset during render, before the effect would run.
+  const submittedTaskId = inspectionTaskId?.trim() ?? "";
+  const [submittedFor, setSubmittedFor] = useState(submittedTaskId);
+  if (submittedFor !== submittedTaskId) {
+    setSubmittedFor(submittedTaskId);
+    if (!submittedTaskId) setInspectionSubmitted(false);
+  }
   useEffect(() => {
     const taskId = inspectionTaskId?.trim();
-    if (!taskId) {
-      setInspectionSubmitted(false);
-      return;
-    }
+    if (!taskId) return;
     let cancelled = false;
     void loadInspectorWorkspaceSnapshot(taskId).then((draft) => {
       if (cancelled) return;

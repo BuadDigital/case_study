@@ -141,7 +141,6 @@ export function PropertyDetailMediaGlance({
           }
         >
           {hasPhoto && heroUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={heroUrl}
               alt={primaryPhoto?.name || "صورة العقار الرئيسية"}

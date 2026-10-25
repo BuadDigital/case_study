@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
+import { useLatestRef } from "./use-latest-ref";
 
 /** Enter compact past this scroll offset. */
 const COMPACT_AT = 120;
@@ -34,14 +35,12 @@ export function useStickyCompact(
   enabled = true,
 ): boolean {
   const [compact, setCompact] = useState(false);
-  const compactRef = useRef(false);
-  compactRef.current = compact;
+  // Disabled: start expanded again when re-enabled (reset during render, not in the effect).
+  if (!enabled && compact) setCompact(false);
+  const compactRef = useLatestRef(compact);
 
   useEffect(() => {
-    if (!enabled) {
-      setCompact(false);
-      return;
-    }
+    if (!enabled) return;
     const target = scrollParentOf(ref.current);
 
     const read = () =>
@@ -58,7 +57,7 @@ export function useStickyCompact(
     onScroll();
     target.addEventListener("scroll", onScroll, { passive: true });
     return () => target.removeEventListener("scroll", onScroll);
-  }, [ref, enabled]);
+  }, [ref, enabled, compactRef]);
 
   return enabled && compact;
 }

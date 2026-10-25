@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { ComparablePropertyDto, ValuationComparableSelectionDto } from "@platform/api-client";
 import { PhoneField, Td, TdLtr, cn } from "@platform/ui-kit";
 import {
@@ -130,9 +130,8 @@ export function ComparablesBankMoneyCells({
     timer.current = setTimeout(flush, COMMIT_MS);
   }
 
-  const flushRef = useRef(flush);
-  flushRef.current = flush;
-  useEffect(() => () => flushRef.current(), []);
+  const flushOnUnmount = useEffectEvent(flush);
+  useEffect(() => () => flushOnUnmount(), []);
 
   const ratioWarn = ratio != null && ratio >= 2;
   const cells = (

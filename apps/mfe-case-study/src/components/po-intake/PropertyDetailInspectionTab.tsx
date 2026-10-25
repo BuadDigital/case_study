@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, Fragment } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode, Fragment } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import {
   AppModal,
@@ -182,8 +183,7 @@ export function PropertyDetailInspectionTab({
     {},
   );
   const mapPinned = Boolean(draft?.mapPinned);
-  const mapPinnedRef = useRef(false);
-  mapPinnedRef.current = mapPinned;
+  const mapPinnedRef = useLatestRef(mapPinned);
   const [mapBackup, setMapBackup] = useState<{
     lat: string;
     lng: string;
@@ -334,11 +334,17 @@ export function PropertyDetailInspectionTab({
     ],
   );
 
+  // Only the specialist sees the engineering pin, and only with a survey task — otherwise it
+  // clears during render, before the effect would run.
+  const engineeringPinTaskId = mapActor === "specialist" ? (surveyTask?.id ?? "") : "";
+  const [engineeringPinFor, setEngineeringPinFor] = useState(engineeringPinTaskId);
+  if (engineeringPinFor !== engineeringPinTaskId) {
+    setEngineeringPinFor(engineeringPinTaskId);
+    if (!engineeringPinTaskId) setEngineeringMapPin(null);
+  }
+
   useEffect(() => {
-    if (mapActor !== "specialist" || !surveyTask?.id) {
-      setEngineeringMapPin(null);
-      return;
-    }
+    if (mapActor !== "specialist" || !surveyTask?.id) return;
     let cancelled = false;
     void loadEngineeringSurveySubmissionAsync({
       taskId: surveyTask.id,

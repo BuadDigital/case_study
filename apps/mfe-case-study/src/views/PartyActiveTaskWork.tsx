@@ -3,6 +3,7 @@
 import {
   Activity,
   useCallback,
+  useInsertionEffect,
   useMemo,
   useRef,
   useState,
@@ -64,6 +65,25 @@ import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTra
 const LOADING_TEXT = "text-xs text-text-3";
 const TAB_CONTENT = "min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:p-5";
 
+/** The injected work forms as elements, so their host refs are passed as props, not into a call during render. */
+function SurveyWorkSlot({
+  extensions,
+  ...work
+}: Parameters<PartyEngineeringSurveyExtensions["renderSurveyWork"]>[0] & {
+  extensions: PartyEngineeringSurveyExtensions;
+}) {
+  return extensions.renderSurveyWork(work);
+}
+
+function AppraisalWorkSlot({
+  extensions,
+  ...work
+}: Parameters<PartyAppraisalExtensions["renderAppraisalWork"]>[0] & {
+  extensions: PartyAppraisalExtensions;
+}) {
+  return extensions.renderAppraisalWork(work);
+}
+
 export function PartyActiveTaskWork({
   def,
   task,
@@ -100,6 +120,8 @@ export function PartyActiveTaskWork({
     hostRef.current?.onRefresh?.();
   }, [hostRef]);
 
+  const [submitSuccess, setSubmitSuccess] = useState(false);
+
   /**
    * After successful party submit → queue for that role
    * (property inspection / property valuation / engineering survey).
@@ -125,7 +147,6 @@ export function PartyActiveTaskWork({
   );
   const { data: allWorkflowTasks = [] } = useWorkflowTasksQuery();
   const [saving, setSaving] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
   const [workTab, setWorkTab] = useState<"task" | "case-study">("task");
   // The case-study tab stays mounted once opened, so coming back skips its reload skeleton.
   const [caseStudyTabOpened, setCaseStudyTabOpened] = useState(false);
@@ -152,22 +173,26 @@ export function PartyActiveTaskWork({
     setSubmitState("sent");
     refresh();
   };
-  evaluatorHostRef.current.onSubmitted = sentHost;
-  evaluatorHostRef.current.onSubmitStarted = sendingHost.onSubmitStarted;
-  evaluatorHostRef.current.onSubmitFailed = sendingHost.onSubmitFailed;
-  evaluatorHostRef.current.onSavingChange = setSaving;
-  // Engineering survey form does not toast on success — show completeMessage here.
-  surveyHostRef.current.onSubmitted = () =>
-    completePartyTaskSubmit(def.completeMessage, { showToast: true });
-  surveyHostRef.current.onSavingChange = setSaving;
-  fieldInspectionHostRef.current.onSubmitted = sentHost;
-  fieldInspectionHostRef.current.onSubmitStarted = sendingHost.onSubmitStarted;
-  fieldInspectionHostRef.current.onSubmitFailed = sendingHost.onSubmitFailed;
-  fieldInspectionHostRef.current.onSubmitQueued = () => {
-    setSubmitState("queued");
-    refresh();
-  };
-  fieldInspectionHostRef.current.onSavingChange = setSaving;
+  // Wired after every render (as useLatestRef does), not during it; the work forms keep their
+  // own fields (e.g. `submit`) on the same host objects.
+  useInsertionEffect(() => {
+    evaluatorHostRef.current.onSubmitted = sentHost;
+    evaluatorHostRef.current.onSubmitStarted = sendingHost.onSubmitStarted;
+    evaluatorHostRef.current.onSubmitFailed = sendingHost.onSubmitFailed;
+    evaluatorHostRef.current.onSavingChange = setSaving;
+    // Engineering survey form does not toast on success — show completeMessage here.
+    surveyHostRef.current.onSubmitted = () =>
+      completePartyTaskSubmit(def.completeMessage, { showToast: true });
+    surveyHostRef.current.onSavingChange = setSaving;
+    fieldInspectionHostRef.current.onSubmitted = sentHost;
+    fieldInspectionHostRef.current.onSubmitStarted = sendingHost.onSubmitStarted;
+    fieldInspectionHostRef.current.onSubmitFailed = sendingHost.onSubmitFailed;
+    fieldInspectionHostRef.current.onSubmitQueued = () => {
+      setSubmitState("queued");
+      refresh();
+    };
+    fieldInspectionHostRef.current.onSavingChange = setSaving;
+  });
   const submitDialog = (
     <PartyTaskSubmitDialog
       state={submitState}
@@ -352,16 +377,17 @@ export function PartyActiveTaskWork({
       submitSuccess;
 
     const surveyWork = engineeringSurveyExtensions ? (
-      engineeringSurveyExtensions.renderSurveyWork({
-        def,
-        childTask: task,
-        hostRef: surveyHostRef,
-        deedNumber: deedLabel,
-        onBack: exit,
-        onFailureSubmitted: refresh,
-        variant: engineeringSurveyEntry ? "entry" : "workspace",
-        forceReadOnly: surveyLocked,
-      })
+      <SurveyWorkSlot
+        extensions={engineeringSurveyExtensions}
+        def={def}
+        childTask={task}
+        hostRef={surveyHostRef}
+        deedNumber={deedLabel}
+        onBack={exit}
+        onFailureSubmitted={refresh}
+        variant={engineeringSurveyEntry ? "entry" : "workspace"}
+        forceReadOnly={surveyLocked}
+      />
     ) : (
       <InlineLoadingSkeleton className={LOADING_TEXT} />
     );
@@ -501,14 +527,15 @@ export function PartyActiveTaskWork({
       ? record.properties.findIndex((p) => p.id === property.id)
       : -1;
     const appraisalWork = appraisalExtensions ? (
-      appraisalExtensions.renderAppraisalWork({
-        def,
-        childTask: task,
-        hostRef: evaluatorHostRef,
-        deedLabel,
-        onBack: exit,
-        embeddedInPropertyChrome: layout === "page" && Boolean(record && property),
-        propertySummary: {
+      <AppraisalWorkSlot
+        extensions={appraisalExtensions}
+        def={def}
+        childTask={task}
+        hostRef={evaluatorHostRef}
+        deedLabel={deedLabel}
+        onBack={exit}
+        embeddedInPropertyChrome={layout === "page" && Boolean(record && property)}
+        propertySummary={{
           deedNumber: deedLabel,
           poNumber: formatPoDisplay(task.poNumber),
           classification,
@@ -520,8 +547,8 @@ export function PartyActiveTaskWork({
           surveyTaskId,
           inspectionTaskId,
           appraisalTaskId: task.id,
-        },
-      })
+        }}
+      />
     ) : (
       <InlineLoadingSkeleton className={LOADING_TEXT} />
     );

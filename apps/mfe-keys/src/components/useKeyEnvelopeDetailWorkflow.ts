@@ -6,7 +6,14 @@
  * refresh that feeds the parent `onChanged`. The component consumes the
  * returned bag and keeps JSX plus event wiring only.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useToast } from "@platform/ui-kit";
 import { useIdempotentAction } from "@platform/app-shared";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
@@ -123,10 +130,10 @@ export function useKeyEnvelopeDetailWorkflow({
   const commandBusy =
     busy || confirmingAssignment || confirmingHandoff || settingKeyLocation;
 
-  const onBackRef = useRef(onBack);
-  onBackRef.current = onBack;
-  const showToastRef = useRef(showToast);
-  showToastRef.current = showToast;
+  const onLoadFailed = useEffectEvent((error: string) => {
+    showToast(error, "error");
+    onBack();
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -147,8 +154,7 @@ export function useKeyEnvelopeDetailWorkflow({
         );
         if (!cancelled) setCourtAccess(access);
       } else {
-        showToastRef.current(result.error, "error");
-        onBackRef.current();
+        onLoadFailed(result.error);
       }
     })();
     return () => {

@@ -31,10 +31,8 @@ export function PushNotificationSettings() {
   const permission = pushPermission();
 
   useEffect(() => {
-    if (!isFeatureEnabled("webPush")) {
-      setLoading(false);
-      return;
-    }
+    // Flag off (build-time env): the component renders nothing, so `loading` is never read.
+    if (!isFeatureEnabled("webPush")) return;
     let cancelled = false;
     void (async () => {
       try {

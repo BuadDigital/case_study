@@ -87,6 +87,7 @@ export function FieldSyncSupervisorView() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refresh() is the board's API load (also the minute poll and «تحديث»); it raises its loading flag before the request
     void refresh();
     const timer = window.setInterval(() => void refresh(), 60_000);
     return () => window.clearInterval(timer);

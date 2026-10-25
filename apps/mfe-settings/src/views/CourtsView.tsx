@@ -294,6 +294,7 @@ export function CourtsView() {
   }, [authReady]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- server fetch: loadCourts() is shared with the retry/refresh handlers and flips loading/error before its first await
     void loadCourts();
   }, [loadCourts]);
 

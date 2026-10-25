@@ -107,6 +107,7 @@ export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   useEffect(() => {
     const config = workOrdersApiConfig();
     if (!config) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no API session: the load ends here; the fetch path sets state in its callback
       setClientsLoading(false);
       return;
     }

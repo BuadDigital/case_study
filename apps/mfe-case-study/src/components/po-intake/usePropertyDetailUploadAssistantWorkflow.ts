@@ -104,9 +104,18 @@ function useFinalReportDocument(
   version: number | undefined,
 ): PropertyDetailDocumentEntry | null {
   const [document, setDocument] = useState<PropertyDetailDocumentEntry | null>(null);
+  // Not ready (or no request): no document — cleared during render, before the effect would run.
+  const readyRequestId = finalReportStatus === "ready" ? (valuationRequestId ?? "") : "";
+  const [documentFor, setDocumentFor] = useState(readyRequestId);
+  if (documentFor !== readyRequestId) {
+    setDocumentFor(readyRequestId);
+    if (!readyRequestId) setDocument(null);
+  }
   useEffect(() => {
+    if (!valuationRequestId || finalReportStatus !== "ready") return;
     const config = apiConfig();
-    if (!config || !valuationRequestId || finalReportStatus !== "ready") {
+    if (!config) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no API session: the report cannot be downloaded, so none is shown; the fetch path sets it in its callback
       setDocument(null);
       return;
     }

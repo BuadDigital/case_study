@@ -9,7 +9,8 @@ import {
   fetchEvaluatorSubmission,
   prefetchEvaluatorReport,
 } from "../lib/evaluator-bridge";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { useGovernedPropertyDocumentsQuery } from "./governed-property-documents-query";
 import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import {
@@ -61,14 +62,17 @@ export function usePropertyDetailDocuments(input: {
 
   // Latest assemble fn via a live ref — lets deps use primary keys
   // instead of property-object identity that re-triggered a full fetch every paint.
-  const collectRef = useRef(collect);
-  collectRef.current = collect;
+  const collectRef = useLatestRef(collect);
+
+  // Disabled: no sections — cleared during render, before the effect would run.
+  const [sectionsEnabled, setSectionsEnabled] = useState(enabled);
+  if (sectionsEnabled !== enabled) {
+    setSectionsEnabled(enabled);
+    if (!enabled) setSections([]);
+  }
 
   useEffect(() => {
-    if (!enabled) {
-      setSections([]);
-      return;
-    }
+    if (!enabled) return;
 
     let cancelled = false;
     const refresh = () => {
@@ -120,13 +124,13 @@ export function usePropertyDetailDocuments(input: {
   }, [
     enabled,
     // Property key, not identity — an unstabilized caller object re-ran every fetch every paint.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     property.id,
     showDecree,
     poNumber,
     surveyTaskId,
     appraisalTaskId,
     inspectionTaskId,
+    collectRef,
   ]);
 
   // Documents-tab uploads share this react-query cache with the tab, so an upload there

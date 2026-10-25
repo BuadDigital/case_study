@@ -183,12 +183,19 @@ export function PoPropertyEdit({
   const showDeleteProperty =
     canDeleteProperty(role) && Boolean(property && !property.isRemoved);
 
-  useEffect(() => {
-    let cancelled = false;
+  // Unsaved local edits of this property show at once (during render); the server copy follows.
+  const propertyKey = `${poNumber}\0${propertyId}`;
+  const [peekedFor, setPeekedFor] = useState<string | null>(null);
+  if (peekedFor !== propertyKey) {
+    setPeekedFor(propertyKey);
     const local = peekPropertyFieldAutosave(poNumber, propertyId);
     if (local) {
       setProperty(local);
     }
+  }
+
+  useEffect(() => {
+    let cancelled = false;
     void findPropertyInRecord(poNumber, propertyId)
       .then((found) => {
         if (cancelled) return;

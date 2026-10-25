@@ -6,6 +6,7 @@
  * component consumes the returned bag and keeps JSX plus event wiring only.
  */
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { useToast } from "@platform/ui-kit";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -108,8 +109,7 @@ export function useFieldInspectionWorkflow({
   } | null>(null);
   const [mapPinEpoch, setMapPinEpoch] = useState(0);
   const mapPinned = Boolean(draft?.mapPinned);
-  const mapPinnedRef = useRef(false);
-  mapPinnedRef.current = mapPinned;
+  const mapPinnedRef = useLatestRef(mapPinned);
   const sessionPinMigratedRef = useRef<string | null>(null);
 
   const onLoadError = useCallback(
@@ -211,6 +211,7 @@ export function useFieldInspectionWorkflow({
     } catch {
       return;
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time migration of a sessionStorage pin into the saved draft; persist() saves it and updates the form together
     persist({ mapPinned: true });
   }, [draft, task.id, workLocked, persist]);
 
@@ -253,7 +254,7 @@ export function useFieldInspectionWorkflow({
       });
       return "pending";
     },
-    [draft, persist, setPendingMapMove],
+    [draft, persist, setPendingMapMove, mapPinnedRef],
   );
 
   const saveDraft = useCallback(async (): Promise<boolean> => {

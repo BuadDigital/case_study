@@ -9,6 +9,7 @@
 import { spawn } from "node:child_process";
 import { execSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import net from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -23,6 +24,32 @@ function stopStaleProcesses() {
     execSync(`node "${stopScript}"`, { cwd: root, stdio: "inherit" });
   } catch {
     // best effort
+  }
+}
+
+const API_PORTS = Array.from({ length: 10 }, (_, i) => 5160 + i);
+
+function portIsFree(port) {
+  return new Promise((resolve) => {
+    const probe = net.createServer();
+    probe.once("error", () => resolve(false));
+    probe.once("listening", () => probe.close(() => resolve(true)));
+    probe.listen(port, "0.0.0.0");
+  });
+}
+
+/** Windows frees a killed process's sockets a moment later — start nothing until they are free. */
+async function waitForPortsFree(timeoutMs = 15_000) {
+  const started = Date.now();
+  for (;;) {
+    const busy = [];
+    for (const port of API_PORTS) if (!(await portIsFree(port))) busy.push(port);
+    if (busy.length === 0) return;
+    if (Date.now() - started > timeoutMs) {
+      console.error(`[dev-api] ports still in use after ${timeoutMs / 1000}s: ${busy.join(", ")} — run node backend/scripts/stop-api.mjs`);
+      process.exit(1);
+    }
+    await sleep(500);
   }
 }
 
@@ -201,6 +228,7 @@ function migrateLocalStreams() {
 }
 
 stopStaleProcesses();
+await waitForPortsFree();
 
 // Shared backend projects must be built once before parallel `dotnet watch` instances
 // compete for the same obj/bin DLLs (especially on Windows + Defender).

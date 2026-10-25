@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useEffectEvent, useRef } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { MarkerClusterer, type Renderer } from "@googlemaps/markerclusterer";
 import { loadGoogleMapsApi } from "@platform/ui-kit";
 import type { LayerKey } from "../../lib/app-data/map-locations-logic";
@@ -140,18 +141,13 @@ export function PropertyMapCanvasGoogle({
   const readyRef = useRef(false);
   const failedRef = useRef(false);
 
-  const markersRef = useRef(markers);
-  const selectedRef = useRef(selectedId);
-  const onSelectRef = useRef(onSelect);
-  const onBackgroundClickRef = useRef(onBackgroundClick);
+  const markersRef = useLatestRef(markers);
+  const selectedRef = useLatestRef(selectedId);
+  const onSelectRef = useLatestRef(onSelect);
+  const onBackgroundClickRef = useLatestRef(onBackgroundClick);
   const lastCommandSeq = useRef(0);
 
-  markersRef.current = markers;
-  selectedRef.current = selectedId;
-  onSelectRef.current = onSelect;
-  onBackgroundClickRef.current = onBackgroundClick;
-
-  const paint = () => {
+  const paint = useEffectEvent(() => {
     const g = gRef.current;
     const map = mapRef.current;
     if (!g || !map) return;
@@ -200,7 +196,7 @@ export function PropertyMapCanvasGoogle({
     for (const key of LAYERS) {
       clusterersRef.current[key]?.addMarkers(byLayer[key]);
     }
-  };
+  });
 
   useEffect(() => {
     const host = hostRef.current;
@@ -312,7 +308,7 @@ export function PropertyMapCanvasGoogle({
     map.fitBounds(bounds, 60);
     const z = map.getZoom();
     if (z != null && z > 12) map.setZoom(12);
-  }, [command]);
+  }, [command, markersRef]);
 
   return (
     <div className="relative h-full min-h-0 min-w-0 w-full flex-1">

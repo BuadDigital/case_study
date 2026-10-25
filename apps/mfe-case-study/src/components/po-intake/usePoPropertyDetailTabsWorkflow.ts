@@ -7,7 +7,7 @@
  * consumes the returned bag and keeps JSX only.
  */
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { findSurveyChildForParent } from "@platform/app-shared/engineering-survey/survey-task";
 import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
@@ -162,8 +162,12 @@ export function usePoPropertyDetailTabsWorkflow({
       : visibleTabs[0]?.id ?? "basic";
 
   /** Tab mounts only after first visit — then stays mounted but hidden so its state is kept. */
-  const visitedTabsRef = useRef<Set<TabId>>(new Set());
-  visitedTabsRef.current.add(effectiveTab);
+  const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<TabId>>(
+    () => new Set([effectiveTab]),
+  );
+  if (!visitedTabs.has(effectiveTab)) {
+    setVisitedTabs(new Set(visitedTabs).add(effectiveTab));
+  }
   const tabMode = (id: TabId) => (effectiveTab === id ? "visible" : "hidden");
   /**
    * Documents and photos load only once a tab that shows them has been opened —
@@ -171,8 +175,8 @@ export function usePoPropertyDetailTabsWorkflow({
    * fan-out (fanout doc, 2026-09-04). Visited tabs stay mounted, so this never
    * flips back.
    */
-  const propertyMediaVisited = PROPERTY_MEDIA_TABS.some((id) =>
-    visitedTabsRef.current.has(id),
+  const propertyMediaVisited = PROPERTY_MEDIA_TABS.some(
+    (id) => id === effectiveTab || visitedTabs.has(id),
   );
 
   // Another property carries its own “seen” marks.
@@ -226,8 +230,9 @@ export function usePoPropertyDetailTabsWorkflow({
     );
   }, [task, tasks, poNumber, property.id]);
 
+  const inspectorWorkspaceTask = inspectorWorkspace?.task;
   const inspectionTask = useMemo(() => {
-    if (inspectorWorkspace?.task) return inspectorWorkspace.task;
+    if (inspectorWorkspaceTask) return inspectorWorkspaceTask;
     return resolveInspectionTaskForProperty({
       tasks,
       parentTask: task ?? null,
@@ -237,7 +242,7 @@ export function usePoPropertyDetailTabsWorkflow({
       propertyId: property.id,
     });
   }, [
-    inspectorWorkspace?.task,
+    inspectorWorkspaceTask,
     task,
     tasks,
     appraisalTask,
@@ -423,15 +428,18 @@ export function usePoPropertyDetailTabsWorkflow({
     ],
   );
 
-  useEffect(() => {
-    const fingerprint = tabActivity[effectiveTab] ?? null;
-    if (!fingerprint) return;
-    markPropertyTabSeen(property.id, effectiveTab, fingerprint);
+  // The open tab counts as seen — in state during render, in storage once committed.
+  const openTabFingerprint = tabActivity[effectiveTab] ?? null;
+  if (openTabFingerprint && seenTabs[effectiveTab] !== openTabFingerprint) {
     setSeenTabs((prev) => {
-      if (prev[effectiveTab] === fingerprint) return prev;
-      return { ...prev, [effectiveTab]: fingerprint };
+      if (prev[effectiveTab] === openTabFingerprint) return prev;
+      return { ...prev, [effectiveTab]: openTabFingerprint };
     });
-  }, [property.id, effectiveTab, tabActivity]);
+  }
+  useEffect(() => {
+    if (!openTabFingerprint) return;
+    markPropertyTabSeen(property.id, effectiveTab, openTabFingerprint);
+  }, [property.id, effectiveTab, openTabFingerprint]);
 
   return {
     role,
@@ -441,7 +449,7 @@ export function usePoPropertyDetailTabsWorkflow({
     workspaceForced,
     effectiveTab,
     tabMode,
-    visitedTabsRef,
+    visitedTabs,
     selectTab,
     warmTab,
     replaceInspectQuery,

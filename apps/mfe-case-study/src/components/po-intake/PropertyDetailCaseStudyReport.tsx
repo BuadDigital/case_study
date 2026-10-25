@@ -372,6 +372,7 @@ export function PropertyDetailCaseStudyReport({
   }, [task]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- refreshDraft() is the report's API load; it shows the skeleton for a new task before the request
     void refreshDraft();
   }, [refreshDraft, partyRevision]);
 

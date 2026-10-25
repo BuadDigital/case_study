@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import {
   MobileRecordCard,
   StatusPill,
@@ -159,9 +159,28 @@ export function FinanceCostsView({
   /** Immediate account tab — does not wait on delayed searchParams */
   const [viewSection, setViewSection] = useState(section);
   const [prevSection, setPrevSection] = useState(section);
+  let currentViewSection = viewSection;
   if (section !== prevSection) {
     setPrevSection(section);
     setViewSection(section);
+    currentViewSection = section;
+  }
+
+  /** deep-link: open payrolls when statement is present (on each new statement id) */
+  const [prevFocusStatementId, setPrevFocusStatementId] = useState<
+    string | null
+  >(null);
+  const [statementsDeepLinks, setStatementsDeepLinks] = useState(0);
+  if (focusStatementId !== prevFocusStatementId) {
+    setPrevFocusStatementId(focusStatementId);
+    if (
+      focusStatementId &&
+      currentViewSection !== "statements" &&
+      currentViewSection !== "paid"
+    ) {
+      setViewSection("statements");
+      setStatementsDeepLinks((n) => n + 1);
+    }
   }
 
   const statementResolvedParty = useMemo(() => {
@@ -179,14 +198,14 @@ export function FinanceCostsView({
     onEnsureParty(statementResolvedParty);
   }, [statementResolvedParty, focusPartyIdProp, onEnsureParty]);
 
-  /** deep-link: open payrolls when statement is present */
-  useEffect(() => {
-    if (!focusStatementId) return;
-    if (viewSection === "statements" || viewSection === "paid") return;
-    setViewSection("statements");
+  /** deep-link: pin the statements section in the URL after the switch above */
+  const pinStatementsSection = useEffectEvent(() => {
     onSectionChange("statements");
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to statement id
-  }, [focusStatementId]);
+  });
+  useEffect(() => {
+    if (!statementsDeepLinks) return;
+    pinStatementsSection();
+  }, [statementsDeepLinks]);
 
   const focusPartyId = focusPartyIdProp?.trim() || statementResolvedParty;
 

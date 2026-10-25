@@ -8,6 +8,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@platform/ui-kit";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import type { WorkflowTask } from "@case-study/mfe/lib/app-data/tasks";
 import { surveyWorkGate } from "@case-study/mfe/lib/app-data/documentary-workflow-gates";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -116,10 +117,8 @@ export function useEngineeringSurveyData({
   const pendingPatchRef = useRef<Parameters<
     typeof updateEngineeringSurveyDraft
   >[1]>({});
-  const localFieldsRef = useRef(localFields);
-  localFieldsRef.current = localFields;
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
+  const localFieldsRef = useLatestRef(localFields);
+  const draftRef = useLatestRef(draft);
 
   const applyRemoteDraft = useCallback((next: EngineeringSurveySubmission) => {
     setDraft(
@@ -130,7 +129,7 @@ export function useEngineeringSurveyData({
         pendingPatchRef.current.checklist,
       ),
     );
-  }, []);
+  }, [draftRef, localFieldsRef]);
 
   const liveSurveyTask = useMemo(
     () => workflowTasks.find((t) => t.id === task.id) ?? task,
@@ -250,6 +249,7 @@ export function useEngineeringSurveyData({
     draft?.latitude,
     draft?.longitude,
     draft?.status,
+    draftRef,
     forceReadOnly,
     liveSurveyTask,
     propertyId,

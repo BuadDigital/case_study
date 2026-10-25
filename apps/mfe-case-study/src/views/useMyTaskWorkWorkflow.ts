@@ -7,6 +7,7 @@
  * `useMyTaskWorkCommands`; the view and its regions consume the returned bag.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { useRouter } from "next/navigation";
 import { useToast } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -110,8 +111,7 @@ export function useMyTaskWorkWorkflow({
   const effectivePropertyId = task.propertyId ?? draftPropertyId;
   const hydratedPropertyKeyRef = useRef("");
   /** What is on screen right now — read inside effects without re-running them on every keystroke. */
-  const propertyRef = useRef(property);
-  propertyRef.current = property;
+  const propertyRef = useLatestRef(property);
 
   const { data: poRecord, isFetched } = usePoRecordQuery(task.poNumber);
   const loading = !propertyHydrated;
@@ -286,6 +286,7 @@ export function useMyTaskWorkWorkflow({
         engineeringOffice: false,
         engineeringOfficeId: "",
       });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- drops an unavailable engineering office from the saved distribution — the form and the server patch change together
       setDistribution(next);
       void patchTaskDistribution(task.id, next, task).then((updated) => {
         if (!updated) {

@@ -50,6 +50,8 @@ function PartyOfficeBillingStatementsPanel(
       </div>
     );
   }
+  // The slot returns the one component the shell registered at boot — same identity every render.
+  // eslint-disable-next-line react-hooks/static-components -- registry lookup of a module-level component, not one created in render
   return <Panel {...props} />;
 }
 
@@ -206,8 +208,12 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
   const effectiveTab = tabs.some((item) => item.id === tab) ? tab : "basic";
 
   /** Panel mounts only after first visit — then stays mounted hidden so state is kept. */
-  const visitedTabsRef = useRef<Set<ProfileTab>>(new Set());
-  visitedTabsRef.current.add(effectiveTab);
+  const [visitedTabs, setVisitedTabs] = useState<ReadonlySet<ProfileTab>>(
+    () => new Set([effectiveTab]),
+  );
+  if (!visitedTabs.has(effectiveTab)) {
+    setVisitedTabs(new Set(visitedTabs).add(effectiveTab));
+  }
   const tabMode = (id: ProfileTab) =>
     effectiveTab === id ? "visible" : "hidden";
 
@@ -336,7 +342,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
       </div>
 
       <div ref={panelRef} className="space-y-4 max-lg:space-y-5">
-        {visitedTabsRef.current.has("basic") ? (
+        {visitedTabs.has("basic") ? (
           <Activity mode={tabMode("basic")}>
             <section>
               <h3 className="m-0 mb-3 text-[13px] font-bold text-heading">
@@ -412,7 +418,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           </Activity>
         ) : null}
 
-        {visitedTabsRef.current.has("login") ? (
+        {visitedTabs.has("login") ? (
           <Activity mode={tabMode("login")}>
           <section className="grid gap-3 sm:grid-cols-2">
             <ProfileField label="الحالة" value={statusLabel(user.status)} />
@@ -430,7 +436,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           </Activity>
         ) : null}
 
-        {visitedTabsRef.current.has("activity") ? (
+        {visitedTabs.has("activity") ? (
           <Activity mode={tabMode("activity")}>
           <section>
             {feesLoading ? (
@@ -497,7 +503,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           </Activity>
         ) : null}
 
-        {visitedTabsRef.current.has("eng_statements") && showEngStatements ? (
+        {visitedTabs.has("eng_statements") && showEngStatements ? (
           <Activity mode={tabMode("eng_statements")}>
           <section className="space-y-3">
             <PartyOfficeBillingStatementsPanel
@@ -508,7 +514,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           </Activity>
         ) : null}
 
-        {visitedTabsRef.current.has("inspector_dues") && showInspectorDues ? (
+        {visitedTabs.has("inspector_dues") && showInspectorDues ? (
           <Activity mode={tabMode("inspector_dues")}>
           <section className="space-y-3">
             <p className={cn(opsTfNote, "m-0")}>
@@ -520,7 +526,7 @@ export function UserProfileContent({ user }: { user: StaffUser }) {
           </Activity>
         ) : null}
 
-        {visitedTabsRef.current.has("financial") && showFinancial ? (
+        {visitedTabs.has("financial") && showFinancial ? (
           <Activity mode={tabMode("financial")}>
           <section className="space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

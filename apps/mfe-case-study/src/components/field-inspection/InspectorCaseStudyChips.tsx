@@ -105,9 +105,15 @@ export function InspectorCaseStudyChips({
     }).filter((g) => g.questions.length > 0);
   }, [partyId, matrix, questionCatalog]);
 
+  // Another task loads afresh — flagged during render, before its fetch starts.
+  const [loadingFor, setLoadingFor] = useState(childTask.id);
+  if (loadingFor !== childTask.id) {
+    setLoadingFor(childTask.id);
+    setLoading(true);
+  }
+
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     void loadPartyCaseStudyReportDraft(childTask.id)
       .then((d) => {
         if (!cancelled) setDraft(d);

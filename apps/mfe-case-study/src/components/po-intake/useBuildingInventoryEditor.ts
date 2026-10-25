@@ -12,6 +12,7 @@
  * duplicate or delete lines). `flush()` settles everything before the inspection is submitted.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
   getBuildingInventory,
   saveBuildingInventory,
@@ -98,9 +99,8 @@ export function useBuildingInventoryEditor(input: {
   const loopRef = useRef<Promise<BuildingInventorySaveOutcome> | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
-  const lockedRef = useRef(true);
-  const onSavedRef = useRef(onSaved);
-  onSavedRef.current = onSaved;
+  const lockedRef = useLatestRef(disabled || loading || Boolean(loadError));
+  const onSavedRef = useLatestRef(onSaved);
   const keysRef = useRef(new WeakMap<object, string>());
   const keySeqRef = useRef(0);
 
@@ -151,13 +151,13 @@ export function useBuildingInventoryEditor(input: {
 
   useEffect(() => {
     mountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() is the table's API load (also exposed to callers); it raises its loading flag before the request
     void reload();
     return () => {
       mountedRef.current = false;
     };
   }, [reload]);
 
-  lockedRef.current = disabled || loading || Boolean(loadError);
 
   /** One request: the newest rows and text; adopts the reply's ids; false stops the loop. */
   const saveOnce = useCallback(async (): Promise<BuildingInventorySaveOutcome> => {
@@ -208,7 +208,7 @@ export function useBuildingInventoryEditor(input: {
     const outcome = { ok: true, queued: wasQueued };
     onSavedRef.current?.(outcome);
     return outcome;
-  }, [actor, keyOf, poNumber, propertyId, setLines, taskId]);
+  }, [actor, keyOf, poNumber, propertyId, setLines, taskId, onSavedRef]);
 
   /** Single-flight: callers during a save join its loop, which repeats while edits keep coming. */
   const requestSave = useCallback((): Promise<BuildingInventorySaveOutcome> => {
@@ -227,7 +227,7 @@ export function useBuildingInventoryEditor(input: {
       })();
     }
     return loopRef.current;
-  }, [saveOnce]);
+  }, [saveOnce, lockedRef]);
 
   const markEdited = useCallback(() => {
     dirtyRef.current = true;
@@ -283,7 +283,7 @@ export function useBuildingInventoryEditor(input: {
     }
     if (dirtyRef.current && !lockedRef.current) return requestSave();
     return loopRef.current ?? { ok: true };
-  }, [requestSave]);
+  }, [requestSave, lockedRef]);
 
   const save = useCallback(async (): Promise<BuildingInventorySaveOutcome> => {
     if (timerRef.current) {
@@ -300,7 +300,7 @@ export function useBuildingInventoryEditor(input: {
       if (timerRef.current) clearTimeout(timerRef.current);
       if (autosave && dirtyRef.current && !lockedRef.current) void requestSave();
     },
-    [autosave, requestSave],
+    [autosave, requestSave, lockedRef],
   );
 
   return {

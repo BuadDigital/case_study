@@ -45,6 +45,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   }, []);
 
   useLayoutEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the store's user is switched here (external module state) and its list must be read back before paint
     setItems([]);
     setNotificationStorageUser(session?.user.id);
     refresh();

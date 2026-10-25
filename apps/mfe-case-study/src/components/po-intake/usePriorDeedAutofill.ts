@@ -6,6 +6,7 @@
  * this property and replace the draft — once per deed identity.
  */
 import { useEffect, useRef, useState } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { useToast } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import { clonePropertyDocumentsFromPrior } from "../../lib/app-data/assignment-doc-attachments";
@@ -41,17 +42,23 @@ export function usePriorDeedAutofill({
   const [priorFilled, setPriorFilled] = useState(false);
   /** One full auto-fill per propertyId + deed + prior PO (don't fight user edits). */
   const appliedPriorKeyRef = useRef<string | null>(null);
-  const propertyRef = useRef(property);
-  propertyRef.current = property;
+  const propertyRef = useLatestRef(property);
+
+  // A cleared deed matches nothing — reset during render, before the effect would run.
+  const deedNumber = property.deedNumber.trim();
+  const [lookupDeed, setLookupDeed] = useState(deedNumber);
+  if (lookupDeed !== deedNumber) {
+    setLookupDeed(deedNumber);
+    if (!deedNumber) {
+      setPriorPo(null);
+      setPriorFilled(false);
+    }
+  }
 
   useEffect(() => {
     const deed = property.deedNumber.trim();
     // Any non-empty deed can match a prior PO (length is not fixed).
-    if (!deed) {
-      setPriorPo(null);
-      setPriorFilled(false);
-      return;
-    }
+    if (!deed) return;
     let cancelled = false;
     const timer = window.setTimeout(() => {
       void findPriorDeedFull(deed, priorExcludePo, priorExcludePropertyId)
@@ -120,8 +127,7 @@ export function usePriorDeedAutofill({
       window.clearTimeout(timer);
     };
     // Autofill once per deed identity — not on every field change after user edits.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
-  }, [property.deedNumber, property.id, priorExcludePo, priorExcludePropertyId, attachPo, onPatch, onReplaceProperty, showToast]);
+  }, [property.deedNumber, property.id, priorExcludePo, priorExcludePropertyId, attachPo, onPatch, onReplaceProperty, showToast, propertyRef]);
 
   return { priorPo, priorFilled };
 }

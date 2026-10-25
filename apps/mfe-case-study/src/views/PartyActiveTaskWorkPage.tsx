@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, PageGutter, PageShell, PanelSkeleton } from "@platform/ui-kit";
 import { partyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
@@ -29,11 +29,12 @@ export function PartyActiveTaskWorkPage({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const hostRef = useRef<PartyActiveTaskWorkHostRef>({});
-  hostRef.current.onClose = () => router.push(partyTaskPath(pageId));
-  hostRef.current.onRefresh = () => {
-    refreshPartyTaskWorkQueries(queryClient, pageId);
-  };
+  const hostRef = useLatestRef<PartyActiveTaskWorkHostRef>({
+    onClose: () => router.push(partyTaskPath(pageId)),
+    onRefresh: () => {
+      refreshPartyTaskWorkQueries(queryClient, pageId);
+    },
+  });
 
   const def = partyTaskPageDef(pageId);
   const { data: tasks, isFetched } = useWorkflowTasksQuery();
