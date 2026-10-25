@@ -8,6 +8,7 @@
  * mutate.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { useToast } from "@platform/ui-kit";
 import { caseStudyAnswerKey, type CaseStudyQuestionSection } from "../../lib/app-data/case-study-report-data";
@@ -108,8 +109,7 @@ export function useCaseStudyReportData({
     () => buildSeed(task, property, requestDateSeed),
     [task, property, requestDateSeed],
   );
-  const seedRef = useRef(seed);
-  seedRef.current = seed;
+  const seedRef = useLatestRef(seed);
   const seedKey = [
     seed.requestNumber ?? "",
     seed.requestDate ?? "",
@@ -153,8 +153,7 @@ export function useCaseStudyReportData({
   /** Last mirrored inspector values — used to follow updates without clobbering overrides. */
   const previousInspectorRef = useRef<SpecialistAnswersMap>({});
   const mirroringRef = useRef(false);
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
+  const draftRef = useLatestRef(draft);
   /**
    * The workspace keeps this form in an <Activity>: showing it again re-runs the
    * load for the same draft. That reload is silent (no skeleton), so until it lands
@@ -251,6 +250,7 @@ export function useCaseStudyReportData({
     partyAnswersByKey,
     setDraft,
     showToast,
+    draftRef,
   ]);
 
   const isQuestionVisible = useCallback(
@@ -379,7 +379,7 @@ export function useCaseStudyReportData({
     return () => {
       cancelled = true;
     };
-  }, [storageTaskId, referenceTaskId, isParty, reloadKey, seedKey]);
+  }, [storageTaskId, referenceTaskId, isParty, reloadKey, seedKey, seedRef]);
 
   useEffect(() => {
     if (!isParty || !hydrated) return;

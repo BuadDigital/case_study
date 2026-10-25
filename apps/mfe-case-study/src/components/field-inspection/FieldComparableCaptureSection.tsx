@@ -156,6 +156,7 @@ export function FieldComparableCaptureSection({
   }, [propertyId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() is the section's API load (also run after a save); its only synchronous setState is the no-session exit
     void reload();
   }, [reload]);
 

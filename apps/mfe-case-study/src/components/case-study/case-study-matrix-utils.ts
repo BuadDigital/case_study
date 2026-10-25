@@ -26,7 +26,6 @@ const ANSWER_YN: [CaseStudyReportAnswer, MatrixYn][] = [
   ["NA", "NA"],
 ];
 const YN_BY_ANSWER = new Map(ANSWER_YN);
-const ANSWER_BY_YN = new Map(ANSWER_YN.map(([answer, yn]) => [yn, answer]));
 
 export function answerToYn(
   value: CaseStudyReportAnswer | null | undefined,
@@ -35,7 +34,9 @@ export function answerToYn(
 }
 
 export function ynToAnswer(value: MatrixYn | null): CaseStudyReportAnswer | null {
-  return (value && ANSWER_BY_YN.get(value)) ?? null;
+  if (!value) return null;
+  for (const [answer, yn] of YN_BY_ANSWER) if (yn === value) return answer;
+  return null;
 }
 
 export function contributionsToPartyAnswers(

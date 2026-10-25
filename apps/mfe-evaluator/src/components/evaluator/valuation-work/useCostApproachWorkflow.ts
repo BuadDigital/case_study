@@ -100,6 +100,17 @@ export function useCostApproachWorkflow({
 
   // Hydrate from the server batch — each full load (new hydrateKey) reseeds drafts;
   // silent reloads leave them alone (same meaning as hydrateEdits in the shell previously).
+  // The drafts are reseeded during render; the effect below runs the async seeding only.
+  const [hydratedKey, setHydratedKey] = useState<number | null>(null);
+  if (hydratedKey !== hydrateKey) {
+    setHydratedKey(hydrateKey);
+    if (!cost) {
+      setCostDraft([]);
+    } else {
+      setCostDraft(cost.lines);
+      setFields(costFieldsFromDto(cost));
+    }
+  }
   const hydratedKeyRef = useRef<number | null>(null);
   useEffect(() => {
     if (hydratedKeyRef.current === hydrateKey) return;
@@ -120,13 +131,8 @@ export function useCostApproachWorkflow({
         stop = true;
       };
     };
-    if (!cost) {
-      setCostDraft([]);
-      return seedFromComponents();
-    }
-    setCostDraft(cost.lines);
+    if (!cost) return seedFromComponents();
     const stopSeed = cost.lines.length === 0 ? seedFromComponents() : () => {};
-    setFields(costFieldsFromDto(cost));
     const taskId = inspectionTaskId?.trim();
     if (cost.actualAgeYears != null || !taskId) return stopSeed;
     let cancelled = false;
@@ -201,6 +207,7 @@ export function useCostApproachWorkflow({
     onCostSaved,
     onSavingChange,
     reportSaveFailure,
+    showToast,
     valuationRequestId,
   ]);
 

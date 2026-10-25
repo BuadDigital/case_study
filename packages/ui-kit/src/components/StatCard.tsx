@@ -1,50 +1,66 @@
 "use client";
 
-import { useEffect, useState, type HTMLAttributes } from "react";
+import {
+  useEffect,
+  useState,
+  useSyncExternalStore,
+  type HTMLAttributes,
+} from "react";
 import { cn } from "../lib/cn";
 import {
   statCardFlushClassName,
   statGridFlushClassName,
 } from "../lib/page-layout-classes";
 
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+
+/** Read on every render (no change subscription); the server render assumes motion is allowed. */
+function subscribeNothing(): () => void {
+  return () => {};
+}
+
+function prefersReducedMotion(): boolean {
+  return window.matchMedia(REDUCED_MOTION_QUERY).matches;
+}
+
 function useCountUp(target: number | undefined, enabled: boolean): number | undefined {
-  const [display, setDisplay] = useState<number | undefined>(undefined);
+  const reducedMotion = useSyncExternalStore(
+    subscribeNothing,
+    prefersReducedMotion,
+    () => false,
+  );
+  const animating = target !== undefined && enabled && !reducedMotion;
+  /** Latest animation frame for `target`; null until the first tick (shows 0). */
+  const [frame, setFrame] = useState<{ target: number; value: number } | null>(
+    null,
+  );
+  // A new target, or no animation: drop the old run so the next one starts from 0.
+  if (frame !== null && (!animating || frame.target !== target)) {
+    setFrame(null);
+  }
 
   useEffect(() => {
-    if (target === undefined) {
-      setDisplay(undefined);
-      return;
-    }
-    if (!enabled) {
-      setDisplay(target);
-      return;
-    }
-    if (
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches
-    ) {
-      setDisplay(target);
-      return;
-    }
+    if (target === undefined || !enabled || reducedMotion) return;
 
     const start = performance.now();
     const duration = 600;
-    let frame = 0;
+    let raf = 0;
 
     const tick = (now: number) => {
       const progress = Math.min(1, (now - start) / duration);
-      setDisplay(Math.round(target * progress));
+      setFrame({ target, value: Math.round(target * progress) });
       if (progress < 1) {
-        frame = requestAnimationFrame(tick);
+        raf = requestAnimationFrame(tick);
       }
     };
 
-    setDisplay(0);
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [target, enabled]);
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, enabled, reducedMotion]);
 
-  return display;
+  if (target === undefined) return undefined;
+  if (!animating) return target;
+  return frame?.target === target ? frame.value : 0;
 }
 
 const accentClasses = {

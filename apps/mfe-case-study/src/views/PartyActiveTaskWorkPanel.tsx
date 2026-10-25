@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { useQueryClient } from "@tanstack/react-query";
 import { PartyActiveTaskWork } from "./PartyActiveTaskWork";
 import { PartyReassignmentNotice } from "./PartyReassignmentNotice";
@@ -30,12 +30,13 @@ export function PartyActiveTaskWorkPanel({
   engineeringSurveyExtensions?: PartyEngineeringSurveyExtensions;
 }) {
   const queryClient = useQueryClient();
-  const hostRef = useRef<PartyActiveTaskWorkHostRef>({});
-  hostRef.current.onRefresh = () => {
-    refreshPartyTaskWorkQueries(queryClient, def.pageId);
-    onRefreshAction();
-  };
-  hostRef.current.onClose = onCloseAction;
+  const hostRef = useLatestRef<PartyActiveTaskWorkHostRef>({
+    onRefresh: () => {
+      refreshPartyTaskWorkQueries(queryClient, def.pageId);
+      onRefreshAction();
+    },
+    onClose: onCloseAction,
+  });
 
   return (
     <>

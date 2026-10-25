@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
   MobileRecordCard,
   MobileRecordList,
@@ -80,8 +81,7 @@ export function EngineeringSurveyChecklist({
   onChange: (rows: EngineeringSurveyChecklistRow[]) => void;
 }) {
   const desktop = useViewportDesktop();
-  const rowsRef = useRef(rows);
-  rowsRef.current = rows;
+  const rowsRef = useLatestRef(rows);
   const patchRow = (
     index: number,
     patch: Partial<EngineeringSurveyChecklistRow>,

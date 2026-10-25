@@ -6,7 +6,8 @@
  * per-valuation price/area override. Handlers are exposed through stable
  * refs so the bank table memo survives shell re-renders.
  */
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
   setValuationComparableAdopted,
   type ValuationComparableSelectionDto,
@@ -107,19 +108,17 @@ export function useComparablesCommands(
 
   /* ─── Stable handlers for the comparables bank — so table memo holds across shell re-renders.
      Function declarations above are hoisted, so references here are valid. ─── */
-  const adoptRef = useRef(adopt);
-  adoptRef.current = adopt;
-  const saveBankOverrideRef = useRef(saveBankOverride);
-  saveBankOverrideRef.current = saveBankOverride;
+  const adoptRef = useLatestRef(adopt);
+  const saveBankOverrideRef = useLatestRef(saveBankOverride);
   const onAdoptMarket = useCallback(
     (comparableId: string, adopted: boolean) =>
       adoptRef.current(comparableId, adopted, MARKET_CONTEXT),
-    [],
+    [adoptRef],
   );
   const onAdoptLand = useCallback(
     (comparableId: string, adopted: boolean) =>
       adoptRef.current(comparableId, adopted, LAND_WITHIN_COST),
-    [],
+    [adoptRef],
   );
   const onSaveBankOverride = useCallback(
     (
@@ -127,7 +126,7 @@ export function useComparablesCommands(
       field: "price" | "area",
       raw: string,
     ) => saveBankOverrideRef.current(item, field, raw),
-    [],
+    [saveBankOverrideRef],
   );
 
   return { onAdoptMarket, onAdoptLand, onSaveBankOverride };

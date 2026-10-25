@@ -72,6 +72,7 @@ export function InspectionLimitsSection({
   }, [poNumber, propertyId]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reload() is the section's API load; it raises its loading flag before the request
     void reload();
   }, [reload]);
 

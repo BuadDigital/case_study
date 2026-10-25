@@ -343,18 +343,22 @@ function PartyDataCard({
   const [saveError, setSaveError] = useState<string | null>(null);
   const taskId = task?.id ?? "";
 
+  // Another task: loading starts (or, with none, ends) during render, before the effect fetches.
+  const [loadingFor, setLoadingFor] = useState<string | null>(null);
+  if (loadingFor !== taskId) {
+    setLoadingFor(taskId);
+    setLoading(Boolean(taskId));
+  }
+
   useEffect(() => {
-    if (!taskId) {
-      setLoading(false);
-      return;
-    }
+    if (!taskId) return;
     let cancelled = false;
     const config = workOrdersApiConfig();
     if (!config) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no API session: the load ends here; the fetch path sets state in its callback
       setLoading(false);
       return;
     }
-    setLoading(true);
     void getPartyTaskSubmission(config, taskId).then((res) => {
       if (cancelled) return;
       if (res.ok) {

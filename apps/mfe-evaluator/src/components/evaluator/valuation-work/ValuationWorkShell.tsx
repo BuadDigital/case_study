@@ -5,7 +5,6 @@ import {
   Suspense,
   useCallback,
   useEffect,
-  useRef,
   useState,
 } from "react";
 import {
@@ -208,12 +207,15 @@ export function ValuationWorkShell({
 
   /** Screen mounts only after first visit — then stays mounted (hidden) so drafts are not lost.
    * Basics + review stay mounted so send-from-any-tab can scroll to their fields. */
-  const visitedScreensRef = useRef<Set<ValuationWorkScreenId>>(new Set());
-  if (!loading) {
-    visitedScreensRef.current.add("basic");
-    visitedScreensRef.current.add("review");
+  const [visitedScreens, setVisitedScreens] = useState<Set<ValuationWorkScreenId>>(
+    () => new Set(),
+  );
+  const screensToMount: ValuationWorkScreenId[] = loading
+    ? [effectiveScreen]
+    : ["basic", "review", effectiveScreen];
+  if (screensToMount.some((id) => !visitedScreens.has(id))) {
+    setVisitedScreens(new Set([...visitedScreens, ...screensToMount]));
   }
-  visitedScreensRef.current.add(effectiveScreen);
   const screenMode = (id: ValuationWorkScreenId) =>
     !loading && effectiveScreen === id ? "visible" : "hidden";
 
@@ -556,7 +558,7 @@ export function ValuationWorkShell({
             </p>
           ) : null}
           {loading ? <ValuationWorkLoadingSkeleton /> : null}
-          {visitedScreensRef.current.has("basic") ? (
+          {visitedScreens.has("basic") ? (
             <Activity mode={screenMode("basic")}>
               {assetTypeChangedNeedsReview({
                 changedGroups: draft?.inspectorDataChangedGroups,
@@ -582,10 +584,10 @@ export function ValuationWorkShell({
               />
             </Activity>
           ) : null}
-          {visitedScreensRef.current.has("market") ? (
+          {visitedScreens.has("market") ? (
             <Activity mode={screenMode("market")}>{renderMarket()}</Activity>
           ) : null}
-          {visitedScreensRef.current.has("cost") ? (
+          {visitedScreens.has("cost") ? (
             <Activity mode={screenMode("cost")}>
               {renderCost()}
               {settingsSaved && costTab ? (
@@ -624,7 +626,7 @@ export function ValuationWorkShell({
               </CardPad>
             </Card>
           ) : null}
-          {visitedScreensRef.current.has("final") ? (
+          {visitedScreens.has("final") ? (
             <Activity mode={screenMode("final")}>
               {settingsSaved ? (
                 <Suspense fallback={<InlineLoadingSkeleton />}>
@@ -654,7 +656,7 @@ export function ValuationWorkShell({
               ) : null}
             </Activity>
           ) : null}
-          {visitedScreensRef.current.has("review") ? (
+          {visitedScreens.has("review") ? (
             <Activity mode={screenMode("review")}>{renderReview()}</Activity>
           ) : null}
         </div>

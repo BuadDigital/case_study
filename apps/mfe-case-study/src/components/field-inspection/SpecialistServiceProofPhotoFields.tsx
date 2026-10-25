@@ -179,7 +179,6 @@ export function SpecialistServiceProofPhotoFields({
                       if (doc) openPropertyDetailDocumentPreview(doc);
                     }}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={previewUrl}
                       alt={selected?.fileName ?? slot.label}

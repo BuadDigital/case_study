@@ -7,7 +7,14 @@
  * zoom lives in `useBrandLetterheadZoom`; pure decisions in `brand-identity-state.ts`.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useInsertionEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   BRAND_IDENTITY_DEFAULTS,
   getOrganizationSettings,
@@ -72,8 +79,11 @@ export function useBrandIdentityWorkflow() {
   const [previewOpen, setPreviewOpen] = useState(false);
 
   // Timers and queued saves run after later renders — they read the latest values from here.
+  // Refreshed after each render (not during it); handlers also write ahead of their setState.
   const latest = useRef({ brand, saved });
-  latest.current = { brand, saved };
+  useInsertionEffect(() => {
+    latest.current = { brand, saved };
+  });
   const timers = useRef<Partial<Record<BrandKey, number>>>({});
   const revisions = useRef<Record<BrandKey, number>>({ logo: 0, stamp: 0, sig: 0, lh: 0 });
   const queue = useRef<Promise<unknown>>(Promise.resolve());
@@ -111,6 +121,7 @@ export function useBrandIdentityWorkflow() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- server fetch: reload() is shared with the retry/refresh handlers and flips loading/error before its first await
     void reload();
   }, [reload]);
 

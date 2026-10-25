@@ -372,13 +372,22 @@ export function EvaluatorValuationReportOutputTab({
     ],
   );
 
+  // A rebuild below starts without the previous error — cleared during render when its inputs change.
+  const buildInputs = [
+    buildReportMeta, draft.poNumber, poQuery.isPending, outputQuery.isSuccess, showMissingFields,
+  ] as const;
+  const [prevBuildInputs, setPrevBuildInputs] = useState(buildInputs);
+  if (buildInputs.some((input, i) => input !== prevBuildInputs[i])) {
+    setPrevBuildInputs(buildInputs);
+    if (!(draft.poNumber && poQuery.isPending) && outputQuery.isSuccess) setError(null);
+  }
+
   useEffect(() => {
     if (draft.poNumber && poQuery.isPending) return;
     // Do not build the report before the output bundle arrives — previously built empty
     // then fully rebuilt when data arrived (async-cheap-condition-before-await).
     if (!outputQuery.isSuccess) return;
     let cancelled = false;
-    setError(null);
     // Use the shared cache — do not force-refetch (that caused a request storm).
     void ensureOrganizationSettingsLoaded()
       .then((loaded) => {

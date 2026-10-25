@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   getApiBase,
@@ -15,6 +15,7 @@ import {
 import { getAuthSession } from "@platform/auth-client";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { fetchInspectorWorkspace } from "../../lib/case-study-bridge";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
@@ -179,8 +180,7 @@ export function EvaluatorValuationReportTab({
   const { data: record } = usePoRecordQuery(draft.poNumber);
 
   const choices = draft.reportChoices ?? emptyReportChoices();
-  const choicesRef = useRef(choices);
-  choicesRef.current = choices;
+  const choicesRef = useLatestRef(choices);
 
   const specialistPropertyId = property?.id ?? draft.propertyId;
   // Another property has another saved finishing level.
@@ -284,8 +284,7 @@ export function EvaluatorValuationReportTab({
     },
     [bases, choices, methods, onChange],
   );
-  const patchRef = useRef(patch);
-  patchRef.current = patch;
+  const patchRef = useLatestRef(patch);
 
   // Pour specialist → report draft (for print) — finishes.
   useEffect(() => {
@@ -297,7 +296,7 @@ export function EvaluatorValuationReportTab({
         finishingLevel: specialistFinishing,
       });
     }
-  }, [disabled, loading, specialistFinishing]);
+  }, [choicesRef, disabled, loading, patchRef, specialistFinishing]);
 
   const patchValues = useCallback(
     (partial: {
@@ -358,6 +357,8 @@ export function EvaluatorValuationReportTab({
     );
   }, [
     assignmentType,
+    choicesRef,
+    patchRef,
     recordAssignmentType,
     reportSubClientId,
     draft.valueBasis,
@@ -382,6 +383,7 @@ export function EvaluatorValuationReportTab({
     choices.marketMethodKey,
     disabled,
     methods,
+    patchRef,
   ]);
 
   if (loading) {

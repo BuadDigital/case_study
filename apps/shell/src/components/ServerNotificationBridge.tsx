@@ -13,6 +13,7 @@ import { isFeatureEnabled } from "@platform/app-shared/feature-flags";
 import { ensureFreshAuthSession } from "@platform/app-shared/auth/ensure-fresh-session";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import { useDocumentVisible } from "@platform/app-shared/hooks/use-document-visible";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   filterNotificationsForRole,
@@ -61,8 +62,7 @@ export function ServerNotificationBridge() {
   const localSyncSourceEventsRef = useRef<Map<string, number>>(new Map());
   const refreshDebounceRef = useRef<number | undefined>(undefined);
   const visible = useDocumentVisible();
-  const visibleRef = useRef(visible);
-  visibleRef.current = visible;
+  const visibleRef = useLatestRef(visible);
   const wasVisibleRef = useRef(visible);
   const pullOnVisibleRef = useRef<() => void>(() => {});
 
@@ -315,6 +315,7 @@ export function ServerNotificationBridge() {
     refreshTransactions,
     shouldSuppressEchoToast,
     markSeenIfNew,
+    visibleRef,
   ]);
 
   // Hidden → visible only: pull on mount is done via pull(false) in the effect above,

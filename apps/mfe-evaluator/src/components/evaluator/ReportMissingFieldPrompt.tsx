@@ -123,11 +123,15 @@ export function ReportMissingFieldPrompt({
     return () => cell.removeAttribute(OPEN_ATTR);
   }, [open]);
 
+  // Closing hides the panel again — applied during render; the layout effect only places it.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    if (!open) setStyle({ visibility: "hidden" });
+  }
+
   useLayoutEffect(() => {
-    if (!open) {
-      setStyle({ visibility: "hidden" });
-      return;
-    }
+    if (!open) return;
     const place = () => setStyle(panelStyle(open.element, panelRef.current));
     place();
     const raf = requestAnimationFrame(place);

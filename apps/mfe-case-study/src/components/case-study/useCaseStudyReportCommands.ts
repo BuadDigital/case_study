@@ -6,7 +6,8 @@
  * actions with their progress toasts. It reads and mutates the state owned by
  * `useCaseStudyReportData`.
  */
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { progressMessageForActionLabel } from "@platform/ui-kit";
 import {
   CASE_STUDY_REPORT_STEPS,
@@ -77,8 +78,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
     dismissToast,
   } = data;
 
-  const draftRef = useRef(draft);
-  draftRef.current = draft;
+  const draftRef = useLatestRef(draft);
 
   const persistToServer = useCallback(
     async (next: CaseStudyReportDraft, idempotencyKey?: string) => {
@@ -207,7 +207,7 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
     if (typeof window !== "undefined") {
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-  }, [persist]);
+  }, [persist, draftRef]);
 
   const { submittingForm, issueReport, reopenReport } = useCaseStudyReportIssue(
     data,

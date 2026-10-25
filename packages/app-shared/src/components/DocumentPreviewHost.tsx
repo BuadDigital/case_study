@@ -293,7 +293,6 @@ function ImagePreviewLightbox({
       {loaded.status === "ready" ? (
         // Native pixels only: max-* shrinks a large photo into the window
         // and never stretches a smaller one, so it stays sharp and inside the viewport.
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={loaded.url}
           alt={caption}

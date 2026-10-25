@@ -91,7 +91,7 @@ export function PoPropertyDetailTabs({
     workspaceForced,
     effectiveTab,
     tabMode,
-    visitedTabsRef,
+    visitedTabs,
     selectTab,
     warmTab,
     replaceInspectQuery,
@@ -247,7 +247,7 @@ export function PoPropertyDetailTabs({
             )}
           >
           <div ref={panelBodyRef}>
-          {visitedTabsRef.current.has("basic") ? (
+          {visitedTabs.has("basic") ? (
             <Activity mode={tabMode("basic")}>
               <PropertyDetailBasicTab
                 record={record}
@@ -258,7 +258,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("documents") ? (
+          {visitedTabs.has("documents") ? (
             <Activity mode={tabMode("documents")}>
               <DocumentsTab
                 sections={propertyDocumentSections}
@@ -268,7 +268,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("linked") ? (
+          {visitedTabs.has("linked") ? (
             <Activity mode={tabMode("linked")}>
               <PropertyDetailLinkedTab
                 record={record}
@@ -278,7 +278,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("failures") ? (
+          {visitedTabs.has("failures") ? (
             <Activity mode={tabMode("failures")}>
             {propertyFailures.length > 0 ? (
               <>
@@ -342,7 +342,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("survey") ? (
+          {visitedTabs.has("survey") ? (
             <Activity mode={tabMode("survey")}>
             {surveyCard ? (
               <>
@@ -381,7 +381,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("inspection") ? (
+          {visitedTabs.has("inspection") ? (
             <Activity mode={tabMode("inspection")}>
             <PropertyDetailInspectionTab
               property={property}
@@ -422,7 +422,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("government") ? (
+          {visitedTabs.has("government") ? (
             <Activity mode={tabMode("government")}>
               <PropertyDetailGovernmentReviewsTab
                 poNumber={poNumber}
@@ -431,7 +431,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("report") ? (
+          {visitedTabs.has("report") ? (
             <Activity mode={tabMode("report")}>
               <PropertyDetailCaseStudyReport
                 record={record}
@@ -442,7 +442,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("appraisal") ? (
+          {visitedTabs.has("appraisal") ? (
             <Activity mode={tabMode("appraisal")}>
             <PropertyDetailAppraisalTab
               property={property}
@@ -458,13 +458,13 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("photos") ? (
+          {visitedTabs.has("photos") ? (
             <Activity mode={tabMode("photos")}>
               <PropertyDetailPhotosTab photos={propertyPhotos} />
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("log") ? (
+          {visitedTabs.has("log") ? (
             <Activity mode={tabMode("log")}>
             {logEvents.length === 0 ? (
               <EmptyState title="لا يوجد سجل إجراءات" />
@@ -511,7 +511,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("keys") ? (
+          {visitedTabs.has("keys") ? (
             <Activity mode={tabMode("keys")}>
               <PropertyDetailPropertyKeys
                 poNumber={poNumber}
@@ -521,7 +521,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("enfath-upload") ? (
+          {visitedTabs.has("enfath-upload") ? (
             <Activity mode={tabMode("enfath-upload")}>
             <PropertyDetailEnfathUpload
               record={record}
@@ -534,7 +534,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("finance") ? (
+          {visitedTabs.has("finance") ? (
             <Activity mode={tabMode("finance")}>
               <PropertyDetailFinanceTab
                 poNumber={poNumber}
@@ -544,7 +544,7 @@ export function PoPropertyDetailTabs({
             </Activity>
           ) : null}
 
-          {visitedTabsRef.current.has("survey-notes") ? (
+          {visitedTabs.has("survey-notes") ? (
             <Activity mode={tabMode("survey-notes")}>
               <PropertyDetailSurveyNotesTab
                 sections={partyRemarksSections}

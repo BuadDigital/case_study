@@ -77,7 +77,7 @@ export function usePropertyDocumentsWorkflow({
         propertyType,
         propertyRequiresSurvey: propertyRequiresSurvey(property),
       }),
-    [sections, governed.data, attachmentsList, propertyType, property],
+    [sections, governed.data, attachmentsList, propertyType, property, poNumber],
   );
   const uploadOptions = useMemo(
     () =>

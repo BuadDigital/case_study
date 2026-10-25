@@ -142,12 +142,12 @@ export function useCostInspectorSync({
   // The inspector's age, read (never written) only once the age group changed.
   const ageChanged = Boolean(inspectorChangedGroups?.includes("age"));
   const [inspectorAge, setInspectorAge] = useState("");
+  // Nothing to read — clear the age during render; the effect only fetches.
+  const ageReadable = ageChanged && Boolean(inspectionTaskId?.trim());
+  if (!ageReadable && inspectorAge !== "") setInspectorAge("");
   useEffect(() => {
     const taskId = inspectionTaskId?.trim();
-    if (!ageChanged || !taskId) {
-      setInspectorAge("");
-      return;
-    }
+    if (!ageChanged || !taskId) return;
     let cancelled = false;
     void fetchInspectorWorkspace(taskId)
       .then((workspace) => {

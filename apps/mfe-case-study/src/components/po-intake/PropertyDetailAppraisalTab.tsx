@@ -1,5 +1,6 @@
 "use client";
 
+import { createElement } from "react";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { PartyRecallAdvisorySection } from "@platform/app-shared/components/PartyRecallAdvisorySection";
 import { canDecideAppraisalRecall, canPrepareReportDraft } from "../../lib/app-data/po-roles";
@@ -83,20 +84,21 @@ export function PropertyDetailAppraisalTab({
       {submission?.packageStatus === "reopened" && returnRemark?.trim() ? (
         <ReturnedForCorrectionNote note={returnRemark} className="mb-3" />
       ) : null}
-      {showReportDraft && appraisalTask && ReportDraftPanel ? (
-        <ReportDraftPanel
-          appraisalTask={appraisalTask}
-          allTasks={tasks}
-          property={property}
-          canEdit={canPrepareReportDraft(role)}
-        />
-      ) : null}
+      {/* The evaluator bridge registers module-level components (stable identity), not ones created per render. */}
+      {showReportDraft && appraisalTask && ReportDraftPanel
+        ? createElement(ReportDraftPanel, {
+            appraisalTask,
+            allTasks: tasks,
+            property,
+            canEdit: canPrepareReportDraft(role),
+          })
+        : null}
       {appraisalTask && ValuationReport ? (
-        <ValuationReport
-          appraisalTask={appraisalTask}
-          allTasks={tasks}
-          property={property}
-        />
+        createElement(ValuationReport, {
+          appraisalTask,
+          allTasks: tasks,
+          property,
+        })
       ) : (
         <EmptyState
           title="تقرير التقييم غير متاح بعد"

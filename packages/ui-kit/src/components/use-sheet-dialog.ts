@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type RefObject } from "react";
+import { useEffect, useEffectEvent, useRef, type RefObject } from "react";
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -16,8 +16,7 @@ export function useSheetDialog(
   panelRef: RefObject<HTMLElement | null>,
 ): void {
   const openerRef = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  const onCloseEvent = useEffectEvent(onClose);
 
   useEffect(() => {
     if (!open) return;
@@ -45,7 +44,7 @@ export function useSheetDialog(
     if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
-        onCloseRef.current();
+        onCloseEvent();
         return;
       }
       if (e.key !== "Tab") return;

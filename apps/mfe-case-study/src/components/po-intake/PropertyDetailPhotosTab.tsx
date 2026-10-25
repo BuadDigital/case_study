@@ -74,17 +74,29 @@ function PhotoTile({
       (handle ? getInspectorPhotoDataUrl(handle.taskId, handle.photoRef) : undefined),
   );
 
-  useEffect(() => {
+  // New photo source: take its own or the cached copy during render — only a fetch waits for the effect.
+  const [shownFor, setShownFor] = useState<readonly unknown[] | null>(null);
+  const source = [
+    photo.dataUrl,
+    handle?.taskId,
+    handle?.photoRef,
+    handle?.attachment,
+    handle?.attachment.attachmentId,
+  ] as const;
+  if (!shownFor || source.some((value, i) => value !== shownFor[i])) {
+    setShownFor(source);
     if (photo.dataUrl) {
       setDataUrl(photo.dataUrl);
-      return;
+    } else if (handle?.attachment.attachmentId) {
+      const cached = getInspectorPhotoDataUrl(handle.taskId, handle.photoRef);
+      if (cached) setDataUrl(cached);
     }
+  }
+
+  useEffect(() => {
+    if (photo.dataUrl) return;
     if (!handle?.attachment.attachmentId) return;
-    const cached = getInspectorPhotoDataUrl(handle.taskId, handle.photoRef);
-    if (cached) {
-      setDataUrl(cached);
-      return;
-    }
+    if (getInspectorPhotoDataUrl(handle.taskId, handle.photoRef)) return;
     let cancelled = false;
     void prefetchInspectorPhoto(handle.taskId, handle.photoRef, handle.attachment).then(
       (url) => {
@@ -123,7 +135,6 @@ function PhotoTile({
         aria-label={photo.name}
       >
         {dataUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img
             src={dataUrl}
             alt={photo.name}

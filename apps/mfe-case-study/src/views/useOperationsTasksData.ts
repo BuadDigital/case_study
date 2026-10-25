@@ -205,6 +205,7 @@ export function useOperationsTasksData() {
 
   useEffect(() => {
     if (!deepLinkTaskId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- a deep link selects its row and re-widens the filter (with the blink) whenever the filter changes
     setSelectedId(deepLinkTaskId);
     setDetailId(deepLinkTaskId);
     // A deep link may point at a row the current filter hides — open the full list

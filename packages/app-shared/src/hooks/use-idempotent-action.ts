@@ -29,9 +29,12 @@ export function useIdempotentAction<T>(
   const inFlightRef = useRef(false);
   const keyRef = useRef<string | null>(null);
   const [loading, setLoading] = useState(false);
+  /** Render-side mirror of `keyRef` (the ref stays the source of truth for calls). */
+  const [idempotencyKey, setIdempotencyKey] = useState<string | null>(null);
 
   const reset = useCallback(() => {
     keyRef.current = null;
+    setIdempotencyKey(null);
     inFlightRef.current = false;
     setLoading(false);
   }, []);
@@ -45,10 +48,12 @@ export function useIdempotentAction<T>(
     setLoading(true);
     const key = keyRef.current ?? createIdempotencyKey();
     keyRef.current = key;
+    setIdempotencyKey(key);
 
     try {
       const value = await action(key);
       keyRef.current = null;
+      setIdempotencyKey(null);
       return { status: "ok", value };
     } catch (error) {
       throw error;
@@ -61,7 +66,7 @@ export function useIdempotentAction<T>(
   return {
     execute,
     loading,
-    idempotencyKey: keyRef.current,
+    idempotencyKey,
     reset,
   };
 }

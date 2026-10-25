@@ -14,6 +14,7 @@ import {
   opsEmptyHint,
 } from "@platform/ui-kit";
 import { JEDDAH_DEFAULT_CENTER } from "@platform/app-shared/domain/jeddah-default-coords";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 
 const DEFAULT_CENTER = JEDDAH_DEFAULT_CENTER;
 const DEFAULT_ZOOM = 6;
@@ -35,9 +36,12 @@ export function EngineeringSurveyMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const markerRef = useRef<google.maps.Marker | null>(null);
-  const onCoordsChangeRef = useRef(onCoordsChange);
-  onCoordsChangeRef.current = onCoordsChange;
-  const [mapError, setMapError] = useState<string | null>(null);
+  const onCoordsChangeRef = useLatestRef(onCoordsChange);
+  const [mapError, setMapError] = useState<string | null>(() =>
+    googleMapsApiKey()
+      ? null
+      : "أضف NEXT_PUBLIC_GOOGLE_MAPS_API_KEY لتفعيل خريطة Google.",
+  );
   const [mapReady, setMapReady] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -47,13 +51,9 @@ export function EngineeringSurveyMap({
   const hasPin = pin !== null;
 
   useEffect(() => {
-    if (!googleMapsApiKey()) {
-      setMapError("أضف NEXT_PUBLIC_GOOGLE_MAPS_API_KEY لتفعيل خريطة Google.");
-      setMapReady(false);
-      return;
-    }
+    // No key: the message is the initial error state and the map never becomes ready.
+    if (!googleMapsApiKey()) return;
 
-    setMapReady(false);
     let cancelled = false;
 
     loadGoogleMapsApi()
@@ -111,6 +111,8 @@ export function EngineeringSurveyMap({
 
     return () => {
       cancelled = true;
+      // Not ready until the next init (disabled / reload) finishes loading.
+      setMapReady(false);
       markerRef.current?.setMap(null);
       markerRef.current = null;
       mapRef.current = null;

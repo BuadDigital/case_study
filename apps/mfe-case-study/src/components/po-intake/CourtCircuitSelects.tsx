@@ -73,10 +73,8 @@ export function CourtCircuitSelects({
   useEffect(() => {
     let cancelled = false;
     const config = apiConfig();
-    if (!config) {
-      setCourts([]);
-      return;
-    }
+    // No session: the list stays empty, as it starts.
+    if (!config) return;
     void listSelectableCourts(config).then((result) => {
       if (cancelled) return;
       if (!result.ok) {
@@ -98,14 +96,19 @@ export function CourtCircuitSelects({
   // A typed court has no catalog id, so it has no catalog circuits either.
   const selectedCourtId = isCustomCourt ? "" : selectedCourtValue;
 
+  // No court: no circuits — cleared during render, before the effect would run.
+  const [circuitsCourtId, setCircuitsCourtId] = useState(selectedCourtId);
+  if (circuitsCourtId !== selectedCourtId) {
+    setCircuitsCourtId(selectedCourtId);
+    if (!selectedCourtId) setCircuits([]);
+  }
+
   useEffect(() => {
     let cancelled = false;
-    if (!selectedCourtId) {
-      setCircuits([]);
-      return;
-    }
+    if (!selectedCourtId) return;
     const config = apiConfig();
     if (!config) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- no API session: the circuits API cannot be reached, so the list empties here; the fetch path sets it in its callback
       setCircuits([]);
       return;
     }

@@ -7,6 +7,7 @@
  * in the bank table by distance, never written back as un-adopted.
  */
 import { useCallback, useMemo, useRef } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
   type ComparablePropertyDto,
   type ValuationComparableSelectionListDto,
@@ -189,8 +190,7 @@ export function useValuationWorkReadModels({
 
   const subjectAreaNum = parseDecimal(subjectArea) || null;
 
-  const subjectAreaRef = useRef(subjectArea);
-  subjectAreaRef.current = subjectArea;
+  const subjectAreaRef = useLatestRef(subjectArea);
   const searchGen = useRef(0);
   /** Bank search — fetches bank candidates only instead of a full screen reload (7 calls). */
   const onSearchBank = useCallback(
@@ -209,7 +209,7 @@ export function useValuationWorkReadModels({
         applyBankResult(res.data, res.subjectCoords, search);
       })();
     },
-    [resolveBankFetchOpts, property?.area, applyBankResult],
+    [resolveBankFetchOpts, property?.area, applyBankResult, subjectAreaRef],
   );
 
   return {

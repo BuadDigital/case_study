@@ -7,7 +7,8 @@
  * (basis, area factor, subject spec) come from `useMarketApproachCommands`;
  * everything is exposed as one stable dispatcher per context.
  */
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
   saveAdjustmentFactorRationale,
   type ValuationComparableSelectionDto,
@@ -302,15 +303,14 @@ export function useAdjustmentsMatrixCommands(
     saveCellDescription,
     saveSubjectSpec: approach.saveSubjectSpec,
   };
-  const matrixOpsRef = useRef(matrixOps);
-  matrixOpsRef.current = matrixOps;
+  const matrixOpsRef = useLatestRef(matrixOps);
   const dispatchMarketMatrix = useCallback<MatrixDispatch>(
     (action) => runMatrixAction(matrixOpsRef.current, MARKET_CONTEXT, action),
-    [],
+    [matrixOpsRef],
   );
   const dispatchLandMatrix = useCallback<MatrixDispatch>(
     (action) => runMatrixAction(matrixOpsRef.current, LAND_WITHIN_COST, action),
-    [],
+    [matrixOpsRef],
   );
 
   return { dispatchMarketMatrix, dispatchLandMatrix };

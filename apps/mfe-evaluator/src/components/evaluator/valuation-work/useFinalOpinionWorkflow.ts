@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   activeValuationListOptions,
   getWorkOrder,
@@ -122,31 +122,39 @@ export function useFinalOpinionWorkflow({
 
   // Hydration: new key = full load (full reseed); same key with a new batch = silent
   // reload that merges computed approach values and keeps user weights/rationales.
-  const hydratedKeyRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (hydratedKeyRef.current === hydrateKey) {
+  // Applied during render when the inputs change (null = first render, not hydrated yet).
+  const [hydratedFrom, setHydratedFrom] = useState<{
+    hydrateKey: number;
+    recon: ValuationReconciliationDto | null;
+    assignmentType: string | undefined;
+  } | null>(null);
+  if (
+    hydratedFrom === null ||
+    hydratedFrom.hydrateKey !== hydrateKey ||
+    hydratedFrom.recon !== recon ||
+    hydratedFrom.assignmentType !== assignmentType
+  ) {
+    setHydratedFrom({ hydrateKey, recon, assignmentType });
+    if (hydratedFrom?.hydrateKey === hydrateKey) {
       if (recon) {
         setReconMethods((prev) => mergeReconMethods(recon.methods, prev));
       }
-      return;
-    }
-    hydratedKeyRef.current = hydrateKey;
-    if (!recon) {
+    } else if (!recon) {
       setReconMethods([]);
       setMethodsRationale("");
       setFinalRoundDecimals("0");
       setLiquidationDiscountPct("0");
       setLiquidationDiscountRationale("");
-      return;
+    } else {
+      setReconMethods(recon.methods);
+      const stored = recon.methodsRationale ?? "";
+      // Drop leftover auto-generated filler — the appraiser writes this field.
+      setMethodsRationale(looksLikeAutoFinalOpinion(stored) ? "" : stored);
+      setFinalRoundDecimals(String(recon.finalRoundDecimals ?? 0));
+      setLiquidationDiscountPct(String(recon.liquidationDiscountPct ?? 0));
+      setLiquidationDiscountRationale(recon.liquidationDiscountRationale ?? "");
     }
-    setReconMethods(recon.methods);
-    const stored = recon.methodsRationale ?? "";
-    // Drop leftover auto-generated filler — the appraiser writes this field.
-    setMethodsRationale(looksLikeAutoFinalOpinion(stored) ? "" : stored);
-    setFinalRoundDecimals(String(recon.finalRoundDecimals ?? 0));
-    setLiquidationDiscountPct(String(recon.liquidationDiscountPct ?? 0));
-    setLiquidationDiscountRationale(recon.liquidationDiscountRationale ?? "");
-  }, [hydrateKey, recon, assignmentType]);
+  }
 
   /* ─── Live value-opinion calc (interactive-form spec) ─── */
   const finalComputed = useMemo(

@@ -17,6 +17,7 @@ import {
 } from "@platform/app-shared/app-data/comparable-entry";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import {
   AppModal,
@@ -241,10 +242,8 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
       return res.data;
     },
   );
-  const onSearchRef = useRef(onSearch);
-  onSearchRef.current = onSearch;
-  const onCreatedRef = useRef(onCreated);
-  onCreatedRef.current = onCreated;
+  const onSearchRef = useLatestRef(onSearch);
+  const onCreatedRef = useLatestRef(onCreated);
   const firstSearch = useRef(true);
 
   // Soft refresh when bank search query changes (no full-screen blank).
@@ -255,7 +254,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
     }
     const t = window.setTimeout(() => onSearchRef.current?.(q), 280);
     return () => window.clearTimeout(t);
-  }, [q]);
+  }, [onSearchRef, q]);
 
   function toggleAdopt(compId: string, next: boolean) {
     setPendingAdopt((prev) => new Map(prev).set(compId, next));

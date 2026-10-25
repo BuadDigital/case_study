@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { invalidateEvaluatorReportOutput } from "../../lib/evaluator/evaluator-report-output-cache";
 import {
@@ -22,6 +29,7 @@ import {
   invalidControlClass,
   scheduleScrollToFormField,
 } from "@platform/app-shared/form-ux";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { esgGroupsMissingImpactDescription } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
 import {
@@ -100,22 +108,14 @@ export function EvaluatorFinalReviewTab({
   const queryClient = useQueryClient();
   const persistSeq = useRef(0);
   const editVersionRef = useRef(0);
-  const assumptionsRef = useRef(assumptions);
-  const specialistUsedRef = useRef(specialistUsed);
-  const specialistDetailsRef = useRef(specialistDetails);
-  const freeAssumptionRef = useRef(freeAssumption);
-  const settingsRef = useRef(settings);
-  const dirtyRef = useRef(dirty);
-  const noSpecialistClauseRef = useRef("");
-  const persistAssumptionsRef = useRef<() => Promise<void>>(async () => {});
+  const assumptionsRef = useLatestRef(assumptions);
+  const specialistUsedRef = useLatestRef(specialistUsed);
+  const specialistDetailsRef = useLatestRef(specialistDetails);
+  const freeAssumptionRef = useLatestRef(freeAssumption);
+  const settingsRef = useLatestRef(settings);
   /** Settings echoed back from this tab's own autosave — reseeding from them would wipe in-flight typing. */
-  const lastSavedSettingsRef = useRef<ValuationApproachSettingsDto | null>(null);
-  assumptionsRef.current = assumptions;
-  specialistUsedRef.current = specialistUsed;
-  specialistDetailsRef.current = specialistDetails;
-  freeAssumptionRef.current = freeAssumption;
-  settingsRef.current = settings;
-  dirtyRef.current = dirty;
+  const [lastSavedSettings, setLastSavedSettings] =
+    useState<ValuationApproachSettingsDto | null>(null);
 
   useEffect(() => {
     onSpecialistDraftChange?.({
@@ -161,36 +161,50 @@ export function EvaluatorFinalReviewTab({
 
   // Shell mode: settings come from parent — no duplicate fetch; seed once per
   // request (or when the server selection changes) so local edits are not wiped.
-  const seededForRequestRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (approachSettingsFromShell === undefined) return;
-    setLoading(false);
-    if (!approachSettingsFromShell) {
-      setSettings(null);
-      setError("تعذّر تحميل إعدادات التقييم");
-      return;
+  // Applied during render when those inputs change (null = not applied yet, i.e. first render).
+  const [seededForRequest, setSeededForRequest] = useState<string | null>(null);
+  const [shellInputs, setShellInputs] = useState<{
+    settings: ValuationApproachSettingsDto | null | undefined;
+    requestId: string | null | undefined;
+    propertyId: string;
+  } | null>(null);
+  if (
+    shellInputs === null ||
+    shellInputs.settings !== approachSettingsFromShell ||
+    shellInputs.requestId !== knownValuationRequestId ||
+    shellInputs.propertyId !== propertyId
+  ) {
+    setShellInputs({
+      settings: approachSettingsFromShell,
+      requestId: knownValuationRequestId,
+      propertyId,
+    });
+    if (approachSettingsFromShell !== undefined) {
+      setLoading(false);
+      if (!approachSettingsFromShell) {
+        setSettings(null);
+        setError("تعذّر تحميل إعدادات التقييم");
+      } else {
+        setError(null);
+        setSettings(approachSettingsFromShell);
+        const loaded = approachSettingsFromShell.selectedAssumptions ?? [];
+        const seedKey = `${knownValuationRequestId ?? propertyId}:${
+          shouldUseDefaultSpecialAssumptions(loaded)
+            ? "default-all"
+            : loaded.join("\u0001")
+        }`;
+        if (seededForRequest !== seedKey) {
+          setSeededForRequest(seedKey);
+          if (approachSettingsFromShell !== lastSavedSettings) {
+            seedAssumptions(approachSettingsFromShell);
+          }
+        }
+      }
     }
-    setError(null);
-    setSettings(approachSettingsFromShell);
-    const loaded = approachSettingsFromShell.selectedAssumptions ?? [];
-    const seedKey = `${knownValuationRequestId ?? propertyId}:${
-      shouldUseDefaultSpecialAssumptions(loaded)
-        ? "default-all"
-        : loaded.join("\u0001")
-    }`;
-    if (seededForRequestRef.current === seedKey) return;
-    seededForRequestRef.current = seedKey;
-    if (approachSettingsFromShell === lastSavedSettingsRef.current) return;
-    seedAssumptions(approachSettingsFromShell);
-  }, [
-    approachSettingsFromShell,
-    knownValuationRequestId,
-    propertyId,
-    seedAssumptions,
-  ]);
+  }
 
   const loadAssumptions = useCallback(async () => {
-    // Shell mode — the effect above is the source; no fetch here.
+    // Shell mode — the render-time sync above is the source; no fetch here.
     if (approachSettingsFromShell !== undefined) return;
     const config = apiConfig();
     if (!config || !propertyId.trim()) {
@@ -236,6 +250,7 @@ export function EvaluatorFinalReviewTab({
   ]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- standalone fetch: flags loading (or the missing session, readable only on the client) before the first await.
     void loadAssumptions();
   }, [loadAssumptions]);
 
@@ -248,7 +263,7 @@ export function EvaluatorFinalReviewTab({
   const noSpecialistClause = resolveNoSpecialistClause(
     settings?.assumptionLibrary ?? [],
   );
-  noSpecialistClauseRef.current = noSpecialistClause;
+  const noSpecialistClauseRef = useLatestRef(noSpecialistClause);
 
   function markDirty() {
     editVersionRef.current += 1;
@@ -337,7 +352,7 @@ export function EvaluatorFinalReviewTab({
       return;
     }
     setSettings(res.data);
-    lastSavedSettingsRef.current = res.data;
+    setLastSavedSettings(res.data);
     onSettingsSaved?.(res.data);
     invalidateEvaluatorReportOutput(queryClient);
     // Skip applying server state if the user edited again while this request was in flight.
@@ -346,7 +361,18 @@ export function EvaluatorFinalReviewTab({
     if (withPending !== base) setFreeAssumption("");
     setDirty(false);
     setSaveHint("تم الحفظ تلقائياً");
-  }, [disabled, onSettingsSaved, queryClient, showToast]);
+  }, [
+    assumptionsRef,
+    disabled,
+    freeAssumptionRef,
+    noSpecialistClauseRef,
+    onSettingsSaved,
+    queryClient,
+    settingsRef,
+    showToast,
+    specialistDetailsRef,
+    specialistUsedRef,
+  ]);
 
   // Debounced autosave — same cadence as EvaluatorWindow draft saves.
   useEffect(() => {
@@ -365,13 +391,15 @@ export function EvaluatorFinalReviewTab({
     persistAssumptions,
   ]);
 
-  persistAssumptionsRef.current = persistAssumptions;
+  const flushPendingEdits = useEffectEvent(() => {
+    if (dirty) void persistAssumptions();
+  });
 
   // Flush pending edits when leaving the tab so the report does not miss the last change.
   useEffect(() => {
     return () => {
-      if (!dirtyRef.current || disabled) return;
-      void persistAssumptionsRef.current();
+      if (disabled) return;
+      flushPendingEdits();
     };
   }, [disabled]);
 

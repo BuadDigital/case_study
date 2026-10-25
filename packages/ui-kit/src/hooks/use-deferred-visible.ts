@@ -14,12 +14,11 @@ export function useDeferredVisible(
   delayMs = GENTLE_LOADING_DELAY_MS,
 ): boolean {
   const [visible, setVisible] = useState(false);
+  // Off as soon as `active` drops (reset during render, so the delay restarts next time).
+  if (!active && visible) setVisible(false);
 
   useEffect(() => {
-    if (!active) {
-      setVisible(false);
-      return;
-    }
+    if (!active) return;
     const timer = window.setTimeout(() => setVisible(true), delayMs);
     return () => window.clearTimeout(timer);
   }, [active, delayMs]);
