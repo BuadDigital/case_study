@@ -94,9 +94,23 @@
     "KpiCheckIcon": "src/icons/kpi-icons.tsx",
     "KpiClipboardIcon": "src/icons/kpi-icons.tsx",
     "KpiClockIcon": "src/icons/kpi-icons.tsx",
-    "ShowAllEye": "src/icons/show-all-eye.tsx"
+    "ShowAllEye": "src/icons/show-all-eye.tsx",
+    "PhoneField": "src/components/PhoneField.tsx",
+    "YesNoToggle": "src/components/YesNoToggle.tsx",
+    "OpsIcon": "src/components/OpsIcon.tsx",
+    "UploadFileIcon": "src/components/UploadFileIcon.tsx",
+    "ColorStatusPill": "src/badges.tsx",
+    "OpsSectionTitle": "src/components/OpsPanelParts.tsx",
+    "OpsInfoNote": "src/components/OpsPanelParts.tsx",
+    "OpsReadField": "src/components/OpsPanelParts.tsx",
+    "MobileRecordCard": "src/components/MobileRecordCard.tsx",
+    "MobileRecordList": "src/components/MobileRecordCard.tsx",
+    "MobileSectionPicker": "src/components/MobileSectionPicker.tsx"
   },
   "overrides": {
-    "RowMoreMenu": { "cardMode": "single", "primaryStory": "Default" }
+    "RowMoreMenu": {
+      "cardMode": "single",
+      "primaryStory": "Default"
+    }
   }
 }

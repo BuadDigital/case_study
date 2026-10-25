@@ -14,7 +14,7 @@ export function Default() {
           </p>
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <Field label="القيمة السوقية المقدّرة" value="٢٬٤٥٠٬٠٠٠ ريال" />
+          <Field label="القيمة السوقية المقدّرة" value="2,450,000 ريال" />
           <Field label="تاريخ المعاينة" value="1447/03/10هـ" />
           <Field label="المقيّم المعتمد" value="م. سارة القحطاني — رخصة 4021" />
         </div>

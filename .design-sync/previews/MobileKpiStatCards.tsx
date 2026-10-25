@@ -25,7 +25,7 @@ export function Default() {
             key: "completed-value",
             label: "قيمة التقييمات المكتملة",
             sub: "خلال الشهر الحالي",
-            value: "٢٫٤م ر.س",
+            value: "2.4م ر.س",
             icon: <KpiCheckIcon />,
             iconClass:
               "bg-[color-mix(in_srgb,var(--success)_16%,transparent)] text-success-text",
@@ -36,7 +36,7 @@ export function Default() {
             key: "avg-time",
             label: "متوسط زمن الإنجاز",
             sub: "من الاستلام حتى الإصدار",
-            value: "٣ أيام",
+            value: "3 أيام",
             icon: <KpiClockIcon />,
             iconClass:
               "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#b8791a]",
@@ -46,7 +46,7 @@ export function Default() {
             key: "stuck",
             label: "طلبات متعذرة",
             sub: "تحتاج معالجة فورية",
-            value: "٢",
+            value: "2",
             icon: <KpiAlertIcon />,
             iconClass:
               "bg-[color-mix(in_srgb,var(--red)_15%,transparent)] text-red",
