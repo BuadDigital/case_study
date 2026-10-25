@@ -20,6 +20,16 @@ public static class RabbitMqTopology
 
     public static string DeadLetterQueueName(string queueName) => queueName + ".dead-letter";
 
+ /// <summary>The broker connection settings every publisher and consumer opens with.</summary>
+    public static ConnectionFactory CreateConnectionFactory(RabbitMqOptions options) => new()
+    {
+        HostName = options.Host,
+        Port = options.Port,
+        UserName = options.UserName,
+        Password = options.Password,
+        VirtualHost = options.VirtualHost,
+    };
+
  /// <summary>
  /// Opens a channel and declares the exchange, work queue, and dead-letter chain.
  /// </summary>

@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Financial.Application.Rules;
 
@@ -38,7 +39,7 @@ public static class EnfazTrackingListQueryRules
         [SortCreated, SortPo, SortCompleted, SortInvoiceIssued];
 
     public static EnfazTrackingListSortKey ResolveSort(string? sort) =>
-        Normalize(sort) switch
+        ListQueryText.Normalize(sort) switch
         {
             SortPo => EnfazTrackingListSortKey.PoNumber,
             SortCompleted => EnfazTrackingListSortKey.Completed,
@@ -47,23 +48,18 @@ public static class EnfazTrackingListQueryRules
         };
 
     public static bool ResolveDescending(string? dir) =>
-        Normalize(dir) switch
-        {
-            DirAscending => false,
-            DirDescending => true,
-            _ => DefaultDescending,
-        };
+        ListQueryText.ResolveDescending(dir, DefaultDescending);
 
     public static string? NormalizeSearch(string? q) =>
-        string.IsNullOrWhiteSpace(q) ? null : q.Trim();
+        ListQueryText.NormalizeSearch(q);
 
     /// <summary>The revenue screen's haystack: PO, deed, property label, city and invoice number.</summary>
     public static bool Matches(EnfazTrackingRowDto row, string search) =>
-        Contains(row.PoNumber, search)
-        || Contains(row.DeedNumber, search)
-        || Contains(row.PropertyLabel, search)
-        || Contains(row.City, search)
-        || Contains(row.InvoiceNumber, search);
+        ListQueryText.Contains(row.PoNumber, search)
+        || ListQueryText.Contains(row.DeedNumber, search)
+        || ListQueryText.Contains(row.PropertyLabel, search)
+        || ListQueryText.Contains(row.City, search)
+        || ListQueryText.Contains(row.InvoiceNumber, search);
 
     /// <summary>
     /// Search then sort. Every explicit sort ends with PO number then property id as tiebreakers,
@@ -81,10 +77,10 @@ public static class EnfazTrackingListQueryRules
         var descending = ResolveDescending(query.Dir);
         var ordered = ResolveSort(query.Sort) switch
         {
-            EnfazTrackingListSortKey.PoNumber => Order(rows, row => row.PoNumber ?? "", descending, StringComparer.Ordinal),
-            EnfazTrackingListSortKey.Completed => Order(
+            EnfazTrackingListSortKey.PoNumber => ListQueryText.Order(rows, row => row.PoNumber ?? "", descending, StringComparer.Ordinal),
+            EnfazTrackingListSortKey.Completed => ListQueryText.Order(
                 rows, row => row.CompletedAtUtc ?? DateTime.MinValue, descending),
-            EnfazTrackingListSortKey.InvoiceIssued => Order(
+            EnfazTrackingListSortKey.InvoiceIssued => ListQueryText.Order(
                 rows, row => row.InvoiceIssuedAtUtc ?? DateTime.MinValue, descending),
             _ => null,
         };
@@ -97,17 +93,4 @@ public static class EnfazTrackingListQueryRules
             .ThenBy(row => row.PropertyId ?? "", StringComparer.Ordinal)
             .ToList();
     }
-
-    private static IOrderedEnumerable<T> Order<T, TKey>(
-        IEnumerable<T> rows,
-        Func<T, TKey> key,
-        bool descending,
-        IComparer<TKey>? comparer = null) =>
-        descending ? rows.OrderByDescending(key, comparer) : rows.OrderBy(key, comparer);
-
-    private static bool Contains(string? haystack, string needle) =>
-        !string.IsNullOrEmpty(haystack)
-        && haystack.Contains(needle, StringComparison.OrdinalIgnoreCase);
-
-    private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? "";
 }

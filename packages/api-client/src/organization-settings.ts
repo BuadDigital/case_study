@@ -613,6 +613,28 @@ export async function getOrganizationSettings(
   }
 }
 
+/** A settings write's answer (save, staff valuer sync): 400 carries the server's reason. */
+async function readSettingsWrite(
+  res: Response,
+): Promise<OrganizationSettingsResult<OrganizationSettingsDto>> {
+  if (res.status === 401) return { ok: false, kind: "auth" };
+  if (res.status === 403) return { ok: false, kind: "forbidden" };
+  if (res.status === 400) {
+    const payload = (await res.json().catch(() => null)) as {
+      detail?: string;
+      error?: string;
+    } | null;
+    return {
+      ok: false,
+      kind: "validation",
+      message: payload?.detail ?? payload?.error ?? "بيانات غير صالحة",
+    };
+  }
+  if (!res.ok) return { ok: false, kind: "server" };
+  const raw = (await res.json()) as Record<string, unknown>;
+  return { ok: true, data: normalizeSettings(raw) };
+}
+
 export async function saveOrganizationSettings(
   config: OrganizationSettingsApiConfig,
   body: SaveOrganizationSettingsRequest,
@@ -627,22 +649,7 @@ export async function saveOrganizationSettings(
       },
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (res.status === 400) {
-      const payload = (await res.json().catch(() => null)) as {
-        detail?: string;
-        error?: string;
-      } | null;
-      return {
-        ok: false,
-        kind: "validation",
-        message: payload?.detail ?? payload?.error ?? "بيانات غير صالحة",
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>;
-    return { ok: true, data: normalizeSettings(raw) };
+    return await readSettingsWrite(res);
   } catch (err) {
     if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
     return { ok: false, kind: "network" };
@@ -683,22 +690,7 @@ export async function syncStaffValuer(
       },
       body: JSON.stringify(body),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (res.status === 400) {
-      const payload = (await res.json().catch(() => null)) as {
-        detail?: string;
-        error?: string;
-      } | null;
-      return {
-        ok: false,
-        kind: "validation",
-        message: payload?.detail ?? payload?.error ?? "بيانات غير صالحة",
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>;
-    return { ok: true, data: normalizeSettings(raw) };
+    return await readSettingsWrite(res);
   } catch (err) {
     if (err instanceof ApiAuthError) return { ok: false, kind: "auth" };
     return { ok: false, kind: "network" };

@@ -1,3 +1,5 @@
+using RealEstateEval.Application.Rules;
+
 namespace RealEstateEval.Platform.Application.Rules;
 
 /// <summary>Sortable columns of the notification feed, resolved from the wire <c>sort</c> value.</summary>
@@ -27,12 +29,7 @@ public static class NotificationListQueryRules
     public static NotificationListSortKey ResolveSort(string? sort) => NotificationListSortKey.Created;
 
     public static bool ResolveDescending(string? dir) =>
-        Normalize(dir) switch
-        {
-            DirAscending => false,
-            DirDescending => true,
-            _ => DefaultDescending,
-        };
+        ListQueryText.ResolveDescending(dir, DefaultDescending);
 
  /// <summary>
  /// <c>unread=true</c> keeps only notifications the user has not opened; <c>false</c> only the
@@ -41,10 +38,8 @@ public static class NotificationListQueryRules
     public static bool? ResolveUnread(bool? unread) => unread;
 
     public static string? NormalizeExact(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        ListQueryText.NormalizeExact(value);
 
     public static string? NormalizeSearch(string? q) =>
-        string.IsNullOrWhiteSpace(q) ? null : q.Trim();
-
-    private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? "";
+        ListQueryText.NormalizeSearch(q);
 }

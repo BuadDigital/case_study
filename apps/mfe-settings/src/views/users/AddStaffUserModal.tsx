@@ -5,9 +5,6 @@
  * engineering-office extras) and the created-account note (phone login ready).
  */
 
-import type { RoleId } from "@platform/types";
-import { isSectionSupervisorRole } from "@platform/app-shared/users/admin-staff-roles";
-import { RegField, RegSelect } from "@platform/app-shared/registration/FormFields";
 import {
   Button,
   ModalBody,
@@ -17,16 +14,9 @@ import {
   ModalOverlay,
   ModalTitle,
   Note,
-  cn,
 } from "@platform/ui-kit";
-import {
-  INSPECTOR_TYPE_OPTIONS,
-  ROLE_SELECT_OPTIONS,
-  SUPERVISOR_DEPARTMENT_SELECT_OPTIONS,
-  type StaffFormState,
-} from "./users-organization-state";
 import type { UsersOrganizationWorkflow } from "./useUsersOrganizationWorkflow";
-import { FormSectionLabel } from "../../components/FormSectionLabel";
+import { StaffUserFormFields } from "../../components/StaffUserFormFields";
 
 export function AddStaffUserModal({ workflow }: { workflow: UsersOrganizationWorkflow }) {
   const {
@@ -62,153 +52,14 @@ export function AddStaffUserModal({ workflow }: { workflow: UsersOrganizationWor
             اسم الدخول يُنشأ تلقائياً. يدخل المستخدم برقم الجوال (شاشة رمز التحقق).
           </p>
           <form id="add-staff-user" onSubmit={(e) => void onSubmit(e)}>
-            <div className="grid gap-x-4 gap-y-3.5 sm:grid-cols-2">
-              <FormSectionLabel>البيانات الأساسية</FormSectionLabel>
-              <RegField
-                id="staff-displayName"
-                label="الاسم"
-                required
-                placeholder="الاسم الكامل"
-                value={form.displayName}
-                onChange={(v) => updateField("displayName", v)}
-                error={errors.displayName}
-              />
-              <RegSelect
-                id="staff-roleId"
-                label="الدور"
-                required
-                placeholder="اختر الدور"
-                options={ROLE_SELECT_OPTIONS}
-                value={form.roleId}
-                onChange={(v) => changeRole(v as RoleId | "")}
-                error={errors.roleId}
-              />
-              <RegField
-                id="staff-mobile"
-                label="رقم الجوال"
-                required
-                dir="ltr"
-                inputMode="tel"
-                placeholder="05xxxxxxxx"
-                value={form.mobile}
-                onChange={(v) => updateField("mobile", v)}
-                error={errors.mobile}
-              />
-              <RegField
-                id="staff-city"
-                label="المدينة"
-                required
-                placeholder="مثال: الرياض"
-                value={form.city}
-                onChange={(v) => updateField("city", v)}
-                error={errors.city}
-              />
-              {isSectionSupervisorRole(form.roleId) ? (
-                <RegSelect
-                  id="staff-department"
-                  label="قسم الإشراف"
-                  required
-                  placeholder="اختر القسم"
-                  options={SUPERVISOR_DEPARTMENT_SELECT_OPTIONS}
-                  value={form.department}
-                  onChange={(v) => updateField("department", v)}
-                  error={errors.department}
-                />
-              ) : null}
-              {form.roleId === "field-inspector" ? (
-                <RegSelect
-                  id="staff-inspectorType"
-                  label="نوع المعاين"
-                  required
-                  placeholder="اختر النوع"
-                  options={INSPECTOR_TYPE_OPTIONS}
-                  value={form.inspectorType}
-                  onChange={(v) =>
-                    updateField("inspectorType", v as StaffFormState["inspectorType"])
-                  }
-                  error={errors.inspectorType}
-                />
-              ) : null}
-              <FormSectionLabel>الهوية والالتحاق</FormSectionLabel>
-              <RegField
-                id="staff-nationalId"
-                label="رقم الهوية"
-                required
-                dir="ltr"
-                inputMode="numeric"
-                placeholder="1xxxxxxxxx"
-                value={form.nationalId}
-                onChange={(v) => updateField("nationalId", v)}
-                error={errors.nationalId}
-              />
-              <RegField
-                id="staff-joinedAt"
-                label="تاريخ الالتحاق"
-                type="date"
-                value={form.joinedAt}
-                onChange={(v) => updateField("joinedAt", v)}
-                hint="اختياري"
-              />
-              <FormSectionLabel>التعويض والفوترة</FormSectionLabel>
-              <label
-                className={cn(
-                  "flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-surface-2/70 px-3 py-2.5 text-xs font-medium text-text sm:col-span-2",
-                  form.hasCompensation && "border-gold/40 bg-gold-soft text-heading",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  className="size-3.5 accent-[var(--gold-d)]"
-                  checked={form.hasCompensation}
-                  onChange={(event) => updateField("hasCompensation", event.target.checked)}
-                />
-                يستحق تعويضاً مالياً
-              </label>
-              {form.hasCompensation ? (
-                <RegField
-                  id="staff-feeValueSar"
-                  label="قيمة الأتعاب (ر.س)"
-                  required
-                  type="number"
-                  dir="ltr"
-                  placeholder="0"
-                  value={form.feeValueSar}
-                  onChange={(v) => updateField("feeValueSar", v)}
-                  error={errors.feeValueSar}
-                />
-              ) : null}
-              <RegField
-                id="staff-iban"
-                label="الآيبان"
-                dir="ltr"
-                placeholder="SAxxxxxxxxxxxxxxxxxxxxxx"
-                value={form.iban}
-                onChange={(v) => updateField("iban", v)}
-                error={errors.iban}
-                hint="اختياري — صيغة SA + 22 رقماً"
-              />
-              {form.roleId === "engineering-office" ? (
-                <>
-                  <FormSectionLabel>بيانات المكتب الهندسي</FormSectionLabel>
-                  <RegField
-                    id="staff-taxNumber"
-                    label="الرقم الضريبي"
-                    dir="ltr"
-                    value={form.taxNumber}
-                    onChange={(v) => updateField("taxNumber", v)}
-                    hint="اختياري"
-                  />
-                  <RegField
-                    id="staff-commercialRegistration"
-                    label="السجل التجاري"
-                    dir="ltr"
-                    value={form.commercialRegistration}
-                    onChange={(v) => updateField("commercialRegistration", v)}
-                    hint="اختياري"
-                  />
-                </>
-              ) : null}
-            </div>
+            <StaffUserFormFields
+              idPrefix="staff"
+              form={form}
+              errors={errors}
+              updateField={updateField}
+              changeRole={changeRole}
+              nationalIdRequired
+            />
             {errors._form ? (
               <Note tone="danger" className="mt-3 text-xs">
                 {errors._form}

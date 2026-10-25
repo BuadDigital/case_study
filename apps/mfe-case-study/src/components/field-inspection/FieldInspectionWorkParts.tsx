@@ -30,8 +30,6 @@ import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { InspectorSubmitFooter } from "./InspectorSubmitFooter";
 import { InspectorMovablesDescriptionField } from "./InspectorMovablesDescriptionField";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
-import { EditableFeaturePhotoCell } from "../po-intake/PropertyDetailInspectionPhotos";
-import type { InspectorPhotoAttachment } from "../../lib/app-data/inspector-workspace-data";
 import {
   MobileChips,
   MobileFieldLabel,
@@ -141,42 +139,6 @@ export const INS_TD_CLASS = "border border-border px-2.5 py-[7px] text-xs";
 /** «تثبيت الموقع» / «إقرار صحة الموقع» — wizard map card action. */
 export const INS_WIZARD_PIN_BUTTON_CLASS =
   "inline-flex h-[38px] items-center justify-center rounded-lg border border-border-md bg-surface-2 px-5 font-inherit text-[12.5px] font-bold text-heading transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50";
-
-/**
- * Desktop feature photo cell — same thumb preview as the wizard picker.
- */
-export function DesktopFeaturePhotoCell({
-  needsPhoto,
-  hasPhoto,
-  disabled,
-  onUpload,
-  taskId,
-  photoRef,
-  attachment,
-  onClear,
-}: {
-  needsPhoto: boolean;
-  hasPhoto: boolean;
-  disabled?: boolean;
-  onUpload: (file: File) => boolean | void | Promise<boolean | void>;
-  taskId?: string;
-  photoRef?: string;
-  attachment?: InspectorPhotoAttachment | null;
-  onClear?: () => void;
-}) {
-  return (
-    <EditableFeaturePhotoCell
-      needsPhoto={needsPhoto}
-      hasPhoto={hasPhoto}
-      disabled={disabled}
-      onUpload={onUpload}
-      taskId={taskId}
-      photoRef={photoRef}
-      attachment={attachment}
-      onClear={onClear}
-    />
-  );
-}
 
 /** Case Study.html `insBadge`. */
 export function InsBadge({

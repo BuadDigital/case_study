@@ -3,6 +3,7 @@ import {
   type OrganizationSettingsDto,
   type OrganizationValuationReportSettings,
 } from "@platform/api-client";
+import { pairsFromOrgLines } from "./valuation-report-print-attachments";
 import type { ReportTabSection } from "./valuation-report-tab-sections";
 
 function lines(text: string | undefined): string[] {
@@ -10,17 +11,6 @@ function lines(text: string | undefined): string[] {
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean);
-}
-
-function pairsFromLines(text: string | undefined): { term: string; text: string }[] {
-  return lines(text).map((line) => {
-    const colon = line.indexOf(": ");
-    if (colon < 0) return { term: line, text: "" };
-    return {
-      term: line.slice(0, colon).trim(),
-      text: line.slice(colon + 2).trim(),
-    };
-  });
 }
 
 function overlayFinishingPairs(
@@ -78,11 +68,11 @@ function overlaySection(
       return bullets.length ? { ...section, bullets } : section;
     }
     case "37": {
-      const pairs = pairsFromLines(vr.ivsStandards);
+      const pairs = pairsFromOrgLines(vr.ivsStandards);
       return pairs.length ? { ...section, pairs } : section;
     }
     case "38": {
-      const pairs = pairsFromLines(vr.glossary);
+      const pairs = pairsFromOrgLines(vr.glossary);
       return pairs.length ? { ...section, pairs } : section;
     }
     default:

@@ -18,7 +18,10 @@ import {
   pdfBlobToFirstPageDataUrl,
   pdfFileToFirstPageDataUrl,
 } from "./pdf-first-page-preview";
-import { processEvidencePhoto } from "./process-evidence-photo";
+import {
+  prepareEvidencePhotoUpload,
+  type EvidencePhotoMetadata,
+} from "@platform/app-shared/media/evidence-photo-upload";
 
 export type PropertyDocKind =
   | "decree"
@@ -60,8 +63,6 @@ const PROPERTY_DOC_PREFETCH_KINDS: readonly PropertyDocKind[] = [
 ];
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-const MAX_IMAGE_INPUT_BYTES = 20 * 1024 * 1024;
-const MAX_PROCESSED_IMAGE_BYTES = 1024 * 1024;
 const MAX_PDF_PREVIEW_BYTES = 20 * 1024 * 1024;
 
 export type CachedAssignmentDoc = {
@@ -244,13 +245,7 @@ async function writeCachedDoc(
   }
 
   let uploadFile = file;
-  let photoMetadata:
-    | {
-        latitude: number | null;
-        longitude: number | null;
-        capturedAtUtc: string | null;
-      }
-    | undefined;
+  let photoMetadata: EvidencePhotoMetadata | undefined;
 
   // Keys-proof images follow the evidence pipeline; PDFs/other docs stay raw.
   if (
@@ -259,32 +254,10 @@ async function writeCachedDoc(
     (file.type.startsWith("image/") ||
       /\.(heic|heif|jpe?g|png|webp|gif)$/i.test(file.name))
   ) {
-    if (file.size > MAX_IMAGE_INPUT_BYTES) {
-      return {
-        ok: false,
-        error: "الحجم الأقصى للصورة قبل المعالجة 20 ميجابايت.",
-      };
-    }
-    try {
-      const processed = await processEvidencePhoto(file);
-      uploadFile = processed.file;
-      photoMetadata = {
-        latitude: processed.exif.latitude ?? null,
-        longitude: processed.exif.longitude ?? null,
-        capturedAtUtc: processed.exif.capturedAt ?? null,
-      };
-    } catch {
-      return {
-        ok: false,
-        error: "تعذّر معالجة الصورة قبل الرفع. حاول بصيغة JPG.",
-      };
-    }
-    if (uploadFile.size > MAX_PROCESSED_IMAGE_BYTES) {
-      return {
-        ok: false,
-        error: "تعذّر ضغط الصورة إلى أقل من 1 ميجابايت.",
-      };
-    }
+    const prepared = await prepareEvidencePhotoUpload(file);
+    if (!prepared.ok) return prepared;
+    uploadFile = prepared.file;
+    photoMetadata = prepared.photoMetadata;
   }
 
   const replaceAll = options?.replaceAll ?? kind === "keys-proof";

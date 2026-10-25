@@ -65,6 +65,38 @@ export async function getCaseStudyReport(
   }
 }
 
+/** 403 with the server's reason in field error `_`, else the generic no-permission text. */
+async function forbiddenError(res: Response): Promise<ApiErr> {
+  const errors = await parseFieldErrorsFromResponse(res);
+  const message =
+    errors._?.trim() || "ليس لديك صلاحية لهذا الإجراء";
+  return { ok: false, kind: "forbidden", message, errors: { _: message, ...errors } };
+}
+
+/** A report save's answer (specialist or party): 409 means another session saved first. */
+async function readReportSave(res: Response): Promise<ApiOk<CaseStudyReportDto> | ApiErr> {
+  if (res.status === 401) return { ok: false, kind: "auth" };
+  if (res.status === 403) return forbiddenError(res);
+  if (res.status === 400) {
+    const errors = await parseFieldErrorsFromResponse(res);
+    return { ok: false, kind: "validation", errors };
+  }
+  if (res.status === 409) {
+    const errors = await parseFieldErrorsFromResponse(res);
+    const message =
+      errors._?.trim() ||
+      "تم تحديث التقرير من جلسة أخرى. حدّث الصفحة ثم أعد الحفظ.";
+    return {
+      ok: false,
+      kind: "validation",
+      message,
+      errors: { _: message, ...errors },
+    };
+  }
+  if (!res.ok) return { ok: false, kind: "server" };
+  return { ok: true, data: (await res.json()) as CaseStudyReportDto };
+}
+
 export async function saveCaseStudyReport(
   config: WorkOrdersApiConfig,
   taskId: string,
@@ -78,31 +110,7 @@ export async function saveCaseStudyReport(
       headers: authHeaders(config.token, { idempotencyKey }),
       body: JSON.stringify({ report }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      const message =
-        errors._?.trim() || "ليس لديك صلاحية لهذا الإجراء";
-      return { ok: false, kind: "forbidden", message, errors: { _: message, ...errors } };
-    }
-    if (res.status === 400) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
-    }
-    if (res.status === 409) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      const message =
-        errors._?.trim() ||
-        "تم تحديث التقرير من جلسة أخرى. حدّث الصفحة ثم أعد الحفظ.";
-      return {
-        ok: false,
-        kind: "validation",
-        message,
-        errors: { _: message, ...errors },
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as CaseStudyReportDto };
+    return await readReportSave(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -136,12 +144,7 @@ async function postCaseStudyReportAction<T>(
       body: JSON.stringify(body),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      const message =
-        errors._?.trim() || "ليس لديك صلاحية لهذا الإجراء";
-      return { ok: false, kind: "forbidden", message, errors: { _: message, ...errors } };
-    }
+    if (res.status === 403) return await forbiddenError(res);
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (res.status === 400 || res.status === 409) {
       const errors = await parseFieldErrorsFromResponse(res);
@@ -260,31 +263,7 @@ export async function savePartyCaseStudyReport(
       headers: authHeaders(config.token),
       body: JSON.stringify({ report }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      const message =
-        errors._?.trim() || "ليس لديك صلاحية لهذا الإجراء";
-      return { ok: false, kind: "forbidden", message, errors: { _: message, ...errors } };
-    }
-    if (res.status === 400) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      return { ok: false, kind: "validation", errors };
-    }
-    if (res.status === 409) {
-      const errors = await parseFieldErrorsFromResponse(res);
-      const message =
-        errors._?.trim() ||
-        "تم تحديث التقرير من جلسة أخرى. حدّث الصفحة ثم أعد الحفظ.";
-      return {
-        ok: false,
-        kind: "validation",
-        message,
-        errors: { _: message, ...errors },
-      };
-    }
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as CaseStudyReportDto };
+    return await readReportSave(res);
   } catch {
     return { ok: false, kind: "network" };
   }

@@ -44,35 +44,16 @@ public sealed class ValuationCostApproachService(
         var vr = await repo.GetRequestAsync(valuationRequestId, cancellationToken);
         if (vr is null)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
-        if (vr.Status == ValuationRequestStatus.Done)
-            return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
-        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
-        if (frozenMessage is not null)
-        {
-            return (
-                null,
-                new Dictionary<string, string> { ["_"] = frozenMessage });
-        }
+        var blocked = await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل", cancellationToken);
+        if (blocked is not null)
+            return (null, new Dictionary<string, string> { ["_"] = blocked });
 
  // Q-2/Q-3 amended: cost tab is closed when the approach is off (bare land defaults it off;
  // land WITH structures opens it for the structure lines only — spec v2 §3).
         var approachSettings = await repo.GetApproachSettingsAsync(
             valuationRequestId, cancellationToken);
-        var hasStructures = false;
-        var effectivePropertyType = vr.PropertyType;
-        var propertyGuid = vr.PropertyId;
-        if (propertyGuid != Guid.Empty)
-        {
-            var context = await caseStudy.GetValuationPropertyContextAsync(
-                propertyGuid,
-                cancellationToken);
-            hasStructures = string.Equals(
-                context?.HasStructuresToValue.Trim(),
-                "yes",
-                StringComparison.OrdinalIgnoreCase);
-            effectivePropertyType = context?.EffectivePropertyType() ?? vr.PropertyType;
-        }
+        var (hasStructures, effectivePropertyType) = await ValuationPropertyScope.ReadAsync(
+            caseStudy, vr, cancellationToken);
 
         // Unsaved settings follow the defaults used everywhere else, not «cost on».
         var settings = approachSettings

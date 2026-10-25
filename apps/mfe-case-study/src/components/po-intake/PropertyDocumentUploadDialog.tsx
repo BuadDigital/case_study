@@ -5,8 +5,17 @@
  * the defined list; «مستند غير معرّف» asks for a name (reason optional) and goes to review.
  */
 
-import { useEffect, useRef, useState } from "react";
-import { AppModal, Button, Input, Label, Textarea, cn } from "@platform/ui-kit";
+import { useState } from "react";
+import {
+  AppModal,
+  Button,
+  Input,
+  Label,
+  Textarea,
+  UploadFileIcon,
+  cn,
+  useFileDropZone,
+} from "@platform/ui-kit";
 import {
   UNLISTED_DOCUMENT_KEY,
   VALUED_DOCUMENT_KEY,
@@ -53,8 +62,19 @@ export function PropertyDocumentUploadDialog({
   const [reason, setReason] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const {
+    dragOver,
+    inputRef: fileInputRef,
+    zoneProps: dropZoneProps,
+  } = useFileDropZone({
+    onFiles: (files) => {
+      const dropped = files[0];
+      if (dropped) {
+        setFile(dropped);
+        setError(null);
+      }
+    },
+  });
 
   // Every open of the dialog starts from the state it was opened with.
   const [openedWith, setOpenedWith] = useState(state);
@@ -234,35 +254,7 @@ export function PropertyDocumentUploadDialog({
                     ? "border-danger bg-danger-bg/30"
                     : "border-border-md bg-surface-2 hover:border-primary/50 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]",
               )}
-              onClick={() => fileInputRef.current?.click()}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  fileInputRef.current?.click();
-                }
-              }}
-              onDragEnter={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={(e) => {
-                e.preventDefault();
-                if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-                setDragOver(false);
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                const dropped = e.dataTransfer.files?.[0];
-                if (dropped) {
-                  setFile(dropped);
-                  setError(null);
-                }
-              }}
+              {...dropZoneProps}
             >
               {file ? (
                 <div className="flex items-center justify-between gap-2 text-start">
@@ -288,21 +280,7 @@ export function PropertyDocumentUploadDialog({
                     className="mx-auto mb-2 grid h-9 w-9 place-items-center rounded-full bg-[color-mix(in_srgb,var(--primary)_10%,transparent)] text-primary"
                     aria-hidden
                   >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                      <path d="M14 2v6h6" />
-                      <path d="M12 18v-6" />
-                      <path d="M9 15l3-3 3 3" />
-                    </svg>
+                    <UploadFileIcon size={18} />
                   </div>
                   <div className="mb-2 text-[11px] leading-relaxed text-text-3">
                     {dragOver

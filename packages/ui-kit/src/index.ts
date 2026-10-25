@@ -66,6 +66,10 @@ export {
   opsTfSegRow,
   opsModalClose,
   opsModalFooter,
+  opsPhoneSegTrack,
+  opsPhoneSegCell,
+  opsPhoneSegOn,
+  opsPhoneSegOff,
 } from "./lib/ops-chrome";
 export { Button, type ButtonProps, type ButtonVariant, type ButtonSize } from "./components/Button";
 export { ListPager, listPagerWindow, type ListPagerProps } from "./components/ListPager";
@@ -97,6 +101,8 @@ export {
 } from "./hooks/use-deferred-visible";
 export { useIsHydrated } from "./hooks/use-is-hydrated";
 export { useSwapAnimation, SWAP_ANIMATION_MS } from "./hooks/use-swap-animation";
+export { useFileDropZone, type FileDropZoneIsolation } from "./hooks/use-file-drop-zone";
+export { PDF_OR_IMAGE_ACCEPT, isPdfOrImageFile } from "./lib/file-accept";
 export { preloadableLazy, whenIdle } from "./lib/preloadable-lazy";
 export { ToastProvider, useToast, useOptionalToast, type ToastTone } from "./components/Toast";
 export { progressMessageForActionLabel } from "./lib/action-progress-message";
@@ -123,6 +129,15 @@ export {
   QUERY_ERROR_DEFAULT_LINE,
 } from "./components/QueryErrorState";
 export { RowAttentionDot } from "./components/RowAttentionDot";
+export { OpsIcon } from "./components/OpsIcon";
+export {
+  OpsInfoNote,
+  OpsReadField,
+  OpsSectionTitle,
+  type OpsInfoNoteVariant,
+} from "./components/OpsPanelParts";
+export { YesNoToggle } from "./components/YesNoToggle";
+export { UploadFileIcon } from "./components/UploadFileIcon";
 export {
   PoNumber,
   formatPoDisplay,
@@ -179,7 +194,6 @@ export {
 } from "./components/StatCard";
 export { KpiBand, KpiCell } from "./components/KpiBand";
 export { MobileKpiStatCards } from "./components/MobileKpiStatCards";
-export { BottomSheet, type BottomSheetProps } from "./components/BottomSheet";
 export {
   MobileSectionPicker,
   type MobileSection,
@@ -192,6 +206,7 @@ export {
   type MobileRecordField,
   type MobileRecordTone,
 } from "./components/MobileRecordCard";
+export { PhoneField, type PhoneFieldProps } from "./components/PhoneField";
 export {
   InfathTextField,
   type InfathTextFieldProps,
@@ -255,6 +270,7 @@ export {
   type StatusPillProps,
   queueLegacyStatusStyle,
   statusPillStyleFromColor,
+  ColorStatusPill,
   finStatusStyle,
   FIN_STATUS_STYLES,
   type StatusPillStyle,

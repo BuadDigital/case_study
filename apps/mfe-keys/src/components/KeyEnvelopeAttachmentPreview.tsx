@@ -7,6 +7,7 @@ import { requestDocumentPreview } from "@platform/app-shared/app-data/document-p
 import { openTaskAttachmentPreview, type TaskAttachmentPreview } from "@platform/app-shared/app-data/task-attachments-api";
 import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
 import { cn } from "@platform/ui-kit";
+import { FileIcon } from "./KeyEnvelopeDetailIcons";
 
 type PreviewState =
   | { status: "idle" }
@@ -21,25 +22,6 @@ function isImageMime(mime: string): boolean {
 function isPdfMime(mime: string, fileName?: string): boolean {
   if (mime === "application/pdf") return true;
   return (fileName ?? "").toLowerCase().endsWith(".pdf");
-}
-
-function FileIcon() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <path d="M14 2v6h6" />
-    </svg>
-  );
 }
 
 function ImageIcon() {

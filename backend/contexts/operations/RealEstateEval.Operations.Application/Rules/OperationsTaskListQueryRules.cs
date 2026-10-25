@@ -1,4 +1,5 @@
 using RealEstateEval.Operations.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Operations.Application.Rules;
 
@@ -35,7 +36,7 @@ public static class OperationsTaskListQueryRules
         [SortQueue, SortCreated, SortDue, SortUpdated, SortPriority];
 
     public static OperationsTaskListSortKey ResolveSort(string? sort) =>
-        Normalize(sort) switch
+        ListQueryText.Normalize(sort) switch
         {
             SortCreated => OperationsTaskListSortKey.Created,
             SortDue => OperationsTaskListSortKey.Due,
@@ -45,12 +46,7 @@ public static class OperationsTaskListQueryRules
         };
 
     public static bool ResolveDescending(string? dir) =>
-        Normalize(dir) switch
-        {
-            DirAscending => false,
-            DirDescending => true,
-            _ => DefaultDescending,
-        };
+        ListQueryText.ResolveDescending(dir, DefaultDescending);
 
     /// <summary>
     /// Queue band used by the default sort: active first (0), paused next (1), terminal last (2).
@@ -96,10 +92,8 @@ public static class OperationsTaskListQueryRules
     }
 
     public static string? NormalizeExact(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        ListQueryText.NormalizeExact(value);
 
     public static string? NormalizeSearch(string? q) =>
-        string.IsNullOrWhiteSpace(q) ? null : q.Trim();
-
-    private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? "";
+        ListQueryText.NormalizeSearch(q);
 }

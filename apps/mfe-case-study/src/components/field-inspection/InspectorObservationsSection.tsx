@@ -100,6 +100,35 @@ export function InspectorObservationsSection({
     {draft.observations.map((obs) => {
       const obsPhotoRef = `observation:${obs.id}`;
       const obsInvalid = fieldErrors.missingObservationId === obs.id;
+      const clearObsPhoto = () => {
+        clearInspectorPhotoDataUrl(draft.taskId, obsPhotoRef);
+        persist({
+          observations: draft.observations.map((o) =>
+            o.id === obs.id ? { ...o, photo: null } : o,
+          ),
+        });
+      };
+      const uploadObsPhoto = async (files: File[]) => {
+        const file = files[0];
+        if (!file) return false;
+        const result = await uploadInspectorPhotoFromFile(
+          draft.taskId,
+          obsPhotoRef,
+          file,
+          {
+            draft: liveDraft,
+            deedNumber: property?.deedNumber,
+          },
+        );
+        if (!result.ok) {
+          throw new Error(result.error);
+        }
+        persist((current) => ({
+          observations: current.observations.map((o) =>
+            o.id === obs.id ? { ...o, photo: result.attachment } : o,
+          ),
+        }));
+      };
 
       if (mobile) {
         return (
@@ -119,48 +148,14 @@ export function InspectorObservationsSection({
                   taskId={draft.taskId}
                   photoRef={obsPhotoRef}
                   attachment={obs.photo}
-                  onClear={
-                    locked
-                      ? undefined
-                      : () => {
-                          clearInspectorPhotoDataUrl(
-                            draft.taskId,
-                            obsPhotoRef,
-                          );
-                          persist({
-                            observations: draft.observations.map((o) =>
-                              o.id === obs.id ? { ...o, photo: null } : o,
-                            ),
-                          });
-                        }
-                  }
+                  onClear={locked ? undefined : clearObsPhoto}
                 />
               ) : (
                 <InspectorPhotoFilePicker
                   label="صورة"
                   disabled={locked}
                   className="size-full [&_button]:h-full [&_button]:min-h-0 [&_button]:border-0 [&_button]:bg-transparent [&_button]:px-0 [&_button]:py-0 [&_button]:text-[10px]"
-                  onFilesSelected={async (files) => {
-                    const file = files[0];
-                    if (!file) return false;
-                    const result = await uploadInspectorPhotoFromFile(
-                      draft.taskId,
-                      obsPhotoRef,
-                      file,
-                      {
-                        draft: liveDraft,
-                        deedNumber: property?.deedNumber,
-                      },
-                    );
-                    if (!result.ok) {
-                      throw new Error(result.error);
-                    }
-                    persist((current) => ({
-                      observations: current.observations.map((o) =>
-                        o.id === obs.id ? { ...o, photo: result.attachment } : o,
-                      ),
-                    }));
-                  }}
+                  onFilesSelected={uploadObsPhoto}
                 />
               )}
             </div>
@@ -240,48 +235,14 @@ export function InspectorObservationsSection({
               taskId={draft.taskId}
               photoRef={obsPhotoRef}
               attachment={obs.photo}
-              onClear={
-                locked
-                  ? undefined
-                  : () => {
-                      clearInspectorPhotoDataUrl(
-                        draft.taskId,
-                        obsPhotoRef,
-                      );
-                      persist({
-                        observations: draft.observations.map((o) =>
-                          o.id === obs.id ? { ...o, photo: null } : o,
-                        ),
-                      });
-                    }
-              }
+              onClear={locked ? undefined : clearObsPhoto}
             />
           ) : (
             <InspectorPhotoFilePicker
               label="إرفاق صورة توثيقية"
               disabled={locked}
               className="h-[116px] flex-col border-2 py-2"
-              onFilesSelected={async (files) => {
-                const file = files[0];
-                if (!file) return false;
-                const result = await uploadInspectorPhotoFromFile(
-                  draft.taskId,
-                  obsPhotoRef,
-                  file,
-                  {
-                    draft: liveDraft,
-                    deedNumber: property?.deedNumber,
-                  },
-                );
-                if (!result.ok) {
-                  throw new Error(result.error);
-                }
-                persist((current) => ({
-                      observations: current.observations.map((o) =>
-                        o.id === obs.id ? { ...o, photo: result.attachment } : o,
-                      ),
-                    }));
-              }}
+              onFilesSelected={uploadObsPhoto}
             />
           )}
         </div>

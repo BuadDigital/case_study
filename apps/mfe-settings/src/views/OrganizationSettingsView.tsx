@@ -1,6 +1,5 @@
 "use client";
 
-import { OpsIcon } from "../components/OpsIcon";
 
 /**
  * Organization settings shell — composition only. `useOrganizationSettingsWorkflow`
@@ -12,12 +11,10 @@ import { OpsIcon } from "../components/OpsIcon";
 import { Suspense, useEffect, useRef } from "react";
 import { Can } from "@platform/app-shared/components/Can";
 import {
-  Note,
-  PageLoadingHint,
-  PageShell,
-  Spinner,
   cn,
+  Note,
   opsBtnPrimary,
+  OpsIcon,
   opsIconBoxGold,
   opsLetterCard,
   opsLetterHead,
@@ -25,7 +22,10 @@ import {
   opsLetterTitle,
   opsTfActions,
   opsTfNote,
+  PageLoadingHint,
+  PageShell,
   preloadableLazy,
+  Spinner,
   useSwapAnimation,
   whenIdle,
 } from "@platform/ui-kit";

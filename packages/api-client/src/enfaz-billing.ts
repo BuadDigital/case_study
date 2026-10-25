@@ -287,14 +287,16 @@ export type EnfazReadyPoListQuery = Omit<ListPageQuery, "sort"> & {
   sort?: EnfazReadyPoListSort;
 };
 
-/** One server page of ready work orders — cut over the readiness scan, count exact. */
-export async function listReadyEnfazPoSummariesPage(
+/** One server page (page, size, sort, dir, q) with every row normalized; a failure passes through. */
+async function fetchNormalizedPage<T>(
   config: EnfazBillingApiConfig,
-  query?: EnfazReadyPoListQuery,
-): Promise<ApiOk<PagedResultDto<EnfazReadyPoSummaryDto>> | ApiErr> {
+  path: string,
+  query: ListPageQuery | undefined,
+  normalize: (raw: Record<string, unknown>) => T,
+): Promise<ApiOk<PagedResultDto<T>> | ApiErr> {
   const result = await fetchListPage<unknown>(
     { ...config, baseUrl: config.baseUrl ?? getApiBase() },
-    "/api/enfaz-billing/ready-pos-summary",
+    path,
     {
       page: query?.page,
       pageSize: query?.pageSize,
@@ -308,9 +310,22 @@ export async function listReadyEnfazPoSummariesPage(
     ok: true,
     data: {
       ...result.data,
-      items: result.data.items.map((r) => normalizeReadySummary(asRecord(r))),
+      items: result.data.items.map((r) => normalize(asRecord(r))),
     },
   };
+}
+
+/** One server page of ready work orders — cut over the readiness scan, count exact. */
+export async function listReadyEnfazPoSummariesPage(
+  config: EnfazBillingApiConfig,
+  query?: EnfazReadyPoListQuery,
+): Promise<ApiOk<PagedResultDto<EnfazReadyPoSummaryDto>> | ApiErr> {
+  return fetchNormalizedPage(
+    config,
+    "/api/enfaz-billing/ready-pos-summary",
+    query,
+    normalizeReadySummary,
+  );
 }
 
 export type EnfazTrackingListSort = "created" | "po" | "completed" | "invoiceIssued";
@@ -328,25 +343,20 @@ export async function listEnfazTrackingPage(
   config: EnfazBillingApiConfig,
   query?: EnfazTrackingListQuery,
 ): Promise<ApiOk<PagedResultDto<EnfazTrackingRowDto>> | ApiErr> {
-  const result = await fetchListPage<unknown>(
-    { ...config, baseUrl: config.baseUrl ?? getApiBase() },
+  return fetchNormalizedPage(
+    config,
     "/api/enfaz-billing/tracking",
-    {
-      page: query?.page,
-      pageSize: query?.pageSize,
-      sort: query?.sort,
-      dir: query?.dir,
-      q: query?.q,
-    },
+    query,
+    normalizeTrackingRow,
   );
-  if (!result.ok) return result;
-  return {
-    ok: true,
-    data: {
-      ...result.data,
-      items: result.data.items.map((r) => normalizeTrackingRow(asRecord(r))),
-    },
-  };
+}
+
+/** A billing write's answer (save, issue, collect): 401 → auth, other failures → server. */
+async function readBillingWrite(res: Response): Promise<ApiOk<PoEnfazBillingDto> | ApiErr> {
+  if (res.status === 401) return { ok: false, kind: "auth" };
+  if (!res.ok) return { ok: false, kind: "server" };
+  const raw = (await res.json()) as Record<string, unknown>;
+  return { ok: true, data: normalizeBilling(raw) };
 }
 
 export async function getPoEnfazBilling(
@@ -384,10 +394,7 @@ export async function savePoEnfazBilling(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>;
-    return { ok: true, data: normalizeBilling(raw) };
+    return await readBillingWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -421,10 +428,7 @@ export async function issuePoEnfazInvoice(
       `${base}/api/enfaz-billing/${encodeURIComponent(poNumber)}/issue-invoice`,
       { method: "POST", headers: authHeaders(config.token, { idempotencyKey }) },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>;
-    return { ok: true, data: normalizeBilling(raw) };
+    return await readBillingWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -446,10 +450,7 @@ export async function collectPoEnfazInvoice(
         body: JSON.stringify(body),
       },
     );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const raw = (await res.json()) as Record<string, unknown>;
-    return { ok: true, data: normalizeBilling(raw) };
+    return await readBillingWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }

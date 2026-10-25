@@ -204,16 +204,7 @@ public static class PoRoleMatrixRules
             return true;
         }
 
-        var assignee = taskAssigneeId?.Trim() ?? "";
-        if (assignee.Length == 0) return false;
-
-        var dist = actorDistributionAssigneeId?.Trim() ?? "";
-        if (dist.Length > 0 && string.Equals(dist, assignee, StringComparison.Ordinal))
-            return true;
-
-        var userId = actorUserId?.Trim() ?? "";
-        return userId.Length > 0
-            && string.Equals(userId, assignee, StringComparison.Ordinal);
+        return IsAssignedPartyUser(taskAssigneeId, actorUserId, actorDistributionAssigneeId);
     }
 
  /// <summary>

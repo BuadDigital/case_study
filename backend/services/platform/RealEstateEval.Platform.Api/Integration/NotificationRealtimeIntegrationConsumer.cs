@@ -45,16 +45,8 @@ public sealed class NotificationRealtimeIntegrationConsumer(
 
     private async Task RunConsumerAsync(CancellationToken stoppingToken)
     {
-        var factory = new ConnectionFactory
-        {
-            HostName = _options.Host,
-            Port = _options.Port,
-            UserName = _options.UserName,
-            Password = _options.Password,
-            VirtualHost = _options.VirtualHost,
-        };
-
-        await using var connection = await factory.CreateConnectionAsync(stoppingToken);
+        await using var connection = await RabbitMqTopology.CreateConnectionFactory(_options)
+            .CreateConnectionAsync(stoppingToken);
         await using var channel = await connection.CreateChannelAsync(cancellationToken: stoppingToken);
         await channel.ExchangeDeclareAsync(
             _options.Exchange,

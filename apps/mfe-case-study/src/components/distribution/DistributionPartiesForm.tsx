@@ -9,29 +9,11 @@ import {
   getEngineeringOffices,
   getFieldInspectors,
   getValuators,
-  type DistributionAssignee,
 } from "../../lib/app-data/distribution-parties";
-import {
-  buildAssigneeOpenLoadMap,
-  openLoadForAssignee,
-  withOpenLoadLabel,
-} from "../../lib/app-data/distribution-load";
+import { buildAssigneeOpenLoadMap } from "../../lib/app-data/distribution-load";
+import { assigneeLoadOptions } from "../../lib/app-data/distribution-assignee-options";
 import type { TaskDistributionDraft } from "../../lib/app-data/tasks";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
-
-function toOptions(
-  list: DistributionAssignee[],
-  loadByAssignee: Map<string, number>,
-) {
-  return list.map((a) => {
-    const base = a.subtitle ? `${a.name} — ${a.subtitle}` : a.name;
-    const count = openLoadForAssignee(loadByAssignee, a.id);
-    return {
-      value: a.id,
-      label: withOpenLoadLabel(base, count),
-    };
-  });
-}
 
 function PartyBlock({
   enabled,
@@ -149,7 +131,7 @@ export function DistributionPartiesForm({
           label="الأخصائي"
           required
           disabled={readOnly}
-          options={toOptions(caseSpecialists, loadByAssignee)}
+          options={assigneeLoadOptions(caseSpecialists, loadByAssignee)}
           value={distribution.caseSpecialistId}
           placeholder="اختر أخصائي دراسة الحالة…"
           onChange={(v) =>
@@ -172,7 +154,7 @@ export function DistributionPartiesForm({
             label="المعاين الميداني"
             required
             disabled={readOnly}
-            options={toOptions(fieldInspectors, loadByAssignee)}
+            options={assigneeLoadOptions(fieldInspectors, loadByAssignee)}
             value={distribution.inspectorId}
             placeholder="اختر المعاين…"
             onChange={(v) =>
@@ -184,7 +166,7 @@ export function DistributionPartiesForm({
             label="المقيّم العقاري"
             required
             disabled={readOnly}
-            options={toOptions(valuators, loadByAssignee)}
+            options={assigneeLoadOptions(valuators, loadByAssignee)}
             value={distribution.valuatorId}
             placeholder="اختر المقيّم…"
             onChange={(v) =>
@@ -213,7 +195,7 @@ export function DistributionPartiesForm({
             label="المكتب"
             required={distribution.engineeringOffice}
             disabled={readOnly || !distribution.engineeringOffice}
-            options={toOptions(engineeringOffices, loadByAssignee)}
+            options={assigneeLoadOptions(engineeringOffices, loadByAssignee)}
             value={distribution.engineeringOfficeId}
             placeholder="اختر المكتب الهندسي…"
             onChange={(v) => onPatch({ engineeringOfficeId: v })}

@@ -57,6 +57,17 @@ export function statusPillStyleFromColor(color: string): StatusPillStyle {
   return { base: color, fg: color };
 }
 
+/** `StatusPill` tinted by one CSS color (keys / eng / val HTML `pill(t,c)`). */
+export function ColorStatusPill({
+  label,
+  color,
+}: {
+  label: string;
+  color: string;
+}) {
+  return <StatusPill label={label} style={statusPillStyleFromColor(color)} />;
+}
+
 const FIN_STATUS_STYLES = {
   default: Object.freeze({
     base: "var(--ink)",

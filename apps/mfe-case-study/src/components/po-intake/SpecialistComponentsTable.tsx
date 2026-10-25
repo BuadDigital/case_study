@@ -10,6 +10,7 @@ import {
   Input,
   MobileRecordCard,
   MobileRecordList,
+  PhoneField,
   Select,
   TBody,
   THead,
@@ -26,7 +27,6 @@ import {
   componentLineAcceptsBuildRatio,
   componentLineForTypedName,
 } from "../../lib/app-data/specialist-components";
-import { PhoneField } from "./PhoneField";
 
 function LineProvenance({ line }: { line: BuildingInventoryLineDto }) {
   const { written, edited } = partyProvenanceLines(line.provenance ?? undefined);

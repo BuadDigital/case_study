@@ -1,22 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { cn } from "@platform/ui-kit";
-
-function isAcceptedFile(file: File): boolean {
-  const type = (file.type || "").toLowerCase();
-  if (type === "application/pdf" || type.startsWith("image/")) return true;
-  const name = file.name.toLowerCase();
-  return (
-    name.endsWith(".pdf") ||
-    name.endsWith(".png") ||
-    name.endsWith(".jpg") ||
-    name.endsWith(".jpeg") ||
-    name.endsWith(".webp") ||
-    name.endsWith(".heic") ||
-    name.endsWith(".heif")
-  );
-}
+import {
+  PDF_OR_IMAGE_ACCEPT,
+  cn,
+  isPdfOrImageFile,
+  useFileDropZone,
+} from "@platform/ui-kit";
 
 /** Upload transfer receipt — replacement for the original «Choose File» */
 export function FinanceReceiptUploadField({
@@ -36,16 +25,20 @@ export function FinanceReceiptUploadField({
   onPick: (file: File) => void;
   onPreview?: () => void;
 }) {
-  const [dragOver, setDragOver] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
   const blocked = Boolean(disabled || busy);
 
   function pickFromList(files: FileList | File[] | null | undefined) {
     if (blocked) return;
     const file = files?.[0];
-    if (!file || !isAcceptedFile(file)) return;
+    if (!file || !isPdfOrImageFile(file)) return;
     onPick(file);
   }
+
+  const { dragOver, inputRef, openPicker, zoneProps } = useFileDropZone({
+    onFiles: pickFromList,
+    disabled: blocked,
+    isolate: "drag",
+  });
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -80,10 +73,7 @@ export function FinanceReceiptUploadField({
               type="button"
               disabled={blocked}
               className="cursor-pointer rounded-lg border border-border bg-surface px-3 py-1.5 text-[11.5px] font-semibold text-text-2 hover:bg-[#faf6ee] disabled:opacity-60"
-              onClick={() => {
-                if (blocked) return;
-                inputRef.current?.click();
-              }}
+              onClick={openPicker}
             >
               استبدال
             </button>
@@ -103,38 +93,7 @@ export function FinanceReceiptUploadField({
               ? "border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)]"
               : "border-[#ddd8cc] bg-surface-2 hover:border-[#a4906f] hover:bg-surface-2",
           )}
-          onClick={() => {
-            if (blocked) return;
-            inputRef.current?.click();
-          }}
-          onKeyDown={(e) => {
-            if (blocked) return;
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              inputRef.current?.click();
-            }
-          }}
-          onDragEnter={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (!blocked) setDragOver(true);
-          }}
-          onDragOver={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          }}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
-            setDragOver(false);
-          }}
-          onDrop={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setDragOver(false);
-            pickFromList(e.dataTransfer.files);
-          }}
+          {...zoneProps}
         >
           <div className="text-[12.5px] font-bold text-heading">
             {busy
@@ -155,7 +114,7 @@ export function FinanceReceiptUploadField({
       <input
         ref={inputRef}
         type="file"
-        accept="application/pdf,image/*,.pdf,.png,.jpg,.jpeg,.webp,.heic,.heif"
+        accept={PDF_OR_IMAGE_ACCEPT}
         className="sr-only"
         disabled={blocked}
         onChange={(e) => {

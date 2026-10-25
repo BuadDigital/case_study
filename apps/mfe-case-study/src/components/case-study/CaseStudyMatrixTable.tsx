@@ -30,8 +30,7 @@ import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desk
 import {
   answerToYn,
   contributionsToPartyAnswers,
-  getMatrixConsensus,
-  getMatrixRowStatus,
+  matrixAgreement,
   PARTY_MATRIX_ORDER,
   PARTY_MATRIX_SHORT,
   type MatrixYn,
@@ -276,13 +275,8 @@ export function CaseStudyMatrixTable({
     const partyAnswers = showPartyColumn
       ? contributionsToPartyAnswers(partyByKey?.[key] ?? [])
       : {};
-    const status = showPartyColumn
-      ? getMatrixRowStatus(partyAnswers)
-      : "pending";
-    const consensus = showPartyColumn
-      ? getMatrixConsensus(partyAnswers)
-      : null;
-    const hasPartyAnswers = Object.keys(partyAnswers).length > 0;
+    const { status, consensus } = matrixAgreement(partyAnswers);
+    const hasPartyAnswers = status !== "pending";
     const awaitingPartyAnswer =
       showPartyColumn && status === "pending" && official === null;
     const conflict = showPartyColumn && status === "conflict";

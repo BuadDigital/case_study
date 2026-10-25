@@ -195,6 +195,19 @@ export function isPersistedPartyTaskSubmission(
   return Boolean(dto?.id?.trim());
 }
 
+/** A save / submit / reopen / accept answer: 401 → auth, 403 / 400 → the server's refusal. */
+async function readSubmissionWrite(
+  res: Response,
+): Promise<
+  | ApiOk<PartyTaskSubmissionDto>
+  | (ApiErr & { errors?: Record<string, string> })
+> {
+  if (res.status === 401) return { ok: false, kind: "auth" };
+  if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
+  if (!res.ok) return { ok: false, kind: "server" };
+  return { ok: true, data: normalizeSubmissionDto(await res.json()) };
+}
+
 export async function getPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,
@@ -228,10 +241,7 @@ export async function savePartyTaskSubmission(
       headers: authHeaders(config.token),
       body: JSON.stringify({ payload } satisfies SavePartyTaskSubmissionRequest),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: normalizeSubmissionDto(await res.json()) };
+    return await readSubmissionWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -251,10 +261,7 @@ export async function submitPartyTaskSubmission(
       method: "POST",
       headers: authHeaders(config.token, { idempotencyKey }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: normalizeSubmissionDto(await res.json()) };
+    return await readSubmissionWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -275,10 +282,7 @@ export async function reopenPartyTaskSubmission(
       headers: authHeaders(config.token),
       body: JSON.stringify({ returnNote } satisfies ReopenPartyTaskSubmissionRequest),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: normalizeSubmissionDto(await res.json()) };
+    return await readSubmissionWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }
@@ -299,10 +303,7 @@ export async function acceptPartyTaskSubmission(
       method: "POST",
       headers: authHeaders(config.token, { idempotencyKey }),
     });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403 || res.status === 400) return parseSaveFailure(res);
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: normalizeSubmissionDto(await res.json()) };
+    return await readSubmissionWrite(res);
   } catch {
     return { ok: false, kind: "network" };
   }

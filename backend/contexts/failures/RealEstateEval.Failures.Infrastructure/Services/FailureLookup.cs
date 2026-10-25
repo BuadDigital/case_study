@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using RealEstateEval.Application.Rules;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
@@ -20,75 +21,45 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
     public Task<bool> HasActiveAsync(
         string poNumber,
         string propertyId,
-        CancellationToken cancellationToken = default)
-    {
-        var po = poNumber.Trim();
-        if (!FailureRules.TryParsePropertyId(propertyId, out var property)) return Task.FromResult(false);
-        return db.PropertyFailures.AsNoTracking().AnyAsync(
-            f => f.PoNumber == po
-                && f.PropertyId == property
-                && PropertyFailureStatus.Active.Contains(f.Status),
+        CancellationToken cancellationToken = default) =>
+        AnyOnPropertyAsync(
+            poNumber,
+            propertyId,
+            f => PropertyFailureStatus.Active.Contains(f.Status),
             cancellationToken);
-    }
 
     public Task<bool> HasSurveyFreezingAsync(
         string poNumber,
         string propertyId,
-        CancellationToken cancellationToken = default)
-    {
-        var po = poNumber.Trim();
-        if (!FailureRules.TryParsePropertyId(propertyId, out var property)) return Task.FromResult(false);
-        return db.PropertyFailures.AsNoTracking().AnyAsync(
-            f => f.PoNumber == po
-                && f.PropertyId == property
-                && PropertyFailureStatus.Active.Contains(f.Status)
+        CancellationToken cancellationToken = default) =>
+        AnyOnPropertyAsync(
+            poNumber,
+            propertyId,
+            f => PropertyFailureStatus.Active.Contains(f.Status)
                 && f.SurveyFreezeLiftedAtUtc == null,
             cancellationToken);
-    }
 
     public Task<bool> HasBlockingAsync(
         string poNumber,
         string propertyId,
-        CancellationToken cancellationToken = default)
-    {
-        var po = poNumber.Trim();
-        if (!FailureRules.TryParsePropertyId(propertyId, out var property)) return Task.FromResult(false);
-        return db.PropertyFailures.AsNoTracking().AnyAsync(
-            f => f.PoNumber == po
-                && f.PropertyId == property
-                && f.Status != PropertyFailureStatus.Resolved
+        CancellationToken cancellationToken = default) =>
+        AnyOnPropertyAsync(
+            poNumber,
+            propertyId,
+            f => f.Status != PropertyFailureStatus.Resolved
                 && f.Status != PropertyFailureStatus.Suspended,
             cancellationToken);
-    }
 
-    public async Task<IReadOnlyList<string>> ListApprovedPropertyKeysAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var rows = await db.PropertyFailures.AsNoTracking()
-            .Where(f => f.Status == PropertyFailureStatus.Approved)
-            .Select(f => new { f.PoNumber, f.PropertyId })
-            .ToListAsync(cancellationToken);
+    public Task<IReadOnlyList<string>> ListApprovedPropertyKeysAsync(
+        CancellationToken cancellationToken = default) =>
+        ListPropertyKeysAsync(f => f.Status == PropertyFailureStatus.Approved, cancellationToken);
 
-        return rows
-            .Select(f => $"{f.PoNumber.Trim()}|{f.PropertyId:D}")
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-    }
-
-    public async Task<IReadOnlyList<string>> ListBlockingPropertyKeysAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var rows = await db.PropertyFailures.AsNoTracking()
-            .Where(f => f.Status != PropertyFailureStatus.Resolved
-                && f.Status != PropertyFailureStatus.Suspended)
-            .Select(f => new { f.PoNumber, f.PropertyId })
-            .ToListAsync(cancellationToken);
-
-        return rows
-            .Select(f => $"{f.PoNumber.Trim()}|{f.PropertyId:D}")
-            .Distinct(StringComparer.Ordinal)
-            .ToList();
-    }
+    public Task<IReadOnlyList<string>> ListBlockingPropertyKeysAsync(
+        CancellationToken cancellationToken = default) =>
+        ListPropertyKeysAsync(
+            f => f.Status != PropertyFailureStatus.Resolved
+                && f.Status != PropertyFailureStatus.Suspended,
+            cancellationToken);
 
     public async Task<IReadOnlyList<FailureRecordDto>> ListForPropertyAsync(
         string poNumber,
@@ -101,7 +72,7 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
             .Where(f => f.PoNumber == po && f.PropertyId == property)
             .OrderBy(f => f.CreatedAtUtc)
             .ToListAsync(cancellationToken);
-        return rows.Select(ToDto).ToList();
+        return rows.Select(f => FailureRecordRules.ToDto(f)).ToList();
     }
 
     public async Task<IReadOnlyList<FailureRecordDto>> ListSuspendedAsync(
@@ -112,7 +83,7 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
             .OrderByDescending(x => x.SuspendedAtUtc ?? x.UpdatedAtUtc)
             .Take(MaxSuspendedRows)
             .ToListAsync(cancellationToken);
-        return rows.Select(ToDto).ToList();
+        return rows.Select(f => FailureRecordRules.ToDto(f)).ToList();
     }
 
     public async Task<IReadOnlyList<Guid>> ListActiveIdsByProblemAsync(
@@ -137,27 +108,33 @@ public sealed class FailureLookup(FailuresDbContext db) : IFailureLookup
             .ToListAsync(cancellationToken);
     }
 
-    internal static FailureRecordDto ToDto(PropertyFailure entity) => new()
+    /// <summary>Whether a failure on the PO's property matches; false for an unparsable property id.</summary>
+    private Task<bool> AnyOnPropertyAsync(
+        string poNumber,
+        string propertyId,
+        Expression<Func<PropertyFailure, bool>> predicate,
+        CancellationToken cancellationToken)
     {
-        Id = entity.Id.ToString(),
-        PoNumber = entity.PoNumber,
-        PropertyId = entity.PropertyId.ToString("D"),
-        DeedNumber = entity.DeedNumber,
-        Title = entity.Title,
-        ProblemTypeId = entity.ProblemTypeId,
-        Severity = entity.Severity,
-        RaisedByRole = PersonLabelResolver.NormalizeSystemLabel(entity.RaisedByRole),
-        InternalNote = entity.InternalNote,
-        FinalNote = entity.FinalNote,
-        ResolutionReason = entity.ResolutionReason,
-        ContinueInstructions = entity.ContinueInstructions,
-        Status = entity.Status,
-        Specialist = PersonLabelResolver.NormalizeSystemLabel(entity.Specialist),
-        CreatedAt = entity.CreatedAtUtc.ToString("O"),
-        UpdatedAt = entity.UpdatedAtUtc.ToString("O"),
-        SuspendedAt = entity.SuspendedAtUtc?.ToString("O"),
-        SuspendedByUserId = entity.SuspendedByUserId,
-        SurveyFreezeLiftedAt = entity.SurveyFreezeLiftedAtUtc?.ToString("O"),
-        SurveyFreezeLiftReason = entity.SurveyFreezeLiftReason,
-    };
+        var po = poNumber.Trim();
+        if (!FailureRules.TryParsePropertyId(propertyId, out var property)) return Task.FromResult(false);
+        return db.PropertyFailures.AsNoTracking()
+            .Where(f => f.PoNumber == po && f.PropertyId == property)
+            .AnyAsync(predicate, cancellationToken);
+    }
+
+    /// <summary>Distinct <c>PO|propertyId</c> keys of the properties with a matching failure.</summary>
+    private async Task<IReadOnlyList<string>> ListPropertyKeysAsync(
+        Expression<Func<PropertyFailure, bool>> predicate,
+        CancellationToken cancellationToken)
+    {
+        var rows = await db.PropertyFailures.AsNoTracking()
+            .Where(predicate)
+            .Select(f => new { f.PoNumber, f.PropertyId })
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(f => $"{f.PoNumber.Trim()}|{f.PropertyId:D}")
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+    }
 }

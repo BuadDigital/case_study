@@ -3,18 +3,14 @@ import type {
   InternalDelegationLetter,
 } from "./internal-delegation-letters";
 import { openHtmlDocumentInNewTab } from "../open-html-document";
-import {
-  caseStudyProviderName,
-  caseStudySignatureImage,
-  caseStudyStampImage,
-} from "./case-study-report-data";
+import { caseStudyProviderName } from "./case-study-report-data";
 import {
   ensureOrganizationSettingsLoaded,
   getCachedOrganizationSettings,
 } from "@platform/app-shared/organization/organization-settings-cache";
 import { escapeHtml } from "@platform/app-shared/lib/html-escape";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "./po-intake-data";
-import { orgLetterheadUrl } from "./org-letterhead-slices";
+import { officialLetterAssetUrls } from "./official-letter-assets";
 import {
   officialLetterFontsHtml,
   officialLetterShellCss,
@@ -23,13 +19,6 @@ import {
 } from "./official-letter-layout";
 
 const DEFAULT_COMPANY_CR = "4030297680";
-
-/** Blob print windows need absolute asset URLs. */
-function assetUrl(path: string): string {
-  if (typeof window === "undefined") return path;
-  if (/^https?:\/\//i.test(path) || path.startsWith("data:")) return path;
-  return `${window.location.origin}${path.startsWith("/") ? "" : "/"}${path}`;
-}
 
 /** Pure HTML — layout matches `docs/مراجع حكومي/authorization_letter.html`. */
 export function internalDelegationLetterHtml(
@@ -55,9 +44,7 @@ export function internalDelegationLetterHtml(
   const companyName = caseStudyProviderName();
   const companyCr =
     org?.company.commercialRegistration?.trim() || DEFAULT_COMPANY_CR;
-  const bg = escapeHtml(assetUrl(orgLetterheadUrl(branding)));
-  const stamp = escapeHtml(assetUrl(caseStudyStampImage()));
-  const signature = escapeHtml(assetUrl(caseStudySignatureImage()));
+  const { bg, stamp, signature } = officialLetterAssetUrls(branding);
 
   const rows = rowsSource
     .map(

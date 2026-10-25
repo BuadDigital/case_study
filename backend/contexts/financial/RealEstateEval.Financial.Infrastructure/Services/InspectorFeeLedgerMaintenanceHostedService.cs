@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Financial.Application.Abstractions;
+using RealEstateEval.Infrastructure.Services;
 
 namespace RealEstateEval.Financial.Infrastructure.Services;
 
@@ -11,56 +11,21 @@ namespace RealEstateEval.Financial.Infrastructure.Services;
 /// path (EnsureLedgersForTasksAsync) creates rows promptly; this loop is the
 /// safety net for missed events and drifted snapshots.
 /// </summary>
-public sealed class InspectorFeeLedgerMaintenanceHostedService : BackgroundService
+public sealed class InspectorFeeLedgerMaintenanceHostedService(
+    IServiceScopeFactory scopeFactory,
+    ILogger<InspectorFeeLedgerMaintenanceHostedService> logger)
+    : PeriodicSweepHostedService(scopeFactory, logger)
 {
-    private static readonly TimeSpan InitialDelay = TimeSpan.FromSeconds(20);
-    private static readonly TimeSpan Interval = TimeSpan.FromMinutes(2);
+    protected override TimeSpan InitialDelay { get; } = TimeSpan.FromSeconds(20);
 
-    private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ILogger<InspectorFeeLedgerMaintenanceHostedService> _logger;
+    protected override TimeSpan Interval { get; } = TimeSpan.FromMinutes(2);
 
-    public InspectorFeeLedgerMaintenanceHostedService(
-        IServiceScopeFactory scopeFactory,
-        ILogger<InspectorFeeLedgerMaintenanceHostedService> logger)
+    protected override string SweepName => "Inspector fee ledger maintenance sweep";
+
+    protected override async Task SweepAsync(IServiceProvider services, CancellationToken cancellationToken)
     {
-        _scopeFactory = scopeFactory;
-        _logger = logger;
-    }
-
-    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-    {
-        try
-        {
-            await Task.Delay(InitialDelay, stoppingToken);
-        }
-        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-        {
-            return;
-        }
-
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            try
-            {
-                using var scope = _scopeFactory.CreateScope();
-                var writer = scope.ServiceProvider
-                    .GetRequiredService<IInspectorFeeLedgerWriter>();
-                await writer.BackfillMissingLedgersAsync(stoppingToken);
-                await writer.SyncLedgerSnapshotsFromTasksAsync(stoppingToken);
-            }
-            catch (Exception ex) when (!stoppingToken.IsCancellationRequested)
-            {
-                _logger.LogWarning(ex, "Inspector fee ledger maintenance sweep failed");
-            }
-
-            try
-            {
-                await Task.Delay(Interval, stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
-            }
-        }
+        var writer = services.GetRequiredService<IInspectorFeeLedgerWriter>();
+        await writer.BackfillMissingLedgersAsync(cancellationToken);
+        await writer.SyncLedgerSnapshotsFromTasksAsync(cancellationToken);
     }
 }

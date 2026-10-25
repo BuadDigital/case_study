@@ -22,7 +22,6 @@ import {
   inspectorInvalidControlClass,
 } from "../../lib/app-data/inspector-workspace-validation";
 import {
-  DesktopFeaturePhotoCell,
   InsBadge,
   InspectorCard,
   MobileCountStepper,
@@ -45,12 +44,8 @@ import { bourseSourceNotes } from "../../lib/app-data/inspector-bourse-prefill";
 import {
   InspectorOccupancyDescriptionField,
 } from "./InspectorOccupancyDescriptionField";
-import {
-  InspectorPhotoFilePicker,
-} from "./InspectorPhotoFilePicker";
-import {
-  InspectorStampedPhotoThumb,
-} from "./InspectorStampedPhotoThumb";
+import { InspectorPhotoThumbOrPicker } from "./InspectorPhotoThumbOrPicker";
+import { EditableFeaturePhotoCell } from "../po-intake/PropertyDetailInspectionPhotos";
 import {
   Select,
   TBody,
@@ -248,7 +243,7 @@ export function InspectorFeaturesSection({
                       <span className="text-text-3">—</span>
                     )
                   ) : (
-                  <DesktopFeaturePhotoCell
+                  <EditableFeaturePhotoCell
                     needsPhoto={inspectorFeatureOffersPhoto(field, value)}
                     hasPhoto={Boolean(attachment?.fileName)}
                     disabled={locked}
@@ -440,48 +435,22 @@ export function InspectorFeaturesSection({
               </div>
             ) : needsPhoto ? (
               <div className="mt-2.5">
-                {attachment?.fileName ? (
-                  <InspectorStampedPhotoThumb
-                    stamp={photoStamp}
-                    taskId={draft.taskId}
-                    photoRef={photoRef}
-                    attachment={attachment}
-                    onClear={
-                      locked
-                        ? undefined
-                        : () => {
-                            clearInspectorPhotoDataUrl(
-                              draft.taskId,
-                              photoRef,
-                            );
-                            persist(featurePhotoPatch(field.key, null));
-                          }
-                    }
-                  />
-                ) : (
-                  <InspectorPhotoFilePicker
-                    label="صورة إثبات مطلوبة — التقاط *"
-                    disabled={locked}
-                    className="[&_button]:min-h-12 [&_button]:rounded-xl [&_button]:border-[1.5px] [&_button]:border-dashed [&_button]:border-[var(--gold-d,#a4906f)] [&_button]:bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] [&_button]:text-[13.5px] [&_button]:font-bold [&_button]:text-[var(--gold-d,#a4906f)]"
-                    onFilesSelected={async (files) => {
-                      const file = files[0];
-                      if (!file) return false;
-                      const result = await uploadInspectorPhotoFromFile(
-                        draft.taskId,
-                        photoRef,
-                        file,
-                        {
-                          draft: liveDraft,
-                          deedNumber: property?.deedNumber,
-                        },
-                      );
-                      if (!result.ok) {
-                        throw new Error(result.error);
-                      }
-                      persist(featurePhotoPatch(field.key, result.attachment));
-                    }}
-                  />
-                )}
+                <InspectorPhotoThumbOrPicker
+                  stamp={photoStamp}
+                  taskId={draft.taskId}
+                  photoRef={photoRef}
+                  attachment={attachment}
+                  disabled={locked}
+                  pickerLabel="صورة إثبات مطلوبة — التقاط *"
+                  pickerClassName="[&_button]:min-h-12 [&_button]:rounded-xl [&_button]:border-[1.5px] [&_button]:border-dashed [&_button]:border-[var(--gold-d,#a4906f)] [&_button]:bg-[color-mix(in_srgb,var(--gold)_8%,transparent)] [&_button]:text-[13.5px] [&_button]:font-bold [&_button]:text-[var(--gold-d,#a4906f)]"
+                  uploadContext={{
+                    draft: liveDraft,
+                    deedNumber: property?.deedNumber,
+                  }}
+                  onAttachmentChange={(photo) =>
+                    persist(featurePhotoPatch(field.key, photo))
+                  }
+                />
               </div>
             ) : null}
             {fi === 0 && !isLandInspection ? (

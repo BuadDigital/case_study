@@ -1,13 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { cn } from "@platform/ui-kit";
-import {
-  COMMIT_MS,
-  commitKeys,
-  tdLabelClass,
-} from "./AdjustmentsMatrixCells.styles";
+import { commitKeys, tdLabelClass } from "./AdjustmentsMatrixCells.styles";
 import type { TouchProps } from "./AdjustmentsMatrixCells";
+import { useMatrixCellDraft } from "./useMatrixCellDraft";
 
 /**
  * The factor-row pieces of the adjustments matrix — the label cell (pick /
@@ -213,36 +210,7 @@ function AreaFactorInput({
   touch?: boolean;
   onCommit: (raw: string) => Promise<boolean> | void;
 }) {
-  const committed = String(value);
-  const [draft, setDraft] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pending = useRef<string | null>(null);
-  const text = draft ?? committed;
-
-  function clearTimer() {
-    if (timer.current) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-  }
-
-  function flush() {
-    const raw = pending.current;
-    pending.current = null;
-    clearTimer();
-    if (raw == null) return;
-    if (raw === committed) {
-      setDraft(null);
-      return;
-    }
-    void Promise.resolve(onCommit(raw)).then((ok) => {
-      if (ok !== false) setDraft((d) => (d === raw ? null : d));
-    });
-  }
-
-  const flushRef = useRef(flush);
-  flushRef.current = flush;
-  useEffect(() => () => flushRef.current(), []);
+  const { text, change, flush, onKeyDown } = useMatrixCellDraft(String(value), onCommit);
 
   return (
     <label className={cn("mt-1.5 flex items-center gap-[7px]", touch && "mt-2.5 justify-between gap-3")}>
@@ -256,20 +224,8 @@ function AreaFactorInput({
         type="text"
         disabled={locked}
         value={text}
-        onChange={(e) => {
-          const raw = e.target.value;
-          setDraft(raw);
-          pending.current = raw;
-          clearTimer();
-          timer.current = setTimeout(flush, COMMIT_MS);
-        }}
-        onKeyDown={(e) =>
-          commitKeys(e, flush, () => {
-            pending.current = null;
-            clearTimer();
-            setDraft(null);
-          })
-        }
+        onChange={(e) => change(e.target.value)}
+        onKeyDown={onKeyDown}
         onBlur={flush}
         className={cn(
           "rounded-[7px] border border-border-md bg-surface text-center font-bold text-heading",

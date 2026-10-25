@@ -30,9 +30,11 @@ public static class PoEnfazInvoiceRules
     /// behind it are frozen. Null while no invoice is issued.
     /// </summary>
     public static string? LinesLockedError(PoEnfazInvoice? invoice) =>
-        invoice is not null && !string.IsNullOrWhiteSpace(invoice.InvoiceNumber)
-            ? LinesLockedAfterIssueAr
-            : null;
+        IsIssued(invoice) ? LinesLockedAfterIssueAr : null;
+
+    /// <summary>Issued means it has a number — the one test the line lock and a re-issue share.</summary>
+    public static bool IsIssued(PoEnfazInvoice? invoice) =>
+        invoice is not null && !string.IsNullOrWhiteSpace(invoice.InvoiceNumber);
 
     public const string NotReadyError =
         "تعذّر إصدار الفاتورة — تحقق من تعليم كل صكوك أمر العمل «جاهز للفوترة» وتعبئة الأتعاب.";
@@ -46,7 +48,7 @@ public static class PoEnfazInvoiceRules
     /// </summary>
     public static string? IssueBlockedReason(PoEnfazInvoice? existing, bool readyForBilling, decimal subtotalSar)
     {
-        if (existing is not null && PoEnfazInvoiceStatus.All.Contains(existing.Status))
+        if (IsIssued(existing))
             return AlreadyIssuedError;
         return readyForBilling && subtotalSar > 0 ? null : NotReadyError;
     }

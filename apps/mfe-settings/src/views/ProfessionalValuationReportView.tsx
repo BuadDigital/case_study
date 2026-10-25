@@ -21,7 +21,12 @@ import {
   type ValuationListsDto,
 } from "@platform/api-client";
 import { useCapability } from "@platform/app-shared/components/Can";
-import { Button, Note, PageLoadingHint, PageShell, useToast } from "@platform/ui-kit";
+import { Note, PageShell, useToast } from "@platform/ui-kit";
+import {
+  SettingsAccessNotes,
+  SettingsLoadingShell,
+  SettingsSaveBar,
+} from "../components/SettingsPageParts";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import { refreshOrgCache } from "../lib/org-settings-ui";
 import {
@@ -127,11 +132,7 @@ export function ProfessionalValuationReportView() {
   }
 
   if (loading) {
-    return (
-      <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-        <PageLoadingHint className="py-20" />
-      </PageShell>
-    );
+    return <SettingsLoadingShell />;
   }
 
   const listsHref = "/attachment-print-dictionary";
@@ -141,12 +142,7 @@ export function ProfessionalValuationReportView() {
 
   return (
     <PageShell variant="canvas" className="gap-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6" dir="rtl">
-      {!canEdit ? (
-        <Note tone="warn" className="mb-3 max-w-[560px]">
-          الرابط صحيح، لكن دورك الحالي لا يملك صلاحية هذا البند. اطلب الصلاحية من مسؤول النظام.
-        </Note>
-      ) : null}
-      {error ? <Note tone="warn">{error}</Note> : null}
+      <SettingsAccessNotes canEdit={canEdit} error={error} />
 
       {/* Decision 23: one version for the whole text pack — any edit, even one paragraph, issues a new pack;
           in-progress adopts the latest; issued is frozen to texts at issue time. */}
@@ -190,17 +186,7 @@ export function ProfessionalValuationReportView() {
       </div>
 
       {canEdit ? (
-        <div className="mt-4 flex flex-wrap items-center justify-end gap-2.5">
-          {dirty ? (
-            <span className="flex items-center gap-1.5 text-[11.5px] text-amber-text">
-              <span className="size-1.5 rounded-full bg-warning" />
-              تعديل غير محفوظ
-            </span>
-          ) : null}
-          <Button variant="primary" loading={saving} onClick={() => void persist()}>
-            حفظ
-          </Button>
-        </div>
+        <SettingsSaveBar dirty={dirty} saving={saving} onSave={() => void persist()} />
       ) : null}
     </PageShell>
   );

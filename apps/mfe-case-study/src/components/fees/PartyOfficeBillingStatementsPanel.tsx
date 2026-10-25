@@ -34,6 +34,7 @@ import {
 import type { PartyBillingStatementDto } from "@platform/api-client";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { VendorInvoicePdfField } from "./VendorInvoicePdfField";
+import { statementCardFields } from "./FeeLedgerParts";
 import { todayIso, ymd as formatYmd } from "@platform/app-shared/format/date";
 import { opsLetterCard } from "../../lib/app-data/ops-tasks-tw";
 
@@ -378,20 +379,7 @@ export function PartyOfficeBillingStatementsPanel({
                 onOpen={() => setOpenRef(open ? null : s.referenceNumber)}
                 title={<bdi dir="ltr" className="tabular-nums">{s.referenceNumber}</bdi>}
                 status={<StatusPill label={meta.label} style={meta.style} />}
-                fields={[
-                  {
-                    label: "تاريخ الإصدار",
-                    ltr: true,
-                    value: formatYmd(s.issuedAtUtc ?? s.createdAtUtc),
-                  },
-                  {
-                    label: "الإجمالي",
-                    ltr: true,
-                    value: fmtSar(s.totalNetSar, { digits: 3, trim: true }),
-                  },
-                  { label: "المعاملات", value: `${s.lines.length} معاملات` },
-                  { label: "الصرف", wide: true, value: renderPayout(s, true) },
-                ]}
+                fields={statementCardFields(s, renderPayout(s, true), true)}
               >
                 {open ? (
                   <div

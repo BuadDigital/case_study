@@ -1,9 +1,9 @@
 "use client";
 
-import { MobileSectionPicker, Note, Spinner, cn, opsBtnGhost, opsBtnPrimary, opsFldControl, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterSub, opsLetterTitle, opsTfNote, opsTfSeg, opsTfSegActive, opsTfSegRow } from "@platform/ui-kit";
+import { cn, MobileSectionPicker, Note, opsBtnGhost, opsBtnPrimary, opsFldControl, OpsIcon, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterSub, opsLetterTitle, opsTfNote, opsTfSeg, opsTfSegActive, opsTfSegRow, Spinner } from "@platform/ui-kit";
 
 import { CATEGORIES, PRICING_ICON } from "../lib/party-fee-pricing-state";
-import { OpsIcon, PricingAssignModal } from "./FinancePartyFeePricingParts";
+import { PricingAssignModal } from "./FinancePartyFeePricingParts";
 import { FinancePartyFeePricingEditor } from "./FinancePartyFeePricingEditor";
 import { useFinancePartyFeePricingWorkflow } from "./useFinancePartyFeePricingWorkflow";
 

@@ -91,8 +91,9 @@ public sealed class SecurityHeadersOptions
             DocumentationContentSecurityPolicy = ReadPolicy(
                 section["DocumentationContentSecurityPolicy"],
                 DefaultDocumentationContentSecurityPolicy),
-            DocumentationPathPrefixes = ReadPathPrefixes(
-                section.GetSection("DocumentationPathPrefixes")),
+            DocumentationPathPrefixes = PathPrefixConfiguration.Read(
+                section.GetSection("DocumentationPathPrefixes"),
+                DefaultDocumentationPathPrefixes),
             FrameOptions = ReadPolicy(section["FrameOptions"], "DENY"),
             ReferrerPolicy = ReadPolicy(section["ReferrerPolicy"], "no-referrer"),
             PermissionsPolicy = ReadPolicy(section["PermissionsPolicy"], DefaultPermissionsPolicy),
@@ -138,29 +139,6 @@ public sealed class SecurityHeadersOptions
 
     private static string ReadPolicy(string? configured, string fallback) =>
         configured is null ? fallback : configured.Trim();
-
-    private static IReadOnlyList<string> ReadPathPrefixes(IConfiguration section)
-    {
-        var configured = section.Get<string[]>();
-        var source = configured is { Length: > 0 }
-            ? configured
-            : DefaultDocumentationPathPrefixes;
-
-        var prefixes = new List<string>(source.Length);
-        foreach (var entry in source)
-        {
-            if (string.IsNullOrWhiteSpace(entry))
-                continue;
-
-            var normalized = entry.Trim().TrimEnd('/');
-            if (!normalized.StartsWith('/'))
-                normalized = "/" + normalized;
-
-            prefixes.Add(normalized);
-        }
-
-        return prefixes;
-    }
 }
 
 public sealed class SecurityHeadersMiddleware

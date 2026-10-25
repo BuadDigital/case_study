@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { cn, MobileSectionPicker } from "@platform/ui-kit";
+import { cn, MobileSectionPicker, OpsIcon } from "@platform/ui-kit";
 import {
   opsIconBoxGold,
   opsLetterSub,
@@ -14,24 +14,6 @@ import {
 
 const FOLDER_ICON =
   "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z";
-
-function OpsIcon({ path, size = 18 }: { path: string; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d={path} />
-    </svg>
-  );
-}
 
 /** Segment tabs — same control language as FailureTypes / CaseStudyInfoRoles. */
 export function EngFeesHtmlTabs({
@@ -128,7 +110,7 @@ export function EngFeesSectionTitle({
     >
       <div className="flex min-w-0 items-center gap-[11px]">
         <span className={opsIconBoxGold}>
-          <OpsIcon path={FOLDER_ICON} />
+          <OpsIcon path={FOLDER_ICON} size={18} />
         </span>
         <div className="min-w-0">
           <div className={opsLetterTitle}>{title}</div>

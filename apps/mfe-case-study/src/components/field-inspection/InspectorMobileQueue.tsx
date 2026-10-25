@@ -9,9 +9,8 @@ import type { RowMoreMenuItem } from "@platform/ui-kit";
 import {
   buildPrimaryDataTableRow,
   findPropertyForTask,
-  formatRemainingDuration,
-  resolveSlaTimerRatio,
 } from "../../lib/app-data/my-task-row";
+import { queueCardTimer, queueCardTitle } from "../../lib/app-data/queue-mobile-card";
 import type { PoIntakeRecord } from "../../lib/app-data/po-intake-data";
 import { formatPoDisplay } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
@@ -51,15 +50,6 @@ export function InspectorMobileQueue({
     const row = buildPrimaryDataTableRow(task, property, record, now);
     const badge = resolveBadge(task);
     const tone = toneFromLegacyBadge(badge?.className);
-    const timer = formatRemainingDuration(record?.dueDateAt ?? "", now);
-    const showTimer = timer.remainingDuration !== "—";
-    const titleParts = [
-      row.propertySlot !== "—" ? row.propertySlot : null,
-      property?.plotNumber?.trim()
-        ? `قطعة ${property.plotNumber.trim()}`
-        : null,
-      row.district !== "—" ? row.district : null,
-    ].filter(Boolean);
     const meta = [
       { text: formatPoDisplay(task.poNumber), kind: "po" as const },
       row.city !== "—"
@@ -72,25 +62,12 @@ export function InspectorMobileQueue({
 
     return {
       id: task.id,
-      title:
-        titleParts.length > 0 ? titleParts.join(" — ") : `مهمة ${task.id}`,
+      title: queueCardTitle(row, property, task.id),
       meta,
       statusLabel: badge?.label,
       statusClassName: badge?.className,
       tone,
-      timerLabel: showTimer
-        ? timer.remainingOverdue
-          ? "متأخرة"
-          : `متبقي ${timer.remainingDuration}`
-        : undefined,
-      timerOverdue: showTimer ? timer.remainingOverdue : undefined,
-      timerRatio: showTimer
-        ? resolveSlaTimerRatio(
-            record?.dueDateAt ?? "",
-            task.createdAt ?? "",
-            now,
-          )
-        : undefined,
+      ...queueCardTimer(record, task, now),
       moreItems: resolveMoreItems(task, property?.id),
       onOpen: () => onOpen(task.id),
       loading: isOpening?.(task.id),

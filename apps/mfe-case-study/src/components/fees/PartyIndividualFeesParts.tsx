@@ -17,11 +17,25 @@ import {
   statementMeta,
   statusMeta,
 } from "./party-individual-fees-state";
+import { feeRowCardFields, statementCardFields } from "./FeeLedgerParts";
 import type { usePartyIndividualFeesWorkflow } from "./usePartyIndividualFeesWorkflow";
 
 type Workflow = ReturnType<typeof usePartyIndividualFeesWorkflow>;
 type FeeRow = Workflow["filteredFees"][number];
 type Statement = Workflow["filteredFns"][number];
+
+/** Individual lanes date a fee by its work submission. */
+export function partyFeeDate(row: FeeRow) {
+  return row.workSubmittedAtUtc ?? row.accruedAtUtc ?? row.updatedAtUtc;
+}
+
+/** Row key — a ledger row may not have an id yet. */
+export function partyFeeRowKey(row: FeeRow): string {
+  return (
+    row.id ||
+    `${row.workflowTaskId}-${row.billingStatus}-${row.netFeeSar}`
+  );
+}
 
 /** The fee row's next step — a submit button or a short status note (table cell and phone card). */
 export function FeeRowAction({
@@ -152,42 +166,18 @@ export function PartyFeesPhoneList({
           const st = individualFeeUiStatus(row);
           const meta = statusMeta(st);
           const { deed, region } = deedParts(row);
-          const ded = row.supervisorDiscountSar > 0;
           return (
             <MobileRecordCard
-              key={
-                row.id ||
-                `${row.workflowTaskId}-${row.billingStatus}-${row.netFeeSar}`
-              }
+              key={partyFeeRowKey(row)}
               tone={st === "needs_submit" ? "gold" : undefined}
               title={<bdi dir="ltr" className="tabular-nums">{deed}</bdi>}
               subtitle={region}
               status={<StatusPill label={meta.label} style={meta.style} />}
-              fields={[
-                {
-                  label: copy.dateCol,
-                  ltr: true,
-                  value: formatYmd(
-                    row.workSubmittedAtUtc ?? row.accruedAtUtc ?? row.updatedAtUtc,
-                  ),
-                },
-                {
-                  label: "الصافي",
-                  ltr: true,
-                  value: fmtSar(row.netFeeSar, { digits: 3, trim: true }),
-                },
-                {
-                  label: "سعر الجدول",
-                  ltr: true,
-                  value: fmtSar(row.agreedFeeSar, { digits: 3, trim: true }),
-                },
-                {
-                  label: "تعديل / مبرر",
-                  value: ded
-                    ? `− ${fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}${row.discountReason ? ` · ${row.discountReason}` : ""}`
-                    : "بسعر الجدول",
-                },
-              ]}
+              fields={feeRowCardFields(
+                row,
+                { date: copy.dateCol, discount: "تعديل / مبرر" },
+                partyFeeDate(row),
+              )}
             >
               <FeeRowAction
                 row={row}
@@ -236,26 +226,12 @@ export function PartyStatementsPhoneList({
               onOpen={() => setOpenFn(open ? null : s.referenceNumber)}
               title={<bdi dir="ltr" className="tabular-nums">{s.referenceNumber}</bdi>}
               status={<StatusPill label={meta.label} style={meta.style} />}
-              fields={[
-                {
-                  label: "تاريخ الإصدار",
-                  ltr: true,
-                  value: formatYmd(s.issuedAtUtc ?? s.createdAtUtc),
-                },
-                {
-                  label: "الإجمالي",
-                  ltr: true,
-                  value: fmtSar(s.totalNetSar, { digits: 3, trim: true }),
-                },
-                { label: "المعاملات", value: `${s.lines.length} معاملات` },
-                {
-                  label: "الصرف",
-                  value:
-                    s.status === "closed" && s.paidAtUtc
-                      ? `صُرف ${formatYmd(s.paidAtUtc)}`
-                      : "بانتظار الصرف",
-                },
-              ]}
+              fields={statementCardFields(
+                s,
+                s.status === "closed" && s.paidAtUtc
+                  ? `صُرف ${formatYmd(s.paidAtUtc)}`
+                  : "بانتظار الصرف",
+              )}
             >
               {open ? (
                 <div className="rounded-[10px] bg-surface-2 p-2.5">

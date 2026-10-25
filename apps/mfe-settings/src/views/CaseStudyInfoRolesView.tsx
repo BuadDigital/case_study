@@ -1,12 +1,11 @@
 "use client";
 
-import { OpsIcon } from "../components/OpsIcon";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
-import { cn, EmptyState, MobileSectionPicker, InlineLoadingSkeleton, PageShell, QueryErrorState, Spinner, useSwapAnimation, useToast, confirmAction } from "@platform/ui-kit";
+import { cn, confirmAction, EmptyState, InlineLoadingSkeleton, MobileSectionPicker, OpsIcon, PageShell, QueryErrorState, Spinner, useSwapAnimation, useToast } from "@platform/ui-kit";
 import {
   CASE_STUDY_INFO_PARTIES,
   CASE_STUDY_INFO_ROLE_TYPES,

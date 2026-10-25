@@ -1,3 +1,5 @@
+using RealEstateEval.Application.Rules;
+
 namespace RealEstateEval.Valuation.Application.Rules;
 
 /// <summary>Sortable columns of the comparable bank, resolved from the wire <c>sort</c> value.</summary>
@@ -36,7 +38,7 @@ public static class ComparablePropertyListQueryRules
         [SortTransaction, SortCreated, SortPrice, SortPricePerSqm, SortArea, SortDistrict];
 
     public static ComparablePropertyListSortKey ResolveSort(string? sort) =>
-        Normalize(sort) switch
+        ListQueryText.Normalize(sort) switch
         {
             "created" => ComparablePropertyListSortKey.Created,
             "price" => ComparablePropertyListSortKey.Price,
@@ -47,12 +49,7 @@ public static class ComparablePropertyListQueryRules
         };
 
     public static bool ResolveDescending(string? dir) =>
-        Normalize(dir) switch
-        {
-            DirAscending => false,
-            DirDescending => true,
-            _ => DefaultDescending,
-        };
+        ListQueryText.ResolveDescending(dir, DefaultDescending);
 
     public static string? NormalizeSearch(string? q)
     {
@@ -73,6 +70,4 @@ public static class ComparablePropertyListQueryRules
  /// </summary>
     public static Guid? ResolveForPropertyId(string? forPropertyId) =>
         Guid.TryParse(forPropertyId, out var parsed) && parsed != Guid.Empty ? parsed : null;
-
-    private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? "";
 }

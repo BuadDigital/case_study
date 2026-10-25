@@ -15,6 +15,8 @@ import {
   cn,
   EmptyState,
   InlineLoadingSkeleton,
+  MobileRecordCard,
+  MobileRecordList,
   PageShell,
   Spinner,
   Table,
@@ -209,42 +211,34 @@ export function AuditLogView() {
         <>
           {isDesktopViewport === true ? null : (
             // Phones: one card per event — the 5-column table clipped «الإجراء».
-            <ul className="m-0 flex list-none flex-col gap-2 p-0 lg:hidden">
+            <MobileRecordList className="lg:hidden">
               {entries.map((entry) => (
-                <li
+                <MobileRecordCard
                   key={entry.id}
-                  className="rounded-[12px] border border-border bg-surface px-3.5 py-3"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="min-w-0 text-[13.5px] font-bold text-heading">
-                      {auditActionLabel(entry.action)}
-                    </span>
-                    <span
-                      className="shrink-0 text-[11.5px] font-semibold text-text-2"
-                      title={entry.actorId}
-                    >
-                      {auditActorLabel(
-                        entry.actorId,
-                        actorNames,
-                        entry.actorDisplayName,
-                      )}
-                    </span>
-                  </div>
-                  <div className="mt-1 text-[12px] text-text-3">
-                    <bdi>{formatAt(entry.createdAtUtc)}</bdi>
-                  </div>
-                  <div
-                    className="mt-1 truncate text-[12.5px] text-text-2"
-                    title={`${entry.entityType} · ${entry.entityId}`}
-                  >
-                    {auditEntityLabel(entry.entityType, entry.entityId)}
-                  </div>
-                  <p className="m-0 mt-1 line-clamp-3 text-[12.5px] leading-snug text-text-2">
-                    {auditDetailSummary(entry.action, entry.before, entry.after)}
-                  </p>
-                </li>
+                  title={auditActionLabel(entry.action)}
+                  subtitle={<bdi>{formatAt(entry.createdAtUtc)}</bdi>}
+                  fields={[
+                    {
+                      label: "المستخدم",
+                      value: auditActorLabel(entry.actorId, actorNames, entry.actorDisplayName),
+                    },
+                    {
+                      label: "الكيان",
+                      value: auditEntityLabel(entry.entityType, entry.entityId),
+                    },
+                    {
+                      label: "التفاصيل",
+                      value: (
+                        <span className="line-clamp-3">
+                          {auditDetailSummary(entry.action, entry.before, entry.after)}
+                        </span>
+                      ),
+                      wide: true,
+                    },
+                  ]}
+                />
               ))}
-            </ul>
+            </MobileRecordList>
           )}
           {isDesktopViewport === false ? null : (
         <TableFrame className={cn(opsLetterCard, "hidden lg:block")}>

@@ -16,7 +16,6 @@ import {
   Tr,
   cn,
   opsMobileCard,
-  useToast,
 } from "@platform/ui-kit";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
@@ -26,7 +25,8 @@ import {
   type InspectorFeeAction,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
-import { runInspectorFeeTransition } from "@platform/app-shared/app-data/inspector-fees-api";
+import { useFeeTransition } from "./useFeeLedgerWrites";
+import { FeePhoneCards } from "./FeeLedgerParts";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
 import { PoNumber } from "../ui/PoNumber";
 
@@ -227,8 +227,7 @@ export function PartyFeeWorkflowTable({
   onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const { showToast, busyId, runFeeTransition } = useFeeTransition();
   const [reasonModal, setReasonModal] = useState<{
     row: InspectorFeeRowDto;
     action: ReasonAction;
@@ -241,26 +240,11 @@ export function PartyFeeWorkflowTable({
     onChanged?.();
   }, [onChanged, queryClient]);
 
-  const act = async (
+  const act = (
     row: InspectorFeeRowDto,
     action: InspectorFeeAction,
     extra?: { reason?: string },
-  ) => {
-    setBusyId(row.workflowTaskId);
-    try {
-      const result = await runInspectorFeeTransition(row.workflowTaskId, {
-        action,
-        reason: extra?.reason,
-      });
-      if (result.ok) {
-        await invalidate();
-        return;
-      }
-      showToast(result.error || "تعذّر تنفيذ الإجراء — حاول مرة أخرى", "error");
-    } finally {
-      setBusyId(null);
-    }
-  };
+  ) => runFeeTransition(row, action, extra, invalidate);
 
   const showActions = role !== "readonly";
   const onReason = (row: InspectorFeeRowDto, action: ReasonAction) =>
@@ -349,79 +333,68 @@ export function PartyFeeWorkflowTable({
         </div>
 
         <div className="lg:hidden">
-        {pending && rows.length === 0 ? (
-          <div className="space-y-2.5 p-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-[110px] animate-pulse rounded-[12px] bg-surface-2"
-              />
-            ))}
-          </div>
-        ) : rows.length === 0 ? (
-          <p className="m-0 px-3 py-8 text-center text-[13px] text-text-3">
-            لا بنود.
-          </p>
-        ) : (
-          <ul className="m-0 flex list-none flex-col gap-3 p-3 max-lg:px-0">
-            {rows.map((row) => {
-              const busy = busyId === row.workflowTaskId;
-              return (
-                <li
-                  key={`m-${row.workflowTaskId}`}
-                  className={cn(opsMobileCard, "border-s-[3px] border-s-gold")}
-                >
-                  <div className="mb-2 flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="text-[14px] font-bold text-heading">
-                        {row.propertyLabel}
-                      </div>
-                      <div className="mt-1">
-                        <PoNumber value={row.poNumber} link />
-                      </div>
+        <FeePhoneCards
+          pending={pending}
+          isEmpty={rows.length === 0}
+          placeholderHeight="h-[110px]"
+        >
+          {rows.map((row) => {
+            const busy = busyId === row.workflowTaskId;
+            return (
+              <li
+                key={`m-${row.workflowTaskId}`}
+                className={cn(opsMobileCard, "border-s-[3px] border-s-gold")}
+              >
+                <div className="mb-2 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-[14px] font-bold text-heading">
+                      {row.propertyLabel}
                     </div>
-                    <div className="shrink-0 text-end">
-                      <Sar value={row.netFeeSar} />
-                      {row.supervisorDiscountSar > 0 ? (
-                        <div className="mt-0.5 text-[10px] text-text-3">
-                          حسم {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
-                        </div>
-                      ) : null}
+                    <div className="mt-1">
+                      <PoNumber value={row.poNumber} link />
                     </div>
                   </div>
-                  <div className="mb-2.5 flex flex-wrap gap-1.5">
-                    <Badge tone={inspectorFeeWorkStatusTone(row.workStatus)}>
-                      {row.workStatusLabel}
-                    </Badge>
-                    <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
-                      {row.billingStatusLabel ||
-                        inspectorFeeStatusLabel(row.billingStatus)}
-                    </Badge>
+                  <div className="shrink-0 text-end">
+                    <Sar value={row.netFeeSar} />
+                    {row.supervisorDiscountSar > 0 ? (
+                      <div className="mt-0.5 text-[10px] text-text-3">
+                        حسم {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
+                      </div>
+                    ) : null}
                   </div>
-                  {row.disbursementVoucher ? (
-                    <p className="mb-2 m-0 text-[11px] text-text-3">
-                      {row.disbursementVoucher}
-                    </p>
-                  ) : null}
-                  {row.suspensionReason ? (
-                    <p className="mb-2 m-0 text-[11px] text-text-3">
-                      سبب الإيقاف: {row.suspensionReason}
-                    </p>
-                  ) : null}
-                  {showActions ? (
-                    <FeeRowActions
-                      row={row}
-                      role={role}
-                      busy={busy}
-                      onAct={(r, a) => void act(r, a)}
-                      onReason={onReason}
-                    />
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        )}
+                </div>
+                <div className="mb-2.5 flex flex-wrap gap-1.5">
+                  <Badge tone={inspectorFeeWorkStatusTone(row.workStatus)}>
+                    {row.workStatusLabel}
+                  </Badge>
+                  <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
+                    {row.billingStatusLabel ||
+                      inspectorFeeStatusLabel(row.billingStatus)}
+                  </Badge>
+                </div>
+                {row.disbursementVoucher ? (
+                  <p className="mb-2 m-0 text-[11px] text-text-3">
+                    {row.disbursementVoucher}
+                  </p>
+                ) : null}
+                {row.suspensionReason ? (
+                  <p className="mb-2 m-0 text-[11px] text-text-3">
+                    سبب الإيقاف: {row.suspensionReason}
+                  </p>
+                ) : null}
+                {showActions ? (
+                  <FeeRowActions
+                    row={row}
+                    role={role}
+                    busy={busy}
+                    onAct={(r, a) => void act(r, a)}
+                    onReason={onReason}
+                  />
+                ) : null}
+              </li>
+            );
+          })}
+        </FeePhoneCards>
         </div>
       </TableFrame>
 

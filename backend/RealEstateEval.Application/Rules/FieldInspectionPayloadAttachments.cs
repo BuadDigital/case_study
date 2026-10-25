@@ -13,65 +13,32 @@ public static class FieldInspectionPayloadAttachments
     {
         var refs = new List<FieldInspectionAttachmentRef>();
 
-        if (root.TryGetProperty("featurePhotoAttachments", out var featureAttachments) &&
-            featureAttachments.ValueKind == JsonValueKind.Object)
+        foreach (var prop in ObjectMembers(root, "featurePhotoAttachments"))
+            TryAdd(refs, prop.Value, $"feature:{prop.Name}");
+
+        foreach (var prop in ObjectMembers(root, "componentPhotoAttachments"))
+            TryAdd(refs, prop.Value, $"component:{prop.Name}");
+
+        foreach (var (slot, photo) in DefinedSlotPhotos(root))
         {
-            foreach (var prop in featureAttachments.EnumerateObject())
-            {
-                TryAdd(refs, prop.Value, $"feature:{prop.Name}");
-            }
+            var photoId = ReadInt(photo, "id");
+            if (photoId <= 0) continue;
+            TryAdd(refs, photo, $"slot:{slot}:{photoId}");
         }
 
-        if (root.TryGetProperty("componentPhotoAttachments", out var componentAttachments) &&
-            componentAttachments.ValueKind == JsonValueKind.Object)
+        foreach (var photo in ArrayItems(root, "freePhotos"))
         {
-            foreach (var prop in componentAttachments.EnumerateObject())
-            {
-                TryAdd(refs, prop.Value, $"component:{prop.Name}");
-            }
+            var photoId = ReadInt(photo, "id");
+            if (photoId <= 0) continue;
+            TryAdd(refs, photo, $"free:{photoId}");
         }
 
-        if (root.TryGetProperty("definedPhotos", out var definedPhotos) &&
-            definedPhotos.ValueKind == JsonValueKind.Object)
+        foreach (var obs in ArrayItems(root, "observations"))
         {
-            foreach (var slotProp in definedPhotos.EnumerateObject())
-            {
-                if (!slotProp.Value.TryGetProperty("photos", out var photos) ||
-                    photos.ValueKind != JsonValueKind.Array)
-                {
-                    continue;
-                }
-
-                foreach (var photo in photos.EnumerateArray())
-                {
-                    var photoId = ReadInt(photo, "id");
-                    if (photoId <= 0) continue;
-                    TryAdd(refs, photo, $"slot:{slotProp.Name}:{photoId}");
-                }
-            }
-        }
-
-        if (root.TryGetProperty("freePhotos", out var freePhotos) &&
-            freePhotos.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var photo in freePhotos.EnumerateArray())
-            {
-                var photoId = ReadInt(photo, "id");
-                if (photoId <= 0) continue;
-                TryAdd(refs, photo, $"free:{photoId}");
-            }
-        }
-
-        if (root.TryGetProperty("observations", out var observations) &&
-            observations.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var obs in observations.EnumerateArray())
-            {
-                var obsId = ReadString(obs, "id");
-                if (string.IsNullOrWhiteSpace(obsId)) continue;
-                if (!obs.TryGetProperty("photo", out var photo)) continue;
-                TryAdd(refs, photo, $"observation:{obsId}");
-            }
+            var obsId = ReadString(obs, "id");
+            if (string.IsNullOrWhiteSpace(obsId)) continue;
+            if (!obs.TryGetProperty("photo", out var photo)) continue;
+            TryAdd(refs, photo, $"observation:{obsId}");
         }
 
         return refs;
@@ -79,67 +46,55 @@ public static class FieldInspectionPayloadAttachments
 
     public static bool HasPhotosWithoutServerAttachment(JsonElement root)
     {
-        if (HasUnboundAttachment(root, "featurePhotoAttachments")) return true;
-        if (HasUnboundAttachment(root, "componentPhotoAttachments")) return true;
+        if (ObjectMembers(root, "featurePhotoAttachments").Any(prop => IsUnboundPhoto(prop.Value))) return true;
+        if (ObjectMembers(root, "componentPhotoAttachments").Any(prop => IsUnboundPhoto(prop.Value))) return true;
+        if (DefinedSlotPhotos(root).Any(slotPhoto => IsUnboundPhoto(slotPhoto.Photo))) return true;
+        if (ArrayItems(root, "freePhotos").Any(IsUnboundPhoto)) return true;
 
-        if (root.TryGetProperty("definedPhotos", out var definedPhotos) &&
-            definedPhotos.ValueKind == JsonValueKind.Object)
+        foreach (var obs in ArrayItems(root, "observations"))
         {
-            foreach (var slotProp in definedPhotos.EnumerateObject())
-            {
-                if (!slotProp.Value.TryGetProperty("photos", out var photos) ||
-                    photos.ValueKind != JsonValueKind.Array)
-                {
-                    continue;
-                }
-
-                foreach (var photo in photos.EnumerateArray())
-                {
-                    if (IsUnboundPhoto(photo))
-                        return true;
-                }
-            }
-        }
-
-        if (root.TryGetProperty("freePhotos", out var freePhotos) &&
-            freePhotos.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var photo in freePhotos.EnumerateArray())
-            {
-                if (IsUnboundPhoto(photo))
-                    return true;
-            }
-        }
-
-        if (root.TryGetProperty("observations", out var observations) &&
-            observations.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var obs in observations.EnumerateArray())
-            {
-                if (!obs.TryGetProperty("photo", out var photo)) continue;
-                if (IsUnboundPhoto(photo))
-                    return true;
-            }
+            if (!obs.TryGetProperty("photo", out var photo)) continue;
+            if (IsUnboundPhoto(photo))
+                return true;
         }
 
         return false;
     }
 
-    private static bool HasUnboundAttachment(JsonElement root, string propertyName)
+    /// <summary>Members of the named object; none when it is absent or not an object.</summary>
+    private static IEnumerable<JsonProperty> ObjectMembers(JsonElement root, string name)
     {
-        if (!root.TryGetProperty(propertyName, out var attachments) ||
-            attachments.ValueKind != JsonValueKind.Object)
-        {
-            return false;
-        }
+        if (!root.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Object)
+            yield break;
 
-        foreach (var prop in attachments.EnumerateObject())
-        {
-            if (IsUnboundPhoto(prop.Value))
-                return true;
-        }
+        foreach (var prop in value.EnumerateObject())
+            yield return prop;
+    }
 
-        return false;
+    /// <summary>Items of the named array; none when it is absent or not an array.</summary>
+    private static IEnumerable<JsonElement> ArrayItems(JsonElement root, string name)
+    {
+        if (!root.TryGetProperty(name, out var value) || value.ValueKind != JsonValueKind.Array)
+            yield break;
+
+        foreach (var item in value.EnumerateArray())
+            yield return item;
+    }
+
+    /// <summary>Every photo of every defined slot (<c>definedPhotos.{slot}.photos[]</c>), with its slot name.</summary>
+    private static IEnumerable<(string Slot, JsonElement Photo)> DefinedSlotPhotos(JsonElement root)
+    {
+        foreach (var slotProp in ObjectMembers(root, "definedPhotos"))
+        {
+            if (!slotProp.Value.TryGetProperty("photos", out var photos) ||
+                photos.ValueKind != JsonValueKind.Array)
+            {
+                continue;
+            }
+
+            foreach (var photo in photos.EnumerateArray())
+                yield return (slotProp.Name, photo);
+        }
     }
 
     private static bool IsUnboundPhoto(JsonElement attachment)

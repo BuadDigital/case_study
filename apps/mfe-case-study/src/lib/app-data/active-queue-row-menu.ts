@@ -16,6 +16,7 @@ import {
 import {
   canDeleteTransaction,
   canEditProperty,
+  canRaisePropertyFailure,
   canRedistributeParties,
   canRevertTaskPhase,
 } from "./po-roles";
@@ -220,12 +221,17 @@ export function buildActiveQueueRowMoreItems(
     });
   }
 
-  if (
-    (options.task.kind === "engineering-survey" ||
-      options.task.kind === "field-inspection" ||
-      options.task.kind === "property-appraisal") &&
-    propertyId
-  ) {
+  const isPartyTask =
+    options.task.kind === "engineering-survey" ||
+    options.task.kind === "field-inspection" ||
+    options.task.kind === "property-appraisal";
+  // Primary data and bourse rows — same gate as the PO properties list.
+  const isIntakeTask =
+    options.task.kind === "case-study-property" &&
+    (options.task.phase === "enfath" || options.task.phase === "bourse") &&
+    Boolean(options.viewerRole && canRaisePropertyFailure(options.viewerRole));
+
+  if ((isPartyTask || isIntakeTask) && propertyId) {
     const record = options.poByNumber?.get(po);
     const property = findPropertyForTask(record, options.task);
     items.push({
@@ -251,22 +257,32 @@ export function buildActiveQueueRowMoreItems(
   appendPhaseRevertItems(items, options);
 
   if (propertyId) {
-    items.push({
-      id: "property-detail",
-      label: "تفاصيل العقار",
-      onClick: () => options.router.push(poPropertyPath(po, propertyId)),
-    });
-    if (options.viewerRole && canEditProperty(options.viewerRole)) {
-      items.push({
-        id: "property-edit",
-        label: "تعديل العقار",
-        onClick: () =>
-          options.router.push(poPropertyEditPath(po, propertyId)),
-      });
-    }
+    appendPropertyLinkItems(items, po, propertyId, options);
   }
 
   return items;
+}
+
+/** «تفاصيل العقار» and, for editors, «تعديل العقار». */
+function appendPropertyLinkItems(
+  items: RowMoreMenuItem[],
+  po: string,
+  propertyId: string,
+  options: { router: { push: (href: string) => void }; viewerRole?: RoleId },
+): void {
+  items.push({
+    id: "property-detail",
+    label: "تفاصيل العقار",
+    onClick: () => options.router.push(poPropertyPath(po, propertyId)),
+  });
+  if (options.viewerRole && canEditProperty(options.viewerRole)) {
+    items.push({
+      id: "property-edit",
+      label: "تعديل العقار",
+      onClick: () =>
+        options.router.push(poPropertyEditPath(po, propertyId)),
+    });
+  }
 }
 
 export function buildBourseQueueRowMoreItems(
@@ -306,19 +322,7 @@ export function buildCaseStudyQueueRowMoreItems(options: {
   }
 
   if (propertyId) {
-    items.push({
-      id: "property-detail",
-      label: "تفاصيل العقار",
-      onClick: () => options.router.push(poPropertyPath(po, propertyId)),
-    });
-    if (options.viewerRole && canEditProperty(options.viewerRole)) {
-      items.push({
-        id: "property-edit",
-        label: "تعديل العقار",
-        onClick: () =>
-          options.router.push(poPropertyEditPath(po, propertyId)),
-      });
-    }
+    appendPropertyLinkItems(items, po, propertyId, options);
   }
 
   return items;

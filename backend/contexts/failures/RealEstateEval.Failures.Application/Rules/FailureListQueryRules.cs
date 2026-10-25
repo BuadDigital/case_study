@@ -1,4 +1,5 @@
 using RealEstateEval.Failures.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Failures.Application.Rules;
 
@@ -44,7 +45,7 @@ public static class FailureListQueryRules
     ];
 
     public static FailureListSortKey ResolveSort(string? sort) =>
-        Normalize(sort) switch
+        ListQueryText.Normalize(sort) switch
         {
             SortCreated => FailureListSortKey.Created,
             SortPo => FailureListSortKey.PoNumber,
@@ -53,12 +54,7 @@ public static class FailureListQueryRules
         };
 
     public static bool ResolveDescending(string? dir) =>
-        Normalize(dir) switch
-        {
-            DirAscending => false,
-            DirDescending => true,
-            _ => DefaultDescending,
-        };
+        ListQueryText.ResolveDescending(dir, DefaultDescending);
 
  /// <summary>
  /// CSV of persisted statuses. Unrecognised tokens are dropped; an all-unknown list yields no
@@ -82,10 +78,8 @@ public static class FailureListQueryRules
     }
 
     public static string? NormalizeExact(string? value) =>
-        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        ListQueryText.NormalizeExact(value);
 
     public static string? NormalizeSearch(string? q) =>
-        string.IsNullOrWhiteSpace(q) ? null : q.Trim();
-
-    private static string Normalize(string? value) => value?.Trim().ToLowerInvariant() ?? "";
+        ListQueryText.NormalizeSearch(q);
 }

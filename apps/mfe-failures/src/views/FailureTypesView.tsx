@@ -7,6 +7,7 @@ import {
   cn,
   EmptyState,
   InlineLoadingSkeleton,
+  OpsIcon,
   PageShell,
   QueryErrorState,
   Spinner,
@@ -45,24 +46,6 @@ function canManageFailureTypes(role: RoleId): boolean {
 const FOLDER_ICON =
   "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z";
 const PLUS_ICON = "M12 5v14M5 12h14";
-
-function OpsIcon({ path, size = 20 }: { path: string; size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d={path} />
-    </svg>
-  );
-}
 
 export function FailureTypesView() {
   const queryClient = useQueryClient();

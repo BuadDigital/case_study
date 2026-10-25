@@ -1,6 +1,6 @@
 "use client";
 
-import { MobileRecordCard, MobileRecordList, cn } from "@platform/ui-kit";
+import { MobileRecordCard, MobileRecordList, PhoneField, cn } from "@platform/ui-kit";
 
 import { costGroupOf } from "./lib/cost-line-math";
 import { fmt } from "./lib/shell-utils";
@@ -20,9 +20,6 @@ import {
   DirectTotalFooter,
   costLineEditor,
 } from "./CostApproachLineEditors";
-
-/** Phone field label (above a full-width input). */
-const phoneLabelClass = "mb-1 block text-[11px] font-medium text-text-3";
 
 /**
  * Phone layout — per group: a header with its subtotal, one card per line
@@ -115,33 +112,30 @@ export function CostApproachLinesPhone({
                     }
                   >
                     <div className="grid grid-cols-2 gap-x-3 gap-y-2.5">
-                      <div className="col-span-2">
-                        <span className={phoneLabelClass}>البند</span>
+                      <PhoneField label="البند" className="col-span-2">
                         <CostLineNameField {...ed} />
-                      </div>
-                      <label className={cn("min-w-0", !comp.usesPct && "col-span-2")}>
-                        <span className={phoneLabelClass}>
-                          {comp.isRepeated ? "عدد الأدوار المتكررة" : "المساحة / العدد"}
-                        </span>
+                      </PhoneField>
+                      <PhoneField
+                        as="label"
+                        label={comp.isRepeated ? "عدد الأدوار المتكررة" : "المساحة / العدد"}
+                        className={cn(!comp.usesPct && "col-span-2")}
+                      >
                         <CostLineQtyInput {...ed} />
-                      </label>
+                      </PhoneField>
                       {comp.usesPct ? (
-                        <label className="min-w-0">
-                          <span className={phoneLabelClass}>نسبة البناء (٪)</span>
+                        <PhoneField as="label" label="نسبة البناء (٪)">
                           <CostLineBuildRatioInput {...ed} />
-                        </label>
+                        </PhoneField>
                       ) : null}
                       <div className="col-span-2 -mt-1.5">
                         <CostLineQtyNote {...ed} />
                       </div>
-                      <label className="min-w-0">
-                        <span className={phoneLabelClass}>الوحدة</span>
+                      <PhoneField as="label" label="الوحدة">
                         <CostLineUnitSelect {...ed} />
-                      </label>
-                      <label className="min-w-0">
-                        <span className={phoneLabelClass}>سعر المتر / تكلفة الوحدة</span>
+                      </PhoneField>
+                      <PhoneField as="label" label="سعر المتر / تكلفة الوحدة">
                         <CostLineUnitCostInput {...ed} />
-                      </label>
+                      </PhoneField>
                       <div className="col-span-2 flex items-start justify-between gap-3 rounded-[9px] bg-surface-2 px-3 py-2">
                         <span className="text-[11.5px] font-semibold text-text-2">
                           الإجمالي
@@ -153,10 +147,9 @@ export function CostApproachLinesPhone({
                           <CostLineTotal {...ed} />
                         </div>
                       </div>
-                      <label className="col-span-2">
-                        <span className={phoneLabelClass}>مبرر التقدير</span>
+                      <PhoneField as="label" label="مبرر التقدير" className="col-span-2">
                         <CostLineRationaleInput {...ed} />
-                      </label>
+                      </PhoneField>
                     </div>
                   </MobileRecordCard>
                 );

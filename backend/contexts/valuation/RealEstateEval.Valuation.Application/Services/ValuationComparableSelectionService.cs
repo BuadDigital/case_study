@@ -72,16 +72,9 @@ public sealed partial class ValuationComparableSelectionService(
         if (vr is null)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
 
-        if (vr.Status == ValuationRequestStatus.Done)
-            return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل المقارنات" });
-        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
-        if (frozenMessage is not null)
-        {
-            return (
-                null,
-                new Dictionary<string, string> { ["_"] = frozenMessage });
-        }
+        var blocked = await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات", cancellationToken);
+        if (blocked is not null)
+            return (null, new Dictionary<string, string> { ["_"] = blocked });
 
         var items = request.Items ?? [];
         var (ids, errors) = ValuationComparableSelectionRequestRules.ValidateReplaceItems(items);
@@ -137,12 +130,9 @@ public sealed partial class ValuationComparableSelectionService(
     {
         var vr = await repo.GetRequestAsync(valuationRequestId, cancellationToken);
         if (vr is null) return (null, "طلب التقييم غير موجود");
-        if (vr.Status == ValuationRequestStatus.Done)
-            return (null, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات");
-        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
-        if (frozenMessage is not null)
-            return (null, frozenMessage);
+        var blocked = await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات", cancellationToken);
+        if (blocked is not null)
+            return (null, blocked);
 
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         var row = await repo.FindSelectionByComparableAsync(
@@ -199,12 +189,9 @@ public sealed partial class ValuationComparableSelectionService(
     {
         var vr = await repo.GetRequestAsync(valuationRequestId, cancellationToken);
         if (vr is null) return (false, "طلب التقييم غير موجود");
-        if (vr.Status == ValuationRequestStatus.Done)
-            return (false, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات");
-        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
-        if (frozenMessage is not null)
-            return (false, frozenMessage);
+        var blocked = await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات", cancellationToken);
+        if (blocked is not null)
+            return (false, blocked);
 
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         var row = await repo.FindSelectionByComparableAsync(
@@ -226,16 +213,9 @@ public sealed partial class ValuationComparableSelectionService(
         var vr = await repo.GetRequestAsync(valuationRequestId, cancellationToken);
         if (vr is null)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
-        if (vr.Status == ValuationRequestStatus.Done)
-            return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل — لا يمكن تعديل التسويات" });
-        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
-        if (frozenMessage is not null)
-        {
-            return (
-                null,
-                new Dictionary<string, string> { ["_"] = frozenMessage });
-        }
+        var blocked = await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل — لا يمكن تعديل التسويات", cancellationToken);
+        if (blocked is not null)
+            return (null, new Dictionary<string, string> { ["_"] = blocked });
 
         var row = await repo.FindSelectionAsync(valuationRequestId, selectionId, cancellationToken);
         if (row is null)

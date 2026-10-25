@@ -12,6 +12,7 @@ import {
   Textarea,
   Th,
   Tr,
+  YesNoToggle,
   cn,
   opsLetterCard,
 } from "@platform/ui-kit";
@@ -24,62 +25,9 @@ const EMPTY_CHECKLIST_ROW: EngineeringSurveyChecklistRow = {
   note: "",
 };
 
-function YesNoToggle({
-  name,
-  value,
-  disabled,
-  onChange,
-  block,
-}: {
-  name: string;
-  value: "yes" | "no" | null;
-  disabled?: boolean;
-  onChange: (next: "yes" | "no") => void;
-  /** Phone card: full width, 44px-tall halves. */
-  block?: boolean;
-}) {
-  return (
-    <div
-      role="radiogroup"
-      aria-label="نعم أو لا"
-      className={cn(
-        "inline-flex rounded-[var(--radius-DEFAULT)] border border-border-md bg-surface-2 p-0.5",
-        block && "flex w-full",
-      )}
-    >
-      {(
-        [
-          ["yes", "نعم"],
-          ["no", "لا"],
-        ] as const
-      ).map(([v, label]) => {
-        const on = value === v;
-        return (
-          <button
-            key={v}
-            type="button"
-            role="radio"
-            name={name}
-            aria-checked={on}
-            disabled={disabled}
-            onClick={() => onChange(v)}
-            className={cn(
-              "min-w-[44px] rounded-[calc(var(--radius-DEFAULT)-2px)] border border-transparent px-2.5 py-1.5 text-[12px] font-semibold transition-colors",
-              block && "min-h-11 flex-1 text-[13px]",
-              "disabled:cursor-not-allowed disabled:opacity-55",
-              on
-                ? v === "yes"
-                  ? "border-[color-mix(in_srgb,#3f8f5f_35%,transparent)] bg-[color-mix(in_srgb,#3f8f5f_14%,transparent)] text-[#2f7a4d]"
-                  : "border-[color-mix(in_srgb,#d9694f_35%,transparent)] bg-[color-mix(in_srgb,#d9694f_12%,transparent)] text-[#a5432e]"
-                : "bg-transparent text-text-2 hover:bg-surface hover:text-heading",
-            )}
-          >
-            {label}
-          </button>
-        );
-      })}
-    </div>
-  );
+/** Survey rows store «yes» / «no»; the shared toggle speaks booleans. */
+function answerIsYes(answer: EngineeringSurveyChecklistRow["answer"]): boolean | null {
+  return answer === null ? null : answer === "yes";
 }
 
 function ChecklistNoteField({
@@ -162,9 +110,9 @@ export function EngineeringSurveyChecklist({
                 <YesNoToggle
                   block
                   name={`m-eng-q-${index}`}
-                  value={row.answer}
+                  value={answerIsYes(row.answer)}
                   disabled={disabled}
-                  onChange={(value) => patchRow(index, { answer: value })}
+                  onChange={(yes) => patchRow(index, { answer: yes ? "yes" : "no" })}
                 />
                 <label className="mt-2.5 block">
                   <span className="mb-1 block text-[11px] font-medium text-text-3">
@@ -208,10 +156,10 @@ export function EngineeringSurveyChecklist({
                       <div className="flex justify-center">
                         <YesNoToggle
                           name={`eng-q-${index}`}
-                          value={row.answer}
+                          value={answerIsYes(row.answer)}
                           disabled={disabled}
-                          onChange={(value) =>
-                            patchRow(index, { answer: value })
+                          onChange={(yes) =>
+                            patchRow(index, { answer: yes ? "yes" : "no" })
                           }
                         />
                       </div>

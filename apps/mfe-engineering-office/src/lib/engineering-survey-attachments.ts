@@ -216,40 +216,38 @@ export function listEngineeringSurveyDocuments(
   return entries;
 }
 
-/** Appends one more PDF to the survey report; the first file stays the required one. */
-export async function addEngineeringSurveyExtraReport(
+function isPdfFile(file: File): boolean {
+  return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+}
+
+/**
+ * Uploads through the attachment service and keeps metadata + attachmentId only — never
+ * dataUrl bytes in the payload. `null` when the service did not store the file.
+ */
+async function uploadSurveyAttachment(
+  scope: string,
   taskId: string,
   file: File,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  if (!taskId) return { ok: false, error: "تعذّر حفظ الملف." };
-  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-    return { ok: false, error: "يُقبل ملف PDF فقط." };
-  }
-  if (file.size > MAX_SURVEY_REPORT_BYTES) return { ok: false, error: "الحجم الأقصى 20 ميجابايت." };
-  const current = loadEngineeringSurveySubmission(taskId);
-  if (!current || current.status === "submitted") {
-    return { ok: false, error: "لا يمكن تعديل الرفع بعد الإرسال." };
-  }
-  if (!current.surveyReportFileName.trim()) {
-    return { ok: false, error: "ارفع التقرير المساحي الأساسي أولاً." };
-  }
-
-  const uploaded = await uploadTaskScopedAttachment(
-    FIELD_META.surveyReport.scope,
-    taskId,
-    file,
-    { keepOthers: true },
-  );
-  if (!uploaded?.attachmentId) {
-    return { ok: false, error: "تعذّر حفظ الملف عبر خدمة المرفقات." };
-  }
-  const attachment = stripDataUrl({
+  options?: { keepOthers?: boolean },
+): Promise<CachedEngineeringSurveyFile | null> {
+  const uploaded = await uploadTaskScopedAttachment(scope, taskId, file, options);
+  if (!uploaded?.attachmentId) return null;
+  return stripDataUrl({
     fileName: uploaded.fileName,
     mimeType: uploaded.mimeType,
     sizeBytes: uploaded.sizeBytes,
     attachmentId: uploaded.attachmentId,
   });
+}
 
+/**
+ * Writes an uploaded file's fields onto the latest draft, inside the write queue. `fields` gets
+ * the cached payload so it can extend a list already there.
+ */
+function writeUploadedFileToDraft(
+  taskId: string,
+  fields: (payload: Record<string, unknown> | undefined) => Record<string, unknown>,
+): Promise<{ ok: true } | { ok: false; error: string }> {
   return enqueueEngineeringSurveyDraftWrite(taskId, async () => {
     const latest = loadEngineeringSurveySubmission(taskId);
     if (!latest || latest.status === "submitted") {
@@ -259,7 +257,7 @@ export async function addEngineeringSurveyExtraReport(
     const payload: Record<string, unknown> = {
       ...(dto?.payload ?? {}),
       ...latest,
-      [EXTRA_REPORTS_KEY]: [...extraReportsFromPayload(dto?.payload), attachment],
+      ...fields(dto?.payload),
       updatedAtUtc: new Date().toISOString(),
     };
     const saved = await persistPartySubmissionPayload(taskId, payload);
@@ -267,6 +265,32 @@ export async function addEngineeringSurveyExtraReport(
     notifyChanged();
     return { ok: true as const };
   });
+}
+
+/** Appends one more PDF to the survey report; the first file stays the required one. */
+export async function addEngineeringSurveyExtraReport(
+  taskId: string,
+  file: File,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!taskId) return { ok: false, error: "تعذّر حفظ الملف." };
+  if (!isPdfFile(file)) return { ok: false, error: "يُقبل ملف PDF فقط." };
+  if (file.size > MAX_SURVEY_REPORT_BYTES) return { ok: false, error: "الحجم الأقصى 20 ميجابايت." };
+  const current = loadEngineeringSurveySubmission(taskId);
+  if (!current || current.status === "submitted") {
+    return { ok: false, error: "لا يمكن تعديل الرفع بعد الإرسال." };
+  }
+  if (!current.surveyReportFileName.trim()) {
+    return { ok: false, error: "ارفع التقرير المساحي الأساسي أولاً." };
+  }
+
+  const attachment = await uploadSurveyAttachment(FIELD_META.surveyReport.scope, taskId, file, {
+    keepOthers: true,
+  });
+  if (!attachment) return { ok: false, error: "تعذّر حفظ الملف عبر خدمة المرفقات." };
+
+  return writeUploadedFileToDraft(taskId, (payload) => ({
+    [EXTRA_REPORTS_KEY]: [...extraReportsFromPayload(payload), attachment],
+  }));
 }
 
 /** Removes one appended PDF; the primary report is cleared through `clearEngineeringSurveyFile`. */
@@ -303,9 +327,7 @@ export async function cacheEngineeringSurveyFile(
   file: File,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   if (!taskId) return { ok: false, error: "تعذّر حفظ الملف." };
-  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
-    return { ok: false, error: "يُقبل ملف PDF فقط." };
-  }
+  if (!isPdfFile(file)) return { ok: false, error: "يُقبل ملف PDF فقط." };
 
   const meta = FIELD_META[field];
   if (file.size > meta.maxBytes) {
@@ -323,39 +345,15 @@ export async function cacheEngineeringSurveyFile(
     return { ok: false, error: "لا يمكن تعديل الرفع بعد الإرسال." };
   }
 
-  const uploaded = await uploadTaskScopedAttachment(meta.scope, taskId, file);
-  if (!uploaded?.attachmentId) {
-    return { ok: false, error: "تعذّر حفظ الملف عبر خدمة المرفقات." };
-  }
-
-  // Persist metadata + attachmentId only — never dataUrl bytes in the payload.
-  const attachment = stripDataUrl({
-    fileName: uploaded.fileName,
-    mimeType: uploaded.mimeType,
-    sizeBytes: uploaded.sizeBytes,
-    attachmentId: uploaded.attachmentId,
-  });
+  const attachment = await uploadSurveyAttachment(meta.scope, taskId, file);
+  if (!attachment) return { ok: false, error: "تعذّر حفظ الملف عبر خدمة المرفقات." };
 
   // The upload took time: rebuild from the cache *inside* the write queue so a
   // coordinate/checklist write that landed meanwhile is not erased.
-  return enqueueEngineeringSurveyDraftWrite(taskId, async () => {
-    const latest = loadEngineeringSurveySubmission(taskId);
-    if (!latest || latest.status === "submitted") {
-      return { ok: false as const, error: "لا يمكن تعديل الرفع بعد الإرسال." };
-    }
-    const dto = getCachedPartySubmission(taskId);
-    const payload: Record<string, unknown> = {
-      ...(dto?.payload ?? {}),
-      ...latest,
-      [meta.fileNameKey]: file.name,
-      [meta.attachmentKey]: attachment,
-      updatedAtUtc: new Date().toISOString(),
-    };
-    const saved = await persistPartySubmissionPayload(taskId, payload);
-    if (!saved) return { ok: false as const, error: "تعذّر حفظ الملف." };
-    notifyChanged();
-    return { ok: true as const };
-  });
+  return writeUploadedFileToDraft(taskId, () => ({
+    [meta.fileNameKey]: file.name,
+    [meta.attachmentKey]: attachment,
+  }));
 }
 
 export async function clearEngineeringSurveyFile(

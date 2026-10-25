@@ -41,6 +41,17 @@ public static class IntegrationEventEnvelopeReader
         }
     }
 
+    /// <summary>The envelope's event type for a handler; throws when the envelope carries none.</summary>
+    public static string? ReadEventType(JsonElement root) =>
+        GetProperty(root, "eventType", "EventType").GetString();
+
+    /// <summary>The envelope's payload element for a handler; throws when the envelope carries none.</summary>
+    public static JsonElement ReadPayload(JsonElement root) =>
+        GetProperty(root, "payload", "Payload");
+
+    private static JsonElement GetProperty(JsonElement root, string camelCase, string pascalCase) =>
+        root.TryGetProperty(camelCase, out var value) ? value : root.GetProperty(pascalCase);
+
     private static bool TryGetProperty(
         JsonElement root,
         string camelCase,

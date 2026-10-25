@@ -6,6 +6,7 @@ import {
   Label,
   MobileRecordCard,
   MobileRecordList,
+  PhoneField,
   Select,
   TBody,
   Table,
@@ -23,7 +24,6 @@ import {
 } from "../../lib/app-data/po-intake-data";
 import { useFacadeOptions } from "../../query/use-facade-options";
 import { FALLBACK_FACADE_OPTIONS } from "../field-inspection/inspector-wizard-state";
-import { PhoneField } from "./PhoneField";
 
 type BoundaryRow = (typeof PROPERTY_BOUNDARY_ROWS)[number];
 

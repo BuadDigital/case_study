@@ -1,12 +1,9 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import {
-  getTransactionByProperty,
-  getTransactionTimeline,
-  type TransactionDetailDto,
-} from "@platform/api-client";
+import { getTransactionTimeline } from "@platform/api-client";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { useTransactionByPropertyQuery } from "@platform/app-shared/query/transaction-by-property-query";
 import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
@@ -21,22 +18,7 @@ const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;
 
 /** The transaction (المعاملة) a deed belongs to, with every deed in it. `null` when the deed has none (older rows). */
-export function useTransactionQuery(propertyId: string | null | undefined) {
-  const property = propertyId?.trim() ?? "";
-  return useQuery<TransactionDetailDto | null>({
-    queryKey: appDataKeys.transactionByProperty(property),
-    queryFn: async () => {
-      const config = requireWorkOrdersApiConfig();
-      if (!property) return null;
-      const result = await getTransactionByProperty(config, property);
-      if (!result.ok && result.kind === "not_found") return null;
-      return unwrapApiResult(result, "تعذّر تحميل بيانات المعاملة");
-    },
-    enabled: Boolean(property),
-    staleTime: STALE_MS,
-    gcTime: GC_MS,
-  });
-}
+export const useTransactionQuery = useTransactionByPropertyQuery;
 
 /**
  * The timeline a property page shows: the transaction's merged timeline when it has several

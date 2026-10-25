@@ -18,7 +18,6 @@ import {
   cn,
   opsMobileCard,
   pageToolbarClassName,
-  useToast,
 } from "@platform/ui-kit";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
@@ -27,8 +26,9 @@ import {
   type InspectorFeeRowDto,
 } from "@platform/api-client";
 import { PoNumber } from "../ui/PoNumber";
+import { useFeeTransition } from "../fees/useFeeLedgerWrites";
+import { FeePhoneCards } from "../fees/FeeLedgerParts";
 import {
-  runInspectorFeeTransition,
   saveInspectorFeePatch,
 } from "@platform/app-shared/app-data/inspector-fees-api";
 import { FeeDiscountModal } from "@platform/app-shared/fees/FeeDiscountModal";
@@ -182,9 +182,8 @@ export function InspectorFeesBillingTable({
   onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
+  const { showToast, busyId, setBusyId, runFeeTransition } = useFeeTransition();
   const [drafts, setDrafts] = useState<Record<string, RowDraft>>({});
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [discountRow, setDiscountRow] = useState<InspectorFeeRowDto | null>(
     null,
@@ -252,27 +251,11 @@ export function InspectorFeesBillingTable({
     }
   };
 
-  const transitionRow = async (
+  const transitionRow = (
     row: InspectorFeeRowDto,
     action: import("@platform/api-client").InspectorFeeAction,
     extra?: { reason?: string; disbursementVoucher?: string },
-  ) => {
-    setBusyId(row.workflowTaskId);
-    try {
-      const result = await runInspectorFeeTransition(row.workflowTaskId, {
-        action,
-        reason: extra?.reason,
-        disbursementVoucher: extra?.disbursementVoucher,
-      });
-      if (result.ok) {
-        await invalidate();
-        return;
-      }
-      showToast(result.error || "تعذّر تنفيذ الإجراء — حاول مرة أخرى", "error");
-    } finally {
-      setBusyId(null);
-    }
-  };
+  ) => runFeeTransition(row, action, extra, invalidate);
 
   const batchSave = async () => {
     const ids = [...selected];
@@ -592,52 +575,41 @@ export function InspectorFeesBillingTable({
       </div>
 
       <div className="lg:hidden">
-        {pending && rows.length === 0 ? (
-          <div className="space-y-2.5 p-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-[100px] animate-pulse rounded-[12px] bg-surface-2"
-              />
-            ))}
-          </div>
-        ) : rows.length === 0 ? (
-          <p className="m-0 px-3 py-8 text-center text-[13px] text-text-3">
-            لا بنود.
-          </p>
-        ) : (
-          <ul className="m-0 flex list-none flex-col gap-3 p-3 max-lg:px-0">
-            {rows.map((row) => (
-              <li
-                key={`m-bill-${row.workflowTaskId}`}
-                className={cn(opsMobileCard, "border-s-[3px] border-s-ink")}
-              >
-                <div className="mb-2 flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-[14px] font-bold text-heading">
-                      {row.propertyLabel}
-                    </div>
-                    <div className="mt-1">
-                      <PoNumber value={row.poNumber} link />
-                    </div>
-                    <div className="mt-1 text-[11px] text-text-3">
-                      {row.inspectorType || partyTypeColumn}
-                    </div>
+        <FeePhoneCards
+          pending={pending}
+          isEmpty={rows.length === 0}
+          placeholderHeight="h-[100px]"
+        >
+          {rows.map((row) => (
+            <li
+              key={`m-bill-${row.workflowTaskId}`}
+              className={cn(opsMobileCard, "border-s-[3px] border-s-ink")}
+            >
+              <div className="mb-2 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-[14px] font-bold text-heading">
+                    {row.propertyLabel}
                   </div>
-                  <div className="shrink-0 text-end">
-                    <Sar value={row.netFeeSar} />
-                    {row.supervisorDiscountSar > 0 ? (
-                      <div className="mt-0.5 text-[10px] text-danger-text">
-                        حسم {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
-                      </div>
-                    ) : null}
+                  <div className="mt-1">
+                    <PoNumber value={row.poNumber} link />
+                  </div>
+                  <div className="mt-1 text-[11px] text-text-3">
+                    {row.inspectorType || partyTypeColumn}
                   </div>
                 </div>
-                <FeeStatusBadge row={row} />
-              </li>
-            ))}
-          </ul>
-        )}
+                <div className="shrink-0 text-end">
+                  <Sar value={row.netFeeSar} />
+                  {row.supervisorDiscountSar > 0 ? (
+                    <div className="mt-0.5 text-[10px] text-danger-text">
+                      حسم {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+              <FeeStatusBadge row={row} />
+            </li>
+          ))}
+        </FeePhoneCards>
       </div>
 
       <FeeDiscountModal

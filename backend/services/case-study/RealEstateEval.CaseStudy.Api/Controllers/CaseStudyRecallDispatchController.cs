@@ -53,19 +53,8 @@ public sealed class CaseStudyRecallDispatchController(
         return RecallErrors(errors, PartyTaskSubmissionService.NewVersionForbiddenAr);
     }
 
-    private async Task<PartySubmissionActor> ResolveActorAsync(CancellationToken cancellationToken)
-    {
-        var userId = ActorClaims.Id(User);
-        var known = !string.IsNullOrWhiteSpace(userId) && userId != "unknown";
-        var perms = known ? await permissions.GetForUserIdAsync(userId, cancellationToken) : null;
-        return new PartySubmissionActor
-        {
-            UserId = known ? userId : "",
-            DisplayName = ActorClaims.DisplayName(User),
-            PrototypeRole = perms?.PrototypeRole,
-            DistributionAssigneeId = perms?.DistributionAssigneeId,
-        };
-    }
+    private Task<PartySubmissionActor> ResolveActorAsync(CancellationToken cancellationToken) =>
+        PartySubmissionActors.ResolveAsync(User, permissions, cancellationToken);
 
     private ActionResult RecallErrors(Dictionary<string, string> errors, string forbiddenMessage)
     {

@@ -7,28 +7,28 @@ import type {
   UpdateStaffUserRequest,
 } from "@platform/api-client";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
-import { adminStaffRoleOptions } from "@platform/app-shared/users/admin-staff-roles";
 import {
   isSectionSupervisorRole,
   SUPERVISOR_DEPARTMENT_OPTIONS,
 } from "@platform/app-shared/users/admin-staff-roles";
 import {
-  RegField,
-  RegSelect,
-} from "@platform/app-shared/registration/FormFields";
-import {
   mergeFieldErrors,
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
 import {
+  applyRoleChange,
   professionalEquals,
   professionalFromRow,
   staffRoleChangeBlocked,
   staffRoleSelectLocked,
   unlinkedRosterRows,
+  withoutFieldError,
+  withoutRoleErrors,
+  type StaffFormState,
   type StaffProfessional,
 } from "../views/users/users-organization-state";
 import { StaffProfessionalFields } from "./StaffProfessionalFields";
+import { StaffUserFormFields } from "./StaffUserFormFields";
 import {
   Button,
   ModalBody,
@@ -38,40 +38,9 @@ import {
   ModalOverlay,
   ModalTitle,
   Note,
-  cn,
 } from "@platform/ui-kit";
-import { FormSectionLabel } from "./FormSectionLabel";
 
-const ROLE_OPTIONS = adminStaffRoleOptions();
-const ROLE_SELECT_OPTIONS = ROLE_OPTIONS.map((o) => ({
-  value: o.value,
-  label: o.label,
-}));
-const SUPERVISOR_DEPARTMENT_SELECT_OPTIONS = SUPERVISOR_DEPARTMENT_OPTIONS.map(
-  (o) => ({ value: o.value, label: o.label }),
-);
-const INSPECTOR_TYPE_OPTIONS = [
-  { value: "employee", label: "موظف" },
-  { value: "contractor", label: "متعاون" },
-];
-
-type FormState = {
-  displayName: string;
-  mobile: string;
-  city: string;
-  roleId: RoleId | "";
-  department: string;
-  nationalId: string;
-  inspectorType: "employee" | "contractor" | "";
-  hasCompensation: boolean;
-  feeValueSar: string;
-  iban: string;
-  taxNumber: string;
-  commercialRegistration: string;
-  joinedAt: string;
-};
-
-function initialForm(user: StaffUser): FormState {
+function initialForm(user: StaffUser): StaffFormState {
   return {
     displayName: user.name ?? "",
     mobile: user.phone ?? "",
@@ -92,7 +61,7 @@ function initialForm(user: StaffUser): FormState {
   };
 }
 
-function validate(form: FormState): FieldErrors {
+function validate(form: StaffFormState): FieldErrors {
   return mergeFieldErrors(
     form.displayName.trim() ? undefined : { displayName: "الاسم مطلوب." },
     form.mobile.trim() ? undefined : { mobile: "رقم الجوال مطلوب." },
@@ -125,8 +94,8 @@ function validate(form: FormState): FieldErrors {
  * server keeps its stored value; a cleared optional field is sent as an empty string.
  */
 function buildPatch(
-  form: FormState,
-  original: FormState,
+  form: StaffFormState,
+  original: StaffFormState,
 ): UpdateStaffUserRequest {
   const patch: UpdateStaffUserRequest = {};
 
@@ -199,7 +168,7 @@ export function EditStaffUserModal({
   onClose: () => void;
 }) {
   const original = useMemo(() => initialForm(user), [user]);
-  const [form, setForm] = useState<FormState>(original);
+  const [form, setForm] = useState<StaffFormState>(original);
   const originalPro = useMemo(
     () => professionalFromRow(rosterRow, user.roleId),
     [rosterRow, user.roleId],
@@ -208,14 +177,14 @@ export function EditStaffUserModal({
   const [errors, setErrors] = useState<FieldErrors>({});
   const roleLockReason = staffRoleSelectLocked(viewerUserId, user, users);
 
-  function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
+  function updateField<K extends keyof StaffFormState>(key: K, value: StaffFormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
-    setErrors((prev) => {
-      if (!prev[key]) return prev;
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
+    setErrors((prev) => withoutFieldError(prev, key));
+  }
+
+  function changeRole(roleId: RoleId | "") {
+    setForm((prev) => applyRoleChange(prev, roleId));
+    setErrors((prev) => withoutRoleErrors(prev));
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -271,171 +240,15 @@ export function EditStaffUserModal({
             أسفل النموذج.
           </p>
           <form id="edit-staff-user" onSubmit={(e) => void handleSubmit(e)}>
-            <div className="grid gap-x-4 gap-y-3.5 sm:grid-cols-2">
-              <FormSectionLabel>البيانات الأساسية</FormSectionLabel>
-              <RegField
-                id="edit-displayName"
-                label="الاسم"
-                required
-                placeholder="الاسم الكامل"
-                value={form.displayName}
-                onChange={(v) => updateField("displayName", v)}
-                error={errors.displayName}
-              />
-              <RegSelect
-                id="edit-roleId"
-                label="الدور"
-                required
-                placeholder="اختر الدور"
-                options={ROLE_SELECT_OPTIONS}
-                value={form.roleId}
-                disabled={Boolean(roleLockReason)}
-                hint={roleLockReason ?? undefined}
-                onChange={(v) => {
-                  const roleId = v as RoleId | "";
-                  setForm((prev) => ({
-                    ...prev,
-                    roleId,
-                    department: isSectionSupervisorRole(roleId)
-                      ? prev.department
-                      : "",
-                  }));
-                  setErrors((prev) => {
-                    const next = { ...prev };
-                    delete next.roleId;
-                    delete next.department;
-                    return next;
-                  });
-                }}
-                error={errors.roleId}
-              />
-              <RegField
-                id="edit-mobile"
-                label="رقم الجوال"
-                required
-                dir="ltr"
-                inputMode="tel"
-                placeholder="05xxxxxxxx"
-                value={form.mobile}
-                onChange={(v) => updateField("mobile", v)}
-                error={errors.mobile}
-                hint="تغييره يُلغي تأكيد الرقم"
-              />
-              <RegField
-                id="edit-city"
-                label="المدينة"
-                required
-                placeholder="مثال: الرياض"
-                value={form.city}
-                onChange={(v) => updateField("city", v)}
-                error={errors.city}
-              />
-              {isSectionSupervisorRole(form.roleId) ? (
-                <RegSelect
-                  id="edit-department"
-                  label="قسم الإشراف"
-                  required
-                  placeholder="اختر القسم"
-                  options={SUPERVISOR_DEPARTMENT_SELECT_OPTIONS}
-                  value={form.department}
-                  onChange={(v) => updateField("department", v)}
-                  error={errors.department}
-                />
-              ) : null}
-              {form.roleId === "field-inspector" ? (
-                <RegSelect
-                  id="edit-inspectorType"
-                  label="نوع المعاين"
-                  required
-                  placeholder="اختر النوع"
-                  options={INSPECTOR_TYPE_OPTIONS}
-                  value={form.inspectorType}
-                  onChange={(v) =>
-                    updateField("inspectorType", v as FormState["inspectorType"])
-                  }
-                  error={errors.inspectorType}
-                />
-              ) : null}
-              <FormSectionLabel>الهوية والالتحاق</FormSectionLabel>
-              <RegField
-                id="edit-nationalId"
-                label="رقم الهوية"
-                dir="ltr"
-                inputMode="numeric"
-                placeholder="1xxxxxxxxx"
-                value={form.nationalId}
-                onChange={(v) => updateField("nationalId", v)}
-                error={errors.nationalId}
-              />
-              <RegField
-                id="edit-joinedAt"
-                label="تاريخ الالتحاق"
-                type="date"
-                value={form.joinedAt}
-                onChange={(v) => updateField("joinedAt", v)}
-                hint="اختياري"
-              />
-              <FormSectionLabel>التعويض والفوترة</FormSectionLabel>
-              <label
-                className={cn(
-                  "flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-surface-2/70 px-3 py-2.5 text-xs font-medium text-text sm:col-span-2",
-                  form.hasCompensation && "border-gold/40 bg-gold-soft text-heading",
-                )}
-              >
-                <input
-                  type="checkbox"
-                  className="size-3.5 accent-[var(--gold-d)]"
-                  checked={form.hasCompensation}
-                  onChange={(event) =>
-                    updateField("hasCompensation", event.target.checked)
-                  }
-                />
-                يستحق تعويضاً مالياً
-              </label>
-              {form.hasCompensation ? (
-                <RegField
-                  id="edit-feeValueSar"
-                  label="قيمة الأتعاب (ر.س)"
-                  required
-                  type="number"
-                  dir="ltr"
-                  placeholder="0"
-                  value={form.feeValueSar}
-                  onChange={(v) => updateField("feeValueSar", v)}
-                  error={errors.feeValueSar}
-                />
-              ) : null}
-              <RegField
-                id="edit-iban"
-                label="الآيبان"
-                dir="ltr"
-                placeholder="SAxxxxxxxxxxxxxxxxxxxxxx"
-                value={form.iban}
-                onChange={(v) => updateField("iban", v)}
-                error={errors.iban}
-                hint="اختياري — صيغة SA + 22 رقماً"
-              />
-              {form.roleId === "engineering-office" ? (
-                <>
-                  <FormSectionLabel>بيانات المكتب الهندسي</FormSectionLabel>
-                  <RegField
-                    id="edit-taxNumber"
-                    label="الرقم الضريبي"
-                    dir="ltr"
-                    value={form.taxNumber}
-                    onChange={(v) => updateField("taxNumber", v)}
-                    hint="اختياري"
-                  />
-                  <RegField
-                    id="edit-commercialRegistration"
-                    label="السجل التجاري"
-                    dir="ltr"
-                    value={form.commercialRegistration}
-                    onChange={(v) => updateField("commercialRegistration", v)}
-                    hint="اختياري"
-                  />
-                </>
-              ) : null}
+            <StaffUserFormFields
+              idPrefix="edit"
+              form={form}
+              errors={errors}
+              updateField={updateField}
+              changeRole={changeRole}
+              roleLockReason={roleLockReason}
+              mobileHint="تغييره يُلغي تأكيد الرقم"
+            >
               <StaffProfessionalFields
                 value={pro}
                 onChange={setPro}
@@ -443,7 +256,7 @@ export function EditStaffUserModal({
                 hasRow={rosterRow !== null}
                 unlinkedRows={unlinkedRosterRows(valuers)}
               />
-            </div>
+            </StaffUserFormFields>
             {errors._form ? (
               <Note tone="danger" className="mt-3 text-xs">
                 {errors._form}

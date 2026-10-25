@@ -121,16 +121,58 @@ export function InspectorFeatureWizardFields({
     }
   }
 
+  /** Read-only / value / missing flags shared by the select and chip fields. */
+  function featureFieldState(field: InspectorFeatureField) {
+    const rawVal = draft.featureValues[field.key]?.trim() ?? "";
+    return {
+      fieldDisabled: disabled || readOnlyKeys.has(field.key),
+      rawVal,
+      valueMissing: Boolean(emptyFeatureKeys?.includes(field.key)),
+      needsPhoto: inspectorFeatureOffersPhoto(field, rawVal),
+      photoMissing: missingFeaturePhotoKey === field.key,
+    };
+  }
+
+  /** Stamped photo cell beside a feature whose answer asks for a photo. */
+  function featurePhotoCell(key: string, fieldDisabled: boolean) {
+    const photoRef = `feature:${key}`;
+    return (
+      <EditableFeaturePhotoCell
+        needsPhoto
+        hasPhoto={Boolean(draft.featurePhotoAttachments[key]?.fileName)}
+        disabled={fieldDisabled}
+        taskId={draft.taskId}
+        photoRef={photoRef}
+        attachment={draft.featurePhotoAttachments[key]}
+        onClear={
+          fieldDisabled
+            ? undefined
+            : () => {
+                clearInspectorPhotoDataUrl(draft.taskId, photoRef);
+                onPatch(featurePhotoPatch(key, null));
+              }
+        }
+        onUpload={async (file) => {
+          const result = await uploadInspectorPhotoFromFile(
+            draft.taskId,
+            photoRef,
+            file,
+            { draft, deedNumber },
+          );
+          if (!result.ok) throw new Error(result.error);
+          onPatch(featurePhotoPatch(key, result.attachment));
+          return true;
+        }}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-3.5">
       <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">
         {selectFields.map((field) => {
-          const fieldDisabled = disabled || readOnlyKeys.has(field.key);
-          const rawVal = draft.featureValues[field.key]?.trim() ?? "";
-          const valueMissing = Boolean(emptyFeatureKeys?.includes(field.key));
-          const needsPhoto = inspectorFeatureOffersPhoto(field, rawVal);
-          const hasPhoto = Boolean(draft.featurePhotoAttachments[field.key]?.fileName);
-          const photoMissing = missingFeaturePhotoKey === field.key;
+          const { fieldDisabled, rawVal, valueMissing, needsPhoto, photoMissing } =
+            featureFieldState(field);
           return (
             <div key={field.key} id={`ins-feature-${field.key}`}>
               {fieldDisabled ? (
@@ -176,36 +218,7 @@ export function InspectorFeatureWizardFields({
                     photoMissing && "rounded-md bg-danger-bg p-1",
                   )}
                 >
-                  <EditableFeaturePhotoCell
-                    needsPhoto
-                    hasPhoto={hasPhoto}
-                    disabled={fieldDisabled}
-                    taskId={draft.taskId}
-                    photoRef={`feature:${field.key}`}
-                    attachment={draft.featurePhotoAttachments[field.key]}
-                    onClear={
-                      fieldDisabled
-                        ? undefined
-                        : () => {
-                            clearInspectorPhotoDataUrl(
-                              draft.taskId,
-                              `feature:${field.key}`,
-                            );
-                            onPatch(featurePhotoPatch(field.key, null));
-                          }
-                    }
-                    onUpload={async (file) => {
-                      const result = await uploadInspectorPhotoFromFile(
-                        draft.taskId,
-                        `feature:${field.key}`,
-                        file,
-                        { draft, deedNumber },
-                      );
-                      if (!result.ok) throw new Error(result.error);
-                      onPatch(featurePhotoPatch(field.key, result.attachment));
-                      return true;
-                    }}
-                  />
+                  {featurePhotoCell(field.key, fieldDisabled)}
                 </div>
               ) : null}
             </div>
@@ -232,12 +245,8 @@ export function InspectorFeatureWizardFields({
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
         {choiceFields.map((field) => {
-          const fieldDisabled = disabled || readOnlyKeys.has(field.key);
-          const rawVal = draft.featureValues[field.key]?.trim() ?? "";
-          const valueMissing = Boolean(emptyFeatureKeys?.includes(field.key));
-          const needsPhoto = inspectorFeatureOffersPhoto(field, rawVal);
-          const hasPhoto = Boolean(draft.featurePhotoAttachments[field.key]?.fileName);
-          const photoMissing = missingFeaturePhotoKey === field.key;
+          const { fieldDisabled, rawVal, valueMissing, needsPhoto, photoMissing } =
+            featureFieldState(field);
           return (
             <div
               key={field.key}
@@ -273,36 +282,7 @@ export function InspectorFeatureWizardFields({
                     photoMissing && "rounded-md bg-danger-bg p-1",
                   )}
                 >
-                  <EditableFeaturePhotoCell
-                    needsPhoto
-                    hasPhoto={hasPhoto}
-                    disabled={fieldDisabled}
-                    taskId={draft.taskId}
-                    photoRef={`feature:${field.key}`}
-                    attachment={draft.featurePhotoAttachments[field.key]}
-                    onClear={
-                      fieldDisabled
-                        ? undefined
-                        : () => {
-                            clearInspectorPhotoDataUrl(
-                              draft.taskId,
-                              `feature:${field.key}`,
-                            );
-                            onPatch(featurePhotoPatch(field.key, null));
-                          }
-                    }
-                    onUpload={async (file) => {
-                      const result = await uploadInspectorPhotoFromFile(
-                        draft.taskId,
-                        `feature:${field.key}`,
-                        file,
-                        { draft, deedNumber },
-                      );
-                      if (!result.ok) throw new Error(result.error);
-                      onPatch(featurePhotoPatch(field.key, result.attachment));
-                      return true;
-                    }}
-                  />
+                  {featurePhotoCell(field.key, fieldDisabled)}
                 </div>
               ) : null}
               {field.key === OCCUPANCY_STATE_KEY && rawVal === "مشغول" ? (
@@ -332,7 +312,6 @@ export function InspectorFeatureWizardFields({
               const fieldDisabled = disabled || readOnlyKeys.has(field.key);
               const on = (draft.featureValues[field.key] ?? "") === "نعم";
               const needsPhoto = inspectorFeatureOffersPhoto(field, on ? "نعم" : "لا");
-              const hasPhoto = Boolean(draft.featurePhotoAttachments[field.key]?.fileName);
               const photoMissing = missingFeaturePhotoKey === field.key;
               return (
                 <div
@@ -372,36 +351,7 @@ export function InspectorFeatureWizardFields({
                         photoMissing && invalidControlClass,
                       )}
                     >
-                      <EditableFeaturePhotoCell
-                        needsPhoto
-                        hasPhoto={hasPhoto}
-                        disabled={fieldDisabled}
-                        taskId={draft.taskId}
-                        photoRef={`feature:${field.key}`}
-                        attachment={draft.featurePhotoAttachments[field.key]}
-                        onClear={
-                          fieldDisabled
-                            ? undefined
-                            : () => {
-                                clearInspectorPhotoDataUrl(
-                                  draft.taskId,
-                                  `feature:${field.key}`,
-                                );
-                                onPatch(featurePhotoPatch(field.key, null));
-                              }
-                        }
-                        onUpload={async (file) => {
-                          const result = await uploadInspectorPhotoFromFile(
-                            draft.taskId,
-                            `feature:${field.key}`,
-                            file,
-                            { draft, deedNumber },
-                          );
-                          if (!result.ok) throw new Error(result.error);
-                          onPatch(featurePhotoPatch(field.key, result.attachment));
-                          return true;
-                        }}
-                      />
+                      {featurePhotoCell(field.key, fieldDisabled)}
                     </span>
                   ) : null}
                   {field.key === "movables" && on ? (

@@ -67,21 +67,8 @@ public sealed partial class ValuationReconciliationService(
         CancellationToken cancellationToken)
     {
         var settings = await repo.GetApproachSettingsAsync(vr.Id, cancellationToken);
-        var hasStructures = false;
-        var effectivePropertyType = vr.PropertyType;
-        var propertyGuid = vr.PropertyId;
-        if (propertyGuid != Guid.Empty)
-        {
-            var context = await caseStudy.GetValuationPropertyContextAsync(
-                propertyGuid,
-                cancellationToken);
-            hasStructures = string.Equals(
-                context?.HasStructuresToValue.Trim(),
-                "yes",
-                StringComparison.OrdinalIgnoreCase);
-            effectivePropertyType =
-                context?.EffectivePropertyType() ?? vr.PropertyType;
-        }
+        var (hasStructures, effectivePropertyType) = await ValuationPropertyScope.ReadAsync(
+            caseStudy, vr, cancellationToken);
 
         settings ??= ValuationApproachSettingsRules.Defaults(
             vr.Id,
@@ -127,16 +114,9 @@ public sealed partial class ValuationReconciliationService(
         var vr = await repo.GetRequestAsync(valuationRequestId, cancellationToken);
         if (vr is null)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
-        if (vr.Status == ValuationRequestStatus.Done)
-            return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
-        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
-        var frozenMessage = await freeze.GetFrozenMessageAsync(vr.Id, vr.PropertyId, cancellationToken);
-        if (frozenMessage is not null)
-        {
-            return (
-                null,
-                new Dictionary<string, string> { ["_"] = frozenMessage });
-        }
+        var blocked = await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل", cancellationToken);
+        if (blocked is not null)
+            return (null, new Dictionary<string, string> { ["_"] = blocked });
 
         // Deed/nature match (traditional deed) is enforced at issuance only — the appraiser may
         // reconcile and save before the specialist settles the match.

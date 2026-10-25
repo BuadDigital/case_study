@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { ComparablePropertyDto, ValuationComparableSelectionDto } from "@platform/api-client";
-import { Td, TdLtr, cn } from "@platform/ui-kit";
+import { PhoneField, Td, TdLtr, cn } from "@platform/ui-kit";
 import {
   areaRatio,
   areaRatioValue,
@@ -34,10 +34,9 @@ function MoneySlot({
 }) {
   if (!touch) return <Td className={tdClassName}>{children}</Td>;
   return (
-    <label className="block min-w-0">
-      <span className="mb-1 block text-[11px] font-medium text-text-3">{label}</span>
+    <PhoneField as="label" label={label}>
       {children}
-    </label>
+    </PhoneField>
   );
 }
 
@@ -85,14 +84,11 @@ export function ComparablesBankMoneyCells({
     }
   }
 
-  function flush() {
-    const next = pending.current;
-    pending.current = null;
-    clearTimer();
-    if (!next) return;
-    void onSaveOverride(item, next.field, next.raw).then((ok) => {
+  /** Saves one override; once the server takes it, that field's drafts give way to the saved value. */
+  function save(edit: { field: "price" | "area"; raw: string }) {
+    void onSaveOverride(item, edit.field, edit.raw).then((ok) => {
       if (!ok) return;
-      if (next.field === "price") {
+      if (edit.field === "price") {
         setPriceDraft(null);
         setUnitDraft(null);
       } else {
@@ -101,20 +97,31 @@ export function ComparablesBankMoneyCells({
     });
   }
 
+  function flush() {
+    const next = pending.current;
+    pending.current = null;
+    clearTimer();
+    if (!next) return;
+    save(next);
+  }
+
+  /** Enter commits and leaves the field; Tab commits and moves on. */
+  function commitOnKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      flush();
+      e.currentTarget.blur();
+    } else if (e.key === "Tab") {
+      flush();
+    }
+  }
+
   function schedule(field: "price" | "area", raw: string) {
     if (pending.current && pending.current.field !== field) {
       const prev = pending.current;
       pending.current = { field, raw };
       clearTimer();
-      void onSaveOverride(item, prev.field, prev.raw).then((ok) => {
-        if (!ok) return;
-        if (prev.field === "price") {
-          setPriceDraft(null);
-          setUnitDraft(null);
-        } else {
-          setAreaDraft(null);
-        }
-      });
+      save(prev);
       timer.current = setTimeout(flush, COMMIT_MS);
       return;
     }
@@ -147,15 +154,7 @@ export function ComparablesBankMoneyCells({
             }
           }}
           onBlur={flush}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              flush();
-              e.currentTarget.blur();
-            } else if (e.key === "Tab") {
-              flush();
-            }
-          }}
+          onKeyDown={commitOnKey}
           className={cn(
             touch ? touchInputClass : cn(inputClass, "w-[96px] text-[14px] font-extrabold"),
             item.priceOverrideSar != null
@@ -178,15 +177,7 @@ export function ComparablesBankMoneyCells({
             schedule("price", raw);
           }}
           onBlur={flush}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              flush();
-              e.currentTarget.blur();
-            } else if (e.key === "Tab") {
-              flush();
-            }
-          }}
+          onKeyDown={commitOnKey}
           className={cn(
             touch ? touchInputClass : cn(inputClass, "w-[104px] text-[13.5px] font-extrabold"),
             item.priceOverrideSar != null
@@ -209,15 +200,7 @@ export function ComparablesBankMoneyCells({
             schedule("area", raw);
           }}
           onBlur={flush}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              flush();
-              e.currentTarget.blur();
-            } else if (e.key === "Tab") {
-              flush();
-            }
-          }}
+          onKeyDown={commitOnKey}
           className={cn(
             touch ? touchInputClass : cn(inputClass, "w-[84px]"),
             item.areaOverrideSqm != null

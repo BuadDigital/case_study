@@ -43,7 +43,7 @@ public sealed class HttpInspectorFeeService(
             $"{Root}/{workflowTaskId:D}/accrue-survey",
             new AccrueEngineeringSurveyFeeDispatchRequest { ActorUserId = actorUserId },
             cancellationToken);
-        return (row, FirstError(errors));
+        return (row, UpstreamJson.FirstError(errors));
     }
 
     public Task<InspectorFeesSummaryDto> GetSummaryAsync(
@@ -124,7 +124,7 @@ public sealed class HttpInspectorFeeService(
                 CanManageAllDepartments = canManageAllDepartments,
             },
             cancellationToken);
-        return (row, FirstError(errors));
+        return (row, UpstreamJson.FirstError(errors));
     }
 
     public Task<BatchInspectorFeeTransitionResponseDto> BatchTransitionAsync(
@@ -191,9 +191,4 @@ public sealed class HttpInspectorFeeService(
     private Task PostAsync(string path, object? body, CancellationToken cancellationToken) =>
         UpstreamJson.PostAsync(
             http, httpContext, options.Value.FinancialBaseUrl, path, body, Setting, cancellationToken);
-
-    private static string? FirstError(Dictionary<string, string>? errors) =>
-        errors is null || errors.Count == 0
-            ? null
-            : errors.TryGetValue("_", out var message) ? message : errors.Values.First();
 }

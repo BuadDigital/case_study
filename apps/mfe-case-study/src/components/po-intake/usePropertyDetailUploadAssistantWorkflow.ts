@@ -36,6 +36,7 @@ import {
   type BuildingInventoryLineDto,
 } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
+import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
 import {
   resolveEnvelopeIdFromSources,
@@ -129,15 +130,6 @@ function useFinalReportDocument(
     };
   }, [valuationRequestId, finalReportStatus, version]);
   return document;
-}
-
-function blobToDataUrl(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ""));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(blob);
-  });
 }
 
 export function usePropertyDetailEnfathUploadWorkflow({

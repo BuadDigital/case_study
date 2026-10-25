@@ -5,7 +5,7 @@
  * tile and the desktop c9 tile. Each owns its hidden file input and drop
  * zone; the slot state (done / «غير متوفر» / first photo) arrives as props.
  */
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { cn, useToast } from "@platform/ui-kit";
 import type { InspectorSlotPhoto } from "../../lib/app-data/inspector-workspace-data";
 import {
@@ -13,10 +13,7 @@ import {
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
 } from "../../lib/app-data/inspector-photo-drop";
-import {
-  getInspectorPhotoDataUrl,
-  prefetchInspectorPhoto,
-} from "../../lib/app-data/inspector-photo-upload";
+import { useInspectorPhotoDataUrl } from "./useInspectorPhotoDataUrl";
 
 type UploadHandler = (files: File[]) => boolean | void | Promise<boolean | void>;
 
@@ -164,31 +161,7 @@ export function DesktopHtmlPhotoTile({
     disabled: dropBlocked,
     onFiles: (files) => runWithUploadToast(() => onUpload(files)),
   });
-  const [dataUrl, setDataUrl] = useState(
-    () =>
-      photoRef ? getInspectorPhotoDataUrl(taskId, photoRef) : undefined,
-  );
-
-  useEffect(() => {
-    if (!photoRef || !photo) {
-      setDataUrl(undefined);
-      return;
-    }
-    const cached = getInspectorPhotoDataUrl(taskId, photoRef);
-    if (cached) {
-      setDataUrl(cached);
-      return;
-    }
-    let cancelled = false;
-    void prefetchInspectorPhoto(taskId, photoRef, photo).then((url) => {
-      if (!cancelled && url) setDataUrl(url);
-    }).catch(() => {
-      if (!cancelled) setDataUrl(undefined);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [taskId, photoRef, photo]);
+  const dataUrl = useInspectorPhotoDataUrl(taskId, photoRef, photo);
 
   return (
     <div className="flex flex-col gap-0.5">

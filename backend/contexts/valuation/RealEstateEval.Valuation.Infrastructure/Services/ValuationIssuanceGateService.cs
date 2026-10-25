@@ -69,10 +69,7 @@ public sealed class ValuationIssuanceGateService(
                 propertyType = context.EffectivePropertyType();
                 poNumber = context.PoNumber;
                 propertyRequiresSurvey = context.RequiresEngineeringSurvey;
-                hasStructures = string.Equals(
-                    context.HasStructuresToValue.Trim(),
-                    "yes",
-                    StringComparison.OrdinalIgnoreCase);
+                hasStructures = context.HasStructures();
                 inspectionScopeKey = string.IsNullOrWhiteSpace(context.InspectionScopeKey)
                     ? null
                     : context.InspectionScopeKey;

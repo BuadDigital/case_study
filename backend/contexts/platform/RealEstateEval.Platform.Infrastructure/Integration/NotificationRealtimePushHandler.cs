@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Integration;
 
 namespace RealEstateEval.Platform.Infrastructure.Integration;
 
@@ -27,14 +28,12 @@ public sealed class NotificationRealtimePushHandler
     {
         using var doc = JsonDocument.Parse(payloadJson);
         var root = doc.RootElement;
-        var eventType = root.TryGetProperty("eventType", out var et)
-            ? et.GetString()
-            : root.GetProperty("EventType").GetString();
+        var eventType = IntegrationEventEnvelopeReader.ReadEventType(root);
 
         if (!string.Equals(eventType, IntegrationEventTypes.NotificationUserCreated, StringComparison.Ordinal))
             return Task.CompletedTask;
 
-        var payloadElement = root.TryGetProperty("payload", out var p) ? p : root.GetProperty("Payload");
+        var payloadElement = IntegrationEventEnvelopeReader.ReadPayload(root);
         var payload = payloadElement.Deserialize<NotificationUserCreatedPayload>(JsonOpts);
         if (payload is null)
         {

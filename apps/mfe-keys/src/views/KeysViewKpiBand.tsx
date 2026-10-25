@@ -1,6 +1,7 @@
 "use client";
 
 /** KPI band (desktop) and stat cards (mobile) at the top of the keys list. */
+import type { ReactNode } from "react";
 import {
   KpiAlertIcon,
   KpiBand,
@@ -10,7 +11,8 @@ import {
 } from "@platform/ui-kit";
 import type { KeysKpis } from "./keys-view-state";
 
-function KpiEnvIcon() {
+/** The envelope glyph; `children` adds strokes on top (the ready card's slot mark). */
+function KpiEnvIcon({ children }: { children?: ReactNode }) {
   return (
     <svg
       width="17"
@@ -25,27 +27,16 @@ function KpiEnvIcon() {
     >
       <path d="M22 7 12 13 2 7" />
       <rect x="2" y="4" width="20" height="16" rx="2" />
+      {children}
     </svg>
   );
 }
 
 function KpiReadyIcon() {
   return (
-    <svg
-      width="17"
-      height="17"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M22 7 12 13 2 7" />
-      <rect x="2" y="4" width="20" height="16" rx="2" />
+    <KpiEnvIcon>
       <path d="M12 13v4" />
-    </svg>
+    </KpiEnvIcon>
   );
 }
 

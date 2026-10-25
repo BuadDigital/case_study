@@ -1,9 +1,8 @@
 "use client";
 
-import { OpsIcon } from "../OpsIcon";
 
 import { useMemo, useRef, useState } from "react";
-import { MobileSectionPicker, PageShell, cn, opsFldControl, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterMeta, opsLetterSub, opsLetterTitle, opsTfSegRow, useSwapAnimation } from "@platform/ui-kit";
+import { cn, MobileSectionPicker, opsFldControl, OpsIcon, opsIconBoxGold, opsLetterCard, opsLetterHead, opsLetterMeta, opsLetterSub, opsLetterTitle, opsTfSegRow, PageShell, useSwapAnimation } from "@platform/ui-kit";
 import { opsTfSeg, opsTfSegActive } from "@platform/ui-kit";
 import {
   FIELD_DICTIONARY_STAGES,

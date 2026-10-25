@@ -2,7 +2,7 @@
 
 /** Inspection-tab photo parts — slot tile, feature-table picker cell, count-with-photo field. */
 
-import { useEffect, useRef, useState } from "react";
+import { useRef } from "react";
 import { cn, useToast } from "@platform/ui-kit";
 import type { InspectorWorkspacePatch } from "../../lib/app-data/inspector-workspace-model";
 import type {
@@ -16,15 +16,15 @@ import {
   getInspectorPhotoDataUrl,
   openInspectorPhotoPreview,
   prefetchInspectorPhoto,
-  uploadInspectorPhotoFromFile,
 } from "../../lib/app-data/inspector-photo-upload";
 import {
   INSPECTOR_PHOTO_ACCEPT,
   filterInspectorPhotoFiles,
   useInspectorPhotoDropZone,
 } from "../../lib/app-data/inspector-photo-drop";
-import { InspectorPhotoFilePicker } from "../field-inspection/InspectorPhotoFilePicker";
+import { InspectorPhotoThumbOrPicker } from "../field-inspection/InspectorPhotoThumbOrPicker";
 import { InspectorStampedPhotoThumb } from "../field-inspection/InspectorStampedPhotoThumb";
+import { useInspectorPhotoDataUrl } from "../field-inspection/useInspectorPhotoDataUrl";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { InsEditField, InsReadField } from "./PropertyDetailInspectionFields";
 import {
@@ -56,32 +56,7 @@ export function PhotoTile({
   locationFlag?: string | null;
   distanceM?: number | null;
 }) {
-  const [dataUrl, setDataUrl] = useState<string | undefined>(() =>
-    taskId && photoRef ? getInspectorPhotoDataUrl(taskId, photoRef) : undefined,
-  );
-
-  useEffect(() => {
-    if (!filled || !taskId || !photoRef || !photo) {
-      setDataUrl(undefined);
-      return;
-    }
-    const cached = getInspectorPhotoDataUrl(taskId, photoRef);
-    if (cached) {
-      setDataUrl(cached);
-      return;
-    }
-    let cancelled = false;
-    void prefetchInspectorPhoto(taskId, photoRef, photo)
-      .then((url) => {
-        if (!cancelled && url) setDataUrl(url);
-      })
-      .catch(() => {
-        if (!cancelled) setDataUrl(undefined);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [filled, taskId, photoRef, photo]);
+  const dataUrl = useInspectorPhotoDataUrl(taskId || undefined, photoRef, photo, filled);
 
   const flag = photoTileFlagBadge(locationFlag, distanceM);
 
@@ -337,56 +312,26 @@ export function ComponentCountWithPhotoField({
       />
       {needsPhoto ? (
         <div className="mt-1.5">
-          {attachment?.fileName ? (
-            <InspectorStampedPhotoThumb
-              compact
-              stamp={stamp}
-              taskId={taskId}
-              photoRef={photoRef}
-              attachment={attachment}
-              onClear={
-                disabled
-                  ? undefined
-                  : () => {
-                      clearInspectorPhotoDataUrl(taskId, photoRef);
-                      onPatch(
-                        componentPhotoAttachmentPatch(
-                          photoKey,
-                          draft.componentPhotoAttachments,
-                          null,
-                        ),
-                      );
-                    }
-              }
-            />
-          ) : (
-            <InspectorPhotoFilePicker
-              label={photoLabel}
-              disabled={disabled}
-              className="w-auto"
-              onFilesSelected={async (files) => {
-                const file = files[0];
-                if (!file) return false;
-                const result = await uploadInspectorPhotoFromFile(
-                  taskId,
-                  photoRef,
-                  file,
-                  { draft, deedNumber },
-                );
-                if (!result.ok) {
-                  throw new Error(result.error);
-                }
-                onPatch(
-                  componentPhotoAttachmentPatch(
-                    photoKey,
-                    draft.componentPhotoAttachments,
-                    result.attachment,
-                  ),
-                );
-                return true;
-              }}
-            />
-          )}
+          <InspectorPhotoThumbOrPicker
+            compact
+            stamp={stamp}
+            taskId={taskId}
+            photoRef={photoRef}
+            attachment={attachment}
+            disabled={disabled}
+            pickerLabel={photoLabel}
+            pickerClassName="w-auto"
+            uploadContext={{ draft, deedNumber }}
+            onAttachmentChange={(photo) =>
+              onPatch(
+                componentPhotoAttachmentPatch(
+                  photoKey,
+                  draft.componentPhotoAttachments,
+                  photo,
+                ),
+              )
+            }
+          />
         </div>
       ) : null}
     </div>

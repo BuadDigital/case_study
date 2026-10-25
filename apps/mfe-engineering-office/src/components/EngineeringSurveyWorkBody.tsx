@@ -10,6 +10,7 @@ import { updateEngineeringSurveyDraft } from "../lib/engineering-survey-submissi
 import { applyNatureBoundaryPatch, natureFieldsFromDeedForm } from "../lib/engineering-survey-nature-fields";
 import { EngineeringSurveyChecklist } from "./EngineeringSurveyChecklist";
 import { EngExtraReportsList } from "./EngExtraReportsList";
+import { EngBoundaryFields } from "./EngineeringSurveyBoundaryFields";
 import {
   EngInfo,
   EngSection,
@@ -154,62 +155,15 @@ export function EngineeringSurveyWorkBody({
       ) : null}
 
       <EngSection>الحدود والأطوال (حسب الصك)</EngSection>
-      <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-        <div>
-          <label className={opsTfLbl} htmlFor="eng-on-site-area">
-            المساحة الإجمالية
-          </label>
-          <input
-            id="eng-on-site-area"
-            inputMode="decimal"
-            className={cn(
-              opsFldControl,
-              fieldErrors.on_site_area && engineeringInvalidControlClass,
-            )}
-            disabled={formDisabled}
-            value={localFields.onSiteAreaSqm}
-            onChange={(e) => patchLocalField("onSiteAreaSqm", e.target.value)}
-          />
-          {fieldErrors.on_site_area ? (
-            <p className="mt-1 text-[11px] text-[#a5432e]">
-              {fieldErrors.on_site_area}
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      {BOUNDARY_ROWS.map(([boundKey, lenKey, boundLabel, lenLabel]) => (
-        <div
-          key={boundKey}
-          className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
-        >
-          <div>
-            <label className={opsTfLbl} htmlFor={`eng-${boundKey}`}>
-              {boundLabel}
-            </label>
-            <input
-              id={`eng-${boundKey}`}
-              className={opsFldControl}
-              disabled={formDisabled}
-              value={localFields[boundKey]}
-              onChange={(e) => patchLocalField(boundKey, e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={opsTfLbl} htmlFor={`eng-${lenKey}`}>
-              {lenLabel}
-            </label>
-            <input
-              id={`eng-${lenKey}`}
-              inputMode="decimal"
-              className={opsFldControl}
-              disabled={formDisabled}
-              value={localFields[lenKey]}
-              onChange={(e) => patchLocalField(lenKey, e.target.value)}
-            />
-          </div>
-        </div>
-      ))}
+      <EngBoundaryFields
+        areaId="eng-on-site-area"
+        areaKey="onSiteAreaSqm"
+        areaError={fieldErrors.on_site_area}
+        rows={BOUNDARY_ROWS}
+        localFields={localFields}
+        patchLocalField={patchLocalField}
+        disabled={formDisabled}
+      />
 
       <EngSection>مطابقة الصك للطبيعة</EngSection>
       <div
@@ -307,73 +261,15 @@ export function EngineeringSurveyWorkBody({
       {draft.deedMatchesNature === "no" ? (
         <>
           <EngSection>الحدود والأطوال (حسب الطبيعة)</EngSection>
-          <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-            <div>
-              <label
-                className={opsTfLbl}
-                htmlFor="eng-nature-on-site-area"
-              >
-                المساحة الإجمالية
-              </label>
-              <input
-                id="eng-nature-on-site-area"
-                inputMode="decimal"
-                className={cn(
-                  opsFldControl,
-                  fieldErrors.nature_on_site_area &&
-                    engineeringInvalidControlClass,
-                )}
-                disabled={formDisabled}
-                value={localFields.natureOnSiteAreaSqm}
-                onChange={(e) =>
-                  patchLocalField("natureOnSiteAreaSqm", e.target.value)
-                }
-              />
-              {fieldErrors.nature_on_site_area ? (
-                <p className="mt-1 text-[11px] text-[#a5432e]">
-                  {fieldErrors.nature_on_site_area}
-                </p>
-              ) : null}
-            </div>
-          </div>
-
-          {NATURE_BOUNDARY_ROWS.map(
-            ([boundKey, lenKey, boundLabel, lenLabel]) => (
-              <div
-                key={boundKey}
-                className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2"
-              >
-                <div>
-                  <label
-                    className={opsTfLbl}
-                    htmlFor={`eng-${boundKey}`}
-                  >
-                    {boundLabel}
-                  </label>
-                  <input
-                    id={`eng-${boundKey}`}
-                    className={opsFldControl}
-                    disabled={formDisabled}
-                    value={localFields[boundKey]}
-                    onChange={(e) => patchLocalField(boundKey, e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className={opsTfLbl} htmlFor={`eng-${lenKey}`}>
-                    {lenLabel}
-                  </label>
-                  <input
-                    id={`eng-${lenKey}`}
-                    inputMode="decimal"
-                    className={opsFldControl}
-                    disabled={formDisabled}
-                    value={localFields[lenKey]}
-                    onChange={(e) => patchLocalField(lenKey, e.target.value)}
-                  />
-                </div>
-              </div>
-            ),
-          )}
+          <EngBoundaryFields
+            areaId="eng-nature-on-site-area"
+            areaKey="natureOnSiteAreaSqm"
+            areaError={fieldErrors.nature_on_site_area}
+            rows={NATURE_BOUNDARY_ROWS}
+            localFields={localFields}
+            patchLocalField={patchLocalField}
+            disabled={formDisabled}
+          />
         </>
       ) : null}
 

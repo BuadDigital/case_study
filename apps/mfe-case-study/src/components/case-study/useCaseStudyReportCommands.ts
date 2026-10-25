@@ -21,6 +21,42 @@ import {
 import type { CaseStudyReportData } from "./useCaseStudyReportData";
 import { useCaseStudyReportIssue } from "./useCaseStudyReportIssue";
 
+type PartyDraft = Awaited<ReturnType<typeof loadPartyCaseStudyReportDraft>>;
+
+/**
+ * Saves one edited answer / note: into the party's own draft (merged over its
+ * saved copy) when a party child task edits, else into the case-study draft.
+ * Failures only toast — the form keeps the local edit.
+ */
+function saveEditedDraft(
+  next: CaseStudyReportDraft,
+  partyChildTaskId: string | null | undefined,
+  partyDraft: (prevParty: PartyDraft, taskId: string) => CaseStudyReportDraft,
+  partyErrorText: string,
+  showToast: CaseStudyReportData["showToast"],
+): void {
+  if (partyChildTaskId) {
+    void loadPartyCaseStudyReportDraft(partyChildTaskId)
+      .then((prevParty) =>
+        savePartyCaseStudyReportDraft(partyDraft(prevParty, partyChildTaskId)),
+      )
+      .then((result) => {
+        if (result && !result.ok) showToast(result.error, "error");
+      })
+      .catch((err: unknown) => {
+        showToast(err instanceof Error ? err.message : partyErrorText, "error");
+      });
+    return;
+  }
+  void saveCaseStudyReportDraft(next)
+    .then((result) => {
+      if (!result.ok) showToast(result.error, "error");
+    })
+    .catch(() => {
+      showToast("تعذّر حفظ تقرير دراسة الحالة — حاول مرة أخرى", "error");
+    });
+}
+
 export function useCaseStudyReportCommands(data: CaseStudyReportData) {
   const {
     isParty,
@@ -111,37 +147,17 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
       };
       setDraft(next);
 
-      if (isParty && partyChildTaskId) {
-        void loadPartyCaseStudyReportDraft(partyChildTaskId)
-          .then((prevParty) => {
-            const partyAnswers = {
-              ...(prevParty?.answers ?? {}),
-              [key]: value,
-            };
-            return savePartyCaseStudyReportDraft({
-              ...next,
-              taskId: partyChildTaskId,
-              answers: partyAnswers,
-            });
-          })
-          .then((result) => {
-            if (result && !result.ok) showToast(result.error, "error");
-          })
-          .catch((err: unknown) => {
-            showToast(
-              err instanceof Error
-                ? err.message
-                : "تعذّر حفظ إجابات الطرف — حاول مرة أخرى",
-              "error",
-            );
-          });
-      } else {
-        void saveCaseStudyReportDraft(next).then((result) => {
-          if (!result.ok) showToast(result.error, "error");
-        }).catch(() => {
-          showToast("تعذّر حفظ تقرير دراسة الحالة — حاول مرة أخرى", "error");
-        });
-      }
+      saveEditedDraft(
+        next,
+        isParty ? partyChildTaskId : null,
+        (prevParty, taskId) => ({
+          ...next,
+          taskId,
+          answers: { ...(prevParty?.answers ?? {}), [key]: value },
+        }),
+        "تعذّر حفظ إجابات الطرف — حاول مرة أخرى",
+        showToast,
+      );
     },
     [
       canEditKey,
@@ -164,39 +180,23 @@ export function useCaseStudyReportCommands(data: CaseStudyReportData) {
       const next: CaseStudyReportDraft = { ...draft, answerNotes: nextNotes };
       setDraft(next);
 
-      if (isParty && partyChildTaskId) {
-        void loadPartyCaseStudyReportDraft(partyChildTaskId)
-          .then((prevParty) => {
-            const partyNotes = { ...(prevParty?.answerNotes ?? {}) };
-            if (note.trim()) partyNotes[key] = note;
-            else delete partyNotes[key];
-            return savePartyCaseStudyReportDraft({
-              ...next,
-              taskId: partyChildTaskId,
-              answers: { ...(prevParty?.answers ?? {}), ...next.answers },
-              answerNotes: partyNotes,
-            });
-          })
-          .then((result) => {
-            if (result && !result.ok) showToast(result.error, "error");
-          })
-          .catch((err: unknown) => {
-            showToast(
-              err instanceof Error
-                ? err.message
-                : "تعذّر حفظ الملاحظة — حاول مرة أخرى",
-              "error",
-            );
-          });
-      } else {
-        void saveCaseStudyReportDraft(next)
-          .then((result) => {
-            if (!result.ok) showToast(result.error, "error");
-          })
-          .catch(() => {
-            showToast("تعذّر حفظ تقرير دراسة الحالة — حاول مرة أخرى", "error");
-          });
-      }
+      saveEditedDraft(
+        next,
+        isParty ? partyChildTaskId : null,
+        (prevParty, taskId) => {
+          const partyNotes = { ...(prevParty?.answerNotes ?? {}) };
+          if (note.trim()) partyNotes[key] = note;
+          else delete partyNotes[key];
+          return {
+            ...next,
+            taskId,
+            answers: { ...(prevParty?.answers ?? {}), ...next.answers },
+            answerNotes: partyNotes,
+          };
+        },
+        "تعذّر حفظ الملاحظة — حاول مرة أخرى",
+        showToast,
+      );
     },
     [canEditKey, draft, isParty, partyChildTaskId, resyncingRef, setDraft, showToast],
   );

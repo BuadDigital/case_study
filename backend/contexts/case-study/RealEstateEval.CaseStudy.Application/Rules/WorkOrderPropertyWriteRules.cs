@@ -314,17 +314,24 @@ public static class WorkOrderPropertyWriteRules
     public static void ApplyPropertyBourseDraft(WorkOrderProperty entity, WorkOrderPropertyDto dto)
     {
         ApplyPropertyBourse(entity, dto);
+        ApplyOwners(entity, dto.Owners);
+    }
 
-        if (dto.Owners is not null)
-        {
-            var owners = dto.Owners
-                .Select(o => new DeedOwner(o.Name?.Trim() ?? ""))
-                .Where(o => !string.IsNullOrWhiteSpace(o.Name))
-                .ToList();
-            entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
-            if (owners.Count > 0)
-                entity.OwnerName = owners[0].Name;
-        }
+    /// <summary>
+    /// The transcribed owners, blank names dropped; the first one becomes the owner name. Null
+    /// leaves the stored owners as they are.
+    /// </summary>
+    private static void ApplyOwners(WorkOrderProperty entity, IEnumerable<DeedOwnerDto>? owners)
+    {
+        if (owners is null) return;
+
+        var named = owners
+            .Select(o => new DeedOwner(o.Name?.Trim() ?? ""))
+            .Where(o => !string.IsNullOrWhiteSpace(o.Name))
+            .ToList();
+        entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(named);
+        if (named.Count > 0)
+            entity.OwnerName = named[0].Name;
     }
 
     /// <summary>
@@ -353,16 +360,7 @@ public static class WorkOrderPropertyWriteRules
         entity.RestrictionOtherReason = NormalizeRestrictionOtherReason(request.RestrictionsPresent, request.RestrictionType, request.RestrictionOtherReason);
 
  // owners from the transcription; the ownership type is derived from their count (never stored).
-        if (request.Owners is not null)
-        {
-            var owners = request.Owners
-                .Select(o => new DeedOwner(o.Name?.Trim() ?? ""))
-                .Where(o => !string.IsNullOrWhiteSpace(o.Name))
-                .ToList();
-            entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(owners);
-            if (owners.Count > 0)
-                entity.OwnerName = owners[0].Name;
-        }
+        ApplyOwners(entity, request.Owners);
 
         entity.BoundariesAvailability = request.BoundariesAvailability?.Trim();
         entity.BoundariesExternalDocName = request.BoundariesExternalDocName?.Trim();

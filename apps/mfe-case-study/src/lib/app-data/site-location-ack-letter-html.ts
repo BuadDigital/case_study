@@ -4,12 +4,8 @@ import {
   ensureOrganizationSettingsLoaded,
   getCachedOrganizationSettings,
 } from "@platform/app-shared/organization/organization-settings-cache";
-import {
-  caseStudySignatureImage,
-  caseStudyStampImage,
-} from "./case-study-report-data";
 import type { SiteLocationAckLetter } from "./site-location-ack-letter";
-import { orgLetterheadUrl } from "./org-letterhead-slices";
+import { officialLetterAssetUrls } from "./official-letter-assets";
 import {
   officialLetterFontsHtml,
   officialLetterShellCss,
@@ -17,20 +13,11 @@ import {
   officialLetterToolbarHtml,
 } from "./official-letter-layout";
 
-/** Blob print windows need absolute asset URLs. */
-function assetUrl(path: string): string {
-  if (typeof window === "undefined") return path;
-  if (/^https?:\/\//i.test(path) || path.startsWith("data:")) return path;
-  return `${window.location.origin}${path.startsWith("/") ? "" : "/"}${path}`;
-}
-
 /** Pure HTML — same official-letter layout as خطاب التكليف / authorization_letter.html. */
 export function siteLocationAckLetterHtml(letter: SiteLocationAckLetter): string {
   const org = getCachedOrganizationSettings();
   const branding = org?.branding ?? null;
-  const bg = escapeHtml(assetUrl(orgLetterheadUrl(branding)));
-  const stamp = escapeHtml(assetUrl(caseStudyStampImage()));
-  const signature = escapeHtml(assetUrl(caseStudySignatureImage()));
+  const { bg, stamp, signature } = officialLetterAssetUrls(branding);
 
   const deed = escapeHtml(letter.deedNumber);
   const hijri = escapeHtml(letter.dateHijri);

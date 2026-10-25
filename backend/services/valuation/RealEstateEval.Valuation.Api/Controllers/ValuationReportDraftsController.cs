@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.Valuation.Application.Abstractions;
@@ -119,7 +120,8 @@ public class ValuationReportDraftsController(
             return this.FieldErrorsProblem(errors);
         }
 
-        return Ok(new FinalReportStatusDto { FinalReportStatus = status ?? "none" });
+        // Where the generated final PDF stands after this (re)generation attempt.
+        return Ok(new PropertyFinalReportStatusDto { FinalReportStatus = status ?? FinalReportStatusWire.None });
     }
 
     private async Task<ActionResult<ValuationReportDraftDto>> RunAsync(

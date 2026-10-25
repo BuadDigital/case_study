@@ -42,3 +42,26 @@ describe("active queue row menu — phase revert", () => {
     expect(menuIds("bourse")).not.toContain("revert-enfath");
   });
 });
+
+describe("active queue row menu — register failure", () => {
+  it("offers «تسجيل تعذّر» on primary data and bourse rows to roles that may raise one", () => {
+    const ids = (phase: string, viewerRole?: RoleId) =>
+      buildActiveQueueRowMoreItems({
+        task: {
+          id: "t1",
+          kind: "case-study-property",
+          poNumber: "PO-1",
+          phase,
+        } as unknown as WorkflowTask,
+        propertyId: "p1",
+        openTask: () => undefined,
+        router: { push: () => undefined },
+        viewerRole,
+      }).map((item) => item.id);
+
+    expect(ids("enfath", "case-specialist")).toContain("register-failure");
+    expect(ids("bourse", "section-supervisor")).toContain("register-failure");
+    expect(ids("distribution", "case-specialist")).not.toContain("register-failure");
+    expect(ids("enfath")).not.toContain("register-failure");
+  });
+});

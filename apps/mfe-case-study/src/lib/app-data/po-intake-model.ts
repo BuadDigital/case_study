@@ -264,9 +264,10 @@ export function propertyToEnfathDto(
   };
 }
 
-export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
+/** Owners, restrictions and the four boundaries — sent the same way by the
+ *  full-property payload and the bourse save. */
+function ownersRestrictionsBoundaries(prop: PoPropertyIntake) {
   return {
-    ...propertyToEnfathDto(prop),
     owners: parseOwnersDraft(prop.ownersJson),
     restrictionsPresent: prop.restrictionsPresent || undefined,
     restrictionType: prop.restrictionType || undefined,
@@ -289,6 +290,13 @@ export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
     westBoundaryLengthM: prop.westBoundaryLengthM || undefined,
     westBoundaryType: prop.westBoundaryType || undefined,
     westFacadeFinishing: prop.westFacadeFinishing || undefined,
+  };
+}
+
+export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
+  return {
+    ...propertyToEnfathDto(prop),
+    ...ownersRestrictionsBoundaries(prop),
     planNumber: prop.planNumber || undefined,
     planName: prop.planName || undefined,
     plotNumber: prop.plotNumber || undefined,
@@ -320,28 +328,7 @@ export function propertyToBourseRequest(
     area: prop.area || undefined,
     deedStatus: prop.deedStatus || undefined,
     bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
-    owners: parseOwnersDraft(prop.ownersJson),
-    restrictionsPresent: prop.restrictionsPresent || undefined,
-    restrictionType: prop.restrictionType || undefined,
-    restrictionOtherReason: prop.restrictionOtherReason || undefined,
-    boundariesAvailability: prop.boundariesAvailability || undefined,
-    boundariesExternalDocName: prop.boundariesExternalDocName || undefined,
-    northBoundary: prop.northBoundary || undefined,
-    northBoundaryLengthM: prop.northBoundaryLengthM || undefined,
-    northBoundaryType: prop.northBoundaryType || undefined,
-    northFacadeFinishing: prop.northFacadeFinishing || undefined,
-    southBoundary: prop.southBoundary || undefined,
-    southBoundaryLengthM: prop.southBoundaryLengthM || undefined,
-    southBoundaryType: prop.southBoundaryType || undefined,
-    southFacadeFinishing: prop.southFacadeFinishing || undefined,
-    eastBoundary: prop.eastBoundary || undefined,
-    eastBoundaryLengthM: prop.eastBoundaryLengthM || undefined,
-    eastBoundaryType: prop.eastBoundaryType || undefined,
-    eastFacadeFinishing: prop.eastFacadeFinishing || undefined,
-    westBoundary: prop.westBoundary || undefined,
-    westBoundaryLengthM: prop.westBoundaryLengthM || undefined,
-    westBoundaryType: prop.westBoundaryType || undefined,
-    westFacadeFinishing: prop.westFacadeFinishing || undefined,
+    ...ownersRestrictionsBoundaries(prop),
   };
 }
 

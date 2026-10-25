@@ -12,10 +12,9 @@ import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import {
   buildDistributionTableRow,
   findPropertyForTask,
-  formatRemainingDuration,
   remainingTimerTick,
-  resolveSlaTimerRatio,
 } from "../lib/app-data/my-task-row";
+import { queueCardTimer, queueCardTitle } from "../lib/app-data/queue-mobile-card";
 import { formatPoDisplay } from "../lib/app-data/po-intake-data";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks";
@@ -142,15 +141,7 @@ export function buildQueueMobileCardItems({
   return filteredPrimaryMeta.map(({ task, record, property, row }) => {
     const badge = resolveTaskBadge(task);
     const tone = toneFromLegacyBadge(badge?.className);
-    const timer = formatRemainingDuration(record?.dueDateAt ?? "", now);
-    const showTimer = timer.remainingDuration !== "—";
-    const titleParts = [
-      row.propertySlot !== "—" ? row.propertySlot : null,
-      property?.plotNumber?.trim()
-        ? `قطعة ${property.plotNumber.trim()}`
-        : null,
-      row.district !== "—" ? row.district : null,
-    ].filter(Boolean);
+    const timer = queueCardTimer(record, task, now);
     const transactionNumber =
       transactionNumberOf(property) ?? task.transactionNumber;
     const meta = [
@@ -170,22 +161,14 @@ export function buildQueueMobileCardItems({
     ].filter((v): v is NonNullable<typeof v> => Boolean(v));
     return {
       id: task.id,
-      title: titleParts.length > 0 ? titleParts.join(" — ") : `مهمة ${task.id}`,
+      title: queueCardTitle(row, property, task.id),
       meta,
       statusLabel: badge?.label,
       statusClassName: badge?.className,
       tone,
-      timerLabel: showTimer
-        ? timer.remainingOverdue
-          ? "متأخرة"
-          : `متبقي ${timer.remainingDuration}`
-        : undefined,
-      timerTick: showTimer
+      ...timer,
+      timerTick: timer.timerLabel
         ? remainingTimerTick(record?.dueDateAt ?? "")
-        : undefined,
-      timerOverdue: showTimer ? timer.remainingOverdue : undefined,
-      timerRatio: showTimer
-        ? resolveSlaTimerRatio(record?.dueDateAt ?? "", task.createdAt ?? "", now)
         : undefined,
       moreItems: resolveRowMoreItems(task, property?.id),
       onOpen: () => handleRowClick(task.id),

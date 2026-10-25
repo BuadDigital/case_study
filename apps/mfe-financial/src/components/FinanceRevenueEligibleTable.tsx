@@ -18,12 +18,10 @@ import {
 } from "@platform/ui-kit";
 import { sortByCompletedDesc } from "../lib/finance-revenue-state";
 import {
-  CityCell,
-  CompletedAtCell,
   DeedCell,
   PoCell,
+  RevenueLeadCells,
   RevenueTableHead,
-  TotalFeesCell,
   TotalFeesValue,
   revenueCityDateFields,
 } from "./FinanceRevenueTableParts";
@@ -135,15 +133,7 @@ export function EligibleTable({
         <TBody>
           {sorted.map((row) => (
             <Tr key={`${row.poNumber}-${row.propertyId}`}>
-              <Td className="text-center">
-                <PoCell po={row.poNumber} />
-              </Td>
-              <Td className="text-center">
-                <DeedCell deed={row.deedNumber} />
-              </Td>
-              <CityCell row={row} />
-              <CompletedAtCell iso={row.completedAtUtc} />
-              <TotalFeesCell row={row} />
+              <RevenueLeadCells row={row} />
               <Td className="text-center">
                 <div className="flex flex-wrap items-center justify-center gap-1.5">
                   <EligibleActions row={row} {...actionProps} />

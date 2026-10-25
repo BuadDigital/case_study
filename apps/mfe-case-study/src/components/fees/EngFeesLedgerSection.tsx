@@ -5,27 +5,15 @@
  * toolbar filters and the ledger table with the accept / dispute actions.
  */
 
-import { fmtSar } from "@platform/app-shared/format/number";
 import {
-  cn,
   MobileRecordCard,
   MobileRecordList,
   StatusPill,
-  Table,
-  TableEmptyRow,
-  TableFrame,
-  TBody,
-  Td,
-  TdLtr,
-  Th,
-  THead,
-  Tr,
 } from "@platform/ui-kit";
 import type {
   InspectorFeeAction,
   InspectorFeeRowDto,
 } from "@platform/api-client";
-import { ymd as formatYmd } from "@platform/app-shared/format/date";
 import { engFeeUiStatus } from "./EngOfficeFeesBillingTable";
 import { EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import {
@@ -34,11 +22,15 @@ import {
   type TabId,
 } from "./eng-fees-state";
 import {
-  opsFldControl,
-  opsFilters,
-  opsListCount,
-  opsToolbar,
-} from "../../lib/app-data/ops-tasks-tw";
+  FeeLedgerTable,
+  FeeLedgerToolbar,
+  feeRowCardFields,
+} from "./FeeLedgerParts";
+
+/** The office lane dates a fee by its acceptance. */
+function engFeeDate(row: InspectorFeeRowDto) {
+  return row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc;
+}
 
 type FeeAct = (
   row: InspectorFeeRowDto,
@@ -179,57 +171,25 @@ export function EngFeesLedgerSection({
     )}
 
     {/* `.toolbar` > `.filters` — separate from card */}
-    <div className={opsToolbar}>
-      <div className={opsFilters}>
-        <div className="relative flex items-center">
-          <svg
-            width="15"
-            height="15"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="pointer-events-none absolute start-3 text-text-3"
-            aria-hidden
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="رقم الصك أو المدينة أو الحي…"
-            aria-label="بحث الأتعاب"
-            className={cn(opsFldControl, "w-[248px] max-w-full ps-[38px]")}
-          />
-        </div>
-        <div className="relative flex items-center">
-          <select
-            value={stFilter}
-            onChange={(e) => setStFilter(e.target.value)}
-            aria-label="تصفية الحالة"
-            className={cn(opsFldControl, "cursor-pointer")}
-          >
-            <option value="">جميع الحالات</option>
-            {tab === "action" ? (
-              <>
-                <option value="pending_office">بانتظار إفادتكم</option>
-                <option value="dispute">تحفّظ على التسعير</option>
-              </>
-            ) : (
-              <>
-                <option value="ready">جاهز للفوترة</option>
-                <option value="carried">مرحَّل — متأخر</option>
-              </>
-            )}
-          </select>
-        </div>
-        <span className={opsListCount}>{filteredFees.length} بند</span>
-      </div>
-    </div>
+    <FeeLedgerToolbar
+      search={search}
+      setSearch={setSearch}
+      stFilter={stFilter}
+      setStFilter={setStFilter}
+      count={filteredFees.length}
+    >
+      {tab === "action" ? (
+        <>
+          <option value="pending_office">بانتظار إفادتكم</option>
+          <option value="dispute">تحفّظ على التسعير</option>
+        </>
+      ) : (
+        <>
+          <option value="ready">جاهز للفوترة</option>
+          <option value="carried">مرحَّل — متأخر</option>
+        </>
+      )}
+    </FeeLedgerToolbar>
 
     {/* Phones: one card per fee — the 7-column ledger would scroll sideways. */}
     <MobileRecordList
@@ -241,7 +201,6 @@ export function EngFeesLedgerSection({
         const st = engFeeUiStatus(row);
         const meta = statusMeta(st);
         const { deed, region } = deedParts(row);
-        const ded = row.supervisorDiscountSar > 0;
         return (
           <MobileRecordCard
             key={row.workflowTaskId}
@@ -249,31 +208,11 @@ export function EngFeesLedgerSection({
             title={<bdi dir="ltr" className="tabular-nums">{deed}</bdi>}
             subtitle={region}
             status={<StatusPill label={meta.label} style={meta.style} />}
-            fields={[
-              {
-                label: "تاريخ القبول",
-                ltr: true,
-                value: formatYmd(
-                  row.accruedAtUtc ?? row.workSubmittedAtUtc ?? row.updatedAtUtc,
-                ),
-              },
-              {
-                label: "الصافي",
-                ltr: true,
-                value: fmtSar(row.netFeeSar, { digits: 3, trim: true }),
-              },
-              {
-                label: "سعر الجدول",
-                ltr: true,
-                value: fmtSar(row.agreedFeeSar, { digits: 3, trim: true }),
-              },
-              {
-                label: "تعديل التسعير ومبرره",
-                value: ded
-                  ? `− ${fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}${row.discountReason ? ` · ${row.discountReason}` : ""}`
-                  : "بسعر الجدول",
-              },
-            ]}
+            fields={feeRowCardFields(
+              row,
+              { date: "تاريخ القبول", discount: "تعديل التسعير ومبرره" },
+              engFeeDate(row),
+            )}
           >
             <OfficeFeeAction
               row={row}
@@ -290,104 +229,33 @@ export function EngFeesLedgerSection({
       })}
     </MobileRecordList>
 
-    <TableFrame className="max-lg:hidden">
-      <Table className="min-w-[920px]">
-        <THead>
-          <Tr hoverable={false}>
-            <Th>الصك</Th>
-            <Th>تاريخ القبول</Th>
-            <Th>سعر الجدول</Th>
-            <Th>تعديل التسعير ومبرره</Th>
-            <Th>الصافي</Th>
-            <Th>الحالة</Th>
-            <Th>إجراء المكتب</Th>
-          </Tr>
-        </THead>
-        <TBody>
-          {feesPending && filteredFees.length === 0 ? (
-            <TableEmptyRow colSpan={7}>جاري التحميل…</TableEmptyRow>
-          ) : filteredFees.length === 0 ? (
-            <TableEmptyRow colSpan={7}>لا توجد بنود مطابقة.</TableEmptyRow>
-          ) : (
-            filteredFees.map((row) => {
-              const st = engFeeUiStatus(row);
-              const meta = statusMeta(st);
-              const { deed, region } = deedParts(row);
-              const ded = row.supervisorDiscountSar > 0;
-              const busy = busyId === row.workflowTaskId;
-              const objOpen = objectOpenId === row.workflowTaskId;
-              return (
-                <Tr key={row.workflowTaskId}>
-                  <Td>
-                    <div className="flex min-w-0 flex-col gap-0.5">
-                      <span
-                        dir="ltr"
-                        className="inline-block text-start text-[13px] font-bold tabular-nums text-gold-d [unicode-bidi:isolate]"
-                      >
-                        {deed}
-                      </span>
-                      <span className="text-[11px] text-text-3">
-                        {region}
-                      </span>
-                    </div>
-                  </Td>
-                  <TdLtr valueClassName="text-[12px] text-text-2">
-                    {formatYmd(
-                      row.accruedAtUtc ??
-                        row.workSubmittedAtUtc ??
-                        row.updatedAtUtc,
-                    )}
-                  </TdLtr>
-                  <TdLtr valueClassName="text-[12.5px] text-text-2">
-                    {fmtSar(row.agreedFeeSar, { digits: 3, trim: true })}
-                  </TdLtr>
-                  <Td>
-                    {ded ? (
-                      <span
-                        className="inline-flex min-w-0 items-center gap-1.5"
-                        title={row.discountReason ?? undefined}
-                      >
-                        <span
-                          dir="ltr"
-                          className="shrink-0 text-[12.5px] font-bold tabular-nums text-[#a5432e] [unicode-bidi:isolate]"
-                        >
-                          − {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
-                        </span>
-                        <span className="truncate text-[10.5px] text-text-3">
-                          {row.discountReason || ""}
-                        </span>
-                      </span>
-                    ) : (
-                      <span className="text-[11px] text-text-3">
-                        بسعر الجدول
-                      </span>
-                    )}
-                  </Td>
-                  <TdLtr valueClassName="text-[13px] font-bold text-heading">
-                    {fmtSar(row.netFeeSar, { digits: 3, trim: true })}
-                  </TdLtr>
-                  <Td>
-                    <StatusPill label={meta.label} style={meta.style} />
-                  </Td>
-                  <Td className="overflow-visible">
-                    <OfficeFeeAction
-                      row={row}
-                      st={st}
-                      busy={busy}
-                      objOpen={objOpen}
-                      objectText={objectText}
-                      setObjectText={setObjectText}
-                      setObjectOpenId={setObjectOpenId}
-                      act={act}
-                    />
-                  </Td>
-                </Tr>
-              );
-            })
-          )}
-        </TBody>
-      </Table>
-    </TableFrame>
+    <FeeLedgerTable
+      rows={filteredFees}
+      pending={feesPending}
+      columns={{
+        date: "تاريخ القبول",
+        discount: "تعديل التسعير ومبرره",
+        action: "إجراء المكتب",
+      }}
+      rowKey={(row) => row.workflowTaskId}
+      rowDate={engFeeDate}
+      rowStatus={(row) => {
+        const st = engFeeUiStatus(row);
+        return { st, meta: statusMeta(st) };
+      }}
+      renderAction={(row, st) => (
+        <OfficeFeeAction
+          row={row}
+          st={st}
+          busy={busyId === row.workflowTaskId}
+          objOpen={objectOpenId === row.workflowTaskId}
+          objectText={objectText}
+          setObjectText={setObjectText}
+          setObjectOpenId={setObjectOpenId}
+          act={act}
+        />
+      )}
+    />
     </>
   );
 }

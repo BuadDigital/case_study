@@ -1,6 +1,5 @@
 "use client";
 
-import { OpsIcon } from "../components/OpsIcon";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -14,7 +13,7 @@ import {
   type UpsertClientRequest,
 } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
-import { Badge, cn, EmptyState, MobileRecordCard, MobileRecordList, ModalBody, ModalCard, ModalClose, ModalFooter, ModalHeader, ModalOverlay, ModalTitle, PageShell, PageLoadingHint, Table, TBody, Td, TdLtr, Th, THead, Tr, useToast, confirmAction } from "@platform/ui-kit";
+import { Badge, cn, confirmAction, EmptyState, MobileRecordCard, MobileRecordList, ModalBody, ModalCard, ModalClose, ModalFooter, ModalHeader, ModalOverlay, ModalTitle, OpsIcon, PageLoadingHint, PageShell, Table, TBody, Td, TdLtr, Th, THead, Tr, useToast } from "@platform/ui-kit";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   opsBtnGhost,

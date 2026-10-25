@@ -35,8 +35,10 @@ public interface IOperationsTaskCommands
         string actorRole,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Scheduler entry: auto-remind active tasks whose next work-hours checkpoint has passed.</summary>
     Task<int> ProcessDueAutoRemindersAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Daily creator+assignee reminders for pauses past the one-workday limit.</summary>
     Task<int> ProcessOverLimitPauseRemindersAsync(CancellationToken cancellationToken = default);
 
     Task<(OperationsTaskDto? Result, string? Error)> AddCommentAsync(
