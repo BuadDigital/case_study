@@ -18,8 +18,9 @@ import {
   opsChip,
   opsTapCard,
   useToast,
+  ColorStatusPill,
 } from "@platform/ui-kit";
-import { KeysBackLink, KeysEmpty, KeysStatusPill } from "./KeysHtmlPrimitives";
+import { KeysBackLink, KeysEmpty } from "./KeysHtmlPrimitives";
 import { markEnvelopeFeeCollected } from "../lib/keys-envelope-api";
 import type { KeyEnvelopeFeeReportRow } from "../lib/keys-envelope-types";
 import {
@@ -144,7 +145,7 @@ export function KeyEnvelopeFeesPanel({
                       )}
                     </TdLtr>
                     <Td>
-                      <KeysStatusPill
+                      <ColorStatusPill
                         label={
                           collected
                             ? "محصّلة"
@@ -232,7 +233,7 @@ export function KeyEnvelopeFeesPanel({
                               {row.court || "—"}
                             </div>
                           </div>
-                          <KeysStatusPill
+                          <ColorStatusPill
                             label={
                               collected
                                 ? "محصّلة"

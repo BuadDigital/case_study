@@ -30,6 +30,7 @@ import {
   THead,
   Tr,
   useSwapAnimation,
+  KpiClockIcon,
 } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { KeyEnvelopeFeesPanel } from "./KeyEnvelopeFeesPanelSlot";
@@ -62,7 +63,7 @@ import {
   PartyStatementsPhoneList,
   StatementLinesDetail,
 } from "./PartyIndividualFeesParts";
-import { CardIcon, ClockIcon, CurrencyIcon } from "./FeeKpiIcons";
+import { CardIcon, CurrencyIcon } from "./FeeKpiIcons";
 
 export type { IndividualFeesVariant };
 
@@ -116,7 +117,7 @@ export function PartyIndividualFeesHtmlScreen({
           },
           {
             key: "action",
-            icon: <ClockIcon />,
+            icon: <KpiClockIcon />,
             iconClass: "bg-[color-mix(in_srgb,#d9a441_14%,transparent)] text-[#8a5e14]",
             tone: "gold",
             label: copy.actionKpiLabel,
@@ -158,7 +159,7 @@ export function PartyIndividualFeesHtmlScreen({
           dot
         />
         <KpiCell
-          icon={<ClockIcon />}
+          icon={<KpiClockIcon />}
           iconClass="bg-[color-mix(in_srgb,#d9a441_14%,transparent)] text-[#8a5e14]"
           label={copy.actionKpiLabel}
           value={

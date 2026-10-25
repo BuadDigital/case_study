@@ -71,13 +71,10 @@ function RegisterKeyEnvelopeForm({
     form,
     filteredSuggestions,
     listOpen,
-    dragOver,
-    setDragOver,
     uploading,
     saving,
     locked,
     photoReady,
-    photoRef,
     receiptRef,
     letterRef,
     setText,
@@ -182,10 +179,7 @@ function RegisterKeyEnvelopeForm({
                 source={source}
                 photo={form.photo}
                 uploading={uploading}
-                dragOver={dragOver}
-                inputRef={photoRef}
                 onFile={(file) => void handleUpload("photo", file, "photo")}
-                onDragOverChange={setDragOver}
                 onRemove={removePhoto}
               />
             ) : null}

@@ -10,7 +10,8 @@
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
-import { Note, PageShell } from "@platform/ui-kit";
+import { PageShell } from "@platform/ui-kit";
+import { SettingsAccessNotes } from "../../components/SettingsPageParts";
 import { ConfirmActionModal } from "../../components/ConfirmActionModal";
 import { DevSystemResetPanel } from "../../components/DevSystemResetPanel";
 import { AddStaffUserModal } from "./AddStaffUserModal";
@@ -69,12 +70,7 @@ export function UsersOrganizationView() {
 
   return (
     <PageShell variant="canvas" className="gap-0 p-4 sm:p-6" dir="rtl">
-      {!canManage ? (
-        <Note tone="warn" className="mb-3 max-w-[560px]">
-          الرابط صحيح، لكن دورك الحالي لا يملك صلاحية هذا البند. اطلب الصلاحية من مسؤول النظام.
-        </Note>
-      ) : null}
-      {loadError ? <Note tone="warn">{loadError}</Note> : null}
+      <SettingsAccessNotes canEdit={canManage} error={loadError} />
 
       <UsersOrganizationToolbar workflow={workflow} />
       <UsersOrganizationTable workflow={workflow} />

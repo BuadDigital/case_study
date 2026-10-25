@@ -10,9 +10,8 @@ import {
   buildPrimaryDataTableRow,
   findPropertyForTask,
 } from "../../lib/app-data/my-task-row";
-import { queueCardTimer, queueCardTitle } from "../../lib/app-data/queue-mobile-card";
+import { queueCardMeta, queueCardTimer, queueCardTitle } from "../../lib/app-data/queue-mobile-card";
 import type { PoIntakeRecord } from "../../lib/app-data/po-intake-data";
-import { formatPoDisplay } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import type { QueueTaskStatusBadge } from "../../lib/app-data/active-queue-list-filters";
 
@@ -50,15 +49,7 @@ export function InspectorMobileQueue({
     const row = buildPrimaryDataTableRow(task, property, record, now);
     const badge = resolveBadge(task);
     const tone = toneFromLegacyBadge(badge?.className);
-    const meta = [
-      { text: formatPoDisplay(task.poNumber), kind: "po" as const },
-      row.city !== "—"
-        ? { text: row.city, kind: "place" as const }
-        : null,
-      row.assignmentType !== "—"
-        ? { text: row.assignmentType, kind: "type" as const }
-        : null,
-    ].filter((v): v is NonNullable<typeof v> => Boolean(v));
+    const meta = queueCardMeta(task.poNumber, row);
 
     return {
       id: task.id,

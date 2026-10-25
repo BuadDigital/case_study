@@ -1,16 +1,8 @@
 "use client";
 
 import { useDeferredValue, useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { fmtSar } from "@platform/app-shared/format/number";
-import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
-import {
-  loadPartyBillingReadyLines,
-  loadPartyBillingStatements,
-} from "@platform/app-shared/app-data/party-billing-statements-api";
-import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   EmptyState,
   QueryErrorState,
@@ -34,9 +26,9 @@ import {
   opsTfNote,
 } from "@platform/ui-kit";
 import {
-  buildFinanceCostParties,
   type FinanceCostParty,
 } from "../lib/finance-cost-parties";
+import { useFinanceCostParties } from "./useFinanceCostParties";
 import {
   FINANCE_LIST_PAGE_SIZE,
   useListPageState,
@@ -48,7 +40,6 @@ import {
 } from "../lib/finance-tw";
 import { SearchIcon } from "./FinanceRevenueTableParts";
 
-const EMPTY_STAFF_USERS: StaffUser[] = [];
 
 function PayeeChip({ party }: { party: FinanceCostParty }) {
   const isInd = party.payeeType === "individual";
@@ -89,34 +80,13 @@ export function FinanceCostPartiesList({
   const [q, setQ] = useState("");
   /** Deferred value for filtering — search input stays immediate without blocking typing */
   const deferredQ = useDeferredValue(q);
-  const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
   // Deliberately unpaged loads: a payee row is an aggregate — its balance sums
   // every ready line and every statement of that payee, and a payee with no
   // ready line still appears through its statements. Neither list has a
   // "group by payee" on the server, so both must be whole; the pager below
   // windows the aggregated rows client-side (pagination-contract §9, note).
-  const readyQuery = useQuery({
-    queryKey: [...appDataKeys.partyBilling(), "ready-lines", "parties"],
-    queryFn: () => loadPartyBillingReadyLines(),
-    staleTime: 20_000,
-  });
-  const statementsQuery = useQuery({
-    queryKey: [...appDataKeys.partyBilling(), "statements", "parties"],
-    queryFn: () => loadPartyBillingStatements(),
-    staleTime: 20_000,
-  });
-
-  const parties = useMemo(
-    () =>
-      buildFinanceCostParties({
-        readyLines: readyQuery.data ?? [],
-        statements: statementsQuery.data ?? [],
-        staffUsers,
-      }),
-    [readyQuery.data, statementsQuery.data, staffUsers],
-  );
+  const { readyQuery, statementsQuery, parties, staffUsers } = useFinanceCostParties("parties");
 
   const filtered = useMemo(() => {
     const needle = deferredQ.trim().toLowerCase();

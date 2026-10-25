@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { InspectorSlotPhoto } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorPhotoAttachment } from "../../lib/app-data/inspector-workspace-data";
 import {
   getInspectorPhotoDataUrl,
   prefetchInspectorPhoto,
@@ -14,7 +14,7 @@ import {
 export function useInspectorPhotoDataUrl(
   taskId: string | undefined,
   photoRef: string | undefined,
-  photo: InspectorSlotPhoto | null | undefined,
+  photo: InspectorPhotoAttachment | null | undefined,
   active = true,
 ): string | undefined {
   const [dataUrl, setDataUrl] = useState<string | undefined>(() =>

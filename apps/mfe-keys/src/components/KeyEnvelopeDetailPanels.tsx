@@ -24,6 +24,7 @@ import {
   opsPanelCard,
   opsPanelNote,
   opsSurfaceCard,
+  ColorStatusPill,
 } from "@platform/ui-kit";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@case-study/mfe/lib/app-data/po-intake-data";
 import {
@@ -42,7 +43,6 @@ import {
   type PropertyCourtAccessRow,
 } from "../lib/keys-envelope-types";
 import { KeyEnvelopeAttachmentPreview } from "./KeyEnvelopeAttachmentPreview";
-import { KeysStatusPill } from "./KeysHtmlPrimitives";
 import { FileIcon, HandoffIcon } from "./KeyEnvelopeDetailIcons";
 import {
   KEY_LOCATION_OPTIONS,
@@ -176,7 +176,7 @@ function KeyLocationCell({
   }
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
-      <KeysStatusPill
+      <ColorStatusPill
         label={keyLocationLabel(assignment.keyLocation, assignment.keyHolderLabel)}
         color={keyLocationColor(assignment.keyLocation)}
       />
@@ -254,7 +254,7 @@ export function AssignmentsPanel({
                     </span>
                   </Td>
                   <Td>
-                    <KeysStatusPill
+                    <ColorStatusPill
                       label={assignmentStatusLabel(a.status)}
                       color={color}
                     />
@@ -316,7 +316,7 @@ export function AssignmentsPanel({
                 >
                   صك {a.deedNumber}
                 </span>
-                <KeysStatusPill
+                <ColorStatusPill
                   label={assignmentStatusLabel(a.status)}
                   color={color}
                 />

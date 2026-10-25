@@ -14,7 +14,7 @@ import {
   findPropertyForTask,
   remainingTimerTick,
 } from "../lib/app-data/my-task-row";
-import { queueCardTimer, queueCardTitle } from "../lib/app-data/queue-mobile-card";
+import { queueCardMeta, queueCardTimer, queueCardTitle } from "../lib/app-data/queue-mobile-card";
 import { formatPoDisplay } from "../lib/app-data/po-intake-data";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks";
@@ -144,21 +144,10 @@ export function buildQueueMobileCardItems({
     const timer = queueCardTimer(record, task, now);
     const transactionNumber =
       transactionNumberOf(property) ?? task.transactionNumber;
-    const meta = [
-      { text: formatPoDisplay(task.poNumber), kind: "po" as const },
-      transactionNumber
-        ? { text: transactionNumber, kind: "po" as const }
-        : null,
-      row.city !== "—" ? { text: row.city, kind: "place" as const } : null,
-      flags.isPropertyAppraisalTable &&
-      row.propertyType &&
-      row.propertyType !== "—"
-        ? { text: row.propertyType, kind: "type" as const }
-        : null,
-      row.assignmentType !== "—"
-        ? { text: row.assignmentType, kind: "type" as const }
-        : null,
-    ].filter((v): v is NonNullable<typeof v> => Boolean(v));
+    const meta = queueCardMeta(task.poNumber, row, {
+      transactionNumber,
+      withPropertyType: flags.isPropertyAppraisalTable,
+    });
     return {
       id: task.id,
       title: queueCardTitle(row, property, task.id),

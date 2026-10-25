@@ -13,6 +13,7 @@ import {
   opsBtnPrimary,
   opsPpHeadCard,
   useSwapAnimation,
+  ColorStatusPill,
 } from "@platform/ui-kit";
 import {
   envelopeDisplayRef,
@@ -27,7 +28,6 @@ import { KeyEnvelopeAttachmentPreview } from "./KeyEnvelopeAttachmentPreview";
 import {
   KeysBackLink,
   KeysPpCell,
-  KeysStatusPill,
   KeysTabBar,
 } from "./KeysHtmlPrimitives";
 import { AlertIcon, EnvIcon, PhoneIcon } from "./KeyEnvelopeDetailIcons";
@@ -122,7 +122,7 @@ export function KeyEnvelopeDetailPage({
                     <span className="text-[13px] font-semibold text-text-3">
                       طلب {env.requestNumber}
                     </span>
-                    <KeysStatusPill
+                    <ColorStatusPill
                       label={envelopeStatusLabel(env.status)}
                       color={stColor}
                     />
@@ -184,7 +184,7 @@ export function KeyEnvelopeDetailPage({
             {/* pp-summary */}
             <div className="mt-4 flex flex-wrap border-t border-border pt-3.5 max-lg:grid max-lg:grid-cols-2 max-lg:gap-y-1">
               <KeysPpCell label="سيناريو الاستلام" first>
-                <KeysStatusPill
+                <ColorStatusPill
                   label={scenarioLabel(env.receiveScenario)}
                   color={scColor}
                 />

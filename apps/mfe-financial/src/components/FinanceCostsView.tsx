@@ -11,22 +11,15 @@ import {
   QueryErrorState,
   useSwapAnimation,
 } from "@platform/ui-kit";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { fmtSar } from "@platform/app-shared/format/number";
-import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
-import {
-  loadPartyBillingReadyLines,
-  loadPartyBillingStatements,
-} from "@platform/app-shared/app-data/party-billing-statements-api";
 import { resolvePartyName } from "@platform/app-shared/fees/party-fee-meta";
-import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
-import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import {
   applyCostTax,
-  buildFinanceCostParties,
   type FinanceCostParty,
 } from "../lib/finance-cost-parties";
+import { useFinanceCostParties } from "./useFinanceCostParties";
 import { COSTS_ACCOUNT_TABS, type CostsSection } from "../lib/finance-nav";
 import { FinanceStagePills } from "./FinanceStagePills";
 import { FinancePartyBillingStatements } from "./FinancePartyBillingStatements";
@@ -34,7 +27,6 @@ import { FinanceExcludedCosts } from "./FinanceExcludedCosts";
 import { FinanceCostPartiesList } from "./FinanceCostPartiesList";
 import { prefetchCostsAccountTab } from "../query/costs-account-queries";
 
-const EMPTY_STAFF_USERS: StaffUser[] = [];
 
 // SAR suffix without forced fractional zeros — keep local to preserve the same display.
 function AccountHeader({ party }: { party: FinanceCostParty }) {
@@ -157,33 +149,12 @@ export function FinanceCostsView({
   onEnsureParty?: (partyId: string) => void;
   excludedCount?: number;
 }) {
-  const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
 
   // Deliberately unpaged: the account header sums the payee's whole ledger
   // (due / in statements / paid / balance) and the tab badges count it, and a
   // deep-linked statement resolves its payee from the whole statement list.
   // The paged reads live in the tabs below (usePartyBillingStatementsWorkflow).
-  const readyQuery = useQuery({
-    queryKey: [...appDataKeys.partyBilling(), "ready-lines", "account"],
-    queryFn: () => loadPartyBillingReadyLines(),
-    staleTime: 20_000,
-  });
-  const statementsQuery = useQuery({
-    queryKey: [...appDataKeys.partyBilling(), "statements", "account"],
-    queryFn: () => loadPartyBillingStatements(),
-    staleTime: 20_000,
-  });
-
-  const parties = useMemo(
-    () =>
-      buildFinanceCostParties({
-        readyLines: readyQuery.data ?? [],
-        statements: statementsQuery.data ?? [],
-        staffUsers,
-      }),
-    [readyQuery.data, statementsQuery.data, staffUsers],
-  );
+  const { readyQuery, statementsQuery, parties, staffUsers } = useFinanceCostParties("account");
 
   /** Immediate account tab — does not wait on delayed searchParams */
   const [viewSection, setViewSection] = useState(section);
