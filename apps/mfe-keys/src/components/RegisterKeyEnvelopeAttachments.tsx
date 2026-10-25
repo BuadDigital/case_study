@@ -5,8 +5,8 @@
  * dropzone (camera capture or drag-and-drop) and the plain file button used
  * for the receipt letter and the third-party letter.
  */
-import type { DragEvent, RefObject } from "react";
-import { Spinner, cn } from "@platform/ui-kit";
+import type { RefObject } from "react";
+import { Spinner, cn, useFileDropZone } from "@platform/ui-kit";
 import type { FilePick, SourceKind } from "./register-key-envelope-state";
 import { Fld, FldLabel } from "./RegisterKeyEnvelopeSections";
 
@@ -34,22 +34,20 @@ export function EnvelopePhotoField({
   source,
   photo,
   uploading,
-  dragOver,
-  inputRef,
   onFile,
-  onDragOverChange,
   onRemove,
 }: {
   source: SourceKind;
   photo: FilePick | null;
   uploading: boolean;
-  dragOver: boolean;
-  inputRef: RefObject<HTMLInputElement | null>;
   onFile: (file: File | undefined) => void;
-  onDragOverChange: (over: boolean) => void;
   onRemove: () => void;
 }) {
   const photoPicked = Boolean(photo);
+  const { dragOver, inputRef, openPicker, zoneProps } = useFileDropZone({
+    onFiles: (files) => onFile(files[0]),
+    disabled: uploading,
+  });
   return (
     <Fld full>
       <FldLabel>
@@ -77,26 +75,7 @@ export function EnvelopePhotoField({
               ? "border-[var(--gold)] bg-[var(--gold-soft)]"
               : "border-border-md",
         )}
-        onClick={() => {
-          if (uploading) return;
-          inputRef.current?.click();
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            inputRef.current?.click();
-          }
-        }}
-        onDragOver={(e: DragEvent<HTMLDivElement>) => {
-          e.preventDefault();
-          onDragOverChange(true);
-        }}
-        onDragLeave={() => onDragOverChange(false)}
-        onDrop={(e: DragEvent<HTMLDivElement>) => {
-          e.preventDefault();
-          onDragOverChange(false);
-          onFile(e.dataTransfer.files?.[0]);
-        }}
+        {...zoneProps}
       >
         {photoPicked && photo ? (
           <div>
@@ -130,7 +109,7 @@ export function EnvelopePhotoField({
                 className="cursor-pointer border-none bg-transparent text-[11px] font-bold text-[var(--gold-d)]"
                 onClick={(e) => {
                   e.stopPropagation();
-                  inputRef.current?.click();
+                  openPicker();
                 }}
               >
                 استبدال

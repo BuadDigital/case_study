@@ -1,12 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { cn } from "@platform/ui-kit";
 import type { InspectorPhotoAttachment } from "../../lib/app-data/inspector-workspace-data";
-import {
-  getInspectorPhotoDataUrl,
-  prefetchInspectorPhoto,
-} from "../../lib/app-data/inspector-photo-upload";
+import { useInspectorPhotoDataUrl } from "./useInspectorPhotoDataUrl";
 
 export function InspectorStampedPhotoThumb({
   stamp,
@@ -32,37 +28,13 @@ export function InspectorStampedPhotoThumb({
   onClear?: () => void;
   onClick?: () => void;
 }) {
-  const [dataUrl, setDataUrl] = useState(
-    () =>
-      dataUrlProp ??
-      (taskId && photoRef ? getInspectorPhotoDataUrl(taskId, photoRef) : undefined),
+  const fetchedUrl = useInspectorPhotoDataUrl(
+    taskId || undefined,
+    photoRef,
+    attachment,
+    dataUrlProp === undefined,
   );
-
-  useEffect(() => {
-    if (dataUrlProp !== undefined) {
-      setDataUrl(dataUrlProp);
-      return;
-    }
-    if (!taskId || !photoRef || !attachment) return;
-
-    const cached = getInspectorPhotoDataUrl(taskId, photoRef);
-    if (cached) {
-      setDataUrl(cached);
-      return;
-    }
-
-    let cancelled = false;
-    void prefetchInspectorPhoto(taskId, photoRef, attachment)
-      .then((url) => {
-        if (!cancelled && url) setDataUrl(url);
-      })
-      .catch((err: unknown) => {
-        console.warn("Inspector photo prefetch failed:", err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [dataUrlProp, taskId, photoRef, attachment]);
+  const dataUrl = dataUrlProp ?? fetchedUrl;
 
   const sizeClass = compact
     ? "h-[60px] w-[84px] text-[10px]"

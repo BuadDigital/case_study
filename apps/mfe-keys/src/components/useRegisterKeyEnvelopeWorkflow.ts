@@ -64,9 +64,7 @@ export function useRegisterKeyEnvelopeWorkflow({
   const [linked, setLinked] = useState<KeyEnvelopeLinkedProperty[]>([]);
   const [suggestions, setSuggestions] = useState<RequestSuggestion[]>([]);
   const [listOpen, setListOpen] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const photoRef = useRef<HTMLInputElement>(null);
   const receiptRef = useRef<HTMLInputElement>(null);
   const letterRef = useRef<HTMLInputElement>(null);
   const blurTimer = useRef<number | null>(null);
@@ -228,14 +226,11 @@ export function useRegisterKeyEnvelopeWorkflow({
     form,
     filteredSuggestions,
     listOpen,
-    dragOver,
-    setDragOver,
     uploading,
     saving,
     locked,
     photoReady,
     photoPicked,
-    photoRef,
     receiptRef,
     letterRef,
     setText,

@@ -8,14 +8,10 @@ import {
   openPropertyDetailDocumentPreview,
   type PropertyDetailDocumentEntry,
 } from "../../lib/app-data/property-detail-documents";
-import {
-  getInspectorPhotoDataUrl,
-  prefetchInspectorPhoto,
-} from "../../lib/app-data/inspector-photo-upload";
 import { cn } from "@platform/ui-kit";
+import { useInspectorPhotoDataUrl } from "../field-inspection/useInspectorPhotoDataUrl";
 import { PropertyLocationMapGlance } from "./PropertyLocationMapGlance";
 import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
-import { useEffect, useState } from "react";
 
 const goldSoft = "rounded border border-border bg-surface-2";
 
@@ -61,46 +57,13 @@ export function PropertyDetailMediaGlance({
   photos?: PropertyDetailDocumentEntry[] | null;
 }) {
   const handle = primaryPhoto?.inspectionPhoto;
-  const [heroUrl, setHeroUrl] = useState(
-    () =>
-      primaryPhoto?.dataUrl ??
-      (handle
-        ? getInspectorPhotoDataUrl(handle.taskId, handle.photoRef)
-        : undefined),
-  );
-
-  useEffect(() => {
-    if (primaryPhoto?.dataUrl) {
-      setHeroUrl(primaryPhoto.dataUrl);
-      return;
-    }
-    if (!handle?.attachment.attachmentId) {
-      setHeroUrl(undefined);
-      return;
-    }
-    const cached = getInspectorPhotoDataUrl(handle.taskId, handle.photoRef);
-    if (cached) {
-      setHeroUrl(cached);
-      return;
-    }
-    let cancelled = false;
-    void prefetchInspectorPhoto(
-      handle.taskId,
-      handle.photoRef,
-      handle.attachment,
-    ).then((url) => {
-      if (!cancelled && url) setHeroUrl(url);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    primaryPhoto?.dataUrl,
+  const fetchedUrl = useInspectorPhotoDataUrl(
     handle?.taskId,
     handle?.photoRef,
-    handle?.attachment,
-    handle?.attachment.attachmentId,
-  ]);
+    handle?.attachment.attachmentId ? handle.attachment : null,
+    !primaryPhoto?.dataUrl,
+  );
+  const heroUrl = primaryPhoto?.dataUrl || fetchedUrl;
 
   const hasPhoto = Boolean(heroUrl);
   const description = property

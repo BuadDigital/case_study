@@ -5,9 +5,7 @@ import {
   EmptyIconSearch,
   EmptyState,
   MobileSectionPicker,
-  StatusPill,
   cn,
-  statusPillStyleFromColor,
 } from "@platform/ui-kit";
 
 export function KeysBackLink({
@@ -40,16 +38,6 @@ export function KeysBackLink({
       <span>{children}</span>
     </button>
   );
-}
-
-export function KeysStatusPill({
-  label,
-  color,
-}: {
-  label: string;
-  color: string;
-}) {
-  return <StatusPill label={label} style={statusPillStyleFromColor(color)} />;
 }
 
 export function KeysTabBar({

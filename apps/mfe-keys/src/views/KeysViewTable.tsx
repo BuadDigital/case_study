@@ -14,12 +14,13 @@ import {
   THead,
   Tr,
   cn,
+  ColorStatusPill,
 } from "@platform/ui-kit";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,
 } from "@platform/app-shared/components/ActiveQueueMobileCards";
-import { KeysEmpty, KeysStatusPill } from "../components/KeysHtmlPrimitives";
+import { KeysEmpty } from "../components/KeysHtmlPrimitives";
 import {
   envelopeDisplayRef,
   envelopeHolderText,
@@ -175,13 +176,13 @@ export function KeysViewTable({
                     </span>
                   </Td>
                   <Td>
-                    <KeysStatusPill
+                    <ColorStatusPill
                       label={scenarioLabel(env.receiveScenario)}
                       color={scenarioColor(env.receiveScenario)}
                     />
                   </Td>
                   <Td>
-                    <KeysStatusPill
+                    <ColorStatusPill
                       label={envelopeStatusLabel(env.status)}
                       color={envelopeStatusColor(env.status)}
                     />

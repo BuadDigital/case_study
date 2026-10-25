@@ -169,7 +169,6 @@ public static class CaseStudyModel
             e.Property(x => x.Circuit).HasMaxLength(150);
             e.Property(x => x.DeedDate).HasMaxLength(32);
             e.Property(x => x.DeedStatus).HasMaxLength(64);
-            e.Property(x => x.OwnerName).HasMaxLength(256);
             e.Property(x => x.AssignmentDocFileName).HasMaxLength(512);
             e.Property(x => x.BourseDeedImageFileName).HasMaxLength(512);
             e.Property(x => x.DeedOwnershipFileName).HasMaxLength(512);

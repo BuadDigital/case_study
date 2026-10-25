@@ -31,7 +31,6 @@ import {
   ModalHeader,
   ModalOverlay,
   ModalTitle,
-  Note,
   PageShell,
   Select,
   PageLoadingHint,
@@ -46,6 +45,7 @@ import {
   Tr,
   useToast,
 } from "@platform/ui-kit";
+import { SettingsAccessNotes } from "../components/SettingsPageParts";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 const REGION_CITIES: Record<string, string[]> = {
@@ -435,12 +435,8 @@ export function CourtsView() {
 
   return (
     <PageShell variant="canvas" className="gap-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6" dir="rtl">
-      {!canEdit && authReady ? (
-        <Note tone="warn" className="mb-3 max-w-[560px]">
-          الرابط صحيح، لكن دورك الحالي لا يملك صلاحية هذا البند. اطلب الصلاحية من مسؤول النظام.
-        </Note>
-      ) : null}
-      {loadError ? <Note tone="warn">{loadError}</Note> : null}
+      {/* The permission note waits for auth so it never flashes on load. */}
+      <SettingsAccessNotes canEdit={canEdit || !authReady} error={loadError} />
 
       {canEdit ? (
         <div className="mb-3 flex flex-wrap gap-2.5">

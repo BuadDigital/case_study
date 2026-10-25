@@ -15,13 +15,14 @@ import {
   KpiCell,
   MobileKpiStatCards,
   useSwapAnimation,
+  KpiClockIcon,
 } from "@platform/ui-kit";
 import { EngFeesHtmlTabs } from "./EngFeesHtmlTabs";
 import { EngFeesLedgerSection } from "./EngFeesLedgerSection";
 import { EngFeesStatementsSection } from "./EngFeesStatementsSection";
 import { EngFeesInvoiceModal } from "./EngFeesInvoiceModal";
 import { useEngFeesWorkflow } from "./useEngFeesWorkflow";
-import { CardIcon, ClockIcon, CurrencyIcon } from "./FeeKpiIcons";
+import { CardIcon, CurrencyIcon } from "./FeeKpiIcons";
 
 export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
   const {
@@ -79,7 +80,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           },
           {
             key: "pending",
-            icon: <ClockIcon />,
+            icon: <KpiClockIcon />,
             iconClass: "bg-[color-mix(in_srgb,#d9a441_14%,transparent)] text-[#8a5e14]",
             tone: "gold",
             label: "بانتظار إفادتكم",
@@ -122,7 +123,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
           dot
         />
         <KpiCell
-          icon={<ClockIcon />}
+          icon={<KpiClockIcon />}
           iconClass="bg-[color-mix(in_srgb,#d9a441_14%,transparent)] text-[#8a5e14]"
           label="بانتظار إفادتكم"
           value={
