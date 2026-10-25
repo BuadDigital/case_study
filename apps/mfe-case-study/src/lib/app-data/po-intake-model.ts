@@ -232,6 +232,9 @@ export function propertyToEnfathDto(
     district: prop.district.trim() || undefined,
     classification: prop.classification.trim() || undefined,
     propertyType: prop.propertyType.trim() || undefined,
+    // The server writes both from this payload too — omitting them wiped a bourse-step area/deed status.
+    area: prop.area.trim() || undefined,
+    deedStatus: prop.deedStatus.trim() || undefined,
     court: prop.court || undefined,
     circuit: prop.circuit || undefined,
     courtId: prop.courtId?.trim() || undefined,
@@ -295,8 +298,6 @@ export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
     partitionMinutesDate: prop.partitionMinutesDate || undefined,
     finishingType: prop.finishingType || undefined,
     finishingStructure: prop.finishingStructure || undefined,
-    deedStatus: prop.deedStatus || undefined,
-    area: prop.area || undefined,
     bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
     city: prop.city.trim(),
     district: prop.district.trim(),

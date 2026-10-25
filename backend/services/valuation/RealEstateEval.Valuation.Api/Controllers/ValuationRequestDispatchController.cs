@@ -41,6 +41,16 @@ public sealed class ValuationRequestDispatchController(
         return this.OkOrEmpty(dto);
     }
 
+    /// <summary>Case study checks the final report is ready before the Enfaz handover.</summary>
+    [HttpGet("final-report-status-by-property/{propertyId}")]
+    public async Task<ActionResult<PropertyFinalReportStatusDto>> GetFinalReportStatusByProperty(
+        string propertyId,
+        CancellationToken cancellationToken) =>
+        Ok(new PropertyFinalReportStatusDto
+        {
+            FinalReportStatus = await service.GetFinalReportStatusByPropertyAsync(propertyId, cancellationToken),
+        });
+
     [HttpPost]
     public async Task<ActionResult<ValuationRequestDto>> Create(
         [FromBody] SaveValuationRequestRequest request,

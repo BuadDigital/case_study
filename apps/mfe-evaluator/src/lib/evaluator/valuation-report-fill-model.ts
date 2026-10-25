@@ -16,7 +16,6 @@ import {
 import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
 import { OTHER_ATTACHMENTS_KEY } from "@platform/app-shared/app-data/inspector-workspace-data";
-import { approximatePropertyGeo } from "@platform/app-shared/domain/property-geo";
 import {
   clientNameFromRecord,
   formatValuationReportUsers,
@@ -284,20 +283,10 @@ function joinCoords(inspector?: InspectorWorkspaceDraft | null): string {
 
 function subjectCoordsForReport(
   inspector: InspectorWorkspaceDraft | null | undefined,
-  property: PoPropertyIntake | null | undefined,
 ): { lat: number; lng: number } | null {
-  const approx = property
-    ? approximatePropertyGeo({
-        city: property.city,
-        deedNumber: property.deedNumber,
-      })
-    : null;
   return resolveSubjectMapCoords({
     subjectLat: inspector?.mapLatitude,
     subjectLng: inspector?.mapLongitude,
-    city: property?.city,
-    fallbackLat: approx?.lat ?? null,
-    fallbackLng: approx?.lng ?? null,
   });
 }
 
@@ -664,7 +653,7 @@ export function buildValuationReportLiveFill(input: {
   const reportAgeYears = reportPropertyAgeYearsFromLicense(licenseDateRaw);
   const reportAgeLabel =
     reportAgeYears == null ? "" : formatReportPropertyAgeYears(reportAgeYears);
-  const subjectCoords = subjectCoordsForReport(inspector, property);
+  const subjectCoords = subjectCoordsForReport(inspector);
   const coordsLabel = subjectCoords
     ? formatSubjectCoordsLabel(subjectCoords.lat, subjectCoords.lng)
     : joinCoords(inspector);
@@ -1096,18 +1085,9 @@ export function buildValuationReportLiveFill(input: {
   const landAdj = buildAdjustmentSheetRows(landComps, input.landMarket);
   const indirect = buildIndirectCostSheetRows(input.cost);
 
-  const approx = property
-    ? approximatePropertyGeo({
-        city: property.city,
-        deedNumber: property.deedNumber,
-      })
-    : null;
   const mapPins = collectComparablesMapPins({
     subjectLat: subjectCoords?.lat ?? inspector?.mapLatitude,
     subjectLng: subjectCoords?.lng ?? inspector?.mapLongitude,
-    city: property?.city,
-    fallbackLat: approx?.lat ?? null,
-    fallbackLng: approx?.lng ?? null,
     comps: comps.map((item, i) => ({
       latitude: item.comparable.latitude,
       longitude: item.comparable.longitude,
@@ -1119,9 +1099,6 @@ export function buildValuationReportLiveFill(input: {
   const landMapPins = collectComparablesMapPins({
     subjectLat: subjectCoords?.lat ?? inspector?.mapLatitude,
     subjectLng: subjectCoords?.lng ?? inspector?.mapLongitude,
-    city: property?.city,
-    fallbackLat: approx?.lat ?? null,
-    fallbackLng: approx?.lng ?? null,
     comps: landComps.map((item, i) => ({
       latitude: item.comparable.latitude,
       longitude: item.comparable.longitude,

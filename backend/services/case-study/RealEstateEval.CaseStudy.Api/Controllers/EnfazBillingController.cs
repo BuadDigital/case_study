@@ -122,11 +122,10 @@ public class EnfazBillingController : ControllerBase
         string poNumber,
         CancellationToken ct)
     {
-        var dto = await _billing.IssueInvoiceAsync(poNumber, ct);
-        return dto is null
-            ? this.BadRequestProblem(
-                "تعذّر إصدار الفاتورة — تحقق من رفع كل عقارات أمر العمل على إنفاذ وتعبئة الأتعاب.")
-            : Ok(dto);
+        var (dto, error) = await _billing.IssueInvoiceAsync(poNumber, ct);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpPost("{poNumber}/collect")]

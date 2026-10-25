@@ -45,10 +45,14 @@ export function resolveRevenueStage(row: EnfazTrackingRowDto): RevenueStage {
   // Ready but not uploaded / not invoiced — stopped by age
   if (isStalledWithoutInvoice(row)) return "stopped";
 
+  // Handed over to Enfaz, but its financial data has not appeared yet: the accountant has not marked
+  // the deed «جاهز للفوترة», so it cannot be matched or invoiced — whatever fees were typed before.
+  if (!row.billingReadyAtUtc) return "eligible";
+
   // Fees filled = match done → billing assistant
   if (row.enfazFilled && row.enfazFeeSar > 0) return "billing_assistant";
 
-  // Completed and ready for match/billing
+  // Marked ready for billing, fees still to match
   return "eligible";
 }
 

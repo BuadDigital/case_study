@@ -1616,6 +1616,8 @@ describe("report follows the chosen approaches (contractor method only)", () => 
     const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
     const fill = buildValuationReportLiveFill({
       draft,
+      // The subject pin comes from the inspector only — never guessed from the city.
+      inspector: { mapLatitude: "21.49", mapLongitude: "39.19" } as never,
       property: { id: "p1", deedNumber: "1", city: "جدة" } as never,
       marketApproachEnabled: false,
       costApproachEnabled: true,

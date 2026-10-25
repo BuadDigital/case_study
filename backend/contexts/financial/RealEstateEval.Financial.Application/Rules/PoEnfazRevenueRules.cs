@@ -39,8 +39,8 @@ public static class PoEnfazRevenueRules
             (InspectorFeeWorkStatuses.InProgress, InspectorFeeBillingRules.WorkStatusLabel(InspectorFeeWorkStatuses.InProgress)));
 
     /// <summary>
-    /// Ready POs with their delivered / cancelled property counts; null when the PO is not ready
-    /// (every live property handed over to Enfaz or fully cancelled). Removed properties are not
+    /// Ready POs with their marked / cancelled property counts; null when the PO is not ready
+    /// (every live property marked «جاهز للفوترة» or fully cancelled). Removed properties are not
     /// counted.
     /// </summary>
     public static EnfazReadyPoSummaryDto? ReadySummary(
@@ -55,7 +55,7 @@ public static class PoEnfazRevenueRules
         var cancelled = 0;
         foreach (var property in properties.Where(p => !p.IsRemoved))
         {
-            if (property.EnfazHandoverAtUtc is not null)
+            if (property.BillingReadyAtUtc is not null)
             {
                 done += 1;
                 continue;
@@ -218,8 +218,10 @@ public static class PoEnfazRevenueRules
         return new EnfazTrackingRowDto
         {
             PoNumber = poNumber,
+            WorkOrderId = property.WorkOrderId.ToString(),
             PropertyId = property.Id.ToString(),
             PropertyLabel = PropertyLineLabel(property),
+            BillingReadyAtUtc = property.BillingReadyAtUtc,
             DeedNumber = (property.DeedNumber ?? string.Empty).Trim(),
             City = (property.City ?? string.Empty).Trim(),
             LandArea = (property.Area ?? string.Empty).Trim(),

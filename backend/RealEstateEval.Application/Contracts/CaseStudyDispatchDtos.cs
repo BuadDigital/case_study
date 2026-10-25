@@ -37,6 +37,8 @@ public sealed class CaseStudyPropertySnapshotDto
     public DateTime? BourseCompletedAtUtc { get; set; }
     /// <summary>Q-9: when the specialist recorded the Enfaz handover (null = not delivered yet).</summary>
     public DateTime? EnfazHandoverAtUtc { get; set; }
+    /// <summary>The accountant marked the deed «جاهز للفوترة» (null = not marked; older hosts omit it).</summary>
+    public DateTime? BillingReadyAtUtc { get; set; }
 }
 
 public sealed class CaseStudyWorkflowTaskSnapshotDto

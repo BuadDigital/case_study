@@ -1,6 +1,5 @@
 "use client";
 
-import type { ReactNode } from "react";
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
 import {
   Input,
@@ -24,18 +23,9 @@ import {
 } from "../../lib/app-data/po-intake-data";
 import { useFacadeOptions } from "../../query/use-facade-options";
 import { FALLBACK_FACADE_OPTIONS } from "../field-inspection/inspector-wizard-state";
+import { PhoneField } from "./PhoneField";
 
 type BoundaryRow = (typeof PROPERTY_BOUNDARY_ROWS)[number];
-
-/** Phone field: label above a full-width control. */
-function PhoneField({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <span className="text-[11px] font-medium text-text-3">{label}</span>
-      {children}
-    </div>
-  );
-}
 
 type Props = {
   property: PoPropertyIntake;

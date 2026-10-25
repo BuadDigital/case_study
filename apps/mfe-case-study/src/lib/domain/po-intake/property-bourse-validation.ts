@@ -3,6 +3,7 @@ import {
   parseRestrictionTypes,
   propertyHasRegisteredTitle,
 } from "../../app-data/po-intake-data";
+import { isPositiveLocaleNumber } from "@platform/app-shared/format/number";
 import {
   collectRequiredErrors,
   mergeFieldErrors,
@@ -11,6 +12,15 @@ import {
 
 const RESTRICTIONS_VALUES = new Set(["yes", "no"]);
 const BOUNDARIES_VALUES = new Set(["deed", "bourse", "doc", "no"]);
+
+/**
+ * The land area is the valuation basis — required to complete the bourse, registered titles
+ * included. Same rule and messages as the server (WorkOrderValidator.BourseAreaError).
+ */
+export function bourseAreaError(area: string | null | undefined): string | null {
+  if (!area?.trim()) return "مساحة الأرض مطلوبة لإتمام البورصة";
+  return isPositiveLocaleNumber(area) ? null : "مساحة الأرض يجب أن تكون رقماً أكبر من صفر";
+}
 
 export function validatePropertyBourseFields(
   p: PoPropertyIntake,
@@ -24,6 +34,9 @@ export function validatePropertyBourseFields(
       ["city", "district"],
     ),
   );
+
+  const areaError = bourseAreaError(p.area);
+  if (areaError) errors.area = areaError;
 
   if (propertyHasRegisteredTitle(p)) return errors;
 
@@ -65,6 +78,7 @@ export function firstBourseValidationMessage(errors: FieldErrors): string {
   return (
     errors.city ??
     errors.district ??
+    errors.area ??
     errors.bourseDeedImageFileName ??
     errors.restrictionsPresent ??
     errors.restrictionType ??

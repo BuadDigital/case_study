@@ -1,4 +1,5 @@
 using System.Text.Json;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
@@ -95,6 +96,54 @@ public class PartyTaskSubmissionRulesTests
         Assert.False(PartyTaskSubmissionRules.MaySubmit(Actor("case-specialist", "other"), survey));
         var appraisal = MakeTask(WorkflowTaskKind.PropertyAppraisal, assigneeId: "ap-1");
         Assert.False(PartyTaskSubmissionRules.MaySubmit(Actor("case-specialist", "other"), appraisal));
+    }
+
+    /// <summary>The submit rule as it was written before it delegated to <c>MayWriteDraft</c>.</summary>
+    private static bool MaySubmitAsFirstWritten(PartySubmissionActor? actor, WorkflowTask task)
+    {
+        if (actor is null) return true;
+        if (PoRoleMatrixRules.CanWritePartyTask(
+                actor.PrototypeRole, task.AssigneeId, actor.UserId, actor.DistributionAssigneeId))
+            return true;
+        return task.Kind == WorkflowTaskKind.FieldInspection
+            && PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(actor, task);
+    }
+
+    [Fact]
+    public void Submit_decides_exactly_as_it_did_for_every_role_kind_and_assignee_match()
+    {
+        var kinds = new[]
+        {
+            WorkflowTaskKind.FieldInspection,
+            WorkflowTaskKind.EngineeringSurvey,
+            WorkflowTaskKind.PropertyAppraisal,
+            WorkflowTaskKind.CaseStudyProperty,
+        };
+        var roles = new[]
+        {
+            "case-specialist", "field-inspector", "cdo", "appraiser", "engineering-office",
+            "finance", "admin", "supervisor", "unknown-role", "",
+        };
+        // (userId, distribution id) pairs: the assignee himself, via distribution, and a stranger.
+        var identities = new (string UserId, string? DistributionId)[]
+        {
+            ("fi-1", null), ("other", "fi-1"), ("other", null), ("other", "nope"),
+        };
+
+        foreach (var kind in kinds)
+        foreach (var assigneeId in new string?[] { "fi-1", null })
+        {
+            var task = MakeTask(kind, assigneeId: assigneeId);
+            Assert.Equal(MaySubmitAsFirstWritten(null, task), PartyTaskSubmissionRules.MaySubmit(null, task));
+            foreach (var role in roles)
+            foreach (var (userId, distributionId) in identities)
+            {
+                var actor = Actor(role, userId, distributionId);
+                Assert.Equal(
+                    MaySubmitAsFirstWritten(actor, task),
+                    PartyTaskSubmissionRules.MaySubmit(actor, task));
+            }
+        }
     }
 
     // ---- labels ----

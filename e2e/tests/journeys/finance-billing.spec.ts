@@ -129,10 +129,10 @@ test.describe("Finance: cost ledger and the server-paged billing list", () => {
 
     // The engineering office's account.
     await page.goto(DUES_URL, { waitUntil: "commit" });
-    await expect(page.getByText(ASSIGNEE_NAMES.engineeringOffice).first()).toBeVisible(
+    await expect(page.getByText(ASSIGNEE_NAMES.engineeringOffice).filter({ visible: true }).first()).toBeVisible(
       { timeout: 90_000 },
     );
-    await expect(page.getByText(ASSIGNEE_IDS.engineeringOffice).first()).toBeVisible();
+    await expect(page.getByText(ASSIGNEE_IDS.engineeringOffice).filter({ visible: true }).first()).toBeVisible();
 
     for (const tab of [
       "المستحقات",

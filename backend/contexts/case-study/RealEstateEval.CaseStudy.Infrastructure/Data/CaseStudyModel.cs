@@ -114,6 +114,7 @@ public static class CaseStudyModel
             // comprehensive "Enfaz" upload. The PO list buckets filter on the stamp.
             e.Property(x => x.EnfazHandoverByUserId).HasMaxLength(128);
             e.HasIndex(x => x.EnfazHandoverAtUtc);
+            e.Property(x => x.BillingReadyByUserId).HasMaxLength(128);
             e.Property(x => x.RemoteInspectionApprovedBy).HasMaxLength(128);
             e.Property(x => x.RequestNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentMandateNumber).HasMaxLength(64);

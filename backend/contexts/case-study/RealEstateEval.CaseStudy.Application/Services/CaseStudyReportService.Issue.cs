@@ -319,6 +319,9 @@ public partial class CaseStudyReportService
             var lone = await _db.GetPropertyForUpdateAsync(lonePropertyId, cancellationToken);
             if (lone is not null) transactionDeeds = [lone];
         }
+        // A marked deed's financial data is on Enfaz: reopening the one study would clear its stamp too.
+        if (transactionDeeds.Any(p => p.IsBillingReady))
+            return (null, Fail(BillingReadyBlocksReopenAr));
         var handedOver = transactionDeeds.Any(p => p.IsHandedOverToEnfaz);
         if (handedOver && !clearEnfazHandover)
             return (null, new Dictionary<string, string> { [EnfazHandoverKey] = EnfazHandoverConfirmAr });

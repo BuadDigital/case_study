@@ -41,6 +41,11 @@ public class TransactionStateDto
  /// </summary>
     public IReadOnlyList<string> EnfazReturnNoticesAr { get; init; } = [];
     public string? EnfazHandoverAtUtc { get; init; }
+ /// <summary>
+ /// When the accountant marked the deed «جاهز للفوترة» (its financial data appeared on Enfaz); null
+ /// when not marked. A marked deed is no longer taken back from Enfaz.
+ /// </summary>
+    public string? BillingReadyAtUtc { get; init; }
  /// <summary>Enfaz upload package (Q-9/Q-14).</summary>
     public IReadOnlyList<string> HandoverPackageAr { get; init; } = [];
 }

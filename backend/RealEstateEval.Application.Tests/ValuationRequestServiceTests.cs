@@ -279,6 +279,92 @@ public class ValuationRequestServiceTests
         Assert.Equal(0, (await folding.UnfoldAsync(new UnfoldValuationRequestRequest { PropertyId = movedProperty })).FoldedCount);
     }
 
+    // ------------------------------------------------------------ final report status by property
+
+    private static ValuationReportIssuance FinalCopy(Guid requestId, int version, DateTime issuedAt, bool pdfReady)
+    {
+        var issuance = ValuationReportIssuance.IssueDeposit(requestId, "{}", "u-1", issuedAt, version);
+        issuance.DepositCode = "DEP-1";
+        issuance.FinalIssuedAtUtc = issuedAt;
+        if (pdfReady) issuance.SetFinalPdf(Guid.NewGuid(), "DEP-1", issuedAt);
+        return issuance;
+    }
+
+    [Fact]
+    public async Task Final_report_status_ignores_a_replaced_copy()
+    {
+        await using var db = CreateDb();
+        var property = Guid.NewGuid();
+        var request = Guid.NewGuid();
+        db.ValuationRequests.Add(OpenRequest(request, "VR-630", property));
+        var old = FinalCopy(request, version: 1, new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Utc), pdfReady: false);
+        db.ValuationReportIssuances.Add(old);
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+        var key = property.ToString("D");
+
+        Assert.Equal(FinalReportStatuses.Preparing, await service.GetFinalReportStatusByPropertyAsync(key));
+
+        // Reopened after the handover: the old copy is replaced and no current copy exists yet.
+        Assert.Null(old.Supersede("u-2", "إعادة فتح للتعديل", DateTime.UtcNow));
+        await db.SaveChangesAsync();
+        Assert.Null(await service.GetFinalReportStatusByPropertyAsync(key));
+
+        // The new cycle's deposit copy is the one the status follows.
+        db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(
+            request, "{}", "u-1", new DateTime(2026, 10, 5, 9, 0, 0, DateTimeKind.Utc), version: 2));
+        await db.SaveChangesAsync();
+        Assert.Equal(FinalReportStatuses.None, await service.GetFinalReportStatusByPropertyAsync(key));
+    }
+
+    [Fact]
+    public async Task Final_report_status_follows_the_pdf_of_the_current_copy()
+    {
+        await using var db = CreateDb();
+        var property = Guid.NewGuid();
+        var request = Guid.NewGuid();
+        db.ValuationRequests.Add(OpenRequest(request, "VR-631", property));
+        var copy = FinalCopy(request, version: 1, DateTime.UtcNow, pdfReady: false);
+        db.ValuationReportIssuances.Add(copy);
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+        var key = property.ToString("D");
+
+        Assert.Equal(FinalReportStatuses.Preparing, await service.GetFinalReportStatusByPropertyAsync(key));
+
+        copy.SetFinalPdf(Guid.NewGuid(), "DEP-1", DateTime.UtcNow);
+        await db.SaveChangesAsync();
+        Assert.Equal(FinalReportStatuses.Ready, await service.GetFinalReportStatusByPropertyAsync(key));
+    }
+
+    [Fact]
+    public async Task A_merged_deed_reads_the_final_report_status_of_the_holders_request()
+    {
+        await using var db = CreateDb();
+        var holderProperty = Guid.NewGuid();
+        var movedProperty = Guid.NewGuid();
+        var holderRequest = Guid.NewGuid();
+        db.ValuationRequests.Add(OpenRequest(holderRequest, "VR-632", holderProperty));
+        db.ValuationRequests.Add(OpenRequest(Guid.NewGuid(), "VR-633", movedProperty));
+        await db.SaveChangesAsync();
+        await new ValuationRequestFoldingService(db).FoldAsync(new FoldValuationRequestsRequest
+        {
+            PropertyIds = [movedProperty],
+            HolderPropertyId = holderProperty,
+        });
+        var copy = FinalCopy(holderRequest, version: 1, DateTime.UtcNow, pdfReady: false);
+        db.ValuationReportIssuances.Add(copy);
+        await db.SaveChangesAsync();
+        var service = CreateService(db);
+
+        Assert.Equal(FinalReportStatuses.Preparing, await service.GetFinalReportStatusByPropertyAsync(holderProperty.ToString("D")));
+        Assert.Equal(FinalReportStatuses.Preparing, await service.GetFinalReportStatusByPropertyAsync(movedProperty.ToString("D")));
+
+        copy.SetFinalPdf(Guid.NewGuid(), "DEP-1", DateTime.UtcNow);
+        await db.SaveChangesAsync();
+        Assert.Equal(FinalReportStatuses.Ready, await service.GetFinalReportStatusByPropertyAsync(movedProperty.ToString("D")));
+    }
+
     [Fact]
     public void A_closed_request_is_never_folded()
     {

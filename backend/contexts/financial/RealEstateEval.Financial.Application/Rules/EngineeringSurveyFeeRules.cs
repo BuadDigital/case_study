@@ -74,15 +74,9 @@ public static class EngineeringSurveyFeeRules
         return list;
     }
 
-    public static bool TryParseAreaM2(string? raw, out decimal areaM2)
-    {
-        // The one typed-number rule (LocaleNumber — same as the screens); an area must be > 0.
-        areaM2 = 0m;
-        if (!LocaleNumber.TryParse(raw, out var parsed)) return false;
-        if (parsed <= 0m) return false;
-        areaM2 = parsed;
-        return true;
-    }
+    // The one typed-number rule (LocaleNumber — same as the screens); an area must be > 0.
+    public static bool TryParseAreaM2(string? raw, out decimal areaM2) =>
+        LocaleNumber.TryParsePositive(raw, out areaM2);
 
     public static decimal NetFee(decimal agreedFeeSar, decimal supervisorDiscountSar) =>
         InspectorFeeRules.NetFee(agreedFeeSar, supervisorDiscountSar);

@@ -22,6 +22,9 @@ public partial class CaseStudyReportService : ICaseStudyReportService
     /// <summary>The refusal an edit of an issued report gets — the only way back is the reopen action.</summary>
     public const string ReportIssuedReopenFirstAr = "التقرير صادر — أعد فتحه أولاً";
 
+    public const string BillingReadyBlocksReopenAr =
+        "أحد صكوك المعاملة موسوم «جاهز للفوترة» — ظهرت بياناته المالية على إنفاذ فلا يُعاد فتح تقرير الدراسة";
+
     private readonly ICaseStudyReportRepository _db;
     private readonly IWorkflowTaskService _workflowTasks;
     private readonly TimeProvider _time;

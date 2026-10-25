@@ -18,6 +18,7 @@ function state(over: Partial<TransactionStateDto>): TransactionStateDto {
     waitingSummaryAr: "",
     allowsEnfazHandover: false,
     enfazHandoverAtUtc: null,
+    billingReadyAtUtc: null,
     handoverPackageAr: [],
     studyReportIssued: false,
     enfazBlockReasonsAr: [],
@@ -40,6 +41,18 @@ describe("enfazCardState", () => {
     // No reasons but the server does not allow it yet (an older server): stay disabled.
     expect(enfazCardState(state({ allowsEnfazHandover: false })).canConfirmHandover).toBe(false);
     expect(enfazCardState(undefined).canConfirmHandover).toBe(false);
+  });
+
+  it("reads the accountant's «جاهز للفوترة» mark only on a handed-over deed", () => {
+    const handedOver = "2026-10-01T09:00:00Z";
+    expect(
+      enfazCardState(
+        state({ enfazHandoverAtUtc: handedOver, billingReadyAtUtc: "2026-10-05T09:00:00Z" }),
+      ).billingReady,
+    ).toBe(true);
+    expect(enfazCardState(state({ enfazHandoverAtUtc: handedOver })).billingReady).toBe(false);
+    expect(enfazCardState(state({ billingReadyAtUtc: "2026-10-05T09:00:00Z" })).billingReady).toBe(false);
+    expect(enfazCardState(undefined).billingReady).toBe(false);
   });
 
   it("reads a stamped handover as handed over, with no blockers and no confirm", () => {

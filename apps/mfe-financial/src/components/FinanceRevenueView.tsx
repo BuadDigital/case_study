@@ -14,6 +14,8 @@ import { fmtSar } from "@platform/app-shared/format/number";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { loadEnfazTracking } from "@platform/app-shared/app-data/enfaz-billing-api";
+import { canMarkBillingReady } from "@platform/app-shared/app-data/role-access";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
 import {
   EmptyState,
@@ -44,6 +46,7 @@ import {
   finWorkTitle,
 } from "../lib/finance-tw";
 import { FinanceStagePills } from "./FinanceStagePills";
+import { useMarkBillingReady } from "./useMarkBillingReady";
 import { FinanceEnfazPoBilling } from "./FinanceEnfazPoBilling";
 import { FinanceEnfazFollowupsPanel } from "./FinanceEnfazFollowupsPanel";
 import {
@@ -75,6 +78,8 @@ export function FinanceRevenueView({
   /** forStage = current display stage so an old stage is not written into the URL */
   onFocusPo: (po: string | null, forStage?: RevenueStage) => void;
 }) {
+  const { role } = useAppAccess();
+  const { markingId, mark: markBillingReady } = useMarkBillingReady();
   const [search, setSearch] = useState("");
   /** Deferred value for filtering — search input stays immediate without blocking typing */
   const deferredSearch = useDeferredValue(search);
@@ -377,7 +382,13 @@ export function FinanceRevenueView({
             onToggleGroup={toggleGroup}
           />
         ) : viewStage === "eligible" ? (
-          <EligibleTable rows={stageRows} onOpenPo={(po) => openPo(po)} />
+          <EligibleTable
+            rows={stageRows}
+            onOpenPo={(po) => openPo(po)}
+            canMarkReady={canMarkBillingReady(role)}
+            markingId={markingId}
+            onMarkReady={(row) => void markBillingReady(row)}
+          />
         ) : viewStage === "billing_assistant" ? (
           <BillingAssistantTable
             rows={stageRows}

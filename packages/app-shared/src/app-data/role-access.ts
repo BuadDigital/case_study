@@ -8,6 +8,14 @@ export function isSuperAdmin(role: RoleId): boolean {
 }
 
 /**
+ * Marking a deed «جاهز للفوترة» (its financial data appeared on Enfaz) is the accountant's call —
+ * the financial officer alone. Mirrors `PoRoleMatrixRules.CanMarkBillingReady`.
+ */
+export function canMarkBillingReady(role: RoleId): boolean {
+  return role === "financial-officer";
+}
+
+/**
  * Finance and management read the billing-aware PO status («مفوتر جزئي» / «مفوتر بالكامل»).
  * Everyone else — the case specialist first — sees the study status only; billing is not their
  * concern and starts after the Enfaz handover.

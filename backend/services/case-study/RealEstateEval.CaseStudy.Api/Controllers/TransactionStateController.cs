@@ -24,6 +24,9 @@ public class TransactionStateController : ControllerBase
     public const string ReturnForbiddenAr =
         "استرجاع المعاملة من إنفاذ لأخصائي دراسة الحالة فقط";
 
+    public const string BillingReadyForbiddenAr =
+        "تعليم الصك «جاهز للفوترة» لموظف الشؤون المالية فقط";
+
     private readonly ITransactionStateService _state;
     private readonly IPermissionService _permissions;
 
@@ -58,6 +61,30 @@ public class TransactionStateController : ControllerBase
             return this.ForbiddenProblem(HandoverForbiddenAr);
 
         var (result, error) = await _state.RecordEnfazHandoverAsync(
+            workOrderId,
+            propertyId,
+            ActorClaims.Id(User),
+            ct);
+        if (error is not null)
+            return this.FieldErrorsProblem(new Dictionary<string, string> { ["_"] = error });
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// The accountant marks the handed-over deed «جاهز للفوترة» once its financial data appeared on
+    /// the Enfaz platform. The door is the financial capability; the role check follows.
+    /// </summary>
+    [HttpPost("billing-ready")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
+    public async Task<ActionResult<TransactionStateDto>> MarkBillingReady(
+        Guid workOrderId,
+        Guid propertyId,
+        CancellationToken ct)
+    {
+        if (!PoRoleMatrixRules.CanMarkBillingReady(await ActorPrototypeRoleAsync(ct)))
+            return this.ForbiddenProblem(BillingReadyForbiddenAr);
+
+        var (result, error) = await _state.MarkBillingReadyAsync(
             workOrderId,
             propertyId,
             ActorClaims.Id(User),

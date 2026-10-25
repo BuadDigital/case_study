@@ -87,6 +87,30 @@ public class TransactionStateEnfazTests
     }
 
     [Fact]
+    public async Task The_handover_waits_while_the_final_report_is_being_prepared()
+    {
+        // The final valuation report heads the Enfaz package — it used to go out before its PDF existed.
+        await using var rig = Arrange(studyIssued: true, finalReportStatus: "preparing");
+
+        var (result, error) = await rig.Service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "specialist-1");
+
+        Assert.Null(result);
+        Assert.Equal(TransactionStateRules.FinalReportNotReadyAr, error);
+        Assert.Null((await rig.Property()).EnfazHandoverAtUtc);
+    }
+
+    [Fact]
+    public async Task The_handover_goes_through_once_the_final_report_is_ready()
+    {
+        await using var rig = Arrange(studyIssued: true, finalReportStatus: "ready");
+
+        var (_, error) = await rig.Service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "specialist-1");
+
+        Assert.Null(error);
+        Assert.NotNull((await rig.Property()).EnfazHandoverAtUtc);
+    }
+
+    [Fact]
     public async Task The_handover_is_recorded_when_everything_is_in_place()
     {
         await using var rig = Arrange(studyIssued: true);
@@ -350,9 +374,102 @@ public class TransactionStateEnfazTests
         Assert.NotNull(again!.EnfazHandoverAtUtc);
     }
 
+    // ------------------------------------------------------------ «جاهز للفوترة»
+
+    private static readonly DateTime Marked = new(2026, 10, 20, 8, 0, 0, DateTimeKind.Utc);
+
+    [Fact]
+    public async Task The_accountant_marks_a_handed_over_deed_ready_for_billing_once()
+    {
+        await using var rig = Arrange(handedOver: true);
+
+        var (result, error) = await rig.Service.MarkBillingReadyAsync(WorkOrderId, PropertyId, "accountant-1");
+
+        Assert.Null(error);
+        Assert.NotNull(result!.BillingReadyAtUtc);
+        var stored = await rig.Property();
+        Assert.NotNull(stored.BillingReadyAtUtc);
+        Assert.Equal("accountant-1", stored.BillingReadyByUserId);
+        Assert.Single(rig.Audit.Entries, e => e.Action == "case-study.billing-ready.marked");
+        Assert.Single(await rig.Db.PropertyTimelineEntries.AsNoTracking()
+            .Where(e => e.Title.Contains("جاهز للفوترة")).ToListAsync());
+
+        // A second mark keeps the first stamp and writes nothing new.
+        var (again, againError) = await rig.Service.MarkBillingReadyAsync(WorkOrderId, PropertyId, "accountant-2");
+
+        Assert.Null(againError);
+        Assert.Equal(result.BillingReadyAtUtc, again!.BillingReadyAtUtc);
+        Assert.Equal("accountant-1", (await rig.Property()).BillingReadyByUserId);
+        Assert.Single(rig.Audit.Entries, e => e.Action == "case-study.billing-ready.marked");
+    }
+
+    [Fact]
+    public async Task A_deed_that_is_not_handed_over_cannot_be_marked_ready_for_billing()
+    {
+        await using var rig = Arrange(handedOver: false);
+
+        var (result, error) = await rig.Service.MarkBillingReadyAsync(WorkOrderId, PropertyId, "accountant-1");
+
+        Assert.Null(result);
+        Assert.Equal(WorkOrderProperty.BillingReadyNeedsHandoverAr, error);
+        Assert.Null((await rig.Property()).BillingReadyAtUtc);
+        Assert.Empty(rig.Audit.Entries);
+    }
+
+    [Fact]
+    public async Task A_deed_marked_ready_for_billing_is_not_taken_back_from_enfaz()
+    {
+        await using var rig = Arrange(handedOver: true, billingReady: true);
+
+        var (result, errors) = await rig.Service.ReturnFromEnfazAsync(
+            WorkOrderId,
+            PropertyId,
+            new ReturnFromEnfazRequest { Reason = Reason, ReopenStudy = true, ReopenValuation = true },
+            Specialist);
+
+        Assert.Null(result);
+        Assert.Equal(TransactionStateService.BillingReadyBlocksReturnAr, errors!["_"]);
+        var stored = await rig.Property();
+        Assert.NotNull(stored.EnfazHandoverAtUtc);
+        Assert.NotNull(stored.BillingReadyAtUtc);
+        Assert.Empty(rig.Reports.Calls);
+        Assert.Empty(rig.ValuationReopen.Calls);
+        Assert.Empty(rig.Audit.Entries);
+    }
+
+    [Fact]
+    public async Task Clearing_the_handover_clears_the_billing_mark_with_it()
+    {
+        var property = new WorkOrderProperty { EnfazHandoverAtUtc = Marked, EnfazHandoverByUserId = "s-1" };
+        Assert.Null(property.MarkBillingReady("a-1", Marked));
+        Assert.True(property.IsBillingReady);
+
+        Assert.True(property.ClearEnfazHandover());
+
+        Assert.False(property.IsBillingReady);
+        Assert.Null(property.BillingReadyByUserId);
+        // And a deed handed over again starts unmarked.
+        property.EnfazHandoverAtUtc = Marked.AddDays(3);
+        Assert.False(property.IsBillingReady);
+    }
+
+    [Fact]
+    public void A_removed_deed_is_not_marked_ready_for_billing()
+    {
+        var property = new WorkOrderProperty { EnfazHandoverAtUtc = Marked, IsRemoved = true };
+
+        Assert.NotNull(property.MarkBillingReady("a-1", Marked));
+        Assert.False(property.IsBillingReady);
+    }
+
     // ------------------------------------------------------------ arrangement
 
-    private static Rig Arrange(bool studyIssued = true, bool valuationOpen = false, bool handedOver = false)
+    private static Rig Arrange(
+        bool studyIssued = true,
+        bool valuationOpen = false,
+        bool handedOver = false,
+        string? finalReportStatus = null,
+        bool billingReady = false)
     {
         var contexts = TestDatabases.Create("enfaz-return");
         var db = contexts.CaseStudy;
@@ -380,6 +497,8 @@ public class TransactionStateEnfazTests
             DeedNumber = "1234567890",
             EnfazHandoverAtUtc = handedOver ? now : null,
             EnfazHandoverByUserId = handedOver ? "specialist-0" : null,
+            BillingReadyAtUtc = handedOver && billingReady ? now : null,
+            BillingReadyByUserId = handedOver && billingReady ? "accountant-0" : null,
         });
         db.WorkflowTasks.AddRange(
             WorkflowTask.Create(
@@ -411,7 +530,7 @@ public class TransactionStateEnfazTests
         var valuationReopen = new RecordingValuationReopen();
         var service = new TransactionStateService(
             new TransactionStateRepository(db),
-            new FakeValuationRequests(valuationOpen),
+            new FakeValuationRequests(valuationOpen, finalReportStatus),
             TestInspectorFeeServiceFactory.CreateTimeline(db),
             audit: new AuditLogWriter(),
             auditLog: audit,
@@ -503,8 +622,12 @@ public class TransactionStateEnfazTests
             throw new NotSupportedException();
     }
 
-    private sealed class FakeValuationRequests(bool open) : IValuationRequestService
+    private sealed class FakeValuationRequests(bool open, string? finalReportStatus = null) : IValuationRequestService
     {
+        public Task<string?> GetFinalReportStatusByPropertyAsync(
+            string propertyId, CancellationToken cancellationToken = default) =>
+            Task.FromResult(finalReportStatus);
+
         public Task<ValuationRequestDto?> GetOpenByPropertyAsync(
             string propertyId, CancellationToken cancellationToken = default) =>
             Task.FromResult(open

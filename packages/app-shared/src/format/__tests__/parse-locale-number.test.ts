@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { toLatinDigits } from "../../lib/arabic-digits";
-import { parseLocaleNumber } from "../number";
+import { isPositiveLocaleNumber, parseLocaleNumber } from "../number";
 
 describe("toLatinDigits", () => {
   it("maps Eastern Arabic and Persian digits", () => {
@@ -77,5 +77,23 @@ describe("parseLocaleNumber", () => {
     Number.NaN,
   ])("%j → NaN", (raw) => {
     expect(parseLocaleNumber(raw)).toBeNaN();
+  });
+});
+
+describe("isPositiveLocaleNumber", () => {
+  it.each<[string | number | null | undefined, boolean]>([
+    ["500", true],
+    ["١٢٣٫٥ م²", true],
+    ["1,250", true],
+    [0.5, true],
+    ["0", false],
+    ["-5", false],
+    ["", false],
+    ["abc", false],
+    [null, false],
+    [undefined, false],
+    [Number.POSITIVE_INFINITY, false],
+  ])("%j → %s", (raw, expected) => {
+    expect(isPositiveLocaleNumber(raw)).toBe(expected);
   });
 });

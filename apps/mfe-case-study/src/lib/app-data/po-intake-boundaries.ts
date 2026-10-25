@@ -12,11 +12,6 @@ export {
   type PropertyBoundaryFacadeKey,
 } from "@platform/app-shared/app-data/po-intake-boundaries";
 
-export {
-  approximatePropertyGeo,
-  hasDistrictGeo,
-} from "@platform/app-shared/domain/property-geo";
-
 /** Approximate map link from city and district (until a precise site URL is provided). */
 export function approximatePropertyMapSearchUrl(property: {
   city: string;

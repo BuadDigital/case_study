@@ -50,8 +50,11 @@ export type PoEnfazBillingDto = {
 
 export type EnfazTrackingRowDto = {
   poNumber: string;
+  workOrderId: string;
   propertyId: string;
   propertyLabel: string;
+  /** When the accountant marked the deed «جاهز للفوترة»; null while not marked. */
+  billingReadyAtUtc: string | null;
   deedNumber: string;
   city: string;
   landArea: string;
@@ -217,8 +220,12 @@ function normalizeTrackingRow(
   const keyFeeSar = Number(raw.keyFeeSar ?? raw.KeyFeeSar ?? 0);
   return {
     poNumber: String(raw.poNumber ?? raw.PoNumber ?? ""),
+    workOrderId: String(raw.workOrderId ?? raw.WorkOrderId ?? ""),
     propertyId: String(raw.propertyId ?? raw.PropertyId ?? ""),
     propertyLabel: String(raw.propertyLabel ?? raw.PropertyLabel ?? ""),
+    billingReadyAtUtc: (raw.billingReadyAtUtc ??
+      raw.BillingReadyAtUtc ??
+      null) as string | null,
     deedNumber: String(raw.deedNumber ?? raw.DeedNumber ?? ""),
     city: String(raw.city ?? raw.City ?? ""),
     landArea: String(raw.landArea ?? raw.LandArea ?? ""),

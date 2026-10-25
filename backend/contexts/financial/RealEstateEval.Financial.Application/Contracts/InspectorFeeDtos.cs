@@ -153,8 +153,11 @@ public class PoEnfazBillingDto
 public class EnfazTrackingRowDto
 {
     public string PoNumber { get; set; } = "";
+    public string WorkOrderId { get; set; } = "";
     public string PropertyId { get; set; } = "";
     public string PropertyLabel { get; set; } = "";
+ /// <summary>When the accountant marked the deed «جاهز للفوترة»; null while not marked.</summary>
+    public DateTime? BillingReadyAtUtc { get; set; }
  /// <summary>Drug number Deed is from Work Order.</summary>
     public string DeedNumber { get; set; } = "";
  /// <summary>City — To filter and display in the revenue list.</summary>

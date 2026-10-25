@@ -44,6 +44,18 @@ public class PoRoleMatrixRulesTests
     }
 
     [Theory]
+    [InlineData("financial-officer", true)]
+    [InlineData("case-specialist", false)]
+    [InlineData("section-supervisor", false)]
+    [InlineData("general-manager", false)]
+    [InlineData("cdo", false)]
+    [InlineData("", false)]
+    public void Marking_a_deed_ready_for_billing_belongs_to_the_financial_officer_only(string role, bool expected)
+    {
+        Assert.Equal(expected, PoRoleMatrixRules.CanMarkBillingReady(role));
+    }
+
+    [Theory]
     [InlineData("case-specialist", true)]
     [InlineData("section-supervisor", false)]
     [InlineData("general-manager", false)]

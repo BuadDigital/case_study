@@ -59,6 +59,25 @@ public sealed class ValuationRequestService : IValuationRequestService
         return ToDto(row, OverlayFor(overlays, id));
     }
 
+    public async Task<string?> GetFinalReportStatusByPropertyAsync(
+        string propertyId,
+        CancellationToken cancellationToken = default)
+    {
+        var key = NormalizePropertyId(propertyId);
+        if (key == Guid.Empty) return null;
+
+        // A merged deed's valuation lives on the holder deed's request (MergedIntoRequestId is set only
+        // while Merged); a replaced copy is not the report the property stands on.
+        var requestIds = _db.ValuationRequests.AsNoTracking()
+            .Where(x => x.PropertyId == key)
+            .Select(x => x.MergedIntoRequestId ?? x.Id);
+        var issuance = await _db.ValuationReportIssuances.AsNoTracking()
+            .Where(x => requestIds.Contains(x.ValuationRequestId) && x.SupersededAtUtc == null)
+            .OrderByDescending(x => x.DepositIssuedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        return issuance?.FinalReportStatus;
+    }
+
     public async Task<ValuationRequestDto?> GetOpenByPropertyAsync(
         string propertyId,
         CancellationToken cancellationToken = default)

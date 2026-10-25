@@ -106,10 +106,10 @@ public sealed class HttpPoEnfazBillingService(
         CancellationToken cancellationToken = default) =>
         await GetAsync<List<EnfazTrackingRowDto>>($"{Root}/tracking", cancellationToken);
 
-    public Task<PoEnfazBillingDto?> IssueInvoiceAsync(
+    public Task<(PoEnfazBillingDto? Billing, string? Error)> IssueInvoiceAsync(
         string poNumber,
         CancellationToken cancellationToken = default) =>
-        PostNullableAsync<PoEnfazBillingDto>(
+        PostWithErrorAsync<PoEnfazBillingDto>(
             $"{Root}/{Uri.EscapeDataString(poNumber)}/issue-invoice",
             null,
             cancellationToken);

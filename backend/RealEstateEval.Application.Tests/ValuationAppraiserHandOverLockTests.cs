@@ -293,6 +293,14 @@ public class ValuationAppraiserHandOverLockTests
     }
 
     [Fact]
+    public void The_final_report_wire_statuses_match_the_valuation_statuses()
+    {
+        Assert.Equal(FinalReportStatuses.None, FinalReportStatusWire.None);
+        Assert.Equal(FinalReportStatuses.Preparing, FinalReportStatusWire.Preparing);
+        Assert.Equal(FinalReportStatuses.Ready, FinalReportStatusWire.Ready);
+    }
+
+    [Fact]
     public async Task The_manual_submit_route_needs_a_final_issuance()
     {
         await using var contexts = TestDatabases.Create("lock-submit-route");

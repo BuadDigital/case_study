@@ -63,6 +63,14 @@ public static partial class LocaleNumber
     public static decimal? ParseOrNull(string? text) =>
         TryParse(text, out var value) ? value : null;
 
+    /// <summary>A number greater than zero (an area, a price); <paramref name="value"/> is 0 otherwise.</summary>
+    public static bool TryParsePositive(string? text, out decimal value)
+    {
+        if (TryParse(text, out value) && value > 0m) return true;
+        value = 0m;
+        return false;
+    }
+
     private static string StripWhitespace(string s)
     {
         var sb = new StringBuilder(s.Length);

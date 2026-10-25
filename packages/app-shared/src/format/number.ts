@@ -97,3 +97,11 @@ export function parseLocaleNumber(
   }
   return PLAIN_NUMBER.test(s) ? Number(s) : Number.NaN;
 }
+
+/** Typed text that reads as a number greater than zero (an area, a price) — the backend's `LocaleNumber.TryParsePositive`. */
+export function isPositiveLocaleNumber(
+  raw: string | number | null | undefined,
+): boolean {
+  const n = parseLocaleNumber(raw);
+  return Number.isFinite(n) && n > 0;
+}

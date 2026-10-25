@@ -97,7 +97,6 @@ export {
   type PropertyBoundaryFacadeKey,
   clearPropertyBoundaryFields,
   approximatePropertyMapSearchUrl,
-  approximatePropertyGeo,
   formatGeoDms,
   formatGeoDec,
   buildPropertyDescriptionLine,

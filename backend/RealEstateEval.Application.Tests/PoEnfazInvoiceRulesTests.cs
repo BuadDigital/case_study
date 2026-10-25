@@ -91,6 +91,30 @@ public class PoEnfazInvoiceRulesTests
         Assert.Equal("[\"a\"]", invoice.AttachmentIdsJson);
     }
 
+    [Theory]
+    [InlineData(PoEnfazInvoiceStatus.Issued)]
+    [InlineData(PoEnfazInvoiceStatus.PartiallyCollected)]
+    [InlineData(PoEnfazInvoiceStatus.Collected)]
+    public void An_issued_invoice_is_never_issued_again(string status)
+    {
+        // A second issue used to zero the collected amount under a new invoice number.
+        Assert.Equal(
+            PoEnfazInvoiceRules.AlreadyIssuedError,
+            PoEnfazInvoiceRules.IssueBlockedReason(Invoice(status: status), readyForBilling: true, subtotalSar: 1000m));
+    }
+
+    [Fact]
+    public void A_first_issue_needs_a_ready_po_and_a_positive_subtotal()
+    {
+        Assert.Null(PoEnfazInvoiceRules.IssueBlockedReason(null, readyForBilling: true, subtotalSar: 1000m));
+        Assert.Equal(
+            PoEnfazInvoiceRules.NotReadyError,
+            PoEnfazInvoiceRules.IssueBlockedReason(null, readyForBilling: false, subtotalSar: 1000m));
+        Assert.Equal(
+            PoEnfazInvoiceRules.NotReadyError,
+            PoEnfazInvoiceRules.IssueBlockedReason(null, readyForBilling: true, subtotalSar: 0m));
+    }
+
     [Fact]
     public void Collection_is_refused_on_a_settled_invoice()
     {

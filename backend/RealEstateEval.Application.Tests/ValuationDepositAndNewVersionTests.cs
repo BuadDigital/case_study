@@ -302,7 +302,7 @@ public class ValuationDepositAndNewVersionTests
         await rig.Service.SaveChoicesAsync(rig.RequestId, new SaveReportDraftChoicesRequest { Choices = choices }, Specialist);
         await rig.Service.SendAsync(rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = true }, Specialist);
         var (_, errors) = await rig.Service.ApproveAsync(
-            rig.RequestId, new ApproveReportDraftRequest { ReportDate = "2026-10-05", Html = "<p>report</p>" }, Appraiser);
+            rig.RequestId, new ApproveReportDraftRequest { ReportDate = "2026-10-05", Html = "<div class=\"pg-meta\">رقم التقرير: 1<br>رمز إيداع التقرير:</div><p>report</p>" }, Appraiser);
         Assert.Null(errors);
         return rig;
     }

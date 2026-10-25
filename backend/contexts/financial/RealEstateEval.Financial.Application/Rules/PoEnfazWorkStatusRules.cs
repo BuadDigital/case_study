@@ -111,9 +111,10 @@ internal static class PoEnfazWorkStatusRules
     }
 
     /// <summary>
-    /// A work order can be matched and invoiced once every live property is delivered: handed
-    /// over to Enfaz, or every task on it cancelled. Removed properties are ignored; a live
-    /// property without any task is not delivered.
+    /// A work order can be matched and invoiced once every live property is marked «جاهز للفوترة»
+    /// by the accountant (its financial data appeared on Enfaz), or every task on it is cancelled.
+    /// Handed over alone is not enough: Enfaz still reviews the order before its figures exist.
+    /// Removed properties are ignored; a live property without any task is not ready.
     /// </summary>
     internal static bool IsPoReadyForEnfazBilling(
         IReadOnlyList<CaseStudyPropertySnapshotDto> properties,
@@ -124,7 +125,7 @@ internal static class PoEnfazWorkStatusRules
 
         foreach (var property in live)
         {
-            if (property.EnfazHandoverAtUtc is not null)
+            if (property.BillingReadyAtUtc is not null)
                 continue;
 
             var propertyTasks = poTasks

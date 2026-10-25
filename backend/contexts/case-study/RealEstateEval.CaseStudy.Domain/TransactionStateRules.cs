@@ -1,3 +1,4 @@
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Domain;
@@ -215,6 +216,17 @@ public static class TransactionStateRules
         !input.EnfazHandedOver && EnfazHandoverBlockReasonsAr(input).Count == 0;
 
     public const string AlreadyHandedOverAr = "المعاملة مرفوعة على إنفاذ سلفاً";
+
+    /// <summary>The final valuation report heads the Enfaz package; the handover waits for its PDF.</summary>
+    public const string FinalReportNotReadyAr =
+        "التقرير النهائي للتقييم قيد الإعداد — لا يمكن الرفع على إنفاذ قبل جاهزيته";
+
+    /// <summary>
+    /// Refuse the handover while an issued final report is still being prepared. No issued report
+    /// (null / «none») is left to the stage gates; an unreadable status does not block.
+    /// </summary>
+    public static bool FinalReportBlocksHandover(string? finalReportStatus) =>
+        string.Equals(finalReportStatus, FinalReportStatusWire.Preparing, StringComparison.Ordinal);
 
     /// <summary>
     /// Why the handover cannot be recorded right now, in the words the specialist reads: every

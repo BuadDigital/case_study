@@ -1121,6 +1121,8 @@ export type TransactionStateDto = {
   waitingSummaryAr: string;
   allowsEnfazHandover: boolean;
   enfazHandoverAtUtc?: string | null;
+  /** The accountant marked the deed «جاهز للفوترة» — it is no longer taken back from Enfaz. */
+  billingReadyAtUtc?: string | null;
   handoverPackageAr: string[];
   /** The study report is issued (the specialist's gate before the Enfaz upload). */
   studyReportIssued: boolean;
@@ -1212,6 +1214,31 @@ export async function recordEnfazHandover(
   try {
     const res = await fetch(
       `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/enfaz-handover`,
+      { method: "POST", headers: authHeaders(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return transactionStateFailure(res);
+    return { ok: true, data: normalizeTransactionState(await res.json()) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/**
+ * The accountant marks a handed-over deed «جاهز للفوترة» once its financial data appeared on Enfaz.
+ * Idempotent on the server (a second mark keeps the first stamp).
+ */
+export async function markBillingReady(
+  config: WorkOrdersApiConfig,
+  workOrderId: string,
+  propertyId: string,
+): Promise<
+  { ok: true; data: TransactionStateDto } | TransactionStateFailure
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/billing-ready`,
       { method: "POST", headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };

@@ -10,6 +10,15 @@ namespace RealEstateEval.Application.Contracts;
 
 // Survey-office and property-key DTOs moved to RealEstateEval.Operations.Application (A8).
 
+/// <summary>
+/// The property's final valuation report: <c>none</c> | <c>preparing</c> | <c>ready</c>, or null when the
+/// property has no issued report. Case study reads it before the Enfaz handover.
+/// </summary>
+public class PropertyFinalReportStatusDto
+{
+    public string? FinalReportStatus { get; init; }
+}
+
 public class ValuationRequestDto
 {
     public Guid Id { get; init; }
@@ -74,6 +83,17 @@ public static class ValuationReportStageWire
     public const string Draft = "draft";
     public const string DepositIssued = "deposit_issued";
     public const string FinalIssued = "final_issued";
+}
+
+/// <summary>
+/// Wire values of <see cref="PropertyFinalReportStatusDto.FinalReportStatus"/> — the same strings as the
+/// valuation context's final-report statuses, stated here for the services that only see the DTO.
+/// </summary>
+public static class FinalReportStatusWire
+{
+    public const string None = "none";
+    public const string Preparing = "preparing";
+    public const string Ready = "ready";
 }
 
 public class SaveValuationRequestRequest

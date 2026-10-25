@@ -130,7 +130,7 @@ public interface IPoEnfazBillingService
         int page,
         CancellationToken cancellationToken = default);
 
-    Task<PoEnfazBillingDto?> IssueInvoiceAsync(
+    Task<(PoEnfazBillingDto? Billing, string? Error)> IssueInvoiceAsync(
         string poNumber,
         CancellationToken cancellationToken = default);
 

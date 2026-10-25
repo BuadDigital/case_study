@@ -181,10 +181,45 @@ public class WorkOrderProperty : ITrackUpdatedAt
  /// </summary>
     public bool ClearEnfazHandover()
     {
+        // A mark can never outlive the handover it follows.
+        ClearBillingReady();
         if (EnfazHandoverAtUtc is null && EnfazHandoverByUserId is null) return false;
 
         EnfazHandoverAtUtc = null;
         EnfazHandoverByUserId = null;
+        return true;
+    }
+
+ /// <summary>
+ /// The accountant marked the deed «جاهز للفوترة»: its financial data appeared on the Enfaz platform
+ /// and it can be invoiced. A marked deed is no longer taken back from Enfaz.
+ /// </summary>
+    public DateTime? BillingReadyAtUtc { get; set; }
+    public string? BillingReadyByUserId { get; set; }
+
+    public bool IsBillingReady => BillingReadyAtUtc is not null;
+
+    public const string BillingReadyNeedsHandoverAr = "لا يُعلَّم الصك «جاهز للفوترة» قبل رفعه على إنفاذ";
+
+    /// <summary>Idempotent: marking a marked deed keeps the first stamp. Null on success, else the reason.</summary>
+    public string? MarkBillingReady(string? byUserId, DateTime nowUtc)
+    {
+        if (IsRemoved) return "الصك محذوف من المعاملة";
+        if (!IsHandedOverToEnfaz) return BillingReadyNeedsHandoverAr;
+        if (IsBillingReady) return null;
+
+        BillingReadyAtUtc = nowUtc;
+        BillingReadyByUserId = byUserId;
+        return null;
+    }
+
+    /// <summary>Returns whether a mark was actually cleared.</summary>
+    public bool ClearBillingReady()
+    {
+        if (BillingReadyAtUtc is null && BillingReadyByUserId is null) return false;
+
+        BillingReadyAtUtc = null;
+        BillingReadyByUserId = null;
         return true;
     }
 
