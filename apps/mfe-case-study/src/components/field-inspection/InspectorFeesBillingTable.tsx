@@ -51,7 +51,7 @@ type RowDraft = {
   exclusionReason: string;
 };
 
-const AR_NUM = new Intl.NumberFormat("ar-SA");
+const AR_NUM = new Intl.NumberFormat("ar-SA-u-nu-latn");
 
 const fieldSm =
   "h-8 w-[4.75rem] px-2 py-1 text-end text-xs tabular-nums";

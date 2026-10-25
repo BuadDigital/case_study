@@ -40,11 +40,11 @@ import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { EmptyState, InfoBox } from "./PropertyDetailFields";
 const SECTION_AR_NUMS: Record<CaseStudyQuestionSection, string> = {
-  deed: "١",
-  survey: "٢",
-  comp: "٣",
-  occ: "٤",
-  extra: "٥",
+  deed: "1",
+  survey: "2",
+  comp: "3",
+  occ: "4",
+  extra: "5",
 };
 
 const REMARKS_SECTIONS: ReadonlySet<CaseStudyQuestionSection> = new Set([

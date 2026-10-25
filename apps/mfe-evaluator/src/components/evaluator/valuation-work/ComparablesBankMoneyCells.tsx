@@ -223,7 +223,7 @@ export function ComparablesBankMoneyCells({
           </bdi>
           {ratioWarn ? (
             <span className="mt-1 block text-[10.5px] text-red-text">
-              نسبة ≥ ٢ — تُفعِّل طريقة المضاعف على الجدول كاملاً
+              نسبة ≥ 2 — تُفعِّل طريقة المضاعف على الجدول كاملاً
             </span>
           ) : null}
         </div>
@@ -236,7 +236,7 @@ export function ComparablesBankMoneyCells({
           )}
           title={
             ratioWarn
-              ? "نسبة ≥ ٢ — تُفعِّل طريقة المضاعف على الجدول كاملاً"
+              ? "نسبة ≥ 2 — تُفعِّل طريقة المضاعف على الجدول كاملاً"
               : undefined
           }
         >

@@ -407,7 +407,7 @@ export function buildInfathUploadModel(input: {
   const sections: InfathUploadSection[] = [
     {
       id: "report-meta",
-      num: "١",
+      num: "1",
       title: "بيانات التقرير",
       fields: [
         txt(
@@ -434,7 +434,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "scope",
-      num: "٢",
+      num: "2",
       title: "نطاق العمل",
       fields: [
         auto("report-no", "رقم التقرير", reportNumber),
@@ -459,7 +459,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "asset",
-      num: "٣",
+      num: "3",
       title: "بيانات الأصل",
       fields: [
         sel(
@@ -604,7 +604,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "boundaries",
-      num: "٤",
+      num: "4",
       title: "الحدود والأطوال للأصل",
       fields: [
         txt("land-area", "مساحة الأرض", landArea, "BR"),
@@ -665,7 +665,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "linked",
-      num: "٥",
+      num: "5",
       title: "الأصول المرتبطة",
       fields: [
         sel(
@@ -683,7 +683,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "valuation",
-      num: "٦",
+      num: "6",
       title: "تقدير القيمة",
       fields: [
         txt("land-value", L.landValue, landValue, "EV", "text", landValue ? "" : "ms"),
@@ -707,7 +707,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "photos",
-      num: "٧",
+      num: "7",
       title: "صور الأصل",
       fields: [
         txt("site-text", L.siteLocation, coords || formatPropertyLocation(property), "MA"),
@@ -725,7 +725,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "workers",
-      num: "٨",
+      num: "8",
       title: "بيانات العاملين على التقرير",
       fields: [
         txt("worker-name", "الاسم", workerName, "EV", "text", workerName ? "" : "ms"),
@@ -737,7 +737,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "search-scope",
-      num: "٩",
+      num: "9",
       title: "نطاق البحث",
       fields: [],
       areas: [area(
@@ -749,7 +749,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "keys",
-      num: "١٠",
+      num: "10",
       title: "استلام المفاتيح",
       fields: [
         sel(
@@ -775,14 +775,14 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "other",
-      num: "١١",
+      num: "11",
       title: "معلومات أخرى",
       fields: [],
       areas: [area("other-notes", L.otherNotes, partyRemark(specialist, L.otherNotes) || specialistRemarks, "SP")],
     },
     {
       id: "closing",
-      num: "١٢",
+      num: "12",
       title: "البيانات الختامية",
       fields: [],
       areas: [
@@ -796,7 +796,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "appraisal-file",
-      num: "١٣",
+      num: "13",
       title: "مرفق التقييم المعتمد",
       fields: [
         file(
@@ -819,7 +819,7 @@ export function buildInfathUploadModel(input: {
     },
     {
       id: "survey-conditional",
-      num: "٤أ",
+      num: "4أ",
       title: "الرفع المساحي (شرطي)",
       conditional: true,
       fields: [

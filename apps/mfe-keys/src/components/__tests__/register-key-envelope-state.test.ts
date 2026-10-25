@@ -161,7 +161,7 @@ describe("validateRegisterForm", () => {
 
   it("court needs at least one key, then the photo, then the receipt", () => {
     expect(validateRegisterForm(validCourt({ keysCountActual: "0" }))).toBe(
-      "عدد المفاتيح الفعلي يجب أن يكون ١ على الأقل.",
+      "عدد المفاتيح الفعلي يجب أن يكون 1 على الأقل.",
     );
     expect(validateRegisterForm(validCourt({ photo: pick() }))).toBe(
       "صورة الظرف مطلوبة لإثبات أتعاب الاستلام.",

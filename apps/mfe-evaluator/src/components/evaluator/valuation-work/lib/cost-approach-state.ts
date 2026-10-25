@@ -558,14 +558,14 @@ export function buildCostAlerts(
     alerts.push({
       kind: "error",
       title: "العمر الفعلي يتجاوز العمر الممتد",
-      body: "الإهلاك المادي يتجاوز ١٠٠٪.",
+      body: "الإهلاك المادي يتجاوز 100٪.",
       targetId: "cost-actualAge",
       fallbackTargetId: "cost-age",
     });
   if (totalDepLocal > 100)
     alerts.push({
       kind: "error",
-      title: "مجموع التقادم يتجاوز ١٠٠٪",
+      title: "مجموع التقادم يتجاوز 100٪",
       body: "راجع نسب التقادم الوظيفي والخارجي.",
       targetId: "cost-functionalObs",
       fallbackTargetId: "cost-age",
@@ -653,14 +653,14 @@ export function buildCostAlerts(
     alerts.push({
       kind: "warn",
       title: "أرباح المطور خارج النطاق",
-      body: `النطاق المعتاد ١٠٪–٢٠٪، والحالي ${developerProfitPct}٪.`,
+      body: `النطاق المعتاد 10٪–20٪، والحالي ${developerProfitPct}٪.`,
       targetId: "cost-indirect",
     });
   if (indirectSumLocal > 45)
     alerts.push({
       kind: "warn",
       title: "النسب غير المباشرة مرتفعة",
-      body: `المجموع ${(Math.round(indirectSumLocal * 100) / 100).toFixed(2)}٪ يتجاوز ٤٥٪.`,
+      body: `المجموع ${(Math.round(indirectSumLocal * 100) / 100).toFixed(2)}٪ يتجاوز 45٪.`,
       targetId: "cost-indirect",
     });
   if (alerts.length === 0)
@@ -712,7 +712,7 @@ export function buildCostNarrative(
           fields.indirectDraft[item.key]?.rationale ?? "",
         ),
       ),
-      `• التمويل — معدل ${fields.financingRate}٪ سنوياً على ${fields.financingMonths} شهراً بمتوسط سحب ٥٠٪`,
+      `• التمويل — معدل ${fields.financingRate}٪ سنوياً على ${fields.financingMonths} شهراً بمتوسط سحب 50٪`,
     ]),
     narrativeSection("مبررات العمر والتقادم:", [
       justifiedBullet(

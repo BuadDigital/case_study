@@ -181,7 +181,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               الترجيح بين مؤشرات الأساليب
             </h2>
             <span className="text-xs text-text-3">
-              مجموع نسب المشاركة يجب أن يساوي ١٠٠٪
+              مجموع نسب المشاركة يجب أن يساوي 100٪
             </span>
           </div>
           {/* Phones: one card per approach — the 900px table ran off-screen. */}
@@ -272,7 +272,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                 )}
               >
                 مجموع نسب المشاركة: {weightSumLocal}٪
-                {reconWeightsBad ? " — يجب أن يساوي ١٠٠٪" : ""}
+                {reconWeightsBad ? " — يجب أن يساوي 100٪" : ""}
               </span>
               <span
                 className={cn(
@@ -343,7 +343,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                       label={`${soleCost && !buildingOnly ? "= " : ""}مؤشر ${m.labelAr}`}
                       note={
                         reconMethods.length === 1
-                          ? "وزنه ١٠٠٪"
+                          ? "وزنه 100٪"
                           : `وزنه ${m.weightPct}٪`
                       }
                       value={done ? fmt(m.approachValue) : "غير مكتمل"}
@@ -416,7 +416,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         onChange={(e) =>
                           setLiquidationDiscountRationale(e.target.value)
                         }
-                        placeholder="مثال: سيولة السوق خلال ٩٠ يوماً، ظروف البيع القسري…"
+                        placeholder="مثال: سيولة السوق خلال 90 يوماً، ظروف البيع القسري…"
                         className={cn(
                           "w-full rounded-md border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-heading max-lg:min-h-11 max-lg:text-[16px]",
                           (fieldErrors.liquidation_discount_rationale ||

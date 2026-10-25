@@ -47,7 +47,7 @@ function formatWhen(raw: string | null | undefined): string {
   if (!raw?.trim()) return "—";
   const d = new Date(raw);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("ar-SA", {
+  return d.toLocaleString("ar-SA-u-nu-latn", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

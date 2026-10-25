@@ -127,7 +127,7 @@ public sealed partial class ValuationReconciliationService(
         var errors = new Dictionary<string, string>();
 
         if (request.FinalRoundDecimals is < 0 or > 6)
-            errors["finalRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6 (تقريب لأقرب ١٠^ن ر.س)";
+            errors["finalRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6 (تقريب لأقرب 10^ن ر.س)";
 
         if (request.LiquidationDiscountPct is < 0m or > 100m)
             errors["liquidationDiscountPct"] = "نسبة الخصم يجب أن تكون بين 0 و 100";

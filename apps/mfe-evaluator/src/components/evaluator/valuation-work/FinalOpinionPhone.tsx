@@ -179,7 +179,7 @@ export function ReconMethodsPhone({
           )}
         >
           مجموع نسب المشاركة: {weightSumLocal}٪
-          {reconWeightsBad ? " — يجب أن يساوي ١٠٠٪" : ""}
+          {reconWeightsBad ? " — يجب أن يساوي 100٪" : ""}
         </span>
         <span
           className={cn(

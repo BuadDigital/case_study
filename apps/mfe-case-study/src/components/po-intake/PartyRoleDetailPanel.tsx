@@ -99,7 +99,7 @@ export function PartyRoleDetailPanel({
                             row.answeredByName,
                             row.sourceRole,
                             row.answeredAtUtc
-                              ? new Date(row.answeredAtUtc).toLocaleString("ar-SA")
+                              ? new Date(row.answeredAtUtc).toLocaleString("ar-SA-u-nu-latn")
                               : null,
                           ]
                             .filter(Boolean)

@@ -144,9 +144,9 @@ type HijriFormatOptions = {
   suffix?: boolean;
 };
 
-/** Official letters (site-location acknowledgment, internal delegation): «١٤٤٨/٤/١٦ هـ». */
+/** Official letters (site-location acknowledgment, internal delegation): «1448/4/16 هـ». */
 export const HIJRI_LETTER_FORMAT: HijriFormatOptions = {
-  digits: "arabic",
+  digits: "latin",
   order: "ymd",
   pad: false,
 };

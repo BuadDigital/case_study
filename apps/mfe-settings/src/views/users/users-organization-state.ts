@@ -234,7 +234,7 @@ export function staffRoleSelectLocked(
 export function formatLastLogin(iso: string | null | undefined): string {
   if (!iso) return "—";
   try {
-    return new Intl.DateTimeFormat("ar-SA", {
+    return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
       dateStyle: "short",
       timeStyle: "short",
     }).format(new Date(iso));

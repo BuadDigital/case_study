@@ -627,7 +627,7 @@ export function InspectorPropertyPhotosSection({
   );
 }
 
-/** «٣ صور» counter for the section header. */
+/** «3 صور» counter for the section header. */
 export function inspectorPhotosLabel(count: number): string {
   if (count === 0) return "بدون صور";
   if (count === 1) return "صورة واحدة";
