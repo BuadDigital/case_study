@@ -1066,8 +1066,7 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasColumnType("character varying(2000)");
 
                     b.Property<string>("OwnerName")
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)");
+                        .HasColumnType("text");
 
                     b.Property<string>("PartitionMinutesDate")
                         .HasMaxLength(32)
