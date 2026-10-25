@@ -25,18 +25,14 @@ const ANSWER_YN: [CaseStudyReportAnswer, MatrixYn][] = [
   ["B", "N"],
   ["NA", "NA"],
 ];
-const YN_BY_ANSWER = new Map(ANSWER_YN);
-
 export function answerToYn(
   value: CaseStudyReportAnswer | null | undefined,
 ): MatrixYn | null {
-  return (value && YN_BY_ANSWER.get(value)) ?? null;
+  return ANSWER_YN.find(([answer]) => answer === value)?.[1] ?? null;
 }
 
 export function ynToAnswer(value: MatrixYn | null): CaseStudyReportAnswer | null {
-  if (!value) return null;
-  for (const [answer, yn] of YN_BY_ANSWER) if (yn === value) return answer;
-  return null;
+  return ANSWER_YN.find(([, yn]) => yn === value)?.[0] ?? null;
 }
 
 export function contributionsToPartyAnswers(

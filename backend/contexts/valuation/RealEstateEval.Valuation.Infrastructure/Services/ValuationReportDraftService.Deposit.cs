@@ -45,7 +45,15 @@ public sealed partial class ValuationReportDraftService
 
         // The final PDF (report + the code + the certificate page) is made now, and again after a code correction.
         // A renderer failure never undoes the registration: the status stays «preparing» and can be retried.
-        await finalReports.EnsureGeneratedAsync(valuationRequestId, cancellationToken);
+        try
+        {
+            await finalReports.EnsureGeneratedAsync(valuationRequestId, cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // D15: a correction saved meanwhile owns the copy now — it generates its own PDF; this
+            // registration stands and the copy simply reads «preparing» until then.
+        }
         return (await issuance.GetStateAsync(valuationRequestId, cancellationToken) ?? result, null);
     }
 

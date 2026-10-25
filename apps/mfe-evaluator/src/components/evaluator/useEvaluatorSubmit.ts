@@ -29,7 +29,9 @@ import { isStudyReportBlockMessage } from "../../lib/evaluator/evaluator-inspect
 import {
   checkIssuanceGatesFailClosed,
   readFreshStudyReportGate,
+  readHandOverPriceFromServer,
 } from "../../lib/evaluator/evaluator-submit-gates";
+import { HANDOVER_BLOCKERS_ID } from "../../lib/evaluator/handover-blockers";
 import type { EvaluatorWindowTab } from "./evaluator-window-tabs";
 
 export function useEvaluatorSubmit({
@@ -133,9 +135,26 @@ export function useEvaluatorSubmit({
     if (!gates.ok) {
       setFormError(gates.message);
       showToast(gates.message, "error");
-      if (gates.kind === "blocked") setActiveTab("review");
+      if (gates.kind === "blocked") {
+        // The full list stays on «المراجعة النهائية» beside the button — not only in the toast.
+        setActiveTab("review");
+        scheduleScrollToFormField(HANDOVER_BLOCKERS_ID, 180, { retries: 24 });
+      }
       return false;
     }
+
+    // The handed-over «سعر التقييم» is the reconciliation's final value as the server holds it —
+    // the server refuses any other figure.
+    const serverPrice = await readHandOverPriceFromServer({
+      token: getAuthSession()?.token,
+      propertyId: task.propertyId,
+    });
+    if (!serverPrice.ok) {
+      setFormError(serverPrice.message);
+      showToast(serverPrice.message, "error");
+      return false;
+    }
+    const evaluatorPrice = serverPrice.price ?? draft.evaluatorPrice;
 
     flushPendingAutosave();
 
@@ -158,7 +177,7 @@ export function useEvaluatorSubmit({
           landValue: draft.landValue,
           buildingValue: draft.buildingValue,
           forcedSaleDiscountPct: draft.forcedSaleDiscountPct,
-          evaluatorPrice: draft.evaluatorPrice,
+          evaluatorPrice,
           assetDataConfirmed: draft.assetDataConfirmed,
           assetDataVarianceNotes: draft.assetDataVarianceNotes,
           independenceDeclared: true,

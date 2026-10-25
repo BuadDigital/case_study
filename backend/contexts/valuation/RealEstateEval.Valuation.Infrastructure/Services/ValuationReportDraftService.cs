@@ -28,9 +28,14 @@ public sealed partial class ValuationReportDraftService(
     TimeProvider? time = null,
     IValuationFinalReportService? finalReports = null,
     ValuationTimelineWriter? timeline = null,
-    ICaseStudyCommands? caseStudyCommands = null)
+    ICaseStudyCommands? caseStudyCommands = null,
+    IAssignedAppraiserCheck? assignedAppraisers = null,
+    IValuationReconciliationService? reconciliation = null)
     : IValuationReportDraftService
 {
+    private IAssignedAppraiserCheck AssignedAppraisers { get; } =
+        assignedAppraisers ?? new AssignedAppraiserCheck(db, caseStudy);
+
     public const string ReportNumberUnavailableAr = "تعذّر تثبيت رقم التقرير من خدمة دراسة الحالة — أعد المحاولة";
 
     public const string PrepareForbiddenAr = "إعداد مسودة تقرير التقييم للأخصائي فقط";

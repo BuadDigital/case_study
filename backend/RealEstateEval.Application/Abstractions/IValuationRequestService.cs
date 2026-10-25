@@ -40,4 +40,23 @@ public interface IValuationRequestService
         string propertyId,
         CancellationToken cancellationToken = default) =>
         Task.FromResult<string?>(null);
+
+    /// <summary>
+    /// The request's issuance gates (the appraiser's hand-over is refused while one he can fix
+    /// blocks). Null when the request is gone or this host cannot read them; a failed read throws.
+    /// </summary>
+    Task<ValuationIssuanceGatesSnapshotDto?> GetIssuanceGatesAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<ValuationIssuanceGatesSnapshotDto?>(null);
+
+    /// <summary>
+    /// The reconciliation's final value (the figure the report prints) — the appraiser's hand-over
+    /// price must equal it. Null when there is no reconciliation or this host cannot read it; a
+    /// failed read throws.
+    /// </summary>
+    Task<decimal?> GetFinalOpinionValueAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<decimal?>(null);
 }

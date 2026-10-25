@@ -73,8 +73,12 @@ public class ValuationCostApproach
 
  /// <summary>. </summary>
     public decimal? ActualAgeYears { get; set; }
+    /// <summary>The appraiser's basis for the actual (effective) age — printed with the cost narrative.</summary>
+    public string? ActualAgeRationale { get; set; }
  /// <summary>. </summary>
     public decimal? EconomicAgeYears { get; set; }
+    /// <summary>The appraiser's basis for the economic life.</summary>
+    public string? EconomicAgeRationale { get; set; }
  /// <summary>extension basis required when above zero.</summary>
     public decimal LifeExtensionYears { get; set; }
     public string? LifeExtensionBasis { get; set; }
@@ -296,6 +300,20 @@ public static class RepeatedFloorRules
             return 0m;
         return DeriveQuantity(firstFloorAreaSqm, count);
     }
+
+    /// <summary>
+    /// Why an included repeated-floors line cannot be priced, or null when it can: the count
+    /// must be at least one and «الدور الأول» must carry an area — the save refuses the line
+    /// instead of silently pricing it at zero.
+    /// </summary>
+    public static string? MissingInputMessage(int? repeatedCount, decimal firstFloorAreaSqm)
+    {
+        if (repeatedCount is not > 0)
+            return "أدخل عدد الأدوار المتكررة (دور واحد على الأقل) — بدونه تُحسب كمية البند صفرًا";
+        if (firstFloorAreaSqm <= 0m)
+            return "كمية الأدوار المتكررة تُشتقّ من مسطح «الدور الأول» — أضف بند الدور الأول بمسطحه";
+        return null;
+    }
 }
 
 public static class MarketOpinionRules
@@ -327,8 +345,48 @@ public static class MarketOpinionRules
 
 public static class CostApproachRules
 {
+    // ─── input bounds (the save refuses anything above; reads clamp legacy rows) ───
+
+    /// <summary>Largest quantity one cost line may carry (m² / linear-m / count).</summary>
+    public const decimal MaxLineQuantity = 10_000_000m;
+    /// <summary>Largest unit cost (SAR) — a lump-sum line carries its whole amount here.</summary>
+    public const decimal MaxUnitCostSar = 1_000_000_000m;
+    /// <summary>Most direct-cost lines one valuation may hold.</summary>
+    public const int MaxLines = 200;
+    /// <summary>Most repeated floors one line may count.</summary>
+    public const int MaxRepeatedFloorCount = 200;
+    /// <summary>Largest actual or economic age (years).</summary>
+    public const decimal MaxAgeYears = 200m;
+    /// <summary>Largest life extension (years).</summary>
+    public const decimal MaxLifeExtensionYears = 100m;
+    /// <summary>Largest apartment land share (m²).</summary>
+    public const decimal MaxLandShareSqm = 10_000_000m;
+
+    /// <summary>
+    /// D12: depreciation never exceeds the cost — the total obsolescence applied to the cost is
+    /// capped here (buildings value floors at zero).
+    /// </summary>
+    public const decimal MaxAppliedObsolescencePct = 100m;
+
+    /// <summary>
+    /// D12: total obsolescence (physical + functional + external) above this asks for a written
+    /// rationale — the methodology alert reads <see cref="ObsolescenceNeedsAlert"/>.
+    /// </summary>
+    public const decimal HighObsolescenceAlertPct = 90m;
+
+    /// <summary>True when the (unclamped) total obsolescence calls for the high-obsolescence alert.</summary>
+    public static bool ObsolescenceNeedsAlert(decimal totalObsolescencePct) =>
+        totalObsolescencePct > HighObsolescenceAlertPct;
+
+    /// <summary>
+    /// Quantity × unit cost. Inputs are clamped to the save bounds so a legacy out-of-range
+    /// row can never overflow the read (the screen, reconciliation and gates keep loading).
+    /// </summary>
     public static decimal LineTotal(decimal areaSqm, decimal unitCostSar) =>
-        Math.Round(Math.Max(0m, areaSqm) * Math.Max(0m, unitCostSar), 2, MidpointRounding.AwayFromZero);
+        Math.Round(
+            Math.Clamp(areaSqm, 0m, MaxLineQuantity) * Math.Clamp(unitCostSar, 0m, MaxUnitCostSar),
+            2,
+            MidpointRounding.AwayFromZero);
 
  /// <summary>
  /// The build-ratio input exists only on m² lines of the area group (group 1); on any other
@@ -421,20 +479,28 @@ public static class CostApproachRules
     }
 
     /// <summary>
-    /// Land comps expose WeightedPricePerSqm as a unit rate, except on whole_property
-    /// where it is the total deal value. Always store a per-m² rate so LandValue
-    /// does not multiply a total by area again.
+    /// D7: the land inside the cost approach is always valued per m². Each adopted land
+    /// comparable's adjusted amount becomes its own unit rate — on a whole_property table the
+    /// adjusted total is divided by THAT comparable's area (never the subject's, which
+    /// overstated the rate whenever the sizes differed) — and the rates are weighted.
     /// </summary>
-    public static decimal LandUnitRateFromComparableWeighted(
-        decimal weightedPricePerSqm,
-        decimal landAreaSqm,
+    public static decimal LandUnitRateFromAdoptedComps(
+        IEnumerable<(decimal AdjustedAmount, decimal ComparableAreaSqm, decimal WeightPct)> adopted,
         string? adjustmentBasis)
     {
-        var weighted = Math.Max(0m, weightedPricePerSqm);
-        if (MarketAdjustmentBasisKeys.Normalize(adjustmentBasis) != MarketAdjustmentBasisKeys.WholeProperty)
-            return weighted;
-        if (landAreaSqm <= 0m) return 0m;
-        return Math.Round(weighted / landAreaSqm, 2, MidpointRounding.AwayFromZero);
+        var whole = MarketAdjustmentBasisKeys.Normalize(adjustmentBasis)
+            == MarketAdjustmentBasisKeys.WholeProperty;
+        var rows = adopted
+            .Select(r =>
+            {
+                var amount = Math.Max(0m, r.AdjustedAmount);
+                var rate = !whole
+                    ? amount
+                    : r.ComparableAreaSqm > 0m ? amount / r.ComparableAreaSqm : 0m;
+                return (rate, Math.Max(0m, r.WeightPct));
+            })
+            .ToList();
+        return MarketApproachRules.WeightedUnitRate(rows);
     }
 
  /// <summary>Land value from the discounted rate; apartment share overrides land area when set.</summary>
@@ -494,16 +560,36 @@ public static class CostApproachRules
     public static decimal TotalObsolescencePct(decimal? physicalPct, decimal functionalPct, decimal externalPct) =>
         Math.Round((physicalPct ?? 0m) + Math.Max(0m, functionalPct) + Math.Max(0m, externalPct), 2, MidpointRounding.AwayFromZero);
 
- /// <summary>
- /// Interactive model spec: depreciation is not capped at 100% — obsolescence over 100% yields
- /// a negative buildings value; methodology alert m4 blocks adoption, not the math.
- /// </summary>
+    /// <summary>D12: the obsolescence actually applied to the cost — 0–100%.</summary>
+    public static decimal AppliedObsolescencePct(decimal totalObsolescencePct) =>
+        Math.Clamp(totalObsolescencePct, 0m, MaxAppliedObsolescencePct);
+
+    /// <summary>
+    /// D12: depreciation = cost × applied obsolescence, the total capped at 100% so the
+    /// depreciation never exceeds the cost. The unclamped total still feeds the alerts.
+    /// </summary>
     public static decimal DepreciationValue(decimal totalCostWithIndirect, decimal totalObsolescencePct) =>
         Math.Round(
-            Math.Max(0m, totalCostWithIndirect) * Math.Max(0m, totalObsolescencePct) / 100m,
+            Math.Max(0m, totalCostWithIndirect) * AppliedObsolescencePct(totalObsolescencePct) / 100m,
             2, MidpointRounding.AwayFromZero);
 
- /// <summary>buildings value after depreciation (buildings without land) — may be negative when obsolescence > 100%.</summary>
+    /// <summary>D12: buildings value after depreciation (buildings without land) — floors at zero.</summary>
     public static decimal BuildingsAfterDepreciation(decimal totalCostWithIndirect, decimal depreciationValue) =>
-        Math.Round(totalCostWithIndirect - depreciationValue, 2, MidpointRounding.AwayFromZero);
+        Math.Max(0m, Math.Round(totalCostWithIndirect - depreciationValue, 2, MidpointRounding.AwayFromZero));
+
+    /// <summary>
+    /// D11: a building valued alone on leased land cannot outlive the lease — its remaining
+    /// economic life (life − actual age) is capped at the remaining lease years, i.e. the life
+    /// used for physical depreciation is at most actual age + remaining lease. Null lease years
+    /// (not leased, or not entered) leave the life unchanged.
+    /// </summary>
+    public static decimal LifeCappedByLease(
+        decimal extendedLifeYears,
+        decimal? actualAgeYears,
+        decimal? remainingLeaseYears)
+    {
+        if (remainingLeaseYears is not { } lease || lease < 0m) return extendedLifeYears;
+        var cap = Math.Max(0m, actualAgeYears ?? 0m) + lease;
+        return Math.Min(extendedLifeYears, cap);
+    }
 }

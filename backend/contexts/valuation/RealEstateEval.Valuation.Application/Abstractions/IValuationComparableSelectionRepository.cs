@@ -87,6 +87,14 @@ public interface IValuationComparableSelectionRepository
         Guid valuationRequestId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The apartment's share of the land (m²) saved on the cost approach — the land area the cost
+    /// approach values; <c>null</c> when none is set (or there is no cost row yet).
+    /// </summary>
+    Task<decimal?> GetCostApartmentLandShareSqmAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken);
+
     /// <summary>Tracked selection with its adjustment lines, addressed by comparable.</summary>
     Task<ValuationComparableSelection?> FindSelectionByComparableAsync(
         Guid valuationRequestId,

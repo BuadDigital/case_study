@@ -10,6 +10,7 @@ import {
 import type { PropertyDetailPartySubmission } from "../../lib/app-data/property-detail-party-submissions";
 import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
 import { cn, InlineLoadingSkeleton } from "@platform/ui-kit";
+import { formatArDateTime } from "@platform/app-shared/format/date";
 
 export function PartyRoleDetailPanel({
   card,
@@ -99,7 +100,7 @@ export function PartyRoleDetailPanel({
                             row.answeredByName,
                             row.sourceRole,
                             row.answeredAtUtc
-                              ? new Date(row.answeredAtUtc).toLocaleString("ar-SA-u-nu-latn")
+                              ? formatArDateTime(row.answeredAtUtc)
                               : null,
                           ]
                             .filter(Boolean)

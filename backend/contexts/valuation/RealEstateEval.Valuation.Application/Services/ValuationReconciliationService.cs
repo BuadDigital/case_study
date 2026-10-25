@@ -24,6 +24,7 @@ public sealed partial class ValuationReconciliationService(
     IAuditLogAppend auditLog,
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
+    IValuationIncomeApproachService incomeApproach,
     TimeProvider? time = null) : IValuationReconciliationService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
@@ -37,6 +38,7 @@ public sealed partial class ValuationReconciliationService(
 
         var market = await selections.ListAsync(valuationRequestId, cancellationToken);
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
+        var income = await incomeApproach.GetAsync(valuationRequestId, cancellationToken);
         var entity = await repo.GetWithMethodsAsync(valuationRequestId, cancellationToken);
 
         var workOrder = await ResolveWorkOrderValuationAsync(vr, cancellationToken);
@@ -50,7 +52,8 @@ public sealed partial class ValuationReconciliationService(
             uses,
             workOrder.AssignmentType,
             workOrder.BasisOfValueKey,
-            workOrder.ValuePremiseKey);
+            workOrder.ValuePremiseKey,
+            income?.IncomeValue ?? 0m);
     }
 
     public async Task<IReadOnlyList<string>> GetEnabledApproachKindsAsync(
@@ -81,7 +84,9 @@ public sealed partial class ValuationReconciliationService(
                 settings.CostScopeKey);
         return ValuationApproachSettingsRules.EnabledReconciliationKinds(
             settings.MarketApproachEnabled,
-            costEnabled);
+            costEnabled,
+            // D17: income (direct capitalisation) joins the weights when the appraiser enables it.
+            settings.IncomeApproachEnabled);
     }
 
     private async Task<(AssignmentType AssignmentType, string? BasisOfValueKey, string? ValuePremiseKey)>
@@ -130,7 +135,7 @@ public sealed partial class ValuationReconciliationService(
             errors["finalRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6 (تقريب لأقرب 10^ن ر.س)";
 
         if (request.LiquidationDiscountPct is < 0m or > 100m)
-            errors["liquidationDiscountPct"] = "نسبة الخصم يجب أن تكون بين 0 و 100";
+            errors["liquidationDiscountPct"] = ReconciliationLiquidationMessages.RangeAr;
 
         var basisKey = string.IsNullOrWhiteSpace(request.BasisOfValueKey)
             ? BasisOfValueKeys.Market
@@ -157,13 +162,21 @@ public sealed partial class ValuationReconciliationService(
         if (request.LiquidationDiscountPct > 0m
             && !string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal))
         {
-            errors["liquidationDiscountPct"] = "خصم التصفية يُطبَّق فقط عند أساس = قيمة التصفية";
+            errors["liquidationDiscountPct"] = ReconciliationLiquidationMessages.OnlyForLiquidationAr;
+        }
+
+        // D3: 0 is a valid discount on every other basis; on «قيمة التصفية» it is refused here, at
+        // save time — not discovered later at the hand-over.
+        if (request.LiquidationDiscountPct == 0m
+            && string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal))
+        {
+            errors["liquidationDiscountPct"] = ReconciliationLiquidationMessages.RequiredForLiquidationAr;
         }
 
         if (request.LiquidationDiscountPct > 0m
             && string.IsNullOrWhiteSpace(request.LiquidationDiscountRationale))
         {
-            errors["liquidationDiscountRationale"] = "مبرر معامل التصفية مطلوب عند إدخال نسبة";
+            errors["liquidationDiscountRationale"] = ReconciliationLiquidationMessages.RationaleRequiredAr;
         }
 
         var alertOverrides = NormalizeAlertOverrides(request.MethodologyAlertOverrides);
@@ -211,6 +224,7 @@ public sealed partial class ValuationReconciliationService(
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
         var marketValue = market?.MarketOpinionValue ?? 0m;
         var costValue = cost?.CostOpinionWithLand ?? 0m;
+        var incomeValue = (await incomeApproach.GetAsync(valuationRequestId, cancellationToken))?.IncomeValue ?? 0m;
 
         var entity = await repo.FindWithMethodsAsync(valuationRequestId, cancellationToken);
         if (entity is null)
@@ -235,9 +249,7 @@ public sealed partial class ValuationReconciliationService(
             var kind = m.ApproachKind.Trim().ToLowerInvariant();
             var value = indicatorValues.TryGetValue(kind, out var documentValue)
                 ? documentValue
-                : string.Equals(kind, ValuationApproachKinds.Cost, StringComparison.Ordinal)
-                    ? costValue
-                    : marketValue;
+                : ValuationApproachKinds.ValueOf(kind, marketValue, costValue, incomeValue);
             var sortOrder = m.SortOrder != 0 ? m.SortOrder : i;
 
             if (methodsByKind.TryGetValue(kind, out var row))

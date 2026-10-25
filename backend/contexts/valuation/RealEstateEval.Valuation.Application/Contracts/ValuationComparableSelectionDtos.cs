@@ -189,6 +189,11 @@ public class ValuationCostApproachDto
 {
     public Guid ValuationRequestId { get; init; }
     public string PropertyId { get; init; } = "";
+    /// <summary>
+    /// True once the appraiser saved the cost approach — the stored values (zeros included) are
+    /// then his and the screen must not substitute its starter defaults.
+    /// </summary>
+    public bool IsSaved { get; init; }
  /// <summary>weighted unit rate from land_within_cost comps (not market approach).</summary>
     public decimal LandUnitRateFromMarket { get; init; }
  /// <summary>Land area m² used in the cost land equation.</summary>
@@ -223,19 +228,31 @@ public class ValuationCostApproachDto
 
  // age / depreciation 
     public decimal? ActualAgeYears { get; init; }
+    public string? ActualAgeRationale { get; init; }
     public decimal? EconomicAgeYears { get; init; }
+    public string? EconomicAgeRationale { get; init; }
     public decimal LifeExtensionYears { get; init; }
     public string? LifeExtensionBasis { get; init; }
     public decimal FunctionalObsolescencePct { get; init; }
     public string? FunctionalObsolescenceRationale { get; init; }
     public decimal ExternalObsolescencePct { get; init; }
     public string? ExternalObsolescenceRationale { get; init; }
- /// <summary>Economic age + extension — computed.</summary>
+ /// <summary>Economic age + extension — computed (before any lease cap).</summary>
     public decimal ExtendedLifeYears { get; init; }
+    /// <summary>D11: remaining lease years read from the approach settings (null = not leased land).</summary>
+    public decimal? RemainingLeaseYears { get; init; }
+    /// <summary>D11: true when building-only on leased land shortened the life to actual age + lease.</summary>
+    public bool LifeCappedByLease { get; init; }
+    /// <summary>The life physical depreciation is measured against (extended life, lease-capped when D11 applies).</summary>
+    public decimal EffectiveLifeYears { get; init; }
  /// <summary> — computed, unclamped.</summary>
     public decimal? PhysicalObsolescencePct { get; init; }
- /// <summary> — computed, unclamped.</summary>
+ /// <summary> — computed, unclamped (alerts read it).</summary>
     public decimal TotalObsolescencePct { get; init; }
+    /// <summary>D12: obsolescence applied to the cost — total capped at 100%.</summary>
+    public decimal AppliedObsolescencePct { get; init; }
+    /// <summary>D12: total obsolescence above <c>CostApproachRules.HighObsolescenceAlertPct</c> (90%).</summary>
+    public bool ObsolescenceNeedsAlert { get; init; }
  /// <summary> — computed.</summary>
     public decimal DepreciationValue { get; init; }
  /// <summary> — computed.</summary>
@@ -342,7 +359,11 @@ public class SaveValuationCostApproachRequest
 
  // age / depreciation
     public decimal? ActualAgeYears { get; init; }
+    [MaxLength(2000)]
+    public string? ActualAgeRationale { get; init; }
     public decimal? EconomicAgeYears { get; init; }
+    [MaxLength(2000)]
+    public string? EconomicAgeRationale { get; init; }
     public decimal LifeExtensionYears { get; init; }
     [MaxLength(2000)]
     public string? LifeExtensionBasis { get; init; }
@@ -388,6 +409,8 @@ public class ValuationReconciliationDto
     public string PropertyId { get; init; } = "";
     public decimal MarketOpinionValue { get; init; }
     public decimal CostOpinionWithLand { get; init; }
+    /// <summary>D17 — income approach indicator (NOI ÷ cap rate); 0 until complete.</summary>
+    public decimal IncomeOpinionValue { get; init; }
     public IReadOnlyList<ValuationReconciliationMethodDto> Methods { get; init; } = [];
     public decimal WeightSumPct { get; init; }
     public bool WeightsSumTo100 { get; init; }
@@ -516,7 +539,7 @@ public class SaveValuationComparableAdjustmentLineRequest
 }
 
 /// <summary>Screen 1 — governing valuation settings (B-2): applied approaches + cost basis/unit + adjustments unlock.</summary>
-public class ValuationApproachSettingsDto
+public partial class ValuationApproachSettingsDto
 {
     public Guid ValuationRequestId { get; init; }
     public string PropertyId { get; init; } = "";
@@ -532,7 +555,7 @@ public class ValuationApproachSettingsDto
     public bool CostApproachAllowed { get; init; } = true;
     public bool MarketApproachEnabled { get; init; } = true;
     public bool CostApproachEnabled { get; init; } = true;
- /// <summary>Deferred — shown as "under construction" and cannot be enabled.</summary>
+ /// <summary>Income approach (direct capitalisation, D17) — the appraiser may enable it.</summary>
     public bool IncomeApproachEnabled { get; init; }
     public string CostBasisKey { get; init; } = "replacement";
     public string CostBasisLabelAr { get; init; } = "";
@@ -570,7 +593,7 @@ public class ValuationApproachSettingsDto
     public bool IsSaved { get; init; }
 }
 
-public class SaveValuationApproachSettingsRequest
+public partial class SaveValuationApproachSettingsRequest
 {
     public bool MarketApproachEnabled { get; init; } = true;
     public bool CostApproachEnabled { get; init; } = true;

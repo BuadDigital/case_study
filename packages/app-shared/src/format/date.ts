@@ -16,6 +16,32 @@ export function formatDateAr(iso: string): string {
   return `${pad2(parsed.getDate())}/${pad2(parsed.getMonth() + 1)}/${parsed.getFullYear()}`;
 }
 
+/**
+ * U+200E / U+200F / U+061C — ICU puts them between the parts of an Arabic-locale date. With Latin
+ * digits they split «25/10/2026» into separate runs that right-to-left text reorders
+ * («2026/10/ 25»), so they are dropped from every Arabic date shown in the UI.
+ */
+const BIDI_MARKS = /[\u200E\u200F\u061C]/g;
+
+/** Text from an Arabic-locale `Intl` formatter, minus the bidi marks (see `BIDI_MARKS`). */
+export function stripBidiMarks(text: string): string {
+  return text.replace(BIDI_MARKS, "");
+}
+
+/**
+ * Arabic date/time with Latin digits (0-9), safe inside right-to-left text — `toLocaleString`
+ * semantics (no options = date and time). "—" when the value is not a date.
+ */
+export function formatArDateTime(
+  value: Date | string | number,
+  options?: Intl.DateTimeFormatOptions,
+  locale = "ar-SA-u-nu-latn",
+): string {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return stripBidiMarks(d.toLocaleString(locale, options));
+}
+
 /** DD/MM/YYYY from a full timestamp (browser timezone) — "—" when absent or unparseable. */
 export function dmy(iso: string | null | undefined): string {
   if (!iso?.trim()) return "—";

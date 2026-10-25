@@ -95,21 +95,32 @@ export function existsIf(
   return "";
 }
 
+/**
+ * One service's availability. «غير متوفر» only when the inspector answered the services
+ * question (picked at least one service) and left this one out; no answer at all prints «—».
+ */
 export function presentChip(
   selected: string[] | undefined,
   label: string,
 ): string {
-  return (selected ?? []).includes(label) ? "متوفر" : "غير متوفر";
+  const picked = selected ?? [];
+  if (picked.length === 0) return "—";
+  return picked.includes(label) ? "متوفر" : "غير متوفر";
 }
 
+/**
+ * «المحيط» cells. «لا يوجد» only when the inspector picked at least one surrounding and left this
+ * one out; nothing picked at all prints «—» (unknown, not «absent») — same rule as the services.
+ */
 export function mapSurroundings(
   amenities: string[] | undefined,
 ): Record<string, string> {
   const set = new Set(amenities ?? []);
+  const answered = set.size > 0;
   const out: Record<string, string> = {};
   const used = new Set<string>();
   for (const [chip, label] of Object.entries(AMENITY_TO_SURROUNDING)) {
-    out[label] = set.has(chip) ? "يوجد" : "لا يوجد";
+    out[label] = set.has(chip) ? "يوجد" : answered ? "لا يوجد" : "—";
     if (set.has(chip)) used.add(chip);
   }
   const other = (amenities ?? []).filter((a) => !used.has(a) && !AMENITY_TO_SURROUNDING[a]);
@@ -146,6 +157,9 @@ function looksLike(label: string, ...needles: string[]): boolean {
   return needles.some((n) => label.includes(n));
 }
 
+/** Labels that name a ground (lower) annex — «الدور الأرضي» alone does not. */
+const GROUND_ANNEX_NEEDLES = ["ملحق أرضي", "الملحق الأرضي", "ملحق ارضي", "ملحق سفلي", "الملحق السفلي"];
+
 export function areasFromInventory(
   lines: BuildingInventoryLineDto[] | null | undefined,
   inspector?: InspectorWorkspaceDraft | null,
@@ -164,12 +178,14 @@ export function areasFromInventory(
     kind: string,
     needles: string[],
     fallback: string,
+    /** Label needles for lines of another kind (defaults to `needles`). */
+    otherKindNeedles: string[] = needles,
   ): { area: string; desc: string; label: string } => {
     const match = rows.find((l) => {
       const k = lineKind(l);
       const lab = lineLabel(l);
       if (k === kind) return needles.length === 0 || looksLike(lab, ...needles);
-      return looksLike(lab, ...needles);
+      return looksLike(lab, ...otherKindNeedles);
     });
     if (match) {
       return {
@@ -184,7 +200,8 @@ export function areasFromInventory(
   const ground = pick("floor", ["أرضي", "الأرضي"], "");
   const first = pick("floor", ["الأول", "اول"], "");
   const annex = pick("annex", ["علوي", "upper"], "");
-  const annexGround = pick("annex", ["أرضي", "ارضى", "سفلي"], "");
+  // A ground annex is an «annex» line, or a line named «ملحق أرضي» — never «الدور الأرضي».
+  const annexGround = pick("annex", ["أرضي", "ارضى", "سفلي"], "", GROUND_ANNEX_NEEDLES);
   const basement = pick("basement", ["قبو"], inspector?.basementTotal ?? "");
   const annexSum = rows
     .filter((l) => lineKind(l) === "annex")
@@ -251,8 +268,10 @@ function costLineByKey(
   lines: ValuationCostLineDto[] | undefined,
   keys: string[],
   labelNeedles: string[],
+  /** Lines already printed on another row — one cost line never prints twice. */
+  taken?: ReadonlySet<string>,
 ): ValuationCostLineDto | undefined {
-  const list = (lines ?? []).filter((l) => l.isIncluded !== false);
+  const list = (lines ?? []).filter((l) => l.isIncluded !== false && !taken?.has(l.id));
   return (
     list.find((l) => keys.includes((l.itemKey ?? "").toLowerCase())) ??
     list.find((l) => labelNeedles.some((n) => (l.itemLabelAr || l.label || "").includes(n)))
@@ -382,7 +401,8 @@ export function buildDirectCostSheetRows(
     {
       key: "مسطح الملحق الأرضي",
       itemKeys: ["lower_annex"],
-      needles: ["أرضي", "سفلي"],
+      // «الدور الأرضي» is not an annex — only a line named as a ground annex matches by label.
+      needles: GROUND_ANNEX_NEEDLES,
       inventory: areas.annexGround,
       optional: true,
     },
@@ -404,7 +424,7 @@ export function buildDirectCostSheetRows(
   const used = new Set<string>();
   const rows: SheetTableRow[] = [];
   for (const slot of slots) {
-    const line = costLineByKey(cost?.lines, slot.itemKeys, slot.needles);
+    const line = costLineByKey(cost?.lines, slot.itemKeys, slot.needles, used);
     const hasInv = Boolean((slot.inventory ?? "").trim());
     if (slot.optional && !line && !hasInv) continue;
     if (line?.id) used.add(line.id);
@@ -577,7 +597,8 @@ function compPairs(
   const count = Math.min(Math.max(comps.length, 1), MAX_REPORT_COMPARABLES);
   return Array.from({ length: count }, (_, i) => {
     const [value, pct] = comps[i] ? pick(comps[i]!) : ["", ""];
-    return [dashSheet(value), pct || "٪"];
+    // A comparable without this factor shows «—», not a bare «٪».
+    return [dashSheet(value), pct || "—"];
   });
 }
 
@@ -607,27 +628,82 @@ export function buildAdjustmentRationaleText(
   return items.join("\n");
 }
 
+/** Sequential factors in chain order (multiplied one after the other on the unit price). */
+const SEQUENTIAL_FACTORS: Array<{ key: string; label: string; always?: boolean }> = [
+  { key: "financing", label: "تسوية شروط التمويل", always: true },
+  // Ejada folds the time gap into market conditions — one row, named for both.
+  { key: "market", label: "تسوية ظروف السوق (عامل الوقت)", always: true },
+  { key: "transaction_type", label: "تسوية نوع المقارن" },
+];
+const SEQUENTIAL_FACTOR_KEYS = new Set(SEQUENTIAL_FACTORS.map((f) => f.key));
+
+/** Fallback labels for built-in difference factors (the server's line label wins). */
+const DIFFERENCE_FACTOR_LABELS: Record<string, string> = {
+  ideal_area: "المساحة المثالية",
+  attraction: "عامل الجذب للموقع",
+  access: "سهولة الوصول",
+  street_count: "عدد الشوارع",
+  street_lengths: "أطوال الشوارع",
+  plot_shape: "شكل القطعة",
+  topography: "طبوغرافيا الأرض",
+  zoning: "تنظيم البناء",
+  services: "الخدمات والبنية التحتية",
+  restrictions: "القيود والارتفاقات",
+  development: "حالة التطوير",
+};
+
+function includedLine(item: ValuationComparableSelectionDto, factorKey: string) {
+  return item.market?.adjustmentLines?.find((l) => l.isIncluded && l.factorKey === factorKey);
+}
+
+/**
+ * Difference factors any comparable applies — besides area and location, which always print —
+ * in the matrix order: access, streets, custom factors, catalog extras… Every included factor
+ * prints, so the rows add up to «مجموع نسب التسويات».
+ */
+function differenceFactorRows(
+  comps: ValuationComparableSelectionDto[],
+): Array<{ key: string; label: string }> {
+  const seen = new Map<string, { label: string; order: number }>();
+  for (const item of comps) {
+    for (const line of item.market?.adjustmentLines ?? []) {
+      const key = line.factorKey;
+      if (!line.isIncluded || SEQUENTIAL_FACTOR_KEYS.has(key) || key === "area" || key === "location") {
+        continue;
+      }
+      const label = (line.labelAr ?? "").trim() || DIFFERENCE_FACTOR_LABELS[key] || key;
+      const prev = seen.get(key);
+      if (!prev || line.sortOrder < prev.order) seen.set(key, { label, order: line.sortOrder });
+    }
+  }
+  return [...seen.entries()]
+    .sort((a, b) => a[1].order - b[1].order)
+    .map(([key, v]) => ({ key, label: v.label }));
+}
+
 export function buildAdjustmentSheetRows(
   comps: ValuationComparableSelectionDto[],
   market: ValuationComparableSelectionListDto | null | undefined,
 ): { rows: SheetTableRow[]; comparisonLabel: string } {
-  const finMkt = (item: ValuationComparableSelectionDto) => {
-    const lines = item.market?.adjustmentLines ?? [];
-    const has = lines.some(
-      (l) =>
-        l.isIncluded &&
-        (l.factorKey === "financing" || l.factorKey === "market"),
-    );
-    if (!has) return "";
-    const fin =
-      lines.find((l) => l.isIncluded && l.factorKey === "financing")?.percent ??
-      0;
-    const mkt =
-      lines.find((l) => l.isIncluded && l.factorKey === "market")?.percent ?? 0;
-    return formatSheetPct(fin + mkt);
+  const sequential = SEQUENTIAL_FACTORS.filter(
+    (f) => f.always || comps.some((x) => includedLine(x, f.key)),
+  );
+  const withKind = sequential.some((f) => f.key === "transaction_type");
+  // The chain multiplies: (1 + p₁)(1 + p₂)… − 1 is what turns the comparable's unit price
+  // into the price after the sequential factors.
+  const chainPct = (item: ValuationComparableSelectionDto) => {
+    const lines = sequential
+      .map((f) => includedLine(item, f.key))
+      .filter((l): l is NonNullable<typeof l> => Boolean(l));
+    if (lines.length === 0) return "";
+    const factor = lines.reduce((acc, l) => acc * (1 + Number(l.percent) / 100), 1);
+    return formatSheetPct((factor - 1) * 100);
   };
+  const compounded = comps.some(
+    (x) => sequential.filter((f) => Number(includedLine(x, f.key)?.percent ?? 0) !== 0).length > 1,
+  );
   const ppsm = market?.weightedPricePerSqm;
-  const opinion = market?.marketOpinionValue;
+  const opinion = market?.marketOpinionValueRaw ?? market?.marketOpinionValue;
   // The label stays plain — no «(سعر المتر × المساحة)» formula beside it.
   const comparisonLabel = "القيمة بطريقة المقارنة";
   const rows: SheetTableRow[] = [
@@ -641,21 +717,18 @@ export function buildAdjustmentSheetRows(
         formatMoneyCell(effectiveComparableValues(x).price),
       ),
     },
-    { key: "تسوية عامل الوقت", values: compCols(comps, () => "") },
+    ...sequential.map((f) => ({
+      key: f.label,
+      values: compCols(comps, (x) => includedPct(x, f.key)),
+    })),
     {
-      key: "تسوية شروط التمويل",
-      values: compCols(comps, (x) => includedPct(x, "financing")),
+      key: `${withKind ? "إجمالي التسويات التسلسلية ٪" : "إجمالي تسويات التمويل والسوق ٪"}${compounded ? " (مركّبة)" : ""}`,
+      values: compCols(comps, chainPct),
     },
     {
-      key: "تسوية ظروف السوق",
-      values: compCols(comps, (x) => includedPct(x, "market")),
-    },
-    {
-      key: "إجمالي تسويات التمويل والسوق ٪",
-      values: compCols(comps, finMkt),
-    },
-    {
-      key: "سعر البيع بعد تسوية شروط التمويل وظروف السوق",
+      key: withKind
+        ? "سعر البيع بعد التسويات التسلسلية"
+        : "سعر البيع بعد تسوية شروط التمويل وظروف السوق",
       values: compCols(comps, (x) =>
         formatMoneyCell(x.market?.pricePerSqmAfterSequential),
       ),
@@ -685,14 +758,11 @@ export function buildAdjustmentSheetRows(
         includedPct(x, "location"),
       ]),
     },
-    {
-      key: "عدد الشوارع",
-      values: compCols(comps, (x) => includedPct(x, "street_count")),
-      pairs: compPairs(comps, (x) => [
-        factorDescription(x, "street_count"),
-        includedPct(x, "street_count"),
-      ]),
-    },
+    ...differenceFactorRows(comps).map((f) => ({
+      key: f.label,
+      values: compCols(comps, (x) => includedPct(x, f.key)),
+      pairs: compPairs(comps, (x) => [factorDescription(x, f.key), includedPct(x, f.key)]),
+    })),
     {
       key: "مجموع نسب التسويات (٪)",
       values: compCols(comps, (x) =>
@@ -794,7 +864,8 @@ export function buildReconSheetRows(
       key: "أسلوب التكلفة — طريقة المقاول",
       kinds: ["cost", "replacement"],
     },
-    { key: "أسلوب الدخل", kinds: ["income"] },
+    // D17 — direct capitalisation, printed with its method.
+    { key: "أسلوب الدخل (رسملة مباشرة)", kinds: ["income"] },
   ];
   const rows: SheetTableRow[] = [];
   // Reconciliation is between the indicators of the approaches in use — an approach that was

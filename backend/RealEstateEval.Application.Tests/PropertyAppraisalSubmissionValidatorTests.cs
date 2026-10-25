@@ -45,6 +45,23 @@ public class PropertyAppraisalSubmissionValidatorTests
         Assert.Empty(errors);
     }
 
+    [Theory]
+    [InlineData("\"abc\"", false)]
+    [InlineData("\"0\"", false)]
+    [InlineData("\"-5\"", false)]
+    [InlineData("\"1e30\"", false)]
+    [InlineData("\"1,250,000\"", true)]
+    [InlineData("\"١٢٥٠٠٠٠\"", true)]
+    [InlineData("1250000", true)]
+    [InlineData("true", false)]
+    public void The_handed_over_price_must_be_a_positive_number(string price, bool valid)
+    {
+        using var doc = JsonDocument.Parse($$"""{ "evaluatorPrice": {{price}} }""");
+        var errors = PropertyAppraisalSubmissionValidator.Validate(doc.RootElement);
+
+        Assert.Equal(valid, !errors.ContainsKey("evaluatorPrice"));
+    }
+
     private static string MinimalValidPayload() =>
         """
         {

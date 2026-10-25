@@ -71,11 +71,16 @@ export function finalOpinionComputed({
     const costComplete = buildingOnly
       ? costBuildReady
       : costBuildReady && !!cost?.landEstimateComplete;
+    // D17: the income indicator is complete once the server computed a positive value (NOI ÷ cap).
+    const incomeComplete =
+      (reconMethods.find((m) => m.approachKind === "income")?.approachValue ?? 0) > 0;
     // A document indicator carries the value the appraiser entered — always complete.
     const methodComplete = (kind: string) =>
       isDocumentIndicatorKind(kind)
         ? true
-        : kind === "cost"
+        : kind === "income"
+          ? incomeComplete
+          : kind === "cost"
           ? costComplete
           : hasAdoptedMarket;
     const isLiquidation = basisOfValueKey === "liquidation";
@@ -129,6 +134,10 @@ export function finalOpinionComputed({
         linesOut.push(
           "اعتُمد أسلوب التكلفة بنطاق «مبنى فقط»؛ القيمة = تكلفة الإحلال ناقصاً الإهلاك. ولم يجرِ ترجيح بين مؤشرات القيمة لاعتماد أسلوب واحد.",
         );
+      } else if (reconMethods[0]?.approachKind === "income") {
+        linesOut.push(
+          "اعتُمد أسلوب الدخل وحده بطريقة الرسملة المباشرة؛ القيمة = صافي الدخل التشغيلي ÷ معدل الرسملة. ولم يجرِ ترجيح بين مؤشرات القيمة لاعتماد أسلوب واحد.",
+        );
       } else {
         linesOut.push(
           "اعتُمد أسلوب السوق وحده، وقُدّرت القيمة بطريقة المقارنات. ولم يجرِ ترجيح بين مؤشرات القيمة لاعتماد أسلوب واحد.",
@@ -180,10 +189,45 @@ const FINAL_TOTAL_OPINION_PREFIX = "القيمة النهائية الإجمال
 
 /** Auto-generated forced-sale discount sentence in the final-opinion narrative. */
 const FORCED_SALE_DISCOUNT_OPINION_LINE_RE =
-  /^طُبِّق خصم بيع قسري .+٪\.$/m;
+  /^طُبِّق خصم (?:بيع قسري|التصفية) .+٪\.$/m;
 
 export function forcedSaleDiscountOpinionLine(pct: number): string {
-  return `طُبِّق خصم بيع قسري ${pct}٪.`;
+  return `طُبِّق ${LIQUIDATION_DISCOUNT_NAME} ${pct}٪.`;
+}
+
+/** D3: the one name the discount carries on every screen and message. */
+export const LIQUIDATION_DISCOUNT_NAME = "خصم التصفية";
+
+/** The server's save messages (ReconciliationLiquidationMessages) — checked here before the round trip. */
+export const LIQUIDATION_DISCOUNT_MESSAGES = {
+  range: "نسبة خصم التصفية يجب أن تكون بين 0 و 100",
+  requiredForLiquidation:
+    "أساس القيمة «قيمة التصفية» يتطلب نسبة خصم التصفية أكبر من صفر",
+  rationaleRequired: "مبرر خصم التصفية مطلوب عند إدخال نسبة",
+} as const;
+
+/**
+ * D3: 0 is a valid discount on every basis but «قيمة التصفية», where the save is refused (the
+ * hand-over no longer is). Returns the field errors keyed like the server's, or null.
+ */
+export function liquidationDiscountSaveErrors(input: {
+  basisOfValueKey: string;
+  liquidationDiscountPct: string;
+  liquidationDiscountRationale: string;
+}): Record<string, string> | null {
+  if (input.basisOfValueKey !== "liquidation") return null;
+  const raw = input.liquidationDiscountPct.trim();
+  const pct = raw ? parseLocaleNumber(raw) : 0;
+  if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+    return { liquidationDiscountPct: LIQUIDATION_DISCOUNT_MESSAGES.range };
+  }
+  if (pct === 0) {
+    return { liquidationDiscountPct: LIQUIDATION_DISCOUNT_MESSAGES.requiredForLiquidation };
+  }
+  if (!input.liquidationDiscountRationale.trim()) {
+    return { liquidationDiscountRationale: LIQUIDATION_DISCOUNT_MESSAGES.rationaleRequired };
+  }
+  return null;
 }
 
 /**
@@ -294,6 +338,55 @@ export function alertOverridesFromRecon(
     };
   }
   return ovMap;
+}
+
+/** The dispositions of the given alert codes, as the alert-overrides save sends them. */
+export function alertOverridesForCodes(
+  record: AlertOverrideRecord,
+  codes: string[],
+): { code: string; overrideRationale: string | null; acknowledged: boolean }[] {
+  return codes
+    .filter((code, i) => codes.indexOf(code) === i)
+    .map((code) => ({
+      code,
+      overrideRationale: record[code]?.overrideRationale.trim() || null,
+      acknowledged: record[code]?.acknowledged ?? false,
+    }));
+}
+
+/**
+ * Problem 19: the final-opinion drafts differ from the saved reconciliation (this screen saves on
+ * «حفظ» only) — the window warns before a refresh would drop them.
+ */
+export function finalOpinionDraftDiffers(input: {
+  recon: {
+    methodsRationale?: string | null;
+    finalRoundDecimals?: number | null;
+    liquidationDiscountPct?: number | null;
+    liquidationDiscountRationale?: string | null;
+    methods: { approachKind: string; weightPct: number; isIncluded: boolean }[];
+  } | null;
+  methodsRationale: string;
+  finalRoundDecimals: string;
+  liquidationDiscountPct: string;
+  liquidationDiscountRationale: string;
+  reconMethods: { approachKind: string; weightPct: number; isIncluded: boolean }[];
+}): boolean {
+  const { recon } = input;
+  if (!recon) {
+    return Boolean(input.methodsRationale.trim() || input.liquidationDiscountRationale.trim());
+  }
+  const storedRationale = recon.methodsRationale ?? "";
+  const savedRationale = looksLikeAutoFinalOpinion(storedRationale) ? "" : storedRationale.trim();
+  if (input.methodsRationale.trim() !== savedRationale) return true;
+  if ((Number.parseInt(input.finalRoundDecimals, 10) || 0) !== (recon.finalRoundDecimals ?? 0)) return true;
+  const pct = input.liquidationDiscountPct.trim() ? parseLocaleNumber(input.liquidationDiscountPct) : 0;
+  if (pct !== (recon.liquidationDiscountPct ?? 0)) return true;
+  if (input.liquidationDiscountRationale.trim() !== (recon.liquidationDiscountRationale ?? "").trim()) return true;
+  return input.reconMethods.some((m) => {
+    const saved = recon.methods.find((r) => r.approachKind === m.approachKind);
+    return !saved || saved.weightPct !== m.weightPct || saved.isIncluded !== m.isIncluded;
+  });
 }
 
 /** True when stored prose matches the former auto-generated opinion template. */

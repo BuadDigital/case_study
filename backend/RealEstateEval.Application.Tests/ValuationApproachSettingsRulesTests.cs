@@ -108,13 +108,15 @@ public class ValuationApproachSettingsRulesTests
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
             valuationDateMode: ValuationDateModes.Retrospective);
         Assert.Contains("retrospectiveDate", missing.Keys);
-        Assert.DoesNotContain("retrospectiveRationale", missing.Keys);
+        // D9: the rationale is required with a retrospective date.
+        Assert.Contains("retrospectiveRationale", missing.Keys);
 
         var ok = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
             valuationDateMode: ValuationDateModes.Retrospective,
-            retrospectiveDate: new DateOnly(2026, 6, 1));
+            retrospectiveDate: new DateOnly(2026, 6, 1),
+            retrospectiveRationale: Rationale);
         Assert.Empty(ok);
 
         var badRange = ValuationApproachSettingsRules.Validate(
@@ -130,7 +132,8 @@ public class ValuationApproachSettingsRulesTests
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
             valuationDateMode: ValuationDateModes.Retrospective,
             retrospectiveDate: new DateOnly(2026, 6, 1),
-            retrospectiveDateEnd: new DateOnly(2026, 6, 10));
+            retrospectiveDateEnd: new DateOnly(2026, 6, 10),
+            retrospectiveRationale: Rationale);
         Assert.Empty(okRange);
 
  // "Value issuance" mode requires nothing.
@@ -138,6 +141,58 @@ public class ValuationApproachSettingsRulesTests
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution);
         Assert.Empty(issue);
+    }
+
+    private const string Rationale = "تاريخ وفاة المورث وفق صك حصر الورثة";
+
+    [Fact]
+    public void Retrospective_date_is_in_the_past_and_its_rationale_has_ten_characters()
+    {
+        var today = new DateOnly(2026, 10, 25);
+        Dictionary<string, string> Check(DateOnly date, string? rationale, DateOnly? end = null, DateOnly? reportDate = null) =>
+            ValuationApproachSettingsRules.Validate(
+                true, true, false, null, null, "فيلا",
+                valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+                valuationDateMode: ValuationDateModes.Retrospective,
+                retrospectiveDate: date,
+                retrospectiveDateEnd: end,
+                retrospectiveRationale: rationale,
+                today: today,
+                reportDate: reportDate);
+
+        Assert.Contains("retrospectiveDate", Check(today.AddDays(1), Rationale).Keys);
+        Assert.Contains("retrospectiveDateEnd", Check(today.AddDays(-3), Rationale, end: today.AddDays(2)).Keys);
+        Assert.Contains("retrospectiveDate", Check(today.AddDays(-1), Rationale, reportDate: today.AddDays(-2)).Keys);
+        Assert.Contains("retrospectiveRationale", Check(today.AddDays(-30), "").Keys);
+        Assert.Contains("retrospectiveRationale", Check(today.AddDays(-30), "  قصير  ").Keys);
+        Assert.Empty(Check(today, Rationale));
+        Assert.Empty(Check(today.AddDays(-30), Rationale, end: today, reportDate: today));
+    }
+
+    [Fact]
+    public void A_leasehold_interest_needs_its_remaining_lease_years()
+    {
+        Dictionary<string, string> Check(string? key, decimal? years) =>
+            ValuationApproachSettingsRules.Validate(
+                true, true, false, null, null, "مستودع",
+                valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+                ownershipInterestKey: key,
+                remainingLeaseYears: years);
+
+        Assert.Empty(Check(null, null));
+        Assert.Empty(Check(OwnershipInterestKeys.Freehold, null));
+        Assert.Contains("ownershipInterestKey", Check("waqf", 5).Keys);
+        Assert.Contains("remainingLeaseYears", Check(OwnershipInterestKeys.LeasedLand, null).Keys);
+        Assert.Contains("remainingLeaseYears", Check(OwnershipInterestKeys.Usufruct, 0).Keys);
+        Assert.Contains("remainingLeaseYears", Check(OwnershipInterestKeys.Usufruct, 1000).Keys);
+        Assert.Empty(Check(OwnershipInterestKeys.LeasedLand, 4));
+        Assert.Empty(Check(" Usufruct ", 15.5m));
+
+        Assert.Equal("حق منفعة", OwnershipInterestKeys.LabelAr(OwnershipInterestKeys.Usufruct));
+        Assert.Equal("أرض مستأجرة", OwnershipInterestKeys.LabelAr(OwnershipInterestKeys.LeasedLand));
+        Assert.Equal("ملكية تامة", OwnershipInterestKeys.LabelAr(null));
+        Assert.True(OwnershipInterestKeys.IsLeasehold(OwnershipInterestKeys.LeasedLand));
+        Assert.False(OwnershipInterestKeys.IsLeasehold("unknown"));
     }
 
     [Fact]
@@ -218,15 +273,19 @@ public class ValuationApproachSettingsRulesTests
     }
 
     [Fact]
-    public void Validate_rejects_income_and_requires_one_approach()
+    public void Validate_allows_income_and_requires_one_approach()
     {
         var none = ValuationApproachSettingsRules.Validate(
             false, false, false, null, null, "فيلا");
         Assert.Contains("appliedApproaches", none.Keys);
 
+        // D17: the income approach may be enabled — alone or beside the others.
         var income = ValuationApproachSettingsRules.Validate(
             true, false, true, null, null, "فيلا");
-        Assert.Contains("incomeApproachEnabled", income.Keys);
+        Assert.DoesNotContain("incomeApproachEnabled", income.Keys);
+        var incomeOnly = ValuationApproachSettingsRules.Validate(
+            false, false, true, null, null, "فيلا");
+        Assert.DoesNotContain("appliedApproaches", incomeOnly.Keys);
     }
 
     [Fact]

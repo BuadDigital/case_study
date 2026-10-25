@@ -17,12 +17,17 @@ import {
 } from "./factor-registry";
 import { weightsSumTo100 } from "./weights";
 
+/** The land table inside the cost approach (shell-state's LAND_WITHIN_COST). */
+const LAND_WITHIN_COST = "land_within_cost";
+
 export type MatrixAlert = { kind: "error" | "ok"; title: string; body: string };
 
 export type MatrixBasisView = {
   basis: string;
   /** Adjustments are per square metre unless the basis is the whole property. */
   isUnit: boolean;
+  /** «قيمة الأرض» only for the land table inside the cost approach — the market table values the property. */
+  outputLabel: string;
   pricePerSqmDisplay: number | null;
   opinionRaw: number | null;
   opinionFinal: number | null;
@@ -56,11 +61,17 @@ export function matrixBasisView(
   return {
     basis,
     isUnit,
+    outputLabel:
+      selection.selectionContext === LAND_WITHIN_COST
+        ? "قيمة الأرض قبل التقريب"
+        : "قيمة العقار قبل التقريب",
     pricePerSqmDisplay,
     opinionRaw: selection.marketOpinionValueRaw ?? selection.marketOpinionValue,
     opinionFinal: selection.marketOpinionValue,
-    areaMethod:
-      adopted[0]?.market?.areaAdjustmentMethod === "multiplier"
+    // D7: no area adjustment on the whole-property basis (the server sends 0).
+    areaMethod: !isUnit
+      ? "لا تسوية مساحة — المقارنة على قيمة العقار كاملة"
+      : adopted[0]?.market?.areaAdjustmentMethod === "multiplier"
         ? "طريقة المضاعف — آلية"
         : "طريقة الأمثال — آلية",
     areaFactor: selection.areaFactorPct ?? 5,
@@ -120,6 +131,18 @@ export function addableFactorOptions(
   return out.filter((f) => !differenceKeys.includes(f.factorKey));
 }
 
+/**
+ * D4 gross adjustment: Σ|%| of the included sequential and difference lines (the server sends the
+ * area line with its computed %). +30/−30 nets to 0 but is a 60٪ adjustment.
+ */
+export function grossAdjustmentPct(item: ValuationComparableSelectionDto): number {
+  const lines = item.market?.adjustmentLines ?? [];
+  const sum = lines
+    .filter((l) => l.isIncluded)
+    .reduce((s, l) => s + Math.abs(Number(l.percent) || 0), 0);
+  return Math.round(sum * 100) / 100;
+}
+
 export function afterWeightValue(item: ValuationComparableSelectionDto): number {
   const m = item.market;
   if (!m) return 0;
@@ -148,8 +171,8 @@ export function buildMatrixAlerts(
   )) {
     alerts.push({
       kind: "error",
-      title: `المقارن ${c.comparable.referenceCode} — مجموع التسويات ${formatPct(c.market?.sumDifferencePct ?? 0)}`,
-      body: "تجاوز ±40٪ — التبرير إلزامي، مع مراجعة صلاحية المقارن أصلاً.",
+      title: `المقارن ${c.comparable.referenceCode} — صافي التسويات ${formatPct(c.market?.sumDifferencePct ?? 0)} · الإجمالي ${formatPct(grossAdjustmentPct(c)).replace(/^\+/, "")}`,
+      body: "تجاوز ±40٪ على الصافي أو على إجمالي التسويات (بالقيمة المطلقة) — التبرير إلزامي، مع مراجعة صلاحية المقارن أصلاً.",
     });
   }
   if (alerts.length === 0) {

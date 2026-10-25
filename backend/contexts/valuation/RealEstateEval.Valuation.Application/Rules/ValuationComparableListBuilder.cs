@@ -55,10 +55,12 @@ public static class ValuationComparableListBuilder
         DateOnly valuationDate,
         ValuationMarketApproach? header,
         string selectionContext,
-        IReadOnlyList<ValuationAdjustmentFactorRationale> factorRationales)
+        IReadOnlyList<ValuationAdjustmentFactorRationale> factorRationales,
+        decimal? costApartmentLandShareSqm = null)
     {
         var adoptedRows = rows.Where(r => r.IsAdopted).ToList();
-        var subjectAreaForSuggestion = header?.SubjectAreaSqm ?? 0m;
+        var subjectAreaForSuggestion = AreaAdjustmentSubjectAreaSqm(
+            header?.SubjectAreaSqm, selectionContext, costApartmentLandShareSqm);
         var areaFactor = header?.AreaFactorPct > 0
             ? header.AreaFactorPct
             : AreaAdjustmentRules.DefaultAreaFactorPct;
@@ -70,32 +72,32 @@ public static class ValuationComparableListBuilder
             adoptedRows
                 .Where(r => comps.ContainsKey(r.ComparablePropertyId))
                 .Select(r => EffectiveCompValues(r, comps[r.ComparablePropertyId]).Area));
+        var basis = EffectiveBasis(header?.AdjustmentBasis, selectionContext);
 
-        // Comparable weights from difference-factor sum only (areaAdj + Σ) — not sequential adjustments.
-        var factorsSums = adoptedRows
-            .Select(r =>
-            {
-                if (!comps.TryGetValue(r.ComparablePropertyId, out var comp))
-                    return 0m;
-                var areaAdj = AreaAdjustmentRules.SuggestPct(
-                    areaMethod,
-                    subjectAreaForSuggestion,
-                    EffectiveCompValues(r, comp).Area,
-                    areaFactor);
-                var otherDiff = MarketApproachRules.SumIncludedPercents(
-                    r.AdjustmentLines
-                        .Where(l =>
-                            l.IsIncluded
-                            && MarketAdjustmentFactorKeys.IsDifferenceFactor(l.FactorKey)
-                            && l.FactorKey != MarketAdjustmentFactorKeys.Area)
-                        .Select(l => l.Percent));
-                return areaAdj + otherDiff;
-            })
+        // D5 + D6: automatic weights from the GROSS adjustment (sequential + difference, absolute),
+        // with no automatic weight for a comparable whose adjusted rate is an outlier against the
+        // median. Manual override still replaces one row only; sum ≠ 100% stays an alert.
+        var adoptedMarkets = adoptedRows
+            .Where(r => comps.ContainsKey(r.ComparablePropertyId))
+            .Select(r => (Row: r, Market: BuildMarket(
+                r,
+                comps[r.ComparablePropertyId],
+                valuationDate,
+                null,
+                basis,
+                subjectAreaForSuggestion,
+                areaMethod,
+                areaFactor,
+                marketRate)))
             .ToList();
-        // Interactive model spec: automatic suggestion as-is (5% units); manual override replaces
-        // one row only; sum ≠ 100% shows an alert the valuer resolves themselves.
-        var suggested = MarketApproachRules.SuggestWeights(factorsSums);
-        var basis = MarketAdjustmentBasisKeys.Normalize(header?.AdjustmentBasis);
+        var suggested = MarketApproachRules.SuggestWeights(
+            adoptedMarkets.Select(x => x.Market.GrossAdjustmentPct()).ToList(),
+            adoptedMarkets
+                .Select(x => AdjustedUnitRate(
+                    x.Market,
+                    basis,
+                    EffectiveCompValues(x.Row, comps[x.Row.ComparablePropertyId]).Area))
+                .ToList());
 
         var items = new List<ValuationComparableSelectionDto>();
         var weightPairs = new List<(decimal adjusted, decimal weight)>();
@@ -193,6 +195,51 @@ public static class ValuationComparableListBuilder
         };
     }
 
+    /// <summary>
+    /// The subject area the area adjustment compares each comparable with. The land table inside
+    /// the cost approach compares land with the land the cost approach values — the apartment's
+    /// share of the land when one is saved (an apartment's floor area is not land), else the
+    /// subject area; the market table keeps the market header's subject area.
+    /// </summary>
+    public static decimal AreaAdjustmentSubjectAreaSqm(
+        decimal? headerSubjectAreaSqm,
+        string? selectionContext,
+        decimal? costApartmentLandShareSqm) =>
+        ComparableSelectionContexts.Normalize(selectionContext) == ComparableSelectionContexts.LandWithinCost
+        && costApartmentLandShareSqm is > 0m
+            ? costApartmentLandShareSqm.Value
+            : headerSubjectAreaSqm ?? 0m;
+
+    /// <summary>
+    /// D7: the land table inside the cost approach is always per m², whatever basis the market
+    /// table uses (the header is shared by both tables).
+    /// </summary>
+    public static string EffectiveBasis(string? headerBasis, string? selectionContext) =>
+        ComparableSelectionContexts.Normalize(selectionContext) == ComparableSelectionContexts.LandWithinCost
+            ? MarketAdjustmentBasisKeys.PricePerSqm
+            : MarketAdjustmentBasisKeys.Normalize(headerBasis);
+
+    /// <summary>D6: adjusted rate per m² — on the whole-property basis the adjusted total ÷ the comparable's area.</summary>
+    public static decimal AdjustedUnitRate(
+        ValuationComparableMarketDto market,
+        string adjustmentBasis,
+        decimal comparableAreaSqm) =>
+        adjustmentBasis == MarketAdjustmentBasisKeys.WholeProperty
+            ? comparableAreaSqm > 0m
+                ? Math.Round(market.PricePerSqmAfterDifference / comparableAreaSqm, 2, MidpointRounding.AwayFromZero)
+                : 0m
+            : market.PricePerSqmAfterDifference;
+
+    /// <summary>D4/D5: Σ|%| of the included sequential and difference lines as the DTO carries them.</summary>
+    public static decimal GrossAdjustmentPct(this ValuationComparableMarketDto market) =>
+        MarketApproachRules.GrossAdjustmentPct(
+            market.AdjustmentLines
+                .Where(l => l.IsIncluded && MarketAdjustmentFactorKeys.IsSequential(l.FactorKey))
+                .Select(l => l.Percent),
+            market.AdjustmentLines
+                .Where(l => l.IsIncluded && MarketAdjustmentFactorKeys.IsDifferenceFactor(l.FactorKey))
+                .Select(l => l.Percent));
+
  /// <summary>compEdit: effective comparable values after this valuation's overrides — unit price = total ÷ area.</summary>
     public static (decimal Total, decimal Area, decimal Unit) EffectiveCompValues(
         ValuationComparableSelection row,
@@ -247,8 +294,11 @@ public static class ValuationComparableListBuilder
     {
         var ordered = row.AdjustmentLines.OrderBy(l => l.SortOrder).ToList();
         var eff = EffectiveCompValues(row, comp);
-        var areaAdj = AreaAdjustmentRules.SuggestPct(
-            areaMethod, subjectAreaSqm, eff.Area, areaFactorPct);
+        // D7: on the whole-property basis the deal totals are compared as they are — a 5٪-per-
+        // multiple area adjustment on a total price is not a size correction, so none is applied.
+        var areaAdj = adjustmentBasis == MarketAdjustmentBasisKeys.WholeProperty
+            ? 0m
+            : AreaAdjustmentRules.SuggestPct(areaMethod, subjectAreaSqm, eff.Area, areaFactorPct);
         var dealAgeMonths = MarketApproachRules.DealAgeMonths(comp.TransactionDate, valuationDate);
         var suggestedMarket = MarketApproachRules.SuggestMarketConditionsPct(
             dealAgeMonths, annualMarketRatePct);
@@ -320,8 +370,10 @@ public static class ValuationComparableListBuilder
             SumSequentialPct = MarketApproachRules.SumIncludedPercents(sequentialPct),
             SumDifferencePct = diffSum,
             SumIncludedPct = sumAll,
-            ExceedsLargeAdjustmentThreshold =
-                MarketApproachRules.ExceedsLargeAdjustmentThreshold(diffSum),
+            // D4: net (kept) or gross (sequential + difference, absolute) above 40٪.
+            ExceedsLargeAdjustmentThreshold = MarketApproachRules.ExceedsLargeAdjustmentThreshold(
+                diffSum,
+                MarketApproachRules.GrossAdjustmentPct(sequentialPct, differencePct)),
             DealAgeMonths = dealAgeMonths,
             SuggestedTransactionTypePct = suggestedKind,
             PricePerSqmAfterSequential = afterSeq,

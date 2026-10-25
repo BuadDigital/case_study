@@ -20,12 +20,15 @@ import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import {
   alertOverridesFromRecon,
   finalOpinionComputed,
+  finalOpinionDraftDiffers,
+  liquidationDiscountSaveErrors,
   looksLikeAutoFinalOpinion,
   mergeReconMethods,
   reconciliationSaveRequest,
   workOrderPremiseKey,
 } from "./lib/final-opinion-state";
 import { apiConfig } from "./lib/shell-utils";
+import { setSectionUnsaved } from "../../../lib/evaluator/unsaved-edits";
 
 /** Same requirement the server states, phrased for a field we scroll to. */
 const METHODS_RATIONALE_REQUIRED =
@@ -183,6 +186,22 @@ export function useFinalOpinionWorkflow({
     ],
   );
 
+  // Problem 19: typed-but-unsaved drafts here make the window warn before a refresh.
+  const unsaved =
+    valuationRequestId != null &&
+    finalOpinionDraftDiffers({
+      recon,
+      methodsRationale,
+      finalRoundDecimals,
+      liquidationDiscountPct,
+      liquidationDiscountRationale,
+      reconMethods,
+    });
+  useEffect(() => {
+    setSectionUnsaved("final-opinion", unsaved);
+    return () => setSectionUnsaved("final-opinion", false);
+  }, [unsaved]);
+
   async function saveReconciliation() {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
@@ -190,6 +209,17 @@ export function useFinalOpinionWorkflow({
     // without spending a round trip on it.
     if (!methodsRationale.trim()) {
       reportFieldError("methodsRationale", METHODS_RATIONALE_REQUIRED);
+      return;
+    }
+    // D3: the server refuses a 0 «خصم التصفية» on the liquidation basis — mark the field first.
+    const discountErrors = liquidationDiscountSaveErrors({
+      basisOfValueKey,
+      liquidationDiscountPct,
+      liquidationDiscountRationale,
+    });
+    if (discountErrors) {
+      const [key, message] = Object.entries(discountErrors)[0];
+      reportFieldError(key, message);
       return;
     }
     onSavingChange(true);

@@ -142,7 +142,7 @@ export function InspectorCaseStudyChips({
   if (!parentId) {
     return (
       <Note tone="warn">
-        لم تُعثر على معاملة دراسة الحالة الأم لهذا العقار. أكمل التوزيع أولاً.
+        لم يُعثَر على معاملة دراسة الحالة الأم لهذا العقار. أكمل التوزيع أولاً.
       </Note>
     );
   }

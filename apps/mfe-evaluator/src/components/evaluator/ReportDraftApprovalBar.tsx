@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, Spinner, cn, confirmAction, opsFldControl, promptAction, useToast } from "@platform/ui-kit";
+import { Button, Spinner, cn, opsFldControl, promptAction, useToast } from "@platform/ui-kit";
 import {
   approveReportDraft,
   ensureReportNumber,
@@ -11,6 +11,7 @@ import {
   type ValuationReportDraftDto,
 } from "@platform/api-client";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
+import { confirmIgnoringDoubleClick } from "../../lib/evaluator/confirm-ignoring-double-click";
 import { FinalReportDownload } from "./FinalReportDownload";
 import { reportDraftKey, useSetReportDraft } from "./useReportDraft";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
@@ -102,7 +103,8 @@ export function ReportDraftApprovalBar({
   async function approve() {
     const config = apiConfig();
     if (!config || anyBusy) return;
-    const confirmed = await confirmAction({
+    // A double-click opens the confirm once and its second click never dismisses it.
+    const confirmed = await confirmIgnoringDoubleClick({
       title: "اعتماد تقرير التقييم",
       message: "يُثبَّت تاريخ اليوم تاريخاً للتقرير ويُجمَّد، ثم ترفعه على «قيمة» وتسجّل رمز الإيداع.",
       confirmLabel: "اعتماد التقرير",
@@ -239,7 +241,10 @@ export function ReportDraftApprovalBar({
               size="sm"
               loading={busy === "approve"}
               disabled={anyBusy}
-              onClick={() => void approve()}
+              onClick={(e) => {
+                if (e.detail > 1) return; // the tail of a double-click — the first click already asked
+                void approve();
+              }}
             >
               {busy === "approve" ? "جاري الاعتماد…" : "اعتماد التقرير"}
             </Button>

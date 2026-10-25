@@ -8,7 +8,7 @@ import {
   type ValuationApproachSettingsDto,
 } from "@platform/api-client";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import { cn, opsFldControl, AppModal, Button, useToast } from "@platform/ui-kit";
+import { cn, AppModal, Button, useToast } from "@platform/ui-kit";
 import type { EvaluatorRetrospectiveDraft } from "../../../lib/evaluator/evaluator-validation";
 
 import { valuationPurposeKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
@@ -22,6 +22,13 @@ import {
 } from "./atoms";
 
 import { apiConfig } from "./lib/shell-utils";
+import { OwnershipInterestFields, ValuationDateFields } from "./ApproachSettingsFields";
+import {
+  approachSettingsDraftError,
+  approachSettingsDraftRequestFields,
+  normalizeOwnershipInterestKey,
+  type ApproachSettingsDraft,
+} from "./lib/approach-settings-form";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import {
   approachesDisabledWithWork,
@@ -64,7 +71,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   onRetrospectiveDraftChange?: (draft: EvaluatorRetrospectiveDraft) => void;
   hasMarketWork?: boolean;
   hasCostWork?: boolean;
-  onDraftApproachesChange?: (nav: { market: boolean; cost: boolean }) => void;
+  onDraftApproachesChange?: (nav: { market: boolean; cost: boolean; income?: boolean }) => void;
 }) {
   const { showToast } = useToast();
   const {
@@ -97,6 +104,10 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   const [asRetroKind, setAsRetroKind] = useState<"single" | "range">("single");
   const [asRetroDate, setAsRetroDate] = useState("");
   const [asRetroDateEnd, setAsRetroDateEnd] = useState("");
+  const [asRetroRationale, setAsRetroRationale] = useState("");
+  const [asIncomeEnabled, setAsIncomeEnabled] = useState(false);
+  const [asOwnership, setAsOwnership] = useState("freehold");
+  const [asLeaseYears, setAsLeaseYears] = useState("");
   const [asAssumptions, setAsAssumptions] = useState<string[]>([]);
   const [confirmDisableOpen, setConfirmDisableOpen] = useState(false);
 
@@ -120,6 +131,12 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     setAsRetroDate(settings.retrospectiveDate ?? "");
     setAsRetroDateEnd(settings.retrospectiveDateEnd ?? "");
     setAsRetroKind(settings.retrospectiveDateEnd?.trim() ? "range" : "single");
+    setAsRetroRationale(settings.retrospectiveRationale ?? "");
+    setAsIncomeEnabled(settings.incomeApproachEnabled ?? false);
+    setAsOwnership(normalizeOwnershipInterestKey(settings.ownershipInterestKey));
+    setAsLeaseYears(
+      settings.remainingLeaseYears != null ? String(settings.remainingLeaseYears) : "",
+    );
     const loadedAssumptions = settings.selectedAssumptions ?? [];
     const library = settings.assumptionLibrary ?? [];
     // When no saved selection exists: all special-assumption items are selected by default.
@@ -157,14 +174,27 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
         asCostEnabled &&
         (settings?.costApproachAllowed ?? true) &&
         asCostScope !== "land_only",
+      // D17 — the «أسلوب الدخل» tab follows the unsaved toggle too.
+      income: asIncomeEnabled,
     });
   }, [
     asMarketEnabled,
     asCostEnabled,
+    asIncomeEnabled,
     asCostScope,
     settings?.costApproachAllowed,
     onDraftApproachesChange,
   ]);
+
+  const draft: ApproachSettingsDraft = {
+    dateMode: asDateMode,
+    retroKind: asRetroKind,
+    retroDate: asRetroDate,
+    retroDateEnd: asRetroDateEnd,
+    retroRationale: asRetroRationale,
+    ownershipKey: asOwnership,
+    leaseYearsText: asLeaseYears,
+  };
 
   async function saveApproachSettings() {
     const config = apiConfig();
@@ -177,24 +207,10 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
       );
       return;
     }
-    if (asDateMode === "retrospective") {
-      if (!asRetroDate.trim()) {
-        reportFieldError("retrospectiveDate", "تاريخ الأثر الرجعي إلزامي");
-        return;
-      }
-      if (asRetroKind === "range") {
-        if (!asRetroDateEnd.trim()) {
-          reportFieldError("retrospectiveDateEnd", "حدّد تاريخ نهاية الفترة");
-          return;
-        }
-        if (asRetroDateEnd < asRetroDate) {
-          reportFieldError(
-            "retrospectiveDateEnd",
-            "تاريخ النهاية يجب ألا يسبق تاريخ البداية",
-          );
-          return;
-        }
-      }
+    const draftError = approachSettingsDraftError(draft);
+    if (draftError) {
+      reportFieldError(draftError.key, draftError.message);
+      return;
     }
     onSavingChange(true);
     const latest = await getValuationApproachSettings(config, valuationRequestId);
@@ -232,7 +248,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
         asCostEnabled &&
         (settings?.costApproachAllowed ?? true) &&
         asCostScope !== "land_only",
-      incomeApproachEnabled: false,
+      incomeApproachEnabled: asIncomeEnabled,
       costBasisKey: asCostBasis,
       costScopeKey: asCostScope,
       costMeasurementUnitKey: asCostUnit,
@@ -248,7 +264,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
         asDateMode === "retrospective" && asRetroKind === "range"
           ? asRetroDateEnd || null
           : null,
-      retrospectiveRationale: null,
+      ...approachSettingsDraftRequestFields(draft),
       selectedAssumptions,
     });
     onSavingChange(false);
@@ -296,7 +312,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   const confirmCopy = disableApproachConfirmCopy(droppingWithWork);
 
   function requestSave() {
-    if (!asMarketEnabled && !nextCostEnabled) {
+    if (!asMarketEnabled && !nextCostEnabled && !asIncomeEnabled) {
       reportFieldError("appliedApproaches", "يلزم تفعيل أسلوب واحد على الأقل");
       return;
     }
@@ -356,6 +372,14 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                   ? "تُقيَّم المكونات المحصورة وحدها بأسلوب التكلفة، دون تقدير الأرض."
                   : "تُقيَّم الأرض مع المكونات المحصورة."}
           </p>
+          <OwnershipInterestFields
+            saving={saving}
+            fieldErrors={fieldErrors}
+            ownershipKey={asOwnership}
+            onOwnershipKeyChange={setAsOwnership}
+            leaseYearsText={asLeaseYears}
+            onLeaseYearsTextChange={setAsLeaseYears}
+          />
           <div
             id="as-approaches"
             className={cn(
@@ -422,21 +446,26 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
               </div>
             </label>
             <label
-              title="قيد الإنشاء — غير متاح بعد"
-              className="flex cursor-not-allowed items-start gap-2.5 rounded-[10px] border border-border-md bg-surface px-3.5 py-[13px] opacity-55"
+              className={cn(
+                "flex cursor-pointer items-start gap-2.5 rounded-[10px] border px-3.5 py-[13px]",
+                asIncomeEnabled
+                  ? "border-gold bg-gold-soft"
+                  : "border-border-md bg-surface",
+              )}
             >
               <input
                 type="checkbox"
-                checked={false}
-                disabled
-                className="mt-0.5 size-[17px]"
+                checked={asIncomeEnabled}
+                disabled={saving}
+                onChange={(e) => setAsIncomeEnabled(e.target.checked)}
+                className="mt-0.5 size-[17px] accent-[var(--ink)]"
               />
               <div>
                 <div className="text-[12.5px] font-bold text-heading">
                   أسلوب الدخل
                 </div>
                 <div className="mt-[3px] text-[11px] font-normal text-text-3">
-                  قيد الإنشاء — غير متاح بعد
+                  رسملة الدخل المباشرة — صافي الدخل التشغيلي ÷ معدل الرسملة
                 </div>
               </div>
             </label>
@@ -491,157 +520,20 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             </div>
           ) : null}
 
-          <div className="mb-4 border-t border-border pt-4">
-            <FieldLabel>تاريخ التقييم</FieldLabel>
-            <div
-              id="as-valuation-date"
-              className={cn(
-                "my-2 mb-1.5 grid grid-cols-2 gap-2.5 max-sm:grid-cols-1 rounded-[10px]",
-                fieldErrors.valuationDateMode && invalidControlClass,
-              )}
-            >
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => setAsDateMode("issue")}
-                className={cn(
-                  "rounded-[var(--radius)] border px-3.5 py-3 text-start transition-[background,border-color] duration-150",
-                  asDateMode !== "retrospective"
-                    ? "border-gold bg-gold-soft"
-                    : "border-border-md bg-surface",
-                  saving ? "cursor-not-allowed opacity-55" : "cursor-pointer",
-                )}
-              >
-                <div className="text-[12.5px] font-bold text-heading">
-                  تاريخ إصدار القيمة
-                </div>
-                <div className="mt-1 text-[10.5px] leading-relaxed text-text-3">
-                  القيمة كما في تاريخ إصدار التقرير
-                </div>
-              </button>
-              <button
-                type="button"
-                disabled={saving}
-                onClick={() => setAsDateMode("retrospective")}
-                className={cn(
-                  "rounded-[var(--radius)] border px-3.5 py-3 text-start transition-[background,border-color] duration-150",
-                  asDateMode === "retrospective"
-                    ? "border-gold bg-gold-soft"
-                    : "border-border-md bg-surface",
-                  saving ? "cursor-not-allowed opacity-55" : "cursor-pointer",
-                )}
-              >
-                <div className="text-[12.5px] font-bold text-heading">
-                  أثر رجعي
-                </div>
-                <div className="mt-1 text-[10.5px] leading-relaxed text-text-3">
-                  قيمة في تاريخ أو فترة سابقة
-                </div>
-              </button>
-            </div>
-
-            {asDateMode === "retrospective" ? (
-              <div className="mt-3 rounded-[var(--radius)] border border-border bg-surface-2 px-3.5 py-3.5">
-                <FieldLabel>صيغة الأثر الرجعي</FieldLabel>
-                <div className="my-2 mb-1.5 flex flex-wrap gap-2">
-                  <ToggleChip
-                    active={asRetroKind === "single"}
-                    disabled={saving}
-                    onClick={() => {
-                      setAsRetroKind("single");
-                      setAsRetroDateEnd("");
-                    }}
-                  >
-                    تاريخ محدد
-                  </ToggleChip>
-                  <ToggleChip
-                    active={asRetroKind === "range"}
-                    disabled={saving}
-                    onClick={() => setAsRetroKind("range")}
-                  >
-                    فترة بين تاريخين
-                  </ToggleChip>
-                </div>
-
-                {asRetroKind === "single" ? (
-                  <div className="mt-2.5 max-w-[14rem]">
-                    <label
-                      htmlFor="as-retro-date"
-                      className="mb-1.5 block text-[11px] font-semibold text-text-2"
-                    >
-                      تاريخ الأثر الرجعي
-                    </label>
-                    <input
-                      id="as-retro-date"
-                      type="date"
-                      dir="ltr"
-                      value={asRetroDate}
-                      onChange={(e) => setAsRetroDate(e.target.value)}
-                      className={cn(
-                        opsFldControl,
-                        "font-semibold",
-                        (fieldErrors.retrospective_date ||
-                          fieldErrors.retrospectiveDate) &&
-                          invalidControlClass,
-                      )}
-                    />
-                  </div>
-                ) : (
-                  <div className="mt-2.5 grid grid-cols-2 gap-2.5 max-sm:grid-cols-1">
-                    <div>
-                      <label
-                        htmlFor="as-retro-date-from"
-                        className="mb-1.5 block text-[11px] font-semibold text-text-2"
-                      >
-                        من تاريخ
-                      </label>
-                        <input
-                          id="as-retro-date-from"
-                          type="date"
-                          dir="ltr"
-                          value={asRetroDate}
-                          onChange={(e) => setAsRetroDate(e.target.value)}
-                          className={cn(
-                            opsFldControl,
-                            "font-semibold",
-                            (fieldErrors.retrospective_date_from ||
-                              fieldErrors.retrospectiveDate) &&
-                              invalidControlClass,
-                          )}
-                        />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor="as-retro-date-to"
-                        className="mb-1.5 block text-[11px] font-semibold text-text-2"
-                      >
-                        إلى تاريخ
-                      </label>
-                        <input
-                          id="as-retro-date-to"
-                          type="date"
-                          dir="ltr"
-                          value={asRetroDateEnd}
-                          min={asRetroDate || undefined}
-                          onChange={(e) => setAsRetroDateEnd(e.target.value)}
-                          className={cn(
-                            opsFldControl,
-                            "font-semibold",
-                            (fieldErrors.retrospective_date_to ||
-                              fieldErrors.retrospectiveDateEnd) &&
-                              invalidControlClass,
-                          )}
-                        />
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="mb-0 mt-2 text-[10.5px] text-text-3">
-                لا يلزم إدخال تاريخ إضافي — يُعتمد تاريخ إصدار القيمة.
-              </p>
-            )}
-          </div>
+          <ValuationDateFields
+            saving={saving}
+            fieldErrors={fieldErrors}
+            dateMode={asDateMode}
+            onDateModeChange={setAsDateMode}
+            retroKind={asRetroKind}
+            onRetroKindChange={setAsRetroKind}
+            retroDate={asRetroDate}
+            onRetroDateChange={setAsRetroDate}
+            retroDateEnd={asRetroDateEnd}
+            onRetroDateEndChange={setAsRetroDateEnd}
+            retroRationale={asRetroRationale}
+            onRetroRationaleChange={setAsRetroRationale}
+          />
 
           <div className="mt-6">
             <PrimaryBtn disabled={saving} onClick={requestSave}>

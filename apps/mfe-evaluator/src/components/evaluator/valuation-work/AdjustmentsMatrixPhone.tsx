@@ -404,7 +404,8 @@ export function AdjustmentsMatrixPhone({
         {adopted.map((item) => {
           const areaAdj = item.market?.suggestedAreaAdjustmentPct ?? 0;
           const sum = item.market?.sumDifferencePct ?? 0;
-          const over = Math.abs(sum) > 35;
+          // The server's ±40٪ rule (MarketApproachRules.LargeAdjustmentThresholdPct).
+          const over = item.market?.exceedsLargeAdjustmentThreshold === true;
           const manual = item.market?.weightIsManual;
           const weightDisplay = String(
             manual

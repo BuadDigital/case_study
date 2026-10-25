@@ -1171,6 +1171,21 @@
       "note": "Cost approach header for a valuation request."
     },
     {
+      "table": "ValuationIncomeApproaches",
+      "schema": "valuation",
+      "dbSet": "ValuationIncomeApproaches",
+      "entity": "ValuationIncomeApproach",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Income approach (direct capitalisation, D17) inputs for a valuation request."
+    },
+    {
       "table": "ValuationCostLines",
       "schema": "valuation",
       "dbSet": "ValuationCostLines",

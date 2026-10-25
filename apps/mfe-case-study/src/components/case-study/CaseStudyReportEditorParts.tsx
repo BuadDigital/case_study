@@ -107,6 +107,30 @@ export function IssueProgressHint({
 }
 
 /**
+ * D16 — why the issue button is disabled: a traditional deed waits for the deed ↔ nature outcome,
+ * chosen on «مدخلات المعاين». The link opens that tab.
+ */
+export function DeedMatchIssueHint({
+  message,
+  onOpen,
+}: {
+  message: string;
+  onOpen: () => void;
+}) {
+  return (
+    <p
+      className="m-0 flex basis-full flex-wrap items-center gap-2 text-xs font-semibold text-amber-text"
+      role="status"
+    >
+      <span>{message}</span>
+      <Button type="button" size="sm" variant="outline" showActionToast={false} onClick={onOpen}>
+        فتح «مدخلات المعاين»
+      </Button>
+    </p>
+  );
+}
+
+/**
  * Status line of an issued report with the specialist's reopen action. Rendered outside the
  * read-only wrapper (`pointer-events-none`) so the button stays clickable.
  */

@@ -59,6 +59,28 @@ export function costNum(raw: string): number {
   return parseLocaleNumber(raw) || 0;
 }
 
+/** Typed whole number (months, floor counts) — Arabic-Indic digits accepted. */
+export function costInt(raw: string): number {
+  return Math.trunc(costNum(raw));
+}
+
+/**
+ * What a cost number box keeps of the typed text: Arabic-Indic / Persian digits become
+ * Latin, «٫» is the decimal point, anything else is dropped (one point at most; none for
+ * whole numbers). The box is a text input — a type=number box drops Arabic digits.
+ */
+export function costNumericInput(raw: string, integer = false): string {
+  const latin = toLatinDigits(raw)
+    .replace(/\u066B/g, ".")
+    .replace(/[^\d.]/g, "");
+  if (integer) return latin.replace(/\./g, "");
+  const [head = "", ...rest] = latin.split(".");
+  return rest.length > 0 ? `${head}.${rest.join("")}` : head;
+}
+
+/** D12: total obsolescence above this asks for a rationale (mirrors the server threshold). */
+export const HIGH_OBSOLESCENCE_ALERT_PCT = 90;
+
 /** Interactive-form starter values (التقييم بأسلوبي السوق والتكلفة). */
 const DEFAULT_INDIRECT_PCTS: Record<string, string> = {
   design_supervision: "3",
@@ -123,19 +145,23 @@ export function costFieldsFromDto(
   const hasSavedIndirect = savedIndirect.some(
     (item) => item.pct !== 0 || (item.rationale ?? "").trim() !== "",
   );
-  const indirectDraft: IndirectDraft = hasSavedIndirect
-    ? {}
-    : defaultIndirectDraft();
-  if (hasSavedIndirect) {
-    for (const item of savedIndirect) {
-      indirectDraft[item.itemKey] = {
-        pct: String(item.pct),
-        rationale: item.rationale ?? "",
+  // Once the appraiser saved, his numbers stand — a deliberate 0 must not turn back into a
+  // starter default on reload. (An older server without isSaved: saved indirect rows decide.)
+  const saved = cost.isSaved ?? hasSavedIndirect;
+  const indirectDraft: IndirectDraft = saved ? {} : defaultIndirectDraft();
+  if (saved) {
+    for (const item of INDIRECT_COST_ITEMS) {
+      const row = savedIndirect.find((i) => i.itemKey === item.key);
+      indirectDraft[item.key] = {
+        pct: String(row?.pct ?? 0),
+        rationale: row?.rationale ?? "",
       };
     }
   }
   const financingUntouched =
-    !(cost.financingAnnualRatePct ?? 0) && !(cost.financingMonths ?? 0);
+    !saved &&
+    !(cost.financingAnnualRatePct ?? 0) &&
+    !(cost.financingMonths ?? 0);
   return {
     useRestrictionPct: String(cost.useRestrictionDiscountPct ?? 0),
     useRestrictionRationale: cost.useRestrictionRationale ?? "",
@@ -154,13 +180,15 @@ export function costFieldsFromDto(
       cost.actualAgeYears != null
         ? String(cost.actualAgeYears)
         : inspectorAgeYearsForCostField(inspectorAgeYears) ||
-          DEFAULT_ACTUAL_AGE_YEARS,
-    actualAgeRationale: "",
+          (saved ? "" : DEFAULT_ACTUAL_AGE_YEARS),
+    actualAgeRationale: cost.actualAgeRationale ?? "",
     economicAge:
       cost.economicAgeYears != null
         ? String(cost.economicAgeYears)
-        : DEFAULT_ECONOMIC_AGE_YEARS,
-    economicAgeRationale: "",
+        : saved
+          ? ""
+          : DEFAULT_ECONOMIC_AGE_YEARS,
+    economicAgeRationale: cost.economicAgeRationale ?? "",
     lifeExtension: String(cost.lifeExtensionYears ?? 0),
     lifeExtensionBasis: cost.lifeExtensionBasis ?? "",
     functionalObs: String(cost.functionalObsolescencePct ?? 0),
@@ -441,6 +469,8 @@ export type CostApproachDerived = {
   totalCostLocal: number;
   economicLocal: number;
   extLifeLocal: number;
+  /** Life physical depreciation is measured against — lease-capped on leased land (D11). */
+  effectiveLifeLocal: number;
   actualLocal: number;
   physicalLocal: number;
   functionalLocal: number;
@@ -465,9 +495,7 @@ export function costApproachDerived(
   buildingOnly: boolean,
 ): CostApproachDerived {
   const financingPctLocal =
-    costNum(fields.financingRate) *
-    ((Number.parseInt(fields.financingMonths, 10) || 0) / 12) *
-    0.5;
+    costNum(fields.financingRate) * (costInt(fields.financingMonths) / 12) * 0.5;
   const indirectSumLocal =
     INDIRECT_COST_ITEMS.reduce(
       (s, item) =>
@@ -478,15 +506,23 @@ export function costApproachDerived(
   const economicLocal = costNum(fields.economicAge);
   const extLifeLocal = economicLocal + costNum(fields.lifeExtension);
   const actualLocal = costNum(fields.actualAge);
+  // D11: building-only on leased land — the life cannot outlast the lease (server sends the term).
+  const leaseYears = cost?.remainingLeaseYears;
+  const effectiveLifeLocal =
+    leaseYears != null && leaseYears >= 0
+      ? Math.min(extLifeLocal, Math.max(0, actualLocal) + leaseYears)
+      : extLifeLocal;
   const physicalLocal =
-    extLifeLocal > 0 && fields.actualAge.trim()
-      ? (actualLocal / extLifeLocal) * 100
+    effectiveLifeLocal > 0 && fields.actualAge.trim()
+      ? (actualLocal / effectiveLifeLocal) * 100
       : 0;
   const functionalLocal = costNum(fields.functionalObs);
   const externalLocal = costNum(fields.externalObs);
   const totalDepLocal = physicalLocal + functionalLocal + externalLocal;
-  const depValueLocal = (totalCostLocal * Math.max(totalDepLocal, 0)) / 100;
-  const netValueLocal = totalCostLocal - depValueLocal;
+  // D12: the depreciation applied is capped at 100% — the buildings value floors at zero.
+  const depValueLocal =
+    (totalCostLocal * Math.min(Math.max(totalDepLocal, 0), 100)) / 100;
+  const netValueLocal = Math.max(0, totalCostLocal - depValueLocal);
   const landComplete = !!cost?.landEstimateComplete;
   const landValueNow = cost?.landValueFromMarket ?? 0;
   return {
@@ -495,6 +531,7 @@ export function costApproachDerived(
     totalCostLocal,
     economicLocal,
     extLifeLocal,
+    effectiveLifeLocal,
     actualLocal,
     physicalLocal,
     functionalLocal,
@@ -566,9 +603,31 @@ export function buildCostAlerts(
     alerts.push({
       kind: "error",
       title: "مجموع التقادم يتجاوز 100٪",
-      body: "راجع نسب التقادم الوظيفي والخارجي.",
+      body: "الإهلاك المطبَّق محدود بـ 100٪ (قيمة المباني صفر) — راجع نسب التقادم.",
       targetId: "cost-functionalObs",
       fallbackTargetId: "cost-age",
+    });
+  else if (totalDepLocal > HIGH_OBSOLESCENCE_ALERT_PCT)
+    alerts.push({
+      kind: "warn",
+      title: `مجموع التقادم يتجاوز ${HIGH_OBSOLESCENCE_ALERT_PCT}٪`,
+      body: "تقادم شبه كامل — يلزم مبرر مكتوب لنسب العمر والتقادم.",
+      targetId: "cost-functionalObsRationale",
+      fallbackTargetId: "cost-age",
+    });
+  const repeatedNoCount = costDraft.findIndex(
+    (l) =>
+      l.itemKey === "repeated_floors" &&
+      l.isIncluded !== false &&
+      !((l.repeatedFloorCount ?? 0) > 0),
+  );
+  if (repeatedNoCount >= 0)
+    alerts.push({
+      kind: "error",
+      title: "عدد الأدوار المتكررة مطلوب",
+      body: "أدخل عدد الأدوار (دور واحد على الأقل) — بدونه لا يُحفظ البند.",
+      targetId: `cost-line-${repeatedNoCount}-repeatedFloorCount`,
+      fallbackTargetId: "cost-lines",
     });
   if (
     costDraft.some((l) => l.itemKey === "repeated_floors") &&
@@ -754,22 +813,21 @@ export function costSaveRequest(
     apartmentLandShareSqm: fields.apartmentLandShare.trim()
       ? costNum(fields.apartmentLandShare)
       : null,
-    indirectItems: INDIRECT_COST_ITEMS.filter(
-      (item) =>
-        costNum(fields.indirectDraft[item.key]?.pct ?? "0") > 0 ||
-        (fields.indirectDraft[item.key]?.rationale ?? "").trim() !== "",
-    ).map((item, i) => ({
+    // Every item is sent, zeros included — a dropped 0 used to come back as a default.
+    indirectItems: INDIRECT_COST_ITEMS.map((item, i) => ({
       itemKey: item.key,
       pct: costNum(fields.indirectDraft[item.key]?.pct ?? "0"),
       rationale: (fields.indirectDraft[item.key]?.rationale ?? "").trim() || null,
       sortOrder: i,
     })),
     financingAnnualRatePct: costNum(fields.financingRate),
-    financingMonths: Number.parseInt(fields.financingMonths, 10) || 0,
+    financingMonths: costInt(fields.financingMonths),
     actualAgeYears: fields.actualAge.trim() ? costNum(fields.actualAge) : null,
+    actualAgeRationale: fields.actualAgeRationale.trim() || null,
     economicAgeYears: fields.economicAge.trim()
       ? costNum(fields.economicAge)
       : null,
+    economicAgeRationale: fields.economicAgeRationale.trim() || null,
     lifeExtensionYears: costNum(fields.lifeExtension),
     lifeExtensionBasis: fields.lifeExtensionBasis.trim() || null,
     functionalObsolescencePct: costNum(fields.functionalObs),

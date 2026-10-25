@@ -166,6 +166,18 @@ public sealed class ComparablePropertyRepository(ValuationDbContext db)
     public Task<ComparableProperty?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         db.ComparableProperties.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<ValuationRequest>> ListRequestsAdoptingAsync(
+        Guid comparableId,
+        CancellationToken cancellationToken)
+    {
+        var requestIds = db.ValuationComparableSelections
+            .Where(s => s.ComparablePropertyId == comparableId && s.IsAdopted)
+            .Select(s => s.ValuationRequestId);
+        return await db.ValuationRequests.AsNoTracking()
+            .Where(r => requestIds.Contains(r.Id))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task AddAsync(ComparableProperty entity, CancellationToken cancellationToken)
     {
         db.ComparableProperties.Add(entity);

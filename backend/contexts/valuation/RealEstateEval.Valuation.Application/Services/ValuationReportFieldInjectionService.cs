@@ -168,7 +168,12 @@ public sealed class ValuationReportFieldInjectionService(
         };
     }
 
-    private static Dictionary<string, string?> BuildValueBag(
+    /// <summary>
+    /// The field values from the gathered context — pure (public so the print rules are testable).
+    /// Basis and premise come from the reconciliation's keys (the appraiser's saved choice, the
+    /// work order only seeding them — D1); the liquidation discount prints only when it is applied.
+    /// </summary>
+    public static Dictionary<string, string?> BuildValueBag(
         ValuationRequest vr,
         WorkOrderProperty? prop,
         FieldInspectionWorkspace? workspace,
@@ -385,7 +390,9 @@ public sealed class ValuationReportFieldInjectionService(
             finalOpinion = recon.FinalOpinionValue;
             PutMoney("final.opinion_value", recon.FinalOpinionValue);
             PutMoney("final.opinion_before_liquidation", recon.FinalOpinionBeforeLiquidation);
-            PutMoney("final.liquidation_discount_pct", recon.LiquidationDiscountPct);
+            // D1: the discount prints only when basis = liquidation AND it is above zero (applied).
+            if (recon.LiquidationDiscountApplied)
+                PutMoney("final.liquidation_discount_pct", recon.LiquidationDiscountPct);
             if (!string.IsNullOrWhiteSpace(recon.MethodsRationale))
                 Put("methods_rationale", recon.MethodsRationale);
         }

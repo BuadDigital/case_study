@@ -1038,7 +1038,7 @@ describe("valuation report live fill from intake", () => {
       } as never,
     });
     expect(liq.cells["نسبة خصم التصفية المنظمة"]).toBe("20٪");
-    expect(liq.cells["مبرر معامل التصفية"]).toBe("سيولة 90 يوم");
+    expect(liq.cells["مبرر خصم التصفية"]).toBe("سيولة 90 يوم");
     expect(liq.cells["قيمة العقار"]).toBe("1,211,200");
 
     const emptyDiscount = buildValuationReportLiveFill({
@@ -1060,7 +1060,7 @@ describe("valuation report live fill from intake", () => {
         <table>
           <tr><td class="k">القيمة المرجّحة</td><td class="v num">9</td></tr>
           <tr><td class="k">نسبة خصم التصفية المنظمة</td><td class="v num">20٪</td>
-              <td class="k">مبرر معامل التصفية</td><td class="v">عينة</td></tr>
+              <td class="k">مبرر خصم التصفية</td><td class="v">عينة</td></tr>
           <tr><td class="k">قيمة العقار</td><td class="v num">9</td></tr>
         </table>
         <div style="background:#102b4e">
@@ -1072,11 +1072,10 @@ describe("valuation report live fill from intake", () => {
     );
     applyValuationReportLiveFill(dom, fill);
     expect(dom.querySelector('[data-sec="25"]')?.textContent).toContain("1,514,000");
+    // D1 — no liquidation basis / no discount ⇒ no liquidation row at all (not a «—» row).
     expect(
-      [...dom.querySelectorAll('[data-sec="25"] td.k')]
-        .find((td) => td.textContent?.includes("خصم"))
-        ?.nextElementSibling?.textContent,
-    ).toBe("—");
+      [...dom.querySelectorAll('[data-sec="25"] td.k')].some((td) => td.textContent?.includes("خصم")),
+    ).toBe(false);
   });
 
   it("fills fixed roster participants plus assigned appraiser as fourth column", () => {
@@ -1193,14 +1192,15 @@ describe("valuation report live fill from intake", () => {
       "عبدالله الكثيري",
       "u-abdullah",
     );
-    expect(people).toHaveLength(4);
-    expect(people[3]).toMatchObject({
+    // No reviewers / assistants on this roster — only the assigned appraiser (no fixed names).
+    expect(people).toHaveLength(1);
+    expect(people[0]).toMatchObject({
       name: "اسم قديم في السجل",
       membership: "1220001583",
     });
   });
 
-  it("keeps only the three fixed participants when assignment is empty", () => {
+  it("keeps only the roster reviewers and assistants when assignment is empty", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
       propertyId: "p1",
@@ -1375,7 +1375,7 @@ describe("valuation report live fill from intake", () => {
     expect(fill.comparableRows[0]?.values[1]).toContain("عرض");
     expect(fill.comparableRows[0]?.values[1]).toContain("88231045");
     expect(fill.adjustmentNotes).toContain("الحد سقف أعلى");
-    const marketRow = fill.adjustmentRows.find((r) => r.key === "تسوية ظروف السوق");
+    const marketRow = fill.adjustmentRows.find((r) => r.key === "تسوية ظروف السوق (عامل الوقت)");
     expect(marketRow?.values[0]).toBe("-3.00٪");
 
     const dom = new DOMParser().parseFromString(
@@ -1629,7 +1629,7 @@ describe("report follows the chosen approaches (contractor method only)", () => 
     expect(fill.comparableRows).toHaveLength(0);
     expect(fill.methodRow[0]).toBe("غير مستخدم");
     expect(fill.cells["أساليب التقييم المستخدمة"]).toBe("أسلوب التكلفة");
-    expect(fill.landAdjustmentRows.find((r) => r.key === "تسوية ظروف السوق")?.values[0]).toBe("1.00٪");
+    expect(fill.landAdjustmentRows.find((r) => r.key === "تسوية ظروف السوق (عامل الوقت)")?.values[0]).toBe("1.00٪");
     expect(fill.landAdjustmentNotes).toContain("صفقة قديمة");
     expect(fill.landComparablesMapPins.length).toBeGreaterThan(1);
 
@@ -1746,6 +1746,6 @@ describe("approaches vs methods — reconciliation only between approach indicat
       marketApproachEnabled: false,
       landMarket: { weightedPricePerSqm: 2000, subjectAreaSqm: 400, marketOpinionValue: 800_000, items: [] } as never,
     });
-    expect(fill.landAdjustmentComparisonLabel).toBe("قيمة الأرض");
+    expect(fill.landAdjustmentComparisonLabel).toBe("قيمة الأرض قبل التقريب");
   });
 });

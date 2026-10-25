@@ -21,7 +21,7 @@ public class ValuationReconciliationController : ControllerBase
         _reconciliation = reconciliation;
 
     [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<ValuationReconciliationDto>> Get(
         Guid valuationRequestId,
         CancellationToken ct)
@@ -32,12 +32,29 @@ public class ValuationReconciliationController : ControllerBase
 
     [HttpPut]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
     public async Task<ActionResult<ValuationReconciliationDto>> Save(
         Guid valuationRequestId,
         [FromBody] SaveValuationReconciliationRequest request,
         CancellationToken ct)
     {
         var (result, errors) = await _reconciliation.SaveAsync(
+            valuationRequestId, request, ActorClaims.Id(User), ct);
+        if (errors is not null)
+            return this.FieldErrorsProblem(errors);
+        return Ok(result);
+    }
+
+    /// <summary>Alert dispositions only — the rest of the reconciliation is left as saved.</summary>
+    [HttpPut("alert-overrides")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
+    public async Task<ActionResult<ValuationReconciliationDto>> SaveAlertOverrides(
+        Guid valuationRequestId,
+        [FromBody] SaveValuationAlertOverridesRequest request,
+        CancellationToken ct)
+    {
+        var (result, errors) = await _reconciliation.SaveAlertOverridesAsync(
             valuationRequestId, request, ActorClaims.Id(User), ct);
         if (errors is not null)
             return this.FieldErrorsProblem(errors);

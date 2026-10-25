@@ -13,6 +13,7 @@ export {
 
 import type { OrganizationValuerRosterEntry } from "@platform/api-client";
 import { isUsableAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
+import { applyIncomeSection } from "./valuation-report-income";
 import {
   SAMPLE_SECS,
   normLabel,
@@ -31,7 +32,7 @@ import {
   fillBoundaries,
   fillBulletListSection,
   fillFinalBanner,
-  fillValueAdditions,
+  fillFinalValueTable,
   fillFinishingLevelSection,
   fillImageSlot,
   fillKeyedInSection,
@@ -83,12 +84,23 @@ type ParticipantFill = {
   signatureUrl: string;
 };
 
-/** §26 — three fixed participants from the roster + fourth from work-order dispatch (assigned appraiser). */
-const FIXED_REPORT_PARTICIPANT_NAMES = [
-  "سليمان عبد الله الصالحي",
-  "سالم الغريب",
-  "أيمن أحمد مجرشي",
-] as const;
+/** Roster roles that stand on every report (D13 — same rule as ValuationIssuanceGateInputRules). */
+const STANDING_REPORT_ROLES = new Set(["reviewer", "assistant"]);
+
+/** Same normalisation as the server's SamePerson: alef forms, tā marbūṭa, alef maqṣūra, spaces. */
+function samePerson(a: string | null | undefined, b: string | null | undefined): boolean {
+  const norm = (s: string | null | undefined) =>
+    (s ?? "")
+      .replace(/[أإآ]/g, "ا")
+      .replace(/ة/g, "ه")
+      .replace(/ى/g, "ي")
+      .split(/\s+/)
+      .filter(Boolean)
+      .join(" ");
+  const left = norm(a);
+  const right = norm(b);
+  return left.length > 0 && left === right;
+}
 
 function participantFromRoster(
   name: string,
@@ -101,6 +113,14 @@ function participantFromRoster(
     (linkedId
       ? roster.find((v) => (v.staffUserId ?? "").trim() === linkedId)
       : undefined) ?? roster.find((v) => peopleNameMatch(v.nameAr, name));
+  return fillFromRosterRow(hit, name, fallbackRole);
+}
+
+function fillFromRosterRow(
+  hit: OrganizationValuerRosterEntry | undefined,
+  name: string,
+  fallbackRole: string,
+): ParticipantFill {
   return {
     name: (hit?.nameAr || name).trim(),
     title: hit
@@ -113,29 +133,34 @@ function participantFromRoster(
   };
 }
 
-/** §26 — three fixed + fourth column from valuation assignment in work-order dispatch. */
+/**
+ * §26 «المشاركون في إعداد التقرير» — the people the issuance gate checks for this report
+ * (D13): the roster's active reviewers and assistants, then the appraiser assigned to this
+ * property (by staff account, else by name). The signing certified valuer prints in the
+ * approval table below, not again here. No names are fixed in code.
+ */
 export function resolveReportParticipants(
   valuers: OrganizationValuerRosterEntry[] | null | undefined,
   assignedAppraiserName?: string | null,
   assignedAppraiserId?: string | null,
 ): ParticipantFill[] {
   const roster = (valuers ?? []).filter((v) => v.isActive !== false);
-  const fixed = FIXED_REPORT_PARTICIPANT_NAMES.map((name) =>
-    participantFromRoster(name, roster, "مراجع"),
-  );
+  const standing = roster
+    .filter((v) => STANDING_REPORT_ROLES.has((v.role ?? "").trim().toLowerCase()))
+    .map((v) => fillFromRosterRow(v, v.nameAr, "مراجع"));
   const assignee = (assignedAppraiserName ?? "").trim();
   const assigneeId = (assignedAppraiserId ?? "").trim();
   const usableName = Boolean(assignee && isUsableAssigneeDisplayName(assignee));
-  if (!usableName && !assigneeId) return [...fixed];
-  const fourth = participantFromRoster(
+  if (!usableName && !assigneeId) return standing;
+  const appraiser = participantFromRoster(
     usableName ? assignee : "",
     roster,
     "معد",
     assigneeId,
   );
-  if (!fourth.name) return [...fixed];
-  if (fixed.some((p) => peopleNameMatch(p.name, fourth.name))) return [...fixed];
-  return [...fixed, fourth];
+  if (!appraiser.name) return standing;
+  if (standing.some((p) => samePerson(p.name, appraiser.name))) return standing;
+  return [...standing, appraiser];
 }
 
 function removeSections(dom: Document, ids: readonly string[]) {
@@ -304,6 +329,53 @@ const FACADE_LABELS = new Set([
   "تشطيب الواجهة الغربية",
 ]);
 
+/** §23 — age rationales / lease cap as full-width rows right after the ages row. */
+function appendAgeNotes(sec: Element, notes: ValuationReportLiveFill["ageNotes"]) {
+  sec.querySelectorAll("tr[data-age-note]").forEach((tr) => tr.remove());
+  const ageRow = [...sec.querySelectorAll("tr")].find((tr) =>
+    [...tr.querySelectorAll("td.k")].some((td) => normLabel(td.textContent ?? "") === "العمر الفعلي"),
+  );
+  if (!ageRow) return;
+  let anchor: Element = ageRow;
+  for (const note of notes) {
+    const doc = sec.ownerDocument;
+    const tr = doc.createElement("tr");
+    tr.setAttribute("data-age-note", "");
+    const k = doc.createElement("td");
+    k.className = "k";
+    k.textContent = note.label;
+    const v = doc.createElement("td");
+    v.className = "v";
+    v.setAttribute("colspan", "3");
+    v.textContent = note.value;
+    tr.append(k, v);
+    anchor.after(tr);
+    anchor = tr;
+  }
+}
+
+/** §2 — D9 retrospective rationale and the building-only scope, one full-width row each. */
+function appendScopeRows(scope: Element, rows: ValuationReportLiveFill["scopeRows"]) {
+  const table = scope.querySelector("table");
+  if (!table) return;
+  table.querySelectorAll("tr[data-scope-row]").forEach((tr) => tr.remove());
+  const body = table.querySelector("tbody") ?? table;
+  for (const row of rows) {
+    const doc = scope.ownerDocument;
+    const tr = doc.createElement("tr");
+    tr.setAttribute("data-scope-row", "");
+    const k = doc.createElement("td");
+    k.className = "k";
+    k.textContent = row.label;
+    const v = doc.createElement("td");
+    v.className = "v";
+    v.setAttribute("colspan", "3");
+    v.textContent = row.value;
+    tr.append(k, v);
+    body.appendChild(tr);
+  }
+}
+
 export function applyValuationReportLiveFill(
   dom: Document,
   fill: ValuationReportLiveFill,
@@ -357,6 +429,7 @@ export function applyValuationReportLiveFill(
       items[1].textContent =
         `أُعد هذا التقرير لاستخدام العميل (${fill.scopeClient && fill.scopeClient !== "—" ? fill.scopeClient : "—"}) فقط، ولا يجوز استخدامه من قبل مستخدم آخر إلا بإذن خطي موقع ومختوم بختم الشركة.`;
     }
+    appendScopeRows(scope, fill.scopeRows);
   }
 
   const asset = dom.querySelector('[data-sec="6"]');
@@ -441,6 +514,9 @@ export function applyValuationReportLiveFill(
     );
   }
 
+  // D17 — the income approach section goes right before the reconciliation.
+  applyIncomeSection(dom, fill);
+
   const reconSec = dom.querySelector('[data-sec="24"]');
   if (reconSec) rebuildReconSheet(reconSec, fill.reconRows);
 
@@ -457,6 +533,7 @@ export function applyValuationReportLiveFill(
 
   // «مباني فقط»: no land value in the cost result — drop the land row and say what the total is.
   const ageSec = dom.querySelector('[data-sec="23"]');
+  if (ageSec) appendAgeNotes(ageSec, fill.ageNotes);
   if (ageSec && fill.costBuildingOnly) {
     for (const td of [...ageSec.querySelectorAll("td.k")]) {
       const label = normLabel(td.textContent ?? "");
@@ -469,19 +546,7 @@ export function applyValuationReportLiveFill(
 
   const finalSec = dom.querySelector('[data-sec="25"]');
   if (finalSec) {
-    const liqShown = (fill.cells["نسبة خصم التصفية المنظمة"] ?? "—") !== "—";
-    if (!liqShown) {
-      const disc = [...finalSec.querySelectorAll("td.k")].find((td) =>
-        normLabel(td.textContent ?? "").includes("خصم التصفية"),
-      );
-      const discVal = disc?.nextElementSibling;
-      if (discVal) discVal.textContent = "—";
-      const reason = [...finalSec.querySelectorAll("td.k")].find((td) =>
-        normLabel(td.textContent ?? "").includes("مبرر معامل"),
-      )?.nextElementSibling;
-      if (reason) reason.textContent = "—";
-    }
-    fillValueAdditions(finalSec, fill);
+    fillFinalValueTable(finalSec, fill);
     fillFinalBanner(finalSec, fill);
   }
 

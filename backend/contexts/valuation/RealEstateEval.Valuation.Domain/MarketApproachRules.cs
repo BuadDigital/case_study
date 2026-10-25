@@ -75,6 +75,114 @@ public static class MarketApproachRules
     public static bool ExceedsLargeAdjustmentThreshold(decimal factorsSumPct) =>
         Math.Abs(factorsSumPct) > LargeAdjustmentThresholdPct;
 
+    /// <summary>
+    /// D4: the ±40٪ rule on the NET difference-factor sum (kept) OR on the GROSS adjustment —
+    /// offsetting +30/−30 nets to 0 but is still a 60٪ adjustment and needs a rationale.
+    /// </summary>
+    public static bool ExceedsLargeAdjustmentThreshold(decimal netDifferencePct, decimal grossAdjustmentPct) =>
+        ExceedsLargeAdjustmentThreshold(netDifferencePct)
+        || grossAdjustmentPct > LargeAdjustmentThresholdPct;
+
+    /// <summary>
+    /// D4/D5: gross adjustment = Σ|sequential %| + Σ|difference %| (included lines only, area
+    /// included) — the size of the total correction regardless of signs.
+    /// </summary>
+    public static decimal GrossAdjustmentPct(
+        IEnumerable<decimal> sequentialPercents,
+        IEnumerable<decimal> differencePercents) =>
+        Math.Round(
+            sequentialPercents.Sum(Math.Abs) + differencePercents.Sum(Math.Abs),
+            2,
+            MidpointRounding.AwayFromZero);
+
+    // ─── D6: dispersion of the adopted comparables ───
+
+    /// <summary>D6: an adjusted unit rate further than 25٪ from the median is an outlier.</summary>
+    public const decimal DispersionMedianDeviationPct = 25m;
+    /// <summary>D6: coefficient of variation of the adjusted unit rates above 15٪ = dispersed set.</summary>
+    public const decimal DispersionCoefficientOfVariationPct = 15m;
+
+    public static decimal Median(IReadOnlyList<decimal> values)
+    {
+        if (values.Count == 0) return 0m;
+        var sorted = values.OrderBy(v => v).ToList();
+        var mid = sorted.Count / 2;
+        return sorted.Count % 2 == 1
+            ? sorted[mid]
+            : (sorted[mid - 1] + sorted[mid]) / 2m;
+    }
+
+    /// <summary>|rate − median| ÷ median × 100 per rate (0 when the median is not positive).</summary>
+    public static IReadOnlyList<decimal> DeviationFromMedianPcts(IReadOnlyList<decimal> rates)
+    {
+        var median = Median(rates);
+        return rates
+            .Select(r => median > 0m
+                ? Math.Round(Math.Abs(r - median) / median * 100m, 2, MidpointRounding.AwayFromZero)
+                : 0m)
+            .ToList();
+    }
+
+    /// <summary>Sample standard deviation ÷ mean × 100 (Excel STDEV.S); 0 below two rates.</summary>
+    public static decimal CoefficientOfVariationPct(IReadOnlyList<decimal> rates)
+    {
+        if (rates.Count < 2) return 0m;
+        var mean = rates.Average();
+        if (mean <= 0m) return 0m;
+        var variance = rates.Sum(r => (r - mean) * (r - mean)) / (rates.Count - 1);
+        var sd = (decimal)Math.Sqrt((double)variance);
+        return Math.Round(sd / mean * 100m, 2, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// D6 outliers: rates deviating more than 25٪ from the median. When every rate is "out"
+    /// (e.g. two comparables far apart) there is no reference to judge by — none is flagged here
+    /// and the coefficient-of-variation test reports the dispersion instead.
+    /// </summary>
+    public static IReadOnlyList<bool> DispersionOutliers(IReadOnlyList<decimal> rates)
+    {
+        if (rates.Count < 2) return rates.Select(_ => false).ToList();
+        var deviations = DeviationFromMedianPcts(rates);
+        var flags = deviations.Select(d => d > DispersionMedianDeviationPct).ToList();
+        return flags.All(f => f) ? flags.Select(_ => false).ToList() : flags;
+    }
+
+    /// <summary>D6: any outlier against the median, or the whole set's CV above 15٪.</summary>
+    public static bool IsDispersed(IReadOnlyList<decimal> rates) =>
+        rates.Count >= 2
+        && (DeviationFromMedianPcts(rates).Any(d => d > DispersionMedianDeviationPct)
+            || CoefficientOfVariationPct(rates) > DispersionCoefficientOfVariationPct);
+
+    // ─── D8: the official valuation date ───
+
+    /// <summary>
+    /// D8: deal age and the time adjustment are measured to the official valuation date — the
+    /// retrospective date (or period start) when the appraiser chose one, otherwise today
+    /// (the issuance date).
+    /// </summary>
+    public static DateOnly OfficialValuationDate(
+        string? valuationDateMode,
+        DateOnly? retrospectiveDate,
+        DateOnly today) =>
+        ValuationDateModes.Normalize(valuationDateMode) == ValuationDateModes.Retrospective
+        && retrospectiveDate is { } date
+            ? date
+            : today;
+
+    /// <summary>
+    /// D8: last date a comparable may carry — the retrospective period end (or the single date);
+    /// today for an issuance-date valuation.
+    /// </summary>
+    public static DateOnly ComparableDateCutoff(
+        string? valuationDateMode,
+        DateOnly? retrospectiveDate,
+        DateOnly? retrospectiveDateEnd,
+        DateOnly today) =>
+        ValuationDateModes.Normalize(valuationDateMode) == ValuationDateModes.Retrospective
+        && retrospectiveDate is { } start
+            ? retrospectiveDateEnd is { } end && end > start ? end : start
+            : today;
+
     public static int DealAgeMonths(DateOnly transactionDate, DateOnly valuationDate)
     {
         // Adjustments logic: months = (today − date) / 30.44
@@ -153,15 +261,38 @@ public static class MarketApproachRules
  /// by largest remainder — sum is 100% by construction and weights are multiples of 5%.
  /// Input must be difference-factor sums (areaAdj + Σ factors), not sequential.
  /// </summary>
-    public static IReadOnlyList<decimal> SuggestWeights(IReadOnlyList<decimal> factorsSums)
+    public static IReadOnlyList<decimal> SuggestWeights(IReadOnlyList<decimal> factorsSums) =>
+        DistributeWeights(factorsSums
+            .Select(s => 1m / (WeightEpsilon + Math.Abs(s)))
+            .ToList());
+
+    /// <summary>
+    /// D5 + D6 automatic weights: score = 1 / (gross adjustment + 0.5), so offsetting +30/−30
+    /// no longer looks like "no adjustment"; a comparable whose adjusted unit rate deviates more
+    /// than 25٪ from the median gets no automatic weight (the dispersion alert asks the appraiser
+    /// to justify or drop it — a manual weight still overrides).
+    /// </summary>
+    public static IReadOnlyList<decimal> SuggestWeights(
+        IReadOnlyList<decimal> grossAdjustmentPcts,
+        IReadOnlyList<decimal> adjustedUnitRates)
     {
-        if (factorsSums.Count == 0) return [];
-        if (factorsSums.Count == 1) return [100m];
+        if (grossAdjustmentPcts.Count == 0) return [];
+        if (grossAdjustmentPcts.Count == 1) return [100m];
+        var outliers = adjustedUnitRates.Count == grossAdjustmentPcts.Count
+            ? DispersionOutliers(adjustedUnitRates)
+            : grossAdjustmentPcts.Select(_ => false).ToList();
+        return DistributeWeights(grossAdjustmentPcts
+            .Select((g, i) => outliers[i] ? 0m : 1m / (WeightEpsilon + Math.Abs(g)))
+            .ToList());
+    }
+
+    /// <summary>Scores → 20 units × 5% by largest remainder (sum is 100% by construction).</summary>
+    private static IReadOnlyList<decimal> DistributeWeights(IReadOnlyList<decimal> raw)
+    {
+        if (raw.Count == 0) return [];
+        if (raw.Count == 1) return [100m];
 
         const int units = 20; // 20 × 5% = 100%
-        var raw = factorsSums
-            .Select(s => 1m / (WeightEpsilon + Math.Abs(s)))
-            .ToList();
         var total = raw.Sum();
         if (total <= 0m)
             total = raw.Count; // degenerate; equal split below
@@ -324,4 +455,78 @@ public static class AreaAdjustmentRules
         var sign = comparableAreaSqm < subjectAreaSqm ? -1m : 1m;
         return Math.Round(sign * magnitude, 2, MidpointRounding.AwayFromZero);
     }
+}
+
+/// <summary>
+/// D10: the four comparison categories — أرض / سكني مبني / تجاري / صناعي. Property types are
+/// Arabic strings from closed-ish lists (أرض، فيلا، شقة، عمارة، محل تجاري، معرض، مستودع…), so
+/// containment on a normalised spelling is the reliable probe. Null = not classifiable (e.g.
+/// «مبنى متعدد الاستخدامات»): such a row is never reported as a mismatch.
+/// </summary>
+public static class PropertyCategoryRules
+{
+    public const string Land = "land";
+    public const string ResidentialBuilt = "residential_built";
+    public const string Commercial = "commercial";
+    public const string Industrial = "industrial";
+
+    private static readonly string[] BuiltWords =
+        ["فيلا", "شقه", "مبني", "عماره", "دور", "منزل", "بيت", "قصر", "معرض", "محل", "مستودع", "مصنع",
+         "villa", "apartment", "building", "house"];
+    // Written in the approved spelling; matched after the same alef/ta-marbuta normalisation.
+    private static readonly string[] LandWords = ["أرض", "فضاء", "land", "plot"];
+    private static readonly string[] IndustrialWords =
+        ["مستودع", "مصنع", "ورشه", "صناعي", "warehouse", "factory", "industrial"];
+    private static readonly string[] CommercialWords =
+        ["محل", "معرض", "تجاري", "مكتب", "فندق", "محطه", "مول", "سوق", "عياده", "مستشفي",
+         "shop", "showroom", "office", "commercial", "retail", "hotel"];
+    private static readonly string[] ResidentialWords =
+        ["فيلا", "شقه", "عماره", "منزل", "بيت", "قصر", "دوبلكس", "شاليه", "سكني", "استراحه",
+         "villa", "apartment", "duplex", "house", "residential"];
+
+    /// <summary>Category of a property type; the usage only decides when the type says nothing.</summary>
+    public static string? Categorize(string? propertyType, string? usage = null) =>
+        FromText(propertyType) ?? FromText(usage, landAllowed: false);
+
+    public static string LabelAr(string? category) => category switch
+    {
+        Land => "أرض",
+        ResidentialBuilt => "سكني مبني",
+        Commercial => "تجاري",
+        Industrial => "صناعي",
+        _ => "غير محدد",
+    };
+
+    /// <summary>Both sides classified and different.</summary>
+    public static bool Mismatch(string? subjectCategory, string? comparableCategory) =>
+        subjectCategory is not null
+        && comparableCategory is not null
+        && !string.Equals(subjectCategory, comparableCategory, StringComparison.Ordinal);
+
+    private static string? FromText(string? text, bool landAllowed = true)
+    {
+        var t = Normalize(text);
+        if (t.Length == 0) return null;
+        if (landAllowed && HasAny(t, LandWords) && !HasAny(t, BuiltWords)) return Land;
+
+        // One category only — a mixed description («تجاري سكني») is not classifiable.
+        var hits = new List<string>();
+        if (HasAny(t, IndustrialWords)) hits.Add(Industrial);
+        if (HasAny(t, CommercialWords)) hits.Add(Commercial);
+        if (HasAny(t, ResidentialWords)) hits.Add(ResidentialBuilt);
+        return hits.Count == 1 ? hits[0] : null;
+    }
+
+    private static bool HasAny(string text, string[] words) =>
+        words.Any(w => text.Contains(Normalize(w), StringComparison.OrdinalIgnoreCase));
+
+    private static string Normalize(string? value) =>
+        (value ?? "")
+            .Replace('أ', 'ا')
+            .Replace('إ', 'ا')
+            .Replace('آ', 'ا')
+            .Replace('ٱ', 'ا')
+            .Replace('ة', 'ه')
+            .Replace('ى', 'ي')
+            .Trim();
 }

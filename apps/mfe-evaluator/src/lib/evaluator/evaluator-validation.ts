@@ -147,7 +147,9 @@ export function validateEvaluatorSubmission(input: {
     }
   }
 
-  if (valueBasisKey === "liquidation") {
+  // D3: with the approaches on, «خصم التصفية» belongs to the reconciliation, whose SAVE refuses a 0 on
+  // the liquidation basis — the hand-over does not ask again (a saved 0 on another basis is valid).
+  if (valueBasisKey === "liquidation" && !skipManualLandBuilding) {
     const discount = parseEvaluatorAmount(forcedSaleDiscountPct);
     if (!forcedSaleDiscountPct.trim()) {
       errors.forced_sale_discount = "مطلوب إدخال نسبة خصم التصفية.";

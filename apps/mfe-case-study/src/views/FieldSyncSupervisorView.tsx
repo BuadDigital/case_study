@@ -24,6 +24,7 @@ import {
   THead,
   Tr,
 } from "@platform/ui-kit";
+import { formatArDateTime } from "@platform/app-shared/format/date";
 
 const KIND_LABELS: Record<string, string> = {
   "attachment-upload": "رفع مرفق",
@@ -44,7 +45,7 @@ function syncRowView(row: FieldSyncStatusDto) {
     age: row.ageHours != null ? `${row.ageHours} س` : "—",
     kinds: row.kinds.map((k) => KIND_LABELS[k] ?? k).join(" · ") || "—",
     lastSeen: row.lastSeenAtUtc
-      ? new Date(row.lastSeenAtUtc).toLocaleString("ar-SA-u-nu-latn")
+      ? formatArDateTime(row.lastSeenAtUtc)
       : "—",
   };
 }

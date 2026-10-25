@@ -6,20 +6,22 @@ namespace RealEstateEval.Application.Tests;
 public class ValuationMethodologyAlertRulesTests
 {
     [Fact]
-    public void Evaluate_returns_20_alerts()
+    public void Evaluate_returns_27_alerts()
     {
         var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput());
-        Assert.Equal(20, checks.Count);
-        Assert.Equal(Enumerable.Range(1, 19).Concat([21]), checks.Select(c => c.Number));
+        Assert.Equal(27, checks.Count);
+        Assert.Equal(Enumerable.Range(1, 19).Concat([21, 22, 23, 24, 25, 26, 27, 28]), checks.Select(c => c.Number));
     }
 
     [Fact]
-    public void Hard_alerts_are_3_4_5_11_15_16_21()
+    public void Hard_alerts_are_4_5_11_15_16_21_23()
     {
-        foreach (var n in new[] { 3, 4, 5, 11, 15, 16, 21 })
+        foreach (var n in new[] { 4, 5, 11, 15, 16, 21, 23 })
             Assert.True(ValuationMethodologyAlertSeverity.IsHard(n));
-        foreach (var n in new[] { 1, 2, 6, 7, 8, 9, 10, 12, 13, 14, 17, 18, 19 })
+        // D13: m3 (age beyond the extended life) now needs a rationale instead of blocking.
+        foreach (var n in new[] { 1, 2, 3, 6, 7, 8, 9, 10, 12, 13, 14, 17, 18, 19, 22, 24, 25 })
             Assert.False(ValuationMethodologyAlertSeverity.IsHard(n));
+        Assert.True(ValuationMethodologyAlertSeverity.RequiresRationale(3));
     }
 
     [Fact]
@@ -203,7 +205,7 @@ public class ValuationMethodologyAlertRulesTests
             ExtendedLifeYears = 0m,
             TotalObsolescencePct = 130m,
             LifeExtensionYears = 5m,
-            FunctionalObsolescencePct = 10m,
+            FunctionalObsolescencePct = 110m,
             UseRestrictionDiscountPct = 10m,
             DeveloperProfitPct = 40m,
             IndirectRatesSumPct = 60m,
@@ -343,7 +345,7 @@ public class ValuationMethodologyAlertRulesTests
         Assert.False(checks.Single(c => c.Number == 2).Evaluated);
         Assert.False(checks.Single(c => c.Number == 2).Triggered);
         Assert.False(checks.Single(c => c.Number == 3).Evaluated);
-        Assert.True(checks.Single(c => c.Number == 3).IsHard);
+        Assert.False(checks.Single(c => c.Number == 3).IsHard);
     }
 
     [Fact]
@@ -383,7 +385,7 @@ public class ValuationMethodologyAlertRulesTests
         Assert.True(m2.Single(c => c.Number == 2).Evaluated);
         Assert.True(m2.Single(c => c.Number == 2).Triggered);
 
- // Actual 60 over extended 50 → m3 (hard).
+ // Actual 60 over extended 50 → m3 (D13: written rationale, not a hard block).
         var m3 = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
         {
             ActualAgeYears = 60m,
@@ -391,17 +393,31 @@ public class ValuationMethodologyAlertRulesTests
             ExtendedLifeYears = 50m,
         });
         Assert.True(m3.Single(c => c.Number == 3).Triggered);
-        Assert.True(m3.Single(c => c.Number == 3).IsHard);
+        Assert.False(m3.Single(c => c.Number == 3).IsHard);
+        Assert.True(m3.Single(c => c.Number == 3).BlocksIssuance); // until explained
         Assert.False(m3.Single(c => c.Number == 2).Triggered);
     }
 
     [Fact]
     public void Obsolescence_alerts_m4_m12_live()
     {
-        var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        // D12/D13: 130٪ that comes from physical depreciation is capped and explained (m3/m25);
+        // m4 stays hard for typed functional + external obsolescence above 100٪.
+        var physical = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
         {
             TotalObsolescencePct = 130m,
             FunctionalObsolescencePct = 20m,
+            FunctionalObsolescenceRationale = "",
+        });
+        Assert.False(physical.Single(c => c.Number == 4).Triggered);
+        Assert.True(physical.Single(c => c.Number == 25).Triggered);
+        Assert.True(physical.Single(c => c.Number == 12).Triggered);
+
+        var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            TotalObsolescencePct = 130m,
+            FunctionalObsolescencePct = 70m,
+            ExternalObsolescencePct = 40m,
             FunctionalObsolescenceRationale = "",
         });
         Assert.True(checks.Single(c => c.Number == 4).Triggered);

@@ -17,7 +17,9 @@ export function reconMethodNote(m: ReconMethod, buildingOnly: boolean): string {
       ? buildingOnly
         ? "مبنى فقط — تكلفة الإحلال ناقصاً الإهلاك"
         : "قيمة الأرض + تكلفة الإحلال − الإهلاك"
-      : "مؤشر قيمة من طريقة المقارنة";
+      : m.approachKind === "income"
+        ? "صافي الدخل التشغيلي ÷ معدل الرسملة"
+        : "مؤشر قيمة من طريقة المقارنة";
 }
 
 /** Participation-share input — table cell and phone card share it. */

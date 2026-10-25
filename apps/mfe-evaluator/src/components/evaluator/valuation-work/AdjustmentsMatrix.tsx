@@ -546,7 +546,8 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               <SubjCell value="أساس المقارنة" note="صفر بالتعريف" />
               {adopted.map((item) => {
                 const sum = item.market?.sumDifferencePct ?? 0;
-                const over = Math.abs(sum) > 35;
+                // The server's ±40٪ rule (MarketApproachRules.LargeAdjustmentThresholdPct).
+                const over = item.market?.exceedsLargeAdjustmentThreshold === true;
                 return (
                   <CompReadonly
                     key={item.id}

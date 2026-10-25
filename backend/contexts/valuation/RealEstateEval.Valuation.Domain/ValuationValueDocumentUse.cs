@@ -79,6 +79,12 @@ public static class ValueDocumentUseRules
     public const int MethodNameMaxLength = 128;
     public const int DocumentLabelMaxLength = 128;
 
+    /// <summary>
+    /// Upper bound on a document's value (one trillion SAR) — far above any property, far below the
+    /// numeric(18,2) column, so an absurd entry is a 400 and never a failed save.
+    /// </summary>
+    public const decimal MaxValueSar = 1_000_000_000_000m;
+
     /// <summary>Reconciliation kinds of document indicators: <c>doc:{attachmentId:N}</c>.</summary>
     public const string ReconciliationKindPrefix = "doc:";
 
@@ -131,6 +137,8 @@ public static class ValueDocumentUseRules
 
             if (u.Value <= 0m)
                 errors[$"{at}.value"] = "أدخل قيمة أكبر من صفر";
+            else if (u.Value > MaxValueSar)
+                errors[$"{at}.value"] = "القيمة أكبر من المعقول — راجع الرقم (الحد تريليون ريال)";
 
             if (effect != ValueDocumentEffects.Indicator) continue;
 

@@ -22,7 +22,7 @@ public class ValuationValueDocumentsController(
     IPermissionService permissions) : ControllerBase
 {
     [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<ValuationValueDocumentsDto>> Get(
         Guid valuationRequestId,
         CancellationToken ct)
@@ -37,6 +37,7 @@ public class ValuationValueDocumentsController(
 
     [HttpPut]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
     public async Task<ActionResult<ValuationValueDocumentsDto>> Save(
         Guid valuationRequestId,
         [FromBody] SaveValuationValueDocumentsRequest request,

@@ -20,7 +20,7 @@ public class ValuationCostApproachController : ControllerBase
     public ValuationCostApproachController(IValuationCostApproachService cost) => _cost = cost;
 
     [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<ValuationCostApproachDto>> Get(
         Guid valuationRequestId,
         CancellationToken ct)
@@ -31,6 +31,7 @@ public class ValuationCostApproachController : ControllerBase
 
     [HttpPut]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
     public async Task<ActionResult<ValuationCostApproachDto>> Save(
         Guid valuationRequestId,
         [FromBody] SaveValuationCostApproachRequest request,

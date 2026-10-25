@@ -17,6 +17,15 @@ public static partial class DepositCertificateRules
     public const string TooLargeAr = "حجم شهادة الإيداع أكبر من المسموح (10 م.ب)";
     public const string OnePageAr = "شهادة الإيداع صفحة واحدة";
 
+    /// <summary>D15: the code is already recorded on another current report (or an earlier version of this one).</summary>
+    public const string DuplicateCodeAr = "رمز الإيداع مسجّل على تقرير آخر — تحقق من الرمز في شهادة الإيداع";
+
+    /// <summary>D15: another request registered this copy's code first.</summary>
+    public const string ConcurrentRegistrationAr = "سُجّل رمز الإيداع لهذا التقرير من طلب آخر للتو — حدّث الصفحة ثم أعد المحاولة";
+
+    /// <summary>Marker key in the error map: the refusal is a conflict (the controller answers 409, the key itself is dropped).</summary>
+    public const string ConflictKey = "_conflict";
+
     private const string ErrorKey = "certificateContentBase64";
 
     /// <summary>

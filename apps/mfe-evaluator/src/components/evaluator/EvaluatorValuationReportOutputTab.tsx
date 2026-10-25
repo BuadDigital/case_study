@@ -25,7 +25,6 @@ import {
 } from "../../lib/evaluator/valuation-report-v3-preview";
 import { ValuationReportLoading } from "./ValuationReportLoading";
 import {
-  assignmentValuationFromPo,
   buildValuationReportLiveFill,
   certifiedPracticeLicenseFromOrg,
 } from "../../lib/evaluator/valuation-report-live-fill";
@@ -60,6 +59,7 @@ import {
   ensureImageSlotCustomElement,
   finishingTextForReport,
   loadReportOutputBundle,
+  reportValuationChoices,
 } from "./evaluator-report-output-helpers";
 
 type ReportOutputInput = Parameters<typeof loadReportOutputBundle>[0];
@@ -160,7 +160,6 @@ export function EvaluatorValuationReportOutputTab({
   );
   const poQuery = usePoRecordQuery(draft.poNumber);
   const record = poQuery.data;
-  const poKeys = assignmentValuationFromPo(record);
   // Phase 5: a linked property's report names every deed of the transaction.
   const linkedDeeds = useLinkedPropertyDeeds(property?.id ?? draft.propertyId);
 
@@ -183,6 +182,7 @@ export function EvaluatorValuationReportOutputTab({
   const market = outputBundle?.approaches?.market ?? null;
   const landMarket = outputBundle?.approaches?.landMarket ?? null;
   const cost = outputBundle?.approaches?.cost ?? null;
+  const income = outputBundle?.approaches?.income ?? null;
   const recon = outputBundle?.approaches?.recon ?? null;
   const approachSettings = outputBundle?.approaches?.settings ?? null;
   const survey = outputBundle?.survey ?? null;
@@ -190,33 +190,18 @@ export function EvaluatorValuationReportOutputTab({
   const deedSlot = outputBundle?.attach.deed ?? null;
   const siteMapSlot = outputBundle?.attach.siteMap ?? null;
 
-  const listLabels = useMemo(() => {
-    const lists = outputBundle?.lists;
-    if (!lists) {
-      return {} as {
-        purpose?: string;
-        basis?: string;
-        premise?: string;
-        basisDefinition?: string;
-      };
-    }
-    const find = (kind: string, key: string) =>
-      (lists[kind] ?? []).find((it) => it.isEnabled && it.key === key);
-    const purpose = find("purposes", poKeys.purposeKey);
-    const basis = find("valueBases", poKeys.valueBasisKey);
-    const premise = find("premises", poKeys.premiseKey);
-    return {
-      purpose: purpose?.name,
-      basis: basis?.name,
-      premise: premise?.name,
-      basisDefinition: (basis?.cells[0] ?? "").trim(),
-    };
-  }, [
-    outputBundle,
-    poKeys.premiseKey,
-    poKeys.purposeKey,
-    poKeys.valueBasisKey,
-  ]);
+  // D1/D9/D11 — purpose, basis, premise, retrospective rationale and the interest valued come
+  // from the appraiser's saved choices; the work order's defaults only when nothing was saved.
+  const valuationChoices = useMemo(
+    () =>
+      reportValuationChoices({
+        record,
+        recon,
+        settings: approachSettings,
+        lists: outputBundle?.lists,
+      }),
+    [approachSettings, outputBundle?.lists, recon, record],
+  );
 
   const photoSlots = useMemo(() => {
     const attach = outputBundle?.attach;
@@ -267,6 +252,9 @@ export function EvaluatorValuationReportOutputTab({
           marketApproachEnabled: approachSettings
             ? approachSettings.marketApproachEnabled
             : undefined,
+          // D17 — the income section and its reconciliation row follow the saved toggle.
+          incomeApproachEnabled: approachSettings ? approachSettings.incomeApproachEnabled === true : undefined,
+          income,
           costScopeKey: approachSettings?.costScopeKey,
           costBasisKey: approachSettings?.costBasisKey,
           record,
@@ -280,10 +268,7 @@ export function EvaluatorValuationReportOutputTab({
           cost,
           recon,
           clients,
-          purposeLabel: listLabels.purpose,
-          basisLabel: listLabels.basis,
-          premiseLabel: listLabels.premise,
-          basisDefinition: listLabels.basisDefinition,
+          ...valuationChoices,
           // Firm practice license from بيانات المنشأة — no sample fallback.
           certifiedName: ev.name,
           certifiedLicense: practice.number,
@@ -354,12 +339,13 @@ export function EvaluatorValuationReportOutputTab({
       deedSlot,
       draft,
       effectiveDraft,
+      income,
       reportDraft,
       inspector,
       inventoryLines,
       landMarket,
       linkedDeeds,
-      listLabels,
+      valuationChoices,
       specialistComponentsText,
       market,
       photoSlots,

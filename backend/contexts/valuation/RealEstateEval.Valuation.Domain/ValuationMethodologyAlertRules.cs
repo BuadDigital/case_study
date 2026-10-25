@@ -3,8 +3,8 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// Methodology alerts — 20 per package v2 (decisions 16 + 24 + Q-4 + Q-7):
-/// 7 hard / 8 require text rationale / 5 require acknowledgement.
+/// Methodology alerts — 27 (package v2 decisions 16 + 24 + Q-4 + Q-7, then D6/D8/D10/D12/D13/D17):
+/// 8 hard / 13 require text rationale / 6 require acknowledgement.
 /// m18/m21 evaluate only once inspection-scope data is captured (inspection boundaries).
 /// </summary>
 public static class ValuationMethodologyAlertCodes
@@ -32,6 +32,20 @@ public static class ValuationMethodologyAlertCodes
     public const string FewAdoptedComparables = "m19_few_adopted_comparables";
  /// <summary>Q-7 — "remote desktop" scope requires certified-valuer approval (hard gate).</summary>
     public const string RemoteInspectionUnapproved = "m21_remote_inspection_unapproved";
+    /// <summary>D6 — adopted adjusted unit rates too far apart (median deviation &gt; 25٪ or CV &gt; 15٪).</summary>
+    public const string ComparableDispersion = "m22_comparable_dispersion";
+    /// <summary>D8 — an adopted comparable dated after the official (retrospective) valuation date.</summary>
+    public const string ComparableAfterValuationDate = "m23_comparable_after_valuation_date";
+    /// <summary>D10 — an adopted market comparable of another category than the subject.</summary>
+    public const string PropertyTypeMismatch = "m24_property_type_mismatch";
+    /// <summary>D12 — physical + functional + external depreciation above 90٪.</summary>
+    public const string DepreciationOver90 = "m25_depreciation_over_90";
+    /// <summary>D17 — capitalisation rate outside the typical 4–12٪ band.</summary>
+    public const string CapRateOutOfRange = "m26_cap_rate_out_of_range";
+    /// <summary>D17 — operating expenses above 50٪ of the effective gross income.</summary>
+    public const string OpexOverHalfOfEgi = "m27_opex_over_half_egi";
+    /// <summary>D17 — net operating income zero or negative: the income approach yields no value.</summary>
+    public const string NoiNotPositive = "m28_noi_not_positive";
 }
 
 public static class ValuationMethodologyAlertSeverityKinds
@@ -66,16 +80,23 @@ public sealed record ValuationMethodologyAlertResolution(
 /// <summary>Alert numbers that block issuance under .</summary>
 public static class ValuationMethodologyAlertSeverity
 {
- /// <summary>Hard gates (7): 3, 4, 5, 11, 15, 16 + 21 (Q-7)</summary>
-    public static bool IsHard(int number) => number is 3 or 4 or 5 or 11 or 15 or 16 or 21;
+ /// <summary>
+ /// Hard gates (8): 4, 5, 11, 15, 16 + 21 (Q-7) + 23 (D8 comparable after the valuation date)
+ /// + 28 (D17 net operating income ≤ 0).
+ /// </summary>
+    public static bool IsHard(int number) => number is 4 or 5 or 11 or 15 or 16 or 21 or 23 or 28;
 
- /// <summary>Warning with text rationale (8): 6, 8, 9, 10, 12, 17 + 18 (decision 24) + 19 (Q-4)</summary>
+ /// <summary>
+ /// Warning with text rationale (13): 6, 8, 9, 10, 12, 17 + 18 (decision 24) + 19 (Q-4)
+ /// + 3 (D13: age beyond the extended life is explained, not a dead end) + 22 (D6) + 24 (D10) + 25 (D12)
+ /// + 26 (D17 cap rate outside 4–12٪).
+ /// </summary>
     public static bool RequiresRationale(int number) =>
-        number is 6 or 8 or 9 or 10 or 12 or 17 or 18 or 19;
+        number is 3 or 6 or 8 or 9 or 10 or 12 or 17 or 18 or 19 or 22 or 24 or 25 or 26;
 
- /// <summary>Warning with acknowledgement (5): 1, 2, 7, 13, 14</summary>
+ /// <summary>Warning with acknowledgement (6): 1, 2, 7, 13, 14 + 27 (D17 expenses above half of EGI).</summary>
     public static bool RequiresAcknowledgement(int number) =>
-        number is 1 or 2 or 7 or 13 or 14;
+        number is 1 or 2 or 7 or 13 or 14 or 27;
 
     public static string KindFor(int number) =>
         IsHard(number) ? ValuationMethodologyAlertSeverityKinds.Hard
@@ -96,7 +117,16 @@ public sealed record ValuationMethodologyAlertCostLineInput(
 public sealed record ValuationMethodologyAlertComparableInput(
     string ComparablePropertyType,
     bool ExceedsLargeAdjustmentThreshold,
-    decimal SumIncludedPct);
+    decimal SumIncludedPct,
+    /// <summary>D6 — adjusted rate per m² (whole-property basis: adjusted total ÷ comparable area); null = not evaluated.</summary>
+    decimal? AdjustedUnitRate = null,
+    /// <summary>D8 — deal / listing date; null = not evaluated.</summary>
+    DateOnly? TransactionDate = null,
+    /// <summary>D10 — usage, used only when the type itself is not classifiable.</summary>
+    string? Usage = null,
+    string? ReferenceCode = null,
+    /// <summary>D4 — Σ|sequential| + Σ|difference| (shown in the m17 detail).</summary>
+    decimal GrossAdjustmentPct = 0m);
 
 public sealed record ValuationMethodologyAlertInput(
     bool HasStructuresToValue,
@@ -152,7 +182,25 @@ public sealed record ValuationMethodologyAlertInput(
     /// (m2–m10, m12–m14) is skipped, so figures left from a cost approach the appraiser later
     /// turned off never warn or block issuance.
     /// </summary>
-    bool CostApproachEnabled = true);
+    bool CostApproachEnabled = true,
+    /// <summary>
+    /// D8 — last date an adopted comparable may carry (retrospective date / period end). Null, or
+    /// not before <see cref="Today"/>, = an issuance-date valuation: m23 is not evaluated.
+    /// </summary>
+    DateOnly? ComparableDateCutoff = null,
+    DateOnly? Today = null,
+    /// <summary>D10 — the subject's (effective) property type; null/blank = m24 not evaluated.</summary>
+    string? SubjectPropertyType = null,
+    /// <summary>D17 — the income approach's figures; null (approach off / never saved) = m26–m28 not evaluated.</summary>
+    ValuationMethodologyAlertIncomeInput? Income = null);
+
+/// <summary>D17 — what alerts 26–28 read from the income approach.</summary>
+public sealed record ValuationMethodologyAlertIncomeInput(
+    decimal GrossPotentialIncome,
+    decimal EffectiveGrossIncome,
+    decimal OperatingExpenses,
+    decimal NetOperatingIncome,
+    decimal? CapitalisationRatePct);
 
 /// <summary>Evaluates alerts per three-tier severity.</summary>
 public static class ValuationMethodologyAlertRules
@@ -170,10 +218,29 @@ public static class ValuationMethodologyAlertRules
         var costOn = input.CostApproachEnabled;
         var lines = costOn ? input.CostLines.Where(l => l.IsIncluded).ToList() : [];
         var comps = input.AdoptedComparables;
+        var income = input.Income;
         var resolutions = (input.Resolutions ?? [])
             .Where(r => !string.IsNullOrWhiteSpace(r.Code))
             .GroupBy(r => r.Code.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(g => g.Key, g => g.Last(), StringComparer.OrdinalIgnoreCase);
+        var dispersionRates = comps
+            .Select((c, i) => (Ref: RefOf(c.ReferenceCode, i), Rate: c.AdjustedUnitRate ?? 0m))
+            .Where(r => r.Rate > 0m)
+            .ToList();
+        var afterCutoff = input.ComparableDateCutoff is { } dateCutoff
+            ? comps
+                .Select((c, i) => (Ref: RefOf(c.ReferenceCode, i), c.TransactionDate))
+                .Where(x => x.TransactionDate is { } d && d > dateCutoff)
+                .ToList()
+            : [];
+        var subjectCategory = PropertyCategoryRules.Categorize(input.SubjectPropertyType);
+        var mismatched = comps
+            .Select((c, i) => (
+                Ref: RefOf(c.ReferenceCode, i),
+                Type: c.ComparablePropertyType,
+                Category: PropertyCategoryRules.Categorize(c.ComparablePropertyType, c.Usage)))
+            .Where(x => PropertyCategoryRules.Mismatch(subjectCategory, x.Category))
+            .ToList();
 
         return
         [
@@ -195,14 +262,17 @@ public static class ValuationMethodologyAlertRules
                 "العمر الفعلي يتجاوز العمر الممتد",
                 costOn && input.ActualAgeYears is not null && (input.ExtendedLifeYears ?? 0m) > 0m,
                 () => input.ActualAgeYears! > input.ExtendedLifeYears!,
-                "الإهلاك المادي > 100٪ — العمر الفعلي يتجاوز الممتد",
+                "الإهلاك المادي > 100٪ — العمر الفعلي يتجاوز الممتد؛ برّر الأعمار (المبنى قائم ومستخدم) — يُقصَر مجموع الإهلاك على 100٪",
                 resolutions),
 
             Eval(4, ValuationMethodologyAlertCodes.ObsolescenceOver100,
                 "مجموع التقادم يتجاوز 100٪",
                 costOn && input.TotalObsolescencePct is not null,
-                () => input.TotalObsolescencePct! > 100m,
-                "مجموع التقادم > 100٪ — راجع الوظيفي والخارجي",
+                // D12/D13: physical depreciation beyond 100٪ is capped and explained (m3 + m25); only
+                // the functional + external obsolescence the appraiser typed can make this impossible.
+                () => Math.Max(0m, input.FunctionalObsolescencePct)
+                      + Math.Max(0m, input.ExternalObsolescencePct) > 100m,
+                "التقادم الوظيفي + الخارجي > 100٪ — راجع الوظيفي والخارجي",
                 resolutions),
 
             Eval(5, ValuationMethodologyAlertCodes.NegativeValues, "قيم سالبة",
@@ -302,10 +372,10 @@ public static class ValuationMethodologyAlertRules
                 resolutions),
 
             Eval(17, ValuationMethodologyAlertCodes.LargeAdjustments,
-                "مجموع التسويات > 40٪",
+                "مجموع التسويات > 40٪ (الصافي أو الإجمالي)",
                 input.MarketApproachRelevant && comps.Count > 0,
                 () => comps.Any(c => c.ExceedsLargeAdjustmentThreshold),
-                "تجاوز عتبة ±40٪ على مجموع عوامل الاختلاف — التبرير إلزامي مع مراجعة صلاحية المقارن",
+                LargeAdjustmentsDetail(comps),
                 resolutions),
 
  // Decision 24 — evaluated only after inspection scope is captured (inspection-boundaries feature).
@@ -339,8 +409,72 @@ public static class ValuationMethodologyAlertRules
                       && !input.RemoteInspectionApprovedByAccredited,
                 "نطاق المعاينة «مكتبية عن بُعد» — لا يمر الإصدار حتى يعتمده المقيّم المعتمد",
                 resolutions),
+
+            // D6 — dispersion of the adopted adjusted unit rates.
+            Eval(22, ValuationMethodologyAlertCodes.ComparableDispersion,
+                "تشتّت المقارنات",
+                input.MarketApproachRelevant && dispersionRates.Count >= 2,
+                () => MarketApproachRules.IsDispersed(dispersionRates.Select(r => r.Rate).ToList()),
+                DispersionDetail(dispersionRates),
+                resolutions),
+
+            // D8 — hard: a deal after the valuation date did not exist on that date.
+            Eval(23, ValuationMethodologyAlertCodes.ComparableAfterValuationDate,
+                "مقارن بتاريخ لاحق لتاريخ التقييم",
+                input.MarketApproachRelevant
+                    && comps.Count > 0
+                    && input.ComparableDateCutoff is { } cutoff
+                    && input.Today is { } today
+                    && cutoff < today,
+                () => afterCutoff.Count > 0,
+                AfterValuationDateDetail(afterCutoff, input.ComparableDateCutoff),
+                resolutions),
+
+            // D10 — category mismatch (vacant-land subjects keep the hard m11 instead).
+            Eval(24, ValuationMethodologyAlertCodes.PropertyTypeMismatch,
+                "نوع المقارن يخالف نوع العقار محل التقييم",
+                input.MarketApproachRelevant
+                    && comps.Count > 0
+                    && subjectCategory is not null
+                    && !(subjectCategory == PropertyCategoryRules.Land && !input.HasStructuresToValue),
+                () => mismatched.Count > 0,
+                TypeMismatchDetail(subjectCategory, mismatched),
+                resolutions),
+
+            // D12 — depreciation total above 90٪ (capped at 100٪ by the cost approach).
+            Eval(25, ValuationMethodologyAlertCodes.DepreciationOver90,
+                "مجموع الإهلاك يتجاوز 90٪",
+                costOn && input.TotalObsolescencePct is not null,
+                () => CostApproachRules.ObsolescenceNeedsAlert(input.TotalObsolescencePct!.Value),
+                $"مجموع الإهلاك (المادي + الوظيفي + الخارجي) {Pct(input.TotalObsolescencePct ?? 0m)}٪ > 90٪ — قيمة المباني شبه معدومة؛ برّر الأعمار والتقادم",
+                resolutions),
+
+            // D17 — income approach (direct capitalisation); evaluated only while it is enabled.
+            Eval(26, ValuationMethodologyAlertCodes.CapRateOutOfRange,
+                "معدل الرسملة خارج النطاق المعتاد (4٪–12٪)",
+                income?.CapitalisationRatePct is > 0m,
+                () => IncomeApproachRules.CapRateOutsideTypicalRange(income!.CapitalisationRatePct!.Value),
+                $"معدل الرسملة {Pct(income?.CapitalisationRatePct ?? 0m)}٪ خارج النطاق المعتاد 4٪–12٪ — برّر المعدل بأدلة السوق",
+                resolutions),
+
+            Eval(27, ValuationMethodologyAlertCodes.OpexOverHalfOfEgi,
+                "مصروفات التشغيل تتجاوز 50٪ من الدخل الفعلي",
+                income is { EffectiveGrossIncome: > 0m },
+                () => IncomeApproachRules.OpexAboveHalfOfEgi(OpexPctOfEgi(income!)),
+                $"مصروفات التشغيل {Pct(income is null ? 0m : OpexPctOfEgi(income))}٪ من الدخل الإجمالي الفعلي (> 50٪) — تحقّق من المصروفات وأقرّ بها",
+                resolutions),
+
+            Eval(28, ValuationMethodologyAlertCodes.NoiNotPositive,
+                "صافي الدخل التشغيلي صفر أو سالب",
+                income is { GrossPotentialIncome: > 0m },
+                () => income!.NetOperatingIncome <= 0m,
+                $"صافي الدخل التشغيلي {Money(income?.NetOperatingIncome ?? 0m)} ر.س ≤ 0 — لا ينتج أسلوب الدخل قيمة؛ راجع الدخل والمصروفات",
+                resolutions),
         ];
     }
+
+    private static decimal OpexPctOfEgi(ValuationMethodologyAlertIncomeInput income) =>
+        IncomeApproachRules.OperatingExpensesPctOfEgi(income.OperatingExpenses, income.EffectiveGrossIncome) ?? 0m;
 
     public static int TriggeredCount(IEnumerable<ValuationMethodologyAlertCheck> checks) =>
         checks.Count(c => c.Triggered);
@@ -411,6 +545,70 @@ public static class ValuationMethodologyAlertRules
             Evaluated: false,
             BlocksIssuance: false,
             DetailAr: detail);
+
+    private static string Pct(decimal value) =>
+        Math.Round(value, 2, MidpointRounding.AwayFromZero)
+            .ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Money(decimal value) =>
+        Math.Round(value, 0, MidpointRounding.AwayFromZero)
+            .ToString("#,0", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string DateText(DateOnly? date) =>
+        date?.ToString("yyyy/MM/dd", System.Globalization.CultureInfo.InvariantCulture) ?? "—";
+
+    private static string RefOf(string? referenceCode, int index) =>
+        string.IsNullOrWhiteSpace(referenceCode) ? $"المقارن {index + 1}" : referenceCode.Trim();
+
+    private static string LargeAdjustmentsDetail(IReadOnlyList<ValuationMethodologyAlertComparableInput> comps)
+    {
+        var over = comps
+            .Select((c, i) => (c, i))
+            .Where(x => x.c.ExceedsLargeAdjustmentThreshold)
+            .Select(x => x.c.GrossAdjustmentPct > 0m
+                ? $"{RefOf(x.c.ReferenceCode, x.i)} (الصافي {Pct(x.c.SumIncludedPct)}٪، الإجمالي {Pct(x.c.GrossAdjustmentPct)}٪)"
+                : RefOf(x.c.ReferenceCode, x.i))
+            .ToList();
+        const string prefix =
+            "تجاوز عتبة ±40٪ على صافي عوامل الاختلاف أو على إجمالي التسويات (المتتابعة + الاختلاف بالقيمة المطلقة)";
+        return (over.Count > 0 ? $"{prefix}: {string.Join("، ", over)}" : prefix)
+            + " — التبرير إلزامي مع مراجعة صلاحية المقارن";
+    }
+
+    private static string DispersionDetail(IReadOnlyList<(string Ref, decimal Rate)> rates)
+    {
+        if (rates.Count < 2) return "";
+        var values = rates.Select(r => r.Rate).ToList();
+        var median = MarketApproachRules.Median(values);
+        var deviations = MarketApproachRules.DeviationFromMedianPcts(values);
+        var outliers = rates
+            .Select((r, i) => (r.Ref, Dev: deviations[i]))
+            .Where(x => x.Dev > MarketApproachRules.DispersionMedianDeviationPct)
+            .Select(x => $"{x.Ref} ينحرف {Pct(x.Dev)}٪")
+            .ToList();
+        var cv = MarketApproachRules.CoefficientOfVariationPct(values);
+        var parts = new List<string>();
+        if (outliers.Count > 0)
+            parts.Add($"{string.Join("، ", outliers)} عن وسيط الأسعار المعدّلة {Money(median)} ر.س/م² (الحد 25٪)");
+        parts.Add($"معامل الاختلاف {Pct(cv)}٪ (الحد 15٪)");
+        return string.Join(" · ", parts) + " — برّر الإبقاء على المقارن الشاذ أو استبعده";
+    }
+
+    private static string AfterValuationDateDetail(
+        IReadOnlyList<(string Ref, DateOnly? TransactionDate)> after,
+        DateOnly? cutoff)
+    {
+        var list = after.Select(x => $"{x.Ref} بتاريخ {DateText(x.TransactionDate)}");
+        return $"{string.Join("، ", list)} — بعد تاريخ التقييم {DateText(cutoff)}؛ صفقة لم تكن قائمة في تاريخ التقييم — ألغِ اعتمادها";
+    }
+
+    private static string TypeMismatchDetail(
+        string? subjectCategory,
+        IReadOnlyList<(string Ref, string Type, string? Category)> mismatched)
+    {
+        var list = mismatched.Select(x => $"{x.Ref} ({x.Type} — {PropertyCategoryRules.LabelAr(x.Category)})");
+        return $"العقار محل التقييم «{PropertyCategoryRules.LabelAr(subjectCategory)}» والمقارن: {string.Join("، ", list)} — برّر صلاحية المقارن أو استبعده";
+    }
 
     private static bool LooksLikeRepeatedFloor(ValuationMethodologyAlertCostLineInput l)
     {

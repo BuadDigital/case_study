@@ -9,3 +9,4 @@ export { AttachmentPrintDictionaryView } from "./views/AttachmentPrintDictionary
 export { ProfileView } from "./views/ProfileView";
 export { CaseStudyInfoRolesView } from "./views/CaseStudyInfoRolesView";
 export { SystemFieldsCatalogView } from "./views/SystemFieldsCatalogView";
+export { AdminAccountsPanel } from "./views/users/AdminAccountsPanel";

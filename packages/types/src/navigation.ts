@@ -34,7 +34,8 @@ export type PageId =
   | "attachment-print-dictionary"
   | "clients"
   | "field-sync-board"
-  | "profile";
+  | "profile"
+  | "admin-panel";
 
 export type RoleId =
   | "cdo"

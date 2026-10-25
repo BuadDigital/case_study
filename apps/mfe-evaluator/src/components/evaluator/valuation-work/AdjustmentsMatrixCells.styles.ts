@@ -32,9 +32,13 @@ export function pct(n: number): string {
   return `${sign}${rounded.toFixed(2)}%`;
 }
 
+/**
+ * Sign colour of an adjustment %. A negative adjustment is a normal correction, not an error —
+ * amber, never the danger red (red is kept for the ±40٪ breach, see `exceedsLargeAdjustmentThreshold`).
+ */
 export function pctClass(n: number): string {
   if (n > 0) return "text-[#2f7a4d]";
-  if (n < 0) return "text-danger-text";
+  if (n < 0) return "text-amber-text";
   return "text-text-2";
 }
 

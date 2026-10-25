@@ -41,12 +41,14 @@ import { CaseStudyReportReopenDialog } from "./CaseStudyReportReopenDialog";
 import {
   CaseStudyIssuedBar,
   CaseStudyMatrixBanner,
+  DeedMatchIssueHint,
   FormProgressRings,
   IssueProgressHint,
   RemarksBlock,
   SpecialistClosingCards,
 } from "./CaseStudyReportEditorParts";
-import { FORM_STEP_SECTIONS } from "./case-study-report-state";
+import { FORM_STEP_SECTIONS, caseStudyDeedMatchIssueBlock } from "./case-study-report-state";
+import { openCaseStudyAppraisalTab } from "../../lib/case-study-workspace-events";
 import { useCaseStudyReportCommands } from "./useCaseStudyReportCommands";
 import { useCaseStudyReportData } from "./useCaseStudyReportData";
 
@@ -202,6 +204,10 @@ export function CaseStudyReportEditor({
       (!isParty && draft.status === "issued") ||
       (isParty && (draft.status === "issued" || parentFormSubmitted)),
   );
+  // D16: a traditional deed's report is issued only once the deed ↔ nature outcome is chosen.
+  const deedMatchBlock = isParty
+    ? null
+    : caseStudyDeedMatchIssueBlock({ outcome: draft.deedNatureMatchOutcome, property });
   const matrixTableProps = {
     canEditKey,
     visibleKey: isQuestionVisible,
@@ -243,11 +249,16 @@ export function CaseStudyReportEditor({
         </Button>
       ) : (
         <>
+          {deedMatchBlock ? (
+            <DeedMatchIssueHint message={deedMatchBlock} onOpen={openCaseStudyAppraisalTab} />
+          ) : null}
           <IssueProgressHint answered={summary.answered} total={summary.total} />
           <Button
             variant="primary"
             showActionToast={false}
             loading={saving || submittingForm}
+            disabled={Boolean(deedMatchBlock)}
+            title={deedMatchBlock ?? undefined}
             onClick={submitForm}
           >
             إصدار تقرير دراسة الحالة

@@ -59,16 +59,16 @@ export function collectComparablesMapPins(input: {
   return pins;
 }
 
-/** Subject-only pin list for §33 location maps (both slots share this). */
+/**
+ * Subject-only pin list for §33 location maps (both slots share this). Without the
+ * inspector's pin there is no location map — a comparable's position is never shown as
+ * the subject's.
+ */
 export function subjectOnlyMapPins(
   pins: ComparablesMapPin[],
 ): ComparablesMapPin[] {
   const subject = pins.find((p) => p.kind === "subject");
-  if (subject) return [{ ...subject, label: "العقار" }];
-  const first = pins[0];
-  return first
-    ? [{ lat: first.lat, lng: first.lng, label: "العقار", kind: "subject" }]
-    : [];
+  return subject ? [{ ...subject, label: "العقار" }] : [];
 }
 
 type StaticMapType = "hybrid" | "satellite" | "roadmap" | "terrain";

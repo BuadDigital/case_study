@@ -43,6 +43,13 @@ type ResolvedValuationWorkError = {
 export const VALUATION_WORK_ERROR_TARGETS: readonly ValuationWorkErrorTarget[] = [
   /* ─── البيانات الأساسية — إعدادات الأساليب ─── */
   { key: "costScopeKey", targetId: "as-scope", screen: "basic" },
+  { key: "ownershipInterestKey", targetId: "as-ownership-interest", screen: "basic" },
+  {
+    key: "remainingLeaseYears",
+    targetId: "as-remaining-lease-years",
+    fallbackTargetId: "as-ownership-interest",
+    screen: "basic",
+  },
   { key: "appliedApproaches", targetId: "as-approaches", screen: "basic" },
   { key: "costApproachEnabled", targetId: "as-approaches", screen: "basic" },
   { key: "incomeApproachEnabled", targetId: "as-approaches", screen: "basic" },
@@ -64,6 +71,12 @@ export const VALUATION_WORK_ERROR_TARGETS: readonly ValuationWorkErrorTarget[] =
     screen: "basic",
   },
   { key: "retrospectiveDateEnd", targetId: "as-retro-date-to", screen: "basic" },
+  {
+    key: "retrospectiveRationale",
+    targetId: "as-retro-rationale",
+    fallbackTargetId: "as-valuation-date",
+    screen: "basic",
+  },
 
   /* ─── طريقة المقارنة — المقارنات وجدول التسويات ─── */
   { key: "weightPct", targetId: "mx-adjustments", screen: "market" },
@@ -149,6 +162,26 @@ export const VALUATION_WORK_ERROR_TARGETS: readonly ValuationWorkErrorTarget[] =
     screen: "cost",
   },
 
+  /* ─── أسلوب الدخل (رسملة مباشرة) — D17 ─── */
+  { key: "grossPotentialIncome", targetId: "income-grossPotentialIncome", screen: "income" },
+  { key: "vacancyCollectionLossPct", targetId: "income-vacancyPct", screen: "income" },
+  { key: "otherIncome", targetId: "income-otherIncome", screen: "income" },
+  { key: "operatingExpensesMode", targetId: "income-inputs", screen: "income" },
+  {
+    key: "operatingExpensesAmount",
+    targetId: "income-opexAmount",
+    fallbackTargetId: "income-inputs",
+    screen: "income",
+  },
+  {
+    key: "operatingExpensesPct",
+    targetId: "income-opexPct",
+    fallbackTargetId: "income-inputs",
+    screen: "income",
+  },
+  { key: "capitalisationRatePct", targetId: "income-capRatePct", screen: "income" },
+  { key: "capRateRationale", targetId: "income-capRateRationale", screen: "income" },
+
   /* ─── رأي القيمة النهائي — الترجيح ─── */
   {
     key: "methods[].weightPct",
@@ -186,6 +219,17 @@ export const COST_FIELD_ERROR_KEYS: Readonly<Record<string, string>> = {
   functionalObs: "functionalObsolescencePct",
   externalObs: "externalObsolescencePct",
 };
+
+/** D17 — income screen field → the server key its validation answers with. */
+export const INCOME_FIELD_ERROR_KEYS = {
+  grossPotentialIncome: "grossPotentialIncome",
+  vacancyPct: "vacancyCollectionLossPct",
+  otherIncome: "otherIncome",
+  opexAmount: "operatingExpensesAmount",
+  opexPct: "operatingExpensesPct",
+  capRatePct: "capitalisationRatePct",
+  capRateRationale: "capRateRationale",
+} as const;
 
 const INDEXED_KEY = /^(.+)\[(\d+)\](.*)$/;
 

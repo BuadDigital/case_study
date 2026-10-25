@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
-  saveValuationReconciliation,
+  saveValuationAlertOverrides,
   type ValuationIssuanceGatesDto,
   type ValuationMethodologyAlertItemDto,
   type ValuationReconciliationDto,
@@ -13,27 +13,34 @@ import { Card, CardPad, PrimaryBtn } from "./atoms";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import {
   alertOverridesFromRecon,
-  reconciliationSaveRequest,
+  alertOverridesForCodes,
   type AlertOverrideRecord,
 } from "./lib/final-opinion-state";
-import { isMarketMethodologyAlert } from "./lib/methodology-alerts";
+import { methodologyAlertGroup, type MethodologyAlertGroup } from "./lib/methodology-alerts";
 import { apiConfig } from "./lib/shell-utils";
 
-function draftFromRecon(recon: ValuationReconciliationDto | null) {
-  return {
-    reconMethods: recon?.methods ?? [],
-    methodsRationale: recon?.methodsRationale ?? "",
-    finalRoundDecimals: String(recon?.finalRoundDecimals ?? 0),
-    basisOfValueKey: recon?.basisOfValueKey ?? "market",
-    valuePremiseKey: recon?.valuePremiseKey ?? "",
-    liquidationDiscountPct: String(recon?.liquidationDiscountPct ?? 0),
-    liquidationDiscountRationale: recon?.liquidationDiscountRationale ?? "",
-    alertOverrides: alertOverridesFromRecon(recon),
-  };
-}
+const GROUP_COPY: Record<MethodologyAlertGroup, { note: string; none: string }> = {
+  market: {
+    note: "تنبيهات أسلوب السوق (المقارنات والأوزان). تُحفَظ المعالجات من هذا التبويب.",
+    none: "✓ لا تنبيهات منهجية مفعّلة على أسلوب السوق",
+  },
+  cost: {
+    note: "تنبيهات أسلوب التكلفة (الأعمار والتكاليف والأرباح). تُحفَظ المعالجات من هذا التبويب.",
+    none: "✓ لا تنبيهات منهجية مفعّلة على أسلوب التكلفة",
+  },
+  income: {
+    note: "تنبيهات أسلوب الدخل (معدل الرسملة والمصروفات وصافي الدخل). تُحفَظ المعالجات من هذا التبويب.",
+    none: "✓ لا تنبيهات منهجية مفعّلة على أسلوب الدخل",
+  },
+  general: {
+    note: "تنبيهات عامة على الطلب (المعاينة وقيود الاستخدام). تُحفَظ المعالجات من هذا التبويب.",
+    none: "✓ لا تنبيهات منهجية عامة مفعّلة",
+  },
+};
 
-/** Market-approach methodology alerts — disposition on طريقة المقارنة. */
+/** Methodology alerts of one screen's group — disposition where the appraiser works on them. */
 export function MethodologyAlertsPanel({
+  group,
   gates,
   recon,
   valuationRequestId,
@@ -41,6 +48,7 @@ export function MethodologyAlertsPanel({
   onSavingChange,
   onReconSaved,
 }: {
+  group: MethodologyAlertGroup;
   gates: ValuationIssuanceGatesDto;
   recon: ValuationReconciliationDto | null;
   valuationRequestId: string | null;
@@ -49,8 +57,7 @@ export function MethodologyAlertsPanel({
   onReconSaved: (dto: ValuationReconciliationDto) => void;
 }) {
   const { showToast } = useToast();
-  const { reportFieldError, reportSaveFailure, clearSaveErrors } =
-    useValuationWorkErrors();
+  const { reportSaveFailure, clearSaveErrors } = useValuationWorkErrors();
   const [alertOverrides, setAlertOverrides] = useState<AlertOverrideRecord>(
     () => alertOverridesFromRecon(recon),
   );
@@ -63,28 +70,22 @@ export function MethodologyAlertsPanel({
   }
 
   const triggeredAlerts = gates.methodologyAlerts.filter(
-    (a) => a.triggered && isMarketMethodologyAlert(a.number),
+    (a) => a.triggered && methodologyAlertGroup(a.number) === group,
   );
 
   async function saveOverrides(next: AlertOverrideRecord) {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
-    // This write carries the whole reconciliation, so the server's required
-    // rationale blocks it from here too — point at that field instead of
-    // telling the appraiser to go find it.
-    if (!(recon?.methodsRationale ?? "").trim()) {
-      reportFieldError(
-        "methodsRationale",
-        "مبرر استخدام طرق التقييم غير محفوظ — اكتبه واحفظ الرأي النهائي، ثم أعد حفظ معالجة التنبيه.",
-      );
-      return;
-    }
+    // Problem 20: the dispositions save on their own (only this screen's alerts) — never through the
+    // full reconciliation, which would wait on «مبرر استخدام طرق التقييم».
     onSavingChange(true);
-    const draft = draftFromRecon(recon);
-    const res = await saveValuationReconciliation(
+    const res = await saveValuationAlertOverrides(
       config,
       valuationRequestId,
-      reconciliationSaveRequest({ ...draft, alertOverrides: next }),
+      alertOverridesForCodes(
+        next,
+        triggeredAlerts.map((a) => a.code),
+      ),
     );
     onSavingChange(false);
     if (!res.ok) {
@@ -118,14 +119,11 @@ export function MethodologyAlertsPanel({
           <span className="block text-[13.5px] font-extrabold text-heading">
             التنبيهات المنهجية
           </span>
-          <p className="mt-0.5 text-[11px] leading-5 text-text-3">
-            تنبيهات أسلوب السوق (المقارنات والأوزان). تُحفَظ
-            المعالجات من هذا التبويب.
-          </p>
+          <p className="mt-0.5 text-[11px] leading-5 text-text-3">{GROUP_COPY[group].note}</p>
         </div>
         {triggeredAlerts.length === 0 ? (
           <div className="text-[12.5px] font-bold text-[#2f7a4d]">
-            ✓ لا تنبيهات منهجية مفعّلة على أسلوب السوق
+            {GROUP_COPY[group].none}
           </div>
         ) : (
           triggeredAlerts.map((a) => (

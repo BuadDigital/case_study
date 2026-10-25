@@ -4,6 +4,7 @@ import {
   getPartyTaskSubmission,
   getValuationApproachSettings,
   getValuationCostApproach,
+  getValuationIncomeApproach,
   getValuationLists,
   getValuationReconciliation,
   listClients,
@@ -14,14 +15,18 @@ import {
   type ValuationApproachSettingsDto,
   type ValuationComparableSelectionListDto,
   type ValuationCostApproachDto,
+  type ValuationIncomeApproachDto,
   type ValuationReconciliationDto,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
 import { fetchInspectorWorkspace } from "../../lib/case-study-bridge";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
-import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
-import type { ValuationReportSurveyBounds } from "../../lib/evaluator/valuation-report-live-fill";
+import {
+  resolveReportValuationKeys,
+  type ValuationReportSurveyBounds,
+} from "../../lib/evaluator/valuation-report-live-fill";
 import {
   collectInspectorPhotoAttachmentIds,
   loadValuationReportPrintAttachments,
@@ -101,6 +106,8 @@ async function loadValuationApproaches(
   market: ValuationComparableSelectionListDto | null;
   landMarket: ValuationComparableSelectionListDto | null;
   cost: ValuationCostApproachDto | null;
+  /** D17 — income approach (direct capitalisation); null when unreadable or never loaded. */
+  income: ValuationIncomeApproachDto | null;
   recon: ValuationReconciliationDto | null;
   settings: ValuationApproachSettingsDto | null;
 }> {
@@ -111,6 +118,7 @@ async function loadValuationApproaches(
       market: null,
       landMarket: null,
       cost: null,
+      income: null,
       recon: null,
       settings: null,
     };
@@ -127,14 +135,16 @@ async function loadValuationApproaches(
       market: null,
       landMarket: null,
       cost: null,
+      income: null,
       recon: null,
       settings: null,
     };
   }
-  const [sel, landSel, costRes, reconRes, settingsRes] = await Promise.all([
+  const [sel, landSel, costRes, incomeRes, reconRes, settingsRes] = await Promise.all([
     listValuationComparableSelections(config, open.data.id, "market"),
     listValuationComparableSelections(config, open.data.id, "land_within_cost"),
     getValuationCostApproach(config, open.data.id),
+    getValuationIncomeApproach(config, open.data.id),
     getValuationReconciliation(config, open.data.id),
     getValuationApproachSettings(config, open.data.id),
   ]);
@@ -143,6 +153,7 @@ async function loadValuationApproaches(
     market: sel.ok ? sel.data : null,
     landMarket: landSel.ok ? landSel.data : null,
     cost: costRes.ok ? costRes.data : null,
+    income: incomeRes.ok ? incomeRes.data : null,
     recon: reconRes.ok ? reconRes.data : null,
     settings: settingsRes.ok ? settingsRes.data : null,
   };
@@ -201,6 +212,54 @@ export function effectiveValuationDate(input: {
     return start;
   }
   return (input.inspector?.inspectionDate ?? "").trim();
+}
+
+type ValuationListRow = { key: string; name: string; isEnabled: boolean; cells: string[] };
+
+/** D11 fields of the approach settings (read structurally — older servers omit them). */
+type OwnershipInterestFields = {
+  ownershipInterestKey?: string | null;
+  ownershipInterestLabelAr?: string | null;
+  remainingLeaseYears?: number | null;
+};
+
+/**
+ * What §2 / §7 print from the appraiser's saved choices (D1, D9, D11): purpose (approach
+ * settings) and basis / premise (reconciliation) with their org-list labels, the retrospective
+ * date and rationale, and the interest valued when it is not the deed's full ownership.
+ */
+export function reportValuationChoices(input: {
+  record: Pick<PoIntakeRecord, "assignmentType" | "reportUserClientIds" | "clientId"> | null | undefined;
+  recon: ValuationReconciliationDto | null;
+  settings: ValuationApproachSettingsDto | null;
+  lists: Record<string, ValuationListRow[]> | null | undefined;
+}) {
+  const s = input.settings;
+  const purposeKey = s?.valuationPurposeKey?.trim() || null;
+  const keys = resolveReportValuationKeys({ record: input.record, recon: input.recon, purposeKey });
+  const find = (kind: string, key: string) =>
+    (input.lists?.[kind] ?? []).find((it) => it.isEnabled && it.key === key);
+  const basis = find("valueBases", keys.valueBasisKey);
+  const retrospective =
+    s?.valuationDateMode === "retrospective"
+      ? { date: (s.retrospectiveDate ?? "").trim(), rationale: (s.retrospectiveRationale ?? "").trim() }
+      : null;
+  const interest = (s ?? {}) as OwnershipInterestFields;
+  return {
+    purposeKey,
+    purposeLabel: find("purposes", keys.purposeKey)?.name || s?.valuationPurposeLabelAr || undefined,
+    basisLabel: basis?.name,
+    premiseLabel: find("premises", keys.premiseKey)?.name,
+    basisDefinition: (basis?.cells[0] ?? "").trim(),
+    retrospective,
+    ownership: interest.ownershipInterestKey
+      ? {
+          key: interest.ownershipInterestKey,
+          labelAr: interest.ownershipInterestLabelAr ?? null,
+          remainingLeaseYears: interest.remainingLeaseYears ?? null,
+        }
+      : null,
+  };
 }
 
 /** Valuation report output-tab data bundle — one cacheable query:

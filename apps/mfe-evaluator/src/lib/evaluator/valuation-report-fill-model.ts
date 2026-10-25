@@ -9,6 +9,7 @@ import {
   VALUATION_PURPOSE_OPTIONS,
   basisOfValueKeyForAssignment,
   basisOfValueLabelArForAssignment,
+  defaultPremiseKeyForBasis,
   valuationPurposeKeyForAssignment,
   valuationPurposeLabelArForAssignment,
   valuePremiseKeyForAssignment,
@@ -43,8 +44,10 @@ import {
   transactionDeedLabelOf,
   type ValuationComparableSelectionListDto,
   type ValuationCostApproachDto,
+  type ValuationIncomeApproachDto,
   type ValuationReconciliationDto,
 } from "@platform/api-client";
+import { buildIncomeSheetRows, type IncomeSheetRow } from "./valuation-report-income";
 import {
   areasFromInventory,
   adoptedComparables,
@@ -57,7 +60,6 @@ import {
   buildReconSheetRows,
   composeTransactionCell,
   costLinePresent,
-  costRowCells,
   dashSheet,
   esgCell,
   finishingLevelLabel,
@@ -105,10 +107,15 @@ import { parseEvaluatorAmount } from "./value-estimation";
 const OWNERSHIP_LABELS: Record<string, string> = {
   absolute: "ملكية مطلقة",
   shared: "مشاع",
+  // D11 — the interest valued when it is not the deed's full ownership (approach settings).
+  usufruct: "حق منفعة",
+  leased_land: "أرض مستأجرة",
 };
 
 /** Template sample numbers wiped before live data is written. */
 export const SAMPLE_SECS = new Set(["10", "11", "13", "14", "15", "17", "19", "20", "21", "22", "23", "24", "25"]);
+
+const LAND_VALUE_BEFORE_ROUNDING = "قيمة الأرض قبل التقريب";
 
 const MARKET_BASIS_DEFINITION =
   "القيمة السوقية هي المبلغ المقدَّر الذي ينبغي أن يُتبادل به أصل أو التزام في تاريخ التقييم بين مشترٍ راغب وبائع راغب في معاملة تجارية بحتة بعد تسويق مناسب، بحيث يتصرف كل طرف عن دراية وبحكمة ودون إجبار.";
@@ -142,6 +149,32 @@ export function assignmentValuationFromPo(
   };
 }
 
+/**
+ * D1 — purpose, basis and premise the report prints: the appraiser's saved choices
+ * (reconciliation basis/premise, approach-settings purpose); the work order's defaults only
+ * when nothing was chosen.
+ */
+export function resolveReportValuationKeys(input: {
+  record?: Parameters<typeof assignmentValuationFromPo>[0];
+  recon?: Pick<ValuationReconciliationDto, "basisOfValueKey" | "valuePremiseKey"> | null;
+  /** The appraiser's saved valuation purpose (approach settings), else the report choices. */
+  purposeKey?: string | null;
+}): { purposeKey: string; valueBasisKey: string; premiseKey: string } {
+  const po = assignmentValuationFromPo(input.record);
+  const savedBasis = (input.recon?.basisOfValueKey ?? "").trim().toLowerCase();
+  const valueBasisKey = savedBasis || po.valueBasisKey;
+  const savedPremise = (input.recon?.valuePremiseKey ?? "").trim().toLowerCase();
+  const premiseKey =
+    savedPremise ||
+    (valueBasisKey === po.valueBasisKey ? po.premiseKey : "") ||
+    (valueBasisKey ? defaultPremiseKeyForBasis(valueBasisKey) : "");
+  return {
+    purposeKey: (input.purposeKey ?? "").trim() || po.purposeKey,
+    valueBasisKey,
+    premiseKey,
+  };
+}
+
 function labelForPurposeKey(key: string): string {
   return VALUATION_PURPOSE_OPTIONS.find((o) => o.value === key)?.label ?? "";
 }
@@ -158,6 +191,24 @@ function ownershipTypeDisplay(value: string | null | undefined): string {
   const t = (value ?? "").trim();
   if (!t) return "";
   return OWNERSHIP_LABELS[t] ?? t;
+}
+
+/**
+ * «نوع الملكية»: what the appraiser recorded for this valuation (D11 — e.g. a building on
+ * leased land, with the remaining lease years), else the deed's ownership (owner count).
+ */
+function ownershipCell(
+  recorded: { key?: string | null; labelAr?: string | null; remainingLeaseYears?: number | null } | null | undefined,
+  deedOwnership: string | null | undefined,
+): string {
+  const key = (recorded?.key ?? "").trim().toLowerCase();
+  // «ملكية تامة» (freehold) prints the deed's own ownership type (مطلقة / مشاع).
+  if (!key || key === "freehold") return ownershipTypeDisplay(deedOwnership);
+  const label = (recorded?.labelAr ?? "").trim() || ownershipTypeDisplay(key);
+  const years = recorded?.remainingLeaseYears;
+  return years != null && Number.isFinite(years) && years > 0
+    ? `${label} — المدة المتبقية ${formatAmountNumberDisplay(years)} ${years >= 3 && years <= 10 ? "سنوات" : "سنة"}`
+    : label;
 }
 
 function pickLength(
@@ -308,21 +359,25 @@ function contractorMethodLabel(
     : `طريقة المقاول: قيمة الأرض فضاءً بطريقة المقارنة + ${building}`;
 }
 
-/** Market / cost used: the saved approach settings when known, else the report's method choices. */
+/** Market / cost / income used: the saved approach settings when known, else the report's method choices. */
 function approachesUsed(
   choices: EvaluatorReportChoices,
-  input: { marketApproachEnabled?: boolean; costApproachEnabled?: boolean },
-): { market: boolean; cost: boolean } {
+  input: {
+    marketApproachEnabled?: boolean;
+    costApproachEnabled?: boolean;
+    incomeApproachEnabled?: boolean;
+  },
+): { market: boolean; cost: boolean; income: boolean } {
   const chosen = (key: string | undefined) => Boolean(key && key !== "__unused__");
   return {
     market: input.marketApproachEnabled ?? chosen(choices.marketMethodKey),
     cost: input.costApproachEnabled ?? chosen(choices.costMethodKey),
+    income: input.incomeApproachEnabled ?? chosen(choices.incomeMethodKey),
   };
 }
 
 function methodsUsed(
-  choices: EvaluatorReportChoices,
-  used: { market: boolean; cost: boolean },
+  used: { market: boolean; cost: boolean; income: boolean },
   documents: DocumentIndicator[] = [],
 ): string {
   const bits: string[] = [];
@@ -333,10 +388,7 @@ function methodsUsed(
   if (used.cost || fromDocument("cost")) {
     bits.push("أسلوب التكلفة");
   }
-  if (
-    (choices.incomeMethodKey && choices.incomeMethodKey !== "__unused__") ||
-    fromDocument("income")
-  ) {
+  if (used.income || fromDocument("income")) {
     bits.push("أسلوب الدخل");
   }
   return bits.join(" و ");
@@ -387,6 +439,14 @@ export type ValuationReportSurveyBounds = {
   natureWestBoundaryLengthM?: string;
 };
 
+/** One §25 line; the liquidation row also carries its rationale (4-cell row). */
+export type FinalValueRow = {
+  key: string;
+  value: string;
+  total?: boolean;
+  rationale?: string;
+};
+
 export type ValuationReportLiveFill = {
   cells: Record<string, string>;
   /** Saved approach-settings decision; never inferred from stale cost data. */
@@ -400,8 +460,22 @@ export type ValuationReportLiveFill = {
    * §24 keeps only the justification, the final value is that approach's indicator.
    */
   approachCount: number;
+  /** D17 — income approach enabled: its section prints before §24 and its row joins the weights. */
+  incomeApproachEnabled: boolean;
+  /** D17 — the income section rows (inputs, EGI, NOI, cap rate, value, rationale). */
+  incomeRows: IncomeSheetRow[];
   scopeBasis: string;
   scopeClient: string;
+  /**
+   * §2 extra statements under the scope table: the retrospective-date rationale (D9) and what
+   * a building-only valuation covers.
+   */
+  scopeRows: Array<{ label: string; value: string }>;
+  /**
+   * §23 «العمر والإهلاك» notes under the ages: the appraiser's age rationales and, for a
+   * building on leased land, that the life is capped at the remaining lease term (D11).
+   */
+  ageNotes: Array<{ label: string; value: string }>;
   basisDefinition: string;
   methodRow: [string, string, string];
   boundaries: Array<{
@@ -437,6 +511,14 @@ export type ValuationReportLiveFill = {
   indirectTotalLabel: string;
   reconRows: Array<{ key: string; values: string[] }>;
   finalDisplay: string;
+  /**
+   * §25 lines a reader can reproduce: the unrounded weighted value of §24, the liquidation
+   * discount and the value after it (liquidation basis with a discount only), each «مستند ذو
+   * قيمة» addition, then the one rounding step ending in the final value.
+   */
+  finalValueRows: FinalValueRow[];
+  /** The exact final value behind finalDisplay — stamped on the banner so approval can check it. */
+  finalValue: number | null;
   finalWords: string;
   /**
    * §25 «مستند ذو قيمة» additions: the property value after the liquidation discount
@@ -516,6 +598,10 @@ export function buildValuationReportLiveFill(input: {
   costApproachEnabled?: boolean;
   /** Saved market-approach decision; undefined = legacy (follow the report's method choices). */
   marketApproachEnabled?: boolean;
+  /** D17 — saved income-approach decision; undefined = legacy (follow the report's method choices). */
+  incomeApproachEnabled?: boolean;
+  /** D17 — the income approach (direct capitalisation) as the server computed it. */
+  income?: ValuationIncomeApproachDto | null;
   costScopeKey?: string | null;
   /** "replacement" (default/إحلال) | "reproduction" (إعادة الإنتاج) — the appraiser's choice on البيانات الأساسية. */
   costBasisKey?: string | null;
@@ -539,9 +625,16 @@ export function buildValuationReportLiveFill(input: {
   cost?: ValuationCostApproachDto | null;
   recon?: ValuationReconciliationDto | null;
   clients?: Pick<ClientDto, "id" | "nameAr">[];
+  /** The appraiser's saved valuation purpose key (approach settings) — D1. */
+  purposeKey?: string | null;
+  /** Labels from the org lists for the resolved keys (resolveReportValuationKeys). */
   purposeLabel?: string | null;
   basisLabel?: string | null;
   premiseLabel?: string | null;
+  /** D9 — retrospective valuation: its date (yyyy-MM-dd) and the appraiser's rationale. */
+  retrospective?: { date: string; rationale: string } | null;
+  /** D11 — ownership the appraiser recorded (key or Arabic label, remaining lease years). */
+  ownership?: { key?: string | null; labelAr?: string | null; remainingLeaseYears?: number | null } | null;
   basisDefinition?: string | null;
   certifiedName?: string | null;
   certifiedLicense?: string | null;
@@ -602,7 +695,13 @@ export function buildValuationReportLiveFill(input: {
     linkedDeeds.length > 1
       ? linkedDeeds.map((d) => transactionDeedDateOf(d) || "—").join(" ، ")
       : "";
-  const keys = assignmentValuationFromPo(record);
+  const choices = draft.reportChoices ?? emptyReportChoices();
+  const keys = resolveReportValuationKeys({
+    record,
+    recon: input.recon,
+    // Not reportChoices.purposeKey: that is a seed from the assignment and goes stale.
+    purposeKey: input.purposeKey,
+  });
   const sub = subClientIdFromReportUsers(record?.reportUserClientIds);
   const purpose =
     (input.purposeLabel ?? "").trim() ||
@@ -613,15 +712,16 @@ export function buildValuationReportLiveFill(input: {
   const basis =
     (input.basisLabel ?? "").trim() ||
     labelForBasisKey(keys.valueBasisKey) ||
+    (input.recon?.basisOfValueLabelAr ?? "").trim() ||
     (record
       ? basisOfValueLabelArForAssignment(record.assignmentType, sub)
       : "");
   const premise =
     (input.premiseLabel ?? "").trim() ||
-    labelForPremiseKey(keys.premiseKey);
+    labelForPremiseKey(keys.premiseKey) ||
+    (input.recon?.valuePremiseLabelAr ?? "").trim();
   const client = clientNameFromRecord(record, input.clients ?? []);
   const users = formatValuationReportUsers(record, input.clients ?? []);
-  const choices = draft.reportChoices ?? emptyReportChoices();
   const appraisal = slashReportDate(
     input.effectiveValuationDate ||
       draft.appraisalDate ||
@@ -682,13 +782,11 @@ export function buildValuationReportLiveFill(input: {
         inspector?.featureValues?.propertyUsage,
     ),
     "أساليب التقييم المستخدمة": dash(
-      methodsUsed(choices, approachesUsed(choices, input), documentIndicators(input.recon)),
+      methodsUsed(approachesUsed(choices, input), documentIndicators(input.recon)),
     ),
     "حالة العقار": dash(inspector?.featureValues?.propertyCondition),
     "حالة الصك": dash(property?.deedStatus),
-    "نوع الملكية": dash(
-      ownershipTypeDisplay(property?.ownershipType),
-    ),
+    "نوع الملكية": dash(ownershipCell(input.ownership, property?.ownershipType)),
     "هل يوجد منقولات": dash(inspector?.featureValues?.movables),
     "وصف المنقولات": inspector?.featureValues?.movables === "نعم"
         ? dash(inspector?.featureValues?.movablesDescription)
@@ -737,7 +835,7 @@ export function buildValuationReportLiveFill(input: {
     "القيمة المرجّحة": dash(price ? formatAmountNumberDisplay(price) : ""),
     "قيمة العقار": dash(price ? formatAmountNumberDisplay(price) : ""),
     "نسبة خصم التصفية المنظمة": "—",
-    "مبرر معامل التصفية": "—",
+    "مبرر خصم التصفية": "—",
     "وصف العقار": dash(reportPropertyDescription(input.specialistComponentsText, inspector)),
   };
 
@@ -770,11 +868,9 @@ export function buildValuationReportLiveFill(input: {
         : "";
   const reconFinal = input.recon?.finalOpinionValue;
   const reconLand = input.cost?.landValueFromMarket;
-  const reconBeforeLiq = input.recon?.finalOpinionBeforeLiquidation;
-  const reconWeighted =
-    reconBeforeLiq != null && reconBeforeLiq > 0
-      ? reconBeforeLiq
-      : (input.recon?.weightedValue ?? reconFinal);
+  // §25 starts from the unrounded weighted value of §24 — the reader multiplies it out from
+  // there; the one rounding step is printed on its own line (finalValueRows).
+  const reconWeighted = input.recon?.weightedValue ?? reconFinal;
   const landDisplay =
     reconLand != null && reconLand > 0
       ? formatMoneyCell(reconLand)
@@ -796,20 +892,15 @@ export function buildValuationReportLiveFill(input: {
   cells["قيمة الأرض"] = dash(landDisplay);
   cells["القيمة المرجّحة"] = dash(weightedDisplay);
   cells["قيمة العقار"] = dash(priceDisplay);
-  const liqOn =
-    isLiquidation || input.recon?.liquidationDiscountApplied === true;
+  // D1 — the liquidation discount prints only when the basis is liquidation AND a discount
+  // above zero is set; a discount left over from before switching the basis never prints.
+  const liquidationPct = input.recon
+    ? Number(input.recon.liquidationDiscountPct) || 0
+    : parseEvaluatorAmount(draft.forcedSaleDiscountPct.replace(/%/g, "")) ?? 0;
+  const liqOn = isLiquidation && liquidationPct > 0;
   if (liqOn) {
-    const fromRecon =
-      input.recon?.liquidationDiscountPct != null &&
-      input.recon.liquidationDiscountPct > 0
-        ? String(input.recon.liquidationDiscountPct).replace(/%/g, "")
-        : "";
-    const fromDraft = draft.forcedSaleDiscountPct.replace(/%/g, "").trim();
-    const pct = fromRecon || fromDraft;
-    cells["نسبة خصم التصفية المنظمة"] = dash(pct ? `${pct}٪` : "");
-    cells["مبرر معامل التصفية"] = dash(
-      input.recon?.liquidationDiscountRationale,
-    );
+    cells["نسبة خصم التصفية المنظمة"] = `${formatAmountNumberDisplay(liquidationPct)}٪`;
+    cells["مبرر خصم التصفية"] = dash(input.recon?.liquidationDiscountRationale);
   }
 
   const marketW = reconWeight(input.recon, ["market", "comparison"]);
@@ -922,10 +1013,20 @@ export function buildValuationReportLiveFill(input: {
     (input.recon?.methodsRationale ?? "").trim() ||
     choices.methodsRationale.trim();
   cells["مبرر استخدام طرق التقييم"] = dash(rationale);
-  cells["دخل سنوي"] = dash(choices.incomeAnnual);
-  cells["نسبة الشغور"] = dash(choices.incomeVacancyPct);
-  cells["نسبة التشغيل"] = dash(choices.incomeOpexPct);
-  cells["معدل الرسملة"] = dash(choices.incomeCapRatePct);
+  // D17 — the saved income approach wins over the legacy report-choice fields.
+  const incomeSaved = input.income?.isSaved ? input.income : null;
+  cells["دخل سنوي"] = dash(
+    incomeSaved ? formatMoneyCell(incomeSaved.grossPotentialIncome) : choices.incomeAnnual,
+  );
+  cells["نسبة الشغور"] = dash(
+    incomeSaved ? formatSheetPct(incomeSaved.vacancyCollectionLossPct) : choices.incomeVacancyPct,
+  );
+  cells["نسبة التشغيل"] = dash(
+    incomeSaved ? formatSheetPct(incomeSaved.operatingExpensesPctOfEgi) : choices.incomeOpexPct,
+  );
+  cells["معدل الرسملة"] = dash(
+    incomeSaved ? formatSheetPct(incomeSaved.capitalisationRatePct) : choices.incomeCapRatePct,
+  );
 
   const profit = input.cost?.indirectItems?.find((i) =>
     (i.itemKey || i.labelAr || "").toLowerCase().includes("profit"),
@@ -996,12 +1097,9 @@ export function buildValuationReportLiveFill(input: {
   // Always write the approving appraiser identity — "—" when empty so sample template data is not printed.
   cells["اسم المقيم المعتمد"] = dash(input.certifiedName ?? "");
   cells["رقم ترخيص مزاولة المهنة"] = dash(input.certifiedLicense ?? "");
-  const membershipNo = (
-    input.certifiedMembershipNumber ||
-    input.certifiedLicense ||
-    ""
-  ).trim();
-  cells["رقم العضوية"] = membershipNo || "—";
+  // The membership number is the valuer's own (الهيئة السعودية للمقيمين المعتمدين) — never the
+  // firm's practice licence number in its place.
+  cells["رقم العضوية"] = dash(input.certifiedMembershipNumber);
   cells["تاريخ الإصدار"] = dash(
     displayLicenseDate(input.certifiedIssuedAt),
   );
@@ -1016,40 +1114,6 @@ export function buildValuationReportLiveFill(input: {
   if (role) cells["صفته"] = role;
   cells["تاريخ انتهاء العضوية"] = dash(input.certifiedMembershipExpires ?? "");
 
-  const groundCost = costRowCells(
-    input.cost,
-    ["ground_floor"],
-    ["أرضي"],
-    areas.ground,
-  );
-  const firstCost = costRowCells(
-    input.cost,
-    ["first_floor"],
-    ["الأول"],
-    areas.first,
-  );
-  const annexCost = costRowCells(
-    input.cost,
-    ["upper_annex"],
-    ["علوي"],
-    areas.annex,
-  );
-  const annexGroundCost = costRowCells(
-    input.cost,
-    ["lower_annex"],
-    ["أرضي", "سفلي"],
-    areas.annexGround,
-  );
-  const basementCost = costRowCells(
-    input.cost,
-    ["basement"],
-    ["قبو"],
-    areas.basement,
-  );
-  const fenceCost = costRowCells(input.cost, ["fence"], ["سور"], "");
-  const poolCost = costRowCells(input.cost, ["pool"], ["مسبح"], "");
-  const parkCost = costRowCells(input.cost, ["parking"], ["مواقف"], "");
-  const otherCost = costRowCells(input.cost, ["custom"], ["أخرى"], "");
 
   const hasFence =
     existsFromYesNo(inspector?.featureValues?.hasFence) ||
@@ -1145,13 +1209,21 @@ export function buildValuationReportLiveFill(input: {
     costApproachEnabled: input.costApproachEnabled === true,
     costBuildingOnly: input.costScopeKey === "building_only",
     marketApproachEnabled: input.marketApproachEnabled !== false,
+    incomeApproachEnabled: used.income,
+    incomeRows: buildIncomeSheetRows(input.income),
     approachCount:
       input.marketApproachEnabled === undefined && input.costApproachEnabled === undefined
         ? // No saved settings passed (legacy callers): count the reconciled approaches.
           (input.recon?.methods ?? []).filter((m) => m.isIncluded).length || 2
-        : (used.market ? 1 : 0) + (used.cost ? 1 : 0) + docIndicators.length,
+        : (used.market ? 1 : 0) + (used.cost ? 1 : 0) + (used.income ? 1 : 0) + docIndicators.length,
     scopeBasis: basis,
     scopeClient: client,
+    ageNotes: isLand ? [] : buildAgeNotes(input.cost),
+    scopeRows: buildScopeRows({
+      retrospective: input.retrospective,
+      buildingOnly: input.costScopeKey === "building_only",
+      ownership: cells["نوع الملكية"] ?? "",
+    }),
     basisDefinition: resolveBasisDefinition(
       keys.valueBasisKey,
       isLiquidation,
@@ -1169,7 +1241,7 @@ export function buildValuationReportLiveFill(input: {
         "cost",
       ),
       approachMethodCell(
-        choices.incomeMethodKey && choices.incomeMethodKey !== "__unused__" ? "رسملة الدخل" : null,
+        used.income ? "الرسملة المباشرة: صافي الدخل التشغيلي ÷ معدل الرسملة" : null,
         docIndicators,
         "income",
       ),
@@ -1320,16 +1392,15 @@ export function buildValuationReportLiveFill(input: {
     }),
     landAppendixNote: cells["إشارة الملحق"] || "",
     landAdjustmentRows: landAdj.rows,
-    // The land table's output is an input to the cost formula — «قيمة الأرض», not an indicator.
-    landAdjustmentComparisonLabel: landAdj.comparisonLabel.replace(
-      "القيمة بطريقة المقارنة",
-      "قيمة الأرض",
-    ),
+    // The land table's output is an input to the cost formula — «قيمة الأرض», not an indicator;
+    // like the matrix card it is unrounded (the final value is rounded once in §25).
+    landAdjustmentComparisonLabel: LAND_VALUE_BEFORE_ROUNDING,
     landAdjustmentNotes: buildAdjustmentRationaleText(landComps),
     landComparableMapSlot,
     landComparablesMapPins: landComps.length > 0 ? landMapPins : [],
     adjustmentRows: adj.rows,
-    adjustmentComparisonLabel: adj.comparisonLabel,
+    // A land subject's comparison value is its land value — named as on the matrix card.
+    adjustmentComparisonLabel: isLand ? LAND_VALUE_BEFORE_ROUNDING : adj.comparisonLabel,
     adjustmentNotes: buildAdjustmentRationaleText(comps),
     surroundingsOther: dash(surroundings["أخرى"]),
     attachmentsOther: dash(inspector?.featureValues?.[OTHER_ATTACHMENTS_KEY]),
@@ -1343,6 +1414,20 @@ export function buildValuationReportLiveFill(input: {
         : priceN != null && priceN > 0
           ? `${formatAmountNumberDisplay(priceN)} ر.س.`
           : "—"),
+    finalValueRows: buildFinalValueRows({
+      recon: input.recon,
+      weighted: reconWeighted != null && reconWeighted > 0 ? reconWeighted : (priceN ?? null),
+      final: reconFinal != null && reconFinal > 0 ? reconFinal : (priceN ?? null),
+      liquidation: liqOn
+        ? { pct: liquidationPct, rationale: cells["مبرر خصم التصفية"] ?? "—" }
+        : null,
+    }),
+    finalValue:
+      reconFinal != null && reconFinal > 0
+        ? reconFinal
+        : priceN != null && priceN > 0
+          ? priceN
+          : null,
     finalWords:
       reconFinal != null && reconFinal > 0
         ? `فقط ${amountToArabicWords(reconFinal)} لا غير`
@@ -1495,4 +1580,111 @@ function resolveBasisDefinition(
   }
   if (listed && !listed.includes("قيمة التصفية")) return listed;
   return listed;
+}
+
+/** «لأقرب 10,000 ر.س.» for the reconciliation rounding exponent (10^n; 0 = nearest riyal). */
+function roundingUnitLabel(decimals: number | null | undefined): string {
+  const d = Math.min(Math.max(Math.trunc(Number(decimals) || 0), 0), 6);
+  return d === 0 ? "لأقرب ريال" : `لأقرب ${formatAmountNumberDisplay(10 ** d)} ر.س.`;
+}
+
+/**
+ * §25 «القيمة النهائية للعقار» — the server's pipeline (weighted → liquidation discount →
+ * + document additions → rounded once) printed step by step, so every number follows from
+ * the one above it.
+ */
+export function buildFinalValueRows(input: {
+  recon?: ValuationReconciliationDto | null;
+  /** Unrounded weighted value (§24), or the draft's price when nothing was reconciled. */
+  weighted: number | null;
+  final: number | null;
+  liquidation: { pct: number; rationale: string } | null;
+}): FinalValueRow[] {
+  const money = (n: number | null | undefined) =>
+    n != null && Number.isFinite(n) && n > 0 ? formatMoneyCell(n) : "—";
+  const rows: FinalValueRow[] = [{ key: "القيمة المرجّحة", value: money(input.weighted) }];
+  let unrounded = input.weighted;
+  if (input.liquidation) {
+    const after =
+      input.recon?.propertyValueAfterLiquidation ??
+      (input.weighted != null ? input.weighted * (1 - input.liquidation.pct / 100) : null);
+    rows.push({
+      key: "نسبة خصم التصفية المنظمة",
+      value: `${formatAmountNumberDisplay(input.liquidation.pct)}٪`,
+      rationale: input.liquidation.rationale,
+    });
+    rows.push({ key: "القيمة بعد خصم التصفية", value: money(after) });
+    unrounded = after;
+  }
+  const additions = input.recon?.additions ?? [];
+  for (const a of additions) {
+    rows.push({ key: `+ ${a.labelAr}`, value: formatMoneyCell(a.value) });
+  }
+  if (additions.length > 0 && unrounded != null) {
+    unrounded += additions.reduce((sum, a) => sum + (Number(a.value) || 0), 0);
+    rows.push({ key: "القيمة قبل التقريب", value: money(unrounded) });
+  }
+  const label = additions.length > 0 ? "القيمة الإجمالية" : "قيمة العقار";
+  const rounded =
+    input.recon != null &&
+    input.final != null &&
+    unrounded != null &&
+    Math.abs(input.final - unrounded) >= 0.005;
+  rows.push({
+    key: rounded ? `${label} بعد التقريب (${roundingUnitLabel(input.recon?.finalRoundDecimals)})` : label,
+    value: money(input.final),
+    total: true,
+  });
+  return rows;
+}
+
+/** §2 statements: D9 retrospective rationale; the building-only scope (land not valued). */
+function buildScopeRows(input: {
+  retrospective?: { date: string; rationale: string } | null;
+  buildingOnly: boolean;
+  /** «نوع الملكية» as printed — a leased-land / usufruct right is named in the scope. */
+  ownership: string;
+}): Array<{ label: string; value: string }> {
+  const rows: Array<{ label: string; value: string }> = [];
+  const retroDate = slashDateFromIso(input.retrospective?.date) || (input.retrospective?.date ?? "").trim();
+  const retroWhy = (input.retrospective?.rationale ?? "").trim();
+  if (retroDate || retroWhy) {
+    rows.push({
+      label: "مبرر التقييم بأثر رجعي",
+      value: [retroDate ? `القيمة كما في تاريخ التقييم ${retroDate}` : "", retroWhy]
+        .filter(Boolean)
+        .join(" — "),
+    });
+  }
+  if (input.buildingOnly) {
+    const ownership = /منفعة|مستأجر|حكر|إيجار/.test(input.ownership) ? ` (${input.ownership})` : "";
+    rows.push({
+      label: "نطاق التقييم",
+      value: `يقتصر التقييم على المباني والتحسينات القائمة${ownership}، ولا تشمل القيمة الأرض.`,
+    });
+  }
+  return rows;
+}
+
+/** §23 — age rationales and the D11 lease cap, as the appraiser saved them on the cost screen. */
+function buildAgeNotes(
+  cost: ValuationCostApproachDto | null | undefined,
+): Array<{ label: string; value: string }> {
+  if (!cost) return [];
+  const rows: Array<{ label: string; value: string }> = [];
+  const actual = (cost.actualAgeRationale ?? "").trim();
+  if (actual) rows.push({ label: "مبرر العمر الفعلي", value: actual });
+  const economic = (cost.economicAgeRationale ?? "").trim();
+  if (economic) rows.push({ label: "مبرر العمر الاقتصادي", value: economic });
+  const lease = cost.remainingLeaseYears;
+  if (cost.lifeCappedByLease && lease != null && lease > 0) {
+    const life = cost.effectiveLifeYears;
+    rows.push({
+      label: "تحديد العمر بمدة الإيجار",
+      value:
+        `المباني مقامة على أرض مستأجرة: حُسب الإهلاك على عمر ${formatAmountNumberDisplay(life ?? lease)} سنة ` +
+        `لأنه لا يتجاوز مدة الإيجار المتبقية (${formatAmountNumberDisplay(lease)} سنة).`,
+    });
+  }
+  return rows;
 }

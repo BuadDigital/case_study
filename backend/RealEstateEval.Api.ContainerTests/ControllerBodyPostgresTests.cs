@@ -766,11 +766,14 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var factory = Factory<ValuationMarker>("Valuation");
         using var client = factory.CreateClient();
 
+        // C1: valuation writes are the assigned appraiser's — the test user holds the property's appraisal task.
+        var propertyId = await SeedAppraisalTaskAsync("container-test-user");
+
         using var createRequest = AuthorizedPost(
             "/api/valuation-requests",
             new SaveValuationRequestRequest
             {
-                PropId = Guid.NewGuid().ToString(),
+                PropId = propertyId.ToString(),
                 Area = "جدة",
                 Type = "فيلا",
                 Appraiser = "مقيم الاختبار",
@@ -847,6 +850,50 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         var handover = await client.SendAsync(handoverRequest);
         Assert.Equal(HttpStatusCode.BadRequest, handover.StatusCode);
         Assert.Equal("application/problem+json", handover.Content.Headers.ContentType?.MediaType);
+    }
+
+    /// <summary>A work order with one property and its appraisal task assigned to <paramref name="appraiserId"/>.</summary>
+    private async Task<Guid> SeedAppraisalTaskAsync(string appraiserId)
+    {
+        var poNumber = $"PO-VAL-{Guid.NewGuid():N}"[..20];
+        var workOrderId = Guid.NewGuid();
+        var propertyId = Guid.NewGuid();
+        await using var cs = (CaseStudyDbContext)BoundedContextStreamMigrator.CreateStreamContext(
+            typeof(CaseStudyDbContext),
+            _connectionString);
+        cs.WorkOrders.Add(new RealEstateEval.CaseStudy.Domain.WorkOrder
+        {
+            Id = workOrderId,
+            PoNumber = poNumber,
+            PromulgationDate = new DateOnly(2026, 8, 1),
+            ReceivedFromEnfathAt = new DateOnly(2026, 8, 2),
+            DueDateAt = new DateOnly(2026, 9, 1),
+            CreatedAtUtc = DateTime.UtcNow,
+        });
+        var transaction = RealEstateEval.CaseStudy.Domain.Transaction.CreateDraft(
+            $"TMP-26-{Random.Shared.Next(10000, 99999)}", DateTime.UtcNow);
+        cs.Transactions.Add(transaction);
+        cs.WorkOrderProperties.Add(new RealEstateEval.CaseStudy.Domain.WorkOrderProperty
+        {
+            Id = propertyId,
+            WorkOrderId = workOrderId,
+            TransactionId = transaction.Id,
+            DeedNumber = "D-VAL-1",
+            City = "جدة",
+            PropertyType = "villa",
+            HasStructuresToValue = "yes",
+        });
+        cs.WorkflowTasks.Add(RealEstateEval.CaseStudy.Domain.WorkflowTask.Create(
+            RealEstateEval.Domain.WorkflowTaskKind.PropertyAppraisal,
+            poNumber,
+            DateTime.UtcNow,
+            title: "تقييم العقار",
+            assigneeRole: RealEstateEval.Domain.StaffRoleIds.RealEstateAppraiser,
+            assigneeName: "مقيم الاختبار",
+            propertyId: propertyId,
+            assigneeId: appraiserId));
+        await cs.SaveChangesAsync();
+        return propertyId;
     }
 
     private RealDatabaseApiFactory<TMarker> Factory<TMarker>(string serviceName)
@@ -994,6 +1041,9 @@ internal sealed class RealDatabaseApiFactory<TMarker> : WebApplicationFactory<TM
                 services.AddScoped<ICourtVisitFeeChargeService>(sp =>
                     new CourtVisitFeeChargeService(
                         sp.GetRequiredKeyedService<FinancialDbContext>(testKey)));
+                // The Case Study work-order list asks Financial which POs are billed once a work order exists.
+                services.AddScoped<IPoEnfazInvoiceLookup>(sp =>
+                    new PoEnfazInvoiceLookup(sp.GetRequiredKeyedService<FinancialDbContext>(testKey)));
             }
 
             if (_serviceName == "Reporting")

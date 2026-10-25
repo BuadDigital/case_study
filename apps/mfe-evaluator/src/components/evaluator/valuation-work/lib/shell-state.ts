@@ -18,12 +18,15 @@ export type ValuationWorkScreenId =
   | "basic"
   | "market"
   | "cost"
+  | "income"
   | "final"
   | "review";
 
 export type ValuationWorkNavAvailability = {
   market: boolean;
   cost: boolean;
+  /** D17 — «أسلوب الدخل»; absent = off (older callers report market/cost only). */
+  income?: boolean;
 };
 
 export type ValuationWorkPropertyHint = {
@@ -113,10 +116,13 @@ export function buildAutoNarrative(
 export function buildNavItems({
   marketEnabled,
   costEnabled,
+  incomeEnabled = false,
   adoptedMarketCount,
 }: {
   marketEnabled: boolean;
   costEnabled: boolean;
+  /** D17 — the income screen appears only when income is enabled in the settings. */
+  incomeEnabled?: boolean;
   adoptedMarketCount: number;
 }): ValuationWorkNavItem[] {
   return [
@@ -128,6 +134,7 @@ export function buildNavItems({
       show: marketEnabled,
     },
     { id: "cost", label: "طريقة المقاول", show: costEnabled },
+    { id: "income", label: "أسلوب الدخل", show: incomeEnabled },
     { id: "final", label: "رأي القيمة النهائي", show: true },
     { id: "review", label: "المراجعة النهائية", show: true },
   ];

@@ -9,6 +9,7 @@ import {
 import type { InternalDelegationLetter } from "./internal-delegation-letters";
 import { openInternalDelegationLetter } from "./internal-delegation-letter-html";
 import type { DelegationAgentInfo } from "./internal-delegation-letters";
+import { formatArDateTime } from "@platform/app-shared/format/date";
 
 export const OPERATIONS_TASK_TYPE_LABELS: Record<string, string> = {
   court_visit: "زيارة محكمة",
@@ -251,19 +252,19 @@ export function formatTaskDueLabel(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "—";
   try {
-    const date = new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
+    const date = formatArDateTime(d, {
       year: "numeric",
       month: "short",
       day: "numeric",
-    }).format(d);
-    const time = new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
+    });
+    const time = formatArDateTime(d, {
       hour: "2-digit",
       minute: "2-digit",
       hour12: false,
-    }).format(d);
+    });
     return `${date} · ${time}`;
   } catch {
-    return d.toLocaleString("ar-u-nu-latn");
+    return formatArDateTime(d, undefined, "ar-u-nu-latn");
   }
 }
 

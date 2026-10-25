@@ -10,6 +10,7 @@ import {
   COST_ITEM_OPTIONS,
   COST_UNIT_OPTIONS,
 } from "./lib/cost-line-math";
+import { costNumericInput } from "./lib/cost-approach-state";
 import { fmt } from "./lib/shell-utils";
 import type { CostApproachWorkflow } from "./useCostApproachWorkflow";
 
@@ -164,17 +165,19 @@ export function CostLineQtyInput({ line, comp, idBase, patch, lineError, touch }
       dir="ltr"
       inputMode="decimal"
       title={comp.isRepeated ? "عدد الأدوار المتكررة" : undefined}
+      // A missing count shows empty (not a phantom «2» the save never sent) — the alert asks for it.
+      placeholder={comp.isRepeated ? "العدد" : undefined}
       value={
         comp.isRepeated
-          ? String(line.repeatedFloorCount ?? 2)
+          ? line.repeatedFloorCount == null ? "" : String(line.repeatedFloorCount)
           : String(line.areaSqm)
       }
       onChange={(e) => {
         const raw = e.target.value;
         if (comp.isRepeated) {
+          const digits = costNumericInput(raw, true);
           patch({
-            repeatedFloorCount:
-              Number.parseInt(raw.replace(/[^\d]/g, ""), 10) || 0,
+            repeatedFloorCount: digits ? Number.parseInt(digits, 10) : null,
           });
           return;
         }
@@ -201,7 +204,7 @@ export function CostLineBuildRatioInput({ line, idBase, patch, lineError, touch 
       value={line.buildRatioPct == null ? "" : String(line.buildRatioPct)}
       placeholder="100"
       onChange={(e) => {
-        const raw = e.target.value.replace(/[^\d.]/g, "");
+        const raw = costNumericInput(e.target.value);
         patch({ buildRatioPct: raw ? Number(raw) : null });
       }}
       className={cn(

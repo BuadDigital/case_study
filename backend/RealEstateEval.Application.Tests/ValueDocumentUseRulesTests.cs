@@ -72,6 +72,22 @@ public class ValueDocumentUseRulesTests
     }
 
     [Fact]
+    public void An_absurd_value_is_a_field_error_not_a_failed_save()
+    {
+        // r9b: an addition of 1e28 reached the numeric(18,2) column and answered 500.
+        var errors = ValueDocumentUseRules.Validate(
+            [
+                new(DocA, "addition", null, null, 10_000_000_000_000_000_000_000_000_000m),
+                new(DocB, "addition", null, null, ValueDocumentUseRules.MaxValueSar),
+            ],
+            [],
+            OnProperty);
+
+        Assert.Contains("uses[0].value", errors.Keys);
+        Assert.DoesNotContain("uses[1].value", errors.Keys);
+    }
+
+    [Fact]
     public void Additions_follow_the_discount_and_the_total_is_rounded_once()
     {
         // 1,234,567 × (1 − 20%) = 987,653.6 unrounded; + 12,345.4 = 999,999 → nearest 1,000 = 1,000,000.

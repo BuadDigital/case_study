@@ -115,48 +115,42 @@ export function fillMethodRow(sec: Element, methods: [string, string, string]) {
 }
 
 /**
- * §25 with «مستند ذو قيمة» additions: «قيمة العقار» becomes the value after the liquidation
- * discount (unrounded), each added document follows on its own line, then «القيمة الإجمالية»;
- * the banner shows that total, rounded once, and its words.
+ * §25 rebuilt from `finalValueRows`: the unrounded weighted value, the liquidation discount
+ * and the value after it (only when it applies), each «مستند ذو قيمة» addition, then the
+ * rounding step — every number follows from the one above it. The banner shows the last row.
  */
-export function fillValueAdditions(sec: Element, fill: ValuationReportLiveFill) {
-  if (fill.valueAdditions.length === 0) return;
-  const doc = sec.ownerDocument;
-  const propertyRow = [...sec.querySelectorAll("tr")].find(
-    (tr) => normalizeSpaces(tr.querySelector("td.k")?.textContent ?? "") === "قيمة العقار",
-  );
-  if (!propertyRow) return;
-  const propertyLabel = propertyRow.querySelector("td.k");
-  const propertyValue = propertyLabel?.nextElementSibling;
-  if (propertyLabel) propertyLabel.textContent = "قيمة العقار بعد خصم التصفية";
-  if (propertyValue) propertyValue.textContent = fill.propertyValueAfterLiquidation || "—";
-
-  const makeRow = (label: string, value: string, total = false) => {
-    const tr = doc.createElement("tr");
-    if (total) tr.className = "total";
-    const k = doc.createElement("td");
-    k.className = "k";
-    k.textContent = label;
-    const v = doc.createElement("td");
-    v.className = "v num";
-    v.setAttribute("colspan", "3");
-    v.textContent = value;
-    tr.append(k, v);
-    return tr;
-  };
-  let anchor: Element = propertyRow;
-  for (const a of fill.valueAdditions) {
-    const row = makeRow(`+ ${a.label}`, a.value);
-    anchor.after(row);
-    anchor = row;
+export function fillFinalValueTable(sec: Element, fill: ValuationReportLiveFill) {
+  const table = sec.querySelector("table");
+  if (table && fill.finalValueRows.length > 0) {
+    const doc = sec.ownerDocument;
+    const td = (className: string, text: string, span = 1) => {
+      const el = doc.createElement("td");
+      el.className = className;
+      if (span > 1) el.setAttribute("colspan", String(span));
+      el.textContent = text;
+      return el;
+    };
+    const rows = fill.finalValueRows.map((row) => {
+      const tr = doc.createElement("tr");
+      if (row.total) tr.className = "total";
+      if (row.rationale != null) {
+        const pct = td("v num", row.value);
+        pct.setAttribute("style", "width:7%;white-space:nowrap");
+        tr.append(td("k", row.key), pct, td("k", "مبرر خصم التصفية"), td("v", row.rationale || "—"));
+      } else {
+        tr.append(td("k", row.key), td("v num", row.value, 3));
+      }
+      return tr;
+    });
+    table.replaceChildren(...rows);
   }
-  anchor.after(makeRow("القيمة الإجمالية", fill.finalDisplay.replace(/\s*ر\.س\.?$/, ""), true));
-
-  const banner = [...sec.querySelectorAll("div")].find((d) =>
-    (d.getAttribute("style") ?? "").includes("#102b4e"),
-  );
-  const title = banner?.children[0]?.children[0];
-  if (title) title.textContent = "القيمة النهائية الإجمالية";
+  if (fill.valueAdditions.length > 0) {
+    const banner = [...sec.querySelectorAll("div")].find((d) =>
+      (d.getAttribute("style") ?? "").includes("#102b4e"),
+    );
+    const title = banner?.children[0]?.children[0];
+    if (title) title.textContent = "القيمة النهائية الإجمالية";
+  }
 }
 
 function normalizeSpaces(text: string): string {
@@ -168,6 +162,9 @@ export function fillFinalBanner(sec: Element, fill: ValuationReportLiveFill) {
     (d.getAttribute("style") ?? "").includes("#102b4e"),
   );
   if (!banner) return;
+  // The server compares this with its own final value before the copy freezes as the official report.
+  if (fill.finalValue != null) banner.setAttribute("data-final-value", String(fill.finalValue));
+  else banner.removeAttribute("data-final-value");
   const kids = [...banner.children];
   const row = kids[0];
   if (row) {
@@ -388,7 +385,8 @@ export function fillKeyedRows(
       if (match === "adjustment" && key === "القيمة بطريقة المقارنة") {
         return name.includes("القيمة بطريقة المقارنة");
       }
-      return false;
+      // «تسوية ظروف السوق (عامل الوقت)» fills an older template's «تسوية ظروف السوق» row.
+      return match === "adjustment" && key.replace(/\s*\([^)]*\)$/, "") === name;
     });
     if (!row) return;
     row.values.forEach((value, i) => {
@@ -415,9 +413,14 @@ function rebuildAdjustmentTable(
     const label = normLabel(tr.querySelector("td")?.textContent ?? "");
     if (label && tr.className) templateClass.set(label, tr.className);
   }
-  const classFor = (key: string) =>
-    templateClass.get(normLabel(key)) ??
-    (normLabel(key).startsWith(normLabel("القيمة بطريقة المقارنة")) ? "total" : "");
+  const classFor = (key: string) => {
+    const label = normLabel(key);
+    const fromTemplate = templateClass.get(label);
+    if (fromTemplate) return fromTemplate;
+    if (label.startsWith(normLabel("القيمة بطريقة المقارنة"))) return "total";
+    // Subtotal rows renamed with the sequential chain (e.g. «إجمالي التسويات التسلسلية ٪»).
+    return label.startsWith("إجمالي") || label.startsWith("سعر البيع بعد") ? "sub" : "";
+  };
 
   const cell = (tag: "td" | "th", text: string, className: string, span = 1) => {
     const el = doc.createElement(tag);
@@ -562,6 +565,13 @@ export function fillAdjustmentSection(
   } else {
     if (colCount > 0) syncAdjustmentColumns(sec, colCount);
     fillKeyedRows(sec, fill.adjustmentRows, "adjustment");
+    // The time gap is part of «ظروف السوق» — an older template's separate time row stays out.
+    const timeRow = "تسوية عامل الوقت";
+    if (!fill.adjustmentRows.some((r) => normLabel(r.key) === timeRow)) {
+      for (const tr of [...sec.querySelectorAll("tr")]) {
+        if (normLabel(tr.querySelector("td")?.textContent ?? "") === timeRow) tr.remove();
+      }
+    }
   }
   sec.querySelectorAll("tr").forEach((tr) => {
     const first = tr.querySelector("td");

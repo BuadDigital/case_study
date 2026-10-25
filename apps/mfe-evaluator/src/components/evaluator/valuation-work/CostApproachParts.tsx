@@ -15,7 +15,7 @@ import {
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import { COST_FIELD_ERROR_KEYS } from "./lib/valuation-work-error-targets";
 import { INDIRECT_COST_ITEMS } from "./lib/cost-line-math";
-import { costNum } from "./lib/cost-approach-state";
+import { costNum, costNumericInput } from "./lib/cost-approach-state";
 import type {
   CostApproachAlert,
   CostApproachDerived,
@@ -82,13 +82,10 @@ export function CostLandValueCard({
             <input
               id="cost-useRestrictionPct"
               dir="ltr"
-              type="number"
-              min={0}
-              max={90}
-              step={5}
+              inputMode="decimal"
               value={fields.useRestrictionPct}
               onChange={(e) =>
-                setField("useRestrictionPct", e.target.value.replace(/[^\d.]/g, ""))
+                setField("useRestrictionPct", costNumericInput(e.target.value))
               }
               className={cn(htmlNumInput, "w-[90px] p-2")}
             />
@@ -112,11 +109,9 @@ export function CostLandValueCard({
                 value={fields.apartmentLandShare}
                 placeholder="120"
                 title="تحل محل مساحة الأرض في معادلة قيمة الأرض"
+                inputMode="decimal"
                 onChange={(e) =>
-                  setField(
-                    "apartmentLandShare",
-                    e.target.value.replace(/[^\d.]/g, ""),
-                  )
+                  setField("apartmentLandShare", costNumericInput(e.target.value))
                 }
                 className={cn(htmlNumInput, "w-[110px] p-2")}
               />
@@ -188,13 +183,14 @@ export function CostIndirectCard({
                   <span dir="ltr">{fmt((directTotal * pctNum) / 100)}</span> ر.س.
                 </span>
                 <input
+                  id={`cost-indirect-${item.key}`}
                   dir="ltr"
-                  type="number"
-                  min={0}
-                  max={50}
-                  step={1}
+                  inputMode="decimal"
+                  aria-label={`${item.label} (٪)`}
                   value={fields.indirectDraft[item.key]?.pct ?? "0"}
-                  onChange={(e) => setIndirect(item.key, { pct: e.target.value })}
+                  onChange={(e) =>
+                    setIndirect(item.key, { pct: costNumericInput(e.target.value) })
+                  }
                   className={cn(htmlNumInput, "w-[70px] shrink-0", touchInput, "max-lg:w-20")}
                 />
               </div>
@@ -217,25 +213,23 @@ export function CostIndirectCard({
               <input
                 id="cost-financingRate"
                 dir="ltr"
-                type="number"
-                min={0}
-                max={30}
-                step={0.5}
+                inputMode="decimal"
                 title="المعدل السنوي"
                 value={fields.financingRate}
-                onChange={(e) => setField("financingRate", e.target.value)}
+                onChange={(e) =>
+                  setField("financingRate", costNumericInput(e.target.value))
+                }
                 className={cn(htmlNumInput, "w-[70px]")}
               />
               <input
                 id="cost-financingMonths"
                 dir="ltr"
-                type="number"
-                min={0}
-                max={120}
-                step={1}
+                inputMode="numeric"
                 title="مدة التنفيذ بالأشهر"
                 value={fields.financingMonths}
-                onChange={(e) => setField("financingMonths", e.target.value)}
+                onChange={(e) =>
+                  setField("financingMonths", costNumericInput(e.target.value, true))
+                }
                 className="w-[70px] rounded-[7px] border border-border-md bg-surface-2 p-[7px] text-center text-[13px] font-bold text-gold-d"
               />
             </div>
@@ -339,11 +333,10 @@ export function CostAgeCard({
               <input
                 id={`cost-${value}`}
                 dir="ltr"
-                type="number"
-                min={0}
-                step={1}
+                inputMode="decimal"
+                aria-label={label}
                 value={fields[value]}
-                onChange={(e) => setField(value, e.target.value)}
+                onChange={(e) => setField(value, costNumericInput(e.target.value))}
                 className={cn(
                   htmlNumInput,
                   "w-[78px] shrink-0",
@@ -355,6 +348,16 @@ export function CostAgeCard({
               />
             </div>
           ))}
+          {derived.effectiveLifeLocal < derived.extLifeLocal ? (
+            <div
+              data-testid="cost-lease-cap-note"
+              className="rounded-[7px] bg-surface-2 px-2.5 py-1.5 text-[11.5px] text-gold-d"
+            >
+              مبنى على أرض مستأجرة: العمر المعتمد للإهلاك{" "}
+              <span dir="ltr">{fmt(derived.effectiveLifeLocal, 1)}</span> سنة — العمر المتبقي
+              لا يتجاوز مدة الإيجار المتبقية
+            </div>
+          ) : null}
           <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5">
             <span className="text-[12.5px] font-medium text-text-2">
               التقادم المادي

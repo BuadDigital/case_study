@@ -34,6 +34,7 @@ import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-r
 import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
 import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import { isGuidPropertyId } from "../../lib/app-data/po-intake-model";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { caseStudyWorkspacePath } from "../../lib/my-task-routes";
 import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access";
@@ -326,9 +327,7 @@ export function PropertyDetailCaseStudyReport({
     let allocatedNow = false;
     if (!reference) {
       const config = apiConfig();
-      const propertyId = /^[0-9a-fA-F-]{36}$/.test(property.id)
-        ? property.id
-        : undefined;
+      const propertyId = isGuidPropertyId(property.id) ? property.id : undefined;
       if (config) {
         const allocated = await allocateNumberedDocument(config, {
           kind: "case-study-report",

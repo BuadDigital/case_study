@@ -10,6 +10,7 @@ import {
   emptyValuationReportSettings,
   type OrganizationSettingsDto,
 } from "@platform/api-client";
+import { formatArDateTime } from "@platform/app-shared/format/date";
 
 export type TabId =
   | "company"
@@ -75,10 +76,7 @@ export function formatUpdatedAt(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "—";
   try {
-    return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(date);
+    return formatArDateTime(date, { dateStyle: "medium", timeStyle: "short" });
   } catch {
     return "—";
   }

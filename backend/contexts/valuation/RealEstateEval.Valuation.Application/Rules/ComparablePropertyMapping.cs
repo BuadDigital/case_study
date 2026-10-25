@@ -7,6 +7,8 @@ namespace RealEstateEval.Valuation.Application.Rules;
 
 public static class ComparablePropertyMapping
 {
+    public const string PriorValuationKindLabelAr = "تقييم سابق معتمد (ليس صفقة)";
+
     public static ComparablePropertyDto ToDto(
         ComparableProperty row,
         DateOnly today,
@@ -24,10 +26,13 @@ public static class ComparablePropertyMapping
             ComparablePropertyType = row.ComparablePropertyType,
             Usage = row.Usage,
             TransactionKind = row.TransactionKind,
-            TransactionKindLabelAr = row.TransactionKind == ComparableTransactionKinds.Offer
-                && row.PriceDescription == ComparablePriceDescriptions.Som
-                    ? "سوم"
-                    : ComparableTransactionKinds.LabelAr(row.TransactionKind),
+            // A completed valuation fed into the bank is an appraisal, not a sale — never «صفقة منفّذة».
+            TransactionKindLabelAr = row.Source == ComparableSources.PriorValuation
+                ? PriorValuationKindLabelAr
+                : row.TransactionKind == ComparableTransactionKinds.Offer
+                    && row.PriceDescription == ComparablePriceDescriptions.Som
+                        ? "سوم"
+                        : ComparableTransactionKinds.LabelAr(row.TransactionKind),
             PriceDescription = row.PriceDescription ?? "",
             PriceDescriptionLabelAr = ComparablePriceDescriptions.LabelAr(row.PriceDescription),
             Source = row.Source,

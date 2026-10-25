@@ -1,6 +1,4 @@
-import { authHeaders, getApiBase } from "./api-base";
-import { repositoryFetch as fetch } from "./write-repository";
-import { parseJson } from "./parse-json";
+import { sendValuationResource, type ValuationResourceResult } from "./valuation-resource";
 import type { ValuationSelectionsApiConfig } from "./valuation-comparable-selections";
 
 /** null = no effect. */
@@ -41,55 +39,11 @@ export type SaveValuationValueDocumentUseRequest = {
   value: number;
 };
 
-type Result<T> =
-  | { ok: true; data: T }
-  | {
-      ok: false;
-      kind: "auth" | "forbidden" | "network" | "server" | "validation" | "not_found";
-      message?: string;
-      errors?: Record<string, string>;
-    };
-
-function path(valuationRequestId: string): string {
-  return `/api/valuation-requests/${encodeURIComponent(valuationRequestId)}/value-documents`;
-}
-
-async function readResult(res: Response): Promise<Result<ValuationValueDocumentsDto>> {
-  if (res.status === 401) return { ok: false, kind: "auth" };
-  if (res.status === 403) return { ok: false, kind: "forbidden" };
-  if (res.status === 404) return { ok: false, kind: "not_found" };
-  if (res.status === 400) {
-    const payload = (await res.json().catch(() => null)) as {
-      errors?: Record<string, string | string[]>;
-      detail?: string;
-    } | null;
-    const errors = Object.fromEntries(
-      Object.entries(payload?.errors ?? {}).map(([k, v]) => [k, Array.isArray(v) ? v[0] ?? "" : v]),
-    );
-    return {
-      ok: false,
-      kind: "validation",
-      message: Object.values(errors)[0] ?? payload?.detail ?? "تعذّر حفظ أثر المستندات",
-      errors,
-    };
-  }
-  if (!res.ok) return { ok: false, kind: "server" };
-  return { ok: true, data: await parseJson<ValuationValueDocumentsDto>(res) };
-}
-
 export async function getValuationValueDocuments(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
-): Promise<Result<ValuationValueDocumentsDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}${path(valuationRequestId)}`, {
-      headers: authHeaders(config.token, { accept: true }),
-    });
-    return await readResult(res);
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+): Promise<ValuationResourceResult<ValuationValueDocumentsDto>> {
+  return sendValuationResource(config, valuationRequestId, "value-documents", INVALID_MESSAGE);
 }
 
 /** The appraiser's decision on each valued document; documents left out have no effect. */
@@ -97,16 +51,8 @@ export async function saveValuationValueDocuments(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
   uses: SaveValuationValueDocumentUseRequest[],
-): Promise<Result<ValuationValueDocumentsDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}${path(valuationRequestId)}`, {
-      method: "PUT",
-      headers: authHeaders(config.token, { accept: true }),
-      body: JSON.stringify({ uses }),
-    });
-    return await readResult(res);
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+): Promise<ValuationResourceResult<ValuationValueDocumentsDto>> {
+  return sendValuationResource(config, valuationRequestId, "value-documents", INVALID_MESSAGE, { uses });
 }
+
+const INVALID_MESSAGE = "تعذّر حفظ أثر المستندات";

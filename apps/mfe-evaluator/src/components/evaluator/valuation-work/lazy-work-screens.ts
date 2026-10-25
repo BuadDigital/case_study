@@ -12,15 +12,20 @@ const costApproachSection = preloadableLazy(() =>
 const finalOpinionSection = preloadableLazy(() =>
   import("./FinalOpinionSection").then((m) => m.FinalOpinionSection),
 );
+const incomeApproachSection = preloadableLazy(() =>
+  import("./IncomeApproachSection").then((m) => m.IncomeApproachSection),
+);
 
 export const AdjustmentsMatrix = adjustmentsMatrix.Component;
 export const CostApproachSection = costApproachSection.Component;
 export const FinalOpinionSection = finalOpinionSection.Component;
+export const IncomeApproachSection = incomeApproachSection.Component;
 
 function preloadLaterWorkScreens() {
   void adjustmentsMatrix.preload();
   void costApproachSection.preload();
   void finalOpinionSection.preload();
+  void incomeApproachSection.preload();
 }
 
 /**

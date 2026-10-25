@@ -307,6 +307,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "attachment-print-dictionary": "قوائم التقييم",
   clients: "سجل العملاء",
   profile: "البروفايل",
+  "admin-panel": "لوحة الإدارة",
 };
 
 /**
@@ -349,6 +350,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "attachment-print-dictionary": "قوائم التقييم",
   clients: "سجل العملاء",
   profile: "البروفايل",
+  "admin-panel": "لوحة الإدارة",
 };
 
 import type { PoListStatus } from "./po-list-status";

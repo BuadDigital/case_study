@@ -108,7 +108,7 @@ describe("markReportMissingFields — keyed cells", () => {
 
   it("marks the liquidation discount only when it is printed", () => {
     const html = `<section data-sec="25"><table>
-      <tr><td class="k">نسبة خصم التصفية المنظمة</td><td class="v num">—</td><td class="k">مبرر معامل التصفية</td><td class="v">—</td></tr>
+      <tr><td class="k">نسبة خصم التصفية المنظمة</td><td class="v num">—</td><td class="k">مبرر خصم التصفية</td><td class="v">—</td></tr>
     </table></section>`;
     const off = doc(html);
     markReportMissingFields(off, fillWith({ isLiquidation: false, liquidationDiscountOn: false }));
@@ -118,7 +118,7 @@ describe("markReportMissingFields — keyed cells", () => {
     markReportMissingFields(on, fillWith({ liquidationDiscountOn: true }));
     expect(missing(on).map((m) => m.label)).toEqual([
       "نسبة خصم التصفية المنظمة",
-      "مبرر معامل التصفية",
+      "مبرر خصم التصفية",
     ]);
   });
 });

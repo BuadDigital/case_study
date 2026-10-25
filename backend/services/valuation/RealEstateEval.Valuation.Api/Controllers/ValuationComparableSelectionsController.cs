@@ -22,7 +22,7 @@ public class ValuationComparableSelectionsController : ControllerBase
     public ValuationComparableSelectionsController(IValuationComparableSelectionService selections) => _selections = selections;
 
     [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<ValuationComparableSelectionListDto>> List(
         Guid valuationRequestId,
         [FromQuery] string? selectionContext,
@@ -37,6 +37,7 @@ public class ValuationComparableSelectionsController : ControllerBase
 
     [HttpPut]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
     public async Task<ActionResult<ValuationComparableSelectionListDto>> Replace(
         Guid valuationRequestId,
         [FromBody] ReplaceValuationComparableSelectionsRequest request,
@@ -54,6 +55,7 @@ public class ValuationComparableSelectionsController : ControllerBase
 
     [HttpPut("{selectionId:guid}/market")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
     public async Task<ActionResult<ValuationComparableSelectionDto>> SaveMarket(
         Guid valuationRequestId,
         Guid selectionId,
@@ -73,6 +75,7 @@ public class ValuationComparableSelectionsController : ControllerBase
     /// <summary>Q-8-1: one factor-level rationale covers all comparables — save/clear.</summary>
     [HttpPut("~/api/valuation-requests/{valuationRequestId:guid}/adjustment-factor-rationale")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
     public async Task<ActionResult<ValuationAdjustmentFactorRationaleDto>> SaveFactorRationale(
         Guid valuationRequestId,
         [FromBody] SaveAdjustmentFactorRationaleRequest request,
@@ -90,6 +93,7 @@ public class ValuationComparableSelectionsController : ControllerBase
 
     [HttpPut("~/api/valuation-requests/{valuationRequestId:guid}/market-approach")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
     public async Task<ActionResult<ValuationComparableSelectionListDto>> SaveMarketApproach(
         Guid valuationRequestId,
         [FromBody] SaveValuationMarketApproachRequest request,
@@ -106,6 +110,7 @@ public class ValuationComparableSelectionsController : ControllerBase
 
     [HttpPost("{comparablePropertyId:guid}/adopt")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
     public async Task<ActionResult<ValuationComparableSelectionDto>> SetAdopted(
         Guid valuationRequestId,
         Guid comparablePropertyId,
@@ -127,6 +132,7 @@ public class ValuationComparableSelectionsController : ControllerBase
 
     [HttpDelete("{comparablePropertyId:guid}")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
     public async Task<IActionResult> Remove(
         Guid valuationRequestId,
         Guid comparablePropertyId,

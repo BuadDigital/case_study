@@ -18,9 +18,13 @@ namespace RealEstateEval.Valuation.Application.Services;
 public sealed class ComparablePropertyService(
     IComparablePropertyRepository repo,
     ICaseStudyLookup caseStudy,
-    TimeProvider? time = null) : IComparablePropertyService
+    TimeProvider? time = null,
+    IValuationReportFreezeGate? freeze = null) : IComparablePropertyService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
+
+    public const string UsedByClosedValuationAr =
+        "المقارن معتمد في تقييم مُسلَّم أو معتمد — تعديله يغيّر قيمة ذلك التقييم. أضف مقارناً جديداً بالبيانات المحدّثة.";
 
     private const int MaxTake = 200;
     private const int ProximityPoolSize = 500;
@@ -159,12 +163,30 @@ public sealed class ComparablePropertyService(
         var entity = await repo.FindAsync(id, cancellationToken);
         if (entity is null)
             return (null, new Dictionary<string, string> { ["_"] = "المقارن غير موجود" });
+        if (await IsAdoptedByClosedValuationAsync(id, cancellationToken))
+            return (null, new Dictionary<string, string> { ["_"] = UsedByClosedValuationAr });
 
         MapToEntity(entity, request);
         entity.UpdatedAtUtc = _time.UtcNow();
         await repo.SaveChangesAsync(cancellationToken);
         var updateAnomaly = await ComputeAnomalyNoteAsync(entity, cancellationToken);
         return (ComparablePropertyMapping.ToDto(entity, RiyadhClock.Today(_time), updateAnomaly), null);
+    }
+
+    /// <summary>
+    /// A valuation reads the bank row live, so editing a comparable it adopted rewrote a handed-over,
+    /// approved or deposited value. Such a row is closed to edits; an open valuation may still change.
+    /// </summary>
+    private async Task<bool> IsAdoptedByClosedValuationAsync(Guid comparableId, CancellationToken cancellationToken)
+    {
+        if (freeze is null) return false;
+        foreach (var request in await repo.ListRequestsAdoptingAsync(comparableId, cancellationToken))
+        {
+            if (await freeze.GetWriteBlockedMessageAsync(request, UsedByClosedValuationAr, cancellationToken) is not null)
+                return true;
+        }
+
+        return false;
     }
 
     public async Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> SetQualityTagsAsync(

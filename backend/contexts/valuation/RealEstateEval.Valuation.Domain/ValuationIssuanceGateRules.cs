@@ -19,6 +19,8 @@ public static class ValuationIssuanceGateCodes
     public const string ValueDocuments = "value_documents";
     /// <summary>The specialist issued the case-study report the appraisal is built on.</summary>
     public const string StudyReportIssued = "study_report_issued";
+    /// <summary>D17 — the enabled income approach has income, a cap rate and a positive NOI.</summary>
+    public const string IncomeApproachComplete = "income_approach_complete";
 }
 
 public readonly record struct ValuationIssuanceGateCheck(
@@ -190,6 +192,22 @@ public static class ValuationIssuanceGateRules
             IsHard: true,
             DetailAr: costApproachEnabled && !landEstimateComplete
                 ? "أسلوب التكلفة مفعّل وقيمة الأرض غير مكتملة — يلزم مقارنات أراضٍ فضاء ثم حفظ التكلفة"
+                : null);
+
+    /// <summary>
+    /// D17: an enabled income approach must yield an indicator before issuance — gross income, a
+    /// capitalisation rate and a positive net operating income. Skipped (pass) when it is off.
+    /// </summary>
+    public static ValuationIssuanceGateCheck IncomeApproachComplete(
+        bool incomeApproachEnabled,
+        bool incomeComplete) =>
+        new(
+            ValuationIssuanceGateCodes.IncomeApproachComplete,
+            "أسلوب الدخل مكتمل",
+            !incomeApproachEnabled || incomeComplete,
+            IsHard: true,
+            DetailAr: incomeApproachEnabled && !incomeComplete
+                ? "أسلوب الدخل مفعّل ولم يكتمل — أدخل الدخل الإجمالي المحتمل ومعدل الرسملة بحيث يكون صافي الدخل التشغيلي موجبًا ثم احفظ"
                 : null);
 
     public static ValuationIssuanceGateCheck ComparableWeights(

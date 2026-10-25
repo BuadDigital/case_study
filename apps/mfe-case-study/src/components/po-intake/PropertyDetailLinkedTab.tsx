@@ -41,6 +41,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, promptAction, useToast } from "@platform/ui-kit";
 import { unmergeTransactionDeed } from "@platform/api-client";
 import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { formatArDateTime } from "@platform/app-shared/format/date";
 
 type LinkedSamePo = {
   kind: "same-po";
@@ -518,7 +519,7 @@ export function PropertyDetailLinkedTab({
                         .filter(Boolean)
                         .join(" · ") || "—"}
                       {item.prior.workOrderCreatedAtUtc
-                        ? ` · ${new Date(item.prior.workOrderCreatedAtUtc).toLocaleDateString("ar-SA-u-nu-latn")}`
+                        ? ` · ${formatArDateTime(item.prior.workOrderCreatedAtUtc, { year: "numeric", month: "numeric", day: "numeric" })}`
                         : ""}
                     </span>
                   </Link>

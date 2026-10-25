@@ -34,6 +34,7 @@ import {
   useSwapAnimation,
 } from "@platform/ui-kit";
 import { ProfileInspectorDuesPanel } from "./ProfileInspectorDuesPanel";
+import { formatArDateTime } from "@platform/app-shared/format/date";
 
 /**
  * Supplied by the shell at boot via the app-shared slot — settings must not
@@ -116,10 +117,7 @@ function isFieldInspectorProfile(user: StaffUser): boolean {
 function formatAt(iso: string | null | undefined): string {
   if (!iso) return "—";
   try {
-    return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date(iso));
+    return formatArDateTime(iso, { dateStyle: "short", timeStyle: "short" });
   } catch {
     return iso;
   }

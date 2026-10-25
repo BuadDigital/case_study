@@ -130,12 +130,13 @@ public partial class CaseStudyReportService
             return (ToDto(existing!), null);
         }
 
-        // The deed ↔ nature match is NOT an issue gate (decision 2026-10-15): the case-study
-        // report has nothing to do with the inspector's inputs. Only the field's own validity is
-        // checked (a known outcome token; notes when فروق / تعذّر), as on every save.
-        var matchErrors = CaseStudyReportDeedNatureMatchRules.ValidateForSave(
+        // D16: a traditional deed's report needs the specialist's deed ↔ nature outcome before it is
+        // issued (the issue locks the field, and the valuation gate needs it); the field's own validity
+        // (a known token; notes when فروق / تعذّر) is checked as on every save.
+        var matchErrors = CaseStudyReportDeedNatureMatchRules.ValidateForIssue(
             report.DeedNatureMatchOutcome,
-            report.DeedNatureMatchNotes);
+            report.DeedNatureMatchNotes,
+            await TransactionDeedKindsAsync(parents, task, propertyId, cancellationToken));
         if (matchErrors is not null) return (null, matchErrors);
 
         // Gate 2 — 100% of the questions the matrix asks, from the answers in THIS request.
@@ -468,15 +469,6 @@ public partial class CaseStudyReportService
         if (Guid.TryParse(report.PropertyId, out var fromDto) && fromDto != Guid.Empty) return fromDto;
         if (existing?.PropertyId is Guid stored && stored != Guid.Empty) return stored;
         return task.PropertyId;
-    }
-
-    private async Task<bool> HasActiveFailureAsync(
-        WorkflowTask task,
-        Guid? propertyId,
-        CancellationToken cancellationToken)
-    {
-        if (_failureGate is null || propertyId is not Guid pid || pid == Guid.Empty) return false;
-        return await _failureGate.HasBlockingFailureAsync(task.PoNumber, pid.ToString("D"), cancellationToken);
     }
 
     private async Task AuditAsync(

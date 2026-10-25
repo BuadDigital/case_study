@@ -4,12 +4,7 @@ import { useMemo } from "react";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
 import { Card, Note, cn } from "@platform/ui-kit";
-import {
-  getCaseSpecialists,
-  getEngineeringOffices,
-  getFieldInspectors,
-  getValuators,
-} from "../../lib/app-data/distribution-parties";
+import { getCaseSpecialists, getEngineeringOffices, getFieldInspectors, getValuators } from "../../lib/app-data/distribution-parties";
 import { buildAssigneeOpenLoadMap } from "../../lib/app-data/distribution-load";
 import { assigneeLoadOptions } from "../../lib/app-data/distribution-assignee-options";
 import type { TaskDistributionDraft } from "../../lib/app-data/tasks";
