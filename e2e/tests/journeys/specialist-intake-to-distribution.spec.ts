@@ -76,8 +76,8 @@ test.describe("Specialist: intake → distribution", () => {
     await waitForPageTitle(page, "البيانات الأولية");
 
     // QueuePager renders only when totalCount > 0 — assert the real thing.
-    // docs/new-look ListPager: total + range first («N نتيجة · start–end»).
-    const rangeLabel = page.getByText(/[\d,]+\s+نتيجة\s+·\s+\d+–\d+/).first();
+    // The queue's own pager (ActiveTransactionQueueView) reads «عرض start–end من N نتيجة».
+    const rangeLabel = page.getByText(/عرض\s+\d+–\d+\s+من\s+[\d,]+\s+نتيجة/).first();
     await expect(rangeLabel).toBeVisible({ timeout: 30_000 });
     await expect(
       page.getByRole("button", { name: "الصفحة التالية" }).first(),
