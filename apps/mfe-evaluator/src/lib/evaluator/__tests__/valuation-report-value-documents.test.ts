@@ -2,8 +2,8 @@
 import { describe, expect, it } from "vitest";
 import type { ValuationReconciliationDto } from "@platform/api-client";
 import { buildReconSheetRows } from "../valuation-report-sheet-facts";
-import { fillValueAdditions } from "../valuation-report-live-fill-dom";
-import type { ValuationReportLiveFill } from "../valuation-report-fill-model";
+import { fillFinalValueTable } from "../valuation-report-live-fill-dom";
+import { buildFinalValueRows, type ValuationReportLiveFill } from "../valuation-report-fill-model";
 
 function recon(partial: Partial<ValuationReconciliationDto>): ValuationReconciliationDto {
   return {
@@ -74,20 +74,40 @@ describe("«مستند ذو قيمة» in the report", () => {
         <div style="background:#102b4e"><div><div>القيمة النهائية للعقار</div><div>—</div></div><div>—</div></div>
       </section>`;
     const sec = document.querySelector('[data-sec="25"]')!;
-    fillValueAdditions(sec, {
-      valueAdditions: [{ label: "تقرير تقييم الآلات", value: "150,000.00" }],
-      propertyValueAfterLiquidation: "987,653.60",
-      finalDisplay: "1,138,000.00 ر.س.",
+    const r = recon({
+      weightedValue: 1_234_567,
+      finalRoundDecimals: 3,
+      basisOfValueKey: "liquidation",
+      liquidationDiscountPct: 20,
+      liquidationDiscountApplied: true,
+      propertyValueAfterLiquidation: 987_653.6,
+      additions: [{ attachmentId: "a", labelAr: "تقرير تقييم الآلات", value: 150_000 }],
+      finalOpinionValue: 1_138_000,
+    });
+    fillFinalValueTable(sec, {
+      valueAdditions: [{ label: "تقرير تقييم الآلات", value: "150,000" }],
+      finalValueRows: buildFinalValueRows({
+        recon: r,
+        weighted: 1_234_567,
+        final: 1_138_000,
+        liquidation: { pct: 20, rationale: "سيولة" },
+      }),
     } as ValuationReportLiveFill);
 
     const labels = [...sec.querySelectorAll("td.k")].map((td) => td.textContent);
     expect(labels).toEqual([
       "القيمة المرجّحة",
-      "قيمة العقار بعد خصم التصفية",
+      "نسبة خصم التصفية المنظمة",
+      "مبرر خصم التصفية",
+      "القيمة بعد خصم التصفية",
       "+ تقرير تقييم الآلات",
-      "القيمة الإجمالية",
+      "القيمة قبل التقريب",
+      "القيمة الإجمالية بعد التقريب (لأقرب 1,000 ر.س.)",
     ]);
-    expect(sec.querySelector("tr.total td.v")?.textContent).toBe("1,138,000.00");
+    const values = [...sec.querySelectorAll("td.num")].map((td) => td.textContent);
+    // 1,234,567 × 0.8 = 987,653.60; + 150,000 = 1,137,653.60 → nearest 1,000 = 1,138,000.
+    expect(values).toEqual(["1,234,567", "20٪", "987,653.60", "150,000", "1,137,653.60", "1,138,000"]);
+    expect(sec.querySelector("tr.total td.v")?.textContent).toBe("1,138,000");
     expect(sec.textContent).toContain("القيمة النهائية الإجمالية");
   });
 });

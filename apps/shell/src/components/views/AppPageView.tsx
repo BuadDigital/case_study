@@ -138,6 +138,13 @@ const FeePricingView = dynamic(
     import("@/components/views/FeePricingView").then((m) => m.FeePricingView),
   { ssr: false, loading: MfeLoading },
 );
+const AdminPanelView = dynamic(
+  () =>
+    import("@/components/views/admin-panel/AdminPanelView").then(
+      (m) => m.AdminPanelView,
+    ),
+  { ssr: false, loading: MfeLoading },
+);
 const PartyActiveTaskViewHost = dynamic(
   () =>
     import("@/components/party-tasks/PartyActiveTaskViewHost").then(
@@ -177,6 +184,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "party-fees": PartyFeesView,
   "audit-log": AuditLogView,
   "fee-pricing": FeePricingView,
+  "admin-panel": AdminPanelView,
 };
 
 // Preload the page chunk on nav-link hover/focus — same import specs as
@@ -214,6 +222,7 @@ export const PAGE_CHUNK_PRELOAD: Partial<
   "party-fees": () => import("@case-study/mfe"),
   "audit-log": () => import("@/components/views/AuditLogView"),
   "fee-pricing": () => import("@/components/views/FeePricingView"),
+  "admin-panel": () => import("@/components/views/admin-panel/AdminPanelView"),
 };
 
 for (const pageId of PARTY_TASK_PAGE_IDS) {

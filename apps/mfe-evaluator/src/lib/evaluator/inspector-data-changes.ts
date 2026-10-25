@@ -6,6 +6,7 @@
  * writes. Nothing here acknowledges anything on its own.
  */
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { formatArDateTime } from "@platform/app-shared/format/date";
 
 /** Group keys the server sends in `inspectorDataChangedGroups`. */
 type InspectorDataGroup =
@@ -149,7 +150,7 @@ export function describeInspectorDataSync(
   return {
     draftLabel: isInspectorDataFinal(workspace) ? null : INSPECTOR_DRAFT_DATA_LABEL,
     syncedLabel: Number.isFinite(ts)
-      ? `آخر مزامنة للمعاين: ${new Date(ts).toLocaleString("ar-SA-u-ca-gregory-nu-latn", SYNC_DATE_FORMAT)}`
+      ? `آخر مزامنة للمعاين: ${formatArDateTime(ts, SYNC_DATE_FORMAT, "ar-SA-u-ca-gregory-nu-latn")}`
       : null,
   };
 }

@@ -36,6 +36,36 @@ public sealed class HttpValuationRequestService(
             "UpstreamServices:ValuationBaseUrl",
             cancellationToken))?.FinalReportStatus;
 
+    /// <summary>Forwards the caller's token: the appraiser handing over reads his own request's gates.</summary>
+    public Task<ValuationIssuanceGatesSnapshotDto?> GetIssuanceGatesAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken = default) =>
+        UpstreamJson.GetOrDefaultAsync<ValuationIssuanceGatesSnapshotDto>(
+            http,
+            httpContext,
+            options.Value.ValuationBaseUrl,
+            $"/api/valuation-requests/{valuationRequestId:D}/issuance-gates",
+            "UpstreamServices:ValuationBaseUrl",
+            cancellationToken);
+
+    /// <summary>Forwards the caller's token (same read policy as the gates); 404 = no reconciliation.</summary>
+    public async Task<decimal?> GetFinalOpinionValueAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken = default) =>
+        (await UpstreamJson.GetOrDefaultAsync<ReconciliationFinalValue>(
+            http,
+            httpContext,
+            options.Value.ValuationBaseUrl,
+            $"/api/valuation-requests/{valuationRequestId:D}/reconciliation",
+            "UpstreamServices:ValuationBaseUrl",
+            cancellationToken))?.FinalOpinionValue;
+
+    /// <summary>The one field the hand-over reads from the reconciliation payload.</summary>
+    private sealed class ReconciliationFinalValue
+    {
+        public decimal FinalOpinionValue { get; init; }
+    }
+
     public Task<ValuationRequestDto?> GetOpenByPropertyAsync(
         string propertyId,
         CancellationToken cancellationToken = default) =>

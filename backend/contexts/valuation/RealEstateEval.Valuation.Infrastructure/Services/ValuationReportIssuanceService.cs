@@ -180,6 +180,10 @@ public sealed partial class ValuationReportIssuanceService(
         if (string.IsNullOrWhiteSpace(request.DepositCode))
             return (null, new Dictionary<string, string> { ["depositCode"] = "رمز الإيداع مطلوب" });
 
+        // D15: one code, one current report — and a new version never reuses a code of its earlier versions.
+        if (await DepositCodeTakenAsync(row, request.DepositCode, cancellationToken))
+            return (null, Conflict("depositCode", DepositCertificateRules.DuplicateCodeAr));
+
         // The deposit certificate (a one-page PDF) and its code are both required; a corrective
         // re-registration may re-send the code alone while the certificate already on the copy stays.
         var (certificate, certificateErrors) = DepositCertificateRules.Read(
@@ -233,21 +237,6 @@ public sealed partial class ValuationReportIssuanceService(
         if (finalError is not null)
             return (null, new Dictionary<string, string> { ["_"] = finalError });
 
-        if (correctedCode is not null && !string.Equals(correctedCode, row.DepositCode, StringComparison.Ordinal)
-            && audit is not null && auditLog is not null)
-        {
-            // The code is corrected after the final issuance (it comes from the authority, not from this system):
-            // no new version, but the change is on record.
-            await auditLog.AppendAsync(audit.Create(
-                actorId: string.IsNullOrWhiteSpace(uploadedByUserId) ? "unknown" : uploadedByUserId,
-                action: "valuation.report-issuance.code-corrected",
-                entityType: "ValuationReportIssuance",
-                entityId: valuationRequestId.ToString("D"),
-                before: new { depositCode = correctedCode },
-                after: new { depositCode = row.DepositCode }),
-                cancellationToken);
-        }
-
         // Completes the professional valuation-report step (Q-9 separates it from Infath bulk upload).
         // The final issuance is the one place the request closes: it publishes the single
         // "report delivered" event (completes the appraiser's task in Case Study) and feeds
@@ -268,7 +257,30 @@ public sealed partial class ValuationReportIssuanceService(
                 cancellationToken);
         }
 
-        await db.SaveChangesAsync(cancellationToken);
+        // D15: parallel registrations — the first save wins; a later one (row version or the unique
+        // code index) is refused as a conflict and its freshly stored certificate is removed again.
+        var conflict = await SaveRegistrationAsync(cancellationToken);
+        if (conflict is not null)
+        {
+            if (files is not null && certificateId is { } orphan)
+                await files.DeleteAsync(orphan, cancellationToken);
+            return (null, conflict);
+        }
+
+        if (correctedCode is not null && !string.Equals(correctedCode, row.DepositCode, StringComparison.Ordinal)
+            && audit is not null && auditLog is not null)
+        {
+            // The code is corrected after the final issuance (it comes from the authority, not from this system):
+            // no new version, but the change is on record.
+            await auditLog.AppendAsync(audit.Create(
+                actorId: string.IsNullOrWhiteSpace(uploadedByUserId) ? "unknown" : uploadedByUserId,
+                action: "valuation.report-issuance.code-corrected",
+                entityType: "ValuationReportIssuance",
+                entityId: valuationRequestId.ToString("D"),
+                before: new { depositCode = correctedCode },
+                after: new { depositCode = row.DepositCode }),
+                cancellationToken);
+        }
 
         // The certificate this one replaced is no longer referenced.
         if (files is not null && replacedCertificate is { } oldId && oldId != certificateId && certificateId is not null)

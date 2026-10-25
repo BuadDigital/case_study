@@ -24,6 +24,7 @@ import {
   mergeFieldErrors,
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
+import { formatArDateTime } from "@platform/app-shared/format/date";
 
 const ROLE_OPTIONS = adminStaffRoleOptions();
 export const ROLE_SELECT_OPTIONS = ROLE_OPTIONS.map((o) => ({
@@ -234,10 +235,7 @@ export function staffRoleSelectLocked(
 export function formatLastLogin(iso: string | null | undefined): string {
   if (!iso) return "—";
   try {
-    return new Intl.DateTimeFormat("ar-SA-u-nu-latn", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date(iso));
+    return formatArDateTime(iso, { dateStyle: "short", timeStyle: "short" });
   } catch {
     return iso;
   }

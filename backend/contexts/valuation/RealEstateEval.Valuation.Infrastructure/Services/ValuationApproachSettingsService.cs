@@ -101,6 +101,14 @@ public sealed class ValuationApproachSettingsService(
         if (DateOnly.TryParse(request.RetrospectiveDateEnd?.Trim(), out var parsedRetroEnd))
             retroDateEnd = parsedRetroEnd;
 
+        var row = await db.ValuationApproachSettings
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+        // A client that does not send a field (JSON null) keeps the stored value: the final-review
+        // assumptions save and older screens neither wipe the rationale nor reset the interest valued.
+        var retroRationale = request.RetrospectiveRationale ?? row?.RetrospectiveRationale;
+        var interestKey = request.OwnershipInterestKey ?? row?.OwnershipInterestKey;
+        var leaseYears = request.OwnershipInterestKey is null ? row?.RemainingLeaseYears : request.RemainingLeaseYears;
+
         var errors = ValuationApproachSettingsRules.Validate(
             request.MarketApproachEnabled,
             request.CostApproachEnabled,
@@ -117,11 +125,14 @@ public sealed class ValuationApproachSettingsService(
             retroDate,
             await AllowedPurposeKeysAsync(cancellationToken),
             costScopeKey: request.CostScopeKey,
-            retrospectiveDateEnd: retroDateEnd);
+            retrospectiveDateEnd: retroDateEnd,
+            retrospectiveRationale: retroRationale,
+            today: RiyadhClock.Today(_time),
+            reportDate: await CurrentReportDateAsync(valuationRequestId, cancellationToken),
+            ownershipInterestKey: interestKey,
+            remainingLeaseYears: leaseYears);
         if (errors.Count > 0) return (null, errors);
 
-        var row = await db.ValuationApproachSettings
-            .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
         if (row is null)
         {
             row = new ValuationApproachSettings
@@ -134,7 +145,11 @@ public sealed class ValuationApproachSettingsService(
 
         row.MarketApproachEnabled = request.MarketApproachEnabled;
         row.CostApproachEnabled = request.CostApproachEnabled;
-        row.IncomeApproachEnabled = false;
+        // D17: the income approach may be enabled (its inputs and value come with the income screen).
+        row.IncomeApproachEnabled = request.IncomeApproachEnabled;
+        var interest = OwnershipInterestKeys.Normalize(interestKey);
+        row.OwnershipInterestKey = interest;
+        row.RemainingLeaseYears = OwnershipInterestKeys.IsLeasehold(interest) ? leaseYears : null;
         row.CostBasisKey = CostBasisKeys.Normalize(request.CostBasisKey);
         row.CostScopeKey = CostScopeKeys.Normalize(request.CostScopeKey);
         row.CostMeasurementUnitKey = CostMeasurementUnitKeys.Normalize(request.CostMeasurementUnitKey);
@@ -153,8 +168,8 @@ public sealed class ValuationApproachSettingsService(
         row.RetrospectiveDateEnd =
             dateMode == ValuationDateModes.Retrospective ? retroDateEnd : null;
         row.RetrospectiveRationale = dateMode == ValuationDateModes.Retrospective
-            && !string.IsNullOrWhiteSpace(request.RetrospectiveRationale)
-            ? request.RetrospectiveRationale.Trim()
+            && !string.IsNullOrWhiteSpace(retroRationale)
+            ? retroRationale.Trim()
             : null;
         var selectedAssumptions = request.SelectedAssumptions ?? [];
         if (request.ExternalSpecialistUsed)
@@ -172,6 +187,17 @@ public sealed class ValuationApproachSettingsService(
             effectivePropertyType,
             assignmentType,
             await AssumptionLibraryAsync(cancellationToken)), null);
+    }
+
+ /// <summary>D9: the report date of the current draft once set (approval), else null.</summary>
+    private async Task<DateOnly?> CurrentReportDateAsync(Guid valuationRequestId, CancellationToken cancellationToken)
+    {
+        var reportDate = await db.ValuationReportDrafts.AsNoTracking()
+            .Where(x => x.ValuationRequestId == valuationRequestId)
+            .OrderByDescending(x => x.Version)
+            .Select(x => x.ReportDate)
+            .FirstOrDefaultAsync(cancellationToken);
+        return DateOnly.TryParseExact(reportDate?.Trim(), "yyyy-MM-dd", out var parsed) ? parsed : null;
     }
 
  /// <summary>Scoping question "are there buildings/structures to value?" + assignment type from the work-order property.</summary>
@@ -220,6 +246,11 @@ public sealed class ValuationApproachSettingsService(
                 && effective.CostApproachEnabled
                 && CostScopeKeys.IncludesBuildings(effective.CostScopeKey),
             IncomeApproachEnabled = effective.IncomeApproachEnabled,
+            OwnershipInterestKey = OwnershipInterestKeys.Normalize(effective.OwnershipInterestKey),
+            OwnershipInterestLabelAr = OwnershipInterestKeys.LabelAr(effective.OwnershipInterestKey),
+            RemainingLeaseYears = OwnershipInterestKeys.IsLeasehold(effective.OwnershipInterestKey)
+                ? effective.RemainingLeaseYears
+                : null,
             CostBasisKey = effective.CostBasisKey,
             CostBasisLabelAr = CostBasisKeys.LabelAr(effective.CostBasisKey),
             CostScopeKey = CostScopeKeys.Normalize(effective.CostScopeKey),

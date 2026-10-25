@@ -8,12 +8,10 @@ import {
   useSwapAnimation,
   useToast,
 } from "@platform/ui-kit";
-import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
-import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { STUDY_REPORT_NOT_ISSUED_MESSAGE } from "../../lib/evaluator/evaluator-inspection-gate";
 import { createEvaluatorDraft, emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
@@ -33,8 +31,11 @@ import {
   type EvaluatorValidationErrors,
 } from "../../lib/evaluator/evaluator-validation";
 import { useEvaluatorSubmit } from "./useEvaluatorSubmit";
+import { useAssignedAppraiserName } from "./useAssignedAppraiserName";
+import { useEvaluatorTabMemory } from "./useEvaluatorTabMemory";
+import { useUnsavedEditsGuard } from "./useUnsavedEditsGuard";
+import { initialEvaluatorTab } from "../../lib/evaluator/evaluator-tab-memory";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
-import { getAuthSession } from "@platform/auth-client";
 import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
 import type {
   EvaluatorChecklistAnswers,
@@ -102,26 +103,7 @@ export function EvaluatorWindow({
   embeddedInPropertyChrome?: boolean;
 }) {
   const { showToast } = useToast();
-  const { data: staffResult } = useStaffUsersQuery();
-  const assignedAppraiserName = useMemo(() => {
-    const session = getAuthSession();
-    const selfFallback =
-      session?.user?.id &&
-      task.assigneeId?.trim() &&
-      session.user.id === task.assigneeId.trim()
-        ? session.user.displayName
-        : undefined;
-    return resolveAssigneeDisplayName({
-      assigneeName: task.assigneeName,
-      assigneeId: task.assigneeId,
-      staffUsers: staffResult?.users ?? [],
-      fallback: selfFallback,
-    });
-  }, [
-    task.assigneeName,
-    task.assigneeId,
-    staffResult?.users,
-  ]);
+  const assignedAppraiserName = useAssignedAppraiserName(task);
 
   const [draft, setDraft] = useState<EvaluatorSubmission>(() =>
     createEvaluatorDraft({
@@ -141,17 +123,19 @@ export function EvaluatorWindow({
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] =
     useState<EvaluatorValidationErrors>(EMPTY_FIELD_ERRORS);
-  const [activeTab, setActiveTab] = useState<EvaluatorWindowTab>(initialTab);
+  // A refresh keeps the tab (problem 19) — remembered per task for this browser tab.
+  const [activeTab, setActiveTab] = useState<EvaluatorWindowTab>(() => initialEvaluatorTab(task.id, initialTab));
   const queryClient = useQueryClient();
   const [navAvail, setNavAvail] = useState<ValuationWorkNavAvailability>({
     market: false,
     cost: false,
+    income: false,
   });
   // Tabs opened so far and the last work screen — recorded during render (state, not refs).
   const [visitedTabs, setVisitedTabs] = useState(() => new Set<EvaluatorWindowTab>([activeTab]));
   if (!visitedTabs.has(activeTab)) setVisitedTabs(new Set(visitedTabs).add(activeTab));
   const [lastWorkScreen, setLastWorkScreen] = useState<ValuationWorkScreenId>(
-    isWorkScreen(initialTab) ? initialTab : "basic",
+    isWorkScreen(activeTab) ? activeTab : "basic",
   );
   if (isWorkScreen(activeTab) && lastWorkScreen !== activeTab) setLastWorkScreen(activeTab);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -177,6 +161,8 @@ export function EvaluatorWindow({
   // Only the SUBMIT waits for the specialist's study report; the form stays editable.
   const studyReportPending =
     task.studyReportIssued !== true && studyReportIssuedFromServer !== true;
+
+  useEvaluatorTabMemory({ taskId: task.id, activeTab, setActiveTab, navAvail });
 
   const visibleTabs = useMemo(
     () => visibleEvaluatorTabs(navAvail),
@@ -390,6 +376,8 @@ export function EvaluatorWindow({
 
   const panelRef = useRef<HTMLDivElement>(null);
   useSwapAnimation(panelRef, activeTab);
+  // Warn before a refresh loses typed text: an unblurred field, a pending autosave, an unsaved section.
+  useUnsavedEditsGuard(panelRef, () => pendingAutosaveRef.current !== null);
 
   // Property / inspection edits outside this window should refresh the report fill.
   useEffect(() => {

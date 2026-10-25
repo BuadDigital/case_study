@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   readFreshStudyReportGate: vi.fn(),
   checkIssuanceGatesFailClosed: vi.fn(),
+  readHandOverPriceFromServer: vi.fn(),
   updateEvaluatorDraft: vi.fn(),
   finalizeAppraiserSubmission: vi.fn(),
   validateEvaluatorSubmission: vi.fn(),
@@ -33,11 +34,12 @@ vi.mock("../../../lib/evaluator/evaluator-validation", () => ({
 vi.mock("../../../lib/evaluator/evaluator-submit-gates", () => ({
   readFreshStudyReportGate: mocks.readFreshStudyReportGate,
   checkIssuanceGatesFailClosed: mocks.checkIssuanceGatesFailClosed,
+  readHandOverPriceFromServer: mocks.readHandOverPriceFromServer,
 }));
 
 import { useEvaluatorSubmit } from "../useEvaluatorSubmit";
 
-function setup(host: Record<string, unknown>) {
+function setup(host: Record<string, unknown>, draftPrice = "") {
   const showToast = vi.fn();
   const hostRef = { current: host } as never;
   const { result } = renderHook(() =>
@@ -45,7 +47,7 @@ function setup(host: Record<string, unknown>) {
       task: { id: "t1", propertyId: "p1", studyReportIssued: true } as never,
       hostRef,
       locked: false,
-      draft: { reportChoices: {} } as never,
+      draft: { reportChoices: {}, evaluatorPrice: draftPrice } as never,
       setDraft: vi.fn(),
       flushPendingAutosave: vi.fn(),
       retrospectiveRef: { current: null },
@@ -65,7 +67,38 @@ describe("useEvaluatorSubmit — the sending dialog", () => {
     mocks.readFreshStudyReportGate.mockResolvedValue({ ready: true });
     mocks.validateEvaluatorSubmission.mockReturnValue({});
     mocks.checkIssuanceGatesFailClosed.mockResolvedValue({ ok: true });
+    mocks.readHandOverPriceFromServer.mockResolvedValue({ ok: true, price: null });
     mocks.updateEvaluatorDraft.mockResolvedValue(null);
+  });
+
+  it("hands over the server's final value instead of the typed price", async () => {
+    mocks.readHandOverPriceFromServer.mockResolvedValue({ ok: true, price: "9220000" });
+    mocks.finalizeAppraiserSubmission.mockResolvedValue({ ok: true, submission: {} });
+    const { result } = setup({ onSubmitted: vi.fn() }, "9830000");
+    expect(await act(() => result.current.submit())).toBe(true);
+    expect(mocks.updateEvaluatorDraft).toHaveBeenCalledWith(
+      "t1",
+      expect.objectContaining({ evaluatorPrice: "9220000" }),
+    );
+  });
+
+  it("keeps the draft price when the server has no final yet, and blocks when it cannot read it", async () => {
+    mocks.finalizeAppraiserSubmission.mockResolvedValue({ ok: true, submission: {} });
+    const first = setup({ onSubmitted: vi.fn() }, "1000000");
+    await act(() => first.result.current.submit());
+    expect(mocks.updateEvaluatorDraft).toHaveBeenCalledWith(
+      "t1",
+      expect.objectContaining({ evaluatorPrice: "1000000" }),
+    );
+
+    mocks.updateEvaluatorDraft.mockClear();
+    mocks.readHandOverPriceFromServer.mockResolvedValue({ ok: false, message: "تعذّر" });
+    const host = { onSubmitStarted: vi.fn() };
+    const second = setup(host, "1000000");
+    expect(await act(() => second.result.current.submit())).toBe(false);
+    expect(second.showToast).toHaveBeenCalledWith("تعذّر", "error");
+    expect(host.onSubmitStarted).not.toHaveBeenCalled();
+    expect(mocks.updateEvaluatorDraft).not.toHaveBeenCalled();
   });
 
   it("does not open the dialog while a gate still refuses", async () => {

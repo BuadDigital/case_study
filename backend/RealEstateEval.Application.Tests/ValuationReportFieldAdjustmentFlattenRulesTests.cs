@@ -97,9 +97,9 @@ public class ArabicAmountWordsTests
     [Fact]
     public void AmountToArabicWords_formats_riyals()
     {
+        // 11–99 take the singular accusative: «ريالًا سعوديًا» (full table in ArabicAmountWordsGrammarTests).
         var text = ArabicAmountWords.AmountToArabicWords(1250m);
-        Assert.Contains("ريال سعودي", text);
-        Assert.Contains("ألف", text);
+        Assert.Equal("ألف ومائتان وخمسون ريالًا سعوديًا", text);
     }
 
     [Fact]

@@ -680,6 +680,10 @@ export {
   type SaveValuationRequestBody,
   type ValuationSelectionsApiConfig,
 } from "./valuation-comparable-selections";
+export {
+  saveValuationAlertOverrides,
+  type ValuationAlertOverrideInput,
+} from "./valuation-alert-overrides";
 export { listOwnValuedDocuments, type OwnValuedDocumentDto } from "./own-valued-documents";
 export {
   getValuationValueDocuments,
@@ -690,6 +694,13 @@ export {
   type ValueDocumentApproachKey,
   type ValueDocumentEffect,
 } from "./valuation-value-documents";
+export {
+  getValuationIncomeApproach,
+  saveValuationIncomeApproach,
+  type OperatingExpensesMode,
+  type SaveValuationIncomeApproachRequest,
+  type ValuationIncomeApproachDto,
+} from "./valuation-income-approach";
 export {
   approveReportDraft,
   downloadFinalReport,

@@ -145,6 +145,8 @@ export type ValuationCostLineDto = {
 export type ValuationCostApproachDto = {
   valuationRequestId: string;
   propertyId: string;
+  /** True once the appraiser saved — stored values (zeros included) replace the starter defaults. */
+  isSaved?: boolean;
  /** weighted unit rate from land_within_cost comps. */
   landUnitRateFromMarket: number;
   landAreaSqm: number;
@@ -167,7 +169,9 @@ export type ValuationCostApproachDto = {
   totalCostWithIndirect: number;
  /** age / depreciation. */
   actualAgeYears?: number | null;
+  actualAgeRationale?: string | null;
   economicAgeYears?: number | null;
+  economicAgeRationale?: string | null;
   lifeExtensionYears: number;
   lifeExtensionBasis?: string | null;
   functionalObsolescencePct: number;
@@ -175,8 +179,18 @@ export type ValuationCostApproachDto = {
   externalObsolescencePct: number;
   externalObsolescenceRationale?: string | null;
   extendedLifeYears: number;
+  /** D11: remaining lease years capping the life (building-only on leased land); null otherwise. */
+  remainingLeaseYears?: number | null;
+  lifeCappedByLease?: boolean;
+  /** Life physical depreciation is measured against (lease-capped when D11 applies). */
+  effectiveLifeYears?: number;
   physicalObsolescencePct?: number | null;
+  /** Unclamped total (alerts read it). */
   totalObsolescencePct: number;
+  /** D12: obsolescence applied to the cost — capped at 100%. */
+  appliedObsolescencePct?: number;
+  /** D12: total obsolescence above 90%. */
+  obsolescenceNeedsAlert?: boolean;
   depreciationValue: number;
   buildingsValueAfterDepreciation: number;
   /** Method index by scope: land_and_building = land + buildings; building_only = buildings after depreciation. */
@@ -241,7 +255,9 @@ export type SaveValuationCostApproachRequest = {
   financingMonths?: number;
  /** age / depreciation. */
   actualAgeYears?: number | null;
+  actualAgeRationale?: string | null;
   economicAgeYears?: number | null;
+  economicAgeRationale?: string | null;
   lifeExtensionYears?: number;
   lifeExtensionBasis?: string | null;
   functionalObsolescencePct?: number;
@@ -286,6 +302,8 @@ export type ValuationReconciliationDto = {
   propertyId: string;
   marketOpinionValue: number;
   costOpinionWithLand: number;
+  /** D17 — income approach indicator (NOI ÷ cap rate); 0 until complete. Older servers omit it. */
+  incomeOpinionValue?: number;
   methods: ValuationReconciliationMethodDto[];
   weightSumPct: number;
   weightsSumTo100: boolean;
@@ -372,8 +390,14 @@ export type ValuationApproachSettingsDto = {
   costApproachAllowed: boolean;
   marketApproachEnabled: boolean;
   costApproachEnabled: boolean;
-  /** Deferred — shown as under construction and cannot be enabled. */
+  /** Income approach (direct capitalisation, D17) — the appraiser may enable it. */
   incomeApproachEnabled: boolean;
+  /** D11: freehold (default) | usufruct («حق منفعة») | leased_land («أرض مستأجرة»). */
+  ownershipInterestKey?: string;
+  /** «ملكية تامة» / «حق منفعة» / «أرض مستأجرة». */
+  ownershipInterestLabelAr?: string;
+  /** Years left on the usufruct / land lease — set for a leasehold interest only. */
+  remainingLeaseYears?: number | null;
   /** replacement | reproduction. */
   costBasisKey: string;
   costBasisLabelAr: string;
@@ -397,6 +421,7 @@ export type ValuationApproachSettingsDto = {
   retrospectiveDate?: string | null;
   /** yyyy-MM-dd — period end; empty = single date. */
   retrospectiveDateEnd?: string | null;
+  /** D9: why the value is stated at a past date — printed in the report scope. */
   retrospectiveRationale?: string | null;
   /** Selected/added assumption items (frozen text). */
   selectedAssumptions: string[];
@@ -426,7 +451,12 @@ export type SaveValuationApproachSettingsRequest = {
   retrospectiveDate?: string | null;
   /** yyyy-MM-dd — period end; empty = single date. */
   retrospectiveDateEnd?: string | null;
+  /** D9: required (≥ 10 characters) when valuationDateMode is retrospective; null keeps the stored one. */
   retrospectiveRationale?: string | null;
+  /** D11: freehold | usufruct | leased_land — null keeps the stored interest. */
+  ownershipInterestKey?: string | null;
+  /** D11: required (> 0, ≤ 999) for usufruct / leased_land; ignored for freehold. */
+  remainingLeaseYears?: number | null;
   selectedAssumptions?: string[] | null;
 };
 
@@ -900,7 +930,7 @@ export async function saveValuationReconciliation(
         message:
           payload?.errors
             ? Object.values(payload.errors)[0]
-            : payload?.message ?? "������ ������� ��� �����",
+            : payload?.message ?? "بيانات الترجيح غير صالحة",
         errors: payload?.errors,
       };
     }

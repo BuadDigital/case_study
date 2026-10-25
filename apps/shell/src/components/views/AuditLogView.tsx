@@ -41,6 +41,7 @@ import {
   auditEntityLabel,
   buildActorNameMap,
 } from "@/lib/audit-log-labels";
+import { stripBidiMarks } from "@platform/app-shared/format/date";
 
 // Hoisted: constructing Intl.DateTimeFormat per row is expensive.
 // Weekday first: «الأربعاء، 30‏/9‏/2026، 3:33 م» (Latin digits). The calendar is pinned to
@@ -54,9 +55,9 @@ const AT_FORMATTER = new Intl.DateTimeFormat("ar-SA-u-ca-gregory-nu-latn", {
   minute: "2-digit",
 });
 
-function formatAt(iso: string): string {
+export function formatAt(iso: string): string {
   try {
-    return AT_FORMATTER.format(new Date(iso));
+    return stripBidiMarks(AT_FORMATTER.format(new Date(iso)));
   } catch {
     return iso;
   }

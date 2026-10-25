@@ -40,6 +40,21 @@ public sealed class ValuationCostApproachRepository(ValuationDbContext db)
         db.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
 
+    public async Task<IReadOnlySet<Guid>> FindLineIdsOwnedElsewhereAsync(
+        Guid? costApproachId,
+        IReadOnlyCollection<Guid> lineIds,
+        CancellationToken cancellationToken)
+    {
+        if (lineIds.Count == 0) return new HashSet<Guid>();
+        var ids = lineIds.ToList();
+        var found = await db.ValuationCostLines.AsNoTracking()
+            .Where(l => ids.Contains(l.Id)
+                && (costApproachId == null || l.CostApproachId != costApproachId))
+            .Select(l => l.Id)
+            .ToListAsync(cancellationToken);
+        return found.ToHashSet();
+    }
+
     public Task AddAsync(ValuationCostApproach entity, CancellationToken cancellationToken)
     {
         db.ValuationCostApproaches.Add(entity);

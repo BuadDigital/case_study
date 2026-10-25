@@ -158,6 +158,15 @@ public static class ValuationModel
             e.Property(x => x.DepositIssuedByUserId).HasMaxLength(128);
             e.Property(x => x.DocumentJson).HasColumnType("jsonb").IsRequired();
             e.Property(x => x.DepositCode).HasMaxLength(128);
+            e.Property(x => x.DepositCodeKey).HasMaxLength(128);
+            // D15: one deposit code per current report — a parallel duplicate loses here (409).
+            e.HasIndex(x => x.DepositCodeKey)
+                .IsUnique()
+                .HasFilter("\"SupersededAtUtc\" IS NULL AND \"DepositCodeKey\" IS NOT NULL")
+                .HasDatabaseName(ValuationReportIssuance.DepositCodeKeyCurrentIndex);
+            // D15: parallel registrations on the same copy — one wins, the others answer 409. The entity
+            // already has a «Version» (the cycle number), so the xmin row version gets its own name.
+            e.Property<uint>("RowVersion").IsRowVersion().HasColumnName("xmin").HasColumnType("xid");
             e.Property(x => x.CertificateFileName).HasMaxLength(512);
             e.Property(x => x.CertificateContentType).HasMaxLength(128);
             e.Property(x => x.CertificateUploadedByUserId).HasMaxLength(128);
@@ -262,6 +271,12 @@ public static class ValuationModel
             e.Property(x => x.ExternalSpecialistDetails).HasMaxLength(2000);
             e.Property(x => x.ValuationDateMode).HasMaxLength(16).IsRequired();
             e.Property(x => x.RetrospectiveRationale).HasMaxLength(2000);
+            // D11: the interest valued (freehold / usufruct / leased land) and its remaining lease term.
+            e.Property(x => x.OwnershipInterestKey)
+                .HasMaxLength(16)
+                .IsRequired()
+                .HasDefaultValue(OwnershipInterestKeys.Freehold);
+            e.Property(x => x.RemainingLeaseYears).HasPrecision(6, 2);
             e.Property(x => x.SelectedAssumptionsJson).HasColumnType("jsonb");
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)
@@ -281,7 +296,9 @@ public static class ValuationModel
             e.Property(x => x.LandValueFromMarket).HasPrecision(18, 2);
             e.Property(x => x.FinancingAnnualRatePct).HasPrecision(9, 4);
             e.Property(x => x.ActualAgeYears).HasPrecision(9, 2);
+            e.Property(x => x.ActualAgeRationale).HasMaxLength(2000);
             e.Property(x => x.EconomicAgeYears).HasPrecision(9, 2);
+            e.Property(x => x.EconomicAgeRationale).HasMaxLength(2000);
             e.Property(x => x.LifeExtensionYears).HasPrecision(9, 2);
             e.Property(x => x.LifeExtensionBasis).HasMaxLength(2000);
             e.Property(x => x.FunctionalObsolescencePct).HasPrecision(9, 4);
@@ -335,6 +352,36 @@ public static class ValuationModel
             e.Property(x => x.Rationale).HasMaxLength(2000);
             e.HasNonNegative("ValuationCostLines", "AreaSqm", "UnitCostSar");
             e.HasIndex(x => x.CostApproachId);
+        });
+
+        // D17 — income approach (direct capitalisation): the appraiser's inputs only.
+        builder.Entity<ValuationIncomeApproach>(e =>
+        {
+            e.ToTable("ValuationIncomeApproaches", DatabaseSchemas.Valuation);
+            e.Property(x => x.GrossPotentialIncome).HasPrecision(18, 2);
+            e.Property(x => x.VacancyCollectionLossPct).HasPrecision(9, 4);
+            e.Property(x => x.OtherIncome).HasPrecision(18, 2);
+            e.Property(x => x.OperatingExpensesMode)
+                .HasMaxLength(16)
+                .IsRequired()
+                .HasDefaultValue(OperatingExpenseModes.PctOfEgi);
+            e.Property(x => x.OperatingExpensesAmount).HasPrecision(18, 2);
+            e.Property(x => x.OperatingExpensesPct).HasPrecision(9, 4);
+            e.Property(x => x.CapitalisationRatePct).HasPrecision(9, 4);
+            e.Property(x => x.CapRateRationale).HasMaxLength(IncomeApproachRules.RationaleMaxLength);
+            e.HasNonNegative(
+                "ValuationIncomeApproaches",
+                "GrossPotentialIncome",
+                "VacancyCollectionLossPct",
+                "OtherIncome",
+                "OperatingExpensesAmount",
+                "OperatingExpensesPct");
+            e.HasAllowedValues("ValuationIncomeApproaches", nameof(ValuationIncomeApproach.OperatingExpensesMode), OperatingExpenseModes.All);
+            e.HasIndex(x => x.ValuationRequestId).IsUnique();
+            e.HasOne(x => x.ValuationRequest)
+                .WithMany()
+                .HasForeignKey(x => x.ValuationRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<ValuationReconciliation>(e =>

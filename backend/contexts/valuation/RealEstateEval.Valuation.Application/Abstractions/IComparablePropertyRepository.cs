@@ -69,6 +69,9 @@ public interface IComparablePropertyRepository
     /// <summary>Tracked record for edits.</summary>
     Task<ComparableProperty?> FindAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Untracked valuation requests that adopted this comparable (market or land selection).</summary>
+    Task<IReadOnlyList<ValuationRequest>> ListRequestsAdoptingAsync(Guid comparableId, CancellationToken cancellationToken);
+
     Task AddAsync(ComparableProperty entity, CancellationToken cancellationToken);
 
     /// <summary>Pins a field-captured comparable to the property it was captured on.</summary>

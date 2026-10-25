@@ -7,11 +7,9 @@ import {
   useEffect,
   useState,
 } from "react";
-import {
-  InlineLoadingSkeleton,
-  cn,
-  opsLetterCard,
-} from "@platform/ui-kit";
+import { useQueryClient } from "@tanstack/react-query";
+import { InlineLoadingSkeleton, cn } from "@platform/ui-kit";
+import { invalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
 import {
   retrospectiveDraftFromSettings,
 } from "../../../lib/evaluator/evaluator-validation";
@@ -36,6 +34,9 @@ import {
   type ValuationWorkScreenId,
 } from "./lib/shell-state";
 import { ApproachSummaryStrip } from "./ApproachSummaryStrip";
+import { IncomeApproachScreen } from "./IncomeApproachScreen";
+import { incomeApproachAvailable } from "./lib/income-approach-state";
+import { ValuationWorkNav } from "./ValuationWorkNav";
 import { deedNatureMatchGateDetail } from "./lib/deed-nature-match-gate";
 import { useValuationWorkData } from "./useValuationWorkData";
 import { useValuationWorkCommands } from "./useValuationWorkCommands";
@@ -179,10 +180,19 @@ export function ValuationWorkShell({
     draftApproaches != null ? draftApproaches.market : marketEnabled;
   const costTab =
     draftApproaches != null ? draftApproaches.cost : costEnabled;
+  // D17 — the settings draft wins once it reports income; else the saved settings decide.
+  const incomeTab = draftApproaches?.income ?? incomeApproachAvailable(approachSettings);
 
   useEffect(() => {
-    onNavAvailabilityChange?.({ market: marketTab, cost: costTab });
-  }, [costTab, marketTab, onNavAvailabilityChange]);
+    onNavAvailabilityChange?.({ market: marketTab, cost: costTab, income: incomeTab });
+  }, [costTab, incomeTab, marketTab, onNavAvailabilityChange]);
+
+  const queryClient = useQueryClient();
+  /** After an income save: drop the printed-report cache and refresh reconciliation + gates. */
+  const onIncomeSaved = useCallback(() => {
+    invalidateEvaluatorReportOutput(queryClient);
+    void reload({ silent: true, scope: "derived" });
+  }, [queryClient, reload]);
 
   const comparableSeed = {
     type: property?.propertyType || intakeProperty?.propertyType,
@@ -201,6 +211,7 @@ export function ValuationWorkShell({
   const navItems = buildNavItems({
     marketEnabled: marketTab,
     costEnabled: costTab,
+    incomeEnabled: incomeTab,
     adoptedMarketCount: visibleAdoptedMarket.length,
   });
   const effectiveScreen = resolveEffectiveScreen(navItems, screen);
@@ -342,6 +353,7 @@ export function ValuationWorkShell({
         ) : null}
         {gates && settingsSaved ? (
           <MethodologyAlertsPanel
+            group="market"
             gates={gates}
             recon={recon}
             valuationRequestId={valuationRequestId}
@@ -352,6 +364,20 @@ export function ValuationWorkShell({
         ) : null}
       </>
     );
+  }
+
+  function alertsPanel(group: "cost" | "general") {
+    return gates ? (
+      <MethodologyAlertsPanel
+        group={group}
+        gates={gates}
+        recon={recon}
+        valuationRequestId={valuationRequestId}
+        saving={saving}
+        onSavingChange={setSaving}
+        onReconSaved={onReconSaved}
+      />
+    ) : null;
   }
 
   function renderCost() {
@@ -456,7 +482,7 @@ export function ValuationWorkShell({
             ناقصاً الإهلاك. يُغيَّر النطاق من شاشة البيانات الأساسية.
           </div>
         )}
-
+        {gates ? alertsPanel("cost") : null}
       </>
     );
   }
@@ -480,6 +506,8 @@ export function ValuationWorkShell({
         showSubmit={showSubmit}
         submitting={submitting}
         onSubmit={onSubmit}
+        gates={gates}
+        onGoToScreen={setScreen}
       />
     );
   }
@@ -491,42 +519,7 @@ export function ValuationWorkShell({
     >
       <div dir="rtl" className="relative min-h-[480px]">
         {!embeddedInTopTabs ? (
-          <div className={opsLetterCard}>
-            <nav className="flex flex-wrap gap-1.5 px-[22px] py-3">
-              {navItems
-                .filter((n) => n.show)
-                .map((n) => {
-                  const active = effectiveScreen === n.id;
-                  return (
-                    <button
-                      key={n.id}
-                      type="button"
-                      onClick={() => setScreen(n.id)}
-                      className={cn(
-                        "inline-flex cursor-pointer items-center gap-2 rounded-full border px-3.5 py-2 text-[12.5px] font-bold",
-                        active
-                          ? "border-ink bg-ink text-white"
-                          : "border-border-md bg-surface text-text",
-                      )}
-                    >
-                      {n.label}
-                      {n.badge != null ? (
-                        <span
-                          className={cn(
-                            "grid h-[17px] min-w-[17px] place-items-center rounded-full px-[5px] text-[9.5px] font-bold",
-                            active
-                              ? "bg-[rgba(200,181,145,.35)] text-white"
-                              : "bg-gold-soft text-gold-d",
-                          )}
-                        >
-                          {n.badge}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-            </nav>
-          </div>
+          <ValuationWorkNav items={navItems} active={effectiveScreen} onSelect={setScreen} />
         ) : null}
 
         {deedMatchPending ? (
@@ -617,6 +610,22 @@ export function ValuationWorkShell({
               ) : null}
             </Activity>
           ) : null}
+          {visitedScreens.has("income") ? (
+            <Activity mode={screenMode("income")}>
+              <IncomeApproachScreen
+                settingsSaved={settingsSaved}
+                incomeEnabled={incomeTab}
+                valuationRequestId={valuationRequestId}
+                gates={gates}
+                recon={recon}
+                saving={saving}
+                locked={adjustmentsLocked}
+                onSavingChange={setSaving}
+                onIncomeSaved={onIncomeSaved}
+                onReconSaved={onReconSaved}
+              />
+            </Activity>
+          ) : null}
           {!loading && effectiveScreen === "final" && !settingsSaved ? (
             <Card>
               <CardPad>
@@ -652,6 +661,7 @@ export function ValuationWorkShell({
                     costAnalysisEnabled={costTab}
                     costBasisKey={approachSettings?.costBasisKey || "replacement"}
                   />
+                  {gates ? alertsPanel("general") : null}
                 </Suspense>
               ) : null}
             </Activity>

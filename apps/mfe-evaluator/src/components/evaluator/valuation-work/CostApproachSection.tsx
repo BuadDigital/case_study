@@ -15,6 +15,7 @@ import {
   CostResultsCard,
 } from "./CostApproachParts";
 import { useCostApproachWorkflow } from "./useCostApproachWorkflow";
+import { costSaveStatusText } from "./lib/cost-autosave";
 
 /**
  * Cost-approach section — composes the land, lines, indirect, age, results,
@@ -77,6 +78,7 @@ export const CostApproachSection = memo(function CostApproachSection({
     costAlerts,
     seedCostFromInventory,
     saveCost,
+    saveState,
     drift,
     addNewInventoryLines,
     updateInventoryAreas,
@@ -159,9 +161,24 @@ export const CostApproachSection = memo(function CostApproachSection({
 
       <CostAlertsCard alerts={costAlerts} />
 
-      <PrimaryBtn disabled={saving || locked} onClick={() => void saveCost()}>
-        حفظ أسلوب التكلفة
-      </PrimaryBtn>
+      <div className="flex flex-wrap items-center gap-3">
+        <PrimaryBtn disabled={saving || locked} onClick={() => void saveCost()}>
+          حفظ أسلوب التكلفة
+        </PrimaryBtn>
+        {!locked && costSaveStatusText(saveState) ? (
+          <p
+            className={
+              saveState.status === "error"
+                ? "m-0 text-[11.5px] font-semibold text-amber-text"
+                : "m-0 text-[11.5px] text-text-3"
+            }
+            role="status"
+            data-testid="cost-save-status"
+          >
+            {costSaveStatusText(saveState)}
+          </p>
+        ) : null}
+      </div>
     </>
   );
 });

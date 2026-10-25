@@ -156,7 +156,7 @@ const KEYED_FIELDS: Record<string, Record<string, FieldOrigin>> = {
 /** §25 — printed only when the value basis is liquidation. */
 const LIQUIDATION_FIELDS: Record<string, FieldOrigin> = {
   "نسبة خصم التصفية المنظمة": FINAL,
-  "مبرر معامل التصفية": FINAL,
+  "مبرر خصم التصفية": FINAL,
 };
 
 /** §26 approval table (the certified valuer). */

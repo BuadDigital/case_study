@@ -8,6 +8,7 @@ import {
   printMapsNotice,
   PRINT_MAP_SIZES,
   resolveComparablesMapImage,
+  subjectOnlyMapPins,
 } from "../valuation-report-comparables-map";
 import {
   applyValuationReportLiveFill,
@@ -379,6 +380,45 @@ describe("print map slots (§18 + §33)", () => {
     expect(withPins.comparableMapSlot).toBeNull();
     expect(withPins.satelliteMapSlot).toBeNull();
     expect(printMapsNotice(withPins.diagnostics)).toContain("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY");
+  });
+
+  it("§33 has no map when the inspector left no pin — comparable 1 is never shown as the subject", async () => {
+    expect(
+      subjectOnlyMapPins([{ lat: 21.81, lng: 39.11, label: "1", kind: "comp" }]),
+    ).toEqual([]);
+    vi.stubEnv("NEXT_PUBLIC_GOOGLE_MAPS_API_KEY", "test-maps-key");
+    const fetchMock = vi.fn(async () => new Response("x", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const r = await materializePrintMapSlots({
+      pins: [{ lat: 21.81, lng: 39.11, label: "1", kind: "comp" }],
+      comparableMapSlot: null,
+      satelliteMapSlot: null,
+      closeupMapSlot: null,
+      probeImage: async () => false,
+    });
+    expect(r.satelliteMapSlot).toBeNull();
+    expect(r.closeupMapSlot).toBeNull();
+    for (const call of fetchMock.mock.calls as unknown as Array<[string]>) {
+      expect(String(call[0])).not.toContain("zoom=18");
+      expect(String(call[0])).not.toContain("zoom=15");
+    }
+
+    const dom = new DOMParser().parseFromString(
+      `<!DOCTYPE html><html><body><section data-sec="33">
+        <div id="map-satellite" style="width:100%;height:300px"></div>
+        <div id="map-closeup" style="width:100%;height:300px"></div>
+      </section></body></html>`,
+      "text/html",
+    );
+    const fill = buildValuationReportLiveFill({
+      draft: createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" }),
+    });
+    applyValuationReportLiveFill(
+      dom,
+      { ...fill, comparablesMapPins: [{ lat: 21.81, lng: 39.11, label: "1", kind: "comp" }] },
+      { interactiveComparablesMap: true },
+    );
+    expect(dom.querySelector('[data-sec="33"] [data-ejada-gmap]')).toBeNull();
   });
 
   it("never falls back to the §18 comps map inside §33", () => {

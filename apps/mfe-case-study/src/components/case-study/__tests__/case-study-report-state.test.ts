@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { emptyCaseStudyReportDraft } from "../../../lib/app-data/case-study-report-model";
 import { caseStudyAnswerKey } from "../../../lib/app-data/case-study-report-data";
 import {
+  CASE_STUDY_DEED_MATCH_REQUIRED_MESSAGE,
+  caseStudyDeedMatchIssueBlock,
   caseStudyIncompleteMessage,
   firstCaseStudyReportScrollTarget,
   firstMissingQuestionLocation,
@@ -29,7 +31,7 @@ describe("firstCaseStudyReportScrollTarget", () => {
     expect(hit?.invalidDeedRemarks).toBeFalsy();
   });
 
-  it("never asks for the deed-nature match: the case-study report does not depend on the inspector's inputs", () => {
+  it("leaves the deed-nature match to caseStudyDeedMatchIssueBlock (D16 — it lives on another tab)", () => {
     // Decision 2026-10-15 — an empty outcome on a traditional deed used to block the issue.
     const draft = emptyCaseStudyReportDraft("t1");
     draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
@@ -89,3 +91,28 @@ describe("firstMissingQuestionLocation", () => {
   });
 });
 
+
+describe("caseStudyDeedMatchIssueBlock (D16)", () => {
+  const traditional = {
+    realEstateRegNumber: "",
+    identifierType: "deed" as const,
+    deedKind: "traditional",
+  };
+  const registered = { ...traditional, deedKind: "registered_title" };
+
+  it("blocks a traditional deed until an outcome is chosen", () => {
+    expect(caseStudyDeedMatchIssueBlock({ outcome: "", property: traditional })).toBe(
+      CASE_STUDY_DEED_MATCH_REQUIRED_MESSAGE,
+    );
+    expect(caseStudyDeedMatchIssueBlock({ outcome: undefined, property: traditional })).toBe(
+      CASE_STUDY_DEED_MATCH_REQUIRED_MESSAGE,
+    );
+    expect(caseStudyDeedMatchIssueBlock({ outcome: "matched", property: traditional })).toBeNull();
+    expect(caseStudyDeedMatchIssueBlock({ outcome: "differences", property: traditional })).toBeNull();
+  });
+
+  it("never blocks a registered title or an unknown property", () => {
+    expect(caseStudyDeedMatchIssueBlock({ outcome: "", property: registered })).toBeNull();
+    expect(caseStudyDeedMatchIssueBlock({ outcome: "", property: null })).toBeNull();
+  });
+});

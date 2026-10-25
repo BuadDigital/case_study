@@ -330,8 +330,10 @@ public static class FieldInspectionSubmissionValidator
             return false;
         if (el.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
             return false;
-        return (HasNonEmptyString(el, "fileName") || HasNonEmptyString(el, "fileName"))
-            && (HasNonEmptyString(el, "attachmentId") || HasNonEmptyString(el, "attachmentId"));
+        // JSON names are case-sensitive here: accept the camelCase the app sends and the PascalCase
+        // a server-side re-serialisation writes (the second check repeated the first before).
+        return (HasNonEmptyString(el, "fileName") || HasNonEmptyString(el, "FileName"))
+            && (HasNonEmptyString(el, "attachmentId") || HasNonEmptyString(el, "AttachmentId"));
     }
 
     /// <summary>

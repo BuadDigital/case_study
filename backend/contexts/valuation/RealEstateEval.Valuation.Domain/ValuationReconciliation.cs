@@ -1,19 +1,29 @@
 namespace RealEstateEval.Valuation.Domain;
 
-/// <summary>Approach kinds that can participate in reconciliation (income deferred).</summary>
+/// <summary>Approach kinds that can participate in reconciliation (income: D17 direct capitalisation).</summary>
 public static class ValuationApproachKinds
 {
     public const string Market = "market";
     public const string Cost = "cost";
+    public const string Income = "income";
 
     public static bool IsKnown(string? kind) =>
         string.Equals(kind, Market, StringComparison.OrdinalIgnoreCase)
-        || string.Equals(kind, Cost, StringComparison.OrdinalIgnoreCase);
+        || string.Equals(kind, Cost, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(kind, Income, StringComparison.OrdinalIgnoreCase);
 
     public static string LabelAr(string kind) =>
         string.Equals(kind, Cost, StringComparison.OrdinalIgnoreCase)
             ? "أسلوب التكلفة"
-            : "أسلوب السوق";
+            : string.Equals(kind, Income, StringComparison.OrdinalIgnoreCase)
+                ? "أسلوب الدخل (رسملة مباشرة)"
+                : "أسلوب السوق";
+
+    /// <summary>The live indicator of an internal approach kind (market is the fallback, as before).</summary>
+    public static decimal ValueOf(string? kind, decimal marketValue, decimal costValue, decimal incomeValue) =>
+        string.Equals(kind?.Trim(), Cost, StringComparison.OrdinalIgnoreCase) ? costValue
+        : string.Equals(kind?.Trim(), Income, StringComparison.OrdinalIgnoreCase) ? incomeValue
+        : marketValue;
 }
 
 /// <summary>8 bases.</summary>
@@ -142,7 +152,7 @@ public class ValuationReconciliationMethodLine
 {
     public Guid Id { get; set; }
     public Guid ReconciliationId { get; set; }
-    /// <summary>market / cost, or <c>doc:{attachmentId:N}</c> for a document indicator.</summary>
+    /// <summary>market / cost / income, or <c>doc:{attachmentId:N}</c> for a document indicator.</summary>
     public string ApproachKind { get; set; } = ValuationApproachKinds.Market;
  /// <summary>Approach opinion snapshotted at save (market / cost with land / the document's value).</summary>
     public decimal ApproachValue { get; set; }
@@ -262,12 +272,13 @@ public static class ReconciliationRules
     public static IReadOnlyDictionary<string, decimal> SuggestWeights(
         IReadOnlyList<string> kinds,
         decimal marketValue,
-        decimal costValue)
+        decimal costValue,
+        decimal incomeValue = 0m)
     {
         var result = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase);
         if (!kinds.Any(ValueDocumentUseRules.IsDocumentKind))
         {
-            foreach (var (kind, weight) in SuggestWeights(marketValue, costValue))
+            foreach (var (kind, weight) in SuggestWeights(marketValue, costValue, incomeValue))
                 result[kind] = weight;
             return result;
         }
@@ -293,6 +304,27 @@ public static class ReconciliationRules
         if (costOk)
             return [(ValuationApproachKinds.Market, 0m), (ValuationApproachKinds.Cost, 100m)];
         return [(ValuationApproachKinds.Market, 0m), (ValuationApproachKinds.Cost, 0m)];
+    }
+
+    /// <summary>
+    /// D17: the same market-first split with the income approach third — the full weight goes to
+    /// the first live indicator of market → cost → income; the appraiser re-weights.
+    /// </summary>
+    public static IReadOnlyList<(string kind, decimal weightPct)> SuggestWeights(
+        decimal marketValue,
+        decimal costValue,
+        decimal incomeValue)
+    {
+        var first = marketValue > 0m ? ValuationApproachKinds.Market
+            : costValue > 0m ? ValuationApproachKinds.Cost
+            : incomeValue > 0m ? ValuationApproachKinds.Income
+            : null;
+        return
+        [
+            (ValuationApproachKinds.Market, first == ValuationApproachKinds.Market ? 100m : 0m),
+            (ValuationApproachKinds.Cost, first == ValuationApproachKinds.Cost ? 100m : 0m),
+            (ValuationApproachKinds.Income, first == ValuationApproachKinds.Income ? 100m : 0m),
+        ];
     }
 
     /// <summary>

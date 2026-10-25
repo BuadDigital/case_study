@@ -102,7 +102,8 @@ describe("costFieldsFromDto actual age", () => {
     expect(fields.financingMonths).toBe("12");
     expect(fields.economicAge).toBe("50");
     expect(fields.indirectDraft.developer_profit?.pct).toBe("20");
-    expect(fields.indirectDraft.design_supervision).toBeUndefined();
+    // Saved rows decide: an item the appraiser left out is his 0, not a starter default.
+    expect(fields.indirectDraft.design_supervision?.pct).toBe("0");
   });
 });
 

@@ -1,6 +1,9 @@
+using System.Text.Json;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
@@ -37,5 +40,35 @@ public partial class PartyTaskSubmissionService
             || task.PropertyId is not Guid propertyId)
             return false;
         return await _valuationRequests.GetOpenByPropertyAsync(propertyId.ToString("D"), cancellationToken) is null;
+    }
+
+    /// <summary>
+    /// The handed-over «سعر التقييم» must equal the reconciliation's final value (±0.5) — see
+    /// <see cref="AppraisalHandOverPriceRules"/>. No valuation port, property, open request or final:
+    /// nothing to compare. An unreadable final fails closed.
+    /// </summary>
+    private async Task<Dictionary<string, string>?> AppraisalHandOverPriceErrorAsync(
+        PartyTaskSubmission entity,
+        CancellationToken cancellationToken)
+    {
+        if (_valuationRequests is null || entity.PropertyId is not Guid propertyId)
+            return null;
+        decimal? price;
+        using (var doc = JsonDocument.Parse(entity.PayloadJson))
+            price = PropertyAppraisalSubmissionValidator.ReadPrice(doc.RootElement);
+        try
+        {
+            var open = await _valuationRequests.GetOpenByPropertyAsync(propertyId.ToString("D"), cancellationToken);
+            if (open is null) return null;
+            var final = await _valuationRequests.GetFinalOpinionValueAsync(open.Id, cancellationToken);
+            return AppraisalHandOverPriceRules.MismatchError(price, final);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return new Dictionary<string, string>
+            {
+                [AppraisalHandOverPriceRules.ErrorKey] = AppraisalHandOverPriceRules.UnverifiedAr,
+            };
+        }
     }
 }

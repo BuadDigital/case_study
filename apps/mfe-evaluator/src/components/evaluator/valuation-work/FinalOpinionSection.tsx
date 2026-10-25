@@ -365,7 +365,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                   <tr className={invoiceTrClass}>
                     <td className={cn(invoiceLabelTdClass, "py-1.5")}>
                       <span className="text-[12.5px] font-medium text-text">
-                        − خصم البيع القسري
+                        − خصم التصفية
                       </span>
                       <input
                         id="final-inf-discount"
@@ -404,7 +404,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                         htmlFor="final-inf-discount-rationale"
                         className="mb-1 block text-[12px] font-medium text-text"
                       >
-                        مبرر معامل التصفية
+                        مبرر خصم التصفية
                         {parseLocaleNumber(liquidationDiscountPct) > 0 ? (
                           <span className="text-danger-text"> *</span>
                         ) : null}
@@ -433,7 +433,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                       ) : parseLocaleNumber(liquidationDiscountPct) >
                         0 ? (
                         <p className="mt-1 mb-0 text-[10.5px] text-text-3">
-                          مطلوب عند إدخال نسبة خصم أكبر من صفر.
+                          مطلوب عند إدخال نسبة خصم التصفية أكبر من صفر.
                         </p>
                       ) : null}
                     </td>

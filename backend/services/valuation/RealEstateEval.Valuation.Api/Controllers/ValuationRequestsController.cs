@@ -115,8 +115,12 @@ public class ValuationRequestsController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// Readable by the case specialist too (<see cref="CapabilityPolicyNames.ReadValuationReport"/>): she
+    /// prepares the report draft and sees what still blocks its issuance.
+    /// </summary>
     [HttpGet("{id:guid}/issuance-gates")]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<ValuationIssuanceGatesDto>> GetIssuanceGates(
         Guid id,
         CancellationToken ct)

@@ -28,6 +28,18 @@ public class FieldInspectionSubmissionValidatorTests
     }
 
     [Fact]
+    public void Validate_accepts_a_bound_photo_written_in_PascalCase()
+    {
+        var pascalPhoto = MinimalValidPayload()
+            .Replace("\"propertyDescription\": \"فيلا سكنية من دورين\"", "\"propertyDescription\": \"  \"")
+            .Replace(
+                "\"featurePhotoAttachments\": {}",
+                "\"featurePhotoAttachments\": { \"propertyDescription\": { \"FileName\": \"desc.jpg\", \"AttachmentId\": \"11111111-1111-1111-1111-111111111111\" } }");
+        using var doc = JsonDocument.Parse(pascalPhoto);
+        Assert.DoesNotContain("propertyDescription", FieldInspectionSubmissionValidator.Validate(doc.RootElement).Keys);
+    }
+
+    [Fact]
     public void Validate_rejects_missing_core_fields()
     {
         using var doc = JsonDocument.Parse("{}");

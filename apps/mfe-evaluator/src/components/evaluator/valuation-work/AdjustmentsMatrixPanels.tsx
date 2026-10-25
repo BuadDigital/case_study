@@ -14,7 +14,7 @@ export function MatrixOutputsPanel({
   basisView: MatrixBasisView;
   weightedPricePerSqm: number | null;
 }) {
-  const { isUnit, pricePerSqmDisplay, opinionRaw } = basisView;
+  const { isUnit, outputLabel, pricePerSqmDisplay, opinionRaw } = basisView;
   return (
     // Phones stack the two figures; side by side each got ~150px.
     <div className={cn(panelCardClass, "flex items-stretch max-lg:flex-col")}>
@@ -42,7 +42,7 @@ export function MatrixOutputsPanel({
       <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px] max-lg:px-4">
         <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />
         <div className="mb-[9px] text-[12px] font-bold text-heading">
-          {isUnit ? "قيمة الأرض قبل التقريب" : "قيمة العقار قبل التقريب"}
+          {outputLabel}
         </div>
         <div
           dir="ltr"

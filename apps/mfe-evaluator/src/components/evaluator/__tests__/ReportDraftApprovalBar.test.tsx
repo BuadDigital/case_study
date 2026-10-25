@@ -92,6 +92,20 @@ describe("ReportDraftApprovalBar", () => {
     expect(api.approveReportDraft).toHaveBeenCalledWith({ token: "t" }, "vr-1", { reportDate: today, html: "<p>report</p>" });
   });
 
+  it("a double-click on «اعتماد التقرير» asks once and approves once", async () => {
+    api.ensureReportNumber.mockResolvedValue({ ok: true, data: { valuationRequestId: "vr-1", reportNumber: "PRV-2026-00007" } });
+    api.approveReportDraft.mockResolvedValue({ ok: true, data: draft({ status: "approved", reportStage: "deposit_issued" }) });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    renderBar(draft({ status: "sent" }));
+
+    const button = screen.getByRole("button", { name: "اعتماد التقرير" });
+    fireEvent.click(button, { detail: 1 });
+    fireEvent.click(button, { detail: 2 });
+
+    await waitFor(() => expect(api.approveReportDraft).toHaveBeenCalledTimes(1));
+    expect(confirm).toHaveBeenCalledTimes(1);
+  });
+
   it("does nothing when the appraiser does not confirm the approval", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(false);
     renderBar(draft({ status: "sent" }));

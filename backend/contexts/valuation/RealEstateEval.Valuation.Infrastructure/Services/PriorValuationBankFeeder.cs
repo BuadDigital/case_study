@@ -13,6 +13,12 @@ namespace RealEstateEval.Valuation.Infrastructure.Services;
 /// "Prior valuation" — the source card then shows "from prior transactions".
 /// Skips quietly when mandatory bank data (final value, area, coordinates) is absent:
 /// "Do not invent data".
+/// <para>
+/// D14: only a market-value opinion on land with its buildings, as of today (not retrospective), is a
+/// usable market indication. One row per subject property: a newly deposited version updates it; a version
+/// that no longer qualifies takes it off the bank. A row another valuation adopted is left untouched — that
+/// valuation reads the bank row live and its value must not move.
+/// </para>
 /// </summary>
 public sealed class PriorValuationBankFeeder(
     ValuationDbContext valuation,
@@ -30,24 +36,31 @@ public sealed class PriorValuationBankFeeder(
         if (vr is null) return false;
         var propertyGuid = vr.PropertyId;
 
- // Idempotent — one prior-valuation row per subject property.
-        var exists = await valuation.ComparableProperties.AsNoTracking()
-            .AnyAsync(
-                c => c.SourcePropertyId == propertyGuid
-                    && c.Source == ComparableSources.PriorValuation,
-                cancellationToken);
-        if (exists) return false;
-
-        var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
-        var market = await selections.ListAsync(valuationRequestId, cancellationToken);
-        var finalValue = recon?.FinalOpinionValue ?? 0m;
-        var areaSqm = market?.SubjectAreaSqm ?? 0m;
-        if (finalValue <= 0m || areaSqm <= 0m) return false;
+        // One prior-valuation row per subject property (tracked — a new version updates it).
+        var existing = await valuation.ComparableProperties
+            .Where(c => c.SourcePropertyId == propertyGuid && c.Source == ComparableSources.PriorValuation)
+            .OrderByDescending(c => c.UpdatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (existing is not null && await AdoptedByAnotherValuationAsync(existing.Id, valuationRequestId, cancellationToken))
+            return false;
 
         var context = await caseStudy.GetValuationPropertyContextAsync(
             propertyGuid,
             cancellationToken);
         if (context is null) return false;
+
+        var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
+        var settings = await valuation.ValuationApproachSettings.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+        var scope = settings?.CostScopeKey
+            ?? ValuationApproachSettingsRules.DefaultScope(context.EffectivePropertyType(), context.HasStructures());
+        if (!PriorValuationBankRules.Qualifies(recon?.BasisOfValueKey, scope, settings?.ValuationDateMode))
+            return await RetireAsync(existing, cancellationToken);
+
+        var market = await selections.ListAsync(valuationRequestId, cancellationToken);
+        var finalValue = recon?.FinalOpinionValue ?? 0m;
+        var areaSqm = market?.SubjectAreaSqm ?? 0m;
+        if (finalValue <= 0m || areaSqm <= 0m) return false;
 
         if (context.LatestWorkspace?.MapLatitude is not { } lat
             || context.LatestWorkspace.MapLongitude is not { } lon
@@ -56,38 +69,75 @@ public sealed class PriorValuationBankFeeder(
             return false;
         }
 
-        var poNumber = context.PoNumber;
-
         var now = clock.GetUtcNow().UtcDateTime;
-        var id = Guid.NewGuid();
-        valuation.ComparableProperties.Add(new ComparableProperty
+        var row = existing;
+        if (row is null)
         {
-            Id = id,
-            ReferenceCode = $"CMP-{id.ToString("N")[..8].ToUpperInvariant()}",
-            ComparablePropertyType = string.IsNullOrWhiteSpace(context.EffectivePropertyType())
-                ? vr.PropertyType ?? ""
-                : context.EffectivePropertyType(),
-            TransactionKind = ComparableTransactionKinds.Executed,
-            Source = ComparableSources.PriorValuation,
-            Latitude = lat,
-            Longitude = lon,
-            AreaSqm = areaSqm,
-            TransactionDate = RiyadhClock.DateOf(now),
-            Price = finalValue,
-            PricePerSqm = ComparablePropertyRules.ComputePricePerSqm(finalValue, areaSqm),
-            City = context.City,
-            District = context.District,
-            Description = $"قيمة تقييم سابق معتمدة — معاملة {vr.DisplayId}",
-            IntakeChannel = ComparableIntakeChannels.Office,
-            SourceWorkOrderNumber = poNumber,
-            SourcePropertyId = propertyGuid,
-            EnteredByUserId = "system:prior-valuation-feeder",
-            EnteredAtUtc = now,
-            IsActive = true,
-            CreatedAtUtc = now,
-            UpdatedAtUtc = now,
-        });
+            var id = Guid.NewGuid();
+            row = new ComparableProperty
+            {
+                Id = id,
+                ReferenceCode = $"CMP-{id.ToString("N")[..8].ToUpperInvariant()}",
+                TransactionKind = ComparableTransactionKinds.Executed,
+                Source = ComparableSources.PriorValuation,
+                IntakeChannel = ComparableIntakeChannels.Office,
+                SourcePropertyId = propertyGuid,
+                EnteredByUserId = "system:prior-valuation-feeder",
+                EnteredAtUtc = now,
+                CreatedAtUtc = now,
+            };
+            valuation.ComparableProperties.Add(row);
+        }
+
+        row.ComparablePropertyType = string.IsNullOrWhiteSpace(context.EffectivePropertyType())
+            ? vr.PropertyType ?? ""
+            : context.EffectivePropertyType();
+        row.Latitude = lat;
+        row.Longitude = lon;
+        row.AreaSqm = areaSqm;
+        row.TransactionDate = RiyadhClock.DateOf(now);
+        row.Price = finalValue;
+        row.PricePerSqm = ComparablePropertyRules.ComputePricePerSqm(finalValue, areaSqm);
+        row.City = context.City;
+        row.District = context.District;
+        row.Description = $"قيمة تقييم سابق معتمدة — معاملة {vr.DisplayId}";
+        row.SourceWorkOrderNumber = context.PoNumber;
+        row.IsActive = true;
+        row.UpdatedAtUtc = now;
         await valuation.SaveChangesAsync(cancellationToken);
         return true;
     }
+
+    /// <summary>A valuation other than the source has the row in its adopted comparables.</summary>
+    private Task<bool> AdoptedByAnotherValuationAsync(
+        Guid comparableId,
+        Guid sourceRequestId,
+        CancellationToken cancellationToken) =>
+        valuation.ValuationComparableSelections.AsNoTracking()
+            .AnyAsync(
+                s => s.ComparablePropertyId == comparableId
+                    && s.IsAdopted
+                    && s.ValuationRequestId != sourceRequestId,
+                cancellationToken);
+
+    /// <summary>The new version no longer qualifies: its earlier bank row is taken off the bank.</summary>
+    private async Task<bool> RetireAsync(ComparableProperty? existing, CancellationToken cancellationToken)
+    {
+        if (existing is null || !existing.IsActive) return false;
+        existing.IsActive = false;
+        existing.UpdatedAtUtc = clock.GetUtcNow().UtcDateTime;
+        await valuation.SaveChangesAsync(cancellationToken);
+        return false;
+    }
+}
+
+/// <summary>D14: which completed valuations feed the comparables bank.</summary>
+public static class PriorValuationBankRules
+{
+    /// <summary>Market basis, land with its buildings, valued as of issue (not a retrospective date).</summary>
+    public static bool Qualifies(string? basisOfValueKey, string? costScopeKey, string? valuationDateMode) =>
+        string.Equals((basisOfValueKey ?? "").Trim(), BasisOfValueKeys.Market, StringComparison.OrdinalIgnoreCase)
+        && CostScopeKeys.Normalize(costScopeKey) == CostScopeKeys.LandAndBuilding
+        && (costScopeKey ?? "").Trim().Length > 0
+        && ValuationDateModes.Normalize(valuationDateMode) != ValuationDateModes.Retrospective;
 }

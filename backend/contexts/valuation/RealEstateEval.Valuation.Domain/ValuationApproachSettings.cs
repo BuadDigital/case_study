@@ -18,8 +18,17 @@ public class ValuationApproachSettings
  /// <summary>Cost approach (contractor method) — Q-3: not enabled for "land" type.</summary>
     public bool CostApproachEnabled { get; set; } = true;
 
- /// <summary>Income approach — formally deferred (⏸️); stored so the choice survives when opened.</summary>
+ /// <summary>Income approach (direct capitalisation, D17) — the appraiser may enable it.</summary>
     public bool IncomeApproachEnabled { get; set; }
+
+ /// <summary>
+ /// D11: the interest valued — see <see cref="OwnershipInterestKeys"/>: full ownership as the deed states it
+ /// (default), a usufruct right, or a building on leased land.
+ /// </summary>
+    public string OwnershipInterestKey { get; set; } = OwnershipInterestKeys.Freehold;
+
+ /// <summary>D11: years left on the usufruct / land lease — required for those interests, empty otherwise.</summary>
+    public decimal? RemainingLeaseYears { get; set; }
 
  /// <summary>Cost basis — see <see cref="CostBasisKeys"/>. Meaningful when cost is enabled.</summary>
     public string CostBasisKey { get; set; } = CostBasisKeys.Replacement;
@@ -64,6 +73,43 @@ public class ValuationApproachSettings
     public DateTime UpdatedAtUtc { get; set; }
 
     public ValuationRequest? ValuationRequest { get; set; }
+}
+
+/// <summary>
+/// D11: the interest being valued. «ملكية تامة» prints the deed's own ownership type; «حق منفعة» and
+/// «أرض مستأجرة» are leasehold interests that carry the remaining lease term (for buildings on leased land
+/// the remaining economic life is capped at it).
+/// </summary>
+public static class OwnershipInterestKeys
+{
+    public const string Freehold = "freehold";
+    public const string Usufruct = "usufruct";
+    public const string LeasedLand = "leased_land";
+
+    public static readonly string[] All = [Freehold, Usufruct, LeasedLand];
+
+    /// <summary>Upper bound on the remaining lease term (years).</summary>
+    public const decimal MaxRemainingLeaseYears = 999m;
+
+    public static bool IsKnown(string? value) =>
+        All.Contains((value ?? "").Trim().ToLowerInvariant(), StringComparer.Ordinal);
+
+    /// <summary>Blank or unknown → freehold.</summary>
+    public static string Normalize(string? value)
+    {
+        var v = (value ?? "").Trim().ToLowerInvariant();
+        return IsKnown(v) ? v : Freehold;
+    }
+
+    /// <summary>A usufruct right or leased land — the remaining lease term applies.</summary>
+    public static bool IsLeasehold(string? value) => Normalize(value) != Freehold;
+
+    public static string LabelAr(string? value) => Normalize(value) switch
+    {
+        Usufruct => "حق منفعة",
+        LeasedLand => "أرض مستأجرة",
+        _ => "ملكية تامة",
+    };
 }
 
 /// <summary>Cost basis: replacement or reproduction (B-2 §9 field).</summary>
@@ -213,6 +259,22 @@ public static class ValuationDateModes
 
 public static class ValuationApproachSettingsRules
 {
+ /// <summary>D9: minimum length of the retrospective-date rationale.</summary>
+    public const int RetrospectiveRationaleMinLength = 10;
+
+ /// <summary>
+ /// D9: a retrospective date lies in the past — not after today (Riyadh) and not after the report date
+ /// when one is already set. Null when acceptable (or when the bound is unknown).
+ /// </summary>
+    public static string? RetrospectiveDateError(DateOnly date, DateOnly? today, DateOnly? reportDate)
+    {
+        if (today is { } t && date > t)
+            return "تاريخ التقييم بأثر رجعي لا يكون بعد تاريخ اليوم";
+        if (reportDate is { } r && date > r)
+            return "تاريخ التقييم بأثر رجعي لا يكون بعد تاريخ التقرير";
+        return null;
+    }
+
  /// <summary>
  /// "Land" (any classification — residential/commercial/vacant). Property types are free-ish Arabic strings
  /// from the work order, so containment is the reliable probe.
@@ -291,7 +353,12 @@ public static class ValuationApproachSettingsRules
         DateOnly? retrospectiveDate = null,
         IReadOnlySet<string>? allowedPurposeKeys = null,
         string? costScopeKey = null,
-        DateOnly? retrospectiveDateEnd = null)
+        DateOnly? retrospectiveDateEnd = null,
+        string? retrospectiveRationale = null,
+        DateOnly? today = null,
+        DateOnly? reportDate = null,
+        string? ownershipInterestKey = null,
+        decimal? remainingLeaseYears = null)
     {
         var errors = new Dictionary<string, string>();
 
@@ -316,19 +383,40 @@ public static class ValuationApproachSettingsRules
         {
             if (retrospectiveDate is null)
                 errors["retrospectiveDate"] = "تاريخ التقييم بالأثر الرجعي إلزامي";
+            else if (RetrospectiveDateError(retrospectiveDate.Value, today, reportDate) is { } dateError)
+                errors["retrospectiveDate"] = dateError;
             if (retrospectiveDateEnd is { } end)
             {
                 if (retrospectiveDate is { } start && end < start)
                     errors["retrospectiveDateEnd"] =
                         "تاريخ نهاية الفترة يجب ألا يسبق تاريخ البداية";
+                else if (RetrospectiveDateError(end, today, reportDate) is { } endError)
+                    errors["retrospectiveDateEnd"] = endError;
             }
+
+            // D9: the rationale is part of the report scope — at least ten characters.
+            if ((retrospectiveRationale?.Trim().Length ?? 0) < RetrospectiveRationaleMinLength)
+                errors["retrospectiveRationale"] =
+                    $"مبرر التقييم بأثر رجعي إلزامي ({RetrospectiveRationaleMinLength} أحرف على الأقل)";
         }
 
         if (!marketEnabled && !costEnabled && !incomeEnabled)
             errors["appliedApproaches"] = "يلزم تفعيل أسلوب واحد على الأقل";
 
-        if (incomeEnabled)
-            errors["incomeApproachEnabled"] = "أسلوب الدخل قيد الإنشاء — مؤجَّل رسمياً";
+        // D11: a usufruct / leased-land interest carries its remaining lease term.
+        if (ownershipInterestKey is not null && ownershipInterestKey.Trim().Length > 0
+            && !OwnershipInterestKeys.IsKnown(ownershipInterestKey))
+        {
+            errors["ownershipInterestKey"] = "نوع الملكية غير معروف (ملكية تامة / حق منفعة / أرض مستأجرة)";
+        }
+        else if (OwnershipInterestKeys.IsLeasehold(ownershipInterestKey))
+        {
+            if (remainingLeaseYears is not { } years || years <= 0m)
+                errors["remainingLeaseYears"] = "المدة المتبقية من حق المنفعة / عقد إيجار الأرض (بالسنوات) إلزامية";
+            else if (years > OwnershipInterestKeys.MaxRemainingLeaseYears)
+                errors["remainingLeaseYears"] =
+                    $"المدة المتبقية لا تتجاوز {OwnershipInterestKeys.MaxRemainingLeaseYears:0} سنة";
+        }
 
         if (costScopeKey is not null && !CostScopeKeys.IsKnown(costScopeKey))
             errors["costScopeKey"] = "نطاق التقييم غير معروف (أرض فقط / مباني فقط / أرض مع المباني)";
@@ -402,14 +490,19 @@ public static class ValuationApproachSettingsRules
         }
     }
 
- /// <summary>Q-2: weighting rows are built from enabled approaches only (income is deferred, so excluded).</summary>
+ /// <summary>
+ /// Q-2: weighting rows are built from enabled approaches only — market, cost, then the D17
+ /// income approach (direct capitalisation), in that order.
+ /// </summary>
     public static IReadOnlyList<string> EnabledReconciliationKinds(
         bool marketEnabled,
-        bool costEnabled)
+        bool costEnabled,
+        bool incomeEnabled = false)
     {
         var kinds = new List<string>();
         if (marketEnabled) kinds.Add(ValuationApproachKinds.Market);
         if (costEnabled) kinds.Add(ValuationApproachKinds.Cost);
+        if (incomeEnabled) kinds.Add(ValuationApproachKinds.Income);
         return kinds;
     }
 }

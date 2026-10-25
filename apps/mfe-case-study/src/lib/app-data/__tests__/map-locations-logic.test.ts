@@ -345,6 +345,14 @@ describe("map-locations-logic", () => {
     );
   });
 
+  it("resolves any calendar year, not only 2025 and 2026", () => {
+    const range = resolveDateRange("2027");
+    expect(range.from?.getFullYear()).toBe(2027);
+    expect(range.to?.getFullYear()).toBe(2027);
+    expect(range.to?.getMonth()).toBe(11);
+    expect(resolveDateRange("nonsense")).toEqual({ from: null, to: null });
+  });
+
   it("flags issued reports older than 90 days as expired", () => {
     const now = new Date("2026-08-16T12:00:00Z");
     const recent = FIXTURE_PROPERTIES.find((r) => r.id === "T-0112")!;

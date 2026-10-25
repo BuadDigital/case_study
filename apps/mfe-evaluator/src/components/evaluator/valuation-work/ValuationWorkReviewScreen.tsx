@@ -9,9 +9,14 @@ import type {
   EvaluatorSubmission,
 } from "../../../lib/evaluator/evaluator-window-data";
 import { createEvaluatorDraft } from "../../../lib/evaluator/evaluator-window-data";
-import type { ValuationApproachSettingsDto } from "@platform/api-client";
+import type {
+  ValuationApproachSettingsDto,
+  ValuationIssuanceGatesDto,
+} from "@platform/api-client";
 import type { EvaluatorSpecialistDraft } from "../../../lib/evaluator/evaluator-validation";
 import { PrimaryBtn } from "./atoms";
+import { HandOverBlockersPanel } from "./HandOverBlockersPanel";
+import type { ValuationWorkScreenId } from "./lib/shell-state";
 
 const EvaluatorFinalReviewTab = lazy(() =>
   import("../EvaluatorFinalReviewTab").then((m) => ({
@@ -36,6 +41,8 @@ export function ValuationWorkReviewScreen({
   submitting = false,
   onSubmit,
   onSpecialistDraftChange,
+  gates = null,
+  onGoToScreen,
 }: {
   draft?: EvaluatorSubmission;
   propertyId: string;
@@ -60,6 +67,9 @@ export function ValuationWorkReviewScreen({
   submitting?: boolean;
   onSubmit?: () => void;
   onSpecialistDraftChange?: (draft: EvaluatorSpecialistDraft) => void;
+  /** Issuance gates from the shell — the hand-over blockers list (D2). */
+  gates?: ValuationIssuanceGatesDto | null;
+  onGoToScreen?: (screen: ValuationWorkScreenId) => void;
 }) {
   const reviewDraft =
     draft ??
@@ -85,6 +95,13 @@ export function ValuationWorkReviewScreen({
           onSpecialistDraftChange={onSpecialistDraftChange}
         />
       </Suspense>
+      {!disabled ? (
+        <HandOverBlockersPanel
+          gates={gates}
+          valuationRequestId={valuationRequestId}
+          onGoToScreen={onGoToScreen}
+        />
+      ) : null}
       {showSubmit ? (
         <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
           <PrimaryBtn

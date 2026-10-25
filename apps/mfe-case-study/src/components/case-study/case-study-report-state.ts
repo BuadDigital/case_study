@@ -3,6 +3,8 @@ import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "../../lib/
 import { caseStudyQuestionTargetId } from "../../lib/app-data/case-study-report-ux";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
+import { propertyDeedKindIsRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
+import { isDeedNatureMatchChosen } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 
 export const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
   "deed",
@@ -152,10 +154,26 @@ export function caseStudyIncompleteMessage(answered: number, total: number): str
   return `أجب عن كل الأسئلة الظاهرة (${answered} من ${total})`;
 }
 
+/** D16 — the refusal both sides show while a traditional deed has no deed ↔ nature outcome. */
+export const CASE_STUDY_DEED_MATCH_REQUIRED_MESSAGE =
+  "اختر نتيجة «مطابقة الصك على الطبيعة» من تبويب «مدخلات المعاين» قبل إصدار تقرير دراسة الحالة";
+
 /**
- * First incomplete control in form order: the matrix only. The deed ↔ nature match is not an
- * issue condition (decision 2026-10-15): the case-study report does not depend on the
- * inspector's inputs. Mirrors the server (CaseStudyReportService.Issue).
+ * D16 — issuing waits for the specialist's deed ↔ nature outcome on a traditional deed (the issue locks
+ * the field, and the appraiser's hand-over needs it). A registered title has no match gate; an unknown
+ * property is left to the server. Mirrors `CaseStudyReportDeedNatureMatchRules.ValidateForIssue`.
+ */
+export function caseStudyDeedMatchIssueBlock(args: {
+  outcome: string | null | undefined;
+  property: Parameters<typeof propertyDeedKindIsRegisteredTitle>[0] | null | undefined;
+}): string | null {
+  if (!args.property || propertyDeedKindIsRegisteredTitle(args.property)) return null;
+  return isDeedNatureMatchChosen(args.outcome) ? null : CASE_STUDY_DEED_MATCH_REQUIRED_MESSAGE;
+}
+
+/**
+ * First incomplete control in form order: the matrix. The deed ↔ nature match (D16) lives on another
+ * tab — see `caseStudyDeedMatchIssueBlock`. Mirrors the server (CaseStudyReportService.Issue).
  */
 export function firstCaseStudyReportScrollTarget(args: {
   draft: CaseStudyReportDraft;

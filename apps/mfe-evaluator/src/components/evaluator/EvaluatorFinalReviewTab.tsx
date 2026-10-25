@@ -328,7 +328,11 @@ export function EvaluatorFinalReviewTab({
       {
         marketApproachEnabled: currentSettings.marketApproachEnabled,
         costApproachEnabled: currentSettings.costApproachEnabled,
-        incomeApproachEnabled: false,
+        // Re-send the saved approaches / interest / rationale as they are — this save only owns the
+        // assumptions and the specialist clause (a hard-coded false would switch the income approach off).
+        incomeApproachEnabled: currentSettings.incomeApproachEnabled,
+        ownershipInterestKey: currentSettings.ownershipInterestKey ?? null,
+        remainingLeaseYears: currentSettings.remainingLeaseYears ?? null,
         costBasisKey: currentSettings.costBasisKey,
         costScopeKey: currentSettings.costScopeKey,
         costMeasurementUnitKey: currentSettings.costMeasurementUnitKey,
@@ -340,7 +344,7 @@ export function EvaluatorFinalReviewTab({
         valuationDateMode: currentSettings.valuationDateMode,
         retrospectiveDate: currentSettings.retrospectiveDate ?? null,
         retrospectiveDateEnd: currentSettings.retrospectiveDateEnd ?? null,
-        retrospectiveRationale: null,
+        retrospectiveRationale: currentSettings.retrospectiveRationale ?? null,
         selectedAssumptions: selected,
       },
     );

@@ -104,8 +104,8 @@ export type DatePreset =
   | "1y"
   | "month"
   | "year"
-  | "2025"
-  | "2026";
+  /** One calendar year, e.g. "2026" — any year, not a fixed list. */
+  | `${number}`;
 
 export type PropertyKindCat = "أرض" | "مبنى";
 export type PropertyUsageCat = "سكني" | "تجاري" | "زراعي" | "خدمات" | "أخرى";
@@ -224,18 +224,16 @@ export function resolveDateRange(preset: DatePreset | string, now = new Date()):
       const from = new Date(now.getFullYear(), 0, 1);
       return { from, to: now };
     }
-    case "2025":
-      return {
-        from: new Date("2025-01-01"),
-        to: new Date("2025-12-31T23:59:59"),
-      };
-    case "2026":
-      return {
-        from: new Date("2026-01-01"),
-        to: new Date("2026-12-31T23:59:59"),
-      };
-    default:
+    default: {
+      // A calendar year («2025», «2027»…) — it used to accept only 2025 and 2026.
+      if (/^\d{4}$/.test(preset)) {
+        return {
+          from: new Date(`${preset}-01-01`),
+          to: new Date(`${preset}-12-31T23:59:59`),
+        };
+      }
       return { from: null, to: null };
+    }
   }
 }
 

@@ -64,6 +64,8 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationReportFreezeGate, ValuationReportFreezeGate>();
         services.AddScoped<IValuationCostApproachRepository, ValuationCostApproachRepository>();
         services.AddScoped<IValuationCostApproachService, ValuationCostApproachService>();
+        services.AddScoped<IValuationIncomeApproachRepository, ValuationIncomeApproachRepository>();
+        services.AddScoped<IValuationIncomeApproachService, ValuationIncomeApproachService>();
         services.AddScoped<IValuationReconciliationRepository, ValuationReconciliationRepository>();
         services.AddScoped<IValuationReconciliationService, ValuationReconciliationService>();
         services.AddScoped<IValuationValueDocumentService, ValuationValueDocumentService>();
@@ -72,6 +74,8 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
         // Q-6: two-phase issuance + deposit certificate.
         services.AddScoped<IValuationReportIssuanceService, ValuationReportIssuanceService>();
+        // Only the assigned appraiser writes a valuation (report draft + every valuation-work write).
+        services.AddScoped<IAssignedAppraiserCheck, AssignedAppraiserCheck>();
         // The report draft: the specialist prepares, the appraiser approves (freezes the deposit copy).
         services.AddScoped<IValuationReportDraftService, ValuationReportDraftService>();
         // Report PDF links: browser-rendered HTML → Gotenberg (Chromium) → stored PDF behind a signed key.

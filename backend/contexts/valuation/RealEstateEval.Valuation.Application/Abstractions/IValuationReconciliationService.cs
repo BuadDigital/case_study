@@ -16,6 +16,16 @@ public interface IValuationReconciliationService
         string? actorId = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// The methodology-alert dispositions alone (upsert by code), audited like a full save. Creates an
+    /// empty reconciliation row when none exists yet — the methods and rationale stay unsaved.
+    /// </summary>
+    Task<(ValuationReconciliationDto? Result, Dictionary<string, string>? Errors)> SaveAlertOverridesAsync(
+        Guid valuationRequestId,
+        SaveValuationAlertOverridesRequest request,
+        string? actorId = null,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Approaches the system values itself on this request (Q-2 settings) — market / cost.</summary>
     Task<IReadOnlyList<string>> GetEnabledApproachKindsAsync(
         Guid valuationRequestId,

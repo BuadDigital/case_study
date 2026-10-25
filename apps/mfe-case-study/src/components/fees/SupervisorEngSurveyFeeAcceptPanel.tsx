@@ -35,6 +35,7 @@ import {
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { PoNumber } from "../ui/PoNumber";
+import { formatArDateTime } from "@platform/app-shared/format/date";
 
 function deedFromTitle(title: string | undefined): string {
   const t = (title ?? "").trim();
@@ -47,7 +48,7 @@ function formatWhen(raw: string | null | undefined): string {
   if (!raw?.trim()) return "—";
   const d = new Date(raw);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("ar-SA-u-nu-latn", {
+  return formatArDateTime(d, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

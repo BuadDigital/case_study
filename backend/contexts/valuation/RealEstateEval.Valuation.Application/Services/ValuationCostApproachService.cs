@@ -32,8 +32,52 @@ public sealed class ValuationCostApproachService(
 
         var entity = await repo.GetWithItemsAsync(valuationRequestId, cancellationToken);
         var settings = await repo.GetApproachSettingsAsync(valuationRequestId, cancellationToken);
+        var scopeKey = CostScopeKeys.Normalize(settings?.CostScopeKey);
+        var land = await ReadLandAsync(vr, entity, scopeKey, cancellationToken);
 
-        return ToDto(vr, entity, CostScopeKeys.Normalize(settings?.CostScopeKey));
+        return ToDto(vr, entity, scopeKey, land, CostLeaseTerms.RemainingLeaseYears(settings, scopeKey));
+    }
+
+    /// <summary>The land inputs one read uses: unit rate (SAR/m²), land area and whether comps are adopted.</summary>
+    private readonly record struct CostLandInputs(decimal UnitRate, decimal AreaSqm, bool HasAdopted);
+
+    private static CostLandInputs StoredLand(ValuationCostApproach? entity) =>
+        new(entity?.LandUnitRateFromMarket ?? 0m,
+            entity?.LandAreaSqm ?? 0m,
+            entity?.LandImportedAtUtc is not null);
+
+    /// <summary>D7: land inside the cost approach — always a per-m² rate from the adopted land comps.</summary>
+    private static CostLandInputs LandFromComps(ValuationComparableSelectionListDto? comps)
+    {
+        if (comps is null) return new(0m, 0m, false);
+        var adopted = comps.Items
+            .Where(i => i.IsAdopted && i.Market is not null)
+            .Select(i => (i.Market!.PricePerSqmAfterDifference, i.EffectiveAreaSqm, i.Market.EffectiveWeightPct));
+        return new(
+            CostApproachRules.LandUnitRateFromAdoptedComps(adopted, comps.AdjustmentBasis),
+            Math.Max(0m, comps.SubjectAreaSqm ?? 0m),
+            comps.AdoptedCount > 0);
+    }
+
+    /// <summary>
+    /// Problem 21: the land follows the land table live — adopting or adjusting a land comparable
+    /// shows in the cost screen, the reconciliation and the gates without a cost save (the market
+    /// approach reads its table the same way). After hand-over the table itself is frozen, so the
+    /// read cannot drift; the stored columns are the snapshot of the last save. Building-only
+    /// scopes carry no land and keep the stored values.
+    /// </summary>
+    private async Task<CostLandInputs> ReadLandAsync(
+        ValuationRequest vr,
+        ValuationCostApproach? entity,
+        string scopeKey,
+        CancellationToken cancellationToken)
+    {
+        if (CostScopeKeys.IsBuildingOnly(scopeKey)) return StoredLand(entity);
+        var comps = await selections.ListAsync(
+            vr.Id,
+            ComparableSelectionContexts.LandWithinCost,
+            cancellationToken);
+        return LandFromComps(comps);
     }
 
     public async Task<(ValuationCostApproachDto? Result, Dictionary<string, string>? Errors)> SaveAsync(
@@ -80,63 +124,28 @@ public sealed class ValuationCostApproachService(
         }
 
         var lines = request.Lines ?? [];
-        var errors = new Dictionary<string, string>();
-        for (var i = 0; i < lines.Count; i++)
-        {
-            var line = lines[i];
-            if (string.IsNullOrWhiteSpace(line.Label)
-                && CostLineItemKeys.Normalize(line.ItemKey) == CostLineItemKeys.Custom)
-                errors[$"lines[{i}].label"] = "تسمية البند مطلوبة";
-            if (line.AreaSqm < 0m)
-                errors[$"lines[{i}].areaSqm"] = "الكمية يجب أن تكون ≥ 0";
-            if (line.UnitCostSar < 0m)
-                errors[$"lines[{i}].unitCostSar"] = "تكلفة الوحدة يجب أن تكون ≥ 0";
-            if (line.Unit is not null && !CostLineUnits.IsKnown(line.Unit))
-                errors[$"lines[{i}].unit"] = "وحدة القياس غير معروفة (م² / م.ط / عدد / مقطوع)";
-            if (line.BuildRatioPct is < 0m or > 100m)
-                errors[$"lines[{i}].buildRatioPct"] = "نسبة البناء يجب أن تكون بين 0 و 100";
-            if (line.RepeatedFloorCount is < 0)
-                errors[$"lines[{i}].repeatedFloorCount"] = "عدد الأدوار المتكررة يجب أن يكون ≥ 0";
-        }
-
-        // "Blocking happens at adoption only": rationales are demanded by methodology alerts (m6/m10/m12), not by save.
-        if (request.UseRestrictionDiscountPct is < 0m or > 100m)
-            errors["useRestrictionDiscountPct"] = "خصم تقييد الاستخدام يجب أن يكون بين 0 و 100";
-        if (request.ApartmentLandShareSqm is < 0m)
-            errors["apartmentLandShareSqm"] = "حصة الشقة من الأرض يجب أن تكون ≥ 0";
-
         var indirectItems = request.IndirectItems ?? [];
-        var seenKeys = new HashSet<string>(StringComparer.Ordinal);
-        for (var i = 0; i < indirectItems.Count; i++)
-        {
-            var item = indirectItems[i];
-            if (!IndirectCostItemKeys.IsKnown(item.ItemKey))
-                errors[$"indirectItems[{i}].itemKey"] = "بند غير معروف من بنود التكاليف غير المباشرة";
-            else if (!seenKeys.Add(item.ItemKey))
-                errors[$"indirectItems[{i}].itemKey"] = "بند مكرر";
-            if (item.Pct < 0m || item.Pct > CostApproachRules.IndirectItemMaxPct)
-                errors[$"indirectItems[{i}].pct"] = "النسبة يجب أن تكون بين 0 و 50";
-        }
-
-        if (request.FinancingAnnualRatePct is < 0m or > CostApproachRules.FinancingAnnualRateMaxPct)
-            errors["financingAnnualRatePct"] = "المعدل السنوي يجب أن يكون بين 0 و 30";
-        if (request.FinancingMonths is < 0 or > CostApproachRules.FinancingMonthsMax)
-            errors["financingMonths"] = "مدة التنفيذ يجب أن تكون بين 0 و 120 شهرًا";
-
-        if (request.ActualAgeYears is < 0m)
-            errors["actualAgeYears"] = "العمر الفعلي يجب أن يكون ≥ 0";
-        if (request.EconomicAgeYears is < 0m)
-            errors["economicAgeYears"] = "العمر الاقتصادي يجب أن يكون ≥ 0";
-        if (request.LifeExtensionYears < 0m)
-            errors["lifeExtensionYears"] = "تمديد العمر يجب أن يكون ≥ 0";
-        if (request.FunctionalObsolescencePct is < 0m or > 100m)
-            errors["functionalObsolescencePct"] = "التقادم الوظيفي يجب أن يكون بين 0 و 100";
-        if (request.ExternalObsolescencePct is < 0m or > 100m)
-            errors["externalObsolescencePct"] = "التقادم الخارجي يجب أن يكون بين 0 و 100";
-
+        var errors = ValuationCostApproachRequestRules.Validate(request);
         if (errors.Count > 0) return (null, errors);
 
         var entity = await repo.FindWithItemsAsync(valuationRequestId, cancellationToken);
+
+        // A line id that is not one of this valuation's lines must not belong to another
+        // valuation — inserting it would collide with that row (was a 500).
+        var unknownIds = ValuationCostApproachRequestRules.UnknownLineIds(
+            lines,
+            (entity?.Lines ?? []).Select(l => l.Id).ToHashSet());
+        if (unknownIds.Count > 0)
+        {
+            var foreign = await repo.FindLineIdsOwnedElsewhereAsync(
+                entity?.Id,
+                unknownIds.Select(x => x.Id).ToList(),
+                cancellationToken);
+            foreach (var (index, id) in unknownIds.Where(x => foreign.Contains(x.Id)))
+                errors[$"lines[{index}].id"] = "معرّف البند يخص تقييمًا آخر — أعد تحميل الشاشة ثم احفظ";
+            if (errors.Count > 0) return (null, errors);
+        }
+
         if (entity is null)
         {
             entity = new ValuationCostApproach
@@ -150,18 +159,13 @@ public sealed class ValuationCostApproachService(
         if (request.RefreshLandFromLandComps)
         {
             // Cost land comes from the land_within_cost table only — no import from the market approach.
-            var landComps = await selections.ListAsync(
+            var land = LandFromComps(await selections.ListAsync(
                 valuationRequestId,
                 ComparableSelectionContexts.LandWithinCost,
-                cancellationToken);
-            entity.LandUnitRateFromMarket = CostApproachRules.LandUnitRateFromComparableWeighted(
-                landComps?.WeightedPricePerSqm ?? 0m,
-                landComps?.SubjectAreaSqm ?? 0m,
-                landComps?.AdjustmentBasis);
-            entity.LandAreaSqm = landComps?.SubjectAreaSqm ?? 0m;
-            entity.LandImportedAtUtc = landComps is { AdoptedCount: > 0 }
-                ? _time.UtcNow()
-                : null;
+                cancellationToken));
+            entity.LandUnitRateFromMarket = land.UnitRate;
+            entity.LandAreaSqm = land.AreaSqm;
+            entity.LandImportedAtUtc = land.HasAdopted ? _time.UtcNow() : null;
         }
 
         entity.UseRestrictionDiscountPct = request.UseRestrictionDiscountPct;
@@ -180,11 +184,8 @@ public sealed class ValuationCostApproachService(
         var linesById = entity.Lines.ToDictionary(l => l.Id);
         var keepLines = new HashSet<Guid>();
 
- // repeated-floors quantity derives from the first-floor area × count.
-        var firstFloorArea = lines
-            .Where(l => CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.FirstFloor)
-            .Select(l => l.AreaSqm)
-            .FirstOrDefault();
+        // repeated-floors quantity derives from the first-floor area × count.
+        var firstFloorArea = ValuationCostApproachRequestRules.FirstFloorArea(lines);
 
         for (var i = 0; i < lines.Count; i++)
         {
@@ -282,7 +283,9 @@ public sealed class ValuationCostApproachService(
         entity.FinancingAnnualRatePct = request.FinancingAnnualRatePct;
         entity.FinancingMonths = request.FinancingMonths;
         entity.ActualAgeYears = request.ActualAgeYears;
+        entity.ActualAgeRationale = TrimOrNull(request.ActualAgeRationale);
         entity.EconomicAgeYears = request.EconomicAgeYears;
+        entity.EconomicAgeRationale = TrimOrNull(request.EconomicAgeRationale);
         entity.LifeExtensionYears = request.LifeExtensionYears;
         entity.LifeExtensionBasis = string.IsNullOrWhiteSpace(request.LifeExtensionBasis)
             ? null
@@ -305,10 +308,15 @@ public sealed class ValuationCostApproachService(
         return (await GetAsync(valuationRequestId, cancellationToken), null);
     }
 
+    private static string? TrimOrNull(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     private static ValuationCostApproachDto ToDto(
         ValuationRequest vr,
         ValuationCostApproach? entity,
-        string costScopeKey)
+        string costScopeKey,
+        CostLandInputs landInputs,
+        decimal? remainingLeaseYears)
     {
         var orderedLines = (entity?.Lines ?? []).OrderBy(l => l.SortOrder).ToList();
 
@@ -334,13 +342,14 @@ public sealed class ValuationCostApproachService(
             .ToList();
 
         var direct = computed.Where(c => c.Line.IsIncluded).Sum(c => c.Total);
-        var land = entity?.LandValueFromMarket ?? 0m;
         var rateAfterDiscount = CostApproachRules.LandUnitRateAfterDiscount(
-            entity?.LandUnitRateFromMarket ?? 0m,
+            landInputs.UnitRate,
             entity?.UseRestrictionDiscountPct ?? 0m);
-        var landEstimateComplete =
-            (entity?.LandUnitRateFromMarket ?? 0m) > 0m
-            && (entity?.LandAreaSqm ?? 0m) > 0m;
+        var land = CostApproachRules.LandValue(
+            rateAfterDiscount,
+            landInputs.AreaSqm,
+            entity?.ApartmentLandShareSqm);
+        var landEstimateComplete = landInputs.UnitRate > 0m && landInputs.AreaSqm > 0m;
 
  // chain (–)
         var financingPct = CostApproachRules.FinancingPct(
@@ -405,8 +414,11 @@ public sealed class ValuationCostApproachService(
  // chain (–)
         var extendedLife = CostApproachRules.ExtendedLifeYears(
             entity?.EconomicAgeYears, entity?.LifeExtensionYears ?? 0m);
+        // D11: building-only on leased land — the remaining life cannot outlast the lease.
+        var effectiveLife = CostApproachRules.LifeCappedByLease(
+            extendedLife, entity?.ActualAgeYears, remainingLeaseYears);
         var physicalPct = CostApproachRules.PhysicalObsolescencePct(
-            entity?.ActualAgeYears, extendedLife);
+            entity?.ActualAgeYears, effectiveLife);
         var totalObsolescence = CostApproachRules.TotalObsolescencePct(
             physicalPct,
             entity?.FunctionalObsolescencePct ?? 0m,
@@ -418,8 +430,9 @@ public sealed class ValuationCostApproachService(
         {
             ValuationRequestId = vr.Id,
             PropertyId = vr.PropertyId.ToString("D"),
-            LandUnitRateFromMarket = entity?.LandUnitRateFromMarket ?? 0m,
-            LandAreaSqm = entity?.LandAreaSqm ?? 0m,
+            IsSaved = entity is not null,
+            LandUnitRateFromMarket = landInputs.UnitRate,
+            LandAreaSqm = landInputs.AreaSqm,
             LandEstimateComplete = landEstimateComplete,
             UseRestrictionDiscountPct = entity?.UseRestrictionDiscountPct ?? 0m,
             UseRestrictionRationale = entity?.UseRestrictionRationale,
@@ -435,7 +448,9 @@ public sealed class ValuationCostApproachService(
             IndirectRatesSumPct = indirectSum,
             TotalCostWithIndirect = totalCost,
             ActualAgeYears = entity?.ActualAgeYears,
+            ActualAgeRationale = entity?.ActualAgeRationale,
             EconomicAgeYears = entity?.EconomicAgeYears,
+            EconomicAgeRationale = entity?.EconomicAgeRationale,
             LifeExtensionYears = entity?.LifeExtensionYears ?? 0m,
             LifeExtensionBasis = entity?.LifeExtensionBasis,
             FunctionalObsolescencePct = entity?.FunctionalObsolescencePct ?? 0m,
@@ -443,8 +458,13 @@ public sealed class ValuationCostApproachService(
             ExternalObsolescencePct = entity?.ExternalObsolescencePct ?? 0m,
             ExternalObsolescenceRationale = entity?.ExternalObsolescenceRationale,
             ExtendedLifeYears = extendedLife,
+            RemainingLeaseYears = remainingLeaseYears,
+            LifeCappedByLease = effectiveLife < extendedLife,
+            EffectiveLifeYears = effectiveLife,
             PhysicalObsolescencePct = physicalPct,
             TotalObsolescencePct = totalObsolescence,
+            AppliedObsolescencePct = CostApproachRules.AppliedObsolescencePct(totalObsolescence),
+            ObsolescenceNeedsAlert = CostApproachRules.ObsolescenceNeedsAlert(totalObsolescence),
             DepreciationValue = depreciation,
             BuildingsValueAfterDepreciation = buildingsAfterDep,
             CostOpinionBuildingsOnly = buildingsAfterDep,

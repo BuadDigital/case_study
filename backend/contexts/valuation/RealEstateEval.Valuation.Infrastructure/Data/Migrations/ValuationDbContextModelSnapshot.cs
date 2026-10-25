@@ -465,6 +465,17 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.Property<bool>("MarketApproachEnabled")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("OwnershipInterestKey")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("freehold");
+
+                    b.Property<decimal?>("RemainingLeaseYears")
+                        .HasPrecision(6, 2)
+                        .HasColumnType("numeric(6,2)");
+
                     b.Property<DateOnly?>("RetrospectiveDate")
                         .HasColumnType("date");
 
@@ -638,6 +649,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("ActualAgeRationale")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<decimal?>("ActualAgeYears")
                         .HasPrecision(9, 2)
                         .HasColumnType("numeric(9,2)");
@@ -649,6 +664,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.Property<decimal?>("ApartmentLandShareSqm")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("EconomicAgeRationale")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
 
                     b.Property<decimal?>("EconomicAgeYears")
                         .HasPrecision(9, 2)
@@ -804,6 +823,74 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                             t.HasCheckConstraint("CK_ValuationCostLines_AreaSqm_NonNegative", "\"AreaSqm\" IS NULL OR \"AreaSqm\" >= 0");
 
                             t.HasCheckConstraint("CK_ValuationCostLines_UnitCostSar_NonNegative", "\"UnitCostSar\" IS NULL OR \"UnitCostSar\" >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIncomeApproach", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("CapRateRationale")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<decimal?>("CapitalisationRatePct")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<decimal>("GrossPotentialIncome")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("OperatingExpensesAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("OperatingExpensesMode")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasDefaultValue("pct_of_egi");
+
+                    b.Property<decimal>("OperatingExpensesPct")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<decimal>("OtherIncome")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("VacancyCollectionLossPct")
+                        .HasPrecision(9, 4)
+                        .HasColumnType("numeric(9,4)");
+
+                    b.Property<Guid>("ValuationRequestId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ValuationRequestId")
+                        .IsUnique();
+
+                    b.ToTable("ValuationIncomeApproaches", "valuation", t =>
+                        {
+                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_GrossPotentialIncome_NonNegative", "\"GrossPotentialIncome\" IS NULL OR \"GrossPotentialIncome\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_OperatingExpensesAmount_NonNegative", "\"OperatingExpensesAmount\" IS NULL OR \"OperatingExpensesAmount\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_OperatingExpensesMode", "\"OperatingExpensesMode\" IS NULL OR \"OperatingExpensesMode\" IN ('amount', 'pct_of_egi')");
+
+                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_OperatingExpensesPct_NonNegative", "\"OperatingExpensesPct\" IS NULL OR \"OperatingExpensesPct\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_OtherIncome_NonNegative", "\"OtherIncome\" IS NULL OR \"OtherIncome\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_VacancyCollectionLossPct_NonNegative", "\"VacancyCollectionLossPct\" IS NULL OR \"VacancyCollectionLossPct\" >= 0");
                         });
                 });
 
@@ -1092,6 +1179,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("DepositCodeKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<DateTime>("DepositIssuedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1116,6 +1207,12 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.Property<DateTime?>("FinalPdfGeneratedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.Property<DateTime?>("SupersededAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1134,6 +1231,11 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("DepositCodeKey")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ValuationReportIssuances_DepositCodeKey_Current")
+                        .HasFilter("\"SupersededAtUtc\" IS NULL AND \"DepositCodeKey\" IS NOT NULL");
 
                     b.HasIndex("ValuationRequestId")
                         .IsUnique()
@@ -1403,6 +1505,17 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .IsRequired();
 
                     b.Navigation("CostApproach");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIncomeApproach", b =>
+                {
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", "ValuationRequest")
+                        .WithMany()
+                        .HasForeignKey("ValuationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("ValuationRequest");
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIndirectCostItem", b =>

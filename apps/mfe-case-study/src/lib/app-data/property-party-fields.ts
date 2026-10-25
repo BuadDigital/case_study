@@ -13,6 +13,7 @@ import {
   inspectorAmenityLabel,
 } from "./inspector-workspace-data";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
+import { formatArDateTime } from "@platform/app-shared/format/date";
 
 /**
  * Field catalogue for the «تعديل العقار» party-data cards: what the inspector, the engineering
@@ -417,7 +418,7 @@ function stampText(
 function formatStamp(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("ar-SA-u-nu-latn", {
+  return formatArDateTime(d, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

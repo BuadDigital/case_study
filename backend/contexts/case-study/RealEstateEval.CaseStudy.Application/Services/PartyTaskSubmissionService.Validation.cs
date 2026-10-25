@@ -34,6 +34,18 @@ public partial class PartyTaskSubmissionService
                 foreach (var (key, message) in studyError)
                     errors[key] = message;
             }
+            else if (errors.Count == 0)
+            {
+                // D2: only a package that passed everything else spends the cross-service gate read.
+                var gateError = await AppraisalHandOverGateErrorsAsync(entity, cancellationToken)
+                    // The handed-over price is the reconciliation's final value — never another figure.
+                    ?? await AppraisalHandOverPriceErrorAsync(entity, cancellationToken);
+                if (gateError is not null)
+                {
+                    foreach (var (key, message) in gateError)
+                        errors[key] = message;
+                }
+            }
         }
 
         if (errors.Count > 0)

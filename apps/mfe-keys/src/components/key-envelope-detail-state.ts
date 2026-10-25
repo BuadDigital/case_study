@@ -78,6 +78,9 @@ export function studyHoldColor(status: string): string {
 export function timelineEventColor(eventType: string): string {
   const t = eventType.toLowerCase();
   if (t.includes("handoff") || t.includes("transfer")) return "#378add";
+  // Before the green check: "mismatch" contains "match" and used to show green.
+  if (t.includes("mismatch") || t.includes("missing") || t.includes("evict"))
+    return "#d9694f";
   if (
     t.includes("confirm") ||
     t.includes("match") ||
@@ -85,8 +88,6 @@ export function timelineEventColor(eventType: string): string {
     t.includes("revenue")
   )
     return "#2f7a4d";
-  if (t.includes("mismatch") || t.includes("missing") || t.includes("evict"))
-    return "#d9694f";
   return "#8a8d96";
 }
 

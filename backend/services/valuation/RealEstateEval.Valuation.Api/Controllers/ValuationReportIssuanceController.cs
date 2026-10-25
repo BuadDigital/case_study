@@ -67,8 +67,11 @@ public class ValuationReportIssuanceController : ControllerBase
         Dictionary<string, string>? errors)
     {
         if (errors is null) return Ok(result);
-        return errors.TryGetValue(ReportDraftErrorKeys.Forbidden, out var forbidden)
-            ? this.ForbiddenProblem(forbidden)
-            : this.FieldErrorsProblem(errors);
+        if (errors.TryGetValue(ReportDraftErrorKeys.Forbidden, out var forbidden))
+            return this.ForbiddenProblem(forbidden);
+        // D15: a duplicate deposit code or a lost parallel registration answers 409 (the marker key is dropped).
+        if (errors.Remove(DepositCertificateRules.ConflictKey))
+            return this.FieldErrorsProblem(errors, StatusCodes.Status409Conflict, "Conflict");
+        return this.FieldErrorsProblem(errors);
     }
 }

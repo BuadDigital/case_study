@@ -1,3 +1,5 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
@@ -22,8 +24,16 @@ public class ValuationReportIssuance
  /// <summary>Frozen snapshot of the full report (ValuationReportDocumentDto) — source for both copies.</summary>
     public string DocumentJson { get; set; } = "";
 
- /// <summary>Deposit-certificate code from Qiama — outside freeze scope.</summary>
+ /// <summary>Deposit-certificate code from Qiama — outside freeze scope. Stored (and printed) in Latin digits.</summary>
     public string? DepositCode { get; set; }
+ /// <summary>
+ /// D15: the code's comparison key (<see cref="DepositCodeKeyOf"/>). One code belongs to one current report:
+ /// a filtered unique index over the non-superseded rows makes a parallel duplicate lose at the database.
+ /// </summary>
+    public string? DepositCodeKey { get; set; }
+
+ /// <summary>The filtered unique index on <see cref="DepositCodeKey"/> — its violation is a duplicate code (409).</summary>
+    public const string DepositCodeKeyCurrentIndex = "IX_ValuationReportIssuances_DepositCodeKey_Current";
     public string? CertificateFileName { get; set; }
     public string? CertificateContentType { get; set; }
  /// <summary>The certificate in the attachments service — stored on the transaction file and appended as a page in the final copy.</summary>
@@ -123,11 +133,12 @@ public class ValuationReportIssuance
         string? uploadedByUserId,
         DateTime nowUtc)
     {
-        var code = depositCode.Trim();
+        var code = NormalizeDepositCode(depositCode);
         if (code.Length == 0)
             return "رمز الإيداع مطلوب";
 
         DepositCode = code;
+        DepositCodeKey = DepositCodeKeyOf(code);
         // A code-only correction keeps the certificate (and its name) already on the copy.
         if (certificateAttachmentId is not null || legacyCertificateContent is not null)
         {
@@ -149,9 +160,25 @@ public class ValuationReportIssuance
         if (!HasCertificate)
             return "أرفق شهادة الإيداع (PDF)";
 
-        FinalIssuedAtUtc = nowUtc;
+        // D15: the final copy is issued once — a later code correction never moves the issue moment.
+        FinalIssuedAtUtc ??= nowUtc;
         return null;
     }
+
+ /// <summary>
+ /// D15: the code as stored and printed — trimmed, Arabic/Persian digits turned Latin, inner whitespace
+ /// runs collapsed to one space. Letters keep the case they were typed in.
+ /// </summary>
+    public static string NormalizeDepositCode(string? depositCode)
+    {
+        var latin = Texts.ToAsciiDigits((depositCode ?? "").Trim());
+        return string.Join(' ', latin.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+    }
+
+ /// <summary>D15: the comparison key — the normalised code without whitespace, upper-case (invariant).</summary>
+    public static string DepositCodeKeyOf(string? depositCode) =>
+        string.Concat(NormalizeDepositCode(depositCode).Where(ch => !char.IsWhiteSpace(ch)))
+            .ToUpperInvariant();
 }
 
 /// <summary>Where the generated final PDF stands (the report with the deposit code + the certificate page).</summary>

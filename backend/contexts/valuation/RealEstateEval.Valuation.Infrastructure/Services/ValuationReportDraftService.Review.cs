@@ -39,6 +39,8 @@ public sealed partial class ValuationReportDraftService
             return (null, Error("حجم التقرير المطبوع أكبر من المسموح"));
         if (!ReportDepositCodeRewriter.HasDepositCodeLine(html))
             return (null, Error(ReportDepositCodeRewriter.MissingLineAr));
+        if (await FinalValueMismatchAsync(valuationRequestId, html, cancellationToken) is { } finalValueError)
+            return (null, Error(finalValueError));
         // Checked before the deposit copy is issued: a refused approval must leave nothing frozen.
         if (!DateOnly.TryParseExact(request.ReportDate?.Trim(), "yyyy-MM-dd", out _))
             return (null, Error(ValuationReportDraft.ReportDateInvalidAr));
@@ -195,6 +197,21 @@ public sealed partial class ValuationReportDraftService
         }
     }
 
+    /// <summary>
+    /// The copy that freezes must state the final value the system computed (when it computed one);
+    /// otherwise a stale or edited copy became the official report.
+    /// </summary>
+    private async Task<string?> FinalValueMismatchAsync(
+        Guid valuationRequestId,
+        string html,
+        CancellationToken cancellationToken)
+    {
+        if (reconciliation is null) return null;
+        var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
+        if (recon is not { FinalOpinionValue: > 0m }) return null;
+        return ReportFinalValueMarker.Check(html, recon.FinalOpinionValue);
+    }
+
     /// <summary>The tracked request, or the refusal when it is missing or the actor is not its assigned appraiser.</summary>
     private async Task<(ValuationRequest? Request, Dictionary<string, string>? Errors)> FindForAssignedAppraiserAsync(
         Guid valuationRequestId,
@@ -209,35 +226,17 @@ public sealed partial class ValuationReportDraftService
     }
 
     /// <summary>Only the appraiser assigned to the property — no supervisor / CDO override.</summary>
-    private async Task<bool> IsAssignedAppraiserAsync(
+    private Task<bool> IsAssignedAppraiserAsync(
         Guid propertyId,
         ReportDraftActor actor,
-        CancellationToken cancellationToken)
-    {
-        var task = await FindAppraisalTaskAsync(propertyId, cancellationToken);
-        return task is not null
-            && PoRoleMatrixRules.IsAssignedPartyUser(task.AssigneeId, actor.UserId, actor.DistributionAssigneeId);
-    }
+        CancellationToken cancellationToken) =>
+        AssignedAppraisers.IsAssignedToPropertyAsync(
+            propertyId, actor.UserId, actor.DistributionAssigneeId, cancellationToken);
 
-    /// <summary>The property's latest non-cancelled appraisal task; null when none or Case Study cannot be read.</summary>
-    private async Task<CaseStudyWorkflowTaskSnapshotDto?> FindAppraisalTaskAsync(
+    private Task<CaseStudyWorkflowTaskSnapshotDto?> FindAppraisalTaskAsync(
         Guid propertyId,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            var tasks = await caseStudy.ListWorkflowTasksByPropertyAsync(
-                propertyId, [WorkflowTaskKind.PropertyAppraisal], cancellationToken);
-            return tasks
-                .Where(t => !string.Equals(t.Status, WorkflowTaskStatusValues.Cancelled, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(t => t.UpdatedAtUtc)
-                .FirstOrDefault();
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException)
-        {
-            return null;
-        }
-    }
+        CancellationToken cancellationToken) =>
+        AssignedAppraisers.FindAppraisalTaskAsync(propertyId, cancellationToken);
 
     /// <summary>
     /// Where a notice leads: the appraiser's own task page, or the specialist's case-study task. Falls back to the

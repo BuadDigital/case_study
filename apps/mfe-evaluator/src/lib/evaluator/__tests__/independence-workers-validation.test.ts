@@ -53,6 +53,18 @@ describe("validateEvaluatorSubmission", () => {
     expect(errors.forced_sale_discount).toBeTruthy();
   });
 
+  it("D3: with the approaches on, the hand-over does not ask for «خصم التصفية» — the reconciliation save does", () => {
+    for (const forcedSaleDiscountPct of ["", "0"]) {
+      const errors = validateEvaluatorSubmission({
+        ...base,
+        forcedSaleDiscountPct,
+        valueBasisKey: "liquidation",
+        skipManualLandBuilding: true,
+      });
+      expect(errors.forced_sale_discount).toBeUndefined();
+    }
+  });
+
   it("requires a retrospective date when valuation date mode is retrospective", () => {
     const errors = validateEvaluatorSubmission({
       ...base,

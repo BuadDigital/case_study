@@ -55,7 +55,7 @@ export function PartyActiveTaskWorkPage({
       <PageShell>
         <PageGutter className="py-8 text-center">
           <p className="m-0 text-[13px] text-text-3">
-            لم تُعثر على المهمة أو لم تعد في قائمتك.
+            لم يُعثَر على المهمة أو لم تعد في قائمتك.
           </p>
           <Button
             type="button"

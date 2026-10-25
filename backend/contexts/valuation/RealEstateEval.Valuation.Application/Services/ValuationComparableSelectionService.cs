@@ -53,12 +53,37 @@ public sealed partial class ValuationComparableSelectionService(
         var compIds = rows.Select(r => r.ComparablePropertyId).Distinct().ToList();
         var comps = await repo.GetComparablesAsync(compIds, cancellationToken);
 
-        var today = RiyadhClock.Today(_time);
+        var valuationDate = await OfficialValuationDateAsync(valuationRequestId, cancellationToken);
         var header = await repo.GetMarketApproachAsync(valuationRequestId, cancellationToken);
         var factorRationales = await repo.ListFactorRationalesAsync(
             valuationRequestId, context, cancellationToken);
         return ValuationComparableListBuilder.BuildList(
-            request, rows, comps, today, header, context, factorRationales);
+            request, rows, comps, valuationDate, header, context, factorRationales,
+            await CostLandShareForAsync(valuationRequestId, context, cancellationToken));
+    }
+
+    /// <summary>The cost approach's apartment land share — read for the land table only.</summary>
+    private async Task<decimal?> CostLandShareForAsync(
+        Guid valuationRequestId,
+        string selectionContext,
+        CancellationToken cancellationToken) =>
+        ComparableSelectionContexts.Normalize(selectionContext) == ComparableSelectionContexts.LandWithinCost
+            ? await repo.GetCostApartmentLandShareSqmAsync(valuationRequestId, cancellationToken)
+            : null;
+
+    /// <summary>
+    /// D8: deal age, the suggested time adjustment and freshness are measured to the official
+    /// valuation date — the retrospective date when chosen, otherwise today.
+    /// </summary>
+    private async Task<DateOnly> OfficialValuationDateAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken)
+    {
+        var settings = await repo.GetApproachSettingsAsync(valuationRequestId, cancellationToken);
+        return MarketApproachRules.OfficialValuationDate(
+            settings?.ValuationDateMode,
+            settings?.RetrospectiveDate,
+            RiyadhClock.Today(_time));
     }
 
     public async Task<(ValuationComparableSelectionListDto? Result, Dictionary<string, string>? Errors)>
@@ -88,7 +113,18 @@ public sealed partial class ValuationComparableSelectionService(
         var context = ComparableSelectionContexts.Normalize(request.SelectionContext);
         var existing = await repo.FindSelectionsAsync(
             valuationRequestId, context, cancellationToken);
-        await repo.RemoveSelectionsAsync(existing, cancellationToken);
+        // A comparable that stays in the list keeps its row — saved adjustments, manual weight
+        // and price/area overrides survive; only comparables dropped from the list are removed.
+        var keptIds = ids.ToHashSet();
+        var existingByComparable = existing
+            .GroupBy(x => x.ComparablePropertyId)
+            .ToDictionary(g => g.Key, g => g.OrderBy(x => x.SortOrder).First());
+        await repo.RemoveSelectionsAsync(
+            existing
+                .Where(x => !keptIds.Contains(x.ComparablePropertyId)
+                    || !ReferenceEquals(existingByComparable[x.ComparablePropertyId], x))
+                .ToList(),
+            cancellationToken);
 
         var now = _time.UtcNow();
         var ordered = ValuationComparableSelectionRequestRules.OrderReplaceItems(items);
@@ -96,6 +132,19 @@ public sealed partial class ValuationComparableSelectionService(
         for (var i = 0; i < ordered.Count; i++)
         {
             var it = ordered[i];
+            if (existingByComparable.TryGetValue(it.ComparablePropertyId, out var kept))
+            {
+                kept.SortOrder = i;
+                if (kept.IsAdopted != it.IsAdopted)
+                {
+                    kept.IsAdopted = it.IsAdopted;
+                    kept.SelectedByUserId = selectedByUserId;
+                    kept.SelectedAtUtc = now;
+                }
+
+                continue;
+            }
+
             var selectionId = Guid.NewGuid();
             await repo.AddSelectionAsync(
                 new ValuationComparableSelection
@@ -233,6 +282,8 @@ public sealed partial class ValuationComparableSelectionService(
         }
 
         var errors = ValuationComparableSelectionRequestRules.ValidateMarketSave(request);
+        foreach (var (field, message) in DuplicateFactorKeyErrors(request))
+            errors[field] = message;
         if (errors.Count > 0) return (null, errors);
 
         await repo.RemoveAdjustmentLinesAsync(row.AdjustmentLines.ToList(), cancellationToken);
@@ -241,6 +292,27 @@ public sealed partial class ValuationComparableSelectionService(
 
         await repo.SaveChangesAsync(cancellationToken);
         return (await GetSelectionDtoAsync(row.Id, cancellationToken), null);
+    }
+
+    /// <summary>
+    /// One line per factor on a comparable — a second «location» row would count the same
+    /// difference twice (and the UI shows only one), so the save is refused with 400.
+    /// </summary>
+    public static Dictionary<string, string> DuplicateFactorKeyErrors(
+        SaveValuationComparableMarketRequest request)
+    {
+        var errors = new Dictionary<string, string>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var lines = request.AdjustmentLines ?? [];
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var key = lines[i].FactorKey?.Trim() ?? "";
+            if (key.Length == 0) continue;
+            if (!seen.Add(key))
+                errors[$"adjustmentLines[{i}].factorKey"] = "عامل التسوية مكرر على المقارن نفسه — سطر واحد لكل عامل";
+        }
+
+        return errors;
     }
 
     private async Task<ValuationComparableSelectionDto?> GetSelectionDtoAsync(
@@ -262,10 +334,12 @@ public sealed partial class ValuationComparableSelectionService(
             request,
             all,
             comps,
-            RiyadhClock.Today(_time),
+            await OfficialValuationDateAsync(row.ValuationRequestId, cancellationToken),
             await repo.GetMarketApproachAsync(row.ValuationRequestId, cancellationToken),
             row.SelectionContext,
-            factorRationales: []);
+            factorRationales: [],
+            costApartmentLandShareSqm: await CostLandShareForAsync(
+                row.ValuationRequestId, row.SelectionContext, cancellationToken));
         return list.Items.FirstOrDefault(i => i.Id == selectionId);
     }
 
@@ -285,22 +359,44 @@ public sealed partial class ValuationComparableSelectionService(
             .Select(x => x.ComparablePropertyId)
             .ToHashSet();
 
-        var missing = DemoComparableBank
+        // D10 / problem 22: a land comparable linked to a BUILT subject never lands in the market
+        // table — it is a land-value input, so it goes to the land table (within the cost approach).
+        var builtSubject = !ValuationApproachSettingsRules.IsLandPropertyType(request.PropertyType);
+        var existingLand = builtSubject
+            ? (await repo.FindSelectionsAsync(
+                    request.Id, ComparableSelectionContexts.LandWithinCost, cancellationToken))
+                .Select(x => x.ComparablePropertyId)
+                .ToHashSet()
+            : [];
+
+        var candidates = DemoComparableBank
             .Exclude(links.Where(id => !existing.Contains(id)))
             .ToList();
-        if (missing.Count == 0) return true;
+        if (candidates.Count == 0) return true;
 
-        var activeIds = (await repo.ListActiveComparableIdsAsync(missing, cancellationToken))
+        var activeIds = (await repo.ListActiveComparableIdsAsync(candidates, cancellationToken))
             .ToHashSet();
+        var linkedComps = builtSubject
+            ? await repo.GetComparablesAsync(candidates, cancellationToken)
+            : new Dictionary<Guid, ComparableProperty>();
 
         var maxOrder = await repo.MaxSortOrderAsync(
             request.Id, ComparableSelectionContexts.Market, cancellationToken);
+        var maxLandOrder = builtSubject
+            ? await repo.MaxSortOrderAsync(
+                request.Id, ComparableSelectionContexts.LandWithinCost, cancellationToken)
+            : 0;
 
         var now = _time.UtcNow();
         var added = false;
-        foreach (var comparableId in missing)
+        foreach (var comparableId in candidates)
         {
             if (!activeIds.Contains(comparableId)) continue;
+            var isLandComp = builtSubject
+                && linkedComps.TryGetValue(comparableId, out var linked)
+                && PropertyCategoryRules.Categorize(linked.ComparablePropertyType, linked.Usage)
+                    == PropertyCategoryRules.Land;
+            if (isLandComp && existingLand.Contains(comparableId)) continue;
             var selectionId = Guid.NewGuid();
             await repo.AddSelectionAsync(
                 new ValuationComparableSelection
@@ -308,8 +404,10 @@ public sealed partial class ValuationComparableSelectionService(
                     Id = selectionId,
                     ValuationRequestId = request.Id,
                     ComparablePropertyId = comparableId,
-                    SelectionContext = ComparableSelectionContexts.Market,
-                    SortOrder = ++maxOrder,
+                    SelectionContext = isLandComp
+                        ? ComparableSelectionContexts.LandWithinCost
+                        : ComparableSelectionContexts.Market,
+                    SortOrder = isLandComp ? ++maxLandOrder : ++maxOrder,
                     IsAdopted = true,
                     SelectedAtUtc = now,
                 },

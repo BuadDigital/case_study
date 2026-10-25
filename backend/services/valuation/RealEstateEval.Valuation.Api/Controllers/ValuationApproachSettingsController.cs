@@ -21,7 +21,7 @@ public class ValuationApproachSettingsController : ControllerBase
         _settings = settings;
 
     [HttpGet]
-    [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
     public async Task<ActionResult<ValuationApproachSettingsDto>> Get(
         Guid valuationRequestId,
         CancellationToken ct)
@@ -32,6 +32,7 @@ public class ValuationApproachSettingsController : ControllerBase
 
     [HttpPut]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [RequireAssignedAppraiser]
     public async Task<ActionResult<ValuationApproachSettingsDto>> Save(
         Guid valuationRequestId,
         [FromBody] SaveValuationApproachSettingsRequest request,

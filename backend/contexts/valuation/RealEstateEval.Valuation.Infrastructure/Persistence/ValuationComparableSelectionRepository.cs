@@ -149,6 +149,14 @@ public sealed class ValuationComparableSelectionRepository(ValuationDbContext db
         db.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
 
+    public Task<decimal?> GetCostApartmentLandShareSqmAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken) =>
+        db.ValuationCostApproaches.AsNoTracking()
+            .Where(x => x.ValuationRequestId == valuationRequestId)
+            .Select(x => x.ApartmentLandShareSqm)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public Task<ValuationComparableSelection?> FindSelectionByComparableAsync(
         Guid valuationRequestId,
         Guid comparablePropertyId,

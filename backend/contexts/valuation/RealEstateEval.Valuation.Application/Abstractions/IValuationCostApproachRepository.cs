@@ -27,6 +27,15 @@ public interface IValuationCostApproachRepository
         Guid valuationRequestId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Of <paramref name="lineIds"/>, the ids already stored on a cost line of ANOTHER cost
+    /// approach (<paramref name="costApproachId"/> null = every stored id is another's).
+    /// </summary>
+    Task<IReadOnlySet<Guid>> FindLineIdsOwnedElsewhereAsync(
+        Guid? costApproachId,
+        IReadOnlyCollection<Guid> lineIds,
+        CancellationToken cancellationToken);
+
     Task AddAsync(ValuationCostApproach entity, CancellationToken cancellationToken);
 
     Task AddLineAsync(ValuationCostLine line, CancellationToken cancellationToken);

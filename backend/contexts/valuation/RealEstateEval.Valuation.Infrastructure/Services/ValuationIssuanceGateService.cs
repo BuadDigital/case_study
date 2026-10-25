@@ -7,6 +7,7 @@ using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 using RealEstateEval.Attachments.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.Valuation.Domain;
 using RealEstateEval.Attachments.Domain;
@@ -16,7 +17,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Services;
 /// <summary>
 /// Aggregates credential + case-study match + gates + methodology alerts.
 /// </summary>
-public sealed class ValuationIssuanceGateService(
+public sealed partial class ValuationIssuanceGateService(
     ValuationDbContext valuation,
     ICaseStudyLookup caseStudy,
     IAttachmentLookup attachments,
@@ -24,8 +25,10 @@ public sealed class ValuationIssuanceGateService(
     IAttachmentPrintDictionaryService printDictionary,
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
+    IValuationIncomeApproachService incomeApproach,
     IValuationReconciliationService reconciliation,
     IValuationValueDocumentService valueDocuments,
+    IAssignedAppraiserCheck assignedAppraiser,
     TimeProvider clock) : IValuationIssuanceGateService
 {
     public async Task<ValuationIssuanceGatesDto?> EvaluateAsync(
@@ -82,6 +85,10 @@ public sealed class ValuationIssuanceGateService(
             }
         }
 
+        var assigneeId = propertyGuid == Guid.Empty
+            ? null
+            : (await assignedAppraiser.FindAppraisalTaskAsync(propertyGuid, cancellationToken))?.AssigneeId;
+
         var market = await selections.ListAsync(
             valuationRequestId,
             ComparableSelectionContexts.Market,
@@ -91,6 +98,7 @@ public sealed class ValuationIssuanceGateService(
             ComparableSelectionContexts.LandWithinCost,
             cancellationToken);
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
+        var income = await incomeApproach.GetAsync(valuationRequestId, cancellationToken);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var hasReconSaved = !string.IsNullOrWhiteSpace(recon?.MethodsRationale)
             || (recon?.FinalOpinionValue ?? 0m) > 0m;
@@ -119,6 +127,8 @@ public sealed class ValuationIssuanceGateService(
         // "Building only" scope: land section hidden — its gates do not apply.
         var costLandRelevant = costApproachEnabled
             && !CostScopeKeys.IsBuildingOnly(settings.CostScopeKey);
+        // D17: the income approach — its gate and alerts 26–28 follow the settings toggle.
+        var incomeOn = settings.IncomeApproachEnabled ? income : null;
 
         var checks = new List<ValuationIssuanceGateCheck>
         {
@@ -126,9 +136,14 @@ public sealed class ValuationIssuanceGateService(
                 firmLicenseExpiresAt,
                 eval.MembershipExpiresAt,
                 today),
+            // D13: only the people on THIS report — not the whole roster (one colleague's expired
+            // membership used to block every appraiser's issuance).
             ValuationIssuanceGateRules.ParticipantCredentials(
-                org.Valuers
-                    .Where(v => v.IsActive)
+                ValuationIssuanceGateInputRules.ReportParticipants(
+                        org.Valuers,
+                        eval.Name,
+                        assigneeId,
+                        vr.Appraiser)
                     .Select(v => new ValuationIssuanceGateRules.RosterParticipantCredentials(
                         v.NameAr,
                         ValuerCredentialRules.FirstFilled(
@@ -152,6 +167,9 @@ public sealed class ValuationIssuanceGateService(
             ValuationIssuanceGateRules.CostLandEstimateComplete(
                 costLandRelevant,
                 cost?.LandEstimateComplete == true),
+            ValuationIssuanceGateRules.IncomeApproachComplete(
+                settings.IncomeApproachEnabled,
+                income?.IsComplete == true),
             ValuationIssuanceGateRules.ComparableWeights(
                 "market",
                 "أوزان مقارنات أسلوب السوق = 100٪",
@@ -197,6 +215,7 @@ public sealed class ValuationIssuanceGateService(
                 ValuationMethodologyAlertCodes.LimitedInspection,
                 inspectionRestrictionReason));
         }
+        IncomeApproachAlertInputRules.AddCapRateRationale(resolutions, incomeOn);
 
         var alertInput = new ValuationMethodologyAlertInput(
             HasStructuresToValue: hasStructures,
@@ -219,10 +238,7 @@ public sealed class ValuationIssuanceGateService(
             LiquidationDiscountRationale: recon?.LiquidationDiscountRationale,
             AdoptedComparables: (market?.Items ?? [])
                 .Where(i => i.IsAdopted)
-                .Select(i => new ValuationMethodologyAlertComparableInput(
-                    i.Comparable.ComparablePropertyType,
-                    i.Market?.ExceedsLargeAdjustmentThreshold ?? false,
-                    i.Market?.SumIncludedPct ?? 0m))
+                .Select(i => ValuationIssuanceGateInputRules.ToAlertComparable(i, market?.AdjustmentBasis))
                 .ToList(),
             UseRestrictionDiscountPct: cost?.UseRestrictionDiscountPct ?? 0m,
             UseRestrictionRationale: cost?.UseRestrictionRationale,
@@ -244,7 +260,15 @@ public sealed class ValuationIssuanceGateService(
             UninspectedUnitCount: uninspectedUnitCount,
             RemoteInspectionApprovedByAccredited: remoteInspectionApproved,
             MarketApproachRelevant: marketApproachEnabled,
-            CostApproachEnabled: costApproachEnabled);
+            CostApproachEnabled: costApproachEnabled,
+            ComparableDateCutoff: MarketApproachRules.ComparableDateCutoff(
+                settings.ValuationDateMode,
+                settings.RetrospectiveDate,
+                settings.RetrospectiveDateEnd,
+                today),
+            Today: today,
+            SubjectPropertyType: typeForRules,
+            Income: IncomeApproachAlertInputRules.AlertInput(incomeOn));
 
         var alerts = ValuationMethodologyAlertRules.Evaluate(alertInput);
         var overrideByCode = (recon?.MethodologyAlertOverrides ?? [])
@@ -294,85 +318,7 @@ public sealed class ValuationIssuanceGateService(
             }).ToList(),
             MethodologyAlertTriggeredCount = ValuationMethodologyAlertRules.TriggeredCount(alerts),
             MethodologyAlertsNoteAr =
-                "تنبيهات منهجية (20): 7 حاجبة · 8 بمبرر نصي إلزامي · 5 بإقرار.",
+                "تنبيهات منهجية (27): 8 حاجبة · 13 بمبرر نصي إلزامي · 6 بإقرار.",
         };
-    }
-
-    /// <summary>
-    /// Every «مستند ذو قيمة» with an effect must be approved by the case specialist; an indicator
-    /// must not duplicate an approach the system now values internally.
-    /// </summary>
-    private async Task<ValuationIssuanceGateCheck> ValueDocumentsCheckAsync(
-        Guid valuationRequestId,
-        CancellationToken cancellationToken)
-    {
-        var docs = await valueDocuments.GetAsync(valuationRequestId, cancellationToken);
-        var used = (docs?.Documents ?? []).Where(d => d.Effect is not null).ToList();
-        var notApproved = used
-            .Where(d => d.Missing || !string.Equals(d.Status, ValueDocumentStatuses.Approved, StringComparison.Ordinal))
-            .Select(d => d.LabelAr)
-            .ToList();
-        var conflicting = used
-            .Where(d => d.Effect == ValueDocumentEffects.Indicator
-                && (docs?.InternalApproachKinds ?? []).Contains(d.ApproachKey ?? "", StringComparer.OrdinalIgnoreCase))
-            .Select(d => d.LabelAr)
-            .ToList();
-        return ValuationIssuanceGateRules.ValueDocuments(notApproved, conflicting);
-    }
-
- /// <summary>
- /// For every active dictionary type marked required (and matching the property
- /// type, when linked), at least one classified upload of that type — or of a type
- /// that counts as it, e.g. the bourse deed image for the deed — must exist.
- /// Unlisted documents never satisfy a requirement.
- /// </summary>
-    private async Task<IReadOnlyList<string>> FindMissingRequiredAttachmentLabelsAsync(
-        string propertyId,
-        string? poNumber,
-        string propertyType,
-        bool propertyRequiresSurvey,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(propertyId)) return [];
-
-        var dictionary = await printDictionary.GetAsync(cancellationToken);
-        var required = ValuationIssuanceGateRules.RequiredAttachmentsForProperty(
-            dictionary.Types
-                .Where(t => t.IsActive && t.IsRequired)
-                .Where(t => AppliesToPropertyType(t.PropertyTypeKeys, propertyType)),
-            t => t.Key,
-            propertyRequiresSurvey);
-        if (required.Count == 0) return [];
-
- // Intake documents are keyed «PO:propertyId»; party uploads use the property id itself.
-        var needles = new List<string> { propertyId };
-        if (!string.IsNullOrWhiteSpace(poNumber))
-            needles.Add($"{poNumber.Trim()}:{propertyId}");
-
-        var presentKeys = new HashSet<string>(StringComparer.Ordinal);
-        var seen = new HashSet<Guid>();
-        foreach (var needle in needles)
-        {
-            foreach (var a in await attachments.ListForPropertyAsync(needle, actor: null, cancellationToken))
-            {
-                if (!seen.Add(a.Id)) continue;
-                var type = PropertyDocumentTypes.Resolve(a.DocumentTypeKey, a.Scope, a.ScopeKey);
-                if (type is null || type.Key == PropertyDocumentTypes.UnlistedKey) continue;
-                presentKeys.Add(type.Key);
-                presentKeys.Add(type.RequirementKey);
-            }
-        }
-
-        return required
-            .Where(t => !presentKeys.Contains(t.Key.Trim().ToLowerInvariant()))
-            .Select(t => t.LabelAr)
-            .ToList();
-    }
-
-    private static bool AppliesToPropertyType(IReadOnlyList<string> propertyTypeKeys, string propertyType)
-    {
-        var keys = PropertyDocumentTypes.NormalizePropertyTypeKeys(propertyTypeKeys);
-        return keys.Count == 0
-            || keys.Any(k => string.Equals(k, propertyType?.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 }

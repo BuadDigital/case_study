@@ -36,6 +36,7 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
     public DbSet<ValuationCostApproach> ValuationCostApproaches => Set<ValuationCostApproach>();
     public DbSet<ValuationCostLine> ValuationCostLines => Set<ValuationCostLine>();
     public DbSet<ValuationIndirectCostItem> ValuationIndirectCostItems => Set<ValuationIndirectCostItem>();
+    public DbSet<ValuationIncomeApproach> ValuationIncomeApproaches => Set<ValuationIncomeApproach>();
     public DbSet<ValuationReconciliation> ValuationReconciliations => Set<ValuationReconciliation>();
     public DbSet<ValuationReconciliationMethodLine> ValuationReconciliationMethodLines =>
         Set<ValuationReconciliationMethodLine>();

@@ -57,6 +57,7 @@ const BREADCRUMB_LABEL_HREF: Record<string, string> = {
   "سجل التدقيق": "/audit-log",
   التسعيرة: "/fee-pricing",
   البروفايل: "/profile",
+  "لوحة الإدارة": "/admin-panel",
 };
 
 /** Split a legacy `a / b / c` trail into segments (last segment is current). */

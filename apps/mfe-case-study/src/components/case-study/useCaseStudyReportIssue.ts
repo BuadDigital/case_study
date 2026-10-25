@@ -22,6 +22,7 @@ import {
 } from "../../lib/app-data/case-study-report-ux";
 import { openCaseStudyAppraisalTab } from "../../lib/case-study-workspace-events";
 import {
+  caseStudyDeedMatchIssueBlock,
   caseStudyIncompleteMessage,
   firstCaseStudyReportScrollTarget,
   firstMissingQuestionLocation,
@@ -65,6 +66,17 @@ export function useCaseStudyReportIssue(
       if (gate.step !== draft.currentStep) goStep(gate.step);
       scheduleScrollToCaseStudyField(gate.targetId, 200);
       showToast(gate.message, "error");
+      return;
+    }
+    // D16: a traditional deed's outcome is chosen on «مدخلات المعاين» before the issue.
+    const deedMatchBlock = caseStudyDeedMatchIssueBlock({
+      outcome: draft.deedNatureMatchOutcome,
+      property,
+    });
+    if (deedMatchBlock) {
+      setFormFieldErrors({ deedNature: true });
+      openCaseStudyAppraisalTab();
+      showToast(deedMatchBlock, "error");
       return;
     }
 
@@ -121,6 +133,7 @@ export function useCaseStudyReportIssue(
     saving,
     sectionQuestions,
     isQuestionVisible,
+    property,
     summary,
     goStep,
     setDraft,

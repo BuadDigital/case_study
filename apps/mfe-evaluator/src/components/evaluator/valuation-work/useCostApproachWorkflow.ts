@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   getBuildingInventory,
-  saveValuationCostApproach,
   type ValuationCostApproachDto,
   type ValuationCostLineDto,
 } from "@platform/api-client";
@@ -30,6 +29,7 @@ import {
   type CostApproachFields,
 } from "./lib/cost-approach-state";
 import { apiConfig } from "./lib/shell-utils";
+import { useCostAutosave } from "./useCostAutosave";
 import { useCostInspectorSync } from "./useCostInspectorSync";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
 
@@ -52,8 +52,9 @@ type CostApproachWorkflowArgs = {
 
 /**
  * Owns the cost-approach drafts, their hydration from the server batch, the
- * live totals/alerts/narrative memos and the two writes (seed from inventory,
- * save). Drafts are local so typing here does not re-render the valuation shell.
+ * live totals/alerts/narrative memos and the writes (seed from inventory, the
+ * debounced autosave after every edit and the explicit save — `useCostAutosave`).
+ * Drafts are local so typing here does not re-render the valuation shell.
  */
 export function useCostApproachWorkflow({
   valuationRequestId,
@@ -75,15 +76,21 @@ export function useCostApproachWorkflow({
   const [fields, setFields] = useState<CostApproachFields>(EMPTY_COST_FIELDS);
   /** Drag a cost line to reorder within its group (drag-to-reorder from the interactive form). */
   const [dragCostId, setDragCostId] = useState<string | null>(null);
+  /** Bumps on every appraiser edit — what the autosave saves (seeds and hydration never bump it). */
+  const [editVersion, setEditVersion] = useState(0);
+  const markEdited = useCallback(() => setEditVersion((v) => v + 1), []);
 
   const setField = useCallback(
-    <K extends keyof CostApproachFields>(key: K, value: CostApproachFields[K]) =>
-      setFields((prev) => ({ ...prev, [key]: value })),
-    [],
+    <K extends keyof CostApproachFields>(key: K, value: CostApproachFields[K]) => {
+      setFields((prev) => ({ ...prev, [key]: value }));
+      markEdited();
+    },
+    [markEdited],
   );
 
   const setIndirect = useCallback(
-    (itemKey: string, patch: { pct?: string; rationale?: string }) =>
+    (itemKey: string, patch: { pct?: string; rationale?: string }) => {
+      markEdited();
       setFields((prev) => ({
         ...prev,
         indirectDraft: {
@@ -94,8 +101,9 @@ export function useCostApproachWorkflow({
               patch.rationale ?? prev.indirectDraft[itemKey]?.rationale ?? "",
           },
         },
-      })),
-    [],
+      }));
+    },
+    [markEdited],
   );
 
   // Hydrate from the server batch — each full load (new hydrateKey) reseeds drafts;
@@ -178,38 +186,27 @@ export function useCostApproachWorkflow({
     }
     const seeded = costLinesFromInventory(inv.data.lines);
     setCostDraft(seeded);
+    markEdited();
     showToast(`تم سحب ${seeded.length} بندًا من الحصر — أدخل تكلفة المتر`, "info");
-  }, [poNumber, propertyId, showToast, valuationRequestId]);
+  }, [markEdited, poNumber, propertyId, showToast, valuationRequestId]);
 
-  const saveCost = useCallback(async () => {
-    const config = apiConfig();
-    if (!config || !valuationRequestId) return;
-    onSavingChange(true);
-    const res = await saveValuationCostApproach(
-      config,
-      valuationRequestId,
-      costSaveRequest(fields, costDraft),
-    );
-    onSavingChange(false);
-    if (!res.ok) {
-      reportSaveFailure(res, "تعذّر حفظ التكلفة");
-      return;
-    }
-    clearSaveErrors();
-    setCostDraft(res.data.lines);
-    showToast("تم حفظ أسلوب التكلفة", "success");
-    // Silent reload — no loading-skeleton flash after save (used to be a full reload).
-    onCostSaved(res.data);
-  }, [
-    clearSaveErrors,
-    costDraft,
-    fields,
-    onCostSaved,
-    onSavingChange,
-    reportSaveFailure,
-    showToast,
+  const { saveState, saveNow: saveCost } = useCostAutosave({
     valuationRequestId,
-  ]);
+    locked,
+    editVersion,
+    hydrateKey,
+    buildRequest: () => costSaveRequest(fields, costDraft),
+    onSavingChange,
+    onSaved: (dto, editedSinceSend) => {
+      clearSaveErrors();
+      // Lines typed while the save was in flight stay; the next autosave sends them.
+      if (!editedSinceSend) setCostDraft(dto.lines);
+      // Silent reload — no loading-skeleton flash after save (used to be a full reload).
+      onCostSaved(dto);
+    },
+    onManualSaved: () => showToast("تم حفظ أسلوب التكلفة", "success"),
+    onManualFailure: (failure) => reportSaveFailure(failure, "تعذّر حفظ التكلفة"),
+  });
 
   // Live local calcs per interactive-form rules (server recalculates on save).
   const totals = useMemo(() => costLineTotals(costDraft), [costDraft]);
@@ -256,23 +253,31 @@ export function useCostApproachWorkflow({
   );
 
   const patchLine = useCallback(
-    (idx: number, partial: Partial<ValuationCostLineDto>) =>
+    (idx: number, partial: Partial<ValuationCostLineDto>) => {
+      markEdited();
       setCostDraft((prev) =>
         prev.map((l, i) => (i === idx ? { ...l, ...partial } : l)),
-      ),
-    [],
+      );
+    },
+    [markEdited],
   );
   const removeCostLine = useCallback(
-    (idx: number) => setCostDraft((prev) => prev.filter((_, i) => i !== idx)),
-    [],
+    (idx: number) => {
+      markEdited();
+      setCostDraft((prev) => prev.filter((_, i) => i !== idx));
+    },
+    [markEdited],
   );
   const addCostLine = useCallback(
-    (partial: Partial<ValuationCostLineDto>) =>
-      setCostDraft((prev) => [...prev, blankCostLine(prev.length, partial)]),
-    [],
+    (partial: Partial<ValuationCostLineDto>) => {
+      markEdited();
+      setCostDraft((prev) => [...prev, blankCostLine(prev.length, partial)]);
+    },
+    [markEdited],
   );
   /** Insert a custom line after a given row — inherits the row’s group (hover-insert from the form). */
   const insertCostLineAfter = useCallback((idx: number) => {
+    markEdited();
     setCostDraft((prev) => {
       const anchor = prev[idx];
       if (!anchor) return prev;
@@ -286,11 +291,13 @@ export function useCostApproachWorkflow({
       );
       return next;
     });
-  }, []);
+  }, [markEdited]);
   const moveCostLine = useCallback(
-    (sourceId: string, targetIdx: number) =>
-      setCostDraft((prev) => reorderCostLines(prev, sourceId, targetIdx) ?? prev),
-    [],
+    (sourceId: string, targetIdx: number) => {
+      markEdited();
+      setCostDraft((prev) => reorderCostLines(prev, sourceId, targetIdx) ?? prev);
+    },
+    [markEdited],
   );
 
   return {
@@ -314,7 +321,17 @@ export function useCostApproachWorkflow({
     moveCostLine,
     seedCostFromInventory,
     saveCost,
+    saveState,
     ...inspectorSync,
+    // The inventory-drift buttons are the appraiser's edits too — the autosave sends them.
+    addNewInventoryLines: () => {
+      inspectorSync.addNewInventoryLines();
+      markEdited();
+    },
+    updateInventoryAreas: () => {
+      inspectorSync.updateInventoryAreas();
+      markEdited();
+    },
   };
 }
 

@@ -1,0 +1,131 @@
+/**
+ * D2 — which issuance gates hold up the appraiser's hand-over («اعتماد التقييم وإرسال») and who fixes
+ * each. Mirrors the server rule `AppraisalHandOverGateRules` (case-study hand-over): every failing
+ * hard gate and blocking methodology alert refuses the hand-over, except what the case specialist
+ * completes AFTER it (the report attachments — deed copy, survey document), shown as «سيكملها الأخصائي».
+ * Pure: no React, no I/O.
+ */
+import type { ValuationIssuanceGatesDto } from "@platform/api-client";
+
+export type HandOverBlockerOwner =
+  | "appraiser"
+  | "specialist_after_handover"
+  | "specialist"
+  | "value_documents"
+  | "administration";
+
+/** The appraiser's screen that fixes a gate (null = not his, or an alert — its screen follows its group). */
+export type HandOverBlockerScreen = "market" | "cost" | "income" | "final" | null;
+
+export type HandOverBlocker = {
+  key: string;
+  code: string;
+  text: string;
+  owner: HandOverBlockerOwner;
+  ownerLabel: string;
+  blocksHandOver: boolean;
+  screen: HandOverBlockerScreen;
+  /** Methodology alerts only — the screen that resolves it follows `methodologyAlertGroup`. */
+  alertNumber?: number;
+};
+
+export const HANDOVER_OWNER_LABELS: Record<HandOverBlockerOwner, string> = {
+  appraiser: "المقيّم",
+  specialist_after_handover: "سيكملها الأخصائي بعد التسليم",
+  specialist: "أخصائي دراسة الحالة",
+  value_documents: "أخصائي دراسة الحالة يعتمد المستند، أو يُزال استخدامه",
+  administration: "إدارة المنشأة (اعتمادات المقيّمين)",
+};
+
+/** Gates the specialist fills in his report draft after the hand-over. */
+const SPECIALIST_AFTER_HANDOVER_CODES = new Set(["required_attachments"]);
+
+/** The «المراجعة النهائية» blockers card — a refused hand-over scrolls to it. */
+export const HANDOVER_BLOCKERS_ID = "handover-blockers";
+
+export const HANDOVER_REFUSED_PREFIX = "لا يُسلَّم التقييم قبل معالجة ما يلي: ";
+
+function ownerOf(code: string): HandOverBlockerOwner {
+  const c = code.trim().toLowerCase();
+  if (SPECIALIST_AFTER_HANDOVER_CODES.has(c)) return "specialist_after_handover";
+  if (c === "credentials" || c === "participant_credentials") return "administration";
+  if (c === "deed_nature_match" || c === "study_report_issued") return "specialist";
+  if (c === "value_documents") return "value_documents";
+  return "appraiser";
+}
+
+function screenOfGate(code: string): HandOverBlockerScreen {
+  const c = code.trim().toLowerCase();
+  if (c.endsWith("_land_within_cost") || c === "cost_land_estimate_complete") return "cost";
+  if (c.endsWith("_market")) return "market";
+  // D17 — «أسلوب الدخل مكتمل»: the appraiser completes it on the income screen.
+  if (c === "income_approach_complete") return "income";
+  if (c === "reconciliation_weights" || c === "final_opinion") return "final";
+  return null;
+}
+
+function textOf(detail: string | null | undefined, label: string): string {
+  return detail?.trim() || label.trim();
+}
+
+/** Every failing hard gate and blocking alert, in the gates' order, each with its owner. */
+export function classifyHandOverBlockers(
+  gates: Pick<ValuationIssuanceGatesDto, "gates" | "methodologyAlerts">,
+): HandOverBlocker[] {
+  const list: HandOverBlocker[] = [];
+  for (const g of gates.gates ?? []) {
+    if (!g.isHard || g.passed) continue;
+    const owner = ownerOf(g.code);
+    list.push({
+      key: `gate:${g.code}`,
+      code: g.code,
+      text: textOf(g.detailAr, g.labelAr),
+      owner,
+      ownerLabel: HANDOVER_OWNER_LABELS[owner],
+      blocksHandOver: owner !== "specialist_after_handover",
+      screen: owner === "appraiser" ? screenOfGate(g.code) : null,
+    });
+  }
+  for (const a of gates.methodologyAlerts ?? []) {
+    if (!a.blocksIssuance) continue;
+    list.push({
+      key: `alert:${a.code}`,
+      code: a.code,
+      text: textOf(a.detailAr, `${a.number}. ${a.labelAr}`),
+      owner: "appraiser",
+      ownerLabel: HANDOVER_OWNER_LABELS.appraiser,
+      blocksHandOver: true,
+      screen: null,
+      alertNumber: a.number,
+    });
+  }
+  return list;
+}
+
+/** The refusal text — every blocker that holds the hand-over, numbered in Latin digits. */
+export function handOverRefusalMessage(blockers: HandOverBlocker[]): string | null {
+  const blocking = blockers.filter((b) => b.blocksHandOver);
+  if (blocking.length === 0) return null;
+  return (
+    HANDOVER_REFUSED_PREFIX +
+    blocking
+      .map((b, i) => `${i + 1}) ${b.text} — يعالجها: ${b.ownerLabel}`)
+      .join("؛ ")
+  );
+}
+
+/**
+ * Fired with the gates every fresh hand-over check read, so the «المراجعة النهائية» list shows what
+ * the refusal just said (not the gates the screen loaded earlier).
+ */
+export const HANDOVER_GATES_READ_EVENT = "evaluator:handover-gates-read";
+
+export type HandOverGatesReadDetail = {
+  valuationRequestId: string;
+  gates: ValuationIssuanceGatesDto;
+};
+
+export function announceHandOverGatesRead(detail: HandOverGatesReadDetail): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<HandOverGatesReadDetail>(HANDOVER_GATES_READ_EVENT, { detail }));
+}
