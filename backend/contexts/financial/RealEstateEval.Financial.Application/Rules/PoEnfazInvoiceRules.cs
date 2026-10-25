@@ -35,7 +35,7 @@ public static class PoEnfazInvoiceRules
             : null;
 
     public const string NotReadyError =
-        "تعذّر إصدار الفاتورة — تحقق من رفع كل عقارات أمر العمل على إنفاذ وتعبئة الأتعاب.";
+        "تعذّر إصدار الفاتورة — تحقق من تعليم كل صكوك أمر العمل «جاهز للفوترة» وتعبئة الأتعاب.";
 
     public const string AlreadyIssuedError =
         "الفاتورة صادرة سلفاً — لا يمكن إعادة إصدارها بعد الإصدار.";

@@ -101,6 +101,13 @@ public sealed class RecordingTransactionState : ITransactionStateService
             NextHandoverError is null ? (State(), null) : (null, NextHandoverError));
     }
 
+    public Task<(TransactionStateDto? Result, string? Error)> MarkBillingReadyAsync(
+        Guid workOrderId, Guid propertyId, string? markedByUserId, CancellationToken cancellationToken = default)
+    {
+        Calls.Add("billing-ready");
+        return Task.FromResult<(TransactionStateDto?, string?)>((State(), null));
+    }
+
     public Task<(TransactionStateDto? Result, Dictionary<string, string>? Errors)> ReturnFromEnfazAsync(
         Guid workOrderId,
         Guid propertyId,

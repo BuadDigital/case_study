@@ -22,7 +22,8 @@ public class PoEnfazRevenueRulesTests
         string district = "",
         Guid? id = null,
         DateTime? handedOverAt = null,
-        bool removed = false) => new()
+        bool removed = false,
+        DateTime? billingReadyAt = null) => new()
         {
             Id = id ?? Guid.NewGuid(),
             PoNumber = "PO-1",
@@ -32,6 +33,7 @@ public class PoEnfazRevenueRulesTests
             City = " الرياض ",
             Area = " 500 ",
             EnfazHandoverAtUtc = handedOverAt,
+            BillingReadyAtUtc = billingReadyAt,
             IsRemoved = removed,
         };
 
@@ -89,7 +91,7 @@ public class PoEnfazRevenueRulesTests
     [Fact]
     public void Ready_summary_counts_done_and_cancelled_properties()
     {
-        var done = Property(id: Guid.NewGuid(), handedOverAt: Now);
+        var done = Property(id: Guid.NewGuid(), handedOverAt: Now, billingReadyAt: Now);
         var cancelled = Property(id: Guid.NewGuid());
 
         var summary = PoEnfazRevenueRules.ReadySummary(
@@ -117,25 +119,44 @@ public class PoEnfazRevenueRulesTests
         Assert.Null(PoEnfazRevenueRules.ReadySummary("PO-1", [untasked], []));
     }
 
-    /// <summary>Finance starts at the Enfaz handover: a completed study that was not delivered is not billable.</summary>
+    /// <summary>
+    /// Billing starts when the accountant marks the deed «جاهز للفوترة» (its figures appeared on Enfaz):
+    /// a completed study, or even a handed-over deed, that is not marked is not billable.
+    /// </summary>
     [Fact]
-    public void A_po_whose_study_is_complete_but_not_handed_over_is_not_ready()
+    public void A_po_whose_deeds_are_not_marked_ready_for_billing_is_not_ready()
     {
         var studied = Property(id: Guid.NewGuid());
         Assert.Null(PoEnfazRevenueRules.ReadySummary(
             "PO-1", [studied], [TaskFor(studied.Id, WorkflowTaskStatus.Completed)]));
 
-        var delivered = Property(id: Guid.NewGuid(), handedOverAt: Now);
+        var handedOver = Property(id: Guid.NewGuid(), handedOverAt: Now);
+        Assert.Null(PoEnfazRevenueRules.ReadySummary(
+            "PO-1", [handedOver], [TaskFor(handedOver.Id, WorkflowTaskStatus.Completed)]));
+
+        var marked = Property(id: Guid.NewGuid(), handedOverAt: Now, billingReadyAt: Now);
         var summary = PoEnfazRevenueRules.ReadySummary(
-            "PO-1", [delivered], [TaskFor(delivered.Id, WorkflowTaskStatus.Completed)]);
+            "PO-1", [marked], [TaskFor(marked.Id, WorkflowTaskStatus.Completed)]);
         Assert.NotNull(summary);
         Assert.Equal(1, summary.DoneCount);
     }
 
     [Fact]
+    public void One_unmarked_deed_keeps_the_whole_po_from_billing()
+    {
+        var marked = Property(id: Guid.NewGuid(), handedOverAt: Now, billingReadyAt: Now);
+        var waiting = Property(id: Guid.NewGuid(), handedOverAt: Now);
+
+        Assert.Null(PoEnfazRevenueRules.ReadySummary(
+            "PO-1",
+            [marked, waiting],
+            [TaskFor(marked.Id, WorkflowTaskStatus.Completed), TaskFor(waiting.Id, WorkflowTaskStatus.Completed)]));
+    }
+
+    [Fact]
     public void A_removed_property_never_blocks_readiness_nor_counts()
     {
-        var delivered = Property(id: Guid.NewGuid(), handedOverAt: Now);
+        var delivered = Property(id: Guid.NewGuid(), handedOverAt: Now, billingReadyAt: Now);
         var removed = Property(id: Guid.NewGuid(), removed: true);
 
         var summary = PoEnfazRevenueRules.ReadySummary(
@@ -338,6 +359,23 @@ public class PoEnfazRevenueRulesTests
             "PO-1", property, Done, null, Now.AddDays(-20), null, false, null, 0);
 
         Assert.Equal(handedOver, row.CompletedAtUtc);
+    }
+
+    [Fact]
+    public void Tracking_row_carries_the_work_order_and_the_billing_ready_mark()
+    {
+        var workOrderId = Guid.NewGuid();
+        var property = Property(handedOverAt: Now.AddDays(-2), billingReadyAt: Now.AddDays(-1));
+        property.WorkOrderId = workOrderId;
+
+        var marked = PoEnfazRevenueRules.ToTrackingRow(
+            "PO-1", property, Done, null, null, null, false, null, 0);
+        var waiting = PoEnfazRevenueRules.ToTrackingRow(
+            "PO-1", Property(handedOverAt: Now.AddDays(-2)), Done, null, null, null, false, null, 0);
+
+        Assert.Equal(workOrderId.ToString(), marked.WorkOrderId);
+        Assert.Equal(Now.AddDays(-1), marked.BillingReadyAtUtc);
+        Assert.Null(waiting.BillingReadyAtUtc);
     }
 
     [Fact]

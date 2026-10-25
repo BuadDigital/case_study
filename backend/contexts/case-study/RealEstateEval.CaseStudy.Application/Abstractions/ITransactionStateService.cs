@@ -18,6 +18,16 @@ public interface ITransactionStateService
         CancellationToken cancellationToken = default);
 
  /// <summary>
+ /// The accountant marks a handed-over deed «جاهز للفوترة» once its financial data appeared on Enfaz.
+ /// Idempotent; refused for a deed that is not handed over.
+ /// </summary>
+    Task<(TransactionStateDto? Result, string? Error)> MarkBillingReadyAsync(
+        Guid workOrderId,
+        Guid propertyId,
+        string? markedByUserId,
+        CancellationToken cancellationToken = default);
+
+ /// <summary>
  /// The case specialist takes a handed-over transaction back from Enfaz: clears the handover
  /// stamp and, as chosen, reopens the case-study report (and records the valuation request).
  /// Errors carry Arabic field messages (<c>reason</c>, or <c>_</c>).

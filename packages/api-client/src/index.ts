@@ -52,6 +52,7 @@ export {
   deleteWorkOrder,
   deleteWorkOrderProperty,
   getTransactionState,
+  markBillingReady,
   recordEnfazHandover,
   returnFromEnfaz,
   type EnfazReturnRequest,

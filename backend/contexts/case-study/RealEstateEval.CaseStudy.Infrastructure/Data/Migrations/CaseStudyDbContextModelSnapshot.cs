@@ -883,6 +883,13 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<DateTime?>("BillingReadyAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("BillingReadyByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("BlockNumber")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");

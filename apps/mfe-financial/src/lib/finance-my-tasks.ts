@@ -73,7 +73,7 @@ function href(target: FinanceNavTarget): string {
 }
 
 const REVENUE_META: Record<
-  "eligible" | "billing_assistant" | "awaiting_collection" | "stopped",
+  "eligible_mark" | "eligible" | "billing_assistant" | "awaiting_collection" | "stopped",
   {
     kind: FinanceMyTaskKind;
     title: string;
@@ -81,6 +81,12 @@ const REVENUE_META: Record<
     movesTo: string;
   }
 > = {
+  eligible_mark: {
+    kind: "revenue_match",
+    title: "تعليم جاهز للفوترة",
+    requirement: "ظهور البيانات المالية للصك على منصة إنفاذ",
+    movesTo: "مطابقة الأتعاب",
+  },
   eligible: {
     kind: "revenue_match",
     title: "مطابقة الأتعاب",
@@ -128,15 +134,27 @@ function buildRevenueMyTasks(
 
   const tasks: FinanceMyTask[] = [];
 
-  for (const stage of [
-    "eligible",
-    "billing_assistant",
-    "awaiting_collection",
-    "stopped",
-  ] as const) {
-    const rows = byStage.get(stage) ?? [];
+  // «مؤهلة»: a handed-over deed first waits for the accountant's mark, then for the fee match.
+  const eligibleRows = byStage.get("eligible") ?? [];
+  const taskGroups = [
+    {
+      stage: "eligible" as const,
+      metaKey: "eligible_mark" as const,
+      rows: eligibleRows.filter((r) => !r.billingReadyAtUtc),
+    },
+    {
+      stage: "eligible" as const,
+      metaKey: "eligible" as const,
+      rows: eligibleRows.filter((r) => Boolean(r.billingReadyAtUtc)),
+    },
+    ...(["billing_assistant", "awaiting_collection", "stopped"] as const).map(
+      (stage) => ({ stage, metaKey: stage, rows: byStage.get(stage) ?? [] }),
+    ),
+  ];
+
+  for (const { stage, metaKey, rows } of taskGroups) {
     for (const { poNumber, rows: group } of groupRowsByPo(rows)) {
-      const meta = REVENUE_META[stage];
+      const meta = REVENUE_META[metaKey];
       const ages = group
         .map((r) => daysSince(r.invoiceIssuedAtUtc ?? r.completedAtUtc))
         .filter((d): d is number => d != null);
@@ -158,7 +176,7 @@ function buildRevenueMyTasks(
           : meta.title;
 
       tasks.push({
-        id: `rev-${stage}-${poNumber}`,
+        id: `rev-${metaKey}-${poNumber}`,
         kind: meta.kind,
         domain: "revenue",
         title,

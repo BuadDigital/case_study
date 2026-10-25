@@ -11,6 +11,8 @@ import {
   setEnfazFinanceFlag,
   clearEnfazFinanceFlag,
   savePoEnfazBilling,
+  markBillingReady,
+  type TransactionStateDto,
   type AddEnfazFollowupRequest,
   type CollectPoEnfazInvoiceRequest,
   type EnfazFollowupDto,
@@ -25,9 +27,30 @@ import {
 import {
   workOrdersApiConfig,
   apiErrorMessage,
+  mutationFromApiResult,
+  notifyWorkOrdersChanged,
   requireWorkOrdersApiConfig,
   unwrapApiResult,
+  type MutationResult,
 } from "./work-orders-api-config";
+
+/**
+ * «تعليم جاهز للفوترة» — the accountant marks a handed-over deed once its financial data appeared on
+ * Enfaz. A refusal reads as the server's own Arabic reason.
+ */
+export async function markDeedBillingReady(
+  workOrderId: string,
+  propertyId: string,
+): Promise<MutationResult<TransactionStateDto>> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = mutationFromApiResult(
+    await markBillingReady(config, workOrderId, propertyId),
+    "تعذّر تعليم الصك جاهزاً للفوترة",
+  );
+  if (result.ok) notifyWorkOrdersChanged();
+  return result;
+}
 
 /** One server page of Enfaz-ready work orders (pagination-contract §10.1). */
 export async function loadReadyEnfazPoSummariesPage(

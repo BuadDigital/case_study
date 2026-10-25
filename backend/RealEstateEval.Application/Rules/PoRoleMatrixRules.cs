@@ -84,6 +84,13 @@ public static class PoRoleMatrixRules
     public static bool CanLiftSurveyFreeze(string? prototypeRole) => IsCaseSpecialistDecision(prototypeRole);
 
     /// <summary>
+    /// Marking a deed «جاهز للفوترة» once its financial data appeared on Enfaz is the accountant's call
+    /// (the financial officer) — the specialist who handed it over does not decide when it can be billed.
+    /// </summary>
+    public static bool CanMarkBillingReady(string? prototypeRole) =>
+        Normalize(prototypeRole) is "financial-officer";
+
+    /// <summary>
     /// The valuation-report draft is prepared, sent, withdrawn — and a deposited report is reopened as a
     /// new version — by the case specialist alone (the appraiser's assistant).
     /// </summary>

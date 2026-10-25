@@ -637,6 +637,7 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
         Area = property.Area,
         BourseCompletedAtUtc = property.BourseCompletedAtUtc,
         EnfazHandoverAtUtc = property.EnfazHandoverAtUtc,
+        BillingReadyAtUtc = property.BillingReadyAtUtc,
     };
 
     private static string? ParseKeysStatus(string payloadJson)

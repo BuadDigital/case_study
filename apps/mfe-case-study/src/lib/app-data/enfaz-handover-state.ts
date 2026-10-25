@@ -10,6 +10,8 @@ type EnfazCardState = {
   /** The handover stamp is set. */
   handedOver: boolean;
   handedOverAtUtc: string | null;
+  /** The accountant marked the deed «جاهز للفوترة» — its figures are on Enfaz, so it is not taken back. */
+  billingReady: boolean;
   /** Why the handover is refused now — always empty once handed over. */
   blockReasons: string[];
   /** The confirm button is live: nothing blocks and the server says the handover is allowed. */
@@ -27,6 +29,7 @@ export function enfazCardState(
   return {
     handedOver,
     handedOverAtUtc,
+    billingReady: handedOver && Boolean(state?.billingReadyAtUtc?.trim()),
     blockReasons,
     canConfirmHandover:
       Boolean(state) &&

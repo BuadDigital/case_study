@@ -147,7 +147,11 @@ export function PropertyDetailEnfazHandoverCard({
                 ) : null}
                 .
               </Note>
-              {canReturn ? (
+              {card.billingReady ? (
+                <Note tone="info">
+                  وُسم الصك «جاهز للفوترة» — ظهرت بياناته المالية على إنفاذ، فلا يُسترجع للتعديل.
+                </Note>
+              ) : canReturn ? (
                 <Button
                   type="button"
                   size="sm"

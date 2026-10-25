@@ -1,6 +1,6 @@
 "use client";
 
-/** Revenue stage «جاهزة للمطابقة» — completed rows, newest first, with the match / refresh actions. */
+/** Revenue stage «مؤهلة للفوترة» — handed-over rows, newest first: the accountant's mark, then the match / refresh actions. */
 
 import { useMemo } from "react";
 import type { EnfazTrackingRowDto } from "@platform/api-client";
@@ -28,14 +28,39 @@ import {
   revenueCityDateFields,
 } from "./FinanceRevenueTableParts";
 
-/** «مطابقة الأتعاب» (until Enfaz is filled) + «تحديث حالة إنفاذ» (table cell and phone card). */
+/**
+ * A deed whose financial data has not been marked yet waits for the accountant's «تعليم جاهز للفوترة»;
+ * a marked one goes on to «مطابقة الأتعاب» (until the fees are matched) + «تحديث حالة إنفاذ».
+ * Table cell and phone card.
+ */
 function EligibleActions({
   row,
   onOpenPo,
+  canMarkReady,
+  markingId,
+  onMarkReady,
 }: {
   row: EnfazTrackingRowDto;
   onOpenPo: (po: string) => void;
+  canMarkReady: boolean;
+  markingId: string | null;
+  onMarkReady: (row: EnfazTrackingRowDto) => void;
 }) {
+  if (!row.billingReadyAtUtc) {
+    return canMarkReady ? (
+      <button
+        type="button"
+        className={cn(opsBtnPrimary, "px-3 py-2 text-[11.5px]", markingId === row.propertyId && "opacity-60")}
+        title="ظهرت البيانات المالية لهذا الصك على منصة إنفاذ"
+        disabled={markingId !== null}
+        onClick={() => onMarkReady(row)}
+      >
+        {markingId === row.propertyId ? "جارٍ التعليم…" : "تعليم جاهز للفوترة"}
+      </button>
+    ) : (
+      <span className="text-[11.5px] text-text-3">بانتظار ظهور بياناته المالية على إنفاذ</span>
+    );
+  }
   return (
     <>
       {!row.enfazFilled ? (
@@ -64,10 +89,17 @@ function EligibleActions({
 export function EligibleTable({
   rows,
   onOpenPo,
+  canMarkReady = false,
+  markingId = null,
+  onMarkReady = () => {},
 }: {
   rows: EnfazTrackingRowDto[];
   onOpenPo: (po: string) => void;
+  canMarkReady?: boolean;
+  markingId?: string | null;
+  onMarkReady?: (row: EnfazTrackingRowDto) => void;
 }) {
+  const actionProps = { onOpenPo, canMarkReady, markingId, onMarkReady };
   const sorted = useMemo(() => sortByCompletedDesc(rows), [rows]);
 
   return (
@@ -77,14 +109,14 @@ export function EligibleTable({
       {sorted.map((row) => (
         <MobileRecordCard
           key={`${row.poNumber}-${row.propertyId}`}
-          tone={!row.enfazFilled ? "gold" : undefined}
+          tone={!row.billingReadyAtUtc || !row.enfazFilled ? "gold" : undefined}
           title={<PoCell po={row.poNumber} />}
           subtitle={<DeedCell deed={row.deedNumber} />}
           fields={[
             ...revenueCityDateFields(row),
             { label: "إجمالي الأتعاب", value: <TotalFeesValue row={row} />, wide: true },
           ]}
-          actions={<EligibleActions row={row} onOpenPo={onOpenPo} />}
+          actions={<EligibleActions row={row} {...actionProps} />}
         />
       ))}
     </MobileRecordList>
@@ -114,7 +146,7 @@ export function EligibleTable({
               <TotalFeesCell row={row} />
               <Td className="text-center">
                 <div className="flex flex-wrap items-center justify-center gap-1.5">
-                  <EligibleActions row={row} onOpenPo={onOpenPo} />
+                  <EligibleActions row={row} {...actionProps} />
                 </div>
               </Td>
             </Tr>

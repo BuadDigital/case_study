@@ -185,6 +185,7 @@ public sealed partial class TransactionStateService(
                 : TransactionStateRules.EnfazHandoverBlockReasonsAr(input),
             EnfazReturnNoticesAr = returnNoticesAr ?? [],
             EnfazHandoverAtUtc = property.EnfazHandoverAtUtc?.ToString("o"),
+            BillingReadyAtUtc = property.BillingReadyAtUtc?.ToString("o"),
             HandoverPackageAr = TransactionStateRules.HandoverPackageAr(hasSurvey),
         };
     }

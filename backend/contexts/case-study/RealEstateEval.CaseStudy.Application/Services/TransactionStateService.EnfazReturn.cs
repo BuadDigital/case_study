@@ -53,6 +53,8 @@ public sealed partial class TransactionStateService
         if (facts is null) return (null, Fail("المعاملة غير موجودة"));
         var (input, _, property) = facts.Value;
         if (!input.EnfazHandedOver) return (null, Fail(NotHandedOverAr));
+        // Checked before anything moves: a marked deed's financial data is already on Enfaz.
+        if (property.IsBillingReady) return (null, Fail(BillingReadyBlocksReturnAr));
 
         var handoverBefore = new
         {
