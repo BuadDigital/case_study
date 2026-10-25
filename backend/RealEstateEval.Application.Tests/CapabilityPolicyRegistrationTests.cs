@@ -29,6 +29,8 @@ public class CapabilityPolicyRegistrationTests
                      CapabilityPolicyNames.ReadFinancialData,
                      CapabilityPolicyNames.ReadManagementReports,
                      CapabilityPolicyNames.ReadKeyData,
+                     CapabilityPolicyNames.ReadKeyGate,
+                     CapabilityPolicyNames.ReadSuspendedTransactions,
                      CapabilityPolicyNames.ReadValuationQueue,
                      CapabilityPolicyNames.ReadValuationReport,
                      CapabilityPolicyNames.WriteComparableBank,
@@ -65,6 +67,34 @@ public class CapabilityPolicyRegistrationTests
             PrincipalWith(PlatformCapabilities.ManageFinancial),
             resource: null,
             CapabilityPolicyNames.ReadCaseStudyWorkspace)).Succeeded);
+    }
+
+    [Fact]
+    public async Task Field_parties_check_the_key_gate_without_reading_key_data()
+    {
+        var authorization = BuildAuthorizationService();
+        var inspector = PrincipalWith(PlatformCapabilities.SubmitPartyWork);
+
+        Assert.True((await authorization.AuthorizeAsync(
+            inspector, resource: null, CapabilityPolicyNames.ReadKeyGate)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            inspector, resource: null, CapabilityPolicyNames.ReadKeyData)).Succeeded);
+    }
+
+    [Fact]
+    public async Task The_appraiser_reads_suspended_transactions_without_managing_failures()
+    {
+        var authorization = BuildAuthorizationService();
+        var appraiser = PrincipalWith(PlatformCapabilities.SubmitValuationReport, PlatformCapabilities.SubmitPartyWork);
+
+        Assert.True((await authorization.AuthorizeAsync(
+            appraiser, resource: null, CapabilityPolicyNames.ReadSuspendedTransactions)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            appraiser, resource: null, CapabilityPolicyNames.ManageFailures)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.SubmitPartyWork),
+            resource: null,
+            CapabilityPolicyNames.ReadSuspendedTransactions)).Succeeded);
     }
 
     [Fact]

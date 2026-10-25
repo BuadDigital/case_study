@@ -67,6 +67,21 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageFinancial)));
 
             options.AddPolicy(
+                CapabilityPolicyNames.ReadKeyGate,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageOperations,
+                    PlatformCapabilities.ManageFinancial,
+                    PlatformCapabilities.SubmitPartyWork)));
+
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadSuspendedTransactions,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageFailures,
+                    PlatformCapabilities.SubmitValuationReport)));
+
+            options.AddPolicy(
                 CapabilityPolicyNames.ReadValuationQueue,
                 policy => policy.RequireAssertion(ctx => HasAnyCapability(
                     ctx,

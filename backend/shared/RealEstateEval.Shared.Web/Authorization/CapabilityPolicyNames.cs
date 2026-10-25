@@ -60,6 +60,19 @@ public static class CapabilityPolicyNames
     public const string ReadKeyData = "Capability:read-key-data";
 
  /// <summary>
+ /// One property's key gate (is the key available, who holds it) — key staff, plus the field
+ /// parties whose dashboard checks it before a visit. The rest of the key data stays on
+ /// <see cref="ReadKeyData"/>.
+ /// </summary>
+    public const string ReadKeyGate = "Capability:read-key-gate";
+
+ /// <summary>
+ /// The «المعاملات المعلّقة» list (read only) — failure managers, plus the appraiser whose
+ /// menu shows the page.
+ /// </summary>
+    public const string ReadSuspendedTransactions = "Capability:read-suspended-transactions";
+
+ /// <summary>
  /// Staff pickers for distribution and internal key handoffs —
  /// case staff (work orders) or ops parties (keys/gov review).
  /// </summary>
