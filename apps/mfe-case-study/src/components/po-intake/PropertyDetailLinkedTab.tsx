@@ -30,6 +30,7 @@ import {
 } from "../../lib/app-data/operations-task-display";
 import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
 import { isActiveOperationsTask } from "../../lib/app-data/operations-tasks-model";
+import { filterOperationsTasksForProperty } from "../../lib/app-data/operations-task-property-scope";
 import { deedsMatch, normalizeDeedNumber } from "../../lib/app-data/deed-number";
 import { useTransactionQuery } from "../../query/use-transaction-query";
 import { transactionDeedLabel } from "./TransactionDeedSwitcher";
@@ -100,27 +101,10 @@ export function PropertyDetailLinkedTab({
   const deedNumber = property.deedNumber.trim();
   const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
 
-  const propertyOpsTasks = useMemo(() => {
-    return opsTasks.filter((t) => {
-      if (t.poNumber?.trim() === poNumber) {
-        if (t.scope === "work_order" || t.scope === "multi") return true;
-        if (t.scope === "transaction") {
-          return t.deeds.some(
-            (d) =>
-              deedsMatch(d, deedDisplay) ||
-              deedsMatch(d, deedNumber) ||
-              (deedNumber && d.includes(deedNumber)),
-          );
-        }
-      }
-      return t.deeds.some(
-        (d) =>
-          deedsMatch(d, deedDisplay) ||
-          deedsMatch(d, deedNumber) ||
-          (deedNumber && d.includes(deedNumber)),
-      );
-    });
-  }, [opsTasks, poNumber, deedDisplay, deedNumber]);
+  const propertyOpsTasks = useMemo(
+    () => filterOperationsTasksForProperty(opsTasks, { poNumber, deedNumber, deedDisplay }),
+    [opsTasks, poNumber, deedDisplay, deedNumber],
+  );
 
   const createHref = `/operations-tasks?create=1&type=general&scope=transaction&po=${encodeURIComponent(poNumber)}&deed=${encodeURIComponent(deedDisplay)}`;
 
@@ -534,7 +518,7 @@ export function PropertyDetailLinkedTab({
                         .filter(Boolean)
                         .join(" · ") || "—"}
                       {item.prior.workOrderCreatedAtUtc
-                        ? ` · ${new Date(item.prior.workOrderCreatedAtUtc).toLocaleDateString("ar-SA")}`
+                        ? ` · ${new Date(item.prior.workOrderCreatedAtUtc).toLocaleDateString("ar-SA-u-nu-latn")}`
                         : ""}
                     </span>
                   </Link>

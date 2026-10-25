@@ -104,4 +104,21 @@ describe("operations-task-property-scope", () => {
     expect(row?.court).toBe("محكمة ب");
     expect(row?.owner).toBe("B");
   });
+
+  it("matches a deed written with Arabic digits or separators", () => {
+    const t = task({ id: "arabic", deeds: ["٦١١٥-٠٨٠٠٧٢٧٢"] });
+    expect(
+      filterOperationsTasksForProperty([t], { poNumber: "PO-1", deedNumber: "611508007272" }),
+    ).toHaveLength(1);
+  });
+
+  it("does not pull every transaction task of the order onto a property with no deed number", () => {
+    const t = task({ id: "other-deed", deeds: ["999"] });
+    expect(filterOperationsTasksForProperty([t], { poNumber: "PO-1", deedNumber: "" })).toEqual([]);
+  });
+
+  it("keeps an order-wide task on every property of that order", () => {
+    const t = task({ id: "wo", scope: "work_order", deeds: [] });
+    expect(filterOperationsTasksForProperty([t], { poNumber: "PO-1", deedNumber: "" })).toHaveLength(1);
+  });
 });
