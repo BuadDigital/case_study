@@ -25,20 +25,24 @@ export type PropertyTimelineEvent = {
  * A transaction timeline (linked properties, 2026-10-19): the deeds' events merged by the server,
  * each tagged with its deed.
  *
- * How it works: maps the events with `mapPropertyTimelineDtos` (same order, oldest first), then
- * adds each event's `propertyId` and `deedLabel` from the DTO at the same index (blank → undefined).
+ * How it works: drops the events without a time (as `mapPropertyTimelineDtos` does), then maps each
+ * remaining event together with its own DTO, adding its `propertyId` and `deedLabel` (blank → undefined).
  *
- * Edge cases: the tags are paired by index, which holds only while every event has a time —
- * `mapPropertyTimelineDtos` drops events without `at`.
+ * Edge cases and how they were fixed: the tags used to be paired with the mapped list by index after
+ * `mapPropertyTimelineDtos` had dropped the events without a time, so one such event shifted every
+ * later event onto the wrong deed (found 2026-10-26 while documenting). Each event now carries the
+ * tags of the DTO it was built from.
  */
 export function mapTransactionTimelineDtos(
   events: TransactionTimelineEventDto[],
 ): PropertyTimelineEvent[] {
-  return mapPropertyTimelineDtos(events).map((e, i) => ({
-    ...e,
-    propertyId: events[i]?.propertyId?.trim() || undefined,
-    deedLabel: events[i]?.deedLabel?.trim() || undefined,
-  }));
+  return events
+    .filter((e) => e.at)
+    .map((e) => ({
+      ...mapPropertyTimelineDtos([e])[0]!,
+      propertyId: e.propertyId?.trim() || undefined,
+      deedLabel: e.deedLabel?.trim() || undefined,
+    }));
 }
 
 /**
