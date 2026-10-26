@@ -10,6 +10,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { InlineLoadingSkeleton, cn } from "@platform/ui-kit";
 import { invalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
+import { apartmentLandHint } from "../../../lib/evaluator/cost-land-figures";
 import {
   retrospectiveDraftFromSettings,
 } from "../../../lib/evaluator/evaluator-validation";
@@ -157,6 +158,9 @@ export function ValuationWorkShell({
     reload,
     bankSubjectCoords,
   } = data;
+  const isApartment = (approachSettings?.propertyType ?? "").includes("شقة");
+  // Decision A: the land table's own area — the whole plot, never the apartment's floor area.
+  const landPlotSqm = landSelection?.subjectAreaSqm ?? cost?.landAreaSqm ?? 0;
 
   const {
     onAdoptMarket,
@@ -440,12 +444,18 @@ export function ValuationWorkShell({
               مكوّن داخل أسلوب التكلفة — ناتجه قيمة الأرض ولا يدخل الترجيح بين
               الأساليب. مقارناته أراضٍ خام مستقلة عن مقارنات أسلوب السوق.
             </div>
+            {/* Decision A: the land comparables are adjusted against the whole plot. */}
+            {isApartment ? (
+              <div data-testid="apartment-plot-hint" className="mt-1 text-[11.5px] font-bold text-heading">
+                {apartmentLandHint(cost)}
+              </div>
+            ) : null}
           </div>
         </div>
 
         <ComparablesBankTable
           rows={landBankRows}
-          subjectSqm={cost?.landAreaSqm || subjectAreaNum}
+          subjectSqm={landPlotSqm || (isApartment ? null : subjectAreaNum)}
           distanceKm={landBankDistanceKm}
           radiusKm={bankRadiusKm}
           onRadiusChange={setBankRadiusKm}
@@ -465,8 +475,8 @@ export function ValuationWorkShell({
               adopted={visibleAdoptedLand}
               locked={adjustmentsLocked}
               saving={saving}
-              subjectArea={String(cost?.landAreaSqm || subjectArea)}
-              idealArea={String(cost?.landAreaSqm || subjectArea)}
+              subjectArea={landPlotSqm ? String(landPlotSqm) : isApartment ? "" : subjectArea}
+              idealArea={landPlotSqm ? String(landPlotSqm) : isApartment ? "" : subjectArea}
               city={property?.city}
               district={property?.district ?? districtHint}
               valuationDate={officialValuationDate ?? undefined}
@@ -597,9 +607,8 @@ export function ValuationWorkShell({
                       (approachSettings?.costScopeKey ?? "land_and_building") ===
                       "building_only"
                     }
-                    isApartmentProperty={(approachSettings?.propertyType ?? "").includes(
-                      "شقة",
-                    )}
+                    isApartmentProperty={isApartment}
+                    deedArea={property?.area}
                     costBasisKey={approachSettings?.costBasisKey || "replacement"}
                     saving={saving}
                     locked={adjustmentsLocked}
@@ -615,6 +624,7 @@ export function ValuationWorkShell({
               <IncomeApproachScreen
                 settingsSaved={settingsSaved}
                 incomeEnabled={incomeTab}
+                incomeSaved={incomeApproachAvailable(approachSettings)}
                 valuationRequestId={valuationRequestId}
                 gates={gates}
                 recon={recon}

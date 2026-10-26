@@ -32,6 +32,8 @@ import {
   readHandOverPriceFromServer,
 } from "../../lib/evaluator/evaluator-submit-gates";
 import { HANDOVER_BLOCKERS_ID } from "../../lib/evaluator/handover-blockers";
+import { confirmIgnoringDoubleClick } from "../../lib/evaluator/confirm-ignoring-double-click";
+import { fmt } from "@platform/app-shared/format/number";
 import type { EvaluatorWindowTab } from "./evaluator-window-tabs";
 
 export function useEvaluatorSubmit({
@@ -148,6 +150,8 @@ export function useEvaluatorSubmit({
     const serverPrice = await readHandOverPriceFromServer({
       token: getAuthSession()?.token,
       propertyId: task.propertyId,
+      // The gate check already read the open request — no second lookup.
+      valuationRequestId: gates.valuationRequestId,
     });
     if (!serverPrice.ok) {
       setFormError(serverPrice.message);
@@ -155,6 +159,19 @@ export function useEvaluatorSubmit({
       return false;
     }
     const evaluatorPrice = serverPrice.price ?? draft.evaluatorPrice;
+
+    // The hand-over locks the package: ask once, after every check passed (no confirm → refusal).
+    const priceNumber = Number(evaluatorPrice);
+    const confirmed = await confirmIgnoringDoubleClick({
+      title: "اعتماد التقييم وإرساله",
+      message:
+        (Number.isFinite(priceNumber) && priceNumber > 0
+          ? `يُرسَل التقييم بقيمة نهائية ${fmt(priceNumber)} ر.س إلى أخصائي دراسة الحالة. `
+          : "يُرسَل التقييم إلى أخصائي دراسة الحالة. ") +
+        "لا يمكن تعديله بعد الإرسال إلا إذا أعاده الأخصائي.",
+      confirmLabel: "اعتماد وإرسال",
+    });
+    if (!confirmed) return false;
 
     flushPendingAutosave();
 

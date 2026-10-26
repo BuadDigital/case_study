@@ -13,20 +13,30 @@ public sealed class AssignedAppraiserCheck(ValuationDbContext db, ICaseStudyLook
 {
     public async Task<CaseStudyWorkflowTaskSnapshotDto?> FindAppraisalTaskAsync(
         Guid propertyId,
+        CancellationToken cancellationToken) =>
+        (await ReadAppraisalTaskAsync(propertyId, cancellationToken)).Task;
+
+    /// <summary>
+    /// The latest non-cancelled appraisal task, and whether Case Study answered at all. A timeout of
+    /// the remote client (TaskCanceledException without the caller cancelling) counts as unreachable.
+    /// </summary>
+    private async Task<(CaseStudyWorkflowTaskSnapshotDto? Task, bool Reached)> ReadAppraisalTaskAsync(
+        Guid propertyId,
         CancellationToken cancellationToken)
     {
         try
         {
             var tasks = await caseStudy.ListWorkflowTasksByPropertyAsync(
                 propertyId, [WorkflowTaskKind.PropertyAppraisal], cancellationToken);
-            return tasks
+            var task = tasks
                 .Where(t => !string.Equals(t.Status, WorkflowTaskStatusValues.Cancelled, StringComparison.OrdinalIgnoreCase))
                 .OrderByDescending(t => t.UpdatedAtUtc)
                 .FirstOrDefault();
+            return (task, true);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
-            return null;
+            return (null, false);
         }
     }
 
@@ -34,14 +44,33 @@ public sealed class AssignedAppraiserCheck(ValuationDbContext db, ICaseStudyLook
         Guid propertyId,
         string userId,
         string? distributionAssigneeId,
-        CancellationToken cancellationToken)
-    {
-        var task = await FindAppraisalTaskAsync(propertyId, cancellationToken);
-        return task is not null
-            && PoRoleMatrixRules.IsAssignedPartyUser(task.AssigneeId, userId, distributionAssigneeId);
-    }
+        CancellationToken cancellationToken) =>
+        await CheckPropertyAsync(propertyId, userId, distributionAssigneeId, cancellationToken)
+            == AssignedAppraiserVerdict.Assigned;
 
     public async Task<bool> IsAssignedToRequestAsync(
+        Guid valuationRequestId,
+        string userId,
+        string? distributionAssigneeId,
+        CancellationToken cancellationToken) =>
+        await CheckRequestAsync(valuationRequestId, userId, distributionAssigneeId, cancellationToken)
+            == AssignedAppraiserVerdict.Assigned;
+
+    public async Task<AssignedAppraiserVerdict> CheckPropertyAsync(
+        Guid propertyId,
+        string userId,
+        string? distributionAssigneeId,
+        CancellationToken cancellationToken)
+    {
+        var (task, reached) = await ReadAppraisalTaskAsync(propertyId, cancellationToken);
+        if (!reached) return AssignedAppraiserVerdict.Unverified;
+        return task is not null
+               && PoRoleMatrixRules.IsAssignedPartyUser(task.AssigneeId, userId, distributionAssigneeId)
+            ? AssignedAppraiserVerdict.Assigned
+            : AssignedAppraiserVerdict.NotAssigned;
+    }
+
+    public async Task<AssignedAppraiserVerdict> CheckRequestAsync(
         Guid valuationRequestId,
         string userId,
         string? distributionAssigneeId,
@@ -52,6 +81,7 @@ public sealed class AssignedAppraiserCheck(ValuationDbContext db, ICaseStudyLook
             .Select(x => (Guid?)x.PropertyId)
             .FirstOrDefaultAsync(cancellationToken);
         return propertyId is { } id
-            && await IsAssignedToPropertyAsync(id, userId, distributionAssigneeId, cancellationToken);
+            ? await CheckPropertyAsync(id, userId, distributionAssigneeId, cancellationToken)
+            : AssignedAppraiserVerdict.NotAssigned;
     }
 }

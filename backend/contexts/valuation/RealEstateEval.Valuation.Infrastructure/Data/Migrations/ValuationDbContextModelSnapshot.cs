@@ -665,6 +665,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal?>("BuildingPlotAreaSqm")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("EconomicAgeRationale")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -743,6 +747,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                             t.HasCheckConstraint("CK_ValuationCostApproaches_ActualAgeYears_NonNegative", "\"ActualAgeYears\" IS NULL OR \"ActualAgeYears\" >= 0");
 
                             t.HasCheckConstraint("CK_ValuationCostApproaches_ApartmentLandShareSqm_NonNegative", "\"ApartmentLandShareSqm\" IS NULL OR \"ApartmentLandShareSqm\" >= 0");
+
+                            t.HasCheckConstraint("CK_ValuationCostApproaches_BuildingPlotAreaSqm_NonNegative", "\"BuildingPlotAreaSqm\" IS NULL OR \"BuildingPlotAreaSqm\" >= 0");
 
                             t.HasCheckConstraint("CK_ValuationCostApproaches_EconomicAgeYears_NonNegative", "\"EconomicAgeYears\" IS NULL OR \"EconomicAgeYears\" >= 0");
 

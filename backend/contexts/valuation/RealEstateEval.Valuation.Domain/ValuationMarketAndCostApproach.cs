@@ -62,6 +62,13 @@ public class ValuationCostApproach
     public string? UseRestrictionRationale { get; set; }
  /// <summary>apartment share of land m²; overrides land area when set.</summary>
     public decimal? ApartmentLandShareSqm { get; set; }
+    /// <summary>
+    /// Decision A (round 2): the whole building plot (m²) the land table inside the cost approach compares
+    /// each land comparable with — for an apartment the building's land, never the unit's floor area. Kept
+    /// here, apart from the market header, so the subject-area sync can never overwrite it. Null = not
+    /// entered (see <see cref="CostApproachRules.LandTableSubjectAreaSqm"/>).
+    /// </summary>
+    public decimal? BuildingPlotAreaSqm { get; set; }
  /// <summary>Land value = discounted unit rate × land area — recomputed on every save.</summary>
     public decimal LandValueFromMarket { get; set; }
     public DateTime? LandImportedAtUtc { get; set; }
@@ -343,6 +350,12 @@ public static class MarketOpinionRules
 
 }
 
+/// <summary>
+/// Decision A: what the land table inside the cost approach reads from the cost approach — the whole
+/// building plot (area-adjustment base) and the apartment's share of it (value multiplier), in m².
+/// </summary>
+public readonly record struct CostLandAreas(decimal? BuildingPlotAreaSqm, decimal? ApartmentShareSqm);
+
 public static class CostApproachRules
 {
     // ─── input bounds (the save refuses anything above; reads clamp legacy rows) ───
@@ -361,6 +374,13 @@ public static class CostApproachRules
     public const decimal MaxLifeExtensionYears = 100m;
     /// <summary>Largest apartment land share (m²).</summary>
     public const decimal MaxLandShareSqm = 10_000_000m;
+    /// <summary>Largest building plot area (m²) the land table may compare with.</summary>
+    public const decimal MaxBuildingPlotAreaSqm = 10_000_000m;
+    /// <summary>
+    /// Largest amount (SAR) one cost line (quantity × unit cost) or the cost total may reach — keeps
+    /// every stored value (numeric(18,2)) and the reconciliation's approach value far from overflow.
+    /// </summary>
+    public const decimal MaxAmountSar = 1_000_000_000_000m;
 
     /// <summary>
     /// D12: depreciation never exceeds the cost — the total obsolescence applied to the cost is
@@ -502,6 +522,30 @@ public static class CostApproachRules
             .ToList();
         return MarketApproachRules.WeightedUnitRate(rows);
     }
+
+    /// <summary>
+    /// Decision A: the area the land table's area adjustment compares each land comparable with — the
+    /// building plot saved on the cost approach. Without one, a property whose land is shared (an apartment
+    /// share is set) has no usable area (null → the land estimate stays incomplete until the plot is
+    /// entered: the unit's floor area is not land); any other property keeps the market header's subject
+    /// area, which is its deed (land) area.
+    /// </summary>
+    public static decimal? LandTableSubjectAreaSqm(
+        decimal? buildingPlotAreaSqm,
+        decimal? apartmentShareSqm,
+        decimal? headerSubjectAreaSqm) =>
+        buildingPlotAreaSqm is > 0m ? buildingPlotAreaSqm
+        : apartmentShareSqm is > 0m ? null
+        : headerSubjectAreaSqm;
+
+    /// <summary>
+    /// Decision A: the area the land table's adjusted rate multiplies into the land value — the apartment's
+    /// share of the land when set, else the plot itself; null while the plot is unknown.
+    /// </summary>
+    public static decimal? LandTableValueAreaSqm(decimal? plotAreaSqm, decimal? apartmentShareSqm) =>
+        plotAreaSqm is not > 0m ? null
+        : apartmentShareSqm is > 0m ? apartmentShareSqm
+        : plotAreaSqm;
 
  /// <summary>Land value from the discounted rate; apartment share overrides land area when set.</summary>
     public static decimal LandValue(decimal unitRateAfterDiscount, decimal landAreaSqm, decimal? apartmentShareSqm)

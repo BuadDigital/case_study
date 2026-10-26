@@ -136,8 +136,9 @@ public class ValuationComparableSelectionRequestRulesTests
         Assert.Equal("تسمية العامل المضاف مطلوبة", errors["adjustmentLines[1].labelAr"]);
         Assert.Equal("النسبة يجب أن تكون بين -100 و 100", errors["adjustmentLines[2].percent"]);
         Assert.Equal("النسبة يجب أن تكون بين -100 و 100", errors["adjustmentLines[3].percent"]);
-        Assert.False(errors.ContainsKey("adjustmentLines[3].rationale"));
-        Assert.Equal(4, errors.Count);
+        // Round 2, decision B: a written rationale for a non-zero factor is at least 10 characters.
+        Assert.Equal("مبرر التسوية للمقارن يجب ألا يقل عن 10 أحرف", errors["adjustmentLines[3].rationale"]);
+        Assert.Equal(5, errors.Count);
     }
 
     [Theory]
@@ -150,7 +151,7 @@ public class ValuationComparableSelectionRequestRulesTests
         {
             WeightIsManual = true,
             WeightPct = weight is null ? null : decimal.Parse(weight),
-            WeightOverrideRationale = ".",
+            WeightOverrideRationale = "مبرر الوزن اليدوي كافٍ",
         });
 
         Assert.Equal(expected, errors["weightPct"]);
@@ -293,6 +294,78 @@ public class ValuationComparableSelectionRequestRulesTests
         Assert.Empty(built);
     }
 
+    // ---- round 2: rationale minimum (decision B) and bounds ----
+
+    [Fact]
+    public void ValidateMarketSave_refuses_required_rationales_under_ten_characters()
+    {
+        var errors = ValuationComparableSelectionRequestRules.ValidateMarketSave(new()
+        {
+            WeightIsManual = true,
+            WeightPct = 50m,
+            WeightOverrideRationale = " الأقرب ",
+            AdjustmentLines =
+            [
+                new SaveValuationComparableAdjustmentLineRequest
+                {
+                    FactorKey = MarketAdjustmentFactorKeys.Location, Percent = 5m, Rationale = "موقع أفضل", IsIncluded = true,
+                },
+                new SaveValuationComparableAdjustmentLineRequest
+                {
+                    FactorKey = MarketAdjustmentFactorKeys.Financing, Percent = 0m, Rationale = "لا فرق", IsIncluded = true,
+                },
+                new SaveValuationComparableAdjustmentLineRequest
+                {
+                    FactorKey = MarketAdjustmentFactorKeys.Access, Percent = -3m, Rationale = "", IsIncluded = true,
+                },
+            ],
+        });
+
+        Assert.Equal("مبرر الوزن اليدوي يجب ألا يقل عن 10 أحرف", errors["weightOverrideRationale"]);
+        Assert.Equal("مبرر التسوية للمقارن يجب ألا يقل عن 10 أحرف", errors["adjustmentLines[0].rationale"]);
+        // A zero factor needs no rationale; a blank override inherits the factor rationale (draft).
+        Assert.False(errors.ContainsKey("adjustmentLines[1].rationale"));
+        Assert.False(errors.ContainsKey("adjustmentLines[2].rationale"));
+    }
+
+    [Fact]
+    public void ValidateMarketApproach_refuses_out_of_range_coefficients_and_areas()
+    {
+        var errors = ValuationComparableSelectionRequestRules.ValidateMarketApproach(new()
+        {
+            SubjectAreaSqm = 20_000_000m,
+            AreaFactorPct = 1_000_000m,
+            AnnualMarketRatePct = -1m,
+            ValueRoundDecimals = 9,
+        });
+
+        Assert.NotNull(errors);
+        Assert.Equal("المساحة تتجاوز الحد المعقول (10,000,000 م²)", errors["subjectAreaSqm"]);
+        Assert.Equal("معامل المساحة يجب أن يكون بين 0.1 و 50", errors["areaFactorPct"]);
+        Assert.Equal("معدل تغير السوق السنوي يجب أن يكون بين 0 و 50", errors["annualMarketRatePct"]);
+        Assert.Equal("أسّ التقريب يجب أن يكون بين 0 و 6", errors["valueRoundDecimals"]);
+        Assert.Null(ValuationComparableSelectionRequestRules.ValidateMarketApproach(new()
+        {
+            SubjectAreaSqm = 500m, AreaFactorPct = 5m, AnnualMarketRatePct = 4m, ValueRoundDecimals = 4,
+        }));
+    }
+
+    [Fact]
+    public void Prices_are_above_zero_and_at_most_a_trillion()
+    {
+        Assert.Equal("سعر المقارن يجب أن يكون أكبر من صفر", ComparablePropertyRules.PriceError(0m));
+        Assert.Contains("يتجاوز الحد المعقول", ComparablePropertyRules.PriceError(1_000_000_000_001m));
+        Assert.Null(ComparablePropertyRules.PriceError(1_000_000_000_000m));
+
+        var errors = ValuationComparableSelectionRequestRules.ValidateMarketSave(new()
+        {
+            PriceOverrideSar = 2_000_000_000_000m,
+            AreaOverrideSqm = 50_000_000m,
+        });
+        Assert.Contains("يتجاوز الحد المعقول", errors["priceOverrideSar"]);
+        Assert.Contains("تتجاوز الحد المعقول", errors["areaOverrideSqm"]);
+    }
+
     // ---- market-approach header ----
 
     [Fact]
@@ -302,7 +375,8 @@ public class ValuationComparableSelectionRequestRulesTests
             new() { SubjectAreaSqm = -1m, AdjustmentBasis = "bogus" });
         Assert.NotNull(area);
         Assert.Equal("المساحة يجب أن تكون ≥ 0", area["subjectAreaSqm"]);
-        Assert.Single(area);
+        Assert.Equal("أساس التسويات غير معروف", area["adjustmentBasis"]);
+        Assert.Equal(2, area.Count);
 
         var basis = ValuationComparableSelectionRequestRules.ValidateMarketApproach(
             new() { SubjectAreaSqm = 10m, AdjustmentBasis = "bogus" });

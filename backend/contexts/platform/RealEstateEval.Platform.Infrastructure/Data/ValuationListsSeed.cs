@@ -239,7 +239,15 @@ internal static class ValuationListsSeed
     }
 
     /// <summary>The professional glossary as printed in the reference report: 42 terms, in its order.</summary>
-    private static List<ValuationListItemDto> Glossary()
+    /// <summary>Round 2: one ownership term everywhere — «ملكية تامة» (was «ملكية مطلقة»).</summary>
+    internal const string FreeholdTermAr = "ملكية تامة";
+
+    /// <summary>The freehold term the round-1 seed used — a stored list still carrying it is upgraded.</summary>
+    private const string PreviousFreeholdTermAr = "ملكية مطلقة";
+
+    private static List<ValuationListItemDto> Glossary() => Glossary(FreeholdTermAr);
+
+    private static List<ValuationListItemDto> Glossary(string freeholdTerm)
     {
         var i = 0;
         ValuationListItemDto G(string key, string name, string def, int usage) =>
@@ -282,7 +290,7 @@ internal static class ValuationListsSeed
             G("valuation_date", "تاريخ التقييم", "التاريخ الذي يسري فيه التحليل والرأي الخاص بعملية التقييم.", 214),
             G("opinion_date", "تاريخ إصدار الرأي", "هو تاريخ الوصول للقيمة من قبل المقيم، بغض النظر عن تاريخ التقييم المطلوب.", 214),
             G("report_date", "تاريخ التقرير", "هو تاريخ اعتماد تاريخ التقييم بالصيغة النهائية.", 214),
-            G("freehold", "ملكية مطلقة", "حق تام في ملكية العقار أو الأرض.", 160),
+            G("freehold", freeholdTerm, "حق تام في ملكية العقار أو الأرض.", 160),
             G("award_date", "تاريخ قرار التقدير", "تاريخ اعتماد الجهة صاحبة المشروع لمحضر لجنة التقدير (تقرير اللجنة النهائي).", 15),
             G("current_use", "الاستخدام الحالي", "يُقصد بالاستخدام الحالي هو الطريقة الحالية لاستخدام الأصل، أو الالتزام، أو مجموعة الأصول، أو الالتزامات. وقد يكون الاستخدام الحالي، ولكن ليس بالضرورة، أعلى وأفضل استخدام.", 180),
             G("habu", "الاستخدام الأعلى والأفضل", "يجب أن يكون أعلى وأفضل استخدام ممكنًا من الناحية المادية (حيثما ينطبق ذلك) ومجديًا وقابلًا للتطبيق من الناحية المالية ومسموحًا به قانونًا ويؤدي إلى تحقيق أعلى قيمة. إذا كان أعلى وأفضل استخدام مختلف عن الاستخدام الحالي، فإنّ تكاليف تحويل الأصل إلى أعلى وأفضل استخدام يؤثر على القيمة.", 120),
@@ -355,7 +363,8 @@ internal static class ValuationListsSeed
     /// all enabled) — nobody edited it, so it moves to the current seed. Any edit keeps it as stored.
     /// </summary>
     internal static bool IsPreviousGlossaryDefault(IReadOnlyList<ValuationListItemDto> stored) =>
-        SameAsPrevious(stored, PreviousGlossary());
+        SameAsPrevious(stored, PreviousGlossary())
+        || SameAsPrevious(stored, Glossary(PreviousFreeholdTermAr));
 
     /// <summary>Same test for the IVS standards list.</summary>
     internal static bool IsPreviousIvsStandardsDefault(IReadOnlyList<ValuationListItemDto> stored) =>

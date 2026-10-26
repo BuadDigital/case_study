@@ -35,6 +35,11 @@ public static class ValuationIncomeApproachRequestRules
 
         if ((request.CapRateRationale?.Trim().Length ?? 0) > IncomeApproachRules.RationaleMaxLength)
             errors["capRateRationale"] = $"مبرر معدل الرسملة لا يتجاوز {N(IncomeApproachRules.RationaleMaxLength)} حرف";
+        // Decision B: when alert 26 fires (rate outside 4–12٪) a written rationale is at least 10 characters.
+        else if (request.CapitalisationRatePct is { } rate
+                 && IncomeApproachRules.CapRateOutsideTypicalRange(rate)
+                 && JustificationRules.IsBelowRequiredMinimum(request.CapRateRationale))
+            errors["capRateRationale"] = JustificationRules.RequiredMinimumMessageAr("مبرر معدل الرسملة");
         return errors;
     }
 

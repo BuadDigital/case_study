@@ -7,7 +7,10 @@ import {
   resolveReportParticipants,
   resolveReportValuationKeys,
 } from "../valuation-report-live-fill";
-import { reportValuationChoices } from "../../../components/evaluator/evaluator-report-output-helpers";
+import {
+  effectiveValuationDate,
+  reportValuationChoices,
+} from "../../../components/evaluator/evaluator-report-output-helpers";
 
 /** An Infath execution work order — its defaults are liquidation / auction sale. */
 function executionPo() {
@@ -140,7 +143,11 @@ describe("D1 — §2 prints the appraiser's saved basis / premise / purpose", ()
     expect(choices.purposeLabel).toBe("التقاضي وفض النزاعات");
     expect(choices.basisLabel).toBe("القيمة السوقية (قائمة)");
     expect(choices.basisDefinition).toBe("تعريف");
-    expect(choices.retrospective).toEqual({ date: "2026-02-10", rationale: "تاريخ إبرام عقد البيع محل النزاع" });
+    expect(choices.retrospective).toEqual({
+      date: "2026-02-10",
+      dateEnd: "",
+      rationale: "تاريخ إبرام عقد البيع محل النزاع",
+    });
     expect(choices.ownership).toEqual({ key: "leased_land", labelAr: "أرض مستأجرة", remainingLeaseYears: 4 });
   });
 });
@@ -168,10 +175,33 @@ describe("§25 — numbers a reader can reproduce", () => {
     applyValuationReportLiveFill(dom, fill);
     expect(sec25Rows(dom)).toEqual([
       ["القيمة المرجّحة", "1,556,861.07"],
-      ["نسبة خصم التصفية المنظمة", "20٪", "مبرر خصم التصفية", "بيع قسري بالمزاد خلال 30 يوماً"],
-      ["القيمة بعد خصم التصفية", "1,245,488.86"],
+      // Round 2: a forced-sale premise names its own discount — never «التصفية المنظمة».
+      ["نسبة خصم البيع القسري", "20٪", "مبرر خصم البيع القسري", "بيع قسري بالمزاد خلال 30 يوماً"],
+      ["القيمة بعد خصم البيع القسري", "1,245,488.86"],
       ["قيمة العقار بعد التقريب (لأقرب 10,000 ر.س.)", "1,250,000"],
     ]);
+    expect(fill.basisDefinition).toContain("البيع القسري");
+    expect(fill.basisDefinition).not.toContain("التصفية المنظمة");
+  });
+
+  it("an orderly-liquidation premise keeps «نسبة خصم التصفية المنظمة»", () => {
+    const fill = buildValuationReportLiveFill({
+      draft: draft(),
+      record: executionPo() as never,
+      recon: recon({
+        basisOfValueKey: "liquidation",
+        valuePremiseKey: "orderly",
+        weightedValue: 1_000_000,
+        propertyValueAfterLiquidation: 900_000,
+        finalOpinionValue: 900_000,
+        liquidationDiscountPct: 10,
+        liquidationDiscountApplied: true,
+        liquidationDiscountRationale: "فترة تسويق نموذجية للتصفية",
+      }),
+    });
+    const dom = sec25Dom();
+    applyValuationReportLiveFill(dom, fill);
+    expect(sec25Rows(dom)[1]?.slice(0, 3)).toEqual(["نسبة خصم التصفية المنظمة", "10٪", "مبرر خصم التصفية المنظمة"]);
   });
 
   it("no rounding line when the value is already round; two-million words in construct form", () => {
@@ -309,8 +339,11 @@ describe("report facts printed as the inspector / roster recorded them", () => {
       draft: draft(),
       certifiedLicense: "1302",
       certifiedMembershipNumber: "1210000003",
+      certifiedMembershipExpires: "2027-09-06",
     });
     expect(withMembership.cells["رقم العضوية"]).toBe("1210000003");
+    // §25 — yyyy/mm/dd like every other date in the report (round 2).
+    expect(withMembership.cells["تاريخ انتهاء العضوية"]).toBe("2027/09/06");
   });
 });
 
@@ -332,6 +365,38 @@ describe("§2 scope statements — D9 retrospective rationale, building-only sco
     const rows = [...dom.querySelectorAll('[data-sec="2"] tr[data-scope-row]')];
     expect(rows).toHaveLength(1);
     expect(rows[0]?.textContent).toContain("تاريخ وفاة المورث");
+  });
+
+  it("the retrospective date is THE valuation date — the draft's own date never prints beside it (round 2)", () => {
+    const d = { ...draft(), appraisalDate: "2026-10-25" };
+    const settings = {
+      valuationDateMode: "retrospective",
+      retrospectiveDate: "2026-09-15",
+      retrospectiveDateEnd: null,
+      retrospectiveRationale: "طلبت دائرة التنفيذ القيمة كما في تاريخ الحجز",
+    } as never;
+    expect(effectiveValuationDate({ draft: d, inspector: null, settings })).toBe("2026-09-15");
+    const choices = reportValuationChoices({ record: null, recon: null, settings, lists: null });
+    // The specialist's overlay draft carries its own date: the retrospective one still wins.
+    const fill = buildValuationReportLiveFill({ draft: d, retrospective: choices.retrospective });
+    expect(fill.cells["تاريخ التقييم"]).toBe("2026/09/15");
+    expect(fill.scopeRows[0]?.value).toContain("2026/09/15");
+  });
+
+  it("a retrospective period prints start — end in §2 and in the scope statement", () => {
+    const settings = {
+      valuationDateMode: "retrospective",
+      retrospectiveDate: "2026-01-01",
+      retrospectiveDateEnd: "2026-03-31",
+      retrospectiveRationale: "متوسط القيمة خلال فترة النزاع",
+    } as never;
+    const choices = reportValuationChoices({ record: null, recon: null, settings, lists: null });
+    const fill = buildValuationReportLiveFill({
+      draft: { ...draft(), appraisalDate: "2026-10-25" },
+      retrospective: choices.retrospective,
+    });
+    expect(fill.cells["تاريخ التقييم"]).toBe("2026/01/01 — 2026/03/31");
+    expect(fill.scopeRows[0]?.value).toContain("2026/01/01 — 2026/03/31");
   });
 
   it("a building on leased land: ownership with remaining years, and the scope says the land is not valued", () => {
@@ -382,7 +447,8 @@ describe("§23 — age rationales and the lease cap (cost handoff)", () => {
       "مبرر العمر الاقتصادي",
       "تحديد العمر بمدة الإيجار",
     ]);
-    expect(fill.ageNotes[2]?.value).toContain("مدة الإيجار المتبقية (4 سنة)");
+    expect(fill.ageNotes[2]?.value).toContain("مدة الإيجار المتبقية (4 سنوات)");
+    expect(fill.ageNotes[2]?.value).toContain("عمر 22 سنة");
     const dom = new DOMParser().parseFromString(
       `<section data-sec="23"><table>
         <tr><td class="k">العمر الفعلي</td><td class="v num">—</td><td class="k">العمر الاقتصادي</td><td class="v num">—</td></tr>
@@ -400,6 +466,30 @@ describe("§23 — age rationales and the lease cap (cost handoff)", () => {
       "تحديد العمر بمدة الإيجار",
       "التقادم المادي",
     ]);
+  });
+
+  it("a usufruct right is named as such in the cap note — not «أرض مستأجرة» (round 2)", () => {
+    const fill = buildValuationReportLiveFill({
+      draft: draft(),
+      ownership: { key: "usufruct", labelAr: "حق منفعة", remainingLeaseYears: 2 },
+      cost: { remainingLeaseYears: 2, lifeCappedByLease: true, effectiveLifeYears: 2, lines: [] } as never,
+    });
+    expect(fill.ageNotes[0]?.label).toBe("تحديد العمر بمدة حق المنفعة");
+    expect(fill.ageNotes[0]?.value).not.toContain("مستأجرة");
+    expect(fill.ageNotes[0]?.value).toContain("(سنتان)");
+    expect(fill.cells["نوع الملكية"]).toBe("حق منفعة — المدة المتبقية سنتان");
+  });
+
+  it("deed full ownership prints «ملكية تامة»; one remaining year «سنة واحدة»", () => {
+    expect(
+      buildValuationReportLiveFill({ draft: draft(), property: { ownershipType: "absolute" } as never }).cells["نوع الملكية"],
+    ).toBe("ملكية تامة");
+    expect(
+      buildValuationReportLiveFill({
+        draft: draft(),
+        ownership: { key: "leased_land", labelAr: "أرض مستأجرة", remainingLeaseYears: 1 },
+      }).cells["نوع الملكية"],
+    ).toBe("أرض مستأجرة — المدة المتبقية سنة واحدة");
   });
 
   it("no notes when nothing was written and the life is not capped", () => {

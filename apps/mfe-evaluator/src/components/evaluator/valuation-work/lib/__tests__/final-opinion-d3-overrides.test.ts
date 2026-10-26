@@ -35,9 +35,28 @@ describe("liquidationDiscountSaveErrors (D3)", () => {
     expect(save("liquidation", "١٠")).toEqual({
       liquidationDiscountRationale: LIQUIDATION_DISCOUNT_MESSAGES.rationaleRequired,
     });
-    expect(save("liquidation", "10", "مزاد")).toBeNull();
+    expect(save("liquidation", "10", "مزاد علني خلال 30 يوماً")).toBeNull();
     expect(save("liquidation", "120", "مزاد")).toEqual({
       liquidationDiscountPct: LIQUIDATION_DISCOUNT_MESSAGES.range,
+    });
+  });
+
+  it("round 2: the server's 90٪ ceiling and the 10-character rationale (decision B)", () => {
+    expect(save("liquidation", "95", "مزاد علني خلال 30 يوماً")).toEqual({
+      liquidationDiscountPct: LIQUIDATION_DISCOUNT_MESSAGES.range,
+    });
+    expect(save("liquidation", "90", "مزاد علني خلال 30 يوماً")).toBeNull();
+    const premise = (key: string) =>
+      liquidationDiscountSaveErrors({
+        basisOfValueKey: "liquidation",
+        liquidationDiscountPct: "95",
+        liquidationDiscountRationale: "مزاد علني خلال 30 يوماً",
+        valuePremiseKey: key,
+      })?.liquidationDiscountPct;
+    expect(premise("orderly")).toBe("نسبة خصم التصفية المنظمة يجب أن تكون بين 0 و 90");
+    expect(premise("forced")).toBe("نسبة خصم البيع القسري يجب أن تكون بين 0 و 90");
+    expect(save("liquidation", "10", "  مزاد  ")).toEqual({
+      liquidationDiscountRationale: "مبرر خصم التصفية يجب ألا يقل عن 10 أحرف",
     });
   });
 

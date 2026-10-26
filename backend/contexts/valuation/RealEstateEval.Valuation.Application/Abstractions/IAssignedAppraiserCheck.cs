@@ -23,4 +23,34 @@ public interface IAssignedAppraiserCheck
         string userId,
         string? distributionAssigneeId,
         CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Like <see cref="IsAssignedToRequestAsync"/>, but tells «Case Study could not be read» apart from
+    /// «not the assigned appraiser», so the caller can ask for a retry instead of refusing the user.
+    /// </summary>
+    Task<AssignedAppraiserVerdict> CheckRequestAsync(
+        Guid valuationRequestId,
+        string userId,
+        string? distributionAssigneeId,
+        CancellationToken cancellationToken);
+
+    /// <inheritdoc cref="CheckRequestAsync"/>
+    Task<AssignedAppraiserVerdict> CheckPropertyAsync(
+        Guid propertyId,
+        string userId,
+        string? distributionAssigneeId,
+        CancellationToken cancellationToken);
+}
+
+public enum AssignedAppraiserVerdict
+{
+    Assigned,
+    NotAssigned,
+    /// <summary>Case Study did not answer (down, timed out) — the assignment is unknown.</summary>
+    Unverified,
+}
+
+public static class AssignedAppraiserMessages
+{
+    public const string UnverifiedAr = "تعذّر التحقق من المقيّم المُسنَد — أعد المحاولة";
 }

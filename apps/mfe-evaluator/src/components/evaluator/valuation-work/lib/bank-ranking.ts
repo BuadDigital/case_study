@@ -526,6 +526,8 @@ export function buildBankDisplayRows(opts: {
     ? ranked.filter(
         (row) =>
           !eligibleIds.has(row.comparable.id) &&
+          // An adopted one outside the radius still shows (below) — it is not «beyond».
+          itemByCompId.get(row.comparable.id)?.isAdopted !== true &&
           row.distanceKm != null &&
           Number.isFinite(row.distanceKm),
       )
@@ -537,21 +539,28 @@ export function buildBankDisplayRows(opts: {
       : null,
   };
 
-  const ordered = [...eligible]
-    .sort((a, b) => {
-      const distA = a.distanceKm ?? Number.POSITIVE_INFINITY;
-      const distB = b.distanceKm ?? Number.POSITIVE_INFINITY;
-      if (distA !== distB) return distA - distB;
-      if (opts.subjectSqm != null && opts.subjectSqm > 0) {
-        const da = Math.abs((a.comparable.areaSqm || 0) - opts.subjectSqm);
-        const db = Math.abs((b.comparable.areaSqm || 0) - opts.subjectSqm);
-        if (da !== db) return da - db;
-      }
-      return (b.comparable.transactionDate || "").localeCompare(
-        a.comparable.transactionDate || "",
-      );
-    })
-    .slice(0, limit);
+  const byNearest = (a: RankedItem, b: RankedItem) => {
+    const distA = a.distanceKm ?? Number.POSITIVE_INFINITY;
+    const distB = b.distanceKm ?? Number.POSITIVE_INFINITY;
+    if (distA !== distB) return distA - distB;
+    if (opts.subjectSqm != null && opts.subjectSqm > 0) {
+      const da = Math.abs((a.comparable.areaSqm || 0) - opts.subjectSqm);
+      const db = Math.abs((b.comparable.areaSqm || 0) - opts.subjectSqm);
+      if (da !== db) return da - db;
+    }
+    return (b.comparable.transactionDate || "").localeCompare(
+      a.comparable.transactionDate || "",
+    );
+  };
+  // The adopted comparables always show (whatever the radius or the limit) — the appraiser must
+  // see what the valuation uses; the nearest others fill the rest of the limit.
+  const isAdopted = (row: RankedItem) => itemByCompId.get(row.comparable.id)?.isAdopted === true;
+  const adoptedRows = ranked.filter(isAdopted);
+  const others = eligible
+    .filter((row) => !isAdopted(row))
+    .sort(byNearest)
+    .slice(0, Math.max(0, limit - adoptedRows.length));
+  const ordered = [...adoptedRows, ...others].sort(byNearest);
 
   const distances: Record<string, number> = {};
   const rows: BankDisplayRow[] = ordered.map((row) => {

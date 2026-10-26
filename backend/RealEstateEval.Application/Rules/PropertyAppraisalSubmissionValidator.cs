@@ -44,6 +44,35 @@ public static class PropertyAppraisalSubmissionValidator
         };
     }
 
+    /// <summary>
+    /// The payload with «evaluatorPrice» rewritten as the plain number it means — Latin digits, no
+    /// thousands separators («٩٬٢٢٠٬٠٠٠» → «9220000») — so every later reader sees one form. A payload
+    /// whose price is not a number (or that is not a JSON object) is returned unchanged.
+    /// </summary>
+    public static string NormalizePrice(string payloadJson)
+    {
+        try
+        {
+            var node = System.Text.Json.Nodes.JsonNode.Parse(payloadJson);
+            if (node is not System.Text.Json.Nodes.JsonObject root) return payloadJson;
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (ReadPrice(doc.RootElement) is not { } price) return payloadJson;
+            var normalized = price.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+            if (root["evaluatorPrice"] is System.Text.Json.Nodes.JsonValue current
+                && current.TryGetValue<string>(out var text)
+                && text == normalized)
+            {
+                return payloadJson;
+            }
+            root["evaluatorPrice"] = normalized;
+            return root.ToJsonString();
+        }
+        catch (JsonException)
+        {
+            return payloadJson;
+        }
+    }
+
     private static bool IsNumber(JsonElement element, string name) =>
         element.ValueKind == JsonValueKind.Object
         && element.TryGetProperty(name, out var value)

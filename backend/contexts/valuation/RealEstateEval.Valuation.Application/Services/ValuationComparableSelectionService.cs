@@ -53,37 +53,48 @@ public sealed partial class ValuationComparableSelectionService(
         var compIds = rows.Select(r => r.ComparablePropertyId).Distinct().ToList();
         var comps = await repo.GetComparablesAsync(compIds, cancellationToken);
 
-        var valuationDate = await OfficialValuationDateAsync(valuationRequestId, cancellationToken);
+        var (valuationDate, cutoff) = await ValuationDatesAsync(valuationRequestId, cancellationToken);
         var header = await repo.GetMarketApproachAsync(valuationRequestId, cancellationToken);
         var factorRationales = await repo.ListFactorRationalesAsync(
             valuationRequestId, context, cancellationToken);
         return ValuationComparableListBuilder.BuildList(
-            request, rows, comps, valuationDate, header, context, factorRationales,
-            await CostLandShareForAsync(valuationRequestId, context, cancellationToken));
+            request, rows, comps, valuationDate, header, context, factorRationales, cutoff,
+            await CostLandAreasAsync(valuationRequestId, context, cancellationToken));
     }
 
-    /// <summary>The cost approach's apartment land share — read for the land table only.</summary>
-    private async Task<decimal?> CostLandShareForAsync(
+    /// <summary>
+    /// Decision A: the land table inside the cost approach compares with the building plot saved on the
+    /// cost approach and multiplies the apartment's share; the market table reads neither.
+    /// </summary>
+    private async Task<CostLandAreas?> CostLandAreasAsync(
         Guid valuationRequestId,
-        string selectionContext,
+        string? selectionContext,
         CancellationToken cancellationToken) =>
         ComparableSelectionContexts.Normalize(selectionContext) == ComparableSelectionContexts.LandWithinCost
-            ? await repo.GetCostApartmentLandShareSqmAsync(valuationRequestId, cancellationToken)
+            ? await repo.GetCostLandAreasAsync(valuationRequestId, cancellationToken)
             : null;
 
     /// <summary>
     /// D8: deal age, the suggested time adjustment and freshness are measured to the official
-    /// valuation date — the retrospective date when chosen, otherwise today.
+    /// valuation date — the retrospective date when chosen, otherwise today. The cutoff is the last
+    /// deal date hard alert 23 accepts (null when it is not evaluated).
     /// </summary>
-    private async Task<DateOnly> OfficialValuationDateAsync(
+    private async Task<(DateOnly ValuationDate, DateOnly? HardCutoff)> ValuationDatesAsync(
         Guid valuationRequestId,
         CancellationToken cancellationToken)
     {
         var settings = await repo.GetApproachSettingsAsync(valuationRequestId, cancellationToken);
-        return MarketApproachRules.OfficialValuationDate(
-            settings?.ValuationDateMode,
-            settings?.RetrospectiveDate,
-            RiyadhClock.Today(_time));
+        var today = RiyadhClock.Today(_time);
+        return (
+            MarketApproachRules.OfficialValuationDate(
+                settings?.ValuationDateMode,
+                settings?.RetrospectiveDate,
+                today),
+            MarketApproachRules.HardComparableDateCutoff(
+                settings?.ValuationDateMode,
+                settings?.RetrospectiveDate,
+                settings?.RetrospectiveDateEnd,
+                today));
     }
 
     public async Task<(ValuationComparableSelectionListDto? Result, Dictionary<string, string>? Errors)>
@@ -100,6 +111,9 @@ public sealed partial class ValuationComparableSelectionService(
         var blocked = await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات", cancellationToken);
         if (blocked is not null)
             return (null, new Dictionary<string, string> { ["_"] = blocked });
+
+        if (ValuationComparableSelectionRequestRules.SelectionContextError(request.SelectionContext) is { } contextError)
+            return (null, new Dictionary<string, string> { ["selectionContext"] = contextError });
 
         var items = request.Items ?? [];
         var (ids, errors) = ValuationComparableSelectionRequestRules.ValidateReplaceItems(items);
@@ -182,6 +196,8 @@ public sealed partial class ValuationComparableSelectionService(
         var blocked = await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات", cancellationToken);
         if (blocked is not null)
             return (null, blocked);
+        if (ValuationComparableSelectionRequestRules.SelectionContextError(selectionContext) is { } contextError)
+            return (null, contextError);
 
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         var row = await repo.FindSelectionByComparableAsync(
@@ -241,6 +257,8 @@ public sealed partial class ValuationComparableSelectionService(
         var blocked = await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات", cancellationToken);
         if (blocked is not null)
             return (false, blocked);
+        if (ValuationComparableSelectionRequestRules.SelectionContextError(selectionContext) is { } contextError)
+            return (false, contextError);
 
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         var row = await repo.FindSelectionByComparableAsync(
@@ -330,16 +348,17 @@ public sealed partial class ValuationComparableSelectionService(
         var comps = await repo.GetComparablesAsync(
             all.Select(a => a.ComparablePropertyId).ToList(), cancellationToken);
 
+        var (valuationDate, cutoff) = await ValuationDatesAsync(row.ValuationRequestId, cancellationToken);
         var list = ValuationComparableListBuilder.BuildList(
             request,
             all,
             comps,
-            await OfficialValuationDateAsync(row.ValuationRequestId, cancellationToken),
+            valuationDate,
             await repo.GetMarketApproachAsync(row.ValuationRequestId, cancellationToken),
             row.SelectionContext,
             factorRationales: [],
-            costApartmentLandShareSqm: await CostLandShareForAsync(
-                row.ValuationRequestId, row.SelectionContext, cancellationToken));
+            hardComparableDateCutoff: cutoff,
+            costLand: await CostLandAreasAsync(row.ValuationRequestId, row.SelectionContext, cancellationToken));
         return list.Items.FirstOrDefault(i => i.Id == selectionId);
     }
 

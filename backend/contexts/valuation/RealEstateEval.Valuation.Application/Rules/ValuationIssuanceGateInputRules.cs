@@ -40,6 +40,53 @@ public static class ValuationIssuanceGateInputRules
             GrossAdjustmentPct: item.Market?.GrossAdjustmentPct() ?? 0m);
     }
 
+    /// <summary>
+    /// Round 2: what the «مبررات التسويات والأوزان اليدوية» gate names — for each ADOPTED comparable,
+    /// every included factor with a non-zero percent whose rationale (the comparable's own override,
+    /// else the factor-level one — Q-8-1) is under 10 characters, and a manual weight whose rationale
+    /// is. «CMP-1: الموقع (+10٪)», «CMP-2: الوزن اليدوي (60٪)».
+    /// </summary>
+    public static IReadOnlyList<string> UnexplainedAdjustments(ValuationComparableSelectionListDto? list)
+    {
+        if (list is null) return [];
+        var factorRationales = list.FactorRationales
+            .GroupBy(r => r.FactorKey.Trim(), StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Last().RationaleAr, StringComparer.Ordinal);
+        var unexplained = new List<string>();
+        var index = 0;
+        foreach (var item in list.Items)
+        {
+            index++;
+            if (!item.IsAdopted || item.Market is null) continue;
+            var reference = string.IsNullOrWhiteSpace(item.Comparable?.ReferenceCode)
+                ? $"المقارن {index}"
+                : item.Comparable.ReferenceCode.Trim();
+            foreach (var line in item.Market.AdjustmentLines.Where(l => l.IsIncluded && l.Percent != 0m))
+            {
+                var own = line.Rationale;
+                var effective = JustificationRules.IsBlank(own)
+                    ? factorRationales.GetValueOrDefault(line.FactorKey.Trim())
+                    : own;
+                if (!JustificationRules.MeetsRequiredMinimum(effective))
+                    unexplained.Add($"{reference}: {line.LabelAr} ({SignedPct(line.Percent)}٪)");
+            }
+            if (item.Market.WeightIsManual
+                && !JustificationRules.MeetsRequiredMinimum(item.Market.WeightOverrideRationale))
+            {
+                unexplained.Add($"{reference}: الوزن اليدوي ({Pct(item.Market.EffectiveWeightPct)}٪)");
+            }
+        }
+        return unexplained;
+    }
+
+    private static string SignedPct(decimal value) =>
+        Math.Round(value, 2, MidpointRounding.AwayFromZero)
+            .ToString("+0.##;-0.##;0", System.Globalization.CultureInfo.InvariantCulture);
+
+    private static string Pct(decimal value) =>
+        Math.Round(value, 2, MidpointRounding.AwayFromZero)
+            .ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+
     private static readonly HashSet<string> StandingReportRoles =
         new(StringComparer.OrdinalIgnoreCase) { "reviewer", "assistant" };
 

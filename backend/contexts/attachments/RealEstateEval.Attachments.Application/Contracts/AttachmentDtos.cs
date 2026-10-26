@@ -52,15 +52,15 @@ public sealed class AttachmentExistsDto
 
 public class UploadAttachmentRequest
 {
-    [Required, MaxLength(64)]
+    [Required(ErrorMessage = "نطاق المرفق مطلوب"), MaxLength(64, ErrorMessage = "نطاق المرفق طويل جدًا")]
     public string Scope { get; init; } = "";
-    [Required, MaxLength(512)]
+    [Required(ErrorMessage = "مفتاح نطاق المرفق مطلوب"), MaxLength(512, ErrorMessage = "مفتاح نطاق المرفق طويل جدًا")]
     public string ScopeKey { get; init; } = "";
-    [Required, MaxLength(512)]
+    [Required(ErrorMessage = "اسم الملف مطلوب"), MaxLength(512, ErrorMessage = "اسم الملف طويل جدًا — الحد الأقصى 512 حرفاً")]
     public string FileName { get; init; } = "";
-    [MaxLength(128)]
+    [MaxLength(128, ErrorMessage = "نوع المحتوى طويل جدًا")]
     public string ContentType { get; init; } = "application/octet-stream";
-    [Required]
+    [Required(ErrorMessage = "محتوى الملف مطلوب")]
     public string ContentBase64 { get; init; } = "";
 
  /// <summary>Optional EXIF extracted on-device before compression.</summary>

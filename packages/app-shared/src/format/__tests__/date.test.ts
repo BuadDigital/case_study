@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatArDateTime, localDateIso, todayIso } from "../date";
+import { formatArDateTime, localDateIso, todayIso, ymd } from "../date";
 
 // Dates are built with the local-time constructor, so these hold in any machine TZ.
 describe("localDateIso", () => {
@@ -45,5 +45,18 @@ describe("formatArDateTime", () => {
 
   it("returns «—» for a value that is not a date", () => {
     expect(formatArDateTime("not a date")).toBe("—");
+  });
+});
+
+describe("ymd", () => {
+  it("writes a plain date as yyyy/mm/dd without a timezone shift", () => {
+    expect(ymd("2026-09-15")).toBe("2026/09/15");
+    expect(ymd(" 2025-01-01 ")).toBe("2025/01/01");
+  });
+
+  it("returns «—» when absent or unparseable", () => {
+    expect(ymd(null)).toBe("—");
+    expect(ymd("")).toBe("—");
+    expect(ymd("abc")).toBe("—");
   });
 });

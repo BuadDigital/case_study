@@ -178,6 +178,16 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             .OrderByDescending(f => f.UpdatedAtUtc)
             .Select(f => new { f.DeedNatureMatchOutcome, f.Status })
             .FirstOrDefaultAsync(cancellationToken);
+        // Round 2: the office's survey counts only once the office SUBMITTED its package — a file it
+        // uploaded to a draft (or a package the specialist reopened) is not the survey yet.
+        var surveyTaskIds = await caseStudy.WorkflowTasks.AsNoTracking()
+            .Where(t => t.Kind == WorkflowTaskKind.EngineeringSurvey
+                && (t.PropertyId == propertyId || t.PropertyId == studyPropertyId))
+            .Where(t => caseStudy.PartyTaskSubmissions.Any(s =>
+                s.WorkflowTaskId == t.Id && s.Status == PartyTaskSubmissionStatus.Submitted))
+            .OrderBy(t => t.CreatedAtUtc)
+            .Select(t => t.Id)
+            .ToListAsync(cancellationToken);
         var deedNatureMatchOutcome = latestReport?.DeedNatureMatchOutcome;
         var studyReportIssued = latestReport?.Status == CaseStudyReportStatuses.Issued;
 
@@ -225,6 +235,7 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             DeedNumber = property.DeedNumber,
             RealEstateRegNumber = property.RealEstateRegNumber,
             RequiresEngineeringSurvey = SurveyRequirementRules.PropertyRequiresSurvey(property),
+            SurveyTaskIds = surveyTaskIds,
             DeedDate = property.DeedDate,
             OwnerName = property.OwnerName,
             DeedOwnersJson = property.DeedOwnersJson,

@@ -11,11 +11,14 @@ import { useToast } from "@platform/ui-kit";
 import {
   emptyIncomeFields,
   incomeDerived,
+  incomeFieldsDiffer,
   incomeFieldsFromDto,
+  incomeSaveErrors,
   incomeSaveRequest,
   incomeWarnings,
   type IncomeApproachFields,
 } from "./lib/income-approach-state";
+import { setSectionUnsaved } from "../../../lib/evaluator/unsaved-edits";
 import { INCOME_FIELD_ERROR_KEYS } from "./lib/valuation-work-error-targets";
 import { apiConfig } from "./lib/shell-utils";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
@@ -40,10 +43,14 @@ export function useIncomeApproachWorkflow({
   onIncomeSaved,
 }: IncomeApproachWorkflowArgs) {
   const { showToast } = useToast();
-  const { reportSaveFailure, clearSaveErrors } = useValuationWorkErrors();
+  const { reportSaveFailure, reportFieldError, clearSaveErrors } = useValuationWorkErrors();
   const [fields, setFields] = useState<IncomeApproachFields>(emptyIncomeFields);
   const [saved, setSaved] = useState<ValuationIncomeApproachDto | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  /** The saved row arrived — until then the inputs and the save stay closed (nothing to overwrite). */
+  const [loaded, setLoaded] = useState(false);
+  /** Bumped by «إعادة المحاولة» after a failed load. */
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     const config = apiConfig();
@@ -58,11 +65,24 @@ export function useIncomeApproachWorkflow({
       setLoadError(null);
       setSaved(res.data);
       setFields(incomeFieldsFromDto(res.data));
+      setLoaded(true);
     });
     return () => {
       cancelled = true;
     };
-  }, [valuationRequestId]);
+  }, [valuationRequestId, loadAttempt]);
+
+  const retryLoad = useCallback(() => {
+    setLoadError(null);
+    setLoadAttempt((n) => n + 1);
+  }, []);
+
+  // Problem 19: typed-but-unsaved income drafts make the window warn before a refresh. No cleanup —
+  // <Activity> hiding the screen runs cleanups while the drafts are still unsaved.
+  const unsaved = loaded && incomeFieldsDiffer(fields, saved);
+  useEffect(() => {
+    setSectionUnsaved("income-approach", unsaved);
+  }, [unsaved]);
 
   const setField = useCallback(
     <K extends keyof IncomeApproachFields>(key: K, value: IncomeApproachFields[K]) => {
@@ -79,7 +99,13 @@ export function useIncomeApproachWorkflow({
 
   const saveIncome = useCallback(async () => {
     const config = apiConfig();
-    if (!config || !valuationRequestId || locked) return;
+    if (!config || !valuationRequestId || locked || !loaded) return;
+    const refused = incomeSaveErrors(fields);
+    if (refused) {
+      const [key, message] = Object.entries(refused)[0]!;
+      reportFieldError(key, message);
+      return;
+    }
     onSavingChange(true);
     const res = await saveValuationIncomeApproach(config, valuationRequestId, incomeSaveRequest(fields));
     onSavingChange(false);
@@ -95,15 +121,17 @@ export function useIncomeApproachWorkflow({
   }, [
     clearSaveErrors,
     fields,
+    loaded,
     locked,
     onIncomeSaved,
     onSavingChange,
+    reportFieldError,
     reportSaveFailure,
     showToast,
     valuationRequestId,
   ]);
 
-  return { fields, setField, derived, warnings, saved, loadError, saveIncome };
+  return { fields, setField, derived, warnings, saved, loaded, loadError, retryLoad, saveIncome };
 }
 
 export type IncomeApproachWorkflow = ReturnType<typeof useIncomeApproachWorkflow>;

@@ -46,7 +46,8 @@ public class ReopenReportIssuanceRequest
 /// </summary>
 public class RegisterDepositCertificateRequest
 {
-    [Required, MaxLength(128)]
+    [Required(ErrorMessage = "رمز الإيداع مطلوب")]
+    [MaxLength(128, ErrorMessage = "رمز الإيداع طويل جدًا — الحد الأقصى 128 حرفاً")]
     public string DepositCode { get; init; } = "";
 
     [MaxLength(512)]

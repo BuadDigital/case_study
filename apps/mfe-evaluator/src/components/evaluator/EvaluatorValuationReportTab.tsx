@@ -24,6 +24,7 @@ import {
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
+import { canManageWorkOrders } from "@platform/app-shared/app-data/runtime-access";
 import { usePoRecordQuery } from "../../lib/case-study-bridge";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlanceSlot";
 import {
@@ -108,7 +109,9 @@ async function loadReportTabBundle(inspectionTaskId: string | null) {
   const [loadedOrg, listRes, clientsRes, ws] = await Promise.all([
     ensureOrganizationSettingsLoaded(),
     getValuationLists(config),
-    listClients(config),
+    // GET /api/clients is `manage-work-orders` only: an appraiser asked for it and got a 403 on
+    // every load. Without it the report users fall back to the work order's own client name.
+    canManageWorkOrders() ? listClients(config) : Promise.resolve(null),
     inspectionTaskId
       ? fetchInspectorWorkspace(inspectionTaskId)
       : Promise.resolve(null),
@@ -127,7 +130,7 @@ async function loadReportTabBundle(inspectionTaskId: string | null) {
     org: loadedOrg,
     lists: listRes.ok ? listRes.data : null,
     listsFailed: !listRes.ok,
-    clients: clientsRes.ok ? clientsRes.data : ([] as ClientDto[]),
+    clients: clientsRes?.ok ? clientsRes.data : ([] as ClientDto[]),
     inspector: ws,
     primaryPhoto,
     photos,

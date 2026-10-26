@@ -1,6 +1,8 @@
+using RealEstateEval.Application.Abstractions;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 using RealEstateEval.Domain;
+using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Domain;
 using RealEstateEval.Valuation.Infrastructure.Services;
 
@@ -42,6 +44,57 @@ public class AssignedAppraiserCheckTests
 
         Assert.False(await check.IsAssignedToRequestAsync(Guid.NewGuid(), "u-any", AssignedDistributionId, default));
         Assert.False(await check.IsAssignedToPropertyAsync(propertyId, "u-any", AssignedDistributionId, default));
+    }
+
+    [Fact]
+    public async Task An_unreachable_case_study_is_unverified_not_a_refusal()
+    {
+        var contexts = TestDatabases.Create("assigned-appraiser-down");
+        var requestId = Guid.NewGuid();
+        var propertyId = Guid.NewGuid();
+        contexts.Valuation.ValuationRequests.Add(ValuationRequest.Create(
+            requestId, "VR-A2", propertyId, "جدة", "فيلا", "مقيم", "2026-06-25", DateTime.UtcNow));
+        contexts.Valuation.SaveChanges();
+
+        // HttpClient.Timeout: a TaskCanceledException while the caller's own token is live.
+        var timedOut = new AssignedAppraiserCheck(contexts.Valuation, ThrowingLookup.Create(new TaskCanceledException("timeout")));
+        Assert.Equal(AssignedAppraiserVerdict.Unverified,
+            await timedOut.CheckRequestAsync(requestId, "u-any", AssignedDistributionId, default));
+        Assert.False(await timedOut.IsAssignedToRequestAsync(requestId, "u-any", AssignedDistributionId, default));
+        Assert.Null(await timedOut.FindAppraisalTaskAsync(propertyId, default));
+
+        var down = new AssignedAppraiserCheck(contexts.Valuation, ThrowingLookup.Create(new HttpRequestException("down")));
+        Assert.Equal(AssignedAppraiserVerdict.Unverified,
+            await down.CheckPropertyAsync(propertyId, "u-any", AssignedDistributionId, default));
+
+        // The caller cancelling is not an outage: it still propagates.
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            new AssignedAppraiserCheck(contexts.Valuation, ThrowingLookup.Create(new OperationCanceledException(cts.Token)))
+                .CheckPropertyAsync(propertyId, "u-any", AssignedDistributionId, cts.Token));
+
+        var (check, assignedRequest, _) = Arrange(AssignedDistributionId);
+        Assert.Equal(AssignedAppraiserVerdict.Assigned,
+            await check.CheckRequestAsync(assignedRequest, "u-any", AssignedDistributionId, default));
+        Assert.Equal(AssignedAppraiserVerdict.NotAssigned,
+            await check.CheckRequestAsync(assignedRequest, "u-colleague", "val-colleague", default));
+    }
+
+    /// <summary>A Case Study lookup whose every call throws the given exception.</summary>
+    public class ThrowingLookup : System.Reflection.DispatchProxy
+    {
+        private Exception _error = new InvalidOperationException();
+
+        public static ICaseStudyLookup Create(Exception error)
+        {
+            var proxy = Create<ICaseStudyLookup, ThrowingLookup>();
+            ((ThrowingLookup)(object)proxy)._error = error;
+            return proxy;
+        }
+
+        protected override object? Invoke(System.Reflection.MethodInfo? targetMethod, object?[]? args) =>
+            throw _error;
     }
 
     private static (AssignedAppraiserCheck Check, Guid RequestId, Guid PropertyId) Arrange(

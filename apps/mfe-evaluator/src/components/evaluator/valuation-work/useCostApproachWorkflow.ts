@@ -23,6 +23,8 @@ import {
   costFieldsFromDto,
   costLineTotals,
   costLinesFromInventory,
+  keepCostLineInputs,
+  costRepullMessage,
   costSaveRequest,
   inspectorAgeYearsForCostField,
   reorderCostLines,
@@ -43,6 +45,10 @@ type CostApproachWorkflowArgs = {
   cost: ValuationCostApproachDto | null;
   hydrateKey: number;
   buildingOnly: boolean;
+  /** Decision A: the apartment's land is a share of the building plot (plot + share required). */
+  isApartment?: boolean;
+  /** The plot box before one is saved (`buildingPlotAreaSeed`) — a draft, never auto-saved. */
+  plotAreaSeed?: string;
   costBasisKey: string;
   /** The appraiser's package is submitted: the numbers are closed (server-locked). */
   locked?: boolean;
@@ -65,6 +71,8 @@ export function useCostApproachWorkflow({
   cost,
   hydrateKey,
   buildingOnly,
+  isApartment = false,
+  plotAreaSeed = "",
   costBasisKey,
   locked = false,
   onSavingChange,
@@ -116,7 +124,7 @@ export function useCostApproachWorkflow({
       setCostDraft([]);
     } else {
       setCostDraft(cost.lines);
-      setFields(costFieldsFromDto(cost));
+      setFields(costFieldsFromDto(cost, undefined, plotAreaSeed));
     }
   }
   const hydratedKeyRef = useRef<number | null>(null);
@@ -184,11 +192,13 @@ export function useCostApproachWorkflow({
       showToast("تعذّر تحميل حصر المباني", "error");
       return;
     }
+    // Unit costs already priced survive the re-pull (they used to reset to 0); the toast says
+    // which lines kept theirs and which still need one.
     const seeded = costLinesFromInventory(inv.data.lines);
-    setCostDraft(seeded);
+    setCostDraft((prev) => keepCostLineInputs(seeded, prev));
     markEdited();
-    showToast(`تم سحب ${seeded.length} بندًا من الحصر — أدخل تكلفة المتر`, "info");
-  }, [markEdited, poNumber, propertyId, showToast, valuationRequestId]);
+    showToast(costRepullMessage(keepCostLineInputs(seeded, costDraft)), "info");
+  }, [costDraft, markEdited, poNumber, propertyId, showToast, valuationRequestId]);
 
   const { saveState, saveNow: saveCost } = useCostAutosave({
     valuationRequestId,
@@ -206,6 +216,7 @@ export function useCostApproachWorkflow({
     },
     onManualSaved: () => showToast("تم حفظ أسلوب التكلفة", "success"),
     onManualFailure: (failure) => reportSaveFailure(failure, "تعذّر حفظ التكلفة"),
+    onLeaveFailure: (message) => showToast(`لم تُحفظ تعديلات أسلوب التكلفة: ${message}`, "error"),
   });
 
   // Live local calcs per interactive-form rules (server recalculates on save).
@@ -241,6 +252,7 @@ export function useCostApproachWorkflow({
     totals,
     derived,
     buildingOnly,
+    isApartment,
   );
 
   // memo + short-circuit: multi-KB text used to rebuild on every keystroke then be discarded

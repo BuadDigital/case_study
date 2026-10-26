@@ -1,4 +1,5 @@
 using System.Globalization;
+using RealEstateEval.Domain;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;
 
@@ -19,7 +20,52 @@ public static class ValuationCostApproachRequestRules
         ValidateLand(request, errors);
         ValidateIndirect(request, errors);
         ValidateAgeAndObsolescence(request, errors);
+        if (errors.Count == 0) ValidateAmounts(request, errors);
         return errors;
+    }
+
+    /// <summary>
+    /// Quantity × unit cost per line, the direct total and the total with indirect costs stay within
+    /// <see cref="CostApproachRules.MaxAmountSar"/> — computed as the read computes them (repeated floors
+    /// from the first floor, inherited unit cost, build ratio), so an overflow is a 400, never a 500.
+    /// </summary>
+    private static void ValidateAmounts(
+        SaveValuationCostApproachRequest request,
+        Dictionary<string, string> errors)
+    {
+        var lines = request.Lines ?? [];
+        var firstFloorArea = FirstFloorArea(lines);
+        var firstFloorUnitCost = lines
+            .Where(l => CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.FirstFloor)
+            .Select(l => l.UnitCostSar)
+            .FirstOrDefault();
+        var direct = 0m;
+        for (var i = 0; i < lines.Count; i++)
+        {
+            var line = lines[i];
+            var itemKey = CostLineItemKeys.Normalize(line.ItemKey);
+            var quantity = itemKey == CostLineItemKeys.RepeatedFloors
+                ? RepeatedFloorRules.QuantityForLine(firstFloorArea, line.RepeatedFloorCount)
+                : line.AreaSqm;
+            var total = CostApproachRules.LineTotal(
+                CostApproachRules.EffectiveQuantity(quantity, line.Unit, line.BuildRatioPct, itemKey, line.StructureKind),
+                CostApproachRules.InheritedUnitCost(itemKey, line.UnitCostSar, firstFloorUnitCost));
+            if (total > CostApproachRules.MaxAmountSar)
+                errors[$"lines[{i}].unitCostSar"] =
+                    $"مبلغ البند (الكمية × تكلفة الوحدة) يتجاوز الحد المعقول ({N(CostApproachRules.MaxAmountSar)} ر.س)";
+            if (line.IsIncluded) direct += total;
+        }
+
+        if (errors.Count > 0) return;
+        var indirectSum = CostApproachRules.IndirectSumPct(
+            (request.IndirectItems ?? []).Select(x => x.Pct),
+            CostApproachRules.FinancingPct(request.FinancingAnnualRatePct, request.FinancingMonths));
+        if (direct > CostApproachRules.MaxAmountSar
+            || CostApproachRules.TotalCostWithIndirect(direct, indirectSum) > CostApproachRules.MaxAmountSar)
+        {
+            errors["lines"] =
+                $"إجمالي التكلفة (المباشرة مع غير المباشرة) يتجاوز الحد المعقول ({N(CostApproachRules.MaxAmountSar)} ر.س)";
+        }
     }
 
     /// <summary>The first-floor area the repeated-floors quantity derives from (first such line).</summary>
@@ -74,6 +120,10 @@ public static class ValuationCostApproachRequestRules
             else if (line.UnitCostSar > CostApproachRules.MaxUnitCostSar)
                 errors[$"lines[{i}].unitCostSar"] =
                     $"تكلفة الوحدة تتجاوز الحد المعقول ({N(CostApproachRules.MaxUnitCostSar)} ر.س)";
+            // Round 2: an unknown kind («xyz») is refused instead of being stored as-is.
+            if (!string.IsNullOrWhiteSpace(line.StructureKind)
+                && !BuildingStructureKinds.IsKnown(line.StructureKind.Trim().ToLowerInvariant()))
+                errors[$"lines[{i}].structureKind"] = "نوع المكوّن غير معروف (دور / سور / ملحق / قبو / أخرى)";
             if (line.Unit is not null && !CostLineUnits.IsKnown(line.Unit))
                 errors[$"lines[{i}].unit"] = "وحدة القياس غير معروفة (م² / م.ط / عدد / مقطوع)";
             if (line.BuildRatioPct is < 0m or > 100m)
@@ -95,10 +145,25 @@ public static class ValuationCostApproachRequestRules
     {
         if (request.UseRestrictionDiscountPct is < 0m or > 100m)
             errors["useRestrictionDiscountPct"] = "خصم تقييد الاستخدام يجب أن يكون بين 0 و 100";
+        // Decision B: the rationale alert 10 asks for is at least 10 characters once written.
+        if (request.UseRestrictionDiscountPct > 0m
+            && JustificationRules.IsBelowRequiredMinimum(request.UseRestrictionRationale))
+            errors["useRestrictionRationale"] = JustificationRules.RequiredMinimumMessageAr("مبرر خصم تقييد الاستخدام");
         if (request.ApartmentLandShareSqm is < 0m or > CostApproachRules.MaxLandShareSqm)
             errors["apartmentLandShareSqm"] =
                 $"حصة الشقة من الأرض يجب أن تكون بين 0 و {N(CostApproachRules.MaxLandShareSqm)} م²";
+        // Decision A: the land comparables are compared with the whole building plot.
+        if (request.BuildingPlotAreaSqm is <= 0m or > CostApproachRules.MaxBuildingPlotAreaSqm)
+            errors["buildingPlotAreaSqm"] =
+                $"مساحة قطعة الأرض يجب أن تكون أكبر من 0 ولا تتجاوز {N(CostApproachRules.MaxBuildingPlotAreaSqm)} م²";
+        else if (request.BuildingPlotAreaSqm is { } plot
+                 && request.ApartmentLandShareSqm is { } share
+                 && share > plot)
+            errors["apartmentLandShareSqm"] =
+                $"حصة الشقة من الأرض ({N2(share)} م²) لا يمكن أن تتجاوز مساحة قطعة الأرض ({N2(plot)} م²)";
     }
+
+    private static string N2(decimal value) => value.ToString("#,0.##", CultureInfo.InvariantCulture);
 
     private static void ValidateIndirect(
         SaveValuationCostApproachRequest request,
@@ -138,5 +203,16 @@ public static class ValuationCostApproachRequestRules
             errors["functionalObsolescencePct"] = "التقادم الوظيفي يجب أن يكون بين 0 و 100";
         if (request.ExternalObsolescencePct is < 0m or > 100m)
             errors["externalObsolescencePct"] = "التقادم الخارجي يجب أن يكون بين 0 و 100";
+        // Decision B: the basis alert 6 asks for (life extension > 0) is at least 10 characters once written.
+        if (request.LifeExtensionYears > 0m
+            && JustificationRules.IsBelowRequiredMinimum(request.LifeExtensionBasis))
+            errors["lifeExtensionBasis"] = JustificationRules.RequiredMinimumMessageAr("بيان أساس تمديد العمر");
+        // Decision B: the rationales alert 12 asks for are at least 10 characters once written.
+        if (request.FunctionalObsolescencePct > 0m
+            && JustificationRules.IsBelowRequiredMinimum(request.FunctionalObsolescenceRationale))
+            errors["functionalObsolescenceRationale"] = JustificationRules.RequiredMinimumMessageAr("مبرر التقادم الوظيفي");
+        if (request.ExternalObsolescencePct > 0m
+            && JustificationRules.IsBelowRequiredMinimum(request.ExternalObsolescenceRationale))
+            errors["externalObsolescenceRationale"] = JustificationRules.RequiredMinimumMessageAr("مبرر التقادم الخارجي");
     }
 }

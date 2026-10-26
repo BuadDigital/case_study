@@ -6,6 +6,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -150,12 +151,16 @@ function ToastIcon({ tone }: { tone: ToastTone }) {
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  // When the last error toast was raised — the global action listener skips its success toast for
+  // an action that was refused meanwhile (a refused deposit showed «تم التسجيل !» beside the refusal).
+  const lastErrorAtRef = useRef(Number.NEGATIVE_INFINITY);
 
   const dismissToast = useCallback((id: string) => {
     setToasts((current) => current.filter((item) => item.id !== id));
   }, []);
 
   const showToast = useCallback((message: string, tone: ToastTone = "info") => {
+    if (tone === "error") lastErrorAtRef.current = Date.now();
     const id = newToastId();
     setToasts((current) => [...current, { id, message, tone }]);
     window.setTimeout(() => {
@@ -226,9 +231,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    return bindGlobalActionToast(showProgressToast, dismissToast, (message) => {
-      showToast(message, "success");
-    });
+    return bindGlobalActionToast(
+      showProgressToast,
+      dismissToast,
+      (message) => {
+        showToast(message, "success");
+      },
+      (startedAt) => lastErrorAtRef.current >= startedAt,
+    );
   }, [dismissToast, showProgressToast, showToast]);
 
   return (

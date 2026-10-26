@@ -176,11 +176,15 @@ public static class ValuationReportFieldBuilder
                     ? null
                     : DeedKindLabels.LabelAr(prop.DeedKind);
                 d["ownerName"] = prop?.OwnerName;
- // Ownership-type field in section 6 — derived from the owners count (one → absolute, several → shared).
-                d["ownershipType"] = prop is null
-                    ? null
-                    : OwnershipTypes.LabelAr(OwnershipTypeRules.FromOwners(
-                        OwnershipTypeRules.ParseOwners(prop.DeedOwnersJson)));
+ // Ownership-type field in section 6 — the interest valued (D11) when it is not freehold, else the
+ // deed's own type derived from the owners count (one → «ملكية تامة», several → «مشاع»).
+                d["ownershipType"] = OwnershipInterestKeys.ReportCell(
+                    approachSettings?.OwnershipInterestKey,
+                    approachSettings?.RemainingLeaseYears,
+                    prop is null
+                        ? null
+                        : OwnershipTypes.LabelAr(OwnershipTypeRules.FromOwners(
+                            OwnershipTypeRules.ParseOwners(prop.DeedOwnersJson))));
                 d["hasStructures"] = hasStructures ? "yes" : "no";
                 // «حالة العقار» (جديد/مستخدم) — حقل معاين مستقل عن «حالة البناء».
                 d["propertyCondition"] = hasStructures ? inspector.PropertyCondition : null;
@@ -382,7 +386,8 @@ public static class ValuationReportFieldBuilder
                     approachSettings?.ExternalSpecialistDetails,
                     ValuationApproachSettingsRules.ParseAssumptions(
                         approachSettings?.SelectedAssumptionsJson),
-                    retrospectiveLine);
+                    retrospectiveLine,
+                    approachSettings?.OwnershipInterestKey);
                 break;
             }
 

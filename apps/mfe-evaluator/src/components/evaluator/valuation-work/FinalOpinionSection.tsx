@@ -16,6 +16,7 @@ import {
   cn,
 } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
+import { ymd } from "@platform/app-shared/format/date";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 
@@ -43,7 +44,7 @@ import {
   reconMethodNote,
   type ReconMethod,
 } from "./FinalOpinionPhone";
-import { buildCostNarrative, costFieldsFromDto } from "./lib/cost-approach-state";
+import { buildCostNarrative, costFieldsFromDto, costNumericInput } from "./lib/cost-approach-state";
 import { analysesForRationale, appendAnalysesToRationale } from "./lib/final-opinion-state";
 
 /**
@@ -304,7 +305,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
               </div>
               <div className="text-[11.5px] text-text-3">
                 {officialValuationDate
-                  ? `قيمة العقار محل التقييم في تاريخ ${officialValuationDate}`
+                  ? `قيمة العقار محل التقييم في تاريخ ${ymd(officialValuationDate)}`
                   : "قيمة العقار محل التقييم — يُثبَّت التاريخ عند اعتماد التقييم"}
               </div>
             </div>
@@ -370,13 +371,12 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                       <input
                         id="final-inf-discount"
                         dir="ltr"
-                        type="number"
-                        min={0}
-                        max={90}
-                        step={5}
+                        type="text"
+                        inputMode="decimal"
+                        aria-label="نسبة خصم التصفية"
                         value={liquidationDiscountPct}
                         onChange={(e) =>
-                          setLiquidationDiscountPct(e.target.value)
+                          setLiquidationDiscountPct(costNumericInput(e.target.value))
                         }
                         className={cn(
                           invoiceInputClass,
@@ -465,12 +465,13 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                     <input
                       id="final-round-decimals"
                       dir="ltr"
-                      type="number"
-                      min={0}
-                      max={6}
-                      step={1}
+                      type="text"
+                      inputMode="numeric"
+                      aria-label="تقريب القيمة"
                       value={finalRoundDecimals}
-                      onChange={(e) => setFinalRoundDecimals(e.target.value)}
+                      onChange={(e) =>
+                        setFinalRoundDecimals(costNumericInput(e.target.value, true).slice(0, 1))
+                      }
                       className={cn(
                         invoiceInputClass,
                         fieldErrors.finalRoundDecimals && invalidControlClass,

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { ValuationComparableSelectionDto } from "@platform/api-client";
 import { cn } from "@platform/ui-kit";
 import type { factorDescriptor } from "./lib/factor-registry";
@@ -24,6 +24,8 @@ import {
   panelCardClass,
 } from "./AdjustmentsMatrixCells.styles";
 import { useMatrixCellDraft } from "./useMatrixCellDraft";
+import { rationaleMinimumError } from "./lib/rationale-minimum";
+import { formatArabicMonths } from "../../../lib/evaluator/valuation-report-property-age";
 
 export {
   pct,
@@ -71,7 +73,16 @@ export function SubjCell({ value, note }: { value: string; note?: string }) {
   );
 }
 
-/** One justification covering every comparable in the row. Draft lives in the cell. */
+/** The rationale's name in its messages — the weight row's is the manual-weight rationale. */
+export function justLabel(factorKey: string | undefined): string {
+  return factorKey === "weight" ? "مبرر الوزن اليدوي" : "مبرر عامل التسوية";
+}
+
+/**
+ * One justification covering every comparable in the row. Draft lives in the cell. Round 2: it is
+ * checked and saved on blur / Enter / Tab only (not per keystroke), and a written rationale under
+ * 10 characters is named under the box — the draft stays for the appraiser to finish.
+ */
 export function JustCell({
   factorKey,
   value,
@@ -83,12 +94,21 @@ export function JustCell({
   factorKey?: string;
   value?: string;
   locked?: boolean;
-  /** Commits while typing (debounced) and on Tab/blur; returning false keeps the draft (save failed). */
+  /** Commits on Tab / Enter / blur; returning false keeps the draft (save failed). */
   onCommit?: (factorKey: string, text: string) => Promise<boolean> | void;
 }) {
+  const [error, setError] = useState<string | null>(null);
+  const label = justLabel(factorKey);
   const { text, change, flush, onKeyDown } = useMatrixCellDraft(
     value ?? "",
-    factorKey && onCommit ? (raw) => onCommit(factorKey, raw) : undefined,
+    factorKey && onCommit
+      ? (raw) => {
+          const short = rationaleMinimumError(label, raw);
+          setError(short);
+          return short ? false : onCommit(factorKey, raw);
+        }
+      : undefined,
+    { debounce: false },
   );
 
   if (!factorKey || !onCommit) {
@@ -101,15 +121,26 @@ export function JustCell({
         type="text"
         value={text}
         disabled={locked}
-        placeholder="مبرر عامل التسوية"
-        onChange={(e) => change(e.target.value)}
+        placeholder={label}
+        aria-label={label}
+        aria-invalid={error ? true : undefined}
+        onChange={(e) => {
+          if (error) setError(null);
+          change(e.target.value);
+        }}
         onKeyDown={onKeyDown}
         onBlur={flush}
         className={cn(
-          "w-full rounded-[7px] border border-border bg-surface px-2.5 py-[7px] font-medium text-text",
+          "w-full rounded-[7px] border bg-surface px-2.5 py-[7px] font-medium text-text",
+          error ? "border-danger" : "border-border",
           touch ? "min-h-11 text-[16px]" : "text-[12px]",
         )}
       />
+      {error ? (
+        <div role="alert" className="mt-1 text-[10.5px] font-semibold text-danger-text">
+          {error}
+        </div>
+      ) : null}
     </Wrap>
   );
 }
@@ -247,7 +278,10 @@ export function sequentialCompNote(
   desc: ReturnType<typeof factorDescriptor>,
   item: ValuationComparableSelectionDto,
 ): string | undefined {
-  if (desc?.compNote === "deal-age") return `عمر الصفقة ${item.market?.dealAgeMonths ?? "—"} شهراً`;
+  if (desc?.compNote === "deal-age") {
+    const months = item.market?.dealAgeMonths;
+    return `عمر الصفقة ${months == null ? "—" : formatArabicMonths(months)}`;
+  }
   if (desc?.compNote === "kind-suggested") return item.comparable.transactionKindLabelAr;
   return undefined;
 }

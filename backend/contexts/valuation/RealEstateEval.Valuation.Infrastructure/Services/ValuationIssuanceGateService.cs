@@ -54,6 +54,7 @@ public sealed partial class ValuationIssuanceGateService(
         var propertyType = "";
         string? poNumber = null;
         var propertyRequiresSurvey = true;
+        IReadOnlyList<Guid> surveyTaskIds = [];
  // Inspection boundaries (decision 24 + Q-7) — feed m18/m21.
         string? inspectionScopeKey = null;
         var uninspectedUnitCount = 0;
@@ -72,6 +73,7 @@ public sealed partial class ValuationIssuanceGateService(
                 propertyType = context.EffectivePropertyType();
                 poNumber = context.PoNumber;
                 propertyRequiresSurvey = context.RequiresEngineeringSurvey;
+                surveyTaskIds = context.SurveyTaskIds ?? [];
                 hasStructures = context.HasStructures();
                 inspectionScopeKey = string.IsNullOrWhiteSpace(context.InspectionScopeKey)
                     ? null
@@ -182,6 +184,17 @@ public sealed partial class ValuationIssuanceGateService(
                 costLandRelevant,
                 landWithinCost?.WeightsSumTo100 ?? true,
                 costLandRelevant ? landWithinCost?.AdoptedCount ?? 0 : 0),
+            // Round 2: blank rationales stay a draft, but every unexplained factor / manual weight blocks.
+            ValuationIssuanceGateRules.AdjustmentRationales(
+                "market",
+                "أسلوب السوق",
+                marketApproachEnabled,
+                ValuationIssuanceGateInputRules.UnexplainedAdjustments(market)),
+            ValuationIssuanceGateRules.AdjustmentRationales(
+                "land_within_cost",
+                "الأرض ضمن التكلفة",
+                costLandRelevant,
+                ValuationIssuanceGateInputRules.UnexplainedAdjustments(landWithinCost)),
             ValuationIssuanceGateRules.ReconciliationWeights(
                 hasReconSaved,
                 recon?.WeightsSumTo100 ?? false),
@@ -190,6 +203,7 @@ public sealed partial class ValuationIssuanceGateService(
                 await FindMissingRequiredAttachmentLabelsAsync(
                     propertyId,
                     poNumber,
+                    surveyTaskIds,
                     propertyType,
                     propertyRequiresSurvey,
                     cancellationToken)),
@@ -267,6 +281,10 @@ public sealed partial class ValuationIssuanceGateService(
                 settings.RetrospectiveDateEnd,
                 today),
             Today: today,
+            ComparableDateCutoffIsPeriodEnd: MarketApproachRules.ComparableDateCutoffIsPeriodEnd(
+                settings.ValuationDateMode,
+                settings.RetrospectiveDate,
+                settings.RetrospectiveDateEnd),
             SubjectPropertyType: typeForRules,
             Income: IncomeApproachAlertInputRules.AlertInput(incomeOn));
 

@@ -45,7 +45,8 @@ public partial class PartyTaskSubmissionService
     /// <summary>
     /// The handed-over «سعر التقييم» must equal the reconciliation's final value (±0.5) — see
     /// <see cref="AppraisalHandOverPriceRules"/>. No valuation port, property, open request or final:
-    /// nothing to compare. An unreadable final fails closed.
+    /// nothing to compare. An unreadable final fails closed. A price within the slack is rewritten to
+    /// the final value in the payload (saved only if the hand-over goes through).
     /// </summary>
     private async Task<Dictionary<string, string>?> AppraisalHandOverPriceErrorAsync(
         PartyTaskSubmission entity,
@@ -61,9 +62,13 @@ public partial class PartyTaskSubmissionService
             var open = await _valuationRequests.GetOpenByPropertyAsync(propertyId.ToString("D"), cancellationToken);
             if (open is null) return null;
             var final = await _valuationRequests.GetFinalOpinionValueAsync(open.Id, cancellationToken);
-            return AppraisalHandOverPriceRules.MismatchError(price, final);
+            var mismatch = AppraisalHandOverPriceRules.MismatchError(price, final);
+            // Accepted within the slack: the stored price is the server's final value, not the typed one.
+            if (mismatch is null)
+                entity.PayloadJson = AppraisalHandOverPriceRules.WithFinalPrice(entity.PayloadJson, price, final);
+            return mismatch;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             return new Dictionary<string, string>
             {

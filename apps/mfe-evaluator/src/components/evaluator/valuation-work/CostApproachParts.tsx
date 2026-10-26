@@ -5,6 +5,7 @@ import {
   invalidControlClass,
   scheduleScrollToFirstFormField,
 } from "@platform/app-shared/form-ux";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { cn } from "@platform/ui-kit";
 
 import {
@@ -15,6 +16,10 @@ import {
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import { COST_FIELD_ERROR_KEYS } from "./lib/valuation-work-error-targets";
 import { INDIRECT_COST_ITEMS } from "./lib/cost-line-math";
+import {
+  costLandMultiplierLabel,
+  costLandMultiplierSqm,
+} from "../../../lib/evaluator/cost-land-figures";
 import { costNum, costNumericInput } from "./lib/cost-approach-state";
 import type {
   CostApproachAlert,
@@ -51,8 +56,17 @@ const touchInput = "max-lg:min-h-11 max-lg:text-[16px]";
 const phoneRowGrid =
   "max-lg:grid max-lg:grid-cols-[minmax(0,1fr)_auto] max-lg:items-center max-lg:gap-x-2 max-lg:gap-y-1.5";
 const phoneRowLabel = "max-lg:col-span-2 max-lg:w-auto";
+/**
+ * Desktop: a rationale between the label and the numbers was squeezed to 20–55px in the
+ * two-column cost layout — it takes its own full line under them instead (the row wraps).
+ */
+const COST_RATIONALE_FULL_ROW = "lg:order-last lg:basis-full lg:flex-none";
 
-/** Land value — compact HTML strip: discount, rationale, optional share, rates. */
+/**
+ * Land value — compact HTML strip in the report's order: the plot the land comparables are compared
+ * with (decision A), the rate after adjustments, the discount, the apartment's share, the land value
+ * and the multiplication behind it.
+ */
 export function CostLandValueCard({
   cost,
   fields,
@@ -66,13 +80,35 @@ export function CostLandValueCard({
   landComplete: boolean;
   isApartmentProperty: boolean;
 }) {
+  const { fieldErrors } = useValuationWorkErrors();
   return (
     <Card>
       <div className="px-[22px] py-3.5">
         <div className="mb-3 text-[13px] font-extrabold text-heading">قيمة الأرض</div>
         <div className="flex flex-wrap items-end gap-[18px]">
+          <label className="flex flex-col gap-1.5">
+            <FieldLabel>
+              {isApartmentProperty ? "مساحة أرض العمارة كاملة (م²)" : "مساحة قطعة الأرض (م²)"}
+            </FieldLabel>
+            <input
+              id="cost-buildingPlotArea"
+              dir="ltr"
+              inputMode="decimal"
+              value={fields.buildingPlotArea}
+              placeholder={isApartmentProperty ? "900" : ""}
+              title="تُقارن بها مقارنات الأراضي في تسوية المساحة"
+              onChange={(e) =>
+                setField("buildingPlotArea", costNumericInput(e.target.value))
+              }
+              className={cn(
+                htmlNumInput,
+                "w-[110px] p-2",
+                fieldErrors.buildingPlotAreaSqm && invalidControlClass,
+              )}
+            />
+          </label>
           <div className="flex flex-col gap-1.5">
-            <FieldLabel>سعر المتر من مقارنات الأرض</FieldLabel>
+            <FieldLabel>سعر المتر بعد التسويات</FieldLabel>
             <span dir="ltr" className="py-2 text-sm font-extrabold text-heading">
               {landComplete ? fmt(cost?.landUnitRateFromMarket) : "—"}
             </span>
@@ -97,7 +133,10 @@ export function CostLandValueCard({
               placeholder="مبرر تقييد الاستخدام…"
               value={fields.useRestrictionRationale}
               onChange={(e) => setField("useRestrictionRationale", e.target.value)}
-              className="w-full rounded-[7px] border border-dashed border-border-md bg-surface-2 px-2.5 py-2 text-xs font-medium text-text-2"
+              className={cn(
+                "w-full rounded-[7px] border border-dashed border-border-md bg-surface-2 px-2.5 py-2 text-xs font-medium text-text-2",
+                fieldErrors.useRestrictionRationale && invalidControlClass,
+              )}
             />
           </label>
           {isApartmentProperty ? (
@@ -107,13 +146,17 @@ export function CostLandValueCard({
                 id="cost-apartmentLandShare"
                 dir="ltr"
                 value={fields.apartmentLandShare}
-                placeholder="120"
-                title="تحل محل مساحة الأرض في معادلة قيمة الأرض"
+                placeholder="60"
+                title="تُضرب في سعر المتر — لا تدخل تسوية المساحة"
                 inputMode="decimal"
                 onChange={(e) =>
                   setField("apartmentLandShare", costNumericInput(e.target.value))
                 }
-                className={cn(htmlNumInput, "w-[110px] p-2")}
+                className={cn(
+                  htmlNumInput,
+                  "w-[110px] p-2",
+                  fieldErrors.apartmentLandShareSqm && invalidControlClass,
+                )}
               />
             </label>
           ) : null}
@@ -136,6 +179,14 @@ export function CostLandValueCard({
             </span>
           </div>
         </div>
+        {landComplete && cost ? (
+          <p data-testid="cost-land-formula" className="mb-0 mt-2.5 text-[11.5px] text-text-2">
+            قيمة الأرض = <span dir="ltr">{fmtMax(cost.landUnitRateAfterDiscount)}</span> ر.س/م² ×{" "}
+            {costLandMultiplierLabel(cost)} <span dir="ltr">{fmtMax(costLandMultiplierSqm(cost))}</span> م² ={" "}
+            <span dir="ltr">{fmtMax(cost.landValueFromMarket)}</span>
+            {" — "}تسوية المساحة على مساحة الأرض كاملة <span dir="ltr">{fmtMax(cost.landAreaSqm)}</span> م²
+          </p>
+        ) : null}
       </div>
     </Card>
   );
@@ -167,7 +218,7 @@ export function CostIndirectCard({
           {INDIRECT_COST_ITEMS.map((item) => {
             const pctNum = costNum(fields.indirectDraft[item.key]?.pct ?? "0");
             return (
-              <div key={item.key} className={cn("flex items-center gap-2.5", phoneRowGrid)}>
+              <div key={item.key} className={cn("flex flex-wrap items-center gap-2.5", phoneRowGrid)}>
                 <span className={cn("w-[170px] shrink-0 text-[12.5px] font-medium text-text-2", phoneRowLabel)}>
                   {item.label}
                 </span>
@@ -177,7 +228,8 @@ export function CostIndirectCard({
                   onChange={(e) =>
                     setIndirect(item.key, { rationale: e.target.value })
                   }
-                  className={cn(htmlJustInput, touchInput, "max-lg:col-span-2")}
+                  aria-label={`مبرر ${item.label}`}
+                  className={cn(htmlJustInput, touchInput, COST_RATIONALE_FULL_ROW, "max-lg:col-span-2")}
                 />
                 <span className="w-[110px] shrink-0 text-end text-[11.5px] font-medium text-text-3 max-lg:w-auto max-lg:text-start">
                   <span dir="ltr">{fmt((directTotal * pctNum) / 100)}</span> ر.س.
@@ -319,7 +371,7 @@ export function CostAgeCard({
         </div>
         <div className="flex flex-col gap-2.5">
           {AGE_ROWS.map(({ label, value, justification }) => (
-            <div key={label} className={cn("flex items-center gap-2.5", phoneRowGrid)}>
+            <div key={label} className={cn("flex flex-wrap items-center gap-2.5", phoneRowGrid)}>
               <span className={cn("w-[150px] shrink-0 text-[12.5px] font-medium text-text-2", phoneRowLabel)}>
                 {label}
               </span>
@@ -328,7 +380,13 @@ export function CostAgeCard({
                 placeholder="مبرر التقدير…"
                 value={fields[justification]}
                 onChange={(e) => setField(justification, e.target.value)}
-                className={cn(htmlJustInput, touchInput)}
+                aria-label={`مبرر ${label}`}
+                className={cn(
+                  htmlJustInput,
+                  touchInput,
+                  COST_RATIONALE_FULL_ROW,
+                  fieldErrors[COST_FIELD_ERROR_KEYS[justification] ?? justification] && invalidControlClass,
+                )}
               />
               <input
                 id={`cost-${value}`}

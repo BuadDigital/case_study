@@ -18,9 +18,17 @@ export function hasUnsavedSections(): boolean {
   return dirtySections.size > 0;
 }
 
+/**
+ * The window is gone (unmounted): nothing it held can be saved or lost any more. Sections never
+ * clear themselves on unmount — a screen hidden by <Activity> runs the same cleanups.
+ */
+export function clearUnsavedSections(): void {
+  dirtySections.clear();
+}
+
 /** Test seam. */
 export function resetUnsavedSectionsForTests(): void {
-  dirtySections.clear();
+  clearUnsavedSections();
 }
 
 type EditableLike = {

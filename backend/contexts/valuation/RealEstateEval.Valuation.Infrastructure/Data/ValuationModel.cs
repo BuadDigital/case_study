@@ -293,6 +293,8 @@ public static class ValuationModel
             e.Property(x => x.UseRestrictionDiscountPct).HasPrecision(9, 4);
             e.Property(x => x.UseRestrictionRationale).HasMaxLength(2000);
             e.Property(x => x.ApartmentLandShareSqm).HasPrecision(18, 2);
+            // Decision A (round 2): the building plot the cost land table compares with — nullable, no default.
+            e.Property(x => x.BuildingPlotAreaSqm).HasPrecision(18, 2);
             e.Property(x => x.LandValueFromMarket).HasPrecision(18, 2);
             e.Property(x => x.FinancingAnnualRatePct).HasPrecision(9, 4);
             e.Property(x => x.ActualAgeYears).HasPrecision(9, 2);
@@ -311,6 +313,7 @@ public static class ValuationModel
                 "LandUnitRateFromMarket",
                 "LandAreaSqm",
                 "ApartmentLandShareSqm",
+                "BuildingPlotAreaSqm",
                 "LandValueFromMarket",
                 "ActualAgeYears",
                 "EconomicAgeYears",

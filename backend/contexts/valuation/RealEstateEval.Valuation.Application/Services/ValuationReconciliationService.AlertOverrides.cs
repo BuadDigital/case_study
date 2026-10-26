@@ -30,18 +30,33 @@ public sealed partial class ValuationReconciliationService
         var entity = await repo.FindWithMethodsAsync(valuationRequestId, cancellationToken);
         if (entity is null)
         {
+            // The saved basis wins over the work order (D1), so a row created by an acknowledgement
+            // starts from the work order's basis and premise — never the class default «market».
+            var workOrder = await ResolveWorkOrderValuationAsync(vr, cancellationToken);
             entity = new ValuationReconciliation
             {
                 Id = Guid.NewGuid(),
                 ValuationRequestId = valuationRequestId,
+                BasisOfValueKey = FirstValuationKey(
+                    workOrder.BasisOfValueKey,
+                    AssignmentValuationDefaults.BasisOfValueKey(workOrder.AssignmentType)),
+                ValuePremiseKey = TrimOrNull(FirstValuationKey(
+                    workOrder.ValuePremiseKey,
+                    AssignmentValuationDefaults.PremiseKey(workOrder.AssignmentType))),
             };
             await repo.AddAsync(entity, cancellationToken);
         }
 
+        var incoming = NormalizeAlertOverrides(request.MethodologyAlertOverrides);
+        var errors = new Dictionary<string, string>();
+        AddAlertOverrideCodeErrors(request.MethodologyAlertOverrides, errors);
+        AddAlertOverrideRationaleErrors(incoming, errors);
+        if (errors.Count > 0) return (null, errors);
+
         var previousOverridesJson = entity.MethodologyAlertOverridesJson;
         var merged = MergeAlertOverrides(
             ParseAlertOverrides(previousOverridesJson),
-            NormalizeAlertOverrides(request.MethodologyAlertOverrides));
+            incoming);
         entity.MethodologyAlertOverridesJson = merged.Count == 0
             ? null
             : System.Text.Json.JsonSerializer.Serialize(merged, AlertOverridesJsonOptions);
@@ -61,6 +76,41 @@ public sealed partial class ValuationReconciliationService
         }
 
         return (await GetAsync(valuationRequestId, cancellationToken), null);
+    }
+
+    public const string AlertCodeRequiredAr = "رمز التنبيه مطلوب";
+    public const string AlertCodeUnknownAr = "رمز تنبيه منهجي غير معروف";
+
+    /// <summary>
+    /// Round 2: a disposition for a blank or unknown alert code («xyz») is refused with an Arabic 400
+    /// — it used to be dropped (blank) or stored where no alert ever reads it (unknown).
+    /// </summary>
+    public static void AddAlertOverrideCodeErrors(
+        IReadOnlyList<ValuationMethodologyAlertOverrideDto>? overrides,
+        Dictionary<string, string> errors)
+    {
+        var items = overrides ?? [];
+        for (var i = 0; i < items.Count; i++)
+        {
+            var code = items[i]?.Code;
+            if (string.IsNullOrWhiteSpace(code))
+                errors[$"methodologyAlertOverrides[{i}].code"] = AlertCodeRequiredAr;
+            else if (!ValuationMethodologyAlertCodes.IsAcceptedForDisposition(code))
+                errors[$"methodologyAlertOverrides[{i}].code"] = $"{AlertCodeUnknownAr}: «{code.Trim()}»";
+        }
+    }
+
+    /// <summary>Decision B: a written override rationale is at least 10 characters (blank = acknowledgement only / clear).</summary>
+    public static void AddAlertOverrideRationaleErrors(
+        IReadOnlyList<ValuationMethodologyAlertOverrideDto> overrides,
+        Dictionary<string, string> errors)
+    {
+        foreach (var o in overrides)
+        {
+            if (JustificationRules.IsBelowRequiredMinimum(o.OverrideRationale))
+                errors[$"methodologyAlertOverrides.{o.Code.Trim()}"] =
+                    JustificationRules.RequiredMinimumMessageAr("مبرر تجاوز التنبيه");
+        }
     }
 
     /// <summary>Upsert by code; a disposition with neither rationale nor acknowledgement is dropped.</summary>
@@ -84,7 +134,33 @@ public sealed partial class ValuationReconciliationService
 /// </summary>
 public static class ReconciliationLiquidationMessages
 {
-    public const string RangeAr = "نسبة خصم التصفية يجب أن تكون بين 0 و 100";
+    /// <summary>The server ceiling — the same 90٪ the final-opinion screen allows.</summary>
+    public const decimal MaxDiscountPct = 90m;
+
+    /// <summary>The discount's name follows the premise: «التصفية المنظمة» / «البيع القسري».</summary>
+    public static string DiscountLabelAr(string? premiseKey) =>
+        (premiseKey ?? "").Trim().ToLowerInvariant() switch
+        {
+            ValuePremiseKeys.Orderly => "خصم التصفية المنظمة",
+            ValuePremiseKeys.Forced => "خصم البيع القسري",
+            _ => "خصم التصفية",
+        };
+
+    /// <summary>
+    /// Round 2: the report's liquidation field labels follow the premise too — the catalog's generic
+    /// «نسبة البيع القصري» / «… بدون البيع القصري» printed on an orderly-liquidation report. Null for
+    /// any other field (its catalog label stands).
+    /// </summary>
+    public static string? ReportFieldLabelAr(string fieldKey, string? premiseKey) => fieldKey switch
+    {
+        "final.liquidation_discount_pct" => $"نسبة {DiscountLabelAr(premiseKey)}",
+        "final.opinion_before_liquidation" => $"القيمة النهائية قبل {DiscountLabelAr(premiseKey)}",
+        _ => null,
+    };
+
+    public static string RangeMessageAr(string? premiseKey) =>
+        $"نسبة {DiscountLabelAr(premiseKey)} يجب أن تكون بين 0 و 90";
+
     public const string OnlyForLiquidationAr = "خصم التصفية يُطبَّق فقط عند أساس القيمة «قيمة التصفية»";
     public const string RequiredForLiquidationAr =
         "أساس القيمة «قيمة التصفية» يتطلب نسبة خصم التصفية أكبر من صفر";

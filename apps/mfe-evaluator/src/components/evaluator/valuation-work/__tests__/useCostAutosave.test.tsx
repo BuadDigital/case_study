@@ -25,6 +25,7 @@ function setup(initial: Props = { editVersion: 0 }) {
     onSaved: vi.fn(),
     onManualSaved: vi.fn(),
     onManualFailure: vi.fn(),
+    onLeaveFailure: vi.fn(),
   };
   const view = renderHook(
     ({ editVersion, locked = false, hydrateKey = 1 }: Props) =>
@@ -131,6 +132,30 @@ describe("useCostAutosave", () => {
     unmount();
     await act(() => vi.advanceTimersByTimeAsync(0));
     expect(api.saveValuationCostApproach).toHaveBeenCalledTimes(1);
+  });
+
+  it("hiding the screen (<Activity> runs the cleanups) keeps the refresh warning until the save lands", async () => {
+    let resolveSave: (v: unknown) => void = () => {};
+    api.saveValuationCostApproach.mockImplementationOnce(() => new Promise((r) => (resolveSave = r)));
+    const { rerender, unmount, cb } = setup();
+    rerender({ editVersion: 1 });
+    unmount();
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(api.saveValuationCostApproach).toHaveBeenCalledTimes(1);
+    expect(hasUnsavedSections()).toBe(true);
+    await act(async () => resolveSave(ok));
+    expect(hasUnsavedSections()).toBe(false);
+    expect(cb.onLeaveFailure).not.toHaveBeenCalled();
+  });
+
+  it("a refused leave-save is toasted and the warning stays up", async () => {
+    api.saveValuationCostApproach.mockResolvedValueOnce({ ok: false, kind: "server", message: "خطأ في الخادم" });
+    const { rerender, unmount, cb } = setup();
+    rerender({ editVersion: 1 });
+    unmount();
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(cb.onLeaveFailure).toHaveBeenCalledWith("خطأ في الخادم");
+    expect(hasUnsavedSections()).toBe(true);
   });
 
   it("a full reload drops what was pending (the drafts are the server's again)", async () => {

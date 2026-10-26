@@ -118,7 +118,7 @@ public sealed class ComparablePropertyService(
         string enteredByUserId,
         CancellationToken cancellationToken = default)
     {
-        var errors = Validate(request);
+        var errors = Validate(request, RiyadhClock.Today(_time));
         if (errors.Count > 0) return (null, errors);
 
         var now = _time.UtcNow();
@@ -157,7 +157,7 @@ public sealed class ComparablePropertyService(
         UpsertComparablePropertyRequest request,
         CancellationToken cancellationToken = default)
     {
-        var errors = Validate(request);
+        var errors = Validate(request, RiyadhClock.Today(_time));
         if (errors.Count > 0) return (null, errors);
 
         var entity = await repo.FindAsync(id, cancellationToken);
@@ -343,7 +343,8 @@ public sealed class ComparablePropertyService(
             : "";
 
         entity.ComparablePropertyType = request.ComparablePropertyType.Trim();
-        entity.Usage = (request.Usage ?? "").Trim();
+        // Round 2: never an empty usage when the type says what the property is used for.
+        entity.Usage = ComparablePropertyRules.UsageOrDefault(request.Usage, null, request.ComparablePropertyType);
         entity.TransactionKind = kind;
         entity.PriceDescription = priceDesc;
         entity.Source = request.Source.Trim().ToLowerInvariant();
@@ -374,7 +375,7 @@ public sealed class ComparablePropertyService(
         return entity;
     }
 
-    private static Dictionary<string, string> Validate(UpsertComparablePropertyRequest request)
+    private static Dictionary<string, string> Validate(UpsertComparablePropertyRequest request, DateOnly today)
     {
         var errors = new Dictionary<string, string>();
 
@@ -401,14 +402,16 @@ public sealed class ComparablePropertyService(
         if (string.IsNullOrWhiteSpace(request.District))
             errors["district"] = "الحي مطلوب";
 
-        if (!DateOnly.TryParse(request.TransactionDate?.Trim(), out _))
+        if (!DateOnly.TryParse(request.TransactionDate?.Trim(), out var transactionDate))
             errors["transactionDate"] = "تاريخ العملية إلزامي وبصيغة صحيحة";
+        else if (ComparablePropertyRules.IsFutureTransactionDate(transactionDate, today))
+            errors["transactionDate"] = ComparablePropertyRules.FutureTransactionDateAr;
 
         if (request.AreaSqm <= 0m)
             errors["areaSqm"] = "المساحة يجب أن تكون أكبر من صفر";
 
-        if (request.Price < 0m)
-            errors["price"] = "السعر غير صالح";
+        if (ComparablePropertyRules.PriceError(request.Price) is { } priceError)
+            errors["price"] = priceError;
 
         if (request.Latitude is < -90m or > 90m)
             errors["latitude"] = "خط العرض غير صالح";

@@ -30,7 +30,8 @@ public sealed partial class ValuationReportDraftService(
     ValuationTimelineWriter? timeline = null,
     ICaseStudyCommands? caseStudyCommands = null,
     IAssignedAppraiserCheck? assignedAppraisers = null,
-    IValuationReconciliationService? reconciliation = null)
+    IValuationReconciliationService? reconciliation = null,
+    IValuationIssuanceGateService? issuanceGates = null)
     : IValuationReportDraftService
 {
     private IAssignedAppraiserCheck AssignedAppraisers { get; } =
@@ -115,6 +116,14 @@ public sealed partial class ValuationReportDraftService(
 
         var (vr, draft, error) = await PrepareForWriteAsync(valuationRequestId, cancellationToken);
         if (error is not null) return (null, error);
+
+        // Round 2: what only the specialist can upload (the deed copy, the survey document …) is in
+        // place before the draft goes to the appraiser — otherwise his approval is refused for a
+        // document he cannot add.
+        if (issuanceGates is not null
+            && ReportDraftSendRules.MissingSpecialistDocumentsError(
+                    await issuanceGates.EvaluateAsync(valuationRequestId, cancellationToken)) is { } missing)
+            return (null, missing);
 
         var sendError = draft!.Send(
             request.ConformityConfirmed, request.Note, actor.UserId, _time.GetUtcNow().UtcDateTime);

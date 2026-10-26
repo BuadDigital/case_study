@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { MobileRecordCard, MobileRecordList, cn } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
+import { costNumericInput } from "./lib/cost-approach-state";
 import { fmt } from "./lib/shell-utils";
 import type { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
 
@@ -38,19 +40,22 @@ export function ReconWeightInput({
   onChange: (raw: number) => void;
   touch?: boolean;
 }) {
+  // A text box (a type=number box drops Arabic-Indic digits): the typed text stays while the box
+  // is focused («7,» on the way to «7,5»), the parsed share goes up on every keystroke.
+  const [typed, setTyped] = useState<string | null>(null);
   return (
     <input
       id={id}
       dir="ltr"
-      type="number"
+      type="text"
       inputMode="decimal"
-      min={0}
-      max={100}
-      step={5}
-      value={m.weightPct}
-      onChange={(e) =>
-        onChange(Math.min(100, Math.max(0, parseLocaleNumber(e.target.value) || 0)))
-      }
+      value={typed ?? String(m.weightPct)}
+      onChange={(e) => {
+        const text = costNumericInput(e.target.value);
+        setTyped(text);
+        onChange(Math.min(100, Math.max(0, parseLocaleNumber(text) || 0)));
+      }}
+      onBlur={() => setTyped(null)}
       className={cn(
         "rounded-[7px] border p-2 text-center font-bold",
         touch ? "min-h-11 w-full text-[16px]" : "w-[82px]",

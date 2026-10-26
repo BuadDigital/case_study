@@ -79,6 +79,27 @@ public class IdentityApiDevGateTests : IClassFixture<IdentityApiWebApplicationFa
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Login_refusal_is_arabic_with_the_field_key_kept()
+    {
+        using var factory = IdentityApiWebApplicationFactory.CreateWithDevLoginEnabled();
+        using var client = factory.CreateClient();
+        var response = await client.PostAsJsonAsync("/api/auth/login", new { username = "" });
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.DoesNotContain("field is required", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("minimum length", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("One or more validation errors", body, StringComparison.Ordinal);
+        using var document = System.Text.Json.JsonDocument.Parse(body);
+        Assert.Equal(
+            RealEstateEval.Shared.Web.ArabicInvalidModelState.TitleAr,
+            document.RootElement.GetProperty("title").GetString());
+        Assert.Contains("اسم المستخدم", document.RootElement.GetProperty("detail").GetString(), StringComparison.Ordinal);
+        Assert.True(document.RootElement.GetProperty("errors").TryGetProperty("Username", out _)
+                    || document.RootElement.GetProperty("errors").TryGetProperty("username", out _));
+    }
+
 
     [Fact]
     public async Task Refresh_returns_a_new_session_for_a_valid_refresh_token()

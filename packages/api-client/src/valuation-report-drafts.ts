@@ -1,6 +1,6 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
-import { parseJson } from "./parse-json";
+import { parseJson, serverFailure } from "./parse-json";
 import type { ValuationSelectionsApiConfig } from "./valuation-comparable-selections";
 
 export type ValuationReportDraftStatus = "none" | "preparing" | "sent" | "approved";
@@ -90,7 +90,7 @@ async function readResult(res: Response): Promise<Result<ValuationReportDraftDto
       errors,
     };
   }
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (!res.ok) return await serverFailure(res);
   return { ok: true, data: await parseJson<ValuationReportDraftDto>(res) };
 }
 
@@ -235,7 +235,7 @@ export async function listReportDraftStates(
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ReportDraftStateDto[]>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -259,7 +259,7 @@ export async function downloadFinalReport(
     if (res.status === 409 || res.status === 404) {
       return { ok: false, kind: "not_found", message: "ملف التقرير النهائي قيد الإعداد — أعد المحاولة بعد قليل" };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await res.blob() };
   } catch {
     return { ok: false, kind: "network" };
@@ -279,7 +279,7 @@ export async function generateFinalReport(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 403) return { ok: false, kind: "forbidden" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<{ finalReportStatus: FinalReportStatus }>(res) };
   } catch {
     return { ok: false, kind: "network" };

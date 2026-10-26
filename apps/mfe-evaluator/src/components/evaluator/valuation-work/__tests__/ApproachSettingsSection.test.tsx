@@ -75,6 +75,78 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+describe("ApproachSettingsSection — round 2: the draft tabs never flash off on mount", () => {
+  it("reports the saved approaches only — never the all-off defaults before hydration", async () => {
+    const onDraftApproachesChange = vi.fn();
+    const dto = settings({ costApproachEnabled: true, incomeApproachEnabled: true });
+    api.getValuationApproachSettings.mockResolvedValue({ ok: true, data: dto });
+    render(
+      <ApproachSettingsSection
+        valuationRequestId="vr-1"
+        settings={dto}
+        hydrateKey={1}
+        saving={false}
+        onSavingChange={() => {}}
+        onSettingsSaved={() => {}}
+        onDraftApproachesChange={onDraftApproachesChange}
+      />,
+    );
+    await waitFor(() => expect(onDraftApproachesChange).toHaveBeenCalled());
+    for (const [nav] of onDraftApproachesChange.mock.calls) {
+      expect(nav).toEqual({ market: true, cost: true, income: true });
+    }
+  });
+});
+
+describe("ApproachSettingsSection — round 2: retrospective dates", () => {
+  it("cannot pick a future date, and the date is closed while the settings save", () => {
+    const dto = settings({ valuationDateMode: "retrospective", retrospectiveDate: "2026-01-15" });
+    api.getValuationApproachSettings.mockResolvedValue({ ok: true, data: dto });
+    const { rerender } = render(
+      <ApproachSettingsSection
+        valuationRequestId="vr-1"
+        settings={dto}
+        hydrateKey={1}
+        saving={false}
+        onSavingChange={() => {}}
+        onSettingsSaved={() => {}}
+      />,
+    );
+    const today = new Date();
+    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const date = screen.getByLabelText("تاريخ الأثر الرجعي") as HTMLInputElement;
+    expect(date.max).toBe(iso);
+    expect(date.disabled).toBe(false);
+    rerender(
+      <ApproachSettingsSection
+        valuationRequestId="vr-1"
+        settings={dto}
+        hydrateKey={1}
+        saving
+        onSavingChange={() => {}}
+        onSettingsSaved={() => {}}
+      />,
+    );
+    expect((screen.getByLabelText("تاريخ الأثر الرجعي") as HTMLInputElement).disabled).toBe(true);
+  });
+
+  it("the start hint names the income approach too", () => {
+    const dto = settings({ isSaved: false });
+    api.getValuationApproachSettings.mockResolvedValue({ ok: true, data: dto });
+    render(
+      <ApproachSettingsSection
+        valuationRequestId="vr-1"
+        settings={dto}
+        hydrateKey={1}
+        saving={false}
+        onSavingChange={() => {}}
+        onSettingsSaved={() => {}}
+      />,
+    );
+    expect(screen.queryByText(/أسلوب السوق أو التكلفة أو الدخل/)).toBeTruthy();
+  });
+});
+
 describe("ApproachSettingsSection — D9 / D11 / D17 fields", () => {
   it("sends the income toggle, the ownership interest and lease years instead of hard-coded values", async () => {
     renderSection(settings());

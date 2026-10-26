@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button, InlineLoadingSkeleton, cn, opsFldControl, promptAction, useToast } from "@platform/ui-kit";
 import {
+  getValuationIssuanceGates,
   reopenReportIssuance,
   saveReportDraftChoices,
   sendReportDraft,
@@ -18,6 +19,10 @@ import { findSiblingInspectionTask } from "../../lib/evaluator/evaluator-inspect
 import { findSiblingSurveyTask } from "../../lib/evaluator/evaluator-readiness";
 import { useEvaluatorSubmissionQuery } from "../../query/evaluator-submission-query";
 import { normalizeReportChoices } from "../../lib/evaluator/evaluator-window-data";
+import {
+  REPORT_DRAFT_MISSING_DOCUMENTS_PREFIX,
+  missingSpecialistDocuments,
+} from "../../lib/evaluator/report-draft-send-gate";
 import {
   overlayFromDraft,
   pickSpecialistChoices,
@@ -71,6 +76,21 @@ export function ReportDraftPanel({
 
   const editable =
     canEdit && draft != null && (draft.status === "preparing" || (draft.status === "none" && draft.canPrepare));
+
+  // Round 2: the documents only he uploads must be in place before the draft goes out.
+  const requestId = draft?.valuationRequestId ?? null;
+  const sendGatesQuery = useQuery({
+    queryKey: ["valuation-issuance-gates", "report-draft-send", requestId],
+    enabled: editable && requestId != null,
+    staleTime: 0,
+    queryFn: async () => {
+      const config = apiConfig();
+      if (!config || !requestId) return null;
+      const res = await getValuationIssuanceGates(config, requestId);
+      return res.ok ? res.data : null;
+    },
+  });
+  const missingDocuments = missingSpecialistDocuments(sendGatesQuery.data);
 
   // ---- the specialist's working copy of his choices ----
   const [choices, setChoices] = useState<SpecialistReportChoices | null>(null);
@@ -194,6 +214,8 @@ export function ReportDraftPanel({
       });
       if (!res.ok) {
         showToast(res.message ?? "تعذّر إرسال المسودة", "error");
+        // A refusal for missing documents: the list under the button follows the fresh gates.
+        void sendGatesQuery.refetch();
         return;
       }
       setDraft(res.data);
@@ -201,7 +223,7 @@ export function ReportDraftPanel({
     } finally {
       setBusy(null);
     }
-  }, [choices, conformity, draft, note, persist, setDraft, showToast]);
+  }, [choices, conformity, draft, note, persist, sendGatesQuery, setDraft, showToast]);
 
   const withdraw = useCallback(async () => {
     const config = apiConfig();
@@ -372,6 +394,12 @@ export function ReportDraftPanel({
                 disabled={anyBusy}
                 onChange={(e) => setNote(e.target.value)}
               />
+              {missingDocuments ? (
+                <p role="alert" className="m-0 text-[12px] font-semibold text-danger-text">
+                  {REPORT_DRAFT_MISSING_DOCUMENTS_PREFIX}
+                  {missingDocuments}
+                </p>
+              ) : null}
               <div className="flex flex-wrap items-center justify-end gap-3">
                 <span className="text-[11.5px] text-text-3" role="status">
                   {saveState === "saving"
@@ -389,7 +417,7 @@ export function ReportDraftPanel({
                   variant="accent"
                   size="sm"
                   loading={busy === "send"}
-                  disabled={anyBusy || !conformity}
+                  disabled={anyBusy || !conformity || missingDocuments != null}
                   onClick={() => void send()}
                 >
                   {busy === "send" ? "جاري الإرسال…" : "إرسال المسودة للمقيّم"}

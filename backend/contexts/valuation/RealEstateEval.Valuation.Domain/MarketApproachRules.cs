@@ -27,6 +27,15 @@ public class ValuationComparableAdjustmentLine
 
 public static class MarketApproachRules
 {
+    /// <summary>Largest subject area (m²) the market header accepts.</summary>
+    public const decimal MaxSubjectAreaSqm = 10_000_000m;
+    /// <summary>Allowed range of the frozen area factor (%) a header save may set.</summary>
+    public const decimal MinAreaFactorPct = 0.1m;
+    public const decimal MaxAreaFactorPct = 50m;
+    /// <summary>Allowed range of the frozen annual market rate (%) a header save may set.</summary>
+    public const decimal MaxAnnualMarketRatePct = 50m;
+    public const int MaxValueRoundDecimals = 6;
+
     /// <summary>Interactive model spec: ±40% adjustments-sum breach — rationale required with comparable-validity review.</summary>
     public const decimal LargeAdjustmentThresholdPct = 40m;
     /// <summary>Adjustments logic: score = 1 / (|factorsSum| + 0.5).</summary>
@@ -183,6 +192,33 @@ public static class MarketApproachRules
             ? retrospectiveDateEnd is { } end && end > start ? end : start
             : today;
 
+    /// <summary>
+    /// Round 2: the cutoff is the end of a retrospective PERIOD (an end date after its start) — the
+    /// wording then says «نهاية فترة التقييم».
+    /// </summary>
+    public static bool ComparableDateCutoffIsPeriodEnd(
+        string? valuationDateMode,
+        DateOnly? retrospectiveDate,
+        DateOnly? retrospectiveDateEnd) =>
+        ValuationDateModes.Normalize(valuationDateMode) == ValuationDateModes.Retrospective
+        && retrospectiveDate is { } start
+        && retrospectiveDateEnd is { } end
+        && end > start;
+
+    /// <summary>
+    /// The cutoff alert 23 enforces, or null when it is not evaluated (an issuance-date valuation, or a
+    /// period that does not end before today) — the same condition the alert itself applies.
+    /// </summary>
+    public static DateOnly? HardComparableDateCutoff(
+        string? valuationDateMode,
+        DateOnly? retrospectiveDate,
+        DateOnly? retrospectiveDateEnd,
+        DateOnly today)
+    {
+        var cutoff = ComparableDateCutoff(valuationDateMode, retrospectiveDate, retrospectiveDateEnd, today);
+        return cutoff < today ? cutoff : null;
+    }
+
     public static int DealAgeMonths(DateOnly transactionDate, DateOnly valuationDate)
     {
         // Adjustments logic: months = (today − date) / 30.44
@@ -272,18 +308,32 @@ public static class MarketApproachRules
     /// than 25٪ from the median gets no automatic weight (the dispersion alert asks the appraiser
     /// to justify or drop it — a manual weight still overrides).
     /// </summary>
+    /// <param name="blocked">
+    /// Round 2: comparables hard alert 23 blocks (dealt after the valuation date) — no automatic
+    /// weight, like an outlier; they are also left out of the outlier median.
+    /// </param>
     public static IReadOnlyList<decimal> SuggestWeights(
         IReadOnlyList<decimal> grossAdjustmentPcts,
-        IReadOnlyList<decimal> adjustedUnitRates)
+        IReadOnlyList<decimal> adjustedUnitRates,
+        IReadOnlyList<bool>? blocked = null)
     {
         if (grossAdjustmentPcts.Count == 0) return [];
-        if (grossAdjustmentPcts.Count == 1) return [100m];
-        var outliers = adjustedUnitRates.Count == grossAdjustmentPcts.Count
-            ? DispersionOutliers(adjustedUnitRates)
+        var isBlocked = blocked is not null && blocked.Count == grossAdjustmentPcts.Count
+            ? blocked
             : grossAdjustmentPcts.Select(_ => false).ToList();
-        return DistributeWeights(grossAdjustmentPcts
-            .Select((g, i) => outliers[i] ? 0m : 1m / (WeightEpsilon + Math.Abs(g)))
+        var usable = Enumerable.Range(0, grossAdjustmentPcts.Count).Where(i => !isBlocked[i]).ToList();
+        if (usable.Count == 0) return grossAdjustmentPcts.Select(_ => 0m).ToList();
+        if (usable.Count == 1)
+            return grossAdjustmentPcts.Select((_, i) => isBlocked[i] ? 0m : 100m).ToList();
+        var outliers = adjustedUnitRates.Count == grossAdjustmentPcts.Count
+            ? DispersionOutliers(usable.Select(i => adjustedUnitRates[i]).ToList())
+            : usable.Select(_ => false).ToList();
+        var weights = DistributeWeights(usable
+            .Select((i, k) => outliers[k] ? 0m : 1m / (WeightEpsilon + Math.Abs(grossAdjustmentPcts[i])))
             .ToList());
+        var result = grossAdjustmentPcts.Select(_ => 0m).ToArray();
+        for (var k = 0; k < usable.Count; k++) result[usable[k]] = weights[k];
+        return result;
     }
 
     /// <summary>Scores → 20 units × 5% by largest remainder (sum is 100% by construction).</summary>

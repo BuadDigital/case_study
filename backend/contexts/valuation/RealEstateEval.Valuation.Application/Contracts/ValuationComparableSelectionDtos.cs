@@ -84,8 +84,13 @@ public class ValuationComparableSelectionListDto
     public bool WeightsSumTo100 { get; init; }
  /// <summary>Weighted adjusted amount across adopted comps — unit rate or whole value per basis.</summary>
     public decimal WeightedPricePerSqm { get; init; }
- /// <summary>Subject land/building site area m².</summary>
+ /// <summary>Subject land/building site area m² — on the land table, the whole building plot (decision A).</summary>
     public decimal? SubjectAreaSqm { get; init; }
+    /// <summary>
+    /// Land table only (decision A): the apartment's share of the plot (m²) the adjusted rate multiplies
+    /// into the land value — <see cref="MarketOpinionValueRaw"/> is then rate × share; null otherwise.
+    /// </summary>
+    public decimal? ApartmentLandShareSqm { get; init; }
  /// <summary>price_per_sqm | whole_property.</summary>
     public string AdjustmentBasis { get; init; } = "price_per_sqm";
     public string AdjustmentBasisLabelAr { get; init; } = "";
@@ -145,7 +150,7 @@ public class SaveValuationMarketApproachRequest
     /// <summary>Optional freeze override 0–6; null keeps existing.</summary>
     public int? ValueRoundDecimals { get; init; }
 
-    [MaxLength(4000)]
+    [MaxLength(4000, ErrorMessage = "ملاحظات التحليل طويلة جدًا — الحد الأقصى 4000 حرف.")]
     public string? AnalysisNotes { get; init; }
 
  /// <summary>subjSpec: subject descriptions per difference factor — null keeps stored values.</summary>
@@ -206,6 +211,8 @@ public class ValuationCostApproachDto
     public string? UseRestrictionRationale { get; init; }
  /// <summary>. </summary>
     public decimal? ApartmentLandShareSqm { get; init; }
+    /// <summary>Decision A: the whole building plot (m²) saved for the land table; null = not entered.</summary>
+    public decimal? BuildingPlotAreaSqm { get; init; }
  /// <summary>computed.</summary>
     public decimal LandUnitRateAfterDiscount { get; init; }
  /// <summary>Discounted rate × (apartment share ?? land area) —, not free-typed.</summary>
@@ -335,7 +342,7 @@ public class SaveValuationCostApproachRequest
 {
     public IReadOnlyList<SaveValuationCostLineRequest> Lines { get; init; } = [];
 
-    [MaxLength(4000)]
+    [MaxLength(4000, ErrorMessage = "ملاحظات التحليل طويلة جدًا — الحد الأقصى 4000 حرف.")]
     public string? AnalysisNotes { get; init; }
 
  /// <summary>When true, refresh land rate/area from current market approach .</summary>
@@ -351,6 +358,12 @@ public class SaveValuationCostApproachRequest
 
  /// <summary>apartment share of land m².</summary>
     public decimal? ApartmentLandShareSqm { get; init; }
+
+    /// <summary>
+    /// Decision A: the whole building plot (m²) the land comparables are compared with; null clears it
+    /// (the land table then falls back as <see cref="CostApproachRules.LandTableSubjectAreaSqm"/> says).
+    /// </summary>
+    public decimal? BuildingPlotAreaSqm { get; init; }
 
  // indirect costs
     public IReadOnlyList<SaveValuationIndirectCostItemRequest> IndirectItems { get; init; } = [];
@@ -467,6 +480,7 @@ public class SaveValuationReconciliationMethodRequest
 
 public class SaveValuationReconciliationRequest
 {
+    [Required(ErrorMessage = "طرق التقييم مطلوبة — أرسل قائمة الأساليب ونسب مشاركتها.")]
     public IReadOnlyList<SaveValuationReconciliationMethodRequest> Methods { get; init; } = [];
 
     // AddValidation is off for this service (ServiceModule.ConfigureHostOptions), so these
@@ -490,7 +504,7 @@ public class SaveValuationReconciliationRequest
  /// <summary>Applied only when basis = liquidation and premise is set.</summary>
     public decimal LiquidationDiscountPct { get; init; }
 
-    [MaxLength(2000)]
+    [MaxLength(2000, ErrorMessage = "مبرر خصم التصفية طويل جدًا — الحد الأقصى 2000 حرف.")]
     public string? LiquidationDiscountRationale { get; init; }
 
     public IReadOnlyList<ValuationMethodologyAlertOverrideDto>? MethodologyAlertOverrides { get; init; }

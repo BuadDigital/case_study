@@ -16,6 +16,7 @@ import {
   type ComparableEntryFieldErrors,
 } from "@platform/app-shared/app-data/comparable-entry";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
+import { ymd } from "@platform/app-shared/format/date";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
@@ -52,7 +53,7 @@ type ComparablesBankRow = BankDisplayRow;
 
 /**
  * Nearby bank table — search and price/area drafts stay local so typing does
- * not re-render the valuation shell. «اضافة مقارن» writes to the shared bank.
+ * not re-render the valuation shell. «إضافة مقارن» writes to the shared bank.
  */
 function radiusLabel(radiusKm: number | null): string {
   return radiusKm == null ? "كل المقارنات المتاحة" : `ضمن ${radiusKm} كم`;
@@ -371,7 +372,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
             disabled={saving}
             onClick={openForm}
           >
-            اضافة مقارن
+            إضافة مقارن
           </Button>
           {onSearch ? (
             <input
@@ -458,7 +459,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                 key={row.key}
                 tone={adopted ? "gold" : undefined}
                 className={cn(adopted && "bg-gold-soft")}
-                title={<bdi dir="ltr" className="text-gold-d">{comp.referenceCode}</bdi>}
+                title={<bdi dir="ltr" className="whitespace-nowrap text-gold-d">{comp.referenceCode}</bdi>}
                 subtitle={[comp.comparablePropertyType, comp.district].filter(Boolean).join(" · ")}
                 status={
                   <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[11.5px] font-medium text-text-2">
@@ -466,7 +467,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                   </span>
                 }
                 fields={[
-                  { label: "تاريخ العملية", value: comp.transactionDate?.slice(0, 10) || "—", ltr: true },
+                  { label: "تاريخ العملية", value: ymd(comp.transactionDate), ltr: true },
                   { label: "المسافة", value: distanceLabel(distanceKm[comp.id]), ltr: true },
                   ...(row.item
                     ? []
@@ -558,7 +559,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                   />
                 </Td>
                 <TdLtr
-                  valueClassName="text-[13.5px] font-bold text-gold-d"
+                  valueClassName="whitespace-nowrap text-[13.5px] font-bold text-gold-d"
                 >
                   {row.comp.referenceCode}
                 </TdLtr>
@@ -573,7 +574,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                   </span>
                 </Td>
                 <TdLtr className="text-center" valueClassName="text-[13px] text-text-2">
-                  {row.comp.transactionDate?.slice(0, 10) || "—"}
+                  {ymd(row.comp.transactionDate)}
                 </TdLtr>
                 {row.item ? (
                   <ComparablesBankMoneyCells

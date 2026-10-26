@@ -183,6 +183,59 @@ public class CaseStudyValuationContextLookupTests
         Assert.Equal("فيلا", submitted!.EffectivePropertyType());
     }
 
+    [Fact]
+    public async Task Context_names_the_engineering_survey_tasks_whose_uploads_count_for_the_property()
+    {
+        await using var cs = CreateDb();
+        Seed(cs);
+        var now = DateTime.UtcNow;
+        var survey = WorkflowTask.Create(WorkflowTaskKind.EngineeringSurvey, "PO-900", now, propertyId: PropertyId);
+        var inspection = WorkflowTask.Create(WorkflowTaskKind.FieldInspection, "PO-900", now, propertyId: PropertyId);
+        var otherProperty = WorkflowTask.Create(WorkflowTaskKind.EngineeringSurvey, "PO-900", now, propertyId: Guid.NewGuid());
+        cs.WorkflowTasks.AddRange(survey, inspection, otherProperty);
+        cs.PartyTaskSubmissions.AddRange(
+            SurveyPackage(survey.Id, PartyTaskSubmissionStatus.Submitted, now),
+            SurveyPackage(otherProperty.Id, PartyTaskSubmissionStatus.Submitted, now));
+        await cs.SaveChangesAsync();
+
+        var context = await new CaseStudyLookup(cs).GetValuationPropertyContextAsync(PropertyId);
+
+        Assert.Equal([survey.Id], context!.SurveyTaskIds);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(PartyTaskSubmissionStatus.Draft)]
+    [InlineData(PartyTaskSubmissionStatus.Reopened)]
+    public async Task A_survey_the_office_has_not_submitted_does_not_count_yet(string? status)
+    {
+        await using var cs = CreateDb();
+        Seed(cs);
+        var now = DateTime.UtcNow;
+        var survey = WorkflowTask.Create(WorkflowTaskKind.EngineeringSurvey, "PO-900", now, propertyId: PropertyId);
+        cs.WorkflowTasks.Add(survey);
+        if (status is not null)
+            cs.PartyTaskSubmissions.Add(SurveyPackage(survey.Id, status, now));
+        await cs.SaveChangesAsync();
+
+        var context = await new CaseStudyLookup(cs).GetValuationPropertyContextAsync(PropertyId);
+
+        Assert.Empty(context!.SurveyTaskIds);
+    }
+
+    private static PartyTaskSubmission SurveyPackage(Guid taskId, string status, DateTime now) => new()
+    {
+        Id = Guid.NewGuid(),
+        WorkflowTaskId = taskId,
+        Kind = WorkflowTaskKindValues.EngineeringSurvey,
+        Status = status,
+        PropertyId = PropertyId,
+        PoNumber = "PO-900",
+        PayloadJson = "{}",
+        CreatedAtUtc = now,
+        UpdatedAtUtc = now,
+    };
+
     private static CaseStudyDbContext CreateDb()
     {
         var options = new DbContextOptionsBuilder<CaseStudyDbContext>()

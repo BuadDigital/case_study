@@ -11,6 +11,7 @@ import { createClientId } from "@platform/app-shared/lib/create-client-id";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 
+import { isRationaleBelowMinimum, rationaleMinimumMessage } from "./rationale-minimum";
 import {
   COST_ITEM_OPTIONS,
   COST_UNIT_OPTIONS,
@@ -38,6 +39,8 @@ export type CostApproachFields = {
   useRestrictionPct: string;
   useRestrictionRationale: string;
   apartmentLandShare: string;
+  /** Decision A: the whole building plot the land comparables are compared with (m²). */
+  buildingPlotArea: string;
   indirectDraft: IndirectDraft;
   financingRate: string;
   financingMonths: string;
@@ -67,15 +70,28 @@ export function costInt(raw: string): number {
 /**
  * What a cost number box keeps of the typed text: Arabic-Indic / Persian digits become
  * Latin, «٫» is the decimal point, anything else is dropped (one point at most; none for
- * whole numbers). The box is a text input — a type=number box drops Arabic digits.
+ * whole numbers). An ASCII comma stays: `costNum` (parseLocaleNumber) reads «7,5» as 7.5 and
+ * «1,250» as 1250 — dropping it turned «7,5» into 75. The box is a text input — a
+ * type=number box drops Arabic digits.
  */
 export function costNumericInput(raw: string, integer = false): string {
   const latin = toLatinDigits(raw)
     .replace(/\u066B/g, ".")
-    .replace(/[^\d.]/g, "");
-  if (integer) return latin.replace(/\./g, "");
+    .replace(/[^\d.,]/g, "");
+  if (integer) return latin.replace(/[.,]/g, "");
   const [head = "", ...rest] = latin.split(".");
-  return rest.length > 0 ? `${head}.${rest.join("")}` : head;
+  return rest.length > 0 ? `${head}.${rest.join("").replace(/,/g, "")}` : head;
+}
+
+/**
+ * «الأدوار المتكررة» starts with no count — the alert asks the appraiser for it (a pre-filled «2»
+ * looked answered and the rule never fired). A count already typed is kept; other items have none.
+ */
+export function repeatedFloorCountForItem(
+  itemKey: string,
+  current: number | null | undefined,
+): number | null {
+  return itemKey === "repeated_floors" ? (current ?? null) : null;
 }
 
 /** D12: total obsolescence above this asks for a rationale (mirrors the server threshold). */
@@ -111,6 +127,7 @@ export const EMPTY_COST_FIELDS: CostApproachFields = {
   useRestrictionPct: "0",
   useRestrictionRationale: "",
   apartmentLandShare: "",
+  buildingPlotArea: "",
   indirectDraft: defaultIndirectDraft(),
   financingRate: DEFAULT_FINANCING_RATE,
   financingMonths: DEFAULT_FINANCING_MONTHS,
@@ -136,10 +153,26 @@ export function inspectorAgeYearsForCostField(
   return match?.[1] ?? "";
 }
 
+/**
+ * Decision A: what the plot-area box starts with before the appraiser saves one — the deed area when
+ * the deed is the land itself; an apartment's deed area is the unit, never the building plot, so it
+ * starts empty there. Typed digits only (Arabic digits → Latin).
+ */
+export function buildingPlotAreaSeed(
+  deedArea: string | null | undefined,
+  isApartment: boolean,
+): string {
+  if (isApartment) return "";
+  const seed = costNumericInput((deedArea ?? "").trim());
+  return costNum(seed) > 0 ? seed : "";
+}
+
 /** Server DTO to editable drafts — one full-load reseed, no partial merges. */
 export function costFieldsFromDto(
   cost: ValuationCostApproachDto,
   inspectorAgeYears?: string | null,
+  /** The plot box when none is saved yet (`buildingPlotAreaSeed`) — a draft only, never auto-saved. */
+  plotAreaSeed = "",
 ): CostApproachFields {
   const savedIndirect = cost.indirectItems ?? [];
   const hasSavedIndirect = savedIndirect.some(
@@ -169,6 +202,10 @@ export function costFieldsFromDto(
       cost.apartmentLandShareSqm != null
         ? String(cost.apartmentLandShareSqm)
         : "",
+    buildingPlotArea:
+      cost.buildingPlotAreaSqm != null
+        ? String(cost.buildingPlotAreaSqm)
+        : plotAreaSeed,
     indirectDraft,
     financingRate: financingUntouched
       ? DEFAULT_FINANCING_RATE
@@ -254,6 +291,44 @@ export function costLinesFromInventory(
     sortOrder: i,
     };
   });
+}
+
+/**
+ * Re-pulling the building inventory rebuilds the lines from it; the unit costs (and their
+ * rationales) the appraiser already priced stay on the matching lines — same inventory row,
+ * else the same item and name — instead of falling back to 0.
+ */
+export function keepCostLineInputs(
+  seeded: ValuationCostLineDto[],
+  previous: readonly ValuationCostLineDto[],
+): ValuationCostLineDto[] {
+  const used = new Set<ValuationCostLineDto>();
+  const sameName = (a: ValuationCostLineDto, b: ValuationCostLineDto) =>
+    a.itemKey === b.itemKey && a.label.trim() === b.label.trim();
+  return seeded.map((line) => {
+    const free = previous.filter((p) => !used.has(p) && (Number(p.unitCostSar) || 0) > 0);
+    const match =
+      (line.sourceInventoryLineId
+        ? free.find((p) => p.sourceInventoryLineId === line.sourceInventoryLineId)
+        : undefined) ?? free.find((p) => sameName(p, line));
+    if (!match) return line;
+    used.add(match);
+    return { ...line, unitCostSar: match.unitCostSar, rationale: match.rationale ?? line.rationale };
+  });
+}
+
+/**
+ * Round 2: the re-pull toast says what happened — how many lines kept the unit cost already
+ * priced and how many still need one — instead of always «أدخل تكلفة المتر».
+ */
+export function costRepullMessage(lines: readonly ValuationCostLineDto[]): string {
+  const pulled = `تم سحب ${lines.length} بندًا من الحصر`;
+  const priced = lines.filter((l) => (Number(l.unitCostSar) || 0) > 0).length;
+  const unpriced = lines.length - priced;
+  if (lines.length === 0) return "لا توجد بنود في حصر المباني لسحبها";
+  if (unpriced === 0) return `${pulled} — احتُفظ بتكلفة المتر لجميع البنود`;
+  if (priced === 0) return `${pulled} — أدخل تكلفة المتر`;
+  return `${pulled} — احتُفظ بتكلفة المتر لـ ${priced}، وأدخل تكلفة المتر لـ ${unpriced}`;
 }
 
 /* ─── Early seeds: the cost table follows the specialist's components table ─── */
@@ -506,7 +581,8 @@ export function costApproachDerived(
   const economicLocal = costNum(fields.economicAge);
   const extLifeLocal = economicLocal + costNum(fields.lifeExtension);
   const actualLocal = costNum(fields.actualAge);
-  // D11: building-only on leased land — the life cannot outlast the lease (server sends the term).
+  // D11: a usufruct / leased-land interest — the life cannot outlast the lease, whatever the
+  // scope (the server sends the term only when it applies).
   const leaseYears = cost?.remainingLeaseYears;
   const effectiveLifeLocal =
     leaseYears != null && leaseYears >= 0
@@ -564,6 +640,7 @@ export function buildCostAlerts(
   totals: Pick<CostLineTotals, "firstFloorLine">,
   derived: CostApproachDerived,
   buildingOnly: boolean,
+  isApartment = false,
 ): CostApproachAlert[] {
   const alerts: CostApproachAlert[] = [];
   const {
@@ -686,6 +763,7 @@ export function buildCostAlerts(
       body: "افتراضه صفر ولا يُملأ إلا بمبرر موثّق.",
       targetId: "cost-useRestrictionRationale",
     });
+  alerts.push(...apartmentLandAlerts(fields, buildingOnly, isApartment));
   if (!buildingOnly && !landComplete)
     alerts.push({
       kind: "error",
@@ -706,6 +784,24 @@ export function buildCostAlerts(
       targetId: functionalUnjustified
         ? "cost-functionalObsRationale"
         : "cost-externalObsRationale",
+      fallbackTargetId: "cost-age",
+    });
+  // Decision B: a written rationale the server requires is at least 10 characters — a shorter
+  // one is refused by the autosave, so it is named here before the round trip.
+  const shortRationale = (
+    [
+      [costNum(fields.useRestrictionPct) > 0, "مبرر خصم تقييد الاستخدام", fields.useRestrictionRationale, "cost-useRestrictionRationale"],
+      [costNum(fields.lifeExtension) > 0, "بيان أساس تمديد العمر", fields.lifeExtensionBasis, "cost-lifeExtensionBasis"],
+      [functionalLocal > 0, "مبرر التقادم الوظيفي", fields.functionalObsRationale, "cost-functionalObsRationale"],
+      [externalLocal > 0, "مبرر التقادم الخارجي", fields.externalObsRationale, "cost-externalObsRationale"],
+    ] as const
+  ).find(([applies, , text]) => applies && isRationaleBelowMinimum(text));
+  if (shortRationale)
+    alerts.push({
+      kind: "error",
+      title: rationaleMinimumMessage(shortRationale[1]),
+      body: "لا يُحفظ أسلوب التكلفة قبل إكمال المبرر.",
+      targetId: shortRationale[3],
       fallbackTargetId: "cost-age",
     });
   if (developerProfitPct < 10 || developerProfitPct > 20)
@@ -729,6 +825,49 @@ export function buildCostAlerts(
       body: "المدخلات ضمن الحدود المنهجية.",
     });
   return alerts;
+}
+
+/**
+ * Decision A: an apartment's land is the building plot's land — the comparables are adjusted against
+ * the whole plot and the rate multiplies the apartment's share; both must be entered, the share within
+ * the plot.
+ */
+function apartmentLandAlerts(
+  fields: CostApproachFields,
+  buildingOnly: boolean,
+  isApartment: boolean,
+): CostApproachAlert[] {
+  if (buildingOnly || !isApartment) return [];
+  const plot = costNum(fields.buildingPlotArea);
+  const share = costNum(fields.apartmentLandShare);
+  if (!(plot > 0))
+    return [
+      {
+        kind: "error",
+        title: "مساحة أرض العمارة مطلوبة",
+        body: "تُقارن مقارنات الأراضي بمساحة أرض العمارة كاملة — بدونها تبقى قيمة الأرض غير مكتملة.",
+        targetId: "cost-buildingPlotArea",
+      },
+    ];
+  if (!(share > 0))
+    return [
+      {
+        kind: "error",
+        title: "حصة الشقة من الأرض مطلوبة",
+        body: "قيمة الأرض = سعر المتر بعد التسويات × حصة الشقة — لا مساحة الأرض كاملة.",
+        targetId: "cost-apartmentLandShare",
+      },
+    ];
+  if (share > plot)
+    return [
+      {
+        kind: "error",
+        title: "حصة الشقة تتجاوز مساحة أرض العمارة",
+        body: `الحصة ${share} م² أكبر من مساحة الأرض ${plot} م².`,
+        targetId: "cost-apartmentLandShare",
+      },
+    ];
+  return [];
 }
 
 function justifiedBullet(label: string, rationale: string): string | null {
@@ -812,6 +951,9 @@ export function costSaveRequest(
     useRestrictionRationale: fields.useRestrictionRationale.trim() || null,
     apartmentLandShareSqm: fields.apartmentLandShare.trim()
       ? costNum(fields.apartmentLandShare)
+      : null,
+    buildingPlotAreaSqm: fields.buildingPlotArea.trim()
+      ? costNum(fields.buildingPlotArea)
       : null,
     // Every item is sent, zeros included — a dropped 0 used to come back as a default.
     indirectItems: INDIRECT_COST_ITEMS.map((item, i) => ({

@@ -110,6 +110,12 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   const [asLeaseYears, setAsLeaseYears] = useState("");
   const [asAssumptions, setAsAssumptions] = useState<string[]>([]);
   const [confirmDisableOpen, setConfirmDisableOpen] = useState(false);
+  /**
+   * The toggles hold the saved settings (hydrated). Before that they are the useState defaults
+   * (all off): reporting them hid every approach tab for a moment, and a refresh that had just
+   * restored «طريقة المقاول» fell back to «البيانات الأساسية».
+   */
+  const [draftReady, setDraftReady] = useState(false);
 
   const hydratedKeyRef = useRef<number | null>(null);
   useEffect(() => {
@@ -117,6 +123,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     hydratedKeyRef.current = hydrateKey;
     if (!settings) return;
     const toggles = initialApproachToggles(settings);
+    setDraftReady(true);
     setAsMarketEnabled(toggles.market);
     setAsCostEnabled(toggles.cost);
     setAsCostBasis(settings.costBasisKey || "replacement");
@@ -168,6 +175,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   ]);
 
   useEffect(() => {
+    if (!draftReady) return;
     onDraftApproachesChange?.({
       market: asMarketEnabled,
       cost:
@@ -182,6 +190,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     asCostEnabled,
     asIncomeEnabled,
     asCostScope,
+    draftReady,
     settings?.costApproachAllowed,
     onDraftApproachesChange,
   ]);
@@ -547,7 +556,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             </p>
           ) : (
             <p className="mt-3 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
-              حدّد أسلوب السوق أو التكلفة ليظهر تبويب العمل، ثم ابدأ التقييم.
+              حدّد أسلوب السوق أو التكلفة أو الدخل ليظهر تبويب العمل، ثم ابدأ التقييم.
             </p>
           )}
         </CardPad>

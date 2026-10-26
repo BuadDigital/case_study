@@ -1,6 +1,6 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
-import { parseJson } from "./parse-json";
+import { parseJson, serverFailure } from "./parse-json";
 import type { ValuationSelectionsApiConfig } from "./valuation-comparable-selections";
 
 /** Result of a GET / PUT on one resource under `/api/valuation-requests/{id}/…`. */
@@ -32,7 +32,7 @@ async function readResult<T>(res: Response, invalidMessage: string): Promise<Val
       errors,
     };
   }
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (!res.ok) return await serverFailure(res);
   return { ok: true, data: await parseJson<T>(res) };
 }
 

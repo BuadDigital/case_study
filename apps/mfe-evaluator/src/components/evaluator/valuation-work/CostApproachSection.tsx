@@ -16,6 +16,7 @@ import {
 } from "./CostApproachParts";
 import { useCostApproachWorkflow } from "./useCostApproachWorkflow";
 import { costSaveStatusText } from "./lib/cost-autosave";
+import { buildingPlotAreaSeed } from "./lib/cost-approach-state";
 
 /**
  * Cost-approach section — composes the land, lines, indirect, age, results,
@@ -34,6 +35,7 @@ export const CostApproachSection = memo(function CostApproachSection({
   hydrateKey,
   buildingOnly,
   isApartmentProperty,
+  deedArea,
   costBasisKey,
   saving,
   locked = false,
@@ -49,6 +51,8 @@ export const CostApproachSection = memo(function CostApproachSection({
   hydrateKey: number;
   buildingOnly: boolean;
   isApartmentProperty: boolean;
+  /** The deed area — seeds the plot box when the deed is the land itself (decision A). */
+  deedArea?: string | null;
   costBasisKey: string;
   saving: boolean;
   locked?: boolean;
@@ -64,6 +68,8 @@ export const CostApproachSection = memo(function CostApproachSection({
     cost,
     hydrateKey,
     buildingOnly,
+    isApartment: isApartmentProperty,
+    plotAreaSeed: buildingPlotAreaSeed(deedArea, isApartmentProperty),
     costBasisKey,
     locked,
     onSavingChange,

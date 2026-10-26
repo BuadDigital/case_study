@@ -17,7 +17,8 @@ public static class OwnershipTypes
 
     public static string LabelAr(string? value) => (value ?? "").Trim().ToLowerInvariant() switch
     {
-        Absolute => "ملكية مطلقة",
+        // One wording everywhere (round 2): «ملكية تامة» / «حق منفعة» / «أرض مستأجرة».
+        Absolute => "ملكية تامة",
         Shared => "مشاع",
         _ => "",
     };

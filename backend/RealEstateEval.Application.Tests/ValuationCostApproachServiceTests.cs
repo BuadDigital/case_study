@@ -200,12 +200,11 @@ public class ValuationCostApproachServiceTests
     }
 
     [Fact]
-    public void Lease_cap_only_applies_to_building_only_on_leased_land()
+    public void Lease_cap_applies_to_any_leasehold_interest_with_a_term()
     {
-        Assert.Equal(10m, CostLeaseTerms.ForScope(buildingOnly: true, isLeasedLand: true, remainingLeaseYears: 10m));
-        Assert.Null(CostLeaseTerms.ForScope(buildingOnly: false, isLeasedLand: true, remainingLeaseYears: 10m));
-        Assert.Null(CostLeaseTerms.ForScope(buildingOnly: true, isLeasedLand: false, remainingLeaseYears: 10m));
-        Assert.Null(CostLeaseTerms.ForScope(buildingOnly: true, isLeasedLand: true, remainingLeaseYears: null));
+        Assert.Equal(10m, CostLeaseTerms.ForInterest(isLeasehold: true, remainingLeaseYears: 10m));
+        Assert.Null(CostLeaseTerms.ForInterest(isLeasehold: false, remainingLeaseYears: 10m));
+        Assert.Null(CostLeaseTerms.ForInterest(isLeasehold: true, remainingLeaseYears: null));
         // Economic life 40, actual 15 → remaining 25 capped at 10 lease years → life 25.
         Assert.Equal(25m, CostApproachRules.LifeCappedByLease(40m, 15m, 10m));
         Assert.Equal(40m, CostApproachRules.LifeCappedByLease(40m, 15m, null));
@@ -245,11 +244,40 @@ public class ValuationCostApproachServiceTests
 
         // Freehold: the same inputs keep the full life.
         Assert.Null(CostLeaseTerms.RemainingLeaseYears(
-            new ValuationApproachSettings { OwnershipInterestKey = OwnershipInterestKeys.Freehold, RemainingLeaseYears = 10m },
-            CostScopeKeys.BuildingOnly));
-        Assert.Null(CostLeaseTerms.RemainingLeaseYears(
-            new ValuationApproachSettings { OwnershipInterestKey = OwnershipInterestKeys.LeasedLand, RemainingLeaseYears = 10m },
-            CostScopeKeys.LandAndBuilding));
+            new ValuationApproachSettings { OwnershipInterestKey = OwnershipInterestKeys.Freehold, RemainingLeaseYears = 10m }));
+        // Round 2 (D11): the cap holds whatever the scope — land with buildings included.
+        Assert.Equal(10m, CostLeaseTerms.RemainingLeaseYears(
+            new ValuationApproachSettings { OwnershipInterestKey = OwnershipInterestKeys.LeasedLand, RemainingLeaseYears = 10m, CostScopeKey = CostScopeKeys.LandAndBuilding }));
+    }
+
+    [Theory]
+    [InlineData("usufruct", 2)]
+    [InlineData("leased_land", 4)]
+    public async Task A_usufruct_or_leased_land_with_its_land_valued_too_is_depreciated_over_the_lease(
+        string interest, int leaseYears)
+    {
+        await using var contexts = TestDatabases.Create("cost-lease-scope");
+        var (service, requestId) = await NewServiceAsync(contexts.Valuation);
+        contexts.Valuation.ValuationApproachSettings.Add(new ValuationApproachSettings
+        {
+            Id = Guid.NewGuid(),
+            ValuationRequestId = requestId,
+            CostApproachEnabled = true,
+            CostScopeKey = CostScopeKeys.LandAndBuilding,
+            OwnershipInterestKey = interest,
+            RemainingLeaseYears = leaseYears,
+        });
+        await contexts.Valuation.SaveChangesAsync();
+        var (saved, errors) = await service.SaveAsync(requestId, new SaveValuationCostApproachRequest
+        {
+            Lines = Request().Lines,
+            ActualAgeYears = 10m,
+            EconomicAgeYears = 40m,
+        });
+
+        Assert.Null(errors);
+        Assert.True(saved!.LifeCappedByLease);
+        Assert.Equal(10m + leaseYears, saved.EffectiveLifeYears);
     }
 
     [Fact]

@@ -6,6 +6,42 @@ public static class ComparablePropertyRules
  /// <summary>Heuristic only — no hard TTL in the package; used for source-card freshness.</summary>
     public const int RecentTransactionDays = 90;
 
+    /// <summary>Largest deal price (SAR) a bank comparable — or a per-valuation price override — may carry.</summary>
+    public const decimal MaxPriceSar = 1_000_000_000_000m;
+
+    /// <summary>A bank comparable's price is above zero and at most <see cref="MaxPriceSar"/>; null when acceptable.</summary>
+    public static string? PriceError(decimal price) =>
+        price <= 0m
+            ? "سعر المقارن يجب أن يكون أكبر من صفر"
+            : price > MaxPriceSar
+                ? "سعر المقارن يتجاوز الحد المعقول (1,000,000,000,000 ر.س)"
+                : null;
+
+    /// <summary>Round 2: a deal or listing dated after today did not happen yet — refused at entry.</summary>
+    public const string FutureTransactionDateAr = "تاريخ العملية لا يمكن أن يكون بعد تاريخ اليوم";
+
+    /// <summary>The deal / listing date is later than today (Riyadh date).</summary>
+    public static bool IsFutureTransactionDate(DateOnly transactionDate, DateOnly today) =>
+        transactionDate > today;
+
+    /// <summary>
+    /// Round 2: a bank row always carries a usage — the one entered, else the subject's classification
+    /// (work-order «التصنيف»), else what its property type says (سكني / تجاري / صناعي). A plain land
+    /// type with nothing else stays empty: «Do not invent data».
+    /// </summary>
+    public static string UsageOrDefault(string? usage, string? classification, string? propertyType)
+    {
+        if (!string.IsNullOrWhiteSpace(usage)) return usage.Trim();
+        if (!string.IsNullOrWhiteSpace(classification)) return classification.Trim();
+        return PropertyCategoryRules.Categorize(propertyType) switch
+        {
+            PropertyCategoryRules.ResidentialBuilt => "سكني",
+            PropertyCategoryRules.Commercial => "تجاري",
+            PropertyCategoryRules.Industrial => "صناعي",
+            _ => "",
+        };
+    }
+
     public static decimal ComputePricePerSqm(decimal price, decimal areaSqm)
     {
         if (areaSqm <= 0m) return 0m;

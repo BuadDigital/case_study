@@ -7,7 +7,6 @@ import {
   getValuationIncomeApproach,
   getValuationLists,
   getValuationReconciliation,
-  listClients,
   listValuationComparableSelections,
   ensureOpenValuationRequestByProperty,
   type BuildingInventoryLineDto,
@@ -203,14 +202,16 @@ export function effectiveValuationDate(input: {
   inspector: InspectorWorkspaceDraft | null;
   settings: ValuationApproachSettingsDto | null;
 }): string {
-  const draftDate = input.draft.appraisalDate || input.draft.reportIssueDate;
-  if (draftDate.trim()) return draftDate;
+  // A retrospective valuation is valued AS OF its saved date (or period) — it outranks the
+  // draft's own date, else the report would print two different valuation dates.
   if (input.settings?.valuationDateMode === "retrospective") {
     const start = (input.settings.retrospectiveDate ?? "").trim();
     const end = (input.settings.retrospectiveDateEnd ?? "").trim();
     if (start && end) return `${start} — ${end}`;
-    return start;
+    if (start) return start;
   }
+  const draftDate = input.draft.appraisalDate || input.draft.reportIssueDate;
+  if (draftDate.trim()) return draftDate;
   return (input.inspector?.inspectionDate ?? "").trim();
 }
 
@@ -242,7 +243,11 @@ export function reportValuationChoices(input: {
   const basis = find("valueBases", keys.valueBasisKey);
   const retrospective =
     s?.valuationDateMode === "retrospective"
-      ? { date: (s.retrospectiveDate ?? "").trim(), rationale: (s.retrospectiveRationale ?? "").trim() }
+      ? {
+          date: (s.retrospectiveDate ?? "").trim(),
+          dateEnd: (s.retrospectiveDateEnd ?? "").trim(),
+          rationale: (s.retrospectiveRationale ?? "").trim(),
+        }
       : null;
   const interest = (s ?? {}) as OwnershipInterestFields;
   return {
@@ -287,7 +292,6 @@ export async function loadReportOutputBundle(input: {
       inventoryLines: [] as BuildingInventoryLineDto[],
       componentsText: "",
       lists: null,
-      clients: [] as ClientDto[],
       approaches: null,
       survey: null,
       attach: emptyAttach,
@@ -301,7 +305,9 @@ export async function loadReportOutputBundle(input: {
     input.poNumber && propertyId
       ? getBuildingInventory(config, input.poNumber, propertyId)
       : Promise.resolve(null);
-  const labelsP = Promise.all([getValuationLists(config), listClients(config)]);
+  // No client list here: the printed report reads the client names off the work order, and
+  // GET /api/clients is a case-staff endpoint (an appraiser got a 403 on every load).
+  const listsP = getValuationLists(config);
   const approachesP = loadValuationApproaches(config, input.property);
   const surveyP = input.surveyTaskId
     ? getPartyTaskSubmission(config, input.surveyTaskId)
@@ -330,11 +336,11 @@ export async function loadReportOutputBundle(input: {
       );
     },
   );
-  const [ws, invRes, [listsRes, clientsRes], approaches, surveyRes, attach] =
+  const [ws, invRes, listsRes, approaches, surveyRes, attach] =
     await Promise.all([
       inspectorP,
       inventoryP,
-      labelsP,
+      listsP,
       approachesP,
       surveyP,
       attachmentsP,
@@ -349,7 +355,6 @@ export async function loadReportOutputBundle(input: {
     componentsText:
       input.poNumber && propertyId && invRes?.ok ? invRes.data.componentsText ?? "" : "",
     lists: listsRes.ok ? listsRes.data.lists : null,
-    clients: clientsRes.ok ? clientsRes.data : ([] as ClientDto[]),
     approaches,
     survey:
       surveyRes && "ok" in surveyRes && surveyRes.ok

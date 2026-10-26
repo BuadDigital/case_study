@@ -33,6 +33,15 @@ public class ValuationReportGlossaryDefaultTests
     }
 
     [Fact]
+    public void The_glossary_says_ownership_tamma_and_the_round_1_text_is_upgraded()
+    {
+        Assert.Contains("ملكية تامة: ", ValuationReportSettingsDefaults.Glossary);
+        Assert.DoesNotContain("ملكية مطلقة", ValuationReportSettingsDefaults.Glossary);
+        var roundOne = ValuationReportSettingsDefaults.Glossary.Replace("ملكية تامة: ", "ملكية مطلقة: ");
+        Assert.Equal(ValuationReportSettingsDefaults.Glossary, ValuationReportSettingsDefaults.UpgradeGlossary(roundOne));
+    }
+
+    [Fact]
     public void The_upgrade_ignores_line_ending_and_edge_whitespace_differences()
     {
         var stored = "\r\n" + ValuationReportSettingsDefaults.PreviousGlossary.Replace("\n", "\r\n") + "\r\n";

@@ -14,8 +14,8 @@ namespace RealEstateEval.Valuation.Infrastructure.Services;
 /// Skips quietly when mandatory bank data (final value, area, coordinates) is absent:
 /// "Do not invent data".
 /// <para>
-/// D14: only a market-value opinion on land with its buildings, as of today (not retrospective), is a
-/// usable market indication. One row per subject property: a newly deposited version updates it; a version
+/// D14: only a market-value opinion on land with its buildings — or on land alone (decision C, entered as a
+/// land comparable) — as of today (not retrospective), is a usable market indication. One row per subject property: a newly deposited version updates it; a version
 /// that no longer qualifies takes it off the bank. A row another valuation adopted is left untouched — that
 /// valuation reads the bank row live and its value must not move.
 /// </para>
@@ -59,7 +59,11 @@ public sealed class PriorValuationBankFeeder(
 
         var market = await selections.ListAsync(valuationRequestId, cancellationToken);
         var finalValue = recon?.FinalOpinionValue ?? 0m;
-        var areaSqm = market?.SubjectAreaSqm ?? 0m;
+        var propertyType = string.IsNullOrWhiteSpace(context.EffectivePropertyType())
+            ? vr.PropertyType ?? ""
+            : context.EffectivePropertyType();
+        // The subject's own figures: an apartment enters with its own area — never the building plot.
+        var areaSqm = PriorValuationBankRules.SubjectAreaSqm(propertyType, context.Area, market?.SubjectAreaSqm);
         if (finalValue <= 0m || areaSqm <= 0m) return false;
 
         if (context.LatestWorkspace?.MapLatitude is not { } lat
@@ -89,9 +93,8 @@ public sealed class PriorValuationBankFeeder(
             valuation.ComparableProperties.Add(row);
         }
 
-        row.ComparablePropertyType = string.IsNullOrWhiteSpace(context.EffectivePropertyType())
-            ? vr.PropertyType ?? ""
-            : context.EffectivePropertyType();
+        row.ComparablePropertyType = PriorValuationBankRules.ComparableType(scope, propertyType);
+        row.Usage = ComparablePropertyRules.UsageOrDefault(null, context.Classification, row.ComparablePropertyType);
         row.Latitude = lat;
         row.Longitude = lon;
         row.AreaSqm = areaSqm;
@@ -131,13 +134,44 @@ public sealed class PriorValuationBankFeeder(
     }
 }
 
-/// <summary>D14: which completed valuations feed the comparables bank.</summary>
+/// <summary>D14 + decision C: which completed valuations feed the comparables bank, and as what.</summary>
 public static class PriorValuationBankRules
 {
-    /// <summary>Market basis, land with its buildings, valued as of issue (not a retrospective date).</summary>
+    /// <summary>
+    /// Market basis, valued as of issue (not a retrospective date), on land with its buildings — or, by
+    /// decision C, on land alone («أرض فقط» / vacant land). A buildings-only value never feeds the bank.
+    /// </summary>
     public static bool Qualifies(string? basisOfValueKey, string? costScopeKey, string? valuationDateMode) =>
         string.Equals((basisOfValueKey ?? "").Trim(), BasisOfValueKeys.Market, StringComparison.OrdinalIgnoreCase)
-        && CostScopeKeys.Normalize(costScopeKey) == CostScopeKeys.LandAndBuilding
+        && CostScopeKeys.Normalize(costScopeKey) is CostScopeKeys.LandAndBuilding or CostScopeKeys.LandOnly
         && (costScopeKey ?? "").Trim().Length > 0
         && ValuationDateModes.Normalize(valuationDateMode) != ValuationDateModes.Retrospective;
+
+    /// <summary>
+    /// The area the bank row carries (its rate = final value ÷ this area). An apartment's own (deed) area —
+    /// the market header may have held the whole building plot (VR-542: 900 m² at 1,077.78 instead of the
+    /// unit's 180 m² at 5,388.89). Anything else keeps the market table's subject area (for land alone, the
+    /// land area); the deed area when the header has none.
+    /// </summary>
+    public static decimal SubjectAreaSqm(string? propertyType, string? deedArea, decimal? marketSubjectAreaSqm)
+    {
+        decimal? deed = LocaleNumber.TryParsePositive(deedArea, out var parsed) ? parsed : null;
+        if (IsApartment(propertyType) && deed is { } own) return own;
+        return marketSubjectAreaSqm is > 0m ? marketSubjectAreaSqm.Value : deed ?? 0m;
+    }
+
+    /// <summary>A unit valued on its own — its land is a share of the building plot.</summary>
+    public static bool IsApartment(string? propertyType)
+    {
+        var t = (propertyType ?? "").Trim();
+        return t.Contains("شقة", StringComparison.Ordinal)
+            || t.Contains("شقه", StringComparison.Ordinal)
+            || t.Contains("apartment", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Decision C: a land-only valuation enters the bank as a LAND comparable («أرض»).</summary>
+    public static string ComparableType(string? costScopeKey, string propertyType) =>
+        CostScopeKeys.IsLandOnly(costScopeKey)
+            ? PropertyCategoryRules.LabelAr(PropertyCategoryRules.Land)
+            : propertyType;
 }

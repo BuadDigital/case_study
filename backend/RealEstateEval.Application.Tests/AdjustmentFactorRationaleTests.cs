@@ -38,8 +38,14 @@ public class AdjustmentFactorRationaleTests
         Assert.False(ValuationMethodologyAlertRules.IsResolved(
             17, ValuationMethodologyAlertCodes.LargeAdjustments, resolutions));
 
+        // Round 2, decision B: under 10 characters does not resolve it; 10 or more does.
         resolutions[ValuationMethodologyAlertCodes.LargeAdjustments] =
             new(ValuationMethodologyAlertCodes.LargeAdjustments, "نعم");
+        Assert.False(ValuationMethodologyAlertRules.IsResolved(
+            17, ValuationMethodologyAlertCodes.LargeAdjustments, resolutions));
+
+        resolutions[ValuationMethodologyAlertCodes.LargeAdjustments] =
+            new(ValuationMethodologyAlertCodes.LargeAdjustments, "فروق المساحة كبيرة");
         Assert.True(ValuationMethodologyAlertRules.IsResolved(
             17, ValuationMethodologyAlertCodes.LargeAdjustments, resolutions));
     }
@@ -60,7 +66,7 @@ public class AdjustmentFactorRationaleTests
     }
 
     [Fact]
-    public async Task Save_factor_rationale_upserts_clears_and_accepts_short_text()
+    public async Task Save_factor_rationale_upserts_clears_and_refuses_text_under_ten_characters()
     {
         await using var contexts = TestDatabases.Create("factor-rationale");
         var db = contexts.Valuation;
@@ -84,9 +90,10 @@ public class AdjustmentFactorRationaleTests
                 RationaleAr = "قصير",
             },
             "user-1");
-        Assert.Null(shortErrors);
-        Assert.Equal("قصير", shortSaved!.RationaleAr);
-        Assert.Single(db.ValuationAdjustmentFactorRationales);
+        // Round 2, decision B: a written factor rationale is at least 10 characters.
+        Assert.Null(shortSaved);
+        Assert.Equal("مبرر عامل التسوية يجب ألا يقل عن 10 أحرف", shortErrors!["rationaleAr"]);
+        Assert.Empty(db.ValuationAdjustmentFactorRationales);
 
         // Save properly and then update.
         var (saved, saveErrors) = await service.SaveFactorRationaleAsync(

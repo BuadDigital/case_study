@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  formatArabicMonths,
+  formatArabicYears,
   formatReportPropertyAgeYears,
   parseLicenseDateForAge,
   reportPropertyAgeYearsFromLicense,
@@ -68,5 +70,21 @@ describe("reportPropertyAgeYearsFromLicense", () => {
     expect(formatReportPropertyAgeYears(14)).toBe("14 سنة");
     expect(formatReportPropertyAgeYears(100)).toBe("100 سنة");
     expect(formatReportPropertyAgeYears(103)).toBe("103 سنوات");
+  });
+});
+
+describe("Arabic counts — years and months (round 2)", () => {
+  it("years agree with the count", () => {
+    expect(formatArabicYears(1)).toBe("سنة واحدة");
+    expect(formatArabicYears(2)).toBe("سنتان");
+    expect(formatArabicYears(4)).toBe("4 سنوات");
+    expect(formatArabicYears(22)).toBe("22 سنة");
+    expect(formatArabicYears(2.5)).toBe("2.5 سنة");
+  });
+  it("months agree with the count («5 أشهر», never «5 شهراً»)", () => {
+    expect(formatArabicMonths(1)).toBe("شهر واحد");
+    expect(formatArabicMonths(2)).toBe("شهران");
+    expect(formatArabicMonths(5)).toBe("5 أشهر");
+    expect(formatArabicMonths(14)).toBe("14 شهراً");
   });
 });

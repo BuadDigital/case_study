@@ -46,6 +46,32 @@ public static class ValuationMethodologyAlertCodes
     public const string OpexOverHalfOfEgi = "m27_opex_over_half_egi";
     /// <summary>D17 — net operating income zero or negative: the income approach yields no value.</summary>
     public const string NoiNotPositive = "m28_noi_not_positive";
+
+    /// <summary>Every alert code — a disposition for any other code is refused (round 2).</summary>
+    public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        NoCostLine, ExtendedLifeZero, EffectiveAgeExceedsLife, ObsolescenceOver100, NegativeValues,
+        LifeExtensionNoRationale, RepeatedFloorNoArea, ExtraLineNoRationale, RepeatedUnitCostMismatch,
+        UseRestrictionNoRationale, NonVacantLandComps, ObsolescenceNoRationale, DeveloperProfitOutOfRange,
+        IndirectRatesHigh, NoAdoptedComparables, WeightsNot100, LargeAdjustments, LimitedInspection,
+        FewAdoptedComparables, RemoteInspectionUnapproved, ComparableDispersion, ComparableAfterValuationDate,
+        PropertyTypeMismatch, DepreciationOver90, CapRateOutOfRange, OpexOverHalfOfEgi, NoiNotPositive,
+    };
+
+    /// <summary>
+    /// Codes of alerts since removed (m20, the stale-comparable time alert). Dispositions stored for
+    /// them are still round-tripped by the screens, so a save that resends one is not refused.
+    /// </summary>
+    public static readonly IReadOnlySet<string> Retired = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "m20_stale_comparable_no_time_adjustment",
+    };
+
+    public static bool IsKnown(string? code) => All.Contains((code ?? "").Trim());
+
+    /// <summary>A current or a retired code — what a saved disposition may carry.</summary>
+    public static bool IsAcceptedForDisposition(string? code) =>
+        IsKnown(code) || Retired.Contains((code ?? "").Trim());
 }
 
 public static class ValuationMethodologyAlertSeverityKinds
@@ -189,6 +215,11 @@ public sealed record ValuationMethodologyAlertInput(
     /// </summary>
     DateOnly? ComparableDateCutoff = null,
     DateOnly? Today = null,
+    /// <summary>
+    /// Round 2: the cutoff is the END of a retrospective valuation period — alert 23 then names it
+    /// «نهاية فترة التقييم», not «تاريخ التقييم».
+    /// </summary>
+    bool ComparableDateCutoffIsPeriodEnd = false,
     /// <summary>D10 — the subject's (effective) property type; null/blank = m24 not evaluated.</summary>
     string? SubjectPropertyType = null,
     /// <summary>D17 — the income approach's figures; null (approach off / never saved) = m26–m28 not evaluated.</summary>
@@ -284,9 +315,10 @@ public static class ValuationMethodologyAlertRules
             Eval(6, ValuationMethodologyAlertCodes.LifeExtensionNoRationale,
                 "تمديد العمر مستخدم بلا بيان",
                 costOn,
+                // Decision B: the basis the extension requires is at least 10 characters.
                 () => input.LifeExtensionYears > 0m
-                      && string.IsNullOrWhiteSpace(input.LifeExtensionBasis),
-                "التمديد > 0 وبيان الأساس فارغ",
+                      && !JustificationRules.MeetsRequiredMinimum(input.LifeExtensionBasis),
+                "التمديد > 0 وبيان الأساس فارغ أو أقل من 10 أحرف",
                 resolutions),
 
  // Repeated-floors line present while the
@@ -318,8 +350,8 @@ public static class ValuationMethodologyAlertRules
                 "خصم تقييد الاستخدام بلا مبرر",
                 costOn,
                 () => input.UseRestrictionDiscountPct > 0m
-                      && string.IsNullOrWhiteSpace(input.UseRestrictionRationale),
-                "خصم تقييد الاستخدام > 0 والمبرر فارغ",
+                      && !JustificationRules.MeetsRequiredMinimum(input.UseRestrictionRationale),
+                "خصم تقييد الاستخدام > 0 والمبرر فارغ أو أقل من 10 أحرف",
                 resolutions),
 
             Eval(11, ValuationMethodologyAlertCodes.NonVacantLandComps,
@@ -333,10 +365,10 @@ public static class ValuationMethodologyAlertRules
                 "تقادم وظيفي أو خارجي بلا مبرر",
                 costOn,
                 () => (input.FunctionalObsolescencePct > 0m
-                       && string.IsNullOrWhiteSpace(input.FunctionalObsolescenceRationale))
+                       && !JustificationRules.MeetsRequiredMinimum(input.FunctionalObsolescenceRationale))
                       || (input.ExternalObsolescencePct > 0m
-                          && string.IsNullOrWhiteSpace(input.ExternalObsolescenceRationale)),
-                "تقادم وظيفي/خارجي مُدخل بلا مبرر",
+                          && !JustificationRules.MeetsRequiredMinimum(input.ExternalObsolescenceRationale)),
+                "تقادم وظيفي/خارجي مُدخل بلا مبرر (10 أحرف على الأقل)",
                 resolutions),
 
             Eval(13, ValuationMethodologyAlertCodes.DeveloperProfitOutOfRange,
@@ -420,14 +452,16 @@ public static class ValuationMethodologyAlertRules
 
             // D8 — hard: a deal after the valuation date did not exist on that date.
             Eval(23, ValuationMethodologyAlertCodes.ComparableAfterValuationDate,
-                "مقارن بتاريخ لاحق لتاريخ التقييم",
+                input.ComparableDateCutoffIsPeriodEnd
+                    ? "مقارن بتاريخ لاحق لنهاية فترة التقييم"
+                    : "مقارن بتاريخ لاحق لتاريخ التقييم",
                 input.MarketApproachRelevant
                     && comps.Count > 0
                     && input.ComparableDateCutoff is { } cutoff
                     && input.Today is { } today
                     && cutoff < today,
                 () => afterCutoff.Count > 0,
-                AfterValuationDateDetail(afterCutoff, input.ComparableDateCutoff),
+                AfterValuationDateDetail(afterCutoff, input.ComparableDateCutoff, input.ComparableDateCutoffIsPeriodEnd),
                 resolutions),
 
             // D10 — category mismatch (vacant-land subjects keep the hard m11 instead).
@@ -490,9 +524,9 @@ public static class ValuationMethodologyAlertRules
         if (!resolutions.TryGetValue(code, out var r))
             return false;
 
-        // Q-8-2: a token rationale (shorter than the minimum) does not clear a "with rationale" alert.
+        // Q-8-2 / decision B: a rationale shorter than 10 characters does not clear a "with rationale" alert.
         if (ValuationMethodologyAlertSeverity.RequiresRationale(number))
-            return JustificationRules.IsAcceptable(r.OverrideRationale);
+            return JustificationRules.MeetsRequiredMinimum(r.OverrideRationale);
 
         if (ValuationMethodologyAlertSeverity.RequiresAcknowledgement(number))
             return r.Acknowledged;
@@ -596,10 +630,13 @@ public static class ValuationMethodologyAlertRules
 
     private static string AfterValuationDateDetail(
         IReadOnlyList<(string Ref, DateOnly? TransactionDate)> after,
-        DateOnly? cutoff)
+        DateOnly? cutoff,
+        bool cutoffIsPeriodEnd)
     {
         var list = after.Select(x => $"{x.Ref} بتاريخ {DateText(x.TransactionDate)}");
-        return $"{string.Join("، ", list)} — بعد تاريخ التقييم {DateText(cutoff)}؛ صفقة لم تكن قائمة في تاريخ التقييم — ألغِ اعتمادها";
+        return cutoffIsPeriodEnd
+            ? $"{string.Join("، ", list)} — بعد نهاية فترة التقييم {DateText(cutoff)}؛ صفقة لم تكن قائمة خلال فترة التقييم — ألغِ اعتمادها"
+            : $"{string.Join("، ", list)} — بعد تاريخ التقييم {DateText(cutoff)}؛ صفقة لم تكن قائمة في تاريخ التقييم — ألغِ اعتمادها";
     }
 
     private static string TypeMismatchDetail(

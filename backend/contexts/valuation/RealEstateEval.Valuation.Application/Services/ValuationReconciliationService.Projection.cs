@@ -99,13 +99,16 @@ public sealed partial class ValuationReconciliationService
         var weightSum = methodDtos.Where(m => m.IsIncluded).Sum(m => m.WeightPct);
         var weighted = ReconciliationRules.WeightedValue(includedMethods);
         var decimals = entity?.FinalRoundDecimals ?? 0;
-        // The appraiser's saved basis and premise win (D1); the work order only seeds them.
+        // The appraiser's saved basis and premise win (D1); the work order only seeds them. A row
+        // only an alert acknowledgement created (no full save — that requires the methods rationale)
+        // holds no choice of the appraiser, so it never outranks the work order.
+        var appraiserSaved = !string.IsNullOrWhiteSpace(entity?.MethodsRationale);
         var basis = FirstValuationKey(
-            entity?.BasisOfValueKey,
+            appraiserSaved ? entity!.BasisOfValueKey : null,
             workOrderBasisKey,
             AssignmentValuationDefaults.BasisOfValueKey(assignmentType));
         var premise = FirstValuationKey(
-            entity?.ValuePremiseKey,
+            appraiserSaved ? entity!.ValuePremiseKey : null,
             workOrderPremiseKey,
             AssignmentValuationDefaults.PremiseKey(assignmentType));
         var discountPct = entity?.LiquidationDiscountPct ?? 0m;

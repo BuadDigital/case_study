@@ -12,3 +12,21 @@ export async function readErrorText(res: Response): Promise<string> {
     return `HTTP ${res.status}`;
   }
 }
+
+/**
+ * A failed answer reported as `server`. A 503 carries its reason in the problem `detail` — e.g. the
+ * valuation service could not reach Case Study to check the assigned appraiser («تعذّر التحقق من
+ * المقيّم المُسنَد — أعد المحاولة») — and that reason is kept, not replaced by a generic failure.
+ */
+export async function serverFailure(
+  res: Response,
+): Promise<{ ok: false; kind: "server"; message?: string }> {
+  if (res.status !== 503) return { ok: false, kind: "server" };
+  try {
+    const body = (await res.json()) as { detail?: unknown; message?: unknown };
+    const text = [body.detail, body.message].find((v) => typeof v === "string" && v.trim());
+    return typeof text === "string" ? { ok: false, kind: "server", message: text.trim() } : { ok: false, kind: "server" };
+  } catch {
+    return { ok: false, kind: "server" };
+  }
+}

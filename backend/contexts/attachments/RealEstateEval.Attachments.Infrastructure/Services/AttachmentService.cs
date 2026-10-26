@@ -20,6 +20,9 @@ public sealed partial class AttachmentService : IAttachmentService
     private const int MaxAttachmentsPerScope = 200;
 
  /// <summary>Base64 inflates by 4/3; allow a little slack for padding and whitespace.</summary>
+    /// <summary>The upload's content is not valid Base64 (round 2: was the English «invalid base64 content»).</summary>
+    public const string InvalidBase64Ar = "محتوى الملف تالف أو غير مقروء — أعد رفع الملف";
+
     private const int MaxBase64Length =
         (int)(AttachmentUploadRules.DefaultMaxBytes / 3 + 1) * 4 + 1024;
     private readonly AttachmentsDbContext _db;
@@ -132,7 +135,7 @@ public sealed partial class AttachmentService : IAttachmentService
         }
         catch
         {
-            return (null, "invalid base64 content");
+            return (null, InvalidBase64Ar);
         }
 
         var inspection = AttachmentUploadRules.Inspect(

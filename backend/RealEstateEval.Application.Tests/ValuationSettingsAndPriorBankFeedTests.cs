@@ -143,12 +143,42 @@ public class ValuationSettingsAndPriorBankFeedTests
     [InlineData("market", "land_and_building", "issue", true)]
     [InlineData("liquidation", "land_and_building", "issue", false)]
     [InlineData("market", "building_only", "issue", false)]
-    [InlineData("market", "land_only", "issue", false)]
+    [InlineData("market", "land_only", "issue", true)]
+    [InlineData("market", "land_only", "retrospective", false)]
+    [InlineData("liquidation", "land_only", "issue", false)]
     [InlineData("market", "land_and_building", "retrospective", false)]
     [InlineData("market", "", "issue", false)]
-    public void Only_a_current_market_value_of_land_and_buildings_feeds_the_bank(
+    public void Only_a_current_market_value_of_land_with_or_without_buildings_feeds_the_bank(
         string basis, string scope, string dateMode, bool feeds) =>
         Assert.Equal(feeds, PriorValuationBankRules.Qualifies(basis, scope, dateMode));
+
+    [Fact]
+    public async Task A_land_only_valuation_enters_the_bank_as_a_land_comparable()
+    {
+        Assert.Equal("أرض", PriorValuationBankRules.ComparableType(CostScopeKeys.LandOnly, "فيلا"));
+        Assert.Equal("فيلا", PriorValuationBankRules.ComparableType(CostScopeKeys.LandAndBuilding, "فيلا"));
+
+        await using var contexts = TestDatabases.Create("prior-bank-land");
+        var db = contexts.Valuation;
+        var propertyId = Guid.NewGuid();
+        var id = NewRequest(db, propertyId);
+        db.ValuationApproachSettings.Add(new ValuationApproachSettings
+        {
+            Id = Guid.NewGuid(),
+            ValuationRequestId = id,
+            CostScopeKey = CostScopeKeys.LandOnly,
+            ValuationPurposeKey = ValuationPurposeKeys.SalePurchase,
+        });
+        await db.SaveChangesAsync();
+
+        Assert.True(await Feeder(db, () => 900_000m, () => BasisOfValueKeys.Market).FeedAsync(id));
+
+        db.ChangeTracker.Clear();
+        var row = Assert.Single(db.ComparableProperties.Where(c => c.SourcePropertyId == propertyId));
+        Assert.Equal("أرض", row.ComparablePropertyType);
+        Assert.Equal(ComparableSources.PriorValuation, row.Source);
+        Assert.True(row.IsActive);
+    }
 
     [Fact]
     public async Task A_new_deposited_version_updates_the_one_bank_row_and_a_non_qualifying_one_retires_it()

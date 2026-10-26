@@ -37,6 +37,18 @@ public static class ValuationComparableSelectionRequestRules
         return (seen.ToList(), errors);
     }
 
+    public const string UnknownSelectionContextAr =
+        "سياق المقارنات غير معروف (أسلوب السوق / تقدير الأرض ضمن التكلفة)";
+
+    /// <summary>
+    /// Round 2: an unknown <c>selectionContext</c> («xyz») is refused on every write — it used to be
+    /// read silently as the market table. Blank keeps the market default.
+    /// </summary>
+    public static string? SelectionContextError(string? selectionContext) =>
+        string.IsNullOrWhiteSpace(selectionContext) || ComparableSelectionContexts.IsKnown(selectionContext)
+            ? null
+            : UnknownSelectionContextAr;
+
     /// <summary>One error per requested id that is not an active bank comparable.</summary>
     public static Dictionary<string, string> MissingActiveComparableErrors(
         IEnumerable<Guid> ids,
@@ -64,8 +76,10 @@ public static class ValuationComparableSelectionRequestRules
 
     /// <summary>
     /// Per-comparable market save checks. Interactive model spec: "blocking happens at adoption
-    /// only — partial input is kept as draft", so rationales are enforced by issuance gates and
-    /// methodology alerts, not by save; Q-8-2 still rejects token (shorter than min) rationales.
+    /// only — partial input is kept as draft", so a BLANK rationale saves; the issuance gate
+    /// <c>adjustment_rationales_*</c> (<see cref="ValuationIssuanceGateRules.AdjustmentRationales"/>)
+    /// then blocks issuance and hand-over until each is written. Q-8-2 still rejects token (written
+    /// but shorter than 10 characters) rationales here.
     /// </summary>
     public static Dictionary<string, string> ValidateMarketSave(SaveValuationComparableMarketRequest request)
     {
@@ -86,10 +100,11 @@ public static class ValuationComparableSelectionRequestRules
             if (line.Percent is < -100m or > 100m)
                 errors[$"adjustmentLines[{i}].percent"] = "النسبة يجب أن تكون بين -100 و 100";
 
-            // Q-8-2: empty override inherits the factor rationale, but a token (shorter than min) is rejected.
-            if (JustificationRules.IsTooShort(line.Rationale))
+            // Q-8-2 / decision B: empty override inherits the factor rationale; a written one for a
+            // non-zero factor is at least 10 characters.
+            if (line.Percent != 0m && JustificationRules.IsBelowRequiredMinimum(line.Rationale))
                 errors[$"adjustmentLines[{i}].rationale"] =
-                    JustificationRules.TooShortMessageAr("مبرر التسوية للمقارن");
+                    JustificationRules.RequiredMinimumMessageAr("مبرر التسوية للمقارن");
         }
 
         if (request.WeightIsManual)
@@ -99,15 +114,19 @@ public static class ValuationComparableSelectionRequestRules
             else if (request.WeightPct is < 0m or > 100m)
                 errors["weightPct"] = "الوزن يجب أن يكون بين 0 و 100";
 
-            if (JustificationRules.IsTooShort(request.WeightOverrideRationale))
+            if (JustificationRules.IsBelowRequiredMinimum(request.WeightOverrideRationale))
                 errors["weightOverrideRationale"] =
-                    JustificationRules.TooShortMessageAr("مبرر الوزن اليدوي");
+                    JustificationRules.RequiredMinimumMessageAr("مبرر الوزن اليدوي");
         }
 
         if (request.PriceOverrideSar is < 0m)
             errors["priceOverrideSar"] = "سعر العقار يجب أن يكون ≥ 0";
+        else if (request.PriceOverrideSar > ComparablePropertyRules.MaxPriceSar)
+            errors["priceOverrideSar"] = "سعر العقار يتجاوز الحد المعقول (1,000,000,000,000 ر.س)";
         if (request.AreaOverrideSqm is <= 0m)
             errors["areaOverrideSqm"] = "مساحة المقارن يجب أن تكون أكبر من صفر";
+        else if (request.AreaOverrideSqm > MarketApproachRules.MaxSubjectAreaSqm)
+            errors["areaOverrideSqm"] = "مساحة المقارن تتجاوز الحد المعقول (10,000,000 م²)";
 
         if (request.AreaAdjustmentMethod is not null
             && !AreaAdjustmentMethods.IsKnown(request.AreaAdjustmentMethod))
@@ -179,14 +198,30 @@ public static class ValuationComparableSelectionRequestRules
         return built;
     }
 
-    /// <summary>Market-approach header checks — null when the request is acceptable.</summary>
+    /// <summary>
+    /// Market-approach header checks — null when the request is acceptable. A coefficient outside its
+    /// range is refused with an Arabic message (it used to be dropped silently).
+    /// </summary>
     public static Dictionary<string, string>? ValidateMarketApproach(SaveValuationMarketApproachRequest request)
     {
+        var errors = new Dictionary<string, string>();
         if (request.SubjectAreaSqm is < 0m)
-            return new Dictionary<string, string> { ["subjectAreaSqm"] = "المساحة يجب أن تكون ≥ 0" };
+            errors["subjectAreaSqm"] = "المساحة يجب أن تكون ≥ 0";
+        // Round 2: the per-m² basis multiplies the weighted rate by this area — 0 is no area.
+        else if (request.SubjectAreaSqm == 0m
+                 && MarketAdjustmentBasisKeys.Normalize(request.AdjustmentBasis) != MarketAdjustmentBasisKeys.WholeProperty)
+            errors["subjectAreaSqm"] = "مساحة العقار محل التقييم يجب أن تكون أكبر من صفر (أساس سعر المتر)";
+        else if (request.SubjectAreaSqm > MarketApproachRules.MaxSubjectAreaSqm)
+            errors["subjectAreaSqm"] = "المساحة تتجاوز الحد المعقول (10,000,000 م²)";
         if (request.AdjustmentBasis is not null && !MarketAdjustmentBasisKeys.IsKnown(request.AdjustmentBasis))
-            return new Dictionary<string, string> { ["adjustmentBasis"] = "أساس التسويات غير معروف" };
-        return null;
+            errors["adjustmentBasis"] = "أساس التسويات غير معروف";
+        if (request.AreaFactorPct is < MarketApproachRules.MinAreaFactorPct or > MarketApproachRules.MaxAreaFactorPct)
+            errors["areaFactorPct"] = "معامل المساحة يجب أن يكون بين 0.1 و 50";
+        if (request.AnnualMarketRatePct is < 0m or > MarketApproachRules.MaxAnnualMarketRatePct)
+            errors["annualMarketRatePct"] = "معدل تغير السوق السنوي يجب أن يكون بين 0 و 50";
+        if (request.ValueRoundDecimals is < 0 or > MarketApproachRules.MaxValueRoundDecimals)
+            errors["valueRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6";
+        return errors.Count == 0 ? null : errors;
     }
 
     /// <summary>

@@ -8,6 +8,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Domain;
@@ -220,10 +221,26 @@ public sealed partial class ValuationReportDraftService
     {
         var vr = await db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
         if (vr is null) return (null, Error("طلب التقييم غير موجود"));
-        if (!await IsAssignedAppraiserAsync(vr.PropertyId, actor, cancellationToken))
-            return (null, Forbidden(ReviewForbiddenAr));
-        return (vr, null);
+        var refusal = await AssignedAppraiserRefusalAsync(vr.PropertyId, actor, ReviewForbiddenAr, cancellationToken);
+        return refusal is null ? (vr, null) : (null, refusal);
     }
+
+    /// <summary>
+    /// Null for the assigned appraiser; «أعد المحاولة» when Case Study could not be read; otherwise the
+    /// forbidden message — an outage is never reported as «not the assigned appraiser».
+    /// </summary>
+    private async Task<Dictionary<string, string>?> AssignedAppraiserRefusalAsync(
+        Guid propertyId,
+        ReportDraftActor actor,
+        string forbiddenAr,
+        CancellationToken cancellationToken) =>
+        await AssignedAppraisers.CheckPropertyAsync(
+                propertyId, actor.UserId, actor.DistributionAssigneeId, cancellationToken) switch
+        {
+            AssignedAppraiserVerdict.Assigned => null,
+            AssignedAppraiserVerdict.Unverified => Error(AssignedAppraiserMessages.UnverifiedAr),
+            _ => Forbidden(forbiddenAr),
+        };
 
     /// <summary>Only the appraiser assigned to the property — no supervisor / CDO override.</summary>
     private Task<bool> IsAssignedAppraiserAsync(

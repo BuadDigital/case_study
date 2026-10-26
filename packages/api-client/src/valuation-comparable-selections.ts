@@ -1,7 +1,7 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ComparablePropertyDto } from "./comparable-properties";
-import { parseJson } from "./parse-json";
+import { parseJson, serverFailure } from "./parse-json";
 
 export type ValuationComparableAdjustmentLineDto = {
   id: string;
@@ -70,7 +70,10 @@ export type ValuationComparableSelectionListDto = {
   meetsMinimumAdoptedGate: boolean;
   weightsSumTo100: boolean;
   weightedPricePerSqm: number;
+  /** Subject area — on the land table, the whole building plot (decision A). */
   subjectAreaSqm?: number | null;
+  /** Land table only (decision A): the apartment's share the rate multiplies into the land value. */
+  apartmentLandShareSqm?: number | null;
  /** price_per_sqm | whole_property. */
   adjustmentBasis: string;
   adjustmentBasisLabelAr: string;
@@ -155,6 +158,8 @@ export type ValuationCostApproachDto = {
   useRestrictionDiscountPct: number;
   useRestrictionRationale?: string | null;
   apartmentLandShareSqm?: number | null;
+  /** Decision A: the whole building plot (m²) the land comparables are compared with; null = not entered. */
+  buildingPlotAreaSqm?: number | null;
  /** computed. */
   landUnitRateAfterDiscount: number;
   landValueFromMarket: number;
@@ -249,6 +254,8 @@ export type SaveValuationCostApproachRequest = {
   useRestrictionRationale?: string | null;
  /** apartment share of land m². */
   apartmentLandShareSqm?: number | null;
+  /** Decision A: the whole building plot (m²); null clears it. */
+  buildingPlotAreaSqm?: number | null;
  /** indirect costs. */
   indirectItems?: SaveValuationIndirectCostItemRequest[];
   financingAnnualRatePct?: number;
@@ -523,7 +530,7 @@ export async function getOpenValuationRequestByProperty(
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404 || res.status === 204) return { ok: true, data: null };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     const data = await parseJson<ValuationRequestLiteDto | null>(res);
     return { ok: true, data: data?.id ? data : null };
   } catch {
@@ -556,7 +563,7 @@ export async function ensureOpenValuationRequestByProperty(
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationRequestLiteDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -579,7 +586,7 @@ export async function listValuationComparableSelections(
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationComparableSelectionListDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -615,7 +622,7 @@ export async function setValuationComparableAdopted(
         message: payload?.message ?? "تعذّر تحديث الاعتماد",
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return {
       ok: true,
       data: await parseJson<ValuationComparableSelectionDto>(res),
@@ -678,7 +685,7 @@ export async function saveValuationComparableMarket(
         errors: payload?.errors as Record<string, string> | undefined,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return {
       ok: true,
       data: await parseJson<ValuationComparableSelectionDto>(res),
@@ -719,7 +726,7 @@ export async function saveAdjustmentFactorRationale(
         errors: payload?.errors,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return {
       ok: true,
       data: await parseJson<ValuationAdjustmentFactorRationaleDto>(res),
@@ -760,7 +767,7 @@ export async function saveValuationMarketApproach(
         errors: payload?.errors,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return {
       ok: true,
       data: await parseJson<ValuationComparableSelectionListDto>(res),
@@ -782,7 +789,7 @@ export async function getValuationApproachSettings(
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationApproachSettingsDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -820,7 +827,7 @@ export async function saveValuationApproachSettings(
         errors: payload?.errors,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationApproachSettingsDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -839,7 +846,7 @@ export async function getValuationCostApproach(
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationCostApproachDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -877,7 +884,7 @@ export async function saveValuationCostApproach(
         errors: payload?.errors,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationCostApproachDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -896,7 +903,7 @@ export async function getValuationReconciliation(
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationReconciliationDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -934,7 +941,7 @@ export async function saveValuationReconciliation(
         errors: payload?.errors,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationReconciliationDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -987,7 +994,7 @@ export async function getValuationIssuanceGates(
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationIssuanceGatesDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
@@ -1045,7 +1052,7 @@ async function postIssuance(
         errors,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationReportIssuanceStateDto>(res) };
   } catch {
     return { ok: false, kind: "network" };

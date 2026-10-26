@@ -12,6 +12,7 @@ public partial class PartyTaskSubmissionService
 {
     private async Task<Dictionary<string, string>?> AppraisalHandOverGateErrorsAsync(
         PartyTaskSubmission entity,
+        bool studyReportListed,
         CancellationToken cancellationToken)
     {
         // Test compositions without the valuation port, or a package without a property.
@@ -23,9 +24,9 @@ public partial class PartyTaskSubmissionService
             // No valuation request yet: nothing was valued, so there is no gate to read.
             if (open is null) return null;
             var gates = await _valuationRequests.GetIssuanceGatesAsync(open.Id, cancellationToken);
-            return AppraisalHandOverGateRules.HandOverError(gates);
+            return AppraisalHandOverGateRules.HandOverError(gates, studyReportListed);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
         {
             // Fail closed: an unreadable gate never lets the hand-over through.
             return new Dictionary<string, string>

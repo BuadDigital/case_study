@@ -48,7 +48,8 @@ export async function readFreshStudyReportGate(
 }
 
 type IssuanceGateCheck =
-  | { ok: true }
+  /** `valuationRequestId`: the open request this check read (null = none yet) — reused by the price read. */
+  | { ok: true; valuationRequestId: string | null }
   | { ok: false; kind: "blocked" | "unverified"; message: string };
 
 /**
@@ -72,7 +73,7 @@ export async function checkIssuanceGatesFailClosed(input: {
   try {
     const open = await getOpenValuationRequestByProperty({ token }, propertyId);
     if (!open.ok) return unverified;
-    if (!open.data?.id) return { ok: true };
+    if (!open.data?.id) return { ok: true, valuationRequestId: null };
 
     const gatesRes = await getValuationIssuanceGates({ token }, open.data.id);
     if (!gatesRes.ok || !gatesRes.data) return unverified;
@@ -83,7 +84,9 @@ export async function checkIssuanceGatesFailClosed(input: {
     // up; everything else does, and every blocker is named with who fixes it — the server refuses
     // the same set (case-study hand-over gate).
     const message = handOverRefusalMessage(classifyHandOverBlockers(gatesRes.data));
-    return message ? { ok: false, kind: "blocked", message } : { ok: true };
+    return message
+      ? { ok: false, kind: "blocked", message }
+      : { ok: true, valuationRequestId: open.data.id };
   } catch {
     return unverified;
   }
@@ -102,16 +105,25 @@ type HandOverPriceRead =
 export async function readHandOverPriceFromServer(input: {
   token: string | null | undefined;
   propertyId: string | null | undefined;
+  /**
+   * The open request the gate check just read (null = none) — skips a second
+   * `getOpenValuationRequestByProperty`; undefined reads it here.
+   */
+  valuationRequestId?: string | null;
 }): Promise<HandOverPriceRead> {
   const failed: HandOverPriceRead = { ok: false, message: FINAL_VALUE_UNVERIFIED_MESSAGE };
   const token = input.token?.trim();
   const propertyId = input.propertyId?.trim();
   if (!token || !propertyId) return failed;
   try {
-    const open = await getOpenValuationRequestByProperty({ token }, propertyId);
-    if (!open.ok) return failed;
-    if (!open.data?.id) return { ok: true, price: null };
-    const recon = await getValuationReconciliation({ token }, open.data.id);
+    let requestId = input.valuationRequestId;
+    if (requestId === undefined) {
+      const open = await getOpenValuationRequestByProperty({ token }, propertyId);
+      if (!open.ok) return failed;
+      requestId = open.data?.id ?? null;
+    }
+    if (!requestId) return { ok: true, price: null };
+    const recon = await getValuationReconciliation({ token }, requestId);
     if (!recon.ok) return recon.kind === "not_found" ? { ok: true, price: null } : failed;
     const final = Number(recon.data.finalOpinionValue);
     return { ok: true, price: Number.isFinite(final) && final > 0 ? String(final) : null };

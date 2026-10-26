@@ -35,7 +35,7 @@ public sealed class ValuationCostApproachService(
         var scopeKey = CostScopeKeys.Normalize(settings?.CostScopeKey);
         var land = await ReadLandAsync(vr, entity, scopeKey, cancellationToken);
 
-        return ToDto(vr, entity, scopeKey, land, CostLeaseTerms.RemainingLeaseYears(settings, scopeKey));
+        return ToDto(vr, entity, scopeKey, land, CostLeaseTerms.RemainingLeaseYears(settings));
     }
 
     /// <summary>The land inputs one read uses: unit rate (SAR/m²), land area and whether comps are adopted.</summary>
@@ -156,28 +156,13 @@ public sealed class ValuationCostApproachService(
             await repo.AddAsync(entity, cancellationToken);
         }
 
-        if (request.RefreshLandFromLandComps)
-        {
-            // Cost land comes from the land_within_cost table only — no import from the market approach.
-            var land = LandFromComps(await selections.ListAsync(
-                valuationRequestId,
-                ComparableSelectionContexts.LandWithinCost,
-                cancellationToken));
-            entity.LandUnitRateFromMarket = land.UnitRate;
-            entity.LandAreaSqm = land.AreaSqm;
-            entity.LandImportedAtUtc = land.HasAdopted ? _time.UtcNow() : null;
-        }
-
         entity.UseRestrictionDiscountPct = request.UseRestrictionDiscountPct;
         entity.UseRestrictionRationale = string.IsNullOrWhiteSpace(request.UseRestrictionRationale)
             ? null
             : request.UseRestrictionRationale.Trim();
         entity.ApartmentLandShareSqm = request.ApartmentLandShareSqm;
-        entity.LandValueFromMarket = CostApproachRules.LandValue(
-            CostApproachRules.LandUnitRateAfterDiscount(
-                entity.LandUnitRateFromMarket, entity.UseRestrictionDiscountPct),
-            entity.LandAreaSqm,
-            entity.ApartmentLandShareSqm);
+        // Decision A: the land table's own area — the subject-area sync of the market header never touches it.
+        entity.BuildingPlotAreaSqm = request.BuildingPlotAreaSqm;
 
         // Upsert in place — navigation-adds with pre-set GUIDs get marked Modified
         // by EF's graph heuristic (UPDATE 0 rows → global 409) on re-saves.
@@ -305,7 +290,37 @@ public sealed class ValuationCostApproachService(
         entity.UpdatedAtUtc = _time.UtcNow();
         await repo.SaveChangesAsync(cancellationToken);
 
+        // The land table reads the plot and the share from the stored row (decision A), so the land
+        // snapshot is taken once they are saved — a changed plot moves the area adjustment.
+        await RefreshLandSnapshotAsync(entity, request.RefreshLandFromLandComps, cancellationToken);
+        await repo.SaveChangesAsync(cancellationToken);
+
         return (await GetAsync(valuationRequestId, cancellationToken), null);
+    }
+
+    /// <summary>Stored land snapshot: rate and plot from the land table, value = discounted rate × (share ?? plot).</summary>
+    private async Task RefreshLandSnapshotAsync(
+        ValuationCostApproach entity,
+        bool refreshFromLandComps,
+        CancellationToken cancellationToken)
+    {
+        if (refreshFromLandComps)
+        {
+            // Cost land comes from the land_within_cost table only — no import from the market approach.
+            var land = LandFromComps(await selections.ListAsync(
+                entity.ValuationRequestId,
+                ComparableSelectionContexts.LandWithinCost,
+                cancellationToken));
+            entity.LandUnitRateFromMarket = land.UnitRate;
+            entity.LandAreaSqm = land.AreaSqm;
+            entity.LandImportedAtUtc = land.HasAdopted ? _time.UtcNow() : null;
+        }
+
+        entity.LandValueFromMarket = CostApproachRules.LandValue(
+            CostApproachRules.LandUnitRateAfterDiscount(
+                entity.LandUnitRateFromMarket, entity.UseRestrictionDiscountPct),
+            entity.LandAreaSqm,
+            entity.ApartmentLandShareSqm);
     }
 
     private static string? TrimOrNull(string? value) =>
@@ -437,6 +452,7 @@ public sealed class ValuationCostApproachService(
             UseRestrictionDiscountPct = entity?.UseRestrictionDiscountPct ?? 0m,
             UseRestrictionRationale = entity?.UseRestrictionRationale,
             ApartmentLandShareSqm = entity?.ApartmentLandShareSqm,
+            BuildingPlotAreaSqm = entity?.BuildingPlotAreaSqm,
             LandUnitRateAfterDiscount = rateAfterDiscount,
             LandValueFromMarket = land,
             LandImportedAtUtc = entity?.LandImportedAtUtc?.ToString("o"),

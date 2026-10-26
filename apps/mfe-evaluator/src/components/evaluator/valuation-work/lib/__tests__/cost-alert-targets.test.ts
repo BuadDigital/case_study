@@ -100,6 +100,15 @@ describe("cost alerts carry the control they are about", () => {
     ).toMatchObject({ targetId: "cost-useRestrictionRationale" });
   });
 
+  it("names a life-extension basis under 10 characters at its field (round 2)", () => {
+    expect(
+      find(
+        alertsFor({ lifeExtension: "5", lifeExtensionBasis: "ترميم" }),
+        "بيان أساس تمديد العمر يجب ألا يقل عن 10 أحرف",
+      ),
+    ).toMatchObject({ kind: "error", targetId: "cost-lifeExtensionBasis" });
+  });
+
   it("points the missing land value at the land-comparables section", () => {
     expect(
       find(alertsFor({}, [line()], false), "قيمة الأرض غير مقدَّرة"),

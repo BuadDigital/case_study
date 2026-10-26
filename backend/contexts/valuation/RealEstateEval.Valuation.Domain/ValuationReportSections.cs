@@ -177,6 +177,19 @@ public static class ValuationReportDisplayRules
     public static string FormatMoney(decimal amount) =>
         amount.ToString("#,##0.00", System.Globalization.CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// A number of years in correct Arabic, Latin digits: «سنة واحدة», «سنتان», «4 سنوات» (3–10),
+    /// «15 سنة» (11 and up, or a fraction such as «2.5 سنة»).
+    /// </summary>
+    public static string FormatYears(decimal years)
+    {
+        var y = Math.Round(years, 2, MidpointRounding.AwayFromZero);
+        if (y == 1m) return "سنة واحدة";
+        if (y == 2m) return "سنتان";
+        var text = y.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
+        return y == decimal.Truncate(y) && y is >= 3m and <= 10m ? $"{text} سنوات" : $"{text} سنة";
+    }
+
  /// <summary>Plain Arabic valuer word (al-muqayyim) without tashkeel in body copy.</summary>
     public const string ValuerWordPlain = "المقيم";
 }

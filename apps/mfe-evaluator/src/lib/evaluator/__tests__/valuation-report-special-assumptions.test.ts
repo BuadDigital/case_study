@@ -92,7 +92,7 @@ describe("§29 special assumption live fill", () => {
     ).toEqual(["افتراض 1", "افتراض 3"]);
   });
 
-  it("clears the list when selection is empty", () => {
+  it("drops the whole section — heading included — when selection is empty (round 2)", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",
       propertyId: "p1",
@@ -109,7 +109,24 @@ describe("§29 special assumption live fill", () => {
       "text/html",
     );
     applyValuationReportLiveFill(dom, fill);
-    expect(dom.querySelectorAll('[data-sec="29"] li')).toHaveLength(0);
+    expect(dom.querySelector('[data-sec="29"]')).toBeNull();
+  });
+
+  it("the full-ownership clause follows the interest valued (usufruct / leased land)", () => {
+    const clause =
+      "يفترض أن العقار مطلق الملكية وليس عليه أي نزاعات ملكية أو ورثة او قيود على البيع والتملك.";
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const bullets = (key: string) =>
+      buildValuationReportLiveFill({
+        draft,
+        selectedSpecialAssumptions: [clause],
+        ownership: { key },
+      }).specialAssumptionBullets?.[0] ?? "";
+    expect(bullets("freehold")).toBe(clause);
+    expect(bullets("usufruct")).not.toContain("مطلق الملكية");
+    expect(bullets("usufruct")).toContain("حق المنفعة");
+    expect(bullets("leased_land")).not.toContain("مطلق الملكية");
+    expect(bullets("leased_land")).toContain("إيجار الأرض");
   });
 
   it("omits the no-specialist clause when a specialist is used", () => {

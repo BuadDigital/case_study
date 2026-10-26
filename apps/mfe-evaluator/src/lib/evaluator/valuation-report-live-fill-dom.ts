@@ -136,7 +136,7 @@ export function fillFinalValueTable(sec: Element, fill: ValuationReportLiveFill)
       if (row.rationale != null) {
         const pct = td("v num", row.value);
         pct.setAttribute("style", "width:7%;white-space:nowrap");
-        tr.append(td("k", row.key), pct, td("k", "مبرر خصم التصفية"), td("v", row.rationale || "—"));
+        tr.append(td("k", row.key), pct, td("k", row.rationaleLabel ?? "مبرر خصم التصفية المنظمة"), td("v", row.rationale || "—"));
       } else {
         tr.append(td("k", row.key), td("v num", row.value, 3));
       }
@@ -601,6 +601,42 @@ export function fillAdjustmentSection(
     }
     notesCell.appendChild(ul);
   }
+}
+
+/**
+ * §20 — decision A: the land key table rebuilt one figure per line, in the order they multiply (plot,
+ * rate after adjustments, discount, the apartment's share, land value) — the template's two-row table
+ * printed the plot next to the share-based land value with no share line between them.
+ */
+export function rebuildLandValueTable(
+  sec: Element,
+  rows: ReadonlyArray<{ key: string; value: string; total?: boolean }>,
+) {
+  if (rows.length === 0) return;
+  const landValue = normLabel("قيمة الأرض");
+  const table = [...sec.querySelectorAll("table")].find(
+    (t) =>
+      !t.classList.contains("mx") &&
+      [...t.querySelectorAll("td.k")].some((td) => normLabel(td.textContent ?? "") === landValue),
+  );
+  if (!table) return;
+  const doc = sec.ownerDocument;
+  const lines = rows.map((row) => {
+    const tr = doc.createElement("tr");
+    const k = doc.createElement("td");
+    k.className = "k";
+    k.textContent = row.key;
+    const v = doc.createElement("td");
+    v.className = "v num";
+    v.textContent = row.value;
+    if (row.total) {
+      tr.className = "total";
+      k.setAttribute("style", "background:inherit;color:inherit");
+    }
+    tr.append(k, v);
+    return tr;
+  });
+  (table.querySelector("tbody") ?? table).replaceChildren(...lines);
 }
 
 export function fillLoneValueSection(sec: Element, text: string) {
@@ -1418,10 +1454,11 @@ export function fillAttachmentAndGlossarySections(
     fill.searchScopeNotes,
   );
 
-  fillBulletListSection(
-    dom.querySelector('[data-sec="29"]'),
-    fill.specialAssumptionBullets,
-  );
+  const specialAssumptions = dom.querySelector('[data-sec="29"]');
+  // None selected: drop the section, not just its bullets — a bare «الافتراضات الخاصة» heading
+  // printed with nothing under it.
+  if (fill.specialAssumptionBullets?.length === 0) specialAssumptions?.remove();
+  else fillBulletListSection(specialAssumptions, fill.specialAssumptionBullets);
 
   rebuildDefinitionTable(
     dom.querySelector('[data-sec="37"]'),

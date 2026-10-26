@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Rules;
@@ -88,10 +89,77 @@ public class AppraisalHandOverPriceTests
         Assert.Equal(PartyTaskSubmissionStatus.Submitted, result!.Status);
     }
 
+    [Theory]
+    [InlineData("9,220,000")]
+    [InlineData("٩٬٢٢٠٬٠٠٠")]
+    public async Task The_handed_over_price_is_stored_normalised_and_the_old_return_note_is_cleared(string typed)
+    {
+        await using var rig = Arrange(typed, new FinalAnswer(9_220_000m));
+        var draft = await rig.Contexts.CaseStudy.PartyTaskSubmissions.SingleAsync(s => s.WorkflowTaskId == Appraisal);
+        draft.Status = PartyTaskSubmissionStatus.Reopened;
+        draft.ReturnNote = "صحّح سعر التقييم";
+        await rig.Contexts.CaseStudy.SaveChangesAsync();
+
+        var (result, errors) = await rig.Service.SubmitAsync(Appraisal, Appraiser);
+
+        Assert.Null(errors);
+        Assert.Null(result!.ReturnNote);
+        var stored = await rig.Contexts.CaseStudy.PartyTaskSubmissions.AsNoTracking().SingleAsync(s => s.WorkflowTaskId == Appraisal);
+        Assert.Null(stored.ReturnNote);
+        using var doc = JsonDocument.Parse(stored.PayloadJson);
+        Assert.Equal("9220000", doc.RootElement.GetProperty("evaluatorPrice").GetString());
+    }
+
+    [Theory]
+    [InlineData("970000.4")]
+    [InlineData("969999.5")]
+    public async Task A_price_accepted_within_the_slack_is_stored_as_the_final_value(string typed)
+    {
+        await using var rig = Arrange(typed, new FinalAnswer(970_000m));
+
+        var (result, errors) = await rig.Service.SubmitAsync(Appraisal, Appraiser);
+
+        Assert.Null(errors);
+        Assert.Equal(PartyTaskSubmissionStatus.Submitted, result!.Status);
+        var stored = await rig.Contexts.CaseStudy.PartyTaskSubmissions.AsNoTracking().SingleAsync(s => s.WorkflowTaskId == Appraisal);
+        using var doc = JsonDocument.Parse(stored.PayloadJson);
+        Assert.Equal("970000", doc.RootElement.GetProperty("evaluatorPrice").GetString());
+    }
+
+    [Fact]
+    public void The_final_price_rewrite_leaves_a_mismatch_or_no_final_untouched()
+    {
+        const string payload = """{"evaluatorPrice":"980000"}""";
+        Assert.Equal(payload, AppraisalHandOverPriceRules.WithFinalPrice(payload, 980_000m, 970_000m));
+        Assert.Equal(payload, AppraisalHandOverPriceRules.WithFinalPrice(payload, 980_000m, null));
+        Assert.Contains(
+            "\"970000\"",
+            AppraisalHandOverPriceRules.WithFinalPrice("""{"evaluatorPrice":970000.4}""", 970_000.4m, 970_000m));
+    }
+
+    [Fact]
+    public void Price_normalisation_leaves_a_non_number_untouched()
+    {
+        Assert.Equal("""{"evaluatorPrice":"abc"}""", PropertyAppraisalSubmissionValidator.NormalizePrice("""{"evaluatorPrice":"abc"}"""));
+        Assert.Equal("not json", PropertyAppraisalSubmissionValidator.NormalizePrice("not json"));
+        Assert.Contains("\"1000.5\"", PropertyAppraisalSubmissionValidator.NormalizePrice("""{"evaluatorPrice":"1,000.50"}"""));
+    }
+
     [Fact]
     public async Task An_unreadable_final_fails_closed()
     {
         await using var rig = Arrange("9220000", new FinalAnswer(Throws: true));
+
+        var (result, errors) = await rig.Service.SubmitAsync(Appraisal, Appraiser);
+
+        Assert.Null(result);
+        Assert.Equal(AppraisalHandOverPriceRules.UnverifiedAr, errors![AppraisalHandOverPriceRules.ErrorKey]);
+    }
+
+    [Fact]
+    public async Task A_timed_out_final_read_fails_closed_instead_of_a_500()
+    {
+        await using var rig = Arrange("9220000", new FinalAnswer(TimesOut: true));
 
         var (result, errors) = await rig.Service.SubmitAsync(Appraisal, Appraiser);
 
@@ -167,10 +235,12 @@ public class AppraisalHandOverPriceTests
     }
 
     /// <summary>The valuation port: an open request with passing gates and the given final (or a failed read).</summary>
-    private sealed class FinalAnswer(decimal? final = null, bool Throws = false) : IValuationRequestService
+    private sealed class FinalAnswer(decimal? final = null, bool Throws = false, bool TimesOut = false) : IValuationRequestService
     {
         public Task<decimal?> GetFinalOpinionValueAsync(Guid valuationRequestId, CancellationToken cancellationToken = default) =>
-            Throws ? throw new HttpRequestException("valuation down") : Task.FromResult(final);
+            Throws ? throw new HttpRequestException("valuation down")
+            : TimesOut ? throw new TaskCanceledException("HttpClient.Timeout")
+            : Task.FromResult(final);
 
         public Task<ValuationIssuanceGatesSnapshotDto?> GetIssuanceGatesAsync(
             Guid valuationRequestId,

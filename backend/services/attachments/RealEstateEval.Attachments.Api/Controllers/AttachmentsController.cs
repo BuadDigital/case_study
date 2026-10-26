@@ -16,6 +16,9 @@ namespace RealEstateEval.Attachments.Api.Controllers;
 [Authorize]
 public class AttachmentsController : ControllerBase
 {
+    public const string ScopeRequiredAr = "نطاق المرفقات ومفتاحه مطلوبان (scope و scopeKey)";
+    public const string ScopeKeyRequiredAr = "مفتاح نطاق المرفقات مطلوب (scopeKey)";
+
     private readonly IAttachmentService _attachments;
     private readonly IAttachmentLookup _lookup;
     private readonly IPermissionService _permissions;
@@ -35,12 +38,12 @@ public class AttachmentsController : ControllerBase
     [HttpGet]
     [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
     public async Task<ActionResult<IReadOnlyList<FileAttachmentMetaDto>>> List(
-        [FromQuery] string scope,
-        [FromQuery] string scopeKey,
+        [FromQuery] string? scope,
+        [FromQuery] string? scopeKey,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(scope) || string.IsNullOrWhiteSpace(scopeKey))
-            return this.BadRequestProblem("scope and scopeKey are required");
+            return this.BadRequestProblem(ScopeRequiredAr);
 
         var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
         return Ok(await _attachments.ListAsync(scope, scopeKey, actor, ct));
@@ -50,11 +53,11 @@ public class AttachmentsController : ControllerBase
     [HttpGet("own-valued-documents")]
     [Authorize(Policy = CapabilityPolicyNames.ManageAttachments)]
     public async Task<ActionResult<IReadOnlyList<OwnValuedDocumentDto>>> OwnValuedDocuments(
-        [FromQuery] string scopeKey,
+        [FromQuery] string? scopeKey,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(scopeKey))
-            return this.BadRequestProblem("scopeKey is required");
+            return this.BadRequestProblem(ScopeKeyRequiredAr);
 
         var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
         return Ok(await _attachments.ListOwnValuedDocumentsAsync(scopeKey, actor, ct));
@@ -176,7 +179,7 @@ public class AttachmentsController : ControllerBase
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(propertyId))
-            return this.BadRequestProblem("propertyId is required");
+            return this.BadRequestProblem("معرّف العقار مطلوب");
 
         var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
         return Ok(await _lookup.ListForPropertyAsync(propertyId, actor, ct));

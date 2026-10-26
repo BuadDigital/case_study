@@ -8,8 +8,10 @@ import {
   type ValuationReconciliationDto,
 } from "@platform/api-client";
 import { cn, useToast } from "@platform/ui-kit";
+import { invalidControlClass } from "@platform/app-shared/form-ux";
 
 import { Card, CardPad, PrimaryBtn } from "./atoms";
+import { KeepCodesTogether } from "./KeepCodesTogether";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import {
   alertOverridesFromRecon,
@@ -17,6 +19,7 @@ import {
   type AlertOverrideRecord,
 } from "./lib/final-opinion-state";
 import { methodologyAlertGroup, type MethodologyAlertGroup } from "./lib/methodology-alerts";
+import { rationaleMinimumError } from "./lib/rationale-minimum";
 import { apiConfig } from "./lib/shell-utils";
 
 const GROUP_COPY: Record<MethodologyAlertGroup, { note: string; none: string }> = {
@@ -57,10 +60,12 @@ export function MethodologyAlertsPanel({
   onReconSaved: (dto: ValuationReconciliationDto) => void;
 }) {
   const { showToast } = useToast();
-  const { reportSaveFailure, clearSaveErrors } = useValuationWorkErrors();
+  const { reportSaveFailure, clearSaveErrors, fieldErrors } = useValuationWorkErrors();
   const [alertOverrides, setAlertOverrides] = useState<AlertOverrideRecord>(
     () => alertOverridesFromRecon(recon),
   );
+  /** Decision B — a written override rationale shorter than 10 characters, per alert code. */
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
 
   // A reloaded reconciliation replaces the local overrides.
   const [syncedRecon, setSyncedRecon] = useState(recon);
@@ -76,6 +81,18 @@ export function MethodologyAlertsPanel({
   async function saveOverrides(next: AlertOverrideRecord) {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
+    const short: Record<string, string> = {};
+    for (const a of triggeredAlerts) {
+      if (a.severityKind !== "require_rationale") continue;
+      const message = rationaleMinimumError("مبرر تجاوز التنبيه", next[a.code]?.overrideRationale);
+      if (message) short[a.code] = message;
+    }
+    setRowErrors(short);
+    const firstShort = Object.values(short)[0];
+    if (firstShort) {
+      showToast(firstShort, "error");
+      return;
+    }
     // Problem 20: the dispositions save on their own (only this screen's alerts) — never through the
     // full reconciliation, which would wait on «مبرر استخدام طرق التقييم».
     onSavingChange(true);
@@ -102,6 +119,7 @@ export function MethodologyAlertsPanel({
     code: string,
     patch: Partial<AlertOverrideRecord[string]>,
   ) {
+    if (rowErrors[code]) setRowErrors((prev) => ({ ...prev, [code]: "" }));
     setAlertOverrides((prev) => ({
       ...prev,
       [code]: {
@@ -136,6 +154,7 @@ export function MethodologyAlertsPanel({
                   acknowledged: false,
                 }
               }
+              error={rowErrors[a.code] || fieldErrors[`methodologyAlertOverrides.${a.code}`]}
               onPatch={(patch) => patchOverride(a.code, patch)}
             />
           ))
@@ -158,10 +177,13 @@ export function MethodologyAlertsPanel({
 function MethodologyAlertRow({
   alert: a,
   override: ov,
+  error,
   onPatch,
 }: {
   alert: ValuationMethodologyAlertItemDto;
   override: { overrideRationale: string; acknowledged: boolean };
+  /** The rationale's refusal (too short), shown under the field. */
+  error?: string;
   onPatch: (patch: Partial<{ overrideRationale: string; acknowledged: boolean }>) => void;
 }) {
   const needsRationale = a.severityKind === "require_rationale";
@@ -203,16 +225,25 @@ function MethodologyAlertRow({
         </span>
       </div>
       {a.detailAr ? (
-        <p className="text-[11.5px] leading-5 text-text-2">{a.detailAr}</p>
+        <p className="text-[11.5px] leading-5 text-text-2">
+          <KeepCodesTogether text={a.detailAr} />
+        </p>
       ) : null}
       {needsRationale ? (
         <>
           <input
+            id={`alert-override-${a.code}`}
             value={ov.overrideRationale}
             placeholder="المبرر النصي لتجاوز التنبيه…"
+            aria-label={`مبرر تجاوز التنبيه ${a.number}`}
+            aria-invalid={error ? true : undefined}
             onChange={(e) => onPatch({ overrideRationale: e.target.value })}
-            className="rounded-[7px] border border-dashed border-border-md bg-surface px-2.5 py-[7px] text-xs"
+            className={cn(
+              "rounded-[7px] border border-dashed border-border-md bg-surface px-2.5 py-[7px] text-xs",
+              error && invalidControlClass,
+            )}
           />
+          {error ? <p className="m-0 text-[11px] text-danger-text">{error}</p> : null}
         </>
       ) : null}
       {needsAck ? (
