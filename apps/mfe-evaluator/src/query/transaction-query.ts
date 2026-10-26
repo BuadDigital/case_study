@@ -14,7 +14,18 @@ const NO_DEEDS: TransactionDeedDto[] = [];
  */
 export { useTransactionByPropertyQuery };
 
-/** The live deeds of a linked property; a stable empty list for an ordinary property. */
+/**
+ * Phase 5 (decision 2026-10-19): the live deeds of a linked property, for the report and the
+ * appraiser's window.
+ *
+ * How it works: reads the deed's transaction (`useTransactionByPropertyQuery`, shared cache
+ * with the case-study page) and passes it to `linkedPropertyDeeds`, which drops removed deeds
+ * and returns them in transaction order only when two or more remain.
+ *
+ * Edge cases: an ordinary property, a deed with no transaction (404 → null) or a transaction
+ * still loading → the same module-level empty array every render, so callbacks and memos that
+ * depend on it (the report meta) do not rebuild for nothing.
+ */
 export function useLinkedPropertyDeeds(propertyId: string | null | undefined): TransactionDeedDto[] {
   const { data } = useTransactionByPropertyQuery(propertyId);
   const deeds = linkedPropertyDeeds(data);

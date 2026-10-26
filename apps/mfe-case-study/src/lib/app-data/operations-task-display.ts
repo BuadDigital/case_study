@@ -53,6 +53,8 @@ export const OPERATIONS_TASK_PRIORITY_COLORS: Record<string, string> = {
   low: "#8a8d96",
 };
 
+// Decision 2026-10-18: «معاملة» now names the transaction above the deeds, so a task scoped to
+// one deed (scope "transaction") reads «صك» and a multi-deed task «عدة صكوك».
 export const OPERATIONS_TASK_SCOPE_LABELS: Record<string, string> = {
   transaction: "صك",
   work_order: "أمر عمل",

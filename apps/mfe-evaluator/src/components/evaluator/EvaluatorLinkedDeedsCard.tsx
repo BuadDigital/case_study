@@ -9,7 +9,16 @@ import { fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
 import { MobileRecordCard, MobileRecordList } from "@platform/ui-kit";
 import { ValCard } from "./EvaluatorHtmlPrimitives";
 
-/** Sum of the deed areas in m², or "—" when any deed has none. */
+/**
+ * The total area of a linked property's deeds, as printed under the deeds table.
+ *
+ * How it works: parses each deed's `area` with `parseLocaleNumber` (so "1,250" and Arabic
+ * digits such as "٧٥٠٫٥" both read), sums them and formats the sum with up to two decimals
+ * plus " م²".
+ *
+ * Edge cases: any deed without a readable area (null, empty, text) → "—" rather than a partial
+ * total that would understate the property; an empty list → "—".
+ */
 export function linkedDeedsTotalArea(deeds: readonly Pick<TransactionDeedDto, "area">[]): string {
   const areas = deeds.map((d) => parseLocaleNumber(d.area ?? ""));
   return areas.length > 0 && areas.every((a) => Number.isFinite(a))
@@ -18,8 +27,18 @@ export function linkedDeedsTotalArea(deeds: readonly Pick<TransactionDeedDto, "a
 }
 
 /**
- * Phase 5 (decision 2026-10-19): a linked property is valued as one — the appraiser sees every
- * deed of the transaction, its area and the total, above the documents.
+ * The «صكوك العقار» card on the appraiser's basic screen for a linked property.
+ *
+ * How it works: phase 5 (decision 2026-10-19) — a linked property is valued as one, so the
+ * appraiser sees every deed of the transaction above the documents. Takes the live `deeds`
+ * (from `linkedPropertyDeeds`), the link kind label and the transaction number; prints a note
+ * («عقار مرتبط — kind · المعاملة number»), then one row per deed: label
+ * (`transactionDeedLabelOf`, registry number for a registry deed), date
+ * (`transactionDeedDateOf`), work order and area, and a total-area row
+ * (`linkedDeedsTotalArea`). Phones get one card per deed instead of the table.
+ *
+ * Edge cases: fewer than two deeds → renders nothing (an ordinary one-deed property); no link
+ * kind or no transaction number → that part of the note is left out; a missing date/area → "—".
  */
 export function EvaluatorLinkedDeedsCard({
   deeds,

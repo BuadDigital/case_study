@@ -58,6 +58,7 @@ const AllTransactionsRow = memo(function AllTransactionsRow({
           label={meta.deedCell}
           loading={ctx.isTaskOpening(meta.task.id)}
           trailing={rowAttentionTrailing(ctx, meta.task)}
+          // Linked properties (2026-10-19): the deed cell also shows its transaction number, with the deed count when it has several.
           subtitle={
             <TransactionNumberBadge
               number={meta.transactionNumber}

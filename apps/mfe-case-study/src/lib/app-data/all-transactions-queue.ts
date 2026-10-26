@@ -80,14 +80,22 @@ export type AllTransactionsQueueRowMeta = {
   district: string;
   phaseLabel: string;
   propertyId?: string;
-  /** PR-… once official, else the D- draft number; null when the deed has no transaction yet. */
+  /** PR-… once official, else the TMP- temporary number; null when the deed has no transaction yet. */
   transactionNumber: string | null;
+  /** Deeds in this deed's transaction; above 1 they collapse into one queue row (decision 2026-10-18). */
   transactionDeedCount: number;
 };
 
 /**
- * Groups sibling workflow tasks that belong to the same property / slot — and, since phase 4,
- * every deed of a transaction with several deeds into one row (the transaction is the property).
+ * The key that decides which «كل المعاملات» rows collapse into one: sibling workflow tasks of the
+ * same property / slot — and, since phase 4, every deed of a transaction with several deeds
+ * (the transaction is the property).
+ *
+ * How it works, first match wins: 1) the task has a transaction id and the deed's transaction
+ * holds more than one deed → `tx::<transactionId>`; 2) a property id → `<po>::prop::<id>`;
+ * 3) otherwise `<po>::deed::<deed or —>::ord::<property ordinal>`.
+ *
+ * Edge cases: a one-deed transaction keeps its per-property key, so ordinary deeds group as before.
  */
 function allTransactionsPropertyGroupKey(
   row: Pick<

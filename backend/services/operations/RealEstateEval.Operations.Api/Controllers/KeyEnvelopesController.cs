@@ -130,6 +130,14 @@ public class KeyEnvelopesController : ControllerBase
     }
 
     /// <summary>Decision 2026-10-20: where a deed's matching key is now (it came back, went to court, is lost).</summary>
+    /// <remarks>
+    /// How it works: passes the envelope id, assignment id and request (KeyLocation in_envelope / with_user /
+    /// returned_court / missing, plus holder id or label for with_user) with the caller's id and name to
+    /// <c>SetAssignmentKeyLocationAsync</c>; returns the refreshed envelope. An error containing «غير موجود»
+    /// (envelope or assignment) → 404, any other refusal → 400.
+    /// Edge cases: with_user needs a named holder here (no fallback to the actor, unlike the field trial);
+    /// there is no key entity — the place lives on the deed's assignment in the envelope.
+    /// </remarks>
     [HttpPost("{id:guid}/assignments/{assignmentId:guid}/key-location")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitPartyWork)]
     public async Task<ActionResult<KeyEnvelopeDto>> SetKeyLocation(

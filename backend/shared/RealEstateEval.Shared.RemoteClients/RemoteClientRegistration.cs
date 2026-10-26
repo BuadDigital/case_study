@@ -77,6 +77,7 @@ public static class RemoteClientRegistration
     {
         services.AddUpstreamHttp(configuration);
         services.AddHttpClient<IValuationRequestService, HttpValuationRequestService>(WithLookupTimeout);
+        // Phase 5 (decision 2026-10-19): merge / unmerge folds the deeds' valuation requests on the Valuation host.
         services.AddHttpClient<IValuationRequestFolding, HttpValuationRequestFolding>(WithLookupTimeout);
         services.AddHttpClient<IValuationReportReopenCommands, HttpValuationReportReopenCommands>(WithLookupTimeout);
         return services;

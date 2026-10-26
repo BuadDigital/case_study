@@ -222,6 +222,7 @@ function buildReplayDeps(userId: string): OfflineSyncDeps {
         assignmentId?: string;
         status?: string;
         notes?: string | null;
+        // Decision 2026-10-20: where the matching key went, recorded offline in the field.
         keyLocation?: string | null;
       }>(input.payloadJson);
       if (!payload) return invalidPayloadFailure("بيانات تأكيد غير صالحة");

@@ -50,6 +50,18 @@ public sealed class HttpCaseStudyCommands(
             Setting,
             cancellationToken);
 
+    /// <summary>
+    /// Decision 2026-10-19: asks Case Study to fix the deed's transaction PR reference (drawn now if missing)
+    /// and returns the numbers derived from it (PRV for the report).
+    /// </summary>
+    /// <remarks>
+    /// How it works: POSTs an empty body to /api/case-study-dispatch/properties/{propertyId}/confirm-reference
+    /// through <c>UpstreamJson.PostForResultAsync</c>; returns (numbers, null) on success.
+    /// Edge cases: a problem answer returns its first non-blank message (or «تعذّر تثبيت الرقم المرجعي.»); a
+    /// success whose ReferenceNumber is empty also counts as a failure, so a report number is never taken
+    /// from a transaction without its official PR. Case Study confirms idempotently, so a retry never draws
+    /// a second PR.
+    /// </remarks>
     public async Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(
         Guid propertyId,
         CancellationToken cancellationToken = default)

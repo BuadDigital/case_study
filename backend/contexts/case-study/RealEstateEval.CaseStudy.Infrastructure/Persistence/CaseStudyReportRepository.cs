@@ -91,6 +91,14 @@ public sealed class CaseStudyReportRepository(CaseStudyDbContext db) : ICaseStud
     public Task<Guid> ResolveStudyTaskIdAsync(Guid taskId, CancellationToken cancellationToken) =>
         StudyHolder.HolderTaskAsync(db, taskId, cancellationToken);
 
+    /// <summary>Phase 4: one case-study parent task per live deed of the holder task's transaction.</summary>
+    /// <remarks>
+    /// How it works: 1) loads the holder task; 2) lists the live deeds of its deed's transaction
+    /// (StudyHolder.TransactionPropertyIdsAsync); 3) loads their non-cancelled top-level case-study
+    /// tasks, newest first, keeps the newest per deed; 4) puts the holder task first.
+    /// Edge cases: unknown task → []; a task without a property → just that task; a deed not
+    /// distributed yet has no parent task and is simply absent (issue/reopen then skip it).
+    /// </remarks>
     public async Task<IReadOnlyList<WorkflowTask>> ListTransactionParentTasksAsync(
         Guid holderTaskId,
         CancellationToken cancellationToken)
@@ -112,6 +120,13 @@ public sealed class CaseStudyReportRepository(CaseStudyDbContext db) : ICaseStud
         return perDeed.OrderBy(t => t.Id == holderTaskId ? 0 : 1).ToList();
     }
 
+    /// <summary>The live deeds of the holder task's transaction, tracked (reopen reads and clears their Enfaz stamps).</summary>
+    /// <remarks>
+    /// How it works: loads the holder task, lists its transaction's live deeds through
+    /// StudyHolder.TransactionPropertyIdsAsync and loads them tracked.
+    /// Edge cases: a task with no property (or unknown) → [] and the caller falls back to the lone
+    /// deed; a deed alone in its transaction → just that deed.
+    /// </remarks>
     public async Task<IReadOnlyList<WorkOrderProperty>> ListTransactionPropertiesForUpdateAsync(
         Guid holderTaskId,
         CancellationToken cancellationToken)

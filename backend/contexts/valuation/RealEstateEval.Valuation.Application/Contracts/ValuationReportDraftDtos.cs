@@ -3,11 +3,6 @@ using System.Text.Json;
 
 namespace RealEstateEval.Valuation.Application.Contracts;
 
-/// <summary>
-/// The valuation-report draft of a request as the specialist and the appraiser read it. An absent
-/// draft (the appraiser has not handed over yet, or the specialist has not started) reads as
-/// <see cref="Status"/> <c>none</c> with <see cref="PackageStatus"/> telling why.
-/// </summary>
 /// <summary>The request's report number once fixed (decision 2026-10-19: PRV-… from the transaction's PR root).</summary>
 public class ValuationReportNumberDto
 {
@@ -15,6 +10,11 @@ public class ValuationReportNumberDto
     public string ReportNumber { get; init; } = "";
 }
 
+/// <summary>
+/// The valuation-report draft of a request as the specialist and the appraiser read it. An absent
+/// draft (the appraiser has not handed over yet, or the specialist has not started) reads as
+/// <see cref="Status"/> <c>none</c> with <see cref="PackageStatus"/> telling why.
+/// </summary>
 public class ValuationReportDraftDto
 {
     public Guid ValuationRequestId { get; init; }

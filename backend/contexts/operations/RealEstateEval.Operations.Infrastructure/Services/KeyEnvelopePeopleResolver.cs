@@ -62,6 +62,16 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
         return list[0]!;
     }
 
+    /// <summary>Envelope DTOs with every person shown by current display name instead of an id or stale label.</summary>
+    /// <remarks>
+    /// How it works: 1) collects user-id candidates from creator, handoff parties, timeline actors,
+    /// trial confirmers, and (custody, 2026-10-20) each deed's key holder and the envelope holder;
+    /// 2) resolves them in one batch; 3) rebuilds each DTO with <c>Fix</c> — a value that already looks
+    /// like a name stays, otherwise the user id (or a Guid-looking value) maps to its display name.
+    /// Edge cases: a blank holder / key-holder label stays blank (e.g. a key that is not with_user has
+    /// none) instead of being turned into a looked-up name; the rebuilt DTO now also carries
+    /// OperationsTaskId and the custody fields, which the copy would otherwise drop.
+    /// </remarks>
     public async Task<IReadOnlyList<KeyEnvelopeDto>> WithResolvedPeopleAsync(
         IReadOnlyList<KeyEnvelopeDto> rows,
         CancellationToken cancellationToken = default)
@@ -84,6 +94,7 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
             foreach (var a in row.Assignments)
             {
                 CollectUserIdCandidate(ids, null, a.ConfirmedByName);
+                // Custody (decision 2026-10-20): key and envelope holders get their display names resolved too.
                 CollectUserIdCandidate(ids, a.KeyHolderUserId, a.KeyHolderLabel);
             }
             CollectUserIdCandidate(ids, row.HolderUserId, row.HolderLabel);
@@ -131,6 +142,7 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
             CreatedAtUtc = row.CreatedAtUtc,
             UpdatedAtUtc = row.UpdatedAtUtc,
             OperationsTaskId = row.OperationsTaskId,
+            // Custody fields (decision 2026-10-20) carried through, with the holder's label fixed to the person's current name.
             HolderKind = row.HolderKind,
             HolderUserId = row.HolderUserId,
             HolderLabel = string.IsNullOrWhiteSpace(row.HolderLabel)

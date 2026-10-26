@@ -60,6 +60,23 @@ public sealed class TransactionCommandService : ITransactionCommands
         _time = time ?? TimeProvider.System;
     }
 
+    /// <summary>
+    /// Joins the chosen deeds' transactions into the target (case specialist only, with a link kind and
+    /// a reason). Every deed involved must pass the intake stage check before anything moves.
+    /// </summary>
+    /// <remarks>
+    /// How it works: 1) role, reason (5+ chars), link kind and a non-empty deed list; 2) loads the
+    /// target tracked and validates it; 3) loads the chosen deeds and their source transactions;
+    /// 4) checks every chosen deed (BlockedReason), every live target deed and every other deed the
+    /// sources bring along (DeedStageBlock) — all before any write; 5) moves every source deed to the
+    /// target and closes each source (MergedIntoTransactionId/At/By); 6) sets link kind + reason and
+    /// fixes StudyHolderPropertyId once; saves; 7) writes a timeline entry per moved and per staying
+    /// deed and a TRANSACTION_MERGED audit row; 8) folds the moved deeds' valuation requests into the
+    /// holder's; returns the refreshed detail.
+    /// Edge cases: a missing deed id → «أحد الصكوك غير موجود»; the holder is chosen from the target's
+    /// own deeds only, so a moved deed with an older work order never steals the study; a merge before
+    /// distribution is allowed (stage rule 2026-10-20) — the dispatch folds those deeds later.
+    /// </remarks>
     public async Task<(TransactionDetailDto? Result, string? Error)> MergeAsync(
         Guid targetTransactionId,
         MergeTransactionsRequest request,
@@ -117,6 +134,7 @@ public sealed class TransactionCommandService : ITransactionCommands
         var now = _time.UtcNow();
         var actorId = ActorId(actor);
         var moved = new List<WorkOrderProperty>();
+        // Each source hands all its deeds to the target and stays behind as a closed row pointing at it.
         foreach (var source in sources)
         {
             foreach (var deed in source.Properties.ToList())
@@ -191,6 +209,14 @@ public sealed class TransactionCommandService : ITransactionCommands
         return (await _query.GetAsync(target.Id, actor, cancellationToken), null);
     }
 
+    /// <summary>Phase 5: asks the valuation context to fold the moved deeds' open requests into the holder's.</summary>
+    /// <remarks>
+    /// How it works: calls IValuationRequestFolding.FoldAsync with the moved deed ids and the holder
+    /// deed; the valuation side marks each folded request merged (idempotent) with MergedIntoRequestId.
+    /// Edge cases: no folding port (tests / composition without valuation) or no moved deed → no-op; a
+    /// failure after the merge committed is only logged — screens still route by the holder and the
+    /// next merge/unmerge repeats the call; cancellation is not swallowed.
+    /// </remarks>
     private async Task FoldValuationRequestsAsync(
         List<Guid> movedPropertyIds,
         Guid holderPropertyId,
@@ -209,6 +235,11 @@ public sealed class TransactionCommandService : ITransactionCommands
         }
     }
 
+    /// <summary>The reverse of the fold for a deed taken out; best effort like the fold, a failure is only logged.</summary>
+    /// <remarks>
+    /// How it works: calls IValuationRequestFolding.UnfoldAsync for the one deed so it gets its own
+    /// valuation request back. Edge cases: no folding port → no-op; cancellation is rethrown.
+    /// </remarks>
     private async Task UnfoldValuationRequestAsync(Guid propertyId, CancellationToken cancellationToken)
     {
         if (_valuationFolding is null) return;
@@ -222,6 +253,20 @@ public sealed class TransactionCommandService : ITransactionCommands
         }
     }
 
+    /// <summary>
+    /// Takes one deed back out into a new draft (TMP) transaction of its own — allowed only before the
+    /// official PR number, with a reason.
+    /// </summary>
+    /// <remarks>
+    /// How it works: 1) role and reason (5+ chars); 2) loads the transaction tracked and runs
+    /// ValidateUnmerge with the live deed count; 3) draws a fresh TMP number and moves the deed to the
+    /// new transaction; 4) drops link kind and reason when fewer than two live deeds remain; saves;
+    /// 5) writes the deed's timeline entry and a TRANSACTION_DEED_UNMERGED audit row; 6) unfolds the
+    /// deed's valuation request; returns the remaining transaction's detail.
+    /// Edge cases: once the PR number exists nothing comes out; taking out the holder deed leaves its
+    /// StudyHolderPropertyId pointing at a deed no longer here, and TransactionStudyRules.Holder then
+    /// falls back to the first live deed; a TMP counter error aborts before any move.
+    /// </remarks>
     public async Task<(TransactionDetailDto? Result, string? Error)> UnmergeDeedAsync(
         Guid transactionId,
         UnmergeTransactionDeedRequest request,
@@ -248,6 +293,7 @@ public sealed class TransactionCommandService : ITransactionCommands
         deed!.TransactionId = fresh.Id;
         deed.Transaction = fresh;
         fresh.Properties.Add(deed);
+        // A transaction left with one deed is no longer linked: drop its link kind and reason.
         if (transaction.Properties.Count(p => !p.IsRemoved) < 2)
         {
             transaction.LinkKind = null;
@@ -285,6 +331,18 @@ public sealed class TransactionCommandService : ITransactionCommands
         return (await _query.GetAsync(transaction.Id, actor, cancellationToken), null);
     }
 
+    /// <summary>
+    /// Merge dialog search (three characters at least) over deed, registry and PO numbers in the POs
+    /// the actor may see; every hit carries its transaction and why it cannot join, if it cannot.
+    /// </summary>
+    /// <remarks>
+    /// How it works: 1) trims the text, under three characters returns nothing; 2) resolves the POs the
+    /// actor may see; 3) matches live deeds by deed, registry or PO number, newest work order first, at
+    /// most 20; 4) counts each hit's live deeds per transaction; 5) maps each hit with its transaction
+    /// number and TransactionMergeRules.BlockedReason against the target.
+    /// Edge cases: a null visibility set means the actor sees every PO; blocked deeds are still listed
+    /// (with the reason) so the specialist sees why a deed cannot join.
+    /// </remarks>
     public async Task<IReadOnlyList<TransactionDeedSearchHitDto>> SearchDeedsAsync(
         Guid targetTransactionId,
         string query,

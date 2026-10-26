@@ -143,6 +143,22 @@ function AssignmentStatusBadge({ status }: { status?: string | null }) {
   );
 }
 
+/**
+ * The inspector's «المفتاح» tab: the key envelope's state for this deed and the trial actions.
+ *
+ * How it works:
+ * - Reads the shared key gate through `useInspectorKeyAvailability(task)`.
+ * - «التسليم للمعاين» comes from `keyHandedToInspectorText`, compared against this deed's own
+ *   inspector (the task assignee) — decided on the client because the operations service
+ *   cannot see case-study tasks (decision 2026-10-20).
+ * - When the keys come from an envelope, shows the envelope's one holder and where this deed's
+ *   key is now (custody, decision 2026-10-20).
+ * - Offers «تأكيد استلام المناولة» while a handoff waits, and the trial result buttons while the
+ *   assignment is still open; each action re-reads the gate on success.
+ *
+ * Edge cases: an envelope held by another deed's inspector reads «الظرف عند … (معاين صك آخر)»,
+ * not «تم التسليم».
+ */
 export function InspectorKeyStatusTab({
   task,
   vacantLand = false,
@@ -167,6 +183,8 @@ export function InspectorKeyStatusTab({
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // Decision 2026-10-20: «handed to the inspector» compares the envelope / key holder with
+  // this deed's own inspector (the task assignee), not with whoever happens to view it.
   const handedLabel = keyHandedToInspectorText(
     { ...availability, keyHandedToInspector },
     { id: task.assigneeId ?? null, name: task.assigneeName ?? null },
@@ -176,7 +194,18 @@ export function InspectorKeyStatusTab({
   const loadProblem = inspectorKeyGateProblem(availability.status);
   const fromEnvelope = availability.source === PropertyKeyGateSources.Envelope;
 
-  /** The trial result, and for a match where the key went (decision 2026-10-20). */
+  /**
+   * Records the field trial of this deed's key: the result, and for a match where the key went
+   * (decision 2026-10-20).
+   *
+   * How it works: needs the API config, `envelopeId` and `assignmentId` (else does nothing);
+   * sends `{ status: next, keyLocation }` with `confirmKeyEnvelopeAssignment`, then re-reads the
+   * gate (`retry`). «مطابق — عاد المفتاح للظرف» sends `in_envelope`, «مطابق — المفتاح معي» sends
+   * `with_user` (the server makes the recording user the key's holder); «غير مطابق» sends null
+   * (the server then defaults the place to `in_envelope`).
+   *
+   * Edge cases: a refused call shows «تعذّر تحديث حالة المطابقة» and keeps the buttons.
+   */
   const confirmAssignment = async (
     next: "matched" | "unmatched",
     keyLocation: string | null = null,
@@ -227,6 +256,7 @@ export function InspectorKeyStatusTab({
       <FieldsGrid>
         <FieldBox label="حالة المفاتيح" value={keysLabel} />
         <FieldBox label="التسليم للمعاين" value={handedLabel} />
+        {/* Custody (decision 2026-10-20): the envelope's one holder and where this deed's key is now. */}
         {fromEnvelope ? (
           <>
             <FieldBox
@@ -273,6 +303,7 @@ export function InspectorKeyStatusTab({
         </Note>
       ) : null}
 
+      {/* A matched key is recorded with its place: back in the envelope, or kept by the inspector. */}
       {showAssignmentActions ? (
         <div className="mt-4 flex flex-wrap gap-2">
           <Button

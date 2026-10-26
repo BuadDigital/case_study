@@ -159,6 +159,8 @@ export function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
     district: dto.district?.trim() || undefined,
     propertyType: dto.propertyType?.trim() || undefined,
     classification: dto.classification?.trim() || undefined,
+    // Linked properties (decision 2026-10-18): the deed's transaction, its number and the holder
+    // deed that carries the one study, so queues can group and label deeds by transaction.
     transactionNumber: dto.transactionNumber?.trim() || undefined,
     transactionId: dto.transactionId?.trim() || undefined,
     transactionStudyHolderPropertyId: dto.transactionStudyHolderPropertyId?.trim() || undefined,

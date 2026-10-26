@@ -13,7 +13,7 @@ public interface ITransactionRepository
         DateTime nowUtc,
         CancellationToken cancellationToken);
 
-    /// <summary>Next yearly official reference PR-{year}-{seq}, or the reason it could not be issued.</summary>
+    /// <summary>Next yearly official reference PR-{YY}-{seq}, or the reason it could not be issued.</summary>
     Task<(string? Reference, string? Error)> AllocateOfficialReferenceAsync(
         DateTime nowUtc,
         CancellationToken cancellationToken);

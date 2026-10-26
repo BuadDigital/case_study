@@ -55,6 +55,18 @@ function TileButton({
   );
 }
 
+/**
+ * The «نتيجة المطابقة» dialog for one deed's key trial.
+ *
+ * How it works: the user picks a result tile (`MATCH_RESULT_TILES`); for a match or partial
+ * match (`matchResultHasKeyToPlace`) a second tile row asks where the matching key is now
+ * (`KEY_PLACE_TILES`: back in the envelope / kept with me); a note field appears for anything
+ * but a full match. Save runs `validateMatchResult` and passes status, note and key place to
+ * `onSave`, or shows the validation error.
+ *
+ * Edge cases: decision 2026-10-20 — no place tile clicked reads as «back in the envelope» (that
+ * tile shows selected and that is what is saved); a result with no key to place sends null.
+ */
 export function MatchResultModal({
   deed,
   busy,
@@ -130,6 +142,8 @@ export function MatchResultModal({
               ))}
             </div>
           </div>
+          {/* Decision 2026-10-20: a deed whose key matched records where that key is now;
+              nothing picked means it stays in the envelope. */}
           {matchResultHasKeyToPlace(sel) ? (
             <div>
               <Label>أين المفتاح المطابق الآن؟</Label>

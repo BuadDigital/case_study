@@ -149,6 +149,8 @@ export function KeyEnvelopeDetailPage({
               ) : null}
             </div>
 
+            {/* Decision 2026-10-20: while the reviewer holds the envelope and every one of our deeds
+                was tried with its matching key back, hint that it can go back to the court. */}
             {env.readyForCourtReturn && env.status === "reviewer" ? (
               <div
                 className="mt-3.5 flex items-center gap-[11px] rounded-[10px] px-[22px] py-3 text-[12.5px] font-semibold leading-relaxed"
@@ -192,11 +194,13 @@ export function KeyEnvelopeDetailPage({
               <KeysPpCell label="مستلم الظرف">
                 {displayPersonName(env.createdByName)}
               </KeysPpCell>
+              {/* Decision 2026-10-20: the envelope's one explicit holder (changes only when the receiver confirms). */}
               <KeysPpCell label="عند من الآن">
                 {envelopeHolderText(env)}
               </KeysPpCell>
               <KeysPpCell label="عدد المفاتيح">
                 <span className="tabular-nums">{env.keysCountActual}</span>
+                {/* Keys in the envelope that opened none of our deeds — they stay in it and go back to court. */}
                 {otherKeysInEnvelope(env) > 0 ? (
                   <span className="ms-1 text-[11px] text-text-3">
                     (منها {otherKeysInEnvelope(env)} لا تخص صكوكنا)

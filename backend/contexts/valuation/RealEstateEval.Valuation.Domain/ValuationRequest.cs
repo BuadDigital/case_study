@@ -25,12 +25,19 @@ public class ValuationRequest
     public DateTime UpdatedAtUtc { get; private set; }
 
     /// <summary>
-    /// The report number PRV-{year}-{seq}, derived from the transaction's official reference the
+    /// The report number PRV-{YY}-{seq}, derived from the transaction's official reference the
     /// moment the appraiser approves the report (decision 2026-10-19). Null until then; never
     /// changes afterwards (a reopened report keeps the number and takes a version suffix).
     /// </summary>
     public string? ReportNumber { get; private set; }
 
+    /// <summary>Fixes the PRV-… report number on the request, once.</summary>
+    /// <remarks>
+    /// How it works: trims the given number; stores it and stamps UpdatedAtUtc only when it is not
+    /// blank and the request has no number yet.
+    /// Edge cases: a second call (reopen, retry, a different number) is a silent no-op, so the printed
+    /// number never changes (decision 2026-10-19); a blank number is ignored.
+    /// </remarks>
     public void AssignReportNumber(string reportNumber, DateTime nowUtc)
     {
         var trimmed = (reportNumber ?? "").Trim();
@@ -46,6 +53,14 @@ public class ValuationRequest
     public Guid? MergedIntoRequestId { get; private set; }
 
     /// <summary>Folds an open request into the holder's; a closed request is left alone.</summary>
+    /// <remarks>
+    /// How it works: returns false for a done request, and for one already merged into the same
+    /// <paramref name="holderRequestId"/>; otherwise sets status merged, MergedIntoRequestId and
+    /// UpdatedAtUtc and returns true (the caller counts and saves only the true ones).
+    /// Edge cases: idempotent (phase 5). The target may be null — a merge before distribution
+    /// (2026-10-21) folds before the holder has a request; a later fold with the holder's new request
+    /// re-points the row, because only the same target counts as «already merged».
+    /// </remarks>
     public bool MarkMerged(Guid? holderRequestId, DateTime nowUtc)
     {
         if (Status == ValuationRequestStatus.Done) return false;
@@ -57,6 +72,10 @@ public class ValuationRequest
     }
 
     /// <summary>The deed left the transaction: its request is its own again.</summary>
+    /// <remarks>
+    /// How it works: only a merged request changes — status back to progress, MergedIntoRequestId
+    /// cleared, UpdatedAtUtc stamped, returns true; any other status returns false (idempotent).
+    /// </remarks>
     public bool Unmerge(DateTime nowUtc)
     {
         if (Status != ValuationRequestStatus.Merged) return false;

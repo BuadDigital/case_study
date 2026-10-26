@@ -34,6 +34,7 @@ public static class KeyEnvelopeMapper
         CreatedAtUtc = row.CreatedAtUtc,
         UpdatedAtUtc = row.UpdatedAtUtc,
         OperationsTaskId = row.OperationsTaskId,
+        // Custody (decision 2026-10-20): the envelope's single holder and the computed «ready to go back to court» hint.
         HolderKind = row.HolderKind,
         HolderUserId = row.HolderUserId,
         HolderLabel = row.HolderLabel,

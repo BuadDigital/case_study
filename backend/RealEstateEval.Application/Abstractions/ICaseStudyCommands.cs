@@ -25,6 +25,14 @@ public interface ICaseStudyCommands
     /// numbers derived from it; also stamps the valuation report number on the appraisal
     /// package. Called by Valuation when the appraiser approves the report. Idempotent.
     /// </summary>
+    /// <remarks>
+    /// How it works (Case Study owns it, numbering §10, decision 2026-10-19/20): 1) the deed's
+    /// transaction draws its official PR-YY-seq if it still carries TMP-…; 2) the PRV-… report number
+    /// is derived from that root and stamped on the appraisal package of every deed of the
+    /// transaction (one report, uploaded to Enfaz per deed); 3) returns transaction id, PR, PRC and PRV.
+    /// Edge cases: PR is drawn once and never reused — a later call (reopen, retry) returns the same
+    /// numbers; on failure Result is null and Error carries the Arabic reason.
+    /// </remarks>
     Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(
         Guid propertyId,
         CancellationToken cancellationToken = default);

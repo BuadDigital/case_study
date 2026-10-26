@@ -240,6 +240,13 @@ public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : Contr
     /// its official PR reference (if it had none) and the PRV report number is returned and stamped
     /// on the appraisal package.
     /// </summary>
+    /// <remarks>
+    /// How it works: hands the property id to <c>ICaseStudyCommands.ConfirmTransactionReferenceAsync</c>
+    /// (draws PR once, stamps PRV on every deed's appraisal package) and returns its numbers; an error
+    /// answer becomes a 400 problem carrying the Arabic message.
+    /// Edge cases (decision 2026-10-19): idempotent — an already confirmed transaction returns its PR
+    /// unchanged, so a retried or reopened approval never draws a second number (gap-free counter).
+    /// </remarks>
     [HttpPost("properties/{propertyId:guid}/confirm-reference")]
     public async Task<ActionResult<CaseStudyTransactionNumbersDto>> ConfirmTransactionReference(
         Guid propertyId,

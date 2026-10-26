@@ -35,6 +35,16 @@ const CASE_STUDY_ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
   },
 ];
 
+/**
+ * Whether a task is a row of the case-study active-transactions list.
+ *
+ * How it works: keeps `case-study-property` tasks in the case-study or done phase, after
+ * dropping folded ones (`isFoldedCaseStudyTask`).
+ *
+ * Edge cases: phase 4 — one study per transaction, so a deed folded into another deed's study
+ * is not a row (the holder deed's row carries the study); the system-upload list below keeps
+ * folded deeds, because every deed is uploaded to Enfaz on its own.
+ */
 function taskMatchesCaseStudy(task: WorkflowTask): boolean {
   if (task.kind !== "case-study-property") return false;
   // Phase 4: one study per transaction — a deed folded into another deed's study is not a row.

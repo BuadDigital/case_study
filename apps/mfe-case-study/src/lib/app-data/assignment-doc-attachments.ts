@@ -423,6 +423,18 @@ function readCachedDocs(
   return docCache.get(cacheKey(kind, poNumber, propertyId)) ?? [];
 }
 
+/**
+ * Finds the cached document of one kind that a property's saved file name points at.
+ *
+ * How it works: reads the cached documents of (kind, PO, property). With no expected name it returns the first
+ * one. Otherwise it returns the document whose name is equal to the expected name, or equal once both sides
+ * are reduced with `storedFileNameOf`.
+ *
+ * Edge cases and how they were fixed: forms keep the name of the file the user picked, while the attachments
+ * service stores a cleaned-up name (a file called `.deed.pdf` is stored as `deed.pdf`). An exact comparison
+ * therefore missed the document, and the deed vanished from the documents checklist ("mandatory document
+ * not uploaded"). Comparing the stored forms closes that gap. No document at all returns `null`.
+ */
 export function getCachedPropertyDocMatching(
   kind: PropertyDocKind,
   poNumber: string,
@@ -442,9 +454,15 @@ export function getCachedPropertyDocMatching(
 }
 
 /**
- * The name the attachments service keeps for an upload: no directory part, no reserved
- * characters, no leading or trailing dots. Forms keep the name the user's file had, so lookups
- * compare both sides in this form (a file called `.deed.pdf` is stored as `deed.pdf`).
+ * The name the attachments service keeps for an uploaded file.
+ *
+ * How it works (mirrors `AttachmentUploadRules.SanitizeFileName` on the server, in this order): keep only the part
+ * after the last `\`, `/` or `:`; remove reserved characters (`<>:"/\|?*` and control characters); trim; strip
+ * leading and trailing dots; trim again; keep only the LAST 200 characters of a long name.
+ *
+ * Edge cases: forms keep the user's own file name, so every lookup by name must compare both sides through this
+ * function (`.deed.pdf` and `deed.pdf` are the same stored file). If the server's rule changes, change this
+ * function with it — `stored-file-name.test.ts` pins the cases.
  */
 export function storedFileNameOf(name: string): string {
   const base = name.trim().split(/[\\/:]/).pop() ?? "";
@@ -839,7 +857,18 @@ export async function clonePropertyDocumentsFromPrior(
   return cloneAllPropertyDocKinds(config, fromPo, fromId, toPo, toId);
 }
 
-/** Wipes each target kind first (a new transaction), then copies the source kind's files. */
+/**
+ * Copies every document kind of one property onto another (a new transaction) and returns the
+ * copied file names per kind.
+ *
+ * How it works: runs `clonePropertyDocKind` for the seven kinds (decree, delegation, other,
+ * registry, deed, bourse-deed, boundaries) in parallel; each kind wipes the target first, then
+ * copies. Multi-file kinds return their name lists; single-file kinds return the first name or "".
+ *
+ * Edge cases: decision 2026-10-18 removed the grouped-property "fill-empty" mode with grouped
+ * properties (linked deeds now share one transaction instead of copying files), so cloning only
+ * replaces.
+ */
 async function cloneAllPropertyDocKinds(
   config: NonNullable<ReturnType<typeof prototypeModulesApiConfig>>,
   fromPo: string,
@@ -870,6 +899,18 @@ async function cloneAllPropertyDocKinds(
   };
 }
 
+/**
+ * Copies one document kind from the source property's scope to the target's.
+ *
+ * How it works: 1) lists the source scope; 2) wipes the target scope and clears its write
+ * generation, doc metas and cache entry, then notifies listeners; 3) downloads each source file,
+ * re-uploads it to the target scope (keeping an unlisted document's label and reason) and adds it
+ * to the target cache. Returns the names that were copied.
+ *
+ * Edge cases: an unreadable or empty source returns [] before the target is touched; a file that
+ * fails to download or upload is left out of the result. The "fill-empty" branch (copy only onto
+ * an empty target) was removed with grouped properties (decision 2026-10-18).
+ */
 async function clonePropertyDocKind(
   config: NonNullable<ReturnType<typeof prototypeModulesApiConfig>>,
   kind: PropertyDocKind,

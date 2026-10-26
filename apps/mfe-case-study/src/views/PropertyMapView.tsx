@@ -227,6 +227,7 @@ export function PropertyMapView() {
                 {propertyCard(selection.record).expired ? (
                   <Badge tone="danger">تجاوز صلاحية الـ90 يوماً</Badge>
                 ) : null}
+                {/* Decision 2026-10-19: a map cluster is one transaction with several deeds (was «عقار مجمع»). */}
                 {selection.groupCount ? (
                   <Badge tone="warning">معاملة بعدة صكوك — {selection.groupCount} صكوك</Badge>
                 ) : null}

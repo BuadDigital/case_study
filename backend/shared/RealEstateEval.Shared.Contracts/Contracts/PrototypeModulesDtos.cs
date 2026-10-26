@@ -89,6 +89,12 @@ public static class ValuationReportStageWire
 /// Wire values of <see cref="PropertyFinalReportStatusDto.FinalReportStatus"/> — the same strings as the
 /// valuation context's final-report statuses, stated here for the services that only see the DTO.
 /// </summary>
+/// <remarks>
+/// Why it exists: case study cannot reference the valuation domain, yet it must compare the status the
+/// valuation service sends («preparing» blocks the Enfaz handover). The strings used to be literals on
+/// both sides; now they are defined here and a test (The_final_report_wire_statuses_match_the_valuation_statuses)
+/// fails if the valuation side ever changes one of them.
+/// </remarks>
 public static class FinalReportStatusWire
 {
     public const string None = "none";

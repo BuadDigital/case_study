@@ -4,8 +4,16 @@ import type { CaseStudyReportDeeds } from "../../lib/app-data/case-study-report-
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/app-data/po-intake-data";
 
 /**
- * Phase 4 (decision 2026-10-19): one study covers every deed of a linked property. The form
- * and the report tab show the deeds and the total area above the deed questions.
+ * The «صكوك العقار» table shown above the deed questions of the one transaction study.
+ *
+ * How it works (phase 4, decision 2026-10-19 — one study covers every deed of a linked
+ * property): renders the ready-made `deeds` block from `caseStudyReportDeeds` — a header with
+ * the deed count and the total area, then one row per deed (number, identifier label, PO,
+ * area). It computes nothing itself; callers pass `deeds` only when the transaction has two or
+ * more live deeds. Used by the specialist's form (not the party form) and the report tab.
+ *
+ * Edge cases: a missing value prints «—», and the total reads «—» when any deed's area is
+ * missing (decided in `caseStudyReportDeeds`), so a partial sum is never shown as the total.
  */
 export function CaseStudyDeedsTable({ deeds }: { deeds: CaseStudyReportDeeds }) {
   return (

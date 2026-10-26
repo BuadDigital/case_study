@@ -42,6 +42,14 @@ public partial class CaseStudyReportService
 
     // ---------------------------------------------------------------- issue
 
+    /// <summary>Issues the case-study report (the transaction's one study) — case specialist only.</summary>
+    /// <remarks>
+    /// How it works: 1) refuses an actor of another role; 2) re-points the task id to the holder deed's parent
+    /// task (phase 4), so issuing from any deed of the transaction issues the one study; 3) runs
+    /// <see cref="IssueOnceAsync"/>, retrying up to three times on a row-version (xmin) clash with a
+    /// clean tracker, then answers «تم تحديث النموذج من جلسة أخرى».
+    /// Edge cases: an ordinary single-deed property resolves to its own task, unchanged.
+    /// </remarks>
     public async Task<(CaseStudyReportDto? Result, Dictionary<string, string>? Errors)> IssueAsync(
         Guid taskId,
         CaseStudyReportDto report,
@@ -76,6 +84,20 @@ public partial class CaseStudyReportService
         return (null, Fail(StaleSessionAr));
     }
 
+    /// <summary>One issue attempt on the holder task: gates, then one database transaction.</summary>
+    /// <remarks>
+    /// How it works: 1) loads the task (case-study kind, not cancelled) and the stored report;
+    /// 2) lists the parent tasks of every live deed of the transaction (holder first; the task alone
+    /// when none); 3) gate 1: a blocked task or an active failure on ANY deed refuses; 4) the deed ↔
+    /// nature outcome and the 100% answers gates; 5) in ONE transaction: writes the report as issued,
+    /// confirms the transaction's PR number, then for every deed's parent completes the task, locks
+    /// its party contributions and writes «إصدار تقرير دراسة الحالة» on that deed's timeline; 6) audit
+    /// and appraiser notifications.
+    /// Edge cases: a repeat call on an issued + completed study is a no-op; an issued report with an
+    /// open parent (half-applied legacy issue) only finishes completion and locks; a PR allocation
+    /// error throws so the whole issue rolls back — the study is never issued without its PR number,
+    /// and the PR stays on a later reopen (gap-free).
+    /// </remarks>
     private async Task<(CaseStudyReportDto? Result, Dictionary<string, string>? Errors)> IssueOnceAsync(
         Guid taskId,
         CaseStudyReportDto report,
@@ -201,6 +223,8 @@ public partial class CaseStudyReportService
                         throw new InvalidOperationException(referenceError);
                 }
 
+                // Each deed's parent task completes and locks its contributions, and each deed's own
+                // timeline records the issue (the folded deeds share the holder's study).
                 foreach (var parent in parents)
                 {
                     await TryCompleteCaseStudyWorkflowTaskAsync(parent.Id, ct);
@@ -245,6 +269,12 @@ public partial class CaseStudyReportService
 
     // --------------------------------------------------------------- reopen
 
+    /// <summary>Reopens the issued case-study report (the transaction's one study) — case specialist only.</summary>
+    /// <remarks>
+    /// How it works: refuses an actor of another role, re-points the task id to the holder deed's parent task
+    /// (phase 4), then runs <see cref="ReopenOnceAsync"/> with the same three-attempt xmin retry as issue.
+    /// Edge cases: reopening from a folded deed reopens the holder's study, never a second one.
+    /// </remarks>
     public async Task<(ReopenCaseStudyReportResultDto? Result, Dictionary<string, string>? Errors)> ReopenAsync(
         Guid taskId,
         string? reason,
@@ -279,6 +309,20 @@ public partial class CaseStudyReportService
         return (null, Fail(StaleSessionAr));
     }
 
+    /// <summary>One reopen attempt: back to draft for every deed of the transaction.</summary>
+    /// <remarks>
+    /// How it works: 1) reason of 10–1000 characters; 2) the report must be issued; 3) lists every
+    /// deed's parent task and every deed of the transaction (the lone deed when none); 4) refuses
+    /// when any deed is marked ready for billing, and asks for confirmation when any deed is handed
+    /// over to Enfaz; 5) in ONE transaction: report → draft, every deed's handover stamp cleared (when
+    /// confirmed), then for every deed's parent: Completed → Open in the case-study phase, unlock of
+    /// open party contributions, «إعادة فتح» on the deed's timeline; 6) audit, appraiser notice.
+    /// Edge cases: any deed of the transaction handed over freezes the one study (phase 4); the deeds
+    /// are re-read tracked inside the transaction because the tracker is cleared on each run.
+    /// KNOWN GAP (not fixed): only the child tasks open at this moment get their contributions
+    /// unlocked, so an inspection returned after the reopen keeps the inspector's case-study answers
+    /// locked.
+    /// </remarks>
     private async Task<(ReopenCaseStudyReportResultDto? Result, Dictionary<string, string>? Errors)> ReopenOnceAsync(
         Guid taskId,
         string? rawReason,
@@ -320,7 +364,8 @@ public partial class CaseStudyReportService
             var lone = await _db.GetPropertyForUpdateAsync(lonePropertyId, cancellationToken);
             if (lone is not null) transactionDeeds = [lone];
         }
-        // A marked deed's financial data is on Enfaz: reopening the one study would clear its stamp too.
+        // Billing-ready guard (details on BillingReadyBlocksReopenAr): any marked deed refuses the reopen,
+        // before the stamp-confirmation prompt, because the reopen below clears every deed's stamp.
         if (transactionDeeds.Any(p => p.IsBillingReady))
             return (null, Fail(BillingReadyBlocksReopenAr));
         var handedOver = transactionDeeds.Any(p => p.IsHandedOverToEnfaz);

@@ -45,6 +45,8 @@ public sealed class ValuationReportDocumentService(
         string? clientNameAr = null;
         IReadOnlyList<string> reportUserNames = [];
         AssignmentType? assignmentType = null;
+        // Decision 2026-10-19: one report per transaction — every deed of the transaction is listed
+        // in the report (deeds table, total area, joined deed numbers), not only the holder deed.
         IReadOnlyList<CaseStudyTransactionDeedDto> transactionDeeds = [];
         var propertyGuid = vr.PropertyId;
         if (propertyGuid != Guid.Empty)

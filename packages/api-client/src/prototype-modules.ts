@@ -677,6 +677,17 @@ export async function confirmKeyEnvelopeAssignment(
   );
 }
 
+/**
+ * The reviewer's correction of where a deed's matching key is (decision 2026-10-20).
+ *
+ * How it works: POST `/api/key-envelopes/{envelopeId}/assignments/{assignmentId}/key-location`
+ * with the place (in_envelope / with_user / returned_court / missing) and, for with_user, the
+ * holder's id and name, sent with the idempotency key through `keyEnvelopeMutation`; returns
+ * the updated envelope (the change is logged as `key_location_changed`).
+ *
+ * Edge cases: 400 → validation with the server's message, 404 → not_found; a retry with the
+ * same key is not applied twice.
+ */
 export async function setKeyEnvelopeAssignmentKeyLocation(
   config: PrototypeModulesApiConfig,
   envelopeId: string,

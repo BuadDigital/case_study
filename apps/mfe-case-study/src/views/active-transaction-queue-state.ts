@@ -545,6 +545,7 @@ export function filterAppraisalRowMeta({
       const cityDistrict = [meta.row.city, meta.row.district]
         .filter((v) => v && v !== "—")
         .join(" — ");
+      // The search also finds a deed by its transaction number (linked properties, 2026-10-19).
       const transactionNumber =
         transactionNumberOf(meta.property) ?? meta.task.transactionNumber ?? "";
       const hay = `${meta.row.deedLabel} ${cityDistrict} ${meta.row.propertySlot} ${transactionNumber}`;

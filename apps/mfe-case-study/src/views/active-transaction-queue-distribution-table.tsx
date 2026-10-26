@@ -95,6 +95,7 @@ const DistributionQueueRow = memo(function DistributionQueueRow({
       loading={ctx.isTaskOpening(task.id)}
       labelClassName={INSPECTION_TABLE_TYPE.deed}
       trailing={rowAttentionTrailing(ctx, task)}
+      // Linked properties (2026-10-19): the deed cell also shows its transaction number, with the deed count when it has several.
       subtitle={
         <TransactionNumberBadge
           number={transactionNumberOf(property) ?? task.transactionNumber}

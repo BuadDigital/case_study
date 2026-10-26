@@ -195,7 +195,7 @@ public partial class WorkOrderService : IWorkOrderService
         {
             propDto.Id = null;
             var mappedProperty = _properties.MapPropertyEnfath(propDto, workOrder.Id, forInsert: true);
-            // Decision 2026-10-19: every deed opens its own draft transaction (D- number); the
+            // Decision 2026-10-19: every deed opens its own draft transaction (TMP- number); the
             // official PR reference comes at the first report approval, never at intake.
             var now = _time.UtcNow();
             var (draftNumber, referenceError) =
@@ -434,8 +434,14 @@ public partial class WorkOrderService : IWorkOrderService
     }
 
     /// <summary>
-    /// The instant the order was received from Enfaz: its date plus the received time when the order carries
-    /// one (Riyadh time, UTC+3), otherwise the date alone at midnight UTC (shown on the timeline as a date only).
+    /// Builds the first timeline milestone of a property: «استلام أمر العمل من إنفاذ».
+    ///
+    /// How it works: key <c>enfath</c> (one per property, so registering again never duplicates it), tone done,
+    /// detail naming the assignment specialist and who registered the order, and the instant from
+    /// <see cref="ReceivedFromEnfathInstant"/>.
+    ///
+    /// Edge cases: used both when an order is created with its properties and when a property is added to an
+    /// existing order (the usual UI path), which is why it is a static helper rather than inline code in one method.
     /// </summary>
     internal static PropertyTimelineRecordRequest EnfathReceivedEvent(
         WorkOrder workOrder,
@@ -451,6 +457,12 @@ public partial class WorkOrderService : IWorkOrderService
             PropertyTimelineTones.Done,
             ReceivedFromEnfathInstant(workOrder.ReceivedFromEnfathAt, workOrder.ReceivedFromEnfathTime));
 
+    /// <summary>
+    /// The instant the order was received from Enfaz. With a received time (Riyadh, UTC+3) it is that moment in
+    /// UTC; without one, or with text that is not a time, it is the date at midnight UTC.
+    /// Edge case: the timeline shows a midnight-UTC instant as a date only, so an order with no time no longer
+    /// displays a made-up «03:00».
+    /// </summary>
     internal static DateTime ReceivedFromEnfathInstant(DateOnly date, string? receivedTime)
     {
         if (TimeOnly.TryParse(receivedTime?.Trim(), out var time))

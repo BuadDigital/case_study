@@ -36,6 +36,13 @@ public sealed class CaseStudyValuationDispatchRepository(CaseStudyDbContext db)
         db.WorkOrderProperties.AsNoTracking()
             .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
 
+    /// <summary>The holder deed of the property's transaction and the other live deeds in it.</summary>
+    /// <remarks>
+    /// How it works: StudyHolder.HolderPropertyAsync gives the holder; StudyHolder.TransactionPropertyIdsAsync
+    /// gives the live deeds; the property itself is removed from that list.
+    /// Edge cases: a deed alone (or with TransactionId = Guid.Empty) returns (itself, []), so the
+    /// dispatch's fold step is a no-op for an ordinary property.
+    /// </remarks>
     public async Task<(Guid HolderPropertyId, IReadOnlyList<Guid> SiblingPropertyIds)> GetTransactionDeedsAsync(
         Guid propertyId,
         CancellationToken cancellationToken)

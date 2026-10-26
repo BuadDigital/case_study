@@ -18,7 +18,7 @@ public class WorkOrderPropertyDto
     public Guid? TransactionId { get; set; }
     /// <summary>Transaction draft number TMP-{YY}-{seq} — shown until the official reference exists.</summary>
     public string? TransactionDraftNumber { get; set; }
-    /// <summary>Transaction official reference PR-{year}-{seq} — null until the first report approval.</summary>
+    /// <summary>Transaction official reference PR-{YY}-{seq} (two-digit year) — null until the first report approval.</summary>
     public string? ReferenceNumber { get; set; }
     /// <summary>How the transaction's deeds are linked (one_building | contract); null for a single deed.</summary>
     public string? TransactionLinkKind { get; set; }
@@ -449,7 +449,7 @@ public class PendingBoursePropertyDto
     public string DueDateAt { get; set; } = "";
  /// <summary>PO creation time (UTC ISO) — used for newest-first queue order.</summary>
     public string CreatedAtUtc { get; set; } = "";
-    /// <summary>The deed's transaction number: PR-… once confirmed, else the D- draft number.</summary>
+    /// <summary>The deed's transaction number: PR-… once confirmed, else the TMP- temporary number.</summary>
     public string? TransactionNumber { get; set; }
 }
 

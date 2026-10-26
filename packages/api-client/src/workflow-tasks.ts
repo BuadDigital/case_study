@@ -69,7 +69,7 @@ export type WorkflowTaskDto = {
   district?: string | null;
   propertyType?: string | null;
   classification?: string | null;
-  /** The property's transaction number (PR-… once confirmed, else the D- draft), joined server-side. */
+  /** The property's transaction number (PR-… once confirmed, else the TMP- temporary number), joined server-side. */
   transactionNumber?: string | null;
   /** The property's transaction id, joined server-side. */
   transactionId?: string | null;

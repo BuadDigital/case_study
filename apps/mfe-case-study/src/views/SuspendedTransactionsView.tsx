@@ -428,6 +428,7 @@ export function SuspendedTransactionsView() {
                             onClick={() => openItem(item)}
                           >
                             <Td className="whitespace-nowrap">
+                              {/* Linked properties (2026-10-19): the deed row also shows its transaction number and deed count. */}
                               <InteractiveDeedCell
                                 label={deedLabel(item, record)}
                                 loading={openingId === item.id}

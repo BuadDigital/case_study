@@ -166,7 +166,7 @@ export type PoPropertyIntake = {
   transactionId?: string | null;
   /** Transaction draft number TMP-{YY}-{seq}, shown until the official reference exists. */
   transactionDraftNumber?: string | null;
-  /** Transaction official reference PR-{year}-{seq}; null until the first report approval. */
+  /** Transaction official reference PR-{YY}-{seq}; null until the first report approval. */
   referenceNumber?: string | null;
   /** one_building | contract; null for a single deed. */
   transactionLinkKind?: string | null;

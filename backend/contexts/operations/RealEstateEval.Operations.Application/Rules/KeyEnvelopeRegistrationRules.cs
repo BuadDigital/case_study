@@ -79,12 +79,16 @@ public static class KeyEnvelopeRegistrationRules
     /// <summary>HTML parity: only external delivery requires a proof letter.</summary>
     public static bool NeedsDeliveryLetter(string kind) => kind == KeyHandoffKinds.External;
 
-    /// <summary>
-    /// The receiver confirms (decision 2026-10-20): an internal handoff waits for the inspector; a
-    /// receive-back recorded by someone other than the reviewer waits for the reviewer; one the
-    /// reviewer records himself is his own confirmation. External and court deliveries complete
-    /// at once — the letter is the confirmation.
-    /// </summary>
+    /// <summary>The status a new handoff starts in: waiting for the receiver, or already completed.</summary>
+    /// <remarks>
+    /// How it works: internal → pending_confirm always; receive_back → completed when
+    /// <paramref name="actorIsReceiver"/>, else pending_confirm; external / return_court → completed.
+    /// Edge cases (decision 2026-10-20, the receiver confirms): an internal handoff waits for the
+    /// inspector even if the actor is flagged as receiver; a receive-back recorded by someone other
+    /// than the reviewer waits for the reviewer; one the reviewer records himself is his own
+    /// confirmation. External and court deliveries complete at once — the letter is the confirmation.
+    /// Before this, every non-internal kind (receive-back included) completed at once.
+    /// </remarks>
     public static string InitialHandoffStatus(string kind, bool actorIsReceiver = false) =>
         kind switch
         {
@@ -95,9 +99,17 @@ public static class KeyEnvelopeRegistrationRules
             _ => KeyHandoffStatuses.Completed,
         };
 
+    /// <summary>Handoff kinds whose custody moves only when the receiver confirms (internal, and receive-back since 2026-10-20).</summary>
     public static bool AwaitsReceiverConfirmation(string kind) =>
         kind is KeyHandoffKinds.Internal or KeyHandoffKinds.ReceiveBack;
 
+    /// <summary>Whether a handoff may be confirmed now; null when it may, else the Arabic reason.</summary>
+    /// <remarks>
+    /// How it works: rejects kinds that never await a receiver (<see cref="AwaitsReceiverConfirmation"/>:
+    /// external, return to court), then rejects a handoff that is no longer pending_confirm.
+    /// Edge cases: receive-back became confirmable on 2026-10-20 (it was internal only), and the
+    /// message changed to name both kinds; a second confirm of the same handoff is refused.
+    /// </remarks>
     public static string? ValidateHandoffConfirmation(KeyEnvelopeHandoff handoff)
     {
         if (!AwaitsReceiverConfirmation(handoff.Kind))
@@ -108,6 +120,11 @@ public static class KeyEnvelopeRegistrationRules
     }
 
     /// <summary>Key-location fields of a trial result; null when acceptable.</summary>
+    /// <remarks>
+    /// How it works: trims and lower-cases the value; blank is accepted (the trial then takes
+    /// <c>KeyLocations.DefaultFor</c> its result); otherwise it must be in_envelope / with_user /
+    /// returned_court / missing, else «مكان المفتاح غير صالح» (decision 2026-10-20).
+    /// </remarks>
     public static string? ValidateKeyLocation(string? location)
     {
         var value = (location ?? "").Trim().ToLowerInvariant();

@@ -18,6 +18,20 @@ import {
   type CopyKey,
 } from "./property-detail-upload-assistant-state";
 
+/**
+ * Icon-only copy / download button of the Infath upload assistant.
+ *
+ * How it works: the shared `size="icon"` Button (32px box, no padding, 18px glyph in the
+ * heading colour) with a check when `done`, else a download icon when `file`, else a copy icon.
+ * `done` is the parent's «just copied» flag (`flashKey`), so the check shows only for
+ * `COPIED_FLASH_MS` after a copy; the row's tint is driven separately by `copied`.
+ *
+ * Edge cases (fixed 2026-10-20):
+ * - `size="sm"` added `px-3.5` and a `p-0` class on top did not win (`cn` only joins classes),
+ *   so the svg was squeezed to ~1px and the button looked empty → the shared icon size.
+ * - The check used to stay forever and read as a stuck state → it now clears after 2 s.
+ * - The success colour on the svg needs `!` because the icon size already colours the svg.
+ */
 function CopyButton({
   done,
   file,
@@ -129,6 +143,7 @@ function InfathAreaBlock({
 }) {
   const hasValue = infathFieldHasValue(field.value);
 
+  // The block keeps its tint once copied (progress marker); only the button's check is transient.
   return (
     <div
       className={cn(

@@ -11,6 +11,19 @@ import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator
 import type { EvaluatorPropertySummary } from "./EvaluatorPropertyTab";
 import { useWorkflowTasksQuery } from "../../query/evaluator-queries";
 
+/**
+ * The appraiser's task page: opens the evaluator window for one appraisal task.
+ *
+ * How it works: reads the workflow task list and takes the live copy of `childTask` (falls back
+ * to the prop until the list loads). `holderAppraisalTaskFor` then checks whether the task's
+ * deed is folded into another deed's valuation; if so, an effect `router.replace`s to the
+ * holder task's appraisal workspace and a skeleton shows meanwhile. Otherwise it renders
+ * `EvaluatorWindow` with the live task and the full task list.
+ *
+ * Edge cases: phase 5 (decision 2026-10-19) — one valuation per transaction, so a folded deed
+ * never opens its own window. If the holder's task is not in the list, the deed's own window
+ * opens.
+ */
 export function AppraiserUploadTab({
   def: _def,
   childTask,

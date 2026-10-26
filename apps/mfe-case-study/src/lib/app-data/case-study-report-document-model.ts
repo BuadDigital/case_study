@@ -105,8 +105,17 @@ export type CaseStudyReportDeedSource = {
 };
 
 /**
- * The deeds block for a transaction with several deeds; `undefined` for one deed (the
- * report then reads as it always has). Removed deeds are left out.
+ * The deeds block the case-study report prints for a transaction with several deeds
+ * (phase 4, decision 2026-10-19: one study covers every deed).
+ *
+ * How it works: 1) drops removed deeds; 2) fewer than two left → `undefined`; 3) one row per
+ * deed: label = the registry number when the deed is identified by one, else the deed number
+ * (then the registry number, then «—»), the formatted work order, the area as entered or «—»;
+ * 4) parses every area with `parseLocaleNumber` (Arabic digits and commas allowed) and prints
+ * the sum with up to two decimals and «م²».
+ *
+ * Edge cases: one deed → `undefined`, so the report reads as it always has; any area missing or
+ * unreadable → total «—» rather than a partial sum.
  */
 export function caseStudyReportDeeds(
   deeds: readonly CaseStudyReportDeedSource[] | null | undefined,
@@ -162,6 +171,18 @@ function resolveRequestDateIso(
   );
 }
 
+/**
+ * The approval block at the foot of the case-study report (provider, declaration, deed,
+ * approver, report date, request number).
+ *
+ * How it works: deed = every deed label joined with « ، » when `deeds` is given (a transaction
+ * with several deeds), else the property's deed display, else the draft's deed number or «—»;
+ * request number = the task's work order, else the draft's; report date from
+ * `resolveRequestDateIso`.
+ *
+ * Edge cases: phase 4 (decision 2026-10-19) — the study is one for the whole transaction, so the
+ * approval names all its deeds, not only the deed the workspace was opened on.
+ */
 function buildCaseStudyReportApproval(
   task: WorkflowTask,
   property: PoPropertyIntake | null,

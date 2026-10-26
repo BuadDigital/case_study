@@ -218,6 +218,16 @@ internal static class UpstreamJson
         return request;
     }
 
+    /// <summary>Puts the Authorization header and the X-REE-Upstream marker on an owner-to-owner request.</summary>
+    /// <remarks>
+    /// How it works: picks the first non-blank of 1) the service's own token
+    /// (<c>UpstreamServiceBearer.Ambient</c>) when <paramref name="asService"/> is set, 2) the incoming
+    /// request's Authorization header, 3) the service's own token (no person behind the call — event
+    /// consumers, hosted sweeps). Adds it when found, and always adds X-REE-Upstream: 1.
+    /// Edge cases: 2026-10-21 — a system check (actor = null) used to forward the person's token, so the
+    /// attachments service filtered out photos that person cannot read (prod PO-067455); asService now
+    /// sends the service token first. If no service token is configured it falls back to the caller's.
+    /// </remarks>
     private static void ForwardAuthorization(
         IHttpContextAccessor httpContext,
         HttpRequestMessage request,

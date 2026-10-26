@@ -72,7 +72,17 @@ type PropertyDetailEnfathUploadWorkflow = {
   handleDownloadAll: () => void;
 };
 
-/** The certified appraiser's identity — the one the printed report carries (organization settings). */
+/**
+ * The certified appraiser's name, license number and license date for the Infath upload sheet.
+ *
+ * How it works: reads the organization settings once on mount and maps `evaluator.name`, `evaluator.licenseNumber`
+ * and the license date to `InfathReportContext`; it is `null` until the read succeeds (and when it fails).
+ *
+ * Edge cases and how they were fixed: the appraiser used to type these into his package, and the new evaluator
+ * screens have no such fields, so the sheet showed them empty. The date falls back to the company's practice-license
+ * date because the organization has no personal license date for the appraiser, and that is the date the printed
+ * report carries. An unmounted component ignores a late response.
+ */
 function useReportContext(): InfathReportContext | null {
   const [context, setContext] = useState<InfathReportContext | null>(null);
   useEffect(() => {
@@ -97,7 +107,18 @@ function useReportContext(): InfathReportContext | null {
   return context;
 }
 
-/** The generated final report as a downloadable document, once the server has it ready. */
+/**
+ * The generated final report (report + deposit code + certificate page) as a downloadable document entry.
+ *
+ * How it works: when the report draft says the final PDF is `ready`, it downloads the PDF for the valuation
+ * request, turns it into a data URL and exposes it as a document typed `valuation-report` named
+ * `final-report-v{version}.pdf`; `buildInfathUploadModel` then treats it as «مرفق التقييم المعتمد».
+ *
+ * Edge cases: while the PDF is `none` or still `preparing` (it takes seconds, up to a minute under load) the hook
+ * returns `null`, cleared during render so a stale document is never shown for another request. A failed
+ * download leaves `null` (the sheet row stays «غير متوفر»). A response that arrives after the request or the
+ * version changed is discarded.
+ */
 function useFinalReportDocument(
   valuationRequestId: string | null | undefined,
   finalReportStatus: string | undefined,
@@ -251,6 +272,18 @@ export function usePropertyDetailEnfathUploadWorkflow({
     [],
   );
 
+  /**
+   * Marks a field as copied to Infath after a successful clipboard write.
+   *
+   * How it works: adds `key` to `copiedKeys` (the row's lasting tint, «already moved to
+   * Infath»), sets `flashKey = key` (the button's check), restarts one shared timer that clears
+   * `flashKey` after `COPIED_FLASH_MS`, and toasts a preview of the copied text.
+   *
+   * Edge cases (Omar, 2026-10-20: a check that never went away read as a stuck state):
+   * - The timer clears the flash only if `key` is still the flashing one, so a quick second
+   *   copy keeps its own check for the full 2 s.
+   * - The timer is cleared on unmount (effect above), so no state update lands after leaving.
+   */
   const markCopied = useCallback(
     (key: CopyKey, text: string) => {
       setCopiedKeys((prev) => withCopiedKey(prev, key));

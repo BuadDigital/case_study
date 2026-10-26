@@ -1,6 +1,6 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
-import { parseJson, serverFailure } from "./parse-json";
+import { parseJson, readProblemMessage, serverFailure } from "./parse-json";
 import type { ValuationSelectionsApiConfig } from "./valuation-comparable-selections";
 
 export type ValuationReportDraftStatus = "none" | "preparing" | "sent" | "approved";
@@ -160,13 +160,21 @@ export function withdrawReportDraft(
 
 export type ValuationReportNumberDto = {
   valuationRequestId: string;
-  /** PRV-{year}-{seq}, derived from the transaction's official reference. */
+  /** PRV-{YY}-{seq}, derived from the transaction's official reference. */
   reportNumber: string;
 };
 
 /**
  * Fixes the report number before the approved copy is printed (decision 2026-10-19): the
  * transaction's official PR reference is confirmed through Case Study and PRV-… returned. Idempotent.
+ *
+ * How it works: POST `/report-number` on the valuation request; 401 → auth, 403 → forbidden,
+ * 404 → not_found, other failures → server (5xx) or validation (4xx) with the server's message
+ * (`readProblemMessage`); success returns `{ valuationRequestId, reportNumber }`.
+ *
+ * Edge cases: PR is drawn once at the first approved report and never reused, so calling it
+ * again (a retry, a later version, an approval after a reopen) returns the same number; a
+ * success body without a number → server error, so the caller never prints an empty number.
  */
 export async function ensureReportNumber(
   config: ValuationSelectionsApiConfig,
@@ -179,26 +187,16 @@ export async function ensureReportNumber(
       headers: authHeaders(config.token, { accept: true }),
     });
     if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 403) return { ok: false, kind: "forbidden", message: await problemMessage(res) };
+    if (res.status === 403) return { ok: false, kind: "forbidden", message: await readProblemMessage(res) };
     if (res.status === 404) return { ok: false, kind: "not_found" };
     if (!res.ok) {
-      return { ok: false, kind: res.status >= 500 ? "server" : "validation", message: await problemMessage(res) };
+      return { ok: false, kind: res.status >= 500 ? "server" : "validation", message: await readProblemMessage(res) };
     }
     const data = (await parseJson<ValuationReportNumberDto>(res)) ?? null;
     if (!data?.reportNumber) return { ok: false, kind: "server" };
     return { ok: true, data };
   } catch {
     return { ok: false, kind: "network" };
-  }
-}
-
-async function problemMessage(res: Response): Promise<string | undefined> {
-  try {
-    const body = (await res.clone().json()) as { detail?: string; title?: string; errors?: Record<string, string> };
-    const firstError = body?.errors ? Object.values(body.errors).find((v) => typeof v === "string" && v) : undefined;
-    return body?.detail || firstError || body?.title || undefined;
-  } catch {
-    return undefined;
   }
 }
 

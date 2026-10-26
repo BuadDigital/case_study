@@ -6,6 +6,13 @@ import { ltrValueClass } from "../po-intake/PropertyDetailFields";
 /** Temporary transaction numbers carry the TMP prefix (decision 2026-10-20). */
 export const TEMPORARY_TRANSACTION_PREFIX = "TMP-";
 
+/**
+ * Whether a transaction number is still the temporary one.
+ *
+ * How it works: trims the value and checks the `TMP-` prefix (numbering §10: TMP replaced the
+ * old `D` prefix, and a migration renamed the existing drafts and their counter, so no `D-`
+ * number is left to recognise). Blank / null is not temporary.
+ */
 export function isTemporaryTransactionNumber(value: string | null | undefined): boolean {
   return (value ?? "").trim().startsWith(TEMPORARY_TRANSACTION_PREFIX);
 }
@@ -14,6 +21,13 @@ export function isTemporaryTransactionNumber(value: string | null | undefined): 
  * The transaction number (المعاملة) beside a deed: PR-… once the official reference exists,
  * else the TMP- temporary number — the prefix itself says so, no badge. Renders nothing when
  * there is no number at all.
+ *
+ * How it works (numbering, decision 2026-10-20): trims `number`, prints it left-to-right with
+ * tabular digits, and adds «N صكوك» when `deedCount` is more than one. The tooltip says
+ * «رقم مؤقت — يُثبَّت الرقم الرسمي PR عند اعتماد أول تقرير» for a TMP- number, else «رقم المعاملة».
+ *
+ * Edge cases: the official PR is drawn once at the first approved report and never reused, so
+ * a number shown as PR here stays PR even after a reopen; a missing `deedCount` counts as one.
  */
 export function TransactionNumberBadge({
   number,

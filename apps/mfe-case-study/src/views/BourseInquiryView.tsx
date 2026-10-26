@@ -479,6 +479,7 @@ export function BourseInquiryView() {
                           onClick={() => void openItem(item)}
                         >
                           <Td>
+                            {/* Linked properties (2026-10-19): the deed row also shows its transaction number. */}
                             <InteractiveDeedCell
                               label={deedLabel}
                               loading={isItemOpening(item)}

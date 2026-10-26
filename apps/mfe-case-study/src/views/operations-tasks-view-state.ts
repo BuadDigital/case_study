@@ -673,7 +673,15 @@ export function operationsTaskCardLinkMeta(
   return { text: operationsTaskScopeLabel(task.scope), kind: "plain" };
 }
 
-/** «النطاق / الربط» cell on the detail header. */
+/**
+ * «النطاق / الربط» cell on the detail header.
+ *
+ * How it works: `general` → «غير مرتبطة — مهمة مستقلة»; `transaction` (one deed) → the link label
+ * alone; any other scope → «<scope label> · <link label>».
+ *
+ * Edge cases: decision 2026-10-18 renamed the one-deed scope «معاملة» → «صك» (the transaction now
+ * sits above the deeds), and its link label already reads «صك …», so the scope word is dropped.
+ */
 export function operationsTaskLinkChip(task: OperationsTask): string {
   if (task.scope === "general") return "غير مرتبطة — مهمة مستقلة";
   // A deed-scoped task's link already reads «صك …»; repeating the scope word would say it twice.

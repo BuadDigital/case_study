@@ -110,7 +110,17 @@ export function computeKeysKpis(envelopes: KeyEnvelopeRow[]): KeysKpis {
   return { total, delivered, inCustody, active, pendingMatch, readyToDeliver };
 }
 
-/** Reference, request, court, circuit, holder and every deed — what the search box matches. */
+/**
+ * Reference, request, court, circuit, holder and every deed — what the search box matches.
+ *
+ * How it works: joins with spaces the envelope reference (`envelopeDisplayRef`), request
+ * number, court, circuit, every assignment's deed number and the holder label; the caller
+ * lower-cases it and tests `includes`.
+ *
+ * Edge cases: decision 2026-10-20 — an unnumbered envelope contributes «بلا رقم», never a
+ * made-up ENV- reference; the holder name (who has the envelope now) is searchable; no holder
+ * label → nothing added.
+ */
 export function envelopeSearchText(env: KeyEnvelopeRow): string {
   const deeds = env.assignments.map((a) => a.deedNumber).join(" ");
   const ref = envelopeDisplayRef(env.id, env.createdAtUtc, env.referenceNumber);
@@ -147,7 +157,16 @@ export function envelopeCardTone(
   return env.receiveScenario ? "pending" : "new";
 }
 
-/** Court · request (or circuit) · keys and deeds · holder when known — inspector wording on mobile. */
+/**
+ * Court · request (or circuit) · keys and deeds · holder when known — inspector wording on mobile.
+ *
+ * How it works: builds the three fixed chips (court or «بدون محكمة»; «طلب <number>» or the
+ * circuit or "—"; keys and deeds count), then appends «عند: <holder>» from
+ * `envelopeHolderText` (decision 2026-10-20, the envelope's one explicit holder).
+ *
+ * Edge cases: a row with no `holderKind` (from before the holder existed) gets no holder chip
+ * rather than a guessed one.
+ */
 export function envelopeCardMeta(
   env: KeyEnvelopeRow,
 ): NonNullable<ActiveQueueMobileCardItem["meta"]> {

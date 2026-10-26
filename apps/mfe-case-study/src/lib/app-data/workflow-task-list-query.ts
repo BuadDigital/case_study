@@ -25,6 +25,7 @@ export type WorkflowTaskFilterRow = {
   district?: string;
   propertyType?: string;
   classification?: string;
+  /** The deed's transaction number, so the search box also finds a deed by it. */
   transactionNumber?: string;
 };
 

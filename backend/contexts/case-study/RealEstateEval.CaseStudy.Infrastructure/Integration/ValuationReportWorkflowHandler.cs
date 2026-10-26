@@ -58,6 +58,15 @@ public sealed class ValuationReportWorkflowHandler
         await HandleAsync(payload, cancellationToken);
     }
 
+    /// <summary>Completes the appraisal task(s) when the valuation report's final issuance arrives.</summary>
+    /// <remarks>
+    /// How it works: 1) parses the property id; 2) finds the deed's open appraisal task; 3) stops when
+    /// there is none or its package was never submitted; 4) completes it (CompleteAsync); 5) phase 5:
+    /// lists the other live deeds of the transaction and completes each one's open appraisal task too.
+    /// Edge cases: the siblings skip the submitted check — only the holder's package is submitted in a
+    /// folded transaction; a sibling with no open appraisal task is skipped; an ordinary one-deed
+    /// property has no siblings, so nothing changes for it.
+    /// </remarks>
     public async Task HandleAsync(
         ValuationReportSubmittedPayload payload,
         CancellationToken cancellationToken = default)
@@ -102,6 +111,12 @@ public sealed class ValuationReportWorkflowHandler
         }
     }
 
+    /// <summary>Marks one appraisal task done and writes the final-issued entry on that deed's timeline.</summary>
+    /// <remarks>
+    /// How it works: patches the task to Completed / phase Done, records «اكتمل تقييم العقار» with the
+    /// report's display id on the deed's timeline, and logs.
+    /// Edge cases: no timeline service or a task without a PO number → the timeline entry is skipped.
+    /// </remarks>
     private async Task CompleteAsync(
         OpenAppraisalTaskRef task,
         Guid propertyId,

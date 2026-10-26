@@ -69,6 +69,7 @@ function mapEnvelope(dto: KeyEnvelopeDto): KeyEnvelopeRow {
     createdByName: dto.createdByName,
     createdAtUtc: dto.createdAtUtc,
     operationsTaskId: dto.operationsTaskId ?? null,
+    // Decision 2026-10-20: the envelope's one explicit holder; rows from before it default to the reviewer.
     holderKind: dto.holderKind ?? "reviewer",
     holderUserId: dto.holderUserId ?? null,
     holderLabel: dto.holderLabel ?? null,
@@ -504,6 +505,19 @@ export async function registerKeyEnvelope(
   });
 }
 
+/**
+ * Records the field trial of one deed's key: the match result, its note and where the
+ * matching key went.
+ *
+ * How it works: builds `{ status, notes, keyLocation }` and sends it through `writeOrQueue`:
+ * online it calls `confirmKeyEnvelopeAssignment` and maps the returned envelope; in an offline
+ * field session (or on a network failure there) the same body goes to the outbox as
+ * `key-envelope-assignment-confirm` and replays later.
+ *
+ * Edge cases: decision 2026-10-20 — `keyLocation` travels in both the live and the queued body
+ * so a trial recorded offline keeps the key's place; null lets the server default it
+ * (in_envelope on matched/partial, missing on missing; with_user holder = the actor).
+ */
 export async function confirmEnvelopeAssignment(
   envelopeId: string,
   assignmentId: string,
@@ -537,7 +551,16 @@ export async function confirmEnvelopeAssignment(
   });
 }
 
-/** The reviewer corrects where a deed's key is (decision 2026-10-20). Online only — a desk action. */
+/**
+ * The reviewer corrects where a deed's key is (decision 2026-10-20). Online only — a desk action.
+ *
+ * How it works: without an API config returns the auth error; otherwise calls
+ * `setKeyEnvelopeAssignmentKeyLocation` with the body (place, and the holder when the key is
+ * with a user) and the idempotency key, and returns the mapped envelope or an Arabic failure.
+ *
+ * Edge cases: never queued offline — unlike the field trial, a correction needs the server's
+ * answer at once.
+ */
 export async function setEnvelopeKeyLocation(
   envelopeId: string,
   assignmentId: string,

@@ -38,6 +38,13 @@ export type PropertyDetailTab = (typeof TABS)[number];
 /**
  * The tab bar's groups for a transaction with several deeds: transaction tabs first, then the
  * deed tabs. Each group keeps the catalog order. A single-deed transaction uses the flat list.
+ *
+ * How it works (decision 2026-10-19): takes the tabs already allowed for the role, splits them
+ * by `scope` into «المعاملة» (study, valuation, links, log, notes) and «الصك» (the per-deed
+ * tabs), and returns the two groups in that order.
+ *
+ * Edge cases: a group left empty by the role filter (e.g. a role that sees no transaction tab)
+ * is dropped, so the bar never shows an empty group heading.
  */
 export function groupPropertyDetailTabs(
   tabs: readonly PropertyDetailTab[],

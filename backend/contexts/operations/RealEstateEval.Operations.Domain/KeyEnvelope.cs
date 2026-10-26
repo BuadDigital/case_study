@@ -56,6 +56,15 @@ public class KeyEnvelope
     public DateTime? HolderSinceUtc { get; set; }
 
     /// <summary>A handoff that reached its receiver: custody status and holder move together.</summary>
+    /// <remarks>
+    /// How it works: 1) sets <see cref="Status"/> from the handoff kind (<see cref="ApplyHandoffKind"/>);
+    /// 2) sets the holder from the handoff — internal → internal_user (ToUserId, ToParty); external →
+    /// external (label only); return_court → court (label only); receive_back (default branch) →
+    /// reviewer (ToUserId, ToParty); 3) stamps HolderSinceUtc and UpdatedAtUtc.
+    /// Edge cases: called only once a handoff is confirmed (internal / receive-back by the receiver) or
+    /// completes at once (external / court, the letter is the proof), so a pending handoff never moves
+    /// the holder (decision 2026-10-20). Outside parties and the court carry no user id.
+    /// </remarks>
     public void ApplyConfirmedHandoff(KeyEnvelopeHandoff handoff, DateTime nowUtc)
     {
         ApplyHandoffKind(handoff.Kind);
@@ -87,6 +96,13 @@ public class KeyEnvelope
     }
 
     /// <summary>Where the deed's matching key is after the field trial (per deed — keys carry no tag).</summary>
+    /// <remarks>
+    /// How it works: writes the location on the assignment; keeps the holder user id and label only
+    /// when the location is with_user, otherwise clears both; stamps KeyLocationAtUtc and the
+    /// envelope's UpdatedAtUtc. The caller has already validated and defaulted the location.
+    /// Edge cases: moving a key from with_user back to in_envelope / returned_court / missing drops the
+    /// old holder, so a stale «عند فلان» never survives a correction (decision 2026-10-20).
+    /// </remarks>
     public void SetAssignmentKeyLocation(
         KeyEnvelopeAssignment assignment,
         string location,
@@ -244,6 +260,11 @@ public static class KeyLocations
         location is InEnvelope or WithUser or ReturnedCourt or Missing;
 
     /// <summary>What a trial result implies when the inspector says nothing about the key's place.</summary>
+    /// <remarks>
+    /// How it works: a «missing» trial result → missing; every other result (matched, partial,
+    /// unmatched, unmatched_inspected) → in_envelope (decision 2026-10-20).
+    /// Edge cases: with_user is never a default — the inspector must say he kept the key.
+    /// </remarks>
     public static string DefaultFor(string assignmentStatus) =>
         assignmentStatus == KeyAssignmentStatuses.Missing ? Missing : InEnvelope;
 }

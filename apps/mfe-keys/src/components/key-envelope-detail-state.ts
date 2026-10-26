@@ -159,7 +159,18 @@ export const KEY_LOCATION_OPTIONS: { id: KeyLocation; label: string }[] = [
   { id: KeyLocationValues.Missing, label: "مفقود" },
 ];
 
-/** Header line for the custody panel: holder now, or the handoff still on its way. */
+/**
+ * Header line for the custody panel (decision 2026-10-20): who holds the envelope now, since
+ * when, and any handoff still on its way.
+ *
+ * How it works: `title` is `envelopeHolderText(env)` (the one explicit holder); `since` is the
+ * formatted `holderSinceUtc`; `pending` describes the latest `pending_confirm` handoff (to
+ * whom, by whom, when — awaiting the receiver's confirmation).
+ *
+ * Edge cases: a pending handoff does not change `title` — the holder changes only when the
+ * receiver confirms, so the panel shows the old holder plus «في الطريق إلى …»; no holder date
+ * (rows from before the holder existed) → `since` null.
+ */
 export function custodyNowText(env: KeyEnvelopeRow): {
   title: string;
   since: string | null;
@@ -178,6 +189,7 @@ export function custodyNowText(env: KeyEnvelopeRow): {
 }
 
 export const HANDOFF_NOTES_BY_KIND: Record<string, string> = {
+  // Decision 2026-10-20: custody moves only when the receiver confirms (not only the inspector).
   internal:
     "التسليم الداخلي يُسجَّل بحالة «بانتظار التأكيد» ثم يؤكّده المستلم — ولا تنتقل العهدة إليه قبل تأكيده.",
   external:

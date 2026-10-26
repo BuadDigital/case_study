@@ -63,7 +63,7 @@ export function PartyQueueDeedCell({
   task: WorkflowTask;
   propertySlot: string;
   propertyType?: string;
-  /** PR-… / D-… shown under the property type; hidden when empty. */
+  /** PR-… / TMP-… shown under the property type; hidden when empty. */
   transactionNumber?: string | null;
   transactionDeedCount?: number | null;
 }) {
