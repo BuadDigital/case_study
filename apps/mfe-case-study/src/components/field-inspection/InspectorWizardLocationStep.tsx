@@ -111,6 +111,11 @@ export function InspectorWizardLocationStep({
     [draft, mapActor, mapPinned, engineeringMapPin],
   );
   const coordsValue = inspectorWizardCoordsValue(draft);
+  // The coordinates box: `coordsText` is what the user is typing (used only while the box is focused);
+  // `coordsValue` is the saved pair from the draft. Typing never writes a half pair to the draft: only a complete,
+  // in-range «lat, lng» (read by `parseCoordinatePair`) is patched. Before this, every keystroke patched the draft,
+  // an incomplete pair made the derived value empty and wiped the box, and a blank save was repaired back to the
+  // Jeddah default — so the field could not be cleared and retyped.
   const [coordsText, setCoordsText] = useState(coordsValue);
   const [coordsEditing, setCoordsEditing] = useState(false);
 

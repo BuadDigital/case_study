@@ -70,7 +70,19 @@ function computeDualCalendarPanelStyle(
   };
 }
 
-/** Building-permit and similar dates — Hijri / Gregorian picker inside calendar popup. */
+/**
+ * A date field for building-permit and similar dates: a text box you can type or paste into, plus a calendar popup.
+ *
+ * How it works: while the box is focused it shows `text` (what the user is typing); otherwise it shows the saved
+ * value formatted as `dd/mm/yyyy م` (Gregorian) or `dd/mm/yyyy هـ` (Hijri). Every change is read with
+ * `parseDualCalendarDate`; as soon as the text is a complete valid date, `onChange` receives it in the formatted
+ * shape. The calendar icon opens the picker (Gregorian / Hijri tabs); picking a day calls `onChange` and closes it.
+ *
+ * Edge cases: Arabic digits and `/`, `-`, `.` separators are accepted; day comes first, so `06/15/2018` is not a
+ * date; text that is not yet complete never changes the saved value, and on blur the box goes back to the saved
+ * value. Emptying the box and leaving it clears the date. The field used to be a button that only opened the
+ * calendar, so a copied date could not be pasted. `disabled` renders a read-only value.
+ */
 export function InsDualCalendarDateField({
   id,
   label,

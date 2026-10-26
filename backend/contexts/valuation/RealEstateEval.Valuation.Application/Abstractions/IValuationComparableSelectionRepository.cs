@@ -148,8 +148,15 @@ public interface IValuationComparableSelectionRepository
     Task SaveChangesAsync(CancellationToken cancellationToken);
 
     /// <summary>
-    /// Saves rows that every first open of a request seeds. Returns <c>false</c> (and discards the
-    /// pending rows) when a concurrent open already seeded them, so the caller just reads theirs.
+    /// Saves the rows that every first open of a request seeds (imported comparable selections, their standard
+    /// adjustment lines and the market-approach header).
+    ///
+    /// How it works: a normal save; if it fails on a unique index, the pending inserts are detached and
+    /// <c>false</c> is returned, otherwise <c>true</c>.
+    ///
+    /// Edge cases and how it got fixed: the selections read and the reconciliation read both seed on the first
+    /// open of a request and run at the same time. The loser used to hit the unique index and answer 500 (the screen
+    /// showed «تعذّر تحميل المقارنات المختارة» until a reload). Any other database error is NOT swallowed.
     /// </summary>
     Task<bool> TrySaveSeedAsync(CancellationToken cancellationToken);
 }

@@ -32,7 +32,12 @@ export function PropertyDetailAppraisalTab({
   appraisalCard: PropertyDetailPartyCard | null;
   submission: PropertyDetailPartySubmission | null;
   onReviewChanged?: () => void;
-  /** The draft workspace lives in the case-study screen's «مدخلات التقييم» tab only. */
+  /**
+   * Whether this tab shows the specialist's report-draft workspace (send, approval state, attachments, final PDF).
+   * The same tab component is used by the property page («تقييم العقار») and by the case-study screen
+   * («مدخلات التقييم»). The draft is worked on in the second one only, so the property page passes `false`: it keeps
+   * the package-return bar and the read-only report, and its hint text no longer says the draft is "below".
+   */
   showReportDraft?: boolean;
 }) {
   const { role } = useAppAccess();

@@ -175,7 +175,12 @@ export function useEvaluatorSubmit({
 
     flushPendingAutosave();
 
-    // Everything checkable up front has passed — a host with a sending dialog opens it now.
+    // From here the hand-over is really sent. Order matters: the study report gate, the form validation, the
+    // issuance gates, the server price and the confirmation all come BEFORE this point, so the sending dialog opens
+    // only for a send that is going to run, and any refusal above stays on this screen with its reason.
+    // `dialogHost` is true when the host shows a sending dialog (it then says the result; no success toast here).
+    // After this point every way out reports to the host: success → `onSubmitted`, a refusal (`refuse`) or a thrown
+    // error → `onSubmitFailed`, so the dialog can never stay open on a failure.
     const dialogHost = Boolean(hostRef.current?.onSubmitStarted);
     hostRef.current?.onSubmitStarted?.();
     const refuse = (message: string) => {

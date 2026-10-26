@@ -277,7 +277,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
 
         var bourseNow = _time.UtcNow();
         var bourseWasCompleted = existing.BourseDataCompleted;
-        var (applyErrors, boundariesUnavailable) = WorkOrderPropertyWriteRules.ApplyBourseRequest(
+        var applyErrors = WorkOrderPropertyWriteRules.ApplyBourseRequest(
             existing!,
             request,
             bourseNow,
@@ -286,25 +286,10 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
 
         await _db.SaveChangesAsync(cancellationToken);
 
-        if (boundariesUnavailable)
-        {
-            var specialist = await _labels.ResolveAsync(
-                entity.AssignmentSpecialist ?? DocumentaryWorkflowRules.SystemRaiserRole,
-                cancellationToken);
-            await _failureGate.EnsureSystemFailureAsync(
-                IWorkOrderLoader.NormalizePo(poNumber),
-                propertyId.ToString(),
-                existing!.DeedNumber,
-                "unknown-boundaries",
-                "عدم معرفة حدود العقار",
-                "توفر الحدود = غير متوفرة حسب استعلام البورصة.",
-                specialist,
-                cancellationToken);
-        }
-
+        // «توفر الحدود = غير متوفرة» is a valid bourse answer, not a failure: nothing is raised for it.
         var bourseNormPo = IWorkOrderLoader.NormalizePo(poNumber);
         // One milestone per COMPLETION: a re-save of a completed bourse adds nothing, a bourse redone after a
-        // revert adds a new row; a property held open on «الحدود غير متوفرة» is not completed, so no row.
+        // revert adds a new row (a bourse that answers «الحدود غير متوفرة» completes like any other).
         if (existing!.BourseDataCompleted && !bourseWasCompleted)
         {
             await _timeline.RecordAsync(
@@ -420,20 +405,6 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             workOrder.AssignmentSpecialist ?? DocumentaryWorkflowRules.SystemRaiserRole,
             cancellationToken);
         var propertyId = property.Id.ToString();
-
-        if (DocumentaryWorkflowRules.BoundariesUnavailable(property.BoundariesAvailability)
-            && property.BourseDataCompleted)
-        {
-            await _failureGate.EnsureSystemFailureAsync(
-                workOrder.PoNumber,
-                propertyId,
-                property.DeedNumber,
-                "unknown-boundaries",
-                "عدم معرفة حدود العقار",
-                "توفر الحدود = غير متوفرة حسب استعلام البورصة.",
-                specialist,
-                cancellationToken);
-        }
 
         var hadUrl = DocumentaryWorkflowRules.HasLocationMapUrl(previousLocationMapUrl);
         var hasUrl = DocumentaryWorkflowRules.HasLocationMapUrl(property.LocationMapUrl);

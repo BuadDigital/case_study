@@ -804,10 +804,12 @@ export function buildInfathUploadModel(input: {
           L.signedAppraisal,
           partyField(appraisal, L.signedAppraisal) ||
             partyField(appraisal, "تقرير التقييم") ||
+            // The appraiser no longer types a file name: fall back to the generated final report listed with the documents.
             appraisalDocument?.fileName ||
             "",
           "EV",
         ),
+        // Only the certificate's file name is known here; the certificate page itself is merged into the final report PDF.
         file(
           "deposit-certificate",
           L.depositCertificate,

@@ -533,6 +533,15 @@ export type InspectorWorkspacePatchInput =
   | InspectorWorkspacePatch
   | ((current: InspectorWorkspaceDraft) => InspectorWorkspacePatch);
 
+/**
+ * Turns a patch input into a plain patch against the draft that is current right now.
+ *
+ * How it works: an object patch is returned as it is; a function patch is called with `current`. Callers pass the
+ * LATEST draft (the one in the cache when the save runs), not the one captured when the user acted.
+ *
+ * Edge cases: this is the fix for lost photos — two uploads that finish close together used to build their
+ * patches from the same stale draft, and the second one replaced the whole photo map and dropped the first.
+ */
 export function resolveInspectorWorkspacePatch(
   current: InspectorWorkspaceDraft,
   input: InspectorWorkspacePatchInput,
@@ -540,7 +549,12 @@ export function resolveInspectorWorkspacePatch(
   return typeof input === "function" ? input(current) : input;
 }
 
-/** The fields a patch touches — a function patch is read once against the rendered draft to learn them. */
+/**
+ * The names of the fields a patch touches (used to mark the matching section chip «مسودة»).
+ *
+ * How it works: an object patch contributes its own keys; a function patch is called once against the draft the
+ * screen renders to learn its keys. With no draft yet a function patch contributes nothing.
+ */
 export function inspectorPatchKeys(
   current: InspectorWorkspaceDraft | null,
   input: InspectorWorkspacePatchInput,
@@ -548,7 +562,12 @@ export function inspectorPatchKeys(
   return Object.keys(typeof input === "function" ? (current ? input(current) : {}) : input);
 }
 
-/** Sets (or clears, with `null`) one feature photo in the latest draft. */
+/**
+ * A function patch that sets (or clears, with `null`) the proof photo of one feature (fence, tanks, …).
+ *
+ * How it works: it copies the photo map of the draft it is given and replaces only `key`, so photos of the other
+ * features survive. Edge case: it must be applied to the latest draft (see `resolveInspectorWorkspacePatch`).
+ */
 export function featurePhotoPatch(
   key: string,
   attachment: InspectorWorkspaceDraft["featurePhotoAttachments"][string] | null,
@@ -558,7 +577,10 @@ export function featurePhotoPatch(
   });
 }
 
-/** Sets (or clears, with `null`) one component photo in the latest draft. */
+/**
+ * A function patch that sets (or clears, with `null`) the proof photo of one building component.
+ * Same technique and the same edge case as `featurePhotoPatch`, on `componentPhotoAttachments`.
+ */
 export function componentPhotoPatch(
   key: keyof InspectorWorkspaceDraft["componentPhotoAttachments"],
   attachment: InspectorWorkspaceDraft["componentPhotoAttachments"][keyof InspectorWorkspaceDraft["componentPhotoAttachments"]],

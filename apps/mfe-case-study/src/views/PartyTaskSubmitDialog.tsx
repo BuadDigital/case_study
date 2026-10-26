@@ -6,8 +6,15 @@ import { AppModal, Button, Spinner } from "@platform/ui-kit";
 export type PartyTaskSubmitState = "idle" | "sending" | "sent" | "queued";
 
 /**
- * The window the inspector and the appraiser see between pressing «إرسال» and being done: a loading
- * card while the send runs (it cannot be dismissed), then the result and one button back to the queue.
+ * The window the inspector and the appraiser see between pressing «إرسال» and being done.
+ *
+ * How it works: it is a pure view of `state`. `idle` renders nothing. `sending` shows a spinner and the sending
+ * text; the modal's close handler is a no-op, so Escape and the overlay cannot dismiss it. `sent` shows a check mark,
+ * `sentText` and one button «العودة للقائمة»; `queued` (saved offline) shows a fixed «will be sent when the connection
+ * is back» text with the same button. In `sent` and `queued`, closing the window is the same as going back.
+ *
+ * Edge cases: the host owns the state and closes the window (state back to `idle`) when a send fails, so the form
+ * stays usable; the old flow showed a read-only form and redirected after 900 ms, which looked like a freeze.
  */
 export function PartyTaskSubmitDialog({
   state,

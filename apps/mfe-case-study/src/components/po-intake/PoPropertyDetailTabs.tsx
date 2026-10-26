@@ -57,6 +57,7 @@ import { canEditProperty, canHandOverToEnfaz } from "../../lib/app-data/po-roles
 import { PropertyDetailEnfazHandoverCard } from "./PropertyDetailEnfazHandoverCard";
 import { PropertyFailureSurveyFreezeLift } from "./PropertyFailureSurveyFreezeLift";
 import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "../../lib/app-data/inspector-workspace-data";
+import { ENG_DISCOUNT_REASONS } from "@platform/app-shared/fees/party-fee-meta";
 
 export type PoPropertyDetailInspectorWorkspace = {
   /** Active field-inspection task for this property (desktop HTML inspect-desktop). */
@@ -361,7 +362,13 @@ export function PoPropertyDetailTabs({
                   returnPlaceholder="صف ما يجب تصحيحه في الرفع المساحي…"
                   acceptSuccessToast="تم قبول مخرجات الرفع المساحي"
                   returnSuccessToast="أُعيد الرفع المساحي للتصحيح"
-                  hint="قبول المخرجات يستحق أتعاب المكتب من جدول التسعير، ويُظهر البيانات المعتمدة في حزمة إنفاذ."
+                  hint="قبول المخرجات يستحق أتعاب المكتب من جدول التسعير ويرسلها للمالية مباشرة، ويُظهر البيانات المعتمدة في حزمة إنفاذ. «قبول مع اقتراح حسم» يرفع الأتعاب لمشرف القسم ليقرر الحسم أولاً."
+                  // Acceptance is done here, inside the transaction. The specialist may accept as
+                  // is (fee straight to finance) or with a proposed discount for the supervisor.
+                  discountProposal={{
+                    subjectLabel: `أتعاب ${surveyTask?.assigneeName?.trim() || "المكتب الهندسي"}`,
+                    reasons: ENG_DISCOUNT_REASONS,
+                  }}
                   onChanged={() => {
                     void partySubmissionsQuery.refetch();
                   }}
@@ -450,6 +457,7 @@ export function PoPropertyDetailTabs({
               tasks={tasks}
               appraisalCard={appraisalCard}
               submission={partySubmissionsQuery.data?.appraisal ?? null}
+              // The report-draft workspace lives only in the case-study screen's «مدخلات التقييم» tab.
               showReportDraft={false}
               onReviewChanged={() => {
                 void partySubmissionsQuery.refetch();

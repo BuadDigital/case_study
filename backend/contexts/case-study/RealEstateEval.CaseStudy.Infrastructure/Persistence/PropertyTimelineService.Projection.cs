@@ -46,6 +46,17 @@ public sealed partial class PropertyTimelineService
         key.StartsWith("task:", StringComparison.Ordinal)
         && key.Contains(":distribution", StringComparison.Ordinal);
 
+    /// <summary>
+    /// Turns the stored rows of one property into the milestones the timeline card shows.
+    ///
+    /// How it works: rows with a legacy technical key are set aside (kept only to rebuild the details of old
+    /// «توزيع المعاملة» rows); the rest are ordered oldest first by occurrence, then by recording time, then by key
+    /// (so equal instants always come out in the same order); each becomes a DTO with a modern title, detail and tone.
+    ///
+    /// Edge cases: nothing is deleted from the table — old rows are only hidden or re-worded on read. The same event
+    /// key never appears twice for repeated steps because those keys carry a tick suffix (a second submission of the
+    /// inspection is a new row, not a replacement). An empty list is a valid result.
+    /// </summary>
     internal static IReadOnlyList<PropertyTimelineEventDto> Project(IReadOnlyCollection<PropertyTimelineEntry> rows)
     {
         var hidden = rows.Where(r => IsLegacyTechnicalKey(r.EventKey)).ToList();
