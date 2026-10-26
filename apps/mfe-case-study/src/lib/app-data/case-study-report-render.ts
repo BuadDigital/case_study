@@ -81,7 +81,16 @@ function renderCommissionTable(model: CaseStudyReportModel): string {
   </tbody></table></div>${renderDeedsTable(model)}`;
 }
 
-/** Phase 4: a linked property lists every deed of the transaction and the total area. */
+/**
+ * Phase 4: the «صكوك العقار (n)» table — a linked property lists every deed of the transaction
+ * and the total area. Printed right after the commission table.
+ *
+ * How it works: reads `model.deeds` (built by `caseStudyReportDeeds`); one escaped row per deed
+ * (#, deed / registry label, work order, area), then a footer row «المساحة الكلية» with the total.
+ *
+ * Edge cases: no deeds block, or fewer than two rows → "" so an ordinary property's report is
+ * unchanged.
+ */
 function renderDeedsTable(model: CaseStudyReportModel): string {
   const deeds = model.deeds;
   if (!deeds || deeds.rows.length < 2) return "";

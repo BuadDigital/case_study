@@ -87,8 +87,16 @@ type InspectorWorkspaceLoadInput = {
 };
 
 /**
- * «يوجد منقولات» left untouched means «لا»: the report prints «لا يوجد منقولات بالعقار» only for an
- * explicit «لا», so an empty answer would otherwise print a dash. Never over an answer already given.
+ * Makes an unanswered «يوجد منقولات» a «لا» in an inspection draft.
+ *
+ * How it works: if `featureValues.movables` has no text, it returns a copy of the draft with `movables = "لا"`;
+ * otherwise it returns the same draft object (callers can use identity to see that nothing changed).
+ *
+ * Edge cases and how they were fixed: the pill is an on/off toggle, so an inspector who never touched it left the
+ * value empty, and the report printed a dash because «لا يوجد منقولات بالعقار» is printed only for an explicit
+ * «لا». It is applied when a new draft is created and again when an existing, unlocked draft is opened (drafts
+ * made before this default existed). A «نعم» is never overwritten; submitted drafts are not touched (the repair
+ * skips locked drafts).
  */
 export function withMovablesDefaultNo(draft: InspectorWorkspaceDraft): InspectorWorkspaceDraft {
   if ((draft.featureValues[MOVABLES_FEATURE_KEY] ?? "").trim()) return draft;
@@ -111,6 +119,7 @@ function repairLoadedInspectorDraft(
   // inspector has started — until he submits. Never over something he wrote.
   if (!isInspectorWorkspaceLocked(existing.status)) {
     existing = fillEmptyFeaturesFromBourse(existing, input.property);
+    // Drafts opened before the default existed: an unanswered «يوجد منقولات» becomes «لا» (see withMovablesDefaultNo).
     existing = withMovablesDefaultNo(existing);
   }
   const stamp = inspectionStampFromNow();
@@ -130,6 +139,8 @@ function repairLoadedInspectorDraft(
 export async function getOrCreateInspectorWorkspace(
   input: InspectorWorkspaceLoadInput,
 ): Promise<InspectorWorkspaceDraft | null> {
+  // Decision 2026-10-18: no prefill from a sibling deed's inspection any more — grouped
+  // properties were removed; deeds are merged into one transaction by the case specialist instead.
   let existing = await fetchInspectorWorkspace(input.taskId);
   if (existing) {
     existing = await migrateInspectorDefaultCoordsIfNeeded(existing);
@@ -143,6 +154,7 @@ export async function getOrCreateInspectorWorkspace(
     return existing;
   }
 
+  // A brand-new draft starts with «يوجد منقولات» = «لا», so the report never prints a dash for an untouched pill.
   let draft = withMovablesDefaultNo(createInspectorWorkspaceDraft(input));
   if (input.property && inspectorDraftNeedsEnfathPrefill(draft)) {
     draft = applyEnfathPrefillToInspectorDraft(draft, input.property);
@@ -327,6 +339,19 @@ function scheduleDebouncedSave(
   });
 }
 
+/**
+ * Applies a change to a task's inspection draft and saves it (debounced) to the server.
+ *
+ * How it works: takes the cached draft (or fetches it), resolves the patch against it (`resolveInspectorWorkspacePatch`),
+ * writes the merged draft to the device cache at once so typing is instant, and queues the network PUT after
+ * `SAVE_DEBOUNCE_MS`, or immediately with `options.immediate` or when the patch carries `mapPinned` (a pin or unpin
+ * must not wait: leaving the page inside the debounce window used to drop it). Returns the saved draft, or the current one when
+ * nothing was saved, or `null` when the task has no draft.
+ *
+ * Edge cases: a submitted draft is returned unchanged unless the caller allows it (the specialist correcting an inspector's
+ * submission); the patch is resolved against the cached draft as it is NOW, which is what keeps concurrent photo
+ * uploads from erasing each other; writes for one task go through one queue so an older PUT cannot land last.
+ */
 export async function updateInspectorWorkspace(
   taskId: string,
   patchInput: InspectorWorkspacePatchInput,

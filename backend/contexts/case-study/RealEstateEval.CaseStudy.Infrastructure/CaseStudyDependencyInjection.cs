@@ -33,7 +33,7 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IWorkOrderPropertyCommands, WorkOrderPropertyCommands>();
         services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
         services.AddScoped<IWorkOrderService, WorkOrderService>();
-        // Decision 2026-10-19: the transaction above the deeds and its D- / PR numbers.
+        // Decision 2026-10-19: the transaction above the deeds and its TMP- / PR numbers.
         services.AddScoped<ITransactionRepository, TransactionRepository>();
         services.AddScoped<ITransactionReferenceService, TransactionReferenceService>();
         services.AddScoped<ITransactionQuery, TransactionQueryService>();

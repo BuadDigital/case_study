@@ -16,6 +16,14 @@ public sealed class WorkOrderLoader : IWorkOrderLoader
         _db = db;
     }
 
+    /// <summary>Loads one work order by PO number with its client, deeds, contacts and each deed's transaction.</summary>
+    /// <remarks>
+    /// How it works: normalises the PO, includes client → deeds → contacts, and deeds → transaction →
+    /// all of that transaction's deeds (they may sit on other work orders, decision 2026-10-19), then
+    /// returns the first match; tracked unless asNoTracking.
+    /// Edge cases: the transaction → deeds → transaction include is a cycle a plain no-tracking query
+    /// refuses, so the read-only path uses AsNoTrackingWithIdentityResolution.
+    /// </remarks>
     public async Task<WorkOrder?> LoadAsync(
         string poNumber,
         CancellationToken cancellationToken = default,

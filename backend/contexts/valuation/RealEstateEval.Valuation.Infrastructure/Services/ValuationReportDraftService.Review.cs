@@ -19,6 +19,18 @@ public sealed partial class ValuationReportDraftService
 {
     private const string PackageStatusUnknown = "unknown";
 
+    /// <summary>The assigned appraiser approves the sent report draft and freezes it as the deposit copy.</summary>
+    /// <remarks>
+    /// How it works: loads the request for the assigned appraiser; an already approved draft returns the
+    /// current state; a draft not sent is refused. It then checks the printed HTML (present, within
+    /// MaxHtmlBytes, has the deposit-code line, final value matches) and the report date (yyyy-MM-dd and
+    /// today). Next it fixes the report number through <see cref="EnsureReportNumberCoreAsync"/>, issues the
+    /// deposit copy unless already frozen, approves the draft with the compressed snapshot and its SHA-256,
+    /// notifies the case specialist, saves and writes the timeline milestone.
+    /// Edge cases: the number is fixed before the freeze (decision 2026-10-19) so the frozen copy always
+    /// carries PRV-…; a Case Study failure refuses the approval with nothing frozen. A retry after a failed
+    /// second save finds the copy frozen and only completes the approval.
+    /// </remarks>
     public async Task<(ValuationReportDraftDto? Result, Dictionary<string, string>? Errors)> ApproveAsync(
         Guid valuationRequestId,
         ApproveReportDraftRequest request,
@@ -125,6 +137,18 @@ public sealed partial class ValuationReportDraftService
         return (await GetAsync(valuationRequestId, cancellationToken), null);
     }
 
+    /// <summary>
+    /// Decision 2026-10-19: lets the assigned appraiser fix the PRV-… report number before approving
+    /// (it is printed in the frozen copy).
+    /// </summary>
+    /// <remarks>
+    /// How it works: loads the request for the assigned appraiser (else the refusal), reads the current
+    /// draft untracked, then calls <see cref="EnsureReportNumberCoreAsync"/> and returns
+    /// { ValuationRequestId, ReportNumber }.
+    /// Edge cases: a request with no number whose draft is missing or not yet sent is refused (NotSentAr) —
+    /// a draft not on its way to approval has no claim on the PR root. A request that already has a number
+    /// returns it unchanged whatever the draft state (a reopened report keeps its number).
+    /// </remarks>
     public async Task<(ValuationReportNumberDto? Result, Dictionary<string, string>? Errors)> EnsureReportNumberAsync(
         Guid valuationRequestId,
         ReportDraftActor actor,
@@ -147,6 +171,15 @@ public sealed partial class ValuationReportDraftService
     /// The request's report number: already fixed, or confirmed now through the Case Study
     /// owner call (which draws the transaction's PR reference if it had none). Saves.
     /// </summary>
+    /// <remarks>
+    /// How it works: 1) a request that already has ReportNumber returns it (no call). 2) Otherwise it calls
+    /// <c>ConfirmTransactionReferenceAsync(vr.PropertyId)</c>; Case Study draws PR once (idempotent) and
+    /// returns the derived numbers. 3) It stores ValuationReportNumber (PRV-YY-seq) on the request with
+    /// <c>AssignReportNumber</c> and saves. Returns (number, null) or (null, Arabic error).
+    /// Edge cases: no Case Study client, an error answer, a thrown call (cancellation excepted) or an empty
+    /// PRV all return ReportNumberUnavailableAr and change nothing. The number never changes once set, so a
+    /// reopen keeps it (prod PO-067455 kept PR-26-00002 after a reopen 21 s later).
+    /// </remarks>
     private async Task<(string? Number, string? Error)> EnsureReportNumberCoreAsync(
         ValuationRequest vr,
         CancellationToken cancellationToken)

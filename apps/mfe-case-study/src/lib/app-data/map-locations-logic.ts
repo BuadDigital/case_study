@@ -73,7 +73,7 @@ export type MapPropertyRecord = {
   coordsSource: string | null;
   /** The transaction (المعاملة) id: deeds sharing it cluster into one point. */
   propertyGroupId: string | null;
-  /** PR-… once confirmed, else the D- draft number. */
+  /** PR-… once confirmed, else the TMP- temporary number. */
   transactionNumber?: string | null;
   poNumber?: string;
   propertyId?: string;
@@ -350,6 +350,19 @@ type MapGroupPoint = {
 
 export type MapGroupedPoint = MapSinglePoint | MapGroupPoint;
 
+/**
+ * Turns map records into points: one point per deed, or one cluster per transaction with
+ * several deeds (decision 2026-10-19: `propertyGroupId` is the transaction id).
+ *
+ * How it works: 1) records without a group id become single points; 2) the rest are bucketed by
+ * group id; 3) a bucket of two or more becomes a cluster (deed count, active when any member is
+ * active, coordinates of the first located member). Returns singles first, then clusters.
+ *
+ * Edge cases: every deed now carries its transaction id, so a one-deed transaction would have
+ * become a one-member cluster — it is turned back into a single point. A cluster used to take the
+ * first member's coordinates, so an unlocated first deed hid the whole cluster; it now takes the
+ * first member that has coordinates (both 2026-10-19).
+ */
 export function groupForMap(records: MapPropertyRecord[]): MapGroupedPoint[] {
   const singles: MapSinglePoint[] = [];
   const groups = new Map<string, MapPropertyRecord[]>();

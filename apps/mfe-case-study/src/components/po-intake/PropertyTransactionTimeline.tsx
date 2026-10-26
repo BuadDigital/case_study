@@ -346,6 +346,7 @@ export function PropertyTransactionTimeline({
                     <span className="[direction:ltr] [unicode-bidi:isolate]">
                       {formatTimelineDate(event.at)}
                     </span>
+                    {/* On a transaction timeline each event names the deed it happened on. */}
                     {event.deedLabel ? (
                       <span>
                         صك{" "}

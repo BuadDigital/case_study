@@ -78,7 +78,15 @@ export function reportDateForPrint(
   return submission.appraisalDate || submission.reportIssueDate;
 }
 
-/** The report number printed on the report: a new version (n+1) keeps the number and adds «/n» (PRV-2026-00123/2). */
+/**
+ * The report number printed on the report: a new version (n+1) keeps the number and adds «/n».
+ *
+ * How it works: trims `reportNo`; when it is set and `version` is above 1 returns
+ * `${number}/${version}` (PRV-26-00123/2), else the number as is.
+ *
+ * Edge cases: version 1 or unknown → the bare number; no number yet → "" (never "/2").
+ * Decision 2026-10-19: the suffix changed from « نسخة n» to «/n» with the PRV- numbering.
+ */
 export function versionedReportNo(
   reportNo: string | null | undefined,
   version: number | null | undefined,

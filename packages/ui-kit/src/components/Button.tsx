@@ -39,6 +39,7 @@ const iconSizeClasses = {
   default: "[&>svg]:h-4 [&>svg]:w-4",
   sm: "[&>svg]:h-3.5 [&>svg]:w-3.5",
   lg: "[&>svg]:h-4 [&>svg]:w-4",
+  // The icon size sets its own 18px glyph in `sizeClasses` above.
   icon: "",
 } as const;
 

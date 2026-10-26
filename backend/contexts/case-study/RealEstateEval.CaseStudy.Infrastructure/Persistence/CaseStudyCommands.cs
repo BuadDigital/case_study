@@ -28,6 +28,20 @@ public sealed class CaseStudyCommands : ICaseStudyCommands
         _transactions = transactions ?? new TransactionReferenceService(new TransactionRepository(caseStudy));
     }
 
+    /// <summary>
+    /// Decision 2026-10-19: fixes the transaction's official PR number (idempotent) and stamps the
+    /// derived PRV valuation report number on every deed's appraisal package.
+    /// </summary>
+    /// <remarks>
+    /// How it works: 1) confirms the PR reference through ITransactionReferenceService (drawn now only
+    /// when the transaction had none); 2) derives PRV-{YY}-{seq}; 3) loads the non-cancelled appraisal
+    /// tasks of every live deed of the transaction; 4) for each, seeds a draft submission carrying the
+    /// number or stamps reportNo into the existing payload; saves; 5) returns the transaction id, PR,
+    /// PRC and PRV. Called by the valuation context when the valuation report is first approved.
+    /// Edge cases: a confirmation error returns (null, reason) and stamps nothing; a reopen/re-approval
+    /// gets the same PR back so the stamp is unchanged (gap-free); a deed with no appraisal task yet
+    /// is skipped (no save when there are none); an old reserved TQ-… reportNo is overwritten.
+    /// </remarks>
     public async Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(
         Guid propertyId,
         CancellationToken cancellationToken = default)

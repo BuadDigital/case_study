@@ -46,6 +46,14 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
     /// Folds the transaction's requests onto the holder's: a sibling deed's own request (or one
     /// folded before the holder had any) points at the holder's open request. Idempotent.
     /// </summary>
+    /// <remarks>
+    /// How it works: for the holder deed it folds every sibling; for a folded deed it folds only that
+    /// deed; the call goes to IValuationRequestFolding.FoldAsync with the holder deed id.
+    /// Edge cases: no folding port or no sibling (an ordinary single-deed property) → no-op; a
+    /// failure is logged, never thrown, so the request creation still stands (cancellation is
+    /// rethrown). When the holder has no request yet the rows fold with a null target, and the
+    /// holder's own dispatch later re-points them (fix 2026-10-21, merge before distribution).
+    /// </remarks>
     private async Task FoldTransactionAsync(
         Guid propertyId,
         Guid holderPropertyId,
@@ -85,6 +93,20 @@ public sealed class CaseStudyValuationDispatchService : ICaseStudyValuationDispa
         }
     }
 
+    /// <summary>Opens the deed's valuation request once its appraisal task exists, folded per transaction.</summary>
+    /// <remarks>
+    /// How it works: 1) reads the parent task's property, stops when there is none or no appraisal
+    /// child; 2) reads the holder deed and the siblings of the deed's transaction; 3) a folded deed
+    /// first re-points any request it already has; 4) when an open request already answers for the
+    /// deed (its own, or the holder's through MergedIntoRequestId) it stops — the holder gathers its
+    /// siblings first; 5) otherwise creates the request (area = city, else district), folds (holder:
+    /// gathers siblings; folded deed: joins the holder's) and writes «فتح مسار التقييم» on the timeline.
+    /// Edge cases: since 2026-10-20 a merge may come before distribution, so either deed can be
+    /// distributed first — a folded deed distributed after the merge used to open its own valuation;
+    /// fixed 2026-10-21 by steps 3–5, giving one request whatever the order. A create refused by the
+    /// valuation service is logged and skipped. The report number is no longer reserved here
+    /// (2026-10-19): PRV is derived from the PR reference when it is confirmed.
+    /// </remarks>
     private async Task CreateWhenAppraisalSpawnedCoreAsync(
         Guid parentTaskId,
         CancellationToken cancellationToken)

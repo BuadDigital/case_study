@@ -36,6 +36,14 @@ public static class ReferenceNumbering
     /// <summary>Two-digit year for the printed form (decision 2026-10-20): 2026 → 26.</summary>
     public static string ShortYear(int year) => (year % 100).ToString("D2");
 
+    /// <summary>The printed number for a prefix, year and yearly sequence: PR-26-00123.</summary>
+    /// <remarks>
+    /// How it works: joins the prefix, <see cref="ShortYear"/> of the year and the sequence padded to five
+    /// digits with dashes.
+    /// Edge cases (decision 2026-10-20): the year was printed with four digits (PR-2026-00123); only the
+    /// printed form is shortened — callers pass the full year and the counters stay keyed by it, so the
+    /// yearly sequence is unchanged.
+    /// </remarks>
     public static string Format(string prefix, int year, int sequence) =>
         $"{prefix}-{ShortYear(year)}-{sequence:D5}";
 
@@ -44,6 +52,13 @@ public static class ReferenceNumbering
     /// under the document prefix (PR-26-00123 → PRC-26-00123). Null when the reference is
     /// not an official PR number.
     /// </summary>
+    /// <remarks>
+    /// How it works: trims the reference; if it starts with "PR-" it swaps the leading "PR" for the
+    /// document prefix and keeps the rest as is; otherwise returns null.
+    /// Edge cases: a TMP temporary number or null gives null — a report number is never made from a
+    /// temporary number (decision 2026-10-19). Old four-digit-year roots derive as they are
+    /// (PR-2026-00012 → PRV-2026-00012), so already printed numbers stay consistent.
+    /// </remarks>
     public static string? Derive(string? transactionReference, string documentPrefix)
     {
         var root = (transactionReference ?? "").Trim();

@@ -228,6 +228,8 @@ export function PropertyDetailHero({
   const { isFavorite, toggleFavorite } = useFavoriteProperties();
   // Decision 2026-10-19: the page is the transaction's; its deeds (when several) sit in the switcher.
   const { data: transaction } = useTransactionQuery(property.id);
+  // The transaction's number (official PR-…, else TMP-…), falling back to this deed's own
+  // reference or draft number while the transaction is still loading.
   const transactionNumber =
     transaction?.displayNumber?.trim() ||
     property.referenceNumber?.trim() ||
@@ -423,6 +425,7 @@ export function PropertyDetailHero({
                     {transactionNumber}
                   </bdi>
                 </div>
+                {/* Several deeds: the link kind (one building / contract) and the deed count under the number. */}
                 {multiDeed && transaction ? (
                   <div className="mt-0.5 text-[10.5px] text-text-2">
                     {transaction.linkKindLabelAr || "عدة صكوك"} · {transaction.deedCount} صكوك

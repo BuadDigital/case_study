@@ -19,6 +19,7 @@ public sealed class TransactionRepository(CaseStudyDbContext db) : ITransactionR
             nowUtc,
             cancellationToken);
 
+    // Decision 2026-10-19: the official number draws from the property (PR) sequence; PRC / PRV reuse its root.
     public Task<(string? Reference, string? Error)> AllocateOfficialReferenceAsync(
         DateTime nowUtc,
         CancellationToken cancellationToken) =>

@@ -29,6 +29,12 @@ public sealed class ValuationReportWorkflowTaskLookup(CaseStudyDbContext db)
         return new OpenAppraisalTaskRef(task.Id, task.PoNumber, submitted);
     }
 
+    /// <summary>The other live deeds of the property's transaction (phase 5).</summary>
+    /// <remarks>
+    /// How it works: StudyHolder.TransactionPropertyIdsAsync, minus the property itself.
+    /// Edge cases: an ordinary deed (or one with TransactionId = Guid.Empty) yields an empty list, so
+    /// the final issuance closes only its own appraisal task.
+    /// </remarks>
     public async Task<IReadOnlyList<Guid>> ListSiblingDeedIdsAsync(
         Guid propertyId,
         CancellationToken cancellationToken)

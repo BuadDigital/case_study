@@ -10,8 +10,9 @@ using RealEstateEval.CaseStudy.Application.Contracts;
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 /// <summary>
-/// The transaction (المعاملة) above the deeds — decision 2026-10-19. Reads only in this phase:
-/// the header with its deeds and one timeline for all of them. Visibility follows the deeds'
+/// The transaction (المعاملة) above the deeds — decision 2026-10-19. Reads the header with its
+/// deeds and one timeline for all of them; the case specialist merges transactions, takes a deed
+/// back out (before the PR number) and searches deeds to merge. Visibility follows the deeds'
 /// work orders, as every other property read does.
 /// </summary>
 [ApiController]
@@ -43,6 +44,13 @@ public class TransactionsController : ControllerBase
         Ok(await _commands.SearchDeedsAsync(transactionId, q ?? "", await ActorAsync(ct), ct));
 
     /// <summary>Merge other deeds' transactions into this one (case-study specialist, audited).</summary>
+    /// <remarks>
+    /// How it works: resolves the caller's permissions and passes the target id and request (deed ids, link
+    /// kind one_building | contract, reason) to <c>ITransactionCommands.MergeAsync</c>. A rule refusal → 400
+    /// with the Arabic message; an unknown transaction → 404; else the refreshed detail.
+    /// Edge cases: the rules live in the command service — specialist only, every deed must have finished
+    /// intake (BourseDataCompleted, decision 2026-10-21), so a merge may come before distribution.
+    /// </remarks>
     [HttpPost("{transactionId:guid}/merge")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<TransactionDetailDto>> Merge(
@@ -56,6 +64,13 @@ public class TransactionsController : ControllerBase
     }
 
     /// <summary>Take one deed out into a new draft transaction — only before the official reference exists.</summary>
+    /// <remarks>
+    /// How it works: resolves the caller's permissions and passes the transaction id and request (deed,
+    /// reason) to <c>ITransactionCommands.UnmergeDeedAsync</c>, which gives the deed a fresh TMP transaction
+    /// and its own valuation request back. A rule refusal → 400; an unknown transaction → 404; else the
+    /// remaining transaction's detail.
+    /// Edge cases: once the PR number exists the command refuses — a deed never leaves after the official number.
+    /// </remarks>
     [HttpPost("{transactionId:guid}/unmerge-deed")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<TransactionDetailDto>> UnmergeDeed(

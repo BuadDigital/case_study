@@ -28,6 +28,7 @@ public sealed partial class ValuationReportDraftService(
     TimeProvider? time = null,
     IValuationFinalReportService? finalReports = null,
     ValuationTimelineWriter? timeline = null,
+    // Decision 2026-10-19: confirms the transaction's PR reference in Case Study so the report number (PRV) can be fixed.
     ICaseStudyCommands? caseStudyCommands = null,
     IAssignedAppraiserCheck? assignedAppraisers = null,
     IValuationReconciliationService? reconciliation = null,

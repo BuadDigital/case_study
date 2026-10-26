@@ -37,6 +37,13 @@ public static class TransactionMergeRules
         TransactionLinkKinds.IsValid((kind ?? "").Trim()) ? null : LinkKindRequiredAr;
 
     /// <summary>A deed's own stage condition: intake done (bourse completed), not handed over.</summary>
+    /// <remarks>
+    /// How it works: returns «مرفوع على إنفاذ» when the deed is handed over to Enfaz, else «لم يُستكمل
+    /// استعلام البورصة» when BourseDataCompleted is false, else null.
+    /// Edge cases: the first gate asked every deed's inspection to be submitted/accepted; Omar
+    /// corrected it (2026-10-20) to intake only, so a merge may come before distribution. A rare deed
+    /// entered with its bourse data already filled also has BourseDataCompleted set and passes.
+    /// </remarks>
     public static string? DeedStageBlock(WorkOrderProperty deed)
     {
         if (deed.IsHandedOverToEnfaz) return HandedOverAr;
@@ -45,6 +52,13 @@ public static class TransactionMergeRules
     }
 
     /// <summary>Why a deed cannot join the target transaction; null when it can.</summary>
+    /// <remarks>
+    /// How it works, first failing check wins: removed deed → already in the target → source
+    /// transaction missing or itself merged → source already has its official PR number → the
+    /// deed's own stage (<see cref="DeedStageBlock"/>).
+    /// Edge cases: a source with a PR number is refused because merging after approval needs a new
+    /// version (later phase); the deed search reuses this to tell which deeds can join.
+    /// </remarks>
     public static string? BlockedReason(
         WorkOrderProperty deed,
         Transaction? source,
@@ -58,6 +72,13 @@ public static class TransactionMergeRules
         return DeedStageBlock(deed);
     }
 
+    /// <summary>The receiving transaction: not itself folded into another, and none of its deeds handed over to Enfaz.</summary>
+    /// <remarks>
+    /// How it works: «مدمجة في معاملة أخرى» when the target was merged into another transaction,
+    /// «مرفوع على إنفاذ» when any of its deeds is handed over, else null.
+    /// Edge cases: a target with an official PR number is allowed — it keeps its number and the
+    /// source deeds join under it.
+    /// </remarks>
     public static string? ValidateTarget(Transaction target, IEnumerable<WorkOrderProperty> targetDeeds)
     {
         if (target.IsMerged) return TargetMergedAr;
@@ -65,6 +86,14 @@ public static class TransactionMergeRules
         return null;
     }
 
+    /// <summary>Taking a deed back out: only before the official PR number, never a handed-over deed, never the last deed.</summary>
+    /// <remarks>
+    /// How it works, first failing check wins: transaction merged into another → transaction has its
+    /// PR number → deed missing or not in this transaction → deed handed over to Enfaz → fewer than
+    /// two deeds left (nothing to take out).
+    /// Edge cases: once the PR number exists nothing comes out, so the printed reference always
+    /// covers the same deeds.
+    /// </remarks>
     public static string? ValidateUnmerge(Transaction transaction, WorkOrderProperty? deed, int deedCount)
     {
         if (transaction.IsMerged) return TargetMergedAr;

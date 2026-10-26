@@ -75,6 +75,7 @@ const PrimaryQueueRow = memo(function PrimaryQueueRow({
           tone={isStudyLabel ? "gold" : "primary"}
           rtl={isStudyLabel}
           trailing={rowAttentionTrailing(ctx, task)}
+          // Linked properties (2026-10-19): the deed cell also shows its transaction number, with the deed count when it has several.
           subtitle={
             <TransactionNumberBadge
               number={transactionNumberOf(property) ?? task.transactionNumber}

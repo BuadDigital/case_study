@@ -152,6 +152,7 @@ const EngineeringSurveyRow = memo(function EngineeringSurveyRow({
           task={task}
           propertySlot={row.propertySlot}
           propertyType={propertyTypeLabel(property)}
+          // Linked properties (2026-10-19): the deed cell also shows its transaction number, with the deed count when it has several.
           transactionNumber={
             transactionNumberOf(property) ?? task.transactionNumber
           }

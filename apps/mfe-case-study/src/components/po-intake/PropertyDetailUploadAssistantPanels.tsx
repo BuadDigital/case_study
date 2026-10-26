@@ -53,6 +53,7 @@ function InfathAttachmentRow({
       >
         {attachmentStatusLabel(ready, item.conditional)}
       </Badge>
+      {/* Decision 2026-10-20: the shared icon size — sm padding on a fixed 32px box squeezed the svg to ~1px. */}
       <Button
         type="button"
         size="icon"

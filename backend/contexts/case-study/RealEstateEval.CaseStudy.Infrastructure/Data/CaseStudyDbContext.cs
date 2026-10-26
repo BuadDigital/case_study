@@ -13,6 +13,7 @@ public sealed class CaseStudyDbContext(DbContextOptions<CaseStudyDbContext> opti
 {
     public DbSet<WorkOrder> WorkOrders => Set<WorkOrder>();
     public DbSet<WorkOrderProperty> WorkOrderProperties => Set<WorkOrderProperty>();
+    // Decision 2026-10-18: the transaction above the deeds (replaces the removed property groups).
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<BuildingInventoryLine> BuildingInventoryLines => Set<BuildingInventoryLine>();

@@ -160,6 +160,8 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageFinancial,
                     PlatformCapabilities.ManageOperations)));
 
+            // 2026-10-21: attachment existence/references only — the attachment readers plus the
+            // service's own token, so a system payload check is not filtered by the saving person's rights.
             options.AddPolicy(
                 CapabilityPolicyNames.CheckAttachmentRefs,
                 policy => policy.RequireAssertion(ctx => IsUpstreamService(ctx) || HasAnyCapability(

@@ -157,6 +157,16 @@ public class AttachmentsController : ControllerBase
     /// References of the given ids. A person sees only the rows they may read; the service's own
     /// token (a payload check behind a save) sees every row, as the in-process lookup does.
     /// </summary>
+    /// <remarks>
+    /// How it works: parses the comma-separated ids; a caller holding the upstream-service token gets
+    /// <c>GetRefsAsync(ids, actor: null)</c> (unfiltered); anyone else is resolved to their permissions
+    /// and gets only the rows they may read. Returns references only (id, scope, scope key — never files).
+    /// Edge case fixed 2026-10-21 (prod PO-067455): the inspector's resend failed «مرفق صورة غير موجود في
+    /// قاعدة البيانات» because the check ran with the inspector's token and inspection photos are readable
+    /// by uploader/manager only, so the specialist's photo was hidden. Fix: policy CheckAttachmentRefs
+    /// (readers + service token) and the unfiltered service branch. In-process (dev) never failed, since
+    /// actor = null already skipped filtering there.
+    /// </remarks>
     [HttpGet("lookup")]
     [Authorize(Policy = CapabilityPolicyNames.CheckAttachmentRefs)]
     public async Task<ActionResult<IReadOnlyList<AttachmentRefDto>>> Lookup(
@@ -169,6 +179,8 @@ public class AttachmentsController : ControllerBase
         return Ok(await _lookup.GetRefsAsync(parsed, actor, ct));
     }
 
+    // Decision 2026-10-21: a system check (actor = null) — e.g. a photo the specialist added to a
+    // returned inspection must not be reported «missing» to the inspector who cannot read it.
     private bool IsServiceCaller() =>
         User.HasClaim(PlatformCapabilities.TokenUseClaimType, PlatformCapabilities.UpstreamServiceTokenUse);
 
@@ -185,6 +197,15 @@ public class AttachmentsController : ControllerBase
         return Ok(await _lookup.ListForPropertyAsync(propertyId, actor, ct));
     }
 
+    /// <summary>Whether one attachment exists — for the caller, or at all for the service's own token.</summary>
+    /// <remarks>
+    /// How it works: an upstream-service caller gets <c>ExistsAsync(id, actor: null)</c>, which ignores read
+    /// rights; any other caller is resolved to their permissions and gets "exists and I may read it".
+    /// Returns { Exists } only, never the file.
+    /// Edge case fixed 2026-10-21: same cause as <see cref="Lookup"/> — a system payload check must not report
+    /// a photo «missing» just because the person saving cannot open it; the policy moved from
+    /// ReadAttachments to CheckAttachmentRefs so the service token (no capability claims) is let in.
+    /// </remarks>
     [HttpGet("{id:guid}/exists")]
     [Authorize(Policy = CapabilityPolicyNames.CheckAttachmentRefs)]
     public async Task<ActionResult<AttachmentExistsDto>> Exists(Guid id, CancellationToken ct)

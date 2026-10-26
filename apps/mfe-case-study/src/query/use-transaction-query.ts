@@ -23,6 +23,15 @@ export const useTransactionQuery = useTransactionByPropertyQuery;
 /**
  * The timeline a property page shows: the transaction's merged timeline when it has several
  * deeds (every event names its deed), else the deed's own. Both are read-only queries.
+ *
+ * How it works: 1) reads the deed's transaction; deed count and transaction id come from it,
+ * falling back to the property's own `transactionDeedCount` / `transactionId` while it loads;
+ * 2) `multi` = more than one deed and a known transaction id; 3) runs the deed timeline query
+ * with null keys when `multi` (so it fetches nothing) and the transaction timeline only when
+ * `multi`. Returns the active query, `multi`, the transaction id and the cache key to invalidate.
+ *
+ * Edge cases: a deed with no transaction (older rows) or a one-deed transaction keeps its own
+ * timeline and key.
  */
 export function usePropertyOrTransactionTimeline(
   poNumber: string,
@@ -44,7 +53,15 @@ export function usePropertyOrTransactionTimeline(
   };
 }
 
-/** One timeline for every deed of the transaction, oldest first; each event names its deed. */
+/**
+ * One timeline for every deed of the transaction, oldest first; each event names its deed.
+ *
+ * How it works: keyed by `appDataKeys.transactionTimeline(id)`; fetches
+ * `getTransactionTimeline`, unwraps it (Arabic error «تعذّر تحميل الجدول الزمني للمعاملة») and
+ * maps it with `mapTransactionTimelineDtos`. Fresh for 60 s, kept 10 min.
+ *
+ * Edge cases: a blank id, or `enabled: false`, does not run; a blank id inside the fetch → [].
+ */
 export function useTransactionTimelineQuery(
   transactionId: string | null | undefined,
   options: { enabled?: boolean } = {},

@@ -374,6 +374,7 @@ export function CaseStudyReportEditor({
           <div ref={stepPanelRef} className="flex flex-col gap-3.5">
             {step === 0 && sectionHasVisibleQuestions("deed") ? (
               <div className="flex flex-col gap-3.5">
+                {/* Phase 4 (decision 2026-10-19): the specialist's form lists every deed of the transaction above the deed questions. */}
                 {!isParty && deeds ? <CaseStudyDeedsTable deeds={deeds} /> : null}
                 <CaseStudyMatrixTable
                   section="deed"

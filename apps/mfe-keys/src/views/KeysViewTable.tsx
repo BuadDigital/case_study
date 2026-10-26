@@ -187,6 +187,7 @@ export function KeysViewTable({
                       color={envelopeStatusColor(env.status)}
                     />
                   </Td>
+                  {/* Decision 2026-10-20: who holds the envelope now (its one explicit holder). */}
                   <Td>
                     <span className="text-[12.5px] font-semibold text-text-2">
                       {envelopeHolderText(env)}

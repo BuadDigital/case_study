@@ -40,7 +40,17 @@ export function matchResultHasKeyToPlace(
   return selected === "matched" || selected === "partial";
 }
 
-/** A tile must be chosen; anything but a full match needs a note. */
+/**
+ * Validates the match-result dialog and turns it into what is saved.
+ *
+ * How it works: a result tile must be chosen; anything but a full match needs a note. Returns
+ * the status, the note (the fixed field-confirmation wording for a full match, else the
+ * trimmed note) and `keyLocation`: the chosen key place for a match or partial match.
+ *
+ * Edge cases: decision 2026-10-20 — a match/partial with no place picked defaults to
+ * `in_envelope` (the matching key went back with the others); missing/other results carry no
+ * key to place → null, and the server sets that deed's place (missing on a missing result).
+ */
 export function validateMatchResult(
   selected: KeyAssignmentMatchStatus | "",
   note: string,
@@ -70,9 +80,18 @@ export function receivesAsReviewer(role: RoleId): boolean {
 }
 
 /**
- * The receive-back handoff (decision 2026-10-20). The reviewer who records it is its
- * receiver, so the server completes it at once; an inspector records a handoff to the
- * envelope's reviewer, which waits for that reviewer's confirmation.
+ * Builds the receive-back handoff (decision 2026-10-20) for the viewer who records it.
+ *
+ * How it works: `fromParty` is the envelope's current holder label (else the receive-dialog
+ * holder label). A reviewer or section supervisor (`receivesAsReviewer`) is the receiver: the
+ * body goes to his own user id and `immediate` is true, because the server completes a
+ * receive-back at once when the recording user is the receiver. Anyone else (an inspector)
+ * records a handoff to the envelope's reviewer (`createdByUserId` / `createdByName`),
+ * `immediate` false — it waits for that reviewer's confirmation, and the holder changes only
+ * then.
+ *
+ * Edge cases: a reviewer without a known user id → error; an envelope with no known reviewer
+ * → error telling the inspector the reviewer records the receipt himself.
  */
 export function buildReceiveBackBody(
   env: KeyEnvelopeRow,

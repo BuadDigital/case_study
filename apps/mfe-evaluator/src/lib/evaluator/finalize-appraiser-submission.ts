@@ -15,7 +15,20 @@ type FinalizeAppraiserResult =
   | { ok: true; submission: EvaluatorSubmission }
   | { ok: false; message: string };
 
-/** Submits the appraiser valuation + inference answers to the case-study specialist. */
+/**
+ * Submits the appraiser valuation + inference answers to the case-study specialist.
+ *
+ * How it works: 1) reads the study-report gate fresh and stops if it is not ready; 2) if a
+ * package and a party study draft exist, re-syncs the checklist from the study; 3) for a
+ * package not yet submitted/completed: makes sure the deed's valuation request is open, fixes
+ * the report issue date and appraisal date (today when reopened or empty) and saves; 4) submits
+ * (`submitEvaluatorSubmission`) and clears the task's recall flag. Returns ok + submission or a
+ * message.
+ *
+ * Edge cases: decision 2026-10-19 — the report number is not drawn here any more (it used to
+ * reserve VR/TQ numbers, with a "could not reserve" failure); the server fixes PRV-… at report
+ * approval. An unopenable valuation request or a failed date save stops before submitting.
+ */
 export async function finalizeAppraiserSubmission(
   appraisalTaskId: string,
   idempotencyKey?: string,

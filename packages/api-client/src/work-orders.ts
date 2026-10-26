@@ -31,7 +31,7 @@ export type WorkOrderPropertyDto = {
   transactionId?: string | null;
   /** Transaction draft number TMP-{YY}-{seq}, shown until the official reference exists. */
   transactionDraftNumber?: string | null;
-  /** Transaction official reference PR-{year}-{seq}; null until the first report approval. */
+  /** Transaction official reference PR-{YY}-{seq}; null until the first report approval. */
   referenceNumber?: string | null;
   /** How the transaction's deeds are linked: one_building | contract; null for a single deed. */
   transactionLinkKind?: string | null;
@@ -330,7 +330,7 @@ export type PendingBoursePropertyDto = {
   dueDateAt: string;
   /** PO creation time (ISO) — newest-first queue order. */
   createdAtUtc?: string;
-  /** The deed's transaction number: PR-… once confirmed, else the D- draft number. */
+  /** The deed's transaction number: PR-… once confirmed, else the TMP- temporary number. */
   transactionNumber?: string | null;
 };
 
@@ -1227,6 +1227,14 @@ export async function recordEnfazHandover(
 /**
  * The accountant marks a handed-over deed «جاهز للفوترة» once its financial data appeared on Enfaz.
  * Idempotent on the server (a second mark keeps the first stamp).
+ *
+ * How it works: POSTs `…/transaction-state/billing-ready` for one deed (work order + property) and
+ * returns the refreshed transaction state, normalised like the other transaction-state calls.
+ *
+ * Edge cases: 401 → `auth`; any other non-OK answer is read with `transactionStateFailure`, so a refusal
+ * (not handed over, wrong role → 403 as `forbidden`) carries the server's own Arabic reason in
+ * `message`; a network error → `network`. The call needs no idempotency key because marking twice is
+ * harmless.
  */
 export async function markBillingReady(
   config: WorkOrdersApiConfig,

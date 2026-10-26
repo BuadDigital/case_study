@@ -86,6 +86,20 @@ function priorHref(item: LinkedPrior): string {
     : poPropertiesPath(item.prior.poNumber);
 }
 
+/**
+ * The «العقارات المرتبطة» tab: everything linked to this deed, the transaction's deeds first.
+ *
+ * How it works (decision 2026-10-19 — a transaction sits above its deeds):
+ * - Reads the transaction with `useTransactionQuery(property.id)` and lists its other live
+ *   deeds (link to each deed's page, PO, city / district), with the transaction number and link
+ *   kind in the heading; then same-PO properties, earlier registrations of the same deed,
+ *   declared related assets and operations tasks. The count sums all of them.
+ * - The case specialist (`isCaseStudySpecialist`) gets «دمج صكوك في المعاملة» (opens
+ *   `TransactionMergeDialog`) and, per deed, «إخراج» (`unmerge`).
+ *
+ * Edge cases: the old grouped-property list (`getPropertyGroup`) was removed with the redesign;
+ * «إخراج» is hidden once the transaction has its official reference number.
+ */
 export function PropertyDetailLinkedTab({
   record,
   property,
@@ -127,12 +141,24 @@ export function PropertyDetailLinkedTab({
     () => (transaction?.deeds ?? []).filter((d) => d.propertyId !== property.id && !d.isRemoved),
     [transaction, property.id],
   );
+  // Only the case specialist merges deeds into a transaction or takes one back out.
   const canMerge = isCaseStudySpecialist(role);
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [mergeOpen, setMergeOpen] = useState(false);
   const [unmergingId, setUnmergingId] = useState<string | null>(null);
 
+  /**
+   * Takes a deed back out of the transaction into a new draft transaction that keeps its own
+   * inspection. Offered only before the official PR number exists; the reason is audited.
+   *
+   * How it works: asks for a reason with `promptAction` (at least 5 characters), calls
+   * `unmergeTransactionDeed(transaction.id, { propertyId, reason })`, then refreshes every view
+   * of the transaction for all its deeds' POs (`invalidateTransactionViews`) and toasts.
+   *
+   * Edge cases: does nothing while another take-out runs (`unmergingId`) or when the prompt is
+   * cancelled; a server refusal is shown as its own message in an error toast.
+   */
   async function unmerge(deedPropertyId: string, label: string) {
     const config = workOrdersApiConfig();
     if (!config || !transaction || unmergingId) return;

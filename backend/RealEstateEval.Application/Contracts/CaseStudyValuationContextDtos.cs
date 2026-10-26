@@ -133,7 +133,7 @@ public sealed class CaseStudyValuationPropertyContextDto
     // Phase 5 (decision 2026-10-19): the transaction above the deeds. One valuation covers every
     // deed, so the report lists them all; empty for a host that predates the field.
     public Guid? TransactionId { get; set; }
-    /// <summary>PR-… once confirmed, else the D- draft number.</summary>
+    /// <summary>PR-… once confirmed, else the TMP- temporary number.</summary>
     public string? TransactionNumber { get; set; }
     public string? TransactionLinkKind { get; set; }
     /// <summary>The deed whose tasks carry the transaction's study and valuation.</summary>

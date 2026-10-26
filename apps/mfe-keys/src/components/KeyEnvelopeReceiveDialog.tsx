@@ -31,6 +31,21 @@ import {
 } from "./key-envelope-dialogs-state";
 import { DialogErrorBanner, DialogHeader } from "./KeyEnvelopeDialogShared";
 
+/**
+ * The «استلام الظرف» dialog: confirms a waiting handoff, or records a receive-back.
+ *
+ * How it works: finds the latest `pending_confirm` handoff. If there is one, the button
+ * confirms it (`confirmEnvelopeHandoff`). If not, `buildReceiveBackBody` decides from the
+ * viewer's role: a reviewer/supervisor receives at once into his own custody (`immediate`), an
+ * inspector hands the envelope to its reviewer and the handoff waits for that reviewer
+ * (`createEnvelopeHandoff`). Title, text, button label and success toast follow the case; the
+ * new envelope row is passed to `onDone`.
+ *
+ * Edge cases: decision 2026-10-20 — custody moves only on the receiver's confirmation. The
+ * pending handoff is read again at click time (the envelope may have changed while the dialog
+ * was open). An envelope with no known reviewer, or a viewer without an id, shows the reason
+ * and disables the button. A write queued offline hands back the current row.
+ */
 export function ReceiveEnvelopeModal({
   env,
   busy,
@@ -48,6 +63,7 @@ export function ReceiveEnvelopeModal({
   const { role, viewerUserId, viewerDisplayName } = useAppAccess();
   const pending = findPendingHandoff(env);
   const holder = env.holderLabel?.trim() || receiveHolderLabel(env, pending);
+  // No handoff waiting on the viewer → this is a receive-back; `blocked` says why the viewer may not.
   const receiveBack = pending
     ? null
     : buildReceiveBackBody(env, {
@@ -77,6 +93,7 @@ export function ReceiveEnvelopeModal({
   );
 
   const buttonBusy = busy || receiving;
+  // The reviewer receives at once; an inspector's receive-back waits for the reviewer to confirm.
   const immediate = receiveBack?.ok ? receiveBack.immediate : true;
 
   return (

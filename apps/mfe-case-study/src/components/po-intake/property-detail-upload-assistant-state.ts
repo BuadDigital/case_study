@@ -167,7 +167,6 @@ export function toggledSet(set: ReadonlySet<string>, id: string): Set<string> {
   return next;
 }
 
-/** Adds a key; returns the same set instance when it is already present. */
 /**
  * How long the copy button shows its check after a copy (Omar, 2026-10-20: a check
  * that never went away read as a stuck state). The row's tint stays as the
@@ -175,6 +174,7 @@ export function toggledSet(set: ReadonlySet<string>, id: string): Set<string> {
  */
 export const COPIED_FLASH_MS = 2000;
 
+/** Adds a key; returns the same set instance when it is already present. */
 export function withCopiedKey<S extends Set<CopyKey>>(set: S, key: CopyKey): S | Set<CopyKey> {
   if (set.has(key)) return set;
   const next = new Set(set);

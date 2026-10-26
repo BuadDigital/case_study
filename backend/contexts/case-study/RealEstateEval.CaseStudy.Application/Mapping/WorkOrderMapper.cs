@@ -52,6 +52,8 @@ public static class WorkOrderMapper
             SuggestedDeedKind = DeedKindLabels.ToApiValue(
                 DeedKindLabels.SuggestFromIdentifier(p.IdentifierType)),
             DeedNumber = p.DeedNumber,
+            // Decision 2026-10-19: the numbers now live on the transaction above the deed (draft TMP,
+            // official PR); the deed count lets the screens show «N صكوك» for a merged transaction.
             TransactionId = p.TransactionId == Guid.Empty ? null : p.TransactionId,
             TransactionDraftNumber = p.Transaction?.DraftNumber,
             ReferenceNumber = p.Transaction?.ReferenceNumber,
@@ -201,6 +203,10 @@ public static class WorkOrderMapper
     private static bool Flag(IReadOnlyDictionary<Guid, bool>? flags, Guid propertyId) =>
         flags is not null && flags.TryGetValue(propertyId, out var value) && value;
 
+    /// <summary>
+    /// <paramref name="transactionNumber"/> lets a caller that already resolved the transaction pass its
+    /// display number (PR once confirmed, else TMP); otherwise it is read from the loaded transaction.
+    /// </summary>
     public static PendingBoursePropertyDto ToPendingBourse(WorkOrderProperty p, string? transactionNumber = null)
     {
         return new PendingBoursePropertyDto

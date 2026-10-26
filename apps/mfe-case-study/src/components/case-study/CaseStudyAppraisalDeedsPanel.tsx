@@ -10,9 +10,18 @@ import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { usePoRecordQuery } from "../../query/case-study-queries";
 
 /**
- * Phase 4 (decision 2026-10-19): the study is one per transaction, but every deed was
- * inspected on its own. The inspector-inputs step therefore shows one review per deed,
- * behind a deed picker; a one-deed transaction renders the plain panel.
+ * The case-study «inspector inputs» step for a transaction: one inspection review per deed.
+ *
+ * How it works (phase 4, decision 2026-10-19 — one study per transaction, but every deed was
+ * inspected on its own):
+ * - Reads `transaction.deeds` and drops removed deeds.
+ * - Fewer than two live deeds → renders the plain `CaseStudyAppraisalPanel` for `property`.
+ * - Otherwise renders a pill per deed (label from `transactionDeedLabel`) and, under it, the
+ *   chosen deed only: this page's own deed gets the plain panel with this page's task; any
+ *   other deed goes through `SiblingDeedAppraisal`, which loads that deed's own records.
+ *
+ * Edge cases: the picked id falls back to `property.id` when it is no longer a live deed
+ * (removed or taken out of the transaction), so the step never shows an empty panel.
  */
 export function CaseStudyAppraisalDeedsPanel({
   property,
@@ -101,7 +110,18 @@ export function CaseStudyAppraisalDeedsPanel({
   );
 }
 
-/** Another deed of the transaction: its own work order, property row and case-study parent task. */
+/**
+ * The inspection review of another deed of the transaction, read from that deed's own records.
+ *
+ * How it works: loads the deed's work order (`usePoRecordQuery(deed.poNumber)`), picks the
+ * property row with `deed.propertyId`, and finds that deed's own case-study parent task
+ * (`kind === "case-study-property"`, same property, not cancelled) in `tasks`; then renders
+ * `CaseStudyAppraisalPanel` with that property, PO and task.
+ *
+ * Edge cases: a skeleton while the work order loads; a warning when the work order or the
+ * property row cannot be loaded; a warning (not a crash) when the deed has no case-study task —
+ * its inspection is then reviewed from its own property page.
+ */
 function SiblingDeedAppraisal({
   deed,
   tasks,

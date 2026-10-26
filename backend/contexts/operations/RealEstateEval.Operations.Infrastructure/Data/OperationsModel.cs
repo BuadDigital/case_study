@@ -113,6 +113,7 @@ public static class OperationsModel
                 "KeyEnvelopeAssignments",
                 nameof(KeyEnvelopeAssignment.Status),
                 KeyAssignmentStatuses.All);
+            // Decision 2026-10-20: where each deed's matching key is after the field trial (keys carry no tag of their own).
             e.Property(x => x.KeyLocation).HasMaxLength(32).HasDefaultValue(KeyLocations.InEnvelope);
             e.Property(x => x.KeyHolderUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.KeyHolderLabel).HasMaxLength(256);

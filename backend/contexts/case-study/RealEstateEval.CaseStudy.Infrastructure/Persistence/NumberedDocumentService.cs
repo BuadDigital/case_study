@@ -36,6 +36,16 @@ public sealed class NumberedDocumentService : INumberedDocumentService
         _transactions = transactions ?? new TransactionReferenceService(new TransactionRepository(caseStudy));
     }
 
+    /// <summary>Gives a printed document its reference number and logs it in the ledger.</summary>
+    /// <remarks>
+    /// How it works: 1) validates the kind; 2) case-study report: needs the property, confirms the
+    /// transaction's PR reference (drawn now if this is the first approval), derives PRC-{YY}-{seq}
+    /// from it and returns the existing ledger row when that number is already logged; 3) letter:
+    /// draws the next yearly LT number; 4) writes a new immutable NumberedDocument row and returns it.
+    /// Edge cases: a report request without a property, or a PR confirmation error, returns an Arabic
+    /// error and logs nothing; asking twice for the same report returns the same row (before
+    /// 2026-10-19 every request drew a fresh report number from its own counter).
+    /// </remarks>
     public async Task<(NumberedDocumentDto? Result, string? Error)> AllocateAsync(
         AllocateNumberedDocumentRequest request,
         string actorUserId,

@@ -55,6 +55,8 @@ public static class CaseStudyModel
             e.HasIndex(x => x.ClientId);
         });
 
+        // Decision 2026-10-18/19: the transaction row holds the TMP draft and PR official numbers (both
+        // unique), the merge link kind and reason, the study-holder deed and, once folded, the receiving transaction.
         builder.Entity<Transaction>(e =>
         {
             MapTable(e, "Transactions", DatabaseSchemas.CaseStudy, ownsMigrations);
@@ -95,6 +97,7 @@ public static class CaseStudyModel
  // Edited from intake, bourse, inspection and specialist screens; a stale save must 409
  // rather than silently overwrite another user's answers.
             e.UseOptimisticConcurrency();
+            // Every deed belongs to one transaction; the reference number moved from the deed to it.
             e.HasOne(x => x.Transaction)
                 .WithMany(t => t.Properties)
                 .HasForeignKey(x => x.TransactionId)

@@ -138,6 +138,20 @@ export function ReportDraftApprovalBar({
   const finalIssued = draft.reportStage === "final_issued";
   const anyBusy = busy !== null;
 
+  /**
+   * The appraiser's «اعتماد التقرير» action.
+   *
+   * How it works: asks for confirmation; takes today as the report date once; calls
+   * `ensureReportNumber` for the draft's valuation request; builds the printed copy with that
+   * date and the returned `reportNumber` (`buildApprovedHtml`); uploads it with
+   * `approveReportDraft`; on success stores the returned draft and toasts. Each step shows in
+   * the phase note, and leaving the page is guarded while it runs.
+   *
+   * Edge cases: decision 2026-10-19 — the number (PRV-… from the transaction's PR root) is
+   * fixed before the copy is printed; if it cannot be fixed, the refusal shows and nothing is
+   * built or approved. A refused approval leaves the draft as it was; a double-click or a busy
+   * bar does nothing.
+   */
   async function approve() {
     const config = apiConfig();
     if (!config || anyBusy) return;

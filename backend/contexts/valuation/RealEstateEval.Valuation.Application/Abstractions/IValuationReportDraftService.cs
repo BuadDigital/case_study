@@ -49,6 +49,14 @@ public interface IValuationReportDraftService
     /// The report number PRV-… for the request: fixed already, or confirmed now through Case Study
     /// (the transaction's official reference). Only the assigned appraiser, only once the draft was sent.
     /// </summary>
+    /// <remarks>
+    /// How it works: a request that already has its number returns it; otherwise, when the draft was
+    /// sent, Case Study confirms the transaction's PR (drawn once) and the derived PRV-YY-seq is stored
+    /// on the request (decision 2026-10-19).
+    /// Edge cases: a draft not yet sent gets no number; an unreachable or failing Case Study returns an
+    /// Arabic error and stores nothing; once set the number never changes, so a reopened report keeps
+    /// it (prod PO-067455 kept PR-26-00002 after a reopen 21 s later).
+    /// </remarks>
     Task<(ValuationReportNumberDto? Result, Dictionary<string, string>? Errors)> EnsureReportNumberAsync(
         Guid valuationRequestId,
         ReportDraftActor actor,

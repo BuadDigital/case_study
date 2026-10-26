@@ -329,6 +329,8 @@ export function EvaluatorWindow({
     showToast,
   });
 
+  // Decision 2026-10-18/19: the transaction above this deed — its live deeds feed the window title
+  // and the linked-deeds card, since a linked property is valued as one.
   const { data: transaction } = useTransactionByPropertyQuery(
     propertySummary?.property?.id ?? task.propertyId,
   );

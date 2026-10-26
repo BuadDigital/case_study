@@ -10,7 +10,7 @@ export type TransactionDto = {
   id: string;
   /** TMP-{YY}-{seq}; shown until the official reference exists. */
   draftNumber: string;
-  /** PR-{year}-{seq}; null until the first report approval. */
+  /** PR-{YY}-{seq}; null until the first report approval. */
   referenceNumber?: string | null;
   /** The number people see: the official reference once confirmed, else the draft number. */
   displayNumber: string;
@@ -26,6 +26,7 @@ export type TransactionDto = {
   deedCount: number;
 };
 
+/** One deed of the transaction; `isRemoved` marks a deed the specialist took back out. */
 export type TransactionDeedDto = {
   propertyId: string;
   poNumber: string;
@@ -42,7 +43,15 @@ export type TransactionDeedDto = {
   createdAtUtc: string;
 };
 
-/** A deed's label: the registry number when identified by one, else the deed number. */
+/**
+ * A deed's label for tables and joined report cells.
+ *
+ * How it works: a deed identified by a real-estate registry (`identifierType ===
+ * "real_estate_reg"`) with a registry number → that number; otherwise the deed number.
+ *
+ * Edge cases: an empty deed number falls back to the registry number, then "—"; values are
+ * trimmed.
+ */
 export function transactionDeedLabelOf(
   deed: Pick<TransactionDeedDto, "deedNumber" | "realEstateRegNumber" | "identifierType">,
 ): string {
@@ -51,7 +60,14 @@ export function transactionDeedLabelOf(
   return deed.deedNumber.trim() || registry || "—";
 }
 
-/** A deed's date label: the registry date for a registry deed, else the deed date. */
+/**
+ * A deed's date label: the registry date for a registry deed, else the deed date.
+ *
+ * How it works: same rule as `transactionDeedLabelOf` — a registry-identified deed with a
+ * registry date → that date; otherwise the deed date.
+ *
+ * Edge cases: no deed date → the registry date if any, else "" (callers print "—").
+ */
 export function transactionDeedDateOf(
   deed: Pick<TransactionDeedDto, "identifierType" | "deedDate" | "realEstateRegDate">,
 ): string {
@@ -63,6 +79,12 @@ export function transactionDeedDateOf(
 /**
  * Phase 5 (decision 2026-10-19): the live deeds of a linked property, in transaction order;
  * empty for an ordinary one-deed property so callers keep printing the single deed.
+ *
+ * How it works: drops the deeds marked `isRemoved` (taken back out by the specialist) and
+ * returns the rest only when two or more remain.
+ *
+ * Edge cases: no transaction (not loaded, or a 404) → []; a merge left with one live deed after
+ * an unmerge → [] as well, so it reads as an ordinary property again.
  */
 export function linkedPropertyDeeds(
   transaction: Pick<TransactionDetailDto, "deeds"> | null | undefined,
@@ -85,6 +107,10 @@ export type TransactionTimelineEventDto = PropertyTimelineEventDto & {
   deedLabel?: string | null;
 };
 
+/**
+ * Maps a transaction read response: 401 → auth, 403 → forbidden, 404 → not_found, any other
+ * failure → server; a success parses the JSON body.
+ */
 async function readJson<T>(res: Response): Promise<ApiOk<T> | ApiErr> {
   if (res.status === 401) return { ok: false, kind: "auth" };
   if (res.status === 403) return { ok: false, kind: "forbidden" };
@@ -93,6 +119,15 @@ async function readJson<T>(res: Response): Promise<ApiOk<T> | ApiErr> {
   return { ok: true, data: (await res.json()) as T };
 }
 
+/**
+ * The transaction a deed belongs to, with all its deeds and the study holder.
+ *
+ * How it works: GET `/api/transactions/by-property/{propertyId}` (trimmed, URL-encoded) and
+ * maps the answer with `readJson`.
+ *
+ * Edge cases: a deed with no transaction answers 404 → `not_found` (callers treat it as "no
+ * transaction", not an error); a thrown fetch → `network`.
+ */
 export async function getTransactionByProperty(
   config: WorkOrdersApiConfig,
   propertyId: string,
@@ -109,6 +144,11 @@ export async function getTransactionByProperty(
   }
 }
 
+/**
+ * One transaction by id, with all its deeds and the study holder.
+ *
+ * How it works: GET `/api/transactions/{id}` mapped with `readJson`; a thrown fetch → `network`.
+ */
 export async function getTransaction(
   config: WorkOrdersApiConfig,
   transactionId: string,
@@ -125,6 +165,7 @@ export async function getTransaction(
   }
 }
 
+/** How merged deeds belong together: «مبنى واحد» (one building) or «أعيان بعقد» (one contract). */
 export type TransactionLinkKind = "one_building" | "contract";
 
 /** A deed found for the merge dialog; `blockedReasonAr` says why it cannot join when it cannot. */
@@ -145,6 +186,13 @@ export type TransactionDeedSearchHitDto = {
 
 type CommandErr = ApiErr & { message?: string };
 
+/**
+ * Maps a transaction command response so its refusal reaches the user in Arabic.
+ *
+ * How it works: 401 → auth; 403 → forbidden with the server's message; 404 → not_found; other
+ * 5xx → server, 4xx → validation, both with the message from `problemDetail`; success parses
+ * the JSON body.
+ */
 async function readCommand<T>(res: Response): Promise<ApiOk<T> | CommandErr> {
   if (res.status === 401) return { ok: false, kind: "auth" };
   if (res.status === 403) return { ok: false, kind: "forbidden", message: await problemDetail(res) };
@@ -159,6 +207,10 @@ async function readCommand<T>(res: Response): Promise<ApiOk<T> | CommandErr> {
   return { ok: true, data: (await res.json()) as T };
 }
 
+/**
+ * The message of a problem-details refusal: `detail`, else the first field error, else
+ * `title`; undefined when the body is not JSON. Reads a clone, so the response stays readable.
+ */
 async function problemDetail(res: Response): Promise<string | undefined> {
   try {
     const body = (await res.clone().json()) as { detail?: string; title?: string; errors?: Record<string, string> };
@@ -169,7 +221,16 @@ async function problemDetail(res: Response): Promise<string | undefined> {
   }
 }
 
-/** Deeds matching a deed / registry / PO number (3+ characters), with their merge state. */
+/**
+ * Deeds matching a deed / registry / PO number (3+ characters), with their merge state.
+ *
+ * How it works: GET `/api/transactions/{id}/deed-search?q=…` (query trimmed and encoded) for
+ * the merge dialog; each hit carries its own transaction number and deed count, and
+ * `blockedReasonAr` when it cannot join (the server decides: already in this transaction,
+ * bourse inquiry not finished, …).
+ *
+ * Edge cases: a non-array body → []; refusals carry the server's Arabic message.
+ */
 export async function searchTransactionDeeds(
   config: WorkOrdersApiConfig,
   transactionId: string,
@@ -189,7 +250,17 @@ export async function searchTransactionDeeds(
   }
 }
 
-/** Merge other deeds' transactions into this one (decision 2026-10-19; case-study specialist). */
+/**
+ * Merge other deeds' transactions into this one (decision 2026-10-19; case-study specialist).
+ *
+ * How it works: POST `/api/transactions/{id}/merge` with the chosen deeds, the link kind
+ * («مبنى واحد» one_building / «أعيان بعقد» contract) and the reason; returns the merged
+ * transaction with all its deeds.
+ *
+ * Edge cases: the server refuses (validation, with an Arabic message) when a deed has not
+ * finished intake — since 2026-10-21 that is the only stage condition (`BourseDataCompleted`);
+ * inspection and study are not, so a merge may come before distribution.
+ */
 export async function mergeTransactions(
   config: WorkOrdersApiConfig,
   transactionId: string,
@@ -209,7 +280,16 @@ export async function mergeTransactions(
   }
 }
 
-/** Take one deed out of the transaction into a new draft transaction (only before the official number). */
+/**
+ * Take one deed out of the transaction into a new draft transaction (only before the official number).
+ *
+ * How it works: POST `/api/transactions/{id}/unmerge-deed` with the deed and the reason; the
+ * server gives the deed a fresh TMP transaction (and its own valuation request back) and returns
+ * the remaining transaction's detail.
+ *
+ * Edge cases: once the official PR reference exists the server refuses, with its Arabic
+ * message.
+ */
 export async function unmergeTransactionDeed(
   config: WorkOrdersApiConfig,
   transactionId: string,
@@ -229,7 +309,14 @@ export async function unmergeTransactionDeed(
   }
 }
 
-/** One timeline for every deed of the transaction, oldest first. */
+/**
+ * One timeline for every deed of the transaction, oldest first.
+ *
+ * How it works: GET `/api/transactions/{id}/timeline` mapped with `readJson`; each event names
+ * the deed it belongs to (`propertyId`, `deedLabel`).
+ *
+ * Edge cases: a non-array body → []; a thrown fetch → `network`.
+ */
 export async function getTransactionTimeline(
   config: WorkOrdersApiConfig,
   transactionId: string,

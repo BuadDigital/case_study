@@ -217,7 +217,20 @@ export function EvaluatorValuationReportOutputTab({
       : attach.photos;
   }, [outputBundle, property?.classification, property?.propertyType]);
 
-  /** Shared report request body for on-screen preview and print — was fully duplicated (~70 lines). */
+  /**
+   * Shared report request body for on-screen preview and print — was fully duplicated (~70 lines).
+   *
+   * How it works: reads the organisation settings (`loaded`: evaluator, company, report texts)
+   * and returns `{ reportNo, reportDate, depositCode, live }`. `reportNo` = the override, else the
+   * draft DTO's `reportNumber`, else the package's `draft.reportNo`, with the draft version
+   * appended (`versionedReportNo`). `live` is `buildValuationReportLiveFill` over every loaded
+   * input, including `transactionDeeds` (the linked property's live deeds).
+   *
+   * Edge cases: decision 2026-10-19 — the report number is never computed in the browser; at
+   * approval the server fixes it first and passes it in as `reportNoOverride`, because the
+   * draft DTO only carries it after the next refetch. Phase 5: a linked property's report names
+   * every deed (`linkedDeeds` is empty for a one-deed property, so its own deed prints).
+   */
   const buildReportMeta = useCallback(
     (
       loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>,
@@ -410,7 +423,18 @@ export function EvaluatorValuationReportOutputTab({
     // Including it re-triggered the effect after setOrg and caused a fetch loop.
   }, [buildReportMeta, draft.poNumber, poQuery.isPending, outputQuery.isSuccess, showMissingFields]);
 
-  /** Print copy: report meta + §18/§33 Static Maps images, exactly as the browser prints it. */
+  /**
+   * Print copy: report meta + §18/§33 Static Maps images, exactly as the browser prints it.
+   *
+   * How it works: builds the meta with `buildReportMeta(loaded, reportDateOverride,
+   * reportNoOverride)`; replaces the map slots with Static Maps images (§18/§33, and §20 land
+   * comparables when there are pins), reporting each step through `onPhase`; then asks for the
+   * "print" HTML and returns `{ html, reportNo }`.
+   *
+   * Edge cases: `reportNoOverride` is the number the server fixed at approval (decision
+   * 2026-10-19), so the approved copy prints the PRV- number before the draft DTO has it.
+   * Google refusing Static Maps → console warning and the map notice, the copy still builds.
+   */
   const preparePrintHtml = useCallback(
     async (
       loaded: OrganizationSettingsDto | null,

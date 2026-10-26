@@ -24,7 +24,12 @@ public sealed class TransactionStateRepository(CaseStudyDbContext db) : ITransac
             .Where(t => t.PropertyId == propertyId)
             .ToListAsync(cancellationToken);
 
-    // Phase 4: the deed's study is its transaction's (the holder deed's report).
+    /// <summary>Whether the deed's study — its transaction's one study on the holder task — is issued.</summary>
+    /// <remarks>
+    /// How it works: StudyHolder.IssuedParentTaskIdsAsync for the one task id.
+    /// Edge cases: a folded deed's own task never has a report row; it reads as issued once the
+    /// holder's report is issued, so its gates open with the holder's.
+    /// </remarks>
     public async Task<bool> IsCaseStudyReportIssuedAsync(
         Guid parentTaskId,
         CancellationToken cancellationToken) =>

@@ -242,6 +242,17 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
         return (await GetAsync(envelopeId, cancellationToken), null);
     }
 
+    /// <summary>The field trial result of one deed's key: did it open the property, and where did the key go.</summary>
+    /// <remarks>
+    /// How it works: 1) loads the envelope and the assignment; 2) the status must be a trial result and
+    /// the optional key location valid (<c>ValidateKeyLocation</c>); 3) writes the result
+    /// (<c>ConfirmAssignmentField</c>); 4) works out the key location — blank → <c>KeyLocations.DefaultFor</c>
+    /// the result; with_user takes the given holder or, if none, the actor and his name; 5) stores it
+    /// (<c>SetAssignmentKeyLocation</c>) and writes one timeline line with result and key place; 6) saves,
+    /// then raises the key-unmatched failure for an unmatched / missing result, else tells the specialist.
+    /// Edge cases (decision 2026-10-20): keys carry no tag, so the deed it opened is the key's only
+    /// identity; a missing key defaults to «missing» without the inspector saying so.
+    /// </remarks>
     public async Task<(KeyEnvelopeDto? Envelope, string? Error)> ConfirmAssignmentAsync(
         Guid envelopeId,
         Guid assignmentId,
@@ -326,6 +337,16 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
     }
 
     /// <summary>The reviewer corrects where a deed's key is (it came back, it was returned to court, it is lost).</summary>
+    /// <remarks>
+    /// How it works: 1) loads the envelope and the assignment; 2) the location must be one of
+    /// in_envelope / with_user / returned_court / missing (no default here); 3) with_user needs a holder
+    /// id or label; 4) resolves the holder label (with_user only) and stores the location
+    /// (<c>SetAssignmentKeyLocation</c>, which clears the holder for other places); 5) writes a
+    /// key_location_changed timeline line, saves, returns the fresh envelope.
+    /// Edge cases (decision 2026-10-20): unlike the trial, with_user here never falls back to the actor
+    /// — the reviewer must name who has the key. Putting the key back in the envelope can make the
+    /// envelope «ready for court return».
+    /// </remarks>
     public async Task<(KeyEnvelopeDto? Envelope, string? Error)> SetAssignmentKeyLocationAsync(
         Guid envelopeId,
         Guid assignmentId,
@@ -368,6 +389,10 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
         return (await GetAsync(envelopeId, cancellationToken), null);
     }
 
+    /// <summary>
+    /// The key-place phrase of a timeline line: «عند {holder}» for with_user with a known holder,
+    /// else the Arabic place label (<c>KeyLocationLabel</c>; with_user without a name reads «عند مستخدم»).
+    /// </summary>
     private static string KeyLocationSummary(string location, string? holderLabel) =>
         location == KeyLocations.WithUser && !string.IsNullOrWhiteSpace(holderLabel)
             ? $"عند {holderLabel}"

@@ -143,7 +143,7 @@ type DistributionQueueRowMeta = {
   propertyType: string;
   classification: string;
   assignmentType: string;
-  /** PR-… once official, else the D- draft number; null when the deed has no transaction yet. */
+  /** PR-… once official, else the TMP- temporary number; null when the deed has no transaction yet. */
   transactionNumber: string | null;
 };
 

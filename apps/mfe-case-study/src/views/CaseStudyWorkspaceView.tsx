@@ -149,6 +149,20 @@ function CaseStudyValuationPanel({
   );
 }
 
+/**
+ * The case specialist's study workspace for one case-study task: study, appraisal and valuation
+ * tabs, with the Enfaz handover card and the timeline beside them.
+ *
+ * How it works: 1) finds the task, its work order and the deed; a missing task, no access or a
+ * missing deed sends the user to the fallback path; 2) reads the deed's transaction — when its
+ * `studyHolderTaskId` is another task, replaces the route with the holder's workspace; 3) shows a
+ * skeleton until the task, record, deed and transaction are loaded; 4) builds the report's deeds
+ * block (`caseStudyReportDeeds`) and passes it and the transaction to the study and appraisal tabs.
+ *
+ * Edge cases: phase 4 (decision 2026-10-19) — one study per transaction, so a folded deed never
+ * opens its own study; the server resolves writes to the holder the same way. A failed
+ * transaction read still counts as fetched, so it never blocks the page.
+ */
 export function CaseStudyWorkspaceView({
   taskId,
   renderPartiesExtras,
@@ -370,6 +384,7 @@ export function CaseStudyWorkspaceView({
               ) : null}
               {visitedTabs.has("appraisal") ? (
                 <Activity mode={workspaceTab === "appraisal" ? "visible" : "hidden"}>
+                  {/* Phase 4: one study covers the transaction, so the appraisal tab lists every deed. */}
                   <CaseStudyAppraisalDeedsPanel
                     property={property}
                     poNumber={record.poNumber}

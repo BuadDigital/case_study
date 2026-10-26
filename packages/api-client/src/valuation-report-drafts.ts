@@ -160,13 +160,21 @@ export function withdrawReportDraft(
 
 export type ValuationReportNumberDto = {
   valuationRequestId: string;
-  /** PRV-{year}-{seq}, derived from the transaction's official reference. */
+  /** PRV-{YY}-{seq}, derived from the transaction's official reference. */
   reportNumber: string;
 };
 
 /**
  * Fixes the report number before the approved copy is printed (decision 2026-10-19): the
  * transaction's official PR reference is confirmed through Case Study and PRV-… returned. Idempotent.
+ *
+ * How it works: POST `/report-number` on the valuation request; 401 → auth, 403 → forbidden,
+ * 404 → not_found, other failures → server (5xx) or validation (4xx) with the server's message
+ * (`problemMessage`); success returns `{ valuationRequestId, reportNumber }`.
+ *
+ * Edge cases: PR is drawn once at the first approved report and never reused, so calling it
+ * again (a retry, a later version, an approval after a reopen) returns the same number; a
+ * success body without a number → server error, so the caller never prints an empty number.
  */
 export async function ensureReportNumber(
   config: ValuationSelectionsApiConfig,
@@ -192,6 +200,10 @@ export async function ensureReportNumber(
   }
 }
 
+/**
+ * The message of a problem-details refusal: `detail`, else the first field error, else
+ * `title`; undefined when the body is not JSON. Reads a clone, so the response stays readable.
+ */
 async function problemMessage(res: Response): Promise<string | undefined> {
   try {
     const body = (await res.clone().json()) as { detail?: string; title?: string; errors?: Record<string, string> };

@@ -10,7 +10,7 @@ namespace RealEstateEval.CaseStudy.Application.Abstractions;
 /// </summary>
 public interface ITransactionReferenceService
 {
-    /// <summary>A new draft transaction with its D- number; not yet saved (the caller's unit of work saves it).</summary>
+    /// <summary>A new draft transaction with its TMP- number; not yet saved (the caller's unit of work saves it).</summary>
     Task<(Transaction? Transaction, string? Error)> CreateDraftAsync(
         DateTime nowUtc,
         CancellationToken cancellationToken = default);

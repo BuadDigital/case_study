@@ -24,6 +24,7 @@ public static class ValuationModel
             e.Property(x => x.Area).HasMaxLength(128);
             e.Property(x => x.PropertyType).HasMaxLength(128);
             e.Property(x => x.Appraiser).HasMaxLength(256);
+            // PRV-… report number, fixed when the appraiser approves the report (decision 2026-10-19).
             e.Property(x => x.ReportNumber).HasMaxLength(32);
             e.Property(x => x.Status)
                 .HasConversion(DomainEnumConverters.ValuationRequestStatus)
@@ -37,6 +38,8 @@ public static class ValuationModel
                 .IsUnique()
                 .HasFilter($"\"Status\" <> '{ValuationRequestStatuses.Done}' AND \"Status\" <> '{ValuationRequestStatuses.Merged}'")
                 .HasDatabaseName(DatabaseIndexNames.ValuationRequestOpenPerProperty);
+            // Phase 5 (decision 2026-10-19): a folded deed's request is «merged» into the holder deed's request, so it
+            // no longer counts as open (excluded from the index above) and points at the holder via MergedIntoRequestId.
             e.HasIndex(x => x.MergedIntoRequestId);
             e.HasAllowedValues(
                 "ValuationRequests",

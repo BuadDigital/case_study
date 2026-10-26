@@ -652,6 +652,20 @@ export type ValuationReportLiveFill = {
   closeupMapSlot: ValuationReportSlotAttachment | null;
 };
 
+/**
+ * Builds everything the valuation report template is filled with (labelled cells, sections,
+ * tables, slots) from the appraiser's package and the loaded inputs.
+ *
+ * How it works: reads the draft, the work-order record, the property, the inspection and the
+ * valuation inputs; resolves the valuation keys and the asset context; fills the `cells` map
+ * by printed label, then the approach tables, reconciliation, texts and map/photo slots, and
+ * returns one `ValuationReportLiveFill`.
+ *
+ * Edge cases: phase 5 (decision 2026-10-19) — for a linked property (`transactionDeeds`, two
+ * or more live deeds after dropping `isRemoved`) «رقم الصك» / «تاريخ الصك» join every deed's
+ * label and date with « ، » (registry number/date for a registry deed, "—" for a missing date);
+ * with no or one live deed the property's own deed prints.
+ */
 export function buildValuationReportLiveFill(input: {
   draft: EvaluatorSubmission;
   /** Source of truth is the saved approach settings, not the presence of cost rows. */

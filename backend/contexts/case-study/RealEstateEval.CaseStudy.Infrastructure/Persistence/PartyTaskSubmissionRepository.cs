@@ -91,12 +91,22 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
         return accepted.ToHashSet();
     }
 
-    // Phase 4: the deed's study is its transaction's (the holder deed's report).
+    /// <summary>Whether the deed's study — its transaction's one study on the holder task — is issued.</summary>
+    /// <remarks>
+    /// How it works: StudyHolder.IssuedParentTaskIdsAsync for the one task id.
+    /// Edge cases: a folded deed's own task never has a report row; it reads as issued once the
+    /// holder's report is issued, so its gates open with the holder's.
+    /// </remarks>
     public async Task<bool> IsCaseStudyReportIssuedAsync(
         Guid parentTaskId,
         CancellationToken cancellationToken) =>
         (await StudyHolder.IssuedParentTaskIdsAsync(db, [parentTaskId], cancellationToken)).Contains(parentTaskId);
 
+    /// <summary>Of the given parent tasks, those whose transaction study is issued.</summary>
+    /// <remarks>
+    /// How it works: StudyHolder.IssuedParentTaskIdsAsync over the whole list (one query per step).
+    /// Edge cases: empty input → empty set; folded deeds count as issued with the holder's report.
+    /// </remarks>
     public async Task<IReadOnlySet<Guid>> ListIssuedReportParentIdsAsync(
         IReadOnlyCollection<Guid> parentTaskIds,
         CancellationToken cancellationToken)

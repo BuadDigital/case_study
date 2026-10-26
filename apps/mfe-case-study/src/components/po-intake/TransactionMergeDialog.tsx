@@ -16,6 +16,8 @@ import { notifyWorkOrdersChanged, workOrdersApiConfig } from "../../lib/work-ord
 import { formatPoDisplay } from "../../lib/app-data/po-intake-data";
 import { transactionDeedLabel } from "./TransactionDeedSwitcher";
 
+// The two link kinds: one building over several deeds is valued once; deeds bound by one
+// contract are valued one by one, then summed.
 const LINK_KINDS: { value: TransactionLinkKind; label: string; hint: string }[] = [
   { value: "one_building", label: "مبنى واحد على عدة صكوك", hint: "قيمة واحدة للمبنى كله" },
   { value: "contract", label: "أعيان مرتبطة بعقد", hint: "قيمة لكل عين ثم المجموع" },
@@ -29,7 +31,17 @@ const kindPill = (selected: boolean) =>
       : "border-border bg-surface text-text-2 hover:border-primary-light hover:text-primary",
   );
 
-/** Refreshes everything that shows the transaction after a merge / unmerge. */
+/**
+ * Refreshes everything that shows the transaction after a merge / unmerge.
+ *
+ * How it works: invalidates every transaction query and every transaction timeline (any
+ * property id), the PO list, the work-order DTOs, and the PO record of each number in
+ * `poNumbers`; then fires `notifyWorkOrdersChanged()` so screens listening for work-order
+ * events reload too.
+ *
+ * Edge cases: callers pass the POs of BOTH sides (the holder transaction's deeds and the
+ * merged-in / taken-out ones), because a merge changes deeds that live on other work orders.
+ */
 export function invalidateTransactionViews(
   queryClient: ReturnType<typeof useQueryClient>,
   poNumbers: string[],
@@ -45,9 +57,18 @@ export function invalidateTransactionViews(
 }
 
 /**
- * Decision 2026-10-19: after the inspections, the case-study specialist joins other deeds'
- * transactions into this one — by deed, registry or PO number, with the link kind and a reason.
- * The server refuses deeds that are not ready and says why on each hit.
+ * The «دمج معاملات مرتبطة» dialog: the case-study specialist joins other deeds' transactions
+ * into this one (decision 2026-10-19).
+ *
+ * How it works: search by deed, registry or PO number → pick hits (one per transaction) →
+ * choose the link kind (one_building / contract; preset from the transaction's own kind) →
+ * write a reason of at least 5 characters → «دمج». This transaction keeps its number; the
+ * picked transactions are folded into it with all their deeds.
+ *
+ * Edge cases: the server refuses deeds that are not ready and says why on each hit (shown in
+ * red, not selectable). Stage rule corrected 2026-10-21: the first gate required every deed's
+ * inspection submitted/accepted; now the only condition is finished intake
+ * (`BourseDataCompleted`), so a merge can come before distribution.
  */
 export function TransactionMergeDialog({
   open,
@@ -75,11 +96,22 @@ export function TransactionMergeDialog({
   const [error, setError] = useState<string | null>(null);
 
   const picked = useMemo(() => [...selected.values()], [selected]);
+  // A picked deed brings its whole transaction, so count deeds, not picks.
   const incomingDeeds = picked.reduce((n, h) => n + Math.max(1, h.transactionDeedCount), 0);
   const canMerge = picked.length > 0 && Boolean(linkKind) && reason.trim().length >= 5 && !merging;
 
   if (!open) return null;
 
+  /**
+   * Looks up deeds to merge for the typed number.
+   *
+   * How it works: trims the query, calls `searchTransactionDeeds(transaction.id, q)` and shows
+   * the hits; each hit carries its transaction, deed count and, when it cannot be merged, the
+   * server's Arabic reason (`blockedReasonAr`).
+   *
+   * Edge cases: fewer than 3 characters (or no API config) shows a hint and sends nothing; a
+   * failed search clears the old hits and shows the server's message.
+   */
   async function search() {
     const config = workOrdersApiConfig();
     const q = query.trim();
@@ -103,6 +135,15 @@ export function TransactionMergeDialog({
     }
   }
 
+  /**
+   * Picks or unpicks a search hit.
+   *
+   * How it works: a picked hit is removed; a new hit replaces any picked hit of the same
+   * transaction; otherwise it is added. `selected` is keyed by property id.
+   *
+   * Edge cases: a blocked hit cannot be picked; one pick per transaction is enough because a
+   * deed brings its whole transaction, so two picks there would double-count the deeds.
+   */
   function toggle(hit: TransactionDeedSearchHitDto) {
     if (hit.blockedReasonAr) return;
     setSelected((prev) => {
@@ -118,6 +159,18 @@ export function TransactionMergeDialog({
     });
   }
 
+  /**
+   * Sends the merge.
+   *
+   * How it works: calls `mergeTransactions(transaction.id, { propertyIds, linkKind, reason })`
+   * with the picked property ids and the trimmed reason; on success refreshes the views of both
+   * sides' POs (`invalidateTransactionViews`), toasts the incoming deed count, hands the new
+   * transaction to `onMerged` and closes.
+   *
+   * Edge cases: does nothing unless `canMerge` (a pick, a link kind, a 5+ character reason, not
+   * already merging); a refusal stays in the dialog as a note and a toast; the dialog cannot be
+   * closed by its × while the merge runs.
+   */
   async function merge() {
     const config = workOrdersApiConfig();
     if (!config || !canMerge || !linkKind) return;
@@ -175,6 +228,8 @@ export function TransactionMergeDialog({
       }
     >
       <div className="flex flex-col gap-3">
+        {/* Decision 2026-10-21: the only stage condition is finished intake (work order, primary data,
+            bourse inquiry); inspection and study are not conditions, so a merge can come before distribution. */}
         <Note tone="info">
           يُدمج الصك متى اكتمل تسجيله: أمر العمل والبيانات الأولية واستعلام البورصة. المعاينة
           والدراسة ليستا شرطًا. اختيار صك يضم معاملته كاملة بكل صكوكها. المعاملات

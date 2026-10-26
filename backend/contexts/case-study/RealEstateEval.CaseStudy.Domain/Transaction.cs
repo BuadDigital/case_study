@@ -17,7 +17,7 @@ public class Transaction : ITrackUpdatedAt
     public string DraftNumber { get; set; } = "";
 
     /// <summary>
-    /// Official reference PR-{year}-{seq}: drawn when the case-study report or the valuation
+    /// Official reference PR-{YY}-{seq}: drawn when the case-study report or the valuation
     /// report is first approved, whichever comes first, and never changed afterwards.
     /// </summary>
     public string? ReferenceNumber { get; set; }
@@ -64,6 +64,13 @@ public class Transaction : ITrackUpdatedAt
     };
 
     /// <summary>Fixes the official reference once; a second call with a reference already set is a no-op.</summary>
+    /// <remarks>
+    /// How it works: when no reference is set yet, stores the trimmed PR number, stamps
+    /// ConfirmedAtUtc / UpdatedAtUtc and returns true; otherwise returns false and changes nothing.
+    /// Edge cases: the PR is drawn once and kept for good (§10) — a reopen never clears it and a
+    /// later approval finds it set, so the number is never re-drawn and numbering stays gap-free
+    /// (prod PO-067455 kept PR-26-00002 after an issue reopened 21 s later).
+    /// </remarks>
     public bool Confirm(string referenceNumber, DateTime nowUtc)
     {
         if (IsConfirmed) return false;
@@ -85,6 +92,13 @@ public static class TransactionStudyRules
     /// first live deed (by its work order's receipt, then deed number). Null when the transaction
     /// has no live deed.
     /// </summary>
+    /// <remarks>
+    /// How it works: 1) keeps only the deeds that are not removed; 2) returns the recorded
+    /// StudyHolderPropertyId when it is still one of them; 3) otherwise orders the live deeds by
+    /// their work order's CreatedAtUtc, then by deed number (ordinal), and returns the first.
+    /// Edge cases: a recorded holder that was removed falls back to the ordering rule; a deed whose
+    /// work order is not loaded sorts last (DateTime.MaxValue) instead of throwing.
+    /// </remarks>
     public static WorkOrderProperty? Holder(Transaction transaction)
     {
         var live = transaction.Properties.Where(p => !p.IsRemoved).ToList();

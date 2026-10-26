@@ -103,7 +103,7 @@ export type WorkflowTask = {
   district?: string;
   propertyType?: string;
   classification?: string;
-  /** The property's transaction number (PR-… once confirmed, else the D- draft), joined server-side. */
+  /** The property's transaction number (PR-… once confirmed, else the TMP- temporary number), joined server-side. */
   transactionNumber?: string;
   /** The property's transaction id, joined server-side. */
   transactionId?: string;
@@ -115,8 +115,15 @@ export type WorkflowTask = {
 };
 
 /**
- * Phases 4–5: a task on a deed whose transaction's study and valuation live on another deed
- * (the holder). The server sets the holder on every task of such a deed.
+ * Phases 4–5: true for a task on a deed whose transaction's study and valuation live on
+ * another deed (the holder deed, «الصك الأساس»).
+ *
+ * How it works: reads `transactionStudyHolderPropertyId`, which the server joins onto every
+ * task of a deed in a merged transaction, trims it, and returns true only when it is set and
+ * names a deed other than the task's own `propertyId`.
+ *
+ * Edge cases: a task on the holder deed itself carries its own id as the holder → false (it is
+ * the one that keeps the study); a deed outside any merge has no holder → false.
  */
 export function isFoldedTransactionTask(
   task: Pick<WorkflowTask, "propertyId" | "transactionStudyHolderPropertyId">,
@@ -140,8 +147,17 @@ export function isFoldedAppraisalTask(
 }
 
 /**
- * Phase 5: the holder deed's appraisal task that a folded appraisal task redirects to; null
- * when the task is not folded or the holder's task is not in the list.
+ * Phase 5 (decision 2026-10-19, one valuation per transaction): the holder deed's appraisal
+ * task that a folded appraisal task redirects to.
+ *
+ * How it works: returns null unless `task` is a folded `property-appraisal` task
+ * (`isFoldedAppraisalTask`); then searches `tasks` for a `property-appraisal` task on the
+ * holder deed (`transactionStudyHolderPropertyId`) that is not cancelled and is not `task`
+ * itself, and returns it (or null).
+ *
+ * Edge cases: a task whose holder is its own deed → null (it is the holder); the holder's task
+ * missing from the list (not loaded yet, or cancelled) → null, so the caller shows the deed's
+ * own workspace instead of redirecting nowhere.
  */
 export function holderAppraisalTaskFor(
   task: Pick<WorkflowTask, "id" | "kind" | "propertyId" | "transactionStudyHolderPropertyId">,

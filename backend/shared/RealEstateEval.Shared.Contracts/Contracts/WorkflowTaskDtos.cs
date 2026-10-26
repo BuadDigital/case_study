@@ -124,7 +124,7 @@ public class WorkflowTaskDto
  /// <inheritdoc cref="DeedNumber"/>
     public string? Classification { get; set; }
 
-    /// <summary>The property's transaction number (PR-… once confirmed, else the D- draft), joined like the five columns above.</summary>
+    /// <summary>The property's transaction number (PR-… once confirmed, else the TMP- temporary number), joined like the five columns above.</summary>
     public string? TransactionNumber { get; set; }
 
     /// <summary>The property's transaction id, joined like the five columns above.</summary>

@@ -9,6 +9,18 @@ namespace RealEstateEval.Operations.Application.Services;
 
 public sealed partial class KeyEnvelopesService
 {
+    /// <summary>Records a move of the key envelope (internal, external, receive-back, return to court).</summary>
+    /// <remarks>
+    /// How it works: 1) resolves the actor's name and loads the envelope; 2) validates the kind and
+    /// resolves the from / to party labels (both required); 3) external needs a proof letter that
+    /// exists; 4) decides whether the actor is the receiver (receive-back with no ToUserId or ToUserId
+    /// == actor); 5) builds the handoff with <see cref="KeyEnvelopeRegistrationRules.InitialHandoffStatus"/>;
+    /// 6) when it is not pending, custody moves now (<c>ApplyConfirmedHandoff</c>) and the receiver
+    /// self-confirms; 7) saves with a timeline line; 8) notifies ToUserId only while a confirmation is owed.
+    /// Edge cases (decision 2026-10-20): a receive-back recorded by someone else (e.g. the inspector)
+    /// stays pending until the reviewer confirms, and the holder does not change until then; a
+    /// self-recorded receive-back stores the actor as ToUserId so the reviewer holder has an id.
+    /// </remarks>
     public async Task<(KeyEnvelopeDto? Envelope, string? Error)> CreateHandoffAsync(
         Guid envelopeId,
         CreateKeyEnvelopeHandoffRequest request,
@@ -95,6 +107,7 @@ public sealed partial class KeyEnvelopesService
 
         await SaveAndDetachAsync(cancellationToken);
 
+        // Notify the receiver only when a confirmation is still owed; a receipt already confirmed needs no request.
         if (toUserId is not null && handoff.Status == KeyHandoffStatuses.PendingConfirm)
         {
             await _notifications.CreateForUserAsync(
@@ -116,6 +129,16 @@ public sealed partial class KeyEnvelopesService
         return (await GetAsync(envelopeId, cancellationToken), null);
     }
 
+    /// <summary>The receiver confirms a pending handoff; only then does the envelope change hands.</summary>
+    /// <remarks>
+    /// How it works: 1) loads the envelope and the handoff; 2) <see cref="KeyEnvelopeRegistrationRules.ValidateHandoffConfirmation"/>
+    /// allows only pending internal / receive-back handoffs; 3) marks it confirmed by the actor; 4) for
+    /// an internal handoff with no ToUserId, the confirming actor becomes ToUserId; 5) moves status and
+    /// holder together (<c>ApplyConfirmedHandoff</c>); 6) writes two timeline lines, saves, and notifies
+    /// the handoff's creator.
+    /// Edge cases (decision 2026-10-20): receive-back now goes through this too (it used to be internal
+    /// only); step 4 keeps an internal_user holder from ending up without a user id.
+    /// </remarks>
     public async Task<(KeyEnvelopeDto? Envelope, string? Error)> ConfirmHandoffAsync(
         Guid envelopeId,
         Guid handoffId,

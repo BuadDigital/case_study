@@ -98,10 +98,21 @@ public static class OperationsTaskCommandRules
             : "🔔 تم إرسال تذكير فوري إلى المنفّذ.";
 
     /// <summary>Operations task id: T-26-0007 (two-digit year, decision 2026-10-20).</summary>
+    /// <remarks>
+    /// How it works: «T-» + <c>ReferenceNumbering.ShortYear</c>(year) + the sequence padded to 4 digits
+    /// (wider sequences print in full: T-26-12345). The counter keeps the full year; only the print is short.
+    /// Edge cases: ids already printed as T-2026-0007 stay as they are; only new ids take the short year.
+    /// </remarks>
     public static string DisplayId(int year, int sequence) =>
         $"T-{ReferenceNumbering.ShortYear(year)}-{sequence:D4}";
 
     /// <summary>Court-visit reference CV-26-0007 — Latin only; no reference carries an Arabic prefix.</summary>
+    /// <remarks>
+    /// How it works: for a court visit, «CV-» + two-digit year + 4-digit sequence; any other task has no
+    /// reference (null).
+    /// Edge cases (decision 2026-10-20): was «خ.ت-2026-0007»; migration CourtVisitReferenceLatin rewrote
+    /// stored references to CV-YY-… so old and new rows read the same.
+    /// </remarks>
     public static string? Reference(int year, int sequence, bool courtVisit) =>
         courtVisit ? $"CV-{ReferenceNumbering.ShortYear(year)}-{sequence:D4}" : null;
 }

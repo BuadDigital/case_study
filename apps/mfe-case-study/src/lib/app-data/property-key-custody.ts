@@ -24,6 +24,7 @@ type GateCustody = Pick<
   | "keyHolderLabel"
 >;
 
+/** Arabic label for the envelope's single holder: reviewer, internal user, external party or court. */
 export function envelopeHolderLabelAr(
   kind: string | null | undefined,
   label: string | null | undefined,
@@ -43,6 +44,7 @@ export function envelopeHolderLabelAr(
   }
 }
 
+/** Arabic label for where this deed's key is after the field trial (envelope, a user, court, missing). */
 export function keyLocationLabelAr(
   location: string | null | undefined,
   holderLabel: string | null | undefined,
@@ -62,6 +64,7 @@ export function keyLocationLabelAr(
   }
 }
 
+/** Fallback to the older yes/no «handed» value when no holder or key place says otherwise. */
 function legacyHandedLabel(value: string): string {
   if (value === PropertyKeyHandedValues.Yes) return "تم التسليم";
   if (value === PropertyKeyHandedValues.No) return "لم يُسلَّم";
@@ -70,9 +73,18 @@ function legacyHandedLabel(value: string): string {
 }
 
 /**
- * «تسليم للمعاين» for one deed: yes when this deed's inspector holds the envelope
- * or its key; otherwise where the envelope or key actually is, so a deed whose
- * envelope sits with another deed's inspector never reads as handed.
+ * «تسليم للمعاين» for one deed (decision 2026-10-20): yes when this deed's inspector holds the
+ * envelope or its key; otherwise where the envelope or key actually is.
+ *
+ * How it works, first match wins: 1) no gate → the legacy «لم تُحدَّد بعد»; 2) the envelope holder
+ * is an internal user with this inspector's id, or the key is `with_user` with this inspector's id
+ * → handed, «نعم — عند <name>» (the inspector's name, else the holder's label); 3) the envelope is
+ * with another internal user → «الظرف عند <name> (معاين صك آخر)» («… عند <name>» when the deed has
+ * no inspector); 4) the key is with another user → «المفتاح عند <name>»; 5) else the legacy yes/no.
+ *
+ * Edge cases: decided here because the operations service cannot see case-study tasks; one
+ * envelope can serve several deeds, so a deed whose envelope sits with another deed's inspector
+ * never reads «تم التسليم» even when the old flag says yes.
  */
 export function keyHandedToInspectorText(
   gate: GateCustody | null | undefined,

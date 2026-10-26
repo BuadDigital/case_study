@@ -23,6 +23,19 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
         _caseStudy = caseStudy;
     }
 
+    /// <summary>The key gate of one deed: are its keys in, handed to an inspector, and available for the visit.</summary>
+    /// <remarks>
+    /// How it works: 1) finds the deed through Case Study (by id, or PO + deed number); 2) court access
+    /// «enabled without a key» answers at once (not required, available); 3) finds the envelope by
+    /// request number, else by an assignment on the deed (normalised deed forms) or property id;
+    /// 4) picks this deed's assignment and the latest pending internal handoff; 5) handed = the envelope
+    /// is held by an internal_user, or this deed's key is with_user, or the trial matched; 6) returns
+    /// the flags plus the envelope holder and the deed's key place / holder.
+    /// Edge cases (custody, decision 2026-10-20): handed used to come from the envelope status
+    /// (assessor / external) or any internal handoff ever confirmed; it now follows the current holder.
+    /// Operations cannot see case-study tasks, so whether the holder is THIS deed's inspector is decided
+    /// on the client — an envelope held by another deed's inspector reads «الظرف عند … (معاين صك آخر)».
+    /// </remarks>
     public async Task<PropertyKeyGateDto> ResolveAsync(
         Guid? propertyId,
         string? poNumber,

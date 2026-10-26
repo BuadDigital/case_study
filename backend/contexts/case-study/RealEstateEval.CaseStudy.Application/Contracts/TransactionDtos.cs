@@ -8,7 +8,7 @@ public class TransactionDto
     /// <summary>TMP-{YY}-{seq}; shown until the official reference exists.</summary>
     public string DraftNumber { get; init; } = "";
 
-    /// <summary>PR-{year}-{seq}; null until the first report approval.</summary>
+    /// <summary>PR-{YY}-{seq}; null until the first report approval.</summary>
     public string? ReferenceNumber { get; init; }
 
     /// <summary>The number people see: the official reference once confirmed, else the draft number.</summary>
@@ -22,6 +22,10 @@ public class TransactionDto
     /// <summary>PRV-… when confirmed, else null.</summary>
     public string? ValuationReportNumber { get; init; }
 
+    /// <summary>
+    /// Decision 2026-10-19: why the deeds were merged — one_building («مبنى واحد») or contract
+    /// («أعيان بعقد»), with the specialist's reason; null while the transaction holds one deed.
+    /// </summary>
     public string? LinkKind { get; init; }
 
     public string? LinkKindLabelAr { get; init; }

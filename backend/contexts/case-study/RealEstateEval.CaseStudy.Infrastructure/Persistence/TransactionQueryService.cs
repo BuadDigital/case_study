@@ -30,6 +30,11 @@ public sealed class TransactionQueryService : ITransactionQuery
         _timeline = timeline;
     }
 
+    /// <summary>The transaction detail of the transaction a deed belongs to.</summary>
+    /// <remarks>
+    /// How it works: reads the deed's TransactionId and hands it to <see cref="GetAsync"/>.
+    /// Edge cases: an unknown deed returns null; visibility is applied by GetAsync.
+    /// </remarks>
     public async Task<TransactionDetailDto?> GetByPropertyAsync(
         Guid propertyId,
         PermissionsDto? actor,
@@ -42,6 +47,17 @@ public sealed class TransactionQueryService : ITransactionQuery
         return transactionId is { } id ? await GetAsync(id, actor, cancellationToken) : null;
     }
 
+    /// <summary>The transaction with its numbers, link, holder deed and the deeds the actor may see.</summary>
+    /// <remarks>
+    /// How it works: 1) loads the transaction with its deeds and work orders (no tracking); 2) keeps
+    /// the deeds whose PO the actor may see, ordered by work-order date then deed number; 3) finds the
+    /// holder deed (TransactionStudyRules.Holder) and its case-study parent task; 4) returns the
+    /// numbers, PRC / PRV derived from the PR root, link kind and reason, the live deed count and
+    /// the deeds.
+    /// Edge cases: a party actor who sees none of the deeds gets null (not an empty transaction);
+    /// removed deeds stay in the list flagged IsRemoved but are not counted; the holder task is null
+    /// until the holder deed is distributed; PRC / PRV are null while only TMP exists.
+    /// </remarks>
     public async Task<TransactionDetailDto?> GetAsync(
         Guid transactionId,
         PermissionsDto? actor,
@@ -84,6 +100,14 @@ public sealed class TransactionQueryService : ITransactionQuery
         };
     }
 
+    /// <summary>One timeline for the transaction: every visible deed's events merged in time order.</summary>
+    /// <remarks>
+    /// How it works: gets the detail (so visibility applies), reads each deed's timeline, prefixes
+    /// every event id with the deed id and tags it with the deed (registry number, else deed number),
+    /// then sorts all events by time and id.
+    /// Edge cases: null when the actor may not see the transaction; the id prefix keeps two deeds'
+    /// events with the same key distinct.
+    /// </remarks>
     public async Task<IReadOnlyList<PropertyTimelineEventDto>?> GetTimelineAsync(
         Guid transactionId,
         PermissionsDto? actor,
@@ -137,6 +161,10 @@ public sealed class TransactionQueryService : ITransactionQuery
     };
 
     /// <summary>Events carry either a date (yyyy-MM-dd) or an instant (round-trip); both sort as UTC.</summary>
+    /// <remarks>
+    /// How it works: parses invariant, assuming and adjusting to UTC. Edge cases: an unparseable
+    /// value sorts first (DateTime.MinValue) instead of throwing.
+    /// </remarks>
     private static DateTime SortKey(string at) =>
         DateTime.TryParse(at, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var parsed)
             ? parsed

@@ -43,6 +43,17 @@ export function hydrateEvaluatorSubmission(input: {
   return draftWrites.enqueue(input.taskId, () => hydrateNow(input));
 }
 
+/**
+ * Loads (or creates) the appraiser's package for a task; runs inside the task's write queue.
+ *
+ * How it works: fetches the party submission for `taskId` and maps it (`dtoToSubmission`); if
+ * one exists it is returned as is. Otherwise a new draft is built from the input
+ * (`createEvaluatorDraft`), saved, and the saved copy is returned.
+ *
+ * Edge cases: decision 2026-10-19 — no report number is reserved here any more (the old
+ * `stampReservedReportNumber` opened a valuation request and stamped TQ-… on open); the server
+ * stamps PRV-… on the package at report approval. A failed first save throws an Arabic error.
+ */
 async function hydrateNow(input: {
   taskId: string;
   propertyId: string;

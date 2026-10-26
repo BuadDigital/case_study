@@ -58,6 +58,15 @@ export const KeyLocationValues = {
 export type KeyLocation =
   (typeof KeyLocationValues)[keyof typeof KeyLocationValues];
 
+/**
+ * Decision 2026-10-20: the Arabic label of where a deed's matching key is.
+ *
+ * How it works: `with_user` → «عند <holder>» from `holderLabel`; `returned_court` →
+ * «أُعيد للمحكمة»; `missing` → «مفقود»; anything else → «في الظرف».
+ *
+ * Edge cases: with_user without a holder name → «عند مستخدم»; an empty or unknown place (rows
+ * from before key places existed) reads «في الظرف», the server's default.
+ */
 export function keyLocationLabel(
   location: string | null | undefined,
   holderLabel?: string | null,
@@ -139,6 +148,7 @@ export type KeyEnvelopeRow = {
   feeGenerated: boolean;
   feeAmountSar?: number | null;
   revenueEntitlementAtUtc?: string | null;
+  /** The envelope's reviewer — an inspector's receive-back is handed to (and confirmed by) this user. */
   createdByUserId?: string | null;
   createdByName: string;
   createdAtUtc: string;
@@ -156,7 +166,16 @@ export type KeyEnvelopeRow = {
   linkedProperties: KeyEnvelopeLinkedProperty[];
 };
 
-/** «عند من الآن»: the holder as a short phrase, from the holder fields (status-based fallback for old rows). */
+/**
+ * «عند من الآن»: the envelope's one explicit holder (decision 2026-10-20) as a short phrase.
+ *
+ * How it works: switches on `holderKind`: internal_user → the holder's name; external →
+ * «طرف خارجي: <label>»; court → the label, else the envelope's court; reviewer → the label,
+ * else the envelope's reviewer (`createdByName`), else «المراجع الحكومي».
+ *
+ * Edge cases: each kind falls back to a generic word when the label is empty; a row from
+ * before the holder existed (no `holderKind`) shows its custody status label instead.
+ */
 export function envelopeHolderText(
   env: Pick<KeyEnvelopeRow, "holderKind" | "holderLabel" | "status" | "court" | "createdByName">,
 ): string {
@@ -175,7 +194,16 @@ export function envelopeHolderText(
   }
 }
 
-/** The envelope's keys that opened none of our deeds: the actual count minus the deeds that matched. */
+/**
+ * The «other keys» count (decision 2026-10-20): the envelope's keys that opened none of our
+ * deeds — they stay in it and go back to the court with it.
+ *
+ * How it works: counts the deeds whose trial ended matched or partial and subtracts that from
+ * `keysCountActual`.
+ *
+ * Edge cases: never negative — more matched deeds than counted keys (one key opening two
+ * deeds, or a miscount) gives 0.
+ */
 export function otherKeysInEnvelope(
   env: Pick<KeyEnvelopeRow, "keysCountActual" | "assignments">,
 ): number {
@@ -284,8 +312,14 @@ export function scenarioColor(scenario: string): string {
 export const ENVELOPE_NO_REFERENCE_LABEL = "بلا رقم";
 
 /**
- * The envelope's reference KE-YY-##### as the server allocated it at registration (decision
- * 2026-10-20: no made-up fallback — an old envelope that was never numbered says so).
+ * The envelope's reference KE-YY-##### as the server allocated it at registration.
+ *
+ * How it works: returns the trimmed `referenceNumber`; otherwise «بلا رقم»
+ * (`ENVELOPE_NO_REFERENCE_LABEL`). The id and creation date are no longer read.
+ *
+ * Edge cases: decision 2026-10-20 — no made-up fallback: it used to compose ENV-{year}-{last
+ * three id digits}, which read like a real reference; an old envelope that was never numbered
+ * now says so (search matches «بلا رقم», never "ENV-").
  */
 export function envelopeDisplayRef(
   _id: string,

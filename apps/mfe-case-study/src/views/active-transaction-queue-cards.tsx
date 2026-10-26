@@ -67,6 +67,8 @@ export function buildQueueMobileCardItems({
     return filteredAllTxMeta.map((meta) => {
       const metaLines = [
         { text: formatPoDisplay(meta.poNumber), kind: "po" as const },
+        // Linked properties (2026-10-19): every phone card (all three branches here) shows the
+        // deed's transaction number beside the work order.
         meta.transactionNumber
           ? { text: meta.transactionNumber, kind: "po" as const }
           : null,

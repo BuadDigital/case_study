@@ -173,6 +173,7 @@ export function PickerList({
           const key = n.kind === "group" ? `g:${n.groupId}` : `p:${n.record.id}`;
           const head = n.kind === "group" ? n.members[0]! : n.record;
           const checked = !selectedKeys || selectedKeys.includes(key);
+          // A multi-deed transaction is one row: its transaction number and deed count (decision 2026-10-19).
           const label =
             n.kind === "group"
               ? `${head.transactionNumber ?? head.refNo} — ${head.district}، ${head.city} (${n.deedCount} صكوك)`
