@@ -50,6 +50,10 @@ internal static class TestDatabases
         public FinancialDbContext Financial { get; }
         public MessagingDbContext Messaging { get; }
 
+        /// <summary>A second Valuation context over the same store — another request's view, for concurrency tests.</summary>
+        public ValuationDbContext NewValuationContext() =>
+            Create<ValuationDbContext>(options => new ValuationDbContext(options));
+
         public async ValueTask DisposeAsync()
         {
             await Messaging.DisposeAsync();

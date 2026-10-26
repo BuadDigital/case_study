@@ -11,6 +11,7 @@ import { InlineLoadingSkeleton } from "@platform/ui-kit";
 import { Card, CardPad } from "./atoms";
 import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
 import { IncomeApproachSection } from "./lazy-work-screens";
+import { incomeScreenClosedReason } from "./lib/income-approach-state";
 
 /**
  * D17 — the «أسلوب الدخل» work screen: closed until the settings are saved with the income
@@ -19,6 +20,7 @@ import { IncomeApproachSection } from "./lazy-work-screens";
 export function IncomeApproachScreen({
   settingsSaved,
   incomeEnabled,
+  incomeSaved,
   valuationRequestId,
   gates,
   recon,
@@ -29,7 +31,10 @@ export function IncomeApproachScreen({
   onReconSaved,
 }: {
   settingsSaved: boolean;
+  /** The tab's state (settings draft included). */
   incomeEnabled: boolean;
+  /** The SAVED settings have the income approach on — the only state the server accepts. */
+  incomeSaved: boolean;
   valuationRequestId: string | null;
   gates: ValuationIssuanceGatesDto | null;
   recon: ValuationReconciliationDto | null;
@@ -39,13 +44,12 @@ export function IncomeApproachScreen({
   onIncomeSaved: (dto: ValuationIncomeApproachDto) => void;
   onReconSaved: (dto: ValuationReconciliationDto) => void;
 }) {
-  if (!settingsSaved || !incomeEnabled) {
+  const closedReason = incomeScreenClosedReason({ settingsSaved, incomeEnabled, incomeSaved });
+  if (closedReason) {
     return (
       <Card>
         <CardPad>
-          <p className="text-[13px] text-text-2">
-            {!settingsSaved ? "ابدأ التقييم أولاً." : "أسلوب الدخل غير مفعّل في إعدادات التقييم."}
-          </p>
+          <p className="text-[13px] text-text-2">{closedReason}</p>
         </CardPad>
       </Card>
     );

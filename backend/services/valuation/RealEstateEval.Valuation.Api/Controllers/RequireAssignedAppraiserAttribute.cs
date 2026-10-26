@@ -28,8 +28,15 @@ internal sealed class AssignedAppraiserFilter(
             && context.Controller is ControllerBase controller)
         {
             var actor = await ReportDraftActors.ResolveAsync(permissions, context.HttpContext.User, ct);
-            if (!await assignedAppraisers.IsAssignedToRequestAsync(
-                    valuationRequestId, actor.UserId, actor.DistributionAssigneeId, ct))
+            var verdict = await assignedAppraisers.CheckRequestAsync(
+                valuationRequestId, actor.UserId, actor.DistributionAssigneeId, ct);
+            if (verdict == AssignedAppraiserVerdict.Unverified)
+            {
+                // Case Study did not answer: ask for a retry rather than telling the appraiser he is not assigned.
+                context.Result = controller.ServiceUnavailableProblem(AssignedAppraiserMessages.UnverifiedAr);
+                return;
+            }
+            if (verdict != AssignedAppraiserVerdict.Assigned)
             {
                 context.Result = controller.ForbiddenProblem(ForbiddenAr);
                 return;

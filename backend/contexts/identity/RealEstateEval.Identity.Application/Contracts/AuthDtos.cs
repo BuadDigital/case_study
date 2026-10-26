@@ -5,29 +5,29 @@ namespace RealEstateEval.Application.Contracts;
 /// <summary>Login — mobile (preferred) or username.</summary>
 public class UsernameLoginRequest
 {
-    [Required]
-    [MinLength(2)]
-    [MaxLength(120)]
+    [Required(ErrorMessage = "اسم المستخدم أو رقم الجوال مطلوب")]
+    [MinLength(2, ErrorMessage = "اسم المستخدم قصير — حرفان على الأقل")]
+    [MaxLength(120, ErrorMessage = "اسم المستخدم طويل جدًا")]
     public string Username { get; set; } = string.Empty;
 }
 
 /// <summary>Step 1 of mobile login: send the code.</summary>
 public class OtpRequestRequest
 {
-    [Required]
-    [MaxLength(20)]
+    [Required(ErrorMessage = "رقم الجوال مطلوب")]
+    [MaxLength(20, ErrorMessage = "صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).")]
     public string Mobile { get; set; } = string.Empty;
 }
 
 /// <summary>Step 2 of mobile login: exchange the code for a session.</summary>
 public class OtpVerifyRequest
 {
-    [Required]
-    [MaxLength(20)]
+    [Required(ErrorMessage = "رقم الجوال مطلوب")]
+    [MaxLength(20, ErrorMessage = "صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).")]
     public string Mobile { get; set; } = string.Empty;
 
-    [Required]
-    [MaxLength(12)]
+    [Required(ErrorMessage = "رمز التحقق مطلوب")]
+    [MaxLength(12, ErrorMessage = "رمز التحقق مكوّن من 6 أرقام.")]
     public string Code { get; set; } = string.Empty;
 }
 
@@ -42,8 +42,8 @@ public class OtpRequestResponseDto
 
 public class RefreshTokenRequest
 {
-    [Required]
-    [MaxLength(256)]
+    [Required(ErrorMessage = "رمز التجديد مطلوب")]
+    [MaxLength(256, ErrorMessage = "رمز التجديد غير صالح")]
     public string RefreshToken { get; set; } = string.Empty;
 }
 

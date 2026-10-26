@@ -56,11 +56,23 @@ public static class ValuationComparableListBuilder
         ValuationMarketApproach? header,
         string selectionContext,
         IReadOnlyList<ValuationAdjustmentFactorRationale> factorRationales,
-        decimal? costApartmentLandShareSqm = null)
+        DateOnly? hardComparableDateCutoff = null,
+        CostLandAreas? costLand = null)
     {
         var adoptedRows = rows.Where(r => r.IsAdopted).ToList();
-        var subjectAreaForSuggestion = AreaAdjustmentSubjectAreaSqm(
-            header?.SubjectAreaSqm, selectionContext, costApartmentLandShareSqm);
+        // Decision A: the land table compares each land comparable with the whole building plot saved on
+        // the cost approach (never the market header, which the subject-area sync owns); the apartment's
+        // land share only multiplies the adjusted rate into the land value. The market table keeps the header.
+        var isLandTable = ComparableSelectionContexts.Normalize(selectionContext)
+            == ComparableSelectionContexts.LandWithinCost;
+        var subjectArea = isLandTable
+            ? CostApproachRules.LandTableSubjectAreaSqm(
+                costLand?.BuildingPlotAreaSqm, costLand?.ApartmentShareSqm, header?.SubjectAreaSqm)
+            : header?.SubjectAreaSqm;
+        var valueArea = isLandTable
+            ? CostApproachRules.LandTableValueAreaSqm(subjectArea, costLand?.ApartmentShareSqm)
+            : subjectArea;
+        var subjectAreaForSuggestion = subjectArea ?? 0m;
         var areaFactor = header?.AreaFactorPct > 0
             ? header.AreaFactorPct
             : AreaAdjustmentRules.DefaultAreaFactorPct;
@@ -97,6 +109,12 @@ public static class ValuationComparableListBuilder
                     x.Market,
                     basis,
                     EffectiveCompValues(x.Row, comps[x.Row.ComparablePropertyId]).Area))
+                .ToList(),
+            // Round 2: a market comparable dealt after the valuation date (hard alert 23) gets no automatic weight.
+            adoptedMarkets
+                .Select(x => ComparableSelectionContexts.Normalize(selectionContext) == ComparableSelectionContexts.Market
+                    && hardComparableDateCutoff is { } cutoff
+                    && comps[x.Row.ComparablePropertyId].TransactionDate > cutoff)
                 .ToList());
 
         var items = new List<ValuationComparableSelectionDto>();
@@ -150,15 +168,16 @@ public static class ValuationComparableListBuilder
 
         var effectiveWeights = weightPairs.Select(p => p.weight).ToList();
         var weighted = MarketApproachRules.WeightedUnitRate(weightPairs);
-        var area = header?.SubjectAreaSqm;
+        var area = subjectArea;
         var roundDecimals = header?.ValueRoundDecimals
             ?? MarketApproachRules.DefaultValueRoundDecimals;
  // : whole-property basis yields the opinion directly — "without multiplying by area".
         // Cost logic §3: approach output is raw without rounding — round once after reconciliation.
+        // Decision A: on the land table the rate multiplies the apartment's share, not the whole plot.
         var opinionRaw = basis == MarketAdjustmentBasisKeys.WholeProperty
             ? weighted
-            : area is > 0m
-                ? MarketOpinionRules.ComputeOpinionValue(weighted, area.Value)
+            : valueArea is > 0m
+                ? MarketOpinionRules.ComputeOpinionValue(weighted, valueArea.Value)
                 : 0m;
         var opinion = opinionRaw;
 
@@ -174,6 +193,9 @@ public static class ValuationComparableListBuilder
                 || MarketApproachRules.WeightsSumTo100(effectiveWeights),
             WeightedPricePerSqm = weighted,
             SubjectAreaSqm = area,
+            ApartmentLandShareSqm = isLandTable && costLand?.ApartmentShareSqm is > 0m
+                ? costLand.Value.ApartmentShareSqm
+                : null,
             AdjustmentBasis = basis,
             AdjustmentBasisLabelAr = MarketAdjustmentBasisKeys.LabelAr(basis),
             MarketOpinionValueRaw = opinionRaw,
@@ -194,21 +216,6 @@ public static class ValuationComparableListBuilder
             Items = items,
         };
     }
-
-    /// <summary>
-    /// The subject area the area adjustment compares each comparable with. The land table inside
-    /// the cost approach compares land with the land the cost approach values — the apartment's
-    /// share of the land when one is saved (an apartment's floor area is not land), else the
-    /// subject area; the market table keeps the market header's subject area.
-    /// </summary>
-    public static decimal AreaAdjustmentSubjectAreaSqm(
-        decimal? headerSubjectAreaSqm,
-        string? selectionContext,
-        decimal? costApartmentLandShareSqm) =>
-        ComparableSelectionContexts.Normalize(selectionContext) == ComparableSelectionContexts.LandWithinCost
-        && costApartmentLandShareSqm is > 0m
-            ? costApartmentLandShareSqm.Value
-            : headerSubjectAreaSqm ?? 0m;
 
     /// <summary>
     /// D7: the land table inside the cost approach is always per m², whatever basis the market

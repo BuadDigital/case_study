@@ -6,7 +6,7 @@ import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
-import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
 
 import {
   AUTO_AREA_KEY,
@@ -28,6 +28,8 @@ export type MatrixBasisView = {
   isUnit: boolean;
   /** «قيمة الأرض» only for the land table inside the cost approach — the market table values the property. */
   outputLabel: string;
+  /** What the output multiplies — decision A: an apartment's land is the rate × its share of the plot. */
+  outputFormula: string;
   pricePerSqmDisplay: number | null;
   opinionRaw: number | null;
   opinionFinal: number | null;
@@ -65,6 +67,7 @@ export function matrixBasisView(
       selection.selectionContext === LAND_WITHIN_COST
         ? "قيمة الأرض قبل التقريب"
         : "قيمة العقار قبل التقريب",
+    outputFormula: matrixOutputFormula(selection, isUnit),
     pricePerSqmDisplay,
     opinionRaw: selection.marketOpinionValueRaw ?? selection.marketOpinionValue,
     opinionFinal: selection.marketOpinionValue,
@@ -76,6 +79,20 @@ export function matrixBasisView(
         : "طريقة الأمثال — آلية",
     areaFactor: selection.areaFactorPct ?? 5,
   };
+}
+
+function matrixOutputFormula(
+  selection: ValuationComparableSelectionListDto,
+  isUnit: boolean,
+): string {
+  if (!isUnit) return "أساس الكل — بلا ضرب في المساحة (يساوي المتوسط المرجّح)";
+  if (selection.selectionContext !== LAND_WITHIN_COST) return "سعر المتر بعد التسوية × مساحة العقار";
+  const share = selection.apartmentLandShareSqm ?? 0;
+  const plot = selection.subjectAreaSqm ?? 0;
+  if (share > 0) {
+    return `سعر المتر بعد التسوية × حصة الشقة ${fmtMax(share)} م² — تسوية المساحة على أرض العمارة كاملة ${plot > 0 ? `${fmtMax(plot)} م²` : "(أدخلها في بطاقة قيمة الأرض)"}`;
+  }
+  return "سعر المتر بعد التسوية × مساحة الأرض";
 }
 
 /** Factor keys in the order the adopted comparables' lines introduce them. */

@@ -7,11 +7,13 @@ import { COMMIT_MS, commitKeys } from "./AdjustmentsMatrixCells.styles";
  * The draft every editable matrix cell keeps for itself: typing commits after `COMMIT_MS`,
  * Enter / Tab / blur commit now, Escape drops the change, and unmounting flushes what is
  * pending. An unchanged value (or no `commit`) just clears the draft; a commit that returns
- * false keeps it (save failed).
+ * false keeps it (save failed). `debounce: false` commits on Enter / Tab / blur only — a text
+ * field (a rationale) is not validated and saved while the appraiser is still typing.
  */
 export function useMatrixCellDraft(
   committed: string,
-  commit: ((raw: string) => Promise<boolean> | void) | undefined,
+  commit: ((raw: string) => Promise<boolean> | boolean | void) | undefined,
+  { debounce = true }: { debounce?: boolean } = {},
 ) {
   const [draft, setDraft] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -45,7 +47,7 @@ export function useMatrixCellDraft(
     setDraft(raw);
     pending.current = raw;
     clearTimer();
-    timer.current = setTimeout(flush, COMMIT_MS);
+    if (debounce) timer.current = setTimeout(flush, COMMIT_MS);
   }
 
   function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {

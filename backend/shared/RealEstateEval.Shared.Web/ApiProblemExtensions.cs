@@ -55,6 +55,13 @@ public static class ApiProblemExtensions
         string title = "Forbidden") =>
         BuildProblem(controller, StatusCodes.Status403Forbidden, title, detail);
 
+    /// <summary>A service this request depends on did not answer — the client may retry.</summary>
+    public static ObjectResult ServiceUnavailableProblem(
+        this ControllerBase controller,
+        string detail,
+        string title = "Service Unavailable") =>
+        BuildProblem(controller, StatusCodes.Status503ServiceUnavailable, title, detail);
+
 
     public static ObjectResult WithProblemExtension(
         this ObjectResult result,
@@ -77,7 +84,7 @@ public static class ApiProblemExtensions
         string title = "Bad Request")
     {
         var detail = errors.Count > 0
-            ? string.Join(" ", errors.Values)
+            ? JoinMessages(errors.Values)
             : "الطلب غير صالح.";
 
         var result = BuildProblem(controller, statusCode, title, detail);
@@ -85,6 +92,24 @@ public static class ApiProblemExtensions
             errors.ToDictionary(pair => pair.Key, pair => pair.Value);
         return result;
     }
+
+    /// <summary>
+    /// Round 2: several field messages in one <c>detail</c>, each closed before the next — «… 10 أحرف.
+    /// عامل التسوية مكرر …» — instead of glued into one run-on sentence. Repeats are dropped.
+    /// </summary>
+    public static string JoinMessages(IEnumerable<string?> messages)
+    {
+        var list = messages
+            .Select(m => (m ?? "").Trim())
+            .Where(m => m.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        return string.Join(" ", list.Select((m, i) =>
+            i < list.Count - 1 && !EndsWithStop(m) ? m + "." : m));
+    }
+
+    private static bool EndsWithStop(string message) =>
+        message[^1] is '.' or '،' or '؛' or '!' or '؟' or '?' or ':' or '۔';
 
     private static ObjectResult BuildProblem(
         ControllerBase controller,

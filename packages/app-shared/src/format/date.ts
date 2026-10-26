@@ -63,9 +63,14 @@ export function todayIso(): string {
   return localDateIso(new Date());
 }
 
-/** YYYY/MM/DD from a timestamp (browser timezone) — "—" when absent or unparseable. */
+/**
+ * YYYY/MM/DD from a timestamp (browser timezone) — "—" when absent or unparseable. A plain date
+ * («2026-09-15», a deal or valuation date) is rewritten as it is, never shifted by the timezone.
+ */
 export function ymd(raw: string | null | undefined): string {
   if (!raw?.trim()) return "—";
+  const plain = /^(\d{4})-(\d{2})-(\d{2})$/.exec(raw.trim());
+  if (plain) return `${plain[1]}/${plain[2]}/${plain[3]}`;
   const d = new Date(raw);
   if (Number.isNaN(d.getTime())) return "—";
   return `${d.getFullYear()}/${pad2(d.getMonth() + 1)}/${pad2(d.getDate())}`;

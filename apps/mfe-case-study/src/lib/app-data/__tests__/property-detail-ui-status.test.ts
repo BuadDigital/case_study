@@ -33,6 +33,62 @@ function parentTask(status: WorkflowTask["status"], phase: WorkflowTask["phase"]
   } as WorkflowTask;
 }
 
+describe("derivePropertyUiStatus — a party's view (round 2)", () => {
+  it("without the case-study task, the server's row status for the party wins over «جديد»", () => {
+    expect(
+      derivePropertyUiStatus({
+        poNumber: PO,
+        property: property(),
+        tasks: [],
+        failures: [],
+        serverRowStatus: PropertyListRowStatuses.Done,
+      }),
+    ).toBe(PropertyListRowStatuses.Done);
+    expect(
+      derivePropertyUiStatus({ poNumber: PO, property: property(), tasks: [], failures: [] }),
+    ).toBe(PropertyListRowStatuses.New);
+  });
+
+  it("the appraiser's own completed task (final report issued) reads «مكتمل», not the row's «قيد العمل»", () => {
+    const appraisal = {
+      ...parentTask("completed", "done"),
+      id: "task-appraisal",
+      kind: "property-appraisal",
+      assigneeRole: "real-estate-appraiser",
+    } as WorkflowTask;
+    expect(
+      derivePropertyUiStatus({
+        poNumber: PO,
+        property: property(),
+        tasks: [appraisal],
+        failures: [],
+        serverRowStatus: PropertyListRowStatuses.Progress,
+      }),
+    ).toBe(PropertyListRowStatuses.Done);
+    expect(
+      derivePropertyUiStatus({
+        poNumber: PO,
+        property: property(),
+        tasks: [{ ...appraisal, status: "open", phase: "case-study" } as WorkflowTask],
+        failures: [],
+        serverRowStatus: PropertyListRowStatuses.Progress,
+      }),
+    ).toBe(PropertyListRowStatuses.Progress);
+  });
+
+  it("the case-study task, when visible, still decides", () => {
+    expect(
+      derivePropertyUiStatus({
+        poNumber: PO,
+        property: property(),
+        tasks: [parentTask("completed", "done")],
+        failures: [],
+        serverRowStatus: PropertyListRowStatuses.Progress,
+      }),
+    ).toBe(PropertyListRowStatuses.Ready);
+  });
+});
+
 describe("derivePropertyUiStatus", () => {
   it("shows «جاهز للرفع» once the report is issued but the handover is not recorded", () => {
     expect(

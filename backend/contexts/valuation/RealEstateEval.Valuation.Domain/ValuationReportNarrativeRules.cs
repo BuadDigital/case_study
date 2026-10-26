@@ -43,7 +43,9 @@ public static class ValuationReportNarrativeRules
  // Items selected from the valuation-report tab settings library + valuer free-text additions.
         IReadOnlyList<string>? selectedAssumptions = null,
  // Retrospective line when selected (date + rationale).
-        string? retrospectiveLine = null)
+        string? retrospectiveLine = null,
+ // D11 interest valued — rewords the library's full-ownership assumption for a usufruct / leased land.
+        string? ownershipInterestKey = null)
     {
         var bits = new List<string>
         {
@@ -88,6 +90,7 @@ public static class ValuationReportNarrativeRules
             if (externalSpecialistUsed
                 && ValuationApproachSettingsRules.IsNoExternalSpecialistAssumption(t))
                 continue;
+            t = OwnershipInterestKeys.AssumptionForInterest(t, ownershipInterestKey);
             bits.Add(t.EndsWith('.') || t.EndsWith('؟') ? t : t + ".");
         }
 

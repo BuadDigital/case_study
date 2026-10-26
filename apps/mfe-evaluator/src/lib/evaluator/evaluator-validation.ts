@@ -153,8 +153,9 @@ export function validateEvaluatorSubmission(input: {
     const discount = parseEvaluatorAmount(forcedSaleDiscountPct);
     if (!forcedSaleDiscountPct.trim()) {
       errors.forced_sale_discount = "مطلوب إدخال نسبة خصم التصفية.";
-    } else if (discount == null || discount < 0 || discount > 100) {
-      errors.forced_sale_discount = "النسبة يجب أن تكون بين 0 و 100.";
+    } else if (discount == null || discount < 0 || discount > 90) {
+      // Same ceiling as the reconciliation save (server max 90٪).
+      errors.forced_sale_discount = "النسبة يجب أن تكون بين 0 و 90.";
     }
   }
 

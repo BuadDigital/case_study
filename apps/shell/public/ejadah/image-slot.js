@@ -524,8 +524,8 @@
         // clicks through for chrome marked with it (EDIT_TRANSPARENT_SEL)
         // — without it, Replace/Edit clicks in Edit mode are swallowed by
         // element selection and the controls look dead.
-        '<div class="ctl" popover="manual" data-dc-edit-transparent><button data-act="replace" title="Replace image">Replace</button>' +
-        '  <button data-act="edit" title="Reframe image">Edit</button></div>' +
+        '<div class="ctl" popover="manual" data-dc-edit-transparent><button data-act="replace" title="استبدال الصورة">استبدال</button>' +
+        '  <button data-act="edit" title="تعديل إطار الصورة">تعديل</button></div>' +
         '<input type="file" accept="' + ACCEPT.join(',') + '" hidden>';
       this._frame = root.querySelector('.frame');
       this._ring = root.querySelector('.ring');
@@ -1141,7 +1141,7 @@
           y: stored && Number.isFinite(stored.y) ? stored.y : 0,
         };
       }
-      this._cap.textContent = this.getAttribute('placeholder') || 'Drop an image';
+      this._cap.textContent = this.getAttribute('placeholder') || 'اسحب صورة هنا';
       // Toggle via style.display — the [hidden] attribute alone loses to
       // the display:flex / display:block rules in the stylesheet above.
       // An Unsplash src with no credit attribute must NOT render — showing

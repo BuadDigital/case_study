@@ -197,9 +197,10 @@ export function useFinalOpinionWorkflow({
       liquidationDiscountRationale,
       reconMethods,
     });
+  // No cleanup: <Activity> hiding the screen runs effect cleanups while the drafts are still
+  // unsaved. The flag goes down when a save makes the drafts match, or when the window unmounts.
   useEffect(() => {
     setSectionUnsaved("final-opinion", unsaved);
-    return () => setSectionUnsaved("final-opinion", false);
   }, [unsaved]);
 
   async function saveReconciliation() {
@@ -216,6 +217,7 @@ export function useFinalOpinionWorkflow({
       basisOfValueKey,
       liquidationDiscountPct,
       liquidationDiscountRationale,
+      valuePremiseKey,
     });
     if (discountErrors) {
       const [key, message] = Object.entries(discountErrors)[0];

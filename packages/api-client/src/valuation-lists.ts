@@ -1,6 +1,6 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
-import { parseJson } from "./parse-json";
+import { parseJson, serverFailure } from "./parse-json";
 
 export type ValuationListItemDto = {
   id: string;
@@ -59,7 +59,7 @@ export function activeValuationListOptions(
 async function readListsResult(res: Response): Promise<Result<ValuationListsDto>> {
   if (res.status === 401) return { ok: false, kind: "auth" };
   if (res.status === 403) return { ok: false, kind: "forbidden" };
-  if (!res.ok) return { ok: false, kind: "server" };
+  if (!res.ok) return await serverFailure(res);
   return { ok: true, data: normalize(await parseJson<ValuationListsDto>(res)) };
 }
 

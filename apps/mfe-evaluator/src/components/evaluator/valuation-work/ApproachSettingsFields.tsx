@@ -1,6 +1,7 @@
 "use client";
 
 import { invalidControlClass } from "@platform/app-shared/form-ux";
+import { todayIso } from "@platform/app-shared/format/date";
 import { cn, opsFldControl, Select, Textarea } from "@platform/ui-kit";
 import { FieldLabel, ToggleChip } from "./atoms";
 import {
@@ -53,6 +54,7 @@ function DateInput({
   value,
   min,
   invalid,
+  disabled,
   onChange,
 }: {
   id: string;
@@ -60,6 +62,8 @@ function DateInput({
   value: string;
   min?: string;
   invalid: boolean;
+  /** While the settings save — the date cannot change under the request. */
+  disabled: boolean;
   onChange: (value: string) => void;
 }) {
   return (
@@ -73,6 +77,9 @@ function DateInput({
         dir="ltr"
         value={value}
         min={min}
+        // A retrospective date lies in the past (the server refuses a future one).
+        max={todayIso()}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         className={cn(opsFldControl, "font-semibold", invalid && invalidControlClass)}
       />
@@ -166,6 +173,7 @@ export function ValuationDateFields({
                 label="تاريخ الأثر الرجعي"
                 value={retroDate}
                 invalid={Boolean(fieldErrors.retrospective_date || fieldErrors.retrospectiveDate)}
+                disabled={saving}
                 onChange={onRetroDateChange}
               />
             </div>
@@ -178,6 +186,7 @@ export function ValuationDateFields({
                 invalid={Boolean(
                   fieldErrors.retrospective_date_from || fieldErrors.retrospectiveDate,
                 )}
+                disabled={saving}
                 onChange={onRetroDateChange}
               />
               <DateInput
@@ -188,6 +197,7 @@ export function ValuationDateFields({
                 invalid={Boolean(
                   fieldErrors.retrospective_date_to || fieldErrors.retrospectiveDateEnd,
                 )}
+                disabled={saving}
                 onChange={onRetroDateEndChange}
               />
             </div>

@@ -12,6 +12,7 @@ import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { roundHalfAwayFromZero } from "@platform/app-shared/format/money";
 import { valuePremiseKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 
+import { rationaleMinimumError } from "./rationale-minimum";
 import { fmt } from "./shell-utils";
 import { weightsSumTo100 } from "./weights";
 
@@ -198,9 +199,12 @@ export function forcedSaleDiscountOpinionLine(pct: number): string {
 /** D3: the one name the discount carries on every screen and message. */
 export const LIQUIDATION_DISCOUNT_NAME = "خصم التصفية";
 
+/** The server ceiling (ReconciliationLiquidationMessages.MaxDiscountPct) — the same 90٪ on screen. */
+export const LIQUIDATION_DISCOUNT_MAX_PCT = 90;
+
 /** The server's save messages (ReconciliationLiquidationMessages) — checked here before the round trip. */
 export const LIQUIDATION_DISCOUNT_MESSAGES = {
-  range: "نسبة خصم التصفية يجب أن تكون بين 0 و 100",
+  range: `نسبة خصم التصفية يجب أن تكون بين 0 و ${LIQUIDATION_DISCOUNT_MAX_PCT}`,
   requiredForLiquidation:
     "أساس القيمة «قيمة التصفية» يتطلب نسبة خصم التصفية أكبر من صفر",
   rationaleRequired: "مبرر خصم التصفية مطلوب عند إدخال نسبة",
@@ -210,16 +214,28 @@ export const LIQUIDATION_DISCOUNT_MESSAGES = {
  * D3: 0 is a valid discount on every basis but «قيمة التصفية», where the save is refused (the
  * hand-over no longer is). Returns the field errors keyed like the server's, or null.
  */
+/** The server's range refusal, named after the premise: «التصفية المنظمة» / «البيع القسري». */
+export function liquidationDiscountRangeMessage(premiseKey: string | null | undefined): string {
+  const label =
+    premiseKey === "orderly"
+      ? "نسبة خصم التصفية المنظمة"
+      : premiseKey === "forced"
+        ? "نسبة خصم البيع القسري"
+        : "نسبة خصم التصفية";
+  return `${label} يجب أن تكون بين 0 و ${LIQUIDATION_DISCOUNT_MAX_PCT}`;
+}
+
 export function liquidationDiscountSaveErrors(input: {
   basisOfValueKey: string;
   liquidationDiscountPct: string;
   liquidationDiscountRationale: string;
+  valuePremiseKey?: string | null;
 }): Record<string, string> | null {
   if (input.basisOfValueKey !== "liquidation") return null;
   const raw = input.liquidationDiscountPct.trim();
   const pct = raw ? parseLocaleNumber(raw) : 0;
-  if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
-    return { liquidationDiscountPct: LIQUIDATION_DISCOUNT_MESSAGES.range };
+  if (!Number.isFinite(pct) || pct < 0 || pct > LIQUIDATION_DISCOUNT_MAX_PCT) {
+    return { liquidationDiscountPct: liquidationDiscountRangeMessage(input.valuePremiseKey) };
   }
   if (pct === 0) {
     return { liquidationDiscountPct: LIQUIDATION_DISCOUNT_MESSAGES.requiredForLiquidation };
@@ -227,7 +243,9 @@ export function liquidationDiscountSaveErrors(input: {
   if (!input.liquidationDiscountRationale.trim()) {
     return { liquidationDiscountRationale: LIQUIDATION_DISCOUNT_MESSAGES.rationaleRequired };
   }
-  return null;
+  // Decision B: a written rationale is at least 10 characters.
+  const short = rationaleMinimumError("مبرر خصم التصفية", input.liquidationDiscountRationale);
+  return short ? { liquidationDiscountRationale: short } : null;
 }
 
 /**

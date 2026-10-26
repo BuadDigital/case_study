@@ -35,6 +35,29 @@ public static class AppraisalHandOverPriceRules
         };
     }
 
+    /// <summary>
+    /// Round 2: a price accepted within the ±0.5 slack is stored as the server's final value — the
+    /// typed 970000.4 becomes 970000 — so the hand-over and the report carry one figure. Any other
+    /// case (no final, a mismatch the gate refuses, a payload without a price) is returned unchanged.
+    /// </summary>
+    public static string WithFinalPrice(string payloadJson, decimal? handedOverPrice, decimal? finalValue)
+    {
+        if (finalValue is not { } final || final <= 0m || handedOverPrice is not { } price
+            || Math.Abs(price - final) > ToleranceSar)
+            return payloadJson;
+        try
+        {
+            if (System.Text.Json.Nodes.JsonNode.Parse(payloadJson) is not System.Text.Json.Nodes.JsonObject root)
+                return payloadJson;
+            root["evaluatorPrice"] = final.ToString("0.##", CultureInfo.InvariantCulture);
+            return root.ToJsonString();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return payloadJson;
+        }
+    }
+
     private static string Format(decimal value) =>
         value.ToString("#,0.##", CultureInfo.InvariantCulture);
 }

@@ -6,6 +6,7 @@ import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
+import { ymd } from "@platform/app-shared/format/date";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 
@@ -229,7 +230,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 <CompReadonly
                   key={item.id}
                   value={fmt(effPrice(item))}
-                  note={item.comparable.transactionDate}
+                  note={ymd(item.comparable.transactionDate)}
                   valueClassName={!isUnit ? "text-heading" : "text-text-3"}
                 />
               ))}
@@ -254,7 +255,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 <CompReadonly
                   key={item.id}
                   value={fmt(effUnit(item))}
-                  note={item.comparable.transactionDate}
+                  note={ymd(item.comparable.transactionDate)}
                   valueClassName={isUnit ? "text-heading" : "text-text-3"}
                 />
               ))}

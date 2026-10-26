@@ -270,6 +270,29 @@ public class ValuationFinalReportTests
     }
 
     [Fact]
+    public async Task A_concurrent_save_after_the_store_removes_the_orphan_file()
+    {
+        await using var rig = await ArrangeApprovedAsync();
+        rig.Renderer.Fail = true;
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        rig.Renderer.Fail = false;
+        // Another request changes the issuance row between the store and the save.
+        rig.Files.OnStore = scope =>
+        {
+            if (scope != ReportFileScopes.FinalReport) return;
+            using var other = rig.Contexts.NewValuationContext();
+            other.ValuationReportIssuances.Remove(other.ValuationReportIssuances.Single());
+            other.SaveChanges();
+        };
+
+        var status = await rig.FinalReports.EnsureGeneratedAsync(rig.RequestId);
+
+        Assert.Equal(FinalReportStatuses.Preparing, status);
+        var orphan = rig.Files.Stored.Single(f => f.Scope == ReportFileScopes.FinalReport).Id;
+        Assert.Contains(orphan, rig.Files.Deleted);
+    }
+
+    [Fact]
     public async Task A_download_before_the_pdf_exists_says_it_is_being_prepared()
     {
         await using var rig = await ArrangeApprovedAsync();
@@ -414,6 +437,7 @@ public class ValuationFinalReportTests
         public List<StoredFile> Stored { get; } = [];
         public List<Guid> Deleted { get; } = [];
         public string? FailWith { get; set; }
+        public Action<string>? OnStore { get; set; }
 
         public Task<(Guid? Id, string? Error)> StoreAsync(
             string scope, string scopeKey, string fileName, string contentType, byte[] content,
@@ -422,6 +446,7 @@ public class ValuationFinalReportTests
             if (FailWith is not null) return Task.FromResult<(Guid?, string?)>((null, FailWith));
             var id = Guid.NewGuid();
             Stored.Add(new StoredFile(id, scope, scopeKey, fileName, content));
+            OnStore?.Invoke(scope);
             return Task.FromResult<(Guid?, string?)>((id, null));
         }
 

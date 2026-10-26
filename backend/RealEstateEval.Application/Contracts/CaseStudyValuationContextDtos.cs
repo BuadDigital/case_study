@@ -30,6 +30,13 @@ public sealed class CaseStudyValuationPropertyContextDto
     /// Issuance must not require the engineering-survey print attachment when this is false.
     /// </summary>
     public bool RequiresEngineeringSurvey { get; set; } = true;
+    /// <summary>
+    /// The property's engineering-survey task ids (and the study holder's, for a linked deed): the
+    /// surveyor uploads «التقرير المساحي» under the task, not the property, so the issuance gate also
+    /// looks there. Only tasks whose package the office has SUBMITTED are listed — an upload to a
+    /// draft does not count as the survey. Empty from a host that predates the field.
+    /// </summary>
+    public IReadOnlyList<Guid> SurveyTaskIds { get; set; } = [];
     public string? DeedDate { get; set; }
     public string? OwnerName { get; set; }
     public string? DeedOwnersJson { get; set; }

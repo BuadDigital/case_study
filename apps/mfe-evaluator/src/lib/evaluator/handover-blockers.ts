@@ -68,7 +68,21 @@ function textOf(detail: string | null | undefined, label: string): string {
   return detail?.trim() || label.trim();
 }
 
-/** Every failing hard gate and blocking alert, in the gates' order, each with its owner. */
+/** A weights gate — the comparable weights of either table, or the approach shares. */
+function isWeightsGate(code: string): boolean {
+  const c = code.trim().toLowerCase();
+  return c === "reconciliation_weights" || c.startsWith("comparable_weights");
+}
+
+/** Alert 16 «مجموع الأوزان النسبية ≠ 100٪» — it repeats the weights gates. */
+const WEIGHTS_ALERT_CODE = "m16_weights_not_100";
+
+/**
+ * Every failing hard gate and blocking alert, in the gates' order, each with its owner. Alert 16
+ * is not listed again when a weights gate already fails (round 2: the weights item showed twice).
+ * Round 2 also lists `adjustment_rationales_*` — a non-zero factor or a manual weight without a
+ * rationale of 10 characters — as the appraiser's, on the market / cost screen by its suffix.
+ */
 export function classifyHandOverBlockers(
   gates: Pick<ValuationIssuanceGatesDto, "gates" | "methodologyAlerts">,
 ): HandOverBlocker[] {
@@ -86,8 +100,10 @@ export function classifyHandOverBlockers(
       screen: owner === "appraiser" ? screenOfGate(g.code) : null,
     });
   }
+  const weightsGateFails = list.some((b) => isWeightsGate(b.code));
   for (const a of gates.methodologyAlerts ?? []) {
     if (!a.blocksIssuance) continue;
+    if (weightsGateFails && a.code.trim().toLowerCase() === WEIGHTS_ALERT_CODE) continue;
     list.push({
       key: `alert:${a.code}`,
       code: a.code,

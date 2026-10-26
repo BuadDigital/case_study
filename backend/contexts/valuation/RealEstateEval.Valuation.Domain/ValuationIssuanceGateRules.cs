@@ -21,6 +21,12 @@ public static class ValuationIssuanceGateCodes
     public const string StudyReportIssued = "study_report_issued";
     /// <summary>D17 — the enabled income approach has income, a cap rate and a positive NOI.</summary>
     public const string IncomeApproachComplete = "income_approach_complete";
+    /// <summary>
+    /// Round 2 (Q-8-2 / decision B): every non-zero adjustment factor and every manual weight of an
+    /// adopted comparable is explained (≥ 10 characters). Suffixed per table: <c>_market</c> /
+    /// <c>_land_within_cost</c>.
+    /// </summary>
+    public const string AdjustmentRationales = "adjustment_rationales";
 }
 
 public readonly record struct ValuationIssuanceGateCheck(
@@ -210,6 +216,30 @@ public static class ValuationIssuanceGateRules
                 ? "أسلوب الدخل مفعّل ولم يكتمل — أدخل الدخل الإجمالي المحتمل ومعدل الرسملة بحيث يكون صافي الدخل التشغيلي موجبًا ثم احفظ"
                 : null);
 
+    /// <summary>
+    /// Round 2: a blank rationale on a non-zero factor (+10٪) or a manual weight stays a savable draft,
+    /// but the valuation is not issued — nor handed over — until each is explained in at least
+    /// <see cref="JustificationRules.RequiredMinLength"/> characters. Every unexplained item is named
+    /// (comparable — factor (percent) / manual weight). Skipped (pass) when the table is not in use.
+    /// </summary>
+    public static ValuationIssuanceGateCheck AdjustmentRationales(
+        string codeSuffix,
+        string tableLabelAr,
+        bool approachEnabled,
+        IReadOnlyList<string> unexplainedAr)
+    {
+        var fails = approachEnabled && unexplainedAr.Count > 0;
+        return new(
+            $"{ValuationIssuanceGateCodes.AdjustmentRationales}_{codeSuffix}",
+            $"مبررات التسويات والأوزان اليدوية ({tableLabelAr})",
+            !fails,
+            IsHard: true,
+            DetailAr: fails
+                ? $"تسويات أو أوزان يدوية بلا مبرر ({tableLabelAr}) — اكتب لكلٍّ منها مبرراً لا يقل عن {JustificationRules.RequiredMinLength} أحرف: "
+                  + string.Join("، ", unexplainedAr)
+                : null);
+    }
+
     public static ValuationIssuanceGateCheck ComparableWeights(
         string codeSuffix,
         string labelAr,
@@ -267,6 +297,26 @@ public static class ValuationIssuanceGateRules
     {
         if (propertyRequiresSurvey) return required as IReadOnlyList<T> ?? required.ToList();
         return required.Where(t => !IsSurveyAttachmentKey(keySelector(t))).ToList();
+    }
+
+    /// <summary>
+    /// Where the property's documents are filed: intake documents under «PO:propertyId», party
+    /// uploads under the property id, and the surveyor's «التقرير المساحي» under the survey task id.
+    /// </summary>
+    public static IReadOnlyList<string> AttachmentScopeKeys(
+        string propertyId,
+        string? poNumber,
+        IEnumerable<Guid> surveyTaskIds)
+    {
+        var keys = new List<string> { propertyId };
+        if (!string.IsNullOrWhiteSpace(poNumber))
+            keys.Add($"{poNumber.Trim()}:{propertyId}");
+        foreach (var taskId in surveyTaskIds)
+        {
+            var key = taskId.ToString("D");
+            if (taskId != Guid.Empty && !keys.Contains(key, StringComparer.Ordinal)) keys.Add(key);
+        }
+        return keys;
     }
 
  /// <summary>required dictionary types (matching the property type) need a printable upload.</summary>

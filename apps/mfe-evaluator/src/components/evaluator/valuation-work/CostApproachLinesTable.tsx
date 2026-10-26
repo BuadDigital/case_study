@@ -105,6 +105,13 @@ function DragHandle({
 }
 
 /**
+ * Round 2: the 1160px table scrolls INSIDE its card. Without `contain: inline-size` the table's
+ * min-content width stretched the card past the overflow-hidden page column at 1440px, which then
+ * clipped the right-hand columns instead of scrolling.
+ */
+export const COST_LINES_TABLE_WRAP_CLASS = "!overflow-y-visible [contain:inline-size]";
+
+/**
  * Direct cost lines table — two groups (building areas, extras) with
  * drag-to-reorder, hover-insert and a ghost “choose item” row per group.
  * Column widths and colspans match the interactive-form HTML. Phones get
@@ -142,10 +149,10 @@ export function CostApproachLinesTable({
       />
     ) : null}
     {desktop !== false ? (
-    <Card id="cost-lines" className="mb-6 !overflow-visible max-lg:hidden">
+    <Card id="cost-lines" className="mb-6 min-w-0 !overflow-visible max-lg:hidden">
       <Table
         className="min-w-[1160px] table-fixed"
-        wrapClassName="!overflow-y-visible"
+        wrapClassName={COST_LINES_TABLE_WRAP_CLASS}
       >
         <colgroup>
           <col style={{ width: 34 }} />

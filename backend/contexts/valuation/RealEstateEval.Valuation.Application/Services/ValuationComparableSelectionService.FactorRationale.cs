@@ -37,12 +37,23 @@ public sealed partial class ValuationComparableSelectionService
             });
         }
 
+        if (ValuationComparableSelectionRequestRules.SelectionContextError(request.SelectionContext) is { } contextError)
+            return (null, new Dictionary<string, string> { ["selectionContext"] = contextError });
+
         var context = ComparableSelectionContexts.Normalize(request.SelectionContext);
         var factorKey = request.FactorKey.Trim();
         if (factorKey.Length == 0)
             return (null, new Dictionary<string, string> { ["factorKey"] = "مفتاح العامل مطلوب" });
 
         var rationale = request.RationaleAr?.Trim() ?? "";
+        // Decision B: empty clears; a written factor rationale is at least 10 characters.
+        if (JustificationRules.IsBelowRequiredMinimum(rationale))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["rationaleAr"] = JustificationRules.RequiredMinimumMessageAr("مبرر عامل التسوية"),
+            });
+        }
 
         var row = await repo.FindFactorRationaleAsync(
             valuationRequestId, context, factorKey, cancellationToken);

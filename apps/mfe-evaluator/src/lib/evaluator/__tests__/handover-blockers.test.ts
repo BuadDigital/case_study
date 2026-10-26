@@ -87,3 +87,42 @@ describe("classifyHandOverBlockers (D2)", () => {
     ).toBeNull();
   });
 });
+
+describe("classifyHandOverBlockers — round 2", () => {
+  it("lists the weights item once when a weights gate and alert 16 both block", () => {
+    const blockers = classifyHandOverBlockers({
+      gates: [gate("reconciliation_weights", "مجموع نسب المشاركة ≠ 100٪")],
+      methodologyAlerts: [{ ...alert(16, true), code: "m16_weights_not_100" }],
+    });
+
+    expect(blockers.map((b) => b.code)).toEqual(["reconciliation_weights"]);
+    expect(handOverRefusalMessage(blockers)).toBe(
+      `${HANDOVER_REFUSED_PREFIX}1) مجموع نسب المشاركة ≠ 100٪ — يعالجها: المقيّم`,
+    );
+  });
+
+  it("keeps alert 16 when no weights gate fails", () => {
+    const blockers = classifyHandOverBlockers({
+      gates: [gate("final_opinion", "الرأي النهائي غير محسوب أو صفر")],
+      methodologyAlerts: [{ ...alert(16, true), code: "m16_weights_not_100" }],
+    });
+
+    expect(blockers.map((b) => b.code)).toEqual(["final_opinion", "m16_weights_not_100"]);
+  });
+
+  it("an unexplained factor or manual weight is the appraiser's, on the table's screen", () => {
+    const blockers = classifyHandOverBlockers({
+      gates: [
+        gate("adjustment_rationales_market", "تسويات أو أوزان يدوية بلا مبرر (أسلوب السوق) — CMP-1: الموقع (+10٪)"),
+        gate("adjustment_rationales_land_within_cost", "تسويات بلا مبرر (الأرض ضمن التكلفة) — CMP-2: الشكل (+5٪)"),
+      ],
+      methodologyAlerts: [],
+    });
+
+    expect(blockers.map((b) => [b.code, b.owner, b.blocksHandOver, b.screen])).toEqual([
+      ["adjustment_rationales_market", "appraiser", true, "market"],
+      ["adjustment_rationales_land_within_cost", "appraiser", true, "cost"],
+    ]);
+    expect(handOverRefusalMessage(blockers)).toContain("CMP-1: الموقع (+10٪) — يعالجها: المقيّم");
+  });
+});

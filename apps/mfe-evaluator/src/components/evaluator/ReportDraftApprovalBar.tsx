@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Button, Spinner, cn, opsFldControl, promptAction, useToast } from "@platform/ui-kit";
+import { Button, Note, Spinner, cn, opsFldControl, promptAction, useToast } from "@platform/ui-kit";
 import {
   approveReportDraft,
   ensureReportNumber,
@@ -37,6 +37,38 @@ function readFileAsBase64(file: File): Promise<string> {
     reader.readAsDataURL(file);
   });
 }
+
+/** Every reason a refusal names (the server lists each blocker as its own error), never only the first. */
+function refusalLines(
+  res: { message?: string; errors?: Record<string, string> },
+  fallback: string,
+): string[] {
+  const fromErrors = Object.values(res.errors ?? {}).map((m) => (m ?? "").trim());
+  const fromMessage = (res.message ?? "").split(/\r?\n/).map((m) => m.trim());
+  const lines = [...new Set([...fromErrors, ...fromMessage].filter(Boolean))];
+  return lines.length ? lines : [fallback];
+}
+
+/** A refused approval / deposit stays on screen with all its reasons (a toast vanished with them). */
+function RefusalPanel({ refusal, onClose }: { refusal: Refusal; onClose: () => void }) {
+  return (
+    <Note tone="danger" role="alert" className="mb-0" data-testid="report-approval-refusal">
+      <div className="flex items-start justify-between gap-3">
+        <strong className="text-[12.5px]">{refusal.title}</strong>
+        <button type="button" className="text-[11.5px] underline" onClick={onClose}>
+          إخفاء
+        </button>
+      </div>
+      <ul className="m-0 mt-1 list-disc ps-5">
+        {refusal.lines.map((line) => (
+          <li key={line}>{line}</li>
+        ))}
+      </ul>
+    </Note>
+  );
+}
+
+type Refusal = { title: string; lines: string[] };
 
 /** The step the long actions are on — approval builds and uploads the printed report, the deposit renders the final PDF. */
 function PhaseNote({ phase, hint }: { phase: string | null; hint?: string }) {
@@ -83,6 +115,12 @@ export function ReportDraftApprovalBar({
   const [editingCode, setEditingCode] = useState(false);
   const [busy, setBusy] = useState<BusyAction>(null);
   const [phase, setPhase] = useState<string | null>(null);
+  const [refusal, setRefusal] = useState<Refusal | null>(null);
+  const refuse = (title: string, res: { message?: string; errors?: Record<string, string> }) => {
+    const lines = refusalLines(res, title);
+    setRefusal({ title, lines });
+    showToast(lines[0] ?? title, "error");
+  };
 
   // Approval and deposit take tens of seconds (report build, PDF render): leaving the page mid-way loses them.
   const guardUnload = busy === "approve" || busy === "deposit";
@@ -112,6 +150,7 @@ export function ReportDraftApprovalBar({
     if (!confirmed) return;
     // The report date is the approval date, taken once so the printed copy and the record agree.
     const reportDate = todayIso();
+    setRefusal(null);
     setBusy("approve");
     setPhase("تثبيت رقم التقرير…");
     try {
@@ -119,7 +158,7 @@ export function ReportDraftApprovalBar({
       // printed copy carries it; without it nothing is approved.
       const numbered = await ensureReportNumber(config, draft.valuationRequestId);
       if (!numbered.ok) {
-        showToast(numbered.message ?? "تعذّر تثبيت رقم التقرير", "error");
+        refuse("تعذّر تثبيت رقم التقرير", numbered);
         return;
       }
       setPhase("تجهيز نسخة التقرير…");
@@ -127,7 +166,7 @@ export function ReportDraftApprovalBar({
       setPhase("رفع نسخة التقرير المعتمدة…");
       const res = await approveReportDraft(config, draft.valuationRequestId, { reportDate, html });
       if (!res.ok) {
-        showToast(res.message ?? "تعذّر اعتماد التقرير", "error");
+        refuse("تعذّر اعتماد التقرير", res);
         return;
       }
       setDraft(res.data);
@@ -186,6 +225,7 @@ export function ReportDraftApprovalBar({
         return;
       }
     }
+    setRefusal(null);
     setBusy(codeOnly ? "code" : "deposit");
     // The server renders the final PDF (report + code + certificate) inside this call; it is the slow part.
     setPhase(codeOnly ? "حفظ الرمز وتحديث ملف التقرير النهائي…" : "قراءة الشهادة…");
@@ -202,7 +242,7 @@ export function ReportDraftApprovalBar({
       if (!codeOnly) setPhase("تسجيل الرمز وتوليد ملف التقرير النهائي (PDF)…");
       const res = await registerDepositCertificate(config, draft.valuationRequestId, body);
       if (!res.ok) {
-        showToast(res.message ?? "تعذّر تسجيل رمز الإيداع", "error");
+        refuse("تعذّر تسجيل رمز الإيداع", res);
         return;
       }
       setCertificate(null);
@@ -225,6 +265,7 @@ export function ReportDraftApprovalBar({
       data-testid="report-draft-approval-bar"
       aria-busy={anyBusy || undefined}
     >
+      {refusal ? <RefusalPanel refusal={refusal} onClose={() => setRefusal(null)} /> : null}
       {draft.status === "sent" ? (
         <>
           <p className="m-0 text-[12.5px] font-semibold text-heading">

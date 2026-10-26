@@ -3,6 +3,7 @@
 import { useEffect, type RefObject } from "react";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
+  clearUnsavedSections,
   editableText,
   focusedFieldChanged,
   hasUnsavedSections,
@@ -47,6 +48,8 @@ export function useUnsavedEditsGuard(
       document.removeEventListener("focusin", onFocusIn);
       document.removeEventListener("focusout", onFocusOut);
       window.removeEventListener("beforeunload", onBeforeUnload);
+      // The window unmounts: its sections' flags go with it.
+      clearUnsavedSections();
     };
   }, [rootRef, pendingRef]);
 }

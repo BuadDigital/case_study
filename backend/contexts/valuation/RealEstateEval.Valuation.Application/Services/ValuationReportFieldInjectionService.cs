@@ -138,7 +138,10 @@ public sealed class ValuationReportFieldInjectionService(
             fields.Add(new ValuationReportFieldDto
             {
                 FieldKey = map.FieldKey,
-                LabelAr = map.LabelAr,
+                // Round 2: the liquidation fields are named after the premise («خصم التصفية المنظمة» /
+                // «خصم البيع القسري»), not the catalog's generic «البيع القصري».
+                LabelAr = ReconciliationLiquidationMessages.ReportFieldLabelAr(map.FieldKey, recon?.ValuePremiseKey)
+                          ?? map.LabelAr,
                 ValueType = ValuationReportFieldRules.ValueTypeApi(map.ValueType),
                 ValueTypeLabelAr = ValuationReportFieldRules.ValueTypeLabelAr(map.ValueType),
                 SourceKind = ValuationReportFieldRules.SourceKindApi(map.SourceKind),

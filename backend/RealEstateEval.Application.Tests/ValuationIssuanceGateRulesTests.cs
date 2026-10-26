@@ -148,4 +148,14 @@ public class ValuationIssuanceGateRulesTests
             propertyRequiresSurvey: false);
         Assert.Equal(["deed", "zoning-sketch"], withoutSurvey);
     }
+
+    [Fact]
+    public void Required_attachments_are_also_looked_up_under_the_survey_task()
+    {
+        var task = Guid.Parse("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa");
+        Assert.Equal(
+            ["prop-1", "PO-9:prop-1", task.ToString("D")],
+            ValuationIssuanceGateRules.AttachmentScopeKeys("prop-1", " PO-9 ", [task, task, Guid.Empty]));
+        Assert.Equal(["prop-1"], ValuationIssuanceGateRules.AttachmentScopeKeys("prop-1", null, []));
+    }
 }

@@ -137,16 +137,69 @@ public class AppraisalHandOverGateTests
     }
 
     [Fact]
-    public async Task The_study_report_refusal_comes_first_and_spends_no_gate_read()
+    public async Task Before_the_study_report_is_issued_the_refusal_also_lists_what_the_appraiser_can_fix()
     {
-        var answer = new GateAnswer(Throws: true);
+        var answer = new GateAnswer(Gates(
+            Failing(ValuationIssuanceGateCodes.StudyReportIssued, "تقرير دراسة الحالة لم يصدر"),
+            Failing(ValuationIssuanceGateCodes.FinalOpinion, "الرأي النهائي غير محسوب أو صفر")));
         await using var rig = Arrange(answer, reportStatus: "draft");
+
+        var (result, errors) = await rig.Service.SubmitAsync(Appraisal, Appraiser);
+
+        Assert.Null(result);
+        // Round 2: one numbered list — the study report is item 1, not a sentence glued on after it.
+        Assert.False(errors!.ContainsKey(PartyTaskSubmissionRules.StudyReportKey));
+        var gates = errors[AppraisalHandOverGateRules.ErrorKey];
+        Assert.Contains(
+            $"1) {AppraisalHandOverGateRules.StudyReportNotIssuedItemAr} — يعالجها: {AppraisalHandOverGateRules.SpecialistOwnerAr}",
+            gates);
+        Assert.Contains("2) الرأي النهائي غير محسوب أو صفر — يعالجها: المقيّم", gates);
+        Assert.DoesNotContain("تقرير دراسة الحالة لم يصدر", gates);
+        Assert.DoesNotContain(PartyTaskSubmissionRules.StudyReportNotIssuedAr, gates);
+        Assert.Equal(1, answer.GateReads);
+    }
+
+    [Fact]
+    public async Task Before_the_study_report_is_issued_with_nothing_else_blocking_its_own_message_stays()
+    {
+        await using var rig = Arrange(new GateAnswer(Gates(
+            Failing(ValuationIssuanceGateCodes.StudyReportIssued, "تقرير دراسة الحالة لم يصدر"))), reportStatus: "draft");
 
         var (_, errors) = await rig.Service.SubmitAsync(Appraisal, Appraiser);
 
-        Assert.True(errors!.ContainsKey("studyReport"));
+        Assert.Equal(PartyTaskSubmissionRules.StudyReportNotIssuedAr, errors![PartyTaskSubmissionRules.StudyReportKey]);
         Assert.False(errors.ContainsKey(AppraisalHandOverGateRules.ErrorKey));
-        Assert.Equal(0, answer.GateReads);
+    }
+
+    [Fact]
+    public void The_weights_item_is_listed_once_when_a_weights_gate_and_alert_16_both_block()
+    {
+        var error = AppraisalHandOverGateRules.HandOverError(Gates(
+            [Failing(ValuationIssuanceGateCodes.ReconciliationWeights, "مجموع نسب المشاركة ≠ 100٪")],
+            [new ValuationMethodologyAlertSnapshotItemDto
+            {
+                Number = 16,
+                Code = ValuationMethodologyAlertCodes.WeightsNot100,
+                LabelAr = "مجموع الأوزان النسبية ≠ 100٪",
+                BlocksIssuance = true,
+                DetailAr = "أوزان المقارنات أو نسب مشاركة الأساليب ≠ 100٪",
+            }]));
+
+        var message = error![AppraisalHandOverGateRules.ErrorKey];
+        Assert.Contains("1) مجموع نسب المشاركة ≠ 100٪", message);
+        Assert.DoesNotContain("2)", message);
+        Assert.DoesNotContain("أوزان المقارنات أو نسب مشاركة الأساليب", message);
+    }
+
+    [Fact]
+    public async Task A_timed_out_gate_read_fails_closed_with_the_retry_message()
+    {
+        await using var rig = Arrange(new GateAnswer(TimesOut: true));
+
+        var (result, errors) = await rig.Service.SubmitAsync(Appraisal, Appraiser);
+
+        Assert.Null(result);
+        Assert.Equal(AppraisalHandOverGateRules.UnverifiedAr, errors![AppraisalHandOverGateRules.ErrorKey]);
     }
 
     // ------------------------------------------------------------ arrangement
@@ -227,7 +280,8 @@ public class AppraisalHandOverGateTests
     private sealed class GateAnswer(
         ValuationIssuanceGatesSnapshotDto? gates = null,
         bool Open = true,
-        bool Throws = false) : IValuationRequestService
+        bool Throws = false,
+        bool TimesOut = false) : IValuationRequestService
     {
         public int GateReads { get; private set; }
 
@@ -237,6 +291,8 @@ public class AppraisalHandOverGateTests
         {
             GateReads++;
             if (Throws) throw new HttpRequestException("valuation down");
+            // HttpClient.Timeout surfaces as TaskCanceledException while the caller's token is live.
+            if (TimesOut) throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout");
             return Task.FromResult(gates);
         }
 

@@ -5,6 +5,7 @@ import { cn } from "@platform/ui-kit";
 import { panelCardClass } from "./AdjustmentsMatrixCells";
 import type { MatrixAlert, MatrixBasisView } from "./lib/adjustments-matrix-state";
 import { fmt } from "./lib/shell-utils";
+import { KeepCodesTogether } from "./KeepCodesTogether";
 
 /** Output strip under the matrix — unit rate, then the unrounded approach value. */
 export function MatrixOutputsPanel({
@@ -14,7 +15,7 @@ export function MatrixOutputsPanel({
   basisView: MatrixBasisView;
   weightedPricePerSqm: number | null;
 }) {
-  const { isUnit, outputLabel, pricePerSqmDisplay, opinionRaw } = basisView;
+  const { isUnit, outputLabel, outputFormula, pricePerSqmDisplay, opinionRaw } = basisView;
   return (
     // Phones stack the two figures; side by side each got ~150px.
     <div className={cn(panelCardClass, "flex items-stretch max-lg:flex-col")}>
@@ -50,10 +51,8 @@ export function MatrixOutputsPanel({
         >
           {fmt(opinionRaw)}
         </div>
-        <div className="mt-[7px] text-[11.5px] font-normal text-text-3">
-          {isUnit
-            ? "سعر المتر بعد التسوية × مساحة العقار"
-            : "أساس الكل — بلا ضرب في المساحة (يساوي المتوسط المرجّح)"}
+        <div className="mt-[7px] text-[11.5px] font-normal text-text-3" data-testid="matrix-output-formula">
+          {outputFormula}
         </div>
         <div className="mt-[5px] text-[11.5px] font-normal text-text-3">
           بلا تقريب هنا — التقريب مرة واحدة بعد الترجيح النهائي
@@ -89,9 +88,11 @@ export function MatrixAlertsPanel({ alerts }: { alerts: MatrixAlert[] }) {
                 a.kind === "error" ? "text-danger-text" : "text-[#3f8f5f]",
               )}
             >
-              {a.title}
+              <KeepCodesTogether text={a.title} />
             </div>
-            <div className="mt-0.5 text-[11.5px] text-text-2">{a.body}</div>
+            <div className="mt-0.5 text-[11.5px] text-text-2">
+              <KeepCodesTogether text={a.body} />
+            </div>
           </div>
         </div>
       ))}

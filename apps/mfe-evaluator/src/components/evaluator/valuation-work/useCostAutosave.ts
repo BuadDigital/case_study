@@ -18,7 +18,8 @@ import {
 import { apiConfig } from "./lib/shell-utils";
 import { setSectionUnsaved } from "../../../lib/evaluator/unsaved-edits";
 
-type SaveMode = "auto" | "manual";
+/** "leave": the save sent when the screen is left (hidden or unmounted) with edits pending. */
+type SaveMode = "auto" | "manual" | "leave";
 
 type CostSaveFailure = Extract<
   Awaited<ReturnType<typeof saveValuationCostApproach>>,
@@ -42,6 +43,7 @@ export function useCostAutosave({
   onSaved,
   onManualSaved,
   onManualFailure,
+  onLeaveFailure,
 }: {
   valuationRequestId: string | null;
   locked: boolean;
@@ -53,6 +55,8 @@ export function useCostAutosave({
   onSaved: (dto: ValuationCostApproachDto, editedSinceSend: boolean) => void;
   onManualSaved: () => void;
   onManualFailure: (failure: CostSaveFailure) => void;
+  /** The save sent on leaving the screen was refused — nobody sees the status line any more. */
+  onLeaveFailure?: (message: string) => void;
 }) {
   const [savedVersion, setSavedVersion] = useState(0);
   const [saveState, setSaveState] = useState<CostSaveState & { version?: number }>(COST_SAVE_IDLE);
@@ -68,7 +72,13 @@ export function useCostAutosave({
   const editVersionRef = useLatestRef(editVersion);
   const savedVersionRef = useLatestRef(savedVersion);
   const buildRequestRef = useLatestRef(buildRequest);
-  const callbacksRef = useLatestRef({ onSavingChange, onSaved, onManualSaved, onManualFailure });
+  const callbacksRef = useLatestRef({
+    onSavingChange,
+    onSaved,
+    onManualSaved,
+    onManualFailure,
+    onLeaveFailure,
+  });
   const inFlight = useRef(false);
   const queued = useRef<SaveMode | null>(null);
 
@@ -78,7 +88,12 @@ export function useCostAutosave({
       if (!config || !valuationRequestId) return;
       if (inFlight.current) {
         // One more save after the current one — a manual ask outranks an automatic one.
-        queued.current = asked === "manual" || queued.current === "manual" ? "manual" : "auto";
+        queued.current =
+          asked === "manual" || queued.current === "manual"
+            ? "manual"
+            : asked === "leave" || queued.current === "leave"
+              ? "leave"
+              : "auto";
         return;
       }
       inFlight.current = true;
@@ -92,12 +107,17 @@ export function useCostAutosave({
         cb.onSavingChange(false);
         if (res.ok) {
           setSavedVersion((v) => Math.max(v, sent));
+          // Cleared here, not by the effect: a screen hidden by <Activity> runs no effects, and
+          // its leave-save must still take the refresh warning down.
+          if (editVersionRef.current === sent) setSectionUnsaved("cost-approach", false);
           cb.onSaved(res.data, editVersionRef.current !== sent);
           setSaveState({ status: "saved" });
           if (mode === "manual") cb.onManualSaved();
         } else {
-          setSaveState({ status: "error", message: costAutosaveFailureMessage(res), version: sent });
+          const message = costAutosaveFailureMessage(res);
+          setSaveState({ status: "error", message, version: sent });
           if (mode === "manual") cb.onManualFailure(res);
+          if (mode === "leave") cb.onLeaveFailure?.(message);
         }
         mode = queued.current;
         queued.current = null;
@@ -119,12 +139,13 @@ export function useCostAutosave({
   }, [autosaveOn, dirty, editVersion, runRef]);
 
   // Refresh / close with an edit still waiting for its save → the window's unsaved-edits prompt.
+  // No cleanup: <Activity> hiding the screen runs effect cleanups too, and the edits are still
+  // unsaved then. The flag goes down on a real save (above / here) or when the window unmounts.
   useEffect(() => {
     setSectionUnsaved("cost-approach", autosaveOn && dirty);
-    return () => setSectionUnsaved("cost-approach", false);
   }, [autosaveOn, dirty]);
 
-  // Leaving the screen for good sends what is still pending (fire and forget).
+  // Leaving the screen (hidden or unmounted) sends what is still pending; a refusal is toasted.
   const autosaveOnRef = useLatestRef(autosaveOn);
   useEffect(
     () => () => {
@@ -132,7 +153,7 @@ export function useCostAutosave({
         autosaveOnRef.current &&
         costHasUnsavedEdits(editVersionRef.current, savedVersionRef.current)
       ) {
-        void runRef.current("auto");
+        void runRef.current("leave");
       }
     },
     [autosaveOnRef, editVersionRef, runRef, savedVersionRef],

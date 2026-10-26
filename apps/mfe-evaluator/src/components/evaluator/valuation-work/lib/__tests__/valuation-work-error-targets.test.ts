@@ -115,3 +115,42 @@ describe("the registry itself", () => {
     }
   });
 });
+
+describe("round 2 — the server's new 400 keys reach their fields", () => {
+  const at = (key: string) => {
+    const hit = firstValuationWorkError({ [key]: "x" });
+    return hit ? { targetId: hit.targetId, screen: hit.screen } : null;
+  };
+
+  it("cost rationales and totals", () => {
+    expect(at("useRestrictionRationale")).toEqual({ targetId: "cost-useRestrictionRationale", screen: "cost" });
+    expect(at("functionalObsolescenceRationale")).toEqual({ targetId: "cost-functionalObsRationale", screen: "cost" });
+    expect(at("externalObsolescenceRationale")).toEqual({ targetId: "cost-externalObsRationale", screen: "cost" });
+    expect(at("lifeExtensionBasis")).toEqual({ targetId: "cost-lifeExtensionBasis", screen: "cost" });
+    expect(at("lines")).toEqual({ targetId: "cost-lines", screen: "cost" });
+    expect(at("lines[2].unitCostSar")).toEqual({ targetId: "cost-line-2-unitCostSar", screen: "cost" });
+  });
+
+  it("matrix header bounds, factor and cap-rate rationales", () => {
+    for (const key of ["areaFactorPct", "annualMarketRatePct", "valueRoundDecimals", "rationaleAr"]) {
+      expect(at(key)).toEqual({ targetId: "mx-adjustments", screen: "market" });
+    }
+    expect(at("capRateRationale")).toEqual({ targetId: "income-capRateRationale", screen: "income" });
+  });
+
+  it("an alert override rationale points at that alert's box on its own screen", () => {
+    expect(at("methodologyAlertOverrides.m17_large_adjustments")).toEqual({
+      targetId: "alert-override-m17_large_adjustments",
+      screen: "market",
+    });
+    expect(at("methodologyAlertOverrides.m26_cap_rate")).toEqual({
+      targetId: "alert-override-m26_cap_rate",
+      screen: "income",
+    });
+    expect(at("methodologyAlertOverrides.m10_use_restriction")?.screen).toBe("final");
+    // A listed field still comes first.
+    expect(
+      firstValuationWorkError({ "methodologyAlertOverrides.m17_x": "a", methodsRationale: "b" })?.key,
+    ).toBe("methodsRationale");
+  });
+});

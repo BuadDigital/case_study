@@ -20,12 +20,11 @@ import {
   STANDARD_FACTORS,
 } from "./lib/market-save-mappers";
 import { runMatrixAction, type MatrixDispatch } from "./lib/matrix-actions";
+import { rationaleMinimumError } from "./lib/rationale-minimum";
 import { LAND_WITHIN_COST, MARKET_CONTEXT, parseDecimal } from "./lib/shell-state";
 import {
-  JUSTIFICATION_TOO_SHORT_MESSAGE,
   RESET_WEIGHTS_PATCH,
   isFactorIncluded,
-  isJustificationTooShort,
   itemsMissingFactor,
   linesWithCellPercent,
   linesWithDescription,
@@ -51,7 +50,7 @@ export function useAdjustmentsMatrixCommands(
   approach: MarketApproachCommands,
 ) {
   const { showToast, setSelection, setLandSelection, setSaving, reload } = data;
-  const { reportSaveFailure } = useValuationWorkErrors();
+  const { reportSaveFailure, reportFieldError } = useValuationWorkErrors();
   const {
     writeContext,
     contextOfItem,
@@ -133,6 +132,12 @@ export function useAdjustmentsMatrixCommands(
   ): Promise<boolean> {
     const ctx = unlocked();
     if (!ctx) return false;
+    // Decision B: a written manual-weight rationale is at least 10 characters (server rule).
+    const short = rationaleMinimumError("مبرر الوزن اليدوي", weightRationale);
+    if (short) {
+      reportFieldError("weightOverrideRationale", short);
+      return false;
+    }
     return saveOne(
       ctx,
       item,
@@ -164,6 +169,15 @@ export function useAdjustmentsMatrixCommands(
     const ctx = unlocked();
     if (!ctx) return false;
     const text = rawText.trim();
+    // The weight row's rationale is the manual-weight rationale — named as such (round 2).
+    const short = rationaleMinimumError(
+      factorKey === "weight" ? "مبرر الوزن اليدوي" : "مبرر عامل التسوية",
+      text,
+    );
+    if (short) {
+      reportFieldError("rationaleAr", short);
+      return false;
+    }
     // Weight uses the same factor-rationale table as other rows — saving only onto
     // manual-weight market rows used to no-op when الوزن was still «مقترح», so the
     // cell draft vanished on blur with nothing persisted.
@@ -192,12 +206,15 @@ export function useAdjustmentsMatrixCommands(
     const ctx = unlocked();
     if (!ctx) return;
     const text = rawText.trim();
-    if (isJustificationTooShort(text)) {
-      showToast(JUSTIFICATION_TOO_SHORT_MESSAGE, "error");
-      return;
-    }
     const item = adoptedFor(context).find((i) => i.id === selectionId);
     if (!item) return;
+    // Decision B: the rationale of a non-zero adjustment is at least 10 characters (server rule).
+    const percent = item.market?.adjustmentLines?.find((l) => l.factorKey === factorKey)?.percent ?? 0;
+    const short = percent !== 0 ? rationaleMinimumError("مبرر التسوية للمقارن", text) : null;
+    if (short) {
+      reportFieldError("rationaleAr", short);
+      return;
+    }
     const ok = await saveOne(
       ctx,
       item,

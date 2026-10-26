@@ -24,6 +24,30 @@ public static class JustificationRules
 
     public static string TooShortMessageAr(string labelAr) =>
         $"{labelAr}: المبرر مطلوب — اكتب سبباً غير فارغ (ق-8).";
+
+    /// <summary>
+    /// Round-2 decision B: a rationale the methodology requires (factor, manual weight, alert
+    /// override, liquidation discount, cap rate, cost discount / obsolescence) is at least this
+    /// many characters after trimming.
+    /// </summary>
+    public const int RequiredMinLength = 10;
+
+    /// <summary>The required rationale is long enough (≥ <see cref="RequiredMinLength"/> trimmed).</summary>
+    public static bool MeetsRequiredMinimum(string? rationale) =>
+        (rationale?.Trim().Length ?? 0) >= RequiredMinLength;
+
+    /// <summary>
+    /// Written but shorter than <see cref="RequiredMinLength"/> — refused at save; blank stays a draft,
+    /// and issuance is held by <see cref="ValuationIssuanceGateRules.AdjustmentRationales"/> (factors,
+    /// manual weights) or the methodology alert that asks for it (6, 10, 12, the overrides) until it
+    /// meets <see cref="MeetsRequiredMinimum"/>.
+    /// </summary>
+    public static bool IsBelowRequiredMinimum(string? rationale) =>
+        !IsBlank(rationale) && !MeetsRequiredMinimum(rationale);
+
+    /// <summary>«مبرر الوزن اليدوي يجب ألا يقل عن 10 أحرف».</summary>
+    public static string RequiredMinimumMessageAr(string labelAr) =>
+        $"{labelAr} يجب ألا يقل عن {RequiredMinLength} أحرف";
 }
 
 /// <summary>

@@ -11,6 +11,7 @@ import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import { costNumericInput } from "./lib/cost-approach-state";
 import {
   INCOME_APPROACH_LABEL,
+  incomeCapRateError,
   type IncomeApproachDerived,
   type IncomeApproachFields,
 } from "./lib/income-approach-state";
@@ -83,7 +84,14 @@ function ResultRow({ label, value, strong }: { label: string; value: ReactNode; 
 }
 
 /** EGI → expenses → NOI → value, as the server computes them on save. */
-function IncomeResultsCard({ derived }: { derived: IncomeApproachDerived }) {
+function IncomeResultsCard({
+  derived,
+  capRateError,
+}: {
+  derived: IncomeApproachDerived;
+  /** A cap rate the server refuses (> 30٪): its refusal shows instead of a value. */
+  capRateError: string | null;
+}) {
   return (
     <Card id="income-results" className="mb-0">
       <div className="flex flex-col gap-2.5 px-[22px] pb-5 pt-[18px]">
@@ -98,9 +106,14 @@ function IncomeResultsCard({ derived }: { derived: IncomeApproachDerived }) {
         <ResultRow label="معدل الرسملة" value={pct2(derived.capRatePct)} />
         <ResultRow
           label="القيمة = صافي الدخل ÷ معدل الرسملة"
-          value={derived.complete ? fmt(derived.value) : "غير مكتمل"}
+          value={capRateError ? "—" : derived.complete ? fmt(derived.value) : "غير مكتمل"}
           strong
         />
+        {capRateError ? (
+          <p role="alert" className="m-0 text-[12px] font-bold text-danger-text">
+            {capRateError}
+          </p>
+        ) : null}
       </div>
     </Card>
   );
@@ -125,9 +138,11 @@ export const IncomeApproachSection = memo(function IncomeApproachSection({
   onIncomeSaved: (dto: ValuationIncomeApproachDto) => void;
 }) {
   const workflow = useIncomeApproachWorkflow({ valuationRequestId, locked, onSavingChange, onIncomeSaved });
-  const { fields, setField, derived, warnings, loadError, saveIncome } = workflow;
+  const { fields, setField, derived, warnings, loaded, loadError, retryLoad, saveIncome } = workflow;
   const { fieldErrors } = useValuationWorkErrors();
-  const disabled = saving || locked;
+  // Closed until the saved row is in: a save before it would overwrite the row with empty drafts.
+  const disabled = saving || locked || !loaded;
+  const capRateError = incomeCapRateError(fields);
   const pctMode = fields.opexMode === "pct_of_egi";
 
   return (
@@ -139,10 +154,29 @@ export const IncomeApproachSection = memo(function IncomeApproachSection({
           { label: "معدل الرسملة", value: pct2(derived.capRatePct) },
         ]}
         resultLabel="صافي الدخل ÷ معدل الرسملة ="
-        result={derived.complete ? fmt(derived.value) : "غير مكتمل — يلزم الدخل ومعدل الرسملة"}
-        resultTone={derived.complete ? "heading" : "danger"}
+        result={
+          capRateError
+            ? capRateError
+            : derived.complete
+              ? fmt(derived.value)
+              : "غير مكتمل — يلزم الدخل ومعدل الرسملة"
+        }
+        resultTone={derived.complete && !capRateError ? "heading" : "danger"}
       />
-      {loadError ? <p className="mb-3 text-[12.5px] text-red-text">{loadError}</p> : null}
+      {loadError ? (
+        <div className="mb-3 flex flex-wrap items-center gap-3 text-[12.5px] text-red-text">
+          <span>{loadError}</span>
+          <button
+            type="button"
+            onClick={retryLoad}
+            className="rounded-[7px] border border-border-md bg-surface px-3 py-1.5 font-bold text-heading"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
+      ) : !loaded ? (
+        <p className="mb-3 text-[12.5px] text-text-3">جاري تحميل أسلوب الدخل…</p>
+      ) : null}
 
       <div className="mb-6 grid grid-cols-[1.2fr_1fr] gap-[18px] max-lg:grid-cols-1">
         <Card id="income-inputs" className="mb-0">
@@ -187,7 +221,7 @@ export const IncomeApproachSection = memo(function IncomeApproachSection({
             </label>
           </div>
         </Card>
-        <IncomeResultsCard derived={derived} />
+        <IncomeResultsCard derived={derived} capRateError={capRateError} />
       </div>
 
       {warnings.length > 0 ? (

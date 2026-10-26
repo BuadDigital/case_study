@@ -9,6 +9,8 @@ type ActiveToast = {
   id: string;
   label: string;
   sawBusy: boolean;
+  /** When the action started (ms) — a refusal raised after it suppresses the success toast. */
+  startedAt: number;
   observer: MutationObserver;
   pollTimer: number;
 };
@@ -34,6 +36,14 @@ function elementLooksBusy(element: HTMLElement): boolean {
   return false;
 }
 
+/**
+ * Whether the action failed while it ran — an error toast (or an error the caller tracks) raised at
+ * or after `startedAt`. A refused action must not also say «تم … !».
+ */
+export type ActionFailureProbe = (startedAt: number) => boolean;
+
+let failureProbe: ActionFailureProbe | undefined;
+
 function dismissFor(
   element: HTMLElement,
   dismissToast: (id: string) => void,
@@ -50,7 +60,8 @@ function dismissFor(
 
   if (
     showSuccessToast &&
-    (entry.sawBusy || options?.forceSuccess)
+    (entry.sawBusy || options?.forceSuccess) &&
+    !failureProbe?.(entry.startedAt)
   ) {
     showSuccessToast(successMessageForActionLabel(entry.label));
   }
@@ -104,6 +115,7 @@ function watchActionElement(
     id: toastId,
     label,
     sawBusy,
+    startedAt,
     observer,
     pollTimer,
   });
@@ -127,7 +139,10 @@ export function bindGlobalActionToast(
   showProgressToast: (message: string) => string,
   dismissToast: (id: string) => void,
   showSuccessToast?: (message: string) => void,
+  /** Round 2: a refusal (error toast) during the action means no «تم التسجيل !» beside it. */
+  hadFailureSince?: ActionFailureProbe,
 ): () => void {
+  failureProbe = hadFailureSince;
   function onPointerDown(event: Event) {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
@@ -156,5 +171,8 @@ export function bindGlobalActionToast(
   }
 
   document.addEventListener("pointerdown", onPointerDown, true);
-  return () => document.removeEventListener("pointerdown", onPointerDown, true);
+  return () => {
+    document.removeEventListener("pointerdown", onPointerDown, true);
+    if (failureProbe === hadFailureSince) failureProbe = undefined;
+  };
 }

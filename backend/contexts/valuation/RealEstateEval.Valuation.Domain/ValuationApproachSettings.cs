@@ -110,6 +110,41 @@ public static class OwnershipInterestKeys
         LeasedLand => "أرض مستأجرة",
         _ => "ملكية تامة",
     };
+
+    private const string FullOwnershipAssumptionPhrase = "أن العقار مطلق الملكية";
+
+    /// <summary>
+    /// The library's «يفترض أن العقار مطلق الملكية …» states the interest valued — for a usufruct
+    /// right or buildings on leased land it is reworded to that interest (the same wording the
+    /// screen's report uses). Any other text, or a freehold valuation, is returned unchanged.
+    /// </summary>
+    public static string AssumptionForInterest(string assumption, string? ownershipInterestKey) =>
+        Normalize(ownershipInterestKey) switch
+        {
+            Usufruct => assumption.Replace(
+                FullOwnershipAssumptionPhrase,
+                "أن حق المنفعة محل التقييم قائم وساري المفعول طوال مدته المتبقية",
+                StringComparison.Ordinal),
+            LeasedLand => assumption.Replace(
+                FullOwnershipAssumptionPhrase,
+                "أن عقد إيجار الأرض المقامة عليها المباني قائم وساري المفعول طوال مدته المتبقية",
+                StringComparison.Ordinal),
+            _ => assumption,
+        };
+
+    /// <summary>
+    /// «نوع الملكية» in the report: freehold prints the deed's own type; a usufruct right or leased land
+    /// prints that interest with the remaining term («حق منفعة — المدة المتبقية 4 سنوات»).
+    /// </summary>
+    public static string? ReportCell(string? ownershipInterestKey, decimal? remainingLeaseYears, string? deedOwnershipLabelAr)
+    {
+        if (!IsLeasehold(ownershipInterestKey))
+            return string.IsNullOrWhiteSpace(deedOwnershipLabelAr) ? null : deedOwnershipLabelAr;
+        var label = LabelAr(ownershipInterestKey);
+        return remainingLeaseYears is > 0m
+            ? $"{label} — المدة المتبقية {ValuationReportDisplayRules.FormatYears(remainingLeaseYears.Value)}"
+            : label;
+    }
 }
 
 /// <summary>Cost basis: replacement or reproduction (B-2 §9 field).</summary>
@@ -377,6 +412,10 @@ public static class ValuationApproachSettingsRules
  // Specialist clause: "Yes" requires details (specialist, role, outcome) — IVS 101.
         if (externalSpecialistUsed && string.IsNullOrWhiteSpace(externalSpecialistDetails))
             errors["externalSpecialistDetails"] = "توضيح الاستعانة بالأخصائي الخارجي إلزامي عند «نعم»";
+
+        // Round 2: an unknown mode («xyz») is refused, not silently read as «تاريخ إصدار القيمة».
+        if (!string.IsNullOrWhiteSpace(valuationDateMode) && !ValuationDateModes.IsKnown(valuationDateMode))
+            errors["valuationDateMode"] = "نوع تاريخ التقييم غير معروف (تاريخ إصدار القيمة / أثر رجعي)";
 
  // Valuation date: retrospective = a date (or a period between two dates).
         if (ValuationDateModes.Normalize(valuationDateMode) == ValuationDateModes.Retrospective)

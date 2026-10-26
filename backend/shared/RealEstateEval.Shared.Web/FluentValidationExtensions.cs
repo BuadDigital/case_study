@@ -16,6 +16,8 @@ public static class FluentValidationExtensions
  /// </summary>
     public static IMvcBuilder AddRealEstateEvalValidation(this IMvcBuilder mvc)
     {
+        // Built-in rule messages («must not be empty», «maximum length», …) in Arabic.
+        ValidatorOptions.Global.LanguageManager.Culture = new System.Globalization.CultureInfo("ar");
         mvc.Services.AddScoped<FluentValidationActionFilter>();
         mvc.AddMvcOptions(options => options.Filters.AddService<FluentValidationActionFilter>());
         return mvc;
@@ -51,11 +53,8 @@ internal sealed class FluentValidationActionFilter(IServiceProvider services) : 
 
         if (!context.ModelState.IsValid)
         {
-            context.Result = new BadRequestObjectResult(new ValidationProblemDetails(context.ModelState)
-            {
-                Status = StatusCodes.Status400BadRequest,
-                Title = "One or more validation errors occurred.",
-            });
+            // Same Arabic 400 as the automatic model-state filter (title, detail, legacy members).
+            context.Result = ArabicInvalidModelState.Create(context);
             return;
         }
 

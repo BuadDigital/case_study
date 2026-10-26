@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   updateEvaluatorDraft: vi.fn(),
   finalizeAppraiserSubmission: vi.fn(),
   validateEvaluatorSubmission: vi.fn(),
+  confirmIgnoringDoubleClick: vi.fn(),
 }));
 
 vi.mock("@platform/auth-client", () => ({ getAuthSession: () => ({ token: "t" }) }));
@@ -30,6 +31,9 @@ vi.mock("../../../lib/evaluator/evaluator-validation", () => ({
   firstEvaluatorErrorTarget: () => "",
   evaluatorWorkScreenForErrorTarget: () => "review",
   validateEvaluatorSubmission: mocks.validateEvaluatorSubmission,
+}));
+vi.mock("../../../lib/evaluator/confirm-ignoring-double-click", () => ({
+  confirmIgnoringDoubleClick: mocks.confirmIgnoringDoubleClick,
 }));
 vi.mock("../../../lib/evaluator/evaluator-submit-gates", () => ({
   readFreshStudyReportGate: mocks.readFreshStudyReportGate,
@@ -66,9 +70,33 @@ describe("useEvaluatorSubmit — the sending dialog", () => {
     vi.clearAllMocks();
     mocks.readFreshStudyReportGate.mockResolvedValue({ ready: true });
     mocks.validateEvaluatorSubmission.mockReturnValue({});
-    mocks.checkIssuanceGatesFailClosed.mockResolvedValue({ ok: true });
+    mocks.checkIssuanceGatesFailClosed.mockResolvedValue({ ok: true, valuationRequestId: "vr-1" });
     mocks.readHandOverPriceFromServer.mockResolvedValue({ ok: true, price: null });
     mocks.updateEvaluatorDraft.mockResolvedValue(null);
+    mocks.confirmIgnoringDoubleClick.mockResolvedValue(true);
+  });
+
+  it("round 2: asks before the hand-over, and reuses the gate check's open request for the price", async () => {
+    mocks.readHandOverPriceFromServer.mockResolvedValue({ ok: true, price: "9220000" });
+    mocks.finalizeAppraiserSubmission.mockResolvedValue({ ok: true, submission: {} });
+    const { result } = setup({ onSubmitted: vi.fn() });
+    expect(await act(() => result.current.submit())).toBe(true);
+    expect(mocks.readHandOverPriceFromServer).toHaveBeenCalledWith(
+      expect.objectContaining({ valuationRequestId: "vr-1" }),
+    );
+    expect(mocks.confirmIgnoringDoubleClick).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "اعتماد التقييم وإرساله", message: expect.stringContaining("9,220,000") }),
+    );
+  });
+
+  it("round 2: a declined confirmation sends nothing and opens no dialog", async () => {
+    mocks.confirmIgnoringDoubleClick.mockResolvedValue(false);
+    const host = { onSubmitStarted: vi.fn(), onSubmitted: vi.fn() };
+    const { result } = setup(host);
+    expect(await act(() => result.current.submit())).toBe(false);
+    expect(host.onSubmitStarted).not.toHaveBeenCalled();
+    expect(mocks.updateEvaluatorDraft).not.toHaveBeenCalled();
+    expect(mocks.finalizeAppraiserSubmission).not.toHaveBeenCalled();
   });
 
   it("hands over the server's final value instead of the typed price", async () => {

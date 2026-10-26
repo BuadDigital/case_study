@@ -61,6 +61,32 @@ public class FinancialApiErrorBodyTests : IClassFixture<FinancialApiWebApplicati
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("\"abc\"")]
+    [InlineData("\"1,000\"")]
+    public async Task A_number_sent_as_text_answers_in_arabic_with_the_field_path(string value)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/financial/v1/party-fee-pricing")
+        {
+            Content = new StringContent(
+                $$"""{"category":"engineering-survey","name":"جدول","flatAmountSar":{{value}}}""",
+                System.Text.Encoding.UTF8,
+                "application/json"),
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", SystemConfigToken);
+
+        var response = await _client.SendAsync(request);
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.DoesNotContain("could not be converted", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("field is required", body, StringComparison.Ordinal);
+        using var document = JsonDocument.Parse(body);
+        var errors = document.RootElement.GetProperty("errors");
+        Assert.Contains("flatAmountSar", errors.GetProperty("flatAmountSar")[0].GetString(), StringComparison.Ordinal);
+        Assert.Contains("أرقام لاتينية", document.RootElement.GetProperty("detail").GetString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Invalid_pricing_category_filter_returns_400()
     {

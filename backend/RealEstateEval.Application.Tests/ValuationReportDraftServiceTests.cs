@@ -81,6 +81,50 @@ public class ValuationReportDraftServiceTests
     }
 
     [Fact]
+    public async Task The_draft_is_not_sent_while_a_document_only_the_specialist_uploads_is_missing()
+    {
+        await using var rig = Arrange(PartyTaskSubmissionStatus.Submitted, sendGates: new MissingDeedGates());
+        await rig.Service.SaveChoicesAsync(
+            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(PrintChoices) }, Specialist);
+
+        var (sent, errors) = await rig.Service.SendAsync(
+            rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = true }, Specialist);
+
+        Assert.Null(sent);
+        var message = errors![ReportDraftSendRules.ErrorKey];
+        Assert.StartsWith(ReportDraftSendRules.MissingDocumentsPrefixAr, message);
+        Assert.Contains("صك الملكية", message);
+        Assert.Equal(ReportDraftStatuses.Preparing, (await rig.Service.GetAsync(rig.RequestId))!.Status);
+        Assert.Empty(NoticePayloads(rig));
+    }
+
+    private sealed class MissingDeedGates : IValuationIssuanceGateService
+    {
+        public Task<ValuationIssuanceGatesDto?> EvaluateAsync(
+            Guid valuationRequestId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<ValuationIssuanceGatesDto?>(new ValuationIssuanceGatesDto
+            {
+                ValuationRequestId = valuationRequestId,
+                Gates =
+                [
+                    new ValuationIssuanceGateItemDto
+                    {
+                        Code = ValuationIssuanceGateCodes.RequiredAttachments,
+                        LabelAr = "المرفقات الإلزامية",
+                        Passed = false,
+                        IsHard = true,
+                        DetailAr = "مرفقات إلزامية بلا رفع مصنّف للطباعة: صك الملكية",
+                    },
+                    new ValuationIssuanceGateItemDto
+                    {
+                        Code = ValuationIssuanceGateCodes.FinalOpinion, LabelAr = "الرأي النهائي", Passed = false, IsHard = true,
+                    },
+                ],
+            });
+    }
+
+    [Fact]
     public async Task Sending_and_withdrawing_the_draft_land_on_the_property_timeline()
     {
         var recorder = new CapturingTimelineRecorder();
@@ -373,7 +417,10 @@ public class ValuationReportDraftServiceTests
         return rig;
     }
 
-    private static Rig Arrange(string packageStatus, ValuationTimelineWriter? timeline = null)
+    private static Rig Arrange(
+        string packageStatus,
+        ValuationTimelineWriter? timeline = null,
+        IValuationIssuanceGateService? sendGates = null)
     {
         var contexts = TestDatabases.Create("report-draft");
         var propertyId = Guid.NewGuid();
@@ -401,7 +448,7 @@ public class ValuationReportDraftServiceTests
             contexts, requestId,
             new ValuationReportDraftService(
                 contexts.Valuation, issuance, lookup, events, new FixedClock(ClockNow), timeline: timeline,
-                caseStudyCommands: new FakeCaseStudyCommands()));
+                caseStudyCommands: new FakeCaseStudyCommands(), issuanceGates: sendGates));
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider

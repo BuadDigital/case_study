@@ -160,7 +160,7 @@ public static class ValuationReportSettingsDefaults
         + "تاريخ التقييم: التاريخ الذي يسري فيه التحليل والرأي الخاص بعملية التقييم.\n"
         + "تاريخ إصدار الرأي: هو تاريخ الوصول للقيمة من قبل المقيم، بغض النظر عن تاريخ التقييم المطلوب.\n"
         + "تاريخ التقرير: هو تاريخ اعتماد تاريخ التقييم بالصيغة النهائية.\n"
-        + "ملكية مطلقة: حق تام في ملكية العقار أو الأرض.\n"
+        + "ملكية تامة: حق تام في ملكية العقار أو الأرض.\n"
         + "تاريخ قرار التقدير: تاريخ اعتماد الجهة صاحبة المشروع لمحضر لجنة التقدير (تقرير اللجنة النهائي).\n"
         + "الاستخدام الحالي: يُقصد بالاستخدام الحالي هو الطريقة الحالية لاستخدام الأصل، أو الالتزام، أو مجموعة الأصول، أو الالتزامات. وقد يكون الاستخدام الحالي، ولكن ليس بالضرورة، أعلى وأفضل استخدام.\n"
         + "الاستخدام الأعلى والأفضل: يجب أن يكون أعلى وأفضل استخدام ممكنًا من الناحية المادية (حيثما ينطبق ذلك) ومجديًا وقابلًا للتطبيق من الناحية المالية ومسموحًا به قانونًا ويؤدي إلى تحقيق أعلى قيمة. إذا كان أعلى وأفضل استخدام مختلف عن الاستخدام الحالي، فإنّ تكاليف تحويل الأصل إلى أعلى وأفضل استخدام يؤثر على القيمة.\n"
@@ -197,7 +197,13 @@ public static class ValuationReportSettingsDefaults
     /// current default. Anything else is the organisation's own text and is left alone.
     /// </summary>
     public static string? UpgradeGlossary(string? stored) =>
-        SameText(stored, PreviousGlossary) ? Glossary : stored;
+        SameText(stored, PreviousGlossary) || SameText(stored, GlossaryWithPreviousFreeholdTerm)
+            ? Glossary
+            : stored;
+
+    /// <summary>Round 2: the reference glossary as first shipped, with «ملكية مطلقة» — upgraded to «ملكية تامة».</summary>
+    private static readonly string GlossaryWithPreviousFreeholdTerm =
+        Glossary.Replace("ملكية تامة: حق تام", "ملكية مطلقة: حق تام", StringComparison.Ordinal);
 
     private static bool SameText(string? a, string b) =>
         string.Equals(

@@ -43,6 +43,7 @@ import {
   fillParagraphSection,
   fillParticipants,
   rebuildDirectCostSheet,
+  rebuildLandValueTable,
   rebuildIndirectCostSheet,
   rebuildReconSheet,
   rebuildComponentsSheet,
@@ -478,6 +479,7 @@ export function applyValuationReportLiveFill(
 
   const landAppendix = dom.querySelector('[data-sec="20"]');
   if (landAppendix) {
+    rebuildLandValueTable(landAppendix, fill.landValueRows);
     fillKeyedInSection(
       landAppendix,
       "إشارة الملحق",

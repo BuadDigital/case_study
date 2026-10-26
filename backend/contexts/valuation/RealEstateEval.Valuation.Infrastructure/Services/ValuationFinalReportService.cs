@@ -76,7 +76,18 @@ public sealed class ValuationFinalReportService(
 
             var replaced = row.FinalPdfAttachmentId;
             row.SetFinalPdf(id.Value, row.DepositCode, _time.UtcNow());
-            await db.SaveChangesAsync(work);
+            try
+            {
+                await db.SaveChangesAsync(work);
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                // Another generation (or a code correction) saved the row first: the file just stored is
+                // referenced by nothing — remove it rather than leave an orphan in the attachments store.
+                logger?.LogWarning(ex, "The final report of request {RequestId} was saved concurrently; discarding the duplicate file", valuationRequestId);
+                await files.DeleteAsync(id.Value, work);
+                return FinalReportStatuses.Preparing;
+            }
             if (replaced is { } old) await files.DeleteAsync(old, work);
             return FinalReportStatuses.Ready;
         }

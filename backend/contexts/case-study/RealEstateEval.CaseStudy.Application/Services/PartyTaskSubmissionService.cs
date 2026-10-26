@@ -298,6 +298,13 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         var now = _time.UtcNow();
         entity.Submit(now, actor?.UserId, actor?.DisplayName, task.AssigneeName);
+        if (task.Kind == WorkflowTaskKind.PropertyAppraisal)
+        {
+            // Round 2: the handed-over price is stored in one form (Latin digits, no separators), and the
+            // specialist's earlier return note no longer shows once the appraiser hands over again.
+            entity.PayloadJson = PropertyAppraisalSubmissionValidator.NormalizePrice(entity.PayloadJson);
+            entity.ReturnNote = null;
+        }
         entity.PayloadJson = PartyTaskSubmissionPayloadRules.SetPayloadStatus(
             entity.PayloadJson, PartyTaskSubmissionStatus.Submitted, now);
 

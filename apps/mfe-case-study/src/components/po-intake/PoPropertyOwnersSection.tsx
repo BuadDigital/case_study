@@ -6,7 +6,7 @@ import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 type OwnerRow = { name: string };
 
 function ownershipTypeLabel(value: string): string {
-  return value === "shared" ? "مشاع" : "ملكية مطلقة";
+  return value === "shared" ? "مشاع" : "ملكية تامة";
 }
 
 function parseRows(ownersJson: string): OwnerRow[] {
@@ -27,7 +27,7 @@ function serializeRows(rows: OwnerRow[]): string {
 }
 
 /**
- * The deed owners. The ownership type follows their count: one owner → ملكية مطلقة, several → مشاع.
+ * The deed owners. The ownership type follows their count: one owner → ملكية تامة, several → مشاع.
  * The server derives and stores nothing about it; the badge here only previews the same rule while typing.
  */
 export function PoPropertyOwnersSection({
@@ -105,7 +105,7 @@ export function PoPropertyOwnersSection({
           {ownershipTypeLabel(ownershipType)}
         </span>
         <span className="text-[11px] text-text-3">
-          مالك واحد: ملكية مطلقة · أكثر من مالك: مشاع
+          مالك واحد: ملكية تامة · أكثر من مالك: مشاع
         </span>
       </div>
     </div>

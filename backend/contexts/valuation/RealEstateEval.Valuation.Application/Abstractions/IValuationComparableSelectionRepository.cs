@@ -88,10 +88,10 @@ public interface IValuationComparableSelectionRepository
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// The apartment's share of the land (m²) saved on the cost approach — the land area the cost
-    /// approach values; <c>null</c> when none is set (or there is no cost row yet).
+    /// Decision A: the building plot and the apartment's land share saved on the cost approach — what the
+    /// land table inside the cost approach compares with and multiplies by (both null before a cost save).
     /// </summary>
-    Task<decimal?> GetCostApartmentLandShareSqmAsync(
+    Task<CostLandAreas> GetCostLandAreasAsync(
         Guid valuationRequestId,
         CancellationToken cancellationToken);
 

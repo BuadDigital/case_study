@@ -134,9 +134,6 @@ public sealed partial class ValuationReconciliationService(
         if (request.FinalRoundDecimals is < 0 or > 6)
             errors["finalRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6 (تقريب لأقرب 10^ن ر.س)";
 
-        if (request.LiquidationDiscountPct is < 0m or > 100m)
-            errors["liquidationDiscountPct"] = ReconciliationLiquidationMessages.RangeAr;
-
         var basisKey = string.IsNullOrWhiteSpace(request.BasisOfValueKey)
             ? BasisOfValueKeys.Market
             : request.BasisOfValueKey.Trim().ToLowerInvariant();
@@ -159,6 +156,10 @@ public sealed partial class ValuationReconciliationService(
             premiseKey = ValuePremiseKeys.Forced;
         }
 
+        // Same ceiling as the screen (90٪); the message names the premise's discount.
+        if (request.LiquidationDiscountPct is < 0m or > ReconciliationLiquidationMessages.MaxDiscountPct)
+            errors["liquidationDiscountPct"] = ReconciliationLiquidationMessages.RangeMessageAr(premiseKey);
+
         if (request.LiquidationDiscountPct > 0m
             && !string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal))
         {
@@ -178,14 +179,16 @@ public sealed partial class ValuationReconciliationService(
         {
             errors["liquidationDiscountRationale"] = ReconciliationLiquidationMessages.RationaleRequiredAr;
         }
+        else if (request.LiquidationDiscountPct > 0m
+                 && JustificationRules.IsBelowRequiredMinimum(request.LiquidationDiscountRationale))
+        {
+            errors["liquidationDiscountRationale"] =
+                JustificationRules.RequiredMinimumMessageAr("مبرر خصم التصفية");
+        }
 
         var alertOverrides = NormalizeAlertOverrides(request.MethodologyAlertOverrides);
-        foreach (var ov in alertOverrides)
-        {
-            if (string.IsNullOrWhiteSpace(ov.Code))
-                continue;
- // Soft overrides are free-form; hard alerts cannot be overridden via this channel.
-        }
+        AddAlertOverrideCodeErrors(request.MethodologyAlertOverrides, errors);
+        AddAlertOverrideRationaleErrors(alertOverrides, errors);
 
         var enabledKinds = await GetEnabledKindsAsync(vr, cancellationToken);
         // Document indicators («مستند ذو قيمة») are reconciled like approaches, at their entered value.
@@ -290,10 +293,13 @@ public sealed partial class ValuationReconciliationService(
         entity.LiquidationDiscountRationale = string.IsNullOrWhiteSpace(request.LiquidationDiscountRationale)
             ? null
             : request.LiquidationDiscountRationale.Trim();
+        // Upsert like SaveAlertOverridesAsync: a disposition the request does not resend is kept;
+        // a code sent with neither acknowledgement nor rationale is the explicit clear.
         var previousOverridesJson = entity.MethodologyAlertOverridesJson;
-        entity.MethodologyAlertOverridesJson = alertOverrides.Count == 0
+        var mergedOverrides = MergeAlertOverrides(ParseAlertOverrides(previousOverridesJson), alertOverrides);
+        entity.MethodologyAlertOverridesJson = mergedOverrides.Count == 0
             ? null
-            : System.Text.Json.JsonSerializer.Serialize(alertOverrides, AlertOverridesJsonOptions);
+            : System.Text.Json.JsonSerializer.Serialize(mergedOverrides, AlertOverridesJsonOptions);
         entity.UpdatedAtUtc = _time.UtcNow();
 
         await repo.SaveChangesAsync(cancellationToken);
@@ -308,7 +314,7 @@ public sealed partial class ValuationReconciliationService(
                 entityType: "ValuationReconciliation",
                 entityId: valuationRequestId.ToString("D"),
                 before: ParseAlertOverrides(previousOverridesJson),
-                after: alertOverrides), cancellationToken);
+                after: mergedOverrides), cancellationToken);
         }
 
         return (await GetAsync(valuationRequestId, cancellationToken), null);

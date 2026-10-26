@@ -222,12 +222,9 @@ export function PropertyDetailHero({
   const { data: failures = [] } = useFailuresQuery();
   // The handover stamp reaches the browser as the server's property-row status.
   const { data: propertyItems } = usePropertyListItemsQuery();
-  const handedOverToEnfaz =
-    propertyItems?.some(
-      (item) =>
-        item.propertyId === property.id &&
-        item.row.status === PropertyListRowStatuses.Done,
-    ) ?? false;
+  const serverRowStatus =
+    propertyItems?.find((item) => item.propertyId === property.id)?.row.status ?? null;
+  const handedOverToEnfaz = serverRowStatus === PropertyListRowStatuses.Done;
   const { isFavorite, toggleFavorite } = useFavoriteProperties();
   // Decision 2026-10-19: the page is the transaction's; its deeds (when several) sit in the switcher.
   const { data: transaction } = useTransactionQuery(property.id);
@@ -256,8 +253,9 @@ export function PropertyDetailHero({
         tasks,
         failures,
         handedOverToEnfaz,
+        serverRowStatus,
       }),
-    [record.poNumber, property, tasks, failures, handedOverToEnfaz],
+    [record.poNumber, property, tasks, failures, handedOverToEnfaz, serverRowStatus],
   );
 
   const completion = useMemo(() => {
@@ -273,6 +271,9 @@ export function PropertyDetailHero({
     const survey = children.find((t) => t.kind === "engineering-survey");
     const appraisal = children.find((t) => t.kind === "property-appraisal");
     const doneish = (status: string | undefined) => status === "completed";
+    // A party does not see the case-study task or the other tracks: a ring computed from its own
+    // task alone read 22% after the final report — it is not shown then.
+    if (!parent) return null;
 
     return estimateCaseStudyCompletion({
       property,
@@ -453,12 +454,14 @@ export function PropertyDetailHero({
                 </div>
               </div>
             ) : null}
-            <CompletionRing
-              pct={completion.pct}
-              done={completion.done}
-              total={completion.total}
-              compact={compact}
-            />
+            {completion ? (
+              <CompletionRing
+                pct={completion.pct}
+                done={completion.done}
+                total={completion.total}
+                compact={compact}
+              />
+            ) : null}
             <PoPropertyDetailTopbarActions
               poNumber={record.poNumber}
               propertyId={property.id}

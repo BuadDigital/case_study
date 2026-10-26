@@ -51,6 +51,7 @@ public sealed partial class ValuationIssuanceGateService
     private async Task<IReadOnlyList<string>> FindMissingRequiredAttachmentLabelsAsync(
         string propertyId,
         string? poNumber,
+        IReadOnlyList<Guid> surveyTaskIds,
         string propertyType,
         bool propertyRequiresSurvey,
         CancellationToken cancellationToken)
@@ -66,10 +67,7 @@ public sealed partial class ValuationIssuanceGateService
             propertyRequiresSurvey);
         if (required.Count == 0) return [];
 
- // Intake documents are keyed «PO:propertyId»; party uploads use the property id itself.
-        var needles = new List<string> { propertyId };
-        if (!string.IsNullOrWhiteSpace(poNumber))
-            needles.Add($"{poNumber.Trim()}:{propertyId}");
+        var needles = ValuationIssuanceGateRules.AttachmentScopeKeys(propertyId, poNumber, surveyTaskIds);
 
         var presentKeys = new HashSet<string>(StringComparer.Ordinal);
         var seen = new HashSet<Guid>();

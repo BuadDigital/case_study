@@ -53,3 +53,25 @@ describe("bank radius", () => {
     expect(build(3, []).beyond).toEqual({ count: 0, nearestKm: null });
   });
 });
+
+describe("bank rows — adopted comparables always show (round 2)", () => {
+  it("adopted ones are kept past the 6-row limit and the radius; the nearest others fill the rest", () => {
+    const kms = [0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 2.9, 7];
+    const candidates = kms.map((km, i) => comparableAt(`c${i}`, km));
+    const adopt = (id: string) =>
+      ({ id: `s-${id}`, isAdopted: true, comparable: candidates.find((c) => c.id === id)! }) as never;
+    const { rows, beyond } = buildBankDisplayRows({
+      selectionItems: [adopt("c7"), adopt("c8")],
+      candidates,
+      subjectCity: "الرياض",
+      subjectCoords: SUBJECT,
+    });
+    const ids = rows.map((r) => r.comp.id);
+    expect(ids).toHaveLength(6);
+    expect(ids).toContain("c7");
+    expect(ids).toContain("c8"); // 7 km — outside the 3 km radius, but adopted
+    expect(ids.filter((id) => id !== "c7" && id !== "c8")).toEqual(["c0", "c1", "c2", "c3"]);
+    expect(rows.find((r) => r.comp.id === "c8")?.adopted).toBe(true);
+    expect(beyond.count).toBe(0);
+  });
+});

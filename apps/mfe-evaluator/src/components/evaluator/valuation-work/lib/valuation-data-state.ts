@@ -197,13 +197,17 @@ export function initialSubjectArea(
 
 /**
  * Whether the server's market-approach area must be overwritten with the transaction area —
- * once per (request, area), and never when the server already matches.
+ * once per (request, area), and never when the server already matches. It writes the market
+ * header only: the land table's building plot lives on the cost approach (decision A) and is
+ * never part of this body. Nothing is sent while writes are frozen (the appraiser's package is
+ * handed over) — the server refuses it, and every visit used to fire that refused PUT.
  */
 export function subjectAreaSyncPlan({
   requestId,
   transactionArea,
   selection,
   lastSyncKey,
+  writesFrozen = false,
 }: {
   requestId: string;
   transactionArea: string;
@@ -213,11 +217,13 @@ export function subjectAreaSyncPlan({
     analysisNotes?: string | null;
   };
   lastSyncKey: string | null;
+  writesFrozen?: boolean;
 }): { syncKey: string; body: SaveValuationMarketApproachRequest } | null {
   const txNum = parseDecimal(transactionArea);
   const serverArea = selection.subjectAreaSqm;
   const syncKey = `${requestId}:${txNum}`;
   if (
+    writesFrozen ||
     !transactionArea ||
     !Number.isFinite(txNum) ||
     txNum <= 0 ||

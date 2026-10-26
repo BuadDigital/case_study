@@ -13,6 +13,7 @@
  */
 
 import type { ValuationWorkScreenId } from "./shell-state";
+import { methodologyAlertGroup } from "./methodology-alerts";
 
 type ValuationWorkErrorTarget = {
   /**
@@ -84,6 +85,10 @@ export const VALUATION_WORK_ERROR_TARGETS: readonly ValuationWorkErrorTarget[] =
   { key: "areaOverrideSqm", targetId: "mx-adjustments", screen: "market" },
   { key: "priceOverrideSar", targetId: "mx-adjustments", screen: "market" },
   { key: "areaAdjustmentMethod", targetId: "mx-adjustments", screen: "market" },
+  // Round 2 — the matrix header's bounds (area factor, annual market rate, rounding).
+  { key: "areaFactorPct", targetId: "mx-adjustments", screen: "market" },
+  { key: "annualMarketRatePct", targetId: "mx-adjustments", screen: "market" },
+  { key: "valueRoundDecimals", targetId: "mx-adjustments", screen: "market" },
   { key: "adjustmentLines[].factorKey", targetId: "mx-adjustments", screen: "market" },
   { key: "adjustmentLines[].labelAr", targetId: "mx-adjustments", screen: "market" },
   { key: "adjustmentLines[].percent", targetId: "mx-adjustments", screen: "market" },
@@ -93,7 +98,11 @@ export const VALUATION_WORK_ERROR_TARGETS: readonly ValuationWorkErrorTarget[] =
 
   /* ─── طريقة المقاول — أسلوب التكلفة ─── */
   { key: "useRestrictionDiscountPct", targetId: "cost-useRestrictionPct", screen: "cost" },
+  { key: "useRestrictionRationale", targetId: "cost-useRestrictionRationale", screen: "cost" },
+  // The cost totals (amount × quantity) out of range: the lines table as a whole.
+  { key: "lines", targetId: "cost-lines", screen: "cost" },
   { key: "apartmentLandShareSqm", targetId: "cost-apartmentLandShare", screen: "cost" },
+  { key: "buildingPlotAreaSqm", targetId: "cost-buildingPlotArea", screen: "cost" },
   {
     key: "lines[].label",
     targetId: "cost-line-{i}-label",
@@ -161,6 +170,24 @@ export const VALUATION_WORK_ERROR_TARGETS: readonly ValuationWorkErrorTarget[] =
     fallbackTargetId: "cost-age",
     screen: "cost",
   },
+  {
+    key: "lifeExtensionBasis",
+    targetId: "cost-lifeExtensionBasis",
+    fallbackTargetId: "cost-age",
+    screen: "cost",
+  },
+  {
+    key: "functionalObsolescenceRationale",
+    targetId: "cost-functionalObsRationale",
+    fallbackTargetId: "cost-age",
+    screen: "cost",
+  },
+  {
+    key: "externalObsolescenceRationale",
+    targetId: "cost-externalObsRationale",
+    fallbackTargetId: "cost-age",
+    screen: "cost",
+  },
 
   /* ─── أسلوب الدخل (رسملة مباشرة) — D17 ─── */
   { key: "grossPotentialIncome", targetId: "income-grossPotentialIncome", screen: "income" },
@@ -211,6 +238,7 @@ export const VALUATION_WORK_ERROR_TARGETS: readonly ValuationWorkErrorTarget[] =
 export const COST_FIELD_ERROR_KEYS: Readonly<Record<string, string>> = {
   useRestrictionPct: "useRestrictionDiscountPct",
   apartmentLandShare: "apartmentLandShareSqm",
+  buildingPlotArea: "buildingPlotAreaSqm",
   financingMonths: "financingMonths",
   financingRate: "financingAnnualRatePct",
   actualAge: "actualAgeYears",
@@ -218,6 +246,10 @@ export const COST_FIELD_ERROR_KEYS: Readonly<Record<string, string>> = {
   lifeExtension: "lifeExtensionYears",
   functionalObs: "functionalObsolescencePct",
   externalObs: "externalObsolescencePct",
+  useRestrictionRationale: "useRestrictionRationale",
+  functionalObsRationale: "functionalObsolescenceRationale",
+  externalObsRationale: "externalObsolescenceRationale",
+  lifeExtensionBasis: "lifeExtensionBasis",
 };
 
 /** D17 — income screen field → the server key its validation answers with. */
@@ -265,10 +297,30 @@ export function normalizeValuationWorkErrors(
   return out;
 }
 
+const ALERT_OVERRIDE_PREFIX = "methodologyAlertOverrides.";
+
+/**
+ * `methodologyAlertOverrides.m17_large_adjustments` (decision B: a short override rationale) →
+ * that alert's rationale box, on the screen whose panel shows the alert.
+ */
+function alertOverrideTarget(key: string): ValuationWorkErrorTarget | null {
+  if (!key.startsWith(ALERT_OVERRIDE_PREFIX)) return null;
+  const code = key.slice(ALERT_OVERRIDE_PREFIX.length);
+  const number = Number(/^m(\d+)/i.exec(code)?.[1] ?? Number.NaN);
+  const group = Number.isFinite(number) ? methodologyAlertGroup(number) : "general";
+  return {
+    key,
+    targetId: `alert-override-${code}`,
+    screen: group === "general" ? "final" : group,
+  };
+}
+
 /** The registry key for an error key, with its index when the key is indexed. */
 function matchTarget(
   key: string,
 ): { target: ValuationWorkErrorTarget; index: string | null } | null {
+  const alert = alertOverrideTarget(key);
+  if (alert) return { target: alert, index: null };
   for (const target of VALUATION_WORK_ERROR_TARGETS) {
     if (target.key === key) return { target, index: null };
   }
@@ -293,7 +345,9 @@ export function firstValuationWorkError(
     if (!message?.trim()) continue;
     const match = matchTarget(key);
     if (!match) continue;
-    const at = VALUATION_WORK_ERROR_TARGETS.indexOf(match.target);
+    const listed = VALUATION_WORK_ERROR_TARGETS.indexOf(match.target);
+    // Alert overrides are not in the list: they come after every listed field.
+    const at = listed < 0 ? VALUATION_WORK_ERROR_TARGETS.length : listed;
     if (best && best.at <= at) continue;
     const index = match.index ?? "";
     best = {

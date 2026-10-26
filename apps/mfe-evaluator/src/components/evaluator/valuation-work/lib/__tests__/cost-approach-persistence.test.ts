@@ -9,9 +9,14 @@ import {
   costFieldsFromDto,
   costInt,
   costLineTotals,
+  costLinesFromInventory,
+  costNum,
   costNumericInput,
   costSaveRequest,
   EMPTY_COST_FIELDS,
+  keepCostLineInputs,
+  costRepullMessage,
+  repeatedFloorCountForItem,
 } from "../cost-approach-state";
 import { INDIRECT_COST_ITEMS } from "../cost-line-math";
 
@@ -259,5 +264,60 @@ describe("Problem 6 — repeated floors need a floor count", () => {
       true,
     );
     expect(alerts.some((a) => a.title === "عدد الأدوار المتكررة مطلوب")).toBe(false);
+  });
+});
+
+describe("round 2 — cost inputs", () => {
+  it("a decimal comma survives the box: «7,5» reads 7.5, «1,250» reads 1250", () => {
+    expect(costNum(costNumericInput("7,5"))).toBe(7.5);
+    expect(costNum(costNumericInput("٧,٥"))).toBe(7.5);
+    expect(costNum(costNumericInput("1,250"))).toBe(1250);
+    expect(costNum(costNumericInput("1,250.5"))).toBe(1250.5);
+    expect(costNumericInput("7,5", true)).toBe("75");
+  });
+
+  it("«الأدوار المتكررة» starts with no count; a typed count is kept", () => {
+    expect(repeatedFloorCountForItem("repeated_floors", null)).toBeNull();
+    expect(repeatedFloorCountForItem("repeated_floors", undefined)).toBeNull();
+    expect(repeatedFloorCountForItem("repeated_floors", 3)).toBe(3);
+    expect(repeatedFloorCountForItem("ground_floor", 3)).toBeNull();
+  });
+
+  it("decision B: a short obsolescence rationale is named before the autosave refuses it", () => {
+    const f = { ...EMPTY_COST_FIELDS, functionalObs: "10", functionalObsRationale: "قصير" };
+    const totals = costLineTotals([]);
+    const alerts = buildCostAlerts(f, [], totals, costApproachDerived(f, totals.directTotal, null, true), true);
+    expect(alerts.some((a) => a.title === "مبرر التقادم الوظيفي يجب ألا يقل عن 10 أحرف")).toBe(true);
+  });
+
+  it("re-pulling the inventory keeps the unit costs already priced", () => {
+    const inventory = [
+      { id: "inv-1", itemKey: "ground_floor", label: "الدور الأرضي", areaSqm: "200", structureKind: "floor" },
+      { id: "inv-2", itemKey: "fence", label: "السور", areaSqm: "80", structureKind: "other" },
+      { id: "inv-3", itemKey: "annex", label: "ملحق", areaSqm: "30", structureKind: "other" },
+    ] as never;
+    const first = costLinesFromInventory(inventory).map((l, i) =>
+      i === 0 ? { ...l, unitCostSar: 1800, rationale: "دليل الهيئة" } : i === 1 ? { ...l, unitCostSar: 150 } : l,
+    );
+    // The appraiser's line for inv-2 lost its link (older save) — matched by item and name.
+    first[1] = { ...first[1]!, sourceInventoryLineId: null };
+    const again = keepCostLineInputs(costLinesFromInventory(inventory), first);
+    expect(again.map((l) => l.unitCostSar)).toEqual([1800, 150, 0]);
+    expect(again[0]?.rationale).toBe("دليل الهيئة");
+    // Round 2: the toast is worded from the result, not always «أدخل تكلفة المتر».
+    expect(costRepullMessage(again)).toBe(
+      "تم سحب 3 بندًا من الحصر — احتُفظ بتكلفة المتر لـ 2، وأدخل تكلفة المتر لـ 1",
+    );
+  });
+
+  it("the re-pull toast says when every cost was kept, or that costs are still to enter", () => {
+    const lines = costLinesFromInventory([
+      { id: "inv-1", itemKey: "ground_floor", label: "الدور الأرضي", areaSqm: "200", structureKind: "floor" },
+    ] as never);
+    expect(costRepullMessage(lines)).toBe("تم سحب 1 بندًا من الحصر — أدخل تكلفة المتر");
+    expect(costRepullMessage(lines.map((l) => ({ ...l, unitCostSar: 900 })))).toBe(
+      "تم سحب 1 بندًا من الحصر — احتُفظ بتكلفة المتر لجميع البنود",
+    );
+    expect(costRepullMessage([])).toBe("لا توجد بنود في حصر المباني لسحبها");
   });
 });

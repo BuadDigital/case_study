@@ -109,6 +109,31 @@ export function formatReportPropertyAgeYears(years: number): string {
   return lastTwo >= 3 && lastTwo <= 10 ? `${years} سنوات` : `${years} سنة`;
 }
 
+/**
+ * A counted noun as it stands alone (nominative): 1 → «سنة واحدة», 2 → «سنتان», 3–10 → «N سنوات»,
+ * 11 and up → «N سنة» (by the last two digits); a fraction keeps the singular («2.5 سنة»).
+ */
+function arabicCount(
+  n: number,
+  forms: { one: string; two: string; few: string; many: string },
+): string {
+  if (!Number.isInteger(n) || n <= 0) return `${n} ${forms.many}`;
+  if (n === 1) return forms.one;
+  if (n === 2) return forms.two;
+  const lastTwo = n % 100;
+  return `${n} ${lastTwo >= 3 && lastTwo <= 10 ? forms.few : forms.many}`;
+}
+
+/** «سنة واحدة» / «سنتان» / «4 سنوات» / «22 سنة». */
+export function formatArabicYears(years: number): string {
+  return arabicCount(years, { one: "سنة واحدة", two: "سنتان", few: "سنوات", many: "سنة" });
+}
+
+/** «شهر واحد» / «شهران» / «5 أشهر» / «14 شهراً». */
+export function formatArabicMonths(months: number): string {
+  return arabicCount(months, { one: "شهر واحد", two: "شهران", few: "أشهر", many: "شهراً" });
+}
+
 /** Same wording for a free-text age: whole numbers are reworded, anything else is kept. */
 export function formatReportAgeText(raw: string): string {
   const text = raw.trim();

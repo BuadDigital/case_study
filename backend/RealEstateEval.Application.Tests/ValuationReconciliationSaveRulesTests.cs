@@ -66,8 +66,83 @@ public class ValuationReconciliationSaveRulesTests
 
         Assert.Contains("خصم التصفية", onMarket!["liquidationDiscountPct"]);
         Assert.Contains("خصم التصفية", noRationale!["liquidationDiscountRationale"]);
-        Assert.Contains("خصم التصفية", outOfRange!["liquidationDiscountPct"]);
+        // Round 2: the range message names the premise's discount (an unset premise on liquidation is «قسري»).
+        Assert.Equal("نسبة خصم البيع القسري يجب أن تكون بين 0 و 90", outOfRange!["liquidationDiscountPct"]);
         Assert.DoesNotContain("معامل", noRationale["liquidationDiscountRationale"]);
+    }
+
+    [Theory]
+    [InlineData("orderly", 95, "نسبة خصم التصفية المنظمة يجب أن تكون بين 0 و 90")]
+    [InlineData("forced", 90.01, "نسبة خصم البيع القسري يجب أن تكون بين 0 و 90")]
+    public async Task The_liquidation_discount_is_capped_at_90_in_the_premise_wording(string premise, double pct, string message)
+    {
+        await using var rig = Arrange($"recon-cap-{premise}");
+        var request = Request("liquidation", (decimal)pct, "بيع بالمزاد خلال مدة قصيرة");
+
+        var (result, errors) = await rig.Service.SaveAsync(rig.RequestId, With(request, premise: premise));
+
+        Assert.Null(result);
+        Assert.Equal(message, errors!["liquidationDiscountPct"]);
+        var (ok, okErrors) = await rig.Service.SaveAsync(
+            rig.RequestId, With(Request("liquidation", 90m, "بيع بالمزاد خلال مدة قصيرة"), premise: premise));
+        Assert.Null(okErrors);
+        Assert.Equal(90m, ok!.LiquidationDiscountPct);
+    }
+
+    [Fact]
+    public async Task Required_rationales_shorter_than_ten_characters_are_refused()
+    {
+        await using var rig = Arrange("recon-rationale-min");
+
+        var (_, liquidation) = await rig.Service.SaveAsync(rig.RequestId, Request("liquidation", 10m, " مزاد قصير "));
+        var (_, fullSaveAlert) = await rig.Service.SaveAsync(
+            rig.RequestId,
+            Request("market", 0m, overrides: [new ValuationMethodologyAlertOverrideDto { Code = "m12_obsolescence_no_rationale", OverrideRationale = "مبرر" }]));
+        var (_, alertAlone) = await rig.Service.SaveAlertOverridesAsync(
+            rig.RequestId,
+            new SaveValuationAlertOverridesRequest
+            {
+                MethodologyAlertOverrides = [new ValuationMethodologyAlertOverrideDto { Code = "m12_obsolescence_no_rationale", OverrideRationale = "  قصير  " }],
+            });
+
+        Assert.Equal("مبرر خصم التصفية يجب ألا يقل عن 10 أحرف", liquidation!["liquidationDiscountRationale"]);
+        Assert.Equal("مبرر تجاوز التنبيه يجب ألا يقل عن 10 أحرف", fullSaveAlert!["methodologyAlertOverrides.m12_obsolescence_no_rationale"]);
+        Assert.Equal("مبرر تجاوز التنبيه يجب ألا يقل عن 10 أحرف", alertAlone!["methodologyAlertOverrides.m12_obsolescence_no_rationale"]);
+        Assert.False(await rig.Contexts.Valuation.ValuationReconciliations.AnyAsync());
+        // A short text never clears a «with rationale» alert either.
+        Assert.False(ValuationMethodologyAlertRules.IsResolved(
+            12, "m12_obsolescence_no_rationale", new Dictionary<string, ValuationMethodologyAlertResolution> { ["m12_obsolescence_no_rationale"] = new("m12_obsolescence_no_rationale", "مبرر قصير") }));
+        Assert.True(ValuationMethodologyAlertRules.IsResolved(
+            12, "m12_obsolescence_no_rationale", new Dictionary<string, ValuationMethodologyAlertResolution> { ["m12_obsolescence_no_rationale"] = new("m12_obsolescence_no_rationale", "مبرر كافٍ للتنبيه") }));
+    }
+
+    [Fact]
+    public async Task A_full_save_keeps_dispositions_it_does_not_resend_and_clears_only_an_emptied_one()
+    {
+        await using var rig = Arrange("recon-full-merge");
+        var (_, ackErrors) = await rig.Service.SaveAlertOverridesAsync(
+            rig.RequestId,
+            new SaveValuationAlertOverridesRequest
+            {
+                MethodologyAlertOverrides =
+                [
+                    new ValuationMethodologyAlertOverrideDto { Code = "m7_repeated_floor_no_area", Acknowledged = true },
+                    new ValuationMethodologyAlertOverrideDto { Code = "m12_obsolescence_no_rationale", OverrideRationale = "تقادم وظيفي ظاهر بالمعاينة" },
+                ],
+            });
+        Assert.Null(ackErrors);
+
+        // The full save sends none of them: both survive.
+        var (kept, keptErrors) = await rig.Service.SaveAsync(rig.RequestId, Request("market", 0m));
+        Assert.Null(keptErrors);
+        Assert.Equal(["m12_obsolescence_no_rationale", "m7_repeated_floor_no_area"], kept!.MethodologyAlertOverrides.Select(o => o.Code).Order().ToArray());
+
+        // It resends m7_repeated_floor_no_area with neither acknowledgement nor rationale: only m7_repeated_floor_no_area is cleared.
+        var (cleared, clearErrors) = await rig.Service.SaveAsync(
+            rig.RequestId,
+            Request("market", 0m, overrides: [new ValuationMethodologyAlertOverrideDto { Code = "m7_repeated_floor_no_area" }]));
+        Assert.Null(clearErrors);
+        Assert.Equal(["m12_obsolescence_no_rationale"], cleared!.MethodologyAlertOverrides.Select(o => o.Code).ToArray());
     }
 
     [Fact]
@@ -81,16 +156,16 @@ public class ValuationReconciliationSaveRulesTests
             {
                 MethodologyAlertOverrides =
                 [
-                    new ValuationMethodologyAlertOverrideDto { Code = "m7", Acknowledged = true },
-                    new ValuationMethodologyAlertOverrideDto { Code = "m12", OverrideRationale = "  مبرر مكتوب  " },
+                    new ValuationMethodologyAlertOverrideDto { Code = "m7_repeated_floor_no_area", Acknowledged = true },
+                    new ValuationMethodologyAlertOverrideDto { Code = "m12_obsolescence_no_rationale", OverrideRationale = "  مبرر مكتوب  " },
                 ],
             },
             actorId: "appraiser-1");
 
         Assert.Null(errors);
         Assert.Equal("", result!.MethodsRationale);
-        Assert.Contains(result.MethodologyAlertOverrides, o => o.Code == "m7" && o.Acknowledged);
-        Assert.Contains(result.MethodologyAlertOverrides, o => o.Code == "m12" && o.OverrideRationale == "مبرر مكتوب");
+        Assert.Contains(result.MethodologyAlertOverrides, o => o.Code == "m7_repeated_floor_no_area" && o.Acknowledged);
+        Assert.Contains(result.MethodologyAlertOverrides, o => o.Code == "m12_obsolescence_no_rationale" && o.OverrideRationale == "مبرر مكتوب");
         Assert.Single(rig.Audit.Entries);
     }
 
@@ -105,7 +180,7 @@ public class ValuationReconciliationSaveRulesTests
             rig.RequestId,
             new SaveValuationAlertOverridesRequest
             {
-                MethodologyAlertOverrides = [new ValuationMethodologyAlertOverrideDto { Code = "m7", Acknowledged = true }],
+                MethodologyAlertOverrides = [new ValuationMethodologyAlertOverrideDto { Code = "m7_repeated_floor_no_area", Acknowledged = true }],
             });
 
         Assert.Null(errors);
@@ -126,7 +201,7 @@ public class ValuationReconciliationSaveRulesTests
             Id = Guid.NewGuid(),
             ValuationRequestId = rig.RequestId,
             BasisOfValueKey = BasisOfValueKeys.Market,
-            MethodologyAlertOverridesJson = """[{"code":"m7","acknowledged":true}]""",
+            MethodologyAlertOverridesJson = """[{"code":"m7_repeated_floor_no_area","acknowledged":true}]""",
         });
         await rig.Contexts.Valuation.SaveChangesAsync();
 
@@ -141,27 +216,27 @@ public class ValuationReconciliationSaveRulesTests
     {
         await using var rig = Arrange("recon-overrides-merge");
         var (_, saveErrors) = await rig.Service.SaveAsync(
-            rig.RequestId, Request("market", 0m, overrides: [new ValuationMethodologyAlertOverrideDto { Code = "m7", Acknowledged = true }]));
+            rig.RequestId, Request("market", 0m, overrides: [new ValuationMethodologyAlertOverrideDto { Code = "m7_repeated_floor_no_area", Acknowledged = true }]));
         Assert.Null(saveErrors);
 
         var (result, errors) = await rig.Service.SaveAlertOverridesAsync(
             rig.RequestId,
             new SaveValuationAlertOverridesRequest
             {
-                MethodologyAlertOverrides = [new ValuationMethodologyAlertOverrideDto { Code = "m12", Acknowledged = true }],
+                MethodologyAlertOverrides = [new ValuationMethodologyAlertOverrideDto { Code = "m12_obsolescence_no_rationale", Acknowledged = true }],
             });
 
         Assert.Null(errors);
         Assert.Equal("مبرر الترجيح", result!.MethodsRationale);
-        Assert.Equal(["m12", "m7"], result.MethodologyAlertOverrides.Select(o => o.Code).Order().ToArray());
+        Assert.Equal(["m12_obsolescence_no_rationale", "m7_repeated_floor_no_area"], result.MethodologyAlertOverrides.Select(o => o.Code).Order().ToArray());
     }
 
     [Fact]
     public void An_emptied_disposition_is_dropped_from_the_merge()
     {
         var merged = ValuationReconciliationService.MergeAlertOverrides(
-            [new ValuationMethodologyAlertOverrideDto { Code = "m7", Acknowledged = true }],
-            [new ValuationMethodologyAlertOverrideDto { Code = "M7", Acknowledged = false }]);
+            [new ValuationMethodologyAlertOverrideDto { Code = "m7_repeated_floor_no_area", Acknowledged = true }],
+            [new ValuationMethodologyAlertOverrideDto { Code = "M7_REPEATED_FLOOR_NO_AREA", Acknowledged = false }]);
 
         Assert.Empty(merged);
     }
@@ -180,6 +255,17 @@ public class ValuationReconciliationSaveRulesTests
         BasisOfValueKey = basis,
         LiquidationDiscountPct = discountPct,
         LiquidationDiscountRationale = discountRationale,
+    };
+
+    private static SaveValuationReconciliationRequest With(SaveValuationReconciliationRequest r, string premise) => new()
+    {
+        MethodologyAlertOverrides = r.MethodologyAlertOverrides,
+        Methods = r.Methods,
+        MethodsRationale = r.MethodsRationale,
+        BasisOfValueKey = r.BasisOfValueKey,
+        ValuePremiseKey = premise,
+        LiquidationDiscountPct = r.LiquidationDiscountPct,
+        LiquidationDiscountRationale = r.LiquidationDiscountRationale,
     };
 
     private static Rig Arrange(string name)

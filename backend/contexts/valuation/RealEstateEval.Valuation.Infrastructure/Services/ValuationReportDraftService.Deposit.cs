@@ -23,8 +23,8 @@ public sealed partial class ValuationReportDraftService
         var vr = await db.ValuationRequests.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
         if (vr is null) return (null, Error("طلب التقييم غير موجود"));
-        if (!await IsAssignedAppraiserAsync(vr.PropertyId, actor, cancellationToken))
-            return (null, Forbidden(DepositForbiddenAr));
+        if (await AssignedAppraiserRefusalAsync(vr.PropertyId, actor, DepositForbiddenAr, cancellationToken) is { } refusal)
+            return (null, refusal);
 
         // The deposit code is recorded for the approved report only (the copy is frozen at approval).
         var draft = await CurrentDraftAsync(valuationRequestId, tracked: false, cancellationToken);

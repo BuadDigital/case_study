@@ -74,7 +74,7 @@ describe("checkIssuanceGatesFailClosed", () => {
 
   it("lets a first submit through when there is no open valuation request yet", async () => {
     getOpen.mockResolvedValue({ ok: true, data: null });
-    expect(await checkIssuanceGatesFailClosed(input)).toEqual({ ok: true });
+    expect(await checkIssuanceGatesFailClosed(input)).toEqual({ ok: true, valuationRequestId: null });
     expect(getGates).not.toHaveBeenCalled();
   });
 
@@ -84,7 +84,7 @@ describe("checkIssuanceGatesFailClosed", () => {
       ok: true,
       data: { allowsIssuance: true, blockingReasonsAr: [] },
     });
-    expect(await checkIssuanceGatesFailClosed(input)).toEqual({ ok: true });
+    expect(await checkIssuanceGatesFailClosed(input)).toEqual({ ok: true, valuationRequestId: "vr1" });
   });
 
   const gate = (code: string, detailAr: string) => ({
@@ -135,7 +135,7 @@ describe("checkIssuanceGatesFailClosed", () => {
         blockingReasonsAr: ["مرفقات إلزامية بلا رفع مصنّف للطباعة: صك الملكية"],
       },
     });
-    expect(await checkIssuanceGatesFailClosed(input)).toEqual({ ok: true });
+    expect(await checkIssuanceGatesFailClosed(input)).toEqual({ ok: true, valuationRequestId: "vr1" });
   });
 
   it("announces the gates it read so the final-review list shows the same blockers", async () => {
@@ -198,6 +198,19 @@ describe("readHandOverPriceFromServer", () => {
     expect(await readHandOverPriceFromServer(input)).toEqual({ ok: true, price: null });
     getRecon.mockResolvedValueOnce({ ok: true, data: { finalOpinionValue: 0 } });
     expect(await readHandOverPriceFromServer(input)).toEqual({ ok: true, price: null });
+  });
+
+  it("round 2: reuses the open request the gate check read — no second lookup", async () => {
+    getRecon.mockResolvedValue({ ok: true, data: { finalOpinionValue: 9_220_000 } });
+    expect(await readHandOverPriceFromServer({ ...input, valuationRequestId: "vr1" })).toEqual({
+      ok: true,
+      price: "9220000",
+    });
+    expect(await readHandOverPriceFromServer({ ...input, valuationRequestId: null })).toEqual({
+      ok: true,
+      price: null,
+    });
+    expect(getOpen).not.toHaveBeenCalled();
   });
 
   it("blocks when it cannot read the final value", async () => {

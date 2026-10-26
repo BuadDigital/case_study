@@ -13,6 +13,7 @@ import type {
 } from "@platform/api-client";
 import { roundSar } from "@platform/app-shared/format/money";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { rationaleMinimumError } from "./rationale-minimum";
 
 /** Every input of the income screen, as typed strings (lossless while typing). */
 export type IncomeApproachFields = {
@@ -50,6 +51,24 @@ export const INCOME_APPROACH_LABEL = "أسلوب الدخل (رسملة مباش
 /** Rule Q-2: the income screen exists only once the settings are saved with income on. */
 export function incomeApproachAvailable(settings: ValuationApproachSettingsDto | null): boolean {
   return Boolean(settings?.isSaved && settings.incomeApproachEnabled);
+}
+
+/**
+ * Why the income screen is closed, or null when it opens. The tab may already show from the
+ * settings draft (the toggle was switched on but not saved): the server refuses an income save
+ * until the settings are saved with it on, so the screen asks for that save first.
+ */
+export function incomeScreenClosedReason(input: {
+  settingsSaved: boolean;
+  /** The tab's state — follows the settings draft. */
+  incomeEnabled: boolean;
+  /** The saved settings have the income approach on. */
+  incomeSaved: boolean;
+}): string | null {
+  if (!input.settingsSaved) return "ابدأ التقييم أولاً.";
+  if (!input.incomeEnabled) return "أسلوب الدخل غير مفعّل في إعدادات التقييم.";
+  if (!input.incomeSaved) return "احفظ إعدادات التقييم أولاً — فُعِّل أسلوب الدخل ولم تُحفظ الإعدادات بعد.";
+  return null;
 }
 
 /** Typed number via the shared locale rule (Arabic digits, «٫», thousands); blank or junk → 0. */
@@ -131,6 +150,46 @@ export function incomeWarnings(derived: IncomeApproachDerived): string[] {
     out.push("صافي الدخل التشغيلي صفر أو سالب — لا ينتج أسلوب الدخل قيمة");
   }
   return out;
+}
+
+/**
+ * The server's refusal of a typed cap rate (ValuationIncomeApproachRequestRules): above 0 and at
+ * most 30٪. Shown on the screen in place of a value the save would never accept.
+ */
+export function incomeCapRateError(fields: IncomeApproachFields): string | null {
+  const raw = fields.capRatePct.trim();
+  if (!raw) return null;
+  const cap = incomeNum(raw);
+  return cap > 0 && cap <= INCOME_MAX_CAP_RATE_PCT
+    ? null
+    : `معدل الرسملة يجب أن يكون أكبر من 0 ولا يتجاوز ${INCOME_MAX_CAP_RATE_PCT}٪`;
+}
+
+/**
+ * What the save would refuse, keyed like the server's errors (checked before the round trip):
+ * the cap-rate bounds, and — when alert 26 fires (rate outside 4–12٪) — a written rationale of at
+ * least 10 characters (decision B).
+ */
+export function incomeSaveErrors(fields: IncomeApproachFields): Record<string, string> | null {
+  const capError = incomeCapRateError(fields);
+  if (capError) return { capitalisationRatePct: capError };
+  const raw = fields.capRatePct.trim();
+  const cap = raw ? incomeNum(raw) : null;
+  const outside =
+    cap != null && (cap < INCOME_TYPICAL_CAP_RATE.min || cap > INCOME_TYPICAL_CAP_RATE.max);
+  const short = outside ? rationaleMinimumError("مبرر معدل الرسملة", fields.capRateRationale) : null;
+  return short ? { capRateRationale: short } : null;
+}
+
+/** The drafts differ from what the server holds (a never-saved row compares with empty drafts). */
+export function incomeFieldsDiffer(
+  fields: IncomeApproachFields,
+  saved: ValuationIncomeApproachDto | null,
+): boolean {
+  const base = incomeFieldsFromDto(saved);
+  return (Object.keys(base) as (keyof IncomeApproachFields)[]).some(
+    (key) => String(fields[key]).trim() !== String(base[key]).trim(),
+  );
 }
 
 /** Save body — Latin numbers; a blank cap rate stays a draft (null), never 0. */

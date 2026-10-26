@@ -34,6 +34,8 @@ public static class RealEstateEvalApiHostExtensions
 
         var mvc = builder.Services.AddControllers();
         mvc.AddMvcOptions(o => o.Conventions.Add(new CanonicalV1AliasConvention()));
+        // One place for every host: an unreadable body value answers in Arabic (round 2, item 10).
+        mvc.ConfigureApiBehaviorOptions(o => o.InvalidModelStateResponseFactory = ArabicInvalidModelState.Create);
         if (options.AddValidation)
             mvc.AddRealEstateEvalValidation();
 

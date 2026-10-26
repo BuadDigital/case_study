@@ -81,4 +81,30 @@ describe("MethodologyAlertsPanel (problem 20)", () => {
     expect(api.saveValuationReconciliation).not.toHaveBeenCalled();
     expect(toast.showToast).toHaveBeenCalledWith("تم حفظ معالجة التنبيهات المنهجية", "success");
   });
+
+  it("round 2 (decision B): a written override rationale under 10 characters is marked, not sent", async () => {
+    const rationaleGates = {
+      ...gates,
+      methodologyAlerts: [
+        { ...gates.methodologyAlerts[0], severityKind: "require_rationale" },
+      ],
+    } as ValuationIssuanceGatesDto;
+    render(
+      <MethodologyAlertsPanel
+        group="market"
+        gates={rationaleGates}
+        recon={recon}
+        valuationRequestId="vr-1"
+        saving={false}
+        onSavingChange={() => undefined}
+        onReconSaved={vi.fn()}
+      />,
+    );
+    const input = screen.getByRole("textbox", { name: "مبرر تجاوز التنبيه 15" });
+    fireEvent.change(input, { target: { value: "  قصير " } });
+    fireEvent.click(screen.getByRole("button", { name: "حفظ معالجة التنبيهات" }));
+    expect(await screen.findByText("مبرر تجاوز التنبيه يجب ألا يقل عن 10 أحرف")).toBeTruthy();
+    expect(input.getAttribute("aria-invalid")).toBe("true");
+    expect(api.saveValuationAlertOverrides).not.toHaveBeenCalled();
+  });
 });

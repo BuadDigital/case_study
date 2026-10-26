@@ -7,5 +7,6 @@ namespace RealEstateEval.Valuation.Application.Contracts;
 /// </summary>
 public class SaveValuationAlertOverridesRequest
 {
+    [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "قائمة معالجات التنبيهات مطلوبة.")]
     public IReadOnlyList<ValuationMethodologyAlertOverrideDto> MethodologyAlertOverrides { get; init; } = [];
 }

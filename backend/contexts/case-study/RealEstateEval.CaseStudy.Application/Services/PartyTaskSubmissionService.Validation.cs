@@ -29,15 +29,14 @@ public partial class PartyTaskSubmissionService
         {
             var studyError = PartyTaskSubmissionRules.StudyReportGateError(
                 await StudyReportIssuedForAsync(entity.WorkflowTaskId, cancellationToken));
-            if (studyError is not null)
-            {
-                foreach (var (key, message) in studyError)
-                    errors[key] = message;
-            }
-            else if (errors.Count == 0)
+            if (errors.Count == 0)
             {
                 // D2: only a package that passed everything else spends the cross-service gate read.
-                var gateError = await AppraisalHandOverGateErrorsAsync(entity, cancellationToken)
+                // Round 2: the unissued study report no longer hides what the appraiser can fix now —
+                // the refusal lists it together with every other blocker (the study-report gate itself
+                // is not repeated).
+                var gateError = await AppraisalHandOverGateErrorsAsync(
+                        entity, studyReportListed: studyError is not null, cancellationToken)
                     // The handed-over price is the reconciliation's final value — never another figure.
                     ?? await AppraisalHandOverPriceErrorAsync(entity, cancellationToken);
                 if (gateError is not null)
@@ -45,6 +44,15 @@ public partial class PartyTaskSubmissionService
                     foreach (var (key, message) in gateError)
                         errors[key] = message;
                 }
+            }
+            // Round 2: when the gate refusal already lists the unissued study report as a numbered item,
+            // its separate sentence is not glued on after it.
+            if (studyError is not null
+                && !(errors.TryGetValue(AppraisalHandOverGateRules.ErrorKey, out var listed)
+                     && listed.Contains(AppraisalHandOverGateRules.StudyReportNotIssuedItemAr, StringComparison.Ordinal)))
+            {
+                foreach (var (key, message) in studyError)
+                    errors[key] = message;
             }
         }
 

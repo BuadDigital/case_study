@@ -13,6 +13,7 @@ import {
   opsWorkCard,
 } from "@platform/ui-kit";
 import type { ValuationComparableSelectionDto } from "@platform/api-client";
+import { ymd } from "@platform/app-shared/format/date";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 
 import { fmt } from "./lib/shell-utils";
@@ -439,7 +440,7 @@ export function AdjustmentsMatrixPhone({
                 },
                 {
                   label: "تاريخ الصفقة",
-                  value: item.comparable.transactionDate,
+                  value: ymd(item.comparable.transactionDate),
                   ltr: true,
                 },
                 {

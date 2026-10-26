@@ -84,6 +84,7 @@ export function useValuationWorkData({
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const onFinalOpinionChangeRef = useLatestRef(onFinalOpinionChange);
+  const editLockedRef = useLatestRef(editLocked); // handed over: no background market-approach PUTs
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -140,6 +141,7 @@ export function useValuationWorkData({
       transactionArea,
       selection: sel,
       lastSyncKey: subjectAreaSyncedRef.current,
+      writesFrozen: editLockedRef.current,
     });
     if (!plan) return;
     subjectAreaSyncedRef.current = plan.syncKey;
@@ -318,7 +320,7 @@ export function useValuationWorkData({
       // Drop demo seed filler so تحليل التسويات follows the adjustments table.
       const seedNotes = isSeedMarketAnalysisNotes(loadedNotes);
       setAnalysisNotes(seedNotes ? "" : loadedNotes);
-      if (seedNotes) {
+      if (seedNotes && !editLockedRef.current) {
         void saveValuationMarketApproach(config, requestId, {
           subjectAreaSqm: selRes.data.subjectAreaSqm ?? null,
           adjustmentBasis: selRes.data.adjustmentBasis || "price_per_sqm",

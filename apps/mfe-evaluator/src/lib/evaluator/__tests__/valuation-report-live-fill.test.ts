@@ -67,7 +67,7 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["أساس القيمة"]).toBe("القيمة السوقية");
     expect(fill.cells["الغرض من التقييم"]).toBe("البيع");
     expect(fill.cells["فرضية القيمة"]).toBe("الاستخدام الحالي");
-    expect(fill.cells["نوع الملكية"]).toBe("ملكية مطلقة");
+    expect(fill.cells["نوع الملكية"]).toBe("ملكية تامة");
     expect(fill.cells["اسم مستخدم تقرير التقييم"]).toContain("نبر");
     expect(fill.cells["نسبة خصم التصفية المنظمة"]).toBe("—");
   });
@@ -782,7 +782,8 @@ describe("valuation report live fill from intake", () => {
     const nums = [...dom.querySelectorAll('[data-sec="20"] td.num')].map(
       (td) => td.textContent,
     );
-    expect(nums).toEqual(["2,000", "400", "800,000"]);
+    // Decision A: one figure per line in the order they multiply — area, rate, value before/after rounding.
+    expect(nums).toEqual(["400", "2,000", "800,000", "800,000"]);
   });
 
   it("rebuilds direct cost rows including lump fence and tanks", () => {
@@ -1374,6 +1375,8 @@ describe("valuation report live fill from intake", () => {
     expect(fill.surroundingsOther).toBe("—");
     expect(fill.comparableRows[0]?.values[1]).toContain("عرض");
     expect(fill.comparableRows[0]?.values[1]).toContain("88231045");
+    // §15 dates print yyyy/mm/dd like the rest of the report (round 2), never ISO.
+    expect(fill.comparableRows[0]?.values[3]).toBe("2026/04/12");
     expect(fill.adjustmentNotes).toContain("الحد سقف أعلى");
     const marketRow = fill.adjustmentRows.find((r) => r.key === "تسوية ظروف السوق (عامل الوقت)");
     expect(marketRow?.values[0]).toBe("-3.00٪");

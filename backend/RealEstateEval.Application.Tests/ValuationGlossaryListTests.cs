@@ -65,6 +65,19 @@ public class ValuationGlossaryListTests
     }
 
     [Fact]
+    public async Task The_freehold_term_is_ownership_tamma_and_a_stored_round_1_seed_moves_to_it()
+    {
+        var fresh = await GlossaryAsync(null);
+        Assert.Equal("ملكية تامة", fresh.Single(r => r.Key == "freehold").Name);
+
+        var roundOne = fresh.Select(r => r.Key == "freehold" ? Copy(r, name: "ملكية مطلقة") : r).ToList();
+        var rows = await GlossaryAsync(roundOne);
+
+        Assert.Equal("ملكية تامة", rows.Single(r => r.Key == "freehold").Name);
+        Assert.DoesNotContain(rows, r => r.Name.Contains("مطلقة", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task A_disabled_row_means_the_list_was_edited_and_is_kept()
     {
         var previous = ValuationListsSeed.PreviousGlossary();
@@ -123,11 +136,12 @@ public class ValuationGlossaryListTests
     private static ValuationListItemDto Copy(
         ValuationListItemDto row,
         bool? isEnabled = null,
-        string[]? cells = null) => new()
+        string[]? cells = null,
+        string? name = null) => new()
     {
         Id = row.Id,
         Key = row.Key,
-        Name = row.Name,
+        Name = name ?? row.Name,
         Cells = cells ?? row.Cells,
         IsEnabled = isEnabled ?? row.IsEnabled,
         DefaultName = row.DefaultName,

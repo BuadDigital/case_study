@@ -10,7 +10,7 @@ import {
   COST_ITEM_OPTIONS,
   COST_UNIT_OPTIONS,
 } from "./lib/cost-line-math";
-import { costNumericInput } from "./lib/cost-approach-state";
+import { costNum, costNumericInput, repeatedFloorCountForItem } from "./lib/cost-approach-state";
 import { fmt } from "./lib/shell-utils";
 import type { CostApproachWorkflow } from "./useCostApproachWorkflow";
 
@@ -82,8 +82,7 @@ export function costLineEditor(
       itemKey: value,
       unit: opt?.unit ?? line.unit,
       areaSqm: (opt?.unit ?? line.unit) === "lump" ? 1 : line.areaSqm,
-      repeatedFloorCount:
-        value === "repeated_floors" ? (line.repeatedFloorCount ?? 2) : null,
+      repeatedFloorCount: repeatedFloorCountForItem(value, line.repeatedFloorCount),
       label: opt?.label ?? line.label,
     });
   };
@@ -205,7 +204,7 @@ export function CostLineBuildRatioInput({ line, idBase, patch, lineError, touch 
       placeholder="100"
       onChange={(e) => {
         const raw = costNumericInput(e.target.value);
-        patch({ buildRatioPct: raw ? Number(raw) : null });
+        patch({ buildRatioPct: raw ? costNum(raw) : null });
       }}
       className={cn(
         "rounded-[7px] border border-dashed border-border-md bg-surface-2 px-0.5 py-2 text-center font-bold text-gold-d",
@@ -351,7 +350,7 @@ export function AddCostLineSelect({
           label: opt.label,
           unit: opt.unit,
           areaSqm: opt.unit === "lump" ? 1 : 0,
-          repeatedFloorCount: opt.key === "repeated_floors" ? 2 : null,
+          repeatedFloorCount: repeatedFloorCountForItem(opt.key, null),
         });
       }}
       className={cn(

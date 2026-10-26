@@ -92,6 +92,23 @@ describe("ReportDraftApprovalBar", () => {
     expect(api.approveReportDraft).toHaveBeenCalledWith({ token: "t" }, "vr-1", { reportDate: today, html: "<p>report</p>" });
   });
 
+  it("a refused approval lists every blocker in a panel that stays (round 2)", async () => {
+    api.ensureReportNumber.mockResolvedValue({ ok: true, data: { valuationRequestId: "vr-1", reportNumber: "PRV-2026-00007" } });
+    api.approveReportDraft.mockResolvedValue({
+      ok: false,
+      kind: "validation",
+      message: "المسح الهندسي غير مرفوع",
+      errors: { survey: "المسح الهندسي غير مرفوع", deed: "مطابقة الصك للطبيعة لم تُحسم" },
+    });
+    renderBar(draft({ status: "sent" }));
+    fireEvent.click(screen.getByRole("button", { name: "اعتماد التقرير" }));
+    const panel = await screen.findByTestId("report-approval-refusal");
+    expect(panel.textContent).toContain("تعذّر اعتماد التقرير");
+    expect(panel.textContent).toContain("المسح الهندسي غير مرفوع");
+    expect(panel.textContent).toContain("مطابقة الصك للطبيعة لم تُحسم");
+    expect(panel.querySelectorAll("li")).toHaveLength(2);
+  });
+
   it("a double-click on «اعتماد التقرير» asks once and approves once", async () => {
     api.ensureReportNumber.mockResolvedValue({ ok: true, data: { valuationRequestId: "vr-1", reportNumber: "PRV-2026-00007" } });
     api.approveReportDraft.mockResolvedValue({ ok: true, data: draft({ status: "approved", reportStage: "deposit_issued" }) });

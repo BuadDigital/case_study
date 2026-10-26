@@ -149,13 +149,16 @@ public sealed class ValuationComparableSelectionRepository(ValuationDbContext db
         db.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
 
-    public Task<decimal?> GetCostApartmentLandShareSqmAsync(
+    public async Task<CostLandAreas> GetCostLandAreasAsync(
         Guid valuationRequestId,
-        CancellationToken cancellationToken) =>
-        db.ValuationCostApproaches.AsNoTracking()
+        CancellationToken cancellationToken)
+    {
+        var row = await db.ValuationCostApproaches.AsNoTracking()
             .Where(x => x.ValuationRequestId == valuationRequestId)
-            .Select(x => x.ApartmentLandShareSqm)
+            .Select(x => new { x.BuildingPlotAreaSqm, x.ApartmentLandShareSqm })
             .FirstOrDefaultAsync(cancellationToken);
+        return new CostLandAreas(row?.BuildingPlotAreaSqm, row?.ApartmentLandShareSqm);
+    }
 
     public Task<ValuationComparableSelection?> FindSelectionByComparableAsync(
         Guid valuationRequestId,

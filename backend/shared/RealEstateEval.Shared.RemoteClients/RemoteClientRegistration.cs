@@ -18,6 +18,12 @@ namespace RealEstateEval.Infrastructure;
 public static class RemoteClientRegistration
 {
     /// <summary>
+    /// How long a cross-service read (gates, assignment, case-study context) may wait before the
+    /// caller answers «تعذّر التحقق … أعد المحاولة» instead of hanging for the framework's 100 s.
+    /// </summary>
+    public static readonly TimeSpan LookupTimeout = TimeSpan.FromSeconds(10);
+
+    /// <summary>
     /// Attachment existence and report lookups via the Attachments HTTP API.
     /// Forwards the caller's Authorization header. Do not combine with
     /// <c>AddAttachmentsPersistence</c> on the same host.
@@ -70,9 +76,9 @@ public static class RemoteClientRegistration
         IConfiguration configuration)
     {
         services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IValuationRequestService, HttpValuationRequestService>();
-        services.AddHttpClient<IValuationRequestFolding, HttpValuationRequestFolding>();
-        services.AddHttpClient<IValuationReportReopenCommands, HttpValuationReportReopenCommands>();
+        services.AddHttpClient<IValuationRequestService, HttpValuationRequestService>(WithLookupTimeout);
+        services.AddHttpClient<IValuationRequestFolding, HttpValuationRequestFolding>(WithLookupTimeout);
+        services.AddHttpClient<IValuationReportReopenCommands, HttpValuationReportReopenCommands>(WithLookupTimeout);
         return services;
     }
 
@@ -118,8 +124,8 @@ public static class RemoteClientRegistration
         IConfiguration configuration)
     {
         services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<ICaseStudyLookup, HttpCaseStudyLookup>();
-        services.AddHttpClient<IWorkflowAssigneeLookup, HttpWorkflowAssigneeLookup>();
+        services.AddHttpClient<ICaseStudyLookup, HttpCaseStudyLookup>(WithLookupTimeout);
+        services.AddHttpClient<IWorkflowAssigneeLookup, HttpWorkflowAssigneeLookup>(WithLookupTimeout);
         services.AddRemotePropertyTimelineRecorder(configuration);
         return services;
     }
@@ -180,9 +186,11 @@ public static class RemoteClientRegistration
         IConfiguration configuration)
     {
         services.AddUpstreamHttp(configuration);
-        services.AddHttpClient<IWorkflowAssigneeLookup, HttpWorkflowAssigneeLookup>();
+        services.AddHttpClient<IWorkflowAssigneeLookup, HttpWorkflowAssigneeLookup>(WithLookupTimeout);
         return services;
     }
+
+    private static void WithLookupTimeout(HttpClient client) => client.Timeout = LookupTimeout;
 
     private static IServiceCollection AddUpstreamHttp(
         this IServiceCollection services,

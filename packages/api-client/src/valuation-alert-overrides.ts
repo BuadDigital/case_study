@@ -1,6 +1,6 @@
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
-import { parseJson } from "./parse-json";
+import { parseJson, serverFailure } from "./parse-json";
 import type {
   ValuationReconciliationDto,
   ValuationSelectionsApiConfig,
@@ -59,7 +59,7 @@ export async function saveValuationAlertOverrides(
         errors: payload?.errors,
       };
     }
-    if (!res.ok) return { ok: false, kind: "server" };
+    if (!res.ok) return await serverFailure(res);
     return { ok: true, data: await parseJson<ValuationReconciliationDto>(res) };
   } catch {
     return { ok: false, kind: "network" };
