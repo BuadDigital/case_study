@@ -167,6 +167,18 @@ export function useFieldInspectionWorkflow({
     ),
   );
 
+  /**
+   * Applies a change to the inspection draft: on screen at once, on the server a moment later.
+   *
+   * How it works: marks the section chips of the touched fields «مسودة»; updates the on-screen draft through
+   * `setDraft` (a function patch is resolved against the latest draft); then calls `updateInspectorWorkspace`
+   * (debounced network save) and merges the saved draft back only if it is newer than what is on screen.
+   *
+   * Edge cases and how they were fixed: ignored when the work is locked. Two photo uploads finishing close together
+   * used to lose one photo because each patch was built from the draft captured before its upload started; a patch
+   * given as a function is now resolved against the latest draft, both here and in the saver. A failed save toasts
+   * the error and keeps the on-screen value.
+   */
   const persist = useCallback(
     (input: InspectorWorkspacePatchInput) => {
       if (!task.id || workLocked) return;
@@ -320,7 +332,9 @@ export function useFieldInspectionWorkflow({
       return false;
     }
 
-    // Everything the form can check itself has passed — a host with a sending dialog opens it now.
+    // Everything the form can check itself has passed (the key gate, the declaration phone, the inventory flush
+    // and the field validation all ran above and returned early on any problem), so a host with a sending dialog
+    // opens it now; the network part is `sendInspectorSubmission`, which reports back through the host callbacks.
     hostRef.current?.onSubmitStarted?.();
     return sendInspectorSubmission({
       draft,

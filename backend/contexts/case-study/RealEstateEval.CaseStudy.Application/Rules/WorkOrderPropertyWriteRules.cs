@@ -336,10 +336,13 @@ public static class WorkOrderPropertyWriteRules
 
     /// <summary>
     /// The bourse transcription as its own request: same columns, plus the owners/ownership-type
-    /// decisions. Returns the error dictionary to hand back, and whether the boundaries came back
-    /// unavailable (which holds the property open instead of completing it).
+    /// decisions. Returns the error dictionary to hand back (null when the request applied).
+    ///
+    /// Saving always completes the bourse, whatever the boundaries source is. «غير متوفرة» only means the
+    /// bourse had no boundaries to transcribe: it neither holds the property open nor raises a failure (it
+    /// used to, although the screen says «ويمكن الحفظ مباشرة»).
     /// </summary>
-    public static (Dictionary<string, string>? Errors, bool BoundariesUnavailable) ApplyBourseRequest(
+    public static Dictionary<string, string>? ApplyBourseRequest(
         WorkOrderProperty entity,
         UpdatePropertyBourseRequest request,
         DateTime nowUtc,
@@ -371,16 +374,11 @@ public static class WorkOrderPropertyWriteRules
             request.EastBoundary, request.EastBoundaryLengthM, request.EastBoundaryType, request.EastFacadeFinishing,
             request.WestBoundary, request.WestBoundaryLengthM, request.WestBoundaryType, request.WestFacadeFinishing);
 
-        var boundariesUnavailable = DocumentaryWorkflowRules.BoundariesUnavailable(
-            entity.BoundariesAvailability);
-        if (!boundariesUnavailable)
-        {
-            entity.BourseDataCompleted = true;
-            entity.BourseCompletedAtUtc = nowUtc;
-            entity.BourseCompletedByName = NormalizeActorName(completedByName);
-        }
+        entity.BourseDataCompleted = true;
+        entity.BourseCompletedAtUtc = nowUtc;
+        entity.BourseCompletedByName = NormalizeActorName(completedByName);
 
-        return (null, boundariesUnavailable);
+        return null;
     }
 
     /// <summary>«المدينة · الحي — أدخله الاسم»: the bourse milestone's detail line (null when nothing to say).</summary>
@@ -414,6 +412,13 @@ public static class WorkOrderPropertyWriteRules
     }
 
     /// <summary>«أدخله الاسم» — the one wording of who entered a milestone, shared by every timeline detail line.</summary>
+    /// <remarks>
+    /// How it works: prefixes an already-normalised actor name with «أدخله ». Callers get the name from
+    /// NormalizeActorName, which returns null for a blank name — so this is never called with an empty
+    /// name and a milestone without an actor simply has no «أدخله» part. The bourse, primary-data and
+    /// Enfath-receipt detail lines each wrote this literal by hand; they now share it, so the wording
+    /// cannot drift between the three timeline milestones.
+    /// </remarks>
     private static string EnteredByText(string name) => $"أدخله {name}";
 
     /// <summary>The display name stored beside the completion stamp: trimmed, bounded, null when empty.</summary>

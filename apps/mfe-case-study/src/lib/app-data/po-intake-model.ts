@@ -293,6 +293,15 @@ function ownersRestrictionsBoundaries(prop: PoPropertyIntake) {
   };
 }
 
+/**
+ * The full-property payload: the primary data (`propertyToEnfathDto`), then owners / restrictions /
+ * boundaries, then plan, location, finishing and the bourse image.
+ *
+ * Edge cases and the fix: `area` and `deedStatus` must come ONLY from `propertyToEnfathDto`, which trims
+ * them and turns a blank into `undefined`. They used to be set a second time further down with the
+ * untrimmed value, which overrode the trimmed one — « 1,250 » was saved with its spaces and a spaces-only
+ * value was sent as spaces instead of being left unchanged. Do not set them again below.
+ */
 export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
   return {
     ...propertyToEnfathDto(prop),
@@ -670,16 +679,6 @@ export function shouldCompleteBourseAfterPriorCopy(
   if (scope !== "bourse") return false;
   if (skipsBourseForIdentifier(draft.identifierType)) return false;
   return hasBourseDetailFields(draft) || Boolean(prior.bourseDataCompleted);
-}
-
-/**
- * A property whose boundaries are unavailable stays on the bourse stage — the
- * case-study task only moves to party distribution when they are.
- */
-export function bourseCompletionAdvancesTask(
-  property: PoPropertyIntake,
-): boolean {
-  return property.boundariesAvailability !== "no";
 }
 
 export type PoIntakeDraftPayload = {

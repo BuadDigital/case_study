@@ -440,7 +440,9 @@ public sealed partial class ValuationComparableSelectionService(
         if (!added) return true;
 
         await EnsureMarketApproachHeaderAsync(request.Id, cancellationToken);
-        // The reconciliation read and the selections read both open a fresh request at once.
+        // The reconciliation read and the selections read both open a fresh request at once, so both import
+        // the same linked comparables. TrySaveSeedAsync tolerates losing that race (the winner's rows are
+        // read afterwards) instead of failing the whole request with a 500.
         await repo.TrySaveSeedAsync(cancellationToken);
         return true;
     }

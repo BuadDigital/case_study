@@ -256,6 +256,8 @@ public sealed class ValuationComparableSelectionRepository(ValuationDbContext db
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         db.SaveChangesAsync(cancellationToken);
 
+    // Seeding runs from two concurrent GET requests on a request's first open (the selections read and the
+    // reconciliation read). The loser of that race hits a unique index; it must not surface as a 500.
     public async Task<bool> TrySaveSeedAsync(CancellationToken cancellationToken)
     {
         try
@@ -265,6 +267,8 @@ public sealed class ValuationComparableSelectionRepository(ValuationDbContext db
         }
         catch (DbUpdateException exception) when (PostgresErrors.ViolatedUniqueIndex(exception) is not null)
         {
+            // The other request already inserted these rows: drop our pending inserts so they are not retried
+            // on the next save, and let the caller read the winner's rows.
             foreach (var entry in db.ChangeTracker.Entries().Where(e => e.State == EntityState.Added).ToList())
                 entry.State = EntityState.Detached;
             return false;

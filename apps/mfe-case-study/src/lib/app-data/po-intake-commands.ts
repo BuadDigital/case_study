@@ -27,7 +27,6 @@ import {
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
 import {
-  bourseCompletionAdvancesTask,
   draftToDto,
   dtoToProperty,
   dtoToRecord,
@@ -279,16 +278,11 @@ export async function completePropertyBourse(
   }
 
   const saved = dtoToProperty(result.data, poNumber);
-  if (bourseCompletionAdvancesTask(saved)) {
-    const advanced = await advanceTaskAfterBourseForProperty(
-      poNumber,
-      propertyId,
-      saved,
-      tasks,
-    );
-    if (advanced && !advanced.ok) {
-      return { ok: false, error: advanced.error };
-    }
+  // Every completed bourse moves the task on to distribution — also one that answered «الحدود غير متوفرة»
+  // (that answer used to hold the property on the bourse stage and raise a failure).
+  const advanced = await advanceTaskAfterBourseForProperty(poNumber, propertyId, saved, tasks);
+  if (advanced && !advanced.ok) {
+    return { ok: false, error: advanced.error };
   }
   notifyWorkOrdersChanged();
   return { ok: true, data: saved };

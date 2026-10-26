@@ -359,6 +359,13 @@ export function PropertyDetailInspectionTab({
     };
   }, [mapActor, surveyTask?.id, surveyTask?.propertyId, surveyTask?.poNumber]);
 
+  /**
+   * The specialist's version of «persist» for the inspection draft in the property page: applies a change on screen
+   * at once and saves it on the server (debounced).
+   * How it works: the patch (object or function of the latest draft) is resolved against the current draft; when the
+   * specialist's photos come from the transaction, the inspector-owned feature values are kept as they are.
+   * Edge case: a function patch is re-resolved when the save runs, so photo uploads that finish together all survive.
+   */
   function patchDraft(input: InspectorWorkspacePatchInput) {
     if (!inspectionTask || locked) return;
     // Built from the latest draft each time it is applied (see InspectorWorkspacePatchInput).

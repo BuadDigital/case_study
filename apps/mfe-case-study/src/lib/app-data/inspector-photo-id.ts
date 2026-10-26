@@ -7,8 +7,14 @@ import {
 const allocated = new Map<string, number>();
 
 /**
- * The next photo id for a task. `nextInspectorPhotoId` only sees photos already saved in the draft, so two
- * uploads running at the same time (different slots, or a slow network) would both get the same id.
+ * Hands out the id of a photo that is about to be uploaded.
+ *
+ * How it works: the id is the larger of "next id after the photos saved in the draft" and "the last id handed out
+ * for this task in this session + 1", and the answer is remembered per task.
+ *
+ * Edge cases: `nextInspectorPhotoId` only sees photos already in the draft, so two uploads in flight at once
+ * (different slots, or a slow network) both got the same id and one overwrote the other. The in-memory counter is
+ * per page session; a reload starts from the draft again, which is safe because every handed-out id was saved by then.
  */
 export function allocateInspectorPhotoId(draft: InspectorWorkspaceDraft): number {
   const id = Math.max(nextInspectorPhotoId(draft), (allocated.get(draft.taskId) ?? 0) + 1);

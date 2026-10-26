@@ -302,10 +302,9 @@ public class WorkOrderPropertyWriteRulesTests
             NorthBoundary = " شارع ",
         };
 
-        var (errors, unavailable) = WorkOrderPropertyWriteRules.ApplyBourseRequest(entity, request, now);
+        var errors = WorkOrderPropertyWriteRules.ApplyBourseRequest(entity, request, now);
 
         Assert.Null(errors);
-        Assert.False(unavailable);
         Assert.Equal("الرياض", entity.City);
         Assert.Equal("شارع", entity.NorthBoundary);
         Assert.True(entity.BourseDataCompleted);
@@ -313,7 +312,7 @@ public class WorkOrderPropertyWriteRulesTests
     }
 
     [Fact]
-    public void Bourse_request_leaves_the_property_open_when_boundaries_are_unavailable()
+    public void Bourse_request_completes_the_property_even_when_boundaries_are_unavailable()
     {
         var entity = new WorkOrderProperty { Id = Guid.NewGuid() };
         var request = new UpdatePropertyBourseRequest
@@ -325,15 +324,14 @@ public class WorkOrderPropertyWriteRulesTests
             BoundariesAvailability = "no",
         };
 
-        var (errors, unavailable) = WorkOrderPropertyWriteRules.ApplyBourseRequest(
-            entity,
-            request,
-            DateTime.UtcNow);
+        var now = new DateTime(2026, 4, 1, 0, 0, 0, DateTimeKind.Utc);
 
+        var errors = WorkOrderPropertyWriteRules.ApplyBourseRequest(entity, request, now);
+
+        // «غير متوفرة» is an answer, not an obstruction: the screen says it can be saved directly.
         Assert.Null(errors);
-        Assert.True(unavailable);
-        Assert.False(entity.BourseDataCompleted);
-        Assert.Null(entity.BourseCompletedAtUtc);
+        Assert.True(entity.BourseDataCompleted);
+        Assert.Equal(now, entity.BourseCompletedAtUtc);
     }
 
     [Fact]
@@ -354,7 +352,7 @@ public class WorkOrderPropertyWriteRulesTests
             ],
         };
 
-        var (errors, _) = WorkOrderPropertyWriteRules.ApplyBourseRequest(entity, request, DateTime.UtcNow);
+        var errors = WorkOrderPropertyWriteRules.ApplyBourseRequest(entity, request, DateTime.UtcNow);
 
         Assert.Null(errors);
         Assert.Equal("سالم", entity.OwnerName);
@@ -365,7 +363,7 @@ public class WorkOrderPropertyWriteRulesTests
     }
 
     [Fact]
-    public void Completing_the_bourse_records_who_did_it_and_a_held_one_records_nobody()
+    public void Completing_the_bourse_records_who_did_it_whatever_the_boundaries_answer_is()
     {
         var request = new UpdatePropertyBourseRequest
         {
@@ -379,10 +377,10 @@ public class WorkOrderPropertyWriteRulesTests
         Assert.True(done.BourseDataCompleted);
         Assert.Equal("أسامة الصالحي", done.BourseCompletedByName);
 
-        // Boundaries «غير متوفرة» hold the property open: nothing is completed, nobody is credited.
-        var held = new WorkOrderProperty { Id = Guid.NewGuid() };
+        // Boundaries «غير متوفرة» complete it too, and the person is credited the same way.
+        var noBoundaries = new WorkOrderProperty { Id = Guid.NewGuid() };
         WorkOrderPropertyWriteRules.ApplyBourseRequest(
-            held,
+            noBoundaries,
             new UpdatePropertyBourseRequest
             {
                 City = "الرياض",
@@ -393,8 +391,8 @@ public class WorkOrderPropertyWriteRulesTests
             },
             DateTime.UtcNow,
             "أسامة الصالحي");
-        Assert.False(held.BourseDataCompleted);
-        Assert.Null(held.BourseCompletedByName);
+        Assert.True(noBoundaries.BourseDataCompleted);
+        Assert.Equal("أسامة الصالحي", noBoundaries.BourseCompletedByName);
 
         Assert.Null(WorkOrderPropertyWriteRules.NormalizeActorName("   "));
         Assert.Equal(128, WorkOrderPropertyWriteRules.NormalizeActorName(new string('م', 300))!.Length);

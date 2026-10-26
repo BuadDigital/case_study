@@ -11,7 +11,12 @@ public sealed class ValuationTimelineWriter(
     IPropertyTimelineRecorder recorder,
     IPropertyPoNumberLookup poLookup)
 {
-    /// <summary>For callers that already hold the PO number.</summary>
+    /// <summary>
+    /// Records a milestone whose PO number the caller already holds.
+    /// How it works: hands the request to the recorder (an HTTP post to Case Study, which owns the timeline).
+    /// Edge cases: best effort — any failure except cancellation is swallowed, so a lost milestone never fails the
+    /// recall or report step that produced it.
+    /// </summary>
     public async Task WriteKnownAsync(PropertyTimelineRecordRequest request, CancellationToken cancellationToken)
     {
         try
@@ -24,6 +29,13 @@ public sealed class ValuationTimelineWriter(
         }
     }
 
+    /// <summary>
+    /// Records a milestone for a property when only the property id is known.
+    /// How it works: resolves the PO number of the property, builds the request with it (<paramref name="build"/>),
+    /// and records it.
+    /// Edge cases: an unknown PO number silently drops the milestone; any failure except cancellation is
+    /// swallowed (best effort), so the report step (draft sent, approval, deposit, new version) always stands.
+    /// </summary>
     public async Task WriteAsync(
         Guid propertyId,
         Func<string, PropertyTimelineRecordRequest> build,

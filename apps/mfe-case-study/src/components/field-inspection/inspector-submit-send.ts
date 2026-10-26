@@ -28,6 +28,21 @@ import { newerInspectorDraft } from "./field-inspection-work-state";
 
 type SubmitResult = Awaited<ReturnType<typeof finalizeInspectorWorkspace>>;
 
+/**
+ * Saves the inspection, then sends it, and reports the outcome to the host.
+ *
+ * How it works: (1) switch the host's saving flag on; (2) save the whole draft, stamping the inspector's
+ * original map pin; (3) patch the key status and the declaration; (4) run the idempotent submit (`execute`, one
+ * key per click so a double click sends once); (5) tell the host what happened: `onSubmitted` when it was sent,
+ * `onSubmitQueued` when the device is offline and the send was queued, `onSubmitFailed` when it was refused or
+ * threw. The saving flag is always switched off in `finally`.
+ *
+ * Edge cases: a host with a sending dialog (it sets `onSubmitStarted`) says the result itself, so no success
+ * toast is shown for it; failures always toast the reason and also close the dialog. A refusal that carries field
+ * errors jumps to the step holding the first one. An `execute` that was skipped (a send is already running) or
+ * returned nothing counts as a failure so the dialog never stays open. Returns `true` only when the inspection
+ * was sent or queued.
+ */
 export async function sendInspectorSubmission(input: {
   draft: InspectorWorkspaceDraft;
   taskId: string;

@@ -162,8 +162,12 @@ export function PartyActiveTaskWork({
   const surveyHostRef = useRef<PartyEngineeringSurveyWorkHostRef>({});
   const fieldInspectionHostRef = useRef<FieldInspectionWorkHostRef>({});
 
-  // The inspector and the appraiser see a sending dialog: loading while the send runs, then the result
-  // and one button back to the queue. A failure closes it — the reason is already on screen.
+  // The sending dialog of the inspector and the appraiser.
+  // States: idle (hidden) → sending (spinner, cannot be dismissed) → sent / queued (result text + one button back
+  // to the queue). The work forms drive it through the host callbacks wired below: `onSubmitStarted` once their own
+  // checks passed, then exactly one of `onSubmitted`, `onSubmitQueued` (inspector, offline) or `onSubmitFailed`.
+  // A failure returns to idle: the reason is already on screen as a toast and the form stays editable.
+  // The old behaviour (a success toast, a read-only form for 900 ms, then a redirect) showed half-finished screens.
   const [submitState, setSubmitState] = useState<PartyTaskSubmitState>("idle");
   const sendingHost = {
     onSubmitStarted: () => setSubmitState("sending"),
@@ -187,6 +191,7 @@ export function PartyActiveTaskWork({
     fieldInspectionHostRef.current.onSubmitted = sentHost;
     fieldInspectionHostRef.current.onSubmitStarted = sendingHost.onSubmitStarted;
     fieldInspectionHostRef.current.onSubmitFailed = sendingHost.onSubmitFailed;
+    // Offline: the inspection is saved on the device and sent when the connection is back — the dialog says so.
     fieldInspectionHostRef.current.onSubmitQueued = () => {
       setSubmitState("queued");
       refresh();
