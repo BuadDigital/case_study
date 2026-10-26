@@ -14,6 +14,21 @@ export async function readErrorText(res: Response): Promise<string> {
 }
 
 /**
+ * The message of a problem-details refusal: `detail`, else the first field error, else `title`;
+ * undefined when the body is not JSON. Reads a clone, so the response stays readable.
+ * (One copy for the transactions and valuation-report-draft clients — 2026-10-26 reuse clean-up.)
+ */
+export async function readProblemMessage(res: Response): Promise<string | undefined> {
+  try {
+    const body = (await res.clone().json()) as { detail?: string; title?: string; errors?: Record<string, string> };
+    const firstError = body?.errors ? Object.values(body.errors).find((v) => typeof v === "string" && v) : undefined;
+    return body?.detail || firstError || body?.title || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * A failed answer reported as `server`. A 503 carries its reason in the problem `detail` — e.g. the
  * valuation service could not reach Case Study to check the assigned appraiser («تعذّر التحقق من
  * المقيّم المُسنَد — أعد المحاولة») — and that reason is kept, not replaced by a generic failure.

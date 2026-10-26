@@ -1,3 +1,4 @@
+import { readProblemMessage } from "./parse-json";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, PropertyTimelineEventDto, WorkOrdersApiConfig } from "./work-orders";
@@ -190,35 +191,21 @@ type CommandErr = ApiErr & { message?: string };
  * Maps a transaction command response so its refusal reaches the user in Arabic.
  *
  * How it works: 401 → auth; 403 → forbidden with the server's message; 404 → not_found; other
- * 5xx → server, 4xx → validation, both with the message from `problemDetail`; success parses
+ * 5xx → server, 4xx → validation, both with the message from `readProblemMessage`; success parses
  * the JSON body.
  */
 async function readCommand<T>(res: Response): Promise<ApiOk<T> | CommandErr> {
   if (res.status === 401) return { ok: false, kind: "auth" };
-  if (res.status === 403) return { ok: false, kind: "forbidden", message: await problemDetail(res) };
+  if (res.status === 403) return { ok: false, kind: "forbidden", message: await readProblemMessage(res) };
   if (res.status === 404) return { ok: false, kind: "not_found" };
   if (!res.ok) {
     return {
       ok: false,
       kind: res.status >= 500 ? "server" : "validation",
-      message: await problemDetail(res),
+      message: await readProblemMessage(res),
     };
   }
   return { ok: true, data: (await res.json()) as T };
-}
-
-/**
- * The message of a problem-details refusal: `detail`, else the first field error, else
- * `title`; undefined when the body is not JSON. Reads a clone, so the response stays readable.
- */
-async function problemDetail(res: Response): Promise<string | undefined> {
-  try {
-    const body = (await res.clone().json()) as { detail?: string; title?: string; errors?: Record<string, string> };
-    const first = body?.errors ? Object.values(body.errors).find((v) => typeof v === "string" && v) : undefined;
-    return body?.detail || first || body?.title || undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 /**
