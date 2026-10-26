@@ -95,6 +95,48 @@ public class ValuationReconciliationSaveRulesTests
     }
 
     [Fact]
+    public async Task An_acknowledgement_before_the_first_save_keeps_the_work_order_basis()
+    {
+        // An Infath execution (no work-order keys) defaults to liquidation / orderly. The row the
+        // acknowledgement creates must not carry the class default «market» (it would win under D1).
+        await using var rig = Arrange("recon-overrides-basis");
+
+        var (result, errors) = await rig.Service.SaveAlertOverridesAsync(
+            rig.RequestId,
+            new SaveValuationAlertOverridesRequest
+            {
+                MethodologyAlertOverrides = [new ValuationMethodologyAlertOverrideDto { Code = "m7", Acknowledged = true }],
+            });
+
+        Assert.Null(errors);
+        Assert.Equal(BasisOfValueKeys.Liquidation, result!.BasisOfValueKey);
+        Assert.Equal(ValuePremiseKeys.Orderly, result.ValuePremiseKey);
+        var stored = rig.Contexts.Valuation.ValuationReconciliations.Single(x => x.ValuationRequestId == rig.RequestId);
+        Assert.Equal(BasisOfValueKeys.Liquidation, stored.BasisOfValueKey);
+        Assert.Equal(ValuePremiseKeys.Orderly, stored.ValuePremiseKey);
+    }
+
+    [Fact]
+    public async Task A_row_left_at_market_by_an_earlier_acknowledgement_reads_the_work_order_basis()
+    {
+        // Rows created before the fix carry «market» with no full save — they must not outrank the work order.
+        await using var rig = Arrange("recon-overrides-heal");
+        rig.Contexts.Valuation.ValuationReconciliations.Add(new ValuationReconciliation
+        {
+            Id = Guid.NewGuid(),
+            ValuationRequestId = rig.RequestId,
+            BasisOfValueKey = BasisOfValueKeys.Market,
+            MethodologyAlertOverridesJson = """[{"code":"m7","acknowledged":true}]""",
+        });
+        await rig.Contexts.Valuation.SaveChangesAsync();
+
+        var result = await rig.Service.GetAsync(rig.RequestId);
+
+        Assert.Equal(BasisOfValueKeys.Liquidation, result!.BasisOfValueKey);
+        Assert.Equal(ValuePremiseKeys.Orderly, result.ValuePremiseKey);
+    }
+
+    [Fact]
     public async Task Saving_one_disposition_keeps_the_others_and_leaves_the_reconciliation_alone()
     {
         await using var rig = Arrange("recon-overrides-merge");
