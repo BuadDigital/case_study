@@ -51,7 +51,7 @@ public sealed class HttpCaseStudyCommands(
             cancellationToken);
 
     /// <summary>
-    /// Decision 2026-10-19: asks Case Study to fix the deed's transaction PR reference (drawn now if missing)
+    /// Asks Case Study to fix the deed's transaction PR reference (drawn now if missing)
     /// and returns the numbers derived from it (PRV for the report).
     /// </summary>
     /// <remarks>
@@ -82,7 +82,7 @@ public sealed class HttpCaseStudyCommands(
     }
 }
 
-/// <summary>Failures-host HTTP client for the Case Study failure side effects (A9).</summary>
+/// <summary>Failures-host HTTP client for the Case Study failure side effects.</summary>
 public sealed class HttpCaseStudyFailureCommands(
     HttpClient http,
     IHttpContextAccessor httpContext,

@@ -1,10 +1,10 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Income  New file — owns the income-approach drafts (D17): loads the saved row once per valuation
+//  • Income  New file — owns the income-approach drafts: loads the saved row once per valuation
 //            request, keeps typed strings local, previews the chain and saves.
 // Round 2 (1b19bedc)
-//  • R2-4  New loaded flag (save refused until the row loads) and retryLoad («إعادة المحاولة»).
-//  • R2-4  Unsaved income drafts raise the refresh warning («income-approach», setSectionUnsaved), with no
+//  • New loaded flag (save refused until the row loads) and retryLoad («إعادة المحاولة»).
+//  • Unsaved income drafts raise the refresh warning («income-approach», setSectionUnsaved), with no
 //          effect cleanup so an <Activity>-hidden screen keeps it.
 //  • B    The save checks incomeSaveErrors first (cap-rate bounds, 10-character rationale) and marks
 //         the field.
@@ -45,7 +45,7 @@ type IncomeApproachWorkflowArgs = {
 };
 
 /**
- * D17 — owns the income-approach drafts: loads the saved row once per valuation request, keeps the
+ * Owns the income-approach drafts: loads the saved row once per valuation request, keeps the
  * typed strings local (typing does not re-render the shell), previews the chain and saves.
  */
 export function useIncomeApproachWorkflow({

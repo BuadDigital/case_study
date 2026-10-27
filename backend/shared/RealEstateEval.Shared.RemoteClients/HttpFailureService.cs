@@ -26,7 +26,7 @@ public sealed class HttpFailureService(
  /// <summary>
  /// The actor is not forwarded: the upstream re-derives it from the bearer header. Filters and
  /// the sort go on the query string, so they are applied where the rows live.
- /// See docs/architecture/pagination-contract.md §5.
+ /// See docs/architecture/pagination-contract.md.
  /// </summary>
     public async Task<IReadOnlyList<FailureRecordDto>> ListAsync(
         FailureListQuery query,
@@ -173,10 +173,15 @@ public sealed class HttpFailureService(
         CancellationToken cancellationToken = default) =>
         PostNullableAsync<FailureRecordDto>($"/api/failures/{id:D}/upgrade", null, cancellationToken);
 
+    /// <summary>Escalation over the wire — the note travels as <c>{ note }</c>, the body the API now requires.</summary>
     public Task<FailureRecordDto?> SubmitForReviewAsync(
         Guid id,
+        string escalationNote,
         CancellationToken cancellationToken = default) =>
-        PostNullableAsync<FailureRecordDto>($"/api/failures/{id:D}/submit", null, cancellationToken);
+        PostNullableAsync<FailureRecordDto>(
+            $"/api/failures/{id:D}/submit",
+            new FailureNoteRequest { Note = escalationNote },
+            cancellationToken);
 
     public Task<FailureRecordDto?> SuspendAsync(
         Guid id,
@@ -207,6 +212,27 @@ public sealed class HttpFailureService(
             $"/api/failures/{id:D}/approve",
             new FailureNoteRequest { Note = finalNote },
             cancellationToken);
+
+    /// <summary>The failures API answers the field errors itself; a refusal reads as one general error here.</summary>
+    /// <remarks>
+    /// How it works: posts the request to <c>/api/failures/final</c> and reads the finalized list.
+    /// Edge cases: the shared POST helper drops the problem body, so a 400 or 403 surfaces as one
+    /// <c>reason</c> error rather than the server's own field map — no service calls this today,
+    /// it exists so the remote client stays a full <c>IFailureService</c>.
+    /// </remarks>
+    public async Task<(IReadOnlyList<FailureRecordDto>? Result, Dictionary<string, string>? Errors)> RecordFinalFailureAsync(
+        FinalFailureRequest request,
+        string? actorUserId = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await PostNullableAsync<List<FailureRecordDto>>(
+            "/api/failures/final",
+            request,
+            cancellationToken);
+        return result is null
+            ? (null, new Dictionary<string, string> { ["reason"] = "تعذّر تسجيل التعذّر النهائي" })
+            : (result, null);
+    }
 
     public Task<FailureRecordDto?> ReturnAsync(
         Guid id,

@@ -70,7 +70,7 @@ public static class WorkOrderValidator
 
         ValidateSharedEnfathFields(dto, assignmentType, excludePropertyId, deedExistsInPo, policy, errors);
 
- // Q-11: Order number ≠ Deed number changed from blocking restriction to warning check — literal match
+ // Order number ≠ Deed number changed from blocking restriction to warning check — literal match
  // It is a coincidence and not conclusive evidence of error; The alert is on the interface and the input confirms and proceeds.
 
         if (policy.RequiresAssignmentDoc && dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))

@@ -2,6 +2,7 @@
  * Failures API — property failures (obstructions) persisted in PostgreSQL.
  */
 import { parseFieldErrorsFromResponse } from "./field-errors";
+import { readProblemMessage } from "./parse-json";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
@@ -19,6 +20,8 @@ export type FailureRecordDto = {
   severity: string;
   raisedByRole: string;
   internalNote: string;
+  /** The specialist's explanation when escalating to the supervisor. */
+  escalationNote?: string;
   finalNote: string;
   resolutionReason: string;
   continueInstructions: string;
@@ -29,6 +32,12 @@ export type FailureRecordDto = {
   /** Set when the specialist lifted the survey freeze this failure caused (ISO UTC). */
   surveyFreezeLiftedAt?: string | null;
   surveyFreezeLiftReason?: string | null;
+  /** The deed's transaction number (PR-… or TMP-…); null when the deed is not found. */
+  transactionNumber?: string | null;
+  /** Deeds in that transaction (1 for an ordinary property). */
+  transactionDeedCount?: number;
+  /** The company's case specialist on the deed; null until one is assigned. */
+  caseSpecialistName?: string | null;
 };
 
 export type CreateFailureRequest = {
@@ -48,10 +57,10 @@ export type ResolveFailureRequest = {
   continueInstructions: string;
 };
 
-/** Allowed `sort` keys — pagination-contract §5. Unknown keys fall back to `updated`. */
+/** Allowed `sort` keys — see the pagination contract. Unknown keys fall back to `updated`. */
 export type FailureListSort = "updated" | "created" | "po" | "deed";
 
-/** `GET /api/failures` query — pagination-contract §5. */
+/** `GET /api/failures` query — see the pagination contract. */
 export type FailureListQuery = {
   /** 1-based page; presence switches the endpoint to the paged envelope. */
   page?: number;
@@ -84,7 +93,7 @@ function failureListParams(query?: FailureListQuery) {
 }
 
 /**
- * One server page of the failures queue — pagination-contract §5. The actor's
+ * One server page of the failures queue — see the pagination contract. The actor's
  * visible PO set is resolved inside the query, so `totalCount` is theirs.
  */
 export async function listFailuresPage(
@@ -138,13 +147,24 @@ export async function getPropertyFailure(
   }
 }
 
-async function postFailureAction(
+/**
+ * POST one failure action and read its JSON answer.
+ *
+ * How it works: 401 → `auth`, 400 → `validation` with the field map, 403 → `forbidden` with the
+ * server's message, other errors → `server`, a thrown fetch → `network`; success casts the body
+ * to `T` (one record by default).
+ *
+ * Edge cases: `T` was fixed to one record; the final failure answers a list, so it became a type
+ * parameter. 403 used to fall into `server`, which hid «التعذّر النهائي عن المعاملة للمشرف فقط»
+ * behind a generic error.
+ */
+async function postFailureAction<T = FailureRecordDto>(
   config: FailuresApiConfig,
   path: string,
   body?: unknown,
   idempotencyKey?: string,
 ): Promise<
-  | ApiOk<FailureRecordDto>
+  | ApiOk<T>
   | (ApiErr & { errors?: Record<string, string> })
 > {
   const base = config.baseUrl ?? getApiBase();
@@ -159,11 +179,43 @@ async function postFailureAction(
       const errors = await parseFieldErrorsFromResponse(res);
       return { ok: false, kind: "validation", errors };
     }
+    if (res.status === 403) {
+      return { ok: false, kind: "forbidden", message: await readProblemMessage(res) };
+    }
     if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as FailureRecordDto };
+    return { ok: true, data: (await res.json()) as T };
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+export type FinalFailureRequest = {
+  poNumber: string;
+  propertyId: string;
+  /** Required only when a deed of the transaction has no open failure. */
+  problemTypeId?: string;
+  title?: string;
+  reason: string;
+  /** true = notify the parties holding tasks; false = stop their tasks silently. */
+  notifyParties: boolean;
+};
+
+/**
+ * «التعذر النهائي عن المعاملة» — the supervisor's final failure on every live deed of the
+ * transaction; answers the finalized failures.
+ *
+ * How it works: `POST /api/failures/final` with the request as JSON.
+ * Edge cases: a 400 carries `problemTypeId` when a sibling deed has no open failure, `reason`
+ * when blank, `propertyId` when the transaction is final already.
+ */
+export async function recordFinalFailure(
+  config: FailuresApiConfig,
+  request: FinalFailureRequest,
+): Promise<
+  | ApiOk<FailureRecordDto[]>
+  | (ApiErr & { errors?: Record<string, string> })
+> {
+  return postFailureAction<FailureRecordDto[]>(config, "/api/failures/final", request);
 }
 
 export async function createFailure(
@@ -184,11 +236,13 @@ export async function upgradeFailureToInternal(
   return postFailureAction(config, `/api/failures/${id}/upgrade`);
 }
 
+/** «تصعيد إلى المشرف» — `note` is the specialist's explanation, required by the server. */
 export async function submitFailureForReview(
   config: FailuresApiConfig,
   id: string,
+  note: string,
 ): Promise<ApiOk<FailureRecordDto> | ApiErr> {
-  return postFailureAction(config, `/api/failures/${id}/submit`);
+  return postFailureAction(config, `/api/failures/${id}/submit`, { note });
 }
 
 export async function suspendFailure(
@@ -255,6 +309,7 @@ export function dtoToFailureRecord(dto: FailureRecordDto) {
     severity: dto.severity,
     raisedByRole: dto.raisedByRole,
     internalNote: dto.internalNote,
+    escalationNote: dto.escalationNote ?? "",
     finalNote: dto.finalNote,
     resolutionReason: dto.resolutionReason,
     continueInstructions: dto.continueInstructions,
@@ -264,6 +319,9 @@ export function dtoToFailureRecord(dto: FailureRecordDto) {
     updatedAt: dto.updatedAt,
     surveyFreezeLiftedAt: dto.surveyFreezeLiftedAt ?? null,
     surveyFreezeLiftReason: dto.surveyFreezeLiftReason ?? null,
+    transactionNumber: dto.transactionNumber ?? null,
+    transactionDeedCount: dto.transactionDeedCount ?? 1,
+    caseSpecialistName: dto.caseSpecialistName ?? null,
   };
 }
 

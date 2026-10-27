@@ -5,7 +5,7 @@ namespace RealEstateEval.Application.Abstractions;
 /// <summary>
 /// Resolves notification recipients: workflow assignees from Case Study, profile and
 /// email maps from Identity. Extracted so bounded-context libraries can depend on the
-/// abstraction instead of the shared Infrastructure resolver (A8).
+/// abstraction instead of the shared Infrastructure resolver.
 /// </summary>
 public interface INotificationRecipientResolver
 {

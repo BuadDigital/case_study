@@ -1,5 +1,5 @@
 /**
- * When a new build may replace the running one (decision 2026-10-19: no «تحديث الآن» banner —
+ * When a new build may replace the running one (: no «تحديث الآن» banner —
  * the update applies on its own at a moment nobody is typing).
  *
  * Moments:

@@ -1,7 +1,7 @@
 namespace RealEstateEval.Valuation.Application.Rules;
 
 /// <summary>
-/// ق-6 freeze wording, stated once. The predicate itself is a persistence question and lives
+/// Freeze wording, stated once. The predicate itself is a persistence question and lives
 /// behind <c>IValuationReportFreezeGate</c>.
 /// </summary>
 public static class ValuationReportFreezeRules

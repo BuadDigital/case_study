@@ -2,13 +2,13 @@
 // Round 1 (5b554f4e)
 //  • Income  An income indicator counts as complete once the server computed a positive value; an
 //            income-only opinion gets its own sentence (NOI ÷ cap rate, no weighting).
-//  • D3   One name «خصم التصفية» (LIQUIDATION_DISCOUNT_NAME) in the opinion line; new
+//  • One name «خصم التصفية» (LIQUIDATION_DISCOUNT_NAME) in the opinion line; new
 //         liquidationDiscountSaveErrors mirrors the server: 0 is refused only on the «قيمة التصفية» basis.
 //  • Alerts  New alertOverridesForCodes — the dispositions of given alert codes for the alert-overrides save.
 //  • Unsaved  New finalOpinionDraftDiffers: drafts that differ from the saved reconciliation make the
 //             window warn before a refresh (problem 19).
 // Round 2 (1b19bedc)
-//  • R2-11  Discount ceiling 90٪ like the server (LIQUIDATION_DISCOUNT_MAX_PCT); the range message is named
+//  • Discount ceiling 90٪ like the server (LIQUIDATION_DISCOUNT_MAX_PCT); the range message is named
 //           after the premise («التصفية المنظمة» / «البيع القسري») — liquidationDiscountRangeMessage.
 //  • B    A written liquidation discount rationale must be at least 10 characters.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ export function finalOpinionComputed({
     const costComplete = buildingOnly
       ? costBuildReady
       : costBuildReady && !!cost?.landEstimateComplete;
-    // D17: the income indicator is complete once the server computed a positive value (NOI ÷ cap).
+    // The income indicator is complete once the server computed a positive value (NOI ÷ cap).
     const incomeComplete =
       (reconMethods.find((m) => m.approachKind === "income")?.approachValue ?? 0) > 0;
     // A document indicator carries the value the appraiser entered — always complete.
@@ -211,7 +211,7 @@ export function forcedSaleDiscountOpinionLine(pct: number): string {
   return `طُبِّق ${LIQUIDATION_DISCOUNT_NAME} ${pct}٪.`;
 }
 
-/** D3: the one name the discount carries on every screen and message. */
+/** The one name the discount carries on every screen and message. */
 export const LIQUIDATION_DISCOUNT_NAME = "خصم التصفية";
 
 /** The server ceiling (ReconciliationLiquidationMessages.MaxDiscountPct) — the same 90٪ on screen. */
@@ -226,7 +226,7 @@ export const LIQUIDATION_DISCOUNT_MESSAGES = {
 } as const;
 
 /**
- * D3: 0 is a valid discount on every basis but «قيمة التصفية», where the save is refused (the
+ * 0 is a valid discount on every basis but «قيمة التصفية», where the save is refused (the
  * hand-over no longer is). Returns the field errors keyed like the server's, or null.
  */
 /** The server's range refusal, named after the premise: «التصفية المنظمة» / «البيع القسري». */
@@ -258,7 +258,7 @@ export function liquidationDiscountSaveErrors(input: {
   if (!input.liquidationDiscountRationale.trim()) {
     return { liquidationDiscountRationale: LIQUIDATION_DISCOUNT_MESSAGES.rationaleRequired };
   }
-  // Decision B: a written rationale is at least 10 characters.
+  // A written rationale is at least 10 characters.
   const short = rationaleMinimumError("مبرر خصم التصفية", input.liquidationDiscountRationale);
   return short ? { liquidationDiscountRationale: short } : null;
 }

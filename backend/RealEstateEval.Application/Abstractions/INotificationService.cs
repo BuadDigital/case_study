@@ -14,7 +14,7 @@ public interface INotificationService
         NotificationListQuery query,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Filtered / sorted page for one user. See docs/architecture/pagination-contract.md §6.</summary>
+    /// <summary>Filtered / sorted page for one user. See docs/architecture/pagination-contract.md.</summary>
     Task<PagedResultDto<UserNotificationDto>> ListPagedForUserAsync(
         string userId,
         NotificationListQuery query,

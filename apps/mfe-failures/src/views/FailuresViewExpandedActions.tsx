@@ -102,11 +102,11 @@ export function FailuresViewExpandedActions({
                   size="sm"
                   variant="default"
                   className={actionBtn}
-                  loading={wf.busyKey === failureBusyKey(f.id, "submit")}
+                  disabled={busy}
                   showActionToast={false}
-                  onClick={() => wf.handleSubmit(f.id)}
+                  onClick={() => wf.toggleEscalate(f.id)}
                 >
-                  تصعيد على المشرف
+                  {wf.escalateOpen[f.id] ? "إلغاء التصعيد" : "تصعيد إلى المشرف"}
                 </Button>
               )}
               {canResolve ? (
@@ -132,10 +132,9 @@ export function FailuresViewExpandedActions({
                 size="sm"
                 variant="default"
                 className={actionBtn}
-                loading={wf.busyKey === failureBusyKey(f.id, "approve")}
                 disabled={busy}
                 showActionToast={false}
-                onClick={() => wf.handleApprove(f.id)}
+                onClick={() => wf.setFinalFailureId(f.id)}
               >
                 اعتماد التعذّر
               </Button>
@@ -168,13 +167,15 @@ export function FailuresViewExpandedActions({
         </div>
       ) : null}
 
+      {/* The supervisor's note serves «إعادة للأخصائي» and «تعليق المعاملة» only — «اعتماد
+          التعذّر» opens the final-failure dialog, which asks its own required reason. */}
       {canSupervisorAct ? (
         <div className="mt-3 border-t border-border/80 pt-3">
           <label
             className="mb-1.5 block text-[11px] font-semibold text-heading"
             htmlFor={`sup_note_${f.id}`}
           >
-            ملاحظة الاعتماد أو الإعادة
+            ملاحظة الإعادة أو التعليق
           </label>
           <textarea
             id={`sup_note_${f.id}`}
@@ -184,6 +185,42 @@ export function FailuresViewExpandedActions({
             value={wf.supervisorNote[f.id] ?? ""}
             onChange={(e) => wf.setSupervisorNoteFor(f.id, e.target.value)}
           />
+        </div>
+      ) : null}
+
+      {/* «تصعيد إلى المشرف» form: the explanation is required — the confirm button stays off
+          while it is blank (the escalation used to be one click with no text). A possible
+          failure never gets it: its button is «تأكيد تعذّر داخلي» instead. */}
+      {wf.escalateOpen[f.id] && canSpecialistAct && f.severity !== "suspected" ? (
+        <div className="mt-3 space-y-2.5 border-t border-border/80 pt-3">
+          <div>
+            <label
+              className="mb-1.5 block text-[11px] font-semibold text-heading"
+              htmlFor={`escalate_note_${f.id}`}
+            >
+              سبب التصعيد *
+            </label>
+            <textarea
+              id={`escalate_note_${f.id}`}
+              className={failuresFieldTextareaClass}
+              rows={3}
+              placeholder="اشرح للمشرف ما الذي حاولته ولماذا لم يُحل التعذّر…"
+              value={wf.escalateNote[f.id] ?? ""}
+              onChange={(e) => wf.setEscalateNoteFor(f.id, e.target.value)}
+            />
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="default"
+            className={actionBtn}
+            loading={wf.busyKey === failureBusyKey(f.id, "submit")}
+            disabled={!(wf.escalateNote[f.id] ?? "").trim() || busy}
+            showActionToast={false}
+            onClick={() => wf.handleSubmit(f.id)}
+          >
+            تأكيد التصعيد إلى المشرف
+          </Button>
         </div>
       ) : null}
 

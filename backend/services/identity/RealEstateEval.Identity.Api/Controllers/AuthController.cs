@@ -128,7 +128,7 @@ public class AuthController : ControllerBase
             return Ok(session);
 
         // A disabled account gets a distinct code so the device wipes its offline store
-        // on first contact (spec §3.4); a plain expiry must keep unsynced field work.
+        // on first contact (spec); a plain expiry must keep unsynced field work.
         if (await _sessions.IsDisabledAccountTokenAsync(request.RefreshToken, cancellationToken))
         {
             return this.UnauthorizedProblem("تم تعطيل الحساب")

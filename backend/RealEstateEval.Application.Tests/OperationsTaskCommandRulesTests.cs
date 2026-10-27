@@ -141,7 +141,7 @@ public class OperationsTaskCommandRulesTests
     [Fact]
     public void Numbering_PadsSequenceAndReferencesOnlyCourtVisits()
     {
-        // Decision 2026-10-20: two-digit year everywhere, and no Arabic prefix on any reference.
+        // two-digit year everywhere, and no Arabic prefix on any reference.
         Assert.Equal("T-26-0007", OperationsTaskCommandRules.DisplayId(2026, 7));
         Assert.Equal("T-26-12345", OperationsTaskCommandRules.DisplayId(2026, 12345));
         Assert.Equal("CV-26-0007", OperationsTaskCommandRules.Reference(2026, 7, courtVisit: true));

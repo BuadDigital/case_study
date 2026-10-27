@@ -11,6 +11,8 @@ type PropertyDetailHeroMenuInput = {
   caseStudyBusy?: boolean;
   onNavigate: (href: string) => void;
   onOpenFailure?: () => void;
+  /** «التعذّر النهائي عن المعاملة» — the section supervisor only, while the transaction is not final. */
+  onFinalFailure?: () => void;
 };
 
 export function buildPropertyDetailHeroMenuItems(
@@ -37,6 +39,16 @@ export function buildPropertyDetailHeroMenuItems(
       danger: true,
       disabled: Boolean(input.caseStudyBusy),
       onClick: input.onOpenFailure,
+    });
+  }
+
+  if (input.onFinalFailure) {
+    items.push({
+      id: "final-failure",
+      label: "التعذّر النهائي عن المعاملة",
+      danger: true,
+      disabled: Boolean(input.caseStudyBusy),
+      onClick: input.onFinalFailure,
     });
   }
 

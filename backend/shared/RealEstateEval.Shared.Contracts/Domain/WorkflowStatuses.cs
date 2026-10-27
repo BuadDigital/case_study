@@ -1,6 +1,6 @@
 namespace RealEstateEval.Domain;
 
-// PropertyFailureStatus moved to RealEstateEval.Failures.Domain (A8).
+// PropertyFailureStatus moved to RealEstateEval.Failures.Domain.
 
 public static class EvaluatorRecallStatus
 {

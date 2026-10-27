@@ -38,7 +38,7 @@ export function propertyWorkflowStatusStyle(
     case PropertyListRowStatuses.Fail:
     case "removed":
       return {
-        label: status === "removed" ? "محذوف" : "متعذّر",
+        label: status === "removed" ? "محذوف" : "تعذّر",
         base: "#d9694f",
         fg: "#c0553d",
       };

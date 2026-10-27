@@ -1,9 +1,9 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D11  Server errors for ownershipInterestKey and remainingLeaseYears point at their boxes on the
+//  • Server errors for ownershipInterestKey and remainingLeaseYears point at their boxes on the
 //         basics screen.
-//  • D9   retrospectiveRationale points at «مبرر التقييم بأثر رجعي».
-//  • Income  Income-screen targets (D17) for every input and the cap-rate rationale; new
+//  • retrospectiveRationale points at «مبرر التقييم بأثر رجعي».
+//  • Income  Income-screen targets for every input and the cap-rate rationale; new
 //            INCOME_FIELD_ERROR_KEYS maps screen fields to the server's keys.
 // Round 2 (1b19bedc)
 //  • Bounds  The matrix header's bounds (area factor, annual market rate, rounding) and the cost totals
@@ -205,7 +205,7 @@ export const VALUATION_WORK_ERROR_TARGETS: readonly ValuationWorkErrorTarget[] =
     screen: "cost",
   },
 
-  /* ─── أسلوب الدخل (رسملة مباشرة) — D17 ─── */
+  /* ─── أسلوب الدخل (رسملة مباشرة) — ─── */
   { key: "grossPotentialIncome", targetId: "income-grossPotentialIncome", screen: "income" },
   { key: "vacancyCollectionLossPct", targetId: "income-vacancyPct", screen: "income" },
   { key: "otherIncome", targetId: "income-otherIncome", screen: "income" },
@@ -268,7 +268,7 @@ export const COST_FIELD_ERROR_KEYS: Readonly<Record<string, string>> = {
   lifeExtensionBasis: "lifeExtensionBasis",
 };
 
-/** D17 — income screen field → the server key its validation answers with. */
+/** Income screen field → the server key its validation answers with. */
 export const INCOME_FIELD_ERROR_KEYS = {
   grossPotentialIncome: "grossPotentialIncome",
   vacancyPct: "vacancyCollectionLossPct",
@@ -316,7 +316,7 @@ export function normalizeValuationWorkErrors(
 const ALERT_OVERRIDE_PREFIX = "methodologyAlertOverrides.";
 
 /**
- * `methodologyAlertOverrides.m17_large_adjustments` (decision B: a short override rationale) →
+ * `methodologyAlertOverrides.m17_large_adjustments` (a short override rationale) →
  * that alert's rationale box, on the screen whose panel shows the alert.
  */
 function alertOverrideTarget(key: string): ValuationWorkErrorTarget | null {

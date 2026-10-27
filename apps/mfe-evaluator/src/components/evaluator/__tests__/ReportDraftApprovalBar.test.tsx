@@ -86,7 +86,7 @@ describe("ReportDraftApprovalBar", () => {
 
     await waitFor(() => expect(api.approveReportDraft).toHaveBeenCalledTimes(1));
     const today = new Date().toLocaleDateString("en-CA");
-    // Decision 2026-10-19: the report number is fixed on the server before the copy is printed.
+    // The report number is fixed on the server before the copy is printed.
     expect(api.ensureReportNumber).toHaveBeenCalledWith({ token: "t" }, "vr-1");
     expect(buildApprovedHtml).toHaveBeenCalledWith(today, expect.any(Function), "PRV-2026-00007");
     expect(api.approveReportDraft).toHaveBeenCalledWith({ token: "t" }, "vr-1", { reportDate: today, html: "<p>report</p>" });

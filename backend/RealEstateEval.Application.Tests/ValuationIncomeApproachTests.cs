@@ -15,7 +15,7 @@ using Xunit;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// D17 — income approach by direct capitalisation: the chain (EGI → NOI → value) by hand, the save
+/// Income approach by direct capitalisation: the chain (EGI → NOI → value) by hand, the save
 /// bounds (Arabic 400s, never 500s), the settings and freeze gates, alerts 26–28, the issuance gate
 /// «أسلوب الدخل مكتمل», and the income row in the reconciliation (with market/cost, or alone).
 /// </summary>

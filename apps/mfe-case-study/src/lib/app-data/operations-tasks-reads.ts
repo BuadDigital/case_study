@@ -88,7 +88,7 @@ export async function loadOperationsTasks(
 
 /**
  * The downloaded tasks paged on the device. Field roles get an empty page when
- * nothing was downloaded yet — never a connection error (spec §4.2).
+ * nothing was downloaded yet — never a connection error (spec).
  */
 async function offlineOperationsTasksPage(
   query: OperationsTaskListQuery,
@@ -121,7 +121,7 @@ type OperationsTasksPage = {
   totalPages: number;
 };
 
-/** One server page of operations tasks — pagination-contract §3. */
+/** One server page of operations tasks — pagination-contract. */
 export async function loadOperationsTasksPage(
   query: OperationsTaskListQuery,
 ): Promise<OperationsTasksPage> {

@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D15  New Arabic refusals: DuplicateCodeAr (the code is already on another current report) and
+//  • New Arabic refusals: DuplicateCodeAr (the code is already on another current report) and
 //         ConcurrentRegistrationAr (another request registered it first), plus ConflictKey so the controller
 //         answers 409.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -24,10 +24,10 @@ public static partial class DepositCertificateRules
     public const string TooLargeAr = "حجم شهادة الإيداع أكبر من المسموح (10 م.ب)";
     public const string OnePageAr = "شهادة الإيداع صفحة واحدة";
 
-    /// <summary>D15: the code is already recorded on another current report (or an earlier version of this one).</summary>
+    /// <summary>The code is already recorded on another current report (or an earlier version of this one).</summary>
     public const string DuplicateCodeAr = "رمز الإيداع مسجّل على تقرير آخر — تحقق من الرمز في شهادة الإيداع";
 
-    /// <summary>D15: another request registered this copy's code first.</summary>
+    /// <summary>Another request registered this copy's code first.</summary>
     public const string ConcurrentRegistrationAr = "سُجّل رمز الإيداع لهذا التقرير من طلب آخر للتو — حدّث الصفحة ثم أعد المحاولة";
 
     /// <summary>Marker key in the error map: the refusal is a conflict (the controller answers 409, the key itself is dropped).</summary>

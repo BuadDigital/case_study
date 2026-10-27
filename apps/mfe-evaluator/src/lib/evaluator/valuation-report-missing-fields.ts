@@ -158,13 +158,13 @@ const KEYED_FIELDS: Record<string, Record<string, FieldOrigin>> = {
   "33": { الموقع: INTAKE, "إحداثيات الموقع": INSPECTOR },
 };
 
-/** §25 — printed only when the value basis is liquidation. */
+/** Section 25 — printed only when the value basis is liquidation. */
 const LIQUIDATION_FIELDS: Record<string, FieldOrigin> = {
   "نسبة خصم التصفية المنظمة": FINAL,
   "مبرر خصم التصفية": FINAL,
 };
 
-/** §26 approval table (the certified valuer). */
+/** Section 26 approval table (the certified valuer). */
 const APPROVAL_FIELDS: Record<string, FieldOrigin> = {
   الاسم: VALUERS,
   "رقم العضوية": VALUERS,
@@ -174,7 +174,7 @@ const APPROVAL_FIELDS: Record<string, FieldOrigin> = {
   "فرع التقييم": REPORT_SETTINGS,
 };
 
-/** §26 participant rows filled from the valuers roster (one column per participant). */
+/** Section 26 participant rows filled from the valuers roster (one column per participant). */
 const PARTICIPANT_ROWS = [
   "المسمى الوظيفي",
   "فئة العضوية",
@@ -185,7 +185,7 @@ const PARTICIPANT_ROWS = [
 const BOUNDARY_SIDES = new Set(["الشمالية", "الجنوبية", "الشرقية", "الغربية"]);
 const METERED_SERVICES = new Set(["كهرباء", "ماء"]);
 
-/** §19 rows with one value per adopted comparable — factor rows stay unmarked (dash = not applied). */
+/** Section 19 rows with one value per adopted comparable — factor rows stay unmarked (dash = not applied). */
 const ADJUSTMENT_COMPARABLE_ROWS = new Set([
   "وصف العقار المقارن",
   "قيمة العقارات المقارنة",
@@ -538,7 +538,7 @@ function reportMissingFieldsFromRoot(root: ParentNode): ReportMissingField[] {
   return [...byKey.values()];
 }
 
-/** Same gap wherever it prints (e.g. «اسم المالك» in §2 and §7). */
+/** Same gap wherever it prints (e.g. «اسم المالك» in section 2 and section 7). */
 export function missingCellKey(cell: ReportMissingCell): string {
   return `${cell.source}|${cell.label}`;
 }

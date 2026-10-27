@@ -146,7 +146,7 @@ export function PropertyTransactionTimeline({
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
   const poNumber = record.poNumber.trim();
-  // Decision 2026-10-19: a transaction with several deeds has one timeline for all of them.
+  // A transaction with several deeds has one timeline for all of them.
   const { query: timelineQuery, invalidationKey } = usePropertyOrTransactionTimeline(poNumber, property);
   const queryClient = useQueryClient();
 

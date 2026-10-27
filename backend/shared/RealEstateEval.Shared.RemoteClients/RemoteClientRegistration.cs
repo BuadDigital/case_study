@@ -11,7 +11,7 @@ using RealEstateEval.Operations.Application.Abstractions;
 namespace RealEstateEval.Infrastructure;
 
 /// <summary>
-/// Registrations for the owner-to-owner HTTP clients (A8: moved out of the global
+/// Registrations for the owner-to-owner HTTP clients (: moved out of the global
 /// Infrastructure assembly with the clients themselves; the namespace is unchanged so
 /// host modules keep calling <c>services.AddRemote*</c> with no using churn).
 /// </summary>
@@ -77,7 +77,7 @@ public static class RemoteClientRegistration
     {
         services.AddUpstreamHttp(configuration);
         services.AddHttpClient<IValuationRequestService, HttpValuationRequestService>(WithLookupTimeout);
-        // Phase 5 (decision 2026-10-19): merge / unmerge folds the deeds' valuation requests on the Valuation host.
+        // Phase 5: merge / unmerge folds the deeds' valuation requests on the Valuation host.
         services.AddHttpClient<IValuationRequestFolding, HttpValuationRequestFolding>(WithLookupTimeout);
         services.AddHttpClient<IValuationReportReopenCommands, HttpValuationReportReopenCommands>(WithLookupTimeout);
         return services;

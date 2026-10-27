@@ -6,7 +6,7 @@ namespace RealEstateEval.Financial.Application.Services;
 
 /// <summary>
 /// The list half of the party billing use case — the paged and filtered reads of
-/// docs/architecture/pagination-contract.md §9. Statements are counted and cut in the database;
+/// docs/architecture/pagination-contract.md. Statements are counted and cut in the database;
 /// ready lines are synthesised first and the page is cut over that list.
 /// </summary>
 public partial class PartyBillingStatementService

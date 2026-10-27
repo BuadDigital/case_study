@@ -8,7 +8,7 @@
 //           a compounded subtotal «(مركّبة)»; the empty separate time row is gone.
 //  • Report Every included difference factor prints (differenceFactorRows), so the rows add up to «مجموع نسب
 //           التسويات»; the comparison value uses the unrounded marketOpinionValueRaw.
-//  • D17  The reconciliation row reads «أسلوب الدخل (رسملة مباشرة)».
+//  • The reconciliation row reads «أسلوب الدخل (رسملة مباشرة)».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 import {
@@ -32,7 +32,7 @@ export type SheetTableRow = {
   key: string;
   values: string[];
   /**
-   * §19 factor rows (area, location, streets): per comparable the comparable's description and
+   * Section 19 factor rows (area, location, streets): per comparable the comparable's description and
    * the adjustment % — printed as two cells under the comparable's column.
    */
   pairs?: Array<[string, string]>;
@@ -83,7 +83,7 @@ export function yesNoFromFlag(value: string | null | undefined): string {
   return "";
 }
 
-/** Report sheet §11 uses "exists" / "does not exist", not yes / no. */
+/** Report sheet section 11 uses "exists" / "does not exist", not yes / no. */
 export function existsFromYesNo(value: string | null | undefined): string {
   const t = (value ?? "").trim();
   if (t === "نعم" || t === "يوجد") return "يوجد";
@@ -237,7 +237,7 @@ export function areasFromInventory(
     builtAny = true;
   }
 
-  // §10 lists every component the specialist recorded (fence, elevator… too); the built-up
+  // Section 10 lists every component the specialist recorded (fence, elevator… too); the built-up
   // total below still sums floor areas only. Non-m² items show their quantity and unit.
   const descriptions: SheetTableRow[] = rows.map((l) => {
     const unit = (l.unit || "sqm").trim();
@@ -877,7 +877,7 @@ export function buildReconSheetRows(
       key: "أسلوب التكلفة — طريقة المقاول",
       kinds: ["cost", "replacement"],
     },
-    // D17 — direct capitalisation, printed with its method.
+    // Direct capitalisation, printed with its method.
     { key: "أسلوب الدخل (رسملة مباشرة)", kinds: ["income"] },
   ];
   const rows: SheetTableRow[] = [];

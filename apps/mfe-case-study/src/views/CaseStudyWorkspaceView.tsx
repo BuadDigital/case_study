@@ -159,7 +159,7 @@ function CaseStudyValuationPanel({
  * skeleton until the task, record, deed and transaction are loaded; 4) builds the report's deeds
  * block (`caseStudyReportDeeds`) and passes it and the transaction to the study and appraisal tabs.
  *
- * Edge cases: phase 4 (decision 2026-10-19) — one study per transaction, so a folded deed never
+ * Edge cases: phase 4 — one study per transaction, so a folded deed never
  * opens its own study; the server resolves writes to the holder the same way. A failed
  * transaction read still counts as fetched, so it never blocks the page.
  */
@@ -242,7 +242,7 @@ export function CaseStudyWorkspaceView({
     return record.properties.findIndex((p) => p.id === property.id);
   }, [record, property]);
 
-  // Phase 4 (decision 2026-10-19): one study per transaction. A deed folded into another
+  // Phase 4: one study per transaction. A deed folded into another
   // deed's study opens that deed's workspace — the server resolves writes the same way.
   const { data: transaction, isFetched: transactionFetched } = useTransactionQuery(property?.id);
   const holderTaskId = transaction?.studyHolderTaskId?.trim() || null;

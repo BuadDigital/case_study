@@ -352,7 +352,7 @@ export type MapGroupedPoint = MapSinglePoint | MapGroupPoint;
 
 /**
  * Turns map records into points: one point per deed, or one cluster per transaction with
- * several deeds (decision 2026-10-19: `propertyGroupId` is the transaction id).
+ * several deeds (`propertyGroupId` is the transaction id).
  *
  * How it works: 1) records without a group id become single points; 2) the rest are bucketed by
  * group id; 3) a bucket of two or more becomes a cluster (deed count, active when any member is

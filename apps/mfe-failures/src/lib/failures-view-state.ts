@@ -5,6 +5,7 @@ import {
   type FailureRecord,
 } from "@platform/app-shared/failures/failures-types";
 import { failureRecordTitle } from "./failures-labels";
+import type { FailuresTab } from "./failures-list-page";
 import { isPartyScopedFailuresRole } from "./failures-party-raiser-scope";
 
 /**
@@ -39,8 +40,18 @@ export function partyScopedFailuresEmptyLine(role: RoleId): string | null {
 export const FAILURES_DEFAULT_EMPTY_LINE =
   "لا توجد تعذّرات — سجّل تعذّراً من شاشة العقارات.";
 
-/** Empty-queue message: the party-scoped hint when there is one, else the generic line. */
-export function failuresEmptyLine(role: RoleId): string {
+/**
+ * Empty-tab message. «التعذّرات» has its own line; on «تحتاج إجراء» the supervisor reads
+ * that nothing is escalated, a party role its raising hint, everyone else the generic line.
+ *
+ * How it works: the tab decides first, then the role. Edge cases: `tab` defaults to «تحتاج
+ * إجراء» so callers from before the tabs keep their old line; the supervisor's line exists
+ * because his tab holds only escalated failures, and the generic «سجّل تعذّراً» hint was wrong
+ * for him.
+ */
+export function failuresEmptyLine(role: RoleId, tab: FailuresTab = "action"): string {
+  if (tab === "final") return "لا توجد تعذّرات نهائية.";
+  if (role === "section-supervisor") return "لا توجد تعذّرات مصعّدة بانتظار اعتمادك.";
   return partyScopedFailuresEmptyLine(role) ?? FAILURES_DEFAULT_EMPTY_LINE;
 }
 
@@ -57,42 +68,37 @@ export function viewerModeNote(role: RoleId): string | null {
 }
 
 export type FailuresKpiStats = {
-  open: number;
+  /** With the specialist: possible / internal failures and the ones returned to them. */
+  withSpecialist: number;
+  /** Escalated, waiting for the supervisor's approval. */
   review: number;
-  closed: number;
-  total: number;
-  closedPct: string;
+  /** Final failures (approved) — the «التعذّرات» tab. */
+  final: number;
 };
 
 /**
- * One pass computes all four badges — countOpenFailures was a second full pass
- * over the same array (js-combine-iterations). Whole set, not the page: there
- * is no /api/failures/counts endpoint (pagination-contract §5).
+ * One pass computes the three badges. Whole set, not the page: there is no
+ * /api/failures/counts endpoint (see the pagination contract). Resolved and suspended
+ * failures are on no tab, so they count nowhere.
+ *
+ * How it works: `internal` (possible or internal) and `returned` count as «عند الأخصائي»,
+ * `review` as «قيد المراجعة», `approved` as «تعذّرات نهائية».
+ *
+ * Edge cases: the three counters are the same for every role (only the items differ for party
+ * roles), so the supervisor reads his own work in «قيد المراجعة» and the specialist his in the
+ * first cell. The old «الإجمالي» and «معتمدة / تم الحل» cells were dropped with the tabs — they
+ * counted resolved failures the screen no longer shows.
  */
 export function failuresKpiStats(items: FailureRecord[]): FailuresKpiStats {
-  let open = 0;
+  let withSpecialist = 0;
   let review = 0;
-  let closed = 0;
-  let total = 0;
+  let final = 0;
   for (const f of items) {
-    if (
-      isActiveFailureStatus(f.status) &&
-      (f.status === "internal" || f.status === "review" || f.status === "returned")
-    ) {
-      open += 1;
-    }
-    if (f.status === "review") review += 1;
-    else if (f.status === "approved" || f.status === "resolved") closed += 1;
-    if (f.status !== "suspended") total += 1;
+    if (f.status === "internal" || f.status === "returned") withSpecialist += 1;
+    else if (f.status === "review") review += 1;
+    else if (f.status === "approved") final += 1;
   }
-  return {
-    open,
-    review,
-    closed,
-    total,
-    closedPct:
-      total > 0 ? `${Math.round((closed / total) * 100)}% من الإجمالي` : "—",
-  };
+  return { withSpecialist, review, final };
 }
 
 /** Work order → assignment specialist, from the case-study bridge records. */
@@ -107,20 +113,41 @@ export function assignmentSpecialistByPo(
   return map;
 }
 
-/** Row / card title: the deed with its «صك» prefix, else the failure title. */
+/** Mobile card title: the deed with its «صك» prefix, else the failure title. */
 export function failureRowTitle(f: FailureRecord): string {
   if (!f.deedNumber) return failureRecordTitle(f);
   return f.deedNumber.startsWith("صك") ? f.deedNumber : `صك ${f.deedNumber}`;
 }
 
-/** Card specialist: the assignment specialist of the work order, else the record's own. */
-export function failureCardSpecialist(
-  f: FailureRecord,
-  specialistByPo: Map<string, string>,
-): string {
-  return (
-    specialistByPo.get(f.poNumber.trim())?.trim() || f.specialist?.trim() || ""
-  );
+/**
+ * Table cell under «رقم الصك/التسجيل العيني»: the bare number (a stored «صك» prefix dropped), else «—».
+ *
+ * How it works: trims, removes a leading «صك» with any spaces after it, falls back to «—».
+ *
+ * Edge cases: the cell used to reuse `failureRowTitle`, which added «صك» before the number (wrong
+ * for a registration number under a header that already names it) and printed the problem type
+ * when there was no deed — under a deed-number header. The phone card keeps `failureRowTitle`,
+ * since a card has no column header to say what the number is.
+ */
+export function failureDeedCell(f: Pick<FailureRecord, "deedNumber">): string {
+  return (f.deedNumber ?? "").trim().replace(/^صك\s*/, "") || "—";
+}
+
+/**
+ * «الأخصائي» on a failure (table cell and phone card alike): the company's case specialist
+ * assigned to the deed, "" until one is. Not the work order's `assignmentSpecialist` — that is
+ * Enfaz's «أخصائي الإسناد».
+ *
+ * How it works: reads `caseSpecialistName`, which the failures API fills from the deed's
+ * case-study task assignee.
+ *
+ * Edge cases: the table once showed the name stored on the record when it was raised (often a
+ * role label such as «النظام» or the inspector), and the phone card the work order's
+ * `assignmentSpecialist` — two different people for one failure, and the second was Enfaz's.
+ * Both now read this one field; "" renders «—».
+ */
+export function failureSpecialistName(f: Pick<FailureRecord, "caseSpecialistName">): string {
+  return f.caseSpecialistName?.trim() || "";
 }
 
 type FailureCardTone = "done" | "pending" | "returned";
@@ -177,7 +204,16 @@ export function failureActionPermissions(
 
 type FailureMetaRow = { label: string; value: string };
 
-/** The label/value lines under the title in the expanded panel. */
+/**
+ * The label/value lines under the title in the expanded panel.
+ *
+ * How it works: each non-blank note becomes a row in the order the failure lived them — raise
+ * note, «سبب التصعيد», «قرار المشرف», the resolve pair — then, while under review, Enfaz's
+ * «أخصائي الإسناد» the supervisor consults.
+ *
+ * Edge cases: «سبب التصعيد» was added with the required escalation note; failures escalated
+ * before it carry none and simply show no row.
+ */
 export function failureMetaRows(
   f: FailureRecord,
   specialistByPo: Map<string, string>,
@@ -185,6 +221,9 @@ export function failureMetaRows(
   const rows: FailureMetaRow[] = [];
   if (f.internalNote?.trim()) {
     rows.push({ label: "ملاحظات", value: f.internalNote.trim() });
+  }
+  if (f.escalationNote?.trim()) {
+    rows.push({ label: "سبب التصعيد", value: f.escalationNote.trim() });
   }
   if (f.finalNote?.trim()) {
     rows.push({ label: "قرار المشرف", value: f.finalNote.trim() });

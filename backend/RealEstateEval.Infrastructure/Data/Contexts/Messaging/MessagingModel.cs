@@ -12,11 +12,11 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// consumer name. Command-idempotency records are likewise mapped by owner contexts that keep
 /// their reservations in their own databases.
 /// <para>
-/// Platform-owned notification / push tables (D3) are mapped here and by the legacy context
+/// Platform-owned notification / push tables are mapped here and by the legacy context
 /// for transitional dual write until owner APIs replace them.
 /// </para>
 /// </summary>
-// A8: public — owner contexts (incl. Valuation outbox mapping) live in context libraries.
+// Public — owner contexts (incl. Valuation outbox mapping) live in context libraries.
 public static class MessagingModel
 {
     public static ModelBuilder ApplyOutboxModel(this ModelBuilder builder, bool ownsMigrations = true)
@@ -86,7 +86,7 @@ public static class MessagingModel
     }
 
  /// <summary>
- /// Platform-owned in-app notification inbox and web-push rows (D3). Migration ownership is
+ /// Platform-owned in-app notification inbox and web-push rows. Migration ownership is
  /// <see cref="MessagingDbContext"/>; legacy maps ExcludeFromMigrations for dual/transitional paths.
  /// </summary>
     public static ModelBuilder ApplyNotificationModel(

@@ -11,6 +11,8 @@ public class FailureRecordDto
     public string Severity { get; set; } = "internal";
     public string RaisedByRole { get; set; } = "";
     public string InternalNote { get; set; } = "";
+    /// <summary>The specialist's explanation when escalating to the supervisor.</summary>
+    public string EscalationNote { get; set; } = "";
     public string FinalNote { get; set; } = "";
     public string ResolutionReason { get; set; } = "";
     public string ContinueInstructions { get; set; } = "";
@@ -22,6 +24,12 @@ public class FailureRecordDto
     public string? SuspendedByUserId { get; set; }
     public string? SurveyFreezeLiftedAt { get; set; }
     public string? SurveyFreezeLiftReason { get; set; }
+    /// <summary>The property's transaction number (PR-… or TMP-…); null when the property is not found.</summary>
+    public string? TransactionNumber { get; set; }
+    /// <summary>Deeds in that transaction (1 for an ordinary property).</summary>
+    public int TransactionDeedCount { get; set; } = 1;
+    /// <summary>The company's case specialist on the deed («الأخصائي»); null until one is assigned.</summary>
+    public string? CaseSpecialistName { get; set; }
 }
 
 public class CreateFailureRequest
@@ -50,6 +58,24 @@ public class ResolveFailureRequest
 {
     public string ResolutionReason { get; set; } = "";
     public string ContinueInstructions { get; set; } = "";
+}
+
+/// <summary>
+/// «التعذر النهائي عن المعاملة» from the property ⋮ menu or the supervisor's approve button.
+/// Lands on every live deed of the deed's transaction.
+/// </summary>
+public class FinalFailureRequest
+{
+    public string PoNumber { get; set; } = "";
+    public string PropertyId { get; set; } = "";
+    /// <summary>Required only for a deed with no open failure to finalize.</summary>
+    public string? ProblemTypeId { get; set; }
+    /// <summary>The problem type's label, stored as the new failure's title.</summary>
+    public string? Title { get; set; }
+    /// <summary>The supervisor's reason — stored as the final note on every deed.</summary>
+    public string Reason { get; set; } = "";
+    /// <summary>Notify the parties holding tasks on the deeds; false stops them silently.</summary>
+    public bool NotifyParties { get; set; }
 }
 
 public class FailureNoteRequest

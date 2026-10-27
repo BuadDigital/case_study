@@ -149,7 +149,7 @@ export function KeyEnvelopeDetailPage({
               ) : null}
             </div>
 
-            {/* Decision 2026-10-20: while the reviewer holds the envelope and every one of our deeds
+            {/* While the reviewer holds the envelope and every one of our deeds
                 was tried with its matching key back, hint that it can go back to the court. */}
             {env.readyForCourtReturn && env.status === "reviewer" ? (
               <div
@@ -194,7 +194,7 @@ export function KeyEnvelopeDetailPage({
               <KeysPpCell label="مستلم الظرف">
                 {displayPersonName(env.createdByName)}
               </KeysPpCell>
-              {/* Decision 2026-10-20: the envelope's one explicit holder (changes only when the receiver confirms). */}
+              {/* The envelope's one explicit holder (changes only when the receiver confirms). */}
               <KeysPpCell label="عند من الآن">
                 {envelopeHolderText(env)}
               </KeysPpCell>

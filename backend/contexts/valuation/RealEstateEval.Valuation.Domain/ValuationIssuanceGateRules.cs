@@ -1,11 +1,11 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  New gate income_approach_complete «أسلوب الدخل مكتمل»: an enabled income approach needs gross
+//  • New gate income_approach_complete «أسلوب الدخل مكتمل»: an enabled income approach needs gross
 //         income, a cap rate and a positive NOI before issuance.
 // Round 2 (1b19bedc)
 //  • B    New gate adjustment_rationales_<table> «مبررات التسويات والأوزان اليدوية»: a non-zero factor or
 //         manual weight without a 10-character rationale blocks issue and hand-over, each item named.
-//  • R2-1 AttachmentScopeKeys — documents are also looked up under the survey task id, so the
+//  • AttachmentScopeKeys — documents are also looked up under the survey task id, so the
 //         engineering survey «التقرير المساحي» is found for vacant land.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -30,10 +30,10 @@ public static class ValuationIssuanceGateCodes
     public const string ValueDocuments = "value_documents";
     /// <summary>The specialist issued the case-study report the appraisal is built on.</summary>
     public const string StudyReportIssued = "study_report_issued";
-    /// <summary>D17 — the enabled income approach has income, a cap rate and a positive NOI.</summary>
+    /// <summary>The enabled income approach has income, a cap rate and a positive NOI.</summary>
     public const string IncomeApproachComplete = "income_approach_complete";
     /// <summary>
-    /// Round 2 (Q-8-2 / decision B): every non-zero adjustment factor and every manual weight of an
+    /// Round 2: every non-zero adjustment factor and every manual weight of an
     /// adopted comparable is explained (≥ 10 characters). Suffixed per table: <c>_market</c> /
     /// <c>_land_within_cost</c>.
     /// </summary>
@@ -212,7 +212,7 @@ public static class ValuationIssuanceGateRules
                 : null);
 
     /// <summary>
-    /// D17: an enabled income approach must yield an indicator before issuance — gross income, a
+    /// An enabled income approach must yield an indicator before issuance — gross income, a
     /// capitalisation rate and a positive net operating income. Skipped (pass) when it is off.
     /// </summary>
     public static ValuationIssuanceGateCheck IncomeApproachComplete(

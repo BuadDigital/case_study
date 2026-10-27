@@ -3,7 +3,7 @@ namespace RealEstateEval.Failures.Application.Contracts;
 /// <summary>
 /// Server-side paging / filtering / sorting for <c>GET /api/failures</c>. Every member is optional:
 /// an instance with no page and no page size keeps the legacy plain-array response.
-/// See docs/architecture/pagination-contract.md §5.
+/// See docs/architecture/pagination-contract.md.
 /// </summary>
 public sealed record FailureListQuery
 {

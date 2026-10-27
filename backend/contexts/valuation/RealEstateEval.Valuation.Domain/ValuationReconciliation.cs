@@ -1,14 +1,14 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  New approach kind «income» («أسلوب الدخل (رسملة مباشرة)») with ValueOf for the live indicator
+//  • New approach kind «income» («أسلوب الدخل (رسملة مباشرة)») with ValueOf for the live indicator
 //         of each kind.
-//  • D17  Suggested weights take the income value third: the full weight goes to the first live
+//  • Suggested weights take the income value third: the full weight goes to the first live
 //         indicator of market → cost → income.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 namespace RealEstateEval.Valuation.Domain;
 
-/// <summary>Approach kinds that can participate in reconciliation (income: D17 direct capitalisation).</summary>
+/// <summary>Approach kinds that can participate in reconciliation (income: direct capitalisation).</summary>
 public static class ValuationApproachKinds
 {
     public const string Market = "market";
@@ -315,7 +315,7 @@ public static class ReconciliationRules
     }
 
     /// <summary>
-    /// D17: the same market-first split with the income approach third — the full weight goes to
+    /// The same market-first split with the income approach third — the full weight goes to
     /// the first live indicator of market → cost → income; the appraiser re-weights.
     /// </summary>
     public static IReadOnlyList<(string kind, decimal weightPct)> SuggestWeights(

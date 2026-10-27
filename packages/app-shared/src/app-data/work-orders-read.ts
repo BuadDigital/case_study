@@ -117,7 +117,7 @@ type PoListRowsPage = {
 /**
  * One server page of the PO list: paging, status/type filtering, free-text
  * search and sorting all happen in the query
- * (`docs/architecture/pagination-contract.md` §1).
+ * (`docs/architecture/pagination-contract.md`).
  */
 export async function loadPoListRowsPage(
   query: WorkOrderListQuery,
@@ -136,7 +136,7 @@ export async function loadPoListRowsPage(
 
 /**
  * The PO list KPI band and empty-state totals in one `COUNT` call — no rows are
- * materialised (`docs/architecture/pagination-contract.md` §1.1). Takes the
+ * materialised (`docs/architecture/pagination-contract.md`). Takes the
  * list's filters only; the page window and the sort are meaningless here.
  */
 export async function loadPoListCounts(

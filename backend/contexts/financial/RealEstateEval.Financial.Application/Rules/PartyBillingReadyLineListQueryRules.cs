@@ -19,7 +19,7 @@ public enum PartyBillingReadyLineListSortKey
 /// <c>GET /api/party-billing-statements/ready-lines</c>. The rows are synthesised by the use
 /// case, so unlike the EF-backed lists this module also applies the search and the sort — over
 /// the full materialised list, before the page is cut. No I/O.
-/// See docs/architecture/pagination-contract.md §9.2.
+/// See docs/architecture/pagination-contract.md.
 /// </summary>
 public static class PartyBillingReadyLineListQueryRules
 {

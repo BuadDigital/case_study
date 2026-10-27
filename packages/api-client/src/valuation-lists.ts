@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 2 (1b19bedc)
-//  • R2   Other failed responses go through serverFailure: a 503 (an unreachable service) now carries the
+//  • Other failed responses go through serverFailure: a 503 (an unreachable service) now carries the
 //         server's Arabic message instead of a bare «server» failure.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 

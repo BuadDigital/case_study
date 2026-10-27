@@ -27,7 +27,7 @@ public sealed class OperationsTaskNotifier
     private readonly IUserLabelLookup _labels;
     private readonly TimeProvider _time;
 
-    // A8: the IdentityDbContext convenience ctor is gone — pass IIdentityDirectory + IUserLabelLookup.
+    // The IdentityDbContext convenience ctor is gone — pass IIdentityDirectory + IUserLabelLookup.
 
     [ActivatorUtilitiesConstructor]
     public OperationsTaskNotifier(

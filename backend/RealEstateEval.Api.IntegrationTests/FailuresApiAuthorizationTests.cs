@@ -60,6 +60,7 @@ public class FailuresApiAuthorizationTests : IClassFixture<FailuresApiFactory>
     [InlineData("/api/failures/{id}/resolve")]
     [InlineData("/api/failures/{id}/approve")]
     [InlineData("/api/failures/{id}/return")]
+    [InlineData("/api/failures/final")]
     [InlineData("/api/failures/bourse-obstruction")]
     public async Task Parties_may_raise_failures_but_never_adjudicate_them(string template)
     {

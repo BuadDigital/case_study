@@ -88,7 +88,7 @@ public class RepositoryBoundaryTests
                 "RealEstateEval.Operations.Infrastructure",
                 "Services")))
             ;
-        // A8: the case-study lookup/commands/mapper services moved into the context's
+        // The case-study lookup/commands/mapper services moved into the context's
         // Services directory above, so no stray global-Infrastructure paths remain to scan.
 
         var violations = files

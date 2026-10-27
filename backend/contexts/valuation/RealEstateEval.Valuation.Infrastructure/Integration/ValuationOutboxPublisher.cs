@@ -6,7 +6,7 @@ using RealEstateEval.Infrastructure.Integration;
 
 namespace RealEstateEval.Valuation.Infrastructure.Integration;
 
-/// <summary>Outbox writer owned by the Valuation context (A8: lives beside its context).</summary>
+/// <summary>Outbox writer owned by the Valuation context (lives beside its context).</summary>
 public sealed class ValuationOutboxPublisher(
     ValuationDbContext db,
     ILogger<ValuationOutboxPublisher> logger,

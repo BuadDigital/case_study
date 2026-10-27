@@ -11,7 +11,7 @@ import {
 function mapStatus(status: string): VrRow["status"] {
   if (status === "done") return "done";
   if (status === "fail") return "fail";
-  // Decision 2026-10-19: one valuation per transaction — a folded deed's request reads «merged».
+  // One valuation per transaction — a folded deed's request reads «merged».
   if (status === "merged") return "merged";
   return "progress";
 }

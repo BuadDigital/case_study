@@ -78,7 +78,7 @@ public class ValuationComparableSelectionsController : ControllerBase
         return Ok(result);
     }
 
-    /// <summary>Q-8-1: one factor-level rationale covers all comparables — save/clear.</summary>
+    /// <summary>One factor-level rationale covers all comparables — save/clear.</summary>
     [HttpPut("~/api/valuation-requests/{valuationRequestId:guid}/adjustment-factor-rationale")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     [RequireAssignedAppraiser]

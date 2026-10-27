@@ -48,7 +48,7 @@ public interface IValuationComparableSelectionService
         SaveValuationMarketApproachRequest request,
         CancellationToken cancellationToken = default);
 
- /// <summary>Q-8-1: single adjustment-factor rationale (empty = clear).</summary>
+ /// <summary>Single adjustment-factor rationale (empty = clear).</summary>
     Task<(ValuationAdjustmentFactorRationaleDto? Result, Dictionary<string, string>? Errors)>
         SaveFactorRationaleAsync(
             Guid valuationRequestId,

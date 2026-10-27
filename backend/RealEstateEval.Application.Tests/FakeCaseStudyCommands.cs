@@ -5,7 +5,7 @@ namespace RealEstateEval.Application.Tests;
 
 /// <summary>
 /// Stands in for the Case Study owner call that confirms the transaction's PR reference
-/// (decision 2026-10-19). Hands back a fixed root so the report number is PRV-2026-00001.
+///Hands back a fixed root so the report number is PRV-2026-00001.
 /// </summary>
 public sealed class FakeCaseStudyCommands : ICaseStudyCommands
 {

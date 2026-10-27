@@ -332,7 +332,7 @@ export async function listOfflineDrafts(
   return listEncrypted<OfflineDraftRecord>("drafts", userId);
 }
 
-/** The server confirmed the save — the local copy of the draft goes (spec §3.4). */
+/** The server confirmed the save — the local copy of the draft goes (spec). */
 export async function deleteOfflineDraft(
   userId: string,
   id: string,
@@ -485,7 +485,7 @@ export async function listOfflineBlobMeta(
 
 /**
  * The server confirmed the upload: record its id and drop the local bytes
- * (spec §3.4 — the local copy goes once each item is confirmed). The small
+ * (spec — the local copy goes once each item is confirmed). The small
  * encrypted meta row stays only as the local→server id mapping until nothing
  * queued refers to it (`releaseSyncedLocalCopies`).
  */

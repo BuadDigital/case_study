@@ -67,7 +67,7 @@ export async function listNotifications(
 }
 
 /**
- * `GET /api/notifications` query — pagination-contract §6. The feed has one
+ * `GET /api/notifications` query — pagination-contract. The feed has one
  * meaningful order, so `sort` is `created` and any other value resolves to it.
  */
 export type NotificationListQuery = {
@@ -97,7 +97,7 @@ function notificationListParams(query?: NotificationListQuery) {
 }
 
 /**
- * One server page of the signed-in user's bell feed — pagination-contract §6.
+ * One server page of the signed-in user's bell feed — pagination-contract.
  * The unpaged `listNotifications` stays on its own 50-row cap, and the SSE
  * stream is untouched.
  */

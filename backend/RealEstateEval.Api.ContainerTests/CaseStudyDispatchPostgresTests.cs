@@ -15,7 +15,7 @@ using CaseStudyDispatchMarker = CaseStudyApi::RealEstateEval.CaseStudy.Api.Contr
 namespace RealEstateEval.Api.ContainerTests;
 
 /// <summary>
-/// The A9 dispatch surface other services depend on (Valuation context read, Failures
+/// The dispatch surface other services depend on (Valuation context read, Failures
 /// side effects), executed over HTTP against a migrated Postgres.
 /// </summary>
 [Collection(PostgresCollection.Name)]
@@ -54,7 +54,7 @@ public sealed class CaseStudyDispatchPostgresTests : IAsyncLifetime
             DueDateAt = new DateOnly(2026, 9, 1),
             CreatedAtUtc = DateTime.UtcNow,
         });
-        // Decision 2026-10-19: every deed sits under a transaction (FK enforced on Postgres).
+        // Every deed sits under a transaction (FK enforced on Postgres).
         var transaction = Transaction.CreateDraft($"TMP-26-{Random.Shared.Next(10000, 99999)}", DateTime.UtcNow);
         cs.Transactions.Add(transaction);
         cs.WorkOrderProperties.Add(new WorkOrderProperty

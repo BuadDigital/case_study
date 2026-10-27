@@ -245,7 +245,7 @@ public class ValuationCostApproachServiceTests
         // Freehold: the same inputs keep the full life.
         Assert.Null(CostLeaseTerms.RemainingLeaseYears(
             new ValuationApproachSettings { OwnershipInterestKey = OwnershipInterestKeys.Freehold, RemainingLeaseYears = 10m }));
-        // Round 2 (D11): the cap holds whatever the scope — land with buildings included.
+        // Round 2: the cap holds whatever the scope — land with buildings included.
         Assert.Equal(10m, CostLeaseTerms.RemainingLeaseYears(
             new ValuationApproachSettings { OwnershipInterestKey = OwnershipInterestKeys.LeasedLand, RemainingLeaseYears = 10m, CostScopeKey = CostScopeKeys.LandAndBuilding }));
     }

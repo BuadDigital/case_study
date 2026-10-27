@@ -11,7 +11,7 @@ import { resetSnapshotFallback } from "@platform/app-shared/offline/snapshot-fal
 /**
  * Online, but a list fell back to the copy saved on the device because the
  * server failed (po-intake / operations-tasks reads). Office roles only — field
- * roles never see connection messages (spec §4.2), same as `OfflineBanner`.
+ * roles never see connection messages (spec), same as `OfflineBanner`.
  * While offline `OfflineBanner` speaks instead.
  */
 export function SnapshotFallbackNotice() {

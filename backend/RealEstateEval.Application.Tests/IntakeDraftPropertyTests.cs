@@ -7,7 +7,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// Decision 2026-10-18: no client-side property ids. Opening an empty slot creates the property
+/// No client-side property ids. Opening an empty slot creates the property
 /// as a draft on the server and links the slot to it, so every upload carries the real id.
 /// </summary>
 public class IntakeDraftPropertyTests
@@ -56,7 +56,7 @@ public class IntakeDraftPropertyTests
         Assert.Equal(order.Id, row.WorkOrderId);
         Assert.Equal("", row.DeedNumber);
         Assert.False(row.BourseDataCompleted);
-        // Decision 2026-10-19: a draft transaction (D- number) opens with the deed; no official PR yet.
+        // A draft transaction (D- number) opens with the deed; no official PR yet.
         var transaction = bundle.CaseStudy.Transactions.Single(t => t.Id == row.TransactionId);
         Assert.StartsWith("TMP-", transaction.DraftNumber);
         Assert.Null(transaction.ReferenceNumber);

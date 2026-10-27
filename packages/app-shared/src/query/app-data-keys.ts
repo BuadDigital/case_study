@@ -1,26 +1,26 @@
 export const appDataKeys = {
   all: ["app-data"] as const,
   poListRows: () => [...appDataKeys.all, "po-list-rows"] as const,
-  /** One server page of the PO list — see docs/architecture/pagination-contract.md §1. */
+  /** One server page of the PO list — see docs/architecture/pagination-contract.md. */
   poListRowsPage: (query: Record<string, unknown>) =>
     [...appDataKeys.poListRows(), "page", query] as const,
   /**
-   * The PO list KPI counts for one filter set — pagination-contract §1.1. Under the rows prefix
+   * The PO list KPI counts for one filter set — pagination-contract. Under the rows prefix
    * so a work-order change (a handover, an intake) refreshes the band with the rows.
    */
   poListCounts: (query: Record<string, unknown>) =>
     [...appDataKeys.poListRows(), "counts", query] as const,
   /** Prefix every party-billing read shares, so a write invalidates them all. */
   partyBilling: () => [...appDataKeys.all, "party-billing"] as const,
-  /** One server page of statements — pagination-contract §9.1. */
+  /** One server page of statements — pagination-contract. */
   partyBillingStatementsPage: (query: Record<string, unknown>) =>
     [...appDataKeys.partyBilling(), "statements", "page", query] as const,
-  /** One server page of ready dues — pagination-contract §9.2. */
+  /** One server page of ready dues — pagination-contract. */
   partyBillingReadyLinesPage: (query: Record<string, unknown>) =>
     [...appDataKeys.partyBilling(), "ready-lines", "page", query] as const,
   partyBillingStatement: (statementId: string) =>
     [...appDataKeys.partyBilling(), "statement", statementId] as const,
-  /** One server page of Enfaz-ready work orders — pagination-contract §10.1. */
+  /** One server page of Enfaz-ready work orders — pagination-contract. */
   enfazReadyPosPage: (query: Record<string, unknown>) =>
     [...appDataKeys.all, "enfaz-billing", "ready-summary", "page", query] as const,
   workOrderDtos: () => [...appDataKeys.all, "work-order-dtos"] as const,
@@ -29,17 +29,17 @@ export const appDataKeys = {
   poRecord: (poNumber: string) =>
     [...appDataKeys.all, "po-record", poNumber] as const,
   workflowTasks: () => [...appDataKeys.all, "workflow-tasks"] as const,
-  /** Server-filtered workflow tasks (all matching rows) — pagination-contract §2. */
+  /** Server-filtered workflow tasks (all matching rows) — pagination-contract. */
   workflowTasksFiltered: (query: Record<string, unknown>) =>
     [...appDataKeys.workflowTasks(), "filtered", query] as const,
-  /** One server page of workflow tasks — pagination-contract §2. */
+  /** One server page of workflow tasks — pagination-contract. */
   workflowTasksPage: (query: Record<string, unknown>) =>
     [...appDataKeys.workflowTasks(), "page", query] as const,
   operationsTasks: () => [...appDataKeys.all, "operations-tasks"] as const,
-  /** Server-filtered operations tasks (all matching rows) — pagination-contract §3. */
+  /** Server-filtered operations tasks (all matching rows) — pagination-contract. */
   operationsTasksFiltered: (query: Record<string, unknown>) =>
     [...appDataKeys.operationsTasks(), "filtered", query] as const,
-  /** One server page of operations tasks — pagination-contract §3. */
+  /** One server page of operations tasks — pagination-contract. */
   operationsTasksPage: (query: Record<string, unknown>) =>
     [...appDataKeys.operationsTasks(), "page", query] as const,
   courtVisitFees: (query?: { creditAssigneeId?: string }) =>
@@ -47,7 +47,7 @@ export const appDataKeys = {
   pendingBourseItems: () =>
     [...appDataKeys.all, "pending-bourse-items"] as const,
   failures: () => [...appDataKeys.all, "failures"] as const,
-  /** One server page of the failures queue — pagination-contract §5. Shares the `failures` prefix so one invalidation covers both. */
+  /** One server page of the failures queue — pagination-contract. Shares the `failures` prefix so one invalidation covers both. */
   failuresPage: (query: Record<string, unknown>) =>
     [...appDataKeys.failures(), "page", query] as const,
   failureTypes: () => [...appDataKeys.all, "failure-types"] as const,

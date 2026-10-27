@@ -4,7 +4,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
-/// Q-9 (Suleiman's wording): transaction / case-study state machine — a distribution-and-dependency
+/// (Suleiman's wording): transaction / case-study state machine — a distribution-and-dependency
 /// network, not a linear chain.
 /// Foundational stages are sequential: work-order intake from Enfaz ← initial data (deeds)
 /// ← real-estate bourse inquiry ← distribution to parties.
@@ -13,7 +13,7 @@ namespace RealEstateEval.CaseStudy.Domain;
 /// from distribution and its submission waits for the specialist's issued case-study report · the
 /// case-study specialist waits for the inspector and the survey (never the valuer) then issues.
 /// Closing has two different steps: Qeema deposit certificate (professional — valuation report alone,
-/// Q-6) then uploading the transaction to Enfaz (full handover).
+///) then uploading the transaction to Enfaz (full handover).
 /// Overall status is derived from party statuses; the UI shows who is waiting on whom.
 /// (Recall/reopen cases and field-freeze scope: supplementary workshop — this structure governs.)
 /// </summary>
@@ -90,7 +90,7 @@ public static class TransactionStateRules
  /// <summary>null = The transaction does not require survey submission.</summary>
         PartyFacts? EngineeringOffice,
         PartyFacts CaseSpecialist,
- /// <summary>Q-6: final version issued with deposit certificate (valuation request closed).</summary>
+ /// <summary>Final version issued with deposit certificate (valuation request closed).</summary>
         bool ValuationReportClosed,
         bool EnfazHandedOver,
  /// <summary>
@@ -166,7 +166,7 @@ public static class TransactionStateRules
 
         var partiesDone = parties.All(p => p.Status == Statuses.Completed);
 
-        // Closing — two different steps (Q-6, then full handover).
+        // Closing — two different steps (then full handover).
         var depositDone = input.ValuationReportClosed;
         var handoverReady = depositDone && partiesDone;
         var handoverDone = input.EnfazHandedOver;
@@ -210,7 +210,7 @@ public static class TransactionStateRules
 
  /// <summary>
  /// Full Enfaz handover is not allowed before the case-study report is issued, the valuation
- /// report is deposited (Q-6) and every party is complete.
+ /// report is deposited and every party is complete.
  /// </summary>
     public static bool AllowsEnfazHandover(Input input) =>
         !input.EnfazHandedOver && EnfazHandoverBlockReasonsAr(input).Count == 0;
@@ -318,7 +318,7 @@ public static class TransactionStateRules
             _ => 0.0,
         };
 
- /// <summary>Enfaz upload package (Q-9/Q-14): required contents of the complete delivery.</summary>
+ /// <summary>Enfaz upload package: required contents of the complete delivery.</summary>
     public static IReadOnlyList<string> HandoverPackageAr(bool hasSurvey) =>
         hasSurvey
             ?

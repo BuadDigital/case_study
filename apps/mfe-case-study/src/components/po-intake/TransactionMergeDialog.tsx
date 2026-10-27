@@ -58,7 +58,7 @@ export function invalidateTransactionViews(
 
 /**
  * The «دمج معاملات مرتبطة» dialog: the case-study specialist joins other deeds' transactions
- * into this one (decision 2026-10-19).
+ * into this one.
  *
  * How it works: search by deed, registry or PO number → pick hits (one per transaction) →
  * choose the link kind (one_building / contract; preset from the transaction's own kind) →
@@ -228,7 +228,7 @@ export function TransactionMergeDialog({
       }
     >
       <div className="flex flex-col gap-3">
-        {/* Decision 2026-10-21: the only stage condition is finished intake (work order, primary data,
+        {/* The only stage condition is finished intake (work order, primary data,
             bourse inquiry); inspection and study are not conditions, so a merge can come before distribution. */}
         <Note tone="info">
           يُدمج الصك متى اكتمل تسجيله: أمر العمل والبيانات الأولية واستعلام البورصة. المعاينة

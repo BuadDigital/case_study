@@ -6,7 +6,7 @@ import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/app-data/po-intake-d
 /**
  * The «صكوك العقار» table shown above the deed questions of the one transaction study.
  *
- * How it works (phase 4, decision 2026-10-19 — one study covers every deed of a linked
+ * How it works (phase 4 — one study covers every deed of a linked
  * property): renders the ready-made `deeds` block from `caseStudyReportDeeds` — a header with
  * the deed count and the total area, then one row per deed (number, identifier label, PO,
  * area). It computes nothing itself; callers pass `deeds` only when the transaction has two or

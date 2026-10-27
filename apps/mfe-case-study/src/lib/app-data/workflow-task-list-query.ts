@@ -1,6 +1,6 @@
 /**
  * Client-side mirror of the workflow-task list filters the server applies
- * (`docs/architecture/pagination-contract.md` §2). The API is the source of
+ * (`docs/architecture/pagination-contract.md`). The API is the source of
  * truth; this exists only so the offline prefetch cache answers a filtered
  * query the same way the endpoint would, and so the filter shape is testable
  * without a network.
@@ -73,7 +73,7 @@ export function matchesWorkflowTaskFilters(
   const q = filters.q?.trim();
   if (q) {
     // The endpoint's haystack: the task's own columns plus the five PO-record
-    // columns of its property (pagination-contract §2, "`q`").
+    // columns of its property (pagination-contract, "`q`").
     const hay = [
       task.poNumber,
       task.title,

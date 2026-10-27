@@ -4,7 +4,7 @@ namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
 /// The transaction (المعاملة): the property as the reference above its deeds. An ordinary
-/// property is a transaction with one deed; a linked property (decision 2026-10-18) is one
+/// property is a transaction with one deed; a linked property is one
 /// transaction with several deeds, each from its own Enfaz work order. The case-study report,
 /// the valuation request and the valuation report belong to the transaction, while the
 /// work order, its finance and its Enfaz upload stay with the deed.
@@ -67,7 +67,7 @@ public class Transaction : ITrackUpdatedAt
     /// <remarks>
     /// How it works: when no reference is set yet, stores the trimmed PR number, stamps
     /// ConfirmedAtUtc / UpdatedAtUtc and returns true; otherwise returns false and changes nothing.
-    /// Edge cases: the PR is drawn once and kept for good (§10) — a reopen never clears it and a
+    /// Edge cases: the PR is drawn once and kept for good (section 10) — a reopen never clears it and a
     /// later approval finds it set, so the number is never re-drawn and numbering stays gap-free
     /// (prod PO-067455 kept PR-26-00002 after an issue reopened 21 s later).
     /// </remarks>
@@ -82,7 +82,7 @@ public class Transaction : ITrackUpdatedAt
 }
 
 /// <summary>
-/// One study per transaction (decision 2026-10-18, phase 4): the study row stays on the
+/// One study per transaction: the study row stays on the
 /// case-study parent task of the holder deed; every other deed's study flow folds into it.
 /// </summary>
 public static class TransactionStudyRules
@@ -116,7 +116,7 @@ public static class TransactionStudyRules
     }
 }
 
-/// <summary>How the deeds of one transaction are linked (decision 2026-10-18).</summary>
+/// <summary>How the deeds of one transaction are linked.</summary>
 public static class TransactionLinkKinds
 {
     /// <summary>One building on several deeds — valued as one.</summary>

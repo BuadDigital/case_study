@@ -125,7 +125,7 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
     });
 
     // Issuance no longer lives on this screen: the gates card moved off the
-    // final-opinion screen and the Q-6 cycle is part of «المراجعة النهائية».
+    // final-opinion screen and the cycle is part of «المراجعة النهائية».
     await tabs.getByRole("tab", { name: "المراجعة النهائية" }).click();
     // The tab's own hint («الافتراضات الخاصة وإرسال التقييم») is a hidden phone-only copy — match the card heading.
     await expect(page.getByRole("heading", { name: "الافتراضات الخاصة", exact: true })).toBeVisible({

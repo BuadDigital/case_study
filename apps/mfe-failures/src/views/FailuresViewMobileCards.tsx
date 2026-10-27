@@ -10,13 +10,13 @@ import {
 } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import {
   failureActorLabel,
-  failureListSeverityLabel,
   failureListStatusColor,
   failureListStatusLabel,
+  failureRecordTitle,
 } from "../lib/failures-labels";
 import {
-  failureCardSpecialist,
   failureCardTone,
+  failureSpecialistName,
   failureRowTitle,
   failuresEmptyLine,
 } from "../lib/failures-view-state";
@@ -26,22 +26,25 @@ import type { FailuresViewWorkflow } from "./useFailuresViewWorkflow";
 export function FailuresViewMobileCards({ wf }: { wf: FailuresViewWorkflow }) {
   // After hydration mount only one tree (table or cards) — both used to build together.
   if (wf.isDesktopViewport === true) return null;
-  const { rows, expandedId, highlightId, specialistByPo } = wf;
+  const { rows, expandedId, highlightId } = wf;
   const items: ActiveQueueMobileCardItem[] = rows.map((f) => {
     const active = isActiveFailureStatus(f.status);
     const statusColor = failureListStatusColor(f.status, f.severity);
     const expanded = expandedId === f.id;
-    const specialist = failureCardSpecialist(f, specialistByPo);
+    const specialist = failureSpecialistName(f);
     return {
       id: f.id,
       anchorId: `failure-${f.id}`,
       title: failureRowTitle(f),
+      // Card line: transaction number (when the deed has one), work order, the failure's reason,
+      // then the company's specialist — or, before one is assigned, who raised it. The severity
+      // word that used to sit here is part of the status pill now.
       meta: [
+        ...(f.transactionNumber
+          ? [{ text: f.transactionNumber, kind: "po" as const }]
+          : []),
         { text: formatPoDisplay(f.poNumber), kind: "po" as const },
-        {
-          text: failureListSeverityLabel(f.severity),
-          kind: "type" as const,
-        },
+        { text: failureRecordTitle(f), kind: "type" as const },
         specialist
           ? { text: specialist, kind: "place" as const }
           : {
@@ -68,7 +71,7 @@ export function FailuresViewMobileCards({ wf }: { wf: FailuresViewWorkflow }) {
       <ActiveQueueMobileCards
         items={items}
         pending={!wf.isFetched}
-        emptyMessage={failuresEmptyLine(wf.role)}
+        emptyMessage={failuresEmptyLine(wf.role, wf.tab)}
       />
     </div>
   );

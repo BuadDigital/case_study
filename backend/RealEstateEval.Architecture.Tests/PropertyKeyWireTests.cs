@@ -17,7 +17,7 @@ public class PropertyKeyWireTests
     {
         var files = new[]
         {
-            // A8: property-key services live in the Operations context.
+            // property-key services live in the Operations context.
             RepoPaths.Combine(
                 "backend", "contexts", "operations", "RealEstateEval.Operations.Infrastructure",
                 "Services", "PropertyKeysService.cs"),
@@ -46,7 +46,7 @@ public class PropertyKeyWireTests
         var checks = new (string File, Regex Pattern)[]
         {
             (
-                // A8: property list/timeline services live in the Case Study context.
+                // Property list/timeline services live in the Case Study context.
                 RepoPaths.Combine(
                     "backend", "contexts", "case-study", "RealEstateEval.CaseStudy.Infrastructure",
                     "Services", "PropertyListRowBuilder.cs"),
@@ -59,7 +59,7 @@ public class PropertyKeyWireTests
                 new Regex(@"""(done|active|warn|muted)""", RegexOptions.Compiled)
             ),
             (
-                // A8: the financial report service lives in the Financial context.
+                // The financial report service lives in the Financial context.
                 RepoPaths.Combine(
                     "backend", "contexts", "financial", "RealEstateEval.Financial.Application",
                     "Services", "FinancialReportService.cs"),

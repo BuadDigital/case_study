@@ -226,7 +226,7 @@ export function PropertyDetailHero({
     propertyItems?.find((item) => item.propertyId === property.id)?.row.status ?? null;
   const handedOverToEnfaz = serverRowStatus === PropertyListRowStatuses.Done;
   const { isFavorite, toggleFavorite } = useFavoriteProperties();
-  // Decision 2026-10-19: the page is the transaction's; its deeds (when several) sit in the switcher.
+  // The page is the transaction's; its deeds (when several) sit in the switcher.
   const { data: transaction } = useTransactionQuery(property.id);
   // The transaction's number (official PR-…, else TMP-…), falling back to this deed's own
   // reference or draft number while the transaction is still loading.
@@ -414,7 +414,7 @@ export function PropertyDetailHero({
                 <div className="text-[10.5px] text-text-3">رقم المعاملة</div>
                 <div
                   className="text-[15px] font-bold tabular-nums text-heading"
-                  // Decision 2026-10-20: the TMP- prefix says the number is temporary; no badge.
+                  // The TMP- prefix says the number is temporary; no badge.
                   title={
                     transactionConfirmed
                       ? "الرقم المرجعي الرسمي للمعاملة"

@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  New «أسلوب الدخل» tab (`income`, hint «رسملة مباشرة …») between cost and final, and `income` in
+//  • New «أسلوب الدخل» tab (`income`, hint «رسملة مباشرة …») between cost and final, and `income` in
 //         WORK_SCREENS; visibleEvaluatorTabs shows it only while navAvail.income is true.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -67,7 +67,7 @@ export function visibleEvaluatorTabs(navAvail: {
   return VAL_TAB_DEFS.filter((t) => {
     if (t.id === "market") return navAvail.market;
     if (t.id === "cost") return navAvail.cost;
-    // D17 — shown only while the income approach is enabled in the settings.
+    // Shown only while the income approach is enabled in the settings.
     if (t.id === "income") return navAvail.income === true;
     return true;
   });

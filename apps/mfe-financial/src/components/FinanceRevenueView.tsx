@@ -101,7 +101,7 @@ export function FinanceRevenueView({
   }
 
   // Deliberately unpaged although `GET /api/enfaz-billing/tracking` pages
-  // (pagination-contract §10.2): the stage tabs are client-side buckets
+  // (pagination-contract): the stage tabs are client-side buckets
   // (`bucketRevenueRows`) whose badges count every row, the study table shows
   // «X of Y» properties per work order from its siblings, and the collection
   // table groups rows by invoice. A server page would cut across those

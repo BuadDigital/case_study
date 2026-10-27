@@ -1,10 +1,10 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
 //  • O14  subjectOnlyMapPins no longer falls back to the first comparable's position: without the inspector's
-//         pin there is no §33 location map.
+//         pin there is no section 33 location map.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
-/** Client-side map for §18 — subject + adopted comparables (Google Maps or SVG fallback). */
+/** Client-side map for section 18 — subject + adopted comparables (Google Maps or SVG fallback). */
 
 import { parseLatLng } from "@platform/app-shared/domain/geo";
 import { escHtml } from "./html-escape";
@@ -66,7 +66,7 @@ export function collectComparablesMapPins(input: {
 }
 
 /**
- * Subject-only pin list for §33 location maps (both slots share this). Without the
+ * Subject-only pin list for section 33 location maps (both slots share this). Without the
  * inspector's pin there is no location map — a comparable's position is never shown as
  * the subject's.
  */
@@ -79,7 +79,7 @@ export function subjectOnlyMapPins(
 
 type StaticMapType = "hybrid" | "satellite" | "roadmap" | "terrain";
 
-/** Fixed view for single-subject maps (§33). Omit to let Static Maps fit all markers (§18). */
+/** Fixed view for single-subject maps (section 33). Omit to let Static Maps fit all markers (section 18). */
 type StaticMapView = {
   zoom?: number;
   centerLat?: number;
@@ -88,7 +88,7 @@ type StaticMapView = {
 
 /**
  * Static Maps request sizes matched to the print slot aspect ratios
- * (A4 content width 178mm ≈ 673px; §18 slot 200px tall, §33 slots 300px).
+ * (A4 content width 178mm ≈ 673px; section 18 slot 200px tall, section 33 slots 300px).
  * The print `<img>` uses object-fit:cover, so a matched ratio means no cropping.
  * Static Maps caps free-form size at 640px per side; scale=2 doubles the pixels.
  */
@@ -98,7 +98,7 @@ export const PRINT_MAP_SIZES = {
   closeup: { w: 640, h: 285 },
 } as const;
 
-/** §33 views mirror the on-screen Google map (ComparablesGoogleMap / fillLocationMapsSlots). */
+/** Section 33 views mirror the on-screen Google map (ComparablesGoogleMap / fillLocationMapsSlots). */
 const PRINT_MAP_VIEWS = {
   satellite: { zoom: 15, maptype: "hybrid" as StaticMapType },
   closeup: { zoom: 18, maptype: "satellite" as StaticMapType },
@@ -440,9 +440,9 @@ export function printMapsNotice(d: PrintMapsDiagnostics): string | null {
 }
 
 /**
- * Print-time map slots. §18 gets the comps map (Static Maps → SVG fallback).
- * §33 upper keeps an uploaded site map, else the Google hybrid view (zoom 15);
- * §33 lower is the Google satellite close-up (zoom 18). §33 has no SVG fallback:
+ * Print-time map slots. section 18 gets the comps map (Static Maps → SVG fallback).
+ * Section 33 upper keeps an uploaded site map, else the Google hybrid view (zoom 15);
+ * Section 33 lower is the Google satellite close-up (zoom 18). section 33 has no SVG fallback:
  * a one-dot grid is not a location map, so the template placeholder stays.
  */
 export async function materializePrintMapSlots(input: {

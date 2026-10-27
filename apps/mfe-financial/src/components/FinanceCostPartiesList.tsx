@@ -85,7 +85,7 @@ export function FinanceCostPartiesList({
   // every ready line and every statement of that payee, and a payee with no
   // ready line still appears through its statements. Neither list has a
   // "group by payee" on the server, so both must be whole; the pager below
-  // windows the aggregated rows client-side (pagination-contract §9, note).
+  // windows the aggregated rows client-side (pagination-contract, note).
   const { readyQuery, statementsQuery, parties, staffUsers } = useFinanceCostParties("parties");
 
   const filtered = useMemo(() => {

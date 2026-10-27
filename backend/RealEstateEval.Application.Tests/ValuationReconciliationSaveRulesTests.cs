@@ -11,7 +11,7 @@ using RealEstateEval.Valuation.Infrastructure.Persistence;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// D3 — a 0 «خصم التصفية» is valid on every basis but «قيمة التصفية», where the reconciliation SAVE
+/// A 0 «خصم التصفية» is valid on every basis but «قيمة التصفية», where the reconciliation SAVE
 /// refuses it (not the hand-over). Problem 20 — the alert dispositions save on their own, without
 /// the methods rationale the full save requires.
 /// </summary>
@@ -173,7 +173,7 @@ public class ValuationReconciliationSaveRulesTests
     public async Task An_acknowledgement_before_the_first_save_keeps_the_work_order_basis()
     {
         // An Infath execution (no work-order keys) defaults to liquidation / orderly. The row the
-        // acknowledgement creates must not carry the class default «market» (it would win under D1).
+        // acknowledgement creates must not carry the class default «market» (it would win under).
         await using var rig = Arrange("recon-overrides-basis");
 
         var (result, errors) = await rig.Service.SaveAlertOverridesAsync(

@@ -37,7 +37,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
     {
     }
 
- /// <summary>Test-friendly compose from shared bounded-context pair. A8: takes the Identity
+ /// <summary>Test-friendly compose from shared bounded-context pair.: takes the Identity
  /// abstractions instead of the Identity context type.</summary>
     public static OperationsTaskService Create(
         OperationsDbContext ops,

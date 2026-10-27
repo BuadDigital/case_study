@@ -23,7 +23,7 @@ internal static class BoundedContextFacts
     private const string PlaceholderConnection =
         "Host=architecture-tests;Database=model_only;Username=none;Password=none";
 
- /// <summary>The nine owner-context types, in migration apply order (A10: no legacy).</summary>
+ /// <summary>The nine owner-context types, in migration apply order (no legacy).</summary>
     public static IReadOnlyList<Type> ContextTypes { get; } =
     [
         typeof(AttachmentsDbContext),

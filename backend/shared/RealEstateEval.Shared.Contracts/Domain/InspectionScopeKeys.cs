@@ -1,6 +1,6 @@
 ﻿namespace RealEstateEval.Domain;
 
-/// <summary>Inspection scope (decision 24) — fields completed with the inspection-limits feature.</summary>
+/// <summary>Inspection scope — fields completed with the inspection-limits feature.</summary>
 public static class InspectionScopeKeys
 {
     public const string Full = "full";

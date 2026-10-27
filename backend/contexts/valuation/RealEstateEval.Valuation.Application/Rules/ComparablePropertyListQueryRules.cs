@@ -17,7 +17,7 @@ public enum ComparablePropertyListSortKey
 /// <summary>
 /// Pure allow-list and sort map for <c>GET /api/comparable-properties</c>. No EF, no I/O — the
 /// repository turns these values into expressions.
-/// See docs/architecture/pagination-contract.md §4.
+/// See docs/architecture/pagination-contract.md.
 /// </summary>
 public static class ComparablePropertyListQueryRules
 {
@@ -65,7 +65,7 @@ public static class ComparablePropertyListQueryRules
     }
 
  /// <summary>
- /// Subject property for the comparison-method §2 display priority. A blank or unparsable value
+ /// Subject property for the comparison-method section 2 display priority. A blank or unparsable value
  /// means "no priority", never an error.
  /// </summary>
     public static Guid? ResolveForPropertyId(string? forPropertyId) =>

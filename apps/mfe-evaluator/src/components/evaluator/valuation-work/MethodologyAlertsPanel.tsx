@@ -1,13 +1,13 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D6   The panel takes a group (market / cost / income / general) and shows that screen's triggered
+//  • The panel takes a group (market / cost / income / general) and shows that screen's triggered
 //         alerts with its own heading and empty text (GROUP_COPY) — cost and income alerts get a panel.
 //  • Alerts  Dispositions save on their own through saveValuationAlertOverrides (alertOverridesForCodes),
 //            not the full reconciliation, so they no longer wait on «مبرر استخدام طرق التقييم» (problem 20).
 // Round 2 (1b19bedc)
 //  • B    A require-rationale override under 10 characters is refused before saving and named under its
 //         field (also the server's per-alert field errors); the box gets an id and aria-label.
-//  • R2-20  Alert details go through KeepCodesTogether so CMP-… codes never break across lines.
+//  • Alert details go through KeepCodesTogether so CMP-… codes never break across lines.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -76,7 +76,7 @@ export function MethodologyAlertsPanel({
   const [alertOverrides, setAlertOverrides] = useState<AlertOverrideRecord>(
     () => alertOverridesFromRecon(recon),
   );
-  /** Decision B — a written override rationale shorter than 10 characters, per alert code. */
+  /** A written override rationale shorter than 10 characters, per alert code. */
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
 
   // A reloaded reconciliation replaces the local overrides.

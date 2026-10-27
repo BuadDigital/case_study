@@ -60,7 +60,7 @@ public static class BoundedContextConnections
             $"Set {EnvVarFor(serviceName)} or ConnectionStrings:{serviceName}. "
             + "Extracted owners do not fall back to a shared database.");
 
-    // A8 migration-catalog decomposition: keyed by context class name so context types can
+    // migration-catalog decomposition: keyed by context class name so context types can
     // move into their context libraries without this file referencing them.
     private static readonly IReadOnlyDictionary<string, string> ServiceNameByContextName =
         new Dictionary<string, string>(StringComparer.Ordinal)

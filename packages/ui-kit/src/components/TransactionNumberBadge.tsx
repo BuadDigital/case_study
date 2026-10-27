@@ -1,15 +1,14 @@
 "use client";
 
-import { cn } from "@platform/ui-kit";
-import { ltrValueClass } from "../po-intake/PropertyDetailFields";
+import { cn } from "../lib/cn";
 
-/** Temporary transaction numbers carry the TMP prefix (decision 2026-10-20). */
+/** Temporary transaction numbers carry the TMP prefix. */
 export const TEMPORARY_TRANSACTION_PREFIX = "TMP-";
 
 /**
  * Whether a transaction number is still the temporary one.
  *
- * How it works: trims the value and checks the `TMP-` prefix (numbering §10: TMP replaced the
+ * How it works: trims the value and checks the `TMP-` prefix (TMP replaced the
  * old `D` prefix, and a migration renamed the existing drafts and their counter, so no `D-`
  * number is left to recognise). Blank / null is not temporary.
  */
@@ -22,7 +21,7 @@ export function isTemporaryTransactionNumber(value: string | null | undefined): 
  * else the TMP- temporary number — the prefix itself says so, no badge. Renders nothing when
  * there is no number at all.
  *
- * How it works (numbering, decision 2026-10-20): trims `number`, prints it left-to-right with
+ * How it works: trims `number`, prints it left-to-right with
  * tabular digits, and adds «N صكوك» when `deedCount` is more than one. The tooltip says
  * «رقم مؤقت — يُثبَّت الرقم الرسمي PR عند اعتماد أول تقرير» for a TMP- number, else «رقم المعاملة».
  *
@@ -56,7 +55,7 @@ export function TransactionNumberBadge({
           : "رقم المعاملة"
       }
     >
-      <bdi dir="ltr" className={cn(ltrValueClass, "tabular-nums")}>
+      <bdi dir="ltr" className="inline [direction:ltr] [unicode-bidi:isolate] tabular-nums">
         {value}
       </bdi>
       {multi ? (
@@ -67,5 +66,3 @@ export function TransactionNumberBadge({
     </span>
   );
 }
-
-export { transactionNumberOf } from "../../lib/app-data/transaction-number";

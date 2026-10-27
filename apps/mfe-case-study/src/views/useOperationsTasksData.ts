@@ -179,7 +179,7 @@ export function useOperationsTasksData() {
   }
   /*
    * The auto-resume sweep needs the paused rows, which the queue's own filters
-   * hide (`activeOnly`, `excludeFailurePaused`) — pagination-contract §3,
+   * hide (`activeOnly`, `excludeFailurePaused`) — pagination-contract,
    * "still client-side" #4. One narrow `status=paused` request instead of
    * re-loading the whole queue.
    */
@@ -254,7 +254,7 @@ export function useOperationsTasksData() {
   });
 
   // No search argument: `q` — deed numbers included — is answered in the query
-  // (pagination-contract §3), so the page is rendered as it arrived.
+  // (pagination-contract), so the page is rendered as it arrived.
   const visibleTasks = useMemo(
     () =>
       visibleOperationsTasks(queueTasks, {

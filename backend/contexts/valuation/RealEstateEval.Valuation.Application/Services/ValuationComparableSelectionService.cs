@@ -1,18 +1,18 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D8   Deal age, time adjustment and freshness are measured to the official valuation date (the
+//  • Deal age, time adjustment and freshness are measured to the official valuation date (the
 //         retrospective date when chosen, else today) instead of today (OfficialValuationDateAsync).
-//  • D7   The land table reads the apartment's land share saved on the cost approach.
+//  • The land table reads the apartment's land share saved on the cost approach.
 //  • Market Replacing the comparable list keeps the rows of comparables that stay — their adjustments,
 //           manual weight and overrides survive; only dropped comparables are removed.
 //  • Market A duplicate factor key on one comparable is refused with a 400 (DuplicateFactorKeyErrors).
-//  • D10  Auto-adopt: a land comparable linked to a built subject goes to the land table inside the cost
+//  • Auto-adopt: a land comparable linked to a built subject goes to the land table inside the cost
 //         approach, never the market table (problem 22).
 // Round 2 (1b19bedc)
 //  • A    The land table reads the building plot and the apartment's share (CostLandAreasAsync).
-//  • R2-7 The hard alert 23 cutoff date is passed to the list builder, so later-dated comparables get
+//  • The hard alert 23 cutoff date is passed to the list builder, so later-dated comparables get
 //         automatic weight 0 (ValuationDatesAsync).
-//  • R2-10 An unknown selectionContext is refused on every write.
+//  • An unknown selectionContext is refused on every write.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Application;
@@ -27,10 +27,10 @@ namespace RealEstateEval.Valuation.Application.Services;
 
 /// <summary>
 /// Selecting and adopting bank comparables plus the sequential market adjustments and weights.
-/// Persistence goes through <see cref="IValuationComparableSelectionRepository"/> and the ق-6
+/// Persistence goes through <see cref="IValuationComparableSelectionRepository"/> and the
 /// freeze through <see cref="IValuationReportFreezeGate"/>, so this file holds rules only -
 /// no EF (solid-scorecard finding 1). Request checks and entity shaping live in
-/// <see cref="ValuationComparableSelectionRequestRules"/>; the factor-rationale (Q-8) and
+/// <see cref="ValuationComparableSelectionRequestRules"/>; the factor-rationale and
 /// market-approach header concerns sit in their partial files.
 /// </summary>
 public sealed partial class ValuationComparableSelectionService(
@@ -80,7 +80,7 @@ public sealed partial class ValuationComparableSelectionService(
     }
 
     /// <summary>
-    /// Decision A: the land table inside the cost approach compares with the building plot saved on the
+    /// The land table inside the cost approach compares with the building plot saved on the
     /// cost approach and multiplies the apartment's share; the market table reads neither.
     /// </summary>
     private async Task<CostLandAreas?> CostLandAreasAsync(
@@ -92,7 +92,7 @@ public sealed partial class ValuationComparableSelectionService(
             : null;
 
     /// <summary>
-    /// D8: deal age, the suggested time adjustment and freshness are measured to the official
+    /// Deal age, the suggested time adjustment and freshness are measured to the official
     /// valuation date — the retrospective date when chosen, otherwise today. The cutoff is the last
     /// deal date hard alert 23 accepts (null when it is not evaluated).
     /// </summary>
@@ -305,7 +305,7 @@ public sealed partial class ValuationComparableSelectionService(
         if (row is null)
             return (null, new Dictionary<string, string> { ["_"] = "الاختيار غير موجود" });
 
- // Adjustments edit unlock (B-2 §13): absent row = unlocked, matching the defaults.
+ // Adjustments edit unlock (B-2 section 13): absent row = unlocked, matching the defaults.
         var approachSettings = await repo.GetApproachSettingsAsync(
             valuationRequestId, cancellationToken);
         if (approachSettings is { AdjustmentsEditUnlocked: false })
@@ -395,7 +395,7 @@ public sealed partial class ValuationComparableSelectionService(
             .Select(x => x.ComparablePropertyId)
             .ToHashSet();
 
-        // D10 / problem 22: a land comparable linked to a BUILT subject never lands in the market
+        // Problem 22: a land comparable linked to a BUILT subject never lands in the market
         // table — it is a land-value input, so it goes to the land table (within the cost approach).
         var builtSubject = !ValuationApproachSettingsRules.IsLandPropertyType(request.PropertyType);
         var existingLand = builtSubject

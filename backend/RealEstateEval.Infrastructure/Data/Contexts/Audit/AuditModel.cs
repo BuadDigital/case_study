@@ -9,7 +9,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// in a schema of its own — a writer can be granted INSERT on this one table instead of a whole
 /// owner's schema.
 /// </summary>
-// A8: public — owner contexts now live in their context libraries; the shared audit
+// Public — owner contexts now live in their context libraries; the shared audit
 // mapping stays global beside the frozen legacy context.
 public static class AuditModel
 {

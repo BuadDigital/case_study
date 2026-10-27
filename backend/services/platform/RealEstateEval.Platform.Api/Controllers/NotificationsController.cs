@@ -42,7 +42,7 @@ public sealed class NotificationsController : ControllerBase
  /// <summary>
  /// The signed-in user's notifications. Sending page or pageSize returns PagedResultDto; without
  /// them the response stays the plain array the bell has always read, capped at 50 rows. The SSE
- /// stream below is untouched. See docs/architecture/pagination-contract.md §6.
+ /// stream below is untouched. See docs/architecture/pagination-contract.md.
  /// </summary>
     [HttpGet]
     public async Task<IActionResult> List(

@@ -59,7 +59,7 @@ type PanelRenderProps = {
 };
 
 /**
- * Server pager for the queues that page (pagination-contract §2). `totalCount`
+ * Server pager for the queues that page (pagination-contract). `totalCount`
  * is the actor's total for the filters and the search; the range reports the
  * rows that survived the client-side rules the contract keeps.
  */
@@ -214,7 +214,7 @@ export function ActiveTransactionQueueView({
   useSwapAnimation(tableSwapRef, rowsSwapKey);
   useSwapAnimation(mobileSwapRef, rowsSwapKey);
   // Field roles offline before anything was downloaded: say so plainly — never a
-  // connection error, and never "no tasks" as if the queue were really empty (§4.2).
+  // connection error, and never "no tasks" as if the queue were really empty (section 4.2).
   const online = useOnlineStatus();
   const offlineFieldEmpty = !online && isOfflineFieldSession();
 

@@ -17,7 +17,7 @@ export type ComparablePropertyDto = {
   id: string;
   referenceCode: string;
   comparablePropertyType: string;
-  /** Comparable use — closed list (Q-3/5). */
+  /** Comparable use — closed list. */
   usage: string;
   transactionKind: string;
   transactionKindLabelAr: string;
@@ -25,7 +25,7 @@ export type ComparablePropertyDto = {
   priceDescriptionLabelAr: string;
   source: string;
   listingNumber?: string | null;
-  /** Q-3/3: bourse deal reference for executed comps. */
+  /** Bourse deal reference for executed comps. */
   transactionReference?: string | null;
   advertiserPhone?: string | null;
   listingImageFileName?: string | null;
@@ -48,7 +48,7 @@ export type ComparablePropertyDto = {
   sourceWorkOrderNumber?: string | null;
   sourcePropertyId?: string | null;
   isActive: boolean;
-  /** Q-3: human quality tags — normal | anomalous | unreliable. */
+  /** Human quality tags — normal | anomalous | unreliable. */
   reliabilityTag: string;
   reliabilityTagLabelAr: string;
   isDuplicateTagged: boolean;
@@ -64,7 +64,7 @@ export type ComparablePropertyDto = {
   sourceCard: ComparableSourceCardDto;
 };
 
-/** Q-3: set/update quality tags with reason — record remains. */
+/** set/update quality tags with reason — record remains. */
 export type SaveComparableQualityTagsRequest = {
   reliabilityTag: string;
   isDuplicateTagged: boolean;
@@ -73,13 +73,13 @@ export type SaveComparableQualityTagsRequest = {
 
 export type UpsertComparablePropertyRequest = {
   comparablePropertyType: string;
-  /** Comparable use — closed list (Q-3/5). */
+  /** Comparable use — closed list. */
   usage?: string | null;
   transactionKind: string;
   priceDescription?: string | null;
   source: string;
   listingNumber?: string | null;
-  /** Q-3/3: deal reference — for executed comps. */
+  /** Deal reference — for executed comps. */
   transactionReference?: string | null;
   advertiserPhone?: string | null;
   listingImageFileName?: string | null;
@@ -99,7 +99,7 @@ export type UpsertComparablePropertyRequest = {
   isActive?: boolean;
 };
 
-/** Allowed `sort` keys — pagination-contract §4. Unknown keys fall back to `transaction`. */
+/** Allowed `sort` keys — pagination-contract. Unknown keys fall back to `transaction`. */
 export type ComparablePropertyListSort =
   | "transaction"
   | "created"
@@ -121,7 +121,7 @@ export type ComparablePropertyListQuery = {
   includeInactive?: boolean;
   /**
    * Legacy row cap for the **unpaged** array (default 100, max 200). Ignored
-   * once `page` / `pageSize` is sent — pagination-contract §4.
+   * once `page` / `pageSize` is sent — pagination-contract.
    */
   take?: number;
   /** Comparison-method spec: field priority for this property. */
@@ -228,7 +228,7 @@ export async function listComparableProperties(
 }
 
 /**
- * One server page of the comparables bank — pagination-contract §4. The
+ * One server page of the comparables bank — pagination-contract. The
  * `forPropertyId` field priority is applied inside the query now, so page 1
  * still holds the subject's own field comparables whatever `sort` says and
  * `totalCount` is exact. `take` is not sent: it only caps the unpaged array.
@@ -325,7 +325,7 @@ export async function createComparableProperty(
   }
 }
 
-/** Q-3: human quality tags — set by an authorized user with reason; record stays tagged. */
+/** Human quality tags — set by an authorized user with reason; record stays tagged. */
 export async function setComparableQualityTags(
   config: ComparablePropertiesApiConfig,
   id: string,

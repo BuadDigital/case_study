@@ -34,7 +34,7 @@ public class ComparablePropertiesController : ControllerBase
  /// <summary>
  /// Comparable bank list. Sending page or pageSize returns PagedResultDto; without them the
  /// response stays the plain array every existing caller expects (the legacy <c>take</c> still
- /// caps it). See docs/architecture/pagination-contract.md §4.
+ /// caps it). See docs/architecture/pagination-contract.md.
  /// </summary>
         [HttpGet]
         [Authorize(Policy = CapabilityPolicyNames.ReadComparableBank)]
@@ -93,7 +93,7 @@ public class ComparablePropertiesController : ControllerBase
         return Ok(result);
     }
 
- /// <summary>Q-3 — human quality tags (reliability/duplicate) with rationale; record stays tagged, not deleted.</summary>
+ /// <summary>Human quality tags (reliability/duplicate) with rationale; record stays tagged, not deleted.</summary>
     [HttpPut("{id:guid}/quality-tags")]
     [Authorize(Policy = CapabilityPolicyNames.WriteComparableBank)]
     public async Task<ActionResult<ComparablePropertyDto>> SetQualityTags(

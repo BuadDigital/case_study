@@ -96,7 +96,7 @@ export function activeOutboxItems<T extends Pick<OfflineOutboxItem, "status">>(
 /**
  * Items the server refused for good (validation, forbidden). They are never retried,
  * so they must not vanish from the indicator: the field user sees them, with the
- * server's reason, until they act on it (spec §4.3 — nothing unsent is dropped quietly).
+ * server's reason, until they act on it (spec — nothing unsent is dropped quietly).
  */
 export function rejectedOutboxItems<T extends Pick<OfflineOutboxItem, "status">>(
   items: T[],
@@ -213,7 +213,7 @@ export type ReplayFailure = { ok: false; error: string; terminal: boolean };
  * validation is terminal only for handlers whose payload cannot be fixed by a
  * retry (`validationTerminal`). Everything else — including 401, which the next
  * token renewal fixes — stays retryable, so no confirmed-unsent work is dropped
- * (spec §4.3). Wiping is reserved for a disabled account (spec §3.4).
+ * (spec). Wiping is reserved for a disabled account (spec).
  */
 export function replayFailure(
   kind: string | undefined,

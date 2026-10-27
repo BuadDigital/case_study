@@ -1,11 +1,11 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D15  DepositCodeKey with a unique index filtered to current reports (SupersededAtUtc IS NULL) — a
+//  • DepositCodeKey with a unique index filtered to current reports (SupersededAtUtc IS NULL) — a
 //         duplicate code loses with a 409; an xmin row version («RowVersion») so parallel registrations on
 //         the same copy: one wins, the others 409.
-//  • D11  OwnershipInterestKey (required, default freehold) and RemainingLeaseYears on the approach settings.
+//  • OwnershipInterestKey (required, default freehold) and RemainingLeaseYears on the approach settings.
 //  • Cost  ActualAgeRationale and EconomicAgeRationale (max 2000) on the cost approach.
-//  • D17  Mapping of the new ValuationIncomeApproaches table: precisions, operating-expense mode (default
+//  • Mapping of the new ValuationIncomeApproaches table: precisions, operating-expense mode (default
 //         pct_of_egi, allowed values), non-negative checks, one row per request.
 // Round 2 (1b19bedc)
 //  • A    BuildingPlotAreaSqm (18,2, nullable, non-negative) on the cost approach — the building plot the
@@ -24,7 +24,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 /// <see cref="ValuationDbContext"/>, which owns the write path, and by the legacy context,
 /// which still serves the Case Study dispatch pre-check until a Valuation owner call replaces it.
 /// </summary>
-// A8: public — the owner context lives in its context library; this shared mapping stays
+// Public — the owner context lives in its context library; this shared mapping stays
 // global beside the frozen legacy context (drift guard).
 public static class ValuationModel
 {
@@ -38,7 +38,7 @@ public static class ValuationModel
             e.Property(x => x.Area).HasMaxLength(128);
             e.Property(x => x.PropertyType).HasMaxLength(128);
             e.Property(x => x.Appraiser).HasMaxLength(256);
-            // PRV-… report number, fixed when the appraiser approves the report (decision 2026-10-19).
+            // PRV-… report number, fixed when the appraiser approves the report.
             e.Property(x => x.ReportNumber).HasMaxLength(32);
             e.Property(x => x.Status)
                 .HasConversion(DomainEnumConverters.ValuationRequestStatus)
@@ -52,7 +52,7 @@ public static class ValuationModel
                 .IsUnique()
                 .HasFilter($"\"Status\" <> '{ValuationRequestStatuses.Done}' AND \"Status\" <> '{ValuationRequestStatuses.Merged}'")
                 .HasDatabaseName(DatabaseIndexNames.ValuationRequestOpenPerProperty);
-            // Phase 5 (decision 2026-10-19): a folded deed's request is «merged» into the holder deed's request, so it
+            // Phase 5: a folded deed's request is «merged» into the holder deed's request, so it
             // no longer counts as open (excluded from the index above) and points at the holder via MergedIntoRequestId.
             e.HasIndex(x => x.MergedIntoRequestId);
             e.HasAllowedValues(
@@ -168,7 +168,7 @@ public static class ValuationModel
             e.HasIndex(x => x.SelectionId);
         });
 
-        // Q-6: two-phase issuance — frozen report snapshot + both copies (deposit/final).
+        // two-phase issuance — frozen report snapshot + both copies (deposit/final).
         builder.Entity<ValuationReportIssuance>(e =>
         {
             e.ToTable("ValuationReportIssuances", DatabaseSchemas.Valuation);
@@ -176,12 +176,12 @@ public static class ValuationModel
             e.Property(x => x.DocumentJson).HasColumnType("jsonb").IsRequired();
             e.Property(x => x.DepositCode).HasMaxLength(128);
             e.Property(x => x.DepositCodeKey).HasMaxLength(128);
-            // D15: one deposit code per current report — a parallel duplicate loses here (409).
+            // One deposit code per current report — a parallel duplicate loses here (409).
             e.HasIndex(x => x.DepositCodeKey)
                 .IsUnique()
                 .HasFilter("\"SupersededAtUtc\" IS NULL AND \"DepositCodeKey\" IS NOT NULL")
                 .HasDatabaseName(ValuationReportIssuance.DepositCodeKeyCurrentIndex);
-            // D15: parallel registrations on the same copy — one wins, the others answer 409. The entity
+            // Parallel registrations on the same copy — one wins, the others answer 409. The entity
             // already has a «Version» (the cycle number), so the xmin row version gets its own name.
             e.Property<uint>("RowVersion").IsRowVersion().HasColumnName("xmin").HasColumnType("xid");
             e.Property(x => x.CertificateFileName).HasMaxLength(512);
@@ -190,7 +190,7 @@ public static class ValuationModel
             e.Property(x => x.FinalPdfDepositCode).HasMaxLength(128);
             e.Property(x => x.SupersededByUserId).HasMaxLength(128);
             e.Property(x => x.SupersededReason).HasMaxLength(1024);
-            // R2: one current copy per request — superseded ("replaced by a newer copy") stays on file.
+            // One current copy per request — superseded ("replaced by a newer copy") stays on file.
             e.HasIndex(x => x.ValuationRequestId)
                 .IsUnique()
                 .HasFilter("\"SupersededAtUtc\" IS NULL");
@@ -239,7 +239,7 @@ public static class ValuationModel
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Q-8-1: one factor-level rationale covers all comparables; adjustment row holds the override only.
+        // One factor-level rationale covers all comparables; adjustment row holds the override only.
         builder.Entity<ValuationAdjustmentFactorRationale>(e =>
         {
             e.ToTable("ValuationAdjustmentFactorRationales", DatabaseSchemas.Valuation);
@@ -288,7 +288,7 @@ public static class ValuationModel
             e.Property(x => x.ExternalSpecialistDetails).HasMaxLength(2000);
             e.Property(x => x.ValuationDateMode).HasMaxLength(16).IsRequired();
             e.Property(x => x.RetrospectiveRationale).HasMaxLength(2000);
-            // D11: the interest valued (freehold / usufruct / leased land) and its remaining lease term.
+            // The interest valued (freehold / usufruct / leased land) and its remaining lease term.
             e.Property(x => x.OwnershipInterestKey)
                 .HasMaxLength(16)
                 .IsRequired()
@@ -310,7 +310,7 @@ public static class ValuationModel
             e.Property(x => x.UseRestrictionDiscountPct).HasPrecision(9, 4);
             e.Property(x => x.UseRestrictionRationale).HasMaxLength(2000);
             e.Property(x => x.ApartmentLandShareSqm).HasPrecision(18, 2);
-            // Decision A (round 2): the building plot the cost land table compares with — nullable, no default.
+            // (round 2): the building plot the cost land table compares with — nullable, no default.
             e.Property(x => x.BuildingPlotAreaSqm).HasPrecision(18, 2);
             e.Property(x => x.LandValueFromMarket).HasPrecision(18, 2);
             e.Property(x => x.FinancingAnnualRatePct).HasPrecision(9, 4);
@@ -374,7 +374,7 @@ public static class ValuationModel
             e.HasIndex(x => x.CostApproachId);
         });
 
-        // D17 — income approach (direct capitalisation): the appraiser's inputs only.
+        // Income approach (direct capitalisation): the appraiser's inputs only.
         builder.Entity<ValuationIncomeApproach>(e =>
         {
             e.ToTable("ValuationIncomeApproaches", DatabaseSchemas.Valuation);

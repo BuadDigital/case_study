@@ -26,7 +26,7 @@ public class ValuationRequest
 
     /// <summary>
     /// The report number PRV-{YY}-{seq}, derived from the transaction's official reference the
-    /// moment the appraiser approves the report (decision 2026-10-19). Null until then; never
+    /// moment the appraiser approves the report. Null until then; never
     /// changes afterwards (a reopened report keeps the number and takes a version suffix).
     /// </summary>
     public string? ReportNumber { get; private set; }
@@ -36,7 +36,7 @@ public class ValuationRequest
     /// How it works: trims the given number; stores it and stamps UpdatedAtUtc only when it is not
     /// blank and the request has no number yet.
     /// Edge cases: a second call (reopen, retry, a different number) is a silent no-op, so the printed
-    /// number never changes (decision 2026-10-19); a blank number is ignored.
+    /// number never changes; a blank number is ignored.
     /// </remarks>
     public void AssignReportNumber(string reportNumber, DateTime nowUtc)
     {
@@ -47,7 +47,7 @@ public class ValuationRequest
     }
 
     /// <summary>
-    /// Phase 5 (decision 2026-10-19): the deed was merged into another deed's transaction and this
+    /// Phase 5: the deed was merged into another deed's transaction and this
     /// request folded into the holder deed's one. Null unless <see cref="Status"/> is Merged.
     /// </summary>
     public Guid? MergedIntoRequestId { get; private set; }
@@ -135,7 +135,7 @@ public class ValuationRequest
     }
 
  /// <summary>
- /// Q-9 supplement (R2): reopen valuation cycle after deposit — inverse of <see cref="SubmitReport"/>;
+ /// Supplement: reopen valuation cycle after deposit — inverse of <see cref="SubmitReport"/>;
  /// the request reopens and holds the property again until a newer deposit copy.
  /// </summary>
     public void ReopenReport(DateTime nowUtc)

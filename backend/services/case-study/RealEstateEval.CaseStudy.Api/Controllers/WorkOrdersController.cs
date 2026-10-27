@@ -70,7 +70,7 @@ public class WorkOrdersController : ControllerBase
     /// <summary>
     /// KPI counters for the PO list over the same filters as <see cref="List"/> (the page window
     /// and the sort are the only list parameters this route ignores). See
-    /// docs/architecture/pagination-contract.md §1.1.
+    /// docs/architecture/pagination-contract.md.
     /// </summary>
     [HttpGet("counts")]
     [Authorize(Policy = CapabilityPolicyNames.ReadCaseStudyWorkspace)]

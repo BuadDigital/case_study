@@ -57,7 +57,7 @@ type CaseStudyReportApproval = {
   requestNumber: string;
 };
 
-/** One deed of a linked property (decision 2026-10-19) as the report prints it. */
+/** One deed of a linked property as the report prints it. */
 export type CaseStudyReportDeedRow = {
   propertyId: string;
   /** Deed number, or the registry number when the deed is identified by one. */
@@ -106,7 +106,7 @@ export type CaseStudyReportDeedSource = {
 
 /**
  * The deeds block the case-study report prints for a transaction with several deeds
- * (phase 4, decision 2026-10-19: one study covers every deed).
+ * (phase 4,: one study covers every deed).
  *
  * How it works: 1) drops removed deeds; 2) fewer than two left → `undefined`; 3) one row per
  * deed: label = the registry number when the deed is identified by one, else the deed number
@@ -180,7 +180,7 @@ function resolveRequestDateIso(
  * request number = the task's work order, else the draft's; report date from
  * `resolveRequestDateIso`.
  *
- * Edge cases: phase 4 (decision 2026-10-19) — the study is one for the whole transaction, so the
+ * Edge cases: phase 4 — the study is one for the whole transaction, so the
  * approval names all its deeds, not only the deed the workspace was opened on.
  */
 function buildCaseStudyReportApproval(

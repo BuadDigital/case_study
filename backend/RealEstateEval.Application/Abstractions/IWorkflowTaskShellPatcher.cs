@@ -4,7 +4,7 @@ namespace RealEstateEval.Application.Abstractions;
 
 /// <summary>
 /// Applies a shell patch to a workflow task without case-study fee / cascade collaborators.
-/// Used by Failures (A6 pure host) and the residual lifecycle façade.
+/// Used by Failures (pure host) and the residual lifecycle façade.
 /// </summary>
 public interface IWorkflowTaskShellPatcher
 {

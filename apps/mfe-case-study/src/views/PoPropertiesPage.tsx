@@ -269,7 +269,7 @@ export function PoPropertiesPage({
     const serverStatus =
       statusByPropertyId.get(prop.id) ?? PropertyListRowStatuses.New;
     const boursePending = !prop.bourseDataCompleted && !prop.isRemoved;
-    // A slot the specialist opened but has not saved yet (decision 2026-10-18:
+    // A slot the specialist opened but has not saved yet (:
     // the property exists on the server from the first second).
     const intakePending =
       boursePending &&

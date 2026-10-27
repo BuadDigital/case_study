@@ -78,7 +78,7 @@ describe("comparables map", () => {
     expect(url).toContain("size=640x285");
     expect(url).toContain("scale=2");
     expect(url).toContain("maptype=satellite");
-    // §18 lets Static Maps fit all markers — no center/zoom.
+    // Section 18 lets Static Maps fit all markers — no center/zoom.
     const fit = buildComparablesGoogleStaticMapUrl(pins, "test-maps-key");
     expect(fit).not.toContain("zoom=");
     expect(fit).not.toContain("center=");
@@ -222,11 +222,11 @@ describe("print map slots (§18 + §33)", () => {
 
     const urls = fetchMock.mock.calls.map((c) => String(c[0]));
     expect(urls).toHaveLength(3);
-    // §18: all three markers, auto-fit, comps slot size.
+    // Section 18: all three markers, auto-fit, comps slot size.
     const comps = urls.find((u) => !u.includes("zoom="))!;
     expect(comps).toContain("size=640x190");
     expect((comps.match(/markers=/g) ?? []).length).toBe(3);
-    // §33: subject only, mirrored views of the on-screen maps.
+    // Section 33: subject only, mirrored views of the on-screen maps.
     const sat = urls.find((u) => u.includes("zoom=15"))!;
     expect(sat).toContain("maptype=hybrid");
     expect(sat).toContain("center=21.8%2C39.1");

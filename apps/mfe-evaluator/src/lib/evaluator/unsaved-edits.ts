@@ -4,7 +4,7 @@
 //         hasUnsavedSections) and the test for a focused text field changed since focus (editableText,
 //         focusedFieldChanged).
 // Round 2 (1b19bedc)
-//  • R2-2 New clearUnsavedSections, called only when the window unmounts — a screen hidden by <Activity> runs
+//  • New clearUnsavedSections, called only when the window unmounts — a screen hidden by <Activity> runs
 //         the same cleanups, so sections never clear themselves on unmount.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 

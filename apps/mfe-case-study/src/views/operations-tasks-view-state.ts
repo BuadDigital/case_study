@@ -50,7 +50,7 @@ type OperationsTaskFilters = {
 /**
  * The screen's query state. Status, scope, type, the "active only" toggle, the
  * failure-pause exclusion, the search term and the sort are all sent to the
- * server (`docs/architecture/pagination-contract.md` §3); what stays here is
+ * server (`docs/architecture/pagination-contract.md`); what stays here is
  * listed on `visibleOperationsTasks`.
  */
 export type OperationsTaskQueryState = {
@@ -121,7 +121,7 @@ export function toOperationsTaskListQuery(
     excludeFailurePaused: boolean;
     /**
      * Debounced search term; falls back to the live one. Deed numbers belong in
-     * here — `q` matches `DeedsJson` server-side (pagination-contract §3).
+     * here — `q` matches `DeedsJson` server-side (pagination-contract).
      */
     search?: string;
   },
@@ -176,7 +176,7 @@ export function queueTasksForViewer(
       return false;
     }
     // The other half needs the Failures records and the PO → property map,
-    // neither of which is in the Operations database — pagination-contract §3,
+    // neither of which is in the Operations database — pagination-contract,
     // "still client-side" #1. `totalCount` can therefore overstate what this
     // viewer sees.
     return !isOperationsTaskBlockedByFailure(t, failures, poRecords);
@@ -187,7 +187,7 @@ export function queueTasksForViewer(
  * Status, scope, the "active only" toggle and the whole of the free text are
  * applied by the server. **The deed term is gone from here**: `q` now matches
  * `DeedsJson` through the jsonb containment / trigram pair the endpoint grew
- * (pagination-contract §3, "Deed search"), so a deed-only search no longer
+ * (pagination-contract, "Deed search"), so a deed-only search no longer
  * comes back empty and the client no longer re-filters what it asked for. The
  * status / scope / active predicates stay only because a stale or offline page
  * can still hold rows the current filters exclude; what is genuinely left is
@@ -679,7 +679,7 @@ export function operationsTaskCardLinkMeta(
  * How it works: `general` → «غير مرتبطة — مهمة مستقلة»; `transaction` (one deed) → the link label
  * alone; any other scope → «<scope label> · <link label>».
  *
- * Edge cases: decision 2026-10-18 renamed the one-deed scope «معاملة» → «صك» (the transaction now
+ * Edge cases: renamed the one-deed scope «معاملة» → «صك» (the transaction now
  * sits above the deeds), and its link label already reads «صك …», so the scope word is dropped.
  */
 export function operationsTaskLinkChip(task: OperationsTask): string {

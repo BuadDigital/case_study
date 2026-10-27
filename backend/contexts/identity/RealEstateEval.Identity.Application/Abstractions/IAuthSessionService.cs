@@ -36,7 +36,7 @@ public interface IAuthSessionService
 
  /// <summary>
  /// True when the refresh token belongs to an account an admin disabled — a refused
- /// refresh then tells the device to wipe its offline data (security_offline_spec §3.4),
+ /// refresh then tells the device to wipe its offline data (security_offline_spec),
  /// unlike an expired session, whose unsynced field work must survive to the next login.
  /// </summary>
     Task<bool> IsDisabledAccountTokenAsync(

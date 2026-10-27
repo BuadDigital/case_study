@@ -7,7 +7,7 @@ namespace RealEstateEval.Architecture.Tests;
 
 /// <summary>
 /// bounded-context split guardrails for the migration architecture. Every stream belongs to
-/// exactly one context (A10: the legacy stream is archived under git tag
+/// exactly one context (: the legacy stream is archived under git tag
 /// a10-legacy-stream-final), and only the deploy-time migrator (or the development-only
 /// Case Study startup path) applies any of them.
 /// </summary>
@@ -88,7 +88,7 @@ public class MigrationStreamTests
  + ". Each context owns its migrations assembly and history table.");
     }
 
-    // A10: the legacy-stream cutover freeze test is retired with the legacy stream itself
+    // The legacy-stream cutover freeze test is retired with the legacy stream itself
     // (archived under git tag a10-legacy-stream-final). Each schema is shaped only by its
     // owner's stream, which EveryMigrationBelongsToItsOwnStreamsContext enforces.
 

@@ -19,7 +19,7 @@ import {
 /**
  * Redirects to the user's first allowed page when they lack permission for the current
  * route. Offline, a field inspector / government reviewer is kept on the input-form
- * screens (spec §3.1) and sent to their first one from anywhere else.
+ * screens (spec) and sent to their first one from anywhere else.
  */
 export function PageAccessGate({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "/";

@@ -17,7 +17,7 @@ namespace RealEstateEval.Application.Tests;
 /// index-backed on PostgreSQL (jsonb containment + a trigram LIKE over the generated DeedsText
 /// column) and falls back to a plain LINQ substring on the in-memory provider, which has neither.
 /// The SQL half is proved by the container test; these cover the rules and the fallback rows.
-/// See docs/architecture/pagination-contract.md §3.
+/// See docs/architecture/pagination-contract.md.
 /// </summary>
 public class OperationsTaskDeedSearchTests
 {

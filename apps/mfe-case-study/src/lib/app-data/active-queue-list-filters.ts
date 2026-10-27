@@ -65,7 +65,7 @@ export type PrimaryQueueRowMeta = {
  * The PO-record column the server joined onto the task row, or the record-derived
  * value when the task carries none (an unfilled slot). The join in
  * `buildPrimaryQueueRowMeta` / `buildDistributionQueueRowMeta` is no longer the
- * source of these five — pagination-contract §2, "The PO-record joins for display".
+ * source of these five — pagination-contract, "The PO-record joins for display".
  */
 function serverColumn(value: string | undefined, fallback: string): string {
   const v = value?.trim();
@@ -109,8 +109,8 @@ export function buildPrimaryQueueRowMeta(
  * The free-text pass is **gone**: the deed / city / district haystack this used
  * to build is exactly what server `q` now matches, so the queues that call this
  * send the search term and render the page they get back
- * (pagination-contract §2, "Retired client-side rules"). Only the two filters
- * the server cannot answer are left: the badge *label* status filter (§2 "still
+ * (pagination-contract, "Retired client-side rules"). Only the two filters
+ * the server cannot answer are left: the badge *label* status filter (section 2 "still
  * client-side" #1) and the assignment-type label, which the queue resolves as
  * `record.assignmentType ?? task.assignmentType` and so can differ from the
  * column the server would filter on.
@@ -176,7 +176,7 @@ export function buildDistributionQueueRowMeta(
  * same list (`buildCaseStudyPartyAssignees`), so their request is deliberately
  * left unnarrowed and unpaged — sending `q` would drop the siblings the party
  * columns need. The free-text pass therefore stays here, over the same five
- * PO-record columns the server would match (pagination-contract §2, and the
+ * PO-record columns the server would match (pagination-contract, and the
  * sibling-reading exception it carves out for these layouts).
  */
 export function filterDistributionQueueRows(

@@ -5,7 +5,7 @@ using RealEstateEval.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Architecture.Tests.Support;
 
 /// <summary>
-/// Aggregates the nine owner-context models (A10: the legacy god context is archived).
+/// Aggregates the nine owner-context models (the legacy god context is archived).
 /// The union of the owner models is the authority for table and schema placement; the
 /// ownership catalog is the authority for who may write each table. Contexts that map
 /// another owner's table read-only (e.g. Valuation's <c>messaging.OutboxMessages</c>)

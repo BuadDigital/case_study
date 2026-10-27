@@ -36,22 +36,22 @@ public abstract class BoundedContextDesignTimeFactory<TContext> : IDesignTimeDbC
     protected abstract TContext Create(DbContextOptions<TContext> options);
 }
 
-// A8 physical move: AttachmentsDbContextDesignTimeFactory lives beside its context in
+// Physical move: AttachmentsDbContextDesignTimeFactory lives beside its context in
 // contexts/attachments (RealEstateEval.Attachments.Infrastructure/Data).
 
-// A8 physical move: PlatformDbContextDesignTimeFactory lives beside its context library.
+// Physical move: PlatformDbContextDesignTimeFactory lives beside its context library.
 
-// A8 physical move: ValuationDbContextDesignTimeFactory lives beside its context library.
+// Physical move: ValuationDbContextDesignTimeFactory lives beside its context library.
 
-// A8 physical move: IdentityDbContextDesignTimeFactory lives beside its context library.
+// Physical move: IdentityDbContextDesignTimeFactory lives beside its context library.
 
-// A8 physical move: FailuresDbContextDesignTimeFactory lives beside its context library.
+// Physical move: FailuresDbContextDesignTimeFactory lives beside its context library.
 
-// A8 physical move: OperationsDbContextDesignTimeFactory lives beside its context library.
+// Physical move: OperationsDbContextDesignTimeFactory lives beside its context library.
 
-// A8 physical move: FinancialDbContextDesignTimeFactory lives beside its context library.
+// Physical move: FinancialDbContextDesignTimeFactory lives beside its context library.
 
-// A8 physical move: CaseStudyDbContextDesignTimeFactory lives beside its context library.
+// Physical move: CaseStudyDbContextDesignTimeFactory lives beside its context library.
 
 public sealed class MessagingDbContextDesignTimeFactory
     : BoundedContextDesignTimeFactory<MessagingDbContext>

@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 2 (1b19bedc)
-//  • R2-14 The assumptions text takes the ownership interest key and rewords the full-ownership assumption
+//  • The assumptions text takes the ownership interest key and rewords the full-ownership assumption
 //          for a usufruct / leased land (OwnershipInterestKeys.AssumptionForInterest).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ public static class ValuationReportNarrativeRules
         string? basisLabelAr,
         string? premiseLabelAr,
         string? restrictionsLine,
- // Decision 24 — auto-composed inspection-boundary caveat text (empty for full inspection).
+ // auto-composed inspection-boundary caveat text (empty for full inspection).
         string? inspectionReservationLine = null,
  // Specialist clause (IVS 101 1-20/l): "No" ⟵ standard denial · "Yes" ⟵ details replace it.
         bool externalSpecialistUsed = false,
@@ -50,7 +50,7 @@ public static class ValuationReportNarrativeRules
         IReadOnlyList<string>? selectedAssumptions = null,
  // Retrospective line when selected (date + rationale).
         string? retrospectiveLine = null,
- // D11 interest valued — rewords the library's full-ownership assumption for a usufruct / leased land.
+ // Interest valued — rewords the library's full-ownership assumption for a usufruct / leased land.
         string? ownershipInterestKey = null)
     {
         var bits = new List<string>

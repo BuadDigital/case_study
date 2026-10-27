@@ -1,6 +1,6 @@
 /**
  * Query-string tests for the paged list clients of
- * `docs/architecture/pagination-contract.md` §4–§7. Each asserts the exact URL
+ * `docs/architecture/pagination-contract.md`–section 7. Each asserts the exact URL
  * the fetcher builds, because a renamed or dropped parameter is silently
  * ignored by the endpoint (unknown `sort` falls back, it never 400s).
  */

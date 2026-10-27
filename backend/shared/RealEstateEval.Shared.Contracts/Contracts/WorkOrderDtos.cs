@@ -453,7 +453,7 @@ public class PendingBoursePropertyDto
     public string? TransactionNumber { get; set; }
 }
 
-// Courts-catalog DTOs moved to RealEstateEval.Platform.Application (A8).
+// Courts-catalog DTOs moved to RealEstateEval.Platform.Application.
 
 /// <summary>One deed owner.</summary>
 public class DeedOwnerDto

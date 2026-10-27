@@ -154,12 +154,12 @@ export function caseStudyIncompleteMessage(answered: number, total: number): str
   return `أجب عن كل الأسئلة الظاهرة (${answered} من ${total})`;
 }
 
-/** D16 — the refusal both sides show while a traditional deed has no deed ↔ nature outcome. */
+/** The refusal both sides show while a traditional deed has no deed ↔ nature outcome. */
 export const CASE_STUDY_DEED_MATCH_REQUIRED_MESSAGE =
   "اختر نتيجة «مطابقة الصك على الطبيعة» من تبويب «مدخلات المعاين» قبل إصدار تقرير دراسة الحالة";
 
 /**
- * D16 — issuing waits for the specialist's deed ↔ nature outcome on a traditional deed (the issue locks
+ * Issuing waits for the specialist's deed ↔ nature outcome on a traditional deed (the issue locks
  * the field, and the appraiser's hand-over needs it). A registered title has no match gate; an unknown
  * property is left to the server. Mirrors `CaseStudyReportDeedNatureMatchRules.ValidateForIssue`.
  */
@@ -172,7 +172,7 @@ export function caseStudyDeedMatchIssueBlock(args: {
 }
 
 /**
- * First incomplete control in form order: the matrix. The deed ↔ nature match (D16) lives on another
+ * First incomplete control in form order: the matrix. The deed ↔ nature match lives on another
  * tab — see `caseStudyDeedMatchIssueBlock`. Mirrors the server (CaseStudyReportService.Issue).
  */
 export function firstCaseStudyReportScrollTarget(args: {

@@ -18,7 +18,7 @@ public class ComparablePropertyDto
     public Guid Id { get; init; }
     public required string ReferenceCode { get; init; }
     public required string ComparablePropertyType { get; init; }
- /// <summary>Comparable use — closed list (Q-3/5).</summary>
+ /// <summary>Comparable use — closed list.</summary>
     public string Usage { get; init; } = "";
     public required string TransactionKind { get; init; }
     public string TransactionKindLabelAr { get; init; } = "";
@@ -26,7 +26,7 @@ public class ComparablePropertyDto
     public string PriceDescriptionLabelAr { get; init; } = "";
     public required string Source { get; init; }
     public string? ListingNumber { get; init; }
- /// <summary>Q-3/3: bourse deal reference for closed deals.</summary>
+ /// <summary>Bourse deal reference for closed deals.</summary>
     public string? TransactionReference { get; init; }
     public string? AdvertiserPhone { get; init; }
     public string? ListingImageFileName { get; init; }
@@ -51,7 +51,7 @@ public class ComparablePropertyDto
     public Guid? SourcePropertyId { get; init; }
     public bool IsActive { get; init; }
 
- // Q-3: human quality tags.
+ // Human quality tags.
  /// <summary>normal | anomalous | unreliable.</summary>
     public string ReliabilityTag { get; init; } = "normal";
     public string ReliabilityTagLabelAr { get; init; } = "";
@@ -69,7 +69,7 @@ public class ComparablePropertyDto
     public ComparableSourceCardDto SourceCard { get; init; } = null!;
 }
 
-/// <summary>Q-3: set/update quality tags — any authorized actor with a rationale; the record remains.</summary>
+/// <summary>set/update quality tags — any authorized actor with a rationale; the record remains.</summary>
 public class SaveComparableQualityTagsRequest
 {
  /// <summary>normal | anomalous | unreliable.</summary>
@@ -88,7 +88,7 @@ public class UpsertComparablePropertyRequest
     [Required, MaxLength(128)]
     public string ComparablePropertyType { get; init; } = "";
 
- /// <summary>Comparable use — closed list (Q-3/5).</summary>
+ /// <summary>Comparable use — closed list.</summary>
     [MaxLength(64)]
     public string? Usage { get; init; }
 
@@ -106,7 +106,7 @@ public class UpsertComparablePropertyRequest
     [MaxLength(64)]
     public string? ListingNumber { get; init; }
 
- /// <summary>Q-3/3: bourse deal reference — for closed deals, optional.</summary>
+ /// <summary>Bourse deal reference — for closed deals, optional.</summary>
     [MaxLength(64)]
     public string? TransactionReference { get; init; }
 
@@ -167,7 +167,7 @@ public class ComparablePropertyListQuery
     public string? ToDate { get; init; }
     public bool IncludeInactive { get; init; }
     public int Take { get; init; } = 100;
-    /// <summary>Comparison-method spec §2: prioritize field comparables for this property, then banked ones.</summary>
+    /// <summary>Comparison-method spec: prioritize field comparables for this property, then banked ones.</summary>
     public string? ForPropertyId { get; init; }
 
     /// <summary>1-based page. Presence switches the endpoint to the paged envelope.</summary>

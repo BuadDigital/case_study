@@ -31,7 +31,7 @@ export type ValuationWorkScreenId =
 export type ValuationWorkNavAvailability = {
   market: boolean;
   cost: boolean;
-  /** D17 — «أسلوب الدخل»; absent = off (older callers report market/cost only). */
+  /** «أسلوب الدخل»; absent = off (older callers report market/cost only). */
   income?: boolean;
 };
 
@@ -76,7 +76,7 @@ export function officialValuationDateOf(
 /**
  * Interactive-form spec (buildNarrative): adjustments analysis lists only written
  * factor justifications until the appraiser edits it manually. Empty factors are omitted.
- * Rule Q-8-1: the factor-level justification (مبرر التسوية) lives in its own per-request table,
+ * The factor-level justification (مبرر التسوية) lives in its own per-request table,
  * not on the adjustment line — same precedence as `useAdjustmentsMatrixModel.justValue`. The
  * per-comparable line rationale is a back-compat/override fallback only.
  */
@@ -127,7 +127,7 @@ export function buildNavItems({
 }: {
   marketEnabled: boolean;
   costEnabled: boolean;
-  /** D17 — the income screen appears only when income is enabled in the settings. */
+  /** The income screen appears only when income is enabled in the settings. */
   incomeEnabled?: boolean;
   adoptedMarketCount: number;
 }): ValuationWorkNavItem[] {

@@ -7,7 +7,7 @@ namespace RealEstateEval.Operations.Application.Rules;
 /// Turns the free-text <c>q</c> of <c>GET /api/operations-tasks</c> into the two literals the deed
 /// search needs. Pure: no EF, no I/O — the query service feeds these to
 /// <c>EF.Functions.JsonContains</c> and <c>EF.Functions.Like</c>. See
-/// docs/architecture/pagination-contract.md §3.
+/// docs/architecture/pagination-contract.md.
 /// </summary>
 public static class OperationsTaskDeedSearch
 {

@@ -411,7 +411,7 @@ export function draftToPayload(
     ...(draft.completedOnSiteAtUtc
       ? { completedOnSiteAtUtc: draft.completedOnSiteAtUtc }
       : {}),
-    // Client-only marker: the server compares and strips it (spec §4.4).
+    // Client-only marker: the server compares and strips it (spec).
     ...(draft.sourceFingerprint
       ? { sourceFingerprintSeen: draft.sourceFingerprint }
       : {}),

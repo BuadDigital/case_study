@@ -11,7 +11,7 @@ using RealEstateEval.CaseStudy.Infrastructure.Persistence;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// A9 — the one-call Case Study read the Valuation host uses instead of CaseStudyDbContext.
+/// The one-call Case Study read the Valuation host uses instead of CaseStudyDbContext.
 /// </summary>
 public class CaseStudyValuationContextLookupTests
 {

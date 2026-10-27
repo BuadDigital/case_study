@@ -97,7 +97,7 @@ export function ComparablePropertiesView() {
   }
 
   /**
-   * One server page (pagination-contract §4). The bank used to arrive as a
+   * One server page (pagination-contract). The bank used to arrive as a
    * single `take: 100` slab that silently dropped row 101 onwards; `totalCount`
    * is now the real size of the filtered bank.
    */

@@ -156,7 +156,7 @@ public partial class UserRegistrationService : IUserRegistrationService
         // Resolve the target state first: an absent member keeps the stored value, and an
         // empty string clears an optional one.
         var target = StaffProfileRules.ResolveUpdateTarget(request, user, stored);
-        // Q-3: A mobile phone entered in a format other than Saudi Arabia is rejected - a number that cannot be entered is not stored.
+        // A mobile phone entered in a format other than Saudi Arabia is rejected - a number that cannot be entered is not stored.
         if (StaffProfileRules.MobileRejected(request, target))
             return (null, StaffUserRules.FormError(
                 "صيغة رقم الجوال السعودي غير صحيحة (05XXXXXXXX).", "mobile"));

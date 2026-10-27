@@ -31,7 +31,7 @@ public partial class PartyTaskSubmissionService
                 await StudyReportIssuedForAsync(entity.WorkflowTaskId, cancellationToken));
             if (errors.Count == 0)
             {
-                // D2: only a package that passed everything else spends the cross-service gate read.
+                // Only a package that passed everything else spends the cross-service gate read.
                 // Round 2: the unissued study report no longer hides what the appraiser can fix now —
                 // the refusal lists it together with every other blocker (the study-report gate itself
                 // is not repeated).

@@ -3,7 +3,7 @@ import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
 
-/** Inspection scope (Decision 24): full · external only · desktop remote. */
+/** Inspection scope: full · external only · desktop remote. */
 export type InspectionScopeKey = "full" | "external" | "desktop";
 
 export type UninspectedUnitEntryDto = {
@@ -11,7 +11,7 @@ export type UninspectedUnitEntryDto = {
   reason: string;
 };
 
-/** Inspection limits (Decision 24 + Q-7) — structured inputs filled by the inspector. */
+/** Inspection limits — structured inputs filled by the inspector. */
 export type InspectionLimitsDto = {
   propertyId: string;
   /** full | external | desktop | "" (not captured yet). */
@@ -22,7 +22,7 @@ export type InspectionLimitsDto = {
   totalUninspectedUnits: number;
   /** Auto-composed caveat text — feeds special assumptions. */
   reservationTextAr: string;
-  /** Q-7 — certified valuer approval for desktop-remote scope. */
+  /** Certified valuer approval for desktop-remote scope. */
   remoteInspectionApprovedBy?: string | null;
   remoteInspectionApprovedAtUtc?: string | null;
   remoteInspectionApproved: boolean;

@@ -5,20 +5,20 @@
 //  • Saved 0s  Once the cost approach is saved (cost.isSaved), a deliberate 0 for indirect items, financing
 //              or ages no longer turns back into a default on reload; every indirect item is sent, zeros
 //              included. Actual / economic age rationales are loaded and sent.
-//  • D11  Physical depreciation uses a life capped at the remaining lease term (effectiveLifeLocal).
-//  • D12  Applied depreciation capped at 100٪ (buildings value floors at 0); new alert when the total
+//  • Physical depreciation uses a life capped at the remaining lease term (effectiveLifeLocal).
+//  • Applied depreciation capped at 100٪ (buildings value floors at 0); new alert when the total
 //         is above 90٪ (HIGH_OBSOLESCENCE_ALERT_PCT).
 //  • Floors  New alert «عدد الأدوار المتكررة مطلوب» for an included repeated-floors line without a count.
 // Round 2 (1b19bedc)
-//  • R2-5  costNumericInput keeps an ASCII comma so costNum reads «7,5» as 7.5 (was 75).
-//  • R2-7  New repeatedFloorCountForItem — a repeated-floors line starts with no count, not 2.
+//  • costNumericInput keeps an ASCII comma so costNum reads «7,5» as 7.5 (was 75).
+//  • New repeatedFloorCountForItem — a repeated-floors line starts with no count, not 2.
 //  • A    New buildingPlotArea field (buildingPlotAreaSeed: the deed area, empty for an apartment), sent as
 //         buildingPlotAreaSqm; apartmentLandAlerts require plot and share and refuse a share above the plot.
-//  • R2-16  Re-pulling the inventory keeps unit costs already priced (keepCostLineInputs); the toast says
+//  • Re-pulling the inventory keeps unit costs already priced (keepCostLineInputs); the toast says
 //           how many kept theirs and how many still need one (costRepullMessage).
 //  • B    New alert when a required cost rationale (use restriction, life extension, functional /
 //         external obsolescence) is written but under 10 characters.
-//  • D11  The lease cap comment now covers any usufruct / leased-land interest, whatever the scope.
+//  • The lease cap comment now covers any usufruct / leased-land interest, whatever the scope.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -62,7 +62,7 @@ export type CostApproachFields = {
   useRestrictionPct: string;
   useRestrictionRationale: string;
   apartmentLandShare: string;
-  /** Decision A: the whole building plot the land comparables are compared with (m²). */
+  /** The whole building plot the land comparables are compared with (m²). */
   buildingPlotArea: string;
   indirectDraft: IndirectDraft;
   financingRate: string;
@@ -117,7 +117,7 @@ export function repeatedFloorCountForItem(
   return itemKey === "repeated_floors" ? (current ?? null) : null;
 }
 
-/** D12: total obsolescence above this asks for a rationale (mirrors the server threshold). */
+/** Total obsolescence above this asks for a rationale (mirrors the server threshold). */
 export const HIGH_OBSOLESCENCE_ALERT_PCT = 90;
 
 /** Interactive-form starter values (التقييم بأسلوبي السوق والتكلفة). */
@@ -177,7 +177,7 @@ export function inspectorAgeYearsForCostField(
 }
 
 /**
- * Decision A: what the plot-area box starts with before the appraiser saves one — the deed area when
+ * What the plot-area box starts with before the appraiser saves one — the deed area when
  * the deed is the land itself; an apartment's deed area is the unit, never the building plot, so it
  * starts empty there. Typed digits only (Arabic digits → Latin).
  */
@@ -567,7 +567,7 @@ export type CostApproachDerived = {
   totalCostLocal: number;
   economicLocal: number;
   extLifeLocal: number;
-  /** Life physical depreciation is measured against — lease-capped on leased land (D11). */
+  /** Life physical depreciation is measured against — lease-capped on leased land. */
   effectiveLifeLocal: number;
   actualLocal: number;
   physicalLocal: number;
@@ -604,7 +604,7 @@ export function costApproachDerived(
   const economicLocal = costNum(fields.economicAge);
   const extLifeLocal = economicLocal + costNum(fields.lifeExtension);
   const actualLocal = costNum(fields.actualAge);
-  // D11: a usufruct / leased-land interest — the life cannot outlast the lease, whatever the
+  // A usufruct / leased-land interest — the life cannot outlast the lease, whatever the
   // scope (the server sends the term only when it applies).
   const leaseYears = cost?.remainingLeaseYears;
   const effectiveLifeLocal =
@@ -618,7 +618,7 @@ export function costApproachDerived(
   const functionalLocal = costNum(fields.functionalObs);
   const externalLocal = costNum(fields.externalObs);
   const totalDepLocal = physicalLocal + functionalLocal + externalLocal;
-  // D12: the depreciation applied is capped at 100% — the buildings value floors at zero.
+  // The depreciation applied is capped at 100% — the buildings value floors at zero.
   const depValueLocal =
     (totalCostLocal * Math.min(Math.max(totalDepLocal, 0), 100)) / 100;
   const netValueLocal = Math.max(0, totalCostLocal - depValueLocal);
@@ -809,7 +809,7 @@ export function buildCostAlerts(
         : "cost-externalObsRationale",
       fallbackTargetId: "cost-age",
     });
-  // Decision B: a written rationale the server requires is at least 10 characters — a shorter
+  // A written rationale the server requires is at least 10 characters — a shorter
   // one is refused by the autosave, so it is named here before the round trip.
   const shortRationale = (
     [
@@ -851,7 +851,7 @@ export function buildCostAlerts(
 }
 
 /**
- * Decision A: an apartment's land is the building plot's land — the comparables are adjusted against
+ * An apartment's land is the building plot's land — the comparables are adjusted against
  * the whole plot and the rate multiplies the apartment's share; both must be entered, the share within
  * the plot.
  */

@@ -20,7 +20,7 @@ public sealed class HttpPoEnfazBillingService(
     /// <summary>
     /// List parameters go upstream on the query string; the owner re-resolves the page window
     /// from its own <c>Database</c> options, so skip / take here are informational only
-    /// (pagination-contract §10).
+    /// (pagination-contract).
     /// </summary>
     public async Task<IReadOnlyList<EnfazReadyPoSummaryDto>> ListReadyPoSummariesAsync(
         EnfazReadyPoListQuery query,

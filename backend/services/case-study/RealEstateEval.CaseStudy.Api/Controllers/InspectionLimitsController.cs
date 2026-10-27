@@ -9,7 +9,7 @@ using RealEstateEval.CaseStudy.Application.Abstractions;
 
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
-/// <summary>Inspection Limitations (Decision 24 + Q-7) — Packaged by Inspector, supported by Appraiser desktop.</summary>
+/// <summary>Inspection Limitations — Packaged by Inspector, supported by Appraiser desktop.</summary>
 [ApiController]
 [Route("api/work-orders/{poNumber}/properties/{propertyId:guid}/inspection-limits")]
 [Authorize]

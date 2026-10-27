@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D14  A comparable fed from a completed valuation is labelled «تقييم سابق معتمد (ليس صفقة)»
+//  • A comparable fed from a completed valuation is labelled «تقييم سابق معتمد (ليس صفقة)»
 //         (PriorValuationKindLabelAr) — an appraisal, never «صفقة منفّذة».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 

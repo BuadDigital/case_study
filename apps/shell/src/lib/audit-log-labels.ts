@@ -171,7 +171,7 @@ const FIELD_AR: Record<string, string> = {
   poNumber: "أمر العمل",
   kind: "نوع المهمة",
   phase: "المرحلة",
-  severity: "الخطورة",
+  severity: "درجة التعذّر",
   problemTypeId: "نوع المشكلة",
   acceptedBy: "قبله",
   childCount: "عدد الأطراف",
@@ -438,7 +438,7 @@ export function auditDetailSummary(
         actionWord,
         poPart(readString(afterObj, "poNumber") ?? readString(beforeObj, "poNumber")),
         readString(afterObj, "severity")
-          ? `النوع: ${severityLabel(readString(afterObj, "severity"))}`
+          ? `درجة التعذّر: ${severityLabel(readString(afterObj, "severity"))}`
           : null,
         readString(beforeObj, "status") && readString(afterObj, "status")
           ? `${statusLabel(readString(beforeObj, "status"))} ← ${statusLabel(readString(afterObj, "status"))}`

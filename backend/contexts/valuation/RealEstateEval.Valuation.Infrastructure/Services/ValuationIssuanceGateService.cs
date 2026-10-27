@@ -1,20 +1,20 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D13  The participant-credentials gate checks only the people on this report (ReportParticipants, incl.
+//  • The participant-credentials gate checks only the people on this report (ReportParticipants, incl.
 //         the signing valuer and the assigned appraiser), not the whole roster.
-//  • D17  Income approach: gate IncomeApproachComplete, the cap-rate rationale and alerts 26–28 follow the
+//  • Income approach: gate IncomeApproachComplete, the cap-rate rationale and alerts 26–28 follow the
 //         settings toggle.
-//  • Alerts  Alert input gets each adopted comparable's adjusted unit rate (D6), deal date (D8) and usage
-//            (D10) via ToAlertComparable, plus the date cutoff from the valuation date (D8), today and the
-//            subject type (D10).
+//  • Alerts  Alert input gets each adopted comparable's adjusted unit rate, deal date and usage
+//            via ToAlertComparable, plus the date cutoff from the valuation date, today and the
+//            subject type.
 //  • Wording  Alert note now «تنبيهات منهجية (27): 8 حاجبة · 13 بمبرر نصي إلزامي · 6 بإقرار».
 //  • Split  Value-document and required-attachment reads moved to ValuationIssuanceGateService.Reads.cs (the
 //           class is now partial).
 // Round 2 (1b19bedc)
-//  • R2-1  Passes the engineering-survey task ids to the required-attachments read.
+//  • Passes the engineering-survey task ids to the required-attachments read.
 //  • B    New gates AdjustmentRationales for the market table and the land-within-cost table: an included
 //         non-zero factor or a manual weight without a rationale of ≥ 10 characters blocks.
-//  • D8   Passes ComparableDateCutoffIsPeriodEnd — whether the cutoff is the end of a retrospective period.
+//  • Passes ComparableDateCutoffIsPeriodEnd — whether the cutoff is the end of a retrospective period.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using Microsoft.EntityFrameworkCore;
@@ -74,7 +74,7 @@ public sealed partial class ValuationIssuanceGateService(
         string? poNumber = null;
         var propertyRequiresSurvey = true;
         IReadOnlyList<Guid> surveyTaskIds = [];
- // Inspection boundaries (decision 24 + Q-7) — feed m18/m21.
+ // Inspection boundaries — feed m18/m21.
         string? inspectionScopeKey = null;
         var uninspectedUnitCount = 0;
         string? inspectionRestrictionReason = null;
@@ -127,7 +127,7 @@ public sealed partial class ValuationIssuanceGateService(
         var costUsed = (cost?.CostOpinionWithLand ?? 0m) > 0m
             || (cost?.Lines.Count ?? 0) > 0;
 
- // Q-2/Q-3 amended: cost alerts are irrelevant when the approach is off
+ // Amended: cost alerts are irrelevant when the approach is off
  // (bare land defaults it off; land with structures keeps it available).
         var approachSettings = await valuation.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
@@ -148,7 +148,7 @@ public sealed partial class ValuationIssuanceGateService(
         // "Building only" scope: land section hidden — its gates do not apply.
         var costLandRelevant = costApproachEnabled
             && !CostScopeKeys.IsBuildingOnly(settings.CostScopeKey);
-        // D17: the income approach — its gate and alerts 26–28 follow the settings toggle.
+        // The income approach — its gate and alerts 26–28 follow the settings toggle.
         var incomeOn = settings.IncomeApproachEnabled ? income : null;
 
         var checks = new List<ValuationIssuanceGateCheck>
@@ -157,7 +157,7 @@ public sealed partial class ValuationIssuanceGateService(
                 firmLicenseExpiresAt,
                 eval.MembershipExpiresAt,
                 today),
-            // D13: only the people on THIS report — not the whole roster (one colleague's expired
+            // Only the people on THIS report — not the whole roster (one colleague's expired
             // membership used to block every appraiser's issuance).
             ValuationIssuanceGateRules.ParticipantCredentials(
                 ValuationIssuanceGateInputRules.ReportParticipants(
@@ -236,7 +236,7 @@ public sealed partial class ValuationIssuanceGateService(
                 o.Acknowledged))
             .ToList();
 
- // Decision 24: the structured restriction reason is the valuer's explanation of inspection limits —
+ // The structured restriction reason is the valuer's explanation of inspection limits —
  // it satisfies the m18 rationale without rewriting it in issuance gates (single source).
         if (!string.IsNullOrWhiteSpace(inspectionRestrictionReason)
             && resolutions.All(r => !string.Equals(

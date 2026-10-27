@@ -10,7 +10,7 @@ using RealEstateEval.Valuation.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 
-/// <summary>Q-6: two-phase issuance + deposit certificate.</summary>
+/// <summary>two-phase issuance + deposit certificate.</summary>
 public class ValuationReportIssuanceTests
 {
     [Fact]
@@ -52,7 +52,7 @@ public class ValuationReportIssuanceTests
         var (_, dupErrors) = await service.IssueDepositAsync(id, "user-1");
         Assert.Contains("مجمّد", dupErrors!["_"]);
 
-        // Q-6: freeze guard blocks editing adjustments after the deposit copy.
+        // Freeze guard blocks editing adjustments after the deposit copy.
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(db, id));
 
         // Phase 2: register certificate and code — final copy.
@@ -117,7 +117,7 @@ public class ValuationReportIssuanceTests
         Assert.Contains("مطلوب", shortErrors!["reason"]);
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(db, id));
 
-        // R2: current copy is marked superseded and kept on file; cycle returns to an open draft.
+        // Current copy is marked superseded and kept on file; cycle returns to an open draft.
         var (reopened, reopenErrors) = await service.ReopenAfterDepositAsync(
             id,
             new ReopenReportIssuanceRequest { Reason = "قيمة المقارنات تغيّرت بعد صفقة مسجلة أحدث" },
@@ -197,7 +197,7 @@ public class ValuationReportIssuanceTests
         Assert.Contains("ر1", errors!["_"]);
     }
 
-    // ---- D15: the deposit code ----
+    // ----: the deposit code ----
 
     [Fact]
     public void Deposit_codes_are_stored_in_latin_digits_and_compared_case_and_space_insensitively()
@@ -285,7 +285,7 @@ public class ValuationReportIssuanceTests
         Assert.Null(fresh);
         Assert.Equal(2, v2!.Version);
 
-        // D15 scope: only current reports hold their code against OTHER requests — v1 is superseded.
+        // Scope: only current reports hold their code against OTHER requests — v1 is superseded.
         await service.IssueDepositAsync(other, "user-1");
         var (_, otherErrors) = await service.RegisterCertificateAsync(other, Certificate("QYM-V1"), "app-2");
         Assert.Null(otherErrors);

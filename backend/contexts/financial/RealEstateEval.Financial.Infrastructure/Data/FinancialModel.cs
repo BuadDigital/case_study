@@ -6,11 +6,11 @@ using RealEstateEval.Financial.Domain;
 namespace RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Financial-owned tables in the <c>financial</c> schema, including D1 inspector-fee
+/// Financial-owned tables in the <c>financial</c> schema, including inspector-fee
 /// ledgers, transitions, and disbursement batches (relocated from the <c>case_study</c>
 /// schema name). Applied by <see cref="FinancialDbContext"/>.
 /// </summary>
-// A8: public — the owner context lives in its context library; this shared mapping stays
+// Public — the owner context lives in its context library; this shared mapping stays
 // global beside the frozen legacy context (drift guard).
 public static class FinancialModel
 {
@@ -262,7 +262,7 @@ public static class FinancialModel
                 .HasDatabaseName("UX_DiscountFlags_PendingTask");
         });
 
- // D1: accrual/disbursement lifecycle is financial-owned (relocated from case_study).
+ // accrual/disbursement lifecycle is financial-owned (relocated from case_study).
         builder.Entity<InspectorFeeLedger>(e =>
         {
             MapTable(e, "InspectorFeeLedgers", DatabaseSchemas.Financial, ownsMigrations);
@@ -304,7 +304,7 @@ public static class FinancialModel
                 "SupervisorDiscountSar",
                 "NetFeeSar",
                 "PaidAmountSar");
- // Both tables sit in financial (D1), so the link can be enforced; deleting a batch
+ // Both tables sit in financial, so the link can be enforced; deleting a batch
  // releases its lines back to the unbatched pool instead of orphaning them.
             e.HasOne<DisbursementBatch>()
                 .WithMany()

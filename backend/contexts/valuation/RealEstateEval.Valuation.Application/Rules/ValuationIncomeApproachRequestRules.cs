@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Income New file — pure validation of the income-approach save (D17): amounts 0–1e9 SAR, % 0–100,
+//  • Income New file — pure validation of the income-approach save: amounts 0–1e9 SAR, % 0–100,
 //           known expenses mode, cap rate > 0 and ≤ the maximum, rationale length; Arabic 400s, never a 500.
 // Round 2 (1b19bedc)
 //  • B    When alert 26 fires (cap rate outside 4–12%) a written cap-rate rationale is at least 10 characters.
@@ -13,7 +13,7 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.Valuation.Application.Rules;
 
 /// <summary>
-/// Pure request validation for the income-approach save (D17) — bounds with Arabic messages,
+/// Pure request validation for the income-approach save — bounds with Arabic messages,
 /// run before anything is loaded so an absurd payload is a 400, never a 500.
 /// </summary>
 public static class ValuationIncomeApproachRequestRules
@@ -43,7 +43,7 @@ public static class ValuationIncomeApproachRequestRules
 
         if ((request.CapRateRationale?.Trim().Length ?? 0) > IncomeApproachRules.RationaleMaxLength)
             errors["capRateRationale"] = $"مبرر معدل الرسملة لا يتجاوز {N(IncomeApproachRules.RationaleMaxLength)} حرف";
-        // Decision B: when alert 26 fires (rate outside 4–12٪) a written rationale is at least 10 characters.
+        // When alert 26 fires (rate outside 4–12٪) a written rationale is at least 10 characters.
         else if (request.CapitalisationRatePct is { } rate
                  && IncomeApproachRules.CapRateOutsideTypicalRange(rate)
                  && JustificationRules.IsBelowRequiredMinimum(request.CapRateRationale))

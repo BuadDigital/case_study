@@ -16,7 +16,7 @@ public class ProjectReferenceBoundaryTests
     ];
 
     /// <summary>
-    /// A10 cleanup: the global Domain assembly is retired — entities live in the context
+    /// Cleanup: the global Domain assembly is retired — entities live in the context
     /// Domain libraries, shared wire types in the Shared.Contracts leaf. It must not return.
     /// </summary>
     [Fact]

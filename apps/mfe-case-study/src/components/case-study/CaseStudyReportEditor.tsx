@@ -204,7 +204,7 @@ export function CaseStudyReportEditor({
       (!isParty && draft.status === "issued") ||
       (isParty && (draft.status === "issued" || parentFormSubmitted)),
   );
-  // D16: a traditional deed's report is issued only once the deed ↔ nature outcome is chosen.
+  // A traditional deed's report is issued only once the deed ↔ nature outcome is chosen.
   const deedMatchBlock = isParty
     ? null
     : caseStudyDeedMatchIssueBlock({ outcome: draft.deedNatureMatchOutcome, property });
@@ -374,7 +374,7 @@ export function CaseStudyReportEditor({
           <div ref={stepPanelRef} className="flex flex-col gap-3.5">
             {step === 0 && sectionHasVisibleQuestions("deed") ? (
               <div className="flex flex-col gap-3.5">
-                {/* Phase 4 (decision 2026-10-19): the specialist's form lists every deed of the transaction above the deed questions. */}
+                {/* Phase 4: the specialist's form lists every deed of the transaction above the deed questions. */}
                 {!isParty && deeds ? <CaseStudyDeedsTable deeds={deeds} /> : null}
                 <CaseStudyMatrixTable
                   section="deed"

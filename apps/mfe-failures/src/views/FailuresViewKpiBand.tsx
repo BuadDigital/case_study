@@ -1,12 +1,11 @@
 "use client";
 
-/** Failures queue — the KPI band (desktop) and the 2×2 stat cards (mobile). */
+/** Failures queue — the KPI band (desktop) and the stat cards (mobile): one count per stage. */
 
 import {
   KpiAlertIcon,
   KpiBand,
   KpiCell,
-  KpiCheckIcon,
   KpiClipboardIcon,
   KpiClockIcon,
   MobileKpiStatCards,
@@ -20,11 +19,7 @@ export function FailuresViewKpiBand({
   stats: FailuresKpiStats;
   isFetched: boolean;
 }) {
-  const openSub = !isFetched
-    ? "—"
-    : stats.open > 0
-      ? "تحتاج معالجة"
-      : "لا تعذّرات مفتوحة";
+  const value = (n: number) => (!isFetched ? "—" : n);
   return (
     <>
       <KpiBand className="mb-0 hidden lg:flex">
@@ -32,32 +27,25 @@ export function FailuresViewKpiBand({
           first
           icon={<KpiAlertIcon />}
           iconClass="bg-[var(--gold-soft)] text-[var(--gold-d)]"
-          label="تعذّرات مفتوحة"
-          value={!isFetched ? "—" : stats.open}
-          sub={openSub}
+          label="عند الأخصائي"
+          value={value(stats.withSpecialist)}
+          sub="احتمال · داخلي · مُعاد"
           dot
         />
         <KpiCell
           icon={<KpiClockIcon />}
           iconClass="bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]"
           label="قيد المراجعة"
-          value={!isFetched ? "—" : stats.review}
-          sub="بانتظار الاعتماد"
-        />
-        <KpiCell
-          icon={<KpiCheckIcon />}
-          iconClass="bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading"
-          label="معتمدة / تم الحل"
-          value={!isFetched ? "—" : stats.closed}
-          sub={isFetched ? stats.closedPct : "—"}
+          value={value(stats.review)}
+          sub="بانتظار اعتماد المشرف"
         />
         <KpiCell
           last
           icon={<KpiClipboardIcon />}
-          iconClass="bg-[color-mix(in_srgb,#3f8f5f_16%,transparent)] text-[#2f7a4d]"
-          label="الإجمالي"
-          value={!isFetched ? "—" : stats.total}
-          sub="سجلات التعذّر"
+          iconClass="bg-[color-mix(in_srgb,#a33a3a_14%,transparent)] text-[#a33a3a]"
+          label="تعذّرات نهائية"
+          value={value(stats.final)}
+          sub="لا إجراء بعدها"
         />
       </KpiBand>
 
@@ -65,10 +53,10 @@ export function FailuresViewKpiBand({
         className="mb-0"
         items={[
           {
-            key: "open",
-            label: "تعذّرات مفتوحة",
-            sub: openSub,
-            value: !isFetched ? "—" : stats.open,
+            key: "with-specialist",
+            label: "عند الأخصائي",
+            sub: "احتمال · داخلي · مُعاد",
+            value: value(stats.withSpecialist),
             icon: <KpiAlertIcon />,
             iconClass: "bg-[var(--gold-soft)] text-[var(--gold-d)]",
             tone: "gold",
@@ -77,8 +65,8 @@ export function FailuresViewKpiBand({
           {
             key: "review",
             label: "قيد المراجعة",
-            sub: "بانتظار الاعتماد",
-            value: !isFetched ? "—" : stats.review,
+            sub: "بانتظار اعتماد المشرف",
+            value: value(stats.review),
             icon: <KpiClockIcon />,
             iconClass:
               "bg-[color-mix(in_srgb,#d9a441_20%,transparent)] text-[#8a5e14]",
@@ -86,25 +74,14 @@ export function FailuresViewKpiBand({
             valueClass: "!text-gold-d",
           },
           {
-            key: "closed",
-            label: "معتمدة / تم الحل",
-            sub: isFetched ? stats.closedPct : "—",
-            value: !isFetched ? "—" : stats.closed,
-            icon: <KpiCheckIcon />,
-            iconClass:
-              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
+            key: "final",
+            label: "تعذّرات نهائية",
+            sub: "لا إجراء بعدها",
+            value: value(stats.final),
+            icon: <KpiClipboardIcon />,
+            iconClass: "bg-[color-mix(in_srgb,#a33a3a_14%,transparent)] text-[#a33a3a]",
             tone: "ink",
             valueClass: "!text-heading",
-          },
-          {
-            key: "total",
-            label: "الإجمالي",
-            sub: "سجلات التعذّر",
-            value: !isFetched ? "—" : stats.total,
-            icon: <KpiClipboardIcon />,
-            iconClass:
-              "bg-[color-mix(in_srgb,var(--ink)_10%,transparent)] text-heading",
-            tone: "ink",
           },
         ]}
       />

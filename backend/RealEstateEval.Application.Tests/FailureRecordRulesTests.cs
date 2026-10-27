@@ -162,4 +162,50 @@ public class FailureRecordRulesTests
         var plainName = FailureRecordRules.ToDto(Failure(specialist: "سالم"), names);
         Assert.Equal("سالم", plainName.Specialist);
     }
+
+    [Fact]
+    public void The_record_carries_the_transaction_number_of_its_deed()
+    {
+        var dto = FailureRecordRules.ToDto(
+            Failure(),
+            property: new CaseStudyPropertySnapshotDto
+            {
+                TransactionNumber = " PR-26-00012 ",
+                TransactionDeedCount = 3,
+                CaseSpecialistName = " أسامة ",
+            });
+
+        Assert.Equal("PR-26-00012", dto.TransactionNumber);
+        Assert.Equal(3, dto.TransactionDeedCount);
+        Assert.Equal("أسامة", dto.CaseSpecialistName);
+    }
+
+    [Fact]
+    public void Escalating_keeps_the_specialists_explanation_on_the_record()
+    {
+        var failure = Failure();
+
+        Assert.True(failure.TrySubmitForReview("  الملاك رفضوا الدخول  ", Now));
+
+        Assert.Equal(PropertyFailureStatus.Review, failure.Status);
+        Assert.Equal("الملاك رفضوا الدخول", FailureRecordRules.ToDto(failure).EscalationNote);
+        Assert.False(failure.TrySubmitForReview("مرة ثانية", Now));
+        Assert.Equal("الملاك رفضوا الدخول", failure.EscalationNote);
+    }
+
+    [Fact]
+    public void Without_the_deed_snapshot_there_is_no_transaction_number()
+    {
+        var dto = FailureRecordRules.ToDto(Failure());
+
+        Assert.Null(dto.TransactionNumber);
+        Assert.Equal(1, dto.TransactionDeedCount);
+        Assert.Null(dto.CaseSpecialistName);
+
+        var blank = FailureRecordRules.ToDto(
+            Failure(),
+            property: new CaseStudyPropertySnapshotDto { TransactionNumber = "  ", TransactionDeedCount = 0 });
+        Assert.Null(blank.TransactionNumber);
+        Assert.Equal(1, blank.TransactionDeedCount);
+    }
 }

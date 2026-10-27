@@ -1,9 +1,9 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D15  A deposit code already taken is refused with a 409 before anything is stored.
-//  • D15  The save goes through SaveRegistrationAsync: a lost parallel registration returns a conflict and
+//  • A deposit code already taken is refused with a 409 before anything is stored.
+//  • The save goes through SaveRegistrationAsync: a lost parallel registration returns a conflict and
 //         deletes the certificate it just stored.
-//  • D15  The code-correction audit entry is written only after the save succeeds.
+//  • The code-correction audit entry is written only after the save succeeds.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Domain;
@@ -24,7 +24,7 @@ using RealEstateEval.Attachments.Application.Abstractions;
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
-/// Q-6: two-phase issuance + deposit certificate. The frozen snapshot (DocumentJson) is the source
+/// two-phase issuance + deposit certificate. The frozen snapshot (DocumentJson) is the source
 /// for both copies: deposit copy is generated at freeze with empty code field; final copy is the same
 /// snapshot literally + code in the field and metadata + attached certificate page.
 /// </summary>
@@ -55,7 +55,7 @@ public sealed partial class ValuationReportIssuanceService(
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
         if (vr is null) return null;
 
-        // R2: only the current copy drives the phase — superseded copies stay on file and count only.
+        // Only the current copy drives the phase — superseded copies stay on file and count only.
         var row = await db.ValuationReportIssuances.AsNoTracking()
             .FirstOrDefaultAsync(
                 x => x.ValuationRequestId == valuationRequestId && x.SupersededAtUtc == null,
@@ -104,7 +104,7 @@ public sealed partial class ValuationReportIssuanceService(
         if (vr is null)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
 
-        // R2: only the current copy blocks issuance — after reopen, cycle N+1 is issued.
+        // Only the current copy blocks issuance — after reopen, cycle N+1 is issued.
         var hasActive = await db.ValuationReportIssuances.AsNoTracking()
             .AnyAsync(
                 x => x.ValuationRequestId == valuationRequestId && x.SupersededAtUtc == null,
@@ -116,7 +116,7 @@ public sealed partial class ValuationReportIssuanceService(
         if (handOverError is not null)
             return (null, new Dictionary<string, string> { ["_"] = handOverError });
 
-        // Q-6-1: no issuance until gates pass — evaluation failure itself blocks with a clear
+        // No issuance until gates pass — evaluation failure itself blocks with a clear
         // message instead of crashing the request.
         ValuationIssuanceGatesDto? gateState;
         try
@@ -143,7 +143,7 @@ public sealed partial class ValuationReportIssuanceService(
         if (document is null)
             return (null, new Dictionary<string, string> { ["_"] = "تعذّر بناء لقطة التقرير" });
 
-        // R2: cycle number = max prior cycle + 1 (superseded count — numbers are not reused).
+        // Cycle number = max prior cycle + 1 (superseded count — numbers are not reused).
         var priorVersion = await db.ValuationReportIssuances.AsNoTracking()
             .Where(x => x.ValuationRequestId == valuationRequestId)
             .Select(x => (int?)x.Version)
@@ -188,7 +188,7 @@ public sealed partial class ValuationReportIssuanceService(
         if (string.IsNullOrWhiteSpace(request.DepositCode))
             return (null, new Dictionary<string, string> { ["depositCode"] = "رمز الإيداع مطلوب" });
 
-        // D15: one code, one current report — and a new version never reuses a code of its earlier versions.
+        // One code, one current report — and a new version never reuses a code of its earlier versions.
         if (await DepositCodeTakenAsync(row, request.DepositCode, cancellationToken))
             return (null, Conflict("depositCode", DepositCertificateRules.DuplicateCodeAr));
 
@@ -245,7 +245,7 @@ public sealed partial class ValuationReportIssuanceService(
         if (finalError is not null)
             return (null, new Dictionary<string, string> { ["_"] = finalError });
 
-        // Completes the professional valuation-report step (Q-9 separates it from Infath bulk upload).
+        // Completes the professional valuation-report step (separates it from Infath bulk upload).
         // The final issuance is the one place the request closes: it publishes the single
         // "report delivered" event (completes the appraiser's task in Case Study) and feeds
         // the comparables bank. A corrective re-registration finds the request already closed
@@ -265,7 +265,7 @@ public sealed partial class ValuationReportIssuanceService(
                 cancellationToken);
         }
 
-        // D15: parallel registrations — the first save wins; a later one (row version or the unique
+        // Parallel registrations — the first save wins; a later one (row version or the unique
         // code index) is refused as a conflict and its freshly stored certificate is removed again.
         var conflict = await SaveRegistrationAsync(cancellationToken);
         if (conflict is not null)

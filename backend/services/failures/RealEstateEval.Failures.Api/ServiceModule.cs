@@ -21,7 +21,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddFailuresInfrastructure(
             builder.Configuration, connectionString!, builder.Environment);
-        // A8: the failure request validators live in the Failures context assembly.
+        // The failure request validators live in the Failures context assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<CreateFailureRequestValidator>();
     }
 

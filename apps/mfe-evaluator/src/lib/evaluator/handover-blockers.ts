@@ -1,20 +1,20 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D2   New file — classifies failing hard gates and blocking alerts by who fixes them (appraiser, «سيكملها
+//  • New file — classifies failing hard gates and blocking alerts by who fixes them (appraiser, «سيكملها
 //         الأخصائي بعد التسليم», specialist, value documents, administration) and the appraiser's screen;
 //         `required_attachments` does not block. Mirrors server AppraisalHandOverGateRules.
-//  • D2   handOverRefusalMessage numbers every blocker with its owner; announceHandOverGatesRead lets
+//  • handOverRefusalMessage numbers every blocker with its owner; announceHandOverGatesRead lets
 //         «المراجعة النهائية» show the gates the refusal read.
-//  • D17  `income_approach_complete` routes to the income screen.
+//  • `income_approach_complete` routes to the income screen.
 // Round 2 (1b19bedc)
-//  • R2   Alert 16 (m16_weights_not_100) is not listed again when a weights gate already fails — the weights
+//  • Alert 16 (m16_weights_not_100) is not listed again when a weights gate already fails — the weights
 //         item showed twice.
 //  • B    Comment only: `adjustment_rationales_*` gates (rationale under 10 characters) fall to the appraiser
 //         and route by their suffix through the existing rules.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * D2 — which issuance gates hold up the appraiser's hand-over («اعتماد التقييم وإرسال») and who fixes
+ * Which issuance gates hold up the appraiser's hand-over («اعتماد التقييم وإرسال») and who fixes
  * each. Mirrors the server rule `AppraisalHandOverGateRules` (case-study hand-over): every failing
  * hard gate and blocking methodology alert refuses the hand-over, except what the case specialist
  * completes AFTER it (the report attachments — deed copy, survey document), shown as «سيكملها الأخصائي».
@@ -73,7 +73,7 @@ function screenOfGate(code: string): HandOverBlockerScreen {
   const c = code.trim().toLowerCase();
   if (c.endsWith("_land_within_cost") || c === "cost_land_estimate_complete") return "cost";
   if (c.endsWith("_market")) return "market";
-  // D17 — «أسلوب الدخل مكتمل»: the appraiser completes it on the income screen.
+  // «أسلوب الدخل مكتمل»: the appraiser completes it on the income screen.
   if (c === "income_approach_complete") return "income";
   if (c === "reconciliation_weights" || c === "final_opinion") return "final";
   return null;

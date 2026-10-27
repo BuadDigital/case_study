@@ -20,7 +20,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddFinancialInfrastructure(builder.Configuration, connectionString!, builder.Environment);
-        // A8: Financial boundary validators live in the context assembly.
+        // Financial boundary validators live in the context assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<CreatePartyFeePricingTableRequestValidator>();
     }
 

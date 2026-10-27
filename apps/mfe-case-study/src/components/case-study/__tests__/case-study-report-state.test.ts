@@ -32,7 +32,7 @@ describe("firstCaseStudyReportScrollTarget", () => {
   });
 
   it("leaves the deed-nature match to caseStudyDeedMatchIssueBlock (D16 — it lives on another tab)", () => {
-    // Decision 2026-10-15 — an empty outcome on a traditional deed used to block the issue.
+    // An empty outcome on a traditional deed used to block the issue.
     const draft = emptyCaseStudyReportDraft("t1");
     draft.answers[caseStudyAnswerKey("deed", 0)] = "A";
     draft.answers[caseStudyAnswerKey("survey", 0)] = "A";

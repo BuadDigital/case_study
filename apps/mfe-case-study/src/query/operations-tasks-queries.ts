@@ -35,7 +35,7 @@ export function useOperationsTasksQuery(options?: {
 /**
  * All operations tasks matching a server-side filter set (status / scope /
  * type / activeOnly / excludeFailurePaused / search / sort). The rules the
- * screen still applies in the browser stay there — pagination-contract §3.
+ * screen still applies in the browser stay there — pagination-contract.
  */
 export function useOperationsTasksFilteredQuery(
   query: OperationsTaskQuery,
@@ -50,7 +50,7 @@ export function useOperationsTasksFilteredQuery(
   });
 }
 
-/** One server page of operations tasks — pagination-contract §3. */
+/** One server page of operations tasks — pagination-contract. */
 function useOperationsTasksPageQuery(
   query: OperationsTaskListQuery,
   options?: { live?: boolean; enabled?: boolean },
@@ -82,7 +82,7 @@ export function useCourtVisitFeesQuery(options?: {
  * The KPI band's counters. `operationsTaskKpis` used to count over every loaded
  * row; with the list narrowed server-side those rows are gone, so each counter
  * is its own one-row request and reads `totalCount` off the paged envelope
- * (pagination-contract §3, "still client-side" #3 — "it needs its own call").
+ * (pagination-contract, "still client-side" #3 — "it needs its own call").
  *
  * The blocked-by-failure rows the viewer's queue hides are not visible to the
  * endpoint, so a counter can overstate by those rows.

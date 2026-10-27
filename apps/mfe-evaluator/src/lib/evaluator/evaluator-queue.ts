@@ -13,7 +13,7 @@ import { appraiserQueueStatusBadge } from "./evaluator-readiness";
  * issuance) rows hidden by default; "Show all" (`showCompleted`) restores them. A submitted
  * package is only handed over, so its task stays listed.
  *
- * Edge cases: phase 5 (decision 2026-10-19) — one valuation per transaction, so a deed folded
+ * Edge cases: phase 5 — one valuation per transaction, so a deed folded
  * into another deed's valuation is not a row; the holder deed's task is the one listed, and a
  * deed whose holder is itself stays.
  */

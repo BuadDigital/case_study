@@ -27,7 +27,7 @@ namespace RealEstateEval.Application.Tests;
 
 /// <summary>
 /// Filter / sort / page behaviour of the array endpoints added in
-/// docs/architecture/pagination-contract.md §§4-7, over the in-memory provider. Everything asserted
+/// docs/architecture/pagination-contract.md, over the in-memory provider. Everything asserted
 /// here is produced by the query itself, so a page and its count always agree.
 /// </summary>
 public class ComparablePropertyListQueryTests
@@ -87,7 +87,7 @@ public class ComparablePropertyListQueryTests
     }
 
     /// <summary>
-    /// The comparison-method §2 priority is now part of the SQL ordering, so it survives paging:
+    /// The comparison-method section 2 priority is now part of the SQL ordering, so it survives paging:
     /// the subject's own field comparable is on page 1 whatever the sort.
     /// </summary>
     [Fact]
@@ -290,10 +290,10 @@ public class FailureListQueryTests
             specialist,
             Now);
 
-        if (status == PropertyFailureStatus.Review) failure.TrySubmitForReview(Now);
+        if (status == PropertyFailureStatus.Review) failure.TrySubmitForReview("سبب التصعيد", Now);
         if (status == PropertyFailureStatus.Suspended)
         {
-            failure.TrySubmitForReview(Now);
+            failure.TrySubmitForReview("سبب التصعيد", Now);
             failure.TrySuspend("تعليق", "user-1", Now);
         }
 

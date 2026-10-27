@@ -44,7 +44,7 @@ import {
   queueRowClassName,
   QueueRowMoreCell,
 } from "./active-transaction-queue-row-parts";
-import { transactionNumberOf } from "../components/ui/TransactionNumberBadge";
+import { transactionNumberOf } from "../lib/app-data/transaction-number";
 import { TeamStack } from "./PoListViewParts";
 
 type OpenPropertyDetail = (

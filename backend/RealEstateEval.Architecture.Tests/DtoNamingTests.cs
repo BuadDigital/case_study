@@ -20,7 +20,7 @@ public class DtoNamingTests
     [Fact]
     public void Contract_types_use_the_documented_suffixes()
     {
-        // Global Application contracts plus per-context Contracts folders (A8).
+        // Global Application contracts plus per-context Contracts folders.
         var contractRoots = new List<string>
         {
             RepoPaths.Combine("backend", "RealEstateEval.Application", "Contracts"),

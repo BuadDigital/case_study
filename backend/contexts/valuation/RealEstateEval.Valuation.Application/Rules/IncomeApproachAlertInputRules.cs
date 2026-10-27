@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Income New file — what the issuance gates feed alerts 26–28 from the income approach (D17); the
+//  • Income New file — what the issuance gates feed alerts 26–28 from the income approach; the
 //           cap-rate rationale typed on the income screen clears alert 26 unless a saved override exists.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -9,7 +9,7 @@ using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Valuation.Application.Rules;
 
-/// <summary>D17 — what the issuance gates feed alerts 26–28 from the income approach. Pure.</summary>
+/// <summary>What the issuance gates feed alerts 26–28 from the income approach. Pure.</summary>
 public static class IncomeApproachAlertInputRules
 {
     /// <summary>The income figures alerts 26–28 read; null while the approach is off or never saved.</summary>

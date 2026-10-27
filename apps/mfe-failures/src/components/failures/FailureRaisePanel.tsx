@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, cn, useToast } from "@platform/ui-kit";
 import { useCommandMutation } from "@platform/app-shared";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import type { FailureSeverity } from "@platform/app-shared/failures/failures-types";
 import {
   activeFailureForProperty,
   failuresForProperty,
@@ -78,6 +79,7 @@ export function FailureRaisePanel({
   const { data: failures = [] } = useFailuresQuery();
   const { data: catalog } = useFailureTypesQuery();
   const [problemTypeId, setProblemTypeId] = useState(initialProblemTypeId);
+  const [severity, setSeverity] = useState<FailureSeverity>("internal");
   const [invalid, setInvalid] = useState(false);
 
   const { run: runCreateFailure, loading: saving } = useCommandMutation(
@@ -152,6 +154,7 @@ export function FailureRaisePanel({
       catalog?.problemTypes?.length
         ? catalog.problemTypes
         : FAILURE_PROBLEM_TYPES,
+      severity,
     );
     if (!payload) {
       setInvalid(true);
@@ -179,6 +182,7 @@ export function FailureRaisePanel({
         }),
       ]);
       setProblemTypeId("");
+      setSeverity("internal");
       showToast("تم رفع التعذّر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();
     } catch {
@@ -269,6 +273,8 @@ export function FailureRaisePanel({
             <div className="grid max-w-[560px] gap-2.5">
               <FailureRaiseFields
                 idPrefix={`raise-${propertyId}`}
+                severity={severity}
+                onSeverityChange={setSeverity}
                 problemTypeId={problemTypeId}
                 onProblemTypeChange={(v) => {
                   setProblemTypeId(v);

@@ -1,9 +1,9 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  The assumptions save re-sends the saved incomeApproachEnabled instead of a hard-coded false, which
+//  • The assumptions save re-sends the saved incomeApproachEnabled instead of a hard-coded false, which
 //         switched the income approach off — this save owns only the assumptions and the specialist clause.
-//  • D11  It also re-sends the saved ownership interest (ownershipInterestKey) and remaining lease years.
-//  • D9   It re-sends the saved retrospective rationale instead of null.
+//  • It also re-sends the saved ownership interest (ownershipInterestKey) and remaining lease years.
+//  • It re-sends the saved retrospective rationale instead of null.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";

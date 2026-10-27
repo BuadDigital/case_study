@@ -325,7 +325,7 @@ export function usePoPropertyDetailTabsWorkflow({
     [partySubmissionsQuery.data, record.workOrderDescription],
   );
 
-  // Decision 2026-10-19: the log is the transaction's when it has several deeds.
+  // The log is the transaction's when it has several deeds.
   const { query: logEventsQuery } = usePropertyOrTransactionTimeline(poNumber, property);
   const logEvents = logEventsQuery.data ?? EMPTY_LOG_EVENTS;
 

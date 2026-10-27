@@ -19,7 +19,7 @@ public sealed partial class PoEnfazBillingService
 
     /// <summary>
     /// Every tracking row the scan yields, uncapped — the list the contract's search, sort and
-    /// page window are applied to (pagination-contract §10.2).
+    /// page window are applied to (pagination-contract).
     /// </summary>
     private async Task<List<EnfazTrackingRowDto>> ScanTrackingRowsAsync(
         CancellationToken cancellationToken)

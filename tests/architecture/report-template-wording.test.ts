@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { repoRoot } from "./support/frontend-tree";
 
 /**
- * D3: one name for the liquidation discount in every printed template — «خصم التصفية».
+ * One name for the liquidation discount in every printed template — «خصم التصفية».
  * The HTML templates sit outside the approved-terms ratchet (it reads TS / C# literals only).
  */
 const TEMPLATES = [

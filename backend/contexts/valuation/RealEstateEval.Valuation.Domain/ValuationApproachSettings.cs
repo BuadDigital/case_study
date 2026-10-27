@@ -1,14 +1,14 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D11  OwnershipInterestKey and RemainingLeaseYears on the settings; OwnershipInterestKeys (freehold /
+//  • OwnershipInterestKey and RemainingLeaseYears on the settings; OwnershipInterestKeys (freehold /
 //         usufruct / leased_land, «ملكية تامة» / «حق منفعة» / «أرض مستأجرة»); a leasehold needs 1–999 years.
-//  • D9   A retrospective date (and period end) is not after today or the report date
+//  • A retrospective date (and period end) is not after today or the report date
 //         (RetrospectiveDateError); its rationale is required, at least 10 characters.
-//  • D17  The income approach may be enabled (was refused as deferred) and joins the reconciliation kinds.
+//  • The income approach may be enabled (was refused as deferred) and joins the reconciliation kinds.
 // Round 2 (1b19bedc)
-//  • R2-14 AssumptionForInterest rewords «أن العقار مطلق الملكية» for a usufruct / leased land; ReportCell
+//  • AssumptionForInterest rewords «أن العقار مطلق الملكية» for a usufruct / leased land; ReportCell
 //          prints the interest with its remaining term («حق منفعة — المدة المتبقية 4 سنوات»).
-//  • R2-10 An unknown valuationDateMode is refused instead of being read as «تاريخ إصدار القيمة».
+//  • An unknown valuationDateMode is refused instead of being read as «تاريخ إصدار القيمة».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Domain;
@@ -17,7 +17,7 @@ namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Screen 1 — governing valuation settings (v2 scoping §B-2): applied approaches control work tabs
-/// and weighting rows (Q-2); land is not valued by the cost approach (Q-3).
+/// and weighting rows; land is not valued by the cost approach.
 /// One row per valuation request; absent row = defaults derived from the property type.
 /// </summary>
 public class ValuationApproachSettings
@@ -28,19 +28,19 @@ public class ValuationApproachSettings
  /// <summary>Market approach (comparison method).</summary>
     public bool MarketApproachEnabled { get; set; } = true;
 
- /// <summary>Cost approach (contractor method) — Q-3: not enabled for "land" type.</summary>
+ /// <summary>Cost approach (contractor method) —: not enabled for "land" type.</summary>
     public bool CostApproachEnabled { get; set; } = true;
 
- /// <summary>Income approach (direct capitalisation, D17) — the appraiser may enable it.</summary>
+ /// <summary>Income approach (direct capitalisation) — the appraiser may enable it.</summary>
     public bool IncomeApproachEnabled { get; set; }
 
  /// <summary>
- /// D11: the interest valued — see <see cref="OwnershipInterestKeys"/>: full ownership as the deed states it
+ /// The interest valued — see <see cref="OwnershipInterestKeys"/>: full ownership as the deed states it
  /// (default), a usufruct right, or a building on leased land.
  /// </summary>
     public string OwnershipInterestKey { get; set; } = OwnershipInterestKeys.Freehold;
 
- /// <summary>D11: years left on the usufruct / land lease — required for those interests, empty otherwise.</summary>
+ /// <summary>Years left on the usufruct / land lease — required for those interests, empty otherwise.</summary>
     public decimal? RemainingLeaseYears { get; set; }
 
  /// <summary>Cost basis — see <see cref="CostBasisKeys"/>. Meaningful when cost is enabled.</summary>
@@ -55,7 +55,7 @@ public class ValuationApproachSettings
  /// <summary>Adjustments edit unlock — when disabled, blocks saving adjustment lines and weights.</summary>
     public bool AdjustmentsEditUnlocked { get; set; } = true;
 
- /// <summary>Valuation purpose (§4j-5) — auto-selected from assignment type; valuer may change. See <see cref="ValuationPurposeKeys"/>.</summary>
+ /// <summary>Valuation purpose (section 4j-5) — auto-selected from assignment type; valuer may change. See <see cref="ValuationPurposeKeys"/>.</summary>
     public string ValuationPurposeKey { get; set; } = "";
  /// <summary>Optional purpose note (required when "other").</summary>
     public string? ValuationPurposeNote { get; set; }
@@ -70,7 +70,7 @@ public class ValuationApproachSettings
     public string? ExternalSpecialistDetails { get; set; }
 
  /// <summary>
- /// Valuation date — two kinds (Omar decision 2026-08-17): "value issuance" (automatic — usually report
+ /// Valuation date — two kinds (Omar): "value issuance" (automatic — usually report
  /// issue date) or "retrospective" set manually by the valuer with required date and rationale.
  /// </summary>
     public string ValuationDateMode { get; set; } = ValuationDateModes.Issue;
@@ -89,7 +89,7 @@ public class ValuationApproachSettings
 }
 
 /// <summary>
-/// D11: the interest being valued. «ملكية تامة» prints the deed's own ownership type; «حق منفعة» and
+/// The interest being valued. «ملكية تامة» prints the deed's own ownership type; «حق منفعة» and
 /// «أرض مستأجرة» are leasehold interests that carry the remaining lease term (for buildings on leased land
 /// the remaining economic life is capped at it).
 /// </summary>
@@ -160,7 +160,7 @@ public static class OwnershipInterestKeys
     }
 }
 
-/// <summary>Cost basis: replacement or reproduction (B-2 §9 field).</summary>
+/// <summary>Cost basis: replacement or reproduction (B-2 section 9 field).</summary>
 public static class CostBasisKeys
 {
     public const string Replacement = "replacement";
@@ -213,7 +213,7 @@ public static class CostScopeKeys
     public static bool IncludesBuildings(string? value) => Normalize(value) != LandOnly;
 }
 
-/// <summary>Cost measurement unit (B-2 §10 field).</summary>
+/// <summary>Cost measurement unit (B-2 section 10 field).</summary>
 public static class CostMeasurementUnitKeys
 {
     public const string ComparisonUnit = "comparison_unit";
@@ -242,7 +242,7 @@ public static class CostMeasurementUnitKeys
 }
 
 /// <summary>
-/// Valuation purpose (§4j-5) — full list; default is derived from assignment type.
+/// Valuation purpose (section 4j-5) — full list; default is derived from assignment type.
 /// List is extensible once an official list is adopted.
 /// </summary>
 public static class ValuationPurposeKeys
@@ -307,11 +307,11 @@ public static class ValuationDateModes
 
 public static class ValuationApproachSettingsRules
 {
- /// <summary>D9: minimum length of the retrospective-date rationale.</summary>
+ /// <summary>Minimum length of the retrospective-date rationale.</summary>
     public const int RetrospectiveRationaleMinLength = 10;
 
  /// <summary>
- /// D9: a retrospective date lies in the past — not after today (Riyadh) and not after the report date
+ /// A retrospective date lies in the past — not after today (Riyadh) and not after the report date
  /// when one is already set. Null when acceptable (or when the bound is unknown).
  /// </summary>
     public static string? RetrospectiveDateError(DateOnly date, DateOnly? today, DateOnly? reportDate)
@@ -410,7 +410,7 @@ public static class ValuationApproachSettingsRules
     {
         var errors = new Dictionary<string, string>();
 
- // §4j-5: purpose is a list chosen by the valuer — required when saving report settings.
+ // Section 4j-5: purpose is a list chosen by the valuer — required when saving report settings.
         var purpose = (valuationPurposeKey ?? "").Trim().ToLowerInvariant();
         if (purpose.Length == 0)
             errors["valuationPurposeKey"] = "الغرض من التقييم إلزامي";
@@ -446,7 +446,7 @@ public static class ValuationApproachSettingsRules
                     errors["retrospectiveDateEnd"] = endError;
             }
 
-            // D9: the rationale is part of the report scope — at least ten characters.
+            // The rationale is part of the report scope — at least ten characters.
             if ((retrospectiveRationale?.Trim().Length ?? 0) < RetrospectiveRationaleMinLength)
                 errors["retrospectiveRationale"] =
                     $"مبرر التقييم بأثر رجعي إلزامي ({RetrospectiveRationaleMinLength} أحرف على الأقل)";
@@ -455,7 +455,7 @@ public static class ValuationApproachSettingsRules
         if (!marketEnabled && !costEnabled && !incomeEnabled)
             errors["appliedApproaches"] = "يلزم تفعيل أسلوب واحد على الأقل";
 
-        // D11: a usufruct / leased-land interest carries its remaining lease term.
+        // A usufruct / leased-land interest carries its remaining lease term.
         if (ownershipInterestKey is not null && ownershipInterestKey.Trim().Length > 0
             && !OwnershipInterestKeys.IsKnown(ownershipInterestKey))
         {
@@ -543,7 +543,7 @@ public static class ValuationApproachSettingsRules
     }
 
  /// <summary>
- /// Q-2: weighting rows are built from enabled approaches only — market, cost, then the D17
+ /// Weighting rows are built from enabled approaches only — market, cost, then the
  /// income approach (direct capitalisation), in that order.
  /// </summary>
     public static IReadOnlyList<string> EnabledReconciliationKinds(

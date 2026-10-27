@@ -5,8 +5,11 @@ import {
   failuresListServerQuery,
   failuresLocalWindow,
   failuresServerPagination,
+  failuresTabOf,
+  failuresTabStatuses,
   pinHighlightedFailure,
 } from "../failures-list-page";
+import { failureListStatusLabel } from "../failures-labels";
 
 function failure(
   id: string,
@@ -27,26 +30,64 @@ function failure(
     continueInstructions: "",
     status: "review",
     specialist: "osama",
-    createdAt: "2026-09-01T00:00:00.000Z",
-    updatedAt: `2026-09-01T00:00:${id.padStart(2, "0")}.000Z`,
+    createdAt: `2026-09-01T00:00:${id.padStart(2, "0")}.000Z`,
+    updatedAt: "2026-09-02T00:00:00.000Z",
     ...overrides,
   } as FailureRecord;
 }
 
+describe("failuresTabStatuses", () => {
+  it("lists the open work on «تحتاج إجراء» and the approved failure on «التعذّرات»", () => {
+    expect(failuresTabStatuses("action", "case-specialist")).toEqual([
+      "internal",
+      "returned",
+      "review",
+    ]);
+    expect(failuresTabStatuses("final", "case-specialist")).toEqual(["approved"]);
+    expect(failuresTabStatuses("final", "section-supervisor")).toEqual(["approved"]);
+  });
+
+  it("gives the section supervisor only what the specialist escalated", () => {
+    expect(failuresTabStatuses("action", "section-supervisor")).toEqual(["review"]);
+    expect(failuresTabStatuses("action", "cdo")).toContain("internal");
+  });
+
+  it("puts a resolved or suspended failure on no tab", () => {
+    expect(failuresTabOf("approved", "case-specialist")).toBe("final");
+    expect(failuresTabOf("returned", "case-specialist")).toBe("action");
+    expect(failuresTabOf("internal", "section-supervisor")).toBeNull();
+    expect(failuresTabOf("resolved", "case-specialist")).toBeNull();
+    expect(failuresTabOf("suspended", "case-specialist")).toBeNull();
+  });
+});
+
+describe("failureListStatusLabel", () => {
+  it("folds the severity into the stage", () => {
+    expect(failureListStatusLabel("internal", "suspected")).toBe("احتمال تعذّر");
+    expect(failureListStatusLabel("internal", "internal")).toBe("تعذّر داخلي");
+    expect(failureListStatusLabel("returned", "internal")).toBe("مُعاد");
+    expect(failureListStatusLabel("review", "internal")).toBe("قيد المراجعة");
+    expect(failureListStatusLabel("approved", "internal")).toBe("تعذّر نهائي");
+    expect(failureListStatusLabel("suspended", "internal")).toBe("معلّق");
+  });
+});
+
 describe("failuresListServerQuery", () => {
-  it("asks for a 10-row page, newest-updated first, without suspended rows", () => {
-    expect(failuresListServerQuery({ search: "", page: 2 })).toEqual({
+  it("asks for a 10-row page of the tab's statuses, newest raised first", () => {
+    expect(
+      failuresListServerQuery({ search: "", page: 2, statuses: ["approved"] }),
+    ).toEqual({
       page: 2,
       pageSize: FAILURES_PAGE_SIZE,
-      sort: "updated",
+      sort: "created",
       dir: "desc",
-      status: ["internal", "review", "approved", "returned", "resolved"],
+      status: ["approved"],
     });
     expect(FAILURES_PAGE_SIZE).toBe(10);
   });
 
   it("sends a trimmed `q` and clamps the page to 1", () => {
-    const query = failuresListServerQuery({ search: "  صك 12 ", page: 0 });
+    const query = failuresListServerQuery({ search: "  صك 12 ", page: 0, statuses: ["review"] });
     expect(query.q).toBe("صك 12");
     expect(query.page).toBe(1);
   });
@@ -75,8 +116,10 @@ describe("failuresLocalWindow", () => {
     failure("99", { status: "suspended" }),
   ];
 
-  it("drops suspended rows, orders by updatedAt desc, and cuts 10 per page", () => {
-    const first = failuresLocalWindow(items, { search: "", page: 1 });
+  const statuses = ["review"] as const;
+
+  it("keeps only the tab's statuses, orders by createdAt desc, and cuts 10 per page", () => {
+    const first = failuresLocalWindow(items, { search: "", page: 1, statuses });
     expect(first.totalCount).toBe(12);
     expect(first.totalPages).toBe(2);
     expect(first.rows.map((f) => f.id)).toEqual([
@@ -84,15 +127,20 @@ describe("failuresLocalWindow", () => {
     ]);
     expect(first).toMatchObject({ safePage: 1, rangeStart: 1, rangeEnd: 10 });
 
-    const second = failuresLocalWindow(items, { search: "", page: 2 });
+    const second = failuresLocalWindow(items, { search: "", page: 2, statuses });
     expect(second.rows.map((f) => f.id)).toEqual(["2", "1"]);
     expect(second).toMatchObject({ rangeStart: 11, rangeEnd: 12 });
   });
 
   it("applies the local search before cutting the window", () => {
-    const hit = failuresLocalWindow(items, { search: "D-7", page: 1 });
+    const hit = failuresLocalWindow(items, { search: "D-7", page: 1, statuses });
     expect(hit.rows.map((f) => f.id)).toEqual(["7"]);
     expect(hit.totalCount).toBe(1);
+  });
+
+  it("shows nothing of another tab's statuses", () => {
+    const final = failuresLocalWindow(items, { search: "", page: 1, statuses: ["approved"] });
+    expect(final.totalCount).toBe(0);
   });
 });
 

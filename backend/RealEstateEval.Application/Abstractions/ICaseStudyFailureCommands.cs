@@ -5,7 +5,7 @@ namespace RealEstateEval.Application.Abstractions;
 /// <summary>
 /// Case Study side effects the Failures workflow applies (deed status, task obstruction,
 /// access holds, property timeline). The Case Study host uses EF; the Failures host calls
-/// HTTP. Do not open Case Study EF on the Failures host (A9).
+/// HTTP. Do not open Case Study EF on the Failures host.
 /// </summary>
 public interface ICaseStudyFailureCommands
 {

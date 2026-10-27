@@ -29,7 +29,7 @@ export function linkedDeedsTotalArea(deeds: readonly Pick<TransactionDeedDto, "a
 /**
  * The «صكوك العقار» card on the appraiser's basic screen for a linked property.
  *
- * How it works: phase 5 (decision 2026-10-19) — a linked property is valued as one, so the
+ * How it works: phase 5 — a linked property is valued as one, so the
  * appraiser sees every deed of the transaction above the documents. Takes the live `deeds`
  * (from `linkedPropertyDeeds`), the link kind label and the transaction number; prints a note
  * («عقار مرتبط — kind · المعاملة number»), then one row per deed: label

@@ -108,7 +108,7 @@ export type ActiveTransactionQueueConfig = {
   includeAllStatuses?: boolean;
   /**
    * Server-side narrowing for this queue's list request
-   * (`docs/architecture/pagination-contract.md` §2). It must never be narrower
+   * (`docs/architecture/pagination-contract.md`). It must never be narrower
    * than `filterListed`: the client only ever refines further.
    */
   serverQuery?: {
@@ -124,7 +124,7 @@ export const QUEUE_DEFAULT_STATUSES = ["open", "blocked"] as const;
 
 /**
  * Every order a queue can ask for. `deed-first` / `city-first` are the two the
- * server grew in pagination-contract §2 — the queue no longer has to load the
+ * server grew in pagination-contract — the queue no longer has to load the
  * PO records to order by a deed number or a city.
  */
 type QueueSortMode =
@@ -134,7 +134,7 @@ type QueueSortMode =
   | "deed-first"
   | "city-first";
 
-/** Rows per server page for the queues that page (pagination-contract §2). */
+/** Rows per server page for the queues that page (pagination-contract). */
 export const QUEUE_PAGE_SIZE = 25;
 
 /** The queue sort modes, mapped onto the endpoint's sort keys. */
@@ -193,7 +193,7 @@ export function buildQueueServerQuery(input: {
   /**
    * The search box, sent as `q`. Only the paged layouts pass it: the server
    * matches the task's own columns plus the five PO-record columns
-   * (pagination-contract §2), which is exactly what the queue used to filter
+   * (pagination-contract), which is exactly what the queue used to filter
    * on. A sibling-reading layout must leave it out, or `q` would drop the
    * children its party columns read.
    */
@@ -242,7 +242,7 @@ export function buildQueueServerQuery(input: {
  * A layout may page only when its rows are 1:1 with the tasks the endpoint
  * returns. Three read a *parent's children* out of the same list — distribution
  * and case-study build the party columns from sibling tasks, and the appraiser
- * table reads the sibling field-inspection row (pagination-contract §2, "still
+ * table reads the sibling field-inspection row (pagination-contract, "still
  * client-side" #2) — and all-transactions collapses every sibling task of a
  * property down to its furthest stage (`collapseAllTransactionsToLatestPhase`),
  * which removes rows after materialisation and would make `totalCount` disagree
@@ -274,7 +274,7 @@ export function buildQueuePageQuery(input: {
 
 /**
  * Pager numbers from the server envelope. `totalCount` is the actor's total, but
- * the four rules §2 keeps in the browser (badge-label status, appraisal groups,
+ * the four rules section 2 keeps in the browser (badge-label status, appraisal groups,
  * the suspended-property exclusion and `config.filterListed`) still run after
  * the page is cut, so `shownOnPage` is what the viewer actually sees.
  */
@@ -377,7 +377,7 @@ export function buildPoByNumber(
 /**
  * Client twin of `queueServerSort`, so an unpaged layout lists rows in the same
  * order the endpoint would have returned them. `deed-first` / `city-first` read
- * the columns the server now puts on the row (pagination-contract §2), with the
+ * the columns the server now puts on the row (pagination-contract), with the
  * endpoint's null handling: a task with no property sorts first ascending.
  */
 export function queueSortComparator(
@@ -455,7 +455,7 @@ export function buildListedQueue({
     .sort((a, b) => compare(a, b, poByNumber));
 }
 
-/** The three assignment-type labels the data ever carries (pagination-contract §1). */
+/** The three assignment-type labels the data ever carries (pagination-contract). */
 export const QUEUE_ASSIGNMENT_TYPE_OPTIONS: readonly string[] = [
   "تنفيذ",
   "تركات",
@@ -478,7 +478,7 @@ export function buildQueueFilterOptions({
   /**
    * A paged queue holds one page, so the assignment-type dropdown cannot be
    * derived from it — it lists the three labels the data ever carries instead
-   * (the same move as pagination-contract §1, "still client-side" #5). The
+   * (the same move as pagination-contract, "still client-side" #5). The
    * status dropdown has no closed vocabulary (its labels come from the
    * field-inspection workspace and the SLA clock), so it stays page-derived.
    */

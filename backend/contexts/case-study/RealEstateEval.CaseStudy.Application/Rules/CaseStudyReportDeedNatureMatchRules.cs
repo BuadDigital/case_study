@@ -4,7 +4,7 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
 /// Validity of the deed↔nature match field on the case-study report (save and issue alike):
-/// Unset is allowed on save, unknown tokens are rejected, فروق/تعذر need notes. D16 (supersedes the
+/// Unset is allowed on save, unknown tokens are rejected, فروق/تعذر need notes. (supersedes the
 /// 2026-10-15 decision): a traditional deed's report is not issued before the specialist has chosen an
 /// outcome — issuing locks the field, and the valuation gate (<see cref="DeedKindRules.AllowsValuationCalc"/>)
 /// would otherwise block the appraiser's hand-over with no way left to set it.
@@ -15,7 +15,7 @@ public static class CaseStudyReportDeedNatureMatchRules
         "اختر نتيجة «مطابقة الصك على الطبيعة» من تبويب «مدخلات المعاين» قبل إصدار تقرير دراسة الحالة";
 
     /// <summary>
-    /// D16 issue gate: the save rules, plus a chosen outcome when any deed of the transaction is traditional
+    /// Issue gate: the save rules, plus a chosen outcome when any deed of the transaction is traditional
     /// (a registered title has no match gate).
     /// </summary>
     public static Dictionary<string, string>? ValidateForIssue(

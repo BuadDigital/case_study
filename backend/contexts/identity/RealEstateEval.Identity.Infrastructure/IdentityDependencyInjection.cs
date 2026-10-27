@@ -20,7 +20,7 @@ using RealEstateEval.Identity.Infrastructure.Sms;
 namespace RealEstateEval.Identity.Infrastructure;
 
 /// <summary>
-/// Context-local registration for the Identity bounded context (A8): auth sessions,
+/// Context-local registration for the Identity bounded context: auth sessions,
 /// phone login, JWT issuance, user registration, and database-backed permission
 /// resolution. The ASP.NET Identity stores, seed graph, and directory/label plumbing stay
 /// global — other contexts construct them directly.
@@ -107,7 +107,7 @@ public static class IdentityDependencyInjection
         }
         return services;
     }
- /// <summary>Identity write context. A8 physical move: lives beside <see cref="IdentityDbContext"/>.</summary>
+ /// <summary>Identity write context. physical move: lives beside <see cref="IdentityDbContext"/>.</summary>
     public static IServiceCollection AddIdentityPersistence(
         this IServiceCollection services,
         IConfiguration configuration,

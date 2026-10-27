@@ -50,7 +50,7 @@ export function hydrateEvaluatorSubmission(input: {
  * one exists it is returned as is. Otherwise a new draft is built from the input
  * (`createEvaluatorDraft`), saved, and the saved copy is returned.
  *
- * Edge cases: decision 2026-10-19 — no report number is reserved here any more (the old
+ * Edge cases: — no report number is reserved here any more (the old
  * `stampReservedReportNumber` opened a valuation request and stamped TQ-… on open); the server
  * stamps PRV-… on the package at report approval. A failed first save throws an Arabic error.
  */
@@ -64,7 +64,7 @@ async function hydrateNow(input: {
     await fetchPartySubmission(input.taskId),
     input.assignmentType,
   );
-  // Decision 2026-10-19: no report number is reserved here — the server stamps PRV-… on the
+  // No report number is reserved here — the server stamps PRV-… on the
   // package when the transaction's official reference is confirmed at approval.
   const draft = existing ?? createEvaluatorDraft(input);
   if (!existing) {

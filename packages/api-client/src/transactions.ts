@@ -4,7 +4,7 @@ import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, PropertyTimelineEventDto, WorkOrdersApiConfig } from "./work-orders";
 
 /**
- * The transaction (المعاملة) above the deeds — decision 2026-10-19. An ordinary property is a
+ * The transaction (المعاملة) above the deeds —. An ordinary property is a
  * transaction with one deed; a linked property has several, each from its own work order.
  */
 export type TransactionDto = {
@@ -78,7 +78,7 @@ export function transactionDeedDateOf(
 }
 
 /**
- * Phase 5 (decision 2026-10-19): the live deeds of a linked property, in transaction order;
+ * Phase 5: the live deeds of a linked property, in transaction order;
  * empty for an ordinary one-deed property so callers keep printing the single deed.
  *
  * How it works: drops the deeds marked `isRemoved` (taken back out by the specialist) and
@@ -238,7 +238,7 @@ export async function searchTransactionDeeds(
 }
 
 /**
- * Merge other deeds' transactions into this one (decision 2026-10-19; case-study specialist).
+ * Merge other deeds' transactions into this one (; case-study specialist).
  *
  * How it works: POST `/api/transactions/{id}/merge` with the chosen deeds, the link kind
  * («مبنى واحد» one_building / «أعيان بعقد» contract) and the reason; returns the merged

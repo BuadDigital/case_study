@@ -1,17 +1,17 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • §25  fillValueAdditions replaced by fillFinalValueTable: §25 is rebuilt from finalValueRows; the banner
+//  • Section 25  fillValueAdditions replaced by fillFinalValueTable: section 25 is rebuilt from finalValueRows; the banner
 //         title becomes «القيمة النهائية الإجمالية» when documents add value.
-//  • §25  fillFinalBanner stamps data-final-value so the server compares it with its own final value before
+//  • Section 25  fillFinalBanner stamps data-final-value so the server compares it with its own final value before
 //         the copy freezes.
 //  • Report Adjustment table: «تسوية ظروف السوق (عامل الوقت)» fills an older template's «تسوية ظروف السوق»
 //           row, its separate «تسوية عامل الوقت» row is removed, and «إجمالي…» / «سعر البيع بعد…» rows get
 //           the subtotal style.
 // Round 2 (1b19bedc)
-//  • R2-11 The liquidation rationale cell is labelled from the row (rationaleLabel, by premise).
-//  • A    New rebuildLandValueTable: the §20 land table one figure per line, in the order they multiply (the
+//  • The liquidation rationale cell is labelled from the row (rationaleLabel, by premise).
+//  • New rebuildLandValueTable: the section 20 land table one figure per line, in the order they multiply (the
 //         template printed the plot next to the share-based value).
-//  • R2-19 No special assumptions → the «الافتراضات الخاصة» section is removed, not printed as a bare
+//  • No special assumptions → the «الافتراضات الخاصة» section is removed, not printed as a bare
 //          heading.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -132,7 +132,7 @@ export function fillMethodRow(sec: Element, methods: [string, string, string]) {
 }
 
 /**
- * §25 rebuilt from `finalValueRows`: the unrounded weighted value, the liquidation discount
+ * Section 25 rebuilt from `finalValueRows`: the unrounded weighted value, the liquidation discount
  * and the value after it (only when it applies), each «مستند ذو قيمة» addition, then the
  * rounding step — every number follows from the one above it. The banner shows the last row.
  */
@@ -414,7 +414,7 @@ export function fillKeyedRows(
 }
 
 /**
- * §19 laid out like the adjustments sheet: each comparable owns two columns — the factor rows
+ * Section 19 laid out like the adjustments sheet: each comparable owns two columns — the factor rows
  * (area, location, streets) print the comparable's description and the % side by side, every
  * other row spans both. Dashed lines set the factor block apart from the financing/market
  * rows above and the totals below. Row shading (sub / total) follows the template rows.
@@ -621,7 +621,7 @@ export function fillAdjustmentSection(
 }
 
 /**
- * §20 — decision A: the land key table rebuilt one figure per line, in the order they multiply (plot,
+ * Section 20 —: the land key table rebuilt one figure per line, in the order they multiply (plot,
  * rate after adjustments, discount, the apartment's share, land value) — the template's two-row table
  * printed the plot next to the share-based land value with no share line between them.
  */
@@ -679,7 +679,7 @@ export function fillKeyedInSection(
 }
 
 /**
- * §10 «مكونات العقار»: «الدور | الوصف والاستخدام | المساحة (م²)», closed by the
+ * Section 10 «مكونات العقار»: «الدور | الوصف والاستخدام | المساحة (م²)», closed by the
  * «مجموع مسطحات البناء» total row. Adds the area column when an older template lacks it.
  */
 export function rebuildComponentsSheet(
@@ -1076,7 +1076,7 @@ export function fillBulletListSection(
   if (!ul) return;
   const doc = sec.ownerDocument;
   ul.replaceChildren();
-  // A line starting with "- " is a sub-clause of the bullet above it (e.g. §31 «للمباني والعقارات القائمة:»).
+  // A line starting with "- " is a sub-clause of the bullet above it (e.g. section 31 «للمباني والعقارات القائمة:»).
   let parent: Element | null = null;
   for (const text of bullets) {
     const sub = /^-\s+/.exec(text);
@@ -1348,7 +1348,7 @@ function fillComparablesMapSlot(
 
 /**
  * A comparables map with no image (Google unavailable) leaves an empty heading behind — drop the
- * §18 section and the land-map caption so the report shows no blank map block.
+ * Section 18 section and the land-map caption so the report shows no blank map block.
  */
 function dropEmptyMapBlocks(dom: Document) {
   const hasMap = (scope: Element | null | undefined) =>
@@ -1367,7 +1367,7 @@ export function fillLocationMapsSlots(
   fill: ValuationReportLiveFill,
   interactive: boolean,
 ) {
-  // Both §33 maps must share the exact same subject pin (never a random comparable).
+  // Both section 33 maps must share the exact same subject pin (never a random comparable).
   const pins = subjectOnlyMapPins(fill.comparablesMapPins ?? []);
 
   fillGoogleMapHostSlot(
@@ -1375,7 +1375,7 @@ export function fillLocationMapsSlots(
     "map-satellite",
     SATELLITE_MAP_HOST_ID,
     pins,
-    // Uploaded site map, or the print-time Google hybrid view. Never the §18 comps map.
+    // Uploaded site map, or the print-time Google hybrid view. Never the section 18 comps map.
     fill.satelliteMapSlot,
     "خريطة الأقمار الصناعية — تُرفق صورة الموقع",
     "خريطة الأقمار الصناعية",
@@ -1413,7 +1413,7 @@ export function fillAttachmentAndGlossarySections(
     "خريطة مواقع المقارنات — اسحب الصورة هنا",
     options?.interactiveComparablesMap === true,
   );
-  // §20 — land comparables of the cost approach on their own map.
+  // Section 20 — land comparables of the cost approach on their own map.
   fillGoogleMapHostSlot(
     dom,
     "map-land-comparables",

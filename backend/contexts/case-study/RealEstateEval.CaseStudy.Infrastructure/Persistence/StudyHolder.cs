@@ -6,7 +6,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 /// <summary>
-/// Phase 4 (decision 2026-10-18): one study per transaction. Every read or write of "the deed's
+/// Phase 4: one study per transaction. Every read or write of "the deed's
 /// study" goes through here to land on the holder deed's case-study parent task. A deed without
 /// a transaction row, or alone in its transaction, resolves to itself — nothing changes for the
 /// ordinary property.

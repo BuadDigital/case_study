@@ -5,7 +5,7 @@ import { googleMapsApiKey, loadGoogleMapsApi } from "@platform/ui-kit";
 import type { ComparablesMapPin } from "../../lib/evaluator/valuation-report-comparables-map";
 
 /**
- * Interactive Google Map for valuation report preview (§18 / §33).
+ * Interactive Google Map for valuation report preview (sections 18/33).
  */
 export function ComparablesGoogleMap({
   pins,
@@ -18,7 +18,7 @@ export function ComparablesGoogleMap({
   /** Fixed zoom (e.g. close-up). When omitted, fitBounds is used. */
   zoom?: number;
   mapTypeId?: "hybrid" | "satellite" | "roadmap" | "terrain";
-  /** Explicit center — preferred over bounds for §33 single-subject maps. */
+  /** Explicit center — preferred over bounds for section 33 single-subject maps. */
   centerLat?: number;
   centerLng?: number;
 }) {

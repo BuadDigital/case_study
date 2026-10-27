@@ -21,9 +21,9 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
     {
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddClaimsPermissionService();
-        // A8: blob storage folds into the context registration below.
+        // Blob storage folds into the context registration below.
         builder.Services.AddAttachmentsInfrastructure(builder.Configuration, connectionString!);
-        // A8: the attachment validators live in the Attachments context assembly.
+        // The attachment validators live in the Attachments context assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<UploadAttachmentRequestValidator>();
     }
 

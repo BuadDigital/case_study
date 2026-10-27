@@ -208,7 +208,7 @@ public class ValuationReportDraftServiceTests
     [InlineData("[]")]
     [InlineData("\"x\"")]
     [InlineData("{\"purposeKey\":\"sale\"}")]
-    // ESG is the appraiser's own (decision 2026-10-06) — the specialist's draft refuses it.
+    // ESG is the appraiser's own — the specialist's draft refuses it.
     [InlineData("{\"esgEnv\":{\"none\":true,\"selected\":[],\"notes\":\"x\"}}")]
     public async Task Only_the_allow_listed_choice_keys_are_accepted(string json)
     {
@@ -262,7 +262,7 @@ public class ValuationReportDraftServiceTests
         Assert.True(approved.HasSnapshot);
         Assert.Equal(64, approved.SnapshotSha256!.Length);
         Assert.True(await ValuationReportFreeze.IsFrozenAsync(rig.Contexts.Valuation, rig.RequestId));
-        // Decision 2026-10-19: the approval fixes the report number from the transaction's PR root.
+        // The approval fixes the report number from the transaction's PR root.
         Assert.Equal("PRV-2026-00001", approved.ReportNumber);
 
         Assert.Contains(

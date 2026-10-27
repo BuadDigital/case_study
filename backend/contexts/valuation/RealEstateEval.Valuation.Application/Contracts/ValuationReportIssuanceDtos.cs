@@ -1,13 +1,13 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 2 (1b19bedc)
-//  • R2-10 DepositCode: Arabic messages for the required and max-length (128) checks.
+//  • DepositCode: Arabic messages for the required and max-length (128) checks.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateEval.Valuation.Application.Contracts;
 
-/// <summary>Q-6: two-phase issuance status for the UI.</summary>
+/// <summary>two-phase issuance status for the UI.</summary>
 public class ValuationReportIssuanceStateDto
 {
     public Guid ValuationRequestId { get; init; }
@@ -28,7 +28,7 @@ public class ValuationReportIssuanceStateDto
  /// <summary>none | preparing | ready — the generated final PDF (report + deposit code + certificate page).</summary>
     public string FinalReportStatus { get; init; } = "none";
 
- /// <summary>Q-9 supplement (R2): current valuation cycle number — 1 before any reopen.</summary>
+ /// <summary>Supplement: current valuation cycle number — 1 before any reopen.</summary>
     public int Version { get; init; } = 1;
 
  /// <summary>Count of superseded copies ("replaced by a newer copy") remaining on the transaction file.</summary>
@@ -36,8 +36,8 @@ public class ValuationReportIssuanceStateDto
 }
 
 /// <summary>
-/// Q-9 supplement (R2): reopen the valuation cycle after deposit — requires section-supervisor approval;
-/// reason required with Q-8-2 minimum (10 characters).
+/// Supplement: reopen the valuation cycle after deposit — requires section-supervisor approval;
+/// reason required with minimum (10 characters).
 /// </summary>
 public class ReopenReportIssuanceRequest
 {
@@ -46,7 +46,7 @@ public class ReopenReportIssuanceRequest
 }
 
 /// <summary>
-/// Q-6-3: register deposit certificate and its code — this step generates the final copy (Q-6-4).
+/// Register deposit certificate and its code — this step generates the final copy.
 /// Certificate image preferred (becomes a page); other formats are stored and referenced.
 /// </summary>
 public class RegisterDepositCertificateRequest

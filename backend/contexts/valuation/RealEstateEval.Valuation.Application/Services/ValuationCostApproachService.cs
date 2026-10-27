@@ -4,15 +4,15 @@
 //           valuation is refused with an Arabic 400 (was a 500).
 //  • Cost Problem 21: the read takes the land live from the land table (ReadLandAsync), so adopting a land
 //         comparable shows in the cost screen without a cost save; building-only scopes keep stored values.
-//  • D7   Land inside the cost approach is always a per-m² rate from the adopted land comparables
+//  • Land inside the cost approach is always a per-m² rate from the adopted land comparables
 //         (LandFromComps).
 //  • Cost Age rationales are stored and returned; IsSaved tells the screen the stored zeros are real.
-//  • D11  Physical depreciation uses the life capped by the remaining lease (EffectiveLifeYears).
-//  • D12  AppliedObsolescencePct (total capped at 100%) and ObsolescenceNeedsAlert (> 90%) on the DTO.
+//  • Physical depreciation uses the life capped by the remaining lease (EffectiveLifeYears).
+//  • AppliedObsolescencePct (total capped at 100%) and ObsolescenceNeedsAlert (> 90%) on the DTO.
 // Round 2 (1b19bedc)
 //  • A    BuildingPlotAreaSqm is saved; the land snapshot is refreshed after the plot and share are stored,
 //         value = discounted rate × (share ?? plot) (RefreshLandSnapshotAsync).
-//  • D11  The lease cap no longer depends on the cost scope (CostLeaseTerms.RemainingLeaseYears(settings)).
+//  • The lease cap no longer depends on the cost scope (CostLeaseTerms.RemainingLeaseYears(settings)).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Application;
@@ -27,7 +27,7 @@ namespace RealEstateEval.Valuation.Application.Services;
 
 /// <summary>
 /// Contractor cost approach scaffold — land from market, lines priced by the appraiser.
-/// Persistence goes through <see cref="IValuationCostApproachRepository"/> and the ق-6 freeze
+/// Persistence goes through <see cref="IValuationCostApproachRepository"/> and the freeze
 /// through <see cref="IValuationReportFreezeGate"/>, so this file holds rules only - no EF
 /// (solid-scorecard finding 1).
 /// </summary>
@@ -63,7 +63,7 @@ public sealed class ValuationCostApproachService(
             entity?.LandAreaSqm ?? 0m,
             entity?.LandImportedAtUtc is not null);
 
-    /// <summary>D7: land inside the cost approach — always a per-m² rate from the adopted land comps.</summary>
+    /// <summary>Land inside the cost approach — always a per-m² rate from the adopted land comps.</summary>
     private static CostLandInputs LandFromComps(ValuationComparableSelectionListDto? comps)
     {
         if (comps is null) return new(0m, 0m, false);
@@ -109,8 +109,8 @@ public sealed class ValuationCostApproachService(
         if (blocked is not null)
             return (null, new Dictionary<string, string> { ["_"] = blocked });
 
- // Q-2/Q-3 amended: cost tab is closed when the approach is off (bare land defaults it off;
- // land WITH structures opens it for the structure lines only — spec v2 §3).
+ // Amended: cost tab is closed when the approach is off (bare land defaults it off;
+ // land WITH structures opens it for the structure lines only — spec v2 section 3).
         var approachSettings = await repo.GetApproachSettingsAsync(
             valuationRequestId, cancellationToken);
         var (hasStructures, effectivePropertyType) = await ValuationPropertyScope.ReadAsync(
@@ -178,7 +178,7 @@ public sealed class ValuationCostApproachService(
             ? null
             : request.UseRestrictionRationale.Trim();
         entity.ApartmentLandShareSqm = request.ApartmentLandShareSqm;
-        // Decision A: the land table's own area — the subject-area sync of the market header never touches it.
+        // The land table's own area — the subject-area sync of the market header never touches it.
         entity.BuildingPlotAreaSqm = request.BuildingPlotAreaSqm;
 
         // Upsert in place — navigation-adds with pre-set GUIDs get marked Modified
@@ -307,7 +307,7 @@ public sealed class ValuationCostApproachService(
         entity.UpdatedAtUtc = _time.UtcNow();
         await repo.SaveChangesAsync(cancellationToken);
 
-        // The land table reads the plot and the share from the stored row (decision A), so the land
+        // The land table reads the plot and the share from the stored row, so the land
         // snapshot is taken once they are saved — a changed plot moves the area adjustment.
         await RefreshLandSnapshotAsync(entity, request.RefreshLandFromLandComps, cancellationToken);
         await repo.SaveChangesAsync(cancellationToken);
@@ -446,7 +446,7 @@ public sealed class ValuationCostApproachService(
  // chain (–)
         var extendedLife = CostApproachRules.ExtendedLifeYears(
             entity?.EconomicAgeYears, entity?.LifeExtensionYears ?? 0m);
-        // D11: building-only on leased land — the remaining life cannot outlast the lease.
+        // building-only on leased land — the remaining life cannot outlast the lease.
         var effectiveLife = CostApproachRules.LifeCappedByLease(
             extendedLife, entity?.ActualAgeYears, remainingLeaseYears);
         var physicalPct = CostApproachRules.PhysicalObsolescencePct(

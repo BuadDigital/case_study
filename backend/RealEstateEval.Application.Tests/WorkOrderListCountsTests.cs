@@ -18,7 +18,7 @@ namespace RealEstateEval.Application.Tests;
 /// GET /api/work-orders/counts — the KPI band the PO screen used to compute over the whole list.
 /// Every number is a SQL COUNT over the same filtered, visibility-narrowed set the list pages.
 /// Due dates are relative to the real clock because the query resolves "today" from it.
-/// See docs/architecture/pagination-contract.md §1.1.
+/// See docs/architecture/pagination-contract.md.
 /// </summary>
 public class WorkOrderListCountsTests
 {

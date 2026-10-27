@@ -65,7 +65,7 @@ export function readOfflineAccess(userId: string): PermissionsDto | null {
 /**
  * The signed-in user is a field inspector / government reviewer (their access is
  * cached on this device). Reads use it to answer offline with the downloaded copy —
- * or an empty list — instead of a connection error (spec §4.2 forbids those).
+ * or an empty list — instead of a connection error (spec forbids those).
  */
 export function isOfflineFieldSession(): boolean {
   const userId = currentOfflineUserId();

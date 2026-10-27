@@ -13,7 +13,7 @@ using RealEstateEval.Attachments.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Attachments.Infrastructure;
 
 /// <summary>
-/// Context-local registration for the Attachments bounded context (A8). The shared
+/// Context-local registration for the Attachments bounded context. The shared
 /// persistence/HTTP plumbing still comes from the global Infrastructure extensions.
 /// </summary>
 public static class AttachmentsDependencyInjection
@@ -35,7 +35,7 @@ public static class AttachmentsDependencyInjection
     }
 
  /// <summary>Attachments write context. Prefers a dedicated Attachments connection string.
- /// A8 physical move: lives beside <see cref="AttachmentsDbContext"/> in the context library.</summary>
+ /// Physical move: lives beside <see cref="AttachmentsDbContext"/> in the context library.</summary>
     public static IServiceCollection AddAttachmentsPersistence(
         this IServiceCollection services,
         IConfiguration configuration,

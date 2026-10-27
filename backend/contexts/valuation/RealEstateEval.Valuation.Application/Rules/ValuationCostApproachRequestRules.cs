@@ -6,12 +6,12 @@
 //           duplicate / %), financing, ages and obsolescence % checked; duplicate line ids refused.
 //  • Cost A repeated-floors line needs a floor count (RepeatedFloorRules.MissingInputMessage).
 // Round 2 (1b19bedc)
-//  • R2-5 Line amount (quantity × unit cost), the direct total and the total with indirect costs ≤
+//  • Line amount (quantity × unit cost), the direct total and the total with indirect costs ≤
 //         MaxAmountSar (ValidateAmounts) — an overflow is a 400, not a 500.
 //  • A    BuildingPlotAreaSqm must be > 0 and within the maximum; the apartment's land share cannot exceed it.
 //  • B    Use-restriction, life-extension basis and functional / external obsolescence rationales are at
 //         least 10 characters once written.
-//  • R2-10 An unknown line structureKind is refused instead of being stored as-is.
+//  • An unknown line structureKind is refused instead of being stored as-is.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using System.Globalization;
@@ -161,14 +161,14 @@ public static class ValuationCostApproachRequestRules
     {
         if (request.UseRestrictionDiscountPct is < 0m or > 100m)
             errors["useRestrictionDiscountPct"] = "خصم تقييد الاستخدام يجب أن يكون بين 0 و 100";
-        // Decision B: the rationale alert 10 asks for is at least 10 characters once written.
+        // The rationale alert 10 asks for is at least 10 characters once written.
         if (request.UseRestrictionDiscountPct > 0m
             && JustificationRules.IsBelowRequiredMinimum(request.UseRestrictionRationale))
             errors["useRestrictionRationale"] = JustificationRules.RequiredMinimumMessageAr("مبرر خصم تقييد الاستخدام");
         if (request.ApartmentLandShareSqm is < 0m or > CostApproachRules.MaxLandShareSqm)
             errors["apartmentLandShareSqm"] =
                 $"حصة الشقة من الأرض يجب أن تكون بين 0 و {N(CostApproachRules.MaxLandShareSqm)} م²";
-        // Decision A: the land comparables are compared with the whole building plot.
+        // The land comparables are compared with the whole building plot.
         if (request.BuildingPlotAreaSqm is <= 0m or > CostApproachRules.MaxBuildingPlotAreaSqm)
             errors["buildingPlotAreaSqm"] =
                 $"مساحة قطعة الأرض يجب أن تكون أكبر من 0 ولا تتجاوز {N(CostApproachRules.MaxBuildingPlotAreaSqm)} م²";
@@ -219,11 +219,11 @@ public static class ValuationCostApproachRequestRules
             errors["functionalObsolescencePct"] = "التقادم الوظيفي يجب أن يكون بين 0 و 100";
         if (request.ExternalObsolescencePct is < 0m or > 100m)
             errors["externalObsolescencePct"] = "التقادم الخارجي يجب أن يكون بين 0 و 100";
-        // Decision B: the basis alert 6 asks for (life extension > 0) is at least 10 characters once written.
+        // The basis alert 6 asks for (life extension > 0) is at least 10 characters once written.
         if (request.LifeExtensionYears > 0m
             && JustificationRules.IsBelowRequiredMinimum(request.LifeExtensionBasis))
             errors["lifeExtensionBasis"] = JustificationRules.RequiredMinimumMessageAr("بيان أساس تمديد العمر");
-        // Decision B: the rationales alert 12 asks for are at least 10 characters once written.
+        // The rationales alert 12 asks for are at least 10 characters once written.
         if (request.FunctionalObsolescencePct > 0m
             && JustificationRules.IsBelowRequiredMinimum(request.FunctionalObsolescenceRationale))
             errors["functionalObsolescenceRationale"] = JustificationRules.RequiredMinimumMessageAr("مبرر التقادم الوظيفي");

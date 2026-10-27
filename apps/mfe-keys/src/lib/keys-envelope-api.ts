@@ -69,7 +69,7 @@ function mapEnvelope(dto: KeyEnvelopeDto): KeyEnvelopeRow {
     createdByName: dto.createdByName,
     createdAtUtc: dto.createdAtUtc,
     operationsTaskId: dto.operationsTaskId ?? null,
-    // Decision 2026-10-20: the envelope's one explicit holder; rows from before it default to the reviewer.
+    // The envelope's one explicit holder; rows from before it default to the reviewer.
     holderKind: dto.holderKind ?? "reviewer",
     holderUserId: dto.holderUserId ?? null,
     holderLabel: dto.holderLabel ?? null,
@@ -220,7 +220,7 @@ async function writeOrQueue<TDto, TRow>({
   }
 }
 
-/* ─── Offline reads (government reviewer, spec §3.2 / §6) ─── */
+/* ─── Offline reads (government reviewer, spec) ─── */
 
 type KeysOfflineSnapshot = {
   envelopes: KeyEnvelopeDto[];
@@ -514,7 +514,7 @@ export async function registerKeyEnvelope(
  * field session (or on a network failure there) the same body goes to the outbox as
  * `key-envelope-assignment-confirm` and replays later.
  *
- * Edge cases: decision 2026-10-20 — `keyLocation` travels in both the live and the queued body
+ * Edge cases: — `keyLocation` travels in both the live and the queued body
  * so a trial recorded offline keeps the key's place; null lets the server default it
  * (in_envelope on matched/partial, missing on missing; with_user holder = the actor).
  */
@@ -524,7 +524,7 @@ export async function confirmEnvelopeAssignment(
   status: KeyAssignmentMatchStatus,
   notes?: string,
   idempotencyKey?: string,
-  /** Where the matching key went after the trial (decision 2026-10-20); empty = back in the envelope. */
+  /** Where the matching key went after the trial; empty = back in the envelope. */
   keyLocation?: string | null,
 ): Promise<MutationResult<KeyEnvelopeRow>> {
   const config = prototypeModulesApiConfig();
@@ -552,7 +552,7 @@ export async function confirmEnvelopeAssignment(
 }
 
 /**
- * The reviewer corrects where a deed's key is (decision 2026-10-20). Online only — a desk action.
+ * The reviewer corrects where a deed's key is. Online only — a desk action.
  *
  * How it works: without an API config returns the auth error; otherwise calls
  * `setKeyEnvelopeAssignmentKeyLocation` with the body (place, and the holder when the key is

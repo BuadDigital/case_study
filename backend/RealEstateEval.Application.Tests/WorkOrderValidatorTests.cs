@@ -83,7 +83,7 @@ public class WorkOrderValidatorTests
     [Fact]
     public void Request_number_matching_deed_number_is_a_warning_not_a_block()
     {
- // Q-11: exact match may occur by chance — UI warning, not a hard block.
+ // Exact match may occur by chance — UI warning, not a hard block.
         var dto = ValidDeedProperty();
         dto.RequestNumber = dto.DeedNumber;
 

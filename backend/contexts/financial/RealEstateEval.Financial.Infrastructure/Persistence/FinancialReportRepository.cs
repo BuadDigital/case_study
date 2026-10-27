@@ -72,7 +72,7 @@ public sealed class FinancialReportRepository : IFinancialReportRepository
     public async Task<IReadOnlyList<LedgerCostSlice>> ListCompletedLedgerCostSlicesAsync(
         IReadOnlyCollection<Guid> completedPropertyIds,
         CancellationToken cancellationToken) =>
-        // Project scalars only so InspectorFeeLedger entities are not materialized (F/D10 report tests).
+        // Project scalars only so InspectorFeeLedger entities are not materialized (F/ report tests).
         await CompletedLedgers(completedPropertyIds)
             .Select(ledger => new LedgerCostSlice(
                 ledger.AssigneeId == null || ledger.AssigneeId.Trim() == ""

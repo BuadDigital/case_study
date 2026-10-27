@@ -9,13 +9,13 @@ import { useTransactionByPropertyQuery } from "@platform/app-shared/query/transa
 const NO_DEEDS: TransactionDeedDto[] = [];
 
 /**
- * Phase 5 (decision 2026-10-19): the transaction a deed belongs to — the appraiser values the
+ * Phase 5: the transaction a deed belongs to — the appraiser values the
  * whole linked property, so the window lists every deed. Same query as the case-study page.
  */
 export { useTransactionByPropertyQuery };
 
 /**
- * Phase 5 (decision 2026-10-19): the live deeds of a linked property, for the report and the
+ * Phase 5: the live deeds of a linked property, for the report and the
  * appraiser's window.
  *
  * How it works: reads the deed's transaction (`useTransactionByPropertyQuery`, shared cache

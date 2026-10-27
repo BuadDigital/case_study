@@ -117,7 +117,7 @@ export function usePendingBourseItemsQuery() {
 
 /**
  * One server page of the PO list: paging, status/type filters, search and sort
- * are all query parameters (pagination-contract §1).
+ * are all query parameters (pagination-contract).
  */
 export function usePoListRowsPageQuery(query: WorkOrderListQuery) {
   return useQuery({
@@ -129,7 +129,7 @@ export function usePoListRowsPageQuery(query: WorkOrderListQuery) {
 
 /**
  * The PO list KPI band and empty-state totals — one `COUNT` request keyed by
- * the same filters as the page query (pagination-contract §1.1). Deliberately
+ * the same filters as the page query (pagination-contract). Deliberately
  * not keyed by `page`/`sort`/`dir`: flipping a page must not refetch it.
  */
 export function useWorkOrderListCountsQuery(query: WorkOrderListCountsQuery) {
@@ -143,7 +143,7 @@ export function useWorkOrderListCountsQuery(query: WorkOrderListCountsQuery) {
 /**
  * All workflow tasks matching a server-side filter set (kind / status / phase /
  * assignee / sort). The rows the screen still refines client-side stay in the
- * browser — pagination-contract §2.
+ * browser — pagination-contract.
  */
 export function useWorkflowTasksFilteredQuery(
   filters: WorkflowTaskListFilters,
@@ -169,7 +169,7 @@ export function useWorkflowTasksFilteredQuery(
   });
 }
 
-/** One server page of workflow tasks — pagination-contract §2. */
+/** One server page of workflow tasks — pagination-contract. */
 export function useWorkflowTasksPageQuery(
   query: WorkflowTaskListQuery,
   options?: { live?: boolean; enabled?: boolean },

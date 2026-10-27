@@ -4,7 +4,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Application.Services;
 
 /// <summary>
-/// D2: the appraiser's hand-over waits on the valuation issuance gates he must see fixed first
+/// The appraiser's hand-over waits on the valuation issuance gates he must see fixed first
 /// (read from the Valuation API through the cross-service client); what the specialist completes
 /// after the hand-over does not hold it up. See <see cref="AppraisalHandOverGateRules"/>.
 /// </summary>

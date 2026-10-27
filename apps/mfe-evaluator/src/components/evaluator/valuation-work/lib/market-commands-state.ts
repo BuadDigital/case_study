@@ -64,7 +64,7 @@ export function nextSubjectSpecs(
   return next;
 }
 
-/** Rule Q-8-2: a non-empty justification below the minimum length is rejected client-side. */
+/** A non-empty justification below the minimum length is rejected client-side. */
 export function isJustificationTooShort(text: string): boolean {
   return text.length > 0 && text.length < JUSTIFICATION_MIN_LENGTH;
 }
@@ -219,7 +219,7 @@ export function linesWithDescription(
 }
 
 /**
- * Rule Q-8-1: per-comparable justification override. Writing an override alone does not
+ * per-comparable justification override. Writing an override alone does not
  * turn a “suggested” value into a stored manual percentage.
  */
 export function linesWithRationaleOverride(

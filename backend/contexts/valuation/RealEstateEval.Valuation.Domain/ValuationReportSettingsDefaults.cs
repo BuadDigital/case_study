@@ -7,7 +7,7 @@
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// Default copy for organization settings tab "Valuation report" (decision 25 layer B).
+/// Default copy for organization settings tab "Valuation report" (layer B).
 /// Seeded from the official v3 template; admin may edit; issued reports freeze a snapshot.
 /// </summary>
 public static class ValuationReportSettingsDefaults
@@ -57,7 +57,7 @@ public static class ValuationReportSettingsDefaults
         + "لا تتحمل الشركة أو المقيم أي مسؤولية قانونية أو مالية عن أي خسائر قد تنجم عن سوء استخدام التقرير، أو الاعتماد عليه من قبل أطراف غير مصرح لها، أو استخدامه في غير سياقه الموضح.\n"
         + "يُعد هذا التقرير وحدة فنية متكاملة وغير قابلة للتجزئة، ويُحظر استخدامه جزئيًا أو الاقتباس منه بشكلٍ منفصل عن سياقه الكلي وفرضياته الواردة فيه.";
 
-    /// <summary>§32 — the restrictions of the v3 design; <c>{{reportDate}}</c> is filled with the valuation date.</summary>
+    /// <summary>Section 32 — the restrictions of the v3 design; <c>{{reportDate}}</c> is filled with the valuation date.</summary>
     public const string Restrictions =
         "أُعد هذا التقرير حصريًا للغرض المحدد فيه، ولا يجوز استخدامه أو الاقتباس منه أو الإشارة إليه لأي غرض آخر غير الذي صُدر من أجله.\n"
         + "يُصنف هذا التقرير كوثيقة سرية للغاية، وهو مخصص لاستخدام العميل والمستخدمين المقصودين المسمَّين بالتقرير فقط، ولا يجوز تقديمه لأي طرف ثالث دون موافقة خطية صريحة ومسبقة من الشركة.\n"
@@ -67,7 +67,7 @@ public static class ValuationReportSettingsDefaults
         + "يُعد هذا التقرير وحدة فنية متكاملة وغير قابلة للتجزئة، ويُحظر استخدامه جزئيًا أو الاقتباس منه بشكلٍ منفصل عن سياقه الكلي وفرضياته الواردة فيه، ولا يُعتد بالقيمة التقديرية إلا بالاطلاع على التقرير بكافة بنوده وملاحقه.";
 
     /// <summary>
-    /// §31 — full clause list of the issued Ejadah reports. <c>{{reportDate}}</c> is the report date;
+    /// Section 31 — full clause list of the issued Ejadah reports. <c>{{reportDate}}</c> is the report date;
     /// a line starting with "- " is a sub-clause of the line above it.
     /// </summary>
     public const string Terms =
@@ -221,11 +221,11 @@ public static class ValuationReportSettingsDefaults
     public static string? UpgradeIvsStandards(string? stored) =>
         SameText(stored, PreviousIvsStandards) ? IvsStandards : stored;
 
-    /// <summary>A stored §31 that still equals the short previous list was never edited: it moves to the full one.</summary>
+    /// <summary>A stored section 31 that still equals the short previous list was never edited: it moves to the full one.</summary>
     public static string? UpgradeTerms(string? stored) =>
         SameText(stored, PreviousTerms) ? Terms : stored;
 
-    /// <summary>A stored §32 that still equals the previous list was never edited: it moves to the v3 one.</summary>
+    /// <summary>A stored section 32 that still equals the previous list was never edited: it moves to the v3 one.</summary>
     public static string? UpgradeRestrictions(string? stored) =>
         SameText(stored, PreviousRestrictions) ? Restrictions : stored;
 

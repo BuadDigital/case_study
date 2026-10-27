@@ -7,7 +7,7 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// D1 on the server-side field payload: basis / premise print the reconciliation's keys (the
+/// On the server-side field payload: basis / premise print the reconciliation's keys (the
 /// appraiser's saved choice), and the liquidation discount prints only when basis = liquidation and
 /// it is above zero.
 /// </summary>

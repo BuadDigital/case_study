@@ -28,7 +28,7 @@ public interface IFailureRepository
     /// <summary>
     /// One filtered, sorted window of the queue. Visibility is part of the same query, so
     /// <see cref="CountAsync"/> is the actor's total.
-    /// See docs/architecture/pagination-contract.md §5.
+    /// See docs/architecture/pagination-contract.md.
     /// </summary>
     Task<IReadOnlyList<PropertyFailure>> ListPageAsync(
         IReadOnlyCollection<string>? visiblePoNumbers,

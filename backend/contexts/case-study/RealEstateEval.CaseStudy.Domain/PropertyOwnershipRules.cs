@@ -25,7 +25,7 @@ public static class OwnershipTypes
 }
 
 /// <summary>
-/// Ownership Type is derived from the owners list alone (decision 2026-10-06, supersedes the
+/// Ownership Type is derived from the owners list alone (supersedes the
 /// earlier four-value rule): one owner → absolute, more than one owner → shared. A mortgage is a
 /// restriction on the deed (see RestrictionType), not an ownership type; shares are not modelled.
 /// </summary>

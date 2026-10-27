@@ -9,7 +9,7 @@ public interface IComparablePropertyService
         ComparablePropertyListQuery query,
         CancellationToken cancellationToken = default);
 
-    /// <summary>Filtered / sorted page. See docs/architecture/pagination-contract.md §4.</summary>
+    /// <summary>Filtered / sorted page. See docs/architecture/pagination-contract.md.</summary>
     Task<PagedResultDto<ComparablePropertyDto>> ListPagedAsync(
         ComparablePropertyListQuery query,
         int skip,
@@ -42,7 +42,7 @@ public interface IComparablePropertyService
         ComparableProximityQuery query,
         CancellationToken cancellationToken = default);
 
- /// <summary>Q-3: set/update human quality tags (reliability/duplicate) with rationale — record remains.</summary>
+ /// <summary>set/update human quality tags (reliability/duplicate) with rationale — record remains.</summary>
     Task<(ComparablePropertyDto? Result, Dictionary<string, string>? Errors)> SetQualityTagsAsync(
         Guid id,
         SaveComparableQualityTagsRequest request,

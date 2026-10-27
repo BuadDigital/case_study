@@ -34,7 +34,7 @@ public class FailuresController : ControllerBase
  /// <summary>
  /// Failures queue. Sending page or pageSize returns PagedResultDto; without them the response
  /// stays the plain array every existing caller expects.
- /// See docs/architecture/pagination-contract.md §5.
+ /// See docs/architecture/pagination-contract.md.
  /// </summary>
     [HttpGet]
     public async Task<IActionResult> List(
@@ -122,13 +122,20 @@ public class FailuresController : ControllerBase
         return Ok(dto);
     }
 
+    /// <summary>
+    /// «تصعيد إلى المشرف». How it works: the body's <c>note</c> is the specialist's explanation,
+    /// stored on the failure as «سبب التصعيد». Edge cases: a missing or blank note is a 400 from
+    /// the note validator before the service runs (the body used to be empty); an illegal
+    /// transition answers 400 «لا يمكن إرسال هذا التعذّر للمراجعة».
+    /// </summary>
     [HttpPost("{id:guid}/submit")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> Submit(
         Guid id,
+        [FromBody] FailureNoteRequest request,
         CancellationToken cancellationToken)
     {
-        var dto = await _failures.SubmitForReviewAsync(id, cancellationToken);
+        var dto = await _failures.SubmitForReviewAsync(id, request.Note, cancellationToken);
         if (dto is null) return this.BadRequestProblem("لا يمكن إرسال هذا التعذّر للمراجعة");
         return Ok(dto);
     }
@@ -175,6 +182,32 @@ public class FailuresController : ControllerBase
             cancellationToken);
         if (dto is null) return this.BadRequestProblem("لا يمكن اعتماد هذا التعذّر");
         return Ok(dto);
+    }
+
+    /// <summary>
+    /// «التعذر النهائي عن المعاملة» — the section supervisor (or the CDO) only: every live deed of
+    /// the transaction turns final, the parties told only when <c>notifyParties</c> is set.
+    /// How it works: the role comes from the caller's permissions, not the token, and is checked
+    /// with <c>FailureRecordRules.CanRecordFinalFailure</c> before the service runs.
+    /// Edge cases: a specialist passes the <c>manage-failures</c> policy but gets 403 here; field
+    /// errors (reason, problem type, already final) come back as a 400 keyed by field.
+    /// </summary>
+    [HttpPost("final")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
+    public async Task<ActionResult<IReadOnlyList<FailureRecordDto>>> RecordFinal(
+        [FromBody] FinalFailureRequest request,
+        CancellationToken cancellationToken)
+    {
+        var role = (await ActorAsync(cancellationToken))?.PrototypeRole;
+        if (!FailureRecordRules.CanRecordFinalFailure(role))
+            return this.ForbiddenProblem("التعذّر النهائي عن المعاملة للمشرف فقط");
+
+        var (result, errors) = await _failures.RecordFinalFailureAsync(
+            request,
+            ActorClaims.Id(User),
+            cancellationToken);
+        if (errors is not null) return this.FieldErrorsProblem(errors);
+        return Ok(result);
     }
 
     [HttpPost("{id:guid}/return")]

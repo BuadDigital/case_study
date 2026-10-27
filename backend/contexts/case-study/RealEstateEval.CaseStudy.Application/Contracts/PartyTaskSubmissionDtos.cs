@@ -45,7 +45,7 @@ public class PartyTaskSubmissionDto
  /// <summary>
  /// Field-inspection: fingerprint of the property's specialist-owned source data as the
  /// server holds it now. The inspector's device sends it back with each save so a change
- /// made while the inspector worked offline alerts the specialist (spec §4.4).
+ /// made while the inspector worked offline alerts the specialist (spec).
  /// </summary>
     public string? SourceFingerprint { get; set; }
 

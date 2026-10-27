@@ -31,7 +31,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
     /// 4) picks this deed's assignment and the latest pending internal handoff; 5) handed = the envelope
     /// is held by an internal_user, or this deed's key is with_user, or the trial matched; 6) returns
     /// the flags plus the envelope holder and the deed's key place / holder.
-    /// Edge cases (custody, decision 2026-10-20): handed used to come from the envelope status
+    /// Edge cases (custody): handed used to come from the envelope status
     /// (assessor / external) or any internal handoff ever confirmed; it now follows the current holder.
     /// Operations cannot see case-study tasks, so whether the holder is THIS deed's inspector is decided
     /// on the client — an envelope held by another deed's inspector reads «الظرف عند … (معاين صك آخر)».
@@ -134,7 +134,7 @@ public sealed class PropertyKeyGateResolver : IPropertyKeyGateResolver
                 .OrderByDescending(h => h.CreatedAtUtc)
                 .FirstOrDefault();
 
-            // Custody (decision 2026-10-20): the key reads as handed when the envelope is with a
+            // Custody: the key reads as handed when the envelope is with a
             // system user or this deed's own key is kept by one. Which user is the deed's inspector
             // is for the screen to compare — the holder is exposed beside the flag.
             var keyWithUser = assignment?.KeyLocation == KeyLocations.WithUser;

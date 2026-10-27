@@ -255,7 +255,7 @@ export async function deletePartyFeePricing(
 }
 
 /* ------------------------------------------------------------------------- *
- * Financial ledgers — pagination-contract §7.
+ * Financial ledgers — pagination-contract.
  *
  * Two lists on `FinancialController` with the same row shape and one rules
  * module, reached through `CapabilityPolicyNames.ManageOperations`. No screen
@@ -287,7 +287,7 @@ export type IncentiveSuspensionDto = {
   liftedAtUtc?: string | null;
 };
 
-/** `GET /api/financial/incentive-suspensions` query — pagination-contract §7.1. */
+/** `GET /api/financial/incentive-suspensions` query — pagination-contract. */
 export type IncentiveSuspensionListQuery = FinancialLedgerPageQuery & {
   /** Free text over `TransactionKey`, `AssigneeId`, `Reason`. */
   q?: string;
@@ -310,7 +310,7 @@ function incentiveSuspensionListParams(query?: IncentiveSuspensionListQuery) {
   };
 }
 
-/** One server page of the incentive-suspension ledger — pagination-contract §7.1. */
+/** One server page of the incentive-suspension ledger — pagination-contract. */
 export async function listIncentiveSuspensionsPage(
   config: PrototypeModulesApiConfig,
   query?: IncentiveSuspensionListQuery,

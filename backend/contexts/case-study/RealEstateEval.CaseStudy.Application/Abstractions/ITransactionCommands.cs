@@ -3,7 +3,7 @@ using RealEstateEval.CaseStudy.Application.Contracts;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
-/// <summary>Merge / unmerge of transactions (decision 2026-10-19) — the case-study specialist's decision, audited.</summary>
+/// <summary>Merge / unmerge of transactions — the case-study specialist's decision, audited.</summary>
 public interface ITransactionCommands
 {
     Task<(TransactionDetailDto? Result, string? Error)> MergeAsync(

@@ -55,7 +55,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
 
-        // Decision 2026-10-18: a slot opened by the specialist becomes a real property at once
+        // A slot opened by the specialist becomes a real property at once
         // (draft, no gate) so its documents are stored under the real id from the first upload;
         // the explicit حفظ validates fully, as before.
         if (!softDraft)
@@ -75,7 +75,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         property.Id = null;
 
         var mapped = MapPropertyEnfath(property, entity.Id, forInsert: true);
-        // Decision 2026-10-19: a deed added later opens its own draft transaction as well.
+        // A deed added later opens its own draft transaction as well.
         var now = _time.UtcNow();
         var (draftNumber, referenceError) =
             await _db.AllocateTransactionDraftNumberAsync(now, cancellationToken);

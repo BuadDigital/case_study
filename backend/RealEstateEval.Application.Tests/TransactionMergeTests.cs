@@ -10,7 +10,7 @@ using Xunit;
 
 namespace RealEstateEval.Application.Tests;
 
-/// <summary>Decision 2026-10-19 (stage condition Omar 2026-10-20: bourse done, inspection not required): merging deeds' transactions, and taking a deed back out.</summary>
+/// <summary>(stage condition Omar 2026-10-20: bourse done, inspection not required): merging deeds' transactions, and taking a deed back out.</summary>
 public class TransactionMergeTests
 {
     private static readonly PermissionsDto Specialist = new()

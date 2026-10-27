@@ -54,7 +54,7 @@ function keysBadgeTone(status: string): BadgeTone {
 /**
  * Property keys — listens to key-envelope gate + court_visit ops (linked envelope).
  *
- * How it works (custody, decision 2026-10-20): reads the deed's key gate and its court visits;
+ * How it works (custody): reads the deed's key gate and its court visits;
  * «تسليم للمعاين» comes from `keyHandedToInspectorText`, which compares the envelope holder,
  * or the deed's key holder, with this deed's inspection task assignee (`inspectionTask`).
  * When the keys come from an envelope it also shows «الظرف عند» (the envelope's one holder:
@@ -200,7 +200,7 @@ export function PropertyDetailPropertyKeys({
       </div>
 
       <FieldsGrid>
-        {/* Custody (decision 2026-10-20): shown only when the keys come from an envelope. */}
+        {/* Custody: shown only when the keys come from an envelope. */}
         {gate?.source === PropertyKeyGateSources.Envelope ? (
           <>
             <FieldBox label="الظرف عند" value={holderLabel} emptyLabel="—" />

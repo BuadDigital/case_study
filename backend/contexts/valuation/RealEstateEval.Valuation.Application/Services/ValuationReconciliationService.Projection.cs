@@ -1,10 +1,10 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  The income value joins the reconciliation rows and the DTO (IncomeOpinionValue) when the income
+//  • The income value joins the reconciliation rows and the DTO (IncomeOpinionValue) when the income
 //         approach is enabled (ValuationApproachKinds.ValueOf).
-//  • D1   The appraiser's saved basis and premise win; the work order only seeds them.
+//  • The appraiser's saved basis and premise win; the work order only seeds them.
 // Hotfix (9acb4f54)
-//  • D1   A row that only an alert acknowledgement created (no methods rationale = no full save) never
+//  • A row that only an alert acknowledgement created (no methods rationale = no full save) never
 //         outranks the work order's basis and premise.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -39,7 +39,7 @@ public sealed partial class ValuationReconciliationService
         string? workOrderPremiseKey = null,
         decimal incomeValue = 0m)
     {
- // Q-2: a disabled approach neither shows a row nor skews the suggestion split.
+ // A disabled approach neither shows a row nor skews the suggestion split.
         var marketEnabled = enabledKinds.Contains(
             ValuationApproachKinds.Market, StringComparer.OrdinalIgnoreCase);
         var costEnabled = enabledKinds.Contains(
@@ -109,7 +109,7 @@ public sealed partial class ValuationReconciliationService
         var weightSum = methodDtos.Where(m => m.IsIncluded).Sum(m => m.WeightPct);
         var weighted = ReconciliationRules.WeightedValue(includedMethods);
         var decimals = entity?.FinalRoundDecimals ?? 0;
-        // The appraiser's saved basis and premise win (D1); the work order only seeds them. A row
+        // The appraiser's saved basis and premise win; the work order only seeds them. A row
         // only an alert acknowledgement created (no full save — that requires the methods rationale)
         // holds no choice of the appraiser, so it never outranks the work order.
         var appraiserSaved = !string.IsNullOrWhiteSpace(entity?.MethodsRationale);

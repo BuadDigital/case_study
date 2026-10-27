@@ -2,7 +2,7 @@
 // Round 2 (1b19bedc)
 //  • Frozen  subjectAreaSyncPlan sends nothing while writes are frozen (package handed over) — every visit
 //            used to fire a PUT the server refused. Comment: the sync writes the market header only; the
-//            building plot (decision A) lives on the cost approach.
+//            building plot lives on the cost approach.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -34,7 +34,7 @@ export type SubjectHints = {
   intakeProperty?: PoPropertyIntake | null;
 };
 
-/** Rule Q-2: approach screens appear only after settings are saved and the approach is enabled. */
+/** Approach screens appear only after settings are saved and the approach is enabled. */
 export function approachAvailability(
   settings: ValuationApproachSettingsDto | null,
 ): { settingsSaved: boolean; marketEnabled: boolean; costEnabled: boolean } {
@@ -205,7 +205,7 @@ export function initialSubjectArea(
 /**
  * Whether the server's market-approach area must be overwritten with the transaction area —
  * once per (request, area), and never when the server already matches. It writes the market
- * header only: the land table's building plot lives on the cost approach (decision A) and is
+ * header only: the land table's building plot lives on the cost approach and is
  * never part of this body. Nothing is sent while writes are frozen (the appraiser's package is
  * handed over) — the server refuses it, and every visit used to fire that refused PUT.
  */

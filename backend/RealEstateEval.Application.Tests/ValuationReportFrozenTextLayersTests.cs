@@ -31,13 +31,13 @@ public class ValuationReportFrozenTextLayersTests
     }
 
     [Fact]
-    // Decision 2026-10-19: the report numbers derive from the transaction's PR root.
+    // The report numbers derive from the transaction's PR root.
     public void Report_numbers_derive_from_the_transaction_reference()
     {
         Assert.Equal("PRV-2026-00012", ReferenceNumbering.ValuationReportNumber("PR-2026-00012"));
         Assert.Equal("PRC-2026-00012", ReferenceNumbering.CaseStudyReportNumber(" PR-2026-00012 "));
         Assert.Null(ReferenceNumbering.ValuationReportNumber("TMP-26-00012"));
-        // Decision 2026-10-20: the printed form carries a two-digit year; the counters keep the full year.
+        // The printed form carries a two-digit year; the counters keep the full year.
         Assert.Equal("PR-26-00123", ReferenceNumbering.Format(ReferenceNumbering.Property, 2026, 123));
         Assert.Equal("TMP-26-00055", ReferenceNumbering.Format(ReferenceNumbering.TransactionDraft, 2026, 55));
         Assert.Equal("PRV-26-00123", ReferenceNumbering.ValuationReportNumber("PR-26-00123"));

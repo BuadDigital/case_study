@@ -83,7 +83,7 @@ const mobileLoadingSkeleton = (
   </div>
 );
 
-// Decision 2026-10-19: "merged" = a deed's request folded into its transaction holder's request.
+// "merged" = a deed's request folded into its transaction holder's request.
 type StatusFilter = "all" | "progress" | "done" | "fail" | "merged";
 
 export function ValuationRequestsView() {

@@ -30,7 +30,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddMessagingPersistence(builder.Configuration);
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddCaseStudyInfrastructure(builder.Configuration, builder.Environment);
-        // A8: Case Study boundary validators live in the context assembly.
+        // Case Study boundary validators live in the context assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<CreateWorkOrderRequestValidator>();
         // Billing/enfaz bodies still validated from the shared Application assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<CreatePartyBillingStatementRequestValidator>();
@@ -39,7 +39,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddIntegrationEventPublishing(builder.Configuration, builder.Environment);
         builder.Services.AddValuationIntegrationHandlers();
         builder.Services.AddIntegrationEventInbox();
-        // A8: dead AddBlobStorage registration removed — nothing on this host resolves IBlobStorage.
+        // Dead AddBlobStorage registration removed — nothing on this host resolves IBlobStorage.
         builder.Services.AddHostedService<ValuationIntegrationEventConsumer>();
 
         if (builder.Environment.IsDevelopment())
@@ -85,7 +85,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         if (migrateOnStartup)
         {
             // Apply the registered bounded-context streams in catalog order. The legacy
-            // god-context stream is applied only by the DbMigrate deploy job. (A8: the
+            // god-context stream is applied only by the DbMigrate deploy job. (: the
             // catalog is name-keyed; hosts enumerate their own stream registrations.)
             var streams = sp.GetServices<BoundedContextStreamRegistration>()
                 .DistinctBy(registration => registration.ContextType)

@@ -47,7 +47,7 @@ export type InspectorKeyAvailability = {
   assignmentStatus?: string | null;
   pendingHandoffId?: string | null;
   studyHoldStatus?: string;
-  /** Custody (decision 2026-10-20): who holds the envelope, where this deed's key is. */
+  /** Custody: who holds the envelope, where this deed's key is. */
   envelopeHolderKind?: string | null;
   envelopeHolderUserId?: string | null;
   envelopeHolderLabel?: string | null;
@@ -150,9 +150,9 @@ function AssignmentStatusBadge({ status }: { status?: string | null }) {
  * - Reads the shared key gate through `useInspectorKeyAvailability(task)`.
  * - «التسليم للمعاين» comes from `keyHandedToInspectorText`, compared against this deed's own
  *   inspector (the task assignee) — decided on the client because the operations service
- *   cannot see case-study tasks (decision 2026-10-20).
+ *   cannot see case-study tasks.
  * - When the keys come from an envelope, shows the envelope's one holder and where this deed's
- *   key is now (custody, decision 2026-10-20).
+ *   key is now (custody).
  * - Offers «تأكيد استلام المناولة» while a handoff waits, and the trial result buttons while the
  *   assignment is still open; each action re-reads the gate on success.
  *
@@ -183,7 +183,7 @@ export function InspectorKeyStatusTab({
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  // Decision 2026-10-20: «handed to the inspector» compares the envelope / key holder with
+  // «handed to the inspector» compares the envelope / key holder with
   // this deed's own inspector (the task assignee), not with whoever happens to view it.
   const handedLabel = keyHandedToInspectorText(
     { ...availability, keyHandedToInspector },
@@ -195,8 +195,7 @@ export function InspectorKeyStatusTab({
   const fromEnvelope = availability.source === PropertyKeyGateSources.Envelope;
 
   /**
-   * Records the field trial of this deed's key: the result, and for a match where the key went
-   * (decision 2026-10-20).
+   * Records the field trial of this deed's key: the result, and for a match where the key went.
    *
    * How it works: needs the API config, `envelopeId` and `assignmentId` (else does nothing);
    * sends `{ status: next, keyLocation }` with `confirmKeyEnvelopeAssignment`, then re-reads the
@@ -256,7 +255,7 @@ export function InspectorKeyStatusTab({
       <FieldsGrid>
         <FieldBox label="حالة المفاتيح" value={keysLabel} />
         <FieldBox label="التسليم للمعاين" value={handedLabel} />
-        {/* Custody (decision 2026-10-20): the envelope's one holder and where this deed's key is now. */}
+        {/* Custody: the envelope's one holder and where this deed's key is now. */}
         {fromEnvelope ? (
           <>
             <FieldBox

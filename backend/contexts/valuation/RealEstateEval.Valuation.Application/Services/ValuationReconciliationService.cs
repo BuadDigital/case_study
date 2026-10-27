@@ -1,13 +1,13 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  The income approach value is read and joins the weights when the appraiser enables it.
-//  • D3   Liquidation discount 0 on basis «قيمة التصفية» is refused at save time; one name «خصم التصفية»
+//  • The income approach value is read and joins the weights when the appraiser enables it.
+//  • Liquidation discount 0 on basis «قيمة التصفية» is refused at save time; one name «خصم التصفية»
 //         in every message (ReconciliationLiquidationMessages).
 // Round 2 (1b19bedc)
-//  • R2-8 Liquidation discount capped at 90% with a message that names the premise's discount.
+//  • Liquidation discount capped at 90% with a message that names the premise's discount.
 //  • B    A liquidation discount rationale and alert override rationales are at least 10 characters; unknown
 //         alert codes are refused.
-//  • R2-3 The full save merges alert dispositions (MergeAlertOverrides) instead of replacing them — one
+//  • The full save merges alert dispositions (MergeAlertOverrides) instead of replacing them — one
 //         not resent is kept; a code sent with neither acknowledgement nor rationale clears it.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -26,7 +26,7 @@ namespace RealEstateEval.Valuation.Application.Services;
 /// <summary>
 /// Method participation plus the round-once final opinion, with a liquidation discount when the
 /// basis allows it. Persistence goes through <see cref="IValuationReconciliationRepository"/>
-/// and the ق-6 freeze through <see cref="IValuationReportFreezeGate"/>, so this file holds
+/// and the freeze through <see cref="IValuationReportFreezeGate"/>, so this file holds
 /// rules only - no EF (solid-scorecard finding 1).
 /// </summary>
 public sealed partial class ValuationReconciliationService(
@@ -77,7 +77,7 @@ public sealed partial class ValuationReconciliationService(
         return vr is null ? [] : await GetEnabledKindsAsync(vr, cancellationToken);
     }
 
- /// <summary>Q-2: a disabled approach neither shows a row nor enters the weight.</summary>
+ /// <summary>A disabled approach neither shows a row nor enters the weight.</summary>
     private async Task<IReadOnlyList<string>> GetEnabledKindsAsync(
         ValuationRequest vr,
         CancellationToken cancellationToken)
@@ -98,7 +98,7 @@ public sealed partial class ValuationReconciliationService(
         return ValuationApproachSettingsRules.EnabledReconciliationKinds(
             settings.MarketApproachEnabled,
             costEnabled,
-            // D17: income (direct capitalisation) joins the weights when the appraiser enables it.
+            // Income (direct capitalisation) joins the weights when the appraiser enables it.
             settings.IncomeApproachEnabled);
     }
 
@@ -179,7 +179,7 @@ public sealed partial class ValuationReconciliationService(
             errors["liquidationDiscountPct"] = ReconciliationLiquidationMessages.OnlyForLiquidationAr;
         }
 
-        // D3: 0 is a valid discount on every other basis; on «قيمة التصفية» it is refused here, at
+        // 0 is a valid discount on every other basis; on «قيمة التصفية» it is refused here, at
         // save time — not discovered later at the hand-over.
         if (request.LiquidationDiscountPct == 0m
             && string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal))

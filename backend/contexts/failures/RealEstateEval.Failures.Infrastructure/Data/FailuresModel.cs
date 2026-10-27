@@ -9,7 +9,7 @@ namespace RealEstateEval.Failures.Infrastructure.Data.Contexts;
 /// The <c>failures</c> schema mapping. Applied by <see cref="FailuresDbContext"/> (write path)
 /// and by the legacy context (transitional Case Study / billing reads until owner APIs replace them).
 /// </summary>
-// A8: public — the owner context lives in its context library; this shared mapping stays
+// Public — the owner context lives in its context library; this shared mapping stays
 // global beside the frozen legacy context (drift guard).
 public static class FailuresModel
 {
@@ -30,6 +30,7 @@ public static class FailuresModel
             e.Property(x => x.Severity).HasMaxLength(32);
             e.Property(x => x.RaisedByRole).HasMaxLength(128);
             e.Property(x => x.InternalNote).HasMaxLength(4000);
+            e.Property(x => x.EscalationNote).HasMaxLength(4000);
             e.Property(x => x.FinalNote).HasMaxLength(4000);
             e.Property(x => x.ResolutionReason).HasMaxLength(4000);
             e.Property(x => x.ContinueInstructions).HasMaxLength(4000);

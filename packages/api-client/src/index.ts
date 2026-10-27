@@ -270,6 +270,8 @@ export {
   liftSurveyFreeze,
   listFailuresPage,
   type LiftSurveyFreezeRequest,
+  recordFinalFailure,
+  type FinalFailureRequest,
   resolveFailure,
   returnFailure,
   submitFailureForReview,

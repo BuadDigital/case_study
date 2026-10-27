@@ -28,7 +28,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddHostSharedInfrastructure(builder.Configuration, builder.Environment);
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddPlatformInfrastructure(builder.Configuration, connectionString!);
-        // A8: Platform boundary validators moved out of the globally scanned assembly.
+        // Platform boundary validators moved out of the globally scanned assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<CreateCourtRequestValidator>();
         builder.Services.AddMessagingPersistence(builder.Configuration);
         builder.Services.Configure<OutboxDispatcherOptions>(o =>

@@ -61,7 +61,7 @@ public class TransactionStateEnfazTests
         Assert.Contains("شهادة الإيداع", error);
     }
 
-    /// <summary>Decision 2026-10-20: a deed never goes to Enfaz under a temporary number.</summary>
+    /// <summary>A deed never goes to Enfaz under a temporary number.</summary>
     [Fact]
     public async Task The_handover_fixes_the_official_reference_when_it_is_still_temporary()
     {

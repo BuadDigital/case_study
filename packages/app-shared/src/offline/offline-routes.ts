@@ -2,7 +2,7 @@ import type { PageId } from "@platform/types";
 import { pageIdFromPathname } from "../app-data/page-access";
 
 /**
- * Spec §3.1: offline, the field inspector and government reviewer get input forms
+ * Spec: offline, the field inspector and government reviewer get input forms
  * only — no general browsing. These are the screens that work from the device:
  * the inspection queue and form, the operations tasks and the keys/envelopes forms.
  * The service worker keeps exactly these pages (`OFFLINE_PAGE_PREFIXES` in sw.js).

@@ -6,13 +6,13 @@ using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
-/// <summary>Q-6: freeze guard — after deposit copy, nothing is editable except code and certificate.</summary>
+/// <summary>Freeze guard — after deposit copy, nothing is editable except code and certificate.</summary>
 public static class ValuationReportFreeze
 {
     public const string FrozenMessageAr = ValuationReportFreezeRules.FrozenMessageAr;
 
-    // R2: freeze follows the current copy only — reopen (superseding) lifts the
-    // Q-6 layer only; freeze of adopted party outputs is a lower layer untouched (2-C).
+    // Freeze follows the current copy only — reopen (superseding) lifts the
+    // Layer only; freeze of adopted party outputs is a lower layer untouched (2-C).
     public static Task<bool> IsFrozenAsync(
         ValuationDbContext db,
         Guid valuationRequestId,

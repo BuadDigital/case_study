@@ -11,7 +11,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 /// <summary>
-/// Reads of the transaction above the deeds (decision 2026-10-19). A party actor sees only the
+/// Reads of the transaction above the deeds. A party actor sees only the
 /// deeds whose work orders he may read; staff see them all.
 /// </summary>
 public sealed class TransactionQueryService : ITransactionQuery

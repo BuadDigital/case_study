@@ -160,7 +160,7 @@ public class KeyEnvelopesServiceTests
             "معاين");
         Assert.Null(confirmError);
         Assert.Equal(KeyEnvelopeStatuses.Assessor, confirmed!.Status);
-        // Custody (decision 2026-10-20): the holder moves only with the receiver's confirmation.
+        // Custody: the holder moves only with the receiver's confirmation.
         Assert.Equal(KeyHolderKinds.InternalUser, confirmed.HolderKind);
         Assert.Equal("insp-1", confirmed.HolderUserId);
         Assert.NotNull(confirmed.HolderSinceUtc);
@@ -492,7 +492,7 @@ public class KeyEnvelopesServiceTests
         Assert.True(gate.KeyAvailable);
         Assert.Equal("yes", gate.KeyHandedToInspector);
         Assert.Equal("received", gate.KeysStatus);
-        // Custody (decision 2026-10-20): the screen compares the holder with the deed's inspector.
+        // Custody: the screen compares the holder with the deed's inspector.
         Assert.Equal(KeyHolderKinds.InternalUser, gate.EnvelopeHolderKind);
         Assert.Equal("insp-1", gate.EnvelopeHolderUserId);
         Assert.Equal(KeyLocations.InEnvelope, gate.KeyLocation);

@@ -38,7 +38,7 @@ export function useFailuresQuery() {
   });
 }
 
-/** One server page of the failures queue — pagination-contract §5. */
+/** One server page of the failures queue — pagination-contract. */
 export function useFailuresPageQuery(
   query: FailureListQuery,
   options?: { enabled?: boolean },

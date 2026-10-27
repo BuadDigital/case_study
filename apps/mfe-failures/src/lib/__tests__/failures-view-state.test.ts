@@ -6,8 +6,9 @@ import {
   assignmentSpecialistByPo,
   failureActionPermissions,
   failureBusyKey,
-  failureCardSpecialist,
+  failureSpecialistName,
   failureCardTone,
+  failureDeedCell,
   failureMetaRows,
   failureRowTitle,
   failuresEmptyLine,
@@ -66,6 +67,8 @@ describe("viewer roles", () => {
     expect(partyScopedFailuresEmptyLine("case-specialist")).toBeNull();
     expect(failuresEmptyLine("case-specialist")).toBe(FAILURES_DEFAULT_EMPTY_LINE);
     expect(failuresEmptyLine("field-inspector")).toContain("المعاينة الميدانية");
+    expect(failuresEmptyLine("section-supervisor")).toBe("لا توجد تعذّرات مصعّدة بانتظار اعتمادك.");
+    expect(failuresEmptyLine("case-specialist", "final")).toBe("لا توجد تعذّرات نهائية.");
   });
 
   it("shows the viewer-mode note only to roles that cannot act or raise", () => {
@@ -83,26 +86,21 @@ describe("viewer roles", () => {
 });
 
 describe("failuresKpiStats", () => {
-  it("counts open, review, closed and non-suspended totals in one pass", () => {
+  it("counts the specialist's, the escalated and the final failures in one pass", () => {
     const stats = failuresKpiStats([
       failure("a", { status: "internal" }),
+      failure("a2", { status: "internal", severity: "suspected" }),
       failure("b", { status: "review" }),
       failure("c", { status: "returned" }),
       failure("d", { status: "approved" }),
       failure("e", { status: "resolved" }),
       failure("f", { status: "suspended" }),
     ]);
-    expect(stats).toEqual({
-      open: 3,
-      review: 1,
-      closed: 2,
-      total: 5,
-      closedPct: "40% من الإجمالي",
-    });
+    expect(stats).toEqual({ withSpecialist: 3, review: 1, final: 1 });
   });
 
-  it("shows a dash for the percentage when there is nothing", () => {
-    expect(failuresKpiStats([]).closedPct).toBe("—");
+  it("counts nothing for an empty set", () => {
+    expect(failuresKpiStats([])).toEqual({ withSpecialist: 0, review: 0, final: 0 });
   });
 });
 
@@ -126,13 +124,17 @@ describe("row and card display", () => {
     expect(failureRowTitle(failure("a", { deedNumber: "", title: "عنوان" }))).toBeTruthy();
   });
 
-  it("prefers the assignment specialist of the work order", () => {
-    const byPo = new Map([["PO-1", "سارة"]]);
-    expect(failureCardSpecialist(failure("a"), byPo)).toBe("سارة");
-    expect(failureCardSpecialist(failure("a", { poNumber: "PO-9" }), byPo)).toBe("osama");
-    expect(
-      failureCardSpecialist(failure("a", { poNumber: "PO-9", specialist: " " }), byPo),
-    ).toBe("");
+  it("shows the bare deed number in the table cell, else a dash", () => {
+    expect(failureDeedCell({ deedNumber: "123" })).toBe("123");
+    expect(failureDeedCell({ deedNumber: " صك 123 " })).toBe("123");
+    expect(failureDeedCell({ deedNumber: "صك123" })).toBe("123");
+    expect(failureDeedCell({ deedNumber: "" })).toBe("—");
+  });
+
+  it("names the company's specialist on the deed, never the work order's Enfaz specialist", () => {
+    expect(failureSpecialistName({ caseSpecialistName: " أسامة " })).toBe("أسامة");
+    expect(failureSpecialistName({ caseSpecialistName: null })).toBe("");
+    expect(failureSpecialistName({})).toBe("");
   });
 
   it("tones cards by activity and severity", () => {
@@ -210,6 +212,7 @@ describe("failureMetaRows", () => {
       failure("a", {
         status: "review",
         internalNote: " ملاحظة ",
+        escalationNote: " الملاك رفضوا ",
         finalNote: "",
         resolutionReason: "سبب",
         continueInstructions: "توجيه",
@@ -218,6 +221,7 @@ describe("failureMetaRows", () => {
     );
     expect(rows).toEqual([
       { label: "ملاحظات", value: "ملاحظة" },
+      { label: "سبب التصعيد", value: "الملاك رفضوا" },
       { label: "سبب الحل", value: "سبب" },
       { label: "توجيه استمرار العمل", value: "توجيه" },
       { label: "أخصائي الإسناد", value: "سارة" },

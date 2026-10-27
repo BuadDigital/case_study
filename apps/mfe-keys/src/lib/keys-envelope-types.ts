@@ -47,7 +47,7 @@ export type KeyEnvelopeAssignment = {
   keyLocationAtUtc?: string | null;
 };
 
-/** Where a deed's matching key may be (decision 2026-10-20). */
+/** Where a deed's matching key may be. */
 export const KeyLocationValues = {
   InEnvelope: "in_envelope",
   WithUser: "with_user",
@@ -59,7 +59,7 @@ export type KeyLocation =
   (typeof KeyLocationValues)[keyof typeof KeyLocationValues];
 
 /**
- * Decision 2026-10-20: the Arabic label of where a deed's matching key is.
+ * The Arabic label of where a deed's matching key is.
  *
  * How it works: `with_user` → «عند <holder>» from `holderLabel`; `returned_court` →
  * «أُعيد للمحكمة»; `missing` → «مفقود»; anything else → «في الظرف».
@@ -96,7 +96,7 @@ export function keyLocationColor(location: string | null | undefined): string {
   }
 }
 
-/** Who holds the envelope (decision 2026-10-20). */
+/** Who holds the envelope. */
 export const KeyHolderKindValues = {
   Reviewer: "reviewer",
   InternalUser: "internal_user",
@@ -167,7 +167,7 @@ export type KeyEnvelopeRow = {
 };
 
 /**
- * «عند من الآن»: the envelope's one explicit holder (decision 2026-10-20) as a short phrase.
+ * «عند من الآن»: the envelope's one explicit holder as a short phrase.
  *
  * How it works: switches on `holderKind`: internal_user → the holder's name; external →
  * «طرف خارجي: <label>»; court → the label, else the envelope's court; reviewer → the label,
@@ -195,7 +195,7 @@ export function envelopeHolderText(
 }
 
 /**
- * The «other keys» count (decision 2026-10-20): the envelope's keys that opened none of our
+ * The «other keys» count: the envelope's keys that opened none of our
  * deeds — they stay in it and go back to the court with it.
  *
  * How it works: counts the deeds whose trial ended matched or partial and subtracts that from
@@ -317,7 +317,7 @@ export const ENVELOPE_NO_REFERENCE_LABEL = "بلا رقم";
  * How it works: returns the trimmed `referenceNumber`; otherwise «بلا رقم»
  * (`ENVELOPE_NO_REFERENCE_LABEL`). The id and creation date are no longer read.
  *
- * Edge cases: decision 2026-10-20 — no made-up fallback: it used to compose ENV-{year}-{last
+ * Edge cases: — no made-up fallback: it used to compose ENV-{year}-{last
  * three id digits}, which read like a real reference; an old envelope that was never numbered
  * now says so (search matches «بلا رقم», never "ENV-").
  */

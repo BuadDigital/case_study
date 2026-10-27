@@ -1,6 +1,6 @@
 namespace RealEstateEval.Application.Contracts;
 
-// Stays global (A8 Operations slice): returned by the shared ICourtVisitFeeChargeService
+// Stays global (Operations slice): returned by the shared ICourtVisitFeeChargeService
 // abstraction and served by the financial charges dispatch endpoint.
 public class CourtVisitFeeReportRowDto
 {

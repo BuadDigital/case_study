@@ -50,7 +50,7 @@ export type ValuationWorkShellProps = {
   onScreenChange?: (screen: ValuationWorkScreenId) => void;
   /** Hide inner header/nav — top ValTabBar owns navigation. */
   embeddedInTopTabs?: boolean;
-  /** Notify parent which approach tabs should appear (Rule Q-2). */
+  /** Notify parent which approach tabs should appear. */
   onNavAvailabilityChange?: (nav: ValuationWorkNavAvailability) => void;
   onRetrospectiveDraftChange?: (draft: EvaluatorRetrospectiveDraft) => void;
   onSpecialistDraftChange?: (draft: EvaluatorSpecialistDraft) => void;

@@ -85,7 +85,7 @@ export function reportDateForPrint(
  * `${number}/${version}` (PRV-26-00123/2), else the number as is.
  *
  * Edge cases: version 1 or unknown → the bare number; no number yet → "" (never "/2").
- * Decision 2026-10-19: the suffix changed from « نسخة n» to «/n» with the PRV- numbering.
+ * The suffix changed from « نسخة n» to «/n» with the PRV- numbering.
  */
 export function versionedReportNo(
   reportNo: string | null | undefined,

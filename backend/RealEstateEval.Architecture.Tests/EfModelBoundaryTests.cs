@@ -55,7 +55,7 @@ public class EfModelBoundaryTests
             + "\nThese generate cross-owner joins. Read through the owner instead.");
     }
 
-    // A10: the legacy-snapshot drift test is retired with the legacy context. Owner-stream
+    // The legacy-snapshot drift test is retired with the legacy context. Owner-stream
     // snapshot drift is caught per stream by MigrationStreamTests and the container suite
     // (EF10 fails MigrateAsync on PendingModelChangesWarning), and shared-mapping drift by
     // the consistency checks inside EfModelFacts.

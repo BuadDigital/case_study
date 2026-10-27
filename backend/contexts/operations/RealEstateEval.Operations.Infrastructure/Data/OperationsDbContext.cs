@@ -7,7 +7,7 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts;
 /// <summary>
 /// Write context for the Operations bounded context :
 /// key envelopes, survey offices, property-key records, court access, and operations tasks
-/// (tasks still physically in <c>case_study</c> per D2).
+/// (tasks still physically in <c>case_study</c> per).
 /// <para>
 /// Financial charges created inside operations transactions
 /// (<c>KeyReceiptFeeCharges</c>, <c>CourtVisitFeeCharges</c>) stay on the legacy context until

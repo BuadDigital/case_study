@@ -30,7 +30,7 @@ export function caseStudyProviderName(): string {
 export const CASE_STUDY_REPORT_TITLE = "تقرير دراسة الحالة";
 export const CASE_STUDY_REPORT_SUBTITLE = "منصة إدارة التقييم العقاري";
 const DEFAULT_APPROVER_NAME = "عماد رشيد الرشيد";
-/** Report approver = certified valuer from org settings (Decision 25) — not the assignment specialist from the work order. */
+/** Report approver = certified valuer from org settings — not the assignment specialist from the work order. */
 export function caseStudyApproverName(): string {
   const name = getCachedOrganizationSettings()?.evaluator.name?.trim();
   return name || DEFAULT_APPROVER_NAME;

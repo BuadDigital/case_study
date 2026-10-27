@@ -1,12 +1,12 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D9   Retrospective settings are validated against today and the current draft's report date
+//  • Retrospective settings are validated against today and the current draft's report date
 //         (CurrentReportDateAsync), with the rationale.
-//  • D9   A field the client does not send (JSON null) keeps the stored value — screens that do not send them
+//  • A field the client does not send (JSON null) keeps the stored value — screens that do not send them
 //         no longer wipe the retrospective rationale or the interest valued and its lease years.
-//  • D11  Saves OwnershipInterestKey (normalised) and RemainingLeaseYears (leasehold only); the DTO returns
+//  • Saves OwnershipInterestKey (normalised) and RemainingLeaseYears (leasehold only); the DTO returns
 //         the key, its Arabic label and the lease years.
-//  • D17  IncomeApproachEnabled is saved from the request instead of being forced to false.
+//  • IncomeApproachEnabled is saved from the request instead of being forced to false.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using Microsoft.EntityFrameworkCore;
@@ -23,7 +23,7 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
-/// Governing screen 1: applied approaches (Q-2/Q-3 amended) + cost basis/unit + adjustments unlock.
+/// Governing screen 1: applied approaches (amended) + cost basis/unit + adjustments unlock.
 /// Absent row = property-type defaults, so older valuations keep behaving as before.
 /// </summary>
 public sealed class ValuationApproachSettingsService(
@@ -58,7 +58,7 @@ public sealed class ValuationApproachSettingsService(
             await AssumptionLibraryAsync(cancellationToken));
     }
 
- /// <summary>Assumptions library — managed in valuation-report tab settings (decision 25 layer B).</summary>
+ /// <summary>Assumptions library — managed in valuation-report tab settings (layer B).</summary>
     private async Task<HashSet<string>> AllowedPurposeKeysAsync(CancellationToken cancellationToken)
     {
         var allowed = new HashSet<string>(ValuationPurposeKeys.All, StringComparer.OrdinalIgnoreCase);
@@ -97,7 +97,7 @@ public sealed class ValuationApproachSettingsService(
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم غير موجود" });
         if (vr.Status == ValuationRequestStatus.Done)
             return (null, new Dictionary<string, string> { ["_"] = "طلب التقييم مكتمل" });
-        // Q-6: after deposit copy, the full report is frozen — only code and certificate are outside the freeze.
+        // After deposit copy, the full report is frozen — only code and certificate are outside the freeze.
         var frozenMessage = await ValuationReportFreeze.GetFrozenMessageAsync(
             db, caseStudy, vr.Id, vr.PropertyId, cancellationToken);
         if (frozenMessage is not null)
@@ -156,7 +156,7 @@ public sealed class ValuationApproachSettingsService(
 
         row.MarketApproachEnabled = request.MarketApproachEnabled;
         row.CostApproachEnabled = request.CostApproachEnabled;
-        // D17: the income approach may be enabled (its inputs and value come with the income screen).
+        // The income approach may be enabled (its inputs and value come with the income screen).
         row.IncomeApproachEnabled = request.IncomeApproachEnabled;
         var interest = OwnershipInterestKeys.Normalize(interestKey);
         row.OwnershipInterestKey = interest;
@@ -200,7 +200,7 @@ public sealed class ValuationApproachSettingsService(
             await AssumptionLibraryAsync(cancellationToken)), null);
     }
 
- /// <summary>D9: the report date of the current draft once set (approval), else null.</summary>
+ /// <summary>The report date of the current draft once set (approval), else null.</summary>
     private async Task<DateOnly?> CurrentReportDateAsync(Guid valuationRequestId, CancellationToken cancellationToken)
     {
         var reportDate = await db.ValuationReportDrafts.AsNoTracking()

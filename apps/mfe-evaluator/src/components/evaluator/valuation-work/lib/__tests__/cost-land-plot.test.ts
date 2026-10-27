@@ -17,7 +17,7 @@ import {
 } from "../valuation-work-error-targets";
 
 /**
- * Decision A (round 2): the apartment's land table is compared with the whole building plot, kept on
+ * (round 2): the apartment's land table is compared with the whole building plot, kept on
  * the cost approach apart from the market header the subject-area sync writes.
  */
 function cost(extra: Partial<ValuationCostApproachDto> = {}): ValuationCostApproachDto {

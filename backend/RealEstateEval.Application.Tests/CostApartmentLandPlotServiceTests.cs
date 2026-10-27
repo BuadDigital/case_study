@@ -12,7 +12,7 @@ using Xunit;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// Decision A end to end over the real selection and cost services (in-memory store), on the VR-542
+/// End to end over the real selection and cost services (in-memory store), on the VR-542
 /// journey: an apartment of 180 m² whose building stands on a 900 m² plot, with a 60 m² share. The land
 /// comparables are adjusted against the plot saved on the cost approach, the land value is the adjusted
 /// rate × the share, and the screen's subject-area sync (a market-approach PUT of 180 m²) moves nothing.

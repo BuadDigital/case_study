@@ -195,7 +195,7 @@ public partial class WorkOrderService : IWorkOrderService
         {
             propDto.Id = null;
             var mappedProperty = _properties.MapPropertyEnfath(propDto, workOrder.Id, forInsert: true);
-            // Decision 2026-10-19: every deed opens its own draft transaction (TMP- number); the
+            // Every deed opens its own draft transaction (TMP- number); the
             // official PR reference comes at the first report approval, never at intake.
             var now = _time.UtcNow();
             var (draftNumber, referenceError) =

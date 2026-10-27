@@ -1,10 +1,10 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 2 (1b19bedc)
-//  • R2-10 An unknown selectionContext is refused (SelectionContextError) — it was read silently as market.
+//  • An unknown selectionContext is refused (SelectionContextError) — it was read silently as market.
 //  • B    A written factor rationale for a non-zero factor and the manual weight rationale must be at
 //         least 10 characters (IsBelowRequiredMinimum / RequiredMinimumMessageAr); blank still saves as draft.
-//  • R2-5 Bounds with Arabic 400s: comparable price override ≤ 1e12 SAR, area override ≤ 10,000,000 m².
-//  • R2-5 Market header: subject area > 0 on the per-m² basis and ≤ 10,000,000 m²; area factor 0.1–50,
+//  • Bounds with Arabic 400s: comparable price override ≤ 1e12 SAR, area override ≤ 10,000,000 m².
+//  • Market header: subject area > 0 on the per-m² basis and ≤ 10,000,000 m²; area factor 0.1–50,
 //         annual market rate 0–50, rounding 0–6 — refused instead of dropped silently; all errors returned.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -88,7 +88,7 @@ public static class ValuationComparableSelectionRequestRules
     /// Per-comparable market save checks. Interactive model spec: "blocking happens at adoption
     /// only — partial input is kept as draft", so a BLANK rationale saves; the issuance gate
     /// <c>adjustment_rationales_*</c> (<see cref="ValuationIssuanceGateRules.AdjustmentRationales"/>)
-    /// then blocks issuance and hand-over until each is written. Q-8-2 still rejects token (written
+    /// then blocks issuance and hand-over until each is written. still rejects token (written
     /// but shorter than 10 characters) rationales here.
     /// </summary>
     public static Dictionary<string, string> ValidateMarketSave(SaveValuationComparableMarketRequest request)
@@ -110,7 +110,7 @@ public static class ValuationComparableSelectionRequestRules
             if (line.Percent is < -100m or > 100m)
                 errors[$"adjustmentLines[{i}].percent"] = "النسبة يجب أن تكون بين -100 و 100";
 
-            // Q-8-2 / decision B: empty override inherits the factor rationale; a written one for a
+            // Empty override inherits the factor rationale; a written one for a
             // non-zero factor is at least 10 characters.
             if (line.Percent != 0m && JustificationRules.IsBelowRequiredMinimum(line.Rationale))
                 errors[$"adjustmentLines[{i}].rationale"] =

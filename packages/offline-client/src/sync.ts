@@ -393,7 +393,7 @@ async function processAttachment(
     });
     return false;
   }
-  // Confirmed: the local bytes go now (spec §3.4); the encrypted id mapping stays so
+  // Confirmed: the local bytes go now (spec); the encrypted id mapping stays so
   // queued saves that still name the local id can be rewritten.
   await markBlobUploaded(userId, blob.id, result.attachmentId);
   recordUploadedAttachment(attachmentMap, item, blob.id, result.attachmentId);

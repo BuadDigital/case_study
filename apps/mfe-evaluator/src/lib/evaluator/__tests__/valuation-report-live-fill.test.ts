@@ -723,7 +723,7 @@ describe("valuation report live fill from intake", () => {
       "text/html",
     );
     applyValuationReportLiveFill(dom, fill);
-    // §09 is gone; §10 gains the area column and the built-up total.
+    // Section 09 is gone; section 10 gains the area column and the built-up total.
     expect(dom.querySelector('[data-sec="9"]')).toBeNull();
     const components = dom.querySelector('[data-sec="10"]');
     expect(components?.querySelectorAll("th")[2]?.textContent).toBe("المساحة (م²)");
@@ -782,7 +782,7 @@ describe("valuation report live fill from intake", () => {
     const nums = [...dom.querySelectorAll('[data-sec="20"] td.num')].map(
       (td) => td.textContent,
     );
-    // Decision A: one figure per line in the order they multiply — area, rate, value before/after rounding.
+    // One figure per line in the order they multiply — area, rate, value before/after rounding.
     expect(nums).toEqual(["400", "2,000", "800,000", "800,000"]);
   });
 
@@ -1073,7 +1073,7 @@ describe("valuation report live fill from intake", () => {
     );
     applyValuationReportLiveFill(dom, fill);
     expect(dom.querySelector('[data-sec="25"]')?.textContent).toContain("1,514,000");
-    // D1 — no liquidation basis / no discount ⇒ no liquidation row at all (not a «—» row).
+    // No liquidation basis / no discount ⇒ no liquidation row at all (not a «—» row).
     expect(
       [...dom.querySelectorAll('[data-sec="25"] td.k')].some((td) => td.textContent?.includes("خصم")),
     ).toBe(false);
@@ -1375,7 +1375,7 @@ describe("valuation report live fill from intake", () => {
     expect(fill.surroundingsOther).toBe("—");
     expect(fill.comparableRows[0]?.values[1]).toContain("عرض");
     expect(fill.comparableRows[0]?.values[1]).toContain("88231045");
-    // §15 dates print yyyy/mm/dd like the rest of the report (round 2), never ISO.
+    // Section 15 dates print yyyy/mm/dd like the rest of the report (round 2), never ISO.
     expect(fill.comparableRows[0]?.values[3]).toBe("2026/04/12");
     expect(fill.adjustmentNotes).toContain("الحد سقف أعلى");
     const marketRow = fill.adjustmentRows.find((r) => r.key === "تسوية ظروف السوق (عامل الوقت)");
@@ -1409,7 +1409,7 @@ describe("valuation report live fill from intake", () => {
       "text/html",
     );
     applyValuationReportLiveFill(dom, fill);
-    // §13 «وصف العيوب الإنشائية» is no longer printed.
+    // Section 13 «وصف العيوب الإنشائية» is no longer printed.
     expect(dom.querySelector('[data-sec="13"]')).toBeNull();
     expect(dom.querySelector('[data-sec="11"] td.k + td.v')?.textContent).not.toContain(
       "ملاحظة أصل",

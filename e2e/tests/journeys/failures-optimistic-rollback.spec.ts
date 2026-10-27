@@ -74,7 +74,7 @@ test.describe("Failures optimistic rollback", () => {
       page.getByRole("status").filter({ hasText: "تعذّر اعتماد التعذّر — حاول مرة أخرى" }),
     ).toBeVisible({ timeout: 10_000 });
     await expect(row.getByText("قيد المراجعة")).toBeVisible();
-    // Scoped to the row: the KPI band's «معتمدة / تم الحل» label is a substring match.
-    await expect(row.getByText("معتمد", { exact: true })).toHaveCount(0);
+    // Scoped to the row: the KPI band and the tab strip also say «تعذّر نهائي» / «التعذّرات».
+    await expect(row.getByText("تعذّر نهائي", { exact: true })).toHaveCount(0);
   });
 });

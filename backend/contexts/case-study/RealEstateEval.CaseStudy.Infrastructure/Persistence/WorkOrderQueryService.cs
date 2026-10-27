@@ -123,7 +123,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
  /// <summary>
  /// PO list KPI counters. Every number is a SQL COUNT over the same filtered, visibility-narrowed
  /// set the list pages — no row is materialised. Mirrors poListKpi on the screen; see
- /// docs/architecture/pagination-contract.md §1.1.
+ /// docs/architecture/pagination-contract.md.
  /// </summary>
     public async Task<WorkOrderListCountsDto> CountsAsync(
         WorkOrderListQuery query,

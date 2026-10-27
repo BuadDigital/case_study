@@ -8,7 +8,7 @@ using RealEstateEval.Valuation.Infrastructure.Services;
 
 namespace RealEstateEval.Application.Tests;
 
-/// <summary>Q-8: Justification Engineering — Agent-level justification + minimum length.</summary>
+/// <summary>Justification Engineering — Agent-level justification + minimum length.</summary>
 public class AdjustmentFactorRationaleTests
 {
     [Fact]
@@ -38,7 +38,7 @@ public class AdjustmentFactorRationaleTests
         Assert.False(ValuationMethodologyAlertRules.IsResolved(
             17, ValuationMethodologyAlertCodes.LargeAdjustments, resolutions));
 
-        // Round 2, decision B: under 10 characters does not resolve it; 10 or more does.
+        // Round 2: under 10 characters does not resolve it; 10 or more does.
         resolutions[ValuationMethodologyAlertCodes.LargeAdjustments] =
             new(ValuationMethodologyAlertCodes.LargeAdjustments, "نعم");
         Assert.False(ValuationMethodologyAlertRules.IsResolved(
@@ -90,7 +90,7 @@ public class AdjustmentFactorRationaleTests
                 RationaleAr = "قصير",
             },
             "user-1");
-        // Round 2, decision B: a written factor rationale is at least 10 characters.
+        // Round 2: a written factor rationale is at least 10 characters.
         Assert.Null(shortSaved);
         Assert.Equal("مبرر عامل التسوية يجب ألا يقل عن 10 أحرف", shortErrors!["rationaleAr"]);
         Assert.Empty(db.ValuationAdjustmentFactorRationales);

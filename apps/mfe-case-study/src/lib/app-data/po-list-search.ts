@@ -303,7 +303,7 @@ function filterPoListRows(
 
 /**
  * Server page → display rows. The server already applied `q` over its own
- * columns (`docs/architecture/pagination-contract.md` §1), so nothing is
+ * columns (`docs/architecture/pagination-contract.md`), so nothing is
  * dropped here: this only expands a **deed query** into one row per matching
  * deed and re-attaches the per-row deed metadata the table renders.
  */

@@ -9,7 +9,7 @@ public sealed record InspectorDeedBoundary(string? Description, string? LengthM)
 /// <summary>
 /// Mirrors the inspector's deed boundaries («الحد حسب الصك» / «الطول») onto the property's
 /// intake boundary fields once the specialist confirms the package, so the bourse-stage table,
-/// the inspector table and the printed §08 all show one set of values. Boundary type
+/// the inspector table and the printed section 08 all show one set of values. Boundary type
 /// (شارع/قطعة…) and facade stay untouched — the inspector table has no type column.
 /// </summary>
 public static class InspectorBoundarySyncRules

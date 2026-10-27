@@ -59,6 +59,11 @@ namespace RealEstateEval.Failures.Infrastructure.Data.Contexts.Failures.Migratio
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("EscalationNote")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
                     b.Property<string>("FinalNote")
                         .IsRequired()
                         .HasMaxLength(4000)

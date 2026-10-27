@@ -5,7 +5,7 @@ using RealEstateEval.Application.Validation;
 
 namespace RealEstateEval.Platform.Application.Validation;
 
-// Platform-owned boundary validators (A8): courts catalogs, organization settings, and
+// Platform-owned boundary validators: courts catalogs, organization settings, and
 // communication tests. Registered on the Platform host via AddValidatorsFromAssemblyContaining.
 
 public sealed class CreateCourtRequestValidator : AbstractValidator<CreateCourtRequest>

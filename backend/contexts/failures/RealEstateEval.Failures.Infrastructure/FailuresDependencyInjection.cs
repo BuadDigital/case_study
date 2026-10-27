@@ -15,7 +15,7 @@ using RealEstateEval.Failures.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Failures.Infrastructure;
 
 /// <summary>
-/// Context-local registration for the Failures bounded context (A8). The shared
+/// Context-local registration for the Failures bounded context. The shared
 /// persistence/HTTP plumbing still comes from the global Infrastructure extensions.
 /// </summary>
 public static class FailuresDependencyInjection
@@ -27,13 +27,13 @@ public static class FailuresDependencyInjection
         IHostEnvironment environment)
     {
         services.AddFailuresPersistence(configuration, connectionString);
- // A9: Case Study reads and workflow/deed/timeline side effects go through the owner
+ // Case Study reads and workflow/deed/timeline side effects go through the owner
  // HTTP API. No CaseStudyDbContext here, and no compose depends_on case-study
  // (case-study already depends_on failures).
         services.AddRemoteCaseStudy(configuration);
         services.AddHttpClient<ICaseStudyFailureCommands, HttpCaseStudyFailureCommands>();
         services.AddRemoteIdentityDirectory(configuration);
- // Pure-host outbox for platform notification requests (A6 — no ApplicationDbContext).
+ // Pure-host outbox for platform notification requests (no ApplicationDbContext).
         services.AddMessagingPersistence(configuration);
         services.AddNotificationInfrastructure(configuration, environment);
         services.AddScoped<IFailureLookup, FailureLookup>();
@@ -44,7 +44,7 @@ public static class FailuresDependencyInjection
         return services;
     }
  /// <summary>Failures write context. Prefers a dedicated Failures connection string.
- /// A8 physical move: lives beside <see cref="FailuresDbContext"/> in the context library.</summary>
+ /// Physical move: lives beside <see cref="FailuresDbContext"/> in the context library.</summary>
     public static IServiceCollection AddFailuresPersistence(
         this IServiceCollection services,
         IConfiguration configuration,

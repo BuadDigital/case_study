@@ -28,7 +28,7 @@ public class EnfazBillingController : ControllerBase
  /// <summary>
  /// Work orders ready for an Enfaz invoice. Sending page or pageSize returns PagedResultDto;
  /// without them the response stays the plain array. See
- /// docs/architecture/pagination-contract.md §10.1.
+ /// docs/architecture/pagination-contract.md.
  /// </summary>
     [HttpGet("ready-pos-summary")]
     [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]
@@ -83,7 +83,7 @@ public class EnfazBillingController : ControllerBase
  /// <summary>
  /// Per-property tracking rows. Sending page or pageSize returns PagedResultDto; without them the
  /// response stays the plain array (capped at 2000 as before). See
- /// docs/architecture/pagination-contract.md §10.2.
+ /// docs/architecture/pagination-contract.md.
  /// </summary>
     [HttpGet("tracking")]
     [Authorize(Policy = CapabilityPolicyNames.ReadFinancialData)]

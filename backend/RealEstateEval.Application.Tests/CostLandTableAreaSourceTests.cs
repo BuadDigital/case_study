@@ -6,7 +6,7 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// Decision A (round 2): the land table inside the cost approach compares each land comparable with
+/// (round 2): the land table inside the cost approach compares each land comparable with
 /// the whole building plot saved on the cost approach — never the market header, whose subject area the
 /// screen's subject-area sync rewrites with the apartment's own area — and the apartment's land share
 /// only multiplies the adjusted rate into the land value.

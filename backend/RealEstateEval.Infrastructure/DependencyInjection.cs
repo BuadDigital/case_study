@@ -22,7 +22,7 @@ public static class DependencyInjection
  /// <summary>
  /// Host-local cross-cutting bits that do not open the legacy god context: database options,
  /// clock, audit builder, Redis cache. Pure extracted APIs call this instead of
- /// <see cref="AddPersistence"/> (A6).
+ /// <see cref="AddPersistence"/>.
  /// </summary>
     public static IServiceCollection AddHostSharedInfrastructure(
         this IServiceCollection services,
@@ -56,18 +56,18 @@ public static class DependencyInjection
         return services;
     }
 
- // A10: the legacy god context is archived (git tag a10-legacy-stream-final carries its
+ // The legacy god context is archived (git tag a10-legacy-stream-final carries its
  // final stream). Owner contexts are the only persistence; shared model mappings and the
  // audit/messaging plumbing below are all that remain here.
 
- // A8 physical move: AddAttachmentsPersistence lives in AttachmentsDependencyInjection
+ // Physical move: AddAttachmentsPersistence lives in AttachmentsDependencyInjection
  // (contexts/attachments) beside its DbContext; the generic pool helper below is public
  // so per-context registrations can move with their contexts.
 
- // A8 physical move: AddPlatformPersistence lives in PlatformDependencyInjection
+ // Physical move: AddPlatformPersistence lives in PlatformDependencyInjection
  // (contexts/platform) beside its DbContext.
 
- // A8 physical move: AddValuationPersistence lives in ValuationDependencyInjection
+ // Physical move: AddValuationPersistence lives in ValuationDependencyInjection
  // (contexts/valuation) beside its DbContext.
 
  /// <summary>
@@ -98,7 +98,7 @@ public static class DependencyInjection
                         BoundedContextMigrations.HistorySchemaFor<TContext>());
                 })
                 .AddInterceptors(new UpdatedAtStampingInterceptor()));
-        // A8: startup migration loops enumerate registered streams via these markers instead
+        // Startup migration loops enumerate registered streams via these markers instead
         // of the catalog naming concrete context types.
         services.AddSingleton(new BoundedContextStreamRegistration(typeof(TContext)));
 
@@ -132,25 +132,25 @@ public static class DependencyInjection
         return services;
     }
 
- // A8 physical move: AddIdentityPersistence and AddIdentityStores live in
+ // Physical move: AddIdentityPersistence and AddIdentityStores live in
  // IdentityDependencyInjection (contexts/identity) beside their DbContext.
 
- // A8 physical move: AddFailuresPersistence lives in FailuresDependencyInjection
+ // Physical move: AddFailuresPersistence lives in FailuresDependencyInjection
  // (contexts/failures) beside its DbContext.
 
- // A8 physical move: AddOperationsPersistence lives in OperationsDependencyInjection
+ // Physical move: AddOperationsPersistence lives in OperationsDependencyInjection
  // (contexts/operations) beside its DbContext.
 
- // A8 physical move: AddFinancialPersistence lives in FinancialDependencyInjection
+ // Physical move: AddFinancialPersistence lives in FinancialDependencyInjection
  // (contexts/financial) beside its DbContext.
 
- // A8 physical move: AddCaseStudyPersistence lives in CaseStudyDependencyInjection
+ // Physical move: AddCaseStudyPersistence lives in CaseStudyDependencyInjection
  // (contexts/case-study) beside its DbContext.
 
     // AddIdentityApplicationServices and AddIdentityInfrastructure moved to
-    // RealEstateEval.Identity.Infrastructure (A8).
+    // RealEstateEval.Identity.Infrastructure.
 
- // A8 physical move: AddIdentityStores lives in IdentityDependencyInjection
+ // Physical move: AddIdentityStores lives in IdentityDependencyInjection
  // (contexts/identity) beside the Identity context and stores.
 
  /// <summary>
@@ -164,38 +164,38 @@ public static class DependencyInjection
         return services;
     }
 
- // A8: AddIdentitySeedStores lives in the DevSeed leaf (DevSeedProvider) — it wires
+ // AddIdentitySeedStores lives in the DevSeed leaf (DevSeedProvider) — it wires
  // Identity + Platform persistence for the throwaway seed graph only.
 
- // A8: CreateIdentityMaintenanceProvider moved to the RealEstateEval.DevSeed leaf project
+ // CreateIdentityMaintenanceProvider moved to the RealEstateEval.DevSeed leaf project
  // (tools/DevSeed) beside DataSeeder, so context registrations can move with their contexts.
 
- // AddBlobStorage folded into AddAttachmentsInfrastructure (RealEstateEval.Attachments.Infrastructure, A8).
+ // AddBlobStorage folded into AddAttachmentsInfrastructure (RealEstateEval.Attachments.Infrastructure).
 
-    // AddInspectorFeeCollaborators moved to RealEstateEval.Financial.Infrastructure (A8).
+    // AddInspectorFeeCollaborators moved to RealEstateEval.Financial.Infrastructure.
 
     // AddCaseStudyInfrastructure, AddCaseStudyCoreInfrastructure,
     // AddCaseStudyAuxiliaryInfrastructure, and AddWorkflowTaskCollaborators moved to
-    // RealEstateEval.CaseStudy.Infrastructure (A8).
+    // RealEstateEval.CaseStudy.Infrastructure.
 
-    // AddFailuresInfrastructure moved to RealEstateEval.Failures.Infrastructure (A8).
+    // AddFailuresInfrastructure moved to RealEstateEval.Failures.Infrastructure.
 
- // AddAttachmentsInfrastructure moved to RealEstateEval.Attachments.Infrastructure (A8).
+ // AddAttachmentsInfrastructure moved to RealEstateEval.Attachments.Infrastructure.
 
-    // A8: the AddRemote* owner-to-owner HTTP client registrations moved to
+    // The AddRemote* owner-to-owner HTTP client registrations moved to
     // RemoteClientRegistration in RealEstateEval.Shared.RemoteClients (same namespace).
-    // AddFinancialInfrastructure moved to RealEstateEval.Financial.Infrastructure (A8);
+    // AddFinancialInfrastructure moved to RealEstateEval.Financial.Infrastructure;
     // the dead parameterless overload was dropped.
 
     // AddOperationsInfrastructure and AddOperationsTaskCollaborators moved to
-    // RealEstateEval.Operations.Infrastructure (A8); the dead parameterless
+    // RealEstateEval.Operations.Infrastructure; the dead parameterless
     // AddOperationsInfrastructure overload was dropped.
 
-    // AddPlatformInfrastructure moved to RealEstateEval.Platform.Infrastructure (A8).
+    // AddPlatformInfrastructure moved to RealEstateEval.Platform.Infrastructure.
 
  /// <summary>
  /// Messaging write context. Requires a dedicated Messaging connection string.
- /// Valuation keeps its own outbox on the valuation database (D5).
+ /// Valuation keeps its own outbox on the valuation database.
  /// </summary>
     public static IServiceCollection AddMessagingPersistence(
         this IServiceCollection services,
@@ -249,11 +249,11 @@ public static class DependencyInjection
         return services;
     }
 
-    // AddPlatformNotificationInfrastructure moved to RealEstateEval.Platform.Infrastructure (A8).
+    // AddPlatformNotificationInfrastructure moved to RealEstateEval.Platform.Infrastructure.
 
- // AddValuationRequestInfrastructure folded into AddValuationInfrastructure (RealEstateEval.Valuation.Infrastructure, A8).
+ // AddValuationRequestInfrastructure folded into AddValuationInfrastructure (RealEstateEval.Valuation.Infrastructure).
 
- // AddValuationInfrastructure moved to RealEstateEval.Valuation.Infrastructure (A8).
+ // AddValuationInfrastructure moved to RealEstateEval.Valuation.Infrastructure.
 
  /// <summary>
  /// Transactional outbox writer — use on any service that publishes integration events.
@@ -356,7 +356,7 @@ public static class DependencyInjection
         return builder;
     }
 
-    // AddValuationIntegrationHandlers moved to RealEstateEval.CaseStudy.Infrastructure (A8).
+    // AddValuationIntegrationHandlers moved to RealEstateEval.CaseStudy.Infrastructure.
 
-    // AddNotificationIntegrationHandlers moved to RealEstateEval.Platform.Infrastructure (A8).
+    // AddNotificationIntegrationHandlers moved to RealEstateEval.Platform.Infrastructure.
 }

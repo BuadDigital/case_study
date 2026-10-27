@@ -4,6 +4,7 @@ export { FailuresView } from "./views/FailuresView";
 export { FailureTypesView } from "./views/FailureTypesView";
 export { FailureReportForm } from "./components/failures/FailureReportForm";
 export { FailureRaisePanel } from "./components/failures/FailureRaisePanel";
+export { FinalFailureDialog } from "./components/failures/FinalFailureDialog";
 export {
   FailureRaiseFields,
   failurePayloadFromProblemType,

@@ -108,7 +108,7 @@ type PoListKpi = {
 
 /**
  * The four counters, straight from `GET /api/work-orders/counts` — no rows are
- * loaded to compute them (pagination-contract §1.1). `poListKpi`, the old pass
+ * loaded to compute them (pagination-contract). `poListKpi`, the old pass
  * over every loaded row, is retired with the fetch-all query that fed it.
  */
 export function poListKpiFromCounts(
@@ -127,7 +127,7 @@ export const PO_LIST_EMPTY_NO_ROWS = "لا توجد أوامر عمل.";
 export const PO_LIST_EMPTY_NO_MATCH = "لا توجد نتائج مطابقة";
 
 /**
- * Empty-state copy from the counts envelope (pagination-contract §1.1):
+ * Empty-state copy from the counts envelope (pagination-contract):
  * `totalUnfiltered === 0` means the actor has no work orders at all; anything
  * else with `total === 0` means the filters matched nothing. While the counts
  * are still loading, assume filters — the neutral wording.
@@ -142,7 +142,7 @@ export function poListEmptyMessage(
 /**
  * Assignment-type filter options. With server paging the dropdown can no longer
  * be derived from the loaded rows (they are one page), so it lists the three
- * labels the endpoint accepts — pagination-contract §1, "still client-side" #5.
+ * labels the endpoint accepts — pagination-contract, "still client-side" #5.
  */
 export const PO_ASSIGNMENT_TYPE_OPTIONS: readonly string[] = [
   "تنفيذ",
@@ -191,7 +191,7 @@ export function teamMembersForRow(
 
 /**
  * The screen's query state — every field of it is sent to the server
- * (`docs/architecture/pagination-contract.md` §1). Nothing here slices or sorts
+ * (`docs/architecture/pagination-contract.md`). Nothing here slices or sorts
  * rows in the browser.
  */
 export type PoListQueryState = {
@@ -285,7 +285,7 @@ export function poListQueryReducer(
 /**
  * The two billing buckets the server can only widen to their study bucket —
  * whether Finance issued an Enfaz invoice lives in another context and cannot
- * be a SQL predicate (pagination-contract §1, "still client-side" #1). The
+ * be a SQL predicate (pagination-contract, "still client-side" #1). The
  * screen therefore asks for one generous page of the widened bucket and does
  * the narrowing, and the windowing, itself.
  */
@@ -322,7 +322,7 @@ export function toWorkOrderListQuery(
 /**
  * Query state → the `GET /api/work-orders/counts` parameters: the same filters
  * as the list, without the page window and the sort, so a page flip reuses the
- * cached counts (pagination-contract §1.1).
+ * cached counts (pagination-contract).
  */
 export function toWorkOrderListCountsQuery(
   state: PoListQueryState,

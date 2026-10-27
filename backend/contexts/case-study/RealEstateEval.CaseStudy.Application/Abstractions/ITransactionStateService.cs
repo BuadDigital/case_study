@@ -2,7 +2,7 @@ using RealEstateEval.CaseStudy.Application.Contracts;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
-/// <summary>Q-9: transaction state machine — derived from party states + complete Enfaz upload.</summary>
+/// <summary>Transaction state machine — derived from party states + complete Enfaz upload.</summary>
 public interface ITransactionStateService
 {
     Task<TransactionStateDto?> GetStateAsync(

@@ -9,7 +9,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Application.Services;
 
 /// <summary>
-/// Inspection Limitations (Decision 24 + Q-7): Packaged by Inspector, feeding m18/m21 alarms
+/// Inspection Limitations: Packaged by Inspector, feeding m18/m21 alarms
 /// The compound reservation text is within Special Assumptions.
 /// </summary>
 public sealed class InspectionLimitsService : IInspectionLimitsService
@@ -49,7 +49,7 @@ public sealed class InspectionLimitsService : IInspectionLimitsService
 
         var scope = request.InspectionScopeKey.Trim().ToLowerInvariant();
 
- // Changing the domain drops the previous Q-7 certification — the certification is tied to a specific domain.
+ // Changing the domain drops the previous certification — the certification is tied to a specific domain.
         if (!string.Equals(prop.InspectionScopeKey, scope, StringComparison.Ordinal))
         {
             prop.RemoteInspectionApprovedBy = null;

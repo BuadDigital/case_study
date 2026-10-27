@@ -2,12 +2,12 @@
 // Round 1 (5b554f4e)
 //  • Unsaved  Unsaved final-opinion drafts raise the window's refresh warning (setSectionUnsaved,
 //             finalOpinionDraftDiffers) — problem 19.
-//  • D3   The save marks the liquidation discount field first when the server would refuse it
+//  • The save marks the liquidation discount field first when the server would refuse it
 //         (liquidationDiscountSaveErrors), e.g. 0 on the liquidation basis.
 // Round 2 (1b19bedc)
-//  • R2-2  The refresh-warning flag is no longer cleared by effect cleanup (an <Activity>-hidden screen
+//  • The refresh-warning flag is no longer cleared by effect cleanup (an <Activity>-hidden screen
 //          runs cleanups with drafts still unsaved); it goes down when a save matches or the window unmounts.
-//  • R2-11  Passes the value premise to the discount check so the message names it.
+//  • Passes the value premise to the discount check so the message names it.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -224,7 +224,7 @@ export function useFinalOpinionWorkflow({
       reportFieldError("methodsRationale", METHODS_RATIONALE_REQUIRED);
       return;
     }
-    // D3: the server refuses a 0 «خصم التصفية» on the liquidation basis — mark the field first.
+    // The server refuses a 0 «خصم التصفية» on the liquidation basis — mark the field first.
     const discountErrors = liquidationDiscountSaveErrors({
       basisOfValueKey,
       liquidationDiscountPct,

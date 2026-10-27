@@ -4,7 +4,7 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
-/// Decision D2: the appraiser's hand-over («اعتماد التقييم وإرسال») is refused while an issuance gate
+/// Decision: the appraiser's hand-over («اعتماد التقييم وإرسال») is refused while an issuance gate
 /// he must see fixed first blocks — every blocker is listed, each with who fixes it. What the case
 /// specialist completes AFTER the hand-over (the report attachments: deed copy, survey document, …)
 /// does not hold the hand-over up; it stays on the list as «سيكملها الأخصائي».
@@ -41,7 +41,7 @@ public static class AppraisalHandOverGateRules
             ValuationIssuanceGateCodes.DeedNatureMatch or ValuationIssuanceGateCodes.StudyReportIssued =>
                 SpecialistOwnerAr,
             ValuationIssuanceGateCodes.ValueDocuments => ValueDocumentsOwnerAr,
-            // D17: the income approach inputs (and alerts 26–28) are the appraiser's to complete.
+            // The income approach inputs (and alerts 26–28) are the appraiser's to complete.
             ValuationIssuanceGateCodes.IncomeApproachComplete => AppraiserOwnerAr,
             _ => AppraiserOwnerAr,
         };

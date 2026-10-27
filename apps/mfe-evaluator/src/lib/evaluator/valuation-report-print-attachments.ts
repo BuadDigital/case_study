@@ -157,7 +157,7 @@ async function toSlot(
   const label = attachmentLabelAr(typeKey);
   const labelAr = captured ? `${label} — ${captured}` : label;
 
-  // Rasterize PDF page 1 so §35/§36 actually show in the report (iframes hang print).
+  // Rasterize PDF page 1 so sections 35/36 actually show in the report (iframes hang print).
   if (isPdfAttachment(row)) {
     const preview = await pdfBlobToFirstPageDataUrl(blobRes.data, 1.75);
     if (preview) {
@@ -202,7 +202,7 @@ export function surveyReportAttachmentIdFromPayload(
 /**
  * Field inspection photos are tied to the task id, not the property — for-property
  * (property-id prefix) does not see them. The inspector draft holds the same attachment ids,
- * so collect them from there to fill §34 slots.
+ * so collect them from there to fill section 34 slots.
  */
 export function collectInspectorPhotoAttachmentIds(
   inspector: InspectorWorkspaceDraft | null | undefined,
@@ -271,7 +271,7 @@ export async function loadValuationReportPrintAttachments(
   target: { poNumber: string | null | undefined; propertyId: string },
   hasStructures: boolean,
   extras?: {
-    /** Inspection photo ids from the inspector draft — complete the §34 slot budget. */
+    /** Inspection photo ids from the inspector draft — complete the section 34 slot budget. */
     inspectorPhotoIds?: string[];
     /**
      * Survey-report attachment ids from the engineering-office submission

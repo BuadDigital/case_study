@@ -57,7 +57,7 @@ function StatementStatusPill({ statement }: { statement: Statement }) {
 }
 
 /**
- * Statement list — one server page (pagination-contract §9.1) with the shared
+ * Statement list — one server page (pagination-contract) with the shared
  * pager — plus either the full detail panel (focused modes) or the side
  * summary that the “all” overview shows next to the table.
  */

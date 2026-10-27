@@ -11,7 +11,7 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
 {
     private readonly IUserLabelLookup _labels;
 
-    // A8: the IdentityDbContext convenience ctor is gone — pass IUserLabelLookup.
+    // The IdentityDbContext convenience ctor is gone — pass IUserLabelLookup.
 
     [ActivatorUtilitiesConstructor]
     public KeyEnvelopePeopleResolver(IUserLabelLookup labels)
@@ -94,7 +94,7 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
             foreach (var a in row.Assignments)
             {
                 CollectUserIdCandidate(ids, null, a.ConfirmedByName);
-                // Custody (decision 2026-10-20): key and envelope holders get their display names resolved too.
+                // Custody: key and envelope holders get their display names resolved too.
                 CollectUserIdCandidate(ids, a.KeyHolderUserId, a.KeyHolderLabel);
             }
             CollectUserIdCandidate(ids, row.HolderUserId, row.HolderLabel);
@@ -142,7 +142,7 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
             CreatedAtUtc = row.CreatedAtUtc,
             UpdatedAtUtc = row.UpdatedAtUtc,
             OperationsTaskId = row.OperationsTaskId,
-            // Custody fields (decision 2026-10-20) carried through, with the holder's label fixed to the person's current name.
+            // Custody fields carried through, with the holder's label fixed to the person's current name.
             HolderKind = row.HolderKind,
             HolderUserId = row.HolderUserId,
             HolderLabel = string.IsNullOrWhiteSpace(row.HolderLabel)

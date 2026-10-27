@@ -18,7 +18,7 @@ namespace RealEstateEval.Api.ContainerTests;
 /// </summary>
 internal static class BoundedContextStreamMigrator
 {
-    // A8: the catalog's ApplyOrder is name-keyed; this concrete list mirrors the deploy
+    // The catalog's ApplyOrder is name-keyed; this concrete list mirrors the deploy
     // migrator's and is validated against the catalog so drift fails the suite loudly.
     public static IReadOnlyList<Type> StreamTypes { get; } =
     [

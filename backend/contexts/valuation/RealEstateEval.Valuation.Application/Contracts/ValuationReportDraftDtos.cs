@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace RealEstateEval.Valuation.Application.Contracts;
 
-/// <summary>The request's report number once fixed (decision 2026-10-19: PRV-… from the transaction's PR root).</summary>
+/// <summary>The request's report number once fixed (PRV-… from the transaction's PR root).</summary>
 public class ValuationReportNumberDto
 {
     public Guid ValuationRequestId { get; init; }

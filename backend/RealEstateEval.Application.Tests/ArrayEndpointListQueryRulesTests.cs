@@ -8,7 +8,7 @@ namespace RealEstateEval.Application.Tests;
 
 /// <summary>
 /// The pure half of the contract for the array endpoints added in
-/// docs/architecture/pagination-contract.md §§4-6: comparables, failures and notifications.
+/// docs/architecture/pagination-contract.md: comparables, failures and notifications.
 /// Same shared rules as the first three endpoints — an unknown sort key falls
 /// back to the default and never answers 400, and <c>dir</c> defaults to <c>desc</c>.
 /// </summary>

@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Income New file — D17 entity (one row per valuation, inputs only), OperatingExpenseModes (amount /
+//  • Income New file — entity (one row per valuation, inputs only), OperatingExpenseModes (amount /
 //           % of EGI) and IncomeApproachRules: EGI, expenses, NOI, value = NOI ÷ cap rate, IsComplete.
 //  • Income Bounds (cap rate ≤ 30%, amounts ≤ 1e9 SAR) and the alert thresholds: cap rate outside 4–12%
 //           (alert 26), expenses above 50% of EGI (alert 27).
@@ -9,7 +9,7 @@
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// D17 — income approach by direct capitalisation, one row per valuation request:
+/// Income approach by direct capitalisation, one row per valuation request:
 /// EGI = GPI × (1 − vacancy%) + other income; NOI = EGI − operating expenses; value = NOI ÷ cap rate.
 /// Only the appraiser's inputs are stored — every derived figure is recomputed on read.
 /// </summary>

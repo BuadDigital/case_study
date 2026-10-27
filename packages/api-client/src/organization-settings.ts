@@ -237,9 +237,9 @@ type OrganizationValuationSettings = {
   marketValueRoundDecimals: number;
 };
 
-/** Valuation report tab (Decision 25 layer B) — constants and texts filled once. */
+/** Valuation report tab (layer B) — constants and texts filled once. */
 export type OrganizationValuationReportSettings = {
-  /** Decision 23: standard-text bundle number — one version for the whole bundle; any edit issues a new bundle. */
+  /** standard-text bundle number — one version for the whole bundle; any edit issues a new bundle. */
   textPackageVersion?: number;
   reportType: string;
   currency: string;
@@ -301,7 +301,7 @@ export const VALUATION_REPORT_HTML_DEFAULTS: OrganizationValuationReportSettings
     "قاعدة البيانات الداخلية وسجلات عمليات التقييم الداخلية للشركة.\n" +
     "الهيئة العامة للإحصاء فيما يخص دراسة السوق في المنطقة وفي المملكة بشكل عام.\n" +
     "الاسترشاد بالأدلة الاسترشادية والمناهج والإصدارات الصادرة عن الهيئة السعودية للمقيمين المعتمدين.",
-  /** §31 — `{{reportDate}}` is the report date; a line starting with "- " is a sub-clause of the line above. */
+  /** Section 31 — `{{reportDate}}` is the report date; a line starting with "- " is a sub-clause of the line above. */
   terms:
     "اعتمد المقيم على صحة وسلامة صكوك الملكية والمستندات القانونية المقدمة من العميل دون التحقق من أصولها لدى الجهات المختصة، ويفترض التقرير خلو العقار من أي التزامات او عوائق قانونية لم يتم الإفصاح عنها.\n" +
     "يقتصر دور المقيم على المعاينة البصرية الظاهرية للموقع، لذا فإن المقيم والشركة يخليان مسؤوليتهما عن أي عيوب إنشائية خفية، أو أعطال في الأنظمة الميكانيكية والكهربائية، أو وجود مواد خطرة ومضرة بالبيئة لا يمكن كشفها إلا بالفحص الهندسي المتخصص.\n" +
@@ -438,7 +438,7 @@ function normalizeValuationReport( raw: Record<string, unknown> ): OrganizationV
     ? libraryRaw.filter((item): item is string => typeof item === "string")
     : [];
   return {
-    // Decision 23: standard-text bundle number — one version for the whole bundle.
+    // standard-text bundle number — one version for the whole bundle.
     textPackageVersion: typeof versionRaw === 'number' ? versionRaw : 1,
     reportType: pickStr(raw, "reportType", "ReportType"),
     currency: pickStr(raw, "currency", "Currency"),

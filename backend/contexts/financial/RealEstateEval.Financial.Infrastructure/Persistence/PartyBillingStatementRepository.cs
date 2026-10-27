@@ -130,7 +130,7 @@ public sealed class PartyBillingStatementRepository : IPartyBillingStatementRepo
         CancellationToken cancellationToken) =>
         FilterStatements(filter).CountAsync(cancellationToken);
 
-    /// <summary>Every clause is an EF predicate — pagination-contract §9.1.</summary>
+    /// <summary>Every clause is an EF predicate — pagination-contract.</summary>
     private IQueryable<PartyBillingStatement> FilterStatements(PartyBillingStatementListFilterQuery filter)
     {
         var query = _db.PartyBillingStatements.AsNoTracking().AsQueryable();

@@ -26,7 +26,7 @@ public sealed class ComparablePropertyRepository(ValuationDbContext db)
         ListPageAsync(filter, 0, take, cancellationToken);
 
  /// <summary>
- /// One filtered, sorted window. Everything — including the comparison-method §2 field-first
+ /// One filtered, sorted window. Everything — including the comparison-method section 2 field-first
  /// priority — is an EF expression, so the window and <see cref="CountAsync"/> always agree.
  /// </summary>
     public async Task<IReadOnlyList<ComparableProperty>> ListPageAsync(
@@ -201,7 +201,7 @@ public sealed class ComparablePropertyRepository(ValuationDbContext db)
         int take,
         CancellationToken cancellationToken)
     {
-        // ق-3: anomalous / unreliable / duplicate-tagged records stay visible in the bank but
+        // Anomalous / unreliable / duplicate-tagged records stay visible in the bank but
         // never surface as suggestions.
         var q = db.ComparableProperties.AsNoTracking()
             .Where(x => x.IsActive

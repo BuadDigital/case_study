@@ -40,7 +40,7 @@ public static class PersonLabelResolver
         return true;
     }
 
-    // A8: the EF-backed Resolve/ResolveMany moved into UserLabelLookup (Identity context
+    // The EF-backed Resolve/ResolveMany moved into UserLabelLookup (Identity context
     // library) — this class keeps only the pure label helpers used across contexts.
 
     public static string ApplyResolved(

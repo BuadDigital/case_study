@@ -1,9 +1,9 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D3   With the approaches on, the hand-over no longer asks for «خصم التصفية» — the reconciliation save
+//  • With the approaches on, the hand-over no longer asks for «خصم التصفية» — the reconciliation save
 //         refuses a 0 on the liquidation basis.
 // Round 2 (1b19bedc)
-//  • R2   The liquidation discount ceiling is 90 (was 100), the same as the reconciliation save on the
+//  • The liquidation discount ceiling is 90 (was 100), the same as the reconciliation save on the
 //         server.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -156,7 +156,7 @@ export function validateEvaluatorSubmission(input: {
     }
   }
 
-  // D3: with the approaches on, «خصم التصفية» belongs to the reconciliation, whose SAVE refuses a 0 on
+  // With the approaches on, «خصم التصفية» belongs to the reconciliation, whose SAVE refuses a 0 on
   // the liquidation basis — the hand-over does not ask again (a saved 0 on another basis is valid).
   if (valueBasisKey === "liquidation" && !skipManualLandBuilding) {
     const discount = parseEvaluatorAmount(forcedSaleDiscountPct);

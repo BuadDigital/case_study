@@ -59,7 +59,7 @@ export async function markDeedBillingReady(
   return result;
 }
 
-/** One server page of Enfaz-ready work orders (pagination-contract §10.1). */
+/** One server page of Enfaz-ready work orders (pagination-contract). */
 export async function loadReadyEnfazPoSummariesPage(
   query: EnfazReadyPoListQuery,
 ): Promise<PagedResultDto<EnfazReadyPoSummaryDto>> {

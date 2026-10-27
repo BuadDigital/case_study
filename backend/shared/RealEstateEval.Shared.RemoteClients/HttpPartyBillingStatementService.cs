@@ -40,7 +40,7 @@ public sealed class HttpPartyBillingStatementService(
     /// <summary>
     /// The list parameters go upstream on the query string, paged or not; the owner re-resolves
     /// the page window from its own <c>Database</c> options, so the skip / take this host computed
-    /// are informational only (pagination-contract §9).
+    /// are informational only (pagination-contract).
     /// </summary>
     public async Task<IReadOnlyList<PartyBillingReadyLineDto>> ListReadyLinesAsync(
         PartyBillingReadyLineListQuery query,

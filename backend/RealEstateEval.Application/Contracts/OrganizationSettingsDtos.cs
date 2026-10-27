@@ -12,11 +12,11 @@ public sealed class OrganizationSettingsDto
     public DateTime UpdatedAtUtc { get; init; }
 }
 
-/// <summary>Valuation Report Tab — Layer B (Decision 25): Constants and text that is populated once and consumed in each report.</summary>
+/// <summary>Valuation Report Tab — Layer B: Constants and text that is populated once and consumed in each report.</summary>
 public sealed class OrganizationValuationReportSettingsDto
 {
  /// <summary>
- /// Decision 23: Standard/legal text package number — one copy for the entire package; Any modification
+ /// Standard/legal text package number — one copy for the entire package; Any modification
  /// to the managed block issues a new package. Computed from version history, not stored in settings.
  /// </summary>
     public int TextPackageVersion { get; set; } = 1;

@@ -36,7 +36,7 @@ public static class KeyEnvelopeLifecycleRules
         _ => status,
     };
 
-    /// <summary>Arabic label of where a deed's matching key is (decision 2026-10-20), printed on the envelope timeline.</summary>
+    /// <summary>Arabic label of where a deed's matching key is, printed on the envelope timeline.</summary>
     public static string KeyLocationLabel(string? location) => location switch
     {
         KeyLocations.WithUser => "عند مستخدم",
@@ -49,7 +49,7 @@ public static class KeyEnvelopeLifecycleRules
     /// <remarks>
     /// How it works: true only when 1) the envelope is with the reviewer (status reviewer), 2) it has at
     /// least one assignment, and 3) every assignment has a trial result and no key is with_user. Read by
-    /// the mapper into the «ready to go back to court» hint (decision 2026-10-20).
+    /// the mapper into the «ready to go back to court» hint.
     /// Edge cases: an envelope with no deeds is never ready; one pending deed or one key still kept by a
     /// user holds the hint back; a missing / returned key does not.
     /// </remarks>

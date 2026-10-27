@@ -28,7 +28,7 @@ type MatchResultValidation =
       ok: true;
       status: KeyAssignmentMatchStatus;
       note: string;
-      /** Where the matching key went (decision 2026-10-20); only a match or partial match has one to place. */
+      /** Where the matching key went; only a match or partial match has one to place. */
       keyLocation: KeyLocation | null;
     }
   | { ok: false; error: string };
@@ -47,7 +47,7 @@ export function matchResultHasKeyToPlace(
  * the status, the note (the fixed field-confirmation wording for a full match, else the
  * trimmed note) and `keyLocation`: the chosen key place for a match or partial match.
  *
- * Edge cases: decision 2026-10-20 — a match/partial with no place picked defaults to
+ * Edge cases: — a match/partial with no place picked defaults to
  * `in_envelope` (the matching key went back with the others); missing/other results carry no
  * key to place → null, and the server sets that deed's place (missing on a missing result).
  */
@@ -80,7 +80,7 @@ export function receivesAsReviewer(role: RoleId): boolean {
 }
 
 /**
- * Builds the receive-back handoff (decision 2026-10-20) for the viewer who records it.
+ * Builds the receive-back handoff for the viewer who records it.
  *
  * How it works: `fromParty` is the envelope's current holder label (else the receive-dialog
  * holder label). A reviewer or section supervisor (`receivesAsReviewer`) is the receiver: the

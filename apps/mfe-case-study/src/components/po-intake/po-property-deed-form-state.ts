@@ -171,7 +171,7 @@ export function fallbackPatchEntries(
     .map((key) => [key, next[key]]);
 }
 
-/** Q-11: literal match is a soft warning, not a hard block. */
+/** Literal match is a soft warning, not a hard block. */
 export function requestNumberMatchesDeed(requestNumber: string, deedNumber: string): boolean {
   const request = requestNumber.trim();
   return request.length > 0 && request === deedNumber.trim();

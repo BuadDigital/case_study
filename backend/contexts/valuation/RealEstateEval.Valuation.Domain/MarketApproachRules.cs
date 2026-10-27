@@ -1,17 +1,17 @@
 ﻿// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D4   GrossAdjustmentPct (Σ|sequential| + Σ|difference|); the ±40% rule fires on net OR gross.
-//  • D6   Dispersion: Median, deviation from the median (> 25% = outlier), coefficient of variation
+//  • GrossAdjustmentPct (Σ|sequential| + Σ|difference|); the ±40% rule fires on net OR gross.
+//  • Dispersion: Median, deviation from the median (> 25% = outlier), coefficient of variation
 //         (> 15% = dispersed), DispersionOutliers / IsDispersed.
-//  • D5   Automatic weights scored on the gross adjustment; an outlier gets no automatic weight
+//  • Automatic weights scored on the gross adjustment; an outlier gets no automatic weight
 //         (SuggestWeights(gross, adjustedRates), DistributeWeights).
-//  • D8   OfficialValuationDate (retrospective date, else today) and ComparableDateCutoff (period end).
-//  • D10  PropertyCategoryRules — أرض / سكني مبني / تجاري / صناعي from the property type (usage as
+//  • OfficialValuationDate (retrospective date, else today) and ComparableDateCutoff (period end).
+//  • PropertyCategoryRules — أرض / سكني مبني / تجاري / صناعي from the property type (usage as
 //         fallback), and Mismatch for the type-mismatch alert.
 // Round 2 (1b19bedc)
-//  • R2-5 Header bounds: subject area ≤ 10,000,000 m², area factor 0.1–50%, annual market rate ≤ 50%,
+//  • Header bounds: subject area ≤ 10,000,000 m², area factor 0.1–50%, annual market rate ≤ 50%,
 //         rounding 0–6.
-//  • R2-7 Comparables blocked by hard alert 23 (dealt after the valuation date) get weight 0 and are left
+//  • Comparables blocked by hard alert 23 (dealt after the valuation date) get weight 0 and are left
 //         out of the outlier median (HardComparableDateCutoff, ComparableDateCutoffIsPeriodEnd).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -102,7 +102,7 @@ public static class MarketApproachRules
         Math.Abs(factorsSumPct) > LargeAdjustmentThresholdPct;
 
     /// <summary>
-    /// D4: the ±40٪ rule on the NET difference-factor sum (kept) OR on the GROSS adjustment —
+    /// The ±40٪ rule on the NET difference-factor sum (kept) OR on the GROSS adjustment —
     /// offsetting +30/−30 nets to 0 but is still a 60٪ adjustment and needs a rationale.
     /// </summary>
     public static bool ExceedsLargeAdjustmentThreshold(decimal netDifferencePct, decimal grossAdjustmentPct) =>
@@ -110,7 +110,7 @@ public static class MarketApproachRules
         || grossAdjustmentPct > LargeAdjustmentThresholdPct;
 
     /// <summary>
-    /// D4/D5: gross adjustment = Σ|sequential %| + Σ|difference %| (included lines only, area
+    /// Gross adjustment = Σ|sequential %| + Σ|difference %| (included lines only, area
     /// included) — the size of the total correction regardless of signs.
     /// </summary>
     public static decimal GrossAdjustmentPct(
@@ -121,11 +121,11 @@ public static class MarketApproachRules
             2,
             MidpointRounding.AwayFromZero);
 
-    // ─── D6: dispersion of the adopted comparables ───
+    // ─── Dispersion of the adopted comparables ───
 
-    /// <summary>D6: an adjusted unit rate further than 25٪ from the median is an outlier.</summary>
+    /// <summary>An adjusted unit rate further than 25٪ from the median is an outlier.</summary>
     public const decimal DispersionMedianDeviationPct = 25m;
-    /// <summary>D6: coefficient of variation of the adjusted unit rates above 15٪ = dispersed set.</summary>
+    /// <summary>Coefficient of variation of the adjusted unit rates above 15٪ = dispersed set.</summary>
     public const decimal DispersionCoefficientOfVariationPct = 15m;
 
     public static decimal Median(IReadOnlyList<decimal> values)
@@ -161,7 +161,7 @@ public static class MarketApproachRules
     }
 
     /// <summary>
-    /// D6 outliers: rates deviating more than 25٪ from the median. When every rate is "out"
+    /// Outliers: rates deviating more than 25٪ from the median. When every rate is "out"
     /// (e.g. two comparables far apart) there is no reference to judge by — none is flagged here
     /// and the coefficient-of-variation test reports the dispersion instead.
     /// </summary>
@@ -173,16 +173,16 @@ public static class MarketApproachRules
         return flags.All(f => f) ? flags.Select(_ => false).ToList() : flags;
     }
 
-    /// <summary>D6: any outlier against the median, or the whole set's CV above 15٪.</summary>
+    /// <summary>Any outlier against the median, or the whole set's CV above 15٪.</summary>
     public static bool IsDispersed(IReadOnlyList<decimal> rates) =>
         rates.Count >= 2
         && (DeviationFromMedianPcts(rates).Any(d => d > DispersionMedianDeviationPct)
             || CoefficientOfVariationPct(rates) > DispersionCoefficientOfVariationPct);
 
-    // ─── D8: the official valuation date ───
+    // ─── The official valuation date ───
 
     /// <summary>
-    /// D8: deal age and the time adjustment are measured to the official valuation date — the
+    /// Deal age and the time adjustment are measured to the official valuation date — the
     /// retrospective date (or period start) when the appraiser chose one, otherwise today
     /// (the issuance date).
     /// </summary>
@@ -196,7 +196,7 @@ public static class MarketApproachRules
             : today;
 
     /// <summary>
-    /// D8: last date a comparable may carry — the retrospective period end (or the single date);
+    /// Last date a comparable may carry — the retrospective period end (or the single date);
     /// today for an issuance-date valuation.
     /// </summary>
     public static DateOnly ComparableDateCutoff(
@@ -301,7 +301,7 @@ public static class MarketApproachRules
     }
 
  /// <summary>
- /// Q-8-1: row rationale is a "per-comparable override" — empty inherits the factor rationale.
+ /// Row rationale is a "per-comparable override" — empty inherits the factor rationale.
  /// </summary>
     public static string EffectiveRationale(string? lineOverride, string? factorRationale)
     {
@@ -320,7 +320,7 @@ public static class MarketApproachRules
             .ToList());
 
     /// <summary>
-    /// D5 + D6 automatic weights: score = 1 / (gross adjustment + 0.5), so offsetting +30/−30
+    /// Automatic weights: score = 1 / (gross adjustment + 0.5), so offsetting +30/−30
     /// no longer looks like "no adjustment"; a comparable whose adjusted unit rate deviates more
     /// than 25٪ from the median gets no automatic weight (the dispersion alert asks the appraiser
     /// to justify or drop it — a manual weight still overrides).
@@ -525,7 +525,7 @@ public static class AreaAdjustmentRules
 }
 
 /// <summary>
-/// D10: the four comparison categories — أرض / سكني مبني / تجاري / صناعي. Property types are
+/// The four comparison categories — أرض / سكني مبني / تجاري / صناعي. Property types are
 /// Arabic strings from closed-ish lists (أرض، فيلا، شقة، عمارة، محل تجاري، معرض، مستودع…), so
 /// containment on a normalised spelling is the reliable probe. Null = not classifiable (e.g.
 /// «مبنى متعدد الاستخدامات»): such a row is never reported as a mismatch.

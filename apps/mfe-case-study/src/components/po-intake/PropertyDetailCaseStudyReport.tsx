@@ -313,7 +313,7 @@ export function PropertyDetailCaseStudyReport({
     extra: false,
   });
   const [previewOpen, setPreviewOpen] = useState(false);
- // Decision 25 (entity 6): report number CS-{year}-{5-digit seq} is allocated on first print
+ // Report number CS-{year}-{5-digit seq} is allocated on first print
  // and fixed for the session — no new number on every click.
   const [reportReference, setReportReference] = useState<string | null>(null);
 

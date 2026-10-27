@@ -22,7 +22,7 @@ public sealed record ComparableBankFilter(
     DateOnly? FromDate,
     DateOnly? ToDate,
  /// <summary>
- /// Comparison-method §2 display priority. When set, rows sourced from this property's field
+ /// Comparison-method section 2 display priority. When set, rows sourced from this property's field
  /// work sort first, then any other field row, then the rest of the bank — in SQL, so a page
  /// and its count agree. Null means the plain sort below.
  /// </summary>
@@ -64,7 +64,7 @@ public interface IComparablePropertyRepository
 
     /// <summary>
     /// Coordinate pairs carried by more than one active record — location is the duplicate
-    /// discriminator (ق-3/2), and the suspicion is advisory only.
+    /// discriminator, and the suspicion is advisory only.
     /// </summary>
     Task<IReadOnlyList<ComparableCoordinate>> ListDuplicateCoordinatesAsync(
         CancellationToken cancellationToken);

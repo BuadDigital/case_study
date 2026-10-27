@@ -25,7 +25,7 @@ import { caseStudyReportPaginateScript } from "./case-study-report-paginate";
 
 export type CaseStudyReportRenderOptions = {
   origin?: string;
-  /** CS-{year}-{seq} — printed under the title once allocated (Decision 25, entity 6). */
+  /** CS-{year}-{seq} — printed under the title once allocated. */
   referenceNumber?: string | null;
   /** Drop the print toolbar when the page is shown inside the app's own preview modal. */
   embedded?: boolean;

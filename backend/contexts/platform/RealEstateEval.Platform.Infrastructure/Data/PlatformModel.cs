@@ -11,7 +11,7 @@ namespace RealEstateEval.Platform.Infrastructure.Data.Contexts;
 /// path, and by the legacy context, which still serves cross-boundary reference reads until
 /// a cacheable Platform API or versioned snapshot replaces them.
 /// </summary>
-// A8: public — the owner context lives in its context library; this shared mapping stays
+// Public — the owner context lives in its context library; this shared mapping stays
 // global beside the frozen legacy context (drift guard).
 public static class PlatformModel
 {
@@ -141,7 +141,7 @@ public static class PlatformModel
             e.Property(x => x.NotesJson).HasColumnType("jsonb");
         });
 
-        // Decision 23: standard-text package version history — immutable rows, one version per package.
+        // standard-text package version history — immutable rows, one version per package.
         builder.Entity<ValuationReportTextPackage>(e =>
         {
             if (ownsMigrations)

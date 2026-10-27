@@ -21,7 +21,7 @@ public static partial class WorkflowTaskLifecycleRules
 
     /// <summary>
     /// Redistributing the parties of a case-study transaction: the CDO, the section supervisor
-    /// and the case specialist who runs the file (decision 2026-10-15).
+    /// and the case specialist who runs the file.
     /// </summary>
     public static bool CanRedistributeParties(string? actorRole) =>
         IsSectionSupervisorOrAbove(actorRole)

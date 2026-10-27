@@ -6,7 +6,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.CaseStudy.Application.Services;
 
 /// <summary>
-/// Decision 2026-10-19/20: a deed's transaction gets a TMP draft number at intake and its official PR
+/// A deed's transaction gets a TMP draft number at intake and its official PR
 /// number only at the first approved report; PRC / PRV report numbers are derived from that PR root.
 /// </summary>
 public sealed class TransactionReferenceService : ITransactionReferenceService

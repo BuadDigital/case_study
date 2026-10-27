@@ -3,14 +3,14 @@
 //  • Alerts New file — problem 20: the alert dispositions are saved on their own (SaveAlertOverridesAsync,
 //           upsert by code via MergeAlertOverrides, audited), so an acknowledgement no longer waits on
 //           «مبرر استخدام طرق التقييم».
-//  • D3   ReconciliationLiquidationMessages — one name for the liquidation discount, «خصم التصفية».
+//  • ReconciliationLiquidationMessages — one name for the liquidation discount, «خصم التصفية».
 // Hotfix (9acb4f54)
-//  • D1   A row created by an acknowledgement starts from the work order's basis and premise, not the
+//  • A row created by an acknowledgement starts from the work order's basis and premise, not the
 //         default «market» — liquidation cases no longer turn into market value.
 // Round 2 (1b19bedc)
-//  • R2-10 A blank or unknown alert code is refused with an Arabic 400 (AddAlertOverrideCodeErrors).
+//  • A blank or unknown alert code is refused with an Arabic 400 (AddAlertOverrideCodeErrors).
 //  • B    A written override rationale is at least 10 characters (AddAlertOverrideRationaleErrors).
-//  • R2-8 Liquidation discount capped at 90% (MaxDiscountPct); its name and the report labels follow the
+//  • Liquidation discount capped at 90% (MaxDiscountPct); its name and the report labels follow the
 //         premise: «خصم التصفية المنظمة» / «خصم البيع القسري» (DiscountLabelAr, ReportFieldLabelAr).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ public sealed partial class ValuationReconciliationService
         var entity = await repo.FindWithMethodsAsync(valuationRequestId, cancellationToken);
         if (entity is null)
         {
-            // The saved basis wins over the work order (D1), so a row created by an acknowledgement
+            // The saved basis wins over the work order, so a row created by an acknowledgement
             // starts from the work order's basis and premise — never the class default «market».
             var workOrder = await ResolveWorkOrderValuationAsync(vr, cancellationToken);
             entity = new ValuationReconciliation
@@ -116,7 +116,7 @@ public sealed partial class ValuationReconciliationService
         }
     }
 
-    /// <summary>Decision B: a written override rationale is at least 10 characters (blank = acknowledgement only / clear).</summary>
+    /// <summary>A written override rationale is at least 10 characters (blank = acknowledgement only / clear).</summary>
     public static void AddAlertOverrideRationaleErrors(
         IReadOnlyList<ValuationMethodologyAlertOverrideDto> overrides,
         Dictionary<string, string> errors)
@@ -146,7 +146,7 @@ public sealed partial class ValuationReconciliationService
 }
 
 /// <summary>
-/// D3: the reconciliation's liquidation-discount messages, one name throughout — «خصم التصفية».
+/// The reconciliation's liquidation-discount messages, one name throughout — «خصم التصفية».
 /// </summary>
 public static class ReconciliationLiquidationMessages
 {

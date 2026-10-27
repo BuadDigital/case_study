@@ -1,16 +1,16 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  New file — the income approach in the printed report: buildIncomeSheetRows (GPI, vacancy, EGI,
+//  • New file — the income approach in the printed report: buildIncomeSheetRows (GPI, vacancy, EGI,
 //         expenses, NOI, cap rate, value, rationale) and applyIncomeSection, which inserts the section before
-//         §24 (else §25) and moves the reconciliation to a new page; nothing while the approach is off or
+//         Section 24 (else section 25) and moves the reconciliation to a new page; nothing while the approach is off or
 //         unsaved.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * D17 — the income approach (direct capitalisation) in the printed valuation report: the inputs
+ * The income approach (direct capitalisation) in the printed valuation report: the inputs
  * table, EGI, expenses, NOI, the capitalisation rate, the value and the rate's rationale. The
  * template has no income section, so the live fill adds one on its own page before the
- * reconciliation (§24) when the approach is enabled; the section numbering is renumbered after.
+ * reconciliation (section 24) when the approach is enabled; the section numbering is renumbered after.
  */
 import type { ValuationIncomeApproachDto } from "@platform/api-client";
 
@@ -83,8 +83,8 @@ function sectionElement(doc: Document, rows: IncomeSheetRow[]): HTMLElement {
 }
 
 /**
- * Adds (or refreshes) the income section right before the reconciliation (§24, else the final
- * value §25), with the cost result (§23) before it on the same page; the reconciliation and what
+ * Adds (or refreshes) the income section right before the reconciliation (section 24, else the final
+ * value section 25), with the cost result (section 23) before it on the same page; the reconciliation and what
  * follows it on that page move to a page of their own so nothing overflows the sheet. Nothing is
  * added while the approach is off.
  */

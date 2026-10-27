@@ -263,7 +263,7 @@ public class PartyTaskSubmissionAcceptTests
     [InlineData("""{"landHasValuableStructures":"no"}""")]
     public async Task Accept_field_inspection_of_a_non_land_asset_needs_no_inventory_table(string payloadJson)
     {
-        // Decision 2026-10-15: the table is not a condition for a building either.
+        // The table is not a condition for a building either.
         var (result, errors) = await AcceptInspectedAsync("فيلا", payloadJson);
 
         Assert.Null(errors);

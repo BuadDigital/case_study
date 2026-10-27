@@ -1,27 +1,27 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D1   resolveReportValuationKeys: basis / premise from the reconciliation, purpose from the approach
+//  • resolveReportValuationKeys: basis / premise from the reconciliation, purpose from the approach
 //         settings, work-order defaults only as fallback. The liquidation discount prints only on the
 //         liquidation basis with a discount > 0; «مبرر معامل التصفية» → «مبرر خصم التصفية».
-//  • §25  buildFinalValueRows prints §25 step by step (weighted value unrounded → liquidation → «مستند ذو
+//  • Section 25  buildFinalValueRows prints section 25 step by step (weighted value unrounded → liquidation → «مستند ذو
 //         قيمة» additions → one rounding step); finalValue is exposed for the approval check.
-//  • D9   buildScopeRows adds the retrospective rationale row and the building-only scope row to §2.
-//  • D11  ownershipCell prints a usufruct / leased-land interest with the remaining lease years;
-//         buildAgeNotes adds the age rationales and the lease cap to §23.
-//  • D17  Income joins the methods used, the approach count and the method cell; incomeRows
+//  • buildScopeRows adds the retrospective rationale row and the building-only scope row to section 2.
+//  • ownershipCell prints a usufruct / leased-land interest with the remaining lease years;
+//         buildAgeNotes adds the age rationales and the lease cap to section 23.
+//  • Income joins the methods used, the approach count and the method cell; incomeRows
 //         (buildIncomeSheetRows) and the income cells come from the saved income approach.
 //  • Wording «رقم العضوية» is the valuer's own (no firm-licence fallback); the land comparison value is
 //            labelled «قيمة الأرض قبل التقريب»; unused costRowCells calls removed.
 // Round 2 (1b19bedc)
-//  • R2-10 «ملكية مطلقة» → «ملكية تامة»; lease years via formatArabicYears; the «مطلق الملكية» assumption is
+//  • «ملكية مطلقة» → «ملكية تامة»; lease years via formatArabicYears; the «مطلق الملكية» assumption is
 //          reworded for a usufruct / leased land (assumptionsForInterest); the lease-cap note names «حق
 //          المنفعة» or «الإيجار».
-//  • R2-11 Liquidation labels follow the premise (liquidationDiscountLabels: «التصفية المنظمة» / «البيع
+//  • Liquidation labels follow the premise (liquidationDiscountLabels: «التصفية المنظمة» / «البيع
 //          القسري») and the forced premise gets its own basis definition.
-//  • R2-1 A retrospective date or period (retrospectiveDateLabel) is THE printed valuation date, also in the
+//  • A retrospective date or period (retrospectiveDateLabel) is THE printed valuation date, also in the
 //         scope row.
-//  • A    §20 landValueRows come from costLandReportRows.
-//  • R2-19 Comparable transaction dates print as yyyy/mm/dd; the membership expiry date goes through
+//  • section 20 landValueRows come from costLandReportRows.
+//  • Comparable transaction dates print as yyyy/mm/dd; the membership expiry date goes through
 //          displayLicenseDate.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -137,7 +137,7 @@ const OWNERSHIP_LABELS: Record<string, string> = {
   // One wording everywhere (approach settings, report, case study): «ملكية تامة».
   absolute: "ملكية تامة",
   shared: "مشاع",
-  // D11 — the interest valued when it is not the deed's full ownership (approach settings).
+  // The interest valued when it is not the deed's full ownership (approach settings).
   usufruct: "حق منفعة",
   leased_land: "أرض مستأجرة",
 };
@@ -183,7 +183,7 @@ export function assignmentValuationFromPo(
 }
 
 /**
- * D1 — purpose, basis and premise the report prints: the appraiser's saved choices
+ * Purpose, basis and premise the report prints: the appraiser's saved choices
  * (reconciliation basis/premise, approach-settings purpose); the work order's defaults only
  * when nothing was chosen.
  */
@@ -227,7 +227,7 @@ function ownershipTypeDisplay(value: string | null | undefined): string {
 }
 
 /**
- * «نوع الملكية»: what the appraiser recorded for this valuation (D11 — e.g. a building on
+ * «نوع الملكية»: what the appraiser recorded for this valuation ( — e.g. a building on
  * leased land, with the remaining lease years), else the deed's ownership (owner count).
  */
 function ownershipCell(
@@ -244,7 +244,7 @@ function ownershipCell(
     : label;
 }
 
-/** The D11 interest key as the report wording needs it: a usufruct right or leased land. */
+/** The interest key as the report wording needs it: a usufruct right or leased land. */
 function partialInterestKey(
   recorded: { key?: string | null } | null | undefined,
 ): "usufruct" | "leased_land" | null {
@@ -330,7 +330,7 @@ export function slashDateFromIso(iso: string | null | undefined): string {
   return m ? `${m[1]}/${m[2]}/${m[3]}` : "";
 }
 
-/** D9 — a retrospective valuation date as printed: «yyyy/mm/dd», or «start — end» for a period. */
+/** A retrospective valuation date as printed: «yyyy/mm/dd», or «start — end» for a period. */
 export function retrospectiveDateLabel(
   retro: { date: string; dateEnd?: string | null } | null | undefined,
 ): string {
@@ -414,7 +414,7 @@ function googleMapOnly<T extends { contentType: string }>(img: T | null): T | nu
   return img && !img.contentType.includes("svg") ? img : null;
 }
 
-/** §16 — أسلوب التكلفة is valued by طريقة المقاول; the land component only when land is in scope. */
+/** Section 16 — أسلوب التكلفة is valued by طريقة المقاول; the land component only when land is in scope. */
 function contractorMethodLabel(
   costScopeKey: string | null | undefined,
   costBasisKey: string | null | undefined,
@@ -477,7 +477,7 @@ function documentIndicators(
     }));
 }
 
-/** §16 cell of one approach: its internal method, else the methods named by documents. */
+/** Section 16 cell of one approach: its internal method, else the methods named by documents. */
 function approachMethodCell(
   internal: string | null,
   documents: DocumentIndicator[],
@@ -508,7 +508,7 @@ export type ValuationReportSurveyBounds = {
   natureWestBoundaryLengthM?: string;
 };
 
-/** One §25 line; the liquidation row also carries its rationale (4-cell row). */
+/** One section 25 line; the liquidation row also carries its rationale (4-cell row). */
 export type FinalValueRow = {
   key: string;
   value: string;
@@ -536,29 +536,29 @@ export type ValuationReportLiveFill = {
   cells: Record<string, string>;
   /** Saved approach-settings decision; never inferred from stale cost data. */
   costApproachEnabled: boolean;
-  /** Cost scope from approach settings; hides §20 while retaining building-cost sheets. */
+  /** Cost scope from approach settings; hides section 20 while retaining building-cost sheets. */
   costBuildingOnly: boolean;
-  /** Saved market-approach decision — off removes §17–19 (comparables, map, adjustments). */
+  /** Saved market-approach decision — off removes section 17–19 (comparables, map, adjustments). */
   marketApproachEnabled: boolean;
   /**
    * Approaches in use (market, cost). One approach ⇒ no reconciliation between indicators:
-   * §24 keeps only the justification, the final value is that approach's indicator.
+   * Section 24 keeps only the justification, the final value is that approach's indicator.
    */
   approachCount: number;
-  /** D17 — income approach enabled: its section prints before §24 and its row joins the weights. */
+  /** Income approach enabled: its section prints before section 24 and its row joins the weights. */
   incomeApproachEnabled: boolean;
-  /** D17 — the income section rows (inputs, EGI, NOI, cap rate, value, rationale). */
+  /** The income section rows (inputs, EGI, NOI, cap rate, value, rationale). */
   incomeRows: IncomeSheetRow[];
   scopeBasis: string;
   scopeClient: string;
   /**
-   * §2 extra statements under the scope table: the retrospective-date rationale (D9) and what
+   * Section 2 extra statements under the scope table: the retrospective-date rationale and what
    * a building-only valuation covers.
    */
   scopeRows: Array<{ label: string; value: string }>;
   /**
-   * §23 «العمر والإهلاك» notes under the ages: the appraiser's age rationales and, for a
-   * building on leased land, that the life is capped at the remaining lease term (D11).
+   * Section 23 «العمر والإهلاك» notes under the ages: the appraiser's age rationales and, for a
+   * building on leased land, that the life is capped at the remaining lease term.
    */
   ageNotes: Array<{ label: string; value: string }>;
   basisDefinition: string;
@@ -569,19 +569,19 @@ export type ValuationReportLiveFill = {
     len: string;
     face: string;
   }>;
-  /** §8 — the engineering survey supplies boundaries when a survey task exists, else intake. */
+  /** Section 8 — the engineering survey supplies boundaries when a survey task exists, else intake. */
   boundariesSource?: "survey" | "intake";
   buildDescRows: Array<{ key: string; values: string[] }>;
-  /** The specialist listed at least one component — §10 prints even on land. */
+  /** The specialist listed at least one component — section 10 prints even on land. */
   componentsListed: boolean;
   serviceRows: Array<{ key: string; values: string[] }>;
   comparableRows: Array<{ key: string; values: string[] }>;
-  /** §20 — decision A: plot, rate after adjustments, (discount), share, land value — in that order. */
+  /** Section 20 —: plot, rate after adjustments, (discount), share, land value — in that order. */
   landValueRows: CostLandReportRow[];
   /** Appendix (A) — land_within_cost comps only. */
   landComparableRows: Array<{ key: string; values: string[] }>;
   landAppendixNote: string;
-  /** §20 — land comparables inside the cost approach get their own adjustments table and map. */
+  /** Section 20 — land comparables inside the cost approach get their own adjustments table and map. */
   landAdjustmentRows: SheetTableRow[];
   landAdjustmentComparisonLabel: string;
   landAdjustmentNotes: string;
@@ -591,7 +591,7 @@ export type ValuationReportLiveFill = {
   adjustmentComparisonLabel: string;
   adjustmentNotes: string;
   surroundingsOther: string;
-  /** §11 «أخرى» — the inspector/specialist free text «ملحقات أخرى». */
+  /** Section 11 «أخرى» — the inspector/specialist free text «ملحقات أخرى». */
   attachmentsOther: string;
   costRows: Array<{ key: string; values: string[] }>;
   indirectRows: Array<{ key: string; values: string[] }>;
@@ -599,7 +599,7 @@ export type ValuationReportLiveFill = {
   reconRows: Array<{ key: string; values: string[] }>;
   finalDisplay: string;
   /**
-   * §25 lines a reader can reproduce: the unrounded weighted value of §24, the liquidation
+   * Section 25 lines a reader can reproduce: the unrounded weighted value of section 24, the liquidation
    * discount and the value after it (liquidation basis with a discount only), each «مستند ذو
    * قيمة» addition, then the one rounding step ending in the final value.
    */
@@ -608,28 +608,28 @@ export type ValuationReportLiveFill = {
   finalValue: number | null;
   finalWords: string;
   /**
-   * §25 «مستند ذو قيمة» additions: the property value after the liquidation discount
+   * Section 25 «مستند ذو قيمة» additions: the property value after the liquidation discount
    * (unrounded), one line per added document, then the rounded total (= finalDisplay).
    */
   valueAdditions: Array<{ label: string; value: string }>;
   propertyValueAfterLiquidation: string;
   isLiquidation: boolean;
-  /** §25 liquidation discount printed (liquidation basis or discount applied in reconciliation). */
+  /** Section 25 liquidation discount printed (liquidation basis or discount applied in reconciliation). */
   liquidationDiscountOn?: boolean;
   isLand: boolean;
   /** An apartment records no facades — the facade rows and the boundaries «الواجهات» column are not printed. */
   isApartment?: boolean;
   propertyDescription: string;
   reportWorkers: EvaluatorReportWorker[];
-  /** §26 — assigned appraiser from work-order dispatch (fourth column). */
+  /** Section 26 — assigned appraiser from work-order dispatch (fourth column). */
   assignedAppraiserName: string;
   /** Staff user id of the assigned appraiser — matches roster `staffUserId` before name. */
   assignedAppraiserId: string;
-  /** §34 — up to 12 field photos (data URLs); null keeps that HTML slot empty. */
+  /** Section 34 — up to 12 field photos (data URLs); null keeps that HTML slot empty. */
   photoSlots: Array<ValuationReportSlotAttachment | null>;
-  /** §35 — survey document (image or PDF data URL). */
+  /** Section 35 — survey document (image or PDF data URL). */
   surveySlot: ValuationReportSlotAttachment | null;
-  /** §36 — deed document. */
+  /** Section 36 — deed document. */
   deedSlot: ValuationReportSlotAttachment | null;
   /** Pan/scale per slot id (image-slot {s,x,y}). */
   slotFrames: Record<string, { s: number; x: number; y: number }>;
@@ -637,45 +637,45 @@ export type ValuationReportLiveFill = {
   printAttachmentOrder: string[];
   /** Selected attachment keys for print inclusion. */
   printAttachmentKeys: string[];
-  /** §18 — uploaded site map or generated map from coords. */
+  /** Section 18 — uploaded site map or generated map from coords. */
   comparableMapSlot: ValuationReportSlotAttachment | null;
-  /** §18 — pins for interactive Google Map in screen preview. */
+  /** Section 18 — pins for interactive Google Map in screen preview. */
   comparablesMapPins: ComparablesMapPin[];
-  /** §28 — optional notes under research scope bullets. */
+  /** Section 28 — optional notes under research scope bullets. */
   searchScopeNotes: string;
-  /** §28 — empty keeps template bullets; org `researchScopeText` replaces. */
+  /** Section 28 — empty keeps template bullets; org `researchScopeText` replaces. */
   researchScopeBullets: string[];
-  /** §29 — null keeps template; array (even empty) replaces org-filtered list. */
+  /** Section 29 — null keeps template; array (even empty) replaces org-filtered list. */
   specialAssumptionBullets: string[] | null;
-  /** §37 — empty keeps template; org `ivsStandards` replaces rows. */
+  /** Section 37 — empty keeps template; org `ivsStandards` replaces rows. */
   ivsPairs: Array<{ term: string; text: string }>;
-  /** §38 — empty keeps template; org `glossary` replaces rows. */
+  /** Section 38 — empty keeps template; org `glossary` replaces rows. */
   glossaryPairs: Array<{ term: string; text: string }>;
-  /** §12 — selected finishing level key (luxury|medium|ordinary|none). */
+  /** Section 12 — selected finishing level key (luxury|medium|ordinary|none). */
   finishingLevel: "" | "luxury" | "medium" | "ordinary" | "none";
-  /** §12 — optional org overrides for the three description columns. */
+  /** Section 12 — optional org overrides for the three description columns. */
   finishingTexts: {
     luxury: string;
     medium: string;
     ordinary: string;
   };
-  /** §3 — org keyInputsText; empty keeps template bullets. */
+  /** Section 3 — org keyInputsText; empty keeps template bullets. */
   keyInputsBullets: string[];
-  /** §4 — org professionalStandards with {{ivsDate}} applied; empty keeps template. */
+  /** Section 4 — org professionalStandards with {{ivsDate}} applied; empty keeps template. */
   standardsParagraphs: string[];
-  /** §5 — org independence text; empty keeps template. */
+  /** Section 5 — org independence text; empty keeps template. */
   independenceParagraphs: string[];
-  /** §31 — org terms; empty keeps template list (with date scrub). */
+  /** Section 31 — org terms; empty keeps template list (with date scrub). */
   termsBullets: string[];
-  /** §32 — org restrictions; empty keeps template list (with date scrub). */
+  /** Section 32 — org restrictions; empty keeps template list (with date scrub). */
   restrictionsBullets: string[];
-  /** Report date as yyyy/mm/dd — replaces frozen sample dates in §31/§32. */
+  /** Report date as yyyy/mm/dd — replaces frozen sample dates in sections 31/32. */
   reportDateSlash: string;
-  /** §33 — "city - district" instead of the hardcoded "Jeddah - Al Sawari". */
+  /** Section 33 — "city - district" instead of the hardcoded "Jeddah - Al Sawari". */
   locationLabel: string;
-  /** §33 upper — uploaded site map; print adds a Google hybrid view (zoom 15) when none. */
+  /** Section 33 upper — uploaded site map; print adds a Google hybrid view (zoom 15) when none. */
   satelliteMapSlot: ValuationReportSlotAttachment | null;
-  /** §33 lower — Google satellite close-up (zoom 18); produced only at print time. */
+  /** Section 33 lower — Google satellite close-up (zoom 18); produced only at print time. */
   closeupMapSlot: ValuationReportSlotAttachment | null;
 };
 
@@ -688,7 +688,7 @@ export type ValuationReportLiveFill = {
  * by printed label, then the approach tables, reconciliation, texts and map/photo slots, and
  * returns one `ValuationReportLiveFill`.
  *
- * Edge cases: phase 5 (decision 2026-10-19) — for a linked property (`transactionDeeds`, two
+ * Edge cases: phase 5 — for a linked property (`transactionDeeds`, two
  * or more live deeds after dropping `isRemoved`) «رقم الصك» / «تاريخ الصك» join every deed's
  * label and date with « ، » (registry number/date for a registry deed, "—" for a missing date);
  * with no or one live deed the property's own deed prints.
@@ -699,9 +699,9 @@ export function buildValuationReportLiveFill(input: {
   costApproachEnabled?: boolean;
   /** Saved market-approach decision; undefined = legacy (follow the report's method choices). */
   marketApproachEnabled?: boolean;
-  /** D17 — saved income-approach decision; undefined = legacy (follow the report's method choices). */
+  /** Saved income-approach decision; undefined = legacy (follow the report's method choices). */
   incomeApproachEnabled?: boolean;
-  /** D17 — the income approach (direct capitalisation) as the server computed it. */
+  /** The income approach (direct capitalisation) as the server computed it. */
   income?: ValuationIncomeApproachDto | null;
   costScopeKey?: string | null;
   /** "replacement" (default/إحلال) | "reproduction" (إعادة الإنتاج) — the appraiser's choice on البيانات الأساسية. */
@@ -709,7 +709,7 @@ export function buildValuationReportLiveFill(input: {
   record?: PoIntakeRecord | null;
   property?: PoPropertyIntake | null;
   /**
-   * Phase 5 (decision 2026-10-19): the live deeds of a linked property, in transaction order.
+   * Phase 5: the live deeds of a linked property, in transaction order.
    * Two or more → the deed cells name them all; empty / one → the property's own deed prints.
    */
   transactionDeeds?: readonly Pick<
@@ -726,15 +726,15 @@ export function buildValuationReportLiveFill(input: {
   cost?: ValuationCostApproachDto | null;
   recon?: ValuationReconciliationDto | null;
   clients?: Pick<ClientDto, "id" | "nameAr">[];
-  /** The appraiser's saved valuation purpose key (approach settings) — D1. */
+  /** The appraiser's saved valuation purpose key (approach settings) —. */
   purposeKey?: string | null;
   /** Labels from the org lists for the resolved keys (resolveReportValuationKeys). */
   purposeLabel?: string | null;
   basisLabel?: string | null;
   premiseLabel?: string | null;
-  /** D9 — retrospective valuation: its date (yyyy-MM-dd) and the appraiser's rationale. */
+  /** Retrospective valuation: its date (yyyy-MM-dd) and the appraiser's rationale. */
   retrospective?: { date: string; dateEnd?: string | null; rationale: string } | null;
-  /** D11 — ownership the appraiser recorded (key or Arabic label, remaining lease years). */
+  /** Ownership the appraiser recorded (key or Arabic label, remaining lease years). */
   ownership?: { key?: string | null; labelAr?: string | null; remainingLeaseYears?: number | null } | null;
   basisDefinition?: string | null;
   certifiedName?: string | null;
@@ -771,7 +771,7 @@ export function buildValuationReportLiveFill(input: {
   specialAssumptionLibrary?: string[] | null;
   /** When true, drop the library clause that denies using an external specialist. */
   externalSpecialistUsed?: boolean;
-  /** Printed into §29 when an external specialist was used. */
+  /** Printed into section 29 when an external specialist was used. */
   externalSpecialistDetails?: string | null;
   finishingLuxuryText?: string | null;
   finishingMediumText?: string | null;
@@ -823,7 +823,7 @@ export function buildValuationReportLiveFill(input: {
     (input.recon?.valuePremiseLabelAr ?? "").trim();
   const client = clientNameFromRecord(record, input.clients ?? []);
   const users = formatValuationReportUsers(record, input.clients ?? []);
-  // D9 — a retrospective date (or period) is THE valuation date, whatever the draft holds.
+  // A retrospective date (or period) is THE valuation date, whatever the draft holds.
   const appraisal = retrospectiveDateLabel(input.retrospective) || slashReportDate(
     input.effectiveValuationDate ||
       draft.appraisalDate ||
@@ -970,7 +970,7 @@ export function buildValuationReportLiveFill(input: {
         : "";
   const reconFinal = input.recon?.finalOpinionValue;
   const reconLand = input.cost?.landValueFromMarket;
-  // §25 starts from the unrounded weighted value of §24 — the reader multiplies it out from
+  // Section 25 starts from the unrounded weighted value of section 24 — the reader multiplies it out from
   // there; the one rounding step is printed on its own line (finalValueRows).
   const reconWeighted = input.recon?.weightedValue ?? reconFinal;
   const landDisplay =
@@ -994,7 +994,7 @@ export function buildValuationReportLiveFill(input: {
   cells["قيمة الأرض"] = dash(landDisplay);
   cells["القيمة المرجّحة"] = dash(weightedDisplay);
   cells["قيمة العقار"] = dash(priceDisplay);
-  // D1 — the liquidation discount prints only when the basis is liquidation AND a discount
+  // The liquidation discount prints only when the basis is liquidation AND a discount
   // above zero is set; a discount left over from before switching the basis never prints.
   const liquidationPct = input.recon
     ? Number(input.recon.liquidationDiscountPct) || 0
@@ -1115,7 +1115,7 @@ export function buildValuationReportLiveFill(input: {
     (input.recon?.methodsRationale ?? "").trim() ||
     choices.methodsRationale.trim();
   cells["مبرر استخدام طرق التقييم"] = dash(rationale);
-  // D17 — the saved income approach wins over the legacy report-choice fields.
+  // The saved income approach wins over the legacy report-choice fields.
   const incomeSaved = input.income?.isSaved ? input.income : null;
   cells["دخل سنوي"] = dash(
     incomeSaved ? formatMoneyCell(incomeSaved.grossPotentialIncome) : choices.incomeAnnual,
@@ -1299,7 +1299,7 @@ export function buildValuationReportLiveFill(input: {
         }
       : null);
 
-  // §33 — the uploaded site map occupies the satellite slot; both Google views
+  // Section 33 — the uploaded site map occupies the satellite slot; both Google views
   // (hybrid zoom 15 / satellite zoom 18) are fetched at print time by
   // materializePrintMapSlots. Screen preview mounts live Google maps instead.
   const satelliteMapSlot: ValuationReportSlotAttachment | null =
@@ -1417,8 +1417,8 @@ export function buildValuationReportLiveFill(input: {
       },
     ],
     componentsListed: (input.inventoryLines ?? []).length > 0,
-    // §10 «مكونات العقار»: description + area per listed component, then the built-up total.
-    // (§09 «تفاصيل المساحات» was dropped from the report.)
+    // Section 10 «مكونات العقار»: description + area per listed component, then the built-up total.
+    // (section 09 «تفاصيل المساحات» was dropped from the report.)
     buildDescRows: [
       ...areas.descriptions.map((r) => ({
         key: r.key,
@@ -1497,7 +1497,7 @@ export function buildValuationReportLiveFill(input: {
     landAppendixNote: cells["إشارة الملحق"] || "",
     landAdjustmentRows: landAdj.rows,
     // The land table's output is an input to the cost formula — «قيمة الأرض», not an indicator;
-    // like the matrix card it is unrounded (the final value is rounded once in §25).
+    // like the matrix card it is unrounded (the final value is rounded once in section 25).
     landAdjustmentComparisonLabel: LAND_VALUE_BEFORE_ROUNDING,
     landAdjustmentNotes: buildAdjustmentRationaleText(landComps),
     landComparableMapSlot,
@@ -1701,13 +1701,13 @@ function roundingUnitLabel(decimals: number | null | undefined): string {
 }
 
 /**
- * §25 «القيمة النهائية للعقار» — the server's pipeline (weighted → liquidation discount →
+ * Section 25 «القيمة النهائية للعقار» — the server's pipeline (weighted → liquidation discount →
  * + document additions → rounded once) printed step by step, so every number follows from
  * the one above it.
  */
 export function buildFinalValueRows(input: {
   recon?: ValuationReconciliationDto | null;
-  /** Unrounded weighted value (§24), or the draft's price when nothing was reconciled. */
+  /** Unrounded weighted value (section 24), or the draft's price when nothing was reconciled. */
   weighted: number | null;
   final: number | null;
   liquidation: {
@@ -1756,7 +1756,7 @@ export function buildFinalValueRows(input: {
   return rows;
 }
 
-/** §2 statements: D9 retrospective rationale; the building-only scope (land not valued). */
+/** Section 2 statements: retrospective rationale; the building-only scope (land not valued). */
 function buildScopeRows(input: {
   retrospective?: { date: string; dateEnd?: string | null; rationale: string } | null;
   buildingOnly: boolean;
@@ -1784,7 +1784,7 @@ function buildScopeRows(input: {
   return rows;
 }
 
-/** §23 — age rationales and the D11 lease cap, as the appraiser saved them on the cost screen. */
+/** Section 23 — age rationales and the lease cap, as the appraiser saved them on the cost screen. */
 function buildAgeNotes(
   cost: ValuationCostApproachDto | null | undefined,
   interest: "usufruct" | "leased_land" | null,
@@ -1798,7 +1798,7 @@ function buildAgeNotes(
   const lease = cost.remainingLeaseYears;
   if (cost.lifeCappedByLease && lease != null && lease > 0) {
     const life = cost.effectiveLifeYears;
-    // The note names the interest the appraiser recorded (D11): a usufruct right is not a lease.
+    // The note names the interest the appraiser recorded: a usufruct right is not a lease.
     const usufruct = interest === "usufruct";
     const term = usufruct ? "مدة حق المنفعة" : "مدة الإيجار";
     rows.push({
