@@ -8,8 +8,9 @@ namespace RealEstateEval.Financial.Application.Abstractions;
 public interface IInspectorFeeSummaryQuery
 {
  /// <summary>
- /// Set <paramref name="hideDisputed"/> for a finance-only actor: a line under pricing dispute must
- /// not reach finance in any response, counts included, until operations resolves it.
+ /// Set <paramref name="hideAwaitingDiscountDecision"/> for a finance-only actor: a line whose
+ /// proposed discount the supervisor has not decided yet must not reach finance in any response,
+ /// counts included, until the decision is made.
  /// </summary>
     Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
@@ -18,7 +19,7 @@ public interface IInspectorFeeSummaryQuery
         string? taskKind = null,
         string? billingStatus = null,
         string? returnTo = null,
-        bool hideDisputed = false,
+        bool hideAwaitingDiscountDecision = false,
         CancellationToken cancellationToken = default,
         string? supervisingDepartment = null);
 

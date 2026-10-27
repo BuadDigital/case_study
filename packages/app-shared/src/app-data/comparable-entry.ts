@@ -184,6 +184,7 @@ export function validateComparableEntry(
     errors.kind = "اختر نوع المقارن (أرض أو مبنى)";
   }
 
+  // Price and area share the one positive-number rule used by every screen.
   if (!isPositiveLocaleNumber(draft.price)) {
     errors.price = "أدخل سعراً أكبر من صفر";
   }

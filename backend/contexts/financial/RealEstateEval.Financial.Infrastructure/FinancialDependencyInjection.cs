@@ -41,14 +41,12 @@ public static class FinancialDependencyInjection
         services.AddRemoteAuditLogAppend(configuration);
         services.AddRemoteAttachmentLookup(configuration);
         services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
- // E6: Financial Host notifications were NullNotificationService(«residue until it exists
- // Dispatch” — now has a real Operations/Failures-style outbox, with reminders
- // The negotiation deadline and notices of outstanding fees actually arrive.
+ // Financial Host notifications go through a real Operations/Failures-style outbox, so
+ // fee and statement notices actually arrive.
         services.AddMessagingPersistence(configuration);
         services.AddNotificationInfrastructure(configuration, environment);
         services.AddHttpClient<IOperationsTaskService, HttpOperationsTaskService>();
         services.AddInspectorFeeCollaborators();
-        services.AddHostedService<BillingNegotiationDeadlineHostedService>();
         services.AddScoped<ICourtVisitFeeChargeService, CourtVisitFeeChargeService>();
         services.AddScoped<IKeyReceiptFeeChargeService, KeyReceiptFeeChargeService>();
         services.AddScoped<IPoEnfazInvoiceLookup, PoEnfazInvoiceLookup>();

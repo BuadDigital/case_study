@@ -77,7 +77,8 @@ export const ROLES: Record<RoleId, RoleDef> = {
     init: "أص",
     bg: "var(--success-bg)",
     tc: "var(--success)",
-    // Match supervisor pages (includes party-fees + fee pricing) — without financial.
+    // Supervisor's operational pages — without fees, pricing or financial: party outputs are
+    // accepted inside the transaction and fee money is the supervisor's decision.
     // Plus all-transactions so the specialist can open every case, not only assigned ones.
     pages: [
       "dashboard",
@@ -96,8 +97,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "failures",
       "suspended-transactions",
       "failure-types",
-      "party-fees",
-      "fee-pricing",
     ],
   },
   "real-estate-appraiser": {

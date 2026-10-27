@@ -297,30 +297,6 @@ export type IncentiveSuspensionListQuery = FinancialLedgerPageQuery & {
   activeOnly?: boolean;
 };
 
-export type DiscountFlagDto = {
-  id: string;
-  transactionKey: string;
-  workflowTaskId?: string | null;
-  targetAssigneeId: string;
-  flaggedByUserId: string;
-  reason: string;
-  proposedDiscountSar: number;
-  status: string;
-  approvedByUserId?: string | null;
-  resolvedAtUtc?: string | null;
-  resolutionNote?: string | null;
-  createdAtUtc: string;
-};
-
-/** `GET /api/financial/discount-flags` query — pagination-contract §7.2. */
-export type DiscountFlagListQuery = FinancialLedgerPageQuery & {
-  /** Free text over `TransactionKey`, `TargetAssigneeId`, `Reason`. */
-  q?: string;
-  transactionKey?: string;
-  /** Exact `pending` | `approved` | `rejected`; anything else matches no row. */
-  status?: string;
-};
-
 function incentiveSuspensionListParams(query?: IncentiveSuspensionListQuery) {
   return {
     page: query?.page,
@@ -331,18 +307,6 @@ function incentiveSuspensionListParams(query?: IncentiveSuspensionListQuery) {
     transactionKey: query?.transactionKey,
     assigneeId: query?.assigneeId,
     activeOnly: query?.activeOnly,
-  };
-}
-
-function discountFlagListParams(query?: DiscountFlagListQuery) {
-  return {
-    page: query?.page,
-    pageSize: query?.pageSize,
-    sort: query?.sort,
-    dir: query?.dir,
-    q: query?.q,
-    transactionKey: query?.transactionKey,
-    status: query?.status,
   };
 }
 
@@ -358,14 +322,3 @@ export async function listIncentiveSuspensionsPage(
   );
 }
 
-/** One server page of the discount-flag ledger — pagination-contract §7.2. */
-export async function listDiscountFlagsPage(
-  config: PrototypeModulesApiConfig,
-  query?: DiscountFlagListQuery,
-): Promise<ApiOk<PagedResultDto<DiscountFlagDto>> | ApiErr> {
-  return fetchListPage<DiscountFlagDto>(
-    { ...config, baseUrl: baseUrl(config) },
-    "/api/financial/v1/discount-flags",
-    discountFlagListParams(query),
-  );
-}

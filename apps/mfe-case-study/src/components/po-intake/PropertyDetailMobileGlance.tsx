@@ -56,13 +56,13 @@ export function PropertyDetailMobileGlance({
   const activeOps = propertyOpsTasks.filter(isActiveOperationsTask);
   const primaryOps = activeOps[0] ?? propertyOpsTasks[0] ?? null;
 
+  // Fees not yet with finance (sup-review includes a proposed discount awaiting the supervisor).
   const pendingFees = feeRows.filter(
     (r) =>
       r.billingStatus === "draft" ||
       r.billingStatus === "returned" ||
       r.billingStatus === "inquiry" ||
-      r.billingStatus === "sup-review" ||
-      r.billingStatus === "office-review",
+      r.billingStatus === "sup-review",
   ).length;
 
   const feeLabel =

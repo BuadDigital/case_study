@@ -18,11 +18,35 @@ public interface IInspectorFeeService : IInspectorFeeSummaryQuery
  /// <summary>
  /// Accrues an engineering-survey fee from the pricing table when the specialist
  /// accepts survey outputs. Idempotent if already accrued. Re-uploads do not create a second fee.
+ /// Without a proposal the fee goes straight to finance; with one it waits for the department
+ /// supervisor's decision.
  /// </summary>
     Task<(InspectorFeeRowDto? Row, string? Error)> AccrueEngineeringSurveyFeeAsync(
         Guid workflowTaskId,
         string actorUserId,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        EngineeringSurveyDiscountProposalInput? proposal = null);
+
+ /// <summary>The supervisor approves, amends or waives the specialist's proposed discount.</summary>
+    Task<(InspectorFeeRowDto? Row, string? Error)> ResolveDiscountProposalAsync(
+        Guid workflowTaskId,
+        ResolveDiscountProposalRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false);
+
+ /// <summary>
+ /// Cancels one party's whole fee on a transaction: every line not yet in a statement, paid or
+ /// withheld is discounted in full. The lines left untouched come back as skipped.
+ /// </summary>
+    Task<(WaivePartyFeesResultDto? Result, string? Error)> WaivePartyFeesAsync(
+        string poNumber,
+        WaivePartyFeesRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false);
 
     Task<InspectorFeeRowDto?> PatchAsync(
         Guid workflowTaskId,

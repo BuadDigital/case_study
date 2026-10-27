@@ -8,6 +8,23 @@ namespace RealEstateEval.Financial.Infrastructure.Services;
 
 public static class InspectorFeeRowMapper
 {
+    /// <summary>
+    /// Projects one fee line (with its task, labels and optional pending proposal) into the row the
+    /// fee screens render, including which actions the row offers.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Proposal handling:</b> when <paramref name="pendingProposal"/> is given and the line
+    /// is still in <c>sup-review</c>, the row carries the proposed amount, reason, proposer and date,
+    /// sets <c>CanResolveDiscountProposal</c>, and turns off <c>CanApproveToFinance</c> and
+    /// <c>IsEditable</c> — the only way forward is the decision.</para>
+    /// <para><b>Edge cases:</b></para>
+    /// <list type="bullet">
+    /// <item>A flag that is still pending while its line moved on (e.g. the line was suspended) does
+    /// not show as a proposal: the row only reports what the supervisor can act on now.</item>
+    /// <item>The retired <c>CanOfficeApproveDiscount</c> / <c>CanOfficeDispute</c> /
+    /// <c>CanResolveDispute</c> flags were removed with the office loop.</item>
+    /// </list>
+    /// </remarks>
     public static InspectorFeeRowDto ToRowDto(
         InspectorFeeLedger ledger,
         WorkflowTask task,
@@ -15,8 +32,13 @@ public static class InspectorFeeRowMapper
         bool workSubmitted,
         DateTime? workSubmittedAtUtc,
         DateTime? poReceivedAtUtc,
-        string? lastTransitionReason)
+        string? lastTransitionReason,
+        DiscountFlag? pendingProposal = null)
     {
+        // A pending proposal only matters while its line still waits in sup-review: the row then
+        // carries the proposal, offers the decision instead of a plain approval, and is not editable.
+        var awaitsDecision = pendingProposal is not null
+            && ledger.BillingStatus == InspectorFeeBillingStatus.SupReview;
         var discount = Math.Max(0m, ledger.SupervisorDiscountSar);
         var workStatus = workSubmitted
             ? InspectorFeeWorkStatuses.Done
@@ -59,7 +81,9 @@ public static class InspectorFeeRowMapper
             AccruedAtUtc = ledger.AccruedAtUtc,
             WorkSubmittedAtUtc = workSubmittedAtUtc,
             PoReceivedAtUtc = poReceivedAtUtc,
-            IsEditable = InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus),
+            // A line waiting on a proposal decision is settled through that decision, not edited.
+            IsEditable = InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus)
+                && !awaitsDecision,
             CanSubmitToSupervisor = workStatus == InspectorFeeWorkStatuses.Done
                 && !ledger.ExcludedFromBatch
                 && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
@@ -72,26 +96,15 @@ public static class InspectorFeeRowMapper
                 && task.Kind != WorkflowTaskKind.EngineeringSurvey,
             CanApproveToFinance = workStatus == InspectorFeeWorkStatuses.Done
                 && !ledger.ExcludedFromBatch
-                && ledger.BillingStatus == InspectorFeeBillingStatus.SupReview,
+                && ledger.BillingStatus == InspectorFeeBillingStatus.SupReview
+                && !awaitsDecision,
  // all party fee kinds use billing statements; legacy disb-req rows stay on finance disburse.
             CanCreateDisbursementRequest = false,
-            CanOfficeApproveDiscount = workStatus == InspectorFeeWorkStatuses.Done
-                && !ledger.ExcludedFromBatch
-                && !InspectorFeeRules.IsEmployee(ledger.InspectorType)
-                && task.Kind == WorkflowTaskKind.EngineeringSurvey
-                && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
-                && discount > 0m,
-            CanOfficeDispute = workStatus == InspectorFeeWorkStatuses.Done
-                && !ledger.ExcludedFromBatch
-                && !InspectorFeeRules.IsEmployee(ledger.InspectorType)
-                && task.Kind == WorkflowTaskKind.EngineeringSurvey
-                && ledger.BillingStatus == InspectorFeeBillingStatus.OfficeReview
-                && discount > 0m,
-            CanResolveDispute = workStatus == InspectorFeeWorkStatuses.Done
-                && !ledger.ExcludedFromBatch
-                && !InspectorFeeRules.IsEmployee(ledger.InspectorType)
-                && task.Kind == WorkflowTaskKind.EngineeringSurvey
-                && ledger.BillingStatus == InspectorFeeBillingStatus.Disputed,
+            ProposedDiscountSar = awaitsDecision ? pendingProposal!.ProposedDiscountSar : null,
+            ProposedDiscountReason = awaitsDecision ? pendingProposal!.Reason : null,
+            ProposedByName = awaitsDecision ? pendingProposal!.FlaggedByName : null,
+            ProposedAtUtc = awaitsDecision ? pendingProposal!.CreatedAtUtc : null,
+            CanResolveDiscountProposal = awaitsDecision,
             SuspensionReason = ledger.SuspensionReason,
             CanSuspend = InspectorFeeBillingStatus.Suspendable.Contains(ledger.BillingStatus),
             CanLiftSuspension = ledger.BillingStatus == InspectorFeeBillingStatus.Suspended,

@@ -116,6 +116,17 @@ internal static class PoEnfazWorkStatusRules
     /// Handed over alone is not enough: Enfaz still reviews the order before its figures exist.
     /// Removed properties are ignored; a live property without any task is not ready.
     /// </summary>
+    /// <remarks>
+    /// How it works: 1) takes the live (not removed) properties; none → not ready. 2) Each live property
+    /// must be marked ready (BillingReadyAtUtc set) — or have tasks and every one of them cancelled.
+    /// 3) One property that is neither fails the whole order.
+    /// Edge cases and the fix: readiness used to be computed from the handover stamp alone, so an order was
+    /// billable the moment its deeds were uploaded — before Enfaz's procurement review had produced any
+    /// figures. It now follows the accountant's manual mark. Consequences: an order with one unmarked deed
+    /// is not ready (partial billing, e.g. 4 of 7 deeds, is not possible until the invoice itself becomes
+    /// per deed); a deed returned from Enfaz loses its mark with its stamp, so it drops out again; a deed
+    /// with no tasks at all is not ready.
+    /// </remarks>
     internal static bool IsPoReadyForEnfazBilling(
         IReadOnlyList<CaseStudyPropertySnapshotDto> properties,
         IReadOnlyList<WorkflowTask> poTasks)

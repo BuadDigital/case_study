@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listKeyEnvelopeFeeReport } from "@platform/api-client";
 import { QueryErrorState, QueueTableHint, useSwapAnimation } from "@platform/ui-kit";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
@@ -20,13 +20,8 @@ import { PartyOfficeBillingStatementsPanel } from "./PartyOfficeBillingStatement
 import { EngFeesHtmlTabs, EngFeesSectionTitle } from "./EngFeesHtmlTabs";
 import { EngFeesHtmlScreen } from "./EngFeesHtmlScreen";
 import { PartyIndividualFeesHtmlScreen } from "./PartyIndividualFeesHtmlScreen";
-import {
-  SUPERVISOR_ENG_SURVEY_PENDING_ACCEPT_KEY,
-  SupervisorEngSurveyFeeAcceptPanel,
-  loadSupervisorEngSurveyPendingAcceptRows,
-} from "./SupervisorEngSurveyFeeAcceptPanel";
+import { WaivePartyFeesPanel } from "./WaivePartyFeesPanel";
 import { sortInspectorFeeRowsNewestFirst } from "@platform/app-shared/fees/party-fee-meta";
-import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCourtVisitFeesQuery } from "../../query/operations-tasks-queries";
 import { opsLetterCard } from "../../lib/app-data/ops-tasks-tw";
 
@@ -50,6 +45,7 @@ export function PartyFeesWorkspace({
   isSupervisor: boolean;
 }) {
   const { hasCapability } = useAppAccess();
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<PartyFeesTab>(
     isSupervisor ? "financial" : "action",
   );
@@ -67,20 +63,19 @@ export function PartyFeesWorkspace({
     { enabled: isSupervisor || Boolean(assigneeId) },
   );
   const { data: summary, isLoading, isFetched } = feesQuery;
-
-  const { data: tasks } = useWorkflowTasksQuery();
-  const { data: engAcceptPending = [] } = useQuery({
-    queryKey: SUPERVISOR_ENG_SURVEY_PENDING_ACCEPT_KEY,
-    queryFn: () => loadSupervisorEngSurveyPendingAcceptRows(tasks ?? []),
-    enabled: isSupervisor && Boolean(tasks && tasks.length > 0),
-    staleTime: 15_000,
-  });
+  const invalidateFees = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: [...appDataKeys.all, "inspector-fees"],
+    });
+  }, [queryClient]);
 
   const rows = useMemo(
     () => sortInspectorFeeRowsNewestFirst(summary?.rows ?? []),
     [summary?.rows],
   );
 
+  // Lines waiting for the supervisor — including engineering-office fees whose discount the
+  // specialist proposed at acceptance (decided in this queue: approve / amend / waive).
   const supReviewRows = useMemo(
     () => rows.filter((r) => r.billingStatus === "sup-review"),
     [rows],
@@ -92,21 +87,13 @@ export function PartyFeesWorkspace({
       ),
     [rows],
   );
-  const disputedRows = useMemo(
-    () => rows.filter((r) => r.billingStatus === "disputed"),
-    [rows],
-  );
   const suspendedRows = useMemo(
     () => rows.filter((r) => r.billingStatus === "suspended"),
     [rows],
   );
 
   const supervisorAttentionCount =
-    engAcceptPending.length +
-    supReviewRows.length +
-    returnedToSup.length +
-    disputedRows.length +
-    suspendedRows.length;
+    supReviewRows.length + returnedToSup.length + suspendedRows.length;
 
   const isIndividualParty =
     variant === "field-inspection" || variant === "court-visit";
@@ -153,7 +140,7 @@ export function PartyFeesWorkspace({
 
   /*
    * One fees module, three party slots — never mix lanes:
-   *   engineering-survey  → vendor (accept/dispute + invoice)
+   *   engineering-survey  → vendor (proposed discounts shown + invoice)
    *   field-inspection    → individual inspector (submit supervisor)
    *   court-visit         → individual reviewer (+ visit fees)
    */
@@ -219,24 +206,13 @@ export function PartyFeesWorkspace({
         <div ref={supPanelRef} className="flex flex-col gap-3.5">
           {supTab === "financial" ? (
             <div className="flex flex-col gap-3.5">
-              <section className={opsLetterCard}>
-                <div className="px-4 pb-4 pt-1 sm:px-[18px]">
-                  <EngFeesSectionTitle
-                    className="mb-3 mt-3"
-                    title="قبول مخرجات الرفع المساحي"
-                    sub="استحقاق أتعاب المكتب يبدأ بعد قبول المخرجات المرسلة (سعر جدول التسعير)."
-                  />
-                  <SupervisorEngSurveyFeeAcceptPanel />
-                </div>
-              </section>
-
               {supReviewRows.length > 0 ? (
                 <section className={opsLetterCard}>
                   <div className="px-4 pb-4 pt-1 sm:px-[18px]">
                     <EngFeesSectionTitle
                       className="mb-3 mt-3"
                       title="الواردة للاعتماد"
-                      sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
+                      sub="أتعاب بانتظار قرارك قبل المالية — منها حسم اقترحه الأخصائي عند قبول مخرجات المكتب الهندسي: اعتمده أو عدّله أو اسمح به بعد مناقشة المكتب."
                       count={supReviewRows.length}
                     />
                     <PartyFeeWorkflowTable
@@ -251,7 +227,7 @@ export function PartyFeesWorkspace({
                     <EngFeesSectionTitle
                       className="mb-3 mt-3"
                       title="الواردة للاعتماد"
-                      sub="معاينة / مراجعة حكومية / أطراف — بانتظار اعتماد المشرف قبل المالية."
+                      sub="أتعاب بانتظار قرارك قبل المالية — منها حسم اقترحه الأخصائي عند قبول مخرجات المكتب الهندسي: اعتمده أو عدّله أو اسمح به بعد مناقشة المكتب."
                     />
                     <QueueTableHint className="mt-1">
                       لا بنود واردة للاعتماد حالياً.
@@ -259,20 +235,6 @@ export function PartyFeesWorkspace({
                   </div>
                 </section>
               )}
-
-              {disputedRows.length > 0 ? (
-                <section className={opsLetterCard}>
-                  <div className="px-4 pb-4 pt-1 sm:px-[18px]">
-                    <EngFeesSectionTitle
-                      className="mb-3 mt-3"
-                      title="خلاف تسعير (مكتب هندسي)"
-                      sub="تحفّظات المكتب قيد المعالجة."
-                      count={disputedRows.length}
-                    />
-                    <PartyFeeWorkflowTable rows={disputedRows} role="supervisor" />
-                  </div>
-                </section>
-              ) : null}
 
               {suspendedRows.length > 0 ? (
                 <section className={opsLetterCard}>
@@ -327,8 +289,10 @@ export function PartyFeesWorkspace({
                 <EngFeesSectionTitle
                   className="mb-3 mt-3"
                   title="الحسم والمراجعة"
-                  sub="الحسم هنا — للمكتب الهندسي: الخصم يُرسل لموافقة المكتب قبل المالية."
+                  sub="الحسم هنا نهائي ويُرسل البند للمالية ويُبلَّغ الطرف. لإلغاء أتعاب طرف عن معاملة كاملة استخدم الزر أدناه."
                 />
+                {/* Cancel one party's whole fee on a transaction (e.g. an operationally complete one). */}
+                <WaivePartyFeesPanel rows={rows} onDone={invalidateFees} />
                 <div className="hidden lg:block">
                   <InspectorFeesBillingTable
                     rows={rows}

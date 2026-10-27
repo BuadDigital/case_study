@@ -243,16 +243,23 @@ public static class FinancialModel
             e.Property(x => x.TransactionKey).HasMaxLength(64).IsRequired();
             e.Property(x => x.TargetAssigneeId).HasMaxLength(128).IsRequired();
             e.Property(x => x.FlaggedByUserId).HasMaxLength(ColumnLengths.UserId).IsRequired();
+            e.Property(x => x.FlaggedByName).HasMaxLength(200);
             e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
             e.Property(x => x.Status).HasMaxLength(32).IsRequired();
-            e.Property(x => x.ApprovedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.ResolvedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.ResolutionNote).HasMaxLength(2000);
             e.Property(x => x.ProposedDiscountSar).HasPrecision(12, 2);
+            e.Property(x => x.ResolvedDiscountSar).HasPrecision(12, 2);
             e.HasAllowedValues("DiscountFlags", nameof(DiscountFlag.Status), DiscountFlagStatuses.All);
             e.HasNonNegative("DiscountFlags", nameof(DiscountFlag.ProposedDiscountSar));
             e.HasIndex(x => x.TransactionKey);
             e.HasIndex(x => x.Status);
             e.HasIndex(x => new { x.TransactionKey, x.TargetAssigneeId, x.Status });
+ // One open proposal per task: a second accept cannot stack another one on top.
+            e.HasIndex(x => x.WorkflowTaskId)
+                .IsUnique()
+                .HasFilter("\"Status\" = 'pending'")
+                .HasDatabaseName("UX_DiscountFlags_PendingTask");
         });
 
  // D1: accrual/disbursement lifecycle is financial-owned (relocated from case_study).
@@ -272,7 +279,6 @@ public static class FinancialModel
             e.Property(x => x.SuspensionReason).HasMaxLength(2000);
             e.Property(x => x.ExclusionReason).HasMaxLength(2000);
             e.Property(x => x.ReturnTo).HasMaxLength(32);
-            e.Property(x => x.DisputeNotifiedStages).HasMaxLength(128);
             e.Property(x => x.DisbursementVoucher).HasMaxLength(128);
             e.Property(x => x.AgreedFeeSar).HasPrecision(12, 2);
             e.Property(x => x.SupervisorDiscountSar).HasPrecision(12, 2);

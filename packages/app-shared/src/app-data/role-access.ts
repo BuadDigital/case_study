@@ -10,6 +10,10 @@ export function isSuperAdmin(role: RoleId): boolean {
 /**
  * Marking a deed «جاهز للفوترة» (its financial data appeared on Enfaz) is the accountant's call —
  * the financial officer alone. Mirrors `PoRoleMatrixRules.CanMarkBillingReady`.
+ *
+ * How it works: a plain role comparison used only to show or hide the «تعليم جاهز للفوترة» button; the
+ * server checks the role again, so hiding the button is a convenience, not the security boundary.
+ * Edge cases: the CDO, the general manager, the supervisor and the case specialist get false on purpose.
  */
 export function canMarkBillingReady(role: RoleId): boolean {
   return role === "financial-officer";

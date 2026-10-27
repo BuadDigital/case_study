@@ -58,13 +58,12 @@ public static class PlatformPermissionCatalog
             "party-fees",
             "fee-pricing",
         ],
- // Supervisor matching (pages + fees + Pricing) plus all-transactions — none financial / manage-financial
+ // Supervisor's operational pages plus all-transactions. No fees or pricing: party outputs are
+ // accepted inside the transaction, and fee money is the supervisor's decision.
         ["case-specialist"] =
         [
             "dashboard", "po", "all-transactions", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution",
             "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
-            "party-fees",
-            "fee-pricing",
         ],
         ["real-estate-appraiser"] =
         [

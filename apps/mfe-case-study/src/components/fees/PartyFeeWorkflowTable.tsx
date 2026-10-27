@@ -22,12 +22,15 @@ import {
   inspectorFeeStatusLabel,
   inspectorFeeStatusTone,
   inspectorFeeWorkStatusTone,
+  type DiscountProposalDecision,
   type InspectorFeeAction,
   type InspectorFeeRowDto,
 } from "@platform/api-client";
 import { useFeeTransition } from "./useFeeLedgerWrites";
-import { FeePhoneCards } from "./FeeLedgerParts";
+import { FeePhoneCards, proposedDiscountText } from "./FeeLedgerParts";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
+import { FeeDiscountModal } from "@platform/app-shared/fees/FeeDiscountModal";
+import { ENG_DISCOUNT_REASONS } from "@platform/app-shared/fees/party-fee-meta";
 import { PoNumber } from "../ui/PoNumber";
 
 type PartyFeeWorkflowRole = "office" | "supervisor" | "finance" | "readonly";
@@ -36,7 +39,6 @@ type PartyFeeWorkflowRole = "office" | "supervisor" | "finance" | "readonly";
 type ReasonAction =
   | "return-to-supervisor"
   | "inquiry-to-office"
-  | "office-dispute"
   | "suspend";
 
 function Sar({ value }: { value: number }) {
@@ -48,18 +50,78 @@ function Sar({ value }: { value: number }) {
   );
 }
 
+/**
+ * «حسم مقترح − X · سبب — من الأخصائي» under the net, while the supervisor has not decided.
+ * Renders nothing once the proposal is decided (the row then shows the applied discount instead).
+ */
+function ProposedDiscountLine({ row }: { row: InspectorFeeRowDto }) {
+  const text = proposedDiscountText(row);
+  if (!text) return null;
+  return (
+    <span className="text-[10px] font-semibold text-[#8a5e14]">
+      {text}
+      {row.proposedByName ? ` — ${row.proposedByName}` : ""}
+    </span>
+  );
+}
+
+/**
+ * Net with the applied discount and any pending proposal under it (table cell and phone card).
+ * One component for both layouts — the duplicate detector flagged the two copies once the proposal
+ * line was added to each.
+ */
+function FeeRowAmount({
+  row,
+  className,
+}: {
+  row: InspectorFeeRowDto;
+  className: string;
+}) {
+  return (
+    <div className={className}>
+      <Sar value={row.netFeeSar} />
+      {row.supervisorDiscountSar > 0 ? (
+        <span className="text-[10px] text-text-3">
+          حسم {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
+          {row.discountReason ? ` — ${row.discountReason}` : ""}
+        </span>
+      ) : null}
+      <ProposedDiscountLine row={row} />
+    </div>
+  );
+}
+
+/** Billing status with the voucher and suspension reason under it (table cell and phone card). */
+function FeeRowBilling({ row, noteClassName }: { row: InspectorFeeRowDto; noteClassName: string }) {
+  return (
+    <>
+      <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
+        {row.billingStatusLabel || inspectorFeeStatusLabel(row.billingStatus)}
+      </Badge>
+      {row.disbursementVoucher ? (
+        <span className={noteClassName}>{row.disbursementVoucher}</span>
+      ) : null}
+      {row.suspensionReason ? (
+        <span className={noteClassName}>سبب الإيقاف: {row.suspensionReason}</span>
+      ) : null}
+    </>
+  );
+}
+
 function FeeRowActions({
   row,
   role,
   busy,
   onAct,
   onReason,
+  onDecide,
 }: {
   row: InspectorFeeRowDto;
   role: PartyFeeWorkflowRole;
   busy: boolean;
   onAct: (row: InspectorFeeRowDto, action: InspectorFeeAction) => void;
   onReason: (row: InspectorFeeRowDto, action: ReasonAction) => void;
+  onDecide: (row: InspectorFeeRowDto, decision: DiscountProposalDecision) => void;
 }) {
   return (
     <div className="flex flex-wrap gap-1.5 max-lg:[&>button]:min-h-11">
@@ -75,29 +137,39 @@ function FeeRowActions({
           رفع للمشرف
         </Button>
       ) : null}
-      {role === "office" && row.canOfficeApproveDiscount ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="primary"
-          loading={busy}
-          showActionToast={false}
-          onClick={() => onAct(row, "office-approve-discount")}
-        >
-          موافقة على الحسم
-        </Button>
-      ) : null}
-      {role === "office" && row.canOfficeDispute ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          loading={busy}
-          showActionToast={false}
-          onClick={() => onReason(row, "office-dispute")}
-        >
-          اعتراض
-        </Button>
+      {role === "supervisor" && row.canResolveDiscountProposal ? (
+        <>
+          <Button
+            type="button"
+            size="sm"
+            variant="primary"
+            loading={busy}
+            showActionToast={false}
+            onClick={() => onDecide(row, "approve")}
+          >
+            اعتماد الحسم
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            loading={busy}
+            showActionToast={false}
+            onClick={() => onDecide(row, "amend")}
+          >
+            تعديل
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            loading={busy}
+            showActionToast={false}
+            onClick={() => onDecide(row, "waive")}
+          >
+            سماح
+          </Button>
+        </>
       ) : null}
       {role === "supervisor" && row.canApproveToFinance ? (
         <Button
@@ -109,18 +181,6 @@ function FeeRowActions({
           onClick={() => onAct(row, "approve-to-finance")}
         >
           اعتماد ← المالية
-        </Button>
-      ) : null}
-      {role === "supervisor" && row.canResolveDispute ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="primary"
-          loading={busy}
-          showActionToast={false}
-          onClick={() => onAct(row, "resolve-dispute")}
-        >
-          حسم الخلاف ← جاهز
         </Button>
       ) : null}
       {role === "supervisor" &&
@@ -215,6 +275,12 @@ function FeeRowActions({
   );
 }
 
+/**
+ * Fee lines with the actions of the viewing role. For the supervisor, a line carrying the
+ * specialist's proposed discount offers three decisions instead of a plain approval: اعتماد
+ * (apply as proposed), تعديل (amend the amount in the discount dialog) and سماح (waive — full fee).
+ * The office sees the proposal as «under review»; it has no discount action.
+ */
 export function PartyFeeWorkflowTable({
   rows,
   role,
@@ -227,11 +293,12 @@ export function PartyFeeWorkflowTable({
   onChanged?: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { showToast, busyId, runFeeTransition } = useFeeTransition();
+  const { busyId, runFeeTransition, runDiscountDecision } = useFeeTransition();
   const [reasonModal, setReasonModal] = useState<{
     row: InspectorFeeRowDto;
     action: ReasonAction;
   } | null>(null);
+  const [amendRow, setAmendRow] = useState<InspectorFeeRowDto | null>(null);
 
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({
@@ -249,6 +316,27 @@ export function PartyFeeWorkflowTable({
   const showActions = role !== "readonly";
   const onReason = (row: InspectorFeeRowDto, action: ReasonAction) =>
     setReasonModal({ row, action });
+  // approve / waive are sent straight away; amend first opens the discount dialog for the agreed
+  // amount and is sent from its save.
+  const onDecide = (row: InspectorFeeRowDto, decision: DiscountProposalDecision) => {
+    if (decision === "amend") {
+      setAmendRow(row);
+      return;
+    }
+    void runDiscountDecision(row, decision, undefined, invalidate);
+  };
+  // The action cell of a row (nothing for read-only viewers), shared by the table and the cards.
+  const rowActions = (row: InspectorFeeRowDto) =>
+    showActions ? (
+      <FeeRowActions
+        row={row}
+        role={role}
+        busy={busyId === row.workflowTaskId}
+        onAct={(r, a) => void act(r, a)}
+        onReason={onReason}
+        onDecide={onDecide}
+      />
+    ) : null;
 
   return (
     <>
@@ -269,26 +357,17 @@ export function PartyFeeWorkflowTable({
             {pending && rows.length === 0 ? (
               <SkeletonTableRows rows={4} cols={showActions ? 6 : 5} />
             ) : (
-              rows.map((row) => {
-                const busy = busyId === row.workflowTaskId;
-                return (
+              rows.map((row) => (
                   <Tr key={row.workflowTaskId} hoverable={false}>
                     <Td className="font-medium text-text">{row.propertyLabel}</Td>
                     <Td>
                       <PoNumber value={row.poNumber} link />
                     </Td>
                     <Td className="text-end">
-                      <div className="flex flex-col items-end gap-0.5">
-                        <Sar value={row.netFeeSar} />
-                        {row.supervisorDiscountSar > 0 ? (
-                          <span className="text-[10px] text-text-3">
-                            حسم {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
-                            {row.discountReason
-                              ? ` — ${row.discountReason}`
-                              : ""}
-                          </span>
-                        ) : null}
-                      </div>
+                      <FeeRowAmount
+                        row={row}
+                        className="flex flex-col items-end gap-0.5"
+                      />
                     </Td>
                     <Td>
                       <Badge tone={inspectorFeeWorkStatusTone(row.workStatus)}>
@@ -297,36 +376,12 @@ export function PartyFeeWorkflowTable({
                     </Td>
                     <Td>
                       <div className="flex flex-col items-start gap-1">
-                        <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
-                          {row.billingStatusLabel ||
-                            inspectorFeeStatusLabel(row.billingStatus)}
-                        </Badge>
-                        {row.disbursementVoucher ? (
-                          <span className="text-[10px] text-text-3">
-                            {row.disbursementVoucher}
-                          </span>
-                        ) : null}
-                        {row.suspensionReason ? (
-                          <span className="text-[10px] text-text-3">
-                            سبب الإيقاف: {row.suspensionReason}
-                          </span>
-                        ) : null}
+                        <FeeRowBilling row={row} noteClassName="text-[10px] text-text-3" />
                       </div>
                     </Td>
-                    {showActions ? (
-                      <Td>
-                        <FeeRowActions
-                          row={row}
-                          role={role}
-                          busy={busy}
-                          onAct={(r, a) => void act(r, a)}
-                          onReason={onReason}
-                        />
-                      </Td>
-                    ) : null}
+                    {showActions ? <Td>{rowActions(row)}</Td> : null}
                   </Tr>
-                );
-              })
+              ))
             )}
           </TBody>
         </Table>
@@ -338,9 +393,7 @@ export function PartyFeeWorkflowTable({
           isEmpty={rows.length === 0}
           placeholderHeight="h-[110px]"
         >
-          {rows.map((row) => {
-            const busy = busyId === row.workflowTaskId;
-            return (
+          {rows.map((row) => (
               <li
                 key={`m-${row.workflowTaskId}`}
                 className={cn(opsMobileCard, "border-s-[3px] border-s-gold")}
@@ -354,46 +407,23 @@ export function PartyFeeWorkflowTable({
                       <PoNumber value={row.poNumber} link />
                     </div>
                   </div>
-                  <div className="shrink-0 text-end">
-                    <Sar value={row.netFeeSar} />
-                    {row.supervisorDiscountSar > 0 ? (
-                      <div className="mt-0.5 text-[10px] text-text-3">
-                        حسم {fmtSar(row.supervisorDiscountSar, { digits: 3, trim: true })}
-                      </div>
-                    ) : null}
-                  </div>
+                  <FeeRowAmount
+                    row={row}
+                    className="flex shrink-0 flex-col items-end gap-0.5 text-end"
+                  />
                 </div>
-                <div className="mb-2.5 flex flex-wrap gap-1.5">
+                <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
                   <Badge tone={inspectorFeeWorkStatusTone(row.workStatus)}>
                     {row.workStatusLabel}
                   </Badge>
-                  <Badge tone={inspectorFeeStatusTone(row.billingStatus)}>
-                    {row.billingStatusLabel ||
-                      inspectorFeeStatusLabel(row.billingStatus)}
-                  </Badge>
-                </div>
-                {row.disbursementVoucher ? (
-                  <p className="mb-2 m-0 text-[11px] text-text-3">
-                    {row.disbursementVoucher}
-                  </p>
-                ) : null}
-                {row.suspensionReason ? (
-                  <p className="mb-2 m-0 text-[11px] text-text-3">
-                    سبب الإيقاف: {row.suspensionReason}
-                  </p>
-                ) : null}
-                {showActions ? (
-                  <FeeRowActions
+                  <FeeRowBilling
                     row={row}
-                    role={role}
-                    busy={busy}
-                    onAct={(r, a) => void act(r, a)}
-                    onReason={onReason}
+                    noteClassName="basis-full text-[11px] text-text-3"
                   />
-                ) : null}
+                </div>
+                {rowActions(row)}
               </li>
-            );
-          })}
+          ))}
         </FeePhoneCards>
         </div>
       </TableFrame>
@@ -403,20 +433,16 @@ export function PartyFeeWorkflowTable({
         title={
           reasonModal?.action === "inquiry-to-office"
             ? "استفسار للمكتب"
-            : reasonModal?.action === "office-dispute"
-              ? "اعتراض على الحسم"
-              : reasonModal?.action === "suspend"
-                ? "إيقاف البند"
-                : "إرجاع للمشرف"
+            : reasonModal?.action === "suspend"
+              ? "إيقاف البند"
+              : "إرجاع للمشرف"
         }
         label={
           reasonModal?.action === "inquiry-to-office"
             ? "نص الاستفسار"
-            : reasonModal?.action === "office-dispute"
-              ? "سبب الاعتراض"
-              : reasonModal?.action === "suspend"
-                ? "سبب الإيقاف"
-                : "سبب الإرجاع"
+            : reasonModal?.action === "suspend"
+              ? "سبب الإيقاف"
+              : "سبب الإرجاع"
         }
         confirmLabel="تأكيد"
         onClose={() => setReasonModal(null)}
@@ -424,6 +450,26 @@ export function PartyFeeWorkflowTable({
           if (!reasonModal) return;
           await act(reasonModal.row, reasonModal.action, { reason });
         }}
+      />
+      {/* Amending a proposal: seeded from it, the specialist's reason stays, the amount is the one
+          agreed with the office; to drop the discount entirely the supervisor uses «سماح». */}
+      <FeeDiscountModal
+        open={amendRow !== null}
+        row={amendRow}
+        title="تعديل الحسم المقترح"
+        reasons={ENG_DISCOUNT_REASONS}
+        initialDiscountSar={amendRow?.proposedDiscountSar ?? undefined}
+        initialReason={amendRow?.proposedDiscountReason}
+        reasonLocked
+        requireDiscount
+        note="المبلغ الذي اتفقت عليه مع المكتب. للتنازل عن الحسم كاملاً اختر «سماح»."
+        saveLabel="اعتماد المبلغ المعدّل"
+        onClose={() => setAmendRow(null)}
+        onSave={(patch) =>
+          amendRow
+            ? runDiscountDecision(amendRow, "amend", patch.supervisorDiscountSar, invalidate)
+            : false
+        }
       />
     </>
   );

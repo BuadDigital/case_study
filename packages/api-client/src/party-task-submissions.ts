@@ -288,11 +288,27 @@ export async function reopenPartyTaskSubmission(
   }
 }
 
-/** Specialist accepts party outputs (survey fee accrual; inspection → Enfaz package). */
+/**
+ * Optional acceptance body — engineering survey only: the specialist's proposed discount on the
+ * office's fee, with its reason, for the department supervisor to decide.
+ */
+export type AcceptPartyTaskSubmissionRequest = {
+  proposedDiscountSar?: number;
+  discountReason?: string;
+};
+
+/**
+ * Specialist accepts party outputs (survey fee accrual; inspection → Enfaz package).
+ *
+ * `body` is optional and only sent when present — a plain accept posts no body exactly as before,
+ * so the inspection accept and the offline replay are unaffected. With a body (survey only) the
+ * fee goes to the department supervisor instead of straight to finance.
+ */
 export async function acceptPartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,
   idempotencyKey?: string,
+  body?: AcceptPartyTaskSubmissionRequest,
 ): Promise<
   | ApiOk<PartyTaskSubmissionDto>
   | (ApiErr & { errors?: Record<string, string> })
@@ -302,6 +318,7 @@ export async function acceptPartyTaskSubmission(
     const res = await fetch(`${base}/api/party-task-submissions/${taskId}/accept`, {
       method: "POST",
       headers: authHeaders(config.token, { idempotencyKey }),
+      ...(body ? { body: JSON.stringify(body) } : {}),
     });
     return await readSubmissionWrite(res);
   } catch {

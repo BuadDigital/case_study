@@ -11,8 +11,7 @@ import { EmptyState } from "../po-intake/PropertyDetailFields";
 import { findPropertyForTask } from "../../lib/app-data/my-task-row";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
-import { CASE_STUDY_SPECIALIST_FEATURE_KEYS, isInspectorWorkspaceAccepted,
-  submittedInspectorAssetIsLand,
+import { CASE_STUDY_SPECIALIST_FEATURE_KEYS, isInspectorWorkspaceAccepted, submittedInspectorAssetIsLand,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
   type InspectorWorkspaceStatus,

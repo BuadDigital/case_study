@@ -65,11 +65,12 @@ public class FinancialReportServiceTests
     }
 
  /// <summary>
- /// A disputed line has no agreed amount yet, so counting it would overstate external costs and
- /// understate the margin. The exclusion has to hold for the aggregates, not just the fee list.
+ /// A line whose proposed discount the supervisor has not decided has no agreed amount yet, so
+ /// counting it would overstate external costs and understate the margin. The exclusion has to
+ /// hold for the aggregates, not just the fee list.
  /// </summary>
     [Fact]
-    public async Task Disputed_lines_stay_out_of_the_cost_aggregates()
+    public async Task Lines_awaiting_a_discount_decision_stay_out_of_the_cost_aggregates()
     {
         await using var store = CreateStore(new EntityMaterializationCounter());
         await SeedAsync(store);
@@ -98,7 +99,20 @@ public class FinancialReportServiceTests
             AssigneeId = "inspector-disputed",
             InspectorType = InspectorFeeRules.TypeCooperatorIndividual,
             AgreedFeeSar = 4_000m,
-            BillingStatus = InspectorFeeBillingStatus.Disputed,
+            BillingStatus = InspectorFeeBillingStatus.SupReview,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        store.Fin.DiscountFlags.Add(new DiscountFlag
+        {
+            Id = Guid.NewGuid(),
+            TransactionKey = "PO-100",
+            WorkflowTaskId = disputedTaskId,
+            TargetAssigneeId = "inspector-disputed",
+            FlaggedByUserId = "specialist",
+            Reason = "نقص في مرفقات الرفع المساحي",
+            ProposedDiscountSar = 500m,
+            Status = DiscountFlagStatuses.Pending,
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });

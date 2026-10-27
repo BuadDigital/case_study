@@ -57,6 +57,26 @@ public sealed class InspectorFeeBatchTransitionDispatchRequest
 public sealed class AccrueEngineeringSurveyFeeDispatchRequest
 {
     public string ActorUserId { get; set; } = "";
+    /// <summary>The specialist's optional discount proposal sent with the acceptance.</summary>
+    public EngineeringSurveyDiscountProposalInput? Proposal { get; set; }
+}
+
+/// <summary>Case Study → Financial: the supervisor's decision on a proposal, with the actor's scope.</summary>
+public sealed class ResolveDiscountProposalDispatchRequest
+{
+    public ResolveDiscountProposalRequest Decision { get; set; } = new();
+    public string ActorUserId { get; set; } = "";
+    public string? ActorDepartment { get; set; }
+    public bool CanManageAllDepartments { get; set; }
+}
+
+/// <summary>Case Study → Financial: cancel a party's whole fee on a PO, with the actor's scope.</summary>
+public sealed class WaivePartyFeesDispatchRequest
+{
+    public WaivePartyFeesRequest Waive { get; set; } = new();
+    public string ActorUserId { get; set; } = "";
+    public string? ActorDepartment { get; set; }
+    public bool CanManageAllDepartments { get; set; }
 }
 
 public sealed class ActorUserRequest

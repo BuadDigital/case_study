@@ -31,7 +31,7 @@ public class InspectorFeeLedger
     public string? AssigneeId { get; set; }
  /// <summary>Individual cooperator | company cooperator | employee (or legacy cooperator)</summary>
     public string InspectorType { get; set; } = "موظف";
- /// <summary>The transaction department whose supervisor owns discount and dispute decisions.</summary>
+ /// <summary>The transaction department whose supervisor owns discount decisions.</summary>
     public string SupervisingDepartment { get; set; } = SupervisingDepartments.CaseStudy;
     public decimal AgreedFeeSar { get; set; }
  /// <summary>
@@ -50,9 +50,14 @@ public class InspectorFeeLedger
  /// <summary>Amount paid out. Set to <see cref="NetFeeSar"/> when status becomes disbursed.</summary>
     public decimal PaidAmountSar { get; set; }
  /// <summary>
- /// draft | office-review | disputed | sup-review | at-finance | deferred |
- /// in-statement | disb-req | disbursed | returned | inquiry | suspended
+ /// draft | sup-review | at-finance | deferred | in-statement | disb-req | disbursed |
+ /// returned | inquiry | suspended
  /// </summary>
+ /// <remarks>
+ /// An engineering-survey line in sup-review is waiting on the specialist's proposed discount
+ /// (a pending <see cref="DiscountFlag"/> for its task); the discount itself stays zero here until
+ /// the supervisor decides, so <see cref="SupervisorDiscountSar"/> only ever holds a decided amount.
+ /// </remarks>
     public string BillingStatus { get; set; } = InspectorFeeBillingStatus.Draft;
  /// <summary>
  /// The status the line was withheld from, so lifting a suspension restores it exactly instead of
@@ -74,14 +79,6 @@ public class InspectorFeeLedger
  /// Null until acceptance; re-uploads after accrual do not create a new fee.
  /// </summary>
     public DateTime? AccruedAtUtc { get; set; }
- /// <summary>
- /// E6: negotiation deadline stamped on entering disputed (10 business days, Riyadh).
- /// Cleared on any exit from disputed or when the discount changes — clearing it is
- /// what cancels the pending reminders (the sweep only reads live values).
- /// </summary>
-    public DateTime? DisputeDeadlineUtc { get; set; }
- /// <summary>CSV of E6 stages already notified (reminder-2d, reminder-0d, escalation).</summary>
-    public string? DisputeNotifiedStages { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 

@@ -43,6 +43,12 @@ public static class PoEnfazRevenueRules
     /// (every live property marked «جاهز للفوترة» or fully cancelled). Removed properties are not
     /// counted.
     /// </summary>
+    /// <remarks>
+    /// How it works: returns null unless IsPoReadyForEnfazBilling holds; then counts, over the live
+    /// properties, how many are marked ready (DoneCount) and how many have every task cancelled
+    /// (CancelledCount). Edge cases: removed deeds are in neither count; a deed that is neither marked nor
+    /// cancelled cannot exist here, because it would have made the order not ready.
+    /// </remarks>
     public static EnfazReadyPoSummaryDto? ReadySummary(
         string poNumber,
         IReadOnlyList<CaseStudyPropertySnapshotDto> properties,
@@ -55,6 +61,7 @@ public static class PoEnfazRevenueRules
         var cancelled = 0;
         foreach (var property in properties.Where(p => !p.IsRemoved))
         {
+            // «Done» here means the accountant marked the deed ready for billing (not merely handed over).
             if (property.BillingReadyAtUtc is not null)
             {
                 done += 1;
@@ -199,6 +206,15 @@ public static class PoEnfazRevenueRules
     /// One tracking row per property. The completion date is the Enfaz handover when recorded,
     /// else the bourse date, else the last completed task — and only while the work is done.
     /// </summary>
+    /// <remarks>
+    /// How it works: copies the property's identity, the work status, the stored fees, the invoice and the
+    /// finance flag into one flat row for the revenue screens. It also carries WorkOrderId (the mark
+    /// endpoint is addressed by work order + deed) and BillingReadyAtUtc (null while the accountant has not
+    /// marked the deed), which is what moves a row from «مؤهلة — waiting for the mark» to the fee match.
+    /// Edge cases: CompletedAtUtc is null unless the work is done (the 30-day stall clock must not run on
+    /// work in progress); EnfazFilled needs a billed line with a total above zero; missing line or invoice
+    /// gives zeros / nulls, never an exception.
+    /// </remarks>
     public static EnfazTrackingRowDto ToTrackingRow(
         string poNumber,
         CaseStudyPropertySnapshotDto property,
@@ -218,6 +234,7 @@ public static class PoEnfazRevenueRules
         return new EnfazTrackingRowDto
         {
             PoNumber = poNumber,
+            // The screens mark a deed ready for billing through the case-study endpoint, which needs the order id.
             WorkOrderId = property.WorkOrderId.ToString(),
             PropertyId = property.Id.ToString(),
             PropertyLabel = PropertyLineLabel(property),

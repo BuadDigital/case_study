@@ -13,14 +13,42 @@ namespace RealEstateEval.CaseStudy.Application.Services;
 /// <summary>Specialist acceptance of a party package (fee accrual, sibling notices, audit).</summary>
 public partial class PartyTaskSubmissionService
 {
+    /// <summary>
+    /// Specialist accepts a party package. For the engineering survey this accrues the office's fee
+    /// — straight to finance, or to the supervisor when <paramref name="request"/> carries a proposed
+    /// discount.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>Proposal edge cases:</b></para>
+    /// <list type="bullet">
+    /// <item>A proposal on any other package (inspection, appraisal) is refused before anything
+    /// happens — those fees are not accrued here, so there is nothing to discount.</item>
+    /// <item>A proposal without a reason is refused as a field error (<c>discountReason</c>), so the
+    /// dialog can point at the field.</item>
+    /// <item>Re-accepting an accepted survey keeps the first acceptance stamp but still sends a new
+    /// proposal to Financial, which routes it to the unbilled lines.</item>
+    /// <item>Financial is a separate service: a refused proposal returns before the acceptance stamp
+    /// is saved, so the package stays unaccepted and the specialist can retry.</item>
+    /// </list>
+    /// </remarks>
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> AcceptAsync(
         Guid taskId,
         PartySubmissionActor actor,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        AcceptPartyTaskSubmissionRequest? request = null)
     {
         var task = await _repo.GetTaskAsync(taskId, cancellationToken);
         if (task is null)
             return (null, Error("المهمة غير موجودة"));
+
+        // The specialist may propose a discount on the engineering office's fee while accepting its
+        // outputs. The proposal is only meaningful for the survey (the one fee accrued here) and
+        // always needs a reason — the supervisor decides on it and the office is told why.
+        var proposesDiscount = request?.ProposedDiscountSar is > 0m;
+        if (proposesDiscount && task.Kind != WorkflowTaskKind.EngineeringSurvey)
+            return (null, Error("اقتراح الحسم عند القبول متاح لمخرجات الرفع المساحي فقط"));
+        if (proposesDiscount && string.IsNullOrWhiteSpace(request!.DiscountReason))
+            return (null, new Dictionary<string, string> { ["discountReason"] = "سبب الحسم المقترح إلزامي" });
 
         if (!PartyTaskSubmissionRules.IsPartySubmissionKind(task.Kind))
             return (null, Error("قبول المخرجات غير متاح لهذا النوع من المهام"));
@@ -61,10 +89,20 @@ public partial class PartyTaskSubmissionService
             var (feeError, feeRow) = await _repo.ExecuteInTransactionAsync(
                 async ct =>
                 {
+                    // With a proposal the accrued fee waits for the supervisor instead of going
+                    // straight to finance; the proposer's name travels with it.
                     var (row, error) = await _inspectorFees.AccrueEngineeringSurveyFeeAsync(
                         taskId,
                         actorUserId,
-                        ct);
+                        ct,
+                        proposesDiscount
+                            ? new EngineeringSurveyDiscountProposalInput
+                            {
+                                ProposedDiscountSar = request!.ProposedDiscountSar,
+                                DiscountReason = request.DiscountReason!.Trim(),
+                                ProposedByName = actor.DisplayName,
+                            }
+                            : null);
                     if (error is not null)
                         return (Commit: false, Result: (Error: error, Row: (InspectorFeeRowDto?)null));
 
@@ -122,7 +160,10 @@ public partial class PartyTaskSubmissionService
                     propertyId,
                     $"party:{taskId}:fee-accrued:{acceptedStamp}",
                     "احتساب أتعاب الرفع المساحي",
-                    $"{accruedFee.NetFeeSar:N0} ر.س",
+                    // The timeline shows the full fee and the pending proposal until it is decided.
+                    accruedFee.ProposedDiscountSar is > 0m
+                        ? $"{accruedFee.AgreedFeeSar:N0} ر.س — حسم مقترح {accruedFee.ProposedDiscountSar:N0} ر.س بانتظار المشرف"
+                        : $"{accruedFee.NetFeeSar:N0} ر.س",
                     "done",
                     entity.AcceptedAtUtc ?? _time.UtcNow(),
                     cancellationToken);

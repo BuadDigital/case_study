@@ -151,7 +151,28 @@ public class InspectorFeeAccrualRulesTests
     }
 
     [Fact]
-    public void Re_accrual_keeps_a_discounted_line_in_office_review()
+    public void A_proposed_discount_parks_a_new_line_with_the_supervisor()
+    {
+        var task = SurveyTask();
+        var identity = (TransactionId: Guid.NewGuid(), DeedId: Guid.NewGuid(), UserId: "u-1");
+
+        var ledger = InspectorFeeAccrualRules.NewAccruedLedger(
+            task,
+            identity,
+            new InspectorFeeDeedTarget(identity.DeedId, Guid.NewGuid()),
+            1,
+            InspectorFeeRules.TypeCooperatorOrganization,
+            750m,
+            null,
+            Now,
+            awaitsDiscountDecision: true);
+
+        Assert.Equal(InspectorFeeBillingStatus.SupReview, ledger.BillingStatus);
+        Assert.Equal(0m, ledger.SupervisorDiscountSar);
+    }
+
+    [Fact]
+    public void Re_accrual_keeps_a_decided_discount_and_goes_to_finance()
     {
         var task = SurveyTask();
         var identity = (TransactionId: Guid.NewGuid(), DeedId: Guid.NewGuid(), UserId: "u-1");
@@ -160,9 +181,17 @@ public class InspectorFeeAccrualRulesTests
         var discounted = Ledger(discount: 50m, status: InspectorFeeBillingStatus.Draft);
         InspectorFeeAccrualRules.RefreshAccruedLedger(
             discounted, task, identity, deed, 2, InspectorFeeRules.TypeCooperatorIndividual, 900m, null, Now);
-        Assert.Equal(InspectorFeeBillingStatus.OfficeReview, discounted.BillingStatus);
+        Assert.Equal(InspectorFeeBillingStatus.AtFinance, discounted.BillingStatus);
+        Assert.Equal(50m, discounted.SupervisorDiscountSar);
         Assert.Equal(900m, discounted.AgreedFeeSar);
         Assert.Equal(Now, discounted.AccruedAtUtc);
+
+        var proposed = Ledger(discount: 50m, status: InspectorFeeBillingStatus.Draft);
+        InspectorFeeAccrualRules.RefreshAccruedLedger(
+            proposed, task, identity, deed, 2, InspectorFeeRules.TypeCooperatorIndividual, 900m, null, Now,
+            awaitsDiscountDecision: true);
+        Assert.Equal(InspectorFeeBillingStatus.SupReview, proposed.BillingStatus);
+        Assert.Equal(0m, proposed.SupervisorDiscountSar);
 
         var clean = Ledger(discount: 0m, status: InspectorFeeBillingStatus.Draft);
         clean.DiscountReason = "قديم";
@@ -224,18 +253,14 @@ public class InspectorFeeAccrualRulesTests
     }
 
     [Fact]
-    public void Changing_a_disputed_discount_cancels_the_negotiation_deadline()
+    public void A_patched_discount_is_stored_with_its_trimmed_reason()
     {
-        var ledger = Ledger(status: InspectorFeeBillingStatus.Disputed, discount: 50m);
-        ledger.DisputeDeadlineUtc = Now;
-        ledger.DisputeNotifiedStages = "d3";
+        var ledger = Ledger(status: InspectorFeeBillingStatus.AtFinance, discount: 50m);
 
         Assert.True(InspectorFeeAccrualRules.TryApplyPatch(
             ledger,
             new PatchInspectorFeeRequest { SupervisorDiscountSar = 75m, DiscountReason = " سبب " }));
 
-        Assert.Null(ledger.DisputeDeadlineUtc);
-        Assert.Null(ledger.DisputeNotifiedStages);
         Assert.Equal(75m, ledger.SupervisorDiscountSar);
         Assert.Equal("سبب", ledger.DiscountReason);
     }
@@ -291,7 +316,7 @@ public class InspectorFeeAccrualRulesTests
     public void A_discounted_employee_line_goes_straight_to_finance()
     {
         var ledger = Ledger(
-            status: InspectorFeeBillingStatus.OfficeReview,
+            status: InspectorFeeBillingStatus.SupReview,
             inspectorType: InspectorFeeRules.TypeEmployee,
             discount: 30m);
 
@@ -305,7 +330,7 @@ public class InspectorFeeAccrualRulesTests
     }
 
     [Fact]
-    public void A_discounted_cooperator_survey_line_needs_office_approval()
+    public void A_discounted_cooperator_survey_line_stays_at_finance()
     {
         var ledger = Ledger(
             status: InspectorFeeBillingStatus.AtFinance,
@@ -318,13 +343,13 @@ public class InspectorFeeAccrualRulesTests
             isEmployee: false,
             discountApplied: true);
 
-        Assert.Equal(InspectorFeeBillingStatus.OfficeReview, ledger.BillingStatus);
+        Assert.Equal(InspectorFeeBillingStatus.AtFinance, ledger.BillingStatus);
     }
 
     [Fact]
-    public void An_undiscounted_cooperator_survey_line_returns_to_finance()
+    public void An_undiscounted_cooperator_survey_draft_goes_to_finance()
     {
-        var ledger = Ledger(status: InspectorFeeBillingStatus.OfficeReview, accruedAtUtc: Now);
+        var ledger = Ledger(status: InspectorFeeBillingStatus.Draft, accruedAtUtc: Now);
 
         InspectorFeeAccrualRules.ApplyStatusAfterPatch(
             ledger,
@@ -338,21 +363,21 @@ public class InspectorFeeAccrualRulesTests
     [Fact]
     public void A_non_survey_cooperator_line_is_left_where_it_is()
     {
-        var ledger = Ledger(status: InspectorFeeBillingStatus.OfficeReview, accruedAtUtc: Now);
+        var ledger = Ledger(status: InspectorFeeBillingStatus.SupReview, accruedAtUtc: Now);
 
         InspectorFeeAccrualRules.ApplyStatusAfterPatch(
             ledger,
             WorkflowTaskKind.FieldInspection,
             isEmployee: false,
-            discountApplied: false);
+            discountApplied: true);
 
-        Assert.Equal(InspectorFeeBillingStatus.OfficeReview, ledger.BillingStatus);
+        Assert.Equal(InspectorFeeBillingStatus.SupReview, ledger.BillingStatus);
     }
 
     [Fact]
     public void An_unaccrued_survey_line_is_left_where_it_is()
     {
-        var ledger = Ledger(status: InspectorFeeBillingStatus.OfficeReview);
+        var ledger = Ledger(status: InspectorFeeBillingStatus.Draft);
 
         InspectorFeeAccrualRules.ApplyStatusAfterPatch(
             ledger,
@@ -360,7 +385,7 @@ public class InspectorFeeAccrualRulesTests
             isEmployee: false,
             discountApplied: false);
 
-        Assert.Equal(InspectorFeeBillingStatus.OfficeReview, ledger.BillingStatus);
+        Assert.Equal(InspectorFeeBillingStatus.Draft, ledger.BillingStatus);
     }
 
     [Fact]
@@ -476,7 +501,7 @@ public class InspectorFeeAccrualRulesTests
     public void The_employee_discount_notification_names_the_net_fee()
     {
         var ledger = Ledger(fee: 1000m, discount: 250m);
-        var notification = InspectorFeeAccrualRules.EmployeeDiscountNotification(ledger);
+        var notification = InspectorFeeAccrualRules.PartyDiscountNotification(ledger);
 
         Assert.Equal("حسم من أتعابك", notification.Title);
         Assert.Contains("PO-1", notification.Body);

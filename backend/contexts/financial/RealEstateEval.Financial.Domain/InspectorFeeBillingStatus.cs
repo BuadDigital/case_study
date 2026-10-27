@@ -3,13 +3,23 @@ namespace RealEstateEval.Financial.Domain;
 /// <summary>
 /// Payment lifecycle for party fee rows (HTML proposal).
 /// </summary>
+/// <remarks>
+/// Engineering-office survey fees (ruling of 2026-10-26):
+/// <list type="bullet">
+/// <item>The specialist's acceptance of the outputs accrues the fee from the pricing table straight
+/// to <see cref="AtFinance"/> — no supervisor step.</item>
+/// <item>When the specialist proposes a discount at acceptance, the line waits in
+/// <see cref="SupReview"/> at full amount with a pending <c>DiscountFlag</c> until the department
+/// supervisor approves, amends or waives it; then it goes to <see cref="AtFinance"/>.</item>
+/// <item>The office never approves or disputes a discount inside the system: the retired
+/// <c>office-review</c> and <c>disputed</c> states (and their negotiation deadline) are gone. Older
+/// lines in those states were turned into pending proposals by the
+/// <c>EngineeringFeeDiscountProposals</c> migration.</item>
+/// </list>
+/// </remarks>
 public static class InspectorFeeBillingStatus
 {
     public const string Draft = "draft";
- /// <summary>Engineering office — discounted line awaiting explicit office approval.</summary>
-    public const string OfficeReview = "office-review";
- /// <summary>Engineering office — office disputed the discount (supervisor negotiation).</summary>
-    public const string Disputed = "disputed";
     public const string SupReview = "sup-review";
     public const string AtFinance = "at-finance";
  /// <summary>Ready for billing but deferred by accountant to a later cycle.</summary>
@@ -29,8 +39,6 @@ public static class InspectorFeeBillingStatus
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.Ordinal)
     {
         Draft,
-        OfficeReview,
-        Disputed,
         SupReview,
         AtFinance,
         Deferred,
@@ -67,15 +75,6 @@ public static class InspectorFeeActions
 {
  /// <summary>Office — draft → sup-review (work must be submitted).</summary>
     public const string SubmitToSupervisor = "submit-to-supervisor";
-
- /// <summary>Engineering office — office-review → at-finance (accept discounted amount).</summary>
-    public const string OfficeApproveDiscount = "office-approve-discount";
-
- /// <summary>Engineering office — office-review → disputed.</summary>
-    public const string OfficeDispute = "office-dispute";
-
- /// <summary>Supervisor — disputed → at-finance (agreed amount after negotiation).</summary>
-    public const string ResolveDispute = "resolve-dispute";
 
  /// <summary>Supervisor — sup-review → at-finance.</summary>
     public const string ApproveToFinance = "approve-to-finance";

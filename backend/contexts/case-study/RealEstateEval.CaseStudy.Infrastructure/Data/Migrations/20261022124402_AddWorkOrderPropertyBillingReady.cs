@@ -5,7 +5,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Data.Migrations
 {
-    /// <inheritdoc />
+    /// <summary>
+    /// The accountant's «جاهز للفوترة» mark on a deed: when it was set and by whom. Both columns are
+    /// nullable, so existing deeds start unmarked and need no backfill.
+    /// </summary>
     public partial class AddWorkOrderPropertyBillingReady : Migration
     {
         /// <inheritdoc />

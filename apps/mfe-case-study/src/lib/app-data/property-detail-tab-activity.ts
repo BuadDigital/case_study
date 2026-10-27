@@ -46,14 +46,13 @@ function joinTokens(...parts: Array<string | null | undefined>): string | null {
   return kept.sort().join("|");
 }
 
+/** Fee states that light the tab's “new” dot (sup-review covers a pending proposed discount). */
 const FEE_ATTENTION = new Set([
   "at-finance",
   "deferred",
   "returned",
   "inquiry",
-  "disputed",
   "sup-review",
-  "office-review",
 ]);
 
 /**

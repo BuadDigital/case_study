@@ -26,7 +26,7 @@ public sealed class InspectorFeeDispatchController(
         [FromQuery] string? taskKind = null,
         [FromQuery] string? billingStatus = null,
         [FromQuery] string? returnTo = null,
-        [FromQuery] bool hideDisputed = false,
+        [FromQuery] bool hideAwaitingDiscountDecision = false,
         [FromQuery] string? supervisingDepartment = null,
         CancellationToken cancellationToken = default) =>
         Ok(await fees.GetSummaryAsync(
@@ -36,7 +36,7 @@ public sealed class InspectorFeeDispatchController(
             taskKind,
             billingStatus,
             returnTo,
-            hideDisputed,
+            hideAwaitingDiscountDecision,
             cancellationToken,
             supervisingDepartment));
 
@@ -86,10 +86,48 @@ public sealed class InspectorFeeDispatchController(
         CancellationToken cancellationToken)
     {
         var (row, error) = await fees.AccrueEngineeringSurveyFeeAsync(
-            workflowTaskId, request.ActorUserId, cancellationToken);
+            workflowTaskId, request.ActorUserId, cancellationToken, request.Proposal);
         if (error is not null)
             return this.BadRequestProblem(error);
         return row is null ? NotFound() : Ok(row);
+    }
+
+    /// <summary>Applies the supervisor's decision (authority already checked on Case Study).</summary>
+    [HttpPost("{workflowTaskId:guid}/discount-proposal/resolve")]
+    public async Task<ActionResult<InspectorFeeRowDto>> ResolveDiscountProposal(
+        Guid workflowTaskId,
+        [FromBody] ResolveDiscountProposalDispatchRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (row, error) = await fees.ResolveDiscountProposalAsync(
+            workflowTaskId,
+            request.Decision,
+            request.ActorUserId,
+            cancellationToken,
+            request.ActorDepartment,
+            request.CanManageAllDepartments);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return row is null ? NotFound() : Ok(row);
+    }
+
+    /// <summary>Cancels a party's whole fee on a PO (authority already checked on Case Study).</summary>
+    [HttpPost("transactions/{poNumber}/waive-party")]
+    public async Task<ActionResult<WaivePartyFeesResultDto>> WaiveParty(
+        string poNumber,
+        [FromBody] WaivePartyFeesDispatchRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (result, error) = await fees.WaivePartyFeesAsync(
+            poNumber,
+            request.Waive,
+            request.ActorUserId,
+            cancellationToken,
+            request.ActorDepartment,
+            request.CanManageAllDepartments);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return Ok(result);
     }
 
     [HttpPost("{workflowTaskId:guid}/patch")]

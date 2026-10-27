@@ -10,7 +10,13 @@ type EnfazCardState = {
   /** The handover stamp is set. */
   handedOver: boolean;
   handedOverAtUtc: string | null;
-  /** The accountant marked the deed «جاهز للفوترة» — its figures are on Enfaz, so it is not taken back. */
+  /**
+   * The accountant marked the deed «جاهز للفوترة» — its figures are on Enfaz, so it is not taken back.
+   * How it works: true only when the deed is handed over AND the server sent a non-blank
+   * `billingReadyAtUtc`. Edge cases: a mark without a handover stamp (inconsistent data) is ignored; a
+   * missing state (still loading, or an older server without the field) reads false, so the return
+   * button keeps showing and the server's own refusal stays the safety net.
+   */
   billingReady: boolean;
   /** Why the handover is refused now — always empty once handed over. */
   blockReasons: string[];

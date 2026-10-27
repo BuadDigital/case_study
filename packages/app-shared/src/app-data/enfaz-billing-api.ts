@@ -37,6 +37,13 @@ import {
 /**
  * «تعليم جاهز للفوترة» — the accountant marks a handed-over deed once its financial data appeared on
  * Enfaz. A refusal reads as the server's own Arabic reason.
+ *
+ * How it works: builds the API config from the session (none → the «please sign in» error without any
+ * request), calls `markBillingReady`, converts the result with `mutationFromApiResult`, and on success
+ * fires `notifyWorkOrdersChanged` so lists and badges refresh.
+ *
+ * Edge cases: a failure returns `{ ok: false, error }` with the server's Arabic text when it sent one,
+ * else the fallback «تعذّر تعليم الصك جاهزاً للفوترة»; nothing is notified on failure.
  */
 export async function markDeedBillingReady(
   workOrderId: string,

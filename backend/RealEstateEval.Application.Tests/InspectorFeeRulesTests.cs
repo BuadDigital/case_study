@@ -197,35 +197,25 @@ public class InspectorFeeRulesTests
         Assert.Equal(350m, EngineeringSurveyFeeRules.NetFee(500m, 150m));
     }
 
+    /// <summary>
+    /// The office-approval loop is retired: its actions are unknown now, while the old statuses
+    /// keep their names so older lines' audit history still reads.
+    /// </summary>
     [Fact]
-    public void Office_discount_transitions_match_billing_doc()
+    public void Retired_office_actions_are_unknown_but_their_history_still_reads()
     {
-        Assert.True(InspectorFeeBillingRules.TryResolveTransition(
-            InspectorFeeBillingStatus.OfficeReview,
-            InspectorFeeActions.OfficeApproveDiscount,
-            out var approved,
+        Assert.False(InspectorFeeBillingRules.TryResolveTransition(
+            "office-review",
+            "office-approve-discount",
             out _,
-            out _));
-        Assert.Equal(InspectorFeeBillingStatus.AtFinance, approved);
-
-        Assert.True(InspectorFeeBillingRules.TryResolveTransition(
-            InspectorFeeBillingStatus.OfficeReview,
-            InspectorFeeActions.OfficeDispute,
-            out var disputed,
             out _,
-            out _));
-        Assert.Equal(InspectorFeeBillingStatus.Disputed, disputed);
+            out var error));
+        Assert.Equal("إجراء غير معروف.", error);
+        Assert.DoesNotContain("office-review", InspectorFeeBillingStatus.All);
+        Assert.DoesNotContain("disputed", InspectorFeeBillingStatus.All);
 
-        Assert.True(InspectorFeeBillingRules.TryResolveTransition(
-            InspectorFeeBillingStatus.Disputed,
-            InspectorFeeActions.ResolveDispute,
-            out var resolved,
-            out _,
-            out _));
-        Assert.Equal(InspectorFeeBillingStatus.AtFinance, resolved);
-
-        Assert.Equal("بانتظار موافقة المكتب", InspectorFeeBillingRules.StatusLabel(InspectorFeeBillingStatus.OfficeReview));
-        Assert.Equal("خلاف تسعير", InspectorFeeBillingRules.StatusLabel(InspectorFeeBillingStatus.Disputed));
+        Assert.Equal("بانتظار موافقة المكتب", InspectorFeeBillingRules.StatusLabel("office-review"));
+        Assert.Equal("خلاف تسعير", InspectorFeeBillingRules.StatusLabel("disputed"));
         Assert.Equal("جاهز للفوترة", InspectorFeeBillingRules.StatusLabel(InspectorFeeBillingStatus.AtFinance));
     }
 

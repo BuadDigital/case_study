@@ -79,6 +79,7 @@ export function FinanceRevenueView({
   onFocusPo: (po: string | null, forStage?: RevenueStage) => void;
 }) {
   const { role } = useAppAccess();
+  // The accountant's «تعليم جاهز للفوترة» command (confirm → mark → refresh the billing queries).
   const { markingId, mark: markBillingReady } = useMarkBillingReady();
   const [search, setSearch] = useState("");
   /** Deferred value for filtering — search input stays immediate without blocking typing */
@@ -385,6 +386,7 @@ export function FinanceRevenueView({
           <EligibleTable
             rows={stageRows}
             onOpenPo={(po) => openPo(po)}
+            // Only the financial officer sees the mark button; the server checks the role again.
             canMarkReady={canMarkBillingReady(role)}
             markingId={markingId}
             onMarkReady={(row) => void markBillingReady(row)}

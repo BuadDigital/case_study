@@ -37,9 +37,12 @@ public class InspectorFeeRowDto
     public bool CanSubmitToSupervisor { get; set; }
     public bool CanApproveToFinance { get; set; }
     public bool CanCreateDisbursementRequest { get; set; }
-    public bool CanOfficeApproveDiscount { get; set; }
-    public bool CanOfficeDispute { get; set; }
-    public bool CanResolveDispute { get; set; }
+    /// <summary>The specialist's discount proposal still waiting for the supervisor; null when none.</summary>
+    public decimal? ProposedDiscountSar { get; set; }
+    public string? ProposedDiscountReason { get; set; }
+    public string? ProposedByName { get; set; }
+    public DateTime? ProposedAtUtc { get; set; }
+    public bool CanResolveDiscountProposal { get; set; }
     public bool CanSuspend { get; set; }
     public bool CanLiftSuspension { get; set; }
 }
@@ -64,6 +67,46 @@ public class PatchInspectorFeeRequest
     public decimal? AgreedFeeSar { get; set; }
     public bool? ExcludedFromBatch { get; set; }
     public string? ExclusionReason { get; set; }
+}
+
+/// <summary>
+/// The specialist's optional discount proposal, sent with the acceptance of survey outputs.
+/// </summary>
+public class EngineeringSurveyDiscountProposalInput
+{
+    public decimal? ProposedDiscountSar { get; init; }
+    public string? DiscountReason { get; init; }
+    public string? ProposedByName { get; init; }
+}
+
+/// <summary>The supervisor's decision on a proposal: approve | amend | waive.</summary>
+public class ResolveDiscountProposalRequest
+{
+    public string Decision { get; init; } = "";
+    /// <summary>Required for amend: the discount the supervisor settled on.</summary>
+    public decimal? AmountSar { get; init; }
+    public string? Note { get; init; }
+}
+
+/// <summary>Cancel one party's whole fee on a transaction (full discount on every open line).</summary>
+public class WaivePartyFeesRequest
+{
+    public string AssigneeId { get; init; } = "";
+    public string Reason { get; init; } = "";
+}
+
+public class WaivePartyFeesResultDto
+{
+    public int WaivedCount { get; init; }
+    public IReadOnlyList<WaivePartyFeesSkippedLineDto> Skipped { get; init; } = [];
+}
+
+public class WaivePartyFeesSkippedLineDto
+{
+    public string WorkflowTaskId { get; init; } = "";
+    public string PropertyId { get; init; } = "";
+    public string BillingStatus { get; init; } = "";
+    public string BillingStatusLabel { get; init; } = "";
 }
 
 public class InspectorFeeTransitionRequest
@@ -153,6 +196,7 @@ public class PoEnfazBillingDto
 public class EnfazTrackingRowDto
 {
     public string PoNumber { get; set; } = "";
+ /// <summary>The deed's work order — the screens need it to mark the deed ready for billing.</summary>
     public string WorkOrderId { get; set; } = "";
     public string PropertyId { get; set; } = "";
     public string PropertyLabel { get; set; } = "";

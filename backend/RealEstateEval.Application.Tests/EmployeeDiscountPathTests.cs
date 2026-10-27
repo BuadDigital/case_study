@@ -9,8 +9,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// Employee discounts skip the office-approval loop: the line becomes ready for finance and the
-/// assignee is told. Disputed is not a state employees can enter.
+/// A supervisor discount is final: the line becomes ready for finance and the party is told.
 /// </summary>
 public class EmployeeDiscountPathTests
 {
@@ -38,56 +37,53 @@ public class EmployeeDiscountPathTests
         Assert.Equal("تأخير تسليم", stored.DiscountReason);
     }
 
+    /// <summary>
+    /// The office-approval loop is gone: a supervisor discount on an engineering-office line is
+    /// final and the line goes straight to finance, exactly like an employee's.
+    /// </summary>
     [Fact]
-    public async Task An_employee_cannot_open_a_pricing_dispute()
+    public async Task A_supervisor_discount_on_an_engineering_office_line_goes_straight_to_finance()
     {
         await using var db = CreateDb();
-        var taskId = SeedEmployeeLedger(db, InspectorFeeBillingStatus.OfficeReview, discount: 40m);
+        var taskId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        db.CaseStudy.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey,
+            "PO-ENG",
+            now,
+            assigneeRole: "engineering-office",
+            assigneeName: "مكتب هندسي",
+            assigneeId: "eng-office-1",
+            id: taskId,
+            status: WorkflowTaskStatus.Completed));
+        db.Financial.InspectorFeeLedgers.Add(new InspectorFeeLedger
+        {
+            WorkflowTaskId = taskId,
+            PoNumber = "PO-ENG",
+            AssigneeId = "eng-office-1",
+            InspectorType = "متعاون شركة",
+            AgreedFeeSar = 900m,
+            BillingStatus = InspectorFeeBillingStatus.AtFinance,
+            AccruedAtUtc = now,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
         await db.CaseStudy.SaveChangesAsync();
         await db.Financial.SaveChangesAsync();
 
-        var (row, error) = await TestInspectorFeeServiceFactory.Create(db.CaseStudy).TransitionAsync(
+        await TestInspectorFeeServiceFactory.Create(db.CaseStudy).PatchAsync(
             taskId,
-            new InspectorFeeTransitionRequest
+            new PatchInspectorFeeRequest
             {
-                Action = InspectorFeeActions.OfficeDispute,
-                Reason = "اعتراض",
+                SupervisorDiscountSar = 100m,
+                DiscountReason = "تأخّر تسليم التقرير المساحي",
             },
-            "office-user",
-            actorAssigneeId: "insp-emp-1",
-            isOperationsManager: false,
-            isFinancialOfficer: false);
+            canManageAllDepartments: true);
 
-        Assert.Null(row);
-        Assert.NotNull(error);
-        Assert.Contains("الموظف", error);
         var stored = await db.Financial.InspectorFeeLedgers.AsNoTracking()
             .SingleAsync(l => l.WorkflowTaskId == taskId);
-        Assert.Equal(InspectorFeeBillingStatus.OfficeReview, stored.BillingStatus);
-    }
-
-    [Fact]
-    public void Authorization_rejects_dispute_actions_for_employees()
-    {
-        var ledger = new InspectorFeeLedger
-        {
-            InspectorType = InspectorFeeRules.TypeEmployee,
-            AssigneeId = "insp-emp-1",
-            BillingStatus = InspectorFeeBillingStatus.OfficeReview,
-        };
-
-        Assert.False(InspectorFeeTransitionAuthorization.CanPerformAction(
-            InspectorFeeActions.OfficeDispute,
-            ledger,
-            "insp-emp-1",
-            isOperationsManager: false,
-            isFinancialOfficer: false));
-        Assert.False(InspectorFeeTransitionAuthorization.CanPerformAction(
-            InspectorFeeActions.ResolveDispute,
-            ledger,
-            null,
-            isOperationsManager: true,
-            isFinancialOfficer: false));
+        Assert.Equal(InspectorFeeBillingStatus.AtFinance, stored.BillingStatus);
+        Assert.Equal(100m, stored.SupervisorDiscountSar);
     }
 
     private static Guid SeedEmployeeLedger(

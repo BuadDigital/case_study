@@ -56,6 +56,48 @@ public class PartyTaskSubmissionAcceptTests
         Assert.NotNull(entity.AcceptedAtUtc);
     }
 
+    /// <summary>
+    /// A discount proposal belongs to the engineering-office fee only, and always with a reason —
+    /// the supervisor decides on it and the office is told why.
+    /// </summary>
+    [Fact]
+    public async Task Accept_refuses_a_discount_proposal_off_the_survey_or_without_a_reason()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        SeedAcceptedableFieldInspection(db);
+        var service = CreateService(db, bundle.Failures, bundle.Ops);
+        var actor = new PartySubmissionActor
+        {
+            UserId = "specialist-1",
+            DisplayName = "أخصائي",
+            PrototypeRole = "case-specialist",
+        };
+
+        var (offSurvey, offSurveyErrors) = await service.AcceptAsync(
+            TaskId,
+            actor,
+            request: new AcceptPartyTaskSubmissionRequest
+            {
+                ProposedDiscountSar = 100m,
+                DiscountReason = "تأخّر التسليم",
+            });
+
+        Assert.Null(offSurvey);
+        Assert.Contains("الرفع المساحي", offSurveyErrors!["_"]);
+
+        var survey = CreateDb();
+        SeedAcceptedableSurvey(survey.CaseStudy);
+        var (noReason, noReasonErrors) = await CreateService(survey.CaseStudy, survey.Failures, survey.Ops)
+            .AcceptAsync(
+                TaskId,
+                actor,
+                request: new AcceptPartyTaskSubmissionRequest { ProposedDiscountSar = 100m });
+
+        Assert.Null(noReason);
+        Assert.True(noReasonErrors!.ContainsKey("discountReason"));
+    }
+
     [Fact]
     public async Task Accept_keeps_the_first_acceptance_timestamp_on_re_accept()
     {

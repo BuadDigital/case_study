@@ -15,7 +15,7 @@ namespace RealEstateEval.Financial.Application.Services;
 /// Facade for inspector-fee use cases. Heavy write/query/transition work lives in collaborators;
 /// persistence is <see cref="IInspectorFeeLedgerStore"/>, so this class never opens EF.
 /// </summary>
-public class InspectorFeeService : IInspectorFeeService
+public partial class InspectorFeeService : IInspectorFeeService
 {
     private readonly ICaseStudyLookup _lookup;
     private readonly ICaseStudyCommands _commands;
@@ -78,122 +78,6 @@ public class InspectorFeeService : IInspectorFeeService
         await _writer.EnsureLedgersForTasksAsync(feeTasks, cancellationToken);
     }
 
-    public async Task<(InspectorFeeRowDto? Row, string? Error)> AccrueEngineeringSurveyFeeAsync(
-        Guid workflowTaskId,
-        string actorUserId,
-        CancellationToken cancellationToken = default)
-    {
-        var snapshot = await _lookup.GetWorkflowTaskAsync(workflowTaskId, cancellationToken);
-        if (snapshot is null)
-            return (null, InspectorFeeAccrualRules.TaskNotFoundError);
-        var task = snapshot.ToWorkflowTask();
-
-        var submissions = await _lookup.ListPartyTaskSubmissionsByTaskIdsAsync(
-            [workflowTaskId], cancellationToken);
-        var submission = submissions.FirstOrDefault()?.ToSubmission();
-        var accrualError = InspectorFeeAccrualRules.ValidateEngineeringSurveyAccrual(task, submission);
-        if (accrualError is not null)
-            return (null, accrualError);
-
-        var deeds = await _resolver.ResolveDeedTargetsAsync(task, cancellationToken);
-        var existingForTask =
-            (await _ledgers.ListByWorkflowTaskAsync(workflowTaskId, cancellationToken)).ToList();
-
- // Idempotent: every target deed already accrued — do not create a second fee on re-accept.
-        if (InspectorFeeAccrualRules.AllDeedsAccrued(deeds, existingForTask))
-        {
-            return (await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken), null);
-        }
-
-        var partyType = existingForTask.FirstOrDefault()?.InspectorType
-            ?? await _resolver.ResolvePartyTypeAsync(task, cancellationToken);
-        var now = _time.UtcNow();
-        InspectorFeeLedger? lastLedger = null;
-        var ordinal = 0;
-        foreach (var deed in deeds)
-        {
-            ordinal++;
-            var areaM2 = await _resolver.ResolvePropertyAreaM2Async(
-                task, cancellationToken, deed.PropertyId);
- // Offices enter total area on the survey form; PO Area is often still empty.
- // Prefer that submitted area for tier pricing, and backfill the property row when empty.
-            if (areaM2 is not > 0m)
-            {
-                areaM2 = InspectorFeeAccrualRules.TryParseSurveyOnSiteAreaM2(submission!.PayloadJson);
-                if (areaM2 is > 0m && deed.PropertyId is Guid propertyId)
-                    await BackfillPropertyAreaIfEmptyAsync(
-                        propertyId, areaM2.Value, cancellationToken);
-            }
-
-            if (areaM2 is not > 0m)
-                return (null, PricingErrors.PropertyAreaMissing);
-
-            var resolvedFee = await _pricing.ResolveDefaultFeeAsync(
-                task.Kind,
-                partyType,
-                areaM2,
-                task.AssigneeId,
-                cancellationToken);
-
-            if (!resolvedFee.IsResolved)
-                return (null, PricingErrors.FeeUnresolved);
-
-            var agreedFee = resolvedFee.FeeSar!.Value;
-            var identity = await _resolver.ResolveLedgerIdentityAsync(
-                task, cancellationToken, deed.DeedId);
-            var ledger = existingForTask.FirstOrDefault(l => l.DeedId == identity.DeedId)
-                ?? await _ledgers.FindByIdentityAsync(
-                    identity.TransactionId,
-                    identity.DeedId,
-                    identity.UserId,
-                    cancellationToken);
-
-            if (ledger is not null && InspectorFeeAccrualRules.IsAccrued(ledger))
-            {
-                lastLedger = ledger;
-                continue;
-            }
-
-            if (ledger is null)
-            {
-                ledger = InspectorFeeAccrualRules.NewAccruedLedger(
-                    task,
-                    identity,
-                    deed,
-                    ordinal,
-                    partyType,
-                    agreedFee,
-                    resolvedFee.PricingTableId,
-                    now);
-                _ledgers.AddLedger(ledger);
-                existingForTask.Add(ledger);
-            }
-            else
-            {
-                InspectorFeeAccrualRules.RefreshAccruedLedger(
-                    ledger,
-                    task,
-                    identity,
-                    deed,
-                    ordinal,
-                    partyType,
-                    agreedFee,
-                    resolvedFee.PricingTableId,
-                    now);
-            }
-
-            _ledgers.AddTransition(
-                InspectorFeeAccrualRules.AccrualTransition(ledger, actorUserId, now));
-            lastLedger = ledger;
-        }
-
-        if (lastLedger is null)
-            return (null, PricingErrors.FeeUnresolved);
-
-        await _ledgers.SaveChangesAsync(cancellationToken);
-        return (await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken), null);
-    }
-
     public Task<InspectorFeesSummaryDto> GetSummaryAsync(
         string? assigneeId,
         string? workflowTaskId,
@@ -201,7 +85,7 @@ public class InspectorFeeService : IInspectorFeeService
         string? taskKind = null,
         string? billingStatus = null,
         string? returnTo = null,
-        bool hideDisputed = false,
+        bool hideAwaitingDiscountDecision = false,
         CancellationToken cancellationToken = default,
         string? supervisingDepartment = null) =>
         _summary.GetSummaryAsync(
@@ -211,7 +95,7 @@ public class InspectorFeeService : IInspectorFeeService
             taskKind,
             billingStatus,
             returnTo,
-            hideDisputed,
+            hideAwaitingDiscountDecision,
             cancellationToken,
             supervisingDepartment);
 
@@ -220,6 +104,23 @@ public class InspectorFeeService : IInspectorFeeService
         CancellationToken cancellationToken = default) =>
         _summary.GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken);
 
+    /// <summary>
+    /// The supervisor's direct edit of a fee line: discount and reason, hand-priced employee fee,
+    /// or exclusion from statements. Returns null when the edit is refused.
+    /// </summary>
+    /// <remarks>
+    /// <para><b>How it works:</b> department check → refuse a discount on a line with a pending
+    /// proposal → apply the patch (<see cref="InspectorFeeAccrualRules.TryApplyPatch"/>) → settle the
+    /// status (<see cref="InspectorFeeAccrualRules.ApplyStatusAfterPatch"/>) → audit row if the status
+    /// moved → save → notify the party when a discount was applied.</para>
+    /// <para><b>Edge cases:</b></para>
+    /// <list type="bullet">
+    /// <item>A direct discount on a line waiting for a proposal decision would bypass the proposal
+    /// (and leave the flag pending forever), so it is refused; the decision endpoint is the way.</item>
+    /// <item>A discount on an engineering-office line no longer waits for the office's approval: the
+    /// line goes to finance and the office is notified, like an employee.</item>
+    /// </list>
+    /// </remarks>
     public async Task<InspectorFeeRowDto?> PatchAsync(
         Guid workflowTaskId,
         PatchInspectorFeeRequest request,
@@ -233,6 +134,14 @@ public class InspectorFeeService : IInspectorFeeService
                 ledger.SupervisingDepartment,
                 actorDepartment,
                 canManageAllDepartments))
+        {
+            return null;
+        }
+
+        // A line waiting on a proposed discount is settled by the decision endpoint (approve /
+        // amend / waive), never by a direct discount that would bypass the proposal.
+        if (request.SupervisorDiscountSar.HasValue
+            && (await _ledgers.ListPendingProposalsAsync([workflowTaskId], cancellationToken)).Count > 0)
         {
             return null;
         }
@@ -261,8 +170,15 @@ public class InspectorFeeService : IInspectorFeeService
 
         await _ledgers.SaveChangesAsync(cancellationToken);
 
-        if (isEmployee && discountApplied)
-            await NotifyEmployeeDiscountAppliedAsync(ledger, cancellationToken);
+        // A direct supervisor discount is final, so the party (employee or engineering office) is
+        // informed rather than asked to approve it.
+        if (InspectorFeeAccrualRules.NotifiesPartyOfDiscount(taskKind, isEmployee, discountApplied))
+        {
+            await NotifyAssigneeAsync(
+                ledger.AssigneeId,
+                InspectorFeeAccrualRules.PartyDiscountNotification(ledger),
+                cancellationToken);
+        }
 
         return await GetByWorkflowTaskIdAsync(workflowTaskId, cancellationToken);
     }
@@ -390,27 +306,6 @@ public class InspectorFeeService : IInspectorFeeService
         Guid workflowTaskId,
         CancellationToken cancellationToken = default) =>
         _summary.ListTransitionsAsync(workflowTaskId, cancellationToken);
-
-    private async Task NotifyEmployeeDiscountAppliedAsync(
-        InspectorFeeLedger ledger,
-        CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(ledger.AssigneeId)) return;
-
-        var usersByAssignee = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
-            [ledger.AssigneeId.Trim()],
-            cancellationToken);
-        if (!usersByAssignee.TryGetValue(ledger.AssigneeId.Trim(), out var userId)
-            || string.IsNullOrWhiteSpace(userId))
-        {
-            return;
-        }
-
-        await _notifications.CreateForUsersAsync(
-            [userId],
-            InspectorFeeAccrualRules.EmployeeDiscountNotification(ledger),
-            cancellationToken);
-    }
 
     private async Task NotifyPartiesFeesDisbursedAsync(
         IReadOnlyList<InspectorFeeRowDto> rows,

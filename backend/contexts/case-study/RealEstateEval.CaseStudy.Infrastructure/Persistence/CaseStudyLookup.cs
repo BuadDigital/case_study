@@ -648,6 +648,7 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
         Area = property.Area,
         BourseCompletedAtUtc = property.BourseCompletedAtUtc,
         EnfazHandoverAtUtc = property.EnfazHandoverAtUtc,
+        // Finance reads billing readiness from the accountant's mark, not from the handover stamp alone.
         BillingReadyAtUtc = property.BillingReadyAtUtc,
     };
 

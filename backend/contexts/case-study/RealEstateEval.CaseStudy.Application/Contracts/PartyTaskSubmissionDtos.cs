@@ -96,3 +96,13 @@ public class ReopenPartyTaskSubmissionRequest
 {
     public string ReturnNote { get; set; } = "";
 }
+
+/// <summary>
+/// Optional body of an acceptance. Engineering survey only: the specialist may propose a discount
+/// on the office's fee, with its reason, for the department supervisor to decide.
+/// </summary>
+public class AcceptPartyTaskSubmissionRequest
+{
+    public decimal? ProposedDiscountSar { get; set; }
+    public string? DiscountReason { get; set; }
+}
