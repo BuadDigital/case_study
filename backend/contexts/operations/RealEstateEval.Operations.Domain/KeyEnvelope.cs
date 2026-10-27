@@ -46,7 +46,7 @@ public class KeyEnvelope
     public Guid? OperationsTaskId { get; set; }
 
     /// <summary>
-    /// Custody (decision 2026-10-20): who physically holds the envelope right now. The envelope is
+    /// Custody: who physically holds the envelope right now. The envelope is
     /// the custody unit — keys are unlabeled and move with it — and the holder changes only when a
     /// receipt is confirmed (internal / receive-back) or a letter closes it (external / court).
     /// </summary>
@@ -63,7 +63,7 @@ public class KeyEnvelope
     /// reviewer (ToUserId, ToParty); 3) stamps HolderSinceUtc and UpdatedAtUtc.
     /// Edge cases: called only once a handoff is confirmed (internal / receive-back by the receiver) or
     /// completes at once (external / court, the letter is the proof), so a pending handoff never moves
-    /// the holder (decision 2026-10-20). Outside parties and the court carry no user id.
+    /// the holder. Outside parties and the court carry no user id.
     /// </remarks>
     public void ApplyConfirmedHandoff(KeyEnvelopeHandoff handoff, DateTime nowUtc)
     {
@@ -101,7 +101,7 @@ public class KeyEnvelope
     /// when the location is with_user, otherwise clears both; stamps KeyLocationAtUtc and the
     /// envelope's UpdatedAtUtc. The caller has already validated and defaulted the location.
     /// Edge cases: moving a key from with_user back to in_envelope / returned_court / missing drops the
-    /// old holder, so a stale «عند فلان» never survives a correction (decision 2026-10-20).
+    /// old holder, so a stale «عند فلان» never survives a correction.
     /// </remarks>
     public void SetAssignmentKeyLocation(
         KeyEnvelopeAssignment assignment,
@@ -229,7 +229,7 @@ public static class KeyEnvelopeStatuses
     public static readonly IReadOnlyList<string> All = [Reviewer, Assessor, External, Returned];
 }
 
-/// <summary>Who holds the envelope (decision 2026-10-20).</summary>
+/// <summary>Who holds the envelope.</summary>
 public static class KeyHolderKinds
 {
     /// <summary>With the government reviewer (the office).</summary>
@@ -246,7 +246,7 @@ public static class KeyHolderKinds
     public static bool IsValid(string? kind) => kind is Reviewer or InternalUser or External or Court;
 }
 
-/// <summary>Where a deed's matching key is after the field trial (decision 2026-10-20).</summary>
+/// <summary>Where a deed's matching key is after the field trial.</summary>
 public static class KeyLocations
 {
     public const string InEnvelope = "in_envelope";
@@ -262,7 +262,7 @@ public static class KeyLocations
     /// <summary>What a trial result implies when the inspector says nothing about the key's place.</summary>
     /// <remarks>
     /// How it works: a «missing» trial result → missing; every other result (matched, partial,
-    /// unmatched, unmatched_inspected) → in_envelope (decision 2026-10-20).
+    /// unmatched, unmatched_inspected) → in_envelope.
     /// Edge cases: with_user is never a default — the inspector must say he kept the key.
     /// </remarks>
     public static string DefaultFor(string assignmentStatus) =>
@@ -391,7 +391,7 @@ public static class KeyEnvelopeTimelineEvents
  /// <summary>Key Receipt Revenue Accrual Indicator — No amount.</summary>
     public const string RevenueEntitlement = "revenue_entitlement";
     public const string StatusChanged = "status_changed";
-    /// <summary>The reviewer corrected where a deed's key is (decision 2026-10-20).</summary>
+    /// <summary>The reviewer corrected where a deed's key is.</summary>
     public const string KeyLocationChanged = "key_location_changed";
 }
 

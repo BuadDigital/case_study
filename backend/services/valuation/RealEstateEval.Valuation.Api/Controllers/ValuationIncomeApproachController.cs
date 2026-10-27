@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  New file — GET / PUT api/valuation-requests/{id}/income-approach; same policies as the cost
+//  • New file — GET / PUT api/valuation-requests/{id}/income-approach; same policies as the cost
 //         approach, PUT limited to the assigned appraiser.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -13,7 +13,7 @@ using RealEstateEval.Valuation.Application.Contracts;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
-/// <summary>D17 — income approach (direct capitalisation); same read/write policies as the cost approach.</summary>
+/// <summary>Income approach (direct capitalisation); same read/write policies as the cost approach.</summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/income-approach")]
 [Authorize]

@@ -60,7 +60,7 @@ export const CostApproachSection = memo(function CostApproachSection({
   hydrateKey: number;
   buildingOnly: boolean;
   isApartmentProperty: boolean;
-  /** The deed area — seeds the plot box when the deed is the land itself (decision A). */
+  /** The deed area — seeds the plot box when the deed is the land itself. */
   deedArea?: string | null;
   costBasisKey: string;
   saving: boolean;

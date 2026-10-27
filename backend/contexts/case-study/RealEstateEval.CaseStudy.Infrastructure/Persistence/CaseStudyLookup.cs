@@ -434,6 +434,23 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
         return rows;
     }
 
+    /// <summary>
+    /// Snapshots of the given deeds, enriched for the failures context: the work-order number,
+    /// the transaction number with its live deed ids, and the company's case specialist.
+    /// </summary>
+    /// <remarks>
+    /// How it works: one query for the deeds, then three side queries keyed on what they found —
+    /// the work orders (PO number), the transactions (PR-… when confirmed, else the TMP-… draft,
+    /// plus the ids of their deeds that are not removed) and the case-study tasks (the newest
+    /// task per deed whose assignee is a named case specialist). Each snapshot is filled from
+    /// those maps; nothing is joined, so every requested deed comes back.
+    ///
+    /// Edge cases: a deed without a transaction keeps a null number, a deed count of one and an
+    /// empty id list; a task still sitting with the role placeholder (no assignee id) gives no
+    /// specialist name. The PO number used to come from an <c>Include</c> of the work order — that
+    /// is an inner join, and it silently dropped deeds whose work order row was missing (the
+    /// finance fee tests caught it), so it is read apart now.
+    /// </remarks>
     public async Task<IReadOnlyList<CaseStudyPropertySnapshotDto>> ListPropertiesByIdsAsync(
         IReadOnlyList<Guid> propertyIds,
         CancellationToken cancellationToken = default)
@@ -444,7 +461,66 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
         var rows = await caseStudy.WorkOrderProperties.AsNoTracking()
             .Where(p => propertyIds.Contains(p.Id))
             .ToListAsync(cancellationToken);
-        return rows.Select(ToSnapshot).ToList();
+
+        // The work-order number, looked up apart so a deed is never dropped by a join.
+        var orderIds = rows.Select(p => p.WorkOrderId).Distinct().ToList();
+        var poByOrder = await caseStudy.WorkOrders.AsNoTracking()
+            .Where(w => orderIds.Contains(w.Id))
+            .Select(w => new { w.Id, w.PoNumber })
+            .ToDictionaryAsync(w => w.Id, w => w.PoNumber, cancellationToken);
+
+        // The transaction numbers ride along for the failures queue's «رقم المعاملة» column,
+        // the live deed ids for a final failure that stops the whole transaction.
+        var transactionIds = rows
+            .Select(p => p.TransactionId)
+            .Where(id => id != Guid.Empty)
+            .Distinct()
+            .ToList();
+        var transactions = await caseStudy.Transactions.AsNoTracking()
+            .Where(t => transactionIds.Contains(t.Id))
+            .Select(t => new
+            {
+                t.Id,
+                t.ReferenceNumber,
+                t.DraftNumber,
+                DeedIds = t.Properties.Where(d => !d.IsRemoved).Select(d => d.Id).ToList(),
+            })
+            .ToDictionaryAsync(t => t.Id, cancellationToken);
+
+        // The company's specialist: the named case-specialist assignee of the deed's case-study
+        // task (an unassigned task keeps the role's placeholder name and no assignee id).
+        var specialistRows = await caseStudy.WorkflowTasks.AsNoTracking()
+            .Where(t =>
+                t.Kind == WorkflowTaskKind.CaseStudyProperty
+                && t.PropertyId != null
+                && propertyIds.Contains(t.PropertyId.Value)
+                && t.AssigneeRole == StaffRoleIds.CaseSpecialist
+                && t.AssigneeId != null
+                && t.AssigneeId != "")
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .Select(t => new { PropertyId = t.PropertyId!.Value, t.AssigneeName })
+            .ToListAsync(cancellationToken);
+        var specialists = specialistRows
+            .GroupBy(t => t.PropertyId)
+            .ToDictionary(g => g.Key, g => g.First().AssigneeName.Trim());
+
+        return rows.Select(p =>
+        {
+            var snapshot = ToSnapshot(p);
+            if (snapshot.PoNumber.Length == 0 && poByOrder.TryGetValue(p.WorkOrderId, out var po))
+                snapshot.PoNumber = po?.Trim() ?? "";
+            if (specialists.TryGetValue(p.Id, out var specialist) && specialist.Length > 0)
+                snapshot.CaseSpecialistName = specialist;
+            if (transactions.TryGetValue(p.TransactionId, out var t))
+            {
+                snapshot.TransactionNumber = string.IsNullOrWhiteSpace(t.ReferenceNumber)
+                    ? t.DraftNumber
+                    : t.ReferenceNumber;
+                snapshot.TransactionDeedCount = Math.Max(1, t.DeedIds.Count);
+                snapshot.TransactionPropertyIds = t.DeedIds;
+            }
+            return snapshot;
+        }).ToList();
     }
 
     public async Task<CaseStudyWorkflowTaskSnapshotDto?> GetWorkflowTaskAsync(

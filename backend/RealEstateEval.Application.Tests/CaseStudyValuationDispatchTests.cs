@@ -41,7 +41,7 @@ public class CaseStudyValuationDispatchTests
         Assert.Equal("عبدالله الكثيري", vr.Appraiser);
         Assert.StartsWith("VR-", vr.DisplayId);
 
-        // Decision 2026-10-19: no report number is reserved at dispatch — it is fixed at approval.
+        // No report number is reserved at dispatch — it is fixed at approval.
         Assert.Equal(0, await contexts.CaseStudy.PartyTaskSubmissions.CountAsync());
 
         var outbox = await contexts.Messaging.OutboxMessages.SingleAsync();

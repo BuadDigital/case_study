@@ -64,7 +64,7 @@ export type SetKeyLocationHandler = (
 ) => void;
 
 /**
- * The reviewer's correction of where a deed's matching key is (decision 2026-10-20):
+ * The reviewer's correction of where a deed's matching key is:
  * a place, plus the inspector when the key is with someone. Shown once the deed was tried.
  *
  * How it works: starts from the deed's saved `keyLocation` (else in_envelope) and saved key
@@ -152,7 +152,7 @@ function KeyLocationEditor({
 }
 
 /**
- * Decision 2026-10-20: where this deed's matching key is now (in_envelope / with_user /
+ * Where this deed's matching key is now (in_envelope / with_user /
  * returned_court / missing). Empty until the deed was tried; the reviewer may correct it.
  *
  * How it works: a deed still `pending` shows «— بعد التجربة». Otherwise a coloured pill with
@@ -222,7 +222,7 @@ function KeyLocationCell({
  * (`onMatch`, pending deeds when `canEdit`) or who confirmed it. Desktop gets a table, phones a
  * card list. Below, the «other keys» note from `otherKeysInEnvelope`.
  *
- * Edge cases: decision 2026-10-20 — keys that opened none of our deeds are counted, not listed
+ * Edge cases: — keys that opened none of our deeds are counted, not listed
  * (no key entity); they stay in the envelope and go back with it, the note shows only when
  * the count is above zero. No assignments → a «no deeds yet» note.
  */
@@ -403,7 +403,7 @@ export function AssignmentsPanel({
         })}
       </ul>
 
-      {/* Decision 2026-10-20: keys that opened none of our deeds stay in the envelope and go back with it. */}
+      {/* Keys that opened none of our deeds stay in the envelope and go back with it. */}
       {otherKeys > 0 ? (
         <div className={cn(opsPanelNote, "mt-3")}>
           في الظرف {otherKeys} مفاتيح أخرى لم تفتح أيًّا من صكوكنا — تبقى معه
@@ -423,7 +423,7 @@ export function AssignmentsPanel({
  * (who received, who handed over, state, letter); a `pending_confirm` step gets «تأكيد الاستلام»
  * (`onConfirm`) when `canEdit`.
  *
- * Edge cases: decision 2026-10-20 — the holder changes only when the receiver confirms, so a
+ * Edge cases: — the holder changes only when the receiver confirms, so a
  * pending handoff shows as «في الطريق إلى …» under the old holder; the button no longer says
  * «the inspector's» receipt because any receiver confirms. The pending note wins over the
  * ready-for-court hint.
@@ -444,7 +444,7 @@ export function CustodyPanel({
 
   return (
     <div>
-      {/* Decision 2026-10-20: who holds the envelope now and since when, a handoff still awaiting
+      {/* Who holds the envelope now and since when, a handoff still awaiting
           the receiver's confirmation, or the ready-for-court-return hint. */}
       <div
         className={cn(

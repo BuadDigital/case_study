@@ -16,7 +16,7 @@ using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Operations.Infrastructure;
 
 /// <summary>
-/// Context-local registration for the Operations bounded context (A8): survey offices,
+/// Context-local registration for the Operations bounded context: survey offices,
 /// property keys, key envelopes, and the operations-task collaborators. The shared
 /// persistence/HTTP plumbing still comes from the global Infrastructure extensions.
 /// </summary>
@@ -68,7 +68,7 @@ public static class OperationsDependencyInjection
         return services;
     }
  /// <summary>Operations write context. Prefers a dedicated Operations connection string.
- /// A8 physical move: lives beside <see cref="OperationsDbContext"/> in the context library.</summary>
+ /// Physical move: lives beside <see cref="OperationsDbContext"/> in the context library.</summary>
     public static IServiceCollection AddOperationsPersistence(
         this IServiceCollection services,
         IConfiguration configuration,

@@ -6,7 +6,7 @@
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Round-2 decision B — a rationale the methodology requires (a non-zero adjustment factor, a
+ * Round-2 — a rationale the methodology requires (a non-zero adjustment factor, a
  * manual weight, an alert override, the liquidation discount, the cap rate outside 4–12٪) is at
  * least 10 characters after trimming. Mirrors the server's `JustificationRules.RequiredMinLength`
  * and its message, so the field is marked before the round trip. Blank stays the caller's own

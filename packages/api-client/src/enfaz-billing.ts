@@ -282,7 +282,7 @@ function asRecord(raw: unknown): Record<string, unknown> {
 export type EnfazReadyPoListSort = "created" | "po";
 
 /**
- * `GET /api/enfaz-billing/ready-pos-summary` — pagination-contract §10.1.
+ * `GET /api/enfaz-billing/ready-pos-summary` — pagination-contract.
  * `created` is the readiness scan's own order (newest work order first).
  */
 export type EnfazReadyPoListQuery = Omit<ListPageQuery, "sort"> & {
@@ -333,7 +333,7 @@ export async function listReadyEnfazPoSummariesPage(
 export type EnfazTrackingListSort = "created" | "po" | "completed" | "invoiceIssued";
 
 /**
- * `GET /api/enfaz-billing/tracking` — pagination-contract §10.2. `q` covers
+ * `GET /api/enfaz-billing/tracking` — pagination-contract. `q` covers
  * PO, deed, property label, city and invoice number.
  */
 export type EnfazTrackingListQuery = Omit<ListPageQuery, "sort"> & {

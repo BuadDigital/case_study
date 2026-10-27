@@ -10,7 +10,7 @@ namespace RealEstateEval.CaseStudy.Application.Services;
 
 /// <summary>
 /// Opens the valuation request when the appraisal task is spawned. The report number is no
-/// longer reserved here (decision 2026-10-19): it is PRV-… derived from the transaction's
+/// longer reserved here: it is PRV-… derived from the transaction's
 /// official reference, stamped on the appraisal package when that reference is confirmed.
 /// One valuation per transaction (phase 5) whatever the order: since 2026-10-20 a transaction
 /// may be merged before distribution, so a folded deed distributed later folds into the

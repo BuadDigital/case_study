@@ -8,7 +8,7 @@ using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
-/// Phase 5 (decision 2026-10-19): one valuation per transaction. A merge folds the moved deeds'
+/// Phase 5: one valuation per transaction. A merge folds the moved deeds'
 /// open requests into the holder deed's request (status <c>merged</c>, <c>MergedIntoRequestId</c>);
 /// an unmerge gives the deed its own request back. Both are idempotent.
 /// </summary>
@@ -44,7 +44,7 @@ public sealed class ValuationRequestFoldingService(
             .FirstOrDefaultAsync(cancellationToken);
         if (ids.Count == 0) return new FoldValuationRequestsResultDto { HolderRequestId = holderRequestId };
 
-        // Decision 2026-10-21: a merge may come before distribution, so the holder may have no open
+        // A merge may come before distribution, so the holder may have no open
         // request yet. The deeds still fold (no target); the valuation dispatch folds again once the
         // holder's request exists, and MarkMerged then re-points an already merged row at it.
         var rows = await db.ValuationRequests

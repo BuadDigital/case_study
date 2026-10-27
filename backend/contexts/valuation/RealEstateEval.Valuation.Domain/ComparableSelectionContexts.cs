@@ -1,7 +1,7 @@
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// Comparable-table context — valuation-approaches-logic §5 and §7.
+/// Comparable-table context — valuation-approaches-logic section 5 and section 7.
 /// Two independent tables: market approach vs vacant-land estimate within cost. No import between them.
 /// </summary>
 public static class ComparableSelectionContexts

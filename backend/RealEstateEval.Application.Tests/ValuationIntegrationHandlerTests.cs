@@ -90,7 +90,7 @@ public class ValuationIntegrationHandlerTests
   }
 
   /// <summary>
-  /// Phase 5 (decision 2026-10-19): one valuation per transaction — the final issuance on the holder
+  /// Phase 5: one valuation per transaction — the final issuance on the holder
   /// deed also completes the other deeds' appraisal tasks, whose packages were never submitted.
   /// </summary>
   [Fact]
@@ -130,7 +130,7 @@ public class ValuationIntegrationHandlerTests
   }
 
  /// <summary>
- /// D5 makes the outbox per-producer: the Valuation publisher must write through the Valuation
+ /// Makes the outbox per-producer: the Valuation publisher must write through the Valuation
  /// context, and the row must be visible in the shared messaging table either way.
  /// </summary>
   [Fact]

@@ -250,7 +250,7 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
     /// the result; with_user takes the given holder or, if none, the actor and his name; 5) stores it
     /// (<c>SetAssignmentKeyLocation</c>) and writes one timeline line with result and key place; 6) saves,
     /// then raises the key-unmatched failure for an unmatched / missing result, else tells the specialist.
-    /// Edge cases (decision 2026-10-20): keys carry no tag, so the deed it opened is the key's only
+    /// Edge cases: keys carry no tag, so the deed it opened is the key's only
     /// identity; a missing key defaults to «missing» without the inspector saying so.
     /// </remarks>
     public async Task<(KeyEnvelopeDto? Envelope, string? Error)> ConfirmAssignmentAsync(
@@ -289,7 +289,7 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
             actorDisplayName.Trim(),
             now);
 
-        // Decision 2026-10-20: the trial also says where the matching key went. Keys carry no tag,
+        // The trial also says where the matching key went. Keys carry no tag,
         // so this is the only identity a key ever gets — the deed it opened.
         var location = (request.KeyLocation ?? "").Trim().ToLowerInvariant();
         if (location.Length == 0) location = KeyLocations.DefaultFor(status);
@@ -343,7 +343,7 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
     /// id or label; 4) resolves the holder label (with_user only) and stores the location
     /// (<c>SetAssignmentKeyLocation</c>, which clears the holder for other places); 5) writes a
     /// key_location_changed timeline line, saves, returns the fresh envelope.
-    /// Edge cases (decision 2026-10-20): unlike the trial, with_user here never falls back to the actor
+    /// Edge cases: unlike the trial, with_user here never falls back to the actor
     /// — the reviewer must name who has the key. Putting the key back in the envelope can make the
     /// envelope «ready for court return».
     /// </remarks>

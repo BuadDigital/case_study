@@ -13,7 +13,7 @@ import { finPo, finRowActive } from "../lib/finance-tw";
 
 /**
  * The «أوامر العمل الجاهزة» side list of the Enfaz billing screen — one
- * server page of ready work orders (pagination-contract §10.1) with the shared
+ * server page of ready work orders (pagination-contract) with the shared
  * pager underneath. Selection stays with the parent, which owns the detail.
  */
 export function FinanceEnfazReadyPoList({

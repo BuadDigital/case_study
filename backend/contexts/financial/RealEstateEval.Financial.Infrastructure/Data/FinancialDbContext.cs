@@ -7,7 +7,7 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts;
 
 /// <summary>
 /// Write context for the Financial bounded context.
-/// Maps the <c>financial</c> schema plus D1 inspector-fee tables still physically in
+/// Maps the <c>financial</c> schema plus inspector-fee tables still physically in
 /// <c>case_study</c>.
 /// </summary>
 public sealed class FinancialDbContext(DbContextOptions<FinancialDbContext> options)

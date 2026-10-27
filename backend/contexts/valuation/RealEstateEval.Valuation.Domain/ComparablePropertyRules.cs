@@ -1,8 +1,8 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 2 (1b19bedc)
-//  • R2-5 MaxPriceSar (1e12) and PriceError — a bank comparable's price is > 0 and ≤ the maximum.
-//  • R2-10 IsFutureTransactionDate / FutureTransactionDateAr — a deal dated after today is refused at entry.
-//  • R2-10 UsageOrDefault — the usage entered, else the classification, else what the property type says
+//  • MaxPriceSar (1e12) and PriceError — a bank comparable's price is > 0 and ≤ the maximum.
+//  • IsFutureTransactionDate / FutureTransactionDateAr — a deal dated after today is refused at entry.
+//  • UsageOrDefault — the usage entered, else the classification, else what the property type says
 //          (سكني / تجاري / صناعي); plain land stays empty.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 

@@ -7,7 +7,7 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 /// «مكونات العقار» is the case specialist's: a report text written from the inspector's
 /// description (text or photo), plus a building-inventory table the appraiser's direct costs
 /// can start from. Before accepting the field inspection the report text is required; the table
-/// is not a condition (decision 2026-10-15) — it is listed whenever the property has buildings or
+/// is not a condition — it is listed whenever the property has buildings or
 /// annexes worth valuing (every non-land asset, and a land asset only when the inspector answered
 /// «yes» to <see cref="LandHasValuableStructuresKey"/>, see <see cref="HasStructures"/>), and an
 /// empty table is simply a report and a cost approach without components.

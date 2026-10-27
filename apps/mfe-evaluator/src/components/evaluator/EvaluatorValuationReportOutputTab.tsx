@@ -1,10 +1,10 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D1   Purpose, basis and premise labels come from reportValuationChoices (the appraiser's saved choices);
+//  • Purpose, basis and premise labels come from reportValuationChoices (the appraiser's saved choices);
 //         the work-order-only listLabels / assignmentValuationFromPo lookup is removed.
-//  • D9   The same choices pass the retrospective date and rationale into the report fill.
-//  • D11  …and the ownership interest valued (key, label, remaining lease years).
-//  • D17  The income approach DTO and the saved income toggle (incomeApproachEnabled) go to the live fill.
+//  • The same choices pass the retrospective date and rationale into the report fill.
+//  • …and the ownership interest valued (key, label, remaining lease years).
+//  • The income approach DTO and the saved income toggle (incomeApproachEnabled) go to the live fill.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -199,7 +199,7 @@ export function EvaluatorValuationReportOutputTab({
   const deedSlot = outputBundle?.attach.deed ?? null;
   const siteMapSlot = outputBundle?.attach.siteMap ?? null;
 
-  // D1/D9/D11 — purpose, basis, premise, retrospective rationale and the interest valued come
+  // Purpose, basis, premise, retrospective rationale and the interest valued come
   // from the appraiser's saved choices; the work order's defaults only when nothing was saved.
   const valuationChoices = useMemo(
     () =>
@@ -235,7 +235,7 @@ export function EvaluatorValuationReportOutputTab({
    * appended (`versionedReportNo`). `live` is `buildValuationReportLiveFill` over every loaded
    * input, including `transactionDeeds` (the linked property's live deeds).
    *
-   * Edge cases: decision 2026-10-19 — the report number is never computed in the browser; at
+   * Edge cases: — the report number is never computed in the browser; at
    * approval the server fixes it first and passes it in as `reportNoOverride`, because the
    * draft DTO only carries it after the next refetch. Phase 5: a linked property's report names
    * every deed (`linkedDeeds` is empty for a one-deed property, so its own deed prints).
@@ -274,7 +274,7 @@ export function EvaluatorValuationReportOutputTab({
           marketApproachEnabled: approachSettings
             ? approachSettings.marketApproachEnabled
             : undefined,
-          // D17 — the income section and its reconciliation row follow the saved toggle.
+          // The income section and its reconciliation row follow the saved toggle.
           incomeApproachEnabled: approachSettings ? approachSettings.incomeApproachEnabled === true : undefined,
           income,
           costScopeKey: approachSettings?.costScopeKey,
@@ -433,10 +433,10 @@ export function EvaluatorValuationReportOutputTab({
   }, [buildReportMeta, draft.poNumber, poQuery.isPending, outputQuery.isSuccess, showMissingFields]);
 
   /**
-   * Print copy: report meta + §18/§33 Static Maps images, exactly as the browser prints it.
+   * Print copy: report meta + sections 18/33 Static Maps images, exactly as the browser prints it.
    *
    * How it works: builds the meta with `buildReportMeta(loaded, reportDateOverride,
-   * reportNoOverride)`; replaces the map slots with Static Maps images (§18/§33, and §20 land
+   * reportNoOverride)`; replaces the map slots with Static Maps images (sections 18/33, and section 20 land
    * comparables when there are pins), reporting each step through `onPhase`; then asks for the
    * "print" HTML and returns `{ html, reportNo }`.
    *
@@ -455,7 +455,7 @@ export function EvaluatorValuationReportOutputTab({
       let live = baseMeta.live;
       if (live) {
         onPhase?.("تجهيز خرائط التقرير…");
-        // Print cannot run Google Maps JS — fetch Static Maps images for §18 / §33 instead.
+        // Print cannot run Google Maps JS — fetch Static Maps images for sections 18/33 instead.
         const { diagnostics, ...mapSlots } = await materializePrintMapSlots({
           pins: live.comparablesMapPins ?? [],
           comparableMapSlot: live.comparableMapSlot,
@@ -463,7 +463,7 @@ export function EvaluatorValuationReportOutputTab({
           closeupMapSlot: live.closeupMapSlot,
         });
         live = { ...live, ...mapSlots };
-        // §20 land comparables map (cost approach, land and building) — same Static Maps path.
+        // Section 20 land comparables map (cost approach, land and building) — same Static Maps path.
         if ((live.landComparablesMapPins ?? []).length > 0) {
           const land = await materializeComparablesMapImage(live.landComparablesMapPins, {
             maptype: "hybrid",

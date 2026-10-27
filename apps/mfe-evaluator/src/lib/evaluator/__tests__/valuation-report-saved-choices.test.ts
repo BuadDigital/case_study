@@ -342,7 +342,7 @@ describe("report facts printed as the inspector / roster recorded them", () => {
       certifiedMembershipExpires: "2027-09-06",
     });
     expect(withMembership.cells["رقم العضوية"]).toBe("1210000003");
-    // §25 — yyyy/mm/dd like every other date in the report (round 2).
+    // Section 25 — yyyy/mm/dd like every other date in the report (round 2).
     expect(withMembership.cells["تاريخ انتهاء العضوية"]).toBe("2027/09/06");
   });
 });

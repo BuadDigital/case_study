@@ -17,7 +17,7 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// D2 — the appraiser's hand-over is refused on the server while an issuance gate he must see fixed
+/// The appraiser's hand-over is refused on the server while an issuance gate he must see fixed
 /// blocks; every blocker is listed with who fixes it. The report attachments the specialist adds
 /// after the hand-over (deed copy, survey document) do not hold it up. An unreadable gate fails closed.
 /// </summary>

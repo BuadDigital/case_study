@@ -3,15 +3,15 @@
 //  • Income  New «أسلوب الدخل» screen (IncomeApproachScreen): the tab follows the settings draft, else the
 //            saved settings; an income save drops the printed-report cache and reloads reconciliation
 //            and gates.
-//  • D6   Alert panels per group: market on «طريقة المقارنة», cost on the cost screen, general on the final
+//  • Alert panels per group: market on «طريقة المقارنة», cost on the cost screen, general on the final
 //         opinion (alertsPanel) — cost and general alerts had no panel.
-//  • D2   Passes gates and setScreen to the review screen for the hand-over blockers list.
+//  • Passes gates and setScreen to the review screen for the hand-over blockers list.
 //  • Split  The screen pills moved to ValuationWorkNav.
 // Round 2 (1b19bedc)
 //  • A    The land table inside the cost approach uses the whole plot area (landPlotSqm), never an
 //         apartment's floor area, and an apartment shows apartmentLandHint; deedArea goes to the cost
 //         section.
-//  • R2-3  Passes incomeSaved (saved settings) to the income screen.
+//  • Passes incomeSaved (saved settings) to the income screen.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -175,7 +175,7 @@ export function ValuationWorkShell({
     bankSubjectCoords,
   } = data;
   const isApartment = (approachSettings?.propertyType ?? "").includes("شقة");
-  // Decision A: the land table's own area — the whole plot, never the apartment's floor area.
+  // The land table's own area — the whole plot, never the apartment's floor area.
   const landPlotSqm = landSelection?.subjectAreaSqm ?? cost?.landAreaSqm ?? 0;
 
   const {
@@ -200,7 +200,7 @@ export function ValuationWorkShell({
     draftApproaches != null ? draftApproaches.market : marketEnabled;
   const costTab =
     draftApproaches != null ? draftApproaches.cost : costEnabled;
-  // D17 — the settings draft wins once it reports income; else the saved settings decide.
+  // The settings draft wins once it reports income; else the saved settings decide.
   const incomeTab = draftApproaches?.income ?? incomeApproachAvailable(approachSettings);
 
   useEffect(() => {
@@ -460,7 +460,7 @@ export function ValuationWorkShell({
               مكوّن داخل أسلوب التكلفة — ناتجه قيمة الأرض ولا يدخل الترجيح بين
               الأساليب. مقارناته أراضٍ خام مستقلة عن مقارنات أسلوب السوق.
             </div>
-            {/* Decision A: the land comparables are adjusted against the whole plot. */}
+            {/* The land comparables are adjusted against the whole plot. */}
             {isApartment ? (
               <div data-testid="apartment-plot-hint" className="mt-1 text-[11.5px] font-bold text-heading">
                 {apartmentLandHint(cost)}

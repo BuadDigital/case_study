@@ -5,7 +5,7 @@
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 
 /**
- * Decision 2026-10-19: the page is the transaction's (المعاملة). A tab is either about the
+ * The page is the transaction's (المعاملة). A tab is either about the
  * transaction as a whole (its study, valuation, links, log, notes) or about one deed (its
  * data, documents, survey, inspection, photos, court visits, keys, failures, Enfaz upload,
  * finance). The order below is the single-deed order; a transaction with several deeds shows
@@ -39,7 +39,7 @@ export type PropertyDetailTab = (typeof TABS)[number];
  * The tab bar's groups for a transaction with several deeds: transaction tabs first, then the
  * deed tabs. Each group keeps the catalog order. A single-deed transaction uses the flat list.
  *
- * How it works (decision 2026-10-19): takes the tabs already allowed for the role, splits them
+ * How it works: takes the tabs already allowed for the role, splits them
  * by `scope` into «المعاملة» (study, valuation, links, log, notes) and «الصك» (the per-deed
  * tabs), and returns the two groups in that order.
  *

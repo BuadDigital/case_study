@@ -5,7 +5,7 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
 /// When a property counts as delivered or deliverable, for the PO list status, its counters and
-/// the property-row status. Delivery is the Enfaz handover (Q-9), not the case-study report.
+/// the property-row status. Delivery is the Enfaz handover, not the case-study report.
 /// <c>WorkOrderQueryService</c> carries the same two rules as EF expressions — change both.
 /// </summary>
 public static class PropertyDeliveryRules

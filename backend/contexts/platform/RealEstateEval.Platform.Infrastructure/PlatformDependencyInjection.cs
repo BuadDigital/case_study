@@ -20,7 +20,7 @@ using RealEstateEval.Platform.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Platform.Infrastructure;
 
 /// <summary>
-/// Context-local registration for the Platform bounded context (A8): the reference catalogs
+/// Context-local registration for the Platform bounded context: the reference catalogs
 /// (courts, geography, dictionaries, organization settings) and the Platform-owned
 /// notification inbox with its SSE and web-push delivery. The shared persistence/messaging
 /// plumbing still comes from the global Infrastructure extensions.
@@ -93,7 +93,7 @@ public static class PlatformDependencyInjection
         services.AddScoped<NotificationRealtimePushHandler>();
         return services;
     }
- /// <summary>Platform catalog write context. A8 physical move: lives beside <see cref="PlatformDbContext"/>.</summary>
+ /// <summary>Platform catalog write context. physical move: lives beside <see cref="PlatformDbContext"/>.</summary>
     public static IServiceCollection AddPlatformPersistence(
         this IServiceCollection services,
         IConfiguration configuration,

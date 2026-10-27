@@ -3,7 +3,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>
-/// Persistence boundary for the inspection-limits use case (Decision 24 + Q-7). The use case in
+/// Persistence boundary for the inspection-limits use case. The use case in
 /// <c>CaseStudy.Application</c> composes these calls; only the Infrastructure adapter opens EF.
 /// </summary>
 public interface IInspectionLimitsRepository

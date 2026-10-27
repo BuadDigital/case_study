@@ -150,7 +150,7 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                         || p.District.Contains(search)
                         || p.PropertyType.Contains(search)
                         || p.Classification.Contains(search)
-                        // Decision 2026-10-19: the transaction's number (official PR or draft TMP) finds its deeds' tasks.
+                        // The transaction's number (official PR or draft TMP) finds its deeds' tasks.
                         || _caseStudy.Transactions.Any(t =>
                             t.Id == p.TransactionId
                             && ((t.ReferenceNumber != null && t.ReferenceNumber.Contains(search))

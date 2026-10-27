@@ -121,8 +121,8 @@ public class TableOwnershipCatalogTests
     }
 
  /// <summary>
- /// Plan rule 7: a phase starts only when the preceding phase's exit criteria are met. Every
- /// open decision must therefore carry its outcome, and D6 — the production-consumer
+ /// Plan: a phase starts only when the preceding phase's exit criteria are met. Every
+ /// open decision must therefore carry its outcome, — the production-consumer
  /// inventory that repository inspection cannot produce — must say so explicitly rather than
  /// be quietly closed.
  /// </summary>

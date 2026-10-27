@@ -52,7 +52,7 @@ public sealed class NotificationService : INotificationService
 
  /// <summary>
  /// Filters and sorts in the database, then pages. The user narrowing is the first Where, so
- /// TotalCount is that user's total. See docs/architecture/pagination-contract.md §6.
+ /// TotalCount is that user's total. See docs/architecture/pagination-contract.md.
  /// </summary>
     public async Task<PagedResultDto<UserNotificationDto>> ListPagedForUserAsync(
         string userId,

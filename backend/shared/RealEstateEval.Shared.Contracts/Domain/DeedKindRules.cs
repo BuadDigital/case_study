@@ -14,7 +14,7 @@ public static class DeedKindRules
     /// <summary>
     /// Downstream professional work: the valuation calculation. Registered title always passes;
     /// traditional requires match outcome = matched. فروق / تعذر is an impediment path, not a
-    /// pass. The case-study report is NOT behind this rule (decision 2026-10-15).
+    /// pass. The case-study report is NOT behind this rule.
     /// </summary>
     public static bool AllowsValuationCalc(DeedKind deedKind, string? matchOutcome)
     {

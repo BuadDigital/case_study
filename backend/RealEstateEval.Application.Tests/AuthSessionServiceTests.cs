@@ -212,7 +212,7 @@ public class AuthSessionServiceTests
     }
 
     /// <summary>
-    /// security_offline_spec §3.4: a disabled field user's device wipes its offline store on
+    /// security_offline_spec: a disabled field user's device wipes its offline store on
     /// first contact — but only for disabled accounts, never for a plain expiry or a lockout,
     /// where unsynced field work must survive to the next login.
     /// </summary>

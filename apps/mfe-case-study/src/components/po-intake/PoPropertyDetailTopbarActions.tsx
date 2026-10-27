@@ -20,7 +20,12 @@ import {
   FAILURE_RAISER_SUPERVISOR,
 } from "@failures/mfe/lib/failure-party-roles";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
-import { canEditProperty, canRaisePropertyFailure } from "../../lib/app-data/po-roles";
+import {
+  canEditProperty,
+  canRaisePropertyFailure,
+  canRecordFinalFailure,
+} from "../../lib/app-data/po-roles";
+import { FinalFailureDialog } from "@failures/mfe/components/failures/FinalFailureDialog";
 import {
   poPropertyDetailPath,
   poPropertyEditPath,
@@ -39,6 +44,7 @@ import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-part
 import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access";
 import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
 import { formatPropertyDeedDisplay } from "../../lib/app-data/po-intake-data";
+import { transactionNumberOf } from "../../lib/app-data/transaction-number";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { FailureRaiseModal } from "../failures/FailureRaiseModal";
 import { isAllowedPropertyTab } from "./po-property-detail-tabs-state";
@@ -90,6 +96,7 @@ export function PoPropertyDetailTopbarActions({
   const isHero = variant === "hero";
   const btn = shellBtn;
   const [failureModalOpen, setFailureModalOpen] = useState(false);
+  const [finalFailureOpen, setFinalFailureOpen] = useState(false);
   const [openingCaseStudy, setOpeningCaseStudy] = useState(false);
   const [navPending, startTransition] = useTransition();
   const caseStudyToastIdRef = useRef<string | null>(null);
@@ -128,6 +135,18 @@ export function PoPropertyDetailTopbarActions({
       property &&
       !property.isRemoved &&
       !getPropertyFailure(poNumber.trim(), property.id),
+  );
+
+  // The open failure of this deed, if any — a final one hides the action; any other is finalized
+  // by it (so the dialog does not ask for a problem type). Read from the failures cache, so a
+  // deed whose final failure was just recorded loses the item as soon as the cache refreshes;
+  // a sibling deed without a failure is caught by the server, which makes the dialog ask then.
+  const openFailure = property ? getPropertyFailure(poNumber.trim(), property.id) : null;
+  const canOpenFinalFailure = Boolean(
+    canRecordFinalFailure(role) &&
+      property &&
+      !property.isRemoved &&
+      openFailure?.status !== "approved",
   );
 
   const failureRaisedByRole =
@@ -274,8 +293,12 @@ export function PoPropertyDetailTopbarActions({
       onOpenFailure: canOpenFailureModal
         ? () => setFailureModalOpen(true)
         : undefined,
+      onFinalFailure: canOpenFinalFailure
+        ? () => setFinalFailureOpen(true)
+        : undefined,
     });
   }, [
+    canOpenFinalFailure,
     isHero,
     hideOpenCaseStudy,
     partyFailureRaiser,
@@ -306,6 +329,24 @@ export function PoPropertyDetailTopbarActions({
     />
   ) : null;
 
+  // The title names the transaction (PR-… or TMP-…) when the deed has one, else the deed itself;
+  // mounted only while open, so its fields start empty every time.
+  const finalFailureDialog =
+    finalFailureOpen && canOpenFinalFailure ? (
+      <FinalFailureDialog
+        open
+        onClose={() => setFinalFailureOpen(false)}
+        poNumber={poNumber}
+        propertyId={property.id}
+        deedLabel={
+          transactionNumberOf(property) ??
+          (formatPropertyDeedDisplay(property) || property.deedNumber.trim())
+        }
+        deedCount={property.transactionDeedCount}
+        askProblemType={!openFailure}
+      />
+    ) : null;
+
   if (isHero) {
     if (heroMenuItems.length === 0) return null;
     return (
@@ -317,6 +358,7 @@ export function PoPropertyDetailTopbarActions({
           buttonClassName="border-border-md bg-surface text-text-2"
         />
         {failureModal}
+        {finalFailureDialog}
       </>
     );
   }

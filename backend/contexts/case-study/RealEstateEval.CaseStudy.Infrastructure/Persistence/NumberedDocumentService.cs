@@ -12,7 +12,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 /// <summary>
-/// Decision 25 + numbering workshop: a letter takes its LT number at print time. Decision
+/// Numbering workshop: a letter takes its LT number at print time. Decision
 /// 2026-10-19: the case-study report's number is PRC-… derived from the transaction's official
 /// reference, which is confirmed here if the report is the first approval. Both are logged as
 /// immutable ledger rows; asking for the same report number twice returns the same row.

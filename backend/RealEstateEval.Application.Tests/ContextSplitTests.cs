@@ -75,7 +75,7 @@ public class ContextSplitTests
     }
 
  /// <summary>
- /// D5: the Valuation context maps <c>messaging.OutboxMessages</c> precisely so the request
+ /// The Valuation context maps <c>messaging.OutboxMessages</c> precisely so the request
  /// and its event are one <c>SaveChanges</c>. If the event were published through another
  /// context, a crash between the two saves would announce a request that does not exist.
  /// </summary>

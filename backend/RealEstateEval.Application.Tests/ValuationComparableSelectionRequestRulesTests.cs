@@ -136,7 +136,7 @@ public class ValuationComparableSelectionRequestRulesTests
         Assert.Equal("تسمية العامل المضاف مطلوبة", errors["adjustmentLines[1].labelAr"]);
         Assert.Equal("النسبة يجب أن تكون بين -100 و 100", errors["adjustmentLines[2].percent"]);
         Assert.Equal("النسبة يجب أن تكون بين -100 و 100", errors["adjustmentLines[3].percent"]);
-        // Round 2, decision B: a written rationale for a non-zero factor is at least 10 characters.
+        // Round 2: a written rationale for a non-zero factor is at least 10 characters.
         Assert.Equal("مبرر التسوية للمقارن يجب ألا يقل عن 10 أحرف", errors["adjustmentLines[3].rationale"]);
         Assert.Equal(5, errors.Count);
     }
@@ -294,7 +294,7 @@ public class ValuationComparableSelectionRequestRulesTests
         Assert.Empty(built);
     }
 
-    // ---- round 2: rationale minimum (decision B) and bounds ----
+    // ---- round 2: rationale minimum and bounds ----
 
     [Fact]
     public void ValidateMarketSave_refuses_required_rationales_under_ten_characters()

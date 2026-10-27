@@ -6,6 +6,17 @@ export function canReceivePo(role: RoleId): boolean {
   return role === "section-supervisor" || role === "case-specialist";
 }
 
+/**
+ * «التعذّر النهائي عن المعاملة» — the section supervisor (and the CDO); mirrors `FailureRecordRules.CanRecordFinalFailure`.
+ *
+ * How it works: a plain role match that shows the ⋮ menu item. Edge cases: not `isSuperAdmin` —
+ * that also admits any role holding `manage-system-config`, which the server would refuse with
+ * 403; the general manager is view-only on failures and is left out on both sides.
+ */
+export function canRecordFinalFailure(role: RoleId): boolean {
+  return role === "cdo" || role === "section-supervisor";
+}
+
 export function canEditPoHeader(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";
 }

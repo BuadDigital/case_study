@@ -4,15 +4,15 @@
 //  • Cost A repeated-floors line needs a count and a first-floor area (RepeatedFloorRules.MissingInputMessage).
 //  • Bounds Save bounds for quantity, unit cost, line count, floor count, ages, life extension and land
 //           share; LineTotal clamps legacy rows so a read never overflows.
-//  • D7   The land rate inside the cost approach is always per m²: on whole_property each comparable's
+//  • The land rate inside the cost approach is always per m²: on whole_property each comparable's
 //         total ÷ its own area, then weighted (LandUnitRateFromAdoptedComps).
-//  • D12  Applied obsolescence capped at 100% (buildings value floors at 0); alert above 90%.
-//  • D11  LifeCappedByLease — the life used for depreciation is at most actual age + remaining lease.
+//  • Applied obsolescence capped at 100% (buildings value floors at 0); alert above 90%.
+//  • LifeCappedByLease — the life used for depreciation is at most actual age + remaining lease.
 // Round 2 (1b19bedc)
 //  • A    BuildingPlotAreaSqm on the cost approach and CostLandAreas (plot + apartment share); the land
 //         table compares with the plot (LandTableSubjectAreaSqm) and multiplies by the share
 //         (LandTableValueAreaSqm).
-//  • R2-5 MaxBuildingPlotAreaSqm and MaxAmountSar (1e12) — a cost line or total cannot overflow numeric(18,2).
+//  • MaxBuildingPlotAreaSqm and MaxAmountSar (1e12) — a cost line or total cannot overflow numeric(18,2).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Domain;
@@ -80,7 +80,7 @@ public class ValuationCostApproach
  /// <summary>apartment share of land m²; overrides land area when set.</summary>
     public decimal? ApartmentLandShareSqm { get; set; }
     /// <summary>
-    /// Decision A (round 2): the whole building plot (m²) the land table inside the cost approach compares
+    /// (round 2): the whole building plot (m²) the land table inside the cost approach compares
     /// each land comparable with — for an apartment the building's land, never the unit's floor area. Kept
     /// here, apart from the market header, so the subject-area sync can never overwrite it. Null = not
     /// entered (see <see cref="CostApproachRules.LandTableSubjectAreaSqm"/>).
@@ -368,7 +368,7 @@ public static class MarketOpinionRules
 }
 
 /// <summary>
-/// Decision A: what the land table inside the cost approach reads from the cost approach — the whole
+/// What the land table inside the cost approach reads from the cost approach — the whole
 /// building plot (area-adjustment base) and the apartment's share of it (value multiplier), in m².
 /// </summary>
 public readonly record struct CostLandAreas(decimal? BuildingPlotAreaSqm, decimal? ApartmentShareSqm);
@@ -400,13 +400,13 @@ public static class CostApproachRules
     public const decimal MaxAmountSar = 1_000_000_000_000m;
 
     /// <summary>
-    /// D12: depreciation never exceeds the cost — the total obsolescence applied to the cost is
+    /// Depreciation never exceeds the cost — the total obsolescence applied to the cost is
     /// capped here (buildings value floors at zero).
     /// </summary>
     public const decimal MaxAppliedObsolescencePct = 100m;
 
     /// <summary>
-    /// D12: total obsolescence (physical + functional + external) above this asks for a written
+    /// Total obsolescence (physical + functional + external) above this asks for a written
     /// rationale — the methodology alert reads <see cref="ObsolescenceNeedsAlert"/>.
     /// </summary>
     public const decimal HighObsolescenceAlertPct = 90m;
@@ -516,7 +516,7 @@ public static class CostApproachRules
     }
 
     /// <summary>
-    /// D7: the land inside the cost approach is always valued per m². Each adopted land
+    /// The land inside the cost approach is always valued per m². Each adopted land
     /// comparable's adjusted amount becomes its own unit rate — on a whole_property table the
     /// adjusted total is divided by THAT comparable's area (never the subject's, which
     /// overstated the rate whenever the sizes differed) — and the rates are weighted.
@@ -541,7 +541,7 @@ public static class CostApproachRules
     }
 
     /// <summary>
-    /// Decision A: the area the land table's area adjustment compares each land comparable with — the
+    /// The area the land table's area adjustment compares each land comparable with — the
     /// building plot saved on the cost approach. Without one, a property whose land is shared (an apartment
     /// share is set) has no usable area (null → the land estimate stays incomplete until the plot is
     /// entered: the unit's floor area is not land); any other property keeps the market header's subject
@@ -556,7 +556,7 @@ public static class CostApproachRules
         : headerSubjectAreaSqm;
 
     /// <summary>
-    /// Decision A: the area the land table's adjusted rate multiplies into the land value — the apartment's
+    /// The area the land table's adjusted rate multiplies into the land value — the apartment's
     /// share of the land when set, else the plot itself; null while the plot is unknown.
     /// </summary>
     public static decimal? LandTableValueAreaSqm(decimal? plotAreaSqm, decimal? apartmentShareSqm) =>
@@ -621,12 +621,12 @@ public static class CostApproachRules
     public static decimal TotalObsolescencePct(decimal? physicalPct, decimal functionalPct, decimal externalPct) =>
         Math.Round((physicalPct ?? 0m) + Math.Max(0m, functionalPct) + Math.Max(0m, externalPct), 2, MidpointRounding.AwayFromZero);
 
-    /// <summary>D12: the obsolescence actually applied to the cost — 0–100%.</summary>
+    /// <summary>The obsolescence actually applied to the cost — 0–100%.</summary>
     public static decimal AppliedObsolescencePct(decimal totalObsolescencePct) =>
         Math.Clamp(totalObsolescencePct, 0m, MaxAppliedObsolescencePct);
 
     /// <summary>
-    /// D12: depreciation = cost × applied obsolescence, the total capped at 100% so the
+    /// Depreciation = cost × applied obsolescence, the total capped at 100% so the
     /// depreciation never exceeds the cost. The unclamped total still feeds the alerts.
     /// </summary>
     public static decimal DepreciationValue(decimal totalCostWithIndirect, decimal totalObsolescencePct) =>
@@ -634,12 +634,12 @@ public static class CostApproachRules
             Math.Max(0m, totalCostWithIndirect) * AppliedObsolescencePct(totalObsolescencePct) / 100m,
             2, MidpointRounding.AwayFromZero);
 
-    /// <summary>D12: buildings value after depreciation (buildings without land) — floors at zero.</summary>
+    /// <summary>Buildings value after depreciation (buildings without land) — floors at zero.</summary>
     public static decimal BuildingsAfterDepreciation(decimal totalCostWithIndirect, decimal depreciationValue) =>
         Math.Max(0m, Math.Round(totalCostWithIndirect - depreciationValue, 2, MidpointRounding.AwayFromZero));
 
     /// <summary>
-    /// D11: a building valued alone on leased land cannot outlive the lease — its remaining
+    /// A building valued alone on leased land cannot outlive the lease — its remaining
     /// economic life (life − actual age) is capped at the remaining lease years, i.e. the life
     /// used for physical depreciation is at most actual age + remaining lease. Null lease years
     /// (not leased, or not entered) leave the life unchanged.

@@ -76,7 +76,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
             return;
 
         _connectionString = await _postgres.EnsureDatabaseAsync("controller_bodies");
-        // A10: the nine context streams alone provision the schema.
+        // The nine context streams alone provision the schema.
         await BoundedContextStreamMigrator.ApplyAllStreamsAsync(_connectionString);
     }
 
@@ -245,7 +245,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
     /// is the only place the <c>@&gt;</c> containment and the trigram <c>LIKE</c> over the generated
     /// <c>DeedsText</c> column are actually translated and executed — the index shapes are created
     /// by <c>AddOperationsTaskDeedSearchIndex</c>.
-    /// See docs/architecture/pagination-contract.md §3.
+    /// See docs/architecture/pagination-contract.md.
     /// </summary>
     [DockerFact]
     public async Task Operations_task_deed_search_executes_against_postgres()
@@ -757,7 +757,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
     }
 
  /// <summary>
- /// F6 — Q-8/Q-6: factor rationale (minimum 10 characters + persistence and retrieval) and two-stage issuance
+ /// F6 —: factor rationale (minimum 10 characters + persistence and retrieval) and two-stage issuance
  /// (Draft status, Upload rejected before block, 404 for ungenerated versions) on real Postgres.
  /// </summary>
     [DockerFact]
@@ -785,7 +785,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         var valuationRequestId = created.RootElement.GetProperty("id").GetGuid();
 
-        // Decision B: a written factor justification needs at least 10 characters (Arabic 400).
+        // A written factor justification needs at least 10 characters (Arabic 400).
         using var shortRationale = AuthorizedPut(
             $"/api/valuation-requests/{valuationRequestId:D}/adjustment-factor-rationale",
             new { selectionContext = "market", factorKey = "financing", rationaleAr = "قصير" });
@@ -793,7 +793,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, shortSaved.StatusCode);
         Assert.Contains("يجب ألا يقل عن 10 أحرف", await shortSaved.Content.ReadAsStringAsync());
 
-        // Q-8-1: one rationale per factor — persisted and returned in the comparables payload.
+        // One rationale per factor — persisted and returned in the comparables payload.
         using var saveRationale = AuthorizedPut(
             $"/api/valuation-requests/{valuationRequestId:D}/adjustment-factor-rationale",
             new
@@ -810,7 +810,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         Assert.Contains("شروط التمويل مماثلة لكل المقارنات", savedBody);
         Assert.Contains("financing", savedBody);
 
-        // Q-6 (2026-10-05): the issuance state is read through the report draft — the old
+        // (2026-10-05): the issuance state is read through the report draft — the old
         // GET report-issuance route is gone, so the draft below is the only state read.
         // The report draft starts empty: nothing was handed over, so the specialist cannot prepare it yet.
         using var draftRequest = AuthorizedGet(
@@ -830,7 +830,7 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
     }
 
  /// <summary>
- /// F6 — Q-9: Network transaction status and upload Enfaz — 404 for unknown, reject upload before ready
+ /// F6 —: Network transaction status and upload Enfaz — 404 for unknown, reject upload before ready
  /// With a problem message, on real Postgres.
  /// </summary>
     [DockerFact]
@@ -993,7 +993,7 @@ internal sealed class RealDatabaseApiFactory<TMarker> : WebApplicationFactory<TM
                         BoundedContextMigrations.HistorySchemaFor<TContext>()))
                     .Options;
 
- // A9 moved cross-context reads to owner HTTP APIs, but this test boots one host at a
+ // Moved cross-context reads to owner HTTP APIs, but this test boots one host at a
  // time against a single database that holds every schema — re-point the remote
  // lookups at their EF implementations so bodies still execute real SQL. The contexts
  // are registered KEYED so they never join constructor resolution (several services

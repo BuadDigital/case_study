@@ -45,7 +45,7 @@ export type PartyTaskSubmissionDto = {
   studyReportIssued?: boolean | null;
   /**
    * Field-inspection: the server's fingerprint of the specialist-owned source data.
-   * The inspector's device echoes it back with each save (spec §4.4).
+   * The inspector's device echoes it back with each save (spec).
    */
   sourceFingerprint?: string;
   /**

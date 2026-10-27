@@ -4,7 +4,7 @@ namespace RealEstateEval.Application.Contracts;
 /// Server-side paging / filtering / sorting for <c>GET /api/party-billing-statements</c>.
 /// Every member is optional: with no page and no page size the endpoint keeps its plain array.
 /// Lives in the shared Application assembly because the Case Study host forwards it over HTTP to
-/// the Financial owner. See docs/architecture/pagination-contract.md §9.1.
+/// the Financial owner. See docs/architecture/pagination-contract.md.
 /// </summary>
 public sealed record PartyBillingStatementListQuery
 {
@@ -38,7 +38,7 @@ public sealed record PartyBillingStatementListQuery
 /// <summary>
 /// Server-side paging / filtering / sorting for <c>GET /api/party-billing-statements/ready-lines</c>.
 /// The row set is synthesised (ledgers minus claimed lines, one per task, plus court-visit
-/// charges), so the page is cut over the materialised list — see the contract, §9.2.
+/// charges), so the page is cut over the materialised list — see the contract, section 9.2.
 /// </summary>
 public sealed record PartyBillingReadyLineListQuery
 {
@@ -63,7 +63,7 @@ public sealed record PartyBillingReadyLineListQuery
 
 /// <summary>
 /// Server-side paging / filtering / sorting for <c>GET /api/enfaz-billing/ready-pos-summary</c>.
-/// See docs/architecture/pagination-contract.md §10.1.
+/// See docs/architecture/pagination-contract.md.
 /// </summary>
 public sealed record EnfazReadyPoListQuery
 {
@@ -85,7 +85,7 @@ public sealed record EnfazReadyPoListQuery
 
 /// <summary>
 /// Server-side paging / filtering / sorting for <c>GET /api/enfaz-billing/tracking</c>.
-/// See docs/architecture/pagination-contract.md §10.2.
+/// See docs/architecture/pagination-contract.md.
 /// </summary>
 public sealed record EnfazTrackingListQuery
 {

@@ -103,7 +103,7 @@ export function useMyTaskWorkWorkflow({
     null,
   );
   /**
-   * Decision 2026-10-18: an empty slot gets its property on the server the moment it is
+   * An empty slot gets its property on the server the moment it is
    * opened (a draft with its real id), so uploads never need a client-side id. The task list
    * learns the id on its next refresh; until then it lives here.
    */

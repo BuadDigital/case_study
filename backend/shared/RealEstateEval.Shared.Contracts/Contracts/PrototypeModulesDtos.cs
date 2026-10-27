@@ -3,12 +3,12 @@ using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Contracts;
 
-// Field-dictionary DTOs moved to RealEstateEval.Platform.Application (A8).
+// Field-dictionary DTOs moved to RealEstateEval.Platform.Application.
 
-// Failure-types catalog DTOs moved to RealEstateEval.Failures.Application (A8).
-// Evaluator-recall DTOs moved to RealEstateEval.Valuation.Application (A8).
+// Failure-types catalog DTOs moved to RealEstateEval.Failures.Application.
+// Evaluator-recall DTOs moved to RealEstateEval.Valuation.Application.
 
-// Survey-office and property-key DTOs moved to RealEstateEval.Operations.Application (A8).
+// Survey-office and property-key DTOs moved to RealEstateEval.Operations.Application.
 
 /// <summary>
 /// The property's final valuation report: <c>none</c> | <c>preparing</c> | <c>ready</c>, or null when the
@@ -47,7 +47,7 @@ public class ValuationRequestDto
 }
 
 /// <summary>
-/// Phase 5 (decision 2026-10-19): the deeds moved into a transaction by a merge. Their open
+/// Phase 5: the deeds moved into a transaction by a merge. Their open
 /// valuation requests fold into the holder deed's request; one valuation per transaction.
 /// </summary>
 public sealed class FoldValuationRequestsRequest
@@ -126,7 +126,7 @@ public class ValuationImpedimentRequest
     public string Reason { get; init; } = "";
 }
 
-// Attachment DTOs moved to RealEstateEval.Attachments.Application (A8).
+// Attachment DTOs moved to RealEstateEval.Attachments.Application.
 
 public sealed class UserLabelDto
 {

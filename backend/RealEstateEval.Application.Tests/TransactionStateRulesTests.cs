@@ -4,7 +4,7 @@ using static RealEstateEval.CaseStudy.Domain.TransactionStateRules;
 
 namespace RealEstateEval.Application.Tests;
 
-/// <summary>Q-9: Transaction State Machine — Distribution and Dependencies Network, Inspector Key Node.</summary>
+/// <summary>Transaction State Machine — Distribution and Dependencies Network, Inspector Key Node.</summary>
 public class TransactionStateRulesTests
 {
     private static Input BaseInput(

@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D15  A duplicate deposit code or a lost parallel registration answers 409 Conflict (the ConflictKey
+//  • A duplicate deposit code or a lost parallel registration answers 409 Conflict (the ConflictKey
 //         marker is dropped from the errors).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -16,7 +16,7 @@ using RealEstateEval.Valuation.Application.Rules;
 namespace RealEstateEval.Valuation.Api.Controllers;
 
 /// <summary>
-/// Q-6: two-phase issuance + deposit certificate — the frozen deposit copy is issued when the appraiser
+/// two-phase issuance + deposit certificate — the frozen deposit copy is issued when the appraiser
 /// approves the report draft (<c>report-draft/approve</c>); this controller records the Qeema deposit code and
 /// certificate (final copy) and reopens a deposited report.
 /// </summary>
@@ -75,7 +75,7 @@ public class ValuationReportIssuanceController : ControllerBase
         if (errors is null) return Ok(result);
         if (errors.TryGetValue(ReportDraftErrorKeys.Forbidden, out var forbidden))
             return this.ForbiddenProblem(forbidden);
-        // D15: a duplicate deposit code or a lost parallel registration answers 409 (the marker key is dropped).
+        // A duplicate deposit code or a lost parallel registration answers 409 (the marker key is dropped).
         if (errors.Remove(DepositCertificateRules.ConflictKey))
             return this.FieldErrorsProblem(errors, StatusCodes.Status409Conflict, "Conflict");
         return this.FieldErrorsProblem(errors);

@@ -1,4 +1,4 @@
-// Session-local diagnostic driver: screenshot §18 / §33 maps in the evaluator report
+// Session-local diagnostic driver: screenshot sections 18/33 maps in the evaluator report
 // (screen preview + print tab) and log Google Maps request outcomes. Not a CI test.
 import { chromium } from "@playwright/test";
 import fs from "node:fs";

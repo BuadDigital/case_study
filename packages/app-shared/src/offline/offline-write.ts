@@ -297,7 +297,7 @@ export async function evaluateOfflineLease(): Promise<{
   };
 }
 
-/* ─── Local working copy (spec §3.4: «الحفظ لحظي أثناء الإدخال») ─── */
+/* ─── Local working copy (spec: «الحفظ لحظي أثناء الإدخال») ─── */
 
 type WorkingCopyWriter = {
   running: Promise<void> | null;

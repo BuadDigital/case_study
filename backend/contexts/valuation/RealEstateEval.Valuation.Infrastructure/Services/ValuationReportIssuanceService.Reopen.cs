@@ -63,7 +63,7 @@ public sealed partial class ValuationReportIssuanceService
         if (reopenError is not null)
             return (null, new Dictionary<string, string> { ["_"] = reopenError });
 
-        // R2: deposited copy is not edited — marked superseded and kept on file; the new cycle ends
+        // Deposited copy is not edited — marked superseded and kept on file; the new cycle ends
         // with deposit copy N+1 and a new Qiama deposit.
         var error = row.Supersede(requestedByUserId, request.Reason, _time.UtcNow());
         if (error is not null)

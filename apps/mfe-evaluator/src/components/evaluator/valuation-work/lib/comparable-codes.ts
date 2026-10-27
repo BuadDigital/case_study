@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 2 (1b19bedc)
-//  • R2-20  New file — splitComparableCodes cuts alert text into plain runs and CMP-… code runs, so the
+//  • New file — splitComparableCodes cuts alert text into plain runs and CMP-… code runs, so the
 //           UI can keep each code on one line. Pure.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 

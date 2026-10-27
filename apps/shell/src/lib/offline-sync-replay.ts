@@ -36,7 +36,7 @@ import {
 /**
  * Classifies a failed replay. A 401/403 never wipes the queue: an expired token is
  * renewed and retried, and only a disabled account (refresh code `account-disabled`)
- * wipes the device (spec §3.4 / §4.3).
+ * wipes the device (spec).
  */
 async function fail(
   _userId: string,
@@ -222,7 +222,7 @@ function buildReplayDeps(userId: string): OfflineSyncDeps {
         assignmentId?: string;
         status?: string;
         notes?: string | null;
-        // Decision 2026-10-20: where the matching key went, recorded offline in the field.
+        // Where the matching key went, recorded offline in the field.
         keyLocation?: string | null;
       }>(input.payloadJson);
       if (!payload) return invalidPayloadFailure("بيانات تأكيد غير صالحة");

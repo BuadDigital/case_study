@@ -176,7 +176,7 @@ function buildQuery(params: Record<string, string | undefined>): string {
   return s ? `?${s}` : "";
 }
 
-/** Allowed `sort` keys — pagination-contract §3. Unknown keys fall back to `queue`. */
+/** Allowed `sort` keys — pagination-contract. Unknown keys fall back to `queue`. */
 export type OperationsTaskListSort =
   | "queue"
   | "created"
@@ -185,7 +185,7 @@ export type OperationsTaskListSort =
   | "priority";
 
 /**
- * `GET /api/operations-tasks` query — pagination-contract §3. Inherited `q`
+ * `GET /api/operations-tasks` query — pagination-contract. Inherited `q`
  * matches Title / DisplayId / AssigneeName / PoNumber / Reference **and any
  * deed number in `DeedsJson`** (jsonb containment for a whole deed number, a
  * trigram index for a partial one), so deed terms belong on the wire.

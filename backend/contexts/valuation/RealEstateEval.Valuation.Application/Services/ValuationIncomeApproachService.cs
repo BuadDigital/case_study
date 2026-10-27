@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Income New file — D17 income approach by direct capitalisation: save (refused while frozen, handed
+//  • Income New file — income approach by direct capitalisation: save (refused while frozen, handed
 //           over or not enabled in the settings; validated by ValuationIncomeApproachRequestRules) and read.
 //  • Income ToDto computes the chain from the stored inputs — EGI, operating expenses, NOI = EGI − opex,
 //           value = NOI ÷ cap rate, IsComplete; nothing derived is stored.
@@ -15,8 +15,8 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.Valuation.Application.Services;
 
 /// <summary>
-/// D17 — income approach by direct capitalisation. Persistence goes through
-/// <see cref="IValuationIncomeApproachRepository"/> and the ق-6 / hand-over lock through
+/// Income approach by direct capitalisation. Persistence goes through
+/// <see cref="IValuationIncomeApproachRepository"/> and the / hand-over lock through
 /// <see cref="IValuationReportFreezeGate"/> (same gate as the cost approach); this file holds
 /// rules only — no EF.
 /// </summary>
@@ -52,7 +52,7 @@ public sealed class ValuationIncomeApproachService(
         if (blocked is not null)
             return (null, new Dictionary<string, string> { ["_"] = blocked });
 
-        // Q-2: the screen is closed while the approach is off (unsaved settings = off).
+        // The screen is closed while the approach is off (unsaved settings = off).
         var settings = await repo.GetApproachSettingsAsync(valuationRequestId, cancellationToken);
         if (settings?.IncomeApproachEnabled != true)
             return (null, new Dictionary<string, string> { ["_"] = NotEnabledAr });

@@ -170,7 +170,7 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
             if (_ops.Database.IsNpgsql())
             {
                 // Deed search is index-backed: jsonb containment (exact deed number) plus a trigram
-                // LIKE over the generated DeedsText column. See pagination-contract.md §3.
+                // LIKE over the generated DeedsText column. See pagination-contract.md.
                 var containment = OperationsTaskDeedSearch.ContainmentJson(search);
                 var pattern = OperationsTaskDeedSearch.SubstringPattern(search);
                 rows = rows.Where(t =>

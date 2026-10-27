@@ -2,8 +2,8 @@
 // Round 1 (5b554f4e)
 //  • Wording  New outputLabel: «قيمة الأرض قبل التقريب» only for the land table inside the cost approach,
 //             «قيمة العقار قبل التقريب» otherwise.
-//  • D7   On the whole-property basis the area method reads «لا تسوية مساحة — المقارنة على قيمة العقار كاملة».
-//  • D4   New grossAdjustmentPct (Σ|%| of included lines); the ±40٪ alert shows net and gross and says it
+//  • On the whole-property basis the area method reads «لا تسوية مساحة — المقارنة على قيمة العقار كاملة».
+//  • New grossAdjustmentPct (Σ|%| of included lines); the ±40٪ alert shows net and gross and says it
 //         fires on either.
 // Round 2 (1b19bedc)
 //  • A    New outputFormula (matrixOutputFormula): for an apartment's land, rate × the apartment's share
@@ -40,7 +40,7 @@ export type MatrixBasisView = {
   isUnit: boolean;
   /** «قيمة الأرض» only for the land table inside the cost approach — the market table values the property. */
   outputLabel: string;
-  /** What the output multiplies — decision A: an apartment's land is the rate × its share of the plot. */
+  /** What the output multiplies —: an apartment's land is the rate × its share of the plot. */
   outputFormula: string;
   pricePerSqmDisplay: number | null;
   opinionRaw: number | null;
@@ -83,7 +83,7 @@ export function matrixBasisView(
     pricePerSqmDisplay,
     opinionRaw: selection.marketOpinionValueRaw ?? selection.marketOpinionValue,
     opinionFinal: selection.marketOpinionValue,
-    // D7: no area adjustment on the whole-property basis (the server sends 0).
+    // No area adjustment on the whole-property basis (the server sends 0).
     areaMethod: !isUnit
       ? "لا تسوية مساحة — المقارنة على قيمة العقار كاملة"
       : adopted[0]?.market?.areaAdjustmentMethod === "multiplier"
@@ -161,7 +161,7 @@ export function addableFactorOptions(
 }
 
 /**
- * D4 gross adjustment: Σ|%| of the included sequential and difference lines (the server sends the
+ * Gross adjustment: Σ|%| of the included sequential and difference lines (the server sends the
  * area line with its computed %). +30/−30 nets to 0 but is a 60٪ adjustment.
  */
 export function grossAdjustmentPct(item: ValuationComparableSelectionDto): number {

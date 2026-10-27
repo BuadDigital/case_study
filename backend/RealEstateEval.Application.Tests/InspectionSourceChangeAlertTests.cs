@@ -18,7 +18,7 @@ using RealEstateEval.Infrastructure.Services;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// security_offline_spec §4.4 — one owning source per field. The inspector's package never
+/// security_offline_spec — one owning source per field. The inspector's package never
 /// carries the specialist's source data, so the server wins on it; when that data changed
 /// after the inspector downloaded the task (typically while working offline), the case
 /// specialist is alerted to review the answers.

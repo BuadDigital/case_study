@@ -11,7 +11,7 @@ namespace RealEstateEval.Architecture.Tests.Support;
 /// </summary>
 internal static class SourceFacts
 {
- // Field aliases for ApplicationDbContext and extracted bounded-context fields after A6
+ // Field aliases for ApplicationDbContext and extracted bounded-context fields after
  // cutovers (`_ops`, `_caseStudy`, `_financial`, …). Extending here keeps schema fan-out
  // detection accurate without forcing every service back onto `_db`.
     private static readonly Regex ContextMemberAccess = new(
@@ -54,7 +54,7 @@ internal static class SourceFacts
         BuildProjectReferences();
 
  /// <summary>Infrastructure source file (repo-relative) to the schemas it reaches — the
- /// global Infrastructure project plus the per-context libraries under backend/contexts (A8).</summary>
+ /// global Infrastructure project plus the per-context libraries under backend/contexts.</summary>
     public static IReadOnlyDictionary<string, IReadOnlyList<string>> SchemasByInfrastructureFile { get; } =
         BuildSchemasByFile(
             RepoPaths.Combine("backend", "RealEstateEval.Infrastructure"),
@@ -278,7 +278,7 @@ internal static class SourceFacts
         {
             RepoPaths.Combine("backend", "RealEstateEval.Infrastructure", "DependencyInjection.cs"),
         };
-        // Per-context registration files (A8) — e.g. FailuresDependencyInjection.cs.
+        // Per-context registration files — e.g. FailuresDependencyInjection.cs.
         sources.AddRange(RepoPaths
             .CSharpFiles(RepoPaths.Combine("backend", "contexts"))
             .Where(file => Path.GetFileName(file).EndsWith("DependencyInjection.cs", StringComparison.Ordinal)));

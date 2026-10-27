@@ -73,7 +73,7 @@ function EnfathRequestNumberField({
               {fieldErrors.requestNumber}
             </p>
           ) : null}
-          {/* Q-11: literal match is a soft warning, not a hard block — submitter confirms and proceeds */}
+          {/* Literal match is a soft warning, not a hard block — submitter confirms and proceeds */}
           {requestNumberMatchesDeed(property.requestNumber, property.deedNumber) ? (
             <p className="mt-1 text-[10px] text-amber-text" role="status">
               رقم الطلب ورقم الصك متطابقان. هل كتبت الرقم نفسه في الخانتين عن غير قصد؟

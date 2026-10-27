@@ -3,7 +3,7 @@
 //  • Split  New file — the non-methodology gate reads (value documents check, required attachments) moved
 //           here unchanged from ValuationIssuanceGateService.cs.
 // Round 2 (1b19bedc)
-//  • R2-1  Required attachments are also looked up under the engineering-survey task ids
+//  • Required attachments are also looked up under the engineering-survey task ids
 //          (ValuationIssuanceGateRules.AttachmentScopeKeys) — a vacant-land survey stored under the task no
 //          longer blocks approval.
 // ──────────────────────────────────────────────────────────────────────────────────────────────

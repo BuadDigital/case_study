@@ -133,7 +133,7 @@ export function PoPropertyDetailTabs({
   // a tab shown again) keeps the submissions on screen instead of blanking them.
   const partiesLoading = partySubmissionsQuery.isLoading;
 
-  // Decision 2026-10-19: a transaction with several deeds shows two tab levels — the
+  // A transaction with several deeds shows two tab levels — the
   // transaction's tabs, then this deed's behind the switcher in the hero. One deed: flat bar.
   const { data: transaction } = useTransactionQuery(property.id);
   const deedCount = transaction?.deedCount ?? property.transactionDeedCount ?? 1;

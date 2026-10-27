@@ -124,7 +124,7 @@ public static class StaffProfileRules
             Status: request.Status ?? stored.Status);
     }
 
-    /// <summary>Q-3: a mobile entered in a non-Saudi format is rejected, never stored.</summary>
+    /// <summary>A mobile entered in a non-Saudi format is rejected, never stored.</summary>
     public static bool MobileRejected(UpdateStaffUserRequest request, StaffUpdateTarget target) =>
         request.Mobile is not null && target.Mobile is null;
 

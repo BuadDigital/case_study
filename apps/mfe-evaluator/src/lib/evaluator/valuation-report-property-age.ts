@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 2 (1b19bedc)
-//  • R2-10 New formatArabicYears / formatArabicMonths (arabicCount) for counted years and months: «سنة
+//  • New formatArabicYears / formatArabicMonths (arabicCount) for counted years and months: «سنة
 //          واحدة», «سنتان», «4 سنوات», «22 سنة»; «شهر واحد», «شهران», «5 أشهر».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 

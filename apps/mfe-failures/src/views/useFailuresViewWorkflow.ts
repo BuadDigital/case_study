@@ -17,7 +17,6 @@ import type {
 } from "@platform/app-shared/failures/failures-types";
 import { failureStatusErrorToast } from "../lib/failure-status-toast";
 import {
-  approveFailure,
   resolveFailure,
   returnFailure,
   submitFailureForReview,
@@ -56,9 +55,23 @@ export function useFailuresViewWorkflow() {
   const { role } = useAppAccess();
   const caseEditor = isCaseEditor(role);
   const supervisor = isSupervisor(role);
-  // Server-paged rows (pagination-contract §5); `kpiItems` is the whole set the KPI band still needs.
-  const { rows, rowsPage, kpiItems, search, setSearch, setPage, pager, isFetched, isError, error, refetch } =
-    useFailuresListPage(role, highlightId);
+  // Server-paged rows (pagination contract); `kpiItems` is the whole set the KPI band still needs.
+  const {
+    rows,
+    rowsPage,
+    kpiItems,
+    tab,
+    setTab,
+    tabCounts,
+    search,
+    setSearch,
+    setPage,
+    pager,
+    isFetched,
+    isError,
+    error,
+    refetch,
+  } = useFailuresListPage(role, highlightId);
   const { data: poRecords = [] } = usePoRecordsViaBridge();
   const specialistByPo = useMemo(
     () => assignmentSpecialistByPo(poRecords),
@@ -74,6 +87,20 @@ export function useFailuresViewWorkflow() {
     {},
   );
   const [resolveOpen, setResolveOpen] = useState<Record<string, boolean>>({});
+  /** «تصعيد إلى المشرف» form per failure: open flag and the explanation being typed. */
+  const [escalateOpen, setEscalateOpen] = useState<Record<string, boolean>>({});
+  const [escalateNote, setEscalateNote] = useState<Record<string, string>>({});
+  /**
+   * «اعتماد التعذّر» opens the final-failure dialog on this failure. How it works: the id is kept,
+   * the record read from the visible rows. Edge cases: if the row leaves the page (refetch, tab
+   * switch) the record is null and the dialog closes itself instead of posting for a stale row.
+   * The button used to approve straight away with the optional note; it now goes through the
+   * same dialog as the property ⋮ menu (reason required, notify choice, whole transaction).
+   */
+  const [finalFailureId, setFinalFailureId] = useState<string | null>(null);
+  const finalFailure = finalFailureId
+    ? rows.find((f) => f.id === finalFailureId) ?? null
+    : null;
   /** `failureId:action` — shows Spinner on the button during the network call. */
   const [busyKey, setBusyKey] = useState<string | null>(null);
   /** Sync guard — React state alone can miss two clicks in the same frame. */
@@ -157,12 +184,36 @@ export function useFailuresViewWorkflow() {
     });
   }
 
+  /**
+   * «تأكيد التصعيد إلى المشرف».
+   *
+   * How it works: sends the typed explanation with the escalation, flips the row to «قيد
+   * المراجعة» optimistically (with the note, so the panel shows «سبب التصعيد» at once) and closes
+   * the form when the server agrees; a refusal restores the row.
+   *
+   * Edge cases: a blank note does nothing (the confirm button is disabled for it too) — the
+   * escalation used to be one click with no explanation; one is required now.
+   */
   function handleSubmit(id: string) {
-    void runOptimisticStatus(id, "review", () => submitFailureForReview(id), {
+    const note = (escalateNote[id] ?? "").trim();
+    if (!note) return;
+    void runOptimisticStatus(id, "review", () => submitFailureForReview(id, note), {
       busyKey: failureBusyKey(id, "submit"),
-      successToast: "تم تصعيد التعذّر",
-      errorToast: "تعذّر إرسال التعذّر للمراجعة — حاول مرة أخرى",
+      successToast: "تم تصعيد التعذّر إلى المشرف",
+      errorToast: "تعذّر تصعيد التعذّر — حاول مرة أخرى",
+      extra: { escalationNote: note },
+      onOk: () => setEscalateOpen((o) => ({ ...o, [id]: false })),
     });
+  }
+
+  /** Opens or closes the escalation form; it and the resolve form never show together. */
+  function toggleEscalate(id: string) {
+    setEscalateOpen((o) => ({ ...o, [id]: !o[id] }));
+    setResolveOpen((o) => ({ ...o, [id]: false }));
+  }
+
+  function setEscalateNoteFor(id: string, value: string) {
+    setEscalateNote((n) => ({ ...n, [id]: value }));
   }
 
   function handleUpgrade(id: string) {
@@ -171,16 +222,6 @@ export function useFailuresViewWorkflow() {
       successToast: "تم تأكيد التعذّر الداخلي",
       errorToast: "تعذّر ترقية التعذّر — حاول مرة أخرى",
       extra: { severity: "internal" },
-    });
-  }
-
-  function handleApprove(id: string) {
-    const note = supervisorNote[id] ?? "";
-    void runOptimisticStatus(id, "approved", () => approveFailure(id, note), {
-      busyKey: failureBusyKey(id, "approve"),
-      successToast: "تم اعتماد التعذّر",
-      errorToast: "تعذّر اعتماد التعذّر — حاول مرة أخرى",
-      extra: { finalNote: note },
     });
   }
 
@@ -250,6 +291,7 @@ export function useFailuresViewWorkflow() {
 
   function toggleResolve(id: string) {
     setResolveOpen((o) => ({ ...o, [id]: !o[id] }));
+    setEscalateOpen((o) => ({ ...o, [id]: false }));
   }
 
   function patchResolveDraft(id: string, patch: Partial<ResolveDraft>) {
@@ -272,6 +314,9 @@ export function useFailuresViewWorkflow() {
     isDesktopViewport,
     rows,
     rowsPage,
+    tab,
+    setTab,
+    tabCounts,
     search,
     setSearch,
     setPage,
@@ -288,10 +333,16 @@ export function useFailuresViewWorkflow() {
     setSupervisorNoteFor,
     resolveDraft,
     resolveOpen,
+    escalateOpen,
+    escalateNote,
+    toggleEscalate,
+    setEscalateNoteFor,
     busyKey,
     handleSubmit,
     handleUpgrade,
-    handleApprove,
+    finalFailure,
+    setFinalFailureId,
+    closeFinalFailure: () => setFinalFailureId(null),
     handleReturn,
     handleSuspend,
     handleResolve,

@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 2 (1b19bedc)
-//  • R2   Non-OK responses (read, draft states, final-report download / generate) go through serverFailure: a
+//  • Non-OK responses (read, draft states, final-report download / generate) go through serverFailure: a
 //         503 now carries the server's Arabic message.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -171,7 +171,7 @@ export type ValuationReportNumberDto = {
 };
 
 /**
- * Fixes the report number before the approved copy is printed (decision 2026-10-19): the
+ * Fixes the report number before the approved copy is printed: the
  * transaction's official PR reference is confirmed through Case Study and PRV-… returned. Idempotent.
  *
  * How it works: POST `/report-number` on the valuation request; 401 → auth, 403 → forbidden,

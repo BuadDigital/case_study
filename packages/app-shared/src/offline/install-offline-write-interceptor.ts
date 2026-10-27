@@ -347,7 +347,7 @@ export function installOfflineWriteInterceptor(): () => void {
     }
 
     // A 401/403 on one write must not wipe the device's unsynced work — only a
-    // disabled account does that, via the refresh check (spec §3.4 / §4.3).
+    // disabled account does that, via the refresh check (spec).
     return next();
   };
 

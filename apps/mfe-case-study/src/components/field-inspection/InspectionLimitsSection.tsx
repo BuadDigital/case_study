@@ -25,7 +25,7 @@ const SCOPE_OPTIONS = [
 ] as const;
 
 /**
- * Inspection limits = constraints on the inspection (Decision 24 + Q-7): structured inputs, not free text —
+ * Inspection limits = constraints on the inspection: structured inputs, not free text —
  * the system composes the reservation text and places it among special assumptions. Inspection scope is required,
  * and remote desktop scope blocks issuance until the certified valuer approves it.
  */

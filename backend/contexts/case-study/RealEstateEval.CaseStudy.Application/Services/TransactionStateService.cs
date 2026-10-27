@@ -8,7 +8,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.CaseStudy.Application.Services;
 
 /// <summary>
-/// Q-9: Collects transaction facts (parent case study task and its parties + closing Valuation Report Q-6
+/// Collects transaction facts (parent case study task and its parties + closing Valuation Report
 /// + Raise Enfaz) and derive the state via <see cref="TransactionStateRules"/> — the screen displays from
 /// Waiting for who?
 /// </summary>
@@ -28,7 +28,7 @@ public sealed partial class TransactionStateService(
 
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
- /// <summary>R3 is consistent with Q-8-2: Reason for Decision is at least 10 characters (JustificationRules in evaluation context).</summary>
+ /// <summary>Is consistent with: Reason for Decision is at least 10 characters (JustificationRules in evaluation context).</summary>
     private const int MinDecisionReasonLength = 10;
 
     public async Task<TransactionStateDto?> GetStateAsync(
@@ -62,7 +62,7 @@ public sealed partial class TransactionStateService(
         if (TransactionStateRules.FinalReportBlocksHandover(finalReportStatus))
             return (null, TransactionStateRules.FinalReportNotReadyAr);
 
-        // Decision 2026-10-20: a deed never goes to Enfaz under a temporary number. The first report
+        // A deed never goes to Enfaz under a temporary number. The first report
         // approval normally fixed the PR root; this is the safety net for anything that slipped past.
         if (transactions is not null)
         {
@@ -127,7 +127,7 @@ public sealed partial class TransactionStateService(
             studyReportIssued: studyReportIssued,
             appraiserSubmitted: appraiserSubmitted);
 
-        // Q-6: Valuation Report closure = the appraiser completed and no Valuation Request remains open for the property.
+        // Valuation Report closure = the appraiser completed and no Valuation Request remains open for the property.
         if (input.Appraiser.Completed)
         {
             var openValuation = await valuationRequests.GetOpenByPropertyAsync(

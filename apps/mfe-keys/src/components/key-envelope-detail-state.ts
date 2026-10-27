@@ -130,7 +130,7 @@ export const MATCH_RESULT_TILES: {
   },
 ];
 
-/** Where the matching key went after the trial (decision 2026-10-20). */
+/** Where the matching key went after the trial. */
 export const KEY_PLACE_TILES: {
   id: KeyLocation;
   label: string;
@@ -160,7 +160,7 @@ export const KEY_LOCATION_OPTIONS: { id: KeyLocation; label: string }[] = [
 ];
 
 /**
- * Header line for the custody panel (decision 2026-10-20): who holds the envelope now, since
+ * Header line for the custody panel: who holds the envelope now, since
  * when, and any handoff still on its way.
  *
  * How it works: `title` is `envelopeHolderText(env)` (the one explicit holder); `since` is the
@@ -189,7 +189,7 @@ export function custodyNowText(env: KeyEnvelopeRow): {
 }
 
 export const HANDOFF_NOTES_BY_KIND: Record<string, string> = {
-  // Decision 2026-10-20: custody moves only when the receiver confirms (not only the inspector).
+  // Custody moves only when the receiver confirms (not only the inspector).
   internal:
     "التسليم الداخلي يُسجَّل بحالة «بانتظار التأكيد» ثم يؤكّده المستلم — ولا تنتقل العهدة إليه قبل تأكيده.",
   external:

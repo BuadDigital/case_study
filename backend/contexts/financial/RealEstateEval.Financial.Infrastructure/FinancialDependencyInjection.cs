@@ -17,7 +17,7 @@ using RealEstateEval.Financial.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Financial.Infrastructure;
 
 /// <summary>
-/// Context-local registration for the Financial bounded context (A8): inspector fees,
+/// Context-local registration for the Financial bounded context: inspector fees,
 /// party billing statements, Enfaz billing, fee pricing, charges, and financial reports.
 /// The shared persistence/HTTP plumbing still comes from the global Infrastructure extensions.
 /// </summary>
@@ -82,7 +82,7 @@ public static class FinancialDependencyInjection
         return services;
     }
  /// <summary>Financial write context. Prefers a dedicated Financial connection string.
- /// A8 physical move: lives beside <see cref="FinancialDbContext"/> in the context library.</summary>
+ /// Physical move: lives beside <see cref="FinancialDbContext"/> in the context library.</summary>
     public static IServiceCollection AddFinancialPersistence(
         this IServiceCollection services,
         IConfiguration configuration,

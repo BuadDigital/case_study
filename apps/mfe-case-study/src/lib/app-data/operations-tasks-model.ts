@@ -8,7 +8,7 @@ export type OperationsTask = OperationsTaskDto;
 /** Query shape shared by the API loader and the offline cache filter. */
 /**
  * The operations-task list query — mirrors
- * `docs/architecture/pagination-contract.md` §3. `assigneeId`, `createdBy` and
+ * `docs/architecture/pagination-contract.md`. `assigneeId`, `createdBy` and
  * `status` predate the contract; the rest moved from the screen to the server.
  */
 export type OperationsTaskQuery = {
@@ -26,7 +26,7 @@ export type OperationsTaskQuery = {
   excludeFailurePaused?: boolean;
   /**
    * Free text over Title / DisplayId / AssigneeName / PoNumber / Reference,
-   * **and any deed number in `DeedsJson`** (pagination-contract §3, "Deed
+   * **and any deed number in `DeedsJson`** (pagination-contract, "Deed
    * search") — so a deed-only term is a server search, not a client one.
    */
   q?: string;
@@ -96,7 +96,7 @@ export function filterPrefetchedOpsTasks(
     }
     if (q) {
       // Deeds are deliberately absent — `DeedsJson` is not searchable server-side
-      // (pagination-contract §3, "still client-side" #2).
+      // (pagination-contract, "still client-side" #2).
       const hay = `${task.title} ${task.displayId} ${task.assigneeName} ${task.poNumber ?? ""} ${task.reference ?? ""}`;
       if (!hay.includes(q)) return false;
     }

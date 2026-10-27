@@ -19,7 +19,7 @@ public enum PartyBillingStatementListSortKey
 /// <summary>
 /// Pure allow-list, sort map and status parser for <c>GET /api/party-billing-statements</c>.
 /// No EF, no I/O — the repository turns the resolved filter into expressions.
-/// See docs/architecture/pagination-contract.md §9.1.
+/// See docs/architecture/pagination-contract.md.
 /// </summary>
 public static class PartyBillingStatementListQueryRules
 {

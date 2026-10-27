@@ -18,7 +18,7 @@ public sealed class PoEnfazDispatchController(
 {
     private readonly DatabaseOptions _dbOptions = dbOptions?.Value ?? new DatabaseOptions();
 
-    /// <summary>Same envelope rule as the public route — pagination-contract §10.1.</summary>
+    /// <summary>Same envelope rule as the public route — pagination-contract.</summary>
     [HttpGet("ready-pos-summary")]
     public async Task<IActionResult> ReadyPos(
         [FromQuery] int? page = null,
@@ -46,7 +46,7 @@ public sealed class PoEnfazDispatchController(
             query, skip, take, resolvedPage, cancellationToken));
     }
 
-    /// <summary>Same envelope rule as the public route — pagination-contract §10.2.</summary>
+    /// <summary>Same envelope rule as the public route — pagination-contract.</summary>
     [HttpGet("tracking")]
     public async Task<IActionResult> Tracking(
         [FromQuery] int? page = null,

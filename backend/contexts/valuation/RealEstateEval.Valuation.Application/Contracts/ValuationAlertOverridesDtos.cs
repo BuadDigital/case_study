@@ -3,7 +3,7 @@
 //  • Alerts New file — SaveValuationAlertOverridesRequest: the methodology-alert dispositions saved on their
 //           own, so an acknowledgement never waits on «مبرر استخدام طرق التقييم»; codes not sent are kept.
 // Round 2 (1b19bedc)
-//  • R2-10 MethodologyAlertOverrides is [Required] with an Arabic message «قائمة معالجات التنبيهات مطلوبة.».
+//  • MethodologyAlertOverrides is [Required] with an Arabic message «قائمة معالجات التنبيهات مطلوبة.».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 namespace RealEstateEval.Valuation.Application.Contracts;

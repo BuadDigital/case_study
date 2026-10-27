@@ -28,7 +28,7 @@ export function offlinePagePlan(
   rolePages: readonly PageId[],
   tasks: ReadonlyArray<Record<string, unknown>>,
 ): OfflinePagePlan {
-  // Only the input-form screens open offline (spec §3.1) — `OFFLINE_PAGE_PREFIXES` in sw.js.
+  // Only the input-form screens open offline (spec) — `OFFLINE_PAGE_PREFIXES` in sw.js.
   const pages = offlineFormPages(rolePages);
   const urls = pages.map((id) => `/${id}`);
 

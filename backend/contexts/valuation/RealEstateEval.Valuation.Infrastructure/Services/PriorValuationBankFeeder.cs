@@ -1,10 +1,10 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D14  Only a market-basis valuation of land with its buildings, not retrospective, feeds the bank
+//  • Only a market-basis valuation of land with its buildings, not retrospective, feeds the bank
 //         (PriorValuationBankRules.Qualifies).
-//  • D14  One row per subject property: a new deposited version updates the existing row instead of being
+//  • One row per subject property: a new deposited version updates the existing row instead of being
 //         skipped; a version that no longer qualifies deactivates it (RetireAsync).
-//  • D14  A row another valuation has adopted is left untouched (AdoptedByAnotherValuationAsync) — that
+//  • A row another valuation has adopted is left untouched (AdoptedByAnotherValuationAsync) — that
 //         valuation reads it live and its value must not move.
 // Round 2 (1b19bedc)
 //  • C    Land-only valuations (scope «أرض فقط» / vacant land) also qualify and enter the bank as a land
@@ -29,7 +29,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Services;
 /// Skips quietly when mandatory bank data (final value, area, coordinates) is absent:
 /// "Do not invent data".
 /// <para>
-/// D14: only a market-value opinion on land with its buildings — or on land alone (decision C, entered as a
+/// Only a market-value opinion on land with its buildings — or on land alone (entered as a
 /// land comparable) — as of today (not retrospective), is a usable market indication. One row per subject property: a newly deposited version updates it; a version
 /// that no longer qualifies takes it off the bank. A row another valuation adopted is left untouched — that
 /// valuation reads the bank row live and its value must not move.
@@ -149,12 +149,12 @@ public sealed class PriorValuationBankFeeder(
     }
 }
 
-/// <summary>D14 + decision C: which completed valuations feed the comparables bank, and as what.</summary>
+/// <summary>Which completed valuations feed the comparables bank, and as what.</summary>
 public static class PriorValuationBankRules
 {
     /// <summary>
     /// Market basis, valued as of issue (not a retrospective date), on land with its buildings — or, by
-    /// decision C, on land alone («أرض فقط» / vacant land). A buildings-only value never feeds the bank.
+    /// On land alone («أرض فقط» / vacant land). A buildings-only value never feeds the bank.
     /// </summary>
     public static bool Qualifies(string? basisOfValueKey, string? costScopeKey, string? valuationDateMode) =>
         string.Equals((basisOfValueKey ?? "").Trim(), BasisOfValueKeys.Market, StringComparison.OrdinalIgnoreCase)
@@ -184,7 +184,7 @@ public static class PriorValuationBankRules
             || t.Contains("apartment", StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>Decision C: a land-only valuation enters the bank as a LAND comparable («أرض»).</summary>
+    /// <summary>A land-only valuation enters the bank as a LAND comparable («أرض»).</summary>
     public static string ComparableType(string? costScopeKey, string propertyType) =>
         CostScopeKeys.IsLandOnly(costScopeKey)
             ? PropertyCategoryRules.LabelAr(PropertyCategoryRules.Land)

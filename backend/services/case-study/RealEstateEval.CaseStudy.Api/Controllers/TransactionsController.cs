@@ -10,7 +10,7 @@ using RealEstateEval.CaseStudy.Application.Contracts;
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 /// <summary>
-/// The transaction (المعاملة) above the deeds — decision 2026-10-19. Reads the header with its
+/// The transaction (المعاملة) above the deeds —. Reads the header with its
 /// deeds and one timeline for all of them; the case specialist merges transactions, takes a deed
 /// back out (before the PR number) and searches deeds to merge. Visibility follows the deeds'
 /// work orders, as every other property read does.
@@ -49,7 +49,7 @@ public class TransactionsController : ControllerBase
     /// kind one_building | contract, reason) to <c>ITransactionCommands.MergeAsync</c>. A rule refusal → 400
     /// with the Arabic message; an unknown transaction → 404; else the refreshed detail.
     /// Edge cases: the rules live in the command service — specialist only, every deed must have finished
-    /// intake (BourseDataCompleted, decision 2026-10-21), so a merge may come before distribution.
+    /// intake (BourseDataCompleted), so a merge may come before distribution.
     /// </remarks>
     [HttpPost("{transactionId:guid}/merge")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]

@@ -29,7 +29,7 @@ public sealed class CaseStudyCommands : ICaseStudyCommands
     }
 
     /// <summary>
-    /// Decision 2026-10-19: fixes the transaction's official PR number (idempotent) and stamps the
+    /// Fixes the transaction's official PR number (idempotent) and stamps the
     /// derived PRV valuation report number on every deed's appraisal package.
     /// </summary>
     /// <remarks>
@@ -197,7 +197,7 @@ public sealed class CaseStudyCommands : ICaseStudyCommands
 
 /// <summary>
 /// EF implementation of the Failures→Case Study side effects, served on the Case Study
-/// host through /api/case-study-dispatch. Logic relocated from FailureService (A9).
+/// host through /api/case-study-dispatch. Logic relocated from FailureService.
 /// </summary>
 public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
 {

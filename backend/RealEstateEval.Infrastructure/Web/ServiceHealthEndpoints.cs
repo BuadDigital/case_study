@@ -143,7 +143,7 @@ public static class ServiceHealthEndpoints
     private const string LogCategory = "RealEstateEval.Readiness";
 
  /// <summary>
- /// Maps <c>/ready</c> against one owned write context (A6 pure hosts). Connectivity and
+ /// Maps <c>/ready</c> against one owned write context (pure hosts). Connectivity and
  /// that stream's pending migrations are checked — not the frozen legacy full model.
  /// </summary>
     public static WebApplication MapDatabaseReady<TContext>(this WebApplication app, string serviceName)

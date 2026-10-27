@@ -337,7 +337,7 @@ export type PartyBillingStatementListSort =
   | "total";
 
 /**
- * `GET /api/party-billing-statements` — pagination-contract §9.1. `status`
+ * `GET /api/party-billing-statements` — pagination-contract. `status`
  * takes one status or a list (sent as CSV); the actor narrowing (an office
  * sees only its own issued-or-later statements) happens on the server.
  */
@@ -385,7 +385,7 @@ export async function listPartyBillingStatementsPage(
 export type PartyBillingReadyLineListSort = "updated" | "accrued" | "net" | "po";
 
 /**
- * `GET /api/party-billing-statements/ready-lines` — pagination-contract §9.2.
+ * `GET /api/party-billing-statements/ready-lines` — pagination-contract.
  * `sort=accrued&dir=asc` is the dues screen's oldest-first order; `q` covers
  * the property label, PO number and workflow task id.
  */

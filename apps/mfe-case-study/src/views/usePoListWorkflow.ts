@@ -143,7 +143,7 @@ export function usePoListWorkflow() {
     isPlaceholderData,
   } = pageQuery;
   // The KPI band and the empty-state copy are SQL COUNTs on the same filters —
-  // no list is loaded for them any more (pagination-contract §1.1).
+  // no list is loaded for them any more (pagination-contract).
   const { data: counts } = useWorkOrderListCountsQuery(countsQuery);
   const { data: propertyItems } = usePropertyListItemsQuery();
   const { data: workflowTasks } = useWorkflowTasksQuery();

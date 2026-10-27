@@ -9,9 +9,9 @@ using RealEstateEval.Infrastructure.Services;
 namespace RealEstateEval.Identity.Infrastructure.Services;
 
 /// <summary>
-/// D10: user-label resolution reads the Identity owner context. Hosts without an Identity
+/// user-label resolution reads the Identity owner context. Hosts without an Identity
 /// pool use the HTTP directory (<c>AddRemoteIdentityDirectory</c>) instead of this class.
-/// A8: absorbed the EF halves of PersonLabelResolver when it moved beside its context.
+/// Absorbed the EF halves of PersonLabelResolver when it moved beside its context.
 /// </summary>
 public sealed class UserLabelLookup(IdentityDbContext db) : IUserLabelLookup
 {

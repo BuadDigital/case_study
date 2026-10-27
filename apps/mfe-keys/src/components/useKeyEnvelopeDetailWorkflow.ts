@@ -77,7 +77,7 @@ export function useKeyEnvelopeDetailWorkflow({
     keyLocation?: KeyLocation | null;
   } | null>(null);
   const pendingHandoffId = useRef<string | null>(null);
-  // Decision 2026-10-20: the reviewer's key-place correction in flight, read by the idempotent action.
+  // The reviewer's key-place correction in flight, read by the idempotent action.
   const pendingKeyLocation = useRef<{
     assignmentId: string;
     keyLocation: KeyLocation;
@@ -193,7 +193,7 @@ export function useKeyEnvelopeDetailWorkflow({
    * result and either refreshes the envelope from the returned row or, when the write was
    * queued offline, only tells the parent something changed.
    *
-   * Edge cases: decision 2026-10-20 — the key place goes with the result, so a trial recorded
+   * Edge cases: — the key place goes with the result, so a trial recorded
    * offline in the field keeps where the key went; a second click while one runs is skipped.
    */
   async function handleConfirmAssignment(
@@ -226,7 +226,7 @@ export function useKeyEnvelopeDetailWorkflow({
   }
 
   /**
-   * The reviewer corrects where a deed's matching key is (decision 2026-10-20).
+   * The reviewer corrects where a deed's matching key is.
    *
    * How it works: stores the correction (assignment, place, holder id and name) in
    * `pendingKeyLocation`, then runs the idempotent `setEnvelopeKeyLocation` action, which reads

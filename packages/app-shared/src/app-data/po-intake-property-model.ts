@@ -58,7 +58,7 @@ export function propertyUiStatusLabel(status: PropertyUiStatus): string {
     case PropertyListRowStatuses.Done:
       return "مكتمل";
     case PropertyListRowStatuses.Fail:
-      return "متعذّر";
+      return "تعذّر";
     case PropertyListRowStatuses.Incomplete:
       return "ناقص";
     default:

@@ -1,7 +1,7 @@
 namespace RealEstateEval.Infrastructure.Data;
 
 /// <summary>Default failure types catalog — mirrors apps/mfe-failures failure-types-data.ts.</summary>
-// A8: public — DataSeeder moved to the DevSeed leaf project.
+// Public — DataSeeder moved to the DevSeed leaf project.
 public static class FailureTypesCatalogSeed
 {
     public static readonly Guid SingletonId =

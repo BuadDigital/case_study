@@ -89,7 +89,7 @@ function priorHref(item: LinkedPrior): string {
 /**
  * The «العقارات المرتبطة» tab: everything linked to this deed, the transaction's deeds first.
  *
- * How it works (decision 2026-10-19 — a transaction sits above its deeds):
+ * How it works (a transaction sits above its deeds):
  * - Reads the transaction with `useTransactionQuery(property.id)` and lists its other live
  *   deeds (link to each deed's page, PO, city / district), with the transaction number and link
  *   kind in the heading; then same-PO properties, earlier registrations of the same deed,
@@ -135,7 +135,7 @@ export function PropertyDetailLinkedTab({
     [record.properties, property.id],
   );
 
-  // Decision 2026-10-19: the deeds of this transaction come first — they ARE the property.
+  // The deeds of this transaction come first — they ARE the property.
   const { data: transaction } = useTransactionQuery(property.id);
   const transactionDeeds = useMemo(
     () => (transaction?.deeds ?? []).filter((d) => d.propertyId !== property.id && !d.isRemoved),

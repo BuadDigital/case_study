@@ -2,7 +2,7 @@ namespace RealEstateEval.Domain;
 
 /// <summary>
 /// Structure-kind wire values for the building inventory, shared by the case-study
-/// inventory entity and the valuation cost approach (A10 cleanup: moved to the
+/// inventory entity and the valuation cost approach ( cleanup: moved to the
 /// contracts leaf so neither context references the other).
 /// </summary>
 public static class BuildingStructureKinds

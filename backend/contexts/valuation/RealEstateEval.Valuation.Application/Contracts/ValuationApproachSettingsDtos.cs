@@ -1,12 +1,12 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D11  New file — partial settings DTO / save request: the ownership interest (freehold / usufruct /
+//  • New file — partial settings DTO / save request: the ownership interest (freehold / usufruct /
 //         leased_land, «ملكية تامة» / «حق منفعة» / «أرض مستأجرة») and the remaining lease years.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 namespace RealEstateEval.Valuation.Application.Contracts;
 
-/// <summary>D11: the interest being valued and, for a leasehold interest, the remaining lease term.</summary>
+/// <summary>The interest being valued and, for a leasehold interest, the remaining lease term.</summary>
 public partial class ValuationApproachSettingsDto
 {
     /// <summary>freehold (default) | usufruct | leased_land.</summary>
@@ -19,7 +19,7 @@ public partial class ValuationApproachSettingsDto
     public decimal? RemainingLeaseYears { get; init; }
 }
 
-/// <summary>D11: the interest being valued and its remaining lease term.</summary>
+/// <summary>The interest being valued and its remaining lease term.</summary>
 public partial class SaveValuationApproachSettingsRequest
 {
     /// <summary>freehold (default when blank) | usufruct | leased_land.</summary>

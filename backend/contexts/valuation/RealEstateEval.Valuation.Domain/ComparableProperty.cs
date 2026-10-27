@@ -9,10 +9,10 @@ public class ComparableProperty
     public Guid Id { get; set; }
     public string ReferenceCode { get; set; } = "";
 
- /// <summary>Comparable property type — Q-3/5: closed list enforced by the UI (same as subject property types).</summary>
+ /// <summary>Comparable property type —: closed list enforced by the UI (same as subject property types).</summary>
     public string ComparablePropertyType { get; set; } = "";
 
- /// <summary>Comparable use — Q-3/5: closed list = subject property use list.</summary>
+ /// <summary>Comparable use —: closed list = subject property use list.</summary>
     public string Usage { get; set; } = "";
 
  /// <summary>offer | executed</summary>
@@ -25,7 +25,7 @@ public class ComparableProperty
     public string Source { get; set; } = ComparableSources.Other;
 
     public string? ListingNumber { get; set; }
- /// <summary>Q-3/3: real-estate bourse deal reference for closed deals — counterpart to listing number for offers.</summary>
+ /// <summary>real-estate bourse deal reference for closed deals — counterpart to listing number for offers.</summary>
     public string? TransactionReference { get; set; }
     public string? AdvertiserPhone { get; set; }
  /// <summary>Stored only — never printed in report appendices.</summary>
@@ -59,7 +59,7 @@ public class ComparableProperty
 
     public bool IsActive { get; set; } = true;
 
- // Q-3: human tagging system — the record stays tagged; it is not deleted.
+ // Human tagging system — the record stays tagged; it is not deleted.
  /// <summary>normal | anomalous | unreliable — reliability tag set by the valuer with a rationale.</summary>
     public string ReliabilityTag { get; set; } = ComparableReliabilityTags.Normal;
  /// <summary>"Duplicate" tag — human, not automatic; rejects recording the same deal twice, not successive sales.</summary>
@@ -73,13 +73,13 @@ public class ComparableProperty
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }
 
- /// <summary>Q-3: anomalous/unreliable/duplicate tagged items are excluded from suggestions (and visually marked in lists).</summary>
+ /// <summary>anomalous/unreliable/duplicate tagged items are excluded from suggestions (and visually marked in lists).</summary>
     public bool IsExcludedFromSuggestions =>
         IsDuplicateTagged
         || !string.Equals(ReliabilityTag, ComparableReliabilityTags.Normal, StringComparison.Ordinal);
 
  /// <summary>
- /// B2/Q-3: tagging rules on the aggregate — any enabled tag requires a substantive rationale (Q-8-2),
+ /// B2: tagging rules on the aggregate — any enabled tag requires a substantive rationale,
  /// and the tag is dated with the author; clearing all tags clears the trail.
  /// Returns (field name, message) on rejection.
  /// </summary>
@@ -113,7 +113,7 @@ public class ComparableProperty
     }
 }
 
-/// <summary>Q-3/1 — comparable reliability tag: normal · anomalous · unreliable.</summary>
+/// <summary>Comparable reliability tag: normal · anomalous · unreliable.</summary>
 public static class ComparableReliabilityTags
 {
     public const string Normal = "normal";
@@ -155,11 +155,11 @@ public static class ComparableTransactionKinds
 
 public static class ComparablePriceDescriptions
 {
- /// <summary>Ceiling — upper bound set by the seller (Q-2).</summary>
+ /// <summary>Ceiling — upper bound set by the seller.</summary>
     public const string Asking = "asking";
- /// <summary>Q-2: dropped from input lists (was sample data) — still readable for legacy records.</summary>
+ /// <summary>Dropped from input lists (was sample data) — still readable for legacy records.</summary>
     public const string Negotiable = "negotiable";
- /// <summary>Som — last price from a willing buyer (Q-2).</summary>
+ /// <summary>Som — last price from a willing buyer.</summary>
     public const string Som = "som";
 
     public static bool IsKnown(string? value) =>

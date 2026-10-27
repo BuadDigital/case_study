@@ -3,7 +3,7 @@
 /**
  * Field match result for one deed — the tile picker plus the note that is
  * mandatory for anything but a full match, and, for a match, where the
- * matching key went afterwards (decision 2026-10-20). Validation lives in
+ * matching key went afterwards. Validation lives in
  * `key-envelope-dialogs-state`; the parent persists the chosen status.
  */
 import { useState } from "react";
@@ -64,7 +64,7 @@ function TileButton({
  * but a full match. Save runs `validateMatchResult` and passes status, note and key place to
  * `onSave`, or shows the validation error.
  *
- * Edge cases: decision 2026-10-20 — no place tile clicked reads as «back in the envelope» (that
+ * Edge cases: — no place tile clicked reads as «back in the envelope» (that
  * tile shows selected and that is what is saved); a result with no key to place sends null.
  */
 export function MatchResultModal({
@@ -142,7 +142,7 @@ export function MatchResultModal({
               ))}
             </div>
           </div>
-          {/* Decision 2026-10-20: a deed whose key matched records where that key is now;
+          {/* A deed whose key matched records where that key is now;
               nothing picked means it stays in the envelope. */}
           {matchResultHasKeyToPlace(sel) ? (
             <div>

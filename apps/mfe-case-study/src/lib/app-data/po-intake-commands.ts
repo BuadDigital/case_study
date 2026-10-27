@@ -379,7 +379,7 @@ export async function updatePoRecord(
 }
 
 /**
- * Decision 2026-10-18: the specialist opened an empty slot. The server creates the property
+ * The specialist opened an empty slot. The server creates the property
  * now — a draft with its real id — and points the slot at it, so every upload from the first
  * second is stored under that id. No client-side ids, no copying on save.
  */

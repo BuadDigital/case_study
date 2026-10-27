@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace RealEstateEval.CaseStudy.Application.Contracts;
 
 /// <summary>
-/// Merge (decision 2026-10-19): the case-study specialist (once every deed finished intake — rule 2026-10-21) joins other
+/// Merge: the case-study specialist (once every deed finished intake — rule 2026-10-21) joins other
 /// deeds' transactions into this one. A selected deed brings its whole transaction along.
 /// </summary>
 public class MergeTransactionsRequest

@@ -790,7 +790,7 @@ export function isSpecialistProofService(
 }
 
 /**
- * Stored amenity values — ordered like the report's «المحيط المؤثر للعقار» (§15).
+ * Stored amenity values — ordered like the report's «المحيط المؤثر للعقار» (section 15).
  * The strings are payload values and photo-slot ids, so they never change; the
  * screens show them through `inspectorAmenityLabel` with the report wording.
  */
@@ -805,7 +805,7 @@ export const INSPECTOR_AMENITY_OPTIONS = [
   "طرق رئيسية",
 ] as const;
 
-/** Display wording per stored amenity — identical to the §15 report cells. */
+/** Display wording per stored amenity — identical to the section 15 report cells. */
 const INSPECTOR_AMENITY_LABELS: Record<string, string> = {
   مساجد: "جامع",
   مستشفيات: "مرفق طبي",
@@ -821,7 +821,7 @@ export function inspectorAmenityLabel(value: string): string {
   return INSPECTOR_AMENITY_LABELS[value.trim()] ?? value;
 }
 
-/** Free-text «ملحقات أخرى» stored beside the yes/no features — prints in §11 «أخرى». */
+/** Free-text «ملحقات أخرى» stored beside the yes/no features — prints in section 11 «أخرى». */
 export const OTHER_ATTACHMENTS_KEY = "otherAttachments";
 export const OTHER_ATTACHMENTS_LABEL = "ملحقات أخرى";
 
@@ -1178,17 +1178,17 @@ export type InspectorWorkspaceDraft = {
   inspectionConfirmed: boolean;
   status: InspectorWorkspaceStatus;
   returnNote?: string;
-  /** Server receipt of the submission (upload moment — audit only, ق-10). */
+  /** Server receipt of the submission (upload moment — audit only). */
   submittedAtUtc: string | null;
   /**
-   * Device clock at «إرسال المعاينة» on site — the approved inspection stamp (ق-10),
+   * Device clock at «إرسال المعاينة» on site — the approved inspection stamp,
    * recorded even offline and kept apart from the later upload moment.
    */
   completedOnSiteAtUtc: string;
   /**
    * Server fingerprint of the specialist's source data (deed, owner, court, request,
    * commissioning) as last downloaded. Sent back with every save, so a save queued
-   * offline tells the server which version the answers were based on (spec §4.4).
+   * offline tells the server which version the answers were based on (spec).
    */
   sourceFingerprint: string;
   /** Specialist acceptance stamp — gates package into Infath. */
@@ -1388,7 +1388,7 @@ export function createInspectorWorkspaceDraft(input: {
 }
 
 /**
- * ق-10: the inspection is stamped at the moment the inspector completes it on site.
+ * The inspection is stamped at the moment the inspector completes it on site.
  * The date/time fields take that moment so the report prints it, not the upload time.
  */
 export function inspectionCompletionStamp(now = new Date()): Pick<
@@ -1403,7 +1403,7 @@ const LATE_UPLOAD_MS = 10 * 60 * 1000;
 
 /**
  * The upload moment, when it differs from the on-site completion — shown to the
- * specialist next to the inspection date (ق-10 keeps the two apart). Null otherwise.
+ * specialist next to the inspection date (keeps the two apart). Null otherwise.
  */
 export function inspectionLateUploadAtUtc(
   draft: Pick<InspectorWorkspaceDraft, "completedOnSiteAtUtc" | "submittedAtUtc">,

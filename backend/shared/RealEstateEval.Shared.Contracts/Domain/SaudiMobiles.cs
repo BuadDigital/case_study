@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Saudi Mobile Normalization — One Contract Registration and Login (Q-3: Mobile Login ID
+/// Saudi Mobile Normalization — One Contract Registration and Login (: Mobile Login ID
 /// Unique is mandatory). Registration accepted any international number, while entry was Saudi only.
 /// A number is stored that can never be accessed.
 /// It accepts +9665… / 009665… / 05… / 5XXXXXXXX and returns +9665XXXXXXXX,

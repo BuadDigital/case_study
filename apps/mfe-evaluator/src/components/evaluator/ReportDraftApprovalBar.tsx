@@ -3,7 +3,7 @@
 //  • O17  The «اعتماد التقرير» confirm goes through confirmIgnoringDoubleClick and the button ignores the
 //         second click of a double-click (e.detail > 1) — a double-click no longer dismisses the confirm.
 // Round 2 (1b19bedc)
-//  • R2-13 A refused report-number / approval / deposit-code call shows a RefusalPanel («إخفاء» closes it)
+//  • A refused report-number / approval / deposit-code call shows a RefusalPanel («إخفاء» closes it)
 //          listing every reason (refusalLines: each error and message line, de-duplicated) instead of only a
 //          toast; the toast still shows the first line. Retrying clears the panel.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -157,7 +157,7 @@ export function ReportDraftApprovalBar({
    * `approveReportDraft`; on success stores the returned draft and toasts. Each step shows in
    * the phase note, and leaving the page is guarded while it runs.
    *
-   * Edge cases: decision 2026-10-19 — the number (PRV-… from the transaction's PR root) is
+   * Edge cases: — the number (PRV-… from the transaction's PR root) is
    * fixed before the copy is printed; if it cannot be fixed, the refusal shows and nothing is
    * built or approved. A refused approval leaves the draft as it was; a double-click or a busy
    * bar does nothing.
@@ -178,7 +178,7 @@ export function ReportDraftApprovalBar({
     setBusy("approve");
     setPhase("تثبيت رقم التقرير…");
     try {
-      // Decision 2026-10-19: the number is fixed first (PRV-… from the transaction's PR root) so the
+      // The number is fixed first (PRV-… from the transaction's PR root) so the
       // printed copy carries it; without it nothing is approved.
       const numbered = await ensureReportNumber(config, draft.valuationRequestId);
       if (!numbered.ok) {

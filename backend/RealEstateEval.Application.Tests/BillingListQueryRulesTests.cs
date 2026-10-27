@@ -5,7 +5,7 @@ using RealEstateEval.Financial.Domain;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// The pure half of docs/architecture/pagination-contract.md §9-§10: the party billing statement
+/// The pure half of docs/architecture/pagination-contract.md-section 10: the party billing statement
 /// and ready-line lists and the two Enfaz billing lists. Same shared rules as every other
 /// endpoint — an unknown sort key falls back and never answers 400, <c>dir</c> defaults to
 /// <c>desc</c> — plus the in-memory search / sort / page the synthesised lists apply.

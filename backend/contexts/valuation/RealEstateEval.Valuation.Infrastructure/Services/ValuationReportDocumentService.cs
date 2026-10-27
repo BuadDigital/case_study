@@ -45,7 +45,7 @@ public sealed class ValuationReportDocumentService(
         string? clientNameAr = null;
         IReadOnlyList<string> reportUserNames = [];
         AssignmentType? assignmentType = null;
-        // Decision 2026-10-19: one report per transaction — every deed of the transaction is listed
+        // One report per transaction — every deed of the transaction is listed
         // in the report (deeds table, total area, joined deed numbers), not only the holder deed.
         IReadOnlyList<CaseStudyTransactionDeedDto> transactionDeeds = [];
         var propertyGuid = vr.PropertyId;
@@ -250,7 +250,7 @@ public sealed class ValuationReportDocumentService(
             MarketApproachUsed = marketUsed,
             CostApproachUsed = costUsed,
             IncomeApproachUsed = incomeUsed,
-            // Decision 2026-10-19: PRV-… fixed at approval; empty until then (the screen says so).
+            // PRV-… fixed at approval; empty until then (the screen says so).
             ReportNumber = vr.ReportNumber ?? "",
             ReportDateDisplay = ValuationReportDisplayRules.FormatGregorianDate(today),
             ValidUntilDisplay = ValuationReportDisplayRules.FormatGregorianDate(
@@ -271,8 +271,8 @@ public sealed class ValuationReportDocumentService(
                 : ValuationReportDisplayRules.FormatMoney(recon.WeightedValue),
             MethodsRationale = recon?.MethodsRationale,
             AllowsIssuance = gates?.AllowsIssuance ?? false,
-            // Decision 23: one version for the whole package — distinction inside the report is by position and title;
-            // the version number labels the package, not the paragraph; issued reports are frozen on their texts (Q-6 snapshot).
+            // One version for the whole package — distinction inside the report is by position and title;
+            // the version number labels the package, not the paragraph; issued reports are frozen on their texts (snapshot).
             TextLayerNoteAr =
                 $"النصوص المعيارية/القانونية — الحزمة نسخة {org?.ValuationReport?.TextPackageVersion ?? 1} "
                 + "(تُجمَّد لحظة الإصدار — قرار 23).",

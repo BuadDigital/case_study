@@ -62,7 +62,7 @@ public class ValuationReportDraftsController(
     /// <c>EnsureReportNumberAsync(valuationRequestId, actor)</c> and returns { ValuationRequestId, ReportNumber }.
     /// Errors: the Forbidden key (not the assigned appraiser) → 403; any other (draft not sent, Case Study
     /// unavailable) → field-errors problem; no result → 404.
-    /// Edge cases (decision 2026-10-19): the screen calls it first so the printed HTML carries the number;
+    /// Edge cases: the screen calls it first so the printed HTML carries the number;
     /// an already fixed number comes back unchanged, so calling it again never draws a new PR.
     /// </remarks>
     [HttpPost("report-number")]

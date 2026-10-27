@@ -107,7 +107,7 @@ export function IssueProgressHint({
 }
 
 /**
- * D16 — why the issue button is disabled: a traditional deed waits for the deed ↔ nature outcome,
+ * Why the issue button is disabled: a traditional deed waits for the deed ↔ nature outcome,
  * chosen on «مدخلات المعاين». The link opens that tab.
  */
 export function DeedMatchIssueHint({

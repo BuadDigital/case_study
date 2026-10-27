@@ -6,7 +6,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
-/// Offline conflict rule (security_offline_spec §4.4): every field has one owning source.
+/// Offline conflict rule (security_offline_spec): every field has one owning source.
 /// Commissioning data, deed, owner, court/circuit and request number belong to the
 /// specialist / bourse, so the server always wins on them — the inspector's package never
 /// carries them. The special case is detection: when that source data changed after the

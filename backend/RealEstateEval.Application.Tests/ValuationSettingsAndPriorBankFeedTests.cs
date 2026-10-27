@@ -10,7 +10,7 @@ using RealEstateEval.Valuation.Infrastructure.Services;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// D9 / D11 / D17 on the approach-settings save, and D14 on the prior-valuation bank feed.
+/// On the approach-settings save, on the prior-valuation bank feed.
 /// </summary>
 public class ValuationSettingsAndPriorBankFeedTests
 {
@@ -137,7 +137,7 @@ public class ValuationSettingsAndPriorBankFeedTests
         };
     }
 
-    // ---- D14: prior-valuation bank feed ----
+    // ----: prior-valuation bank feed ----
 
     [Theory]
     [InlineData("market", "land_and_building", "issue", true)]

@@ -3,7 +3,7 @@
 //  • Access  Constructor takes IAssignedAppraiserCheck (default: AssignedAppraiserCheck over the same db) and
 //            IValuationReconciliationService (for the final-value check on approval).
 // Round 2 (1b19bedc)
-//  • D2   Sending the draft to the appraiser is refused while a required document only the specialist uploads
+//  • Sending the draft to the appraiser is refused while a required document only the specialist uploads
 //         is missing (ReportDraftSendRules.MissingSpecialistDocumentsError over the gates).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -37,7 +37,7 @@ public sealed partial class ValuationReportDraftService(
     TimeProvider? time = null,
     IValuationFinalReportService? finalReports = null,
     ValuationTimelineWriter? timeline = null,
-    // Decision 2026-10-19: confirms the transaction's PR reference in Case Study so the report number (PRV) can be fixed.
+    // Confirms the transaction's PR reference in Case Study so the report number (PRV) can be fixed.
     ICaseStudyCommands? caseStudyCommands = null,
     IAssignedAppraiserCheck? assignedAppraisers = null,
     IValuationReconciliationService? reconciliation = null,

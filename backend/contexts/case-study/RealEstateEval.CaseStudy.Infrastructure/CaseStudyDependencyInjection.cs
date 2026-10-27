@@ -17,7 +17,7 @@ using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 namespace RealEstateEval.CaseStudy.Infrastructure;
 
 /// <summary>
-/// Context-local registration for the Case Study bounded context (A8): work orders, workflow
+/// Context-local registration for the Case Study bounded context: work orders, workflow
 /// tasks, case-study/party forms, field inspection, and the valuation integration handler.
 /// The lookup/command concretes other contexts construct stay global; shared persistence and
 /// HTTP plumbing still come from the global Infrastructure extensions.
@@ -33,7 +33,7 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IWorkOrderPropertyCommands, WorkOrderPropertyCommands>();
         services.AddScoped<IWorkOrderRepository, WorkOrderRepository>();
         services.AddScoped<IWorkOrderService, WorkOrderService>();
-        // Decision 2026-10-19: the transaction above the deeds and its TMP- / PR numbers.
+        // The transaction above the deeds and its TMP- / PR numbers.
         services.AddScoped<ITransactionRepository, TransactionRepository>();
         services.AddScoped<ITransactionReferenceService, TransactionReferenceService>();
         services.AddScoped<ITransactionQuery, TransactionQueryService>();
@@ -59,7 +59,7 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();
-        // Q-9: derived transaction-state machine + comprehensive Enfaz upload.
+        // Derived transaction-state machine + comprehensive Enfaz upload.
         services.AddScoped<ITransactionStateRepository, TransactionStateRepository>();
         services.AddScoped<ITransactionStateService, TransactionStateService>();
         services.AddScoped<IWorkflowTaskPatchNotifier, WorkflowTaskPatchNotifier>();
@@ -130,7 +130,7 @@ public static class CaseStudyDependencyInjection
         return services;
     }
  /// <summary>Case Study write context. Prefers a dedicated Case Study connection string.
- /// A8 physical move: lives beside <see cref="CaseStudyDbContext"/>.</summary>
+ /// Physical move: lives beside <see cref="CaseStudyDbContext"/>.</summary>
     public static IServiceCollection AddCaseStudyPersistence(
         this IServiceCollection services,
         IConfiguration configuration,

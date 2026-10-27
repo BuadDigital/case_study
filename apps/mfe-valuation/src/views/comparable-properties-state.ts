@@ -9,7 +9,7 @@ import type {
 } from "@platform/api-client";
 import type { GoogleMapContextPin } from "@platform/ui-kit";
 
-// Q-3/5: closed lists aligned with subject-property lists — no free text.
+// Closed lists aligned with subject-property lists — no free text.
 export const COMPARABLE_TYPE_OPTIONS = [
   "أرض",
   "شقة",

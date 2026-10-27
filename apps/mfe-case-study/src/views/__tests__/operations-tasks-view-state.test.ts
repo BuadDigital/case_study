@@ -153,7 +153,7 @@ describe("visibleOperationsTasks", () => {
   }
 
   it("no longer re-filters the page by the search term — `q` matched deeds server-side", () => {
-    // Before pagination-contract §3 this row was dropped unless the client
+    // Before pagination-contract this row was dropped unless the client
     // re-matched `t.deeds.join(" ")`; the endpoint answers the deed term now.
     const rows = [task()];
     expect(

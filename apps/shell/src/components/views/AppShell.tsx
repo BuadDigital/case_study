@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { role, rolePages: accessPages, viewerDisplayName, viewerJobTitle } =
     useAppAccess();
-  // Offline, field roles see only their input-form screens in the sidebar (spec §3.1).
+  // Offline, field roles see only their input-form screens in the sidebar (spec).
   const online = useOnlineStatus();
   const rolePages = useMemo(
     () =>

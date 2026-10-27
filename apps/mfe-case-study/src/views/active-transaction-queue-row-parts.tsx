@@ -15,9 +15,9 @@ import {
   RowMoreMenu,
   type RowMoreMenuItem,
   TdAction,
+  TransactionNumberBadge,
 } from "@platform/ui-kit";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
-import { TransactionNumberBadge } from "../components/ui/TransactionNumberBadge";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 import type { QueueRowContext } from "./active-transaction-queue-tables-state";
 

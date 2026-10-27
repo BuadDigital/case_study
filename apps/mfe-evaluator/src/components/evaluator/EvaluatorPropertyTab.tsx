@@ -165,7 +165,7 @@ export function EvaluatorPropertyTab({
 }) {
   return (
     <div>
-      {/* Decision 2026-10-19: the report number is no longer reserved at distribution — the note
+      {/* The report number is no longer reserved at distribution — the note
           says it is fixed at report approval, from the transaction's official PR reference. */}
       <EngInfo>
         تُستخدم هذه البيانات لتسجيل أمر عمل تقييم عقاري. أكمل التقييم في

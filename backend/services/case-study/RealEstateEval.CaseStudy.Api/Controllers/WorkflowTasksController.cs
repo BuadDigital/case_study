@@ -139,7 +139,7 @@ public class WorkflowTasksController : ControllerBase
 
     /// <summary>
     /// The specialist opened an empty slot: the property draft was just created with its real
-    /// id — point the slot at it (phase unchanged). Decision 2026-10-18.
+    /// id — point the slot at it (phase unchanged)..
     /// </summary>
     [HttpPost("{id:guid}/link-property")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]

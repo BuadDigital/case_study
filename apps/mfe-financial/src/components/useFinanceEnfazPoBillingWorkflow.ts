@@ -83,7 +83,7 @@ export function useFinanceEnfazPoBillingWorkflow({
 
   const commandBusy = busy || issuing || collecting;
 
-  // One server page of ready work orders (pagination-contract §10.1); the
+  // One server page of ready work orders (pagination-contract); the
   // side list pages it, and the first PO of page 1 is the default selection.
   const [readyPage, setReadyPage] = useListPageState("ready");
   const readyQuery = useEnfazReadyPosPageQuery({

@@ -3,11 +3,11 @@ using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Domain;
 
-/// <summary>Unseen units — counter + reason for each condition (Decision 24).</summary>
+/// <summary>Unseen units — counter + reason for each condition.</summary>
 public sealed record UninspectedUnitEntry(int Count, string Reason);
 
 /// <summary>
-/// Inspection Limitations = Limitations of Inspector (Decision 24 + Q-7): structured input no free text —
+/// Inspection Limitations = Limitations of Inspector: structured input no free text —
 /// Inspection Scope + unseen units + reason for the restriction, and the system installs the reservation text
 /// And puts it under Special Assumptions. Remote Desktop Blocker even Appraiser certified.
 /// Stored on <see cref="WorkOrderProperty"/> (construction question style).
@@ -55,7 +55,7 @@ public static class InspectionLimitsRules
         units.Sum(u => Math.Max(0, u.Count));
 
  /// <summary>
- /// Composite output (Decision 24): Reservation text placed under Special Assumptions —
+ /// Composite output: Reservation text placed under Special Assumptions —
  /// Dynamic as output, structured as input. Blank on complete inspection with no units excluded.
  /// </summary>
     public static string ComposeReservationTextAr(

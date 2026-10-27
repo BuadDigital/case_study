@@ -1,13 +1,13 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D2   A blocked hand-over switches to «المراجعة النهائية» and scrolls to the blockers card
+//  • A blocked hand-over switches to «المراجعة النهائية» and scrolls to the blockers card
 //         (HANDOVER_BLOCKERS_ID), so the full list stays on screen, not only in the toast.
 //  • Price The handed-over «سعر التقييم» is the reconciliation's final value read fresh from the server
 //          (readHandOverPriceFromServer), not the draft figure; a failed read stops the hand-over.
 // Round 2 (1b19bedc)
-//  • R2-14 A confirmation («اعتماد التقييم وإرساله», naming the final value in ر.س) is asked once after every
+//  • A confirmation («اعتماد التقييم وإرساله», naming the final value in ر.س) is asked once after every
 //          check passed, via confirmIgnoringDoubleClick; no confirmation → no hand-over.
-//  • R2-14 The price read reuses the request id the gate check already read — no second
+//  • The price read reuses the request id the gate check already read — no second
 //          getOpenValuationRequestByProperty call.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 

@@ -35,7 +35,7 @@ public class PartyBillingStatementsController : ControllerBase
  /// <summary>
  /// Ready dues. Sending page or pageSize returns PagedResultDto; without them the response stays
  /// the plain array. The rows are synthesised, so the page is cut over the materialised list.
- /// See docs/architecture/pagination-contract.md §9.2.
+ /// See docs/architecture/pagination-contract.md.
  /// </summary>
     [HttpGet("ready-lines")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
@@ -70,7 +70,7 @@ public class PartyBillingStatementsController : ControllerBase
  /// Statements. Sending page or pageSize returns PagedResultDto; without them the response stays
  /// the plain array. Actor narrowing (an office sees only its own issued-or-later statements) is
  /// folded into the query before it is forwarded, so the count is the actor's.
- /// See docs/architecture/pagination-contract.md §9.1.
+ /// See docs/architecture/pagination-contract.md.
  /// </summary>
     [HttpGet]
     [Authorize(Policy = CapabilityPolicyNames.ReadPartyPayables)]

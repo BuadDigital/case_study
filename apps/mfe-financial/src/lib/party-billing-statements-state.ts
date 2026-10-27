@@ -33,7 +33,7 @@ function statementsForMode(
 /**
  * The server-side form of `statementsForMode`: the CSV `status` filter one
  * mode sends on `GET /api/party-billing-statements` (pagination-contract
- * §9.1). `undefined` means "no status filter" (the “all” overview); “dues”
+ * Section 9.1). `undefined` means "no status filter" (the “all” overview); “dues”
  * shows no statements at all, so its query is disabled rather than filtered.
  */
 export function statementStatusesForMode(

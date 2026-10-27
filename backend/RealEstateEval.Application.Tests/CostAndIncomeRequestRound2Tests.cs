@@ -8,7 +8,7 @@ namespace RealEstateEval.Application.Tests;
 /// <summary>
 /// Round 2: a cost line (quantity × unit cost) and the cost total stay within 1e12 — an overflow of
 /// numeric(18,2) was a 500 — and the rationales the methodology requires are at least 10 characters
-/// (decision B) on the cost and income saves.
+/// on the cost and income saves.
 /// </summary>
 public class CostAndIncomeRequestRound2Tests
 {

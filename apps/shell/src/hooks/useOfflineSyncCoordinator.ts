@@ -146,7 +146,7 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
     const userId = user?.id;
     if (!userId) return;
     // Back online: confirm the account first — a user disabled while offline has their
-    // device wiped by the refresh instead of uploading (spec §3.4) — then replay.
+    // device wiped by the refresh instead of uploading (spec) — then replay.
     const cameBackOnline = wasOfflineRef.current;
     wasOfflineRef.current = false;
     void (async () => {

@@ -48,7 +48,7 @@ type PartyBillingWorkflowArgs = {
 
 /**
  * Owns the party-billing screen: the two server-paged lists (dues and
- * statements, pagination-contract §9), the dues selection, the
+ * statements, pagination-contract), the dues selection, the
  * close/reject/cancel form drafts and every write (create, issue, match,
  * reject, cancel, receipt upload, close). Rendering is left to the sections.
  */
@@ -92,7 +92,7 @@ export function usePartyBillingStatementsWorkflow({
   const [paidAt, setPaidAt] = useState(todayIso);
 
   // Dues: search, payee scope and the oldest-first order are server-side
-  // (§9.2); a search or payee change goes back to page 1.
+  // (section 9.2); a search or payee change goes back to page 1.
   const duesQ = deferredDuesSearch.trim();
   const [duesPage, setDuesPage] = useListPageState(`${assigneeId ?? ""}|${duesQ}`);
   const readyQuery = usePartyBillingReadyLinesPageQuery(
@@ -101,7 +101,7 @@ export function usePartyBillingStatementsWorkflow({
   );
 
   // Statements: the mode's status set and the payee scope are the server
-  // filters (§9.1); the “dues” mode shows no statements, so nothing is fetched.
+  // filters (section 9.1); the “dues” mode shows no statements, so nothing is fetched.
   const [statementsPage, setStatementsPage] = useListPageState(
     `${assigneeId ?? ""}|${mode}`,
   );
@@ -416,7 +416,7 @@ export function usePartyBillingStatementsWorkflow({
     deferredDuesSearch,
     showDues,
     showStatements,
-    // Pager state — one server page per list (pagination-contract §9).
+    // Pager state — one server page per list (pagination-contract).
     pageSize: FINANCE_LIST_PAGE_SIZE,
     duesPage,
     setDuesPage,

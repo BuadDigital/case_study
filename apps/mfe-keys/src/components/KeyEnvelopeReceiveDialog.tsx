@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Receive envelope (decision 2026-10-20). With a handoff waiting on the viewer it
+ * Receive envelope. With a handoff waiting on the viewer it
  * confirms that handoff. Otherwise it records a receive-back: the reviewer
  * receives at once (he is the receiver), an inspector hands the envelope to the
  * envelope's reviewer and waits for that reviewer's confirmation.
@@ -41,7 +41,7 @@ import { DialogErrorBanner, DialogHeader } from "./KeyEnvelopeDialogShared";
  * (`createEnvelopeHandoff`). Title, text, button label and success toast follow the case; the
  * new envelope row is passed to `onDone`.
  *
- * Edge cases: decision 2026-10-20 — custody moves only on the receiver's confirmation. The
+ * Edge cases: — custody moves only on the receiver's confirmation. The
  * pending handoff is read again at click time (the envelope may have changed while the dialog
  * was open). An envelope with no known reviewer, or a viewer without an id, shows the reason
  * and disables the button. A write queued offline hands back the current row.

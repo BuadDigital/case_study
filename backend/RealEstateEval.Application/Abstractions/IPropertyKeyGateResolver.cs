@@ -1,6 +1,6 @@
 namespace RealEstateEval.Application.Abstractions;
 
-// IPropertyKeyGateResolver moved to RealEstateEval.Operations.Application (A8).
+// IPropertyKeyGateResolver moved to RealEstateEval.Operations.Application.
 // IPropertyAccessHoldService stays: the case-study host registers it too.
 
 public interface IPropertyAccessHoldService

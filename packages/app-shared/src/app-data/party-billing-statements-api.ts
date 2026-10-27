@@ -60,7 +60,7 @@ export async function loadPartyBillingStatements(query?: {
   return result.ok ? result.data : [];
 }
 
-/** One server page of statements (pagination-contract §9.1); throws so React Query shows the error. */
+/** One server page of statements (pagination-contract); throws so React Query shows the error. */
 export async function loadPartyBillingStatementsPage(
   query: PartyBillingStatementListQuery,
 ): Promise<PagedResultDto<PartyBillingStatementDto>> {
@@ -69,7 +69,7 @@ export async function loadPartyBillingStatementsPage(
   return unwrapApiResult(result, "تعذّر تحميل مسيرات وأوامر الصرف");
 }
 
-/** One server page of ready dues (pagination-contract §9.2). */
+/** One server page of ready dues (pagination-contract). */
 export async function loadPartyBillingReadyLinesPage(
   query: PartyBillingReadyLineListQuery,
 ): Promise<PagedResultDto<PartyBillingReadyLineDto>> {

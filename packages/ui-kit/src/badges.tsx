@@ -132,7 +132,7 @@ const STATUS_MAP: Record<string, readonly [string, BadgeTone]> = {
   new: ["جديد", "info"],
   progress: ["قيد التنفيذ", "warning"],
   done: ["مكتمل", "success"],
-  fail: ["متعذّر", "danger"],
+  fail: ["تعذّر", "danger"],
   incomplete: ["ناقص", "warning"],
   review: ["قيد المراجعة", "warning"],
   approved: ["معتمد", "success"],

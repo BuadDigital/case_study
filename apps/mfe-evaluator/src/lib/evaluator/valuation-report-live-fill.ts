@@ -1,13 +1,13 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D13  §26 participants: the three names fixed in code are gone — the roster's active reviewers and
+//  • Section 26 participants: the three names fixed in code are gone — the roster's active reviewers and
 //         assistants, then the assigned appraiser (duplicates matched by samePerson).
-//  • D17  applyIncomeSection puts the income section before the reconciliation.
-//  • D9   appendScopeRows adds the §2 scope rows (retrospective rationale, building-only scope).
-//  • D11  appendAgeNotes adds the age rationales / lease cap under the §23 ages row.
-//  • §25  fillFinalValueTable replaces the old liquidation dash-out and fillValueAdditions.
+//  • applyIncomeSection puts the income section before the reconciliation.
+//  • appendScopeRows adds the section 2 scope rows (retrospective rationale, building-only scope).
+//  • appendAgeNotes adds the age rationales / lease cap under the section 23 ages row.
+//  • Section 25  fillFinalValueTable replaces the old liquidation dash-out and fillValueAdditions.
 // Round 2 (1b19bedc)
-//  • A    §20 calls rebuildLandValueTable with fill.landValueRows.
+//  • section 20 calls rebuildLandValueTable with fill.landValueRows.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -97,7 +97,7 @@ type ParticipantFill = {
   signatureUrl: string;
 };
 
-/** Roster roles that stand on every report (D13 — same rule as ValuationIssuanceGateInputRules). */
+/** Roster roles that stand on every report (same rule as ValuationIssuanceGateInputRules). */
 const STANDING_REPORT_ROLES = new Set(["reviewer", "assistant"]);
 
 /** Same normalisation as the server's SamePerson: alef forms, tā marbūṭa, alef maqṣūra, spaces. */
@@ -147,8 +147,8 @@ function fillFromRosterRow(
 }
 
 /**
- * §26 «المشاركون في إعداد التقرير» — the people the issuance gate checks for this report
- * (D13): the roster's active reviewers and assistants, then the appraiser assigned to this
+ * Section 26 «المشاركون في إعداد التقرير» — the people the issuance gate checks for this report
+ *The roster's active reviewers and assistants, then the appraiser assigned to this
  * property (by staff account, else by name). The signing certified valuer prints in the
  * approval table below, not again here. No names are fixed in code.
  */
@@ -216,7 +216,7 @@ function removeEmptyOptionalPairs(dom: Document, fill: ValuationReportLiveFill) 
   }
   if (!labels.size) return;
   removeLabeledPairs(dom, labels);
-  // §07 — close the gaps the hidden pairs leave: the remaining pairs flow three per row.
+  // Section 07 — close the gaps the hidden pairs leave: the remaining pairs flow three per row.
   const site = dom.querySelector('[data-sec="7"] table');
   if (site) reflowPairTable(site, 3);
 }
@@ -287,9 +287,9 @@ function removeFacadeColumn(dom: Document) {
 }
 
 function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill) {
-  // §09 «تفاصيل المساحات» is no longer printed; its areas and the built-up total moved
-  // into §10 «مكونات العقار». Dropped here too so older stored templates follow suit.
-  // §13 «وصف العيوب الإنشائية» is not printed either (dropped from older stored templates).
+  // Section 09 «تفاصيل المساحات» is no longer printed; its areas and the built-up total moved
+  // into section 10 «مكونات العقار». Dropped here too so older stored templates follow suit.
+  // Section 13 «وصف العيوب الإنشائية» is not printed either (dropped from older stored templates).
   removeSections(dom, ["9", "13"]);
   // Market off (e.g. contractor method only) ⇒ no property comparables, map or adjustments.
   if (!fill.marketApproachEnabled) {
@@ -309,7 +309,7 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
 
   if (!fill.isLand) return;
   // Building-only sections — vacant land has no on-site meters/utilities table either.
-  // §10 «مكونات العقار» stays when the specialist listed components (a fence, a room…).
+  // Section 10 «مكونات العقار» stays when the specialist listed components (a fence, a room…).
   removeSections(dom, fill.componentsListed ? ["11", "12", "13", "14"] : ["10", "11", "12", "13", "14"]);
   removeLabeledPairs(
     dom,
@@ -342,7 +342,7 @@ const FACADE_LABELS = new Set([
   "تشطيب الواجهة الغربية",
 ]);
 
-/** §23 — age rationales / lease cap as full-width rows right after the ages row. */
+/** Section 23 — age rationales / lease cap as full-width rows right after the ages row. */
 function appendAgeNotes(sec: Element, notes: ValuationReportLiveFill["ageNotes"]) {
   sec.querySelectorAll("tr[data-age-note]").forEach((tr) => tr.remove());
   const ageRow = [...sec.querySelectorAll("tr")].find((tr) =>
@@ -367,7 +367,7 @@ function appendAgeNotes(sec: Element, notes: ValuationReportLiveFill["ageNotes"]
   }
 }
 
-/** §2 — D9 retrospective rationale and the building-only scope, one full-width row each. */
+/** Section 2 — retrospective rationale and the building-only scope, one full-width row each. */
 function appendScopeRows(scope: Element, rows: ValuationReportLiveFill["scopeRows"]) {
   const table = scope.querySelector("table");
   if (!table) return;
@@ -471,7 +471,7 @@ export function applyValuationReportLiveFill(
   const feat = dom.querySelector('[data-sec="11"]');
   if (feat) fillKeyedInSection(feat, "أخرى", fill.attachmentsOther);
 
-  // §11 ملحقات / §15 المحيط: «أخرى» prints only when written; «يوجد» reads as a tick.
+  // Section 11 ملحقات / section 15 المحيط: «أخرى» prints only when written; «يوجد» reads as a tick.
   if (feat) tidyPresenceTable(feat, fill.attachmentsOther, 4);
   if (surr) tidyPresenceTable(surr, fill.surroundingsOther, 4);
 
@@ -528,7 +528,7 @@ export function applyValuationReportLiveFill(
     );
   }
 
-  // D17 — the income approach section goes right before the reconciliation.
+  // The income approach section goes right before the reconciliation.
   applyIncomeSection(dom, fill);
 
   const reconSec = dom.querySelector('[data-sec="24"]');
@@ -578,7 +578,7 @@ export function applyValuationReportLiveFill(
     fillApprovalTable(people, fill);
   }
 
-  // §3/§4/§5/§31/§32 — org settings text replaces sample text; empty keeps the template.
+  // Sections 3/4/5/31/32 — org settings text replaces sample text; empty keeps the template.
   fillBulletListSection(
     dom.querySelector('[data-sec="3"]'),
     fill.keyInputsBullets.length ? fill.keyInputsBullets : null,
@@ -598,7 +598,7 @@ export function applyValuationReportLiveFill(
     scrubFrozenDates(restrictionsSec, fill.reportDateSlash);
   }
 
-  // §33 — real location and satellite/close-up maps (interactive Google on screen).
+  // Section 33 — real location and satellite/close-up maps (interactive Google on screen).
   const mapsSec = dom.querySelector('[data-sec="33"]');
   if (mapsSec) {
     // Always overwrite — an empty city/district must not leave the template's sample location.

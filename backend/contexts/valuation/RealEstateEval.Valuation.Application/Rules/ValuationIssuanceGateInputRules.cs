@@ -1,8 +1,8 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
 //  • Alerts New file — the inputs the issuance-gate service hands to the alerts: one adopted comparable as
-//           alert input (D4 gross, D6 adjusted rate, D8 deal date, D10 type; ToAlertComparable).
-//  • D13  ReportParticipants — the credential gate checks only this report's people (standing reviewers /
+//           alert input (gross, adjusted rate, deal date, type; ToAlertComparable).
+//  • ReportParticipants — the credential gate checks only this report's people (standing reviewers /
 //         assistants, the signing certified valuer, the assigned appraiser), not the whole roster.
 // Round 2 (1b19bedc)
 //  • B    UnexplainedAdjustments — for each adopted comparable, every included non-zero factor and manual
@@ -18,11 +18,11 @@ namespace RealEstateEval.Valuation.Application.Rules;
 
 /// <summary>
 /// Inputs the issuance-gate service hands to the methodology alerts and the credential gate:
-/// one adopted comparable as alert input (D4/D6/D8/D10) and the people on this report (D13).
+/// one adopted comparable as alert input (/) and the people on this report.
 /// </summary>
 public static class ValuationIssuanceGateInputRules
 {
-    /// <summary>Alert input for one adopted market comparable (D4 gross, D6 rate, D8 date, D10 type).</summary>
+    /// <summary>Alert input for one adopted market comparable (gross, rate, date, type).</summary>
     public static ValuationMethodologyAlertComparableInput ToAlertComparable(
         ValuationComparableSelectionDto item,
         string? adjustmentBasis)
@@ -55,7 +55,7 @@ public static class ValuationIssuanceGateInputRules
     /// <summary>
     /// Round 2: what the «مبررات التسويات والأوزان اليدوية» gate names — for each ADOPTED comparable,
     /// every included factor with a non-zero percent whose rationale (the comparable's own override,
-    /// else the factor-level one — Q-8-1) is under 10 characters, and a manual weight whose rationale
+    /// else the factor-level one —) is under 10 characters, and a manual weight whose rationale
     /// is. «CMP-1: الموقع (+10٪)», «CMP-2: الوزن اليدوي (60٪)».
     /// </summary>
     public static IReadOnlyList<string> UnexplainedAdjustments(ValuationComparableSelectionListDto? list)
@@ -103,7 +103,7 @@ public static class ValuationIssuanceGateInputRules
         new(StringComparer.OrdinalIgnoreCase) { "reviewer", "assistant" };
 
     /// <summary>
-    /// D13: the people whose credentials this report depends on — the report's standing
+    /// The people whose credentials this report depends on — the report's standing
     /// reviewers / assistants, the signing certified valuer's roster row, and the appraiser
     /// assigned to this property (by staff account, else by name). Other working valuers on the
     /// roster are not on this report and never block it.

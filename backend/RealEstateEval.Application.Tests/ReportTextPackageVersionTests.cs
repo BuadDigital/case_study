@@ -7,8 +7,8 @@ using RealEstateEval.Platform.Infrastructure.Services;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// Decision 23 (amended by Q-15): one version for the entire text package — any change, even to one paragraph, issues
-/// a complete new package; work in progress adopts the latest; issued reports are frozen (Q-6 snapshot).
+/// (amended by): one version for the entire text package — any change, even to one paragraph, issues
+/// a complete new package; work in progress adopts the latest; issued reports are frozen (snapshot).
 /// </summary>
 public class ReportTextPackageVersionTests
 {

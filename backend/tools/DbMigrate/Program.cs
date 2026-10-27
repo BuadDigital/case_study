@@ -40,7 +40,7 @@ using RealEstateEval.DbMigrate;
 
 var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
 
-// A8: the catalog's ApplyOrder is name-keyed so context types can leave the global assembly.
+// The catalog's ApplyOrder is name-keyed so context types can leave the global assembly.
 // This migrator keeps the concrete list and fails loudly if it drifts from the catalog —
 // a stream the migrator does not know about would silently never run in production.
 IReadOnlyList<Type> streamTypes =

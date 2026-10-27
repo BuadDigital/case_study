@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D4   The ±40٪ flag on a phone card comes from the server (exceedsLargeAdjustmentThreshold, net or
+//  • The ±40٪ flag on a phone card comes from the server (exceedsLargeAdjustmentThreshold, net or
 //         gross) instead of a local |net| > 35 check.
 // Round 2 (1b19bedc)
 //  • Wording  «تاريخ الصفقة» prints as yyyy/mm/dd (ymd).

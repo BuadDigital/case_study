@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  New file — EF adapter for IValuationIncomeApproachRepository: reads the request, the income row
+//  • New file — EF adapter for IValuationIncomeApproachRepository: reads the request, the income row
 //         (tracked or not) and the approach settings; adds and saves the income row.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -13,7 +13,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Persistence;
 
 /// <summary>
 /// EF adapter for <see cref="IValuationIncomeApproachRepository"/>. The only place the income
-/// approach use case (D17) reaches <see cref="ValuationDbContext"/>.
+/// approach use case reaches <see cref="ValuationDbContext"/>.
 /// </summary>
 public sealed class ValuationIncomeApproachRepository(ValuationDbContext db)
     : IValuationIncomeApproachRepository

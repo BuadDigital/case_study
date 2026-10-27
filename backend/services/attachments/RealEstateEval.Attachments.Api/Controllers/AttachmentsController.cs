@@ -179,7 +179,7 @@ public class AttachmentsController : ControllerBase
         return Ok(await _lookup.GetRefsAsync(parsed, actor, ct));
     }
 
-    // Decision 2026-10-21: a system check (actor = null) — e.g. a photo the specialist added to a
+    // A system check (actor = null) — e.g. a photo the specialist added to a
     // returned inspection must not be reported «missing» to the inspector who cannot read it.
     private bool IsServiceCaller() =>
         User.HasClaim(PlatformCapabilities.TokenUseClaimType, PlatformCapabilities.UpstreamServiceTokenUse);

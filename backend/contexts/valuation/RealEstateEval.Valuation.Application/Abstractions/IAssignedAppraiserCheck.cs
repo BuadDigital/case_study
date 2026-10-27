@@ -3,9 +3,9 @@
 //  • Access New file — the check that only the appraiser assigned to the property's appraisal task may
 //           write valuation work (no supervisor or CDO override); the report-draft actions share it.
 // Round 2 (1b19bedc)
-//  • R2-6 CheckRequestAsync / CheckPropertyAsync return AssignedAppraiserVerdict (Assigned / NotAssigned /
+//  • CheckRequestAsync / CheckPropertyAsync return AssignedAppraiserVerdict (Assigned / NotAssigned /
 //         Unverified), so «Case Study did not answer» is told apart from «not the assigned appraiser».
-//  • R2-6 AssignedAppraiserMessages.UnverifiedAr «تعذّر التحقق من المقيّم المُسنَد — أعد المحاولة» — the
+//  • AssignedAppraiserMessages.UnverifiedAr «تعذّر التحقق من المقيّم المُسنَد — أعد المحاولة» — the
 //         caller asks for a retry instead of refusing the user.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 

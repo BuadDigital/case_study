@@ -26,7 +26,7 @@ export function transactionDeedLabel(deed: Pick<TransactionDeedDto, "deedNumber"
 /**
  * The «صكوك المعاملة» select in the property page header.
  *
- * How it works (decision 2026-10-19): a transaction with several deeds shows one page per deed
+ * How it works: a transaction with several deeds shows one page per deed
  * under one header; this switcher jumps between them. Each option is the deed's label and its
  * PO; choosing one pushes `poPropertyPath(deed.poNumber, deed.propertyId)` — each deed keeps
  * its own work order, so the link carries that deed's PO.

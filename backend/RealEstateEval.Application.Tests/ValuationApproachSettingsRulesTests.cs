@@ -78,7 +78,7 @@ public class ValuationApproachSettingsRulesTests
     [Fact]
     public void Purpose_is_mandatory_and_other_needs_a_note()
     {
- // §4j-5: purpose is chosen by the valuer — not derived from assignment type.
+ // Section 4j-5: purpose is chosen by the valuer — not derived from assignment type.
         var missing = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا");
         Assert.Contains("valuationPurposeKey", missing.Keys);
@@ -102,13 +102,13 @@ public class ValuationApproachSettingsRulesTests
     [Fact]
     public void Retrospective_valuation_date_needs_date()
     {
- // Omar decision 2026-08-17: two kinds — value issuance (automatic) or manual retrospective.
+ // Omar: two kinds — value issuance (automatic) or manual retrospective.
         var missing = ValuationApproachSettingsRules.Validate(
             true, true, false, null, null, "فيلا",
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
             valuationDateMode: ValuationDateModes.Retrospective);
         Assert.Contains("retrospectiveDate", missing.Keys);
-        // D9: the rationale is required with a retrospective date.
+        // The rationale is required with a retrospective date.
         Assert.Contains("retrospectiveRationale", missing.Keys);
 
         var ok = ValuationApproachSettingsRules.Validate(
@@ -279,7 +279,7 @@ public class ValuationApproachSettingsRulesTests
             false, false, false, null, null, "فيلا");
         Assert.Contains("appliedApproaches", none.Keys);
 
-        // D17: the income approach may be enabled — alone or beside the others.
+        // The income approach may be enabled — alone or beside the others.
         var income = ValuationApproachSettingsRules.Validate(
             true, false, true, null, null, "فيلا");
         Assert.DoesNotContain("incomeApproachEnabled", income.Keys);

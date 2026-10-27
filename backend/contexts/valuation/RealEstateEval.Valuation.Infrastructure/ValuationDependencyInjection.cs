@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  Registers IValuationIncomeApproachRepository and IValuationIncomeApproachService.
+//  • Registers IValuationIncomeApproachRepository and IValuationIncomeApproachService.
 //  • Access  Registers IAssignedAppraiserCheck.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 namespace RealEstateEval.Valuation.Infrastructure;
 
 /// <summary>
-/// Context-local registration for the Valuation bounded context (A8). Everything the
+/// Context-local registration for the Valuation bounded context. Everything the
 /// Valuation host serves, including evaluator recalls. The shared persistence/HTTP
 /// plumbing still comes from the global Infrastructure extensions.
 /// </summary>
@@ -33,7 +33,7 @@ public static class ValuationDependencyInjection
         IConfiguration configuration,
         string connectionString)
     {
- // A9: Case Study reads go through the owner HTTP API. No CaseStudyDbContext here, and
+ // Case Study reads go through the owner HTTP API. No CaseStudyDbContext here, and
  // no compose depends_on case-study (case-study already depends_on valuation).
         services.AddRemoteCaseStudy(configuration);
         services.AddRemotePlatformCatalogs(configuration);
@@ -41,7 +41,7 @@ public static class ValuationDependencyInjection
         // The deposit certificate and the generated final report are stored through the Attachments API.
         services.AddRemoteAttachmentFileStore(configuration);
         services.AddRemoteAuditLogAppend(configuration);
- // The valuation-request write path: context, per-producer outbox publisher (D5),
+ // The valuation-request write path: context, per-producer outbox publisher,
  // HTTP PO-number lookup, and the request service.
         services.AddValuationPersistence(configuration, connectionString);
         // Valuation already runs MessagingRetentionHostedService for its local outbox;
@@ -55,7 +55,7 @@ public static class ValuationDependencyInjection
         // Phase 5: merge / unmerge of transactions folds the deeds' requests into the holder's.
         services.AddScoped<IValuationRequestFolding, ValuationRequestFoldingService>();
         services.AddHttpClient<ICaseStudyRecallCommands, HttpCaseStudyRecallCommands>();
-        // Decision 2026-10-19: the report number is drawn from the transaction's PR root owned by Case Study.
+        // The report number is drawn from the transaction's PR root owned by Case Study.
         services.AddHttpClient<ICaseStudyCommands, HttpCaseStudyCommands>();
         services.AddScoped<ValuationTimelineWriter>();
         services.AddScoped<IEvaluatorRecallsService, EvaluatorRecallsService>();
@@ -78,7 +78,7 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationValuedDocumentLookup, ValuationValuedDocumentLookup>();
         services.AddScoped<IValuationIssuanceGateService, ValuationIssuanceGateService>();
         services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
-        // Q-6: two-phase issuance + deposit certificate.
+        // two-phase issuance + deposit certificate.
         services.AddScoped<IValuationReportIssuanceService, ValuationReportIssuanceService>();
         // Only the assigned appraiser writes a valuation (report draft + every valuation-work write).
         services.AddScoped<IAssignedAppraiserCheck, AssignedAppraiserCheck>();
@@ -101,7 +101,7 @@ public static class ValuationDependencyInjection
         return services;
     }
  /// <summary>Valuation write context, including its own outbox rows. Prefers a dedicated
- /// Valuation connection string. A8 physical move: lives beside <see cref="ValuationDbContext"/>.</summary>
+ /// Valuation connection string. physical move: lives beside <see cref="ValuationDbContext"/>.</summary>
     public static IServiceCollection AddValuationPersistence(
         this IServiceCollection services,
         IConfiguration configuration,

@@ -15,7 +15,7 @@ public sealed class NotificationRecipientResolver : INotificationRecipientResolv
     private readonly IWorkflowAssigneeLookup _assignees;
     private readonly IIdentityDirectory _identity;
 
-    // A8 hard-stay unwind: the EF-backed test wiring (ForContexts) moved to the test
+    // hard-stay unwind: the EF-backed test wiring (ForContexts) moved to the test
     // project (TestNotificationRecipients) — production code holds no context types here.
 
     public NotificationRecipientResolver(

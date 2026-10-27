@@ -36,7 +36,7 @@ public class BoundedContextBoundaryTests
             RegexOptions.Compiled);
 
         var declared = new SortedSet<string>(StringComparer.Ordinal);
-        // "contexts" included ahead of the physical DbContext moves (A8 migration-catalog
+        // "contexts" included ahead of the physical DbContext moves ( migration-catalog
         // decomposition): a context declaration is catalogued wherever it lives.
         foreach (var root in new[] { "RealEstateEval.Infrastructure", "services", "shared", "gateway", "contexts" })
         {
@@ -89,7 +89,7 @@ public class BoundedContextBoundaryTests
 
  /// <summary>
  /// Plan exit criterion. Only
- /// the messaging tables are exempt, because D5 makes their rows — not the table — owned.
+ /// the messaging tables are exempt, because makes their rows — not the table — owned.
  /// </summary>
     [Fact]
     public void EveryTableHasExactlyOneWritingContext()
@@ -151,7 +151,7 @@ public class BoundedContextBoundaryTests
             "PermissionService",
         };
 
-        // A8: extracted bounded-context services live under backend/contexts. The solid-scorecard
+        // Extracted bounded-context services live under backend/contexts. The solid-scorecard
         // slice then moves a use case to <Ctx>.Application/Services with its EF adapter in
         // <Ctx>.Infrastructure/Persistence, so every folder a service may sit in is searched.
         var serviceRoots = OwningServiceRoots();

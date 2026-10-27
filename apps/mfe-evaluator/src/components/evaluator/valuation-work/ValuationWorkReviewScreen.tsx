@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D2   Takes the issuance gates and onGoToScreen and shows HandOverBlockersPanel above the hand-over
+//  • Takes the issuance gates and onGoToScreen and shows HandOverBlockersPanel above the hand-over
 //         while the review is not disabled — every blocker is listed before «اعتماد التقييم وإرسال».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ export function ValuationWorkReviewScreen({
   submitting?: boolean;
   onSubmit?: () => void;
   onSpecialistDraftChange?: (draft: EvaluatorSpecialistDraft) => void;
-  /** Issuance gates from the shell — the hand-over blockers list (D2). */
+  /** Issuance gates from the shell — the hand-over blockers list. */
   gates?: ValuationIssuanceGatesDto | null;
   onGoToScreen?: (screen: ValuationWorkScreenId) => void;
 }) {

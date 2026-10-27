@@ -25,7 +25,7 @@ type FinalizeAppraiserResult =
  * (`submitEvaluatorSubmission`) and clears the task's recall flag. Returns ok + submission or a
  * message.
  *
- * Edge cases: decision 2026-10-19 — the report number is not drawn here any more (it used to
+ * Edge cases: — the report number is not drawn here any more (it used to
  * reserve VR/TQ numbers, with a "could not reserve" failure); the server fixes PRV-… at report
  * approval. An unopenable valuation request or a failed date save stops before submitting.
  */
@@ -49,7 +49,7 @@ export async function finalizeAppraiserSubmission(
   if (current && current.status !== "submitted" && current.status !== "completed") {
     const issuedAt = new Date();
     // The valuation request must be open for the package to land on; the report number is NOT
-    // drawn here (decision 2026-10-19): the server fixes PRV-… when the report is approved.
+    // drawn here: the server fixes PRV-… when the report is approved.
     try {
       await ensureOpenValuationRequest({ propertyId: current.propertyId });
     } catch {

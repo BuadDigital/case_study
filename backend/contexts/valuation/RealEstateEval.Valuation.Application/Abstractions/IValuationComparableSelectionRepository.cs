@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D7   GetCostApartmentLandShareSqmAsync — reads the apartment's land share (m²) saved on the cost
+//  • GetCostApartmentLandShareSqmAsync — reads the apartment's land share (m²) saved on the cost
 //         approach, the land area the cost approach values.
 // Round 2 (1b19bedc)
 //  • A    Replaced by GetCostLandAreasAsync (CostLandAreas): the building plot area and the apartment's land
@@ -70,7 +70,7 @@ public interface IValuationComparableSelectionRepository
 
     Task AddMarketApproachAsync(ValuationMarketApproach header, CancellationToken cancellationToken);
 
-    /// <summary>Untracked factor rationales of one context, ordered by factor key (ق-8-1).</summary>
+    /// <summary>Untracked factor rationales of one context, ordered by factor key (1).</summary>
     Task<IReadOnlyList<ValuationAdjustmentFactorRationale>> ListFactorRationalesAsync(
         Guid valuationRequestId,
         string selectionContext,
@@ -97,7 +97,7 @@ public interface IValuationComparableSelectionRepository
         CancellationToken cancellationToken);
 
     /// <summary>
-    /// Decision A: the building plot and the apartment's land share saved on the cost approach — what the
+    /// The building plot and the apartment's land share saved on the cost approach — what the
     /// land table inside the cost approach compares with and multiplies by (both null before a cost save).
     /// </summary>
     Task<CostLandAreas> GetCostLandAreasAsync(

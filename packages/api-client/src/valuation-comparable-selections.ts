@@ -2,15 +2,15 @@
 // Round 1 (5b554f4e)
 //  • P5   Cost DTO: isSaved (saved zeros replace the starter defaults) and the actual / economic age
 //         rationales, also on the save request.
-//  • D11  Cost DTO: remainingLeaseYears / lifeCappedByLease / effectiveLifeYears; settings DTO and save
+//  • Cost DTO: remainingLeaseYears / lifeCappedByLease / effectiveLifeYears; settings DTO and save
 //         request: ownershipInterestKey (+ label) and remainingLeaseYears.
-//  • D12  Cost DTO: appliedObsolescencePct (capped at 100%) and obsolescenceNeedsAlert (> 90%).
-//  • D17  Reconciliation incomeOpinionValue; the income toggle is no longer documented as deferred.
+//  • Cost DTO: appliedObsolescencePct (capped at 100%) and obsolescenceNeedsAlert (> 90%).
+//  • Reconciliation incomeOpinionValue; the income toggle is no longer documented as deferred.
 //  • Wording The garbled reconciliation 400 message is now «بيانات الترجيح غير صالحة».
 // Round 2 (1b19bedc)
 //  • A    subjectAreaSqm is the whole building plot on the land table; new apartmentLandShareSqm (list) and
 //         buildingPlotAreaSqm (cost DTO and save request).
-//  • R2   Other failed responses go through serverFailure: a 503 (an unreachable service) now carries the
+//  • Other failed responses go through serverFailure: a 503 (an unreachable service) now carries the
 //         server's Arabic message instead of a bare «server» failure.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -50,7 +50,7 @@ export type ValuationComparableMarketDto = {
   effectiveWeightPct: number;
   weightIsManual: boolean;
   weightPct?: number | null;
-  /** Decision 19.3 — required when weightIsManual. */
+  /** 3 — required when weightIsManual. */
   weightOverrideRationale?: string | null;
  /** multiplier | amthal — table-wide auto choice. */
   areaAdjustmentMethod: string;
@@ -86,9 +86,9 @@ export type ValuationComparableSelectionListDto = {
   meetsMinimumAdoptedGate: boolean;
   weightsSumTo100: boolean;
   weightedPricePerSqm: number;
-  /** Subject area — on the land table, the whole building plot (decision A). */
+  /** Subject area — on the land table, the whole building plot. */
   subjectAreaSqm?: number | null;
-  /** Land table only (decision A): the apartment's share the rate multiplies into the land value. */
+  /** Land table only: the apartment's share the rate multiplies into the land value. */
   apartmentLandShareSqm?: number | null;
  /** price_per_sqm | whole_property. */
   adjustmentBasis: string;
@@ -106,12 +106,12 @@ export type ValuationComparableSelectionListDto = {
   analysisNotes?: string | null;
   /** subjSpec: subject-property descriptions per difference factor. */
   subjectSpecs?: Record<string, string>;
-  /** Q-8-1: factor-level justifications — comparable row holds allocation only. */
+  /** factor-level justifications — comparable row holds allocation only. */
   factorRationales?: ValuationAdjustmentFactorRationaleDto[];
   items: ValuationComparableSelectionDto[];
 };
 
-/** Q-8-1: single adjustment-factor justification (covers all comparables). */
+/** Single adjustment-factor justification (covers all comparables). */
 export type ValuationAdjustmentFactorRationaleDto = {
   selectionContext: string;
   factorKey: string;
@@ -174,7 +174,7 @@ export type ValuationCostApproachDto = {
   useRestrictionDiscountPct: number;
   useRestrictionRationale?: string | null;
   apartmentLandShareSqm?: number | null;
-  /** Decision A: the whole building plot (m²) the land comparables are compared with; null = not entered. */
+  /** The whole building plot (m²) the land comparables are compared with; null = not entered. */
   buildingPlotAreaSqm?: number | null;
  /** computed. */
   landUnitRateAfterDiscount: number;
@@ -200,17 +200,17 @@ export type ValuationCostApproachDto = {
   externalObsolescencePct: number;
   externalObsolescenceRationale?: string | null;
   extendedLifeYears: number;
-  /** D11: remaining lease years capping the life (building-only on leased land); null otherwise. */
+  /** Remaining lease years capping the life (building-only on leased land); null otherwise. */
   remainingLeaseYears?: number | null;
   lifeCappedByLease?: boolean;
-  /** Life physical depreciation is measured against (lease-capped when D11 applies). */
+  /** Life physical depreciation is measured against (lease-capped when applies). */
   effectiveLifeYears?: number;
   physicalObsolescencePct?: number | null;
   /** Unclamped total (alerts read it). */
   totalObsolescencePct: number;
-  /** D12: obsolescence applied to the cost — capped at 100%. */
+  /** Obsolescence applied to the cost — capped at 100%. */
   appliedObsolescencePct?: number;
-  /** D12: total obsolescence above 90%. */
+  /** Total obsolescence above 90%. */
   obsolescenceNeedsAlert?: boolean;
   depreciationValue: number;
   buildingsValueAfterDepreciation: number;
@@ -270,7 +270,7 @@ export type SaveValuationCostApproachRequest = {
   useRestrictionRationale?: string | null;
  /** apartment share of land m². */
   apartmentLandShareSqm?: number | null;
-  /** Decision A: the whole building plot (m²); null clears it. */
+  /** The whole building plot (m²); null clears it. */
   buildingPlotAreaSqm?: number | null;
  /** indirect costs. */
   indirectItems?: SaveValuationIndirectCostItemRequest[];
@@ -325,7 +325,7 @@ export type ValuationReconciliationDto = {
   propertyId: string;
   marketOpinionValue: number;
   costOpinionWithLand: number;
-  /** D17 — income approach indicator (NOI ÷ cap rate); 0 until complete. Older servers omit it. */
+  /** Income approach indicator (NOI ÷ cap rate); 0 until complete. Older servers omit it. */
   incomeOpinionValue?: number;
   methods: ValuationReconciliationMethodDto[];
   weightSumPct: number;
@@ -336,7 +336,7 @@ export type ValuationReconciliationDto = {
   /** weighted → liquidation discount → + document additions → rounded once. */
   finalOpinionValue: number;
   finalOpinionBeforeLiquidation?: number;
-  /** Property value after the liquidation discount, unrounded (§25 first line). */
+  /** Property value after the liquidation discount, unrounded (section 25 first line). */
   propertyValueAfterLiquidation?: number;
   additions?: ValuationValueDocumentAdditionDto[];
   additionsTotal?: number;
@@ -391,13 +391,13 @@ export type SaveValuationComparableMarketRequest = {
   areaOverrideSqm?: number | null;
   weightPct?: number | null;
   weightIsManual?: boolean;
-  /** Decision 19.3 — required when weightIsManual. */
+  /** 3 — required when weightIsManual. */
   weightOverrideRationale?: string | null;
  /** multiplier (default) | amthal. */
   areaAdjustmentMethod?: string | null;
 };
 
-/** Screen 1 — applied approaches (Q-2/Q-3) + cost basis/unit + adjustments eligibility. */
+/** Screen 1 — applied approaches + cost basis/unit + adjustments eligibility. */
 export type ValuationApproachSettingsDto = {
   valuationRequestId: string;
   propertyId: string;
@@ -413,9 +413,9 @@ export type ValuationApproachSettingsDto = {
   costApproachAllowed: boolean;
   marketApproachEnabled: boolean;
   costApproachEnabled: boolean;
-  /** Income approach (direct capitalisation, D17) — the appraiser may enable it. */
+  /** Income approach (direct capitalisation) — the appraiser may enable it. */
   incomeApproachEnabled: boolean;
-  /** D11: freehold (default) | usufruct («حق منفعة») | leased_land («أرض مستأجرة»). */
+  /** Freehold (default) | usufruct («حق منفعة») | leased_land («أرض مستأجرة»). */
   ownershipInterestKey?: string;
   /** «ملكية تامة» / «حق منفعة» / «أرض مستأجرة». */
   ownershipInterestLabelAr?: string;
@@ -444,7 +444,7 @@ export type ValuationApproachSettingsDto = {
   retrospectiveDate?: string | null;
   /** yyyy-MM-dd — period end; empty = single date. */
   retrospectiveDateEnd?: string | null;
-  /** D9: why the value is stated at a past date — printed in the report scope. */
+  /** Why the value is stated at a past date — printed in the report scope. */
   retrospectiveRationale?: string | null;
   /** Selected/added assumption items (frozen text). */
   selectedAssumptions: string[];
@@ -463,7 +463,7 @@ export type SaveValuationApproachSettingsRequest = {
   costScopeKey?: string | null;
   costMeasurementUnitKey?: string | null;
   adjustmentsEditUnlocked?: boolean;
-  /** Required (§4j-5). */
+  /** Required (section 4j-5). */
   valuationPurposeKey?: string | null;
   valuationPurposeNote?: string | null;
   externalSpecialistUsed?: boolean;
@@ -474,11 +474,11 @@ export type SaveValuationApproachSettingsRequest = {
   retrospectiveDate?: string | null;
   /** yyyy-MM-dd — period end; empty = single date. */
   retrospectiveDateEnd?: string | null;
-  /** D9: required (≥ 10 characters) when valuationDateMode is retrospective; null keeps the stored one. */
+  /** Required (≥ 10 characters) when valuationDateMode is retrospective; null keeps the stored one. */
   retrospectiveRationale?: string | null;
-  /** D11: freehold | usufruct | leased_land — null keeps the stored interest. */
+  /** Freehold | usufruct | leased_land — null keeps the stored interest. */
   ownershipInterestKey?: string | null;
-  /** D11: required (> 0, ≤ 999) for usufruct / leased_land; ignored for freehold. */
+  /** Required (> 0, ≤ 999) for usufruct / leased_land; ignored for freehold. */
   remainingLeaseYears?: number | null;
   selectedAssumptions?: string[] | null;
 };
@@ -711,7 +711,7 @@ export async function saveValuationComparableMarket(
   }
 }
 
-/** Q-8-1: save/clear single adjustment-factor justification — empty clears. */
+/** save/clear single adjustment-factor justification — empty clears. */
 export async function saveAdjustmentFactorRationale(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
@@ -1017,7 +1017,7 @@ export async function getValuationIssuanceGates(
   }
 }
 
-/* ─── Q-6: two-phase issuance + deposit certificate ─── */
+/* ─── two-phase issuance + deposit certificate ─── */
 
 export type ValuationReportIssuanceStateDto = {
   valuationRequestId: string;
@@ -1030,7 +1030,7 @@ export type ValuationReportIssuanceStateDto = {
   certificateFileName?: string | null;
   certificateUploadedAtUtc?: string | null;
   finalIssuedAtUtc?: string | null;
-  /** Q-9 supplement (r2): active valuation round number — 1 before any reopen. */
+  /** Supplement (r2): active valuation round number — 1 before any reopen. */
   version: number;
   /** Count of superseded cancelled copies still kept on the transaction file. */
   supersededCount: number;
@@ -1075,7 +1075,7 @@ async function postIssuance(
   }
 }
 
-/** Q-6-3/4: record certificate and code — generates final copy with certificate/code page in meta. */
+/** Record certificate and code — generates final copy with certificate/code page in meta. */
 export function registerDepositCertificate(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
@@ -1095,7 +1095,7 @@ export function registerDepositCertificate(
 }
 
 /**
- * Q-9 supplement (r2): reopen valuation round after deposit — department supervisor
+ * Supplement (r2): reopen valuation round after deposit — department supervisor
  * approval required; the active copy is marked superseded and remains on file.
  */
 export function reopenReportIssuance(

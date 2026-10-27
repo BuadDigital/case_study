@@ -3,7 +3,7 @@ namespace RealEstateEval.Application.Contracts;
 /// <summary>
 /// Server-side paging / filtering / sorting for <c>GET /api/notifications</c>. Every member is
 /// optional: an instance with no page and no page size keeps the legacy plain-array response,
-/// capped at the feed's own 50 rows. See docs/architecture/pagination-contract.md §6.
+/// capped at the feed's own 50 rows. See docs/architecture/pagination-contract.md.
 /// </summary>
 public sealed record NotificationListQuery
 {

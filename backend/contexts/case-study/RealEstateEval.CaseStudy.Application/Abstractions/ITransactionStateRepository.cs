@@ -3,7 +3,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>
-/// Persistence boundary for the Q-9 transaction-state use case. The use case in
+/// Persistence boundary for the transaction-state use case. The use case in
 /// <c>CaseStudy.Application</c> composes these calls; only the Infrastructure adapter opens EF.
 /// </summary>
 public interface ITransactionStateRepository

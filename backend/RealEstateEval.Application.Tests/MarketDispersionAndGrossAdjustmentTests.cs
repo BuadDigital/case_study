@@ -11,13 +11,13 @@ using RealEstateEval.Valuation.Infrastructure.Services;
 namespace RealEstateEval.Application.Tests;
 
 /// <summary>
-/// Market approach fixes D4 (gross ±40٪), D5 (weights by gross), D6 (dispersion), D7 (no area
-/// adjustment on the whole-property basis; land table always per m²), D8 (valuation date) and
-/// D10 (property category) — with the numbers of the R2a/R2b/r5a/r8a journeys.
+/// Market approach fixes (gross ±40٪) (weights by gross) (dispersion) (no area
+/// adjustment on the whole-property basis; land table always per m²) (valuation date) and
+/// (property category) — with the numbers of the R2a/R2b/r5a/r8a journeys.
 /// </summary>
 public class MarketDispersionAndGrossAdjustmentTests
 {
-    // ─── D4: gross adjustment ───
+    // ─── Gross adjustment ───
 
     [Fact]
     public void Offsetting_plus_30_minus_30_is_a_61_63_pct_gross_adjustment_and_breaches_40()
@@ -40,7 +40,7 @@ public class MarketDispersionAndGrossAdjustmentTests
         Assert.True(MarketApproachRules.ExceedsLargeAdjustmentThreshold(41m, 41m));
     }
 
-    // ─── D6: dispersion ───
+    // ─── Dispersion ───
 
     private static readonly decimal[] R2aAdjusted = [857.30m, 857.15m, 805.10m, 1654.62m, 873.16m];
     private static readonly decimal[] R2aGross = [1.14m, 7.06m, 3m, 0.28m, 61.63m];
@@ -72,7 +72,7 @@ public class MarketDispersionAndGrossAdjustmentTests
         Assert.True(MarketApproachRules.IsDispersed(rates));
     }
 
-    // ─── D5: weights by gross, outlier gets no automatic weight ───
+    // ─── Weights by gross, outlier gets no automatic weight ───
 
     [Fact]
     public void R2a_old_net_weights_gave_the_outlier_30_pct()
@@ -98,7 +98,7 @@ public class MarketDispersionAndGrossAdjustmentTests
         Assert.Equal([20m, 15m, 65m, 0m, 0m], MarketApproachRules.SuggestWeights(gross, adjusted));
     }
 
-    // ─── D8: official valuation date ───
+    // ─── Official valuation date ───
 
     [Fact]
     public void R5a_deal_age_is_measured_to_the_retrospective_valuation_date()
@@ -126,7 +126,7 @@ public class MarketDispersionAndGrossAdjustmentTests
         Assert.Equal(today, MarketApproachRules.ComparableDateCutoff("issue", null, null, today));
     }
 
-    // ─── D10: categories ───
+    // ─── Categories ───
 
     [Theory]
     [InlineData("أرض", null, PropertyCategoryRules.Land)]
@@ -496,7 +496,7 @@ public class MarketDispersionAndGrossAdjustmentTests
         Assert.Equal(numbers, checks.Select(c => c.Number).ToArray());
     }
 
-    // ─── D13: credential gate — this report's people only ───
+    // ─── Credential gate — this report's people only ───
 
     [Fact]
     public void Credential_gate_checks_the_report_participants_not_the_whole_roster()
@@ -533,7 +533,7 @@ public class MarketDispersionAndGrossAdjustmentTests
         Assert.Contains(byName, p => p.NameAr == "محمد العساف");
     }
 
-    // ─── Selection service: PUT keeps saved work, duplicate factor → 400, import, D8 ───
+    // ─── Selection service: PUT keeps saved work, duplicate factor → 400, import ───
 
     private sealed class FixedTime(DateTimeOffset now) : TimeProvider
     {

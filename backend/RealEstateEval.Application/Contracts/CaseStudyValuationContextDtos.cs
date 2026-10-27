@@ -130,7 +130,7 @@ public sealed class CaseStudyValuationPropertyContextDto
     public string? ClientNameEn { get; set; }
     public IReadOnlyList<string> ReportUserClientNamesAr { get; set; } = [];
 
-    // Phase 5 (decision 2026-10-19): the transaction above the deeds. One valuation covers every
+    // Phase 5: the transaction above the deeds. One valuation covers every
     // deed, so the report lists them all; empty for a host that predates the field.
     public Guid? TransactionId { get; set; }
     /// <summary>PR-… once confirmed, else the TMP- temporary number.</summary>
@@ -247,7 +247,7 @@ public sealed class CaseStudyTransactionDeedDto
             : DeedDate;
 }
 
-/// <summary>How a linked property's deeds print in one report cell (decision 2026-10-19).</summary>
+/// <summary>How a linked property's deeds print in one report cell.</summary>
 public static class CaseStudyTransactionDeedRules
 {
     public const string Separator = " ، ";

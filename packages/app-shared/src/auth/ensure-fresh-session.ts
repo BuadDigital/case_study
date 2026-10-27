@@ -100,7 +100,7 @@ async function renew(force: boolean): Promise<FreshAuthSessionResult> {
 }
 
 /**
- * Spec §3.4: a disabled user is refused and the device wipes its local store on the first
+ * Spec: a disabled user is refused and the device wipes its local store on the first
  * connection — drafts, queued work, photos, downloaded documents, the session itself.
  * Only for a disabled account: an expired session keeps unsynced work for the next login.
  */

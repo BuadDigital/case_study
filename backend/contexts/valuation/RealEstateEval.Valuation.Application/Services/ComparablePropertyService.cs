@@ -3,9 +3,9 @@
 //  • Lock A bank comparable adopted by a handed-over, approved or deposited valuation cannot be edited
 //         (IsAdoptedByClosedValuationAsync, UsedByClosedValuationAr) — the valuation reads the row live.
 // Round 2 (1b19bedc)
-//  • R2-5 Price must be > 0 and ≤ 1e12 SAR (ComparablePropertyRules.PriceError).
-//  • R2-10 A transaction date after today (Riyadh) is refused with an Arabic message.
-//  • R2-10 Usage is never stored empty when the property type says it (ComparablePropertyRules.UsageOrDefault).
+//  • Price must be > 0 and ≤ 1e12 SAR (ComparablePropertyRules.PriceError).
+//  • A transaction date after today (Riyadh) is refused with an Arabic message.
+//  • Usage is never stored empty when the property type says it (ComparablePropertyRules.UsageOrDefault).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Application;
@@ -50,10 +50,10 @@ public sealed class ComparablePropertyService(
     }
 
  /// <summary>
- /// One page of the same filtered, sorted set. The comparison-method §2 field-first display
+ /// One page of the same filtered, sorted set. The comparison-method section 2 field-first display
  /// priority is part of the SQL ordering (see <c>ComparableBankFilter.ForPropertyId</c>), so no
  /// row is dropped after materialisation and TotalCount always agrees with the page.
- /// See docs/architecture/pagination-contract.md §4.
+ /// See docs/architecture/pagination-contract.md.
  /// </summary>
     public async Task<PagedResultDto<ComparablePropertyDto>> ListPagedAsync(
         ComparablePropertyListQuery query,
@@ -95,7 +95,7 @@ public sealed class ComparablePropertyService(
         IReadOnlyList<ComparableProperty> rows,
         CancellationToken cancellationToken)
     {
- // Q-3/2: system suggests suspicion (two records at same location) and neither blocks nor merges automatically.
+ // System suggests suspicion (two records at same location) and neither blocks nor merges automatically.
         var suspectCoords = await DuplicateSuspectCoordsAsync(cancellationToken);
 
         var today = RiyadhClock.Today(_time);
@@ -209,7 +209,7 @@ public sealed class ComparablePropertyService(
         if (entity is null)
             return (null, new Dictionary<string, string> { ["_"] = "المقارن غير موجود" });
 
-        // B2/Q-3: tagging rules on the aggregate — service coordinates only.
+        // B2: tagging rules on the aggregate — service coordinates only.
         var tagError = entity.ApplyQualityTags(
             request.ReliabilityTag,
             request.IsDuplicateTagged,
@@ -269,7 +269,7 @@ public sealed class ComparablePropertyService(
         }
 
         var exclude = ParseExcludeIds(query.ExcludeIds);
- // Q-3: anomalous/unreliable/duplicate tagged items are excluded from suggestions (remain visible in the bank, marked).
+ // anomalous/unreliable/duplicate tagged items are excluded from suggestions (remain visible in the bank, marked).
  // Pull a wider pool then rank in memory — Haversine is not trivial in SQL across providers.
         var pool = await repo.ListProximityPoolAsync(
             new ComparableProximityFilter(exclude, query.District, query.PropertyType),
@@ -359,7 +359,7 @@ public sealed class ComparablePropertyService(
         entity.PriceDescription = priceDesc;
         entity.Source = request.Source.Trim().ToLowerInvariant();
         entity.ListingNumber = Normalize(request.ListingNumber);
- // Q-3/3: deal reference for closed deals — counterpart to listing number for offers.
+ // Deal reference for closed deals — counterpart to listing number for offers.
         entity.TransactionReference = kind == ComparableTransactionKinds.Executed
             ? Normalize(request.TransactionReference)
             : null;

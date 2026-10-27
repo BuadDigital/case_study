@@ -47,7 +47,7 @@ public class ValuationComparableSelection : ITrackUpdatedAt
 /// <summary>Selection / adoption helpers — adjustments logic: at least one adopted comparable is required.</summary>
 public static class ValuationComparableSelectionRules
 {
-    /// <summary>Adjustments logic §4: error when zero adopted — at least one is required.</summary>
+    /// <summary>Adjustments logic section 4: error when zero adopted — at least one is required.</summary>
     public const int MinimumAdoptedForMarketApproach = 1;
 
     public static bool MeetsMinimumAdopted(IEnumerable<ValuationComparableSelection> rows) =>

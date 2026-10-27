@@ -63,5 +63,5 @@ public sealed class MessagingOutboxPublisher(
     TimeProvider? time = null)
     : OutboxIntegrationEventPublisher<MessagingDbContext>(db, logger, time);
 
-// A8 physical move: ValuationOutboxPublisher lives beside its context in
+// Physical move: ValuationOutboxPublisher lives beside its context in
 // RealEstateEval.Valuation.Infrastructure (Integration/ValuationOutboxPublisher.cs).

@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D15  New file — DepositCodeTakenAsync (case/space-insensitive key, Latin digits; held by another current
+//  • New file — DepositCodeTakenAsync (case/space-insensitive key, Latin digits; held by another current
 //         report or any version of this request; older rows matched on the stored code) and
 //         SaveRegistrationAsync (a lost row-version or unique-index race → 409 conflict).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -12,11 +12,11 @@ using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
-/// <summary>D15: one deposit code per current report, and parallel registrations — one wins, the others 409.</summary>
+/// <summary>One deposit code per current report, and parallel registrations — one wins, the others 409.</summary>
 public sealed partial class ValuationReportIssuanceService
 {
     /// <summary>
-    /// D15: the code (compared case/space-insensitively, Latin digits) is held by another current report, or by
+    /// The code (compared case/space-insensitively, Latin digits) is held by another current report, or by
     /// any earlier version of this request — a new version gets its own certificate from the platform.
     /// Rows recorded before the comparison key existed are matched on their stored code.
     /// </summary>

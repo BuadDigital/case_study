@@ -14,7 +14,7 @@ namespace RealEstateEval.Infrastructure;
 /// <summary>
 /// Short-lived DI graph for Development identity seed/reset. Case Study request paths stay
 /// claims-only; only this throwaway provider opens Identity stores and registration writes.
-/// A8: lives in the DevSeed leaf beside <see cref="Data.DataSeeder"/> so per-context
+/// Lives in the DevSeed leaf beside <see cref="Data.DataSeeder"/> so per-context
 /// persistence registrations can move with their contexts.
 /// </summary>
 public static class DevSeedProvider
@@ -37,7 +37,7 @@ public static class DevSeedProvider
         services.AddValuationPersistence(configuration, connectionString);
         services.AddFailuresPersistence(configuration, connectionString);
  // Seed-time audit entries land on the Platform database, as they did when the
- // registration service could take PlatformDbContext directly (A8 unwind).
+ // registration service could take PlatformDbContext directly (unwind).
         services.AddScoped<RealEstateEval.Application.Abstractions.IAuditLogAppend,
             RealEstateEval.Platform.Infrastructure.Services.PlatformAuditLogAppend>();
         return services.BuildServiceProvider();
@@ -45,7 +45,7 @@ public static class DevSeedProvider
  /// <summary>
  /// Development-only Identity stores for demo seeding. Does not register auth write services
  /// or database-backed permission resolution — request paths still use claims.
- /// A8: lives here because it wires Identity + Platform persistence together, which no
+ /// Lives here because it wires Identity + Platform persistence together, which no
  /// single context library may do.
  /// </summary>
     public static IServiceCollection AddIdentitySeedStores(

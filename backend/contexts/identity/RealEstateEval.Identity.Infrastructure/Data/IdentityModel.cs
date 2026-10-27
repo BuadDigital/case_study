@@ -12,7 +12,7 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts;
 /// owner APIs replace them. A single definition keeps the two
 /// mappings from drifting while both exist.
 /// </summary>
-// A8: public — the owner context lives in its context library; this shared mapping stays
+// Public — the owner context lives in its context library; this shared mapping stays
 // global beside the frozen legacy context (drift guard).
 public static class IdentityModel
 {

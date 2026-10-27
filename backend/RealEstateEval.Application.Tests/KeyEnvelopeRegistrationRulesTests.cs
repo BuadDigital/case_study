@@ -185,7 +185,7 @@ public class KeyEnvelopeRegistrationRulesTests
         Assert.Equal(
             KeyHandoffStatuses.Completed,
             KeyEnvelopeRegistrationRules.InitialHandoffStatus(KeyHandoffKinds.External));
-        // Decision 2026-10-20: a receive-back waits for the receiver unless the reviewer records it himself.
+        // A receive-back waits for the receiver unless the reviewer records it himself.
         Assert.Equal(
             KeyHandoffStatuses.PendingConfirm,
             KeyEnvelopeRegistrationRules.InitialHandoffStatus(KeyHandoffKinds.ReceiveBack));

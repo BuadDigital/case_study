@@ -11,7 +11,7 @@ namespace RealEstateEval.Attachments.Infrastructure.Data.Contexts;
 /// until the Attachments API replaces them. A single definition is what keeps the
 /// two mappings from drifting while both exist.
 /// </summary>
-// A8 physical move: public — the owner context now lives in the Attachments context library
+// Physical move: public — the owner context now lives in the Attachments context library
 // while this shared mapping stays global beside the frozen legacy context (drift guard).
 public static class AttachmentsModel
 {

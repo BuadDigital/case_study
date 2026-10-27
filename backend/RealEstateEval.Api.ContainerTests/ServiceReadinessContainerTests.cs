@@ -33,7 +33,7 @@ public class ServiceReadinessContainerTests
         Assert.Equal(HttpStatusCode.ServiceUnavailable, beforeMigrating.StatusCode);
         Assert.Equal("migrations_pending", await ReadDatabaseStatusAsync(beforeMigrating));
 
-        // /ready checks the host's own migration stream (A10: streams alone provision).
+        // /ready checks the host's own migration stream (streams alone provision).
         await BoundedContextStreamMigrator.ApplyAllStreamsAsync(connectionString);
 
         var afterMigrating = await client.GetAsync("/ready");

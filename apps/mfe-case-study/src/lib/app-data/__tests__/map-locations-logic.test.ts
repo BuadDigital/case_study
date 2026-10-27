@@ -304,7 +304,7 @@ describe("map-locations-logic", () => {
     expect(cluster.active).toBe(true);
   });
 
-  // Decision 2026-10-19: every deed carries its transaction id, so a one-deed transaction must
+  // Every deed carries its transaction id, so a one-deed transaction must
   // stay an ordinary point, and a cluster takes the first located deed's coordinates.
   it("keeps a one-deed transaction as a single point and locates a cluster by its first located deed", () => {
     const [a, b] = FIXTURE_PROPERTIES;

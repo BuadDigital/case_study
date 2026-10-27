@@ -1,9 +1,9 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D1   BuildValueBag made public (testable); the liquidation discount % prints only when it is applied
+//  • BuildValueBag made public (testable); the liquidation discount % prints only when it is applied
 //         (basis = liquidation and discount > 0).
 // Round 2 (1b19bedc)
-//  • R2-11 The liquidation field labels follow the premise («خصم التصفية المنظمة» / «خصم البيع القسري»)
+//  • The liquidation field labels follow the premise («خصم التصفية المنظمة» / «خصم البيع القسري»)
 //          instead of the catalog's «البيع القصري».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -183,7 +183,7 @@ public sealed class ValuationReportFieldInjectionService(
     /// <summary>
     /// The field values from the gathered context — pure (public so the print rules are testable).
     /// Basis and premise come from the reconciliation's keys (the appraiser's saved choice, the
-    /// work order only seeding them — D1); the liquidation discount prints only when it is applied.
+    /// work order only seeding them —); the liquidation discount prints only when it is applied.
     /// </summary>
     public static Dictionary<string, string?> BuildValueBag(
         ValuationRequest vr,
@@ -402,7 +402,7 @@ public sealed class ValuationReportFieldInjectionService(
             finalOpinion = recon.FinalOpinionValue;
             PutMoney("final.opinion_value", recon.FinalOpinionValue);
             PutMoney("final.opinion_before_liquidation", recon.FinalOpinionBeforeLiquidation);
-            // D1: the discount prints only when basis = liquidation AND it is above zero (applied).
+            // The discount prints only when basis = liquidation AND it is above zero (applied).
             if (recon.LiquidationDiscountApplied)
                 PutMoney("final.liquidation_discount_pct", recon.LiquidationDiscountPct);
             if (!string.IsNullOrWhiteSpace(recon.MethodsRationale))

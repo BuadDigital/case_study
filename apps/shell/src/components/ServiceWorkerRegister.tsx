@@ -29,7 +29,7 @@ function shouldRegisterServiceWorker(): boolean {
 }
 
 /**
- * Registers the service worker and applies each new build silently (decision 2026-10-19: the
+ * Registers the service worker and applies each new build silently (: the
  * «تحديث الآن» banner is gone). The waiting worker takes over at the first moment nobody is
  * typing — right at load, on the next screen change, or when the tab goes to the background —
  * and never while offline outbox items are still pending. The new worker warms the offline

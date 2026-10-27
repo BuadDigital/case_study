@@ -1,12 +1,12 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D2   checkIssuanceGatesFailClosed refuses with every appraiser-fixable blocker and its owner
+//  • checkIssuanceGatesFailClosed refuses with every appraiser-fixable blocker and its owner
 //         (classifyHandOverBlockers / handOverRefusalMessage) instead of the first four reasons; what the
 //         specialist completes after the hand-over does not block. It announces the gates it read.
 //  • Price New readHandOverPriceFromServer: the reconciliation's saved final value read fresh (null when
 //          there is no open request / reconciliation); a failed read blocks (FINAL_VALUE_UNVERIFIED_MESSAGE).
 // Round 2 (1b19bedc)
-//  • R2-14 The gate check returns the open valuationRequestId and readHandOverPriceFromServer accepts it,
+//  • The gate check returns the open valuationRequestId and readHandOverPriceFromServer accepts it,
 //          skipping a second getOpenValuationRequestByProperty.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -65,7 +65,7 @@ type IssuanceGateCheck =
   | { ok: false; kind: "blocked" | "unverified"; message: string };
 
 /**
- * Valuation issuance gates the hand-over waits on (D2), fail closed. The only path that proceeds without gates is a
+ * Valuation issuance gates the hand-over waits on, fail closed. The only path that proceeds without gates is a
  * property with NO open valuation request yet (first submit — `finalizeAppraiserSubmission`
  * opens it and reserves the report number); every other unknown blocks.
  */
@@ -92,7 +92,7 @@ export async function checkIssuanceGatesFailClosed(input: {
     // The «المراجعة النهائية» list shows exactly what this check read.
     announceHandOverGatesRead({ valuationRequestId: open.data.id, gates: gatesRes.data });
 
-    // D2: what the specialist completes after the hand-over (report attachments) does not hold it
+    // What the specialist completes after the hand-over (report attachments) does not hold it
     // up; everything else does, and every blocker is named with who fixes it — the server refuses
     // the same set (case-study hand-over gate).
     const message = handOverRefusalMessage(classifyHandOverBlockers(gatesRes.data));

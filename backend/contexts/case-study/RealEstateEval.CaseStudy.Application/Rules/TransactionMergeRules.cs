@@ -3,7 +3,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
 /// <summary>
-/// Pure merge / unmerge rules (decision 2026-10-19). Merge: by the case-study specialist, with a
+/// Pure merge / unmerge rules. Merge: by the case-study specialist, with a
 /// link kind and a reason; never a transaction already merged, never a source that already
 /// carries an official reference, never a deed handed over to Enfaz.
 /// Omar 2026-10-20: the only stage condition is that every deed went through intake — work order,

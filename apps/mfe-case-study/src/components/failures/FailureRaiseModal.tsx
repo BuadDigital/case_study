@@ -9,6 +9,7 @@ import {
 } from "@platform/ui-kit";
 import { useIdempotentAction } from "@platform/app-shared";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import type { FailureSeverity } from "@platform/app-shared/failures/failures-types";
 import { FailureRaiseFields, failurePayloadFromProblemType } from "@failures/mfe/components/failures/FailureRaiseFields";
 import { createFailure } from "@failures/mfe/lib/failures-repository";
 import { FAILURE_PROBLEM_TYPES } from "@failures/mfe/lib/failure-types-data";
@@ -69,6 +70,7 @@ function FailureRaiseForm({
   const { showToast } = useToast();
   const { data: catalog } = useFailureTypesQuery();
   const [problemTypeId, setProblemTypeId] = useState("");
+  const [severity, setSeverity] = useState<FailureSeverity>("internal");
   const [invalid, setInvalid] = useState(false);
   const pendingFailure = useRef<Parameters<typeof createFailure>[0] | null>(null);
 
@@ -91,6 +93,7 @@ function FailureRaiseForm({
       catalog?.problemTypes?.length
         ? catalog.problemTypes
         : FAILURE_PROBLEM_TYPES,
+      severity,
     );
     if (!payload) {
       setInvalid(true);
@@ -157,6 +160,8 @@ function FailureRaiseForm({
     >
       <FailureRaiseFields
         idPrefix={`modal-${propertyId}`}
+        severity={severity}
+        onSeverityChange={setSeverity}
         problemTypeId={problemTypeId}
         onProblemTypeChange={(v) => {
           setProblemTypeId(v);

@@ -66,7 +66,7 @@ public class MarketOpinionAndCostApproachRulesTests
     [Fact]
     public void Whole_property_land_comps_are_converted_to_a_unit_rate_before_area()
     {
-        // D7 / O3: each comparable's adjusted total ÷ ITS OWN area — a 600 m² comparable
+        // O3: each comparable's adjusted total ÷ ITS OWN area — a 600 m² comparable
         // worth 600,000 is 1,000/m² whatever the subject's 400 m² (÷ 400 overstated it to 1,500).
         Assert.Equal(
             1000m,
@@ -139,7 +139,7 @@ public class MarketOpinionAndCostApproachRulesTests
     {
  // Actual 60 over extended 50 = 120% — must stay unclamped so alert 3 sees it.
         Assert.Equal(120m, CostApproachRules.PhysicalObsolescencePct(60m, 50m));
-        // D12: the depreciation applied is capped at 100% — the buildings value floors at zero.
+        // The depreciation applied is capped at 100% — the buildings value floors at zero.
         Assert.Equal(100m, CostApproachRules.AppliedObsolescencePct(120m));
         Assert.Equal(1_000m, CostApproachRules.DepreciationValue(1_000m, 120m));
         Assert.Equal(0m, CostApproachRules.BuildingsAfterDepreciation(1_000m, 1_200m));

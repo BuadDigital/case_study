@@ -3,12 +3,12 @@
 //  • A    New file — the cost-approach land figures shared by the cost screen and the report: the rate
 //         multiplies the apartment's share when set, else the plot (costLandMultiplierSqm / Label);
 //         apartmentLandHint names the whole building plot the comparables are compared with.
-//  • A    costLandReportRows: §20 lines in the order they multiply — plot area, rate after adjustments,
+//  • costLandReportRows: section 20 lines in the order they multiply — plot area, rate after adjustments,
 //         use-restriction discount, apartment share, «قيمة الأرض قبل التقريب», «قيمة الأرض».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Decision A (round 2) — the land figures inside the cost approach, shared by the cost screen and the
+ * (round 2) — the land figures inside the cost approach, shared by the cost screen and the
  * printed report: the land comparables are adjusted against the whole plot (`landAreaSqm`), and the
  * adjusted rate (after any use-restriction discount) multiplies the apartment's share when one is set,
  * else the plot. Every printed line multiplies out to the next.
@@ -66,7 +66,7 @@ function money(n: number | null | undefined): string {
 }
 
 /**
- * §20 «قيمة الأرض (أسلوب التكلفة)» in the order the figures multiply: plot area, rate after
+ * Section 20 «قيمة الأرض (أسلوب التكلفة)» in the order the figures multiply: plot area, rate after
  * adjustments, (use-restriction discount and the rate after it), the apartment's share, the land value
  * before rounding (rate × area, unrounded) and the land value carried into the cost approach.
  */

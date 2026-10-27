@@ -17,7 +17,7 @@ public sealed partial class KeyEnvelopesService
     /// == actor); 5) builds the handoff with <see cref="KeyEnvelopeRegistrationRules.InitialHandoffStatus"/>;
     /// 6) when it is not pending, custody moves now (<c>ApplyConfirmedHandoff</c>) and the receiver
     /// self-confirms; 7) saves with a timeline line; 8) notifies ToUserId only while a confirmation is owed.
-    /// Edge cases (decision 2026-10-20): a receive-back recorded by someone else (e.g. the inspector)
+    /// Edge cases: a receive-back recorded by someone else (e.g. the inspector)
     /// stays pending until the reviewer confirms, and the holder does not change until then; a
     /// self-recorded receive-back stores the actor as ToUserId so the reviewer holder has an id.
     /// </remarks>
@@ -136,7 +136,7 @@ public sealed partial class KeyEnvelopesService
     /// an internal handoff with no ToUserId, the confirming actor becomes ToUserId; 5) moves status and
     /// holder together (<c>ApplyConfirmedHandoff</c>); 6) writes two timeline lines, saves, and notifies
     /// the handoff's creator.
-    /// Edge cases (decision 2026-10-20): receive-back now goes through this too (it used to be internal
+    /// Edge cases: receive-back now goes through this too (it used to be internal
     /// only); step 4 keeps an internal_user holder from ending up without a user id.
     /// </remarks>
     public async Task<(KeyEnvelopeDto? Envelope, string? Error)> ConfirmHandoffAsync(

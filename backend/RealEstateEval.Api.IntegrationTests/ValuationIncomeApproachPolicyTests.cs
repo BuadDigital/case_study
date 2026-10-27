@@ -8,7 +8,7 @@ using RealEstateEval.Shared.Web.Authorization;
 namespace RealEstateEval.Api.IntegrationTests;
 
 /// <summary>
-/// D17 — the income approach sits on the same policies as the cost approach: anyone who reads the
+/// The income approach sits on the same policies as the cost approach: anyone who reads the
 /// report reads it; only the assigned appraiser (SubmitValuationReport) writes it.
 /// </summary>
 public class ValuationIncomeApproachPolicyTests

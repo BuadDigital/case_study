@@ -20,6 +20,8 @@ export type FailureRecord = {
   severity: FailureSeverity;
   raisedByRole: string;
   internalNote: string;
+  /** «سبب التصعيد» — the specialist's explanation when escalating to the supervisor. */
+  escalationNote?: string;
   finalNote: string;
   resolutionReason: string;
   continueInstructions: string;
@@ -30,6 +32,12 @@ export type FailureRecord = {
   /** The specialist lifted the survey freeze this failure caused (the failure itself stays open). */
   surveyFreezeLiftedAt?: string | null;
   surveyFreezeLiftReason?: string | null;
+  /** The deed's transaction number (PR-… or TMP-…), shown as «رقم المعاملة». */
+  transactionNumber?: string | null;
+  /** Deeds in that transaction (1 for an ordinary property). */
+  transactionDeedCount?: number;
+  /** «الأخصائي» — the company's case specialist on the deed; null until one is assigned. */
+  caseSpecialistName?: string | null;
 };
 
 /** The survey freeze of this failure was lifted by the specialist. */

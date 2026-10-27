@@ -16,13 +16,11 @@ import {
   ThAction,
   THead,
   Tr,
+  TransactionNumberBadge,
 } from "@platform/ui-kit";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
-import {
-  TransactionNumberBadge,
-  transactionNumberOf,
-} from "../components/ui/TransactionNumberBadge";
+import { transactionNumberOf } from "../lib/app-data/transaction-number";
 import { PartyAssigneeCell } from "../components/ui/PartyAssigneeCell";
 import {
   buildDistributionTableRow,

@@ -4,7 +4,7 @@
  * - the inventory table «جدول الحصر» is the inspector's (the specialist may correct it); it is
  *   shown for anything with buildings or annexes worth valuing (a land asset only when the
  *   inspector said it holds such structures) but is not a condition for accepting the
- *   inspection (decision 2026-10-15).
+ *   inspection.
  * The table uses the appraiser's direct-cost catalog so its lines drop straight into
  * «بنود التكلفة المباشرة»; see `SpecialistComponentsRules` on the server.
  */

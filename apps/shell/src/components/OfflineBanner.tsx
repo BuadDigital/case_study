@@ -9,7 +9,7 @@ import { useAuth } from "@platform/app-shared/hooks/useAuth";
 /**
  * Offline banner for office roles only: their changes may not save.
  * Field inspector / government reviewer never see connection messages — sync is
- * silent and the single top-bar sync icon is their only indicator (spec §4.2).
+ * silent and the single top-bar sync icon is their only indicator (spec).
  */
 export function OfflineBanner() {
   const online = useOnlineStatus();

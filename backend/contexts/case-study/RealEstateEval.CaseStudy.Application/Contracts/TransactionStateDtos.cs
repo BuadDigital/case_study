@@ -1,6 +1,6 @@
 namespace RealEstateEval.CaseStudy.Application.Contracts;
 
-/// <summary>Q-9: Derived transaction status — network of stages, parties and “who is waiting for whom”.</summary>
+/// <summary>Derived transaction status — network of stages, parties and “who is waiting for whom”.</summary>
 public class TransactionStageStateDto
 {
     public required string Key { get; init; }
@@ -46,7 +46,7 @@ public class TransactionStateDto
  /// when not marked. A marked deed is no longer taken back from Enfaz.
  /// </summary>
     public string? BillingReadyAtUtc { get; init; }
- /// <summary>Enfaz upload package (Q-9/Q-14).</summary>
+ /// <summary>Enfaz upload package.</summary>
     public IReadOnlyList<string> HandoverPackageAr { get; init; } = [];
 }
 

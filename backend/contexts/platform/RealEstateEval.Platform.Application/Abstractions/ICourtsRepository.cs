@@ -76,7 +76,7 @@ public interface ICourtsRepository
         Guid courtId,
         CancellationToken cancellationToken);
 
-    /// <summary>Stages the audit row so it commits with the catalog change (D7).</summary>
+    /// <summary>Stages the audit row so it commits with the catalog change.</summary>
     Task AppendAuditAsync(AuditLog entry, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

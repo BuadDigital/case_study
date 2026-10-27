@@ -5,8 +5,8 @@
 //  • Digits  Floor count and build ratio keep Arabic/Persian digits (costNumericInput) instead of
 //            dropping them.
 // Round 2 (1b19bedc)
-//  • R2-7  A new or switched repeated-floors line starts with no count (repeatedFloorCountForItem), not 2.
-//  • R2-5  Build ratio is read with costNum, so «7,5» is 7.5.
+//  • A new or switched repeated-floors line starts with no count (repeatedFloorCountForItem), not 2.
+//  • Build ratio is read with costNum, so «7,5» is 7.5.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";

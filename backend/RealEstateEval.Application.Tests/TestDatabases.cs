@@ -16,7 +16,7 @@ namespace RealEstateEval.Application.Tests;
 /// Builds the owner contexts over one in-memory store, the way they run over one physical
 /// database in tests. Sharing an explicit <see cref="InMemoryDatabaseRoot"/> is what lets a
 /// test write through one owner context and read the row through another that maps the same
-/// entity. (A10: the legacy god context is archived — owner contexts are the only mappings.)
+/// entity. (the legacy god context is archived — owner contexts are the only mappings.)
 /// </summary>
 internal static class TestDatabases
 {

@@ -6,11 +6,11 @@ using RealEstateEval.Operations.Domain;
 namespace RealEstateEval.Operations.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Operations-owned tables in the <c>operations</c> schema, including D2
+/// Operations-owned tables in the <c>operations</c> schema, including
 /// <c>OperationsTasks</c> (relocated from the <c>case_study</c> schema name). Applied by
 /// <see cref="OperationsDbContext"/>.
 /// </summary>
-// A8: public — the owner context lives in its context library; this shared mapping stays
+// Public — the owner context lives in its context library; this shared mapping stays
 // global beside the frozen legacy context (drift guard).
 public static class OperationsModel
 {
@@ -19,7 +19,7 @@ public static class OperationsModel
  /// is immutable so PostgreSQL accepts it in a generated column). It exists only so a deed-number
  /// substring search is index-backed: a GIN <c>gin_trgm_ops</c> index over this column answers
  /// <c>LIKE '%…%'</c>, which no jsonb operator class can do. See
- /// docs/architecture/pagination-contract.md §3.
+ /// docs/architecture/pagination-contract.md.
  /// </summary>
     public const string OperationsTaskDeedsTextColumn = "DeedsText";
 
@@ -77,7 +77,7 @@ public static class OperationsModel
             e.HasIndex(x => x.RevenueEntitlementAtUtc);
             e.HasIndex(x => x.OperationsTaskId);
             e.HasAllowedValues("KeyEnvelopes", nameof(KeyEnvelope.Status), KeyEnvelopeStatuses.All);
-            // Custody (decision 2026-10-20): the holder moves on confirmed receipt only.
+            // Custody: the holder moves on confirmed receipt only.
             e.Property(x => x.HolderKind).HasMaxLength(32).HasDefaultValue(KeyHolderKinds.Reviewer);
             e.Property(x => x.HolderUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.HolderLabel).HasMaxLength(256);
@@ -113,7 +113,7 @@ public static class OperationsModel
                 "KeyEnvelopeAssignments",
                 nameof(KeyEnvelopeAssignment.Status),
                 KeyAssignmentStatuses.All);
-            // Decision 2026-10-20: where each deed's matching key is after the field trial (keys carry no tag of their own).
+            // Where each deed's matching key is after the field trial (keys carry no tag of their own).
             e.Property(x => x.KeyLocation).HasMaxLength(32).HasDefaultValue(KeyLocations.InEnvelope);
             e.Property(x => x.KeyHolderUserId).HasMaxLength(ColumnLengths.UserId);
             e.Property(x => x.KeyHolderLabel).HasMaxLength(256);
@@ -176,7 +176,7 @@ public static class OperationsModel
                 PropertyCourtAccessStatuses.All);
         });
 
- // D2: task lifecycle is operations-owned; rows live in the operations schema.
+ // Task lifecycle is operations-owned; rows live in the operations schema.
         builder.Entity<OperationsTask>(e =>
         {
             MapTable(e, "OperationsTasks", DatabaseSchemas.Operations, ownsMigrations);

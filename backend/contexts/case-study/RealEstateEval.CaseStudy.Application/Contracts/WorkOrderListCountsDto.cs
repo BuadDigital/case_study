@@ -4,7 +4,7 @@ namespace RealEstateEval.CaseStudy.Application.Contracts;
 /// KPI counters for the PO list, computed in SQL over the same filtered, visibility-narrowed set
 /// the list endpoint pages. Mirrors <c>poListKpi</c> in
 /// <c>apps/mfe-case-study/src/views/po-list-view-state.ts</c> plus the two totals the empty-state
-/// copy needs. See docs/architecture/pagination-contract.md §1.1.
+/// copy needs. See docs/architecture/pagination-contract.md.
 /// </summary>
 public sealed class WorkOrderListCountsDto
 {

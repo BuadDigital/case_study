@@ -23,7 +23,7 @@ public class TransactionDto
     public string? ValuationReportNumber { get; init; }
 
     /// <summary>
-    /// Decision 2026-10-19: why the deeds were merged — one_building («مبنى واحد») or contract
+    /// Why the deeds were merged — one_building («مبنى واحد») or contract
     /// («أعيان بعقد»), with the specialist's reason; null while the transaction holds one deed.
     /// </summary>
     public string? LinkKind { get; init; }

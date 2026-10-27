@@ -6,9 +6,9 @@
 //  • Autosave  The inventory-drift buttons count as edits, so the autosave sends them.
 // Round 2 (1b19bedc)
 //  • A    New isApartment and plotAreaSeed arguments; the plot seed fills the draft on hydration.
-//  • R2-16  Re-pulling the inventory keeps unit costs already priced (keepCostLineInputs) and the toast
+//  • Re-pulling the inventory keeps unit costs already priced (keepCostLineInputs) and the toast
 //           says which lines kept theirs (costRepullMessage).
-//  • R2-2  A refused save on leaving the screen is toasted «لم تُحفظ تعديلات أسلوب التكلفة: …».
+//  • A refused save on leaving the screen is toasted «لم تُحفظ تعديلات أسلوب التكلفة: …».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -58,7 +58,7 @@ type CostApproachWorkflowArgs = {
   cost: ValuationCostApproachDto | null;
   hydrateKey: number;
   buildingOnly: boolean;
-  /** Decision A: the apartment's land is a share of the building plot (plot + share required). */
+  /** The apartment's land is a share of the building plot (plot + share required). */
   isApartment?: boolean;
   /** The plot box before one is saved (`buildingPlotAreaSeed`) — a draft, never auto-saved. */
   plotAreaSeed?: string;

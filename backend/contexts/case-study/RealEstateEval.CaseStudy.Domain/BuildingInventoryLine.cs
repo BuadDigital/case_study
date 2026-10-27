@@ -43,7 +43,7 @@ public class BuildingInventoryLine
     public WorkOrderProperty? Property { get; set; }
 }
 
-// BuildingStructureKinds moved to Shared.Contracts (A10 cleanup): the valuation cost
+// BuildingStructureKinds moved to Shared.Contracts (cleanup): the valuation cost
 // approach shares the structure-kind wire values.
 
 /// <summary>Governing question answer: are there buildings/structures to value?</summary>

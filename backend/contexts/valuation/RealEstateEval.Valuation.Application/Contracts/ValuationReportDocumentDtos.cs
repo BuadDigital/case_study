@@ -34,7 +34,7 @@ public class ValuationReportAdjustmentRowDto
     public string AdjustedPricePerSqmDisplay { get; init; } = "";
 }
 
-/// <summary>§25: an amount from a «مستند ذو قيمة» added after the liquidation discount.</summary>
+/// <summary>Section 25: an amount from a «مستند ذو قيمة» added after the liquidation discount.</summary>
 public class ValuationReportValueAdditionRowDto
 {
     public string LabelAr { get; init; } = "";
@@ -87,7 +87,7 @@ public class ValuationReportDocumentDto
     public string? MethodsRationale { get; init; }
     public bool AllowsIssuance { get; init; }
     public string TextLayerNoteAr { get; init; } = "النصوص المعيارية/القانونية تُجمَّد برقم نسخة عند الإصدار — القالب البصري النهائي يعتمد report-template-approved.html عند توفره.";
- /// <summary>Decision 23: text-package number — one version for the whole package, frozen at issuance.</summary>
+ /// <summary>text-package number — one version for the whole package, frozen at issuance.</summary>
     public int TextPackageVersion { get; init; } = 1;
  /// <summary>Public URL of the approved letterhead HTML (shell static asset).</summary>
     public string ApprovedTemplateUrl { get; init; } = "/ejadah/report-template-approved.html";

@@ -82,7 +82,7 @@ export type AllTransactionsQueueRowMeta = {
   propertyId?: string;
   /** PR-… once official, else the TMP- temporary number; null when the deed has no transaction yet. */
   transactionNumber: string | null;
-  /** Deeds in this deed's transaction; above 1 they collapse into one queue row (decision 2026-10-18). */
+  /** Deeds in this deed's transaction; above 1 they collapse into one queue row. */
   transactionDeedCount: number;
 };
 

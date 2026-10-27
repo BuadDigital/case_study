@@ -1,6 +1,6 @@
 /**
  * The number a deed row shows for its transaction: the official PR reference first, then the
- * TMP- temporary number (numbering decision 2026-10-19/20; TMP replaced D).
+ * TMP- temporary number (numbering; TMP replaced D).
  *
  * How it works: returns the trimmed `referenceNumber` when set, else the trimmed
  * `transactionDraftNumber`, else null.

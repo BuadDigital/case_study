@@ -1,10 +1,10 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D15  Deposit code is normalised before it is stored: trimmed, Arabic/Persian digits → Latin,
+//  • Deposit code is normalised before it is stored: trimmed, Arabic/Persian digits → Latin,
 //         inner spaces collapsed (NormalizeDepositCode). It is stored and printed in Latin digits.
-//  • D15  New DepositCodeKey (DepositCodeKeyOf: no spaces, upper-case) with a filtered unique index
+//  • New DepositCodeKey (DepositCodeKeyOf: no spaces, upper-case) with a filtered unique index
 //         over current reports — a duplicate or a parallel deposit loses with a 409.
-//  • D15  FinalIssuedAtUtc ??= — correcting the code never moves the final issue date.
+//  • FinalIssuedAtUtc ??= — correcting the code never moves the final issue date.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Domain;
@@ -12,9 +12,9 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// Q-6: two-phase issuance + deposit certificate (Sulaiman wording):
+/// two-phase issuance + deposit certificate (Sulaiman wording):
 /// 1) When gates pass, the full report is frozen and a "deposit copy" is generated (PDF with deposit-code
-///    field empty) — uploaded manually to Qiama (decision 17).
+///    field empty) — uploaded manually to Qiama.
 /// 2) Qiama platform issues a "deposit certificate" with its own code.
 /// 3) Staff uploads the certificate and enters its code in the existing field (report.deposit_code).
 /// 4) "Final copy": the frozen report literally + the deposit-certificate page as an attachment
@@ -36,7 +36,7 @@ public class ValuationReportIssuance
  /// <summary>Deposit-certificate code from Qiama — outside freeze scope. Stored (and printed) in Latin digits.</summary>
     public string? DepositCode { get; set; }
  /// <summary>
- /// D15: the code's comparison key (<see cref="DepositCodeKeyOf"/>). One code belongs to one current report:
+ /// The code's comparison key (<see cref="DepositCodeKeyOf"/>). One code belongs to one current report:
  /// a filtered unique index over the non-superseded rows makes a parallel duplicate lose at the database.
  /// </summary>
     public string? DepositCodeKey { get; set; }
@@ -83,19 +83,19 @@ public class ValuationReportIssuance
         FinalPdfGeneratedAtUtc = nowUtc;
     }
 
- /* ─── Q-9 supplement (R2): deposit copies N+1 — current = non-superseded; superseded stays on file ─── */
+ /* ─── Supplement: deposit copies N+1 — current = non-superseded; superseded stays on file ─── */
 
- /// <summary>Valuation cycle number — starts at 1 and increments on each reopen (R2).</summary>
+ /// <summary>Valuation cycle number — starts at 1 and increments on each reopen.</summary>
     public int Version { get; set; } = 1;
 
  /// <summary>Supersession moment ("replaced by a newer copy") — null means the current copy.</summary>
     public DateTime? SupersededAtUtc { get; set; }
     public string? SupersededByUserId { get; set; }
- /// <summary>Reopen reason — required with Q-8-2 minimum (10 characters).</summary>
+ /// <summary>Reopen reason — required with minimum (10 characters).</summary>
     public string? SupersededReason { get; set; }
 
  /// <summary>
- /// R2: supersede the copy (no hard delete) — the deposited copy is not edited; it is marked
+ /// Supersede the copy (no hard delete) — the deposited copy is not edited; it is marked
  /// "superseded — replaced by a newer copy" and its file stays on the transaction.
  /// </summary>
     public string? Supersede(string? byUserId, string reason, DateTime nowUtc)
@@ -111,9 +111,9 @@ public class ValuationReportIssuance
         return null;
     }
 
-    /* ─── B2: Q-6 transitions on the aggregate — service prepares snapshot/generators and coordinates only ─── */
+    /* ─── B2: transitions on the aggregate — service prepares snapshot/generators and coordinates only ─── */
 
- /// <summary>Q-6-1: freeze and issue deposit copy — one current copy per request (R2: cycle N+1).</summary>
+ /// <summary>Freeze and issue deposit copy — one current copy per request (cycle N+1).</summary>
     public static ValuationReportIssuance IssueDeposit(
         Guid valuationRequestId,
         string documentJson,
@@ -130,7 +130,7 @@ public class ValuationReportIssuance
         };
 
  /// <summary>
- /// Q-6-3: register certificate and code — outside freeze scope; corrective re-registration allowed.
+ /// Register certificate and code — outside freeze scope; corrective re-registration allowed.
  /// Returns a rejection message when the code is empty.
  /// </summary>
     public string? RegisterCertificate(
@@ -161,7 +161,7 @@ public class ValuationReportIssuance
         return null;
     }
 
- /// <summary>Q-6-4: final copy is not issued before the code is registered.</summary>
+ /// <summary>Final copy is not issued before the code is registered.</summary>
     public string? IssueFinal(DateTime nowUtc)
     {
         if (string.IsNullOrWhiteSpace(DepositCode))
@@ -169,13 +169,13 @@ public class ValuationReportIssuance
         if (!HasCertificate)
             return "أرفق شهادة الإيداع (PDF)";
 
-        // D15: the final copy is issued once — a later code correction never moves the issue moment.
+        // The final copy is issued once — a later code correction never moves the issue moment.
         FinalIssuedAtUtc ??= nowUtc;
         return null;
     }
 
  /// <summary>
- /// D15: the code as stored and printed — trimmed, Arabic/Persian digits turned Latin, inner whitespace
+ /// The code as stored and printed — trimmed, Arabic/Persian digits turned Latin, inner whitespace
  /// runs collapsed to one space. Letters keep the case they were typed in.
  /// </summary>
     public static string NormalizeDepositCode(string? depositCode)
@@ -184,7 +184,7 @@ public class ValuationReportIssuance
         return string.Join(' ', latin.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
     }
 
- /// <summary>D15: the comparison key — the normalised code without whitespace, upper-case (invariant).</summary>
+ /// <summary>The comparison key — the normalised code without whitespace, upper-case (invariant).</summary>
     public static string DepositCodeKeyOf(string? depositCode) =>
         string.Concat(NormalizeDepositCode(depositCode).Where(ch => !char.IsWhiteSpace(ch)))
             .ToUpperInvariant();
@@ -203,7 +203,7 @@ public static class FinalReportStatuses
     public const string Ready = "ready";
 }
 
-/// <summary>Q-6 phases as shown to the UI.</summary>
+/// <summary>Phases as shown to the UI.</summary>
 public static class ReportIssuanceStages
 {
  /// <summary>Deposit copy not yet issued — editing is open; gates control issuance.</summary>

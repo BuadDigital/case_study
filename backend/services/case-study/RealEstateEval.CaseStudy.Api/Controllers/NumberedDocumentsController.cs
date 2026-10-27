@@ -8,7 +8,7 @@ using RealEstateEval.CaseStudy.Application.Contracts;
 namespace RealEstateEval.CaseStudy.Api.Controllers;
 
 /// <summary>
-/// Numbered Document Register (Decision 25 + Numbering Workshop): Assignment of Letter Numbers (LT)
+/// Numbered Document Register (Numbering Workshop): Assignment of Letter Numbers (LT)
 /// Case Study (CS) reports are instant printing and reading history.
 /// </summary>
 [ApiController]

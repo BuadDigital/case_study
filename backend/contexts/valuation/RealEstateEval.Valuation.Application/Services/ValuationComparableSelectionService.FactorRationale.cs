@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 2 (1b19bedc)
-//  • R2-10 An unknown selectionContext is refused (SelectionContextError).
+//  • An unknown selectionContext is refused (SelectionContextError).
 //  • B    A written factor rationale is at least 10 characters; empty still clears it.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -17,7 +17,7 @@ namespace RealEstateEval.Valuation.Application.Services;
 public sealed partial class ValuationComparableSelectionService
 {
  /// <summary>
- /// Q-8-1: save the single adjustment-factor rationale (covers all comparables) — empty clears it.
+ /// Save the single adjustment-factor rationale (covers all comparables) — empty clears it.
  /// </summary>
     public async Task<(ValuationAdjustmentFactorRationaleDto? Result, Dictionary<string, string>? Errors)>
         SaveFactorRationaleAsync(
@@ -52,7 +52,7 @@ public sealed partial class ValuationComparableSelectionService
             return (null, new Dictionary<string, string> { ["factorKey"] = "مفتاح العامل مطلوب" });
 
         var rationale = request.RationaleAr?.Trim() ?? "";
-        // Decision B: empty clears; a written factor rationale is at least 10 characters.
+        // Empty clears; a written factor rationale is at least 10 characters.
         if (JustificationRules.IsBelowRequiredMinimum(rationale))
         {
             return (null, new Dictionary<string, string>

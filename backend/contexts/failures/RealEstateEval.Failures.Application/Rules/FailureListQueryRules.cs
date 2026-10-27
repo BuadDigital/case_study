@@ -15,7 +15,7 @@ public enum FailureListSortKey
 
 /// <summary>
 /// Pure allow-list and sort map for <c>GET /api/failures</c>. No EF, no I/O — the repository turns
-/// these values into expressions. See docs/architecture/pagination-contract.md §5.
+/// these values into expressions. See docs/architecture/pagination-contract.md.
 /// </summary>
 public static class FailureListQueryRules
 {

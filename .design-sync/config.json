@@ -35,6 +35,7 @@
     "Note": "src/components/Note.tsx",
     "RowAttentionDot": "src/components/RowAttentionDot.tsx",
     "PoNumber": "src/components/PoNumber.tsx",
+    "TransactionNumberBadge": "src/components/TransactionNumberBadge.tsx",
     "Table": "src/components/Table.tsx",
     "TableFrame": "src/components/Table.tsx",
     "TableEmptyRow": "src/components/Table.tsx",

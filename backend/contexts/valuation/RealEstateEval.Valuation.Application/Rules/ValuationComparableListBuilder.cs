@@ -1,18 +1,18 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D5   Automatic weights come from the GROSS adjustment (sequential + difference, absolute;
+//  • Automatic weights come from the GROSS adjustment (sequential + difference, absolute;
 //         GrossAdjustmentPct) instead of the difference-factor sum.
-//  • D6   An outlier comparable (adjusted unit rate far from the median; AdjustedUnitRate) gets no automatic
+//  • An outlier comparable (adjusted unit rate far from the median; AdjustedUnitRate) gets no automatic
 //         weight.
-//  • D7   Whole-property basis: no area adjustment; the land table inside the cost approach is always
+//  • Whole-property basis: no area adjustment; the land table inside the cost approach is always
 //         per m² (EffectiveBasis).
-//  • D4   ExceedsLargeAdjustmentThreshold also fires on gross (not only net) above 40%.
-//  • D7   Land table area adjustment compares with the apartment's land share when one is saved
+//  • ExceedsLargeAdjustmentThreshold also fires on gross (not only net) above 40%.
+//  • Land table area adjustment compares with the apartment's land share when one is saved
 //         (AreaAdjustmentSubjectAreaSqm).
 // Round 2 (1b19bedc)
 //  • A    Land table compares each land comparable with the whole building plot and multiplies the adjusted
 //         rate by the apartment's share (CostLandAreas; AreaAdjustmentSubjectAreaSqm removed).
-//  • R2-7 A market comparable dated after the valuation date (hard alert 23) gets automatic weight 0.
+//  • A market comparable dated after the valuation date (hard alert 23) gets automatic weight 0.
 //  • A    The list DTO reports ApartmentLandShareSqm for the land table.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -78,7 +78,7 @@ public static class ValuationComparableListBuilder
         CostLandAreas? costLand = null)
     {
         var adoptedRows = rows.Where(r => r.IsAdopted).ToList();
-        // Decision A: the land table compares each land comparable with the whole building plot saved on
+        // The land table compares each land comparable with the whole building plot saved on
         // the cost approach (never the market header, which the subject-area sync owns); the apartment's
         // land share only multiplies the adjusted rate into the land value. The market table keeps the header.
         var isLandTable = ComparableSelectionContexts.Normalize(selectionContext)
@@ -104,7 +104,7 @@ public static class ValuationComparableListBuilder
                 .Select(r => EffectiveCompValues(r, comps[r.ComparablePropertyId]).Area));
         var basis = EffectiveBasis(header?.AdjustmentBasis, selectionContext);
 
-        // D5 + D6: automatic weights from the GROSS adjustment (sequential + difference, absolute),
+        // Automatic weights from the GROSS adjustment (sequential + difference, absolute),
         // with no automatic weight for a comparable whose adjusted rate is an outlier against the
         // median. Manual override still replaces one row only; sum ≠ 100% stays an alert.
         var adoptedMarkets = adoptedRows
@@ -190,8 +190,8 @@ public static class ValuationComparableListBuilder
         var roundDecimals = header?.ValueRoundDecimals
             ?? MarketApproachRules.DefaultValueRoundDecimals;
  // : whole-property basis yields the opinion directly — "without multiplying by area".
-        // Cost logic §3: approach output is raw without rounding — round once after reconciliation.
-        // Decision A: on the land table the rate multiplies the apartment's share, not the whole plot.
+        // Cost logic section 3: approach output is raw without rounding — round once after reconciliation.
+        // On the land table the rate multiplies the apartment's share, not the whole plot.
         var opinionRaw = basis == MarketAdjustmentBasisKeys.WholeProperty
             ? weighted
             : valueArea is > 0m
@@ -236,7 +236,7 @@ public static class ValuationComparableListBuilder
     }
 
     /// <summary>
-    /// D7: the land table inside the cost approach is always per m², whatever basis the market
+    /// The land table inside the cost approach is always per m², whatever basis the market
     /// table uses (the header is shared by both tables).
     /// </summary>
     public static string EffectiveBasis(string? headerBasis, string? selectionContext) =>
@@ -244,7 +244,7 @@ public static class ValuationComparableListBuilder
             ? MarketAdjustmentBasisKeys.PricePerSqm
             : MarketAdjustmentBasisKeys.Normalize(headerBasis);
 
-    /// <summary>D6: adjusted rate per m² — on the whole-property basis the adjusted total ÷ the comparable's area.</summary>
+    /// <summary>Adjusted rate per m² — on the whole-property basis the adjusted total ÷ the comparable's area.</summary>
     public static decimal AdjustedUnitRate(
         ValuationComparableMarketDto market,
         string adjustmentBasis,
@@ -255,7 +255,7 @@ public static class ValuationComparableListBuilder
                 : 0m
             : market.PricePerSqmAfterDifference;
 
-    /// <summary>D4/D5: Σ|%| of the included sequential and difference lines as the DTO carries them.</summary>
+    /// <summary>Σ|%| of the included sequential and difference lines as the DTO carries them.</summary>
     public static decimal GrossAdjustmentPct(this ValuationComparableMarketDto market) =>
         MarketApproachRules.GrossAdjustmentPct(
             market.AdjustmentLines
@@ -319,7 +319,7 @@ public static class ValuationComparableListBuilder
     {
         var ordered = row.AdjustmentLines.OrderBy(l => l.SortOrder).ToList();
         var eff = EffectiveCompValues(row, comp);
-        // D7: on the whole-property basis the deal totals are compared as they are — a 5٪-per-
+        // On the whole-property basis the deal totals are compared as they are — a 5٪-per-
         // multiple area adjustment on a total price is not a size correction, so none is applied.
         var areaAdj = adjustmentBasis == MarketAdjustmentBasisKeys.WholeProperty
             ? 0m
@@ -395,7 +395,7 @@ public static class ValuationComparableListBuilder
             SumSequentialPct = MarketApproachRules.SumIncludedPercents(sequentialPct),
             SumDifferencePct = diffSum,
             SumIncludedPct = sumAll,
-            // D4: net (kept) or gross (sequential + difference, absolute) above 40٪.
+            // Net (kept) or gross (sequential + difference, absolute) above 40٪.
             ExceedsLargeAdjustmentThreshold = MarketApproachRules.ExceedsLargeAdjustmentThreshold(
                 diffSum,
                 MarketApproachRules.GrossAdjustmentPct(sequentialPct, differencePct)),

@@ -1,7 +1,7 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Supported role IDs (Q-2: code names are legal — no renaming).
+/// Supported role IDs (code names are legal — no renaming).
 /// The letters were scattered and the “Supervisor and above” group was copied into two files.
 /// Note: These are role identifiers — not to be confused with the information matrix pin alphabet
 /// (specA/insp/gov/val/eng/sup) nor with distribution identifier prefixes (fi-/eo-/cs-…),

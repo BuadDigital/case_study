@@ -359,10 +359,10 @@ async function parseFieldErrors(res: Response): Promise<Record<string, string>> 
   return parseFieldErrorsFromResponse(res);
 }
 
-/** Allowed `sort` keys — pagination-contract §1. Unknown keys fall back to `created`. */
+/** Allowed `sort` keys — pagination-contract. Unknown keys fall back to `created`. */
 export type WorkOrderListSort = "created" | "po" | "received" | "due";
 
-/** PO list status buckets the server can compute — pagination-contract §1. */
+/** PO list status buckets the server can compute — pagination-contract. */
 export type WorkOrderListStatusFilter =
   | "new"
   | "under_study"
@@ -376,7 +376,7 @@ export type WorkOrderListStatusFilter =
   | "active"
   | "closed";
 
-/** `GET /api/work-orders` query — pagination-contract §1. */
+/** `GET /api/work-orders` query — pagination-contract. */
 export type WorkOrderListQuery = Omit<ListPageQuery, "sort"> & {
   sort?: WorkOrderListSort;
   status?: WorkOrderListStatusFilter;
@@ -420,7 +420,7 @@ export async function listWorkOrdersPage(
 }
 
 /**
- * `GET /api/work-orders/counts` response — pagination-contract §1.1. Every field
+ * `GET /api/work-orders/counts` response — pagination-contract. Every field
  * is a SQL `COUNT` computed with the actor's visibility applied first.
  */
 export type WorkOrderListCountsDto = {
@@ -440,7 +440,7 @@ export type WorkOrderListCountsDto = {
 
 /**
  * The counts endpoint takes the list's filters and nothing else — no page
- * window and no sort (pagination-contract §1.1).
+ * window and no sort (pagination-contract).
  */
 export type WorkOrderListCountsQuery = Pick<WorkOrderListQuery, "q" | "status" | "type">;
 
@@ -477,7 +477,7 @@ export function normalizeWorkOrderListCounts(
 
 /**
  * The PO list KPI band and empty-state copy in one call — pagination-contract
- * §1.1. Send it the same filters as the list, never the page window.
+ * Section 1.1. Send it the same filters as the list, never the page window.
  */
 export async function getWorkOrderListCounts(
   config: WorkOrdersApiConfig,
@@ -823,7 +823,7 @@ export async function addWorkOrderProperty(
   poNumber: string,
   property: WorkOrderPropertyDto,
   options?: {
-    /** Create the property before anything is typed (no required-field gate) — decision 2026-10-18. */
+    /** Create the property before anything is typed (no required-field gate) —. */
     draft?: boolean;
   },
 ): Promise<ApiOk<WorkOrderPropertyDto> | ApiErr> {
@@ -1093,7 +1093,7 @@ export async function deleteWorkOrderProperty(
   }
 }
 
-/* ─── Q-9: derived transaction status + full Enfaz upload ─── */
+/* ─── Derived transaction status + full Enfaz upload ─── */
 
 export type TransactionStageStateDto = {
   key: string;
@@ -1175,7 +1175,7 @@ async function transactionStateFailure(
   return { ok: false, kind: res.status === 403 ? "forbidden" : "server", message };
 }
 
-/** Q-9: transaction status grid — UI shows who waits on whom. */
+/** Transaction status grid — UI shows who waits on whom. */
 export async function getTransactionState(
   config: WorkOrdersApiConfig,
   workOrderId: string,
@@ -1200,7 +1200,7 @@ export async function getTransactionState(
 }
 
 /**
- * Q-9 (second closing): upload transaction to Enfaz — specialist only. A refusal (study report not
+ * (second closing): upload transaction to Enfaz — specialist only. A refusal (study report not
  * issued / valuation not closed / parties not complete) comes back as the server's own Arabic text.
  */
 export async function recordEnfazHandover(

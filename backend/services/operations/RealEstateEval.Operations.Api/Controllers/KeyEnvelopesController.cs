@@ -129,7 +129,7 @@ public class KeyEnvelopesController : ControllerBase
         return Ok(envelope);
     }
 
-    /// <summary>Decision 2026-10-20: where a deed's matching key is now (it came back, went to court, is lost).</summary>
+    /// <summary>Where a deed's matching key is now (it came back, went to court, is lost).</summary>
     /// <remarks>
     /// How it works: passes the envelope id, assignment id and request (KeyLocation in_envelope / with_user /
     /// returned_court / missing, plus holder id or label for with_user) with the caller's id and name to

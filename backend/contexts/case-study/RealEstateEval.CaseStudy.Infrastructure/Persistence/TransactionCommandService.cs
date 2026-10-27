@@ -14,7 +14,7 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 /// <summary>
-/// Merge / unmerge (decision 2026-10-19). The first transaction stays and keeps its number; the
+/// Merge / unmerge. The first transaction stays and keeps its number; the
 /// others close as «مدمجة في …» and their deeds move over. Every move is written to the audit log
 /// and to each deed's timeline. The study stays on the holder deed's task (phase 4) and the moved
 /// deeds' valuation requests fold into the holder's (phase 5).

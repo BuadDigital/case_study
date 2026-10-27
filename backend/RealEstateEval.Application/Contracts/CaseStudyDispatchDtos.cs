@@ -35,10 +35,27 @@ public sealed class CaseStudyPropertySnapshotDto
     public Guid WorkOrderId { get; set; }
     public string? Area { get; set; }
     public DateTime? BourseCompletedAtUtc { get; set; }
-    /// <summary>Q-9: when the specialist recorded the Enfaz handover (null = not delivered yet).</summary>
+    /// <summary>When the specialist recorded the Enfaz handover (null = not delivered yet).</summary>
     public DateTime? EnfazHandoverAtUtc { get; set; }
     /// <summary>The accountant marked the deed «جاهز للفوترة» (null = not marked; older hosts omit it).</summary>
     public DateTime? BillingReadyAtUtc { get; set; }
+    /// <summary>
+    /// The transaction number shown beside the deed: official PR-… once confirmed, else the TMP-…
+    /// draft. Filled by the by-ids lookup only; other snapshot readers leave it null.
+    /// </summary>
+    public string? TransactionNumber { get; set; }
+    /// <summary>Deeds in the transaction (1 for an ordinary property); set with <see cref="TransactionNumber"/>.</summary>
+    public int TransactionDeedCount { get; set; } = 1;
+    /// <summary>
+    /// The company's case specialist on the deed (assignee of its case-study task), null until one
+    /// is assigned. Filled by the by-ids lookup only.
+    /// </summary>
+    public string? CaseSpecialistName { get; set; }
+    /// <summary>
+    /// The live (not removed) deeds of the same transaction, this one included; empty when the
+    /// deed has no transaction. Filled by the by-ids lookup only.
+    /// </summary>
+    public List<Guid> TransactionPropertyIds { get; set; } = [];
 }
 
 public sealed class CaseStudyWorkflowTaskSnapshotDto

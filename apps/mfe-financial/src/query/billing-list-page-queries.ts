@@ -110,7 +110,7 @@ export function partyBillingReadyLinesPageOptions(
   };
 }
 
-/** One server page of statements — pagination-contract §9.1. */
+/** One server page of statements — pagination-contract. */
 export function usePartyBillingStatementsPageQuery(
   query: PartyBillingStatementListQuery,
   enabled = true,
@@ -122,7 +122,7 @@ export function usePartyBillingStatementsPageQuery(
   });
 }
 
-/** One server page of ready dues — pagination-contract §9.2. */
+/** One server page of ready dues — pagination-contract. */
 export function usePartyBillingReadyLinesPageQuery(
   query: PartyBillingReadyLineListQuery,
   enabled = true,
@@ -148,7 +148,7 @@ export function usePartyBillingStatementQuery(statementId: string | null) {
   });
 }
 
-/** One server page of Enfaz-ready work orders — pagination-contract §10.1. */
+/** One server page of Enfaz-ready work orders — pagination-contract. */
 export function useEnfazReadyPosPageQuery(query: EnfazReadyPoListQuery) {
   return useQuery({
     queryKey: appDataKeys.enfazReadyPosPage(query),

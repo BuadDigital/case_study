@@ -6,6 +6,7 @@ import {
   liftSurveyFreeze as apiLiftSurveyFreeze,
   listFailures,
   listFailuresPage,
+  recordFinalFailure as apiRecordFinalFailure,
   resolveFailure as apiResolveFailure,
   returnFailure as apiReturnFailure,
   submitFailureForReview as apiSubmitFailureForReview,
@@ -123,7 +124,7 @@ export async function loadFailuresForQuery(): Promise<FailureRecord[]> {
 }
 
 /**
- * React Query loader for one queue page (pagination-contract §5). The page is
+ * React Query loader for one queue page (pagination contract). The page is
  * not written to the offline list cache — that cache is the whole set the
  * property gates read, and a window would shadow rows outside it.
  */
@@ -221,9 +222,10 @@ export async function upgradeFailureToInternalAsync(
 
 export async function submitFailureForReviewAsync(
   id: string,
+  note: string,
 ): Promise<FailureMutationResult> {
   return mutateFailure(id, (config, failureId) =>
-    apiSubmitFailureForReview(config, failureId),
+    apiSubmitFailureForReview(config, failureId, note),
   );
 }
 
@@ -249,6 +251,45 @@ export async function resolveFailureAsync(
     return { ok: false, error: failureMutationError(result) };
   }
   return { ok: true, data: applyMutation(mapDto(result.data)) };
+}
+
+export type FinalFailureInput = {
+  poNumber: string;
+  propertyId: string;
+  problemTypeId?: string;
+  title?: string;
+  reason: string;
+  notifyParties: boolean;
+};
+
+/**
+ * «التعذر النهائي عن المعاملة» — every finalized deed lands in the cache; a field error comes back
+ * keyed (`problemTypeId`, `reason`) so the dialog can mark its field.
+ *
+ * How it works: posts through the api-client, maps each returned record and upserts it into the
+ * failures cache (which also fires the work-order and task change events).
+ *
+ * Edge cases: the toast message prefers the server's field message (reason, then type, then
+ * property), then a 403's own text («للمشرف فقط»), then the generic error by kind.
+ */
+export async function recordFinalFailureAsync(
+  input: FinalFailureInput,
+): Promise<
+  | { ok: true; data: FailureRecord[] }
+  | { ok: false; error: string; errors?: Record<string, string> }
+> {
+  const config = requireFailuresApi();
+  const result = await apiRecordFinalFailure(config, input);
+  if (!result.ok) {
+    const message =
+      result.errors?.reason ||
+      result.errors?.problemTypeId ||
+      result.errors?.propertyId ||
+      result.message ||
+      failureMutationError(result);
+    return { ok: false, error: message, errors: result.errors };
+  }
+  return { ok: true, data: result.data.map((dto) => applyMutation(mapDto(dto))) };
 }
 
 export async function approveFailureAsync(

@@ -101,7 +101,7 @@ public class FieldInspectionSubmissionIntegrationTests
         SeedInspectionTask(db);
         SeedPhotoAttachments(db);
 
-        // ق-10: the device stamped completion on site; the submit arrives hours later.
+        // The device stamped completion on site; the submit arrives hours later.
         var completedOnSite = "2026-09-24T07:30:00.000Z";
         var payload = System.Text.Json.Nodes.JsonNode.Parse(MinimalValidPayload())!.AsObject();
         payload["completedOnSiteAtUtc"] = completedOnSite;

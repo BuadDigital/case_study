@@ -3,7 +3,7 @@ using RealEstateEval.CaseStudy.Application.Contracts;
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>
-/// Numbered-document ledger (decision 25 + numbering workshop): assign letter numbers (LT)
+/// Numbered-document ledger (numbering workshop): assign letter numbers (LT)
 /// and case-study report numbers (CS) and log them at print/issue time.
 /// </summary>
 public interface INumberedDocumentService

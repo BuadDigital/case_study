@@ -1,5 +1,5 @@
 /**
- * Key custody as the property page reads it (decision 2026-10-20): the envelope has
+ * Key custody as the property page reads it: the envelope has
  * one holder, and each deed's matching key has a place after the field trial.
  * «تسليم للمعاين» compares the holder, or the key's holder, with this deed's
  * inspector — the operations context cannot see case-study tasks, so the
@@ -73,7 +73,7 @@ function legacyHandedLabel(value: string): string {
 }
 
 /**
- * «تسليم للمعاين» for one deed (decision 2026-10-20): yes when this deed's inspector holds the
+ * «تسليم للمعاين» for one deed: yes when this deed's inspector holds the
  * envelope or its key; otherwise where the envelope or key actually is.
  *
  * How it works, first match wins: 1) no gate → the legacy «لم تُحدَّد بعد»; 2) the envelope holder

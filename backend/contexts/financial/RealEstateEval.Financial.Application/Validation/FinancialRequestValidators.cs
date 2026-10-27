@@ -4,7 +4,7 @@ using RealEstateEval.Application;
 
 namespace RealEstateEval.Financial.Application.Validation;
 
-// Financial-owned boundary validators (A8): party-fee pricing endpoints, which only the
+// Financial-owned boundary validators: party-fee pricing endpoints, which only the
 // financial host binds. Registered there via AddValidatorsFromAssemblyContaining.
 
 public sealed class CreatePartyFeePricingTableRequestValidator

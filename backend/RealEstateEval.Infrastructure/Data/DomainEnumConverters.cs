@@ -10,7 +10,7 @@ namespace RealEstateEval.Infrastructure.Data;
 /// lenient: an unrecognised legacy value materializes as the vocabulary's default instead of
 /// throwing and taking a whole list endpoint down with it.
 /// </summary>
-// A10: public — the per-context model mappings that use these converters moved into
+// Public — the per-context model mappings that use these converters moved into
 // their context libraries with the legacy context's archival.
 public static class DomainEnumConverters
 {

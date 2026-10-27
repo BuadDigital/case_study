@@ -39,7 +39,7 @@ export async function loadWorkflowTasks(): Promise<WorkflowTask[]> {
 /**
  * React Query loader — surfaces API failures; fetches workflow tasks in
  * paginated chunks. `filters` (kind / status / phase / assignee / sort) are
- * applied by the server (`docs/architecture/pagination-contract.md` §2); the
+ * applied by the server (`docs/architecture/pagination-contract.md`); the
  * offline cache falls back to the equivalent client-side predicate.
  */
 export async function loadWorkflowTasksForQuery(
@@ -52,7 +52,7 @@ export async function loadWorkflowTasksForQuery(
   };
 
   // Field roles offline: nothing downloaded yet reads as an empty queue, never as a
-  // connection error (spec §4.2).
+  // connection error (spec).
   const offlineFallback = async () =>
     (await cachedRows()) ?? (isOfflineFieldSession() ? [] : null);
 
@@ -103,7 +103,7 @@ async function offlineWorkflowTasksPage(
   return offlineListPage(filterCachedWorkflowTasks(cached ?? [], filters), query);
 }
 
-/** One server page of workflow tasks — pagination-contract §2. */
+/** One server page of workflow tasks — pagination-contract. */
 export async function loadWorkflowTasksPage(
   query: WorkflowTaskListQuery,
 ): Promise<WorkflowTasksPage> {

@@ -10,7 +10,7 @@ public static class ValuationRequestStatuses
     public const string Progress = "progress";
     public const string Done = "done";
     public const string Failed = "fail";
-    // Phase 5 (decision 2026-10-19): a deed's request folded into the holder deed's request.
+    // Phase 5: a deed's request folded into the holder deed's request.
     public const string Merged = "merged";
 
     public static string ToDbValue(this ValuationRequestStatus status) => status switch

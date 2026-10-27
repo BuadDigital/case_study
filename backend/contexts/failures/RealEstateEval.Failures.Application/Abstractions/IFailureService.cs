@@ -77,8 +77,10 @@ public interface IFailureService
         Guid id,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Escalates to the supervisor with the specialist's explanation (required).</summary>
     Task<FailureRecordDto?> SubmitForReviewAsync(
         Guid id,
+        string escalationNote,
         CancellationToken cancellationToken = default);
 
     Task<FailureRecordDto?> SuspendAsync(
@@ -96,6 +98,15 @@ public interface IFailureService
     Task<FailureRecordDto?> ApproveAsync(
         Guid id,
         string finalNote,
+        string? actorUserId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// «التعذر النهائي عن المعاملة»: finalizes (or files and finalizes) a failure on every live
+    /// deed of the deed's transaction, then notifies the parties when asked to.
+    /// </summary>
+    Task<(IReadOnlyList<FailureRecordDto>? Result, Dictionary<string, string>? Errors)> RecordFinalFailureAsync(
+        FinalFailureRequest request,
         string? actorUserId = null,
         CancellationToken cancellationToken = default);
 

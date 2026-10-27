@@ -1,7 +1,7 @@
 namespace RealEstateEval.CaseStudy.Domain;
 
 /// <summary>
-/// Register of numbered documents (Decision 25 + numbering workshop): Entities 5–6 — Letters
+/// Register of numbered documents (numbering workshop): Entities 5–6 — Letters
 /// (LT) and case study reports (CS). The row is created the moment the number is assigned when printing/
 /// Versioned and not modified afterward — a reference record, not a document store.
 /// </summary>

@@ -3,7 +3,7 @@ using RealEstateEval.Architecture.Tests.Support;
 namespace RealEstateEval.Architecture.Tests;
 
 /// <summary>
-/// A6 exit criterion: no service host registers the legacy ApplicationDbContext pool.
+/// Exit criterion: no service host registers the legacy ApplicationDbContext pool.
 /// </summary>
 public class LegacyPersistenceHostTests
 {

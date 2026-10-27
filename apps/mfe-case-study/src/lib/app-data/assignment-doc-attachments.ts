@@ -865,7 +865,7 @@ export async function clonePropertyDocumentsFromPrior(
  * registry, deed, bourse-deed, boundaries) in parallel; each kind wipes the target first, then
  * copies. Multi-file kinds return their name lists; single-file kinds return the first name or "".
  *
- * Edge cases: decision 2026-10-18 removed the grouped-property "fill-empty" mode with grouped
+ * Edge cases: removed the grouped-property "fill-empty" mode with grouped
  * properties (linked deeds now share one transaction instead of copying files), so cloning only
  * replaces.
  */
@@ -909,7 +909,7 @@ async function cloneAllPropertyDocKinds(
  *
  * Edge cases: an unreadable or empty source returns [] before the target is touched; a file that
  * fails to download or upload is left out of the result. The "fill-empty" branch (copy only onto
- * an empty target) was removed with grouped properties (decision 2026-10-18).
+ * an empty target) was removed with grouped properties.
  */
 async function clonePropertyDocKind(
   config: NonNullable<ReturnType<typeof prototypeModulesApiConfig>>,

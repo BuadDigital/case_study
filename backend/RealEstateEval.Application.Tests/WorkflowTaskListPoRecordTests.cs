@@ -13,7 +13,7 @@ namespace RealEstateEval.Application.Tests;
 /// <summary>
 /// The PO-record columns the workflow-task list now joins from <c>WorkOrderProperties</c>: they are
 /// on every row, <c>q</c> searches them, and <c>deed</c> / <c>city</c> sort by them. This is what
-/// lets the active transaction queue page — see docs/architecture/pagination-contract.md §2.
+/// lets the active transaction queue page — see docs/architecture/pagination-contract.md.
 /// </summary>
 public class WorkflowTaskListPoRecordTests
 {

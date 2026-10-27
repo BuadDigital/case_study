@@ -13,21 +13,36 @@ import {
   Th,
   THead,
   Tr,
+  TransactionNumberBadge,
   cn,
   formatPoDisplay,
   queueTableRowClassName,
 } from "@platform/ui-kit";
+import { dmy } from "@platform/app-shared/format/date";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "@platform/app-shared/domain/property-labels";
 import { isActiveFailureStatus } from "@platform/app-shared/failures/failures-types";
 import {
   failureActorLabel,
-  failureListSeverityLabel,
   failureListStatusColor,
   failureListStatusLabel,
+  failureRecordTitle,
 } from "../lib/failures-labels";
-import { failureRowTitle, failuresEmptyLine } from "../lib/failures-view-state";
+import {
+  failureDeedCell,
+  failureSpecialistName,
+  failuresEmptyLine,
+} from "../lib/failures-view-state";
 import { FailuresViewExpandedActions } from "./FailuresViewExpandedActions";
 import type { FailuresViewWorkflow } from "./useFailuresViewWorkflow";
+
+/**
+ * Column order: رقم المعاملة · رقم الصك/التسجيل العيني · أمر العمل · سبب
+ * التعذّر · الحالة · مصدر التعذّر · الأخصائي · تاريخ تسجيل التعذّر. The skeleton and the expanded
+ * row span all of them, so the count lives here. «الخطورة» was folded into «الحالة»; «الرافع»
+ * became «مصدر التعذّر»; the transaction number badge moved to ui-kit to be shared with the
+ * case-study queues.
+ */
+const COLUMNS = 8;
 
 export function FailuresViewTable({ wf }: { wf: FailuresViewWorkflow }) {
   // After hydration mount only one tree (table or cards) — both used to build together.
@@ -38,21 +53,23 @@ export function FailuresViewTable({ wf }: { wf: FailuresViewWorkflow }) {
       <Table framed pending={!isFetched}>
         <THead>
           <Tr hoverable={false}>
+            <Th className="text-start">رقم المعاملة</Th>
             <Th className="text-start">{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
             <Th className="text-start">أمر العمل</Th>
-            <Th className="text-start">الخطورة</Th>
+            <Th className="text-start">سبب التعذّر</Th>
             <Th className="text-start">الحالة</Th>
-            <Th className="text-start">الرافع</Th>
+            <Th className="text-start">مصدر التعذّر</Th>
             <Th className="text-start">الأخصائي</Th>
+            <Th className="text-start">تاريخ تسجيل التعذّر</Th>
           </Tr>
         </THead>
         <TBody>
           {!isFetched ? (
-            <SkeletonTableRows rows={6} cols={6} />
+            <SkeletonTableRows rows={6} cols={COLUMNS} />
           ) : rows.length === 0 ? (
             <Tr hoverable={false}>
-              <Td colSpan={6} className="cursor-default py-10">
-                <EmptyState line={failuresEmptyLine(wf.role)} />
+              <Td colSpan={COLUMNS} className="cursor-default py-10">
+                <EmptyState line={failuresEmptyLine(wf.role, wf.tab)} />
               </Td>
             </Tr>
           ) : (
@@ -74,17 +91,26 @@ export function FailuresViewTable({ wf }: { wf: FailuresViewWorkflow }) {
                     )}
                     onClick={() => wf.toggleExpanded(f.id)}
                   >
+                    <Td className="text-text-2">
+                      {f.transactionNumber ? (
+                        <TransactionNumberBadge
+                          number={f.transactionNumber}
+                          deedCount={f.transactionDeedCount}
+                          className="!text-[13px] !text-text-2"
+                        />
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
                     <Td>
-                      <span className="text-[13.5px] font-bold text-primary">
-                        {failureRowTitle(f)}
+                      <span className="text-[13.5px] font-bold text-primary [unicode-bidi:isolate]">
+                        {failureDeedCell(f)}
                       </span>
                     </Td>
                     <Td className="font-semibold text-text-2">
                       {formatPoDisplay(f.poNumber)}
                     </Td>
-                    <Td className="text-[13px] font-semibold text-heading">
-                      {failureListSeverityLabel(f.severity)}
-                    </Td>
+                    <Td className="text-[13px] text-heading">{failureRecordTitle(f)}</Td>
                     <Td>
                       <StatusPill
                         label={failureListStatusLabel(f.status, f.severity)}
@@ -95,12 +121,13 @@ export function FailuresViewTable({ wf }: { wf: FailuresViewWorkflow }) {
                       {failureActorLabel(f.raisedByRole)}
                     </Td>
                     <Td className="text-text-2">
-                      {failureActorLabel(f.specialist)}
+                      {failureSpecialistName(f) || "—"}
                     </Td>
+                    <Td className="tabular-nums text-text-2">{dmy(f.createdAt)}</Td>
                   </Tr>
                   {expanded ? (
                     <Tr hoverable={false}>
-                      <Td colSpan={6} className="cursor-default p-0">
+                      <Td colSpan={COLUMNS} className="cursor-default p-0">
                         <FailuresViewExpandedActions failure={f} wf={wf} />
                       </Td>
                     </Tr>

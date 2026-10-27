@@ -152,7 +152,7 @@ public partial class CaseStudyReportService
             return (ToDto(existing!), null);
         }
 
-        // D16: a traditional deed's report needs the specialist's deed ↔ nature outcome before it is
+        // A traditional deed's report needs the specialist's deed ↔ nature outcome before it is
         // issued (the issue locks the field, and the valuation gate needs it); the field's own validity
         // (a known token; notes when فروق / تعذّر) is checked as on every save.
         var matchErrors = CaseStudyReportDeedNatureMatchRules.ValidateForIssue(
@@ -214,7 +214,7 @@ public partial class CaseStudyReportService
 
                 await _db.SaveChangesAsync(ct);
 
-                // Decision 2026-10-19: issuing the study is one of the two moments that fix the
+                // Issuing the study is one of the two moments that fix the
                 // transaction's official PR reference (the valuation approval is the other).
                 if (_transactions is not null && propertyId is Guid confirmPropertyId)
                 {

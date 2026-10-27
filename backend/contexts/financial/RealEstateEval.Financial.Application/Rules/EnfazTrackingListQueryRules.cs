@@ -20,7 +20,7 @@ public enum EnfazTrackingListSortKey
 /// Pure allow-list, sort map and in-memory filter for <c>GET /api/enfaz-billing/tracking</c>.
 /// Rows are synthesised per property from cross-context reads, so the search and sort run over
 /// the materialised list before the page is cut. No I/O.
-/// See docs/architecture/pagination-contract.md §10.2.
+/// See docs/architecture/pagination-contract.md.
 /// </summary>
 public static class EnfazTrackingListQueryRules
 {

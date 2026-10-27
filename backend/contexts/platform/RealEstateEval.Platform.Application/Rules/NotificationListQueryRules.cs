@@ -12,7 +12,7 @@ public enum NotificationListSortKey
 /// <summary>
 /// Pure allow-list and sort map for <c>GET /api/notifications</c>. The feed has exactly one
 /// meaningful order, so the allow-list is a single key; <c>dir</c> still flips it. No EF, no I/O.
-/// See docs/architecture/pagination-contract.md §6.
+/// See docs/architecture/pagination-contract.md.
 /// </summary>
 public static class NotificationListQueryRules
 {

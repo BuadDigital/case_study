@@ -6,12 +6,12 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 
 /// <summary>
-/// Case Study–owned tables in the <c>case_study</c> schema. Does not map operations tasks (D2)
-/// or inspector-fee tables (D1) — those write paths belong to Operations / Financial while the
+/// Case Study–owned tables in the <c>case_study</c> schema. Does not map operations tasks
+/// or inspector-fee tables — those write paths belong to Operations / Financial while the
 /// rows remain physically here. Applied by <see cref="CaseStudyDbContext"/> and by the legacy
 /// context (transitional cross-boundary reads until owner APIs replace them).
 /// </summary>
-// A8: public — the owner context lives in its context library; this shared mapping stays
+// Public — the owner context lives in its context library; this shared mapping stays
 // global beside the frozen legacy context (drift guard).
 public static class CaseStudyModel
 {
@@ -55,7 +55,7 @@ public static class CaseStudyModel
             e.HasIndex(x => x.ClientId);
         });
 
-        // Decision 2026-10-18/19: the transaction row holds the TMP draft and PR official numbers (both
+        // The transaction row holds the TMP draft and PR official numbers (both
         // unique), the merge link kind and reason, the study-holder deed and, once folded, the receiving transaction.
         builder.Entity<Transaction>(e =>
         {

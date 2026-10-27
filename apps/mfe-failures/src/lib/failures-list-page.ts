@@ -1,42 +1,78 @@
 import type { FailureListQuery } from "@platform/api-client";
-import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
-import {
-  failureListSeverityLabel,
-  failureListStatusLabel,
-  failureRecordTitle,
-} from "./failures-labels";
+import type {
+  FailureRecord,
+  FailureStatus,
+} from "@platform/app-shared/failures/failures-types";
+import type { RoleId } from "@platform/types";
+import { failureListStatusLabel, failureRecordTitle } from "./failures-labels";
 
-/** Same window as the PO list — pagination-contract §5 pages the failures queue. */
+/** Same window as the PO list — the pagination contract pages the failures queue. */
 export const FAILURES_PAGE_SIZE = 10;
 
+/** The queue's two tabs: «تحتاج إجراء» (open work) and «التعذّرات» (final failures). */
+export type FailuresTab = "action" | "final";
+
 /**
- * Every persisted status except `suspended`: suspended failures live on the
- * suspended-transactions screen, so the queue never listed them.
+ * The statuses a tab lists for a role.
+ *
+ * How it works: «التعذّرات» is the final failure — approved by the supervisor after the
+ * assignment specialist's direction, nothing to do after it. «تحتاج إجراء» is the open work:
+ * the possible / internal failure, the one returned to the specialist, and the escalated one.
+ * The section supervisor works only on what the specialist escalated, so their «تحتاج إجراء»
+ * is `review` alone; the specialist keeps `review` on view (no buttons) so an escalation does
+ * not vanish before the supervisor decides.
+ *
+ * Edge cases: `resolved` and `suspended` are on neither tab — a resolved failure is over, a
+ * suspended one lives on the suspended-transactions screen.
  */
-const FAILURES_LISTED_STATUSES: readonly string[] = [
-  "internal",
-  "review",
-  "approved",
-  "returned",
-  "resolved",
-];
+export function failuresTabStatuses(
+  tab: FailuresTab,
+  role: RoleId,
+): readonly FailureStatus[] {
+  if (tab === "final") return ["approved"];
+  if (role === "section-supervisor") return ["review"];
+  return ["internal", "returned", "review"];
+}
+
+/**
+ * The tab a failure shows on for a role, or null when it is on neither.
+ *
+ * How it works: «التعذّرات» is checked first, then «تحتاج إجراء», against `failuresTabStatuses`.
+ *
+ * Edge cases: the same failure can sit on a tab for one role and on none for another — an
+ * `internal` failure is the specialist's work but not the supervisor's, so it is null for him.
+ * The queue uses this to open a deep link (`?highlight=`) on the tab that holds the failure.
+ */
+export function failuresTabOf(status: FailureStatus, role: RoleId): FailuresTab | null {
+  if (failuresTabStatuses("final", role).includes(status)) return "final";
+  if (failuresTabStatuses("action", role).includes(status)) return "action";
+  return null;
+}
 
 /**
  * The server request for one queue page. `q` is the contract's substring
- * search over PO number, deed number, title and specialist; the sort is the
- * endpoint default (`updated desc`), spelled out so the cache key is explicit.
+ * search over PO number, deed number, title and specialist; newest raised first
+ * (`created desc`), matching the table's «تاريخ تسجيل التعذّر» column.
+ *
+ * How it works: the tab's statuses travel as the `status` filter, so each tab is its own
+ * server-paged list and its pager counts only its rows.
+ *
+ * Edge cases: the order used to be `updated desc`; with a date column that read as unsorted, so
+ * it follows the registration date now — an acted-on failure no longer jumps to the top. A blank
+ * search sends no `q`, keeping the cache key of the unfiltered page stable.
  */
 export function failuresListServerQuery(input: {
   search: string;
   page: number;
+  statuses: readonly FailureStatus[];
 }): FailureListQuery {
   const q = input.search.trim();
   return {
     page: Math.max(1, input.page),
     pageSize: FAILURES_PAGE_SIZE,
-    sort: "updated",
+    sort: "created",
     dir: "desc",
-    status: FAILURES_LISTED_STATUSES,
+    status: input.statuses,
     ...(q ? { q } : {}),
   };
 }
@@ -76,7 +112,6 @@ function matchesFailureSearch(f: FailureRecord, search: string): boolean {
     f.deedNumber,
     f.poNumber,
     failureRecordTitle(f),
-    failureListSeverityLabel(f.severity),
     failureListStatusLabel(f.status, f.severity),
     f.raisedByRole,
     f.specialist,
@@ -91,19 +126,26 @@ function matchesFailureSearch(f: FailureRecord, search: string): boolean {
  * are filtered by the raiser label (`failuresForPartyRole`), which is not a
  * `GET /api/failures` filter, so their queue is cut here from the whole set
  * (already in cache for the KPI band) — the same pattern as the PO list's
- * billing buckets. Same order as the server default: `updated desc`.
+ * billing buckets. Same order as the server request: `created desc`.
+ *
+ * How it works: keeps the tab's statuses that match the search, sorts newest registered first
+ * and cuts the 10-row page, clamping the page into range.
+ *
+ * Edge cases: before the tabs it kept every status but `suspended` — resolved failures showed
+ * too; now `statuses` is the only filter, so a party's resolved failure is on no tab, exactly as
+ * on the server-paged path.
  */
 export function failuresLocalWindow(
   items: FailureRecord[],
-  input: { search: string; page: number },
+  input: { search: string; page: number; statuses: readonly FailureStatus[] },
 ): FailuresPagination & { rows: FailureRecord[] } {
   const listed = items
     .filter(
       (f) =>
-        FAILURES_LISTED_STATUSES.includes(f.status) &&
+        input.statuses.includes(f.status) &&
         matchesFailureSearch(f, input.search),
     )
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const totalCount = listed.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / FAILURES_PAGE_SIZE));
   const safePage = Math.min(Math.max(1, input.page), totalPages);

@@ -97,7 +97,7 @@ public static class OperationsTaskCommandRules
             ? "⏰ تذكير تلقائي ضمن ساعات العمل (المنفّذ والمنشئ)."
             : "🔔 تم إرسال تذكير فوري إلى المنفّذ.";
 
-    /// <summary>Operations task id: T-26-0007 (two-digit year, decision 2026-10-20).</summary>
+    /// <summary>Operations task id: T-26-0007 (two-digit year).</summary>
     /// <remarks>
     /// How it works: «T-» + <c>ReferenceNumbering.ShortYear</c>(year) + the sequence padded to 4 digits
     /// (wider sequences print in full: T-26-12345). The counter keeps the full year; only the print is short.
@@ -110,7 +110,7 @@ public static class OperationsTaskCommandRules
     /// <remarks>
     /// How it works: for a court visit, «CV-» + two-digit year + 4-digit sequence; any other task has no
     /// reference (null).
-    /// Edge cases (decision 2026-10-20): was «خ.ت-2026-0007»; migration CourtVisitReferenceLatin rewrote
+    /// Edge cases: was «خ.ت-2026-0007»; migration CourtVisitReferenceLatin rewrote
     /// stored references to CV-YY-… so old and new rows read the same.
     /// </remarks>
     public static string? Reference(int year, int sequence, bool courtVisit) =>

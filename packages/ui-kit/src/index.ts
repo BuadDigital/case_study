@@ -145,6 +145,11 @@ export {
   poNumberLinkClassName,
 } from "./components/PoNumber";
 export {
+  TransactionNumberBadge,
+  isTemporaryTransactionNumber,
+  TEMPORARY_TRANSACTION_PREFIX,
+} from "./components/TransactionNumberBadge";
+export {
   Table,
   type TableProps,
   TableFrame,

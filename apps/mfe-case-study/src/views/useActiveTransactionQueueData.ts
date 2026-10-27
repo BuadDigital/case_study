@@ -135,7 +135,7 @@ export function useActiveTransactionQueueData({
    * Sibling-reading tables cannot be narrowed: the distribution / case-study
    * tables read a parent's children and the appraiser table reads the sibling
    * field-inspection task, and both live outside this queue's kind/phase/role
-   * slice (pagination-contract §2, "still client-side" #1 and #3). Those three
+   * slice (pagination-contract, "still client-side" #1 and #3). Those three
    * keep the full list; every other queue asks the server for its slice.
    */
   const needsSiblingTasks = isDistributionTable || isPropertyAppraisalTable;
@@ -353,7 +353,7 @@ export function useActiveTransactionQueueData({
       });
     }
     // No search pass: this queue pages, and the server already matched `q`
-    // against the deed / city / district haystack (pagination-contract §2).
+    // against the deed / city / district haystack (pagination-contract).
     return filterPrimaryQueueRowMeta(primaryRowMeta, {
       statusFilter,
       typeFilter,
@@ -422,7 +422,7 @@ export function useActiveTransactionQueueData({
 
   /*
    * Pager numbers straight off the envelope. `totalCount` is the actor's total
-   * for the filters and the search; the four rules §2 keeps in the browser run
+   * for the filters and the search; the four rules section 2 keeps in the browser run
    * after the page is cut, so the range is reported from what actually rendered.
    */
   const pagination = useMemo(

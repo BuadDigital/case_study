@@ -95,7 +95,7 @@ export type WorkflowTask = {
   propertyFailureBlocked?: boolean;
   /*
    * The task's property, as the server joined it onto the row
-   * (`docs/architecture/pagination-contract.md` §2). Undefined when the task has
+   * (`docs/architecture/pagination-contract.md`). Undefined when the task has
    * no property yet — queues fall back to the PO record for display.
    */
   deedNumber?: string;
@@ -147,7 +147,7 @@ export function isFoldedAppraisalTask(
 }
 
 /**
- * Phase 5 (decision 2026-10-19, one valuation per transaction): the holder deed's appraisal
+ * Phase 5 (one valuation per transaction): the holder deed's appraisal
  * task that a folded appraisal task redirects to.
  *
  * How it works: returns null unless `task` is a folded `property-appraisal` task

@@ -15,7 +15,7 @@ public interface IPartyBillingStatementService
         CancellationToken cancellationToken = default);
 
  /// <summary>
- /// Ready lines with the search and sort of pagination-contract §9.2 applied, capped as the
+ /// Ready lines with the search and sort of pagination-contract applied, capped as the
  /// legacy list is. Plain array — the caller sent no page window.
  /// </summary>
     Task<IReadOnlyList<PartyBillingReadyLineDto>> ListReadyLinesAsync(
@@ -24,7 +24,7 @@ public interface IPartyBillingStatementService
 
  /// <summary>
  /// One page of ready lines. The rows are synthesised, so the page is cut over the materialised
- /// list and <c>TotalCount</c> is that list's length — pagination-contract §9.2.
+ /// list and <c>TotalCount</c> is that list's length — pagination-contract.
  /// </summary>
     Task<PagedResultDto<PartyBillingReadyLineDto>> ListReadyLinesPagedAsync(
         PartyBillingReadyLineListQuery query,
@@ -33,12 +33,12 @@ public interface IPartyBillingStatementService
         int page,
         CancellationToken cancellationToken = default);
 
- /// <summary>Statements with the filters, search and sort of pagination-contract §9.1; plain array.</summary>
+ /// <summary>Statements with the filters, search and sort of pagination-contract; plain array.</summary>
     Task<IReadOnlyList<PartyBillingStatementDto>> ListStatementsAsync(
         PartyBillingStatementListQuery query,
         CancellationToken cancellationToken = default);
 
- /// <summary>One page of statements, counted and cut in the database — pagination-contract §9.1.</summary>
+ /// <summary>One page of statements, counted and cut in the database — pagination-contract.</summary>
     Task<PagedResultDto<PartyBillingStatementDto>> ListStatementsPagedAsync(
         PartyBillingStatementListQuery query,
         int skip,

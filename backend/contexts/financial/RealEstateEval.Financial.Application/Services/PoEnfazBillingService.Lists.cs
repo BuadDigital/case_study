@@ -4,7 +4,7 @@ using RealEstateEval.Financial.Application.Rules;
 namespace RealEstateEval.Financial.Application.Services;
 
 /// <summary>
-/// The filtered / paged reads of docs/architecture/pagination-contract.md §10. Both lists are
+/// The filtered / paged reads of docs/architecture/pagination-contract.md. Both lists are
 /// synthesised from cross-context reads, so the search and sort run over the materialised rows
 /// and the page is cut from that same list — its length is the envelope's count.
 /// </summary>

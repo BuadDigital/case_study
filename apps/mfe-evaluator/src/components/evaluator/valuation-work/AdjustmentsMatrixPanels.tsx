@@ -5,7 +5,7 @@
 // Round 2 (1b19bedc)
 //  • A    The formula line under the value comes from basisView.outputFormula — for an apartment's land it
 //         shows «سعر المتر بعد التسوية × حصة الشقة» with the area adjustment on the whole building plot.
-//  • R2-20  Alert titles and bodies go through KeepCodesTogether so CMP-… codes never break across lines.
+//  • Alert titles and bodies go through KeepCodesTogether so CMP-… codes never break across lines.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";

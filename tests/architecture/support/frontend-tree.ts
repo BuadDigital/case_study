@@ -81,28 +81,13 @@ export function isTestFile(fileName: string): boolean {
 }
 
 /**
- * Lines of text — equal to `wc -l` for a newline-terminated file, so a baseline figure can
- * be spot-checked from a shell, and one higher for a file with no final newline.
+ * The frozen lists the ratchets read. Edge cases: it held line caps for components (700) and
+ * hooks (500) too; those size rules were removed — they counted comment lines, so documenting
+ * a file pushed it over the cap — and only the storage-module list is left.
  */
-export function lineCount(file: string): number {
-  const lines = readFileSync(file, "utf8").split(/\r?\n/);
-  if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
-  return lines.length;
-}
-
-export type FrozenEntry = { path: string; lines: number };
-
-export type SizeSection = {
-  cap: number;
-  note: string;
-  frozen: FrozenEntry[];
-};
-
 export type FrontendSizeBaseline = {
   $schema?: string;
   generated: string;
-  components: SizeSection;
-  hooks: SizeSection;
   storageModules: { note: string; frozen: string[] };
 };
 
@@ -116,38 +101,6 @@ export function loadBaseline(): FrontendSizeBaseline {
 /** The single sentence every ratchet failure ends with. */
 export const RATCHET_DOC =
   `See docs/architecture/solid-scorecard.md ("Frontend architecture ratchet") and ${BASELINE_PATH}.`;
-
-/**
- * The two halves of a size ratchet, shared by the component and hook suites.
- * `overCap` = files that grew past the cap and are not frozen (the list may not grow).
- * `stale` = frozen entries that shrank below the cap or moved (the list must shrink).
- */
-export function ratchetOffenders(
-  files: string[],
-  cap: number,
-  frozen: FrozenEntry[],
-): { overCap: string[]; stale: string[] } {
-  const frozenPaths = new Set(frozen.map((entry) => entry.path));
-  const overCap = files
-    .map((file) => ({ path: relativePath(file), lines: lineCount(file) }))
-    .filter((entry) => entry.lines > cap && !frozenPaths.has(entry.path))
-    .map((entry) => `${entry.path} (${entry.lines} lines)`)
-    .sort();
-
-  const stale = frozen
-    .filter((entry) => {
-      const absolute = join(repoRoot(), entry.path);
-      return !existsSync(absolute) || lineCount(absolute) <= cap;
-    })
-    .map((entry) =>
-      existsSync(join(repoRoot(), entry.path))
-        ? `${entry.path} (now ${lineCount(join(repoRoot(), entry.path))} lines, cap ${cap})`
-        : `${entry.path} (moved or deleted)`,
-    )
-    .sort();
-
-  return { overCap, stale };
-}
 
 /** Absolute paths of the `app-data` module folders the storage-purity rules cover. */
 export function appDataRoots(): string[] {

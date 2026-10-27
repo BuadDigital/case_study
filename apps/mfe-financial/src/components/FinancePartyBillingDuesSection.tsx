@@ -114,7 +114,7 @@ function DueDiscount({ ded }: { ded: number }) {
 
 /**
  * Outstanding dues: search, group select and the selectable line table over
- * one server page (pagination-contract §9.2), with the shared pager below.
+ * one server page (pagination-contract), with the shared pager below.
  * Every selection and total comes from the party-billing workflow; a
  * selection survives a page flip.
  */

@@ -167,7 +167,7 @@ export function buildMapMarkers(
         archived: !point.active,
         infeasible: isFailureRecord(head),
         count: point.deedCount,
-        // Decision 2026-10-19: a cluster is one transaction, so it is titled by its number.
+        // A cluster is one transaction, so it is titled by its number.
         title: `${head.transactionNumber ?? head.refNo} — ${point.deedCount} صكوك`,
         subtitle: `${head.city} · ${head.district} · ${head.propertyType}`,
       });

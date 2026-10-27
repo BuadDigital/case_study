@@ -20,7 +20,7 @@ import { useWorkflowTasksQuery } from "../../query/evaluator-queries";
  * holder task's appraisal workspace and a skeleton shows meanwhile. Otherwise it renders
  * `EvaluatorWindow` with the live task and the full task list.
  *
- * Edge cases: phase 5 (decision 2026-10-19) — one valuation per transaction, so a folded deed
+ * Edge cases: phase 5 — one valuation per transaction, so a folded deed
  * never opens its own window. If the holder's task is not in the list, the deed's own window
  * opens.
  */
@@ -46,7 +46,7 @@ export function AppraiserUploadTab({
   const liveTask =
     tasks?.find((t) => t.id === childTask.id) ?? childTask;
 
-  // Phase 5 (decision 2026-10-19): one valuation per transaction. A deed folded into another
+  // Phase 5: one valuation per transaction. A deed folded into another
   // deed's valuation opens the holder deed's appraisal workspace instead of its own.
   const holderTask = holderAppraisalTaskFor(liveTask, tasks ?? []);
   useEffect(() => {

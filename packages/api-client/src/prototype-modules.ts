@@ -268,7 +268,7 @@ export type KeyEnvelopeDto = {
   createdAtUtc: string;
   updatedAtUtc: string;
   operationsTaskId?: string | null;
-  /** reviewer | internal_user | external | court — who holds the envelope now (decision 2026-10-20). */
+  /** reviewer | internal_user | external | court — who holds the envelope now. */
   holderKind?: string;
   holderUserId?: string | null;
   holderLabel?: string | null;
@@ -312,7 +312,7 @@ export type PropertyKeyGateDto = {
   pendingHandoffId?: string | null;
   studyHoldStatus: string;
   envelopeMissingWarning: boolean;
-  /** Custody (decision 2026-10-20): who holds the envelope and where this deed's key is. */
+  /** Custody: who holds the envelope and where this deed's key is. */
   envelopeHolderKind?: string | null;
   envelopeHolderUserId?: string | null;
   envelopeHolderLabel?: string | null;
@@ -381,7 +381,7 @@ export type ConfirmKeyAssignmentRequest = {
   keyHolderLabel?: string | null;
 };
 
-/** The reviewer corrects where a deed's key is (decision 2026-10-20). */
+/** The reviewer corrects where a deed's key is. */
 export type SetKeyLocationRequest = {
   keyLocation: string;
   keyHolderUserId?: string | null;
@@ -678,7 +678,7 @@ export async function confirmKeyEnvelopeAssignment(
 }
 
 /**
- * The reviewer's correction of where a deed's matching key is (decision 2026-10-20).
+ * The reviewer's correction of where a deed's matching key is.
  *
  * How it works: POST `/api/key-envelopes/{envelopeId}/assignments/{assignmentId}/key-location`
  * with the place (in_envelope / with_user / returned_court / missing) and, for with_user, the

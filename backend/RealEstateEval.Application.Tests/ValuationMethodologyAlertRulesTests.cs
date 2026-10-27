@@ -18,7 +18,7 @@ public class ValuationMethodologyAlertRulesTests
     {
         foreach (var n in new[] { 4, 5, 11, 15, 16, 21, 23 })
             Assert.True(ValuationMethodologyAlertSeverity.IsHard(n));
-        // D13: m3 (age beyond the extended life) now needs a rationale instead of blocking.
+        // m3 (age beyond the extended life) now needs a rationale instead of blocking.
         foreach (var n in new[] { 1, 2, 3, 6, 7, 8, 9, 10, 12, 13, 14, 17, 18, 19, 22, 24, 25 })
             Assert.False(ValuationMethodologyAlertSeverity.IsHard(n));
         Assert.True(ValuationMethodologyAlertSeverity.RequiresRationale(3));
@@ -385,7 +385,7 @@ public class ValuationMethodologyAlertRulesTests
         Assert.True(m2.Single(c => c.Number == 2).Evaluated);
         Assert.True(m2.Single(c => c.Number == 2).Triggered);
 
- // Actual 60 over extended 50 → m3 (D13: written rationale, not a hard block).
+ // Actual 60 over extended 50 → m3 (written rationale, not a hard block).
         var m3 = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
         {
             ActualAgeYears = 60m,
@@ -401,7 +401,7 @@ public class ValuationMethodologyAlertRulesTests
     [Fact]
     public void Obsolescence_alerts_m4_m12_live()
     {
-        // D12/D13: 130٪ that comes from physical depreciation is capped and explained (m3/m25);
+        // 130٪ that comes from physical depreciation is capped and explained (m3/m25);
         // m4 stays hard for typed functional + external obsolescence above 100٪.
         var physical = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
         {

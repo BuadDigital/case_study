@@ -85,7 +85,7 @@ public class KeyEnvelopeDto
     public DateTime CreatedAtUtc { get; init; }
     public DateTime UpdatedAtUtc { get; init; }
     public Guid? OperationsTaskId { get; init; }
-    /// <summary>reviewer | internal_user | external | court — who holds the envelope now (decision 2026-10-20).</summary>
+    /// <summary>reviewer | internal_user | external | court — who holds the envelope now.</summary>
     public string HolderKind { get; init; } = KeyHolderKinds.Reviewer;
     public string? HolderUserId { get; init; }
     public string? HolderLabel { get; init; }
@@ -184,7 +184,7 @@ public class ConfirmKeyAssignmentRequest
     public string? KeyHolderLabel { get; init; }
 }
 
-/// <summary>The reviewer corrects where a deed's key is (decision 2026-10-20).</summary>
+/// <summary>The reviewer corrects where a deed's key is.</summary>
 public class SetKeyLocationRequest
 {
     [Required, MaxLength(32)]

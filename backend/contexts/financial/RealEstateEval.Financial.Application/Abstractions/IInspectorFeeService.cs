@@ -86,12 +86,12 @@ public interface IPoEnfazBillingService
     Task<IReadOnlyList<EnfazReadyPoSummaryDto>> ListReadyPoSummariesAsync(
         CancellationToken cancellationToken = default);
 
- /// <summary>Ready POs with the search and sort of pagination-contract §10.1; plain array.</summary>
+ /// <summary>Ready POs with the search and sort of pagination-contract; plain array.</summary>
     Task<IReadOnlyList<EnfazReadyPoSummaryDto>> ListReadyPoSummariesAsync(
         EnfazReadyPoListQuery query,
         CancellationToken cancellationToken = default);
 
- /// <summary>One page of ready POs, cut over the materialised readiness scan — §10.1.</summary>
+ /// <summary>One page of ready POs, cut over the materialised readiness scan — section 10.1.</summary>
     Task<PagedResultDto<EnfazReadyPoSummaryDto>> ListReadyPoSummariesPagedAsync(
         EnfazReadyPoListQuery query,
         int skip,
@@ -118,12 +118,12 @@ public interface IPoEnfazBillingService
     Task<IReadOnlyList<EnfazTrackingRowDto>> ListTrackingAsync(
         CancellationToken cancellationToken = default);
 
- /// <summary>Tracking rows with the search and sort of pagination-contract §10.2; plain array.</summary>
+ /// <summary>Tracking rows with the search and sort of pagination-contract; plain array.</summary>
     Task<IReadOnlyList<EnfazTrackingRowDto>> ListTrackingAsync(
         EnfazTrackingListQuery query,
         CancellationToken cancellationToken = default);
 
- /// <summary>One page of tracking rows, cut over the materialised scan — §10.2.</summary>
+ /// <summary>One page of tracking rows, cut over the materialised scan — section 10.2.</summary>
     Task<PagedResultDto<EnfazTrackingRowDto>> ListTrackingPagedAsync(
         EnfazTrackingListQuery query,
         int skip,

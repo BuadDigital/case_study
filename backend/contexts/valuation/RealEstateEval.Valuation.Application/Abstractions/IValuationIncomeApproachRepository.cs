@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Income New file — persistence boundary for the income approach (D17): request, income row
+//  • Income New file — persistence boundary for the income approach: request, income row
 //           (untracked / tracked), approach settings, add and save.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -9,7 +9,7 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.Valuation.Application.Abstractions;
 
 /// <summary>
-/// Persistence boundary for the income approach (D17). <c>ValuationIncomeApproachService</c> owns
+/// Persistence boundary for the income approach. <c>ValuationIncomeApproachService</c> owns
 /// the validation and the capitalisation chain; only the adapter opens <c>ValuationDbContext</c>.
 /// </summary>
 public interface IValuationIncomeApproachRepository

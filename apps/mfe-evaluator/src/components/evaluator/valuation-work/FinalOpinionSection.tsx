@@ -1,9 +1,9 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D3   One name for the discount on screen: «− خصم التصفية», «مبرر خصم التصفية» (was «خصم البيع القسري»
+//  • One name for the discount on screen: «− خصم التصفية», «مبرر خصم التصفية» (was «خصم البيع القسري»
 //         / «مبرر معامل التصفية»).
 // Round 2 (1b19bedc)
-//  • R2-15  Liquidation discount and rounding boxes are type="text" filtered by costNumericInput (Arabic
+//  • Liquidation discount and rounding boxes are type="text" filtered by costNumericInput (Arabic
 //           digits kept; rounding is one digit), with aria-labels.
 //  • Wording  The official valuation date in the value heading prints as yyyy/mm/dd (ymd).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ import { analysesForRationale, appendAnalysesToRationale } from "./lib/final-opi
 
 /**
  * Final-opinion screen — reconciliation table and the value-opinion card.
- * Drafts live in `useFinalOpinionWorkflow`. The Q-6 issuance cycle lives on
+ * Drafts live in `useFinalOpinionWorkflow`. The issuance cycle lives on
  * المراجعة النهائية; methodology alerts live on طريقة المقارنة.
  */
 export const FinalOpinionSection = memo(function FinalOpinionSection({

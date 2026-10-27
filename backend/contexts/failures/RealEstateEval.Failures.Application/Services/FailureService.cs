@@ -77,7 +77,7 @@ public partial class FailureService : IFailureService
 
  /// <summary>
  /// Filtered / sorted page. Visibility narrows the query before the count, so TotalCount is the
- /// actor's total. See docs/architecture/pagination-contract.md §5.
+ /// actor's total. See docs/architecture/pagination-contract.md.
  /// </summary>
     public async Task<PagedResultDto<FailureRecordDto>> ListPagedAsync(
         FailureListQuery query,
@@ -100,6 +100,16 @@ public partial class FailureService : IFailureService
         };
     }
 
+    /// <summary>Wire records of a page (or any list) of failures.</summary>
+    /// <remarks>
+    /// How it works: two batched lookups for the whole list — the specialist display names, and
+    /// the case-study snapshots of the deeds (<see cref="PropertySnapshotsAsync"/>) — then
+    /// <see cref="FailureRecordRules.ToDto"/> per failure with its own snapshot.
+    ///
+    /// Edge cases: a failure whose deed is not found maps with no transaction number and no
+    /// specialist (shown «—»). One snapshot call per list, never per row, so a 10-row page costs
+    /// one extra round trip to case-study, not ten.
+    /// </remarks>
     private async Task<IReadOnlyList<FailureRecordDto>> ToDtosAsync(
         IReadOnlyList<PropertyFailure> list,
         CancellationToken cancellationToken)
@@ -107,9 +117,16 @@ public partial class FailureService : IFailureService
         var names = await _labels.ResolveManyAsync(
             list.Select(f => f.Specialist),
             cancellationToken);
-        return list.Select(f => FailureRecordRules.ToDto(f, names)).ToList();
+        var properties = await PropertySnapshotsAsync(list, cancellationToken);
+        return list
+            .Select(f => FailureRecordRules.ToDto(f, names, properties.GetValueOrDefault(f.PropertyId)))
+            .ToList();
     }
 
+    /// <summary>
+    /// The wire record of one failure — the same enrichment as <see cref="ToDtosAsync"/>, so the row
+    /// an action returns keeps its transaction number and specialist in the queue's cache.
+    /// </summary>
     private async Task<FailureRecordDto> ToDtoAsync(
         PropertyFailure entity,
         CancellationToken cancellationToken)
@@ -117,7 +134,27 @@ public partial class FailureService : IFailureService
         var names = await _labels.ResolveManyAsync(
             [entity.Specialist],
             cancellationToken);
-        return FailureRecordRules.ToDto(entity, names);
+        var properties = await PropertySnapshotsAsync([entity], cancellationToken);
+        return FailureRecordRules.ToDto(entity, names, properties.GetValueOrDefault(entity.PropertyId));
+    }
+
+    /// <summary>The case-study snapshots of the failures' deeds, for the transaction number.</summary>
+    /// <remarks>
+    /// How it works: the distinct non-empty property ids go to case-study in one
+    /// <c>ListPropertiesByIdsAsync</c> call; the answer is keyed by deed id.
+    ///
+    /// Edge cases: legacy rows with an empty property id are skipped; a duplicate snapshot (should
+    /// the lookup ever repeat a deed) keeps the first instead of throwing on the dictionary key.
+    /// </remarks>
+    private async Task<Dictionary<Guid, CaseStudyPropertySnapshotDto>> PropertySnapshotsAsync(
+        IReadOnlyList<PropertyFailure> list,
+        CancellationToken cancellationToken)
+    {
+        var ids = list.Select(f => f.PropertyId).Where(id => id != Guid.Empty).Distinct().ToList();
+        var snapshots = await _caseStudyLookup.ListPropertiesByIdsAsync(ids, cancellationToken);
+        return snapshots
+            .GroupBy(p => p.Id)
+            .ToDictionary(g => g.Key, g => g.First());
     }
 
     public async Task<FailureRecordDto?> GetActiveForPropertyAsync(
@@ -226,7 +263,10 @@ public partial class FailureService : IFailureService
 
         if (create.Result is null) return create;
 
-        var submitted = await SubmitForReviewAsync(Guid.Parse(create.Result.Id), cancellationToken);
+        var submitted = await SubmitForReviewAsync(
+            Guid.Parse(create.Result.Id),
+            request.Reason,
+            cancellationToken);
         return (submitted, null);
     }
 
@@ -281,13 +321,28 @@ public partial class FailureService : IFailureService
         return await ToDtoAsync(entity, cancellationToken);
     }
 
+    /// <summary>«تصعيد إلى المشرف» with the specialist's explanation.</summary>
+    /// <remarks>
+    /// How it works: loads the tracked failure, moves it to <c>review</c> with the note
+    /// (<see cref="PropertyFailure.TrySubmitForReview"/>), saves, then records the timeline step,
+    /// hands the case-study task to the supervisor as an obstruction and notifies the work order's
+    /// case specialists.
+    ///
+    /// Edge cases: null (refused) for a blank note, an unknown id or a status that cannot be
+    /// escalated — the controller turns it into a 400. A bourse obstruction escalates itself with
+    /// the bourse's reason as the note, so system escalations are never blank either.
+    /// </remarks>
     public async Task<FailureRecordDto?> SubmitForReviewAsync(
         Guid id,
+        string escalationNote,
         CancellationToken cancellationToken = default)
     {
+        // The explanation is required (the controller's note validator says so); a blank one
+        // from an in-process caller is refused the same way an illegal transition is.
+        if (string.IsNullOrWhiteSpace(escalationNote)) return null;
         var entity = await _failures.FindAsync(id, cancellationToken);
         if (entity is null) return null;
-        if (!entity.TrySubmitForReview(_time.UtcNow())) return null;
+        if (!entity.TrySubmitForReview(escalationNote, _time.UtcNow())) return null;
 
         await _failures.SaveChangesAsync(cancellationToken);
         await RecordSubmittedAsync(entity, cancellationToken);

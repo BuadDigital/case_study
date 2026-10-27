@@ -409,7 +409,7 @@ const failuresFields: PropertyFieldCatalogEntry[] = [
   { key: "problemTypeId", label: "نوع المشكلة" },
   { key: "failureSeverity", label: "نوع التعذّر (احتمالي / داخلي)" },
   { key: "failureStatus", label: "حالة التعذّر" },
-  { key: "raisedByRole", label: "الدور الرافع للتعذّر" },
+  { key: "raisedByRole", label: "مصدر التعذّر" },
   { key: "internalNote", label: "وصف داخلي / ملاحظة التعذّر" },
   { key: "finalNote", label: "قرار المشرف" },
   { key: "resolutionReason", label: "سبب الحل" },

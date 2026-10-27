@@ -4,7 +4,7 @@
 //            «تعديل التقييم للمقيّم المُسنَد للعقار فقط» unless the caller is the assigned appraiser; the
 //            capability policy alone let any appraiser rewrite a colleague's valuation.
 // Round 2 (1b19bedc)
-//  • R2-6  When Case Study cannot be reached the filter answers 503 with
+//  • When Case Study cannot be reached the filter answers 503 with
 //          AssignedAppraiserMessages.UnverifiedAr (retry) instead of 403.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 

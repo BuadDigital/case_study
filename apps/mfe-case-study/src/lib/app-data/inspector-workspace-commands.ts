@@ -139,7 +139,7 @@ function repairLoadedInspectorDraft(
 export async function getOrCreateInspectorWorkspace(
   input: InspectorWorkspaceLoadInput,
 ): Promise<InspectorWorkspaceDraft | null> {
-  // Decision 2026-10-18: no prefill from a sibling deed's inspection any more — grouped
+  // No prefill from a sibling deed's inspection any more — grouped
   // properties were removed; deeds are merged into one transaction by the case specialist instead.
   let existing = await fetchInspectorWorkspace(input.taskId);
   if (existing) {
@@ -371,7 +371,7 @@ export async function updateInspectorWorkspace(
   // window used to drop `mapPinned` and block «خطاب صحة الموقع».
   const next = mergeInspectorWorkspacePatch(current, patch);
   setCache(next);
-  // Spec §3.4: the edit is on the device now — the network save below is debounced.
+  // Spec: the edit is on the device now — the network save below is debounced.
   if (next.status !== "submitted") {
     void saveLocalWorkingCopy({
       taskId,
@@ -406,7 +406,7 @@ export async function submitInspectorWorkspace(
     return { ok: true, draft: current };
   }
 
-  // ق-10: stamp the on-site completion now, on the device — a submit queued offline
+  // Stamp the on-site completion now, on the device — a submit queued offline
   // keeps this moment; the server's SubmittedAtUtc records the later upload separately.
   setCache(mergeInspectorWorkspacePatch(current, inspectionCompletionStamp()));
   const flushed = await flushInspectorWorkspaceSave(taskId) ?? current;

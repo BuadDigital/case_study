@@ -8,7 +8,7 @@ namespace RealEstateEval.Infrastructure.Data.Contexts;
 /// migrations, and the deploy-time migrator (migration-stream rules) applies the frozen legacy stream first
 /// and then these in a fixed order.
 /// <para>
-/// A8 migration-catalog decomposition: the catalog is keyed by context <em>class name</em>, not
+/// migration-catalog decomposition: the catalog is keyed by context <em>class name</em>, not
 /// <see cref="Type"/>, so a DbContext can move into its context library without this file needing
 /// a reference to it. Concrete type lists live with their consumers (DbMigrate, the container-test
 /// stream migrator) and are validated against <see cref="ApplyOrder"/> at startup.

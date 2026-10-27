@@ -6,7 +6,7 @@
 //         the restored tab.
 //  • P19  useUnsavedEditsGuard warns before a refresh / close loses an unblurred field, a pending autosave or
 //         an unsaved section.
-//  • D17  navAvail gains income (false until the settings report the approach).
+//  • navAvail gains income (false until the settings report the approach).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -340,7 +340,7 @@ export function EvaluatorWindow({
     showToast,
   });
 
-  // Decision 2026-10-18/19: the transaction above this deed — its live deeds feed the window title
+  // The transaction above this deed — its live deeds feed the window title
   // and the linked-deeds card, since a linked property is valued as one.
   const { data: transaction } = useTransactionByPropertyQuery(
     propertySummary?.property?.id ?? task.propertyId,

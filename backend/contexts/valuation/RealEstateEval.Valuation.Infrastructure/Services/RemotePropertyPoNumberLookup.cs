@@ -4,7 +4,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
 /// PO-number resolution over the Case Study HTTP API for hosts without
-/// <c>CaseStudyDbContext</c> (A9). Uses the valuation property context so soft-removed
+/// <c>CaseStudyDbContext</c>. Uses the valuation property context so soft-removed
 /// properties still resolve, matching <see cref="CaseStudyPropertyPoNumberLookup"/>.
 /// </summary>
 public sealed class RemotePropertyPoNumberLookup(ICaseStudyLookup caseStudy) : IPropertyPoNumberLookup

@@ -61,7 +61,7 @@ export type WorkflowTaskDto = {
   propertyFailureBlocked?: boolean | null;
   /*
    * The five PO-record columns of the task's property, joined server-side
-   * (pagination-contract §2, "The PO-record columns on the row"). All optional
+   * (pagination-contract, "The PO-record columns on the row"). All optional
    * and null when the task has no property yet, so no existing consumer changes.
    */
   deedNumber?: string | null;
@@ -106,7 +106,7 @@ async function readTaskWrite<T>(
   return { ok: true, data: await readJson<T>(res) };
 }
 
-/** Allowed `sort` keys — pagination-contract §2. Unknown keys fall back to `created`. */
+/** Allowed `sort` keys — pagination-contract. Unknown keys fall back to `created`. */
 export type WorkflowTaskListSort =
   | "created"
   | "updated"
@@ -118,7 +118,7 @@ export type WorkflowTaskListSort =
   /** `City` of the task's property; same null handling. */
   | "city";
 
-/** `GET /api/workflow-tasks` query — pagination-contract §2. */
+/** `GET /api/workflow-tasks` query — pagination-contract. */
 export type WorkflowTaskListQuery = Omit<ListPageQuery, "sort"> & {
   sort?: WorkflowTaskListSort;
   /** CSV of task kinds; unrecognised tokens are dropped by the server. */

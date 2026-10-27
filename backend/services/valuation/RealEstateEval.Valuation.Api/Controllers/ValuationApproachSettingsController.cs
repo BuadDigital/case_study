@@ -15,7 +15,7 @@ using RealEstateEval.Valuation.Application.Abstractions;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
-/// <summary>Screen 1 — applied approaches (Q-2/Q-3) + cost basis/unit + adjustments unlock.</summary>
+/// <summary>Screen 1 — applied approaches + cost basis/unit + adjustments unlock.</summary>
 [ApiController]
 [Route("api/valuation-requests/{valuationRequestId:guid}/approach-settings")]
 [Authorize]

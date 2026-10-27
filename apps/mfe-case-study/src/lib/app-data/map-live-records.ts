@@ -210,7 +210,7 @@ export function mapPoRecordsToMapProperties(
         valuer: valuation?.valuer ?? null,
         coords,
         coordsSource,
-        // Decision 2026-10-19: deeds of one transaction cluster into one point. A transaction
+        // Deeds of one transaction cluster into one point. A transaction
         // with one deed stays a single (groupForMap turns one-member groups back into singles).
         propertyGroupId: property.transactionId?.trim() || null,
         transactionNumber:

@@ -5,7 +5,7 @@
 //  • Reuse  The assigned-appraiser lookup delegates to the shared IAssignedAppraiserCheck instead of a
 //           private copy.
 // Round 2 (1b19bedc)
-//  • R2-6  AssignedAppraiserRefusalAsync: null for the assigned appraiser, «أعد المحاولة»
+//  • AssignedAppraiserRefusalAsync: null for the assigned appraiser, «أعد المحاولة»
 //          (AssignedAppraiserMessages.UnverifiedAr) when Case Study could not be read, else forbidden.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -38,7 +38,7 @@ public sealed partial class ValuationReportDraftService
     /// today). Next it fixes the report number through <see cref="EnsureReportNumberCoreAsync"/>, issues the
     /// deposit copy unless already frozen, approves the draft with the compressed snapshot and its SHA-256,
     /// notifies the case specialist, saves and writes the timeline milestone.
-    /// Edge cases: the number is fixed before the freeze (decision 2026-10-19) so the frozen copy always
+    /// Edge cases: the number is fixed before the freeze so the frozen copy always
     /// carries PRV-…; a Case Study failure refuses the approval with nothing frozen. A retry after a failed
     /// second save finds the copy frozen and only completes the approval.
     /// </remarks>
@@ -71,7 +71,7 @@ public sealed partial class ValuationReportDraftService
         if (!ValuationReportDraft.IsApprovalDate(request.ReportDate, _time.GetUtcNow().UtcDateTime))
             return (null, Error(ValuationReportDraft.ReportDateNotTodayAr));
 
-        // Decision 2026-10-19: the approval is one of the two moments that fix the transaction's
+        // The approval is one of the two moments that fix the transaction's
         // official reference; the report number PRV-… derives from it and must exist before the copy freezes.
         var (_, numberError) = await EnsureReportNumberCoreAsync(vr, cancellationToken);
         if (numberError is not null) return (null, Error(numberError));
@@ -149,7 +149,7 @@ public sealed partial class ValuationReportDraftService
     }
 
     /// <summary>
-    /// Decision 2026-10-19: lets the assigned appraiser fix the PRV-… report number before approving
+    /// Lets the assigned appraiser fix the PRV-… report number before approving
     /// (it is printed in the frozen copy).
     /// </summary>
     /// <remarks>

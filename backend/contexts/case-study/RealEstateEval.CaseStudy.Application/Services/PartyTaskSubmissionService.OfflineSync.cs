@@ -8,7 +8,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Application.Services;
 
 /// <summary>
-/// Offline field work (security_offline_spec §4.4, decisions log ق-10): the source-data
+/// Offline field work (security_offline_spec, decisions log): the source-data
 /// fingerprint the inspector's device echoes back, the specialist alert when it is stale,
 /// and the audit entry that keeps on-site completion apart from the upload moment.
 /// </summary>
@@ -21,7 +21,7 @@ public partial class PartyTaskSubmissionService
         (await _repo.ListPropertiesAsync([propertyId], cancellationToken))
             .GetValueOrDefault(propertyId);
 
-    /// <summary>The task's property carries the Enfaz handover stamp (Q-9: delivered, frozen).</summary>
+    /// <summary>The task's property carries the Enfaz handover stamp (delivered, frozen).</summary>
     private async Task<bool> IsHandedOverToEnfazAsync(
         WorkflowTask task,
         CancellationToken cancellationToken) =>
@@ -65,7 +65,7 @@ public partial class PartyTaskSubmissionService
             : (payloadJson, null);
 
     /// <summary>
-    /// Spec §4.4 special case: the specialist's source data (deed, owner, court, request,
+    /// Spec special case: the specialist's source data (deed, owner, court, request,
     /// commissioning) changed after the inspector downloaded the task. The server's values
     /// stand; the case specialist is told to review the inspector's answers. One unread
     /// alert per task — a later save refreshes it instead of stacking.
@@ -116,7 +116,7 @@ public partial class PartyTaskSubmissionService
     }
 
     /// <summary>
-    /// ق-10: the approved inspection stamp is the on-site completion the device recorded
+    /// The approved inspection stamp is the on-site completion the device recorded
     /// (also in the payload's inspection date/time); the upload moment is this request —
     /// both go to the audit trail, kept apart.
     /// </summary>

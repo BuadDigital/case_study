@@ -5,7 +5,7 @@ namespace RealEstateEval.Platform.Application.Abstractions;
 
 /// <summary>
 /// Persistence boundary for the singleton organization settings and the immutable report
-/// text-package registry (قرار 23). <c>OrganizationSettingsService</c> in
+/// text-package registry. <c>OrganizationSettingsService</c> in
 /// <c>Platform.Application</c> owns the merge, validation and masking rules; only the adapter
 /// opens <c>PlatformDbContext</c> (solid-scorecard finding 1).
 /// </summary>
@@ -28,7 +28,7 @@ public interface IOrganizationSettingsRepository
     /// <summary>Stages a new immutable package version; existing rows are never updated.</summary>
     Task AddTextPackageAsync(ValuationReportTextPackage package, CancellationToken cancellationToken);
 
-    /// <summary>Stages the audit row so it commits with the settings change (D7).</summary>
+    /// <summary>Stages the audit row so it commits with the settings change.</summary>
     Task AppendAuditAsync(AuditLog entry, CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

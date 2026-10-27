@@ -52,7 +52,7 @@ public static class WorkOrderMapper
             SuggestedDeedKind = DeedKindLabels.ToApiValue(
                 DeedKindLabels.SuggestFromIdentifier(p.IdentifierType)),
             DeedNumber = p.DeedNumber,
-            // Decision 2026-10-19: the numbers now live on the transaction above the deed (draft TMP,
+            // The numbers now live on the transaction above the deed (draft TMP,
             // official PR); the deed count lets the screens show «N صكوك» for a merged transaction.
             TransactionId = p.TransactionId == Guid.Empty ? null : p.TransactionId,
             TransactionDraftNumber = p.Transaction?.DraftNumber,

@@ -140,7 +140,7 @@ export function useAdjustmentsMatrixCommands(
   ): Promise<boolean> {
     const ctx = unlocked();
     if (!ctx) return false;
-    // Decision B: a written manual-weight rationale is at least 10 characters (server rule).
+    // A written manual-weight rationale is at least 10 characters (server rule).
     const short = rationaleMinimumError("مبرر الوزن اليدوي", weightRationale);
     if (short) {
       reportFieldError("weightOverrideRationale", short);
@@ -204,7 +204,7 @@ export function useAdjustmentsMatrixCommands(
     return true;
   }
 
-  /** Rule Q-8-1: per-comparable justification override — writes that comparable’s adjustment line only. */
+  /** per-comparable justification override — writes that comparable’s adjustment line only. */
   async function saveLineRationaleOverride(
     selectionId: string,
     factorKey: string,
@@ -216,7 +216,7 @@ export function useAdjustmentsMatrixCommands(
     const text = rawText.trim();
     const item = adoptedFor(context).find((i) => i.id === selectionId);
     if (!item) return;
-    // Decision B: the rationale of a non-zero adjustment is at least 10 characters (server rule).
+    // The rationale of a non-zero adjustment is at least 10 characters (server rule).
     const percent = item.market?.adjustmentLines?.find((l) => l.factorKey === factorKey)?.percent ?? 0;
     const short = percent !== 0 ? rationaleMinimumError("مبرر التسوية للمقارن", text) : null;
     if (short) {

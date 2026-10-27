@@ -21,7 +21,7 @@ public sealed class ServiceModule : IRealEstateEvalServiceModule
         builder.Services.AddClaimsPermissionService();
         builder.Services.AddOperationsInfrastructure(
             builder.Configuration, connectionString!, builder.Environment);
-        // A8: Operations boundary validators live in the context assembly.
+        // Operations boundary validators live in the context assembly.
         builder.Services.AddValidatorsFromAssemblyContaining<CreateOperationsTaskRequestValidator>();
     }
 

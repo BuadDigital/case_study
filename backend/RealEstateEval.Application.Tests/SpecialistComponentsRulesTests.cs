@@ -46,7 +46,7 @@ public class SpecialistComponentsRulesTests
     [InlineData(null)]
     public void An_empty_inventory_table_never_blocks_acceptance(string? inspectedType)
     {
-        // Decision 2026-10-15: the table is not a condition for any asset type.
+        // The table is not a condition for any asset type.
         Assert.Empty(SpecialistComponentsRules.MissingForAcceptance(
             Property("وصف المكونات", lines: 0, inspectedType: inspectedType)));
     }

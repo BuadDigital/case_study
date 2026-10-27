@@ -31,6 +31,7 @@ import {
   ThAction,
   THead,
   Tr,
+  TransactionNumberBadge,
 } from "@platform/ui-kit";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
@@ -43,10 +44,7 @@ import type { RoleId } from "@platform/types";
 import { PoNumber } from "../components/ui/PoNumber";
 import { TickingRemainingTimeCell } from "../components/ui/RemainingTimeCell";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
-import {
-  TransactionNumberBadge,
-  transactionNumberOf,
-} from "../components/ui/TransactionNumberBadge";
+import { transactionNumberOf } from "../lib/app-data/transaction-number";
 import {
   ActiveQueueMobileCards,
   type ActiveQueueMobileCardItem,

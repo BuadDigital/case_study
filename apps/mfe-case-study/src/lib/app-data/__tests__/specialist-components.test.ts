@@ -32,7 +32,7 @@ describe("specialist components", () => {
     // the text is always required, whatever the property is
     expect(specialistComponentsMissing({ componentsText: " " })).toBe(SPECIALIST_COMPONENTS_TEXT_REQUIRED);
     expect(specialistComponentsMissing({ componentsText: "" })).toBe(SPECIALIST_COMPONENTS_TEXT_REQUIRED);
-    // a building without a single inventory line is accepted (decision 2026-10-15)
+    // a building without a single inventory line is accepted
     expect(specialistComponentsMissing({ componentsText: "فيلا" })).toBeNull();
     expect(specialistComponentsMissing({ componentsText: "أرض فضاء" })).toBeNull();
   });

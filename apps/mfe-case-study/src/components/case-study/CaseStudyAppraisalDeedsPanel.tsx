@@ -12,7 +12,7 @@ import { usePoRecordQuery } from "../../query/case-study-queries";
 /**
  * The case-study «inspector inputs» step for a transaction: one inspection review per deed.
  *
- * How it works (phase 4, decision 2026-10-19 — one study per transaction, but every deed was
+ * How it works (phase 4 — one study per transaction, but every deed was
  * inspected on its own):
  * - Reads `transaction.deeds` and drops removed deeds.
  * - Fewer than two live deeds → renders the plain `CaseStudyAppraisalPanel` for `property`.

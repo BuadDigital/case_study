@@ -22,7 +22,7 @@ export type RefreshSessionResult =
       kind: "network" | "server" | "auth";
       /**
        * The server refused because an admin disabled the account (problem code
-       * `account-disabled`) — the device must wipe its offline data (spec §3.4).
+       * `account-disabled`) — the device must wipe its offline data (spec).
        */
       accountDisabled?: boolean;
     };

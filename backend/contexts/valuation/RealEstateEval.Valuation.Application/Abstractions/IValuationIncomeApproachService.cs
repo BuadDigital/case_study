@@ -1,13 +1,13 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Income New file — read and save contract of the income approach (D17, direct capitalisation).
+//  • Income New file — read and save contract of the income approach (direct capitalisation).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Valuation.Application.Contracts;
 
 namespace RealEstateEval.Valuation.Application.Abstractions;
 
-/// <summary>D17 — income approach (direct capitalisation) read and save.</summary>
+/// <summary>Income approach (direct capitalisation) read and save.</summary>
 public interface IValuationIncomeApproachService
 {
     Task<ValuationIncomeApproachDto?> GetAsync(

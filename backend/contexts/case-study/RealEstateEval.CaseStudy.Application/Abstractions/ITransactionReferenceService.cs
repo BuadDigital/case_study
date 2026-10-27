@@ -4,7 +4,7 @@ using RealEstateEval.CaseStudy.Domain;
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
 /// <summary>
-/// The transaction numbers (decision 2026-10-19): a draft number at intake, the official PR
+/// The transaction numbers: a draft number at intake, the official PR
 /// reference at the first approval of the case-study report or the valuation report, and the
 /// report numbers derived from it.
 /// </summary>

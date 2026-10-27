@@ -53,7 +53,7 @@ export const OPERATIONS_TASK_PRIORITY_COLORS: Record<string, string> = {
   low: "#8a8d96",
 };
 
-// Decision 2026-10-18: «معاملة» now names the transaction above the deeds, so a task scoped to
+// «معاملة» now names the transaction above the deeds, so a task scoped to
 // one deed (scope "transaction") reads «صك» and a multi-deed task «عدة صكوك».
 export const OPERATIONS_TASK_SCOPE_LABELS: Record<string, string> = {
   transaction: "صك",
@@ -331,7 +331,7 @@ export async function printOperationsTaskDelegationLetter(
 ): Promise<void> {
   if (task.type !== "court_visit" || task.letterRows.length === 0) return;
   const first = task.letterRows[0]!;
- // Numbering workshop + Decision 25 (entity 5): letter takes LT-{year}-{5-digit seq}
+ // Numbering workshop: letter takes LT-{year}-{5-digit seq}
  // from the registry at print time; if allocation fails, print with the old reference (CV-…).
   let letterReference = task.reference;
   const config = apiConfig();

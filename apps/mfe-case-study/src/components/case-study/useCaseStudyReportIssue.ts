@@ -68,7 +68,7 @@ export function useCaseStudyReportIssue(
       showToast(gate.message, "error");
       return;
     }
-    // D16: a traditional deed's outcome is chosen on «مدخلات المعاين» before the issue.
+    // A traditional deed's outcome is chosen on «مدخلات المعاين» before the issue.
     const deedMatchBlock = caseStudyDeedMatchIssueBlock({
       outcome: draft.deedNatureMatchOutcome,
       property,

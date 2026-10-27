@@ -27,7 +27,7 @@ export async function loadFailuresQuery(): Promise<FailureRecord[]> {
   return loadFailuresForQuery();
 }
 
-/** One server page of the failures queue — pagination-contract §5. */
+/** One server page of the failures queue — see the pagination contract. */
 export async function loadFailuresPageQuery(
   query: FailureListQuery,
 ): Promise<PagedResultDto<FailureRecord>> {
@@ -74,8 +74,9 @@ export async function suspendFailure(
 
 export async function submitFailureForReview(
   id: string,
+  note: string,
 ): Promise<FailureMutationResult> {
-  return submitFailureForReviewAsync(id);
+  return submitFailureForReviewAsync(id, note);
 }
 
 export async function approveFailure(

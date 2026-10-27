@@ -62,7 +62,7 @@ public class SchemaAccessBoundaryTests
     [Fact]
     public void LegacyContextIsNotUsedAnywhere()
     {
-        // A10: the god context is archived (git tag a10-legacy-stream-final). Nothing may
+        // The god context is archived (git tag a10-legacy-stream-final). Nothing may
         // mention it again — not even in comments — outside the Infrastructure project.
         Assert.True(
             SourceFacts.GodContextUsageOutsideInfrastructure.Count == 0,
@@ -72,7 +72,7 @@ public class SchemaAccessBoundaryTests
     }
 
  /// <summary>
- /// rule 1: one table has one write owner at every stage. A persistence service
+ /// One table has one write owner at every stage. A persistence service
  /// registered by several APIs means several processes write its tables, so the recorded
  /// fan-out may shrink but never grow.
  /// </summary>

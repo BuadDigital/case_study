@@ -21,7 +21,7 @@ const OFFLINE_PROFILE_KEY = "/__ejada/offline-profile";
 
 /**
  * Field-role input-form screens kept for offline reload / cold start (plus their task
- * detail routes) — spec §3.1 allows only these offline. Mirrors `OFFLINE_FORM_PAGE_IDS`
+ * detail routes) — spec allows only these offline. Mirrors `OFFLINE_FORM_PAGE_IDS`
  * in packages/app-shared/src/offline/offline-routes.ts.
  */
 const OFFLINE_PAGE_PREFIXES = ["/active-inspection", "/operations-tasks", "/keys"];
@@ -128,7 +128,7 @@ async function offlinePageFor(url) {
   const cached = await cache.match(pageCacheKey(url));
   if (cached) return cached;
 
-  // Offline a field user gets their input forms only (spec §3.1): the start URL
+  // Offline a field user gets their input forms only (spec): the start URL
   // (`/?source=pwa`) and any other screen send them to their queue. The login screen
   // cannot work offline, so it keeps the offline page.
   if (url.pathname !== "/login" && !url.pathname.startsWith("/login/")) {

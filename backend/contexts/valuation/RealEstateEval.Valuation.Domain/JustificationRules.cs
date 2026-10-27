@@ -8,9 +8,9 @@
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// Q-8-2: required rationales must be non-blank (trimmed).
+/// Required rationales must be non-blank (trimmed).
 /// Applies to all required rationales in the valuation package (adjustments, weights, tags, rationale alerts)
-/// without touching "free text" fields (decision 19).
+/// without touching "free text" fields.
 /// </summary>
 public static class JustificationRules
 {
@@ -33,7 +33,7 @@ public static class JustificationRules
         $"{labelAr}: المبرر مطلوب — اكتب سبباً غير فارغ (ق-8).";
 
     /// <summary>
-    /// Round-2 decision B: a rationale the methodology requires (factor, manual weight, alert
+    /// Round-2: a rationale the methodology requires (factor, manual weight, alert
     /// override, liquidation discount, cap rate, cost discount / obsolescence) is at least this
     /// many characters after trimming.
     /// </summary>
@@ -58,7 +58,7 @@ public static class JustificationRules
 }
 
 /// <summary>
-/// Q-8-1: rationale is at factor level, not line×comparable — one factor rationale covers all comparables
+/// Rationale is at factor level, not line×comparable — one factor rationale covers all comparables
 /// while the logic is the same, with optional per-comparable override when they differ.
 /// Adjustment row holds the "override" only; empty inherits the factor rationale.
 /// </summary>

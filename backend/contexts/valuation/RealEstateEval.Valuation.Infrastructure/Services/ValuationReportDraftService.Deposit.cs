@@ -1,9 +1,9 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D15  A concurrency conflict while generating the final PDF (a correction saved meanwhile) no longer
+//  • A concurrency conflict while generating the final PDF (a correction saved meanwhile) no longer
 //         fails the registration; the copy reads «preparing» until that PDF is made.
 // Round 2 (1b19bedc)
-//  • R2-6  Uses AssignedAppraiserRefusalAsync: when Case Study cannot be read the answer is «أعد المحاولة»,
+//  • Uses AssignedAppraiserRefusalAsync: when Case Study cannot be read the answer is «أعد المحاولة»,
 //          not «forbidden».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -60,7 +60,7 @@ public sealed partial class ValuationReportDraftService
         }
         catch (DbUpdateConcurrencyException)
         {
-            // D15: a correction saved meanwhile owns the copy now — it generates its own PDF; this
+            // A correction saved meanwhile owns the copy now — it generates its own PDF; this
             // registration stands and the copy simply reads «preparing» until then.
         }
         return (await issuance.GetStateAsync(valuationRequestId, cancellationToken) ?? result, null);

@@ -100,7 +100,7 @@ public sealed class ValuationReportWorkflowHandler
 
         await CompleteAsync(task, propertyId, payload.DisplayId, cancellationToken);
 
-        // Phase 5 (decision 2026-10-19): one valuation per transaction — the final issuance on the
+        // Phase 5: one valuation per transaction — the final issuance on the
         // holder deed closes the appraisal task of every other deed too. Their packages were
         // never submitted (the holder's was), so the submitted check does not apply to them.
         foreach (var siblingId in await _tasksLookup.ListSiblingDeedIdsAsync(propertyId, cancellationToken))

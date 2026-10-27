@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  New file — client for GET / PUT /api/valuation-requests/{id}/income-approach
+//  • New file — client for GET / PUT /api/valuation-requests/{id}/income-approach
 //         (ValuationIncomeApproachDto, SaveValuationIncomeApproachRequest) through sendValuationResource.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -10,7 +10,7 @@ import type { ValuationSelectionsApiConfig } from "./valuation-comparable-select
 /** How operating expenses are entered: a typed annual amount, or a % of the effective gross income. */
 export type OperatingExpensesMode = "amount" | "pct_of_egi";
 
-/** D17 — income approach (direct capitalisation): the appraiser's inputs and the derived chain. */
+/** Income approach (direct capitalisation): the appraiser's inputs and the derived chain. */
 export type ValuationIncomeApproachDto = {
   valuationRequestId: string;
   propertyId: string;

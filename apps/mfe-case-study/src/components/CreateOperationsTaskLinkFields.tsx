@@ -103,7 +103,7 @@ export function CreateTaskLinkScopeFields({
 
       {scope === "transaction" && selectedPo ? (
         <div className={opsFldFull}>
-          {/* Decision 2026-10-19: the transaction sits above its deeds, so this picks a deed, not «the transaction». */}
+          {/* The transaction sits above its deeds, so this picks a deed, not «the transaction». */}
           <label className={opsTfLblInFld}>الصك *</label>
           <select
             className={opsFldControl}

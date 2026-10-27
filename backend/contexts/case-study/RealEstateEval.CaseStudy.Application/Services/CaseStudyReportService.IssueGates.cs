@@ -3,7 +3,7 @@ using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
-/// <summary>The issue's per-deed reads: the deed kinds (D16 match gate) and the active-failure gate.</summary>
+/// <summary>The issue's per-deed reads: the deed kinds (match gate) and the active-failure gate.</summary>
 public partial class CaseStudyReportService
 {
     /// <summary>The deed kinds of every deed the one study covers (the holder's own when it stands alone).</summary>

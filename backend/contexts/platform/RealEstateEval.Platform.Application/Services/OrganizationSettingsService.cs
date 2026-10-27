@@ -13,7 +13,7 @@ namespace RealEstateEval.Platform.Application.Services;
 
 /// <summary>
 /// Organization settings use case: read with secrets masked, merge-and-validate on save, and
-/// the قرار 23 text-package versioning. Persistence goes through
+/// the text-package versioning. Persistence goes through
 /// <see cref="IOrganizationSettingsRepository"/>, so this file holds rules only - no EF
 /// (solid-scorecard finding 1).
 /// </summary>
@@ -50,7 +50,7 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
         var row = await _repo.GetSettingsAsync(cancellationToken);
         var dto = row is null ? Defaults() : FromRow(row);
 
-        // Decision 23: Seed Package (default) version 1 implicit; Version History actually starts with
+        // Seed Package (default) version 1 implicit; Version History actually starts with
         // The first save touches the managed block.
         var latestVersion = await _repo.GetLatestTextPackageVersionAsync(cancellationToken);
         dto.ValuationReport.TextPackageVersion =
@@ -70,7 +70,7 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
         var row = await _repo.FindSettingsAsync(cancellationToken);
         var now = _time.UtcNow();
 
-        // Decision 23: Any modification in the managed text block releases a complete new text package with number
+        // Any modification in the managed text block releases a complete new text package with number
         // one version for the package — an immutable version history.
         var textPackageVersion = await EnsureTextPackageVersionAsync(
             current.ValuationReport, next.ValuationReport, actorId, now, cancellationToken);
@@ -113,7 +113,7 @@ public sealed partial class OrganizationSettingsService : IOrganizationSettingsS
 
 
  /// <summary>
- /// Decision 23: Managed block = 6 fields (Professional Standards/Autonomy/Restrictions/Conditions/IVS/Glossary).
+ /// Managed block = 6 fields (Professional Standards/Autonomy/Restrictions/Conditions/IVS/Glossary).
  /// Seed Package “Copy 1” is recorded when the block is first touched, any subsequent variation adds a copy
  /// Completely new — rows are never modified.
  /// </summary>

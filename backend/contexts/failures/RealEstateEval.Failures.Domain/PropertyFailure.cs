@@ -22,6 +22,8 @@ public class PropertyFailure
     public string Severity { get; private set; } = PropertyFailureSeverity.Internal;
     public string RaisedByRole { get; private set; } = "";
     public string InternalNote { get; private set; } = "";
+ /// <summary>The specialist's explanation when escalating to the supervisor (the latest escalation).</summary>
+    public string EscalationNote { get; private set; } = "";
     public string FinalNote { get; private set; } = "";
     public string ResolutionReason { get; private set; } = "";
     public string ContinueInstructions { get; private set; } = "";
@@ -85,11 +87,24 @@ public class PropertyFailure
         return true;
     }
 
-    public bool TrySubmitForReview(DateTime nowUtc)
+ /// <summary>«تصعيد إلى المشرف» — the specialist hands an internal or returned failure up for review.</summary>
+ /// <remarks>
+ /// How it works: from <c>internal</c> or <c>returned</c> only, the status becomes <c>review</c>
+ /// and the specialist's explanation is stored trimmed in <see cref="EscalationNote"/>, where the
+ /// supervisor reads it as «سبب التصعيد». Returns false and changes nothing from any other status.
+ ///
+ /// Edge cases: a failure escalated again after a return overwrites the note with the latest one.
+ /// A blank note is refused one level up (the service and the controller's note validator) — the
+ /// escalation used to carry no explanation at all; now it must.
+ /// A possible failure also has status <c>internal</c>, so the domain would accept it; the screen
+ /// offers «تأكيد تعذّر داخلي» instead of the escalate button for it.
+ /// </remarks>
+    public bool TrySubmitForReview(string escalationNote, DateTime nowUtc)
     {
         if (Status is not (PropertyFailureStatus.Internal or PropertyFailureStatus.Returned))
             return false;
         Status = PropertyFailureStatus.Review;
+        EscalationNote = escalationNote.Trim();
         UpdatedAtUtc = nowUtc;
         return true;
     }
@@ -138,6 +153,32 @@ public class PropertyFailure
         if (Status != PropertyFailureStatus.Review)
             return false;
         Status = PropertyFailureStatus.Approved;
+        FinalNote = finalNote.Trim();
+        UpdatedAtUtc = nowUtc;
+        return true;
+    }
+
+ /// <summary>
+ /// «التعذر النهائي عن المعاملة» — the supervisor records the final failure from any open stage
+ /// (possible, internal, returned, escalated); a possible failure is confirmed on the way.
+ /// Resolved, suspended and already-final failures are left alone.
+ /// </summary>
+ /// <remarks>
+ /// How it works: when the status is active and not yet <c>approved</c>, it becomes
+ /// <c>approved</c>, the severity <c>internal</c>, and the supervisor's reason the trimmed
+ /// <see cref="FinalNote"/>. Returns false and changes nothing otherwise.
+ ///
+ /// Edge cases: unlike <see cref="TryApprove"/> it does not require <c>review</c> — the final
+ /// failure comes from the centre's decision and may land before the specialist escalated. The
+ /// false on an already-final failure is what lets a repeated request finalize nothing and be
+ /// answered «المعاملة متعذّرة نهائياً من قبل».
+ /// </remarks>
+    public bool TryFinalize(string finalNote, DateTime nowUtc)
+    {
+        if (!PropertyFailureStatus.IsActive(Status) || Status == PropertyFailureStatus.Approved)
+            return false;
+        Status = PropertyFailureStatus.Approved;
+        Severity = PropertyFailureSeverity.Internal;
         FinalNote = finalNote.Trim();
         UpdatedAtUtc = nowUtc;
         return true;
@@ -225,9 +266,11 @@ public class PropertyFailure
         string continueInstructions = "",
         DateTime? surveyFreezeLiftedAtUtc = null,
         string? surveyFreezeLiftedByUserId = null,
-        string? surveyFreezeLiftReason = null) =>
+        string? surveyFreezeLiftReason = null,
+        string escalationNote = "") =>
         new()
         {
+            EscalationNote = escalationNote,
             Id = id,
             PoNumber = poNumber,
             PropertyId = propertyId,

@@ -31,7 +31,7 @@ public class DatabaseMigrationTests
     public DatabaseMigrationTests(PostgresFixture postgres) => _postgres = postgres;
 
  /// <summary>
- /// A10: the legacy stream is archived, so a fresh database must come up from the nine
+ /// The legacy stream is archived, so a fresh database must come up from the nine
  /// bounded-context streams alone (each carries an Ensure*TablesForStandalone baseline).
  /// </summary>
     [DockerFact]
@@ -113,7 +113,7 @@ public class DatabaseMigrationTests
         await using var provider = services.BuildServiceProvider();
 
  // The seeder writes identity and platform tables, so it needs every stream the deploy
- // migrator applies (A10: the streams alone provision the schema).
+ // migrator applies (the streams alone provision the schema).
         await using (var scope = provider.CreateAsyncScope())
         {
             foreach (var context in BoundedContextStreamMigrator.StreamTypes)

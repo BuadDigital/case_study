@@ -1,9 +1,9 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D11  New file — the one place the cost approach reads the ownership interest and lease years: the
+//  • New file — the one place the cost approach reads the ownership interest and lease years: the
 //         economic life is capped at the remaining lease years for a building-only scope on a leasehold.
 // Round 2 (1b19bedc)
-//  • D11  The cap applies to every scope (ForInterest replaces ForScope; no scope argument) — a «أرض مع
+//  • The cap applies to every scope (ForInterest replaces ForScope; no scope argument) — a «أرض مع
 //         المباني» valuation on a short usufruct was depreciated over the full life.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -12,7 +12,7 @@ using RealEstateEval.Valuation.Domain;
 namespace RealEstateEval.Valuation.Application.Rules;
 
 /// <summary>
-/// D11 (cost side): buildings held under a usufruct or on leased land («حق منفعة / أرض مستأجرة»)
+/// (cost side): buildings held under a usufruct or on leased land («حق منفعة / أرض مستأجرة»)
 /// have their remaining economic life capped at the remaining lease / usufruct years — whatever the
 /// valuation scope (round 2: the cap used to apply to «مباني فقط» only, so a «أرض مع المباني» valuation
 /// on a 2-year usufruct was depreciated over the full 40-year life). The ownership type and lease

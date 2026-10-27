@@ -2,12 +2,12 @@
 // Round 1 (5b554f4e)
 //  • Split  New file — the «تاريخ التقييم» block (issue date or retrospective date / period) moved here
 //           out of ApproachSettingsSection (ValuationDateFields).
-//  • D9   The retrospective block adds «مبرر التقييم بأثر رجعي» (required, at least 10 characters,
+//  • The retrospective block adds «مبرر التقييم بأثر رجعي» (required, at least 10 characters,
 //         printed in the report scope).
-//  • D11  New OwnershipInterestFields: «نوع الملكية المقيَّمة» (ملكية تامة / حق منفعة / أرض مستأجرة) and,
+//  • New OwnershipInterestFields: «نوع الملكية المقيَّمة» (ملكية تامة / حق منفعة / أرض مستأجرة) and,
 //         for a leasehold, «المدة المتبقية (سنة)».
 // Round 2 (1b19bedc)
-//  • R2-18  Date inputs take max = today (the server refuses a future retrospective date) and are
+//  • Date inputs take max = today (the server refuses a future retrospective date) and are
 //           disabled while the settings save.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -100,7 +100,7 @@ function DateInput({
   );
 }
 
-/** «تاريخ التقييم»: issue date or retrospective (a date or a period) with its rationale (D9). */
+/** «تاريخ التقييم»: issue date or retrospective (a date or a period) with its rationale. */
 export function ValuationDateFields({
   saving,
   fieldErrors,
@@ -251,7 +251,7 @@ export function ValuationDateFields({
   );
 }
 
-/** «نوع الملكية المقيَّمة» (D11): freehold, usufruct or leased land with the remaining lease years. */
+/** «نوع الملكية المقيَّمة»: freehold, usufruct or leased land with the remaining lease years. */
 export function OwnershipInterestFields({
   saving,
   fieldErrors,

@@ -2,15 +2,15 @@
 // Round 1 (5b554f4e)
 //  • Cost Cost DTO: IsSaved (stored zeros are the appraiser's — no starter defaults) and the actual /
 //         economic age rationales (ActualAgeRationale, EconomicAgeRationale) on the DTO and the save request.
-//  • D11  Cost DTO: RemainingLeaseYears, LifeCappedByLease and EffectiveLifeYears (life capped by the lease).
-//  • D12  Cost DTO: AppliedObsolescencePct (total capped at 100%) and ObsolescenceNeedsAlert (above 90%).
-//  • D17  Reconciliation DTO: IncomeOpinionValue (NOI ÷ cap rate); income approach may now be enabled.
-//  • Split ValuationApproachSettingsDto and SaveValuationApproachSettingsRequest made partial (D11 fields
+//  • Cost DTO: RemainingLeaseYears, LifeCappedByLease and EffectiveLifeYears (life capped by the lease).
+//  • Cost DTO: AppliedObsolescencePct (total capped at 100%) and ObsolescenceNeedsAlert (above 90%).
+//  • Reconciliation DTO: IncomeOpinionValue (NOI ÷ cap rate); income approach may now be enabled.
+//  • Split ValuationApproachSettingsDto and SaveValuationApproachSettingsRequest made partial ( fields
 //          live in ValuationApproachSettingsDtos.cs).
 // Round 2 (1b19bedc)
 //  • A    Land table: SubjectAreaSqm is the whole building plot; new ApartmentLandShareSqm (rate × share).
 //  • A    Cost DTO and save request: BuildingPlotAreaSqm — the plot the land comparables are compared with.
-//  • R2-10 Arabic validation messages on AnalysisNotes, LiquidationDiscountRationale and the required
+//  • Arabic validation messages on AnalysisNotes, LiquidationDiscountRationale and the required
 //          reconciliation Methods list.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -100,10 +100,10 @@ public class ValuationComparableSelectionListDto
     public bool WeightsSumTo100 { get; init; }
  /// <summary>Weighted adjusted amount across adopted comps — unit rate or whole value per basis.</summary>
     public decimal WeightedPricePerSqm { get; init; }
- /// <summary>Subject land/building site area m² — on the land table, the whole building plot (decision A).</summary>
+ /// <summary>Subject land/building site area m² — on the land table, the whole building plot.</summary>
     public decimal? SubjectAreaSqm { get; init; }
     /// <summary>
-    /// Land table only (decision A): the apartment's share of the plot (m²) the adjusted rate multiplies
+    /// Land table only: the apartment's share of the plot (m²) the adjusted rate multiplies
     /// into the land value — <see cref="MarketOpinionValueRaw"/> is then rate × share; null otherwise.
     /// </summary>
     public decimal? ApartmentLandShareSqm { get; init; }
@@ -124,12 +124,12 @@ public class ValuationComparableSelectionListDto
  /// <summary>Subject-property descriptions per factor (subjSpec) — factorKey → text.</summary>
     public IReadOnlyDictionary<string, string> SubjectSpecs { get; init; } =
         new Dictionary<string, string>();
- /// <summary>Q-8-1: factor-level rationales — factorKey → rationale; comparable row holds override only.</summary>
+ /// <summary>factor-level rationales — factorKey → rationale; comparable row holds override only.</summary>
     public IReadOnlyList<ValuationAdjustmentFactorRationaleDto> FactorRationales { get; init; } = [];
     public IReadOnlyList<ValuationComparableSelectionDto> Items { get; init; } = [];
 }
 
-/// <summary>Q-8-1: adjustment-factor rationale (covers all comparables while the logic is the same).</summary>
+/// <summary>adjustment-factor rationale (covers all comparables while the logic is the same).</summary>
 public class ValuationAdjustmentFactorRationaleDto
 {
     public required string SelectionContext { get; init; }
@@ -227,7 +227,7 @@ public class ValuationCostApproachDto
     public string? UseRestrictionRationale { get; init; }
  /// <summary>. </summary>
     public decimal? ApartmentLandShareSqm { get; init; }
-    /// <summary>Decision A: the whole building plot (m²) saved for the land table; null = not entered.</summary>
+    /// <summary>The whole building plot (m²) saved for the land table; null = not entered.</summary>
     public decimal? BuildingPlotAreaSqm { get; init; }
  /// <summary>computed.</summary>
     public decimal LandUnitRateAfterDiscount { get; init; }
@@ -262,19 +262,19 @@ public class ValuationCostApproachDto
     public string? ExternalObsolescenceRationale { get; init; }
  /// <summary>Economic age + extension — computed (before any lease cap).</summary>
     public decimal ExtendedLifeYears { get; init; }
-    /// <summary>D11: remaining lease years read from the approach settings (null = not leased land).</summary>
+    /// <summary>Remaining lease years read from the approach settings (null = not leased land).</summary>
     public decimal? RemainingLeaseYears { get; init; }
-    /// <summary>D11: true when building-only on leased land shortened the life to actual age + lease.</summary>
+    /// <summary>True when building-only on leased land shortened the life to actual age + lease.</summary>
     public bool LifeCappedByLease { get; init; }
-    /// <summary>The life physical depreciation is measured against (extended life, lease-capped when D11 applies).</summary>
+    /// <summary>The life physical depreciation is measured against (extended life, lease-capped when applies).</summary>
     public decimal EffectiveLifeYears { get; init; }
  /// <summary> — computed, unclamped.</summary>
     public decimal? PhysicalObsolescencePct { get; init; }
  /// <summary> — computed, unclamped (alerts read it).</summary>
     public decimal TotalObsolescencePct { get; init; }
-    /// <summary>D12: obsolescence applied to the cost — total capped at 100%.</summary>
+    /// <summary>Obsolescence applied to the cost — total capped at 100%.</summary>
     public decimal AppliedObsolescencePct { get; init; }
-    /// <summary>D12: total obsolescence above <c>CostApproachRules.HighObsolescenceAlertPct</c> (90%).</summary>
+    /// <summary>Total obsolescence above <c>CostApproachRules.HighObsolescenceAlertPct</c> (90%).</summary>
     public bool ObsolescenceNeedsAlert { get; init; }
  /// <summary> — computed.</summary>
     public decimal DepreciationValue { get; init; }
@@ -376,7 +376,7 @@ public class SaveValuationCostApproachRequest
     public decimal? ApartmentLandShareSqm { get; init; }
 
     /// <summary>
-    /// Decision A: the whole building plot (m²) the land comparables are compared with; null clears it
+    /// The whole building plot (m²) the land comparables are compared with; null clears it
     /// (the land table then falls back as <see cref="CostApproachRules.LandTableSubjectAreaSqm"/> says).
     /// </summary>
     public decimal? BuildingPlotAreaSqm { get; init; }
@@ -438,7 +438,7 @@ public class ValuationReconciliationDto
     public string PropertyId { get; init; } = "";
     public decimal MarketOpinionValue { get; init; }
     public decimal CostOpinionWithLand { get; init; }
-    /// <summary>D17 — income approach indicator (NOI ÷ cap rate); 0 until complete.</summary>
+    /// <summary>Income approach indicator (NOI ÷ cap rate); 0 until complete.</summary>
     public decimal IncomeOpinionValue { get; init; }
     public IReadOnlyList<ValuationReconciliationMethodDto> Methods { get; init; } = [];
     public decimal WeightSumPct { get; init; }
@@ -452,7 +452,7 @@ public class ValuationReconciliationDto
  /// Without additions it is the rounded property value, as before.
  /// </summary>
     public decimal FinalOpinionValue { get; init; }
-    /// <summary>Property value after the liquidation discount, unrounded (§25 first line).</summary>
+    /// <summary>Property value after the liquidation discount, unrounded (section 25 first line).</summary>
     public decimal PropertyValueAfterLiquidation { get; init; }
     public IReadOnlyList<ValuationValueDocumentAdditionDto> Additions { get; init; } = [];
     public decimal AdditionsTotal { get; init; }
@@ -585,7 +585,7 @@ public partial class ValuationApproachSettingsDto
     public bool CostApproachAllowed { get; init; } = true;
     public bool MarketApproachEnabled { get; init; } = true;
     public bool CostApproachEnabled { get; init; } = true;
- /// <summary>Income approach (direct capitalisation, D17) — the appraiser may enable it.</summary>
+ /// <summary>Income approach (direct capitalisation) — the appraiser may enable it.</summary>
     public bool IncomeApproachEnabled { get; init; }
     public string CostBasisKey { get; init; } = "replacement";
     public string CostBasisLabelAr { get; init; } = "";
@@ -596,7 +596,7 @@ public partial class ValuationApproachSettingsDto
     public string CostMeasurementUnitLabelAr { get; init; } = "";
     public bool AdjustmentsEditUnlocked { get; init; } = true;
 
- /// <summary>Valuation purpose (§4j-5) — valuation report settings.</summary>
+ /// <summary>Valuation purpose (section 4j-5) — valuation report settings.</summary>
     public string ValuationPurposeKey { get; init; } = "";
     public string ValuationPurposeLabelAr { get; init; } = "";
     public string? ValuationPurposeNote { get; init; }
@@ -641,7 +641,7 @@ public partial class SaveValuationApproachSettingsRequest
 
     public bool AdjustmentsEditUnlocked { get; init; } = true;
 
- /// <summary>Valuation purpose — required (§4j-5).</summary>
+ /// <summary>Valuation purpose — required (section 4j-5).</summary>
     [MaxLength(32)]
     public string? ValuationPurposeKey { get; init; }
 

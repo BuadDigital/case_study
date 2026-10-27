@@ -2,14 +2,14 @@
 // Round 1 (5b554f4e)
 //  • Split  The valuation-date block moved to ValuationDateFields; the date checks moved to the pure
 //           approachSettingsDraftError (lib/approach-settings-form).
-//  • D9   Holds and sends the retrospective rationale (approachSettingsDraftRequestFields).
-//  • D11  Holds and sends the ownership interest and the remaining lease years (OwnershipInterestFields).
+//  • Holds and sends the retrospective rationale (approachSettingsDraftRequestFields).
+//  • Holds and sends the ownership interest and the remaining lease years (OwnershipInterestFields).
 //  • Income  «أسلوب الدخل» is a working toggle (was «قيد الإنشاء — غير متاح بعد»): saved as
 //            incomeApproachEnabled, reported to the nav for the tab, and enough on its own to start.
 // Round 2 (1b19bedc)
-//  • R2-6  The approach toggles are reported to the nav only after the saved settings load (draftReady) —
+//  • The approach toggles are reported to the nav only after the saved settings load (draftReady) —
 //          the all-off defaults hid every approach tab and a refresh fell back to «البيانات الأساسية».
-//  • R2-18  The empty-state hint names the income approach too.
+//  • The empty-state hint names the income approach too.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -196,7 +196,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
         asCostEnabled &&
         (settings?.costApproachAllowed ?? true) &&
         asCostScope !== "land_only",
-      // D17 — the «أسلوب الدخل» tab follows the unsaved toggle too.
+      // The «أسلوب الدخل» tab follows the unsaved toggle too.
       income: asIncomeEnabled,
     });
   }, [

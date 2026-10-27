@@ -50,31 +50,52 @@ export function failureActorLabel(raw: string | null | undefined): string {
   return value;
 }
 
-/** HTML Case Study list vocabulary for Failures management. */
+/**
+ * The queue's «الحالة» cell — the failure's stage, the severity folded in: a failure not yet
+ * escalated reads «احتمال تعذّر» or «تعذّر داخلي», the supervisor's approval reads «تعذّر نهائي».
+ *
+ * How it works: `internal` splits on the severity; every other status maps to one word.
+ *
+ * Edge cases: the table used to carry a separate «الخطورة» column (احتمال / مؤكد) while this cell
+ * said «داخلي» for a possible failure and «مفتوح» for both a new and a returned one — the two
+ * columns contradicted each other. they are merged now; «مُعاد» now tells the specialist
+ * the supervisor sent it back, and «معلّق» agrees in gender with the other values.
+ */
 export function failureListStatusLabel(
   status: FailureStatus,
   severity?: FailureRecord["severity"],
 ): string {
-  if (status === "review") return "قيد المراجعة";
-  if (status === "returned") return "مفتوح";
   if (status === "internal") {
-    return severity === "suspected" ? "داخلي" : "مفتوح";
+    return severity === "suspected" ? "احتمال تعذّر" : "تعذّر داخلي";
   }
-  if (status === "approved") return "معتمد";
+  if (status === "returned") return "مُعاد";
+  if (status === "review") return "قيد المراجعة";
+  if (status === "approved") return "تعذّر نهائي";
   if (status === "resolved") return "تم الحل";
-  if (status === "suspended") return "معلّقة";
+  if (status === "suspended") return "معلّق";
   return failureStatusLabel(status);
 }
 
+/**
+ * The pill colour of `failureListStatusLabel`.
+ *
+ * How it works: keyed on the status (and severity for `internal`) — navy for a possible failure,
+ * red for work waiting on the specialist, gold under review, dark red for a final failure, green
+ * once resolved, grey otherwise.
+ *
+ * Edge cases: it used to compare the label text, so renaming a label silently turned its pill
+ * grey; keying on the status keeps colours stable through wording changes. A final failure is no
+ * longer green — it was grouped with «تم الحل» as "closed", which read as good news.
+ */
 export function failureListStatusColor(
   status: FailureStatus,
   severity?: FailureRecord["severity"],
 ): string {
-  const label = failureListStatusLabel(status, severity);
-  if (label === "قيد المراجعة") return "#d9a441";
-  if (label === "داخلي") return "#102B4E";
-  if (label === "مفتوح") return "#d9694f";
-  if (label === "معتمد" || label === "تم الحل") return "#3f8f5f";
+  if (status === "internal") return severity === "suspected" ? "#102B4E" : "#d9694f";
+  if (status === "returned") return "#d9694f";
+  if (status === "review") return "#d9a441";
+  if (status === "approved") return "#a33a3a";
+  if (status === "resolved") return "#3f8f5f";
   return "#8a8d96";
 }
 
@@ -83,14 +104,6 @@ export function failureSeverityLabel(
 ): string {
   if (severity === "suspected") return "احتمال تعذّر";
   return "تعذّر داخلي";
-}
-
-/** HTML list: confirmed / possible */
-export function failureListSeverityLabel(
-  severity: FailureRecord["severity"],
-): string {
-  if (severity === "suspected") return "احتمال";
-  return "مؤكد";
 }
 
 export type GroupedFailureRow = {

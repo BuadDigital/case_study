@@ -1,17 +1,17 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • D17  loadValuationApproaches also reads the income approach (getValuationIncomeApproach) into the bundle
+//  • loadValuationApproaches also reads the income approach (getValuationIncomeApproach) into the bundle
 //         (`income`, null when unreadable).
-//  • D1   New reportValuationChoices: purpose (approach settings) and basis / premise (reconciliation, via
+//  • New reportValuationChoices: purpose (approach settings) and basis / premise (reconciliation, via
 //         resolveReportValuationKeys) with their org-list labels and basis definition; the work order's
 //         defaults only when nothing was saved.
-//  • D9   It also returns the retrospective date and rationale when the valuation date is retrospective.
-//  • D11  …and the ownership interest (key, Arabic label, remaining lease years) when one is saved.
+//  • It also returns the retrospective date and rationale when the valuation date is retrospective.
+//  • …and the ownership interest (key, Arabic label, remaining lease years) when one is saved.
 // Round 2 (1b19bedc)
-//  • R2-1 effectiveValuationDate: a retrospective date (or «start — end» period) now outranks the draft's own
+//  • effectiveValuationDate: a retrospective date (or «start — end» period) now outranks the draft's own
 //         date, so the report no longer prints two valuation dates; reportValuationChoices passes
 //         retrospectiveDateEnd.
-//  • R2-17 The output bundle no longer calls listClients (GET /api/clients is case-staff only — the appraiser
+//  • The output bundle no longer calls listClients (GET /api/clients is case-staff only — the appraiser
 //          got a 403); the printed report reads client names off the work order.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -122,7 +122,7 @@ async function loadValuationApproaches(
   market: ValuationComparableSelectionListDto | null;
   landMarket: ValuationComparableSelectionListDto | null;
   cost: ValuationCostApproachDto | null;
-  /** D17 — income approach (direct capitalisation); null when unreadable or never loaded. */
+  /** Income approach (direct capitalisation); null when unreadable or never loaded. */
   income: ValuationIncomeApproachDto | null;
   recon: ValuationReconciliationDto | null;
   settings: ValuationApproachSettingsDto | null;
@@ -234,7 +234,7 @@ export function effectiveValuationDate(input: {
 
 type ValuationListRow = { key: string; name: string; isEnabled: boolean; cells: string[] };
 
-/** D11 fields of the approach settings (read structurally — older servers omit them). */
+/** Fields of the approach settings (read structurally — older servers omit them). */
 type OwnershipInterestFields = {
   ownershipInterestKey?: string | null;
   ownershipInterestLabelAr?: string | null;
@@ -242,7 +242,7 @@ type OwnershipInterestFields = {
 };
 
 /**
- * What §2 / §7 print from the appraiser's saved choices (D1, D9, D11): purpose (approach
+ * What sections 2/7 print from the appraiser's saved choices: purpose (approach
  * settings) and basis / premise (reconciliation) with their org-list labels, the retrospective
  * date and rationale, and the interest valued when it is not the deed's full ownership.
  */

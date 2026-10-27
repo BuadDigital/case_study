@@ -83,7 +83,7 @@ public static class KeyEnvelopeRegistrationRules
     /// <remarks>
     /// How it works: internal → pending_confirm always; receive_back → completed when
     /// <paramref name="actorIsReceiver"/>, else pending_confirm; external / return_court → completed.
-    /// Edge cases (decision 2026-10-20, the receiver confirms): an internal handoff waits for the
+    /// Edge cases (the receiver confirms): an internal handoff waits for the
     /// inspector even if the actor is flagged as receiver; a receive-back recorded by someone other
     /// than the reviewer waits for the reviewer; one the reviewer records himself is his own
     /// confirmation. External and court deliveries complete at once — the letter is the confirmation.
@@ -123,7 +123,7 @@ public static class KeyEnvelopeRegistrationRules
     /// <remarks>
     /// How it works: trims and lower-cases the value; blank is accepted (the trial then takes
     /// <c>KeyLocations.DefaultFor</c> its result); otherwise it must be in_envelope / with_user /
-    /// returned_court / missing, else «مكان المفتاح غير صالح» (decision 2026-10-20).
+    /// returned_court / missing, else «مكان المفتاح غير صالح».
     /// </remarks>
     public static string? ValidateKeyLocation(string? location)
     {

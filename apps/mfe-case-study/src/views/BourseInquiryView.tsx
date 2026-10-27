@@ -26,6 +26,7 @@ import {
   THead,
   Tr,
   useToast,
+  TransactionNumberBadge,
 } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useIdempotentAction } from "@platform/app-shared";
@@ -80,7 +81,6 @@ import { caseStudyTaskForProperty } from "../lib/app-data/tasks";
 import { useRouter } from "next/navigation";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
-import { TransactionNumberBadge } from "../components/ui/TransactionNumberBadge";
 import { canEditProperty } from "../lib/app-data/po-roles";
 import { bourseDeedStatus, DEED_VITALITY_REQUIRED_ERROR } from "./my-task-work-state";
 import { useConfirmActionDialog } from "../components/ConfirmActionDialog";

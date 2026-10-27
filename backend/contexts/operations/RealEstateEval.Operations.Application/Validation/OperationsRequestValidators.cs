@@ -6,7 +6,7 @@ using RealEstateEval.Operations.Domain;
 
 namespace RealEstateEval.Operations.Application.Validation;
 
-// Operations-owned boundary validators (A8): operations tasks and key envelopes.
+// Operations-owned boundary validators: operations tasks and key envelopes.
 // Registered on the Operations host via AddValidatorsFromAssemblyContaining.
 
 public sealed class CreateOperationsTaskRequestValidator : AbstractValidator<CreateOperationsTaskRequest>

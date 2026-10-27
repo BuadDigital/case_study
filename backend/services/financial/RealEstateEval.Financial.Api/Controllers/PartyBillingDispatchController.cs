@@ -21,7 +21,7 @@ public sealed class PartyBillingDispatchController(
     /// <summary>
     /// Same envelope rule as the public route on the Case Study host: page or pageSize present
     /// returns <see cref="PagedResultDto{T}"/>, otherwise the plain array. The page window is
-    /// resolved here from the owner's options. See docs/architecture/pagination-contract.md §9.2.
+    /// resolved here from the owner's options. See docs/architecture/pagination-contract.md.
     /// </summary>
     [HttpGet("ready-lines")]
     public async Task<IActionResult> ReadyLines(
@@ -54,7 +54,7 @@ public sealed class PartyBillingDispatchController(
 
     /// <summary>
     /// Mirrors <c>GET /api/party-billing-statements</c> exactly — the "dispatch envelope" gap of
-    /// pagination-contract §9.1: paged in, paged out. Actor narrowing already happened on the
+    /// pagination-contract: paged in, paged out. Actor narrowing already happened on the
     /// calling host; this route trusts the forwarded <c>assigneeId</c> / <c>issuedOrLaterOnly</c>.
     /// </summary>
     [HttpGet]

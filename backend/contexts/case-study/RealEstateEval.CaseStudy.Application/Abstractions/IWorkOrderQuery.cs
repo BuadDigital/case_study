@@ -30,7 +30,7 @@ public interface IWorkOrderQuery
 
     /// <summary>
     /// KPI counters over the same filtered, visibility-narrowed set as the list. Paging and sort
-    /// members of the query are ignored. See docs/architecture/pagination-contract.md §1.1.
+    /// members of the query are ignored. See docs/architecture/pagination-contract.md.
     /// </summary>
     Task<WorkOrderListCountsDto> CountsAsync(
         WorkOrderListQuery query,

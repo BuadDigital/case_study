@@ -145,7 +145,7 @@ export function ProfessionalValuationReportView() {
     <PageShell variant="canvas" className="gap-0 px-4 pb-4 pt-2 sm:px-6 sm:pb-6" dir="rtl">
       <SettingsAccessNotes canEdit={canEdit} error={error} />
 
-      {/* Decision 23: one version for the whole text pack — any edit, even one paragraph, issues a new pack;
+      {/* One version for the whole text pack — any edit, even one paragraph, issues a new pack;
           in-progress adopts the latest; issued is frozen to texts at issue time. */}
       <Note tone="info" className="mb-3 max-w-[560px]">
         حزمة النصوص المعيارية/القانونية — <strong>نسخة {org?.valuationReport.textPackageVersion ?? 1}</strong>

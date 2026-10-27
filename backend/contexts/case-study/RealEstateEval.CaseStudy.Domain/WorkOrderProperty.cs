@@ -154,18 +154,18 @@ public class WorkOrderProperty : ITrackUpdatedAt
  /// </summary>
     public string? SpecialistComponentsText { get; set; }
 
- // Inspection Limitations (Decision 24 + Q-7) — Construction Question Pattern: Columns on property.
+ // Inspection Limitations — Construction Question Pattern: Columns on property.
  /// <summary>Inspection Scope: full | external | desktop | “(Not captured).</summary>
     public string InspectionScopeKey { get; set; } = "";
  /// <summary>Reason why Inspector is restricted/unabled — Mandatory when range is incomplete.</summary>
     public string? InspectionRestrictionReason { get; set; }
  /// <summary>JSON — unseen units (number + reason for each case).</summary>
     public string? UninspectedUnitsJson { get; set; }
- /// <summary>Q-7 — certified appraiser approval for the “remote desktop” scope.</summary>
+ /// <summary>Certified appraiser approval for the “remote desktop” scope.</summary>
     public string? RemoteInspectionApprovedBy { get; set; }
     public DateTime? RemoteInspectionApprovedAtUtc { get; set; }
 
- /// <summary>Q-9 (Second End): Upload the Transaction over Enfaz — Complete Delivery after Deposit Certificate.</summary>
+ /// <summary>(Second End): Upload the Transaction over Enfaz — Complete Delivery after Deposit Certificate.</summary>
     public DateTime? EnfazHandoverAtUtc { get; set; }
     public string? EnfazHandoverByUserId { get; set; }
 

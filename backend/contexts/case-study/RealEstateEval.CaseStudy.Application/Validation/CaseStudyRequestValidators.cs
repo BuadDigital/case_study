@@ -8,7 +8,7 @@ using RealEstateEval.Application.Validation;
 
 namespace RealEstateEval.CaseStudy.Application.Validation;
 
-// Case-study-owned boundary validators (A8): work orders, clients, and inspection limits.
+// Case-study-owned boundary validators: work orders, clients, and inspection limits.
 // Registered on the Case Study host via AddValidatorsFromAssemblyContaining.
 
 public sealed class CreateWorkOrderRequestValidator : AbstractValidator<CreateWorkOrderRequest>

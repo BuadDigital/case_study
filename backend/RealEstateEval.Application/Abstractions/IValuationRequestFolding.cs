@@ -3,7 +3,7 @@ using RealEstateEval.Application.Contracts;
 namespace RealEstateEval.Application.Abstractions;
 
 /// <summary>
-/// Phase 5 (decision 2026-10-19): one valuation per transaction. When the case-study specialist
+/// Phase 5: one valuation per transaction. When the case-study specialist
 /// merges transactions, the moved deeds' open valuation requests fold into the holder deed's
 /// request; unmerging a deed reopens its own. Case Study calls this over HTTP; the Valuation host
 /// implements it on its own tables. Kept apart from <see cref="IValuationRequestService"/> so the
