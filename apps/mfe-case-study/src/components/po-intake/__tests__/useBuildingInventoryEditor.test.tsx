@@ -171,6 +171,51 @@ describe("useBuildingInventoryEditor save queue", () => {
     expect(hook.result.current.dirty).toBe(false);
   });
 
+  it("keeps each row's key across saves, so the field being typed in is never remounted", async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let n = 0;
+    let calls = 0;
+    api.saveBuildingInventory.mockImplementation(
+      async (_c: unknown, _po: string, _p: string, body: { lines: BuildingInventoryLineDto[] }) => {
+        calls += 1;
+        if (calls === 2) await gate;
+        return { ok: true, data: dto(body.lines.map((l) => ({ ...l, id: l.id ?? `srv-${++n}` }))) };
+      },
+    );
+    const hook = setup("inspector");
+    await waitFor(() => expect(hook.result.current.loading).toBe(false));
+    act(() => hook.result.current.addLine());
+    await typeRow(hook, 0, "الدور الأرضي", "200");
+    const firstKey = hook.result.current.rowKey(hook.result.current.lines[0]!);
+
+    // nothing typed during the save: the reply's rows replace the screen's
+    await act(async () => {
+      await hook.result.current.save();
+    });
+    expect(hook.result.current.lines[0]!.id).toBe("srv-1");
+    expect(hook.result.current.rowKey(hook.result.current.lines[0]!)).toBe(firstKey);
+
+    // a new row typed into while its first save is in the air: it adopts its id, same key
+    act(() => hook.result.current.addLine());
+    await typeRow(hook, 1, "ملحق علوي", "40");
+    const secondKey = hook.result.current.rowKey(hook.result.current.lines[1]!);
+    let pending!: Promise<unknown>;
+    act(() => {
+      pending = hook.result.current.save();
+    });
+    await typeRow(hook, 1, "ملحق علوي", "45");
+    await act(async () => {
+      release();
+      await pending;
+    });
+    expect(hook.result.current.lines.map((l) => l.id)).toEqual(["srv-1", "srv-2"]);
+    expect(hook.result.current.rowKey(hook.result.current.lines[0]!)).toBe(firstKey);
+    expect(hook.result.current.rowKey(hook.result.current.lines[1]!)).toBe(secondKey);
+  });
+
   it("never sends the specialist's report text from the inspector's save", async () => {
     echoServer();
     api.getBuildingInventory.mockResolvedValue({ ok: true, data: dto([], "نص الأخصائي") });

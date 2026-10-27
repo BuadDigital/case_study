@@ -14,6 +14,7 @@ import {
   Input,
   Label,
   Note,
+  opsIconBoxGold,
   Select,
   Textarea,
   useToast,
@@ -279,13 +280,11 @@ export function InspectorCard({
           aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
         >
-          {step != null ? (
-            <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-ink text-[14px] font-extrabold text-[var(--gold-2,#c8b591)]">
-              {arabicStepLabel(step)}
-            </span>
-          ) : (
-            <i className={`ti ${icon} shrink-0 text-lg text-primary`} aria-hidden />
-          )}
+          {/* The section's icon, not its number: numbered navy circles here read like the
+              wizard's step numbers above them (and two cards of one step could share a number). */}
+          <span className={opsIconBoxGold} aria-hidden>
+            <i className={`ti ${icon} text-lg`} />
+          </span>
           <span className="min-w-0 flex-1">
             <span className="block text-[15px] font-bold text-heading">{title}</span>
             {subtitle ? (

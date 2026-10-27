@@ -7,6 +7,7 @@ import {
 import type { SiteLocationAckLetter } from "./site-location-ack-letter";
 import { officialLetterAssetUrls } from "./official-letter-assets";
 import {
+  officialLetterFitToScreenHtml,
   officialLetterFontsHtml,
   officialLetterShellCss,
   officialLetterSignBlockHtml,
@@ -136,6 +137,7 @@ export function siteLocationAckLetterHtml(letter: SiteLocationAckLetter): string
       ${officialLetterSignBlockHtml({ stampUrl: stamp, signatureUrl: signature, clientSignature: true })}
     </div>
   </div>
+  ${officialLetterFitToScreenHtml()}
 </body>
 </html>`;
 }

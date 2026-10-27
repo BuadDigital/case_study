@@ -118,6 +118,7 @@ export function SpecialistComponentsSection({
               lines={lines}
               disabled={locked}
               readView={Boolean(disabled)}
+              rowKey={editor.rowKey}
               onPatch={editor.patchLine}
               onRemove={editor.removeLine}
             />

@@ -54,7 +54,9 @@ export function InspectorInventoryEditor({
     [flush],
   );
 
-  const locked = workLocked || editor.saving || Boolean(editor.loadError);
+  // Not locked while a save is in the air: the save loop takes edits made meanwhile, and disabling
+  // the fields blurred the one being typed in — on a phone the keyboard closed at every pause.
+  const locked = workLocked || Boolean(editor.loadError);
   const status = inventorySaveStatus(editor);
   const warning = inspectorInventoryWarning({
     hasStructures: inspectionHasStructures({
@@ -91,6 +93,7 @@ export function InspectorInventoryEditor({
             <InspectorInventoryLineCards
               lines={editor.lines}
               disabled={locked}
+              rowKey={editor.rowKey}
               onPatch={editor.patchLine}
               onRemove={editor.removeLine}
             />
@@ -98,6 +101,7 @@ export function InspectorInventoryEditor({
             <SpecialistComponentsTable
               lines={editor.lines}
               disabled={locked}
+              rowKey={editor.rowKey}
               onPatch={editor.patchLine}
               onRemove={editor.removeLine}
             />

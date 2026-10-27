@@ -1,12 +1,8 @@
 import type { ToastTone } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "./po-intake-data";
-import {
-  isValidSaudiNationalId,
-  type InspectorWorkspaceDraft,
-} from "./inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
 import {
   SITE_LOCATION_ACK_POPUP_BLOCKED_MESSAGE,
-  SITE_LOCATION_ACK_REQUIRES_NATIONAL_ID_MESSAGE,
   SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE,
   buildSiteLocationAckLetter,
   canPrintSiteLocationAck,
@@ -21,7 +17,8 @@ type ShowToast = (message: string, tone?: ToastTone) => void;
 
 /**
  * «إقرار صحة الموقع» click — requires تثبيت الموقع (or placed GPS on submitted
- * packages), then opens the branded letter.
+ * packages), then opens the branded letter. The contact's national id is optional:
+ * the letter prints a dash when it is empty.
  * Opens the tab synchronously so popup blockers do not kill the await for org settings.
  */
 export function handleSiteLocationAckClick(input: {
@@ -41,11 +38,6 @@ export function handleSiteLocationAckClick(input: {
     })
   ) {
     input.showToast(SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE, "info");
-    return;
-  }
-
-  if (!isValidSaudiNationalId(input.draft.accessContactNationalId)) {
-    input.showToast(SITE_LOCATION_ACK_REQUIRES_NATIONAL_ID_MESSAGE, "info");
     return;
   }
 

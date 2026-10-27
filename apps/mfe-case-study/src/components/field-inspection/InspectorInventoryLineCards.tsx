@@ -19,11 +19,14 @@ const ITEMS_LIST_ID = "inspector-inventory-items";
 export function InspectorInventoryLineCards({
   lines,
   disabled,
+  rowKey,
   onPatch,
   onRemove,
 }: {
   lines: BuildingInventoryLineDto[];
   disabled: boolean;
+  /** Stable key per row (`useBuildingInventoryEditor().rowKey`) — see why there. */
+  rowKey: (line: BuildingInventoryLineDto) => string;
   onPatch: (index: number, next: BuildingInventoryLineDto) => void;
   onRemove: (index: number) => void;
 }) {
@@ -38,7 +41,7 @@ export function InspectorInventoryLineCards({
         const isRepeated = line.itemKey === "repeated_floors";
         return (
           <div
-            key={line.id ?? `new-${index}`}
+            key={rowKey(line)}
             className="grid gap-3 rounded-xl border border-border bg-surface p-3"
           >
             <div className="flex items-center justify-between gap-2">
