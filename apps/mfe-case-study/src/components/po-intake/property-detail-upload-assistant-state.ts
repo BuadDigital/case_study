@@ -63,16 +63,46 @@ export function attachmentIcon(item: Pick<InfathUploadAttachment, "id">): InfazI
   }
 }
 
-/** An attachment can be downloaded once its document carries bytes. */
-export function attachmentReady(item: Pick<InfathUploadAttachment, "document">): boolean {
-  return Boolean(item.document?.dataUrl);
+/**
+ * Whether a document has a file that can be downloaded.
+ *
+ * How it works: a stored file (`attachmentId`) is fetched from the server on download; otherwise the bytes
+ * must already be in `dataUrl` (the generated final valuation report).
+ *
+ * Edge cases and how they were fixed: the panel used to accept `dataUrl` only. Files hydrated from the server
+ * carry their id but a `dataUrl` only when this browser had built a preview, so the deed of a transaction showed
+ * «غير متوفر» on every other device. A PDF's `dataUrl` is also just a picture of its first page — downloading it
+ * gave an image, not the deed — which is why the id wins whenever there is one.
+ */
+export function documentHasFile(
+  doc: Pick<PropertyDetailDocumentEntry, "attachmentId" | "dataUrl"> | null | undefined,
+): boolean {
+  return Boolean(doc?.attachmentId?.trim() || doc?.dataUrl);
 }
 
-export function attachmentStatusLabel(ready: boolean, conditional?: boolean): string {
-  return ready ? "جاهز" : conditional ? "عند الحاجة" : "غير متوفر";
+/** A row can be downloaded once the model marked it ready (a file, or the issued case-study report). */
+export function attachmentReady(item: Pick<InfathUploadAttachment, "status">): boolean {
+  return item.status === "ready";
 }
 
-export function readyAttachments<T extends Pick<InfathUploadAttachment, "document">>(
+/**
+ * The badge text of an attachment row.
+ *
+ * How it works: ready → «جاهز»; a file the transaction does not have at all → its own note (e.g. «لا يوجد رفع
+ * مساحي»); a file needed only in some cases → «عند الحاجة»; otherwise «غير متوفر».
+ *
+ * Edge cases: a transaction with no survey task used to read «عند الحاجة», which left the specialist unsure
+ * whether a survey file was still owed; it now says plainly that there is no survey.
+ */
+export function attachmentStatusLabel(
+  item: Pick<InfathUploadAttachment, "status" | "conditional" | "statusNote">,
+): string {
+  if (item.status === "ready") return "جاهز";
+  if (item.status === "not-needed") return item.statusNote?.trim() || "غير مطلوب";
+  return item.conditional ? "عند الحاجة" : "غير متوفر";
+}
+
+export function readyAttachments<T extends Pick<InfathUploadAttachment, "status">>(
   attachments: readonly T[],
 ): T[] {
   return attachments.filter((a) => attachmentReady(a));

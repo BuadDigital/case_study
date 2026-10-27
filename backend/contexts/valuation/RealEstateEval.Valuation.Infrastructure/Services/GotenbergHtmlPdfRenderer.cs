@@ -28,8 +28,15 @@ public sealed class GotenbergHtmlPdfRenderer(
 {
     public const string RendererName = "gotenberg-chromium";
 
+    /// <summary>
+    /// When the page may be printed: fonts settled, and a page that lays out its own sheets has said it finished —
+    /// the valuation report sets <c>data-rpt-ready</c>, the case-study report (<c>.csrd-root</c>) sets
+    /// <c>data-csrd-ready</c>. Without the second check the case-study report printed before its paging ran.
+    /// </summary>
     internal const string ReadyExpression =
-        "document.fonts.status === 'loaded' && (!document.querySelector('[data-rpt-block],[data-rpt-sheet]') || document.documentElement.getAttribute('data-rpt-ready') === '1')";
+        "document.fonts.status === 'loaded'"
+        + " && (!document.querySelector('[data-rpt-block],[data-rpt-sheet]') || document.documentElement.getAttribute('data-rpt-ready') === '1')"
+        + " && (!document.querySelector('.csrd-root') || document.documentElement.getAttribute('data-csrd-ready') === '1')";
 
  /// <summary>A4 in inches — Gotenberg's paper unit.</summary>
     private const string A4WidthIn = "8.27";

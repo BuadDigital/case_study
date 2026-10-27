@@ -32,12 +32,17 @@ export function InfathCollapseControls({
 
 function InfathAttachmentRow({
   item,
+  downloading,
   onDownload,
 }: {
   item: InfathUploadAttachment;
+  /** The file is being fetched or printed (the case-study report takes a few seconds). */
+  downloading: boolean;
   onDownload: (item: InfathUploadAttachment) => void;
 }) {
   const ready = attachmentReady(item);
+  // «لا يوجد رفع مساحي» is an answer, not a gap: neutral, not the amber of a missing file.
+  const tone = ready ? "success" : item.status === "not-needed" ? "default" : "warning";
   return (
     <div className="flex items-center gap-2.5 rounded-[var(--radius-DEFAULT)] border border-border bg-surface px-3 py-2.5">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-DEFAULT)] bg-surface-2 text-text-2">
@@ -48,16 +53,17 @@ function InfathAttachmentRow({
         <div className="text-[10px] text-text-3">← {item.infathTarget}</div>
       </div>
       <Badge
-        tone={ready ? "success" : "warning"}
+        tone={tone}
         className="shrink-0 text-[10px] font-medium"
       >
-        {attachmentStatusLabel(ready, item.conditional)}
+        {attachmentStatusLabel(item)}
       </Badge>
       {/* Decision 2026-10-20: the shared icon size — sm padding on a fixed 32px box squeezed the svg to ~1px. */}
       <Button
         type="button"
         size="icon"
         disabled={!ready}
+        loading={downloading}
         onClick={() => onDownload(item)}
         aria-label={`تحميل ${item.name}`}
       >
@@ -69,10 +75,13 @@ function InfathAttachmentRow({
 
 export function InfathAttachmentsPanel({
   attachments,
+  downloadingIds,
   onDownload,
   onDownloadAll,
 }: {
   attachments: InfathUploadAttachment[];
+  /** Rows whose file is being fetched or printed right now. */
+  downloadingIds: ReadonlySet<string>;
   onDownload: (item: InfathUploadAttachment) => void;
   onDownloadAll: () => void;
 }) {
@@ -83,14 +92,25 @@ export function InfathAttachmentsPanel({
           <InfazIcon name="paperclip" />
           مرفقات الرفع (PDF) — نزّلها ثم ارفعها في إنفاذ
         </div>
-        <Button type="button" size="sm" variant="primary" onClick={onDownloadAll}>
+        <Button
+          type="button"
+          size="sm"
+          variant="primary"
+          loading={downloadingIds.size > 0}
+          onClick={onDownloadAll}
+        >
           <InfazIcon name="download" />
           تحميل الكل
         </Button>
       </div>
       <div className="grid grid-cols-1 gap-2">
         {attachments.map((item) => (
-          <InfathAttachmentRow key={item.id} item={item} onDownload={onDownload} />
+          <InfathAttachmentRow
+            key={item.id}
+            item={item}
+            downloading={downloadingIds.has(item.id)}
+            onDownload={onDownload}
+          />
         ))}
       </div>
     </section>

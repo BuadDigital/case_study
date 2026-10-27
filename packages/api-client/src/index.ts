@@ -722,6 +722,11 @@ export {
   type ValuationReportDraftStatus,
   type ValuationReportNumberDto,
 } from "./valuation-report-drafts";
+export {
+  renderPrintPdf,
+  type PrintPdfApiConfig,
+  type PrintPdfResult,
+} from "./print-pdf";
 
 export {
   getInspectionLimits,

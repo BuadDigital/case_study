@@ -37,8 +37,19 @@ export type InfathUploadAttachment = {
   id: string;
   name: string;
   infathTarget: string;
-  status: "ready" | "conditional" | "missing";
+  /**
+   * `ready` = a file can be downloaded now; `conditional` = only needed in some cases and missing;
+   * `missing` = needed and missing; `not-needed` = this transaction has no such file at all (the badge
+   * then shows `statusNote`, e.g. «لا يوجد رفع مساحي»).
+   */
+  status: "ready" | "conditional" | "missing" | "not-needed";
   conditional?: boolean;
+  /** The badge text when `status` is `not-needed`. */
+  statusNote?: string;
+  /**
+   * The file behind the row. The case-study report has no stored file: its entry carries only a name,
+   * and the PDF is printed when the row is downloaded.
+   */
   document: PropertyDetailDocumentEntry | null;
 };
 

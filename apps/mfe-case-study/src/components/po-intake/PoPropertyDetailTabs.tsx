@@ -535,6 +535,9 @@ export function PoPropertyDetailTabs({
               record={record}
               property={property}
               task={task ?? null}
+              studyTask={studyTask}
+              reportDeeds={reportDeeds}
+              hasSurveyTask={Boolean(surveyTask && surveyTask.status !== "cancelled")}
               parties={partySubmissionsQuery.data}
               documentSections={propertyDocumentSections}
               loading={partiesLoading}

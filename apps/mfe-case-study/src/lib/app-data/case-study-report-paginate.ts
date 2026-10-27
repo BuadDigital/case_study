@@ -42,6 +42,15 @@ export function paginateCaseStudyReport(root: HTMLElement): void {
   var avail = availableHeight(content);
   var used = 0;
 
+  // The print stylesheet hides the flow (`display:none`). A page laid out in print media — the server
+  // renderer that turns the report into a PDF prints that way — would then measure every block as 0 high,
+  // pile them all onto one sheet and cut off everything past its bottom. Keep the flow laid out (still
+  // invisible) while measuring.
+  var flowStyle = (flow as HTMLElement).style;
+  var previousDisplay = flowStyle.getPropertyValue("display");
+  var previousPriority = flowStyle.getPropertyPriority("display");
+  flowStyle.setProperty("display", "block", "important");
+
   for (var i = 0; i < flow.children.length; i++) {
     var block = flow.children[i] as HTMLElement;
     var style = window.getComputedStyle(block);
@@ -58,6 +67,9 @@ export function paginateCaseStudyReport(root: HTMLElement): void {
     content.appendChild(block.cloneNode(true));
     used += height;
   }
+
+  if (previousDisplay) flowStyle.setProperty("display", previousDisplay, previousPriority);
+  else flowStyle.removeProperty("display");
 
   root.setAttribute("data-paginated", "1");
 }
