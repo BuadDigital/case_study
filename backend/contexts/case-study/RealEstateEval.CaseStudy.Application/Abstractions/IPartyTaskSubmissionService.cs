@@ -68,11 +68,14 @@ public interface IPartyTaskSubmissionService
 
  /// <summary>
  /// Specialist accepts engineering-survey outputs — triggers fee accrual from the pricing table.
+ /// A discount proposal in <paramref name="request"/> sends the fee to the supervisor instead of
+ /// straight to finance.
  /// </summary>
     Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> AcceptAsync(
         Guid taskId,
         PartySubmissionActor actor,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        AcceptPartyTaskSubmissionRequest? request = null);
 
  /// <summary>
  /// Approved appraiser recall: reopens the appraisal package for the deciding specialist.

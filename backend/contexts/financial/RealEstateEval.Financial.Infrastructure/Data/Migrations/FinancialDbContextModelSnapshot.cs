@@ -218,12 +218,12 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<string>("ApprovedByUserId")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FlaggedByName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.Property<string>("FlaggedByUserId")
                         .IsRequired()
@@ -245,6 +245,14 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.Property<DateTime?>("ResolvedAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ResolvedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<decimal?>("ResolvedDiscountSar")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -273,13 +281,18 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
 
                     b.HasIndex("TransactionKey");
 
+                    b.HasIndex("WorkflowTaskId")
+                        .IsUnique()
+                        .HasDatabaseName("UX_DiscountFlags_PendingTask")
+                        .HasFilter("\"Status\" = 'pending'");
+
                     b.HasIndex("TransactionKey", "TargetAssigneeId", "Status");
 
                     b.ToTable("DiscountFlags", "financial", t =>
                         {
                             t.HasCheckConstraint("CK_DiscountFlags_ProposedDiscountSar_NonNegative", "\"ProposedDiscountSar\" IS NULL OR \"ProposedDiscountSar\" >= 0");
 
-                            t.HasCheckConstraint("CK_DiscountFlags_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending', 'approved', 'rejected')");
+                            t.HasCheckConstraint("CK_DiscountFlags_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending', 'approved', 'amended', 'waived')");
                         });
                 });
 
@@ -400,13 +413,6 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<DateTime?>("DisputeDeadlineUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DisputeNotifiedStages")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
                     b.Property<bool>("ExcludedFromBatch")
                         .HasColumnType("boolean");
 
@@ -513,13 +519,13 @@ namespace RealEstateEval.Financial.Infrastructure.Data.Contexts.Financial.Migrat
                         {
                             t.HasCheckConstraint("CK_InspectorFeeLedgers_AgreedFeeSar_NonNegative", "\"AgreedFeeSar\" IS NULL OR \"AgreedFeeSar\" >= 0");
 
-                            t.HasCheckConstraint("CK_InspectorFeeLedgers_BillingStatus", "\"BillingStatus\" IS NULL OR \"BillingStatus\" IN ('draft', 'office-review', 'disputed', 'sup-review', 'at-finance', 'deferred', 'in-statement', 'disb-req', 'disbursed', 'returned', 'inquiry', 'suspended')");
+                            t.HasCheckConstraint("CK_InspectorFeeLedgers_BillingStatus", "\"BillingStatus\" IS NULL OR \"BillingStatus\" IN ('draft', 'sup-review', 'at-finance', 'deferred', 'in-statement', 'disb-req', 'disbursed', 'returned', 'inquiry', 'suspended')");
 
                             t.HasCheckConstraint("CK_InspectorFeeLedgers_NetFeeSar_NonNegative", "\"NetFeeSar\" IS NULL OR \"NetFeeSar\" >= 0");
 
                             t.HasCheckConstraint("CK_InspectorFeeLedgers_PaidAmountSar_NonNegative", "\"PaidAmountSar\" IS NULL OR \"PaidAmountSar\" >= 0");
 
-                            t.HasCheckConstraint("CK_InspectorFeeLedgers_PreSuspensionStatus", "\"PreSuspensionStatus\" IS NULL OR \"PreSuspensionStatus\" IN ('draft', 'office-review', 'disputed', 'sup-review', 'at-finance', 'deferred', 'in-statement', 'disb-req', 'disbursed', 'returned', 'inquiry', 'suspended')");
+                            t.HasCheckConstraint("CK_InspectorFeeLedgers_PreSuspensionStatus", "\"PreSuspensionStatus\" IS NULL OR \"PreSuspensionStatus\" IN ('draft', 'sup-review', 'at-finance', 'deferred', 'in-statement', 'disb-req', 'disbursed', 'returned', 'inquiry', 'suspended')");
 
                             t.HasCheckConstraint("CK_InspectorFeeLedgers_SupervisorDiscountSar_NonNegative", "\"SupervisorDiscountSar\" IS NULL OR \"SupervisorDiscountSar\" >= 0");
                         });

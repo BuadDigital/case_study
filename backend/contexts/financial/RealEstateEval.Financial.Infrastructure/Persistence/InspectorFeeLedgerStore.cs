@@ -48,7 +48,33 @@ public sealed class InspectorFeeLedgerStore : IInspectorFeeLedgerStore
                 && x.UserId == userId,
             cancellationToken);
 
+    public async Task<IReadOnlyList<InspectorFeeLedger>> ListByPoAndAssigneeAsync(
+        string poNumber,
+        string assigneeId,
+        CancellationToken cancellationToken)
+    {
+        var po = poNumber.Trim();
+        var assignee = assigneeId.Trim();
+        return await _financial.InspectorFeeLedgers
+            .Where(x => x.PoNumber == po && x.AssigneeId == assignee)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<DiscountFlag>> ListPendingProposalsAsync(
+        IReadOnlyCollection<Guid> workflowTaskIds,
+        CancellationToken cancellationToken)
+    {
+        if (workflowTaskIds.Count == 0) return [];
+        return await _financial.DiscountFlags
+            .Where(f => f.WorkflowTaskId != null
+                && workflowTaskIds.Contains(f.WorkflowTaskId.Value)
+                && f.Status == DiscountFlagStatuses.Pending)
+            .ToListAsync(cancellationToken);
+    }
+
     public void AddLedger(InspectorFeeLedger ledger) => _financial.InspectorFeeLedgers.Add(ledger);
+
+    public void AddDiscountFlag(DiscountFlag flag) => _financial.DiscountFlags.Add(flag);
 
     public void AddTransition(InspectorFeeTransition transition) =>
         _financial.InspectorFeeTransitions.Add(transition);
@@ -64,6 +90,11 @@ public sealed class InspectorFeeLedgerStore : IInspectorFeeLedgerStore
 
         await _financial.InspectorFeeTransitions
             .Where(x => workflowTaskIds.Contains(x.WorkflowTaskId))
+            .ExecuteDeleteAsync(cancellationToken);
+
+        // Proposals belong to the task's fee; they go with it.
+        await _financial.DiscountFlags
+            .Where(x => x.WorkflowTaskId != null && workflowTaskIds.Contains(x.WorkflowTaskId.Value))
             .ExecuteDeleteAsync(cancellationToken);
 
         await _financial.InspectorFeeLedgers

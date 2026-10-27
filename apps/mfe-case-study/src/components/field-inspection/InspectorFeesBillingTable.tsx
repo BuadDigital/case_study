@@ -32,6 +32,7 @@ import {
   saveInspectorFeePatch,
 } from "@platform/app-shared/app-data/inspector-fees-api";
 import { FeeDiscountModal } from "@platform/app-shared/fees/FeeDiscountModal";
+import { proposedDiscountText } from "../fees/FeeLedgerParts";
 import { FeeActionReasonModal } from "@platform/app-shared/fees/FeeActionReasonModal";
 import { ENG_DISCOUNT_REASONS } from "@platform/app-shared/fees/party-fee-meta";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../../lib/app-data/po-intake-data";
@@ -426,6 +427,11 @@ export function InspectorFeesBillingTable({
                             })
                           }
                         />
+                      ) : row.proposedDiscountSar != null ? (
+                        // A proposal is decided in the «الأمور المالية» queue, not edited here.
+                        <span className="text-[11px] font-semibold text-[#8a5e14]">
+                          {proposedDiscountText(row)} — بانتظار قرارك في «الأمور المالية»
+                        </span>
                       ) : (
                         <span className="text-text-2">
                           {row.discountReason ?? "—"}

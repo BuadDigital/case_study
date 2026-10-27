@@ -98,7 +98,18 @@ export function parseLocaleNumber(
   return PLAIN_NUMBER.test(s) ? Number(s) : Number.NaN;
 }
 
-/** Typed text that reads as a number greater than zero (an area, a price) — the backend's `LocaleNumber.TryParsePositive`. */
+/**
+ * True when typed text reads as a number greater than zero (an area, a price) — the client twin of the
+ * backend's `LocaleNumber.TryParsePositive`.
+ *
+ * How it works: reads the value with `parseLocaleNumber` (Arabic/Persian digits, «٫», thousands commas,
+ * unit suffixes) and accepts it only when it is finite and above zero.
+ *
+ * Edge cases: blank, null, undefined and non-numeric text give NaN → false; zero and negatives → false;
+ * `Infinity` → false (a number input can produce it); a real number passes through unchanged. It
+ * replaces two private copies (the comparable form's `positiveAmount` and the bourse area check) so the
+ * screens cannot disagree about what «greater than zero» means.
+ */
 export function isPositiveLocaleNumber(
   raw: string | number | null | undefined,
 ): boolean {

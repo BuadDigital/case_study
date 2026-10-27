@@ -34,16 +34,72 @@ public sealed class HttpInspectorFeeService(
         CancellationToken cancellationToken = default) =>
         PostAsync($"{Root}/ensure-ledgers-for-property/{propertyId:D}", null, cancellationToken);
 
+    /// <summary>Forwards the accrual (and the optional proposal) to Financial; returns its first error.</summary>
     public async Task<(InspectorFeeRowDto? Row, string? Error)> AccrueEngineeringSurveyFeeAsync(
         Guid workflowTaskId,
         string actorUserId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        EngineeringSurveyDiscountProposalInput? proposal = null)
     {
         var (row, errors) = await PostForResultAsync<InspectorFeeRowDto>(
             $"{Root}/{workflowTaskId:D}/accrue-survey",
-            new AccrueEngineeringSurveyFeeDispatchRequest { ActorUserId = actorUserId },
+            new AccrueEngineeringSurveyFeeDispatchRequest
+            {
+                ActorUserId = actorUserId,
+                Proposal = proposal,
+            },
             cancellationToken);
         return (row, UpstreamJson.FirstError(errors));
+    }
+
+    /// <summary>
+    /// Forwards the supervisor's decision to Financial with the actor's department scope; Financial
+    /// applies the department check.
+    /// </summary>
+    public async Task<(InspectorFeeRowDto? Row, string? Error)> ResolveDiscountProposalAsync(
+        Guid workflowTaskId,
+        ResolveDiscountProposalRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false)
+    {
+        var (row, errors) = await PostForResultAsync<InspectorFeeRowDto>(
+            $"{Root}/{workflowTaskId:D}/discount-proposal/resolve",
+            new ResolveDiscountProposalDispatchRequest
+            {
+                Decision = request,
+                ActorUserId = actorUserId,
+                ActorDepartment = actorDepartment,
+                CanManageAllDepartments = canManageAllDepartments,
+            },
+            cancellationToken);
+        return (row, UpstreamJson.FirstError(errors));
+    }
+
+    /// <summary>
+    /// Forwards a whole-transaction cancellation to Financial. The PO is URL-escaped — PO numbers may
+    /// contain characters that are not path-safe.
+    /// </summary>
+    public async Task<(WaivePartyFeesResultDto? Result, string? Error)> WaivePartyFeesAsync(
+        string poNumber,
+        WaivePartyFeesRequest request,
+        string actorUserId,
+        CancellationToken cancellationToken = default,
+        string? actorDepartment = null,
+        bool canManageAllDepartments = false)
+    {
+        var (result, errors) = await PostForResultAsync<WaivePartyFeesResultDto>(
+            $"{Root}/transactions/{Uri.EscapeDataString(poNumber.Trim())}/waive-party",
+            new WaivePartyFeesDispatchRequest
+            {
+                Waive = request,
+                ActorUserId = actorUserId,
+                ActorDepartment = actorDepartment,
+                CanManageAllDepartments = canManageAllDepartments,
+            },
+            cancellationToken);
+        return (result, UpstreamJson.FirstError(errors));
     }
 
     public Task<InspectorFeesSummaryDto> GetSummaryAsync(
@@ -53,11 +109,12 @@ public sealed class HttpInspectorFeeService(
         string? taskKind = null,
         string? billingStatus = null,
         string? returnTo = null,
-        bool hideDisputed = false,
+        bool hideAwaitingDiscountDecision = false,
         CancellationToken cancellationToken = default,
         string? supervisingDepartment = null)
     {
-        var query = $"{Root}?submittedOnly={submittedOnly}&hideDisputed={hideDisputed}";
+        var query = $"{Root}?submittedOnly={submittedOnly}"
+            + $"&hideAwaitingDiscountDecision={hideAwaitingDiscountDecision}";
         if (!string.IsNullOrWhiteSpace(assigneeId))
             query += $"&assigneeId={Uri.EscapeDataString(assigneeId)}";
         if (!string.IsNullOrWhiteSpace(workflowTaskId))

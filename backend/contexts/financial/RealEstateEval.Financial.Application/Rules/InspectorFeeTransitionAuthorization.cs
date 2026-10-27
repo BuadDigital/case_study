@@ -7,6 +7,11 @@ namespace RealEstateEval.Financial.Application.Rules;
 /// <summary>
 /// Role / assignee gates for inspector-fee billing actions (not status-machine edges).
 /// </summary>
+/// <remarks>
+/// The engineering office has no action of its own on a discount any more (approve / dispute were
+/// retired); the supervisor's decision on a proposed discount goes through
+/// <c>InspectorFeeService.ResolveDiscountProposalAsync</c>, not through a transition.
+/// </remarks>
 public static class InspectorFeeTransitionAuthorization
 {
     public static bool CanPerformAction(
@@ -16,28 +21,16 @@ public static class InspectorFeeTransitionAuthorization
         bool isOperationsManager,
         bool isFinancialOfficer)
     {
- // Employees never enter the office-approval / dispute loop.
-        if (InspectorFeeRules.IsEmployee(ledger.InspectorType)
-            && action is InspectorFeeActions.OfficeApproveDiscount
-                or InspectorFeeActions.OfficeDispute
-                or InspectorFeeActions.ResolveDispute)
-        {
-            return false;
-        }
-
         return action switch
         {
             InspectorFeeActions.SubmitToSupervisor
-                or InspectorFeeActions.CreateDisbursementRequest
-                or InspectorFeeActions.OfficeApproveDiscount
-                or InspectorFeeActions.OfficeDispute =>
+                or InspectorFeeActions.CreateDisbursementRequest =>
                 !string.IsNullOrWhiteSpace(actorAssigneeId)
                 && string.Equals(ledger.AssigneeId?.Trim(), actorAssigneeId.Trim(), StringComparison.Ordinal),
 
             InspectorFeeActions.ApproveToFinance
                 or InspectorFeeActions.ResendToFinance
                 or InspectorFeeActions.ReturnToOffice
-                or InspectorFeeActions.ResolveDispute
                 or InspectorFeeActions.Suspend
                 or InspectorFeeActions.LiftSuspension => isOperationsManager,
 

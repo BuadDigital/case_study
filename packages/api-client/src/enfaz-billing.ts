@@ -50,6 +50,7 @@ export type PoEnfazBillingDto = {
 
 export type EnfazTrackingRowDto = {
   poNumber: string;
+  /** The deed's work order — needed to mark the deed ready for billing. */
   workOrderId: string;
   propertyId: string;
   propertyLabel: string;
@@ -220,6 +221,7 @@ function normalizeTrackingRow(
   const keyFeeSar = Number(raw.keyFeeSar ?? raw.KeyFeeSar ?? 0);
   return {
     poNumber: String(raw.poNumber ?? raw.PoNumber ?? ""),
+    // Both new fields read as empty / null from an older server that does not send them yet.
     workOrderId: String(raw.workOrderId ?? raw.WorkOrderId ?? ""),
     propertyId: String(raw.propertyId ?? raw.PropertyId ?? ""),
     propertyLabel: String(raw.propertyLabel ?? raw.PropertyLabel ?? ""),

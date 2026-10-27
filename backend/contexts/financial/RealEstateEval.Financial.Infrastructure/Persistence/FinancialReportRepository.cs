@@ -191,16 +191,24 @@ public sealed class FinancialReportRepository : IFinancialReportRepository
     }
 
     /// <summary>
-    /// Disputed lines have no agreed amount yet and suspended ones are withheld, so neither is
-    /// a committed cost. Excluding them here keeps them out of every aggregate: costs, margin,
-    /// payables, and the per-PO tracked/disbursed counts.
+    /// Lines whose proposed discount the supervisor has not decided have no agreed amount yet,
+    /// and suspended ones are withheld, so neither is a committed cost. Excluding them here keeps
+    /// them out of every aggregate: costs, margin, payables, and the per-PO tracked/disbursed counts.
     /// </summary>
+    /// <remarks>
+    /// This replaced the old «disputed» exclusion: a proposal awaiting a decision is the new state
+    /// whose amount is not settled. Only <c>sup-review</c> lines <i>with</i> a pending flag are
+    /// excluded — an ordinary line awaiting approval (e.g. an inspector fee) still counts.
+    /// </remarks>
     private IQueryable<InspectorFeeLedger> CompletedLedgers(
         IReadOnlyCollection<Guid> completedPropertyIds) =>
         _fin.InspectorFeeLedgers.AsNoTracking()
             .Where(ledger =>
-                ledger.BillingStatus != InspectorFeeBillingStatus.Disputed
-                && ledger.BillingStatus != InspectorFeeBillingStatus.Suspended)
+                ledger.BillingStatus != InspectorFeeBillingStatus.Suspended
+                && (ledger.BillingStatus != InspectorFeeBillingStatus.SupReview
+                    || !_fin.DiscountFlags.Any(f =>
+                        f.WorkflowTaskId == ledger.WorkflowTaskId
+                        && f.Status == DiscountFlagStatuses.Pending)))
             .Where(ledger =>
                 ledger.PropertyId != null
                 && completedPropertyIds.Contains(ledger.PropertyId.Value));

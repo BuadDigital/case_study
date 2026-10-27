@@ -30,6 +30,13 @@ import {
  * A deed whose financial data has not been marked yet waits for the accountant's «تعليم جاهز للفوترة»;
  * a marked one goes on to «مطابقة الأتعاب» (until the fees are matched) + «تحديث حالة إنفاذ».
  * Table cell and phone card.
+ *
+ * How it works: an unmarked deed shows the mark button to the financial officer (`canMarkReady`) and a
+ * «waiting for its financial data on Enfaz» note to anyone else; a marked deed shows the match button
+ * (only while `enfazFilled` is false) and the refresh button, both opening the work order's billing sheet.
+ *
+ * Edge cases: while one mark is in flight (`markingId` set) every mark button is disabled — not only
+ * the clicked one — so two deeds cannot be marked at once; the clicked button reads «جارٍ التعليم…».
  */
 function EligibleActions({
   row,

@@ -48,7 +48,28 @@ public static class InspectorFeeAccrualRules
     public static int PropertyOrdinalFor(WorkflowTask task, InspectorFeeDeedTarget deed, int ordinal) =>
         deed.PropertyId == task.PropertyId ? task.PropertyOrdinal : ordinal;
 
+    /// <summary>
+    /// Where a freshly accrued survey line lands: straight to finance, or to the supervisor when
+    /// the specialist proposed a discount that is still waiting for a decision.
+    /// </summary>
+    /// <remarks>
+    /// The single place that decides the accrual status, shared by <see cref="NewAccruedLedger"/> and
+    /// <see cref="RefreshAccruedLedger"/> so a new line and a re-accrued line can never disagree.
+    /// </remarks>
+    public static string AccruedStatus(bool awaitsDiscountDecision) =>
+        awaitsDiscountDecision
+            ? InspectorFeeBillingStatus.SupReview
+            : InspectorFeeBillingStatus.AtFinance;
+
     /// <summary>A brand-new accrued ledger line for one deed of a survey task.</summary>
+    /// <remarks>
+    /// <para><b>How it works:</b> the line is created priced (agreed fee + the pricing table it came
+    /// from), stamped accrued now, with no discount. <paramref name="awaitsDiscountDecision"/> picks
+    /// the status through <see cref="AccruedStatus"/>: <c>at-finance</c> for a plain acceptance,
+    /// <c>sup-review</c> when the specialist proposed a discount.</para>
+    /// <para><b>Edge case:</b> even with a proposal the discount stays zero here — the proposal lives
+    /// on the <see cref="DiscountFlag"/>, and only the supervisor's decision writes a discount.</para>
+    /// </remarks>
     public static InspectorFeeLedger NewAccruedLedger(
         WorkflowTask task,
         (Guid TransactionId, Guid DeedId, string UserId) identity,
@@ -57,7 +78,8 @@ public static class InspectorFeeAccrualRules
         string partyType,
         decimal agreedFeeSar,
         Guid? pricingTableId,
-        DateTime nowUtc) => new()
+        DateTime nowUtc,
+        bool awaitsDiscountDecision = false) => new()
         {
             Id = Guid.NewGuid(),
             TransactionId = identity.TransactionId,
@@ -74,7 +96,7 @@ public static class InspectorFeeAccrualRules
             PricingTableId = pricingTableId,
             SupervisorDiscountSar = 0m,
             DiscountReason = null,
-            BillingStatus = InspectorFeeBillingStatus.AtFinance,
+            BillingStatus = AccruedStatus(awaitsDiscountDecision),
             ExcludedFromBatch = false,
             ExclusionReason = null,
             ReturnTo = null,
@@ -86,9 +108,18 @@ public static class InspectorFeeAccrualRules
         };
 
     /// <summary>
-    /// Re-accrues an existing line onto the current identity and price. A discount already on the
-    /// row keeps it in office review; an undiscounted row goes straight back to finance.
+    /// Re-accrues an existing line onto the current identity and price. A new discount proposal
+    /// clears the old discount and waits for the supervisor; otherwise a discount the supervisor
+    /// already set stays and the line goes straight back to finance.
     /// </summary>
+    /// <remarks>
+    /// <para><b>How it works:</b> used when a ledger row already exists for the deed but was never
+    /// priced (e.g. opened before acceptance). Identity, party type, department and price are
+    /// refreshed; then the discount and the status are settled as described above.</para>
+    /// <para><b>Edge case fixed:</b> this used to send a discounted line to the retired
+    /// <c>office-review</c> state for the office to approve. A supervisor discount is final now, so
+    /// the line goes to finance; only a new proposal sends it to the supervisor.</para>
+    /// </remarks>
     public static void RefreshAccruedLedger(
         InspectorFeeLedger ledger,
         WorkflowTask task,
@@ -98,7 +129,8 @@ public static class InspectorFeeAccrualRules
         string partyType,
         decimal agreedFeeSar,
         Guid? pricingTableId,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        bool awaitsDiscountDecision = false)
     {
         ledger.TransactionId = identity.TransactionId;
         ledger.DeedId = identity.DeedId;
@@ -111,16 +143,13 @@ public static class InspectorFeeAccrualRules
         ledger.PropertyId = deed.PropertyId;
         ledger.PropertyOrdinal = PropertyOrdinalFor(task, deed, ordinal);
         ledger.PoNumber = task.PoNumber.Trim();
-        if (ledger.SupervisorDiscountSar <= 0m)
+        if (awaitsDiscountDecision || ledger.SupervisorDiscountSar <= 0m)
         {
             ledger.SupervisorDiscountSar = 0m;
             ledger.DiscountReason = null;
-            ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
         }
-        else
-        {
-            ledger.BillingStatus = InspectorFeeBillingStatus.OfficeReview;
-        }
+
+        ledger.BillingStatus = AccruedStatus(awaitsDiscountDecision);
 
         ledger.AccruedAtUtc = nowUtc;
         ledger.UpdatedAtUtc = nowUtc;
@@ -164,6 +193,12 @@ public static class InspectorFeeAccrualRules
     /// allowed at all (wrong status, hand-priced override on a table-priced row, missing exclusion
     /// reason, discount without a reason) and the caller must abandon the write.
     /// </summary>
+    /// <remarks>
+    /// The discount branch used to clear the dispute negotiation deadline when a disputed discount
+    /// changed. The dispute state and its deadline are retired, so the discount is simply stored
+    /// (never negative). A line with a pending proposal never reaches here with a discount — the
+    /// service refuses that patch first.
+    /// </remarks>
     public static bool TryApplyPatch(InspectorFeeLedger ledger, PatchInspectorFeeRequest request)
     {
         if (!InspectorFeeBillingRules.IsEditableStatus(ledger.BillingStatus)) return false;
@@ -178,19 +213,7 @@ public static class InspectorFeeAccrualRules
         }
 
         if (request.SupervisorDiscountSar.HasValue)
-        {
-            var nextDiscount = Math.Max(0m, request.SupervisorDiscountSar.Value);
- // E6 (Decision Clause 12): a change during the objection cancels the negotiation deadline
- // and its reminders.
-            if (ledger.BillingStatus == InspectorFeeBillingStatus.Disputed
-                && ledger.SupervisorDiscountSar != nextDiscount)
-            {
-                ledger.DisputeDeadlineUtc = null;
-                ledger.DisputeNotifiedStages = null;
-            }
-
-            ledger.SupervisorDiscountSar = nextDiscount;
-        }
+            ledger.SupervisorDiscountSar = Math.Max(0m, request.SupervisorDiscountSar.Value);
 
         if (request.DiscountReason is not null)
         {
@@ -226,53 +249,66 @@ public static class InspectorFeeAccrualRules
         request.SupervisorDiscountSar.HasValue && ledger.SupervisorDiscountSar > 0m;
 
     /// <summary>
-    /// Where a patched line lands. Employees never enter the office-approval / dispute loop, so a
-    /// supervisor discount sends them straight to finance; a discounted cooperator survey line
-    /// needs explicit engineering-office approval.
+    /// Where a patched line lands. A supervisor discount is final for employees and for
+    /// engineering offices alike — the office is told, not asked — so the line goes to finance.
+    /// An accrued survey line left undiscounted also belongs at finance.
     /// </summary>
+    /// <remarks>
+    /// <para><b>How it works:</b></para>
+    /// <list type="number">
+    /// <item>Employee, or an accrued engineering-survey line, that received a discount while in
+    /// draft / sup-review / at-finance / returned / inquiry → <c>at-finance</c>.</item>
+    /// <item>An accrued survey line still in <c>draft</c> → <c>at-finance</c> (survey fees never wait
+    /// in draft; they are payable from acceptance).</item>
+    /// <item>Anything else is left where it is.</item>
+    /// </list>
+    /// <para><b>Edge cases:</b></para>
+    /// <list type="bullet">
+    /// <item>Before the ruling, a discounted survey line went to <c>office-review</c> and waited for
+    /// the office. That loop is gone; the discount goes to finance and the office is notified.</item>
+    /// <item>A cooperator field-inspection line is not moved: its own submit/approve flow decides.</item>
+    /// <item>An unaccrued survey line (no acceptance yet) is not moved: it has no payable fee.</item>
+    /// </list>
+    /// </remarks>
     public static void ApplyStatusAfterPatch(
         InspectorFeeLedger ledger,
         WorkflowTaskKind taskKind,
         bool isEmployee,
         bool discountApplied)
     {
-        if (isEmployee
+        var isSurvey = !isEmployee
+            && taskKind == WorkflowTaskKind.EngineeringSurvey
+            && ledger.AccruedAtUtc is not null;
+
+        if ((isEmployee || isSurvey)
             && discountApplied
             && ledger.BillingStatus is InspectorFeeBillingStatus.Draft
                 or InspectorFeeBillingStatus.SupReview
                 or InspectorFeeBillingStatus.AtFinance
                 or InspectorFeeBillingStatus.Returned
-                or InspectorFeeBillingStatus.Inquiry
-                or InspectorFeeBillingStatus.OfficeReview
-                or InspectorFeeBillingStatus.Disputed)
+                or InspectorFeeBillingStatus.Inquiry)
         {
             ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
             return;
         }
 
-        if (isEmployee
-            || taskKind != WorkflowTaskKind.EngineeringSurvey
-            || ledger.AccruedAtUtc is null
-            || ledger.BillingStatus is not (InspectorFeeBillingStatus.Draft
-                or InspectorFeeBillingStatus.AtFinance
-                or InspectorFeeBillingStatus.OfficeReview
-                or InspectorFeeBillingStatus.Disputed
-                or InspectorFeeBillingStatus.SupReview))
-        {
-            return;
-        }
-
-        if (ledger.SupervisorDiscountSar > 0m)
-        {
-            ledger.BillingStatus = InspectorFeeBillingStatus.OfficeReview;
-        }
-        else if (ledger.BillingStatus is InspectorFeeBillingStatus.OfficeReview
-            or InspectorFeeBillingStatus.Disputed
-            or InspectorFeeBillingStatus.Draft)
-        {
+        if (isSurvey && ledger.BillingStatus == InspectorFeeBillingStatus.Draft)
             ledger.BillingStatus = InspectorFeeBillingStatus.AtFinance;
-        }
     }
+
+    /// <summary>
+    /// Whether the party should hear about a patch: a supervisor discount reaches employees and
+    /// engineering offices directly (it no longer waits for their approval).
+    /// </summary>
+    /// <remarks>
+    /// Only a discount actually sent in the patch counts (see <see cref="DiscountApplied"/>), so
+    /// saving an exclusion or a fee on an already-discounted line does not re-notify the party.
+    /// </remarks>
+    public static bool NotifiesPartyOfDiscount(
+        WorkflowTaskKind taskKind,
+        bool isEmployee,
+        bool discountApplied) =>
+        discountApplied && (isEmployee || taskKind == WorkflowTaskKind.EngineeringSurvey);
 
     /// <summary>The audit row a patch writes when it moved the line.</summary>
     public static InspectorFeeTransition PatchTransition(
@@ -322,9 +358,7 @@ public static class InspectorFeeAccrualRules
         }
 
         if (action is not (InspectorFeeActions.SubmitToSupervisor
-            or InspectorFeeActions.CreateDisbursementRequest
-            or InspectorFeeActions.OfficeApproveDiscount
-            or InspectorFeeActions.OfficeDispute))
+            or InspectorFeeActions.CreateDisbursementRequest))
         {
             return true;
         }
@@ -377,7 +411,11 @@ public static class InspectorFeeAccrualRules
             .Distinct(StringComparer.Ordinal)
             .ToList();
 
-    public static CreateUserNotificationRequest EmployeeDiscountNotification(InspectorFeeLedger ledger)
+    /// <summary>
+    /// «حسم من أتعابك»: the applied discount and the resulting net, ready for billing. Sent to
+    /// employees and engineering offices after a direct supervisor discount.
+    /// </summary>
+    public static CreateUserNotificationRequest PartyDiscountNotification(InspectorFeeLedger ledger)
     {
         var net = InspectorFeeRules.NetFee(ledger.AgreedFeeSar, ledger.SupervisorDiscountSar);
         return new CreateUserNotificationRequest

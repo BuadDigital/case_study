@@ -35,7 +35,7 @@ type UiStatus =
   | "other";
 
 /**
- * Individual-party status bucket (not eng office-review).
+ * Individual-party status bucket (not the engineering-office lane).
  * `returned` / `inquiry` are NOT "work pending" — that was a misleading label for
  * finance/supervisor loops (e.g. returnTo=supervisor).
  */

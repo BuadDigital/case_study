@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web;
@@ -138,16 +139,27 @@ public class PartyTaskSubmissionsController : ControllerBase
         return ToObjectResult(result, errors);
     }
 
+    /// <summary>
+    /// Specialist accepts a party package. The body is optional: an engineering-survey acceptance
+    /// may carry a proposed discount (amount + reason) that sends the fee to the supervisor first.
+    /// </summary>
+    /// <remarks>
+    /// Edge case: every existing caller (inspection accept, offline replay, older clients) posts no
+    /// body. <c>EmptyBodyBehavior.Allow</c> keeps those working — an empty body binds to null and the
+    /// acceptance behaves exactly as before.
+    /// </remarks>
     [HttpPost("{taskId:guid}/accept")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<PartyTaskSubmissionDto>> Accept(
         Guid taskId,
+        [FromBody(EmptyBodyBehavior = EmptyBodyBehavior.Allow)] AcceptPartyTaskSubmissionRequest? request,
         CancellationToken cancellationToken)
     {
         var (result, errors) = await _submissions.AcceptAsync(
             taskId,
             await ResolveActorAsync(cancellationToken),
-            cancellationToken);
+            cancellationToken,
+            request);
         return ToActionResult(result, errors);
     }
 

@@ -225,7 +225,16 @@ public static class TransactionStateRules
     /// Refuse the handover while an issued final report is still being prepared. No issued report
     /// (null / «none») is left to the stage gates; an unreadable status does not block.
     /// </summary>
+    /// <remarks>
+    /// How it works: true only when the status equals «preparing» exactly (ordinal compare) — the final
+    /// copy was issued but its PDF is not generated yet (or the renderer failed and can be retried).
+    /// Edge cases: null (no current copy — e.g. right after a return from Enfaz, before the new cycle's
+    /// copy exists), «none» and «ready» do not block; the stage gates ("valuation report closed") cover
+    /// those. The literal «preparing» was replaced by FinalReportStatusWire.Preparing so the string is
+    /// defined once and a test keeps it equal to the valuation context's FinalReportStatuses.
+    /// </remarks>
     public static bool FinalReportBlocksHandover(string? finalReportStatus) =>
+        // Compared with the shared wire constant, not a string literal, so it cannot drift from the valuation context.
         string.Equals(finalReportStatus, FinalReportStatusWire.Preparing, StringComparison.Ordinal);
 
     /// <summary>

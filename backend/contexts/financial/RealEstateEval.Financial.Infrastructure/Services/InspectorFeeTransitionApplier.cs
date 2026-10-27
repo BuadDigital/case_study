@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -52,14 +53,6 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
         var action = request.Action.Trim().ToLowerInvariant();
         var fromStatus = ledger.BillingStatus;
 
-        if (InspectorFeeRules.IsEmployee(ledger.InspectorType)
-            && action is InspectorFeeActions.OfficeApproveDiscount
-                or InspectorFeeActions.OfficeDispute
-                or InspectorFeeActions.ResolveDispute)
-        {
-            return "مسار الموظف لا يدعم خلاف التسعير — الحسم يُبلَّغ ويصبح جاهزاً مباشرة.";
-        }
-
         if (!InspectorFeeTransitionAuthorization.CanPerformAction(
                 action, ledger, actorAssigneeId, isOperationsManager, isFinancialOfficer))
             return "غير مصرّح بتنفيذ هذا الإجراء.";
@@ -86,7 +79,7 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
             if (kinds.TryGetValue(ledger.WorkflowTaskId, out var taskKind)
                 && taskKind == WorkflowTaskKind.EngineeringSurvey)
             {
-                return "مسار المكتب الهندسي لا يدعم رفع الأتعاب للمشرف — استخدم موافقة الحسم أو الاعتراض من الكشف المبدئي.";
+                return "مسار المكتب الهندسي لا يدعم رفع الأتعاب للمشرف — الأتعاب تُستحق عند قبول الأخصائي للمخرجات.";
             }
         }
 
@@ -168,39 +161,18 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
 
             if (!await IsLedgerWorkSubmittedAsync(ledger.WorkflowTaskId, cancellationToken))
                 return "لا يمكن اعتماد الأتعاب قبل إتمام عمل الطرف.";
-        }
 
-        if (action is InspectorFeeActions.OfficeApproveDiscount
-            or InspectorFeeActions.OfficeDispute)
-        {
-            if (ledger.ExcludedFromBatch)
-                return "لا يمكن معالجة عقار مستبعد.";
-
-            if (ledger.SupervisorDiscountSar <= 0m)
-                return "لا يوجد حسم يحتاج موافقة المكتب.";
-
-            if (action == InspectorFeeActions.OfficeDispute
-                && string.IsNullOrWhiteSpace(request.Reason))
+ // A proposed discount is settled by its own decision (approve / amend / waive), never by a
+ // plain approval that would send the full fee past it.
+ // Edge case: the UI hides «اعتماد ← المالية» for such a line (CanApproveToFinance is false),
+ // but the batch endpoint and old clients could still send the action — so it is refused here,
+ // where every single and batch transition passes.
+            if (await _financial.DiscountFlags.AnyAsync(
+                    f => f.WorkflowTaskId == ledger.WorkflowTaskId
+                        && f.Status == DiscountFlagStatuses.Pending,
+                    cancellationToken))
             {
-                return "سبب الاعتراض مطلوب.";
-            }
-        }
-
-        if (action == InspectorFeeActions.ResolveDispute)
-        {
-            if (ledger.ExcludedFromBatch)
-                return "لا يمكن حسم خلاف لعقار مستبعد.";
-
-            if (!InspectorFeeRules.HasBillableAgreedFee(ledger.AgreedFeeSar))
-                return "يجب إدخال مبلغ الأتعاب المتفق عليه قبل الحسم.";
-
-            if (!InspectorFeeBillingRules.ValidateDiscount(
-                    ledger.SupervisorDiscountSar,
-                    ledger.DiscountReason,
-                    ledger.AgreedFeeSar,
-                    out var resolveDiscountError))
-            {
-                return resolveDiscountError;
+                return DiscountProposalRules.PendingProposalBlocksError;
             }
         }
 
@@ -241,22 +213,6 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
         ledger.ReturnTo = nextReturnTo;
         ledger.UpdatedAtUtc = _time.UtcNow();
 
- // E6 (decision items 9 and 12): deadline is stamped only on entering "disputed", and cleared with
- // its stage log on any exit (either direction) — clearing cancels pending reminders.
-        if (nextStatus == InspectorFeeBillingStatus.Disputed
-            && fromStatus != InspectorFeeBillingStatus.Disputed)
-        {
-            ledger.DisputeDeadlineUtc =
-                BillingNegotiationDeadlines.DeadlineFromUtc(_time.UtcNow());
-            ledger.DisputeNotifiedStages = null;
-        }
-        else if (nextStatus != InspectorFeeBillingStatus.Disputed
-            && ledger.DisputeDeadlineUtc is not null)
-        {
-            ledger.DisputeDeadlineUtc = null;
-            ledger.DisputeNotifiedStages = null;
-        }
-
         _financial.InspectorFeeTransitions.Add(new InspectorFeeTransition
         {
             Id = Guid.NewGuid(),
@@ -295,7 +251,6 @@ public sealed class InspectorFeeTransitionApplier : IInspectorFeeTransitionAppli
         action is InspectorFeeActions.ApproveToFinance
             or InspectorFeeActions.ResendToFinance
             or InspectorFeeActions.ReturnToOffice
-            or InspectorFeeActions.ResolveDispute
             or InspectorFeeActions.Suspend
             or InspectorFeeActions.LiftSuspension;
 

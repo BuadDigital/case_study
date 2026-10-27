@@ -9,11 +9,7 @@
 import { fmtSar } from "@platform/app-shared/format/number";
 import { useDeferredValue, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type {
-  InspectorFeeAction,
-  InspectorFeeRowDto,
-  PartyBillingStatementDto,
-} from "@platform/api-client";
+import type { PartyBillingStatementDto } from "@platform/api-client";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   loadPartyBillingStatements,
@@ -33,16 +29,13 @@ import {
 import { useFeeLedgerWrites } from "./useFeeLedgerWrites";
 
 export function useEngFeesWorkflow(assigneeId: string | undefined) {
-  const { showToast, busyId, setBusyId, invalidate, runFeeTransition } =
-    useFeeLedgerWrites();
+  const { showToast, busyId, setBusyId, invalidate } = useFeeLedgerWrites();
   const [tab, setTab] = useState<TabId>("action");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [stFilter, setStFilter] = useState("");
   const [fnSearch, setFnSearch] = useState("");
   const [openFn, setOpenFn] = useState<string | null>(null);
-  const [objectOpenId, setObjectOpenId] = useState<string | null>(null);
-  const [objectText, setObjectText] = useState("");
   const [invoiceNo, setInvoiceNo] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(todayIso);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
@@ -104,17 +97,6 @@ export function useEngFeesWorkflow(assigneeId: string | undefined) {
     () => filterEngStatements(statements, fnSearch),
     [statements, fnSearch],
   );
-
-  const act = (
-    row: InspectorFeeRowDto,
-    action: InspectorFeeAction,
-    extra?: { reason?: string },
-  ) =>
-    runFeeTransition(row, action, extra, async () => {
-      await invalidate();
-      setObjectOpenId(null);
-      setObjectText("");
-    });
 
   const submitInvoice = async (s: PartyBillingStatementDto) => {
     if (!invoiceNo.trim()) {
@@ -189,10 +171,6 @@ export function useEngFeesWorkflow(assigneeId: string | undefined) {
     openFn,
     setOpenFn,
     busyId,
-    objectOpenId,
-    setObjectOpenId,
-    objectText,
-    setObjectText,
     invoiceNo,
     setInvoiceNo,
     invoiceDate,
@@ -206,7 +184,6 @@ export function useEngFeesWorkflow(assigneeId: string | undefined) {
     readyCount,
     filteredFees,
     filteredFns,
-    act,
     submitInvoice,
     openStatement,
     closeStatementModal,

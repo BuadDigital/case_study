@@ -16,6 +16,16 @@ public sealed partial class TransactionStateService
     /// The accountant marks a handed-over deed «جاهز للفوترة» after its financial data appeared on Enfaz.
     /// Idempotent: a second mark keeps the first stamp. The mark is cleared whenever the handover is.
     /// </summary>
+    /// <remarks>
+    /// How it works: 1) loads the deed's facts (unknown deed → «المعاملة غير موجودة»). 2) Remembers whether it
+    /// was already marked, then asks the entity to mark it (WorkOrderProperty.MarkBillingReady). 3) A refusal
+    /// (not handed over, removed) comes back as the Arabic error with nothing saved. 4) Only a NEW mark is
+    /// saved and recorded (audit + timeline); then the fresh transaction state is returned so the screen
+    /// updates without a second request.
+    /// Edge cases: a repeat mark succeeds without a second save, audit entry or timeline entry; audit and
+    /// timeline failures are swallowed on purpose because the mark is already saved and must not be
+    /// reported as failed; the role check is the controller's (CanMarkBillingReady), not this service's.
+    /// </remarks>
     public async Task<(TransactionStateDto? Result, string? Error)> MarkBillingReadyAsync(
         Guid workOrderId,
         Guid propertyId,

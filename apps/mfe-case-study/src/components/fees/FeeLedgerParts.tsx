@@ -110,8 +110,23 @@ export function FeeLedgerToolbar({
   );
 }
 
-/** «− خصم · مبرر» text for a phone card, or «بسعر الجدول». */
+/**
+ * «حسم مقترح − X · سبب» while the specialist's proposal waits for the supervisor, or null.
+ * Shared by the fee ledgers and the workflow table so every screen words it the same way.
+ * The server only fills `proposedDiscountSar` while the line is still waiting, so a non-null
+ * value always means "undecided".
+ */
+export function proposedDiscountText(row: InspectorFeeRowDto): string | null {
+  if (row.proposedDiscountSar == null) return null;
+  return `حسم مقترح − ${fmt3(row.proposedDiscountSar)}${
+    row.proposedDiscountReason ? ` · ${row.proposedDiscountReason}` : ""
+  }`;
+}
+
+/** «− خصم · مبرر» text for a phone card, the pending proposal, or «بسعر الجدول». */
 function discountText(row: InspectorFeeRowDto): string {
+  const proposed = proposedDiscountText(row);
+  if (proposed) return proposed;
   return row.supervisorDiscountSar > 0
     ? `− ${fmt3(row.supervisorDiscountSar)}${row.discountReason ? ` · ${row.discountReason}` : ""}`
     : "بسعر الجدول";
@@ -179,6 +194,7 @@ export function FeeLedgerTable<S>({
               const { st, meta } = rowStatus(row);
               const { deed, region } = deedParts(row);
               const ded = row.supervisorDiscountSar > 0;
+              const proposed = proposedDiscountText(row);
               return (
                 <Tr key={rowKey(row)}>
                   <Td>
@@ -201,7 +217,11 @@ export function FeeLedgerTable<S>({
                     {fmt3(row.agreedFeeSar)}
                   </TdLtr>
                   <Td>
-                    {ded ? (
+                    {proposed ? (
+                      <span className="text-[11px] font-semibold text-[#8a5e14]">
+                        {proposed}
+                      </span>
+                    ) : ded ? (
                       <span
                         className={
                           discountFullWidth

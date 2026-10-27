@@ -33,7 +33,6 @@ import {
 import { filterActionablePendingBourseItems } from "@case-study/mfe/lib/app-data/pending-bourse-queue";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { loadInspectorFeesSummary } from "@platform/app-shared/app-data/inspector-fees-api";
-import { loadSupervisorEngSurveyPendingAcceptRows } from "@case-study/mfe/components/fees/SupervisorEngSurveyFeeAcceptPanel";
 
 const EMPTY_FAILURES: FailureRecord[] = [];
 
@@ -72,6 +71,8 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
   const isFeesSupervisor =
     hasCapability("manage-operations") && !isPartyFeesRole;
 
+  // Fees badge: what waits for the viewer. For the supervisor that includes proposed discounts
+  // (sup-review); acceptance itself now lives inside the transaction, so it is not counted here.
   const selectFeeCount = useCallback(
     (summary: InspectorFeesSummary) => {
       const feeRows = summary.rows ?? [];
@@ -81,7 +82,6 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
             (r) =>
               r.billingStatus === "sup-review" ||
               (r.billingStatus === "returned" && r.returnTo === "supervisor") ||
-              r.billingStatus === "disputed" ||
               r.billingStatus === "suspended",
           ).length
         : feeRows.filter(
@@ -106,15 +106,6 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
       }),
     staleTime: 30_000,
     select: selectFeeCount,
-  });
-
-  const { data: engAcceptPendingCount = 0 } = useQuery({
-    // Share cache with PartyFeesWorkspace (SUPERVISOR_ENG_SURVEY_PENDING_ACCEPT_KEY).
-    queryKey: [...appDataKeys.all, "eng-survey-fee-accept-pending"],
-    queryFn: () => loadSupervisorEngSurveyPendingAcceptRows(tasks ?? []),
-    enabled: isFeesSupervisor && Boolean(tasks && tasks.length > 0),
-    staleTime: 15_000,
-    select: (rows) => rows.length,
   });
 
   const badgeSignature = useMemo(() => {
@@ -171,7 +162,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
       );
     }
 
-    setPage("party-fees", (feeCount ?? 0) + engAcceptPendingCount);
+    setPage("party-fees", feeCount ?? 0);
 
     return parts.join("|");
   }, [
@@ -184,7 +175,6 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
     failures,
     staffUsers,
     feeCount,
-    engAcceptPendingCount,
   ]);
 
   const badges = useMemo(() => {

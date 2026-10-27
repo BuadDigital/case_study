@@ -8,7 +8,6 @@ import type {
   InspectorFeeRowDto,
   PartyBillingStatementDto,
 } from "@platform/api-client";
-import { engFeeUiStatus } from "./EngOfficeFeesBillingTable";
 import { feeRowMatchesSearch, feeStatementMeta } from "./fee-screen-state";
 
 export {
@@ -18,18 +17,49 @@ export {
 
 export type TabId = "action" | "ready" | "statements";
 
-export function statusMeta(st: ReturnType<typeof engFeeUiStatus>): {
+/** Case Study.html `FEE_ST` mapping for engineering office billing. */
+export type EngFeeUiStatus =
+  | "under_review"
+  | "ready"
+  | "carried"
+  | "listed"
+  | "paid"
+  | "other";
+
+/**
+ * The office's view of a fee. A line with the supervisor (a discount the specialist proposed) is
+ * «under review» — the office is told, not asked; everything else follows the billing lane.
+ *
+ * Replaced `pending_office` / `dispute`, which mapped the retired office-review / disputed
+ * states and offered «قبول» / «تحفّظ» buttons. Engineering-survey lines only reach sup-review
+ * through a proposal, so sup-review is safe to read as "under review" in this lane.
+ */
+export function engFeeUiStatus(row: InspectorFeeRowDto): EngFeeUiStatus {
+  switch (row.billingStatus) {
+    case "sup-review":
+      return "under_review";
+    case "deferred":
+      return "carried";
+    case "at-finance":
+    case "disb-req":
+      return "ready";
+    case "in-statement":
+      return "listed";
+    case "disbursed":
+      return "paid";
+    default:
+      return "other";
+  }
+}
+
+export function statusMeta(st: EngFeeUiStatus): {
   label: string;
   style: StatusPillStyle;
 } {
   const map: Record<string, { label: string; style: StatusPillStyle }> = {
-    pending_office: {
-      label: "بانتظار إفادتكم",
+    under_review: {
+      label: "قيد المراجعة مع المشرف",
       style: { base: "#d9a441", fg: "#8a5e14" },
-    },
-    dispute: {
-      label: "تحفّظ على التسعير",
-      style: { base: "#d9694f", fg: "#a5432e" },
     },
     carried: {
       label: "مرحَّل — متأخر عن دورته",
@@ -67,7 +97,7 @@ export function engFeeTabCounts(rows: InspectorFeeRowDto[]): {
   let readyCount = 0;
   for (const r of rows) {
     const st = engFeeUiStatus(r);
-    if (st === "pending_office" || st === "dispute") actionCount += 1;
+    if (st === "under_review") actionCount += 1;
     if (st === "ready" || st === "carried") readyCount += 1;
   }
   return { actionCount, readyCount };
@@ -85,7 +115,7 @@ export function filterEngFeeRows(
     const st = engFeeUiStatus(row);
     const inTab =
       tab === "action"
-        ? st === "pending_office" || st === "dispute"
+        ? st === "under_review"
         : st === "ready" || st === "carried";
     if (!inTab) return false;
     if (stFilter && st !== stFilter) return false;

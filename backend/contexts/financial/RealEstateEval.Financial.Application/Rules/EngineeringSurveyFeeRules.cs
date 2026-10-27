@@ -74,7 +74,14 @@ public static class EngineeringSurveyFeeRules
         return list;
     }
 
-    // The one typed-number rule (LocaleNumber — same as the screens); an area must be > 0.
+    /// <summary>Reads a property area in m² from typed text; false (and 0) unless it is a number above zero.</summary>
+    /// <remarks>
+    /// How it works: delegates to <see cref="LocaleNumber.TryParsePositive"/>, the one typed-number rule
+    /// the screens use too, so «1,250», «١٢٥٠» and «1250 م²» all read as 1250.
+    /// Edge cases: blank, text, zero and negative areas return false with areaM2 = 0, which the fee
+    /// resolver treats as «no area yet». The body used to repeat the parse-then-compare steps by hand;
+    /// it now delegates and the behaviour is unchanged.
+    /// </remarks>
     public static bool TryParseAreaM2(string? raw, out decimal areaM2) =>
         LocaleNumber.TryParsePositive(raw, out areaM2);
 

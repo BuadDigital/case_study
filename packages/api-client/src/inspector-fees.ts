@@ -30,10 +30,14 @@ async function readMutationError(res: Response): Promise<ApiErr> {
 
 export type InspectorFeesApiConfig = WorkOrdersApiConfig;
 
+/**
+ * Fee line lifecycle. An engineering-survey line in `sup-review` is waiting on the specialist's
+ * proposed discount (see `proposedDiscountSar`) until the department supervisor decides it. The
+ * office approve / dispute states (`office-review`, `disputed`) are retired — the office is told
+ * about a proposed discount, never asked.
+ */
 export type InspectorFeeBillingStatus =
   | "draft"
-  | "office-review"
-  | "disputed"
   | "sup-review"
   | "at-finance"
   | "deferred"
@@ -46,11 +50,9 @@ export type InspectorFeeBillingStatus =
 
 export type InspectorFeeWorkStatus = "in_progress" | "done" | "cancelled";
 
+/** Status-machine actions. Proposed-discount decisions use `resolveDiscountProposal`, not these. */
 export type InspectorFeeAction =
   | "submit-to-supervisor"
-  | "office-approve-discount"
-  | "office-dispute"
-  | "resolve-dispute"
   | "approve-to-finance"
   | "resend-to-finance"
   | "return-to-office"
@@ -101,9 +103,12 @@ export type InspectorFeeRowDto = {
   canSubmitToSupervisor: boolean;
   canApproveToFinance: boolean;
   canCreateDisbursementRequest: boolean;
-  canOfficeApproveDiscount: boolean;
-  canOfficeDispute: boolean;
-  canResolveDispute: boolean;
+  /** The specialist's discount proposal still waiting for the supervisor; null when none. */
+  proposedDiscountSar: number | null;
+  proposedDiscountReason: string | null;
+  proposedByName: string | null;
+  proposedAtUtc: string | null;
+  canResolveDiscountProposal: boolean;
   canSuspend: boolean;
   canLiftSuspension: boolean;
 };
@@ -125,6 +130,32 @@ export type PatchInspectorFeeRequest = {
   agreedFeeSar?: number;
   excludedFromBatch?: boolean;
   exclusionReason?: string;
+};
+
+/** The supervisor's decision on a proposed discount. */
+export type DiscountProposalDecision = "approve" | "amend" | "waive";
+
+export type ResolveDiscountProposalRequest = {
+  decision: DiscountProposalDecision;
+  /** Required for amend. */
+  amountSar?: number;
+  note?: string;
+};
+
+export type WaivePartyFeesRequest = {
+  assigneeId: string;
+  reason: string;
+};
+
+/** How many lines were cancelled, and the ones left for finance (in a statement, paid or suspended). */
+export type WaivePartyFeesResultDto = {
+  waivedCount: number;
+  skipped: {
+    workflowTaskId: string;
+    propertyId: string;
+    billingStatus: InspectorFeeBillingStatus;
+    billingStatusLabel: string;
+  }[];
 };
 
 export type InspectorFeeTransitionRequest = {
@@ -211,14 +242,23 @@ function normalizeRow(raw: Record<string, unknown>): InspectorFeeRowDto {
     canCreateDisbursementRequest: Boolean(
       raw.canCreateDisbursementRequest ?? raw.CanCreateDisbursementRequest ?? false,
     ),
-    canOfficeApproveDiscount: Boolean(
-      raw.canOfficeApproveDiscount ?? raw.CanOfficeApproveDiscount ?? false,
-    ),
-    canOfficeDispute: Boolean(
-      raw.canOfficeDispute ?? raw.CanOfficeDispute ?? false,
-    ),
-    canResolveDispute: Boolean(
-      raw.canResolveDispute ?? raw.CanResolveDispute ?? false,
+    // Kept null (not 0) when absent: `null` means "no proposal waiting", while 0 would read as a
+    // proposal of zero and show a proposal line on every row.
+    proposedDiscountSar:
+      raw.proposedDiscountSar == null && raw.ProposedDiscountSar == null
+        ? null
+        : Number(raw.proposedDiscountSar ?? raw.ProposedDiscountSar),
+    proposedDiscountReason: (raw.proposedDiscountReason ??
+      raw.ProposedDiscountReason ??
+      null) as string | null,
+    proposedByName: (raw.proposedByName ?? raw.ProposedByName ?? null) as
+      | string
+      | null,
+    proposedAtUtc: (raw.proposedAtUtc ?? raw.ProposedAtUtc ?? null) as
+      | string
+      | null,
+    canResolveDiscountProposal: Boolean(
+      raw.canResolveDiscountProposal ?? raw.CanResolveDiscountProposal ?? false,
     ),
     suspensionReason:
       (raw.suspensionReason ?? raw.SuspensionReason ?? null) as string | null,
@@ -328,16 +368,89 @@ export async function transitionInspectorFee(
   }
 }
 
+/**
+ * POSTs a fee command under `/api/inspector-fees` and maps the reply: auth for 401/403, not
+ * found for 404, the server's message for any other failure.
+ *
+ * How it works: one fetch with the JSON body, then the status is mapped to the shared
+ * `ApiOk` / `ApiErr` shape and a successful body goes through `read`.
+ *
+ * Why it exists: the decision and the cancellation had the same 20-line fetch body, which the
+ * duplicate detector flagged; both now share this and only differ by path and reader. A network
+ * failure resolves to `kind: "network"` instead of throwing, like every other client here.
+ */
+async function postFeeCommand<T>(
+  config: InspectorFeesApiConfig,
+  path: string,
+  body: unknown,
+  read: (raw: Record<string, unknown>) => T,
+): Promise<ApiOk<T> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/inspector-fees/${path}`, {
+      method: "POST",
+      headers: authHeaders(config.token),
+      body: JSON.stringify(body),
+    });
+    if (res.status === 401 || res.status === 403) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) {
+      return { ok: false, kind: "server", message: await readErrorText(res) };
+    }
+    return { ok: true, data: read((await res.json()) as Record<string, unknown>) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/**
+ * Supervisor: approve, amend or waive the specialist's proposed discount.
+ *
+ * `amountSar` is only read for `amend`. A refused decision (wrong department, amend to zero or
+ * above the fee, no pending proposal) comes back as `kind: "server"` with the Arabic reason.
+ * The reply is the updated fee row (now at finance), normalised like a list row.
+ */
+export function resolveDiscountProposal(
+  config: InspectorFeesApiConfig,
+  workflowTaskId: string,
+  body: ResolveDiscountProposalRequest,
+): Promise<ApiOk<InspectorFeeRowDto> | ApiErr> {
+  return postFeeCommand(
+    config,
+    `${workflowTaskId}/discount-proposal/resolve`,
+    body,
+    normalizeRow,
+  );
+}
+
+/**
+ * Supervisor: cancel one party's whole fee on a transaction.
+ *
+ * The PO is URI-encoded (PO numbers are free text). Edge case: lines already in a statement,
+ * paid or suspended are not cancelled — they come back in `skipped` so the caller can say so.
+ */
+export function waivePartyFees(
+  config: InspectorFeesApiConfig,
+  poNumber: string,
+  body: WaivePartyFeesRequest,
+): Promise<ApiOk<WaivePartyFeesResultDto> | ApiErr> {
+  return postFeeCommand(
+    config,
+    `transactions/${encodeURIComponent(poNumber.trim())}/waive-party`,
+    body,
+    (raw) => ({
+      waivedCount: Number(raw.waivedCount ?? 0),
+      skipped: (raw.skipped ?? []) as WaivePartyFeesResultDto["skipped"],
+    }),
+  );
+}
+
 export function inspectorFeeStatusLabel(
   status: InspectorFeeBillingStatus,
 ): string {
   switch (status) {
     case "draft":
       return "مستحق";
-    case "office-review":
-      return "بانتظار موافقة المكتب";
-    case "disputed":
-      return "خلاف تسعير";
     case "sup-review":
       return "بانتظار اعتماد المشرف";
     case "at-finance":
@@ -365,10 +478,6 @@ export function inspectorFeeStatusTone(
   status: InspectorFeeBillingStatus,
 ): "default" | "warning" | "success" | "danger" | "info" {
   switch (status) {
-    case "office-review":
-      return "warning";
-    case "disputed":
-      return "danger";
     case "sup-review":
       return "warning";
     case "at-finance":

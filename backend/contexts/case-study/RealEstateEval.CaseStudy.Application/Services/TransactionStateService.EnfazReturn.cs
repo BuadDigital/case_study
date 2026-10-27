@@ -53,7 +53,12 @@ public sealed partial class TransactionStateService
         if (facts is null) return (null, Fail("المعاملة غير موجودة"));
         var (input, _, property) = facts.Value;
         if (!input.EnfazHandedOver) return (null, Fail(NotHandedOverAr));
-        // Checked before anything moves: a marked deed's financial data is already on Enfaz.
+        // Billing-ready guard. How it works: a deed the accountant marked «جاهز للفوترة» has its figures on
+        // Enfaz, and Enfaz itself no longer takes modification requests for it, so it is refused here.
+        // Edge cases: it sits BEFORE the valuation reopen and every stamp clear on purpose — those steps
+        // make a retry safe by clearing first and restoring on failure, and a refusal after them would
+        // have to undo real changes. An unmarked deed (including one handed over but not yet marked)
+        // returns as before.
         if (property.IsBillingReady) return (null, Fail(BillingReadyBlocksReturnAr));
 
         var handoverBefore = new

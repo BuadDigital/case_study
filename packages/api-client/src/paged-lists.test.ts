@@ -8,10 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { listComparablePropertiesPage } from "./comparable-properties";
 import { listFailuresPage } from "./failures";
 import { listNotificationsPage } from "./notifications";
-import {
-  listDiscountFlagsPage,
-  listIncentiveSuspensionsPage,
-} from "./financial";
+import { listIncentiveSuspensionsPage } from "./financial";
 
 const CONFIG = { baseUrl: "https://api.test", token: "t" };
 
@@ -145,22 +142,6 @@ describe("financial ledgers (§7)", () => {
     );
     expect(params(calls[0]!)).toBe(
       "page=2&pageSize=25&sort=transaction&q=PO-1&assigneeId=a-1&activeOnly=false",
-    );
-  });
-
-  it("pages the discount-flag ledger with its exact status filter", async () => {
-    const calls = stubFetch();
-    await listDiscountFlagsPage(CONFIG, {
-      sort: "created",
-      dir: "desc",
-      transactionKey: "PO-1::p1",
-      status: "pending",
-    });
-    expect(calls[0]).toContain(
-      "https://api.test/api/financial/v1/discount-flags?",
-    );
-    expect(params(calls[0]!)).toBe(
-      "page=1&pageSize=500&sort=created&dir=desc&transactionKey=PO-1%3A%3Ap1&status=pending",
     );
   });
 });

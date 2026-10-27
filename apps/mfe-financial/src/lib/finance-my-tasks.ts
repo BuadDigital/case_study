@@ -134,7 +134,11 @@ function buildRevenueMyTasks(
 
   const tasks: FinanceMyTask[] = [];
 
-  // «مؤهلة»: a handed-over deed first waits for the accountant's mark, then for the fee match.
+  // «مؤهلة» task split. How it works: the rows of the `eligible` stage become two task kinds — deeds
+  // not yet marked get «تعليم جاهز للفوترة» (waiting for their data on Enfaz), marked deeds get
+  // «مطابقة الأتعاب». The other stages keep one task kind each. Tasks are then grouped per work order
+  // (`groupRowsByPo`) and the id carries the kind (`rev-eligible_mark-PO-1` vs `rev-eligible-PO-1`),
+  // so one order with deeds in both states shows two separate tasks.
   const eligibleRows = byStage.get("eligible") ?? [];
   const taskGroups = [
     {

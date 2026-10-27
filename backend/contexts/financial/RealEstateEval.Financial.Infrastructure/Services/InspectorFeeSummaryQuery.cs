@@ -41,7 +41,7 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
         string? taskKind = null,
         string? billingStatus = null,
         string? returnTo = null,
-        bool hideDisputed = false,
+        bool hideAwaitingDiscountDecision = false,
         CancellationToken cancellationToken = default,
         string? supervisingDepartment = null)
     {
@@ -49,12 +49,16 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
  // a read must not load every ledger and possibly write on each screen poll.
         var query = _financial.InspectorFeeLedgers.AsNoTracking();
 
- // Applied to the query itself, before any row cap or projection, so a disputed line cannot
- // reach finance through the list, the totals, or the queue counts derived from them.
-        if (hideDisputed)
+ // Applied to the query itself, before any row cap or projection, so a line whose amount is
+ // still under a discount decision cannot reach finance through the list, the totals, or the
+ // queue counts derived from them.
+        if (hideAwaitingDiscountDecision)
         {
             query = query.Where(x =>
-                x.BillingStatus != InspectorFeeBillingStatus.Disputed);
+                x.BillingStatus != InspectorFeeBillingStatus.SupReview
+                || !_financial.DiscountFlags.Any(f =>
+                    f.WorkflowTaskId == x.WorkflowTaskId
+                    && f.Status == DiscountFlagStatuses.Pending));
         }
 
  // A non-null supervisingDepartment means the caller is department-scoped. Fail closed when
@@ -135,6 +139,8 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             .GroupBy(t => t.WorkflowTaskId)
             .ToDictionary(g => g.Key, g => g.First().Reason);
 
+        var pendingProposals = await LoadPendingProposalsAsync(taskIds, cancellationToken);
+
         var poNumbers = ledgers.Select(l => l.PoNumber.Trim()).Distinct().ToList();
         var poReceivedByNumber = await _lookup.GetWorkOrderReceivedAtByPoNumbersAsync(
             poNumbers, cancellationToken);
@@ -163,7 +169,8 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
                     ledger.WorkflowTaskId, tasks, workspaces, submissions),
                 InspectorFeeWorkStatusRules.ResolveWorkSubmittedAtUtc(task, workspaces, submissions),
                 poReceived,
-                lastReason));
+                lastReason,
+                pendingProposals.GetValueOrDefault(ledger.WorkflowTaskId)));
         }
 
         return InspectorFeeRowMapper.Summarize(rows);
@@ -198,6 +205,8 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             workspaces,
             submissions);
 
+        var pendingProposals = await LoadPendingProposalsAsync([workflowTaskId], cancellationToken);
+
         return InspectorFeeRowMapper.ToRowDto(
             ledger,
             task,
@@ -205,7 +214,31 @@ public sealed class InspectorFeeSummaryQuery : IInspectorFeeSummaryQuery
             workSubmitted,
             InspectorFeeWorkStatusRules.ResolveWorkSubmittedAtUtc(task, workspaces, submissions),
             null,
-            null);
+            null,
+            pendingProposals.GetValueOrDefault(workflowTaskId));
+    }
+
+    /// <summary>
+    /// Pending discount proposals by task, so each fee row can show the proposed amount, reason
+    /// and proposer while it waits for the supervisor.
+    /// </summary>
+    /// <remarks>
+    /// One query for the whole page of rows (not one per row). Should a task ever hold two pending
+    /// rows (the unique index prevents it), the newest wins so the row stays deterministic.
+    /// </remarks>
+    private async Task<Dictionary<Guid, DiscountFlag>> LoadPendingProposalsAsync(
+        IReadOnlyCollection<Guid> taskIds,
+        CancellationToken cancellationToken)
+    {
+        if (taskIds.Count == 0) return [];
+        var flags = await _financial.DiscountFlags.AsNoTracking()
+            .Where(f => f.WorkflowTaskId != null
+                && taskIds.Contains(f.WorkflowTaskId.Value)
+                && f.Status == DiscountFlagStatuses.Pending)
+            .ToListAsync(cancellationToken);
+        return flags
+            .GroupBy(f => f.WorkflowTaskId!.Value)
+            .ToDictionary(g => g.Key, g => g.OrderByDescending(f => f.CreatedAtUtc).First());
     }
 
     public async Task<IReadOnlyList<InspectorFeeAuditEntryDto>> ListTransitionsAsync(

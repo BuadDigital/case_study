@@ -391,13 +391,8 @@ export function computeFeesPageSituation(
   let disbursed = 0;
 
   for (const row of rows) {
-    if (
-      row.billingStatus === "sup-review" ||
-      row.billingStatus === "office-review" ||
-      row.billingStatus === "disputed"
-    ) {
-      toSupervisor += 1;
-    }
+    // With the supervisor: awaiting approval, or a proposed discount awaiting a decision.
+    if (row.billingStatus === "sup-review") toSupervisor += 1;
     if (
       row.billingStatus === "at-finance" ||
       row.billingStatus === "deferred" ||
@@ -419,7 +414,9 @@ export function computeFeesPageSituation(
 
 /**
  * Case Study.html `renderEngFees` KPI sums (SAR) for the engineering office.
- * Matches FEE_ST buckets: pending_office → pending; ready|carried → ready;
+ * Matches FEE_ST buckets: under_review (with the supervisor) → pending; ready|carried → ready;
+ * («pending» used to sum office-review lines awaiting the office; it now sums lines whose proposed
+ * discount waits for the supervisor, at full amount since nothing is decided yet.)
  * listed (in-statement) is outstanding but not “ready to invoice”.
  * Paid matches HTML `ENG_FNS` with `paidAt` when `closedStatementsPaidSar` is provided.
  */
@@ -440,7 +437,7 @@ export function computeEngineeringFeesSituation(
   for (const row of rows) {
     const net = Number(row.netFeeSar) || 0;
     if (row.billingStatus !== "disbursed") outstanding += net;
-    if (row.billingStatus === "office-review") {
+    if (row.billingStatus === "sup-review") {
       pending += net;
     } else if (
       row.billingStatus === "at-finance" ||
@@ -473,8 +470,8 @@ export const ENGINEERING_FEES_SITUATION_CARDS: PageSituationCardDef[] = [
   },
   {
     key: "pending",
-    label: "بانتظار إفادتكم",
-    sub: "تعديلات تسعير تنتظر إفادتكم",
+    label: "قيد المراجعة مع المشرف",
+    sub: "حسم مقترح يناقشه معكم المشرف",
     tone: "warn",
     valueFormat: "sar",
     icon: "clock",

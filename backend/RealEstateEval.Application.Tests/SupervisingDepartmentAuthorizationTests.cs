@@ -117,42 +117,47 @@ public class SupervisingDepartmentAuthorizationTests
     }
 
     [Fact]
-    public async Task Only_the_transactions_department_can_resolve_its_dispute()
+    public async Task Only_the_transactions_department_can_decide_its_proposed_discount()
     {
         await using var db = CreateDb();
         var taskId = SeedLedger(
             db,
             SupervisingDepartments.Valuation,
-            InspectorFeeBillingStatus.Disputed,
-            discount: 100m);
+            InspectorFeeBillingStatus.SupReview);
+        var fin = TestInspectorFeeServiceFactory.ShareFinancial(db);
+        fin.DiscountFlags.Add(new DiscountFlag
+        {
+            Id = Guid.NewGuid(),
+            TransactionKey = "PO-DEPT",
+            WorkflowTaskId = taskId,
+            TargetAssigneeId = "office-1",
+            FlaggedByUserId = "specialist",
+            Reason = "تأخّر تسليم التقرير المساحي",
+            ProposedDiscountSar = 100m,
+            Status = DiscountFlagStatuses.Pending,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow,
+        });
+        fin.SaveChanges();
         await db.SaveChangesAsync();
         var service = TestInspectorFeeServiceFactory.Create(db);
-        var request = new InspectorFeeTransitionRequest
-        {
-            Action = InspectorFeeActions.ResolveDispute,
-            Reason = "اعتماد الحسم",
-        };
+        var request = new ResolveDiscountProposalRequest { Decision = DiscountProposalDecisions.Approve };
 
-        var (_, deniedError) = await service.TransitionAsync(
+        var (_, deniedError) = await service.ResolveDiscountProposalAsync(
             taskId,
             request,
             "case-supervisor",
-            actorAssigneeId: null,
-            isOperationsManager: true,
-            isFinancialOfficer: false,
             actorDepartment: SupervisingDepartments.CaseStudy);
         Assert.Contains("قسماً آخر", deniedError);
 
-        var (resolved, error) = await service.TransitionAsync(
+        var (resolved, error) = await service.ResolveDiscountProposalAsync(
             taskId,
             request,
             "valuation-supervisor",
-            actorAssigneeId: null,
-            isOperationsManager: true,
-            isFinancialOfficer: false,
             actorDepartment: SupervisingDepartments.Valuation);
         Assert.Null(error);
         Assert.NotNull(resolved);
+        Assert.Equal(100m, resolved!.SupervisorDiscountSar);
     }
 
  /// <summary>

@@ -87,6 +87,14 @@ public static class PoRoleMatrixRules
     /// Marking a deed «جاهز للفوترة» once its financial data appeared on Enfaz is the accountant's call
     /// (the financial officer) — the specialist who handed it over does not decide when it can be billed.
     /// </summary>
+    /// <remarks>
+    /// How it works: normalises the role (trim + lower-case) and accepts only «financial-officer».
+    /// Edge cases: null / blank / unknown roles are refused; the case specialist, the section supervisor,
+    /// the general manager and the CDO are refused on purpose — the mark is the accountant's statement
+    /// that the figures appeared on Enfaz, which only they can see. Mirrored on the client by
+    /// canMarkBillingReady (role-access.ts); the controller checks this after the ManageFinancial capability,
+    /// because a capability only «reaches the door» and several roles share it.
+    /// </remarks>
     public static bool CanMarkBillingReady(string? prototypeRole) =>
         Normalize(prototypeRole) is "financial-officer";
 

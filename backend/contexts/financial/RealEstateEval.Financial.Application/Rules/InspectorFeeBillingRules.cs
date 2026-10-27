@@ -5,10 +5,19 @@ namespace RealEstateEval.Application.Rules;
 
 public static class InspectorFeeBillingRules
 {
+    /// <summary>
+    /// States whose amount may still change (direct supervisor discount, exclusion, or a
+    /// whole-transaction cancellation). Once a line joins a statement, is paid or is suspended, its
+    /// money is committed elsewhere and must be pulled back through those paths first.
+    /// </summary>
+    /// <remarks>
+    /// <c>office-review</c> and <c>disputed</c> were dropped from this list with the office loop.
+    /// Note that a <c>sup-review</c> line with a pending proposal is editable by status, but the fee
+    /// row reports it as not editable and the service refuses a direct discount on it — it is
+    /// settled through the proposal decision instead.
+    /// </remarks>
     public static bool IsEditableStatus(string? status) =>
         status is InspectorFeeBillingStatus.Draft
-            or InspectorFeeBillingStatus.OfficeReview
-            or InspectorFeeBillingStatus.Disputed
             or InspectorFeeBillingStatus.SupReview
             or InspectorFeeBillingStatus.AtFinance
             or InspectorFeeBillingStatus.Deferred
@@ -100,39 +109,6 @@ public static class InspectorFeeBillingRules
                 error = "لا يمكن رفع الأتعاب للمشرف من هذه الحالة.";
                 return false;
 
-            case InspectorFeeActions.OfficeApproveDiscount:
-                if (currentStatus == InspectorFeeBillingStatus.OfficeReview)
-                {
-                    nextStatus = InspectorFeeBillingStatus.AtFinance;
-                    returnTo = null;
-                    return true;
-                }
-
-                error = "لا يمكن الموافقة إلا على بند بانتظار موافقة المكتب.";
-                return false;
-
-            case InspectorFeeActions.OfficeDispute:
-                if (currentStatus == InspectorFeeBillingStatus.OfficeReview)
-                {
-                    nextStatus = InspectorFeeBillingStatus.Disputed;
-                    returnTo = null;
-                    return true;
-                }
-
-                error = "لا يمكن الاعتراض إلا على بند بانتظار موافقة المكتب.";
-                return false;
-
-            case InspectorFeeActions.ResolveDispute:
-                if (currentStatus == InspectorFeeBillingStatus.Disputed)
-                {
-                    nextStatus = InspectorFeeBillingStatus.AtFinance;
-                    returnTo = null;
-                    return true;
-                }
-
-                error = "لا يمكن حسم الخلاف إلا لبنود خلاف التسعير.";
-                return false;
-
             case InspectorFeeActions.ApproveToFinance:
                 if (currentStatus == InspectorFeeBillingStatus.SupReview)
                 {
@@ -221,8 +197,6 @@ public static class InspectorFeeBillingRules
     public static string StatusLabel(string? status) => status switch
     {
         InspectorFeeBillingStatus.Draft => "مستحق",
-        InspectorFeeBillingStatus.OfficeReview => "بانتظار موافقة المكتب",
-        InspectorFeeBillingStatus.Disputed => "خلاف تسعير",
         InspectorFeeBillingStatus.SupReview => "بانتظار اعتماد المشرف",
         InspectorFeeBillingStatus.AtFinance => "جاهز للفوترة",
         InspectorFeeBillingStatus.Deferred => "جاهز — مرحَّل",
@@ -232,6 +206,11 @@ public static class InspectorFeeBillingRules
         InspectorFeeBillingStatus.Returned => "مُعاد للتعديل",
         InspectorFeeBillingStatus.Inquiry => "استفسار مفتوح",
         InspectorFeeBillingStatus.Suspended => "موقوف",
+ // Retired office-approval states — still named in the audit history of older lines.
+ // Edge case: without these two cases the history of a line that went through the old loop
+ // would show «—» for those steps after the statuses were removed from the enum.
+        "office-review" => "بانتظار موافقة المكتب",
+        "disputed" => "خلاف تسعير",
         _ => "—",
     };
 

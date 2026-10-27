@@ -145,6 +145,7 @@ export function PropertyDetailEnfazHandoverCard({
                 ) : null}
                 .
               </Note>
+              {/* A deed the accountant marked ready for billing is not taken back: its figures are on Enfaz. */}
               {card.billingReady ? (
                 <Note tone="info">
                   وُسم الصك «جاهز للفوترة» — ظهرت بياناته المالية على إنفاذ، فلا يُسترجع للتعديل.

@@ -41,8 +41,13 @@ public class PlatformPermissionCatalogTests
         Assert.DoesNotContain(PlatformCapabilities.ManageUsers, capabilities);
     }
 
+    /// <summary>
+    /// The specialist shares the supervisor's operational pages but not fees or pricing (ruling of
+    /// 2026-10-26): party outputs are accepted inside the transaction, and fee money is the
+    /// supervisor's decision.
+    /// </summary>
     [Fact]
-    public void Case_specialist_matches_section_supervisor_pages_and_capabilities()
+    public void Case_specialist_matches_section_supervisor_pages_except_fees_and_pricing()
     {
         var supervisorPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var supervisorCaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -60,10 +65,13 @@ public class PlatformPermissionCatalogTests
         Assert.Contains("all-transactions", specialistPages);
         Assert.DoesNotContain("all-transactions", supervisorPages);
         specialistPages.Remove("all-transactions");
+        Assert.DoesNotContain("party-fees", specialistPages);
+        Assert.DoesNotContain("fee-pricing", specialistPages);
+        supervisorPages.Remove("party-fees");
+        supervisorPages.Remove("fee-pricing");
         Assert.Equal(
             supervisorPages.OrderBy(p => p, StringComparer.OrdinalIgnoreCase),
             specialistPages.OrderBy(p => p, StringComparer.OrdinalIgnoreCase));
-        Assert.Contains("fee-pricing", specialistPages);
         Assert.DoesNotContain("financial", specialistPages);
         Assert.DoesNotContain("manage-financial", specialistCaps);
     }
@@ -81,8 +89,6 @@ public class PlatformPermissionCatalogTests
     [InlineData("section-supervisor", "failures")]
     [InlineData("section-supervisor", "fee-pricing")]
     [InlineData("section-supervisor", "party-fees")]
-    [InlineData("case-specialist", "fee-pricing")]
-    [InlineData("case-specialist", "party-fees")]
     [InlineData("case-specialist", "property-map")]
     [InlineData("case-specialist", "all-transactions")]
     [InlineData("case-specialist", "dashboard")]

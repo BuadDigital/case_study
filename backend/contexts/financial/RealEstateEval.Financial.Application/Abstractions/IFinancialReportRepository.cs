@@ -27,8 +27,8 @@ public sealed record CourtVisitFeeTotals(decimal Total, decimal Open);
 /// <remarks>
 /// The ledger reads take the completed case-study property ids because that filter crosses
 /// contexts: the ids are materialised from Case Study before the Financial query can use them.
-/// Disputed and suspended ledgers are excluded by every one of them, so they stay out of costs,
-/// margin, payables, and the per-PO counts alike.
+/// Ledgers awaiting a discount decision and suspended ones are excluded by every one of them, so
+/// they stay out of costs, margin, payables, and the per-PO counts alike.
 /// </remarks>
 public interface IFinancialReportRepository
 {

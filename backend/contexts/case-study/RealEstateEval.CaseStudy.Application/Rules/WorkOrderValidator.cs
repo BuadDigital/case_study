@@ -131,9 +131,18 @@ public static class WorkOrderValidator
     public const string BourseAreaInvalidAr = "مساحة الأرض يجب أن تكون رقماً أكبر من صفر";
 
     /// <summary>Null when the bourse land area is a positive number; otherwise the Arabic message.</summary>
+    /// <remarks>
+    /// How it works: blank → <see cref="BourseAreaRequiredAr"/>; otherwise the text must pass
+    /// <see cref="LocaleNumber.TryParsePositive"/> (a number above zero, any digit system), else
+    /// <see cref="BourseAreaInvalidAr"/>. The client mirrors it in bourseAreaError with the same messages.
+    /// Edge cases and the fix: bourses used to close without the land area (it was optional), so the
+    /// appraiser's land value stayed «غير مكتمل» — twelve orders were affected. The area is now required to
+    /// complete the bourse, registered titles included; zero, negative and non-numeric text are refused.
+    /// </remarks>
     public static string? BourseAreaError(string? area)
     {
         if (string.IsNullOrWhiteSpace(area)) return BourseAreaRequiredAr;
+        // The shared positive-number rule (same parser as the survey fee area): a number greater than zero.
         return LocaleNumber.TryParsePositive(area, out _) ? null : BourseAreaInvalidAr;
     }
 

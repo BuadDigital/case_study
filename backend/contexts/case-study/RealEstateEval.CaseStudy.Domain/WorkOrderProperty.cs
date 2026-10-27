@@ -179,6 +179,14 @@ public class WorkOrderProperty : ITrackUpdatedAt
  /// Clears the Enfaz handover stamp (the specialist re-opens work on a transaction that was
  /// already handed over). Idempotent; returns whether a stamp was actually cleared.
  /// </summary>
+ /// <remarks>
+ /// How it works: first drops the billing-ready mark, then clears the stamp and the user who set it.
+ /// Edge cases: the mark is cleared BEFORE the «nothing to clear» early return, so a mark can never
+ /// outlive the handover it follows — even on inconsistent data (a mark with no stamp) — and a deed
+ /// handed over again always starts unmarked. The return value still means «a stamp was cleared», not
+ /// «a mark was cleared». Callers that must protect a marked deed refuse BEFORE calling this
+ /// (ReturnFromEnfazAsync and the study reopen), because clearing is exactly what they must not do.
+ /// </remarks>
     public bool ClearEnfazHandover()
     {
         // A mark can never outlive the handover it follows.
@@ -197,11 +205,21 @@ public class WorkOrderProperty : ITrackUpdatedAt
     public DateTime? BillingReadyAtUtc { get; set; }
     public string? BillingReadyByUserId { get; set; }
 
+    /// <summary>True once the accountant has marked the deed ready for billing.</summary>
     public bool IsBillingReady => BillingReadyAtUtc is not null;
 
+    /// <summary>The refusal when the deed is marked before it was handed over to Enfaz.</summary>
     public const string BillingReadyNeedsHandoverAr = "لا يُعلَّم الصك «جاهز للفوترة» قبل رفعه على إنفاذ";
 
-    /// <summary>Idempotent: marking a marked deed keeps the first stamp. Null on success, else the reason.</summary>
+    /// <summary>Marks the deed «جاهز للفوترة». Null on success, otherwise the Arabic reason it was refused.</summary>
+    /// <remarks>
+    /// How it works: refuses a removed deed and a deed that was never handed over to Enfaz (its financial
+    /// data cannot exist yet); if it is already marked it succeeds without touching anything; otherwise it
+    /// stamps the time and the accountant's user id.
+    /// Edge cases: idempotent — a second mark (a double click, a retry after a timeout) keeps the FIRST
+    /// stamp and the first user, so the audit trail is not rewritten; the caller uses IsBillingReady
+    /// beforehand to know whether anything new happened and must be audited.
+    /// </remarks>
     public string? MarkBillingReady(string? byUserId, DateTime nowUtc)
     {
         if (IsRemoved) return "الصك محذوف من المعاملة";
@@ -213,7 +231,13 @@ public class WorkOrderProperty : ITrackUpdatedAt
         return null;
     }
 
-    /// <summary>Returns whether a mark was actually cleared.</summary>
+    /// <summary>Removes the billing-ready mark; returns whether one was actually there.</summary>
+    /// <remarks>
+    /// How it works: clears the time and the user together. Edge cases: safe to call on an unmarked deed
+    /// (returns false); not exposed as a user action — the only caller is <see cref="ClearEnfazHandover"/>,
+    /// because the product has no «unmark»: a mark means the figures are on Enfaz, and a deed returned for
+    /// modification can never be marked again until it is handed over again.
+    /// </remarks>
     public bool ClearBillingReady()
     {
         if (BillingReadyAtUtc is null && BillingReadyByUserId is null) return false;

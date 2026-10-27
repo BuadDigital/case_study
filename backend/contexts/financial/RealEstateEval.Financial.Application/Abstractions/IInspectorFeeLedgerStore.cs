@@ -41,7 +41,20 @@ public interface IInspectorFeeLedgerStore
         string userId,
         CancellationToken cancellationToken);
 
+    /// <summary>Tracked lines of one party on one transaction (PO), across all its tasks.</summary>
+    Task<IReadOnlyList<InspectorFeeLedger>> ListByPoAndAssigneeAsync(
+        string poNumber,
+        string assigneeId,
+        CancellationToken cancellationToken);
+
+    /// <summary>Tracked pending discount proposals of the given tasks.</summary>
+    Task<IReadOnlyList<DiscountFlag>> ListPendingProposalsAsync(
+        IReadOnlyCollection<Guid> workflowTaskIds,
+        CancellationToken cancellationToken);
+
     void AddLedger(InspectorFeeLedger ledger);
+
+    void AddDiscountFlag(DiscountFlag flag);
 
     void AddTransition(InspectorFeeTransition transition);
 

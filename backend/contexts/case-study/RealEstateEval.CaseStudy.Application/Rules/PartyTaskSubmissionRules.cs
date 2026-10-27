@@ -66,7 +66,16 @@ public static class PartyTaskSubmissionRules
     /// corrected — the specialist's «تأكيد مدخلات المعاين» submits before it accepts, including a
     /// package returned for correction.
     /// </summary>
+    /// <remarks>
+    /// How it works: calls <see cref="MayWriteDraft"/> with staffMayCorrect = «this is a field inspection
+    /// AND the actor holds the correction right», so submitting can never be broader than writing.
+    /// Edge cases: an anonymous caller (actor null) may submit; the assignee (or the distribution assignee)
+    /// may submit their own package; case staff may submit only a field inspection — never a survey or an
+    /// appraisal, which stay with their party. The body used to repeat MayWriteDraft's assignee check by
+    /// hand; it now delegates, and a test compares it with the original over every role × kind × identity.
+    /// </remarks>
     public static bool MaySubmit(PartySubmissionActor? actor, WorkflowTask task) =>
+        // Same rule as writing a draft; the only difference is that staff may submit only a field inspection.
         MayWriteDraft(
             actor,
             task,

@@ -6,7 +6,17 @@ public interface IValuationRequestService
 {
     Task<IReadOnlyList<ValuationRequestDto>> ListAsync(CancellationToken cancellationToken = default);
     Task<ValuationRequestDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
- /// <summary>Open (non-Done) request for the property, if any.</summary>
+    /// <summary>The property's open valuation request — its own, or the holder deed's when it was folded.</summary>
+    /// <remarks>
+    /// How it works: 1) normalises the property id (empty → null). 2) Takes the latest request of the
+    /// property that is neither done nor merged. 3) If none, takes the latest merged row's
+    /// MergedIntoRequestId and loads that holder request. 4) Reads the current (not superseded) issuance's
+    /// stage — final issued / deposit issued / draft — and returns the request with that ReportStage.
+    /// Edge cases (phase 5): a folded deed reads the holder's request while it is open, so the per-deed
+    /// gates keep working; once the holder's request is done (or missing, or folded with a null holder
+    /// before distribution) it returns null. Step 2 treats merged as not open, as the open-per-property
+    /// unique index does.
+    /// </remarks>
     Task<ValuationRequestDto?> GetOpenByPropertyAsync(
         string propertyId,
         CancellationToken cancellationToken = default);
@@ -32,10 +42,15 @@ public interface IValuationRequestService
         ValuationImpedimentRequest request,
         CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// none | preparing | ready for the property's latest issued valuation report; null when it has
-    /// none or the status cannot be read (callers then do not block on it).
-    /// </summary>
+    /// <summary>The status of the property's final valuation report: none | preparing | ready, or null.</summary>
+    /// <remarks>
+    /// How it works: takes the newest NON-superseded issuance of the property's requests (a merged deed
+    /// uses its holder's request, MergedIntoRequestId ?? Id) and returns its FinalReportStatus; case study
+    /// reads it before the Enfaz handover. Edge cases and fixes: after a return from Enfaz the replaced
+    /// copy used to be read — now skipped, so the answer is null until the new cycle issues a copy (null
+    /// does not block; the stage gates do); a merged deed used to read null while the holder's PDF was
+    /// still preparing — it now reads the holder's status. An empty id returns null; null also when the status cannot be read (callers then do not block on it).
+    /// </remarks>
     Task<string?> GetFinalReportStatusByPropertyAsync(
         string propertyId,
         CancellationToken cancellationToken = default) =>

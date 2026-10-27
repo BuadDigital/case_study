@@ -22,6 +22,19 @@ public partial class CaseStudyReportService : ICaseStudyReportService
     /// <summary>The refusal an edit of an issued report gets — the only way back is the reopen action.</summary>
     public const string ReportIssuedReopenFirstAr = "التقرير صادر — أعد فتحه أولاً";
 
+    /// <summary>
+    /// The refusal when a deed of the transaction is already marked «جاهز للفوترة» (its figures are on Enfaz).
+    /// </summary>
+    /// <remarks>
+    /// How it works: ReopenOnceAsync loads every live deed of the transaction and, if ANY is marked,
+    /// returns this text — even when the caller confirmed clearing the handover stamp — before the
+    /// stamp-confirmation prompt, so the specialist reads the billing reason.
+    /// Why: a linked transaction has ONE study shared by all its deeds, and the reopen clears the Enfaz
+    /// handover stamp of every deed; a marked deed would silently lose its stamp (and mark) while Enfaz
+    /// still holds its figures.
+    /// Edge cases: a lone deed with no transaction is checked through the fallback load; unmarked
+    /// handed-over deeds are unaffected and keep the confirm-then-clear flow.
+    /// </remarks>
     public const string BillingReadyBlocksReopenAr =
         "أحد صكوك المعاملة موسوم «جاهز للفوترة» — ظهرت بياناته المالية على إنفاذ فلا يُعاد فتح تقرير الدراسة";
 

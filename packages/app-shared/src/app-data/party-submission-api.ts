@@ -7,6 +7,7 @@ import {
   returnInspectionPackage,
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
+  type AcceptPartyTaskSubmissionRequest,
   type PartyTaskSubmissionDto,
   type ReturnImpactDto,
   type ReturnInspectionRequest,
@@ -327,13 +328,19 @@ export async function returnInspectionWithImpact(
   return { ok: true, data: result.data };
 }
 
+/**
+ * Specialist accepts a party package. `body` (engineering survey only) carries a proposed discount
+ * on the office's fee; with it the fee waits for the department supervisor instead of going
+ * straight to finance.
+ */
 export async function acceptPartySubmission(
   taskId: string,
   idempotencyKey?: string,
+  body?: AcceptPartyTaskSubmissionRequest,
 ): Promise<PartySubmissionMutationResult> {
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await acceptPartyTaskSubmission(config, taskId, idempotencyKey);
+  const result = await acceptPartyTaskSubmission(config, taskId, idempotencyKey, body);
   const mapped = mutationFromApiResult(result, "تعذّر قبول مخرجات المهمة");
   if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
   return mapped;

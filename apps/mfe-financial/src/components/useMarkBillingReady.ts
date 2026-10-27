@@ -11,6 +11,17 @@ import { confirmAction, useToast } from "@platform/ui-kit";
  * «تعليم جاهز للفوترة»: the accountant marks a handed-over deed once its financial data appeared on
  * Enfaz. The mark is final for the specialist — a marked deed is no longer taken back from Enfaz —
  * so it is confirmed first.
+ *
+ * How it works: `mark(row)` asks for confirmation, then calls the mark endpoint for that deed's work
+ * order + property, toasts the outcome, and invalidates every `enfaz-billing` query so the stage
+ * tables, badges and My Tasks re-read the tracking rows. `markingId` is the property being marked
+ * (or null) and drives the button state.
+ *
+ * Edge cases: a second call while one is running is ignored; a row without a work-order id (an older
+ * server that does not send it) shows an error asking to refresh instead of sending a broken request;
+ * cancelling the confirmation does nothing; a server refusal (not handed over, wrong role) is shown as
+ * its own Arabic text and leaves the row unmarked; `markingId` is cleared in `finally`, so a thrown
+ * error cannot leave the buttons disabled.
  */
 export function useMarkBillingReady() {
   const queryClient = useQueryClient();

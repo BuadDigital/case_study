@@ -185,6 +185,7 @@ public sealed partial class TransactionStateService(
                 : TransactionStateRules.EnfazHandoverBlockReasonsAr(input),
             EnfazReturnNoticesAr = returnNoticesAr ?? [],
             EnfazHandoverAtUtc = property.EnfazHandoverAtUtc?.ToString("o"),
+            // Lets the specialist's card hide «إعادة من إنفاذ» for a deed whose figures are already on Enfaz.
             BillingReadyAtUtc = property.BillingReadyAtUtc?.ToString("o"),
             HandoverPackageAr = TransactionStateRules.HandoverPackageAr(hasSurvey),
         };

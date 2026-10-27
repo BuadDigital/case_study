@@ -21,6 +21,19 @@ function isStalledWithoutInvoice(row: EnfazTrackingRowDto): boolean {
 /**
  * Matches finance logic reference against tracking data.
  * «Stopped» = manual flag, overdue open invoice, or completed ≥30 days without billing/upload.
+ *
+ * How it works: decides one stage per deed row, top to bottom — manual flag (excluded / stopped /
+ * difficult) → cancelled work → work not yet delivered (`under_study`) → collected → open invoice
+ * (overdue → `stopped`, else `awaiting_collection`) → stalled 30 days without an invoice → the
+ * accountant's mark → fees matched.
+ *
+ * Edge cases and the fix: «مؤهلة» used to mean «handed over»; a delivered deed is now billable only
+ * after the accountant marks it «جاهز للفوترة» (Enfaz's procurement review takes time before any figures
+ * exist). So an UNMARKED deed stays in `eligible` even when fees were typed earlier — otherwise it
+ * would land in the billing assistant, where the invoice is refused because the order is not ready.
+ * A marked deed moves to `billing_assistant` only once its fees are matched (`enfazFilled` and a total
+ * above zero); marked with no fees stays in `eligible` for «مطابقة الأتعاب». The stall rule still runs
+ * before the mark check, on the handover date.
  */
 export function resolveRevenueStage(row: EnfazTrackingRowDto): RevenueStage {
   const flag = (row.financeFlag ?? "").toLowerCase();

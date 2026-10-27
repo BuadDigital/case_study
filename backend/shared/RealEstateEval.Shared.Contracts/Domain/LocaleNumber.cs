@@ -63,7 +63,16 @@ public static partial class LocaleNumber
     public static decimal? ParseOrNull(string? text) =>
         TryParse(text, out var value) ? value : null;
 
-    /// <summary>A number greater than zero (an area, a price); <paramref name="value"/> is 0 otherwise.</summary>
+    /// <summary>A typed number that is greater than zero (an area, a price); <paramref name="value"/> is 0 otherwise.</summary>
+    /// <remarks>
+    /// How it works: 1) reads the text with <see cref="TryParse"/> — Arabic/Persian digits, «٫» as the
+    /// decimal point, thousands commas and unit suffixes (م² ر.س …) are all accepted. 2) Returns true only
+    /// when that succeeded and the value is above zero.
+    /// Edge cases: null, blank, non-numeric text, zero and negative numbers all return false. A rejected
+    /// number is reset to 0 — <see cref="TryParse"/> would leave a parsed «-5» in <paramref name="value"/>,
+    /// and callers (the survey fee area, the bourse area) must never read a value they were told is invalid.
+    /// It exists so the two server checks of «an area must be > 0» share one rule instead of two copies.
+    /// </remarks>
     public static bool TryParsePositive(string? text, out decimal value)
     {
         if (TryParse(text, out value) && value > 0m) return true;

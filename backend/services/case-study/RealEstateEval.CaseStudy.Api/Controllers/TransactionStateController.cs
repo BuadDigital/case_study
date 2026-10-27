@@ -24,6 +24,7 @@ public class TransactionStateController : ControllerBase
     public const string ReturnForbiddenAr =
         "استرجاع المعاملة من إنفاذ لأخصائي دراسة الحالة فقط";
 
+    /// <summary>The refusal for any role other than the financial officer on the billing-ready mark.</summary>
     public const string BillingReadyForbiddenAr =
         "تعليم الصك «جاهز للفوترة» لموظف الشؤون المالية فقط";
 
@@ -74,6 +75,15 @@ public class TransactionStateController : ControllerBase
     /// The accountant marks the handed-over deed «جاهز للفوترة» once its financial data appeared on
     /// the Enfaz platform. The door is the financial capability; the role check follows.
     /// </summary>
+    /// <remarks>
+    /// How it works: 1) the ManageFinancial policy lets the request in. 2) The actor's PROTOTYPE role is
+    /// resolved (the JWT carries identity roles, so it is read from the permission service, falling back
+    /// to the token role) and must pass CanMarkBillingReady — otherwise 403 with the Arabic reason.
+    /// 3) The service marks the deed and returns the new transaction state; a refusal (deed not handed
+    /// over, removed, unknown) is returned as the field error «_» with the Arabic text.
+    /// Edge cases: marking twice is safe (idempotent, 200 with the original stamp); the route is per deed
+    /// (work order + property), so marking one deed of a work order never marks its siblings.
+    /// </remarks>
     [HttpPost("billing-ready")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFinancial)]
     public async Task<ActionResult<TransactionStateDto>> MarkBillingReady(

@@ -58,7 +58,7 @@ public class InspectorFeesController : ControllerBase
             taskKind,
             billingStatus,
             returnTo,
-            hideDisputed: ctx.IsFinanceOnly,
+            hideAwaitingDiscountDecision: ctx.IsFinanceOnly,
             cancellationToken: ct,
             supervisingDepartment: ctx.VisibleDepartment));
     }
@@ -85,14 +85,12 @@ public class InspectorFeesController : ControllerBase
 
         if (ctx.IsFinanceOnly)
         {
- // The list already hides disputed rows from finance; the history must hide with it,
- // otherwise the amount under dispute leaks through the audit entries.
+ // The list already hides lines awaiting a discount decision from finance; the history must
+ // hide with it, otherwise the proposed amount leaks through the audit entries.
+ // (This replaced the same guard for the retired «disputed» state.)
             var row = await _fees.GetByWorkflowTaskIdAsync(workflowTaskId, ct);
-            if (row is not null
-                && row.BillingStatus == InspectorFeeBillingStatus.Disputed)
-            {
+            if (row?.CanResolveDiscountProposal == true)
                 return NotFound();
-            }
         }
 
         return Ok(await _fees.ListTransitionsAsync(workflowTaskId, ct));
@@ -121,6 +119,69 @@ public class InspectorFeesController : ControllerBase
         return row is null
             ? this.BadRequestProblem("تعذّر حفظ الأتعاب — تحقق من الحالة والحسم والاستبعاد.")
             : Ok(row);
+    }
+
+    /// <summary>
+    /// The department supervisor decides the specialist's proposed discount: approve, amend the
+    /// amount, or waive it. Either way the line then goes to finance.
+    /// </summary>
+    /// <remarks>
+    /// Two gates: the actor must be a supervisor at all (section supervisor, general manager or CDO —
+    /// not the specialist who proposed), and Financial then checks the line's department. Errors come
+    /// back as 400 with the Arabic reason.
+    /// </remarks>
+    [HttpPost("{workflowTaskId:guid}/discount-proposal/resolve")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
+    public async Task<ActionResult<InspectorFeeRowDto>> ResolveDiscountProposal(
+        Guid workflowTaskId,
+        [FromBody] ResolveDiscountProposalRequest request,
+        CancellationToken ct)
+    {
+        var ctx = await BuildActorContextAsync(ct);
+        if (ctx.UserId is null) return Unauthorized();
+        if (!ctx.CanSuperviseAnyDepartment) return Forbid();
+
+        var (row, error) = await _fees.ResolveDiscountProposalAsync(
+            workflowTaskId,
+            request,
+            ctx.UserId,
+            ct,
+            ctx.Department,
+            ctx.CanManageAllDepartments);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return row is null ? NotFound() : Ok(row);
+    }
+
+    /// <summary>
+    /// Cancels one party's whole fee on a transaction — typically an operationally complete one.
+    /// Lines already in a statement or paid are left as they are and reported back.
+    /// </summary>
+    /// <remarks>
+    /// Nothing in the system blocks this on a completed or Enfaz-handed-over transaction: what limits
+    /// it is each line's billing state, which Financial enforces (see <c>WaivePartyFeesAsync</c>).
+    /// </remarks>
+    [HttpPost("transactions/{poNumber}/waive-party")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageOperations)]
+    public async Task<ActionResult<WaivePartyFeesResultDto>> WaiveParty(
+        string poNumber,
+        [FromBody] WaivePartyFeesRequest request,
+        CancellationToken ct)
+    {
+        var ctx = await BuildActorContextAsync(ct);
+        if (ctx.UserId is null) return Unauthorized();
+        if (!ctx.CanSuperviseAnyDepartment) return Forbid();
+
+        var (result, error) = await _fees.WaivePartyFeesAsync(
+            poNumber,
+            request,
+            ctx.UserId,
+            ct,
+            ctx.Department,
+            ctx.CanManageAllDepartments);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return Ok(result);
     }
 
     [HttpPost("{workflowTaskId:guid}/transition")]
@@ -178,15 +239,12 @@ public class InspectorFeesController : ControllerBase
         return action switch
         {
             InspectorFeeActions.SubmitToSupervisor
-                or InspectorFeeActions.CreateDisbursementRequest
-                or InspectorFeeActions.OfficeApproveDiscount
-                or InspectorFeeActions.OfficeDispute =>
+                or InspectorFeeActions.CreateDisbursementRequest =>
                 !string.IsNullOrWhiteSpace(ctx.AssigneeId),
 
             InspectorFeeActions.ApproveToFinance
                 or InspectorFeeActions.ResendToFinance
                 or InspectorFeeActions.ReturnToOffice
-                or InspectorFeeActions.ResolveDispute
                 or InspectorFeeActions.Suspend
                 or InspectorFeeActions.LiftSuspension => ctx.CanSuperviseAnyDepartment,
 
@@ -241,9 +299,18 @@ public class InspectorFeesController : ControllerBase
         public bool CanManageAllDepartments =>
             PrototypeRole is "cdo" or "general-manager";
 
+        /// <summary>
+        /// Money decisions on party fees (discounts, approvals, suspensions) are the supervisor's.
+        /// The case specialist proposes a discount when accepting outputs and decides nothing here.
+        /// </summary>
+        /// <remarks>
+        /// Edge case fixed: the specialist used to be listed here, so with the fees page hidden they
+        /// could still discount, approve or suspend through the API — and approve their own proposal.
+        /// Reading the fee rows (<see cref="VisibleDepartment"/>) is unchanged.
+        /// </remarks>
         public bool CanSuperviseAnyDepartment =>
             CanManageAllDepartments
-            || PrototypeRole is "section-supervisor" or "case-specialist";
+            || PrototypeRole is "section-supervisor";
 
         public string? VisibleDepartment =>
             PrototypeRole is "section-supervisor" or "case-specialist"
@@ -258,8 +325,8 @@ public class InspectorFeesController : ControllerBase
                 CanManageAllDepartments);
 
  /// <summary>
- /// Finance and nothing else. Operations resolves pricing disputes, so an actor who also holds
- /// that capability — a CDO or a general manager — still needs to see disputed lines.
+ /// Finance and nothing else. Operations decides proposed discounts, so an actor who also holds
+ /// that capability — a CDO or a general manager — still needs to see lines awaiting a decision.
  /// </summary>
         public bool IsFinanceOnly => IsFinancialOfficer && !IsOperationsManager;
     }

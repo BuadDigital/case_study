@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Button,
   Label,
@@ -9,10 +9,12 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { useIdempotentAction } from "@platform/app-shared";
+import type { AcceptPartyTaskSubmissionRequest } from "@platform/api-client";
 import {
   acceptPartySubmission,
   reopenPartySubmission,
 } from "@platform/app-shared/app-data/party-submission-api";
+import { FeeDiscountModal } from "@platform/app-shared/fees/FeeDiscountModal";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import { formatDateAr } from "../../lib/app-data/po-intake-data";
 import { ReturnInspectionDialog } from "./ReturnInspectionDialog";
@@ -25,6 +27,8 @@ function formatAcceptedDate(iso: string): string {
 /**
  * Specialist accept / return bar for a party package on property detail tabs.
  * Accept stamps server AcceptedAtUtc; return requires a reason and clears acceptance.
+ * With {@link discountProposal} the specialist may also accept with a proposed discount on the
+ * party's fee, which goes to the department supervisor instead of straight to finance.
  */
 export function PropertyDetailPartyPackageReview({
   taskId,
@@ -43,6 +47,7 @@ export function PropertyDetailPartyPackageReview({
   hideAccept = false,
   returnsInspection = false,
   deedLabel,
+  discountProposal,
   onChanged,
 }: {
   taskId: string | null | undefined;
@@ -72,6 +77,8 @@ export function PropertyDetailPartyPackageReview({
   returnsInspection?: boolean;
   /** Deed number shown in the return dialog (inspection only). */
   deedLabel?: string;
+  /** Offer «قبول مع اقتراح حسم» (engineering survey): what the discount is on, and its reasons. */
+  discountProposal?: { subjectLabel: string; reasons: readonly string[] };
   onChanged?: () => void;
 }) {
   const { showToast } = useToast();
@@ -79,10 +86,18 @@ export function PropertyDetailPartyPackageReview({
   const [returnNote, setReturnNote] = useState("");
   const [returnError, setReturnError] = useState<string | null>(null);
   const [returnBusy, setReturnBusy] = useState(false);
+  const [proposalOpen, setProposalOpen] = useState(false);
+  // Set by the click that starts the accept, read by the idempotent call it triggers.
+  // Why a ref: `useIdempotentAction` takes a fixed callback and `execute()` takes no arguments, so
+  // the plain accept and the accept-with-proposal share one idempotent action; the clicked button
+  // writes the body here right before `execute()`. A plain accept writes `undefined`, so a body from
+  // an earlier, refused proposal can never leak into the next plain accept.
+  const acceptBodyRef = useRef<AcceptPartyTaskSubmissionRequest | undefined>(undefined);
 
   const { execute: executeAccept, loading: acceptBusy } = useIdempotentAction(
     useCallback(
-      async (idempotencyKey: string) => acceptPartySubmission(taskId!, idempotencyKey),
+      async (idempotencyKey: string) =>
+        acceptPartySubmission(taskId!, idempotencyKey, acceptBodyRef.current),
       [taskId],
     ),
   );
@@ -117,26 +132,41 @@ export function PropertyDetailPartyPackageReview({
     return inspectionReturnDialog;
   }
 
-  async function handleAccept() {
-    if (!taskId || busy) return;
+  /**
+   * Accepts the package, with or without a proposed discount.
+   *
+   * Resolves true when the package was accepted (the proposal modal closes only then). A refused
+   * accept (server error, network, concurrent click skipped) shows the toast and resolves false,
+   * so the discount dialog stays open with what the specialist typed.
+   */
+  async function handleAccept(body?: AcceptPartyTaskSubmissionRequest): Promise<boolean> {
+    if (!taskId || busy) return false;
+    acceptBodyRef.current = body;
     try {
       const outcome = await executeAccept();
-      if (outcome.status === "skipped") return;
+      if (outcome.status === "skipped") return false;
       const result = outcome.value;
       if (!result.ok) {
         showToast(result.error, "error");
-        return;
+        return false;
       }
-      showToast(acceptSuccessToast, "success");
+      showToast(
+        body
+          ? "تم قبول المخرجات — الحسم المقترح أُرسل لمشرف القسم للقرار"
+          : acceptSuccessToast,
+        "success",
+      );
       // Accept/return write a transaction timeline entry server-side; the
       // timeline rail refetches on the tasks-changed event.
       notifyTasksChanged();
       onChanged?.();
+      return true;
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : "تعذّر قبول مخرجات المهمة",
         "error",
       );
+      return false;
     }
   }
 
@@ -189,6 +219,16 @@ export function PropertyDetailPartyPackageReview({
             >
               {acceptLabel}
             </Button>
+          ) : null}
+          {canAccept && discountProposal ? (
+            <button
+              type="button"
+              className="rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 max-lg:min-h-11 max-lg:flex-1 max-lg:rounded-[12px] max-lg:text-[13px]"
+              disabled={busy}
+              onClick={() => setProposalOpen(true)}
+            >
+              قبول مع اقتراح حسم
+            </button>
           ) : null}
           {canReturn ? (
             <button
@@ -260,6 +300,26 @@ export function PropertyDetailPartyPackageReview({
             </Button>
           </div>
         </div>
+      ) : null}
+
+      {discountProposal ? (
+        <FeeDiscountModal
+          open={proposalOpen}
+          row={null}
+          subject={{ label: discountProposal.subjectLabel, feeSar: null }}
+          title="قبول المخرجات مع اقتراح حسم"
+          reasons={discountProposal.reasons}
+          requireDiscount
+          note="يُرفع الحسم المقترح لمشرف القسم ليعتمده أو يعدّله أو يسمح به، ويُبلَّغ المكتب بأنه قيد المراجعة. لا تصل الأتعاب للمالية قبل قرار المشرف."
+          saveLabel="قبول ورفع الحسم للمشرف"
+          onClose={() => setProposalOpen(false)}
+          onSave={(patch) =>
+            handleAccept({
+              proposedDiscountSar: patch.supervisorDiscountSar,
+              discountReason: patch.discountReason,
+            })
+          }
+        />
       ) : null}
 
       {hint && canReview && !accepted ? (

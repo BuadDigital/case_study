@@ -37,10 +37,6 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
     openFn,
     setOpenFn,
     busyId,
-    objectOpenId,
-    setObjectOpenId,
-    objectText,
-    setObjectText,
     invoiceNo,
     setInvoiceNo,
     invoiceDate,
@@ -54,7 +50,6 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
     readyCount,
     filteredFees,
     filteredFns,
-    act,
     submitInvoice,
     openStatement,
     closeStatementModal,
@@ -83,9 +78,9 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
             icon: <KpiClockIcon />,
             iconClass: "bg-[color-mix(in_srgb,#d9a441_14%,transparent)] text-[#8a5e14]",
             tone: "gold",
-            label: "بانتظار إفادتكم",
+            label: "قيد المراجعة مع المشرف",
             value: fmtSar(kpi.pending, { digits: 3, trim: true }),
-            sub: "تعديلات تسعير تنتظر إفادتكم",
+            sub: "حسم مقترح يناقشه معكم المشرف",
           },
           {
             key: "ready",
@@ -125,13 +120,13 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
         <KpiCell
           icon={<KpiClockIcon />}
           iconClass="bg-[color-mix(in_srgb,#d9a441_14%,transparent)] text-[#8a5e14]"
-          label="بانتظار إفادتكم"
+          label="قيد المراجعة مع المشرف"
           value={
             <span className="text-[20px] font-extrabold tabular-nums">
               {fmtSar(kpi.pending, { digits: 3, trim: true })}
             </span>
           }
-          sub="تعديلات تسعير تنتظر إفادتكم"
+          sub="حسم مقترح يناقشه معكم المشرف"
         />
         <KpiCell
           icon={<CardIcon />}
@@ -165,7 +160,7 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
         tabs={[
           {
             id: "action",
-            label: "تتطلب إجراءكم",
+            label: "قيد المراجعة",
             count: actionCount,
             countWarnWhenActive: true,
           },
@@ -188,12 +183,6 @@ export function EngFeesHtmlScreen({ assigneeId }: { assigneeId?: string }) {
             setStFilter={setStFilter}
             filteredFees={filteredFees}
             feesPending={feesPending}
-            busyId={busyId}
-            objectOpenId={objectOpenId}
-            setObjectOpenId={setObjectOpenId}
-            objectText={objectText}
-            setObjectText={setObjectText}
-            act={act}
           />
         ) : (
           <>
