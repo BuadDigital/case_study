@@ -62,6 +62,12 @@ type BuildingInventoryEditor = {
   addLine: () => void;
   patchLine: (index: number, next: BuildingInventoryLineDto) => void;
   removeLine: (index: number) => void;
+  /**
+   * A React key that follows a row through edits and saves. `line.id` is not one: a new row
+   * has none until its first save, so keying by it remounted the row the moment the save
+   * landed — the focused field lost focus and the phone keyboard closed mid-typing.
+   */
+  rowKey: (line: BuildingInventoryLineDto) => string;
   /** Save now (the specialist's button). */
   save: () => Promise<BuildingInventorySaveOutcome>;
   /** Send whatever is pending and wait until nothing is in flight (never throws). */
@@ -113,6 +119,18 @@ export function useBuildingInventoryEditor(input: {
     }
     return key;
   }, []);
+
+  /** The reply's row objects replace the sent ones index by index — they keep the same keys. */
+  const carryKeys = useCallback(
+    (from: BuildingInventoryLineDto[], to: BuildingInventoryLineDto[]) => {
+      if (from.length !== to.length) return;
+      to.forEach((line, i) => {
+        const prev = from[i];
+        if (prev && line !== prev) keysRef.current.set(line, keyOf(prev));
+      });
+    },
+    [keyOf],
+  );
 
   const setLines = useCallback((next: BuildingInventoryLineDto[]) => {
     linesRef.current = next;
@@ -198,17 +216,20 @@ export function useBuildingInventoryEditor(input: {
     const untouched = sameRows(linesRef.current, sentRows);
     if (untouched && kept.length === sentRows.length && !wasQueued) {
       // Nothing changed meanwhile: show exactly what the server holds (ids, provenance).
+      carryKeys(sentRows, res.data.lines);
       setLines(res.data.lines);
       textRef.current = res.data.componentsText ?? textRef.current;
       if (mountedRef.current) setTextState(textRef.current);
     } else if (!wasQueued) {
-      setLines(adoptSavedLineIds(linesRef.current, kept, res.data.lines, keyOf));
+      const adopted = adoptSavedLineIds(linesRef.current, kept, res.data.lines, keyOf);
+      carryKeys(linesRef.current, adopted);
+      setLines(adopted);
     }
     if (mountedRef.current) setDirty(dirtyRef.current);
     const outcome = { ok: true, queued: wasQueued };
     onSavedRef.current?.(outcome);
     return outcome;
-  }, [actor, keyOf, poNumber, propertyId, setLines, taskId, onSavedRef]);
+  }, [actor, carryKeys, keyOf, poNumber, propertyId, setLines, taskId, onSavedRef]);
 
   /** Single-flight: callers during a save join its loop, which repeats while edits keep coming. */
   const requestSave = useCallback((): Promise<BuildingInventorySaveOutcome> => {
@@ -316,6 +337,7 @@ export function useBuildingInventoryEditor(input: {
     addLine,
     patchLine,
     removeLine,
+    rowKey: keyOf,
     save,
     flush,
     reload,

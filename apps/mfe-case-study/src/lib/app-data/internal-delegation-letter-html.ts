@@ -12,6 +12,7 @@ import { escapeHtml } from "@platform/app-shared/lib/html-escape";
 import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "./po-intake-data";
 import { officialLetterAssetUrls } from "./official-letter-assets";
 import {
+  officialLetterFitToScreenHtml,
   officialLetterFontsHtml,
   officialLetterShellCss,
   officialLetterSignBlockHtml,
@@ -122,6 +123,7 @@ export function internalDelegationLetterHtml(
       ${officialLetterSignBlockHtml({ stampUrl: stamp, signatureUrl: signature })}
     </div>
   </div>
+  ${officialLetterFitToScreenHtml()}
 </body>
 </html>`;
 }

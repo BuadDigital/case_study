@@ -40,6 +40,9 @@ export function officialLetterShellCss(options?: {
       color: ${ink};
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
+      /* Phone browsers must not enlarge the letter's text on their own. */
+      -webkit-text-size-adjust: 100%;
+      text-size-adjust: 100%;
     }
     body {
       font-family: "IBM Plex Sans Arabic", sans-serif;
@@ -272,10 +275,13 @@ export function officialLetterShellCss(options?: {
         min-height: 0;
       }
       .toolbar { display: none !important; }
+      /* The sheet is sized to the paper, never to the screen: a phone lays the print out at its own
+         width (~400px), so 100% / 100vh squeezed the A4 text into a narrow column that ran over the
+         letterhead footer — the letter printed from a phone came out with huge text. */
       .page {
         box-shadow: none;
-        width: 100%;
-        height: 100vh;
+        width: 210mm;
+        height: 297mm;
       }
     }
   `;
@@ -301,6 +307,44 @@ export function officialLetterToolbarHtml(title: string): string {
     طباعة / حفظ PDF
   </button>
 </div>`;
+}
+
+/**
+ * Shrinks the A4 sheet to the screen width on phones; printing is untouched.
+ *
+ * What it does: the sheet is a fixed 210mm (~794px) box. On a phone it is wider than the screen, and because the
+ * page is RTL and centred, the overflow falls off the right edge where the browser cannot scroll to — the inspector
+ * saw the right half of «إقرار صحة الموقع» cut away. How: on load and on resize, each `.page` gets a CSS `zoom` of
+ * (screen width ÷ sheet width) when it does not fit; nothing changes on wider screens.
+ * Edge cases: the print stylesheet forces `zoom: 1`, so a letter printed or saved as PDF from a phone stays a full
+ * A4 page; `beforeprint` also clears the zoom for browsers that lay out the print before applying print CSS.
+ * Not used by the case-study report, whose pagination script measures the sheets itself.
+ */
+export function officialLetterFitToScreenHtml(): string {
+  return `
+<style>
+  @media screen and (max-width: 860px) { body { padding: 12px; } }
+  @media print { .page { zoom: 1 !important; } }
+</style>
+<script>
+(function () {
+  function pages() { return document.querySelectorAll(".page"); }
+  function reset() { pages().forEach(function (p) { p.style.zoom = ""; }); }
+  function fit() {
+    var avail = document.documentElement.clientWidth - 24;
+    pages().forEach(function (p) {
+      p.style.zoom = "";
+      var w = p.offsetWidth;
+      if (w > avail && avail > 0) p.style.zoom = String(avail / w);
+    });
+  }
+  fit();
+  window.addEventListener("load", fit);
+  window.addEventListener("resize", fit);
+  window.addEventListener("beforeprint", reset);
+  window.addEventListener("afterprint", fit);
+})();
+</script>`;
 }
 
 export function officialLetterSignBlockHtml(options: {

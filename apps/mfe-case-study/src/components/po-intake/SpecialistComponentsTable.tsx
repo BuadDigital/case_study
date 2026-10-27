@@ -123,11 +123,14 @@ export function SpecialistComponentsTable({
   lines,
   disabled,
   readView = false,
+  rowKey,
   onPatch,
   onRemove,
 }: {
   lines: BuildingInventoryLineDto[];
   disabled: boolean;
+  /** Stable key per row (`useBuildingInventoryEditor().rowKey`); a new row has no id until saved. */
+  rowKey?: (line: BuildingInventoryLineDto) => string;
   /** Page is view-only (not merely busy saving): render text instead of locked inputs. */
   readView?: boolean;
   onPatch: (index: number, next: BuildingInventoryLineDto) => void;
@@ -237,7 +240,7 @@ export function SpecialistComponentsTable({
           const c = controls(line, index, "h-11 text-[14px]");
           return (
             <MobileRecordCard
-              key={line.id ?? `new-${index}`}
+              key={rowKey ? rowKey(line) : line.id ?? `new-${index}`}
               title={`البند ${index + 1}`}
               subtitle={<LineProvenance line={line} />}
               actions={
@@ -284,7 +287,7 @@ export function SpecialistComponentsTable({
             {lines.map((line, index) => {
               const c = controls(line, index, "text-xs");
               return (
-                <Tr key={line.id ?? `new-${index}`} hoverable={false}>
+                <Tr key={rowKey ? rowKey(line) : line.id ?? `new-${index}`} hoverable={false}>
                   <Td className="align-top">
                     {c.item}
                     <LineProvenance line={line} />

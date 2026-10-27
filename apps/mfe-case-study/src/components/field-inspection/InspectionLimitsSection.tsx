@@ -114,15 +114,10 @@ export function InspectionLimitsSection({
 
   return (
     <div className="mt-3 space-y-3 rounded-lg border border-border bg-surface-2/40 p-3">
-      <div>
-        <p className="m-0 text-[12px] font-bold text-heading">
-          حدود المعاينة (القيود على المعاينة)
-        </p>
-        <p className="mt-1 text-[11px] leading-relaxed text-text-2">
-          نطاق المعاينة إلزامي في كل تقرير. المعاينة المحدودة تنبيه بمبرر
-          إلزامي، والمكتبية عن بُعد لا يمر إصدارها حتى يعتمدها المقيّم المعتمد.
-        </p>
-      </div>
+      <p className="m-0 text-[11px] leading-relaxed text-text-2">
+        نطاق المعاينة إلزامي في كل تقرير. المعاينة المحدودة تنبيه بمبرر
+        إلزامي، والمكتبية عن بُعد لا يمر إصدارها حتى يعتمدها المقيّم المعتمد.
+      </p>
 
       {loading ? (
         <GentleBusy>
