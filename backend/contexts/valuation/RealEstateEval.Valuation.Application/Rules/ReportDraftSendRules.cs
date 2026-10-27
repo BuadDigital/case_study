@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • Gates New file — the specialist cannot send the report draft while a required document he uploads
+//          is missing (gate required_attachments: «صك الملكية», «التقرير المساحي» …); the refusal names them.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;
 

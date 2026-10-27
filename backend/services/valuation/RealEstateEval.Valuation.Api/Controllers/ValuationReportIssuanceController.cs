@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D15  A duplicate deposit code or a lost parallel registration answers 409 Conflict (the ConflictKey
+//         marker is dropped from the errors).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;

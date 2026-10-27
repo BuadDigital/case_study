@@ -1,3 +1,13 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • O17  The «اعتماد التقرير» confirm goes through confirmIgnoringDoubleClick and the button ignores the
+//         second click of a double-click (e.detail > 1) — a double-click no longer dismisses the confirm.
+// Round 2 (1b19bedc)
+//  • R2-13 A refused report-number / approval / deposit-code call shows a RefusalPanel («إخفاء» closes it)
+//          listing every reason (refusalLines: each error and message line, de-duplicated) instead of only a
+//          toast; the toast still shows the first line. Retrying clears the panel.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useEffect, useState } from "react";

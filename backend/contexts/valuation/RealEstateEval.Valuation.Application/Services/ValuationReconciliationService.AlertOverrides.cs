@@ -1,3 +1,19 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Alerts New file — problem 20: the alert dispositions are saved on their own (SaveAlertOverridesAsync,
+//           upsert by code via MergeAlertOverrides, audited), so an acknowledgement no longer waits on
+//           «مبرر استخدام طرق التقييم».
+//  • D3   ReconciliationLiquidationMessages — one name for the liquidation discount, «خصم التصفية».
+// Hotfix (9acb4f54)
+//  • D1   A row created by an acknowledgement starts from the work order's basis and premise, not the
+//         default «market» — liquidation cases no longer turn into market value.
+// Round 2 (1b19bedc)
+//  • R2-10 A blank or unknown alert code is refused with an Arabic 400 (AddAlertOverrideCodeErrors).
+//  • B    A written override rationale is at least 10 characters (AddAlertOverrideRationaleErrors).
+//  • R2-8 Liquidation discount capped at 90% (MaxDiscountPct); its name and the report labels follow the
+//         premise: «خصم التصفية المنظمة» / «خصم البيع القسري» (DiscountLabelAr, ReportFieldLabelAr).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;

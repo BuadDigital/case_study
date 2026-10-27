@@ -1,3 +1,15 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D13  §26 participants: the three names fixed in code are gone — the roster's active reviewers and
+//         assistants, then the assigned appraiser (duplicates matched by samePerson).
+//  • D17  applyIncomeSection puts the income section before the reconciliation.
+//  • D9   appendScopeRows adds the §2 scope rows (retrospective rationale, building-only scope).
+//  • D11  appendAgeNotes adds the age rationales / lease cap under the §23 ages row.
+//  • §25  fillFinalValueTable replaces the old liquidation dash-out and fillValueAdditions.
+// Round 2 (1b19bedc)
+//  • A    §20 calls rebuildLandValueTable with fill.landValueRows.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Applies the valuation report template to the DOM — pure model is built in
  * valuation-report-fill-model.ts; this file only writes values into the template.

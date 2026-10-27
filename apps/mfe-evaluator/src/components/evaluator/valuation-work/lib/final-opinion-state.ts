@@ -1,3 +1,18 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income  An income indicator counts as complete once the server computed a positive value; an
+//            income-only opinion gets its own sentence (NOI ÷ cap rate, no weighting).
+//  • D3   One name «خصم التصفية» (LIQUIDATION_DISCOUNT_NAME) in the opinion line; new
+//         liquidationDiscountSaveErrors mirrors the server: 0 is refused only on the «قيمة التصفية» basis.
+//  • Alerts  New alertOverridesForCodes — the dispositions of given alert codes for the alert-overrides save.
+//  • Unsaved  New finalOpinionDraftDiffers: drafts that differ from the saved reconciliation make the
+//             window warn before a refresh (problem 19).
+// Round 2 (1b19bedc)
+//  • R2-11  Discount ceiling 90٪ like the server (LIQUIDATION_DISCOUNT_MAX_PCT); the range message is named
+//           after the premise («التصفية المنظمة» / «البيع القسري») — liquidationDiscountRangeMessage.
+//  • B    A written liquidation discount rationale must be at least 10 characters.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Pure rules behind `FinalOpinionSection` — the live value-opinion calculation
  * (weights, liquidation discount, rounding and the auto-generated opinion text)

@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • Frozen  subjectAreaSyncPlan sends nothing while writes are frozen (package handed over) — every visit
+//            used to fire a PUT the server refused. Comment: the sync writes the market header only; the
+//            building plot (decision A) lives on the cost approach.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Pure derivations behind `useValuationWorkData`: screen gating from the saved
  * approach settings, the subject identity and bank-fetch options assembled

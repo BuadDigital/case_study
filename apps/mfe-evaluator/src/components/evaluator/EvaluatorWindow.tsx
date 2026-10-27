@@ -1,3 +1,14 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Split The assigned-appraiser name lookup moved unchanged into useAssignedAppraiserName.
+//  • P19  A refresh keeps the tab: the window opens on initialEvaluatorTab (remembered per task) and
+//         useEvaluatorTabMemory restores an approach tab once the settings load; lastWorkScreen starts from
+//         the restored tab.
+//  • P19  useUnsavedEditsGuard warns before a refresh / close loses an unblurred field, a pending autosave or
+//         an unsaved section.
+//  • D17  navAvail gains income (false until the settings report the approach).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import {

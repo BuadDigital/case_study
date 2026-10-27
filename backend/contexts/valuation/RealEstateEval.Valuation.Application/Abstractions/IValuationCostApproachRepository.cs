@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Bounds FindLineIdsOwnedElsewhereAsync — which sent cost line ids already belong to another cost
+//           approach, so a foreign line id is refused with a 400 instead of failing on save.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Valuation.Application.Abstractions;

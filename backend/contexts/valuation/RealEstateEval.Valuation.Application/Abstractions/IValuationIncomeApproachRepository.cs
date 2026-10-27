@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income New file — persistence boundary for the income approach (D17): request, income row
+//           (untracked / tracked), approach settings, add and save.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Valuation.Application.Abstractions;

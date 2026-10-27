@@ -1,3 +1,19 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • P5   Cost DTO: isSaved (saved zeros replace the starter defaults) and the actual / economic age
+//         rationales, also on the save request.
+//  • D11  Cost DTO: remainingLeaseYears / lifeCappedByLease / effectiveLifeYears; settings DTO and save
+//         request: ownershipInterestKey (+ label) and remainingLeaseYears.
+//  • D12  Cost DTO: appliedObsolescencePct (capped at 100%) and obsolescenceNeedsAlert (> 90%).
+//  • D17  Reconciliation incomeOpinionValue; the income toggle is no longer documented as deferred.
+//  • Wording The garbled reconciliation 400 message is now «بيانات الترجيح غير صالحة».
+// Round 2 (1b19bedc)
+//  • A    subjectAreaSqm is the whole building plot on the land table; new apartmentLandShareSqm (list) and
+//         buildingPlotAreaSqm (cost DTO and save request).
+//  • R2   Other failed responses go through serverFailure: a 503 (an unreachable service) now carries the
+//         server's Arabic message instead of a bare «server» failure.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ComparablePropertyDto } from "./comparable-properties";

@@ -1,3 +1,19 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income  New «أسلوب الدخل» screen (IncomeApproachScreen): the tab follows the settings draft, else the
+//            saved settings; an income save drops the printed-report cache and reloads reconciliation
+//            and gates.
+//  • D6   Alert panels per group: market on «طريقة المقارنة», cost on the cost screen, general on the final
+//         opinion (alertsPanel) — cost and general alerts had no panel.
+//  • D2   Passes gates and setScreen to the review screen for the hand-over blockers list.
+//  • Split  The screen pills moved to ValuationWorkNav.
+// Round 2 (1b19bedc)
+//  • A    The land table inside the cost approach uses the whole plot area (landPlotSqm), never an
+//         apartment's floor area, and an apartment shows apartmentLandHint; deedArea goes to the cost
+//         section.
+//  • R2-3  Passes incomeSaved (saved settings) to the income screen.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import {

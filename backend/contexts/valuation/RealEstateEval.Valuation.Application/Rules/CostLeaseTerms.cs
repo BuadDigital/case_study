@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D11  New file — the one place the cost approach reads the ownership interest and lease years: the
+//         economic life is capped at the remaining lease years for a building-only scope on a leasehold.
+// Round 2 (1b19bedc)
+//  • D11  The cap applies to every scope (ForInterest replaces ForScope; no scope argument) — a «أرض مع
+//         المباني» valuation on a short usufruct was depreciated over the full life.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Valuation.Application.Rules;

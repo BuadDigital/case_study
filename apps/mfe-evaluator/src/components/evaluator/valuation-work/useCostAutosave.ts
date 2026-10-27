@@ -1,3 +1,14 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Autosave  New file — the cost screen's writes: a debounced save after every appraiser edit plus the
+//              explicit «حفظ أسلوب التكلفة»; saves never overlap (one queued), leaving the screen sends
+//              pending edits, and pending edits raise the refresh warning (setSectionUnsaved).
+// Round 2 (1b19bedc)
+//  • R2-2  The refresh-warning flag is no longer cleared by effect cleanup (an <Activity>-hidden screen
+//          runs cleanups with edits still unsaved); it goes down on a real save or window unmount.
+//  • R2-2  New "leave" save mode: a refused save on leaving the screen calls onLeaveFailure (toast).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";

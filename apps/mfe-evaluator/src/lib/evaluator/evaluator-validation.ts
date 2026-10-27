@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D3   With the approaches on, the hand-over no longer asks for «خصم التصفية» — the reconciliation save
+//         refuses a 0 on the liquidation basis.
+// Round 2 (1b19bedc)
+//  • R2   The liquidation discount ceiling is 90 (was 100), the same as the reconciliation save on the
+//         server.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import {
   resolveFirstErrorMessage,
   resolveFirstErrorTarget,

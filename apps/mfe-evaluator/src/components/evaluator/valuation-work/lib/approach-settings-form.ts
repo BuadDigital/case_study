@@ -1,3 +1,13 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D9   New file — pure rules of the settings form. approachSettingsDraftError mirrors the server's
+//         ValuationApproachSettingsRules: retrospective date / period checks and a rationale of at least
+//         10 characters.
+//  • D11  Ownership options «ملكية تامة» / «حق منفعة» / «أرض مستأجرة» (normalizeOwnershipInterestKey) and
+//         remaining lease years required for a leasehold, 1–999, Arabic digits accepted (parseLocaleNumber).
+//  • D9   approachSettingsDraftRequestFields builds the D9/D11 part of the save request.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Pure rules behind the basics screen's settings form (ApproachSettingsSection):
  * the ownership-interest options (D11), the retrospective rationale (D9) and the

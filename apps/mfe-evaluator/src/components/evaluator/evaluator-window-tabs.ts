@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  New «أسلوب الدخل» tab (`income`, hint «رسملة مباشرة …») between cost and final, and `income` in
+//         WORK_SCREENS; visibleEvaluatorTabs shows it only while navAvail.income is true.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import type { ValuationWorkScreenId } from "./valuation-work/lib/shell-state";
 
 export type EvaluatorWindowTab = ValuationWorkScreenId | "output";

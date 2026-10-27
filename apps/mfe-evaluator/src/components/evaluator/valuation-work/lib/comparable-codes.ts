@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-20  New file — splitComparableCodes cuts alert text into plain runs and CMP-… code runs, so the
+//           UI can keep each code on one line. Pure.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Comparable codes («CMP-8E3B9A1F», «CMP-2026-000123») inside alert text. A phone broke them at the
  * hyphen («CMP-» on one line, «77E7E900» on the next); the text is cut into plain runs and codes so

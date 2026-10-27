@@ -1,3 +1,8 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  New DbSet ValuationIncomeApproaches for the income approach (direct capitalisation).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;

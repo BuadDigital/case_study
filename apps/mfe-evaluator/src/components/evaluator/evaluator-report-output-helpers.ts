@@ -1,3 +1,20 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  loadValuationApproaches also reads the income approach (getValuationIncomeApproach) into the bundle
+//         (`income`, null when unreadable).
+//  • D1   New reportValuationChoices: purpose (approach settings) and basis / premise (reconciliation, via
+//         resolveReportValuationKeys) with their org-list labels and basis definition; the work order's
+//         defaults only when nothing was saved.
+//  • D9   It also returns the retrospective date and rationale when the valuation date is retrospective.
+//  • D11  …and the ownership interest (key, Arabic label, remaining lease years) when one is saved.
+// Round 2 (1b19bedc)
+//  • R2-1 effectiveValuationDate: a retrospective date (or «start — end» period) now outranks the draft's own
+//         date, so the report no longer prints two valuation dates; reportValuationChoices passes
+//         retrospectiveDateEnd.
+//  • R2-17 The output bundle no longer calls listClients (GET /api/clients is case-staff only — the appraiser
+//          got a 403); the printed report reads client names off the work order.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import {
   getApiBase,
   getBuildingInventory,

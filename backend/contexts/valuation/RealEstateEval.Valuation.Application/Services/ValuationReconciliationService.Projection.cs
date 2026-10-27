@@ -1,3 +1,13 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  The income value joins the reconciliation rows and the DTO (IncomeOpinionValue) when the income
+//         approach is enabled (ValuationApproachKinds.ValueOf).
+//  • D1   The appraiser's saved basis and premise win; the work order only seeds them.
+// Hotfix (9acb4f54)
+//  • D1   A row that only an alert acknowledgement created (no methods rationale = no full save) never
+//         outranks the work order's basis and premise.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;

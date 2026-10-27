@@ -1,3 +1,11 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2   The specialist's send is disabled while the issuance gate `required_attachments` fails
+//         (missingSpecialistDocuments over a fresh getValuationIssuanceGates query) and the missing documents
+//         are listed under the button — the appraiser's approval would be refused for them.
+//  • R2   A refused send refetches those gates so the list follows the server.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

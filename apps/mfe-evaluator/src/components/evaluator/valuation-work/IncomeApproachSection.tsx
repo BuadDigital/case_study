@@ -1,3 +1,15 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income  New file — «أسلوب الدخل (رسملة مباشرة)» (D17): gross potential income, vacancy and collection
+//            loss, other income, operating expenses (amount or % of EGI), cap rate and its rationale,
+//            with the EGI → NOI → value chain. Text inputs so Arabic digits are converted, not dropped.
+// Round 2 (1b19bedc)
+//  • R2-4  Inputs and save stay disabled until the saved row loads («جاري تحميل أسلوب الدخل…»); a load
+//          error shows «إعادة المحاولة».
+//  • R2-18  A cap rate the server refuses (≤ 0 or > 30٪) shows its refusal instead of a value
+//           (incomeCapRateError).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { memo, type ReactNode } from "react";

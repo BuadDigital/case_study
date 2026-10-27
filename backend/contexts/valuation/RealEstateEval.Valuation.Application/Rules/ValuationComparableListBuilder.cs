@@ -1,3 +1,21 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D5   Automatic weights come from the GROSS adjustment (sequential + difference, absolute;
+//         GrossAdjustmentPct) instead of the difference-factor sum.
+//  • D6   An outlier comparable (adjusted unit rate far from the median; AdjustedUnitRate) gets no automatic
+//         weight.
+//  • D7   Whole-property basis: no area adjustment; the land table inside the cost approach is always
+//         per m² (EffectiveBasis).
+//  • D4   ExceedsLargeAdjustmentThreshold also fires on gross (not only net) above 40%.
+//  • D7   Land table area adjustment compares with the apartment's land share when one is saved
+//         (AreaAdjustmentSubjectAreaSqm).
+// Round 2 (1b19bedc)
+//  • A    Land table compares each land comparable with the whole building plot and multiplies the adjusted
+//         rate by the apartment's share (CostLandAreas; AreaAdjustmentSubjectAreaSqm removed).
+//  • R2-7 A market comparable dated after the valuation date (hard alert 23) gets automatic weight 0.
+//  • A    The list DTO reports ApartmentLandShareSqm for the land table.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;

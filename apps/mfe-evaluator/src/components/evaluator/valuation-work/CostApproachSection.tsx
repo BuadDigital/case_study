@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Autosave  A status line next to «حفظ أسلوب التكلفة» says where the automatic save stands
+//              (costSaveStatusText: pending / saving / saved / refused with the reason).
+// Round 2 (1b19bedc)
+//  • A    Takes deedArea and passes isApartment and the plot-area seed (buildingPlotAreaSeed) to the
+//         workflow — the deed area seeds «مساحة أرض العمارة» unless the property is an apartment.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { memo } from "react";

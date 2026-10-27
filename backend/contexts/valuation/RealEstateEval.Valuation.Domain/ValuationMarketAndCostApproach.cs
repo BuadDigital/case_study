@@ -1,3 +1,20 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Cost ActualAgeRationale / EconomicAgeRationale stored on the cost approach.
+//  • Cost A repeated-floors line needs a count and a first-floor area (RepeatedFloorRules.MissingInputMessage).
+//  • Bounds Save bounds for quantity, unit cost, line count, floor count, ages, life extension and land
+//           share; LineTotal clamps legacy rows so a read never overflows.
+//  • D7   The land rate inside the cost approach is always per m²: on whole_property each comparable's
+//         total ÷ its own area, then weighted (LandUnitRateFromAdoptedComps).
+//  • D12  Applied obsolescence capped at 100% (buildings value floors at 0); alert above 90%.
+//  • D11  LifeCappedByLease — the life used for depreciation is at most actual age + remaining lease.
+// Round 2 (1b19bedc)
+//  • A    BuildingPlotAreaSqm on the cost approach and CostLandAreas (plot + apartment share); the land
+//         table compares with the plot (LandTableSubjectAreaSqm) and multiplies by the share
+//         (LandTableValueAreaSqm).
+//  • R2-5 MaxBuildingPlotAreaSqm and MaxAmountSar (1e12) — a cost line or total cannot overflow numeric(18,2).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.Valuation.Domain;

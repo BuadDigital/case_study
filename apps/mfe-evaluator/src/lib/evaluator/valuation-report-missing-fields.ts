@@ -1,3 +1,8 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Wording Field key «مبرر معامل التصفية» → «مبرر خصم التصفية», the label the report now prints.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Valuation report cells whose value comes from a party or a system setting. When the fill
  * leaves one empty (—) it is marked red on screen — like «رقم الطلب». Clicking a marked cell

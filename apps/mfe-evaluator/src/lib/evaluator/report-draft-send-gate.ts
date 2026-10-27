@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2   New file — missingSpecialistDocuments: the failing `required_attachments` gate's text, so the
+//         specialist cannot send the report draft while a document only he uploads is missing (mirrors server
+//         ReportDraftSendRules).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Round 2 — the specialist cannot send the valuation-report draft while a required report document
  * that only he uploads is missing (issuance gate `required_attachments`: «صك الملكية»,

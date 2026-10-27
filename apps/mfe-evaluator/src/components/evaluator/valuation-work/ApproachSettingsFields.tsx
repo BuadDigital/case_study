@@ -1,3 +1,16 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Split  New file — the «تاريخ التقييم» block (issue date or retrospective date / period) moved here
+//           out of ApproachSettingsSection (ValuationDateFields).
+//  • D9   The retrospective block adds «مبرر التقييم بأثر رجعي» (required, at least 10 characters,
+//         printed in the report scope).
+//  • D11  New OwnershipInterestFields: «نوع الملكية المقيَّمة» (ملكية تامة / حق منفعة / أرض مستأجرة) and,
+//         for a leasehold, «المدة المتبقية (سنة)».
+// Round 2 (1b19bedc)
+//  • R2-18  Date inputs take max = today (the server refuses a future retrospective date) and are
+//           disabled while the settings save.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { invalidControlClass } from "@platform/app-shared/form-ux";

@@ -1,3 +1,14 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  New gate income_approach_complete «أسلوب الدخل مكتمل»: an enabled income approach needs gross
+//         income, a cap rate and a positive NOI before issuance.
+// Round 2 (1b19bedc)
+//  • B    New gate adjustment_rationales_<table> «مبررات التسويات والأوزان اليدوية»: a non-zero factor or
+//         manual weight without a 10-character rationale blocks issue and hand-over, each item named.
+//  • R2-1 AttachmentScopeKeys — documents are also looked up under the survey task id, so the
+//         engineering survey «التقرير المساحي» is found for vacant land.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.Valuation.Domain;

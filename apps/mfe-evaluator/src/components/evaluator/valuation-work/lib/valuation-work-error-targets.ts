@@ -1,3 +1,19 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D11  Server errors for ownershipInterestKey and remainingLeaseYears point at their boxes on the
+//         basics screen.
+//  • D9   retrospectiveRationale points at «مبرر التقييم بأثر رجعي».
+//  • Income  Income-screen targets (D17) for every input and the cap-rate rationale; new
+//            INCOME_FIELD_ERROR_KEYS maps screen fields to the server's keys.
+// Round 2 (1b19bedc)
+//  • Bounds  The matrix header's bounds (area factor, annual market rate, rounding) and the cost totals
+//            («lines») point at their tables.
+//  • A    buildingPlotAreaSqm points at the new plot-area box.
+//  • B    Cost rationales (use restriction, life extension, functional / external obsolescence) and
+//         methodologyAlertOverrides.<code> errors point at their boxes; an alert override goes to the
+//         screen whose panel shows it (alertOverrideTarget) and sorts after the listed fields.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Save-time validation errors on the appraiser's valuation screens → the DOM
  * control that caused them, plus the screen that control lives on.

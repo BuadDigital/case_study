@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income New file — D17 income approach DTO (gross income, vacancy %, EGI, operating expenses as amount
+//           or % of EGI, NOI, cap rate, value = NOI ÷ cap rate, IsComplete) and its save request.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 namespace RealEstateEval.Valuation.Application.Contracts;
 
 /// <summary>D17 — income approach (direct capitalisation): the appraiser's inputs and the derived chain.</summary>

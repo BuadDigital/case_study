@@ -1,3 +1,30 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D1   resolveReportValuationKeys: basis / premise from the reconciliation, purpose from the approach
+//         settings, work-order defaults only as fallback. The liquidation discount prints only on the
+//         liquidation basis with a discount > 0; «مبرر معامل التصفية» → «مبرر خصم التصفية».
+//  • §25  buildFinalValueRows prints §25 step by step (weighted value unrounded → liquidation → «مستند ذو
+//         قيمة» additions → one rounding step); finalValue is exposed for the approval check.
+//  • D9   buildScopeRows adds the retrospective rationale row and the building-only scope row to §2.
+//  • D11  ownershipCell prints a usufruct / leased-land interest with the remaining lease years;
+//         buildAgeNotes adds the age rationales and the lease cap to §23.
+//  • D17  Income joins the methods used, the approach count and the method cell; incomeRows
+//         (buildIncomeSheetRows) and the income cells come from the saved income approach.
+//  • Wording «رقم العضوية» is the valuer's own (no firm-licence fallback); the land comparison value is
+//            labelled «قيمة الأرض قبل التقريب»; unused costRowCells calls removed.
+// Round 2 (1b19bedc)
+//  • R2-10 «ملكية مطلقة» → «ملكية تامة»; lease years via formatArabicYears; the «مطلق الملكية» assumption is
+//          reworded for a usufruct / leased land (assumptionsForInterest); the lease-cap note names «حق
+//          المنفعة» or «الإيجار».
+//  • R2-11 Liquidation labels follow the premise (liquidationDiscountLabels: «التصفية المنظمة» / «البيع
+//          القسري») and the forced premise gets its own basis definition.
+//  • R2-1 A retrospective date or period (retrospectiveDateLabel) is THE printed valuation date, also in the
+//         scope row.
+//  • A    §20 landValueRows come from costLandReportRows.
+//  • R2-19 Comparable transaction dates print as yyyy/mm/dd; the membership expiry date goes through
+//          displayLicenseDate.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Valuation report fill model — pure data side (no DOM):
  * builds ValuationReportLiveFill from facts and keeps template application

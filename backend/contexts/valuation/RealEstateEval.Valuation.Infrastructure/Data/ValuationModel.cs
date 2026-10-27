@@ -1,3 +1,17 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D15  DepositCodeKey with a unique index filtered to current reports (SupersededAtUtc IS NULL) — a
+//         duplicate code loses with a 409; an xmin row version («RowVersion») so parallel registrations on
+//         the same copy: one wins, the others 409.
+//  • D11  OwnershipInterestKey (required, default freehold) and RemainingLeaseYears on the approach settings.
+//  • Cost  ActualAgeRationale and EconomicAgeRationale (max 2000) on the cost approach.
+//  • D17  Mapping of the new ValuationIncomeApproaches table: precisions, operating-expense mode (default
+//         pct_of_egi, allowed values), non-negative checks, one row per request.
+// Round 2 (1b19bedc)
+//  • A    BuildingPlotAreaSqm (18,2, nullable, non-negative) on the cost approach — the building plot the
+//         cost land table compares with.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Valuation.Domain;

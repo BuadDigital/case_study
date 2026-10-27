@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • Layout  The 1160px lines table scrolls inside its card (COST_LINES_TABLE_WRAP_CLASS with
+//            contain: inline-size, card min-w-0) — at 1440px it stretched the card and the page column
+//            clipped the right-hand columns.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { Fragment, type DragEvent } from "react";

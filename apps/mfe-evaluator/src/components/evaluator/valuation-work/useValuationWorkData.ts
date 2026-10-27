@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • Frozen  After hand-over (editLocked) no background market-approach PUTs: the subject-area sync gets
+//            writesFrozen and the seeded notes are not written.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 /**

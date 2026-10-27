@@ -1,4 +1,11 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • A    New file — the round-2 EF migration: adds the nullable BuildingPlotAreaSqm (numeric 18,2,
+//         non-negative check) to ValuationCostApproaches — the whole building plot the cost land table
+//         compares an apartment's comparables with.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 

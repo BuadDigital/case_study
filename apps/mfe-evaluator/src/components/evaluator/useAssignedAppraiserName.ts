@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Split New file — the assigned appraiser's display name (staff list, else the signed-in user when he is
+//          the assignee), moved out of EvaluatorWindow unchanged.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useMemo } from "react";

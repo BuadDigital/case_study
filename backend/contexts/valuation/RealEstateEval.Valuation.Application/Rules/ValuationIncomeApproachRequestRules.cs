@@ -1,3 +1,11 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income New file — pure validation of the income-approach save (D17): amounts 0–1e9 SAR, % 0–100,
+//           known expenses mode, cap rate > 0 and ≤ the maximum, rationale length; Arabic 400s, never a 500.
+// Round 2 (1b19bedc)
+//  • B    When alert 26 fires (cap rate outside 4–12%) a written cap-rate rationale is at least 10 characters.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using System.Globalization;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;

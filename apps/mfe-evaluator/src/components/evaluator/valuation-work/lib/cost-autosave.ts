@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Autosave  New file — pure parts of the cost-screen autosave: the 1200 ms pause, the save states and
+//              their status text, the one-line refusal reason (costAutosaveFailureMessage) and
+//              costHasUnsavedEdits. The cost screen had no autosave.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Cost-screen autosave (like the market screen's cells): edits are saved after a short pause,
  * and the screen says where the save stands. Pure — the hook is `useCostAutosave`.

@@ -1,3 +1,13 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • B    JustCell refuses a written rationale under 10 characters (rationaleMinimumError) and shows the
+//         message under the box with a red border; the draft stays for the appraiser to finish.
+//  • B    The rationale cell commits on blur / Enter / Tab only (debounce: false), not while typing.
+//  • B    The weight row's rationale is named «مبرر الوزن اليدوي» (justLabel) in placeholder, aria-label
+//         and message; other rows stay «مبرر عامل التسوية».
+//  • Wording  Deal age reads with Arabic month plurals (formatArabicMonths) instead of «… شهراً».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useState, type ReactNode } from "react";

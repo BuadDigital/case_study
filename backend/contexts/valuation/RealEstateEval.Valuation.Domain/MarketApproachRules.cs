@@ -1,4 +1,21 @@
-﻿using RealEstateEval.Domain;
+﻿// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D4   GrossAdjustmentPct (Σ|sequential| + Σ|difference|); the ±40% rule fires on net OR gross.
+//  • D6   Dispersion: Median, deviation from the median (> 25% = outlier), coefficient of variation
+//         (> 15% = dispersed), DispersionOutliers / IsDispersed.
+//  • D5   Automatic weights scored on the gross adjustment; an outlier gets no automatic weight
+//         (SuggestWeights(gross, adjustedRates), DistributeWeights).
+//  • D8   OfficialValuationDate (retrospective date, else today) and ComparableDateCutoff (period end).
+//  • D10  PropertyCategoryRules — أرض / سكني مبني / تجاري / صناعي from the property type (usage as
+//         fallback), and Mismatch for the type-mismatch alert.
+// Round 2 (1b19bedc)
+//  • R2-5 Header bounds: subject area ≤ 10,000,000 m², area factor 0.1–50%, annual market rate ≤ 50%,
+//         rounding 0–6.
+//  • R2-7 Comparables blocked by hard alert 23 (dealt after the valuation date) get weight 0 and are left
+//         out of the outlier median (HardComparableDateCutoff, ComparableDateCutoffIsPeriodEnd).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Valuation.Domain;
 

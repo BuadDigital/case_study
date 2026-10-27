@@ -1,3 +1,18 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D2   New file — classifies failing hard gates and blocking alerts by who fixes them (appraiser, «سيكملها
+//         الأخصائي بعد التسليم», specialist, value documents, administration) and the appraiser's screen;
+//         `required_attachments` does not block. Mirrors server AppraisalHandOverGateRules.
+//  • D2   handOverRefusalMessage numbers every blocker with its owner; announceHandOverGatesRead lets
+//         «المراجعة النهائية» show the gates the refusal read.
+//  • D17  `income_approach_complete` routes to the income screen.
+// Round 2 (1b19bedc)
+//  • R2   Alert 16 (m16_weights_not_100) is not listed again when a weights gate already fails — the weights
+//         item showed twice.
+//  • B    Comment only: `adjustment_rationales_*` gates (rationale under 10 characters) fall to the appraiser
+//         and route by their suffix through the existing rules.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * D2 — which issuance gates hold up the appraiser's hand-over («اعتماد التقييم وإرسال») and who fixes
  * each. Mirrors the server rule `AppraisalHandOverGateRules` (case-study hand-over): every failing

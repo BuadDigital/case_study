@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • Wording Glossary term «ملكية مطلقة» → «ملكية تامة»; a stored glossary with the old term is upgraded
+//            (GlossaryWithPreviousFreeholdTerm).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>

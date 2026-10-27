@@ -1,3 +1,11 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-14 Section 6 ownership type prints the interest valued (OwnershipInterestKeys.ReportCell) when it is
+//          not freehold, else the deed's type from the owners count.
+//  • R2-14 The ownership key is passed to the assumptions text, so «مطلق الملكية» is not printed for a
+//          leasehold.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;

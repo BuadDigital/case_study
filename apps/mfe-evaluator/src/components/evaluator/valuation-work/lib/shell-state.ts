@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income  New «income» screen id and nav flag; buildNavItems shows «أسلوب الدخل» only when income is
+//            enabled in the settings.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Pure state helpers behind `ValuationWorkShell` — screen identity, the nav
  * model, the auto-generated adjustments narrative and the small parsing

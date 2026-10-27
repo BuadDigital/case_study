@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Alerts The alerts note now counts the new alerts: «تنبيهات منهجية (27): 8 حاجبة · 13 بمبرر نصي إلزامي
+//           · 6 بإقرار.» (was 20: 7 / 8 / 5).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 namespace RealEstateEval.Valuation.Application.Contracts;
 
 public class ValuationIssuanceGateItemDto

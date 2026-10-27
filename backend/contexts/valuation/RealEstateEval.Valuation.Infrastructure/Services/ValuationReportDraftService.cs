@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Access  Constructor takes IAssignedAppraiserCheck (default: AssignedAppraiserCheck over the same db) and
+//            IValuationReconciliationService (for the final-value check on approval).
+// Round 2 (1b19bedc)
+//  • D2   Sending the draft to the appraiser is refused while a required document only the specialist uploads
+//         is missing (ReportDraftSendRules.MissingSpecialistDocumentsError over the gates).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;

@@ -1,3 +1,14 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Freeze  Approval is refused when the copy's stated final value differs from the reconciliation's
+//            computed value (FinalValueMismatchAsync → ReportFinalValueMarker.Check).
+//  • Reuse  The assigned-appraiser lookup delegates to the shared IAssignedAppraiserCheck instead of a
+//           private copy.
+// Round 2 (1b19bedc)
+//  • R2-6  AssignedAppraiserRefusalAsync: null for the assigned appraiser, «أعد المحاولة»
+//          (AssignedAppraiserMessages.UnverifiedAr) when Case Study could not be read, else forbidden.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;

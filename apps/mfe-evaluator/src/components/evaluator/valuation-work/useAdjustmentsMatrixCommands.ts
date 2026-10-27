@@ -1,3 +1,11 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • B    Manual-weight rationale, row rationale and per-comparable rationale of a non-zero adjustment
+//         must be at least 10 characters (rationaleMinimumError); the error goes to the field
+//         (reportFieldError) instead of a toast. The old isJustificationTooShort check is removed.
+//  • B    The weight row's rationale is named «مبرر الوزن اليدوي» in its message.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 /**

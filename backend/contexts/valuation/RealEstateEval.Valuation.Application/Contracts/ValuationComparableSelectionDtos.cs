@@ -1,3 +1,19 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Cost Cost DTO: IsSaved (stored zeros are the appraiser's — no starter defaults) and the actual /
+//         economic age rationales (ActualAgeRationale, EconomicAgeRationale) on the DTO and the save request.
+//  • D11  Cost DTO: RemainingLeaseYears, LifeCappedByLease and EffectiveLifeYears (life capped by the lease).
+//  • D12  Cost DTO: AppliedObsolescencePct (total capped at 100%) and ObsolescenceNeedsAlert (above 90%).
+//  • D17  Reconciliation DTO: IncomeOpinionValue (NOI ÷ cap rate); income approach may now be enabled.
+//  • Split ValuationApproachSettingsDto and SaveValuationApproachSettingsRequest made partial (D11 fields
+//          live in ValuationApproachSettingsDtos.cs).
+// Round 2 (1b19bedc)
+//  • A    Land table: SubjectAreaSqm is the whole building plot; new ApartmentLandShareSqm (rate × share).
+//  • A    Cost DTO and save request: BuildingPlotAreaSqm — the plot the land comparables are compared with.
+//  • R2-10 Arabic validation messages on AnalysisNotes, LiquidationDiscountRationale and the required
+//          reconciliation Methods list.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateEval.Valuation.Application.Contracts;

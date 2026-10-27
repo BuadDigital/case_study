@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  New file — EF adapter for IValuationIncomeApproachRepository: reads the request, the income row
+//         (tracked or not) and the approach settings; adds and saves the income row.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Domain;

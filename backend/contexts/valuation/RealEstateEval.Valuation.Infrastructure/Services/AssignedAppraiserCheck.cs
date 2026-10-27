@@ -1,3 +1,15 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Access  New file — IAssignedAppraiserCheck: the property's latest non-cancelled appraisal task from Case
+//            Study and whether a user is its assignee (by property or by valuation request). Shared by the
+//            report draft service and the valuation-work write filter.
+// Round 2 (1b19bedc)
+//  • R2-6  CheckPropertyAsync / CheckRequestAsync return AssignedAppraiserVerdict (Assigned / NotAssigned /
+//          Unverified). A remote timeout (TaskCanceledException without the caller cancelling) or another
+//          failure is Unverified — an unreachable Case Study is no longer reported as «not the assigned
+//          appraiser».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;

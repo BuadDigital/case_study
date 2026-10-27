@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Wording The amount in words follows Arabic number grammar: dual construct («مليونا ريال», «مائتا ألف»),
+//            3–10 plural, 11–99 accusative, compound counts («مائة ألف وألف») (Noun, Scales, CountedScale).
+//  • Wording Riyals counted correctly («ريال سعودي واحد», «ريالان سعوديان», «ريالات سعودية», «ريالًا
+//            سعوديًا») and halalas as a feminine noun (HalalasInWords); hallalas ≥ 100 carry into the riyals.
+//  • Wording Kept in step with apps/mfe-evaluator/src/lib/evaluator/arabic-amount-words.ts (same test table).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>

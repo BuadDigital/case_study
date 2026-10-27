@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Alerts SaveAlertOverridesAsync — saves the methodology-alert dispositions alone (upsert by code,
+//           audited) and creates an empty reconciliation row when none exists, so an alert acknowledgement is
+//           saved without the methods rationale.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Valuation.Application.Contracts;
 

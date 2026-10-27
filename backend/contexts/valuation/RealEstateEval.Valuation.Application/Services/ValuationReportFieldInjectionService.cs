@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D1   BuildValueBag made public (testable); the liquidation discount % prints only when it is applied
+//         (basis = liquidation and discount > 0).
+// Round 2 (1b19bedc)
+//  • R2-11 The liquidation field labels follow the premise («خصم التصفية المنظمة» / «خصم البيع القسري»)
+//          instead of the catalog's «البيع القصري».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
