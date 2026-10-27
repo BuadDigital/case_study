@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • B    New option { debounce: false }: commit on Enter / Tab / blur only, so a rationale is not
+//         validated and saved while the appraiser is still typing. The commit may also return a boolean.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent } from "react";

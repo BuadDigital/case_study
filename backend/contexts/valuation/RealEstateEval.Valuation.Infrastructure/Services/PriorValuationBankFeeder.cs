@@ -1,3 +1,18 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D14  Only a market-basis valuation of land with its buildings, not retrospective, feeds the bank
+//         (PriorValuationBankRules.Qualifies).
+//  • D14  One row per subject property: a new deposited version updates the existing row instead of being
+//         skipped; a version that no longer qualifies deactivates it (RetireAsync).
+//  • D14  A row another valuation has adopted is left untouched (AdoptedByAnotherValuationAsync) — that
+//         valuation reads it live and its value must not move.
+// Round 2 (1b19bedc)
+//  • C    Land-only valuations (scope «أرض فقط» / vacant land) also qualify and enter the bank as a land
+//         comparable «أرض» (ComparableType); the row's Usage is set from the classification.
+//  • Area  An apartment enters with its own deed area, not the building plot held in the market header
+//          (SubjectAreaSqm; VR-542 entered 900 m² instead of 180 m²).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;

@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • A    New file — the cost-approach land figures shared by the cost screen and the report: the rate
+//         multiplies the apartment's share when set, else the plot (costLandMultiplierSqm / Label);
+//         apartmentLandHint names the whole building plot the comparables are compared with.
+//  • A    costLandReportRows: §20 lines in the order they multiply — plot area, rate after adjustments,
+//         use-restriction discount, apartment share, «قيمة الأرض قبل التقريب», «قيمة الأرض».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Decision A (round 2) — the land figures inside the cost approach, shared by the cost screen and the
  * printed report: the land comparables are adjusted against the whole plot (`landAreaSqm`), and the

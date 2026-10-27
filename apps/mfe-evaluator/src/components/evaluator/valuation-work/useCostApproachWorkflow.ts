@@ -1,3 +1,16 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Autosave  The save moved to useCostAutosave: every appraiser edit bumps editVersion (markEdited) and is
+//              saved after a pause; hydration and silent seeds never bump it. The toast shows only on
+//              the explicit save; lines typed while a save is in flight are kept.
+//  • Autosave  The inventory-drift buttons count as edits, so the autosave sends them.
+// Round 2 (1b19bedc)
+//  • A    New isApartment and plotAreaSeed arguments; the plot seed fills the draft on hydration.
+//  • R2-16  Re-pulling the inventory keeps unit costs already priced (keepCostLineInputs) and the toast
+//           says which lines kept theirs (costRepullMessage).
+//  • R2-2  A refused save on leaving the screen is toasted «لم تُحفظ تعديلات أسلوب التكلفة: …».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

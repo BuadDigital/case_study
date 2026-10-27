@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-12  When saving the final-PDF reference hits a concurrency conflict, the file just stored is deleted
+//           (no orphan in the attachments store) and the status stays «preparing».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application;

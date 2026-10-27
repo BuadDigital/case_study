@@ -1,3 +1,26 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Digits  New costNumericInput / costInt: number boxes keep Arabic/Persian digits (→ Latin, «٫» is the
+//            decimal point) instead of dropping them.
+//  • Saved 0s  Once the cost approach is saved (cost.isSaved), a deliberate 0 for indirect items, financing
+//              or ages no longer turns back into a default on reload; every indirect item is sent, zeros
+//              included. Actual / economic age rationales are loaded and sent.
+//  • D11  Physical depreciation uses a life capped at the remaining lease term (effectiveLifeLocal).
+//  • D12  Applied depreciation capped at 100٪ (buildings value floors at 0); new alert when the total
+//         is above 90٪ (HIGH_OBSOLESCENCE_ALERT_PCT).
+//  • Floors  New alert «عدد الأدوار المتكررة مطلوب» for an included repeated-floors line without a count.
+// Round 2 (1b19bedc)
+//  • R2-5  costNumericInput keeps an ASCII comma so costNum reads «7,5» as 7.5 (was 75).
+//  • R2-7  New repeatedFloorCountForItem — a repeated-floors line starts with no count, not 2.
+//  • A    New buildingPlotArea field (buildingPlotAreaSeed: the deed area, empty for an apartment), sent as
+//         buildingPlotAreaSqm; apartmentLandAlerts require plot and share and refuse a share above the plot.
+//  • R2-16  Re-pulling the inventory keeps unit costs already priced (keepCostLineInputs); the toast says
+//           how many kept theirs and how many still need one (costRepullMessage).
+//  • B    New alert when a required cost rationale (use restriction, life extension, functional /
+//         external obsolescence) is written but under 10 characters.
+//  • D11  The lease cap comment now covers any usufruct / leased-land interest, whatever the scope.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Pure rules behind `CostApproachSection` — draft hydration, the live totals
  * pass, the alert trigger table, the auto-generated cost narrative and the

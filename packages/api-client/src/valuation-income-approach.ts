@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  New file — client for GET / PUT /api/valuation-requests/{id}/income-approach
+//         (ValuationIncomeApproachDto, SaveValuationIncomeApproachRequest) through sendValuationResource.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import { sendValuationResource, type ValuationResourceResult } from "./valuation-resource";
 import type { ValuationSelectionsApiConfig } from "./valuation-comparable-selections";
 

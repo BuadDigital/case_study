@@ -1,3 +1,14 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D6   methodologyAlertGroup replaces isMarketMethodologyAlert: every alert number maps to the screen
+//         that shows and resolves it (market / cost / income / general) — cost alerts such as 13 and 14
+//         used to appear on no screen while still blocking issuance.
+//  • D6   Market group adds 11, 22 «تشتّت المقارنات» (D6), 23 dated after the valuation date (D8) and
+//         24 category ≠ subject (D10).
+//  • D12  Cost group: 1–9, 12–14 and 25 depreciation above 90٪.
+//  • Income  Income group (D17): 26 cap rate outside 4–12٪, 27 expenses above 50٪ of EGI, 28 NOI ≤ 0.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Which screen shows (and resolves) each methodology alert. Every triggered alert must appear on
  * one screen: a soft alert that needs an acknowledgement or a rationale blocks issuance until it is

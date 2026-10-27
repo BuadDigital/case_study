@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Bank  ListRequestsAdoptingAsync — the valuations that adopted a bank comparable, so editing a comparable
+//          used by a handed-over / approved valuation can be refused (its value must not move).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Rules;

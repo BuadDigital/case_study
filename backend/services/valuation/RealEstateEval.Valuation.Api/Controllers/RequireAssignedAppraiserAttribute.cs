@@ -1,3 +1,13 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Access  New file — [RequireAssignedAppraiser] action filter: a valuation-work write is refused with 403
+//            «تعديل التقييم للمقيّم المُسنَد للعقار فقط» unless the caller is the assigned appraiser; the
+//            capability policy alone let any appraiser rewrite a colleague's valuation.
+// Round 2 (1b19bedc)
+//  • R2-6  When Case Study cannot be reached the filter answers 503 with
+//          AssignedAppraiserMessages.UnverifiedAr (retry) instead of 403.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
 using RealEstateEval.Application.Abstractions;

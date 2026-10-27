@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-10 An unknown selectionContext is refused (SelectionContextError).
+//  • B    A written factor rationale is at least 10 characters; empty still clears it.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;

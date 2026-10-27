@@ -1,3 +1,11 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income New file — D17 income approach by direct capitalisation: save (refused while frozen, handed
+//           over or not enabled in the settings; validated by ValuationIncomeApproachRequestRules) and read.
+//  • Income ToDto computes the chain from the stored inputs — EGI, operating expenses, NOI = EGI − opex,
+//           value = NOI ÷ cap rate, IsComplete; nothing derived is stored.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;

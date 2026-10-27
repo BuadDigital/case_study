@@ -1,3 +1,11 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  New file — the income approach in the printed report: buildIncomeSheetRows (GPI, vacancy, EGI,
+//         expenses, NOI, cap rate, value, rationale) and applyIncomeSection, which inserts the section before
+//         §24 (else §25) and moves the reconciliation to a new page; nothing while the approach is off or
+//         unsaved.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * D17 — the income approach (direct capitalisation) in the printed valuation report: the inputs
  * table, EGI, expenses, NOI, the capitalisation rate, the value and the rate's rationale. The

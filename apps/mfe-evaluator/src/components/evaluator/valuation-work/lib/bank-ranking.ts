@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-9  Adopted comparables always show in the bank (whatever the radius or the limit) and are not
+//          counted as «beyond»; the nearest others fill the rest of the limit (buildBankDisplayRows).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import { listComparableProperties,suggestComparablePropertiesByProximity, 
   type ComparablePropertyDto,
   type ValuationComparableSelectionDto,

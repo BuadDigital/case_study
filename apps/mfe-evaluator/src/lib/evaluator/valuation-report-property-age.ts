@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-10 New formatArabicYears / formatArabicMonths (arabicCount) for counted years and months: «سنة
+//          واحدة», «سنتان», «4 سنوات», «22 سنة»; «شهر واحد», «شهران», «5 أشهر».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Report-only property age: years since building-license issue date, minus 2.
  * Does not write back to the inspector workspace — print/preview cells only.

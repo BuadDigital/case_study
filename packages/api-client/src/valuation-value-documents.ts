@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Reuse The private Result / readResult / fetch code is replaced by sendValuationResource — same endpoint
+//          and message.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import { sendValuationResource, type ValuationResourceResult } from "./valuation-resource";
 import type { ValuationSelectionsApiConfig } from "./valuation-comparable-selections";
 

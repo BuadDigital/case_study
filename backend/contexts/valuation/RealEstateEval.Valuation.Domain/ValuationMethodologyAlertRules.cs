@@ -1,3 +1,20 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Alerts 27 alerts (8 hard / 13 rationale / 6 acknowledgement): new m22 «تشتّت المقارنات» (D6),
+//           m23 comparable after the valuation date — hard (D8), m24 type mismatch (D10),
+//           m25 depreciation > 90% (D12).
+//  • D17  Income alerts: m26 cap rate outside 4–12% (rationale), m27 expenses > 50% of EGI (acknowledgement),
+//         m28 NOI ≤ 0 (hard).
+//  • D13  m3 (age beyond the extended life) becomes a rationale alert, not hard; m4 checks only functional
+//         + external obsolescence over 100%.
+//  • D4   m17 fires on net or gross above 40% and names each comparable with both figures.
+// Round 2 (1b19bedc)
+//  • R2-10 ValuationMethodologyAlertCodes.All / Retired / IsAcceptedForDisposition — a disposition for an
+//          unknown code is refused.
+//  • B    Rationale alerts (6, 10, 12) and overrides clear only with at least 10 characters.
+//  • R2-7 m23 names «نهاية فترة التقييم» when the cutoff is the end of a retrospective period.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.Valuation.Domain;

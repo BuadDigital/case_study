@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • O17  New file — confirmIgnoringDoubleClick wraps confirmAction: for 500 ms the rest of the opening
+//         double-click is swallowed (capture phase) and a second call while one is open returns null, so the
+//         dialog opens once and stays.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * «اعتماد التقرير» double-clicked: the first click opens the confirm, the second landed on the dialog's
  * backdrop and dismissed it — the appraiser saw nothing happen. While a confirm opened by a click is

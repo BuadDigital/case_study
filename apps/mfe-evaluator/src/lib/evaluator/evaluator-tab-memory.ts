@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • P19  New file — the evaluator window's tab remembered per task in sessionStorage (failing storage falls
+//         back to the default); initialEvaluatorTab opens always-shown tabs directly, approach tabs
+//         (tabWaitsForApproaches) wait for the settings.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Problem 19 — a refresh keeps the appraiser on the tab he was working in. The tab is remembered per
  * task in sessionStorage (per browser tab, gone when it closes); storage that throws or is empty

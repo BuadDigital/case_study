@@ -1,3 +1,16 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D11  OwnershipInterestKey and RemainingLeaseYears on the settings; OwnershipInterestKeys (freehold /
+//         usufruct / leased_land, «ملكية تامة» / «حق منفعة» / «أرض مستأجرة»); a leasehold needs 1–999 years.
+//  • D9   A retrospective date (and period end) is not after today or the report date
+//         (RetrospectiveDateError); its rationale is required, at least 10 characters.
+//  • D17  The income approach may be enabled (was refused as deferred) and joins the reconciliation kinds.
+// Round 2 (1b19bedc)
+//  • R2-14 AssumptionForInterest rewords «أن العقار مطلق الملكية» for a usufruct / leased land; ReportCell
+//          prints the interest with its remaining term («حق منفعة — المدة المتبقية 4 سنوات»).
+//  • R2-10 An unknown valuationDateMode is refused instead of being read as «تاريخ إصدار القيمة».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.Valuation.Domain;

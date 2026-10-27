@@ -1,3 +1,20 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D8   Deal age, time adjustment and freshness are measured to the official valuation date (the
+//         retrospective date when chosen, else today) instead of today (OfficialValuationDateAsync).
+//  • D7   The land table reads the apartment's land share saved on the cost approach.
+//  • Market Replacing the comparable list keeps the rows of comparables that stay — their adjustments,
+//           manual weight and overrides survive; only dropped comparables are removed.
+//  • Market A duplicate factor key on one comparable is refused with a 400 (DuplicateFactorKeyErrors).
+//  • D10  Auto-adopt: a land comparable linked to a built subject goes to the land table inside the cost
+//         approach, never the market table (problem 22).
+// Round 2 (1b19bedc)
+//  • A    The land table reads the building plot and the apartment's share (CostLandAreasAsync).
+//  • R2-7 The hard alert 23 cutoff date is passed to the list builder, so later-dated comparables get
+//         automatic weight 0 (ValuationDatesAsync).
+//  • R2-10 An unknown selectionContext is refused on every write.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;

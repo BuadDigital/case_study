@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  Registers IValuationIncomeApproachRepository and IValuationIncomeApproachService.
+//  • Access  Registers IAssignedAppraiserCheck.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RealEstateEval.Application.Abstractions;

@@ -1,3 +1,19 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Bounds New file — pure validation of the cost-approach save, run before anything loads, so an absurd
+//           or malformed payload is a 400 with an Arabic message, never a 500.
+//  • Bounds Line count, quantity, unit cost, unit, build ratio, land share, indirect items (unknown /
+//           duplicate / %), financing, ages and obsolescence % checked; duplicate line ids refused.
+//  • Cost A repeated-floors line needs a floor count (RepeatedFloorRules.MissingInputMessage).
+// Round 2 (1b19bedc)
+//  • R2-5 Line amount (quantity × unit cost), the direct total and the total with indirect costs ≤
+//         MaxAmountSar (ValidateAmounts) — an overflow is a 400, not a 500.
+//  • A    BuildingPlotAreaSqm must be > 0 and within the maximum; the apartment's land share cannot exceed it.
+//  • B    Use-restriction, life-extension basis and functional / external obsolescence rationales are at
+//         least 10 characters once written.
+//  • R2-10 An unknown line structureKind is refused instead of being stored as-is.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using System.Globalization;
 using RealEstateEval.Domain;
 using RealEstateEval.Valuation.Application.Contracts;

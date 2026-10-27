@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D15  A concurrency conflict while generating the final PDF (a correction saved meanwhile) no longer
+//         fails the registration; the copy reads «preparing» until that PDF is made.
+// Round 2 (1b19bedc)
+//  • R2-6  Uses AssignedAppraiserRefusalAsync: when Case Study cannot be read the answer is «أعد المحاولة»,
+//          not «forbidden».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.Valuation.Application.Contracts;

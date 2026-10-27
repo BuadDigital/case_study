@@ -1,3 +1,8 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income  Adds the lazily loaded IncomeApproachSection and preloads it with the other work screens.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useEffect } from "react";

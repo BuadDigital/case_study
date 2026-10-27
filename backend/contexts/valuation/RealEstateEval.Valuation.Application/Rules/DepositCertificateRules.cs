@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D15  New Arabic refusals: DuplicateCodeAr (the code is already on another current report) and
+//         ConcurrentRegistrationAr (another request registered it first), plus ConflictKey so the controller
+//         answers 409.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using System.Text;
 using System.Text.RegularExpressions;
 

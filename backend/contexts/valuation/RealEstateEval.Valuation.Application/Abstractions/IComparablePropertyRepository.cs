@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Lock ListRequestsAdoptingAsync — the valuation requests that adopted a comparable (market or land
+//         selection), used to lock a closed valuation's adopted comparables.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Domain;
 

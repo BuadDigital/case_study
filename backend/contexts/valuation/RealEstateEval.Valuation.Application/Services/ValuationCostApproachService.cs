@@ -1,3 +1,20 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Bounds Save validation moved to ValuationCostApproachRequestRules; a line id that belongs to another
+//           valuation is refused with an Arabic 400 (was a 500).
+//  • Cost Problem 21: the read takes the land live from the land table (ReadLandAsync), so adopting a land
+//         comparable shows in the cost screen without a cost save; building-only scopes keep stored values.
+//  • D7   Land inside the cost approach is always a per-m² rate from the adopted land comparables
+//         (LandFromComps).
+//  • Cost Age rationales are stored and returned; IsSaved tells the screen the stored zeros are real.
+//  • D11  Physical depreciation uses the life capped by the remaining lease (EffectiveLifeYears).
+//  • D12  AppliedObsolescencePct (total capped at 100%) and ObsolescenceNeedsAlert (> 90%) on the DTO.
+// Round 2 (1b19bedc)
+//  • A    BuildingPlotAreaSqm is saved; the land snapshot is refreshed after the plot and share are stored,
+//         value = discounted rate × (share ?? plot) (RefreshLandSnapshotAsync).
+//  • D11  The lease cap no longer depends on the cost scope (CostLeaseTerms.RemainingLeaseYears(settings)).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Domain;

@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-17 GET /api/clients is requested only when canManageWorkOrders() — an appraiser got a 403 on every
+//          load. Without it the report users fall back to the work order's own client name.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";

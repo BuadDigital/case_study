@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Reuse New file — sendValuationResource / ValuationResourceResult: one GET / PUT helper for
+//          /api/valuation-requests/{id}/{segment} (400 → field errors), replacing per-file copies.
+// Round 2 (1b19bedc)
+//  • R2   Other failed responses go through serverFailure: a 503 (an unreachable service) now carries the
+//         server's Arabic message instead of a bare «server» failure.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson, serverFailure } from "./parse-json";

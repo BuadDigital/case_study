@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Access  GET issuance-gates uses ReadValuationReport — the case specialist preparing the draft sees what
+//            still blocks issuance (was 403).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;

@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Cost  FindLineIdsOwnedElsewhereAsync — cost line ids that belong to another valuation's cost approach,
+//          so saving them is a field error («معرّف البند يخص تقييمًا آخر») instead of a 500.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Domain;

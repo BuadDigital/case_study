@@ -1,4 +1,18 @@
-﻿using System;
+﻿// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Schema  New file — the one round-1 EF migration: every valuation schema change of the round.
+//  • D15  ValuationReportIssuances gets DepositCodeKey and the xmin row version; stored codes are backfilled
+//         to Latin digits and single spaces (key: no spaces, upper-case); then the filtered unique index
+//         IX_ValuationReportIssuances_DepositCodeKey_Current (a code on two current reports keeps its key on
+//         the latest only).
+//  • D11  ValuationApproachSettings gets OwnershipInterestKey (default «freehold») and RemainingLeaseYears.
+//  • Cost  ValuationCostApproaches gets ActualAgeRationale and EconomicAgeRationale, so the age rationales
+//          are saved.
+//  • D17  New table ValuationIncomeApproaches (one row per valuation request, cascade delete) for the income
+//         approach inputs.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable

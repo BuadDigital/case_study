@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Value New file — approval reads data-final-value from the report copy's final-value banner and
+//          refuses a copy without it or whose value is more than 0.5 SAR off the computed final value.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using System.Globalization;
 using System.Text.RegularExpressions;
 

@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2   Non-OK responses (read, draft states, final-report download / generate) go through serverFailure: a
+//         503 now carries the server's Arabic message.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson, readProblemMessage, serverFailure } from "./parse-json";

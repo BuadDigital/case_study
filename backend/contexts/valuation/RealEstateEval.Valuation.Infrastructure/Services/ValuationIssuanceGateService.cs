@@ -1,3 +1,22 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D13  The participant-credentials gate checks only the people on this report (ReportParticipants, incl.
+//         the signing valuer and the assigned appraiser), not the whole roster.
+//  • D17  Income approach: gate IncomeApproachComplete, the cap-rate rationale and alerts 26–28 follow the
+//         settings toggle.
+//  • Alerts  Alert input gets each adopted comparable's adjusted unit rate (D6), deal date (D8) and usage
+//            (D10) via ToAlertComparable, plus the date cutoff from the valuation date (D8), today and the
+//            subject type (D10).
+//  • Wording  Alert note now «تنبيهات منهجية (27): 8 حاجبة · 13 بمبرر نصي إلزامي · 6 بإقرار».
+//  • Split  Value-document and required-attachment reads moved to ValuationIssuanceGateService.Reads.cs (the
+//           class is now partial).
+// Round 2 (1b19bedc)
+//  • R2-1  Passes the engineering-survey task ids to the required-attachments read.
+//  • B    New gates AdjustmentRationales for the market table and the land-within-cost table: an included
+//         non-zero factor or a manual weight without a rationale of ≥ 10 characters blocks.
+//  • D8   Passes ComparableDateCutoffIsPeriodEnd — whether the cutoff is the end of a retrospective period.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;

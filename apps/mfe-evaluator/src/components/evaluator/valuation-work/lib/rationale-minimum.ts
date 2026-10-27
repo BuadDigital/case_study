@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • B    New file — the 10-character minimum for a required rationale (after trimming), mirroring the
+//         server's JustificationRules.RequiredMinLength and its message «… يجب ألا يقل عن 10 أحرف».
+//         Blank is not "too short" (that stays the caller's rule). Pure.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Round-2 decision B — a rationale the methodology requires (a non-zero adjustment factor, a
  * manual weight, an alert override, the liquidation discount, the cap rate outside 4–12٪) is at

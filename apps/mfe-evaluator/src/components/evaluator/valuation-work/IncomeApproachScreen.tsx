@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income  New file — the «أسلوب الدخل» work screen (D17): closed until the settings are saved with
+//            the income approach on, then the direct-capitalisation section and its alerts (26–28).
+// Round 2 (1b19bedc)
+//  • R2-3  New incomeSaved prop: a tab opened from an unsaved settings toggle shows «احفظ إعدادات
+//          التقييم أولاً …» until the settings are saved (incomeScreenClosedReason).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { Suspense } from "react";

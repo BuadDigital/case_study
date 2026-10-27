@@ -1,3 +1,11 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income  The income method's note reads «صافي الدخل التشغيلي ÷ معدل الرسملة».
+// Round 2 (1b19bedc)
+//  • R2-15  The weight box is type="text" filtered by costNumericInput (type="number" dropped Arabic
+//           digits); the typed text stays while focused so «7,» can become «7,5».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useState } from "react";

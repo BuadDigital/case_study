@@ -1,3 +1,15 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Wording  New outputLabel: «قيمة الأرض قبل التقريب» only for the land table inside the cost approach,
+//             «قيمة العقار قبل التقريب» otherwise.
+//  • D7   On the whole-property basis the area method reads «لا تسوية مساحة — المقارنة على قيمة العقار كاملة».
+//  • D4   New grossAdjustmentPct (Σ|%| of included lines); the ±40٪ alert shows net and gross and says it
+//         fires on either.
+// Round 2 (1b19bedc)
+//  • A    New outputFormula (matrixOutputFormula): for an apartment's land, rate × the apartment's share
+//         of the plot, with the area adjustment against the whole building plot area.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Pure rules behind `AdjustmentsMatrix` — which rows the table shows, the
  * comparison-basis readouts under it and the alert panel. No React, no I/O.

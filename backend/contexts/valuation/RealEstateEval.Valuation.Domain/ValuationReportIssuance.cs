@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D15  Deposit code is normalised before it is stored: trimmed, Arabic/Persian digits → Latin,
+//         inner spaces collapsed (NormalizeDepositCode). It is stored and printed in Latin digits.
+//  • D15  New DepositCodeKey (DepositCodeKeyOf: no spaces, upper-case) with a filtered unique index
+//         over current reports — a duplicate or a parallel deposit loses with a 409.
+//  • D15  FinalIssuedAtUtc ??= — correcting the code never moves the final issue date.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.Valuation.Domain;

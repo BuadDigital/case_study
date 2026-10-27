@@ -1,3 +1,11 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  New approach kind «income» («أسلوب الدخل (رسملة مباشرة)») with ValueOf for the live indicator
+//         of each kind.
+//  • D17  Suggested weights take the income value third: the full weight goes to the first live
+//         indicator of market → cost → income.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>Approach kinds that can participate in reconciliation (income: D17 direct capitalisation).</summary>

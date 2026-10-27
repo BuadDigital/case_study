@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Access  GET uses ReadValuationReport (the case specialist can read it); PUT is limited to the assigned
+//            appraiser ([RequireAssignedAppraiser]).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;

@@ -1,3 +1,14 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Floors  A repeated-floors line with no count shows an empty box with «العدد» placeholder, not a
+//            phantom «2» the save never sent; an empty count is stored as null so the alert asks for it.
+//  • Digits  Floor count and build ratio keep Arabic/Persian digits (costNumericInput) instead of
+//            dropping them.
+// Round 2 (1b19bedc)
+//  • R2-7  A new or switched repeated-floors line starts with no count (repeatedFloorCountForItem), not 2.
+//  • R2-5  Build ratio is read with costNum, so «7,5» is 7.5.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import type { ValuationCostLineDto } from "@platform/api-client";

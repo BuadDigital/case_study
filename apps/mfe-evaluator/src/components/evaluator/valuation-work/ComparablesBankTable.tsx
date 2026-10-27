@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-19  Button and doc comment read «إضافة مقارن» (was «اضافة مقارن»).
+//  • Wording  «تاريخ العملية» prints as yyyy/mm/dd (ymd) on the desktop table and the phone cards.
+//  • R2-20  Comparable codes are whitespace-nowrap so a CMP-… code never breaks across lines.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { memo, useEffect, useRef, useState } from "react";

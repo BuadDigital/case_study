@@ -1,3 +1,14 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • O9   Amount-in-words grammar rewritten (countedScale / Noun): dual construct «مليونا ريال», «مائتا ألف»,
+//         plural after 3–10, accusative after 11–99 (no tanwīn before ريال), 101 / 102 of a scale «مائة ألف
+//         وألف» — it printed «مائتان ألف», «مائة وثلاثة ألف».
+//  • O9   The riyal noun follows the count (riyalsInWords: «ريالان سعوديان», «ريالات سعودية», «ريالًا
+//         سعوديًا») and halalas are feminine (halalasInWords: «ثلاث هللات»).
+//  • O9   A non-finite amount prints «—»; halalas rounding to 100 carry into the riyals. Kept in step with
+//         backend ArabicAmountWords.cs.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Spell out SAR amounts («فقط … لا غير») with the Arabic number grammar a reader expects:
  *

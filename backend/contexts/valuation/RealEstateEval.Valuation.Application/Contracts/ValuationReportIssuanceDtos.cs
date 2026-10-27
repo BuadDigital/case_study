@@ -1,3 +1,8 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-10 DepositCode: Arabic messages for the required and max-length (128) checks.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using System.ComponentModel.DataAnnotations;
 
 namespace RealEstateEval.Valuation.Application.Contracts;

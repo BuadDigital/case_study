@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Cost  GetCostApartmentLandShareSqmAsync — reads the apartment's land share saved on the cost approach,
+//          used as the subject area of the land table inside the cost approach.
+// Round 2 (1b19bedc)
+//  • A    Replaced by GetCostLandAreasAsync, which returns both the building plot area and the apartment land
+//         share (CostLandAreas): the plot for the area adjustment, the share as the multiplier.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Domain;

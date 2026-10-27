@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • O14  subjectOnlyMapPins no longer falls back to the first comparable's position: without the inspector's
+//         pin there is no §33 location map.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /** Client-side map for §18 — subject + adopted comparables (Google Maps or SVG fallback). */
 
 import { parseLatLng } from "@platform/app-shared/domain/geo";

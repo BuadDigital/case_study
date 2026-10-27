@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • P19  New file — beforeunload guard: warns when a focused field in the window changed since focus
+//         (blurring it so its own save runs), an autosave is pending, or a manual-save section is unsaved.
+// Round 2 (1b19bedc)
+//  • R2-2 The window's unmount clears every section flag (clearUnsavedSections) — the flags now belong to the
+//         window, since a screen hidden by <Activity> runs its unmount cleanups too.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useEffect, type RefObject } from "react";

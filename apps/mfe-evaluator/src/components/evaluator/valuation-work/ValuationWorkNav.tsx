@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Split  New file — the work shell's own screen pills (with badges), moved out of ValuationWorkShell
+//           unchanged; shown when the shell is not embedded under the window's top tabs.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { cn, opsLetterCard } from "@platform/ui-kit";

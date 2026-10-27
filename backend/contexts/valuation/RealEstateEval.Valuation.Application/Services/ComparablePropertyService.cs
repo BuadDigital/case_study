@@ -1,3 +1,13 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Lock A bank comparable adopted by a handed-over, approved or deposited valuation cannot be edited
+//         (IsAdoptedByClosedValuationAsync, UsedByClosedValuationAr) — the valuation reads the row live.
+// Round 2 (1b19bedc)
+//  • R2-5 Price must be > 0 and ≤ 1e12 SAR (ComparablePropertyRules.PriceError).
+//  • R2-10 A transaction date after today (Riyadh) is refused with an Arabic message.
+//  • R2-10 Usage is never stored empty when the property type says it (ComparablePropertyRules.UsageOrDefault).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Abstractions;

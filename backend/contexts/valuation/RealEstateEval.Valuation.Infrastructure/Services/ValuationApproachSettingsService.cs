@@ -1,3 +1,14 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D9   Retrospective settings are validated against today and the current draft's report date
+//         (CurrentReportDateAsync), with the rationale.
+//  • D9   A field the client does not send (JSON null) keeps the stored value — screens that do not send them
+//         no longer wipe the retrospective rationale or the interest valued and its lease years.
+//  • D11  Saves OwnershipInterestKey (normalised) and RemainingLeaseYears (leasehold only); the DTO returns
+//         the key, its Arabic label and the lease years.
+//  • D17  IncomeApproachEnabled is saved from the request instead of being forced to false.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;

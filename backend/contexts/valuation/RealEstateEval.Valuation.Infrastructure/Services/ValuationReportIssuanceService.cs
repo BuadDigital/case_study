@@ -1,3 +1,11 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D15  A deposit code already taken is refused with a 409 before anything is stored.
+//  • D15  The save goes through SaveRegistrationAsync: a lost parallel registration returns a conflict and
+//         deletes the certificate it just stored.
+//  • D15  The code-correction audit entry is written only after the save succeeds.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Domain;
 using System.Text.Json;
 using System.Text.Json.Nodes;

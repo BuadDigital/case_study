@@ -1,3 +1,15 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Alerts New file — the inputs the issuance-gate service hands to the alerts: one adopted comparable as
+//           alert input (D4 gross, D6 adjusted rate, D8 deal date, D10 type; ToAlertComparable).
+//  • D13  ReportParticipants — the credential gate checks only this report's people (standing reviewers /
+//         assistants, the signing certified valuer, the assigned appraiser), not the whole roster.
+// Round 2 (1b19bedc)
+//  • B    UnexplainedAdjustments — for each adopted comparable, every included non-zero factor and manual
+//         weight whose rationale is under 10 characters («CMP-1: الموقع (+10٪)») for the
+//         «مبررات التسويات والأوزان اليدوية» gate.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Domain;

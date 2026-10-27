@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-14 The assumptions text takes the ownership interest key and rewords the full-ownership assumption
+//          for a usufruct / leased land (OwnershipInterestKeys.AssumptionForInterest).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Domain;
 
 namespace RealEstateEval.Valuation.Domain;

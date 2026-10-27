@@ -11,6 +11,7 @@ import type {
   PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
+import type { CaseStudyReportDeeds } from "../../lib/app-data/case-study-report-document-model";
 import { InfathSectionBlock } from "./PropertyDetailUploadAssistantRows";
 import {
   InfathAttachmentsPanel,
@@ -22,6 +23,9 @@ export function PropertyDetailEnfathUpload({
   record,
   property,
   task,
+  studyTask,
+  reportDeeds,
+  hasSurveyTask,
   parties,
   documentSections,
   loading,
@@ -29,6 +33,11 @@ export function PropertyDetailEnfathUpload({
   record: PoIntakeRecord;
   property: PoPropertyIntake;
   task: WorkflowTask | null;
+  /** The task holding the transaction's case-study report (the holder deed's for linked deeds). */
+  studyTask: WorkflowTask | null;
+  reportDeeds?: CaseStudyReportDeeds;
+  /** The transaction has a survey task. */
+  hasSurveyTask: boolean;
   parties: PropertyDetailPartySubmissionsMap | null | undefined;
   documentSections: PropertyDetailDocumentSection[];
   loading?: boolean;
@@ -38,6 +47,9 @@ export function PropertyDetailEnfathUpload({
     property,
     parties,
     documentSections,
+    studyTask,
+    reportDeeds,
+    hasSurveyTask,
   });
 
   if (!task) {
@@ -68,6 +80,7 @@ export function PropertyDetailEnfathUpload({
 
       <InfathAttachmentsPanel
         attachments={flow.model.attachments}
+        downloadingIds={flow.downloadingIds}
         onDownload={flow.handleDownloadAttachment}
         onDownloadAll={flow.handleDownloadAll}
       />

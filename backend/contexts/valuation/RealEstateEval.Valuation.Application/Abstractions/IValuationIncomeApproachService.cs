@@ -1,3 +1,8 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income New file — read and save contract of the income approach (D17, direct capitalisation).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Valuation.Application.Contracts;
 
 namespace RealEstateEval.Valuation.Application.Abstractions;

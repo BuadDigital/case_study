@@ -1,3 +1,15 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D2   checkIssuanceGatesFailClosed refuses with every appraiser-fixable blocker and its owner
+//         (classifyHandOverBlockers / handOverRefusalMessage) instead of the first four reasons; what the
+//         specialist completes after the hand-over does not block. It announces the gates it read.
+//  • Price New readHandOverPriceFromServer: the reconciliation's saved final value read fresh (null when
+//          there is no open request / reconciliation); a failed read blocks (FINAL_VALUE_UNVERIFIED_MESSAGE).
+// Round 2 (1b19bedc)
+//  • R2-14 The gate check returns the open valuationRequestId and readHandOverPriceFromServer accepts it,
+//          skipping a second getOpenValuationRequestByProperty.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Fresh, fail-closed reads the appraiser's submit depends on. Both are deliberately NOT cached:
  * a stale «issued» flag or a swallowed network error must never let a submit through.

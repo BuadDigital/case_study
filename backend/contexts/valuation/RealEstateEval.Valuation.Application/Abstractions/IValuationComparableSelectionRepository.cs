@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D7   GetCostApartmentLandShareSqmAsync — reads the apartment's land share (m²) saved on the cost
+//         approach, the land area the cost approach values.
+// Round 2 (1b19bedc)
+//  • A    Replaced by GetCostLandAreasAsync (CostLandAreas): the building plot area and the apartment's land
+//         share — the cost land table compares with the plot and multiplies by the share.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Valuation.Application.Abstractions;

@@ -1,3 +1,13 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • R2-10 An unknown selectionContext is refused (SelectionContextError) — it was read silently as market.
+//  • B    A written factor rationale for a non-zero factor and the manual weight rationale must be at
+//         least 10 characters (IsBelowRequiredMinimum / RequiredMinimumMessageAr); blank still saves as draft.
+//  • R2-5 Bounds with Arabic 400s: comparable price override ≤ 1e12 SAR, area override ≤ 10,000,000 m².
+//  • R2-5 Market header: subject area > 0 on the per-m² basis and ≤ 10,000,000 m²; area factor 0.1–50,
+//         annual market rate 0–50, rounding 0–6 — refused instead of dropped silently; all errors returned.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Valuation.Application.Contracts;

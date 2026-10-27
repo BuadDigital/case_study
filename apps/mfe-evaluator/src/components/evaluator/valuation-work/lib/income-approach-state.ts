@@ -1,3 +1,16 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Income  New file — pure rules of the income approach (D17): drafts from the DTO, the live chain with
+//            the server's formulas and rounding (EGI, NOI, value = NOI ÷ cap), warnings mirroring alerts
+//            26/27, the save payload (blank cap rate stays null), incomeApproachAvailable (Q-2).
+// Round 2 (1b19bedc)
+//  • R2-3  New incomeScreenClosedReason — asks for the settings save when income is on only in the draft.
+//  • R2-18  New incomeCapRateError: cap rate must be above 0 and at most 30٪.
+//  • B    New incomeSaveErrors: when the cap rate is outside 4–12٪ (alert 26) a written rationale is at
+//         least 10 characters.
+//  • R2-4  New incomeFieldsDiffer — drafts vs the saved row, for the unsaved-edits warning.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * D17 — pure rules behind `IncomeApproachSection` (direct capitalisation): draft hydration from
  * the server DTO, the live chain the screen previews, and the save payload. Same formulas and

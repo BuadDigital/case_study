@@ -1,3 +1,16 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Report Services and surroundings print «—» when the inspector answered nothing; «غير متوفر» / «لا يوجد»
+//           only when he picked others. A comparable without a factor shows «—», not a bare «٪».
+//  • O14  A ground annex is matched only by GROUND_ANNEX_NEEDLES, so «الدور الأرضي» no longer prints as «مسطح
+//         الملحق الأرضي»; one cost line never prints on two rows.
+//  • Report Sequential factors (financing, market «(عامل الوقت)», transaction type) print in chain order with
+//           a compounded subtotal «(مركّبة)»; the empty separate time row is gone.
+//  • Report Every included difference factor prints (differenceFactorRows), so the rows add up to «مجموع نسب
+//           التسويات»; the comparison value uses the unrounded marketOpinionValueRaw.
+//  • D17  The reconciliation row reads «أسلوب الدخل (رسملة مباشرة)».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import {
   VALUER_ROSTER_MEMBERSHIP_OPTIONS,
   VALUER_SYS_ROLES,

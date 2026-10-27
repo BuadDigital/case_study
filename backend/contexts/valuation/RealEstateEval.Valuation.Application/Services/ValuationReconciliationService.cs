@@ -1,3 +1,16 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D17  The income approach value is read and joins the weights when the appraiser enables it.
+//  • D3   Liquidation discount 0 on basis «قيمة التصفية» is refused at save time; one name «خصم التصفية»
+//         in every message (ReconciliationLiquidationMessages).
+// Round 2 (1b19bedc)
+//  • R2-8 Liquidation discount capped at 90% with a message that names the premise's discount.
+//  • B    A liquidation discount rationale and alert override rationales are at least 10 characters; unknown
+//         alert codes are refused.
+//  • R2-3 The full save merges alert dispositions (MergeAlertOverrides) instead of replacing them — one
+//         not resent is kept; a code sent with neither acknowledgement nor rationale clears it.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;

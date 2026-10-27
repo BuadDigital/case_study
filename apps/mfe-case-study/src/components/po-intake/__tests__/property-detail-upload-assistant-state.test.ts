@@ -8,6 +8,7 @@ import {
   collapsedSectionIds,
   copyToastPreview,
   courtVisitOpsFields,
+  documentHasFile,
   fieldCopyKey,
   findInfathDocumentByName,
   infathFieldAction,
@@ -43,22 +44,33 @@ describe("attachments", () => {
     expect(attachmentIcon({ id: "whatever" })).toBe("file");
   });
 
-  it("is ready only with document bytes", () => {
-    expect(attachmentReady({ document: null })).toBe(false);
-    expect(attachmentReady({ document: doc({}) })).toBe(false);
-    expect(attachmentReady({ document: doc({ dataUrl: "data:x" }) })).toBe(true);
+  it("counts a stored file id or bytes as a file — not a bare name", () => {
+    expect(documentHasFile(null)).toBe(false);
+    expect(documentHasFile(doc({}))).toBe(false);
+    expect(documentHasFile(doc({ dataUrl: "data:x" }))).toBe(true);
+    expect(documentHasFile(doc({ attachmentId: "att-1" }))).toBe(true);
+  });
+
+  it("is ready when the model says so", () => {
+    expect(attachmentReady({ status: "ready" })).toBe(true);
+    expect(attachmentReady({ status: "missing" })).toBe(false);
+    expect(attachmentReady({ status: "conditional" })).toBe(false);
+    expect(attachmentReady({ status: "not-needed" })).toBe(false);
   });
 
   it("labels the status", () => {
-    expect(attachmentStatusLabel(true)).toBe("جاهز");
-    expect(attachmentStatusLabel(true, true)).toBe("جاهز");
-    expect(attachmentStatusLabel(false, true)).toBe("عند الحاجة");
-    expect(attachmentStatusLabel(false)).toBe("غير متوفر");
+    expect(attachmentStatusLabel({ status: "ready" })).toBe("جاهز");
+    expect(attachmentStatusLabel({ status: "ready", conditional: true })).toBe("جاهز");
+    expect(attachmentStatusLabel({ status: "conditional", conditional: true })).toBe("عند الحاجة");
+    expect(attachmentStatusLabel({ status: "missing" })).toBe("غير متوفر");
+    expect(
+      attachmentStatusLabel({ status: "not-needed", statusNote: "لا يوجد رفع مساحي" }),
+    ).toBe("لا يوجد رفع مساحي");
   });
 
   it("keeps only ready attachments", () => {
-    const ready = { document: doc({ dataUrl: "data:x" }) };
-    expect(readyAttachments([{ document: null }, ready])).toEqual([ready]);
+    const ready = { status: "ready" as const };
+    expect(readyAttachments([{ status: "missing" as const }, ready])).toEqual([ready]);
   });
 
   it("finds a document by stored name in attachments before the sections", () => {

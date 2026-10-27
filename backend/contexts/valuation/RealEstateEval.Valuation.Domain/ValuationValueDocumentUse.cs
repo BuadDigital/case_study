@@ -1,3 +1,9 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Bounds A value document's value is capped at one trillion SAR (MaxValueSar) — an absurd entry is a
+//           400 with an Arabic message, not a failed save.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>What the appraiser decided a «مستند ذو قيمة» does to the valuation.</summary>

@@ -1,3 +1,8 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D4   A negative adjustment % is amber, not danger red (pctClass) — red is kept for the ±40٪ breach.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 import { type KeyboardEvent } from "react";
 import { cn, opsLetterCard } from "@platform/ui-kit";
 import type { ValuationComparableSelectionDto } from "@platform/api-client";

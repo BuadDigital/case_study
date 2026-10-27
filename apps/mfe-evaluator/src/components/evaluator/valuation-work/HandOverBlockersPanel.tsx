@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D2   New file — the panel on «المراجعة النهائية» that lists everything stopping the hand-over before
+//         the button is pressed and keeps it on screen after a refusal (the submit's fresh read replaces
+//         the loaded gates). Each blocker says who fixes it («يعالجها: …») and links to the appraiser's
+//         screen (blockerScreen, by methodologyAlertGroup); the specialist's later work is listed apart
+//         as «سيكملها الأخصائي» and does not block.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useEffect, useState } from "react";

@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D15  New file — DepositCodeTakenAsync (case/space-insensitive key, Latin digits; held by another current
+//         report or any version of this request; older rows matched on the stored code) and
+//         SaveRegistrationAsync (a lost row-version or unique-index race → 409 conflict).
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Valuation.Application.Rules;

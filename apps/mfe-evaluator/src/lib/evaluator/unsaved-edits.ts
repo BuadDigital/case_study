@@ -1,3 +1,13 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • P19  New file — registry of manual-save sections with unsaved drafts (setSectionUnsaved /
+//         hasUnsavedSections) and the test for a focused text field changed since focus (editableText,
+//         focusedFieldChanged).
+// Round 2 (1b19bedc)
+//  • R2-2 New clearUnsavedSections, called only when the window unmounts — a screen hidden by <Activity> runs
+//         the same cleanups, so sections never clear themselves on unmount.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * Problem 19 — what a refresh would lose. Two kinds of unsaved text:
  * 1. a field still being typed in (an adjustment cell, a cost line) whose value changed since it was

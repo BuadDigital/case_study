@@ -1,3 +1,12 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • D1   Purpose, basis and premise labels come from reportValuationChoices (the appraiser's saved choices);
+//         the work-order-only listLabels / assignmentValuationFromPo lookup is removed.
+//  • D9   The same choices pass the retrospective date and rationale into the report fill.
+//  • D11  …and the ownership interest valued (key, label, remaining lease years).
+//  • D17  The income approach DTO and the saved income toggle (incomeApproachEnabled) go to the live fill.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

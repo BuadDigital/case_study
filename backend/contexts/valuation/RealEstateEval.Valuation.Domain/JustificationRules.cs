@@ -1,3 +1,10 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 2 (1b19bedc)
+//  • B    RequiredMinLength = 10 with MeetsRequiredMinimum / IsBelowRequiredMinimum — a required rationale is
+//         at least 10 characters after trimming; blank stays a draft held by the gates.
+//  • B    RequiredMinimumMessageAr — the shared message «… يجب ألا يقل عن 10 أحرف».
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>

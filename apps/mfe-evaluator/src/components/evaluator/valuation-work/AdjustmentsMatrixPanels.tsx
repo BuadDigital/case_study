@@ -1,3 +1,13 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Wording  The output title comes from basisView.outputLabel: «قيمة الأرض قبل التقريب» only for the land
+//             table inside the cost approach, «قيمة العقار قبل التقريب» for the market table.
+// Round 2 (1b19bedc)
+//  • A    The formula line under the value comes from basisView.outputFormula — for an apartment's land it
+//         shows «سعر المتر بعد التسوية × حصة الشقة» with the area adjustment on the whole building plot.
+//  • R2-20  Alert titles and bodies go through KeepCodesTogether so CMP-… codes never break across lines.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import { cn } from "@platform/ui-kit";

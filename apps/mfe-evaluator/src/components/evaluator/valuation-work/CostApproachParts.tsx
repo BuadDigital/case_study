@@ -1,3 +1,19 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • Digits  Use-restriction %, apartment land share, indirect %, financing rate / months and the age boxes
+//            are text inputs filtered by costNumericInput (type="number" dropped Arabic digits).
+//  • D11  Age card notes when the life used for depreciation is capped by the remaining lease term
+//         («مبنى على أرض مستأجرة: العمر المعتمد للإهلاك …»).
+// Round 2 (1b19bedc)
+//  • A    New «مساحة أرض العمارة كاملة (م²)» / «مساحة قطعة الأرض (م²)» box (the area the land comparables
+//         are adjusted against); the share box is only the multiplier; a formula line under the card
+//         shows rate × share/area = land value (costLandMultiplierLabel / costLandMultiplierSqm).
+//  • Wording  «سعر المتر من مقارنات الأرض» → «سعر المتر بعد التسويات».
+//  • R2-8  Indirect and age rationale inputs take their own full row on desktop (COST_RATIONALE_FULL_ROW)
+//          instead of being squeezed to 20–55px; they get aria-labels.
+//  • B    Plot area, share, use-restriction and age rationale boxes show the server's field errors.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 "use client";
 
 import type { ValuationCostApproachDto } from "@platform/api-client";

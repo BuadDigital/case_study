@@ -1,3 +1,20 @@
+// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
+// Round 1 (5b554f4e)
+//  • §25  fillValueAdditions replaced by fillFinalValueTable: §25 is rebuilt from finalValueRows; the banner
+//         title becomes «القيمة النهائية الإجمالية» when documents add value.
+//  • §25  fillFinalBanner stamps data-final-value so the server compares it with its own final value before
+//         the copy freezes.
+//  • Report Adjustment table: «تسوية ظروف السوق (عامل الوقت)» fills an older template's «تسوية ظروف السوق»
+//           row, its separate «تسوية عامل الوقت» row is removed, and «إجمالي…» / «سعر البيع بعد…» rows get
+//           the subtotal style.
+// Round 2 (1b19bedc)
+//  • R2-11 The liquidation rationale cell is labelled from the row (rationaleLabel, by premise).
+//  • A    New rebuildLandValueTable: the §20 land table one figure per line, in the order they multiply (the
+//         template printed the plot next to the share-based value).
+//  • R2-19 No special assumptions → the «الافتراضات الخاصة» section is removed, not printed as a bare
+//          heading.
+// ──────────────────────────────────────────────────────────────────────────────────────────────
+
 /**
  * DOM helpers for filling the valuation report template — imported only by applyValuationReportLiveFill.
  */
