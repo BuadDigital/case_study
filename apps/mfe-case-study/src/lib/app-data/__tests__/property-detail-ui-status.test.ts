@@ -81,7 +81,7 @@ describe("derivePropertyUiStatus — a party's view (round 2)", () => {
       derivePropertyUiStatus({
         poNumber: PO,
         property: property(),
-        tasks: [parentTask("completed", "done")],
+        tasks: [parentTask("completed", "done"), appraisalTask("completed")],
         failures: [],
         serverRowStatus: PropertyListRowStatuses.Progress,
       }),
@@ -89,16 +89,47 @@ describe("derivePropertyUiStatus — a party's view (round 2)", () => {
   });
 });
 
+function appraisalTask(
+  status: WorkflowTask["status"],
+  createdAt = "2026-10-02T00:00:00Z",
+): WorkflowTask {
+  return {
+    ...parentTask(status, "done"),
+    id: `task-appraisal-${createdAt}`,
+    kind: "property-appraisal",
+    assigneeRole: "real-estate-appraiser",
+    parentTaskId: "task-parent",
+    createdAt,
+  } as WorkflowTask;
+}
+
 describe("derivePropertyUiStatus", () => {
-  it("shows «جاهز للرفع» once the report is issued but the handover is not recorded", () => {
+  it("shows «جاهز للرفع» once the study is issued and the valuation deposited, before the handover", () => {
     expect(
       derivePropertyUiStatus({
         poNumber: PO,
         property: property(),
-        tasks: [parentTask("completed", "done")],
+        tasks: [parentTask("completed", "done"), appraisalTask("completed")],
         failures: [],
       }),
     ).toBe(PropertyListRowStatuses.Ready);
+  });
+
+  it("keeps an issued study «قيد العمل» while the valuation is not deposited", () => {
+    for (const tasks of [
+      [parentTask("completed", "done")],
+      [parentTask("completed", "done"), appraisalTask("open")],
+      // Two appraisal tasks on the property: the latest one decides.
+      [
+        parentTask("completed", "done"),
+        appraisalTask("completed", "2026-10-02T00:00:00Z"),
+        appraisalTask("open", "2026-10-03T00:00:00Z"),
+      ],
+    ]) {
+      expect(
+        derivePropertyUiStatus({ poNumber: PO, property: property(), tasks, failures: [] }),
+      ).toBe(PropertyListRowStatuses.Progress);
+    }
   });
 
   it("shows «مكتمل» only for a property handed over to Enfaz", () => {

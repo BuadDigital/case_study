@@ -250,7 +250,7 @@ public class WorkOrderListQueryTests
 
  /// <summary>
  /// PO-001 new (no properties), PO-002 partly studied (estates, party assigned), PO-003 handed
- /// over to Enfaz, PO-004 cancelled, PO-005 studied but not handed over (ready_for_enfaz).
+ /// over to Enfaz, PO-004 cancelled, PO-005 studied and valued but not handed over (ready_for_enfaz).
  /// </summary>
     private static void Seed(CaseStudyDbContext db)
     {
@@ -303,10 +303,24 @@ public class WorkOrderListQueryTests
             propertyId: readyProperty);
         readyTask.Complete(Now);
 
+        // Ready needs the deposited valuation too: the appraiser's task completes at the final issuance.
+        var readyAppraisal = WorkflowTask.Create(
+            WorkflowTaskKind.PropertyAppraisal,
+            "PO-005",
+            Now,
+            title: "تقييم",
+            phase: WorkflowTaskPhase.Done,
+            assigneeRole: "real-estate-appraiser",
+            assigneeName: "مقيّم",
+            assigneeId: "appraiser-assignee",
+            propertyId: readyProperty);
+        readyAppraisal.Complete(Now);
+
         db.WorkflowTasks.AddRange(
             studiedTask,
             doneTask,
             readyTask,
+            readyAppraisal,
             WorkflowTask.Create(
                 WorkflowTaskKind.CaseStudyProperty,
                 "PO-002",

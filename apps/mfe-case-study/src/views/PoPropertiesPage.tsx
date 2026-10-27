@@ -75,6 +75,7 @@ import {
   useWorkflowTasksQuery,
 } from "@case-study/mfe/query/case-study-queries";
 import {
+  canEditAssignmentSpecialist,
   canEditPoHeader,
   canEditProperty,
   canRaisePropertyFailure,
@@ -118,7 +119,9 @@ export function PoPropertiesPage({
   const queryClient = useQueryClient();
   const { role } = useAppAccess();
   const showEdit = canEditProperty(role);
-  const showHeaderEdit = canEditPoHeader(role) || showEdit;
+  const showHeaderEdit = canEditAssignmentSpecialist(role);
+  // The case specialist edits only the assignment specialist's name on that screen.
+  const headerEditLabel = canEditPoHeader(role) ? "تعديل أمر العمل" : "تعديل أخصائي الإسناد";
   const showFailureRaise = canRaisePropertyFailure(role);
   const showEye = canViewPoEye(role);
   const showRowMenu =
@@ -325,7 +328,7 @@ export function PoPropertiesPage({
               items={[
                 {
                   id: "edit-po-header",
-                  label: "تعديل أمر العمل",
+                  label: headerEditLabel,
                   onClick: () =>
                     router.push(poHeaderEditPath(record.poNumber)),
                 },

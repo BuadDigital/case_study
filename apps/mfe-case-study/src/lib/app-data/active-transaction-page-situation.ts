@@ -140,7 +140,7 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
       {
         key: "open",
         label: "جاهزة للرفع",
-        sub: "دراسة مكتملة",
+        sub: "دراسة صادرة وتقييم مودَع",
         tone: "blue",
       },
       {
@@ -234,9 +234,11 @@ export function listedTasksForPage(
   pageId: PageId,
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
+  /** Every loaded task, for pages that read sibling tasks (system upload reads the appraisal). */
+  allTasks: readonly WorkflowTask[] = tasks,
 ): WorkflowTask[] {
-  const filtered = filterTasksForPage(pageId, tasks, poByNumber);
-  // System upload is specifically the completed case-study set (include closed statuses).
+  const filtered = filterTasksForPage(pageId, tasks, poByNumber, allTasks);
+  // System upload: study issued + valuation deposited (include closed statuses).
   if (pageId === "system-upload") {
     return filtered.filter((t) => !isTaskOnSuspendedProperty(t));
   }
@@ -506,6 +508,7 @@ function filterTasksForPage(
   pageId: PageId,
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
+  allTasks: readonly WorkflowTask[] = tasks,
 ): WorkflowTask[] {
   switch (pageId) {
     case "active-primary-data":
@@ -515,7 +518,7 @@ function filterTasksForPage(
     case "active-case-study":
       return filterTasksForCaseStudy(tasks);
     case "system-upload":
-      return filterTasksForSystemUpload(tasks);
+      return filterTasksForSystemUpload(tasks, allTasks);
     case "bourse-inquiry":
       return filterTasksForBourseInquiry(tasks, poByNumber);
     case "property-inspection":
@@ -551,11 +554,13 @@ export function computePageSituationValues(
   const cards = pageSituationCards(pageId);
   if (!cards) return null;
 
-  const scoped = listedTasksForPage(pageId, input.tasks, input.poByNumber);
+  const allTasks = input.allTasks ?? input.tasks;
+  const scoped = listedTasksForPage(pageId, input.tasks, input.poByNumber, allTasks);
   const workflowSituationTasks = filterTasksForPage(
     pageId,
     input.tasks,
     input.poByNumber,
+    allTasks,
   ).filter((t) => !isTaskOnSuspendedProperty(t));
 
   if (pageId === "bourse-inquiry") {
@@ -610,7 +615,7 @@ export function computePageSituationValues(
   }
 
   if (pageId === "system-upload") {
-    const ready = listedTasksForPage(pageId, input.tasks, input.poByNumber);
+    const ready = scoped;
     const now = input.now ?? new Date();
     let arrivedToday = 0;
     for (const task of ready) {

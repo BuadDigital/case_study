@@ -23,6 +23,13 @@ public static class PoRoleMatrixRules
     }
 
     /// <summary>
+    /// The assignment specialist's name is provisional when the work order is received and is
+    /// confirmed later — the case specialist corrects it, beside the header editors.
+    /// </summary>
+    public static bool CanEditAssignmentSpecialist(string? prototypeRole) =>
+        CanEditPoHeader(prototypeRole) || Normalize(prototypeRole) is "case-specialist";
+
+    /// <summary>
     /// Write a property's own data — the initial data (Enfaz stage) and the bourse inquiry, and the
     /// task-phase advances after them. Any case specialist, by role (not by assignment); the supervisor,
     /// the general manager and the CDO do not write these stages.

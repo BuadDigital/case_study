@@ -500,6 +500,11 @@ export function PropertyDetailHero({
             });
           if (showsCourtFields(record.assignmentType) && courtLine && !compact)
             stripCells.push({ label: "المحكمة / الدائرة", node: courtLine });
+          if (record.assignmentSpecialist.trim() && !compact)
+            stripCells.push({
+              label: "أخصائي الإسناد",
+              node: record.assignmentSpecialist.trim(),
+            });
           if (record.dueDateAt)
             stripCells.push({
               label: "تاريخ الاستحقاق",

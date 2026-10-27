@@ -95,25 +95,28 @@ public class PropertyListRowBuilderTests
       ],
     };
 
-    var tasksByProperty = new Dictionary<Guid, IReadOnlyList<WorkflowTask>>
-    {
-      [propertyId] =
-      [
-        Task(
-          WorkflowTaskKind.CaseStudyProperty,
-          "PO-300",
-          propertyId,
-          WorkflowTaskStatus.Completed,
-          WorkflowTaskPhase.Done),
-      ],
-    };
+    var study = Task(
+      WorkflowTaskKind.CaseStudyProperty,
+      "PO-300",
+      propertyId,
+      WorkflowTaskStatus.Completed,
+      WorkflowTaskPhase.Done);
+    RealEstateEval.Application.Contracts.PropertyListRowDto RowFor(params WorkflowTask[] tasks) =>
+      Assert.Single(RealEstateEval.CaseStudy.Infrastructure.Services.PropertyListRowBuilder.Build(
+        [order],
+        new HashSet<string>(StringComparer.Ordinal),
+        new Dictionary<Guid, IReadOnlyList<WorkflowTask>> { [propertyId] = tasks })).Row;
 
-    var items = RealEstateEval.CaseStudy.Infrastructure.Services.PropertyListRowBuilder.Build(
-      [order],
-      new HashSet<string>(StringComparer.Ordinal),
-      tasksByProperty);
+    // The study is issued before the valuation: no appraisal task, or an open one, is not ready.
+    Assert.Equal(PropertyListRowStatuses.Progress, RowFor(study).Status);
+    Assert.Equal(
+      PropertyListRowStatuses.Progress,
+      RowFor(study, Task(WorkflowTaskKind.PropertyAppraisal, "PO-300", propertyId,
+        WorkflowTaskStatus.Open, WorkflowTaskPhase.Done)).Status);
 
-    var row = Assert.Single(items).Row;
+    // The appraisal completes at the final issuance (deposit) — now ready.
+    var row = RowFor(study, Task(WorkflowTaskKind.PropertyAppraisal, "PO-300", propertyId,
+      WorkflowTaskStatus.Completed, WorkflowTaskPhase.Done));
     Assert.Equal(PropertyListRowStatuses.Ready, row.Status);
     Assert.Equal(PropertyListRowStatuses.Done, row.Study);
   }

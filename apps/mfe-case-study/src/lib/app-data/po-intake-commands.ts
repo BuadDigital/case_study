@@ -22,6 +22,7 @@ import {
   linkWorkflowTaskProperty,
   savePoIntakeDraft,
   stopWorkOrder,
+  updateWorkOrderAssignmentSpecialist,
   updateWorkOrderHeader,
   updateWorkOrderProperty,
 } from "@platform/api-client";
@@ -376,6 +377,33 @@ export async function updatePoRecord(
   }
   notifyWorkOrdersChanged();
   return { ok: true, data: saved };
+}
+
+/** The case specialist confirms the provisional assignment-specialist name — that field only. */
+export async function updatePoAssignmentSpecialist(
+  poNumber: string,
+  assignmentSpecialist: string,
+): Promise<StorageOk<PoIntakeRecord> | StorageError> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+
+  const result = await updateWorkOrderAssignmentSpecialist(
+    config,
+    poNumber,
+    assignmentSpecialist.trim(),
+  );
+  if (!result.ok) {
+    return {
+      ok: false,
+      error:
+        result.message ??
+        resolveApiError(result.kind, result.errors, "تعذّر حفظ أخصائي الإسناد"),
+      errors: result.errors,
+    };
+  }
+
+  notifyWorkOrdersChanged();
+  return { ok: true, data: dtoToRecord(result.data) };
 }
 
 /**

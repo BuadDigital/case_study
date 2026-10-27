@@ -190,7 +190,11 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
                 || _db.WorkflowTasks.Any(t =>
                     t.PropertyId == p.Id && t.Status != WorkflowTaskStatus.Cancelled)));
 
- /// <summary>Every live property is ready for the handover (PropertyDeliveryRules.IsReady, inlined for EF).</summary>
+ /// <summary>
+ /// Every live property is ready for the handover (PropertyDeliveryRules.IsReady, inlined for EF):
+ /// a property is not ready with no task, with a task still open, or — unless every task is
+ /// cancelled (closed) — without a completed appraisal task (valuation not deposited).
+ /// </summary>
     private Expression<Func<WorkOrder, bool>> EveryLivePropertyReady() => w =>
         !w.Properties.Any(p =>
             !p.IsRemoved
@@ -199,7 +203,13 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
                 || _db.WorkflowTasks.Any(t =>
                     t.PropertyId == p.Id
                     && t.Status != WorkflowTaskStatus.Cancelled
-                    && t.Status != WorkflowTaskStatus.Completed)));
+                    && t.Status != WorkflowTaskStatus.Completed)
+                || (_db.WorkflowTasks.Any(t =>
+                        t.PropertyId == p.Id && t.Status != WorkflowTaskStatus.Cancelled)
+                    && !_db.WorkflowTasks.Any(t =>
+                        t.PropertyId == p.Id
+                        && t.Kind == WorkflowTaskKind.PropertyAppraisal
+                        && t.Status == WorkflowTaskStatus.Completed))));
 
  /// <summary>WorkOrderListStatus.ResolveStudy == completed: no override, all registered, all closed.</summary>
     private Expression<Func<WorkOrder, bool>> IsCompleted() =>

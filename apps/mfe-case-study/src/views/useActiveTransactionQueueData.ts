@@ -251,8 +251,15 @@ export function useActiveTransactionQueueData({
   ]);
 
   const listed = useMemo(
-    () => buildListedQueue({ config, mine, poByNumber, showCompleted }),
-    [config, mine, poByNumber, showCompleted],
+    () =>
+      buildListedQueue({
+        config,
+        mine,
+        allTasks: tasks ?? EMPTY_TASKS,
+        poByNumber,
+        showCompleted,
+      }),
+    [config, mine, tasks, poByNumber, showCompleted],
   );
 
   const listedTaskIdsKey = useMemo(

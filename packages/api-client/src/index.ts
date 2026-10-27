@@ -71,6 +71,7 @@ export {
   listPropertyListItems,
   stopWorkOrder,
   updateWorkOrderHeader,
+  updateWorkOrderAssignmentSpecialist,
   updateWorkOrderProperty,
   updateSpecialistReportExtras,
   notifyIntakeFieldGap,

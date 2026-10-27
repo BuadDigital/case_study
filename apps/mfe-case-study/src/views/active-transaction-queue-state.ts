@@ -79,7 +79,11 @@ export type ActiveTransactionQueueConfig = {
   filterListed: (
     mine: WorkflowTask[],
     poByNumber: Map<string, PoIntakeRecord>,
-    options?: { showCompleted?: boolean },
+    options?: {
+      showCompleted?: boolean;
+      /** Every task the queue loaded, not only the viewer's — for rules that read sibling tasks. */
+      allTasks?: readonly WorkflowTask[];
+    },
   ) => WorkflowTask[];
   /** Override row ⋮ menu (e.g. appraiser recall). */
   buildRowMoreItems?: (ctx: ActiveQueueRowMoreContext) => RowMoreMenuItem[];
@@ -427,11 +431,14 @@ function compareQueueTasksByColumn(
 export function buildListedQueue({
   config,
   mine,
+  allTasks,
   poByNumber,
   showCompleted,
 }: {
   config: ActiveTransactionQueueConfig;
   mine: WorkflowTask[];
+  /** Every task the queue loaded (defaults to `mine`). */
+  allTasks?: readonly WorkflowTask[];
   poByNumber: Map<string, PoIntakeRecord>;
   showCompleted: boolean;
 }): WorkflowTask[] {
@@ -445,6 +452,7 @@ export function buildListedQueue({
   return config
     .filterListed(mine, poByNumber, {
       showCompleted: showAllToggle ? showCompleted : undefined,
+      allTasks: allTasks ?? mine,
     })
     .filter((t) =>
       isListedQueueTask(t, {

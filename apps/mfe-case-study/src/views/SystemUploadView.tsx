@@ -20,13 +20,13 @@ export function SystemUploadView() {
       pageTitle: "الرفع على النظام",
       hidePageTitle: true,
       tableLayout: "case-study",
-      emptyLine: "لا توجد عقارات مكتملة الدراسة جاهزة للرفع.",
+      emptyLine: "لا توجد عقارات جاهزة للرفع.",
       emptyHint:
-        "تظهر هنا فقط العقارات التي اكتملت دراستها (قبول الأخصائي). اضغط الصف لفتح تبويب حزمة الرفع/إنفاذ.",
+        "تظهر هنا فقط العقارات التي صدر تقرير دراسة حالتها وأُودع تقرير تقييمها. اضغط الصف لفتح تبويب حزمة الرفع/إنفاذ.",
       panelId: "system-upload-panel",
       getBasePath: systemUploadPath,
       getTaskPath: caseStudyWorkspacePath,
-      /** Completed case-study tasks are the source queue for this page. */
+      /** Completed case-study tasks whose valuation is deposited are the source queue for this page. */
       includeAllStatuses: true,
       resolveFullPageTaskPath: (task) => {
         if (task.poNumber?.trim() && task.propertyId?.trim()) {
@@ -35,7 +35,8 @@ export function SystemUploadView() {
         return caseStudyWorkspacePath(task.id);
       },
       queueSort: "distributed-newest-first",
-      filterListed: (mine) => filterTasksForSystemUpload(mine),
+      filterListed: (mine, _poByNumber, options) =>
+        filterTasksForSystemUpload(mine, options?.allTasks),
       buildRowMoreItems: ({ task, propertyId, router, viewerRole }) =>
         buildCaseStudyQueueRowMoreItems({
           task,

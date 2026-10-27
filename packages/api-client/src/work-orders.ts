@@ -755,6 +755,39 @@ export async function updateWorkOrderHeader(
   }
 }
 
+/** The assignment specialist's name only — the case specialist confirms the provisional name. */
+export async function updateWorkOrderAssignmentSpecialist(
+  config: WorkOrdersApiConfig,
+  poNumber: string,
+  assignmentSpecialist: string,
+): Promise<ApiOk<WorkOrderDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/work-orders/${encodeURIComponent(poNumber.trim())}/assignment-specialist`,
+      {
+        method: "PUT",
+        headers: authHeaders(config.token),
+        body: JSON.stringify({ assignmentSpecialist }),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) return parseForbidden(res);
+    if (res.status === 400) {
+      return {
+        ok: false,
+        kind: "validation",
+        errors: await parseFieldErrors(res),
+      };
+    }
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: (await res.json()) as WorkOrderDto };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function deleteWorkOrder(
   config: WorkOrdersApiConfig,
   poNumber: string,

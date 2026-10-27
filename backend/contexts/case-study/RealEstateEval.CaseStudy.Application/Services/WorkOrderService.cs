@@ -283,6 +283,25 @@ public partial class WorkOrderService : IWorkOrderService
         return (await _query.WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken), null);
     }
 
+    public async Task<WorkOrderDto?> UpdateAssignmentSpecialistAsync(
+        string poNumber,
+        string? assignmentSpecialist,
+        CancellationToken cancellationToken)
+    {
+        var entity = await _loader.LoadAsync(poNumber, cancellationToken);
+        if (entity is null) return null;
+
+        var name = IWorkOrderLoader.NormalizeOptionalText(assignmentSpecialist);
+        if (name != entity.AssignmentSpecialist)
+        {
+            entity.AssignmentSpecialist = name;
+            // The stored email belonged to the provisional name; the header edit clears it the same way.
+            entity.AssignmentSpecialistEmail = null;
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        return await _query.WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken);
+    }
+
     public async Task<(bool Ok, string? Error)> DeleteAsync(
         string poNumber,
         CancellationToken cancellationToken)

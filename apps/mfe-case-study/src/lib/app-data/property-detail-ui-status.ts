@@ -3,6 +3,7 @@ import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
 import type { PoPropertyIntake } from "./po-intake-data";
 import type { PropertyUiStatus } from "./po-intake-data";
 import { PropertyListRowStatuses, type PropertyListRowStatus } from "@platform/api-client";
+import { isValuationDepositedForTask } from "@platform/app-shared/workflow/task-done";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
   caseStudyFamilyTaskForProperty,
@@ -12,7 +13,8 @@ import {
 
 /**
  * Derive Case Study.html PSTATUS for the property hero badge. «مكتمل» is the Enfaz handover
- * (the server's property-row status says `done`); an issued report alone is «جاهز للرفع».
+ * (the server's property-row status says `done`); «جاهز للرفع» is the issued study report plus the
+ * deposited valuation report — the study alone stays «قيد العمل».
  */
 export function derivePropertyUiStatus(input: {
   poNumber: string;
@@ -59,9 +61,11 @@ export function derivePropertyUiStatus(input: {
   }
 
   if (parent.status === "completed" || parent.phase === "done") {
-    return handedOverToEnfaz
-      ? PropertyListRowStatuses.Done
-      : PropertyListRowStatuses.Ready;
+    if (handedOverToEnfaz) return PropertyListRowStatuses.Done;
+    // The study is issued before the valuation: «جاهز للرفع» waits for the deposited valuation.
+    return isValuationDepositedForTask(parent, tasks)
+      ? PropertyListRowStatuses.Ready
+      : PropertyListRowStatuses.Progress;
   }
 
   const children = childTasksForCaseStudyParent(parent.id, tasks);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canDeletePo,
+  canEditAssignmentSpecialist,
   canEditPoHeader,
   canEditProperty,
   canRaisePropertyFailure,
@@ -23,12 +24,14 @@ describe("po-roles", () => {
     expect(canEditProperty("case-specialist")).toBe(true);
     expect(canRaisePropertyFailure("case-specialist")).toBe(true);
     expect(canEditPoHeader("case-specialist")).toBe(false);
+    expect(canEditAssignmentSpecialist("case-specialist")).toBe(true);
     expect(canDeletePo("case-specialist")).toBe(false);
   });
 
   it("supervisor can receive, edit header, delete; not property edit alone", () => {
     expect(canReceivePo("section-supervisor")).toBe(true);
     expect(canEditPoHeader("section-supervisor")).toBe(true);
+    expect(canEditAssignmentSpecialist("section-supervisor")).toBe(true);
     expect(canDeletePo("section-supervisor")).toBe(true);
     expect(canRaisePropertyFailure("section-supervisor")).toBe(true);
     expect(canEditProperty("section-supervisor")).toBe(false);

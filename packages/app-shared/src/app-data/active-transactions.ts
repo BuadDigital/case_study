@@ -1,5 +1,6 @@
 import type { PageId, RoleId } from "@platform/types";
 import { CASE_STUDY_READY_NAV } from "@platform/types";
+import { isValuationDepositedForTask } from "../workflow/task-done";
 import { isFoldedCaseStudyTask, type WorkflowTask } from "../workflow/task-types";
 import { PARTY_ACTIVE_TRANSACTIONS_NAV } from "./party-task-pages";
 
@@ -58,18 +59,25 @@ export function filterTasksForCaseStudy(
   return tasks.filter((t) => taskMatchesCaseStudy(t));
 }
 
-/** Properties ready for packing/upload on the system (Enfath handoff). */
-function taskMatchesSystemUpload(task: WorkflowTask): boolean {
-  // Only properties whose case-study form was completed/accepted — not open studies.
-  // Every deed of a transaction is uploaded to Enfaz on its own, so folded deeds stay listed here.
-  if (task.kind !== "case-study-property") return false;
-  return task.status === "completed";
-}
-
+/**
+ * Properties ready for the Enfaz upload: the case-study report is issued AND the valuation report
+ * is deposited. The study is issued before the valuation, so the study alone is not enough.
+ * Every deed of a transaction is uploaded to Enfaz on its own, so folded deeds stay listed here.
+ *
+ * @param allTasks Every task the screen loaded — the appraisal tasks are not the viewer's own
+ *   (the specialist's `mine` holds only case-study tasks). Defaults to `tasks`.
+ */
 export function filterTasksForSystemUpload(
   tasks: WorkflowTask[],
+  allTasks: readonly WorkflowTask[] = tasks,
 ): WorkflowTask[] {
-  return tasks.filter((t) => taskMatchesSystemUpload(t));
+  const appraisals = allTasks.filter((t) => t.kind === "property-appraisal");
+  return tasks.filter(
+    (t) =>
+      t.kind === "case-study-property" &&
+      t.status === "completed" &&
+      isValuationDepositedForTask(t, appraisals),
+  );
 }
 
 /** Party fee billing — under Active Transactions for party roles and supervisor. */

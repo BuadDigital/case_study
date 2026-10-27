@@ -20,12 +20,19 @@ public static class PropertyDeliveryRules
             && propertyTasks.All(t => t.Status == WorkflowTaskStatus.Cancelled));
 
     /// <summary>
-    /// Ready for the handover: closed, or at least one task and none left that is neither
-    /// completed nor cancelled (report issued, valuation deposited, parties complete).
+    /// Ready for the handover: closed, or no task left that is neither completed nor cancelled AND
+    /// a completed appraisal task — the valuation deposited (the appraiser's task completes only at
+    /// the final issuance). The study is issued before the valuation, so a completed case-study
+    /// task alone is not ready; neither is a deed that never had an appraisal task.
     /// </summary>
     public static bool IsReady(WorkOrderProperty property, IReadOnlyList<WorkflowTask> propertyTasks) =>
-        property.EnfazHandoverAtUtc is not null
-        || (propertyTasks.Count > 0
-            && propertyTasks.All(t =>
-                t.Status == WorkflowTaskStatus.Cancelled || t.Status == WorkflowTaskStatus.Completed));
+        IsClosed(property, propertyTasks)
+        || (propertyTasks.All(t =>
+                t.Status == WorkflowTaskStatus.Cancelled || t.Status == WorkflowTaskStatus.Completed)
+            && HasDepositedValuation(propertyTasks));
+
+    /// <summary>The property has a completed appraisal task (final issuance with the deposit certificate).</summary>
+    public static bool HasDepositedValuation(IReadOnlyList<WorkflowTask> propertyTasks) =>
+        propertyTasks.Any(t =>
+            t.Kind == WorkflowTaskKind.PropertyAppraisal && t.Status == WorkflowTaskStatus.Completed);
 }

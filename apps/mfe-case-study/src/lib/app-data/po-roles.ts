@@ -22,6 +22,14 @@ export function canEditPoHeader(role: RoleId): boolean {
 }
 
 /**
+ * The assignment specialist's name is provisional at receipt and confirmed later — the case
+ * specialist corrects it, beside the header editors. Mirrors `PoRoleMatrixRules.CanEditAssignmentSpecialist`.
+ */
+export function canEditAssignmentSpecialist(role: RoleId): boolean {
+  return canEditPoHeader(role) || role === "case-specialist";
+}
+
+/**
  * Write a property's initial data (Enfaz stage) and bourse inquiry, and advance the task after them —
  * any case specialist, by role, and the system admin (CDO) as before. Mirrors `PoRoleMatrixRules.CanEditProperty`.
  */

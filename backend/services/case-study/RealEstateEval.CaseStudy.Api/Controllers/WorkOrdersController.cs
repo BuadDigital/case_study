@@ -228,6 +228,27 @@ public class WorkOrdersController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPut("{poNumber}/assignment-specialist")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<WorkOrderDto>> UpdateAssignmentSpecialist(
+        string poNumber,
+        [FromBody] UpdateWorkOrderAssignmentSpecialistRequest request,
+        CancellationToken cancellationToken)
+    {
+        var forbidden = await ForbidUnlessAsync(
+            PoRoleMatrixRules.CanEditAssignmentSpecialist,
+            cancellationToken,
+            "تعديل أخصائي الإسناد متاح لأخصائي دراسة الحالة أو مشرف القسم فقط");
+        if (forbidden is not null) return forbidden;
+
+        var result = await _workOrders.UpdateAssignmentSpecialistAsync(
+            poNumber,
+            request.AssignmentSpecialist,
+            cancellationToken);
+        if (result is null) return NotFound();
+        return Ok(result);
+    }
+
     [HttpDelete("{poNumber}")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<IActionResult> Delete(string poNumber, CancellationToken cancellationToken)
