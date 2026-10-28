@@ -141,7 +141,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
       (t) => t.status === "open" || t.status === "blocked",
     );
 
-    const systemUploadOpen = filterTasksForSystemUpload(mine).length;
+    const systemUploadOpen = filterTasksForSystemUpload(mine, tasks ?? []).length;
 
     const parts: string[] = [];
     const setPage = (pageId: PageId, count: number) => {

@@ -58,6 +58,10 @@ public interface IWorkOrderService
         string poNumber,
         UpdateWorkOrderHeaderRequest request,
         CancellationToken cancellationToken);
+    Task<WorkOrderDto?> UpdateAssignmentSpecialistAsync(
+        string poNumber,
+        string? assignmentSpecialist,
+        CancellationToken cancellationToken);
     Task<(bool Ok, string? Error)> DeleteAsync(string poNumber, CancellationToken cancellationToken);
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> AddPropertyAsync(
         string poNumber,

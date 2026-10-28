@@ -184,6 +184,12 @@ public class CreateWorkOrderRequest
     public List<WorkOrderPropertyDto> Properties { get; set; } = [];
 }
 
+public class UpdateWorkOrderAssignmentSpecialistRequest
+{
+    [MaxLength(256)]
+    public string? AssignmentSpecialist { get; set; }
+}
+
 public class UpdateWorkOrderHeaderRequest
 {
     [Required]

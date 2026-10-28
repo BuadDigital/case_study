@@ -128,6 +128,17 @@ public class PoRoleMatrixRulesTests
 
     [Theory]
     [InlineData("section-supervisor", true)]
+    [InlineData("case-specialist", true)]
+    [InlineData("general-manager", false)]
+    [InlineData("field-inspector", false)]
+    [InlineData("cdo", true)]
+    public void CanEditAssignmentSpecialist_matches_frontend(string role, bool expected)
+    {
+        Assert.Equal(expected, PoRoleMatrixRules.CanEditAssignmentSpecialist(role));
+    }
+
+    [Theory]
+    [InlineData("section-supervisor", true)]
     [InlineData("case-specialist", false)]
     [InlineData("cdo", true)]
     public void CanDeletePo_matches_frontend(string role, bool expected)

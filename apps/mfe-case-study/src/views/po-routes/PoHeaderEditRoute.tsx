@@ -5,12 +5,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Note, PanelSkeleton, QueryErrorState } from "@platform/ui-kit";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { PoHeaderEdit } from "@case-study/mfe/components/po-intake/PoHeaderEdit";
+import { PoAssignmentSpecialistEdit } from "@case-study/mfe/components/po-intake/PoAssignmentSpecialistEdit";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { canEditPoHeader } from "@case-study/mfe/lib/app-data/po-roles";
 import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { usePoRecordQuery } from "@case-study/mfe/query/case-study-queries";
 
 export function PoHeaderEditRoute({ poNumber }: { poNumber: string }) {
   const router = useRouter();
+  const { role } = useAppAccess();
   const queryClient = useQueryClient();
   const recordQuery = usePoRecordQuery(poNumber);
   const { data: record, isPending } = recordQuery;
@@ -41,14 +45,28 @@ export function PoHeaderEditRoute({ poNumber }: { poNumber: string }) {
     );
   }
 
+  const onBackAction = () => router.push(poPropertiesPath(poNumber));
+  const onSavedAction = () => {
+    void queryClient.invalidateQueries({ queryKey: appDataKeys.all });
+    router.push(poPropertiesPath(poNumber));
+  };
+
+  // The case specialist corrects only the provisional assignment-specialist name.
+  if (!canEditPoHeader(role)) {
+    return (
+      <PoAssignmentSpecialistEdit
+        record={record}
+        onBackAction={onBackAction}
+        onSavedAction={onSavedAction}
+      />
+    );
+  }
+
   return (
     <PoHeaderEdit
       record={record}
-      onBackAction={() => router.push(poPropertiesPath(poNumber))}
-      onSavedAction={() => {
-        void queryClient.invalidateQueries({ queryKey: appDataKeys.all });
-        router.push(poPropertiesPath(poNumber));
-      }}
+      onBackAction={onBackAction}
+      onSavedAction={onSavedAction}
     />
   );
 }

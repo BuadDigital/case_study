@@ -115,6 +115,39 @@ public class WorkOrderListCountsTests
         Assert.Equal(1, closed.DoneProperties);
     }
 
+    /// <summary>
+    /// The study is issued before the valuation: an issued study with the valuation still open
+    /// (or no appraisal task at all) is under study, not ready for Enfaz.
+    /// </summary>
+    [Fact]
+    public async Task Issued_study_without_a_deposited_valuation_is_not_ready_for_enfaz()
+    {
+        var bundle = CreateDb();
+        var withOpenValuation = Guid.NewGuid();
+        var withoutAppraisal = Guid.NewGuid();
+        bundle.CaseStudy.WorkOrders.AddRange(
+            Order("PO-VAL-OPEN", expected: 1, due: Today.AddDays(5),
+                properties: [Property(withOpenValuation, "55001")]),
+            Order("PO-NO-VAL", expected: 1, due: Today.AddDays(5),
+                properties: [Property(withoutAppraisal, "55002")]));
+        bundle.CaseStudy.WorkflowTasks.AddRange(
+            StudyTask("PO-VAL-OPEN", withOpenValuation, completed: true),
+            AppraisalTask("PO-VAL-OPEN", withOpenValuation, completed: false),
+            StudyTask("PO-NO-VAL", withoutAppraisal, completed: true));
+        bundle.CaseStudy.SaveChanges();
+        var query = CreateQuery(bundle);
+
+        var ready = await query.CountsAsync(
+            new WorkOrderListQuery { Status = WorkOrderListStatus.ReadyForEnfaz },
+            Staff());
+        Assert.Equal(0, ready.Total);
+
+        var underStudy = await query.CountsAsync(
+            new WorkOrderListQuery { Status = WorkOrderListStatus.UnderStudy },
+            Staff());
+        Assert.Equal(2, underStudy.Total);
+    }
+
     /// <summary>The billing labels widen exactly as they do on the list.</summary>
     [Fact]
     public async Task Billing_buckets_widen_to_their_study_equivalent()
@@ -215,7 +248,7 @@ public class WorkOrderListCountsTests
  // completed: the single expected property is handed over to Enfaz. Overdue, but terminal.
             Order("PO-DONE", expected: 1, due: Today.AddDays(-9),
                 properties: [Property(DoneProperty, "88001", handedOverAt: Now)]),
- // ready_for_enfaz: the study is complete but the handover is not recorded — still active.
+ // ready_for_enfaz: study issued + valuation deposited, the handover not recorded — still active.
             Order("PO-READY", expected: 1, due: Today.AddDays(5),
                 properties: [Property(ReadyProperty, "66001")]),
             Order("PO-CANCELLED", expected: 1, due: Today.AddDays(-1),
@@ -229,6 +262,7 @@ public class WorkOrderListCountsTests
             StudyTask("PO-STUDY", OpenProperty, completed: false),
             StudyTask("PO-DONE", DoneProperty, completed: true),
             StudyTask("PO-READY", ReadyProperty, completed: true),
+            AppraisalTask("PO-READY", ReadyProperty, completed: true),
             StudyTask("PO-CANCELLED", CancelledProperty, completed: false),
  // Party row: the only thing that makes PO-STUDY visible to the inspector.
             WorkflowTask.Create(
@@ -253,6 +287,20 @@ public class WorkOrderListCountsTests
             Now,
             title: "دراسة",
             phase: WorkflowTaskPhase.CaseStudy,
+            propertyId: propertyId);
+        if (completed) task.Complete(Now);
+        return task;
+    }
+
+    /// <summary>The appraiser's task — completed only at the final issuance with the deposit certificate.</summary>
+    private static WorkflowTask AppraisalTask(string poNumber, Guid propertyId, bool completed)
+    {
+        var task = WorkflowTask.Create(
+            WorkflowTaskKind.PropertyAppraisal,
+            poNumber,
+            Now,
+            title: "تقييم",
+            phase: WorkflowTaskPhase.Done,
             propertyId: propertyId);
         if (completed) task.Complete(Now);
         return task;

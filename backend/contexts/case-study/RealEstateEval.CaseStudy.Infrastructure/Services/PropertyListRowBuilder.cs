@@ -150,7 +150,8 @@ public static class PropertyListRowBuilder
 
     /// <summary>
     /// Overall status: «مكتمل» is the Enfaz handover (delivered), «جاهز للرفع» every task complete
-    /// but not handed over — the same rules as the PO list (PropertyDeliveryRules).
+    /// including the appraisal (valuation deposited) but not handed over — the same rules as the PO
+    /// list (PropertyDeliveryRules).
     /// </summary>
     private static string? ResolveStatusFromTasks(
         IReadOnlyList<WorkflowTask> propertyTasks,
@@ -164,7 +165,8 @@ public static class PropertyListRowBuilder
             .ToList();
         if (active.Count == 0) return PropertyListRowStatuses.Fail;
 
-        if (active.All(t => t.Status == WorkflowTaskStatus.Completed))
+        if (active.All(t => t.Status == WorkflowTaskStatus.Completed)
+            && PropertyDeliveryRules.HasDepositedValuation(active))
             return PropertyListRowStatuses.Ready;
 
         var started = active.Any(t =>
