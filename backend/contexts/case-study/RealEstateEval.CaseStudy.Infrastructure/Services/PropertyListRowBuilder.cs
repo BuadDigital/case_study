@@ -115,7 +115,9 @@ public static class PropertyListRowBuilder
                     ? PropertyListRowStatuses.Progress
                     : PropertyListRowStatuses.New);
 
-        var status = boursePending
+        var status = prop.IsCancelled
+            ? PropertyListRowStatuses.Cancelled
+            : boursePending
             ? PropertyListRowStatuses.Progress
             : isFailed
                 ? PropertyListRowStatuses.Fail
@@ -135,9 +137,10 @@ public static class PropertyListRowBuilder
                 Id = PropertyRowId(order.PoNumber, prop),
                 Po = order.PoNumber,
                 Area = area,
+                // The inspector's corrected type wins once submitted (2026-10-29); the bourse type stays on record.
                 Type = boursePending
                     ? "—"
-                    : FirstNonEmpty(prop.PropertyType, prop.Classification, "—"),
+                    : FirstNonEmpty(prop.InspectedPropertyType, prop.PropertyType, prop.Classification, "—"),
                 Key = false,
                 Survey = survey,
                 Val = valFromTasks ?? PropertyListRowStatuses.New,

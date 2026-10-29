@@ -1,3 +1,4 @@
+import { localDateIso } from "@platform/app-shared/format/date";
 import { shouldUseJeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
 import {
   boundariesMarkedUnavailable,
@@ -284,7 +285,6 @@ export function validateInspectorWorkspace(
     classification?: string | null;
     propertyType?: string | null;
     includeRetiredFeatureKeys?: readonly string[];
-    specialistProofServicesOnly?: boolean;
     /**
      * Mirrors the server's InspectorDeedNatureMatchRules on inspector submit: the explicit
      * verdict «حدود الصك مطابقة للطبيعة؟» is required. Opt-in — callers pass
@@ -328,6 +328,9 @@ export function validateInspectorWorkspace(
   });
   if (!submission.inspectionDate.trim()) {
     errors.inspectionDate = "تاريخ المعاينة مطلوب";
+  } else if (submission.inspectionDate.trim() > localDateIso(new Date())) {
+    // Mirrors FieldInspectionSubmissionValidator: a visit cannot be dated tomorrow.
+    errors.inspectionDate = "تاريخ المعاينة لا يكون في المستقبل";
   }
   if (!submission.inspectionTime.trim()) {
     errors.inspectionTime = "وقت المعاينة مطلوب";
@@ -448,7 +451,6 @@ export function validateInspectorWorkspace(
   const photoIssues = listInspectorPhotoValidationIssues(submission, {
     isLand,
     isShop,
-    specialistProofServicesOnly: options?.specialistProofServicesOnly,
   });
   if (photoIssues.length > 0) {
     const featureIssue = photoIssues.find((issue) => issue.includes("توثيقية"));

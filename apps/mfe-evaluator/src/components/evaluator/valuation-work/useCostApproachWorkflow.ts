@@ -160,22 +160,28 @@ export function useCostApproachWorkflow({
         stop = true;
       };
     };
-    if (!cost) return seedFromComponents();
-    const stopSeed = cost.lines.length === 0 ? seedFromComponents() : () => {};
+    return !cost || cost.lines.length === 0 ? seedFromComponents() : () => {};
+  }, [hydrateKey, cost, poNumber, propertyId, showToast]);
+
+  // «العمر الفعلي» starts from the inspector's age until the appraiser saves one — also when the
+  // cost approach was never saved (no `cost` yet).
+  // Fixed 2026-10-28: the read lived in the effect above, whose cleanup cancelled it on any new
+  // `cost` object or a late inspection id while its once-per-load guard skipped the retry, so the
+  // 10-year default stayed (and «سحب من حصر المباني» saved it).
+  const savedActualAge = cost?.actualAgeYears;
+  useEffect(() => {
     const taskId = inspectionTaskId?.trim();
-    if (cost.actualAgeYears != null || !taskId) return stopSeed;
+    if (savedActualAge != null || !taskId) return;
     let cancelled = false;
     void fetchInspectorWorkspace(taskId).then((workspace) => {
       if (cancelled) return;
       const age = inspectorAgeYearsForCostField(workspace?.propertyAgeYears);
-      if (!age) return;
-      setFields((prev) => ({ ...prev, actualAge: age }));
+      if (age) setFields((prev) => ({ ...prev, actualAge: age }));
     });
     return () => {
       cancelled = true;
-      stopSeed();
     };
-  }, [hydrateKey, cost, inspectionTaskId, poNumber, propertyId, showToast]);
+  }, [hydrateKey, savedActualAge, inspectionTaskId]);
 
   const setActualAge = useCallback(
     (age: string) => setField("actualAge", age),

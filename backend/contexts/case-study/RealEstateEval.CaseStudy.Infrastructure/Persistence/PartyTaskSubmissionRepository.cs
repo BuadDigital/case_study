@@ -136,16 +136,23 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
             .ToDictionaryAsync(p => p.Id, cancellationToken);
     }
 
-    public async Task SetInspectedPropertyTypeAsync(
+    public async Task<InspectedTypeChange?> SetInspectedPropertyTypeAsync(
         Guid propertyId,
         string inspectedPropertyType,
         CancellationToken cancellationToken)
     {
         var property = await db.WorkOrderProperties
             .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
-        if (property is null) return;
+        if (property is null) return null;
 
+        var previous = InspectedPropertyTypeRules.Effective(property.PropertyType, property.InspectedPropertyType);
+        var surveyBefore = SurveyRequirementRules.PropertyRequiresSurvey(property);
         property.InspectedPropertyType = inspectedPropertyType.Trim();
+        return InspectedPropertyTypeRules.ChangeOf(
+            previous,
+            property.InspectedPropertyType,
+            surveyBefore,
+            SurveyRequirementRules.PropertyRequiresSurvey(property));
     }
 
     public async Task SyncInspectorDeedBoundariesAsync(

@@ -126,6 +126,91 @@ public class TransactionStateEnfazTests
         Assert.Equal("specialist-1", property.EnfazHandoverByUserId);
     }
 
+    /// <summary>The handover used to tell nobody: the accountant found new deeds only by opening the finance screen.</summary>
+    [Fact]
+    public async Task The_handover_notifies_every_finance_user()
+    {
+        await using var rig = Arrange(studyIssued: true);
+        var sent = new RecordingNotifications();
+        var service = HandoverServiceWith(rig, sent, new RoleRecipients(["accountant-1", "accountant-2"]));
+
+        var (_, error) = await service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "specialist-1");
+
+        Assert.Null(error);
+        var notice = Assert.Single(sent.Sent);
+        Assert.Equal(["accountant-1", "accountant-2"], sent.Recipients);
+        Assert.Equal("صك جديد مرفوع على إنفاذ", notice.Title);
+        Assert.Contains("1234567890", notice.Body);
+        Assert.Contains(Po, notice.Body);
+        Assert.Equal($"/financial?area=revenue&stage=eligible&po={Po}", notice.Href);
+        Assert.Equal("financial", notice.Category);
+    }
+
+    [Fact]
+    public async Task A_refused_handover_notifies_nobody()
+    {
+        await using var rig = Arrange(studyIssued: false);
+        var sent = new RecordingNotifications();
+        var service = HandoverServiceWith(rig, sent, new RoleRecipients(["accountant-1"]));
+
+        var (_, error) = await service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "specialist-1");
+
+        Assert.NotNull(error);
+        Assert.Empty(sent.Sent);
+    }
+
+    [Fact]
+    public async Task The_handover_goes_through_when_there_is_no_finance_user()
+    {
+        await using var rig = Arrange(studyIssued: true);
+        var sent = new RecordingNotifications();
+        var service = HandoverServiceWith(rig, sent, new RoleRecipients([]));
+
+        var (_, error) = await service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "specialist-1");
+
+        Assert.Null(error);
+        Assert.Empty(sent.Sent);
+        Assert.NotNull((await rig.Property()).EnfazHandoverAtUtc);
+    }
+
+    private static TransactionStateService HandoverServiceWith(
+        Rig rig,
+        INotificationService notifications,
+        INotificationRecipientResolver recipients) =>
+        new(
+            new TransactionStateRepository(rig.Db),
+            new FakeValuationRequests(open: false),
+            TestInspectorFeeServiceFactory.CreateTimeline(rig.Db),
+            notifications: notifications,
+            recipients: recipients);
+
+    /// <summary>Answers the finance role with the given users; every other lookup is empty.</summary>
+    private sealed class RoleRecipients(IReadOnlyList<string> financeUsers) : INotificationRecipientResolver
+    {
+        public Task<IReadOnlyList<string>> ResolveAssigneeUserIdsForPropertyAsync(
+            Guid propertyId, IReadOnlyCollection<WorkflowTaskKind> taskKinds, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task<IReadOnlyList<string>> ResolveAssigneeUserIdsForPoAsync(
+            string poNumber, IReadOnlyCollection<WorkflowTaskKind> taskKinds, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<string>>([]);
+
+        public Task<string?> ResolveUserIdForDistributionAssigneeAsync(
+            string distributionAssigneeId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task<string?> ResolveUserIdForEmailAsync(string email, CancellationToken cancellationToken = default) =>
+            Task.FromResult<string?>(null);
+
+        public Task<IReadOnlyDictionary<string, string>> ResolveUserIdsForDistributionAssigneesAsync(
+            IReadOnlyCollection<string> distributionAssigneeIds, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<string, string>>(new Dictionary<string, string>());
+
+        public Task<IReadOnlyList<string>> ResolveUserIdsWithPrototypeRoleAsync(
+            string prototypeRole, CancellationToken cancellationToken = default) =>
+            Task.FromResult(prototypeRole == "financial-officer" ? financeUsers : (IReadOnlyList<string>)[]);
+    }
+
     [Fact]
     public async Task The_state_exposes_the_issued_flag_and_the_block_reasons()
     {

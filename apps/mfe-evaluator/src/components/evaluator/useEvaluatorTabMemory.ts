@@ -1,7 +1,7 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
 //  • P19  New file — remembers the active tab per task and restores a remembered approach tab («طريقة
-//         المقارنة» / «طريقة المقاول» / income) once the shell reports it; the restore is dropped if the
+//         المقارنة» / «طريقة المقاول») once the shell reports it; the restore is dropped if the
 //         appraiser picks a tab first.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -30,10 +30,10 @@ export function useEvaluatorTabMemory({
   taskId: string;
   activeTab: EvaluatorWindowTab;
   setActiveTab: (tab: EvaluatorWindowTab) => void;
-  navAvail: { market: boolean; cost: boolean; income?: boolean };
+  navAvail: { market: boolean; cost: boolean };
 }): void {
   const [restore, setRestore] = useState<{
-    tab: "market" | "cost" | "income";
+    tab: "market" | "cost";
     from: EvaluatorWindowTab;
   } | null>(
     () => {

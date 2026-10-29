@@ -72,6 +72,8 @@ public static class PropertyListRowStatuses
     public const string Done = "done";
     public const string Fail = "fail";
     public const string Incomplete = "incomplete";
+    /// <summary>The deed's transaction was cancelled («إلغاء المعاملة») — the overall status only.</summary>
+    public const string Cancelled = "cancelled";
 }
 
 /// <summary>Wire values for property timeline event <c>tone</c>.</summary>

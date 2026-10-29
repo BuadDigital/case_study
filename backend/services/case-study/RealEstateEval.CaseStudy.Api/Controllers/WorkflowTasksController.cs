@@ -284,6 +284,25 @@ public class WorkflowTasksController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("{id:guid}/engineering-survey")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<WorkflowTaskDto>> AddEngineeringSurvey(
+        Guid id,
+        [FromBody] AddEngineeringSurveyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (result, errors) = await _tasks.AddEngineeringSurveyAsync(
+            id,
+            request,
+            await ActorPrototypeRoleAsync(cancellationToken),
+            ActorName(),
+            ActorId(),
+            cancellationToken);
+        if (errors is not null) return this.FieldErrorsProblem(errors);
+        if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/redistribute")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkflowTaskDto>> Redistribute(

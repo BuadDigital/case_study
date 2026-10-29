@@ -31,6 +31,8 @@ export function derivePropertyUiStatus(input: {
   serverRowStatus?: PropertyListRowStatus | null;
 }): PropertyUiStatus {
   const { poNumber, property, tasks, failures, handedOverToEnfaz = false } = input;
+  // «إلغاء المعاملة» wins over every other state — the deed is out of the work.
+  if (property.cancelledAtUtc) return PropertyListRowStatuses.Cancelled;
   const propertyFailures = failuresForProperty(failures, {
     poNumber,
     propertyId: property.id,

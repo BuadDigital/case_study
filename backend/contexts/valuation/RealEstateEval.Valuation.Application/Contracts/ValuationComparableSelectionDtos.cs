@@ -4,7 +4,6 @@
 //         economic age rationales (ActualAgeRationale, EconomicAgeRationale) on the DTO and the save request.
 //  • Cost DTO: RemainingLeaseYears, LifeCappedByLease and EffectiveLifeYears (life capped by the lease).
 //  • Cost DTO: AppliedObsolescencePct (total capped at 100%) and ObsolescenceNeedsAlert (above 90%).
-//  • Reconciliation DTO: IncomeOpinionValue (NOI ÷ cap rate); income approach may now be enabled.
 //  • Split ValuationApproachSettingsDto and SaveValuationApproachSettingsRequest made partial ( fields
 //          live in ValuationApproachSettingsDtos.cs).
 // Round 2 (1b19bedc)
@@ -438,8 +437,6 @@ public class ValuationReconciliationDto
     public string PropertyId { get; init; } = "";
     public decimal MarketOpinionValue { get; init; }
     public decimal CostOpinionWithLand { get; init; }
-    /// <summary>Income approach indicator (NOI ÷ cap rate); 0 until complete.</summary>
-    public decimal IncomeOpinionValue { get; init; }
     public IReadOnlyList<ValuationReconciliationMethodDto> Methods { get; init; } = [];
     public decimal WeightSumPct { get; init; }
     public bool WeightsSumTo100 { get; init; }
@@ -585,7 +582,7 @@ public partial class ValuationApproachSettingsDto
     public bool CostApproachAllowed { get; init; } = true;
     public bool MarketApproachEnabled { get; init; } = true;
     public bool CostApproachEnabled { get; init; } = true;
- /// <summary>Income approach (direct capitalisation) — the appraiser may enable it.</summary>
+ /// <summary>Deferred — shown as "under construction" and cannot be enabled.</summary>
     public bool IncomeApproachEnabled { get; init; }
     public string CostBasisKey { get; init; } = "replacement";
     public string CostBasisLabelAr { get; init; } = "";

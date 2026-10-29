@@ -6,6 +6,8 @@ import { SpecialistValuationReportInputs } from "../po-intake/SpecialistValuatio
 import { ReturnInspectionDialog } from "../po-intake/ReturnInspectionDialog";
 import { returnInspectionSuccessMessage } from "../../lib/app-data/return-inspection-state";
 import { CaseStudyDeedNatureMatchReview } from "./CaseStudyDeedNatureMatchReview";
+import { AddEngineeringSurveyNote } from "./AddEngineeringSurveyNote";
+import { surveyMissingAfterTypeChange } from "@platform/app-shared/app-data/po-intake-identifiers";
 import { PropertyDetailInspectionTab } from "../po-intake/PropertyDetailInspectionTab";
 import { EmptyState } from "../po-intake/PropertyDetailFields";
 import { findPropertyForTask } from "../../lib/app-data/my-task-row";
@@ -269,6 +271,23 @@ export function CaseStudyAppraisalPanel({
             النوع المبدئي: {property.propertyType || "—"} · النوع المعتمد
             ميدانياً: {currentInspectionAssetSubject.trim()}
           </div>
+        ) : null}
+
+        {currentInspectionPackageStatus === "submitted" &&
+        surveyMissingAfterTypeChange(
+          { ...property, inspectedPropertyType: currentInspectionAssetSubject },
+          tasks.some(
+            (t) =>
+              t.kind === "engineering-survey" &&
+              t.propertyId === property.id &&
+              t.status !== "cancelled",
+          ),
+        ) ? (
+          <AddEngineeringSurveyNote
+            caseStudyTaskId={caseStudyTask.id}
+            newType={currentInspectionAssetSubject.trim()}
+            staffUsers={staffUsers}
+          />
         ) : null}
 
         {inspectionTask && inspectionCard ? (

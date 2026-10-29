@@ -25,7 +25,8 @@ export function MatrixOutputsPanel({
   basisView: MatrixBasisView;
   weightedPricePerSqm: number | null;
 }) {
-  const { isUnit, outputLabel, outputFormula, pricePerSqmDisplay, opinionRaw } = basisView;
+  const { isUnit, outputLabel, outputFormula, pricePerSqmDisplay, pricePerSqmLabel, opinionRaw } =
+    basisView;
   return (
     // Phones stack the two figures; side by side each got ~150px.
     <div className={cn(panelCardClass, "flex items-stretch max-lg:flex-col")}>
@@ -42,13 +43,16 @@ export function MatrixOutputsPanel({
         <div className="mt-[7px] text-[11.5px] font-normal text-text-3">
           {isUnit ? "ر.س/م²" : "ر.س — متوسط مرجّح لقيم المقارنات"}
         </div>
-        <div className="mt-[5px] text-[11.5px] font-bold text-gold-d">
-          قيمة المتر المربع:{" "}
-          <span dir="ltr">
-            {pricePerSqmDisplay != null ? fmt(pricePerSqmDisplay) : "—"}
-          </span>{" "}
-          ر.س/م²
-        </div>
+        {/* On the whole basis it is information only — hidden when the subject has no area to divide by. */}
+        {isUnit || pricePerSqmDisplay != null ? (
+          <div className="mt-[5px] text-[11.5px] font-bold text-gold-d">
+            {pricePerSqmLabel}:{" "}
+            <span dir="ltr">
+              {pricePerSqmDisplay != null ? fmt(pricePerSqmDisplay) : "—"}
+            </span>{" "}
+            ر.س/م²
+          </div>
+        ) : null}
       </div>
       <div className="relative flex-[1.4] bg-surface-2 px-[22px] py-[18px] max-lg:px-4">
         <span className="absolute start-0 top-0 h-full w-[3px] bg-gold" />

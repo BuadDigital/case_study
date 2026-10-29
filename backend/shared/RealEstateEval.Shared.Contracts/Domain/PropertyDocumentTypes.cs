@@ -193,6 +193,29 @@ public static class PropertyDocumentTypes
             _ => [],
         };
 
+    /// <summary>
+    /// Whether a document whose property-type keys are <paramref name="keys"/> applies to the type.
+    /// How it works: no keys = every type; then an exact name; a key heading a longer name («شقة» →
+    /// «شقة سكنية»); «أرض» for any land type; the whole built list (the «built» default) for any type
+    /// that is not land. Twin: propertyDocumentAppliesToType (property-document-types.ts).
+    /// Edge cases: added 2026-10-29 — the inspector's type comes from the full list now.
+    /// </summary>
+    public static bool AppliesToType(IReadOnlyList<string> keys, string? propertyType)
+    {
+        var type = (propertyType ?? "").Trim();
+        if (type.Length == 0 || keys.Count == 0) return true;
+        if (keys.Any(k => string.Equals(k, type, StringComparison.Ordinal)
+                || type.StartsWith(k + " ", StringComparison.Ordinal)))
+        {
+            return true;
+        }
+        // Alef forms folded onto «أ» so «ارض» typed without the hamza still reads as land.
+        var land = type.Replace('ا', 'أ').Replace('إ', 'أ').Replace('آ', 'أ').Contains("أرض", StringComparison.Ordinal);
+        return land
+            ? keys.Any(k => LandPropertyTypes.Contains(k, StringComparer.Ordinal))
+            : BuiltPropertyTypes.All(k => keys.Contains(k, StringComparer.Ordinal));
+    }
+
     /// <summary>Trims, drops «الكل», and expands the free-text "built" aliases to the real types.</summary>
     public static IReadOnlyList<string> NormalizePropertyTypeKeys(IEnumerable<string?> keys)
     {

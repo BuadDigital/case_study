@@ -117,6 +117,17 @@ public static class ValuationComparableSelectionRequestRules
                     JustificationRules.RequiredMinimumMessageAr("مبرر التسوية للمقارن");
         }
 
+        // The difference factors add up before they apply: at −100٪ or below the comparable's price
+        // turns zero or negative (two −90٪ factors gave a negative price). The area line is computed by
+        // the server and is not part of this sum.
+        var differenceSum = lines
+            .Where(l => l.IsIncluded
+                && MarketAdjustmentFactorKeys.IsDifferenceFactor(l.FactorKey?.Trim() ?? "")
+                && (l.FactorKey?.Trim() ?? "") != MarketAdjustmentFactorKeys.Area)
+            .Sum(l => l.Percent);
+        if (differenceSum <= -100m)
+            errors["adjustmentLines"] = "مجموع تسويات الفروقات للمقارن يجب أن يكون أكبر من -100٪ — وإلا صار سعره صفراً أو سالباً";
+
         if (request.WeightIsManual)
         {
             if (request.WeightPct is null)
@@ -237,15 +248,19 @@ public static class ValuationComparableSelectionRequestRules
     /// <summary>
     /// New market-approach header seeded from organization defaults, falling back to the
     /// methodology constants when the org value is out of range. Coefficients are frozen on the
-    /// header so later org changes never rewrite past valuations.
+    /// header so later org changes never rewrite past valuations. The basis opens on
+    /// <see cref="MarketAdjustmentBasisKeys.DefaultFor"/> — whole property for a building.
     /// </summary>
     public static ValuationMarketApproach SeedMarketApproach(
         Guid valuationRequestId,
-        OrganizationValuationSettingsDto org) =>
+        OrganizationValuationSettingsDto org,
+        string? propertyType = null,
+        string? costScopeKey = null) =>
         new()
         {
             Id = Guid.NewGuid(),
             ValuationRequestId = valuationRequestId,
+            AdjustmentBasis = MarketAdjustmentBasisKeys.DefaultFor(propertyType, costScopeKey),
             AreaFactorPct = org.AreaFactorPct > 0
                 ? org.AreaFactorPct
                 : AreaAdjustmentRules.DefaultAreaFactorPct,

@@ -1,8 +1,3 @@
-// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
-// Round 1 (5b554f4e)
-//  • New DbSet ValuationIncomeApproaches for the income approach (direct capitalisation).
-// ──────────────────────────────────────────────────────────────────────────────────────────────
-
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
@@ -41,7 +36,6 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
     public DbSet<ValuationCostApproach> ValuationCostApproaches => Set<ValuationCostApproach>();
     public DbSet<ValuationCostLine> ValuationCostLines => Set<ValuationCostLine>();
     public DbSet<ValuationIndirectCostItem> ValuationIndirectCostItems => Set<ValuationIndirectCostItem>();
-    public DbSet<ValuationIncomeApproach> ValuationIncomeApproaches => Set<ValuationIncomeApproach>();
     public DbSet<ValuationReconciliation> ValuationReconciliations => Set<ValuationReconciliation>();
     public DbSet<ValuationReconciliationMethodLine> ValuationReconciliationMethodLines =>
         Set<ValuationReconciliationMethodLine>();

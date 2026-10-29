@@ -124,6 +124,13 @@ describe("computeKeysKpis", () => {
     });
   });
 
+  it("does not count an untried key of a cancelled property as pending (إلغاء المعاملة)", () => {
+    const cancelled = { ...assignment("pending", "C"), propertyCancelledAtUtc: "2026-10-29T08:00:00Z" };
+    const kpis = computeKeysKpis([envelope({ assignments: [assignment("matched"), cancelled] })]);
+    expect(kpis.pendingMatch).toBe(0);
+    expect(kpis.readyToDeliver).toBe(1);
+  });
+
   it("is all zeros for an empty list", () => {
     expect(computeKeysKpis([])).toEqual({
       total: 0,

@@ -17,6 +17,7 @@ import {
   nextSubjectSpecs,
 } from "./lib/market-commands-state";
 import { parseDecimal } from "./lib/shell-state";
+import { perSqmBlockedMessage } from "./lib/market-subject";
 import type { ComparableMarketSaver } from "./useComparableMarketSaver";
 import type { ValuationWorkData } from "./useValuationWorkData";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
@@ -37,6 +38,7 @@ export function useMarketApproachCommands(
     analysisNotes,
     setAnalysisNotes,
     subjectSpecs,
+    marketKind,
   } = data;
   const { writeContext } = saver;
   const draft = { subjectArea, adjustmentBasis, analysisNotes };
@@ -97,6 +99,11 @@ export function useMarketApproachCommands(
 
   async function changeAdjustmentBasis(basis: "price_per_sqm" | "whole_property") {
     if (!writeContext({ requireUnlocked: true })) return;
+    // Per m² needs an area to multiply — a building without a floor area says why, not a server error.
+    if (basis === "price_per_sqm" && !(parseDecimal(subjectArea) > 0)) {
+      showToast(perSqmBlockedMessage(marketKind), "error");
+      return;
+    }
     setAdjustmentBasis(basis);
     await saveApproach({ adjustmentBasis: basis }, "تعذّر حفظ أساس التسوية", {
       requireUnlocked: true,

@@ -28,6 +28,22 @@ public partial class PartyTaskSubmissionService
         task.PropertyId is Guid propertyId
         && await LoadSourcePropertyAsync(propertyId, cancellationToken) is { IsHandedOverToEnfaz: true };
 
+    /// <summary>Refusal of any party write on a cancelled transaction («إلغاء المعاملة»).</summary>
+    public const string TransactionCancelledAr = "المعاملة ملغاة — لا يمكن الحفظ أو التسليم";
+
+    /// <summary>The task's transaction is cancelled: the task itself, or its deed, says so.</summary>
+    /// <remarks>
+    /// How it works: a cancelled task answers at once; otherwise the deed's cancellation stamp is read.
+    /// Edge cases: a finished task on a cancelled deed is still refused — a submitted package is not
+    /// corrected after the cancellation; an offline save replayed later meets this refusal too.
+    /// </remarks>
+    private async Task<bool> IsTransactionCancelledAsync(
+        WorkflowTask task,
+        CancellationToken cancellationToken) =>
+        task.Status == WorkflowTaskStatus.Cancelled
+        || (task.PropertyId is Guid propertyId
+            && await LoadSourcePropertyAsync(propertyId, cancellationToken) is { IsCancelled: true });
+
     /// <summary>
     /// The field inspector's device prefetches the submission list; each package carries the
     /// source fingerprint it will send back with offline saves.

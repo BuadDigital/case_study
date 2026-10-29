@@ -18,8 +18,24 @@ namespace RealEstateEval.Operations.Api.Controllers;
 [RequireUpstreamDispatch]
 public sealed class KeyEnvelopeDispatchController(
     IKeyEntitlementLookup entitlements,
-    IPropertyKeyGateResolver gates) : ControllerBase
+    IPropertyKeyGateResolver gates,
+    IKeyEnvelopesService envelopes) : ControllerBase
 {
+    /// <summary>«إلغاء المعاملة»: Case Study marks (or clears) the cancelled deeds in every key envelope.</summary>
+    [HttpPost("properties-cancelled")]
+    public async Task<IActionResult> PropertiesCancelled(
+        [FromBody] SetKeyPropertiesCancelledRequest request,
+        CancellationToken cancellationToken)
+    {
+        await envelopes.SetPropertiesCancelledAsync(
+            request.PropertyIds,
+            request.Cancelled,
+            ActorClaims.Id(User),
+            string.IsNullOrWhiteSpace(request.Actor) ? ActorClaims.DisplayName(User) : request.Actor,
+            cancellationToken);
+        return NoContent();
+    }
+
     [HttpGet("entitlements")]
     public async Task<ActionResult<IReadOnlyList<KeyEnvelopeEntitlementDto>>> Entitlements(
         [FromQuery] string? propertyIds,

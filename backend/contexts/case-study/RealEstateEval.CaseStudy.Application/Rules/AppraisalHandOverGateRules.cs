@@ -41,8 +41,6 @@ public static class AppraisalHandOverGateRules
             ValuationIssuanceGateCodes.DeedNatureMatch or ValuationIssuanceGateCodes.StudyReportIssued =>
                 SpecialistOwnerAr,
             ValuationIssuanceGateCodes.ValueDocuments => ValueDocumentsOwnerAr,
-            // The income approach inputs (and alerts 26–28) are the appraiser's to complete.
-            ValuationIssuanceGateCodes.IncomeApproachComplete => AppraiserOwnerAr,
             _ => AppraiserOwnerAr,
         };
     }

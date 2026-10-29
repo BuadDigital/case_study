@@ -273,19 +273,16 @@ public class ValuationApproachSettingsRulesTests
     }
 
     [Fact]
-    public void Validate_allows_income_and_requires_one_approach()
+    public void Validate_rejects_income_and_requires_one_approach()
     {
         var none = ValuationApproachSettingsRules.Validate(
             false, false, false, null, null, "فيلا");
         Assert.Contains("appliedApproaches", none.Keys);
 
-        // The income approach may be enabled — alone or beside the others.
+        // The income approach is not available yet — enabling it is refused.
         var income = ValuationApproachSettingsRules.Validate(
             true, false, true, null, null, "فيلا");
-        Assert.DoesNotContain("incomeApproachEnabled", income.Keys);
-        var incomeOnly = ValuationApproachSettingsRules.Validate(
-            false, false, true, null, null, "فيلا");
-        Assert.DoesNotContain("appliedApproaches", incomeOnly.Keys);
+        Assert.Equal("أسلوب الدخل قيد الإنشاء — مؤجَّل رسمياً", income["incomeApproachEnabled"]);
     }
 
     [Fact]

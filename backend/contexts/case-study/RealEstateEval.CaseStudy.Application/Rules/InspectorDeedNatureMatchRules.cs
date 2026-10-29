@@ -66,6 +66,25 @@ public static class InspectorDeedNatureMatchRules
         return errors;
     }
 
+    /// <summary>
+    /// The inspector's package says the deed does not match nature — his «غير مطابق», or, on payloads older
+    /// than the verdict field, a side flagged as not matching. False for no package or unreadable JSON.
+    /// </summary>
+    public static bool InspectorSaidNotMatched(string? payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            var verdict = ReadVerdict(doc.RootElement);
+            return verdict is false || (verdict is null && MismatchedSides(doc.RootElement).Count > 0);
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>True = «yes» (matches), false = «no», null = not chosen (empty, missing or unknown).</summary>
     private static bool? ReadVerdict(JsonElement root)
     {

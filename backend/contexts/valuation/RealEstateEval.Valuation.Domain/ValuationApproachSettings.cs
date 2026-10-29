@@ -4,7 +4,6 @@
 //         usufruct / leased_land, «ملكية تامة» / «حق منفعة» / «أرض مستأجرة»); a leasehold needs 1–999 years.
 //  • A retrospective date (and period end) is not after today or the report date
 //         (RetrospectiveDateError); its rationale is required, at least 10 characters.
-//  • The income approach may be enabled (was refused as deferred) and joins the reconciliation kinds.
 // Round 2 (1b19bedc)
 //  • AssumptionForInterest rewords «أن العقار مطلق الملكية» for a usufruct / leased land; ReportCell
 //          prints the interest with its remaining term («حق منفعة — المدة المتبقية 4 سنوات»).
@@ -31,7 +30,10 @@ public class ValuationApproachSettings
  /// <summary>Cost approach (contractor method) —: not enabled for "land" type.</summary>
     public bool CostApproachEnabled { get; set; } = true;
 
- /// <summary>Income approach (direct capitalisation) — the appraiser may enable it.</summary>
+ /// <summary>
+ /// Income approach — not available yet («قيد الإنشاء»); the column is kept but enabling it is refused,
+ /// so it is always false.
+ /// </summary>
     public bool IncomeApproachEnabled { get; set; }
 
  /// <summary>
@@ -455,6 +457,10 @@ public static class ValuationApproachSettingsRules
         if (!marketEnabled && !costEnabled && !incomeEnabled)
             errors["appliedApproaches"] = "يلزم تفعيل أسلوب واحد على الأقل";
 
+        // The income approach is not available yet — enabling it is refused.
+        if (incomeEnabled)
+            errors["incomeApproachEnabled"] = "أسلوب الدخل قيد الإنشاء — مؤجَّل رسمياً";
+
         // A usufruct / leased-land interest carries its remaining lease term.
         if (ownershipInterestKey is not null && ownershipInterestKey.Trim().Length > 0
             && !OwnershipInterestKeys.IsKnown(ownershipInterestKey))
@@ -543,18 +549,16 @@ public static class ValuationApproachSettingsRules
     }
 
  /// <summary>
- /// Weighting rows are built from enabled approaches only — market, cost, then the
- /// income approach (direct capitalisation), in that order.
+ /// Weighting rows are built from enabled approaches only — market, then cost, in that order.
+ /// Edge cases: the income approach is not available, so it never gets a weighting row.
  /// </summary>
     public static IReadOnlyList<string> EnabledReconciliationKinds(
         bool marketEnabled,
-        bool costEnabled,
-        bool incomeEnabled = false)
+        bool costEnabled)
     {
         var kinds = new List<string>();
         if (marketEnabled) kinds.Add(ValuationApproachKinds.Market);
         if (costEnabled) kinds.Add(ValuationApproachKinds.Cost);
-        if (incomeEnabled) kinds.Add(ValuationApproachKinds.Income);
         return kinds;
     }
 }

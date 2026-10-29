@@ -55,6 +55,7 @@ public static class KeyEnvelopeMapper
                 KeyHolderUserId = a.KeyHolderUserId,
                 KeyHolderLabel = a.KeyHolderLabel,
                 KeyLocationAtUtc = a.KeyLocationAtUtc,
+                PropertyCancelledAtUtc = a.PropertyCancelledAtUtc,
             })
             .ToList(),
         Handoffs = row.Handoffs

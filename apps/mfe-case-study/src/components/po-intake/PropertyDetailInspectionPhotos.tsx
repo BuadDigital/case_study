@@ -36,6 +36,7 @@ import {
   photoTileEmptyLabel,
   photoTileFlagBadge,
 } from "./property-detail-inspection-state";
+import { wholeCountInput } from "../../lib/app-data/specialist-components";
 
 export function PhotoTile({
   label,
@@ -301,9 +302,10 @@ export function ComponentCountWithPhotoField({
         ltr
         type="number"
         onChange={(v) => {
+          // Digits only: a down-arrow «-2» skipped the required photo yet printed «-2» (2026-10-28).
           const { patch, clearsPhoto } = componentCountPatch(
             photoKey,
-            v,
+            wholeCountInput(v),
             draft.componentPhotoAttachments,
           );
           if (clearsPhoto) clearInspectorPhotoDataUrl(taskId, photoRef);

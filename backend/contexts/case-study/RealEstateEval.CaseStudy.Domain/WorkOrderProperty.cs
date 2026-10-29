@@ -247,6 +247,55 @@ public class WorkOrderProperty : ITrackUpdatedAt
         return true;
     }
 
+    /// <summary>The deed status a cancelled transaction's deeds carry.</summary>
+    public const string CancelledDeedStatusAr = "ملغى";
+
+    /// <summary>When the deed's transaction was cancelled («إلغاء المعاملة»); null while it is live.</summary>
+    public DateTime? CancelledAtUtc { get; set; }
+
+    /// <summary>The approved cancellation request that cancelled the deed.</summary>
+    public Guid? CancellationId { get; set; }
+
+    /// <summary>The deed status before the cancellation, put back on reactivation.</summary>
+    public string? PreCancelDeedStatus { get; set; }
+
+    /// <summary>True while the deed's transaction is cancelled.</summary>
+    public bool IsCancelled => CancelledAtUtc is not null;
+
+    /// <summary>Marks the deed cancelled by one approved cancellation. Returns whether it changed.</summary>
+    /// <remarks>
+    /// How it works: stamps the time and the cancellation, keeps the current deed status for the
+    /// reactivation and writes «ملغى».
+    /// Edge cases: an already cancelled deed keeps its first stamp and returns false, so a repeated
+    /// approval never overwrites the remembered status with «ملغى».
+    /// </remarks>
+    public bool MarkCancelled(Guid cancellationId, DateTime nowUtc)
+    {
+        if (IsCancelled) return false;
+
+        CancelledAtUtc = nowUtc;
+        CancellationId = cancellationId;
+        PreCancelDeedStatus = DeedStatus;
+        DeedStatus = CancelledDeedStatusAr;
+        return true;
+    }
+
+    /// <summary>Reactivation: clears the cancellation and puts back the deed status. Returns whether it changed.</summary>
+    /// <remarks>
+    /// How it works: clears the stamp and the cancellation id and restores the remembered status.
+    /// Edge cases: a live deed returns false untouched.
+    /// </remarks>
+    public bool ClearCancellation()
+    {
+        if (!IsCancelled) return false;
+
+        CancelledAtUtc = null;
+        CancellationId = null;
+        DeedStatus = PreCancelDeedStatus;
+        PreCancelDeedStatus = null;
+        return true;
+    }
+
  /// <summary>Soft-removed from transaction queues; still listed on the work-order property list.</summary>
     public bool IsRemoved { get; set; }
 

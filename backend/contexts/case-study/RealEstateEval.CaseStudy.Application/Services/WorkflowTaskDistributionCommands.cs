@@ -58,6 +58,12 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         var entity = await _caseStudy.GetTaskForUpdateAsync(id, cancellationToken);
         if (entity is null) return null;
 
+        // The draft is only editable before «تأكيد التوزيع». A late autosave from the screen used to land
+        // after the confirm and wipe the confirmed parties (inspector and appraiser read «لم يُعيَّن»,
+        // 2026-10-28); changing parties afterwards goes through RedistributePartiesAsync.
+        if (entity.Phase != WorkflowTaskPhase.Distribution)
+            return WorkflowTaskMapper.ToDto(entity);
+
         var normalized = WorkflowTaskPhaseRules.NormalizeDistribution(distribution);
         entity.SetDistribution(
             WorkflowTaskMapper.SerializeDistribution(normalized),

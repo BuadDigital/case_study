@@ -84,8 +84,8 @@ public class BuildingInventoryServiceTests
     private static SaveBuildingInventoryRequest Request(string? text, params BuildingInventoryLineDto[] lines) =>
         new() { ComponentsText = text, Lines = [.. lines] };
 
-    private static BuildingInventoryLineDto Line(string label, Guid? id = null) =>
-        new() { Id = id, StructureKind = "floor", Label = label, AreaSqm = "100" };
+    private static BuildingInventoryLineDto Line(string label, Guid? id = null, string? area = "100") =>
+        new() { Id = id, StructureKind = "floor", Label = label, AreaSqm = area };
 
     // ---- access resolution ----
 
@@ -244,6 +244,38 @@ public class BuildingInventoryServiceTests
         Assert.Null(result);
         Assert.Equal(BuildingInventoryWriteRules.PackageSubmitted, errors!["_"]);
         Assert.Empty(db.BuildingInventoryLines);
+    }
+
+    [Theory]
+    [InlineData("-1375")]
+    [InlineData("-٥")]
+    public async Task A_negative_area_is_refused_and_nothing_is_written(string area)
+    {
+        await using var db = CreateDb();
+        Seed(db);
+
+        var (result, errors) = await CreateService(db).SaveAsync(
+            Po, PropertyId, Request(null, Line("الدور الأرضي", area: area)),
+            BuildingInventoryWriteAccess.Inspector, default, Inspector());
+
+        Assert.Null(result);
+        Assert.Equal("المساحة أو العدد لا يكون سالباً", errors!["lines[0].areaSqm"]);
+        Assert.Empty(db.BuildingInventoryLines);
+    }
+
+    [Fact]
+    public async Task A_zero_or_blank_area_still_saves()
+    {
+        await using var db = CreateDb();
+        Seed(db);
+
+        var (result, errors) = await CreateService(db).SaveAsync(
+            Po, PropertyId,
+            Request(null, Line("الدور الأرضي", area: "0"), Line("السور", area: null)),
+            BuildingInventoryWriteAccess.Inspector, default, Inspector());
+
+        Assert.Null(errors);
+        Assert.Equal(2, result!.Lines.Count);
     }
 
     [Fact]

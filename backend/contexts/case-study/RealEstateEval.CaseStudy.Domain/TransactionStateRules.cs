@@ -250,7 +250,7 @@ public static class TransactionStateRules
         if (!input.StudyReportIssued)
             reasons.Add("تقرير دراسة الحالة لم يُصدَر بعد");
         if (!input.ValuationReportClosed)
-            reasons.Add("تقرير التقييم لم يُودَع بعد شهادة الإيداع)");
+            reasons.Add("تقرير التقييم لم يُودَع بعد (شهادة الإيداع)");
 
         var state = Evaluate(input);
         // The valuer's task completes only with the deposit, so while the deposit reason is listed the
@@ -260,9 +260,12 @@ public static class TransactionStateRules
             .Where(p => input.ValuationReportClosed || p.Key != Parties.Appraiser)
             .Select(p => p.LabelAr)
             .ToList();
+        // «لم يتم التوزيع» only when party work really has not started. In progress with no party
+        // listed means the valuer alone is left, and the deposit reason above already says so —
+        // it used to print «لم يتم التوزيع» on a distributed, inspected transaction (2026-10-28).
         if (incomplete.Count > 0)
             reasons.Add($"لم يكتمل عمل: {string.Join("، ", incomplete)}");
-        else if (state.Stages.First(s => s.Key == Stages.PartyWork).Status != Statuses.Completed)
+        else if (state.Stages.First(s => s.Key == Stages.PartyWork).Status == Statuses.NotStarted)
             reasons.Add("مرحلة عمل الأطراف لم تبدأ بعد (لم يتم التوزيع)");
 
         return reasons;

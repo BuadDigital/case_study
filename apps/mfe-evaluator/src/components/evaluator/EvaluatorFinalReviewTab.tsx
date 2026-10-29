@@ -1,8 +1,7 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • The assumptions save re-sends the saved incomeApproachEnabled instead of a hard-coded false, which
-//         switched the income approach off — this save owns only the assumptions and the specialist clause.
-//  • It also re-sends the saved ownership interest (ownershipInterestKey) and remaining lease years.
+//  • The assumptions save re-sends the saved ownership interest (ownershipInterestKey) and remaining
+//         lease years — this save owns only the assumptions and the specialist clause.
 //  • It re-sends the saved retrospective rationale instead of null.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -336,9 +335,9 @@ export function EvaluatorFinalReviewTab({
       {
         marketApproachEnabled: currentSettings.marketApproachEnabled,
         costApproachEnabled: currentSettings.costApproachEnabled,
-        // Re-send the saved approaches / interest / rationale as they are — this save only owns the
-        // assumptions and the specialist clause (a hard-coded false would switch the income approach off).
-        incomeApproachEnabled: currentSettings.incomeApproachEnabled,
+        // Re-send the saved interest / rationale as they are — this save only owns the assumptions and
+        // the specialist clause. The income approach is not available, so it is always off.
+        incomeApproachEnabled: false,
         ownershipInterestKey: currentSettings.ownershipInterestKey ?? null,
         remainingLeaseYears: currentSettings.remainingLeaseYears ?? null,
         costBasisKey: currentSettings.costBasisKey,

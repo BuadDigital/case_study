@@ -118,6 +118,8 @@ export function isVisibleInAppraiserQueue(
   taskStatus: string,
   options?: { showSubmitted?: boolean },
 ): boolean {
+  // A cancelled transaction («إلغاء المعاملة») is neither listed nor opened.
+  if (taskStatus === "cancelled") return false;
   if (taskStatus === "completed") return Boolean(options?.showSubmitted);
   void taskId;
   // A submitted package is a hand-over, not the end: the task stays open until the final issuance

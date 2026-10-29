@@ -8,7 +8,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Button, cn, useSwapAnimation } from "@platform/ui-kit";
+import { Button, cn, useSwapAnimation, useToast } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { ValuedDocumentUploadButton } from "@platform/app-shared/components/ValuedDocumentUploadButton";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -42,11 +42,17 @@ import { InspectorFieldObservationsCard } from "./InspectorFieldObservationsCard
 import { COMPONENT_BOOL_KEYS } from "./inspector-wizard-state";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import {
+  firstInspectorWorkspaceError,
   firstInspectorWorkspaceErrorTarget,
+  inspectorMustDecideDeedMatch,
   inspectorWizardStepForErrorTarget,
+  inspectorWorkspaceHasBlockingErrors,
+  pickInspectorErrorsForWizardStep,
   scheduleInspectorErrorScroll,
+  validateInspectorWorkspace,
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/app-data/inspector-workspace-validation";
+import { boundariesMarkedUnavailable } from "../../lib/app-data/po-intake-data";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
@@ -172,7 +178,35 @@ export function InspectorWorkspaceWizard({
     [isLand, isApartment, includeRetiredFeatureKeys],
   );
 
+  const { showToast } = useToast();
+
+  /**
+   * «حفظ ومتابعة»: moves to the next step once this step's required fields are filled.
+   *
+   * How it works: runs the submit validation on the draft, keeps only the errors that belong to
+   * the current step (pickInspectorErrorsForWizardStep) and, when any is blocking, stays on the
+   * step, names the first missing field and scrolls to it.
+   *
+   * Edge cases: the declaration (step 3) is never asked here. Fixed 2026-10-28 — the step moved on
+   * regardless, so a missing «حالة منطقة العقار» surfaced only at the final «حفظ وإرسال».
+   */
   function advance() {
+    if (mapActor === "inspector") {
+      const all = validateInspectorWorkspace(draft, {
+        boundariesUnavailable: boundariesMarkedUnavailable(property.boundariesAvailability),
+        classification: property.classification,
+        propertyType: property.propertyType,
+        requireDeedMatch: inspectorMustDecideDeedMatch(property),
+        requireLandStructures: true,
+      });
+      const stepErrors = pickInspectorErrorsForWizardStep(all, activeStep);
+      delete stepErrors.inspectionConfirmed;
+      if (inspectorWorkspaceHasBlockingErrors(stepErrors)) {
+        showToast(firstInspectorWorkspaceError(stepErrors) ?? "أكمل الحقول المطلوبة في هذه الخطوة", "error");
+        scheduleInspectorErrorScroll(stepErrors, 60);
+        return;
+      }
+    }
     setActiveStep((prev) => (prev === 3 ? prev : ((prev + 1) as InspectorStepId)));
   }
 
@@ -422,6 +456,8 @@ export function InspectorWorkspaceSubmitFooter({
   submitDisabled = false,
   submitLabel = "حفظ وإرسال",
   confirmLabel = "أقر بأن بيانات المعاينة صحيحة ومطابقة للواقع الميداني",
+  confirmed,
+  onConfirmedChange,
   onPatch,
   onSubmit,
   onCancel,
@@ -434,10 +470,18 @@ export function InspectorWorkspaceSubmitFooter({
   submitLabel?: string;
   /** Defaults to the field inspector pledge; specialist passes a review ack. */
   confirmLabel?: string;
+  /**
+   * The specialist's own review tick. Without it the box shows the inspector's pledge
+   * (`draft.inspectionConfirmed`), which is already ticked on a submitted package — so the
+   * specialist's «راجعت…» opened pre-ticked (fixed 2026-10-28).
+   */
+  confirmed?: boolean;
+  onConfirmedChange?: (checked: boolean) => void;
   onPatch: (patch: InspectorWorkspacePatchInput) => void;
   onSubmit: () => void;
   onCancel: () => void;
 }) {
+  const checked = confirmed ?? draft.inspectionConfirmed;
   return (
     <div className="mt-3 flex flex-wrap items-center gap-2.5 rounded-xl border border-border bg-surface px-4 py-3">
       <label
@@ -450,8 +494,12 @@ export function InspectorWorkspaceSubmitFooter({
         <input
           type="checkbox"
           className="size-[15px] accent-ink"
-          checked={draft.inspectionConfirmed}
-          onChange={(e) => onPatch({ inspectionConfirmed: e.target.checked })}
+          checked={checked}
+          onChange={(e) =>
+            onConfirmedChange
+              ? onConfirmedChange(e.target.checked)
+              : onPatch({ inspectionConfirmed: e.target.checked })
+          }
         />
         {confirmLabel}
       </label>
@@ -461,7 +509,7 @@ export function InspectorWorkspaceSubmitFooter({
         size="sm"
         variant="primary"
         loading={saving}
-        disabled={saving || !draft.inspectionConfirmed || submitDisabled}
+        disabled={saving || !checked || submitDisabled}
         onClick={onSubmit}
       >
         {submitLabel}

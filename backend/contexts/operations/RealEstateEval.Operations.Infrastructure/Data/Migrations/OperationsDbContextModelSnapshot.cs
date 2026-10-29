@@ -234,6 +234,9 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
+                    b.Property<DateTime?>("PropertyCancelledAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("PropertyId")
                         .HasColumnType("uuid");
 

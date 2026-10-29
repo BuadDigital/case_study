@@ -4,7 +4,6 @@
 //         the work-order-only listLabels / assignmentValuationFromPo lookup is removed.
 //  • The same choices pass the retrospective date and rationale into the report fill.
 //  • …and the ownership interest valued (key, label, remaining lease years).
-//  • The income approach DTO and the saved income toggle (incomeApproachEnabled) go to the live fill.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -191,7 +190,6 @@ export function EvaluatorValuationReportOutputTab({
   const market = outputBundle?.approaches?.market ?? null;
   const landMarket = outputBundle?.approaches?.landMarket ?? null;
   const cost = outputBundle?.approaches?.cost ?? null;
-  const income = outputBundle?.approaches?.income ?? null;
   const recon = outputBundle?.approaches?.recon ?? null;
   const approachSettings = outputBundle?.approaches?.settings ?? null;
   const survey = outputBundle?.survey ?? null;
@@ -274,9 +272,6 @@ export function EvaluatorValuationReportOutputTab({
           marketApproachEnabled: approachSettings
             ? approachSettings.marketApproachEnabled
             : undefined,
-          // The income section and its reconciliation row follow the saved toggle.
-          incomeApproachEnabled: approachSettings ? approachSettings.incomeApproachEnabled === true : undefined,
-          income,
           costScopeKey: approachSettings?.costScopeKey,
           costBasisKey: approachSettings?.costBasisKey,
           record,
@@ -361,7 +356,6 @@ export function EvaluatorValuationReportOutputTab({
       deedSlot,
       draft,
       effectiveDraft,
-      income,
       reportDraft,
       inspector,
       inventoryLines,

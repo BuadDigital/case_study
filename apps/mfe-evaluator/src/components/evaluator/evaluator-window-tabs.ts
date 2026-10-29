@@ -1,9 +1,3 @@
-// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
-// Round 1 (5b554f4e)
-//  • New «أسلوب الدخل» tab (`income`, hint «رسملة مباشرة …») between cost and final, and `income` in
-//         WORK_SCREENS; visibleEvaluatorTabs shows it only while navAvail.income is true.
-// ──────────────────────────────────────────────────────────────────────────────────────────────
-
 import type { ValuationWorkScreenId } from "./valuation-work/lib/shell-state";
 
 export type EvaluatorWindowTab = ValuationWorkScreenId | "output";
@@ -12,7 +6,6 @@ export const WORK_SCREENS: ValuationWorkScreenId[] = [
   "basic",
   "market",
   "cost",
-  "income",
   "final",
   "review",
 ];
@@ -32,11 +25,6 @@ const VAL_TAB_DEFS: { id: EvaluatorWindowTab; label: string; hint: string }[] = 
     id: "cost",
     label: "طريقة المقاول",
     hint: "تكلفة الإحلال والإهلاك",
-  },
-  {
-    id: "income",
-    label: "أسلوب الدخل",
-    hint: "رسملة مباشرة: صافي الدخل التشغيلي ÷ معدل الرسملة",
   },
   {
     id: "final",
@@ -62,13 +50,10 @@ export function isWorkScreen(id: EvaluatorWindowTab): id is ValuationWorkScreenI
 export function visibleEvaluatorTabs(navAvail: {
   market: boolean;
   cost: boolean;
-  income?: boolean;
 }): typeof VAL_TAB_DEFS {
   return VAL_TAB_DEFS.filter((t) => {
     if (t.id === "market") return navAvail.market;
     if (t.id === "cost") return navAvail.cost;
-    // Shown only while the income approach is enabled in the settings.
-    if (t.id === "income") return navAvail.income === true;
     return true;
   });
 }

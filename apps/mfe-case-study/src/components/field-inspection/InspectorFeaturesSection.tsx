@@ -68,6 +68,36 @@ import type { updateInspectorWorkspace } from "../../lib/app-data/inspector-work
 import type { visibleInspectorFeatureFields } from "../../lib/app-data/inspector-workspace-data";
 import { featurePhotoPatch } from "../../lib/app-data/inspector-workspace-model";
 
+type InspectorFeatureFieldDef = ReturnType<typeof visibleInspectorFeatureFields>[number];
+
+/**
+ * One feature's new value as a patch built from `current` — the saved draft as it is when the
+ * patch is applied, not the draft this screen last rendered.
+ *
+ * How it works: sets the value, keeps the feature's photo only when the new value still offers
+ * one, and resets the movables photos when «يوجد منقولات» turns off.
+ *
+ * Fixed 2026-10-28: the patch copied the whole `featureValues` from the rendered draft; a tap a
+ * second after another could carry a set that lacked the first tap and wipe it on the server
+ * (seen three times on «حالة منطقة العقار» / «حالة العقار»).
+ */
+export function featureValuePatch(
+  current: InspectorWorkspaceDraft,
+  field: InspectorFeatureFieldDef,
+  next: string,
+) {
+  return {
+    ...movablesPhotosResetPatch(current, field.key, next),
+    featureValues: patchInspectorFeatureValues(current.featureValues, field.key, next),
+    featurePhotoAttachments: {
+      ...current.featurePhotoAttachments,
+      [field.key]: inspectorFeatureOffersPhoto(field, next)
+        ? current.featurePhotoAttachments[field.key]
+        : null,
+    },
+  };
+}
+
 export function InspectorFeaturesSection({
   activeStep,
   cardLayout,
@@ -188,21 +218,7 @@ export function InspectorFeaturesSection({
                     aria-invalid={valueMissing || undefined}
                     onChange={(e) => {
                       const next = e.target.value;
-                      persist({
-                        ...movablesPhotosResetPatch(draft, field.key, next),
-                        featureValues: patchInspectorFeatureValues(
-                          draft.featureValues,
-                          field.key,
-                          next,
-                        ),
-                        featurePhotoAttachments: {
-                          ...draft.featurePhotoAttachments,
-                          [field.key]:
-                            inspectorFeatureOffersPhoto(field, next)
-                              ? draft.featurePhotoAttachments[field.key]
-                              : null,
-                        },
-                      });
+                      persist((current) => featureValuePatch(current, field, next));
                       if (!inspectorFeatureOffersPhoto(field, next)) {
                         clearInspectorPhotoDataUrl(draft.taskId, photoRef);
                       }
@@ -355,20 +371,7 @@ export function InspectorFeaturesSection({
           fieldErrors.missingFeaturePhotoKey === field.key;
 
         function setFeatureValue(next: string) {
-          persist({
-            ...movablesPhotosResetPatch(liveDraft, field.key, next),
-            featureValues: patchInspectorFeatureValues(
-              liveDraft.featureValues,
-              field.key,
-              next,
-            ),
-            featurePhotoAttachments: {
-              ...liveDraft.featurePhotoAttachments,
-              [field.key]: inspectorFeatureOffersPhoto(field, next)
-                ? liveDraft.featurePhotoAttachments[field.key]
-                : null,
-            },
-          });
+          persist((current) => featureValuePatch(current, field, next));
           if (!inspectorFeatureOffersPhoto(field, next)) {
             clearInspectorPhotoDataUrl(liveDraft.taskId, photoRef);
           }

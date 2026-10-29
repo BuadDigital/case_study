@@ -175,6 +175,20 @@ public class Round2SmallFixesTests
     }
 
     [Fact]
+    public void An_economic_age_of_zero_is_refused_and_a_blank_one_stays_a_draft()
+    {
+        // 2026-10-28 A→Z: 0 years read as «no depreciation» and printed a 0٪ depreciation.
+        var zero = ValuationCostApproachRequestRules.Validate(new SaveValuationCostApproachRequest
+        {
+            EconomicAgeYears = 0m,
+        });
+        Assert.True(zero.ContainsKey("economicAgeYears"));
+
+        var blank = ValuationCostApproachRequestRules.Validate(new SaveValuationCostApproachRequest());
+        Assert.False(blank.ContainsKey("economicAgeYears"));
+    }
+
+    [Fact]
     public void A_short_life_extension_basis_is_refused_at_save_but_blank_stays_a_draft()
     {
         var shortBasis = ValuationCostApproachRequestRules.Validate(new SaveValuationCostApproachRequest
@@ -252,7 +266,10 @@ public class Round2SmallFixesTests
         Assert.Equal(2, errors.Count);
         Assert.Contains("«xyz»", errors["methodologyAlertOverrides[0].code"]);
         Assert.Equal(ValuationReconciliationService.AlertCodeRequiredAr, errors["methodologyAlertOverrides[1].code"]);
-        Assert.Equal(27, ValuationMethodologyAlertCodes.All.Count);
+        Assert.Equal(24, ValuationMethodologyAlertCodes.All.Count);
+        // The removed income approach's alerts are retired: a stored disposition still round-trips.
+        Assert.True(ValuationMethodologyAlertCodes.IsAcceptedForDisposition("m26_cap_rate_out_of_range"));
+        Assert.False(ValuationMethodologyAlertCodes.IsKnown("m28_noi_not_positive"));
     }
 
     [Fact]

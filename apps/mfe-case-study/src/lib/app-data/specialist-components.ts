@@ -8,6 +8,7 @@
  * The table uses the appraiser's direct-cost catalog so its lines drop straight into
  * «بنود التكلفة المباشرة»; see `SpecialistComponentsRules` on the server.
  */
+import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
 import type { BuildingInventoryDto, BuildingInventoryLineDto } from "@platform/api-client";
 import { textLooksLikeVacantLand } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
@@ -56,18 +57,38 @@ export function componentLineForItem(
   };
 }
 
+/** Ignores spacing / alef-hamza variants when matching typed names. */
+const normTypedName = (v: string) =>
+  v.replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/\s+/g, " ").trim();
+
 /** Catalog item whose Arabic name the specialist typed (ignores spacing / alef-hamza variants). */
 function catalogItemForTypedName(text: string) {
-  const norm = (v: string) => v.replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/\s+/g, " ").trim();
-  const typed = norm(text);
+  const typed = normTypedName(text);
   if (!typed) return undefined;
-  return COST_ITEM_OPTIONS.find((o) => o.key !== "custom" && norm(o.label) === typed);
+  return COST_ITEM_OPTIONS.find((o) => o.key !== "custom" && normTypedName(o.label) === typed);
+}
+
+/**
+ * A unit's or a building's own floor area: «مساحة المحل», «المكتب», «معرض», «المستودع»,
+ * «هنجر»… (optionally after «مساحة»).
+ */
+const UNIT_AREA_NAME =
+  /^(مساحه |مساحة )?(ال)?(محل|مكتب|معرض|وحده|وحدة|شقه|شقة|مستودع|هنجر|ورشه|ورشة|مصنع)( |$)/;
+
+function typedNameIsUnitArea(text: string | null | undefined): boolean {
+  return UNIT_AREA_NAME.test(normTypedName(text ?? ""));
 }
 
 /**
  * The specialist types the item name instead of picking it: an exact catalog name keeps the
  * catalog behaviour (unit, floor/annex kind, built-up ratio, repeated floors — what Infath areas
  * and the appraiser's cost table key on); anything else is a custom item that keeps its unit.
+ *
+ * How it works: a custom item is an extra («تكاليف وتجهيزات إضافية»), except a unit's own area
+ * («مساحة المحل», «المكتب»…) which is a floor line — judged on the whole name each keystroke.
+ *
+ * Fixed 2026-10-28: the kind was fixed at the first keystroke, so a shop's «مساحة المحل» reached
+ * the cost table as an add-on with a double-counting alert instead of the building area.
  */
 export function componentLineForTypedName(
   line: BuildingInventoryLineDto,
@@ -79,14 +100,58 @@ export function componentLineForTypedName(
       ? { ...line, label: text }
       : { ...componentLineForItem(line, match.key), label: text };
   }
+  const keptKind =
+    line.itemKey === "custom" && !typedNameIsUnitArea(line.label)
+      ? line.structureKind
+      : structureKindForCostItem("custom");
   return {
     ...line,
     itemKey: "custom",
-    structureKind: line.itemKey === "custom" ? line.structureKind : structureKindForCostItem("custom"),
+    structureKind: typedNameIsUnitArea(text) ? "floor" : keptKind,
     label: text,
     buildRatioPct: null,
     repeatedFloorCount: null,
   };
+}
+
+/**
+ * What an «المساحة / العدد» cell keeps of what was typed: the text without any minus sign.
+ *
+ * How it works: every «-» is dropped, so «-1375» keeps «1375» and «-» alone keeps nothing.
+ *
+ * Fixed: the number field took a click on its down arrow below zero and saved «-1375» to the
+ * server (seen 2026-10-28); an area or count is never negative. «e»/«+» are dropped too — a
+ * typed «1e5» was stored and read as no area at all by the cost approach.
+ */
+export function nonNegativeAreaInput(raw: string): string {
+  return raw.replace(/[-+eE]/g, "");
+}
+
+/**
+ * A whole count typed by the inspector (rooms, halls, bathrooms, age in years…).
+ *
+ * How it works: Arabic digits become Latin, everything that is not a digit is dropped, and at most
+ * four digits are kept.
+ *
+ * Edge cases: «-3», «خمسة» and «1e9» were stored as typed and printed in the report and the Enfaz
+ * package (2026-10-28); they now keep only their digits («3», «», «19»).
+ */
+export function wholeCountInput(raw: string): string {
+  return toLatinDigits(raw).replace(/\D/g, "").slice(0, 4);
+}
+
+/**
+ * A non-negative measure with decimals (street width in metres…).
+ *
+ * How it works: Arabic digits and the Arabic decimal sign become Latin; only digits and the first
+ * «.» are kept.
+ *
+ * Edge cases: «-5» was stored for a street width (2026-10-28); a sign or letters never reach the draft.
+ */
+export function nonNegativeDecimalInput(raw: string): string {
+  const latin = toLatinDigits(raw).replace(/[٫,]/g, ".").replace(/[^\d.]/g, "");
+  const dot = latin.indexOf(".");
+  return dot === -1 ? latin : latin.slice(0, dot + 1) + latin.slice(dot + 1).replace(/\./g, "");
 }
 
 export function componentLineAcceptsBuildRatio(line: BuildingInventoryLineDto): boolean {

@@ -194,6 +194,7 @@ public sealed class KeyEnvelopePeopleResolver : IKeyEnvelopePeopleResolver
                     ? a.KeyHolderLabel
                     : Fix(a.KeyHolderLabel, a.KeyHolderUserId),
                 KeyLocationAtUtc = a.KeyLocationAtUtc,
+                PropertyCancelledAtUtc = a.PropertyCancelledAtUtc,
             }).ToList(),
         }).ToList();
     }

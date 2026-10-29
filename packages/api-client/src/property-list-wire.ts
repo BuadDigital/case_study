@@ -8,6 +8,8 @@ export const PropertyListRowStatuses = {
   Done: "done",
   Fail: "fail",
   Incomplete: "incomplete",
+  /** The deed's transaction was cancelled («إلغاء المعاملة») — the overall status only. */
+  Cancelled: "cancelled",
 } as const;
 
 export type PropertyListRowStatus =

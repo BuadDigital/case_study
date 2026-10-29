@@ -51,10 +51,15 @@ public class ValuationSettingsAndPriorBankFeedTests
     }
 
     [Fact]
-    public async Task The_income_approach_and_a_leasehold_interest_are_saved()
+    public async Task The_income_approach_is_refused_and_a_leasehold_interest_is_saved()
     {
         await using var contexts = TestDatabases.Create("settings-income-lease");
         var (service, id) = await ArrangeSettingsAsync(contexts.Valuation);
+
+        // The income approach is not available yet — enabling it is a field error.
+        var (refused, incomeErrors) = await service.SaveAsync(id, Request() with { IncomeApproachEnabled = true });
+        Assert.Null(refused);
+        Assert.Equal("أسلوب الدخل قيد الإنشاء — مؤجَّل رسمياً", incomeErrors!["incomeApproachEnabled"]);
 
         var (_, missingYears) = await service.SaveAsync(id, Request() with
         {
@@ -64,12 +69,11 @@ public class ValuationSettingsAndPriorBankFeedTests
 
         var (saved, errors) = await service.SaveAsync(id, Request() with
         {
-            IncomeApproachEnabled = true,
             OwnershipInterestKey = OwnershipInterestKeys.LeasedLand,
             RemainingLeaseYears = 4,
         });
         Assert.Null(errors);
-        Assert.True(saved!.IncomeApproachEnabled);
+        Assert.False(saved!.IncomeApproachEnabled);
         Assert.Equal(OwnershipInterestKeys.LeasedLand, saved.OwnershipInterestKey);
         Assert.Equal("أرض مستأجرة", saved.OwnershipInterestLabelAr);
         Assert.Equal(4m, saved.RemainingLeaseYears);

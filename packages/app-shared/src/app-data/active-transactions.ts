@@ -63,6 +63,7 @@ export function filterTasksForCaseStudy(
  * Properties ready for the Enfaz upload: the case-study report is issued AND the valuation report
  * is deposited. The study is issued before the valuation, so the study alone is not enough.
  * Every deed of a transaction is uploaded to Enfaz on its own, so folded deeds stay listed here.
+ * A deed already handed over leaves the list (it used to stay, so the count only ever grew).
  *
  * @param allTasks Every task the screen loaded — the appraisal tasks are not the viewer's own
  *   (the specialist's `mine` holds only case-study tasks). Defaults to `tasks`.
@@ -76,6 +77,7 @@ export function filterTasksForSystemUpload(
     (t) =>
       t.kind === "case-study-property" &&
       t.status === "completed" &&
+      t.propertyHandedOverToEnfaz !== true &&
       isValuationDepositedForTask(t, appraisals),
   );
 }

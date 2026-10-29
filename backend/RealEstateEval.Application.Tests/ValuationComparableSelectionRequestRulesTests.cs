@@ -79,6 +79,33 @@ public class ValuationComparableSelectionRequestRulesTests
     // ---- per-comparable market save ----
 
     [Fact]
+    public void ValidateMarketSave_refuses_difference_factors_that_add_up_to_minus_100_or_less()
+    {
+        const string why = "مبرر عامل التسوية كافٍ";
+        var errors = ValuationComparableSelectionRequestRules.ValidateMarketSave(new()
+        {
+            AdjustmentLines =
+            [
+                Line(MarketAdjustmentFactorKeys.Location, -90m, rationale: why),
+                Line(MarketAdjustmentFactorKeys.Access, -90m, rationale: why),
+            ],
+        });
+        Assert.Contains("adjustmentLines", errors.Keys);
+
+        var fine = ValuationComparableSelectionRequestRules.ValidateMarketSave(new()
+        {
+            AdjustmentLines =
+            [
+                Line(MarketAdjustmentFactorKeys.Location, -50m, rationale: why),
+                Line(MarketAdjustmentFactorKeys.Access, -40m, rationale: why),
+            ],
+        });
+        Assert.DoesNotContain("adjustmentLines", fine.Keys);
+        // Rows saved before the check never print a negative price.
+        Assert.Equal(0m, MarketApproachRules.ApplyDifferenceFactorSum(1_000m, -180m));
+    }
+
+    [Fact]
     public void ValidateMarketSave_accepts_a_clean_request()
     {
         var errors = ValuationComparableSelectionRequestRules.ValidateMarketSave(new()

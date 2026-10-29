@@ -38,6 +38,9 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<ITransactionReferenceService, TransactionReferenceService>();
         services.AddScoped<ITransactionQuery, TransactionQueryService>();
         services.AddScoped<ITransactionCommands, TransactionCommandService>();
+        services.AddScoped<ITransactionCancellationRepository, TransactionCancellationRepository>();
+        services.AddScoped<ITransactionCancellationService, TransactionCancellationService>();
+        services.AddScoped<ITransactionCancellationSideEffects, TransactionCancellationSideEffects>();
         services.AddScoped<IFieldGapNotificationService, FieldGapNotificationService>();
         services.AddScoped<IClientRepository, ClientRepository>();
         services.AddScoped<IClientService, ClientService>();

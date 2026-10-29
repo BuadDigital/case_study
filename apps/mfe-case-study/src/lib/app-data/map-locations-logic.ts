@@ -116,8 +116,9 @@ function isLandType(type: string | null | undefined): boolean {
 
 function usageOf(type: string | null | undefined): PropertyUsageCat {
   const t = type || "";
-  if (t.includes("سكني") || t === "فيلا" || t === "شقة") return "سكني";
-  if (t.includes("تجاري") || t === "مستودع") return "تجاري";
+  // Text tests, not exact names: the inspector's type comes from the full list («مجمع فلل»، «شقة سكنية»…).
+  if (t.includes("سكني") || t.includes("فيلا") || t.includes("فلل") || t.includes("شقة")) return "سكني";
+  if (t.includes("تجاري") || t.includes("مستودع") || t.includes("محل") || t.includes("معرض")) return "تجاري";
   if (t.includes("زراعي")) return "زراعي";
   if (t.includes("خدم")) return "خدمات";
   return "أخرى";

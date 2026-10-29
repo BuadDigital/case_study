@@ -1,7 +1,5 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • loadValuationApproaches also reads the income approach (getValuationIncomeApproach) into the bundle
-//         (`income`, null when unreadable).
 //  • New reportValuationChoices: purpose (approach settings) and basis / premise (reconciliation, via
 //         resolveReportValuationKeys) with their org-list labels and basis definition; the work order's
 //         defaults only when nothing was saved.
@@ -21,7 +19,6 @@ import {
   getPartyTaskSubmission,
   getValuationApproachSettings,
   getValuationCostApproach,
-  getValuationIncomeApproach,
   getValuationLists,
   getValuationReconciliation,
   listValuationComparableSelections,
@@ -31,7 +28,6 @@ import {
   type ValuationApproachSettingsDto,
   type ValuationComparableSelectionListDto,
   type ValuationCostApproachDto,
-  type ValuationIncomeApproachDto,
   type ValuationReconciliationDto,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
@@ -122,8 +118,6 @@ async function loadValuationApproaches(
   market: ValuationComparableSelectionListDto | null;
   landMarket: ValuationComparableSelectionListDto | null;
   cost: ValuationCostApproachDto | null;
-  /** Income approach (direct capitalisation); null when unreadable or never loaded. */
-  income: ValuationIncomeApproachDto | null;
   recon: ValuationReconciliationDto | null;
   settings: ValuationApproachSettingsDto | null;
 }> {
@@ -134,7 +128,6 @@ async function loadValuationApproaches(
       market: null,
       landMarket: null,
       cost: null,
-      income: null,
       recon: null,
       settings: null,
     };
@@ -151,16 +144,14 @@ async function loadValuationApproaches(
       market: null,
       landMarket: null,
       cost: null,
-      income: null,
       recon: null,
       settings: null,
     };
   }
-  const [sel, landSel, costRes, incomeRes, reconRes, settingsRes] = await Promise.all([
+  const [sel, landSel, costRes, reconRes, settingsRes] = await Promise.all([
     listValuationComparableSelections(config, open.data.id, "market"),
     listValuationComparableSelections(config, open.data.id, "land_within_cost"),
     getValuationCostApproach(config, open.data.id),
-    getValuationIncomeApproach(config, open.data.id),
     getValuationReconciliation(config, open.data.id),
     getValuationApproachSettings(config, open.data.id),
   ]);
@@ -169,7 +160,6 @@ async function loadValuationApproaches(
     market: sel.ok ? sel.data : null,
     landMarket: landSel.ok ? landSel.data : null,
     cost: costRes.ok ? costRes.data : null,
-    income: incomeRes.ok ? incomeRes.data : null,
     recon: reconRes.ok ? reconRes.data : null,
     settings: settingsRes.ok ? settingsRes.data : null,
   };

@@ -668,6 +668,17 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["نوع الواجهة الشمالية"]).toBe("—");
   });
 
+  it("prints «غير متوفرة» on the boundaries the bourse marked unavailable", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      property: { boundariesAvailability: "no", city: "", deedNumber: "" } as never,
+    });
+    expect(fill.boundaries.map((b) => [b.bound, b.len])).toEqual(
+      Array(4).fill(["غير متوفرة", "غير متوفرة"]),
+    );
+  });
+
   it("prefers survey boundaries and rebuilds extra inventory rows", () => {
     const draft = createEvaluatorDraft({
       taskId: "t1",

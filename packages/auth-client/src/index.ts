@@ -4,6 +4,7 @@ export {
   getAuthSession,
   getValidAuthSession,
   isAuthSessionUsable,
+  isCrossTabUserSwitch,
   isRefreshTokenExpired,
   isSessionExpired,
   notifyAuthExpired,

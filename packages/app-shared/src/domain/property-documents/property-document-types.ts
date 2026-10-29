@@ -258,6 +258,26 @@ export function normalizePropertyTypeKeys(
   return result;
 }
 
+/**
+ * Whether a document whose property-type keys are `keys` applies to `propertyType`.
+ * How it works: no keys = every type; then an exact name; a key heading a longer name («شقة» →
+ * «شقة سكنية»); «أرض» for any land type; and the whole built list (the «built» default) for any
+ * type that is not land.
+ * Edge cases: added 2026-10-29 — the inspector's type now comes from the full list («أرض تجارية»،
+ * «مجمع فلل»), which the six short keys never matched exactly.
+ */
+export function propertyDocumentAppliesToType(
+  keys: readonly string[],
+  propertyType: string | null | undefined,
+): boolean {
+  const type = (propertyType ?? "").trim();
+  if (!type || keys.length === 0) return true;
+  if (keys.some((k) => k === type || type.startsWith(`${k} `))) return true;
+  const land = /[أاإآ]رض/.test(type);
+  if (land) return keys.some((k) => LAND_PROPERTY_TYPES.includes(k));
+  return BUILT_PROPERTY_TYPES.every((k) => keys.includes(k));
+}
+
 export function propertyDocumentGroupTitle(group: PropertyDocumentGroup): string {
   return PROPERTY_DOCUMENT_GROUPS.find((g) => g.key === group)?.titleAr ?? group;
 }

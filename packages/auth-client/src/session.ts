@@ -193,11 +193,40 @@ export function subscribeAuthSession(onStoreChange: () => void): () => void {
   };
 }
 
+/** The user id inside a stored session string; null when absent or unreadable. */
+export function storedSessionUserId(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const id = (JSON.parse(raw) as Partial<AuthSession>)?.user?.id;
+    return typeof id === "string" && id.trim() ? id.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when another tab replaced the shared session with a different person's — this
+ * tab's screen (loaded queries, open forms) still belongs to the previous user.
+ */
+export function isCrossTabUserSwitch(oldValue: string | null, newValue: string | null): boolean {
+  const before = storedSessionUserId(oldValue);
+  const after = storedSessionUserId(newValue);
+  return before !== null && after !== null && before !== after;
+}
+
 // Keep logout synchronized across open tabs. `storage` fires in the other tabs,
 // not in the tab that performed the removal.
 if (typeof window !== "undefined") {
   window.addEventListener("storage", (event) => {
-    if (event.key !== AUTH_STORAGE_KEY || event.newValue !== null) return;
+    if (event.key !== AUTH_STORAGE_KEY) return;
+    // Another tab signed in as someone else: reload so this tab never shows one user
+    // while its requests go out as another (seen 2026-10-28 — 403s under a stale header).
+    if (isCrossTabUserSwitch(event.oldValue, event.newValue)) {
+      sessionStorage.setItem(AUTH_STORAGE_KEY, event.newValue!);
+      window.location.reload();
+      return;
+    }
+    if (event.newValue !== null) return;
     sessionStorage.removeItem(AUTH_STORAGE_KEY);
     rememberSession(null, null);
     syncAuthCookie(null);

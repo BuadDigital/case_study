@@ -131,11 +131,10 @@ describe("round 2 — the server's new 400 keys reach their fields", () => {
     expect(at("lines[2].unitCostSar")).toEqual({ targetId: "cost-line-2-unitCostSar", screen: "cost" });
   });
 
-  it("matrix header bounds, factor and cap-rate rationales", () => {
+  it("matrix header bounds and the factor rationale", () => {
     for (const key of ["areaFactorPct", "annualMarketRatePct", "valueRoundDecimals", "rationaleAr"]) {
       expect(at(key)).toEqual({ targetId: "mx-adjustments", screen: "market" });
     }
-    expect(at("capRateRationale")).toEqual({ targetId: "income-capRateRationale", screen: "income" });
   });
 
   it("an alert override rationale points at that alert's box on its own screen", () => {
@@ -143,9 +142,9 @@ describe("round 2 — the server's new 400 keys reach their fields", () => {
       targetId: "alert-override-m17_large_adjustments",
       screen: "market",
     });
-    expect(at("methodologyAlertOverrides.m26_cap_rate")).toEqual({
-      targetId: "alert-override-m26_cap_rate",
-      screen: "income",
+    expect(at("methodologyAlertOverrides.m25_depreciation")).toEqual({
+      targetId: "alert-override-m25_depreciation",
+      screen: "cost",
     });
     expect(at("methodologyAlertOverrides.m10_use_restriction")?.screen).toBe("final");
     // A listed field still comes first.

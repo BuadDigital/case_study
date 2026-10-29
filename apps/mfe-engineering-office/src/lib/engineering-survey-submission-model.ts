@@ -121,6 +121,8 @@ export function isVisibleInEngineeringSurveyQueue(
   taskStatus: string,
   options?: { showCompleted?: boolean },
 ): boolean {
+  // A cancelled transaction («إلغاء المعاملة») leaves the queue even with «إظهار المكتملة» on.
+  if (taskStatus === "cancelled") return false;
   if (options?.showCompleted) return true;
   if (taskStatus === "completed") return false;
   const sub = loadEngineeringSurveySubmission(taskId);

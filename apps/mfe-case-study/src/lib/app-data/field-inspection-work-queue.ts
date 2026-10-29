@@ -50,11 +50,15 @@ export function fieldInspectionTaskStatusBadge(
   return { label: "جديدة", className: "b-new" };
 }
 
-/** Hide submitted/completed معاينات until «إظهار المكتملة» is on. */
+/**
+ * Hide submitted/completed معاينات until «إظهار المكتملة» is on. A cancelled task («إلغاء المعاملة»)
+ * never shows — there is nothing left to do on it, even with the toggle on.
+ */
 export function isVisibleInFieldInspectionQueue(
   taskStatus: string,
   options?: { showCompleted?: boolean; workspaceStatus?: string | null },
 ): boolean {
+  if (taskStatus === "cancelled") return false;
   if (options?.showCompleted) return true;
   if (taskStatus === "completed") return false;
   if (options?.workspaceStatus === "submitted") return false;

@@ -93,7 +93,8 @@ describe("ApproachSettingsSection — round 2: the draft tabs never flash off on
     );
     await waitFor(() => expect(onDraftApproachesChange).toHaveBeenCalled());
     for (const [nav] of onDraftApproachesChange.mock.calls) {
-      expect(nav).toEqual({ market: true, cost: true, income: true });
+      // A stale saved income flag never reaches the nav — the approach is not available.
+      expect(nav).toEqual({ market: true, cost: true });
     }
   });
 });
@@ -130,7 +131,7 @@ describe("ApproachSettingsSection — round 2: retrospective dates", () => {
     expect((screen.getByLabelText("تاريخ الأثر الرجعي") as HTMLInputElement).disabled).toBe(true);
   });
 
-  it("the start hint names the income approach too", () => {
+  it("the start hint names the market and cost approaches only", () => {
     const dto = settings({ isSaved: false });
     api.getValuationApproachSettings.mockResolvedValue({ ok: true, data: dto });
     render(
@@ -143,14 +144,14 @@ describe("ApproachSettingsSection — round 2: retrospective dates", () => {
         onSettingsSaved={() => {}}
       />,
     );
-    expect(screen.queryByText(/أسلوب السوق أو التكلفة أو الدخل/)).toBeTruthy();
+    expect(screen.queryByText(/حدّد أسلوب السوق أو التكلفة ليظهر/)).toBeTruthy();
+    expect(screen.queryByText(/أو الدخل/)).toBeNull();
   });
 });
 
-describe("ApproachSettingsSection — D9 / D11 / D17 fields", () => {
-  it("sends the income toggle, the ownership interest and lease years instead of hard-coded values", async () => {
+describe("ApproachSettingsSection — interest, rationale and the unavailable income approach", () => {
+  it("sends the ownership interest and lease years instead of hard-coded values, income always off", async () => {
     renderSection(settings());
-    fireEvent.click(screen.getByRole("checkbox", { name: /أسلوب الدخل/ }));
     fireEvent.change(screen.getByLabelText("نوع الملكية المقيَّمة"), {
       target: { value: "leased_land" },
     });
@@ -160,7 +161,7 @@ describe("ApproachSettingsSection — D9 / D11 / D17 fields", () => {
     fireEvent.click(screen.getByRole("button", { name: "حفظ الأساليب" }));
     await waitFor(() => expect(api.saveValuationApproachSettings).toHaveBeenCalled());
     expect(api.saveValuationApproachSettings.mock.calls[0][2]).toMatchObject({
-      incomeApproachEnabled: true,
+      incomeApproachEnabled: false,
       ownershipInterestKey: "leased_land",
       remainingLeaseYears: 20,
       retrospectiveRationale: null,
@@ -197,7 +198,7 @@ describe("ApproachSettingsSection — D9 / D11 / D17 fields", () => {
     });
   });
 
-  it("hydrates the saved rationale, interest and income flag", () => {
+  it("hydrates the saved rationale and interest, but never a saved income flag", () => {
     renderSection(
       settings({
         valuationDateMode: "retrospective",
@@ -214,6 +215,22 @@ describe("ApproachSettingsSection — D9 / D11 / D17 fields", () => {
     );
     expect(screen.getByLabelText("نوع الملكية المقيَّمة")).toHaveProperty("value", "usufruct");
     expect(screen.getByLabelText("المدة المتبقية (سنة)")).toHaveProperty("value", "12");
-    expect(screen.getByRole("checkbox", { name: /أسلوب الدخل/ })).toHaveProperty("checked", true);
+    expect(screen.getByRole("checkbox", { name: /أسلوب الدخل/ })).toHaveProperty("checked", false);
+  });
+
+  it("shows «أسلوب الدخل» greyed as under construction and cannot select it", () => {
+    renderSection(settings());
+    const income = screen.getByRole("checkbox", { name: /أسلوب الدخل/ }) as HTMLInputElement;
+    expect(income.disabled).toBe(true);
+    fireEvent.click(income);
+    expect(income.checked).toBe(false);
+    expect(screen.getByText("قيد الإنشاء — غير متاح بعد")).toBeTruthy();
+  });
+
+  it("refuses to start with market and cost off — income alone is not an approach", () => {
+    renderSection(settings({ marketApproachEnabled: false, incomeApproachEnabled: true }));
+    fireEvent.click(screen.getByRole("button", { name: "حفظ الأساليب" }));
+    expect(toast.showToast).toHaveBeenCalledWith("يلزم تفعيل أسلوب واحد على الأقل", "error");
+    expect(api.saveValuationApproachSettings).not.toHaveBeenCalled();
   });
 });

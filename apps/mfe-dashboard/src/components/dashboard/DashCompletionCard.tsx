@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { opsDashCard } from "@platform/ui-kit";
 import { BigRing } from "../../lib/dash-svg";
 import type { DashCompletionModel } from "../../lib/dashboard-metrics";
@@ -32,12 +31,6 @@ export function DashCompletionCard({
         <h3 className="m-0 text-[14px] font-bold text-heading">
           إنجاز العقارات
         </h3>
-        <Link
-          href="/all-transactions"
-          className="text-[12px] font-bold text-heading no-underline hover:underline"
-        >
-          جميع المعاملات
-        </Link>
       </div>
       {/* Phones: ring on top, the bar + legend full width under it. */}
       <div className="flex items-center gap-[18px] max-lg:flex-col max-lg:items-stretch">

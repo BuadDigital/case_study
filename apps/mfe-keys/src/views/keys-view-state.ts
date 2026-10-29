@@ -94,7 +94,8 @@ export function computeKeysKpis(envelopes: KeyEnvelopeRow[]): KeysKpis {
     if (isEnvelopeOutOfCustody(e.status)) delivered += 1;
     let pendingInEnvelope = 0;
     for (const a of e.assignments) {
-      if (a.status === "pending") pendingInEnvelope += 1;
+      // A key of a cancelled property («إلغاء المعاملة») needs no trial — it is not waiting.
+      if (a.status === "pending" && !a.propertyCancelledAtUtc) pendingInEnvelope += 1;
     }
     pendingMatch += pendingInEnvelope;
     if (

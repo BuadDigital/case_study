@@ -5,7 +5,6 @@
 //         `required_attachments` does not block. Mirrors server AppraisalHandOverGateRules.
 //  • handOverRefusalMessage numbers every blocker with its owner; announceHandOverGatesRead lets
 //         «المراجعة النهائية» show the gates the refusal read.
-//  • `income_approach_complete` routes to the income screen.
 // Round 2 (1b19bedc)
 //  • Alert 16 (m16_weights_not_100) is not listed again when a weights gate already fails — the weights
 //         item showed twice.
@@ -30,7 +29,7 @@ export type HandOverBlockerOwner =
   | "administration";
 
 /** The appraiser's screen that fixes a gate (null = not his, or an alert — its screen follows its group). */
-export type HandOverBlockerScreen = "market" | "cost" | "income" | "final" | null;
+export type HandOverBlockerScreen = "market" | "cost" | "final" | null;
 
 export type HandOverBlocker = {
   key: string;
@@ -73,8 +72,6 @@ function screenOfGate(code: string): HandOverBlockerScreen {
   const c = code.trim().toLowerCase();
   if (c.endsWith("_land_within_cost") || c === "cost_land_estimate_complete") return "cost";
   if (c.endsWith("_market")) return "market";
-  // «أسلوب الدخل مكتمل»: the appraiser completes it on the income screen.
-  if (c === "income_approach_complete") return "income";
   if (c === "reconciliation_weights" || c === "final_opinion") return "final";
   return null;
 }

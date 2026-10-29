@@ -43,9 +43,12 @@ public sealed class InspectorFeeLedgerWriter : IInspectorFeeLedgerWriter
         CancellationToken cancellationToken = default)
     {
  // Engineering-survey fees accrue only on specialist acceptance — not here.
+        // A cancelled task did no billable work: when a transaction is cancelled only the work
+        // finished before it is paid (decision 2026-10-29).
         var feeTasks = tasks
             .Where(t => t.Kind is WorkflowTaskKind.FieldInspection
                 or WorkflowTaskKind.GovernmentReview)
+            .Where(t => t.Status != WorkflowTaskStatus.Cancelled)
             .ToList();
         if (feeTasks.Count == 0) return;
 

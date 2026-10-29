@@ -55,6 +55,9 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
 
+        var phoneErrors = WorkOrderValidator.ValidateContactPhoneLengths(property.Contacts);
+        if (phoneErrors.Count > 0) return (null, phoneErrors);
+
         // A slot opened by the specialist becomes a real property at once
         // (draft, no gate) so its documents are stored under the real id from the first upload;
         // the explicit حفظ validates fully, as before.
@@ -106,6 +109,10 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             propertyId,
             out var existing);
         if (notEditable is not null) return (null, notEditable);
+
+        // Checked on the autosave path too: a phone list wider than the column failed the whole save with a 500.
+        var phoneErrors = WorkOrderValidator.ValidateContactPhoneLengths(property.Contacts);
+        if (phoneErrors.Count > 0) return (null, phoneErrors);
 
         var previousLocationMapUrl = existing!.LocationMapUrl;
         // Recorded once, only for the plain حفظ (not autosave, not the bourse-complete
@@ -176,8 +183,13 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
 
         try
         {
-            await _db.SaveChangesAsync(cancellationToken);
-            await RewritePropertyContactsAsync(existing.Id, property.Contacts, cancellationToken);
+            // One transaction: a failing contact insert used to leave the property saved and its
+            // contacts already deleted (2026-10-28).
+            await _db.ExecuteInTransactionAsync(async ct =>
+            {
+                await _db.SaveChangesAsync(ct);
+                await RewritePropertyContactsAsync(existing.Id, property.Contacts, ct);
+            }, cancellationToken);
         }
         catch (PersistenceConcurrencyException ex)
         {

@@ -21,6 +21,8 @@ import { transactionNumberOf } from "./transaction-number";
 
 /** Short phase labels matching Case Study.html `renderAllTransactions`. */
 export function allTransactionsPhaseLabel(task: WorkflowTask): string {
+  // «إلغاء المعاملة»: a cancelled task reads «ملغاة» — also the status-filter option for them.
+  if (task.status === "cancelled") return "ملغاة";
   if (isPartyTaskDone(task)) return "مكتمل";
   if (isTaskFailureObstructed(task)) return "تعذّر";
   if (task.kind === "government-review") return "المراجعة الحكومية";
@@ -45,6 +47,9 @@ export function allTransactionsPhaseStyle(task: WorkflowTask): StatusPillStyle {
   }
   if (label === "البيانات الأولية") {
     return { base: "#8a8d96", fg: "#696c75" };
+  }
+  if (label === "ملغاة") {
+    return { base: "var(--red)", fg: "var(--red-text)" };
   }
   // Case study / distribution / government review / party stages
   return { base: "var(--gold)", fg: "var(--gold-d)" };

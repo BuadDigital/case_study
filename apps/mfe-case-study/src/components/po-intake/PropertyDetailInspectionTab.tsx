@@ -56,6 +56,7 @@ import {
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
+import { shouldUseJeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
 import { isActiveFailureStatus } from "@platform/app-shared/failures/failures-types";
 import { loadEngineeringSurveySubmissionAsync } from "@engineering-office/mfe/lib/engineering-survey-submission-reads";
 import { updateEngineeringSurveyDraft } from "@engineering-office/mfe/lib/engineering-survey-submission-commands";
@@ -149,7 +150,7 @@ export function PropertyDetailInspectionTab({
   caseStudyDef?: PartyTaskPageDef;
   /** Show retired inspector fields (e.g. zoneStatus for case-study specialist). */
   includeRetiredFeatureKeys?: readonly string[];
-  /** Case-study specialist: require كهرباء/ماء proof from transaction photos. */
+  /** Case-study specialist: كهرباء/ماء proof picked from transaction photos (optional). */
   serviceProofFromTransactionPhotos?: boolean;
   transactionPhotos?: PropertyDetailDocumentEntry[];
   submitFooterAfter?: ReactNode;
@@ -158,7 +159,9 @@ export function PropertyDetailInspectionTab({
 }) {
   const { showToast } = useToast();
   const { data: failures = [] } = useFailuresQuery();
-  // Step 1 of the inspector workspace shows the transaction's documents for reading on site.
+  // The location step shows the transaction's documents («مستندات المعاملة») for reading.
+  // Loaded in the flat layout too: the specialist's review renders the same card, and gating
+  // on `steps` left it saying «لا توجد مستندات مرفوعة» beside uploaded deed/decree/letter.
   const transactionDocumentSections = usePropertyDetailDocuments({
     property,
     showDecree: true,
@@ -166,7 +169,7 @@ export function PropertyDetailInspectionTab({
     surveyTaskId: surveyTask?.id ?? null,
     appraisalTaskId: null,
     inspectionTaskId: null,
-    enabled: steps && Boolean(inspectionTask?.poNumber),
+    enabled: Boolean(inspectionTask?.poNumber),
   });
   const transactionDocuments = useMemo(
     () =>
@@ -176,6 +179,8 @@ export function PropertyDetailInspectionTab({
     [transactionDocumentSections],
   );
   const [draft, setDraft] = useState<InspectorWorkspaceDraft | null>(null);
+  // The specialist's own «راجعت مدخلات المعاين» — starts unticked on every visit.
+  const [specialistReviewed, setSpecialistReviewed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -613,6 +618,12 @@ export function PropertyDetailInspectionTab({
             const nextLng =
               draft.mapLongitude.trim() ||
               (mapGeo ? mapGeo.lng.toFixed(5) : "");
+            // A point outside the Kingdom used to be pinned, then silently swapped for the
+            // Jeddah placeholder on the next load (2026-10-28) — refuse it here instead.
+            if (nextLat && nextLng && shouldUseJeddahDefaultCoords(nextLat, nextLng)) {
+              showToast("الإحداثيات خارج المملكة أو غير صحيحة — راجعها قبل التثبيت", "error");
+              return;
+            }
             if (nextLat && nextLng) {
               patchDraft({
                 ...mapPinPatchForActor(draft, nextLat, nextLng, mapActor),
@@ -650,6 +661,8 @@ export function PropertyDetailInspectionTab({
               ? SPECIALIST_REVIEW_INSPECTOR_INPUTS_ACK
               : undefined
           }
+          confirmed={serviceProofFromTransactionPhotos ? specialistReviewed : undefined}
+          onConfirmedChange={serviceProofFromTransactionPhotos ? setSpecialistReviewed : undefined}
           onPatch={(patch) => patchDraft(patch)}
           onSubmit={() => void handleSaveAndSubmit()}
           onCancel={() => void handleCancelEdit()}

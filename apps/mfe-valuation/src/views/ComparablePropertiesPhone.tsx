@@ -10,6 +10,10 @@
 import { fmtSar } from "@platform/app-shared/format/number";
 import type { ComparablePropertyDto } from "@platform/api-client";
 import {
+  comparableAreaLabel,
+  comparableKindFromType,
+} from "@platform/app-shared/app-data/comparable-entry";
+import {
   cn,
   MobileRecordCard,
   MobileRecordList,
@@ -105,7 +109,11 @@ function rowFields(row: ComparablePropertyDto): MobileRecordField[] {
     { label: "الحي", value: row.district || "—" },
     { label: "المدينة", value: row.city || "—" },
     { label: "التاريخ", value: row.transactionDate || "—", ltr: true },
-    { label: "المساحة", value: `${row.areaSqm} م²`, ltr: true },
+    {
+      label: comparableAreaLabel(comparableKindFromType(row.comparablePropertyType)),
+      value: `${row.areaSqm} م²`,
+      ltr: true,
+    },
     { label: "السعر", value: fmtSar(row.price, { digits: 3, trim: true }), ltr: true },
     {
       label: "سعر المتر",

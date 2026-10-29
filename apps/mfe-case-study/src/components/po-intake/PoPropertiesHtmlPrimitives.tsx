@@ -36,9 +36,15 @@ export function propertyWorkflowStatusStyle(
     case PropertyListRowStatuses.Ready:
       return { label: "جاهز للرفع", base: "#d9a441", fg: "#b8791a" };
     case PropertyListRowStatuses.Fail:
+    case PropertyListRowStatuses.Cancelled:
     case "removed":
       return {
-        label: status === "removed" ? "محذوف" : "تعذّر",
+        label:
+          status === "removed"
+            ? "محذوف"
+            : status === PropertyListRowStatuses.Cancelled
+              ? "ملغى"
+              : "تعذّر",
         base: "#d9694f",
         fg: "#c0553d",
       };

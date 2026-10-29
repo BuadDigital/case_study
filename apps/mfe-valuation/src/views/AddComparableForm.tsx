@@ -46,6 +46,10 @@ import {
   hasMapPin,
 } from "./comparable-properties-state";
 import { parseCoordinatePair } from "@platform/app-shared/domain/geo";
+import {
+  comparableAreaLabel,
+  comparableKindFromType,
+} from "@platform/app-shared/app-data/comparable-entry";
 import { PLUS_ICON } from "./ComparablesOpsIcon";
 
 export function AddComparableForm({
@@ -309,7 +313,9 @@ export function AddComparableForm({
             />
           </div>
           <div className={opsFld}>
-            <label className={opsTfLbl}>المساحة م² *</label>
+            <label className={opsTfLbl}>
+              {comparableAreaLabel(comparableKindFromType(form.comparablePropertyType))} م² *
+            </label>
             <input
               inputMode="decimal"
               dir="ltr"

@@ -41,6 +41,14 @@ public interface ICaseStudyReportRepository
         IReadOnlyCollection<Guid> taskIds,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The field inspector's package payload under the case-study parent (the live inspection child);
+    /// null when there is none.
+    /// </summary>
+    Task<string?> GetInspectionPayloadJsonAsync(
+        Guid parentTaskId,
+        CancellationToken cancellationToken);
+
     /// <summary>Untracked child (party) tasks of the case-study parent, any status.</summary>
     Task<IReadOnlyList<WorkflowTask>> ListChildTasksAsync(
         Guid parentTaskId,

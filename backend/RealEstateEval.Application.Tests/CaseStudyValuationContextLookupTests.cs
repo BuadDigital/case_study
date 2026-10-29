@@ -169,8 +169,8 @@ public class CaseStudyValuationContextLookupTests
         Assert.Null(draft.InspectedPropertyType);
         Assert.Equal("أرض", draft.EffectivePropertyType());
 
-        // A value outside the closed list is not a type.
-        submission.PayloadJson = """{"featureValues":{"assetSubject":"قصر"}}""";
+        // A value outside the system's type list is not a type («قصر» is one since 2026-10-29).
+        submission.PayloadJson = """{"featureValues":{"assetSubject":"نوع غير مدرج"}}""";
         await cs.SaveChangesAsync();
         Assert.Equal("villa", (await lookup.GetValuationPropertyContextAsync(PropertyId))!.EffectivePropertyType());
 

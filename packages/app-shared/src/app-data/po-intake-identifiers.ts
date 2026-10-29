@@ -1,6 +1,7 @@
 /** PO intake — deed/identifier types, validation, formatting, restriction helpers. */
 
 import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { classificationForPropertyType } from "./inspector-workspace-data";
 
 /** What the bourse save records for «الصك فعال» / «الصك غير فعال» (the latter no longer forces a تعذّر). */
 export const DEED_STATUS_ACTIVE = "فعال";
@@ -145,9 +146,14 @@ export function propertyHasApprovedOrganizationalPlan(property: {
   );
 }
 
-/** Engineering survey is skipped for unit-inside-building, title registry, and approved plans. */
+/**
+ * Engineering survey is skipped for unit-inside-building, title registry, and approved plans.
+ * The classification is the inspector's corrected type's when he changed it (2026-10-29), else the
+ * bourse's — same as the server's SurveyRequirementRules.EffectiveClassification.
+ */
 export function propertyRequiresSurvey(property: {
   classification: string;
+  inspectedPropertyType?: string | null;
   realEstateRegNumber: string;
   identifierType: PropertyIdentifierType;
   planNumber?: string | null;
@@ -155,10 +161,28 @@ export function propertyRequiresSurvey(property: {
   deedKind?: string | null;
   suggestedDeedKind?: string | null;
 }): boolean {
+  const classification =
+    classificationForPropertyType(property.inspectedPropertyType ?? "") ?? property.classification;
   return (
-    classificationRequiresSurvey(property.classification) &&
+    classificationRequiresSurvey(classification) &&
     !propertyHasRegisteredTitle(property) &&
     !propertyHasApprovedOrganizationalPlan(property)
+  );
+}
+
+/**
+ * The inspector's corrected type made a survey necessary that the bourse type did not need, and no
+ * survey task is live — the specialist adds the engineering office. Twin of the server's
+ * SurveyRequirementRules.SurveyMissingAfterTypeChange.
+ */
+export function surveyMissingAfterTypeChange(
+  property: Parameters<typeof propertyRequiresSurvey>[0],
+  hasLiveSurveyTask: boolean,
+): boolean {
+  return (
+    !hasLiveSurveyTask &&
+    propertyRequiresSurvey(property) &&
+    !classificationRequiresSurvey(property.classification)
   );
 }
 

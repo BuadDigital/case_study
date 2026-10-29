@@ -20,16 +20,13 @@ export function ActiveTransactionPageLayout({
   panelOpen?: boolean;
   reserveRail?: boolean;
   railGridClassName?: string;
-  /** Office banner etc. — rendered above KPI situation cards (eng2). */
   aboveSituation?: ReactNode;
-  /** When true, skip situation KPI band (e.g. eng fees HTML embeds its own). */
   hideSituation?: boolean;
   queuePanel: ReactNode;
   sidePanel?: ReactNode;
 }) {
   const split = hasRail && Boolean(sidePanel);
   const railActive = panelOpen || reserveRail;
-  /** Queue + form split evenly when the side panel is open. */
   const openGrid = railGridClassName ?? "lg:grid-cols-2";
   const splitPane = "flex min-h-0 min-w-0 flex-col overflow-hidden lg:h-[calc(100dvh-var(--topbar-h)-11rem)]";
 

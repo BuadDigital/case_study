@@ -1,7 +1,7 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • The panel takes a group (market / cost / income / general) and shows that screen's triggered
-//         alerts with its own heading and empty text (GROUP_COPY) — cost and income alerts get a panel.
+//  • The panel takes a group (market / cost / general) and shows that screen's triggered
+//         alerts with its own heading and empty text (GROUP_COPY) — cost alerts get a panel.
 //  • Alerts  Dispositions save on their own through saveValuationAlertOverrides (alertOverridesForCodes),
 //            not the full reconciliation, so they no longer wait on «مبرر استخدام طرق التقييم» (problem 20).
 // Round 2 (1b19bedc)
@@ -42,10 +42,6 @@ const GROUP_COPY: Record<MethodologyAlertGroup, { note: string; none: string }> 
   cost: {
     note: "تنبيهات أسلوب التكلفة (الأعمار والتكاليف والأرباح). تُحفَظ المعالجات من هذا التبويب.",
     none: "✓ لا تنبيهات منهجية مفعّلة على أسلوب التكلفة",
-  },
-  income: {
-    note: "تنبيهات أسلوب الدخل (معدل الرسملة والمصروفات وصافي الدخل). تُحفَظ المعالجات من هذا التبويب.",
-    none: "✓ لا تنبيهات منهجية مفعّلة على أسلوب الدخل",
   },
   general: {
     note: "تنبيهات عامة على الطلب (المعاينة وقيود الاستخدام). تُحفَظ المعالجات من هذا التبويب.",

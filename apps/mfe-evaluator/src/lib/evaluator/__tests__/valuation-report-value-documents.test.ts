@@ -105,8 +105,8 @@ describe("«مستند ذو قيمة» in the report", () => {
       "القيمة الإجمالية بعد التقريب (لأقرب 1,000 ر.س.)",
     ]);
     const values = [...sec.querySelectorAll("td.num")].map((td) => td.textContent);
-    // 1,234,567 × 0.8 = 987,653.60; + 150,000 = 1,137,653.60 → nearest 1,000 = 1,138,000.
-    expect(values).toEqual(["1,234,567", "20٪", "987,653.60", "150,000", "1,137,653.60", "1,138,000"]);
+    // 1,234,567 × 0.8 = 987,653.60; + 150,000 = 1,137,653.60 → nearest 1,000 = 1,138,000 (shown in whole riyals).
+    expect(values).toEqual(["1,234,567", "20٪", "987,654", "150,000", "1,137,654", "1,138,000"]);
     expect(sec.querySelector("tr.total td.v")?.textContent).toBe("1,138,000");
     expect(sec.textContent).toContain("القيمة النهائية الإجمالية");
   });

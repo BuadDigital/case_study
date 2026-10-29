@@ -23,7 +23,7 @@ describe("methodologyAlertGroup", () => {
   });
 
   it("gives every backend alert number a screen", () => {
-    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28];
-    expect(numbers.every((n) => ["market", "cost", "income", "general"].includes(methodologyAlertGroup(n)))).toBe(true);
+    const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25];
+    expect(numbers.every((n) => ["market", "cost", "general"].includes(methodologyAlertGroup(n)))).toBe(true);
   });
 });

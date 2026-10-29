@@ -61,4 +61,28 @@ describe("buildPropertyDetailHeroMenuItems", () => {
 
     expect(items.map((item) => item.label)).toEqual(["تسجيل تعذّر"]);
   });
+
+  it("names the cancel item after who decides (إلغاء المعاملة)", () => {
+    const onCancelTransaction = vi.fn();
+    const asked = buildPropertyDetailHeroMenuItems({
+      hideOpenCaseStudy: true,
+      caseStudyWorkspaceHref: null,
+      reportTabHref: null,
+      onNavigate: vi.fn(),
+      onCancelTransaction,
+    });
+    expect(asked.map((item) => item.label)).toEqual(["طلب إلغاء المعاملة"]);
+    asked[0]?.onClick();
+    expect(onCancelTransaction).toHaveBeenCalled();
+
+    const decided = buildPropertyDetailHeroMenuItems({
+      hideOpenCaseStudy: true,
+      caseStudyWorkspaceHref: null,
+      reportTabHref: null,
+      onNavigate: vi.fn(),
+      onCancelTransaction: vi.fn(),
+      cancelDecides: true,
+    });
+    expect(decided.map((item) => item.label)).toEqual(["إلغاء المعاملة"]);
+  });
 });

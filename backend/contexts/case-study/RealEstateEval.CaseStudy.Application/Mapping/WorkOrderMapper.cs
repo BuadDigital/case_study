@@ -133,6 +133,7 @@ public static class WorkOrderMapper
             IsRemoved = p.IsRemoved,
             RemovalReason = p.RemovalReason,
             RemovedAtUtc = p.RemovedAtUtc?.ToString("o"),
+            CancelledAtUtc = p.CancelledAtUtc?.ToString("o"),
             UpdatedAtUtc = p.UpdatedAtUtc == default ? null : p.UpdatedAtUtc.ToString("o"),
             Contacts = p.Contacts
                 .OrderBy(c => c.SortOrder)
@@ -168,6 +169,7 @@ public static class WorkOrderMapper
         var liveProperties = entity.Properties.Where(p => !p.IsRemoved).ToList();
         var readyCount = liveProperties.Count(p => Flag(readyByProperty, p.Id));
         var closedCount = liveProperties.Count(p => Flag(closedByProperty, p.Id));
+        var cancelledCount = liveProperties.Count(p => p.IsCancelled);
 
         return new WorkOrderListItemDto
         {
@@ -183,13 +185,15 @@ public static class WorkOrderMapper
                 liveProperties.Count,
                 readyCount,
                 closedCount,
-                hasEnfazInvoice),
+                hasEnfazInvoice,
+                cancelledCount),
             StudyStatus = WorkOrderListStatus.ResolveStudy(
                 entity.LifecycleStatus,
                 entity.ExpectedPropertyCount,
                 liveProperties.Count,
                 readyCount,
-                closedCount),
+                closedCount,
+                cancelledCount),
             PromulgationDate = entity.PromulgationDate.ToString("yyyy-MM-dd"),
             ReceivedFromEnfathAt = entity.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
             DueDateAt = entity.DueDateAt.ToString("yyyy-MM-dd"),

@@ -274,7 +274,9 @@ public class MarketDispersionAndGrossAdjustmentTests
         var (rows, comps) = R2a("land_within_cost");
         var list = ValuationComparableListBuilder.BuildList(
             Request("فيلا"), rows, comps, new DateOnly(2026, 10, 25),
-            Header(MarketAdjustmentBasisKeys.WholeProperty), "land_within_cost", []);
+            Header(MarketAdjustmentBasisKeys.WholeProperty), "land_within_cost", [],
+            // A villa's land table reads the plot saved on the cost approach, never the market header.
+            costLand: new CostLandAreas(900m, null));
 
         Assert.Equal(MarketAdjustmentBasisKeys.PricePerSqm, list.AdjustmentBasis);
         Assert.Equal(857.30m, list.Items[0].Market!.PricePerSqmAfterDifference);
@@ -357,6 +359,20 @@ public class MarketDispersionAndGrossAdjustmentTests
         Assert.Equal(ValuationMethodologyAlertSeverityKinds.RequireRationale, m17.SeverityKind);
         Assert.Contains("CMP-5", m17.DetailAr);
         Assert.Contains("الإجمالي 61.63٪", m17.DetailAr);
+    }
+
+    /// <summary>A custom floor (a warehouse's main building) is a building area, as the screen
+    /// lists it — not an extra that needs a written basis (seen 2026-10-28).</summary>
+    [Fact]
+    public void M8_counts_a_custom_floor_as_a_building_area_not_an_extra()
+    {
+        ValuationMethodologyAlertInput WithLine(string kind) => AlertInput([], hasStructures: true) with
+        {
+            CostLines = [new ValuationMethodologyAlertCostLineInput(kind, "المستودع الرئيسي", 1000m, 1500m, null, true, "custom")],
+        };
+
+        Assert.False(Alert(ValuationMethodologyAlertRules.Evaluate(WithLine("floor")), 8).Triggered);
+        Assert.True(Alert(ValuationMethodologyAlertRules.Evaluate(WithLine("other")), 8).Triggered);
     }
 
     [Fact]
@@ -486,12 +502,12 @@ public class MarketDispersionAndGrossAdjustmentTests
     }
 
     [Fact]
-    public void Severity_table_counts_8_hard_13_rationale_6_ack()
+    public void Severity_table_counts_7_hard_12_rationale_5_ack()
     {
-        int[] numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25, 26, 27, 28];
-        Assert.Equal(8, numbers.Count(ValuationMethodologyAlertSeverity.IsHard));
-        Assert.Equal(13, numbers.Count(ValuationMethodologyAlertSeverity.RequiresRationale));
-        Assert.Equal(6, numbers.Count(ValuationMethodologyAlertSeverity.RequiresAcknowledgement));
+        int[] numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25];
+        Assert.Equal(7, numbers.Count(ValuationMethodologyAlertSeverity.IsHard));
+        Assert.Equal(12, numbers.Count(ValuationMethodologyAlertSeverity.RequiresRationale));
+        Assert.Equal(5, numbers.Count(ValuationMethodologyAlertSeverity.RequiresAcknowledgement));
         var checks = ValuationMethodologyAlertRules.Evaluate(AlertInput([]));
         Assert.Equal(numbers, checks.Select(c => c.Number).ToArray());
     }

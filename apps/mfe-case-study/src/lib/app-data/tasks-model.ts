@@ -164,6 +164,8 @@ export function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
     transactionNumber: dto.transactionNumber?.trim() || undefined,
     transactionId: dto.transactionId?.trim() || undefined,
     transactionStudyHolderPropertyId: dto.transactionStudyHolderPropertyId?.trim() || undefined,
+    propertyHandedOverToEnfaz:
+      typeof dto.propertyHandedOverToEnfaz === "boolean" ? dto.propertyHandedOverToEnfaz : undefined,
   };
 }
 

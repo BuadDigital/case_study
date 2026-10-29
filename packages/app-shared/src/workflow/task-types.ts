@@ -112,6 +112,8 @@ export type WorkflowTask = {
    * case-study row is folded into it and hidden from the study queues.
    */
   transactionStudyHolderPropertyId?: string;
+  /** Server join: the task's property was handed over to Enfaz — it leaves «الرفع على النظام». */
+  propertyHandedOverToEnfaz?: boolean;
 };
 
 /**

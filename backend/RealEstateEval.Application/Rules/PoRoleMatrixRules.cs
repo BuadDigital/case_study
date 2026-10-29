@@ -141,6 +141,19 @@ public static class PoRoleMatrixRules
 
     public static bool CanDeleteProperty(string? prototypeRole) => CanDeletePo(prototypeRole);
 
+    /// <summary>
+    /// «إلغاء المعاملة»: the case specialist asks for it; the section supervisor and the CDO may too
+    /// (their request is decided at once). Mirrors <c>canRequestTransactionCancel</c> in po-roles.ts.
+    /// </summary>
+    public static bool CanRequestTransactionCancel(string? prototypeRole) =>
+        CanDecideTransactionCancel(prototypeRole) || Normalize(prototypeRole) is "case-specialist";
+
+    /// <summary>
+    /// Approve or reject a cancellation request, and reactivate a cancelled transaction — the section
+    /// supervisor and the CDO. Mirrors <c>canDecideTransactionCancel</c> in po-roles.ts.
+    /// </summary>
+    public static bool CanDecideTransactionCancel(string? prototypeRole) => CanEditPoHeader(prototypeRole);
+
  /// <summary>Specialist accept / reopen of party submissions.</summary>
     public static bool CanManagePartySubmissions(string? prototypeRole)
     {

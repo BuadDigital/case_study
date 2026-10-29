@@ -2,12 +2,10 @@
 // Round 1 (5b554f4e)
 //  • The participant-credentials gate checks only the people on this report (ReportParticipants, incl.
 //         the signing valuer and the assigned appraiser), not the whole roster.
-//  • Income approach: gate IncomeApproachComplete, the cap-rate rationale and alerts 26–28 follow the
-//         settings toggle.
 //  • Alerts  Alert input gets each adopted comparable's adjusted unit rate, deal date and usage
 //            via ToAlertComparable, plus the date cutoff from the valuation date, today and the
 //            subject type.
-//  • Wording  Alert note now «تنبيهات منهجية (27): 8 حاجبة · 13 بمبرر نصي إلزامي · 6 بإقرار».
+//  • Wording  Alert note now «تنبيهات منهجية (24): 7 حاجبة · 12 بمبرر نصي إلزامي · 5 بإقرار».
 //  • Split  Value-document and required-attachment reads moved to ValuationIssuanceGateService.Reads.cs (the
 //           class is now partial).
 // Round 2 (1b19bedc)
@@ -44,7 +42,6 @@ public sealed partial class ValuationIssuanceGateService(
     IAttachmentPrintDictionaryService printDictionary,
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
-    IValuationIncomeApproachService incomeApproach,
     IValuationReconciliationService reconciliation,
     IValuationValueDocumentService valueDocuments,
     IAssignedAppraiserCheck assignedAppraiser,
@@ -119,7 +116,6 @@ public sealed partial class ValuationIssuanceGateService(
             ComparableSelectionContexts.LandWithinCost,
             cancellationToken);
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
-        var income = await incomeApproach.GetAsync(valuationRequestId, cancellationToken);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var hasReconSaved = !string.IsNullOrWhiteSpace(recon?.MethodsRationale)
             || (recon?.FinalOpinionValue ?? 0m) > 0m;
@@ -148,8 +144,6 @@ public sealed partial class ValuationIssuanceGateService(
         // "Building only" scope: land section hidden — its gates do not apply.
         var costLandRelevant = costApproachEnabled
             && !CostScopeKeys.IsBuildingOnly(settings.CostScopeKey);
-        // The income approach — its gate and alerts 26–28 follow the settings toggle.
-        var incomeOn = settings.IncomeApproachEnabled ? income : null;
 
         var checks = new List<ValuationIssuanceGateCheck>
         {
@@ -188,9 +182,6 @@ public sealed partial class ValuationIssuanceGateService(
             ValuationIssuanceGateRules.CostLandEstimateComplete(
                 costLandRelevant,
                 cost?.LandEstimateComplete == true),
-            ValuationIssuanceGateRules.IncomeApproachComplete(
-                settings.IncomeApproachEnabled,
-                income?.IsComplete == true),
             ValuationIssuanceGateRules.ComparableWeights(
                 "market",
                 "أوزان مقارنات أسلوب السوق = 100٪",
@@ -248,7 +239,6 @@ public sealed partial class ValuationIssuanceGateService(
                 ValuationMethodologyAlertCodes.LimitedInspection,
                 inspectionRestrictionReason));
         }
-        IncomeApproachAlertInputRules.AddCapRateRationale(resolutions, incomeOn);
 
         var alertInput = new ValuationMethodologyAlertInput(
             HasStructuresToValue: hasStructures,
@@ -304,8 +294,7 @@ public sealed partial class ValuationIssuanceGateService(
                 settings.ValuationDateMode,
                 settings.RetrospectiveDate,
                 settings.RetrospectiveDateEnd),
-            SubjectPropertyType: typeForRules,
-            Income: IncomeApproachAlertInputRules.AlertInput(incomeOn));
+            SubjectPropertyType: typeForRules);
 
         var alerts = ValuationMethodologyAlertRules.Evaluate(alertInput);
         var overrideByCode = (recon?.MethodologyAlertOverrides ?? [])
@@ -355,7 +344,7 @@ public sealed partial class ValuationIssuanceGateService(
             }).ToList(),
             MethodologyAlertTriggeredCount = ValuationMethodologyAlertRules.TriggeredCount(alerts),
             MethodologyAlertsNoteAr =
-                "تنبيهات منهجية (27): 8 حاجبة · 13 بمبرر نصي إلزامي · 6 بإقرار.",
+                "تنبيهات منهجية (24): 7 حاجبة · 12 بمبرر نصي إلزامي · 5 بإقرار.",
         };
     }
 }

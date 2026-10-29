@@ -89,7 +89,9 @@ export function useComparablesCommands(
   }
 
   /** compEdit: save price/area override for this valuation only — does not touch the shared bank.
-   * Returns true on success — the bank table clears its local draft then. */
+   * Returns true on success — the bank table clears its local draft then. Lines and the
+   * other override come from the comparable's freshest copy, so a matrix edit saved just
+   * before is not reverted. */
   async function saveBankOverride(
     item: ValuationComparableSelectionDto,
     field: "price" | "area",
@@ -100,9 +102,9 @@ export function useComparablesCommands(
     return saveOne(
       ctx,
       item,
-      savedLines(item),
+      savedLines,
       "تعذّر حفظ تعديل المقارن",
-      bankOverridePatch(item, field, raw),
+      (fresh) => bankOverridePatch(fresh, field, raw),
     );
   }
 

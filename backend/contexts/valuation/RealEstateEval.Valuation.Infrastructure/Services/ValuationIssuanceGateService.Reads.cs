@@ -25,8 +25,7 @@ using RealEstateEval.Attachments.Domain;
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
-/// The issuance-gate reads that are not methodology: value documents and the required attachments
-/// (the income-approach inputs to alerts 26–28 live in <see cref="IncomeApproachAlertInputRules"/>).
+/// The issuance-gate reads that are not methodology: value documents and the required attachments.
 /// </summary>
 public sealed partial class ValuationIssuanceGateService
 {
@@ -101,8 +100,8 @@ public sealed partial class ValuationIssuanceGateService
 
     private static bool AppliesToPropertyType(IReadOnlyList<string> propertyTypeKeys, string propertyType)
     {
-        var keys = PropertyDocumentTypes.NormalizePropertyTypeKeys(propertyTypeKeys);
-        return keys.Count == 0
-            || keys.Any(k => string.Equals(k, propertyType?.Trim(), StringComparison.OrdinalIgnoreCase));
+        return PropertyDocumentTypes.AppliesToType(
+            PropertyDocumentTypes.NormalizePropertyTypeKeys(propertyTypeKeys),
+            propertyType);
     }
 }

@@ -21,15 +21,15 @@ const VR542 = {
 } as ValuationCostApproachDto;
 
 describe("cost land figures (decision A)", () => {
-  it("prints the apartment's land in the order the figures multiply, and every line adds up", () => {
+  it("prints the apartment's land in the order the figures multiply (money in whole riyals, areas as entered)", () => {
     const rows = costLandReportRows(VR542, true);
 
     expect(rows).toEqual([
       { key: "مساحة أرض العمارة كاملة (م²)", value: "900" },
-      { key: "سعر المتر بعد التسويات (ر.س./م²)", value: "3,561.58" },
+      { key: "سعر المتر بعد التسويات (ر.س./م²)", value: "3,562" },
       { key: "حصة الشقة من الأرض (م²)", value: "60" },
-      { key: "قيمة الأرض قبل التقريب", value: "213,694.80" },
-      { key: "قيمة الأرض", value: "213,694.80", total: true },
+      { key: "قيمة الأرض قبل التقريب", value: "213,695" },
+      { key: "قيمة الأرض", value: "213,695", total: true },
     ]);
     // Rate × share = the land value (never rate × plot = 3,205,422).
     expect(Math.round(3561.58 * 60 * 100) / 100).toBe(213694.8);
@@ -51,7 +51,7 @@ describe("cost land figures (decision A)", () => {
       "قيمة الأرض",
     ]);
     expect(rows[2]!.value).toBe("10.00٪");
-    expect(rows[5]!.value).toBe("192,325.20");
+    expect(rows[5]!.value).toBe("192,325");
   });
 
   it("values land that is not shared on the plot itself, with no share line", () => {
@@ -107,10 +107,10 @@ describe("cost land figures (decision A)", () => {
     );
     expect(lines).toEqual([
       ["مساحة أرض العمارة كاملة (م²)", "900"],
-      ["سعر المتر بعد التسويات (ر.س./م²)", "3,561.58"],
+      ["سعر المتر بعد التسويات (ر.س./م²)", "3,562"],
       ["حصة الشقة من الأرض (م²)", "60"],
-      ["قيمة الأرض قبل التقريب", "213,694.80"],
-      ["قيمة الأرض", "213,694.80"],
+      ["قيمة الأرض قبل التقريب", "213,695"],
+      ["قيمة الأرض", "213,695"],
     ]);
     expect(sec.querySelector("table:not(.mx) tr:last-child")?.className).toBe("total");
     // The comparables matrix is left alone.

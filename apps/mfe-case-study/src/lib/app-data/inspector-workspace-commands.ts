@@ -23,6 +23,7 @@ import {
 import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
 import {
   applyEnfathPrefillToInspectorDraft,
+  withMapLinkStartingPoint,
   inspectorDraftNeedsEnfathPrefill,
 } from "./inspector-deed-prefill";
 import { fillEmptyFeaturesFromBourse } from "./inspector-bourse-prefill";
@@ -121,6 +122,8 @@ function repairLoadedInspectorDraft(
     existing = fillEmptyFeaturesFromBourse(existing, input.property);
     // Drafts opened before the default existed: an unanswered «يوجد منقولات» becomes «لا» (see withMovablesDefaultNo).
     existing = withMovablesDefaultNo(existing);
+    // An unpinned map still on the Jeddah placeholder starts at the initial data's map link.
+    existing = withMapLinkStartingPoint(existing, input.property);
   }
   const stamp = inspectionStampFromNow();
   const patch: Partial<InspectorWorkspaceDraft> = {};
@@ -154,11 +157,15 @@ export async function getOrCreateInspectorWorkspace(
     return existing;
   }
 
-  // A brand-new draft starts with «يوجد منقولات» = «لا», so the report never prints a dash for an untouched pill.
-  let draft = withMovablesDefaultNo(createInspectorWorkspaceDraft(input));
+  // The bourse prefill first: the «يوجد منقولات» default below counts as a filled feature, and applying it first
+  // made inspectorDraftNeedsEnfathPrefill say no — the asset type and usage stayed empty until a reload (2026-10-28).
+  let draft = createInspectorWorkspaceDraft(input);
   if (input.property && inspectorDraftNeedsEnfathPrefill(draft)) {
     draft = applyEnfathPrefillToInspectorDraft(draft, input.property);
   }
+  // A brand-new draft starts with «يوجد منقولات» = «لا», so the report never prints a dash for an untouched pill.
+  draft = withMovablesDefaultNo(draft);
+  draft = withMapLinkStartingPoint(draft, input.property);
   const saved = await saveInspectorWorkspaceDraft(draft);
   return saved;
 }

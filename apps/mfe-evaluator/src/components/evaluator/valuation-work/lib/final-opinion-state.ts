@@ -1,7 +1,5 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Income  An income indicator counts as complete once the server computed a positive value; an
-//            income-only opinion gets its own sentence (NOI ÷ cap rate, no weighting).
 //  • One name «خصم التصفية» (LIQUIDATION_DISCOUNT_NAME) in the opinion line; new
 //         liquidationDiscountSaveErrors mirrors the server: 0 is refused only on the «قيمة التصفية» basis.
 //  • Alerts  New alertOverridesForCodes — the dispositions of given alert codes for the alert-overrides save.
@@ -87,16 +85,11 @@ export function finalOpinionComputed({
     const costComplete = buildingOnly
       ? costBuildReady
       : costBuildReady && !!cost?.landEstimateComplete;
-    // The income indicator is complete once the server computed a positive value (NOI ÷ cap).
-    const incomeComplete =
-      (reconMethods.find((m) => m.approachKind === "income")?.approachValue ?? 0) > 0;
     // A document indicator carries the value the appraiser entered — always complete.
     const methodComplete = (kind: string) =>
       isDocumentIndicatorKind(kind)
         ? true
-        : kind === "income"
-          ? incomeComplete
-          : kind === "cost"
+        : kind === "cost"
           ? costComplete
           : hasAdoptedMarket;
     const isLiquidation = basisOfValueKey === "liquidation";
@@ -149,10 +142,6 @@ export function finalOpinionComputed({
       } else if (soleCost) {
         linesOut.push(
           "اعتُمد أسلوب التكلفة بنطاق «مبنى فقط»؛ القيمة = تكلفة الإحلال ناقصاً الإهلاك. ولم يجرِ ترجيح بين مؤشرات القيمة لاعتماد أسلوب واحد.",
-        );
-      } else if (reconMethods[0]?.approachKind === "income") {
-        linesOut.push(
-          "اعتُمد أسلوب الدخل وحده بطريقة الرسملة المباشرة؛ القيمة = صافي الدخل التشغيلي ÷ معدل الرسملة. ولم يجرِ ترجيح بين مؤشرات القيمة لاعتماد أسلوب واحد.",
         );
       } else {
         linesOut.push(

@@ -12,6 +12,7 @@ import {
   defaultPropertyTypeKeys,
   findPropertyDocumentType,
   normalizePropertyTypeKeys,
+  propertyDocumentAppliesToType,
   propertyDocumentGroupTitle,
   type PropertyDocumentGroup,
   type PropertyDocumentType,
@@ -150,8 +151,7 @@ export function buildPropertyDocumentChecklist(input: {
     const propertyKeys = setting
       ? normalizePropertyTypeKeys(setting.propertyTypeKeys ?? [])
       : [...defaultPropertyTypeKeys(type)];
-    const applies =
-      !propertyType || propertyKeys.length === 0 || propertyKeys.includes(propertyType);
+    const applies = propertyDocumentAppliesToType(propertyKeys, propertyType);
     const enabled = setting ? setting.isEnabled : true;
     const required =
       applies &&

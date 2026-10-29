@@ -59,4 +59,9 @@ public sealed class WorkOrderPropertyRepository(CaseStudyDbContext db) : IWorkOr
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         EfConcurrency.SaveAsync(db, cancellationToken);
+
+    public Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> action,
+        CancellationToken cancellationToken) =>
+        DbContextTransaction.ExecuteInTransactionAsync((DbContext)db, action, cancellationToken);
 }

@@ -1,10 +1,8 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Alerts 27 alerts (8 hard / 13 rationale / 6 acknowledgement): new m22 «تشتّت المقارنات»,
+//  • Alerts 24 alerts (7 hard / 12 rationale / 5 acknowledgement): new m22 «تشتّت المقارنات»,
 //           m23 comparable after the valuation date — hard, m24 type mismatch,
 //           m25 depreciation > 90%.
-//  • Income alerts: m26 cap rate outside 4–12% (rationale), m27 expenses > 50% of EGI (acknowledgement),
-//         m28 NOI ≤ 0 (hard).
 //  • m3 (age beyond the extended life) becomes a rationale alert, not hard; m4 checks only functional
 //         + external obsolescence over 100%.
 //  • m17 fires on net or gross above 40% and names each comparable with both figures.
@@ -20,8 +18,8 @@ using RealEstateEval.Domain;
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// Methodology alerts — 27 (package v2 decisions 16 + 24 + +, then ////):
-/// 8 hard / 13 require text rationale / 6 require acknowledgement.
+/// Methodology alerts — 24 (package v2 decisions 16 + 24 + +, then ////):
+/// 7 hard / 12 require text rationale / 5 require acknowledgement.
 /// m18/m21 evaluate only once inspection-scope data is captured (inspection boundaries).
 /// </summary>
 public static class ValuationMethodologyAlertCodes
@@ -57,12 +55,6 @@ public static class ValuationMethodologyAlertCodes
     public const string PropertyTypeMismatch = "m24_property_type_mismatch";
     /// <summary>Physical + functional + external depreciation above 90٪.</summary>
     public const string DepreciationOver90 = "m25_depreciation_over_90";
-    /// <summary>Capitalisation rate outside the typical 4–12٪ band.</summary>
-    public const string CapRateOutOfRange = "m26_cap_rate_out_of_range";
-    /// <summary>Operating expenses above 50٪ of the effective gross income.</summary>
-    public const string OpexOverHalfOfEgi = "m27_opex_over_half_egi";
-    /// <summary>Net operating income zero or negative: the income approach yields no value.</summary>
-    public const string NoiNotPositive = "m28_noi_not_positive";
 
     /// <summary>Every alert code — a disposition for any other code is refused (round 2).</summary>
     public static readonly IReadOnlySet<string> All = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -72,16 +64,21 @@ public static class ValuationMethodologyAlertCodes
         UseRestrictionNoRationale, NonVacantLandComps, ObsolescenceNoRationale, DeveloperProfitOutOfRange,
         IndirectRatesHigh, NoAdoptedComparables, WeightsNot100, LargeAdjustments, LimitedInspection,
         FewAdoptedComparables, RemoteInspectionUnapproved, ComparableDispersion, ComparableAfterValuationDate,
-        PropertyTypeMismatch, DepreciationOver90, CapRateOutOfRange, OpexOverHalfOfEgi, NoiNotPositive,
+        PropertyTypeMismatch, DepreciationOver90,
     };
 
     /// <summary>
-    /// Codes of alerts since removed (m20, the stale-comparable time alert). Dispositions stored for
-    /// them are still round-tripped by the screens, so a save that resends one is not refused.
+    /// Codes of alerts since removed (m20, the stale-comparable time alert; m26–m28, the income
+    /// approach's cap rate / expenses / net income alerts, removed with the income approach).
+    /// Dispositions stored for them are still round-tripped by the screens, so a save that resends
+    /// one is not refused.
     /// </summary>
     public static readonly IReadOnlySet<string> Retired = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "m20_stale_comparable_no_time_adjustment",
+        "m26_cap_rate_out_of_range",
+        "m27_opex_over_half_egi",
+        "m28_noi_not_positive",
     };
 
     public static bool IsKnown(string? code) => All.Contains((code ?? "").Trim());
@@ -124,22 +121,20 @@ public sealed record ValuationMethodologyAlertResolution(
 public static class ValuationMethodologyAlertSeverity
 {
  /// <summary>
- /// Hard gates (8): 4, 5, 11, 15, 16 + 21 + 23 (comparable after the valuation date)
- /// 28 (net operating income ≤ 0).
+ /// Hard gates (7): 4, 5, 11, 15, 16 + 21 + 23 (comparable after the valuation date).
  /// </summary>
-    public static bool IsHard(int number) => number is 4 or 5 or 11 or 15 or 16 or 21 or 23 or 28;
+    public static bool IsHard(int number) => number is 4 or 5 or 11 or 15 or 16 or 21 or 23;
 
  /// <summary>
- /// Warning with text rationale (13): 6, 8, 9, 10, 12, 17 + 18 + 19
- /// 3 (age beyond the extended life is explained, not a dead end) + 22 + 24 + 25
- /// 26 (cap rate outside 4–12٪).
+ /// Warning with text rationale (12): 6, 8, 9, 10, 12, 17 + 18 + 19
+ /// 3 (age beyond the extended life is explained, not a dead end) + 22 + 24 + 25.
  /// </summary>
     public static bool RequiresRationale(int number) =>
-        number is 3 or 6 or 8 or 9 or 10 or 12 or 17 or 18 or 19 or 22 or 24 or 25 or 26;
+        number is 3 or 6 or 8 or 9 or 10 or 12 or 17 or 18 or 19 or 22 or 24 or 25;
 
- /// <summary>Warning with acknowledgement (6): 1, 2, 7, 13, 14 + 27 (expenses above half of EGI).</summary>
+ /// <summary>Warning with acknowledgement (5): 1, 2, 7, 13, 14.</summary>
     public static bool RequiresAcknowledgement(int number) =>
-        number is 1 or 2 or 7 or 13 or 14 or 27;
+        number is 1 or 2 or 7 or 13 or 14;
 
     public static string KindFor(int number) =>
         IsHard(number) ? ValuationMethodologyAlertSeverityKinds.Hard
@@ -238,17 +233,7 @@ public sealed record ValuationMethodologyAlertInput(
     /// </summary>
     bool ComparableDateCutoffIsPeriodEnd = false,
     /// <summary>The subject's (effective) property type; null/blank = m24 not evaluated.</summary>
-    string? SubjectPropertyType = null,
-    /// <summary>The income approach's figures; null (approach off / never saved) = m26–m28 not evaluated.</summary>
-    ValuationMethodologyAlertIncomeInput? Income = null);
-
-/// <summary>What alerts 26–28 read from the income approach.</summary>
-public sealed record ValuationMethodologyAlertIncomeInput(
-    decimal GrossPotentialIncome,
-    decimal EffectiveGrossIncome,
-    decimal OperatingExpenses,
-    decimal NetOperatingIncome,
-    decimal? CapitalisationRatePct);
+    string? SubjectPropertyType = null);
 
 /// <summary>Evaluates alerts per three-tier severity.</summary>
 public static class ValuationMethodologyAlertRules
@@ -266,7 +251,6 @@ public static class ValuationMethodologyAlertRules
         var costOn = input.CostApproachEnabled;
         var lines = costOn ? input.CostLines.Where(l => l.IsIncluded).ToList() : [];
         var comps = input.AdoptedComparables;
-        var income = input.Income;
         var resolutions = (input.Resolutions ?? [])
             .Where(r => !string.IsNullOrWhiteSpace(r.Code))
             .GroupBy(r => r.Code.Trim(), StringComparer.OrdinalIgnoreCase)
@@ -499,33 +483,8 @@ public static class ValuationMethodologyAlertRules
                 () => CostApproachRules.ObsolescenceNeedsAlert(input.TotalObsolescencePct!.Value),
                 $"مجموع الإهلاك (المادي + الوظيفي + الخارجي) {Pct(input.TotalObsolescencePct ?? 0m)}٪ > 90٪ — قيمة المباني شبه معدومة؛ برّر الأعمار والتقادم",
                 resolutions),
-
-            // Income approach (direct capitalisation); evaluated only while it is enabled.
-            Eval(26, ValuationMethodologyAlertCodes.CapRateOutOfRange,
-                "معدل الرسملة خارج النطاق المعتاد (4٪–12٪)",
-                income?.CapitalisationRatePct is > 0m,
-                () => IncomeApproachRules.CapRateOutsideTypicalRange(income!.CapitalisationRatePct!.Value),
-                $"معدل الرسملة {Pct(income?.CapitalisationRatePct ?? 0m)}٪ خارج النطاق المعتاد 4٪–12٪ — برّر المعدل بأدلة السوق",
-                resolutions),
-
-            Eval(27, ValuationMethodologyAlertCodes.OpexOverHalfOfEgi,
-                "مصروفات التشغيل تتجاوز 50٪ من الدخل الفعلي",
-                income is { EffectiveGrossIncome: > 0m },
-                () => IncomeApproachRules.OpexAboveHalfOfEgi(OpexPctOfEgi(income!)),
-                $"مصروفات التشغيل {Pct(income is null ? 0m : OpexPctOfEgi(income))}٪ من الدخل الإجمالي الفعلي (> 50٪) — تحقّق من المصروفات وأقرّ بها",
-                resolutions),
-
-            Eval(28, ValuationMethodologyAlertCodes.NoiNotPositive,
-                "صافي الدخل التشغيلي صفر أو سالب",
-                income is { GrossPotentialIncome: > 0m },
-                () => income!.NetOperatingIncome <= 0m,
-                $"صافي الدخل التشغيلي {Money(income?.NetOperatingIncome ?? 0m)} ر.س ≤ 0 — لا ينتج أسلوب الدخل قيمة؛ راجع الدخل والمصروفات",
-                resolutions),
         ];
     }
-
-    private static decimal OpexPctOfEgi(ValuationMethodologyAlertIncomeInput income) =>
-        IncomeApproachRules.OperatingExpensesPctOfEgi(income.OperatingExpenses, income.EffectiveGrossIncome) ?? 0m;
 
     public static int TriggeredCount(IEnumerable<ValuationMethodologyAlertCheck> checks) =>
         checks.Count(c => c.Triggered);
@@ -686,10 +645,18 @@ public static class ValuationMethodologyAlertRules
                || label.Contains("first", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// What: whether a cost line sits in «تكاليف وتجهيزات إضافية» — the screen's costGroupOf.
+    /// How it works: a custom item is an extra unless it is a floor (a unit's or a building's own
+    /// area, e.g. «مساحة المحل», «المستودع الرئيسي»); legacy lines go by kind and label.
+    /// Fixed 2026-10-28: every custom item counted as an extra here while the screen listed a
+    /// custom floor under the building areas, so m8 fired on a warehouse's main building.
+    /// </summary>
     private static bool LooksLikeExtra(ValuationMethodologyAlertCostLineInput l)
     {
         if (CostLineItemKeys.IsKnown(l.ItemKey))
-            return CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.Custom;
+            return CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.Custom
+                   && !string.Equals(l.StructureKind?.Trim(), BuildingStructureKinds.Floor, StringComparison.OrdinalIgnoreCase);
         var kind = l.StructureKind?.Trim() ?? "";
         var label = l.Label ?? "";
         return kind.Equals(BuildingStructureKinds.Other, StringComparison.OrdinalIgnoreCase)
@@ -698,15 +665,27 @@ public static class ValuationMethodologyAlertRules
                || label.Contains("extra", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// What: m9 — a repeated-floors line priced differently from the first floor without a
+    /// written rationale.
+    /// How it works: finds the first-floor line (the repeated floors' area and price source) and
+    /// flags any repeated-floors line whose own unit cost is above zero, differs from the first
+    /// floor's, and has no rationale.
+    /// Edge cases: a repeated-floors unit cost of 0 (left empty) means "inherit the first floor's
+    /// price" — the cost screen shows «موروثة من الدور الأول» and prices it at the first floor's
+    /// rate (<see cref="CostApproachRules.InheritedUnitCost"/>), so it is never a mismatch. It used
+    /// to compare the stored 0 to the first floor's price and fire falsely; now matches the
+    /// screen's own check. No first-floor line → not evaluated here (m7 covers it).
+    /// </summary>
     private static bool HasRepeatedUnitCostMismatchWithoutRationale(
         IReadOnlyList<ValuationMethodologyAlertCostLineInput> lines)
     {
-        // compares the repeated floor against the FIRST floor (its area source).
         var first = lines.FirstOrDefault(LooksLikeFirstFloor);
         if (first is null) return false;
 
         return lines.Any(l =>
             LooksLikeRepeatedFloor(l)
+            && l.UnitCostSar > 0m
             && l.UnitCostSar != first.UnitCostSar
             && string.IsNullOrWhiteSpace(l.Rationale));
     }

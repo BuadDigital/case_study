@@ -93,7 +93,7 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
       return [];
     }
     const baseline = ROLES[resolvedRole].pages.filter((page) => {
-      // "All transactions" — CDO and case specialist (mirrors pagesFromPermissions)
+      // "All transactions" — hidden from every role (mirrors pagesFromPermissions)
       if (page === "all-transactions" && !roleSeesAllTransactionsPage(resolvedRole)) {
         return false;
       }

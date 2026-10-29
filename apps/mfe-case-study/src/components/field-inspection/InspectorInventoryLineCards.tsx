@@ -11,6 +11,7 @@ import { COST_ITEM_OPTIONS, COST_UNIT_OPTIONS } from "@platform/app-shared/domai
 import {
   componentLineAcceptsBuildRatio,
   componentLineForTypedName,
+  nonNegativeAreaInput,
 } from "../../lib/app-data/specialist-components";
 import { MobileFieldLabel, mobileControlClassName } from "./InspectMobileControls";
 
@@ -93,9 +94,12 @@ export function InspectorInventoryLineCards({
                     aria-label={`المساحة أو العدد — السطر ${index + 1}`}
                     type="number"
                     inputMode="decimal"
+                    min={0}
                     disabled={disabled}
                     value={line.areaSqm ?? ""}
-                    onChange={(e) => onPatch(index, { ...line, areaSqm: e.target.value })}
+                    onChange={(e) =>
+                      onPatch(index, { ...line, areaSqm: nonNegativeAreaInput(e.target.value) })
+                    }
                     className={cn(mobileControlClassName)}
                   />
                 )}

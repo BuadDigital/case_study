@@ -253,6 +253,7 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                         p.City,
                         p.District,
                         p.PropertyType,
+                        p.InspectedPropertyType,
                         p.Classification,
                         // A correlated lookup, not the navigation: a required navigation joins
                         // inner and would drop a deed whose transaction row is missing.
@@ -261,6 +262,7 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                             .Select(t => t.ReferenceNumber ?? t.DraftNumber)
                             .FirstOrDefault(),
                         p.TransactionId,
+                        HandedOverToEnfaz = p.EnfazHandoverAtUtc != null,
                     })
                     .FirstOrDefault(),
                 ParentDistributionJson = t.ParentTaskId == null
@@ -291,10 +293,15 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                 dto.DeedNumber = row.Property.DeedNumber;
                 dto.City = row.Property.City;
                 dto.District = row.Property.District;
-                dto.PropertyType = row.Property.PropertyType;
-                dto.Classification = row.Property.Classification;
+                // The inspector's corrected type (and its classification) once submitted; else the bourse's.
+                dto.PropertyType = string.IsNullOrWhiteSpace(row.Property.InspectedPropertyType)
+                    ? row.Property.PropertyType
+                    : row.Property.InspectedPropertyType;
+                dto.Classification = PropertyTypeCatalog.ClassificationOf(row.Property.InspectedPropertyType)
+                    ?? row.Property.Classification;
                 dto.TransactionNumber = row.Property.TransactionNumber;
                 dto.TransactionId = row.Property.TransactionId == Guid.Empty ? null : row.Property.TransactionId;
+                dto.PropertyHandedOverToEnfaz = row.Property.HandedOverToEnfaz;
                 if (row.Task.PropertyId is Guid propertyId
                     && holderByProperty.TryGetValue(propertyId, out var holder)
                     && holder != propertyId)

@@ -307,7 +307,9 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
             .Where(t =>
                 t.PoNumber == po &&
                 t.PropertyId == propertyGuid &&
-                t.Status != WorkflowTaskStatus.Completed)
+                t.Status != WorkflowTaskStatus.Completed &&
+                // A cancelled transaction stays cancelled — a failure never revives its tasks as blocked.
+                t.Status != WorkflowTaskStatus.Cancelled)
             .ToListAsync(cancellationToken);
 
         /* PatchAsync used to SELECT + SaveChanges per task. Blocking does not trigger Patch

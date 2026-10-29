@@ -82,8 +82,10 @@ public interface IPartyTaskSubmissionRepository
     /// <summary>
     /// Stages the inspector-confirmed property type. The components table is the specialist's
     /// and stays on land too; the appraiser's valuation scope decides whether it is valued.
+    /// Returns the change against the type the property had until now (the earlier inspected type, else
+    /// the bourse type) with the survey requirement before and after; null when the type is unchanged.
     /// </summary>
-    Task SetInspectedPropertyTypeAsync(
+    Task<InspectedTypeChange?> SetInspectedPropertyTypeAsync(
         Guid propertyId,
         string inspectedPropertyType,
         CancellationToken cancellationToken);

@@ -4,12 +4,9 @@
 //           approachSettingsDraftError (lib/approach-settings-form).
 //  • Holds and sends the retrospective rationale (approachSettingsDraftRequestFields).
 //  • Holds and sends the ownership interest and the remaining lease years (OwnershipInterestFields).
-//  • Income  «أسلوب الدخل» is a working toggle (was «قيد الإنشاء — غير متاح بعد»): saved as
-//            incomeApproachEnabled, reported to the nav for the tab, and enough on its own to start.
 // Round 2 (1b19bedc)
 //  • The approach toggles are reported to the nav only after the saved settings load (draftReady) —
 //          the all-off defaults hid every approach tab and a refresh fell back to «البيانات الأساسية».
-//  • The empty-state hint names the income approach too.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -85,7 +82,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   onRetrospectiveDraftChange?: (draft: EvaluatorRetrospectiveDraft) => void;
   hasMarketWork?: boolean;
   hasCostWork?: boolean;
-  onDraftApproachesChange?: (nav: { market: boolean; cost: boolean; income?: boolean }) => void;
+  onDraftApproachesChange?: (nav: { market: boolean; cost: boolean }) => void;
 }) {
   const { showToast } = useToast();
   const {
@@ -119,7 +116,6 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   const [asRetroDate, setAsRetroDate] = useState("");
   const [asRetroDateEnd, setAsRetroDateEnd] = useState("");
   const [asRetroRationale, setAsRetroRationale] = useState("");
-  const [asIncomeEnabled, setAsIncomeEnabled] = useState(false);
   const [asOwnership, setAsOwnership] = useState("freehold");
   const [asLeaseYears, setAsLeaseYears] = useState("");
   const [asAssumptions, setAsAssumptions] = useState<string[]>([]);
@@ -153,7 +149,6 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     setAsRetroDateEnd(settings.retrospectiveDateEnd ?? "");
     setAsRetroKind(settings.retrospectiveDateEnd?.trim() ? "range" : "single");
     setAsRetroRationale(settings.retrospectiveRationale ?? "");
-    setAsIncomeEnabled(settings.incomeApproachEnabled ?? false);
     setAsOwnership(normalizeOwnershipInterestKey(settings.ownershipInterestKey));
     setAsLeaseYears(
       settings.remainingLeaseYears != null ? String(settings.remainingLeaseYears) : "",
@@ -196,13 +191,10 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
         asCostEnabled &&
         (settings?.costApproachAllowed ?? true) &&
         asCostScope !== "land_only",
-      // The «أسلوب الدخل» tab follows the unsaved toggle too.
-      income: asIncomeEnabled,
     });
   }, [
     asMarketEnabled,
     asCostEnabled,
-    asIncomeEnabled,
     asCostScope,
     draftReady,
     settings?.costApproachAllowed,
@@ -271,7 +263,8 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
         asCostEnabled &&
         (settings?.costApproachAllowed ?? true) &&
         asCostScope !== "land_only",
-      incomeApproachEnabled: asIncomeEnabled,
+      // The income approach is not available yet — always sent off.
+      incomeApproachEnabled: false,
       costBasisKey: asCostBasis,
       costScopeKey: asCostScope,
       costMeasurementUnitKey: asCostUnit,
@@ -335,7 +328,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   const confirmCopy = disableApproachConfirmCopy(droppingWithWork);
 
   function requestSave() {
-    if (!asMarketEnabled && !nextCostEnabled && !asIncomeEnabled) {
+    if (!asMarketEnabled && !nextCostEnabled) {
       reportFieldError("appliedApproaches", "يلزم تفعيل أسلوب واحد على الأقل");
       return;
     }
@@ -468,27 +461,23 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                 </div>
               </div>
             </label>
+            {/* Not available yet: shown greyed so the appraiser sees the third approach exists. */}
             <label
-              className={cn(
-                "flex cursor-pointer items-start gap-2.5 rounded-[10px] border px-3.5 py-[13px]",
-                asIncomeEnabled
-                  ? "border-gold bg-gold-soft"
-                  : "border-border-md bg-surface",
-              )}
+              title="قيد الإنشاء — غير متاح بعد"
+              className="flex cursor-not-allowed items-start gap-2.5 rounded-[10px] border border-border-md bg-surface px-3.5 py-[13px] opacity-55"
             >
               <input
                 type="checkbox"
-                checked={asIncomeEnabled}
-                disabled={saving}
-                onChange={(e) => setAsIncomeEnabled(e.target.checked)}
-                className="mt-0.5 size-[17px] accent-[var(--ink)]"
+                checked={false}
+                disabled
+                className="mt-0.5 size-[17px]"
               />
               <div>
                 <div className="text-[12.5px] font-bold text-heading">
                   أسلوب الدخل
                 </div>
                 <div className="mt-[3px] text-[11px] font-normal text-text-3">
-                  رسملة الدخل المباشرة — صافي الدخل التشغيلي ÷ معدل الرسملة
+                  قيد الإنشاء — غير متاح بعد
                 </div>
               </div>
             </label>
@@ -570,7 +559,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             </p>
           ) : (
             <p className="mt-3 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
-              حدّد أسلوب السوق أو التكلفة أو الدخل ليظهر تبويب العمل، ثم ابدأ التقييم.
+              حدّد أسلوب السوق أو التكلفة ليظهر تبويب العمل، ثم ابدأ التقييم.
             </p>
           )}
         </CardPad>

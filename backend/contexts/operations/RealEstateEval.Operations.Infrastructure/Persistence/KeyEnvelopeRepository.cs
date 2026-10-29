@@ -27,6 +27,17 @@ public sealed class KeyEnvelopeRepository(OperationsDbContext ops) : IKeyEnvelop
     public Task<KeyEnvelope?> FindAsync(Guid id, CancellationToken cancellationToken) =>
         ops.KeyEnvelopes.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
 
+    public async Task<IReadOnlyList<KeyEnvelope>> FindWithAssignmentsByPropertyIdsAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken)
+    {
+        if (propertyIds.Count == 0) return [];
+        return await ops.KeyEnvelopes
+            .Include(x => x.Assignments)
+            .Where(x => x.Assignments.Any(a => a.PropertyId != null && propertyIds.Contains(a.PropertyId.Value)))
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<KeyEnvelope?> FindWithAssignmentsAsync(
         Guid id,
         CancellationToken cancellationToken) =>

@@ -1,6 +1,6 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 2 (1b19bedc)
-//  • Button and doc comment read «إضافة مقارن» (was «اضافة مقارن»).
+//  • Button and doc comment read «إضافة مقارن» (the hamza was missing).
 //  • Wording  «تاريخ العملية» prints as yyyy/mm/dd (ymd) on the desktop table and the phone cards.
 //  • Comparable codes are whitespace-nowrap so a CMP-… code never breaks across lines.
 // ──────────────────────────────────────────────────────────────────────────────────────────────

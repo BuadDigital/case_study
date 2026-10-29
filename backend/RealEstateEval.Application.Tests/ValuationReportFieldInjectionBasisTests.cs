@@ -93,4 +93,42 @@ public class ValuationReportFieldInjectionBasisTests
         Assert.Equal(ValuePremiseKeys.LabelAr(ValuePremiseKeys.CurrentUse), fields["premise"]);
         Assert.Null(fields["discountPct"]);
     }
+
+    [Fact]
+    public void A_repeated_floors_line_left_at_zero_prints_the_inherited_first_floor_price()
+    {
+        var bag = ValuationReportFieldInjectionService.BuildValueBag(
+            ValuationRequest.Create(Guid.NewGuid(), "VR-M9", Guid.NewGuid(), "الرياض", "مبنى", "مقيم", "2026-10-28", DateTime.UtcNow),
+            prop: null,
+            workspace: null,
+            inspector: new InspectorPayloadFacts(),
+            client: null,
+            org: new OrganizationSettingsDto(),
+            market: null,
+            cost: new ValuationCostApproachDto
+            {
+                Lines =
+                [
+                    new ValuationCostLineDto
+                    {
+                        ItemKey = CostLineItemKeys.FirstFloor, Label = "الدور الأول",
+                        AreaSqm = 600m, EffectiveQuantity = 600m, UnitCostSar = 1500m, EffectiveUnitCostSar = 1500m,
+                    },
+                    new ValuationCostLineDto
+                    {
+                        ItemKey = CostLineItemKeys.RepeatedFloors, Label = "الأدوار المتكررة",
+                        AreaSqm = 1800m, EffectiveQuantity = 1800m, UnitCostSar = 0m, EffectiveUnitCostSar = 1500m,
+                        UnitCostInherited = true,
+                    },
+                ],
+            },
+            recon: null,
+            printable: [],
+            hasStructures: true,
+            deedNatureMatchOutcome: "",
+            today: new DateOnly(2026, 10, 28));
+
+        Assert.Equal(ValuationReportDisplayRules.FormatMoney(1500m), bag["cost_line.7190"]);
+        Assert.Equal(ValuationReportDisplayRules.FormatMoney(2_700_000m), bag["cost_line.7200"]);
+    }
 }

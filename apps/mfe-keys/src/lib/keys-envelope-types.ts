@@ -45,6 +45,11 @@ export type KeyEnvelopeAssignment = {
   keyHolderUserId?: string | null;
   keyHolderLabel?: string | null;
   keyLocationAtUtc?: string | null;
+  /**
+   * Set while the deed's transaction is cancelled («إلغاء المعاملة»): the key stays with the property
+   * and the envelope shows «عقار ملغى»; an untried key needs no trial any more.
+   */
+  propertyCancelledAtUtc?: string | null;
 };
 
 /** Where a deed's matching key may be. */

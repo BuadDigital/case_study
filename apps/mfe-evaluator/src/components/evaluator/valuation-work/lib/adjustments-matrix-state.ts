@@ -27,6 +27,7 @@ import {
   SEQUENTIAL_SET,
   factorDescriptor,
 } from "./factor-registry";
+import { marketSubjectAreaLabel, type MarketSubjectKind } from "./market-subject";
 import { weightsSumTo100 } from "./weights";
 
 /** The land table inside the cost approach (shell-state's LAND_WITHIN_COST). */
@@ -43,6 +44,10 @@ export type MatrixBasisView = {
   /** What the output multiplies —: an apartment's land is the rate × its share of the plot. */
   outputFormula: string;
   pricePerSqmDisplay: number | null;
+  /** What the per-m² readout is a metre of — «ما يعادل متر البناء» for a building on the whole basis. */
+  pricePerSqmLabel: string;
+  /** How the subject's area is named: «مساحة الأرض» / «مسطح البناء» / «مساحة الشقة». */
+  subjectAreaLabel: string;
   opinionRaw: number | null;
   opinionFinal: number | null;
   areaMethod: string;
@@ -54,7 +59,11 @@ export function matrixBasisView(
   selection: ValuationComparableSelectionListDto,
   adopted: ValuationComparableSelectionDto[],
   subjectArea: string,
+  /** The market table's subject (2026-10-29); the land table inside the cost approach is always land. */
+  subjectKind: MarketSubjectKind = "land",
 ): MatrixBasisView {
+  const kind = selection.selectionContext === LAND_WITHIN_COST ? "land" : subjectKind;
+  const subjectAreaLabel = marketSubjectAreaLabel(kind);
   const basis = selection.adjustmentBasis || "price_per_sqm";
   const isUnit = basis !== "whole_property";
   /** When basis is property value: weightedPricePerSqm holds the total — per-sqm = total ÷ area. */
@@ -79,8 +88,11 @@ export function matrixBasisView(
       selection.selectionContext === LAND_WITHIN_COST
         ? "قيمة الأرض قبل التقريب"
         : "قيمة العقار قبل التقريب",
-    outputFormula: matrixOutputFormula(selection, isUnit),
+    outputFormula: matrixOutputFormula(selection, isUnit, subjectAreaLabel),
     pricePerSqmDisplay,
+    pricePerSqmLabel:
+      isUnit || kind === "land" ? "قيمة المتر المربع" : `ما يعادل متر ${kind === "unit" ? "الشقة" : "البناء"}`,
+    subjectAreaLabel,
     opinionRaw: selection.marketOpinionValueRaw ?? selection.marketOpinionValue,
     opinionFinal: selection.marketOpinionValue,
     // No area adjustment on the whole-property basis (the server sends 0).
@@ -96,9 +108,10 @@ export function matrixBasisView(
 function matrixOutputFormula(
   selection: ValuationComparableSelectionListDto,
   isUnit: boolean,
+  subjectAreaLabel: string,
 ): string {
   if (!isUnit) return "أساس الكل — بلا ضرب في المساحة (يساوي المتوسط المرجّح)";
-  if (selection.selectionContext !== LAND_WITHIN_COST) return "سعر المتر بعد التسوية × مساحة العقار";
+  if (selection.selectionContext !== LAND_WITHIN_COST) return `سعر المتر بعد التسوية × ${subjectAreaLabel}`;
   const share = selection.apartmentLandShareSqm ?? 0;
   const plot = selection.subjectAreaSqm ?? 0;
   if (share > 0) {

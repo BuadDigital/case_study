@@ -69,6 +69,10 @@ export function useAdjustmentsMatrixCommands(
   } = saver;
   const unlocked = () => writeContext({ requireUnlocked: true });
 
+  /**
+   * Matrix cell %. The lines are built inside the write queue from the comparable's
+   * freshest copy, so a description or another cell saved right before is kept.
+   */
   async function saveMatrixCell(
     item: ValuationComparableSelectionDto,
     factorKey: string,
@@ -77,16 +81,25 @@ export function useAdjustmentsMatrixCommands(
     const ctx = unlocked();
     if (!ctx) return false;
     const percent = parseDecimal(raw) || 0;
-    const lines = linesWithCellPercent(
+    // The server refuses it; saying so here beats a cell that shows 150٪ while the table ignores it.
+    if (Math.abs(percent) > 100) {
+      showToast("نسبة التسوية يجب أن تكون بين -100٪ و 100٪", "error");
+      return false;
+    }
+    const factorRows = factorRowsFor(contextOfItem(item));
+    return saveOne(
+      ctx,
       item,
-      factorKey,
-      percent,
-      factorRowsFor(contextOfItem(item)),
+      (fresh) => linesWithCellPercent(fresh, factorKey, percent, factorRows),
+      "تعذّر حفظ التسوية",
     );
-    return saveOne(ctx, item, lines, "تعذّر حفظ التسوية");
   }
 
-  /** compSpec: comparable description for a given difference factor — one cell per comparable. */
+  /**
+   * compSpec: comparable description for a given difference factor — one cell per comparable.
+   * Built from the freshest copy: typing a % and then the description under it used to
+   * send the old % with the description and erase the new one.
+   */
   async function saveCellDescription(
     item: ValuationComparableSelectionDto,
     factorKey: string,
@@ -97,7 +110,7 @@ export function useAdjustmentsMatrixCommands(
     await saveOne(
       ctx,
       item,
-      linesWithDescription(item, factorKey, text),
+      (fresh) => linesWithDescription(fresh, factorKey, text),
       "تعذّر حفظ وصف المقارن",
     );
   }
@@ -146,12 +159,13 @@ export function useAdjustmentsMatrixCommands(
       reportFieldError("weightOverrideRationale", short);
       return false;
     }
+    // Lines and stored rationale come from the freshest copy (see saveMatrixCell).
     return saveOne(
       ctx,
       item,
-      savedLines(item),
+      savedLines,
       "تعذّر حفظ الوزن",
-      manualWeightPatch(item, rawPct, weightRationale),
+      (fresh) => manualWeightPatch(fresh, rawPct, weightRationale),
     );
   }
 
@@ -204,7 +218,19 @@ export function useAdjustmentsMatrixCommands(
     return true;
   }
 
-  /** per-comparable justification override — writes that comparable’s adjustment line only. */
+  /**
+   * per-comparable justification override — writes that comparable’s adjustment line only.
+   * The lines are built from the freshest copy so a % saved just before is not reverted.
+   *
+   * How it works: the 10-character rule (non-zero adjustment only) is checked inside the
+   * write queue against the freshest copy's %; a short text declines the save and marks
+   * the field.
+   *
+   * Edge cases: blank text always saves (it clears the override).
+   *
+   * Fixed: the check read the % the screen showed, so right after typing a % (screen still
+   * at 0) a short rationale got past it and the server rejected it with a toast instead.
+   */
   async function saveLineRationaleOverride(
     selectionId: string,
     factorKey: string,
@@ -216,19 +242,25 @@ export function useAdjustmentsMatrixCommands(
     const text = rawText.trim();
     const item = adoptedFor(context).find((i) => i.id === selectionId);
     if (!item) return;
-    // The rationale of a non-zero adjustment is at least 10 characters (server rule).
-    const percent = item.market?.adjustmentLines?.find((l) => l.factorKey === factorKey)?.percent ?? 0;
-    const short = percent !== 0 ? rationaleMinimumError("مبرر التسوية للمقارن", text) : null;
-    if (short) {
-      reportFieldError("rationaleAr", short);
-      return;
-    }
+    const factorRows = factorRowsFor(context);
+    const declined: { message: string | null } = { message: null };
     const ok = await saveOne(
       ctx,
       item,
-      linesWithRationaleOverride(item, factorKey, text, factorRowsFor(context)),
+      (fresh) => {
+        const percent =
+          fresh.market?.adjustmentLines?.find((l) => l.factorKey === factorKey)?.percent ?? 0;
+        declined.message =
+          percent !== 0 ? rationaleMinimumError("مبرر التسوية للمقارن", text) : null;
+        if (declined.message) return null;
+        return linesWithRationaleOverride(fresh, factorKey, text, factorRows);
+      },
       "تعذّر حفظ تخصيص المبرر",
     );
+    if (declined.message) {
+      reportFieldError("rationaleAr", declined.message);
+      return;
+    }
     // The reload runs even after a failed save so the cell shows the stored text again.
     if (!ok) await reload({ silent: true, scope: "derived" });
   }

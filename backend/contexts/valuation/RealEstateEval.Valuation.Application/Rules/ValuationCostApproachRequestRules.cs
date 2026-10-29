@@ -210,8 +210,9 @@ public static class ValuationCostApproachRequestRules
     {
         if (request.ActualAgeYears is < 0m or > CostApproachRules.MaxAgeYears)
             errors["actualAgeYears"] = $"العمر الفعلي يجب أن يكون بين 0 و {N(CostApproachRules.MaxAgeYears)} سنة";
-        if (request.EconomicAgeYears is < 0m or > CostApproachRules.MaxAgeYears)
-            errors["economicAgeYears"] = $"العمر الاقتصادي يجب أن يكون بين 0 و {N(CostApproachRules.MaxAgeYears)} سنة";
+        // An economic life of 0 read as «no depreciation» (0٪) — a building has some life; blank stays allowed.
+        if (request.EconomicAgeYears is <= 0m or > CostApproachRules.MaxAgeYears)
+            errors["economicAgeYears"] = $"العمر الاقتصادي يجب أن يكون أكبر من 0 ولا يتجاوز {N(CostApproachRules.MaxAgeYears)} سنة";
         if (request.LifeExtensionYears is < 0m or > CostApproachRules.MaxLifeExtensionYears)
             errors["lifeExtensionYears"] =
                 $"تمديد العمر يجب أن يكون بين 0 و {N(CostApproachRules.MaxLifeExtensionYears)} سنة";

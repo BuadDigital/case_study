@@ -298,6 +298,19 @@ public class KeyEnvelopeAssignment
     public string? KeyHolderLabel { get; set; }
     public DateTime? KeyLocationAtUtc { get; set; }
 
+    /// <summary>
+    /// Set while the deed's transaction is cancelled («إلغاء المعاملة»): the key stays linked to the
+    /// property, and the envelope records that the property is cancelled. Cleared on reactivation.
+    /// </summary>
+    public DateTime? PropertyCancelledAtUtc { get; set; }
+
+    /// <summary>
+    /// The assignment needs nothing more from the field: a trial result was recorded, or its property
+    /// was cancelled before the trial.
+    /// </summary>
+    public bool IsSettled =>
+        KeyAssignmentStatuses.IsConfirmResult(Status) || PropertyCancelledAtUtc is not null;
+
     public KeyEnvelope? Envelope { get; set; }
 }
 
@@ -393,6 +406,10 @@ public static class KeyEnvelopeTimelineEvents
     public const string StatusChanged = "status_changed";
     /// <summary>The reviewer corrected where a deed's key is.</summary>
     public const string KeyLocationChanged = "key_location_changed";
+    /// <summary>The deed's transaction was cancelled — its key now belongs to a cancelled property.</summary>
+    public const string PropertyCancelled = "property_cancelled";
+    /// <summary>The cancelled transaction was reactivated.</summary>
+    public const string PropertyReactivated = "property_reactivated";
 }
 
 /// <summary>Entry path independent of the envelope: access enablement / eviction record.</summary>

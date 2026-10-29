@@ -71,6 +71,12 @@ public interface IFailureRepository
         string problemTypeId,
         CancellationToken cancellationToken);
 
+    /// <summary>Tracked failures of one property that are neither resolved nor approved — closed when its transaction is cancelled.</summary>
+    Task<IReadOnlyList<PropertyFailure>> FindOpenForPropertyAsync(
+        string poNumber,
+        Guid propertyId,
+        CancellationToken cancellationToken);
+
     /// <summary>Whether the property already carries an unresolved failure of any kind.</summary>
     Task<bool> HasUnresolvedAsync(
         string poNumber,

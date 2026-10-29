@@ -4,7 +4,9 @@ import {
   LAND_COMPARABLE_TYPE,
   comparableDraftToUpsert,
   comparableEntryReady,
+  comparableAreaLabel,
   comparableKindFromType,
+  comparableRateLabel,
   comparablePlaceLine,
   comparableTypeForSave,
   emptyComparableEntryDraft,
@@ -49,6 +51,16 @@ describe("comparableKindFromType", () => {
     expect(comparableKindFromType("فيلا سكنية")).toBe("building");
     expect(comparableKindFromType("مبنى")).toBe("building");
     expect(comparableKindFromType("")).toBe("");
+  });
+
+  it("treats any named non-land type as a building and names its area by kind", () => {
+    for (const type of ["عمارة", "استراحة", "مستودع", "محل تجاري", "مجمع فلل"]) {
+      expect(comparableKindFromType(type)).toBe("building");
+    }
+    expect(comparableKindFromType("أرض تجارية")).toBe("land");
+    expect(comparableAreaLabel("building")).toBe("مسطح البناء");
+    expect(comparableAreaLabel("land")).toBe("مساحة الأرض");
+    expect(comparableRateLabel("building")).toBe("سعر متر البناء");
   });
 });
 

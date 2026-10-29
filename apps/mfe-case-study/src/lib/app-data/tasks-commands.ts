@@ -8,6 +8,7 @@ import {
   patchWorkflowTask,
   patchWorkflowTaskDistribution,
   redistributeWorkflowTaskParties,
+  addWorkflowTaskEngineeringSurvey,
   reopenCompletedWorkflowTask,
   revertWorkflowTaskPhase,
   syncWorkflowTasks,
@@ -330,6 +331,34 @@ export async function redistributeTaskParties(
         result.kind,
         "errors" in result ? result.errors : undefined,
         "تعذّر إعادة إسناد الأطراف",
+      ),
+    };
+  }
+  notifyTasksChanged();
+  return { ok: true, task: dtoToTask(result.data) };
+}
+
+/**
+ * «إضافة رفع مساحي» after distribution — the inspector's corrected type needs a survey nobody was given.
+ * The server refuses when the property needs no survey or one is already live.
+ */
+export async function addEngineeringSurveyToTask(
+  parentTaskId: string,
+  office: { id: string; name: string },
+): Promise<RedistributePartiesResult> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await addWorkflowTaskEngineeringSurvey(config, parentTaskId, {
+    assigneeId: office.id,
+    assigneeName: office.name,
+  });
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: resolveApiError(
+        result.kind,
+        "errors" in result ? result.errors : undefined,
+        "تعذّر إضافة الرفع المساحي",
       ),
     };
   }

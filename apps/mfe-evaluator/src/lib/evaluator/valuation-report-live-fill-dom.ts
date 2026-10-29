@@ -418,10 +418,23 @@ export function fillKeyedRows(
  * (area, location, streets) print the comparable's description and the % side by side, every
  * other row spans both. Dashed lines set the factor block apart from the financing/market
  * rows above and the totals below. Row shading (sub / total) follows the template rows.
+ *
+ * How it works: when the rows carry the subject's cells (`subject`), a «العقار محل التقييم» column
+ * follows the label column — the subject's type, area, district and per-factor descriptions
+ * («على شارع 15 م») beside the comparables'. Its cells are `td.subj`; a one-value row (weighted
+ * price, comparison value) spans the subject column too.
+ *
+ * Edge cases: rows without `subject` (older callers) build the table without the subject column.
+ * With five comparables the table is 12 columns; the label column narrows to 18% to fit A4.
  */
 function rebuildAdjustmentTable(
   table: Element,
-  rows: Array<{ key: string; values: string[]; pairs?: Array<[string, string]> }>,
+  rows: Array<{
+    key: string;
+    values: string[];
+    pairs?: Array<[string, string]>;
+    subject?: string;
+  }>,
   count: number,
 ) {
   const doc = table.ownerDocument;
@@ -436,7 +449,11 @@ function rebuildAdjustmentTable(
     if (fromTemplate) return fromTemplate;
     if (label.startsWith(normLabel("القيمة بطريقة المقارنة"))) return "total";
     // Subtotal rows renamed with the sequential chain (e.g. «إجمالي التسويات التسلسلية ٪»).
-    return label.startsWith("إجمالي") || label.startsWith("سعر البيع بعد") ? "sub" : "";
+    return label.startsWith("إجمالي") ||
+      label.startsWith("سعر البيع بعد") ||
+      label.startsWith(normLabel("المتوسط المرجح"))
+      ? "sub"
+      : "";
   };
 
   const cell = (tag: "td" | "th", text: string, className: string, span = 1) => {
@@ -447,10 +464,12 @@ function rebuildAdjustmentTable(
     return el;
   };
 
+  const withSubject = rows.some((r) => r.subject !== undefined);
   const header = doc.createElement("tr");
   const first = cell("th", "عناصر المقارنة", "");
-  first.setAttribute("style", "width:24%");
+  first.setAttribute("style", withSubject ? "width:18%" : "width:24%");
   header.appendChild(first);
+  if (withSubject) header.appendChild(cell("th", "العقار محل التقييم", "subj"));
   for (let i = 0; i < count; i++) {
     header.appendChild(cell("th", `العقار المقارن (${i + 1})`, "", 2));
   }
@@ -466,13 +485,15 @@ function rebuildAdjustmentTable(
     inFactors = isFactor;
     tr.className = classes.filter(Boolean).join(" ");
     tr.appendChild(cell("td", row.key, "v"));
+    const single = !row.pairs && row.values.length === 1;
+    if (withSubject && !single) tr.appendChild(cell("td", row.subject ?? "", "v subj"));
     if (row.pairs) {
       for (const [value, pct] of row.pairs) {
         tr.appendChild(cell("td", value, "v fac"));
         tr.appendChild(cell("td", pct, "num pct"));
       }
-    } else if (row.values.length === 1) {
-      tr.appendChild(cell("td", row.values[0] ?? "", "num", count * 2));
+    } else if (single) {
+      tr.appendChild(cell("td", row.values[0] ?? "", "num", count * 2 + (withSubject ? 1 : 0)));
     } else {
       for (let i = 0; i < count; i++) {
         tr.appendChild(cell("td", row.values[i] ?? "—", "num", 2));
@@ -564,6 +585,16 @@ export function syncNumberedRows(scope: Element, count: number) {
   });
 }
 
+/**
+ * Section 19 (and the land adjustments of section 20): the adjustments table and its «مبررات
+ * التسويات» list.
+ *
+ * How it works: rebuilds the table from the rows (subject column, factor pairs) — or, on an older
+ * template without pair rows, fills the template rows in place — renames the comparison-value row,
+ * then writes the factor rationales under the table (`fillRationaleNotes`).
+ *
+ * Edge cases: no rationale written ⇒ the «مبررات التسويات» row is removed.
+ */
 export function fillAdjustmentSection(
   sec: Element,
   fill: Pick<
@@ -598,26 +629,62 @@ export function fillAdjustmentSection(
     }
     first.textContent = fill.adjustmentComparisonLabel;
   });
-  const notesCell = [...sec.querySelectorAll("td.k")].find(
-    (td) => normLabel(td.textContent ?? "") === "مبررات التسويات",
-  )?.nextElementSibling;
-  if (notesCell) {
-    const text = fill.adjustmentNotes.trim();
-    notesCell.replaceChildren();
-    if (!text) {
-      // No rationale written ⇒ no «مبررات التسويات» row in the report.
-      notesCell.closest("table")?.remove();
-      return;
-    }
-    const ul = sec.ownerDocument.createElement("ul");
-    ul.setAttribute("style", "margin:0;padding-inline-start:14px");
-    for (const line of text.split("\n")) {
-      const li = sec.ownerDocument.createElement("li");
-      li.textContent = line;
-      ul.appendChild(li);
-    }
-    notesCell.appendChild(ul);
+  fillRationaleNotes(sec, "مبررات التسويات", fill.adjustmentNotes, table);
+}
+
+/**
+ * A rationale list under a report table: «title | • item — rationale …» (adjustments, cost lines,
+ * reconciliation weights).
+ *
+ * How it works: finds the section's `td.k` titled `title` (the template's own row) or, when the
+ * template has none, adds a one-row table right after `after`; then writes one bullet per line of
+ * `text` (newline-separated, as `rationaleLine` builds it).
+ *
+ * Edge cases: empty text removes the list's table — an optional rationale left empty prints nothing,
+ * so it is never shown (or marked) as a gap. Running it again replaces the earlier list. No title row
+ * and no `after` table ⇒ nothing is added.
+ */
+export function fillRationaleNotes(
+  sec: Element,
+  title: string,
+  text: string,
+  after?: Element | null,
+) {
+  const doc = sec.ownerDocument;
+  let notesCell =
+    [...sec.querySelectorAll("td.k")].find(
+      (td) => normLabel(td.textContent ?? "") === normLabel(title),
+    )?.nextElementSibling ?? null;
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (lines.length === 0) {
+    notesCell?.closest("table")?.remove();
+    return;
   }
+  if (!notesCell) {
+    if (!after) return;
+    const table = doc.createElement("table");
+    const tr = doc.createElement("tr");
+    const k = doc.createElement("td");
+    k.className = "k";
+    k.textContent = title;
+    const v = doc.createElement("td");
+    v.className = "v";
+    tr.append(k, v);
+    table.appendChild(tr);
+    after.after(table);
+    notesCell = v;
+  }
+  const ul = doc.createElement("ul");
+  ul.setAttribute("style", "margin:0;padding-inline-start:14px");
+  for (const line of lines) {
+    const li = doc.createElement("li");
+    li.textContent = line;
+    ul.appendChild(li);
+  }
+  notesCell.replaceChildren(ul);
 }
 
 /**

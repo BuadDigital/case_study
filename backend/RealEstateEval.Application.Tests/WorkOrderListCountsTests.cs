@@ -83,7 +83,8 @@ public class WorkOrderListCountsTests
         Assert.Equal(1, counts.Active);
         Assert.Equal(0, counts.Overdue);
         Assert.Equal(1, counts.DueSoon);
-        Assert.Equal(0, counts.DoneProperties);
+        // «رُفعت على إنفاذ — عبر جميع الأوامر» is never narrowed by the status filter.
+        Assert.Equal(1, counts.DoneProperties);
     }
 
     /// <summary>Every property deliverable, none delivered: the specialist's handover backlog.</summary>
@@ -99,7 +100,7 @@ public class WorkOrderListCountsTests
             Staff());
         Assert.Equal(1, ready.Total);
         Assert.Equal(1, ready.Active);
-        Assert.Equal(0, ready.DoneProperties);
+        Assert.Equal(1, ready.DoneProperties);
 
         var active = await query.CountsAsync(
             new WorkOrderListQuery { Status = WorkOrderListQueryRules.BucketActive },

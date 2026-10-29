@@ -11,7 +11,8 @@ public readonly record struct ValuationReportFieldCostLineLite(
     decimal AreaSqm,
     decimal UnitCostSar,
     bool IsIncluded,
-    string ItemKey = "");
+    string ItemKey = "",
+    decimal? EffectiveQuantity = null);
 
 /// <summary>
 /// Maps priced cost-approach (or inventory area) lines into cost_line.* / inventory.* keys.
@@ -44,7 +45,7 @@ public static class ValuationReportFieldCostLineFlattenRules
  // Aggregate per bucket — several repeated floors (or fences, pools…) must sum,
  // not overwrite each other, so 7180/7190/7200 carry the whole group.
         var used = new HashSet<Bucket>();
-        var totals = new Dictionary<Bucket, (decimal Area, decimal Total)>();
+        var totals = new Dictionary<Bucket, (decimal Area, decimal Priced, decimal Total)>();
 
         foreach (var line in lines.Where(l => l.IsIncluded))
         {
@@ -52,12 +53,15 @@ public static class ValuationReportFieldCostLineFlattenRules
                 ?? ResolveBucket(line.StructureKind, line.Label, used);
             used.Add(bucket);
 
-            var prev = totals.TryGetValue(bucket, out var t) ? t : (Area: 0m, Total: 0m);
-            totals[bucket] = (prev.Area + line.AreaSqm, prev.Total + line.AreaSqm * line.UnitCostSar);
+            // The priced quantity is the effective one (area × build ratio) when the cost screen
+            // sent it, so a line built at 60% prints the same total as the cost screen.
+            var priced = line.EffectiveQuantity ?? line.AreaSqm;
+            var prev = totals.TryGetValue(bucket, out var t) ? t : (Area: 0m, Priced: 0m, Total: 0m);
+            totals[bucket] = (prev.Area + line.AreaSqm, prev.Priced + priced, prev.Total + priced * line.UnitCostSar);
         }
 
         foreach (var (bucket, sum) in totals)
-            WriteTriplet(bag, bucket, sum.Area, sum.Total);
+            WriteTriplet(bag, bucket, sum.Area, sum.Priced, sum.Total);
 
         var annexAreaSum =
             (totals.TryGetValue(Bucket.AnnexGround, out var ag) ? ag.Area : 0m)
@@ -142,11 +146,14 @@ public static class ValuationReportFieldCostLineFlattenRules
         IDictionary<string, string?> bag,
         Bucket bucket,
         decimal area,
+        decimal pricedQuantity,
         decimal total)
     {
         var (areaKey, unitKey, totalKey) = KeysFor(bucket);
-        var unit = area > 0m
-            ? Math.Round(total / area, 2, MidpointRounding.AwayFromZero)
+        // Unit = total ÷ the quantity actually priced, so a build ratio below 100% does not
+        // print a unit price lower than the one the appraiser typed.
+        var unit = pricedQuantity > 0m
+            ? Math.Round(total / pricedQuantity, 2, MidpointRounding.AwayFromZero)
             : 0m;
 
         if (area > 0m)

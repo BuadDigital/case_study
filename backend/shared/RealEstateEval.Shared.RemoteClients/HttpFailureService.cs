@@ -151,6 +151,21 @@ public sealed class HttpFailureService(
             },
             cancellationToken);
 
+    public Task ResolveForCancelledTransactionAsync(
+        string poNumber,
+        string propertyId,
+        string actor,
+        CancellationToken cancellationToken = default) =>
+        PostAsync(
+            "/api/failure-dispatch/transaction-cancelled",
+            new ResolveEvictionHoldRequest
+            {
+                PoNumber = poNumber,
+                PropertyId = propertyId,
+                Actor = actor,
+            },
+            cancellationToken);
+
     public Task EnsureKeyUnmatchedFailureAsync(
         string poNumber,
         string propertyId,

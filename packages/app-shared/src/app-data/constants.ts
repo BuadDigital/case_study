@@ -46,9 +46,9 @@ export const ROLES: Record<RoleId, RoleDef> = {
     ],
   },
   "section-supervisor": {
-    name: "عبدالرحمن النفيعي",
+    name: "مشرف دراسة الحالة",
     dept: "مشرف قسم دراسة الحالة",
-    init: "عن",
+    init: "مد",
     bg: "var(--warning-bg)",
     tc: "var(--warning)",
     pages: [

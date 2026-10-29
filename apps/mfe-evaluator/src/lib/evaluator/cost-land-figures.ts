@@ -14,6 +14,7 @@
  * else the plot. Every printed line multiplies out to the next.
  */
 import type { ValuationCostApproachDto } from "@platform/api-client";
+import { fmt } from "@platform/app-shared/format/number";
 
 import { formatAmountNumberDisplay } from "./arabic-amount-words";
 
@@ -61,8 +62,18 @@ export function apartmentLandHint(
 
 export type CostLandReportRow = { key: string; value: string; total?: boolean };
 
-function money(n: number | null | undefined): string {
-  return n != null && Number.isFinite(n) && n > 0 ? formatAmountNumberDisplay(n) : "—";
+/**
+ * A section 20 figure: money (rates, land values) in whole riyals as the cost screen shows it, an
+ * area (plot, share) with its decimals.
+ *
+ * How it works: positive finite numbers format through the shared `fmt` (money) or
+ * `formatAmountNumberDisplay` (areas, up to two decimals).
+ *
+ * Edge cases: zero, negative or missing → «—». Display only — the land value math stays unrounded.
+ */
+function figure(n: number | null | undefined, kind: "money" | "area"): string {
+  if (n == null || !Number.isFinite(n) || n <= 0) return "—";
+  return kind === "money" ? fmt(n) : formatAmountNumberDisplay(n);
 }
 
 /**
@@ -87,20 +98,23 @@ export function costLandReportRows(
   return [
     {
       key: sharedLand ? "مساحة أرض العمارة كاملة (م²)" : "مساحة الأرض (م²)",
-      value: money(cost.landAreaSqm),
+      value: figure(cost.landAreaSqm, "area"),
     },
-    { key: "سعر المتر بعد التسويات (ر.س./م²)", value: complete ? money(cost.landUnitRateFromMarket) : "—" },
+    {
+      key: "سعر المتر بعد التسويات (ر.س./م²)",
+      value: complete ? figure(cost.landUnitRateFromMarket, "money") : "—",
+    },
     ...(discount > 0
       ? [
           { key: "خصم تقييد الاستخدام", value: `${discount.toFixed(2)}٪` },
           {
             key: "سعر المتر بعد الخصم (ر.س./م²)",
-            value: complete ? money(rateAfterDiscount) : "—",
+            value: complete ? figure(rateAfterDiscount, "money") : "—",
           },
         ]
       : []),
-    ...(sharedLand ? [{ key: "حصة الشقة من الأرض (م²)", value: money(share) }] : []),
-    { key: "قيمة الأرض قبل التقريب", value: money(beforeRounding) },
-    { key: "قيمة الأرض", value: complete ? money(cost.landValueFromMarket) : "—", total: true },
+    ...(sharedLand ? [{ key: "حصة الشقة من الأرض (م²)", value: figure(share, "area") }] : []),
+    { key: "قيمة الأرض قبل التقريب", value: figure(beforeRounding, "money") },
+    { key: "قيمة الأرض", value: complete ? figure(cost.landValueFromMarket, "money") : "—", total: true },
   ];
 }

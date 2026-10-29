@@ -187,6 +187,8 @@ public sealed partial class ValuationReportIssuanceService(
 
         if (string.IsNullOrWhiteSpace(request.DepositCode))
             return (null, new Dictionary<string, string> { ["depositCode"] = "رمز الإيداع مطلوب" });
+        if (DepositCertificateRules.CodeFormatError(request.DepositCode) is { } codeError)
+            return (null, new Dictionary<string, string> { ["depositCode"] = codeError });
 
         // One code, one current report — and a new version never reuses a code of its earlier versions.
         if (await DepositCodeTakenAsync(row, request.DepositCode, cancellationToken))

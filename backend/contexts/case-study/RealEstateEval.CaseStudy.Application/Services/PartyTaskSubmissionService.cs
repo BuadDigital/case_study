@@ -147,6 +147,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             PartyTaskSubmissionRules.StaffMayCorrectPartyPackage(actor, task);
         if (!PartyTaskSubmissionRules.MayWriteDraft(actor, task, canStaffCorrectFieldInspection))
             return (null, Error("ليس لديك صلاحية تعديل هذه المهمة"));
+        if (await IsTransactionCancelledAsync(task, cancellationToken))
+            return (null, Error(TransactionCancelledAr));
 
         var entity = await _repo.GetSubmissionAsync(taskId, track: true, cancellationToken);
 
@@ -268,6 +270,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (!PartyTaskSubmissionRules.MaySubmit(actor, task))
             return (null, Error("ليس لديك صلاحية إرسال هذه المهمة"));
+        if (await IsTransactionCancelledAsync(task, cancellationToken))
+            return (null, Error(TransactionCancelledAr));
 
         var entity = await _repo.GetSubmissionAsync(taskId, track: true, cancellationToken);
         if (entity is null)
@@ -313,13 +317,14 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         // Submission status and workflow completion must commit together; otherwise the
         // party looks submitted while the task is still open (or the reverse on rollback).
+        InspectedTypeChange? typeChange = null;
         await _repo.ExecuteInTransactionAsync(
             async ct =>
             {
                 if (task.PropertyId is Guid inspectedPropertyId
                     && inspectedPropertyType is not null)
                 {
-                    await _repo.SetInspectedPropertyTypeAsync(
+                    typeChange = await _repo.SetInspectedPropertyTypeAsync(
                         inspectedPropertyId,
                         inspectedPropertyType,
                         ct);
@@ -358,6 +363,10 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
         if (task.Kind == WorkflowTaskKind.FieldInspection)
             await AuditInspectionCompletionAsync(task, entity, actor, now, cancellationToken);
+
+        // Before the sibling notices: a survey the new type no longer needs is withdrawn first.
+        if (typeChange is not null)
+            await OnInspectedTypeChangedAsync(task, typeChange, actor, now, cancellationToken);
 
         await NotifySpecialistAndSupervisorOnSubmitAsync(task, cancellationToken);
         if (task.Kind == WorkflowTaskKind.FieldInspection)
@@ -430,6 +439,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         // Delivered to Enfaz: nothing reopens until the specialist takes the transaction back.
         if (await IsHandedOverToEnfazAsync(task, cancellationToken))
             return (null, Error(HandedOverToEnfazAr));
+        if (await IsTransactionCancelledAsync(task, cancellationToken))
+            return (null, Error(TransactionCancelledAr));
 
         var entity = await _repo.GetSubmissionAsync(taskId, track: true, cancellationToken);
         if (entity is null)

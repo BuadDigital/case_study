@@ -104,4 +104,28 @@ public class ValuationReportFieldCostLineFlattenRulesTests
         Assert.Equal("100", bag["cost_line.7090"]);
         Assert.Equal("80", bag["cost_line.7150"]);
     }
+
+    [Fact]
+    public void Build_ratio_prices_the_effective_quantity_and_keeps_the_typed_unit_price()
+    {
+        // 200 m² built at 60% → 120 m² priced at 2,500 = 300,000 (the cost screen's total),
+        // while the printed area stays the line's 200 m².
+        var bag = new Dictionary<string, string?>();
+        ValuationReportFieldCostLineFlattenRules.PutFromLines(
+            bag,
+            [
+                new ValuationReportFieldCostLineLite(
+                    BuildingStructureKinds.Floor,
+                    "الدور الأرضي",
+                    200m,
+                    2500m,
+                    true,
+                    EffectiveQuantity: 120m),
+            ],
+            hasStructuresToValue: true);
+
+        Assert.Equal("200", bag["cost_line.7090"]);
+        Assert.Equal(ValuationReportDisplayRules.FormatMoney(2500m), bag["cost_line.7100"]);
+        Assert.Equal(ValuationReportDisplayRules.FormatMoney(300_000m), bag["cost_line.7110"]);
+    }
 }

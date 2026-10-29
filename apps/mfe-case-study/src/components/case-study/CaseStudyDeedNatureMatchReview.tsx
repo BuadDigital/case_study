@@ -179,6 +179,11 @@ export function CaseStudyDeedNatureMatchReview({
         sourceLabelAr={proposal?.sourceLabelAr}
         suggestedOutcome={proposal?.suggested}
         infoLinesAr={proposal?.infoLinesAr}
+        inspectorSaidNotMatched={
+          proposal?.source === "inspector" &&
+          !proposal.waiting &&
+          proposal.suggested === DeedNatureMatchOutcomes.Differences
+        }
         onAdoptSuggestion={() => {
           if (!proposal?.suggested) return;
           void persist({

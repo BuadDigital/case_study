@@ -25,6 +25,7 @@ import {
 } from "@platform/app-shared/failures/failures-types";
 import {
   createEngineeringSurveyDraft,
+  surveyDeedBoundariesFromProperty,
   isEngineeringSurveyFormLocked,
   type EngineeringSurveySubmission,
 } from "../lib/engineering-survey-data";
@@ -194,8 +195,11 @@ export function useEngineeringSurveyData({
   }, [task.id, task.poNumber, propertyId, forceReadOnly, viewOnly]);
 
   // Seed map + inspector reference once the sibling inspection pin is readable.
+  // Read-only views (the preview before «بدء الرفع المساحي», the specialist) show the
+  // inspector's pin too but never save it — they used to show the Jeddah default.
   useEffect(() => {
-    if (!propertyId || forceReadOnly || viewOnly) return;
+    if (!propertyId) return;
+    const readOnly = forceReadOnly || viewOnly;
     const current = draftRef.current;
     if (!current || current.status === "submitted") return;
     const needsSeed =
@@ -219,6 +223,15 @@ export function useEngineeringSurveyData({
           seeded.inspectorReferenceLongitude ===
             baseline.inspectorReferenceLongitude
         ) {
+          return;
+        }
+        if (readOnly) {
+          setDraft(seeded);
+          setLocalFields((prev) =>
+            prev
+              ? { ...prev, latitude: seeded.latitude, longitude: seeded.longitude }
+              : localFieldsFromDraft(seeded),
+          );
           return;
         }
         const saved = await updateEngineeringSurveyDraft(task.id, {
@@ -257,6 +270,24 @@ export function useEngineeringSurveyData({
     viewOnly,
     workflowTasks,
   ]);
+
+  // «الحدود والأطوال (حسب الصك)» start from the deed boundaries the property already holds
+  // (see surveyDeedBoundariesFromProperty); never over anything the office typed.
+  useEffect(() => {
+    if (!propertyId || forceReadOnly || viewOnly) return;
+    const current = draftRef.current;
+    const seed = current ? surveyDeedBoundariesFromProperty(current, property) : null;
+    if (!seed) return;
+    let cancelled = false;
+    void updateEngineeringSurveyDraft(task.id, seed).then((saved) => {
+      if (cancelled || !saved) return;
+      setDraft(saved);
+      setLocalFields((prev) => (prev ? { ...prev, ...seed } : localFieldsFromDraft(saved)));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [draft?.status, draftRef, forceReadOnly, property, propertyId, task.id, viewOnly]);
 
   // Refresh inspection-completed flag without discarding in-progress form edits.
   useEffect(() => {

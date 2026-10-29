@@ -8,8 +8,6 @@
 //  • buildScopeRows adds the retrospective rationale row and the building-only scope row to section 2.
 //  • ownershipCell prints a usufruct / leased-land interest with the remaining lease years;
 //         buildAgeNotes adds the age rationales and the lease cap to section 23.
-//  • Income joins the methods used, the approach count and the method cell; incomeRows
-//         (buildIncomeSheetRows) and the income cells come from the saved income approach.
 //  • Wording «رقم العضوية» is the valuer's own (no firm-licence fallback); the land comparison value is
 //            labelled «قيمة الأرض قبل التقريب»; unused costRowCells calls removed.
 // Round 2 (1b19bedc)
@@ -43,6 +41,7 @@ import {
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
+import { boundariesMarkedUnavailable } from "@platform/app-shared/app-data/po-intake-identifiers";
 import { OTHER_ATTACHMENTS_KEY } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   clientNameFromRecord,
@@ -72,10 +71,8 @@ import {
   transactionDeedLabelOf,
   type ValuationComparableSelectionListDto,
   type ValuationCostApproachDto,
-  type ValuationIncomeApproachDto,
   type ValuationReconciliationDto,
 } from "@platform/api-client";
-import { buildIncomeSheetRows, type IncomeSheetRow } from "./valuation-report-income";
 import {
   areasFromInventory,
   adoptedComparables,
@@ -86,11 +83,13 @@ import {
   buildDirectCostSheetRows,
   buildIndirectCostSheetRows,
   buildReconSheetRows,
+  notesFromRows,
   composeTransactionCell,
   costLinePresent,
   dashSheet,
   esgCell,
   finishingLevelLabel,
+  formatAreaCell,
   formatMoneyCell,
   formatSheetPct,
   inventoryLinePresent,
@@ -271,6 +270,25 @@ function assumptionsForInterest(
   return bullets.map((b) => b.replace(FULL_OWNERSHIP_ASSUMPTION, phrase));
 }
 
+/**
+ * Section 08 when the bourse recorded «الحدود غير متوفرة»: a side nobody could describe prints
+ * «غير متوفرة» instead of a dash (and is not marked as a missing field).
+ * Edge cases: a side the survey still measured keeps its value.
+ */
+function withUnavailableBoundaries<T extends { bound: string; len: string }>(
+  property: PoPropertyIntake | null | undefined,
+  rows: T[],
+): T[] {
+  if (!boundariesMarkedUnavailable(property?.boundariesAvailability ?? "")) return rows;
+  return rows.map((row) => ({
+    ...row,
+    bound: row.bound || BOUNDARIES_UNAVAILABLE,
+    len: row.len || BOUNDARIES_UNAVAILABLE,
+  }));
+}
+
+const BOUNDARIES_UNAVAILABLE = "غير متوفرة";
+
 function pickLength(
   survey: string | null | undefined,
   property: string | null | undefined,
@@ -428,20 +446,28 @@ function contractorMethodLabel(
     : `طريقة المقاول: قيمة الأرض فضاءً بطريقة المقارنة + ${building}`;
 }
 
-/** Market / cost / income used: the saved approach settings when known, else the report's method choices. */
+/**
+ * Which approaches the report names.
+ *
+ * What: market / cost from the saved approach settings when known, else the report's method
+ * choices; income only from a legacy report method choice.
+ * How it works: a saved toggle wins; an unset one falls back to the matching method key
+ * («__unused__» = not used).
+ * Edge cases: the income approach cannot be enabled in the settings, so only an old report choice
+ * (or a «مستند ذو قيمة» indicator, see methodsUsed) still names it.
+ */
 function approachesUsed(
   choices: EvaluatorReportChoices,
   input: {
     marketApproachEnabled?: boolean;
     costApproachEnabled?: boolean;
-    incomeApproachEnabled?: boolean;
   },
 ): { market: boolean; cost: boolean; income: boolean } {
   const chosen = (key: string | undefined) => Boolean(key && key !== "__unused__");
   return {
     market: input.marketApproachEnabled ?? chosen(choices.marketMethodKey),
     cost: input.costApproachEnabled ?? chosen(choices.costMethodKey),
-    income: input.incomeApproachEnabled ?? chosen(choices.incomeMethodKey),
+    income: chosen(choices.incomeMethodKey),
   };
 }
 
@@ -545,10 +571,6 @@ export type ValuationReportLiveFill = {
    * Section 24 keeps only the justification, the final value is that approach's indicator.
    */
   approachCount: number;
-  /** Income approach enabled: its section prints before section 24 and its row joins the weights. */
-  incomeApproachEnabled: boolean;
-  /** The income section rows (inputs, EGI, NOI, cap rate, value, rationale). */
-  incomeRows: IncomeSheetRow[];
   scopeBasis: string;
   scopeClient: string;
   /**
@@ -596,7 +618,11 @@ export type ValuationReportLiveFill = {
   costRows: Array<{ key: string; values: string[] }>;
   indirectRows: Array<{ key: string; values: string[] }>;
   indirectTotalLabel: string;
+  /** Section 21 «مبررات التقدير» — «line — rationale» per cost line with one, newline-separated. */
+  costNotes: string;
   reconRows: Array<{ key: string; values: string[] }>;
+  /** Section 24 «مبررات نسب المشاركة» — «approach — rationale», newline-separated. */
+  reconNotes: string;
   finalDisplay: string;
   /**
    * Section 25 lines a reader can reproduce: the unrounded weighted value of section 24, the liquidation
@@ -699,10 +725,6 @@ export function buildValuationReportLiveFill(input: {
   costApproachEnabled?: boolean;
   /** Saved market-approach decision; undefined = legacy (follow the report's method choices). */
   marketApproachEnabled?: boolean;
-  /** Saved income-approach decision; undefined = legacy (follow the report's method choices). */
-  incomeApproachEnabled?: boolean;
-  /** The income approach (direct capitalisation) as the server computed it. */
-  income?: ValuationIncomeApproachDto | null;
   costScopeKey?: string | null;
   /** "replacement" (default/إحلال) | "reproduction" (إعادة الإنتاج) — the appraiser's choice on البيانات الأساسية. */
   costBasisKey?: string | null;
@@ -928,7 +950,7 @@ export function buildValuationReportLiveFill(input: {
     "مساحة الأرض (حسب الصك)": dash(area ? `${area} م²` : ""),
     "مساحة الأرض (م²)": dash(
       input.cost?.landAreaSqm && input.cost.landAreaSqm > 0
-        ? formatMoneyCell(input.cost.landAreaSqm)
+        ? formatAreaCell(input.cost.landAreaSqm)
         : area,
     ),
     "قيمة الأرض": dash(
@@ -941,7 +963,7 @@ export function buildValuationReportLiveFill(input: {
     "وصف العقار": dash(reportPropertyDescription(input.specialistComponentsText, inspector)),
   };
 
-  const areas = areasFromInventory(input.inventoryLines, inspector);
+  const areas = areasFromInventory(input.inventoryLines);
   cells["مجموع مسطحات البناء"] = dash(areas.builtUpTotal);
   const surroundings = mapSurroundings(inspector?.amenities);
   const defects = [
@@ -1115,20 +1137,10 @@ export function buildValuationReportLiveFill(input: {
     (input.recon?.methodsRationale ?? "").trim() ||
     choices.methodsRationale.trim();
   cells["مبرر استخدام طرق التقييم"] = dash(rationale);
-  // The saved income approach wins over the legacy report-choice fields.
-  const incomeSaved = input.income?.isSaved ? input.income : null;
-  cells["دخل سنوي"] = dash(
-    incomeSaved ? formatMoneyCell(incomeSaved.grossPotentialIncome) : choices.incomeAnnual,
-  );
-  cells["نسبة الشغور"] = dash(
-    incomeSaved ? formatSheetPct(incomeSaved.vacancyCollectionLossPct) : choices.incomeVacancyPct,
-  );
-  cells["نسبة التشغيل"] = dash(
-    incomeSaved ? formatSheetPct(incomeSaved.operatingExpensesPctOfEgi) : choices.incomeOpexPct,
-  );
-  cells["معدل الرسملة"] = dash(
-    incomeSaved ? formatSheetPct(incomeSaved.capitalisationRatePct) : choices.incomeCapRatePct,
-  );
+  cells["دخل سنوي"] = dash(choices.incomeAnnual);
+  cells["نسبة الشغور"] = dash(choices.incomeVacancyPct);
+  cells["نسبة التشغيل"] = dash(choices.incomeOpexPct);
+  cells["معدل الرسملة"] = dash(choices.incomeCapRatePct);
 
   const profit = input.cost?.indirectItems?.find((i) =>
     (i.itemKey || i.labelAr || "").toLowerCase().includes("profit"),
@@ -1246,10 +1258,17 @@ export function buildValuationReportLiveFill(input: {
     );
   cells["تشجير"] = dash(hasLandscape);
 
-  const adj = buildAdjustmentSheetRows(comps, input.market);
+  // The subject column of section 19: its type and district beside the comparables'.
+  const adjustmentSubject = {
+    propertyType: cells["نوع العقار"] === "—" ? "" : cells["نوع العقار"],
+    district: property?.district,
+  };
+  const adj = buildAdjustmentSheetRows(comps, input.market, adjustmentSubject);
   const landComps = adoptedComparables(input.landMarket);
-  const landAdj = buildAdjustmentSheetRows(landComps, input.landMarket);
+  const landAdj = buildAdjustmentSheetRows(landComps, input.landMarket, adjustmentSubject);
   const indirect = buildIndirectCostSheetRows(input.cost);
+  const costRows = buildDirectCostSheetRows(input.cost);
+  const reconRows = buildReconSheetRows(input.recon);
 
   const mapPins = collectComparablesMapPins({
     subjectLat: subjectCoords?.lat ?? inspector?.mapLatitude,
@@ -1311,13 +1330,11 @@ export function buildValuationReportLiveFill(input: {
     costApproachEnabled: input.costApproachEnabled === true,
     costBuildingOnly: input.costScopeKey === "building_only",
     marketApproachEnabled: input.marketApproachEnabled !== false,
-    incomeApproachEnabled: used.income,
-    incomeRows: buildIncomeSheetRows(input.income),
     approachCount:
       input.marketApproachEnabled === undefined && input.costApproachEnabled === undefined
         ? // No saved settings passed (legacy callers): count the reconciled approaches.
           (input.recon?.methods ?? []).filter((m) => m.isIncluded).length || 2
-        : (used.market ? 1 : 0) + (used.cost ? 1 : 0) + (used.income ? 1 : 0) + docIndicators.length,
+        : (used.market ? 1 : 0) + (used.cost ? 1 : 0) + docIndicators.length,
     scopeBasis: basis,
     scopeClient: client,
     ageNotes: isLand ? [] : buildAgeNotes(input.cost, partialInterestKey(input.ownership)),
@@ -1344,13 +1361,13 @@ export function buildValuationReportLiveFill(input: {
         "cost",
       ),
       approachMethodCell(
-        used.income ? "الرسملة المباشرة: صافي الدخل التشغيلي ÷ معدل الرسملة" : null,
+        used.income ? "رسملة الدخل" : null,
         docIndicators,
         "income",
       ),
     ],
     boundariesSource: input.survey ? "survey" : "intake",
-    boundaries: [
+    boundaries: withUnavailableBoundaries(property, [
       {
         name: "الشمالية",
         bound: pickLength(
@@ -1415,7 +1432,7 @@ export function buildValuationReportLiveFill(input: {
         ),
         face: sideFacadeType(inspector, property, "west"),
       },
-    ],
+    ]),
     componentsListed: (input.inventoryLines ?? []).length > 0,
     // Section 10 «مكونات العقار»: description + area per listed component, then the built-up total.
     // (section 09 «تفاصيل المساحات» was dropped from the report.)
@@ -1499,19 +1516,21 @@ export function buildValuationReportLiveFill(input: {
     // The land table's output is an input to the cost formula — «قيمة الأرض», not an indicator;
     // like the matrix card it is unrounded (the final value is rounded once in section 25).
     landAdjustmentComparisonLabel: LAND_VALUE_BEFORE_ROUNDING,
-    landAdjustmentNotes: buildAdjustmentRationaleText(landComps),
+    landAdjustmentNotes: buildAdjustmentRationaleText(landComps, input.landMarket),
     landComparableMapSlot,
     landComparablesMapPins: landComps.length > 0 ? landMapPins : [],
     adjustmentRows: adj.rows,
     // A land subject's comparison value is its land value — named as on the matrix card.
     adjustmentComparisonLabel: isLand ? LAND_VALUE_BEFORE_ROUNDING : adj.comparisonLabel,
-    adjustmentNotes: buildAdjustmentRationaleText(comps),
+    adjustmentNotes: buildAdjustmentRationaleText(comps, input.market),
     surroundingsOther: dash(surroundings["أخرى"]),
     attachmentsOther: dash(inspector?.featureValues?.[OTHER_ATTACHMENTS_KEY]),
-    costRows: buildDirectCostSheetRows(input.cost, areas),
+    costRows,
+    costNotes: notesFromRows(costRows),
     indirectRows: indirect.rows,
     indirectTotalLabel: indirect.totalLabel,
-    reconRows: buildReconSheetRows(input.recon),
+    reconRows,
+    reconNotes: notesFromRows(reconRows),
     finalDisplay:
       (reconFinal != null && reconFinal > 0
         ? `${formatAmountNumberDisplay(reconFinal)} ر.س.`
