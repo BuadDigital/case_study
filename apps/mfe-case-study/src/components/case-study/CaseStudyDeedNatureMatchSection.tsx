@@ -60,11 +60,16 @@ export function CaseStudyDeedNatureMatchSection({
   inspectorSaidNotMatched?: boolean;
 }) {
   const outcome = draft.deedNatureMatchOutcome ?? "";
-  // «مطابق» against the inspector is not saved on click: the reason is written first and saved with it
-  // (a click alone would be refused by the server and rolled back).
-  const [overrideReason, setOverrideReason] = useState<string | null>(null);
-  const overrideOpen = overrideReason !== null;
-  const overrideReasonShort = (overrideReason ?? "").trim().length < DEED_MATCH_OVERRIDE_REASON_MIN;
+  // An outcome that needs text — «فروق» / «مرشح تعذّر», or «مطابق» against the inspector — is not saved on
+  // click: its notes are written first and saved with it (a click alone is refused by the server and rolled
+  // back), and they start empty — the reason of one outcome never becomes the notes of another.
+  const [pending, setPending] = useState<{ value: string; notes: string } | null>(null);
+  const pendingIsOverride =
+    pending?.value === DeedNatureMatchOutcomes.Matched && inspectorSaidNotMatched;
+  const pendingMin = pendingIsOverride ? DEED_MATCH_OVERRIDE_REASON_MIN : 1;
+  const pendingShort = (pending?.notes ?? "").trim().length < pendingMin;
+  const pendingLabel =
+    DEED_NATURE_MATCH_OPTIONS.find((o) => o.value === pending?.value)?.label ?? "";
   const savedOverrideReason =
     inspectorSaidNotMatched && outcome === DeedNatureMatchOutcomes.Matched
       ? (draft.deedNatureMatchNotes ?? "").trim()
@@ -154,16 +159,15 @@ export function CaseStudyDeedNatureMatchSection({
                     checked={on}
                     disabled={disabled}
                     onChange={() => {
-                      if (
-                        inspectorSaidNotMatched &&
-                        opt.value === DeedNatureMatchOutcomes.Matched &&
-                        outcome !== DeedNatureMatchOutcomes.Matched
-                      ) {
-                        setOverrideReason("");
+                      const needsText =
+                        deedNatureMatchRequiresNotes(opt.value) ||
+                        (inspectorSaidNotMatched && opt.value === DeedNatureMatchOutcomes.Matched);
+                      if (needsText) {
+                        setPending({ value: opt.value, notes: "" });
                         return;
                       }
-                      setOverrideReason(null);
-                      onPatch({ deedNatureMatchOutcome: opt.value });
+                      setPending(null);
+                      onPatch({ deedNatureMatchOutcome: opt.value, deedNatureMatchNotes: "" });
                     }}
                   />
                   {opt.label}
@@ -186,38 +190,43 @@ export function CaseStudyDeedNatureMatchSection({
           ) : null}
         </FormGroup>
 
-        {overrideOpen ? (
+        {pending ? (
           <FormGroup>
-            <Label htmlFor="deed-match-override-reason" className="text-[11px] text-text-2">
-              سبب اعتماد «مطابق» خلافاً لرأي المعاين <span className="text-danger-text">*</span>
+            <Label htmlFor="deed-match-pending-notes" className="text-[11px] text-text-2">
+              {pendingIsOverride ? "سبب اعتماد «مطابق» خلافاً لرأي المعاين" : "ملاحظات الفروق / التعذّر"}{" "}
+              <span className="text-danger-text">*</span>
             </Label>
             <Textarea
-              id="deed-match-override-reason"
+              id="deed-match-pending-notes"
               disabled={disabled}
               rows={3}
-              value={overrideReason ?? ""}
-              onChange={(e) => setOverrideReason(e.target.value)}
-              className={cn(overrideReasonShort && (overrideReason ?? "").length > 0 && invalidControlClass)}
-              placeholder="لماذا تعتبر الصك مطابقاً للطبيعة رغم رأي المعاين؟"
+              value={pending.notes}
+              onChange={(e) => setPending({ ...pending, notes: e.target.value })}
+              className={cn(pendingShort && pending.notes.length > 0 && invalidControlClass)}
+              placeholder={
+                pendingIsOverride
+                  ? "لماذا تعتبر الصك مطابقاً للطبيعة رغم رأي المعاين؟"
+                  : "صف الفرق أو سبب ترشيح التعذّر…"
+              }
             />
-            {overrideReasonShort ? (
+            {pendingIsOverride && pendingShort ? (
               <p className="mb-0 mt-1 text-[11px] text-text-3">{DEED_MATCH_OVERRIDE_REASON_MESSAGE}</p>
             ) : null}
             <div className="mt-2 flex gap-2">
               <Button
                 type="button"
-                disabled={disabled || overrideReasonShort}
+                disabled={disabled || pendingShort}
                 onClick={() => {
                   onPatch({
-                    deedNatureMatchOutcome: DeedNatureMatchOutcomes.Matched,
-                    deedNatureMatchNotes: (overrideReason ?? "").trim(),
+                    deedNatureMatchOutcome: pending.value,
+                    deedNatureMatchNotes: pending.notes.trim(),
                   });
-                  setOverrideReason(null);
+                  setPending(null);
                 }}
               >
-                حفظ «مطابق» مع السبب
+                {`حفظ «${pendingLabel}» مع ${pendingIsOverride ? "السبب" : "الملاحظات"}`}
               </Button>
-              <Button type="button" variant="ghost" disabled={disabled} onClick={() => setOverrideReason(null)}>
+              <Button type="button" variant="ghost" disabled={disabled} onClick={() => setPending(null)}>
                 إلغاء
               </Button>
             </div>
@@ -228,7 +237,7 @@ export function CaseStudyDeedNatureMatchSection({
           </p>
         ) : null}
 
-        {needsNotes ? (
+        {needsNotes && !pending ? (
           <FormGroup>
             <Label
               htmlFor="deed-nature-match-notes"

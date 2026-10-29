@@ -57,8 +57,12 @@ public sealed class IdentityDirectory : IIdentityDirectory
         var assigneeId = distributionAssigneeId.Trim();
         if (assigneeId.Length == 0) return null;
 
+        // Several profiles may carry one assignee id (old imports left copies with no login): the one with an
+        // account wins, then the newest — a notification sent to a login-less copy was never seen (2026-10-29).
         return await _db.UserProfiles.AsNoTracking()
             .Where(p => p.DistributionAssigneeId == assigneeId)
+            .OrderByDescending(p => _db.Users.Any(u => u.Id == p.UserId))
+            .ThenByDescending(p => p.CreatedAtUtc)
             .Select(p => p.UserId)
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -92,12 +96,25 @@ public sealed class IdentityDirectory : IIdentityDirectory
         var rows = await _db.UserProfiles.AsNoTracking()
             .Where(profile => profile.DistributionAssigneeId != null
                               && assigneeIds.Contains(profile.DistributionAssigneeId))
-            .Select(profile => new { profile.DistributionAssigneeId, profile.UserId })
+            .Select(profile => new
+            {
+                profile.DistributionAssigneeId,
+                profile.UserId,
+                profile.CreatedAtUtc,
+                HasAccount = _db.Users.Any(u => u.Id == profile.UserId),
+            })
             .ToListAsync(cancellationToken);
 
+        // Same choice as the single lookup: the profile with an account, then the newest.
         return rows
             .GroupBy(row => row.DistributionAssigneeId!, StringComparer.Ordinal)
-            .ToDictionary(group => group.Key, group => group.First().UserId, StringComparer.Ordinal);
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderByDescending(row => row.HasAccount)
+                    .ThenByDescending(row => row.CreatedAtUtc)
+                    .First().UserId,
+                StringComparer.Ordinal);
     }
 
     public async Task<IReadOnlyList<string>> ResolveUserIdsWithPrototypeRoleAsync(

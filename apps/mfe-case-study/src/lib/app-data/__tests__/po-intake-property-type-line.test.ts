@@ -37,6 +37,7 @@ describe("formatPropertyTypeLine", () => {
         inspectedPropertyType: "فيلا",
         effectivePropertyType: "فيلا",
       }),
-    ).toBe("فيلا / سكني");
+      // The inspector's type brings its own classification (2026-10-29).
+    ).toBe("فيلا / مبنى مفرد");
   });
 });

@@ -1,5 +1,6 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.Domain;
@@ -109,6 +110,23 @@ public sealed partial class PartyTaskSubmissionService
             cancellationToken);
     }
 
+    /// <summary>
+    /// The study's distribution no longer names the engineering office — the parties rail, the study queue's
+    /// office column and the deed-match context read the distribution, and kept showing the withdrawn office
+    /// «قيد التنفيذ» (A→Z test 2026-10-29).
+    /// </summary>
+    private async Task ClearOfficeFromDistributionAsync(WorkflowTask inspectionTask, CancellationToken cancellationToken)
+    {
+        if (inspectionTask.ParentTaskId is not Guid parentId) return;
+        var parent = await _repo.GetTaskAsync(parentId, cancellationToken);
+        var distribution = WorkflowTaskMapper.DeserializeDistribution(parent?.DistributionJson);
+        if (distribution is null || (!distribution.EngineeringOffice && string.IsNullOrEmpty(distribution.EngineeringOfficeId)))
+            return;
+        distribution.EngineeringOffice = false;
+        distribution.EngineeringOfficeId = "";
+        await _tasks.PatchAsync(parentId, new PatchWorkflowTaskRequest { Distribution = distribution }, cancellationToken);
+    }
+
     /// <summary>The new type needs no survey: the open survey task is cancelled at once, the office not told.</summary>
     private async Task WithdrawSurveyAsync(
         WorkflowTask inspectionTask,
@@ -123,6 +141,7 @@ public sealed partial class PartyTaskSubmissionService
             survey.Id,
             new PatchWorkflowTaskRequest { Status = WorkflowTaskStatusValues.Cancelled },
             cancellationToken);
+        await ClearOfficeFromDistributionAsync(inspectionTask, cancellationToken);
         await _timeline.RecordAsync(
             inspectionTask.PoNumber,
             propertyId,

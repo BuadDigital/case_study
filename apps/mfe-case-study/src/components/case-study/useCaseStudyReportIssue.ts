@@ -54,7 +54,12 @@ export function useCaseStudyReportIssue(
   const inFlight = useRef(false);
 
   const issueReport = useCallback(async () => {
-    if (inFlight.current || saving) return;
+    if (inFlight.current) return;
+    // An answer was still being saved: the click used to do nothing at all (A→Z test 2026-10-29).
+    if (saving) {
+      showToast("يُحفظ آخر تعديل — اضغط «إصدار تقرير دراسة الحالة» مرة أخرى بعد لحظة", "info");
+      return;
+    }
     const gate = firstCaseStudyReportScrollTarget({
       draft,
       sectionQuestions,

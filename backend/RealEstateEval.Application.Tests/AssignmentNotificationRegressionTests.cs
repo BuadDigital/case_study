@@ -22,6 +22,41 @@ namespace RealEstateEval.Application.Tests;
 
 public sealed class AssignmentNotificationRegressionTests
 {
+    /// <summary>
+    /// Old imports left profiles with the same assignee id and no login (dev, 2026-10-29): «يلزم رفع مساحي»
+    /// went to a copy nobody signs in with. The profile with an account wins, then the newest.
+    /// </summary>
+    [Fact]
+    public async Task An_assignee_id_resolves_to_the_profile_with_a_login_not_an_old_copy()
+    {
+        var bundle = CreateDb();
+        var identity = TestInspectorFeeServiceFactory.ShareIdentity(bundle.CaseStudy);
+        identity.UserProfiles.Add(new UserProfile
+        {
+            UserId = "old-copy",
+            DistributionAssigneeId = "cs-osama",
+            JobTitle = "specialist",
+            RoleId = "case-specialist",
+            Status = UserStatus.Active,
+            CreatedAtUtc = DateTime.UtcNow.AddMonths(-3),
+        });
+        SeedAssigneeProfile(identity, "osama", "cs-osama");
+        identity.UserProfiles.Add(new UserProfile
+        {
+            UserId = "newer-copy-no-login",
+            DistributionAssigneeId = "cs-osama",
+            JobTitle = "specialist",
+            RoleId = "case-specialist",
+            Status = UserStatus.Active,
+            CreatedAtUtc = DateTime.UtcNow.AddDays(1),
+        });
+        await identity.SaveChangesAsync();
+        var directory = new IdentityDirectory(identity);
+
+        Assert.Equal("osama", await directory.ResolveUserIdForDistributionAssigneeAsync("cs-osama"));
+        Assert.Equal("osama", (await directory.ResolveUserIdsForDistributionAssigneesAsync(["cs-osama"]))["cs-osama"]);
+    }
+
     [Fact]
     public async Task OperationsTask_CreateAsync_queues_assignee_notification()
     {

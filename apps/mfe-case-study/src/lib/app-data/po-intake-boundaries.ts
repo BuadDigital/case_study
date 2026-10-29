@@ -1,5 +1,10 @@
 /** PO intake — property boundary fields, geo/map helpers, description line. */
 
+import {
+  effectiveClassificationOf,
+  effectivePropertyTypeOf,
+} from "@platform/app-shared/app-data/po-intake-property-model";
+
 export {
   PROPERTY_BOUNDARY_ROWS,
   PROPERTY_BOUNDARY_TYPE_OPTIONS,
@@ -47,6 +52,8 @@ export function buildPropertyDescriptionLine(
   property: {
     propertyType: string;
     classification: string;
+    inspectedPropertyType?: string;
+    effectivePropertyType?: string;
     area: string;
     district: string;
     bourseDataCompleted: boolean;
@@ -58,9 +65,10 @@ export function buildPropertyDescriptionLine(
   if (!property.bourseDataCompleted) {
     return "يُحدَّث وصف العقار بعد اكتمال استعلام البورصة وتقرير المعاين.";
   }
+  // The inspector's corrected type and its classification once he changed it (2026-10-29).
   const parts = [
-    property.propertyType.trim(),
-    property.classification.trim(),
+    effectivePropertyTypeOf(property),
+    effectiveClassificationOf(property),
   ].filter(Boolean);
   const head = parts.join(" ");
   const area = property.area.trim()

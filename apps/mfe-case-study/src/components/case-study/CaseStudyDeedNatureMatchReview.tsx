@@ -6,6 +6,7 @@ import { propertyDeedKindIsRegisteredTitle } from "@platform/app-shared/app-data
 import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
 import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
+import { notifyCaseStudyDeedMatchChanged } from "@platform/app-shared/app-data/case-study-report-model";
 import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
 import { saveCaseStudyReportDraft } from "../../lib/app-data/case-study-report-commands";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
@@ -135,6 +136,12 @@ export function CaseStudyDeedNatureMatchReview({
           return;
         }
         if (result.draft) setDraft(result.draft);
+        const saved = result.draft ?? next;
+        notifyCaseStudyDeedMatchChanged({
+          taskId: saved.taskId,
+          deedNatureMatchOutcome: saved.deedNatureMatchOutcome ?? "",
+          deedNatureMatchNotes: saved.deedNatureMatchNotes ?? "",
+        });
       } catch (err) {
         setDraft(rollbackDraft);
         showToast(
