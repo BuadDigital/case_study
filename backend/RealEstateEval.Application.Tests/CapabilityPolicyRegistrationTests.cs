@@ -33,6 +33,7 @@ public class CapabilityPolicyRegistrationTests
                      CapabilityPolicyNames.ReadSuspendedTransactions,
                      CapabilityPolicyNames.ReadValuationQueue,
                      CapabilityPolicyNames.ReadValuationReport,
+                     CapabilityPolicyNames.ReadPriorDeeds,
                      CapabilityPolicyNames.WriteComparableBank,
                      CapabilityPolicyNames.ReadComparableBank,
                      CapabilityPolicyNames.ListDistributionAssignees,
@@ -67,6 +68,25 @@ public class CapabilityPolicyRegistrationTests
             PrincipalWith(PlatformCapabilities.ManageFinancial),
             resource: null,
             CapabilityPolicyNames.ReadCaseStudyWorkspace)).Succeeded);
+    }
+
+    [Fact]
+    public async Task The_appraiser_reads_prior_and_linked_deeds_but_a_field_party_does_not()
+    {
+        var authorization = BuildAuthorizationService();
+
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.SubmitValuationReport),
+            resource: null,
+            CapabilityPolicyNames.ReadPriorDeeds)).Succeeded);
+        Assert.True((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.ManageWorkOrders),
+            resource: null,
+            CapabilityPolicyNames.ReadPriorDeeds)).Succeeded);
+        Assert.False((await authorization.AuthorizeAsync(
+            PrincipalWith(PlatformCapabilities.SubmitPartyWork),
+            resource: null,
+            CapabilityPolicyNames.ReadPriorDeeds)).Succeeded);
     }
 
     [Fact]

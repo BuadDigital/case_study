@@ -12,6 +12,7 @@
 "use client";
 
 import type { ValuationCostLineDto } from "@platform/api-client";
+import { useState } from "react";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { cn } from "@platform/ui-kit";
@@ -165,7 +166,41 @@ export function CostLineNameField({ line, idBase, nameOptions, applyItem, patch,
   );
 }
 
-export function CostLineQtyInput({ line, comp, idBase, patch, lineError, touch }: CostLineEditor) {
+/**
+ * A decimal field over a numeric value: the typed text is kept while the field is edited.
+ * How it works: each keystroke is cleaned (`costNumericInput`) and kept as text, and its number is sent
+ * on; the text gives way to the saved number when the field is left.
+ * Edge cases: the field used to show `String(value)` straight back, so «220.» became «220» on the next
+ * render and no fraction could be typed (the appraiser's areas and unit costs, 2026-10-29).
+ */
+function useDecimalDraft(value: number, onNumber: (n: number) => void) {
+  const [text, setText] = useState<string | null>(null);
+  return {
+    value: text ?? String(value),
+    onChange: (raw: string) => {
+      const clean = costNumericInput(raw);
+      setText(clean);
+      onNumber(parseLocaleNumber(clean) || 0);
+    },
+    onBlur: () => setText(null),
+  };
+}
+
+export function CostLineQtyInput(props: CostLineEditor) {
+  const { line, patch } = props;
+  const area = useDecimalDraft(line.areaSqm, (n) => patch({ areaSqm: n }));
+  return <CostLineQtyField {...props} area={area} />;
+}
+
+function CostLineQtyField({
+  line,
+  comp,
+  idBase,
+  patch,
+  lineError,
+  touch,
+  area,
+}: CostLineEditor & { area: ReturnType<typeof useDecimalDraft> }) {
   if (comp.isLump) {
     return <span className="text-[13px] font-bold text-text-3">مبلغ مقطوع</span>;
   }
@@ -180,8 +215,9 @@ export function CostLineQtyInput({ line, comp, idBase, patch, lineError, touch }
       value={
         comp.isRepeated
           ? line.repeatedFloorCount == null ? "" : String(line.repeatedFloorCount)
-          : String(line.areaSqm)
+          : area.value
       }
+      onBlur={comp.isRepeated ? undefined : area.onBlur}
       onChange={(e) => {
         const raw = e.target.value;
         if (comp.isRepeated) {
@@ -191,7 +227,7 @@ export function CostLineQtyInput({ line, comp, idBase, patch, lineError, touch }
           });
           return;
         }
-        patch({ areaSqm: parseLocaleNumber(raw) || 0 });
+        area.onChange(raw);
       }}
       className={cn(
         "rounded-[7px] border border-border-md px-1 py-2 text-center font-bold",
@@ -272,17 +308,17 @@ export function CostLineUnitSelect({ line, idBase, patch, lineError, touch }: Co
 }
 
 export function CostLineUnitCostInput({ line, comp, idBase, patch, lineError, touch }: CostLineEditor) {
+  const cost = useDecimalDraft(line.unitCostSar, (n) => patch({ unitCostSar: n }));
   return (
     <>
       <input
         id={`${idBase}-unitCostSar`}
         dir="ltr"
         inputMode="decimal"
-        value={comp.inherited ? "" : String(line.unitCostSar)}
+        value={comp.inherited ? "" : cost.value}
         placeholder={comp.inherited ? String(comp.uc) : undefined}
-        onChange={(e) =>
-          patch({ unitCostSar: parseLocaleNumber(e.target.value) || 0 })
-        }
+        onChange={(e) => cost.onChange(e.target.value)}
+        onBlur={cost.onBlur}
         className={cn(
           "rounded-[7px] border p-2 text-center font-bold",
           touch ? touchControl : "w-[110px] text-[13px]",

@@ -274,7 +274,10 @@ export function PoPropertyDetailTabs({
               <PropertyDetailLinkedTab
                 record={record}
                 property={property}
-                caseStudyTask={task ?? null}
+                // The appraiser and the field parties do not see the study task — its id is their task's parent.
+                caseStudyTaskId={
+                  task?.id ?? appraisalTask?.parentTaskId ?? inspectionTask?.parentTaskId ?? surveyTask?.parentTaskId ?? null
+                }
               />
             </Activity>
           ) : null}

@@ -47,6 +47,13 @@ public static class CapabilityPolicyNames
     public const string ReadValuationReport = "Capability:read-valuation-report";
 
  /// <summary>
+ /// Earlier registrations of the same deed and the linked deeds of the «العقارات المرتبطة» tab
+ /// (read only) — case staff, plus the appraiser and the valuation coordinator, who value a
+ /// property linked to, or registered before as, another deed (2026-10-29).
+ /// </summary>
+    public const string ReadPriorDeeds = "Capability:read-prior-deeds";
+
+ /// <summary>
  /// Comparable bank writes — office appraisers and valuation coordinators.
  /// </summary>
     public const string WriteComparableBank = "Capability:write-comparable-bank";
