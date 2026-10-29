@@ -21,7 +21,6 @@ import {
   listPriorDeedsFull,
 } from "../../lib/app-data/po-intake-reads";
 import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
-import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useOperationsTasksQuery } from "../../query/operations-tasks-queries";
 import {
@@ -103,11 +102,12 @@ function priorHref(item: LinkedPrior): string {
 export function PropertyDetailLinkedTab({
   record,
   property,
-  caseStudyTask,
+  caseStudyTaskId,
 }: {
   record: PoIntakeRecord;
   property: PoPropertyIntake;
-  caseStudyTask: WorkflowTask | null;
+  /** The study task whose declared linked deeds are listed — a party passes its own task's parent. */
+  caseStudyTaskId: string | null;
 }) {
   const { role } = useAppAccess();
   const canCreateOps = canManageOperationsTasks(role);
@@ -192,7 +192,7 @@ export function PropertyDetailLinkedTab({
   // The tab sits in an <Activity>: showing it again (or a refetched task list) re-runs
   // the lookup for links already on screen — refresh them without the «جاري البحث» line.
   const loadedKeyRef = useRef<string | null>(null);
-  const loadKey = `${property.id}|${deedNumber}|${poNumber}|${caseStudyTask?.id ?? ""}`;
+  const loadKey = `${property.id}|${deedNumber}|${poNumber}|${caseStudyTaskId ?? ""}`;
 
   useEffect(() => {
     let cancelled = false;
@@ -203,22 +203,24 @@ export function PropertyDetailLinkedTab({
         setLoading(true);
         setLookupError(null);
       }
+      // A failed prior-registration lookup is shown as a note; it no longer hides the declared
+      // linked deeds read from the study (the appraiser saw only the refusal, 2026-10-29).
+      let priorError: string | null = null;
       try {
         const [history, draft] = await Promise.all([
           deedNumber
-            ? listPriorDeedsFull(deedNumber, poNumber, property.id).catch(
-                (err: unknown) => {
+            ? listPriorDeedsFull(deedNumber, poNumber, property.id)
+                .catch(() =>
                   // Fallback to single latest when history endpoint is unavailable.
-                  return findPriorDeedFull(
-                    deedNumber,
-                    poNumber,
-                    property.id,
-                  ).then((one) => (one ? [one] : []));
-                },
-              )
+                  findPriorDeedFull(deedNumber, poNumber, property.id).then((one) => (one ? [one] : [])),
+                )
+                .catch((err: unknown) => {
+                  priorError = err instanceof Error ? err.message : "تعذّر تحميل التسجيلات السابقة";
+                  return [] as PriorDeedRegistrationDto[];
+                })
             : Promise.resolve([] as PriorDeedRegistrationDto[]),
-          caseStudyTask
-            ? loadCaseStudyReportDraft(caseStudyTask.id)
+          caseStudyTaskId
+            ? loadCaseStudyReportDraft(caseStudyTaskId)
             : Promise.resolve(null),
         ]);
 
@@ -230,7 +232,7 @@ export function PropertyDetailLinkedTab({
           propertyId: priorPropertyId(hit),
         }));
         setPriors(priorRows);
-        setLookupError(null);
+        setLookupError(priorError);
 
         const linkedYes = draft?.infathLinkedAssets === "yes";
         const declaredDeeds = linkedYes
@@ -300,7 +302,7 @@ export function PropertyDetailLinkedTab({
     return () => {
       cancelled = true;
     };
-  }, [loadKey, deedNumber, poNumber, caseStudyTask, property.id, record.properties]);
+  }, [loadKey, deedNumber, poNumber, caseStudyTaskId, property.id, record.properties]);
 
   const linkCount =
     transactionDeeds.length +

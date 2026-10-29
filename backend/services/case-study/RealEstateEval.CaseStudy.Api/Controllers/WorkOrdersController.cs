@@ -124,7 +124,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpGet("deeds/prior")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadPriorDeeds)]
     public async Task<ActionResult<PriorDeedRegistrationDto>> FindPriorDeed(
         [FromQuery] string deedNumber,
         [FromQuery] string? excludePo,
@@ -143,7 +143,7 @@ public class WorkOrdersController : ControllerBase
  /// All prior registrations for a deed (newest first), not only the latest.
  /// </summary>
     [HttpGet("deeds/prior/history")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    [Authorize(Policy = CapabilityPolicyNames.ReadPriorDeeds)]
     public async Task<ActionResult<IReadOnlyList<PriorDeedRegistrationDto>>> ListPriorDeedHistory(
         [FromQuery] string deedNumber,
         [FromQuery] string? excludePo,

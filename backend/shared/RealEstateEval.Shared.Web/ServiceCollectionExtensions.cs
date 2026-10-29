@@ -98,6 +98,14 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.SubmitValuationReport,
                     PlatformCapabilities.ManageWorkOrders)));
 
+            options.AddPolicy(
+                CapabilityPolicyNames.ReadPriorDeeds,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageWorkOrders,
+                    PlatformCapabilities.SubmitValuationReport,
+                    PlatformCapabilities.ManageValuationRequests)));
+
  // 11H-2 feed — field inspector captures listings and deals during inspection, so the
  // party-work capability also writes to the shared bank.
             options.AddPolicy(
