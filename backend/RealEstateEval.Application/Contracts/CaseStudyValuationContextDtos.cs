@@ -150,8 +150,8 @@ public sealed class CaseStudyValuationPropertyContextDto
                 ? kind
                 : Domain.DeedKind.Traditional;
 
-    public Domain.PropertyIdentifierType IdentifierTypeValue() =>
-        PropertyIdentifierTypeLabels.TryParseApiValue(IdentifierType, out var type)
+    public Domain.PropertyIdentifierType IdentifierTypeValue() => 
+    PropertyIdentifierTypeLabels.TryParseApiValue(IdentifierType, out var type)
             ? type
             : Domain.PropertyIdentifierType.Deed;
 
@@ -178,7 +178,10 @@ public sealed class CaseStudyValuationPropertyContextDto
         Region = Region,
         District = District,
         Area = Area,
-        Classification = Classification,
+        // The inspector's corrected type carries its own classification (2026-10-29).
+        Classification = string.IsNullOrWhiteSpace(InspectedPropertyType)
+            ? Classification
+            : PropertyTypeCatalog.ClassificationOf(InspectedPropertyType) ?? Classification,
         PropertyType = EffectivePropertyType(),
         PlanNumber = PlanNumber,
         PlanName = PlanName,

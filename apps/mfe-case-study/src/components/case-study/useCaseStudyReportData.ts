@@ -41,6 +41,10 @@ import {
   type CaseStudyReportDraft,
 } from "../../lib/app-data/case-study-report-model";
 import {
+  CASE_STUDY_DEED_MATCH_CHANGED_EVENT,
+  type CaseStudyDeedMatchChangedDetail,
+} from "@platform/app-shared/app-data/case-study-report-model";
+import {
   loadCaseStudyReportDraft,
   loadCaseStudyReportDraftOrThrow,
   loadPartyCaseStudyReportDraft,
@@ -276,6 +280,28 @@ export function useCaseStudyReportData({
       0,
     );
   }, [isParty, partyAnswersByKey]);
+
+  // «مطابقة الصك على الطبيعة» saved from «مدخلات المعاين»: take its outcome and notes into this copy so
+  // the issue button reads the new choice without a reload.
+  useWindowEvents(
+    isParty
+      ? {}
+      : {
+          [CASE_STUDY_DEED_MATCH_CHANGED_EVENT]: (event: Event) => {
+            const detail = (event as CustomEvent<CaseStudyDeedMatchChangedDetail>).detail;
+            if (!detail) return;
+            setDraft((current) =>
+              current.taskId && detail.taskId && current.taskId !== detail.taskId
+                ? current
+                : {
+                    ...current,
+                    deedNatureMatchOutcome: detail.deedNatureMatchOutcome,
+                    deedNatureMatchNotes: detail.deedNatureMatchNotes,
+                  },
+            );
+          },
+        },
+  );
 
   // Form parties do not subscribe to other parties' changes — listeners are specialist-only.
   const refreshPartyRevision = () => setPartyRevision((n) => n + 1);

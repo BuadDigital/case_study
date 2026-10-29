@@ -6,6 +6,10 @@ import {
 } from "@platform/app-shared/workflow/task-failure-status";
 import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-data";
 import {
+  effectiveClassificationOf,
+  effectivePropertyTypeOf,
+} from "@platform/app-shared/app-data/po-intake-property-model";
+import {
   BOURSE_INQUIRY_IDENTIFIER_STATUS,
   dueDateToDeadline,
   formatPropertyDeedDisplay,
@@ -168,8 +172,8 @@ export function buildDistributionTableRow(
     deedLabel: formatPrimaryDataPropertyLabel(task, property, record),
     city: fieldOrDash(property?.city),
     district: fieldOrDash(property?.district),
-    propertyType: fieldOrDash(property?.propertyType),
-    classification: fieldOrDash(property?.classification),
+    propertyType: fieldOrDash(property ? effectivePropertyTypeOf(property) : undefined),
+    classification: fieldOrDash(property ? effectiveClassificationOf(property) : undefined),
     area: fieldOrDash(property?.area),
   };
 }
@@ -188,7 +192,7 @@ export function buildPrimaryDataTableRow(
     propertySlot: formatPrimaryDataPropertyLabel(task, property, record),
     city: fieldOrDash(property?.city),
     district: fieldOrDash(property?.district),
-    propertyType: fieldOrDash(property?.propertyType),
+    propertyType: fieldOrDash(property ? effectivePropertyTypeOf(property) : undefined),
     remainingTime: resolveRemainingTime(record?.dueDateAt ?? "", now),
   };
 }
@@ -217,14 +221,16 @@ function buildTaskTableRow(
         ? `${property.city} · ${property.district}`
         : property.city || "—";
 
-  const typeLabel = property?.propertyType || property?.classification || "—";
+  // The inspector's corrected type and its classification once he changed it (2026-10-29).
+  const classification = property ? effectiveClassificationOf(property) : "";
+  const typeLabel = (property && effectivePropertyTypeOf(property)) || classification || "—";
   const typeDisplay =
     !property || boursePending
       ? task.kind === "case-study-property"
         ? taskPhaseLabel(task.phase)
         : "—"
-      : property.classification
-        ? `${property.classification} · ${typeLabel}`
+      : classification
+        ? `${classification} · ${typeLabel}`
         : typeLabel;
 
   const deedStatus = property?.deedStatus?.trim() || "—";

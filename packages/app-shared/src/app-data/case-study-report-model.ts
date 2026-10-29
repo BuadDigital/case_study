@@ -231,6 +231,23 @@ export function emptyCaseStudyReportDraft(
   };
 }
 
+/**
+ * The deed ↔ nature match was saved from «مدخلات المعاين» — the report editor holds its own copy of the
+ * report and kept the issue button on the old outcome until a reload (A→Z test 2026-10-29).
+ */
+export const CASE_STUDY_DEED_MATCH_CHANGED_EVENT = "case-study-deed-match-changed";
+
+export type CaseStudyDeedMatchChangedDetail = {
+  taskId: string;
+  deedNatureMatchOutcome: string;
+  deedNatureMatchNotes: string;
+};
+
+export function notifyCaseStudyDeedMatchChanged(detail: CaseStudyDeedMatchChangedDetail): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent(CASE_STUDY_DEED_MATCH_CHANGED_EVENT, { detail }));
+}
+
 export const PARTY_CASE_STUDY_REPORT_CHANGED_EVENT =
   "party-case-study-report-changed";
 

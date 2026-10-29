@@ -10,6 +10,7 @@ import {
 } from "@platform/app-shared/app-data/po-intake-identifiers";
 import { deedMatchOverrideReasonMissing } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { propertyDocumentAppliesToType } from "@platform/app-shared/domain/property-documents/property-document-types";
+import { formatPropertyTypeLine } from "@platform/app-shared/app-data/po-intake-property-model";
 import { bourseFeaturePrefill } from "../inspector-bourse-prefill";
 
 /** 2026-10-29: the inspector corrects the bourse type on site from the system's full type list. */
@@ -65,5 +66,15 @@ describe("documents apply by category", () => {
     expect(propertyDocumentAppliesToType(["فيلا", "شقة", "عمارة", "محل تجاري", "مستودع"], "مجمع فلل")).toBe(true);
     expect(propertyDocumentAppliesToType(["فيلا", "شقة", "عمارة", "محل تجاري", "مستودع"], "أرض تجارية")).toBe(false);
     expect(propertyDocumentAppliesToType(["فيلا"], "مجمع فلل")).toBe(false);
+  });
+});
+
+describe("the property header pairs the type with its own classification", () => {
+  it("shows the inspector's type with the inspector's classification, never mixed", () => {
+    const base = { propertyType: "شقة سكنية", classification: "وحدة داخل مبنى" };
+    expect(formatPropertyTypeLine(base)).toBe("شقة سكنية / وحدة داخل مبنى");
+    expect(formatPropertyTypeLine({ ...base, inspectedPropertyType: "فيلا", effectivePropertyType: "فيلا" })).toBe(
+      "فيلا / مبنى مفرد",
+    );
   });
 });

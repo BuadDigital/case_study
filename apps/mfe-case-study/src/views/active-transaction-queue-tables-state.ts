@@ -123,15 +123,27 @@ export function joinCityDistrict(city: string, district: string): string {
   return [city, district].filter((v) => v && v !== "—").join(" — ");
 }
 
-/** Property type, falling back to the classification; empty when neither is set. */
+/**
+ * Property type — the inspector's corrected one once submitted — falling back to the classification;
+ * empty when neither is set.
+ */
 export function propertyTypeLabel(
   property:
-    | { propertyType?: string | null; classification?: string | null }
+    | {
+        propertyType?: string | null;
+        classification?: string | null;
+        inspectedPropertyType?: string | null;
+        effectivePropertyType?: string | null;
+      }
     | null
     | undefined,
 ): string {
   return (
-    property?.propertyType?.trim() || property?.classification?.trim() || ""
+    property?.effectivePropertyType?.trim() ||
+    property?.inspectedPropertyType?.trim() ||
+    property?.propertyType?.trim() ||
+    property?.classification?.trim() ||
+    ""
   );
 }
 

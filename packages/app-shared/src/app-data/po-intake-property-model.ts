@@ -6,6 +6,7 @@ import {
 } from "@platform/api-client";
 import type { AssignmentType } from "./po-intake-assignment";
 import type { PropertyIdentifierType } from "./po-intake-identifiers";
+import { classificationForPropertyType } from "./inspector-workspace-data";
 import {
   clearPropertyBoundaryFields,
   type PropertyBoundaryDescKey,
@@ -158,13 +159,27 @@ export function effectivePropertyTypeOf(
   );
 }
 
+/**
+ * The classification that goes with the type the property is now: the inspector's type's own
+ * classification once he corrected it on site, else the bourse classification.
+ */
+export function effectiveClassificationOf(
+  property: Pick<PoPropertyIntake, "classification" | "propertyType" | "inspectedPropertyType" | "effectivePropertyType">,
+): string {
+  return (
+    (property.inspectedPropertyType?.trim() && classificationForPropertyType(effectivePropertyTypeOf(property))) ||
+    property.classification.trim()
+  );
+}
+
 export function formatPropertyTypeLine(property: Pick<
   PoPropertyIntake,
   "classification" | "propertyType" | "inspectedPropertyType" | "effectivePropertyType"
 >): string {
-  // After field inspection, the inspector-confirmed type wins operationally.
+  // After field inspection, the inspector-confirmed type wins operationally — and its classification
+  // with it: «فيلا / وحدة داخل مبنى» mixed the inspector's type with the bourse's classification.
   const type = effectivePropertyTypeOf(property);
-  const usage = property.classification.trim();
+  const usage = effectiveClassificationOf(property);
   if (type && usage && type !== usage) return `${type} / ${usage}`;
   return type || usage || "";
 }
