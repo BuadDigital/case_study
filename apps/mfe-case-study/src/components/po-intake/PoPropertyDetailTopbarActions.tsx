@@ -21,9 +21,11 @@ import {
 } from "@failures/mfe/lib/failure-party-roles";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
 import {
+  canDecideTransactionCancel,
   canEditProperty,
   canRaisePropertyFailure,
   canRecordFinalFailure,
+  canRequestTransactionCancel,
 } from "../../lib/app-data/po-roles";
 import { FinalFailureDialog } from "@failures/mfe/components/failures/FinalFailureDialog";
 import {
@@ -46,7 +48,9 @@ import { canManageOperationsTasks } from "../../lib/app-data/operations-task-rol
 import { formatPropertyDeedDisplay } from "../../lib/app-data/po-intake-data";
 import { transactionNumberOf } from "../../lib/app-data/transaction-number";
 import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { useTransactionCancellationQuery } from "../../query/use-transaction-cancellation-query";
 import { FailureRaiseModal } from "../failures/FailureRaiseModal";
+import { TransactionCancelDialog } from "./TransactionCancelDialog";
 import { isAllowedPropertyTab } from "./po-property-detail-tabs-state";
 import { buildPropertyDetailHeroMenuItems, CASE_STUDY_OPEN_PROGRESS_MESSAGE } from "./property-detail-hero-menu";
 
@@ -97,6 +101,8 @@ export function PoPropertyDetailTopbarActions({
   const btn = shellBtn;
   const [failureModalOpen, setFailureModalOpen] = useState(false);
   const [finalFailureOpen, setFinalFailureOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const { data: cancellation } = useTransactionCancellationQuery(propertyId);
   const [openingCaseStudy, setOpeningCaseStudy] = useState(false);
   const [navPending, startTransition] = useTransition();
   const caseStudyToastIdRef = useRef<string | null>(null);
@@ -130,10 +136,15 @@ export function PoPropertyDetailTopbarActions({
     );
   }, [partyFailureRaiser, property, poNumber, role, tasks]);
 
+  // A cancelled transaction takes no new failure, final failure or cancellation — only the
+  // supervisor's reactivation (on the page banner) brings it back.
+  const isCancelled = Boolean(property?.cancelledAtUtc);
+
   const canOpenFailureModal = Boolean(
     (showFailure || holdsPartyTask) &&
       property &&
       !property.isRemoved &&
+      !isCancelled &&
       !getPropertyFailure(poNumber.trim(), property.id),
   );
 
@@ -146,8 +157,20 @@ export function PoPropertyDetailTopbarActions({
     canRecordFinalFailure(role) &&
       property &&
       !property.isRemoved &&
+      !isCancelled &&
       openFailure?.status !== "approved",
   );
+
+  // «إلغاء المعاملة»: not on Enfaz, not final-failed, not already requested; the server re-checks.
+  const canOpenCancel = Boolean(
+    canRequestTransactionCancel(role) &&
+      property &&
+      !property.isRemoved &&
+      !isCancelled &&
+      !cancellation?.pending &&
+      openFailure?.status !== "approved",
+  );
+  const cancelDecides = canDecideTransactionCancel(role);
 
   const failureRaisedByRole =
     partyFailureRaiser ??
@@ -296,8 +319,12 @@ export function PoPropertyDetailTopbarActions({
       onFinalFailure: canOpenFinalFailure
         ? () => setFinalFailureOpen(true)
         : undefined,
+      onCancelTransaction: canOpenCancel ? () => setCancelOpen(true) : undefined,
+      cancelDecides,
     });
   }, [
+    canOpenCancel,
+    cancelDecides,
     canOpenFinalFailure,
     isHero,
     hideOpenCaseStudy,
@@ -347,6 +374,19 @@ export function PoPropertyDetailTopbarActions({
       />
     ) : null;
 
+  const cancelDialog =
+    cancelOpen && canOpenCancel ? (
+      <TransactionCancelDialog
+        scope={{ propertyId: property.id }}
+        label={
+          transactionNumberOf(property) ??
+          (formatPropertyDeedDisplay(property) || property.deedNumber.trim())
+        }
+        decides={cancelDecides}
+        onClose={() => setCancelOpen(false)}
+      />
+    ) : null;
+
   if (isHero) {
     if (heroMenuItems.length === 0) return null;
     return (
@@ -359,6 +399,7 @@ export function PoPropertyDetailTopbarActions({
         />
         {failureModal}
         {finalFailureDialog}
+        {cancelDialog}
       </>
     );
   }

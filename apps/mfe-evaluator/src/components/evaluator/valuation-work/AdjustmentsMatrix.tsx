@@ -56,6 +56,7 @@ import {
 import { MatrixAlertsPanel, MatrixOutputsPanel } from "./AdjustmentsMatrixPanels";
 import { AdjustmentsMatrixPhone } from "./AdjustmentsMatrixPhone";
 import { useAdjustmentsMatrixModel } from "./useAdjustmentsMatrixModel";
+import type { MarketSubjectKind } from "./lib/market-subject";
 
 
 type AdjustmentsMatrixProps = {
@@ -64,6 +65,8 @@ type AdjustmentsMatrixProps = {
   locked: boolean;
   saving: boolean;
   subjectArea: string;
+  /** Market table: what the subject is compared as (2026-10-29) — names its area. */
+  subjectKind?: MarketSubjectKind;
   idealArea: string;
   city?: string;
   district?: string;
@@ -87,6 +90,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   locked,
   saving,
   subjectArea,
+  subjectKind,
   idealArea,
   city,
   district,
@@ -101,6 +105,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     selection,
     adopted,
     subjectArea,
+    subjectKind,
     dispatch,
   });
   const {
@@ -117,7 +122,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     alerts,
     addableFactors,
   } = model;
-  const { isUnit, areaMethod, areaFactor } = basisView;
+  const { isUnit, areaMethod, areaFactor, subjectAreaLabel } = basisView;
 
   if (adopted.length === 0) {
     return (
@@ -378,14 +383,15 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                 hint={areaMethod}
                 tip={factorMeta(AUTO_AREA_KEY).tip}
                 locked={locked}
-                areaFactor={areaFactor}
+                // No area adjustment on the whole-property basis — the size is the appraiser's own factor.
+                areaFactor={isUnit ? areaFactor : undefined}
                 onAreaFactorChange={(value) =>
                   dispatch({ type: "area-factor-change", value })
                 }
               />
               <SubjCell
                 value={`${fmt(parseLocaleNumber(subjectArea) || null)} م²`}
-                note="مساحة الأرض"
+                note={subjectAreaLabel}
               />
               {adopted.map((item) => {
                 const adj = item.market?.suggestedAreaAdjustmentPct ?? 0;

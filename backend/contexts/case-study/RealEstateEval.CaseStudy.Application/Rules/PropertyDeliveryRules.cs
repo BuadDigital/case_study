@@ -11,11 +11,13 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 public static class PropertyDeliveryRules
 {
     /// <summary>
-    /// Closed: handed over to Enfaz, or every task on the property was cancelled (nothing left to
-    /// deliver — the same exception Finance applies).
+    /// Closed: handed over to Enfaz, its transaction cancelled («إلغاء المعاملة» — finished tasks stay
+    /// completed), or every task on the property was cancelled (nothing left to deliver — the same
+    /// exception Finance applies).
     /// </summary>
     public static bool IsClosed(WorkOrderProperty property, IReadOnlyList<WorkflowTask> propertyTasks) =>
         property.EnfazHandoverAtUtc is not null
+        || property.IsCancelled
         || (propertyTasks.Count > 0
             && propertyTasks.All(t => t.Status == WorkflowTaskStatus.Cancelled));
 

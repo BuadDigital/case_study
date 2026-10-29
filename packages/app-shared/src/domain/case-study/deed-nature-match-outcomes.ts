@@ -66,6 +66,28 @@ export function deedNatureMatchAllowsDownstreamWork(
   );
 }
 
+/** The specialist's «مطابق» against the inspector's «غير مطابق» needs this many characters of reason. */
+export const DEED_MATCH_OVERRIDE_REASON_MIN = 10;
+
+export const DEED_MATCH_OVERRIDE_REASON_MESSAGE = `سبب اعتماد «مطابق» خلافاً لرأي المعاين مطلوب (${DEED_MATCH_OVERRIDE_REASON_MIN} أحرف على الأقل)`;
+
+/**
+ * «مطابق» chosen while the inspector said «غير مطابق» (2026-10-29 ruling): the reason, kept in the
+ * match notes, must be at least DEED_MATCH_OVERRIDE_REASON_MIN characters. Twin of the server's
+ * CaseStudyReportDeedNatureMatchRules.ValidateForSave(inspectorSaidNotMatched).
+ */
+export function deedMatchOverrideReasonMissing(
+  outcome: string | null | undefined,
+  notes: string | null | undefined,
+  inspectorSaidNotMatched: boolean,
+): boolean {
+  return (
+    inspectorSaidNotMatched &&
+    normalizeDeedNatureMatchOutcome(outcome) === DeedNatureMatchOutcomes.Matched &&
+    (notes ?? "").trim().length < DEED_MATCH_OVERRIDE_REASON_MIN
+  );
+}
+
 export function deedNatureMatchRequiresNotes(
   value: string | null | undefined,
 ): boolean {

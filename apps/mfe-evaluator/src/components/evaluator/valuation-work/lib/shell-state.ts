@@ -1,9 +1,3 @@
-// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
-// Round 1 (5b554f4e)
-//  • Income  New «income» screen id and nav flag; buildNavItems shows «أسلوب الدخل» only when income is
-//            enabled in the settings.
-// ──────────────────────────────────────────────────────────────────────────────────────────────
-
 /**
  * Pure state helpers behind `ValuationWorkShell` — screen identity, the nav
  * model, the auto-generated adjustments narrative and the small parsing
@@ -24,15 +18,12 @@ export type ValuationWorkScreenId =
   | "basic"
   | "market"
   | "cost"
-  | "income"
   | "final"
   | "review";
 
 export type ValuationWorkNavAvailability = {
   market: boolean;
   cost: boolean;
-  /** «أسلوب الدخل»; absent = off (older callers report market/cost only). */
-  income?: boolean;
 };
 
 export type ValuationWorkPropertyHint = {
@@ -122,13 +113,10 @@ export function buildAutoNarrative(
 export function buildNavItems({
   marketEnabled,
   costEnabled,
-  incomeEnabled = false,
   adoptedMarketCount,
 }: {
   marketEnabled: boolean;
   costEnabled: boolean;
-  /** The income screen appears only when income is enabled in the settings. */
-  incomeEnabled?: boolean;
   adoptedMarketCount: number;
 }): ValuationWorkNavItem[] {
   return [
@@ -140,7 +128,6 @@ export function buildNavItems({
       show: marketEnabled,
     },
     { id: "cost", label: "طريقة المقاول", show: costEnabled },
-    { id: "income", label: "أسلوب الدخل", show: incomeEnabled },
     { id: "final", label: "رأي القيمة النهائي", show: true },
     { id: "review", label: "المراجعة النهائية", show: true },
   ];

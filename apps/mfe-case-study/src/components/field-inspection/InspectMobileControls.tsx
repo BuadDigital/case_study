@@ -110,7 +110,7 @@ export function MobileChips({
 }
 
 const FEATURE_SUGGESTIONS: Record<string, readonly string[]> = {
-  assetSubject: ["فيلا", "شقة", "أرض"],
+  assetSubject: ["فيلا", "شقة سكنية", "أرض سكنية"],
   propertyUsage: ["مبنى مفرد", "أرض"],
   facade: ["شمالية", "شرقية"],
 };

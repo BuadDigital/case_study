@@ -466,6 +466,21 @@
       "note": "Decision 2026-10-19: the transaction (المعاملة) above the deeds — draft D- number at intake, official PR reference at the first report approval; 1..n WorkOrderProperties. Write path CaseStudyDbContext."
     },
     {
+      "table": "TransactionCancellations",
+      "schema": "case_study",
+      "dbSet": "TransactionCancellations",
+      "entity": "TransactionCancellation",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Decision 2026-10-29: «إلغاء المعاملة» — the specialist's request, the supervisor's approve / reject and reactivation; cancelled deeds point at the approved row. Write path CaseStudyDbContext."
+    },
+    {
       "table": "WorkOrderProperties",
       "schema": "case_study",
       "dbSet": "WorkOrderProperties",
@@ -1169,21 +1184,6 @@
       "transactionGroup": "valuation.requests",
       "decision": null,
       "note": "Cost approach header for a valuation request."
-    },
-    {
-      "table": "ValuationIncomeApproaches",
-      "schema": "valuation",
-      "dbSet": "ValuationIncomeApproaches",
-      "entity": "ValuationIncomeApproach",
-      "owner": "valuation",
-      "status": "approved",
-      "ownershipModel": "single-owner",
-      "contexts": [
-        "ValuationDbContext"
-      ],
-      "transactionGroup": "valuation.requests",
-      "decision": null,
-      "note": "Income approach (direct capitalisation, D17) inputs for a valuation request."
     },
     {
       "table": "ValuationCostLines",

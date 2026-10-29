@@ -171,7 +171,7 @@ export function AdjustmentsMatrixPhone({
     differenceKeys,
     addableFactors,
   } = model;
-  const { isUnit, areaMethod, areaFactor } = basisView;
+  const { isUnit, areaMethod, areaFactor, subjectAreaLabel } = basisView;
   const first = adopted[0]!;
 
   const factorHead = (factorKey: string) => ({
@@ -275,12 +275,12 @@ export function AdjustmentsMatrixPhone({
             hint={areaMethod}
             tip={factorMeta(AUTO_AREA_KEY).tip}
             locked={locked}
-            areaFactor={areaFactor}
+            areaFactor={isUnit ? areaFactor : undefined}
             onAreaFactorChange={(value) =>
               dispatch({ type: "area-factor-change", value })
             }
           />
-          <SubjectLine label="مساحة أرض العقار محل التقييم">
+          <SubjectLine label={`${subjectAreaLabel} — العقار محل التقييم`}>
             <bdi dir="ltr">{fmt(parseLocaleNumber(subjectArea) || null)}</bdi>{" "}
             م²
           </SubjectLine>

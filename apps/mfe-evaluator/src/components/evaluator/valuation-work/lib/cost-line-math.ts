@@ -1,5 +1,5 @@
 import type { ValuationCostLineDto } from "@platform/api-client";
-import { COST_GROUP1_KEYS } from "@platform/app-shared/domain/cost-items";
+import { costGroupOf } from "@platform/app-shared/domain/cost-items";
 
 export const INDIRECT_COST_ITEMS: { key: string; label: string }[] = [
   { key: "design_supervision", label: "التصميم والإشراف الهندسي" },
@@ -10,22 +10,14 @@ export const INDIRECT_COST_ITEMS: { key: string; label: string }[] = [
   { key: "developer_profit", label: "أرباح المطور والمخاطرة" },
 ];
 
-// The item catalog is shared with the case specialist's «جدول المكونات».
+// The item catalog (and its area / extra grouping, which the printed report follows too) is shared
+// with the case specialist's «جدول المكونات».
 export {
   COST_GROUP1_KEYS,
   COST_ITEM_OPTIONS,
   COST_UNIT_OPTIONS,
+  costGroupOf,
 } from "@platform/app-shared/domain/cost-items";
-
-export function costGroupOf(
-  line: Pick<ValuationCostLineDto, "itemKey" | "structureKind">,
-): "area" | "extra" {
-  // Custom line inherits its group from structureKind (floor = areas) — as in the interactive form.
-  if (line.itemKey === "custom") {
-    return line.structureKind === "floor" ? "area" : "extra";
-  }
-  return COST_GROUP1_KEYS.has(line.itemKey) ? "area" : "extra";
-}
 
 /** Built-up ratio counts only on m² lines of the area group — elsewhere it is not stored. */
 export function buildRatioApplies(

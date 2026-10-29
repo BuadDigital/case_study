@@ -24,15 +24,14 @@ import { Card, CardPad, CardTitle } from "./atoms";
 import type { ValuationWorkScreenId } from "./lib/shell-state";
 import { methodologyAlertGroup } from "./lib/methodology-alerts";
 
-const SCREEN_LABELS: Record<"market" | "cost" | "income" | "final", string> = {
+const SCREEN_LABELS: Record<"market" | "cost" | "final", string> = {
   market: "طريقة المقارنة",
   cost: "طريقة المقاول",
-  income: "أسلوب الدخل",
   final: "رأي القيمة النهائي",
 };
 
 /** The appraiser's screen that resolves the blocker, when it is his. */
-export function blockerScreen(b: HandOverBlocker): "market" | "cost" | "income" | "final" | null {
+export function blockerScreen(b: HandOverBlocker): "market" | "cost" | "final" | null {
   if (b.alertNumber != null) {
     const group = methodologyAlertGroup(b.alertNumber);
     return group === "general" ? "final" : group;

@@ -60,6 +60,20 @@ public static class MarketAdjustmentBasisKeys
         Normalize(value) == WholeProperty
             ? "قيمة العقار المقارن (دون ضرب في المساحة)"
             : "سعر متر المقارن (يُضرب الناتج في المساحة)";
+
+    /// <summary>
+    /// The basis a new market table opens on (2026-10-29 ruling).
+    /// How it works: land, by its type or by the «أرض فقط» scope, is compared per m² of land. Anything
+    /// else (a villa, an عمارة, an apartment) is compared as a whole property — its price includes its
+    /// land, which is not mentioned.
+    /// Edge cases: a land-type deed carrying a building (أرض تجارية + مستودع) opens per m² here; the
+    /// screen knows its floor area and switches it on the first area sync. A saved basis is never replaced.
+    /// </summary>
+    public static string DefaultFor(string? propertyType, string? costScopeKey) =>
+        CostScopeKeys.IsLandOnly(costScopeKey)
+        || ValuationApproachSettingsRules.IsLandPropertyType(propertyType)
+            ? PricePerSqm
+            : WholeProperty;
 }
 
 /// <summary>
@@ -544,16 +558,20 @@ public static class CostApproachRules
     /// The area the land table's area adjustment compares each land comparable with — the
     /// building plot saved on the cost approach. Without one, a property whose land is shared (an apartment
     /// share is set) has no usable area (null → the land estimate stays incomplete until the plot is
-    /// entered: the unit's floor area is not land); any other property keeps the market header's subject
-    /// area, which is its deed (land) area.
+    /// entered: the unit's floor area is not land). Land keeps the market header's subject area, which
+    /// is its deed (land) area.
+    /// Edge cases (2026-10-29): a building's market header holds its floor area, so a built subject
+    /// never falls back to it — null until the plot is saved (the cost screen seeds it from the deed).
     /// </summary>
     public static decimal? LandTableSubjectAreaSqm(
         decimal? buildingPlotAreaSqm,
         decimal? apartmentShareSqm,
-        decimal? headerSubjectAreaSqm) =>
+        decimal? headerSubjectAreaSqm,
+        bool headerIsLandArea = true) =>
         buildingPlotAreaSqm is > 0m ? buildingPlotAreaSqm
         : apartmentShareSqm is > 0m ? null
-        : headerSubjectAreaSqm;
+        : headerIsLandArea ? headerSubjectAreaSqm
+        : null;
 
     /// <summary>
     /// The area the land table's adjusted rate multiplies into the land value — the apartment's

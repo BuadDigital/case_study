@@ -120,8 +120,8 @@ export function SpecialistServiceProofPhotoFields({
         )}
       >
         <p className="mb-2.5 text-[11px] leading-relaxed text-text-3">
-          عند اختيار <strong>كهرباء</strong> أو <strong>ماء</strong> يجب اختيار
-          صورة إثبات من صور المعاملة.
+          عند اختيار <strong>كهرباء</strong> أو <strong>ماء</strong> يمكن اختيار
+          صورة إثبات من صور المعاملة (اختياري).
         </p>
         <div className="flex flex-col gap-2.5">
           {slots.map((slot) => {

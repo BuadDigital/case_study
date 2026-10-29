@@ -118,6 +118,13 @@ public static class CaseStudyModel
             e.Property(x => x.EnfazHandoverByUserId).HasMaxLength(128);
             e.HasIndex(x => x.EnfazHandoverAtUtc);
             e.Property(x => x.BillingReadyByUserId).HasMaxLength(128);
+            // «إلغاء المعاملة»: the stamp is what queues and the PO status test; the status before is kept for reactivation.
+            e.HasIndex(x => x.CancelledAtUtc);
+            e.Property(x => x.PreCancelDeedStatus).HasMaxLength(64);
+            e.HasOne<TransactionCancellation>()
+                .WithMany()
+                .HasForeignKey(x => x.CancellationId)
+                .OnDelete(DeleteBehavior.SetNull);
             e.Property(x => x.RemoteInspectionApprovedBy).HasMaxLength(128);
             e.Property(x => x.RequestNumber).HasMaxLength(64);
             e.Property(x => x.AssignmentMandateNumber).HasMaxLength(64);
@@ -247,6 +254,9 @@ public static class CaseStudyModel
                 .HasConversion(DomainEnumConverters.WorkflowTaskPhase)
                 .HasMaxLength(32);
             e.Property(x => x.AssignmentType).HasMaxLength(64);
+            e.Property(x => x.PreCancelStatus)
+                .HasConversion(DomainEnumConverters.WorkflowTaskStatus)
+                .HasMaxLength(32);
             e.HasIndex(x => x.PoNumber);
             e.HasIndex(x => new { x.PoNumber, x.PropertyOrdinal });
             e.HasIndex(x => new { x.PoNumber, x.PropertyId });
@@ -259,6 +269,7 @@ public static class CaseStudyModel
             e.HasAllowedValues("WorkflowTasks", nameof(WorkflowTask.Phase), WorkflowTaskPhaseValues.All);
             e.HasAllowedValues("WorkflowTasks", nameof(WorkflowTask.Status), WorkflowTaskStatusValues.All);
             e.HasAllowedValues("WorkflowTasks", nameof(WorkflowTask.ObstructionPriorPhase), WorkflowTaskPhaseValues.All);
+            e.HasAllowedValues("WorkflowTasks", nameof(WorkflowTask.PreCancelStatus), WorkflowTaskStatusValues.All);
  // A task belongs to a property of the same work order and cascades with it, exactly as the
  // repository delete paths already do by hand; sub-tasks follow their parent the same way.
             e.HasOne<WorkOrderProperty>()
@@ -411,6 +422,33 @@ public static class CaseStudyModel
                 .WithMany()
                 .HasForeignKey(x => x.PropertyId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // «إلغاء المعاملة»: the specialist's request and the supervisor's decision / reactivation.
+        builder.Entity<TransactionCancellation>(e =>
+        {
+            MapTable(e, "TransactionCancellations", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.UseOptimisticConcurrency();
+            e.Property(x => x.Scope).HasMaxLength(16);
+            e.Property(x => x.ScopeRef).HasMaxLength(64);
+            e.Property(x => x.PoNumber).HasMaxLength(64);
+            e.Property(x => x.DeedIdsJson).HasColumnType("jsonb");
+            e.Property(x => x.Status).HasMaxLength(16);
+            e.Property(x => x.ReasonCode).HasMaxLength(32);
+            e.Property(x => x.Note).HasMaxLength(2000);
+            e.Property(x => x.RequestedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.RequestedByName).HasMaxLength(256);
+            e.Property(x => x.DecidedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.DecidedByName).HasMaxLength(256);
+            e.Property(x => x.DecisionNote).HasMaxLength(2000);
+            e.Property(x => x.ReactivatedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.ReactivatedByName).HasMaxLength(256);
+            e.Property(x => x.ReactivationNote).HasMaxLength(2000);
+            e.HasIndex(x => x.Status);
+            e.HasIndex(x => x.PoNumber);
+            e.HasAllowedValues("TransactionCancellations", nameof(TransactionCancellation.Scope), TransactionCancellationScopes.All);
+            e.HasAllowedValues("TransactionCancellations", nameof(TransactionCancellation.Status), TransactionCancellationStatuses.All);
+            e.HasAllowedValues("TransactionCancellations", nameof(TransactionCancellation.ReasonCode), TransactionCancellationReasons.All);
         });
 
         return builder;

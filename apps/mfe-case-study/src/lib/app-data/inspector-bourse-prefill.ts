@@ -10,6 +10,7 @@
  * («المصدر: استعلام البورصة»); once he changes it the note goes.
  */
 import {
+  ALL_PROPERTY_TYPES,
   INSPECTOR_FEATURE_FIELDS,
   PROPERTY_CLASSIFICATIONS,
   classificationForPropertyType,
@@ -35,14 +36,19 @@ function bourseSourceNote(property: BourseSource | null | undefined): string {
   return `${BOURSE_SOURCE_NOTE}${who}${on ? ` · ${on}` : ""}`;
 }
 
-/** The property type as one of the inspector's «الأصل محل التقييم» options, "" when none fits. */
+/**
+ * The property type as one of the inspector's «الأصل محل التقييم» options, "" when none fits.
+ * How it works: the bourse type itself when it is in the system's list (the inspector's options since
+ * 2026-10-29), else a keyword match onto a catalogue name for legacy free-text types.
+ */
 function mapPropertyTypeToAssetSubject(propertyType: string): string {
   const t = propertyType.trim();
   if (!t) return "";
+  if (ALL_PROPERTY_TYPES.includes(t)) return t;
   const lower = t.toLowerCase();
   if (lower.includes("فيلا") || lower.includes("villa")) return "فيلا";
-  if (lower.includes("أرض") || lower.includes("ارض") || lower.includes("land")) return "أرض";
-  if (lower.includes("شقة") || lower.includes("apartment")) return "شقة";
+  if (lower.includes("أرض") || lower.includes("ارض") || lower.includes("land")) return "أرض سكنية";
+  if (lower.includes("شقة") || lower.includes("apartment")) return "شقة سكنية";
   if (lower.includes("عمارة") || lower.includes("building")) return "عمارة";
   if (lower.includes("محل") || lower.includes("تجار")) return "محل تجاري";
   if (lower.includes("مستودع") || lower.includes("warehouse")) return "مستودع";

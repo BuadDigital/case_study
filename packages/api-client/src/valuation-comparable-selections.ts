@@ -5,7 +5,6 @@
 //  • Cost DTO: remainingLeaseYears / lifeCappedByLease / effectiveLifeYears; settings DTO and save
 //         request: ownershipInterestKey (+ label) and remainingLeaseYears.
 //  • Cost DTO: appliedObsolescencePct (capped at 100%) and obsolescenceNeedsAlert (> 90%).
-//  • Reconciliation incomeOpinionValue; the income toggle is no longer documented as deferred.
 //  • Wording The garbled reconciliation 400 message is now «بيانات الترجيح غير صالحة».
 // Round 2 (1b19bedc)
 //  • A    subjectAreaSqm is the whole building plot on the land table; new apartmentLandShareSqm (list) and
@@ -325,8 +324,6 @@ export type ValuationReconciliationDto = {
   propertyId: string;
   marketOpinionValue: number;
   costOpinionWithLand: number;
-  /** Income approach indicator (NOI ÷ cap rate); 0 until complete. Older servers omit it. */
-  incomeOpinionValue?: number;
   methods: ValuationReconciliationMethodDto[];
   weightSumPct: number;
   weightsSumTo100: boolean;
@@ -413,7 +410,7 @@ export type ValuationApproachSettingsDto = {
   costApproachAllowed: boolean;
   marketApproachEnabled: boolean;
   costApproachEnabled: boolean;
-  /** Income approach (direct capitalisation) — the appraiser may enable it. */
+  /** Deferred — shown as under construction and cannot be enabled. */
   incomeApproachEnabled: boolean;
   /** Freehold (default) | usufruct («حق منفعة») | leased_land («أرض مستأجرة»). */
   ownershipInterestKey?: string;

@@ -73,11 +73,15 @@ public static class MarketApproachRules
         return Math.Round(result, 2, MidpointRounding.AwayFromZero);
     }
 
- /// <summary>Difference factors: sum included % then apply once (spec ).</summary>
+ /// <summary>
+ /// Difference factors: sum included % then apply once (spec ).
+ /// Edge cases: a sum at or below −100٪ (two −90٪ factors) used to give a negative price; the price
+ /// stops at 0 — the save refuses such a sum, this only guards rows saved before.
+ /// </summary>
     public static decimal ApplyDifferenceFactorSum(decimal priceAfterSequential, decimal sumDifferencePct)
     {
         var result = priceAfterSequential * (1m + sumDifferencePct / 100m);
-        return Math.Round(result, 2, MidpointRounding.AwayFromZero);
+        return Math.Max(0m, Math.Round(result, 2, MidpointRounding.AwayFromZero));
     }
 
  /// <summary>

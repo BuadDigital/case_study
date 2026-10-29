@@ -1,8 +1,3 @@
-// ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
-// Round 1 (5b554f4e)
-//  • Income  Adds the lazily loaded IncomeApproachSection and preloads it with the other work screens.
-// ──────────────────────────────────────────────────────────────────────────────────────────────
-
 "use client";
 
 import { useEffect } from "react";
@@ -17,20 +12,15 @@ const costApproachSection = preloadableLazy(() =>
 const finalOpinionSection = preloadableLazy(() =>
   import("./FinalOpinionSection").then((m) => m.FinalOpinionSection),
 );
-const incomeApproachSection = preloadableLazy(() =>
-  import("./IncomeApproachSection").then((m) => m.IncomeApproachSection),
-);
 
 export const AdjustmentsMatrix = adjustmentsMatrix.Component;
 export const CostApproachSection = costApproachSection.Component;
 export const FinalOpinionSection = finalOpinionSection.Component;
-export const IncomeApproachSection = incomeApproachSection.Component;
 
 function preloadLaterWorkScreens() {
   void adjustmentsMatrix.preload();
   void costApproachSection.preload();
   void finalOpinionSection.preload();
-  void incomeApproachSection.preload();
 }
 
 /**

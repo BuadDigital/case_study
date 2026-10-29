@@ -36,4 +36,12 @@ public interface IWorkOrderPropertyRepository
 
     /// <summary>Throws <see cref="PersistenceConcurrencyException"/> when the write lost a race.</summary>
     Task SaveChangesAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Runs the action in one database transaction where the provider supports it — the property
+    /// save and its contact rewrite commit or roll back together.
+    /// </summary>
+    Task ExecuteInTransactionAsync(
+        Func<CancellationToken, Task> action,
+        CancellationToken cancellationToken);
 }

@@ -2,7 +2,6 @@
 // Round 1 (5b554f4e)
 //  • Section 26 participants: the three names fixed in code are gone — the roster's active reviewers and
 //         assistants, then the assigned appraiser (duplicates matched by samePerson).
-//  • applyIncomeSection puts the income section before the reconciliation.
 //  • appendScopeRows adds the section 2 scope rows (retrospective rationale, building-only scope).
 //  • appendAgeNotes adds the age rationales / lease cap under the section 23 ages row.
 //  • Section 25  fillFinalValueTable replaces the old liquidation dash-out and fillValueAdditions.
@@ -25,7 +24,6 @@ export {
 
 import type { OrganizationValuerRosterEntry } from "@platform/api-client";
 import { isUsableAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
-import { applyIncomeSection } from "./valuation-report-income";
 import {
   SAMPLE_SECS,
   normLabel,
@@ -54,6 +52,7 @@ import {
   fillMethodRow,
   fillParagraphSection,
   fillParticipants,
+  fillRationaleNotes,
   rebuildDirectCostSheet,
   rebuildLandValueTable,
   rebuildIndirectCostSheet,
@@ -342,6 +341,27 @@ const FACADE_LABELS = new Set([
   "تشطيب الواجهة الغربية",
 ]);
 
+/**
+ * Removes a later row that repeats a label already printed in the section.
+ *
+ * How it works: keeps the first `td.k` with `label`; a later row whose only label cell is that
+ * label is removed whole.
+ *
+ * Edge cases: section 23 used to print «قيمة المباني بعد الإهلاك» twice (beside «قيمة الإهلاك» and
+ * again on its own row); the template no longer has the second row, and this keeps an older cached
+ * template from printing it.
+ */
+function dropRepeatedLabelRows(sec: Element, label: string) {
+  const want = normLabel(label);
+  const cells = [...sec.querySelectorAll("td.k")].filter(
+    (td) => normLabel(td.textContent ?? "") === want,
+  );
+  for (const td of cells.slice(1)) {
+    const tr = td.closest("tr");
+    if (tr && tr.querySelectorAll("td.k").length === 1) tr.remove();
+  }
+}
+
 /** Section 23 — age rationales / lease cap as full-width rows right after the ages row. */
 function appendAgeNotes(sec: Element, notes: ValuationReportLiveFill["ageNotes"]) {
   sec.querySelectorAll("tr[data-age-note]").forEach((tr) => tr.remove());
@@ -517,7 +537,16 @@ export function applyValuationReportLiveFill(
   if (adj) fillAdjustmentSection(adj, fill);
 
   const costSec = dom.querySelector('[data-sec="21"]');
-  if (costSec) rebuildDirectCostSheet(costSec, fill.costRows);
+  if (costSec) {
+    rebuildDirectCostSheet(costSec, fill.costRows);
+    // Each line's «مبرر التقدير», listed under the cost table.
+    fillRationaleNotes(
+      costSec,
+      "مبررات التقدير",
+      fill.costNotes,
+      [...costSec.querySelectorAll("table")].find((t) => t.querySelector("th")),
+    );
+  }
 
   const indirectSec = dom.querySelector('[data-sec="22"]');
   if (indirectSec) {
@@ -528,11 +557,17 @@ export function applyValuationReportLiveFill(
     );
   }
 
-  // The income approach section goes right before the reconciliation.
-  applyIncomeSection(dom, fill);
-
   const reconSec = dom.querySelector('[data-sec="24"]');
-  if (reconSec) rebuildReconSheet(reconSec, fill.reconRows);
+  if (reconSec) {
+    rebuildReconSheet(reconSec, fill.reconRows);
+    // Each approach's «مبرر نسبة المشاركة» under the weighting table — none when one approach is used.
+    fillRationaleNotes(
+      reconSec,
+      "مبررات نسب المشاركة",
+      fill.approachCount < 2 ? "" : fill.reconNotes,
+      reconSec.querySelector("table.mx"),
+    );
+  }
 
   // One approach ⇒ no reconciliation between indicators: drop the weighting table, keep the
   // justification of the approach and method used («مبرر استخدام طرق التقييم»).
@@ -547,7 +582,10 @@ export function applyValuationReportLiveFill(
 
   // «مباني فقط»: no land value in the cost result — drop the land row and say what the total is.
   const ageSec = dom.querySelector('[data-sec="23"]');
-  if (ageSec) appendAgeNotes(ageSec, fill.ageNotes);
+  if (ageSec) {
+    dropRepeatedLabelRows(ageSec, "قيمة المباني بعد الإهلاك");
+    appendAgeNotes(ageSec, fill.ageNotes);
+  }
   if (ageSec && fill.costBuildingOnly) {
     for (const td of [...ageSec.querySelectorAll("td.k")]) {
       const label = normLabel(td.textContent ?? "");

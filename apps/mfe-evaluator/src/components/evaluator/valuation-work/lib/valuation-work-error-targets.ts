@@ -3,8 +3,6 @@
 //  • Server errors for ownershipInterestKey and remainingLeaseYears point at their boxes on the
 //         basics screen.
 //  • retrospectiveRationale points at «مبرر التقييم بأثر رجعي».
-//  • Income  Income-screen targets for every input and the cap-rate rationale; new
-//            INCOME_FIELD_ERROR_KEYS maps screen fields to the server's keys.
 // Round 2 (1b19bedc)
 //  • Bounds  The matrix header's bounds (area factor, annual market rate, rounding) and the cost totals
 //            («lines») point at their tables.
@@ -205,26 +203,6 @@ export const VALUATION_WORK_ERROR_TARGETS: readonly ValuationWorkErrorTarget[] =
     screen: "cost",
   },
 
-  /* ─── أسلوب الدخل (رسملة مباشرة) — ─── */
-  { key: "grossPotentialIncome", targetId: "income-grossPotentialIncome", screen: "income" },
-  { key: "vacancyCollectionLossPct", targetId: "income-vacancyPct", screen: "income" },
-  { key: "otherIncome", targetId: "income-otherIncome", screen: "income" },
-  { key: "operatingExpensesMode", targetId: "income-inputs", screen: "income" },
-  {
-    key: "operatingExpensesAmount",
-    targetId: "income-opexAmount",
-    fallbackTargetId: "income-inputs",
-    screen: "income",
-  },
-  {
-    key: "operatingExpensesPct",
-    targetId: "income-opexPct",
-    fallbackTargetId: "income-inputs",
-    screen: "income",
-  },
-  { key: "capitalisationRatePct", targetId: "income-capRatePct", screen: "income" },
-  { key: "capRateRationale", targetId: "income-capRateRationale", screen: "income" },
-
   /* ─── رأي القيمة النهائي — الترجيح ─── */
   {
     key: "methods[].weightPct",
@@ -267,17 +245,6 @@ export const COST_FIELD_ERROR_KEYS: Readonly<Record<string, string>> = {
   externalObsRationale: "externalObsolescenceRationale",
   lifeExtensionBasis: "lifeExtensionBasis",
 };
-
-/** Income screen field → the server key its validation answers with. */
-export const INCOME_FIELD_ERROR_KEYS = {
-  grossPotentialIncome: "grossPotentialIncome",
-  vacancyPct: "vacancyCollectionLossPct",
-  otherIncome: "otherIncome",
-  opexAmount: "operatingExpensesAmount",
-  opexPct: "operatingExpensesPct",
-  capRatePct: "capitalisationRatePct",
-  capRateRationale: "capRateRationale",
-} as const;
 
 const INDEXED_KEY = /^(.+)\[(\d+)\](.*)$/;
 

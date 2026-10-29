@@ -122,7 +122,7 @@ describe("subject-area sync and the plot", () => {
   it("writes only the market header — the plot is never part of the body", () => {
     const plan = subjectAreaSyncPlan({
       requestId: "vr-542",
-      transactionArea: "180",
+      subjectArea: "180",
       selection,
       lastSyncKey: null,
     });
@@ -138,7 +138,7 @@ describe("subject-area sync and the plot", () => {
     expect(
       subjectAreaSyncPlan({
         requestId: "vr-542",
-        transactionArea: "180",
+        subjectArea: "180",
         selection,
         lastSyncKey: null,
         writesFrozen: true,

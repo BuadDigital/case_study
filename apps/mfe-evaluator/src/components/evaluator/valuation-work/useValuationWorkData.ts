@@ -26,6 +26,7 @@ import {
   getValuationApproachSettings,
   getValuationReconciliation,
   getValuationIssuanceGates,
+  getBuildingInventory,
   type ComparablePropertyDto,
   type ValuationComparableSelectionListDto,
   type ValuationApproachSettingsDto,
@@ -60,6 +61,13 @@ import {
   type FinalOpinionChangeHandler,
   type SubjectCoords,
 } from "./lib/valuation-data-state";
+import {
+  builtUpSqmFromInventory,
+  defaultMarketBasis,
+  marketSubjectArea,
+  marketSubjectKind,
+  type MarketSubjectKind,
+} from "./lib/market-subject";
 import { createReloadSequence, ignoreSideFailure, runReload } from "./lib/reload-sequence";
 import type { ReloadOptions, ReloadTicket } from "./lib/reload-sequence";
 import { useValuationSectionSaves } from "./useValuationSectionSaves";
@@ -67,6 +75,8 @@ import { useValuationWorkReadModels } from "./useValuationWorkReadModels";
 
 type ValuationWorkDataParams = {
   propertyId: string;
+  /** Reads the specialist's inventory — a building's market area is its floor area. */
+  poNumber?: string;
   inspectionTaskId?: string | null;
   assignmentType?: string;
   districtHint?: string;
@@ -79,6 +89,7 @@ type ValuationWorkDataParams = {
 
 export function useValuationWorkData({
   propertyId,
+  poNumber = "",
   inspectionTaskId = null,
   assignmentType,
   districtHint,
@@ -106,6 +117,9 @@ export function useValuationWorkData({
   const [candidates, setCandidates] = useState<ComparablePropertyDto[]>([]);
   const [bankSubjectCoords, setBankSubjectCoords] = useState<SubjectCoords | null>(null);
   const [bankSearch, setBankSearch] = useState("");
+  // A reload (after adopting, saving…) keeps the bank on the appraiser's search: it used to come back
+  // unfiltered while the box still showed the text, so the next row clicked was a different comparable.
+  const bankSearchRef = useLatestRef(bankSearch);
   // How far around the property the bank tables look (3 km by default); `null` = all.
   const [bankRadiusKm, setBankRadiusKm] = useState<number | null>(NEARBY_RADIUS_KM);
   const [subjectArea, setSubjectArea] = useState("");
@@ -114,6 +128,9 @@ export function useValuationWorkData({
 
   const [approachSettings, setApproachSettings] =
     useState<ValuationApproachSettingsDto | null>(null);
+  const approachSettingsRef = useLatestRef(approachSettings);
+  /** «مجموع مسطحات البناء» from the specialist's inventory — null until read or when none is listed. */
+  const [builtUpSqm, setBuiltUpSqm] = useState<number | null>(null);
 
   const [cost, setCost] = useState<ValuationCostApproachDto | null>(null);
   /** Cost drafts hydrate inside CostApproachSection — key bumps on full load only. */
@@ -133,26 +150,30 @@ export function useValuationWorkData({
 
   const subjectAreaSyncedRef = useRef<string | null>(null);
 
-  /** Subject transaction area from the property wins over stale market-approach area on the server —
-      sync once per (request, area) so it does not repeat on every load. */
-  async function syncSubjectAreaFromTransaction(
+  /** The subject's area (deed area, or a building's floor area) wins over a stale market-approach
+      area on the server — sync once per (request, area) so it does not repeat on every load. */
+  async function syncSubjectArea(
     config: NonNullable<ReturnType<typeof apiConfig>>,
     requestId: string,
-    transactionArea: string,
+    subjectArea: string,
+    firstBasis: string,
     sel: ValuationComparableSelectionListDto,
     live: () => boolean,
   ) {
     const plan = subjectAreaSyncPlan({
       requestId,
-      transactionArea,
+      subjectArea,
       selection: sel,
       lastSyncKey: subjectAreaSyncedRef.current,
       writesFrozen: editLockedRef.current,
+      firstBasis,
     });
     if (!plan) return;
     subjectAreaSyncedRef.current = plan.syncKey;
     const syncRes = await saveValuationMarketApproach(config, requestId, plan.body);
-    if (syncRes.ok && live()) setSelection(syncRes.data);
+    if (!syncRes.ok || !live()) return;
+    setSelection(syncRes.data);
+    setAdjustmentBasis(syncRes.data.adjustmentBasis || "price_per_sqm");
   }
 
   const resolveBankFetchOpts = useCallback(
@@ -277,7 +298,7 @@ export function useValuationWorkData({
     // Text search is a separate call inside the bank table (searchBank) — not routed here.
     const bankP = derivedOnly
       ? null
-      : resolveBankFetchOpts().then((bankOpts) =>
+      : resolveBankFetchOpts(bankSearchRef.current).then((bankOpts) =>
           fetchBankCandidates(config, bankOpts),
         );
     const costP = getValuationCostApproach(config, requestId);
@@ -286,18 +307,28 @@ export function useValuationWorkData({
     const settingsP = derivedOnly
       ? null
       : getValuationApproachSettings(config, requestId);
+    const inventoryP =
+      hydrateEdits && poNumber.trim()
+        ? getBuildingInventory(config, poNumber, propertyId)
+        : null;
 
     // Side batches: a failure leaves the previous rows; the main batches below surface errors.
     void landP.then((r) => live() && setLandSelection(r.ok ? r.data : null), ignoreSideFailure);
     if (bankP) {
       void bankP.then((bankRes) => {
         if (!bankRes.ok || !live()) return;
-        applyBankResult(bankRes.data, bankRes.subjectCoords);
+        applyBankResult(bankRes.data, bankRes.subjectCoords, bankSearchRef.current);
       }, ignoreSideFailure);
     }
     void gatesP.then((r) => live() && setGates(r.ok ? r.data : null), ignoreSideFailure);
 
-    const [selRes, costRes, reconRes, settingsRes] = await Promise.all([selP, costP, reconP, settingsP]);
+    const [selRes, costRes, reconRes, settingsRes, inventoryRes] = await Promise.all([
+      selP,
+      costP,
+      reconP,
+      settingsP,
+      inventoryP,
+    ]);
     if (!live()) return;
 
     setLoading(false);
@@ -319,8 +350,23 @@ export function useValuationWorkData({
     }
     setSelection(selRes.data);
     if (hydrateEdits) {
-      const transactionArea = property?.area?.trim() || "";
-      setSubjectArea(initialSubjectArea(transactionArea, selRes.data));
+      // A building is measured by its floor area, land and an apartment by the deed (2026-10-29).
+      const builtUp = inventoryRes?.ok ? builtUpSqmFromInventory(inventoryRes.data.lines) : builtUpSqm;
+      if (inventoryRes?.ok) setBuiltUpSqm(builtUp);
+      const settings = settingsRes?.ok ? settingsRes.data : approachSettingsRef.current;
+      const kind = marketSubjectKind({
+        costScopeKey: settings?.costScopeKey,
+        isLandPropertyType: settings?.isLandPropertyType,
+        propertyType: settings?.propertyType || property?.propertyType,
+        builtUpSqm: builtUp,
+      });
+      const measuredArea = marketSubjectArea(kind, {
+        deedArea: property?.area?.trim() || "",
+        builtUpSqm: builtUp,
+      });
+      setSubjectArea(
+        initialSubjectArea(measuredArea, selRes.data, { storedFallback: kind !== "building" }),
+      );
       setAdjustmentBasis(selRes.data.adjustmentBasis || "price_per_sqm");
       const loadedNotes = selRes.data.analysisNotes ?? "";
       // Drop demo seed filler so تحليل التسويات follows the adjustments table.
@@ -336,10 +382,11 @@ export function useValuationWorkData({
         }, ignoreSideFailure);
       }
       // Table drafts live inside their components — nothing to clear here.
-      await syncSubjectAreaFromTransaction(
+      await syncSubjectArea(
         config,
         requestId,
-        transactionArea,
+        measuredArea,
+        defaultMarketBasis(kind),
         selRes.data,
         live,
       );
@@ -377,6 +424,8 @@ export function useValuationWorkData({
     [
     applyBankResult,
     propertyId,
+    poNumber,
+    builtUpSqm,
     districtHint,
     assignmentType,
     subjectArea,
@@ -439,6 +488,34 @@ export function useValuationWorkData({
 
   const { settingsSaved, marketEnabled, costEnabled } =
     approachAvailability(approachSettings);
+  const marketKind = marketSubjectKind({
+    costScopeKey: approachSettings?.costScopeKey,
+    isLandPropertyType: approachSettings?.isLandPropertyType,
+    propertyType: approachSettings?.propertyType || property?.propertyType,
+    builtUpSqm,
+  });
+
+  // The scope decides the kind (أرض فقط ↔ أرض مع المباني): a change re-measures the subject — land
+  // area or floor area — once the screen has loaded. The saved basis is kept.
+  const lastMarketKindRef = useRef<MarketSubjectKind | null>(null);
+  useEffect(() => {
+    const prev = lastMarketKindRef.current;
+    lastMarketKindRef.current = marketKind;
+    if (prev == null || prev === marketKind || loading) return;
+    const area = marketSubjectArea(marketKind, {
+      deedArea: property?.area?.trim() || "",
+      builtUpSqm,
+    });
+    setSubjectArea(area);
+    const config = apiConfig();
+    const requestId = valuationRequestIdRef.current;
+    if (!config || !requestId || !selection) return;
+    void syncSubjectArea(config, requestId, area, defaultMarketBasis(marketKind), selection, () =>
+      valuationRequestIdRef.current === requestId,
+    );
+    // Only a change of kind re-measures; the other inputs are read as they are now.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [marketKind]);
   // Deed/nature match is enforced at issuance only — it no longer holds up the appraiser's work.
   const deedMatchPending = deedNatureMatchBlocksValuation(gates);
   // Adjustment / cost tables go read-only once the form is closed.
@@ -481,6 +558,8 @@ export function useValuationWorkData({
     analysisNotes,
     setAnalysisNotes,
     approachSettings,
+    marketKind,
+    builtUpSqm,
     settingsHydrateKey,
     cost,
     costHydrateKey,

@@ -184,6 +184,10 @@ public sealed class ValuationReportFieldInjectionService(
     /// The field values from the gathered context — pure (public so the print rules are testable).
     /// Basis and premise come from the reconciliation's keys (the appraiser's saved choice, the
     /// work order only seeding them —); the liquidation discount prints only when it is applied.
+    /// How it works (cost lines): each priced line is flattened into the cost_line.* slots with
+    /// its effective unit cost.
+    /// Edge cases: a repeated-floors line with unit cost 0 prints the first floor's inherited
+    /// price — it used to print the stored 0 (empty unit and total cells).
     /// </summary>
     public static Dictionary<string, string?> BuildValueBag(
         ValuationRequest vr,
@@ -342,14 +346,19 @@ public sealed class ValuationReportFieldInjectionService(
             PutMoney("cost.building_direct", cost.DirectCostTotal);
             PutMoney("cost.market_value", cost.CostOpinionWithLand);
 
+            // The effective unit cost, not the stored one: a repeated-floors line left at 0
+            // inherits the first floor's price (as the cost screen and its totals do), so its
+            // unit / total cells used to print empty from the stored 0. The total prices the
+            // effective quantity (area × build ratio), as the cost screen does.
             var costLites = cost.Lines
                 .Select(l => new ValuationReportFieldCostLineLite(
                     l.StructureKind,
                     l.Label,
                     l.AreaSqm,
-                    l.UnitCostSar,
+                    l.EffectiveUnitCostSar,
                     l.IsIncluded,
-                    l.ItemKey))
+                    l.ItemKey,
+                    l.EffectiveQuantity))
                 .ToList();
             ValuationReportFieldCostLineFlattenRules.PutFromLines(d, costLites, hasStructures);
         }

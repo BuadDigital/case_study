@@ -21,6 +21,7 @@ import {
 import { inspectorBoolPillClass, listComponentBoolPhotoSlots } from "./inspector-wizard-state";
 import { InspectorComponentBoolPills, InspectorPresentChip } from "./InspectorComponentBoolPills";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
+import { wholeCountInput } from "../../lib/app-data/specialist-components";
 
 export function InspectorWizardComponentsCards({
   deedNumber,
@@ -65,7 +66,7 @@ export function InspectorWizardComponentsCards({
                 value={draft.roomCount}
                 ltr
                 
-                onChange={(v) => onPatch({ roomCount: v })}
+                onChange={(v) => onPatch({ roomCount: wholeCountInput(v) })}
               disabled={!editable} />
             ) : null}
             {showShop("hallCount") ? (
@@ -74,7 +75,7 @@ export function InspectorWizardComponentsCards({
                 value={draft.hallCount}
                 ltr
                 
-                onChange={(v) => onPatch({ hallCount: v })}
+                onChange={(v) => onPatch({ hallCount: wholeCountInput(v) })}
               disabled={!editable} />
             ) : null}
             {showShop("unitCount") ? (
@@ -83,7 +84,7 @@ export function InspectorWizardComponentsCards({
                 value={draft.unitCount}
                 ltr
                 
-                onChange={(v) => onPatch({ unitCount: v })}
+                onChange={(v) => onPatch({ unitCount: wholeCountInput(v) })}
               disabled={!editable} />
             ) : null}
             <InsEditField
@@ -91,7 +92,7 @@ export function InspectorWizardComponentsCards({
               value={draft.bathroomCount}
               ltr
               
-              onChange={(v) => onPatch({ bathroomCount: v })}
+              onChange={(v) => onPatch({ bathroomCount: wholeCountInput(v) })}
             disabled={!editable} />
             <ComponentCountWithPhotoField
               label="المعارض"
@@ -131,7 +132,7 @@ export function InspectorWizardComponentsCards({
                 value={draft.towerCount}
                 ltr
                 
-                onChange={(v) => onPatch({ towerCount: v })}
+                onChange={(v) => onPatch({ towerCount: wholeCountInput(v) })}
               disabled={!editable} />
             ) : null}
           </InsFieldsGrid>

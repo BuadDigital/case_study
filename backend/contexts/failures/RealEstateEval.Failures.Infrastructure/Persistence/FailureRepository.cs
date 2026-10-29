@@ -178,6 +178,21 @@ public sealed class FailureRepository(FailuresDbContext failures) : IFailureRepo
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<PropertyFailure>> FindOpenForPropertyAsync(
+        string poNumber,
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        var po = poNumber.Trim();
+        return await failures.PropertyFailures
+            .Where(f =>
+                f.PoNumber == po
+                && f.PropertyId == propertyId
+                && f.Status != PropertyFailureStatus.Resolved
+                && f.Status != PropertyFailureStatus.Approved)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<PropertyFailure>> FindOpenEvictionHoldsAsync(
         string poNumber,
         Guid propertyId,

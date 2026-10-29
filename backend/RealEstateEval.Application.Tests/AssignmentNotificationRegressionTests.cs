@@ -313,6 +313,31 @@ public sealed class AssignmentNotificationRegressionTests
         Assert.Empty(await messaging.OutboxMessages.ToListAsync());
     }
 
+    [Fact]
+    public async Task A_late_distribution_draft_save_never_overwrites_a_confirmed_distribution()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var parentId = Guid.NewGuid();
+        const string confirmed = "{\"inspectorId\":\"fi-ahmed\",\"valuatorId\":\"val-abdullah\"}";
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.CaseStudyProperty,
+            "PO-LATE-PATCH",
+            DateTime.UtcNow,
+            phase: WorkflowTaskPhase.CaseStudy,
+            id: parentId,
+            distributionJson: confirmed));
+        await db.SaveChangesAsync();
+
+        // The screen's stale autosave (blank parties) arriving after «تأكيد التوزيع».
+        var result = await CreateWorkflowService(db).PatchDistributionAsync(
+            parentId,
+            new TaskDistributionDraftDto { CaseSpecialist = true });
+
+        Assert.NotNull(result);
+        Assert.Equal(confirmed, db.WorkflowTasks.Single(t => t.Id == parentId).DistributionJson);
+    }
+
     private static void SeedAssigneeProfile(
         IdentityDbContext db,
         string userId,

@@ -524,7 +524,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
 
             <div className="mt-[13px] mb-2 flex items-center justify-between gap-2">
               <span className="text-[11px] font-semibold text-text-3">
-               توصيات المقييم و الرأي النهائي للقيمة
+               مبرر استخدام طرق التقييم والرأي النهائي للقيمة
               </span>
               <button
                 type="button"

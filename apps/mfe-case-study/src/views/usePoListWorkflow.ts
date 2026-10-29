@@ -22,7 +22,6 @@ import type { ActiveQueueMobileCardItem } from "@platform/app-shared/components/
 import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { formatPoDisplay } from "../lib/app-data/po-intake-data";
 import {
-  cancelPoRecord,
   deletePoRecord,
   stopPoRecord,
 } from "../lib/app-data/po-intake-commands";
@@ -41,9 +40,11 @@ import {
 } from "@case-study/mfe/query/case-study-queries";
 import { useDebouncedValue } from "@platform/app-shared/hooks/use-debounced-value";
 import {
+  canDecideTransactionCancel,
   canDeletePo,
   canEditPoHeader,
   canReceivePo,
+  canRequestTransactionCancel,
 } from "../lib/app-data/po-roles";
 import { canManageOperationsTasks } from "../lib/app-data/operations-task-roles";
 import {
@@ -77,6 +78,10 @@ export function usePoListWorkflow() {
   const showEdit = canEditPoHeader(role);
   const showDelete = canDeletePo(role);
   const showCreateOperationsTask = canManageOperationsTasks(role);
+  const showCancel = canRequestTransactionCancel(role);
+  const cancelDecides = canDecideTransactionCancel(role);
+  /** «إلغاء أمر العمل» dialog — the work order whose live transactions are being cancelled. */
+  const [cancelPo, setCancelPo] = useState<string | null>(null);
   /** Billing labels are Finance's and management's; everyone else sees the study status. */
   const billing = canSeeBillingStatuses(role);
   const { showToast } = useToast();
@@ -261,18 +266,20 @@ export function usePoListWorkflow() {
           showEdit,
           showDelete,
           showLifecycleActions: showEdit,
+          showCancel,
+          cancelDecides,
           showCreateOperationsTask,
           deleting: deletingPo === p.id,
           lifecycleBusy: lifecyclePo === p.id,
           router,
           onDelete: () => void handleDeletePo(p.id),
-          onCancel: () => void handleCancelPo(p.id),
+          onCancel: () => setCancelPo(p.id),
           onStop: () => void handleStopPo(p.id),
         }),
         onOpen: () => router.push(target),
       };
     });
-    // The three lifecycle handlers below only touch stable setters, the toast and
+    // The lifecycle handlers below only touch stable setters, the toast and
     // the query client, so the rows never capture stale state.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -280,6 +287,8 @@ export function usePoListWorkflow() {
     registeredByPo,
     billing,
     showEdit,
+    showCancel,
+    cancelDecides,
     showDelete,
     showCreateOperationsTask,
     deletingPo,
@@ -289,25 +298,6 @@ export function usePoListWorkflow() {
 
   function toggleSort(key: SortKey) {
     dispatchQuery({ type: "sort", key });
-  }
-
-  async function handleCancelPo(poNumber: string) {
-    const ok = await confirmAction({
-      title: "إلغاء أمر العمل",
-      message: `إلغاء أمر العمل «${poNumber}»؟ سيُعرض كملغى في القائمة.`,
-      confirmLabel: "إلغاء الأمر",
-      danger: true,
-    });
-    if (!ok) return;
-    setLifecyclePo(poNumber);
-    const result = await cancelPoRecord(poNumber);
-    setLifecyclePo(null);
-    if (!result.ok) {
-      showToast(result.error, "error");
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: appDataKeys.all });
-    showToast(`تم إلغاء أمر العمل «${poNumber}».`, "success");
   }
 
   async function handleStopPo(poNumber: string) {
@@ -389,7 +379,11 @@ export function usePoListWorkflow() {
     rangeStart,
     rangeEnd,
     toggleSort,
-    handleCancelPo,
+    showCancel,
+    cancelDecides,
+    cancelPo,
+    /** Opens the «إلغاء أمر العمل» dialog for one order (null closes it). */
+    setCancelPo,
     handleStopPo,
     handleDeletePo,
     /** Row hover: both screens a row opens read this PO's record — fetch it before the click. */

@@ -321,3 +321,182 @@ export async function getTransactionTimeline(
     return { ok: false, kind: "network" };
   }
 }
+
+/** «إلغاء المعاملة» reasons — our own mistakes only (a transaction Enfaz stops is a failure). */
+export type TransactionCancellationReason = "duplicate" | "wrong_entry" | "other";
+
+/** One deed a cancellation covers, or would cover; `blockedReason` says why it is left out. */
+export type TransactionCancellationDeedDto = {
+  propertyId: string;
+  poNumber: string;
+  deedNumber: string;
+  transactionId: string;
+  transactionNumber: string;
+  blockedReason?: string | null;
+};
+
+/** What a request would cancel — the dialog shows it before anything is sent. */
+export type TransactionCancellationPreviewDto = {
+  scope: "transaction" | "work-order";
+  scopeRef: string;
+  poNumber: string;
+  deeds: TransactionCancellationDeedDto[];
+  excluded: TransactionCancellationDeedDto[];
+};
+
+export type TransactionCancellationDto = {
+  id: string;
+  scope: "transaction" | "work-order";
+  scopeRef: string;
+  poNumber: string;
+  status: "pending" | "approved" | "rejected" | "reactivated";
+  reasonCode: TransactionCancellationReason;
+  reasonLabel: string;
+  note: string;
+  attachmentId?: string | null;
+  deeds: TransactionCancellationDeedDto[];
+  requestedByName: string;
+  requestedAtUtc: string;
+  decidedByName?: string | null;
+  decidedAtUtc?: string | null;
+  decisionNote?: string | null;
+  reactivatedByName?: string | null;
+  reactivatedAtUtc?: string | null;
+  reactivationNote?: string | null;
+};
+
+/** A deed's cancellation state: the pending request and the approved cancellation, when there are. */
+export type TransactionCancellationStateDto = {
+  pending?: TransactionCancellationDto | null;
+  cancelled?: TransactionCancellationDto | null;
+};
+
+/**
+ * What cancelling this deed's transaction (`propertyId`) or this work order (`poNumber`) would cancel.
+ *
+ * How it works: GET `/api/transaction-cancellations/preview` with the one id given; the server
+ * returns the deeds it would cancel and those it leaves out, each with its reason.
+ *
+ * Edge cases: an unknown deed / work order comes back as `validation` with the Arabic message.
+ */
+export async function previewTransactionCancellation(
+  config: WorkOrdersApiConfig,
+  scope: { propertyId: string } | { poNumber: string },
+): Promise<ApiOk<TransactionCancellationPreviewDto> | CommandErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const qs = "propertyId" in scope
+    ? `propertyId=${encodeURIComponent(scope.propertyId.trim())}`
+    : `poNumber=${encodeURIComponent(scope.poNumber.trim())}`;
+  try {
+    const res = await fetch(`${base}/api/transaction-cancellations/preview?${qs}`, {
+      headers: authHeaders(config.token),
+    });
+    return await readCommand<TransactionCancellationPreviewDto>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/**
+ * The pending request and the approved cancellation covering one deed.
+ *
+ * How it works: GET `/api/transaction-cancellations/by-property/{propertyId}`.
+ * Edge cases: a deed with neither answers `{}`, never 404.
+ */
+export async function getTransactionCancellationState(
+  config: WorkOrdersApiConfig,
+  propertyId: string,
+): Promise<ApiOk<TransactionCancellationStateDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const id = encodeURIComponent(propertyId.trim());
+  try {
+    const res = await fetch(`${base}/api/transaction-cancellations/by-property/${id}`, {
+      headers: authHeaders(config.token),
+    });
+    return await readJson<TransactionCancellationStateDto>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Requests, newest first; `status` narrows them (e.g. "pending" for the supervisor). */
+export async function listTransactionCancellations(
+  config: WorkOrdersApiConfig,
+  status?: TransactionCancellationDto["status"],
+): Promise<ApiOk<TransactionCancellationDto[]> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+  try {
+    const res = await fetch(`${base}/api/transaction-cancellations${qs}`, {
+      headers: authHeaders(config.token),
+    });
+    const result = await readJson<TransactionCancellationDto[]>(res);
+    if (!result.ok) return result;
+    return { ok: true, data: Array.isArray(result.data) ? result.data : [] };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/**
+ * Raises a cancellation request — the case specialist's waits for the supervisor; the supervisor's
+ * own request comes back already approved.
+ *
+ * How it works: POST `/api/transaction-cancellations` with one scope (a deed of the transaction, or
+ * the work order), the reason, the note and an optional uploaded file id.
+ *
+ * Edge cases: refusals (role, a deed on Enfaz, a pending request already there) carry the server's
+ * Arabic message; a role refusal is `forbidden`.
+ */
+export async function requestTransactionCancellation(
+  config: WorkOrdersApiConfig,
+  body: {
+    propertyId?: string;
+    poNumber?: string;
+    reasonCode: TransactionCancellationReason;
+    note: string;
+    attachmentId?: string | null;
+  },
+): Promise<ApiOk<TransactionCancellationDto> | CommandErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/transaction-cancellations`, {
+      method: "POST",
+      headers: authHeaders(config.token, { json: true }),
+      body: JSON.stringify(body),
+    });
+    return await readCommand<TransactionCancellationDto>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/**
+ * The supervisor's decision on a request, or the reactivation of a cancelled transaction.
+ *
+ * How it works: POST `/api/transaction-cancellations/{id}/{approve|reject|reactivate}` with the
+ * note (required for reactivate, optional otherwise).
+ *
+ * Edge cases: a request already decided is refused with an Arabic message.
+ */
+export async function decideTransactionCancellation(
+  config: WorkOrdersApiConfig,
+  id: string,
+  action: "approve" | "reject" | "reactivate",
+  note: string,
+): Promise<ApiOk<TransactionCancellationDto> | CommandErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/transaction-cancellations/${encodeURIComponent(id.trim())}/${action}`,
+      {
+        method: "POST",
+        headers: authHeaders(config.token, { json: true }),
+        body: JSON.stringify({ note }),
+      },
+    );
+    return await readCommand<TransactionCancellationDto>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}

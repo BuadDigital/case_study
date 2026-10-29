@@ -31,6 +31,8 @@ public class WorkflowTask
     public string? ObstructionReason { get; private set; }
     public WorkflowTaskPhase? ObstructionPriorPhase { get; private set; }
     public string? AssignmentType { get; private set; }
+ /// <summary>The status the task had when its transaction was cancelled; null when it was never cancelled that way.</summary>
+    public WorkflowTaskStatus? PreCancelStatus { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
     public DateTime UpdatedAtUtc { get; private set; }
 
@@ -269,6 +271,45 @@ public class WorkflowTask
         Touch(nowUtc);
     }
 
+    /// <summary>
+    /// «إلغاء المعاملة»: cancels an open or blocked task and remembers its status so a reactivation can
+    /// put it back. Returns whether the task changed.
+    /// </summary>
+    /// <remarks>
+    /// How it works: a terminal task (completed or already cancelled) is left as it is and the call
+    /// returns false; any other task stores its current status in <see cref="PreCancelStatus"/> and
+    /// becomes Cancelled. The phase is not touched, so the restore needs only the status.
+    /// Edge cases: completed work stays completed on purpose — it is the record of what was done
+    /// (and what is paid) before the cancellation.
+    /// </remarks>
+    public bool CancelForTransaction(DateTime nowUtc)
+    {
+        if (IsTerminal) return false;
+
+        PreCancelStatus = Status;
+        Status = WorkflowTaskStatus.Cancelled;
+        Touch(nowUtc);
+        return true;
+    }
+
+    /// <summary>Reactivation of a cancelled transaction: puts back the status the task had. Returns whether it changed.</summary>
+    /// <remarks>
+    /// How it works: only a Cancelled task that carries a <see cref="PreCancelStatus"/> is restored; the
+    /// remembered status comes back and the memory is cleared.
+    /// Edge cases: a task cancelled some other way (no remembered status) stays cancelled, so a
+    /// reactivation never revives work nobody cancelled with the transaction.
+    /// </remarks>
+    public bool RestoreAfterTransactionCancel(DateTime nowUtc)
+    {
+        if (Status != WorkflowTaskStatus.Cancelled || PreCancelStatus is not WorkflowTaskStatus prior)
+            return false;
+
+        Status = prior;
+        PreCancelStatus = null;
+        Touch(nowUtc);
+        return true;
+    }
+
     public bool CanReopen => Status == WorkflowTaskStatus.Completed;
 
  /// <summary>
@@ -335,6 +376,14 @@ public class WorkflowTask
         string? distributionJson,
         DateTime nowUtc)
     {
+        // A task cancelled with its transaction («إلغاء المعاملة») keeps its status and phase until the
+        // supervisor's reactivation — a late submit or a failure block must not write over it.
+        if (Status == WorkflowTaskStatus.Cancelled && PreCancelStatus is not null)
+        {
+            phase = null;
+            status = null;
+        }
+
         if (phase.HasValue) Phase = phase.Value;
         if (status.HasValue) Status = status.Value;
         if (title is not null) Title = title;

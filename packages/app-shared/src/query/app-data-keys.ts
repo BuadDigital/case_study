@@ -78,6 +78,9 @@ export const appDataKeys = {
   /** One timeline for every deed of a transaction. */
   transactionTimeline: (transactionId: string) =>
     [...appDataKeys.all, "transaction-timeline", transactionId] as const,
+  /** «إلغاء المعاملة»: the pending request and the approved cancellation covering a deed. */
+  transactionCancellation: (propertyId: string) =>
+    [...appDataKeys.all, "transaction-cancellation", propertyId] as const,
   inspectorFees: (query: {
     assigneeId?: string;
     workflowTaskId?: string;

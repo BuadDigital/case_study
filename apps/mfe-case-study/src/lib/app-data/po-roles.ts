@@ -17,6 +17,22 @@ export function canRecordFinalFailure(role: RoleId): boolean {
   return role === "cdo" || role === "section-supervisor";
 }
 
+/**
+ * Approve / reject a «إلغاء المعاملة» request and reactivate a cancelled transaction — the section
+ * supervisor and the CDO. Mirrors `PoRoleMatrixRules.CanDecideTransactionCancel`.
+ */
+export function canDecideTransactionCancel(role: RoleId): boolean {
+  return role === "cdo" || role === "section-supervisor";
+}
+
+/**
+ * Ask for «إلغاء المعاملة» — the case specialist; the supervisor and the CDO too (their request is
+ * approved at once). Mirrors `PoRoleMatrixRules.CanRequestTransactionCancel`.
+ */
+export function canRequestTransactionCancel(role: RoleId): boolean {
+  return canDecideTransactionCancel(role) || role === "case-specialist";
+}
+
 export function canEditPoHeader(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";
 }

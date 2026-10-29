@@ -1,6 +1,5 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Registers IValuationIncomeApproachRepository and IValuationIncomeApproachService.
 //  • Access  Registers IAssignedAppraiserCheck.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -70,8 +69,6 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationReportFreezeGate, ValuationReportFreezeGate>();
         services.AddScoped<IValuationCostApproachRepository, ValuationCostApproachRepository>();
         services.AddScoped<IValuationCostApproachService, ValuationCostApproachService>();
-        services.AddScoped<IValuationIncomeApproachRepository, ValuationIncomeApproachRepository>();
-        services.AddScoped<IValuationIncomeApproachService, ValuationIncomeApproachService>();
         services.AddScoped<IValuationReconciliationRepository, ValuationReconciliationRepository>();
         services.AddScoped<IValuationReconciliationService, ValuationReconciliationService>();
         services.AddScoped<IValuationValueDocumentService, ValuationValueDocumentService>();

@@ -9,7 +9,11 @@ import { coordsFromLocationMapUrl, parseLatLng } from "@platform/app-shared/doma
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import { failuresForProperty } from "@failures/mfe/lib/failure-property-match";
-import type { PoIntakeRecord, PoPropertyIntake } from "./po-intake-property-model";
+import {
+  effectivePropertyTypeOf,
+  type PoIntakeRecord,
+  type PoPropertyIntake,
+} from "./po-intake-property-model";
 import type {
   MapComparableRecord,
   MapCoords,
@@ -192,7 +196,7 @@ export function mapPoRecordsToMapProperties(
         refNo: record.poNumber,
         deedNo: property.deedNumber.trim() || property.realEstateRegNumber.trim() || "—",
         deedType: property.deedKind.trim() || "—",
-        propertyType: property.propertyType.trim() || property.classification.trim() || "—",
+        propertyType: effectivePropertyTypeOf(property) || property.classification.trim() || "—",
         city: property.city.trim() || "—",
         district: property.district.trim() || "—",
         area: areaNumber(property.area),

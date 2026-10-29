@@ -6,7 +6,6 @@
 //         the restored tab.
 //  • P19  useUnsavedEditsGuard warns before a refresh / close loses an unblurred field, a pending autosave or
 //         an unsaved section.
-//  • navAvail gains income (false until the settings report the approach).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -140,7 +139,6 @@ export function EvaluatorWindow({
   const [navAvail, setNavAvail] = useState<ValuationWorkNavAvailability>({
     market: false,
     cost: false,
-    income: false,
   });
   // Tabs opened so far and the last work screen — recorded during render (state, not refs).
   const [visitedTabs, setVisitedTabs] = useState(() => new Set<EvaluatorWindowTab>([activeTab]));

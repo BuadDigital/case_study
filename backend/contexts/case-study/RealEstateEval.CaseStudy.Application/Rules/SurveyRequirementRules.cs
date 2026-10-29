@@ -31,8 +31,26 @@ public static class SurveyRequirementRules
     public static bool HasApprovedOrganizationalPlan(string? planNumber, string? plotNumber) =>
         PartyTaskSubmissionPayloadRules.HasPlanAndPlot(planNumber, plotNumber);
 
+    /// <summary>
+    /// The classification the survey rule reads: the inspector's corrected type's classification
+    /// (2026-10-29), else the bourse classification.
+    /// </summary>
+    public static string? EffectiveClassification(WorkOrderProperty prop) =>
+        PropertyTypeCatalog.ClassificationOf(prop.InspectedPropertyType) ?? prop.Classification;
+
     public static bool PropertyRequiresSurvey(WorkOrderProperty prop) =>
-        ClassificationRequiresSurvey(prop.Classification)
+        ClassificationRequiresSurvey(EffectiveClassification(prop))
         && !HasRegisteredTitle(prop)
         && !HasApprovedOrganizationalPlan(prop.PlanNumber, prop.PlotNumber);
+
+    /// <summary>
+    /// The inspector's corrected type made a survey necessary that the bourse type did not need, and no
+    /// survey task is live — the study waits for the specialist to add the engineering office.
+    /// Edge cases: a property the bourse type already required a survey for is left to the distribution
+    /// as before (the office may have been left out there on purpose).
+    /// </summary>
+    public static bool SurveyMissingAfterTypeChange(WorkOrderProperty prop, bool hasLiveSurveyTask) =>
+        !hasLiveSurveyTask
+        && PropertyRequiresSurvey(prop)
+        && !ClassificationRequiresSurvey(prop.Classification);
 }

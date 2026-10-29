@@ -61,6 +61,8 @@ export function propertyUiStatusLabel(status: PropertyUiStatus): string {
       return "تعذّر";
     case PropertyListRowStatuses.Incomplete:
       return "ناقص";
+    case PropertyListRowStatuses.Cancelled:
+      return "ملغى";
     default:
       return "جديد";
   }
@@ -70,7 +72,7 @@ export function propertyUiStatusTone(
   status: PropertyUiStatus,
 ): "teal" | "amber" | "red" | "gray" {
   if (status === PropertyListRowStatuses.Done) return "teal";
-  if (status === PropertyListRowStatuses.Fail) return "red";
+  if (status === PropertyListRowStatuses.Fail || status === PropertyListRowStatuses.Cancelled) return "red";
   if (
     status === PropertyListRowStatuses.Progress ||
     status === PropertyListRowStatuses.Ready ||
@@ -145,16 +147,23 @@ export function formatPropertyLocation(
 
 export const PROPERTY_TYPE_USAGE_LABEL = "نوع العقار / الاستخدام";
 
+/** The type the property is now: the inspector-confirmed one after field inspection, else the bourse's. */
+export function effectivePropertyTypeOf(
+  property: Pick<PoPropertyIntake, "propertyType" | "inspectedPropertyType" | "effectivePropertyType">,
+): string {
+  return (
+    property.effectivePropertyType?.trim() ||
+    property.inspectedPropertyType?.trim() ||
+    property.propertyType.trim()
+  );
+}
+
 export function formatPropertyTypeLine(property: Pick<
   PoPropertyIntake,
   "classification" | "propertyType" | "inspectedPropertyType" | "effectivePropertyType"
 >): string {
   // After field inspection, the inspector-confirmed type wins operationally.
-  const type = (
-    property.effectivePropertyType?.trim() ||
-    property.inspectedPropertyType?.trim() ||
-    property.propertyType.trim()
-  );
+  const type = effectivePropertyTypeOf(property);
   const usage = property.classification.trim();
   if (type && usage && type !== usage) return `${type} / ${usage}`;
   return type || usage || "";
@@ -264,6 +273,8 @@ export type PoPropertyIntake = {
   isRemoved: boolean;
   removalReason: string;
   removedAtUtc: string;
+  /** Set (ISO) while the deed's transaction is cancelled («إلغاء المعاملة»); "" when live. */
+  cancelledAtUtc: string;
   /** Server row time; empty until the property has been fetched. */
   updatedAtUtc: string;
   contacts: PoContact[];
@@ -368,6 +379,7 @@ export function emptyProperty(): PoPropertyIntake {
     isRemoved: false,
     removalReason: "",
     removedAtUtc: "",
+    cancelledAtUtc: "",
     updatedAtUtc: "",
     contacts: [emptyPoContact()],
   };

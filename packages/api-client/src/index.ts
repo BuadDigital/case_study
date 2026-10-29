@@ -166,6 +166,7 @@ export {
   patchWorkflowTask,
   patchWorkflowTaskDistribution,
   redistributeWorkflowTaskParties,
+  addWorkflowTaskEngineeringSurvey,
   reopenCompletedWorkflowTask,
   revertWorkflowTaskPhase,
   syncWorkflowTasks,
@@ -627,7 +628,12 @@ export {
   getTransactionByProperty,
   getTransactionTimeline,
   linkedPropertyDeeds,
+  decideTransactionCancellation,
+  getTransactionCancellationState,
+  listTransactionCancellations,
   mergeTransactions,
+  previewTransactionCancellation,
+  requestTransactionCancellation,
   searchTransactionDeeds,
   transactionDeedDateOf,
   transactionDeedLabelOf,
@@ -638,6 +644,11 @@ export {
   type TransactionDto,
   type TransactionLinkKind,
   type TransactionTimelineEventDto,
+  type TransactionCancellationDeedDto,
+  type TransactionCancellationDto,
+  type TransactionCancellationPreviewDto,
+  type TransactionCancellationReason,
+  type TransactionCancellationStateDto,
 } from "./transactions";
 
 export {
@@ -701,13 +712,6 @@ export {
   type ValueDocumentApproachKey,
   type ValueDocumentEffect,
 } from "./valuation-value-documents";
-export {
-  getValuationIncomeApproach,
-  saveValuationIncomeApproach,
-  type OperatingExpensesMode,
-  type SaveValuationIncomeApproachRequest,
-  type ValuationIncomeApproachDto,
-} from "./valuation-income-approach";
 export {
   approveReportDraft,
   downloadFinalReport,

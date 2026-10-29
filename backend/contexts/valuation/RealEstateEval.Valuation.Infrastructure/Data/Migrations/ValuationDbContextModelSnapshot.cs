@@ -832,74 +832,6 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         });
                 });
 
-            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIncomeApproach", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("CapRateRationale")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<decimal?>("CapitalisationRatePct")
-                        .HasPrecision(9, 4)
-                        .HasColumnType("numeric(9,4)");
-
-                    b.Property<decimal>("GrossPotentialIncome")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<decimal>("OperatingExpensesAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<string>("OperatingExpensesMode")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasDefaultValue("pct_of_egi");
-
-                    b.Property<decimal>("OperatingExpensesPct")
-                        .HasPrecision(9, 4)
-                        .HasColumnType("numeric(9,4)");
-
-                    b.Property<decimal>("OtherIncome")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("VacancyCollectionLossPct")
-                        .HasPrecision(9, 4)
-                        .HasColumnType("numeric(9,4)");
-
-                    b.Property<Guid>("ValuationRequestId")
-                        .HasColumnType("uuid");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ValuationRequestId")
-                        .IsUnique();
-
-                    b.ToTable("ValuationIncomeApproaches", "valuation", t =>
-                        {
-                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_GrossPotentialIncome_NonNegative", "\"GrossPotentialIncome\" IS NULL OR \"GrossPotentialIncome\" >= 0");
-
-                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_OperatingExpensesAmount_NonNegative", "\"OperatingExpensesAmount\" IS NULL OR \"OperatingExpensesAmount\" >= 0");
-
-                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_OperatingExpensesMode", "\"OperatingExpensesMode\" IS NULL OR \"OperatingExpensesMode\" IN ('amount', 'pct_of_egi')");
-
-                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_OperatingExpensesPct_NonNegative", "\"OperatingExpensesPct\" IS NULL OR \"OperatingExpensesPct\" >= 0");
-
-                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_OtherIncome_NonNegative", "\"OtherIncome\" IS NULL OR \"OtherIncome\" >= 0");
-
-                            t.HasCheckConstraint("CK_ValuationIncomeApproaches_VacancyCollectionLossPct_NonNegative", "\"VacancyCollectionLossPct\" IS NULL OR \"VacancyCollectionLossPct\" >= 0");
-                        });
-                });
-
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIndirectCostItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1511,17 +1443,6 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .IsRequired();
 
                     b.Navigation("CostApproach");
-                });
-
-            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIncomeApproach", b =>
-                {
-                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", "ValuationRequest")
-                        .WithMany()
-                        .HasForeignKey("ValuationRequestId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("ValuationRequest");
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIndirectCostItem", b =>

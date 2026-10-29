@@ -25,6 +25,8 @@ import {
   inspectorWizardMapGeo,
 } from "./inspector-wizard-state";
 import { parseCoordinatePair } from "@platform/app-shared/domain/geo";
+import { shouldUseJeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
+import { nonNegativeDecimalInput } from "../../lib/app-data/specialist-components";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
 import { InspectorTransactionDocumentsCard } from "./InspectorTransactionDocumentsCard";
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
@@ -118,6 +120,9 @@ export function InspectorWizardLocationStep({
   // Jeddah default — so the field could not be cleared and retyped.
   const [coordsText, setCoordsText] = useState(coordsValue);
   const [coordsEditing, setCoordsEditing] = useState(false);
+  // A complete pair outside the Kingdom is not written to the draft: it used to be saved, then
+  // swapped for the Jeddah placeholder on reload while the screen said «تم تثبيت الموقع» (2026-10-28).
+  const [coordsOutside, setCoordsOutside] = useState(false);
 
   return (
     <>
@@ -161,7 +166,7 @@ export function InspectorWizardLocationStep({
                 className={cn(
                   EDIT_CONTROL_CLASS,
                   "tabular-nums",
-                  fieldErrors.mapLatitude && invalidControlClass,
+                  (fieldErrors.mapLatitude || coordsOutside) && invalidControlClass,
                 )}
                 dir="ltr"
                 placeholder="21.523339, 39.187743"
@@ -176,12 +181,23 @@ export function InspectorWizardLocationStep({
                   // (a half-typed value would otherwise be wiped, or revert to the saved one).
                   setCoordsText(e.target.value);
                   const pair = parseCoordinatePair(e.target.value);
-                  if (!pair) return;
+                  if (!pair) {
+                    setCoordsOutside(false);
+                    return;
+                  }
+                  const outside = shouldUseJeddahDefaultCoords(String(pair.lat), String(pair.lng));
+                  setCoordsOutside(outside);
+                  if (outside) return;
                   onPatch(
                     mapPinPatchForActor(draft, String(pair.lat), String(pair.lng), mapActor),
                   );
                 }}
               />
+              {coordsOutside ? (
+                <p className="mt-1 text-[11px] text-danger-text" role="alert">
+                  الإحداثيات خارج المملكة — تأكد من ترتيبها (خط العرض ثم خط الطول)
+                </p>
+              ) : null}
             </div>
           ) : (
             <InsReadField
@@ -197,6 +213,7 @@ export function InspectorWizardLocationStep({
               type="button"
               className={INS_WIZARD_PIN_BUTTON_CLASS}
               onClick={onPin}
+              disabled={coordsOutside}
             >
               تثبيت الموقع
             </button>
@@ -325,7 +342,7 @@ export function InspectorWizardLocationStep({
             ltr
             inputMode="decimal"
             
-            onChange={(v) => onPatch({ streetWidthM: v })}
+            onChange={(v) => onPatch({ streetWidthM: nonNegativeDecimalInput(v) })}
           disabled={!editable} />
         </InsFieldsGrid>
         <InspectorAccessContactFields

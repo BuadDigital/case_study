@@ -286,10 +286,15 @@ export function AssignmentsPanel({
                     </span>
                   </Td>
                   <Td>
-                    <ColorStatusPill
-                      label={assignmentStatusLabel(a.status)}
-                      color={color}
-                    />
+                    <span className="inline-flex flex-wrap items-center gap-1.5">
+                      <ColorStatusPill
+                        label={assignmentStatusLabel(a.status)}
+                        color={color}
+                      />
+                      {a.propertyCancelledAtUtc ? (
+                        <ColorStatusPill label="عقار ملغى" color="var(--red)" />
+                      ) : null}
+                    </span>
                   </Td>
                   <Td>
                     <KeyLocationCell
@@ -306,7 +311,7 @@ export function AssignmentsPanel({
                     </span>
                   </Td>
                   <Td className="text-center">
-                    {a.status === "pending" && canEdit ? (
+                    {a.status === "pending" && !a.propertyCancelledAtUtc && canEdit ? (
                       <button
                         type="button"
                         disabled={busy}
@@ -348,10 +353,15 @@ export function AssignmentsPanel({
                 >
                   صك {a.deedNumber}
                 </span>
-                <ColorStatusPill
-                  label={assignmentStatusLabel(a.status)}
-                  color={color}
-                />
+                <span className="inline-flex flex-wrap items-center gap-1.5">
+                  <ColorStatusPill
+                    label={assignmentStatusLabel(a.status)}
+                    color={color}
+                  />
+                  {a.propertyCancelledAtUtc ? (
+                    <ColorStatusPill label="عقار ملغى" color="var(--red)" />
+                  ) : null}
+                </span>
               </div>
               <div className="mt-2 space-y-1.5 text-[12.5px]">
                 <div className="flex justify-between gap-3">
@@ -381,7 +391,7 @@ export function AssignmentsPanel({
                 ) : null}
               </div>
               <div className="mt-3">
-                {a.status === "pending" && canEdit ? (
+                {a.status === "pending" && !a.propertyCancelledAtUtc && canEdit ? (
                   <button
                     type="button"
                     disabled={busy}

@@ -56,9 +56,7 @@ public static class KeyEnvelopeLifecycleRules
     public static bool ReadyForCourtReturn(KeyEnvelope envelope) =>
         envelope.Status == KeyEnvelopeStatuses.Reviewer
         && envelope.Assignments.Count > 0
-        && envelope.Assignments.All(a =>
-            KeyAssignmentStatuses.IsConfirmResult(a.Status)
-            && a.KeyLocation != KeyLocations.WithUser);
+        && envelope.Assignments.All(a => a.IsSettled && a.KeyLocation != KeyLocations.WithUser);
 
     public static string HandoffSummary(string kind, string from, string to) => kind switch
     {

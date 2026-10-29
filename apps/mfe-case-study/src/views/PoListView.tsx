@@ -41,8 +41,9 @@ import {
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import { buildPoListRowMoreItems } from "../lib/app-data/po-list-row-menu";
 import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQueueMobileCards";
-import { formatDateAr } from "../lib/app-data/po-intake-data";
+import { formatDateAr, formatPoDisplay } from "../lib/app-data/po-intake-data";
 import { PoIntakeModal } from "@case-study/mfe/components/po-intake/PoIntakeModal";
+import { TransactionCancelDialog } from "@case-study/mfe/components/po-intake/TransactionCancelDialog";
 import {
   poListRowView,
   progFill,
@@ -100,7 +101,10 @@ export function PoListView() {
     rangeStart,
     rangeEnd,
     toggleSort,
-    handleCancelPo,
+    showCancel,
+    cancelDecides,
+    cancelPo,
+    setCancelPo,
     handleStopPo,
     handleDeletePo,
     warmPo,
@@ -109,6 +113,15 @@ export function PoListView() {
 
   return (
     <>
+      {cancelPo ? (
+        <TransactionCancelDialog
+          scope={{ poNumber: cancelPo }}
+          label={formatPoDisplay(cancelPo)}
+          decides={cancelDecides}
+          onClose={() => setCancelPo(null)}
+        />
+      ) : null}
+
       {showIntake ? (
         <PoIntakeModal
           open={intakeOpen}
@@ -443,12 +456,14 @@ export function PoListView() {
                                   showEdit,
                                   showDelete,
                                   showLifecycleActions: showEdit,
+                                  showCancel,
+                                  cancelDecides,
                                   showCreateOperationsTask,
                                   deleting: deletingPo === p.id,
                                   lifecycleBusy: lifecyclePo === p.id,
                                   router,
                                   onDelete: () => void handleDeletePo(p.id),
-                                  onCancel: () => void handleCancelPo(p.id),
+                                  onCancel: () => setCancelPo(p.id),
                                   onStop: () => void handleStopPo(p.id),
                                 })}
                               />

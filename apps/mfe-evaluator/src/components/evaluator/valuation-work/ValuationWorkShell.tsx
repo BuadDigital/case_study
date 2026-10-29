@@ -1,8 +1,5 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • Income  New «أسلوب الدخل» screen (IncomeApproachScreen): the tab follows the settings draft, else the
-//            saved settings; an income save drops the printed-report cache and reloads reconciliation
-//            and gates.
 //  • Alert panels per group: market on «طريقة المقارنة», cost on the cost screen, general on the final
 //         opinion (alertsPanel) — cost and general alerts had no panel.
 //  • Passes gates and setScreen to the review screen for the hand-over blockers list.
@@ -11,7 +8,6 @@
 //  • A    The land table inside the cost approach uses the whole plot area (landPlotSqm), never an
 //         apartment's floor area, and an apartment shows apartmentLandHint; deedArea goes to the cost
 //         section.
-//  • Passes incomeSaved (saved settings) to the income screen.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -23,9 +19,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import { InlineLoadingSkeleton, cn } from "@platform/ui-kit";
-import { invalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
 import { apartmentLandHint } from "../../../lib/evaluator/cost-land-figures";
 import {
   retrospectiveDraftFromSettings,
@@ -35,6 +29,7 @@ import {
   Card,
   CardPad,
   CardTitle,
+  GhostBtn,
 } from "./atoms";
 import { ApproachSettingsSection } from "./ApproachSettingsSection";
 import { EngInfo } from "../EvaluatorHtmlPrimitives";
@@ -45,14 +40,13 @@ import {
 import { ComparablesBankTable } from "./ComparablesBankTable";
 import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
 import { fmt } from "./lib/shell-utils";
+import { marketSubjectAreaLabel } from "./lib/market-subject";
 import {
   buildNavItems,
   resolveEffectiveScreen,
   type ValuationWorkScreenId,
 } from "./lib/shell-state";
 import { ApproachSummaryStrip } from "./ApproachSummaryStrip";
-import { IncomeApproachScreen } from "./IncomeApproachScreen";
-import { incomeApproachAvailable } from "./lib/income-approach-state";
 import { ValuationWorkNav } from "./ValuationWorkNav";
 import { deedNatureMatchGateDetail } from "./lib/deed-nature-match-gate";
 import { useValuationWorkData } from "./useValuationWorkData";
@@ -122,6 +116,7 @@ export function ValuationWorkShell({
 
   const data = useValuationWorkData({
     propertyId,
+    poNumber,
     inspectionTaskId,
     assignmentType,
     districtHint,
@@ -141,6 +136,7 @@ export function ValuationWorkShell({
     subjectArea,
     analysisNotes,
     approachSettings,
+    marketKind,
     settingsHydrateKey,
     cost,
     costHydrateKey,
@@ -200,19 +196,10 @@ export function ValuationWorkShell({
     draftApproaches != null ? draftApproaches.market : marketEnabled;
   const costTab =
     draftApproaches != null ? draftApproaches.cost : costEnabled;
-  // The settings draft wins once it reports income; else the saved settings decide.
-  const incomeTab = draftApproaches?.income ?? incomeApproachAvailable(approachSettings);
 
   useEffect(() => {
-    onNavAvailabilityChange?.({ market: marketTab, cost: costTab, income: incomeTab });
-  }, [costTab, incomeTab, marketTab, onNavAvailabilityChange]);
-
-  const queryClient = useQueryClient();
-  /** After an income save: drop the printed-report cache and refresh reconciliation + gates. */
-  const onIncomeSaved = useCallback(() => {
-    invalidateEvaluatorReportOutput(queryClient);
-    void reload({ silent: true, scope: "derived" });
-  }, [queryClient, reload]);
+    onNavAvailabilityChange?.({ market: marketTab, cost: costTab });
+  }, [costTab, marketTab, onNavAvailabilityChange]);
 
   const comparableSeed = {
     type: property?.propertyType || intakeProperty?.propertyType,
@@ -231,7 +218,6 @@ export function ValuationWorkShell({
   const navItems = buildNavItems({
     marketEnabled: marketTab,
     costEnabled: costTab,
-    incomeEnabled: incomeTab,
     adoptedMarketCount: visibleAdoptedMarket.length,
   });
   const effectiveScreen = resolveEffectiveScreen(navItems, screen);
@@ -275,18 +261,27 @@ export function ValuationWorkShell({
   ]);
 
   /* ─── screens ─── */
+  /**
+   * A work tab opened before the valuation started. The tabs follow the approaches ticked in the
+   * draft, so they show before «بدء التقييم» succeeds — the card says what to do and leads back,
+   * where a refused start names the missing field (e.g. مبرر التقييم بأثر رجعي).
+   */
+  function notStartedCard(screenLabel: string) {
+    return (
+      <Card>
+        <CardPad>
+          <p className="mb-3 text-[13px] text-text-2">
+            لم يبدأ التقييم بعد، فلا تُفتح «{screenLabel}». ارجع إلى «البيانات الأساسية» واضغط «بدء
+            التقييم» — إن لم يبدأ تظهر رسالة بالحقل الناقص وتنتقل إليه (مثل مبرر التقييم بأثر رجعي).
+          </p>
+          <GhostBtn onClick={() => setScreen("basic")}>الانتقال إلى البيانات الأساسية</GhostBtn>
+        </CardPad>
+      </Card>
+    );
+  }
+
   function renderMarket() {
-    if (!settingsSaved) {
-      return (
-        <Card>
-          <CardPad>
-            <p className="text-[13px] text-text-2">
-              ابدأ التقييم من شاشة البيانات الأساسية أولاً.
-            </p>
-          </CardPad>
-        </Card>
-      );
-    }
+    if (!settingsSaved) return notStartedCard("طريقة المقارنة");
     if (!marketTab) {
       return (
         <Card>
@@ -329,10 +324,19 @@ export function ValuationWorkShell({
                 ]
               : []),
             ...(marketIsUnit
-              ? [{ label: "المساحة", value: subjectAreaNum && subjectAreaNum > 0 ? `${fmt(subjectAreaNum)} م²` : "—" }]
+              ? [
+                  {
+                    label: marketSubjectAreaLabel(marketKind),
+                    value: subjectAreaNum && subjectAreaNum > 0 ? `${fmt(subjectAreaNum)} م²` : "—",
+                  },
+                ]
               : []),
           ]}
-          resultLabel={marketIsUnit ? "سعر المتر × المساحة =" : "قيمة العقار بعد التسوية ="}
+          resultLabel={
+            marketIsUnit
+              ? `سعر المتر × ${marketSubjectAreaLabel(marketKind)} =`
+              : "قيمة العقار بعد التسوية ="
+          }
           result={marketReady ? fmt(marketValue) : "غير مكتمل — يلزم اعتماد مقارن"}
           resultTone={marketReady ? "heading" : "danger"}
         />
@@ -361,6 +365,7 @@ export function ValuationWorkShell({
               locked={adjustmentsLocked}
               saving={saving}
               subjectArea={subjectArea}
+              subjectKind={marketKind}
               idealArea={subjectArea}
               city={property?.city}
               district={property?.district ?? districtHint}
@@ -401,15 +406,12 @@ export function ValuationWorkShell({
   }
 
   function renderCost() {
-    if (!settingsSaved || !costTab) {
+    if (!settingsSaved) return notStartedCard("طريقة المقاول");
+    if (!costTab) {
       return (
         <Card>
           <CardPad>
-            <p className="text-[13px] text-text-2">
-              {!settingsSaved
-                ? "ابدأ التقييم أولاً."
-                : "أسلوب التكلفة غير مفعّل أو غير منطبق."}
-            </p>
+            <p className="text-[13px] text-text-2">أسلوب التكلفة غير مفعّل أو غير منطبق.</p>
           </CardPad>
         </Card>
       );
@@ -635,32 +637,9 @@ export function ValuationWorkShell({
               ) : null}
             </Activity>
           ) : null}
-          {visitedScreens.has("income") ? (
-            <Activity mode={screenMode("income")}>
-              <IncomeApproachScreen
-                settingsSaved={settingsSaved}
-                incomeEnabled={incomeTab}
-                incomeSaved={incomeApproachAvailable(approachSettings)}
-                valuationRequestId={valuationRequestId}
-                gates={gates}
-                recon={recon}
-                saving={saving}
-                locked={adjustmentsLocked}
-                onSavingChange={setSaving}
-                onIncomeSaved={onIncomeSaved}
-                onReconSaved={onReconSaved}
-              />
-            </Activity>
-          ) : null}
-          {!loading && effectiveScreen === "final" && !settingsSaved ? (
-            <Card>
-              <CardPad>
-                <p className="text-[13px] text-text-2">
-                  ابدأ التقييم أولاً لفتح رأي القيمة النهائي.
-                </p>
-              </CardPad>
-            </Card>
-          ) : null}
+          {!loading && effectiveScreen === "final" && !settingsSaved
+            ? notStartedCard("رأي القيمة النهائي")
+            : null}
           {visitedScreens.has("final") ? (
             <Activity mode={screenMode("final")}>
               {settingsSaved ? (

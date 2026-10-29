@@ -23,7 +23,7 @@ const reviewFailure = {
 };
 
 test.describe("Failures optimistic rollback", () => {
-  test("aborted approve restores prior status and shows error toast", async ({
+  test("aborted final failure keeps the status and shows an error toast", async ({
     page,
   }) => {
     await loginAs(page, RELEASE_USERS.cdo);
@@ -56,10 +56,8 @@ test.describe("Failures optimistic rollback", () => {
       },
     );
 
-    // Abort the approve mutation after the optimistic UI has a chance to flip.
-    await page.route(`**/api/failures/${FAILURE_ID}/approve`, (route) =>
-      route.abort("failed"),
-    );
+    // «اعتماد التعذّر» opens the final-failure dialog (since 31c27c53); abort the dialog's post.
+    await page.route("**/api/failures/final", (route) => route.abort("failed"));
 
     await page.goto(`/failures?highlight=${FAILURE_ID}`, { waitUntil: "commit" });
     await waitForPageTitle(page, "إدارة التعذّرات");
@@ -69,10 +67,16 @@ test.describe("Failures optimistic rollback", () => {
     await expect(row.getByText("قيد المراجعة")).toBeVisible();
 
     await page.getByRole("button", { name: "اعتماد التعذّر" }).click();
+    const dialog = page.getByRole("dialog", { name: /التعذّر النهائي عن المعاملة/ });
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel(/سبب التعذّر النهائي/).fill("سبب اختبار التراجع");
+    await dialog.getByRole("button", { name: "تسجيل التعذّر النهائي" }).click();
 
     await expect(
-      page.getByRole("status").filter({ hasText: "تعذّر اعتماد التعذّر — حاول مرة أخرى" }),
+      page.getByRole("status").filter({ hasText: "تعذّر الاتصال بالخادم" }),
     ).toBeVisible({ timeout: 10_000 });
+    // The dialog stays open with the typed reason, and the row keeps its status.
+    await expect(dialog).toBeVisible();
     await expect(row.getByText("قيد المراجعة")).toBeVisible();
     // Scoped to the row: the KPI band and the tab strip also say «تعذّر نهائي» / «التعذّرات».
     await expect(row.getByText("تعذّر نهائي", { exact: true })).toHaveCount(0);

@@ -11,13 +11,12 @@
  * (private window, blocked site data) just falls back to the window's default tab.
  */
 /** Same union as the window's `EvaluatorWindowTab` (kept here so lib does not import components). */
-type EvaluatorWindowTab = "basic" | "market" | "cost" | "income" | "final" | "review" | "output";
+type EvaluatorWindowTab = "basic" | "market" | "cost" | "final" | "review" | "output";
 
 const KNOWN_TABS: readonly EvaluatorWindowTab[] = [
   "basic",
   "market",
   "cost",
-  "income",
   "final",
   "review",
   "output",
@@ -26,8 +25,8 @@ const KNOWN_TABS: readonly EvaluatorWindowTab[] = [
 /** Approach tabs appear only after the valuation settings load — their restore waits for them. */
 export function tabWaitsForApproaches(
   tab: EvaluatorWindowTab,
-): tab is "market" | "cost" | "income" {
-  return tab === "market" || tab === "cost" || tab === "income";
+): tab is "market" | "cost" {
+  return tab === "market" || tab === "cost";
 }
 
 function storageKey(taskId: string): string {

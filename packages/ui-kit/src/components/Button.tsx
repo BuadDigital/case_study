@@ -101,7 +101,9 @@ export function Button({
       {...props}
     >
       {loading ? <Spinner /> : icon}
-      {children}
+      {/* An icon-only button's child IS its glyph: while loading the spinner takes its place
+          rather than sitting beside it in a 32px box built for one glyph. */}
+      {loading && size === "icon" ? null : children}
     </button>
   );
 }

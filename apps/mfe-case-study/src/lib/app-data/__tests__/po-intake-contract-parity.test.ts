@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { validatePropertyBourseFields } from "../../domain/po-intake/property-bourse-validation";
-import { propertyHasIncompleteContact, validatePropertyContacts } from "../../domain/po-intake/property-validation";
+import {
+  CONTACT_PHONE_TOO_LONG,
+  contactPhonesFit,
+  propertyHasIncompleteContact,
+  validatePropertyContacts,
+} from "../../domain/po-intake/property-validation";
 import { emptyProperty } from "../po-intake-data";
 
 describe("PO intake frontend/backend rule parity", () => {
@@ -76,5 +81,22 @@ describe("PO intake frontend/backend rule parity", () => {
     expect(validatePropertyContacts(property).contact_national_id_0).toBe(
       "رقم الهوية يجب أن يتكون من 10 أرقام ويبدأ بـ 1 أو 2.",
     );
+  });
+
+  it("refuses a phone list wider than the backend column with the backend's message", () => {
+    const contact = (phone: string) => ({ name: "", role: "مالك", phone, nationalId: "" });
+    const property = {
+      ...emptyProperty(),
+      contacts: [
+        contact("0512345678 0512345679 0512345670"),
+        contact("0512345678 0512345679 0512345670 0512345671"),
+      ],
+    };
+
+    const errors = validatePropertyContacts(property);
+    expect(errors.contact_phone_0).toBeUndefined();
+    expect(errors.contact_phone_1).toBe(CONTACT_PHONE_TOO_LONG);
+    expect(contactPhonesFit(["0512345678", "0512345679", "0512345670"])).toBe(true);
+    expect(contactPhonesFit(["0512345678", "0512345679", "0512345670", "0512345671"])).toBe(false);
   });
 });

@@ -6,11 +6,11 @@ namespace RealEstateEval.Application.Tests;
 public class ValuationMethodologyAlertRulesTests
 {
     [Fact]
-    public void Evaluate_returns_27_alerts()
+    public void Evaluate_returns_24_alerts()
     {
         var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput());
-        Assert.Equal(27, checks.Count);
-        Assert.Equal(Enumerable.Range(1, 19).Concat([21, 22, 23, 24, 25, 26, 27, 28]), checks.Select(c => c.Number));
+        Assert.Equal(24, checks.Count);
+        Assert.Equal(Enumerable.Range(1, 19).Concat([21, 22, 23, 24, 25]), checks.Select(c => c.Number));
     }
 
     [Fact]
@@ -321,6 +321,61 @@ public class ValuationMethodologyAlertRulesTests
             ],
         });
         Assert.False(withRationale.Single(c => c.Number == 9).Triggered);
+    }
+
+    [Theory]
+    [InlineData(CostLineItemKeys.RepeatedFloors, "")]
+    [InlineData("", "دور متكرر")]
+    public void Repeated_unit_cost_left_at_zero_inherits_the_first_floor_and_does_not_trigger_m9(
+        string repeatedItemKey,
+        string repeatedLabel)
+    {
+        // The reproduced case: first floor 1,500 SAR/m², repeated floors 1,800 m² left at 0
+        // (the screen shows «موروثة من الدور الأول» and prices them at 1,500 → 2,700,000).
+        var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            CostApproachRelevant = true,
+            CostLines =
+            [
+                new(BuildingStructureKinds.Floor, "الدور الأول", 600m, 1500m, null, true,
+                    CostLineItemKeys.FirstFloor),
+                new(BuildingStructureKinds.Floor, repeatedLabel, 1800m, 0m, null, true,
+                    repeatedItemKey),
+            ],
+        });
+        var m9 = checks.Single(c => c.Number == 9);
+        Assert.True(m9.Evaluated);
+        Assert.False(m9.Triggered);
+    }
+
+    [Fact]
+    public void Repeated_unit_cost_typed_differently_by_item_key_still_triggers_m9()
+    {
+        var checks = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            CostApproachRelevant = true,
+            CostLines =
+            [
+                new(BuildingStructureKinds.Floor, "الدور الأول", 600m, 1500m, null, true,
+                    CostLineItemKeys.FirstFloor),
+                new(BuildingStructureKinds.Floor, "", 1800m, 1400m, null, true,
+                    CostLineItemKeys.RepeatedFloors),
+            ],
+        });
+        Assert.True(checks.Single(c => c.Number == 9).Triggered);
+
+        var same = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            CostApproachRelevant = true,
+            CostLines =
+            [
+                new(BuildingStructureKinds.Floor, "الدور الأول", 600m, 1500m, null, true,
+                    CostLineItemKeys.FirstFloor),
+                new(BuildingStructureKinds.Floor, "", 1800m, 1500m, null, true,
+                    CostLineItemKeys.RepeatedFloors),
+            ],
+        });
+        Assert.False(same.Single(c => c.Number == 9).Triggered);
     }
 
     [Fact]

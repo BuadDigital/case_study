@@ -1,4 +1,5 @@
 using RealEstateEval.Domain;
+using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
@@ -21,9 +22,10 @@ public static class CaseStudyReportDeedNatureMatchRules
     public static Dictionary<string, string>? ValidateForIssue(
         string? outcome,
         string? notes,
-        IEnumerable<DeedKind> transactionDeedKinds)
+        IEnumerable<DeedKind> transactionDeedKinds,
+        bool inspectorSaidNotMatched = false)
     {
-        var saveErrors = ValidateForSave(outcome, notes);
+        var saveErrors = ValidateForSave(outcome, notes, inspectorSaidNotMatched);
         if (saveErrors is not null) return saveErrors;
 
         if (transactionDeedKinds.Any(DeedKindRules.RequiresDeedNatureMatchGate)
@@ -38,9 +40,17 @@ public static class CaseStudyReportDeedNatureMatchRules
         return null;
     }
 
+    /// <summary>
+    /// «مطابق» chosen against the inspector's «غير مطابق» (2026-10-29 ruling).
+    /// </summary>
+    public static readonly string OverrideReasonRequiredAr =
+        $"سبب اعتماد «مطابق» خلافاً لرأي المعاين مطلوب ({JustificationRules.RequiredMinLength} أحرف على الأقل)";
+
+    /// <param name="inspectorSaidNotMatched">The field inspector's verdict was «غير مطابق».</param>
     public static Dictionary<string, string>? ValidateForSave(
         string? outcome,
-        string? notes)
+        string? notes,
+        bool inspectorSaidNotMatched = false)
     {
         var matchOutcome = (outcome ?? "").Trim().ToLowerInvariant();
         // IsKnown includes Unset — draft-friendly; matched is for submit / valuation.
@@ -59,6 +69,14 @@ public static class CaseStudyReportDeedNatureMatchRules
             {
                 ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذّر»",
             };
+        }
+
+        // The specialist may decide «مطابق» against the inspector, but says why (in the same notes).
+        if (inspectorSaidNotMatched
+            && matchOutcome == DeedNatureMatchOutcomes.Matched
+            && !JustificationRules.MeetsRequiredMinimum(notes))
+        {
+            return new Dictionary<string, string> { ["deedNatureMatchNotes"] = OverrideReasonRequiredAr };
         }
 
         return null;

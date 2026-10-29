@@ -19,6 +19,8 @@ public static class WorkOrderValidator
             errors["assignmentType"] = "نوع الإسناد غير صالح";
         if (!DateOnly.TryParse(request.PromulgationDate, out _))
             errors["promulgationDate"] = "تاريخ التعميد غير صالح";
+        else if (IsFutureDate(request.PromulgationDate))
+            errors["promulgationDate"] = "تاريخ التعميد لا يكون في المستقبل";
         ValidateOptionalSpecialistEmail(request.AssignmentSpecialistEmail, errors);
         if (request.ExpectedPropertyCount < 1)
             errors["expectedPropertyCount"] = "عدد العقارات يجب أن يكون 1 على الأقل";
@@ -39,6 +41,8 @@ public static class WorkOrderValidator
             errors["assignmentType"] = "نوع الإسناد غير صالح";
         if (!DateOnly.TryParse(request.PromulgationDate, out _))
             errors["promulgationDate"] = "تاريخ التعميد غير صالح";
+        else if (IsFutureDate(request.PromulgationDate))
+            errors["promulgationDate"] = "تاريخ التعميد لا يكون في المستقبل";
         ValidateOptionalSpecialistEmail(request.AssignmentSpecialistEmail, errors);
         if (request.ExpectedPropertyCount < 1)
             errors["expectedPropertyCount"] = "عدد العقارات يجب أن يكون 1 على الأقل";
@@ -100,6 +104,8 @@ public static class WorkOrderValidator
             errors["assignmentMandateNumber"] = "رقم التكليف مطلوب";
         if (string.IsNullOrWhiteSpace(dto.AssignmentMandateDate))
             errors["assignmentMandateDate"] = "تاريخ التكليف مطلوب";
+        else if (IsFutureDate(dto.AssignmentMandateDate))
+            errors["assignmentMandateDate"] = "تاريخ التكليف لا يكون في المستقبل";
         if (policy.RequiresOwnerName && string.IsNullOrWhiteSpace(dto.OwnerName))
             errors["ownerName"] = "اسم المالك مطلوب";
         if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
@@ -223,6 +229,8 @@ public static class WorkOrderValidator
         {
             if (string.IsNullOrWhiteSpace(dto.RealEstateRegDate))
                 errors["realEstateRegDate"] = "تاريخ التسجيل العيني مطلوب";
+            else if (IsFutureDate(dto.RealEstateRegDate))
+                errors["realEstateRegDate"] = "تاريخ التسجيل العيني لا يكون في المستقبل";
             if (string.IsNullOrWhiteSpace(dto.RealEstateRegFileName))
             {
                 errors["realEstateRegFileName"] =
@@ -268,6 +276,8 @@ public static class WorkOrderValidator
             else if (phones.Any(p => CountPhoneDigits(p) < 10))
                 errors[$"contact_phone_{i}"] =
                     "كل رقم جوال يجب أن يكون 10 أرقام على الأقل (افصل بينها بمسافة)";
+            if (ContactPhoneTooLong(c.Phone))
+                errors[$"contact_phone_{i}"] = ContactPhoneTooLongAr;
             if (string.IsNullOrEmpty(role))
                 errors[$"contact_role_{i}"] = "صفة الضابط مطلوبة";
             var nationalId = WorkOrderPropertyWriteRules.NormalizeNationalId(c.NationalId);
@@ -282,6 +292,43 @@ public static class WorkOrderValidator
         if (requireAtLeastOne && !hasContact)
             errors["_contacts"] = "أضف ضابط اتصال واحداً على الأقل (جوال + صفة)";
     }
+
+    /// <summary>Width of <c>PropertyContacts.Phone</c> — every mobile of one contact, space-separated.</summary>
+    public const int ContactPhoneMaxLength = 32;
+
+    public const string ContactPhoneTooLongAr =
+        "أرقام الجوال لهذا الضابط أكثر مما يتسع له — أضف ضابط اتصال آخر لباقي الأرقام";
+
+    /// <summary>
+    /// The contacts' phone lists that would not fit the column — checked on the autosave path
+    /// too, which skips <see cref="ValidateContacts"/>.
+    ///
+    /// How it works: one error per contact whose trimmed phone text is longer than
+    /// <see cref="ContactPhoneMaxLength"/>, keyed like the field errors (<c>contact_phone_{i}</c>).
+    ///
+    /// Edge cases: fixed 2026-10-28 — four mobiles (43 characters) reached the database and
+    /// failed the save with a 500 after the property itself was already written.
+    /// </summary>
+    public static Dictionary<string, string> ValidateContactPhoneLengths(IReadOnlyList<PropertyContactDto>? contacts)
+    {
+        var errors = new Dictionary<string, string>();
+        for (var i = 0; i < (contacts?.Count ?? 0); i++)
+        {
+            if (ContactPhoneTooLong(contacts![i].Phone))
+                errors[$"contact_phone_{i}"] = ContactPhoneTooLongAr;
+        }
+        return errors;
+    }
+
+    private static bool ContactPhoneTooLong(string? phone) =>
+        (phone ?? "").Trim().Length > ContactPhoneMaxLength;
+
+    /// <summary>
+    /// A date that has already happened (التعميد، التكليف، التسجيل العيني) typed after today in Riyadh.
+    /// Fixed 2026-10-28: a PO dated 2099 was accepted and had to be reset in the database.
+    /// </summary>
+    private static bool IsFutureDate(string? value) =>
+        DateOnly.TryParse(value, out var date) && date > RiyadhClock.Today(TimeProvider.System);
 
     private static List<string> SplitPhones(string? phone) =>
         (phone ?? "")

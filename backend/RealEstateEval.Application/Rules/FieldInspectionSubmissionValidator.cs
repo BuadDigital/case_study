@@ -43,12 +43,18 @@ public static class FieldInspectionSubmissionValidator
         "kitchen",
     };
 
-    public static Dictionary<string, string> Validate(JsonElement root)
+    /// <param name="today">Riyadh's date; tests pin it, the server reads the clock.</param>
+    public static Dictionary<string, string> Validate(JsonElement root, DateOnly? today = null)
     {
         var errors = new Dictionary<string, string>();
 
         if (!HasNonEmptyString(root, "inspectionDate"))
             errors["inspectionDate"] = "تاريخ المعاينة مطلوب";
+        // A visit cannot have happened tomorrow — a typed future date was printed on the photo stamp
+        // and in the report (2026-10-28 A→Z).
+        else if (DateOnly.TryParse(ReadString(root, "inspectionDate"), CultureInfo.InvariantCulture, out var visited)
+            && visited > (today ?? RiyadhClock.Today(TimeProvider.System)))
+            errors["inspectionDate"] = "تاريخ المعاينة لا يكون في المستقبل";
 
         if (!HasNonEmptyString(root, "inspectionTime"))
             errors["inspectionTime"] = "وقت المعاينة مطلوب";
@@ -86,6 +92,14 @@ public static class FieldInspectionSubmissionValidator
             && !HasBoundAttachment(GetObject(root, "featurePhotoAttachments"), PropertyDescriptionPhotoKey))
             errors["propertyDescription"] = "أدخل وصف العقار أو أرفق صورة لتفاصيل المكونات";
 
+        foreach (var (key, label) in WholeCountFields)
+        {
+            if (!IsBlankOrWholeCount(ReadString(root, key)))
+                errors[key] = $"«{label}» رقم صحيح من صفر فأكثر";
+        }
+        if (!IsBlankOrNonNegativeNumber(ReadString(root, "streetWidthM")))
+            errors["streetWidthM"] = "«عرض الشارع» رقم من صفر فأكثر";
+
         var photoIssues = ListPhotoValidationIssues(root);
         foreach (var issue in photoIssues)
         {
@@ -99,6 +113,37 @@ public static class FieldInspectionSubmissionValidator
         }
 
         return errors;
+    }
+
+    /// <summary>
+    /// Counts the inspector types as text (rooms … age). «-3», «خمسة» and «1e9» used to be stored and
+    /// printed in the report and the Enfaz package (2026-10-28); the screen now keeps digits only and
+    /// the server refuses anything else — a stale client or a direct API call included.
+    /// </summary>
+    private static readonly (string Key, string Label)[] WholeCountFields =
+    [
+        ("roomCount", "عدد الغرف"),
+        ("hallCount", "عدد الصالات"),
+        ("unitCount", "عدد الشقق"),
+        ("bathroomCount", "دورات المياه"),
+        ("showroomCount", "المعارض"),
+        ("wellCount", "الآبار"),
+        ("towerCount", "الأبراج"),
+        ("propertyAgeYears", "عمر العقار"),
+    ];
+
+    /// <summary>Empty, or digits only (Arabic digits allowed).</summary>
+    internal static bool IsBlankOrWholeCount(string? raw)
+    {
+        var text = (raw ?? "").Trim();
+        return text.Length == 0 || text.All(char.IsDigit);
+    }
+
+    /// <summary>Empty, or a number read by <see cref="LocaleNumber"/> that is not below zero.</summary>
+    internal static bool IsBlankOrNonNegativeNumber(string? raw)
+    {
+        var text = (raw ?? "").Trim();
+        return text.Length == 0 || (LocaleNumber.TryParse(text, out var value) && value >= 0);
     }
 
     private static bool IsLandInspection(JsonElement root)

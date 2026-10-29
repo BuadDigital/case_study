@@ -29,6 +29,8 @@ public class KeyEnvelopeAssignmentDto
     public string? KeyHolderUserId { get; init; }
     public string? KeyHolderLabel { get; init; }
     public DateTime? KeyLocationAtUtc { get; init; }
+    /// <summary>Set while the deed's transaction is cancelled — the key belongs to a cancelled property.</summary>
+    public DateTime? PropertyCancelledAtUtc { get; init; }
 }
 
 public class KeyEnvelopeHandoffDto
@@ -250,4 +252,12 @@ public class UpsertPropertyCourtAccessRequest
     public string? ContactPhones { get; init; }
     [MaxLength(4000)]
     public string? Notes { get; init; }
+}
+
+/// <summary>Case Study → Operations: the deeds whose transaction was cancelled (or reactivated).</summary>
+public class SetKeyPropertiesCancelledRequest
+{
+    public List<Guid> PropertyIds { get; init; } = [];
+    public bool Cancelled { get; init; }
+    public string Actor { get; init; } = "";
 }

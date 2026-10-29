@@ -268,7 +268,6 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "active-case-study", title: "دراسة حالة العقارات" },
   { id: "system-upload", title: "الرفع على النظام" },
   { id: "po", title: "أوامر العمل" },
-  { id: "all-transactions", title: "جميع المعاملات" },
   { id: "property-map", title: "خريطة العقارات" },
   { id: "bourse-inquiry", title: "استعلام بورصة" },
   { id: "keys", title: "محفظة المفاتيح" },
@@ -296,7 +295,6 @@ export const ROLE_MODULE_PAGES: Record<string, string[]> = {
   [RELEASE_USERS.caseSpecialist]: [
     "dashboard",
     "po",
-    "all-transactions",
     "property-map",
     "active-primary-data",
     "bourse-inquiry",

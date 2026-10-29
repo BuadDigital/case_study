@@ -83,9 +83,12 @@ public static class ValuationComparableListBuilder
         // land share only multiplies the adjusted rate into the land value. The market table keeps the header.
         var isLandTable = ComparableSelectionContexts.Normalize(selectionContext)
             == ComparableSelectionContexts.LandWithinCost;
+        // A built subject's market header holds its floor area (2026-10-29), never land.
+        var subjectIsLand = ValuationApproachSettingsRules.IsLandPropertyType(request.PropertyType);
         var subjectArea = isLandTable
             ? CostApproachRules.LandTableSubjectAreaSqm(
-                costLand?.BuildingPlotAreaSqm, costLand?.ApartmentShareSqm, header?.SubjectAreaSqm)
+                costLand?.BuildingPlotAreaSqm, costLand?.ApartmentShareSqm, header?.SubjectAreaSqm,
+                headerIsLandArea: subjectIsLand)
             : header?.SubjectAreaSqm;
         var valueArea = isLandTable
             ? CostApproachRules.LandTableValueAreaSqm(subjectArea, costLand?.ApartmentShareSqm)
@@ -102,7 +105,9 @@ public static class ValuationComparableListBuilder
             adoptedRows
                 .Where(r => comps.ContainsKey(r.ComparablePropertyId))
                 .Select(r => EffectiveCompValues(r, comps[r.ComparablePropertyId]).Area));
-        var basis = EffectiveBasis(header?.AdjustmentBasis, selectionContext);
+        var basis = EffectiveBasis(
+            header?.AdjustmentBasis ?? MarketAdjustmentBasisKeys.DefaultFor(request.PropertyType, null),
+            selectionContext);
 
         // Automatic weights from the GROSS adjustment (sequential + difference, absolute),
         // with no automatic weight for a comparable whose adjusted rate is an outlier against the

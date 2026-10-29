@@ -130,7 +130,6 @@ export async function submitPropertyDetailInspection(input: {
       classification: property.classification,
       propertyType: property.propertyType,
       includeRetiredFeatureKeys,
-      specialistProofServicesOnly: serviceProofFromTransactionPhotos,
       // The inspector's own submit only — the specialist's accept path never demands the verdict.
       requireDeedMatch:
         mapActor === "inspector" && inspectorMustDecideDeedMatch(property),

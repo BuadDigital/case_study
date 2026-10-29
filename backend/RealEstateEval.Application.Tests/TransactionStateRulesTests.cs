@@ -293,6 +293,37 @@ public class TransactionStateRulesTests
     }
 
     [Fact]
+    public void A_distributed_transaction_waiting_only_on_the_deposit_does_not_say_undistributed()
+    {
+        // Distributed, inspection and study done, the valuer's report not deposited yet.
+        var input = BaseInput(
+            studyIssued: true,
+            inspector: new PartyFacts(true, true),
+            appraiser: new PartyFacts(true, false, Submitted: true),
+            officeRequired: false,
+            specialist: new PartyFacts(true, true));
+
+        var reasons = EnfazHandoverBlockReasonsAr(input);
+
+        Assert.Equal(["تقرير التقييم لم يُودَع بعد (شهادة الإيداع)"], reasons);
+    }
+
+    [Fact]
+    public void An_undistributed_transaction_says_party_work_has_not_started()
+    {
+        var input = BaseInput(
+            phase: "bourse",
+            studyIssued: true,
+            valuationClosed: true,
+            inspector: new PartyFacts(true, true),
+            appraiser: new PartyFacts(true, true),
+            officeRequired: false,
+            specialist: new PartyFacts(true, true));
+
+        Assert.Contains("مرحلة عمل الأطراف لم تبدأ بعد (لم يتم التوزيع)", EnfazHandoverBlockReasonsAr(input));
+    }
+
+    [Fact]
     public void A_submitted_valuer_waits_on_the_specialist_while_the_deposit_stage_is_in_progress()
     {
         var input = BaseInput(

@@ -283,8 +283,7 @@ public class ValuationReconciliationSaveRulesTests
             new AuditLogWriter(),
             audit,
             NullAnswers.Create<IValuationComparableSelectionService>(),
-            NullAnswers.Create<IValuationCostApproachService>(),
-            NullAnswers.Create<IValuationIncomeApproachService>());
+            NullAnswers.Create<IValuationCostApproachService>());
         return new Rig(contexts, service, id, audit);
     }
 

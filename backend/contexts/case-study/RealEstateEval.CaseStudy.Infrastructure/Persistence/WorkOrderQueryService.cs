@@ -152,7 +152,9 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
             DueSoon = await active
                 .Where(w => w.DueDateAt > today && w.DueDateAt <= dueSoonUpper)
                 .CountAsync(cancellationToken),
-            DoneProperties = await filtered
+            // «عقارات رُفعت على إنفاذ — عبر جميع الأوامر»: every visible order, whatever the status filter —
+            // on the default «النشطة» filter the handed-over deeds sit in closed orders and it always read 0.
+            DoneProperties = await visible
                 .SelectMany(w => w.Properties)
                 .Where(p => !p.IsRemoved)
                 .Where(ClosedProperty())
@@ -162,18 +164,30 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
 
  // ---- Delivery rules as EF expressions. Mirror PropertyDeliveryRules (in-memory) — change both.
 
- /// <summary>Closed property: handed over to Enfaz, or every task cancelled. PropertyDeliveryRules.IsClosed.</summary>
+ /// <summary>Closed property: handed over to Enfaz, its transaction cancelled, or every task cancelled. PropertyDeliveryRules.IsClosed.</summary>
     private Expression<Func<WorkOrderProperty, bool>> ClosedProperty() => p =>
         p.EnfazHandoverAtUtc != null
+        || p.CancelledAtUtc != null
         || (_db.WorkflowTasks.Any(t => t.PropertyId == p.Id)
             && !_db.WorkflowTasks.Any(t =>
                 t.PropertyId == p.Id && t.Status != WorkflowTaskStatus.Cancelled));
 
- /// <summary>No cancel / stop override on the order.</summary>
-    private static Expression<Func<WorkOrder, bool>> NoLifecycleOverride() => w =>
+ /// <summary>
+ /// No cancel / stop override on the order — neither the manual one nor «every live deed's
+ /// transaction cancelled» (WorkOrderListStatus.ResolveStudy's cancelledCount).
+ /// </summary>
+    private static Expression<Func<WorkOrder, bool>> NoLifecycleOverride() =>
+        And(ManualLifecycleNone(), Not(AllLiveDeedsCancelled()));
+
+    private static Expression<Func<WorkOrder, bool>> ManualLifecycleNone() => w =>
         w.LifecycleStatus == null
         || (w.LifecycleStatus != WorkOrderLifecycleStatus.Cancelled
             && w.LifecycleStatus != WorkOrderLifecycleStatus.Stopped);
+
+ /// <summary>«إلغاء المعاملة»: the order has live deeds and every one of them is cancelled — the order reads «ملغى».</summary>
+    private static Expression<Func<WorkOrder, bool>> AllLiveDeedsCancelled() => w =>
+        w.Properties.Any(p => !p.IsRemoved)
+        && !w.Properties.Any(p => !p.IsRemoved && p.CancelledAtUtc == null);
 
  /// <summary>At least one live property, and as many as Enfaz promised (min 1).</summary>
     private static Expression<Func<WorkOrder, bool>> AllExpectedRegistered() => w =>
@@ -186,6 +200,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         !w.Properties.Any(p =>
             !p.IsRemoved
             && p.EnfazHandoverAtUtc == null
+            && p.CancelledAtUtc == null
             && (!_db.WorkflowTasks.Any(t => t.PropertyId == p.Id)
                 || _db.WorkflowTasks.Any(t =>
                     t.PropertyId == p.Id && t.Status != WorkflowTaskStatus.Cancelled)));
@@ -199,6 +214,7 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         !w.Properties.Any(p =>
             !p.IsRemoved
             && p.EnfazHandoverAtUtc == null
+            && p.CancelledAtUtc == null
             && (!_db.WorkflowTasks.Any(t => t.PropertyId == p.Id)
                 || _db.WorkflowTasks.Any(t =>
                     t.PropertyId == p.Id
@@ -236,6 +252,15 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         var parameter = left.Parameters[0];
         var rightBody = new ParameterReplacer(right.Parameters[0], parameter).Visit(right.Body);
         return Expression.Lambda<Func<T, bool>>(Expression.AndAlso(left.Body, rightBody), parameter);
+    }
+
+    private static Expression<Func<T, bool>> Or<T>(
+        Expression<Func<T, bool>> left,
+        Expression<Func<T, bool>> right)
+    {
+        var parameter = left.Parameters[0];
+        var rightBody = new ParameterReplacer(right.Parameters[0], parameter).Visit(right.Body);
+        return Expression.Lambda<Func<T, bool>>(Expression.OrElse(left.Body, rightBody), parameter);
     }
 
     private static Expression<Func<T, bool>> Not<T>(Expression<Func<T, bool>> expression) =>
@@ -297,7 +322,12 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
         WorkOrderListStatusFilter status)
     {
         if (status == WorkOrderListStatusFilter.Cancelled)
-            return rows.Where(w => w.LifecycleStatus == WorkOrderLifecycleStatus.Cancelled);
+        {
+            // Stopped wins over «every deed cancelled», as in ResolveStudy.
+            var allCancelled = And(AllLiveDeedsCancelled(), Not<WorkOrder>(w => w.LifecycleStatus == WorkOrderLifecycleStatus.Stopped));
+            var manual = (Expression<Func<WorkOrder, bool>>)(w => w.LifecycleStatus == WorkOrderLifecycleStatus.Cancelled);
+            return rows.Where(Or(manual, allCancelled));
+        }
 
         if (status == WorkOrderListStatusFilter.Stopped)
             return rows.Where(w => w.LifecycleStatus == WorkOrderLifecycleStatus.Stopped);

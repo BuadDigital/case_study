@@ -37,6 +37,11 @@ describe("filterTasksForSystemUpload", () => {
     expect(filterTasksForSystemUpload([study], [study])).toEqual([]);
   });
 
+  it("drops a deed once it is handed over to Enfaz", () => {
+    const handedOver = task({ id: "handed", propertyHandedOverToEnfaz: true });
+    expect(filterTasksForSystemUpload([handedOver], [handedOver, appraisal("completed")])).toEqual([]);
+  });
+
   it("ignores a cancelled appraisal and an open study", () => {
     expect(filterTasksForSystemUpload([study], [study, appraisal("cancelled")])).toEqual([]);
     const openStudy = task({ id: "open", status: "open", phase: "case-study" });

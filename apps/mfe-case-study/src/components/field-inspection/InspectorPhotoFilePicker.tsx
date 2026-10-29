@@ -97,19 +97,43 @@ export function InspectorPhotoFilePicker({
     });
   };
 
-  const transactionModal = (
+  /**
+   * The «اختر من صور المعاملة» window.
+   *
+   * How it works: the grid picks a transaction photo; with `withDeviceUpload` the footer also has
+   * «رفع من الجهاز», which closes the window and opens the file picker.
+   *
+   * Edge cases: on a computer the window is the control's click target, so the device upload must
+   * stay one click away inside it; on touch the camera and gallery have their own buttons.
+   */
+  const renderTransactionModal = (withDeviceUpload: boolean) => (
     <AppModal
       open={transactionPickerOpen}
       title="اختر من صور المعاملة"
       onClose={() => setTransactionPickerOpen(false)}
       footer={
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => setTransactionPickerOpen(false)}
-        >
-          إغلاق
-        </Button>
+        <>
+          {withDeviceUpload ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={blocked}
+              onClick={() => {
+                setTransactionPickerOpen(false);
+                galleryRef.current?.click();
+              }}
+            >
+              رفع من الجهاز
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setTransactionPickerOpen(false)}
+          >
+            إغلاق
+          </Button>
+        </>
       }
     >
       <TransactionPhotoPickGrid
@@ -198,19 +222,36 @@ export function InspectorPhotoFilePicker({
             onChange={handleChange}
           />
         </div>
-        {transactionModal}
+        {renderTransactionModal(false)}
       </>
     );
   }
 
-  /* Computer / laptop: drop zone + native file picker. */
+  /*
+   * Computer / laptop: drop zone + native file picker.
+   *
+   * How it works: a click (or Enter/Space) opens the transaction-photo window when transaction
+   * photos can be picked, else the file picker; files dropped on the zone upload directly.
+   *
+   * Fixed: the click always opened the file picker, so «من صور المعاملة» on a computer never showed
+   * the transaction photos — the window existed only in the touch layout.
+   */
+  const openPicker = () => {
+    if (blocked) return;
+    if (canPickFromTransaction) setTransactionPickerOpen(true);
+    else galleryRef.current?.click();
+  };
   return (
     <>
       <div
         role="button"
         tabIndex={0}
         aria-busy={loading || undefined}
-        aria-label={`${label} — اختر صوراً أو اسحبها هنا`}
+        aria-label={
+          canPickFromTransaction
+            ? `${label} — اختر من صور المعاملة أو اسحب صورة هنا`
+            : `${label} — اختر صوراً أو اسحبها هنا`
+        }
         className={cn(
           UPLOAD_BTN,
           compact
@@ -219,11 +260,11 @@ export function InspectorPhotoFilePicker({
           dragOver && DROP_ACTIVE,
           className,
         )}
-        onClick={() => !blocked && galleryRef.current?.click()}
+        onClick={openPicker}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
-            if (!blocked) galleryRef.current?.click();
+            openPicker();
           }
         }}
         {...dropZoneProps}
@@ -241,7 +282,9 @@ export function InspectorPhotoFilePicker({
         </span>
         {!compact && !loading && !dragOver ? (
           <span className="text-[10px] font-normal text-text-3">
-            اسحب الصور وأفلتها، أو اضغط للاختيار
+            {canPickFromTransaction
+              ? "اضغط للاختيار من صور المعاملة، أو اسحب صورة من جهازك"
+              : "اسحب الصور وأفلتها، أو اضغط للاختيار"}
           </span>
         ) : null}
       </div>
@@ -254,7 +297,7 @@ export function InspectorPhotoFilePicker({
         className="sr-only"
         onChange={handleChange}
       />
-      {transactionModal}
+      {renderTransactionModal(true)}
     </>
   );
 }

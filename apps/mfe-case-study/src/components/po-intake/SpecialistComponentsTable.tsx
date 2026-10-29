@@ -26,6 +26,7 @@ import { partyProvenanceLines } from "../../lib/app-data/property-party-fields";
 import {
   componentLineAcceptsBuildRatio,
   componentLineForTypedName,
+  nonNegativeAreaInput,
 } from "../../lib/app-data/specialist-components";
 
 function LineProvenance({ line }: { line: BuildingInventoryLineDto }) {
@@ -174,9 +175,10 @@ export function SpecialistComponentsTable({
         <Input
           aria-label={`المساحة أو العدد — السطر ${index + 1}`}
           type="number"
+          min={0}
           disabled={disabled}
           value={line.areaSqm ?? ""}
-          onChange={(e) => onPatch(index, { ...line, areaSqm: e.target.value })}
+          onChange={(e) => onPatch(index, { ...line, areaSqm: nonNegativeAreaInput(e.target.value) })}
           className={cn("text-center", sizeClass)}
         />
       ),

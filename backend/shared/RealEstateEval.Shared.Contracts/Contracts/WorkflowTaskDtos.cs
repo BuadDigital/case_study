@@ -136,6 +136,12 @@ public class WorkflowTaskDto
     /// is folded into the holder's study and hidden from the study queues.
     /// </summary>
     public Guid? TransactionStudyHolderPropertyId { get; set; }
+
+    /// <summary>
+    /// The task's property was handed over to Enfaz (its handover stamp is set), joined like the columns
+    /// above. «الرفع على النظام» lists only deeds still waiting for the upload. Null when no property.
+    /// </summary>
+    public bool? PropertyHandedOverToEnfaz { get; set; }
 }
 
 public class PatchWorkflowTaskDistributionRequest
@@ -169,6 +175,19 @@ public class RedistributePartiesRequest
  /// <summary>Reason for reassignment of parties — Mandatory, recorded in Event Log.</summary>
     [MaxLength(500)]
     public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Adds the engineering office after distribution — the inspector's corrected type needs a survey the
+/// bourse type did not (2026-10-29).
+/// </summary>
+public class AddEngineeringSurveyRequest
+{
+    [MaxLength(128)]
+    public string AssigneeId { get; set; } = "";
+
+    [MaxLength(256)]
+    public string? AssigneeName { get; set; }
 }
 
 public class AdvanceTaskAfterEnfathRequest

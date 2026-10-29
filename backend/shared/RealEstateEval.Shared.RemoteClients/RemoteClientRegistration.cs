@@ -157,6 +157,7 @@ public static class RemoteClientRegistration
         services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
         services.AddHttpClient<IPropertyKeyGateResolver, HttpPropertyKeyGateResolver>();
         services.AddHttpClient<IPropertyKeysService, HttpPropertyKeysService>();
+        services.AddHttpClient<IKeyEnvelopePropertyCancellation, HttpKeyEnvelopePropertyCancellation>();
         return services;
     }
 

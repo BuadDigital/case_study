@@ -15,7 +15,9 @@ import {
 import {
   COMPARABLE_SOURCE_OPTIONS,
   LAND_COMPARABLE_TYPE,
+  comparableAreaLabel,
   comparableLocationPinned,
+  comparableRateLabel,
   comparablePlaceLine,
   computedPricePerSqm,
   contactNumbers,
@@ -225,12 +227,7 @@ export function ComparablePropertyEntryFields({
     showToast("تم الرجوع إلى موقع العقار", "success");
   }
 
-  const areaLabel =
-    draft.kind === "building"
-      ? "مساحة المباني (م²)"
-      : draft.kind === "land"
-        ? "مساحة الأرض (م²)"
-        : "المساحة (م²)";
+  const areaLabel = `${comparableAreaLabel(draft.kind)} (م²)`;
   const priceLabel =
     draft.kind === "land" ? "سعر الأرض (ر.س.)" : "السعر (ر.س.)";
 
@@ -511,13 +508,7 @@ export function ComparablePropertyEntryFields({
         />
       </Field>
       <Field
-        label={
-          draft.kind === "building"
-            ? "سعر متر المباني (محسوب)"
-            : draft.kind === "land"
-              ? "سعر متر الأرض (محسوب)"
-              : "سعر المتر (محسوب)"
-        }
+        label={`${comparableRateLabel(draft.kind)} (محسوب)`}
       >
         <Input
           readOnly

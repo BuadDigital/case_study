@@ -73,6 +73,13 @@ public interface IFailureService
         string specialist,
         CancellationToken cancellationToken = default);
 
+    /// <summary>«إلغاء المعاملة»: resolves every open failure of the deed — a cancelled transaction has nothing to follow up.</summary>
+    Task ResolveForCancelledTransactionAsync(
+        string poNumber,
+        string propertyId,
+        string actor,
+        CancellationToken cancellationToken = default);
+
     Task<FailureRecordDto?> UpgradeToInternalAsync(
         Guid id,
         CancellationToken cancellationToken = default);

@@ -11,6 +11,7 @@ import {
   buildInfathUploadModel,
   copyInfathText,
   downloadInfathDocument,
+  infathApproachesUsed,
   saveInfathBlob,
   type InfathOpsContext,
   type InfathReportContext,
@@ -39,8 +40,10 @@ import {
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
 import {
   downloadFinalReport,
+  generateFinalReport,
   getBuildingInventory,
   getOrganizationSettings,
+  getValuationApproachSettings,
   type BuildingInventoryLineDto,
 } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
@@ -95,6 +98,52 @@ type PropertyDetailEnfathUploadWorkflow = {
  * date because the organization has no personal license date for the appraiser, and that is the date the printed
  * report carries. An unmounted component ignores a late response.
  */
+/**
+ * The valuation's effective date when it is retrospective («أثر رجعي»), as yyyy-MM-dd (a period reads
+ * «start – end»); "" for a value as of the issue date.
+ *
+ * How it works: reads the request's approach settings once per request id.
+ *
+ * Edge cases: fixed 2026-10-28 — the sheet's «تاريخ التقييم» showed the issue date (28/10) for a valuation
+ * made as of 30/06, so Enfaz would have been told the wrong date. A failed read leaves "".
+ */
+type ValuationApproachFacts = { date: string; approaches: string };
+const NO_APPROACH_FACTS: ValuationApproachFacts = { date: "", approaches: "" };
+
+/**
+ * The valuation's own settings Enfaz needs: the retrospective date (absent = issue date) and the
+ * approaches used (see infathApproachesUsed).
+ */
+function useValuationApproachFacts(
+  valuationRequestId: string | null | undefined,
+): ValuationApproachFacts {
+  const [value, setValue] = useState<{ id: string } & ValuationApproachFacts>({
+    id: "",
+    ...NO_APPROACH_FACTS,
+  });
+  useEffect(() => {
+    const config = apiConfig();
+    const id = valuationRequestId?.trim() ?? "";
+    if (!config || !id) return;
+    let cancelled = false;
+    void getValuationApproachSettings(config, id).then((res) => {
+      if (cancelled || !res.ok) return;
+      const retro = res.data.valuationDateMode === "retrospective";
+      const start = res.data.retrospectiveDate?.trim() ?? "";
+      const end = res.data.retrospectiveDateEnd?.trim() ?? "";
+      setValue({
+        id,
+        date: retro && start ? (end ? `${start} – ${end}` : start) : "",
+        approaches: infathApproachesUsed(res.data),
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [valuationRequestId]);
+  return value.id === (valuationRequestId?.trim() ?? "") ? value : NO_APPROACH_FACTS;
+}
+
 function useReportContext(): InfathReportContext | null {
   const [context, setContext] = useState<InfathReportContext | null>(null);
   useEffect(() => {
@@ -126,10 +175,13 @@ function useReportContext(): InfathReportContext | null {
  * request, turns it into a data URL and exposes it as a document typed `valuation-report` named
  * `final-report-v{version}.pdf`; `buildInfathUploadModel` then treats it as «مرفق التقييم المعتمد».
  *
- * Edge cases: while the PDF is `none` or still `preparing` (it takes seconds, up to a minute under load) the hook
- * returns `null`, cleared during render so a stale document is never shown for another request. A failed
- * download leaves `null` (the sheet row stays «غير متوفر»). A response that arrives after the request or the
- * version changed is discarded.
+ * Edge cases: while the PDF is `none` the hook returns `null`, cleared during render so a stale document is never
+ * shown for another request. A `preparing` PDF is asked for once (`generateFinalReport` — the server renders it if
+ * the copy is issued and its file is missing) and downloaded when that answers `ready`; otherwise the row stays
+ * «غير متوفر». A failed download leaves `null`. A response that arrives after the request or the version changed
+ * is discarded. This is the only file the «تقرير التقييم المعتمد» row takes: it used to pick the first
+ * valuation-report document instead, which was the appraiser's old system-generated TQ-….pdf (Arabic as boxes,
+ * raw field keys).
  */
 function useFinalReportDocument(
   valuationRequestId: string | null | undefined,
@@ -137,15 +189,17 @@ function useFinalReportDocument(
   version: number | undefined,
 ): PropertyDetailDocumentEntry | null {
   const [document, setDocument] = useState<PropertyDetailDocumentEntry | null>(null);
-  // Not ready (or no request): no document — cleared during render, before the effect would run.
-  const readyRequestId = finalReportStatus === "ready" ? (valuationRequestId ?? "") : "";
-  const [documentFor, setDocumentFor] = useState(readyRequestId);
-  if (documentFor !== readyRequestId) {
-    setDocumentFor(readyRequestId);
-    if (!readyRequestId) setDocument(null);
+  // Nothing issued (or no request): no document — cleared during render, before the effect would run.
+  const liveRequestId =
+    finalReportStatus === "ready" || finalReportStatus === "preparing" ? (valuationRequestId ?? "") : "";
+  const [documentFor, setDocumentFor] = useState(liveRequestId);
+  if (documentFor !== liveRequestId) {
+    setDocumentFor(liveRequestId);
+    if (!liveRequestId) setDocument(null);
   }
   useEffect(() => {
-    if (!valuationRequestId || finalReportStatus !== "ready") return;
+    if (!valuationRequestId) return;
+    if (finalReportStatus !== "ready" && finalReportStatus !== "preparing") return;
     const config = apiConfig();
     if (!config) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- no API session: the report cannot be downloaded, so none is shown; the fetch path sets it in its callback
@@ -153,7 +207,15 @@ function useFinalReportDocument(
       return;
     }
     let cancelled = false;
-    void downloadFinalReport(config, valuationRequestId).then(async (res) => {
+    const ready =
+      finalReportStatus === "ready"
+        ? Promise.resolve(true)
+        : generateFinalReport(config, valuationRequestId).then(
+            (res) => res.ok && res.data.finalReportStatus === "ready",
+          );
+    void ready.then(async (isReady) => {
+      if (cancelled || !isReady) return;
+      const res = await downloadFinalReport(config, valuationRequestId);
       if (cancelled || !res.ok) return;
       const dataUrl = await blobToDataUrl(res.data);
       if (cancelled) return;
@@ -242,7 +304,19 @@ export function usePropertyDetailEnfathUploadWorkflow({
     };
   }, [poNumber, property.id]);
 
-  const reportContext = useReportContext();
+  const organizationContext = useReportContext();
+  const approachFacts = useValuationApproachFacts(reportDraft?.valuationRequestId);
+  const reportContext = useMemo<InfathReportContext | null>(
+    () =>
+      organizationContext || approachFacts.date || approachFacts.approaches
+        ? {
+            ...(organizationContext ?? {}),
+            valuationDate: approachFacts.date || undefined,
+            approachesUsed: approachFacts.approaches || undefined,
+          }
+        : null,
+    [organizationContext, approachFacts],
+  );
   const finalReportDocument = useFinalReportDocument(
     reportDraft?.valuationRequestId,
     reportDraft?.finalReportStatus,
@@ -269,10 +343,11 @@ export function usePropertyDetailEnfathUploadWorkflow({
     () => ({
       caseStudyReportIssued,
       hasSurveyTask,
+      finalReport: finalReportDocument,
       depositCertificate: storedFiles?.depositCertificate ?? null,
       keysProof: storedFiles?.keysProof ?? null,
     }),
-    [caseStudyReportIssued, hasSurveyTask, storedFiles],
+    [caseStudyReportIssued, hasSurveyTask, finalReportDocument, storedFiles],
   );
 
   const model = useMemo(
@@ -453,20 +528,48 @@ export function usePropertyDetailEnfathUploadWorkflow({
     [downloadAttachment],
   );
 
-  /** Downloads every ready row one after another (browsers block a burst of simultaneous downloads). */
+  // Rows «تحميل الكل» has lined up but not reached yet.
+  const [queuedIds, setQueuedIds] = useState<ReadonlySet<string>>(() => new Set());
+
+  /**
+   * Downloads every ready row one after another (browsers block a burst of simultaneous downloads).
+   *
+   * How it works: lines up every ready row, then downloads them in order; a row leaves the queue once its own
+   * download is done, so each row's button spins from the click until its file is saved.
+   *
+   * Edge cases and how they were fixed: only the row being fetched used to spin — the rest looked idle while
+   * they waited — so the queue is part of `downloadingIds` now. A second click while the queue runs is ignored.
+   */
   const handleDownloadAll = useCallback(() => {
+    if (queuedIds.size > 0) return;
     const ready = readyAttachments(model.attachments);
     if (ready.length === 0) {
       showToast("لا توجد مرفقات جاهزة للتحميل");
       return;
     }
     showToast(`جارٍ تحميل كل المرفقات…`);
+    setQueuedIds(new Set(ready.map((item) => item.id)));
     void (async () => {
-      for (const item of ready) {
-        await downloadAttachment(item, true);
+      try {
+        for (const item of ready) {
+          await downloadAttachment(item, true);
+          setQueuedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(item.id);
+            return next;
+          });
+        }
+      } finally {
+        setQueuedIds(new Set());
       }
     })();
-  }, [model.attachments, showToast, downloadAttachment]);
+  }, [queuedIds, model.attachments, showToast, downloadAttachment]);
+
+  const busyIds = useMemo(
+    (): ReadonlySet<string> =>
+      queuedIds.size === 0 ? downloadingIds : new Set([...downloadingIds, ...queuedIds]),
+    [downloadingIds, queuedIds],
+  );
 
   const setAllCollapsed = useCallback(
     (collapse: boolean) => {
@@ -491,6 +594,6 @@ export function usePropertyDetailEnfathUploadWorkflow({
     handleDownloadFile,
     handleDownloadAttachment,
     handleDownloadAll,
-    downloadingIds,
+    downloadingIds: busyIds,
   };
 }

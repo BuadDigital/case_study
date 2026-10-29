@@ -27,6 +27,7 @@ import {
 } from "../../lib/app-data/inspector-workspace-data";
 import { featurePhotoPatch } from "../../lib/app-data/inspector-workspace-model";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
+import { wholeCountInput } from "../../lib/app-data/specialist-components";
 
 const INS_LABEL_CENTERED_CLASS = cn(INS_LABEL_CLASS, "w-full text-center");
 const INS_GRID_SELECT_CLASS = cn(EDIT_CONTROL_CLASS, "text-center");
@@ -236,7 +237,7 @@ export function InspectorFeatureWizardFields({
                 className={INS_GRID_NUMERIC_CLASS}
                 inputMode="numeric"
                 value={draft.propertyAgeYears}
-                onChange={(e) => onPatch({ propertyAgeYears: e.target.value })}
+                onChange={(e) => onPatch({ propertyAgeYears: wholeCountInput(e.target.value) })}
               />
             </>
           )}

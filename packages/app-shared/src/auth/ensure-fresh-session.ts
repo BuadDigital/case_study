@@ -1,4 +1,4 @@
-import { refreshAuthSession } from "@platform/api-client";
+import { refreshAuthSession, revokeAuthSession } from "@platform/api-client";
 import {
   clearAuthSession,
   ensureAuthGateCookie,
@@ -59,6 +59,17 @@ export function ensureFreshAuthSession(
   });
 }
 
+/**
+ * Renews the stored session when it is due (or forced).
+ *
+ * How it works: reads the shared session; returns it as is when it is still in date;
+ * otherwise exchanges its refresh token and stores the result.
+ *
+ * Edge cases: a refresh that comes back after the stored session was replaced (another
+ * tab signed in as someone else, or already rotated the token) is dropped and its new
+ * token revoked — the newer session stays. Fixed 2026-10-28: the late write used to
+ * restore the previous user in every tab.
+ */
 async function renew(force: boolean): Promise<FreshAuthSessionResult> {
   const stored = getAuthSession();
   if (!stored) return { status: "none" };
@@ -74,6 +85,15 @@ async function renew(force: boolean): Promise<FreshAuthSessionResult> {
   }
 
   const result = await refreshAuthSession(stored.refreshToken!);
+  // Another tab may have signed in (or renewed) while this refresh was in flight: the
+  // shared storage then holds a newer session, and writing ours would put the old user
+  // back into every tab (seen 2026-10-28 — an appraiser tab ran as the specialist).
+  const current = getAuthSession();
+  if (result.ok && current?.refreshToken !== stored.refreshToken) {
+    void revokeAuthSession(result.session.refreshToken);
+    if (current && !isSessionExpired(current)) return { status: "ok", session: current };
+    return { status: "none" };
+  }
   if (result.ok) {
     const session: AuthSession = {
       token: result.session.token,

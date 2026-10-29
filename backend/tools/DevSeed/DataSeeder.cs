@@ -305,7 +305,7 @@ public static class DataSeeder
 
             "abdulrahman@ejadah.dev",
 
-            "عبدالرحمن النفيعي",
+            "مشرف دراسة الحالة",
 
             "مشرف قسم دراسة الحالة",
 

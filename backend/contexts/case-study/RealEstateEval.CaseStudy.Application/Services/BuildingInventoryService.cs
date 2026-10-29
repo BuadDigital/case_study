@@ -105,6 +105,9 @@ public class BuildingInventoryService(IBuildingInventoryRepository db,
                 errors[$"lines[{i}].itemKey"] = "مفتاح البند غير صالح";
             if (!string.IsNullOrWhiteSpace(line.Unit) && !KnownUnits.Contains(line.Unit.Trim()))
                 errors[$"lines[{i}].unit"] = "الوحدة غير صالحة";
+            // An area or count is never negative — the UI's number field once saved «-1375» (2026-10-28).
+            if (LocaleNumber.TryParse(line.AreaSqm, out var area) && area < 0)
+                errors[$"lines[{i}].areaSqm"] = "المساحة أو العدد لا يكون سالباً";
             if (line.BuildRatioPct is < 0 or > 100)
                 errors[$"lines[{i}].buildRatioPct"] = "نسبة البناء بين 0 و 100";
             if (line.RepeatedFloorCount is < 0)

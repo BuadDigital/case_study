@@ -151,6 +151,43 @@ export function normalizeEngineeringSurveyChecklist(
   return emptyChecklistRows();
 }
 
+const SURVEY_DEED_BOUNDARY_KEYS = [
+  "northBoundary",
+  "northBoundaryLengthM",
+  "southBoundary",
+  "southBoundaryLengthM",
+  "eastBoundary",
+  "eastBoundaryLengthM",
+  "westBoundary",
+  "westBoundaryLengthM",
+] as const;
+
+type SurveyDeedBoundaryKey = (typeof SURVEY_DEED_BOUNDARY_KEYS)[number];
+
+/**
+ * «الحدود والأطوال (حسب الصك)» taken from the property's recorded deed boundaries.
+ *
+ * How it works: for an unsubmitted survey whose deed-boundary fields are all still empty,
+ * returns the property's descriptions and lengths (only the sides that have text); null otherwise.
+ *
+ * Edge cases: anything the office already typed wins — no field is overwritten. The area is
+ * not copied: it is the office's on-site measurement. Added 2026-10-28 — the office retyped the
+ * deed's boundaries by hand, and a typed «-25» reached the specialist.
+ */
+export function surveyDeedBoundariesFromProperty(
+  draft: EngineeringSurveySubmission,
+  property: Partial<Record<SurveyDeedBoundaryKey, string>> | null | undefined,
+): Partial<Pick<EngineeringSurveySubmission, SurveyDeedBoundaryKey>> | null {
+  if (!property || draft.status === "submitted") return null;
+  if (SURVEY_DEED_BOUNDARY_KEYS.some((key) => (draft[key] ?? "").trim())) return null;
+  const patch: Partial<Pick<EngineeringSurveySubmission, SurveyDeedBoundaryKey>> = {};
+  for (const key of SURVEY_DEED_BOUNDARY_KEYS) {
+    const value = (property[key] ?? "").trim();
+    if (value) patch[key] = value;
+  }
+  return Object.keys(patch).length > 0 ? patch : null;
+}
+
 export function createEngineeringSurveyDraft(input: {
   taskId: string;
   propertyId: string;

@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import {
+  Button,
   FormGroup,
   Label,
   Note,
@@ -9,7 +11,10 @@ import {
 } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
+  DEED_MATCH_OVERRIDE_REASON_MESSAGE,
+  DEED_MATCH_OVERRIDE_REASON_MIN,
   DEED_NATURE_MATCH_OPTIONS,
+  DeedNatureMatchOutcomes,
   deedNatureMatchRequiresNotes,
 } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import type { CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
@@ -39,6 +44,7 @@ export function CaseStudyDeedNatureMatchSection({
   suggestedOutcome,
   infoLinesAr,
   onAdoptSuggestion,
+  inspectorSaidNotMatched = false,
 }: {
   draft: Pick<CaseStudyReportDraft, "deedNatureMatchOutcome" | "deedNatureMatchNotes">;
   disabled?: boolean;
@@ -50,8 +56,19 @@ export function CaseStudyDeedNatureMatchSection({
   /** Prior-survey / engineering-office context — shown, never proposed. */
   infoLinesAr?: readonly string[];
   onAdoptSuggestion?: () => void;
+  /** The inspector said «غير مطابق» — «مطابق» then needs the specialist's reason (2026-10-29). */
+  inspectorSaidNotMatched?: boolean;
 }) {
   const outcome = draft.deedNatureMatchOutcome ?? "";
+  // «مطابق» against the inspector is not saved on click: the reason is written first and saved with it
+  // (a click alone would be refused by the server and rolled back).
+  const [overrideReason, setOverrideReason] = useState<string | null>(null);
+  const overrideOpen = overrideReason !== null;
+  const overrideReasonShort = (overrideReason ?? "").trim().length < DEED_MATCH_OVERRIDE_REASON_MIN;
+  const savedOverrideReason =
+    inspectorSaidNotMatched && outcome === DeedNatureMatchOutcomes.Matched
+      ? (draft.deedNatureMatchNotes ?? "").trim()
+      : "";
   const needsNotes = deedNatureMatchRequiresNotes(outcome);
   const canAdopt =
     Boolean(onAdoptSuggestion && suggestedOutcome && suggestedOutcome !== outcome);
@@ -136,9 +153,18 @@ export function CaseStudyDeedNatureMatchSection({
                     className="sr-only"
                     checked={on}
                     disabled={disabled}
-                    onChange={() =>
-                      onPatch({ deedNatureMatchOutcome: opt.value })
-                    }
+                    onChange={() => {
+                      if (
+                        inspectorSaidNotMatched &&
+                        opt.value === DeedNatureMatchOutcomes.Matched &&
+                        outcome !== DeedNatureMatchOutcomes.Matched
+                      ) {
+                        setOverrideReason("");
+                        return;
+                      }
+                      setOverrideReason(null);
+                      onPatch({ deedNatureMatchOutcome: opt.value });
+                    }}
                   />
                   {opt.label}
                 </label>
@@ -159,6 +185,48 @@ export function CaseStudyDeedNatureMatchSection({
             </p>
           ) : null}
         </FormGroup>
+
+        {overrideOpen ? (
+          <FormGroup>
+            <Label htmlFor="deed-match-override-reason" className="text-[11px] text-text-2">
+              سبب اعتماد «مطابق» خلافاً لرأي المعاين <span className="text-danger-text">*</span>
+            </Label>
+            <Textarea
+              id="deed-match-override-reason"
+              disabled={disabled}
+              rows={3}
+              value={overrideReason ?? ""}
+              onChange={(e) => setOverrideReason(e.target.value)}
+              className={cn(overrideReasonShort && (overrideReason ?? "").length > 0 && invalidControlClass)}
+              placeholder="لماذا تعتبر الصك مطابقاً للطبيعة رغم رأي المعاين؟"
+            />
+            {overrideReasonShort ? (
+              <p className="mb-0 mt-1 text-[11px] text-text-3">{DEED_MATCH_OVERRIDE_REASON_MESSAGE}</p>
+            ) : null}
+            <div className="mt-2 flex gap-2">
+              <Button
+                type="button"
+                disabled={disabled || overrideReasonShort}
+                onClick={() => {
+                  onPatch({
+                    deedNatureMatchOutcome: DeedNatureMatchOutcomes.Matched,
+                    deedNatureMatchNotes: (overrideReason ?? "").trim(),
+                  });
+                  setOverrideReason(null);
+                }}
+              >
+                حفظ «مطابق» مع السبب
+              </Button>
+              <Button type="button" variant="ghost" disabled={disabled} onClick={() => setOverrideReason(null)}>
+                إلغاء
+              </Button>
+            </div>
+          </FormGroup>
+        ) : savedOverrideReason ? (
+          <p className="m-0 rounded-lg border border-border bg-surface-2 px-3 py-2 text-[11.5px] leading-relaxed text-text-2">
+            سبب اعتماد «مطابق» خلافاً لرأي المعاين: {savedOverrideReason}
+          </p>
+        ) : null}
 
         {needsNotes ? (
           <FormGroup>

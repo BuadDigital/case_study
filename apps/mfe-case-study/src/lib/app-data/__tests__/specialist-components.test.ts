@@ -9,6 +9,9 @@ import {
   infathBuildingAreasFromComponents,
   inspectedAssetIsLand,
   inspectionHasStructures,
+  nonNegativeAreaInput,
+  nonNegativeDecimalInput,
+  wholeCountInput,
   specialistComponentsMissing,
 } from "../specialist-components";
 
@@ -17,6 +20,30 @@ function line(itemKey: string, areaSqm: string, extra: Partial<BuildingInventory
 }
 
 describe("specialist components", () => {
+  it("an area cell never keeps a minus sign or an exponent", () => {
+    expect(nonNegativeAreaInput("-1375")).toBe("1375");
+    expect(nonNegativeAreaInput("-")).toBe("");
+    expect(nonNegativeAreaInput("375.5")).toBe("375.5");
+    expect(nonNegativeAreaInput("")).toBe("");
+    expect(nonNegativeAreaInput("1e5")).toBe("15");
+  });
+
+  it("a count keeps digits only", () => {
+    expect(wholeCountInput("-3")).toBe("3");
+    expect(wholeCountInput("خمسة")).toBe("");
+    expect(wholeCountInput("1e9")).toBe("19");
+    expect(wholeCountInput("١٢")).toBe("12");
+    expect(wholeCountInput("123456")).toBe("1234");
+  });
+
+  it("a measure keeps digits and one decimal point", () => {
+    expect(nonNegativeDecimalInput("-5")).toBe("5");
+    expect(nonNegativeDecimalInput("12٫5")).toBe("12.5");
+    expect(nonNegativeDecimalInput("12,5")).toBe("12.5");
+    expect(nonNegativeDecimalInput("1.2.3")).toBe("1.23");
+    expect(nonNegativeDecimalInput("abc")).toBe("");
+  });
+
   it("picking an item sets its unit, kind and label", () => {
     expect(componentLineForItem(emptyComponentLine(0), "fence")).toMatchObject({
       itemKey: "fence",
@@ -90,6 +117,19 @@ describe("specialist components", () => {
     });
     // keeps typing: a custom line stays custom and keeps its kind
     expect(componentLineForTypedName(custom, "غرفة حارس ٢")).toMatchObject({ itemKey: "custom", structureKind: "other" });
+  });
+
+  it("a unit's own area is a floor line, judged on the whole name, not the first keystroke", () => {
+    // typed letter by letter, as the inspector does
+    let typed = emptyComponentLine(0);
+    for (const text of ["م", "مساحة", "مساحة المحل"]) typed = componentLineForTypedName(typed, text);
+    expect(typed).toMatchObject({ itemKey: "custom", structureKind: "floor", label: "مساحة المحل" });
+    for (const name of ["المكتب", "معرض", "مساحة الوحدة", "محل تجاري", "المستودع الرئيسي", "هنجر"]) {
+      expect(componentLineForTypedName(emptyComponentLine(0), name).structureKind).toBe("floor");
+    }
+    // not a unit: stays an extra; renaming a unit area to something else makes it an extra again
+    expect(componentLineForTypedName(emptyComponentLine(0), "مكتبة").structureKind).toBe("other");
+    expect(componentLineForTypedName(typed, "مظلة سيارات").structureKind).toBe("other");
   });
 
   it("derives the Infath building areas, repeating the first floor", () => {

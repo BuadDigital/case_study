@@ -13,6 +13,16 @@ public class FieldInspectionSubmissionValidatorTests
     }
 
     [Fact]
+    public void Validate_refuses_an_inspection_dated_after_today()
+    {
+        using var doc = JsonDocument.Parse(MinimalValidPayload());
+        // The payload's visit is 2026-06-21: fine on that day, refused the day before.
+        Assert.Empty(FieldInspectionSubmissionValidator.Validate(doc.RootElement, new DateOnly(2026, 6, 21)));
+        var errors = FieldInspectionSubmissionValidator.Validate(doc.RootElement, new DateOnly(2026, 6, 20));
+        Assert.Equal("تاريخ المعاينة لا يكون في المستقبل", errors["inspectionDate"]);
+    }
+
+    [Fact]
     public void Validate_requires_property_description_text_or_components_photo()
     {
         var noText = MinimalValidPayload()
@@ -37,6 +47,33 @@ public class FieldInspectionSubmissionValidatorTests
                 "\"featurePhotoAttachments\": { \"propertyDescription\": { \"FileName\": \"desc.jpg\", \"AttachmentId\": \"11111111-1111-1111-1111-111111111111\" } }");
         using var doc = JsonDocument.Parse(pascalPhoto);
         Assert.DoesNotContain("propertyDescription", FieldInspectionSubmissionValidator.Validate(doc.RootElement).Keys);
+    }
+
+    [Theory]
+    [InlineData("roomCount", "-3")]
+    [InlineData("hallCount", "خمسة")]
+    [InlineData("bathroomCount", "1e9")]
+    [InlineData("propertyAgeYears", "-8")]
+    [InlineData("streetWidthM", "-5")]
+    [InlineData("streetWidthM", "abc")]
+    public void Validate_refuses_a_count_or_measure_that_is_not_a_plain_non_negative_number(string key, string value)
+    {
+        var payload = MinimalValidPayload().TrimEnd().TrimEnd('}') + $", \"{key}\": \"{value}\" }}";
+        using var doc = JsonDocument.Parse(payload);
+        Assert.Contains(key, FieldInspectionSubmissionValidator.Validate(doc.RootElement).Keys);
+    }
+
+    [Theory]
+    [InlineData("roomCount", "4")]
+    [InlineData("roomCount", "٤")]
+    [InlineData("propertyAgeYears", "")]
+    [InlineData("streetWidthM", "12.5")]
+    [InlineData("streetWidthM", "١٢٫٥")]
+    public void Validate_accepts_plain_counts_and_measures(string key, string value)
+    {
+        var payload = MinimalValidPayload().TrimEnd().TrimEnd('}') + $", \"{key}\": \"{value}\" }}";
+        using var doc = JsonDocument.Parse(payload);
+        Assert.DoesNotContain(key, FieldInspectionSubmissionValidator.Validate(doc.RootElement).Keys);
     }
 
     [Fact]

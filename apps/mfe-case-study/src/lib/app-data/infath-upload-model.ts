@@ -26,7 +26,8 @@ import {
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { BuildingInventoryLineDto } from "@platform/api-client";
-import { infathBuildingAreasFromComponents } from "./specialist-components";
+import { infathBuildingAreasFromComponents, inspectedAssetIsLand } from "./specialist-components";
+import { isApartmentInspectionContext } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { fmt } from "@platform/app-shared/format/number";
 import { PropertyKeysStatuses } from "@platform/api-client";
 import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
@@ -121,6 +122,60 @@ function auto(
   return txt(id, label, value, role, "auto");
 }
 
+/** Building-only fields of «بيانات الأصل» — they have no answer on bare land. */
+const BUILDING_ONLY_FIELD_IDS = new Set([
+  "built-area",
+  "build-license",
+  "build-license-date",
+  "rooms",
+  "halls",
+  "units",
+  "baths",
+  "age",
+  "showrooms",
+  "towers",
+  "kitchen",
+  "car-entrance",
+  "basement",
+  "elevator",
+  "pool",
+  "central-ac",
+  "tanks",
+  "build-state",
+]);
+
+export const INFATH_NOT_APPLICABLE_LAND = "لا ينطبق — أرض";
+
+/**
+ * On bare land (asset «أرض», no listed components) the empty building fields read «لا ينطبق — أرض».
+ *
+ * How it works: only fields in BUILDING_ONLY_FIELD_IDS that are still empty are rewritten, and their
+ * «missing» state is cleared so the stats do not count them as gaps.
+ *
+ * Edge cases: a value the inspector did enter is kept as is. Added 2026-10-28 — a land package
+ * listed rooms, age, elevator… as «— غير مُدخل —», as if data were missing.
+ */
+function markBuildingFieldsNotApplicable(sections: InfathUploadSection[]): void {
+  markFieldsNotApplicable(sections, BUILDING_ONLY_FIELD_IDS, INFATH_NOT_APPLICABLE_LAND);
+}
+
+const APARTMENT_NA_FIELD_IDS = new Set(["facade"]);
+
+export const INFATH_NOT_APPLICABLE_APARTMENT = "لا ينطبق — شقة";
+
+/** Rewrites the still-empty fields among `ids` to `label` and clears their «missing» state. */
+function markFieldsNotApplicable(
+  sections: InfathUploadSection[],
+  ids: ReadonlySet<string>,
+  label: string,
+): void {
+  for (const section of sections) {
+    section.fields = section.fields.map((field) =>
+      ids.has(field.id) && !field.value ? { ...field, value: label, state: "" } : field,
+    );
+  }
+}
+
 function ref(id: string, label: string, value: string): InfathUploadField {
   return txt(id, label, value, "SY", "ref");
 }
@@ -187,6 +242,11 @@ export type InfathAttachmentSources = {
   caseStudyReportIssued?: boolean;
   /** The transaction has a survey task. Without one the survey row says «لا يوجد رفع مساحي». */
   hasSurveyTask?: boolean;
+  /**
+   * The generated final valuation report (the approved report with the deposit code + the certificate page) —
+   * the only file the «تقرير التقييم المعتمد» row and field take.
+   */
+  finalReport?: PropertyDetailDocumentEntry | null;
   /** The deposit certificate stored with the valuation report's issuance. */
   depositCertificate?: PropertyDetailDocumentEntry | null;
   /** The keys handover proof uploaded for the property. */
@@ -220,7 +280,7 @@ function buildAttachments(
   sources: InfathAttachmentSources,
   deedNumber: string,
 ): InfathUploadAttachment[] {
-  const appraisal = findDoc(sections, (n) => n.includes("تقييم"), ["valuation-report"]);
+  const appraisal = sources.finalReport ?? null;
   const survey = findDoc(
     sections,
     (n) => n.includes("رفع") || n.includes("مساح"),
@@ -349,7 +409,28 @@ export type InfathReportContext = {
   appraiserName?: string;
   appraiserLicenseNumber?: string;
   appraiserLicenseDate?: string;
+  /** The valuation's effective date when retrospective (yyyy-MM-dd, or «start – end»); absent = issue date. */
+  valuationDate?: string;
+  /** The approaches the appraiser switched on (e.g. «أسلوب السوق و أسلوب التكلفة»), as the report lists them. */
+  approachesUsed?: string;
 };
+
+/**
+ * «الأسلوب المستخدم» for Enfaz — every approach the valuation used, joined as the report's
+ * «أساليب التقييم المستخدمة» joins them.
+ * How it works: market and cost from the valuation's approach settings (income is not built yet).
+ * Edge cases: none switched on → "" (the panel then falls back to the appraiser's package).
+ * Fixed 2026-10-28: market + cost used to send only «طريقة المقارنة» (the first method chosen).
+ */
+export function infathApproachesUsed(settings: {
+  marketApproachEnabled?: boolean | null;
+  costApproachEnabled?: boolean | null;
+}): string {
+  const names: string[] = [];
+  if (settings.marketApproachEnabled) names.push("أسلوب السوق");
+  if (settings.costApproachEnabled) names.push("أسلوب التكلفة");
+  return names.join(" و ");
+}
 
 export function buildInfathUploadModel(input: {
   record: PoIntakeRecord;
@@ -388,7 +469,14 @@ export function buildInfathUploadModel(input: {
     "";
 
   const inspectionDate = partyField(inspection, L.inspectionDate);
-  const appraisalDate = partyField(appraisal, L.appraisalDate) || partyField(appraisal, "تاريخ الإرسال");
+  // A retrospective valuation is as of its own date, not the date the package was sent (2026-10-28).
+  const retrospectiveDate = (context?.valuationDate ?? "")
+    .split(" – ")
+    .map((d) => (/^\d{4}-\d{2}-\d{2}$/.test(d.trim()) ? formatDateAr(d.trim()) : d.trim()))
+    .filter(Boolean)
+    .join(" – ");
+  const appraisalDate =
+    retrospectiveDate || partyField(appraisal, L.appraisalDate) || partyField(appraisal, "تاريخ الإرسال");
   const visitDate = ops?.courtVisitCompletedAt?.trim()
     ? formatDateAr(ops.courtVisitCompletedAt.trim().slice(0, 10))
     : "";
@@ -396,7 +484,9 @@ export function buildInfathUploadModel(input: {
   const appraisalPrice = partyField(appraisal, "سعر التقييم");
   const landValue = partyField(appraisal, L.landValue);
   const buildingValue = partyField(appraisal, L.buildingValue);
-  const valuationMethod = partyField(appraisal, L.valuationMethod);
+  // Only once the valuation feeds Enfaz — the approaches are switched on long before it is final.
+  const valuationMethod =
+    (appraisal ? context?.approachesUsed?.trim() : "") || partyField(appraisal, L.valuationMethod);
   const valueBasis = partyField(appraisal, L.valueBasis);
   const forcedDiscountRaw = partyField(appraisal, L.forcedDiscount);
   const reportIssueDate = partyField(appraisal, L.reportIssueDate);
@@ -413,11 +503,8 @@ export function buildInfathUploadModel(input: {
   const workerLicenseDate = /^\d{4}-\d{2}-\d{2}/.test(licenseDateRaw)
     ? formatDateAr(licenseDateRaw.slice(0, 10))
     : licenseDateRaw;
-  const appraisalDocument = findDoc(
-    documentSections,
-    (n) => n.includes("تقييم"),
-    ["valuation-report"],
-  );
+  // The approved report is the generated final report only — never the appraiser's old stored file.
+  const appraisalDocument = input.attachmentSources?.finalReport ?? null;
   const appraisalNotes = partyRemark(appraisal, "ملاحظات المقيّم");
   const keysReceived =
     ops?.keysStatus === PropertyKeysStatuses.Received ||
@@ -858,11 +945,10 @@ export function buildInfathUploadModel(input: {
         file(
           "signed-appraisal",
           L.signedAppraisal,
-          partyField(appraisal, L.signedAppraisal) ||
-            partyField(appraisal, "تقرير التقييم") ||
-            // The appraiser no longer types a file name: fall back to the generated final report listed with the documents.
-            appraisalDocument?.fileName ||
-            "",
+          // The generated final report only. The appraiser's package still names the old
+          // system-generated TQ-….pdf (Arabic as boxes, raw field keys); falling back to that name let
+          // the field's download button find the old file again, so there is no fallback.
+          appraisalDocument?.fileName ?? "",
           "EV",
         ),
         // Only the certificate's file name is known here; the certificate page itself is merged into the final report PDF.
@@ -908,6 +994,20 @@ export function buildInfathUploadModel(input: {
     input.attachmentSources ?? {},
     property.deedNumber,
   );
+  const bareLand =
+    inspectedAssetIsLand(partyField(inspection, L.assetSubject) || property.classification) &&
+    (input.componentLines ?? []).length === 0;
+  if (bareLand) markBuildingFieldsNotApplicable(sections);
+  // An apartment records no facade (see isApartmentInspectionContext) — the empty row is «لا ينطبق», not missing.
+  if (
+    isApartmentInspectionContext({
+      classification: property.classification,
+      propertyType: property.propertyType,
+      assetSubject: partyField(inspection, L.assetSubject),
+    })
+  ) {
+    markFieldsNotApplicable(sections, APARTMENT_NA_FIELD_IDS, INFATH_NOT_APPLICABLE_APARTMENT);
+  }
   const stats = computeStats(sections);
 
   const model: InfathUploadModel = {

@@ -259,37 +259,56 @@ describe("initialSubjectArea", () => {
     expect(initialSubjectArea("", { subjectAreaSqm: 250 })).toBe("250");
     expect(initialSubjectArea("", { subjectAreaSqm: null })).toBe("");
   });
+
+  it("shows nothing for a building with no floor area rather than its stored land area", () => {
+    expect(initialSubjectArea("", { subjectAreaSqm: 600 }, { storedFallback: false })).toBe("");
+    expect(initialSubjectArea("820", { subjectAreaSqm: 600 }, { storedFallback: false })).toBe("820");
+  });
 });
 
 describe("subjectAreaSyncPlan", () => {
   const selection = { subjectAreaSqm: 250, adjustmentBasis: "", analysisNotes: undefined };
 
   it("skips blank, non-positive, already-synced and matching areas", () => {
-    expect(subjectAreaSyncPlan({ requestId: "r", transactionArea: "", selection, lastSyncKey: null })).toBeNull();
-    expect(subjectAreaSyncPlan({ requestId: "r", transactionArea: "-4", selection, lastSyncKey: null })).toBeNull();
-    expect(subjectAreaSyncPlan({ requestId: "r", transactionArea: "abc", selection, lastSyncKey: null })).toBeNull();
-    expect(subjectAreaSyncPlan({ requestId: "r", transactionArea: "250,0005", selection, lastSyncKey: null })).toBeNull();
-    expect(subjectAreaSyncPlan({ requestId: "r", transactionArea: "300", selection, lastSyncKey: "r:300" })).toBeNull();
+    expect(subjectAreaSyncPlan({ requestId: "r", subjectArea: "", selection, lastSyncKey: null })).toBeNull();
+    expect(subjectAreaSyncPlan({ requestId: "r", subjectArea: "-4", selection, lastSyncKey: null })).toBeNull();
+    expect(subjectAreaSyncPlan({ requestId: "r", subjectArea: "abc", selection, lastSyncKey: null })).toBeNull();
+    expect(subjectAreaSyncPlan({ requestId: "r", subjectArea: "250,0005", selection, lastSyncKey: null })).toBeNull();
+    expect(subjectAreaSyncPlan({ requestId: "r", subjectArea: "300", selection, lastSyncKey: "r:300" })).toBeNull();
   });
 
   it("plans one sync per (request, area) with the stored basis defaulted", () => {
-    expect(subjectAreaSyncPlan({ requestId: "r", transactionArea: "300,5", selection, lastSyncKey: "r:250" })).toEqual({
+    expect(subjectAreaSyncPlan({ requestId: "r", subjectArea: "300,5", selection, lastSyncKey: "r:250" })).toEqual({
       syncKey: "r:300.5",
       body: { subjectAreaSqm: 300.5, adjustmentBasis: "price_per_sqm", analysisNotes: null },
     });
     expect(
       subjectAreaSyncPlan({
         requestId: "r",
-        transactionArea: "300",
+        subjectArea: "300",
         selection: { subjectAreaSqm: null, adjustmentBasis: "whole_property", analysisNotes: "n" },
         lastSyncKey: null,
       })?.body,
     ).toEqual({ subjectAreaSqm: 300, adjustmentBasis: "whole_property", analysisNotes: "n" });
   });
 
+  it("opens a new table on the subject's basis and keeps a saved one afterwards", () => {
+    const fresh = { subjectAreaSqm: null, adjustmentBasis: "price_per_sqm", analysisNotes: null };
+    expect(
+      subjectAreaSyncPlan({ requestId: "r", subjectArea: "820", selection: fresh, lastSyncKey: null, firstBasis: "whole_property" })
+        ?.body.adjustmentBasis,
+    ).toBe("whole_property");
+    // An area already stored: the appraiser's per-m² choice stays.
+    const saved = { subjectAreaSqm: 600, adjustmentBasis: "price_per_sqm", analysisNotes: null };
+    expect(
+      subjectAreaSyncPlan({ requestId: "r", subjectArea: "820", selection: saved, lastSyncKey: null, firstBasis: "whole_property" })
+        ?.body.adjustmentBasis,
+    ).toBe("price_per_sqm");
+  });
+
   it("reads a thousands comma and units the way the backend does (1,250 → 1250, not 1.25)", () => {
-    const plan = (transactionArea: string) =>
-      subjectAreaSyncPlan({ requestId: "r", transactionArea, selection, lastSyncKey: null })?.body
+    const plan = (subjectArea: string) =>
+      subjectAreaSyncPlan({ requestId: "r", subjectArea, selection, lastSyncKey: null })?.body
         .subjectAreaSqm;
     expect(plan("1,250")).toBe(1250);
     expect(plan("1,250 م²")).toBe(1250);

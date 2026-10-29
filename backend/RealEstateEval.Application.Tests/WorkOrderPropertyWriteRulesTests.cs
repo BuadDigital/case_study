@@ -335,7 +335,7 @@ public class WorkOrderPropertyWriteRulesTests
     }
 
     [Fact]
-    public void Bourse_request_stores_named_owners_and_names_the_first_one()
+    public void Bourse_request_stores_named_owners_and_names_them_all()
     {
         var entity = new WorkOrderProperty { Id = Guid.NewGuid() };
         var request = new UpdatePropertyBourseRequest
@@ -355,7 +355,8 @@ public class WorkOrderPropertyWriteRulesTests
         var errors = WorkOrderPropertyWriteRules.ApplyBourseRequest(entity, request, DateTime.UtcNow);
 
         Assert.Null(errors);
-        Assert.Equal("سالم", entity.OwnerName);
+        // a مشاع deed names every co-owner, not only the first (2026-10-28)
+        Assert.Equal("سالم، نورة", entity.OwnerName);
         Assert.Equal(
             ["سالم", "نورة"],
             OwnershipTypeRules.ParseOwners(entity.DeedOwnersJson).Select(o => o.Name));

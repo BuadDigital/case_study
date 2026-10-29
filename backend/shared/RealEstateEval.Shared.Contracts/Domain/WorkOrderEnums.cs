@@ -182,13 +182,15 @@ public static class WorkOrderListStatus
  /// <param name="expectedPropertyCount">Properties promised by Enfaz at intake.</param>
  /// <param name="registeredCount">Properties on the PO that are not removed.</param>
  /// <param name="readyCount">Live properties whose tasks are all complete or that are already closed.</param>
- /// <param name="closedCount">Live properties handed over to Enfaz, or whose tasks are all cancelled.</param>
+ /// <param name="closedCount">Live properties handed over to Enfaz, cancelled, or whose tasks are all cancelled.</param>
+ /// <param name="cancelledCount">Live properties whose transaction was cancelled («إلغاء المعاملة»); all of them → cancelled.</param>
     public static string ResolveStudy(
         string? lifecycleStatus,
         int expectedPropertyCount,
         int registeredCount,
         int readyCount,
-        int closedCount)
+        int closedCount,
+        int cancelledCount = 0)
     {
         var lifecycle = lifecycleStatus?.Trim();
         if (lifecycle == WorkOrderLifecycleStatus.Cancelled) return Cancelled;
@@ -197,6 +199,7 @@ public static class WorkOrderListStatus
         var expected = Math.Max(1, expectedPropertyCount);
         var registered = registeredCount;
         if (registered <= 0) return New;
+        if (cancelledCount >= registered) return Cancelled;
 
         var allRegistered = registered >= expected;
         if (allRegistered && closedCount >= registered) return Completed;
@@ -215,14 +218,16 @@ public static class WorkOrderListStatus
         int registeredCount,
         int readyCount,
         int closedCount,
-        bool hasEnfazInvoice = false)
+        bool hasEnfazInvoice = false,
+        int cancelledCount = 0)
     {
         var study = ResolveStudy(
             lifecycleStatus,
             expectedPropertyCount,
             registeredCount,
             readyCount,
-            closedCount);
+            closedCount,
+            cancelledCount);
         if (study is Cancelled or Stopped) return study;
 
         // Billing labels only when finance actually issued an invoice.

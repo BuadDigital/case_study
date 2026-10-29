@@ -134,6 +134,13 @@ public partial class CaseStudyReportService
             }
         }
 
+        // Gate 1b — the inspector's corrected type needs a survey nobody was given (2026-10-29).
+        foreach (var parent in parents)
+        {
+            if (await SurveyMissingAfterTypeChangeAsync(parent, cancellationToken))
+                return (null, Fail(PartyTaskSubmissionService.SurveyNeededAfterTypeChangeAr));
+        }
+
         // Re-entry after a half-applied legacy issue: the report is issued but the parent is still
         // open (or its party forms were never locked). Finish the job; nothing else changes.
         if (alreadyIssued)
@@ -158,7 +165,8 @@ public partial class CaseStudyReportService
         var matchErrors = CaseStudyReportDeedNatureMatchRules.ValidateForIssue(
             report.DeedNatureMatchOutcome,
             report.DeedNatureMatchNotes,
-            await TransactionDeedKindsAsync(parents, task, propertyId, cancellationToken));
+            await TransactionDeedKindsAsync(parents, task, propertyId, cancellationToken),
+            await InspectorSaidNotMatchedAsync(task.Id, cancellationToken));
         if (matchErrors is not null) return (null, matchErrors);
 
         // Gate 2 — 100% of the questions the matrix asks, from the answers in THIS request.

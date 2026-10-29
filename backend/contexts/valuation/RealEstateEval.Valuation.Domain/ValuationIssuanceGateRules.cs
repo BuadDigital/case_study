@@ -1,7 +1,4 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
-// Round 1 (5b554f4e)
-//  • New gate income_approach_complete «أسلوب الدخل مكتمل»: an enabled income approach needs gross
-//         income, a cap rate and a positive NOI before issuance.
 // Round 2 (1b19bedc)
 //  • B    New gate adjustment_rationales_<table> «مبررات التسويات والأوزان اليدوية»: a non-zero factor or
 //         manual weight without a 10-character rationale blocks issue and hand-over, each item named.
@@ -30,8 +27,6 @@ public static class ValuationIssuanceGateCodes
     public const string ValueDocuments = "value_documents";
     /// <summary>The specialist issued the case-study report the appraisal is built on.</summary>
     public const string StudyReportIssued = "study_report_issued";
-    /// <summary>The enabled income approach has income, a cap rate and a positive NOI.</summary>
-    public const string IncomeApproachComplete = "income_approach_complete";
     /// <summary>
     /// Round 2: every non-zero adjustment factor and every manual weight of an
     /// adopted comparable is explained (≥ 10 characters). Suffixed per table: <c>_market</c> /
@@ -209,22 +204,6 @@ public static class ValuationIssuanceGateRules
             IsHard: true,
             DetailAr: costApproachEnabled && !landEstimateComplete
                 ? "أسلوب التكلفة مفعّل وقيمة الأرض غير مكتملة — يلزم مقارنات أراضٍ فضاء ثم حفظ التكلفة"
-                : null);
-
-    /// <summary>
-    /// An enabled income approach must yield an indicator before issuance — gross income, a
-    /// capitalisation rate and a positive net operating income. Skipped (pass) when it is off.
-    /// </summary>
-    public static ValuationIssuanceGateCheck IncomeApproachComplete(
-        bool incomeApproachEnabled,
-        bool incomeComplete) =>
-        new(
-            ValuationIssuanceGateCodes.IncomeApproachComplete,
-            "أسلوب الدخل مكتمل",
-            !incomeApproachEnabled || incomeComplete,
-            IsHard: true,
-            DetailAr: incomeApproachEnabled && !incomeComplete
-                ? "أسلوب الدخل مفعّل ولم يكتمل — أدخل الدخل الإجمالي المحتمل ومعدل الرسملة بحيث يكون صافي الدخل التشغيلي موجبًا ثم احفظ"
                 : null);
 
     /// <summary>

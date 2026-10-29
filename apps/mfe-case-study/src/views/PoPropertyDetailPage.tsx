@@ -12,6 +12,7 @@ import {
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { PoDetailPropertyCard } from "@case-study/mfe/components/po-intake/PoDetailPropertyCard";
 import { PropertyDetailHero } from "@case-study/mfe/components/po-intake/PropertyDetailHero";
+import { TransactionCancellationBanner } from "@case-study/mfe/components/po-intake/TransactionCancellationBanner";
 import {
   requiresAssignmentDecree,
 } from "../lib/app-data/po-intake-data";
@@ -120,6 +121,8 @@ export function PoPropertyDetailPage({
           property={property}
           propertyIndex={index + 1}
         />
+
+        <TransactionCancellationBanner propertyId={property.id} />
 
         <PoDetailPropertyCard
           layout="page"

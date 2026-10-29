@@ -109,6 +109,8 @@ public class WorkOrderPropertyDto
     public bool IsRemoved { get; set; }
     public string? RemovalReason { get; set; }
     public string? RemovedAtUtc { get; set; }
+    /// <summary>Set while the deed's transaction is cancelled («إلغاء المعاملة»); read-only on the wire.</summary>
+    public string? CancelledAtUtc { get; set; }
     /// <summary>Last write on the property row — clients drop local autosave drafts older than this.</summary>
     public string? UpdatedAtUtc { get; set; }
     public List<PropertyContactDto> Contacts { get; set; } = [];

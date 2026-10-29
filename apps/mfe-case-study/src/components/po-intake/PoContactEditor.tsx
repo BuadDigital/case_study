@@ -15,6 +15,8 @@ import {
   formControlErrorClassName,
 } from "@platform/ui-kit";
 import {
+  CONTACT_PHONE_TOO_LONG,
+  contactPhonesFit,
   joinContactPhones,
   normalizePhoneInput,
   PHONE_MIN_DIGITS,
@@ -38,7 +40,17 @@ function ContactPhoneField({
 }) {
   const phones = splitContactPhones(value);
   const [draft, setDraft] = useState("");
+  const [full, setFull] = useState(false);
 
+  /**
+   * Adds the typed number as a chip.
+   *
+   * How it works: digits only, at least PHONE_MIN_DIGITS, no duplicates; the joined list
+   * must still fit the server column.
+   *
+   * Edge cases: a number that would not fit stays in the box with a note to add another
+   * contact (fixed 2026-10-28 — a fourth mobile used to fail the whole save with a 500).
+   */
   function commitDraft() {
     const next = normalizePhoneInput(draft);
     if (!next || next.length < PHONE_MIN_DIGITS) return;
@@ -46,6 +58,11 @@ function ContactPhoneField({
       setDraft("");
       return;
     }
+    if (!contactPhonesFit([...phones, next])) {
+      setFull(true);
+      return;
+    }
+    setFull(false);
     onChange(joinContactPhones([...phones, next]));
     setDraft("");
   }
@@ -112,9 +129,9 @@ function ContactPhoneField({
       <p className="mt-1 text-[10px] text-text-3">
         اكتب الرقم ثم اضغط مسافة لحفظه وإضافة رقم آخر
       </p>
-      {error ? (
+      {error || full ? (
         <p className="mt-1 text-[10px] text-danger-text" role="alert">
-          {error}
+          {error ?? CONTACT_PHONE_TOO_LONG}
         </p>
       ) : null}
     </div>

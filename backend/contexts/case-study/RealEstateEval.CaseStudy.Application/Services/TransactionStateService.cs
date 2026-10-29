@@ -21,7 +21,9 @@ public sealed partial class TransactionStateService(
     IAuditLogAppend? auditLog = null,
     ICaseStudyReportService? caseStudyReports = null,
     IValuationReportReopenCommands? valuationReopen = null,
-    ITransactionReferenceService? transactions = null)
+    ITransactionReferenceService? transactions = null,
+    INotificationService? notifications = null,
+    INotificationRecipientResolver? recipients = null)
     : ITransactionStateService
 {
     public const string ReferenceBeforeHandoverAr = "تعذّر تثبيت الرقم المرجعي قبل الرفع — أعد المحاولة";
@@ -95,6 +97,8 @@ public sealed partial class TransactionStateService(
         {
             // The upload itself succeeded — failing the time constraint does not fail the operation.
         }
+
+        await NotifyFinanceOfHandoverAsync(workOrderId, property, cancellationToken);
 
         var updated = input with { EnfazHandedOver = true };
         return (ToDto(workOrderId, propertyId, updated, hasSurvey, property), null);

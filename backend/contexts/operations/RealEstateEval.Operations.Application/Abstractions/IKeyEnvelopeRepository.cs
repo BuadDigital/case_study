@@ -36,6 +36,11 @@ public interface IKeyEnvelopeRepository
     /// <summary>Tracked envelope with its assignments — the confirm/add-assignment path.</summary>
     Task<KeyEnvelope?> FindWithAssignmentsAsync(Guid id, CancellationToken cancellationToken);
 
+    /// <summary>Tracked envelopes (with assignments) holding a key of any of the properties.</summary>
+    Task<IReadOnlyList<KeyEnvelope>> FindWithAssignmentsByPropertyIdsAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken);
+
     /// <summary>Tracked envelope with every child collection, ready to be removed.</summary>
     Task<KeyEnvelope?> FindWithChildrenAsync(Guid id, CancellationToken cancellationToken);
 

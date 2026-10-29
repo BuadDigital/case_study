@@ -16,12 +16,15 @@ import {
   matrixBasisView,
   matrixFactorRows,
 } from "./lib/adjustments-matrix-state";
+import type { MarketSubjectKind } from "./lib/market-subject";
 import { pct } from "./AdjustmentsMatrixCells";
 
 type AdjustmentsMatrixModelArgs = {
   selection: ValuationComparableSelectionListDto;
   adopted: ValuationComparableSelectionDto[];
   subjectArea: string;
+  /** What the market table compares the subject as; the land table is always land. */
+  subjectKind?: MarketSubjectKind;
   dispatch: MatrixDispatch;
 };
 
@@ -34,6 +37,7 @@ export function useAdjustmentsMatrixModel({
   selection,
   adopted,
   subjectArea,
+  subjectKind,
   dispatch,
 }: AdjustmentsMatrixModelArgs) {
   /** Two-step delete — “Delete? ✓ ×” (one confirm slot at a time, as in the form). */
@@ -92,7 +96,7 @@ export function useAdjustmentsMatrixModel({
     lineOf,
     linePct,
     justValue,
-    basisView: matrixBasisView(selection, adopted, subjectArea),
+    basisView: matrixBasisView(selection, adopted, subjectArea, subjectKind),
     sequentialKeys,
     removedSequential,
     differenceKeys,

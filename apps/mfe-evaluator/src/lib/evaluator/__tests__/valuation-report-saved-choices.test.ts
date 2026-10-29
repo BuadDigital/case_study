@@ -91,7 +91,7 @@ describe("D1 — §2 prints the appraiser's saved basis / premise / purpose", ()
     expect(fill.liquidationDiscountOn).toBe(false);
     expect(fill.basisDefinition).toContain("القيمة السوقية");
     expect(fill.finalValueRows).toEqual([
-      { key: "القيمة المرجّحة", value: "9,217,969.74" },
+      { key: "القيمة المرجّحة", value: "9,217,970" },
       { key: "قيمة العقار بعد التقريب (لأقرب 10,000 ر.س.)", value: "9,220,000", total: true },
     ]);
 
@@ -99,7 +99,7 @@ describe("D1 — §2 prints the appraiser's saved basis / premise / purpose", ()
     applyValuationReportLiveFill(dom, fill);
     expect(dom.querySelector('[data-sec="25"]')?.textContent).not.toContain("خصم");
     expect(sec25Rows(dom)).toEqual([
-      ["القيمة المرجّحة", "9,217,969.74"],
+      ["القيمة المرجّحة", "9,217,970"],
       ["قيمة العقار بعد التقريب (لأقرب 10,000 ر.س.)", "9,220,000"],
     ]);
     expect(dom.querySelector('[data-sec="25"] [data-final-value]')?.getAttribute("data-final-value")).toBe("9220000");
@@ -174,10 +174,10 @@ describe("§25 — numbers a reader can reproduce", () => {
     const dom = sec25Dom();
     applyValuationReportLiveFill(dom, fill);
     expect(sec25Rows(dom)).toEqual([
-      ["القيمة المرجّحة", "1,556,861.07"],
+      ["القيمة المرجّحة", "1,556,861"],
       // Round 2: a forced-sale premise names its own discount — never «التصفية المنظمة».
       ["نسبة خصم البيع القسري", "20٪", "مبرر خصم البيع القسري", "بيع قسري بالمزاد خلال 30 يوماً"],
-      ["القيمة بعد خصم البيع القسري", "1,245,488.86"],
+      ["القيمة بعد خصم البيع القسري", "1,245,489"],
       ["قيمة العقار بعد التقريب (لأقرب 10,000 ر.س.)", "1,250,000"],
     ]);
     expect(fill.basisDefinition).toContain("البيع القسري");
@@ -263,15 +263,16 @@ describe("§19 — every applied factor prints", () => {
     expect(keys).toContain("تسوية ظروف السوق (عامل الوقت)");
     const row = (k: string) => fill.adjustmentRows.find((r) => r.key === k);
     expect(row("تسوية نوع المقارن")?.values).toEqual(["-8.00٪"]);
-    // 11,500 × 1.002 × 0.92 = 10,601.16 — the compounded chain, not the plain sum (−7.80).
+    // 11,500 × 1.002 × 0.92 = 10,601.16 — the compounded chain, not the plain sum (−7.80);
+    // printed in whole riyals like the matrix.
     expect(row("إجمالي التسويات التسلسلية ٪ (مركّبة)")?.values).toEqual(["-7.82٪"]);
-    expect(row("سعر البيع بعد التسويات التسلسلية")?.values).toEqual(["10,601.16"]);
+    expect(row("سعر البيع بعد التسويات التسلسلية")?.values).toEqual(["10,601"]);
     expect(row("سهولة الوصول")?.pairs).toEqual([["طريق رئيسي", "3.00٪"]]);
     expect(row("جودة التشطيب")?.pairs).toEqual([["فاخر", "1.00٪"]]);
     expect(row("عمر المبنى وحالة التشطيب")?.pairs).toEqual([["أحدث", "-3.00٪"]]);
     // The difference rows add up to the total: 0.16 + 0 + 3 + 1 − 3 = 1.16.
     expect(row("مجموع نسب التسويات (٪)")?.values).toEqual(["1.16٪"]);
-    expect(row("القيمة بطريقة المقارنة")?.values).toEqual(["3,464,547.20"]);
+    expect(row("القيمة بطريقة المقارنة")?.values).toEqual(["3,464,547"]);
     expect(keys.indexOf("سهولة الوصول")).toBeLessThan(keys.indexOf("جودة التشطيب"));
   });
 
@@ -288,7 +289,7 @@ describe("§19 — every applied factor prints", () => {
 });
 
 describe("report facts printed as the inspector / roster recorded them", () => {
-  it("the ground floor prints once — never again as «مسطح الملحق الأرضي» (O14)", () => {
+  it("the ground floor prints once, under the cost table's own label — never as a ground annex", () => {
     const fill = buildValuationReportLiveFill({
       draft: draft(),
       inventoryLines: [
@@ -304,9 +305,7 @@ describe("report facts printed as the inspector / roster recorded them", () => {
       } as never,
     });
     const keys = fill.costRows.map((r) => r.key);
-    expect(keys).toContain("مسطح الدور الأرضي");
-    expect(keys).not.toContain("مسطح الملحق الأرضي");
-    expect(keys.filter((k) => k.includes("الأرضي"))).toHaveLength(1);
+    expect(keys).toEqual(["الدور الأرضي", "الدور الأول", "مجموع التكلفة المباشرة"]);
   });
 
   it("a real ground annex still prints on its own row", () => {
@@ -320,7 +319,7 @@ describe("report facts printed as the inspector / roster recorded them", () => {
         ],
       } as never,
     });
-    const annex = fill.costRows.find((r) => r.key === "مسطح الملحق الأرضي");
+    const annex = fill.costRows.find((r) => r.key === "الملحق الأرضي");
     expect(annex?.values).toEqual(["40", "1,500", "60,000"]);
   });
 

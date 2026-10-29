@@ -1,7 +1,5 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • The income value joins the reconciliation rows and the DTO (IncomeOpinionValue) when the income
-//         approach is enabled (ValuationApproachKinds.ValueOf).
 //  • The appraiser's saved basis and premise win; the work order only seeds them.
 // Hotfix (9acb4f54)
 //  • A row that only an alert acknowledgement created (no methods rationale = no full save) never
@@ -36,16 +34,13 @@ public sealed partial class ValuationReconciliationService
         IReadOnlyList<ValuationValueDocumentUse> valueDocumentUses,
         AssignmentType assignmentType,
         string? workOrderBasisKey = null,
-        string? workOrderPremiseKey = null,
-        decimal incomeValue = 0m)
+        string? workOrderPremiseKey = null)
     {
  // A disabled approach neither shows a row nor skews the suggestion split.
         var marketEnabled = enabledKinds.Contains(
             ValuationApproachKinds.Market, StringComparer.OrdinalIgnoreCase);
         var costEnabled = enabledKinds.Contains(
             ValuationApproachKinds.Cost, StringComparer.OrdinalIgnoreCase);
-        var incomeEnabled = enabledKinds.Contains(
-            ValuationApproachKinds.Income, StringComparer.OrdinalIgnoreCase);
         // «مستند ذو قيمة» indicators join the internal approaches as reconciliation rows.
         var indicators = valueDocumentUses
             .Where(ValueDocumentUseRules.IsIndicator)
@@ -56,8 +51,7 @@ public sealed partial class ValuationReconciliationService
         var suggestedMap = ReconciliationRules.SuggestWeights(
             kinds,
             marketEnabled ? marketValue : 0m,
-            costEnabled ? costValue : 0m,
-            incomeEnabled ? incomeValue : 0m);
+            costEnabled ? costValue : 0m);
 
         var saved = (entity?.Methods ?? [])
             .ToDictionary(m => m.ApproachKind, StringComparer.OrdinalIgnoreCase);
@@ -70,7 +64,7 @@ public sealed partial class ValuationReconciliationService
             indicators.TryGetValue(kind, out var document);
             var liveValue = document is not null
                 ? document.Value
-                : ValuationApproachKinds.ValueOf(kind, marketValue, costValue, incomeValue);
+                : ValuationApproachKinds.ValueOf(kind, marketValue, costValue);
             saved.TryGetValue(kind, out var row);
             var suggestedWeight = suggestedMap.GetValueOrDefault(kind, 0m);
             var (weight, isIncluded) = ReconciliationRules.EffectiveParticipation(
@@ -146,7 +140,6 @@ public sealed partial class ValuationReconciliationService
             PropertyId = vr.PropertyId.ToString("D"),
             MarketOpinionValue = marketValue,
             CostOpinionWithLand = costValue,
-            IncomeOpinionValue = incomeValue,
             Methods = methodDtos,
             WeightSumPct = weightSum,
             WeightsSumTo100 = includedMethods.Count == 0

@@ -276,6 +276,19 @@ public partial class CaseStudyReportService : ICaseStudyReportService
         }
 
         var previousMatchOutcome = (entity?.DeedNatureMatchOutcome ?? "").Trim();
+        // «مطابق» against the inspector's «غير مطابق» needs the specialist's reason (2026-10-29) — checked
+        // when the match field itself changes, so an older report's other edits still save.
+        if (!party
+            && (!string.Equals(previousMatchOutcome, (form.DeedNatureMatchOutcome ?? "").Trim(), StringComparison.Ordinal)
+                || !string.Equals((entity?.DeedNatureMatchNotes ?? "").Trim(), (form.DeedNatureMatchNotes ?? "").Trim(), StringComparison.Ordinal))
+            && await InspectorSaidNotMatchedAsync(taskId, cancellationToken))
+        {
+            var overrideErrors = CaseStudyReportDeedNatureMatchRules.ValidateForSave(
+                form.DeedNatureMatchOutcome,
+                form.DeedNatureMatchNotes,
+                inspectorSaidNotMatched: true);
+            if (overrideErrors is not null) return (null, overrideErrors);
+        }
         var previousAnswers = ParseAnswers(entity?.AnswersJson);
         var previousRemarks = ReadRemarkMap(entity);
         var previousProvenance = CaseStudyAnswerProvenance.Parse(entity?.AnswerProvenanceJson);

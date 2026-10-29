@@ -8,6 +8,12 @@ export function buildPoListRowMoreItems(options: {
   showEdit: boolean;
   showDelete: boolean;
   showLifecycleActions: boolean;
+  /**
+   * «إلغاء أمر العمل» — every live transaction of the order (specialist: a request to the supervisor;
+   * supervisor / CDO: at once, `cancelDecides`). Absent when the viewer may not ask.
+   */
+  showCancel: boolean;
+  cancelDecides: boolean;
   /** Specialist/supervisor — create an operations task linked to this work order */
   showCreateOperationsTask?: boolean;
   deleting: boolean;
@@ -45,16 +51,19 @@ export function buildPoListRowMoreItems(options: {
     });
   }
 
-  if (options.showLifecycleActions) {
-    const cancelled = options.status === "cancelled";
-    const stopped = options.status === "stopped";
+  const cancelled = options.status === "cancelled";
+  if (options.showCancel) {
     items.push({
       id: "cancel-po",
-      label: options.lifecycleBusy ? "جاري الإلغاء..." : "إلغاء أمر العمل",
+      label: options.cancelDecides ? "إلغاء أمر العمل" : "طلب إلغاء أمر العمل",
       danger: true,
       disabled: options.lifecycleBusy || cancelled,
       onClick: options.onCancel,
     });
+  }
+
+  if (options.showLifecycleActions) {
+    const stopped = options.status === "stopped";
     items.push({
       id: "stop-po",
       label: options.lifecycleBusy ? "جاري الإيقاف..." : "إيقاف أمر العمل",

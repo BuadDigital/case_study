@@ -78,6 +78,8 @@ export type WorkflowTaskDto = {
    * another deed than this task's. A case-study row with this set is folded into that study.
    */
   transactionStudyHolderPropertyId?: string | null;
+  /** The task's property was handed over to Enfaz, joined server-side. */
+  propertyHandedOverToEnfaz?: boolean | null;
 };
 
 export type ConfirmTaskDistributionResponseDto = {
@@ -264,6 +266,25 @@ export async function redistributeWorkflowTaskParties(
         body: JSON.stringify(body),
       },
     );
+    return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** «إضافة رفع مساحي» — the engineering office joins after distribution (the corrected type needs it). */
+export async function addWorkflowTaskEngineeringSurvey(
+  config: WorkOrdersApiConfig,
+  parentTaskId: string,
+  body: { assigneeId: string; assigneeName?: string },
+): Promise<ApiOk<WorkflowTaskDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/workflow-tasks/${parentTaskId}/engineering-survey`, {
+      method: "POST",
+      headers: authHeaders(config.token),
+      body: JSON.stringify(body),
+    });
     return await readTaskWrite<WorkflowTaskDto>(res, { fieldErrorsOn400: true });
   } catch {
     return { ok: false, kind: "network" };

@@ -29,9 +29,7 @@ public sealed partial class ValuationComparableSelectionService
         var header = await repo.FindMarketApproachAsync(valuationRequestId, cancellationToken);
         if (header is null)
         {
-            var org = await organizationSettings.GetInternalAsync(cancellationToken);
-            header = ValuationComparableSelectionRequestRules.SeedMarketApproach(
-                valuationRequestId, org.Valuation);
+            header = await SeedMarketApproachAsync(vr, cancellationToken);
             await repo.AddMarketApproachAsync(header, cancellationToken);
         }
 
@@ -48,10 +46,24 @@ public sealed partial class ValuationComparableSelectionService
         var exists = await repo.MarketApproachExistsAsync(valuationRequestId, cancellationToken);
         if (exists) return;
 
-        var org = await organizationSettings.GetInternalAsync(cancellationToken);
-        var header = ValuationComparableSelectionRequestRules.SeedMarketApproach(
-            valuationRequestId, org.Valuation);
+        var vr = await repo.GetRequestAsync(valuationRequestId, cancellationToken);
+        if (vr is null) return;
+        var header = await SeedMarketApproachAsync(vr, cancellationToken);
         header.UpdatedAtUtc = _time.UtcNow();
         await repo.AddMarketApproachAsync(header, cancellationToken);
+    }
+
+    /// <summary>
+    /// A new market header: organization coefficients, and the basis this property opens on
+    /// (whole property for a building, per m² for land — by its type and the saved scope).
+    /// </summary>
+    private async Task<ValuationMarketApproach> SeedMarketApproachAsync(
+        ValuationRequest vr,
+        CancellationToken cancellationToken)
+    {
+        var org = await organizationSettings.GetInternalAsync(cancellationToken);
+        var settings = await repo.GetApproachSettingsAsync(vr.Id, cancellationToken);
+        return ValuationComparableSelectionRequestRules.SeedMarketApproach(
+            vr.Id, org.Valuation, vr.PropertyType, settings?.CostScopeKey);
     }
 }

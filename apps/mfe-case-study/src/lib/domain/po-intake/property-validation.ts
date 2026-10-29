@@ -27,6 +27,20 @@ export function joinContactPhones(phones: string[]): string {
     .join(" ");
 }
 
+/** Width of the server's contact phone column — every mobile of one contact, space-separated. */
+export const CONTACT_PHONE_MAX_LENGTH = 32;
+
+export const CONTACT_PHONE_TOO_LONG =
+  "أرقام الجوال لهذا الضابط أكثر مما يتسع له — أضف ضابط اتصال آخر لباقي الأرقام";
+
+/**
+ * True when the joined phone list still fits one contact (mirrors the server rule).
+ * Fixed 2026-10-28: a fourth mobile (43 characters) failed the save with a 500.
+ */
+export function contactPhonesFit(phones: string[]): boolean {
+  return joinContactPhones(phones).length <= CONTACT_PHONE_MAX_LENGTH;
+}
+
 function phoneDigitCount(phone: string): number {
   return phone.replace(/\D/g, "").length;
 }
@@ -89,6 +103,8 @@ export function validatePropertyContacts(
     } else if (phones.some((phone) => !isValidPhone(phone))) {
       errors[`contact_phone_${i}`] =
         `كل رقم جوال يجب أن يكون ${PHONE_MIN_DIGITS} أرقام على الأقل (افصل بينها بمسافة)`;
+    } else if (!contactPhonesFit(phones)) {
+      errors[`contact_phone_${i}`] = CONTACT_PHONE_TOO_LONG;
     }
     if (!role) errors[`contact_role_${i}`] = "صفة الضابط مطلوبة";
     const nationalId = normalizeSaudiNationalId(c.nationalId ?? "");

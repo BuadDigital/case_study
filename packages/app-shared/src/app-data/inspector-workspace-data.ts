@@ -291,6 +291,9 @@ export function patchInspectorFeatureValues(
       values[hidden] = "";
     }
   }
+  // «استخدام العقار» follows the type the inspector picked — the two cannot disagree.
+  const usage = key === "assetSubject" ? classificationForPropertyType(next) : null;
+  if (usage) values.propertyUsage = usage;
   return values;
 }
 
@@ -378,6 +381,15 @@ const PROPERTY_TYPES_BY_CLASSIFICATION: Record<
 };
 
 /**
+ * Every property type of the system, in classification order — the bourse picker's list and the
+ * inspector's «الأصل محل التقييم» (2026-10-29: the inspector corrects the type from this list).
+ * C# twin: PropertyTypeCatalog (backend/shared/RealEstateEval.Shared.Contracts/Domain).
+ */
+export const ALL_PROPERTY_TYPES: readonly string[] = PROPERTY_CLASSIFICATIONS.flatMap(
+  (classification) => PROPERTY_TYPES_BY_CLASSIFICATION[classification],
+);
+
+/**
  * Inspector «استخدام العقار»: the property classification the bourse inquiry recorded (أرض، مبنى مفرد،
  * مجمع، وحدة داخل مبنى، مرفق عام) — the field is pre-answered from it. «الأصل محل التقييم» is the type.
  * (It used to list all 47 types, which duplicated «الأصل محل التقييم» and could not take the bourse answer.)
@@ -416,7 +428,7 @@ export const INSPECTOR_FEATURE_FIELDS: InspectorFeatureField[] = [
   {
     key: "assetSubject",
     label: "الأصل محل التقييم",
-    options: ["فيلا", "أرض", "شقة", "عمارة", "محل تجاري", "مستودع"],
+    options: ALL_PROPERTY_TYPES,
     photoOnYes: false,
   },
   {
@@ -1824,8 +1836,6 @@ export function listInspectorPhotoValidationIssues(
     isShop?: boolean;
     classification?: string | null;
     propertyType?: string | null;
-    /** Case-study specialist: only كهرباء/ماء proof from transaction photos. */
-    specialistProofServicesOnly?: boolean;
   },
 ): string[] {
   const issues: string[] = [];
@@ -1876,19 +1886,9 @@ export function listInspectorPhotoValidationIssues(
     issues.push("يجب إرفاق صورة البئر");
   }
 
-  // «الخدمات والمرافق المحيطة» proof photos are optional and never block submit.
-  // The case-study specialist's كهرباء/ماء proof-from-transaction-photos step is a
-  // separate, stricter rule and keeps gating.
-  if (options?.specialistProofServicesOnly) {
-    const proofSlots = listSpecialistProofServicePhotoSlots(draft);
-    const { requiredTotal, requiredDone } = computeInspectorPhotoCoverage(
-      draft,
-      proofSlots,
-    );
-    if (requiredDone < requiredTotal) {
-      issues.push("اختر صورة إثبات من صور المعاملة لكل خدمة (كهرباء / ماء) محددة");
-    }
-  }
+  // «الخدمات والمرافق المحيطة» proof photos are optional and never block submit — the
+  // case-study specialist's كهرباء/ماء proof photos included (Omar, 2026-10-28: the
+  // inspector's form calls them «اختياري», so accepting the inspection must not demand them).
 
   // Free-photo kind (واجهة / خدمة / مرفق / أخرى) is optional — bucket parent is enough.
   // Do not block «حفظ وإرسال» on untagged free photos.

@@ -27,6 +27,8 @@ import {
 } from "../../lib/app-data/case-study-party-answers";
 import {
   applyInspectorAnswersToSpecialist,
+  bourseAnswersForStudy,
+  fillEmptySpecialistAnswers,
   type SpecialistAnswersMap,
 } from "../../lib/app-data/apply-inspector-answers-to-specialist";
 import {
@@ -212,7 +214,10 @@ export function useCaseStudyReportData({
       previousInspectorRef.current,
     );
     previousInspectorRef.current = applied.inspectorSnapshot;
-    if (applied.changedKeys.length === 0) return;
+    // Deed questions the bourse already answered fill the cells nobody answered yet.
+    const fromBourse = fillEmptySpecialistAnswers(applied.answers, bourseAnswersForStudy(property));
+    const changedKeys = [...applied.changedKeys, ...fromBourse.changedKeys];
+    if (changedKeys.length === 0) return;
 
     const approved = { ...current.specialistReviewApproved };
     for (const key of applied.changedKeys) {
@@ -220,7 +225,7 @@ export function useCaseStudyReportData({
     }
     const next: CaseStudyReportDraft = {
       ...current,
-      answers: applied.answers,
+      answers: fromBourse.answers,
       specialistReviewApproved: approved,
     };
 
@@ -248,6 +253,7 @@ export function useCaseStudyReportData({
     hydrated,
     forceReadOnly,
     partyAnswersByKey,
+    property,
     setDraft,
     showToast,
     draftRef,

@@ -42,14 +42,34 @@ export type ComparableEntryDraft = {
 
 export type ComparableSubjectPin = LatLng;
 
+/**
+ * Land or building from a comparable's type. Land words decide first; any other named type is a
+ * building (عمارة، استراحة، مستودع، محل… used to come back unknown). "" only for an empty type.
+ */
 export function comparableKindFromType(
   type: string | null | undefined,
 ): ComparableKind | "" {
   const t = (type ?? "").trim();
   if (!t) return "";
-  if (/فيلا|شقة|مبنى|دور|villa|apartment|building/i.test(t)) return "building";
   if (/أرض|ارض|فضاء|land/i.test(t)) return "land";
-  return "";
+  return "building";
+}
+
+/**
+ * How a comparable's area is named (2026-10-29): a land comparable by its land, a building by its
+ * floor area — a building's price includes its land, which is not measured separately.
+ */
+export function comparableAreaLabel(kind: ComparableKind | ""): string {
+  if (kind === "building") return "مسطح البناء";
+  if (kind === "land") return "مساحة الأرض";
+  return "المساحة";
+}
+
+/** The price per m² a comparable's area gives — «سعر متر البناء» / «سعر متر الأرض». */
+export function comparableRateLabel(kind: ComparableKind | ""): string {
+  if (kind === "building") return "سعر متر البناء";
+  if (kind === "land") return "سعر متر الأرض";
+  return "سعر المتر";
 }
 
 export function emptyComparableEntryDraft(): ComparableEntryDraft {

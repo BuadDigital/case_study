@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
@@ -25,15 +26,7 @@ public static class InspectedPropertyTypeRules
         "occupancyDescription",
     ];
 
-    private static readonly HashSet<string> Allowed = new(StringComparer.Ordinal)
-    {
-        "فيلا",
-        "أرض",
-        "شقة",
-        "عمارة",
-        "محل تجاري",
-        "مستودع",
-    };
+    // The system's full type list (PropertyTypeCatalog) plus the six short values of old payloads.
 
     public static string? FromPayload(string? payloadJson)
     {
@@ -62,7 +55,7 @@ public static class InspectedPropertyTypeRules
         }
 
         var value = subject.GetString()?.Trim() ?? "";
-        return Allowed.Contains(value) ? value : null;
+        return PropertyTypeCatalog.IsInspectorValue(value) ? value : null;
     }
 
     public static bool IsLand(string? propertyType)
@@ -102,4 +95,28 @@ public static class InspectedPropertyTypeRules
         string.IsNullOrWhiteSpace(inspected)
             ? (initial ?? "").Trim()
             : inspected.Trim();
+
+    /// <summary>
+    /// The inspector's type against the one the property had (2026-10-29: he corrects the bourse type
+    /// on site). Null when it is the same type. The survey flags let the submit add or withdraw the
+    /// engineering survey the new type needs.
+    /// </summary>
+    public static InspectedTypeChange? ChangeOf(
+        string? previousType,
+        string? newType,
+        bool surveyRequiredBefore,
+        bool surveyRequiredAfter)
+    {
+        var before = (previousType ?? "").Trim();
+        var after = (newType ?? "").Trim();
+        if (after.Length == 0 || string.Equals(before, after, StringComparison.Ordinal)) return null;
+        return new InspectedTypeChange(before, after, surveyRequiredBefore, surveyRequiredAfter);
+    }
 }
+
+/// <summary>A property type the inspector changed on submit, and what it does to the survey requirement.</summary>
+public sealed record InspectedTypeChange(
+    string PreviousType,
+    string NewType,
+    bool SurveyRequiredBefore,
+    bool SurveyRequiredAfter);

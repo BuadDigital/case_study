@@ -318,8 +318,11 @@ public static class WorkOrderPropertyWriteRules
     }
 
     /// <summary>
-    /// The transcribed owners, blank names dropped; the first one becomes the owner name. Null
-    /// leaves the stored owners as they are.
+    /// The transcribed owners, blank names dropped; every named owner becomes the owner name,
+    /// joined with «، ». Null leaves the stored owners as they are.
+    ///
+    /// Edge cases: fixed 2026-10-28 — only the first owner was kept, so a مشاع deed's report and
+    /// Enfaz package named one of its co-owners.
     /// </summary>
     private static void ApplyOwners(WorkOrderProperty entity, IEnumerable<DeedOwnerDto>? owners)
     {
@@ -331,7 +334,7 @@ public static class WorkOrderPropertyWriteRules
             .ToList();
         entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(named);
         if (named.Count > 0)
-            entity.OwnerName = named[0].Name;
+            entity.OwnerName = string.Join("، ", named.Select(o => o.Name));
     }
 
     /// <summary>

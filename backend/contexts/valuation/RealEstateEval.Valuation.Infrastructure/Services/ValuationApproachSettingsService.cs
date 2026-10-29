@@ -6,7 +6,6 @@
 //         no longer wipe the retrospective rationale or the interest valued and its lease years.
 //  • Saves OwnershipInterestKey (normalised) and RemainingLeaseYears (leasehold only); the DTO returns
 //         the key, its Arabic label and the lease years.
-//  • IncomeApproachEnabled is saved from the request instead of being forced to false.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using Microsoft.EntityFrameworkCore;
@@ -156,8 +155,8 @@ public sealed class ValuationApproachSettingsService(
 
         row.MarketApproachEnabled = request.MarketApproachEnabled;
         row.CostApproachEnabled = request.CostApproachEnabled;
-        // The income approach may be enabled (its inputs and value come with the income screen).
-        row.IncomeApproachEnabled = request.IncomeApproachEnabled;
+        // The income approach is not available yet (Validate refuses it) — it is always stored off.
+        row.IncomeApproachEnabled = false;
         var interest = OwnershipInterestKeys.Normalize(interestKey);
         row.OwnershipInterestKey = interest;
         row.RemainingLeaseYears = OwnershipInterestKeys.IsLeasehold(interest) ? leaseYears : null;

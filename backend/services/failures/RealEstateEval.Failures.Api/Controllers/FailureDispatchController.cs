@@ -127,6 +127,19 @@ public sealed class FailureDispatchController(
         return NoContent();
     }
 
+    [HttpPost("transaction-cancelled")]
+    public async Task<IActionResult> ResolveForCancelledTransaction(
+        [FromBody] ResolveEvictionHoldRequest request,
+        CancellationToken cancellationToken)
+    {
+        await failures.ResolveForCancelledTransactionAsync(
+            request.PoNumber,
+            request.PropertyId,
+            request.Actor,
+            cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("key-unmatched")]
     public async Task<IActionResult> EnsureKeyUnmatched(
         [FromBody] PropertyFailureHoldRequest request,

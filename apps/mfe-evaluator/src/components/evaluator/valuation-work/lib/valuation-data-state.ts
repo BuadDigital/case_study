@@ -191,33 +191,41 @@ export function buildBankFetchOptions({
   };
 }
 
-/** Subject-area draft on a full load: the transaction area wins over the stored market-approach area. */
+/**
+ * Subject-area draft on a full load: the area the subject is measured by (its deed area, or a
+ * building's floor area) wins over the stored market-approach area.
+ * Edge cases: a building with no floor area yet shows nothing (`storedFallback` false) — its stored
+ * area may still be the land area from before the 2026-10-29 ruling.
+ */
 export function initialSubjectArea(
-  transactionArea: string,
+  subjectArea: string,
   selection: { subjectAreaSqm?: number | null },
+  { storedFallback = true }: { storedFallback?: boolean } = {},
 ): string {
-  return (
-    transactionArea ||
-    (selection.subjectAreaSqm != null ? String(selection.subjectAreaSqm) : "")
-  );
+  if (subjectArea || !storedFallback) return subjectArea;
+  return selection.subjectAreaSqm != null ? String(selection.subjectAreaSqm) : "";
 }
 
 /**
- * Whether the server's market-approach area must be overwritten with the transaction area —
+ * Whether the server's market-approach area must be overwritten with the subject's area —
  * once per (request, area), and never when the server already matches. It writes the market
  * header only: the land table's building plot lives on the cost approach and is
  * never part of this body. Nothing is sent while writes are frozen (the appraiser's package is
  * handed over) — the server refuses it, and every visit used to fire that refused PUT.
+ * The first sync (no area stored yet) also sets `firstBasis` — whole property for a building —
+ * so a new market table opens on the basis its subject is compared on; later syncs keep the
+ * appraiser's basis.
  */
 export function subjectAreaSyncPlan({
   requestId,
-  transactionArea,
+  subjectArea,
   selection,
   lastSyncKey,
   writesFrozen = false,
+  firstBasis,
 }: {
   requestId: string;
-  transactionArea: string;
+  subjectArea: string;
   selection: {
     subjectAreaSqm?: number | null;
     adjustmentBasis: string;
@@ -225,25 +233,27 @@ export function subjectAreaSyncPlan({
   };
   lastSyncKey: string | null;
   writesFrozen?: boolean;
+  firstBasis?: string;
 }): { syncKey: string; body: SaveValuationMarketApproachRequest } | null {
-  const txNum = parseDecimal(transactionArea);
+  const areaNum = parseDecimal(subjectArea);
   const serverArea = selection.subjectAreaSqm;
-  const syncKey = `${requestId}:${txNum}`;
+  const syncKey = `${requestId}:${areaNum}`;
   if (
     writesFrozen ||
-    !transactionArea ||
-    !Number.isFinite(txNum) ||
-    txNum <= 0 ||
-    (serverArea != null && Math.abs(Number(serverArea) - txNum) <= 0.001) ||
+    !subjectArea ||
+    !Number.isFinite(areaNum) ||
+    areaNum <= 0 ||
+    (serverArea != null && Math.abs(Number(serverArea) - areaNum) <= 0.001) ||
     lastSyncKey === syncKey
   ) {
     return null;
   }
+  const basis = (serverArea == null ? firstBasis : undefined) || selection.adjustmentBasis;
   return {
     syncKey,
     body: {
-      subjectAreaSqm: txNum,
-      adjustmentBasis: selection.adjustmentBasis || "price_per_sqm",
+      subjectAreaSqm: areaNum,
+      adjustmentBasis: basis || "price_per_sqm",
       analysisNotes: selection.analysisNotes ?? null,
     },
   };

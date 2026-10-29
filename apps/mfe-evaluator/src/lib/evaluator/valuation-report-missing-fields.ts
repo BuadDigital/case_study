@@ -334,6 +334,16 @@ function markNumberedRows(
   }
 }
 
+/**
+ * Section 19 gaps: the comparables' own cells on the per-comparable rows, the weighted price/m²
+ * and the comparison value.
+ *
+ * How it works: walks the table rows by their label and marks empty comparable cells (market tab).
+ *
+ * Edge cases: the subject column («العقار محل التقييم», `td.subj`) is never marked — the subject has
+ * nothing to show on most rows, and its per-factor descriptions are optional. The «مبررات التسويات»
+ * list is optional too and is not a gap.
+ */
 function markAdjustments(
   sec: Element,
   fill: ValuationReportLiveFill,
@@ -342,13 +352,13 @@ function markAdjustments(
   if (fill.methodRow[0] === "غير مستخدم") return;
   const comps = fill.comparableRows.length;
   for (const row of sec.querySelectorAll("tr")) {
-    const cells = tdCells(row);
+    const cells = tdCells(row).filter((c) => !c.classList.contains("subj"));
     const label = text(cells[0]);
     if (comps > 0 && ADJUSTMENT_COMPARABLE_ROWS.has(label)) {
       cells.slice(1).forEach((cell, i) => {
         mark(cell, `${label} (المقارن ${i + 1})`, MARKET);
       });
-    } else if (label === "المتوسط المرجح لسعر المتر") {
+    } else if (label.startsWith("المتوسط المرجح ل")) {
       mark(cells[1], label, MARKET);
     } else if (label.startsWith("القيمة بطريقة المقارنة")) {
       mark(cells[1], "القيمة بطريقة المقارنة", MARKET);

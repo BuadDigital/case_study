@@ -1,6 +1,5 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • The income approach value is read and joins the weights when the appraiser enables it.
 //  • Liquidation discount 0 on basis «قيمة التصفية» is refused at save time; one name «خصم التصفية»
 //         in every message (ReconciliationLiquidationMessages).
 // Round 2 (1b19bedc)
@@ -37,7 +36,6 @@ public sealed partial class ValuationReconciliationService(
     IAuditLogAppend auditLog,
     IValuationComparableSelectionService selections,
     IValuationCostApproachService costApproach,
-    IValuationIncomeApproachService incomeApproach,
     TimeProvider? time = null) : IValuationReconciliationService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
@@ -51,7 +49,6 @@ public sealed partial class ValuationReconciliationService(
 
         var market = await selections.ListAsync(valuationRequestId, cancellationToken);
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
-        var income = await incomeApproach.GetAsync(valuationRequestId, cancellationToken);
         var entity = await repo.GetWithMethodsAsync(valuationRequestId, cancellationToken);
 
         var workOrder = await ResolveWorkOrderValuationAsync(vr, cancellationToken);
@@ -65,8 +62,7 @@ public sealed partial class ValuationReconciliationService(
             uses,
             workOrder.AssignmentType,
             workOrder.BasisOfValueKey,
-            workOrder.ValuePremiseKey,
-            income?.IncomeValue ?? 0m);
+            workOrder.ValuePremiseKey);
     }
 
     public async Task<IReadOnlyList<string>> GetEnabledApproachKindsAsync(
@@ -97,9 +93,7 @@ public sealed partial class ValuationReconciliationService(
                 settings.CostScopeKey);
         return ValuationApproachSettingsRules.EnabledReconciliationKinds(
             settings.MarketApproachEnabled,
-            costEnabled,
-            // Income (direct capitalisation) joins the weights when the appraiser enables it.
-            settings.IncomeApproachEnabled);
+            costEnabled);
     }
 
     private async Task<(AssignmentType AssignmentType, string? BasisOfValueKey, string? ValuePremiseKey)>
@@ -240,7 +234,6 @@ public sealed partial class ValuationReconciliationService(
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
         var marketValue = market?.MarketOpinionValue ?? 0m;
         var costValue = cost?.CostOpinionWithLand ?? 0m;
-        var incomeValue = (await incomeApproach.GetAsync(valuationRequestId, cancellationToken))?.IncomeValue ?? 0m;
 
         var entity = await repo.FindWithMethodsAsync(valuationRequestId, cancellationToken);
         if (entity is null)
@@ -265,7 +258,7 @@ public sealed partial class ValuationReconciliationService(
             var kind = m.ApproachKind.Trim().ToLowerInvariant();
             var value = indicatorValues.TryGetValue(kind, out var documentValue)
                 ? documentValue
-                : ValuationApproachKinds.ValueOf(kind, marketValue, costValue, incomeValue);
+                : ValuationApproachKinds.ValueOf(kind, marketValue, costValue);
             var sortOrder = m.SortOrder != 0 ? m.SortOrder : i;
 
             if (methodsByKind.TryGetValue(kind, out var row))

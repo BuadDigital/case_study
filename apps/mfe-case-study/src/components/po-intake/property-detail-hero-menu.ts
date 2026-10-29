@@ -13,6 +13,10 @@ type PropertyDetailHeroMenuInput = {
   onOpenFailure?: () => void;
   /** «التعذّر النهائي عن المعاملة» — the section supervisor only, while the transaction is not final. */
   onFinalFailure?: () => void;
+  /** «إلغاء المعاملة» — the specialist's request or the supervisor's direct cancel; absent when not allowed. */
+  onCancelTransaction?: () => void;
+  /** The supervisor cancels at once («إلغاء المعاملة»); the specialist asks («طلب إلغاء المعاملة»). */
+  cancelDecides?: boolean;
 };
 
 export function buildPropertyDetailHeroMenuItems(
@@ -49,6 +53,16 @@ export function buildPropertyDetailHeroMenuItems(
       danger: true,
       disabled: Boolean(input.caseStudyBusy),
       onClick: input.onFinalFailure,
+    });
+  }
+
+  if (input.onCancelTransaction) {
+    items.push({
+      id: "cancel-transaction",
+      label: input.cancelDecides ? "إلغاء المعاملة" : "طلب إلغاء المعاملة",
+      danger: true,
+      disabled: Boolean(input.caseStudyBusy),
+      onClick: input.onCancelTransaction,
     });
   }
 

@@ -4,7 +4,6 @@ import {
   downloadEngineeringSurveyDocument,
   type EngineeringSurveyDocumentEntry,
 } from "../engineering-survey-bridge";
-import { getCachedEvaluatorReport } from "../evaluator-bridge";
 import {
   requestDocumentPreview,
   type DocumentPreviewItem,
@@ -323,29 +322,6 @@ function collectEngineeringDocuments(
   );
 }
 
-function collectAppraisalDocuments(
-  appraisalTaskId: string | null | undefined,
-): PropertyDetailDocumentEntry[] {
-  if (!appraisalTaskId) return [];
-  const docs: PropertyDetailDocumentEntry[] = [];
-  const cached = getCachedEvaluatorReport(appraisalTaskId);
-  if (cached?.fileName?.trim()) {
-    docs.push({
-      id: "appraisal-report",
-      documentTypeKey: "valuation-report",
-      name: "تقرير التقييم",
-      fileName: cached.fileName.trim(),
-      source: "المقيّم العقاري",
-      kind: fileKind(cached.fileName, cached.mimeType),
-      dataUrl: cached.dataUrl,
-      attachmentId: cached.attachmentId,
-    });
-  }
-  // The deposit certificate and the generated final report are property attachments now (registry types
-  // «شهادة الإيداع» / «تقرير التقييم»): they reach the documents tab through the property's attachment list.
-  return docs;
-}
-
 function collectFieldInspectionDocuments(
   inspectionTaskId: string | null | undefined,
 ): PropertyDetailDocumentEntry[] {
@@ -550,13 +526,17 @@ export function collectPropertyDetailDocumentSections(input: {
   showDecree: boolean;
   poNumber: string;
   surveyTaskId?: string | null;
+  /**
+   * Unused since the appraiser's task-scoped report stopped being listed: every such file is an old
+   * system-generated TQ-….pdf (Arabic as boxes, raw field keys). The approved report is the generated
+   * final report, a property attachment that reaches this list through the property's attachments.
+   */
   appraisalTaskId?: string | null;
   inspectionTaskId?: string | null;
 }): PropertyDetailDocumentSection[] {
   const all = [
     ...collectIntakeDocuments(input),
     ...collectEngineeringDocuments(input.surveyTaskId),
-    ...collectAppraisalDocuments(input.appraisalTaskId),
     ...collectFieldInspectionDocuments(input.inspectionTaskId),
   ];
 

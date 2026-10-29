@@ -92,14 +92,16 @@ export function InfathAttachmentsPanel({
           <InfazIcon name="paperclip" />
           مرفقات الرفع (PDF) — نزّلها ثم ارفعها في إنفاذ
         </div>
+        {/* The glyph goes in `icon` so the spinner replaces it while files download (as a child it
+            stayed beside the spinner). */}
         <Button
           type="button"
           size="sm"
           variant="primary"
           loading={downloadingIds.size > 0}
+          icon={<InfazIcon name="download" />}
           onClick={onDownloadAll}
         >
-          <InfazIcon name="download" />
           تحميل الكل
         </Button>
       </div>

@@ -33,6 +33,23 @@ public static partial class DepositCertificateRules
     /// <summary>Marker key in the error map: the refusal is a conflict (the controller answers 409, the key itself is dropped).</summary>
     public const string ConflictKey = "_conflict";
 
+    public const string CodeMalformedAr = "رمز الإيداع غير صالح — انسخه كما يظهر في شهادة الإيداع";
+
+    /// <summary>Fewest letters or digits a deposit code may carry.</summary>
+    public const int CodeMinAlphanumerics = 4;
+
+    /// <summary>
+    /// Refuses a deposit code that cannot be a real one.
+    ///
+    /// How it works: the code must carry at least <see cref="CodeMinAlphanumerics"/> letters or digits;
+    /// separators such as «-» or «/» are allowed around them.
+    ///
+    /// Edge cases: Qeema's exact format is not pinned here on purpose. Added 2026-10-28 — «-» alone was
+    /// accepted and printed on the final report.
+    /// </summary>
+    public static string? CodeFormatError(string? code) =>
+        (code ?? "").Count(char.IsLetterOrDigit) < CodeMinAlphanumerics ? CodeMalformedAr : null;
+
     private const string ErrorKey = "certificateContentBase64";
 
     /// <summary>

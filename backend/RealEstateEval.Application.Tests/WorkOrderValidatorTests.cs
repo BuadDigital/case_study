@@ -140,6 +140,29 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
+    public void A_contact_phone_list_wider_than_the_column_is_refused_on_both_paths()
+    {
+        var dto = ValidDeedProperty();
+        dto.Contacts =
+        [
+            // three mobiles fit exactly (32 characters); four (43) failed the save with a 500
+            new PropertyContactDto { Phone = "0512345678 0512345679 0512345670", Role = "مالك" },
+            new PropertyContactDto { Phone = "0512345678 0512345679 0512345670 0512345671", Role = "مالك" },
+        ];
+
+        var full = WorkOrderValidator.ValidatePropertyEnfath(
+            dto,
+            AssignmentType.Execution,
+            null,
+            (_, _) => false);
+        var autosave = WorkOrderValidator.ValidateContactPhoneLengths(dto.Contacts);
+
+        Assert.DoesNotContain(full, e => e.Key == "contact_phone_0");
+        Assert.Equal(WorkOrderValidator.ContactPhoneTooLongAr, full["contact_phone_1"]);
+        Assert.Equal([1], autosave.Keys.Select(k => int.Parse(k["contact_phone_".Length..])));
+    }
+
+    [Fact]
     public void ValidatePropertyEnfath_requires_court_for_execution()
     {
         var dto = ValidDeedProperty();
@@ -185,6 +208,16 @@ public class WorkOrderValidatorTests
         var errors = WorkOrderValidator.ValidateHeader(request);
 
         Assert.Equal("فرضية القيمة غير متوافقة مع أساس القيمة المختار", errors["valuePremiseKey"]);
+    }
+
+    [Fact]
+    public void ValidateHeader_refuses_a_promulgation_date_after_today()
+    {
+        var errors = WorkOrderValidator.ValidateHeader(new CreateWorkOrderRequest { PromulgationDate = "2099-01-01" });
+        Assert.Equal("تاريخ التعميد لا يكون في المستقبل", errors["promulgationDate"]);
+
+        var past = WorkOrderValidator.ValidateHeader(new CreateWorkOrderRequest { PromulgationDate = "2026-06-07" });
+        Assert.DoesNotContain("promulgationDate", past.Keys);
     }
 
     [Fact]

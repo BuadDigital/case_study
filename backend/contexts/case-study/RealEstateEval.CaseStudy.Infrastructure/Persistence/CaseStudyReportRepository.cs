@@ -61,6 +61,17 @@ public sealed class CaseStudyReportRepository(CaseStudyDbContext db) : ICaseStud
             .Where(f => f.IsPartyContribution && taskIds.Contains(f.TaskId))
             .ToListAsync(cancellationToken);
 
+    public Task<string?> GetInspectionPayloadJsonAsync(
+        Guid parentTaskId,
+        CancellationToken cancellationToken) =>
+        db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.ParentTaskId == parentTaskId
+                && t.Kind == WorkflowTaskKind.FieldInspection
+                && t.Status != WorkflowTaskStatus.Cancelled)
+            .Join(db.PartyTaskSubmissions.AsNoTracking(), t => t.Id, s => s.WorkflowTaskId, (_, s) => s.PayloadJson)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<IReadOnlyList<WorkflowTask>> ListChildTasksAsync(
         Guid parentTaskId,
         CancellationToken cancellationToken) =>

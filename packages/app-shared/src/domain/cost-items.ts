@@ -43,6 +43,23 @@ export const COST_GROUP1_KEYS = new Set([
   "shared_portion",
 ]);
 
+/**
+ * Which group of the cost table a line sits in: «مسطحات المبنى والأدوار» (area) or «تكاليف
+ * وتجهيزات إضافية» (extra).
+ *
+ * How it works: a catalog item is in the area group when its key is in COST_GROUP1_KEYS; a custom
+ * line follows its structure kind (a floor is an area line, anything else an extra).
+ *
+ * Edge cases: moved here from the appraiser's cost screen so the printed report lists the lines in
+ * the same two groups, in the same order, as the screen.
+ */
+export function costGroupOf(line: { itemKey: string; structureKind: string }): "area" | "extra" {
+  if (line.itemKey === "custom") {
+    return line.structureKind === "floor" ? "area" : "extra";
+  }
+  return COST_GROUP1_KEYS.has(line.itemKey) ? "area" : "extra";
+}
+
 export function costItemLabel(key: string | null | undefined): string {
   return COST_ITEM_OPTIONS.find((o) => o.key === key)?.label ?? "";
 }

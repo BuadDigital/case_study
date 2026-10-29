@@ -51,7 +51,7 @@ export function DashKpiCards({
       <button
         type="button"
         className={dashKpi}
-        onClick={() => router.push("/all-transactions")}
+        onClick={() => router.push("/po")}
       >
         <div className="mb-3 flex items-center justify-between gap-2">
           <span className="text-[12px] font-semibold text-text-2">

@@ -279,7 +279,8 @@ public partial class PartyTaskSubmissionService
         CancellationToken cancellationToken)
     {
         var survey = await FindSiblingAsync(inspectionTask, WorkflowTaskKind.EngineeringSurvey, cancellationToken);
-        if (survey is null) return;
+        // A survey withdrawn by the inspector's type change is not told anything.
+        if (survey is null || survey.IsTerminal) return;
 
         var refLabel = inspectionTask.PoNumber?.Trim();
         var body = string.IsNullOrEmpty(refLabel)

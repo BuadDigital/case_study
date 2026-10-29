@@ -1,6 +1,4 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
-// Round 1 (5b554f4e)
-//  • Income  The income method's note reads «صافي الدخل التشغيلي ÷ معدل الرسملة».
 // Round 2 (1b19bedc)
 //  • The weight box is type="text" filtered by costNumericInput (type="number" dropped Arabic
 //           digits); the typed text stays while focused so «7,» can become «7,5».
@@ -27,9 +25,7 @@ export function reconMethodNote(m: ReconMethod, buildingOnly: boolean): string {
       ? buildingOnly
         ? "مبنى فقط — تكلفة الإحلال ناقصاً الإهلاك"
         : "قيمة الأرض + تكلفة الإحلال − الإهلاك"
-      : m.approachKind === "income"
-        ? "صافي الدخل التشغيلي ÷ معدل الرسملة"
-        : "مؤشر قيمة من طريقة المقارنة";
+      : "مؤشر قيمة من طريقة المقارنة";
 }
 
 /** Participation-share input — table cell and phone card share it. */

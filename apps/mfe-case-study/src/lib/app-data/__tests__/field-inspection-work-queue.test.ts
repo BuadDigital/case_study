@@ -27,6 +27,11 @@ describe("isVisibleInFieldInspectionQueue", () => {
     ).toBe(true);
   });
 
+  it("never lists a cancelled task, even with «إظهار المكتملة» on (إلغاء المعاملة)", () => {
+    expect(isVisibleInFieldInspectionQueue("cancelled")).toBe(false);
+    expect(isVisibleInFieldInspectionQueue("cancelled", { showCompleted: true })).toBe(false);
+  });
+
   it("hides a submitted workspace while the task is still open", () => {
     expect(
       isVisibleInFieldInspectionQueue("open", {

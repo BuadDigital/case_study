@@ -7,6 +7,17 @@ public interface IKeyEnvelopesService
 {
     Task<IReadOnlyList<KeyEnvelopeDto>> ListAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// «إلغاء المعاملة»: records in every envelope that the deeds' keys belong to a cancelled
+    /// property (or, on reactivation, clears it). Returns how many assignments changed.
+    /// </summary>
+    Task<int> SetPropertiesCancelledAsync(
+        IReadOnlyList<Guid> propertyIds,
+        bool cancelled,
+        string actorUserId,
+        string actorDisplayName,
+        CancellationToken cancellationToken = default);
+
     Task<KeyEnvelopeDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 
     Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);

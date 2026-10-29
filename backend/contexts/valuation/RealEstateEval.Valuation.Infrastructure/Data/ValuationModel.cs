@@ -5,8 +5,6 @@
 //         the same copy: one wins, the others 409.
 //  • OwnershipInterestKey (required, default freehold) and RemainingLeaseYears on the approach settings.
 //  • Cost  ActualAgeRationale and EconomicAgeRationale (max 2000) on the cost approach.
-//  • Mapping of the new ValuationIncomeApproaches table: precisions, operating-expense mode (default
-//         pct_of_egi, allowed values), non-negative checks, one row per request.
 // Round 2 (1b19bedc)
 //  • A    BuildingPlotAreaSqm (18,2, nullable, non-negative) on the cost approach — the building plot the
 //         cost land table compares with.
@@ -372,36 +370,6 @@ public static class ValuationModel
             e.Property(x => x.Rationale).HasMaxLength(2000);
             e.HasNonNegative("ValuationCostLines", "AreaSqm", "UnitCostSar");
             e.HasIndex(x => x.CostApproachId);
-        });
-
-        // Income approach (direct capitalisation): the appraiser's inputs only.
-        builder.Entity<ValuationIncomeApproach>(e =>
-        {
-            e.ToTable("ValuationIncomeApproaches", DatabaseSchemas.Valuation);
-            e.Property(x => x.GrossPotentialIncome).HasPrecision(18, 2);
-            e.Property(x => x.VacancyCollectionLossPct).HasPrecision(9, 4);
-            e.Property(x => x.OtherIncome).HasPrecision(18, 2);
-            e.Property(x => x.OperatingExpensesMode)
-                .HasMaxLength(16)
-                .IsRequired()
-                .HasDefaultValue(OperatingExpenseModes.PctOfEgi);
-            e.Property(x => x.OperatingExpensesAmount).HasPrecision(18, 2);
-            e.Property(x => x.OperatingExpensesPct).HasPrecision(9, 4);
-            e.Property(x => x.CapitalisationRatePct).HasPrecision(9, 4);
-            e.Property(x => x.CapRateRationale).HasMaxLength(IncomeApproachRules.RationaleMaxLength);
-            e.HasNonNegative(
-                "ValuationIncomeApproaches",
-                "GrossPotentialIncome",
-                "VacancyCollectionLossPct",
-                "OtherIncome",
-                "OperatingExpensesAmount",
-                "OperatingExpensesPct");
-            e.HasAllowedValues("ValuationIncomeApproaches", nameof(ValuationIncomeApproach.OperatingExpensesMode), OperatingExpenseModes.All);
-            e.HasIndex(x => x.ValuationRequestId).IsUnique();
-            e.HasOne(x => x.ValuationRequest)
-                .WithMany()
-                .HasForeignKey(x => x.ValuationRequestId)
-                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<ValuationReconciliation>(e =>
