@@ -65,16 +65,16 @@ public sealed class PriorValuationBankFeeder(
         var existingLand = existingRows.FirstOrDefault(PriorValuationBankRules.IsLandRow);
         var existingBuilding = existingRows.FirstOrDefault(r => !PriorValuationBankRules.IsLandRow(r));
 
-        var context = await caseStudy.GetValuationPropertyContextAsync(
+        var facts = await caseStudy.GetValuationPropertyContextAsync(
             propertyGuid,
             cancellationToken);
-        if (context is null) return false;
+        if (facts is null) return false;
 
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
         var settings = await valuation.ValuationApproachSettings.AsNoTracking()
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
         var scope = settings?.CostScopeKey
-            ?? ValuationApproachSettingsRules.DefaultScope(context.EffectivePropertyType(), context.HasStructures());
+            ?? ValuationApproachSettingsRules.DefaultScope(facts.EffectivePropertyType(), facts.HasStructures());
         if (!PriorValuationBankRules.Qualifies(recon?.BasisOfValueKey, scope, settings?.ValuationDateMode))
         {
             await RetireAsync(existingLand, valuationRequestId, cancellationToken);
@@ -82,8 +82,8 @@ public sealed class PriorValuationBankFeeder(
             return false;
         }
 
-        if (context.LatestWorkspace?.MapLatitude is not { } lat
-            || context.LatestWorkspace.MapLongitude is not { } lon
+        if (facts.LatestWorkspace?.MapLatitude is not { } lat
+            || facts.LatestWorkspace.MapLongitude is not { } lon
             || !ComparableProximityRules.HasUsableCoordinates(lat, lon))
         {
             return false;
@@ -91,20 +91,20 @@ public sealed class PriorValuationBankFeeder(
 
         var market = await selections.ListAsync(valuationRequestId, cancellationToken);
         var finalValue = recon?.FinalOpinionValue ?? 0m;
-        var propertyType = string.IsNullOrWhiteSpace(context.EffectivePropertyType())
+        var propertyType = string.IsNullOrWhiteSpace(facts.EffectivePropertyType())
             ? vr.PropertyType ?? ""
-            : context.EffectivePropertyType();
+            : facts.EffectivePropertyType();
         var subjectIsLand = CostScopeKeys.IsLandOnly(scope)
             || (ValuationApproachSettingsRules.IsLandPropertyType(propertyType)
-                && !PriorValuationBankRules.HasFloorArea(context.BuildingInventoryLines));
-        var write = new BankRowWriter(this, valuation, clock, vr, context, lat, lon, valuationRequestId);
+                && !PriorValuationBankRules.HasFloorArea(facts.BuildingInventoryLines));
+        var write = new BankRowWriter(this, valuation, clock, vr, facts, lat, lon, valuationRequestId);
 
         if (subjectIsLand)
         {
             // Land valued on its own: its final value over its land area.
             await RetireAsync(existingBuilding, valuationRequestId, cancellationToken);
             var landArea = PriorValuationBankRules.SubjectAreaSqm(
-                propertyType, context.Area, market?.SubjectAreaSqm, subjectIsLand: true);
+                propertyType, facts.Area, market?.SubjectAreaSqm, subjectIsLand: true);
             return await write.UpsertAsync(
                 existingLand,
                 PriorValuationBankRules.ComparableType(scope, propertyType),
@@ -118,10 +118,10 @@ public sealed class PriorValuationBankFeeder(
         // its floor area (an apartment: its own deed area) — and its land, when the cost approach valued it on
         // its own from land comparables, enters as a land comparable on the whole plot.
         var buildingArea = PriorValuationBankRules.SubjectAreaSqm(
-            propertyType, context.Area, market?.SubjectAreaSqm, subjectIsLand: false);
+            propertyType, facts.Area, market?.SubjectAreaSqm, subjectIsLand: false);
         var fedBuilding = await write.UpsertAsync(
             existingBuilding,
-            PriorValuationBankRules.BuildingComparableType(propertyType, context.BuildingInventoryLines),
+            PriorValuationBankRules.BuildingComparableType(propertyType, facts.BuildingInventoryLines),
             buildingArea,
             finalValue,
             $"قيمة تقييم سابق معتمدة — معاملة {vr.DisplayId}",
