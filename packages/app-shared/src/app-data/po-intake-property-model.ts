@@ -399,3 +399,27 @@ export function emptyProperty(): PoPropertyIntake {
     contacts: [emptyPoContact()],
   };
 }
+
+/**
+ * The property's owners, in order. The deed's owners list when it has names; otherwise the owner
+ * field, split on «،» «,» or a spaced dash — initial data is often pasted as «فلان - فلان».
+ * Edge cases: a dash without spaces stays inside the name; a broken list falls back to the field.
+ */
+export function propertyOwnerNames(
+  property: Pick<PoPropertyIntake, "ownerName" | "ownersJson">,
+): string[] {
+  let listed: string[] = [];
+  try {
+    const parsed: unknown = JSON.parse(property.ownersJson.trim() || "[]");
+    if (Array.isArray(parsed)) {
+      listed = parsed.map((o: { name?: unknown }) => String(o?.name ?? "").trim()).filter(Boolean);
+    }
+  } catch {
+    listed = [];
+  }
+  if (listed.length > 0) return listed;
+  return property.ownerName
+    .split(/\s+-\s+|[،,]/)
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
