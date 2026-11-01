@@ -9,6 +9,7 @@ import {
 import { useStickyCompact } from "@platform/app-shared/hooks/use-sticky-compact";
 import { PoNumber } from "../ui/PoNumber";
 import { ltrValueClass } from "./PropertyDetailFields";
+import { PropertyOwnerValue } from "./PropertyOwnerValue";
 import {
   assignmentCompositeTag,
   formatDateAr,
@@ -496,7 +497,7 @@ export function PropertyDetailHero({
           if (property.ownerName.trim())
             stripCells.push({
               label: "اسم المالك",
-              node: property.ownerName.trim(),
+              node: <PropertyOwnerValue property={property} />,
             });
           if (showsCourtFields(record.assignmentType) && courtLine && !compact)
             stripCells.push({ label: "المحكمة / الدائرة", node: courtLine });
