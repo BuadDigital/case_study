@@ -113,6 +113,9 @@ public static class PoRoleMatrixRules
 
     public static bool CanReopenValuationReport(string? prototypeRole) => IsCaseSpecialistDecision(prototypeRole);
 
+    /// <summary>The specialist deposits the approved report in «قيمة», so he records its code and certificate.</summary>
+    public static bool CanRecordValuationDeposit(string? prototypeRole) => IsCaseSpecialistDecision(prototypeRole);
+
     /// <summary>
     /// Only the appraiser ASSIGNED to the property reviews, approves and deposits the report: no
     /// supervisor / CDO override (an absent appraiser is covered by re-assigning the transaction).

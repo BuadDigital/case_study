@@ -71,7 +71,7 @@ public class ValuationFinalReportTests
     {
         await using var rig = await ArrangeApprovedAsync();
 
-        var (state, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        var (state, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
         Assert.Null(errors);
         Assert.Equal(ReportIssuanceStages.FinalIssued, state!.Stage);
 
@@ -91,7 +91,7 @@ public class ValuationFinalReportTests
         await using var rig = await ArrangeApprovedAsync();
         rig.Files.FailWith = "تعذّر حفظ الملف في خدمة المرفقات";
 
-        var (_, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        var (_, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
 
         Assert.Equal("تعذّر حفظ الملف في خدمة المرفقات", errors!["certificateContentBase64"]);
         var row = await rig.Contexts.Valuation.ValuationReportIssuances.AsNoTracking().SingleAsync();
@@ -103,10 +103,10 @@ public class ValuationFinalReportTests
     public async Task A_replacement_certificate_removes_the_one_it_replaced()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
         var first = rig.Files.Stored.Single(f => f.Scope == ReportFileScopes.DepositCertificate).Id;
 
-        var (_, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        var (_, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
 
         Assert.Null(errors);
         Assert.Contains(first, rig.Files.Deleted);
@@ -121,7 +121,7 @@ public class ValuationFinalReportTests
     {
         await using var rig = await ArrangeApprovedAsync();
 
-        var (state, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        var (state, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
 
         Assert.Null(errors);
         Assert.Equal(FinalReportStatuses.Ready, state!.FinalReportStatus);
@@ -150,7 +150,7 @@ public class ValuationFinalReportTests
     public async Task A_current_final_pdf_is_not_generated_again()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
 
         var status = await rig.FinalReports.EnsureGeneratedAsync(rig.RequestId);
 
@@ -162,11 +162,11 @@ public class ValuationFinalReportTests
     public async Task A_code_correction_regenerates_the_pdf_and_removes_the_stale_one()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
         var stale = rig.Files.Stored.Single(f => f.Scope == ReportFileScopes.FinalReport).Id;
 
         var (state, errors) = await rig.Service.RecordDepositAsync(
-            rig.RequestId, new RegisterDepositCertificateRequest { DepositCode = "QYM-2" }, Appraiser);
+            rig.RequestId, new RegisterDepositCertificateRequest { DepositCode = "QYM-2" }, Specialist);
 
         Assert.Null(errors);
         Assert.Equal(FinalReportStatuses.Ready, state!.FinalReportStatus);
@@ -185,7 +185,7 @@ public class ValuationFinalReportTests
         await using var rig = await ArrangeApprovedAsync();
         rig.Renderer.Fail = true;
 
-        var (state, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        var (state, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
 
         Assert.Null(errors);
         Assert.Equal(ReportIssuanceStages.FinalIssued, state!.Stage);
@@ -236,7 +236,7 @@ public class ValuationFinalReportTests
     public async Task The_specialist_the_management_and_the_assigned_appraiser_download_the_final_report()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
 
         foreach (var actor in new[] { Specialist, Supervisor, Appraiser })
         {
@@ -251,7 +251,7 @@ public class ValuationFinalReportTests
     public async Task Another_role_or_another_appraiser_cannot_download_or_retry()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
         var otherAppraiser = new ReportDraftActor
         {
             UserId = "u-app2", PrototypeRole = "real-estate-appraiser", DistributionAssigneeId = "val-someone-else",
@@ -274,7 +274,7 @@ public class ValuationFinalReportTests
     {
         await using var rig = await ArrangeApprovedAsync();
         rig.Renderer.Fail = true;
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
         rig.Renderer.Fail = false;
         // Another request changes the issuance row between the store and the save.
         rig.Files.OnStore = scope =>
@@ -297,7 +297,7 @@ public class ValuationFinalReportTests
     {
         await using var rig = await ArrangeApprovedAsync();
         rig.Renderer.Fail = true;
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
 
         var (file, errors) = await rig.Service.GetFinalReportAsync(rig.RequestId, Specialist);
 
@@ -320,7 +320,7 @@ public class ValuationFinalReportTests
         Assert.Equal(ReportIssuanceStages.DepositIssued, one.ReportStage);
         Assert.Equal(AppraiserProgressRules.Approved, one.ProgressPct);
 
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-1"), Specialist);
         var final = Assert.Single(await rig.Service.ListStatesAsync([rig.PropertyId]));
         Assert.Equal(ReportIssuanceStages.FinalIssued, final.ReportStage);
         Assert.Equal(AppraiserProgressRules.FinalIssued, final.ProgressPct);

@@ -110,7 +110,10 @@ function commands(screen: Map<string, Item>, put: (item: Item, w: MarketWrite) =
         put,
         settle,
       }),
-    /** The rationale override: a short text on a non-zero % (read from the fresh copy) is declined. */
+    /**
+     * A build that declines on the fresh copy's % — a sample rule (the real override no longer
+     * declines since 2026-11-02) that checks the queue reads the % typed just before.
+     */
     rationale: (item: Item, factorKey: string, text: string) =>
       queue.write({
         items: [item],

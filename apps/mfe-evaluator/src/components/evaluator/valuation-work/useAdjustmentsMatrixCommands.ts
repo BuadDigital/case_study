@@ -4,6 +4,9 @@
 //         must be at least 10 characters (rationaleMinimumError); the error goes to the field
 //         (reportFieldError) instead of a toast. The old isJustificationTooShort check is removed.
 //  • B    The weight row's rationale is named «مبرر الوزن اليدوي» in its message.
+// 2026-11-02 (colleague review, item 10)
+//  • The manual-weight, row and per-comparable rationales are optional notes of any length — the
+//         10-character checks are gone.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -28,7 +31,6 @@ import {
   STANDARD_FACTORS,
 } from "./lib/market-save-mappers";
 import { runMatrixAction, type MatrixDispatch } from "./lib/matrix-actions";
-import { rationaleMinimumError } from "./lib/rationale-minimum";
 import { LAND_WITHIN_COST, MARKET_CONTEXT, parseDecimal } from "./lib/shell-state";
 import {
   RESET_WEIGHTS_PATCH,
@@ -58,7 +60,7 @@ export function useAdjustmentsMatrixCommands(
   approach: MarketApproachCommands,
 ) {
   const { showToast, setSelection, setLandSelection, setSaving, reload } = data;
-  const { reportSaveFailure, reportFieldError } = useValuationWorkErrors();
+  const { reportSaveFailure } = useValuationWorkErrors();
   const {
     writeContext,
     contextOfItem,
@@ -153,12 +155,6 @@ export function useAdjustmentsMatrixCommands(
   ): Promise<boolean> {
     const ctx = unlocked();
     if (!ctx) return false;
-    // A written manual-weight rationale is at least 10 characters (server rule).
-    const short = rationaleMinimumError("مبرر الوزن اليدوي", weightRationale);
-    if (short) {
-      reportFieldError("weightOverrideRationale", short);
-      return false;
-    }
     // Lines and stored rationale come from the freshest copy (see saveMatrixCell).
     return saveOne(
       ctx,
@@ -191,15 +187,6 @@ export function useAdjustmentsMatrixCommands(
     const ctx = unlocked();
     if (!ctx) return false;
     const text = rawText.trim();
-    // The weight row's rationale is the manual-weight rationale — named as such (round 2).
-    const short = rationaleMinimumError(
-      factorKey === "weight" ? "مبرر الوزن اليدوي" : "مبرر عامل التسوية",
-      text,
-    );
-    if (short) {
-      reportFieldError("rationaleAr", short);
-      return false;
-    }
     // Weight uses the same factor-rationale table as other rows — saving only onto
     // manual-weight market rows used to no-op when الوزن was still «مقترح», so the
     // cell draft vanished on blur with nothing persisted.
@@ -222,14 +209,11 @@ export function useAdjustmentsMatrixCommands(
    * per-comparable justification override — writes that comparable’s adjustment line only.
    * The lines are built from the freshest copy so a % saved just before is not reverted.
    *
-   * How it works: the 10-character rule (non-zero adjustment only) is checked inside the
-   * write queue against the freshest copy's %; a short text declines the save and marks
-   * the field.
+   * How it works: queued with the comparable's other writes; the text is an optional note of any
+   * length (2026-11-02 — the 10-character minimum on a non-zero adjustment was dropped).
    *
-   * Edge cases: blank text always saves (it clears the override).
-   *
-   * Fixed: the check read the % the screen showed, so right after typing a % (screen still
-   * at 0) a short rationale got past it and the server rejected it with a toast instead.
+   * Edge cases: blank text clears the override (the row's rationale applies again); a failed save
+   * reloads so the cell shows the stored text again.
    */
   async function saveLineRationaleOverride(
     selectionId: string,
@@ -243,24 +227,12 @@ export function useAdjustmentsMatrixCommands(
     const item = adoptedFor(context).find((i) => i.id === selectionId);
     if (!item) return;
     const factorRows = factorRowsFor(context);
-    const declined: { message: string | null } = { message: null };
     const ok = await saveOne(
       ctx,
       item,
-      (fresh) => {
-        const percent =
-          fresh.market?.adjustmentLines?.find((l) => l.factorKey === factorKey)?.percent ?? 0;
-        declined.message =
-          percent !== 0 ? rationaleMinimumError("مبرر التسوية للمقارن", text) : null;
-        if (declined.message) return null;
-        return linesWithRationaleOverride(fresh, factorKey, text, factorRows);
-      },
+      (fresh) => linesWithRationaleOverride(fresh, factorKey, text, factorRows),
       "تعذّر حفظ تخصيص المبرر",
     );
-    if (declined.message) {
-      reportFieldError("rationaleAr", declined.message);
-      return;
-    }
     // The reload runs even after a failed save so the cell shows the stored text again.
     if (!ok) await reload({ silent: true, scope: "derived" });
   }

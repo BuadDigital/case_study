@@ -4,6 +4,9 @@
 //         manual weight without a 10-character rationale blocks issue and hand-over, each item named.
 //  • AttachmentScopeKeys — documents are also looked up under the survey task id, so the
 //         engineering survey «التقرير المساحي» is found for vacant land.
+// 2026-11-02 (colleague review, item 10)
+//  • The adjustment_rationales_<table> gate is removed: adjustment-factor and weight rationales are
+//         optional notes and never block issue or hand-over.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Domain;
@@ -27,12 +30,6 @@ public static class ValuationIssuanceGateCodes
     public const string ValueDocuments = "value_documents";
     /// <summary>The specialist issued the case-study report the appraisal is built on.</summary>
     public const string StudyReportIssued = "study_report_issued";
-    /// <summary>
-    /// Round 2: every non-zero adjustment factor and every manual weight of an
-    /// adopted comparable is explained (≥ 10 characters). Suffixed per table: <c>_market</c> /
-    /// <c>_land_within_cost</c>.
-    /// </summary>
-    public const string AdjustmentRationales = "adjustment_rationales";
 }
 
 public readonly record struct ValuationIssuanceGateCheck(
@@ -205,30 +202,6 @@ public static class ValuationIssuanceGateRules
             DetailAr: costApproachEnabled && !landEstimateComplete
                 ? "أسلوب التكلفة مفعّل وقيمة الأرض غير مكتملة — يلزم مقارنات أراضٍ فضاء ثم حفظ التكلفة"
                 : null);
-
-    /// <summary>
-    /// Round 2: a blank rationale on a non-zero factor (+10٪) or a manual weight stays a savable draft,
-    /// but the valuation is not issued — nor handed over — until each is explained in at least
-    /// <see cref="JustificationRules.RequiredMinLength"/> characters. Every unexplained item is named
-    /// (comparable — factor (percent) / manual weight). Skipped (pass) when the table is not in use.
-    /// </summary>
-    public static ValuationIssuanceGateCheck AdjustmentRationales(
-        string codeSuffix,
-        string tableLabelAr,
-        bool approachEnabled,
-        IReadOnlyList<string> unexplainedAr)
-    {
-        var fails = approachEnabled && unexplainedAr.Count > 0;
-        return new(
-            $"{ValuationIssuanceGateCodes.AdjustmentRationales}_{codeSuffix}",
-            $"مبررات التسويات والأوزان اليدوية ({tableLabelAr})",
-            !fails,
-            IsHard: true,
-            DetailAr: fails
-                ? $"تسويات أو أوزان يدوية بلا مبرر ({tableLabelAr}) — اكتب لكلٍّ منها مبرراً لا يقل عن {JustificationRules.RequiredMinLength} أحرف: "
-                  + string.Join("، ", unexplainedAr)
-                : null);
-    }
 
     public static ValuationIssuanceGateCheck ComparableWeights(
         string codeSuffix,

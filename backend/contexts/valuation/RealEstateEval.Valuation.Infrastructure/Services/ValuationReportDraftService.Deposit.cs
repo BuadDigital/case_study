@@ -18,22 +18,31 @@ namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 public sealed partial class ValuationReportDraftService
 {
-    public const string DepositForbiddenAr = "تسجيل رمز الإيداع للمقيّم المُسنَد للعقار فقط";
+    public const string DepositForbiddenAr = "تسجيل رمز الإيداع وشهادته للأخصائي فقط";
     public const string ReopenForbiddenAr = "إعادة فتح التقرير بنسخة جديدة للأخصائي فقط";
     public const string NotApprovedYetAr = "اعتمد التقرير أولاً ثم سجّل رمز الإيداع";
     public const string NoDepositedRequestAr = "لا تقرير مودَع لهذا العقار لفتحه بنسخة جديدة";
 
+    /// <summary>
+    /// Records the «قيمة» deposit code and the one-page certificate of the approved report, which issues
+    /// the final report; a later call with the code alone corrects it.
+    /// How it works: only a case specialist may call it (he deposits the report in «قيمة» after the
+    /// appraiser approves it); the draft must be approved; the issuance service checks the code and the
+    /// certificate and closes the request, then the final PDF is generated.
+    /// Edge cases: the appraiser, the supervisor and every other role are refused even on their own
+    /// transaction; a renderer failure leaves the final copy «preparing» without undoing the code.
+    /// </summary>
     public async Task<(ValuationReportIssuanceStateDto? Result, Dictionary<string, string>? Errors)> RecordDepositAsync(
         Guid valuationRequestId,
         RegisterDepositCertificateRequest request,
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
+        if (!PoRoleMatrixRules.CanRecordValuationDeposit(actor.PrototypeRole))
+            return (null, Forbidden(DepositForbiddenAr));
         var vr = await db.ValuationRequests.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
         if (vr is null) return (null, Error("طلب التقييم غير موجود"));
-        if (await AssignedAppraiserRefusalAsync(vr.PropertyId, actor, DepositForbiddenAr, cancellationToken) is { } refusal)
-            return (null, refusal);
 
         // The deposit code is recorded for the approved report only (the copy is frozen at approval).
         var draft = await CurrentDraftAsync(valuationRequestId, tracked: false, cancellationToken);

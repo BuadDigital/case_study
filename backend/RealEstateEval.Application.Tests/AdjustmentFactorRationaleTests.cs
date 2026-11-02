@@ -90,10 +90,9 @@ public class AdjustmentFactorRationaleTests
                 RationaleAr = "قصير",
             },
             "user-1");
-        // Round 2: a written factor rationale is at least 10 characters.
-        Assert.Null(shortSaved);
-        Assert.Equal("مبرر عامل التسوية يجب ألا يقل عن 10 أحرف", shortErrors!["rationaleAr"]);
-        Assert.Empty(db.ValuationAdjustmentFactorRationales);
+        // 2026-11-02: a factor rationale is an optional note of any length.
+        Assert.Null(shortErrors);
+        Assert.Equal("قصير", shortSaved!.RationaleAr);
 
         // Save properly and then update.
         var (saved, saveErrors) = await service.SaveFactorRationaleAsync(

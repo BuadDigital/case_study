@@ -45,8 +45,7 @@ public static class JustificationRules
 
     /// <summary>
     /// Written but shorter than <see cref="RequiredMinLength"/> — refused at save; blank stays a draft,
-    /// and issuance is held by <see cref="ValuationIssuanceGateRules.AdjustmentRationales"/> (factors,
-    /// manual weights) or the methodology alert that asks for it (6, 10, 12, the overrides) until it
+    /// and issuance is held by the methodology alert that asks for it (6, 10, 12, the overrides) until it
     /// meets <see cref="MeetsRequiredMinimum"/>.
     /// </summary>
     public static bool IsBelowRequiredMinimum(string? rationale) =>

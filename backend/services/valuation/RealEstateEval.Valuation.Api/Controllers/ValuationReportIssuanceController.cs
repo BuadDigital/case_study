@@ -37,11 +37,11 @@ public class ValuationReportIssuanceController : ControllerBase
     }
 
     /// <summary>
-    /// The assigned appraiser records the Qeema deposit code and the one-page PDF certificate (both required):
+    /// The case specialist, who deposits the approved report in Qeema, records its code and the one-page PDF certificate (both required):
     /// the final copy is issued. A later call corrects the code (audited, no new version).
     /// </summary>
     [HttpPost("certificate")]
-    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<ValuationReportIssuanceStateDto>> RegisterCertificate(
         Guid valuationRequestId,
         [FromBody] RegisterDepositCertificateRequest request,

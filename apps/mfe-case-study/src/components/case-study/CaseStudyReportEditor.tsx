@@ -21,15 +21,11 @@ import {
 } from "../../lib/app-data/case-study-report-data";
 import { CASE_STUDY_DEED_REMARKS_ID } from "../../lib/app-data/case-study-report-ux";
 import { CaseStudyMatrixTable } from "./CaseStudyMatrixTable";
-import { CaseStudyInfathSpecialistSection } from "./CaseStudyInfathSpecialistSection";
 import {
   partyById,
   type CaseStudyInfoPartyId,
 } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
-import type {
-  CaseStudyReportDraft,
-  CaseStudyMeterType,
-} from "../../lib/app-data/case-study-report-model";
+import type { CaseStudyMeterType } from "../../lib/app-data/case-study-report-model";
 import { canReopenCaseStudyReport } from "../../lib/app-data/po-roles";
 import { enfazCardState } from "../../lib/app-data/enfaz-handover-state";
 import { useTransactionStateQuery } from "../../query/use-transaction-state-query";
@@ -569,18 +565,6 @@ export function CaseStudyReportEditor({
             ) : null}
           </div>
         </div>
-
-        {!isParty ? (
-          <CaseStudyInfathSpecialistSection
-            draft={draft}
-            disabled={isFormReadOnly}
-            onPatch={(p) => {
-              (Object.keys(p) as (keyof CaseStudyReportDraft)[]).forEach((key) => {
-                patch(key, p[key] as CaseStudyReportDraft[typeof key]);
-              });
-            }}
-          />
-        ) : null}
 
         {showStepFooterActions ? formFooterActions : null}
         </div>

@@ -92,8 +92,8 @@ const WEIGHTS_ALERT_CODE = "m16_weights_not_100";
 /**
  * Every failing hard gate and blocking alert, in the gates' order, each with its owner. Alert 16
  * is not listed again when a weights gate already fails (round 2: the weights item showed twice).
- * Round 2 also lists `adjustment_rationales_*` — a non-zero factor or a manual weight without a
- * rationale of 10 characters — as the appraiser's, on the market / cost screen by its suffix.
+ * (The round-2 `adjustment_rationales_*` gate was removed on 2026-11-02 — adjustment and weight
+ * rationales are optional notes.)
  */
 export function classifyHandOverBlockers(
   gates: Pick<ValuationIssuanceGatesDto, "gates" | "methodologyAlerts">,

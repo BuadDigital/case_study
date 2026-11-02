@@ -10,6 +10,7 @@ const api = vi.hoisted(() => ({
   sendReportDraft: vi.fn(),
   withdrawReportDraft: vi.fn(),
   reopenReportIssuance: vi.fn(),
+  registerDepositCertificate: vi.fn(),
   downloadFinalReport: vi.fn(),
   generateFinalReport: vi.fn(),
 }));
@@ -132,6 +133,83 @@ describe("ReportDraftPanel (the specialist's side)", () => {
     await waitFor(() => expect(api.withdrawReportDraft).toHaveBeenCalledWith({ token: "t" }, "vr-1", "راجع الأرقام"));
   });
 
+  describe("after the appraiser's approval — the specialist's deposit", () => {
+    const approved = () =>
+      draft({ status: "approved", canPrepare: false, reportStage: "deposit_issued", reportDate: "2026-10-05" });
+    const pdf = () =>
+      new File([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])], "certificate.pdf", { type: "application/pdf" });
+
+    it("asks him for the code first, then the certificate", async () => {
+      renderPanel(approved());
+      const record = await screen.findByRole("button", { name: /تسجيل رمز الإيداع/ });
+
+      fireEvent.click(record);
+      expect(toast.showToast).toHaveBeenLastCalledWith("اكتب رمز الإيداع", "error");
+
+      fireEvent.change(screen.getByPlaceholderText("رمز الإيداع"), { target: { value: "QYM-1" } });
+      fireEvent.click(record);
+      expect(toast.showToast).toHaveBeenLastCalledWith("أرفق شهادة الإيداع (PDF)", "error");
+      expect(api.registerDepositCertificate).not.toHaveBeenCalled();
+    });
+
+    it("refuses a certificate that is not a PDF", async () => {
+      renderPanel(approved());
+      fireEvent.change(await screen.findByPlaceholderText("رمز الإيداع"), { target: { value: "QYM-1" } });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [new File(["x"], "photo.png", { type: "image/png" })] } });
+
+      fireEvent.click(screen.getByRole("button", { name: /تسجيل رمز الإيداع/ }));
+
+      expect(toast.showToast).toHaveBeenLastCalledWith("شهادة الإيداع ملف PDF", "error");
+      expect(api.registerDepositCertificate).not.toHaveBeenCalled();
+    });
+
+    it("sends the code with the certificate as base64", async () => {
+      api.registerDepositCertificate.mockResolvedValue({ ok: true, data: {} });
+      renderPanel(approved());
+      fireEvent.change(await screen.findByPlaceholderText("رمز الإيداع"), { target: { value: " QYM-1 " } });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [pdf()] } });
+
+      fireEvent.click(screen.getByRole("button", { name: /تسجيل رمز الإيداع/ }));
+
+      await waitFor(() => expect(api.registerDepositCertificate).toHaveBeenCalledTimes(1));
+      const [, id, body] = api.registerDepositCertificate.mock.calls[0]!;
+      expect(id).toBe("vr-1");
+      expect(body).toMatchObject({
+        depositCode: "QYM-1",
+        certificateFileName: "certificate.pdf",
+        certificateContentType: "application/pdf",
+      });
+      expect(body.certificateContentBase64.length).toBeGreaterThan(0);
+      await waitFor(() => expect(toast.showToast).toHaveBeenCalledWith("صدر التقرير النهائي", "success"));
+    });
+
+    it("lists every reason when the server refuses the deposit", async () => {
+      api.registerDepositCertificate.mockResolvedValue({
+        ok: false,
+        errors: { depositCode: "رمز الإيداع مسجّل على تقرير آخر" },
+      });
+      renderPanel(approved());
+      fireEvent.change(await screen.findByPlaceholderText("رمز الإيداع"), { target: { value: "QYM-1" } });
+      const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+      fireEvent.change(input, { target: { files: [pdf()] } });
+
+      fireEvent.click(screen.getByRole("button", { name: /تسجيل رمز الإيداع/ }));
+
+      expect((await screen.findByTestId("report-approval-refusal")).textContent).toContain(
+        "رمز الإيداع مسجّل على تقرير آخر",
+      );
+    });
+
+    it("is not offered to anyone who may not prepare the draft", async () => {
+      renderPanel(approved(), false);
+
+      expect(await screen.findByTestId("report-draft-deposit-status")).toBeTruthy();
+      expect(screen.queryByTestId("report-deposit-step")).toBeNull();
+    });
+  });
+
   describe("after the final issuance", () => {
     const issued = (extra: Partial<ValuationReportDraftDto> = {}) =>
       draft({
@@ -150,6 +228,21 @@ describe("ReportDraftPanel (the specialist's side)", () => {
       const status = await screen.findByTestId("report-draft-deposit-status");
       expect(status.textContent).toContain("QYM-1");
       expect(screen.getByRole("button", { name: /تنزيل التقرير النهائي/ })).toBeTruthy();
+    });
+
+    it("lets him correct the code without a new certificate", async () => {
+      api.registerDepositCertificate.mockResolvedValue({ ok: true, data: {} });
+      renderPanel(issued());
+
+      fireEvent.click(await screen.findByRole("button", { name: "تعديل رمز الإيداع" }));
+      const input = screen.getByPlaceholderText("رمز الإيداع الصحيح") as HTMLInputElement;
+      expect(input.value).toBe("QYM-1");
+      fireEvent.change(input, { target: { value: "QYM-2" } });
+      fireEvent.click(screen.getByRole("button", { name: "حفظ الرمز" }));
+
+      await waitFor(() =>
+        expect(api.registerDepositCertificate).toHaveBeenCalledWith({ token: "t" }, "vr-1", { depositCode: "QYM-2" }),
+      );
     });
 
     it("offers a retry while the final file is still being prepared", async () => {

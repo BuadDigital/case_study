@@ -13,6 +13,9 @@
 //  • B    New gates AdjustmentRationales for the market table and the land-within-cost table: an included
 //         non-zero factor or a manual weight without a rationale of ≥ 10 characters blocks.
 //  • Passes ComparableDateCutoffIsPeriodEnd — whether the cutoff is the end of a retrospective period.
+// 2026-11-02 (colleague review, item 10)
+//  • The AdjustmentRationales gates are gone: adjustment-factor and weight rationales are optional
+//         notes (the percentages are estimates) — they no longer hold issue or hand-over.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using Microsoft.EntityFrameworkCore;
@@ -194,17 +197,6 @@ public sealed partial class ValuationIssuanceGateService(
                 costLandRelevant,
                 landWithinCost?.WeightsSumTo100 ?? true,
                 costLandRelevant ? landWithinCost?.AdoptedCount ?? 0 : 0),
-            // Round 2: blank rationales stay a draft, but every unexplained factor / manual weight blocks.
-            ValuationIssuanceGateRules.AdjustmentRationales(
-                "market",
-                "أسلوب السوق",
-                marketApproachEnabled,
-                ValuationIssuanceGateInputRules.UnexplainedAdjustments(market)),
-            ValuationIssuanceGateRules.AdjustmentRationales(
-                "land_within_cost",
-                "الأرض ضمن التكلفة",
-                costLandRelevant,
-                ValuationIssuanceGateInputRules.UnexplainedAdjustments(landWithinCost)),
             ValuationIssuanceGateRules.ReconciliationWeights(
                 hasReconSaved,
                 recon?.WeightsSumTo100 ?? false),
