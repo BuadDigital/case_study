@@ -77,6 +77,22 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<PartyTaskSubmission>> ListSubmittedFieldInspectionsAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken)
+    {
+        if (propertyIds.Count == 0) return [];
+        var ids = propertyIds.Distinct().ToList();
+        return await db.PartyTaskSubmissions
+            .AsNoTracking()
+            .Where(s =>
+                s.Kind == WorkflowTaskKindValues.FieldInspection
+                && s.Status == PartyTaskSubmissionStatus.Submitted
+                && s.PropertyId != null
+                && ids.Contains(s.PropertyId.Value))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlySet<Guid>> ListAcceptedSubmissionTaskIdsAsync(
         IReadOnlyCollection<Guid> taskIds,
         CancellationToken cancellationToken)
@@ -134,6 +150,16 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
             .AsNoTracking()
             .Where(p => propertyIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id, cancellationToken);
+    }
+
+    public async Task SetInspectedUsageAsync(
+        Guid propertyId,
+        string? inspectedUsage,
+        CancellationToken cancellationToken)
+    {
+        var property = await db.WorkOrderProperties
+            .FirstOrDefaultAsync(p => p.Id == propertyId, cancellationToken);
+        if (property is not null) property.InspectedUsage = inspectedUsage;
     }
 
     public async Task<InspectedTypeChange?> SetInspectedPropertyTypeAsync(

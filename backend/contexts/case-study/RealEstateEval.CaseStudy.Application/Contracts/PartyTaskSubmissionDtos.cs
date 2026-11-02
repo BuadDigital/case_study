@@ -2,6 +2,25 @@ using System.Text.Json;
 
 namespace RealEstateEval.CaseStudy.Application.Contracts;
 
+/// <summary>One earlier inspection of the same deed the inspector may copy from.</summary>
+public class PriorInspectionOptionDto
+{
+    public Guid SourceTaskId { get; set; }
+    public string PoNumber { get; set; } = "";
+    public string? City { get; set; }
+    public string? District { get; set; }
+    public string? InspectorName { get; set; }
+    public DateTime? SubmittedAtUtc { get; set; }
+}
+
+/// <summary>The copyable answers of an earlier inspection — never a photo.</summary>
+public class PriorInspectionCopyDto
+{
+    public Guid SourceTaskId { get; set; }
+    public string PoNumber { get; set; } = "";
+    public JsonElement Payload { get; set; }
+}
+
 public class PartyTaskSubmissionDto
 {
     public string Id { get; set; } = "";

@@ -54,6 +54,17 @@ public static class CapabilityPolicyNames
     public const string ReadPriorDeeds = "Capability:read-prior-deeds";
 
  /// <summary>
+ /// Counting a usage written on an inspection — the inspector on submit, case staff on a correction.
+ /// </summary>
+    public const string RecordPropertyUsage = "Capability:record-property-usage";
+
+ /// <summary>
+ /// Approving or correcting a usage name — the admin, from the review queue or later, and the case
+ /// specialist, from the inspector-review screen. Case staff get this one action, not the settings.
+ /// </summary>
+    public const string ReviewPropertyUsage = "Capability:review-property-usage";
+
+ /// <summary>
  /// Comparable bank writes — office appraisers and valuation coordinators.
  /// </summary>
     public const string WriteComparableBank = "Capability:write-comparable-bank";

@@ -120,18 +120,10 @@ export function repeatedFloorCountForItem(
 /** Total obsolescence above this asks for a rationale (mirrors the server threshold). */
 export const HIGH_OBSOLESCENCE_ALERT_PCT = 90;
 
-/** Interactive-form starter values (التقييم بأسلوبي السوق والتكلفة). */
-const DEFAULT_INDIRECT_PCTS: Record<string, string> = {
-  design_supervision: "3",
-  licensing_fees: "3",
-  project_management: "3",
-  utilities_connection: "3",
-  contingency: "3",
-  developer_profit: "15",
-};
-
-const DEFAULT_FINANCING_RATE = "5";
-const DEFAULT_FINANCING_MONTHS = "18";
+// The indirect-cost table and the financing start at zero (2026-11-01, appraisers' request): the
+// prototype's starter values (3٪ × 5, 15٪ profit, 5٪ over 18 months) were left in reports unexamined.
+const DEFAULT_FINANCING_RATE = "0";
+const DEFAULT_FINANCING_MONTHS = "0";
 const DEFAULT_ACTUAL_AGE_YEARS = "10";
 const DEFAULT_ECONOMIC_AGE_YEARS = "40";
 
@@ -139,7 +131,7 @@ function defaultIndirectDraft(): IndirectDraft {
   const draft: IndirectDraft = {};
   for (const item of INDIRECT_COST_ITEMS) {
     draft[item.key] = {
-      pct: DEFAULT_INDIRECT_PCTS[item.key] ?? "0",
+      pct: "0",
       rationale: "",
     };
   }
@@ -933,7 +925,10 @@ export function buildCostNarrative(
           fields.indirectDraft[item.key]?.rationale ?? "",
         ),
       ),
-      `• التمويل — معدل ${fields.financingRate}٪ سنوياً على ${fields.financingMonths} شهراً بمتوسط سحب 50٪`,
+      // No financing entered (the default since 2026-11-01) ⇒ no «0٪ على 0 شهراً» line.
+      costNum(fields.financingRate) > 0 && costInt(fields.financingMonths) > 0
+        ? `• التمويل — معدل ${fields.financingRate}٪ سنوياً على ${fields.financingMonths} شهراً بمتوسط سحب 50٪`
+        : null,
     ]),
     narrativeSection("مبررات العمر والتقادم:", [
       justifiedBullet(

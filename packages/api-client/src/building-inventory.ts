@@ -53,8 +53,8 @@ export type SaveBuildingInventoryRequest = {
   lines: BuildingInventoryLineDto[];
 };
 
-function url(base: string, poNumber: string, propertyId: string): string {
-  return `${base}/api/work-orders/${encodeURIComponent(poNumber)}/properties/${propertyId}/building-inventory`;
+function url(base: string, poNumber: string, propertyId: string, part = "building-inventory"): string {
+  return `${base}/api/work-orders/${encodeURIComponent(poNumber)}/properties/${propertyId}/${part}`;
 }
 
 /**
@@ -81,20 +81,20 @@ export async function getBuildingInventory(
 }
 
 /**
- * PUT the table (see `SaveBuildingInventoryRequest`). A 4xx the server will never accept
- * on retry (400/409/422 — e.g. «المعاينة أُرسلت…» under `errors._`) is `validation`; 403 is
- * `forbidden`; a 5xx is `server` — so the offline replay can drop the first two and retry
- * the last.
+ * PUT one part of a property. A 4xx the server will never accept on retry (400/409/422 — e.g.
+ * «المعاينة أُرسلت…» under `errors._`) is `validation`; 403 is `forbidden`; a 5xx is `server` —
+ * so an offline replay can drop the first two and retry the last.
  */
-export async function saveBuildingInventory(
+export async function putPropertyPart<T>(
   config: WorkOrdersApiConfig,
   poNumber: string,
   propertyId: string,
-  body: SaveBuildingInventoryRequest,
-): Promise<ApiOk<BuildingInventoryDto> | ApiErr> {
+  part: string,
+  body: unknown,
+): Promise<ApiOk<T> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
-    const res = await fetch(url(base, poNumber, propertyId), {
+    const res = await fetch(url(base, poNumber, propertyId, part), {
       method: "PUT",
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
@@ -108,8 +108,18 @@ export async function saveBuildingInventory(
       const rejected = res.status === 400 || res.status === 409 || res.status === 422;
       return { ok: false, kind: rejected ? "validation" : "server", errors };
     }
-    return { ok: true, data: (await res.json()) as BuildingInventoryDto };
+    return { ok: true, data: (await res.json()) as T };
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+/** PUT the table (see `SaveBuildingInventoryRequest`). */
+export function saveBuildingInventory(
+  config: WorkOrdersApiConfig,
+  poNumber: string,
+  propertyId: string,
+  body: SaveBuildingInventoryRequest,
+): Promise<ApiOk<BuildingInventoryDto> | ApiErr> {
+  return putPropertyPart(config, poNumber, propertyId, "building-inventory", body);
 }

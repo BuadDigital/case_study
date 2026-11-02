@@ -18,6 +18,7 @@ import {
   LegendDot,
   PickerList,
 } from "../components/property-map/PropertyMapPanels";
+import { PropertyMapCardPhoto } from "../components/property-map/PropertyMapCardPhoto";
 import { PropertyMapToolbar } from "./PropertyMapToolbar";
 import { usePropertyMapWorkflow } from "./usePropertyMapWorkflow";
 
@@ -42,7 +43,6 @@ const PropertyMapCanvas = dynamic(
  * `usePropertyMapWorkflow`.
  *
  * Remaining later (no polish):
- * - Property photo in the card + zoom (lightbox) from the transaction attachment.
  * - Precise field coordinates instead of approximate when available from the inspector.
  * - Open a specific comparable card, not the bank list.
  */
@@ -70,6 +70,7 @@ export function PropertyMapView() {
     setApprovedOnly,
     selection,
     setSelection,
+    selectedInspectionTaskId,
     selectComparable,
     revealComparable,
     selectedId,
@@ -97,7 +98,8 @@ export function PropertyMapView() {
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-bg" dir="rtl">
       <PropertyMapToolbar workflow={workflow} />
 
-      <div className="relative min-h-0 flex-1">
+      {/* `isolate` keeps the map's panels and canvas under the shell's modals and the toolbar. */}
+      <div className="relative isolate min-h-0 flex-1">
         <PropertyMapCanvas
           markers={markers}
           selectedId={selectedId}
@@ -215,7 +217,13 @@ export function PropertyMapView() {
           <DetailCard
             familyLabel={POINT_FAMILIES.property}
             title={propertyCard(selection.record).title}
-            isProperty
+            photo={
+              <PropertyMapCardPhoto
+                key={selection.record.id}
+                inspectionTaskId={selectedInspectionTaskId}
+                photoMarks={selection.record.photoMarks}
+              />
+            }
             tags={
               <>
                 <Badge tone={selection.record.closedDate ? "default" : "primary"}>

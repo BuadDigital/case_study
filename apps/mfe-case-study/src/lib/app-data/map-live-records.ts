@@ -14,6 +14,11 @@ import {
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "./po-intake-property-model";
+import {
+  partyChildTaskForProperty,
+  resolveInspectionTaskForProperty,
+} from "./documentary-workflow-gates";
+import type { WorkflowTask } from "./tasks";
 import type {
   MapComparableRecord,
   MapCoords,
@@ -53,6 +58,38 @@ export function inspectorPinsByPropertyId(
     if (coords) out.set(key, coords);
   }
   return out;
+}
+
+/**
+ * The inspection task behind a map record — where the card's photo comes from.
+ *
+ * How it works: the viewer's task list decides first, through the resolver the
+ * property page uses, so the appraisal or survey task's sibling id counts too.
+ * Otherwise the workspace list the map already loaded answers by property id.
+ *
+ * Edge cases: a record without a PO or property id has no inspection to read,
+ * and a property never inspected gives null — the card then shows no photo.
+ */
+export function inspectionTaskIdForMapRecord(
+  record: Pick<MapPropertyRecord, "poNumber" | "propertyId">,
+  tasks: WorkflowTask[],
+  workspaces: FieldInspectionWorkspaceListItemDto[] | null | undefined,
+): string | null {
+  const { poNumber, propertyId } = record;
+  if (!poNumber || !propertyId) return null;
+  const task = resolveInspectionTaskForProperty({
+    tasks,
+    appraisalTask: partyChildTaskForProperty("property-appraisal", poNumber, propertyId, tasks),
+    surveyTask: partyChildTaskForProperty("engineering-survey", poNumber, propertyId, tasks),
+    poNumber,
+    propertyId,
+  });
+  if (task) return task.id;
+  const key = propertyKey(propertyId);
+  return (
+    workspaces?.find((workspace) => propertyKey(workspace.propertyId) === key)
+      ?.workflowTaskId ?? null
+  );
 }
 
 function isIssuedValuation(row: ValuationRequestDto): boolean {
@@ -197,6 +234,7 @@ export function mapPoRecordsToMapProperties(
         deedNo: property.deedNumber.trim() || property.realEstateRegNumber.trim() || "—",
         deedType: property.deedKind.trim() || "—",
         propertyType: effectivePropertyTypeOf(property) || property.classification.trim() || "—",
+        photoMarks: property.photoMarks,
         city: property.city.trim() || "—",
         district: property.district.trim() || "—",
         area: areaNumber(property.area),

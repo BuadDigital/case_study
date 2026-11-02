@@ -18,7 +18,7 @@ import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
-import { fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
+import { fmt, fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
 
 import {
   AUTO_AREA_KEY,
@@ -183,6 +183,19 @@ export function grossAdjustmentPct(item: ValuationComparableSelectionDto): numbe
     .filter((l) => l.isIncluded)
     .reduce((s, l) => s + Math.abs(Number(l.percent) || 0), 0);
   return Math.round(sum * 100) / 100;
+}
+
+/**
+ * One figure of the market price chain, as the matrix and the summary strip show it.
+ *
+ * How it works: on the per-m² basis the figure is a rate, so it keeps up to two decimals; on the
+ * whole-property basis it is a property value and stays in whole riyals.
+ *
+ * Edge cases: farm land trades at a few riyals a metre, where a whole number misleads: 4.5 printed
+ * as 5, and 5 × the area did not equal the value beside it. Empty → "—".
+ */
+export function fmtChainValue(value: number | null | undefined, isUnit: boolean): string {
+  return isUnit ? fmtMax(value) : fmt(value);
 }
 
 export function afterWeightValue(item: ValuationComparableSelectionDto): number {

@@ -249,6 +249,7 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             Classification = property.Classification,
             PropertyType = property.PropertyType,
             InspectedPropertyType = property.InspectedPropertyType,
+            InspectedUsage = property.InspectedUsage,
             DraftInspectedPropertyType = InspectedPropertyTypeRules.FromPayload(inspectorPayloadJson),
             PlanNumber = property.PlanNumber,
             PlanName = property.PlanName,

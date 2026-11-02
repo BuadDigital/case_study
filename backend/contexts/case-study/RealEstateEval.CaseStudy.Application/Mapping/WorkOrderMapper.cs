@@ -107,9 +107,11 @@ public static class WorkOrderMapper
             Classification = p.Classification,
             PropertyType = p.PropertyType,
             InspectedPropertyType = p.InspectedPropertyType,
+            InspectedUsage = p.InspectedUsage,
             EffectivePropertyType = InspectedPropertyTypeRules.Effective(
                 p.PropertyType,
                 p.InspectedPropertyType),
+            PhotoMarks = PropertyPhotoMarksRules.Parse(p.PhotoMarksJson),
             AssignmentDocFileNames = ParseFileNameList(p.AssignmentDocFileName),
             DelegationLetterFileNames = ParseFileNameList(p.DelegationLetterFileName),
             OtherDocumentFileNames = ParseFileNameList(p.OtherDocumentFileNames),

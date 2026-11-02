@@ -48,6 +48,11 @@ public interface IPartyTaskSubmissionRepository
         IReadOnlyCollection<Guid> taskIds,
         CancellationToken cancellationToken);
 
+    /// <summary>Untracked submitted field inspections of <paramref name="propertyIds"/>.</summary>
+    Task<IReadOnlyList<PartyTaskSubmission>> ListSubmittedFieldInspectionsAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken);
+
     /// <summary>Task ids among <paramref name="taskIds"/> whose submission carries an acceptance stamp.</summary>
     Task<IReadOnlySet<Guid>> ListAcceptedSubmissionTaskIdsAsync(
         IReadOnlyCollection<Guid> taskIds,
@@ -85,6 +90,12 @@ public interface IPartyTaskSubmissionRepository
     /// Returns the change against the type the property had until now (the earlier inspected type, else
     /// the bourse type) with the survey requirement before and after; null when the type is unchanged.
     /// </summary>
+    /// <summary>Stores the inspection's usage on the property; null clears it.</summary>
+    Task SetInspectedUsageAsync(
+        Guid propertyId,
+        string? inspectedUsage,
+        CancellationToken cancellationToken);
+
     Task<InspectedTypeChange?> SetInspectedPropertyTypeAsync(
         Guid propertyId,
         string inspectedPropertyType,

@@ -284,11 +284,16 @@ function buildDistancesMap(items: RankedItem[]): Record<string, number> {
   return distances;
 }
 
+/**
+ * The fetched pool, nearest first. It stays wider than the table: the land table filters this pool by
+ * kind, so cutting it to the display limit here left a villa's land table empty whenever six buildings
+ * lay nearer. `buildBankDisplayRows` applies the display limit.
+ */
 function finalizeBankResultFromItems(
   items: RankedItem[],
   subjectSqm: number | null,
   subjectCoords: { lat: number; lng: number } | null,
-  limit = BANK_DISPLAY_LIMIT,
+  limit = BANK_CANDIDATE_POOL,
 ): BankCandidatesResult {
   const ranked = rankBankCandidates(items, subjectSqm, limit);
   const rankedIds = new Set(ranked.map((c) => c.id));
@@ -307,7 +312,6 @@ async function listBankPool(
     q?: string;
     city?: string;
     propertyId?: string;
-    propertyType?: string;
   },
 ): Promise<ComparablePropertyDto[]> {
   const res = await listComparableProperties(config, {
@@ -315,7 +319,6 @@ async function listBankPool(
     city: opts.city || undefined,
     take: BANK_CANDIDATE_POOL,
     forPropertyId: opts.propertyId || undefined,
-    propertyType: opts.propertyType || undefined,
   });
   if (!res.ok) return [];
   return res.data;
@@ -327,7 +330,6 @@ async function listNearSubjectPool(
     q?: string;
     city?: string;
     propertyId?: string;
-    propertyType?: string;
   },
   subjectCoords: { lat: number; lng: number },
   subjectCity?: string | null,
@@ -336,10 +338,8 @@ async function listNearSubjectPool(
     q?: string;
     city?: string;
     propertyId?: string;
-    propertyType?: string;
   }[] = [
     opts,
-    { q: opts.q, city: opts.city, propertyId: opts.propertyId },
     { q: opts.q, propertyId: opts.propertyId },
     { propertyId: opts.propertyId },
   ];
@@ -380,6 +380,13 @@ type BankCandidatesResult = {
  * Display bank for the appraiser:
  * 1) Nearest comps within NEARBY_RADIUS_KM of the subject
  * 2) Same city only when subject coordinates are unknown
+ *
+ * How it works: a search goes to the whole bank; a subject with coordinates asks the proximity
+ * endpoint; a subject with none lists the bank by city and matches the city loosely on the client.
+ *
+ * Edge cases: the property type filters nothing here. The bank saves every land comparable as the
+ * bare «أرض» and the server matches by `Contains`, so a «أرض سكنية», a «فيلا» or a «مزرعة» never matched
+ * one: a land comparable vanished from this table while the bank page still listed it.
  */
 export async function fetchBankCandidates(
   config: { token: string; baseUrl: string },
@@ -390,7 +397,6 @@ export async function fetchBankCandidates(
     city?: string;
     deedNumber?: string;
     locationMapUrl?: string;
-    propertyType?: string;
     subjectSqm: number | null;
     latitude?: number | null;
     longitude?: number | null;
@@ -440,7 +446,6 @@ export async function fetchBankCandidates(
       {
         city: opts.city || undefined,
         propertyId: opts.propertyId || undefined,
-        propertyType: opts.propertyType || undefined,
       },
       subjectCoords,
       opts.city,
@@ -451,7 +456,6 @@ export async function fetchBankCandidates(
   const rows = await listBankPool(config, {
     city: opts.city || undefined,
     propertyId: opts.propertyId || undefined,
-    propertyType: opts.propertyType || undefined,
   });
   const items = filterNearSubject(
     rows.map((comparable) => ({ comparable })),
@@ -468,7 +472,17 @@ export type BankDisplayRow = {
   item?: ValuationComparableSelectionDto;
 };
 
-/** Merge selection + candidates — nearby rows by default, or search hits when nearbyOnly is false. */
+/**
+ * Merge selection + candidates — nearby rows by default, or search hits when nearbyOnly is false.
+ *
+ * How it works: the property's own rows (`selectionItems`: entered inside its transaction, or chosen
+ * for it) always show, whatever the radius, the city or the limit. The nearest others fill the rest.
+ * With `preferLand`, land comparables fill it first.
+ *
+ * Edge cases: an own row the appraiser un-adopted stays, so it can be adopted again; only adopted rows
+ * used to be kept, and an un-adopted one farther than the radius disappeared with no way back but
+ * search. `preferLand` orders and never filters, so a building comparable can still fill a free row.
+ */
 export function buildBankDisplayRows(opts: {
   selectionItems: ValuationComparableSelectionDto[];
   candidates: ComparablePropertyDto[];
@@ -479,6 +493,8 @@ export function buildBankDisplayRows(opts: {
   nearbyOnly?: boolean;
   /** The radius the appraiser picked; `null` shows everything fetched. Default 3 km. */
   radiusKm?: number | null;
+  /** The subject is valued as land: land comparables take the free rows before buildings. */
+  preferLand?: boolean;
 }): { rows: BankDisplayRow[]; distances: Record<string, number>; beyond: BankBeyond } {
   const limit = opts.limit ?? BANK_DISPLAY_LIMIT;
   const nearbyOnly = opts.nearbyOnly !== false;
@@ -532,8 +548,8 @@ export function buildBankDisplayRows(opts: {
     ? ranked.filter(
         (row) =>
           !eligibleIds.has(row.comparable.id) &&
-          // An adopted one outside the radius still shows (below) — it is not «beyond».
-          itemByCompId.get(row.comparable.id)?.isAdopted !== true &&
+          // The property's own row outside the radius still shows (below) — it is not «beyond».
+          !itemByCompId.has(row.comparable.id) &&
           row.distanceKm != null &&
           Number.isFinite(row.distanceKm),
       )
@@ -558,15 +574,16 @@ export function buildBankDisplayRows(opts: {
       a.comparable.transactionDate || "",
     );
   };
-  // The adopted comparables always show (whatever the radius or the limit) — the appraiser must
-  // see what the valuation uses; the nearest others fill the rest of the limit.
-  const isAdopted = (row: RankedItem) => itemByCompId.get(row.comparable.id)?.isAdopted === true;
-  const adoptedRows = ranked.filter(isAdopted);
-  const others = eligible
-    .filter((row) => !isAdopted(row))
-    .sort(byNearest)
-    .slice(0, Math.max(0, limit - adoptedRows.length));
-  const ordered = [...adoptedRows, ...others].sort(byNearest);
+  const isOwn = (row: RankedItem) => itemByCompId.has(row.comparable.id);
+  const ownRows = ranked.filter(isOwn);
+  const isLand = (row: RankedItem) => isVacantLandComparable(row.comparable.comparablePropertyType);
+  const nearest = eligible.filter((row) => !isOwn(row)).sort(byNearest);
+  const others = (
+    opts.preferLand
+      ? [...nearest.filter(isLand), ...nearest.filter((row) => !isLand(row))]
+      : nearest
+  ).slice(0, Math.max(0, limit - ownRows.length));
+  const ordered = [...ownRows, ...others].sort(byNearest);
 
   const distances: Record<string, number> = {};
   const rows: BankDisplayRow[] = ordered.map((row) => {

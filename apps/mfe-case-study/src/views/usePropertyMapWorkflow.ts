@@ -18,6 +18,7 @@ import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-wor
 import { findPropertyPathByDeed } from "../lib/app-data/map-open-property";
 import {
   fillValuersFromAppraisalTasks,
+  inspectionTaskIdForMapRecord,
   inspectorPinsByPropertyId,
   mapComparableDtosToMapRecords,
   mapPoRecordsToMapProperties,
@@ -252,6 +253,10 @@ export function usePropertyMapWorkflow() {
   }, [liveProperties, liveComparables]);
 
   const selectedId = selectedMarkerId(selection);
+  const selectedInspectionTaskId =
+    selection?.kind === "property"
+      ? inspectionTaskIdForMapRecord(selection.record, workflowTasks, inspectionWorkspaces)
+      : null;
 
   useEffect(() => {
     if (fitted.current || markers.length === 0) return;
@@ -450,6 +455,7 @@ export function usePropertyMapWorkflow() {
     setCompSel,
     selection,
     setSelection,
+    selectedInspectionTaskId,
     selectComparable,
     revealComparable,
     selectedId,

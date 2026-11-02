@@ -16,18 +16,9 @@ function draft(featureValues: Record<string, string> = {}) {
   };
 }
 
-describe("the bourse answers the inspector's asset type and usage", () => {
-  it("takes the type and the classification the specialist chose in the bourse", () => {
-    expect(bourseFeaturePrefill(property)).toEqual({
-      assetSubject: "فيلا",
-      propertyUsage: "مبنى مفرد",
-    });
-  });
-
-  it("infers the classification of a legacy row that only has a type", () => {
-    expect(
-      bourseFeaturePrefill({ classification: "", propertyType: "مجمع سكني", deedStatus: "" }).propertyUsage,
-    ).toBe("مجمع");
+describe("the bourse answers the inspector's asset type, not the use", () => {
+  it("takes the type the specialist chose in the bourse and leaves the use to the inspector", () => {
+    expect(bourseFeaturePrefill(property)).toEqual({ assetSubject: "فيلا" });
   });
 
   it("fills every empty field, even after the inspector started, and never overwrites his answer", () => {
@@ -35,12 +26,22 @@ describe("the bourse answers the inspector's asset type and usage", () => {
     const filled = fillEmptyFeaturesFromBourse(started, property);
 
     expect(filled.featureValues.assetSubject).toBe("شقة");
-    expect(filled.featureValues.propertyUsage).toBe("مبنى مفرد");
+    expect(filled.featureValues.propertyUsage).toBeUndefined();
     expect(filled.featureValues.facade).toBe("شمالية");
   });
 
+  it("empties an old use holding a classification, so the inspector is asked for the real one", () => {
+    const old = draft({ assetSubject: "فيلا", propertyUsage: "مبنى مفرد" });
+    expect(fillEmptyFeaturesFromBourse(old, property).featureValues.propertyUsage).toBe("");
+  });
+
+  it("keeps a use the inspector recorded", () => {
+    const answered = draft({ assetSubject: "فيلا", propertyUsage: "سكني تجاري" });
+    expect(fillEmptyFeaturesFromBourse(answered, property)).toBe(answered);
+  });
+
   it("returns the same draft when there is nothing left to fill", () => {
-    const full = draft({ assetSubject: "فيلا", propertyUsage: "مبنى مفرد" });
+    const full = draft({ assetSubject: "فيلا", propertyUsage: "سكني" });
     expect(fillEmptyFeaturesFromBourse(full, property)).toBe(full);
     expect(fillEmptyFeaturesFromBourse(draft(), null)).toBeDefined();
   });
@@ -54,9 +55,8 @@ describe("the bourse answers the inspector's asset type and usage", () => {
   });
 
   it("notes the source only while the field still holds what the bourse answered", () => {
-    expect(bourseSourceNotes({ assetSubject: "فيلا", propertyUsage: "مبنى مفرد" }, property)).toEqual({
+    expect(bourseSourceNotes({ assetSubject: "فيلا", propertyUsage: "سكني" }, property)).toEqual({
       assetSubject: BOURSE_SOURCE_NOTE,
-      propertyUsage: BOURSE_SOURCE_NOTE,
     });
     expect(bourseSourceNotes({ assetSubject: "شقة", propertyUsage: "" }, property)).toEqual({});
   });

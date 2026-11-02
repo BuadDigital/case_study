@@ -53,6 +53,7 @@ import {
   PropertyDetailPropertyKeys,
 } from "./PropertyDetailTabChunks";
 import { usePoPropertyDetailTabsWorkflow } from "./usePoPropertyDetailTabsWorkflow";
+import { usePropertyPhotoMarks } from "./usePropertyPhotoMarks";
 import { canEditProperty, canHandOverToEnfaz } from "../../lib/app-data/po-roles";
 import { PropertyDetailEnfazHandoverCard } from "./PropertyDetailEnfazHandoverCard";
 import { PropertyFailureSurveyFreezeLift } from "./PropertyFailureSurveyFreezeLift";
@@ -142,6 +143,13 @@ export function PoPropertyDetailTabs({
   const studyTask =
     (holderTaskId ? tasks.find((t) => t.id === holderTaskId) : undefined) ?? task ?? null;
   const reportDeeds = useMemo(() => caseStudyReportDeeds(transaction?.deeds), [transaction]);
+  const photoMarks = usePropertyPhotoMarks({
+    poNumber,
+    propertyId: property.id,
+    stored: property.photoMarks,
+    studyTaskId: studyTask?.id ?? null,
+    enabled: visitedTabs.has("photos"),
+  });
   const tabGroups: { label: string | null; tabs: readonly PropertyDetailTab[] }[] =
     deedCount > 1
       ? groupPropertyDetailTabs(visibleTabs).map((g) => ({
@@ -471,7 +479,11 @@ export function PoPropertyDetailTabs({
 
           {visitedTabs.has("photos") ? (
             <Activity mode={tabMode("photos")}>
-              <PropertyDetailPhotosTab photos={propertyPhotos} />
+              <PropertyDetailPhotosTab
+                photos={propertyPhotos}
+                marks={photoMarks.marks}
+                onToggleMark={photoMarks.canEdit ? photoMarks.toggle : undefined}
+              />
             </Activity>
           ) : null}
 

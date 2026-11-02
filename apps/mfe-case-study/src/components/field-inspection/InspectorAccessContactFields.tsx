@@ -19,6 +19,7 @@ import {
   ACCESS_ROUTE_DESCRIPTION_LABEL,
   normalizeSaudiNationalId,
   patchAccessContact,
+  SITE_ATTENDED_BY_LABEL,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
@@ -225,6 +226,12 @@ export function InspectorAccessContactFields({
   if (!editable) {
     return (
       <div className="mt-4">
+        <InsReadField
+          id="ins-site-attended-by"
+          label={SITE_ATTENDED_BY_LABEL}
+          value={draft.siteAttendedBy}
+          className="mb-3"
+        />
         <p className="m-0 mb-2 text-[12px] font-bold text-heading">
           {ACCESS_ROUTE_DESCRIPTION_LABEL}
         </p>
@@ -260,6 +267,17 @@ export function InspectorAccessContactFields({
 
   return (
     <div className="mt-3">
+      <label htmlFor="ins-site-attended-by" className={INS_LABEL_CLASS}>
+        {SITE_ATTENDED_BY_LABEL}
+      </label>
+      <input
+        id="ins-site-attended-by"
+        type="text"
+        placeholder="اسم الشخص"
+        className={cn(controlClass(), "mb-3")}
+        value={draft.siteAttendedBy}
+        onChange={(e) => onPatch({ siteAttendedBy: e.target.value })}
+      />
       <span
         className={cn(
           INS_LABEL_CLASS,

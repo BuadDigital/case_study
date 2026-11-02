@@ -193,7 +193,8 @@ public sealed class PriorValuationBankFeeder(
             }
 
             row.ComparablePropertyType = comparableType;
-            row.Usage = ComparablePropertyRules.UsageOrDefault(null, context.Classification, comparableType);
+            // The inspector's usage, never the bourse classification («مبنى مفرد» is no use).
+            row.Usage = ComparablePropertyRules.UsageOrDefault(context.InspectedUsage, null, comparableType);
             row.Latitude = lat;
             row.Longitude = lon;
             row.AreaSqm = areaSqm;

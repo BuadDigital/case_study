@@ -184,7 +184,6 @@ export function buildBankFetchOptions({
     city: property?.city || intakeProperty?.city || undefined,
     deedNumber: property?.deedNumber || intakeProperty?.deedNumber || undefined,
     locationMapUrl: intakeProperty?.locationMapUrl,
-    propertyType: property?.propertyType?.trim() || undefined,
     subjectSqm: parseSubjectAreaSqm(subjectArea, property?.area),
     latitude: pin ? pin.lat : null,
     longitude: pin ? pin.lng : null,
@@ -215,6 +214,11 @@ export function initialSubjectArea(
  * The first sync (no area stored yet) also sets `firstBasis` — whole property for a building —
  * so a new market table opens on the basis its subject is compared on; later syncs keep the
  * appraiser's basis.
+ *
+ * `forceBasis` is for a change of what the subject is compared as. Without it a villa moved to «أرض فقط»
+ * kept «قيمة العقار كاملة» from its first opening, and a whole plot's price stood for the subject's land
+ * with no multiplication by area. It wins over the saved basis, and goes out even when the area already
+ * matches.
  */
 export function subjectAreaSyncPlan({
   requestId,
@@ -223,6 +227,7 @@ export function subjectAreaSyncPlan({
   lastSyncKey,
   writesFrozen = false,
   firstBasis,
+  forceBasis,
 }: {
   requestId: string;
   subjectArea: string;
@@ -234,21 +239,25 @@ export function subjectAreaSyncPlan({
   lastSyncKey: string | null;
   writesFrozen?: boolean;
   firstBasis?: string;
+  forceBasis?: string;
 }): { syncKey: string; body: SaveValuationMarketApproachRequest } | null {
   const areaNum = parseDecimal(subjectArea);
   const serverArea = selection.subjectAreaSqm;
   const syncKey = `${requestId}:${areaNum}`;
+  const basisChanges = Boolean(forceBasis) && forceBasis !== selection.adjustmentBasis;
   if (
     writesFrozen ||
     !subjectArea ||
     !Number.isFinite(areaNum) ||
     areaNum <= 0 ||
-    (serverArea != null && Math.abs(Number(serverArea) - areaNum) <= 0.001) ||
-    lastSyncKey === syncKey
+    (!basisChanges &&
+      ((serverArea != null && Math.abs(Number(serverArea) - areaNum) <= 0.001) ||
+        lastSyncKey === syncKey))
   ) {
     return null;
   }
-  const basis = (serverArea == null ? firstBasis : undefined) || selection.adjustmentBasis;
+  const basis =
+    forceBasis || (serverArea == null ? firstBasis : undefined) || selection.adjustmentBasis;
   return {
     syncKey,
     body: {

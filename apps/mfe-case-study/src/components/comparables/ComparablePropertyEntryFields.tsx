@@ -465,7 +465,8 @@ export function ComparablePropertyEntryFields({
           </p>
         ) : draft.kind === "land" ? (
           <p className="mb-0 mt-1.5 text-[11.5px] text-text-3">
-            لمكوّن الأرض في أسلوب التكلفة، حتى إذا كان موضوع التقييم فيلا.
+            لتقييم الأرض بأسلوب السوق أو لمكوّن الأرض في أسلوب التكلفة، حتى إذا
+            كان موضوع التقييم فيلا.
           </p>
         ) : (
           <p className="mb-0 mt-1.5 text-[11.5px] text-text-3">

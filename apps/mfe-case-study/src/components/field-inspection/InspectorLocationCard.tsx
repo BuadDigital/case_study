@@ -6,6 +6,7 @@
  * Lifted out of `FieldInspectionWorkBody` — same markup, state stays with
  * the workflow hook.
  */
+import { useState } from "react";
 import { cn, Input } from "@platform/ui-kit";
 import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@platform/app-shared/domain/jeddah-default-coords";
 import {
@@ -18,11 +19,14 @@ import {
   InspectorCard,
   MobileInspectMap,
 } from "./FieldInspectionWorkParts";
+import { InspectorCoordsInput } from "./InspectorCoordsInput";
+import { InspectorCopyPriorButton } from "./InspectorCopyPriorButton";
 import { InspectorSaveChip } from "./InspectorSaveChip";
 import {
   canPinInspectorMap,
   inspectorMapCoordsLabel,
 } from "./field-inspection-work-state";
+import { inspectorWizardCoordsValue } from "./inspector-wizard-state";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
 
 export function InspectorLocationCard({
@@ -62,6 +66,10 @@ export function InspectorLocationCard({
   layout: "desktop" | "mobile";
   mobile: boolean;
 }) {
+  const [coordsOutside, setCoordsOutside] = useState(false);
+  // Phone: the inspector types the numbers when GPS or the map cannot place the point.
+  const phoneCoordsBox = mobile && !locked && !mapPinned;
+
   return (
     <div id="ins-map-section">
     <InspectorCard
@@ -79,6 +87,9 @@ export function InspectorLocationCard({
       subtitle={mobile ? "موقع GPS للعقار" : undefined}
       defaultOpen
     >
+      {!locked ? (
+        <InspectorCopyPriorButton taskId={draft.taskId} className="mb-2.5" onApply={persist} />
+      ) : null}
       {mobile ? (
         <div className="mb-2 text-[13px] font-bold text-heading">
           موقع العقار (GPS)
@@ -156,6 +167,15 @@ export function InspectorLocationCard({
           </div>
         </div>
       ) : null}
+      {phoneCoordsBox ? (
+        <InspectorCoordsInput
+          value={inspectorWizardCoordsValue(draft)}
+          invalid={Boolean(fieldErrors.mapLatitude)}
+          className="mb-2.5"
+          onOutsideChange={setCoordsOutside}
+          onCoords={(lat, lng) => persist(mapPinPatchForActor(draft, lat, lng, "inspector"))}
+        />
+      ) : null}
       {fieldErrors.mapLatitude ? (
         <p className="mb-3 text-[11px] font-semibold text-danger-text" role="alert">
           {fieldErrors.mapLatitude}
@@ -229,8 +249,9 @@ export function InspectorLocationCard({
           {canPinInspectorMap(draft.mapLatitude, draft.mapLongitude, mapPinned) ? (
             <button
               type="button"
+              disabled={phoneCoordsBox && coordsOutside}
               className={cn(
-                "flex w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] font-inherit font-bold text-heading",
+                "flex w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] font-inherit font-bold text-heading disabled:opacity-50",
                 mobile ? "min-h-12 text-[14px]" : "min-h-11 text-[13px]",
               )}
               onClick={() => {
@@ -269,7 +290,7 @@ export function InspectorLocationCard({
           ) : null}
         </div>
       ) : null}
-      {mobile ? (
+      {mobile && !phoneCoordsBox ? (
         <div className="mt-1.5 text-center text-[12px] text-text-3" dir="ltr">
           {inspectorMapCoordsLabel(draft.mapLatitude, draft.mapLongitude)}
         </div>

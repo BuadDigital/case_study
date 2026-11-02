@@ -282,8 +282,11 @@ export function payloadToDraft(
       ? "reopened"
       : "draft") as InspectorWorkspaceStatus;
   const explicitPinned = readBool(payload.mapPinned);
+  // Only a package older than the field counts as pinned by its GPS. A saved «false» stands: the
+  // specialist's «إلغاء التثبيت» on a submitted package used to come straight back pinned, so the
+  // coordinates box never opened (2026-11-01).
   const legacyPinned =
-    !explicitPinned &&
+    payload.mapPinned == null &&
     status !== "draft" &&
     parsePlacedMapPin(mapCoords.mapLatitude, mapCoords.mapLongitude) != null;
   const mapped: InspectorWorkspaceDraft = {
@@ -315,6 +318,7 @@ export function payloadToDraft(
     streetName: readString(payload.streetName),
     mainStreetName: readString(payload.mainStreetName),
     streetWidthM: readString(payload.streetWidthM),
+    siteAttendedBy: readString(payload.siteAttendedBy),
     accessContactName: readString(payload.accessContactName),
     accessContactPhone: readString(payload.accessContactPhone),
     accessContactRole: readString(payload.accessContactRole),
@@ -426,6 +430,7 @@ export function draftToPayload(
     streetName: draft.streetName,
     mainStreetName: draft.mainStreetName,
     streetWidthM: draft.streetWidthM,
+    siteAttendedBy: draft.siteAttendedBy,
     accessContactName: draft.accessContactName,
     accessContactPhone: draft.accessContactPhone,
     accessContactRole: draft.accessContactRole,

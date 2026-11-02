@@ -22,6 +22,7 @@ export const TABS: { id: string; label: string; kind: "table" | "ivs" | "photos"
   { id: "methods", label: "أساليب وطرق التقييم", kind: "table" },
   { id: "comparables", label: "العقارات المقارنة", kind: "table" },
   { id: "facades", label: "أنواع الواجهات", kind: "table" },
+  { id: "propertyUsages", label: "استخدامات العقار", kind: "table" },
   { id: "glossary", label: "المصطلحات المهنية", kind: "table" },
   { id: "ivsStandards", label: "معايير التقييم الدولية", kind: "table" },
   { id: "attachments", label: "مرفقات التقرير", kind: "table" },
@@ -68,6 +69,12 @@ export const TABLE_META: Record<
     addTitle: "إضافة نوع واجهة",
     cols: ["نوع الواجهة", "الاستخدام"],
     note: "أنواع الواجهات — قائمة اختيار «نوع الواجهة» لكل جهة في تعديل العقار ولدى المعاين الميداني؛ اختيار المعاين يتقدّم في التقرير.",
+  },
+  propertyUsages: {
+    addLabel: "إضافة استخدام",
+    addTitle: "إضافة استخدام عقار",
+    cols: ["استخدام العقار", "الاستخدام"],
+    note: "قائمة «استخدام العقار» عند المعاين. الاسم غير الموجود يكتبه المعاين، فينضم مبدئياً ويظهر في «مراجعة المسميات المبدئية». تعديل الاسم هنا لا يغيّر العقارات المحفوظة ولا التقارير الصادرة.",
   },
   boundaryTypes: {
     addLabel: "إضافة نوع حد",

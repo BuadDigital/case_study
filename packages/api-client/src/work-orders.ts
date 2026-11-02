@@ -1,3 +1,4 @@
+import type { PropertyPhotoMarksDto } from "./property-photo-marks";
 import { parseFieldErrorsFromResponse } from "./field-errors";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
@@ -93,8 +94,10 @@ export type WorkOrderPropertyDto = {
   propertyType?: string;
   /** Type confirmed by the field inspector on submission. */
   inspectedPropertyType?: string | null;
+  inspectedUsage?: string | null;
   /** Inspector-confirmed type, falling back to the initial type. */
   effectivePropertyType?: string;
+  photoMarks?: PropertyPhotoMarksDto | null;
   assignmentDocFileNames?: string[];
   delegationLetterFileNames?: string[];
   otherDocumentFileNames?: string[];

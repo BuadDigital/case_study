@@ -2,6 +2,7 @@
 
 import { fmtSar } from "@platform/app-shared/format/number";
 import { haversineKm } from "@platform/app-shared/domain/geo";
+import type { PropertyPhotoMarks } from "@platform/app-shared/app-data/property-detail-document-types";
 
 export const POINT_FAMILIES = {
   property: "عقارات النظام",
@@ -73,6 +74,8 @@ export type MapPropertyRecord = {
   coordsSource: string | null;
   /** The transaction (المعاملة) id: deeds sharing it cluster into one point. */
   propertyGroupId: string | null;
+  /** The specialist's marks: the card opens on the marked main photo. */
+  photoMarks?: PropertyPhotoMarks;
   /** PR-… once confirmed, else the TMP- temporary number. */
   transactionNumber?: string | null;
   poNumber?: string;

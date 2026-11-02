@@ -7,6 +7,8 @@ import {
   collectFieldInspectionDocumentsFromSubmission,
   inspectorFeaturePhotoLabel,
   isPropertyDetailDocumentAvailable,
+  pickInspectorPrimaryPhoto,
+  primaryPhotoCandidatesFromSubmission,
   withGovernedDocumentsSection,
 } from "../property-detail-documents";
 
@@ -134,6 +136,45 @@ describe("collectFieldInspectionDocumentsFromSubmission", () => {
     expect(front?.attachmentId).toBe("att-front");
     expect(front?.dataUrl).toBeUndefined();
     expect(front && isPropertyDetailDocumentAvailable(front)).toBe(true);
+  });
+});
+
+describe("primaryPhotoCandidatesFromSubmission", () => {
+  const photo = (id: number, fileName: string, attachmentId: string | undefined, approved = false) => ({
+    id,
+    category: "واجهة",
+    approved,
+    fileName,
+    mimeType: fileName.endsWith(".pdf") ? "application/pdf" : "image/jpeg",
+    attachmentId,
+    uploadedBy: "inspector" as const,
+  });
+  const draft = createInspectorWorkspaceDraft({
+    taskId: "task-1",
+    propertyId: "prop-1",
+    poNumber: "PO-1",
+  });
+
+  it("keeps stored images only, so the map picks what the basic tab picks", () => {
+    const candidates = primaryPhotoCandidatesFromSubmission({
+      ...draft,
+      status: "submitted",
+      freePhotos: [
+        photo(1, "scan.pdf", "att-pdf"),
+        photo(2, "lost.jpg", undefined),
+        photo(3, "front.jpg", "att-front"),
+      ],
+    });
+    expect(candidates.map((doc) => doc.id)).toEqual(["inspection-free-3"]);
+    expect(pickInspectorPrimaryPhoto(candidates)?.id).toBe("inspection-free-3");
+  });
+
+  it("hides unapproved photos until the inspector submits", () => {
+    const candidates = primaryPhotoCandidatesFromSubmission({
+      ...draft,
+      freePhotos: [photo(1, "draft.jpg", "att-draft"), photo(2, "ok.jpg", "att-ok", true)],
+    });
+    expect(candidates.map((doc) => doc.id)).toEqual(["inspection-free-2"]);
   });
 });
 

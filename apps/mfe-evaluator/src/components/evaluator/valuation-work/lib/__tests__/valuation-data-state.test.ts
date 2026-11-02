@@ -230,7 +230,6 @@ describe("buildBankFetchOptions", () => {
       city: "جدة",
       deedNumber: "d-9",
       locationMapUrl: "https://maps/x",
-      propertyType: "أرض",
       subjectSqm: 400,
       latitude: 1,
       longitude: 2,
@@ -245,7 +244,6 @@ describe("buildBankFetchOptions", () => {
       city: undefined,
       deedNumber: undefined,
       locationMapUrl: undefined,
-      propertyType: undefined,
       subjectSqm: 250.5,
       latitude: null,
       longitude: null,
@@ -268,6 +266,36 @@ describe("initialSubjectArea", () => {
 
 describe("subjectAreaSyncPlan", () => {
   const selection = { subjectAreaSqm: 250, adjustmentBasis: "", analysisNotes: undefined };
+
+  describe("when the subject changes what it is compared as", () => {
+    const villa = { subjectAreaSqm: 300, adjustmentBasis: "whole_property", analysisNotes: undefined };
+    const plan = (subjectArea: string, extra = {}) =>
+      subjectAreaSyncPlan({
+        requestId: "r",
+        subjectArea,
+        selection: villa,
+        lastSyncKey: null,
+        forceBasis: "price_per_sqm",
+        ...extra,
+      });
+
+    it("moves a saved whole-property basis to per m² with the new area", () => {
+      expect(plan("900")?.body).toMatchObject({ subjectAreaSqm: 900, adjustmentBasis: "price_per_sqm" });
+    });
+
+    it("moves the basis even when the area already matches", () => {
+      expect(plan("300")?.body.adjustmentBasis).toBe("price_per_sqm");
+    });
+
+    it("writes nothing while frozen", () => {
+      expect(plan("900", { writesFrozen: true })).toBeNull();
+    });
+
+    it("keeps the appraiser's basis without a change of kind", () => {
+      const kept = subjectAreaSyncPlan({ requestId: "r", subjectArea: "900", selection: villa, lastSyncKey: null });
+      expect(kept?.body.adjustmentBasis).toBe("whole_property");
+    });
+  });
 
   it("skips blank, non-positive, already-synced and matching areas", () => {
     expect(subjectAreaSyncPlan({ requestId: "r", subjectArea: "", selection, lastSyncKey: null })).toBeNull();

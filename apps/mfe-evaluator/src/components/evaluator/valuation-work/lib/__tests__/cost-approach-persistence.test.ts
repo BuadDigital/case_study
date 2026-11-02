@@ -97,11 +97,11 @@ describe("O10 — deliberate zeros survive a save and reload", () => {
     expect(fields.financingMonths).toBe("0");
   });
 
-  it("a never-saved row still starts from the interactive-form defaults", () => {
+  it("a never-saved row starts the indirect table and the financing at zero (2026-11-01)", () => {
     const fields = costFieldsFromDto(cost({ isSaved: false }));
-    expect(fields.indirectDraft.developer_profit?.pct).toBe("15");
-    expect(fields.financingRate).toBe("5");
-    expect(fields.financingMonths).toBe("18");
+    expect(fields.indirectDraft.developer_profit?.pct).toBe("0");
+    expect(fields.financingRate).toBe("0");
+    expect(fields.financingMonths).toBe("0");
   });
 
   it("the save sends all six indirect items, zeros included", () => {

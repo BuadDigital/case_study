@@ -20,6 +20,10 @@ export type ValuationListItemDto = {
   isSystemDefault: boolean;
   isRequired: boolean;
   propertyTypeKeys: string[];
+  /** approved | pending; only «استخدام العقار» has pending rows. Absent reads as approved. */
+  status?: string;
+  /** The name as first typed, kept when the row is corrected. */
+  rawInput?: string | null;
 };
 
 export type ValuationListsDto = {
@@ -77,6 +81,28 @@ export async function getValuationLists(
     const res = await fetch(`${base}/api/valuation-lists`, {
       headers: authHeaders(config.token, { accept: true }),
     });
+    return await readListsResult(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Approves a usage name, or corrects and approves it — the admin and the case specialist. */
+export async function reviewPropertyUsage(
+  config: ValuationListsApiConfig,
+  key: string,
+  body: { action: "approve" | "rename"; nameAr?: string },
+): Promise<Result<ValuationListsDto>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/valuation-lists/property-usages/${encodeURIComponent(key)}/review`,
+      {
+        method: "POST",
+        headers: authHeaders(config.token, { accept: true }),
+        body: JSON.stringify(body),
+      },
+    );
     return await readListsResult(res);
   } catch {
     return { ok: false, kind: "network" };

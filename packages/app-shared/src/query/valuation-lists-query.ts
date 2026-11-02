@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo } from "react";
 import { useQuery, type QueryClient } from "@tanstack/react-query";
 import {
   getValuationLists,
+  type ValuationListItemDto,
   type ValuationListsDto,
 } from "@platform/api-client";
 import { apiConfig } from "../auth/api-config";
@@ -36,4 +38,24 @@ export function useValuationListsQuery() {
     staleTime: 5 * 60_000,
     gcTime: 30 * 60_000,
   });
+}
+
+/**
+ * One admin-managed list's enabled rows, in order.
+ *
+ * Returns `undefined` until the dictionary has loaded, so callers can keep their
+ * built-in options for that first render instead of flashing an empty picker.
+ * Once loaded the array is authoritative — including when it is empty.
+ */
+export function useEnabledValuationListRows(
+  listId: string,
+): ValuationListItemDto[] | undefined {
+  const { data, isPending, isError } = useValuationListsQuery();
+  return useMemo(() => {
+    if (isPending || isError || !data) return undefined;
+    return (data.lists?.[listId] ?? [])
+      .filter((row) => row.isEnabled && row.name.trim().length > 0)
+      .slice()
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [data, isPending, isError, listId]);
 }

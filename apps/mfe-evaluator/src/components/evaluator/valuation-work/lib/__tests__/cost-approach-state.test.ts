@@ -71,14 +71,14 @@ describe("costFieldsFromDto actual age", () => {
     );
   });
 
-  it("seeds the interactive-form starter numbers when the cost row is empty", () => {
+  it("seeds the ages, and zero indirect costs and financing, when the cost row is empty", () => {
     const fields = costFieldsFromDto(cost());
     expect(fields.actualAge).toBe("10");
     expect(fields.economicAge).toBe("40");
-    expect(fields.financingRate).toBe("5");
-    expect(fields.financingMonths).toBe("18");
-    expect(fields.indirectDraft.design_supervision?.pct).toBe("3");
-    expect(fields.indirectDraft.developer_profit?.pct).toBe("15");
+    expect(fields.financingRate).toBe("0");
+    expect(fields.financingMonths).toBe("0");
+    expect(fields.indirectDraft.design_supervision?.pct).toBe("0");
+    expect(fields.indirectDraft.developer_profit?.pct).toBe("0");
   });
 
   it("keeps saved financing and indirect percentages", () => {
@@ -161,6 +161,15 @@ describe("buildCostNarrative", () => {
     expect(text).not.toContain("مبررات العمر والتقادم");
     expect(text).not.toContain("مخصص الطوارئ");
     expect(text).toContain("طريقة تكلفة الإحلال.");
+    expect(text).not.toContain("التمويل");
+  });
+
+  it("lists the financing once a rate and a period are entered", () => {
+    const text = buildCostNarrative(
+      { ...EMPTY_COST_FIELDS, financingRate: "5", financingMonths: "18" },
+      [],
+      "replacement",
+    );
     expect(text).toContain("التمويل — معدل 5٪ سنوياً على 18 شهراً");
   });
 

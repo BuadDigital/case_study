@@ -560,9 +560,10 @@ public static class ValuationMethodologyAlertRules
         Math.Round(value, 2, MidpointRounding.AwayFromZero)
             .ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
 
-    private static string Money(decimal value) =>
-        Math.Round(value, 0, MidpointRounding.AwayFromZero)
-            .ToString("#,0", System.Globalization.CultureInfo.InvariantCulture);
+    // Up to two decimals: a median of 4.5 ر.س/م² on farm land must not read as 5.
+    private static string Rate(decimal value) =>
+        Math.Round(value, 2, MidpointRounding.AwayFromZero)
+            .ToString("#,0.##", System.Globalization.CultureInfo.InvariantCulture);
 
     private static string DateText(DateOnly? date) =>
         date?.ToString("yyyy/MM/dd", System.Globalization.CultureInfo.InvariantCulture) ?? "—";
@@ -599,7 +600,7 @@ public static class ValuationMethodologyAlertRules
         var cv = MarketApproachRules.CoefficientOfVariationPct(values);
         var parts = new List<string>();
         if (outliers.Count > 0)
-            parts.Add($"{string.Join("، ", outliers)} عن وسيط الأسعار المعدّلة {Money(median)} ر.س/م² (الحد 25٪)");
+            parts.Add($"{string.Join("، ", outliers)} عن وسيط الأسعار المعدّلة {Rate(median)} ر.س/م² (الحد 25٪)");
         parts.Add($"معامل الاختلاف {Pct(cv)}٪ (الحد 15٪)");
         return string.Join(" · ", parts) + " — برّر الإبقاء على المقارن الشاذ أو استبعده";
     }

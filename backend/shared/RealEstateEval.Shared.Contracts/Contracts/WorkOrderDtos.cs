@@ -3,6 +3,16 @@ using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Contracts;
 
+/// <summary>The case specialist's marks on the inspector's photos, by attachment id.</summary>
+public class PropertyPhotoMarksDto
+{
+    public string? Main { get; set; }
+    public List<string> Electricity { get; set; } = [];
+    public List<string> Water { get; set; } = [];
+    /// <summary>The photos the report prints; empty = the first ones in the automatic order.</summary>
+    public List<string> Report { get; set; } = [];
+}
+
 public class PropertyContactDto
 {
     public string Name { get; set; } = "";
@@ -81,8 +91,11 @@ public class WorkOrderPropertyDto
     public string PropertyType { get; set; } = "";
     /// <summary>Type confirmed by the field inspector on the latest submission.</summary>
     public string? InspectedPropertyType { get; set; }
+    /// <summary>«استخدام العقار» from the inspection; empty until it is submitted.</summary>
+    public string? InspectedUsage { get; set; }
     /// <summary>Inspector-confirmed type when present, otherwise the initial type.</summary>
     public string EffectivePropertyType { get; set; } = "";
+    public PropertyPhotoMarksDto? PhotoMarks { get; set; }
     public List<string> AssignmentDocFileNames { get; set; } = [];
     public List<string> DelegationLetterFileNames { get; set; } = [];
     public List<string> OtherDocumentFileNames { get; set; } = [];

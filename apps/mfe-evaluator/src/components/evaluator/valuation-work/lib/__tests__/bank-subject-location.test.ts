@@ -1,6 +1,16 @@
-import { describe, expect, it } from "vitest";
-import type { ComparablePropertyDto } from "@platform/api-client";
-import { buildBankDisplayRows, resolveSubjectCoordsForBank } from "../bank-ranking";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ComparablePropertyDto, ComparablePropertyListQuery } from "@platform/api-client";
+import {
+  buildBankDisplayRows,
+  fetchBankCandidates,
+  resolveSubjectCoordsForBank,
+} from "../bank-ranking";
+
+const listComparableProperties = vi.hoisted(() => vi.fn());
+vi.mock("@platform/api-client", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@platform/api-client")>()),
+  listComparableProperties,
+}));
 
 // PO-067355 (production, 2026-10-22): a building in الخرج / مشرف, pinned by the inspector.
 const AL_KHARJ_PIN = { lat: 24.093248, lng: 47.272136 };
@@ -71,5 +81,54 @@ describe("bank subject location", () => {
     });
     expect(rows.map((r) => r.comp.city)).not.toContain("الرياض");
     expect(rows).toHaveLength(AL_KHARJ_COMPS.length);
+  });
+});
+
+// 962010002726 (production, 2026-11-01): land in مكة المكرمة with no pin and no map link yet.
+describe("bank with no subject location", () => {
+  const MAKKAH_LAND = {
+    id: "CMP-MAKKAH",
+    city: "مكة المكرمة",
+    comparablePropertyType: "أرض",
+    latitude: 21.35,
+    longitude: 39.95,
+    areaSqm: 5000,
+  } as unknown as ComparablePropertyDto;
+  const OTHER_CITY_LAND = {
+    ...MAKKAH_LAND,
+    id: "CMP-RIYADH",
+    city: "الرياض",
+  } as ComparablePropertyDto;
+
+  // The same `Contains` filters ComparablePropertyRepository applies on the server.
+  beforeEach(() => {
+    listComparableProperties.mockImplementation(
+      async (_config: unknown, query: ComparablePropertyListQuery) => ({
+        ok: true,
+        data: [MAKKAH_LAND, OTHER_CITY_LAND].filter(
+          (c) =>
+            (!query.city || (c.city ?? "").includes(query.city)) &&
+            (!query.propertyType || c.comparablePropertyType.includes(query.propertyType)),
+        ),
+      }),
+    );
+  });
+
+  it("shows a comparable saved as «أرض» whatever the subject's registered type", async () => {
+    const res = await fetchBankCandidates(
+      { token: "t", baseUrl: "" },
+      { city: "مكة المكرمة", propertyId: "p1", subjectSqm: 147431 },
+    );
+    expect(res.subjectCoords).toBeNull();
+    // No type goes to the server: «أرض» never contains «أرض سكنية», «فيلا» or «مزرعة».
+    expect(listComparableProperties.mock.calls[0][1].propertyType).toBeUndefined();
+
+    const { rows } = buildBankDisplayRows({
+      selectionItems: [],
+      candidates: res.data,
+      subjectCity: "مكة المكرمة",
+      subjectCoords: res.subjectCoords,
+    });
+    expect(rows.map((r) => r.comp.id)).toEqual(["CMP-MAKKAH"]);
   });
 });

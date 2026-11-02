@@ -84,7 +84,7 @@ export function EngineeringSurveyPropertySummary({
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
         <EngField label="التصنيف" value={property.classification || "—"} />
         <EngField
-          label="النوع / الاستخدام"
+          label="النوع"
           value={property.propertyType || "—"}
         />
         <EngField

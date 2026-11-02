@@ -2,42 +2,34 @@ import { describe, expect, it } from "vitest";
 import { formatPropertyTypeLine } from "../po-intake-property-model";
 
 describe("formatPropertyTypeLine", () => {
-  it("joins type then usage as in «فيلا / سكنية»", () => {
-    expect(
-      formatPropertyTypeLine({
-        propertyType: "فيلا",
-        classification: "سكنية",
-      }),
-    ).toBe("فيلا / سكنية");
+  it("shows the type alone before the inspection", () => {
+    expect(formatPropertyTypeLine({ propertyType: "عمارة" })).toBe("عمارة");
   });
 
-  it("returns the one filled side when the other is blank", () => {
-    expect(
-      formatPropertyTypeLine({ propertyType: "فيلا", classification: "  " }),
-    ).toBe("فيلا");
-    expect(
-      formatPropertyTypeLine({ propertyType: "", classification: "سكني" }),
-    ).toBe("سكني");
+  it("pairs the type with the use the inspector recorded", () => {
+    expect(formatPropertyTypeLine({ propertyType: "عمارة", inspectedUsage: "سكني" })).toBe("عمارة / سكني");
   });
 
-  it("does not duplicate when type and usage are the same", () => {
-    expect(
-      formatPropertyTypeLine({
-        propertyType: "سكني",
-        classification: "سكني",
-      }),
-    ).toBe("سكني");
+  it("never shows the classification, which is only for the system", () => {
+    const line = formatPropertyTypeLine({
+      propertyType: "عمارة",
+      classification: "مبنى مفرد",
+    } as Parameters<typeof formatPropertyTypeLine>[0]);
+    expect(line).toBe("عمارة");
+  });
+
+  it("does not duplicate when type and use are the same", () => {
+    expect(formatPropertyTypeLine({ propertyType: "سكني", inspectedUsage: "سكني" })).toBe("سكني");
   });
 
   it("prefers the inspector-confirmed type over the initial intake type", () => {
     expect(
       formatPropertyTypeLine({
-        propertyType: "ارض",
-        classification: "سكني",
+        propertyType: "أرض سكنية",
         inspectedPropertyType: "فيلا",
         effectivePropertyType: "فيلا",
+        inspectedUsage: "سكني تجاري",
       }),
-      // The inspector's type brings its own classification (2026-10-29).
-    ).toBe("فيلا / مبنى مفرد");
+    ).toBe("فيلا / سكني تجاري");
   });
 });

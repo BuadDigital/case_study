@@ -29,6 +29,7 @@ export const SAVE_CHIP_SECTION_BY_FIELD: Record<string, InspectorSaveChipSection
   mainStreetName: "access",
   streetWidthM: "access",
   accessRouteDescription: "access",
+  siteAttendedBy: "access",
   accessContactName: "access",
   accessContactPhone: "access",
   accessContactRole: "access",

@@ -6,6 +6,7 @@ import type {
 import {
   addableFactorOptions,
   buildMatrixAlerts,
+  fmtChainValue,
   grossAdjustmentPct,
   matrixBasisView,
 } from "../adjustments-matrix-state";
@@ -77,6 +78,24 @@ describe("matrixBasisView", () => {
     expect(matrixBasisView(list("market", "whole_property"), [], "180").areaMethod).toContain(
       "لا تسوية مساحة",
     );
+  });
+});
+
+describe("fmtChainValue", () => {
+  it("keeps the fraction of a price per m², so rate × area equals the value beside it", () => {
+    expect(fmtChainValue(4.5, true)).toBe("4.5");
+    expect(fmtChainValue(4.41, true)).toBe("4.41");
+    expect(fmtChainValue(5, true)).toBe("5");
+    expect(fmtChainValue(2494.09, true)).toBe("2,494.09");
+  });
+
+  it("stays in whole riyals on the whole-property basis", () => {
+    expect(fmtChainValue(1_955_260.25, false)).toBe("1,955,260");
+  });
+
+  it("shows a dash for no figure on either basis", () => {
+    expect(fmtChainValue(null, true)).toBe("—");
+    expect(fmtChainValue(undefined, false)).toBe("—");
   });
 });
 

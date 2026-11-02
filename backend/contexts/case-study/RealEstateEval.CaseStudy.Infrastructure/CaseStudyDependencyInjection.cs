@@ -46,6 +46,8 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<IClientService, ClientService>();
         services.AddScoped<IBuildingInventoryRepository, BuildingInventoryRepository>();
         services.AddScoped<IBuildingInventoryService, BuildingInventoryService>();
+        services.AddScoped<IPropertyPhotoMarksRepository, PropertyPhotoMarksRepository>();
+        services.AddScoped<IPropertyPhotoMarksService, PropertyPhotoMarksService>();
         services.AddWorkflowTaskCollaborators();
         services.AddScoped<IWorkOrderVisibilityFilter, WorkOrderVisibilityFilter>();
         services.AddScoped<ICaseStudyReportRepository, CaseStudyReportRepository>();
@@ -59,6 +61,7 @@ public static class CaseStudyDependencyInjection
         services.AddScoped<ICaseStudyFailureGate, CaseStudyFailureGate>();
         services.AddScoped<ICurrentPrototypeRoleResolver, HttpCurrentPrototypeRoleResolver>();
         services.AddScoped<IPartyTaskSubmissionService, PartyTaskSubmissionService>();
+        services.AddScoped<IPriorInspectionCopyService, PriorInspectionCopyService>();
         services.AddScoped<IFieldInspectionWorkspaceService, FieldInspectionWorkspaceService>();
         services.AddScoped<IFieldInspectionAttachmentVerifier, FieldInspectionAttachmentVerifier>();
         services.AddScoped<IPropertyTimelineService, PropertyTimelineService>();

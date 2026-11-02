@@ -274,11 +274,11 @@ export function usePoPropertyDetailTabsWorkflow({
     enabled: !propertyMediaVisited,
   });
   const primaryPhoto = useMemo(() => {
-    const fromSections = pickInspectorPrimaryPhoto(propertyPhotos);
+    const fromSections = pickInspectorPrimaryPhoto(propertyPhotos, property.photoMarks);
     return fromSections?.dataUrl
       ? fromSections
       : (primaryPhotoOnly ?? fromSections);
-  }, [propertyPhotos, primaryPhotoOnly]);
+  }, [propertyPhotos, primaryPhotoOnly, property.photoMarks]);
   const partyCards = buildPropertyDetailPartyCards({
     task: task ?? null,
     allTasks: tasks,

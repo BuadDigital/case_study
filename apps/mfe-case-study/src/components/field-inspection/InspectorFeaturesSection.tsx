@@ -30,6 +30,7 @@ import {
   MobileFieldLabel,
   MobilePills,
   MobileSearchSelect,
+  mobileControlClassName,
   MobileSuggestRow,
   featureUsesPills,
 } from "./InspectMobileControls";
@@ -39,6 +40,7 @@ import {
 import {
   InspectorMovablesPhotosField,
 } from "./InspectorMovablesPhotosField";
+import { InspectorPropertyUsageField } from "./InspectorPropertyUsageField";
 import { movablesPhotosResetPatch } from "./inspector-wizard-state";
 import { bourseSourceNotes } from "../../lib/app-data/inspector-bourse-prefill";
 import {
@@ -213,6 +215,20 @@ export function InspectorFeaturesSection({
                   ) : null}
                 </Td>
                 <Td>
+                  {field.key === "propertyUsage" ? (
+                    <InspectorPropertyUsageField
+                      value={value}
+                      invalid={valueMissing}
+                      controlClassName={cn(
+                        formControlClassName,
+                        "w-full appearance-none rounded-md border border-border-md bg-surface px-[9px] py-[5px] text-[12px] text-text font-inherit",
+                        valueMissing && inspectorInvalidControlClass,
+                      )}
+                      onChange={(next) =>
+                        persist((current) => featureValuePatch(current, field, next))
+                      }
+                    />
+                  ) : (
                   <Select
                     value={value}
                     aria-invalid={valueMissing || undefined}
@@ -239,6 +255,7 @@ export function InspectorFeaturesSection({
                       </option>
                     ))}
                   </Select>
+                  )}
                 </Td>
                 <Td
                   id={`ins-feature-photo-${field.key}`}
@@ -400,7 +417,14 @@ export function InspectorFeaturesSection({
                 </span>
               ) : null}
             </MobileFieldLabel>
-            {usePills ? (
+            {field.key === "propertyUsage" ? (
+              <InspectorPropertyUsageField
+                value={value}
+                invalid={valueMissing}
+                controlClassName={mobileControlClassName}
+                onChange={setFeatureValue}
+              />
+            ) : usePills ? (
               <MobilePills
                 options={field.options}
                 value={value}

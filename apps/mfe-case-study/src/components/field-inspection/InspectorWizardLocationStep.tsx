@@ -24,8 +24,8 @@ import {
   inspectorWizardCoordsValue,
   inspectorWizardMapGeo,
 } from "./inspector-wizard-state";
-import { parseCoordinatePair } from "@platform/app-shared/domain/geo";
-import { shouldUseJeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
+import { InspectorCoordsInput } from "./InspectorCoordsInput";
+import { InspectorCopyPriorButton } from "./InspectorCopyPriorButton";
 import { nonNegativeDecimalInput } from "../../lib/app-data/specialist-components";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
 import { InspectorTransactionDocumentsCard } from "./InspectorTransactionDocumentsCard";
@@ -41,8 +41,6 @@ import {
   InsReadField,
 } from "../po-intake/PropertyDetailInspectionParts";
 import {
-  EDIT_CONTROL_CLASS,
-  INS_LABEL_CLASS,
   INS_WIZARD_PIN_BUTTON_CLASS,
 } from "./FieldInspectionWorkParts";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
@@ -113,21 +111,15 @@ export function InspectorWizardLocationStep({
     [draft, mapActor, mapPinned, engineeringMapPin],
   );
   const coordsValue = inspectorWizardCoordsValue(draft);
-  // The coordinates box: `coordsText` is what the user is typing (used only while the box is focused);
-  // `coordsValue` is the saved pair from the draft. Typing never writes a half pair to the draft: only a complete,
-  // in-range «lat, lng» (read by `parseCoordinatePair`) is patched. Before this, every keystroke patched the draft,
-  // an incomplete pair made the derived value empty and wiped the box, and a blank save was repaired back to the
-  // Jeddah default — so the field could not be cleared and retyped.
-  const [coordsText, setCoordsText] = useState(coordsValue);
-  const [coordsEditing, setCoordsEditing] = useState(false);
-  // A complete pair outside the Kingdom is not written to the draft: it used to be saved, then
-  // swapped for the Jeddah placeholder on reload while the screen said «تم تثبيت الموقع» (2026-10-28).
   const [coordsOutside, setCoordsOutside] = useState(false);
 
   return (
     <>
       <InsCard title="تحديد موقع العقار" step={1}>
         <div id="ins-map-section">
+        {editable && mapActor === "inspector" ? (
+          <InspectorCopyPriorButton taskId={draft.taskId} className="mb-3" onApply={onPatch} />
+        ) : null}
         <div
           key={`${draft.mapLatitude},${draft.mapLongitude},${mapPinEpoch}`}
           className="relative h-[280px] overflow-hidden rounded-lg border border-border"
@@ -159,46 +151,13 @@ export function InspectorWizardLocationStep({
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-2.5">
           {editable && !mapPinned ? (
-            <div className="min-w-[240px] flex-1">
-              <span className={INS_LABEL_CLASS}>الإحداثيات</span>
-              <input
-                id="ins-map-coords"
-                className={cn(
-                  EDIT_CONTROL_CLASS,
-                  "tabular-nums",
-                  (fieldErrors.mapLatitude || coordsOutside) && invalidControlClass,
-                )}
-                dir="ltr"
-                placeholder="21.523339, 39.187743"
-                value={coordsEditing ? coordsText : coordsValue}
-                onFocus={() => {
-                  setCoordsText(coordsValue);
-                  setCoordsEditing(true);
-                }}
-                onBlur={() => setCoordsEditing(false)}
-                onChange={(e) => {
-                  // The text is the user's own while typing; the draft only takes a complete pair
-                  // (a half-typed value would otherwise be wiped, or revert to the saved one).
-                  setCoordsText(e.target.value);
-                  const pair = parseCoordinatePair(e.target.value);
-                  if (!pair) {
-                    setCoordsOutside(false);
-                    return;
-                  }
-                  const outside = shouldUseJeddahDefaultCoords(String(pair.lat), String(pair.lng));
-                  setCoordsOutside(outside);
-                  if (outside) return;
-                  onPatch(
-                    mapPinPatchForActor(draft, String(pair.lat), String(pair.lng), mapActor),
-                  );
-                }}
-              />
-              {coordsOutside ? (
-                <p className="mt-1 text-[11px] text-danger-text" role="alert">
-                  الإحداثيات خارج المملكة — تأكد من ترتيبها (خط العرض ثم خط الطول)
-                </p>
-              ) : null}
-            </div>
+            <InspectorCoordsInput
+              value={coordsValue}
+              invalid={Boolean(fieldErrors.mapLatitude)}
+              className="min-w-[240px] flex-1"
+              onOutsideChange={setCoordsOutside}
+              onCoords={(lat, lng) => onPatch(mapPinPatchForActor(draft, lat, lng, mapActor))}
+            />
           ) : (
             <InsReadField
               id="ins-map-coords"

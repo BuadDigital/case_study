@@ -18,6 +18,7 @@
     "@evaluator/mfe": "*",
     "@failures/mfe": "*",
     "@financial/mfe": "*",
+    "@fontsource/tajawal": "^5.3.0",
     "@keys/mfe": "*",
     "@platform/api-client": "*",
     "@platform/app-shared": "*",

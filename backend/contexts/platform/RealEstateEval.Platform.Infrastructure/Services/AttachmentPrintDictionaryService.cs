@@ -7,6 +7,7 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Platform.Infrastructure.Data.Contexts;
+using RealEstateEval.Platform.Application.Rules;
 using RealEstateEval.Platform.Infrastructure.Data;
 using RealEstateEval.Platform.Domain;
 
@@ -84,6 +85,46 @@ public sealed class AttachmentPrintDictionaryService
                 SingletonId.ToString(),
                 before,
                 after));
+        }
+        await PersistAsync(catalog, cancellationToken);
+        return ToListsDto(catalog);
+    }
+
+    async Task IValuationListsService.RecordPropertyUsageAsync(
+        string nameAr,
+        string actorId,
+        CancellationToken cancellationToken)
+    {
+        var catalog = await LoadAsync(cancellationToken);
+        var rows = catalog.Lists.GetValueOrDefault(ValuationListIds.PropertyUsages) ?? [];
+        var next = PropertyUsageListRules.Record(rows, nameAr, () => $"item-{Guid.NewGuid():N}"[..16]);
+        if (next is null) return;
+
+        catalog.Lists[ValuationListIds.PropertyUsages] = next;
+        await PersistAsync(catalog, cancellationToken);
+    }
+
+    async Task<ValuationListsDto> IValuationListsService.ReviewPropertyUsageAsync(
+        string key,
+        ReviewPropertyUsageRequest request,
+        string actorId,
+        CancellationToken cancellationToken)
+    {
+        var catalog = await LoadAsync(cancellationToken);
+        var before = ToListsDto(catalog);
+        var rows = catalog.Lists.GetValueOrDefault(ValuationListIds.PropertyUsages) ?? [];
+        catalog.Lists[ValuationListIds.PropertyUsages] =
+            PropertyUsageListRules.Review(rows, key, request.Action, request.NameAr);
+
+        if (_audit is not null)
+        {
+            _db.AuditLogs.Add(_audit.Create(
+                string.IsNullOrWhiteSpace(actorId) ? "system" : actorId.Trim(),
+                "PROPERTY_USAGE_REVIEWED",
+                "valuation_lists",
+                SingletonId.ToString(),
+                before,
+                ToListsDto(catalog)));
         }
         await PersistAsync(catalog, cancellationToken);
         return ToListsDto(catalog);
@@ -242,6 +283,8 @@ public sealed class AttachmentPrintDictionaryService
                 IsSystemDefault = row.IsSystemDefault,
                 IsRequired = required,
                 PropertyTypeKeys = propertyKeys,
+                Status = ValuationListItemStatuses.Normalize(row.Status),
+                RawInput = string.IsNullOrWhiteSpace(row.RawInput) ? null : row.RawInput.Trim(),
             });
         }
 

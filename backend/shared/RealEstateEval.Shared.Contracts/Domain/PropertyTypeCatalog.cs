@@ -52,6 +52,13 @@ public static class PropertyTypeCatalog
         .SelectMany(g => g.Types.Select(t => (Type: t, g.Classification)))
         .ToDictionary(x => x.Type, x => x.Classification, StringComparer.Ordinal);
 
+    /// <summary>
+    /// One of the five classifications. The inspector's «استخدام العقار» held these until 2026-11-01, so
+    /// a stored value that is one says nothing about the property's use and reads as empty.
+    /// </summary>
+    public static bool IsClassification(string? value) =>
+        (value ?? "").Trim() is Land or SingleBuilding or Complex or UnitInBuilding or PublicFacility;
+
     /// <summary>The catalogue types in classification order (47).</summary>
     public static IReadOnlyList<string> All { get; } =
         ByClassification.SelectMany(g => g.Types).ToArray();

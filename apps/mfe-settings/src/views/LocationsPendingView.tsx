@@ -4,10 +4,13 @@
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
+  getValuationLists,
   listPendingLocations,
   reviewPendingCity,
   reviewPendingDistrict,
+  reviewPropertyUsage,
   type PendingLocationDto,
+  type ValuationListsDto,
 } from "@platform/api-client";
 import {
   Badge,
@@ -44,12 +47,30 @@ const MAP_PIN_ICON =
   "M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0zM12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z";
 
 
+const USAGE_KIND = "usage";
+
 function kindLabel(kind: string): string {
+  if (kind === USAGE_KIND) return "استخدام";
   return kind === "district" ? "حي" : "مدينة";
 }
 
 function KindBadge({ kind }: { kind: string }) {
-  return <Badge tone={kind === "district" ? "info" : "primary"}>{kindLabel(kind)}</Badge>;
+  return <Badge tone={kind === "city" ? "primary" : "info"}>{kindLabel(kind)}</Badge>;
+}
+
+/** Usage names the inspectors wrote, as rows of this same queue. Their id is the list row's key. */
+function pendingUsageItems(lists: ValuationListsDto | null): PendingLocationDto[] {
+  return (lists?.lists.propertyUsages ?? [])
+    .filter((row) => row.status === "pending")
+    .map((row) => ({
+      id: row.key,
+      kind: USAGE_KIND,
+      nameAr: row.name,
+      rawInput: row.rawInput,
+      scopeLabel: "استخدام العقار",
+      usageCount: row.usage,
+      createdAtUtc: "",
+    }));
 }
 
 export function LocationsPendingView() {
@@ -66,7 +87,10 @@ export function LocationsPendingView() {
     const config = apiConfig();
     if (!config) return;
     setLoading(true);
-    const result = await listPendingLocations(config);
+    const [result, lists] = await Promise.all([
+      listPendingLocations(config),
+      getValuationLists(config),
+    ]);
     setLoading(false);
     if (!result.ok) {
       setItems([]);
@@ -80,7 +104,7 @@ export function LocationsPendingView() {
       return;
     }
     setLoadError("");
-    setItems(result.items);
+    setItems([...result.items, ...pendingUsageItems(lists.ok ? lists.data : null)]);
   }, [authReady]);
 
   useEffect(() => {
@@ -100,9 +124,11 @@ export function LocationsPendingView() {
         ? (renameDrafts[item.id] ?? item.nameAr).trim()
         : undefined;
     const result =
-      item.kind === "district"
-        ? await reviewPendingDistrict(config, item.id, { action, nameAr })
-        : await reviewPendingCity(config, item.id, { action, nameAr });
+      item.kind === USAGE_KIND
+        ? await reviewPropertyUsage(config, item.id, { action, nameAr })
+        : item.kind === "district"
+          ? await reviewPendingDistrict(config, item.id, { action, nameAr })
+          : await reviewPendingCity(config, item.id, { action, nameAr });
     setBusyId(null);
     if (!result.ok) {
       showToast(
@@ -161,8 +187,8 @@ export function LocationsPendingView() {
       dir="rtl"
     >
       <p className={cn(opsTfNote, "m-0 mb-3.5")}>
-        مدن وأحياء أضافها المستخدمون — اعتمد أو صحّح الاسم قبل دمجه لاحقاً في
-        المرجع الرسمي.
+        مدن وأحياء واستخدامات أضافها المستخدمون — اعتمد أو صحّح الاسم قبل دمجه
+        لاحقاً في المرجع الرسمي.
       </p>
 
       <section className={opsLetterCard}>
@@ -174,7 +200,7 @@ export function LocationsPendingView() {
             <div>
               <div className={opsLetterTitle}>مراجعة المسميات المبدئية</div>
               <div className={opsLetterSub}>
-                طابور الاعتماد للمدن والأحياء المقترحة
+                طابور الاعتماد للمدن والأحياء والاستخدامات المقترحة
               </div>
             </div>
           </div>

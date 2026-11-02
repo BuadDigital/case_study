@@ -39,6 +39,7 @@ import {
 } from "../../../lib/evaluator/inspector-data-changes";
 import { ComparablesBankTable } from "./ComparablesBankTable";
 import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
+import { fmtChainValue } from "./lib/adjustments-matrix-state";
 import { fmt } from "./lib/shell-utils";
 import { marketSubjectAreaLabel } from "./lib/market-subject";
 import {
@@ -319,7 +320,7 @@ export function ValuationWorkShell({
                   },
                   {
                     label: marketIsUnit ? "سعر المتر بعد التسوية" : "المتوسط المرجّح",
-                    value: fmt(selection?.weightedPricePerSqm),
+                    value: fmtChainValue(selection?.weightedPricePerSqm, marketIsUnit),
                   },
                 ]
               : []),

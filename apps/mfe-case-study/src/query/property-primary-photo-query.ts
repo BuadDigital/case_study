@@ -49,6 +49,7 @@ export function usePropertyPrimaryPhoto(input: {
         poNumber,
         inspectionTaskId,
       }),
+      property.photoMarks,
     );
   // Live ref so the effect keys on primary keys, not on the property object's identity.
   const pickRef = useLatestRef(pick);
@@ -106,6 +107,7 @@ export function usePropertyPrimaryPhoto(input: {
     enabled,
     // Property key, not identity — see usePropertyDetailDocuments.
     property.id,
+    property.photoMarks?.main,
     showDecree,
     poNumber,
     inspectionTaskId,

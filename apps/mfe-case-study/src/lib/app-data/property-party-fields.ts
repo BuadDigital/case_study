@@ -161,6 +161,7 @@ export const FIELD_INSPECTION_SECTION: PartyDataSectionDef = {
     text("mainStreetName", L.mainStreet),
     area("accessRouteDescription", "تأكيد موقع العقار"),
     text("streetWidthM", L.streetWidth, true),
+    text("siteAttendedBy", "تم الوقوف على العقار عن طريق"),
     text("accessContactName", "اسم من أتاح الوصول"),
     text("accessContactPhone", "جوال من أتاح الوصول", true),
     text("accessContactRole", "صفة من أتاح الوصول"),

@@ -379,6 +379,16 @@ public sealed partial class ValuationComparableSelectionService(
         return list.Items.FirstOrDefault(i => i.Id == selectionId);
     }
 
+    /// <summary>
+    /// Brings the comparables entered inside this property's transaction into its tables, adopted.
+    /// How it works: runs on each market read. A comparable linked to the property and not yet in the
+    /// market table is added; a land comparable of a built subject goes where it can be seen, by
+    /// <see cref="LinkedComparableRules"/>.
+    /// Edge cases: the type alone used to decide, so a villa valued as «أرض فقط» sent its land comparable
+    /// to the land table, which that scope never shows: adopted, invisible, and absent from the value.
+    /// Such a row now enters the market table on the next read. A frozen valuation takes nothing here,
+    /// because a new adopted row would move a value already handed over.
+    /// </summary>
     private async Task<bool> ImportPropertyLinkedComparablesAsync(
         ValuationRequest request,
         CancellationToken cancellationToken)
@@ -409,6 +419,12 @@ public sealed partial class ValuationComparableSelectionService(
             .Exclude(links.Where(id => !existing.Contains(id)))
             .ToList();
         if (candidates.Count == 0) return true;
+        if (await freeze.IsFrozenAsync(request.Id, cancellationToken)) return true;
+
+        var settings = await repo.GetApproachSettingsAsync(request.Id, cancellationToken);
+        var landTableShown = LinkedComparableRules.LandTableIsShown(
+            settings?.CostApproachEnabled,
+            settings?.CostScopeKey);
 
         var activeIds = (await repo.ListActiveComparableIdsAsync(candidates, cancellationToken))
             .ToHashSet();
@@ -425,6 +441,7 @@ public sealed partial class ValuationComparableSelectionService(
 
         var now = _time.UtcNow();
         var added = false;
+        var landAdoptedInMarket = false;
         foreach (var comparableId in candidates)
         {
             if (!activeIds.Contains(comparableId)) continue;
@@ -432,7 +449,11 @@ public sealed partial class ValuationComparableSelectionService(
                 && linkedComps.TryGetValue(comparableId, out var linked)
                 && PropertyCategoryRules.Categorize(linked.ComparablePropertyType, linked.Usage)
                     == PropertyCategoryRules.Land;
-            if (isLandComp && existingLand.Contains(comparableId)) continue;
+            var toLandTable = isLandComp && landTableShown;
+            if (toLandTable && existingLand.Contains(comparableId)) continue;
+            var adoptInMarket = !toLandTable
+                && (!isLandComp || LinkedComparableRules.AdoptLandInMarket(settings?.CostScopeKey));
+            landAdoptedInMarket |= isLandComp && adoptInMarket;
             var selectionId = Guid.NewGuid();
             await repo.AddSelectionAsync(
                 new ValuationComparableSelection
@@ -440,11 +461,11 @@ public sealed partial class ValuationComparableSelectionService(
                     Id = selectionId,
                     ValuationRequestId = request.Id,
                     ComparablePropertyId = comparableId,
-                    SelectionContext = isLandComp
+                    SelectionContext = toLandTable
                         ? ComparableSelectionContexts.LandWithinCost
                         : ComparableSelectionContexts.Market,
-                    SortOrder = isLandComp ? ++maxLandOrder : ++maxOrder,
-                    IsAdopted = true,
+                    SortOrder = toLandTable ? ++maxLandOrder : ++maxOrder,
+                    IsAdopted = toLandTable || adoptInMarket,
                     SelectedAtUtc = now,
                 },
                 cancellationToken);
@@ -457,6 +478,16 @@ public sealed partial class ValuationComparableSelectionService(
         if (!added) return true;
 
         await EnsureMarketApproachHeaderAsync(request.Id, cancellationToken);
+        // A header saved while the villa was still compared as a whole keeps that basis once the scope
+        // becomes «أرض فقط», and a whole plot's price would then stand for the subject's land unmultiplied.
+        if (landAdoptedInMarket
+            && await repo.FindMarketApproachAsync(request.Id, cancellationToken) is { } header
+            && MarketAdjustmentBasisKeys.Normalize(header.AdjustmentBasis) == MarketAdjustmentBasisKeys.WholeProperty)
+        {
+            header.AdjustmentBasis = MarketAdjustmentBasisKeys.PricePerSqm;
+            header.UpdatedAtUtc = now;
+        }
+
         // The reconciliation read and the selections read both open a fresh request at once, so both import
         // the same linked comparables. TrySaveSeedAsync tolerates losing that race (the winner's rows are
         // read afterwards) instead of failing the whole request with a 500.

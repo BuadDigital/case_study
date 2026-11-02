@@ -31,7 +31,16 @@ import {
   type ValuationReconciliationDto,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import { fetchInspectorWorkspace } from "../../lib/case-study-bridge";
+import {
+  collectFieldInspectionDocumentsFromSubmission,
+  fetchInspectorWorkspace,
+} from "../../lib/case-study-bridge";
+import {
+  orderPropertyPhotos,
+  photoMarkId,
+  reportPhotoIds,
+  type PropertyPhotoMarks,
+} from "@platform/app-shared/app-data/property-detail-document-types";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
@@ -274,6 +283,30 @@ export function reportValuationChoices(input: {
   };
 }
 
+/**
+ * Which inspector photos the report prints.
+ *
+ * How it works: the specialist's chosen photos fill the slots when there are any; otherwise the
+ * slots fill in the automatic order, the main photo first.
+ * Edge cases: a photo the property's list does not show still stays at the end of the budget, and
+ * a choice whose photos are all gone counts as no choice.
+ */
+export function reportPhotoSelection(
+  inspector: InspectorWorkspaceDraft | null | undefined,
+  marks: PropertyPhotoMarks | null | undefined,
+): { inspectorPhotoIds: string[]; photoSlotIds: string[] } {
+  const photos = inspector
+    ? collectFieldInspectionDocumentsFromSubmission(inspector).filter(
+        (doc) => doc.kind === "image",
+      )
+    : [];
+  const ordered = orderPropertyPhotos(photos, marks).map(photoMarkId).filter(Boolean);
+  return {
+    inspectorPhotoIds: [...new Set([...ordered, ...collectInspectorPhotoAttachmentIds(inspector)])],
+    photoSlotIds: reportPhotoIds(photos, marks),
+  };
+}
+
 /** Valuation report output-tab data bundle — one cacheable query:
  * switching tabs within staleTime does not re-fire 7+ requests. */
 export async function loadReportOutputBundle(input: {
@@ -330,15 +363,20 @@ export async function loadReportOutputBundle(input: {
           : null;
       const surveyAttachmentId =
         surveyReportAttachmentIdFromPayload(surveyPayload);
+      const { inspectorPhotoIds, photoSlotIds } = reportPhotoSelection(
+        ws,
+        input.property?.photoMarks,
+      );
       return loadValuationReportPrintAttachments(
         config,
         { poNumber: input.poNumber, propertyId },
         true,
         {
-          inspectorPhotoIds: collectInspectorPhotoAttachmentIds(ws),
+          inspectorPhotoIds,
           surveyAttachmentIds: surveyAttachmentId
             ? [surveyAttachmentId]
             : [],
+          ...(photoSlotIds.length ? { preferredAttachmentIds: { photoSlotIds } } : {}),
         },
       );
     },

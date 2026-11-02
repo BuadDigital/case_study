@@ -19,6 +19,7 @@ internal static class ValuationListsSeed
         [ValuationListIds.Comparables] = Comparables(),
         [ValuationListIds.Facades] = Facades(),
         [ValuationListIds.BoundaryTypes] = BoundaryTypes(),
+        [ValuationListIds.PropertyUsages] = PropertyUsages(),
         [ValuationListIds.Glossary] = Glossary(),
         [ValuationListIds.IvsStandards] = IvsStandards(),
         [ValuationListIds.Attachments] = Attachments(),
@@ -38,6 +39,24 @@ internal static class ValuationListsSeed
             SortOrder = i,
             IsSystemDefault = true,
         };
+
+    /// <summary>«استخدام العقار» — what the inspector finds on site, not the bourse classification.</summary>
+    private static List<ValuationListItemDto> PropertyUsages()
+    {
+        var i = 0;
+        return
+        [
+            Row(ValuationListIds.PropertyUsages, ++i, "residential", "سكني", 0),
+            Row(ValuationListIds.PropertyUsages, ++i, "residential_commercial", "سكني تجاري", 0),
+            Row(ValuationListIds.PropertyUsages, ++i, "commercial", "تجاري", 0),
+            Row(ValuationListIds.PropertyUsages, ++i, "commercial_office", "تجاري إداري", 0),
+            Row(ValuationListIds.PropertyUsages, ++i, "office", "إداري", 0),
+            Row(ValuationListIds.PropertyUsages, ++i, "warehouses", "مستودعات", 0),
+            Row(ValuationListIds.PropertyUsages, ++i, "industrial", "صناعي", 0),
+            Row(ValuationListIds.PropertyUsages, ++i, "agricultural", "زراعي", 0),
+            Row(ValuationListIds.PropertyUsages, ++i, "services", "خدمي", 0),
+        ];
+    }
 
     private static List<ValuationListItemDto> Purposes()
     {

@@ -6,6 +6,7 @@ import type {
 import {
   coordsFromLocationMapUrl,
   fillValuersFromAppraisalTasks,
+  inspectionTaskIdForMapRecord,
   inspectorPinsByPropertyId,
   mapPoRecordsToMapProperties,
   resolveLivePropertyCoords,
@@ -13,6 +14,7 @@ import {
 } from "../map-live-records";
 import type { PoIntakeRecord } from "../po-intake-property-model";
 import { emptyProperty } from "../po-intake-property-model";
+import type { WorkflowTask } from "../tasks";
 import type { FailureRecord, FailureStatus } from "@platform/app-shared/failures/failures-types";
 
 function sampleRecord(propertyId = "prop-1"): PoIntakeRecord[] {
@@ -154,6 +156,34 @@ describe("map-live-records", () => {
     expect(mapped[0]!.valuer).toBe("أ. فهد الشمري");
     expect(mapped[0]!.workflowStatus).toBe("in_progress");
     expect(mapped[0]!.finalValue).toBeNull();
+  });
+});
+
+describe("inspectionTaskIdForMapRecord", () => {
+  const record = { poNumber: "PO-100", propertyId: "prop-1" };
+  const task = (over: Partial<WorkflowTask>) =>
+    ({ poNumber: "PO-100", propertyId: "prop-1", ...over }) as WorkflowTask;
+  const workspace = { workflowTaskId: "ws-task", propertyId: "PROP-1" } as FieldInspectionWorkspaceListItemDto;
+
+  it("takes the visible inspection task before the workspace list", () => {
+    const tasks = [task({ id: "visible", kind: "field-inspection" })];
+    expect(inspectionTaskIdForMapRecord(record, tasks, [workspace])).toBe("visible");
+  });
+
+  it("reads the sibling id on the appraiser's own task", () => {
+    const tasks = [
+      task({ id: "appraisal", kind: "property-appraisal", fieldInspectionTaskId: "sibling" }),
+    ];
+    expect(inspectionTaskIdForMapRecord(record, tasks, [])).toBe("sibling");
+  });
+
+  it("falls back to the workspace list, matching the id in any case", () => {
+    expect(inspectionTaskIdForMapRecord(record, [], [workspace])).toBe("ws-task");
+  });
+
+  it("gives null for a property never inspected or a record without ids", () => {
+    expect(inspectionTaskIdForMapRecord(record, [], [])).toBeNull();
+    expect(inspectionTaskIdForMapRecord({}, [], [workspace])).toBeNull();
   });
 });
 

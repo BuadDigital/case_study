@@ -159,6 +159,7 @@ export const ACCESS_ROUTE_DESCRIPTION_LABEL = "تأكيد موقع العقار"
 export const ACCESS_ROUTE_DESCRIPTION_HINT =
   "تم الوصول الى العقار بمعرفة:";
 export const ACCESS_CONTACT_NAME_LABEL = "الاسم";
+export const SITE_ATTENDED_BY_LABEL = "تم الوقوف على العقار عن طريق";
 export const ACCESS_CONTACT_PHONE_LABEL = "رقم الجوال";
 export const ACCESS_CONTACT_ROLE_LABEL = "الصلة";
 export const ACCESS_CONTACT_NATIONAL_ID_LABEL = "رقم الهوية";
@@ -291,9 +292,6 @@ export function patchInspectorFeatureValues(
       values[hidden] = "";
     }
   }
-  // «استخدام العقار» follows the type the inspector picked — the two cannot disagree.
-  const usage = key === "assetSubject" ? classificationForPropertyType(next) : null;
-  if (usage) values.propertyUsage = usage;
   return values;
 }
 
@@ -390,11 +388,35 @@ export const ALL_PROPERTY_TYPES: readonly string[] = PROPERTY_CLASSIFICATIONS.fl
 );
 
 /**
- * Inspector «استخدام العقار»: the property classification the bourse inquiry recorded (أرض، مبنى مفرد،
- * مجمع، وحدة داخل مبنى، مرفق عام) — the field is pre-answered from it. «الأصل محل التقييم» is the type.
- * (It used to list all 47 types, which duplicated «الأصل محل التقييم» and could not take the bourse answer.)
+ * Inspector «استخدام العقار»: what the property is used for, as found on site. The list lives in the
+ * settings; this copy serves the first render and a phone offline. The field is never pre-answered, and
+ * the inspector may write a name the list lacks.
+ * (It used to offer the five classifications and follow the type, so it said nothing about the use.)
  */
-const PROPERTY_USAGE_OPTIONS: readonly string[] = PROPERTY_CLASSIFICATIONS;
+export const PROPERTY_USAGE_OPTIONS: readonly string[] = [
+  "سكني",
+  "سكني تجاري",
+  "تجاري",
+  "تجاري إداري",
+  "إداري",
+  "مستودعات",
+  "صناعي",
+  "زراعي",
+  "خدمي",
+];
+
+/** The settings list that holds «استخدام العقار». */
+export const PROPERTY_USAGES_LIST_ID = "propertyUsages";
+
+/**
+ * A stored «استخدام العقار» as a real use.
+ * Edge cases: before this field held uses it held the classification copied from the bourse, so
+ * «مبنى مفرد» in an old inspection reads as no answer, and the inspector is asked for the use.
+ */
+export function propertyUsageValue(raw: string | null | undefined): string {
+  const value = (raw ?? "").trim();
+  return isPropertyClassification(value) ? "" : value;
+}
 
 function isPropertyClassification(
   value: string,
@@ -1114,6 +1136,11 @@ export type InspectorWorkspaceDraft = {
   streetName: string;
   mainStreetName: string;
   streetWidthM: string;
+  /**
+   * «تم الوقوف على العقار عن طريق» — the person who stood at the property with the inspector on this
+   * visit. Not the access contact («تأكيد موقع العقار»), who may only have given directions.
+   */
+  siteAttendedBy: string;
   /** Composed Infath free-text from access contact fields. */
   accessRouteDescription: string;
   accessContactName: string;
@@ -1338,6 +1365,7 @@ export function createInspectorWorkspaceDraft(input: {
     mainStreetName: "",
     streetWidthM: "",
     accessRouteDescription: "",
+    siteAttendedBy: "",
     accessContactName: "",
     accessContactPhone: "",
     accessContactRole: "",

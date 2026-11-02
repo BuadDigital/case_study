@@ -110,7 +110,7 @@ const KEYED_FIELDS: Record<string, Record<string, FieldOrigin>> = {
     "رقم المخطط": INTAKE,
     "رقم البلك": INTAKE,
     "رقم القطعة": INTAKE,
-    "استخدام العقار": INTAKE,
+    "استخدام العقار": INSPECTOR,
     "إحداثيات الموقع": INSPECTOR,
     "اسم المالك": INTAKE,
     "رقم الصك": INTAKE,
