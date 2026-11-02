@@ -47,8 +47,8 @@ type Result<T> =
 function normalize(data: ValuationListsDto): ValuationListsDto {
   return {
     ivsEffectiveDate: data.ivsEffectiveDate ?? "",
-    photoPagesLand: data.photoPagesLand ?? 1,
-    photoPagesBuilt: data.photoPagesBuilt ?? 2,
+    photoPagesLand: data.photoPagesLand ?? 4,
+    photoPagesBuilt: data.photoPagesBuilt ?? 4,
     lists: data.lists ?? {},
     updatedAtUtc: data.updatedAtUtc ?? "",
   };

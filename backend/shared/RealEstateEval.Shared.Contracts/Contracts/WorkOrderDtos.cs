@@ -9,8 +9,15 @@ public class PropertyPhotoMarksDto
     public string? Main { get; set; }
     public List<string> Electricity { get; set; } = [];
     public List<string> Water { get; set; } = [];
+    /// <summary>Photos of the movables inside the property (2026-11-02).</summary>
+    public List<string> Movables { get; set; } = [];
     /// <summary>The photos the report prints; empty = the first ones in the automatic order.</summary>
     public List<string> Report { get; set; } = [];
+    /// <summary>
+    /// The report section of a photo in <see cref="Report"/>: 1 exterior, 2 interior, 3 other. A
+    /// photo with no entry takes the section its inspection category suggests.
+    /// </summary>
+    public Dictionary<string, int> ReportSections { get; set; } = [];
 }
 
 public class PropertyContactDto

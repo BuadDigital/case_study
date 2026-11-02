@@ -6,8 +6,12 @@ export type PropertyPhotoMarksDto = {
   main: string | null;
   electricity: string[];
   water: string[];
-  /** The photos the report prints; empty = the first ones in the automatic order. */
+  /** Photos of the movables inside the property. */
+  movables?: string[];
+  /** The photos picked for the report; empty = the first ones in the report's order. */
   report: string[];
+  /** A picked photo's report section: 1 exterior, 2 interior, 3 other. */
+  reportSections?: Record<string, 1 | 2 | 3>;
 };
 
 /**

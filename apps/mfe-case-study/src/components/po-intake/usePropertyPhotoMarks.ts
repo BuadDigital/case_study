@@ -9,9 +9,9 @@ import { createKeyedWriteQueue } from "@platform/app-shared/lib/keyed-write-queu
 import { useToast } from "@platform/ui-kit";
 import {
   EMPTY_PROPERTY_PHOTO_MARKS,
-  REPORT_PHOTO_LIMIT,
-  togglePropertyPhotoMark,
-  type PropertyPhotoMark,
+  photoMarkId,
+  reportPhotoIds,
+  type PropertyDetailDocumentEntry,
   type PropertyPhotoMarks,
 } from "@platform/app-shared/app-data/property-detail-document-types";
 import { loadCaseStudyReportDraftOrThrow } from "../../lib/app-data/case-study-report-reads";
@@ -31,8 +31,9 @@ const markWrites = createKeyedWriteQueue();
  * readers (the main photo, the map) to read again.
  * Edge cases: a refused or failed save returns to what the server holds and says why. Editing is
  * open to work-order managers until the study report is issued; the server refuses after that too.
- * The report's limit counts only photos still on the property, so a marked photo that was retaken
- * cannot use up a slot nobody can clear.
+ * The report's limit counts what the report would print (the picked photos with the main photo and
+ * the meters), only photos still on the property, so a marked photo that was retaken cannot use up
+ * a slot nobody can clear; a change that does not add a photo is never refused.
  */
 export function usePropertyPhotoMarks({
   poNumber,
@@ -40,6 +41,7 @@ export function usePropertyPhotoMarks({
   stored,
   studyTaskId,
   enabled,
+  reportLimit,
 }: {
   poNumber: string;
   propertyId: string;
@@ -47,6 +49,8 @@ export function usePropertyPhotoMarks({
   studyTaskId: string | null;
   /** The photos tab was opened; the study report is read only then. */
   enabled: boolean;
+  /** How many photos the report prints («صفحات الصور» in the settings). */
+  reportLimit: number;
 }) {
   const { showToast } = useToast();
   const canManage = canManageWorkOrders();
@@ -67,21 +71,22 @@ export function usePropertyPhotoMarks({
     retry: false,
   });
 
-  const toggle = (id: string, mark: PropertyPhotoMark, liveIds: readonly string[]) => {
+  const change = (
+    photos: readonly PropertyDetailDocumentEntry[],
+    update: (marks: PropertyPhotoMarks) => PropertyPhotoMarks,
+  ) => {
+    const liveIds = new Set(photos.map(photoMarkId).filter(Boolean));
     const current = {
       ...marksRef.current,
-      report: marksRef.current.report.filter((item) => liveIds.includes(item)),
+      report: marksRef.current.report.filter((item) => liveIds.has(item)),
     };
-    if (
-      mark === "report" &&
-      !current.report.includes(id) &&
-      current.report.length >= REPORT_PHOTO_LIMIT
-    ) {
-      showToast(`التقرير يطبع ${REPORT_PHOTO_LIMIT} صورة كحد أقصى`, "error");
+    const next = update(current);
+    const printed = reportPhotoIds([...photos], next).length;
+    if (printed > reportLimit && printed > reportPhotoIds([...photos], current).length) {
+      showToast(`التقرير يطبع ${reportLimit} صورة كحد أقصى`, "error");
       return;
     }
 
-    const next = togglePropertyPhotoMark(current, id, mark);
     marksRef.current = next;
     setMarks(next);
     setSaving((count) => count + 1);
@@ -104,6 +109,6 @@ export function usePropertyPhotoMarks({
   return {
     marks,
     canEdit: canManage && !study.isLoading && study.data?.status !== "issued",
-    toggle,
+    change,
   };
 }

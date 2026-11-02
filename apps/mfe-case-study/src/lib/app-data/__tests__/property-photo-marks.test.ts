@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   EMPTY_PROPERTY_PHOTO_MARKS,
   orderPropertyPhotos,
+  orderReportPhotos,
   pickInspectorPrimaryPhoto,
   reportPhotoIds,
+  setReportPhotoSection,
+  suggestedReportSection,
   togglePropertyPhotoMark,
   type PropertyDetailDocumentEntry,
   type PropertyPhotoMarks,
@@ -115,7 +118,12 @@ describe("pressing a photo's icon", () => {
       "a",
       "water",
     );
-    expect(next).toEqual({ main: null, electricity: ["b"], water: ["a"], report: ["a"] });
+    expect(next).toEqual(marks({ electricity: ["b"], water: ["a"], report: ["a"] }));
+  });
+
+  it("makes a meter photo movables, never both", () => {
+    const next = togglePropertyPhotoMark(marks({ water: ["a"] }), "a", "movables");
+    expect(next).toEqual(marks({ movables: ["a"] }));
   });
 
   it("leaves the role alone when the report changes", () => {
@@ -124,17 +132,65 @@ describe("pressing a photo's icon", () => {
   });
 });
 
-describe("the photos the report prints", () => {
-  it("follows the automatic order, whatever order they were picked in", () => {
-    expect(reportPhotoIds([meter, facade, inside], marks({ report: ["meter", "inside", "facade"] }))).toEqual([
+describe("the report's sections", () => {
+  const room = photo("room", "صور داخلية · مرفق");
+  const kitchen = photo("kitchen", "صور داخلية · أخرى");
+  const yard = photo("yard", "صور خارجية · خدمة");
+
+  it("suggests exterior, interior or other from the inspector's category", () => {
+    expect(suggestedReportSection(facade)).toBe(1);
+    expect(suggestedReportSection(outside)).toBe(1);
+    expect(suggestedReportSection(inside)).toBe(2);
+    expect(suggestedReportSection(room)).toBe(2);
+    expect(suggestedReportSection(kitchen)).toBe(2);
+    expect(suggestedReportSection(yard)).toBe(3);
+    expect(suggestedReportSection(school)).toBe(3);
+    expect(suggestedReportSection(meter)).toBe(3);
+    expect(suggestedReportSection(proof)).toBe(3);
+    expect(suggestedReportSection(other)).toBe(3);
+  });
+
+  it("prints exterior, then interior, then other, the main photo first", () => {
+    expect(ids(orderReportPhotos([meter, yard, inside, outside, facade], null))).toEqual([
       "facade",
+      "outside",
       "inside",
+      "yard",
       "meter",
     ]);
   });
 
+  it("follows the specialist's section over the suggestion", () => {
+    const picked = setReportPhotoSection(EMPTY_PROPERTY_PHOTO_MARKS, "yard", 2);
+    expect(ids(orderReportPhotos([yard, inside, outside], picked))).toEqual([
+      "outside",
+      "yard",
+      "inside",
+    ]);
+  });
+
+  it("drops the section when the photo leaves the report", () => {
+    const picked = setReportPhotoSection(EMPTY_PROPERTY_PHOTO_MARKS, "kitchen", 2);
+    expect(setReportPhotoSection(picked, "kitchen", null)).toEqual(marks({ report: [], reportSections: {} }));
+  });
+});
+
+describe("the photos the report prints", () => {
+  it("follows the sections, whatever order they were picked in", () => {
+    expect(
+      reportPhotoIds([meter, facade, inside], marks({ main: "facade", report: ["meter", "inside"] })),
+    ).toEqual(["facade", "inside", "meter"]);
+  });
+
+  it("adds the main photo and the marked meters to the picked ones", () => {
+    expect(
+      reportPhotoIds([meter, water, facade, inside], marks({ electricity: ["meter"], report: ["inside"] })),
+    ).toEqual(["facade", "inside", "meter"]);
+  });
+
   it("drops a photo no longer on the property, and is empty without a choice", () => {
-    expect(reportPhotoIds([facade], marks({ report: ["gone", "facade"] }))).toEqual(["facade"]);
+    expect(reportPhotoIds([facade, inside], marks({ report: ["gone", "inside"] }))).toEqual(["facade", "inside"]);
+    expect(reportPhotoIds([facade], marks({ report: ["gone"] }))).toEqual([]);
     expect(reportPhotoIds([facade], marks({}))).toEqual([]);
     expect(reportPhotoIds([facade], null)).toEqual([]);
   });

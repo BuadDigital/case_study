@@ -56,8 +56,8 @@ public sealed class ValuationListItemDto
 public sealed class ValuationListsDto
 {
     public string IvsEffectiveDate { get; init; } = "31 يناير 2025";
-    public int PhotoPagesLand { get; init; } = 1;
-    public int PhotoPagesBuilt { get; init; } = 2;
+    public int PhotoPagesLand { get; init; } = 4;
+    public int PhotoPagesBuilt { get; init; } = 4;
     public Dictionary<string, List<ValuationListItemDto>> Lists { get; init; } = [];
     public DateTime UpdatedAtUtc { get; init; }
 }

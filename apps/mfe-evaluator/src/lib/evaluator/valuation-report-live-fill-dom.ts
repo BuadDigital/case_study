@@ -948,6 +948,65 @@ function isUncaptionedSlot(slotId: string): boolean {
   return slotId.startsWith("map-") || slotId.startsWith("photo-");
 }
 
+/** The template's «صور العقار» section ships twelve photo slots. */
+const TEMPLATE_PHOTO_SLOTS = 12;
+
+/**
+ * Gives the «صور العقار» section a slot for every photo the report prints.
+ *
+ * How it works: the settings may ask for up to four pages (24 photos) but the template holds twelve
+ * slots, so the missing ones are copies of the last slot, numbered on. The print copy then lays them
+ * out six to a sheet. Edge cases: twelve or fewer photos change nothing, and a template without
+ * photo slots is left alone.
+ */
+function addPhotoSlots(dom: Document, count: number): void {
+  let last = dom.getElementById(`photo-${TEMPLATE_PHOTO_SLOTS}`);
+  if (!last) return;
+  for (let n = TEMPLATE_PHOTO_SLOTS + 1; n <= count; n++) {
+    if (dom.getElementById(`photo-${n}`)) continue;
+    const slot = last.cloneNode(false) as HTMLElement;
+    slot.id = `photo-${n}`;
+    slot.removeAttribute("placeholder");
+    last.after(slot);
+    last = slot;
+  }
+}
+
+/** The caption line under a property photo, taken from the photo's height. */
+const PHOTO_CAPTION_PX = 14;
+
+/**
+ * Writes a property photo's report section under it («صور خارجية», 2026-11-02 ruling).
+ *
+ * How it works: the photo and its caption share one grid cell, and the photo gives up the
+ * caption's height, so a sheet still holds six photos. Edge cases: a photo without a section (one
+ * uploaded for the property) prints as before, and filling again only rewrites the caption.
+ */
+function captionPhotoSlot(dom: Document, slotId: string, caption: string | undefined): void {
+  if (!caption) return;
+  const slot =
+    dom.getElementById(slotId) ?? dom.querySelector<HTMLElement>(`[data-slot-id="${slotId}"]`);
+  if (!slot) return;
+  const existing = slot.parentElement?.hasAttribute("data-photo-cell")
+    ? slot.parentElement.querySelector<HTMLElement>("[data-photo-caption]")
+    : null;
+  if (existing) {
+    existing.textContent = caption;
+    return;
+  }
+  const cell = dom.createElement("div");
+  cell.setAttribute("data-photo-cell", "");
+  cell.style.cssText = "display:flex;flex-direction:column;gap:2px;min-width:0";
+  const height = parseFloat(slot.style.height);
+  if (height > PHOTO_CAPTION_PX) slot.style.height = `${height - PHOTO_CAPTION_PX}px`;
+  const cap = dom.createElement("div");
+  cap.setAttribute("data-photo-caption", "");
+  cap.style.cssText = `font-size:9px;line-height:${PHOTO_CAPTION_PX - 2}px;color:#3a3f4d;text-align:center`;
+  cap.textContent = caption;
+  slot.replaceWith(cell);
+  cell.append(slot, cap);
+}
+
 export function fillImageSlot(
   dom: Document,
   slotId: string,
@@ -1497,7 +1556,8 @@ export function fillAttachmentAndGlossarySections(
 
   const photos = fill.photoSlots ?? [];
   const frames = fill.slotFrames ?? {};
-  for (let i = 0; i < 12; i++) {
+  addPhotoSlots(dom, photos.length);
+  for (let i = 0; i < Math.max(TEMPLATE_PHOTO_SLOTS, photos.length); i++) {
     const id = `photo-${i + 1}`;
     fillImageSlot(
       dom,
@@ -1506,6 +1566,7 @@ export function fillAttachmentAndGlossarySections(
       "—",
       frames[id] ?? null,
     );
+    captionPhotoSlot(dom, id, photos[i]?.sectionAr);
   }
 
   const includeSurvey = isPrintAttachmentIncluded(

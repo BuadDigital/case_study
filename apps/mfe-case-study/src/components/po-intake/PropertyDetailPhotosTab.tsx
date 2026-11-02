@@ -6,13 +6,21 @@ import {
   ELECTRICITY_PHOTO_RE,
   EXTERIOR_PHOTO_RE,
   INTERIOR_PHOTO_RE,
-  REPORT_PHOTO_LIMIT,
+  MOVABLES_PHOTO_RE,
+  REPORT_PHOTO_SECTIONS,
   WATER_PHOTO_RE,
+  isAutomaticReportPhoto,
   photoMarkId,
   propertyPhotoRole,
   reportPhotoIds,
-  type PropertyPhotoMark,
+  reportPhotoSection,
+  reportPhotoSectionLabel,
+  setReportPhotoSection,
+  suggestedReportSection,
+  togglePropertyPhotoMark,
   type PropertyPhotoMarks,
+  type PropertyPhotoRole,
+  type ReportPhotoSection,
 } from "@platform/app-shared/app-data/property-detail-document-types";
 import {
   isInspectorGlancePhoto,
@@ -44,7 +52,7 @@ const byName =
   (photo: PropertyDetailDocumentEntry, { marks }: PhotoGroupContext) =>
     !propertyPhotoRole(photo, marks) && pattern.test(`${photo.name} ${photo.fileName}`);
 const byRole =
-  (role: "electricity" | "water", pattern: RegExp) =>
+  (role: Exclude<PropertyPhotoRole, "main">, pattern: RegExp) =>
   (photo: PropertyDetailDocumentEntry, context: PhotoGroupContext) =>
     propertyPhotoRole(photo, context.marks) === role || byName(pattern)(photo, context);
 
@@ -79,6 +87,11 @@ const HTML_PHOTO_GROUPS: {
     match: byRole("water", WATER_PHOTO_RE),
   },
   {
+    title: "صور المنقولات",
+    source: "المعاين",
+    match: byRole("movables", MOVABLES_PHOTO_RE),
+  },
+  {
     title: "صور الآبار",
     source: "المكتب الهندسي",
     match: byName(WELL_PHOTO_RE),
@@ -90,20 +103,125 @@ const HTML_PHOTO_GROUPS: {
   },
 ];
 
-const PHOTO_MARK_ACTIONS: { mark: PropertyPhotoMark; icon: string; label: string }[] = [
-  { mark: "main", icon: "ti-home", label: "الصورة الرئيسية" },
-  { mark: "electricity", icon: "ti-bolt", label: "عداد كهرباء" },
-  { mark: "water", icon: "ti-droplet", label: "عداد ماء" },
-  { mark: "report", icon: "ti-printer", label: "في التقرير" },
+const PHOTO_ROLE_ACTIONS: { role: PropertyPhotoRole; icon: string; label: string }[] = [
+  { role: "main", icon: "ti-home", label: "الصورة الرئيسية" },
+  { role: "electricity", icon: "ti-bolt", label: "عداد كهرباء" },
+  { role: "water", icon: "ti-droplet", label: "عداد ماء" },
+  { role: "movables", icon: "ti-armchair", label: "منقولات" },
 ];
 
-function photoHoldsMark(
-  photo: PropertyDetailDocumentEntry,
-  marks: PropertyPhotoMarks | null | undefined,
-  mark: PropertyPhotoMark,
-): boolean {
-  if (mark === "report") return Boolean(marks?.report.includes(photoMarkId(photo)));
-  return propertyPhotoRole(photo, marks) === mark;
+/** Where a photo stands in the report, worked out once for the whole tab. */
+type PhotoReportState = {
+  /** The report prints it: picked, or taken by itself. */
+  printed: boolean;
+  /** The main photo or a marked meter: the report takes it without a pick. */
+  automatic: boolean;
+  section: ReportPhotoSection;
+  suggested: ReportPhotoSection;
+};
+
+/** What a press on a photo's icons changes in the marks. */
+type PhotoMarksChange = (update: (marks: PropertyPhotoMarks) => PropertyPhotoMarks) => void;
+
+const GLASS_CHIP = "rounded-full bg-black/45 text-white backdrop-blur-sm";
+const GLASS_BUTTON =
+  "grid size-7 cursor-pointer place-items-center rounded-full border-0 p-0 text-[15px] leading-none backdrop-blur-sm transition-colors";
+const glassButtonTone = (active: boolean) =>
+  active ? "bg-primary/90 text-white" : "bg-white/20 text-white hover:bg-white/35";
+
+/**
+ * The report icon and its section menu: «1 خارجية», «2 داخلية», «3 أخرى», «إزالة من التقرير».
+ *
+ * How it works: a picked photo shows its section number in place of the icon; the menu marks the
+ * section the inspector's category suggests. Edge cases: the main photo and the meters print by
+ * themselves, so their icon only says so.
+ */
+function ReportSectionButton({
+  id,
+  report,
+  onChange,
+}: {
+  id: string;
+  report: PhotoReportState;
+  onChange: PhotoMarksChange;
+}) {
+  const [open, setOpen] = useState(false);
+  const picked = report.printed && !report.automatic;
+  const label = report.automatic
+    ? "في التقرير تلقائياً"
+    : picked
+      ? `في التقرير: ${reportPhotoSectionLabel(report.section)}`
+      : "إضافة إلى التقرير";
+  const choose = (section: ReportPhotoSection | null) => {
+    setOpen(false);
+    onChange((marks) => setReportPhotoSection(marks, id, section));
+  };
+  return (
+    <div
+      className="relative"
+      onKeyDown={(event) => {
+        if (event.key === "Escape") setOpen(false);
+      }}
+    >
+      <button
+        type="button"
+        title={label}
+        aria-label={label}
+        aria-pressed={report.printed}
+        aria-expanded={report.automatic ? undefined : open}
+        disabled={report.automatic}
+        onClick={() => setOpen((value) => !value)}
+        className={cn(GLASS_BUTTON, glassButtonTone(report.printed), report.automatic && "cursor-default")}
+      >
+        {picked ? (
+          <span className="text-[13px] font-bold">{report.section}</span>
+        ) : (
+          <i className="ti ti-file-text" aria-hidden />
+        )}
+      </button>
+      {open ? (
+        <div
+          role="menu"
+          className="absolute bottom-full end-0 z-10 mb-1 flex min-w-[124px] flex-col overflow-hidden rounded-lg border border-border bg-surface py-1 text-[11.5px] shadow-lg"
+        >
+          {REPORT_PHOTO_SECTIONS.map(({ section, label: name }) => {
+            const current = picked && report.section === section;
+            return (
+              <button
+                key={section}
+                type="button"
+                role="menuitemradio"
+                aria-checked={current}
+                onClick={() => choose(section)}
+                className={cn(
+                  "flex cursor-pointer items-center gap-2 border-0 bg-transparent px-2.5 py-1.5 text-start text-text-1 hover:bg-surface-2",
+                  current && "font-bold text-primary",
+                )}
+              >
+                <span className="grid size-5 place-items-center rounded-full bg-surface-2 text-[11px] font-bold">
+                  {section}
+                </span>
+                {name}
+                {section === report.suggested ? (
+                  <span className="ms-auto text-[10px] font-normal text-text-3">مقترح</span>
+                ) : null}
+              </button>
+            );
+          })}
+          {picked ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => choose(null)}
+              className="cursor-pointer border-0 border-t border-border bg-transparent px-2.5 py-1.5 text-start text-danger hover:bg-surface-2"
+            >
+              إزالة من التقرير
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 /**
@@ -117,50 +235,53 @@ function photoHoldsMark(
 function PhotoMarks({
   photo,
   marks,
-  onToggleMark,
+  report,
+  onChange,
 }: {
   photo: PropertyDetailDocumentEntry;
   marks: PropertyPhotoMarks | null | undefined;
-  onToggleMark?: (photo: PropertyDetailDocumentEntry, mark: PropertyPhotoMark) => void;
+  report: PhotoReportState | undefined;
+  onChange?: PhotoMarksChange;
 }) {
-  const held = PHOTO_MARK_ACTIONS.filter((action) => photoHoldsMark(photo, marks, action.mark));
-  const markable = onToggleMark && photoMarkId(photo) && isInspectorGlancePhoto(photo);
+  const id = photoMarkId(photo);
+  const role = propertyPhotoRole(photo, marks);
+  const held = PHOTO_ROLE_ACTIONS.find((action) => action.role === role);
+  const picked = report && report.printed && !report.automatic ? report : null;
+  const chip = cn(GLASS_CHIP, "inline-flex items-center gap-1 px-2 py-0.5 text-[10.5px] font-bold");
   return (
     <>
-      {held.length > 0 ? (
+      {held || picked ? (
         <div className="pointer-events-none absolute start-1 top-1 flex flex-wrap gap-1">
-          {held.map((action) => (
-            <span
-              key={action.mark}
-              className="inline-flex items-center gap-1 rounded bg-primary px-1.5 py-0.5 text-[10.5px] font-bold text-white"
-            >
-              <i className={cn("ti text-[12px] leading-none", action.icon)} aria-hidden />
-              {action.label}
+          {held ? (
+            <span className={chip}>
+              <i className={cn("ti text-[12px] leading-none", held.icon)} aria-hidden />
+              {held.label}
             </span>
-          ))}
+          ) : null}
+          {picked ? (
+            <span className={chip}>
+              <i className="ti ti-file-text text-[12px] leading-none" aria-hidden />
+              تقرير · {reportPhotoSectionLabel(picked.section)}
+            </span>
+          ) : null}
         </div>
       ) : null}
-      {markable ? (
-        <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1 bg-black/45 p-1">
-          {PHOTO_MARK_ACTIONS.map((action) => {
-            const active = held.includes(action);
-            return (
-              <button
-                key={action.mark}
-                type="button"
-                title={action.label}
-                aria-label={action.label}
-                aria-pressed={active}
-                onClick={() => onToggleMark(photo, action.mark)}
-                className={cn(
-                  "grid size-7 cursor-pointer place-items-center rounded border-0 p-0 text-[15px] leading-none",
-                  active ? "bg-primary text-white" : "bg-surface/90 text-primary hover:bg-surface",
-                )}
-              >
-                <i className={cn("ti", action.icon)} aria-hidden />
-              </button>
-            );
-          })}
+      {onChange && id && report ? (
+        <div className="absolute inset-x-0 bottom-0 flex justify-center gap-1 rounded-b bg-gradient-to-t from-black/60 to-transparent px-1 pb-1 pt-5">
+          {PHOTO_ROLE_ACTIONS.map((action) => (
+            <button
+              key={action.role}
+              type="button"
+              title={action.label}
+              aria-label={action.label}
+              aria-pressed={action.role === role}
+              onClick={() => onChange((current) => togglePropertyPhotoMark(current, id, action.role))}
+              className={cn(GLASS_BUTTON, glassButtonTone(action.role === role))}
+            >
+              <i className={cn("ti", action.icon)} aria-hidden />
+            </button>
+          ))}
+          <ReportSectionButton id={id} report={report} onChange={onChange} />
         </div>
       ) : null}
     </>
@@ -171,12 +292,14 @@ function PhotoTile({
   photo,
   gallery,
   marks,
-  onToggleMark,
+  report,
+  onChange,
 }: {
   photo: PropertyDetailDocumentEntry;
   gallery: PropertyDetailDocumentEntry[];
   marks: PropertyPhotoMarks | null | undefined;
-  onToggleMark?: (photo: PropertyDetailDocumentEntry, mark: PropertyPhotoMark) => void;
+  report: PhotoReportState | undefined;
+  onChange?: PhotoMarksChange;
 }) {
   const handle = photo.inspectionPhoto;
   const [dataUrl, setDataUrl] = useState(
@@ -231,7 +354,7 @@ function PhotoTile({
       <button
         type="button"
         className={cn(
-          "relative block w-full overflow-hidden rounded border border-border bg-surface-2 p-0",
+          "relative block aspect-[4/3] w-full overflow-hidden rounded border border-border bg-surface-2 p-0",
           canOpen ? "cursor-pointer" : "cursor-default opacity-80",
         )}
         disabled={!canOpen}
@@ -249,10 +372,10 @@ function PhotoTile({
           <img
             src={dataUrl}
             alt={photo.name}
-            className="block h-auto w-full"
+            className="block h-full w-full object-cover"
           />
         ) : (
-          <div className="flex aspect-[4/3] w-full items-center justify-center text-text-3">
+          <div className="flex h-full w-full items-center justify-center text-text-3">
             <svg
               width="26"
               height="26"
@@ -269,7 +392,7 @@ function PhotoTile({
           </div>
         )}
       </button>
-      <PhotoMarks photo={photo} marks={marks} onToggleMark={onToggleMark} />
+      <PhotoMarks photo={photo} marks={marks} report={report} onChange={onChange} />
     </div>
   );
 }
@@ -319,31 +442,68 @@ export function buildDisplayGroups(
 }
 
 /**
+ * Each inspector photo's place in the report, and the counter's numbers.
+ *
+ * How it works: one pass over the report's photos, so every tile reads its state without recounting.
+ * Edge cases: before any photo is picked the report takes the first ones in its order, so the
+ * counter says «تلقائي»; the main photo and the meters still show they print by themselves.
+ */
+function photoReportStates(
+  photos: PropertyDetailDocumentEntry[],
+  marks: PropertyPhotoMarks | null | undefined,
+) {
+  const printed = reportPhotoIds(photos, marks);
+  const byPhoto = new Map<string, PhotoReportState>();
+  const counts = new Map<ReportPhotoSection, number>();
+  for (const photo of photos.filter(isInspectorGlancePhoto)) {
+    const automatic = isAutomaticReportPhoto(photos, photo, marks);
+    const section = reportPhotoSection(photo, marks);
+    const isPrinted = automatic || printed.includes(photoMarkId(photo));
+    if (printed.includes(photoMarkId(photo))) counts.set(section, (counts.get(section) ?? 0) + 1);
+    byPhoto.set(photo.id, {
+      printed: isPrinted,
+      automatic,
+      section,
+      suggested: suggestedReportSection(photo),
+    });
+  }
+  const summary = REPORT_PHOTO_SECTIONS.map(
+    ({ section, label }) => `${label} ${counts.get(section) ?? 0}`,
+  ).join(" · ");
+  return { byPhoto, picked: printed.length, summary };
+}
+
+/**
  * Photos tab — real attachments only (no empty-slot placeholders).
  */
 export function PropertyDetailPhotosTab({
   photos,
   title = "صور العقار",
   marks,
-  onToggleMark,
+  reportLimit = 24,
+  onChangeMarks,
 }: {
   photos: PropertyDetailDocumentEntry[];
   title?: string;
+  /** How many photos the report prints («صفحات الصور» in the settings). */
+  reportLimit?: number;
   /** The specialist's marks; each marked photo shows a badge. */
   marks?: PropertyPhotoMarks | null;
   /** Present for the specialist: shows the icons that set the marks. */
-  onToggleMark?: (id: string, mark: PropertyPhotoMark, liveIds: readonly string[]) => void;
+  onChangeMarks?: (
+    photos: readonly PropertyDetailDocumentEntry[],
+    update: (marks: PropertyPhotoMarks) => PropertyPhotoMarks,
+  ) => void;
 }) {
   const { showToast } = useToast();
   const [busy, setBusy] = useState(false);
   const groups = useMemo(() => buildDisplayGroups(photos, marks), [photos, marks]);
   const ordered = useMemo(() => groups.flatMap((group) => group.items), [groups]);
-  const liveIds = useMemo(() => photos.map(photoMarkId).filter(Boolean), [photos]);
+  const report = useMemo(() => photoReportStates(photos, marks), [photos, marks]);
 
   const downloadable = ordered.filter((p) => p.dataUrl);
-  const toggleMark = onToggleMark
-    ? (photo: PropertyDetailDocumentEntry, mark: PropertyPhotoMark) =>
-        onToggleMark(photoMarkId(photo), mark, liveIds)
+  const changeMarks: PhotoMarksChange | undefined = onChangeMarks
+    ? (update) => onChangeMarks(photos, update)
     : undefined;
 
   return (
@@ -353,9 +513,11 @@ export function PropertyDetailPhotosTab({
           {photos.length > 0
             ? `إجمالي ${photos.length} صورة`
             : "لا توجد صور مرفوعة بعد"}
-          {onToggleMark && photos.length > 0 ? (
+          {onChangeMarks && photos.length > 0 ? (
             <span className="ms-3 font-bold text-text-2">
-              صور التقرير {reportPhotoIds(photos, marks).length} / {REPORT_PHOTO_LIMIT}
+              {report.picked > 0
+                ? `صور التقرير ${report.picked} / ${reportLimit} — ${report.summary}`
+                : `صور التقرير: تلقائي (أول ${reportLimit} صورة)`}
             </span>
           ) : null}
         </div>
@@ -410,14 +572,15 @@ export function PropertyDetailPhotosTab({
               </span>
               <span className="h-px flex-1 bg-border" aria-hidden />
             </div>
-            <div className="grid grid-cols-[repeat(auto-fill,198px)] items-start gap-2">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(198px,1fr))] gap-2">
               {group.items.map((photo) => (
                 <PhotoTile
                   key={photo.id}
                   photo={photo}
                   gallery={ordered}
                   marks={marks}
-                  onToggleMark={toggleMark}
+                  report={report.byPhoto.get(photo.id)}
+                  onChange={changeMarks}
                 />
               ))}
             </div>

@@ -72,6 +72,8 @@ export type ValuationReportSlotAttachment = {
   labelAr: string;
   isImage: boolean;
   capturedAtDisplay?: string;
+  /** A property photo's report section («صور خارجية»), printed under it. */
+  sectionAr?: string;
 };
 
 function slashCaptureDate(iso: string | null | undefined): string {
@@ -82,7 +84,7 @@ function slashCaptureDate(iso: string | null | undefined): string {
 
 function classifyRows(
   rows: FileAttachmentMetaDto[],
-  hasStructures: boolean,
+  budget: number,
 ): {
   photos: FileAttachmentMetaDto[];
   survey: FileAttachmentMetaDto[];
@@ -96,7 +98,6 @@ function classifyRows(
   const survey: FileAttachmentMetaDto[] = [];
   const deed: FileAttachmentMetaDto[] = [];
   const siteMaps: FileAttachmentMetaDto[] = [];
-  const budget = photoBudget(hasStructures);
 
   for (const row of ordered) {
     const typeKey = attachmentTypeKeyFromScope(row.scope);
@@ -278,6 +279,8 @@ export async function loadValuationReportPrintAttachments(
      * (`scopeKey` = survey task id — invisible to for-property).
      */
     surveyAttachmentIds?: string[];
+    /** How many photos the report prints («صفحات الصور»); unset = the structures default. */
+    photoBudget?: number;
     /** Preferred attachment ids chosen on final review (deed / survey / site-map). */
     preferredAttachmentIds?: Partial<
       Record<"deed" | "survey" | "site-map", string>
@@ -309,13 +312,10 @@ export async function loadValuationReportPrintAttachments(
   const listed = await listAttachmentsForProperty(config, scopeKey);
   if (!listed.ok) return empty;
 
-  const { photos, survey, deed, siteMaps } = classifyRows(
-    listed.data,
-    hasStructures,
-  );
+  const budget = extras?.photoBudget ?? photoBudget(hasStructures);
+  const { photos, survey, deed, siteMaps } = classifyRows(listed.data, budget);
 
   // Finish the photo budget from task-linked inspection photos (invisible to for-property).
-  const budget = photoBudget(hasStructures);
   const havePhoto = new Set(photos.map((row) => row.id));
   const inspectorIds = (extras?.inspectorPhotoIds ?? []).filter(
     (photoId) => !havePhoto.has(photoId),
@@ -396,7 +396,9 @@ export async function loadValuationReportPrintAttachments(
 
   const photoSlotsTask: Promise<Array<ValuationReportSlotAttachment | null>> =
     Array.isArray(preferred.photoSlotIds)
-      ? Promise.all(preferred.photoSlotIds.map((id) => slotFromId(id, "photo")))
+      ? Promise.all(
+          preferred.photoSlotIds.slice(0, budget).map((id) => slotFromId(id, "photo")),
+        )
       : Promise.all(photos.map((row) => toSlot(config, row, "photo"))).then(
           (slots) =>
             slots.filter((x): x is ValuationReportSlotAttachment => Boolean(x)),

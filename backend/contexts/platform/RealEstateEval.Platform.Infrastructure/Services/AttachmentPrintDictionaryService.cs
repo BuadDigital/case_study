@@ -59,9 +59,9 @@ public sealed class AttachmentPrintDictionaryService
         var before = ToListsDto(catalog);
         if (!string.IsNullOrWhiteSpace(request.IvsEffectiveDate))
             catalog.IvsEffectiveDate = request.IvsEffectiveDate.Trim();
-        if (request.PhotoPagesLand is >= 1 and <= 3)
+        if (request.PhotoPagesLand is >= 1 and <= ValuationListsSeed.MaxPhotoPages)
             catalog.PhotoPagesLand = request.PhotoPagesLand.Value;
-        if (request.PhotoPagesBuilt is >= 1 and <= 4)
+        if (request.PhotoPagesBuilt is >= 1 and <= ValuationListsSeed.MaxPhotoPages)
             catalog.PhotoPagesBuilt = request.PhotoPagesBuilt.Value;
 
         if (request.Lists is not null)
@@ -193,9 +193,9 @@ public sealed class AttachmentPrintDictionaryService
                 ? d
                 : state.IvsEffectiveDate;
         if (root.TryGetProperty("photoPagesLand", out var land) && land.TryGetInt32(out var landN))
-            state.PhotoPagesLand = Math.Clamp(landN, 1, 3);
+            state.PhotoPagesLand = Math.Clamp(landN, 1, ValuationListsSeed.MaxPhotoPages);
         if (root.TryGetProperty("photoPagesBuilt", out var built) && built.TryGetInt32(out var builtN))
-            state.PhotoPagesBuilt = Math.Clamp(builtN, 1, 4);
+            state.PhotoPagesBuilt = Math.Clamp(builtN, 1, ValuationListsSeed.MaxPhotoPages);
 
         if (root.TryGetProperty("lists", out var listsEl) && listsEl.ValueKind == JsonValueKind.Object)
         {
