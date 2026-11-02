@@ -7,6 +7,7 @@ import {
 import type { AssignmentType } from "./po-intake-assignment";
 import type { PropertyIdentifierType } from "./po-intake-identifiers";
 import { classificationForPropertyType } from "./inspector-workspace-data";
+import type { PropertyPhotoMarks } from "./property-detail-document-types";
 import {
   clearPropertyBoundaryFields,
   type PropertyBoundaryDescKey,
@@ -172,16 +173,21 @@ export function effectiveClassificationOf(
   );
 }
 
+/**
+ * The property's type with its use: «عمارة / سكني» after the inspection, «عمارة» before it.
+ * How it works: the type is the inspector-confirmed one, else the bourse's; the use is the name the
+ * inspector recorded on site.
+ * Edge cases: the classification (مبنى مفرد) is never shown. It only tells the system which properties
+ * go to the engineering office, and it used to sit here under the «الاستخدام» heading.
+ */
 export function formatPropertyTypeLine(property: Pick<
   PoPropertyIntake,
-  "classification" | "propertyType" | "inspectedPropertyType" | "effectivePropertyType"
+  "propertyType" | "inspectedPropertyType" | "effectivePropertyType" | "inspectedUsage"
 >): string {
-  // After field inspection, the inspector-confirmed type wins operationally — and its classification
-  // with it: «فيلا / وحدة داخل مبنى» mixed the inspector's type with the bourse's classification.
   const type = effectivePropertyTypeOf(property);
-  const usage = effectiveClassificationOf(property);
+  const usage = property.inspectedUsage?.trim() ?? "";
   if (type && usage && type !== usage) return `${type} / ${usage}`;
-  return type || usage || "";
+  return type || usage;
 }
 
 export type PoPropertyIntake = {
@@ -260,8 +266,12 @@ export type PoPropertyIntake = {
   propertyType: string;
   /** Type confirmed by the field inspector on submission. */
   inspectedPropertyType?: string;
+  /** «استخدام العقار» from the submitted inspection. */
+  inspectedUsage?: string;
   /** Confirmed type when present, otherwise the initial type. */
   effectivePropertyType?: string;
+  /** The case specialist's marks on the inspector's photos. */
+  photoMarks?: PropertyPhotoMarks;
   assignmentDocFileNames: string[];
   delegationLetterFileNames: string[];
   otherDocumentFileNames: string[];
@@ -372,6 +382,7 @@ export function emptyProperty(): PoPropertyIntake {
     classification: "",
     propertyType: "",
     inspectedPropertyType: "",
+    inspectedUsage: "",
     effectivePropertyType: "",
     assignmentDocFileNames: [],
     delegationLetterFileNames: [],

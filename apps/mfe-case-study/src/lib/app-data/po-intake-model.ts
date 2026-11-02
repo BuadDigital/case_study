@@ -9,6 +9,7 @@ import {
 } from "../domain/po-intake/property-validation";
 import type { PriorDeedRegistrationDto,UpdatePropertyBourseRequest,WorkOrderDto,WorkOrderPropertyDto} from "@platform/api-client";
 import { resolveAssignmentValuationKeys } from "@platform/app-shared/app-data/assignment-valuation-defaults";
+import { EMPTY_PROPERTY_PHOTO_MARKS } from "@platform/app-shared/app-data/property-detail-document-types";
 import { hydrateSpecialistReportExtrasFromApi } from "@platform/app-shared/storage/specialist-report-extras-sync";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 
@@ -129,11 +130,13 @@ export function dtoToProperty(
     classification: dto.classification ?? "",
     propertyType: dto.propertyType ?? "",
     inspectedPropertyType: dto.inspectedPropertyType ?? "",
+    inspectedUsage: dto.inspectedUsage ?? "",
     effectivePropertyType:
       dto.effectivePropertyType ??
       dto.inspectedPropertyType ??
       dto.propertyType ??
       "",
+    photoMarks: dto.photoMarks ?? EMPTY_PROPERTY_PHOTO_MARKS,
     assignmentDocFileNames: dto.assignmentDocFileNames ?? [],
     delegationLetterFileNames: dto.delegationLetterFileNames ?? [],
     otherDocumentFileNames: dto.otherDocumentFileNames ?? [],

@@ -92,6 +92,70 @@ public class FieldInspectionSubmissionIntegrationTests
     }
 
     [Fact]
+    public async Task Submit_stores_the_usage_on_the_property_and_counts_it_on_the_list()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var usageList = new RecordingUsageList();
+        var service = CreateService(db, bundle.Failures, bundle.Ops, usageList: usageList);
+        SeedInspectionTask(db);
+        SeedPhotoAttachments(db);
+        db.WorkOrderProperties.Add(new WorkOrderProperty { Id = PropertyId, WorkOrderId = Guid.NewGuid() });
+        db.SaveChanges();
+
+        await service.SaveDraftAsync(
+            TaskId,
+            new SavePartyTaskSubmissionRequest { Payload = ParsePayload(PayloadWithUsage("مغسلة سيارات")) });
+        var (_, errors) = await service.SubmitAsync(TaskId);
+
+        Assert.Null(errors);
+        var property = await db.WorkOrderProperties.AsNoTracking().SingleAsync(p => p.Id == PropertyId);
+        Assert.Equal("مغسلة سيارات", property.InspectedUsage);
+        Assert.Equal(["مغسلة سيارات"], usageList.Recorded);
+    }
+
+    [Fact]
+    public async Task Submit_keeps_a_classification_off_the_property()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var usageList = new RecordingUsageList();
+        var service = CreateService(db, bundle.Failures, bundle.Ops, usageList: usageList);
+        SeedInspectionTask(db);
+        SeedPhotoAttachments(db);
+        db.WorkOrderProperties.Add(new WorkOrderProperty { Id = PropertyId, WorkOrderId = Guid.NewGuid() });
+        db.SaveChanges();
+
+        await service.SaveDraftAsync(
+            TaskId,
+            new SavePartyTaskSubmissionRequest { Payload = ParsePayload(PayloadWithUsage("مبنى مفرد")) });
+        await service.SubmitAsync(TaskId);
+
+        var property = await db.WorkOrderProperties.AsNoTracking().SingleAsync(p => p.Id == PropertyId);
+        Assert.Null(property.InspectedUsage);
+        Assert.Empty(usageList.Recorded);
+    }
+
+    [Fact]
+    public async Task Submit_succeeds_when_the_list_service_is_unreachable()
+    {
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var service = CreateService(
+            db, bundle.Failures, bundle.Ops, usageList: new RecordingUsageList { Unreachable = true });
+        SeedInspectionTask(db);
+        SeedPhotoAttachments(db);
+
+        await service.SaveDraftAsync(
+            TaskId,
+            new SavePartyTaskSubmissionRequest { Payload = ParsePayload(PayloadWithUsage("سكني")) });
+        var (result, errors) = await service.SubmitAsync(TaskId);
+
+        Assert.Null(errors);
+        Assert.Equal("submitted", result!.Status);
+    }
+
+    [Fact]
     public async Task Submit_audits_the_on_site_completion_apart_from_the_upload()
     {
         var bundle = CreateDb();
@@ -287,7 +351,8 @@ public class FieldInspectionSubmissionIntegrationTests
         FailuresDbContext failures,
         OperationsDbContext __,
         INotificationService? notifications = null,
-        RecordingAuditLogAppend? audit = null)
+        RecordingAuditLogAppend? audit = null,
+        IValuationListsService? usageList = null)
     {
         var caseStudy = TestInspectorFeeServiceFactory.ShareCaseStudy(db);
         var timeline = TestInspectorFeeServiceFactory.CreateTimeline(db);
@@ -303,7 +368,40 @@ public class FieldInspectionSubmissionIntegrationTests
             notifications ?? TestInspectorFeeServiceFactory.CreateNotificationDeps(db).Notifications,
             recipients,
             new AuditLogWriter(),
-            audit ?? new RecordingAuditLogAppend());
+            audit ?? new RecordingAuditLogAppend(),
+            usageList: usageList);
+    }
+
+    private sealed class RecordingUsageList : IValuationListsService
+    {
+        public List<string> Recorded { get; } = [];
+        public bool Unreachable { get; init; }
+
+        public Task<ValuationListsDto> GetAsync(CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<ValuationListsDto> SaveAsync(
+            SaveValuationListsRequest request,
+            string actorId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task RecordPropertyUsageAsync(
+            string nameAr,
+            string actorId,
+            CancellationToken cancellationToken = default)
+        {
+            if (Unreachable) throw new HttpRequestException("Platform is down.");
+            Recorded.Add(nameAr);
+            return Task.CompletedTask;
+        }
+
+        public Task<ValuationListsDto> ReviewPropertyUsageAsync(
+            string key,
+            ReviewPropertyUsageRequest request,
+            string actorId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 
     private sealed class NullHttpContextAccessor : IHttpContextAccessor
@@ -481,6 +579,11 @@ public class FieldInspectionSubmissionIntegrationTests
         using var doc = JsonDocument.Parse(json);
         return doc.RootElement.Clone();
     }
+
+    private static string PayloadWithUsage(string usage) =>
+        MinimalValidPayload().Replace(
+            "\"assetSubject\": \"فيلا\"",
+            $"\"assetSubject\": \"فيلا\", \"propertyUsage\": \"{usage}\"");
 
     private static string MinimalValidPayload() =>
         $$"""

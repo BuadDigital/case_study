@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Tajawal } from "next/font/google";
 import { DocumentPreviewHost } from "@platform/app-shared/components/DocumentPreviewHost";
 import { PwaInstallPrompt } from "@/components/PwaInstallPrompt";
 import { ServiceWorkerRegister } from "@/components/ServiceWorkerRegister";
@@ -7,14 +6,12 @@ import { ToastRootProvider } from "@/providers/ToastRootProvider";
 import "@platform/ui-kit/document-reports.css";
 // Tabler icon font: the MFEs use `ti ti-*` classes (field inspection, photo pickers, modals).
 import "@tabler/icons-webfont/dist/tabler-icons.min.css";
+// Tajawal ships with the app (arabic + latin): no Google download at start, so no Arial stand-in.
+import "@fontsource/tajawal/400.css";
+import "@fontsource/tajawal/500.css";
+import "@fontsource/tajawal/700.css";
+import "@fontsource/tajawal/800.css";
 import "./globals.css";
-
-const arabic = Tajawal({
-  weight: ["400", "500", "700", "800"],
-  subsets: ["arabic", "latin"],
-  variable: "--font-arabic",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "نظام إجادة الداخلي",
@@ -62,7 +59,7 @@ export default function RootLayout({
     <html
       lang="ar"
       dir="rtl"
-      className={`${arabic.variable} h-full`}
+      className="h-full"
       suppressHydrationWarning
     >
       <head>

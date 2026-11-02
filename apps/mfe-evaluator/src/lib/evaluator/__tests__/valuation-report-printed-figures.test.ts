@@ -199,10 +199,10 @@ describe("section 22 — the indirect factor", () => {
   });
 });
 
-describe("whole-riyal money, as on the screens", () => {
-  it("never prints halalas for money or price per m²", () => {
+describe("money and price per m², as on the screens", () => {
+  it("prints money in whole riyals and keeps the fraction of a price per m²", () => {
     const text = render("print").body.textContent ?? "";
-    for (const halalas of ["2,494.09", "2,369.35", "2,506.56", "3,113.69", "2,730.54", "1,482,618.75", "4,447,856.25", "1,955,260.25", "889,571.25"]) {
+    for (const halalas of ["1,482,618.75", "4,447,856.25", "1,955,260.25", "889,571.25"]) {
       expect(text).not.toContain(halalas);
     }
     const fill = vr739();
@@ -211,8 +211,8 @@ describe("whole-riyal money, as on the screens", () => {
     expect(fill.finalValueRows[0]).toEqual({ key: "القيمة المرجّحة", value: "1,955,260" });
     expect(fill.finalValueRows.at(-1)?.value).toBe("1,955,000");
     const row = (k: string) => fill.adjustmentRows.find((r) => r.key.startsWith(k));
-    expect(row("سعر البيع بعد تسوية")?.values).toEqual(["2,494", "2,369", "2,731"]);
-    expect(row("المتوسط المرجح")?.values).toEqual(["2,731"]);
+    expect(row("سعر البيع بعد تسوية")?.values).toEqual(["2,494.09", "2,369.35", "2,730.54"]);
+    expect(row("المتوسط المرجح")?.values).toEqual(["2,730.54"]);
   });
 });
 

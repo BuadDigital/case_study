@@ -2,8 +2,10 @@
  * What the bourse inquiry already answered for the inspector's «خصائص العقار», and where it came from.
  *
  *  - «الأصل محل التقييم» ← the property type the specialist chose in the bourse (فيلا، أرض …)
- *  - «استخدام العقار»    ← the property classification from the same step (مبنى مفرد، أرض …)
  *  - «حالة منطقة العقار» ← the deed status, when it names the zone
+ *
+ * «استخدام العقار» is not here: the inspector records it from the site. The bourse classification only
+ * tells the system which properties go to the engineering office.
  *
  * The values are copied into every EMPTY field — also after the inspector has started — and never over
  * something he wrote. A field still holding exactly the copied value carries a source note
@@ -12,8 +14,7 @@
 import {
   ALL_PROPERTY_TYPES,
   INSPECTOR_FEATURE_FIELDS,
-  PROPERTY_CLASSIFICATIONS,
-  classificationForPropertyType,
+  propertyUsageValue,
   type InspectorWorkspaceDraft,
 } from "./inspector-workspace-data";
 import type { PoPropertyIntake } from "./po-intake-data";
@@ -67,19 +68,17 @@ export function bourseFeaturePrefill(
   property: BourseSource | null | undefined,
 ): Record<string, string> {
   if (!property) return {};
-  const classification = property.classification.trim();
-  const usage = (PROPERTY_CLASSIFICATIONS as readonly string[]).includes(classification)
-    ? classification
-    : (classificationForPropertyType(property.propertyType) ?? "");
   const values: Record<string, string> = {
     assetSubject: mapPropertyTypeToAssetSubject(property.propertyType),
-    propertyUsage: usage,
     zoneStatus: pickFeatureOption("zoneStatus", property.deedStatus),
   };
   return Object.fromEntries(Object.entries(values).filter(([, v]) => v));
 }
 
-/** Copies the bourse answers into the draft's EMPTY features. Same reference when nothing changes. */
+/**
+ * Copies the bourse answers into the draft's EMPTY features, and empties an old «استخدام العقار» that
+ * holds a classification, so the inspector is asked for the real use. Same reference when nothing changes.
+ */
 export function fillEmptyFeaturesFromBourse(
   draft: InspectorWorkspaceDraft,
   property: BourseSource | null | undefined,
@@ -87,6 +86,11 @@ export function fillEmptyFeaturesFromBourse(
   const prefill = bourseFeaturePrefill(property);
   const featureValues = { ...draft.featureValues };
   let changed = false;
+  const storedUsage = featureValues.propertyUsage ?? "";
+  if (storedUsage.trim() && !propertyUsageValue(storedUsage)) {
+    featureValues.propertyUsage = "";
+    changed = true;
+  }
   for (const [key, value] of Object.entries(prefill)) {
     if (featureValues[key]?.trim()) continue;
     featureValues[key] = value;

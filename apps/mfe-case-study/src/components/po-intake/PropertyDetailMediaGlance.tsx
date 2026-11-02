@@ -172,7 +172,11 @@ export function PropertyDetailMediaGlance({
       ) : null}
       {photos ? (
         <div className="sm:col-span-2 mt-1">
-          <PropertyDetailPhotosTab photos={photos} title="صور المعاينة" />
+          <PropertyDetailPhotosTab
+            photos={photos}
+            title="صور المعاينة"
+            marks={property?.photoMarks}
+          />
         </div>
       ) : null}
     </div>

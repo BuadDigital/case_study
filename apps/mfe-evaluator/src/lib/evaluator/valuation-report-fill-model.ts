@@ -42,7 +42,10 @@ import {
 import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
 import { boundariesMarkedUnavailable } from "@platform/app-shared/app-data/po-intake-identifiers";
-import { OTHER_ATTACHMENTS_KEY } from "@platform/app-shared/app-data/inspector-workspace-data";
+import {
+  OTHER_ATTACHMENTS_KEY,
+  propertyUsageValue,
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   clientNameFromRecord,
   formatValuationReportUsers,
@@ -91,6 +94,7 @@ import {
   finishingLevelLabel,
   formatAreaCell,
   formatMoneyCell,
+  formatRateCell,
   formatSheetPct,
   inventoryLinePresent,
   joinObservations,
@@ -902,8 +906,7 @@ export function buildValuationReportLiveFill(input: {
         property?.inspectedPropertyType ||
         inspector?.featureValues?.assetSubject ||
         property?.propertyType ||
-        property?.classification ||
-        inspector?.featureValues?.propertyUsage,
+        property?.classification,
     ),
     "أساليب التقييم المستخدمة": dash(
       methodsUsed(approachesUsed(choices, input), documentIndicators(input.recon)),
@@ -930,8 +933,9 @@ export function buildValuationReportLiveFill(input: {
     "رقم المخطط": dash(property?.planNumber),
     "رقم البلك": dash(property?.blockNumber),
     "رقم القطعة": dash(property?.plotNumber),
+    // What the inspector found on site; the classification («مبنى مفرد») is not a use.
     "استخدام العقار": dash(
-      property?.classification || inspector?.featureValues?.propertyUsage,
+      property?.inspectedUsage || propertyUsageValue(inspector?.featureValues?.propertyUsage),
     ),
     "إحداثيات الموقع": dash(coordsLabel),
     "رقم الصك": dash(linkedDeedLabels || property?.deedNumber),
@@ -1189,7 +1193,7 @@ export function buildValuationReportLiveFill(input: {
   );
   cells["سعر متر الأرض من مقارنات الأراضي الفضاء"] = dash(
     input.cost?.landUnitRateFromMarket
-      ? formatMoneyCell(input.cost.landUnitRateFromMarket)
+      ? formatRateCell(input.cost.landUnitRateFromMarket)
       : "",
   );
   // Legacy template label — keep fill so old sheets still update.
@@ -1488,7 +1492,7 @@ export function buildValuationReportLiveFill(input: {
           dashSheet(eff.areaSqm ? String(eff.areaSqm) : ""),
           dashSheet(slashReportDate(c.transactionDate)),
           dashSheet(formatMoneyCell(eff.price)),
-          dashSheet(formatMoneyCell(eff.pricePerSqm)),
+          dashSheet(formatRateCell(eff.pricePerSqm)),
         ],
       };
     }),
@@ -1503,7 +1507,7 @@ export function buildValuationReportLiveFill(input: {
           dashSheet(eff.areaSqm ? String(eff.areaSqm) : ""),
           dashSheet(slashReportDate(c.transactionDate)),
           dashSheet(formatMoneyCell(eff.price)),
-          dashSheet(formatMoneyCell(eff.pricePerSqm)),
+          dashSheet(formatRateCell(eff.pricePerSqm)),
           item.market
             ? dashSheet(formatSheetPct(item.market.effectiveWeightPct))
             : "—",

@@ -1146,6 +1146,10 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<string>("InspectedUsage")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
                     b.Property<string>("InspectionRestrictionReason")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
@@ -1192,6 +1196,9 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<string>("PartitionMinutesNumber")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("PhotoMarksJson")
+                        .HasColumnType("jsonb");
 
                     b.Property<string>("PlanName")
                         .HasMaxLength(256)

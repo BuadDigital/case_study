@@ -241,6 +241,10 @@ export {
   type ReturnInspectionResultDto,
   type ReturnInspectionStudyReportDecision,
   type SavePartyTaskSubmissionRequest,
+  copyPriorInspection,
+  listPriorInspections,
+  type PriorInspectionCopy,
+  type PriorInspectionOption,
 } from "./party-task-submissions";
 
 export {
@@ -570,6 +574,7 @@ export {
 
 export {
   getValuationLists,
+  reviewPropertyUsage,
   saveValuationLists,
   activeValuationListOptions,
   type ValuationListsApiConfig,
@@ -752,3 +757,8 @@ export {
   type BuildingStructureKind,
   type SaveBuildingInventoryRequest,
 } from "./building-inventory";
+
+export {
+  savePropertyPhotoMarks,
+  type PropertyPhotoMarksDto,
+} from "./property-photo-marks";

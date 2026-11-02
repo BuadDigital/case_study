@@ -266,7 +266,7 @@ export function areasFromInventory(
 }
 
 /**
- * A money or price-per-m² cell, as the valuation screens show it.
+ * A money cell, as the valuation screens show it.
  *
  * How it works: whole riyals through the shared `fmt` (Latin digits, en-US grouping) — the same
  * display rounding the market, cost and final-opinion screens use.
@@ -278,6 +278,19 @@ export function areasFromInventory(
 export function formatMoneyCell(n: number | null | undefined): string {
   if (n == null || !Number.isFinite(n)) return "";
   return fmt(n);
+}
+
+/**
+ * A price-per-m² cell, as the valuation screens show it.
+ *
+ * How it works: up to two decimals with no trailing zeros, through the shared `fmtMax`.
+ *
+ * Edge cases: a whole number misleads on cheap land: 4.5 printed as 5, and 5 × the area did not equal
+ * the value on the next row. Empty / non-finite → "".
+ */
+export function formatRateCell(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "";
+  return fmtMax(n);
 }
 
 /**
@@ -391,7 +404,7 @@ function costLineSheetValues(line: ValuationCostLineDto): string[] {
   const price = line.effectiveUnitCostSar ?? line.unitCostSar;
   return [
     dashSheet(qtyText && unit !== "sqm" ? `${qtyText} ${costUnitLabel(unit)}` : qtyText),
-    dashSheet(price ? formatMoneyCell(price) : ""),
+    dashSheet(price ? formatRateCell(price) : ""),
     total,
   ];
 }
@@ -756,6 +769,8 @@ export function buildAdjustmentSheetRows(
     (x) => sequential.filter((f) => Number(includedLine(x, f.key)?.percent ?? 0) !== 0).length > 1,
   );
   const ppsm = market?.weightedPricePerSqm;
+  // On the whole-property basis the chain carries property values, not metres.
+  const chainCell = market?.adjustmentBasis === "whole_property" ? formatMoneyCell : formatRateCell;
   const opinion = market?.marketOpinionValueRaw ?? market?.marketOpinionValue;
   const subjectArea = formatAreaCell(market?.subjectAreaSqm || null);
   const subjectSpec = (key: string) =>
@@ -790,7 +805,7 @@ export function buildAdjustmentSheetRows(
         ? "سعر البيع بعد التسويات التسلسلية"
         : "سعر البيع بعد تسوية شروط التمويل وظروف السوق",
       values: compCols(comps, (x) =>
-        formatMoneyCell(x.market?.pricePerSqmAfterSequential),
+        chainCell(x.market?.pricePerSqmAfterSequential),
       ),
       subject: "",
     },
@@ -836,7 +851,7 @@ export function buildAdjustmentSheetRows(
     {
       key: "سعر البيع بعد التسويات",
       values: compCols(comps, (x) =>
-        formatMoneyCell(
+        chainCell(
           x.market?.pricePerSqmAfterDifference ??
             x.market?.pricePerSqmAfterSequential,
         ),
@@ -856,7 +871,7 @@ export function buildAdjustmentSheetRows(
         market?.adjustmentBasis === "whole_property"
           ? "المتوسط المرجح لقيمة العقار"
           : "المتوسط المرجح لسعر المتر",
-      values: [dashSheet(ppsm != null && ppsm > 0 ? formatMoneyCell(ppsm) : "")],
+      values: [dashSheet(ppsm != null && ppsm > 0 ? chainCell(ppsm) : "")],
       subject: "",
     },
     {

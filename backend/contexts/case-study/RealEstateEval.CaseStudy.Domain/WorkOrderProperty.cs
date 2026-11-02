@@ -81,6 +81,11 @@ public class WorkOrderProperty : ITrackUpdatedAt
     /// Null until the first completed field inspection.
     /// </summary>
     public string? InspectedPropertyType { get; set; }
+    /// <summary>
+    /// «استخدام العقار» as the inspector found it on site, or as case staff corrected it. Null until the
+    /// inspection is submitted; the bourse classification is never copied here.
+    /// </summary>
+    public string? InspectedUsage { get; set; }
     public string? AssignmentDocFileName { get; set; }
     public string? DelegationLetterFileName { get; set; }
  /// <summary>JSON array of filenames.</summary>
@@ -153,6 +158,12 @@ public class WorkOrderProperty : ITrackUpdatedAt
  /// description text or photo. The inspector's own text stays untouched in the payload.
  /// </summary>
     public string? SpecialistComponentsText { get; set; }
+
+ /// <summary>
+ /// JSON — the case specialist's marks on the inspector's photos: the main photo, the electricity and
+ /// water meters and the photos chosen for the report, by attachment id. The package stays untouched.
+ /// </summary>
+    public string? PhotoMarksJson { get; set; }
 
  // Inspection Limitations — Construction Question Pattern: Columns on property.
  /// <summary>Inspection Scope: full | external | desktop | “(Not captured).</summary>

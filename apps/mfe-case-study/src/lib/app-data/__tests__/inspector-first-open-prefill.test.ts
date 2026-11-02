@@ -49,7 +49,7 @@ beforeEach(async () => {
 });
 
 describe("the inspector's first open of a task", () => {
-  it("already carries the bourse's asset type and usage (not only after a reload)", async () => {
+  it("already carries the bourse's asset type (not only after a reload), never a use", async () => {
     const draft = await getOrCreateInspectorWorkspace({
       taskId: TASK,
       propertyId: "p-1",
@@ -58,7 +58,7 @@ describe("the inspector's first open of a task", () => {
     });
 
     expect(draft?.featureValues.assetSubject).toBe("عمارة");
-    expect(draft?.featureValues.propertyUsage).toBe("مبنى مفرد");
+    expect(draft?.featureValues.propertyUsage).toBeFalsy();
     // the movables default still applies
     expect(draft?.featureValues.movables).toBe("لا");
   });

@@ -15,6 +15,7 @@ public class RepositoryBoundaryTests
         { "PartyTaskSubmission", "IPartyTaskSubmissionRepository" },
         { "InspectionLimits", "IInspectionLimitsRepository" },
         { "BuildingInventory", "IBuildingInventoryRepository" },
+        { "PropertyPhotoMarks", "IPropertyPhotoMarksRepository" },
     };
 
     [Theory]

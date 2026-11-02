@@ -22,7 +22,7 @@ import {
 } from "@platform/ui-kit";
 import type { ValuationComparableSelectionDto } from "@platform/api-client";
 import { ymd } from "@platform/app-shared/format/date";
-import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
 
 import { fmt } from "./lib/shell-utils";
 import {
@@ -35,7 +35,7 @@ import {
   nextCustomFactorKey,
 } from "./lib/factor-registry";
 import type { MatrixDispatch } from "./lib/matrix-actions";
-import { afterWeightValue } from "./lib/adjustments-matrix-state";
+import { afterWeightValue, fmtChainValue } from "./lib/adjustments-matrix-state";
 import {
   FactorPctInput,
   JustCell,
@@ -443,7 +443,7 @@ export function AdjustmentsMatrixPhone({
                   label: isUnit
                     ? "سعر متر المقارن · الأساس"
                     : "سعر متر المقارن",
-                  value: fmt(effUnit(item)),
+                  value: fmtMax(effUnit(item)),
                   ltr: true,
                 },
                 {
@@ -484,7 +484,7 @@ export function AdjustmentsMatrixPhone({
                 <PhoneTotal
                   strong
                   label="السعر بعد تسوية ظروف السوق"
-                  value={fmt(item.market?.pricePerSqmAfterSequential)}
+                  value={fmtChainValue(item.market?.pricePerSqmAfterSequential, isUnit)}
                 />
 
                 <PhoneTotal
@@ -547,7 +547,7 @@ export function AdjustmentsMatrixPhone({
                   <PhoneTotal
                     label="القيمة بعد ضبط عوامل الاختلاف"
                     note={isUnit ? "ر.س/م²" : "ر.س — قيمة العقار"}
-                    value={fmt(item.market?.pricePerSqmAfterDifference)}
+                    value={fmtChainValue(item.market?.pricePerSqmAfterDifference, isUnit)}
                   />
                 </div>
 
@@ -573,7 +573,7 @@ export function AdjustmentsMatrixPhone({
                   strong
                   label="القيمة بعد الوزن النسبي"
                   note={isUnit ? "ر.س/م²" : "ر.س — قيمة العقار"}
-                  value={fmt(afterWeightValue(item))}
+                  value={fmtChainValue(afterWeightValue(item), isUnit)}
                 />
               </div>
             </MobileRecordCard>

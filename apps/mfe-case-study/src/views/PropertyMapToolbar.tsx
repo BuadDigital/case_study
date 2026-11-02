@@ -63,7 +63,7 @@ export function PropertyMapToolbar({
   } = workflow;
 
   return (
-    <div className="relative z-[1200] flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-surface px-4 py-2">
+    <div className="relative z-10 flex shrink-0 flex-wrap items-center gap-3 border-b border-border bg-surface px-4 py-2">
       <div className="flex flex-wrap items-center gap-1 rounded-full border border-border bg-surface-2 p-[3px]">
         {LAYER_CHIPS.map((chip) => (
           <LayerPill

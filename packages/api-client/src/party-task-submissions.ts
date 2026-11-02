@@ -226,6 +226,62 @@ export async function getPartyTaskSubmission(
   }
 }
 
+/** One earlier inspection of the same deed the inspector may copy from. */
+export type PriorInspectionOption = {
+  sourceTaskId: string;
+  poNumber: string;
+  city?: string | null;
+  district?: string | null;
+  inspectorName?: string | null;
+  submittedAtUtc?: string | null;
+};
+
+/** The copyable answers of an earlier inspection — the server never sends a photo. */
+export type PriorInspectionCopy = {
+  sourceTaskId: string;
+  poNumber: string;
+  payload: Record<string, unknown>;
+};
+
+/** GET `.../prior-inspections` — empty unless the caller is the inspector of an unsent inspection. */
+export async function listPriorInspections(
+  config: WorkOrdersApiConfig,
+  taskId: string,
+): Promise<ApiOk<PriorInspectionOption[]> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/party-task-submissions/${taskId}/prior-inspections`, {
+      headers: authHeaders(config.token),
+    });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: (await res.json()) as PriorInspectionOption[] };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** POST `.../prior-inspections/{sourceTaskId}/copy` — also writes the copy to the timeline and audit log. */
+export async function copyPriorInspection(
+  config: WorkOrdersApiConfig,
+  taskId: string,
+  sourceTaskId: string,
+): Promise<ApiOk<PriorInspectionCopy> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/party-task-submissions/${taskId}/prior-inspections/${sourceTaskId}/copy`,
+      { method: "POST", headers: authHeaders(config.token) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 404) return { ok: false, kind: "not_found" };
+    if (!res.ok) return { ok: false, kind: "server" };
+    return { ok: true, data: (await res.json()) as PriorInspectionCopy };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function savePartyTaskSubmission(
   config: WorkOrdersApiConfig,
   taskId: string,

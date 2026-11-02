@@ -232,7 +232,7 @@ public sealed class ValuationReportFieldInjectionService(
             Put("inspection_date", ValuationReportDisplayRules.FormatGregorianDate(inspectionDate));
 
         Put("property_type_ar", prop?.PropertyType ?? vr.PropertyType);
-        Put("usage_type_ar", prop?.Classification);
+        Put("usage_type_ar", prop?.InspectedUsage);
         Put("region_ar", prop?.Region);
         Put("city_ar", prop?.City);
         Put("district_ar", prop?.District);

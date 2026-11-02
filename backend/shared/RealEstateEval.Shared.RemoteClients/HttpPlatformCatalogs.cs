@@ -41,6 +41,27 @@ public sealed class HttpValuationListsService(
         CancellationToken cancellationToken = default) =>
         throw new InvalidOperationException(
             "Valuation-lists writes belong on the Platform API.");
+
+    public Task RecordPropertyUsageAsync(
+        string nameAr,
+        string actorId,
+        CancellationToken cancellationToken = default) =>
+        UpstreamJson.PostAsync(
+            http,
+            httpContext,
+            options.Value.PlatformBaseUrl,
+            "/api/valuation-lists/property-usages/record",
+            new RecordPropertyUsageRequest { NameAr = nameAr },
+            "UpstreamServices:PlatformBaseUrl",
+            cancellationToken);
+
+    public Task<ValuationListsDto> ReviewPropertyUsageAsync(
+        string key,
+        ReviewPropertyUsageRequest request,
+        string actorId,
+        CancellationToken cancellationToken = default) =>
+        throw new InvalidOperationException(
+            "Valuation-lists writes belong on the Platform API.");
 }
 
 /// <summary>

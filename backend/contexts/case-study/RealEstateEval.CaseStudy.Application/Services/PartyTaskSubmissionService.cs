@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -35,6 +36,9 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
     private readonly IValuationRequestService? _valuationRequests;
     /// <summary>Absent in test compositions — a study-report reopen decision then fails closed.</summary>
     private readonly ICaseStudyReportService? _reports;
+    /// <summary>Absent in test compositions — usage names are then not counted on the list.</summary>
+    private readonly IValuationListsService? _usageList;
+    private readonly ILogger<PartyTaskSubmissionService>? _logger;
 
     public PartyTaskSubmissionService(
         IPartyTaskSubmissionRepository repo,
@@ -50,11 +54,15 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         IAuditLogAppend auditLog,
         TimeProvider? time = null,
         IValuationRequestService? valuationRequests = null,
-        ICaseStudyReportService? reports = null)
+        ICaseStudyReportService? reports = null,
+        IValuationListsService? usageList = null,
+        ILogger<PartyTaskSubmissionService>? logger = null)
     {
         _time = time ?? TimeProvider.System;
         _valuationRequests = valuationRequests;
         _reports = reports;
+        _usageList = usageList;
+        _logger = logger;
 
         _repo = repo;
         _failures = failures;
@@ -70,6 +78,31 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
     }
 
     private static Dictionary<string, string> Error(string message) => PartyTaskSubmissionRules.Error(message);
+
+    /// <summary>
+    /// Counts the inspection's usage on the shared list, so a name the list lacks reaches the review queue.
+    /// How it works: runs after the inspection is committed, on the server, so one path serves a live
+    /// submit, an offline submit replayed later and a staff correction.
+    /// Edge cases: the inspection is already saved and must not fail over a counter, so an unreachable
+    /// Platform service is only logged. The name stays on the property; the next save of it counts again.
+    /// </summary>
+    private async Task RecordUsageNameAsync(
+        string? usage,
+        PartySubmissionActor? actor,
+        CancellationToken cancellationToken)
+    {
+        if (_usageList is null || string.IsNullOrWhiteSpace(usage)) return;
+        try
+        {
+            await _usageList.RecordPropertyUsageAsync(usage, actor?.UserId ?? "", cancellationToken);
+        }
+        catch (Exception ex) when (
+            ex is HttpRequestException or InvalidOperationException
+            || (ex is OperationCanceledException && !cancellationToken.IsCancellationRequested))
+        {
+            _logger?.LogWarning(ex, "Could not record the property usage on the shared list.");
+        }
+    }
 
     public async Task<PartyTaskSubmissionDto?> GetAsync(
         Guid taskId,
@@ -211,9 +244,19 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 return (null, Error(correctError));
             entity.FieldProvenanceJson = correctedProvenance;
 
+            string? correctedUsage = null;
             if (task.Kind == WorkflowTaskKind.FieldInspection)
             {
                 await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
+                // The specialist corrects «استخدام العقار» here; the property shows the corrected name.
+                var submittedUsage = InspectedUsageRules.FromPayload(payloadBeforeSave);
+                var nextUsage = InspectedUsageRules.FromPayload(entity.PayloadJson);
+                if (task.PropertyId is Guid usagePropertyId
+                    && !string.Equals(submittedUsage, nextUsage, StringComparison.Ordinal))
+                {
+                    await _repo.SetInspectedUsageAsync(usagePropertyId, nextUsage, cancellationToken);
+                    correctedUsage = nextUsage;
+                }
                 // A correction after confirmation keeps the intake boundary table in step with the inspector's.
                 if (entity.AcceptedAtUtc is not null && task.PropertyId is Guid correctedPropertyId)
                 {
@@ -225,6 +268,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             }
 
             await _repo.SaveChangesAsync(cancellationToken);
+            await RecordUsageNameAsync(correctedUsage, actor, cancellationToken);
             await AlertAppraiserInspectorDataChangedAsync(task, payloadBeforeSave, entity.PayloadJson, cancellationToken);
             return (await ToDtoAsync(entity, cancellationToken), null);
         }
@@ -318,6 +362,9 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         // Submission status and workflow completion must commit together; otherwise the
         // party looks submitted while the task is still open (or the reverse on rollback).
         InspectedTypeChange? typeChange = null;
+        var inspectedUsage = task.Kind == WorkflowTaskKind.FieldInspection
+            ? InspectedUsageRules.FromPayload(entity.PayloadJson)
+            : null;
         await _repo.ExecuteInTransactionAsync(
             async ct =>
             {
@@ -328,6 +375,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
                         inspectedPropertyId,
                         inspectedPropertyType,
                         ct);
+                    await _repo.SetInspectedUsageAsync(inspectedPropertyId, inspectedUsage, ct);
                 }
                 await _repo.SaveChangesAsync(ct);
 
@@ -347,6 +395,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     ct);
             },
             cancellationToken);
+
+        await RecordUsageNameAsync(inspectedUsage, actor, cancellationToken);
 
         if (task.PropertyId is Guid propertyId)
         {

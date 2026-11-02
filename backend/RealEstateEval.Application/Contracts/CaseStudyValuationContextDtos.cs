@@ -53,6 +53,8 @@ public sealed class CaseStudyValuationPropertyContextDto
     public string PropertyType { get; set; } = "";
     /// <summary>Type confirmed when the field inspector submitted the inspection.</summary>
     public string? InspectedPropertyType { get; set; }
+    /// <summary>«استخدام العقار» from the submitted inspection.</summary>
+    public string? InspectedUsage { get; set; }
     /// <summary>
     /// «الأصل محل التقييم» as the inspector's latest DRAFT states it (his package is not submitted yet,
     /// so <see cref="InspectedPropertyType"/> is still empty). Lets the appraiser's unsaved approach
@@ -183,6 +185,7 @@ public sealed class CaseStudyValuationPropertyContextDto
             ? Classification
             : PropertyTypeCatalog.ClassificationOf(InspectedPropertyType) ?? Classification,
         PropertyType = EffectivePropertyType(),
+        InspectedUsage = InspectedUsage,
         PlanNumber = PlanNumber,
         PlanName = PlanName,
         PlotNumber = PlotNumber,

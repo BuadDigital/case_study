@@ -67,6 +67,7 @@ export {
   pickPrimaryPropertyDetailPhoto,
   pickInspectorPrimaryPhoto,
   isInspectorGlancePhoto,
+  orderPropertyPhotos,
   type PropertyDetailDocumentEntry,
   type PropertyDetailDocumentSection,
 } from "@platform/app-shared/app-data/property-detail-document-types";
@@ -563,6 +564,17 @@ export function collectPropertyDetailDocumentSections(input: {
  * Inspector photos only for the basic-tab glance — intake/deed/bourse images must
  * never appear as «صورة العقار الرئيسية».
  */
+function isPrimaryPhotoCandidate(doc: PropertyDetailDocumentEntry): boolean {
+  return (
+    doc.kind === "image" &&
+    Boolean(
+      doc.dataUrl ||
+        doc.attachmentId ||
+        doc.inspectionPhoto?.attachment.attachmentId,
+    )
+  );
+}
+
 export function collectPrimaryPhotoCandidates(input: {
   property: PoPropertyIntake;
   showDecree: boolean;
@@ -573,13 +585,19 @@ export function collectPrimaryPhotoCandidates(input: {
   void input.showDecree;
   void input.poNumber;
   return collectFieldInspectionDocuments(input.inspectionTaskId).filter(
-    (doc) =>
-      doc.kind === "image" &&
-      Boolean(
-        doc.dataUrl ||
-          doc.attachmentId ||
-          doc.inspectionPhoto?.attachment.attachmentId,
-      ),
+    isPrimaryPhotoCandidate,
+  );
+}
+
+/**
+ * The same candidates from a package the caller already read, for screens that
+ * must not touch the inspector's workspace cache (the property map's card).
+ */
+export function primaryPhotoCandidatesFromSubmission(
+  submission: InspectorWorkspaceDraft,
+): PropertyDetailDocumentEntry[] {
+  return collectFieldInspectionDocumentsFromSubmission(submission).filter(
+    isPrimaryPhotoCandidate,
   );
 }
 

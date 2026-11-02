@@ -295,7 +295,7 @@ export function DetailCard({
   tags,
   rows,
   nearby,
-  isProperty,
+  photo,
   onNearby,
   onClose,
   actionLabel,
@@ -306,7 +306,7 @@ export function DetailCard({
   tags: ReactNode;
   rows: [string, string][];
   nearby: { item: MapComparableRecord; distanceKm: number }[];
-  isProperty?: boolean;
+  photo?: ReactNode;
   onNearby?: (item: MapComparableRecord) => void;
   onClose: () => void;
   actionLabel?: string;
@@ -329,15 +329,7 @@ export function DetailCard({
           </button>
         </div>
         <div className="mt-2 flex items-center gap-3">
-          {isProperty ? (
-            /* Later: show the transaction photo (photoUrl / first attachment) with lightbox zoom; if no photo, keep this slot and report «no attached photo». */
-            <div className="grid size-[84px] shrink-0 place-items-center overflow-hidden rounded-full border-2 border-white bg-gold-soft text-gold-2 shadow-[0_4px_12px_-6px_rgba(18,40,76,.45)]">
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-                <path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                <circle cx="12" cy="12.5" r="3.2" />
-              </svg>
-            </div>
-          ) : null}
+          {photo}
           <div className="min-w-0">
             <h2 className="m-0 text-[15px] font-extrabold leading-snug text-heading">{title}</h2>
             <div className="mt-1.5 flex flex-wrap gap-1.5">{tags}</div>

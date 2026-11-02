@@ -108,6 +108,7 @@ public static class CaseStudyModel
                 .HasConversion<int>();
             e.Property(x => x.PropertyType).HasMaxLength(128);
             e.Property(x => x.InspectedPropertyType).HasMaxLength(128);
+            e.Property(x => x.InspectedUsage).HasMaxLength(150);
             e.Property(x => x.HasStructuresToValue).HasMaxLength(8);
             e.Property(x => x.SpecialistComponentsText).HasMaxLength(8000);
             e.HasAllowedValues("WorkOrderProperties", nameof(WorkOrderProperty.HasStructuresToValue), TriStateAnswers);
@@ -155,6 +156,7 @@ public static class CaseStudyModel
             e.Property(x => x.RestrictionType).HasMaxLength(128);
             e.Property(x => x.RestrictionOtherReason).HasMaxLength(500);
             e.Property(x => x.DeedOwnersJson).HasColumnType("jsonb");
+            e.Property(x => x.PhotoMarksJson).HasColumnType("jsonb");
             e.Property(x => x.BourseCompletedByName).HasMaxLength(128);
             e.Property(x => x.PlanNumber).HasMaxLength(128);
             e.Property(x => x.PlanName).HasMaxLength(256);

@@ -29,9 +29,9 @@ describe("the inspector's type comes from the system's list", () => {
     ).toBe("استراحة");
   });
 
-  it("moves «استخدام العقار» with the type", () => {
-    const values = patchInspectorFeatureValues({ propertyUsage: "وحدة داخل مبنى" }, "assetSubject", "فيلا");
-    expect(values.propertyUsage).toBe("مبنى مفرد");
+  it("leaves «استخدام العقار» alone: the inspector records it, the type does not decide it", () => {
+    const values = patchInspectorFeatureValues({ propertyUsage: "سكني" }, "assetSubject", "فيلا");
+    expect(values.propertyUsage).toBe("سكني");
   });
 });
 
@@ -69,12 +69,17 @@ describe("documents apply by category", () => {
   });
 });
 
-describe("the property header pairs the type with its own classification", () => {
-  it("shows the inspector's type with the inspector's classification, never mixed", () => {
-    const base = { propertyType: "شقة سكنية", classification: "وحدة داخل مبنى" };
-    expect(formatPropertyTypeLine(base)).toBe("شقة سكنية / وحدة داخل مبنى");
-    expect(formatPropertyTypeLine({ ...base, inspectedPropertyType: "فيلا", effectivePropertyType: "فيلا" })).toBe(
-      "فيلا / مبنى مفرد",
-    );
+describe("the property header shows the type the property is now", () => {
+  it("follows the inspector's type and pairs it with the use he recorded", () => {
+    const base = { propertyType: "شقة سكنية" };
+    expect(formatPropertyTypeLine(base)).toBe("شقة سكنية");
+    expect(
+      formatPropertyTypeLine({
+        ...base,
+        inspectedPropertyType: "فيلا",
+        effectivePropertyType: "فيلا",
+        inspectedUsage: "سكني",
+      }),
+    ).toBe("فيلا / سكني");
   });
 });

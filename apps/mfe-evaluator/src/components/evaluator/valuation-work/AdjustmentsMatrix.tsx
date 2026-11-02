@@ -15,7 +15,7 @@ import type {
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
 import { ymd } from "@platform/app-shared/format/date";
-import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 
 import { fmt } from "./lib/shell-utils";
@@ -29,7 +29,7 @@ import {
   nextCustomFactorKey,
 } from "./lib/factor-registry";
 import type { MatrixDispatch } from "./lib/matrix-actions";
-import { afterWeightValue } from "./lib/adjustments-matrix-state";
+import { afterWeightValue, fmtChainValue } from "./lib/adjustments-matrix-state";
 import {
   CompReadonly,
   FactorPctInput,
@@ -267,7 +267,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               {adopted.map((item) => (
                 <CompReadonly
                   key={item.id}
-                  value={fmt(effUnit(item))}
+                  value={fmtMax(effUnit(item))}
                   note={ymd(item.comparable.transactionDate)}
                   valueClassName={isUnit ? "text-heading" : "text-text-3"}
                 />
@@ -370,7 +370,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               {adopted.map((item) => (
                 <CompReadonly
                   key={item.id}
-                  value={fmt(item.market?.pricePerSqmAfterSequential)}
+                  value={fmtChainValue(item.market?.pricePerSqmAfterSequential, isUnit)}
                 />
               ))}
               <JustCell />
@@ -587,7 +587,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               {adopted.map((item) => (
                 <CompReadonly
                   key={item.id}
-                  value={fmt(item.market?.pricePerSqmAfterDifference)}
+                  value={fmtChainValue(item.market?.pricePerSqmAfterDifference, isUnit)}
                 />
               ))}
               <JustCell />
@@ -650,7 +650,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
               />
               <SubjCell value="—" />
               {adopted.map((item) => (
-                <CompReadonly key={item.id} value={fmt(afterWeightValue(item))} />
+                <CompReadonly key={item.id} value={fmtChainValue(afterWeightValue(item), isUnit)} />
               ))}
               <JustCell />
             </tr>

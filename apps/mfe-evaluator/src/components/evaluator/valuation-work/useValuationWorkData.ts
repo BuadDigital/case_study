@@ -159,6 +159,7 @@ export function useValuationWorkData({
     firstBasis: string,
     sel: ValuationComparableSelectionListDto,
     live: () => boolean,
+    forceBasis?: string,
   ) {
     const plan = subjectAreaSyncPlan({
       requestId,
@@ -167,6 +168,7 @@ export function useValuationWorkData({
       lastSyncKey: subjectAreaSyncedRef.current,
       writesFrozen: editLockedRef.current,
       firstBasis,
+      forceBasis,
     });
     if (!plan) return;
     subjectAreaSyncedRef.current = plan.syncKey;
@@ -495,8 +497,9 @@ export function useValuationWorkData({
     builtUpSqm,
   });
 
-  // The scope decides the kind (أرض فقط ↔ أرض مع المباني): a change re-measures the subject — land
-  // area or floor area — once the screen has loaded. The saved basis is kept.
+  // The scope decides the kind (أرض فقط ↔ أرض مع المباني): a change re-measures area or floor area
+  // and moves the basis to the new kind's, once the screen has loaded. A later sync keeps the
+  // appraiser's own choice.
   const lastMarketKindRef = useRef<MarketSubjectKind | null>(null);
   useEffect(() => {
     const prev = lastMarketKindRef.current;
@@ -510,8 +513,15 @@ export function useValuationWorkData({
     const config = apiConfig();
     const requestId = valuationRequestIdRef.current;
     if (!config || !requestId || !selection) return;
-    void syncSubjectArea(config, requestId, area, defaultMarketBasis(marketKind), selection, () =>
-      valuationRequestIdRef.current === requestId,
+    const basis = defaultMarketBasis(marketKind);
+    void syncSubjectArea(
+      config,
+      requestId,
+      area,
+      basis,
+      selection,
+      () => valuationRequestIdRef.current === requestId,
+      basis,
     );
     // Only a change of kind re-measures; the other inputs are read as they are now.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -531,6 +541,7 @@ export function useValuationWorkData({
     bankSubjectCoords,
     bankSearch,
     bankRadiusKm,
+    marketKind,
     subjectArea,
     analysisNotes,
     cost,

@@ -108,7 +108,6 @@ async function loadReportTabBundle(inspectionTaskId: string | null) {
       listsFailed: false,
       clients: [] as ClientDto[],
       inspector: null,
-      primaryPhoto: null,
       photos: [] as PropertyDetailDocumentEntry[],
     };
   }
@@ -122,14 +121,12 @@ async function loadReportTabBundle(inspectionTaskId: string | null) {
       ? fetchInspectorWorkspace(inspectionTaskId)
       : Promise.resolve(null),
   ]);
-  let primaryPhoto: ReturnType<typeof pickPrimaryPropertyDetailPhoto> = null;
   let photos: PropertyDetailDocumentEntry[] = [];
   if (ws) {
     await prefetchInspectorWorkspacePhotos(ws);
     photos = collectFieldInspectionDocumentsFromSubmission(ws).filter(
       (doc) => doc.kind === "image",
     );
-    primaryPhoto = pickPrimaryPropertyDetailPhoto(photos);
   }
   return {
     authError: false as const,
@@ -138,7 +135,6 @@ async function loadReportTabBundle(inspectionTaskId: string | null) {
     listsFailed: !listRes.ok,
     clients: clientsRes?.ok ? clientsRes.data : ([] as ClientDto[]),
     inspector: ws,
-    primaryPhoto,
     photos,
   };
 }
@@ -230,7 +226,9 @@ export function EvaluatorValuationReportTab({
   const org = !bundleAuthError ? (tabBundle?.org ?? null) : null;
   const lists = !bundleAuthError ? (tabBundle?.lists ?? null) : null;
   const inspector = !bundleAuthError ? (tabBundle?.inspector ?? null) : null;
-  const primaryPhoto = !bundleAuthError ? (tabBundle?.primaryPhoto ?? null) : null;
+  const primaryPhoto = !bundleAuthError
+    ? pickPrimaryPropertyDetailPhoto(tabBundle?.photos ?? [], property?.photoMarks)
+    : null;
   const inspectorPhotos = !bundleAuthError ? (tabBundle?.photos ?? []) : [];
   const clients = (!bundleAuthError ? tabBundle?.clients : undefined) ?? EMPTY_CLIENTS;
 

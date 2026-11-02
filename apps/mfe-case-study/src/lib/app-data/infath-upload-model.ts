@@ -1,7 +1,6 @@
 import {
   formatDateAr,
   formatPropertyLocation,
-  formatPropertyTypeLine,
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "./po-intake-data";
@@ -27,7 +26,10 @@ import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import type { BuildingInventoryLineDto } from "@platform/api-client";
 import { infathBuildingAreasFromComponents, inspectedAssetIsLand } from "./specialist-components";
-import { isApartmentInspectionContext } from "@platform/app-shared/app-data/inspector-workspace-data";
+import {
+  isApartmentInspectionContext,
+  propertyUsageValue,
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { fmt } from "@platform/app-shared/format/number";
 import { PropertyKeysStatuses } from "@platform/api-client";
 import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
@@ -491,6 +493,9 @@ export function buildInfathUploadModel(input: {
   const forcedDiscountRaw = partyField(appraisal, L.forcedDiscount);
   const reportIssueDate = partyField(appraisal, L.reportIssueDate);
   const zoneStatus = partyField(inspection, L.zoneStatus);
+  // The use the inspector recorded. Neither the type nor the classification stands in for it, and an
+  // old inspection still holding a classification reads as missing.
+  const inspectedUsage = propertyUsageValue(partyField(inspection, L.propertyUsage));
   const linkedAssetsAnswer = partyField(specialist, L.linkedAssets);
   const workerName =
     partyField(appraisal, "المشارك في إعداد التقرير") ||
@@ -619,8 +624,9 @@ export function buildInfathUploadModel(input: {
         sel(
           "usage",
           L.propertyUsage,
-          partyField(inspection, L.propertyUsage) || property.propertyType || formatPropertyTypeLine(property),
+          inspectedUsage,
           "MA",
+          inspectedUsage ? "" : "ms",
         ),
         txt("street-name", L.streetName, partyField(inspection, L.streetName), "MA"),
         sel(

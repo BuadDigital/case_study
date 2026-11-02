@@ -24,6 +24,7 @@ import {
 } from "@platform/app-shared/app-data/comparable-entry";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
 import { ymd } from "@platform/app-shared/format/date";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
@@ -479,7 +480,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                   ...(row.item
                     ? []
                     : [
-                        { label: "سعر المتر", value: fmt(comp.pricePerSqm), ltr: true },
+                        { label: "سعر المتر", value: fmtMax(comp.pricePerSqm), ltr: true },
                         { label: "سعر العقار", value: fmt(comp.price), ltr: true },
                         { label: "المساحة (م²)", value: fmt(comp.areaSqm), ltr: true },
                         {

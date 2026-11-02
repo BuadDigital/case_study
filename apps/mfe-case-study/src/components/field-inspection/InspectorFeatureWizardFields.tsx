@@ -10,6 +10,7 @@ import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   inspectorFeatureOffersPhoto,
   patchInspectorFeatureValues,
+  propertyUsageValue,
   type InspectorFeatureField,
   type InspectorWorkspaceDraft,
 } from "../../lib/app-data/inspector-workspace-data";
@@ -19,6 +20,7 @@ import { InspectorMovablesDescriptionField } from "./InspectorMovablesDescriptio
 import { InspectorMovablesPhotosField } from "./InspectorMovablesPhotosField";
 import { movablesPhotosResetPatch } from "./inspector-wizard-state";
 import { InspectorOccupancyDescriptionField } from "./InspectorOccupancyDescriptionField";
+import { InspectorPropertyUsageField, InspectorPropertyUsageNote } from "./InspectorPropertyUsageField";
 import { EDIT_CONTROL_CLASS, INS_LABEL_CLASS } from "./FieldInspectionWorkParts";
 import {
   MOVABLES_DESCRIPTION_KEY,
@@ -124,7 +126,8 @@ export function InspectorFeatureWizardFields({
 
   /** Read-only / value / missing flags shared by the select and chip fields. */
   function featureFieldState(field: InspectorFeatureField) {
-    const rawVal = draft.featureValues[field.key]?.trim() ?? "";
+    const stored = draft.featureValues[field.key]?.trim() ?? "";
+    const rawVal = field.key === "propertyUsage" ? propertyUsageValue(stored) : stored;
     return {
       fieldDisabled: disabled || readOnlyKeys.has(field.key),
       rawVal,
@@ -177,7 +180,28 @@ export function InspectorFeatureWizardFields({
           return (
             <div key={field.key} id={`ins-feature-${field.key}`}>
               {fieldDisabled ? (
-                <InsReadField label={field.label} value={rawVal} />
+                <>
+                  <InsReadField label={field.label} value={rawVal} />
+                  {field.key === "propertyUsage" ? (
+                    <InspectorPropertyUsageNote value={rawVal} />
+                  ) : null}
+                </>
+              ) : field.key === "propertyUsage" ? (
+                <>
+                  <span className={INS_LABEL_CENTERED_CLASS}>
+                    {field.label}
+                  </span>
+                  <InspectorPropertyUsageField
+                    id={`ins-feature-select-${field.key}`}
+                    value={rawVal}
+                    invalid={valueMissing}
+                    controlClassName={cn(
+                      INS_GRID_SELECT_CLASS,
+                      valueMissing && invalidControlClass,
+                    )}
+                    onChange={(next) => setFeature(field.key, next)}
+                  />
+                </>
               ) : (
                 <>
                   <span className={INS_LABEL_CENTERED_CLASS}>

@@ -54,7 +54,7 @@
   --on-ink: #ffffff; /* Text/icon color for anything painted on an --ink fill (buttons, sidebar, toasts) */
   --on-ink-success: #8fd0a5; /* Success icon/accent color on an --ink fill */
   --on-ink-danger: #f0a8a0; /* Danger icon/accent color on an --ink fill */
-  --font-app: var(--font-arabic), "Tajawal", "Segoe UI", Tahoma, system-ui, sans-serif; /* Operations platform — every screen, dashboard, portal */
+  --font-app: "Tajawal", "Segoe UI", Tahoma, system-ui, sans-serif; /* Operations platform — every screen, dashboard, portal */
   --font-report: "IBM Plex Sans Arabic", "IBM Plex Sans", "Segoe UI", Arial, sans-serif; /* Quotations, proposals, slide decks, PDF reports */
   --font-letter: "Sakkal Majalla", "Noto Naskh Arabic", "Segoe UI", Tahoma, sans-serif; /* Official correspondence on the letterhead, memos, certificates */
   --motion-fast: 120ms; /* Micro-interactions — hover/press feedback */

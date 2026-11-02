@@ -376,6 +376,18 @@ public class MarketDispersionAndGrossAdjustmentTests
     }
 
     [Fact]
+    public void M22_keeps_the_fraction_of_a_cheap_median_rate()
+    {
+        var comps = new[] { 4.5m, 4.5m, 4.5m, 450m }
+            .Select((r, i) => AlertComp("أرض", r, $"CMP-FARM-{i + 1}"))
+            .ToList();
+
+        var m22 = Alert(ValuationMethodologyAlertRules.Evaluate(AlertInput(comps)), 22);
+
+        Assert.Contains("عن وسيط الأسعار المعدّلة 4.5 ر.س/م²", m22.DetailAr);
+    }
+
+    [Fact]
     public void M22_dispersion_fires_on_the_R2a_outlier_and_clears_with_a_rationale()
     {
         var comps = R2aAdjusted.Select((r, i) => AlertComp("أرض", r, $"CMP-R2A-{i + 1}")).ToList();

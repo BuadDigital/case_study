@@ -35,6 +35,7 @@ import {
   type SubjectHints,
   subjectIdentity,
 } from "./lib/valuation-data-state";
+import type { MarketSubjectKind } from "./lib/market-subject";
 
 export function useValuationWorkReadModels({
   hints,
@@ -49,6 +50,7 @@ export function useValuationWorkReadModels({
   applyBankResult,
   bankSearch,
   bankRadiusKm,
+  marketKind,
 }: {
   hints: SubjectHints;
   loading: boolean;
@@ -60,6 +62,8 @@ export function useValuationWorkReadModels({
   bankSearch: string;
   /** The radius the appraiser picked for the bank table; `null` = all. */
   bankRadiusKm: number | null;
+  /** What the market table compares the subject as; land puts land comparables first. */
+  marketKind: MarketSubjectKind;
   subjectArea: string;
   analysisNotes: string;
   cost: ValuationCostApproachDto | null;
@@ -141,11 +145,13 @@ export function useValuationWorkReadModels({
         limit: searching ? BANK_SEARCH_DISPLAY_LIMIT : BANK_DISPLAY_LIMIT,
         nearbyOnly: !searching,
         radiusKm: bankRadiusKm,
+        preferLand: marketKind === "land",
       }),
     [
       selection?.items,
       candidates,
       bankRadiusKm,
+      marketKind,
       subjectCity,
       subjectCoordsForBank,
       subjectArea,

@@ -264,9 +264,9 @@ describe("§19 — every applied factor prints", () => {
     const row = (k: string) => fill.adjustmentRows.find((r) => r.key === k);
     expect(row("تسوية نوع المقارن")?.values).toEqual(["-8.00٪"]);
     // 11,500 × 1.002 × 0.92 = 10,601.16 — the compounded chain, not the plain sum (−7.80);
-    // printed in whole riyals like the matrix.
+    // printed with its fraction like the matrix.
     expect(row("إجمالي التسويات التسلسلية ٪ (مركّبة)")?.values).toEqual(["-7.82٪"]);
-    expect(row("سعر البيع بعد التسويات التسلسلية")?.values).toEqual(["10,601"]);
+    expect(row("سعر البيع بعد التسويات التسلسلية")?.values).toEqual(["10,601.16"]);
     expect(row("سهولة الوصول")?.pairs).toEqual([["طريق رئيسي", "3.00٪"]]);
     expect(row("جودة التشطيب")?.pairs).toEqual([["فاخر", "1.00٪"]]);
     expect(row("عمر المبنى وحالة التشطيب")?.pairs).toEqual([["أحدث", "-3.00٪"]]);

@@ -13,7 +13,7 @@
 import { cn } from "@platform/ui-kit";
 
 import { panelCardClass } from "./AdjustmentsMatrixCells";
-import type { MatrixAlert, MatrixBasisView } from "./lib/adjustments-matrix-state";
+import { fmtChainValue, type MatrixAlert, type MatrixBasisView } from "./lib/adjustments-matrix-state";
 import { fmt } from "./lib/shell-utils";
 import { KeepCodesTogether } from "./KeepCodesTogether";
 
@@ -38,7 +38,7 @@ export function MatrixOutputsPanel({
           dir="ltr"
           className="text-start text-[24px] font-extrabold leading-none text-heading"
         >
-          {fmt(weightedPricePerSqm)}
+          {fmtChainValue(weightedPricePerSqm, isUnit)}
         </div>
         <div className="mt-[7px] text-[11.5px] font-normal text-text-3">
           {isUnit ? "ر.س/م²" : "ر.س — متوسط مرجّح لقيم المقارنات"}
@@ -48,7 +48,7 @@ export function MatrixOutputsPanel({
           <div className="mt-[5px] text-[11.5px] font-bold text-gold-d">
             {pricePerSqmLabel}:{" "}
             <span dir="ltr">
-              {pricePerSqmDisplay != null ? fmt(pricePerSqmDisplay) : "—"}
+              {pricePerSqmDisplay != null ? fmtChainValue(pricePerSqmDisplay, true) : "—"}
             </span>{" "}
             ر.س/م²
           </div>

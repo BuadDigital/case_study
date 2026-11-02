@@ -67,7 +67,7 @@ public static class ValuationReportFieldCatalog
         new("property_condition_ar", "حالة العقار- الإسم العربي", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Text, "جديد أو مستخدم — من المعاين"),
         new("building_condition_ar", "حالة المبنى- الإسم العربي", ValuationReportFieldSourceKind.ConditionalEmpty, ValuationReportFieldValueType.Text, null),
         new("vacancy_ar", "شاغرية العقار- الإسم العربي", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Text, null),
-        new("usage_type_ar", "نوع الاستخدام- الإسم العربي", ValuationReportFieldSourceKind.Platform, ValuationReportFieldValueType.Text, "من تصنيف العقار"),
+        new("usage_type_ar", "نوع الاستخدام- الإسم العربي", ValuationReportFieldSourceKind.Platform, ValuationReportFieldValueType.Text, "من المعاينة الميدانية"),
         new("meter.4120", "عدد عدادات الكهرباء", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Number, null),
         new("meter.4130", "أرقام عدادات الكهرباء", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Number, null),
         new("meter.4160", "عدد عدادات المياه", ValuationReportFieldSourceKind.Deferred, ValuationReportFieldValueType.Number, null),

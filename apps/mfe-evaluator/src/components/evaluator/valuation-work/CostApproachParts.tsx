@@ -126,7 +126,7 @@ export function CostLandValueCard({
           <div className="flex flex-col gap-1.5">
             <FieldLabel>سعر المتر بعد التسويات</FieldLabel>
             <span dir="ltr" className="py-2 text-sm font-extrabold text-heading">
-              {landComplete ? fmt(cost?.landUnitRateFromMarket) : "—"}
+              {landComplete ? fmtMax(cost?.landUnitRateFromMarket) : "—"}
             </span>
           </div>
           <label className="flex flex-col gap-1.5">
@@ -179,7 +179,7 @@ export function CostLandValueCard({
           <div className="flex flex-col gap-1.5">
             <FieldLabel>سعر المتر بعد الخصم</FieldLabel>
             <span dir="ltr" className="py-2 text-sm font-extrabold text-gold-d">
-              {landComplete ? fmt(cost?.landUnitRateAfterDiscount) : "—"}
+              {landComplete ? fmtMax(cost?.landUnitRateAfterDiscount) : "—"}
             </span>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -490,7 +490,7 @@ export function CostResultsCard({
   buildingOnly: boolean;
 }) {
   const { totalCostLocal, netValueLocal, costValueLocal, landComplete } = derived;
-  const perSqm = (value: number) => (buildAreaLocal > 0 ? fmt(value / buildAreaLocal) : "—");
+  const perSqm = (value: number) => (buildAreaLocal > 0 ? fmtMax(value / buildAreaLocal) : "—");
   return (
     <Card className="mb-6">
       {/* Phones stack the two figures. */}

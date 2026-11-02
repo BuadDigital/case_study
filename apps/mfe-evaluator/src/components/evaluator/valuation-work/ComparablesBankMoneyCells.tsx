@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import type { ComparablePropertyDto, ValuationComparableSelectionDto } from "@platform/api-client";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { PhoneField, Td, TdLtr, cn } from "@platform/ui-kit";
 import {
   areaRatio,
@@ -261,7 +262,7 @@ export function ComparablesBankMoneyReadOnly({
         className="bg-gold-soft text-center"
         valueClassName="text-[14px] font-extrabold text-heading"
       >
-        {fmt(comp.pricePerSqm)}
+        {fmtMax(comp.pricePerSqm)}
       </TdLtr>
       <Td className="text-center">
         <span dir="ltr" className="text-[14px] font-extrabold text-heading">
