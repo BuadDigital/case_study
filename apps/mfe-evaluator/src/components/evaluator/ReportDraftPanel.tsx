@@ -41,6 +41,7 @@ import {
   resolvePrintAttachmentOrder,
 } from "../../lib/evaluator/valuation-report-property-attachments";
 import { FinalReportDownload } from "./FinalReportDownload";
+import { ReportDepositStep } from "./ReportDepositStep";
 import { ValCard } from "./EvaluatorHtmlPrimitives";
 import { ValuationReportAttachmentsEditor } from "./ValuationReportAttachmentsEditor";
 import { reportDraftKey, useReportDraftByProperty, useSetReportDraft } from "./useReportDraft";
@@ -64,7 +65,8 @@ function formatDate(iso: string | null | undefined): string {
 /**
  * The case specialist's workspace for the valuation-report draft: after the appraiser hands his package
  * over, he fills the report choices he owns (the print attachments; the appraiser's own ESG is his), confirms the valuation matches the
- * property study, and sends the draft to the appraiser — who approves it (or he withdraws it).
+ * property study, and sends the draft to the appraiser — who approves it (or he withdraws it). Once it is
+ * approved he deposits it in «قيمة» and records the code and certificate here (`ReportDepositStep`).
  * Read-only for everyone else.
  */
 export function ReportDraftPanel({
@@ -326,7 +328,7 @@ export function ReportDraftPanel({
             ? `صدر التقرير النهائي — رمز الإيداع ${draft.depositCode ?? "—"}${draft.certificateFileName ? ` · الشهادة: ${draft.certificateFileName}` : ""}.`
             : draft.depositCode
               ? `سُجّل رمز الإيداع ${draft.depositCode}.`
-              : "بانتظار أن يرفع المقيّم التقرير على «قيمة» ويسجّل رمز الإيداع والشهادة."}
+              : "بانتظار إيداع التقرير في «قيمة» وتسجيل رمز الإيداع والشهادة."}
         </p>
       ) : null}
 
@@ -335,6 +337,8 @@ export function ReportDraftPanel({
           <FinalReportDownload propertyId={propertyId} draft={draft} />
         </div>
       ) : null}
+
+      {canEdit && status === "approved" ? <ReportDepositStep propertyId={propertyId} draft={draft} /> : null}
 
       {canEdit && deposited ? (
         <div className="mb-3 flex justify-end">

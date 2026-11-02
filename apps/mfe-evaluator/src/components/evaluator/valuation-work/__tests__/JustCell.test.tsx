@@ -4,10 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { JustCell } from "../AdjustmentsMatrixCells";
 
 /**
- * Round 2 — the factor / manual-weight rationale box: checked on blur (not per keystroke), a
- * short rationale named under the box (not only a toast), and the weight row says «مبرر الوزن اليدوي».
+ * The factor / manual-weight rationale box: saved on blur (not per keystroke), any length —
+ * 2026-11-02 the rationale became an optional note.
  */
-describe("JustCell — rationale minimum on blur", () => {
+describe("JustCell — optional rationale saved on blur", () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
@@ -35,31 +35,25 @@ describe("JustCell — rationale minimum on blur", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("names a short factor rationale under the box on blur and keeps the draft", () => {
+  it("saves a short factor rationale on blur — no minimum", () => {
     const onCommit = renderCell("location");
     const box = screen.getByRole("textbox", { name: "مبرر عامل التسوية" });
 
     fireEvent.change(box, { target: { value: "قصير" } });
     fireEvent.blur(box);
 
-    expect(onCommit).not.toHaveBeenCalled();
-    expect(screen.getByRole("alert").textContent).toBe("مبرر عامل التسوية يجب ألا يقل عن 10 أحرف");
-    expect(box.getAttribute("aria-invalid")).toBe("true");
-    expect((box as HTMLInputElement).value).toBe("قصير");
-
-    fireEvent.change(box, { target: { value: "قصير جداً لكن الآن أطول" } });
     expect(screen.queryByRole("alert")).toBeNull();
-    fireEvent.blur(box);
-    expect(onCommit).toHaveBeenCalledWith("location", "قصير جداً لكن الآن أطول");
+    expect(onCommit).toHaveBeenCalledWith("location", "قصير");
   });
 
-  it("the weight row's message is the manual-weight rationale", () => {
-    renderCell("weight");
+  it("the weight row is named as the manual-weight rationale and saves any length", () => {
+    const onCommit = renderCell("weight");
     const box = screen.getByRole("textbox", { name: "مبرر الوزن اليدوي" });
 
     fireEvent.change(box, { target: { value: "أحدث" } });
     fireEvent.blur(box);
 
-    expect(screen.getByRole("alert").textContent).toBe("مبرر الوزن اليدوي يجب ألا يقل عن 10 أحرف");
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(onCommit).toHaveBeenCalledWith("weight", "أحدث");
   });
 });

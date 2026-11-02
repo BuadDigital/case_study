@@ -86,10 +86,10 @@ public static class ValuationComparableSelectionRequestRules
 
     /// <summary>
     /// Per-comparable market save checks. Interactive model spec: "blocking happens at adoption
-    /// only — partial input is kept as draft", so a BLANK rationale saves; the issuance gate
-    /// <c>adjustment_rationales_*</c> (<see cref="ValuationIssuanceGateRules.AdjustmentRationales"/>)
-    /// then blocks issuance and hand-over until each is written. still rejects token (written
-    /// but shorter than 10 characters) rationales here.
+    /// only — partial input is kept as draft".
+    ///
+    /// Edge cases: 2026-11-02 — the adjustment-factor and manual-weight rationales are optional notes
+    /// of any length (the percentages are estimates); they are neither checked here nor at issuance.
     /// </summary>
     public static Dictionary<string, string> ValidateMarketSave(SaveValuationComparableMarketRequest request)
     {
@@ -110,11 +110,8 @@ public static class ValuationComparableSelectionRequestRules
             if (line.Percent is < -100m or > 100m)
                 errors[$"adjustmentLines[{i}].percent"] = "النسبة يجب أن تكون بين -100 و 100";
 
-            // Empty override inherits the factor rationale; a written one for a
-            // non-zero factor is at least 10 characters.
-            if (line.Percent != 0m && JustificationRules.IsBelowRequiredMinimum(line.Rationale))
-                errors[$"adjustmentLines[{i}].rationale"] =
-                    JustificationRules.RequiredMinimumMessageAr("مبرر التسوية للمقارن");
+            // 2026-11-02: a factor's rationale is an optional note of any length; an empty override
+            // inherits the factor rationale.
         }
 
         // The difference factors add up before they apply: at −100٪ or below the comparable's price
@@ -135,9 +132,6 @@ public static class ValuationComparableSelectionRequestRules
             else if (request.WeightPct is < 0m or > 100m)
                 errors["weightPct"] = "الوزن يجب أن يكون بين 0 و 100";
 
-            if (JustificationRules.IsBelowRequiredMinimum(request.WeightOverrideRationale))
-                errors["weightOverrideRationale"] =
-                    JustificationRules.RequiredMinimumMessageAr("مبرر الوزن اليدوي");
         }
 
         if (request.PriceOverrideSar is < 0m)

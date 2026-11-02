@@ -98,7 +98,7 @@ public sealed partial class ValuationReportDraftService
             vr,
             ValuationNoticeAudiences.CaseSpecialist,
             "اعتمد المقيّم تقرير التقييم",
-            $"اعتمد المقيّم تقرير التقييم للعقار {vr.DisplayId} وسيرفعه على «قيمة» ويسجّل رمز الإيداع.",
+            $"اعتمد المقيّم تقرير التقييم للعقار {vr.DisplayId} — أودعه في «قيمة» وسجّل رمز الإيداع وشهادته.",
             NotificationContract.Tones.Success,
             cancellationToken);
         await db.SaveChangesAsync(cancellationToken);

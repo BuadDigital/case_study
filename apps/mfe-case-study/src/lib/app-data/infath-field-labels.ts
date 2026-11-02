@@ -96,8 +96,3 @@ export const INFATH_FIELD_LABELS = {
   surveyFile: "مرفق الرفع المساحي",
   surveyNotes: "ملاحظات الرفع المساحي",
 } as const;
-
-export const INFATH_YES_NO_OPTIONS = [
-  { value: "yes", label: "نعم" },
-  { value: "no", label: "لا" },
-] as const;

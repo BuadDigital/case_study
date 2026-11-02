@@ -70,13 +70,13 @@ public class ValuationDepositAndNewVersionTests
         await using var rig = await ArrangeApprovedAsync();
 
         var (_, noCertificate) = await rig.Service.RecordDepositAsync(
-            rig.RequestId, new RegisterDepositCertificateRequest { DepositCode = "QYM-1" }, Appraiser);
+            rig.RequestId, new RegisterDepositCertificateRequest { DepositCode = "QYM-1" }, Specialist);
         Assert.Equal(DepositCertificateRules.RequiredAr, noCertificate!["certificateContentBase64"]);
 
         var (_, noCode) = await rig.Service.RecordDepositAsync(
             rig.RequestId,
             new RegisterDepositCertificateRequest { DepositCode = "  ", CertificateContentBase64 = TestPdf.OnePageBase64 },
-            Appraiser);
+            Specialist);
         Assert.Contains("depositCode", noCode!.Keys);
 
         var (_, twoPages) = await rig.Service.RecordDepositAsync(
@@ -86,25 +86,25 @@ public class ValuationDepositAndNewVersionTests
                 DepositCode = "QYM-1",
                 CertificateContentBase64 = Convert.ToBase64String(TestPdf.TwoPages),
             },
-            Appraiser);
+            Specialist);
         Assert.Equal(DepositCertificateRules.OnePageAr, twoPages!["certificateContentBase64"]);
         Assert.Null((await rig.Contexts.Valuation.ValuationReportIssuances.SingleAsync()).FinalIssuedAtUtc);
     }
 
     [Fact]
-    public async Task Only_the_assigned_appraiser_records_the_deposit_and_only_after_the_approval()
+    public async Task Only_the_specialist_records_the_deposit_the_assigned_appraiser_and_the_supervisor_are_refused()
     {
         await using var rig = await ArrangeApprovedAsync();
         var request = Certificate("QYM-2");
 
-        var (_, specialist) = await rig.Service.RecordDepositAsync(rig.RequestId, request, Specialist);
-        Assert.Equal(ValuationReportDraftService.DepositForbiddenAr, specialist![ReportDraftErrorKeys.Forbidden]);
+        var (_, appraiser) = await rig.Service.RecordDepositAsync(rig.RequestId, request, Appraiser);
+        Assert.Equal(ValuationReportDraftService.DepositForbiddenAr, appraiser![ReportDraftErrorKeys.Forbidden]);
 
-        var other = new ReportDraftActor { UserId = "u-x", PrototypeRole = "real-estate-appraiser", DistributionAssigneeId = "val-other" };
-        var (_, notAssigned) = await rig.Service.RecordDepositAsync(rig.RequestId, request, other);
-        Assert.Equal(ValuationReportDraftService.DepositForbiddenAr, notAssigned![ReportDraftErrorKeys.Forbidden]);
+        var supervisor = new ReportDraftActor { UserId = "u-sup", PrototypeRole = "section-supervisor" };
+        var (_, bySupervisor) = await rig.Service.RecordDepositAsync(rig.RequestId, request, supervisor);
+        Assert.Equal(ValuationReportDraftService.DepositForbiddenAr, bySupervisor![ReportDraftErrorKeys.Forbidden]);
 
-        var (final, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, request, Appraiser);
+        var (final, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, request, Specialist);
         Assert.Null(errors);
         Assert.Equal(ReportIssuanceStages.FinalIssued, final!.Stage);
         Assert.Equal("QYM-2", final.DepositCode);
@@ -119,7 +119,7 @@ public class ValuationDepositAndNewVersionTests
             rig.RequestId, new SaveReportDraftChoicesRequest { Choices = System.Text.Json.JsonDocument.Parse("{}").RootElement.Clone() }, Specialist);
         await rig.Service.SendAsync(rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = true }, Specialist);
 
-        var (_, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-3"), Appraiser);
+        var (_, errors) = await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-3"), Specialist);
 
         Assert.Equal(ValuationReportDraftService.NotApprovedYetAr, errors!["_"]);
     }
@@ -128,10 +128,10 @@ public class ValuationDepositAndNewVersionTests
     public async Task A_code_correction_after_the_final_issuance_keeps_the_certificate_audits_and_spends_no_version()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-WRONG"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-WRONG"), Specialist);
 
         var (corrected, errors) = await rig.Service.RecordDepositAsync(
-            rig.RequestId, new RegisterDepositCertificateRequest { DepositCode = "QYM-RIGHT" }, Appraiser);
+            rig.RequestId, new RegisterDepositCertificateRequest { DepositCode = "QYM-RIGHT" }, Specialist);
 
         Assert.Null(errors);
         Assert.Equal("QYM-RIGHT", corrected!.DepositCode);
@@ -167,7 +167,7 @@ public class ValuationDepositAndNewVersionTests
     public async Task A_deposited_report_reopens_as_a_new_version_after_returning_the_appraisers_package()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-4"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-4"), Specialist);
 
         var (state, errors) = await rig.Service.ReopenNewVersionAsync(
             rig.RequestId, new ReopenReportIssuanceRequest { Reason = "تغيّرت المقارنات بعد صفقة مسجلة" }, Specialist);
@@ -190,7 +190,7 @@ public class ValuationDepositAndNewVersionTests
     public async Task A_refusal_from_case_study_stops_the_reopen_and_changes_nothing_here()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-5"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-5"), Specialist);
         rig.CaseStudy.Error = "تعذر إعادة فتح تقييم العقار.";
 
         var (result, errors) = await rig.Service.ReopenNewVersionAsync(
@@ -207,7 +207,7 @@ public class ValuationDepositAndNewVersionTests
     public async Task A_too_short_reason_is_refused_before_case_study_is_touched()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-6"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-6"), Specialist);
 
         var (_, errors) = await rig.Service.ReopenNewVersionAsync(
             rig.RequestId, new ReopenReportIssuanceRequest { Reason = "  " }, Specialist);
@@ -220,7 +220,7 @@ public class ValuationDepositAndNewVersionTests
     public async Task The_reopen_by_property_finds_the_deposited_request()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-7"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-7"), Specialist);
 
         var (state, errors) = await rig.Service.ReopenNewVersionByPropertyAsync(
             rig.PropertyId, new ReopenReportIssuanceRequest { Reason = "رجوع المعاملة من إنفاذ للتصحيح" }, Specialist);
@@ -238,7 +238,7 @@ public class ValuationDepositAndNewVersionTests
     public async Task An_approved_recall_of_a_deposited_report_reopens_it_as_a_new_version()
     {
         await using var rig = await ArrangeApprovedAsync();
-        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-8"), Appraiser);
+        await rig.Service.RecordDepositAsync(rig.RequestId, Certificate("QYM-8"), Specialist);
         var recalls = await ArrangeRecallAsync(rig);
 
         var (recall, errors) = await recalls.DecideAsync(

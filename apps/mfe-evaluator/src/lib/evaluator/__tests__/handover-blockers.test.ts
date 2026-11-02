@@ -110,19 +110,20 @@ describe("classifyHandOverBlockers — round 2", () => {
     expect(blockers.map((b) => b.code)).toEqual(["final_opinion", "m16_weights_not_100"]);
   });
 
-  it("an unexplained factor or manual weight is the appraiser's, on the table's screen", () => {
+  // 2026-11-02: the adjustment_rationales_* gate is gone; a table gate still routes by its suffix.
+  it("a table gate is the appraiser's, on the table's screen", () => {
     const blockers = classifyHandOverBlockers({
       gates: [
-        gate("adjustment_rationales_market", "تسويات أو أوزان يدوية بلا مبرر (أسلوب السوق) — CMP-1: الموقع (+10٪)"),
-        gate("adjustment_rationales_land_within_cost", "تسويات بلا مبرر (الأرض ضمن التكلفة) — CMP-2: الشكل (+5٪)"),
+        gate("min_adopted_comparables_market", "يلزم مقارن معتمد واحد على الأقل (مقارنات أسلوب السوق)"),
+        gate("min_adopted_comparables_land_within_cost", "يلزم مقارن معتمد واحد على الأقل (مقارنات الأرض ضمن التكلفة)"),
       ],
       methodologyAlerts: [],
     });
 
     expect(blockers.map((b) => [b.code, b.owner, b.blocksHandOver, b.screen])).toEqual([
-      ["adjustment_rationales_market", "appraiser", true, "market"],
-      ["adjustment_rationales_land_within_cost", "appraiser", true, "cost"],
+      ["min_adopted_comparables_market", "appraiser", true, "market"],
+      ["min_adopted_comparables_land_within_cost", "appraiser", true, "cost"],
     ]);
-    expect(handOverRefusalMessage(blockers)).toContain("CMP-1: الموقع (+10٪) — يعالجها: المقيّم");
+    expect(handOverRefusalMessage(blockers)).toContain("(مقارنات أسلوب السوق) — يعالجها: المقيّم");
   });
 });

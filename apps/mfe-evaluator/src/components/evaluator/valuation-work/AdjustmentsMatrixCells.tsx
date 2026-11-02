@@ -6,11 +6,13 @@
 //  • B    The weight row's rationale is named «مبرر الوزن اليدوي» (justLabel) in placeholder, aria-label
 //         and message; other rows stay «مبرر عامل التسوية».
 //  • Wording  Deal age reads with Arabic month plurals (formatArabicMonths) instead of «… شهراً».
+// 2026-11-02 (colleague review, item 10)
+//  • JustCell no longer checks a minimum — factor and weight rationales are optional notes.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
 
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { ValuationComparableSelectionDto } from "@platform/api-client";
 import { cn } from "@platform/ui-kit";
 import type { factorDescriptor } from "./lib/factor-registry";
@@ -34,7 +36,6 @@ import {
   panelCardClass,
 } from "./AdjustmentsMatrixCells.styles";
 import { useMatrixCellDraft } from "./useMatrixCellDraft";
-import { rationaleMinimumError } from "./lib/rationale-minimum";
 import { formatArabicMonths } from "../../../lib/evaluator/valuation-report-property-age";
 
 export {
@@ -89,9 +90,12 @@ export function justLabel(factorKey: string | undefined): string {
 }
 
 /**
- * One justification covering every comparable in the row. Draft lives in the cell. Round 2: it is
- * checked and saved on blur / Enter / Tab only (not per keystroke), and a written rationale under
- * 10 characters is named under the box — the draft stays for the appraiser to finish.
+ * One justification covering every comparable in the row. Draft lives in the cell.
+ *
+ * How it works: saved on blur / Enter / Tab only (not per keystroke).
+ *
+ * Edge cases: an optional note of any length (2026-11-02 — the 10-character minimum was dropped);
+ * a failed save keeps the draft.
  */
 export function JustCell({
   factorKey,
@@ -107,17 +111,10 @@ export function JustCell({
   /** Commits on Tab / Enter / blur; returning false keeps the draft (save failed). */
   onCommit?: (factorKey: string, text: string) => Promise<boolean> | void;
 }) {
-  const [error, setError] = useState<string | null>(null);
   const label = justLabel(factorKey);
   const { text, change, flush, onKeyDown } = useMatrixCellDraft(
     value ?? "",
-    factorKey && onCommit
-      ? (raw) => {
-          const short = rationaleMinimumError(label, raw);
-          setError(short);
-          return short ? false : onCommit(factorKey, raw);
-        }
-      : undefined,
+    factorKey && onCommit ? (raw) => onCommit(factorKey, raw) : undefined,
     { debounce: false },
   );
 
@@ -133,24 +130,14 @@ export function JustCell({
         disabled={locked}
         placeholder={label}
         aria-label={label}
-        aria-invalid={error ? true : undefined}
-        onChange={(e) => {
-          if (error) setError(null);
-          change(e.target.value);
-        }}
+        onChange={(e) => change(e.target.value)}
         onKeyDown={onKeyDown}
         onBlur={flush}
         className={cn(
-          "w-full rounded-[7px] border bg-surface px-2.5 py-[7px] font-medium text-text",
-          error ? "border-danger" : "border-border",
+          "w-full rounded-[7px] border border-border bg-surface px-2.5 py-[7px] font-medium text-text",
           touch ? "min-h-11 text-[16px]" : "text-[12px]",
         )}
       />
-      {error ? (
-        <div role="alert" className="mt-1 text-[10.5px] font-semibold text-danger-text">
-          {error}
-        </div>
-      ) : null}
     </Wrap>
   );
 }

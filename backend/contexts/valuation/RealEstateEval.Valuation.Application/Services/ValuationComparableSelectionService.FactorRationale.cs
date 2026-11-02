@@ -52,14 +52,7 @@ public sealed partial class ValuationComparableSelectionService
             return (null, new Dictionary<string, string> { ["factorKey"] = "مفتاح العامل مطلوب" });
 
         var rationale = request.RationaleAr?.Trim() ?? "";
-        // Empty clears; a written factor rationale is at least 10 characters.
-        if (JustificationRules.IsBelowRequiredMinimum(rationale))
-        {
-            return (null, new Dictionary<string, string>
-            {
-                ["rationaleAr"] = JustificationRules.RequiredMinimumMessageAr("مبرر عامل التسوية"),
-            });
-        }
+        // Empty clears; a written rationale is an optional note of any length (2026-11-02).
 
         var row = await repo.FindFactorRationaleAsync(
             valuationRequestId, context, factorKey, cancellationToken);

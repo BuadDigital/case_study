@@ -163,9 +163,9 @@ public class ValuationComparableSelectionRequestRulesTests
         Assert.Equal("تسمية العامل المضاف مطلوبة", errors["adjustmentLines[1].labelAr"]);
         Assert.Equal("النسبة يجب أن تكون بين -100 و 100", errors["adjustmentLines[2].percent"]);
         Assert.Equal("النسبة يجب أن تكون بين -100 و 100", errors["adjustmentLines[3].percent"]);
-        // Round 2: a written rationale for a non-zero factor is at least 10 characters.
-        Assert.Equal("مبرر التسوية للمقارن يجب ألا يقل عن 10 أحرف", errors["adjustmentLines[3].rationale"]);
-        Assert.Equal(5, errors.Count);
+        // 2026-11-02: a factor's rationale is an optional note of any length.
+        Assert.False(errors.ContainsKey("adjustmentLines[3].rationale"));
+        Assert.Equal(4, errors.Count);
     }
 
     [Theory]
@@ -348,9 +348,9 @@ public class ValuationComparableSelectionRequestRulesTests
             ],
         });
 
-        Assert.Equal("مبرر الوزن اليدوي يجب ألا يقل عن 10 أحرف", errors["weightOverrideRationale"]);
-        Assert.Equal("مبرر التسوية للمقارن يجب ألا يقل عن 10 أحرف", errors["adjustmentLines[0].rationale"]);
-        // A zero factor needs no rationale; a blank override inherits the factor rationale (draft).
+        // 2026-11-02: manual-weight and factor rationales are optional notes of any length.
+        Assert.False(errors.ContainsKey("weightOverrideRationale"));
+        Assert.False(errors.ContainsKey("adjustmentLines[0].rationale"));
         Assert.False(errors.ContainsKey("adjustmentLines[1].rationale"));
         Assert.False(errors.ContainsKey("adjustmentLines[2].rationale"));
     }
