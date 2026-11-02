@@ -7,8 +7,10 @@ namespace RealEstateEval.Platform.Infrastructure.Data;
 internal static class ValuationListsSeed
 {
     internal const string DefaultIvsDate = "31 يناير 2025";
-    internal const int DefaultPhotoPagesLand = 1;
-    internal const int DefaultPhotoPagesBuilt = 2;
+    /// <summary>Four pages of six photos for every report (2026-11-02 ruling: 24 for land and buildings).</summary>
+    internal const int MaxPhotoPages = 4;
+    internal const int DefaultPhotoPagesLand = MaxPhotoPages;
+    internal const int DefaultPhotoPagesBuilt = MaxPhotoPages;
 
     internal static Dictionary<string, List<ValuationListItemDto>> Defaults() => new()
     {

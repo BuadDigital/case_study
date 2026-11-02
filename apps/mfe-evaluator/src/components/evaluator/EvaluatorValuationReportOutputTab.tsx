@@ -18,7 +18,6 @@ import {
   type OrganizationSettingsDto,
 } from "@platform/api-client";
 import { loadSpecialistFinishingLevel } from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
-import { isLandInspectionContext } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import { openHtmlDocumentInNewTab } from "@platform/app-shared/media/open-html-document";
 import { usePoRecordQuery } from "../../lib/case-study-bridge";
@@ -210,19 +209,8 @@ export function EvaluatorValuationReportOutputTab({
     [approachSettings, outputBundle?.lists, recon, record],
   );
 
-  const photoSlots = useMemo(() => {
-    const attach = outputBundle?.attach;
-    if (!attach) return EMPTY_PHOTO_SLOTS;
-    const land = isLandInspectionContext({
-      vacantLand: outputBundle.inspector?.vacantLand,
-      assetSubject: outputBundle.inspector?.featureValues?.assetSubject,
-      classification: property?.classification,
-      propertyType: property?.propertyType,
-    });
-    return land && attach.photos.length > 6
-      ? attach.photos.slice(0, 6)
-      : attach.photos;
-  }, [outputBundle, property?.classification, property?.propertyType]);
+  // How many photos print is the settings' «صفحات الصور», applied when the bundle loads them.
+  const photoSlots = outputBundle?.attach?.photos ?? EMPTY_PHOTO_SLOTS;
 
   /**
    * Shared report request body for on-screen preview and print — was fully duplicated (~70 lines).
@@ -306,14 +294,7 @@ export function EvaluatorValuationReportOutputTab({
           assignedAppraiserName,
           assignedAppraiserId,
           survey,
-          photoSlots: isLandInspectionContext({
-            vacantLand: inspector?.vacantLand,
-            assetSubject: inspector?.featureValues?.assetSubject,
-            classification: property?.classification,
-            propertyType: property?.propertyType,
-          })
-            ? photoSlots.slice(0, 6)
-            : photoSlots,
+          photoSlots,
           surveySlot,
           deedSlot,
           siteMapSlot,

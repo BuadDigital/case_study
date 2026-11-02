@@ -66,39 +66,104 @@ describe("marking a photo", () => {
     expect(screen.queryByText(/صور التقرير/)).toBeNull();
   });
 
-  it("hands the pressed mark up without opening the preview", () => {
-    const onToggleMark = vi.fn();
+  it("puts a photo in the report section the specialist picks", () => {
+    const onChangeMarks = vi.fn();
+    const shown = [photo("front", "صور خارجية"), photo("inside", "صور داخلية · أخرى")];
+    render(
+      <PropertyDetailPhotosTab
+        photos={shown}
+        marks={EMPTY_PROPERTY_PHOTO_MARKS}
+        onChangeMarks={onChangeMarks}
+      />,
+    );
+
+    const add = screen.getByRole("button", { name: "إضافة إلى التقرير" });
+    fireEvent.click(add);
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getByRole("menuitemradio", { name: /داخلية/ }).textContent).toContain("مقترح");
+    fireEvent.click(within(menu).getByRole("menuitemradio", { name: /أخرى/ }));
+
+    const [sentPhotos, update] = onChangeMarks.mock.calls[0];
+    expect(sentPhotos).toBe(shown);
+    expect(update(EMPTY_PROPERTY_PHOTO_MARKS)).toMatchObject({
+      report: ["inside"],
+      reportSections: { inside: 3 },
+    });
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("prints the main photo by itself", () => {
     render(
       <PropertyDetailPhotosTab
         photos={[photo("front", "صور خارجية")]}
         marks={EMPTY_PROPERTY_PHOTO_MARKS}
-        onToggleMark={onToggleMark}
+        onChangeMarks={vi.fn()}
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "في التقرير" }));
-
-    expect(onToggleMark).toHaveBeenCalledWith("front", "report", ["front"]);
+    const button = screen.getByRole("button", { name: "في التقرير تلقائياً" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
   });
 
-  it("counts the report's photos", () => {
+  it("marks a photo as movables", () => {
+    const onChangeMarks = vi.fn();
+    render(
+      <PropertyDetailPhotosTab
+        photos={[photo("front", "صور خارجية")]}
+        marks={EMPTY_PROPERTY_PHOTO_MARKS}
+        onChangeMarks={onChangeMarks}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "منقولات" }));
+
+    expect(onChangeMarks.mock.calls[0][1](EMPTY_PROPERTY_PHOTO_MARKS).movables).toEqual(["front"]);
+  });
+
+  it("counts the report's photos by section, the main photo and the meters with them", () => {
     render(
       <PropertyDetailPhotosTab
         photos={photos}
-        marks={{ ...EMPTY_PROPERTY_PHOTO_MARKS, report: ["front", "gone"] }}
-        onToggleMark={vi.fn()}
+        marks={{ ...EMPTY_PROPERTY_PHOTO_MARKS, electricity: ["meter"], report: ["back", "gone"] }}
+        reportLimit={24}
+        onChangeMarks={vi.fn()}
       />,
     );
 
-    expect(screen.getByText(/صور التقرير/).textContent).toContain("1 / 12");
+    expect(screen.getByText(/صور التقرير/).textContent).toBe(
+      "صور التقرير 3 / 24 — خارجية 2 · داخلية 0 · أخرى 1",
+    );
+  });
+
+  it("says the report picks by itself while nothing is picked", () => {
+    render(
+      <PropertyDetailPhotosTab
+        photos={photos}
+        marks={EMPTY_PROPERTY_PHOTO_MARKS}
+        reportLimit={24}
+        onChangeMarks={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText(/صور التقرير/).textContent).toBe("صور التقرير: تلقائي (أول 24 صورة)");
   });
 
   it("offers no icons on a photo that is not the inspector's", () => {
     const deed = { ...photo("deed", "صورة الصك"), source: "البيانات الأولية", documentTypeKey: undefined };
     const { container } = render(
-      <PropertyDetailPhotosTab photos={[deed]} marks={EMPTY_PROPERTY_PHOTO_MARKS} onToggleMark={vi.fn()} />,
+      <PropertyDetailPhotosTab photos={[deed]} marks={EMPTY_PROPERTY_PHOTO_MARKS} onChangeMarks={vi.fn()} />,
     );
 
     expect(within(container).queryByRole("button", { name: "عداد ماء" })).toBeNull();
+  });
+});
+
+describe("the movables section", () => {
+  it("holds the photos marked as movables and the inspector's movables photos", () => {
+    const groups = buildDisplayGroups(
+      [...photos, photo("sofa", "صورة توثيقية — منقولات")],
+      { ...EMPTY_PROPERTY_PHOTO_MARKS, movables: ["back"] },
+    );
+    expect(titles(groups)).toContainEqual(["صور المنقولات", ["back", "sofa"]]);
   });
 });

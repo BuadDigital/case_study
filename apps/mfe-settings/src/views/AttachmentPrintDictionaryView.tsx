@@ -53,6 +53,14 @@ import { useValuationListsWorkflow } from "./useValuationListsWorkflow";
 
 type PatchRow = (id: string, patch: Partial<ValuationListItemDto>) => void;
 
+/** «صفحات الصور»: up to four pages of six photos, for land and buildings alike (2026-11-02). */
+const PHOTO_PAGE_OPTIONS = [
+  ["1", "صفحة واحدة"],
+  ["2", "صفحتان"],
+  ["3", "3 صفحات"],
+  ["4", "4 صفحات"],
+] as const;
+
 /** Phone-card field control: full width, label above, 44px tall. */
 const phoneFieldClass = "h-11 w-full min-w-0 text-[14px]";
 
@@ -291,9 +299,11 @@ export function AttachmentPrintDictionaryView() {
                         })
                       }
                     >
-                      <option value="1">صفحة واحدة</option>
-                      <option value="2">صفحتان</option>
-                      <option value="3">3 صفحات</option>
+                      {PHOTO_PAGE_OPTIONS.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
                     </Select>
                     <p className="m-0 mt-1 text-[11px] text-text-3">
                       = {catalog.photoPagesLand * 6} صور في التقرير
@@ -310,10 +320,11 @@ export function AttachmentPrintDictionaryView() {
                         })
                       }
                     >
-                      <option value="1">صفحة واحدة</option>
-                      <option value="2">صفحتان</option>
-                      <option value="3">3 صفحات</option>
-                      <option value="4">4 صفحات</option>
+                      {PHOTO_PAGE_OPTIONS.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
                     </Select>
                     <p className="m-0 mt-1 text-[11px] text-text-3">
                       = {catalog.photoPagesBuilt * 6} صورة في التقرير

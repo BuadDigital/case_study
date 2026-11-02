@@ -36,11 +36,15 @@ import {
   fetchInspectorWorkspace,
 } from "../../lib/case-study-bridge";
 import {
-  orderPropertyPhotos,
+  orderReportPhotos,
   photoMarkId,
   reportPhotoIds,
+  reportPhotoLimit,
+  reportPhotoSection,
+  reportPhotoSectionLabel,
   type PropertyPhotoMarks,
 } from "@platform/app-shared/app-data/property-detail-document-types";
+import { propertyIsLand } from "@platform/app-shared/app-data/po-intake-property-model";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
@@ -286,24 +290,31 @@ export function reportValuationChoices(input: {
 /**
  * Which inspector photos the report prints.
  *
- * How it works: the specialist's chosen photos fill the slots when there are any; otherwise the
- * slots fill in the automatic order, the main photo first.
+ * How it works: the specialist's chosen photos (with the main photo and the meters) fill the slots
+ * when there are any; otherwise the slots fill in the report's order: exterior, interior, other,
+ * the main photo first. Each photo carries its section's name for the caption under it.
  * Edge cases: a photo the property's list does not show still stays at the end of the budget, and
  * a choice whose photos are all gone counts as no choice.
  */
 export function reportPhotoSelection(
   inspector: InspectorWorkspaceDraft | null | undefined,
   marks: PropertyPhotoMarks | null | undefined,
-): { inspectorPhotoIds: string[]; photoSlotIds: string[] } {
+): { inspectorPhotoIds: string[]; photoSlotIds: string[]; sectionLabels: Record<string, string> } {
   const photos = inspector
     ? collectFieldInspectionDocumentsFromSubmission(inspector).filter(
         (doc) => doc.kind === "image",
       )
     : [];
-  const ordered = orderPropertyPhotos(photos, marks).map(photoMarkId).filter(Boolean);
+  const ordered = orderReportPhotos(photos, marks).map(photoMarkId).filter(Boolean);
+  const sectionLabels: Record<string, string> = {};
+  for (const photo of photos) {
+    const id = photoMarkId(photo);
+    if (id) sectionLabels[id] = `صور ${reportPhotoSectionLabel(reportPhotoSection(photo, marks))}`;
+  }
   return {
     inspectorPhotoIds: [...new Set([...ordered, ...collectInspectorPhotoAttachmentIds(inspector)])],
     photoSlotIds: reportPhotoIds(photos, marks),
+    sectionLabels,
   };
 }
 
@@ -354,8 +365,8 @@ export async function loadReportOutputBundle(input: {
     : Promise.resolve(null);
   // Inspection photos and the survey PDF are task-scoped — for-property never
   // sees them. Collect ids from the inspector draft + engineering submission.
-  const attachmentsP = Promise.all([inspectorP, surveyP]).then(
-    ([ws, surveyRes]) => {
+  const attachmentsP = Promise.all([inspectorP, surveyP, listsP]).then(
+    ([ws, surveyRes, listsRes]) => {
       if (!propertyId) return emptyAttach;
       const surveyPayload =
         surveyRes && "ok" in surveyRes && surveyRes.ok
@@ -363,9 +374,13 @@ export async function loadReportOutputBundle(input: {
           : null;
       const surveyAttachmentId =
         surveyReportAttachmentIdFromPayload(surveyPayload);
-      const { inspectorPhotoIds, photoSlotIds } = reportPhotoSelection(
+      const { inspectorPhotoIds, photoSlotIds, sectionLabels } = reportPhotoSelection(
         ws,
         input.property?.photoMarks,
+      );
+      const photoBudget = reportPhotoLimit(
+        listsRes.ok ? listsRes.data : null,
+        input.property ? propertyIsLand(input.property) : false,
       );
       return loadValuationReportPrintAttachments(
         config,
@@ -376,9 +391,17 @@ export async function loadReportOutputBundle(input: {
           surveyAttachmentIds: surveyAttachmentId
             ? [surveyAttachmentId]
             : [],
+          photoBudget,
           ...(photoSlotIds.length ? { preferredAttachmentIds: { photoSlotIds } } : {}),
         },
-      );
+      ).then((loaded) => ({
+        ...loaded,
+        photos: loaded.photos.map((slot) =>
+          slot && sectionLabels[slot.attachmentId]
+            ? { ...slot, sectionAr: sectionLabels[slot.attachmentId] }
+            : slot,
+        ),
+      }));
     },
   );
   const [ws, invRes, listsRes, approaches, surveyRes, attach] =

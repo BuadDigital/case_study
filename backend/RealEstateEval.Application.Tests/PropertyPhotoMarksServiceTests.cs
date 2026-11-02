@@ -183,10 +183,68 @@ public class PropertyPhotoMarksServiceTests
         Assert.Empty(errors);
     }
 
+    [Fact]
+    public void A_meter_photo_is_not_also_movables()
+    {
+        var errors = PropertyPhotoMarksRules.Validate(new PropertyPhotoMarksDto
+        {
+            Water = ["a1"],
+            Movables = ["a1"],
+        });
+
+        Assert.Contains("_", errors.Keys);
+    }
+
+    [Fact]
+    public void Movables_alone_are_stored()
+    {
+        var json = PropertyPhotoMarksRules.Serialize(new PropertyPhotoMarksDto { Movables = ["a1"] });
+
+        Assert.Equal(["a1"], PropertyPhotoMarksRules.Parse(json).Movables);
+    }
+
     [Theory]
-    [InlineData(12, true)]
-    [InlineData(13, false)]
-    public void The_report_takes_twelve_photos(int count, bool valid)
+    [InlineData(1, true)]
+    [InlineData(3, true)]
+    [InlineData(0, false)]
+    [InlineData(4, false)]
+    public void A_report_section_is_exterior_interior_or_other(int section, bool valid)
+    {
+        var errors = PropertyPhotoMarksRules.Validate(new PropertyPhotoMarksDto
+        {
+            Report = ["a1"],
+            ReportSections = new() { ["a1"] = section },
+        });
+
+        Assert.Equal(valid, errors.Count == 0);
+    }
+
+    [Fact]
+    public void A_section_for_a_photo_outside_the_report_is_dropped()
+    {
+        var json = PropertyPhotoMarksRules.Serialize(new PropertyPhotoMarksDto
+        {
+            Report = ["a1"],
+            ReportSections = new() { ["a1"] = 2, ["a9"] = 1 },
+        });
+
+        Assert.Equal(new Dictionary<string, int> { ["a1"] = 2 }, PropertyPhotoMarksRules.Parse(json).ReportSections);
+    }
+
+    [Fact]
+    public void Marks_saved_before_the_sections_read_with_none()
+    {
+        var marks = PropertyPhotoMarksRules.Parse("""{"main":"a1","electricity":[],"water":[],"report":["a1"]}""");
+
+        Assert.Equal(["a1"], marks.Report);
+        Assert.Empty(marks.ReportSections);
+        Assert.Empty(marks.Movables);
+    }
+
+    [Theory]
+    [InlineData(24, true)]
+    [InlineData(25, false)]
+    public void The_report_takes_at_most_four_pages_of_photos(int count, bool valid)
     {
         var errors = PropertyPhotoMarksRules.Validate(new PropertyPhotoMarksDto
         {

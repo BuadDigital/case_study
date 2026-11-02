@@ -6,7 +6,7 @@ import {
 } from "@platform/api-client";
 import type { AssignmentType } from "./po-intake-assignment";
 import type { PropertyIdentifierType } from "./po-intake-identifiers";
-import { classificationForPropertyType } from "./inspector-workspace-data";
+import { classificationForPropertyType, textLooksLikeVacantLand } from "./inspector-workspace-data";
 import type { PropertyPhotoMarks } from "./property-detail-document-types";
 import {
   clearPropertyBoundaryFields,
@@ -171,6 +171,13 @@ export function effectiveClassificationOf(
     (property.inspectedPropertyType?.trim() && classificationForPropertyType(effectivePropertyTypeOf(property))) ||
     property.classification.trim()
   );
+}
+
+/** A land property: its report is a land report («تقرير تقييم أرض»). */
+export function propertyIsLand(
+  property: Pick<PoPropertyIntake, "propertyType" | "inspectedPropertyType" | "effectivePropertyType">,
+): boolean {
+  return textLooksLikeVacantLand(effectivePropertyTypeOf(property));
 }
 
 /**

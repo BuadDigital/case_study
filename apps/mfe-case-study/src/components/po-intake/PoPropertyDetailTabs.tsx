@@ -54,6 +54,9 @@ import {
 } from "./PropertyDetailTabChunks";
 import { usePoPropertyDetailTabsWorkflow } from "./usePoPropertyDetailTabsWorkflow";
 import { usePropertyPhotoMarks } from "./usePropertyPhotoMarks";
+import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
+import { reportPhotoLimit } from "@platform/app-shared/app-data/property-detail-document-types";
+import { propertyIsLand } from "@platform/app-shared/app-data/po-intake-property-model";
 import { canEditProperty, canHandOverToEnfaz } from "../../lib/app-data/po-roles";
 import { PropertyDetailEnfazHandoverCard } from "./PropertyDetailEnfazHandoverCard";
 import { PropertyFailureSurveyFreezeLift } from "./PropertyFailureSurveyFreezeLift";
@@ -143,12 +146,15 @@ export function PoPropertyDetailTabs({
   const studyTask =
     (holderTaskId ? tasks.find((t) => t.id === holderTaskId) : undefined) ?? task ?? null;
   const reportDeeds = useMemo(() => caseStudyReportDeeds(transaction?.deeds), [transaction]);
+  const { data: valuationLists } = useValuationListsQuery();
+  const reportLimit = reportPhotoLimit(valuationLists, propertyIsLand(property));
   const photoMarks = usePropertyPhotoMarks({
     poNumber,
     propertyId: property.id,
     stored: property.photoMarks,
     studyTaskId: studyTask?.id ?? null,
     enabled: visitedTabs.has("photos"),
+    reportLimit,
   });
   const tabGroups: { label: string | null; tabs: readonly PropertyDetailTab[] }[] =
     deedCount > 1
@@ -482,7 +488,8 @@ export function PoPropertyDetailTabs({
               <PropertyDetailPhotosTab
                 photos={propertyPhotos}
                 marks={photoMarks.marks}
-                onToggleMark={photoMarks.canEdit ? photoMarks.toggle : undefined}
+                reportLimit={reportLimit}
+                onChangeMarks={photoMarks.canEdit ? photoMarks.change : undefined}
               />
             </Activity>
           ) : null}

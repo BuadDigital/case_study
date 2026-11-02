@@ -210,8 +210,8 @@ export function ProfessionalReportTextsPage({
           <Link href={listsHref} className="rpt-link">
             قوائم التقييم
           </Link>{" "}
-          (6 صور بالصفحة) — أرض <bdi>{lists?.photoPagesLand ?? 1}</bdi> · مبانٍ{" "}
-          <bdi>{lists?.photoPagesBuilt ?? 2}</bdi>.
+          (6 صور بالصفحة) — أرض <bdi>{lists?.photoPagesLand ?? 4}</bdi> · مبانٍ{" "}
+          <bdi>{lists?.photoPagesBuilt ?? 4}</bdi>.
         </p>
       </Sec>
     </section>
