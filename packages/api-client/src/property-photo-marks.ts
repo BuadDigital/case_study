@@ -12,6 +12,8 @@ export type PropertyPhotoMarksDto = {
   report: string[];
   /** A picked photo's report section: 1 exterior, 2 interior, 3 other. */
   reportSections?: Record<string, 1 | 2 | 3>;
+  /** `report` is the specialist's board order; absent on picks saved before the board. */
+  reportOrdered?: boolean;
 };
 
 /**

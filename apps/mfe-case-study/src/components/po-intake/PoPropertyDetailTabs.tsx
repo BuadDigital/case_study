@@ -153,6 +153,7 @@ export function PoPropertyDetailTabs({
     propertyId: property.id,
     stored: property.photoMarks,
     studyTaskId: studyTask?.id ?? null,
+    inspectionTaskId: inspectionTask?.id ?? null,
     enabled: visitedTabs.has("photos"),
     reportLimit,
   });
@@ -489,6 +490,7 @@ export function PoPropertyDetailTabs({
                 photos={propertyPhotos}
                 marks={photoMarks.marks}
                 reportLimit={reportLimit}
+                movablesPresent={photoMarks.movablesPresent}
                 onChangeMarks={photoMarks.canEdit ? photoMarks.change : undefined}
               />
             </Activity>

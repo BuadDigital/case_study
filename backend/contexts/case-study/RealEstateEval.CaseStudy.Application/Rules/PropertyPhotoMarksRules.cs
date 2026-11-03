@@ -6,7 +6,7 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 /// <summary>
 /// The case specialist's marks on the inspector's photos (2026-11-01 ruling): one main photo, the
 /// electricity and water meters, the movables (2026-11-02), and the photos the report prints with
-/// their section (1 exterior, 2 interior, 3 other).
+/// their section (1 exterior, 2 interior, 3 other), in the specialist's board order since 2026-11-03.
 /// </summary>
 public static class PropertyPhotoMarksRules
 {
@@ -15,6 +15,9 @@ public static class PropertyPhotoMarksRules
     /// page count the settings hold today is the screen's to apply.
     /// </summary>
     public const int ReportPhotoLimit = 24;
+
+    /// <summary>The report's «صور المنقولات» section prints one page of six (2026-11-03).</summary>
+    public const int MovablesPhotoLimit = 6;
 
     /// <summary>The report's photo sections: 1 exterior, 2 interior, 3 other.</summary>
     public const int FirstReportSection = 1;
@@ -73,6 +76,8 @@ public static class PropertyPhotoMarksRules
             errors["_"] = "الصورة الواحدة تحمل تمييزاً واحداً: رئيسية أو عداد كهرباء أو عداد ماء أو منقولات";
         if (clean.Report.Count > ReportPhotoLimit)
             errors["report"] = $"التقرير يطبع {ReportPhotoLimit} صورة كحد أقصى";
+        if (clean.Movables.Count > MovablesPhotoLimit)
+            errors["movables"] = $"قسم صور المنقولات يطبع {MovablesPhotoLimit} صور كحد أقصى";
         if ((marks.ReportSections ?? []).Values.Any(n => n is < FirstReportSection or > LastReportSection))
             errors["reportSections"] = "قسم الصورة في التقرير: 1 خارجية أو 2 داخلية أو 3 أخرى";
         return errors;
@@ -86,6 +91,8 @@ public static class PropertyPhotoMarksRules
         Movables = CleanIds(marks?.Movables),
         Report = CleanIds(marks?.Report),
         ReportSections = CleanSections(marks?.ReportSections, CleanIds(marks?.Report)),
+        // An order needs photos to order.
+        ReportOrdered = marks?.ReportOrdered == true && CleanIds(marks.Report).Count > 0,
     };
 
     private static Dictionary<string, int> CleanSections(

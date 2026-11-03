@@ -36,12 +36,11 @@ import {
   fetchInspectorWorkspace,
 } from "../../lib/case-study-bridge";
 import {
+  movablesBoardIds,
   orderReportPhotos,
   photoMarkId,
   reportPhotoIds,
   reportPhotoLimit,
-  reportPhotoSection,
-  reportPhotoSectionLabel,
   type PropertyPhotoMarks,
 } from "@platform/app-shared/app-data/property-detail-document-types";
 import { propertyIsLand } from "@platform/app-shared/app-data/po-intake-property-model";
@@ -288,33 +287,26 @@ export function reportValuationChoices(input: {
 }
 
 /**
- * Which inspector photos the report prints.
+ * Which inspector photos the report prints: exactly the specialist's choice (2026-11-03 ruling).
  *
- * How it works: the specialist's chosen photos (with the main photo and the meters) fill the slots
- * when there are any; otherwise the slots fill in the report's order: exterior, interior, other,
- * the main photo first. Each photo carries its section's name for the caption under it.
- * Edge cases: a photo the property's list does not show still stays at the end of the budget, and
- * a choice whose photos are all gone counts as no choice.
+ * How it works: the report board's photos fill «صور العقار» in their order, slot 1 the main photo,
+ * and the movables board's photos fill «صور المنقولات». Edge cases: nothing chosen prints no photo
+ * (the report no longer picks by itself); a chosen photo that was retaken drops out.
  */
 export function reportPhotoSelection(
   inspector: InspectorWorkspaceDraft | null | undefined,
   marks: PropertyPhotoMarks | null | undefined,
-): { inspectorPhotoIds: string[]; photoSlotIds: string[]; sectionLabels: Record<string, string> } {
+): { inspectorPhotoIds: string[]; photoSlotIds: string[]; movablesSlotIds: string[] } {
   const photos = inspector
     ? collectFieldInspectionDocumentsFromSubmission(inspector).filter(
         (doc) => doc.kind === "image",
       )
     : [];
   const ordered = orderReportPhotos(photos, marks).map(photoMarkId).filter(Boolean);
-  const sectionLabels: Record<string, string> = {};
-  for (const photo of photos) {
-    const id = photoMarkId(photo);
-    if (id) sectionLabels[id] = `صور ${reportPhotoSectionLabel(reportPhotoSection(photo, marks))}`;
-  }
   return {
     inspectorPhotoIds: [...new Set([...ordered, ...collectInspectorPhotoAttachmentIds(inspector)])],
     photoSlotIds: reportPhotoIds(photos, marks),
-    sectionLabels,
+    movablesSlotIds: movablesBoardIds(photos, marks),
   };
 }
 
@@ -332,6 +324,7 @@ export async function loadReportOutputBundle(input: {
     : Promise.resolve(null);
   const emptyAttach = {
     photos: [] as Array<ValuationReportSlotAttachment | null>,
+    movablesPhotos: [] as Array<ValuationReportSlotAttachment | null>,
     survey: null as ValuationReportSlotAttachment | null,
     deed: null as ValuationReportSlotAttachment | null,
     siteMap: null as ValuationReportSlotAttachment | null,
@@ -374,7 +367,7 @@ export async function loadReportOutputBundle(input: {
           : null;
       const surveyAttachmentId =
         surveyReportAttachmentIdFromPayload(surveyPayload);
-      const { inspectorPhotoIds, photoSlotIds, sectionLabels } = reportPhotoSelection(
+      const { inspectorPhotoIds, photoSlotIds, movablesSlotIds } = reportPhotoSelection(
         ws,
         input.property?.photoMarks,
       );
@@ -392,16 +385,10 @@ export async function loadReportOutputBundle(input: {
             ? [surveyAttachmentId]
             : [],
           photoBudget,
-          ...(photoSlotIds.length ? { preferredAttachmentIds: { photoSlotIds } } : {}),
+          // Always the choice, even an empty one: the report never fills photos by itself.
+          preferredAttachmentIds: { photoSlotIds, movablesPhotoSlotIds: movablesSlotIds },
         },
-      ).then((loaded) => ({
-        ...loaded,
-        photos: loaded.photos.map((slot) =>
-          slot && sectionLabels[slot.attachmentId]
-            ? { ...slot, sectionAr: sectionLabels[slot.attachmentId] }
-            : slot,
-        ),
-      }));
+      );
     },
   );
   const [ws, invRes, listsRes, approaches, surveyRes, attach] =

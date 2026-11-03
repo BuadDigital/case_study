@@ -945,7 +945,69 @@ function splitSlotBoxStyle(style: string): {
 
 /** Maps and property photos print without the small grey caption under them. */
 function isUncaptionedSlot(slotId: string): boolean {
-  return slotId.startsWith("map-") || slotId.startsWith("photo-");
+  return (
+    slotId.startsWith("map-") ||
+    slotId.startsWith("photo-") ||
+    slotId.startsWith(MOVABLES_PHOTO_SLOT_PREFIX)
+  );
+}
+
+/** The «صور المنقولات» section and its slots (2026-11-03). */
+const MOVABLES_SECTION = "34م";
+const MOVABLES_PHOTO_SLOT_PREFIX = "movables-photo-";
+
+/**
+ * Adds the «صور المنقولات» section on its own sheet right after the property's photos, with a slot
+ * for each movables photo, and fills them.
+ *
+ * How it works: the sheet, section and grid copy the «صور العقار» ones (so the page frame, the
+ * report meta and the two-column grid match), and each slot copies the first photo slot; the
+ * heading carries a section number for the renumbering. The photos' own extra sheets are added
+ * later, straight after their first sheet, so this one stays after them. Edge cases: no movables
+ * photos means no section, and filling again replaces the section built before.
+ */
+function fillMovablesPhotoSection(
+  dom: Document,
+  slots: Array<ValuationReportSlotAttachment | null>,
+  frames: Record<string, { s: number; x: number; y: number } | null | undefined>,
+): void {
+  dom.querySelector(`[data-sec="${MOVABLES_SECTION}"]`)?.closest("section.page")?.remove();
+  if (slots.length === 0) return;
+  const photos = dom.querySelector<HTMLElement>('[data-sec="34"]');
+  const page = photos?.closest<HTMLElement>("section.page");
+  const grid = photos?.querySelector<HTMLElement>(":scope > div");
+  const model =
+    dom.getElementById("photo-1") ?? dom.querySelector<HTMLElement>('[data-slot-id="photo-1"]');
+  if (!photos || !page || !grid || !model) return;
+
+  const section = photos.cloneNode(false) as HTMLElement;
+  section.setAttribute("data-sec", MOVABLES_SECTION);
+  section.setAttribute("data-name", "صور المنقولات");
+  const heading = dom.createElement("h2");
+  const number = dom.createElement("span");
+  number.className = "n";
+  heading.append(number, "صور المنقولات");
+  const sheetGrid = grid.cloneNode(false) as HTMLElement;
+  slots.forEach((_, i) => {
+    const slot = model.cloneNode(false) as HTMLElement;
+    slot.id = `${MOVABLES_PHOTO_SLOT_PREFIX}${i + 1}`;
+    if (slot.hasAttribute("data-slot-id")) slot.setAttribute("data-slot-id", slot.id);
+    slot.removeAttribute("placeholder");
+    sheetGrid.append(slot);
+  });
+  section.append(heading, sheetGrid);
+
+  const sheet = page.cloneNode(false) as HTMLElement;
+  sheet.setAttribute("data-screen-label", "صور المنقولات");
+  const meta = page.querySelector(".pg-meta")?.cloneNode(true);
+  const pageNumber = page.querySelector(".pg-num")?.cloneNode(true);
+  sheet.append(...[meta, section, pageNumber].filter((node): node is Node => Boolean(node)));
+  page.after(sheet);
+
+  slots.forEach((item, i) => {
+    const id = `${MOVABLES_PHOTO_SLOT_PREFIX}${i + 1}`;
+    fillImageSlot(dom, id, item, "—", frames[id] ?? null);
+  });
 }
 
 /** The template's «صور العقار» section ships twelve photo slots. */
@@ -1556,6 +1618,8 @@ export function fillAttachmentAndGlossarySections(
 
   const photos = fill.photoSlots ?? [];
   const frames = fill.slotFrames ?? {};
+  // Before the photos get their captions: its slots copy the first photo slot as the template has it.
+  fillMovablesPhotoSection(dom, fill.movablesPhotoSlots ?? [], frames);
   addPhotoSlots(dom, photos.length);
   for (let i = 0; i < Math.max(TEMPLATE_PHOTO_SLOTS, photos.length); i++) {
     const id = `photo-${i + 1}`;

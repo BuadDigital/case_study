@@ -232,6 +232,35 @@ public class PropertyPhotoMarksServiceTests
     }
 
     [Fact]
+    public void The_board_order_is_kept_and_needs_photos()
+    {
+        var json = PropertyPhotoMarksRules.Serialize(new PropertyPhotoMarksDto
+        {
+            Report = ["a3", "a1", "a2"],
+            ReportOrdered = true,
+        });
+        var marks = PropertyPhotoMarksRules.Parse(json);
+
+        Assert.Equal(["a3", "a1", "a2"], marks.Report);
+        Assert.True(marks.ReportOrdered);
+        Assert.Null(PropertyPhotoMarksRules.Serialize(new PropertyPhotoMarksDto { ReportOrdered = true }));
+        Assert.False(PropertyPhotoMarksRules.Parse("""{"report":["a1"]}""").ReportOrdered);
+    }
+
+    [Theory]
+    [InlineData(6, true)]
+    [InlineData(7, false)]
+    public void The_movables_section_takes_one_page(int count, bool valid)
+    {
+        var errors = PropertyPhotoMarksRules.Validate(new PropertyPhotoMarksDto
+        {
+            Movables = Enumerable.Range(1, count).Select(n => $"m{n}").ToList(),
+        });
+
+        Assert.Equal(valid, errors.Count == 0);
+    }
+
+    [Fact]
     public void Marks_saved_before_the_sections_read_with_none()
     {
         var marks = PropertyPhotoMarksRules.Parse("""{"main":"a1","electricity":[],"water":[],"report":["a1"]}""");

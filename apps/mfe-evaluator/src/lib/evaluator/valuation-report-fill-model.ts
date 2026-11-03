@@ -657,6 +657,8 @@ export type ValuationReportLiveFill = {
   assignedAppraiserId: string;
   /** Section 34 — up to 12 field photos (data URLs); null keeps that HTML slot empty. */
   photoSlots: Array<ValuationReportSlotAttachment | null>;
+  /** «صور المنقولات» — its own section after the photos (2026-11-03); empty = no section. */
+  movablesPhotoSlots: Array<ValuationReportSlotAttachment | null>;
   /** Section 35 — survey document (image or PDF data URL). */
   surveySlot: ValuationReportSlotAttachment | null;
   /** Section 36 — deed document. */
@@ -780,6 +782,7 @@ export function buildValuationReportLiveFill(input: {
   assignedAppraiserId?: string | null;
   survey?: ValuationReportSurveyBounds | null;
   photoSlots?: Array<ValuationReportSlotAttachment | null> | null;
+  movablesPhotoSlots?: Array<ValuationReportSlotAttachment | null> | null;
   surveySlot?: ValuationReportSlotAttachment | null;
   deedSlot?: ValuationReportSlotAttachment | null;
   /** Prefer uploaded site-map; else generate from subject + adopted comps. */
@@ -1582,6 +1585,7 @@ export function buildValuationReportLiveFill(input: {
     assignedAppraiserName: (input.assignedAppraiserName ?? "").trim(),
     assignedAppraiserId: (input.assignedAppraiserId ?? "").trim(),
     photoSlots: input.photoSlots ?? [],
+    movablesPhotoSlots: input.movablesPhotoSlots ?? [],
     surveySlot: input.surveySlot ?? null,
     deedSlot: input.deedSlot ?? null,
     slotFrames: { ...(choices.reportSlotFrames ?? {}) },

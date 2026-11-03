@@ -58,94 +58,115 @@ describe("the photos tab's sections", () => {
 
 describe("marking a photo", () => {
   it("offers the icons only to the specialist, and shows the badge to everyone", () => {
-    const marks = { ...EMPTY_PROPERTY_PHOTO_MARKS, electricity: ["meter"] };
+    const marks = { ...EMPTY_PROPERTY_PHOTO_MARKS, movables: ["meter"] };
     render(<PropertyDetailPhotosTab photos={photos} marks={marks} />);
 
-    expect(screen.getByText("عداد كهرباء")).toBeTruthy();
+    expect(screen.getByText("منقولات")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "الصورة الرئيسية" })).toBeNull();
-    expect(screen.queryByText(/صور التقرير/)).toBeNull();
+    expect(screen.queryByRole("button", { name: "إضافة إلى التقرير" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^إزالة الصورة/ })).toBeNull();
   });
 
-  it("puts a photo in the report section the specialist picks", () => {
-    const onChangeMarks = vi.fn();
-    const shown = [photo("front", "صور خارجية"), photo("inside", "صور داخلية · أخرى")];
+  const board = (report: string[]) => ({
+    ...EMPTY_PROPERTY_PHOTO_MARKS,
+    main: report[0] ?? null,
+    report,
+    reportOrdered: true,
+  });
+  const three = [photo("front", "صور خارجية"), photo("inside", "صور داخلية"), photo("hall", "صور داخلية")];
+
+  it("opens the report board empty, slot 1 for the main photo, above the inspector's photos", () => {
     render(
-      <PropertyDetailPhotosTab
-        photos={shown}
-        marks={EMPTY_PROPERTY_PHOTO_MARKS}
-        onChangeMarks={onChangeMarks}
-      />,
+      <PropertyDetailPhotosTab photos={photos} marks={EMPTY_PROPERTY_PHOTO_MARKS} reportLimit={24} onChangeMarks={vi.fn()} />,
     );
 
-    const add = screen.getByRole("button", { name: "إضافة إلى التقرير" });
-    fireEvent.click(add);
-    const menu = screen.getByRole("menu");
-    expect(within(menu).getByRole("menuitemradio", { name: /داخلية/ }).textContent).toContain("مقترح");
-    fireEvent.click(within(menu).getByRole("menuitemradio", { name: /أخرى/ }));
+    const reportBoard = screen.getByRole("region", { name: "صور التقرير — ترتيب الأخصائي" });
+    expect(reportBoard.textContent).toContain("0 / 24");
+    expect(within(reportBoard).getAllByRole("button", { name: /فارغة$/ })).toHaveLength(24);
+    expect(within(reportBoard).getByRole("button", { name: "خانة 1 فارغة" }).textContent).toContain("الرئيسية");
+  });
 
-    const [sentPhotos, update] = onChangeMarks.mock.calls[0];
-    expect(sentPhotos).toBe(shown);
-    expect(update(EMPTY_PROPERTY_PHOTO_MARKS)).toMatchObject({
+  it("offers no meter or main-photo icons any more", () => {
+    render(<PropertyDetailPhotosTab photos={photos} marks={EMPTY_PROPERTY_PHOTO_MARKS} onChangeMarks={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: "عداد كهرباء" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "عداد ماء" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "الصورة الرئيسية" })).toBeNull();
+  });
+
+  it("puts a chosen photo in the next free slot, the first one becoming the main photo", () => {
+    const onChangeMarks = vi.fn();
+    render(<PropertyDetailPhotosTab photos={three} marks={EMPTY_PROPERTY_PHOTO_MARKS} onChangeMarks={onChangeMarks} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "إضافة إلى التقرير" })[1]!);
+
+    expect(onChangeMarks.mock.calls[0][1](EMPTY_PROPERTY_PHOTO_MARKS)).toMatchObject({
       report: ["inside"],
-      reportSections: { inside: 3 },
+      main: "inside",
+      reportOrdered: true,
     });
-    expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  it("prints the main photo by itself", () => {
-    render(
-      <PropertyDetailPhotosTab
-        photos={[photo("front", "صور خارجية")]}
-        marks={EMPTY_PROPERTY_PHOTO_MARKS}
-        onChangeMarks={vi.fn()}
-      />,
-    );
-
-    const button = screen.getByRole("button", { name: "في التقرير تلقائياً" }) as HTMLButtonElement;
-    expect(button.disabled).toBe(true);
-  });
-
-  it("marks a photo as movables", () => {
+  it("replaces the tapped slot's photo with the next photo chosen", () => {
     const onChangeMarks = vi.fn();
-    render(
-      <PropertyDetailPhotosTab
-        photos={[photo("front", "صور خارجية")]}
-        marks={EMPTY_PROPERTY_PHOTO_MARKS}
-        onChangeMarks={onChangeMarks}
-      />,
-    );
+    render(<PropertyDetailPhotosTab photos={three} marks={board(["front", "inside"])} onChangeMarks={onChangeMarks} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "منقولات" }));
+    fireEvent.click(screen.getByRole("button", { name: "خانة 2: صور داخلية" }));
+    fireEvent.click(screen.getByRole("button", { name: "إضافة إلى التقرير" }));
 
-    expect(onChangeMarks.mock.calls[0][1](EMPTY_PROPERTY_PHOTO_MARKS).movables).toEqual(["front"]);
+    expect(onChangeMarks.mock.calls[0][1](board(["front", "inside"])).report).toEqual(["front", "hall"]);
   });
 
-  it("counts the report's photos by section, the main photo and the meters with them", () => {
-    render(
-      <PropertyDetailPhotosTab
-        photos={photos}
-        marks={{ ...EMPTY_PROPERTY_PHOTO_MARKS, electricity: ["meter"], report: ["back", "gone"] }}
-        reportLimit={24}
-        onChangeMarks={vi.fn()}
-      />,
-    );
+  it("swaps two slots tapped one after the other, slot 1 staying the main photo", () => {
+    const onChangeMarks = vi.fn();
+    const marks = board(["front", "inside", "hall"]);
+    render(<PropertyDetailPhotosTab photos={three} marks={marks} onChangeMarks={onChangeMarks} />);
 
-    expect(screen.getByText(/صور التقرير/).textContent).toBe(
-      "صور التقرير 3 / 24 — خارجية 2 · داخلية 0 · أخرى 1",
-    );
+    fireEvent.click(screen.getByRole("button", { name: "خانة 1: صور خارجية" }));
+    fireEvent.click(screen.getByRole("button", { name: "خانة 3: صور داخلية" }));
+
+    expect(onChangeMarks.mock.calls[0][1](marks)).toMatchObject({
+      report: ["hall", "inside", "front"],
+      main: "hall",
+    });
   });
 
-  it("says the report picks by itself while nothing is picked", () => {
-    render(
-      <PropertyDetailPhotosTab
-        photos={photos}
-        marks={EMPTY_PROPERTY_PHOTO_MARKS}
-        reportLimit={24}
-        onChangeMarks={vi.fn()}
-      />,
-    );
+  it("takes a photo off its slot", () => {
+    const onChangeMarks = vi.fn();
+    render(<PropertyDetailPhotosTab photos={three} marks={board(["front", "inside"])} onChangeMarks={onChangeMarks} />);
 
-    expect(screen.getByText(/صور التقرير/).textContent).toBe("صور التقرير: تلقائي (أول 24 صورة)");
+    fireEvent.click(screen.getByRole("button", { name: "إزالة الصورة من الخانة 1" }));
+
+    expect(onChangeMarks.mock.calls[0][1](board(["front", "inside"]))).toMatchObject({
+      report: ["inside"],
+      main: "inside",
+    });
+  });
+
+  it("refuses a photo once the board is full", () => {
+    const onChangeMarks = vi.fn();
+    render(<PropertyDetailPhotosTab photos={three} marks={board(["front"])} reportLimit={1} onChangeMarks={onChangeMarks} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "إضافة إلى التقرير" })[0]!);
+
+    expect(onChangeMarks).not.toHaveBeenCalled();
+  });
+
+  it("opens the movables board only once the inspector found movables", () => {
+    const onChangeMarks = vi.fn();
+    const { rerender } = render(
+      <PropertyDetailPhotosTab photos={three} marks={EMPTY_PROPERTY_PHOTO_MARKS} onChangeMarks={onChangeMarks} />,
+    );
+    expect(screen.queryByRole("region", { name: "صور المنقولات — قسم في التقرير" })).toBeNull();
+
+    rerender(
+      <PropertyDetailPhotosTab photos={three} marks={EMPTY_PROPERTY_PHOTO_MARKS} movablesPresent onChangeMarks={onChangeMarks} />,
+    );
+    const movables = screen.getByRole("region", { name: "صور المنقولات — قسم في التقرير" });
+    expect(movables.textContent).toContain("0 / 6");
+    fireEvent.click(screen.getAllByRole("button", { name: "إضافة إلى صور المنقولات" })[2]!);
+
+    expect(onChangeMarks.mock.calls[0][1](EMPTY_PROPERTY_PHOTO_MARKS).movables).toEqual(["hall"]);
   });
 
   it("offers no icons on a photo that is not the inspector's", () => {

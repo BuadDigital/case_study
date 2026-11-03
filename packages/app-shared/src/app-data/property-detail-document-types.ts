@@ -57,6 +57,11 @@ export type PropertyPhotoMarks = {
   report: string[];
   /** The section the specialist gave a picked photo; none = the suggested one. */
   reportSections?: Record<string, ReportPhotoSection>;
+  /**
+   * `report` is the specialist's board order (2026-11-03): the report prints it as it stands.
+   * Absent on picks saved before the board, which still print sorted by section.
+   */
+  reportOrdered?: boolean;
 };
 
 export type PropertyPhotoRole = "main" | "electricity" | "water" | "movables";
@@ -64,16 +69,6 @@ export type PropertyPhotoMark = PropertyPhotoRole | "report";
 
 /** The report's photo sections, printed in this order: 1 exterior, 2 interior, 3 other. */
 export type ReportPhotoSection = 1 | 2 | 3;
-
-export const REPORT_PHOTO_SECTIONS: { section: ReportPhotoSection; label: string }[] = [
-  { section: 1, label: "خارجية" },
-  { section: 2, label: "داخلية" },
-  { section: 3, label: "أخرى" },
-];
-
-export function reportPhotoSectionLabel(section: ReportPhotoSection): string {
-  return REPORT_PHOTO_SECTIONS.find((item) => item.section === section)?.label ?? "";
-}
 
 export const EMPTY_PROPERTY_PHOTO_MARKS: PropertyPhotoMarks = {
   main: null,
@@ -240,30 +235,11 @@ export function togglePropertyPhotoMark(
     movables: without(marks.movables ?? []),
   };
   if (mark === "main") return { ...cleared, main: marks.main === id ? null : id };
-  return { ...cleared, [mark]: toggled(marks[mark] ?? []) };
-}
-
-/**
- * The marks after the specialist puts a photo in a report section, or takes it out (null).
- *
- * Edge cases: the report's limit is the caller's to refuse; taking a photo out drops its section.
- */
-export function setReportPhotoSection(
-  marks: PropertyPhotoMarks,
-  id: string,
-  section: ReportPhotoSection | null,
-): PropertyPhotoMarks {
-  const sections = Object.fromEntries(
-    Object.entries(marks.reportSections ?? {}).filter(([key]) => key !== id),
-  ) as Record<string, ReportPhotoSection>;
-  if (section === null) {
-    return { ...marks, report: marks.report.filter((item) => item !== id), reportSections: sections };
+  // Movables print in their own section, so a photo turned into movables leaves the report board.
+  if (mark === "movables" && !(marks.movables ?? []).includes(id)) {
+    return withMovablesBoard(marks, [...(marks.movables ?? []), id]);
   }
-  return {
-    ...marks,
-    report: marks.report.includes(id) ? marks.report : [...marks.report, id],
-    reportSections: { ...sections, [id]: section },
-  };
+  return { ...cleared, [mark]: toggled(marks[mark] ?? []) };
 }
 
 /**
@@ -312,26 +288,13 @@ export function orderReportPhotos(
 }
 
 /**
- * Whether the report takes this photo without it being picked: the main photo (marked, else the
- * automatic pick) and the marked meters (2026-11-02 ruling).
- */
-export function isAutomaticReportPhoto(
-  photos: PropertyDetailDocumentEntry[],
-  entry: PropertyDetailDocumentEntry,
-  marks: PropertyPhotoMarks | null | undefined,
-): boolean {
-  const role = propertyPhotoRole(entry, marks);
-  if (role === "electricity" || role === "water") return true;
-  return entry.id === pickInspectorPrimaryPhoto(photos, marks)?.id;
-}
-
-/**
- * The ids the report prints once the specialist picked photos: the picked ones with the main
- * photo and the marked meters, in the report's order. Empty while nothing is picked, so the report
- * takes the first ones of {@link orderReportPhotos}.
+ * The photos the report prints: the specialist's board, slot 1 the main photo (2026-11-03 ruling:
+ * the specialist always chooses; nothing enters the report by itself).
  *
- * Edge cases: only the inspector's photos still on the property count, so a picked photo that was
- * retaken drops out, and picks that are all gone count as no pick.
+ * How it works: a board saved since 2026-11-03 prints in its own order. Picks saved before it
+ * (2026-11-02) print sorted by section, the marked main photo first, as they printed then.
+ * Edge cases: only the inspector's photos still on the property count, so a photo that was retaken
+ * drops out; no choice prints no photo.
  */
 export function reportPhotoIds(
   photos: PropertyDetailDocumentEntry[],
@@ -339,14 +302,104 @@ export function reportPhotoIds(
 ): string[] {
   if (!marks?.report.length) return [];
   const inspector = photos.filter(isInspectorGlancePhoto);
-  if (!inspector.some((photo) => marks.report.includes(photoMarkId(photo)))) return [];
+  const live = new Set(inspector.map(photoMarkId).filter(Boolean));
+  const picked = marks.report.filter((id) => live.has(id));
+  if (picked.length === 0) return [];
+  if (marks.reportOrdered) return picked;
+  const main = marks.main && live.has(marks.main) ? marks.main : null;
   return orderReportPhotos(inspector, marks)
-    .filter(
-      (photo) =>
-        marks.report.includes(photoMarkId(photo)) || isAutomaticReportPhoto(inspector, photo, marks),
-    )
     .map(photoMarkId)
-    .filter(Boolean);
+    .filter((id) => id && (picked.includes(id) || id === main));
+}
+
+/** What goes onto a board slot: a photo from the inspector's groups, or another slot's photo. */
+export type ReportBoardSource = { photoId: string } | { slot: number };
+
+/**
+ * The board after one drop (or tap) on slot `target`.
+ *
+ * How it works: a slot onto a filled slot swaps the two, onto an empty one moves it to the end; a
+ * photo already on the board acts as its slot; a new photo onto a filled slot replaces that photo,
+ * onto an empty one fills the next free slot. Edge cases: a full board takes no new photo. Returns
+ * the reason instead of a board when the drop is refused.
+ */
+export function placeOnReportBoard(
+  board: readonly string[],
+  source: ReportBoardSource,
+  target: number,
+  limit: number,
+): string[] | { refused: string } {
+  const next = [...board];
+  const from = "slot" in source ? source.slot : next.indexOf(source.photoId);
+  if (from >= 0 && from < next.length) {
+    if (from === target) return next;
+    if (target >= next.length) {
+      const [moved] = next.splice(from, 1);
+      return [...next, moved!];
+    }
+    [next[from], next[target]] = [next[target]!, next[from]!];
+    return next;
+  }
+  if (!("photoId" in source)) return next;
+  if (target < next.length) {
+    next[target] = source.photoId;
+    return next;
+  }
+  if (next.length >= limit) return { refused: `التقرير يطبع ${limit} صورة كحد أقصى` };
+  return [...next, source.photoId];
+}
+
+/**
+ * The marks holding `board` as the specialist's report photos, slot 1 as the property's main photo
+ * (the map card, the basic tab and the report's first photo all read `main`).
+ *
+ * Edge cases: a photo holds one role, so the new main photo leaves the meters' marks kept from
+ * before, and a board photo leaves the movables; sections are no longer chosen, so they drop.
+ */
+export function withReportBoard(marks: PropertyPhotoMarks, board: readonly string[]): PropertyPhotoMarks {
+  const main = board[0] ?? null;
+  return {
+    ...marks,
+    main,
+    electricity: marks.electricity.filter((id) => id !== main),
+    water: marks.water.filter((id) => id !== main),
+    movables: (marks.movables ?? []).filter((id) => !board.includes(id)),
+    report: [...board],
+    reportSections: {},
+    reportOrdered: true,
+  };
+}
+
+/** The movables section prints one page (2026-11-03). */
+export const REPORT_MOVABLES_PHOTO_LIMIT = REPORT_PHOTOS_PER_PAGE;
+
+/**
+ * The movables board: the photos the specialist chose for «صور المنقولات», in their order.
+ * Edge cases: only photos still on the property count.
+ */
+export function movablesBoardIds(
+  photos: PropertyDetailDocumentEntry[],
+  marks: PropertyPhotoMarks | null | undefined,
+): string[] {
+  const live = new Set(photos.filter(isInspectorGlancePhoto).map(photoMarkId).filter(Boolean));
+  return (marks?.movables ?? []).filter((id) => live.has(id)).slice(0, REPORT_MOVABLES_PHOTO_LIMIT);
+}
+
+/**
+ * The marks holding `board` as the movables photos: they leave the report board (slot 1 passes to
+ * the next photo) and drop any other role, since a photo holds one role.
+ */
+export function withMovablesBoard(marks: PropertyPhotoMarks, board: readonly string[]): PropertyPhotoMarks {
+  const next: PropertyPhotoMarks = {
+    ...marks,
+    main: marks.main && board.includes(marks.main) ? null : marks.main,
+    electricity: marks.electricity.filter((id) => !board.includes(id)),
+    water: marks.water.filter((id) => !board.includes(id)),
+    movables: [...board],
+  };
+  if (!board.some((id) => marks.report.includes(id))) return next;
+  const report = marks.report.filter((id) => !board.includes(id));
+  return marks.reportOrdered ? withReportBoard(next, report) : { ...next, report };
 }
 
 /**
