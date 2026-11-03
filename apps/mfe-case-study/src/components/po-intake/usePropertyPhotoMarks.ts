@@ -9,12 +9,15 @@ import { createKeyedWriteQueue } from "@platform/app-shared/lib/keyed-write-queu
 import { useToast } from "@platform/ui-kit";
 import {
   EMPTY_PROPERTY_PHOTO_MARKS,
+  REPORT_MOVABLES_PHOTO_LIMIT,
   photoMarkId,
   reportPhotoIds,
   type PropertyDetailDocumentEntry,
   type PropertyPhotoMarks,
 } from "@platform/app-shared/app-data/property-detail-document-types";
 import { loadCaseStudyReportDraftOrThrow } from "../../lib/app-data/case-study-report-reads";
+import { fetchInspectorWorkspaceReadOnly } from "../../lib/app-data/inspector-workspace-reads";
+import { isMovablesPresent } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   notifyWorkOrderPropertyChanged,
   requireWorkOrdersApiConfig,
@@ -31,15 +34,16 @@ const markWrites = createKeyedWriteQueue();
  * readers (the main photo, the map) to read again.
  * Edge cases: a refused or failed save returns to what the server holds and says why. Editing is
  * open to work-order managers until the study report is issued; the server refuses after that too.
- * The report's limit counts what the report would print (the picked photos with the main photo and
- * the meters), only photos still on the property, so a marked photo that was retaken cannot use up
- * a slot nobody can clear; a change that does not add a photo is never refused.
+ * The report's limit counts what the report would print (the specialist's board), only photos still
+ * on the property, so a marked photo that was retaken cannot use up a slot nobody can clear; a
+ * change that does not add a photo is never refused. The movables section holds one page.
  */
 export function usePropertyPhotoMarks({
   poNumber,
   propertyId,
   stored,
   studyTaskId,
+  inspectionTaskId,
   enabled,
   reportLimit,
 }: {
@@ -47,6 +51,8 @@ export function usePropertyPhotoMarks({
   propertyId: string;
   stored: PropertyPhotoMarks | undefined;
   studyTaskId: string | null;
+  /** The inspection whose «يوجد منقولات» opens the movables board. */
+  inspectionTaskId: string | null;
   /** The photos tab was opened; the study report is read only then. */
   enabled: boolean;
   /** How many photos the report prints («صفحات الصور» in the settings). */
@@ -71,6 +77,18 @@ export function usePropertyPhotoMarks({
     retry: false,
   });
 
+  // «يوجد منقولات: نعم» from the inspector opens the movables board and the report's section.
+  const movables = useQuery({
+    queryKey: ["property-photo-marks", "movables-present", inspectionTaskId],
+    queryFn: async () => {
+      const draft = await fetchInspectorWorkspaceReadOnly(inspectionTaskId!);
+      return draft ? isMovablesPresent(draft.featureValues) : false;
+    },
+    enabled: enabled && Boolean(inspectionTaskId),
+    staleTime: 30_000,
+    retry: false,
+  });
+
   const change = (
     photos: readonly PropertyDetailDocumentEntry[],
     update: (marks: PropertyPhotoMarks) => PropertyPhotoMarks,
@@ -84,6 +102,11 @@ export function usePropertyPhotoMarks({
     const printed = reportPhotoIds([...photos], next).length;
     if (printed > reportLimit && printed > reportPhotoIds([...photos], current).length) {
       showToast(`التقرير يطبع ${reportLimit} صورة كحد أقصى`, "error");
+      return;
+    }
+    const movables = (next.movables ?? []).length;
+    if (movables > REPORT_MOVABLES_PHOTO_LIMIT && movables > (current.movables ?? []).length) {
+      showToast(`قسم صور المنقولات يطبع ${REPORT_MOVABLES_PHOTO_LIMIT} صور كحد أقصى`, "error");
       return;
     }
 
@@ -109,6 +132,7 @@ export function usePropertyPhotoMarks({
   return {
     marks,
     canEdit: canManage && !study.isLoading && study.data?.status !== "issued",
+    movablesPresent: movables.data === true,
     change,
   };
 }

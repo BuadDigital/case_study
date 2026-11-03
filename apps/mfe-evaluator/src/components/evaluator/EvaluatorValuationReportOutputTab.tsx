@@ -211,6 +211,7 @@ export function EvaluatorValuationReportOutputTab({
 
   // How many photos print is the settings' «صفحات الصور», applied when the bundle loads them.
   const photoSlots = outputBundle?.attach?.photos ?? EMPTY_PHOTO_SLOTS;
+  const movablesPhotoSlots = outputBundle?.attach?.movablesPhotos ?? EMPTY_PHOTO_SLOTS;
 
   /**
    * Shared report request body for on-screen preview and print — was fully duplicated (~70 lines).
@@ -295,6 +296,7 @@ export function EvaluatorValuationReportOutputTab({
           assignedAppraiserId,
           survey,
           photoSlots,
+          movablesPhotoSlots,
           surveySlot,
           deedSlot,
           siteMapSlot,
@@ -346,6 +348,7 @@ export function EvaluatorValuationReportOutputTab({
       specialistComponentsText,
       market,
       photoSlots,
+      movablesPhotoSlots,
       property,
       recon,
       record,

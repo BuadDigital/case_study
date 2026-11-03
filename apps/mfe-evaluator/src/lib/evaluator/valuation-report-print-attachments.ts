@@ -287,6 +287,8 @@ export async function loadValuationReportPrintAttachments(
     > & {
       /** Ordered ids for photo-1…N; empty string keeps that slot blank. */
       photoSlotIds?: string[];
+      /** Ordered ids of the «صور المنقولات» section (2026-11-03); unset = no section. */
+      movablesPhotoSlotIds?: string[];
       /**
        * When true, do not fall back to the first available deed/survey/photo —
        * only the preferred ids (or blanks) are used.
@@ -296,12 +298,14 @@ export async function loadValuationReportPrintAttachments(
   },
 ): Promise<{
   photos: Array<ValuationReportSlotAttachment | null>;
+  movablesPhotos: Array<ValuationReportSlotAttachment | null>;
   survey: ValuationReportSlotAttachment | null;
   deed: ValuationReportSlotAttachment | null;
   siteMap: ValuationReportSlotAttachment | null;
 }> {
   const empty = {
     photos: [] as Array<ValuationReportSlotAttachment | null>,
+    movablesPhotos: [] as Array<ValuationReportSlotAttachment | null>,
     survey: null as ValuationReportSlotAttachment | null,
     deed: null as ValuationReportSlotAttachment | null,
     siteMap: null as ValuationReportSlotAttachment | null,
@@ -414,8 +418,9 @@ export async function loadValuationReportPrintAttachments(
   }
 
   // Photos, survey, deed and site map download side by side — each used to wait for the previous one.
-  const [photoSlots, surveySlot, deedSlot, siteMapSlot] = await Promise.all([
+  const [photoSlots, movablesPhotos, surveySlot, deedSlot, siteMapSlot] = await Promise.all([
     photoSlotsTask,
+    Promise.all((preferred.movablesPhotoSlotIds ?? []).map((id) => slotFromId(id, "photo"))),
     documentSlot(survey, preferred.survey, "survey"),
     documentSlot(deed, preferred.deed, "deed"),
     documentSlot(siteMaps, preferred["site-map"], "site-map"),
@@ -423,6 +428,7 @@ export async function loadValuationReportPrintAttachments(
 
   return {
     photos: photoSlots,
+    movablesPhotos,
     survey: surveySlot,
     deed: deedSlot,
     siteMap: siteMapSlot,

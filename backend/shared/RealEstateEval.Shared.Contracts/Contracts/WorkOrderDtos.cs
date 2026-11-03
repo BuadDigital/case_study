@@ -18,6 +18,11 @@ public class PropertyPhotoMarksDto
     /// photo with no entry takes the section its inspection category suggests.
     /// </summary>
     public Dictionary<string, int> ReportSections { get; set; } = [];
+    /// <summary>
+    /// <see cref="Report"/> is the specialist's board order (2026-11-03) and prints as it stands;
+    /// false on picks saved before the board, which print sorted by section.
+    /// </summary>
+    public bool ReportOrdered { get; set; }
 }
 
 public class PropertyContactDto

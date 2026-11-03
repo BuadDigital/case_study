@@ -35,28 +35,28 @@ describe("the photos the report prints", () => {
     documents.list = [photo("meter", "خدمة: كهرباء"), photo("front", "صور خارجية")];
   });
 
-  it("fills the slots in the report's order, the main photo first, each with its section", () => {
+  it("prints no photo while the specialist chose none", () => {
     expect(reportPhotoSelection(workspace, null)).toEqual({
       inspectorPhotoIds: ["front", "meter", "unlisted"],
       photoSlotIds: [],
-      sectionLabels: { front: "صور خارجية", meter: "صور أخرى" },
+      movablesSlotIds: [],
     });
   });
 
-  it("prints only the specialist's choice when there is one", () => {
-    const marks = { ...EMPTY_PROPERTY_PHOTO_MARKS, report: ["meter", "front"] };
-    expect(reportPhotoSelection(workspace, marks).photoSlotIds).toEqual(["front", "meter"]);
+  it("prints the specialist's board in its order", () => {
+    const marks = { ...EMPTY_PROPERTY_PHOTO_MARKS, report: ["meter", "front"], reportOrdered: true };
+    expect(reportPhotoSelection(workspace, marks).photoSlotIds).toEqual(["meter", "front"]);
   });
 
-  it("prints a photo under the section the specialist gave it", () => {
-    const marks = { ...EMPTY_PROPERTY_PHOTO_MARKS, report: ["meter"], reportSections: { meter: 2 as const } };
-    const selection = reportPhotoSelection(workspace, marks);
-    expect(selection.photoSlotIds).toEqual(["front", "meter"]);
-    expect(selection.sectionLabels.meter).toBe("صور داخلية");
+  it("prints the chosen movables in their own section", () => {
+    documents.list = [...documents.list, photo("sofa", "صورة توثيقية — منقولات")];
+    const marks = { ...EMPTY_PROPERTY_PHOTO_MARKS, movables: ["sofa"] };
+    expect(reportPhotoSelection(workspace, marks).movablesSlotIds).toEqual(["sofa"]);
+    expect(reportPhotoSelection(workspace, null).movablesSlotIds).toEqual([]);
   });
 
   it("treats a choice whose photos are gone as no choice", () => {
-    const marks = { ...EMPTY_PROPERTY_PHOTO_MARKS, report: ["gone"] };
+    const marks = { ...EMPTY_PROPERTY_PHOTO_MARKS, report: ["gone"], reportOrdered: true };
     expect(reportPhotoSelection(workspace, marks).photoSlotIds).toEqual([]);
   });
 });

@@ -3,9 +3,12 @@ import {
   EMPTY_PROPERTY_PHOTO_MARKS,
   orderPropertyPhotos,
   orderReportPhotos,
+  movablesBoardIds,
   pickInspectorPrimaryPhoto,
+  placeOnReportBoard,
   reportPhotoIds,
-  setReportPhotoSection,
+  withMovablesBoard,
+  withReportBoard,
   suggestedReportSection,
   togglePropertyPhotoMark,
   type PropertyDetailDocumentEntry,
@@ -161,37 +164,94 @@ describe("the report's sections", () => {
   });
 
   it("follows the specialist's section over the suggestion", () => {
-    const picked = setReportPhotoSection(EMPTY_PROPERTY_PHOTO_MARKS, "yard", 2);
+    const picked = marks({ report: ["yard"], reportSections: { yard: 2 } });
     expect(ids(orderReportPhotos([yard, inside, outside], picked))).toEqual([
       "outside",
       "yard",
       "inside",
     ]);
   });
-
-  it("drops the section when the photo leaves the report", () => {
-    const picked = setReportPhotoSection(EMPTY_PROPERTY_PHOTO_MARKS, "kitchen", 2);
-    expect(setReportPhotoSection(picked, "kitchen", null)).toEqual(marks({ report: [], reportSections: {} }));
-  });
 });
 
 describe("the photos the report prints", () => {
-  it("follows the sections, whatever order they were picked in", () => {
+  it("prints picks saved before the board sorted by section, the marked main photo first", () => {
     expect(
       reportPhotoIds([meter, facade, inside], marks({ main: "facade", report: ["meter", "inside"] })),
     ).toEqual(["facade", "inside", "meter"]);
   });
 
-  it("adds the main photo and the marked meters to the picked ones", () => {
+  it("adds nothing by itself: no automatic main photo, no meters", () => {
     expect(
       reportPhotoIds([meter, water, facade, inside], marks({ electricity: ["meter"], report: ["inside"] })),
-    ).toEqual(["facade", "inside", "meter"]);
+    ).toEqual(["inside"]);
   });
 
   it("drops a photo no longer on the property, and is empty without a choice", () => {
-    expect(reportPhotoIds([facade, inside], marks({ report: ["gone", "inside"] }))).toEqual(["facade", "inside"]);
+    expect(reportPhotoIds([facade, inside], marks({ report: ["gone", "inside"] }))).toEqual(["inside"]);
     expect(reportPhotoIds([facade], marks({ report: ["gone"] }))).toEqual([]);
     expect(reportPhotoIds([facade], marks({}))).toEqual([]);
     expect(reportPhotoIds([facade], null)).toEqual([]);
+  });
+});
+
+describe("the report board (2026-11-03)", () => {
+  it("starts empty: the specialist always chooses", () => {
+    expect(reportPhotoIds([meter, facade, inside], null)).toEqual([]);
+  });
+
+  it("prints a saved board in its own order", () => {
+    const board = withReportBoard(EMPTY_PROPERTY_PHOTO_MARKS, ["inside", "facade"]);
+    expect(reportPhotoIds([meter, facade, outside, inside], board)).toEqual(["inside", "facade"]);
+  });
+
+  it("makes slot 1 the main photo, which leaves an old meter mark", () => {
+    const saved = withReportBoard(marks({ main: "facade", electricity: ["inside"] }), ["inside", "facade"]);
+    expect(saved).toMatchObject({ main: "inside", electricity: [], report: ["inside", "facade"], reportOrdered: true });
+    expect(pickInspectorPrimaryPhoto([facade, inside], saved)?.id).toBe("inside");
+    expect(withReportBoard(saved, []).main).toBeNull();
+  });
+
+  it("swaps two slots, and moves a slot dropped on an empty one to the end", () => {
+    expect(placeOnReportBoard(["a", "b", "c"], { slot: 0 }, 2, 24)).toEqual(["c", "b", "a"]);
+    expect(placeOnReportBoard(["a", "b", "c"], { slot: 0 }, 7, 24)).toEqual(["b", "c", "a"]);
+    expect(placeOnReportBoard(["a", "b"], { photoId: "b" }, 0, 24)).toEqual(["b", "a"]);
+  });
+
+  it("replaces a photo with a new one, or fills the next free slot, up to the limit", () => {
+    expect(placeOnReportBoard(["a", "b"], { photoId: "x" }, 0, 24)).toEqual(["x", "b"]);
+    expect(placeOnReportBoard(["a", "b"], { photoId: "x" }, 5, 24)).toEqual(["a", "b", "x"]);
+    expect(placeOnReportBoard(["a", "b"], { photoId: "x" }, 2, 2)).toEqual({
+      refused: "التقرير يطبع 2 صورة كحد أقصى",
+    });
+  });
+
+  it("drops the sections, which are no longer chosen", () => {
+    const saved = withReportBoard(marks({ reportSections: { a: 2 }, movables: ["a", "m"] }), ["a", "b"]);
+    expect(saved).toMatchObject({ reportSections: {}, movables: ["m"] });
+  });
+});
+
+describe("the movables board (2026-11-03)", () => {
+  const sofa = photo("sofa", "صورة توثيقية — منقولات");
+  const chair = photo("chair", "منقولات: كرسي");
+
+  it("starts empty and follows the specialist's choice", () => {
+    expect(movablesBoardIds([facade, sofa, chair], null)).toEqual([]);
+    expect(movablesBoardIds([facade, sofa, chair], marks({ movables: ["chair", "gone", "sofa"] }))).toEqual([
+      "chair",
+      "sofa",
+    ]);
+  });
+
+  it("takes a photo off the report board, slot 1 passing to the next photo", () => {
+    const board = withReportBoard(EMPTY_PROPERTY_PHOTO_MARKS, ["facade", "inside"]);
+    const next = withMovablesBoard(board, ["facade"]);
+    expect(next).toMatchObject({ main: "inside", movables: ["facade"], report: ["inside"] });
+  });
+
+  it("turning a photo into movables takes it off the report board", () => {
+    const next = togglePropertyPhotoMark(marks({ report: ["inside", "outside"] }), "inside", "movables");
+    expect(next.report).toEqual(["outside"]);
+    expect(next.movables).toEqual(["inside"]);
   });
 });

@@ -176,6 +176,7 @@ export function PropertyDetailMediaGlance({
             photos={photos}
             title="صور المعاينة"
             marks={property?.photoMarks}
+            showReportBoard={false}
           />
         </div>
       ) : null}
