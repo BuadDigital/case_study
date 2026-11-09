@@ -28,6 +28,8 @@ public static class ValuationModel
 {
     public static ModelBuilder ApplyValuationModel(this ModelBuilder builder)
     {
+        // The valuation counters (CMP-{YY}-{seq} for the comparables bank, ruling 2026-11-08).
+        builder.ApplyReferenceSequenceModel(DatabaseSchemas.Valuation);
         builder.Entity<ValuationRequest>(e =>
         {
             e.ToTable("ValuationRequests", DatabaseSchemas.Valuation);
@@ -209,6 +211,8 @@ public static class ValuationModel
             e.Property(x => x.AppraiserNote).HasMaxLength(2000);
             e.Property(x => x.ConformityConfirmedByUserId).HasMaxLength(128);
             e.Property(x => x.SentByUserId).HasMaxLength(128);
+            e.Property(x => x.SubmittedForReviewByUserId).HasMaxLength(128);
+            e.Property(x => x.ReviewNote).HasMaxLength(2000);
             e.Property(x => x.ApprovedByUserId).HasMaxLength(128);
             e.Property(x => x.ReportDate).HasMaxLength(10);
             e.Property(x => x.SnapshotSha256).HasMaxLength(64);

@@ -128,6 +128,35 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         });
                 });
 
+            modelBuilder.Entity("RealEstateEval.Domain.ReferenceSequence", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("LastValue")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Prefix", "Year")
+                        .IsUnique()
+                        .HasDatabaseName("UX_valuation_ReferenceSequences_Prefix_Year");
+
+                    b.ToTable("ValuationReferenceSequences", "valuation");
+                });
+
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ComparableProperty", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1036,6 +1065,10 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
                     b.Property<DateTime?>("SentAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1066,6 +1099,13 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<DateTime?>("SubmittedForReviewAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("SubmittedForReviewByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1082,7 +1122,7 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
 
                     b.ToTable("ValuationReportDrafts", "valuation", t =>
                         {
-                            t.HasCheckConstraint("CK_ValuationReportDrafts_Status", "\"Status\" IS NULL OR \"Status\" IN ('preparing', 'sent', 'approved')");
+                            t.HasCheckConstraint("CK_ValuationReportDrafts_Status", "\"Status\" IS NULL OR \"Status\" IN ('preparing', 'in_review', 'sent', 'approved')");
                         });
                 });
 

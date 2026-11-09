@@ -33,6 +33,7 @@ import {
 } from "../lib/app-data/all-transactions-queue";
 import { appraiserQueueStatusGroup } from "../lib/evaluator-bridge";
 import { transactionNumberOf } from "../lib/app-data/transaction-number";
+import type { StaffAccess } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 
 export const APPRAISAL_STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "drafting", label: "قيد التقييم — بانتظار إصدار الدراسة" },
@@ -314,6 +315,7 @@ export type ActiveQueueRowMoreContext = {
   showToast: (message: string, tone?: ToastTone) => void;
   poByNumber: Map<string, PoIntakeRecord>;
   viewerRole: RoleId;
+  viewerAccess: StaffAccess;
 };
 
 export type ActiveQueueApi = {

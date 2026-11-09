@@ -12,5 +12,6 @@ public interface IJwtTokenService
         string? distributionAssigneeId = null,
         IEnumerable<string>? pages = null,
         string? department = null,
-        string? jobTitle = null);
+        string? jobTitle = null,
+        IEnumerable<string>? subRoles = null);
 }

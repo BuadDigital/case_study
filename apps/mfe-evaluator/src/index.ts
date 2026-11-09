@@ -18,8 +18,6 @@ export {
   clearPartyTaskRecall as clearEvaluatorRecall,
   getPartyTaskRecall as getEvaluatorRecall,
   notifyPartyTaskRecallChanged as notifyEvaluatorRecallChanged,
-  PARTY_TASK_RECALL_CHANGED_EVENT,
-  PARTY_TASK_RECALL_HYDRATED_EVENT,
   partyTaskRecallStatusLabel as recallStatusLabel,
   type PartyTaskRecallRequest as EvaluatorRecallRequest,
   type PartyTaskRecallStatus as EvaluatorRecallStatus,
@@ -50,4 +48,11 @@ export {
   InfathSection,
 } from "@platform/ui-kit";
 
-export * from "./query/evaluator-queries";
+export {
+  usePoRecordQuery,
+  useWorkflowTasksQuery,
+} from "./lib/case-study-bridge";
+export {
+  PARTY_TASK_RECALL_CHANGED_EVENT,
+  PARTY_TASK_RECALL_HYDRATED_EVENT,
+} from "@platform/app-shared/events/app-events";

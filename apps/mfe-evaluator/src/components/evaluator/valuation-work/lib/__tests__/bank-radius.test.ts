@@ -133,3 +133,52 @@ describe("bank rows — adopted comparables always show (round 2)", () => {
     expect(beyond.count).toBe(0);
   });
 });
+
+describe("bank type filter (A→Z #43/#60)", () => {
+  const typed = (id: string, km: number, type: string) =>
+    ({ ...comparableAt(id, km), comparablePropertyType: type }) as ComparablePropertyDto;
+  // Six lands nearer than any building, as around the apartment of trial 5.
+  const pool = [
+    ...[0.1, 0.2, 0.3, 0.4, 0.5, 0.6].map((km, i) => typed(`l${i}`, km, "أرض")),
+    typed("villa", 1.5, "فيلا"),
+    typed("flat", 2.5, "شقة سكنية"),
+  ];
+  const rowsFor = (opts: Partial<Parameters<typeof buildBankDisplayRows>[0]>) =>
+    buildBankDisplayRows({
+      selectionItems: [],
+      candidates: pool,
+      subjectCity: "الرياض",
+      subjectCoords: SUBJECT,
+      ...opts,
+    }).rows.map((r) => r.comp.id);
+
+  it("shows an apartment buildings only, its own type first", () => {
+    expect(rowsFor({ subjectKind: "building", subjectType: "شقة" })).toEqual(["villa", "flat"]);
+  });
+
+  it("shows a land valuation lands only", () => {
+    const ids = rowsFor({ subjectKind: "land", radiusKm: null });
+    expect(ids).toHaveLength(6);
+    expect(ids.every((id) => id.startsWith("l"))).toBe(true);
+  });
+
+  it("«كل الأنواع» keeps every type, the subject's type taking the free rows first", () => {
+    const ids = rowsFor({ subjectKind: "building", subjectType: "شقة", typeFilter: "all" });
+    expect(ids).toHaveLength(6);
+    expect(ids).toContain("flat");
+    expect(ids).toContain("villa");
+  });
+
+  it("never filters the property's own rows and counts only the kept type as beyond", () => {
+    const own = typed("own-land", 0.05, "أرض");
+    const { rows, beyond } = buildBankDisplayRows({
+      selectionItems: [{ id: "s-own", isAdopted: true, comparable: own } as never],
+      candidates: [...pool, typed("far-flat", 9, "شقة"), typed("far-land", 8, "أرض")],
+      subjectCity: "الرياض",
+      subjectCoords: SUBJECT,
+      subjectKind: "building",
+    });
+    expect(rows.map((r) => r.comp.id)).toContain("own-land");
+    expect(beyond.count).toBe(1);
+  });
+});

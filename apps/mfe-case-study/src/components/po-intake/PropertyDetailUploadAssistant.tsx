@@ -18,6 +18,7 @@ import {
   InfathCollapseControls,
 } from "./PropertyDetailUploadAssistantPanels";
 import { usePropertyDetailEnfathUploadWorkflow } from "./usePropertyDetailUploadAssistantWorkflow";
+import { UploadPrepBar } from "./UploadPrepBar";
 
 export function PropertyDetailEnfathUpload({
   record,
@@ -76,6 +77,8 @@ export function PropertyDetailEnfathUpload({
 
   return (
     <div className="flex flex-col gap-4">
+      <UploadPrepBar workOrderId={record.id} propertyId={property.id} attachments={flow.model.attachments} />
+
       <InfathCollapseControls onSetAllCollapsed={flow.setAllCollapsed} />
 
       <InfathAttachmentsPanel

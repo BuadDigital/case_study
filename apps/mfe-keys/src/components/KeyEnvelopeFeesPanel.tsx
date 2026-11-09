@@ -71,7 +71,7 @@ export function KeyEnvelopeFeesPanel({
   return (
     <div>
       {onBack ? (
-        <KeysBackLink onClick={onBack}>محفظة المفاتيح</KeysBackLink>
+        <KeysBackLink onClick={onBack}>المفاتيح</KeysBackLink>
       ) : null}
 
       <div className="mb-3.5 flex items-center gap-2.5">

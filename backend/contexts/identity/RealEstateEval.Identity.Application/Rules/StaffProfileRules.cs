@@ -17,6 +17,7 @@ public sealed record StaffUpdateTarget(
     string? City,
     string? NationalId,
     string? InspectorType,
+    int CaseSpecialistSubRoles,
     bool HasCompensation,
     decimal? FeeValueSar,
     string? Iban,
@@ -70,6 +71,7 @@ public static class StaffProfileRules
             InspectorType = roleId == "field-inspector"
                 ? request.InspectorType!.Trim().ToLowerInvariant()
                 : null,
+            CaseSpecialistSubRoles = SubRoleFlagsFor(roleId, request.CaseSpecialistSubRoles, stored: 0),
             HasCompensation = request.HasCompensation ?? false,
             FeeValueSar = request.HasCompensation == true ? request.FeeValueSar : null,
             Iban = string.IsNullOrWhiteSpace(request.Iban) ? null : NormalizeIban(request.Iban),
@@ -82,6 +84,43 @@ public static class StaffProfileRules
             ReferenceNumber = userReference,
             CreatedAtUtc = nowUtc,
         };
+    }
+
+    // ---- case-specialist sub-roles ----
+
+    public const string SubRolesRequiredAr = "اختر دوراً فرعياً واحداً على الأقل للأخصائي.";
+    public const string SubRolesUnknownAr = "دور فرعي غير معروف.";
+
+    /// <summary>
+    /// The stored sub-role flags of a create or an edit (Omar's ruling 2026-11-02: a case specialist
+    /// holds one or more of coordination / study / review; other roles hold none).
+    /// </summary>
+    /// <remarks>
+    /// How it works: a non-specialist role always gets 0. For a case specialist, an absent request
+    /// list keeps the stored flags, or grants all three when nothing is stored yet (a new account,
+    /// or an account just moved into the role) — the launch rule that no specialist loses work.
+    /// A present list is folded into flags as sent.
+    /// Edge cases: a present but empty (or all-unknown) list yields 0, which
+    /// <see cref="ValidateUpdateTarget"/> / <see cref="SubRolesError"/> then refuse.
+    /// </remarks>
+    public static int SubRoleFlagsFor(string? roleId, IReadOnlyList<string>? requested, int stored)
+    {
+        if (!string.Equals(roleId?.Trim(), StaffRoleIds.CaseSpecialist, StringComparison.Ordinal))
+            return 0;
+        if (requested is null)
+            return stored is > 0 and <= CaseSpecialistSubRoles.AllFlags ? stored : CaseSpecialistSubRoles.AllFlags;
+        return CaseSpecialistSubRoles.ToFlags(requested);
+    }
+
+    /// <summary>
+    /// The refusal of a requested sub-role list, or null when it is acceptable: absent (keeps or
+    /// grants all), or one-or-more known words. An empty list or an unknown word is refused.
+    /// </summary>
+    public static string? SubRolesError(IReadOnlyList<string>? requested)
+    {
+        if (requested is null) return null;
+        if (requested.Any(s => !CaseSpecialistSubRoles.IsKnown(s))) return SubRolesUnknownAr;
+        return CaseSpecialistSubRoles.ToFlags(requested) == 0 ? SubRolesRequiredAr : null;
     }
 
     // ---- edit resolution ----
@@ -110,6 +149,10 @@ public static class StaffProfileRules
                 ? StaffUserRules.ResolveOptional(request.InspectorType, stored.InspectorType)
                     ?.ToLowerInvariant()
                 : null,
+            CaseSpecialistSubRoles: SubRoleFlagsFor(
+                roleId,
+                request.CaseSpecialistSubRoles,
+                stored.CaseSpecialistSubRoles),
             HasCompensation: hasCompensation,
             FeeValueSar: hasCompensation ? request.FeeValueSar ?? stored.FeeValueSar : null,
             Iban: StaffUserRules.ResolveOptional(request.Iban, stored.Iban) is { } iban
@@ -141,6 +184,8 @@ public static class StaffProfileRules
         else if (target.RoleId == "field-inspector"
                  && target.InspectorType is not ("employee" or "contractor"))
             errors["inspectorType"] = "نوع المعاين مطلوب.";
+        else if (target.RoleId == StaffRoleIds.CaseSpecialist && target.CaseSpecialistSubRoles == 0)
+            errors["caseSpecialistSubRoles"] = SubRolesRequiredAr;
 
         if (target.HasCompensation && target.FeeValueSar is null)
             errors["feeValueSar"] = "قيمة الأتعاب مطلوبة عند تفعيل التعويض.";
@@ -174,6 +219,11 @@ public static class StaffProfileRules
         Track(changes, "city", stored.City, target.City);
         Track(changes, "nationalId", stored.NationalId, target.NationalId);
         Track(changes, "inspectorType", stored.InspectorType, target.InspectorType);
+        Track(
+            changes,
+            "caseSpecialistSubRoles",
+            string.Join(",", CaseSpecialistSubRoles.FromFlags(stored.CaseSpecialistSubRoles)),
+            string.Join(",", CaseSpecialistSubRoles.FromFlags(target.CaseSpecialistSubRoles)));
         Track(changes, "hasCompensation", stored.HasCompensation, target.HasCompensation);
         Track(changes, "feeValueSar", stored.FeeValueSar, target.FeeValueSar);
         Track(changes, "iban", stored.Iban is null ? "unset" : "set", target.Iban is null ? "unset" : "set");
@@ -201,6 +251,7 @@ public static class StaffProfileRules
             City = target.City,
             NationalId = target.NationalId,
             InspectorType = target.InspectorType,
+            CaseSpecialistSubRoles = target.CaseSpecialistSubRoles,
             HasCompensation = target.HasCompensation,
             FeeValueSar = target.FeeValueSar,
             Iban = target.Iban,

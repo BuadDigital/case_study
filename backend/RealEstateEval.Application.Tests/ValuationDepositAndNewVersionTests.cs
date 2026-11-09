@@ -26,7 +26,7 @@ public class ValuationDepositAndNewVersionTests
 
     private static readonly ReportDraftActor Specialist = new()
     {
-        UserId = "u-spec", PrototypeRole = "case-specialist",
+        UserId = "u-spec", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
     };
 
     private static readonly ReportDraftActor Appraiser = new()
@@ -41,6 +41,9 @@ public class ValuationDepositAndNewVersionTests
     {
         Assert.Null(DepositCertificateRules.Validate(TestPdf.OnePage));
         Assert.Equal(DepositCertificateRules.OnePageAr, DepositCertificateRules.Validate(TestPdf.TwoPages));
+        // A→Z 2026-11-04: a file a PDF tool cannot open is refused, not left «جاري التجهيز» for ever.
+        Assert.Equal(DepositCertificateRules.DamagedPdfAr, DepositCertificateRules.Validate(TestPdf.NoXref));
+        Assert.Null(DepositCertificateRules.Validate(TestPdf.OnePage));
         Assert.Equal(DepositCertificateRules.NotPdfAr, DepositCertificateRules.Validate([1, 2, 3]));
         Assert.Equal(DepositCertificateRules.NotPdfAr, DepositCertificateRules.Validate("PK\u0003\u0004zip"u8.ToArray()));
         Assert.Equal(DepositCertificateRules.RequiredAr, DepositCertificateRules.Validate([]));

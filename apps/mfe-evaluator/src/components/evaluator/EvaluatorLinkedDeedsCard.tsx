@@ -56,7 +56,7 @@ export function EvaluatorLinkedDeedsCard({
         عقار مرتبط{linkKindLabel ? ` — ${linkKindLabel}` : ""}
         {transactionNumber ? (
           <>
-            {" · المعاملة "}
+            {" · رقم العقار المرتبط "}
             <span dir="ltr">{transactionNumber}</span>
           </>
         ) : null}

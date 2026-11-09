@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -89,6 +90,22 @@ public sealed class HttpIdentityDirectory(
             httpContext,
             options.Value.IdentityBaseUrl,
             $"/api/identity/user-ids-by-role?role={Uri.EscapeDataString(role)}",
+            "UpstreamServices:IdentityBaseUrl",
+            cancellationToken);
+        return body.UserIds;
+    }
+
+    public async Task<IReadOnlyList<string>> ResolveCaseSpecialistUserIdsAsync(
+        string subRole,
+        CancellationToken cancellationToken = default)
+    {
+        var sub = subRole.Trim();
+        if (sub.Length == 0) return [];
+        var body = await UpstreamJson.GetAsync<IdentityUserIdsDto>(
+            http,
+            httpContext,
+            options.Value.IdentityBaseUrl,
+            $"/api/identity/user-ids-by-role?role={StaffRoleIds.CaseSpecialist}&subRole={Uri.EscapeDataString(sub)}",
             "UpstreamServices:IdentityBaseUrl",
             cancellationToken);
         return body.UserIds;

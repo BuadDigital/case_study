@@ -57,7 +57,7 @@ export function useCaseStudyReportIssue(
     if (inFlight.current) return;
     // An answer was still being saved: the click used to do nothing at all (A→Z test 2026-10-29).
     if (saving) {
-      showToast("يُحفظ آخر تعديل — اضغط «إصدار تقرير دراسة الحالة» مرة أخرى بعد لحظة", "info");
+      showToast("يُحفظ آخر تعديل — اضغط «إرسال الدراسة للمراجع والمقيّم» مرة أخرى بعد لحظة", "info");
       return;
     }
     const gate = firstCaseStudyReportScrollTarget({
@@ -84,19 +84,18 @@ export function useCaseStudyReportIssue(
       showToast(deedMatchBlock, "error");
       return;
     }
-
     inFlight.current = true;
     setSubmittingForm(true);
     setSaving(true);
     const progressId = showProgressToast(
-      progressMessageForActionLabel("إصدار تقرير دراسة الحالة"),
+      progressMessageForActionLabel("إرسال الدراسة للمراجع والمقيّم"),
     );
     try {
       setMissingAnswerKeys(new Set());
       const result = await issueCaseStudyReportDraft({ ...draft, status: "draft" });
       if (result.ok) {
         setDraft(result.draft);
-        showToast("تم إصدار تقرير دراسة الحالة بنجاح", "success");
+        showToast("أُرسلت الدراسة للمراجع والمقيّم", "success");
         return;
       }
       const where = firstMissingQuestionLocation(
@@ -126,7 +125,7 @@ export function useCaseStudyReportIssue(
       }
       showToast(result.error, "error");
     } catch {
-      showToast("تعذّر إصدار تقرير دراسة الحالة — حاول مرة أخرى", "error");
+      showToast("تعذّر إرسال الدراسة للمراجع والمقيّم — حاول مرة أخرى", "error");
     } finally {
       dismissToast(progressId);
       setSaving(false);

@@ -4,6 +4,7 @@ import {
 } from "@platform/ui-kit";
 import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
 import type { RoleId } from "@platform/types";
+import type { StaffAccess } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 import { isPartyTaskDone } from "@platform/app-shared/workflow/task-done";
 import { isTaskFailureObstructed } from "@platform/app-shared/workflow/task-failure-status";
 import {
@@ -89,6 +90,8 @@ export type AllTransactionsQueueRowMeta = {
   transactionNumber: string | null;
   /** Deeds in this deed's transaction; above 1 they collapse into one queue row. */
   transactionDeedCount: number;
+  /** «بانتظار» — who the live transaction waits for (`transactionProgress`); null when not resolved. */
+  waitingOn: string | null;
 };
 
 /**
@@ -223,10 +226,20 @@ export function collapseAllTransactionsToLatestPhase(
   return collapsed;
 }
 
+/**
+ * The «المعاملات النشطة» rows: one per property at its latest stage.
+ *
+ * How it works: builds a row per task, collapses them per property (`collapseAllTransactionsToLatestPhase`),
+ * then — when `progressOf` is given (staff) — replaces the coarse phase with where the transaction
+ * stands and who it waits for, and drops what is no longer live.
+ * Edge cases / changed 2026-11-05 (Omar: «المعاملات النشطة» replaces the hidden «جميع المعاملات»):
+ * without `progressOf` (party roles, their own tasks) the rows keep the phase label and every status.
+ */
 export function buildAllTransactionsQueueRowMeta(
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
   now: Date,
+  progressOf?: (task: WorkflowTask) => { stage: string; waitingOn: string } | null,
 ): AllTransactionsQueueRowMeta[] {
   const rows = tasks.map((task) => {
     const record = poByNumber.get(task.poNumber.trim());
@@ -247,9 +260,18 @@ export function buildAllTransactionsQueueRowMeta(
       transactionNumber:
         transactionNumberOf(property) ?? task.transactionNumber ?? null,
       transactionDeedCount: property?.transactionDeedCount ?? 1,
+      waitingOn: null,
     };
   });
-  return collapseAllTransactionsToLatestPhase(rows);
+  const collapsed = collapseAllTransactionsToLatestPhase(rows);
+  if (!progressOf) return collapsed;
+  const live: AllTransactionsQueueRowMeta[] = [];
+  for (const row of collapsed) {
+    const progress = progressOf(row.task);
+    if (!progress) continue;
+    live.push({ ...row, phaseLabel: progress.stage, waitingOn: progress.waitingOn });
+  }
+  return live;
 }
 
 export function filterAllTransactionsQueueRows(
@@ -278,6 +300,7 @@ export function filterAllTransactionsQueueRows(
         row.city,
         row.district,
         row.phaseLabel,
+        row.waitingOn ?? "",
         row.transactionNumber ?? "",
       ]
         .join(" ")
@@ -314,6 +337,8 @@ export function buildAllTransactionsRowMoreItems(options: {
   openTask: () => void;
   router: { push: (href: string) => void };
   viewerRole?: RoleId;
+  /** Viewer role + sub-roles — reopening a finished study is the study sub-role's. */
+  viewerAccess?: StaffAccess;
   /** Opens the reopen dialog for this row (completed tasks only) — the report reopen for a case-study parent. */
   onReopenCompleted?: () => void;
 }): RowMoreMenuItem[] {
@@ -344,7 +369,7 @@ export function buildAllTransactionsRowMoreItems(options: {
     if (options.task.kind === "case-study-property") {
       // The server refuses the generic reopen for a case-study parent — it reopens through the
       // issued report, and only the case specialist may.
-      if (canReopenCaseStudyReport(options.viewerRole)) {
+      if (options.viewerAccess && canReopenCaseStudyReport(options.viewerAccess)) {
         items.push({
           id: "reopen-case-study-report",
           label: "إعادة فتح تقرير الدراسة",

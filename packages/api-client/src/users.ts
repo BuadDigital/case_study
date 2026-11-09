@@ -52,6 +52,8 @@ export type CreateStaffUserRequest = {
   roleId: string;
   department?: string;
   inspectorType?: "employee" | "contractor";
+  /** Case-specialist sub-roles (coordination | study | review); absent = all three. */
+  caseSpecialistSubRoles?: string[];
   hasCompensation?: boolean;
   feeValueSar?: number;
   iban?: string;
@@ -112,6 +114,8 @@ export type UpdateStaffUserRequest = {
   nationalId?: string;
   avatarUrl?: string;
   inspectorType?: "employee" | "contractor" | "";
+  /** Case-specialist sub-roles; absent keeps the stored set. */
+  caseSpecialistSubRoles?: string[];
   hasCompensation?: boolean;
   feeValueSar?: number;
   iban?: string;

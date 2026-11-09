@@ -21,7 +21,7 @@ import {
   patchAccessContact,
   SITE_ATTENDED_BY_LABEL,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import {
   EDIT_CONTROL_CLASS,

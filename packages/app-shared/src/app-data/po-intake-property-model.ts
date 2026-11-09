@@ -201,10 +201,10 @@ export type PoPropertyIntake = {
   id: string;
   /** The transaction (المعاملة) this deed belongs to. */
   transactionId?: string | null;
-  /** Transaction draft number TMP-{YY}-{seq}, shown until the official reference exists. */
-  transactionDraftNumber?: string | null;
-  /** Transaction official reference PR-{YY}-{seq}; null until the first report approval. */
+  /** «رقم المعاملة» — the deed's own PR-{YY}-{seq}; null until its initial data is first saved. */
   referenceNumber?: string | null;
+  /** The property's number: the deed's own for a single deed, «رقم العقار المرتبط» PR-{YY}-{seq}-L when linked. */
+  transactionReferenceNumber?: string | null;
   /** one_building | contract; null for a single deed. */
   transactionLinkKind?: string | null;
   /** Deeds in the transaction (1 for an ordinary property). */

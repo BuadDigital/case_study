@@ -1,16 +1,28 @@
 import { describe, expect, it, vi } from "vitest";
 import { buildPropertyDetailHeroMenuItems } from "../property-detail-hero-menu";
+import {
+  buildTransactionGeneralItems,
+  transactionGeneralRules,
+  withTransactionGeneralItems,
+} from "../../../lib/app-data/transaction-general-actions";
+import { staffAccessOf } from "@platform/app-shared/app-data/case-specialist-sub-roles";
+
+const failureItem = {
+  id: "failure",
+  label: "تسجيل تعذّر",
+  danger: true,
+  onClick: vi.fn(),
+};
 
 describe("buildPropertyDetailHeroMenuItems", () => {
-  it("puts دراسة العقار above تسجيل تعذّر", () => {
+  it("puts دراسة العقار above the general actions", () => {
     const onNavigate = vi.fn();
-    const onOpenFailure = vi.fn();
     const items = buildPropertyDetailHeroMenuItems({
       hideOpenCaseStudy: false,
       caseStudyWorkspaceHref: "/case-study/t1",
       reportTabHref: "/po/x/property/p?tab=report",
       onNavigate,
-      onOpenFailure,
+      generalItems: [failureItem],
     });
 
     expect(items.map((item) => item.label)).toEqual([
@@ -19,6 +31,20 @@ describe("buildPropertyDetailHeroMenuItems", () => {
     ]);
     items[0]?.onClick();
     expect(onNavigate).toHaveBeenCalledWith("/case-study/t1");
+  });
+
+  it("opens the work page first when the viewer may open it", () => {
+    const onNavigate = vi.fn();
+    const items = buildPropertyDetailHeroMenuItems({
+      workPageHref: "/po/x/property/p/work",
+      hideOpenCaseStudy: true,
+      caseStudyWorkspaceHref: null,
+      reportTabHref: null,
+      onNavigate,
+    });
+    expect(items.map((item) => item.label)).toEqual(["صفحة العمل"]);
+    items[0]?.onClick();
+    expect(onNavigate).toHaveBeenCalledWith("/po/x/property/p/work");
   });
 
   it("falls back to the report tab when the workspace is not available", () => {
@@ -42,12 +68,10 @@ describe("buildPropertyDetailHeroMenuItems", () => {
       reportTabHref: null,
       caseStudyBusy: true,
       onNavigate: vi.fn(),
-      onOpenFailure: vi.fn(),
     });
 
     expect(items[0]?.busy).toBe(true);
     expect(items[0]?.disabled).toBe(true);
-    expect(items[1]?.disabled).toBe(true);
   });
 
   it("omits دراسة العقار when already inside the case-study workspace", () => {
@@ -56,33 +80,105 @@ describe("buildPropertyDetailHeroMenuItems", () => {
       caseStudyWorkspaceHref: "/case-study/t1",
       reportTabHref: "/po/x/property/p?tab=report",
       onNavigate: vi.fn(),
-      onOpenFailure: vi.fn(),
+      generalItems: [failureItem],
     });
 
     expect(items.map((item) => item.label)).toEqual(["تسجيل تعذّر"]);
   });
+});
 
-  it("names the cancel item after who decides (إلغاء المعاملة)", () => {
-    const onCancelTransaction = vi.fn();
-    const asked = buildPropertyDetailHeroMenuItems({
-      hideOpenCaseStudy: true,
-      caseStudyWorkspaceHref: null,
-      reportTabHref: null,
-      onNavigate: vi.fn(),
-      onCancelTransaction,
-    });
-    expect(asked.map((item) => item.label)).toEqual(["طلب إلغاء المعاملة"]);
-    asked[0]?.onClick();
-    expect(onCancelTransaction).toHaveBeenCalled();
+describe("transaction general actions (2026-11-05)", () => {
+  const live = { isRemoved: false, cancelledAtUtc: "" };
+  const handlers = {
+    onFailure: vi.fn(),
+    onFinalFailure: vi.fn(),
+    onCancel: vi.fn(),
+    onReopen: vi.fn(),
+  };
+  const labels = (rules: ReturnType<typeof transactionGeneralRules>) =>
+    buildTransactionGeneralItems(rules, handlers).map((i) => i.label);
 
-    const decided = buildPropertyDetailHeroMenuItems({
-      hideOpenCaseStudy: true,
-      caseStudyWorkspaceHref: null,
-      reportTabHref: null,
-      onNavigate: vi.fn(),
-      onCancelTransaction: vi.fn(),
-      cancelDecides: true,
+  it("offers «إعادة فتح المعاملة» first to any specialist once the host says it may reopen", () => {
+    const base = {
+      access: staffAccessOf("case-specialist", ["study"]),
+      canRaiseFailure: false,
+      property: live,
+      openFailureStatus: null,
+    };
+    expect(labels(transactionGeneralRules({ ...base, reopenable: true }))[0]).toBe("إعادة فتح المعاملة");
+    expect(labels(transactionGeneralRules(base))).not.toContain("إعادة فتح المعاملة");
+    expect(
+      labels(transactionGeneralRules({ ...base, access: staffAccessOf("general-manager"), reopenable: true })),
+    ).not.toContain("إعادة فتح المعاملة");
+  });
+
+  it("gives coordination a failure and the cancellation request, not the final failure", () => {
+    const rules = transactionGeneralRules({
+      access: staffAccessOf("case-specialist", ["coordination"]),
+      canRaiseFailure: true,
+      property: live,
+      openFailureStatus: null,
     });
-    expect(decided.map((item) => item.label)).toEqual(["إلغاء المعاملة"]);
+    expect(labels(rules)).toEqual(["تسجيل تعذّر", "طلب إلغاء المعاملة"]);
+  });
+
+  it("gives the supervisor the final failure and the direct cancellation", () => {
+    const rules = transactionGeneralRules({
+      access: staffAccessOf("section-supervisor"),
+      canRaiseFailure: true,
+      property: live,
+      openFailureStatus: "review",
+    });
+    expect(labels(rules)).toEqual([
+      "التعذّر النهائي عن المعاملة",
+      "إلغاء المعاملة",
+    ]);
+  });
+
+  it("offers nothing on a cancelled or removed deed, and no cancellation once one is pending", () => {
+    const base = {
+      access: staffAccessOf("section-supervisor"),
+      canRaiseFailure: true,
+      openFailureStatus: null,
+    };
+    expect(
+      labels(
+        transactionGeneralRules({
+          ...base,
+          property: { cancelledAtUtc: "2026-11-01" },
+        }),
+      ),
+    ).toEqual([]);
+    expect(
+      labels(
+        transactionGeneralRules({ ...base, property: { isRemoved: true } }),
+      ),
+    ).toEqual([]);
+    expect(
+      labels(
+        transactionGeneralRules({
+          ...base,
+          property: live,
+          cancellationPending: true,
+        }),
+      ),
+    ).toEqual(["تسجيل تعذّر", "التعذّر النهائي عن المعاملة"]);
+  });
+
+  it("keeps a stage menu's own failure item and drops the general one", () => {
+    const stage = [
+      { id: "register-failure", label: "تسجيل تعذّر", onClick: vi.fn() },
+    ];
+    const general = [
+      failureItem,
+      {
+        id: "cancel-transaction",
+        label: "طلب إلغاء المعاملة",
+        onClick: vi.fn(),
+      },
+    ];
+    expect(
+      withTransactionGeneralItems(stage, general).map((i) => i.id),
+    ).toEqual(["register-failure", "cancel-transaction"]);
   });
 });

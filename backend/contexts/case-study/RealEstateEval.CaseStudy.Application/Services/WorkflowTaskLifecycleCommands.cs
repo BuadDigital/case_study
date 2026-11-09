@@ -5,6 +5,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Rules;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
@@ -258,12 +259,12 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
     public async Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> ReopenCompletedAsync(
         Guid id,
         ReopenCompletedWorkflowTaskRequest request,
-        string actorRole,
+        StaffActor actor,
         string? actorName,
         string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
-        if (!WorkflowTaskLifecycleRules.IsSectionSupervisorOrAbove(actorRole))
+        if (!WorkflowTaskLifecycleRules.IsSectionSupervisorOrAbove(actor.Role))
             return (null, Error("إعادة فتح المعاملة صلاحية مشرف القسم فأعلى"));
 
         var reason = WorkflowTaskLifecycleRules.NormalizeReason(request.Reason);
@@ -338,7 +339,8 @@ public sealed partial class WorkflowTaskLifecycleCommands : IWorkflowTaskLifecyc
             {
                 status = entity.Status.ToString(),
                 reason,
-                actorRole,
+                actorRole = actor.Role ?? "",
+                actorSubRoles = actor.SubRoles ?? Array.Empty<string>(),
                 actorName,
                 poNumber = entity.PoNumber,
             }), cancellationToken);

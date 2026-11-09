@@ -560,16 +560,17 @@ public sealed class WorkOrderQueryService : IWorkOrderQuery
             .Take(MaxDetailRows)
             .ToListAsync(cancellationToken);
 
-        // The transaction number as a separate lookup: a required navigation joins inner and
-        // would drop a deed whose transaction row is missing (older seeds, tests).
+        // «رقم المعاملة» is the deed's own number; the property number is a separate lookup for an
+        // old row without one (a required navigation joins inner and would drop a deed whose
+        // transaction row is missing — older seeds, tests).
         var transactionIds = list.Select(p => p.TransactionId).Distinct().ToList();
         var numbers = await _db.Transactions.AsNoTracking()
             .Where(t => transactionIds.Contains(t.Id))
-            .Select(t => new { t.Id, Number = t.ReferenceNumber ?? t.DraftNumber })
-            .ToDictionaryAsync(t => t.Id, t => t.Number, cancellationToken);
+            .Select(t => new { t.Id, t.ReferenceNumber })
+            .ToDictionaryAsync(t => t.Id, t => t.ReferenceNumber, cancellationToken);
 
         return list
-            .Select(p => WorkOrderMapper.ToPendingBourse(p, numbers.GetValueOrDefault(p.TransactionId)))
+            .Select(p => WorkOrderMapper.ToPendingBourse(p, p.ReferenceNumber ?? numbers.GetValueOrDefault(p.TransactionId)))
             .ToList();
     }
 

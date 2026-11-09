@@ -10,6 +10,10 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { useIdempotentAction } from "@platform/app-shared";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useFailureRaiseModal } from "../../hooks/useFailureRaiseModal";
+import { useInspectorKeyAvailability } from "../field-inspection/InspectorKeyStatusTab";
+import type { InspectorMapMoveOutcome } from "../field-inspection/InspectorMapActionButtons";
 import { DetailBadge, EmptyState } from "./PropertyDetailFields";
 import { SpecialistComponentsSection } from "./SpecialistComponentsSection";
 import { InspectorDescriptionReference } from "../field-inspection/InspectorDescriptionReference";
@@ -17,7 +21,6 @@ import { inspectorReferenceDocuments } from "../field-inspection/InspectorTransa
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
 import { formatDateAr, type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
-  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
   mergeInspectorWorkspacePatch,
   resolveInspectorWorkspacePatch,
   type InspectorWorkspacePatch,
@@ -54,9 +57,12 @@ import {
   type InspectorPhotoAttachment,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
-import { shouldUseJeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
+import {
+  jeddahPlaceholderPinError,
+  shouldUseJeddahDefaultCoords,
+} from "@platform/app-shared/domain/jeddah-default-coords";
 import { isActiveFailureStatus } from "@platform/app-shared/failures/failures-types";
 import { loadEngineeringSurveySubmissionAsync } from "@engineering-office/mfe/lib/engineering-survey-submission-reads";
 import { updateEngineeringSurveyDraft } from "@engineering-office/mfe/lib/engineering-survey-submission-commands";
@@ -114,6 +120,7 @@ import {
 } from "./PropertyDetailInspectionParts";
 import { submitPropertyDetailInspection } from "./property-detail-inspection-submit";
 import { usePropertyDetailInspectionDraftLoad } from "./usePropertyDetailInspectionDraftLoad";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 export function PropertyDetailInspectionTab({
   property,
@@ -132,6 +139,7 @@ export function PropertyDetailInspectionTab({
   /** Render after wizard; submit footer follows this block (case-study workspace). */
   submitFooterAfter,
   submitSuccessToast,
+  specialistComponents: componentsMode = "with-review",
 }: {
   property: PoPropertyIntake;
   inspectionTask: WorkflowTask | null;
@@ -156,8 +164,16 @@ export function PropertyDetailInspectionTab({
   submitFooterAfter?: ReactNode;
   /** Override success toast after حفظ وإرسال (e.g. specialist → appraiser handoff). */
   submitSuccessToast?: string;
+  /**
+   * «مكونات العقار» (the specialist's): "with-review" — inside the review, locked with it (the
+   * details page); "hidden" — the coordinator's follow-up, where the inspector's package is reviewed
+   * and accepted without them; {locked} — the work page's study, editable until the study is issued
+   * whatever the acceptance (Omar 2026-11-08: acceptance is coordination's, the components the study's).
+   */
+  specialistComponents?: "with-review" | "hidden" | { locked: boolean };
 }) {
   const { showToast } = useToast();
+  const { role } = useAppAccess();
   const { data: failures = [] } = useFailuresQuery();
   // The location step shows the transaction's documents («مستندات المعاملة») for reading.
   // Loaded in the flat layout too: the specialist's review renders the same card, and gating
@@ -286,6 +302,12 @@ export function PropertyDetailInspectionTab({
   const mapActor = serviceProofFromTransactionPhotos
     ? "specialist"
     : "inspector";
+  // The inspector's key answer: shown in step 3 and checked + sent on submit, as on the phone.
+  const keyAvailability = useInspectorKeyAvailability(inspectionTask, {
+    enabled: mapActor === "inspector" && editMode,
+  });
+  // «تسجيل تعذّر المفتاح» opens the shared failure modal (the phone opens the same one).
+  const { openFailureRaise, failureRaiseModal } = useFailureRaiseModal();
 
   const canAdoptEngineeringMap = useMemo(() => {
     if (mapActor !== "specialist" || !engineeringMapPin || !draft) return false;
@@ -420,23 +442,48 @@ export function PropertyDetailInspectionTab({
       });
   }
 
-  function requestMapMove(lat: number, lng: number) {
-    if (!draft) return;
+  /**
+   * A new map point from the map, the coordinates box or the GPS button.
+   *
+   * How it works: an unpinned map (or one without a point) saves the point at once; a pinned map
+   * asks first («تأكيد تحريك الموقع»); the same point does nothing. Returns which happened, so the
+   * GPS button toasts only a saved point.
+   *
+   * Edge cases: returns the outcome since 2026-11-04 (the desktop got the phone's GPS button).
+   */
+  function requestMapMove(lat: number, lng: number): InspectorMapMoveOutcome {
+    if (!draft) return "same";
     const nextLat = lat.toFixed(5);
     const nextLng = lng.toFixed(5);
     const curLat = (draft.mapLatitude ?? "").trim();
     const curLng = (draft.mapLongitude ?? "").trim();
     if (!curLat || !curLng || !mapPinnedRef.current) {
       patchDraft(mapPinPatchForActor(draft, nextLat, nextLng, mapActor));
-      return;
+      return "saved";
     }
-    if (curLat === nextLat && curLng === nextLng) return;
+    if (curLat === nextLat && curLng === nextLng) return "same";
     setPendingMapMove({
       nextLat,
       nextLng,
       prevLat: curLat,
       prevLng: curLng,
     });
+    return "pending";
+  }
+
+  /**
+   * «رجوع للموقع السابق»: puts the pin back where it was before the last confirmed move.
+   *
+   * How it works: restores the point kept by `confirmPendingMapMove`, forgets it, and redraws the map.
+   *
+   * Edge cases: added 2026-11-04 — the previous point was already kept here but nothing offered the
+   * undo (the phone did).
+   */
+  function undoMapMove() {
+    if (!mapBackup || !draft) return;
+    patchDraft(mapPinPatchForActor(draft, mapBackup.lat, mapBackup.lng, mapActor));
+    setMapBackup(null);
+    setMapPinEpoch((n) => n + 1);
   }
 
   function confirmPendingMapMove() {
@@ -522,6 +569,8 @@ export function PropertyDetailInspectionTab({
       mapActor,
       includeRetiredFeatureKeys,
       serviceProofFromTransactionPhotos,
+      studyChecks: componentsMode !== "hidden",
+      inspectorGate: { role, contacts: property.contacts, keyAvailability },
       submitSuccessToast,
       lockEditMode,
       executeInspectorSubmit,
@@ -588,6 +637,20 @@ export function PropertyDetailInspectionTab({
           onSubmit={() => void handleSaveAndSubmit()}
           onCancel={() => void handleCancelEdit()}
           onMapMove={requestMapMove}
+          canUndoMapMove={Boolean(mapBackup)}
+          onUndoMapMove={undoMapMove}
+          keyAvailability={mapActor === "inspector" ? keyAvailability : undefined}
+          onRegisterKeyFailure={
+            mapActor === "inspector" && inspectionTask.propertyId
+              ? () =>
+                  openFailureRaise({
+                    poNumber: inspectionTask.poNumber,
+                    propertyId: inspectionTask.propertyId ?? "",
+                    deedNumber: property.deedNumber,
+                    taskKind: "field-inspection",
+                  })
+              : undefined
+          }
           mapPinned={mapPinned}
           mapActor={mapActor}
           canRestoreInspectorMap={
@@ -599,11 +662,14 @@ export function PropertyDetailInspectionTab({
           onAdoptEngineeringMap={adoptEngineeringMap}
           engineeringMapPin={engineeringMapPin}
           specialistComponents={
-            mapActor === "specialist" && inspectionTask.poNumber && property.id ? (
+            mapActor === "specialist" &&
+            componentsMode !== "hidden" &&
+            inspectionTask.poNumber &&
+            property.id ? (
               <SpecialistComponentsSection
                 poNumber={inspectionTask.poNumber}
                 propertyId={property.id}
-                disabled={locked}
+                disabled={componentsMode === "with-review" ? locked : componentsMode.locked}
                 inspectorReference={
                   <InspectorDescriptionReference draft={draft} deedNumber={property.deedNumber} />
                 }
@@ -622,6 +688,13 @@ export function PropertyDetailInspectionTab({
             // Jeddah placeholder on the next load (2026-10-28) — refuse it here instead.
             if (nextLat && nextLng && shouldUseJeddahDefaultCoords(nextLat, nextLng)) {
               showToast("الإحداثيات خارج المملكة أو غير صحيحة — راجعها قبل التثبيت", "error");
+              return;
+            }
+            // A→Z 2026-11-02 #42: the map starts on the Jeddah placeholder when the deed has no map link;
+            // pinning it unmoved gave a Riyadh property Jeddah coordinates.
+            const placeholderError = jeddahPlaceholderPinError(nextLat, nextLng, property.city);
+            if (placeholderError) {
+              showToast(placeholderError, "error");
               return;
             }
             if (nextLat && nextLng) {
@@ -668,6 +741,8 @@ export function PropertyDetailInspectionTab({
           onCancel={() => void handleCancelEdit()}
         />
       ) : null}
+
+      {failureRaiseModal}
 
       <AppModal
         open={Boolean(pendingMapMove)}

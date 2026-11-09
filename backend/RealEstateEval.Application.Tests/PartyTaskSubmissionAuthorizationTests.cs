@@ -106,7 +106,7 @@ public class PartyTaskSubmissionAuthorizationTests
             {
                 UserId = "staff-1",
                 DisplayName = "أخصائي",
-                PrototypeRole = "case-specialist",
+                PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
                 DistributionAssigneeId = null,
             });
 
@@ -159,7 +159,7 @@ public class PartyTaskSubmissionAuthorizationTests
             {
                 UserId = "staff-1",
                 DisplayName = "أخصائي",
-                PrototypeRole = "case-specialist",
+                PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             });
 
         Assert.Null(errors);
@@ -211,7 +211,7 @@ public class PartyTaskSubmissionAuthorizationTests
             {
                 UserId = "staff-1",
                 DisplayName = "أخصائي",
-                PrototypeRole = "case-specialist",
+                PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             });
 
         Assert.Null(result);
@@ -235,7 +235,7 @@ public class PartyTaskSubmissionAuthorizationTests
             {
                 UserId = "staff-1",
                 DisplayName = "أخصائي",
-                PrototypeRole = "case-specialist",
+                PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
                 DistributionAssigneeId = null,
             });
 
@@ -290,7 +290,7 @@ public class PartyTaskSubmissionAuthorizationTests
     }
 
     [Fact]
-    public async Task Get_allows_property_appraisal_assignee_to_read_completed_sibling_inspection()
+    public async Task Get_allows_property_appraisal_assignee_to_read_the_accepted_sibling_inspection()
     {
         var bundle = CreateDb();
         var db = bundle.CaseStudy;
@@ -343,6 +343,7 @@ public class PartyTaskSubmissionAuthorizationTests
             PoNumber = "PO-SIBLING",
             PayloadJson = """{"visitStatus":"done"}""",
             SubmittedAtUtc = now,
+            AcceptedAtUtc = now,
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
@@ -458,7 +459,8 @@ public class PartyTaskSubmissionAuthorizationTests
     /// Parent + the inspection (id <see cref="TaskId"/>, package in <paramref name="packageStatus"/>, task in
     /// <paramref name="taskState"/>: open | completed | cancelled) + the sibling appraisal («val-1») and survey («eo-1»).
     /// </summary>
-    private static void SeedInspectionFamily(CaseStudyDbContext db, string taskState, string packageStatus)
+    private static void SeedInspectionFamily(
+        CaseStudyDbContext db, string taskState, string packageStatus, bool accepted = false)
     {
         var parentId = Guid.NewGuid();
         var now = DateTime.UtcNow;
@@ -492,28 +494,36 @@ public class PartyTaskSubmissionAuthorizationTests
             PoNumber = "PO-2C",
             PayloadJson = """{"propertyDescription":"وصف"}""",
             SubmittedAtUtc = packageStatus == PartyTaskSubmissionStatus.Submitted ? now : null,
+            AcceptedAtUtc = accepted ? now : null,
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });
         db.SaveChanges();
     }
 
+    /// <summary>
+    /// Omar's ruling 2026-11-05: every piece of the inspector's data reaches the appraiser only after the
+    /// specialist accepts the inspection — a draft, a returned package and a submitted but unaccepted one
+    /// stay hidden from him (until then he read all three).
+    /// </summary>
     [Theory]
-    [InlineData("open", PartyTaskSubmissionStatus.Draft)]
-    [InlineData("open", PartyTaskSubmissionStatus.Reopened)]
-    [InlineData("completed", PartyTaskSubmissionStatus.Submitted)]
-    public async Task Get_lets_the_sibling_appraiser_read_a_non_cancelled_inspection_in_any_state(
-        string taskState, string packageStatus)
+    [InlineData("open", PartyTaskSubmissionStatus.Draft, false, false)]
+    [InlineData("open", PartyTaskSubmissionStatus.Reopened, false, false)]
+    [InlineData("completed", PartyTaskSubmissionStatus.Submitted, false, false)]
+    [InlineData("completed", PartyTaskSubmissionStatus.Submitted, true, true)]
+    public async Task Get_lets_the_sibling_appraiser_read_the_inspection_only_once_accepted(
+        string taskState, string packageStatus, bool accepted, bool readable)
     {
         var db = CreateDb().CaseStudy;
-        SeedInspectionFamily(db, taskState, packageStatus);
+        SeedInspectionFamily(db, taskState, packageStatus, accepted);
         var service = CreateService(db);
 
         var dto = await service.GetAsync(TaskId, AppraiserActor());
+        var listed = await service.ListForTasksAsync([TaskId], AppraiserActor());
 
-        Assert.NotNull(dto);
-        Assert.Equal(packageStatus, dto!.Status);
-        Assert.Contains("وصف", dto.Payload.GetRawText());
+        Assert.Equal(readable, dto is not null);
+        Assert.Equal(readable ? 1 : 0, listed.Count);
+        if (readable) Assert.Contains("وصف", dto!.Payload.GetRawText());
     }
 
     [Fact]
@@ -543,15 +553,72 @@ public class PartyTaskSubmissionAuthorizationTests
     [Fact]
     public async Task List_batch_applies_the_same_rule_by_sibling_kind()
     {
+        // Submitted, not yet accepted: the office reads it (completed), the appraiser waits.
         var db = CreateDb().CaseStudy;
-        SeedInspectionFamily(db, "open", PartyTaskSubmissionStatus.Draft);
+        SeedInspectionFamily(db, "completed", PartyTaskSubmissionStatus.Submitted);
         var service = CreateService(db);
 
         var forAppraiser = await service.ListForTasksAsync([TaskId], AppraiserActor());
         var forOffice = await service.ListForTasksAsync([TaskId], OfficeActor());
 
-        Assert.Single(forAppraiser);
-        Assert.Empty(forOffice);
+        Assert.Empty(forAppraiser);
+        Assert.Single(forOffice);
+    }
+
+    /// <summary>
+    /// A→Z 2026-11-04: the appraiser's report prints the office's boundaries and survey report, so the
+    /// sibling appraiser reads the survey package once the specialist accepted it — not before, and
+    /// never someone else's.
+    /// </summary>
+    [Theory]
+    [InlineData("open", PartyTaskSubmissionStatus.Submitted, "val-1", false, false)]
+    [InlineData("completed", PartyTaskSubmissionStatus.Submitted, "val-1", false, false)]
+    [InlineData("completed", PartyTaskSubmissionStatus.Submitted, "val-1", true, true)]
+    [InlineData("completed", PartyTaskSubmissionStatus.Submitted, "val-other", true, false)]
+    public async Task Get_lets_the_sibling_appraiser_read_the_accepted_survey(
+        string taskState, string packageStatus, string appraisalAssignee, bool accepted, bool readable)
+    {
+        var db = CreateDb().CaseStudy;
+        var parentId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var survey = WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey, "PO-2S", now, title: "رفع",
+            phase: WorkflowTaskPhase.Done, assigneeRole: "engineering-office", assigneeName: "مكتب",
+            assigneeId: "eo-1", id: TaskId, parentTaskId: parentId, propertyId: PropertyId);
+        if (taskState == "completed") survey.Complete(now);
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty, "PO-2S", now, title: "parent",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "case-specialist", assigneeName: "cs",
+                assigneeId: "cs-1", id: parentId, propertyId: PropertyId),
+            survey,
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal, "PO-2S", now, title: "تقييم",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "real-estate-appraiser", assigneeName: "مقيم",
+                assigneeId: appraisalAssignee, parentTaskId: parentId, propertyId: PropertyId));
+        db.PartyTaskSubmissions.Add(new PartyTaskSubmission
+        {
+            Id = Guid.NewGuid(),
+            WorkflowTaskId = TaskId,
+            Kind = WorkflowTaskKindValues.EngineeringSurvey,
+            Status = packageStatus,
+            PropertyId = PropertyId,
+            PoNumber = "PO-2S",
+            PayloadJson = """{"northBoundary":"شارع (مكتب)"}""",
+            SubmittedAtUtc = now,
+            AcceptedAtUtc = accepted ? now : null,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now,
+        });
+        db.SaveChanges();
+        var service = CreateService(db);
+
+        var dto = await service.GetAsync(TaskId, AppraiserActor());
+        var listed = await service.ListForTasksAsync([TaskId], AppraiserActor());
+
+        Assert.Equal(readable, dto is not null);
+        Assert.Equal(readable ? 1 : 0, listed.Count);
+        if (readable) Assert.Contains("مكتب", dto!.Payload.GetRawText());
     }
 
     [Fact]

@@ -448,6 +448,8 @@ describe("§23 — age rationales and the lease cap (cost handoff)", () => {
     ]);
     expect(fill.ageNotes[2]?.value).toContain("مدة الإيجار المتبقية (4 سنوات)");
     expect(fill.ageNotes[2]?.value).toContain("عمر 22 سنة");
+    // A→Z 2026-11-04 #08: the sentence says how the life is made (actual age + remaining term).
+    expect(fill.ageNotes[2]?.value).toContain("العمر الفعلي (18 سنة) مضافاً إليه مدة الإيجار المتبقية");
     const dom = new DOMParser().parseFromString(
       `<section data-sec="23"><table>
         <tr><td class="k">العمر الفعلي</td><td class="v num">—</td><td class="k">العمر الاقتصادي</td><td class="v num">—</td></tr>

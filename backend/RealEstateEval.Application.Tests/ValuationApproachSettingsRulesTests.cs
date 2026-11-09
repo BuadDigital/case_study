@@ -67,12 +67,23 @@ public class ValuationApproachSettingsRulesTests
             costScopeKey: CostScopeKeys.LandAndBuilding);
         Assert.Contains("costScopeKey", buildingsWithoutComponents.Keys);
 
-        var buildingOnlyWithoutCost = ValuationApproachSettingsRules.Validate(
-            true, false, false, null, null, "فيلا",
+        // A→Z #44/#57 (2026-11-04): «مباني فقط» by the market approach alone (an apartment as a
+        // whole property) is allowed — the cost approach can be turned off.
+        var buildingOnlyMarketOnly = ValuationApproachSettingsRules.Validate(
+            true, false, false, null, null, "شقة",
             hasStructuresToValue: true,
             valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
             costScopeKey: CostScopeKeys.BuildingOnly);
-        Assert.Contains("costApproachEnabled", buildingOnlyWithoutCost.Keys);
+        Assert.DoesNotContain("costApproachEnabled", buildingOnlyMarketOnly.Keys);
+        Assert.DoesNotContain("appliedApproaches", buildingOnlyMarketOnly.Keys);
+
+        // …but some approach must still be on.
+        var buildingOnlyNothing = ValuationApproachSettingsRules.Validate(
+            false, false, false, null, null, "شقة",
+            hasStructuresToValue: true,
+            valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
+            costScopeKey: CostScopeKeys.BuildingOnly);
+        Assert.Contains("appliedApproaches", buildingOnlyNothing.Keys);
     }
 
     [Fact]

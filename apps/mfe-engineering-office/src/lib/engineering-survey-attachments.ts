@@ -15,9 +15,11 @@ import { persistPartySubmissionPayload } from "@platform/app-shared/app-data/par
 import { dispatchPartySubmissionChanged } from "@platform/app-shared/app-data/party-submission-changed-event";
 import { enqueueEngineeringSurveyDraftWrite } from "./engineering-survey-draft-write-queue";
 import {
-  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   loadEngineeringSurveySubmission,
 } from "./engineering-survey-submission-model";
+import {
+  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 export type CachedEngineeringSurveyFile = {
   fileName: string;

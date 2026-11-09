@@ -40,7 +40,11 @@ public sealed partial class TransactionStateService(
     {
         var facts = await LoadFactsAsync(workOrderId, propertyId, cancellationToken);
         if (facts is null) return null;
-        return ToDto(workOrderId, propertyId, facts.Value.Input, facts.Value.HasSurvey, facts.Value.Property);
+        return await WithReopeningAsync(
+            ToDto(workOrderId, propertyId, facts.Value.Input, facts.Value.HasSurvey, facts.Value.Property),
+            facts.Value.Input,
+            facts.Value.Property,
+            cancellationToken);
     }
 
     public async Task<(TransactionStateDto? Result, string? Error)> RecordEnfazHandoverAsync(
@@ -63,6 +67,9 @@ public sealed partial class TransactionStateService(
             propertyId.ToString(), cancellationToken);
         if (TransactionStateRules.FinalReportBlocksHandover(finalReportStatus))
             return (null, TransactionStateRules.FinalReportNotReadyAr);
+        // Omar 2026-11-08: the upload follows «تجهيز المعاملة للرفع» (the package checked).
+        if (!property.IsReadyForUpload)
+            return (null, NotReadyForUploadAr);
 
         // A deed never goes to Enfaz under a temporary number. The first report
         // approval normally fixed the PR root; this is the safety net for anything that slipped past.
@@ -77,6 +84,8 @@ public sealed partial class TransactionStateService(
         property.EnfazHandoverAtUtc = _time.UtcNow();
         property.EnfazHandoverByUserId = recordedByUserId;
         await db.SaveChangesAsync(cancellationToken);
+        // A reopened transaction is back on Enfaz: an internal reopening ends, an Enfaz one waits for the reply.
+        await EndReopeningOnUploadAsync(property, _time.UtcNow(), cancellationToken);
 
         // Time entry in the property file — Complete Delivery Closing event.
         try
@@ -101,9 +110,63 @@ public sealed partial class TransactionStateService(
         await NotifyFinanceOfHandoverAsync(workOrderId, property, cancellationToken);
 
         var updated = input with { EnfazHandedOver = true };
-        return (ToDto(workOrderId, propertyId, updated, hasSurvey, property), null);
+        return (await WithReopeningAsync(
+            ToDto(workOrderId, propertyId, updated, hasSurvey, property), updated, property, cancellationToken), null);
     }
 
+
+    public const string NotReadyForUploadAr = "جهّز المعاملة للرفع أولاً — بعد التحقق من حزمة الرفع";
+    public const string ReadyAlreadyHandedOverAr = "المعاملة مرفوعة على إنفاذ";
+
+    /// <summary>«تجهيز المعاملة للرفع» — see the interface.</summary>
+    /// <remarks>
+    /// How it works: the same blockers as the upload (the parties, the study, the closed valuation, the
+    /// final report) must be clear — the package check itself is the screen's (the upload attachments panel
+    /// knows each file); stamps the deed once, with a timeline row.
+    /// Edge cases: a handed-over deed is refused; pressing again keeps the first stamp.
+    /// </remarks>
+    public async Task<(TransactionStateDto? Result, string? Error)> MarkReadyForUploadAsync(
+        Guid workOrderId,
+        Guid propertyId,
+        string? actorUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var facts = await LoadFactsAsync(workOrderId, propertyId, cancellationToken);
+        if (facts is null) return (null, "المعاملة غير موجودة");
+        var (input, hasSurvey, property) = facts.Value;
+        if (input.EnfazHandedOver) return (null, ReadyAlreadyHandedOverAr);
+        var blockReasons = TransactionStateRules.EnfazHandoverBlockReasonsAr(input);
+        if (blockReasons.Count > 0) return (null, EnfazHandoverBlockedAr(blockReasons));
+        var finalReportStatus = await valuationRequests.GetFinalReportStatusByPropertyAsync(
+            propertyId.ToString(), cancellationToken);
+        if (TransactionStateRules.FinalReportBlocksHandover(finalReportStatus))
+            return (null, TransactionStateRules.FinalReportNotReadyAr);
+
+        var now = _time.UtcNow();
+        if (property.MarkReadyForUpload(actorUserId, now))
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            try
+            {
+                var poNumber = await db.GetPoNumberAsync(workOrderId, cancellationToken) ?? "";
+                await timeline.RecordAsync(
+                    poNumber,
+                    propertyId,
+                    $"ready_for_upload:{now.Ticks}",
+                    "تجهيز المعاملة للرفع",
+                    "اكتملت حزمة الرفع على إنفاذ",
+                    PropertyTimelineTones.Done,
+                    now,
+                    cancellationToken);
+            }
+            catch
+            {
+                // The stamp is saved — a missing timeline row does not undo it.
+            }
+        }
+        return (await WithReopeningAsync(
+            ToDto(workOrderId, propertyId, input, hasSurvey, property), input, property, cancellationToken), null);
+    }
 
     private async Task<(TransactionStateRules.Input Input, bool HasSurvey, WorkOrderProperty Property)?>
         LoadFactsAsync(Guid workOrderId, Guid propertyId, CancellationToken cancellationToken)
@@ -191,6 +254,7 @@ public sealed partial class TransactionStateService(
             EnfazHandoverAtUtc = property.EnfazHandoverAtUtc?.ToString("o"),
             // Lets the specialist's card hide «إعادة من إنفاذ» for a deed whose figures are already on Enfaz.
             BillingReadyAtUtc = property.BillingReadyAtUtc?.ToString("o"),
+            ReadyForUploadAtUtc = property.ReadyForUploadAtUtc?.ToString("o"),
             HandoverPackageAr = TransactionStateRules.HandoverPackageAr(hasSurvey),
         };
     }

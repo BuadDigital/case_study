@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { InspectorPhotoAttachment } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorPhotoAttachment } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   getInspectorPhotoDataUrl,
   prefetchInspectorPhoto,

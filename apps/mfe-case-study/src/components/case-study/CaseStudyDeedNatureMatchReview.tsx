@@ -3,14 +3,17 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { propertyDeedKindIsRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
-import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
+import {
+  deedMatchDissent,
+  DeedNatureMatchOutcomes,
+} from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { CaseStudyDeedNatureMatchSection } from "./CaseStudyDeedNatureMatchSection";
-import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
+import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import { notifyCaseStudyDeedMatchChanged } from "@platform/app-shared/app-data/case-study-report-model";
 import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
 import { saveCaseStudyReportDraft } from "../../lib/app-data/case-study-report-commands";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
-import { isInspectorWorkspaceAccepted } from "../../lib/app-data/inspector-workspace-data";
+import { isInspectorWorkspaceAccepted } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { loadEngineeringSurveySubmissionSnapshot } from "../../lib/app-data/property-detail-party-submission-loaders";
 import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
@@ -186,11 +189,12 @@ export function CaseStudyDeedNatureMatchReview({
         sourceLabelAr={proposal?.sourceLabelAr}
         suggestedOutcome={proposal?.suggested}
         infoLinesAr={proposal?.infoLinesAr}
-        inspectorSaidNotMatched={
+        dissent={deedMatchDissent(
           proposal?.source === "inspector" &&
-          !proposal.waiting &&
-          proposal.suggested === DeedNatureMatchOutcomes.Differences
-        }
+            !proposal.waiting &&
+            proposal.suggested === DeedNatureMatchOutcomes.Differences,
+          Boolean(proposal?.engineeringSaidNotMatched),
+        )}
         onAdoptSuggestion={() => {
           if (!proposal?.suggested) return;
           void persist({

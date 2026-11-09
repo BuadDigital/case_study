@@ -47,3 +47,14 @@ public class TransactionDeedSearchHitDto
     /// <summary>Arabic reason the deed cannot join; null when it can.</summary>
     public string? BlockedReasonAr { get; init; }
 }
+
+/// <summary>Change how a multi-deed transaction is linked (the study may correct coordination's choice).</summary>
+public class ChangeTransactionLinkKindRequest
+{
+    /// <summary>one_building | contract.</summary>
+    [Required(ErrorMessage = "نوع الربط مطلوب"), MaxLength(32)]
+    public string LinkKind { get; init; } = "";
+
+    [Required(ErrorMessage = "سبب التغيير مطلوب"), MaxLength(2000)]
+    public string Reason { get; init; } = "";
+}

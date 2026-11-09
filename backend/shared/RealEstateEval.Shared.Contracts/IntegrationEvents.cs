@@ -20,7 +20,19 @@ public static class IntegrationEventTypes
 public static class ValuationNoticeAudiences
 {
     public const string Appraiser = "appraiser";
+    /// <summary>Legacy: the named specialist of the property (events staged before 2026-11).</summary>
     public const string CaseSpecialist = "case-specialist";
+
+    // Ruling 2026-11-02 — every case-specialist stage is a shared queue of its sub-role.
+    public const string CaseSpecialistCoordination = "case-specialist:coordination";
+    public const string CaseSpecialistStudy = "case-specialist:study";
+    public const string CaseSpecialistReview = "case-specialist:review";
+
+    /// <summary>The sub-role an audience addresses («coordination» / «study» / «review»), or null.</summary>
+    public static string? SubRoleOf(string? audience) =>
+        audience is not null && audience.StartsWith(CaseSpecialist + ":", StringComparison.Ordinal)
+            ? audience[(CaseSpecialist.Length + 1)..]
+            : null;
 }
 
 public sealed record ValuationRequestCreatedPayload(

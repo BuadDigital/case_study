@@ -9,7 +9,7 @@ import { propertyAppraisalWorkspacePath } from "@platform/app-shared/domain/po-r
 import { EvaluatorWindow } from "./EvaluatorWindow";
 import type { EvaluatorWindowHostRefObject } from "../../lib/evaluator/evaluator-window-host";
 import type { EvaluatorPropertySummary } from "./EvaluatorPropertyTab";
-import { useWorkflowTasksQuery } from "../../query/evaluator-queries";
+import { useWorkflowTasksQuery } from "../../lib/case-study-bridge";
 
 /**
  * The appraiser's task page: opens the evaluator window for one appraisal task.

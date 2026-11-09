@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import {
   linkedPropertyDeeds,
   type TransactionDeedDto,
@@ -24,10 +25,15 @@ export { useTransactionByPropertyQuery };
  *
  * Edge cases: an ordinary property, a deed with no transaction (404 → null) or a transaction
  * still loading → the same module-level empty array every render, so callbacks and memos that
- * depend on it (the report meta) do not rebuild for nothing.
+ * depend on it (the report meta) do not rebuild for nothing. Fixed 2026-11-04: a linked property
+ * got a new filtered array on every render, so the report tab rebuilt its meta, reset its build
+ * inputs during render and crashed with «Too many re-renders»; the list is now kept until the
+ * transaction itself changes.
  */
 export function useLinkedPropertyDeeds(propertyId: string | null | undefined): TransactionDeedDto[] {
   const { data } = useTransactionByPropertyQuery(propertyId);
-  const deeds = linkedPropertyDeeds(data);
-  return deeds.length > 0 ? deeds : NO_DEEDS;
+  return useMemo(() => {
+    const deeds = linkedPropertyDeeds(data);
+    return deeds.length > 0 ? deeds : NO_DEEDS;
+  }, [data]);
 }

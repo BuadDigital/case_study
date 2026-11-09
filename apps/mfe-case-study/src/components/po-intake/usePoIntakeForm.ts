@@ -21,7 +21,6 @@ import {
 } from "../../lib/app-data/po-intake-data";
 import {
   buildPoRecord,
-  PO_INTAKE_DRAFT_SAVE_FAILED_EVENT,
 } from "../../lib/app-data/po-intake-model";
 import {
   hydratePoDraft,
@@ -43,7 +42,8 @@ import {
   PO_HEADER_MODAL_FIELD_IDS,
   scheduleScrollToFirstPoHeaderError,
 } from "../../lib/domain/po-intake/po-field-error-targets";
-import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
+import { PO_INTAKE_DRAFT_SAVE_FAILED_EVENT } from "@platform/app-shared/events/app-events";
 
 export function usePoIntakeForm(onComplete: (record: PoIntakeRecord) => void) {
   const { showToast } = useToast();

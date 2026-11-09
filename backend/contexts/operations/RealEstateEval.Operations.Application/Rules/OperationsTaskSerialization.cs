@@ -133,6 +133,8 @@ public static class OperationsTaskSerialization
             CreditAssigneeName = PersonLabelResolver.ResolveDisplayLabel(
                 row.CreditAssigneeName, null, names),
             ReceiptConfirmedAt = row.ReceiptConfirmedAtUtc?.ToString("O"),
+            OutputsAcceptedAt = row.OutputsAcceptedAtUtc?.ToString("O"),
+            OutputsAcceptedByName = row.OutputsAcceptedByName,
             CancelReason = row.CancelReason,
             LinkedEnvelopeId = linkedEnvelopeId?.ToString(),
             VisitFeeAmountSar = visitFeeAmountSar ?? row.AgreedVisitFeeSar,

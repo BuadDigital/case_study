@@ -17,6 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;
@@ -176,11 +177,15 @@ public sealed class PriorValuationBankFeeder(
             var row = existing;
             if (row is null)
             {
-                var id = Guid.NewGuid();
+                // CMP-{YY}-{seq} from the bank's yearly counter, like a comparable entered by hand.
+                var (code, codeError) = await ReferenceSequenceAllocator.AllocateYearlyAsync(
+                    db, DatabaseSchemas.Valuation, ReferenceNumbering.Comparable, now, cancellationToken);
+                if (codeError is not null || string.IsNullOrWhiteSpace(code))
+                    throw new InvalidOperationException(codeError ?? "تعذّر تخصيص رقم العقار المقارن.");
                 row = new ComparableProperty
                 {
-                    Id = id,
-                    ReferenceCode = $"CMP-{id.ToString("N")[..8].ToUpperInvariant()}",
+                    Id = Guid.NewGuid(),
+                    ReferenceCode = code,
                     TransactionKind = ComparableTransactionKinds.Executed,
                     Source = ComparableSources.PriorValuation,
                     IntakeChannel = ComparableIntakeChannels.Office,
@@ -279,12 +284,14 @@ public static class PriorValuationBankRules
     /// <summary>
     /// The specialist's inventory lists a floor area (a floor, an annex or a basement with an area) —
     /// a building stands on the land, not only a fence or a room's fittings.
+    /// How it works: the cost table's own grouping (<see cref="CostLineItemKeys.IsAreaGroup"/>), so a
+    /// catalog floor item, a floor / annex / basement kind, or a custom «other» line named as one
+    /// («الدور الثاني», «ملحق علوي» — A→Z #30/#52, 2026-11-04) counts.
+    /// Edge cases: a line without an area never counts.
     /// </summary>
     public static bool HasFloorArea(IEnumerable<CaseStudyBuildingInventoryLineDto>? lines) =>
         (lines ?? []).Any(l =>
-            (l.StructureKind ?? "").Trim() is BuildingStructureKinds.Floor
-                or BuildingStructureKinds.Annex
-                or BuildingStructureKinds.Basement
+            CostLineItemKeys.IsAreaGroup(l.ItemKey, l.StructureKind, l.Label)
             && LocaleNumber.TryParsePositive(l.AreaSqm, out _));
 
     /// <summary>A unit valued on its own — its land is a share of the building plot.</summary>

@@ -14,6 +14,7 @@ const CASE_STUDY_WORKFLOW_QUEUE_PAGES: ReadonlySet<PageId> = new Set([
   "active-primary-data",
   "bourse-inquiry",
   "active-distribution",
+  "active-receipt",
   "active-case-study",
   "system-upload",
 ]);

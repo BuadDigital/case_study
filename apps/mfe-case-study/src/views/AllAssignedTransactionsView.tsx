@@ -21,10 +21,9 @@ import {
   reopenCompletedTransaction,
   type WorkflowTask,
 } from "../lib/app-data/tasks";
-import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
-import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
-import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-field-inspection-events";
 import { useWorkflowTasksQuery } from "../query/case-study-queries";
+import { useTransactionGeneralActions } from "../components/po-intake/useTransactionGeneralActions";
+import { withTransactionGeneralItems } from "../lib/app-data/transaction-general-actions";
 import {
   allTransactionsPath,
   allTransactionsTaskPath,
@@ -39,6 +38,11 @@ import {
 import { canReopenCaseStudyReport } from "../lib/app-data/po-roles";
 import { reopenCaseStudyReportDraft } from "../lib/app-data/case-study-report-commands";
 import { caseStudyReopenSuccessMessage } from "../lib/app-data/case-study-report-issue-errors";
+import {
+  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
+  EVALUATOR_SUBMISSION_CHANGED_EVENT,
+  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 // Row-menu reopen dialogs: code warmed on idle for the roles that may reopen, so
 // the dialog opens on the click (preloadableLazy skips the suspense reveal delay).
 const reopenCompletedModal = preloadableLazy(() =>
@@ -66,7 +70,7 @@ function assignedListedTasks(tasks: WorkflowTask[]): WorkflowTask[] {
 }
 
 export function AllAssignedTransactionsView() {
-  const { role, viewerDisplayName } = useAppAccess();
+  const { role, access, viewerDisplayName } = useAppAccess();
   const router = useRouter();
   const searchParams = useSearchParams();
   const legacyTask = searchParams.get("task");
@@ -74,10 +78,13 @@ export function AllAssignedTransactionsView() {
   const { showToast } = useToast();
   const [reopenTask, setReopenTask] = useState<WorkflowTask | null>(null);
   const [reopenDeedLabel, setReopenDeedLabel] = useState("");
+  // «المعاملات النشطة» rows offer the general actions too (failure, final failure, cancellation).
+  const { itemsFor: generalItemsFor, dialogs: generalDialogs } =
+    useTransactionGeneralActions();
 
   const isPartyRole = isPartyWorkflowRole(role);
 
-  const mayReopenReport = canReopenCaseStudyReport(role);
+  const mayReopenReport = canReopenCaseStudyReport(access);
   const mayReopenCompleted = canReopenCompletedTransaction(role);
   useEffect(() => {
     if (!mayReopenReport && !mayReopenCompleted) return;
@@ -106,13 +113,13 @@ export function AllAssignedTransactionsView() {
   const config = useMemo((): ActiveTransactionQueueConfig => {
     return {
       pageId: "all-transactions",
-      pageTitle: "جميع المعاملات",
+      pageTitle: "المعاملات النشطة",
       hidePageTitle: true,
       tableLayout: "all-transactions",
       emptyLine: "لا توجد معاملات مطابقة.",
       emptyHint: isPartyRole
         ? "تظهر هنا المعاملات المسندة إليك — صف واحد لكل صك مع آخر مرحلة وصل إليها."
-        : "تظهر هنا جميع المعاملات — صف واحد لكل صك مع آخر مرحلة وصل إليها (البيانات الأولية حتى الإكمال).",
+        : "تظهر هنا كل معاملة حية — صف واحد لكل صك: أين وصلت ومن تنتظر. المرفوعة على إنفاذ والملغاة لا تظهر؛ ابحث عنها من الشريط العلوي.",
       panelId: "all-assigned-transactions-panel",
       tableHint: "اضغط الصف للفتح أو الإغلاق.",
       partyAssignee: isPartyRole,
@@ -122,23 +129,33 @@ export function AllAssignedTransactionsView() {
       queueSort: "distributed-newest-first",
       includeAllStatuses: true,
       statusColumnLabel: "المرحلة",
-      buildRowMoreItems: (ctx) =>
-        buildAllTransactionsRowMoreItems({
+      buildRowMoreItems: (ctx) => {
+        const propId = ctx.propertyId ?? ctx.task.propertyId;
+        const property = propId
+          ? ctx.poByNumber
+              .get(ctx.task.poNumber.trim())
+              ?.properties.find((p) => p.id === propId)
+          : undefined;
+        const stageItems = buildAllTransactionsRowMoreItems({
           task: ctx.task,
           propertyId: ctx.propertyId,
           openTask: ctx.openTask,
           router: ctx.router,
           viewerRole: ctx.viewerRole,
+          viewerAccess: ctx.viewerAccess,
           onReopenCompleted: () => {
-            const record = ctx.poByNumber.get(ctx.task.poNumber.trim());
-            const propId = ctx.propertyId ?? ctx.task.propertyId;
-            const prop = propId
-              ? record?.properties.find((p) => p.id === propId)
-              : undefined;
-            setReopenDeedLabel(prop?.deedNumber?.trim() ?? "");
+            setReopenDeedLabel(property?.deedNumber?.trim() ?? "");
             setReopenTask(ctx.task);
           },
-        }),
+        });
+        // Party roles keep their own menu; the staff get the general actions after it.
+        return property && !isPartyRole
+          ? withTransactionGeneralItems(
+              stageItems,
+              generalItemsFor({ poNumber: ctx.task.poNumber, property }),
+            )
+          : stageItems;
+      },
       getTaskStatusBadge: (task) => {
         const label = allTransactionsPhaseLabel(task);
         const className =
@@ -153,7 +170,9 @@ export function AllAssignedTransactionsView() {
       },
       // Party workspaces for latest-stage party tasks; case-study stays panel.
       resolveFullPageTaskPath: partyTaskWorkspacePath,
-      refreshOnWindowEvents: isPartyRole ? PARTY_QUEUE_REFRESH_EVENTS : undefined,
+      refreshOnWindowEvents: isPartyRole
+        ? PARTY_QUEUE_REFRESH_EVENTS
+        : undefined,
       filterListed: (mine, poByNumber) =>
         filterOpenAssignedTransactions(
           assignedListedTasks(mine),
@@ -162,7 +181,7 @@ export function AllAssignedTransactionsView() {
           viewerDisplayName,
         ),
     };
-  }, [isPartyRole, role, viewerDisplayName]);
+  }, [isPartyRole, role, viewerDisplayName, generalItemsFor]);
 
   if (redirectingPartyTask) {
     return <PanelSkeleton className="p-4" />;
@@ -186,6 +205,7 @@ export function AllAssignedTransactionsView() {
               )
         }
       />
+      {generalDialogs}
       <Suspense fallback={null}>
         {reopenTask !== null && reopenTask.kind === "case-study-property" ? (
           // A case-study parent reopens through its issued report (the server refuses the generic reopen).
@@ -222,7 +242,10 @@ export function AllAssignedTransactionsView() {
             }}
             onConfirm={async (reason) => {
               if (!reopenTask) return;
-              const result = await reopenCompletedTransaction(reopenTask.id, reason);
+              const result = await reopenCompletedTransaction(
+                reopenTask.id,
+                reason,
+              );
               if (!result.ok) {
                 showToast(result.error, "error");
                 return;

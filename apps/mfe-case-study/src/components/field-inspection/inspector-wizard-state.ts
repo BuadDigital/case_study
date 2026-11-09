@@ -8,27 +8,116 @@ import {
   activeMapDiffersFromInspectorOriginal,
   hasInspectorOriginalMapPin,
   inspectorFeatureOffersPhoto,
+  isShopHiddenInspectorComponentKey,
   MOVABLES_PHOTOS_SLOT_ID,
   isServiceAmenityPhotoSlotComplete,
   listServiceAmenityPhotoSlots,
+  type InspectorComponentPhotoKey,
   type InspectorDefinedPhotoSlot,
   type InspectorFeatureField,
   type InspectorMapActor,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
   type ServiceAmenityPhotoSlotDef,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
 
-/** Amenity chips from the design file (extras entered elsewhere are preserved). */
-export const DESIGN_AMENITIES = [
-  "مدارس",
-  "مستشفيات",
-  "مساجد",
-  "أسواق تجارية",
-  "طرق رئيسية",
-  "حدائق",
+/** Draft fields that hold one «مكونات العقار» count. */
+export type InspectorComponentCountKey =
+  | "roomCount"
+  | "hallCount"
+  | "unitCount"
+  | "bathroomCount"
+  | "showroomCount"
+  | "wellCount"
+  | "towerCount"
+  | "jacuzziCount"
+  | "diningCount"
+  | "majlisCount"
+  | "maidRoomCount"
+  | "guardRoomCount"
+  | "parkingCount"
+  | "storeCount"
+  | "playgroundCount";
+
+/** One count of «مكونات العقار»; `photo` = a proof photo is asked once the count is above zero. */
+export type InspectorComponentCountField = {
+  key: InspectorComponentCountKey;
+  label: string;
+  photo?: { key: InspectorComponentPhotoKey; label: string };
+};
+
+/**
+ * Every count of «مكونات العقار», in card order — the one list the phone card
+ * (`InspectorComponentsSection`) and the desktop wizard (`InspectorWizardComponentsCards`) render,
+ * so a count added on one device can no longer be missing on the other (2026-11-04: the desktop
+ * lacked جاكوزي, غرف الطعام, المجالس, غرف الخدم, غرفة حارس, مستودع and ملاعب أطفال).
+ */
+export const INSPECTOR_COMPONENT_COUNT_FIELDS: readonly InspectorComponentCountField[] = [
+  { key: "roomCount", label: "عدد الغرف" },
+  { key: "hallCount", label: "عدد الصالات" },
+  { key: "unitCount", label: "عدد الشقق" },
+  { key: "bathroomCount", label: "عدد دورات المياه" },
+  {
+    key: "showroomCount",
+    label: "عدد المعارض",
+    photo: { key: "showroom", label: "إرفاق صورة للمعرض التجاري" },
+  },
+  {
+    key: "wellCount",
+    label: "عدد الآبار",
+    photo: { key: "well", label: "إرفاق صورة البئر" },
+  },
+  { key: "towerCount", label: "عدد الأبراج" },
+  { key: "jacuzziCount", label: "جاكوزي" },
+  { key: "diningCount", label: "غرف الطعام" },
+  { key: "majlisCount", label: "المجالس" },
+  { key: "maidRoomCount", label: "غرف الخدم" },
+  { key: "guardRoomCount", label: "غرفة حارس" },
+  { key: "parkingCount", label: "مواقف" },
+  { key: "storeCount", label: "مستودع" },
+  { key: "playgroundCount", label: "ملاعب أطفال" },
+];
+
+/**
+ * The «مكونات العقار» counts shown for this inspection.
+ *
+ * How it works: the full `INSPECTOR_COMPONENT_COUNT_FIELDS` list, minus the counts a commercial
+ * shop does not record (`isShopHiddenInspectorComponentKey`).
+ *
+ * Edge cases: the same filter on both devices — the desktop used to filter its own hand-written
+ * fields one by one, so every count missing there also had no shop rule.
+ */
+export function inspectorComponentCountFields(
+  isShop: boolean,
+): readonly InspectorComponentCountField[] {
+  if (!isShop) return INSPECTOR_COMPONENT_COUNT_FIELDS;
+  return INSPECTOR_COMPONENT_COUNT_FIELDS.filter(
+    (field) => !isShopHiddenInspectorComponentKey(field.key),
+  );
+}
+
+/** The annex counts asked under «يوجد ملحق؟ — نعم» — numbers on both devices. */
+export const INSPECTOR_ANNEX_COUNT_FIELDS = [
+  { key: "annexUpperCount", label: "ملحق علوي (عدد)" },
+  { key: "annexGroundCount", label: "ملحق أرضي (عدد)" },
 ] as const;
+
+/**
+ * The patch for an «يوجد ملحق؟» answer.
+ *
+ * How it works: stores the answer; «لا» also empties both annex counts.
+ *
+ * Edge cases: shared by the phone pills and the desktop pill. The desktop toggle used to keep the
+ * old counts after «لا», and stored a checkbox «1» instead of the real count (fixed 2026-11-04).
+ */
+export function annexAnswerPatch(
+  next: InspectorWorkspaceDraft["hasAnnex"],
+): Partial<Pick<InspectorWorkspaceDraft, "hasAnnex" | "annexUpperCount" | "annexGroundCount">> {
+  return next === "لا"
+    ? { hasAnnex: next, annexUpperCount: "", annexGroundCount: "" }
+    : { hasAnnex: next };
+}
 
 /** Feature keys rendered as pills in the components card, not as fields. */
 export const COMPONENT_BOOL_KEYS = [

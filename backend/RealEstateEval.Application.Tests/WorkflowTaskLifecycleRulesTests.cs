@@ -54,7 +54,7 @@ public class WorkflowTaskLifecycleRulesTests
     [InlineData(null, false)]
     public void Redistributing_parties_is_for_the_specialist_the_supervisor_and_the_cdo(string? role, bool expected)
     {
-        Assert.Equal(expected, WorkflowTaskLifecycleRules.CanRedistributeParties(role));
+        Assert.Equal(expected, WorkflowTaskLifecycleRules.CanRedistributeParties(TestStaff.Of(role)));
     }
 
     [Fact]

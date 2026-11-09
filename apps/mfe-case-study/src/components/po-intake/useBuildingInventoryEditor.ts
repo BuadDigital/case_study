@@ -24,7 +24,7 @@ import {
   loadBuildingInventoryWithOffline,
   saveBuildingInventoryWithOffline,
 } from "@platform/app-shared/offline/building-inventory-offline";
-import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   INSPECTOR_INVENTORY_LOAD_FAILED,
   INVENTORY_AUTOSAVE_MS,

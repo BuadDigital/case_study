@@ -1,4 +1,4 @@
-import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   acceptInspectorWorkspace,
   submitInspectorWorkspace,

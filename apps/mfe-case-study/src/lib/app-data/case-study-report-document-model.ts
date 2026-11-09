@@ -11,7 +11,7 @@ import {
   type CaseStudyReportAnswer,
   type CaseStudyQuestionSection,
 } from "./case-study-report-data";
-import type { CaseStudyReportDraft } from "./case-study-report-model";
+import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import {
   formatDateAr,
   formatPoDisplay,

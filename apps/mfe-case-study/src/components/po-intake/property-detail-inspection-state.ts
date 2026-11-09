@@ -10,7 +10,7 @@ import {
   type InspectorComponentPhotoAttachments,
   type InspectorComponentPhotoKey,
   type InspectorPhotoAttachment,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { photoLocationFlagLabel } from "@platform/app-shared/media/photo-location";
 
 export function formatAcceptedDate(iso: string): string {

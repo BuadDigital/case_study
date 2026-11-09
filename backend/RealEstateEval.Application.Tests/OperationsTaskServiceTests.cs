@@ -11,6 +11,7 @@ using RealEstateEval.Identity.Infrastructure.Data.Contexts;
 using RealEstateEval.Operations.Infrastructure.Services;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Application.Rules;
+using RealEstateEval.Operations.Application.Services;
 using RealEstateEval.Operations.Domain;
 using RealEstateEval.Financial.Domain;
 using RealEstateEval.Financial.Application.Services;
@@ -74,7 +75,7 @@ public class OperationsTaskServiceTests
             },
             "creator-1",
             "منشئ",
-            "case-specialist");
+            TestStaff.Of("case-specialist"));
 
         Assert.Null(result);
         Assert.Equal("سبب إعادة التوجيه مطلوب", error);
@@ -107,7 +108,7 @@ public class OperationsTaskServiceTests
             },
             "creator-1",
             "منشئ",
-            "case-specialist");
+            TestStaff.Of("case-specialist"));
 
         Assert.Null(error);
         Assert.NotNull(result);
@@ -142,7 +143,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "cancelled" },
             "creator-1",
             "منشئ",
-            "case-specialist",
+            TestStaff.Of("case-specialist"),
             "creator-1");
         Assert.Null(rejected);
         Assert.Equal("سبب الإلغاء مطلوب", rejectError);
@@ -156,7 +157,7 @@ public class OperationsTaskServiceTests
             },
             "creator-1",
             "منشئ",
-            "case-specialist",
+            TestStaff.Of("case-specialist"),
             "creator-1");
 
         Assert.Null(error);
@@ -190,7 +191,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "in_progress" },
             "a1",
             "منفّذ",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-a1");
 
         Assert.Null(error);
@@ -198,6 +199,43 @@ public class OperationsTaskServiceTests
         Assert.Equal("in_progress", started!.Status);
         Assert.False(string.IsNullOrWhiteSpace(started.ReceiptConfirmedAt));
         Assert.Contains(started.Comments, c => c.Text.Contains("أكّد الاستلام", StringComparison.Ordinal));
+    }
+
+    // Omar 2026-11-05: the creator accepts what a completed task delivered.
+    [Fact]
+    public async Task AcceptOutputsAsync_is_the_creators_once_the_task_is_completed()
+    {
+        var (ops, fin, identity) = CreateDbPair();
+        var service = CreateService(ops, fin, identity);
+        var (created, _) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general",
+                Title = "إعادة تصوير",
+                Scope = "general",
+                AssigneeId = "a1",
+                AssigneeName = "منفّذ",
+            },
+            "creator-1",
+            "منشئ");
+        var id = Guid.Parse(created!.Id);
+
+        var (_, early) = await service.AcceptOutputsAsync(id, "creator-1", "منشئ", TestStaff.Of("case-specialist"));
+        Assert.Equal(OperationsTaskCommands.AcceptOutputsNotCompletedAr, early);
+
+        await service.PatchAsync(id, new PatchOperationsTaskRequest { Status = "in_progress" }, "a1", "منفّذ",
+            TestStaff.Of("government-reviewer"), "user-a1");
+        await service.PatchAsync(id, new PatchOperationsTaskRequest { Status = "completed" }, "a1", "منفّذ",
+            TestStaff.Of("government-reviewer"), "user-a1");
+
+        var (_, stranger) = await service.AcceptOutputsAsync(id, "someone", "آخر", TestStaff.Of("field-inspector"));
+        Assert.Equal(OperationsTaskCommands.AcceptOutputsForbiddenAr, stranger);
+
+        var (accepted, error) = await service.AcceptOutputsAsync(id, "creator-1", "منشئ", TestStaff.Of("field-inspector"));
+        Assert.Null(error);
+        Assert.False(string.IsNullOrWhiteSpace(accepted!.OutputsAcceptedAt));
+        Assert.Equal("منشئ", accepted.OutputsAcceptedByName);
+        Assert.Contains(accepted.Comments, c => c.Text.Contains("قُبلت مخرجات المهمة", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -222,7 +260,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "paused" },
             "creator-1",
             "منشئ",
-            "case-specialist",
+            TestStaff.Of("case-specialist"),
             "creator-1");
         Assert.Null(rejected);
         Assert.Equal("سبب الإيقاف المؤقت مطلوب", rejectError);
@@ -236,7 +274,7 @@ public class OperationsTaskServiceTests
             },
             "creator-1",
             "منشئ",
-            "case-specialist",
+            TestStaff.Of("case-specialist"),
             "creator-1");
 
         Assert.Null(error);
@@ -273,7 +311,7 @@ public class OperationsTaskServiceTests
             },
             "creator-1",
             "منشئ",
-            "case-specialist",
+            TestStaff.Of("case-specialist"),
             "creator-1");
         Assert.Null(pauseError);
         Assert.Equal("paused", paused!.Status);
@@ -284,7 +322,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "in_progress" },
             "creator-1",
             "منشئ",
-            "case-specialist",
+            TestStaff.Of("case-specialist"),
             "creator-1");
 
         Assert.Null(resumeError);
@@ -322,14 +360,14 @@ public class OperationsTaskServiceTests
             },
             "creator-1",
             "منشئ",
-            "case-specialist");
+            TestStaff.Of("case-specialist"));
 
         await service.PatchAsync(
             Guid.Parse(created.Id),
             new PatchOperationsTaskRequest { Status = "in_progress" },
             "a2",
             "الثاني",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-a2");
 
         var (done, error) = await service.PatchAsync(
@@ -342,7 +380,7 @@ public class OperationsTaskServiceTests
             },
             "creator-1",
             "منشئ",
-            "case-specialist",
+            TestStaff.Of("case-specialist"),
             "creator-1");
 
         Assert.Null(error);
@@ -373,7 +411,7 @@ public class OperationsTaskServiceTests
             Guid.Parse(created!.Id),
             auto: false,
             actorName: "منشئ",
-            actorRole: "case-specialist");
+            actorStaff: TestStaff.Of("case-specialist"));
 
         Assert.Null(error);
         Assert.NotNull(result);
@@ -404,7 +442,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "completed" },
             "a1",
             "منفّذ",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-a1");
 
         Assert.Null(result);
@@ -458,7 +496,7 @@ public class OperationsTaskServiceTests
             Guid.Parse(created!.Id),
             auto: false,
             actorName: "منفّذ",
-            actorRole: "government-reviewer");
+            actorStaff: TestStaff.Of("government-reviewer"));
 
         Assert.Null(result);
         Assert.Equal("التذكير للمنشئ أو المشرف فقط", error);
@@ -499,7 +537,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "in_progress" },
             "a1",
             "مراجع",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         var (failed, error) = await service.PatchAsync(
@@ -507,7 +545,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "completed" },
             "a1",
             "مراجع",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         Assert.Null(failed);
@@ -552,7 +590,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "in_progress" },
             "a1",
             "مراجع",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         var (done, error) = await service.PatchAsync(
@@ -568,7 +606,7 @@ public class OperationsTaskServiceTests
             },
             "a1",
             "مراجع",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         Assert.Null(error);
@@ -632,7 +670,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "in_progress" },
             "a1",
             "مراجع",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         await service.PatchAsync(
@@ -648,7 +686,7 @@ public class OperationsTaskServiceTests
             },
             "a1",
             "مراجع",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         Assert.Single(fin.CourtVisitFeeCharges);
@@ -667,7 +705,7 @@ public class OperationsTaskServiceTests
             },
             "a1",
             "مراجع",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         Assert.Single(fin.CourtVisitFeeCharges);
@@ -770,7 +808,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "in_progress" },
             "a1",
             "مراجع",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         var (done, error) = await service.PatchAsync(
@@ -786,7 +824,7 @@ public class OperationsTaskServiceTests
             },
             "a1",
             "مراجع",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         Assert.Null(error);
@@ -836,7 +874,7 @@ public class OperationsTaskServiceTests
             new PatchOperationsTaskRequest { Status = "in_progress" },
             "emp-1",
             "موظف",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         var (done, error) = await service.PatchAsync(
@@ -852,12 +890,78 @@ public class OperationsTaskServiceTests
             },
             "emp-1",
             "موظف",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         Assert.Null(error);
         Assert.Equal("completed", done!.Status);
         Assert.Null(done.VisitFeeAmountSar);
+        Assert.Empty(fin.CourtVisitFeeCharges);
+    }
+
+    [Fact]
+    public async Task A_general_task_carries_its_agreed_fee_and_charges_it_once_on_completion()
+    {
+        // 2026-11-05: any task, to any party, may carry a fee agreed on the task (not only court visits).
+        var (ops, fin, identity) = CreateDbPair();
+        await SeedCooperatorAsync(identity, "a1");
+        var service = CreateService(ops, fin, identity);
+        var (created, createError) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general",
+                Title = "إعادة تصوير الواجهة",
+                Scope = "work_order",
+                PoNumber = "PO-GEN-1",
+                AssigneeId = "a1",
+                AssigneeName = "متعاون",
+                VisitFeeAmountSar = 250m,
+            },
+            "creator-1",
+            "منشئ");
+        Assert.Null(createError);
+        Assert.Equal(250m, created!.VisitFeeAmountSar);
+
+        await service.PatchAsync(Guid.Parse(created.Id), new PatchOperationsTaskRequest { Status = "in_progress" },
+            "a1", "متعاون", TestStaff.Of("government-reviewer"), "user-1");
+        var (done, error) = await service.PatchAsync(Guid.Parse(created.Id),
+            new PatchOperationsTaskRequest { Status = "completed" },
+            "a1", "متعاون", TestStaff.Of("government-reviewer"), "user-1");
+
+        Assert.Null(error);
+        Assert.Equal("completed", done!.Status);
+        var charge = await fin.CourtVisitFeeCharges.SingleAsync();
+        Assert.Equal(Guid.Parse(created.Id), charge.OperationsTaskId);
+        Assert.Equal(250m, charge.AmountSar);
+        Assert.Equal("a1", charge.CreditAssigneeId);
+    }
+
+    [Fact]
+    public async Task A_general_task_without_a_fee_is_free_and_an_employee_takes_none()
+    {
+        var (ops, fin, identity) = CreateDbPair();
+        await SeedCooperatorAsync(identity, "a1");
+        await SeedEmployeeAsync(identity, "emp-1");
+        var service = CreateService(ops, fin, identity);
+        var (free, freeError) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general", Title = "مهمة", Scope = "work_order", PoNumber = "PO-GEN-2",
+                AssigneeId = "a1", AssigneeName = "متعاون",
+            },
+            "creator-1", "منشئ");
+        Assert.Null(freeError);
+        Assert.Null(free!.VisitFeeAmountSar);
+
+        var (refused, error) = await service.CreateAsync(
+            new CreateOperationsTaskRequest
+            {
+                Type = "general", Title = "مهمة", Scope = "work_order", PoNumber = "PO-GEN-3",
+                AssigneeId = "emp-1", AssigneeName = "موظف", VisitFeeAmountSar = 100m,
+            },
+            "creator-1", "منشئ");
+        Assert.Null(refused);
+        Assert.Contains("موظف", error);
         Assert.Empty(fin.CourtVisitFeeCharges);
     }
 
@@ -943,14 +1047,14 @@ public class OperationsTaskServiceTests
             },
             "creator-1",
             "منشئ",
-            "case-specialist");
+            TestStaff.Of("case-specialist"));
 
         await service.PatchAsync(
             Guid.Parse(created.Id),
             new PatchOperationsTaskRequest { Status = "in_progress" },
             "new-1",
             "جديد",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         var (done, error) = await service.PatchAsync(
@@ -968,7 +1072,7 @@ public class OperationsTaskServiceTests
             },
             "new-1",
             "جديد",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-1");
 
         Assert.Null(error);

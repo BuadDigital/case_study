@@ -55,16 +55,16 @@ import {
 } from "../query/enfaz-po-queries";
 import {
   EMPTY_TRACKING_ROWS,
-  filterRows,
   SearchIcon,
   RevenueStageEmpty,
-  StudyTable,
-  EligibleTable,
-  BillingAssistantTable,
-  CollectionTable,
-  CollectedTable,
-  StoppedTable,
-} from "./FinanceRevenueTables";
+} from "./FinanceRevenueTableParts";
+import { filterRows } from "../lib/finance-revenue-state";
+import { StudyTable } from "./FinanceRevenueStudyTable";
+import { EligibleTable } from "./FinanceRevenueEligibleTable";
+import { BillingAssistantTable } from "./FinanceRevenueBillingAssistantTable";
+import { CollectionTable } from "./FinanceRevenueCollectionTable";
+import { CollectedTable } from "./FinanceRevenueCollectedTable";
+import { StoppedTable } from "./FinanceRevenueStoppedTable";
 
 export function FinanceRevenueView({
   stage,

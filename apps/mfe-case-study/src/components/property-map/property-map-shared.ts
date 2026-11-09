@@ -18,10 +18,7 @@ export type PropertyMapMarker = {
   subtitle?: string;
 };
 
-export type MapViewCommand =
-  | { seq: number; type: "home" }
-  | { seq: number; type: "fit" }
-  | { seq: number; type: "fly"; coords: MapCoords; zoom?: number };
+export type MapViewCommand = | { seq: number; type: "home" } | { seq: number; type: "fit" } | { seq: number; type: "fly"; coords: MapCoords; zoom?: number };
 
 export type MapBasemap = "carto" | "osm" | "satellite";
 

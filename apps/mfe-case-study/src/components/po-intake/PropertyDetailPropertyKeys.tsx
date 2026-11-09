@@ -74,8 +74,8 @@ export function PropertyDetailPropertyKeys({
   property: PoPropertyIntake;
   inspectionTask?: WorkflowTask | null;
 }) {
-  const { role } = useAppAccess();
-  const canCreateOps = canManageOperationsTasks(role);
+  const { role, access } = useAppAccess();
+  const canCreateOps = canManageOperationsTasks(access);
   const deedNumber = property.deedNumber.trim();
   const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
   const requestNumber = property.requestNumber.trim();

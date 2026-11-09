@@ -3,6 +3,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
@@ -28,20 +29,19 @@ public sealed class WorkflowTaskPatchNotifier(
             return;
         }
 
-        var assigneeId = task.AssigneeId?.Trim();
-        if (string.IsNullOrWhiteSpace(assigneeId)) return;
-
-        var userId = await recipients.ResolveUserIdForDistributionAssigneeAsync(
-            assigneeId,
+        // No specialist is named on the task any more (ruling 2026-11-02): coordination, which
+        // follows every failure, hears that the transaction is back after its obstruction.
+        var userIds = await recipients.ResolveCaseSpecialistUserIdsAsync(
+            CaseSpecialistAudience.Operations,
             cancellationToken);
-        if (string.IsNullOrWhiteSpace(userId)) return;
+        if (userIds.Count == 0) return;
 
-        await notifications.CreateForUserAsync(
-            userId,
+        await notifications.CreateForUsersAsync(
+            userIds,
             new CreateUserNotificationRequest
             {
-                Title = "معاملة أُعيدت إليك",
-                Body = "أُعيدت المعاملة إليك بعد معالجة التعذّر — تابع دراسة الحالة.",
+                Title = "عادت معاملة بعد معالجة التعذّر",
+                Body = "أُعيدت المعاملة إلى مسارها بعد معالجة التعذّر — تابعها.",
                 Tone = "info",
                 Href = $"/case-study/{Uri.EscapeDataString(task.Id.ToString())}",
                 Category = "workflow",

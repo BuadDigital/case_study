@@ -5,7 +5,7 @@ using RealEstateEval.Domain;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
-/// <summary>Inbox fan-out after confirm / redistribute: the party children and the specialist.</summary>
+/// <summary>Inbox fan-out after confirm / redistribute: the party children (no specialist is named any more).</summary>
 public sealed partial class WorkflowTaskDistributionCommands
 {
     /// <summary>Deed of the parent's property, blank when there is none — what notifications quote.</summary>
@@ -16,27 +16,6 @@ public sealed partial class WorkflowTaskDistributionCommands
         return prop?.DeedNumber?.Trim() ?? "";
     }
 
-    private async Task NotifyCaseSpecialistAssignedAsync(
-        WorkflowTask parent,
-        string deed,
-        CancellationToken cancellationToken)
-    {
-        var assigneeId = parent.AssigneeId?.Trim();
-        if (string.IsNullOrWhiteSpace(assigneeId)) return;
-
-        var usersByAssignee = await _recipients.ResolveUserIdsForDistributionAssigneesAsync(
-            [assigneeId],
-            cancellationToken);
-        if (!usersByAssignee.TryGetValue(assigneeId, out var userId)) return;
-
-        var refLabel = WorkflowTaskDistributionRules.RefLabel(deed, parent.PoNumber);
-        await _notifications.CreateForUsersAsync(
-            new Dictionary<string, CreateUserNotificationRequest>(StringComparer.Ordinal)
-            {
-                [userId] = WorkflowTaskDistributionRules.CaseSpecialistAssignedRequest(parent, refLabel),
-            },
-            cancellationToken);
-    }
 
     /// <summary>
     /// Tells each party that lost a child task in a redistribution. Assignees who kept work on

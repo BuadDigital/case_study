@@ -13,7 +13,7 @@ import {
   type CaseStudyQuestionSection,
 } from "./case-study-report-data";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
-import type { CaseStudyReportDraft } from "./case-study-report-model";
+import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import {
   loadCaseStudyReportDraftsForParents,
   type CaseStudyReportDraftsForParent,

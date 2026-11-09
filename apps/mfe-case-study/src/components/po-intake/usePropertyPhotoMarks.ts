@@ -22,7 +22,7 @@ import {
   notifyWorkOrderPropertyChanged,
   requireWorkOrdersApiConfig,
   resolveApiError,
-} from "../../lib/work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 
 /** Every press sends the whole set, so the saves of one property run one after another. */
 const markWrites = createKeyedWriteQueue();

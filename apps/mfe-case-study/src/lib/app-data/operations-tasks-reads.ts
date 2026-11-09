@@ -22,7 +22,7 @@ import { offlineListPage } from "@platform/app-shared/offline/offline-list";
 import {
   resolveApiError,
   workOrdersApiConfig,
-} from "../work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   filterPrefetchedOpsTasks,
   type OperationsTask,

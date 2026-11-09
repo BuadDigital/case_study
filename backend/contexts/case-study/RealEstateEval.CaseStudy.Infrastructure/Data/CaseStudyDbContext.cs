@@ -15,6 +15,9 @@ public sealed class CaseStudyDbContext(DbContextOptions<CaseStudyDbContext> opti
     public DbSet<WorkOrderProperty> WorkOrderProperties => Set<WorkOrderProperty>();
     // The transaction above the deeds (replaces the removed property groups).
     public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<TransactionWorkMarker> TransactionWorkMarkers => Set<TransactionWorkMarker>();
+    public DbSet<TransactionReopening> TransactionReopenings => Set<TransactionReopening>();
+    public DbSet<TransactionExternalReceipt> TransactionExternalReceipts => Set<TransactionExternalReceipt>();
     public DbSet<TransactionCancellation> TransactionCancellations => Set<TransactionCancellation>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<BuildingInventoryLine> BuildingInventoryLines => Set<BuildingInventoryLine>();

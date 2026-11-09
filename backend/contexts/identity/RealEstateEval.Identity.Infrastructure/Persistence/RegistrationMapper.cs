@@ -30,6 +30,7 @@ public static class RegistrationMapper
             NationalId = profile.NationalId,
             AvatarUrl = profile.AvatarUrl,
             InspectorType = profile.InspectorType,
+            CaseSpecialistSubRoles = CaseSpecialistSubRoles.FromFlags(profile.CaseSpecialistSubRoles),
             HasCompensation = profile.HasCompensation,
             FeeValueSar = profile.FeeValueSar,
             Iban = profile.Iban,
@@ -94,6 +95,11 @@ public static class RegistrationMapper
         Add(SecAccount, "رقم الهوية", profile.NationalId);
         Add(SecAccount, "الإدارة", profile.Department);
         Add(SecAccount, "نوع المعاين", profile.InspectorType);
+        Add(
+            SecAccount,
+            "الأدوار الفرعية",
+            string.Join("، ", CaseSpecialistSubRoles.FromFlags(profile.CaseSpecialistSubRoles)
+                .Select(CaseSpecialistSubRoles.LabelAr)));
         Add(SecProcBilling, "الآيبان", profile.Iban);
         Add(SecProcBilling, "الرقم الضريبي", profile.TaxNumber);
         Add(SecProcIdentity, "السجل التجاري", profile.CommercialRegistration);

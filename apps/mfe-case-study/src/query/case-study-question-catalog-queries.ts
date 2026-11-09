@@ -7,9 +7,7 @@ import {
   DEFAULT_CASE_STUDY_QUESTION_CATALOG,
   loadCaseStudyQuestionCatalog,
 } from "@platform/app-shared/domain/case-study/question-catalog";
-
-const CASE_STUDY_QUESTION_CATALOG_CHANGED_EVENT =
-  "field-dictionary-changed";
+import { CASE_STUDY_QUESTION_CATALOG_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 const STALE_MS = 60_000;
 

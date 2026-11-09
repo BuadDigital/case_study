@@ -9,7 +9,8 @@ public class SpecialistComponentsRulesTests
         string? text = null,
         int lines = 0,
         string propertyType = "",
-        string? inspectedType = null)
+        string? inspectedType = null,
+        string? finishing = "medium")
     {
         var property = new WorkOrderProperty
         {
@@ -17,6 +18,7 @@ public class SpecialistComponentsRulesTests
             PropertyType = propertyType,
             InspectedPropertyType = inspectedType,
             SpecialistComponentsText = text,
+            SpecialistFinishingLevel = finishing,
         };
         for (var i = 0; i < lines; i++)
         {
@@ -35,7 +37,7 @@ public class SpecialistComponentsRulesTests
     [Fact]
     public void Text_and_a_line_clear_a_property_with_structures()
     {
-        Assert.Empty(SpecialistComponentsRules.MissingForAcceptance(
+        Assert.Empty(SpecialistComponentsRules.MissingBeforeStudyIssue(
             Property("فيلا", lines: 1, inspectedType: "فيلا")));
     }
 
@@ -47,14 +49,14 @@ public class SpecialistComponentsRulesTests
     public void An_empty_inventory_table_never_blocks_acceptance(string? inspectedType)
     {
         // The table is not a condition for any asset type.
-        Assert.Empty(SpecialistComponentsRules.MissingForAcceptance(
+        Assert.Empty(SpecialistComponentsRules.MissingBeforeStudyIssue(
             Property("وصف المكونات", lines: 0, inspectedType: inspectedType)));
     }
 
     [Fact]
     public void Only_the_text_is_reported_when_both_are_empty()
     {
-        var missing = SpecialistComponentsRules.MissingForAcceptance(Property(text: "  ", inspectedType: "عمارة"));
+        var missing = SpecialistComponentsRules.MissingBeforeStudyIssue(Property(text: "  ", inspectedType: "عمارة"));
 
         Assert.Equal(SpecialistComponentsRules.TextRequired, missing["componentsText"]);
         Assert.Single(missing);
@@ -67,13 +69,13 @@ public class SpecialistComponentsRulesTests
     public void A_land_without_a_yes_answer_needs_the_text_only(string? answer)
     {
         // «no» (annexes irrelevant to valuation), unanswered, and legacy land submissions are all exempt.
-        var missing = SpecialistComponentsRules.MissingForAcceptance(
+        var missing = SpecialistComponentsRules.MissingBeforeStudyIssue(
             Property(text: null, lines: 0, inspectedType: "أرض"));
         Assert.Equal(["componentsText"], missing.Keys);
 
         var property = Property("أرض فضاء", lines: 0, inspectedType: "أرض");
         Assert.False(SpecialistComponentsRules.HasStructures(property, answer));
-        Assert.Empty(SpecialistComponentsRules.MissingForAcceptance(property));
+        Assert.Empty(SpecialistComponentsRules.MissingBeforeStudyIssue(property));
     }
 
     [Fact]
@@ -83,7 +85,7 @@ public class SpecialistComponentsRulesTests
 
         Assert.True(SpecialistComponentsRules.IsInspectedLand(property));
         Assert.True(SpecialistComponentsRules.HasStructures(property, "yes"));
-        Assert.Empty(SpecialistComponentsRules.MissingForAcceptance(property));
+        Assert.Empty(SpecialistComponentsRules.MissingBeforeStudyIssue(property));
     }
 
     [Theory]
@@ -136,7 +138,25 @@ public class SpecialistComponentsRulesTests
     [Fact]
     public void A_listed_annex_on_a_declared_plot_is_still_accepted()
     {
-        Assert.Empty(SpecialistComponentsRules.MissingForAcceptance(
+        Assert.Empty(SpecialistComponentsRules.MissingBeforeStudyIssue(
             Property("أرض وغرفة حارس", lines: 1, inspectedType: "أرض")));
+    }
+
+    /// <summary>
+    /// Omar 2026-11-08: the building finishing level is one of the study's report inputs and a condition
+    /// of its send to review for every asset that is not land (the inspector's corrected type first).
+    /// </summary>
+    [Theory]
+    [InlineData("فيلا", null, true)]
+    [InlineData("عمارة", "", true)]
+    [InlineData("فيلا", "none", false)]
+    [InlineData("أرض", null, false)]
+    public void A_building_needs_its_finishing_level_before_the_study_is_sent(
+        string inspectedType, string? finishing, bool blocked)
+    {
+        var missing = SpecialistComponentsRules.MissingBeforeStudyIssue(
+            Property("وصف المكونات", inspectedType: inspectedType, finishing: finishing));
+
+        Assert.Equal(blocked, missing.ContainsKey(SpecialistComponentsRules.FinishingKey));
     }
 }

@@ -89,7 +89,11 @@ export function PhoneChoice({
     );
   }
   return (
-    <div className="grid w-full grid-cols-2 gap-1.5 lg:hidden" role="radiogroup" aria-label={title}>
+    <div
+      className="grid w-full grid-cols-2 gap-1.5 lg:hidden"
+      role="radiogroup"
+      aria-label={title}
+    >
       {options.map((opt) => {
         const on = value === opt.id;
         return (
@@ -237,17 +241,48 @@ export function CreateTaskAssigneeField({
   );
 }
 
-/** court_visit with an assignee: the fee input for cooperators, a note for employees. */
+/**
+ * The task's fee. A court visit with an assignee: the required fee for a cooperator, a note for an
+ * employee. Any other task (2026-11-05): an optional fee agreed on the task, for a cooperator only.
+ */
 export function CreateTaskVisitFeeFields({
   form,
   dispatch,
   needsVisitFee,
+  allowsAgreedTaskFee = false,
 }: {
-  form: Pick<CreateOperationsTaskForm, "type" | "assigneeId" | "visitFeeAmountSar">;
+  form: Pick<
+    CreateOperationsTaskForm,
+    "type" | "assigneeId" | "visitFeeAmountSar"
+  >;
   dispatch: CreateTaskDispatch;
   needsVisitFee: boolean;
+  allowsAgreedTaskFee?: boolean;
 }) {
-  if (form.type !== "court_visit" || !form.assigneeId) return null;
+  if (form.type !== "court_visit") {
+    if (!allowsAgreedTaskFee) return null;
+    return (
+      <div className={opsFld}>
+        <label className={opsTfLblInFld}>
+          أتعاب المهمة المتفق عليها (ر.س) — اختياري
+        </label>
+        <input
+          className={opsFldControl}
+          type="number"
+          min={0}
+          step={1}
+          inputMode="decimal"
+          value={form.visitFeeAmountSar}
+          onChange={(e) =>
+            dispatch({ type: "set-visit-fee", value: e.target.value })
+          }
+          placeholder="فارغ = مهمة بلا أتعاب"
+        />
+        <span className={HINT}>تُرحَّل إلى التكاليف عند إنجاز المهمة.</span>
+      </div>
+    );
+  }
+  if (!form.assigneeId) return null;
   if (needsVisitFee) {
     return (
       <div className={opsFld}>
@@ -259,7 +294,9 @@ export function CreateTaskVisitFeeFields({
           step={1}
           inputMode="decimal"
           value={form.visitFeeAmountSar}
-          onChange={(e) => dispatch({ type: "set-visit-fee", value: e.target.value })}
+          onChange={(e) =>
+            dispatch({ type: "set-visit-fee", value: e.target.value })
+          }
           placeholder="المبلغ الافتراضي من جدول التسعير قابل للتعديل"
         />
         <span className={HINT}>
@@ -271,9 +308,9 @@ export function CreateTaskVisitFeeFields({
   return (
     <div className={opsFldFull}>
       <p className="m-0 rounded-md border border-border/70 bg-surface-2/60 px-3 py-2 text-[12px] leading-snug text-text-2">
-        المراجع الموظف لا يستحق أتعاب زيارة — لا يظهر بند في التكاليف.
-        الحوافز عبر جداول flat (إن وُجدت). للمتعاون اختر منفّذاً بنوع
-        عقد متعاون/خارجي لتمكين مبلغ الزيارة.
+        المراجع الموظف لا يستحق أتعاب زيارة — لا يظهر بند في التكاليف. الحوافز
+        عبر جداول flat (إن وُجدت). للمتعاون اختر منفّذاً بنوع عقد متعاون/خارجي
+        لتمكين مبلغ الزيارة.
       </p>
     </div>
   );
@@ -292,7 +329,9 @@ export function CreateTaskDescriptionField({
       <textarea
         className={opsFldTextarea}
         value={form.description}
-        onChange={(e) => dispatch({ type: "set-description", value: e.target.value })}
+        onChange={(e) =>
+          dispatch({ type: "set-description", value: e.target.value })
+        }
         rows={2}
         placeholder="تفاصيل إضافية للمنفّذ (اختياري)"
       />

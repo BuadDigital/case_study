@@ -473,6 +473,17 @@ namespace RealEstateEval.Operations.Infrastructure.Data.Contexts.Operations.Migr
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
 
+                    b.Property<DateTime?>("OutputsAcceptedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OutputsAcceptedByName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("OutputsAcceptedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<DateTime?>("PauseOverLimitRemindedAtUtc")
                         .HasColumnType("timestamp with time zone");
 

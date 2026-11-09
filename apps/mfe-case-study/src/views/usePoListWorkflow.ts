@@ -73,12 +73,12 @@ export function usePoListWorkflow() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { role } = useAppAccess();
-  const showIntake = canReceivePo(role);
+  const { role, access } = useAppAccess();
+  const showIntake = canReceivePo(access);
   const showEdit = canEditPoHeader(role);
   const showDelete = canDeletePo(role);
-  const showCreateOperationsTask = canManageOperationsTasks(role);
-  const showCancel = canRequestTransactionCancel(role);
+  const showCreateOperationsTask = canManageOperationsTasks(access);
+  const showCancel = canRequestTransactionCancel(access);
   const cancelDecides = canDecideTransactionCancel(role);
   /** «إلغاء أمر العمل» dialog — the work order whose live transactions are being cancelled. */
   const [cancelPo, setCancelPo] = useState<string | null>(null);
@@ -98,6 +98,19 @@ export function usePoListWorkflow() {
   const { search, statusFilter, typeFilter, page } = query;
   const setSearch = (value: string) =>
     dispatchQuery({ type: "search", value });
+
+  // `?q=` — the top bar's global search lands here with its text (plan 2026-11-05). Adjusted during
+  // render so the first paint already searches; a new `q` replaces the box, the user's typing stays.
+  // The status filter opens on «الكل»: a lookup must also find a handed-over or closed order.
+  const searchFromQuery = searchParams.get("q")?.trim() ?? "";
+  const [prevSearchFromQuery, setPrevSearchFromQuery] = useState("");
+  if (searchFromQuery !== prevSearchFromQuery) {
+    setPrevSearchFromQuery(searchFromQuery);
+    if (searchFromQuery) {
+      dispatchQuery({ type: "status", value: "" });
+      dispatchQuery({ type: "search", value: searchFromQuery });
+    }
+  }
   const setStatusFilter = (value: StatusFilter) =>
     dispatchQuery({ type: "status", value });
   const setTypeFilter = (value: string) =>

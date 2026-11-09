@@ -28,13 +28,12 @@ import {
   approvedInspectorPropertyDescription,
   PROPERTY_DESCRIPTION_PENDING_SPECIALIST_ACCEPT,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
-import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
-import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
+import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-assignment";
 import { canManageWorkOrders } from "@platform/app-shared/app-data/runtime-access";
 import { usePoRecordQuery } from "../../lib/case-study-bridge";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlanceSlot";
 import {
-  VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
   loadSpecialistFinishingLevel,
   type SpecialistFinishingLevel,
 } from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
@@ -70,6 +69,9 @@ import { InspectorDataSyncNote } from "./InspectorDataSyncNote";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
 import { ValCard, ValFieldsGrid } from "./EvaluatorHtmlPrimitives";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
+import {
+  VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const UNUSED = "__unused__";
 

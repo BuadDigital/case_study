@@ -1,3 +1,5 @@
+using RealEstateEval.Application.Rules;
+
 namespace RealEstateEval.CaseStudy.Application.Contracts;
 
 /// <summary>
@@ -93,4 +95,12 @@ public class TransactionCancellationStateDto
 }
 
 /// <summary>Who acts on a cancellation — resolved by the controller from the caller's claims and permissions.</summary>
-public sealed record TransactionCancellationActor(string UserId, string Name, string? Role);
+public sealed record TransactionCancellationActor(
+    string UserId,
+    string Name,
+    string? Role,
+    IReadOnlyList<string>? SubRoles = null)
+{
+    /// <summary>The role plus sub-roles, as the role rules take them.</summary>
+    public StaffActor Staff => new(Role, SubRoles);
+}

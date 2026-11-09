@@ -5,6 +5,7 @@ import {
   costApproachDerived,
   costLineTotals,
   EMPTY_COST_FIELDS,
+  leaseCapWording,
   type CostApproachFields,
 } from "../cost-approach-state";
 
@@ -128,5 +129,28 @@ describe("cost alerts carry the control they are about", () => {
     }, [line({ rationale: "أساس التقدير" })]);
     const ok = find(clean, "لا تنبيهات");
     if (ok) expect(ok.targetId).toBeUndefined();
+  });
+});
+
+describe("extra-line rationale alert (A→Z #52/#78)", () => {
+  it("does not ask a rationale for an extra that adds nothing yet («المسبح» at 0)", () => {
+    const pool = line({ itemKey: "pool", label: "المسبح", unit: "lump", areaSqm: 1, unitCostSar: 0 });
+    expect(find(alertsFor({}, [pool]), "بند إضافي بلا مبرر")).toBeUndefined();
+    const priced = line({ itemKey: "pool", label: "المسبح", unit: "lump", areaSqm: 1, unitCostSar: 90000 });
+    expect(find(alertsFor({}, [priced]), "بند إضافي بلا مبرر")).toBeDefined();
+  });
+
+  it("treats a custom «الدور الثاني» saved as «other» as a floor, not an extra", () => {
+    const floor = line({ label: "الدور الثاني", structureKind: "other", areaSqm: 520, unitCostSar: 1500 });
+    expect(find(alertsFor({}, [floor]), "بند إضافي بلا مبرر")).toBeUndefined();
+    expect(costLineTotals([floor]).buildAreaLocal).toBe(520);
+  });
+});
+
+describe("leaseCapWording (A→Z #69)", () => {
+  it("names the usufruct right, and the lease otherwise", () => {
+    expect(leaseCapWording("usufruct").term).toBe("مدة حق المنفعة المتبقية");
+    expect(leaseCapWording("leased_land").term).toBe("مدة الإيجار المتبقية");
+    expect(leaseCapWording(null).term).toBe("مدة الإيجار المتبقية");
   });
 });

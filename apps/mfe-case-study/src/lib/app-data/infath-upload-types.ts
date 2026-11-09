@@ -51,6 +51,11 @@ export type InfathUploadAttachment = {
    * and the PDF is printed when the row is downloaded.
    */
   document: PropertyDetailDocumentEntry | null;
+  /**
+   * Photo-bundle rows («صور الأصل من الخارج/الداخل»): the inspector's photos printed into one PDF on download.
+   * The row's `document` then carries only the PDF's name.
+   */
+  photos?: PropertyDetailDocumentEntry[];
 };
 
 export type InfathUploadStats = {
@@ -70,7 +75,7 @@ export type InfathUploadModel = {
 
 export const INFAZ_UPLOAD_UNRESOLVED_POINTS = [
   "مصدر «تاريخ المعاينة/التقييم» في بيانات التقرير",
-  "هل «المعاين» هو الأصيل لقسم وصف الأصل؟",
+  "هل «المعاين» هو المصدر الأساسي لقسم بيانات الأصل؟",
   "مساحات المباني (القبو/اللاحق/المباني): مكتب هندسي أم مقيّم؟",
   "قسم العاملين على التقرير: تعبئة تلقائية من الحسابات؟",
 ];

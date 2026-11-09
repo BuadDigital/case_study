@@ -7,7 +7,7 @@
 /** Client-side map for section 18 — subject + adopted comparables (Google Maps or SVG fallback). */
 
 import { parseLatLng } from "@platform/app-shared/domain/geo";
-import { escHtml } from "./html-escape";
+import { escHtml } from "@platform/app-shared/lib/html-escape";
 
 export type ComparablesMapPin = {
   lat: number;

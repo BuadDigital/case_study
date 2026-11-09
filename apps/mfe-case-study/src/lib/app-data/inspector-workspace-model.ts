@@ -19,13 +19,11 @@ import {
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
   type InspectorWorkspaceStatus,
-} from "./inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 const workspaceCache = new Map<string, InspectorWorkspaceDraft>();
-
-export const FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT =
-  "field-inspection-submission-changed";
 
 export function notifyChanged(): void {
   dispatchPartySubmissionChanged(FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT);

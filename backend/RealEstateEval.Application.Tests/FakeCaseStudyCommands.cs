@@ -42,4 +42,17 @@ public sealed class FakeCaseStudyCommands : ICaseStudyCommands
             ValuationReportNumber = "PRV-2026-00001",
         }, null));
     }
+
+    /// <summary>Every review-state move Valuation asked for, in order (state per property).</summary>
+    public List<(Guid PropertyId, string State)> ReviewStates { get; } = [];
+
+    public Task<string?> SetTransactionReviewStateAsync(
+        Guid propertyId,
+        string state,
+        string? userId,
+        CancellationToken cancellationToken = default)
+    {
+        ReviewStates.Add((propertyId, state));
+        return Task.FromResult<string?>(null);
+    }
 }

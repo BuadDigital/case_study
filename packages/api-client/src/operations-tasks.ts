@@ -87,6 +87,9 @@ export type OperationsTaskDto = {
   creditAssigneeName?: string | null;
   /** ISO when assignee confirmed receipt; null = awaiting assignee */
   receiptConfirmedAt?: string | null;
+  /** When the creator accepted what the task delivered (Omar 2026-11-05); null until then. */
+  outputsAcceptedAt?: string | null;
+  outputsAcceptedByName?: string | null;
   cancelReason?: string | null;
   linkedEnvelopeId?: string | null;
   visitFeeAmountSar?: number | null;
@@ -355,6 +358,26 @@ export async function reassignOperationsTask(
         headers: authHeaders(config.token),
         body: JSON.stringify(body),
       },
+    );
+    return await readOperationsTaskWrite(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/**
+ * The creator accepts what a completed task delivered (photos, a note, a reply or a file in its thread);
+ * in his absence a task manager. Omar 2026-11-05.
+ */
+export async function acceptOperationsTaskOutputs(
+  config: WorkOrdersApiConfig,
+  id: string,
+): Promise<ApiOk<OperationsTaskDto> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/operations-tasks/${encodeURIComponent(id)}/accept-outputs`,
+      { method: "POST", headers: authHeaders(config.token), body: "{}" },
     );
     return await readOperationsTaskWrite(res);
   } catch {

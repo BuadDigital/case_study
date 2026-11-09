@@ -6,11 +6,13 @@ import { rememberPropertyPoNumber } from "@platform/app-shared/storage/specialis
 import { INSPECTOR_LOCKED_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
 import {
   SPECIALIST_FINISHING_REQUIRED_MESSAGE,
-  VALUATION_SPECIALIST_FINISHING_REQUIRED_EVENT,
   loadSpecialistFinishingLevel,
   saveSpecialistFinishingLevel,
   type SpecialistFinishingLevel,
-} from "../../lib/app-data/valuation-report-specialist-finishing";
+} from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
+import {
+  VALUATION_SPECIALIST_FINISHING_REQUIRED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const OPTIONS: { value: SpecialistFinishingLevel; label: string }[] = [
   { value: "", label: "— اختر المستوى —" },

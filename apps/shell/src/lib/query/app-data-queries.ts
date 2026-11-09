@@ -4,11 +4,9 @@ import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { PageId } from "@platform/types";
 import { loadPendingBourseItems } from "@case-study/mfe/lib/app-data/po-intake-reads";
 import { loadPoListRows, loadPropertyListItems } from "@platform/app-shared/app-data/work-orders-read";
-import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
 import { loadFailuresQuery } from "@failures/mfe/lib/failures-repository";
-import { CASE_STUDY_INFO_ROLES_CHANGED_EVENT } from "@settings/mfe/lib/app-data/case-study-info-roles-model";
 import { loadCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-reads";
-import { loadPoRecordsWithTaskSync, loadWorkflowTasksForQuery, TASKS_CHANGED_EVENT, WORK_ORDERS_CHANGED_EVENT, WORK_ORDER_PROPERTY_CHANGED_EVENT } from "@case-study/mfe/query/case-study-queries";
+import { loadPoRecordsWithTaskSync, loadWorkflowTasksForQuery } from "@case-study/mfe/query/case-study-queries";
 import { loadSuspendedTransactions } from "@case-study/mfe/lib/app-data/suspended-transactions-reads";
 import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-reads";
 import { loadReportingDashboard } from "@dashboard/mfe/lib/dashboard-reporting-api";
@@ -27,6 +25,13 @@ import {
 } from "@platform/app-shared/app-data/runtime-access";
 import { useEffect } from "react";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import {
+  CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
+  FAILURES_CHANGED_EVENT,
+  TASKS_CHANGED_EVENT,
+  WORK_ORDERS_CHANGED_EVENT,
+  WORK_ORDER_PROPERTY_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const STALE_MS = 60_000;
 
@@ -111,6 +116,7 @@ export function prefetchPrototypePage(
     case "property-map":
     case "favorites":
     case "active-distribution":
+    case "active-receipt":
     case "active-case-study":
     case "system-upload":
     case "property-inspection":
@@ -192,7 +198,10 @@ export function prefetchPrototypePage(
  * secondary data. Runs once permissions resolve (`CorePrototypePrefetch`), so
  * each tier warms only what the role may read.
  */
-export function prefetchCorePrototypeData(queryClient: QueryClient): void {
+export function prefetchCorePrototypeData(
+  queryClient: QueryClient,
+  rolePages?: readonly PageId[],
+): void {
   const opts = prefetchOpts();
   const readsWorkOrders = canReadCaseStudyWorkspace();
 
@@ -211,25 +220,28 @@ export function prefetchCorePrototypeData(queryClient: QueryClient): void {
       void queryClient.prefetchQuery({ queryKey: appDataKeys.pendingBourseItems(), queryFn: loadPendingBourseItems, ...opts });
     }
     void queryClient.prefetchQuery({ queryKey: appDataKeys.failureTypes(), queryFn: loadFailureTypesCatalog, ...opts });
-    void queryClient.prefetchQuery({ queryKey: ["reporting", "dashboard"], queryFn: loadReportingDashboard, ...opts });
+    // Only the CDO holds «لوحة التحكم» (Omar 2026-11-09) — no one else fetches its figures.
+    if (!rolePages || rolePages.includes("dashboard")) {
+      void queryClient.prefetchQuery({ queryKey: ["reporting", "dashboard"], queryFn: loadReportingDashboard, ...opts });
+    }
   }, 1_500);
 }
 
 /** Boot prefetch, deferred until the role's capabilities are known. */
 export function useCorePrototypePrefetch(): void {
   const queryClient = useQueryClient();
-  const { authReady } = useAppAccess();
+  const { authReady, rolePages } = useAppAccess();
 
   useEffect(() => {
     if (!authReady) return;
-    const run = () => prefetchCorePrototypeData(queryClient);
+    const run = () => prefetchCorePrototypeData(queryClient, rolePages);
     if (typeof requestIdleCallback !== "undefined") {
       const id = requestIdleCallback(run, { timeout: 2_000 });
       return () => cancelIdleCallback(id);
     }
     const timer = setTimeout(run, 250);
     return () => clearTimeout(timer);
-  }, [queryClient, authReady]);
+  }, [queryClient, authReady, rolePages]);
 }
 
 export function useAppAccessDataSync(): void {

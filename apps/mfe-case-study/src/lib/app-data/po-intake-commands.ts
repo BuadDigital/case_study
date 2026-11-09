@@ -13,7 +13,6 @@ import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
   addWorkOrderProperty,
-  cancelWorkOrder,
   completePropertyBourseData,
   createWorkOrder,
   deletePoIntakeDraft,
@@ -38,7 +37,6 @@ import {
   shouldCompleteBourseAfterPriorCopy,
   priorDeedToPropertyIntake,
   mergePriorOntoExisting,
-  PO_INTAKE_DRAFT_SAVE_FAILED_EVENT,
   type CopyPriorScope,
   type CopyPriorTarget,
   type PoIntakeDraftPayload,
@@ -51,7 +49,8 @@ import {
   notifyWorkOrdersChanged,
   resolveApiError,
   workOrdersApiConfig,
-} from "../work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
+import { PO_INTAKE_DRAFT_SAVE_FAILED_EVENT } from "@platform/app-shared/events/app-events";
 
 /** The PO header fields — sent the same way on create and on header edit. */
 function workOrderHeaderFields(record: PoIntakeRecord) {
@@ -310,23 +309,6 @@ export async function deletePoRecord(
     return {
       ok: false,
       error: "تم حذف أمر العمل لكن تعذّر حذف سجلات التعذّرات المرتبطة",
-    };
-  }
-  notifyWorkOrdersChanged();
-  return { ok: true };
-}
-
-export async function cancelPoRecord(
-  poNumber: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const config = workOrdersApiConfig();
-  if (!config) return { ok: false, error: apiErrorMessage("auth") };
-
-  const result = await cancelWorkOrder(config, poNumber);
-  if (!result.ok) {
-    return {
-      ok: false,
-      error: result.message ?? apiErrorMessage(result.kind),
     };
   }
   notifyWorkOrdersChanged();

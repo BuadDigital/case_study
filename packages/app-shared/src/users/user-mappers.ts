@@ -31,6 +31,7 @@ export function userListItemToStaff(u: UserListItem): StaffUser {
     nationalId: u.nationalId,
     avatarUrl: u.avatarUrl,
     inspectorType: u.inspectorType,
+    caseSpecialistSubRoles: u.caseSpecialistSubRoles ?? [],
     hasCompensation: u.hasCompensation,
     feeValueSar: u.feeValueSar,
     iban: u.iban,

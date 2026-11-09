@@ -82,6 +82,31 @@ export async function requestLoginOtp(mobileDigits: string): Promise<OtpRequestR
   }
 }
 
+export type LoginHint = { displayName: string; jobTitle?: string | null };
+
+/**
+ * Who owns a full mobile number — the line under the number on the login screen.
+ * Null for an unknown/inactive mobile (204) and for any failure: the hint is optional.
+ */
+export async function fetchLoginHint(
+  mobileDigits: string,
+  signal?: AbortSignal,
+): Promise<LoginHint | null> {
+  try {
+    const res = await fetch(`${getApiBase()}/api/auth/login-hint`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mobile: mobileDigits }),
+      signal,
+    });
+    if (res.status !== 200) return null;
+    const data = (await res.json().catch(() => null)) as LoginHint | null;
+    return data?.displayName?.trim() ? data : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Step 2: the code for a session. One message for every refusal. */
 export async function verifyLoginOtp(mobileDigits: string, code: string): Promise<OtpVerifyResult> {
   const controller = new AbortController();

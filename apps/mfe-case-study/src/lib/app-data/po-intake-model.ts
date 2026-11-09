@@ -76,8 +76,8 @@ export function dtoToProperty(
   const property = normalizeProperty({
     id: String(dto.id ?? ""),
     transactionId: dto.transactionId ?? null,
-    transactionDraftNumber: dto.transactionDraftNumber ?? null,
     referenceNumber: dto.referenceNumber ?? null,
+    transactionReferenceNumber: dto.transactionReferenceNumber ?? null,
     transactionLinkKind: dto.transactionLinkKind ?? null,
     transactionDeedCount: dto.transactionDeedCount ?? 1,
     identifierType: parsePropertyIdentifierType(dto.identifierType),
@@ -754,8 +754,6 @@ export function dtoToDraft(dto: {
     valuePremiseKey: dto.valuePremiseKey ?? "",
   };
 }
-
-export const PO_INTAKE_DRAFT_SAVE_FAILED_EVENT = "po-intake-draft-save-failed";
 
 /**
  * PO-intake draft cache shared by the read side (hydration) and the write side

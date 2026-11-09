@@ -85,7 +85,7 @@ public sealed class BlockedPartyNotificationTests
             {
                 UserId = "specialist-1",
                 DisplayName = "أخصائي",
-                PrototypeRole = "case-specialist",
+                PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             });
 
         Assert.Null(errors);
@@ -122,7 +122,7 @@ public sealed class BlockedPartyNotificationTests
             {
                 UserId = "specialist-1",
                 DisplayName = "أخصائي",
-                PrototypeRole = "case-specialist",
+                PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             });
 
         Assert.DoesNotContain(
@@ -145,7 +145,7 @@ public sealed class BlockedPartyNotificationTests
         {
             UserId = "specialist-1",
             DisplayName = "أخصائي",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         };
 
         await service.AcceptAsync(InspectionTaskId, actor);

@@ -24,7 +24,12 @@ import {
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { EvaluatorReportChoices } from "./evaluator-window-data";
 import { formatAmountNumberDisplay } from "./arabic-amount-words";
-import { costGroupOf, costItemLabel, costUnitLabel } from "@platform/app-shared/domain/cost-items";
+import {
+  costGroupOf,
+  costItemLabel,
+  costUnitLabel,
+  effectiveStructureKind,
+} from "@platform/app-shared/domain/cost-items";
 import { fmt, fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
 
 export type SheetTableRow = {
@@ -154,8 +159,17 @@ export function joinObservations(inspector?: InspectorWorkspaceDraft | null): st
   return bits.join("؛ ");
 }
 
+/**
+ * An inventory line's kind as the floor-area total reads it.
+ *
+ * How it works: `effectiveStructureKind` — the saved kind, or for a custom «other» line the kind
+ * its name says («الدور الثاني» → floor, «ملحق علوي» → annex).
+ *
+ * Edge cases: fixed 2026-11-04 (A→Z #30/#52): such lines were left out of «مجموع مسطحات البناء»
+ * (580 printed for 670) and of the market approach's building floor area.
+ */
 function lineKind(line: BuildingInventoryLineDto): string {
-  return (line.structureKind ?? "").trim().toLowerCase();
+  return effectiveStructureKind(line);
 }
 
 function lineLabel(line: BuildingInventoryLineDto): string {

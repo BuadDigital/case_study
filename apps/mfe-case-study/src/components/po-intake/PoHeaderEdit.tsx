@@ -29,7 +29,7 @@ import {
   assignmentValuationDefaults,
   resolveAssignmentValuationKeys,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
-import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import { AssignmentTypeFields } from "./AssignmentTypeFields";
 import { AssignmentValuationFields } from "./AssignmentValuationFields";
 import { PoEditShell } from "./PoEditShell";

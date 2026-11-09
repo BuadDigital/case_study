@@ -89,6 +89,15 @@ public class ValuationReportDraftsController(
         CancellationToken ct) =>
         RunAsync(actor => drafts.ApproveAsync(valuationRequestId, request, actor, ct), ct);
 
+    /// <summary>The assigned appraiser returns the sent draft to review with a reason (Omar 2026-11-08).</summary>
+    [HttpPost("return-to-review")]
+    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
+    public Task<ActionResult<ValuationReportDraftDto>> ReturnToReviewer(
+        Guid valuationRequestId,
+        [FromBody] ReturnReportDraftToStudyRequest request,
+        CancellationToken ct) =>
+        RunAsync(actor => drafts.ReturnToReviewerAsync(valuationRequestId, request, actor, ct), ct);
+
     [HttpPost("withdraw-approval")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     public Task<ActionResult<ValuationReportDraftDto>> WithdrawApproval(

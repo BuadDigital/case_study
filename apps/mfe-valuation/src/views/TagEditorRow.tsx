@@ -18,7 +18,7 @@ import {
   opsFldControl,
   opsFldFull,
   opsTfLbl,
-} from "../lib/comparables-ops-tw";
+} from "@platform/ui-kit";
 
 export function TagEditorRow({
   row,

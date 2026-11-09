@@ -7,7 +7,7 @@ import { useTransactionByPropertyQuery } from "@platform/app-shared/query/transa
 import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
-} from "../lib/work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   mapTransactionTimelineDtos,
   type PropertyTimelineEvent,

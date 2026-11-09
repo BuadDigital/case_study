@@ -13,7 +13,7 @@ import {
   propertyUsageValue,
   type InspectorFeatureField,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { clearInspectorPhotoDataUrl, uploadInspectorPhotoFromFile } from "../../lib/app-data/inspector-photo-upload";
 import { EditableFeaturePhotoCell, InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorMovablesDescriptionField } from "./InspectorMovablesDescriptionField";
@@ -26,7 +26,7 @@ import {
   MOVABLES_DESCRIPTION_KEY,
   OCCUPANCY_STATE_KEY,
   OCCUPANCY_DESCRIPTION_KEY,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { featurePhotoPatch } from "../../lib/app-data/inspector-workspace-model";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 import { wholeCountInput } from "../../lib/app-data/specialist-components";
@@ -56,6 +56,16 @@ function boolPillStyle(on: boolean) {
   );
 }
 
+/**
+ * The desktop wizard's «خصائص العقار»: select fields, short choice chips and the «يوجد منقولات» pill,
+ * each with its proof photo when the answer asks for one, plus «عمر العقار».
+ *
+ * How it works: fields with more than three options are selects, the rest chips; a change goes
+ * through `setFeature` (drops a photo the new answer no longer needs).
+ *
+ * Edge cases: `showPropertyAge` false hides «عمر العقار» — the wizard passes it for land, as the
+ * phone does (fixed 2026-11-04).
+ */
 export function InspectorFeatureWizardFields({
   fields,
   draft,
@@ -68,6 +78,7 @@ export function InspectorFeatureWizardFields({
   disabled = false,
   readOnlyFeatureKeys = [],
   sourceNotes = {},
+  showPropertyAge = true,
   onPatch,
 }: {
   fields: InspectorFeatureField[];
@@ -84,6 +95,8 @@ export function InspectorFeatureWizardFields({
   readOnlyFeatureKeys?: readonly string[];
   /** Where a still-untouched pre-answered value came from (feature key → «المصدر: …»). */
   sourceNotes?: Record<string, string>;
+  /** «عمر العقار» — not asked for land (as on the phone; it showed for land until 2026-11-04). */
+  showPropertyAge?: boolean;
   onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
   const readOnlyKeys = new Set(readOnlyFeatureKeys);
@@ -249,6 +262,7 @@ export function InspectorFeatureWizardFields({
             </div>
           );
         })}
+        {showPropertyAge ? (
         <div>
           {disabled ? (
             <InsReadField label="عمر العقار (سنوات)" value={draft.propertyAgeYears} ltr />
@@ -266,6 +280,7 @@ export function InspectorFeatureWizardFields({
             </>
           )}
         </div>
+        ) : null}
       </div>
 
       <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">

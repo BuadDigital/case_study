@@ -128,7 +128,7 @@ public class CaseStudyReportsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var actor = await ResolveActorAsync(cancellationToken);
-        if (!PoRoleMatrixRules.CanIssueCaseStudyReport(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanFinishStudy(actor.Staff))
             return this.ForbiddenProblem(CaseStudyReportService.IssueRoleDeniedAr);
 
         var (result, errors) = await _forms.IssueAsync(
@@ -136,6 +136,21 @@ public class CaseStudyReportsController : ControllerBase
             request?.Report ?? new CaseStudyReportDto(),
             actor,
             cancellationToken);
+        if (errors is not null) return this.FieldErrorsProblem(errors);
+        if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Review approves the study the study sent it (Omar 2026-11-08): the transaction's data locks for
+    /// everyone until review returns the study. Review only (a refusal → 400).
+    /// </summary>
+    [HttpPost("{taskId:guid}/approve-study")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<CaseStudyReportDto>> ApproveStudy(Guid taskId, CancellationToken cancellationToken)
+    {
+        var actor = await ResolveActorAsync(cancellationToken);
+        var (result, errors) = await _forms.ApproveStudyAsync(taskId, actor, cancellationToken);
         if (errors is not null) return this.FieldErrorsProblem(errors);
         if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
         return Ok(result);
@@ -155,7 +170,7 @@ public class CaseStudyReportsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var actor = await ResolveActorAsync(cancellationToken);
-        if (!PoRoleMatrixRules.CanReopenCaseStudyReport(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanReopenCaseStudyReport(actor.Staff))
             return this.ForbiddenProblem(CaseStudyReportService.ReopenRoleDeniedAr);
 
         var (result, errors) = await _forms.ReopenAsync(
@@ -227,6 +242,7 @@ public class CaseStudyReportsController : ControllerBase
             DisplayName = ActorClaims.DisplayName(User),
             PrototypeRole = permissions?.PrototypeRole,
             DistributionAssigneeId = permissions?.DistributionAssigneeId,
+            SubRoles = permissions?.SubRoles ?? [],
         };
     }
 }

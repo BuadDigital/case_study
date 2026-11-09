@@ -6,7 +6,7 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 /// <summary>
 /// «مكونات العقار» is the case specialist's: a report text written from the inspector's
 /// description (text or photo), plus a building-inventory table the appraiser's direct costs
-/// can start from. Before accepting the field inspection the report text is required; the table
+/// can start from. Before the study report is issued the report text is required; the table
 /// is not a condition — it is listed whenever the property has buildings or
 /// annexes worth valuing (every non-land asset, and a land asset only when the inspector answered
 /// «yes» to <see cref="LandHasValuableStructuresKey"/>, see <see cref="HasStructures"/>), and an
@@ -30,7 +30,7 @@ public static class SpecialistComponentsRules
 
     public const string LandHasValuableStructuresRequired = "حدّد هل في الأرض مبانٍ أو ملاحق تستحق التقييم";
 
-    public const string TextRequired = "اكتب «مكونات العقار» للتقرير قبل قبول المعاينة";
+    public const string TextRequired = "اكتب «مكونات العقار» للتقرير قبل إرسال الدراسة للمراجع والمقيّم";
 
     /// <summary>
     /// Whether the property has buildings or annexes worth valuing that the inventory table
@@ -88,16 +88,32 @@ public static class SpecialistComponentsRules
         }
     }
 
+    public const string FinishingKey = "finishing";
+    public const string FinishingRequired =
+        "اختر مستوى تشطيبات البناء قبل إرسال الدراسة للمراجع والمقيّم — «بدون تشطيب» خيار صالح";
+
     /// <summary>
-    /// Every reason the field inspection cannot be accepted yet, keyed <see cref="TextKey"/>;
-    /// empty when ready. Only the report text is a condition: an empty «جدول الحصر» does not
-    /// block acceptance for any asset type.
+    /// Every reason the study cannot be sent to review yet for the specialist's report inputs, keyed
+    /// <see cref="TextKey"/> / <see cref="FinishingKey"/>; empty when ready.
     /// </summary>
-    public static Dictionary<string, string> MissingForAcceptance(WorkOrderProperty property)
+    /// <remarks>
+    /// How it works: «مكونات العقار» text is required for every asset; the building finishing level
+    /// (<see cref="WorkOrderProperty.SpecialistFinishingLevel"/>) for every asset whose effective type —
+    /// the inspector's corrected type first — is not land. An empty «جدول الحصر» never blocks.
+    /// Edge cases / fixed: until Omar's 2026-11-08 ruling (acceptance moved to coordination) the text
+    /// gated the inspection's acceptance and the finishing level was checked in the browser only; both
+    /// are now the study's own inputs and conditions of its send (Omar 2026-11-08, question 8).
+    /// </remarks>
+    public static Dictionary<string, string> MissingBeforeStudyIssue(WorkOrderProperty property)
     {
         var missing = new Dictionary<string, string>();
         if (string.IsNullOrWhiteSpace(property.SpecialistComponentsText))
             missing[TextKey] = TextRequired;
+
+        var isLand = InspectedPropertyTypeRules.IsLand(
+            InspectedPropertyTypeRules.Effective(property.PropertyType, property.InspectedPropertyType));
+        if (!isLand && string.IsNullOrWhiteSpace(property.SpecialistFinishingLevel))
+            missing[FinishingKey] = FinishingRequired;
 
         return missing;
     }

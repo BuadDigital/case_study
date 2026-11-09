@@ -364,7 +364,7 @@ public sealed class ValuationCostApproachService(
                 var effectiveUnitCost = CostApproachRules.InheritedUnitCost(
                     l.ItemKey, l.UnitCostSar, firstFloorUnitCost);
                 var effectiveQty = CostApproachRules.EffectiveQuantity(
-                    l.AreaSqm, l.Unit, l.BuildRatioPct, l.ItemKey, l.StructureKind);
+                    l.AreaSqm, l.Unit, l.BuildRatioPct, l.ItemKey, l.StructureKind, l.Label);
                 return (Line: l,
                     EffectiveUnitCost: effectiveUnitCost,
                     Inherited: effectiveUnitCost != Math.Max(0m, l.UnitCostSar),
@@ -430,17 +430,12 @@ public sealed class ValuationCostApproachService(
             })
             .ToList();
 
-        // Building floor areas: Σ effective quantity of m² lines in the floor-areas group
-        // (including custom lines placed in the group via structureKind = floor).
+        // Building floor areas: Σ effective quantity of m² lines in the floor-areas group — custom
+        // lines included by kind or by name («الدور الثاني», «ملحق علوي», «الميزانين»; A→Z #30/#52/#90).
         var buildingArea = computed
             .Where(c => c.Line.IsIncluded
                 && CostLineUnits.Normalize(c.Line.Unit) == CostLineUnits.Sqm
-                && (CostLineItemKeys.Group1.Contains(CostLineItemKeys.Normalize(c.Line.ItemKey))
-                    || (CostLineItemKeys.Normalize(c.Line.ItemKey) == CostLineItemKeys.Custom
-                        && string.Equals(
-                            c.Line.StructureKind,
-                            BuildingStructureKinds.Floor,
-                            StringComparison.OrdinalIgnoreCase))))
+                && CostLineItemKeys.IsAreaGroup(c.Line.ItemKey, c.Line.StructureKind, c.Line.Label))
             .Sum(c => c.EffectiveQty);
 
  // chain (–)

@@ -1,8 +1,9 @@
 import type { WorkOrdersApiConfig } from "@platform/api-client";
 import { apiConfig } from "../auth/api-config";
-
-export const WORK_ORDERS_CHANGED_EVENT = "work-orders-changed";
-export const WORK_ORDER_PROPERTY_CHANGED_EVENT = "work-order-property-changed";
+import {
+  WORK_ORDERS_CHANGED_EVENT,
+  WORK_ORDER_PROPERTY_CHANGED_EVENT,
+} from "../events/app-events";
 
 export function notifyWorkOrdersChanged(): void {
   if (typeof window !== "undefined") {

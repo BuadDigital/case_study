@@ -53,6 +53,10 @@ const nextConfig: NextConfig = {
   output: "standalone",
   /** Transform barrel imports to per-module paths (Vercel bundle-barrel-imports). */
   experimental: {
+    // The /api rewrite below proxies to the gateway with Next's 30 s default — the deposit request
+    // (final PDF, ~45 s) was cut off and showed «تعذّر تسجيل رمز الإيداع» although the server
+    // finished it (A→Z 2026-11-04). Same ceiling as nginx's /api location (infra/nginx.conf, 180 s).
+    proxyTimeout: 180_000,
     optimizePackageImports: [
       "@platform/ui-kit",
       "@platform/api-client",

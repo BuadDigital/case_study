@@ -12,14 +12,18 @@ import {
   copyInfathText,
   downloadInfathDocument,
   infathApproachesUsed,
+  infathLinkedDeedLabels,
+  infathValuationFigures,
   saveInfathBlob,
   type InfathOpsContext,
   type InfathReportContext,
+  type InfathValuationFigures,
 } from "../../lib/app-data/infath-upload-model";
 import type { CaseStudyReportDeeds } from "../../lib/app-data/case-study-report-document-model";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import {
   renderCaseStudyReportPdf,
+  renderInfathPhotosPdf,
   useInfathCaseStudyReportDraft,
   useInfathStoredFiles,
 } from "./useInfathUploadFiles";
@@ -38,17 +42,20 @@ import {
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import { usePropertyOperationsTasks } from "../../query/use-property-operations-tasks";
+import { useTransactionQuery } from "../../query/use-transaction-query";
 import {
   downloadFinalReport,
   generateFinalReport,
   getBuildingInventory,
   getOrganizationSettings,
   getValuationApproachSettings,
+  getValuationCostApproach,
+  getValuationReconciliation,
   type BuildingInventoryLineDto,
 } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
-import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   resolveEnvelopeIdFromSources,
   usePropertyKeyGateQuery,
@@ -107,12 +114,24 @@ type PropertyDetailEnfathUploadWorkflow = {
  * Edge cases: fixed 2026-10-28 — the sheet's «تاريخ التقييم» showed the issue date (28/10) for a valuation
  * made as of 30/06, so Enfaz would have been told the wrong date. A failed read leaves "".
  */
-type ValuationApproachFacts = { date: string; approaches: string };
-const NO_APPROACH_FACTS: ValuationApproachFacts = { date: "", approaches: "" };
+type ValuationApproachFacts = {
+  date: string;
+  approaches: string;
+  /** «تقدير القيمة» from the valuation's results; null until read (or while there is no final value). */
+  valuation: InfathValuationFigures | null;
+};
+const NO_APPROACH_FACTS: ValuationApproachFacts = { date: "", approaches: "", valuation: null };
 
 /**
- * The valuation's own settings Enfaz needs: the retrospective date (absent = issue date) and the
- * approaches used (see infathApproachesUsed).
+ * The valuation's own facts Enfaz needs: the retrospective date (absent = issue date), the approaches used (see
+ * infathApproachesUsed) and the value figures (see infathValuationFigures).
+ *
+ * How it works: reads the approach settings and the reconciliation together, then the cost approach only when it
+ * is switched on; once per request id.
+ *
+ * Edge cases: a failed settings read leaves every fact empty; a failed reconciliation or cost read only leaves the
+ * figures to the appraiser's package (or the cost split unknown). Added 2026-11-04 — the value rows used the
+ * package's land / buildings («0» by default), so they all read 0.
  */
 function useValuationApproachFacts(
   valuationRequestId: string | null | undefined,
@@ -126,8 +145,14 @@ function useValuationApproachFacts(
     const id = valuationRequestId?.trim() ?? "";
     if (!config || !id) return;
     let cancelled = false;
-    void getValuationApproachSettings(config, id).then((res) => {
+    void (async () => {
+      const [res, recon] = await Promise.all([
+        getValuationApproachSettings(config, id),
+        getValuationReconciliation(config, id),
+      ]);
       if (cancelled || !res.ok) return;
+      const cost = res.data.costApproachEnabled ? await getValuationCostApproach(config, id) : null;
+      if (cancelled) return;
       const retro = res.data.valuationDateMode === "retrospective";
       const start = res.data.retrospectiveDate?.trim() ?? "";
       const end = res.data.retrospectiveDateEnd?.trim() ?? "";
@@ -135,8 +160,13 @@ function useValuationApproachFacts(
         id,
         date: retro && start ? (end ? `${start} – ${end}` : start) : "",
         approaches: infathApproachesUsed(res.data),
+        valuation: infathValuationFigures({
+          settings: res.data,
+          recon: recon.ok ? recon.data : null,
+          cost: cost?.ok ? cost.data : null,
+        }),
       });
-    });
+    })();
     return () => {
       cancelled = true;
     };
@@ -287,6 +317,7 @@ export function usePropertyDetailEnfathUploadWorkflow({
       envelopeId,
       depositCode: reportDraft?.depositCode?.trim() ?? "",
       depositCertificateName: reportDraft?.certificateFileName?.trim() ?? "",
+      reportDate: reportDraft?.reportDate?.trim() ?? "",
     };
   }, [primaryCourtVisit, keyGate, reportDraft]);
 
@@ -308,11 +339,12 @@ export function usePropertyDetailEnfathUploadWorkflow({
   const approachFacts = useValuationApproachFacts(reportDraft?.valuationRequestId);
   const reportContext = useMemo<InfathReportContext | null>(
     () =>
-      organizationContext || approachFacts.date || approachFacts.approaches
+      organizationContext || approachFacts.date || approachFacts.approaches || approachFacts.valuation
         ? {
             ...(organizationContext ?? {}),
             valuationDate: approachFacts.date || undefined,
             approachesUsed: approachFacts.approaches || undefined,
+            valuation: approachFacts.valuation,
           }
         : null,
     [organizationContext, approachFacts],
@@ -350,6 +382,13 @@ export function usePropertyDetailEnfathUploadWorkflow({
     [caseStudyReportIssued, hasSurveyTask, finalReportDocument, storedFiles],
   );
 
+  // «الأصول المرتبطة»: the other deeds of the transaction (same cache entry as the page's own read).
+  const { data: transaction } = useTransactionQuery(property.id);
+  const linkedDeedLabels = useMemo(
+    () => infathLinkedDeedLabels(transaction, property.id),
+    [transaction, property.id],
+  );
+
   const model = useMemo(
     () =>
       buildInfathUploadModel({
@@ -361,8 +400,19 @@ export function usePropertyDetailEnfathUploadWorkflow({
         componentLines,
         reportContext,
         attachmentSources,
+        linkedDeedLabels,
       }),
-    [record, property, parties, sectionsWithFinalReport, opsContext, componentLines, reportContext, attachmentSources],
+    [
+      record,
+      property,
+      parties,
+      sectionsWithFinalReport,
+      opsContext,
+      componentLines,
+      reportContext,
+      attachmentSources,
+      linkedDeedLabels,
+    ],
   );
 
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
@@ -438,12 +488,14 @@ export function usePropertyDetailEnfathUploadWorkflow({
   /**
    * Downloads one attachment row; resolves to whether a file was saved.
    *
-   * How it works: the case-study report is printed to PDF by the server from the issued report; every other row
-   * downloads its stored file (or the generated bytes of the final report). The row's button spins meanwhile.
+   * How it works: the case-study report is printed to PDF by the server from the issued report; a photo bundle
+   * («صور الأصل من الخارج/الداخل») is printed to one PDF from the inspector's photos; every other row downloads its
+   * stored file (or the generated bytes of the final report). The row's button spins meanwhile.
    *
    * Edge cases and how they were fixed: rows used to download only bytes already in this browser, so most rows
    * could not be downloaded on another device; and the case-study report had no file at all. A second click while
    * the same row is still downloading is ignored. A failure says why («خدمة إنشاء ملفات PDF غير متاحة…» etc.).
+   * 2026-11-04: the photo bundles are new rows (their fields used to read «غير مُدخل» with photos on the property).
    */
   const downloadAttachment = useCallback(
     async (item: InfathUploadAttachment, quiet = false): Promise<boolean> => {
@@ -473,6 +525,16 @@ export function usePropertyDetailEnfathUploadWorkflow({
             return false;
           }
           saveInfathBlob(res.blob, item.document?.fileName || "تقرير دراسة الحالة.pdf");
+          return true;
+        }
+        if (item.photos) {
+          if (!quiet) showToast(`جارٍ إنشاء ملف: ${item.name}…`);
+          const res = await renderInfathPhotosPdf({ photos: item.photos, title: item.name });
+          if (!res.ok) {
+            showToast(res.message, "error");
+            return false;
+          }
+          saveInfathBlob(res.blob, item.document?.fileName || `${item.name}.pdf`);
           return true;
         }
         if (!quiet) showToast(`جارٍ تحميل: ${item.name}`);

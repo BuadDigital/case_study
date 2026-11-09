@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createInspectorWorkspaceDraft } from "../inspector-workspace-data";
+import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { allocateInspectorPhotoId } from "../inspector-photo-id";
 import {
   featurePhotoPatch,

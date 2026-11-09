@@ -134,6 +134,30 @@ public sealed class IdentityDirectory : IIdentityDirectory
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Active case specialists whose flags carry the sub-role. How it works: one bitwise test in
+    /// SQL. Edge cases: an unknown sub-role answers nobody; a specialist row without flags (only
+    /// possible outside Postgres, whose CHECK forbids it) counts as holding every sub-role, as
+    /// the permission service reads it.
+    /// </summary>
+    public async Task<IReadOnlyList<string>> ResolveCaseSpecialistUserIdsAsync(
+        string subRole,
+        CancellationToken cancellationToken = default)
+    {
+        var flag = CaseSpecialistSubRoles.FlagOf(subRole);
+        if (flag == 0) return [];
+
+        return await _db.UserProfiles
+            .AsNoTracking()
+            .Where(profile =>
+                profile.Status == UserStatus.Active
+                && profile.RoleId == StaffRoleIds.CaseSpecialist
+                && ((profile.CaseSpecialistSubRoles & flag) != 0 || profile.CaseSpecialistSubRoles == 0))
+            .Select(profile => profile.UserId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyDictionary<string, string>> ResolveDisplayNamesByUserIdsAsync(
         IReadOnlyCollection<string> userIds,
         CancellationToken cancellationToken = default)

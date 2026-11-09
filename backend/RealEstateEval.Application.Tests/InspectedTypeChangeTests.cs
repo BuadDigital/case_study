@@ -61,16 +61,75 @@ public class InspectedTypeChangeTests
     }
 
     [Fact]
-    public void A_survey_the_bourse_type_already_needed_is_left_to_the_distribution()
+    public void A_changed_type_that_needs_a_survey_waits_for_the_office_even_when_the_bourse_type_needed_one()
     {
+        // A→Z 2026-11-02 #74: «أرض سكنية» changed to «استراحة» on site — the timeline asked for the office,
+        // but the issue gate skipped it because the bourse type needed a survey too; the study was issued.
         var property = new WorkOrderProperty
         {
-            Classification = PropertyTypeCatalog.Complex,
-            PropertyType = "مجمع فلل",
-            InspectedPropertyType = "فيلا",
+            Classification = PropertyTypeCatalog.Land,
+            PropertyType = "أرض سكنية",
+            InspectedPropertyType = "استراحة",
             IdentifierType = PropertyIdentifierType.Deed,
         };
-        Assert.False(SurveyRequirementRules.SurveyMissingAfterTypeChange(property, hasLiveSurveyTask: false));
+        Assert.True(SurveyRequirementRules.InspectorChangedType(property));
+        Assert.True(SurveyRequirementRules.SurveyMissingAfterTypeChange(property, hasLiveSurveyTask: false));
+        Assert.False(SurveyRequirementRules.SurveyMissingAfterTypeChange(property, hasLiveSurveyTask: true));
+    }
+
+    [Fact]
+    public void No_type_change_or_no_survey_need_never_blocks_the_study()
+    {
+        var sameType = new WorkOrderProperty
+        {
+            Classification = PropertyTypeCatalog.Land,
+            PropertyType = "أرض سكنية",
+            InspectedPropertyType = " أرض سكنية ",
+            IdentifierType = PropertyIdentifierType.Deed,
+        };
+        Assert.False(SurveyRequirementRules.SurveyMissingAfterTypeChange(sameType, hasLiveSurveyTask: false));
+
+        var onApprovedPlan = new WorkOrderProperty
+        {
+            Classification = PropertyTypeCatalog.Land,
+            PropertyType = "أرض سكنية",
+            InspectedPropertyType = "استراحة",
+            IdentifierType = PropertyIdentifierType.Deed,
+            PlanNumber = "1234",
+            PlotNumber = "56",
+        };
+        Assert.False(SurveyRequirementRules.SurveyMissingAfterTypeChange(onApprovedPlan, hasLiveSurveyTask: false));
+    }
+
+    [Fact]
+    public void Matched_against_the_offices_not_matched_needs_a_reason_too()
+    {
+        // A→Z 2026-11-02 #20: the office said «الصك غير مطابق للطبيعة» and «مطابق» passed with no reason.
+        Assert.Equal(
+            CaseStudyReportDeedNatureMatchRules.OfficeOverrideReasonRequiredAr,
+            CaseStudyReportDeedNatureMatchRules.ValidateForSave("matched", "قصير", officeSaidNotMatched: true)?["deedNatureMatchNotes"]);
+        Assert.Null(CaseStudyReportDeedNatureMatchRules.ValidateForSave(
+            "matched", "الحدود مطابقة بعد مراجعة المخطط", officeSaidNotMatched: true));
+        Assert.Null(CaseStudyReportDeedNatureMatchRules.ValidateForSave("differences", "فرق في الضلع", officeSaidNotMatched: true));
+        // Both said «غير مطابق»: one reason, the inspector's message.
+        Assert.Equal(
+            CaseStudyReportDeedNatureMatchRules.OverrideReasonRequiredAr,
+            CaseStudyReportDeedNatureMatchRules.ValidateForSave("matched", "", true, true)?["deedNatureMatchNotes"]);
+        // The issue gate applies the same rule.
+        Assert.NotNull(CaseStudyReportDeedNatureMatchRules.ValidateForIssue(
+            "matched", "", [DeedKind.Traditional], inspectorSaidNotMatched: false, officeSaidNotMatched: true));
+    }
+
+    [Fact]
+    public void The_offices_verdict_is_read_from_its_survey_package()
+    {
+        Assert.True(InspectorDeedNatureMatchRules.EngineeringOfficeSaidNotMatched("""{"deedMatchesNature":"no"}"""));
+        Assert.True(InspectorDeedNatureMatchRules.EngineeringOfficeSaidNotMatched("""{"deedMatchesNature":false}"""));
+        Assert.False(InspectorDeedNatureMatchRules.EngineeringOfficeSaidNotMatched("""{"deedMatchesNature":"yes"}"""));
+        Assert.False(InspectorDeedNatureMatchRules.EngineeringOfficeSaidNotMatched("""{"deedMatchesNature":true}"""));
+        Assert.False(InspectorDeedNatureMatchRules.EngineeringOfficeSaidNotMatched("""{}"""));
+        Assert.False(InspectorDeedNatureMatchRules.EngineeringOfficeSaidNotMatched(null));
+        Assert.False(InspectorDeedNatureMatchRules.EngineeringOfficeSaidNotMatched("not json"));
     }
 
     [Fact]

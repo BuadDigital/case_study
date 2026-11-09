@@ -12,7 +12,7 @@ import {
   newerInspectorDraft,
   resolvedBoundaryDeedField,
 } from "../field-inspection-work-state";
-import type { InspectorWorkspaceDraft } from "../../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { InspectorWorkspaceFieldErrors } from "../../../lib/app-data/inspector-workspace-validation";
 
 const boundaryMatches = {

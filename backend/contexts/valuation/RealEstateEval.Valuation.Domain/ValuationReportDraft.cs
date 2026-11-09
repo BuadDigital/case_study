@@ -8,13 +8,20 @@ public static class ReportDraftStatuses
     /// <summary>The specialist is preparing the report (his own report choices); the appraiser sees nothing yet.</summary>
     public const string Preparing = "preparing";
 
-    /// <summary>Sent to the appraiser, who reviews it and approves (or the specialist withdraws it).</summary>
+    /// <summary>
+    /// The study handed it to review with the issued study report, in one batch (Omar 2026-11-05): review
+    /// alone edits it, then sends it to the appraiser or returns it to the study with a reason. The appraiser
+    /// sees it as «preparing».
+    /// </summary>
+    public const string InReview = "in_review";
+
+    /// <summary>Sent to the appraiser, who reviews it and approves (or review withdraws it).</summary>
     public const string Sent = "sent";
 
     /// <summary>The appraiser approved: the report is frozen (deposit copy) and waits for the Qeema deposit code.</summary>
     public const string Approved = "approved";
 
-    public static readonly IReadOnlyList<string> All = [Preparing, Sent, Approved];
+    public static readonly IReadOnlyList<string> All = [Preparing, InReview, Sent, Approved];
 }
 
 /// <summary>
@@ -52,6 +59,13 @@ public class ValuationReportDraft
     public DateTime? ConformityConfirmedAtUtc { get; set; }
     public string? ConformityConfirmedByUserId { get; set; }
 
+    /// <summary>When (and by whom) the study handed the draft to review; cleared when it goes back to the study.</summary>
+    public DateTime? SubmittedForReviewAtUtc { get; set; }
+    public string? SubmittedForReviewByUserId { get; set; }
+
+    /// <summary>Review's latest reason for returning the draft to the study.</summary>
+    public string? ReviewNote { get; set; }
+
     public DateTime? SentAtUtc { get; set; }
     public string? SentByUserId { get; set; }
 
@@ -79,13 +93,17 @@ public class ValuationReportDraft
     };
 
     public bool IsPreparing => Status == ReportDraftStatuses.Preparing;
+    public bool IsInReview => Status == ReportDraftStatuses.InReview;
     public bool IsSent => Status == ReportDraftStatuses.Sent;
     public bool IsApproved => Status == ReportDraftStatuses.Approved;
 
-    /// <summary>The specialist saves his report choices — only while he is preparing.</summary>
+    /// <summary>
+    /// The report choices are saved while the study prepares, or while review holds the draft (review alone
+    /// edits it then — the caller checks who).
+    /// </summary>
     public string? SaveChoices(string normalizedChoicesJson, DateTime nowUtc)
     {
-        if (!IsPreparing) return NotPreparingAr;
+        if (!IsPreparing && !IsInReview) return NotPreparingAr;
         SpecialistChoicesJson = normalizedChoicesJson;
         // A changed draft is no longer what he confirmed against the study.
         ConformityConfirmedAtUtc = null;
@@ -94,16 +112,24 @@ public class ValuationReportDraft
         return null;
     }
 
-    /// <summary>Sends the draft to the appraiser — needs the explicit conformity confirmation.</summary>
+    /// <summary>
+    /// Review issues the draft to the appraiser (Omar 2026-11-08) from preparing with the conformity
+    /// confirmation; a legacy draft still «in review» (2026-11-05 flow) keeps the study's confirmation.
+    /// </summary>
     public string? Send(bool conformityConfirmed, string? note, string? byUserId, DateTime nowUtc)
     {
         if (IsSent) return null;
-        if (!IsPreparing) return NotPreparingAr;
-        if (!conformityConfirmed) return ConformityRequiredAr;
+        if (!IsPreparing && !IsInReview) return NotPreparingAr;
+        if (IsPreparing && !conformityConfirmed) return ConformityRequiredAr;
 
-        ConformityConfirmedAtUtc = nowUtc;
-        ConformityConfirmedByUserId = Clean(byUserId);
-        SpecialistNote = Clean(note);
+        if (IsPreparing || ConformityConfirmedAtUtc is null)
+        {
+            ConformityConfirmedAtUtc = nowUtc;
+            ConformityConfirmedByUserId = Clean(byUserId);
+        }
+        SubmittedForReviewAtUtc ??= nowUtc;
+        SubmittedForReviewByUserId ??= Clean(byUserId);
+        SpecialistNote = Clean(note) ?? SpecialistNote;
         SentAtUtc = nowUtc;
         SentByUserId = Clean(byUserId);
         Status = ReportDraftStatuses.Sent;
@@ -111,7 +137,7 @@ public class ValuationReportDraft
         return null;
     }
 
-    /// <summary>The specialist pulls a sent draft back (idempotent), with an optional note for the appraiser.</summary>
+    /// <summary>The draft goes back to the study (idempotent), with an optional note: from review, or from the appraiser.</summary>
     public string? Withdraw(string? note, DateTime nowUtc)
     {
         if (IsPreparing) return null;
@@ -120,9 +146,31 @@ public class ValuationReportDraft
         SpecialistNote = Clean(note);
         SentAtUtc = null;
         SentByUserId = null;
+        SubmittedForReviewAtUtc = null;
+        SubmittedForReviewByUserId = null;
         ConformityConfirmedAtUtc = null;
         ConformityConfirmedByUserId = null;
         Status = ReportDraftStatuses.Preparing;
+        UpdatedAtUtc = nowUtc;
+        return null;
+    }
+
+    public const string ReturnToReviewReasonRequiredAr = "اكتب سبب الإرجاع للمراجع";
+
+    /// <summary>
+    /// The appraiser returns the draft to review with a reason (Omar 2026-11-08) — he never edits it himself;
+    /// review corrects and issues it to him again.
+    /// </summary>
+    /// <remarks>How it works: only a sent draft; back to preparing with the reason as the review note.</remarks>
+    public string? ReturnToReviewer(string? reason, DateTime nowUtc)
+    {
+        if (!IsSent) return NotSentAr;
+        var note = reason?.Trim() ?? "";
+        if (note.Length < 3) return ReturnToReviewReasonRequiredAr;
+        Status = ReportDraftStatuses.Preparing;
+        SentAtUtc = null;
+        SentByUserId = null;
+        ReviewNote = note.Length > 1000 ? note[..1000] : note;
         UpdatedAtUtc = nowUtc;
         return null;
     }

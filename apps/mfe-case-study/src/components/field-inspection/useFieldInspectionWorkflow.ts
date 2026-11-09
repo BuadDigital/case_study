@@ -13,13 +13,10 @@ import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { useIdempotentAction } from "@platform/app-shared";
 import { useInspectorKeyAvailability } from "./InspectorKeyStatusTab";
 import { useInspectorWorkspaceLoad } from "./useInspectorWorkspaceLoad";
-import { inspectorKeySubmitGate } from "../../lib/app-data/inspector-key-gate";
+import { inspectorPreSubmitGate } from "../../lib/app-data/inspector-submit-gate";
 import { boundariesMarkedUnavailable } from "../../lib/app-data/po-intake-data";
-import {
-  declarationPhoneGate,
-  hasAnyPartyPhone,
-} from "../../lib/app-data/documentary-workflow-gates";
 import { usePoRecordQuery } from "../../query/case-study-queries";
+import { jeddahPlaceholderPinError } from "@platform/app-shared/domain/jeddah-default-coords";
 import { useFacadeOptions } from "../../query/use-facade-options";
 import { type InspectorStepId } from "./InspectorStepNav";
 import { useInspectorSaveState } from "./InspectorSaveChip";
@@ -27,7 +24,7 @@ import {
   isInspectorWorkspaceLocked,
   mapPinPatchForActor,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { flushInspectorInventorySave } from "./inspector-inventory-flush";
 import { finalizeInspectorWorkspace } from "../../lib/app-data/finalize-field-inspection-submission";
 import { sendInspectorSubmission } from "./inspector-submit-send";
@@ -227,23 +224,38 @@ export function useFieldInspectionWorkflow({
     persist({ mapPinned: true });
   }, [draft, task.id, workLocked, persist]);
 
+  /**
+   * Pins or unpins the inspector's map point; true when the pin was set.
+   *
+   * How it works: unpinning always succeeds; pinning stamps the point for the inspector and saves.
+   *
+   * Edge cases: fixed A→Z 2026-11-02 #42 — a point still exactly on the Jeddah placeholder (the map's start
+   * when the deed has no map link) is refused with a message unless the property is in Jeddah; it used to
+   * be pinned, so a Riyadh property got Jeddah coordinates.
+   */
   const setMapPinned = useCallback(
-    (pinned: boolean) => {
-      if (!draft) return;
+    (pinned: boolean): boolean => {
+      if (!draft) return false;
       if (pinned) {
         const lat = draft.mapLatitude.trim();
         const lng = draft.mapLongitude.trim();
+        const placeholderError = jeddahPlaceholderPinError(lat, lng, property?.city);
+        if (placeholderError) {
+          showToast(placeholderError, "error");
+          return false;
+        }
         persist({
           ...(lat && lng
             ? mapPinPatchForActor(draft, lat, lng, "inspector")
             : {}),
           mapPinned: true,
         });
-        return;
+        return true;
       }
       persist({ mapPinned: false });
+      return true;
     },
-    [draft, persist],
+    [draft, persist, property?.city, showToast],
   );
 
   const requestMapMove = useCallback(
@@ -292,22 +304,17 @@ export function useFieldInspectionWorkflow({
   const submit = useCallback(async (): Promise<boolean> => {
     if (!draft || locked) return false;
 
-    const hasPhone = hasAnyPartyPhone(property?.contacts);
-    const phoneGate = declarationPhoneGate({
+    // The declaration's phone rule and a known key status (sent with the inspection — never a
+    // guessed «no key») — the same gate the desktop submit runs.
+    const preGate = inspectorPreSubmitGate({
+      draft,
       role,
-      hasPhone,
-      phoneWasPresentAtDeclaration: draft.declarationPhoneSatisfied,
+      contacts: property?.contacts,
+      keyAvailability,
     });
-    if (draft.clientDeclarationSigned && !phoneGate.ready) {
-      setFormError(phoneGate.reason);
-      showToast(phoneGate.reason, "error");
-      return false;
-    }
-    // The key status is sent with the inspection — never a guessed «no key» while it is unknown.
-    const keyGate = inspectorKeySubmitGate(keyAvailability);
-    if (!keyGate.ok) {
-      setFormError(keyGate.reason);
-      showToast(keyGate.reason, "error");
+    if (!preGate.ok) {
+      setFormError(preGate.reason);
+      showToast(preGate.reason, "error");
       return false;
     }
 
@@ -320,6 +327,7 @@ export function useFieldInspectionWorkflow({
       propertyType: property?.propertyType,
       requireDeedMatch: property ? inspectorMustDecideDeedMatch(property) : false,
       requireLandStructures: true,
+      requirePhotoMinimums: true,
     });
     setFieldErrors(errors);
     if (inspectorWorkspaceHasBlockingErrors(errors)) {
@@ -327,7 +335,8 @@ export function useFieldInspectionWorkflow({
       setFormError(message);
       showToast(message ?? "يرجى تصحيح الحقول", "error");
       const targetId = firstInspectorWorkspaceErrorTarget(errors);
-      if (targetId) setActiveStep(inspectorWizardStepForErrorTarget(targetId));
+      // The phone body's own step order — not the desktop wizard's (fixed 2026-11-04).
+      if (targetId) setActiveStep(inspectorWizardStepForErrorTarget(targetId, "mobile"));
       scheduleInspectorErrorScroll(errors);
       return false;
     }
@@ -339,8 +348,8 @@ export function useFieldInspectionWorkflow({
     return sendInspectorSubmission({
       draft,
       taskId: task.id,
-      keyAvailable: keyGate.keyAvailable,
-      hasPhone,
+      keyAvailable: preGate.keyAvailable,
+      hasPhone: preGate.hasPhone,
       execute: executeInspectorSubmit,
       hostRef,
       setDraft,
@@ -380,27 +389,16 @@ export function useFieldInspectionWorkflow({
     };
   }, [hostRef, submit, saveDraft]);
 
-  const captureDeviceGps = useCallback(() => {
-    if (!navigator.geolocation) {
-      showToast("المتصفح لا يدعم تحديد الموقع", "error");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const outcome = requestMapMove(pos.coords.latitude, pos.coords.longitude);
-        if (outcome === "saved") {
-          showToast("تم التقاط موقعك الحالي", "success");
-        }
-      },
-      () => {
-        showToast("تعذّر التقاط الموقع — تأكد من صلاحية الموقع", "error");
-      },
-      { enableHighAccuracy: true, timeout: 15_000 },
-    );
-  }, [requestMapMove, showToast]);
-
+  /**
+   * Opens the step holding a control and scrolls to it (the error-note links).
+   *
+   * How it works: picks the phone body's step for the DOM id, then scrolls once the step rendered.
+   *
+   * Edge cases: fixed 2026-11-04 — it used the desktop wizard's step order, so «خصائص العقار» links
+   * opened step 1 and the description / service-photo links opened step 2 on the phone.
+   */
   const scrollToErrorTarget = useCallback((targetId: string) => {
-    setActiveStep(inspectorWizardStepForErrorTarget(targetId));
+    setActiveStep(inspectorWizardStepForErrorTarget(targetId, "mobile"));
     scheduleScrollToFormField(targetId, 80);
   }, [setActiveStep]);
 
@@ -440,7 +438,6 @@ export function useFieldInspectionWorkflow({
     activeStep,
     boundariesUnavailable,
     cancelPendingMapMove,
-    captureDeviceGps,
     confirmPendingMapMove,
     draft,
     errorLinks,

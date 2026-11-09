@@ -30,5 +30,13 @@ public interface ITransactionStateRepository
 
     Task<string?> GetPoNumberAsync(Guid workOrderId, CancellationToken cancellationToken);
 
+    /// <summary>The transaction's reopening still open or awaiting the reply to Enfaz (tracked), or null.</summary>
+    Task<TransactionReopening?> GetActiveReopeningAsync(Guid transactionId, CancellationToken cancellationToken);
+
+    void AddReopening(TransactionReopening reopening);
+
+    /// <summary>Every reopening not closed yet, newest first (the «أعمالي» rows and the reopened chip).</summary>
+    Task<IReadOnlyList<TransactionReopening>> ListActiveReopeningsAsync(CancellationToken cancellationToken);
+
     Task SaveChangesAsync(CancellationToken cancellationToken);
 }

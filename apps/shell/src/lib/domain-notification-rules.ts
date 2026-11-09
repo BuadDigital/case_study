@@ -1,12 +1,12 @@
-import { PARTY_TASK_RECALL_REQUESTED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
-import { SUSPENDED_TRANSACTIONS_CHANGED_EVENT } from "@case-study/mfe/lib/app-data/suspended-transactions-model";
-import { FAILURE_TYPES_CHANGED_EVENT } from "@failures/mfe/lib/failure-types-events";
+import type { PushNotificationInput } from "@platform/app-shared/notifications/notification-store";
 import {
   ENGINEERING_SURVEY_ACCEPTED_EVENT,
   ENGINEERING_SURVEY_RETURNED_EVENT,
   EVALUATOR_SUBMITTED_EVENT,
-} from "@platform/app-shared/app-data/party-workflow-events";
-import type { PushNotificationInput } from "@platform/app-shared/notifications/notification-store";
+  FAILURE_TYPES_CHANGED_EVENT,
+  PARTY_TASK_RECALL_REQUESTED_EVENT,
+  SUSPENDED_TRANSACTIONS_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 type DomainNotificationRule = {
   event: string;

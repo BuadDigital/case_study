@@ -228,6 +228,30 @@
       ]
     },
     {
+      "id": "pro-transaction-number",
+      "concept": "رقم الصك المُسند من إنفاذ (PR-YY-NNNNN) — يُسحب عند أول حفظ كامل للبيانات الأولية (قرار 2026-11-08)",
+      "approved": "رقم المعاملة",
+      "rejected": [
+        "الرقم المؤقت",
+        "رقم مؤقت"
+      ]
+    },
+    {
+      "id": "pro-linked-property",
+      "concept": "عقار قائم على أكثر من صك يُقيَّم بتقرير واحد (قرار 2026-11-08)",
+      "approved": "العقار المرتبط",
+      "rejected": [
+        "المعاملة الجامعة",
+        "العقار المجمّع"
+      ]
+    },
+    {
+      "id": "pro-linked-property-number",
+      "concept": "رقم العقار المرتبط: رقم معاملة الصك الأساس + ‎-L‎ (PR-YY-NNNNN-L)",
+      "approved": "رقم العقار المرتبط",
+      "rejected": []
+    },
+    {
       "id": "val-reconciliation-process",
       "concept": "ترجيح مؤشرات القيمة بين الأساليب",
       "approved": "الترجيح",

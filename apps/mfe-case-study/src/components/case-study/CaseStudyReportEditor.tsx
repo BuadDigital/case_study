@@ -25,8 +25,9 @@ import {
   partyById,
   type CaseStudyInfoPartyId,
 } from "@settings/mfe/lib/app-data/case-study-info-roles-data";
-import type { CaseStudyMeterType } from "../../lib/app-data/case-study-report-model";
-import { canReopenCaseStudyReport } from "../../lib/app-data/po-roles";
+import type { CaseStudyMeterType } from "@platform/app-shared/app-data/case-study-report-model";
+import { canReopenCaseStudyReport, canReviewTransaction } from "../../lib/app-data/po-roles";
+import { approveCaseStudyReportDraft } from "../../lib/app-data/case-study-report-commands";
 import { enfazCardState } from "../../lib/app-data/enfaz-handover-state";
 import { useTransactionStateQuery } from "../../query/use-transaction-state-query";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
@@ -43,7 +44,10 @@ import {
   RemarksBlock,
   SpecialistClosingCards,
 } from "./CaseStudyReportEditorParts";
-import { FORM_STEP_SECTIONS, caseStudyDeedMatchIssueBlock } from "./case-study-report-state";
+import {
+  FORM_STEP_SECTIONS,
+  caseStudyDeedMatchIssueBlock,
+} from "./case-study-report-state";
 import { openCaseStudyAppraisalTab } from "../../lib/case-study-workspace-events";
 import { useCaseStudyReportCommands } from "./useCaseStudyReportCommands";
 import { useCaseStudyReportData } from "./useCaseStudyReportData";
@@ -112,9 +116,13 @@ export function CaseStudyReportEditor({
   const commands = useCaseStudyReportCommands(data);
   const stepPanelRef = useRef<HTMLDivElement>(null);
   useSwapAnimation(stepPanelRef, data.draft.currentStep);
-  const { role } = useAppAccess();
+  const { role, access } = useAppAccess();
   const [reopenOpen, setReopenOpen] = useState(false);
-  const canReopen = canReopenCaseStudyReport(role);
+  const [approving, setApproving] = useState(false);
+  // Set by a successful «اعتماد الدراسة» until the task list refetches with the approved state.
+  const [approvedHere, setApprovedHere] = useState(false);
+  const canReopen = canReopenCaseStudyReport(access);
+  const isReview = canReviewTransaction(access);
   const transactionState = useTransactionStateQuery(workOrderId, property?.id, {
     enabled: canReopen && variant === "specialist" && !partyAdvisory,
   });
@@ -204,6 +212,7 @@ export function CaseStudyReportEditor({
   const deedMatchBlock = isParty
     ? null
     : caseStudyDeedMatchIssueBlock({ outcome: draft.deedNatureMatchOutcome, property });
+  const issueBlock = deedMatchBlock;
   const matrixTableProps = {
     canEditKey,
     visibleKey: isQuestionVisible,
@@ -245,6 +254,7 @@ export function CaseStudyReportEditor({
         </Button>
       ) : (
         <>
+          {/* Each blocking reason as visible text beside the button (A→Z 2026-11-02 #46), not a tooltip only. */}
           {deedMatchBlock ? (
             <DeedMatchIssueHint message={deedMatchBlock} onOpen={openCaseStudyAppraisalTab} />
           ) : null}
@@ -253,11 +263,11 @@ export function CaseStudyReportEditor({
             variant="primary"
             showActionToast={false}
             loading={saving || submittingForm}
-            disabled={Boolean(deedMatchBlock)}
-            title={deedMatchBlock ?? undefined}
+            disabled={Boolean(issueBlock)}
+            title={issueBlock ?? undefined}
             onClick={submitForm}
           >
-            إصدار تقرير دراسة الحالة
+            إرسال الدراسة للمراجع والمقيّم
           </Button>
         </>
       )}
@@ -266,13 +276,41 @@ export function CaseStudyReportEditor({
 
   const showIssuedBar =
     !isParty && !partyAdvisory && !forceReadOnly && draft.status === "issued";
+  // Omar 2026-11-08: the sent study is review's to approve or return; the study may take it back until
+  // review approves it. The server is the judge (it refuses the study after the approval).
+  const studyApproved = approvedHere || task.reviewState === "approved";
+  const reopenLabel = !canReopen
+    ? null
+    : isReview
+      ? "إرجاع للدراسة"
+      : studyApproved
+        ? null
+        : "استرجاع الدراسة";
+  const approveStudy = async () => {
+    if (approving) return;
+    setApproving(true);
+    try {
+      const error = await approveCaseStudyReportDraft(draft.taskId);
+      if (error) {
+        data.showToast(error, "error");
+        return;
+      }
+      setApprovedHere(true);
+      data.showToast("اعتُمدت الدراسة — بياناتها مقفلة الآن على الجميع", "success");
+    } finally {
+      setApproving(false);
+    }
+  };
 
   return (
     <>
       {showIssuedBar ? (
         <CaseStudyIssuedBar
-          canReopen={canReopen}
+          approved={studyApproved}
+          reopenLabel={reopenLabel}
           onReopen={() => setReopenOpen(true)}
+          onApprove={isReview && !studyApproved ? () => void approveStudy() : undefined}
+          approving={approving}
         />
       ) : null}
       {reopenOpen ? (
@@ -280,8 +318,13 @@ export function CaseStudyReportEditor({
           open
           deedLabel={property?.deedNumber}
           enfazHandedOver={enfazHandedOver}
+          returnByReview={isReview}
           onClose={() => setReopenOpen(false)}
-          onReopen={reopenReport}
+          onReopen={async (reason, clear) => {
+            const outcome = await reopenReport(reason, clear);
+            if (outcome.ok) setApprovedHere(false);
+            return outcome;
+          }}
         />
       ) : null}
       <div

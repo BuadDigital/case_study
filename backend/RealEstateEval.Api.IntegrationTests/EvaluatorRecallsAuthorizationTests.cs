@@ -10,6 +10,7 @@ using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Api.IntegrationTests;
 
@@ -39,6 +40,8 @@ public sealed class HeaderRolePermissions(IHttpContextAccessor http) : IPermissi
         {
             UserId = userId,
             PrototypeRole = string.IsNullOrWhiteSpace(role) ? null : role,
+            // A specialist holds every sub-role unless a test narrows it (launch rule 2026-11-02).
+            SubRoles = role == StaffRoleIds.CaseSpecialist ? CaseSpecialistSubRoles.All : [],
         });
     }
 }

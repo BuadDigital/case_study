@@ -20,6 +20,20 @@ import {
   type StaffFormState,
 } from "../views/users/users-organization-state";
 import { FormSectionLabel } from "./FormSectionLabel";
+import {
+  CASE_SPECIALIST_SUB_ROLES,
+  CASE_SPECIALIST_SUB_ROLE_LABELS,
+} from "@platform/app-shared/app-data/case-specialist-sub-roles";
+import type { CaseSpecialistSubRole } from "@platform/types";
+
+/** The held sub-roles with one switched on or off, kept in the fixed coordination → review order. */
+function toggleSubRole(
+  held: readonly CaseSpecialistSubRole[],
+  subRole: CaseSpecialistSubRole,
+  on: boolean,
+): CaseSpecialistSubRole[] {
+  return CASE_SPECIALIST_SUB_ROLES.filter((s) => (s === subRole ? on : held.includes(s)));
+}
 
 export function StaffUserFormFields({
   idPrefix,
@@ -112,6 +126,47 @@ export function StaffUserFormFields({
           onChange={(v) => updateField("inspectorType", v as StaffFormState["inspectorType"])}
           error={errors.inspectorType}
         />
+      ) : null}
+      {form.roleId === "case-specialist" ? (
+        <fieldset className="m-0 border-0 p-0 sm:col-span-2">
+          <legend className="mb-1.5 text-xs font-semibold text-text">
+            الأدوار الفرعية للأخصائي <span className="text-danger">*</span>
+          </legend>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {CASE_SPECIALIST_SUB_ROLES.map((subRole) => {
+              const checked = form.caseSpecialistSubRoles.includes(subRole);
+              return (
+                <label
+                  key={subRole}
+                  className={cn(
+                    "flex items-center gap-2.5 rounded-[var(--radius)] border border-border bg-surface-2/70 px-3 py-2.5 text-xs font-medium text-text",
+                    checked && "border-gold/40 bg-gold-soft text-heading",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    className="size-3.5 accent-[var(--gold-d)]"
+                    checked={checked}
+                    onChange={(event) =>
+                      updateField(
+                        "caseSpecialistSubRoles",
+                        toggleSubRole(form.caseSpecialistSubRoles, subRole, event.target.checked),
+                      )
+                    }
+                  />
+                  {CASE_SPECIALIST_SUB_ROLE_LABELS[subRole]}
+                </label>
+              );
+            })}
+          </div>
+          {errors.caseSpecialistSubRoles ? (
+            <p className="mb-0 mt-1 text-[11px] text-danger">{errors.caseSpecialistSubRoles}</p>
+          ) : (
+            <p className="mb-0 mt-1 text-[11px] text-text-3">
+              يرى الأخصائي قوائم الأدوار التي يحملها فقط، ويصله إشعارها.
+            </p>
+          )}
+        </fieldset>
       ) : null}
       <FormSectionLabel>الهوية والالتحاق</FormSectionLabel>
       <RegField

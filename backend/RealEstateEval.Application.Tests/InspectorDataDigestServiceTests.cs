@@ -43,10 +43,32 @@ public sealed class InspectorDataDigestServiceTests
         DistributionAssigneeId = "fi-1",
     };
 
+    /// <summary>The case specialist — the one who may change an accepted inspection (a correction).</summary>
+    private static readonly PartySubmissionActor Specialist = new()
+    {
+        UserId = "staff-1",
+        DisplayName = "أخصائي",
+        PrototypeRole = "case-specialist",
+        SubRoles = CaseSpecialistSubRoles.All,
+    };
+
     private static SavePartyTaskSubmissionRequest Save(object payload) => new()
     {
         Payload = JsonSerializer.SerializeToElement(payload),
     };
+
+    /// <summary>A specialist correction of the accepted package: the stored payload with <paramref name="changes"/>.</summary>
+    private static SavePartyTaskSubmissionRequest Correct(Dictionary<string, object?> changes)
+    {
+        var payload = new Dictionary<string, object?>
+        {
+            ["status"] = "submitted",
+            ["builtArea"] = "300",
+            ["propertyDescription"] = "وصف",
+        };
+        foreach (var (key, value) in changes) payload[key] = value;
+        return Save(payload);
+    }
 
     [Fact]
     public async Task The_first_read_has_a_fingerprint_and_no_changed_groups()
@@ -61,10 +83,32 @@ public sealed class InspectorDataDigestServiceTests
         Assert.Empty(dto.InspectorDataChangedGroups!);
     }
 
+    /// <summary>
+    /// Ruling 2026-11-05: the appraiser sees nothing of an inspection the specialist has not accepted —
+    /// not even which sections moved.
+    /// </summary>
+    [Fact]
+    public async Task An_unaccepted_inspection_gives_the_appraiser_no_digest_and_no_alert()
+    {
+        var rig = Arrange(accepted: false);
+
+        var dto = await rig.Service.GetAsync(AppraisalId, Appraiser);
+        await rig.Service.SaveDraftAsync(
+            AppraisalId,
+            Save(new Dictionary<string, object?> { ["inspectorDataSeen"] = "stale" }),
+            Appraiser);
+        await rig.Service.SaveDraftAsync(
+            InspectionId, Save(new Dictionary<string, object?> { ["builtArea"] = "500" }), Inspector);
+
+        Assert.Null(dto!.InspectorDataFingerprint);
+        Assert.Null(dto.InspectorDataChangedGroups);
+        Assert.DoesNotContain(rig.Notifications.Sent, n => n.SourceEvent!.StartsWith("inspector-data-changed-appraiser:"));
+    }
+
     [Fact]
     public async Task Other_kinds_carry_no_inspector_digest()
     {
-        var rig = Arrange();
+        var rig = Arrange(accepted: false);
 
         var dto = await rig.Service.GetAsync(InspectionId, Inspector);
 
@@ -88,11 +132,12 @@ public sealed class InspectorDataDigestServiceTests
         Assert.Equal(seen, JsonDocument.Parse(stored.PayloadJson).RootElement.GetProperty("inspectorDataSeen").GetString());
         Assert.Empty((await rig.Service.GetAsync(AppraisalId, Appraiser))!.InspectorDataChangedGroups!);
 
-        // The inspector changes the area and the description.
-        await rig.Service.SaveDraftAsync(
+        // The specialist corrects the area and the description of the accepted inspection.
+        var (_, correctErrors) = await rig.Service.SaveDraftAsync(
             InspectionId,
-            Save(new Dictionary<string, object?> { ["builtArea"] = "450", ["propertyDescription"] = "وصف جديد" }),
-            Inspector);
+            Correct(new Dictionary<string, object?> { ["builtArea"] = "450", ["propertyDescription"] = "وصف جديد" }),
+            Specialist);
+        Assert.Null(correctErrors);
 
         var single = await rig.Service.GetAsync(AppraisalId, Appraiser);
         var listed = Assert.Single(await rig.Service.ListForTasksAsync([AppraisalId], Appraiser));
@@ -133,7 +178,7 @@ public sealed class InspectorDataDigestServiceTests
     }
 
     [Fact]
-    public async Task An_inspector_save_alerts_the_appraiser_who_already_acknowledged_the_data()
+    public async Task A_correction_of_the_accepted_inspection_alerts_the_appraiser_who_already_acknowledged_the_data()
     {
         var rig = Arrange();
         var seen = (await rig.Service.GetAsync(AppraisalId, Appraiser))!.InspectorDataFingerprint!;
@@ -144,8 +189,8 @@ public sealed class InspectorDataDigestServiceTests
 
         await rig.Service.SaveDraftAsync(
             InspectionId,
-            Save(new Dictionary<string, object?> { ["builtArea"] = "500" }),
-            Inspector);
+            Correct(new Dictionary<string, object?> { ["builtArea"] = "500" }),
+            Specialist);
 
         var alert = Assert.Single(rig.Notifications.Sent, n =>
             n.SourceEvent == $"inspector-data-changed-appraiser:{AppraisalId}");
@@ -162,7 +207,7 @@ public sealed class InspectorDataDigestServiceTests
 
         // No baseline yet: the first open has nothing to compare with.
         await rig.Service.SaveDraftAsync(
-            InspectionId, Save(new Dictionary<string, object?> { ["builtArea"] = "500" }), Inspector);
+            InspectionId, Correct(new Dictionary<string, object?> { ["builtArea"] = "500" }), Specialist);
         Assert.DoesNotContain(rig.Notifications.Sent, n => n.SourceEvent!.StartsWith("inspector-data-changed-appraiser:"));
 
         var seen = (await rig.Service.GetAsync(AppraisalId, Appraiser))!.InspectorDataFingerprint!;
@@ -172,8 +217,8 @@ public sealed class InspectorDataDigestServiceTests
         // Same data again, and a volatile-only change: nothing moved.
         await rig.Service.SaveDraftAsync(
             InspectionId,
-            Save(new Dictionary<string, object?> { ["builtArea"] = " 500 ", ["updatedAtUtc"] = "2026-10-05T00:00:00Z" }),
-            Inspector);
+            Correct(new Dictionary<string, object?> { ["builtArea"] = " 500 ", ["updatedAtUtc"] = "2026-10-05T00:00:00Z" }),
+            Specialist);
 
         Assert.DoesNotContain(rig.Notifications.Sent, n => n.SourceEvent!.StartsWith("inspector-data-changed-appraiser:"));
     }
@@ -185,7 +230,11 @@ public sealed class InspectorDataDigestServiceTests
         CaseStudyDbContext Db,
         ReturnInspectionTests.RecordingNotifications Notifications);
 
-    private static Rig Arrange()
+    /// <summary>
+    /// The family: parent, inspection, appraisal. <paramref name="accepted"/> — the inspection is
+    /// submitted, completed and accepted by the specialist (the only state the appraiser reads); else a draft.
+    /// </summary>
+    private static Rig Arrange(bool accepted = true)
     {
         var bundle = TestBoundedContexts.Create($"digest-{Guid.NewGuid():N}");
         var db = bundle.CaseStudy;
@@ -220,14 +269,16 @@ public sealed class InspectorDataDigestServiceTests
             Classification = "سكني",
             DeedNumber = "1234567890",
         });
+        var inspection = WorkflowTask.Create(
+            WorkflowTaskKind.FieldInspection, "PO-DIG", now, title: "معاينة",
+            phase: WorkflowTaskPhase.Done, id: InspectionId, propertyId: PropertyId,
+            parentTaskId: ParentId, assigneeId: "fi-1");
+        if (accepted) inspection.Complete(now);
         db.WorkflowTasks.AddRange(
             WorkflowTask.Create(
                 WorkflowTaskKind.CaseStudyProperty, "PO-DIG", now, title: "دراسة",
                 phase: WorkflowTaskPhase.CaseStudy, id: ParentId, propertyId: PropertyId, assigneeId: "cs-1"),
-            WorkflowTask.Create(
-                WorkflowTaskKind.FieldInspection, "PO-DIG", now, title: "معاينة",
-                phase: WorkflowTaskPhase.Done, id: InspectionId, propertyId: PropertyId,
-                parentTaskId: ParentId, assigneeId: "fi-1"),
+            inspection,
             WorkflowTask.Create(
                 WorkflowTaskKind.PropertyAppraisal, "PO-DIG", now, title: "تقييم",
                 phase: WorkflowTaskPhase.Done, assigneeName: "مقيّم", id: AppraisalId,
@@ -237,10 +288,14 @@ public sealed class InspectorDataDigestServiceTests
             Id = Guid.NewGuid(),
             WorkflowTaskId = InspectionId,
             Kind = WorkflowTaskKindValues.FieldInspection,
-            Status = PartyTaskSubmissionStatus.Draft,
+            Status = accepted ? PartyTaskSubmissionStatus.Submitted : PartyTaskSubmissionStatus.Draft,
             PropertyId = PropertyId,
             PoNumber = "PO-DIG",
-            PayloadJson = """{"builtArea":"300","propertyDescription":"وصف"}""",
+            PayloadJson = accepted
+                ? """{"status":"submitted","builtArea":"300","propertyDescription":"وصف"}"""
+                : """{"builtArea":"300","propertyDescription":"وصف"}""",
+            SubmittedAtUtc = accepted ? now : null,
+            AcceptedAtUtc = accepted ? now : null,
             CreatedAtUtc = now,
             UpdatedAtUtc = now,
         });

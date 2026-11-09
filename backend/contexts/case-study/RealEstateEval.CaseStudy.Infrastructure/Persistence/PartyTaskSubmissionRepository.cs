@@ -14,6 +14,25 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 /// </summary>
 public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPartyTaskSubmissionRepository
 {
+    public async Task<bool> IsTransactionReceivedAsync(Guid? propertyId, CancellationToken cancellationToken)
+    {
+        if (propertyId is not Guid id) return false;
+        return await db.WorkOrderProperties.AsNoTracking()
+            .AnyAsync(p => p.Id == id && p.Transaction != null && p.Transaction.ReceivedAtUtc != null, cancellationToken);
+    }
+
+    public async Task<bool> ClearTransactionReceiptAsync(Guid? propertyId, DateTime nowUtc, CancellationToken cancellationToken)
+    {
+        if (propertyId is not Guid id) return false;
+        var transactionId = await db.WorkOrderProperties.AsNoTracking()
+            .Where(p => p.Id == id)
+            .Select(p => (Guid?)p.TransactionId)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (transactionId is not Guid tid) return false;
+        var transaction = await db.Transactions.FirstOrDefaultAsync(t => t.Id == tid, cancellationToken);
+        return transaction?.ClearReceipt(nowUtc) == true;
+    }
+
     public Task<WorkflowTask?> GetTaskAsync(Guid taskId, CancellationToken cancellationToken) =>
         db.WorkflowTasks
             .AsNoTracking()
@@ -174,11 +193,14 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
         var previous = InspectedPropertyTypeRules.Effective(property.PropertyType, property.InspectedPropertyType);
         var surveyBefore = SurveyRequirementRules.PropertyRequiresSurvey(property);
         property.InspectedPropertyType = inspectedPropertyType.Trim();
-        return InspectedPropertyTypeRules.ChangeOf(
+        var change = InspectedPropertyTypeRules.ChangeOf(
             previous,
             property.InspectedPropertyType,
             surveyBefore,
             SurveyRequirementRules.PropertyRequiresSurvey(property));
+        return change is null
+            ? null
+            : change with { DiffersFromBourseType = SurveyRequirementRules.InspectorChangedType(property) };
     }
 
     public async Task SyncInspectorDeedBoundariesAsync(

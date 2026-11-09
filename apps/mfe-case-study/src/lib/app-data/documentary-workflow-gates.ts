@@ -6,12 +6,13 @@ export function roleBypassesDocumentaryGates(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";
 }
 
-/** Roles allowed to set location map URL (specialist / inspector / bypass). */
+/** Roles allowed to set location map URL (specialist / appraiser / inspector / bypass). */
 export function roleCanSetLocationMapUrl(role: RoleId): boolean {
   return (
     isSuperAdmin(role) ||
     role === "section-supervisor" ||
     role === "case-specialist" ||
+    role === "real-estate-appraiser" ||
     role === "field-inspector"
   );
 }

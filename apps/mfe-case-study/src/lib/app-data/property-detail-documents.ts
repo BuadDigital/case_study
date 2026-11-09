@@ -27,7 +27,7 @@ import {
   type InspectorPhotoAttachment,
   type InspectorWorkspaceDraft,
   PROPERTY_DESCRIPTION_PHOTO_KEY,
-} from "./inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { getInspectorPhotoDataUrl } from "./inspector-photo-upload";
 
 /** Free photos store the category key; the specialist sees its Arabic label. */

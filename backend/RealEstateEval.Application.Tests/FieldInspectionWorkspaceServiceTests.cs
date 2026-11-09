@@ -45,7 +45,7 @@ public class FieldInspectionWorkspaceServiceTests
         var rows = await service.ListAsync(new PermissionsDto
         {
             UserId = "case-staff",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         });
 
         Assert.Equal(2, rows.Count);
@@ -66,7 +66,7 @@ public class FieldInspectionWorkspaceServiceTests
         var rows = await service.ListAsync(new PermissionsDto
         {
             UserId = "case-staff",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         });
 
         var pin = Assert.Single(rows, row => row.WorkflowTaskId == OwnedTaskId.ToString());
@@ -132,7 +132,7 @@ public class FieldInspectionWorkspaceServiceTests
         var summary = await service.GetSummaryAsync(new PermissionsDto
         {
             UserId = "case-staff",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         });
 
         Assert.Equal(2, summary.Total);

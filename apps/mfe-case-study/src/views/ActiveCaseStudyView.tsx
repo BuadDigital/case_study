@@ -2,25 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import dynamic from "next/dynamic";
 import { filterTasksForCaseStudy } from "@platform/app-shared/app-data/active-transactions";
-import { PanelSkeleton, useToast } from "@platform/ui-kit";
+import { PanelSkeleton } from "@platform/ui-kit";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
 } from "./ActiveTransactionQueueView";
 import { buildCaseStudyQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
-const RedistributePartiesModal = dynamic(
-  () =>
-    import("../components/distribution/RedistributePartiesModal").then(
-      (m) => m.RedistributePartiesModal,
-    ),
-  { ssr: false },
-);
-import {
-  redistributeTaskParties,
-  type WorkflowTask,
-} from "../lib/app-data/tasks";
+import type { WorkflowTask } from "../lib/app-data/tasks";
+import { RedistributePartiesHost } from "../components/distribution/RedistributePartiesHost";
 import {
   activeCaseStudyPath,
   caseStudyTaskPath,
@@ -32,7 +22,6 @@ export function ActiveCaseStudyView() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const legacyTask = searchParams.get("task");
-  const { showToast } = useToast();
   const [redistributeTask, setRedistributeTask] = useState<WorkflowTask | null>(
     null,
   );
@@ -57,12 +46,13 @@ export function ActiveCaseStudyView() {
     fullPageTaskPath: caseStudyWorkspacePath,
     queueSort: "distributed-newest-first",
     filterListed: (mine) => filterTasksForCaseStudy(mine),
-    buildRowMoreItems: ({ task, propertyId, router: rowRouter, viewerRole }) =>
+    buildRowMoreItems: ({ task, propertyId, router: rowRouter, viewerRole, viewerAccess }) =>
       buildCaseStudyQueueRowMoreItems({
         task,
         propertyId,
         router: rowRouter,
         viewerRole,
+        viewerAccess,
         onRedistributeParties: () => setRedistributeTask(task),
       }),
   }), []);
@@ -74,30 +64,10 @@ export function ActiveCaseStudyView() {
   return (
     <>
       <ActiveTransactionQueueView config={config} />
-      {redistributeTask !== null ? (
-        <RedistributePartiesModal
-          open={redistributeTask !== null}
-          task={redistributeTask}
-          onClose={() => setRedistributeTask(null)}
-          onConfirm={async (distribution, reason, idempotencyKey, staffUsers) => {
-            if (!redistributeTask) return;
-            // The directory resolves the new assignee's name; without it the server stored the
-            // generic role label («معاين ميداني») instead of the person.
-            const result = await redistributeTaskParties(
-              redistributeTask.id,
-              distribution,
-              reason,
-              staffUsers,
-              idempotencyKey,
-            );
-            if (!result.ok) {
-              showToast(result.error, "error");
-              throw new Error(result.error);
-            }
-            showToast("تم تحديث إسناد الأطراف", "success");
-          }}
-        />
-      ) : null}
+      <RedistributePartiesHost
+        task={redistributeTask}
+        onClose={() => setRedistributeTask(null)}
+      />
     </>
   );
 }

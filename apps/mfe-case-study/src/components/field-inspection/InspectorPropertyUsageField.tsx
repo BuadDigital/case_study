@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type FocusEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { reviewPropertyUsage, type ValuationListItemDto } from "@platform/api-client";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
@@ -19,7 +19,7 @@ import {
   PROPERTY_USAGE_OPTIONS,
   PROPERTY_USAGES_LIST_ID,
   propertyUsageValue,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 
 const ADD_NAME = "__add_usage__";
 
@@ -132,7 +132,10 @@ export function InspectorPropertyUsageNote({
  * set on the draft and joins the list as pending when the inspection reaches the server.
  *
  * Edge cases: an old value holding a classification shows as empty. A saved name that has left the list
- * stays selectable, so an open inspection does not lose it.
+ * stays selectable, so an open inspection does not lose it. Fixed A→Z 2026-11-02 #24: a name typed but not
+ * confirmed with «إضافة» was lost, and «حفظ ومتابعة» jumped back to the field with no message — leaving
+ * the box now keeps the typed name as a provisional value (like an unregistered city, ruling 2026-11-01),
+ * and a still-open box marked invalid says to press «إضافة».
  */
 export function InspectorPropertyUsageField({
   id,
@@ -154,6 +157,7 @@ export function InspectorPropertyUsageField({
   const [typed, setTyped] = useState("");
   const [similar, setSimilar] = useState<string[]>([]);
   const [error, setError] = useState("");
+  const typingBoxRef = useRef<HTMLDivElement>(null);
 
   function closeTyping() {
     setTyping(false);
@@ -186,26 +190,59 @@ export function InspectorPropertyUsageField({
     choose(name);
   }
 
+  /**
+   * Focus left the typed name without «إضافة» (e.g. a tap on «حفظ ومتابعة»): keep it as a provisional value.
+   *
+   * How it works: a move to this box's own buttons («إضافة», «إلغاء», «هل تقصد») is ignored; otherwise a name
+   * the list holds under another spelling takes the listed one, and any other Arabic name is set as typed —
+   * it joins the list as pending when the inspection reaches the server, exactly as after «إضافة».
+   *
+   * Edge cases: an empty box changes nothing; a non-Arabic name stays in the box with its message. The
+   * «هل تقصد» suggestions are skipped here — the typed name is kept, and the specialist can still correct
+   * it from the pending-name note.
+   */
+  function keepTypedOnBlur(e: FocusEvent<HTMLInputElement>) {
+    const next = e.relatedTarget;
+    if (next instanceof Node && typingBoxRef.current?.contains(next)) return;
+    const name = typed.trim();
+    if (!name) return;
+    const listed = listedPropertyUsage(names, name);
+    if (listed) {
+      choose(listed);
+      return;
+    }
+    if (!looksLikeUsageName(name)) {
+      setError("اكتب اسم الاستخدام بالعربية");
+      return;
+    }
+    choose(name);
+  }
+
   if (typing) {
     return (
-      <div className="grid gap-1.5">
+      <div ref={typingBoxRef} className="grid gap-1.5">
         <Input
           id={id}
           value={typed}
           autoFocus
           aria-label="استخدام غير موجود في القائمة"
           placeholder="اكتب الاستخدام كما وجدته"
-          aria-invalid={Boolean(error) || undefined}
+          aria-invalid={Boolean(error) || invalid || undefined}
           className={controlClassName}
           onChange={(e) => {
             setTyped(e.target.value);
             setSimilar([]);
             setError("");
           }}
+          onBlur={keepTypedOnBlur}
         />
         {error ? (
           <p className="m-0 text-[11px] font-semibold text-danger-text" role="alert">
             {error}
+          </p>
+        ) : invalid ? (
+          <p className="m-0 text-[11px] font-semibold text-danger-text" role="alert">
+            اضغط «إضافة» لاعتماد الاستخدام الجديد
           </p>
         ) : null}
         {similar.length > 0 ? (

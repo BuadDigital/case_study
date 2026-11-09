@@ -9,7 +9,7 @@
  */
 import { useEffect } from "react";
 import { Button, GentleBusy, Note } from "@platform/ui-kit";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   inspectorInventoryWarning,
   inventorySaveStatus,

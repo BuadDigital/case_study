@@ -57,6 +57,13 @@ public class LoginResponseDto
     public UserInfoDto User { get; set; } = null!;
 }
 
+/// <summary>Who a mobile belongs to, for the line under the number on the login screen.</summary>
+public class LoginHintDto
+{
+    public string DisplayName { get; set; } = string.Empty;
+    public string? JobTitle { get; set; }
+}
+
 public class UserInfoDto
 {
     public string Id { get; set; } = string.Empty;

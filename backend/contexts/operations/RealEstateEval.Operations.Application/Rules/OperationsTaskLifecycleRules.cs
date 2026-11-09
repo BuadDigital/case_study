@@ -2,6 +2,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Operations.Domain;
 using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Operations.Application.Rules;
 
@@ -11,13 +12,11 @@ namespace RealEstateEval.Operations.Application.Rules;
 /// </summary>
 public static class OperationsTaskLifecycleRules
 {
-    public static bool IsManager(string actorRole)
-    {
-        var role = actorRole.Trim();
-        return role is "case-specialist" or "section-supervisor" or "general-manager"
-                or "real-estate-appraiser"
-            || string.Equals(role, "cdo", StringComparison.OrdinalIgnoreCase);
-    }
+    /// <summary>
+    /// Operations-task managers: the same people as <see cref="PoRoleMatrixRules.CanManageOperationsTasks"/>
+    /// — the coordination sub-role of the case specialist (ruling 2026-11-02), management and the appraiser.
+    /// </summary>
+    public static bool IsManager(StaffActor actorStaff) => PoRoleMatrixRules.CanManageOperationsTasks(actorStaff);
 
     public static string? ValidateScope(
         OperationsTaskScope scope,
@@ -43,7 +42,7 @@ public static class OperationsTaskLifecycleRules
         OperationsTask entity,
         OperationsTaskStatus next,
         string actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         string? actorName = null,
         string? pauseReason = null)
     {
@@ -51,7 +50,7 @@ public static class OperationsTaskLifecycleRules
             return "المهمة في حالة نهائية";
 
         var actor = actorAssigneeId.Trim();
-        var isManager = IsManager(actorRole);
+        var isManager = IsManager(actorStaff);
         var isAssignee = actor.Length > 0
             && string.Equals(entity.AssigneeId, actor, StringComparison.OrdinalIgnoreCase);
         if (!isAssignee && !string.IsNullOrWhiteSpace(actorName))

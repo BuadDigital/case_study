@@ -1,6 +1,6 @@
 /** PO intake — deed/identifier types, validation, formatting, restriction helpers. */
 
-import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 import { classificationForPropertyType } from "./inspector-workspace-data";
 
 /** What the bourse save records for «الصك فعال» / «الصك غير فعال» (the latter no longer forces a تعذّر). */
@@ -171,18 +171,27 @@ export function propertyRequiresSurvey(property: {
 }
 
 /**
- * The inspector's corrected type made a survey necessary that the bourse type did not need, and no
- * survey task is live — the specialist adds the engineering office. Twin of the server's
- * SurveyRequirementRules.SurveyMissingAfterTypeChange.
+ * The inspector's corrected type needs a survey and no survey task is live — the «إضافة رفع مساحي» note
+ * asks the specialist to add the engineering office. It never blocks issuing the study (Omar 2026-11-04).
+ * Twin of the server's SurveyRequirementRules.SurveyMissingAfterTypeChange.
+ *
+ * How it works: the inspector's type is set and differs from the bourse type, the property under it needs
+ * a survey (`propertyRequiresSurvey`), and no survey task is live.
+ *
+ * Edge cases: fixed A→Z 2026-11-02 #74 — a property whose bourse type already needed a survey was skipped
+ * («left to the distribution»), while the submit still told the specialist to add the office. No type
+ * change, or the bourse type picked again, asks nothing.
  */
 export function surveyMissingAfterTypeChange(
-  property: Parameters<typeof propertyRequiresSurvey>[0],
+  property: Parameters<typeof propertyRequiresSurvey>[0] & { propertyType?: string | null },
   hasLiveSurveyTask: boolean,
 ): boolean {
+  const inspected = (property.inspectedPropertyType ?? "").trim();
   return (
     !hasLiveSurveyTask &&
-    propertyRequiresSurvey(property) &&
-    !classificationRequiresSurvey(property.classification)
+    inspected.length > 0 &&
+    inspected !== (property.propertyType ?? "").trim() &&
+    propertyRequiresSurvey(property)
   );
 }
 

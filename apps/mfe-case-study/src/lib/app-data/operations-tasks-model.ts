@@ -2,6 +2,7 @@ import type {
   OperationsTaskDto,
   PatchOperationsTaskRequest,
 } from "@platform/api-client";
+import { OPERATIONS_TASKS_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 export type OperationsTask = OperationsTaskDto;
 
@@ -41,8 +42,6 @@ export type OperationsTaskCommentFile = {
   attachmentId?: string | null;
   contentType?: string | null;
 };
-
-const OPERATIONS_TASKS_CHANGED_EVENT = "eval-operations-tasks-changed";
 
 export function notifyOperationsTasksChanged(): void {
   if (typeof window === "undefined") return;

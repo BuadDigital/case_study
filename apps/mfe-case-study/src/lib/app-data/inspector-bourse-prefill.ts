@@ -16,7 +16,7 @@ import {
   INSPECTOR_FEATURE_FIELDS,
   propertyUsageValue,
   type InspectorWorkspaceDraft,
-} from "./inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "./po-intake-data";
 
 export const BOURSE_SOURCE_NOTE = "المصدر: استعلام البورصة";

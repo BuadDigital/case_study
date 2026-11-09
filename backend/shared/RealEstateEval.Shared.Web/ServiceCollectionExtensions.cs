@@ -165,6 +165,13 @@ public static class AuthorizationExtensions
                     PlatformCapabilities.ManageWorkOrders)));
 
             options.AddPolicy(
+                CapabilityPolicyNames.EditPropertyData,
+                policy => policy.RequireAssertion(ctx => HasAnyCapability(
+                    ctx,
+                    PlatformCapabilities.ManageWorkOrders,
+                    PlatformCapabilities.SubmitValuationReport)));
+
+            options.AddPolicy(
                 CapabilityPolicyNames.ReadCaseStudyWorkspace,
                 policy => policy.RequireAssertion(ctx => HasAnyCapability(
                     ctx,

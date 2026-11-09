@@ -8,7 +8,7 @@
 import { FormRow, Input, cn } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { RegField } from "@platform/app-shared/registration/FormFields";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE,
   canPrintSiteLocationAck,
@@ -28,6 +28,7 @@ export function InspectorAccessPhotosCards({
   activeStep,
   draft,
   fieldErrors,
+  isLand,
   layout,
   locked,
   mapPinned,
@@ -50,6 +51,8 @@ export function InspectorAccessPhotosCards({
   | "showToast"
 > & {
   draft: InspectorWorkspaceDraft;
+  /** Land has no inside: no interior photo floor. */
+  isLand: boolean;
   layout: "desktop" | "mobile";
   mobile: boolean;
 }) {
@@ -181,6 +184,7 @@ export function InspectorAccessPhotosCards({
             draft={draft}
             disabled={locked}
             actor="inspector"
+            isLand={isLand}
             mobile={mobile}
             onPatch={(patch) => persist(patch)}
             onDirty={() => markDirty("photos")}

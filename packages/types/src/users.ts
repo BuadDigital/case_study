@@ -21,6 +21,8 @@ export type UserListItem = {
   nationalId?: string | null;
   avatarUrl?: string | null;
   inspectorType?: "employee" | "contractor" | null;
+  /** Case-specialist sub-roles (coordination | study | review); empty for other roles. */
+  caseSpecialistSubRoles?: string[];
   hasCompensation?: boolean;
   feeValueSar?: number | null;
   iban?: string | null;

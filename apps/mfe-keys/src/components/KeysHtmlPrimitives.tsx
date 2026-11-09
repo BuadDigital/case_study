@@ -10,7 +10,7 @@ import {
 
 export function KeysBackLink({
   onClick,
-  children = "محفظة المفاتيح",
+  children = "المفاتيح",
 }: {
   onClick: () => void;
   children?: ReactNode;

@@ -52,11 +52,11 @@ public sealed class TransactionQueryService : ITransactionQuery
     /// How it works: 1) loads the transaction with its deeds and work orders (no tracking); 2) keeps
     /// the deeds whose PO the actor may see, ordered by work-order date then deed number; 3) finds the
     /// holder deed (TransactionStudyRules.Holder) and its case-study parent task; 4) returns the
-    /// numbers, PRC / PRV derived from the PR root, link kind and reason, the live deed count and
-    /// the deeds.
+    /// property number, PRC / PRV derived from it, link kind and reason, the live deed count and the
+    /// deeds with their own numbers.
     /// Edge cases: a party actor who sees none of the deeds gets null (not an empty transaction);
     /// removed deeds stay in the list flagged IsRemoved but are not counted; the holder task is null
-    /// until the holder deed is distributed; PRC / PRV are null while only TMP exists.
+    /// until the holder deed is distributed; PRC / PRV are null until a deed is numbered.
     /// </remarks>
     public async Task<TransactionDetailDto?> GetAsync(
         Guid transactionId,
@@ -80,13 +80,14 @@ public sealed class TransactionQueryService : ITransactionQuery
         var holderTaskId = holder is null
             ? null
             : await StudyHolder.ParentTaskIdForPropertyAsync(_db, holder.Id, cancellationToken);
+        var marker = await _db.TransactionWorkMarkers.AsNoTracking()
+            .FirstOrDefaultAsync(m => m.TransactionId == transaction.Id, cancellationToken);
 
         return new TransactionDetailDto
         {
             StudyHolderPropertyId = holder?.Id,
             StudyHolderTaskId = holderTaskId,
             Id = transaction.Id,
-            DraftNumber = transaction.DraftNumber,
             ReferenceNumber = transaction.ReferenceNumber,
             DisplayNumber = transaction.DisplayNumber,
             ConfirmedAtUtc = transaction.ConfirmedAtUtc?.ToString("o"),
@@ -97,6 +98,11 @@ public sealed class TransactionQueryService : ITransactionQuery
             LinkReason = transaction.LinkReason,
             DeedCount = transaction.Properties.Count(p => !p.IsRemoved),
             Deeds = deeds,
+            ReceivedAtUtc = transaction.ReceivedAtUtc?.ToString("o"),
+            ReceivedByName = transaction.ReceivedByName,
+            WorkingByUserId = marker?.UserId,
+            WorkingByName = marker?.DisplayName,
+            WorkingAtUtc = marker?.AtUtc.ToString("o"),
         };
     }
 
@@ -147,6 +153,7 @@ public sealed class TransactionQueryService : ITransactionQuery
     {
         PropertyId = p.Id,
         PoNumber = p.WorkOrder!.PoNumber,
+        ReferenceNumber = p.ReferenceNumber,
         IdentifierType = PropertyIdentifierTypeLabels.ToApiValue(p.IdentifierType),
         DeedNumber = p.DeedNumber,
         DeedDate = p.DeedDate,

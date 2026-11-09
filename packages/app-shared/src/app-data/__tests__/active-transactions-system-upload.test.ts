@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { WorkflowTask } from "../../workflow/task-types";
-import { filterTasksForSystemUpload } from "../active-transactions";
+import {
+  filterTasksForCaseStudy,
+  filterTasksForReceipt,
+  filterTasksForSystemUpload,
+  filterTasksForUploadPrep,
+} from "../active-transactions";
 
 function task(over: Partial<WorkflowTask>): WorkflowTask {
   return {
@@ -20,7 +25,7 @@ function task(over: Partial<WorkflowTask>): WorkflowTask {
   } as WorkflowTask;
 }
 
-const study = task({ id: "study" });
+const study = task({ id: "study", readyForUpload: true });
 const appraisal = (status: WorkflowTask["status"], propertyId = "p1") =>
   task({
     id: `appraisal-${propertyId}-${status}`,
@@ -31,6 +36,14 @@ const appraisal = (status: WorkflowTask["status"], propertyId = "p1") =>
   });
 
 describe("filterTasksForSystemUpload", () => {
+  it("lists a deposited deed only once review prepared it for the upload (Omar 2026-11-08)", () => {
+    const notReady = task({ id: "not-ready", readyForUpload: false });
+    const all = [notReady, appraisal("completed")];
+    expect(filterTasksForSystemUpload([notReady], all)).toEqual([]);
+    expect(filterTasksForUploadPrep([notReady], all)).toEqual([notReady]);
+    expect(filterTasksForUploadPrep([study], [study, appraisal("completed")])).toEqual([]);
+  });
+
   it("lists an issued study only once the valuation is deposited", () => {
     expect(filterTasksForSystemUpload([study], [study, appraisal("completed")])).toEqual([study]);
     expect(filterTasksForSystemUpload([study], [study, appraisal("open")])).toEqual([]);
@@ -54,12 +67,34 @@ describe("filterTasksForSystemUpload", () => {
   });
 
   it("a folded deed follows the holder deed's valuation", () => {
-    const folded = task({ id: "folded", propertyId: "p2", transactionStudyHolderPropertyId: "p1" });
+    const folded = task({ id: "folded", propertyId: "p2", transactionStudyHolderPropertyId: "p1", readyForUpload: true });
     expect(
       filterTasksForSystemUpload([folded], [appraisal("completed", "p1"), appraisal("open", "p2")]),
     ).toEqual([folded]);
     expect(
       filterTasksForSystemUpload([folded], [appraisal("open", "p1"), appraisal("completed", "p2")]),
     ).toEqual([]);
+  });
+});
+
+describe("coordination receipt vs study queue (ruling 2026-11-02)", () => {
+  const waiting = task({ id: "waiting", phase: "case-study", status: "open", transactionReceived: false });
+  const received = task({ id: "received", phase: "case-study", status: "open", transactionReceived: true });
+  const finished = task({ id: "finished", phase: "done", status: "completed" });
+
+  it("keeps a distributed transaction with coordination until its formal receipt", () => {
+    expect(filterTasksForReceipt([waiting, received, finished])).toEqual([waiting]);
+    expect(filterTasksForCaseStudy([waiting, received, finished])).toEqual([received, finished]);
+  });
+
+  it("leaves a folded deed out of both queues", () => {
+    const folded = task({
+      id: "folded",
+      phase: "case-study",
+      status: "open",
+      transactionStudyHolderPropertyId: "p-holder",
+    });
+    expect(filterTasksForReceipt([folded])).toEqual([]);
+    expect(filterTasksForCaseStudy([folded])).toEqual([]);
   });
 });

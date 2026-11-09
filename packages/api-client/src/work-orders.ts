@@ -30,10 +30,10 @@ export type WorkOrderPropertyDto = {
   id?: string;
   /** The transaction (المعاملة) this deed belongs to — server-owned. */
   transactionId?: string | null;
-  /** Transaction draft number TMP-{YY}-{seq}, shown until the official reference exists. */
-  transactionDraftNumber?: string | null;
-  /** Transaction official reference PR-{YY}-{seq}; null until the first report approval. */
+  /** «رقم المعاملة» — the deed's own PR-{YY}-{seq}, drawn at the first full save of its initial data; server-owned. */
   referenceNumber?: string | null;
+  /** The property's number: the deed's own for a single deed, «رقم العقار المرتبط» PR-{YY}-{seq}-L when linked. */
+  transactionReferenceNumber?: string | null;
   /** How the transaction's deeds are linked: one_building | contract; null for a single deed. */
   transactionLinkKind?: string | null;
   /** Deeds in the transaction (1 for an ordinary property). */
@@ -820,7 +820,7 @@ export async function deleteWorkOrder(
 async function postWorkOrderLifecycleAction(
   config: WorkOrdersApiConfig,
   poNumber: string,
-  action: "cancel" | "stop",
+  action: "stop",
 ): Promise<ApiOk<void> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
@@ -840,13 +840,6 @@ async function postWorkOrderLifecycleAction(
   } catch {
     return { ok: false, kind: "network" };
   }
-}
-
-export async function cancelWorkOrder(
-  config: WorkOrdersApiConfig,
-  poNumber: string,
-): Promise<ApiOk<void> | ApiErr> {
-  return postWorkOrderLifecycleAction(config, poNumber, "cancel");
 }
 
 export async function stopWorkOrder(
@@ -1164,10 +1157,36 @@ export type TransactionStateDto = {
   handoverPackageAr: string[];
   /** The study report is issued (the specialist's gate before the Enfaz upload). */
   studyReportIssued: boolean;
+  /** «تجهيز المعاملة للرفع» stamp (Omar 2026-11-08) — only a ready deed enters the upload queue. */
+  readyForUploadAtUtc?: string | null;
   /** Why the handover is refused right now — empty when it is allowed. */
   enfazBlockReasonsAr: string[];
   /** Only on the answer of `enfaz-return`: what was done per part (study report / valuation). */
   enfazReturnNoticesAr: string[];
+  /** The transaction's active «إعادة فتح» (open, or awaiting the reply to Enfaz); null when none. */
+  reopening?: TransactionReopeningDto | null;
+  /** «إعادة فتح المعاملة» is open now: deposited or uploaded, nothing active, not ready for billing. */
+  canReopen?: boolean;
+};
+
+/** One «إعادة فتح المعاملة» (Omar 2026-11-05). */
+export type TransactionReopeningDto = {
+  id: string;
+  transactionId: string;
+  propertyId: string;
+  source: "enfaz" | "internal";
+  sourceLabelAr: string;
+  enfazReference?: string | null;
+  reason: string;
+  reopensStudy: boolean;
+  reopensValuation: boolean;
+  needsFieldWork: boolean;
+  affectedLabelAr: string;
+  /** open → closed at the next upload to Enfaz («awaiting_reply» only on rows written before 2026-11-08). */
+  status: "open" | "awaiting_reply" | "closed";
+  openedAtUtc: string;
+  openedByName?: string | null;
+  uploadedAgainAtUtc?: string | null;
 };
 
 function stringList(raw: unknown): string[] {
@@ -1238,20 +1257,23 @@ export async function getTransactionState(
 }
 
 /**
- * (second closing): upload transaction to Enfaz — specialist only. A refusal (study report not
- * issued / valuation not closed / parties not complete) comes back as the server's own Arabic text.
+ * A bodiless POST on one deed's transaction state (`…/transaction-state/{action}`), answered with the
+ * refreshed state.
+ *
+ * How it works: 401 → `auth`; any other non-OK answer is read with `transactionStateFailure`, so a
+ * refusal carries the server's own Arabic reason; success is normalised like every transaction-state
+ * answer. Edge cases: a network error → `network`.
  */
-export async function recordEnfazHandover(
+async function postTransactionStateAction(
   config: WorkOrdersApiConfig,
   workOrderId: string,
   propertyId: string,
-): Promise<
-  { ok: true; data: TransactionStateDto } | TransactionStateFailure
-> {
+  action: "enfaz-handover" | "billing-ready" | "ready-for-upload",
+): Promise<{ ok: true; data: TransactionStateDto } | TransactionStateFailure> {
   const base = config.baseUrl ?? getApiBase();
   try {
     const res = await fetch(
-      `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/enfaz-handover`,
+      `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/${action}`,
       { method: "POST", headers: authHeaders(config.token) },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
@@ -1260,6 +1282,32 @@ export async function recordEnfazHandover(
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+/**
+ * (second closing): upload transaction to Enfaz — specialist only. A refusal (not prepared for the
+ * upload, study report not issued / valuation not closed / parties not complete) comes back as the
+ * server's own Arabic text.
+ */
+export function recordEnfazHandover(
+  config: WorkOrdersApiConfig,
+  workOrderId: string,
+  propertyId: string,
+): Promise<{ ok: true; data: TransactionStateDto } | TransactionStateFailure> {
+  return postTransactionStateAction(config, workOrderId, propertyId, "enfaz-handover");
+}
+
+/**
+ * «تجهيز المعاملة للرفع» (Omar 2026-11-08): review stamps the deed ready once the browser checked the
+ * upload package; the server checks the final report and the blockers again and stamps once. Only a
+ * ready deed enters the upload queue and may be marked uploaded.
+ */
+export function markReadyForUpload(
+  config: WorkOrdersApiConfig,
+  workOrderId: string,
+  propertyId: string,
+): Promise<{ ok: true; data: TransactionStateDto } | TransactionStateFailure> {
+  return postTransactionStateAction(config, workOrderId, propertyId, "ready-for-upload");
 }
 
 /**
@@ -1274,25 +1322,12 @@ export async function recordEnfazHandover(
  * `message`; a network error → `network`. The call needs no idempotency key because marking twice is
  * harmless.
  */
-export async function markBillingReady(
+export function markBillingReady(
   config: WorkOrdersApiConfig,
   workOrderId: string,
   propertyId: string,
-): Promise<
-  { ok: true; data: TransactionStateDto } | TransactionStateFailure
-> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(
-      `${base}/api/work-orders/${workOrderId}/properties/${propertyId}/transaction-state/billing-ready`,
-      { method: "POST", headers: authHeaders(config.token) },
-    );
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return transactionStateFailure(res);
-    return { ok: true, data: normalizeTransactionState(await res.json()) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+): Promise<{ ok: true; data: TransactionStateDto } | TransactionStateFailure> {
+  return postTransactionStateAction(config, workOrderId, propertyId, "billing-ready");
 }
 
 export type EnfazReturnRequest = {
@@ -1300,9 +1335,17 @@ export type EnfazReturnRequest = {
   reason: string;
   reopenStudy: boolean;
   reopenValuation: boolean;
+  /** enfaz (a note from Enfaz, its reference required) | internal (an error found inside). */
+  source?: "enfaz" | "internal";
+  enfazReference?: string;
+  /** Field work is needed: the study is reopened and a task is made for the visit. */
+  needsFieldWork?: boolean;
 };
 
-/** Takes the transaction back from Enfaz — specialist only; clears the handover stamp. */
+/**
+ * «إعادة فتح المعاملة» (Omar 2026-11-05) — any specialist, after the valuation is deposited or the
+ * transaction uploaded; clears the handover stamp and reopens what was chosen.
+ */
 export async function returnFromEnfaz(
   config: WorkOrdersApiConfig,
   workOrderId: string,
@@ -1324,6 +1367,21 @@ export async function returnFromEnfaz(
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return transactionStateFailure(res);
     return { ok: true, data: normalizeTransactionState(await res.json()) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Every reopening not closed yet («أعمالي»: coordination's reply rows, the reopened chip). */
+export async function listActiveReopenings(
+  config: WorkOrdersApiConfig,
+): Promise<{ ok: true; data: TransactionReopeningDto[] } | TransactionStateFailure> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/transaction-reopenings/active`, { headers: authHeaders(config.token) });
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (!res.ok) return transactionStateFailure(res);
+    return { ok: true, data: (await res.json()) as TransactionReopeningDto[] };
   } catch {
     return { ok: false, kind: "network" };
   }

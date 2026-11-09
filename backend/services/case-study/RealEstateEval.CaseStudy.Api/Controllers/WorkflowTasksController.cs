@@ -96,6 +96,10 @@ public class WorkflowTasksController : ControllerBase
         [FromBody] PatchWorkflowTaskDistributionRequest request,
         CancellationToken cancellationToken)
     {
+        // Distribution is the coordination sub-role's (and management's) — ruling 2026-11-02.
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanDistribute, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var dto = await _tasks.PatchDistributionAsync(
             id,
             request.Distribution,
@@ -111,6 +115,9 @@ public class WorkflowTasksController : ControllerBase
         [FromBody] ConfirmTaskDistributionRequest request,
         CancellationToken cancellationToken)
     {
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanDistribute, cancellationToken);
+        if (forbidden is not null) return forbidden;
+
         var (result, errors) = await _tasks.ConfirmDistributionAsync(
             id,
             request,
@@ -128,8 +135,8 @@ public class WorkflowTasksController : ControllerBase
         [FromBody] AdvanceTaskAfterEnfathRequest request,
         CancellationToken cancellationToken)
     {
-        // Initial data (Enfaz stage) is the case specialist's only.
-        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
+        // Initial data (Enfaz stage) is the coordination sub-role's.
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanAdvanceIntake, cancellationToken);
         if (forbidden is not null) return forbidden;
 
         var dto = await _tasks.AdvanceAfterEnfathAsync(id, request, cancellationToken);
@@ -148,7 +155,7 @@ public class WorkflowTasksController : ControllerBase
         [FromBody] LinkTaskPropertyRequest request,
         CancellationToken cancellationToken)
     {
-        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanAdvanceIntake, cancellationToken);
         if (forbidden is not null) return forbidden;
 
         var (dto, error) = await _tasks.LinkPropertyAsync(id, request, cancellationToken);
@@ -163,8 +170,8 @@ public class WorkflowTasksController : ControllerBase
         [FromBody] AdvanceTaskAfterBourseRequest request,
         CancellationToken cancellationToken)
     {
-        // The bourse inquiry is the case specialist's only.
-        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
+        // The bourse inquiry is the coordination sub-role's.
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanAdvanceIntake, cancellationToken);
         if (forbidden is not null) return forbidden;
 
         var dto = await _tasks.AdvanceAfterBourseAsync(id, request, cancellationToken);
@@ -199,7 +206,7 @@ public class WorkflowTasksController : ControllerBase
         // Phase / status moves have their own endpoints (advance, revert, confirm, reopen); through
         // this route they are limited to the roles that run the lifecycle (see CanPatchTaskLifecycle).
         var forbidden = await ForbidUnlessAsync(
-            role => PoRoleMatrixRules.CanPatchTaskLifecycle(role, request.Phase, request.Status),
+            (StaffActor actor) => PoRoleMatrixRules.CanPatchTaskLifecycle(actor, request.Phase, request.Status),
             cancellationToken);
         if (forbidden is not null) return forbidden;
 
@@ -275,7 +282,7 @@ public class WorkflowTasksController : ControllerBase
         var (result, errors) = await _tasks.ReopenCompletedAsync(
             id,
             request,
-            await ActorPrototypeRoleAsync(cancellationToken),
+            await ActorStaffAsync(cancellationToken),
             ActorName(),
             ActorClaims.Id(User),
             cancellationToken);
@@ -294,7 +301,7 @@ public class WorkflowTasksController : ControllerBase
         var (result, errors) = await _tasks.AddEngineeringSurveyAsync(
             id,
             request,
-            await ActorPrototypeRoleAsync(cancellationToken),
+            await ActorStaffAsync(cancellationToken),
             ActorName(),
             ActorId(),
             cancellationToken);
@@ -313,13 +320,23 @@ public class WorkflowTasksController : ControllerBase
         var (result, errors) = await _tasks.RedistributePartiesAsync(
             id,
             request,
-            await ActorPrototypeRoleAsync(cancellationToken),
+            await ActorStaffAsync(cancellationToken),
             ActorName(),
             ActorId(),
             cancellationToken);
         if (errors is not null) return this.FieldErrorsProblem(errors);
         if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
         return Ok(result);
+    }
+
+ /// <summary>The caller's role and case-specialist sub-roles, as the role rules take them.</summary>
+    private async Task<StaffActor> ActorStaffAsync(CancellationToken cancellationToken)
+    {
+        var userId = ActorId();
+        var subRoles = userId.Length == 0
+            ? null
+            : (await _permissions.GetForUserIdAsync(userId, cancellationToken))?.SubRoles;
+        return new StaffActor(await ActorPrototypeRoleAsync(cancellationToken), subRoles);
     }
 
  /// <summary>JWT carries identity roles (Editor/CDO), not prototype roles. Resolve like PermissionService.</summary>
@@ -352,6 +369,19 @@ public class WorkflowTasksController : ControllerBase
         if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
         var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
         if (!allow(perms?.PrototypeRole))
+            return this.ForbiddenProblem("ليس لديك صلاحية لهذا الإجراء");
+        return null;
+    }
+
+ /// <summary>The same gate for rules that read the case specialist's sub-roles.</summary>
+    private async Task<ActionResult?> ForbidUnlessAsync(
+        Func<StaffActor, bool> allow,
+        CancellationToken cancellationToken)
+    {
+        var userId = ActorId();
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
+        var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
+        if (!allow(StaffActor.From(perms)))
             return this.ForbiddenProblem("ليس لديك صلاحية لهذا الإجراء");
         return null;
     }

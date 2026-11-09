@@ -233,7 +233,12 @@ public sealed record ValuationMethodologyAlertInput(
     /// </summary>
     bool ComparableDateCutoffIsPeriodEnd = false,
     /// <summary>The subject's (effective) property type; null/blank = m24 not evaluated.</summary>
-    string? SubjectPropertyType = null);
+    string? SubjectPropertyType = null,
+    /// <summary>
+    /// The land comparables adopted inside the cost approach (land_within_cost); null = none.
+    /// Only alert 23 reads them, and only while the cost approach is on (2026-11-04, A→Z #77).
+    /// </summary>
+    IReadOnlyList<ValuationMethodologyAlertComparableInput>? AdoptedCostLandComparables = null);
 
 /// <summary>Evaluates alerts per three-tier severity.</summary>
 public static class ValuationMethodologyAlertRules
@@ -259,9 +264,17 @@ public static class ValuationMethodologyAlertRules
             .Select((c, i) => (Ref: RefOf(c.ReferenceCode, i), Rate: c.AdjustedUnitRate ?? 0m))
             .Where(r => r.Rate > 0m)
             .ToList();
+        // Alert 23 checks every adopted deal the value rests on: the market comparables while the
+        // market approach is on, and the land comparables inside the cost approach while it is on.
+        // Fixed 2026-11-04 (A→Z #77): a land comparable dated after a retrospective valuation date
+        // entered the cost approach's land rate with no alert, while the market approach blocked it.
+        var datedComps = (input.MarketApproachRelevant ? comps : [])
+            .Select((c, i) => (Ref: RefOf(c.ReferenceCode, i), c.TransactionDate))
+            .Concat((costOn ? input.AdoptedCostLandComparables ?? [] : [])
+                .Select((c, i) => (Ref: $"{RefOf(c.ReferenceCode, i)} (أرض التكلفة)", c.TransactionDate)))
+            .ToList();
         var afterCutoff = input.ComparableDateCutoff is { } dateCutoff
-            ? comps
-                .Select((c, i) => (Ref: RefOf(c.ReferenceCode, i), c.TransactionDate))
+            ? datedComps
                 .Where(x => x.TransactionDate is { } d && d > dateCutoff)
                 .ToList()
             : [];
@@ -456,8 +469,7 @@ public static class ValuationMethodologyAlertRules
                 input.ComparableDateCutoffIsPeriodEnd
                     ? "مقارن بتاريخ لاحق لنهاية فترة التقييم"
                     : "مقارن بتاريخ لاحق لتاريخ التقييم",
-                input.MarketApproachRelevant
-                    && comps.Count > 0
+                datedComps.Count > 0
                     && input.ComparableDateCutoff is { } cutoff
                     && input.Today is { } today
                     && cutoff < today,
@@ -653,11 +665,21 @@ public static class ValuationMethodologyAlertRules
     /// Fixed 2026-10-28: every custom item counted as an extra here while the screen listed a
     /// custom floor under the building areas, so m8 fired on a warehouse's main building.
     /// </summary>
+    /// <summary>
+    /// An addition line that alert 8 asks a rationale for.
+    /// How it works: a known key is an extra only when custom and outside the floor areas
+    /// (<see cref="CostLineItemKeys.IsAreaGroup"/>, by kind or by name); a legacy row without a key
+    /// is judged by its kind and label.
+    /// Edge cases: fixed 2026-11-04 (A→Z #52/#65/#90): a custom «الدور الثاني» / «الميزانين» saved as
+    /// «other» was flagged «بند إضافي/أخرى بلا مبرر». An extra that adds nothing (zero quantity or
+    /// unit cost) is not flagged — it cannot double-count the floor rate (A→Z #78, «المسبح» at 0).
+    /// </summary>
     private static bool LooksLikeExtra(ValuationMethodologyAlertCostLineInput l)
     {
+        if (l.AreaSqm <= 0m || l.UnitCostSar <= 0m) return false;
         if (CostLineItemKeys.IsKnown(l.ItemKey))
             return CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.Custom
-                   && !string.Equals(l.StructureKind?.Trim(), BuildingStructureKinds.Floor, StringComparison.OrdinalIgnoreCase);
+                   && !CostLineItemKeys.IsAreaGroup(l.ItemKey, l.StructureKind, l.Label);
         var kind = l.StructureKind?.Trim() ?? "";
         var label = l.Label ?? "";
         return kind.Equals(BuildingStructureKinds.Other, StringComparison.OrdinalIgnoreCase)

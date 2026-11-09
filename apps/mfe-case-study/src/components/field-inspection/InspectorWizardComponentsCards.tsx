@@ -17,12 +17,29 @@ import {
   isShopHiddenInspectorComponentKey,
   type InspectorComponentPhotoKey,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
-import { inspectorBoolPillClass, listComponentBoolPhotoSlots } from "./inspector-wizard-state";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
+import {
+  INSPECTOR_ANNEX_COUNT_FIELDS,
+  annexAnswerPatch,
+  inspectorBoolPillClass,
+  inspectorComponentCountFields,
+  listComponentBoolPhotoSlots,
+} from "./inspector-wizard-state";
 import { InspectorComponentBoolPills, InspectorPresentChip } from "./InspectorComponentBoolPills";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 import { wholeCountInput } from "../../lib/app-data/specialist-components";
 
+/**
+ * The desktop wizard's «مكونات العقار» and «رخصة البناء» cards (none for land).
+ *
+ * How it works: the counts come from `inspectorComponentCountFields(isShop)` — the phone's list —
+ * with a proof-photo field for a showroom / well; then the «يوجد ملحق» pill with the annex counts
+ * (`INSPECTOR_ANNEX_COUNT_FIELDS`, saved through `annexAnswerPatch`) and the yes/no component pills.
+ *
+ * Edge cases: fixed 2026-11-04 — seven counts (جاكوزي، غرف الطعام، المجالس، غرف الخدم، غرفة حارس،
+ * مستودع، ملاعب أطفال) existed on the phone only; the annex was two checkboxes that stored «1»
+ * whatever the real count; a commercial shop still showed «يوجد ملحق» (the phone hides it).
+ */
 export function InspectorWizardComponentsCards({
   deedNumber,
   draft,
@@ -59,92 +76,48 @@ export function InspectorWizardComponentsCards({
       {!isLand ? (
         <div id="ins-components-section">
         <InsCard title="مكونات العقار">
+          {/* The phone's count list (`inspectorComponentCountFields`) — A→Z 2026-11-02 #33 found
+              «مواقف» on the phone only; 2026-11-04 seven more counts were phone-only. */}
           <InsFieldsGrid min={130} centered>
-            {showShop("roomCount") ? (
-              <InsEditField
-                label="عدد الغرف"
-                value={draft.roomCount}
-                ltr
-                
-                onChange={(v) => onPatch({ roomCount: wholeCountInput(v) })}
-              disabled={!editable} />
-            ) : null}
-            {showShop("hallCount") ? (
-              <InsEditField
-                label="عدد الصالات"
-                value={draft.hallCount}
-                ltr
-                
-                onChange={(v) => onPatch({ hallCount: wholeCountInput(v) })}
-              disabled={!editable} />
-            ) : null}
-            {showShop("unitCount") ? (
-              <InsEditField
-                label="عدد الشقق"
-                value={draft.unitCount}
-                ltr
-                
-                onChange={(v) => onPatch({ unitCount: wholeCountInput(v) })}
-              disabled={!editable} />
-            ) : null}
-            <InsEditField
-              label="دورات المياه"
-              value={draft.bathroomCount}
-              ltr
-              
-              onChange={(v) => onPatch({ bathroomCount: wholeCountInput(v) })}
-            disabled={!editable} />
-            <ComponentCountWithPhotoField
-              label="المعارض"
-              countValue={draft.showroomCount}
-              photoKey="showroom"
-              photoLabel="إرفاق صورة للمعرض التجاري"
-              attachment={draft.componentPhotoAttachments.showroom}
-              taskId={draft.taskId}
-              stamp=""
-              deedNumber={deedNumber}
-              draft={draft}
-              editMode={editable}
-              disabled={locked}
-              invalid={missingComponentPhotoKey === "showroom"}
-              onPatch={onPatch}
-            />
-            {showShop("wellCount") ? (
-              <ComponentCountWithPhotoField
-                label="الآبار"
-                countValue={draft.wellCount}
-                photoKey="well"
-                photoLabel="إرفاق صورة البئر"
-                attachment={draft.componentPhotoAttachments.well}
-                taskId={draft.taskId}
-                stamp=""
-                deedNumber={deedNumber}
-                draft={draft}
-                editMode={editable}
-                disabled={locked}
-                invalid={missingComponentPhotoKey === "well"}
-                onPatch={onPatch}
-              />
-            ) : null}
-            {showShop("towerCount") ? (
-              <InsEditField
-                label="الأبراج"
-                value={draft.towerCount}
-                ltr
-                
-                onChange={(v) => onPatch({ towerCount: wholeCountInput(v) })}
-              disabled={!editable} />
-            ) : null}
+            {inspectorComponentCountFields(isShop).map((field) =>
+              field.photo ? (
+                <ComponentCountWithPhotoField
+                  key={field.key}
+                  label={field.label}
+                  countValue={draft[field.key]}
+                  photoKey={field.photo.key}
+                  photoLabel={field.photo.label}
+                  attachment={draft.componentPhotoAttachments[field.photo.key]}
+                  taskId={draft.taskId}
+                  stamp=""
+                  deedNumber={deedNumber}
+                  draft={draft}
+                  editMode={editable}
+                  disabled={locked}
+                  invalid={missingComponentPhotoKey === field.photo.key}
+                  onPatch={onPatch}
+                />
+              ) : (
+                <InsEditField
+                  key={field.key}
+                  id={`ins-${field.key}`}
+                  label={field.label}
+                  value={draft[field.key]}
+                  ltr
+                  onChange={(v) => onPatch({ [field.key]: wholeCountInput(v) })}
+                  disabled={!editable}
+                />
+              ),
+            )}
           </InsFieldsGrid>
           <div className="mt-3.5 flex flex-wrap items-center gap-2 border-t border-border pt-3">
-            {editable ? (
+            {/* A commercial shop records no annex — hidden like on the phone (2026-11-04). */}
+            {!showShop("hasAnnex") ? null : editable ? (
               <button
                 type="button"
                 className={inspectorBoolPillClass(draft.hasAnnex === "نعم")}
                 onClick={() =>
-                  onPatch({
-                    hasAnnex: draft.hasAnnex === "نعم" ? "لا" : "نعم",
-                  })
+                  onPatch(annexAnswerPatch(draft.hasAnnex === "نعم" ? "لا" : "نعم"))
                 }
               >
                 يوجد ملحق
@@ -166,42 +139,23 @@ export function InspectorWizardComponentsCards({
               </span>
             ) : null}
           </div>
-          {draft.hasAnnex === "نعم" ? (
-            editable ? (
-              <div className="mt-2.5 flex flex-wrap gap-4 rounded-lg bg-surface-2 px-3 py-2.5">
-                <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
-                  <input
-                    type="checkbox"
-                    className="size-[15px] accent-ink"
-                    checked={Boolean(draft.annexUpperCount.trim())}
-                    onChange={(e) =>
-                      onPatch({
-                        annexUpperCount: e.target.checked ? "1" : "",
-                      })
-                    }
+          {/* Annex counts as numbers, like the phone — the old checkboxes stored only «1». */}
+          {showShop("hasAnnex") && draft.hasAnnex === "نعم" ? (
+            <div className="mt-2.5 rounded-lg bg-surface-2 px-3 py-2.5">
+              <InsFieldsGrid min={130} centered>
+                {INSPECTOR_ANNEX_COUNT_FIELDS.map(({ key, label }) => (
+                  <InsEditField
+                    key={key}
+                    id={`ins-${key}`}
+                    label={label}
+                    value={draft[key]}
+                    ltr
+                    onChange={(v) => onPatch({ [key]: wholeCountInput(v) })}
+                    disabled={!editable}
                   />
-                  ملحق علوي
-                </label>
-                <label className="flex cursor-pointer items-center gap-1.5 text-xs text-text-2">
-                  <input
-                    type="checkbox"
-                    className="size-[15px] accent-ink"
-                    checked={Boolean(draft.annexGroundCount.trim())}
-                    onChange={(e) =>
-                      onPatch({
-                        annexGroundCount: e.target.checked ? "1" : "",
-                      })
-                    }
-                  />
-                  ملحق سفلي
-                </label>
-              </div>
-            ) : (
-              <div className="mt-2.5 flex flex-wrap gap-2">
-                {draft.annexUpperCount.trim() ? <InspectorPresentChip label="ملحق علوي" /> : null}
-                {draft.annexGroundCount.trim() ? <InspectorPresentChip label="ملحق سفلي" /> : null}
-              </div>
-            )
+                ))}
+              </InsFieldsGrid>
+            </div>
           ) : null}
         </InsCard>
         </div>

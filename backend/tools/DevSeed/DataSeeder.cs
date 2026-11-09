@@ -1305,6 +1305,11 @@ public static class DataSeeder
                     ? seed.ContractType == ContractType.Internal ? "employee" : "contractor"
                     : null,
 
+                // Seeded specialists hold every sub-role (launch rule 2026-11-02).
+                CaseSpecialistSubRoles = PrototypeRoleResolver.LegacyRoleIdForJobTitle(seed.JobTitle) == StaffRoleIds.CaseSpecialist
+                    ? CaseSpecialistSubRoles.AllFlags
+                    : 0,
+
                 DistributionAssigneeId = ResolveSeedDistributionAssigneeId(
                     seed.LoginUsername,
                     PrototypeRoleResolver.LegacyRoleIdForJobTitle(seed.JobTitle),
@@ -1364,6 +1369,13 @@ public static class DataSeeder
             profile.InspectorType = seed.JobTitle == "معاين ميداني"
                 ? seed.ContractType == ContractType.Internal ? "employee" : "contractor"
                 : null;
+
+            // Keep a specialist's narrowed sub-roles; any other role holds none (CHECK constraint).
+            profile.CaseSpecialistSubRoles = profile.RoleId == StaffRoleIds.CaseSpecialist
+                ? profile.CaseSpecialistSubRoles is > 0 and <= CaseSpecialistSubRoles.AllFlags
+                    ? profile.CaseSpecialistSubRoles
+                    : CaseSpecialistSubRoles.AllFlags
+                : 0;
 
             profile.DistributionAssigneeId = ResolveSeedDistributionAssigneeId(
                 seed.LoginUsername,
@@ -1607,6 +1619,7 @@ public static class DataSeeder
             profile.ContractType = ContractType.ServiceProvider;
 
             profile.RoleId = "engineering-office";
+            profile.CaseSpecialistSubRoles = 0;
 
             profile.JobTitle = "مقدم خدمة — جهة";
 

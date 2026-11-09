@@ -1,6 +1,7 @@
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Rules;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -58,7 +59,7 @@ public class AttachmentAccessRulesTests
         Assert.True(AttachmentAccessRules.Allows("owner-1", new PermissionsDto
         {
             UserId = "staff",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         }));
         Assert.False(AttachmentAccessRules.Allows("owner-1", new PermissionsDto
         {
@@ -92,7 +93,7 @@ public class AttachmentAccessRulesTests
         Assert.True(AttachmentAccessRules.AllowsDelete("owner-1", new PermissionsDto
         {
             UserId = "staff",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         }));
     }
 
@@ -121,7 +122,13 @@ public class AttachmentAccessRulesTests
     private const string Valued = "valued-document";
 
     private static PermissionsDto Actor(string userId, string role, params string[] capabilities) =>
-        new() { UserId = userId, PrototypeRole = role, Capabilities = capabilities };
+        new()
+        {
+            UserId = userId,
+            PrototypeRole = role,
+            Capabilities = capabilities,
+            SubRoles = role == "case-specialist" ? CaseSpecialistSubRoles.All : [],
+        };
 
     [Theory]
     [InlineData("case-specialist", true)]

@@ -716,9 +716,15 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("DraftNumber")
-                        .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime?>("HandedToReviewAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("HandedToReviewByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("LinkKind")
                         .HasMaxLength(32)
@@ -738,9 +744,27 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<Guid?>("MergedIntoTransactionId")
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ReceivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReceivedByName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ReceivedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("ReferenceNumber")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime?>("ReviewApprovedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReviewApprovedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<Guid?>("StudyHolderPropertyId")
                         .HasColumnType("uuid");
@@ -881,6 +905,171 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
 
                             t.HasCheckConstraint("CK_TransactionCancellations_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending', 'approved', 'rejected', 'reactivated')");
                         });
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.TransactionExternalReceipt", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Awaited")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("CancelledAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedByName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<string>("PartyName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("ReceivedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReceivedByName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ReceivedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransactionId", "Status");
+
+                    b.ToTable("TransactionExternalReceipts", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_TransactionExternalReceipts_Status", "\"Status\" IS NULL OR \"Status\" IN ('pending', 'received', 'cancelled')");
+                        });
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.TransactionReopening", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClosedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ClosedByName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("ClosedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("EnfazReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("NeedsFieldWork")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("OpenedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("OpenedByName")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("OpenedByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<Guid>("PropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<bool>("ReopensStudy")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("ReopensValuation")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("UploadedAgainAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TransactionId", "Status");
+
+                    b.ToTable("TransactionReopenings", "case_study", t =>
+                        {
+                            t.HasCheckConstraint("CK_TransactionReopenings_Source", "\"Source\" IS NULL OR \"Source\" IN ('enfaz', 'internal')");
+
+                            t.HasCheckConstraint("CK_TransactionReopenings_Status", "\"Status\" IS NULL OR \"Status\" IN ('open', 'awaiting_reply', 'closed')");
+                        });
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.TransactionWorkMarker", b =>
+                {
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("AtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("TransactionId");
+
+                    b.ToTable("TransactionWorkMarkers", "case_study");
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrder", b =>
@@ -1224,6 +1413,13 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
 
+                    b.Property<DateTime?>("ReadyForUploadAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReadyForUploadByUserId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
                     b.Property<string>("RealEstateRegDate")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
@@ -1233,6 +1429,10 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .HasColumnType("character varying(512)");
 
                     b.Property<string>("RealEstateRegNumber")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<string>("ReferenceNumber")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
 
@@ -1362,6 +1562,9 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.HasIndex("DeedNumber");
 
                     b.HasIndex("EnfazHandoverAtUtc");
+
+                    b.HasIndex("ReferenceNumber")
+                        .IsUnique();
 
                     b.HasIndex("RegionId");
 
@@ -1595,6 +1798,33 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                         .WithMany()
                         .HasForeignKey("MergedIntoTransactionId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.TransactionExternalReceipt", b =>
+                {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.Transaction", null)
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.TransactionReopening", b =>
+                {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.Transaction", null)
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.TransactionWorkMarker", b =>
+                {
+                    b.HasOne("RealEstateEval.CaseStudy.Domain.Transaction", null)
+                        .WithOne()
+                        .HasForeignKey("RealEstateEval.CaseStudy.Domain.TransactionWorkMarker", "TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RealEstateEval.CaseStudy.Domain.WorkOrder", b =>

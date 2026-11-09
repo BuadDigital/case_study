@@ -21,7 +21,7 @@ public class PropertyPhotoMarksServiceTests
     private static readonly Guid PropertyId = Guid.Parse("33333333-aaaa-aaaa-aaaa-333333333333");
 
     private static readonly PartySubmissionActor Specialist =
-        new() { UserId = "spec-1", DisplayName = "الأخصائي", PrototypeRole = "case-specialist" };
+        new() { UserId = "spec-1", DisplayName = "الأخصائي", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All };
 
     private static CaseStudyDbContext CreateDb() =>
         new(new DbContextOptionsBuilder<CaseStudyDbContext>()
@@ -193,6 +193,25 @@ public class PropertyPhotoMarksServiceTests
         });
 
         Assert.Contains("_", errors.Keys);
+    }
+
+    /// <summary>Omar 2026-11-08: every inspector photo's class, apart from the report's picks.</summary>
+    [Fact]
+    public void Photo_classes_alone_are_stored_and_unknown_ones_refused()
+    {
+        var json = PropertyPhotoMarksRules.Serialize(new PropertyPhotoMarksDto
+        {
+            PhotoClasses = new() { [" a1 "] = "surroundings", ["a2"] = "document", [" "] = "exterior" },
+        });
+
+        var stored = PropertyPhotoMarksRules.Parse(json).PhotoClasses;
+        Assert.Equal(2, stored.Count);
+        Assert.Equal("surroundings", stored["a1"]);
+        Assert.Equal("document", stored["a2"]);
+        Assert.Contains("photoClasses", PropertyPhotoMarksRules.Validate(new PropertyPhotoMarksDto
+        {
+            PhotoClasses = new() { ["a1"] = "kitchen" },
+        }).Keys);
     }
 
     [Fact]

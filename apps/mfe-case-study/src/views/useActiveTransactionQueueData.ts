@@ -16,6 +16,8 @@ import {
 } from "react";
 import { useSearchParams } from "next/navigation";
 import { useReportDraftStates } from "@platform/app-shared/workflow/use-report-draft-states";
+import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
+import { transactionProgress } from "../lib/app-data/my-work-model";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { getAuthSession } from "@platform/auth-client";
@@ -267,10 +269,17 @@ export function useActiveTransactionQueueData({
     [listed],
   );
 
-  // The appraiser queue's finer labels (draft sent / approved) come from the valuation service.
+  // The appraiser queue's finer labels (draft sent / approved) and «المعاملات النشطة»'s «بانتظار»
+  // after the study is issued come from the valuation service.
+  const tracksProgress = isAllTransactionsTable && !config.partyAssignee;
   const draftStateVersion = useReportDraftStates(
-    listed.map((t) => t.propertyId),
-    isPropertyAppraisalTable,
+    isPropertyAppraisalTable
+      ? listed.map((t) => t.propertyId)
+      : // Only issued, not handed-over studies have a draft to read (the batch read caps at 200 ids).
+        listed
+          .filter((t) => t.kind === "case-study-property" && t.studyReportIssued && !t.propertyHandedOverToEnfaz)
+          .map((t) => t.propertyId),
+    isPropertyAppraisalTable || tracksProgress,
   );
 
   const selectedTask = useMemo((): WorkflowTask | null => {
@@ -310,8 +319,17 @@ export function useActiveTransactionQueueData({
 
   const allTransactionsRowMeta = useMemo(() => {
     if (!isAllTransactionsTable) return [];
-    return buildAllTransactionsQueueRowMeta(listed, poByNumber, now);
-  }, [isAllTransactionsTable, listed, poByNumber, now]);
+    if (!tracksProgress) return buildAllTransactionsQueueRowMeta(listed, poByNumber, now);
+    void draftStateVersion;
+    const all = tasks ?? EMPTY_TASKS;
+    const byId = new Map(all.map((t) => [t.id, t]));
+    // The row may stand on a party task (its latest stage) — progress is read on its case-study parent.
+    const progressOf = (task: WorkflowTask) => {
+      const parent = task.kind === "case-study-property" ? task : byId.get(task.parentTaskId ?? "");
+      return parent ? transactionProgress(parent, all, getReportDraftState) : null;
+    };
+    return buildAllTransactionsQueueRowMeta(listed, poByNumber, now, progressOf);
+  }, [isAllTransactionsTable, tracksProgress, listed, poByNumber, now, tasks, draftStateVersion]);
 
   const primaryRowMeta = useMemo(() => {
     if (isDistributionTable || isAllTransactionsTable) return [];

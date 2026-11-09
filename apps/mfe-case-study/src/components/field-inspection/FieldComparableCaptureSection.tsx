@@ -22,7 +22,7 @@ import {
   type PropertyComparableLinkItemDto,
   type ValuationListItemDto,
 } from "@platform/api-client";
-import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   comparableDealLabel,
   comparableDraftToUpsert,
@@ -31,7 +31,7 @@ import {
   firstComparableEntryErrorTarget,
   validateComparableEntry,
   type ComparableEntryFieldErrors,
-} from "../../lib/comparable-entry";
+} from "@platform/app-shared/app-data/comparable-entry";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
 import { scheduleScrollToFormField } from "@platform/app-shared/form-ux";
 import { ComparablePropertyEntryFields } from "../comparables/ComparablePropertyEntryFields";

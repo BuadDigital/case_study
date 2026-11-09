@@ -34,6 +34,8 @@ public sealed class RateLimitingOptions
     private static readonly string[] DefaultAuthPathPrefixes =
     [
         "/api/auth/login",
+        // Answers who owns a mobile — the strict budget caps how fast numbers can be tried.
+        "/api/auth/login-hint",
         "/api/auth/refresh",
     ];
 

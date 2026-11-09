@@ -70,6 +70,8 @@ describe("report draft choices", () => {
     expect(versionedReportNo("PRV-2026-00123", 1)).toBe("PRV-2026-00123");
     expect(versionedReportNo("PRV-2026-00123", undefined)).toBe("PRV-2026-00123");
     expect(versionedReportNo("PRV-2026-00123", 2)).toBe("PRV-2026-00123/2");
+    // A linked property's report keeps its «-L» (numbering 2026-11-08).
+    expect(versionedReportNo("PRV-26-00123-L", 2)).toBe("PRV-26-00123-L/2");
     expect(versionedReportNo("", 2)).toBe("");
   });
 

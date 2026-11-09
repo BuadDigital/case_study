@@ -10,9 +10,15 @@ namespace RealEstateEval.CaseStudy.Application.Services;
 public sealed partial class TransactionStateService
 {
     public const string ReturnRoleDeniedAr =
-        "ليس لديك صلاحية استرجاع المعاملة من إنفاذ — الاسترجاع لأخصائي دراسة الحالة";
+        "ليس لديك صلاحية إعادة فتح المعاملة — إعادة الفتح لأخصائي دراسة الحالة";
 
-    public const string NotHandedOverAr = "المعاملة غير مرفوعة على إنفاذ — لا شيء لاسترجاعه";
+    public const string NotHandedOverAr =
+        "لم يُودَع التقييم ولم تُرفع المعاملة بعد — قبل الإيداع يسحب المراجع المسودة من المقيّم بدل إعادة الفتح";
+
+    public const string ReopeningActiveAr =
+        "للمعاملة إعادة فتح قائمة — أكملها (أعد رفعها على إنفاذ) قبل إعادة فتح جديدة";
+
+    public const string EnfazReferenceRequiredAr = "اكتب رقم ملاحظة إنفاذ أو مرجعها";
 
     public const string ReturnNothingChosenAr = "اختر ما يُعاد فتحه: تقرير دراسة الحالة أو تقرير التقييم";
 
@@ -35,7 +41,7 @@ public sealed partial class TransactionStateService
         CaseStudyReportActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanReturnFromEnfaz(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanReopenTransaction(actor.Staff))
             return (null, Fail(ReturnRoleDeniedAr));
 
         var reason = (request.Reason ?? "").Trim();
@@ -46,13 +52,25 @@ public sealed partial class TransactionStateService
                 ["reason"] = $"سبب الاسترجاع مطلوب ({MinDecisionReasonLength} أحرف على الأقل)",
             });
         }
-        if (!request.ReopenStudy && !request.ReopenValuation)
+        // Field work reopens the study (the inspector's work feeds it); the task is made from the screen.
+        var reopenStudy = request.ReopenStudy || request.NeedsFieldWork;
+        if (!reopenStudy && !request.ReopenValuation)
             return (null, Fail(ReturnNothingChosenAr));
+        var source = string.Equals(request.Source?.Trim(), TransactionReopeningSources.Internal, StringComparison.OrdinalIgnoreCase)
+            ? TransactionReopeningSources.Internal
+            : TransactionReopeningSources.Enfaz;
+        var enfazReference = source == TransactionReopeningSources.Enfaz ? request.EnfazReference?.Trim() : null;
+        if (source == TransactionReopeningSources.Enfaz && request.Source is not null && string.IsNullOrEmpty(enfazReference))
+            return (null, new Dictionary<string, string> { ["enfazReference"] = EnfazReferenceRequiredAr });
 
         var facts = await LoadFactsAsync(workOrderId, propertyId, cancellationToken);
         if (facts is null) return (null, Fail("المعاملة غير موجودة"));
         var (input, _, property) = facts.Value;
-        if (!input.EnfazHandedOver) return (null, Fail(NotHandedOverAr));
+        // Omar 2026-11-05: after review approved — the valuation deposited, or the transaction uploaded.
+        if (!input.EnfazHandedOver && !input.ValuationReportClosed) return (null, Fail(NotHandedOverAr));
+        if (property.TransactionId != Guid.Empty
+            && await db.GetActiveReopeningAsync(property.TransactionId, cancellationToken) is not null)
+            return (null, Fail(ReopeningActiveAr));
         // Billing-ready guard. How it works: a deed the accountant marked «جاهز للفوترة» has its figures on
         // Enfaz, and Enfaz itself no longer takes modification requests for it, so it is refused here.
         // Edge cases: it sits BEFORE the valuation reopen and every stamp clear on purpose — those steps
@@ -68,6 +86,11 @@ public sealed partial class TransactionStateService
         };
         var notices = new List<string>();
         var studyOutcome = "not_requested";
+
+        // The transaction leaves review's approval: its data and reports are edited again (Omar 2026-11-05).
+        if (transactions is not null)
+            await transactions.SetReviewStateAsync(
+                propertyId, TransactionReviewStates.Study, actor.UserId, _time.UtcNow(), cancellationToken);
         var valuationOutcome = "not_requested";
 
         // The valuation first: a deposited report reopens as a new version (Valuation also reopens the appraiser's
@@ -98,7 +121,7 @@ public sealed partial class TransactionStateService
             notices.Add("أُعيد فتح تقرير التقييم بنسخة جديدة — يعيد المقيّم تقييمه ثم يُعدّ الأخصائي المسودة ويودع من جديد");
         }
 
-        if (request.ReopenStudy)
+        if (reopenStudy)
         {
             var parent = (await db.ListPropertyTasksAsync(propertyId, cancellationToken))
                 .Where(t => t.Kind == WorkflowTaskKind.CaseStudyProperty)
@@ -107,9 +130,21 @@ public sealed partial class TransactionStateService
             if (parent is null || caseStudyReports is null)
                 return (null, Fail("تعذّر تحديد مهمة دراسة الحالة لإعادة فتح تقريرها"));
 
-            // Reopening with clearEnfazHandover clears the stamp inside the report's own transaction.
+            // Reopening with clearEnfazHandover clears the stamp inside the report's own transaction. Any
+            // specialist reopens the transaction (Omar 2026-11-05), so the study reopen runs on its authority.
+            var studyActor = actor.Staff.HoldsStudy
+                ? actor
+                : new CaseStudyReportActor
+                {
+                    UserId = actor.UserId,
+                    DisplayName = actor.DisplayName,
+                    // The supervisor / CDO reopen as a study holder for this one step (the audit keeps the user id).
+                    PrototypeRole = StaffRoleIds.CaseSpecialist,
+                    DistributionAssigneeId = actor.DistributionAssigneeId,
+                    SubRoles = [.. actor.SubRoles, CaseSpecialistSubRoles.Study],
+                };
             var (reopened, errors) = await caseStudyReports.ReopenAsync(
-                parent.Id, reason, clearEnfazHandover: true, actor, cancellationToken);
+                parent.Id, reason, clearEnfazHandover: true, studyActor, cancellationToken);
             if (errors is not null) return (null, errors);
             if (reopened is null) return (null, Fail("مهمة دراسة الحالة غير موجودة"));
 
@@ -125,7 +160,31 @@ public sealed partial class TransactionStateService
         if (current is null) return (null, Fail("المعاملة غير موجودة"));
         if (current.ClearEnfazHandover())
             await db.SaveChangesAsync(cancellationToken);
-        notices.Insert(0, "مُسح ختم التسليم على إنفاذ");
+        if (input.EnfazHandedOver) notices.Insert(0, "مُسح ختم التسليم على إنفاذ");
+
+        // The reopening itself: it ends when the transaction goes back to Enfaz (Omar 2026-11-05).
+        if (current.TransactionId != Guid.Empty)
+        {
+            db.AddReopening(new TransactionReopening
+            {
+                Id = Guid.NewGuid(),
+                TransactionId = current.TransactionId,
+                PropertyId = propertyId,
+                Source = source,
+                EnfazReference = string.IsNullOrEmpty(enfazReference) ? null : enfazReference,
+                Reason = reason,
+                ReopensStudy = reopenStudy,
+                ReopensValuation = request.ReopenValuation,
+                NeedsFieldWork = request.NeedsFieldWork,
+                Status = TransactionReopeningStatuses.Open,
+                OpenedAtUtc = now,
+                OpenedByUserId = string.IsNullOrWhiteSpace(actor.UserId) ? null : actor.UserId.Trim(),
+                OpenedByName = string.IsNullOrWhiteSpace(actor.DisplayName) ? null : actor.DisplayName.Trim(),
+            });
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        if (request.NeedsFieldWork)
+            notices.Add("أنشئ مهمة للعمل الميداني المطلوب (إعادة تصوير أو زيارة) من «مهمة تشغيلية»");
 
         if (request.ReopenValuation && !input.ValuationReportClosed)
         {
@@ -145,7 +204,10 @@ public sealed partial class TransactionStateService
                 {
                     reason,
                     workOrderId,
-                    reopenedStudy = request.ReopenStudy,
+                    reopenedStudy = reopenStudy,
+                    source,
+                    enfazReference,
+                    needsFieldWork = request.NeedsFieldWork,
                     reopenedValuation = request.ReopenValuation,
                     study = studyOutcome,
                     valuation = valuationOutcome,
@@ -160,8 +222,8 @@ public sealed partial class TransactionStateService
                 poNumber,
                 propertyId,
                 $"enfaz_handover_returned:{now.Ticks}",
-                "أُعيدت المعاملة من إنفاذ",
-                reason,
+                source == TransactionReopeningSources.Enfaz ? "أُعيد فتح المعاملة بملاحظة من إنفاذ" : "أُعيد فتح المعاملة",
+                string.IsNullOrEmpty(enfazReference) ? reason : $"{enfazReference} — {reason}",
                 "warn",
                 now,
                 cancellationToken);
@@ -174,7 +236,11 @@ public sealed partial class TransactionStateService
         var refreshed = await LoadFactsAsync(workOrderId, propertyId, cancellationToken);
         if (refreshed is null) return (null, Fail("المعاملة غير موجودة"));
         var (freshInput, hasSurvey, freshProperty) = refreshed.Value;
-        return (ToDto(workOrderId, propertyId, freshInput, hasSurvey, freshProperty, notices), null);
+        return (await WithReopeningAsync(
+            ToDto(workOrderId, propertyId, freshInput, hasSurvey, freshProperty, notices),
+            freshInput,
+            freshProperty,
+            cancellationToken), null);
     }
 
     private static Dictionary<string, string> Fail(string message) => new() { ["_"] = message };

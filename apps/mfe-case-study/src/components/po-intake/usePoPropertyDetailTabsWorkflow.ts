@@ -82,7 +82,7 @@ export function usePoPropertyDetailTabsWorkflow({
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
-  const { role } = useAppAccess();
+  const { role, access } = useAppAccess();
   const visibleTabs = useMemo(() => propertyDetailTabsForRole(role), [role]);
   usePreloadPropertyDetailTabChunks(
     useMemo(() => visibleTabs.map((t) => t.id), [visibleTabs]),
@@ -443,6 +443,7 @@ export function usePoPropertyDetailTabsWorkflow({
 
   return {
     role,
+    access,
     router,
     visibleTabs,
     showCaseStudySideRail,

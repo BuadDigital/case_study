@@ -78,7 +78,7 @@ public sealed class SurveyFreezeLiftTests
     [InlineData(null, false)]
     public void Only_the_case_specialist_may_lift(string? role, bool allowed)
     {
-        Assert.Equal(allowed, PoRoleMatrixRules.CanLiftSurveyFreeze(role));
+        Assert.Equal(allowed, PoRoleMatrixRules.CanLiftSurveyFreeze(TestStaff.Of(role)));
     }
 
     [Theory]
@@ -147,7 +147,7 @@ public sealed class SurveyFreezeLiftTests
         Assert.True(await rig.Lookup.HasSurveyFreezingAsync(Po, PropertyId.ToString("D")));
 
         var (result, errors) = await rig.Service.LiftSurveyFreezeAsync(
-            Request(Reason), "specialist-1", "case-specialist");
+            Request(Reason), "specialist-1", TestStaff.Of("case-specialist"));
 
         Assert.Null(errors);
         Assert.Equal(1, result!.Lifted);
@@ -180,11 +180,11 @@ public sealed class SurveyFreezeLiftTests
         var elsewhere = rig.AddFailure(PropertyFailureStatus.Internal, OtherPropertyId);
         await rig.SaveFailuresAsync();
 
-        var first = await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", "case-specialist");
+        var first = await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", TestStaff.Of("case-specialist"));
         Assert.Equal(2, first.Result!.Lifted);
 
         var again = await rig.Service.LiftSurveyFreezeAsync(
-            Request("سبب ثانٍ لا يجب أن يحل محل الأول"), "specialist-2", "case-specialist");
+            Request("سبب ثانٍ لا يجب أن يحل محل الأول"), "specialist-2", TestStaff.Of("case-specialist"));
         Assert.Null(again.Errors);
         Assert.Equal(0, again.Result!.Lifted);
 
@@ -209,7 +209,7 @@ public sealed class SurveyFreezeLiftTests
         await using var rig = Arrange();
         rig.AddFailure(PropertyFailureStatus.Internal);
         await rig.SaveFailuresAsync();
-        await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", "case-specialist");
+        await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", TestStaff.Of("case-specialist"));
         Assert.False(await rig.Lookup.HasSurveyFreezingAsync(Po, PropertyId.ToString("D")));
 
         rig.AddFailure(PropertyFailureStatus.Internal);
@@ -218,7 +218,7 @@ public sealed class SurveyFreezeLiftTests
         Assert.True(await rig.Lookup.HasSurveyFreezingAsync(Po, PropertyId.ToString("D")));
 
         // ... and a second lift covers just the new one.
-        var second = await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", "case-specialist");
+        var second = await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", TestStaff.Of("case-specialist"));
         Assert.Equal(1, second.Result!.Lifted);
         Assert.False(await rig.Lookup.HasSurveyFreezingAsync(Po, PropertyId.ToString("D")));
     }
@@ -231,7 +231,7 @@ public sealed class SurveyFreezeLiftTests
         await rig.SaveFailuresAsync();
 
         Assert.False(await rig.Lookup.HasSurveyFreezingAsync(Po, PropertyId.ToString("D")));
-        var result = await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", "case-specialist");
+        var result = await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", TestStaff.Of("case-specialist"));
         Assert.Equal(0, result.Result!.Lifted);
         Assert.Empty(rig.Audit.Entries);
     }
@@ -248,7 +248,7 @@ public sealed class SurveyFreezeLiftTests
         rig.AddFailure(PropertyFailureStatus.Internal);
         await rig.SaveFailuresAsync();
 
-        var (result, errors) = await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "user-1", role);
+        var (result, errors) = await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "user-1", TestStaff.Of(role));
 
         Assert.Null(result);
         Assert.Equal(FailureRecordRules.LiftSurveyFreezeRoleDeniedAr, errors!["_"]);
@@ -265,7 +265,7 @@ public sealed class SurveyFreezeLiftTests
         await rig.SaveFailuresAsync();
 
         var (result, errors) = await rig.Service.LiftSurveyFreezeAsync(
-            Request("   قصير  "), "specialist-1", "case-specialist");
+            Request("   قصير  "), "specialist-1", TestStaff.Of("case-specialist"));
 
         Assert.Null(result);
         Assert.Equal(["reason"], errors!.Keys);
@@ -280,7 +280,7 @@ public sealed class SurveyFreezeLiftTests
         var b = rig.AddFailure(PropertyFailureStatus.Review);
         await rig.SaveFailuresAsync();
 
-        await rig.Service.LiftSurveyFreezeAsync(Request($"  {Reason}  "), "specialist-1", "case-specialist");
+        await rig.Service.LiftSurveyFreezeAsync(Request($"  {Reason}  "), "specialist-1", TestStaff.Of("case-specialist"));
 
         var audit = Assert.Single(rig.Audit.Entries);
         Assert.Equal("failures.survey-freeze.lifted", audit.Action);
@@ -303,7 +303,7 @@ public sealed class SurveyFreezeLiftTests
         var sent = Assert.Single(rig.Notifications.Sent);
         Assert.Equal($"survey-freeze-lifted:{SurveyId}", sent.SourceEvent);
         Assert.Equal(["user-office"], rig.Notifications.Recipients);
-        Assert.Contains(SurveyId.ToString(), sent.Href);
+        Assert.Equal($"/active-survey/{SurveyId}", sent.Href);
         Assert.Contains(Po, sent.Body);
     }
 
@@ -327,7 +327,7 @@ public sealed class SurveyFreezeLiftTests
         Assert.Null(frozen.Result);
         Assert.Equal("الرفع المساحي مجمّد بسبب تعذّر نشط على العقار.", frozen.Errors!["_documentary"]);
 
-        await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", "case-specialist");
+        await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", TestStaff.Of("case-specialist"));
 
         // A fresh failure after the lift: frozen again, same message.
         rig.AddFailure(PropertyFailureStatus.Internal);
@@ -335,7 +335,7 @@ public sealed class SurveyFreezeLiftTests
         var frozenAgain = await rig.Submit.SubmitAsync(SurveyId, office);
         Assert.Equal("الرفع المساحي مجمّد بسبب تعذّر نشط على العقار.", frozenAgain.Errors!["_documentary"]);
 
-        await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", "case-specialist");
+        await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", TestStaff.Of("case-specialist"));
         var submitted = await rig.Submit.SubmitAsync(SurveyId, office);
         Assert.Null(submitted.Errors);
         Assert.Equal(PartyTaskSubmissionStatus.Submitted, submitted.Result!.Status);
@@ -387,7 +387,7 @@ public sealed class SurveyFreezeLiftTests
         Assert.Null(before.SurveyFreezeLiftedAt);
         Assert.Null(before.SurveyFreezeLiftReason);
 
-        await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", "case-specialist");
+        await rig.Service.LiftSurveyFreezeAsync(Request(Reason), "specialist-1", TestStaff.Of("case-specialist"));
 
         var after = Assert.Single(await rig.Lookup.ListForPropertyAsync(Po, PropertyId.ToString("D")));
         Assert.NotNull(after.SurveyFreezeLiftedAt);

@@ -66,7 +66,7 @@ import {
   ValuationWorkShell,
   type ValuationWorkNavAvailability,
   type ValuationWorkScreenId,
-} from "./EvaluatorComparableSelectionPanel";
+} from "./valuation-work/ValuationWorkShell";
 import {
   type EvaluatorWindowTab,
   WORK_SCREENS,
@@ -84,13 +84,16 @@ import {
   refreshEvaluatorReportOutputOnOpen,
   scheduleInvalidateEvaluatorReportOutput,
 } from "../../lib/evaluator/evaluator-report-output-cache";
-import { WORK_ORDER_PROPERTY_CHANGED_EVENT } from "@platform/app-shared/app-data/work-orders-api-config";
 import { linkedPropertyDeeds, transactionDeedLabelOf } from "@platform/api-client";
 import { useTransactionByPropertyQuery } from "../../query/transaction-query";
+import { transactionLandArea } from "../../lib/evaluator/transaction-land-area";
 import { EvaluatorLinkedDeedsCard } from "./EvaluatorLinkedDeedsCard";
-import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "./useInspectorChangedBanner";
 
 export type { EvaluatorWindowTab } from "./evaluator-window-tabs";
+import {
+  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+  WORK_ORDER_PROPERTY_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const EMPTY_FIELD_ERRORS: EvaluatorValidationErrors = {};
 
@@ -340,7 +343,9 @@ export function EvaluatorWindow({
 
   // The transaction above this deed — its live deeds feed the window title
   // and the linked-deeds card, since a linked property is valued as one.
-  const { data: transaction } = useTransactionByPropertyQuery(
+  // While it loads, the valuation screens wait: their first load seeds the land area from it
+  // (a merged transaction's land is the sum of its deeds — A→Z #38).
+  const { data: transaction, isLoading: transactionLoading } = useTransactionByPropertyQuery(
     propertySummary?.property?.id ?? task.propertyId,
   );
 
@@ -620,7 +625,9 @@ export function EvaluatorWindow({
                       />
                     </div>
                     <div className="order-2">
-                      {property?.id ? (
+                      {property?.id && transactionLoading ? (
+                        <InlineLoadingSkeleton className="my-2" />
+                      ) : property?.id ? (
                         <ValuationWorkShell
                           propertyId={property.id}
                           inspectionTaskId={propertySummary?.inspectionTaskId ?? null}
@@ -628,7 +635,8 @@ export function EvaluatorWindow({
                           assignmentType={task.assignmentType ?? undefined}
                           districtHint={property.district}
                           property={{
-                            area: property.area,
+                            // A merged transaction is valued as one: its land is every deed's area.
+                            area: transactionLandArea(property.area, linkedDeeds) ?? undefined,
                             district: property.district,
                             city: property.city,
                             deedNumber: property.deedNumber,

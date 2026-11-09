@@ -482,8 +482,11 @@ public static class ValuationApproachSettingsRules
                  && costScopeKey is not null
                  && !CanEnableCostApproach(propertyType, hasStructuresToValue))
             errors["costScopeKey"] = "لا توجد مكونات محصورة لتقييم المباني — اختر «أرض فقط» أو اطلب من الأخصائي حصرها";
-        else if (CostScopeKeys.IsBuildingOnly(costScopeKey) && !costEnabled)
-            errors["costApproachEnabled"] = "«مباني فقط» تُقيَّم بأسلوب التكلفة — فعّله";
+        // «مباني فقط» no longer forces the cost approach: an apartment or a unit in a building is
+        // valued by the market approach alone as a whole property (2026-11-04, A→Z #44/#57 — the
+        // refused save left the cost approach on, so the gate asked for an empty cost table and
+        // the report printed «أسلوب السوق و أسلوب التكلفة» at 0٪). At least one approach is still
+        // required above.
 
         if (costEnabled && CostScopeKeys.IsLandOnly(costScopeKey))
             errors["costApproachEnabled"] = "نطاق «أرض فقط» لا يُقيَّم بالتكلفة — ألغِ أسلوب التكلفة أو غيّر النطاق";

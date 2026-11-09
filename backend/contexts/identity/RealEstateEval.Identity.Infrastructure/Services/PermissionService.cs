@@ -38,6 +38,7 @@ public sealed class PermissionService : IPermissionService
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var isSuperAdmin = identityRoles.Any(PlatformPermissionCatalog.IsSuperAdminIdentityRole);
         string? prototypeRole;
+        IReadOnlyList<string> subRoles = [];
 
         if (isSuperAdmin)
         {
@@ -52,6 +53,11 @@ public sealed class PermissionService : IPermissionService
             prototypeRole = PrototypeRoleResolver.Resolve(profile, identityRoles.ToList());
             if (!string.IsNullOrWhiteSpace(prototypeRole))
                 PlatformPermissionCatalog.ApplyPrototypeRole(prototypeRole, pages, capabilities);
+            if (string.Equals(prototypeRole, StaffRoleIds.CaseSpecialist, StringComparison.Ordinal))
+            {
+                subRoles = SpecialistSubRoles(profile?.CaseSpecialistSubRoles ?? 0);
+                PlatformPermissionCatalog.ApplyCaseSpecialistSubRoles(subRoles, pages);
+            }
         }
 
  // Empty page set is intentional for department-only identity roles; do not invent shell pages.
@@ -76,7 +82,18 @@ public sealed class PermissionService : IPermissionService
             JobTitle = jobTitle,
             Pages = pages.OrderBy(p => p).ToList(),
             Capabilities = capabilities.OrderBy(c => c).ToList(),
+            SubRoles = subRoles,
         };
     }
+
+    /// <summary>
+    /// The sub-roles of a case specialist's stored flags. A specialist row without flags (only
+    /// possible outside Postgres, whose CHECK forbids it) is read as holding all three, the launch
+    /// rule of 2026-11-02, so a missing value never strips a specialist of work.
+    /// </summary>
+    internal static IReadOnlyList<string> SpecialistSubRoles(int flags) =>
+        CaseSpecialistSubRoles.FromFlags(flags & CaseSpecialistSubRoles.AllFlags) is { Count: > 0 } held
+            ? held
+            : CaseSpecialistSubRoles.All;
 
 }

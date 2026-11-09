@@ -127,7 +127,7 @@ public sealed class AssignmentNotificationRegressionTests
             },
             "creator-1",
             "منشئ",
-            "case-specialist");
+            TestStaff.Of("case-specialist"));
 
         Assert.Null(error);
         Assert.NotNull(reassigned);
@@ -170,7 +170,7 @@ public sealed class AssignmentNotificationRegressionTests
             new PatchOperationsTaskRequest { Status = "in_progress" },
             "gov-1",
             "فراس",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-gov");
         Assert.Null(startError);
         Assert.NotNull(started);
@@ -189,7 +189,7 @@ public sealed class AssignmentNotificationRegressionTests
             new PatchOperationsTaskRequest { Status = "completed" },
             "gov-1",
             "فراس",
-            "government-reviewer",
+            TestStaff.Of("government-reviewer"),
             "user-gov");
         Assert.Null(doneError);
         Assert.NotNull(done);
@@ -235,7 +235,7 @@ public sealed class AssignmentNotificationRegressionTests
             new PatchOperationsTaskRequest { Priority = "high" },
             "user-specialist",
             "أخصائي",
-            "case-specialist",
+            TestStaff.Of("case-specialist"),
             "user-specialist");
         Assert.Null(prioErr);
         var prioPayload = Deserialize(
@@ -249,7 +249,7 @@ public sealed class AssignmentNotificationRegressionTests
             taskId,
             new AddOperationsTaskCommentRequest { Text = "يرجى المتابعة" },
             "user-specialist",
-            "case-specialist",
+            TestStaff.Of("case-specialist"),
             "أخصائي");
         Assert.Null(cmtErr);
         var cmtPayload = Deserialize(
@@ -268,7 +268,7 @@ public sealed class AssignmentNotificationRegressionTests
             },
             "user-specialist",
             "أخصائي",
-            "case-specialist",
+            TestStaff.Of("case-specialist"),
             "user-specialist");
         Assert.Null(cancelErr);
         var cancelPayload = Deserialize(
@@ -344,7 +344,8 @@ public sealed class AssignmentNotificationRegressionTests
 
         Assert.NotNull(errors);
         Assert.Null(result);
-        Assert.Contains("أخصائي", errors!["_"]);
+        // No specialist is asked any more (ruling 2026-11-02): the first missing party is the inspector.
+        Assert.Contains("المعاين", errors!["_"]);
         Assert.Empty(await messaging.OutboxMessages.ToListAsync());
     }
 

@@ -548,3 +548,44 @@ export function distinctValues<T>(list: T[], field: keyof T): string[] {
   }
   return [...out];
 }
+
+/** How far apart pins that share one spot are drawn, in metres (about 40 px at zoom 18). */
+const SAME_SPOT_RADIUS_M = 20;
+
+/**
+ * Where to draw each point when several share exactly the same coordinates (Omar 2026-11-09: a «2»
+ * bubble zoomed in showed one pin — the second sat right under the first).
+ *
+ * How it works: points are bucketed by their coordinates rounded to 6 decimals (~10 cm); a bucket of
+ * one keeps its coordinates; a bucket of n is laid on a small circle around the spot (20 m radius,
+ * the longitude stretched by the latitude so the circle stays round), first point at the top, in the
+ * order given. Returns a map from id to the drawn coordinates.
+ * Edge cases: only the drawn position moves — the record, its card and its links keep the true
+ * coordinates; the clusterer still counts them as one bubble until zoomed in.
+ */
+export function spreadSameSpot<T extends { id: string; coords: MapCoords }>(
+  points: readonly T[],
+): Map<string, MapCoords> {
+  const buckets = new Map<string, T[]>();
+  for (const p of points) {
+    const key = `${p.coords.lat.toFixed(6)},${p.coords.lng.toFixed(6)}`;
+    const bucket = buckets.get(key);
+    if (bucket) bucket.push(p);
+    else buckets.set(key, [p]);
+  }
+  const drawn = new Map<string, MapCoords>();
+  for (const bucket of buckets.values()) {
+    if (bucket.length === 1) {
+      drawn.set(bucket[0]!.id, bucket[0]!.coords);
+      continue;
+    }
+    const { lat, lng } = bucket[0]!.coords;
+    const dLat = SAME_SPOT_RADIUS_M / 111_320;
+    const dLng = dLat / Math.max(Math.cos((lat * Math.PI) / 180), 0.01);
+    bucket.forEach((p, i) => {
+      const angle = (2 * Math.PI * i) / bucket.length;
+      drawn.set(p.id, { lat: lat + dLat * Math.cos(angle), lng: lng + dLng * Math.sin(angle) });
+    });
+  }
+  return drawn;
+}

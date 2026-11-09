@@ -27,7 +27,6 @@ export type {
   WorkflowTaskStatus,
 } from "@platform/app-shared/workflow/task-types";
 export {
-  TASKS_CHANGED_EVENT,
   TASKS_STORAGE_KEY,
   notifyTasksChanged,
 } from "@platform/app-shared/workflow/task-types";
@@ -139,7 +138,9 @@ export function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
       dto.appraisalPackageStatus === "reopened"
         ? dto.appraisalPackageStatus
         : undefined,
+    appraisalValueAccepted: dto.appraisalValueAccepted === true,
     fieldInspectionTaskId: dto.fieldInspectionTaskId?.trim() || undefined,
+    engineeringSurveyTaskId: dto.engineeringSurveyTaskId?.trim() || undefined,
     engineeringSurveyCompleted:
       typeof dto.engineeringSurveyCompleted === "boolean"
         ? dto.engineeringSurveyCompleted
@@ -164,6 +165,18 @@ export function dtoToTask(dto: WorkflowTaskDto): WorkflowTask {
     transactionNumber: dto.transactionNumber?.trim() || undefined,
     transactionId: dto.transactionId?.trim() || undefined,
     transactionStudyHolderPropertyId: dto.transactionStudyHolderPropertyId?.trim() || undefined,
+    transactionReceived: dto.transactionReceived === true,
+    awaitingExternalParty: dto.awaitingExternalParty === true,
+    readyForUpload: dto.readyForUpload === true,
+    reviewState:
+      dto.reviewState === "handed" || dto.reviewState === "approved" ? dto.reviewState : "study",
+    workingByUserId: dto.workingByUserId?.trim() || undefined,
+    workingByName: dto.workingByName?.trim() || undefined,
+    workingAtUtc: dto.workingAtUtc?.trim() || undefined,
+    lastStepAtUtc: dto.lastStepAtUtc?.trim() || undefined,
+    lastStepKey: dto.lastStepKey?.trim() || undefined,
+    lastStepDetail: dto.lastStepDetail?.trim() || undefined,
+    packageAccepted: typeof dto.packageAccepted === "boolean" ? dto.packageAccepted : undefined,
     propertyHandedOverToEnfaz:
       typeof dto.propertyHandedOverToEnfaz === "boolean" ? dto.propertyHandedOverToEnfaz : undefined,
   };
@@ -265,7 +278,8 @@ export function defaultDistribution(): TaskDistributionDraft {
     valuatorId: "",
     engineeringOffice: false,
     engineeringOfficeId: "",
-    caseSpecialist: true,
+    // No named case specialist (ruling 2026-11-02): the specialist stages are shared queues.
+    caseSpecialist: false,
     caseSpecialistId: "",
   };
 }
@@ -284,9 +298,6 @@ export function distributionValidationError(
     assignmentMandateDate?: string | null;
   },
 ): string | null {
-  if (!distribution.caseSpecialistId.trim()) {
-    return "اختر أخصائي دراسة الحالة.";
-  }
   if (!distribution.inspectorId.trim()) {
     return "اختر المعاين الميداني.";
   }

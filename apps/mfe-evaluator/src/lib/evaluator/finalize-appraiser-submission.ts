@@ -9,6 +9,8 @@ import {
 import { ensureOpenValuationRequest } from "./issue-valuation-report";
 import { formatValuationReportIssueDateIso } from "./valuation-report-number";
 import { clearPartyTaskRecall } from "@platform/app-shared/app-data/party-task-recall-model";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
+import { getValuationReconciliation } from "@platform/api-client";
 import type { EvaluatorSubmission } from "./evaluator-window-data";
 
 type FinalizeAppraiserResult =
@@ -50,8 +52,9 @@ export async function finalizeAppraiserSubmission(
     const issuedAt = new Date();
     // The valuation request must be open for the package to land on; the report number is NOT
     // drawn here: the server fixes PRV-… when the report is approved.
+    let valuationRequestId = "";
     try {
-      await ensureOpenValuationRequest({ propertyId: current.propertyId });
+      valuationRequestId = (await ensureOpenValuationRequest({ propertyId: current.propertyId })).id;
     } catch {
       return {
         ok: false,
@@ -67,8 +70,13 @@ export async function finalizeAppraiserSubmission(
         ? reportIssueDate
         : current.appraisalDate.trim();
 
+    // «أساس القيمة» sent to Enfaz is the one the appraiser reconciled on, not the assignment
+    // default (A→Z 2026-11-04: market-value valuations went to Enfaz as «قيمة التصفية»).
+    const valueBasis = await reconciledValueBasisLabel(valuationRequestId);
+
     const prepared = await saveEvaluatorSubmission({
       ...current,
+      ...(valueBasis ? { valueBasis } : {}),
       reportIssueDate,
       appraisalDate,
       updatedAtUtc: issuedAt.toISOString(),
@@ -87,4 +95,17 @@ export async function finalizeAppraiserSubmission(
   // gate), so the server has locked party contributions and such a save would be refused
   // although the submit itself succeeded.
   return result;
+}
+
+/**
+ * The value basis label the appraiser's reconciliation uses («القيمة السوقية» / «قيمة التصفية»).
+ *
+ * How it works: reads the reconciliation of the open valuation request; empty when there is no
+ * request id, no session or the read fails — the package then keeps the basis it had.
+ */
+async function reconciledValueBasisLabel(valuationRequestId: string): Promise<string> {
+  const config = apiConfig();
+  if (!config || !valuationRequestId) return "";
+  const recon = await getValuationReconciliation(config, valuationRequestId).catch(() => null);
+  return recon && recon.ok ? (recon.data.basisOfValueLabelAr ?? "").trim() : "";
 }

@@ -5,7 +5,7 @@ import {
   googleMapsApiKey,
   googleMapsSearchUrl,
   loadGoogleMapsApi,
-} from "../lib/google-maps-loader";
+} from "@platform/ui-kit";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
 import {
   Button,

@@ -24,13 +24,15 @@ import {
   notificationToCreateRequest,
 } from "@platform/app-shared/notifications/notification-mappers";
 import {
-  NOTIFICATION_PUSHED_EVENT,
-  NOTIFICATION_TOAST_EVENT,
   replaceNotificationsFromServer,
   setNotificationStorageUser,
   upsertNotificationFromServer,
   type AppNotification,
 } from "@platform/app-shared/notifications/notification-store";
+import {
+  NOTIFICATION_PUSHED_EVENT,
+  NOTIFICATION_TOAST_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const SSE_RETRY_BASE_MS = 2_000;
 const SSE_RETRY_MAX_MS = 60_000;

@@ -1,3 +1,4 @@
+import { formatReportPropertyAgeYears } from "../valuation-report-property-age";
 import { describe, expect, it } from "vitest";
 import {
   INFATH_SEED_CLIENT_ID,
@@ -188,11 +189,61 @@ describe("valuation report live fill from intake", () => {
       } as never,
     });
     expect(fill.cells["رقم رخصة البناء"]).toBe("1441/2345");
-    expect(fill.cells["تاريخ رخصة البناء"]).toBe("هـ1441/03/15");
-    // Report age is derived from the license date (−2), not the inspector age field.
-    expect(fill.cells["عمر العقار"]).not.toBe("99 سنة");
+    // A Hijri date prints year first with its marker, like every report date (A→Z #8/#35).
+    expect(fill.cells["تاريخ رخصة البناء"]).toBe("1441/03/15 هـ");
+    // The inspector's age wins over the licence-derived one — the cost approach uses it too (A→Z #29).
+    expect(fill.cells["عمر العقار"]).toBe("99 سنة");
+    expect(fill.cells["عمر البناء"]).toBe(fill.cells["عمر العقار"]);
+  });
+
+  it("falls back to the licence age only when the inspector left the age blank", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      inspector: {
+        buildLicenseDate: "هـ1441/03/15",
+        propertyAgeYears: "",
+        featureValues: { assetSubject: "فيلا" },
+      } as never,
+      property: { propertyType: "فيلا", city: "جدة", deedNumber: "1" } as never,
+    });
     expect(fill.cells["عمر العقار"]).toMatch(/^(\d+ (سنوات|سنة)|سنة واحدة|سنتين|أقل من سنة)$/);
     expect(fill.cells["عمر البناء"]).toBe(fill.cells["عمر العقار"]);
+  });
+
+  it("prints the inspector's age (Arabic digits too) and «—» when nothing is known", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const villa = (inspector: Record<string, unknown>) =>
+      buildValuationReportLiveFill({
+        draft,
+        inspector: { featureValues: { assetSubject: "فيلا" }, ...inspector } as never,
+        property: { propertyType: "فيلا", city: "جدة", deedNumber: "1" } as never,
+      });
+    expect(villa({ propertyAgeYears: "١٢", buildLicenseDate: "10/05/2015 م" }).cells["عمر البناء"]).toBe("12 سنة");
+    expect(villa({ propertyAgeYears: "6" }).cells["عمر البناء"]).toBe("6 سنوات");
+    expect(villa({ propertyAgeYears: "", buildLicenseDate: "" }).cells["عمر البناء"]).toBe("—");
+  });
+
+  it("prints deed, subdivision-minutes and licence dates as yyyy/mm/dd", () => {
+    const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
+    const fill = buildValuationReportLiveFill({
+      draft,
+      inspector: {
+        buildLicenseDate: "10/05/2015 م",
+        featureValues: { assetSubject: "فيلا" },
+      } as never,
+      property: {
+        propertyType: "فيلا",
+        city: "جدة",
+        deedNumber: "1",
+        deedDate: "2025-03-15",
+        partitionMinutesNumber: "77",
+        partitionMinutesDate: "2024-06-10",
+      } as never,
+    });
+    expect(fill.cells["تاريخ الصك"]).toBe("2025/03/15");
+    expect(fill.cells["محضر التجزئة"]).toBe("77 · 2024/06/10");
+    expect(fill.cells["تاريخ رخصة البناء"]).toBe("2015/05/10");
   });
 
   it("overwrites previously seeded assignment keys from the current PO", () => {
@@ -939,6 +990,15 @@ describe("valuation report live fill from intake", () => {
     });
     expect(fill.cells["العمر الفعلي"]).toBe("10 سنوات");
     expect(fill.cells["العمر الاقتصادي"]).toBe("40 سنة");
+
+    // PO-072172: the saved cost age is the one the depreciation used — it wins over the inspector's text.
+    const saved = buildValuationReportLiveFill({
+      draft,
+      costApproachEnabled: true,
+      inspector: { propertyAgeYears: "اكبر من 24 عام" } as never,
+      cost: { isSaved: true, actualAgeYears: 30, economicAgeYears: 45, physicalObsolescencePct: 66.67 } as never,
+    });
+    expect(saved.cells["العمر الفعلي"]).toBe(formatReportPropertyAgeYears(30));
     expect(fill.cells["التقادم المادي"]).toBe("25.00٪");
     expect(fill.cells["مجموع التقادم"]).toBe("25.00٪");
 

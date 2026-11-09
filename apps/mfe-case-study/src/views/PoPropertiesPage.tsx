@@ -61,13 +61,19 @@ import {
   isDueSoon,
   PROPERTY_TYPE_USAGE_LABEL,
 } from "../lib/app-data/po-intake-data";
-import { poHeaderEditPath, poPropertyPath, poListPath } from "@platform/app-shared/domain/po-routes";
+import {
+  poHeaderEditPath,
+  poPropertyPath,
+  poListPath,
+} from "@platform/app-shared/domain/po-routes";
 import { buildCopyPriorTargetOptions } from "../lib/app-data/po-intake-model";
 import {
   buildPoPropertiesRowMoreItems,
   type PoPropertyRowMoreContext,
 } from "../lib/app-data/po-properties-row-menu";
 import { useFailureRaiseModal } from "../hooks/useFailureRaiseModal";
+import { useTransactionGeneralActions } from "../components/po-intake/useTransactionGeneralActions";
+import { withTransactionGeneralItems } from "../lib/app-data/transaction-general-actions";
 import { DeliveryCountdown } from "../components/po-intake/DeliveryCountdown";
 import {
   usePoRecordQuery,
@@ -77,7 +83,7 @@ import {
 import {
   canEditAssignmentSpecialist,
   canEditPoHeader,
-  canEditProperty,
+  canEditPropertyData,
   canRaisePropertyFailure,
   canViewPoEye,
 } from "../lib/app-data/po-roles";
@@ -89,9 +95,7 @@ import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
 
 function deedLabel(property: PoPropertyIntake): string {
   return (
-    property.deedNumber.trim() ||
-    property.realEstateRegNumber.trim() ||
-    "—"
+    property.deedNumber.trim() || property.realEstateRegNumber.trim() || "—"
   );
 }
 
@@ -117,15 +121,20 @@ export function PoPropertiesPage({
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { role } = useAppAccess();
-  const showEdit = canEditProperty(role);
-  const showHeaderEdit = canEditAssignmentSpecialist(role);
+  const { role, access } = useAppAccess();
+  const showEdit = canEditPropertyData(role);
+  const showHeaderEdit = canEditAssignmentSpecialist(access);
   // The case specialist edits only the assignment specialist's name on that screen.
-  const headerEditLabel = canEditPoHeader(role) ? "تعديل أمر العمل" : "تعديل أخصائي الإسناد";
+  const headerEditLabel = canEditPoHeader(role)
+    ? "تعديل أمر العمل"
+    : "تعديل أخصائي الإسناد";
   const showFailureRaise = canRaisePropertyFailure(role);
   const showEye = canViewPoEye(role);
   const showRowMenu =
-    showEye || showEdit || showFailureRaise || Boolean(buildPropertyRowMoreItems);
+    showEye ||
+    showEdit ||
+    showFailureRaise ||
+    Boolean(buildPropertyRowMoreItems);
   const [menuRevision, setMenuRevision] = useState(0);
   const bumpMenu = useCallback(() => setMenuRevision((n) => n + 1), []);
   const [copyModalOpen, setCopyModalOpen] = useState(false);
@@ -135,6 +144,9 @@ export function PoPropertiesPage({
   const { openFailureRaise, failureRaiseModal } = useFailureRaiseModal({
     onSubmitted: bumpMenu,
   });
+  // Each deed row also offers the general actions (final failure, cancellation) every ⋮ menu shares.
+  const { itemsFor: generalItemsFor, dialogs: generalDialogs } =
+    useTransactionGeneralActions({ onChanged: bumpMenu });
 
   const recordQuery = usePoRecordQuery(poNumber);
   const { data: record, isPending } = recordQuery;
@@ -199,7 +211,10 @@ export function PoPropertiesPage({
       for (const item of extra) {
         if (!ids.has(item.id)) merged.push(item);
       }
-      return merged;
+      return withTransactionGeneralItems(
+        merged,
+        generalItemsFor({ poNumber, property }),
+      );
     },
     [
       poNumber,
@@ -210,6 +225,7 @@ export function PoPropertiesPage({
       menuRevision,
       openCopyModal,
       openFailureRaise,
+      generalItemsFor,
     ],
   );
 
@@ -280,14 +296,10 @@ export function PoPropertiesPage({
       !prop.realEstateRegNumber.trim();
     const locRaw = formatPropertyLocation(prop);
     const location =
-      locRaw === "بانتظار البورصة"
-        ? "بانتظار البورصة"
-        : locRaw || "—";
+      locRaw === "بانتظار البورصة" ? "بانتظار البورصة" : locRaw || "—";
     const typeLine = formatPropertyTypeLine(prop);
     const typeDisplay =
-      boursePending && !hasBourseDetailFields(prop)
-        ? "—"
-        : typeLine || "—";
+      boursePending && !hasBourseDetailFields(prop) ? "—" : typeLine || "—";
     const detailHref = poPropertyPath(poNumber, prop.id);
     const label = deedLabel(prop);
     const workflowStyle = prop.isRemoved
@@ -329,8 +341,7 @@ export function PoPropertiesPage({
                 {
                   id: "edit-po-header",
                   label: headerEditLabel,
-                  onClick: () =>
-                    router.push(poHeaderEditPath(record.poNumber)),
+                  onClick: () => router.push(poHeaderEditPath(record.poNumber)),
                 },
               ]}
             />
@@ -407,8 +418,15 @@ export function PoPropertiesPage({
           {/* Phones: one card per property — the 720px table hid its columns off-screen. */}
           <MobileRecordList className="sm:hidden">
             {visibleProperties.map((prop, index) => {
-              const { location, typeDisplay, detailHref, label, workflowStyle, deedSt, boursePending } =
-                rowView(prop);
+              const {
+                location,
+                typeDisplay,
+                detailHref,
+                label,
+                workflowStyle,
+                deedSt,
+                boursePending,
+              } = rowView(prop);
               return (
                 <MobileRecordCard
                   key={prop.id}
@@ -421,13 +439,23 @@ export function PoPropertiesPage({
                       </div>
                     ) : undefined
                   }
-                  fields={typeDisplay !== "—" ? [{ label: "النوع", value: typeDisplay }] : undefined}
+                  fields={
+                    typeDisplay !== "—"
+                      ? [{ label: "النوع", value: typeDisplay }]
+                      : undefined
+                  }
                   onOpen={() => router.push(detailHref)}
                 >
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <PpStatus label={workflowStyle.label} style={workflowStyle} />
+                    <PpStatus
+                      label={workflowStyle.label}
+                      style={workflowStyle}
+                    />
                     {!boursePending && deedSt ? (
-                      <PpStatus label={deedSt} style={deedStatusStyle(deedSt)} />
+                      <PpStatus
+                        label={deedSt}
+                        style={deedStatusStyle(deedSt)}
+                      />
                     ) : null}
                   </div>
                   {prop.isRemoved && prop.removalReason.trim() ? (
@@ -494,7 +522,10 @@ export function PoPropertiesPage({
                         {boursePending || !deedSt ? (
                           <span className="text-text-2">—</span>
                         ) : (
-                          <PpStatus label={deedSt} style={deedStatusStyle(deedSt)} />
+                          <PpStatus
+                            label={deedSt}
+                            style={deedStatusStyle(deedSt)}
+                          />
                         )}
                       </Td>
                       <Td>
@@ -544,6 +575,7 @@ export function PoPropertiesPage({
         />
       ) : null}
       {failureRaiseModal}
+      {generalDialogs}
     </div>
   );
 }

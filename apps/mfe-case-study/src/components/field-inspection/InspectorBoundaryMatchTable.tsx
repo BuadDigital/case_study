@@ -18,7 +18,7 @@ import {
   isApartmentInspectionContext,
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   InsCard,
   EDIT_CONTROL_CLASS,
@@ -33,21 +33,42 @@ import {
   resolvedBoundaryDeedField,
 } from "./field-inspection-work-state";
 
+/**
+ * Desktop wizard «الحدود والأطوال»: the deed-match verdict, then per side the facade type, the deed
+ * boundary and its length, and — under «غير مطابق» — each side's match and mismatch note.
+ *
+ * How it works: always shown; edits patch `boundaryMatches`. When the bourse marked the boundaries
+ * «غير متوفرة» the card says so and asks the inspector to enter them (Omar 2026-11-04 — it used to be
+ * hidden, so nobody supplied the boundaries and section 08 printed «غير متوفرة»). The deed ↔ nature
+ * verdict stays optional then (InspectorDeedNatureMatchRules.Applies).
+ *
+ * Edge cases: fixed 2026-11-04 — the verdict's validation message («اختر هل حدود الصك مطابقة
+ * للطبيعة أم لا») was never passed in, so a missing verdict showed no error under the question
+ * (`deedMatchError`), and the side-level message (`boundariesError`) was not shown either.
+ */
 export function InspectorBoundaryMatchTable({
   property,
   draft,
   editable,
   mismatchNoteInvalidKey,
+  deedMatchError,
+  boundariesError,
   onPatch,
 }: {
   property: PoPropertyIntake;
   draft: InspectorWorkspaceDraft;
   editable: boolean;
   mismatchNoteInvalidKey?: string;
+  /** Validation message for «هل حدود الصك مطابقة للطبيعة؟». */
+  deedMatchError?: string;
+  /** Validation message about the sides (no side marked, or a note missing). */
+  boundariesError?: string;
   onPatch: (patch: Partial<InspectorWorkspaceDraft>) => void;
 }) {
   const catalogFacadeOptions = useFacadeOptions();
   const facadeTypeOptions = catalogFacadeOptions ?? FALLBACK_FACADE_OPTIONS;
+  // «الحدود غير متوفرة» in the bourse: the card still shows so the inspector supplies them (Omar 2026-11-04).
+  const boundariesUnavailable = boundariesMarkedUnavailable(property.boundariesAvailability);
   // Per-side verdicts + notes only under «غير مطابق» (explicit, or derived from a legacy payload).
   const showMatchCols = effectiveDeedVerdict(draft) === "no";
   // An apartment records no facades — no «نوع الواجهة» column.
@@ -55,7 +76,7 @@ export function InspectorBoundaryMatchTable({
 
   return (
     <>
-      {!boundariesMarkedUnavailable(property.boundariesAvailability) ? (
+      {(
         <div id="ins-boundaries-section">
         <InsCard
           title="الحدود والأطوال"
@@ -69,6 +90,9 @@ export function InspectorBoundaryMatchTable({
         >
           {editable ? (
             <p className="mb-2.5 text-[11.5px] leading-relaxed text-text-3">
+              {boundariesUnavailable
+                ? "الحدود غير متوفرة في البورصة — أدخلها من الصك أو من الطبيعة. "
+                : null}
               أدخل الحد حسب الصك وطوله إن لم تُعبأ من البورصة، ثم أكّد المطابقة أو
               علّق بعدم المطابقة.
             </p>
@@ -77,8 +101,14 @@ export function InspectorBoundaryMatchTable({
             draft={draft}
             mobile={false}
             readOnly={!editable}
+            errorMessage={deedMatchError}
             onPatch={onPatch}
           />
+          {boundariesError ? (
+            <p role="alert" className="mb-2 mt-0 text-[11.5px] text-danger-text">
+              {boundariesError}
+            </p>
+          ) : null}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] border-collapse text-xs">
               <thead>
@@ -135,6 +165,8 @@ export function InspectorBoundaryMatchTable({
                         {editable ? (
                         <Select
                           className="text-[11.5px]"
+                          // A→Z 2026-11-02 #14: the side's facade select had no accessible name.
+                          aria-label={`نوع الواجهة — ${row.label}`}
                           value={facade}
                           onChange={(e) =>
                             onPatch(
@@ -311,7 +343,7 @@ export function InspectorBoundaryMatchTable({
           </div>
         </InsCard>
         </div>
-      ) : null}
+      )}
     </>
   );
 }

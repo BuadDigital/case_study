@@ -49,6 +49,21 @@ public sealed class TransactionStateRepository(CaseStudyDbContext db) : ITransac
             .Select(w => w.PoNumber)
             .FirstOrDefaultAsync(cancellationToken);
 
+    public Task<TransactionReopening?> GetActiveReopeningAsync(Guid transactionId, CancellationToken cancellationToken) =>
+        db.TransactionReopenings
+            .Where(r => r.TransactionId == transactionId && r.Status != TransactionReopeningStatuses.Closed)
+            .OrderByDescending(r => r.OpenedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public void AddReopening(TransactionReopening reopening) => db.TransactionReopenings.Add(reopening);
+
+    public async Task<IReadOnlyList<TransactionReopening>> ListActiveReopeningsAsync(CancellationToken cancellationToken) =>
+        await db.TransactionReopenings.AsNoTracking()
+            .Where(r => r.Status != TransactionReopeningStatuses.Closed)
+            .OrderByDescending(r => r.OpenedAtUtc)
+            .Take(500)
+            .ToListAsync(cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         db.SaveChangesAsync(cancellationToken);
 }

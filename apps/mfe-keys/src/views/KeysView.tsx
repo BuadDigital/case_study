@@ -118,7 +118,7 @@ export function KeysView() {
             canEdit={canEditEnvelope}
             onBack={closeEnvelope}
             onChanged={() => invalidateEnvelopes()}
-            backLabel={fromFees ? "تقرير الأتعاب" : "محفظة المفاتيح"}
+            backLabel={fromFees ? "تقرير الأتعاب" : "المفاتيح"}
           />
         </PageShell>
       </KeysSwapPanel>

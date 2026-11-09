@@ -12,8 +12,9 @@ import {
   effectiveDeedVerdict,
   isApartmentInspectionContext,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
+import { boundariesMarkedUnavailable } from "@platform/app-shared/app-data/po-intake-identifiers";
 import {
   BOUNDARY_KEYS,
   BOUNDARY_ROW_MAP,
@@ -95,6 +96,12 @@ export function InspectorBoundariesCard({
       step={4}
       subtitle={mobile ? "مطابقة الصك" : undefined}
     >
+      {boundariesMarkedUnavailable(property.boundariesAvailability) ? (
+        // Shown even then (Omar 2026-11-04): the inspector supplies the boundaries the bourse lacks.
+        <p className="mb-3 text-[11px] font-semibold text-text-2">
+          الحدود غير متوفرة في البورصة — أدخلها من الصك أو من الطبيعة.
+        </p>
+      ) : null}
       {mobile ? null : (
         <p className="mb-3 text-[11px] text-text-3">
           أدخل الحد حسب الصك وطوله إن لم تُعبأ من البورصة، ثم أجب: هل حدود الصك

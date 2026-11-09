@@ -16,10 +16,10 @@ public partial class FailureService
     public async Task<(LiftSurveyFreezeResultDto? Result, Dictionary<string, string>? Errors)> LiftSurveyFreezeAsync(
         LiftSurveyFreezeRequest request,
         string? actorUserId,
-        string? actorPrototypeRole,
+        StaffActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanLiftSurveyFreeze(actorPrototypeRole))
+        if (!PoRoleMatrixRules.CanLiftSurveyFreeze(actor))
             return (null, new Dictionary<string, string> { ["_"] = FailureRecordRules.LiftSurveyFreezeRoleDeniedAr });
 
         var errors = FailureRecordRules.ValidateLiftSurveyFreeze(request);

@@ -18,11 +18,6 @@ const sections = {
   accounts: preloadableLazy(() =>
     import("@settings/mfe").then((m) => m.AdminAccountsPanel),
   ),
-  "data-fixes": preloadableLazy(() =>
-    import("@case-study/mfe/components/admin/AdminDataFixesPanel").then(
-      (m) => m.AdminDataFixesPanel,
-    ),
-  ),
 };
 
 export function AdminPanelView() {

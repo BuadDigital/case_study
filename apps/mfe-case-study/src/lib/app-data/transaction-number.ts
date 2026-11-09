@@ -1,21 +1,19 @@
 /**
- * The number a deed row shows for its transaction: the official PR reference first, then the
- * TMP- temporary number (numbering; TMP replaced D).
+ * The number a deed row shows: «رقم المعاملة», the deed's own PR number (ruling 2026-11-08).
  *
- * How it works: returns the trimmed `referenceNumber` when set, else the trimmed
- * `transactionDraftNumber`, else null.
+ * How it works: returns the trimmed `referenceNumber` (the deed's number) when set, else the trimmed
+ * `transactionReferenceNumber` (its property's number — only an old row without its own), else null.
  *
- * Edge cases: no property, or a deed with no transaction yet (older rows) → null; the queue
- * callers then fall back to the task's own `transactionNumber`.
+ * Edge cases: a slot still waiting for its initial data has no number → null, and the queue callers
+ * then fall back to the task's own `transactionNumber`; the retired TMP number is never shown.
  */
 export function transactionNumberOf(
   property:
-    | { referenceNumber?: string | null; transactionDraftNumber?: string | null }
+    | { referenceNumber?: string | null; transactionReferenceNumber?: string | null }
     | null
     | undefined,
 ): string | null {
-  const official = property?.referenceNumber?.trim();
-  if (official) return official;
-  const draft = property?.transactionDraftNumber?.trim();
-  return draft || null;
+  const own = property?.referenceNumber?.trim();
+  if (own) return own;
+  return property?.transactionReferenceNumber?.trim() || null;
 }

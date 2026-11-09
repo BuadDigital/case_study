@@ -36,7 +36,7 @@ import {
   opsLetterTitle,
   opsTfActions,
   opsTfLbl,
-} from "../lib/comparables-ops-tw";
+} from "@platform/ui-kit";
 import {
   bankContextPins,
   COMPARABLE_TYPE_OPTIONS,

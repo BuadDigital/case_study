@@ -6,7 +6,7 @@ import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
-} from "../lib/work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   mapPropertyTimelineDtos,
   type PropertyTimelineEvent,

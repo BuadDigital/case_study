@@ -32,7 +32,7 @@ public class ValuationReportDraftServiceTests
 
     private static readonly ReportDraftActor Specialist = new()
     {
-        UserId = "u-spec", DisplayName = "الأخصائي", PrototypeRole = "case-specialist",
+        UserId = "u-spec", DisplayName = "الأخصائي", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
     };
 
     private static readonly ReportDraftActor Appraiser = new()
@@ -96,6 +96,45 @@ public class ValuationReportDraftServiceTests
         Assert.Contains("صك الملكية", message);
         Assert.Equal(ReportDraftStatuses.Preparing, (await rig.Service.GetAsync(rig.RequestId))!.Status);
         Assert.Empty(NoticePayloads(rig));
+    }
+
+    /// <summary>A→Z 2026-11-04 #18: a «فروق» study outcome blocks the send, not only the approval.</summary>
+    [Fact]
+    public async Task The_draft_is_not_sent_while_the_deed_nature_match_blocks_the_issue()
+    {
+        await using var rig = Arrange(PartyTaskSubmissionStatus.Submitted, sendGates: new DeedMismatchGates());
+        await rig.Service.SaveChoicesAsync(
+            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(PrintChoices) }, Specialist);
+
+        var (sent, errors) = await rig.Service.SendAsync(
+            rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = true }, Specialist);
+
+        Assert.Null(sent);
+        Assert.StartsWith(ReportDraftSendRules.DeedMatchPrefixAr, errors![ReportDraftSendRules.DeedMatchErrorKey]);
+        Assert.Equal(ReportDraftStatuses.Preparing, (await rig.Service.GetAsync(rig.RequestId))!.Status);
+        Assert.Empty(NoticePayloads(rig));
+    }
+
+    private sealed class DeedMismatchGates : IValuationIssuanceGateService
+    {
+        public Task<ValuationIssuanceGatesDto?> EvaluateAsync(
+            Guid valuationRequestId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<ValuationIssuanceGatesDto?>(new ValuationIssuanceGatesDto
+            {
+                ValuationRequestId = valuationRequestId,
+                Gates =
+                [
+                    new ValuationIssuanceGateItemDto
+                    {
+                        Code = ValuationIssuanceGateCodes.DeedNatureMatch,
+                        LabelAr = "مطابقة الصك والطبيعة",
+                        Passed = false,
+                        IsHard = true,
+                        DetailAr = "صك تقليدي — يلزم مخرج مطابقة الصك/الطبيعة = مطابق قبل الإصدار",
+                    },
+                ],
+            });
     }
 
     private sealed class MissingDeedGates : IValuationIssuanceGateService
@@ -199,8 +238,10 @@ public class ValuationReportDraftServiceTests
             rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = true }, actor);
         var withdraw = await rig.Service.WithdrawAsync(rig.RequestId, new WithdrawReportDraftRequest(), actor);
 
-        foreach (var errors in new[] { save.Errors, send.Errors, withdraw.Errors })
-            Assert.Equal(ValuationReportDraftService.PrepareForbiddenAr, errors![ReportDraftErrorKeys.Forbidden]);
+        Assert.Equal(ValuationReportDraftService.PrepareForbiddenAr, save.Errors![ReportDraftErrorKeys.Forbidden]);
+        // Omar 2026-11-08: issuing the draft to the appraiser is review's decision.
+        Assert.Equal(ValuationReportDraftService.ReviewSendForbiddenAr, send.Errors![ReportDraftErrorKeys.Forbidden]);
+        Assert.Equal(ValuationReportDraftService.PrepareForbiddenAr, withdraw.Errors![ReportDraftErrorKeys.Forbidden]);
         Assert.Empty(rig.Contexts.Valuation.ValuationReportDrafts);
     }
 
@@ -267,7 +308,7 @@ public class ValuationReportDraftServiceTests
 
         Assert.Contains(
             NoticePayloads(rig),
-            n => n.GetProperty("Audience").GetString() == ValuationNoticeAudiences.CaseSpecialist);
+            n => n.GetProperty("Audience").GetString() == ValuationNoticeAudiences.CaseSpecialistReview);
 
         // A repeated approval is a no-op that keeps the first snapshot.
         var (again, againErrors) = await rig.Service.ApproveAsync(
@@ -417,6 +458,101 @@ public class ValuationReportDraftServiceTests
         return rig;
     }
 
+    // ---- handover to review (Omar 2026-11-05) ----
+
+    private static readonly ReportDraftActor StudyOnly = new()
+    {
+        UserId = "u-study", DisplayName = "الدراسة", PrototypeRole = "case-specialist",
+        SubRoles = [CaseSpecialistSubRoles.Study],
+    };
+
+    private static readonly ReportDraftActor ReviewOnly = new()
+    {
+        UserId = "u-review", DisplayName = "المراجع", PrototypeRole = "case-specialist",
+        SubRoles = [CaseSpecialistSubRoles.Review],
+    };
+
+    /// <summary>
+    /// Omar 2026-11-08: review issues the draft to the appraiser once it approved the study and accepted the
+    /// value; the study (like any specialist) still edits the draft's choices while it is being prepared.
+    /// </summary>
+    [Fact]
+    public async Task Review_issues_the_draft_after_approving_the_study_and_accepting_the_value()
+    {
+        var gates = new ReviewGates();
+        await using var rig = Arrange(PartyTaskSubmissionStatus.Submitted, sendGates: gates);
+        var confirmed = new SendReportDraftRequest { ConformityConfirmed = true, Note = "جاهزة" };
+
+        var (_, studyEdit) = await rig.Service.SaveChoicesAsync(
+            rig.RequestId, new SaveReportDraftChoicesRequest { Choices = Choices(PrintChoices) }, StudyOnly);
+        Assert.Null(studyEdit);
+
+        var (_, studySend) = await rig.Service.SendAsync(rig.RequestId, confirmed, StudyOnly);
+        Assert.Equal(ValuationReportDraftService.ReviewSendForbiddenAr, studySend![ReportDraftErrorKeys.Forbidden]);
+
+        gates.StudyApproved = false;
+        var (_, noStudy) = await rig.Service.SendAsync(rig.RequestId, confirmed, ReviewOnly);
+        Assert.Equal(ReportDraftSendRules.StudyNotApprovedAr, noStudy![ReportDraftSendRules.ReviewErrorKey]);
+
+        gates.StudyApproved = true;
+        gates.ValueAccepted = false;
+        var (_, noValue) = await rig.Service.SendAsync(rig.RequestId, confirmed, ReviewOnly);
+        Assert.Equal(ReportDraftSendRules.ValueNotAcceptedAr, noValue![ReportDraftSendRules.ReviewErrorKey]);
+
+        gates.ValueAccepted = true;
+        var (sent, sendErrors) = await rig.Service.SendAsync(rig.RequestId, confirmed, ReviewOnly);
+        Assert.Null(sendErrors);
+        Assert.Equal(ReportDraftStatuses.Sent, sent!.Status);
+        // The study's review state is Case Study's own now — the draft no longer moves it.
+        Assert.Empty(rig.Commands.ReviewStates);
+    }
+
+    private sealed class ReviewGates : IValuationIssuanceGateService
+    {
+        public bool? StudyApproved { get; set; } = true;
+        public bool? ValueAccepted { get; set; } = true;
+
+        public Task<ValuationIssuanceGatesDto?> EvaluateAsync(
+            Guid valuationRequestId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<ValuationIssuanceGatesDto?>(new ValuationIssuanceGatesDto
+            {
+                ValuationRequestId = valuationRequestId,
+                StudyApprovedByReview = StudyApproved,
+                ValueAcceptedByReview = ValueAccepted,
+            });
+    }
+
+    /// <summary>
+    /// Omar 2026-11-08: review pulls a sent draft back to preparing; the appraiser returns it to review with
+    /// a reason (never editing it himself). Neither moves the study's review state.
+    /// </summary>
+    [Fact]
+    public async Task Review_pulls_a_sent_draft_back_and_the_appraiser_returns_it_with_a_reason()
+    {
+        await using var rig = Arrange(PartyTaskSubmissionStatus.Submitted);
+        var confirmed = new SendReportDraftRequest { ConformityConfirmed = true };
+        await rig.Service.SendAsync(rig.RequestId, confirmed, ReviewOnly);
+
+        var (_, studyPull) = await rig.Service.WithdrawAsync(rig.RequestId, new WithdrawReportDraftRequest(), StudyOnly);
+        Assert.True(studyPull!.ContainsKey(ReportDraftErrorKeys.Forbidden));
+
+        var (back, errors) = await rig.Service.WithdrawAsync(rig.RequestId, new WithdrawReportDraftRequest(), ReviewOnly);
+        Assert.Null(errors);
+        Assert.Equal(ReportDraftStatuses.Preparing, back!.Status);
+
+        await rig.Service.SendAsync(rig.RequestId, confirmed, ReviewOnly);
+        var (_, blank) = await rig.Service.ReturnToReviewerAsync(
+            rig.RequestId, new ReturnReportDraftToStudyRequest { Reason = " " }, Appraiser);
+        Assert.Equal(ValuationReportDraft.ReturnToReviewReasonRequiredAr, blank!["reason"]);
+        var (returned, returnErrors) = await rig.Service.ReturnToReviewerAsync(
+            rig.RequestId, new ReturnReportDraftToStudyRequest { Reason = "صحّح وصف الموقع" }, Appraiser);
+        Assert.Null(returnErrors);
+        Assert.Equal(ReportDraftStatuses.Preparing, returned!.Status);
+        Assert.Equal("صحّح وصف الموقع", returned.ReviewNote);
+        Assert.Empty(rig.Commands.ReviewStates);
+    }
+
     private static Rig Arrange(
         string packageStatus,
         ValuationTimelineWriter? timeline = null,
@@ -444,11 +580,13 @@ public class ValuationReportDraftServiceTests
         var events = new ValuationOutboxPublisher(contexts.Valuation, NullLogger<ValuationOutboxPublisher>.Instance);
         var issuance = new ValuationReportIssuanceService(
             contexts.Valuation, new StubGates(), new StubDocuments(), events: events, caseStudy: lookup);
+        var commands = new FakeCaseStudyCommands();
         return new Rig(
             contexts, requestId,
             new ValuationReportDraftService(
                 contexts.Valuation, issuance, lookup, events, new FixedClock(ClockNow), timeline: timeline,
-                caseStudyCommands: new FakeCaseStudyCommands(), issuanceGates: sendGates));
+                caseStudyCommands: commands, issuanceGates: sendGates),
+            commands);
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
@@ -456,9 +594,14 @@ public class ValuationReportDraftServiceTests
         public override DateTimeOffset GetUtcNow() => now;
     }
 
-    private sealed class Rig(TestDatabases.ContextSet contexts, Guid requestId, ValuationReportDraftService service)
+    private sealed class Rig(
+        TestDatabases.ContextSet contexts,
+        Guid requestId,
+        ValuationReportDraftService service,
+        FakeCaseStudyCommands commands)
         : IAsyncDisposable
     {
+        public FakeCaseStudyCommands Commands { get; } = commands;
         public TestDatabases.ContextSet Contexts { get; } = contexts;
         public Guid RequestId { get; } = requestId;
         public ValuationReportDraftService Service { get; } = service;

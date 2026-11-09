@@ -10,6 +10,33 @@ public class WorkOrderProperty : ITrackUpdatedAt
     /// <summary>The transaction (المعاملة) this deed belongs to — the reference above the deed.</summary>
     public Guid TransactionId { get; set; }
     public Transaction? Transaction { get; set; }
+
+    /// <summary>
+    /// This deed's official number — «رقم المعاملة» PR-{YY}-{seq} (ruling 2026-11-08). Drawn once at the
+    /// first full save of the initial data and never changed; null while the slot waits for its initial
+    /// data. A removed deed keeps it, with its removal reason.
+    /// </summary>
+    public string? ReferenceNumber { get; set; }
+
+    /// <summary>
+    /// Gives the deed its number once and refreshes its property's number; returns whether the deed was
+    /// numbered now.
+    /// </summary>
+    /// <remarks>
+    /// How it works: when the deed has no number, stores the trimmed one and asks the loaded transaction
+    /// to recompute its number (<see cref="Transaction.RefreshReference"/>).
+    /// Edge cases: a deed that already has a number keeps it (a second save never re-draws); a blank number
+    /// changes nothing; the transaction is only refreshed when it is loaded.
+    /// </remarks>
+    public bool AssignReferenceNumber(string number, DateTime nowUtc)
+    {
+        if (!string.IsNullOrWhiteSpace(ReferenceNumber) || string.IsNullOrWhiteSpace(number)) return false;
+        ReferenceNumber = number.Trim();
+        UpdatedAtUtc = nowUtc;
+        Transaction?.RefreshReference(nowUtc);
+        return true;
+    }
+
     public PropertyIdentifierType IdentifierType { get; set; }
  /// <summary>Deed kind — traditional / registered title.</summary>
     public DeedKind DeedKind { get; set; } = DeedKind.Traditional;
@@ -181,6 +208,34 @@ public class WorkOrderProperty : ITrackUpdatedAt
     public string? EnfazHandoverByUserId { get; set; }
 
  /// <summary>
+ /// «تجهيز المعاملة للرفع» (Omar 2026-11-08): review checked the upload package (the reports, the deed,
+ /// the survey, the photo files, the certificate, the keys proof) once the valuation was deposited; only
+ /// then the deed sits in the upload queue and «تم الرفع» is accepted.
+ /// </summary>
+    public DateTime? ReadyForUploadAtUtc { get; set; }
+    public string? ReadyForUploadByUserId { get; set; }
+
+    public bool IsReadyForUpload => ReadyForUploadAtUtc is not null;
+
+ /// <summary>Stamps «جاهزة للرفع» once; returns whether it changed.</summary>
+    public bool MarkReadyForUpload(string? userId, DateTime nowUtc)
+    {
+        if (IsReadyForUpload) return false;
+        ReadyForUploadAtUtc = nowUtc;
+        ReadyForUploadByUserId = string.IsNullOrWhiteSpace(userId) ? null : userId.Trim();
+        return true;
+    }
+
+ /// <summary>The package must be checked again (a reopening, a new valuation version); returns whether it changed.</summary>
+    public bool ClearReadyForUpload()
+    {
+        if (!IsReadyForUpload && ReadyForUploadByUserId is null) return false;
+        ReadyForUploadAtUtc = null;
+        ReadyForUploadByUserId = null;
+        return true;
+    }
+
+ /// <summary>
  /// True once the transaction was recorded as handed over to Enfaz. A handed-over transaction is
  /// frozen against reopening the case-study report until the specialist takes it back.
  /// </summary>
@@ -204,6 +259,8 @@ public class WorkOrderProperty : ITrackUpdatedAt
         ClearBillingReady();
         if (EnfazHandoverAtUtc is null && EnfazHandoverByUserId is null) return false;
 
+        // Taken back from Enfaz: the package is checked again before the next upload.
+        ClearReadyForUpload();
         EnfazHandoverAtUtc = null;
         EnfazHandoverByUserId = null;
         return true;

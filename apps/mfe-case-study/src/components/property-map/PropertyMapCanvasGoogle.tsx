@@ -4,7 +4,7 @@ import { useEffect, useEffectEvent, useRef } from "react";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { MarkerClusterer, type Renderer } from "@googlemaps/markerclusterer";
 import { loadGoogleMapsApi } from "@platform/ui-kit";
-import type { LayerKey } from "../../lib/app-data/map-locations-logic";
+import { spreadSameSpot, type LayerKey } from "../../lib/app-data/map-locations-logic";
 import {
   CLUSTER_COLORS,
   SAUDI_CENTER,
@@ -163,11 +163,14 @@ export function PropertyMapCanvasGoogle({
       comparables: [],
     };
     const selected = selectedRef.current;
+    // Pins on exactly the same spot are drawn a little apart, or zooming in shows only one.
+    const drawnAt = spreadSameSpot(markersRef.current);
 
     for (const m of markersRef.current) {
       const isSel = m.id === selected;
+      const at = drawnAt.get(m.id) ?? m.coords;
       const marker = new g.maps.Marker({
-        position: { lat: m.coords.lat, lng: m.coords.lng },
+        position: { lat: at.lat, lng: at.lng },
         icon: pinIcon(g, m, isSel),
         // Failure pins sit above the other layers' clusters at the same spot.
         zIndex: isSel ? 3000 : m.layer === "failures" ? 2500 : undefined,

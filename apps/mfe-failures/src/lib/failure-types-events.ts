@@ -1,4 +1,4 @@
-export const FAILURE_TYPES_CHANGED_EVENT = "failure-types-changed";
+import { FAILURE_TYPES_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 export function notifyFailureTypesChanged(): void {
   if (typeof window === "undefined") return;

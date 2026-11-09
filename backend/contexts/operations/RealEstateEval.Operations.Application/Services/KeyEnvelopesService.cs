@@ -456,9 +456,9 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
         _attachments.ExistsAsync(id, cancellationToken);
 
  /// <summary>
- /// Resolves the case specialist for a property's case-study parent task and
- /// notifies them — the specialist is the one waiting on the key to unblock
- /// field work, but had no visibility into key-envelope changes before this.
+ /// Notifies the case specialists of a key-envelope change on a property — keys are operational
+ /// work, so the coordination sub-role hears it (ruling 2026-11-02; no specialist is named on the
+ /// task any more). Edge cases: nobody holding the sub-role → silently skipped.
  /// </summary>
     private async Task NotifyCaseSpecialistForPropertyAsync(
         Guid propertyId,
@@ -467,18 +467,13 @@ public sealed partial class KeyEnvelopesService : IKeyEnvelopesService
         string sourceEvent,
         CancellationToken cancellationToken)
     {
-        var specialistAssigneeId = await _caseStudy.GetCaseSpecialistAssigneeAsync(
-            propertyId,
+        var userIds = await _recipients.ResolveCaseSpecialistUserIdsAsync(
+            CaseSpecialistAudience.Operations,
             cancellationToken);
-        if (string.IsNullOrWhiteSpace(specialistAssigneeId)) return;
+        if (userIds.Count == 0) return;
 
-        var userId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
-            specialistAssigneeId,
-            cancellationToken);
-        if (string.IsNullOrWhiteSpace(userId)) return;
-
-        await _notifications.CreateForUserAsync(
-            userId,
+        await _notifications.CreateForUsersAsync(
+            userIds,
             new CreateUserNotificationRequest
             {
                 Title = title,

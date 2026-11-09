@@ -36,4 +36,21 @@ public interface ICaseStudyCommands
     Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(
         Guid propertyId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Moves the deed's transaction between the study and review (Omar 2026-11-05): «handed» when the
+    /// study hands the valuation draft and the issued study report to review, «approved» when review
+    /// approves them and sends the draft to the appraiser, «study» when it goes back to the study.
+    /// Called by Valuation as the draft moves. Idempotent.
+    /// </summary>
+    /// <remarks>
+    /// How it works: Case Study stamps (or clears) the handover and approval on the transaction; its
+    /// property writes then refuse everyone but review while handed, and everyone once approved.
+    /// Edge cases: an unknown state or deed returns the Arabic reason and changes nothing.
+    /// </remarks>
+    Task<string?> SetTransactionReviewStateAsync(
+        Guid propertyId,
+        string state,
+        string? userId,
+        CancellationToken cancellationToken = default);
 }

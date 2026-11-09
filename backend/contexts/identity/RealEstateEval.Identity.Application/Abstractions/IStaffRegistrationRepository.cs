@@ -21,6 +21,8 @@ public sealed record StaffProfileState
     public string? NationalId { get; init; }
     public string? AvatarUrl { get; init; }
     public string? InspectorType { get; init; }
+    /// <summary>Case-specialist sub-role flags (see <c>CaseSpecialistSubRoles</c>); 0 for other roles.</summary>
+    public int CaseSpecialistSubRoles { get; init; }
     public bool HasCompensation { get; init; }
     public decimal? FeeValueSar { get; init; }
     public string? Iban { get; init; }

@@ -41,7 +41,7 @@ public class PartyTaskSubmissionReadAuthorizationTests
     {
         UserId = "user-staff",
         DisplayName = "أخصائي",
-        PrototypeRole = "case-specialist",
+        PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
     };
 
     [Fact]
@@ -307,7 +307,7 @@ public class CaseStudyReportReadAuthorizationTests
         var dto = await CreateFormService(contexts).GetAsync(
             ParentTaskId,
             party: false,
-            new CaseStudyReportActor { UserId = "staff", PrototypeRole = "case-specialist" });
+            new CaseStudyReportActor { UserId = "staff", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All });
 
         Assert.NotNull(dto);
     }
@@ -321,7 +321,7 @@ public class CaseStudyReportReadAuthorizationTests
         var dto = await CreateFormService(contexts).GetAsync(
             ParentTaskId,
             party: false,
-            new CaseStudyReportActor { UserId = "staff", PrototypeRole = "case-specialist" });
+            new CaseStudyReportActor { UserId = "staff", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All });
 
         Assert.NotNull(dto);
         Assert.Equal("new", dto!.Status);

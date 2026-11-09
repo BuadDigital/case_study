@@ -39,7 +39,7 @@ export {
   requiresContacts,
   businessDaysForAssignmentType,
   COURTS_BY_CITY,
-} from "./po-intake-assignment";
+} from "@platform/app-shared/app-data/po-intake-assignment";
 
 export {
   DEED_STATUS_ACTIVE,
@@ -84,7 +84,7 @@ export {
   boundariesAvailabilityLabel,
   boundariesDetailFieldsOptional,
   boundariesMarkedUnavailable,
-} from "./po-intake-identifiers";
+} from "@platform/app-shared/app-data/po-intake-identifiers";
 
 export {
   PROPERTY_BOUNDARY_ROWS,
@@ -119,7 +119,7 @@ export {
   type PoIntakeRecord,
   emptyProperty,
   emptyPoContact,
-} from "./po-intake-property-model";
+} from "@platform/app-shared/app-data/po-intake-property-model";
 
 export {
   isBusinessDay,

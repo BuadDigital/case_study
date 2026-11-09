@@ -31,7 +31,7 @@ public partial class CaseStudyReportService
         CaseStudyReportActor? actor = null,
         CancellationToken cancellationToken = default)
     {
-        if (actor is not null && !PoRoleMatrixRules.CanReopenCaseStudyReport(actor.PrototypeRole))
+        if (actor is not null && !PoRoleMatrixRules.CanReopenCaseStudyReport(actor.Staff))
             return (null, Fail(ReopenRoleDeniedAr));
 
         // Phase 4: reopening the transaction's one study, from whichever deed asked.
@@ -117,6 +117,16 @@ public partial class CaseStudyReportService
         // before the stamp-confirmation prompt, because the reopen below clears every deed's stamp.
         if (transactionDeeds.Any(p => p.IsBillingReady))
             return (null, Fail(BillingReadyBlocksReopenAr));
+        // Omar 2026-11-08: a study sent to review is taken back by the study or returned by review; once
+        // review approved it, only review returns it (the lock opens again with the reason).
+        if (actor is not null
+            && propertyId is Guid reviewPropertyId && reviewPropertyId != Guid.Empty && _transactions is not null
+            && await _transactions.GetForPropertyAsync(reviewPropertyId, cancellationToken) is { } held
+            && held.ReviewState == TransactionReviewStates.Approved
+            && !PoRoleMatrixRules.CanReviewTransaction(actor.Staff))
+        {
+            return (null, Fail(StudyReopenAfterApprovalAr));
+        }
         var handedOver = transactionDeeds.Any(p => p.IsHandedOverToEnfaz);
         if (handedOver && !clearEnfazHandover)
             return (null, new Dictionary<string, string> { [EnfazHandoverKey] = EnfazHandoverConfirmAr });
@@ -214,6 +224,9 @@ public partial class CaseStudyReportService
 
         if (appraiserSubmitted)
             await NotifyAppraiserStudyReportReopenedAsync(entity, propertyId, reason, cancellationToken);
+
+        // Back with the study (Omar 2026-11-08): the data opens again for every specialist.
+        await MoveReviewStateAsync(propertyId, TransactionReviewStates.Study, actor, now, cancellationToken);
 
         return (new ReopenCaseStudyReportResultDto
         {

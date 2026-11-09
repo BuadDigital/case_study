@@ -15,7 +15,7 @@ import {
   type InspectorDefinedPhotoSlot,
   type InspectorSlotPhoto,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   getInspectorPhotoDataUrl,
   setInspectorPhotoDataUrl,

@@ -9,6 +9,7 @@ import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   filterTasksForCaseStudy,
   filterTasksForSystemUpload,
+  filterTasksForReceipt,
 } from "@platform/app-shared/app-data/active-transactions";
 import {
   filterTasksForDistribution,
@@ -142,6 +143,10 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
     );
 
     const systemUploadOpen = filterTasksForSystemUpload(mine, tasks ?? []).length;
+    // A→Z 2026-11-09: a cancelled transaction was still counted (the other queues filter open/blocked).
+    const receiptOpen = filterTasksForReceipt(mine).filter(
+      (t) => t.status === "open" || t.status === "blocked",
+    ).length;
 
     const parts: string[] = [];
     const setPage = (pageId: PageId, count: number) => {
@@ -151,6 +156,7 @@ export function useActiveTransactionNavBadges(): ActiveTransactionNavIndicators 
     setPage("active-primary-data", primaryOpen.length);
     setPage("bourse-inquiry", bourseOpen.length);
     setPage("active-distribution", distributionOpen.length);
+    setPage("active-receipt", receiptOpen);
     setPage("active-case-study", caseStudyOpen.length);
     setPage("system-upload", systemUploadOpen);
 

@@ -31,7 +31,7 @@ public class OperationsTaskListQueryTests
         Seed(ops);
 
         var rows = await query.ListAsync(
-            OperationsTaskListQuery.Empty, "manager-1", null, Manager);
+            OperationsTaskListQuery.Empty, "manager-1", null, TestStaff.Of(Manager));
 
         Assert.Equal(
             ["T-005", "T-002", "T-001", "T-003", "T-004"],
@@ -48,7 +48,7 @@ public class OperationsTaskListQueryTests
             new OperationsTaskListQuery { Page = 2, PageSize = 2 },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
 
         Assert.Equal(5, page.TotalCount);
         Assert.Equal(2, page.Page);
@@ -67,7 +67,7 @@ public class OperationsTaskListQueryTests
             status: OperationsTaskStatusValues.Paused,
             actorUserId: "manager-1",
             actorAssigneeId: null,
-            actorRole: Manager);
+            actorStaff: TestStaff.Of(Manager));
 
         Assert.Equal("T-003", Assert.Single(rows).DisplayId);
     }
@@ -82,7 +82,7 @@ public class OperationsTaskListQueryTests
             new OperationsTaskListQuery { Page = 1, PageSize = 50, Status = "archived" },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
 
         Assert.Equal(0, page.TotalCount);
         Assert.Empty(page.Items);
@@ -98,7 +98,7 @@ public class OperationsTaskListQueryTests
             new OperationsTaskListQuery { Page = 1, PageSize = 50, Scope = "work_order" },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
         Assert.Equal(1, byScope.TotalCount);
         Assert.Equal("T-002", byScope.Items.Single().DisplayId);
 
@@ -106,7 +106,7 @@ public class OperationsTaskListQueryTests
             new OperationsTaskListQuery { Page = 1, PageSize = 50, Type = "court_visit" },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
         Assert.Equal(2, byType.TotalCount);
     }
 
@@ -121,7 +121,7 @@ public class OperationsTaskListQueryTests
             new OperationsTaskListQuery { Page = 1, PageSize = 50, ActiveOnly = true },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
 
         Assert.Equal(3, page.TotalCount);
         Assert.Equal(["T-005", "T-002", "T-001"], page.Items.Select(r => r.DisplayId));
@@ -141,7 +141,7 @@ public class OperationsTaskListQueryTests
             new OperationsTaskListQuery { Page = 1, PageSize = 50, ExcludeFailurePaused = true },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
 
         Assert.Equal(4, page.TotalCount);
         Assert.DoesNotContain(page.Items, item => item.DisplayId == "T-003");
@@ -210,7 +210,7 @@ public class OperationsTaskListQueryTests
             new OperationsTaskListQuery { Page = 1, PageSize = 50 },
             "executor-user",
             "assignee-b",
-            Executor);
+            TestStaff.Of(Executor));
 
         Assert.Equal(2, page.TotalCount);
         Assert.Equal(["T-002", "T-004"], page.Items.Select(r => r.DisplayId));
@@ -226,7 +226,7 @@ public class OperationsTaskListQueryTests
             new OperationsTaskListQuery { Page = 1, PageSize = 50, ActiveOnly = true },
             "executor-user",
             "assignee-b",
-            Executor);
+            TestStaff.Of(Executor));
 
         Assert.Equal(1, page.TotalCount);
         Assert.Equal("T-002", page.Items.Single().DisplayId);
@@ -235,7 +235,7 @@ public class OperationsTaskListQueryTests
     private static Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
         OperationsTaskQueryService query,
         OperationsTaskListQuery listQuery) =>
-        query.ListAsync(listQuery, "manager-1", null, Manager);
+        query.ListAsync(listQuery, "manager-1", null, TestStaff.Of(Manager));
 
  /// <summary>
  /// T-001 in progress, T-002 created (work-order scope, PO-77, executor b), T-003 paused on a

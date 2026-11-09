@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppModal, Button } from "@platform/ui-kit";
 import {
-  NOTIFICATION_TOAST_EVENT,
   type AppNotification,
 } from "@platform/app-shared/notifications/notification-store";
 import type { RoleId } from "@platform/types";
 import { partyTaskPath } from "../lib/my-task-routes";
 import { homePageIdForRole, isTaskReassignedAwayNotice } from "./party-reassignment-notice-state";
+import { NOTIFICATION_TOAST_EVENT } from "@platform/app-shared/events/app-events";
 
 /**
  * A party actively working a task screen learns immediately — not only from

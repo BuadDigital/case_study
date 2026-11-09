@@ -1,5 +1,6 @@
 import {
   getTransactionState,
+  markReadyForUpload,
   recordEnfazHandover,
   returnFromEnfaz,
   type EnfazReturnRequest,
@@ -13,7 +14,7 @@ import {
   workOrdersApiConfig,
   requireWorkOrdersApiConfig,
   type MutationResult,
-} from "../work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 
 export async function loadTransactionState(
   workOrderId: string,
@@ -41,7 +42,22 @@ export async function confirmEnfazHandover(
   return result;
 }
 
-/** «إعادة من إنفاذ» — clears the handover stamp and reopens what the specialist chose. */
+/** «تجهيز المعاملة للرفع» (Omar 2026-11-08) — review; the server checks the final report and blockers again. */
+export async function prepareUpload(
+  workOrderId: string,
+  propertyId: string,
+): Promise<MutationResult<TransactionStateDto>> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = mutationFromApiResult(
+    await markReadyForUpload(config, workOrderId, propertyId),
+    "تعذّر تجهيز المعاملة للرفع",
+  );
+  if (result.ok) notifyWorkOrdersChanged();
+  return result;
+}
+
+/** «إعادة فتح المعاملة» — clears the handover stamp (when uploaded) and reopens what was chosen. */
 export async function returnPropertyFromEnfaz(
   workOrderId: string,
   propertyId: string,
@@ -51,8 +67,9 @@ export async function returnPropertyFromEnfaz(
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
   const result = mutationFromApiResult(
     await returnFromEnfaz(config, workOrderId, propertyId, request),
-    "تعذّرت الإعادة من إنفاذ",
+    "تعذّرت إعادة فتح المعاملة",
   );
   if (result.ok) notifyWorkOrdersChanged();
   return result;
 }
+

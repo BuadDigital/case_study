@@ -219,7 +219,8 @@ public sealed class AuthSessionService(
             userPermissions?.DistributionAssigneeId,
             userPermissions?.Pages,
             userPermissions?.Department,
-            userPermissions?.JobTitle);
+            userPermissions?.JobTitle,
+            userPermissions?.SubRoles);
 
         var nowUtc = _time.UtcNow();
 

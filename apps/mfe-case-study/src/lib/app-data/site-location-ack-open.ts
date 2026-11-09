@@ -1,6 +1,6 @@
 import type { ToastTone } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "./po-intake-data";
-import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   SITE_LOCATION_ACK_POPUP_BLOCKED_MESSAGE,
   SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE,

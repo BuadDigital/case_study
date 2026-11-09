@@ -1,8 +1,8 @@
-import type { PoIntakeRecord } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoIntakeRecord } from "@platform/app-shared/app-data/po-intake-property-model";
 import {
   VALUATION_REPORT_USER_OPTION_LABEL,
   showsValuationReportUserField,
-} from "@platform/app-shared/app-data/po-intake-data";
+} from "@platform/app-shared/app-data/po-intake-assignment";
 import type { ClientDto } from "@platform/api-client";
 
 /* Valuation report user formatting — lightweight module independent of valuation-report-live-fill

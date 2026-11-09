@@ -15,7 +15,6 @@ import { cn } from "@platform/ui-kit";
 
 import {
   HANDOVER_BLOCKERS_ID,
-  HANDOVER_GATES_READ_EVENT,
   classifyHandOverBlockers,
   type HandOverBlocker,
   type HandOverGatesReadDetail,
@@ -23,6 +22,7 @@ import {
 import { Card, CardPad, CardTitle } from "./atoms";
 import type { ValuationWorkScreenId } from "./lib/shell-state";
 import { methodologyAlertGroup } from "./lib/methodology-alerts";
+import { HANDOVER_GATES_READ_EVENT } from "@platform/app-shared/events/app-events";
 
 const SCREEN_LABELS: Record<"market" | "cost" | "final", string> = {
   market: "طريقة المقارنة",

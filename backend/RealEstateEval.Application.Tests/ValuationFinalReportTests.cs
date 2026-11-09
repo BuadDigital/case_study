@@ -25,7 +25,7 @@ public class ValuationFinalReportTests
 {
     private const string AppraiserDistributionId = "val-abdullah";
 
-    private static readonly ReportDraftActor Specialist = new() { UserId = "u-spec", PrototypeRole = "case-specialist" };
+    private static readonly ReportDraftActor Specialist = new() { UserId = "u-spec", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All };
     private static readonly ReportDraftActor Supervisor = new() { UserId = "u-sup", PrototypeRole = "section-supervisor" };
     private static readonly ReportDraftActor Stranger = new() { UserId = "u-fi", PrototypeRole = "field-inspector" };
     private static readonly ReportDraftActor Appraiser = new()

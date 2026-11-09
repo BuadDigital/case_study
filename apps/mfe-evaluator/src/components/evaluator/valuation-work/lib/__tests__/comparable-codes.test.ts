@@ -10,6 +10,8 @@ describe("comparable codes in alert text (round 2 — phone wrapping)", () => {
       { text: " ينحرف", code: false },
     ]);
     expect(splitComparableCodes("المقارن CMP-2026-000123 —")[1]).toEqual({ text: "CMP-2026-000123", code: true });
+    // The yearly numbering of 2026-11-08 (CMP-YY-NNNNN).
+    expect(splitComparableCodes("المقارن CMP-26-00012 ينحرف")[1]).toEqual({ text: "CMP-26-00012", code: true });
     expect(splitComparableCodes("لا رموز")).toEqual([{ text: "لا رموز", code: false }]);
   });
 });

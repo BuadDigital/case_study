@@ -1,5 +1,5 @@
 import { getPartyTaskSubmission, isPersistedPartyTaskSubmission, type PartyTaskSubmissionDto,} from "@platform/api-client";
-import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
+import { resolveApiError, workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import type {
   EngineeringSurveyChecklistRow,
   EngineeringSurveySubmissionSnapshot,

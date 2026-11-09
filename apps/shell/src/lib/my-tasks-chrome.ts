@@ -103,19 +103,19 @@ export function resolveMyTasksChrome(
 
   if (parts[0] === "active-primary-data" && taskId) {
     return {
-      breadcrumb: "المعاملات النشطة / البيانات الأولية / تنفيذ المعاملة",
+      breadcrumb: "قوائم المراحل / البيانات الأولية / تنفيذ المعاملة",
       title: "تنفيذ المعاملة",
     };
   }
   if (parts[0] === "active-distribution" && taskId) {
     return {
-      breadcrumb: "المعاملات النشطة / توزيع المعاملات / توزيع المعاملة",
+      breadcrumb: "قوائم المراحل / توزيع المعاملات / توزيع المعاملة",
       title: "توزيع المعاملة",
     };
   }
   if (parts[0] === "active-case-study" && taskId) {
     return {
-      breadcrumb: "المعاملات النشطة / دراسة حالة العقارات / دراسة حالة العقار",
+      breadcrumb: "قوائم المراحل / دراسة حالة العقارات / دراسة حالة العقار",
       title: "دراسة حالة العقار",
     };
   }

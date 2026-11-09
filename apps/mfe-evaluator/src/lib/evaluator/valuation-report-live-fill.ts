@@ -58,6 +58,7 @@ import {
   rebuildIndirectCostSheet,
   rebuildReconSheet,
   rebuildComponentsSheet,
+  rebuildLandServicesSheet,
   scrubFrozenDates,
   syncNumberedRows,
 } from "./valuation-report-live-fill-dom";
@@ -307,9 +308,12 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
   }
 
   if (!fill.isLand) return;
-  // Building-only sections — vacant land has no on-site meters/utilities table either.
-  // Section 10 «مكونات العقار» stays when the specialist listed components (a fence, a room…).
-  removeSections(dom, fill.componentsListed ? ["11", "12", "13", "14"] : ["10", "11", "12", "13", "14"]);
+  // Building-only sections. Section 10 «مكونات العقار» stays when the specialist listed components
+  // (a fence, a room…); section 14 stays when the inspector answered the services (land has no
+  // meters — the section is rebuilt without them in applyValuationReportLiveFill).
+  removeSections(dom, ["11", "12", "13"]);
+  if (!fill.componentsListed) removeSections(dom, ["10"]);
+  if (!landServicesAnswered(fill)) removeSections(dom, ["14"]);
   removeLabeledPairs(
     dom,
     new Set([
@@ -327,6 +331,20 @@ function applyStructuralVisibility(dom: Document, fill: ValuationReportLiveFill)
     ]),
   );
   removeFacadeColumn(dom);
+}
+
+/**
+ * Whether the inspector answered the services question on land.
+ *
+ * How it works: on land every `serviceRows` row carries one availability value; «—» on all of them
+ * means nothing was picked. Edge cases: before 2026-11-04 (A→Z #2) section 14 was always removed
+ * for land, so the services the inspector picked (كهرباء، ماء…) never printed.
+ */
+function landServicesAnswered(fill: ValuationReportLiveFill): boolean {
+  return fill.serviceRows.some((row) => {
+    const value = (row.values[0] ?? "").trim();
+    return value !== "" && value !== "—";
+  });
 }
 
 const FACADE_LABELS = new Set([
@@ -496,7 +514,8 @@ export function applyValuationReportLiveFill(
   if (surr) tidyPresenceTable(surr, fill.surroundingsOther, 4);
 
   const services = dom.querySelector('[data-sec="14"]');
-  if (services) fillKeyedRows(services, fill.serviceRows);
+  if (services && fill.isLand) rebuildLandServicesSheet(services, fill.serviceRows);
+  else if (services) fillKeyedRows(services, fill.serviceRows);
 
   const methods = dom.querySelector('[data-sec="16"]');
   if (methods) fillMethodRow(methods, fill.methodRow);

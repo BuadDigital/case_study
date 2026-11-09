@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyCaseStudyReportDraft } from "../../../lib/app-data/case-study-report-model";
+import { emptyCaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import { caseStudyAnswerKey } from "../../../lib/app-data/case-study-report-data";
 import {
   CASE_STUDY_DEED_MATCH_REQUIRED_MESSAGE,

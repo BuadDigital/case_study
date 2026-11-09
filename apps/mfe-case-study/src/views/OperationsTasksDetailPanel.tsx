@@ -6,7 +6,9 @@
  * The action modals are mounted by `OperationsTasksModals` from the view.
  */
 
-import { cn, Note, PageShell, Spinner, StatusPill } from "@platform/ui-kit";
+import { useState } from "react";
+import { cn, Note, PageShell, Spinner, StatusPill, useToast } from "@platform/ui-kit";
+import { acceptOperationsTaskOutputsRecord } from "../lib/app-data/operations-tasks-commands";
 import { displayPersonName } from "@platform/app-shared/app-data/person-display-name";
 import { GOVERNMENT_REVIEWER_FAILURE_RAISER } from "@failures/mfe/lib/failure-party-roles";
 import type { OperationsTask } from "../lib/app-data/operations-tasks-model";
@@ -140,6 +142,55 @@ function ReceiptCell({
       >
         {cell.text}
       </div>
+    </div>
+  );
+}
+
+/**
+ * What the task delivered and its acceptance (Omar 2026-11-05): the executor delivers photos, a note, a
+ * reply or a file in the thread below; once he closes the task, its creator (or a task manager in his
+ * absence) accepts the outputs here.
+ *
+ * How it works: a completed task shows «قبول المخرجات» to the managers until accepted, then who accepted
+ * and when. Edge cases: nothing shows before completion or on a cancelled task; a refusal shows as a toast.
+ */
+function TaskOutputsAcceptance({ detail, canAccept }: { detail: OperationsTask; canAccept: boolean }) {
+  const { showToast } = useToast();
+  const [accepting, setAccepting] = useState(false);
+  if (detail.status !== "completed") return null;
+  if (detail.outputsAcceptedAt) {
+    return (
+      <Note tone="success" className="mt-4" data-testid="ops-task-outputs-accepted">
+        قُبلت مخرجات المهمة
+        {detail.outputsAcceptedByName ? ` — ${detail.outputsAcceptedByName}` : ""} ·{" "}
+        {formatTaskDueLabel(detail.outputsAcceptedAt)}
+      </Note>
+    );
+  }
+  if (!canAccept) return null;
+  return (
+    <div className="mt-4 flex flex-col gap-2 rounded-[13px] border border-border bg-surface px-4 py-3 sm:flex-row sm:items-center">
+      <span className="min-w-0 flex-1 text-[13px] text-heading">
+        أغلق المنفّذ المهمة — راجع ما سلّمه في المحادثة أدناه (صور، ملاحظة، رد، مرفق) ثم اقبل المخرجات.
+      </span>
+      <button
+        type="button"
+        className={opsBtnPrimary}
+        disabled={accepting}
+        aria-busy={accepting || undefined}
+        onClick={async () => {
+          setAccepting(true);
+          try {
+            const res = await acceptOperationsTaskOutputsRecord(detail.id);
+            showToast(res.ok ? "قُبلت مخرجات المهمة" : res.error, res.ok ? "success" : "error");
+          } finally {
+            setAccepting(false);
+          }
+        }}
+      >
+        {accepting ? <Spinner /> : null}
+        <span>{accepting ? "جاري القبول…" : "قبول المخرجات"}</span>
+      </button>
     </div>
   );
 }
@@ -445,6 +496,8 @@ export function OperationsTasksDetailPanel({
           </button>
         </div>
       ) : null}
+
+      <TaskOutputsAcceptance detail={detail} canAccept={canCreate} />
 
       <CommentThread
         task={detail}

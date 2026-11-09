@@ -44,13 +44,30 @@ public static class SurveyRequirementRules
         && !HasApprovedOrganizationalPlan(prop.PlanNumber, prop.PlotNumber);
 
     /// <summary>
-    /// The inspector's corrected type made a survey necessary that the bourse type did not need, and no
-    /// survey task is live — the study waits for the specialist to add the engineering office.
-    /// Edge cases: a property the bourse type already required a survey for is left to the distribution
-    /// as before (the office may have been left out there on purpose).
+    /// The inspector's type differs from the bourse type (2026-10-29: he corrects it on site).
+    /// How it works: a non-empty inspected type that is not the bourse <c>PropertyType</c> (trimmed, ordinal).
+    /// Edge cases: an inspector who picked the bourse type again has made no change.
+    /// </summary>
+    public static bool InspectorChangedType(WorkOrderProperty prop) =>
+        !string.IsNullOrWhiteSpace(prop.InspectedPropertyType)
+        && !string.Equals(
+            prop.InspectedPropertyType.Trim(),
+            (prop.PropertyType ?? "").Trim(),
+            StringComparison.Ordinal);
+
+    /// <summary>
+    /// The inspector's corrected type needs a survey and no survey task is live — the timeline says «بانتظار
+    /// إضافة المكتب الهندسي» and the «إضافة رفع مساحي» note asks the specialist; it never blocks issuing the
+    /// study (Omar 2026-11-04).
+    /// How it works: the inspector changed the type (<see cref="InspectorChangedType"/>), the property under
+    /// that type needs a survey (<see cref="PropertyRequiresSurvey"/>), and no survey task is live.
+    /// Edge cases: fixed A→Z 2026-11-02 #74 — this used to skip a property whose bourse type already needed a
+    /// survey («left to the distribution»), while the submit still asked the specialist for the office (a land
+    /// changed to «استراحة» showed no note). Now the ask and the note read this one rule. No type change, or a
+    /// property that needs no survey (registered title / approved plan / unit), asks nothing.
     /// </summary>
     public static bool SurveyMissingAfterTypeChange(WorkOrderProperty prop, bool hasLiveSurveyTask) =>
         !hasLiveSurveyTask
-        && PropertyRequiresSurvey(prop)
-        && !ClassificationRequiresSurvey(prop.Classification);
+        && InspectorChangedType(prop)
+        && PropertyRequiresSurvey(prop);
 }

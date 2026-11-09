@@ -580,6 +580,25 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
+    public void ValidatePropertyBourse_requires_the_restrictions_answer()
+    {
+        // A→Z 2026-11-02 #64: «القيود» was optional, so restrictionsPresent stayed null.
+        var request = new UpdatePropertyBourseRequest
+        {
+            City = "الرياض", District = "العليا", Area = "500", BourseDeedImageFileName = "deed.pdf",
+        };
+        Assert.Equal(
+            WorkOrderValidator.BourseRestrictionsRequiredAr,
+            WorkOrderValidator.ValidatePropertyBourse(request)["restrictionsPresent"]);
+        // A bourse completed before the rule is re-validated on a full save: an old empty answer passes.
+        Assert.Empty(WorkOrderValidator.ValidatePropertyBourse(request, requireRestrictionsAnswer: false));
+        // A registered title's compact bourse has no restrictions section.
+        Assert.Empty(WorkOrderValidator.ValidatePropertyBourse(request, compactRegisteredTitle: true));
+        request.RestrictionsPresent = "no";
+        Assert.Empty(WorkOrderValidator.ValidatePropertyBourse(request));
+    }
+
+    [Fact]
     public void ValidatePropertyBourse_rejects_invalid_restrictions_and_boundaries()
     {
         var errors = WorkOrderValidator.ValidatePropertyBourse(new UpdatePropertyBourseRequest

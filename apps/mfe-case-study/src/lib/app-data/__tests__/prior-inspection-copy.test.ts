@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createInspectorWorkspaceDraft } from "../inspector-workspace-data";
+import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { resolveInspectorWorkspacePatch, type InspectorWorkspacePatch } from "../inspector-workspace-model";
 import { priorInspectionPatch } from "../prior-inspection-copy";
 

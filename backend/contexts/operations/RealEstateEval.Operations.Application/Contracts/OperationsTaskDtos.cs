@@ -99,6 +99,10 @@ public class OperationsTaskDto
     public string? CreditAssigneeName { get; set; }
  /// <summary>ISO when assignee confirmed receipt; null = awaiting port.</summary>
     public string? ReceiptConfirmedAt { get; set; }
+
+    /// <summary>When the creator accepted the delivered outputs (null until then).</summary>
+    public string? OutputsAcceptedAt { get; set; }
+    public string? OutputsAcceptedByName { get; set; }
  /// <summary>Required reason when status is cancelled.</summary>
     public string? CancelReason { get; set; }
  /// <summary>Linked key envelope id when registered against this task.</summary>

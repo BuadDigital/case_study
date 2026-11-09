@@ -27,6 +27,7 @@ public static class DocumentaryWorkflowRules
         return prototypeRole.Equals("cdo", StringComparison.OrdinalIgnoreCase)
             || prototypeRole.Equals("section-supervisor", StringComparison.OrdinalIgnoreCase)
             || prototypeRole.Equals("case-specialist", StringComparison.OrdinalIgnoreCase)
+            || prototypeRole.Equals("real-estate-appraiser", StringComparison.OrdinalIgnoreCase)
             || prototypeRole.Equals("field-inspector", StringComparison.OrdinalIgnoreCase);
     }
 

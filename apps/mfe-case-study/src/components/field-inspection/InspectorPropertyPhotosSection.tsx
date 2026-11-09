@@ -11,6 +11,7 @@ import {
   canDeleteInspectorFreePhoto,
   inspectorFreePhotoCategoryMeta,
   inspectorFreePhotoKindsForParent,
+  inspectorFreePhotoMinimum,
   isApartmentInspectionContext,
   inspectorFreePhotoNeedsKind,
   inspectorFreePhotoParentKey,
@@ -21,7 +22,7 @@ import {
   type InspectorFreePhoto,
   type InspectorFreePhotoUploader,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { requestDocumentPreview } from "@platform/app-shared/app-data/document-preview-store";
 import {
   getInspectorPhotoDataUrl,
@@ -49,9 +50,12 @@ export function InspectorPropertyPhotosSection({
   onPatch,
   onDirty,
   mobile,
+  isLand = false,
 }: {
   draft: InspectorWorkspaceDraft;
   disabled?: boolean;
+  /** Land has no inside: no interior photo floor. */
+  isLand?: boolean;
   actor?: InspectorFreePhotoUploader;
   onPatch: (patch: InspectorWorkspacePatchInput) => void;
   onDirty?: () => void;
@@ -418,6 +422,7 @@ export function InspectorPropertyPhotosSection({
       : bucketPhotos.filter((p) => !needsKindClassify(p));
     const busy = uploadingParent === parent.key;
     const isExterior = parent.key === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR;
+    const minimum = inspectorFreePhotoMinimum(parent.key, isLand);
 
     return (
       <div
@@ -429,8 +434,14 @@ export function InspectorPropertyPhotosSection({
             <i className={`ti ${parent.icon} text-primary`} aria-hidden />
             {parent.label}
           </p>
-          <p className="m-0 text-[11px] text-text-3">
+          <p
+            className={cn(
+              "m-0 text-[11px] text-text-3",
+              canUpload && bucketPhotos.length < minimum && "font-semibold text-danger",
+            )}
+          >
             {inspectorPhotosLabel(bucketPhotos.length)}
+            {canUpload && minimum > 0 ? ` · الحد الأدنى ${minimum}` : null}
           </p>
         </div>
 

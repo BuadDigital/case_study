@@ -28,6 +28,22 @@ public sealed class CaseStudyCommands : ICaseStudyCommands
         _transactions = transactions ?? new TransactionReferenceService(new TransactionRepository(caseStudy));
     }
 
+    /// <summary>Moves the deed's transaction between the study and review (see the interface).</summary>
+    /// <remarks>
+    /// How it works: hands over to <see cref="ITransactionReferenceService.SetReviewStateAsync"/>
+    /// with the current time. Edge cases: its Arabic error comes back unchanged.
+    /// </remarks>
+    public async Task<string?> SetTransactionReviewStateAsync(
+        Guid propertyId,
+        string state,
+        string? userId,
+        CancellationToken cancellationToken = default)
+    {
+        var (_, error) = await _transactions.SetReviewStateAsync(
+            propertyId, state, userId, _time.UtcNow(), cancellationToken);
+        return error;
+    }
+
     /// <summary>
     /// Fixes the transaction's official PR number (idempotent) and stamps the
     /// derived PRV valuation report number on every deed's appraisal package.

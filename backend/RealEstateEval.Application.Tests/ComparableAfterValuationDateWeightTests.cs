@@ -58,12 +58,13 @@ public class ComparableAfterValuationDateWeightTests
         Assert.Equal(0m, byComp[after.Id].Market!.EffectiveWeightPct);
         Assert.Equal(100m, byComp[before.Id].Market!.EffectiveWeightPct + byComp[before2.Id].Market!.EffectiveWeightPct);
 
-        // The land table inside the cost approach is not alert 23's: its weights are unchanged.
+        // 2026-11-04 (A→Z #77): the land table inside the cost approach follows the same rule — a
+        // land deal after the valuation date no longer enters the land rate at full weight.
         var landRows = comps.Values.Select(c => Row(c, ComparableSelectionContexts.LandWithinCost)).ToList();
         var land = ValuationComparableListBuilder.BuildList(
             Request(), landRows, comps, new DateOnly(2026, 6, 1), Header(), ComparableSelectionContexts.LandWithinCost, [],
             hardComparableDateCutoff: new DateOnly(2026, 6, 30));
-        Assert.NotEqual(0m, land.Items.Single(i => i.ComparablePropertyId == after.Id).Market!.EffectiveWeightPct);
+        Assert.Equal(0m, land.Items.Single(i => i.ComparablePropertyId == after.Id).Market!.EffectiveWeightPct);
     }
 
     private static ComparableProperty Comp(string id, DateOnly date) => new()

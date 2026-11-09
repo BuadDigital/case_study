@@ -12,7 +12,7 @@ import {
   type TransactionLinkKind,
 } from "@platform/api-client";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import { notifyWorkOrdersChanged, workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { notifyWorkOrdersChanged, workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import { formatPoDisplay } from "../../lib/app-data/po-intake-data";
 import { transactionDeedLabel } from "./TransactionDeedSwitcher";
 
@@ -192,7 +192,11 @@ export function TransactionMergeDialog({
         ...transaction.deeds.map((d) => d.poNumber),
         ...picked.map((h) => h.poNumber),
       ]);
-      showToast(`ضُمّت ${incomingDeeds} صكوك إلى المعاملة ${transaction.displayNumber}`, "success");
+      // The server answers with the linked property's number (smallest deed number + «-L»).
+      showToast(
+        `ضُمّت ${incomingDeeds} صكوك — العقار المرتبط ${res.data.displayNumber || transaction.displayNumber}`,
+        "success",
+      );
       onMerged(res.data);
       onClose();
     } finally {
@@ -204,8 +208,8 @@ export function TransactionMergeDialog({
     <AppModal
       open
       wide
-      title="دمج معاملات مرتبطة"
-      subtitle={`المعاملة الجامعة ${transaction.displayNumber} — تبقى برقمها وتُضم إليها صكوك المعاملات المختارة`}
+      title="دمج معاملات في عقار مرتبط"
+      subtitle={`تُضم صكوك المعاملات المختارة إلى ${transaction.displayNumber}، ويصير الرقم رقم العقار المرتبط: أصغر رقم معاملة بين الصكوك + ‎-L‎`}
       onClose={() => {
         if (!merging) onClose();
       }}
@@ -232,12 +236,12 @@ export function TransactionMergeDialog({
             bourse inquiry); inspection and study are not conditions, so a merge can come before distribution. */}
         <Note tone="info">
           يُدمج الصك متى اكتمل تسجيله: أمر العمل والبيانات الأولية واستعلام البورصة. المعاينة
-          والدراسة ليستا شرطًا. اختيار صك يضم معاملته كاملة بكل صكوكها. المعاملات
-          المضمومة تُقفل بحالة «مدمجة في {transaction.displayNumber}».
+          والدراسة ليستا شرطًا. اختيار صك يضم معاملته كاملة بكل صكوكها. كل صك يحتفظ برقم
+          معاملته، ويحمل العقار المرتبط رقمًا واحدًا ينتهي بـ ‎-L‎ تحمله تقاريره. يُفك الدمج قبل اعتماد أول تقرير فقط.
         </Note>
 
         <div className="rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 px-3 py-2.5 text-[12px]">
-          <div className="mb-1 text-[11px] text-text-3">صكوك المعاملة الحالية ({transaction.deeds.length})</div>
+          <div className="mb-1 text-[11px] text-text-3">صكوك العقار الحالية ({transaction.deeds.length})</div>
           <div className="flex flex-wrap gap-1.5">
             {transaction.deeds.map((deed) => (
               <span

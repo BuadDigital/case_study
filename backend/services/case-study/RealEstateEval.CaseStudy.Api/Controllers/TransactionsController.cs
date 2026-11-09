@@ -83,6 +83,92 @@ public class TransactionsController : ControllerBase
         return result is null ? NotFound() : Ok(result);
     }
 
+    /// <summary>
+    /// «إرسال المعاملة للدراسة» of the deed's transaction (coordination, ruling 2026-11-02). A refusal
+    /// (role, stage, an undelivered party, already received) → 400 with the reasons.
+    /// </summary>
+    [HttpPost("by-property/{propertyId:guid}/receive")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<TransactionReceiptDto>> Receive(Guid propertyId, CancellationToken ct)
+    {
+        var (result, error) = await _commands.ReceiveAsync(propertyId, await ActorAsync(ct), ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        return Ok(result);
+    }
+
+    /// <summary>The deliveries the deed's transaction awaits from outside the system (Omar 2026-11-08).</summary>
+    [HttpGet("by-property/{propertyId:guid}/external-receipts")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<IReadOnlyList<TransactionExternalReceiptDto>>> ListExternalReceipts(
+        Guid propertyId,
+        CancellationToken ct)
+    {
+        var rows = await _commands.ListExternalReceiptsAsync(propertyId, ct);
+        return rows is null ? NotFound() : Ok(rows);
+    }
+
+    /// <summary>«إضافة استلام من طرف خارجي» (coordination; a refusal → 400).</summary>
+    [HttpPost("by-property/{propertyId:guid}/external-receipts")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<TransactionExternalReceiptDto>> AddExternalReceipt(
+        Guid propertyId,
+        [FromBody] AddTransactionExternalReceiptRequest request,
+        CancellationToken ct)
+    {
+        var (result, error) = await _commands.AddExternalReceiptAsync(propertyId, request, await ActorAsync(ct), ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        return Ok(result);
+    }
+
+    /// <summary>The external delivery arrived («تم الاستلام»).</summary>
+    [HttpPost("external-receipts/{receiptId:guid}/received")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public Task<ActionResult<TransactionExternalReceiptDto>> ReceiveExternal(
+        Guid receiptId,
+        [FromBody] CloseTransactionExternalReceiptRequest request,
+        CancellationToken ct) => CloseExternalAsync(receiptId, true, request, ct);
+
+    /// <summary>The external delivery is no longer awaited.</summary>
+    [HttpPost("external-receipts/{receiptId:guid}/cancel")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public Task<ActionResult<TransactionExternalReceiptDto>> CancelExternal(
+        Guid receiptId,
+        [FromBody] CloseTransactionExternalReceiptRequest request,
+        CancellationToken ct) => CloseExternalAsync(receiptId, false, request, ct);
+
+    private async Task<ActionResult<TransactionExternalReceiptDto>> CloseExternalAsync(
+        Guid receiptId,
+        bool received,
+        CloseTransactionExternalReceiptRequest request,
+        CancellationToken ct)
+    {
+        var (result, error) = await _commands.CloseExternalReceiptAsync(receiptId, received, request, await ActorAsync(ct), ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    /// <summary>Change the link kind of a multi-deed transaction (the stage owner; a refusal → 400).</summary>
+    [HttpPatch("{transactionId:guid}/link-kind")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<TransactionDetailDto>> ChangeLinkKind(
+        Guid transactionId,
+        [FromBody] ChangeTransactionLinkKindRequest request,
+        CancellationToken ct)
+    {
+        var (result, error) = await _commands.ChangeLinkKindAsync(transactionId, request, await ActorAsync(ct), ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    /// <summary>«يعمل عليها الآن» heartbeat from a specialist's screen — always 204, never a lock.</summary>
+    [HttpPost("{transactionId:guid}/working")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<IActionResult> MarkWorking(Guid transactionId, CancellationToken ct)
+    {
+        await _commands.MarkWorkingAsync(transactionId, await ActorAsync(ct), ct);
+        return NoContent();
+    }
+
     [HttpGet("by-property/{propertyId:guid}")]
     public async Task<ActionResult<TransactionDetailDto>> GetByProperty(Guid propertyId, CancellationToken ct)
     {

@@ -232,9 +232,10 @@ public class CaseStudyLookupTests
     {
         await using var db = CreateDb();
         var orderId = Guid.NewGuid();
+        // An old TMP row whose deed has no number yet, and a linked property whose deeds carry their own.
         var draft = Transaction.CreateDraft("TMP-26-00007", DateTime.UtcNow);
-        var confirmed = Transaction.CreateDraft("TMP-26-00008", DateTime.UtcNow);
-        confirmed.ReferenceNumber = "PR-26-00003";
+        var confirmed = Transaction.Create(DateTime.UtcNow);
+        confirmed.ReferenceNumber = "PR-26-00003-L";
         WorkOrderProperty Deed(Transaction transaction, bool removed = false) => new()
         {
             Id = Guid.NewGuid(),
@@ -246,6 +247,7 @@ public class CaseStudyLookupTests
         };
         var draftDeed = Deed(draft);
         var confirmedDeed = Deed(confirmed);
+        confirmedDeed.ReferenceNumber = "PR-26-00004";
         db.WorkOrders.Add(new WorkOrder
         {
             Id = orderId,
@@ -281,10 +283,11 @@ public class CaseStudyLookupTests
         var rows = (await new CaseStudyLookup(db).ListPropertiesByIdsAsync([draftDeed.Id, confirmedDeed.Id]))
             .ToDictionary(p => p.Id);
 
-        Assert.Equal("TMP-26-00007", rows[draftDeed.Id].TransactionNumber);
+        // The retired TMP is never shown; a failure carries the deed's own «رقم المعاملة».
+        Assert.Null(rows[draftDeed.Id].TransactionNumber);
         Assert.Equal(1, rows[draftDeed.Id].TransactionDeedCount);
         Assert.Null(rows[draftDeed.Id].CaseSpecialistName);
-        Assert.Equal("PR-26-00003", rows[confirmedDeed.Id].TransactionNumber);
+        Assert.Equal("PR-26-00004", rows[confirmedDeed.Id].TransactionNumber);
         Assert.Equal(2, rows[confirmedDeed.Id].TransactionDeedCount);
         Assert.Equal(2, rows[confirmedDeed.Id].TransactionPropertyIds.Count);
         Assert.Contains(confirmedDeed.Id, rows[confirmedDeed.Id].TransactionPropertyIds);

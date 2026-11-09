@@ -8,6 +8,7 @@ using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Application.Abstractions;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Operations.Api.Controllers;
 
@@ -66,15 +67,15 @@ public class OperationsTasksController : ControllerBase
 
         var actorId = ActorId();
         var actorAssigneeId = await ActorAssigneeIdAsync(ct);
-        var actorRole = await ActorPrototypeRoleAsync(ct);
+        var actorStaff = await ActorStaffAsync(ct);
 
         if (query.IsPaged)
         {
             return Ok(await _tasks.ListPagedAsync(
-                query, actorId, actorAssigneeId, actorRole, ct));
+                query, actorId, actorAssigneeId, actorStaff, ct));
         }
 
-        return Ok(await _tasks.ListAsync(query, actorId, actorAssigneeId, actorRole, ct));
+        return Ok(await _tasks.ListAsync(query, actorId, actorAssigneeId, actorStaff, ct));
     }
 
     [HttpGet("court-visit-fees")]
@@ -82,8 +83,7 @@ public class OperationsTasksController : ControllerBase
         [FromQuery] string? creditAssigneeId,
         CancellationToken ct)
     {
-        var role = await ActorPrototypeRoleAsync(ct);
-        if (!PoRoleMatrixRules.CanManageOperationsTasks(role))
+        if (!PoRoleMatrixRules.CanManageOperationsTasks(await ActorStaffAsync(ct)))
         {
             creditAssigneeId = await ActorAssigneeIdAsync(ct);
             if (string.IsNullOrWhiteSpace(creditAssigneeId))
@@ -119,7 +119,7 @@ public class OperationsTasksController : ControllerBase
             request,
             await ActorAssigneeIdAsync(ct) ?? ActorId(),
             ActorName(),
-            await ActorPrototypeRoleAsync(ct),
+            await ActorStaffAsync(ct),
             ActorId(),
             ct);
         if (error is not null) return this.BadRequestProblem(error);
@@ -137,8 +137,23 @@ public class OperationsTasksController : ControllerBase
             id,
             request,
             await ActorAssigneeIdAsync(ct) ?? ActorId(),
-            await ActorPrototypeRoleAsync(ct),
+            await ActorStaffAsync(ct),
             ActorName(),
+            ct);
+        if (error is not null) return this.BadRequestProblem(error);
+        if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
+        return Ok(result);
+    }
+
+    /// <summary>The creator accepts what a completed task delivered (Omar 2026-11-05).</summary>
+    [HttpPost("{id:guid}/accept-outputs")]
+    public async Task<ActionResult<OperationsTaskDto>> AcceptOutputs(Guid id, CancellationToken ct)
+    {
+        var (result, error) = await _tasks.AcceptOutputsAsync(
+            id,
+            ActorId(),
+            ActorName(),
+            await ActorStaffAsync(ct),
             ct);
         if (error is not null) return this.BadRequestProblem(error);
         if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
@@ -157,7 +172,7 @@ public class OperationsTasksController : ControllerBase
             request,
             await ActorAssigneeIdAsync(ct) ?? ActorId(),
             ActorName(),
-            await ActorPrototypeRoleAsync(ct),
+            await ActorStaffAsync(ct),
             ct);
         if (error is not null) return this.BadRequestProblem(error);
         if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
@@ -174,7 +189,7 @@ public class OperationsTasksController : ControllerBase
             id,
             request?.Auto ?? false,
             ActorName(),
-            await ActorPrototypeRoleAsync(ct),
+            await ActorStaffAsync(ct),
             ct);
         if (error is not null) return this.BadRequestProblem(error);
         if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
@@ -192,6 +207,21 @@ public class OperationsTasksController : ControllerBase
     /// <summary>
     /// JWT carries identity roles (Editor/CDO), not prototype roles. Resolve like PermissionService.
     /// </summary>
+    /// <summary>
+    /// The caller's role and case-specialist sub-roles. A caller the role resolver below promotes to
+    /// «case-specialist» from its capabilities alone (no profile role) keeps every sub-role, as before.
+    /// </summary>
+    private async Task<StaffActor> ActorStaffAsync(CancellationToken ct)
+    {
+        var userId = ActorId();
+        var permissions = userId.Length == 0 ? null : await _permissions.GetForUserIdAsync(userId, ct);
+        var role = await ActorPrototypeRoleAsync(ct);
+        var subRoles = string.IsNullOrWhiteSpace(permissions?.PrototypeRole) && role == StaffRoleIds.CaseSpecialist
+            ? CaseSpecialistSubRoles.All
+            : permissions?.SubRoles;
+        return new StaffActor(role, subRoles);
+    }
+
     private async Task<string> ActorPrototypeRoleAsync(CancellationToken ct)
     {
         var userId = ActorId();

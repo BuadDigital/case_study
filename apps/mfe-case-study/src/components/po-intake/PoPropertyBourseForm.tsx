@@ -27,7 +27,7 @@ import {
   PROPERTY_CLASSIFICATIONS,
   classificationForPropertyType,
   propertyTypesForClassification,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySection";
 import { PoPropertyOwnersSection } from "./PoPropertyOwnersSection";
 import { PropertyFileUploadField } from "./PropertyFileUploadField";
@@ -257,7 +257,9 @@ export function PoPropertyBourseForm({
                 "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
             )}
           >
-            <Label className="mb-1 text-[11px]">هل توجد قيود؟</Label>
+            <Label className="mb-1 text-[11px]">
+              هل توجد قيود؟ <span className="text-danger-text">*</span>
+            </Label>
             <div className="flex flex-wrap gap-1.5">
               {RESTRICTIONS_PRESENT_OPTIONS.map((opt) => (
                 <button

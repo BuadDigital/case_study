@@ -1,3 +1,5 @@
+using RealEstateEval.Application.Rules;
+
 namespace RealEstateEval.CaseStudy.Application.Contracts;
 
 /// <summary>
@@ -38,6 +40,10 @@ public class CaseStudyReportActor
     public string DisplayName { get; set; } = "";
     public string? PrototypeRole { get; set; }
     public string? DistributionAssigneeId { get; set; }
+    /// <summary>Case-specialist sub-roles from the caller's token (empty for other roles).</summary>
+    public IReadOnlyList<string> SubRoles { get; set; } = [];
+    /// <summary>The role plus sub-roles, as the role rules take them.</summary>
+    public StaffActor Staff => new(PrototypeRole, SubRoles);
 }
 
 /// <summary>Actor context for party submission mutations.</summary>
@@ -47,4 +53,8 @@ public class PartySubmissionActor
     public string DisplayName { get; set; } = "";
     public string? PrototypeRole { get; set; }
     public string? DistributionAssigneeId { get; set; }
+    /// <summary>Case-specialist sub-roles from the caller's token (empty for other roles).</summary>
+    public IReadOnlyList<string> SubRoles { get; set; } = [];
+    /// <summary>The role plus sub-roles, as the role rules take them.</summary>
+    public StaffActor Staff => new(PrototypeRole, SubRoles);
 }

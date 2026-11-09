@@ -22,13 +22,15 @@ import { formatDateAr } from "../../lib/app-data/po-intake-data";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import { caseStudyFamilyTaskForProperty } from "../../lib/app-data/tasks";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
-import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../../lib/app-data/inspector-workspace-model";
-import { TASKS_CHANGED_EVENT } from "../../query/case-study-queries";
 import { usePropertyOrTransactionTimeline } from "../../query/use-transaction-query";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
-import { WORK_ORDERS_CHANGED_EVENT } from "../../lib/work-orders-api-config";
-import { FAILURES_CHANGED_EVENT } from "@failures/mfe/lib/failures-events";
 import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
+import {
+  FAILURES_CHANGED_EVENT,
+  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+  TASKS_CHANGED_EVENT,
+  WORK_ORDERS_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const EMPTY_EVENTS: PropertyTimelineEvent[] = [];
 

@@ -5,8 +5,7 @@ import type {
 import { CASE_STUDY_INFO_PARTIES } from "./case-study-info-roles-data";
 import { CASE_STUDY_QUESTION_CATALOG } from "./case-study-info-roles-data";
 import { defaultCaseStudyInfoRolesMatrix } from "./default-case-study-info-roles-matrix";
-
-export const CASE_STUDY_INFO_ROLES_CHANGED_EVENT = "case-study-info-roles-changed";
+import { CASE_STUDY_INFO_ROLES_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 /** questionKey → partyId → role */
 export type CaseStudyInfoRolesMatrix = Record<

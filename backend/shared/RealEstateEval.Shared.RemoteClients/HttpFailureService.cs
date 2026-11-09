@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Failures.Application.Abstractions;
 using RealEstateEval.Failures.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -263,7 +264,7 @@ public sealed class HttpFailureService(
     public Task<(LiftSurveyFreezeResultDto? Result, Dictionary<string, string>? Errors)> LiftSurveyFreezeAsync(
         LiftSurveyFreezeRequest request,
         string? actorUserId,
-        string? actorPrototypeRole,
+        StaffActor actor,
         CancellationToken cancellationToken = default) =>
         PostForResultAsync<LiftSurveyFreezeResultDto>(
             "/api/failures/by-property/lift-survey-freeze",

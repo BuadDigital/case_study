@@ -1,18 +1,17 @@
 "use client";
 
 /**
- * Step-3 card: photo-documented property observations plus the client
- * declaration checkbox. Lifted out of `FieldInspectionWorkBody` as one
- * self-contained section — same markup, state stays with the parent.
+ * Step-3 card: photo-documented property observations plus the key notes and the client
+ * declaration checkbox (both shared with the desktop wizard: `InspectorSubmitPrerequisites`).
+ * Lifted out of `FieldInspectionWorkBody` as one self-contained section — same markup, state
+ * stays with the parent.
  */
 import {
   Button,
-  Note,
   Textarea,
   cn,
   formControlClassName,
   opsInsetPanel,
-  type ToastTone,
 } from "@platform/ui-kit";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
@@ -20,19 +19,18 @@ import {
   clearInspectorPhotoDataUrl,
   uploadInspectorPhotoFromFile,
 } from "../../lib/app-data/inspector-photo-upload";
-import { hasAnyPartyPhone } from "../../lib/app-data/documentary-workflow-gates";
 import {
   INSPECTOR_OBSERVATION_CATEGORIES,
   isLandInspectionContext,
   newObservationId,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { RoleId } from "@platform/types";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
 import type { InspectorKeyAvailability } from "./InspectorKeyStatusTab";
-import { inspectorKeyGateProblem } from "../../lib/app-data/inspector-key-gate";
+import { InspectorClientDeclarationField, InspectorKeyStatusNotes } from "./InspectorSubmitPrerequisites";
 import type { updateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 
@@ -50,7 +48,6 @@ export function InspectorObservationsSection({
   photoStamp,
   property,
   role,
-  showToast,
 }: {
   activeStep: number;
   cardLayout: "desktop" | "mobile";
@@ -65,10 +62,8 @@ export function InspectorObservationsSection({
   photoStamp: string;
   property?: PoPropertyIntake;
   role: RoleId;
-  showToast: (message: string, tone?: ToastTone) => void;
 }) {
   const liveDraft = draft;
-  const keyGateProblem = inspectorKeyGateProblem(keyAvailability.status);
   return (
     <div id="ins-observations">
   <InspectorCard
@@ -393,75 +388,22 @@ export function InspectorObservationsSection({
         <i className="ti ti-plus" aria-hidden /> إضافة ملاحظة موثّقة
       </Button>
     )}
-    {!isLandInspectionContext({
-      vacantLand: draft.vacantLand,
-      assetSubject: draft.featureValues.assetSubject,
-      classification: property?.classification,
-      propertyType: property?.propertyType,
-    }) && keyAvailability.keyAvailable === false ? (
-      <Note tone="info" className="mt-3">
-        المفتاح غير مُسلَّم بعد (معلومة من ظرف المفاتيح) — يمكنك إتمام
-        المعاينة. إن كان الدخول متعذّراً بسبب المفتاح سجّل تعذّراً.
-        {onRegisterFailure ? (
-          <div className="mt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={onRegisterFailure}
-            >
-              تسجيل تعذّر المفتاح
-            </Button>
-          </div>
-        ) : null}
-      </Note>
-    ) : null}
-    {keyGateProblem ? (
-      <Note tone="danger" className="mt-3">
-        {keyGateProblem} لا تُرسَل المعاينة قبل معرفتها.
-        {keyAvailability.status === "offline" ? null : (
-          <div className="mt-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              showActionToast={false}
-              onClick={keyAvailability.retry}
-            >
-              إعادة المحاولة
-            </Button>
-          </div>
-        )}
-      </Note>
-    ) : null}
-    <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-surface-2 p-3 text-xs leading-relaxed text-text-2">
-      <input
-        type="checkbox"
-        className="mt-0.5"
-        id="ins-client-declaration"
-        checked={draft.clientDeclarationSigned}
-        onChange={(e) => {
-          const signed = e.target.checked;
-          const hasPhone = hasAnyPartyPhone(property?.contacts);
-          if (signed && !hasPhone && !draft.declarationPhoneSatisfied) {
-            showToast(
-              "لا يمكن توقيع إقرار العميل بدون جوال لأحد الأطراف.",
-              "error",
-            );
-            return;
-          }
-          persist({
-            clientDeclarationSigned: signed,
-            declarationPhoneSatisfied:
-              draft.declarationPhoneSatisfied || (signed && hasPhone),
-          });
-        }}
-      />
-      <span>
-        تم توقيع إقرار العميل / صحة الموقع (يتطلب جوال أحد الأطراف عند
-        أول توقيع)
-      </span>
-    </label>
+    <InspectorKeyStatusNotes
+      keyAvailability={keyAvailability}
+      isLand={isLandInspectionContext({
+        vacantLand: draft.vacantLand,
+        assetSubject: draft.featureValues.assetSubject,
+        classification: property?.classification,
+        propertyType: property?.propertyType,
+      })}
+      onRegisterFailure={onRegisterFailure}
+    />
+    <InspectorClientDeclarationField
+      draft={draft}
+      contacts={property?.contacts}
+      disabled={locked}
+      onPatch={persist}
+    />
     <label className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-amber bg-amber-light p-3 text-xs leading-relaxed text-text-2">
       <input
         type="checkbox"

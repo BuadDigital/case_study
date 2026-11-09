@@ -313,7 +313,14 @@ public static class FailureRules
             PropertyTimelineTones.Done,
             nowUtc);
 
-    /// <summary>Tells the survey assignee the freeze a failure put on the property was lifted.</summary>
+    /// <summary>
+    /// Tells the survey assignee the freeze a failure put on the property was lifted.
+    /// </summary>
+    /// <remarks>
+    /// How it works: the link opens the engineering office's own survey workspace.
+    /// Fixed 2026-11-05: it pointed at <c>/case-study/{surveyTaskId}</c>, which only takes case-study
+    /// tasks, so the office was bounced to the property details page.
+    /// </remarks>
     public static CreateUserNotificationRequest SurveyFreezeLiftedNotification(
         Guid surveyTaskId,
         string poNumber,
@@ -323,7 +330,7 @@ public static class FailureRules
             Title = "فك تجميد الرفع المساحي",
             Body = $"فكّ أخصائي دراسة الحالة تجميد الرفع المساحي على أمر العمل {poNumber} — يمكنك المتابعة. السبب: {reason.Trim()}",
             Tone = "success",
-            Href = $"/case-study/{Uri.EscapeDataString(surveyTaskId.ToString())}",
+            Href = $"/active-survey/{Uri.EscapeDataString(surveyTaskId.ToString())}",
             Category = "workflow",
             EntityType = "task",
             EntityId = surveyTaskId.ToString(),

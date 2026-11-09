@@ -9,8 +9,8 @@ import {
   resolveApiError,
   requireWorkOrdersApiConfig,
   workOrdersApiConfig,
-} from "../work-orders-api-config";
-import { caseStudyReportDtoToDraft, type CaseStudyReportDraft } from "./case-study-report-model";
+} from "@platform/app-shared/app-data/work-orders-api-config";
+import { caseStudyReportDtoToDraft, type CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 
 export async function loadCaseStudyReportDraft(
   taskId: string,

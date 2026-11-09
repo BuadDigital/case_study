@@ -17,7 +17,7 @@ import {
 import { ReasonConfirmModal, RequiredReasonField } from "./ReasonConfirmModal";
 
 /**
- * «رفع تجميد الرفع المساحي» on one failure of a property — the case specialist lifts the freeze an
+ * «رفع تجميد الرفع المساحي» on one failure of a property — the coordination sub-role lifts the freeze an
  * active failure puts on the engineering office's survey (the failure itself stays open). After the
  * lift the row reads «رُفع التجميد بتاريخ … — السبب …». Nothing renders for other roles.
  */
@@ -26,8 +26,8 @@ export function PropertyFailureSurveyFreezeLift({
 }: {
   failure: FailureRecord;
 }) {
-  const { role } = useAppAccess();
-  const view = surveyFreezeLiftView(role, failure);
+  const { access } = useAppAccess();
+  const view = surveyFreezeLiftView(access, failure);
   const [open, setOpen] = useState(false);
 
   if (view === "none") return null;

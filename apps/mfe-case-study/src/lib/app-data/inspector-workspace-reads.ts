@@ -17,7 +17,7 @@ import {
   setCache,
   type InspectorWorkspaceSnapshot,
 } from "./inspector-workspace-model";
-import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 export { loadInspectorWorkspace } from "./inspector-workspace-model";
 
 /**
@@ -67,7 +67,8 @@ export function fetchInspectorWorkspace(
 }
 
 /**
- * The appraiser's read of the inspector's package (draft, reopened or submitted). It only reads:
+ * The appraiser's read of the inspector's package — the server answers only once the specialist
+ * accepted it (ruling 2026-11-05), else null. It only reads:
  * no default-coordinate migration (that PUT would 403 for the appraiser), no local working copy,
  * no queued-draft fallback and no write into the inspector's workspace cache.
  */

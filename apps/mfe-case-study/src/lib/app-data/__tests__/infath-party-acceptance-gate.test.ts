@@ -5,7 +5,7 @@ import {
   includeInspectorPhotoForReaders,
   isInspectorWorkspaceAccepted,
   isInspectorWorkspaceReviewLocked,
-} from "../inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PropertyDetailPartySubmission } from "../property-detail-party-submission-types";
 
 function inspectionParty(

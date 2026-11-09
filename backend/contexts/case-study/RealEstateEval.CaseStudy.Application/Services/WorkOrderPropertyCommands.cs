@@ -22,6 +22,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
     private readonly INotificationService _notifications;
     private readonly INotificationRecipientResolver _recipients;
     private readonly TimeProvider _time;
+    private readonly IAuditLogWriter? _audit;
+    private readonly IAuditLogAppend? _auditLog;
 
     [ActivatorUtilitiesConstructor]
     public WorkOrderPropertyCommands(
@@ -32,9 +34,13 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         IPropertyTimelineService timeline,
         INotificationService notifications,
         INotificationRecipientResolver recipients,
-        TimeProvider? time = null)
+        TimeProvider? time = null,
+        IAuditLogWriter? audit = null,
+        IAuditLogAppend? auditLog = null)
     {
         _time = time ?? TimeProvider.System;
+        _audit = audit;
+        _auditLog = auditLog;
 
         _db = db;
         _failureGate = failureGate;
@@ -78,19 +84,61 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         property.Id = null;
 
         var mapped = MapPropertyEnfath(property, entity.Id, forInsert: true);
-        // A deed added later opens its own draft transaction as well.
+        // A deed added later opens its own transaction as well. An opened slot (softDraft) has no
+        // number yet; a full save here (the offline insert-on-save path) is the first full save of the
+        // initial data, so the deed takes its PR number now (ruling 2026-11-08).
         var now = _time.UtcNow();
-        var (draftNumber, referenceError) =
-            await _db.AllocateTransactionDraftNumberAsync(now, cancellationToken);
-        if (referenceError is not null)
-            return (null, new Dictionary<string, string> { ["_"] = referenceError });
-        mapped.Transaction = Transaction.CreateDraft(draftNumber!, now);
+        mapped.Transaction = Transaction.Create(now);
         mapped.TransactionId = mapped.Transaction.Id;
+        mapped.Transaction.Properties.Add(mapped);
+        if (!softDraft && await NumberDeedAsync(mapped, now, cancellationToken) is { } numberError)
+            return (null, numberError);
         _db.AddProperty(mapped);
         await _db.SaveChangesAsync(cancellationToken);
         // A property registered after the PO was created (the usual path) starts its timeline with the Enfaz receipt.
         await _timeline.RecordManyAsync([WorkOrderService.EnfathReceivedEvent(entity, mapped.Id, actorName)], cancellationToken);
         return (WorkOrderMapper.ToPropertyDto(mapped), null);
+    }
+
+    /// <summary>
+    /// Draws the deed's PR number at its first full save of the initial data (ruling 2026-11-08); null
+    /// when numbered (or already numbered), else the error dictionary to hand back.
+    /// </summary>
+    /// <remarks>
+    /// How it works: a deed that already has a number is left alone; otherwise draws the next yearly
+    /// PR-{YY}-{seq} and stores it with <see cref="WorkOrderProperty.AssignReferenceNumber"/>, which also
+    /// refreshes the property number on the loaded transaction (single → the deed's number).
+    /// Edge cases: a later save never re-draws; a counter error stops the save with an Arabic reason, so
+    /// a fully saved deed is never left without its number. The number is drawn before the save — a save
+    /// that then fails leaves a gap, which the ruling accepts.
+    /// </remarks>
+    private async Task<Dictionary<string, string>?> NumberDeedAsync(
+        WorkOrderProperty deed,
+        DateTime nowUtc,
+        CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(deed.ReferenceNumber)) return null;
+        var (number, error) = await _db.AllocateDeedReferenceAsync(nowUtc, cancellationToken);
+        if (error is not null || string.IsNullOrWhiteSpace(number))
+            return new Dictionary<string, string> { ["_"] = error ?? "تعذّر تخصيص رقم المعاملة." };
+        deed.AssignReferenceNumber(number, nowUtc);
+        return null;
+    }
+
+    /// <summary>
+    /// The review lock on the deed's transaction (Omar 2026-11-05), as the error dictionary to hand
+    /// back, or null when the actor may write.
+    /// </summary>
+    /// <remarks>
+    /// How it works: `WorkOrderPropertyWriteRules.ReviewLockError` on the deed's loaded transaction.
+    /// Edge cases: a call without an actor (an internal writer) is not locked; a deed not yet in a
+    /// transaction is with the study.
+    /// </remarks>
+    private static Dictionary<string, string>? ReviewLocked(WorkOrderProperty property, PartySubmissionActor? actor)
+    {
+        if (actor is null) return null;
+        var error = WorkOrderPropertyWriteRules.ReviewLockError(property.Transaction, actor.Staff);
+        return error is null ? null : new Dictionary<string, string> { ["_"] = error };
     }
 
     public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(
@@ -99,7 +147,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         WorkOrderPropertyDto property,
         CancellationToken cancellationToken,
         bool softDraft = false,
-        string? actorName = null)
+        string? actorName = null,
+        PartySubmissionActor? changeActor = null)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
@@ -109,6 +158,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             propertyId,
             out var existing);
         if (notEditable is not null) return (null, notEditable);
+        if (ReviewLocked(existing!, changeActor) is { } locked) return (null, locked);
+        var beforeEdit = WorkOrderMapper.ToPropertyDto(existing!);
 
         // Checked on the autosave path too: a phone list wider than the column failed the whole save with a 500.
         var phoneErrors = WorkOrderValidator.ValidateContactPhoneLengths(property.Contacts);
@@ -123,6 +174,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         {
             // Field autosave: persist mid-edit without required-field gates and without
             // completing البورصة. Explicit save / bourse complete still validate fully.
+            // A stale draft never blanks a completed bourse (PO-175824, 2026-11-04).
+            WorkOrderPropertyWriteRules.KeepCompletedBourseOnDraft(existing, property);
             WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
             WorkOrderPropertyWriteRules.ApplyPropertyBourseDraft(existing, property);
         }
@@ -158,7 +211,9 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                     BoundariesExternalDocName = property.BoundariesExternalDocName,
                 }, WorkOrderValidator.CompactRegisteredTitleBourse(
                     property.IdentifierType,
-                    property.RealEstateRegNumber));
+                    property.RealEstateRegNumber),
+                    // A bourse completed before «القيود» became required (A→Z 2026-11-02 #64) still saves.
+                    requireRestrictionsAnswer: !existing.BourseDataCompleted);
                 var errors = WorkOrderPropertyWriteRules.MergeErrors(enfathErrors, bourseErrors);
                 if (errors.Count > 0) return (null, errors);
                 WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
@@ -173,6 +228,10 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
                 WorkOrderPropertyWriteRules.ApplyPropertyEnfath(existing, property);
                 recordEnfathCompletion = true;
             }
+
+            // Both branches passed the full initial-data check: the first one numbers the deed.
+            if (await NumberDeedAsync(existing, _time.UtcNow(), cancellationToken) is { } numberError)
+                return (null, numberError);
         }
 
  // Never mix contact DELETE/INSERT with property UPDATE in one SaveChanges —
@@ -228,7 +287,56 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         }
 
         var saved = await _db.GetSavedPropertyWithContactsAsync(propertyId, cancellationToken);
-        return (WorkOrderMapper.ToPropertyDto(saved), null);
+        var savedDto = WorkOrderMapper.ToPropertyDto(saved);
+        await AppendFieldChangesAsync(beforeEdit, savedDto, changeActor, actorName, softDraft, cancellationToken);
+        return (savedDto, null);
+    }
+
+    /// <summary>
+    /// Writes the field change log of one property save (ruling 2026-11-02: everyone who may edit
+    /// property data leaves a trail for oversight).
+    /// </summary>
+    /// <remarks>
+    /// How it works: diffs the property before the save against the saved one
+    /// (<see cref="PropertyFieldChangeRules.Diff"/>) and appends one audit row — before/after of each
+    /// changed field, plus the actor's role and case-specialist sub-roles in the after-side.
+    /// Edge cases: nothing changed (an autosave that rewrote the same values) → no row; no audit
+    /// ports (tests, tools) → no row; the row is best effort and never fails the save, which is
+    /// already committed.
+    /// </remarks>
+    private async Task AppendFieldChangesAsync(
+        WorkOrderPropertyDto before,
+        WorkOrderPropertyDto after,
+        PartySubmissionActor? actor,
+        string? actorName,
+        bool autosave,
+        CancellationToken cancellationToken)
+    {
+        if (_audit is null || _auditLog is null || after.Id is not Guid propertyId) return;
+        var changes = PropertyFieldChangeRules.Diff(before, after);
+        if (changes.Count == 0) return;
+
+        try
+        {
+            await _auditLog.AppendAsync(_audit.Create(
+                actorId: string.IsNullOrWhiteSpace(actor?.UserId) ? "unknown" : actor.UserId.Trim(),
+                action: PropertyFieldChangeRules.AuditAction,
+                entityType: PropertyFieldChangeRules.AuditEntityType,
+                entityId: propertyId.ToString("D"),
+                before: changes.ToDictionary(c => c.Key, c => c.Value.Before),
+                after: new
+                {
+                    fields = changes.ToDictionary(c => c.Key, c => c.Value.After),
+                    actorName = actor?.DisplayName ?? actorName,
+                    actorRole = actor?.PrototypeRole,
+                    actorSubRoles = actor?.SubRoles ?? [],
+                    autosave,
+                }), cancellationToken);
+        }
+        catch (Exception)
+        {
+            // Best effort: the property save is committed; a lost audit row must not undo it.
+        }
     }
 
 
@@ -247,6 +355,7 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             propertyId,
             out var existing);
         if (notEditable is not null) return (null, notEditable);
+        if (ReviewLocked(existing!, actor) is { } reviewLocked) return (null, reviewLocked);
 
         var previousExtras = SpecialistReportExtrasRules.ToWireJson(existing!);
         var extrasErrors = SpecialistReportExtrasRules.ApplyFromWireJson(
@@ -269,7 +378,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         Guid propertyId,
         UpdatePropertyBourseRequest request,
         CancellationToken cancellationToken,
-        string? actorName = null)
+        string? actorName = null,
+        PartySubmissionActor? changeActor = null)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (null, WorkOrderPropertyWriteRules.WorkOrderNotFound());
@@ -279,6 +389,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             propertyId,
             out var existing);
         if (notEditable is not null) return (null, notEditable);
+        if (ReviewLocked(existing!, changeActor) is { } reviewLocked) return (null, reviewLocked);
+        var beforeBourse = WorkOrderMapper.ToPropertyDto(existing!);
 
         var errors = WorkOrderValidator.ValidatePropertyBourse(
             request,
@@ -297,6 +409,17 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         if (applyErrors is not null) return (null, applyErrors);
 
         await _db.SaveChangesAsync(cancellationToken);
+        // The first completion is the bourse's own entry (its timeline row says so); a re-save edits it.
+        if (bourseWasCompleted)
+        {
+            await AppendFieldChangesAsync(
+                beforeBourse,
+                WorkOrderMapper.ToPropertyDto(existing),
+                changeActor,
+                actorName,
+                autosave: false,
+                cancellationToken);
+        }
 
         // «توفر الحدود = غير متوفرة» is a valid bourse answer, not a failure: nothing is raised for it.
         var bourseNormPo = IWorkOrderLoader.NormalizePo(poNumber);

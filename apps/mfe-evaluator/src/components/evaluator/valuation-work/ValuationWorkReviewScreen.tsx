@@ -8,7 +8,7 @@
 
 import { Suspense, lazy } from "react";
 import { InlineLoadingSkeleton, Spinner } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import type {
   EvaluatorReportChoices,
   EvaluatorReportWorker,

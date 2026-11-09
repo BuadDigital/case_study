@@ -13,12 +13,13 @@ import {
   effectivePropertyTypeOf,
   type PoIntakeRecord,
   type PoPropertyIntake,
-} from "./po-intake-property-model";
+} from "@platform/app-shared/app-data/po-intake-property-model";
 import {
   partyChildTaskForProperty,
   resolveInspectionTaskForProperty,
 } from "./documentary-workflow-gates";
 import type { WorkflowTask } from "./tasks";
+import { transactionNumberOf } from "./transaction-number";
 import type {
   MapComparableRecord,
   MapCoords,
@@ -255,8 +256,7 @@ export function mapPoRecordsToMapProperties(
         // Deeds of one transaction cluster into one point. A transaction
         // with one deed stays a single (groupForMap turns one-member groups back into singles).
         propertyGroupId: property.transactionId?.trim() || null,
-        transactionNumber:
-          property.referenceNumber?.trim() || property.transactionDraftNumber?.trim() || null,
+        transactionNumber: transactionNumberOf(property),
         poNumber: record.poNumber,
         propertyId: property.id,
       });

@@ -18,6 +18,16 @@ public interface ITransactionStateService
         CancellationToken cancellationToken = default);
 
  /// <summary>
+ /// «تجهيز المعاملة للرفع» (Omar 2026-11-08): review checked the upload package once the valuation was
+ /// deposited; the deed then sits in the upload queue.
+ /// </summary>
+    Task<(TransactionStateDto? Result, string? Error)> MarkReadyForUploadAsync(
+        Guid workOrderId,
+        Guid propertyId,
+        string? actorUserId,
+        CancellationToken cancellationToken = default);
+
+ /// <summary>
  /// The accountant marks a handed-over deed «جاهز للفوترة» once its financial data appeared on Enfaz.
  /// Idempotent; refused for a deed that is not handed over.
  /// </summary>
@@ -37,5 +47,9 @@ public interface ITransactionStateService
         Guid propertyId,
         ReturnFromEnfazRequest request,
         CaseStudyReportActor actor,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Every reopening not closed yet.</summary>
+    Task<IReadOnlyList<TransactionReopeningDto>> ListActiveReopeningsAsync(
         CancellationToken cancellationToken = default);
 }

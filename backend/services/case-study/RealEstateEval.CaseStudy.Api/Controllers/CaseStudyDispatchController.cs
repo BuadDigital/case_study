@@ -259,6 +259,28 @@ public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : Contr
         return Ok(result);
     }
 
+    /// <summary>
+    /// Valuation moves the deed's transaction between the study and review as the valuation draft moves
+    /// (Omar 2026-11-05): handed (study → review), approved (review sent it to the appraiser), study.
+    /// </summary>
+    /// <remarks>
+    /// How it works: hands {state, userId} to <c>ICaseStudyCommands.SetTransactionReviewStateAsync</c>;
+    /// an error becomes a 400 problem with the Arabic message. Edge cases: idempotent.
+    /// </remarks>
+    [HttpPost("properties/{propertyId:guid}/review-state")]
+    public async Task<ActionResult<CaseStudyTransactionReviewStateDto>> SetTransactionReviewState(
+        Guid propertyId,
+        [FromBody] SetCaseStudyTransactionReviewStateRequest request,
+        [FromServices] ICaseStudyCommands commands,
+        CancellationToken cancellationToken)
+    {
+        var error = await commands.SetTransactionReviewStateAsync(
+            propertyId, request.State, request.UserId, cancellationToken);
+        if (error is not null)
+            return this.BadRequestProblem(error);
+        return Ok(new CaseStudyTransactionReviewStateDto { State = request.State.Trim().ToLowerInvariant() });
+    }
+
     [HttpPost("properties/{propertyId:guid}/backfill-area")]
     public async Task<IActionResult> BackfillPropertyArea(
         Guid propertyId,

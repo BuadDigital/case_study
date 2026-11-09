@@ -61,13 +61,8 @@ const inspectionTab = preloadableLazy(() =>
     (m) => m.PropertyDetailInspectionTab,
   ),
 );
-const partyPackageReview = preloadableLazy(() =>
-  import("./PropertyDetailPartyPackageReview").then(
-    (m) => m.PropertyDetailPartyPackageReview,
-  ),
-);
-const partyRoleDetailPanel = preloadableLazy(() =>
-  import("./PartyRoleDetailPanel").then((m) => m.PartyRoleDetailPanel),
+const surveyPackageReview = preloadableLazy(() =>
+  import("./SurveyPackageReviewSection").then((m) => m.SurveyPackageReviewSection),
 );
 
 export const PropertyDetailAppraisalTab = withChunkFallback(appraisalTab);
@@ -80,9 +75,7 @@ export const PropertyDetailPropertyKeys = withChunkFallback(propertyKeys);
 export const PropertyDetailEnfathUpload = withChunkFallback(enfathUpload);
 export const PropertyDetailFinanceTab = withChunkFallback(financeTab);
 export const PropertyDetailInspectionTab = withChunkFallback(inspectionTab);
-export const PropertyDetailPartyPackageReview =
-  withChunkFallback(partyPackageReview);
-export const PartyRoleDetailPanel = withChunkFallback(partyRoleDetailPanel);
+export const SurveyPackageReviewSection = withChunkFallback(surveyPackageReview);
 
 /** Code each tab needs; tabs missing here render from the main chunk. */
 const TAB_CHUNKS: Partial<Record<TabId, readonly { preload: () => Promise<unknown> }[]>> = {
@@ -95,7 +88,7 @@ const TAB_CHUNKS: Partial<Record<TabId, readonly { preload: () => Promise<unknow
   "enfath-upload": [enfathUpload],
   finance: [financeTab],
   inspection: [inspectionTab],
-  survey: [partyPackageReview, partyRoleDetailPanel],
+  survey: [surveyPackageReview],
 };
 
 export function preloadPropertyDetailTabChunks(ids: readonly TabId[]): void {

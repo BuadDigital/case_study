@@ -175,6 +175,9 @@ public class CaseStudyValuationDispatchTests
         holder.TransactionId = transaction.Id;
         db.WorkOrderProperties.Add(new WorkOrderProperty
         {
+            // «مكونات العقار» gates the issue since 2026-11-08 (it was the acceptance's).
+            SpecialistComponentsText = "فيلا من دورين",
+            SpecialistFinishingLevel = "medium",
             Id = siblingId,
             WorkOrderId = WorkOrderId,
             TransactionId = transaction.Id,
@@ -245,6 +248,9 @@ public class CaseStudyValuationDispatchTests
         });
         db.WorkOrderProperties.Add(new WorkOrderProperty
         {
+            // «مكونات العقار» gates the issue since 2026-11-08 (it was the acceptance's).
+            SpecialistComponentsText = "فيلا من دورين",
+            SpecialistFinishingLevel = "medium",
             Id = PropertyId,
             WorkOrderId = WorkOrderId,
             City = "جدة",

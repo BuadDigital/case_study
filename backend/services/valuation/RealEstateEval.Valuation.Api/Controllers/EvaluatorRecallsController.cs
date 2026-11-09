@@ -86,7 +86,7 @@ public class EvaluatorRecallsController(
         CancellationToken ct)
     {
         var actor = await permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
-        if (!PoRoleMatrixRules.CanDecideAppraisalRecall(actor?.PrototypeRole))
+        if (!PoRoleMatrixRules.CanDecideAppraisalRecall(StaffActor.From(actor)))
             return this.ForbiddenProblem(DecisionForbiddenAr);
 
         var (dto, errors) = await recalls.DecideAsync(taskId, request, ct, actor?.UserId);

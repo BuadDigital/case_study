@@ -1,0 +1,546 @@
+"use client";
+
+/**
+ * «أعمالي» — the start page of the case-study staff: every decision waiting for the viewer's
+ * sub-roles in one list, and stage chips to work one stage in a batch (plan 2026-11-05, phase 1).
+ * The rows come from `buildMyWork`. What waits for someone else is «المعاملات النشطة»'s, not here.
+ */
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Badge,
+  FilterChips,
+  GentleBusy,
+  MobileRecordCard,
+  MobileRecordList,
+  OperationalToolbarSearch,
+  PageShell,
+  PageToolbar,
+  RowMoreMenu,
+  QueryErrorState,
+  TBody,
+  THead,
+  Table,
+  TableFrame,
+  Td,
+  Th,
+  Tr,
+  cn,
+  opsLetterCard,
+  type BadgeTone,
+} from "@platform/ui-kit";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { useTickingMinute, useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
+import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
+import { formatDateAr } from "@platform/app-shared/format/date";
+import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
+import { useReportDraftStates } from "@platform/app-shared/workflow/use-report-draft-states";
+import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
+import {
+  usePendingBourseItemsQuery,
+  usePoRecordsQuery,
+  useWorkflowTasksQuery,
+} from "../query/case-study-queries";
+import { SituationBar } from "../components/active-transactions/ActiveTransactionsSituationBar";
+import type { PageSituationCardDef } from "../lib/app-data/active-transaction-page-situation";
+import { filterActionablePendingBourseItems } from "../lib/app-data/pending-bourse-queue";
+import { tasksForRole, type WorkflowTask } from "../lib/app-data/tasks";
+import { seesAllCaseStudyWorkflowTasks } from "../lib/app-data/viewer-task-access";
+import {
+  MY_WORK_GROUPS,
+  buildMyWork,
+  formatActionClock,
+  myWorkGroupsForPages,
+  type MyWorkDue,
+  type MyWorkItem,
+  type MyWorkStage,
+} from "../lib/app-data/my-work-model";
+import { buildPoByNumber } from "./active-transaction-queue-state";
+import { QueueRowMoreCell } from "./active-transaction-queue-row-parts";
+import { useMyWorkRowMenu } from "./useMyWorkRowMenu";
+import { useActiveReopeningsQuery } from "../query/use-active-reopenings-query";
+
+const EMPTY_TASKS: WorkflowTask[] = [];
+
+const DUE_TONE: Record<MyWorkDue, BadgeTone> = {
+  late: "danger",
+  soon: "warning",
+  ok: "default",
+  none: "default",
+};
+
+const CARDS: PageSituationCardDef[] = [
+  { key: "open", label: "ينتظرك", sub: "قرارات لأدوارك", tone: "blue" },
+  { key: "late", label: "متأخرة عن المهلة", sub: "ابدأ بها", tone: "red" },
+  {
+    key: "soon",
+    label: "تنتهي اليوم أو غدًا",
+    sub: "مهلة قريبة",
+    tone: "warn",
+  },
+];
+
+function DueBadge({ item }: { item: Pick<MyWorkItem, "due" | "dueText"> }) {
+  return (
+    <Badge tone={DUE_TONE[item.due]} className="whitespace-nowrap">
+      {item.dueText}
+    </Badge>
+  );
+}
+
+/**
+ * The row's action as a tag (Omar 2026-11-08): the step in navy («دراسة العقار», «متابعة الأطراف»…),
+ * or — for a transaction reopened after its approval — «معادة للدراسة» in amber INSTEAD of the step, one
+ * tag per row (Omar: «اكتفي بمعادة للتعديل»). The line under it still says where the work stands.
+ * Named «معادة للدراسة» by Omar 2026-11-08 (after «معاد فتحها» and «معادة للتعديل»), knowing a
+ * reopening may also touch the valuation or the upload.
+ */
+function ActionTag({ item }: { item: Pick<MyWorkItem, "action" | "reopened"> }) {
+  return item.reopened ? (
+    <Badge tone="warning" className="whitespace-nowrap">
+      معادة للدراسة
+    </Badge>
+  ) : (
+    <Badge tone="primary" className="whitespace-nowrap">
+      {item.action}
+    </Badge>
+  );
+}
+
+/** The deadline's colour, as «أوامر العمل» colours an urgent one: late red, close amber, else heading. */
+const DUE_TEXT_CLASS: Record<MyWorkDue, string> = {
+  late: "text-red",
+  soon: "text-amber-text",
+  ok: "text-heading",
+  none: "text-heading",
+};
+
+/** An empty cell's «—», muted like every empty cell of the system's tables. */
+function Muted() {
+  return <span className="text-[13px] text-text-3">—</span>;
+}
+
+/**
+ * «تاريخ الاستلام / الاستحقاق»: the PO's receipt date over its deadline, the deadline coloured by how
+ * close it is (late red, today/tomorrow gold) with the short state («متأخرة», «تنتهي غدًا») beside it.
+ */
+function MyWorkDates({
+  item,
+}: {
+  item: Pick<MyWorkItem, "receivedIso" | "dueIso" | "due" | "dueText">;
+}) {
+  return (
+    <div className="flex flex-col items-center gap-0.5 text-[13px] tabular-nums">
+      {/* bdi: «DD/MM/YYYY» must not be reordered by the RTL row (as `TdLtr` in «أوامر العمل»). */}
+      <span className="text-text-2">
+        <bdi dir="ltr">{item.receivedIso ? formatDateAr(item.receivedIso) : "—"}</bdi>
+      </span>
+      <span className={cn("font-semibold", DUE_TEXT_CLASS[item.due])}>
+        <bdi dir="ltr">{item.dueIso ? formatDateAr(item.dueIso) : "—"}</bdi>
+        {item.due === "late" || item.due === "soon" ? (
+          <span className="ms-1.5 text-[12px] font-medium">{item.dueText}</span>
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * «وقت الإجراء» — a running clock from when the action reached the viewer (Omar 2026-11-08).
+ *
+ * How it works: subscribes to the shared one-second clock (`useTickingNow`) here, in the leaf, so
+ * only the clock cells re-render each second, not the page.
+ */
+function ActionClock({ arrivedIso }: { arrivedIso: string }) {
+  const nowMs = useTickingNow();
+  return (
+    <span className="text-[13px] font-semibold tabular-nums text-heading">
+      {formatActionClock(arrivedIso, nowMs)}
+    </span>
+  );
+}
+
+export function MyWorkView() {
+  const router = useRouter();
+  const { role, rolePages } = useAppAccess();
+  const nowMs = useTickingMinute();
+  const [stage, setStage] = useState<MyWorkStage | null>(null);
+  const [search, setSearch] = useState("");
+
+  const tasksQuery = useWorkflowTasksQuery();
+  const poQuery = usePoRecordsQuery();
+  const bourseQuery = usePendingBourseItemsQuery();
+  const failuresQuery = useFailuresQuery();
+  const reopenings = useActiveReopeningsQuery();
+
+  const groups = useMemo(() => myWorkGroupsForPages(rolePages), [rolePages]);
+  const tasks = tasksQuery.data ?? EMPTY_TASKS;
+  const mine = useMemo(
+    () =>
+      seesAllCaseStudyWorkflowTasks(role) ? tasks : tasksForRole(role, tasks),
+    [role, tasks],
+  );
+
+  // The draft / deposit stages read the valuation draft states (they live in the valuation service).
+  const draftPropertyIds = useMemo(
+    () =>
+      mine
+        .filter(
+          (t) =>
+            t.kind === "case-study-property" &&
+            t.studyReportIssued &&
+            !t.propertyHandedOverToEnfaz,
+        )
+        .map((t) => t.propertyId),
+    [mine],
+  );
+  const draftVersion = useReportDraftStates(
+    draftPropertyIds,
+    groups.includes("st") || groups.includes("rv"),
+  );
+
+  const poByNumber = useMemo(
+    () => buildPoByNumber(poQuery.data ?? []),
+    [poQuery.data],
+  );
+  const { itemsFor, modals } = useMyWorkRowMenu({ tasks, poByNumber });
+
+  const work = useMemo(() => {
+    void draftVersion;
+    const pendingBourse = filterActionablePendingBourseItems(
+      bourseQuery.data ?? [],
+      failuresQuery.data ?? [],
+    );
+    return buildMyWork({
+      groups,
+      mine,
+      allTasks: tasks,
+      poByNumber,
+      pendingBourse,
+      draftState: (id) => getReportDraftState(id),
+      reopenings,
+      now: new Date(nowMs),
+    });
+  }, [
+    groups,
+    mine,
+    tasks,
+    poByNumber,
+    bourseQuery.data,
+    failuresQuery.data,
+    draftVersion,
+    reopenings,
+    nowMs,
+  ]);
+
+  // The stage chip, then the search box (deed, PO, transaction number, place, type or action).
+  const listed = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return work.items.filter(
+      (i) =>
+        (!stage || i.stage === stage) &&
+        (!q ||
+          [
+            i.deedNumber,
+            i.poNumber,
+            i.transactionNumber ?? "",
+            i.place,
+            i.propertyType ?? "",
+            i.action,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(q)),
+    );
+  }, [work.items, stage, search]);
+
+  const pending = tasksQuery.isPending || poQuery.isPending;
+  const failed = [tasksQuery, poQuery].filter(queryLoadFailed);
+  const values =
+    pending || failed.length
+      ? {}
+      : {
+          open: work.items.length,
+          late: work.items.filter((i) => i.due === "late").length,
+          soon: work.items.filter((i) => i.due === "soon").length,
+        };
+
+  const countOf = (s: MyWorkStage) =>
+    work.items.filter((i) => i.stage === s).length;
+  const lateOf = (s: MyWorkStage) =>
+    work.items.some((i) => i.stage === s && i.due === "late");
+  const visibleGroups = MY_WORK_GROUPS.filter((g) => groups.includes(g.key));
+  // Omar 2026-11-08: with a single stage (the study alone) «الكل» and that stage list the same rows —
+  // the chips filter nothing, so only the search is shown.
+  const showStageChips =
+    visibleGroups.reduce((n, g) => n + g.stages.length, 0) > 1;
+  const open = (href: string) => router.push(href);
+
+  return (
+    // Spaced like «أوامر العمل»: the shell's gap-3 is the only space between blocks (no margins).
+    <PageShell variant="canvas" className="h-fit min-w-0 max-w-full gap-3 py-4 sm:py-5">
+      <SituationBar cards={CARDS} values={values} flush />
+
+      {visibleGroups.length > 0 ? (
+        // The system's list toolbar (as «أوامر العمل»): search first, then every chip on one row —
+        // «الكل», then each group's stage chips (Omar 2026-11-08: one row, more room for the list).
+        // Wraps only on narrow screens.
+        <PageToolbar className="mb-0 flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b-0 bg-transparent px-0 py-0">
+          <OperationalToolbarSearch
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="رقم الصك أو الأمر أو المعاملة أو المدينة…"
+            aria-label="بحث في أعمالي"
+            className="max-lg:min-w-0 max-lg:flex-1"
+          />
+          {showStageChips ? (
+            <FilterChips
+              options={[
+                {
+                  key: "all",
+                  label: "الكل — ما ينتظرني",
+                  count: work.items.length,
+                },
+              ]}
+              active={stage === null ? "all" : null}
+              onChange={() => setStage(null)}
+            />
+          ) : null}
+          {(showStageChips ? visibleGroups : []).map((g, i) => (
+            // No group label (Omar 2026-11-08: «شيل كلمة التنسيق»); a thin divider still parts
+            // two groups' chips for someone holding more than one sub-role.
+            <div key={g.key} aria-label={g.label} role="group" className="flex min-w-0 items-center gap-2">
+              {i > 0 ? <span aria-hidden className="h-5 w-px shrink-0 bg-border-md" /> : null}
+              <FilterChips
+                options={g.stages.map((s) => ({
+                  key: s.key,
+                  label: s.label,
+                  count: countOf(s.key),
+                  danger: lateOf(s.key),
+                }))}
+                active={stage}
+                onChange={(key) =>
+                  setStage((key as MyWorkStage | null) ?? null)
+                }
+              />
+            </div>
+          ))}
+        </PageToolbar>
+      ) : null}
+
+      <section aria-label="ما ينتظرني" className="min-w-0">
+        {pending ? (
+          <div
+            className={cn(
+              opsLetterCard,
+              "rounded-xl border-border bg-surface px-5 py-12 text-center",
+            )}
+          >
+            <GentleBusy>جاري التحميل…</GentleBusy>
+          </div>
+        ) : failed.length ? (
+          <div
+            className={cn(opsLetterCard, "rounded-xl border-border bg-surface")}
+          >
+            <QueryErrorState
+              panel
+              line="تعذّر تحميل أعمالك"
+              error={failed[0]!.error}
+              onRetry={() => failed.forEach((q) => void q.refetch())}
+              retrying={failed.some((q) => q.isFetching)}
+            />
+          </div>
+        ) : listed.length === 0 ? (
+          <div
+            className={cn(
+              opsLetterCard,
+              "rounded-xl border-border bg-surface px-5 py-12 text-center",
+            )}
+          >
+            <div className="text-sm font-bold text-text-2">
+              {search.trim()
+                ? "لا نتائج مطابقة للبحث"
+                : `لا شيء ينتظرك ${stage ? "في هذه المرحلة" : "الآن"}`}
+            </div>
+            <div className="mt-1 text-[13px] text-text-3">
+              تظهر هنا كل خطوة تصل إلى أدوارك، ويختفي الصف بعد تنفيذها.
+            </div>
+          </div>
+        ) : (
+          <>
+            <MobileRecordList className="lg:hidden">
+              {listed.map((item) => (
+                <MobileRecordCard
+                  key={item.key}
+                  tone={
+                    item.due === "late"
+                      ? "red"
+                      : item.due === "soon"
+                        ? "gold"
+                        : undefined
+                  }
+                  title={item.action}
+                  subtitle={item.reason}
+                  status={
+                    // A→Z 2026-11-09: the phone card showed no «معادة للدراسة» — it sat on the table only.
+                    item.reopened ? (
+                      <span className="flex flex-wrap items-center gap-1">
+                        <ActionTag item={item} />
+                        <DueBadge item={item} />
+                      </span>
+                    ) : (
+                      <DueBadge item={item} />
+                    )
+                  }
+                  onOpen={() => open(item.href)}
+                  actions={<RowMoreMenu items={itemsFor(item)} />}
+                  fields={[
+                    { label: "رقم المعاملة", value: item.transactionNumber || "—", ltr: true },
+                    { label: "رقم الصك / التسجيل العيني", value: item.deedNumber, ltr: true },
+                    { label: "المدينة / الحي", value: item.place },
+                    {
+                      label: "أمر العمل",
+                      value: (
+                        <span className="flex flex-col">
+                          <bdi dir="ltr">{item.poNumber}</bdi>
+                          {item.poDescription ? (
+                            <span className="text-[11px] text-text-2">{item.poDescription}</span>
+                          ) : null}
+                        </span>
+                      ),
+                    },
+                    {
+                      label: "تاريخ الاستلام / الاستحقاق",
+                      value: <MyWorkDates item={item} />,
+                    },
+                    {
+                      label: "وقت الإجراء",
+                      value: <ActionClock arrivedIso={item.arrivedIso} />,
+                    },
+                  ]}
+                />
+              ))}
+            </MobileRecordList>
+            <TableFrame className="max-lg:hidden">
+              <Table>
+                <THead>
+                  <Tr hoverable={false}>
+                    {/* Widths follow the content (Omar 2026-11-08): no fixed widths — the table shares
+                        its free width out in proportion to each column's widest line (values are kept
+                        on one line, the PO description capped at 220px, so that line is the real
+                        content). Only ⋮ shrinks to its button. The two long headers break onto two
+                        lines so they are no wider than their values. */}
+                    <Th>رقم المعاملة</Th>
+                    <Th className="text-center">
+                      رقم الصك /<br />
+                      التسجيل العيني
+                    </Th>
+                    <Th className="text-center">المدينة / الحي</Th>
+                    <Th className="text-center">أمر العمل</Th>
+                    <Th className="text-center">الإجراء المطلوب</Th>
+                    <Th className="text-center">
+                      تاريخ الاستلام /<br />
+                      الاستحقاق
+                    </Th>
+                    <Th className="text-center">وقت الإجراء</Th>
+                    <Th className="w-px">
+                      <span className="sr-only">المزيد</span>
+                    </Th>
+                  </Tr>
+                </THead>
+                <TBody>
+                  {listed.map((item) => (
+                    // The whole row opens the step (Omar 2026-11-08: no «افتح» button); the action's
+                    // name is the row's keyboard target.
+                    <Tr
+                      key={item.key}
+                      className="cursor-pointer"
+                      onClick={() => open(item.href)}
+                    >
+                      {/* Type scale (as «أوامر العمل»): the row's key, the transaction number, 13.5px
+                          bold gold; the action a tag (Badge); values 13px; lines under them 12px text-2;
+                          «—» muted. Every column but the transaction number is centred (Omar 2026-11-08). */}
+                      <Td className="whitespace-nowrap">
+                        {item.transactionNumber ? (
+                          <bdi dir="ltr" className="text-[13.5px] font-bold tabular-nums text-primary">
+                            {item.transactionNumber}
+                          </bdi>
+                        ) : (
+                          <Muted />
+                        )}
+                      </Td>
+                      <Td className="whitespace-nowrap text-center">
+                        {item.deedNumber && item.deedNumber !== "—" ? (
+                          <bdi dir="ltr" className="text-[13px] font-semibold tabular-nums text-heading">
+                            {item.deedNumber}
+                          </bdi>
+                        ) : (
+                          <Muted />
+                        )}
+                      </Td>
+                      <Td className="text-center">
+                        <div className="flex flex-col items-center gap-0.5">
+                          {item.place && item.place !== "—" ? (
+                            <span className="whitespace-nowrap text-[13px] text-text">{item.place}</span>
+                          ) : (
+                            <Muted />
+                          )}
+                          {item.propertyType ? (
+                            <span className="whitespace-nowrap text-[12px] text-text-2">{item.propertyType}</span>
+                          ) : null}
+                        </div>
+                      </Td>
+                      <Td className="text-center">
+                        <div className="flex min-w-0 flex-col items-center gap-0.5">
+                          <bdi dir="ltr" className="whitespace-nowrap text-[13px] tabular-nums text-text">
+                            {item.poNumber}
+                          </bdi>
+                          {item.poDescription ? (
+                            <span
+                              className="line-clamp-2 w-max max-w-[220px] text-[12px] text-text-2"
+                              title={item.poDescription}
+                            >
+                              {item.poDescription}
+                            </span>
+                          ) : null}
+                        </div>
+                      </Td>
+                      <Td className="text-center">
+                        <div className="flex min-w-0 flex-col items-center gap-1 py-1">
+                          <div className="flex flex-wrap items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                open(item.href);
+                              }}
+                              className="cursor-pointer rounded-full border-none bg-transparent p-0 hover:opacity-85"
+                            >
+                              <ActionTag item={item} />
+                            </button>
+                          </div>
+                          <span className="text-[12px] text-text-2">
+                            {item.reason}
+                          </span>
+                        </div>
+                      </Td>
+                      <Td className="whitespace-nowrap text-center">
+                        <MyWorkDates item={item} />
+                      </Td>
+                      <Td className="whitespace-nowrap text-center">
+                        <ActionClock arrivedIso={item.arrivedIso} />
+                      </Td>
+                      <QueueRowMoreCell items={itemsFor(item)} />
+                    </Tr>
+                  ))}
+                </TBody>
+              </Table>
+            </TableFrame>
+          </>
+        )}
+      </section>
+      {modals}
+    </PageShell>
+  );
+}

@@ -50,8 +50,13 @@ export function FilterChips({ options, active, onChange, className }: FilterChip
             {opt.count != null ? (
               <span
                 className={cn(
-                  "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gold-soft px-1.5 text-xs font-semibold tabular-nums",
-                  opt.danger ? "text-red-text" : "text-gold-d",
+                  "inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums",
+                  // On the active (navy) chip the badge is the chip's own pair reversed — white fill,
+                  // the chip's navy as the number — so it reads whatever the surrounding tokens are
+                  // (Omar 2026-11-09: the gold number on the gold wash, then a heading-coloured number,
+                  // were both unreadable there).
+                  isActive ? "bg-[color:var(--on-ink)]" : "bg-gold-soft",
+                  opt.danger ? "text-red-text" : isActive ? "text-[color:var(--ink)]" : "text-gold-d",
                 )}
               >
                 {opt.count}

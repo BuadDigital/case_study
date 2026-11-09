@@ -66,6 +66,14 @@ public class OperationsTask
  /// <summary>Required when status becomes cancelled.</summary>
     public string? CancelReason { get; private set; }
 
+    /// <summary>
+    /// The creator accepted what the task delivered (Omar 2026-11-05: photos, a note, a reply or a file,
+    /// delivered in the task's thread); null until then.
+    /// </summary>
+    public DateTime? OutputsAcceptedAtUtc { get; private set; }
+    public string? OutputsAcceptedByUserId { get; private set; }
+    public string? OutputsAcceptedByName { get; private set; }
+
     public bool IsTerminal => Status.IsTerminal();
 
     public bool IsCourtVisit => Type == OperationsTaskType.CourtVisit;
@@ -304,6 +312,23 @@ public class OperationsTask
         if (pricingTableId.HasValue)
             VisitFeePricingTableId = pricingTableId;
         Touch(nowUtc);
+    }
+
+    /// <summary>The creator (or a manager in his absence) accepts the delivered outputs of a completed task.</summary>
+    /// <remarks>
+    /// How it works: only a completed task; stamps who and when once. Edge cases: a second call keeps the
+    /// first stamp and returns false.
+    /// </remarks>
+    public bool AcceptOutputs(string? userId, string? name, DateTime nowUtc)
+    {
+        if (Status != OperationsTaskStatus.Completed)
+            throw new InvalidOperationException("Outputs are accepted on a completed task only.");
+        if (OutputsAcceptedAtUtc is not null) return false;
+        OutputsAcceptedAtUtc = nowUtc;
+        OutputsAcceptedByUserId = string.IsNullOrWhiteSpace(userId) ? null : userId.Trim();
+        OutputsAcceptedByName = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+        Touch(nowUtc);
+        return true;
     }
 
     public void ReplaceComments(string? commentsJson, DateTime nowUtc)

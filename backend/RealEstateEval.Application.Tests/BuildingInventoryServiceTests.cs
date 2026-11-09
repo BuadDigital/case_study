@@ -21,7 +21,7 @@ public class BuildingInventoryServiceTests
         new() { UserId = userId, DisplayName = "المعاين", PrototypeRole = "field-inspector" };
 
     private static PartySubmissionActor Specialist() =>
-        new() { UserId = "spec-1", DisplayName = "الأخصائي", PrototypeRole = "case-specialist" };
+        new() { UserId = "spec-1", DisplayName = "الأخصائي", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All };
 
     private static CaseStudyDbContext CreateDb() =>
         new(new DbContextOptionsBuilder<CaseStudyDbContext>()

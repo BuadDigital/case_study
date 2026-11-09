@@ -17,7 +17,7 @@ import {
   isMovablesPresent,
   isOccupied,
   patchInspectorFeatureValues,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   inspectorInvalidControlClass,
 } from "../../lib/app-data/inspector-workspace-validation";
@@ -62,12 +62,12 @@ import {
 import {
   Fragment,
 } from "react";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { RoleId } from "@platform/types";
 import type { updateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
-import type { visibleInspectorFeatureFields } from "../../lib/app-data/inspector-workspace-data";
+import type { visibleInspectorFeatureFields } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { featurePhotoPatch } from "../../lib/app-data/inspector-workspace-model";
 
 type InspectorFeatureFieldDef = ReturnType<typeof visibleInspectorFeatureFields>[number];

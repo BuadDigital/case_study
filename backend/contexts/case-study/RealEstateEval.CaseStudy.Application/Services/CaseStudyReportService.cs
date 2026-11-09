@@ -38,6 +38,17 @@ public partial class CaseStudyReportService : ICaseStudyReportService
     public const string BillingReadyBlocksReopenAr =
         "أحد صكوك المعاملة موسوم «جاهز للفوترة» — ظهرت بياناته المالية على إنفاذ فلا يُعاد فتح تقرير الدراسة";
 
+    /// <summary>
+    /// The study cannot be reopened while review holds the transaction (Omar 2026-11-05): withdraw the
+    /// valuation draft from review, or have review return it, first.
+    /// </summary>
+    public const string StudyReopenInReviewAr =
+        "المعاملة عند المراجع — اسحب المسودة من المراجعة أو اطلب من المراجع إرجاعها للدراسة، ثم أعد فتح التقرير";
+
+    /// <summary>After review approved the reports, only the transaction reopen (with a reason) opens it again.</summary>
+    public const string StudyReopenAfterApprovalAr =
+        "اعتمد المراجع الدراسة — يُرجعها المراجع للدراسة مع سبب، أو تُعاد بإجراء «إعادة فتح المعاملة»";
+
     private readonly ICaseStudyReportRepository _db;
     private readonly IWorkflowTaskService _workflowTasks;
     private readonly TimeProvider _time;
@@ -256,7 +267,7 @@ public partial class CaseStudyReportService : ICaseStudyReportService
             });
         }
         else if (!party && actor is not null
-                 && !PoRoleMatrixRules.CanEditProperty(actor.PrototypeRole)
+                 && !PoRoleMatrixRules.CanEditPropertyData(actor.Staff)
                  && !PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
         {
             return (null, new Dictionary<string, string>
@@ -276,18 +287,24 @@ public partial class CaseStudyReportService : ICaseStudyReportService
         }
 
         var previousMatchOutcome = (entity?.DeedNatureMatchOutcome ?? "").Trim();
-        // «مطابق» against the inspector's «غير مطابق» needs the specialist's reason (2026-10-29) — checked
-        // when the match field itself changes, so an older report's other edits still save.
+        // «مطابق» against the inspector's — or, since A→Z 2026-11-02 #20, the engineering office's — «غير مطابق»
+        // needs the specialist's reason (2026-10-29) — checked when the match field itself changes, so an older
+        // report's other edits still save.
         if (!party
             && (!string.Equals(previousMatchOutcome, (form.DeedNatureMatchOutcome ?? "").Trim(), StringComparison.Ordinal)
-                || !string.Equals((entity?.DeedNatureMatchNotes ?? "").Trim(), (form.DeedNatureMatchNotes ?? "").Trim(), StringComparison.Ordinal))
-            && await InspectorSaidNotMatchedAsync(taskId, cancellationToken))
+                || !string.Equals((entity?.DeedNatureMatchNotes ?? "").Trim(), (form.DeedNatureMatchNotes ?? "").Trim(), StringComparison.Ordinal)))
         {
-            var overrideErrors = CaseStudyReportDeedNatureMatchRules.ValidateForSave(
-                form.DeedNatureMatchOutcome,
-                form.DeedNatureMatchNotes,
-                inspectorSaidNotMatched: true);
-            if (overrideErrors is not null) return (null, overrideErrors);
+            var inspectorSaidNotMatched = await InspectorSaidNotMatchedAsync(taskId, cancellationToken);
+            var officeSaidNotMatched = await OfficeSaidNotMatchedAsync(taskId, cancellationToken);
+            if (inspectorSaidNotMatched || officeSaidNotMatched)
+            {
+                var overrideErrors = CaseStudyReportDeedNatureMatchRules.ValidateForSave(
+                    form.DeedNatureMatchOutcome,
+                    form.DeedNatureMatchNotes,
+                    inspectorSaidNotMatched,
+                    officeSaidNotMatched);
+                if (overrideErrors is not null) return (null, overrideErrors);
+            }
         }
         var previousAnswers = ParseAnswers(entity?.AnswersJson);
         var previousRemarks = ReadRemarkMap(entity);

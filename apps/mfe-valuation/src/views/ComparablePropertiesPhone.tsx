@@ -25,7 +25,7 @@ import {
   opsFld,
   opsFldControl,
   opsTfLbl,
-} from "../lib/comparables-ops-tw";
+} from "@platform/ui-kit";
 import { TagEditorRow } from "./TagEditorRow";
 import {
   comparableDeactivateBtn,

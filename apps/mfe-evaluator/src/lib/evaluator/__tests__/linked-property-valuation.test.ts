@@ -37,7 +37,8 @@ describe("phase 5 — one valuation per transaction", () => {
       transactionDeeds: deeds,
     });
     expect(linked.cells["رقم الصك"]).toBe("111 ، REG-9");
-    expect(linked.cells["تاريخ الصك"]).toBe("1440/01/01 ، 1441/02/02");
+    // Hijri deed dates carry their marker, year first (A→Z #8).
+    expect(linked.cells["تاريخ الصك"]).toBe("1440/01/01 هـ ، 1441/02/02 هـ");
 
     const alone = buildValuationReportLiveFill({
       draft,

@@ -993,6 +993,10 @@ export type ValuationIssuanceGatesDto = {
   methodologyAlerts: ValuationMethodologyAlertItemDto[];
   methodologyAlertTriggeredCount: number;
   methodologyAlertsNoteAr: string;
+  /** Review approved the study (Omar 2026-11-08); null/absent when Case Study did not answer. */
+  studyApprovedByReview?: boolean | null;
+  /** Review accepted the appraiser's value; null/absent when unknown. */
+  valueAcceptedByReview?: boolean | null;
 };
 
 export async function getValuationIssuanceGates(

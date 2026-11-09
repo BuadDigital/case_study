@@ -133,7 +133,7 @@ export type ReopenCaseStudyReportResult = {
 async function postCaseStudyReportAction<T>(
   config: WorkOrdersApiConfig,
   taskId: string,
-  action: "issue" | "reopen",
+  action: "issue" | "reopen" | "approve-study",
   body: unknown,
 ): Promise<ApiOk<T> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
@@ -183,6 +183,17 @@ export async function reopenCaseStudyReport(
     "reopen",
     { reason: request.reason, clearEnfazHandover: request.clearEnfazHandover },
   );
+}
+
+/**
+ * Review approves the study sent to it (Omar 2026-11-08): from then on the study data is locked for
+ * everyone until review returns it to the study (`reopenCaseStudyReport` with a reason).
+ */
+export async function approveCaseStudyReport(
+  config: WorkOrdersApiConfig,
+  taskId: string,
+): Promise<ApiOk<CaseStudyReportDto> | ApiErr> {
+  return postCaseStudyReportAction<CaseStudyReportDto>(config, taskId, "approve-study", {});
 }
 
 export async function getPartyCaseStudyReport(

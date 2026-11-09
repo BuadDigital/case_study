@@ -41,7 +41,7 @@ import {
 import {
   resolveApiError,
   workOrdersApiConfig,
-} from "../work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 
 export async function loadPoRecords(): Promise<PoIntakeRecord[]> {
   if (isBrowserOffline()) {

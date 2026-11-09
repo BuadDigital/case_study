@@ -59,7 +59,8 @@ public partial class PartyTaskSubmissionService
         if (inspection is null) return;
 
         var submission = await _repo.GetSubmissionAsync(inspection.Id, track: false, cancellationToken);
-        if (submission is null) return;
+        // Only what the specialist accepted reaches the appraiser (ruling 2026-11-05).
+        if (submission?.AcceptedAtUtc is null) return;
 
         var property = await _repo.GetPropertyWithInventoryAsync(propertyId, cancellationToken);
         ApplyInspectorDigest(dto, appraisal.PayloadJson, submission.PayloadJson, property);
@@ -98,6 +99,7 @@ public partial class PartyTaskSubmissionService
         if (inspectionByPair.Count == 0) return result;
 
         var submissions = (await _repo.ListSubmissionsAsync(inspectionByPair.Values.ToList(), cancellationToken))
+            .Where(s => s.AcceptedAtUtc is not null)
             .ToDictionary(s => s.WorkflowTaskId, s => s.PayloadJson);
         var properties = await _repo.ListPropertiesWithInventoryAsync(propertyIds, cancellationToken);
 
@@ -117,10 +119,11 @@ public partial class PartyTaskSubmissionService
         WorkflowTask task,
         string payloadBefore,
         string payloadAfter,
+        bool packageAccepted,
         CancellationToken cancellationToken) =>
         task.Kind == WorkflowTaskKind.FieldInspection
             ? BestEffortAsync(() =>
-                NotifyAppraiserInspectorDataChangedAsync(task, payloadBefore, payloadAfter, cancellationToken))
+                NotifyAppraiserInspectorDataChangedAsync(task, payloadBefore, payloadAfter, packageAccepted, cancellationToken))
             : Task.CompletedTask;
 
     /// <summary>Runs a post-commit side effect; a failure there never undoes or fails the committed work.</summary>
@@ -144,11 +147,15 @@ public partial class PartyTaskSubmissionService
     /// An inspector save that changed data the appraiser already acknowledged: tell the appraiser which
     /// sections moved. Only when the appraiser holds a baseline (<c>inspectorDataSeen</c>); the unread alert is
     /// deduped by its source event, so a burst of autosaves refreshes one notice instead of stacking.
+    /// Edge cases: the appraiser reads only an accepted package (ruling 2026-11-05), so a change to an
+    /// unaccepted one — the inspector's own draft saves — never alerts him; the specialist is still told
+    /// when the appraiser already handed over.
     /// </summary>
     private async Task NotifyAppraiserInspectorDataChangedAsync(
         WorkflowTask inspectionTask,
         string payloadBefore,
         string payloadAfter,
+        bool packageAccepted,
         CancellationToken cancellationToken)
     {
         var changed = InspectorDataDigestRules.ChangedBetweenPayloads(payloadBefore, payloadAfter);
@@ -188,6 +195,8 @@ public partial class PartyTaskSubmissionService
                 cancellationToken);
             return;
         }
+
+        if (!packageAccepted) return;
 
         await NotifyPartyAssigneeAsync(
             appraisal,

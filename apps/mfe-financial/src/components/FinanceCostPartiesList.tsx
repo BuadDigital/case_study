@@ -3,12 +3,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { fmtSar } from "@platform/app-shared/format/number";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
-import {
-  EmptyState,
-  QueryErrorState,
-  ListPager,
-  MobileRecordCard,
-  MobileRecordList,
+import { EmptyState, QueryErrorState, ListPager, MobileRecordCard, MobileRecordList,
   StatusPill,
   TBody,
   THead,

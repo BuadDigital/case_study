@@ -35,10 +35,10 @@ import {
   type ValuationIssuanceGatesDto,
 } from "@platform/api-client";
 import { useToast } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import { fetchInspectorWorkspace } from "../../../lib/case-study-bridge";
 import { scheduleInvalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
-import { fetchBankCandidates, NEARBY_RADIUS_KM } from "./lib/bank-ranking";
+import { fetchBankCandidates, NEARBY_RADIUS_KM, type BankTypeFilter } from "./lib/bank-ranking";
 import { apiConfig } from "./lib/shell-utils";
 import {
   LAND_WITHIN_COST,
@@ -122,6 +122,8 @@ export function useValuationWorkData({
   const bankSearchRef = useLatestRef(bankSearch);
   // How far around the property the bank tables look (3 km by default); `null` = all.
   const [bankRadiusKm, setBankRadiusKm] = useState<number | null>(NEARBY_RADIUS_KM);
+  // The market bank's type filter: the subject's kind by default, «كل الأنواع» on demand (A→Z #43/#60).
+  const [bankTypeFilter, setBankTypeFilter] = useState<BankTypeFilter>("subject");
   const [subjectArea, setSubjectArea] = useState("");
   const [adjustmentBasis, setAdjustmentBasis] = useState("price_per_sqm");
   const [analysisNotes, setAnalysisNotes] = useState("");
@@ -541,6 +543,7 @@ export function useValuationWorkData({
     bankSubjectCoords,
     bankSearch,
     bankRadiusKm,
+    bankTypeFilter,
     marketKind,
     subjectArea,
     analysisNotes,
@@ -582,6 +585,8 @@ export function useValuationWorkData({
     bankSubjectCoords,
     bankRadiusKm,
     setBankRadiusKm,
+    bankTypeFilter,
+    setBankTypeFilter,
     ...sectionSaves,
     settingsSaved,
     marketEnabled,

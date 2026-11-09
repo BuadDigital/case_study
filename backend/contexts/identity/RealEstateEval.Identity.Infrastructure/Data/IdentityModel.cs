@@ -51,6 +51,10 @@ public static class IdentityModel
                     "CK_UserProfiles_InspectorType",
                     "\"InspectorType\" IS NULL OR \"InspectorType\" IN ('employee', 'contractor')");
                 table.HasCheckConstraint(
+                    "CK_UserProfiles_CaseSpecialistSubRoles",
+                    "(\"RoleId\" = 'case-specialist' AND \"CaseSpecialistSubRoles\" BETWEEN 1 AND 7) "
+                    + "OR (\"RoleId\" IS DISTINCT FROM 'case-specialist' AND \"CaseSpecialistSubRoles\" = 0)");
+                table.HasCheckConstraint(
                     "CK_UserProfiles_ActiveRequiresRoleAndCity",
                     "\"Status\" <> 0 OR (\"RoleId\" IS NOT NULL AND \"City\" IS NOT NULL)");
             });

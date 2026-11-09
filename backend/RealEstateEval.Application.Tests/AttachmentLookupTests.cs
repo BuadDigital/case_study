@@ -27,7 +27,7 @@ public class AttachmentLookupTests
         var actor = new PermissionsDto
         {
             UserId = "staff",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         };
 
         var rows = await lookup.ListForPropertyAsync(propertyId, actor);

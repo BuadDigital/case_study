@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Rules;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.CaseStudy.Application.Services;
 using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 
@@ -22,7 +23,7 @@ public class TransactionStateController : ControllerBase
         "رفع المعاملة على إنفاذ لأخصائي دراسة الحالة فقط";
 
     public const string ReturnForbiddenAr =
-        "استرجاع المعاملة من إنفاذ لأخصائي دراسة الحالة فقط";
+        "إعادة فتح المعاملة لأخصائي دراسة الحالة والمشرف";
 
     /// <summary>The refusal for any role other than the financial officer on the billing-ready mark.</summary>
     public const string BillingReadyForbiddenAr =
@@ -57,8 +58,8 @@ public class TransactionStateController : ControllerBase
         Guid propertyId,
         CancellationToken ct)
     {
-        // The capability only reaches the door: handing over to Enfaz is the case specialist's call.
-        if (!PoRoleMatrixRules.CanHandOverToEnfaz(await ActorPrototypeRoleAsync(ct)))
+        // The capability only reaches the door: recording the Enfaz upload is the review sub-role's call.
+        if (!PoRoleMatrixRules.CanHandOverToEnfaz(await ActorStaffAsync(ct)))
             return this.ForbiddenProblem(HandoverForbiddenAr);
 
         var (result, error) = await _state.RecordEnfazHandoverAsync(
@@ -66,6 +67,22 @@ public class TransactionStateController : ControllerBase
             propertyId,
             ActorClaims.Id(User),
             ct);
+        if (error is not null)
+            return this.FieldErrorsProblem(new Dictionary<string, string> { ["_"] = error });
+        return Ok(result);
+    }
+
+    /// <summary>«تجهيز المعاملة للرفع» (Omar 2026-11-08) — the review sub-role, like the upload itself.</summary>
+    [HttpPost("ready-for-upload")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<TransactionStateDto>> MarkReadyForUpload(
+        Guid workOrderId,
+        Guid propertyId,
+        CancellationToken ct)
+    {
+        if (!PoRoleMatrixRules.CanHandOverToEnfaz(await ActorStaffAsync(ct)))
+            return this.ForbiddenProblem(HandoverForbiddenAr);
+        var (result, error) = await _state.MarkReadyForUploadAsync(workOrderId, propertyId, ActorClaims.Id(User), ct);
         if (error is not null)
             return this.FieldErrorsProblem(new Dictionary<string, string> { ["_"] = error });
         return Ok(result);
@@ -116,28 +133,57 @@ public class TransactionStateController : ControllerBase
         [FromBody] ReturnFromEnfazRequest request,
         CancellationToken ct)
     {
-        var userId = ActorClaims.Id(User);
-        var known = !string.IsNullOrWhiteSpace(userId) && userId != "unknown";
-        var permissions = known ? await _permissions.GetForUserIdAsync(userId, ct) : null;
-        var role = permissions?.PrototypeRole;
-        if (!PoRoleMatrixRules.CanReturnFromEnfaz(role))
+        var actor = await ReportActorAsync(ct);
+        // Omar 2026-11-05: «إعادة فتح المعاملة» is any specialist's (and the supervisor's / CDO's).
+        if (!PoRoleMatrixRules.CanReopenTransaction(actor.Staff))
             return this.ForbiddenProblem(ReturnForbiddenAr);
 
         var (result, errors) = await _state.ReturnFromEnfazAsync(
             workOrderId,
             propertyId,
             request ?? new ReturnFromEnfazRequest(),
-            new CaseStudyReportActor
-            {
-                UserId = known ? userId : "",
-                DisplayName = ActorClaims.DisplayName(User),
-                PrototypeRole = role,
-                DistributionAssigneeId = permissions?.DistributionAssigneeId,
-            },
+            actor,
             ct);
         if (errors is not null)
             return this.FieldErrorsProblem(errors);
         return Ok(result);
+    }
+
+    /// <summary>«إعادة فتح المعاملة» — the same reopen under its plan name (source enfaz | internal).</summary>
+    [HttpPost("reopen")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public Task<ActionResult<TransactionStateDto>> Reopen(
+        Guid workOrderId,
+        Guid propertyId,
+        [FromBody] ReturnFromEnfazRequest request,
+        CancellationToken ct) =>
+        ReturnFromEnfaz(workOrderId, propertyId, request, ct);
+
+    /// <summary>The caller as the case-study services take him (id, name, role, sub-roles).</summary>
+    private async Task<CaseStudyReportActor> ReportActorAsync(CancellationToken ct)
+    {
+        var userId = ActorClaims.Id(User);
+        var known = !string.IsNullOrWhiteSpace(userId) && userId != "unknown";
+        var permissions = known ? await _permissions.GetForUserIdAsync(userId, ct) : null;
+        return new CaseStudyReportActor
+        {
+            UserId = known ? userId : "",
+            DisplayName = ActorClaims.DisplayName(User),
+            PrototypeRole = permissions?.PrototypeRole,
+            DistributionAssigneeId = permissions?.DistributionAssigneeId,
+            SubRoles = permissions?.SubRoles ?? [],
+        };
+    }
+
+    /// <summary>The caller's role and case-specialist sub-roles, as the role rules take them.</summary>
+    private async Task<StaffActor> ActorStaffAsync(CancellationToken cancellationToken) =>
+        new(await ActorPrototypeRoleAsync(cancellationToken), await ActorSubRolesAsync(cancellationToken));
+
+    private async Task<IReadOnlyList<string>> ActorSubRolesAsync(CancellationToken cancellationToken)
+    {
+        var userId = ActorClaims.Id(User);
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return [];
+        return (await _permissions.GetForUserIdAsync(userId, cancellationToken))?.SubRoles ?? [];
     }
 
     /// <summary>JWT carries identity roles (Editor/CDO), not prototype roles.</summary>

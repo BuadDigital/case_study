@@ -2,7 +2,7 @@
  * Pure rules of «رفع تجميد الرفع المساحي» (batch 2C, wire (g)): who sees the lift, when, and what the
  * reason dialog needs. The failure stays open — only the engineering office's survey freeze is lifted.
  */
-import type { RoleId } from "@platform/types";
+import type { StaffAccess } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 import {
   isActiveFailureStatus,
   isSurveyFreezeLifted,
@@ -16,12 +16,12 @@ export const SURVEY_FREEZE_LIFT_REASON_MIN_LENGTH = 10;
 type SurveyFreezeLiftView = "lift" | "lifted" | "none";
 
 export function surveyFreezeLiftView(
-  role: RoleId,
+  access: StaffAccess,
   failure: Pick<FailureRecord, "status" | "surveyFreezeLiftedAt">,
 ): SurveyFreezeLiftView {
   if (!isActiveFailureStatus(failure.status)) return "none";
   if (isSurveyFreezeLifted(failure)) return "lifted";
-  return canLiftSurveyFreeze(role) ? "lift" : "none";
+  return canLiftSurveyFreeze(access) ? "lift" : "none";
 }
 
 /** Reason rule — trimmed, at least 10 characters. Returns the Arabic error, or null when valid. */

@@ -4,6 +4,7 @@ using RealEstateEval.Domain;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Application.Rules;
 using RealEstateEval.Operations.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Operations.Application.Services;
 
@@ -13,10 +14,10 @@ public sealed partial class OperationsTaskCommands
         Guid id,
         bool auto,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default)
     {
-        if (!OperationsTaskLifecycleRules.IsManager(actorRole))
+        if (!OperationsTaskLifecycleRules.IsManager(actorStaff))
             return (null, "التذكير للمنشئ أو المشرف فقط");
 
         var entity = await _repo.FindAsync(id, cancellationToken);

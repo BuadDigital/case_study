@@ -4,7 +4,6 @@ import {
   fetchEngineeringSurveySubmission,
   prefetchEngineeringSurveyDocuments,
 } from "../lib/engineering-survey-bridge";
-import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
 import {
   fetchEvaluatorSubmission,
   prefetchEvaluatorReport,
@@ -12,13 +11,11 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { useGovernedPropertyDocumentsQuery } from "./governed-property-documents-query";
-import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
 import {
   prefetchPropertyDocAttachments,
   subscribeAssignmentDocCache,
 } from "../lib/app-data/assignment-doc-attachments";
 import { prefetchInspectorWorkspacePhotos } from "../lib/app-data/inspector-photo-upload";
-import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/app-data/inspector-workspace-model";
 import { fetchInspectorWorkspace } from "../lib/app-data/inspector-workspace-reads";
 import {
   collectPropertyDetailDocumentSections,
@@ -26,6 +23,11 @@ import {
   type PropertyDetailDocumentSection,
 } from "../lib/app-data/property-detail-documents";
 import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
+import {
+  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
+  EVALUATOR_SUBMISSION_CHANGED_EVENT,
+  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 export function usePropertyDetailDocuments(input: {
   property: PoPropertyIntake;

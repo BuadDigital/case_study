@@ -20,7 +20,7 @@ import {
   type PartyWorkMutationResult,
   type ReturnInspectionMutationResult,
 } from "@platform/app-shared/app-data/party-submission-api";
-import { resolveApiError, workOrdersApiConfig } from "../work-orders-api-config";
+import { resolveApiError, workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   applyEnfathPrefillToInspectorDraft,
   withMapLinkStartingPoint,
@@ -35,7 +35,7 @@ import {
   MOVABLES_FEATURE_KEY,
   sanitizeInspectorDraftForLand,
   type InspectorWorkspaceDraft,
-} from "./inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   draftToPayload,
   isDraftNewerThan,

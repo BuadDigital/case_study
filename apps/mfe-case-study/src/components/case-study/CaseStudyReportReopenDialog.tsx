@@ -23,6 +23,8 @@ type Props = {
    * إنفاذ» confirmation shows up-front instead of after the server's `enfazHandover` refusal.
    */
   enfazHandedOver?: boolean;
+  /** Review returns the study to the study (Omar 2026-11-08) — the wording follows; same call. */
+  returnByReview?: boolean;
 };
 
 /**
@@ -36,6 +38,7 @@ export function CaseStudyReportReopenDialog({
   onReopen,
   deedLabel,
   enfazHandedOver,
+  returnByReview = false,
 }: Props) {
   if (!open) return null;
   return (
@@ -44,6 +47,7 @@ export function CaseStudyReportReopenDialog({
       onReopen={onReopen}
       deedLabel={deedLabel}
       enfazHandedOver={enfazHandedOver}
+      returnByReview={returnByReview}
     />
   );
 }
@@ -53,6 +57,7 @@ function ReopenForm({
   onReopen,
   deedLabel,
   enfazHandedOver,
+  returnByReview,
 }: Omit<Props, "open">) {
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState<string | null>(null);
@@ -95,7 +100,7 @@ function ReopenForm({
   return (
     <AppModal
       open
-      title="إعادة فتح تقرير دراسة الحالة"
+      title={returnByReview ? "إرجاع الدراسة لدارس العقار" : "استرجاع تقرير دراسة الحالة"}
       subtitle={
         <>
           سيعود التقرير
@@ -107,7 +112,7 @@ function ReopenForm({
               </span>
             </>
           ) : null}{" "}
-          إلى «مسودة» ويُفتح للتعديل حتى تُصدره من جديد.
+          إلى «مسودة» ويُفتح للتعديل حتى يُرسَل للمراجع من جديد{returnByReview ? "، ويسقط اعتمادك له" : ""}.
         </>
       }
       onClose={onClose}
@@ -129,7 +134,7 @@ function ReopenForm({
             loading={busy}
             onClick={() => void submit()}
           >
-            إعادة فتح التقرير
+            {returnByReview ? "إرجاع للدراسة" : "استرجاع الدراسة"}
           </Button>
         </div>
       }
@@ -140,7 +145,7 @@ function ReopenForm({
             htmlFor="cs-reopen-reason"
             className="mb-1.5 text-[11px] font-semibold text-text-2"
           >
-            سبب إعادة الفتح (10 أحرف على الأقل)
+            {returnByReview ? "سبب الإرجاع (10 أحرف على الأقل)" : "سبب الاسترجاع (10 أحرف على الأقل)"}
           </Label>
           <Textarea
             id="cs-reopen-reason"

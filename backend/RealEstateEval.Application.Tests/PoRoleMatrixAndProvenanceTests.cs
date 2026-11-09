@@ -15,9 +15,9 @@ public class PoRoleMatrixRulesTests
     [InlineData("field-inspector", false)]
     [InlineData("cdo", true)]
     [InlineData("", false)]
-    public void CanEditProperty_matches_frontend(string role, bool expected)
+    public void CanAdvanceIntake_matches_frontend(string role, bool expected)
     {
-        Assert.Equal(expected, PoRoleMatrixRules.CanEditProperty(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanAdvanceIntake(TestStaff.Of(role)));
     }
 
     [Theory]
@@ -29,7 +29,7 @@ public class PoRoleMatrixRulesTests
     [InlineData("real-estate-appraiser", false)]
     public void CanReceivePo_is_specialist_and_supervisor_only(string role, bool expected)
     {
-        Assert.Equal(expected, PoRoleMatrixRules.CanReceivePo(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanReceivePo(TestStaff.Of(role)));
     }
 
     [Theory]
@@ -40,7 +40,7 @@ public class PoRoleMatrixRulesTests
     [InlineData("field-inspector", false)]
     public void CanRevertTaskPhase_is_specialist_cdo_and_supervisor(string role, bool expected)
     {
-        Assert.Equal(expected, PoRoleMatrixRules.CanRevertTaskPhase(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanRevertTaskPhase(TestStaff.Of(role)));
     }
 
     [Theory]
@@ -64,14 +64,14 @@ public class PoRoleMatrixRulesTests
     [InlineData("", false)]
     public void Specialist_decisions_belong_to_the_case_specialist_only(string role, bool expected)
     {
-        Assert.Equal(expected, PoRoleMatrixRules.CanIssueCaseStudyReport(role));
-        Assert.Equal(expected, PoRoleMatrixRules.CanReopenCaseStudyReport(role));
-        Assert.Equal(expected, PoRoleMatrixRules.CanDecideAppraisalRecall(role));
-        Assert.Equal(expected, PoRoleMatrixRules.CanHandOverToEnfaz(role));
-        Assert.Equal(expected, PoRoleMatrixRules.CanReturnFromEnfaz(role));
-        Assert.Equal(expected, PoRoleMatrixRules.CanLiftSurveyFreeze(role));
-        Assert.Equal(expected, PoRoleMatrixRules.CanPrepareReportDraft(role));
-        Assert.Equal(expected, PoRoleMatrixRules.CanReopenValuationReport(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanFinishStudy(TestStaff.Of(role)));
+        Assert.Equal(expected, PoRoleMatrixRules.CanReopenCaseStudyReport(TestStaff.Of(role)));
+        Assert.Equal(expected, PoRoleMatrixRules.CanDecideAppraisalRecall(TestStaff.Of(role)));
+        Assert.Equal(expected, PoRoleMatrixRules.CanHandOverToEnfaz(TestStaff.Of(role)));
+        Assert.Equal(expected, PoRoleMatrixRules.CanReturnFromEnfaz(TestStaff.Of(role)));
+        Assert.Equal(expected, PoRoleMatrixRules.CanLiftSurveyFreeze(TestStaff.Of(role)));
+        Assert.Equal(expected, PoRoleMatrixRules.CanPrepareReportDraft(TestStaff.Of(role)));
+        Assert.Equal(expected, PoRoleMatrixRules.CanReopenValuationReport(TestStaff.Of(role)));
     }
 
     [Theory]
@@ -113,7 +113,7 @@ public class PoRoleMatrixRulesTests
         string? status,
         bool expected)
     {
-        Assert.Equal(expected, PoRoleMatrixRules.CanPatchTaskLifecycle(role, phase, status));
+        Assert.Equal(expected, PoRoleMatrixRules.CanPatchTaskLifecycle(TestStaff.Of(role), phase, status));
     }
 
     [Theory]
@@ -134,7 +134,7 @@ public class PoRoleMatrixRulesTests
     [InlineData("cdo", true)]
     public void CanEditAssignmentSpecialist_matches_frontend(string role, bool expected)
     {
-        Assert.Equal(expected, PoRoleMatrixRules.CanEditAssignmentSpecialist(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanEditAssignmentSpecialist(TestStaff.Of(role)));
     }
 
     [Theory]
@@ -196,7 +196,7 @@ public class PoRoleMatrixRulesTests
     [InlineData("real-estate-appraiser", false)]
     public void CanCorrectFieldInspectionSubmission_matches_case_staff(string role, bool expected)
     {
-        Assert.Equal(expected, PoRoleMatrixRules.CanCorrectFieldInspectionSubmission(role));
+        Assert.Equal(expected, PoRoleMatrixRules.CanCorrectFieldInspectionSubmission(TestStaff.Of(role)));
     }
 
     [Theory]

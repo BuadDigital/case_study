@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  attachmentTypeKeyFor,
   attachmentTypeKeyFromScope,
   collectInspectorPhotoAttachmentIds,
   pairsFromOrgLines,
@@ -28,6 +29,18 @@ describe("valuation-report-print-attachments", () => {
       "site-map",
     );
     expect(attachmentTypeKeyFromScope("other")).toBeNull();
+  });
+
+  it("never routes an assignment or delegation letter to the deed slot", () => {
+    expect(attachmentTypeKeyFromScope("property-delegation")).toBeNull();
+    expect(attachmentTypeKeyFromScope("property-decree")).toBeNull();
+    expect(attachmentTypeKeyFor("property-delegation", "delegation-letter")).toBeNull();
+    expect(attachmentTypeKeyFor("property-decree", "assignment-letter")).toBeNull();
+    expect(attachmentTypeKeyFor("property-bourse-deed", "bourse-deed")).toBe("deed");
+    expect(attachmentTypeKeyFor("property-deed-ownership", "deed")).toBe("deed");
+    expect(attachmentTypeKeyFor("field-inspection-photo", "inspection-photo")).toBe("photo");
+    expect(attachmentTypeKeyFor("engineering-site-letter", "site-letter")).toBe("site-map");
+    expect(attachmentTypeKeyFor("property-deed-ownership", null)).toBe("deed");
   });
 
   it("builds the for-property needle as the property library's compound key", () => {

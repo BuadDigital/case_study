@@ -243,6 +243,17 @@ describe("costLinesFromInventory", () => {
     expect(annex.itemKey).toBe("upper_annex");
     expect(other.itemKey).toBe("custom");
   });
+
+  it("seeds a custom row named as a floor or annex into the floor areas (A→Z #30/#52/#90)", () => {
+    const [second, mezzanine, guard] = costLinesFromInventory([
+      { id: "a", structureKind: "other", label: "الدور الثاني", areaSqm: "520", itemKey: "custom", unit: "sqm" },
+      { id: "b", structureKind: "other", label: "الميزانين", areaSqm: "80", itemKey: "custom", unit: "sqm", buildRatioPct: 50 },
+      { id: "c", structureKind: "other", label: "غرفة حارس", areaSqm: "12", itemKey: "custom", unit: "sqm" },
+    ]);
+    expect(second.structureKind).toBe("floor");
+    expect(mezzanine).toMatchObject({ structureKind: "floor", buildRatioPct: 50 });
+    expect(guard.structureKind).toBe("other");
+  });
 });
 
 describe("costInventoryDrift — early cost seeds follow the components table", () => {

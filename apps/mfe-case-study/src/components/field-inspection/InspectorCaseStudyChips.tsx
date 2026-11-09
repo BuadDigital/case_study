@@ -25,7 +25,7 @@ import {
   type CaseStudyReportAnswer,
   type CaseStudyQuestionSection,
 } from "../../lib/app-data/case-study-report-data";
-import type { CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
+import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import { loadPartyCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
 import { savePartyCaseStudyReportDraft } from "../../lib/app-data/case-study-report-commands";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";

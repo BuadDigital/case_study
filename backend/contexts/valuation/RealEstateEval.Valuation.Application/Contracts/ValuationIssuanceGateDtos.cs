@@ -45,4 +45,13 @@ public class ValuationIssuanceGatesDto
     public int MethodologyAlertTriggeredCount { get; init; }
     public string MethodologyAlertsNoteAr { get; init; } =
         "تنبيهات منهجية (24): 7 حاجبة · 12 بمبرر نصي إلزامي · 5 بإقرار.";
+
+    /// <summary>
+    /// Review approved the study (Omar 2026-11-08) — read from Case Study; null when unknown. Not a gate:
+    /// it holds only the draft's send to the appraiser, never the issuance of an older transaction.
+    /// </summary>
+    public bool? StudyApprovedByReview { get; init; }
+
+    /// <summary>Review accepted the appraiser's value (his package's acceptance) — as above.</summary>
+    public bool? ValueAcceptedByReview { get; init; }
 }

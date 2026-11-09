@@ -16,7 +16,7 @@ import {
   contactNumbersForSave,
   formatContactNumbersInput,
   validateComparableEntry,
-} from "../comparable-entry";
+} from "@platform/app-shared/app-data/comparable-entry";
 
 describe("contact numbers", () => {
   it("counts every 10 digits as one number", () => {

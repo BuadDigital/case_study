@@ -80,6 +80,30 @@ public sealed class HttpCaseStudyCommands(
             ? (null, "تعذّر تثبيت الرقم المرجعي.")
             : (body, null);
     }
+
+    /// <summary>Moves the deed's transaction between the study and review in Case Study.</summary>
+    /// <remarks>
+    /// How it works: POSTs {state, userId} to /api/case-study-dispatch/properties/{propertyId}/review-state.
+    /// Edge cases: a problem answer returns its first message (or «تعذّر تحديث حالة المراجعة.»); null on success.
+    /// </remarks>
+    public async Task<string?> SetTransactionReviewStateAsync(
+        Guid propertyId,
+        string state,
+        string? userId,
+        CancellationToken cancellationToken = default)
+    {
+        var (_, errors) = await UpstreamJson.PostForResultAsync<CaseStudyTransactionReviewStateDto>(
+            http,
+            httpContext,
+            options.Value.CaseStudyBaseUrl,
+            $"/api/case-study-dispatch/properties/{propertyId:D}/review-state",
+            new SetCaseStudyTransactionReviewStateRequest { State = state, UserId = userId },
+            Setting,
+            cancellationToken);
+        return errors is { Count: > 0 }
+            ? errors.Values.FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? "تعذّر تحديث حالة المراجعة."
+            : null;
+    }
 }
 
 /// <summary>Failures-host HTTP client for the Case Study failure side effects.</summary>

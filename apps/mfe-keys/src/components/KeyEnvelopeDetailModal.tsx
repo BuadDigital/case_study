@@ -55,7 +55,7 @@ export function KeyEnvelopeDetailPage({
   canEdit,
   onBack,
   onChanged,
-  backLabel = "محفظة المفاتيح",
+  backLabel = "المفاتيح",
 }: {
   envelopeId: string;
   canEdit: boolean;

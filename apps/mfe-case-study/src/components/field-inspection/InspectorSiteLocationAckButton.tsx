@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@platform/ui-kit";
-import { SITE_LOCATION_ACK_BUTTON_LABEL } from "../../lib/app-data/inspector-workspace-data";
+import { SITE_LOCATION_ACK_BUTTON_LABEL } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { INS_WIZARD_PIN_BUTTON_CLASS } from "./FieldInspectionWorkParts";
 
 /** Opens the branded «إقرار صحة الموقع» letter (print gated on تثبيت الموقع). */

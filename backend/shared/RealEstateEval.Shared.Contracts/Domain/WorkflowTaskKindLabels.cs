@@ -44,6 +44,15 @@ public static class WorkflowTaskKindLabels
         _ => "إتمام عمل الطرف",
     };
 
+    /// <summary>
+    /// «Party work complete» title, marked «بعد التصحيح» when the package was returned for correction first.
+    /// How it works: <see cref="SubmittedTitleAr(string)"/> plus the suffix on a resubmission.
+    /// Edge cases: added A→Z 2026-11-02 #59 — a corrected inspection wrote a second identical
+    /// «إتمام المعاينة الميدانية» on the timeline.
+    /// </summary>
+    public static string SubmittedTitleAr(string kind, bool afterCorrection) =>
+        afterCorrection ? $"{SubmittedTitleAr(kind)} بعد التصحيح" : SubmittedTitleAr(kind);
+
  /// <summary>Task name in distribution notifications.</summary>
     public static string NotificationLabelAr(WorkflowTaskKind kind) => kind switch
     {

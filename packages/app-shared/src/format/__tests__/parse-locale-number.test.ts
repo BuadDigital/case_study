@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { toLatinDigits } from "../../lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 import { isPositiveLocaleNumber, parseLocaleNumber } from "../number";
 
 describe("toLatinDigits", () => {

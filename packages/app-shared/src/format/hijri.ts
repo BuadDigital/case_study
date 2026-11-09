@@ -1,4 +1,4 @@
-import { toArabicDigits } from "../lib/arabic-digits";
+import { toArabicDigits } from "@platform/ui-kit";
 import { pad2 } from "./date";
 
 /**

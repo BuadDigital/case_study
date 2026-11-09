@@ -1,5 +1,6 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Operations.Application.Abstractions;
 
@@ -15,7 +16,7 @@ public interface IOperationsTaskService : IOperationsTaskCommands
         string? status,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default);
 
  /// <summary>Filtered / sorted plain list. Paging members of the query are ignored here.</summary>
@@ -23,7 +24,7 @@ public interface IOperationsTaskService : IOperationsTaskCommands
         OperationsTaskListQuery query,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default);
 
  /// <summary>Filtered / sorted page. The executor-queue narrowing is applied before the count.</summary>
@@ -31,7 +32,7 @@ public interface IOperationsTaskService : IOperationsTaskCommands
         OperationsTaskListQuery query,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default);
 
     Task<OperationsTaskDto?> GetAsync(Guid id, CancellationToken cancellationToken = default);

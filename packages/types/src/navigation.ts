@@ -1,8 +1,10 @@
 /** Shell navigation contract — shared when splitting MFE remotes later. */
 export type PageId =
   | "dashboard"
+  | "my-work"
   | "active-primary-data"
   | "active-distribution"
+  | "active-receipt"
   | "active-case-study"
   | "system-upload"
   | "po"
@@ -47,6 +49,12 @@ export type RoleId =
   | "government-reviewer"
   | "engineering-office"
   | "financial-officer";
+
+/**
+ * The case specialist's sub-roles (ruling 2026-11-02): coordination («التنسيق»), property study
+ * («دراسة العقار») and review + approval + Enfaz upload («المراجعة والاعتماد والرفع»).
+ */
+export type CaseSpecialistSubRole = "coordination" | "study" | "review";
 
 export type NavItem = {
   id: PageId;

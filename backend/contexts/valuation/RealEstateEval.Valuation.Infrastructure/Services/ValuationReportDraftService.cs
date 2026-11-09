@@ -54,6 +54,8 @@ public sealed partial class ValuationReportDraftService(
     public const string PackageNotSubmittedAr = "سلّم المقيّم تقييمه للأخصائي أولاً";
     public const string AlreadyApprovedAr = "اعتمد المقيّم التقرير — اسحب الاعتماد أولاً";
     public const string RequestClosedAr = "صدر التقرير النهائي — يُعدَّل بنسخة جديدة ";
+    public const string ReviewSendForbiddenAr = "إرسال المسودة للمقيّم وسحبها منه للمراجع (المراجعة والاعتماد والرفع)";
+    public const string InReviewEditForbiddenAr = "المسودة عند المراجع — التعديل له وحده حتى يرسلها أو يُرجعها للدراسة";
 
     private readonly TimeProvider _time = time ?? TimeProvider.System;
 
@@ -95,7 +97,10 @@ public sealed partial class ValuationReportDraftService(
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanPrepareReportDraft(actor.PrototypeRole))
+        // Omar 2026-11-08: the three case-specialist sub-roles edit the report's data at the same level.
+        var mayPrepare = PoRoleMatrixRules.CanPrepareReportDraft(actor.Staff) || actor.Staff.IsCaseSpecialist;
+        var mayReview = PoRoleMatrixRules.CanReviewTransaction(actor.Staff);
+        if (!mayPrepare && !mayReview)
             return (null, Forbidden(PrepareForbiddenAr));
 
         var (json, choiceErrors) = ReportDraftChoiceRules.Normalize(request.Choices);
@@ -104,7 +109,11 @@ public sealed partial class ValuationReportDraftService(
         var (vr, draft, error) = await PrepareForWriteAsync(valuationRequestId, cancellationToken);
         if (error is not null) return (null, error);
 
-        var saveError = draft!.SaveChoices(json!, _time.GetUtcNow().UtcDateTime);
+        // Review lock: in review only review edits; while preparing, the study does.
+        if (draft!.IsInReview ? !mayReview : !mayPrepare)
+            return (null, Forbidden(draft.IsInReview ? InReviewEditForbiddenAr : PrepareForbiddenAr));
+
+        var saveError = draft.SaveChoices(json!, _time.GetUtcNow().UtcDateTime);
         if (saveError is not null) return (null, Error(saveError));
 
         await db.SaveChangesAsync(cancellationToken);
@@ -117,23 +126,20 @@ public sealed partial class ValuationReportDraftService(
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanPrepareReportDraft(actor.PrototypeRole))
-            return (null, Forbidden(PrepareForbiddenAr));
-
         var existing = await CurrentDraftAsync(valuationRequestId, tracked: false, cancellationToken);
         if (existing is { IsSent: true } or { IsApproved: true })
             return (await GetAsync(valuationRequestId, cancellationToken), null);
 
+        // Omar 2026-11-08: review issues the draft to the appraiser for his final approval — after it
+        // approved the study and accepted the appraiser's value (the study no longer hands a draft over).
+        if (!PoRoleMatrixRules.CanReviewTransaction(actor.Staff))
+            return (null, Forbidden(ReviewSendForbiddenAr));
+
         var (vr, draft, error) = await PrepareForWriteAsync(valuationRequestId, cancellationToken);
         if (error is not null) return (null, error);
 
-        // Round 2: what only the specialist can upload (the deed copy, the survey document …) is in
-        // place before the draft goes to the appraiser — otherwise his approval is refused for a
-        // document he cannot add.
-        if (issuanceGates is not null
-            && ReportDraftSendRules.MissingSpecialistDocumentsError(
-                    await issuanceGates.EvaluateAsync(valuationRequestId, cancellationToken)) is { } missing)
-            return (null, missing);
+        if (await HandoverGateErrorAsync(valuationRequestId, cancellationToken, requireReview: true) is { } gateError)
+            return (null, gateError);
 
         var sendError = draft!.Send(
             request.ConformityConfirmed, request.Note, actor.UserId, _time.GetUtcNow().UtcDateTime);
@@ -163,7 +169,9 @@ public sealed partial class ValuationReportDraftService(
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanPrepareReportDraft(actor.PrototypeRole))
+        var mayPrepare = PoRoleMatrixRules.CanPrepareReportDraft(actor.Staff);
+        var mayReview = PoRoleMatrixRules.CanReviewTransaction(actor.Staff);
+        if (!mayPrepare && !mayReview)
             return (null, Forbidden(PrepareForbiddenAr));
 
         var vr = await db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
@@ -173,7 +181,12 @@ public sealed partial class ValuationReportDraftService(
         if (draft is null || draft.IsPreparing)
             return (await GetAsync(valuationRequestId, cancellationToken), null);
 
-        var withdrawError = draft.Withdraw(request.Note, _time.GetUtcNow().UtcDateTime);
+        // Omar 2026-11-08: review pulls a sent draft back from the appraiser to correct it (a legacy draft
+        // still «in review» comes back the same way). The study's own state is Case Study's.
+        if (!mayReview && !(draft.IsInReview && mayPrepare))
+            return (null, Forbidden(ReviewSendForbiddenAr));
+        var now = _time.GetUtcNow().UtcDateTime;
+        var withdrawError = draft.Withdraw(request.Note, now);
         if (withdrawError is not null) return (null, Error(withdrawError));
 
         await StageNoticeAsync(

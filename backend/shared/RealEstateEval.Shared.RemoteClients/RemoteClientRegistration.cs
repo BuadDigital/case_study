@@ -154,6 +154,7 @@ public static class RemoteClientRegistration
     {
         services.AddUpstreamHttp(configuration);
         services.AddHttpClient<IOperationsTaskService, HttpOperationsTaskService>();
+        services.AddHttpClient<ILinkedOperationsTaskLookup, HttpLinkedOperationsTaskLookup>();
         services.AddHttpClient<IKeyEntitlementLookup, HttpKeyEntitlementLookup>();
         services.AddHttpClient<IPropertyKeyGateResolver, HttpPropertyKeyGateResolver>();
         services.AddHttpClient<IPropertyKeysService, HttpPropertyKeysService>();

@@ -8,6 +8,7 @@ using RealEstateEval.Operations.Application.Services;
 using RealEstateEval.Operations.Infrastructure.Persistence;
 using RealEstateEval.Operations.Infrastructure.Data.Contexts;
 using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Operations.Infrastructure.Services;
 
@@ -64,7 +65,7 @@ public sealed class OperationsTaskService : IOperationsTaskService
         string? status,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default) =>
         _query.ListAsync(
             assigneeId,
@@ -72,24 +73,24 @@ public sealed class OperationsTaskService : IOperationsTaskService
             status,
             actorUserId,
             actorAssigneeId,
-            actorRole,
+            actorStaff,
             cancellationToken);
 
     public Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
         OperationsTaskListQuery query,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default) =>
-        _query.ListAsync(query, actorUserId, actorAssigneeId, actorRole, cancellationToken);
+        _query.ListAsync(query, actorUserId, actorAssigneeId, actorStaff, cancellationToken);
 
     public Task<PagedResultDto<OperationsTaskDto>> ListPagedAsync(
         OperationsTaskListQuery query,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default) =>
-        _query.ListPagedAsync(query, actorUserId, actorAssigneeId, actorRole, cancellationToken);
+        _query.ListPagedAsync(query, actorUserId, actorAssigneeId, actorStaff, cancellationToken);
 
     public Task<OperationsTaskDto?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
         _query.GetAsync(id, cancellationToken);
@@ -106,28 +107,36 @@ public sealed class OperationsTaskService : IOperationsTaskService
         PatchOperationsTaskRequest request,
         string actorAssigneeId,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         string actorUserId,
         CancellationToken cancellationToken = default) =>
         _commands.PatchAsync(
-            id, request, actorAssigneeId, actorName, actorRole, actorUserId, cancellationToken);
+            id, request, actorAssigneeId, actorName, actorStaff, actorUserId, cancellationToken);
+
+    public Task<(OperationsTaskDto? Result, string? Error)> AcceptOutputsAsync(
+        Guid id,
+        string actorUserId,
+        string? actorName,
+        StaffActor actorStaff,
+        CancellationToken cancellationToken = default) =>
+        _commands.AcceptOutputsAsync(id, actorUserId, actorName, actorStaff, cancellationToken);
 
     public Task<(OperationsTaskDto? Result, string? Error)> ReassignAsync(
         Guid id,
         ReassignOperationsTaskRequest request,
         string actorAssigneeId,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default) =>
-        _commands.ReassignAsync(id, request, actorAssigneeId, actorName, actorRole, cancellationToken);
+        _commands.ReassignAsync(id, request, actorAssigneeId, actorName, actorStaff, cancellationToken);
 
     public Task<(OperationsTaskDto? Result, string? Error)> RemindAsync(
         Guid id,
         bool auto,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default) =>
-        _commands.RemindAsync(id, auto, actorName, actorRole, cancellationToken);
+        _commands.RemindAsync(id, auto, actorName, actorStaff, cancellationToken);
 
     public Task<int> ProcessDueAutoRemindersAsync(CancellationToken cancellationToken = default) =>
         _commands.ProcessDueAutoRemindersAsync(cancellationToken);
@@ -146,10 +155,10 @@ public sealed class OperationsTaskService : IOperationsTaskService
         Guid id,
         AddOperationsTaskCommentRequest request,
         string actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         string? actorName,
         CancellationToken cancellationToken = default) =>
-        _commands.AddCommentAsync(id, request, actorAssigneeId, actorRole, actorName, cancellationToken);
+        _commands.AddCommentAsync(id, request, actorAssigneeId, actorStaff, actorName, cancellationToken);
 
     public Task<IReadOnlyList<CourtVisitFeeReportRowDto>> ListCourtVisitFeesAsync(
         string? creditAssigneeId = null,

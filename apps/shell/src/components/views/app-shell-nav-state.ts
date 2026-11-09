@@ -128,10 +128,14 @@ type SidebarNavPlanInput = {
 };
 
 /**
- * Where the extra sidebar groups slot in, per row: finance directly under
- * "suspended transactions", general (system settings) after the last row of
- * the last run, active transactions after its anchor row. Each group is
- * inserted at most once; whatever finds no row falls to `trailing`.
+ * Where the extra sidebar groups slot in, per row: finance after the last row of
+ * the run that holds "suspended transactions", general (system settings) after
+ * the last row of the last run, active transactions after its anchor row. Each
+ * group is inserted at most once; whatever finds no row falls to `trailing`.
+ *
+ * Edge cases / fixed 2026-11-05: finance used to go right under "suspended
+ * transactions", so the rows after it in the same run («مراجعة المسميات»,
+ * «سجل العملاء») rendered under the «المالية» heading.
  */
 export function planSidebarNav(
   navRuns: NavRun[],
@@ -145,13 +149,17 @@ export function planSidebarNav(
   }
   let generalInserted = false;
   let financeInserted = false;
+  const financeRunIndex = navRuns.findIndex((run) =>
+    run.items.some((item) => item.id === "suspended-transactions"),
+  );
 
   const runs = navRuns.map((run, ri) => ({
     label: run.label,
     rows: run.items.map((item) => {
       const after: SidebarInsert[] = [];
       if (
-        item.id === "suspended-transactions" &&
+        ri === financeRunIndex &&
+        run.items[run.items.length - 1]?.id === item.id &&
         showFinancial &&
         !financeInserted
       ) {

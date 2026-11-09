@@ -11,7 +11,8 @@ export type BreadcrumbSegment = {
  * Section headers (Case Study, Active Transactions, …) intentionally omit href.
  */
 const BREADCRUMB_LABEL_HREF: Record<string, string> = {
-  الرئيسية: "/dashboard",
+  // «الرئيسية» is each user's own landing page («/» picks it) — the dashboard is the CDO's only (2026-11-09).
+  الرئيسية: "/",
   "لوحة التحكم": "/dashboard",
   "أوامر العمل": "/po",
   "أوامر العمل (PO)": "/po",
@@ -21,6 +22,7 @@ const BREADCRUMB_LABEL_HREF: Record<string, string> = {
   "البيانات الأولية": "/active-primary-data",
   "استعلام بورصة": "/bourse-inquiry",
   "توزيع المعاملات": "/active-distribution",
+  "الاستلام من الأطراف": "/active-receipt",
   "دراسة حالة العقارات": "/active-case-study",
   "الرفع على النظام": "/system-upload",
   "معاينة العقار": "/active-inspection",
@@ -30,6 +32,10 @@ const BREADCRUMB_LABEL_HREF: Record<string, string> = {
   "الأتعاب والصرف": "/party-fees",
   المهام: "/operations-tasks",
   "محفظة المفاتيح": "/keys",
+  المفاتيح: "/keys",
+  التعذّرات: "/failures",
+  "المعاملات النشطة": "/all-transactions",
+  أعمالي: "/my-work",
   "إدارة المفاتيح": "/keys",
   "إدارة التعذرات": "/failures",
   "إدارة التعذّرات": "/failures",

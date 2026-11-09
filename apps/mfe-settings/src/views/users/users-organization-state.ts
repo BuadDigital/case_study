@@ -25,6 +25,8 @@ import {
   type FieldErrors,
 } from "@platform/app-shared/registration/registration-utils";
 import { formatArDateTime } from "@platform/app-shared/format/date";
+import type { CaseSpecialistSubRole } from "@platform/types";
+import { CASE_SPECIALIST_SUB_ROLES } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 
 const ROLE_OPTIONS = adminStaffRoleOptions();
 export const ROLE_SELECT_OPTIONS = ROLE_OPTIONS.map((o) => ({
@@ -48,6 +50,8 @@ export type StaffFormState = {
   city: string;
   department: string;
   inspectorType: "employee" | "contractor" | "";
+  /** Case-specialist sub-roles (ruling 2026-11-02); all three by default. */
+  caseSpecialistSubRoles: CaseSpecialistSubRole[];
   hasCompensation: boolean;
   feeValueSar: string;
   iban: string;
@@ -64,6 +68,7 @@ export const EMPTY_STAFF_FORM: StaffFormState = {
   city: "",
   department: "",
   inspectorType: "",
+  caseSpecialistSubRoles: [...CASE_SPECIALIST_SUB_ROLES],
   hasCompensation: false,
   feeValueSar: "",
   iban: "",
@@ -99,6 +104,9 @@ export function validateStaffForm(form: StaffFormState): FieldErrors {
       : undefined,
     form.roleId === "field-inspector" && !form.inspectorType
       ? { inspectorType: "نوع المعاين مطلوب." }
+      : undefined,
+    form.roleId === "case-specialist" && form.caseSpecialistSubRoles.length === 0
+      ? { caseSpecialistSubRoles: "اختر دوراً فرعياً واحداً على الأقل للأخصائي." }
       : undefined,
     isSectionSupervisorRole(form.roleId) &&
       !SUPERVISOR_DEPARTMENT_OPTIONS.some((o) => o.value === form.department)
@@ -149,6 +157,8 @@ export function buildCreateStaffUserPayload(form: StaffFormState): CreateStaffUs
       ? form.department.trim()
       : undefined,
     inspectorType: form.inspectorType || undefined,
+    caseSpecialistSubRoles:
+      form.roleId === "case-specialist" ? form.caseSpecialistSubRoles : undefined,
     hasCompensation: form.hasCompensation,
     feeValueSar: form.hasCompensation ? Number(form.feeValueSar) : undefined,
     iban: form.iban.trim() || undefined,

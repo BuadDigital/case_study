@@ -166,6 +166,8 @@ export function ValuationWorkShell({
     landBankBeyond,
     bankRadiusKm,
     setBankRadiusKm,
+    bankTypeFilter,
+    setBankTypeFilter,
     subjectAreaNum,
     onSearchBank,
     reload,
@@ -348,6 +350,9 @@ export function ValuationWorkShell({
           distanceKm={bankDistanceKm}
           radiusKm={bankRadiusKm}
           onRadiusChange={setBankRadiusKm}
+          typeFilter={bankTypeFilter}
+          onTypeFilterChange={setBankTypeFilter}
+          subjectKindLabel={marketKind === "land" ? "أراضٍ" : marketKind === "unit" ? "مبانٍ — الشقق أولاً" : "مبانٍ"}
           beyond={bankBeyond}
           onAdopt={onAdoptMarket}
           onSearch={onSearchBank}
@@ -499,6 +504,11 @@ export function ValuationWorkShell({
               city={property?.city}
               district={property?.district ?? districtHint}
               valuationDate={officialValuationDate ?? undefined}
+              // The subject's description per factor is one per valuation (the report prints it in
+              // both tables). Fixed 2026-11-04 (PO-072172, cost only): the land table showed «—»
+              // in the subject column with no way to fill it, since only the market table edited it.
+              subjectSpecs={{ ...landSelection.subjectSpecs, ...subjectSpecs }}
+              canEditSubjectSpec
               dispatch={dispatchLandMatrix}
             />
           </Suspense>
@@ -629,6 +639,7 @@ export function ValuationWorkShell({
                     isApartmentProperty={isApartment}
                     deedArea={property?.area}
                     costBasisKey={approachSettings?.costBasisKey || "replacement"}
+                    ownershipInterestKey={approachSettings?.ownershipInterestKey ?? null}
                     saving={saving}
                     locked={adjustmentsLocked}
                     onSavingChange={setSaving}

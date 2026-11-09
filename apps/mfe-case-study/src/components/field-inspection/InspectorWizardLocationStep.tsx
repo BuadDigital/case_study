@@ -13,7 +13,7 @@ import {
   type InspectorFeatureField,
   type InspectorMapActor,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   SITE_LOCATION_ACK_REQUIRES_PIN_MESSAGE,
   canPrintSiteLocationAck,
@@ -26,6 +26,11 @@ import {
 } from "./inspector-wizard-state";
 import { InspectorCoordsInput } from "./InspectorCoordsInput";
 import { InspectorCopyPriorButton } from "./InspectorCopyPriorButton";
+import {
+  InspectorGpsButton,
+  InspectorMapUndoButton,
+  type InspectorMapMoveOutcome,
+} from "./InspectorMapActionButtons";
 import { nonNegativeDecimalInput } from "../../lib/app-data/specialist-components";
 import { InspectorPropertyPhotosSection } from "./InspectorPropertyPhotosSection";
 import { InspectorTransactionDocumentsCard } from "./InspectorTransactionDocumentsCard";
@@ -47,6 +52,18 @@ import { invalidControlClass } from "@platform/app-shared/form-ux";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
+/**
+ * Desktop wizard step 1: the map card (pin, coordinates, GPS, undo, date/time), the transaction's
+ * documents, «خصائص العقار», the access data and «تصوير العقار».
+ *
+ * How it works: map moves go through `onMapMove` (which saves, or asks to confirm a move of a pinned
+ * map); the GPS button feeds the device position to the same handler, and «رجوع للموقع السابق»
+ * shows while the host keeps the previous point (`canUndoMapMove`).
+ *
+ * Edge cases: fixed 2026-11-04 — «تحديد موقعي الحالي» and «رجوع للموقع السابق» were phone-only
+ * (both shown to the inspector only, never to the specialist's review); «عمر العقار» showed for
+ * land, which the phone hides.
+ */
 export function InspectorWizardLocationStep({
   property,
   draft,
@@ -54,6 +71,7 @@ export function InspectorWizardLocationStep({
   fieldErrors,
   featureFields,
   serviceProofFromTransactionPhotos,
+  isLand,
   onPatch,
   onMapMove,
   mapPinned,
@@ -68,6 +86,8 @@ export function InspectorWizardLocationStep({
   engineeringMapPin = null,
   transactionDocuments = [],
   transactionDocumentsLoading = false,
+  canUndoMapMove = false,
+  onUndoMapMove,
 }: {
   property: PoPropertyIntake;
   draft: InspectorWorkspaceDraft;
@@ -76,8 +96,10 @@ export function InspectorWizardLocationStep({
   /** «خصائص العقار» — rendered right after the map card. */
   featureFields: InspectorFeatureField[];
   serviceProofFromTransactionPhotos: boolean;
+  /** Land has no inside: no interior photo floor. */
+  isLand: boolean;
   onPatch: (patch: InspectorWorkspacePatchInput) => void;
-  onMapMove: (lat: number, lng: number) => void;
+  onMapMove: (lat: number, lng: number) => InspectorMapMoveOutcome | void;
   mapPinned: boolean;
   onPin: () => void;
   onUnpin: () => void;
@@ -91,6 +113,9 @@ export function InspectorWizardLocationStep({
   /** The transaction's documents (deed, delegation…) for reading on site. */
   transactionDocuments?: PropertyDetailDocumentEntry[];
   transactionDocumentsLoading?: boolean;
+  /** A confirmed pin move can be undone («رجوع للموقع السابق»). */
+  canUndoMapMove?: boolean;
+  onUndoMapMove?: () => void;
 }) {
   const { showToast } = useToast();
   const ackReady = canPrintSiteLocationAck({
@@ -118,7 +143,10 @@ export function InspectorWizardLocationStep({
       <InsCard title="تحديد موقع العقار" step={1}>
         <div id="ins-map-section">
         {editable && mapActor === "inspector" ? (
-          <InspectorCopyPriorButton taskId={draft.taskId} className="mb-3" onApply={onPatch} />
+          <>
+            <InspectorCopyPriorButton taskId={draft.taskId} className="mb-3" onApply={onPatch} />
+            <InspectorGpsButton className="mb-3" onCoords={onMapMove} />
+          </>
         ) : null}
         <div
           key={`${draft.mapLatitude},${draft.mapLongitude},${mapPinEpoch}`}
@@ -216,6 +244,11 @@ export function InspectorWizardLocationStep({
             </Button>
           ) : null}
         </div>
+        {editable && canUndoMapMove && onUndoMapMove ? (
+          <div className="mt-2.5">
+            <InspectorMapUndoButton onUndo={onUndoMapMove} />
+          </div>
+        ) : null}
         {contextPins.length > 0 ? (
           <p className="mt-2 mb-0 text-[10.5px] leading-relaxed text-text-3">
             الدبابيس الإضافية للمقارنة فقط (معاين / مكتب هندسي) — الموقع
@@ -276,6 +309,7 @@ export function InspectorWizardLocationStep({
               serviceProofFromTransactionPhotos ? ["assetSubject"] : []
             }
             sourceNotes={bourseSourceNotes(draft.featureValues, property)}
+            showPropertyAge={!isLand}
             onPatch={onPatch}
           />
         </div>
@@ -335,6 +369,7 @@ export function InspectorWizardLocationStep({
             draft={draft}
             disabled={!editable}
             actor={serviceProofFromTransactionPhotos ? "specialist" : "inspector"}
+            isLand={isLand}
             onPatch={onPatch}
           />
         </div>

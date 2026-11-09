@@ -1,4 +1,5 @@
 import {
+  approveCaseStudyReport,
   issueCaseStudyReport,
   reopenCaseStudyReport,
   saveCaseStudyReport,
@@ -6,10 +7,10 @@ import {
 } from "@platform/api-client";
 import {
   apiErrorMessage,
+  notifyWorkOrdersChanged,
   resolveApiError,
   workOrdersApiConfig,
-} from "../work-orders-api-config";
-import { notifyWorkOrdersChanged } from "@platform/app-shared/app-data/work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 import { notifyTasksChanged } from "./tasks-model";
 import { syncEvaluatorChecklistFromPartyCaseStudy } from "../evaluator-bridge";
 import {
@@ -18,7 +19,7 @@ import {
   notifyPartyCaseStudyReportChanged,
   type CaseStudyReportDraft,
   type SaveCaseStudyReportDraftResult,
-} from "./case-study-report-model";
+} from "@platform/app-shared/app-data/case-study-report-model";
 import {
   caseStudyReopenReasonError,
   parseCaseStudyIssueErrors,
@@ -121,7 +122,31 @@ export type ReopenCaseStudyReportDraftResult =
       needsEnfazConfirmation: boolean;
     };
 
-/** Reopen an issued report (`POST .../reopen`) — specialist only; the reason is required server-side too. */
+/**
+ * Review approves the study sent to it (`POST .../approve-study`, Omar 2026-11-08) — the study data is
+ * locked for everyone from then on. Returns null on success, else the Arabic refusal.
+ */
+export async function approveCaseStudyReportDraft(taskId: string): Promise<string | null> {
+  const config = workOrdersApiConfig();
+  if (!config) return apiErrorMessage("auth");
+  const result = await approveCaseStudyReport(config, taskId);
+  if (!result.ok) {
+    return resolveApiError(
+      result.kind,
+      "errors" in result ? result.errors : undefined,
+      "تعذّر اعتماد الدراسة",
+      "message" in result ? result.message : undefined,
+    );
+  }
+  notifyWorkOrdersChanged();
+  notifyTasksChanged();
+  return null;
+}
+
+/**
+ * Reopen the sent study (`POST .../reopen`): the study takes it back, or review returns it to the study
+ * (Omar 2026-11-08); the reason is required server-side too.
+ */
 export async function reopenCaseStudyReportDraft(
   taskId: string,
   reason: string,

@@ -20,6 +20,7 @@ import {
   type ValuationReportDraftDto,
 } from "@platform/api-client";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
+import { TASKS_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 import type { EvaluatorReportDraftPanelProps } from "@platform/app-shared/party-appraisal/evaluator-runtime-bridge";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
@@ -52,6 +53,7 @@ const AUTOSAVE_MS = 800;
 const STATUS_LABEL: Record<string, string> = {
   none: "لم تبدأ",
   preparing: "قيد الإعداد",
+  in_review: "عند المراجع",
   sent: "بانتظار اعتماد المقيّم",
   approved: "اعتمدها المقيّم",
 };
@@ -63,17 +65,21 @@ function formatDate(iso: string | null | undefined): string {
 }
 
 /**
- * The case specialist's workspace for the valuation-report draft: after the appraiser hands his package
- * over, he fills the report choices he owns (the print attachments; the appraiser's own ESG is his), confirms the valuation matches the
- * property study, and sends the draft to the appraiser — who approves it (or he withdraws it). Once it is
- * approved he deposits it in «قيمة» and records the code and certificate here (`ReportDepositStep`).
- * Read-only for everyone else.
+ * The valuation-report draft (Omar 2026-11-08): after the appraiser hands his value over, every case
+ * specialist (`canEdit`) fills the report choices (the print attachments; the appraiser's own ESG is his)
+ * while it is prepared. Review (`canReview`) issues it to the appraiser for his final approval once it
+ * approved the study and accepted the value (the readiness lines show both), and pulls a sent draft back
+ * to correct it; the appraiser returns it to review with a reason (shown here) and never edits it. Once he
+ * approved, review (`canDeposit`) deposits it in «قيمة», records the code and certificate
+ * (`ReportDepositStep`) and may open a new version. Read-only for everyone else.
  */
 export function ReportDraftPanel({
   appraisalTask,
   allTasks,
   property,
   canEdit,
+  canDeposit = false,
+  canReview = false,
 }: EvaluatorReportDraftPanelProps) {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -84,8 +90,10 @@ export function ReportDraftPanel({
 
   const submissionQuery = useEvaluatorSubmissionQuery(appraisalTask.id);
 
-  const editable =
-    canEdit && draft != null && (draft.status === "preparing" || (draft.status === "none" && draft.canPrepare));
+  // Every specialist edits the choices while the draft is prepared (a legacy draft «in review» too).
+  const preparing = draft != null && (draft.status === "preparing" || (draft.status === "none" && draft.canPrepare));
+  const inReview = draft?.status === "in_review";
+  const editable = (canEdit || canReview) && (preparing || inReview);
 
   // Round 2: the documents only he uploads must be in place before the draft goes out.
   const requestId = draft?.valuationRequestId ?? null;
@@ -100,7 +108,19 @@ export function ReportDraftPanel({
       return res.ok ? res.data : null;
     },
   });
+  // Review's decisions elsewhere on the page (approving the study, accepting the value) announce a tasks
+  // change — the readiness lines follow them without a reload.
+  const refetchGates = sendGatesQuery.refetch;
+  useEffect(() => {
+    if (!editable || requestId == null) return;
+    const onChange = () => void refetchGates();
+    window.addEventListener(TASKS_CHANGED_EVENT, onChange);
+    return () => window.removeEventListener(TASKS_CHANGED_EVENT, onChange);
+  }, [editable, requestId, refetchGates]);
   const missingDocuments = missingSpecialistDocuments(sendGatesQuery.data);
+  // Review's two decisions before it issues the draft (unknown → not blocking; the server judges).
+  const studyApproved = sendGatesQuery.data?.studyApprovedByReview !== false;
+  const valueAccepted = sendGatesQuery.data?.valueAcceptedByReview !== false;
 
   // ---- the specialist's working copy of his choices ----
   const [choices, setChoices] = useState<SpecialistReportChoices | null>(null);
@@ -211,35 +231,38 @@ export function ReportDraftPanel({
   );
 
   // ---- actions ----
+  /** Review issues the draft to the appraiser for his final approval (Omar 2026-11-08). */
   const send = useCallback(async () => {
     const config = apiConfig();
     if (!config || !draft || !choices) return;
     setBusy("send");
     try {
-      // The server keeps what he last saved; flush a pending edit before sending.
+      // The server keeps what was last saved; flush a pending edit before sending.
       if (dirtyRef.current && !(await persist(choices))) return;
       const res = await sendReportDraft(config, draft.valuationRequestId, {
-        conformityConfirmed: conformity,
+        conformityConfirmed: conformity || inReview,
         note: note.trim() || undefined,
       });
       if (!res.ok) {
-        showToast(res.message ?? "تعذّر إرسال المسودة", "error");
-        // A refusal for missing documents: the list under the button follows the fresh gates.
+        showToast(res.message ?? "تعذّر إصدار المسودة للمقيّم", "error");
+        // A refusal (missing documents, study / value not reviewed): the lines follow the fresh gates.
         void sendGatesQuery.refetch();
         return;
       }
       setDraft(res.data);
-      showToast("أُرسلت مسودة التقرير للمقيّم", "success");
+      notifyTasksChanged();
+      showToast("أُصدرت مسودة التقرير للمقيّم لاعتمادها النهائي", "success");
     } finally {
       setBusy(null);
     }
-  }, [choices, conformity, draft, note, persist, sendGatesQuery, setDraft, showToast]);
+  }, [choices, conformity, draft, inReview, note, persist, sendGatesQuery, setDraft, showToast]);
 
+  /** Review pulls a sent draft back from the appraiser to correct it. */
   const withdraw = useCallback(async () => {
     const config = apiConfig();
     if (!config || !draft) return;
     const reason = await promptAction({
-      title: "سحب المسودة",
+      title: "سحب المسودة من المقيّم",
       label: "ملاحظة للمقيّم عن سبب سحب المسودة (اختياري)",
       confirmLabel: "سحب المسودة",
     });
@@ -253,7 +276,8 @@ export function ReportDraftPanel({
       }
       seededRef.current = false;
       setDraft(res.data);
-      showToast("سُحبت المسودة — يمكنك تعديلها وإعادة إرسالها", "success");
+      notifyTasksChanged();
+      showToast("سُحبت المسودة — عدّلها ثم أصدرها للمقيّم من جديد", "success");
     } finally {
       setBusy(null);
     }
@@ -338,9 +362,9 @@ export function ReportDraftPanel({
         </div>
       ) : null}
 
-      {canEdit && status === "approved" ? <ReportDepositStep propertyId={propertyId} draft={draft} /> : null}
+      {canDeposit && status === "approved" ? <ReportDepositStep propertyId={propertyId} draft={draft} /> : null}
 
-      {canEdit && deposited ? (
+      {canDeposit && deposited ? (
         <div className="mb-3 flex justify-end">
           <Button
             type="button"
@@ -358,6 +382,15 @@ export function ReportDraftPanel({
       {waitingForHandOver ? (
         <p className="m-0 text-[12.5px] text-text-3">
           تُفتح المسودة بعد أن يسلّم المقيّم تقييمه للأخصائي.
+        </p>
+      ) : null}
+
+      {draft.reviewNote && status === "preparing" ? (
+        <p
+          className="mb-3 mt-0 rounded-[var(--radius)] border border-amber-border bg-amber-bg px-3 py-2 text-[12.5px] text-amber-text"
+          data-testid="report-draft-review-note"
+        >
+          أعادها المقيّم للمراجع: {draft.reviewNote}
         </p>
       ) : null}
 
@@ -386,18 +419,35 @@ export function ReportDraftPanel({
             )}
           </div>
 
-          {editable ? (
+          {editable && !canReview ? (
+            <p className="m-0 border-t border-border pt-3 text-[12px] text-text-3" data-testid="report-draft-review-issues">
+              {saveState === "saving" ? "جاري الحفظ… · " : saveState === "saved" ? "تم الحفظ · " : ""}
+              يُصدر المراجع المسودة للمقيّم بعد اعتماد الدراسة وقبول القيمة.
+            </p>
+          ) : null}
+
+          {editable && canReview ? (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
-              <label className="flex items-start gap-2 text-[12.5px] font-semibold text-text-2">
-                <input
-                  type="checkbox"
-                  className="mt-0.5 size-4 shrink-0 accent-[var(--ink)]"
-                  checked={conformity}
-                  disabled={anyBusy}
-                  onChange={(e) => setConformity(e.target.checked)}
-                />
-                <span>أؤكد أن التقييم مطابق لدراسة العقار</span>
-              </label>
+              <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[12px] font-semibold" data-testid="report-draft-readiness">
+                <li className={studyApproved ? "text-success-text" : "text-amber-text"}>
+                  {studyApproved ? "✓ اعتمدتَ الدراسة" : "✗ لم تُعتمد الدراسة بعد — من قسم «تقرير دراسة الحالة»"}
+                </li>
+                <li className={valueAccepted ? "text-success-text" : "text-amber-text"}>
+                  {valueAccepted ? "✓ قبلتَ القيمة" : "✗ لم تُقبل القيمة بعد — «قبول القيمة» أعلاه"}
+                </li>
+              </ul>
+              {inReview ? null : (
+                <label className="flex items-start gap-2 text-[12.5px] font-semibold text-text-2">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 size-4 shrink-0 accent-[var(--ink)]"
+                    checked={conformity}
+                    disabled={anyBusy}
+                    onChange={(e) => setConformity(e.target.checked)}
+                  />
+                  <span>أؤكد أن التقييم مطابق لدراسة العقار</span>
+                </label>
+              )}
               <textarea
                 className={cn(opsFldControl, "min-h-[64px] font-medium")}
                 placeholder="ملاحظة للمقيّم (اختياري)"
@@ -429,16 +479,22 @@ export function ReportDraftPanel({
                   variant="accent"
                   size="sm"
                   loading={busy === "send"}
-                  disabled={anyBusy || !conformity || missingDocuments != null}
+                  disabled={
+                    anyBusy ||
+                    (!inReview && !conformity) ||
+                    missingDocuments != null ||
+                    !studyApproved ||
+                    !valueAccepted
+                  }
                   onClick={() => void send()}
                 >
-                  {busy === "send" ? "جاري الإرسال…" : "إرسال المسودة للمقيّم"}
+                  {busy === "send" ? "جاري الإصدار…" : "إصدار المسودة للمقيّم"}
                 </Button>
               </div>
             </div>
           ) : null}
 
-          {canEdit && status === "sent" ? (
+          {canReview && status === "sent" ? (
             <div className="flex justify-end border-t border-border pt-3">
               <Button
                 type="button"
@@ -448,7 +504,7 @@ export function ReportDraftPanel({
                 disabled={anyBusy}
                 onClick={() => void withdraw()}
               >
-                {busy === "withdraw" ? "جاري السحب…" : "سحب المسودة"}
+                {busy === "withdraw" ? "جاري السحب…" : "سحب المسودة من المقيّم"}
               </Button>
             </div>
           ) : null}

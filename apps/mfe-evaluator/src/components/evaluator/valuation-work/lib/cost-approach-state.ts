@@ -32,7 +32,8 @@ import type {
 } from "@platform/api-client";
 import { createClientId } from "@platform/app-shared/lib/create-client-id";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
-import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
+import { effectiveStructureKind } from "@platform/app-shared/domain/cost-items";
 
 import { isRationaleBelowMinimum, rationaleMinimumMessage } from "./rationale-minimum";
 import {
@@ -182,11 +183,35 @@ export function buildingPlotAreaSeed(
   return costNum(seed) > 0 ? seed : "";
 }
 
+/**
+ * Whether the deed-area seed of the plot box must be saved on its own: the cost approach is already
+ * saved, but without a plot area, so the box shows the deed area while the server values the land
+ * on nothing (PO-067355: «مساحة الأرض» 0 beside a filled box).
+ *
+ * How it works: true only for a saved cost approach with no saved plot, a non-empty seed and an
+ * appraiser package still open. Edge cases: an unsaved cost approach waits for the appraiser's first
+ * edit (that save carries the seed) so the approach never enters the reconciliation by itself; an
+ * apartment has no seed (its deed area is the unit). Omar's ruling 2026-11-05: save it automatically —
+ * until then the seed stayed a draft until «حفظ».
+ */
+export function plotSeedNeedsSave(input: {
+  cost: Pick<ValuationCostApproachDto, "isSaved" | "buildingPlotAreaSqm"> | null | undefined;
+  plotAreaSeed: string;
+  locked: boolean;
+}): boolean {
+  return (
+    !input.locked &&
+    input.cost?.isSaved === true &&
+    input.cost.buildingPlotAreaSqm == null &&
+    input.plotAreaSeed.trim() !== ""
+  );
+}
+
 /** Server DTO to editable drafts — one full-load reseed, no partial merges. */
 export function costFieldsFromDto(
   cost: ValuationCostApproachDto,
   inspectorAgeYears?: string | null,
-  /** The plot box when none is saved yet (`buildingPlotAreaSeed`) — a draft only, never auto-saved. */
+  /** The plot box when none is saved yet (`buildingPlotAreaSeed`); saved by `plotSeedNeedsSave`. */
   plotAreaSeed = "",
 ): CostApproachFields {
   const savedIndirect = cost.indirectItems ?? [];
@@ -277,6 +302,13 @@ function legacyCostItemKey(l: CostSeedInventoryLine): string {
 /**
  * The specialist's components table to cost lines — item, quantity, unit, built-up ratio and
  * repeated floors carry over; unit rates are left for the evaluator.
+ *
+ * How it works: the item key comes from the inventory (or is guessed for legacy rows); the kind is
+ * the line's effective kind (`effectiveStructureKind`), so a custom row the inspector named
+ * «الدور الثاني» / «ملحق علوي» / «الميزانين» is seeded as a floor / annex line.
+ *
+ * Edge cases: fixed 2026-11-04 (A→Z #30/#52/#90): such rows were saved as «other» and seeded into
+ * «تكاليف وتجهيزات إضافية» (rationale demanded, out of the building floor areas).
  */
 export function costLinesFromInventory(
   lines: CostSeedInventoryLine[],
@@ -284,16 +316,17 @@ export function costLinesFromInventory(
   return lines.map((l, i) => {
     const itemKey = l.itemKey?.trim() || legacyCostItemKey(l);
     const unit = l.unit?.trim() || COST_ITEM_OPTIONS.find((o) => o.key === itemKey)?.unit || "sqm";
+    const structureKind = effectiveStructureKind({ itemKey, structureKind: l.structureKind, label: l.label });
     return {
     id: createClientId("cost"),
     sourceInventoryLineId: l.id ?? null,
-    structureKind: l.structureKind || "other",
+    structureKind,
     itemKey,
     itemLabelAr: "",
     unit,
     unitLabelAr: COST_UNIT_OPTIONS.find((u) => u.key === unit)?.label ?? "م²",
     // The built-up ratio only counts on m² area lines — never seed it elsewhere.
-    buildRatioPct: buildRatioApplies({ itemKey, structureKind: l.structureKind || "other", unit })
+    buildRatioPct: buildRatioApplies({ itemKey, structureKind, unit })
       ? (l.buildRatioPct ?? null)
       : null,
     repeatedFloorCount: l.repeatedFloorCount ?? null,
@@ -640,6 +673,24 @@ export function costApproachDerived(
   };
 }
 
+/**
+ * Wording of the cost screen's lease-cap note («العمر المتبقي لا يتجاوز …») for the interest valued.
+ *
+ * How it works: «usufruct» (حق منفعة) names the usufruct right and its remaining term; anything
+ * else (leased land, or no key yet) keeps the leased-land wording.
+ *
+ * Edge cases: fixed 2026-11-04 (A→Z #69): a usufruct right was told «مدة الإيجار المتبقية»; the
+ * printed report already words it by the interest.
+ */
+export function leaseCapWording(ownershipInterestKey: string | null | undefined): {
+  subject: string;
+  term: string;
+} {
+  return (ownershipInterestKey ?? "").trim().toLowerCase() === "usufruct"
+    ? { subject: "مبانٍ مقيّمة بحق منفعة", term: "مدة حق المنفعة المتبقية" }
+    : { subject: "مبنى على أرض مستأجرة", term: "مدة الإيجار المتبقية" };
+}
+
 function costItemLabel(line: ValuationCostLineDto): string {
   return (
     line.label ||
@@ -740,9 +791,12 @@ export function buildCostAlerts(
       fallbackTargetId: "cost-age",
     });
   for (const [lineIndex, l] of costDraft.entries()) {
+    // An extra that adds nothing (unpriced, zero quantity or excluded) cannot double-count what
+    // the floor rate already holds, so it needs no rationale yet (A→Z #78: «المسبح» at 0 asked one).
     if (
       costGroupOf(l) === "extra" &&
       (l.label.trim() || l.itemKey !== "custom") &&
+      costLineComputed(l, costDraft, totals.firstFloorLine ?? null).total > 0 &&
       !l.rationale.trim()
     ) {
       alerts.push({

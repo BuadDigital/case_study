@@ -96,7 +96,7 @@ public sealed partial class ValuationReportDraftService
 
         await StageNoticeAsync(
             vr,
-            ValuationNoticeAudiences.CaseSpecialist,
+            ValuationNoticeAudiences.CaseSpecialistReview,
             "اعتمد المقيّم تقرير التقييم",
             $"اعتمد المقيّم تقرير التقييم للعقار {vr.DisplayId} — أودعه في «قيمة» وسجّل رمز الإيداع وشهادته.",
             NotificationContract.Tones.Success,
@@ -132,7 +132,7 @@ public sealed partial class ValuationReportDraftService
 
         await StageNoticeAsync(
             vr,
-            ValuationNoticeAudiences.CaseSpecialist,
+            ValuationNoticeAudiences.CaseSpecialistReview,
             "سحب المقيّم اعتماد تقرير التقييم",
             string.IsNullOrWhiteSpace(draft.AppraiserNote)
                 ? $"سحب المقيّم اعتماد تقرير التقييم للعقار {vr.DisplayId} لتعديله."
@@ -375,6 +375,8 @@ public sealed partial class ValuationReportDraftService
             SpecialistNote = draft.SpecialistNote,
             AppraiserNote = draft.AppraiserNote,
             ConformityConfirmedAtUtc = draft.ConformityConfirmedAtUtc?.ToString("o"),
+            SubmittedForReviewAtUtc = draft.SubmittedForReviewAtUtc?.ToString("o"),
+            ReviewNote = draft.ReviewNote,
             SentAtUtc = draft.SentAtUtc?.ToString("o"),
             ApprovedAtUtc = draft.ApprovedAtUtc?.ToString("o"),
             ReportDate = draft.ReportDate,

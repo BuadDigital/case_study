@@ -258,6 +258,8 @@ export async function completeBourseData(
       propertyType: "فيلا",
       area: "500",
       deedStatus: "سليم",
+      // «القيود» is a required bourse answer since 2026-11-04 (A→Z #64).
+      restrictionsPresent: "no",
       bourseDeedImageFileName: "bourse-deed.png",
     },
   );

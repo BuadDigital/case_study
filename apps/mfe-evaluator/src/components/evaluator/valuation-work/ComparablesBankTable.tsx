@@ -7,7 +7,7 @@
 
 "use client";
 
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState, type ReactNode } from "react";
 import type { ValuationComparableSelectionDto } from "@platform/api-client";
 import { createComparableProperty } from "@platform/api-client";
 import { useCommandMutation } from "@platform/app-shared";
@@ -53,6 +53,7 @@ import {
   NEARBY_RADIUS_KM,
   sourceCardLine,
   type BankBeyond,
+  type BankTypeFilter,
   type BankDisplayRow,
 } from "./lib/bank-ranking";
 import { apiConfig, fmt } from "./lib/shell-utils";
@@ -65,6 +66,39 @@ type ComparablesBankRow = BankDisplayRow;
  */
 function radiusLabel(radiusKm: number | null): string {
   return radiusKm == null ? "كل المقارنات المتاحة" : `ضمن ${radiusKm} كم`;
+}
+
+/**
+ * One pressable chip of the bank's radius / type filters.
+ *
+ * How it works: a button with `aria-pressed`; the pressed chip is gold.
+ *
+ * Edge cases: shared by the radius and the type chips (2026-11-04) so both look and behave alike.
+ */
+function BankFilterChip({
+  pressed,
+  onClick,
+  children,
+}: {
+  pressed: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={onClick}
+      className={cn(
+        "rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition-colors max-lg:min-h-11 max-lg:px-3.5 max-lg:text-[12.5px]",
+        pressed
+          ? "border-gold bg-gold-soft text-gold-d"
+          : "border-border-md bg-surface text-text-2 hover:border-gold",
+      )}
+    >
+      {children}
+    </button>
+  );
 }
 
 /** The smallest radius choice that reaches `nearestKm`; `null` (all) when none does. */
@@ -182,6 +216,9 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   distanceKm,
   radiusKm = NEARBY_RADIUS_KM,
   onRadiusChange,
+  typeFilter = "subject",
+  onTypeFilterChange,
+  subjectKindLabel,
   beyond,
   onAdopt,
   onSearch,
@@ -198,6 +235,14 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   radiusKm?: number | null;
   /** Radius chips are shown only when this is given. */
   onRadiusChange?: (radiusKm: number | null) => void;
+  /**
+   * Type filter chips (A→Z #43/#60, 2026-11-04): the subject's kind (`subjectKindLabel`, default)
+   * or «كل الأنواع». Shown only when `onTypeFilterChange` is given (the market bank).
+   */
+  typeFilter?: BankTypeFilter;
+  onTypeFilterChange?: (filter: BankTypeFilter) => void;
+  /** The subject's kind as the chip names it: «أراضٍ», «مبانٍ»… */
+  subjectKindLabel?: string;
   /** What the chosen radius leaves out — drives the empty-state message. */
   beyond?: BankBeyond;
   /** Resolves once the save (and the reload it triggers) settles — the checkbox reverts to
@@ -353,20 +398,26 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
           {onRadiusChange && !q.trim() ? (
             <div className="flex flex-wrap items-center gap-1" role="group" aria-label="نطاق البحث حول العقار">
               {BANK_RADIUS_OPTIONS_KM.map((option) => (
-                <button
+                <BankFilterChip
                   key={option ?? "all"}
-                  type="button"
-                  aria-pressed={option === radiusKm}
+                  pressed={option === radiusKm}
                   onClick={() => onRadiusChange(option)}
-                  className={cn(
-                    "rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition-colors max-lg:min-h-11 max-lg:px-3.5 max-lg:text-[12.5px]",
-                    option === radiusKm
-                      ? "border-gold bg-gold-soft text-gold-d"
-                      : "border-border-md bg-surface text-text-2 hover:border-gold",
-                  )}
                 >
                   {option == null ? "الكل" : `${option} كم`}
-                </button>
+                </BankFilterChip>
+              ))}
+            </div>
+          ) : null}
+          {onTypeFilterChange && subjectKindLabel && !q.trim() ? (
+            <div className="flex flex-wrap items-center gap-1" role="group" aria-label="نوع المقارنات">
+              {(["subject", "all"] as const).map((option) => (
+                <BankFilterChip
+                  key={option}
+                  pressed={option === typeFilter}
+                  onClick={() => onTypeFilterChange(option)}
+                >
+                  {option === "subject" ? subjectKindLabel : "كل الأنواع"}
+                </BankFilterChip>
               ))}
             </div>
           ) : null}

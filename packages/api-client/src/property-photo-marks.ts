@@ -14,6 +14,8 @@ export type PropertyPhotoMarksDto = {
   reportSections?: Record<string, 1 | 2 | 3>;
   /** `report` is the specialist's board order; absent on picks saved before the board. */
   reportOrdered?: boolean;
+  /** Every inspector photo's class (Omar 2026-11-08); none = the suggested one. */
+  photoClasses?: Record<string, "exterior" | "interior" | "surroundings" | "document">;
 };
 
 /**

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createInspectorWorkspaceDraft,
   preserveInspectorOwnedFeatureValues,
-} from "../inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   draftToPayload,
   mergeInspectorWorkspacePatch,

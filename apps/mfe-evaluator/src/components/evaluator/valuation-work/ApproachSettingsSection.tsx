@@ -311,7 +311,8 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
 
   function chooseScope(next: "land_only" | "building_only" | "land_and_building") {
     setAsCostScope(next);
-    // «أرض فقط» values no buildings; «مباني فقط» is valued by cost.
+    // «أرض فقط» values no buildings; «مباني فقط» starts with the cost approach ticked, but the
+    // appraiser may untick it and value by the market approach alone (an apartment — A→Z #44).
     if (next === "land_only") setAsCostEnabled(false);
     if (next === "building_only") setAsCostEnabled(true);
   }
@@ -385,7 +386,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
               : asCostScope === "land_only"
                 ? "مكونات العقار تُطبع في التقرير ولا تدخل في القيمة (مثل مبانٍ هالكة)."
                 : asCostScope === "building_only"
-                  ? "تُقيَّم المكونات المحصورة وحدها بأسلوب التكلفة، دون تقدير الأرض."
+                  ? "تُقيَّم المباني وحدها دون تقدير الأرض — بأسلوب التكلفة، أو بأسلوب السوق للعقار ككل (كالشقة)."
                   : "تُقيَّم الأرض مع المكونات المحصورة."}
           </p>
           <OwnershipInterestFields

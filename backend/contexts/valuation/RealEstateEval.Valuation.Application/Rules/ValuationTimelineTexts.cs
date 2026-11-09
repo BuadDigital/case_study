@@ -29,6 +29,12 @@ public static class ValuationTimelineTexts
         Event(po, propertyId, $"valuation:{requestId:D}:draft-withdrawn:{at.Ticks}",
             DraftWithdrawnTitleAr, Detail(actor, note), PropertyTimelineTones.Warn, at);
 
+    /// <summary>The appraiser returned the draft to review with a reason (Omar 2026-11-08).</summary>
+    public static PropertyTimelineRecordRequest ReturnedToReviewer(
+        string po, Guid propertyId, Guid requestId, string? actor, string? reason, DateTime at) =>
+        Event(po, propertyId, $"valuation:{requestId:D}:returned-to-reviewer:{at.Ticks}",
+            "أعاد المقيّم مسودة التقرير للمراجع", Detail(actor, reason), PropertyTimelineTones.Warn, at);
+
     public static PropertyTimelineRecordRequest Approved(
         string po, Guid propertyId, Guid requestId, string? actor, string? reportDate, DateTime at) =>
         Event(po, propertyId, $"valuation:{requestId:D}:approved:{at.Ticks}",

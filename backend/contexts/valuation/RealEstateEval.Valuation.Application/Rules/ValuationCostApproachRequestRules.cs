@@ -64,7 +64,7 @@ public static class ValuationCostApproachRequestRules
                 ? RepeatedFloorRules.QuantityForLine(firstFloorArea, line.RepeatedFloorCount)
                 : line.AreaSqm;
             var total = CostApproachRules.LineTotal(
-                CostApproachRules.EffectiveQuantity(quantity, line.Unit, line.BuildRatioPct, itemKey, line.StructureKind),
+                CostApproachRules.EffectiveQuantity(quantity, line.Unit, line.BuildRatioPct, itemKey, line.StructureKind, line.Label),
                 CostApproachRules.InheritedUnitCost(itemKey, line.UnitCostSar, firstFloorUnitCost));
             if (total > CostApproachRules.MaxAmountSar)
                 errors[$"lines[{i}].unitCostSar"] =

@@ -233,7 +233,7 @@ export function EvaluatorInspectionFactsSection({
         <p className="text-[12px] text-text-3">جاري تحميل بيانات معاينة العقار…</p>
       ) : !workspace || (features.length === 0 && extras.length === 0) ? (
         <p className={opsEmptyHint}>
-          لم يُدخل المعاين بيانات معاينة العقار بعد — ستظهر هنا فور إرسالها.
+          تظهر بيانات معاينة العقار هنا بعد أن يقبلها الأخصائي.
         </p>
       ) : (
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">

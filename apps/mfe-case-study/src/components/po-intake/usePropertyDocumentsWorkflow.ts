@@ -48,7 +48,7 @@ export function usePropertyDocumentsWorkflow({
   property: PoPropertyIntake;
   poNumber: string;
 }) {
-  const { role } = useAppAccess();
+  const { role, access } = useAppAccess();
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const lists = useValuationListsQuery();
@@ -113,7 +113,7 @@ export function usePropertyDocumentsWorkflow({
     uploadOptions,
     propertyType,
     canUpload: canUploadPropertyDocuments(role),
-    canReviewValued: canReviewValuedDocuments(role),
+    canReviewValued: canReviewValuedDocuments(access),
     busy,
     loadFailed: governed.isError,
     upload: (input: GovernedDocumentTypeInput & { file: File }) =>

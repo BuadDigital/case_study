@@ -466,6 +466,51 @@
       "note": "Decision 2026-10-19: the transaction (المعاملة) above the deeds — draft D- number at intake, official PR reference at the first report approval; 1..n WorkOrderProperties. Write path CaseStudyDbContext."
     },
     {
+      "table": "TransactionReopenings",
+      "schema": "case_study",
+      "dbSet": "TransactionReopenings",
+      "entity": "TransactionReopening",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Omar 2026-11-05: «إعادة فتح المعاملة» after review approved it — source (Enfaz / internal), reason, what it affects; closes at the next Enfaz upload (internal) or at coordination's «تم الرد» (Enfaz). Write path CaseStudyDbContext."
+    },
+    {
+      "table": "TransactionExternalReceipts",
+      "schema": "case_study",
+      "dbSet": "TransactionExternalReceipts",
+      "entity": "TransactionExternalReceipt",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Omar 2026-11-08: «إضافة استلام من طرف خارجي» — who delivers and what is awaited from outside the system; a pending one keeps the transaction «بانتظار طرف خارجي» and blocks «إرسال المعاملة للدراسة». Write path CaseStudyDbContext."
+    },
+    {
+      "table": "TransactionWorkMarkers",
+      "schema": "case_study",
+      "dbSet": "TransactionWorkMarkers",
+      "entity": "TransactionWorkMarker",
+      "owner": "case-study",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "CaseStudyDbContext"
+      ],
+      "transactionGroup": "case-study.work-order",
+      "decision": null,
+      "note": "Decision 2026-11-02 (case-specialist sub-roles): «يعمل عليها الآن» — one row per transaction, the last specialist who opened or saved it; information only, never a lock. Write path CaseStudyDbContext."
+    },
+    {
       "table": "TransactionCancellations",
       "schema": "case_study",
       "dbSet": "TransactionCancellations",
@@ -1684,6 +1729,21 @@
       "transactionGroup": "financial.billing",
       "decision": null,
       "note": "ورشة الترقيم: عدّادات DS السنوية."
+    },
+    {
+      "table": "ValuationReferenceSequences",
+      "schema": "valuation",
+      "dbSet": "",
+      "entity": "ReferenceSequence",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "قرار الترقيم 2026-11-08: عدّادات CMP السنوية لبنك المقارنات."
     }
   ]
 }

@@ -9,7 +9,11 @@ import { repositoryFetch as fetch } from "./write-repository";
 import { parseJson, readProblemMessage, serverFailure } from "./parse-json";
 import type { ValuationSelectionsApiConfig } from "./valuation-comparable-selections";
 
-export type ValuationReportDraftStatus = "none" | "preparing" | "sent" | "approved";
+/**
+ * `in_review` (Omar 2026-11-05): the study handed the draft and the issued study report to review in one
+ * batch; review alone edits, then sends it to the appraiser or returns it to the study.
+ */
+export type ValuationReportDraftStatus = "none" | "preparing" | "in_review" | "sent" | "approved";
 
 /**
  * The valuation-report draft of a request. After the appraiser hands his package over, the case
@@ -33,6 +37,10 @@ export type ValuationReportDraftDto = {
   specialistNote?: string | null;
   appraiserNote?: string | null;
   conformityConfirmedAtUtc?: string | null;
+  /** When the study handed the draft to review (null while it prepares). */
+  submittedForReviewAtUtc?: string | null;
+  /** Review's latest reason for returning the draft to the study. */
+  reviewNote?: string | null;
   sentAtUtc?: string | null;
   approvedAtUtc?: string | null;
   reportDate?: string | null;
@@ -146,7 +154,10 @@ export function saveReportDraftChoices(
   return send(config, valuationRequestId, "/choices", "PUT", { choices });
 }
 
-/** The specialist sends the draft to the appraiser, confirming it matches the property study. */
+/**
+ * Review issues the draft to the appraiser for his final approval (Omar 2026-11-08) — after it approved
+ * the study and accepted the value; the conformity confirmation is required.
+ */
 export function sendReportDraft(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
@@ -155,7 +166,7 @@ export function sendReportDraft(
   return send(config, valuationRequestId, "/send", "POST", body);
 }
 
-/** The specialist pulls a sent draft back to preparing. */
+/** Review pulls a sent draft back from the appraiser to correct it (back to preparing). */
 export function withdrawReportDraft(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
@@ -213,6 +224,18 @@ export function approveReportDraft(
   body: { reportDate: string; html: string },
 ): Promise<Result<ValuationReportDraftDto>> {
   return send(config, valuationRequestId, "/approve", "POST", body);
+}
+
+/**
+ * The assigned appraiser returns the sent draft to review with a reason (Omar 2026-11-08) — he never
+ * edits it himself; review corrects it and issues it again.
+ */
+export function returnReportDraftToReviewer(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  reason: string,
+): Promise<Result<ValuationReportDraftDto>> {
+  return send(config, valuationRequestId, "/return-to-review", "POST", { reason });
 }
 
 /** The assigned appraiser takes his approval back — only before a deposit code is recorded. */

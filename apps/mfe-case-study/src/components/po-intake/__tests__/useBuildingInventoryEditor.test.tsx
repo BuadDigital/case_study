@@ -11,7 +11,7 @@ vi.mock("@platform/api-client", async (importOriginal) => ({
   getBuildingInventory: api.getBuildingInventory,
   saveBuildingInventory: api.saveBuildingInventory,
 }));
-vi.mock("../../../lib/work-orders-api-config", () => ({
+vi.mock("@platform/app-shared/app-data/work-orders-api-config", () => ({
   workOrdersApiConfig: () => ({ token: "t" }),
 }));
 

@@ -16,7 +16,7 @@ import {
   saveInspectionLimits,
   type UninspectedUnitEntryDto,
 } from "@platform/api-client";
-import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 
 const SCOPE_OPTIONS = [
   { value: "full", label: "كاملة (داخل وخارج)" },

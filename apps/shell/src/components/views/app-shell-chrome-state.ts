@@ -191,7 +191,7 @@ export function resolvePageChrome({
     currentPage === "party-fees" && isPartyFeesUnderActiveTransactions(role);
   // Engineering fees under active-transactions — same parent group as other active queues.
   const engineeringFeesCrumb = partyFeesUnderActiveTx
-    ? slashTrailToSegments("المعاملات النشطة / فوترة الأتعاب")
+    ? slashTrailToSegments("قوائم المراحل / فوترة الأتعاب")
     : null;
   const financeLeaf =
     currentPage === "financial" ? financeLeafForArea(financeArea) : null;

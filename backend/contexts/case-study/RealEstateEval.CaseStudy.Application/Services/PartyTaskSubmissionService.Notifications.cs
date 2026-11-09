@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Domain;
 
@@ -154,8 +155,10 @@ public partial class PartyTaskSubmissionService
 
     /// <summary>
     /// Party submit (engineering office / inspector / evaluator) only raised a same-tab
-    /// frontend event, which never reached the assigned case specialist or the section
-    /// supervisor. Fan out server-side so both get an inbox notification on submit.
+    /// frontend event, which never reached the case specialist or the section supervisor. Fan
+    /// out server-side so the specialist sub-role of the next step (see
+    /// <see cref="CaseSpecialistAudience.OnPartySubmitted"/>), the supervisors and the CDO get an
+    /// inbox notification on submit.
     /// </summary>
     private async Task NotifySpecialistAndSupervisorOnSubmitAsync(
         WorkflowTask task,
@@ -169,15 +172,14 @@ public partial class PartyTaskSubmissionService
 
         var userIds = new HashSet<string>(StringComparer.Ordinal);
 
-        var specialistAssigneeId = parent.AssigneeId?.Trim();
-        if (!string.IsNullOrWhiteSpace(specialistAssigneeId))
-        {
-            var specialistUserId = await _recipients.ResolveUserIdForDistributionAssigneeAsync(
-                specialistAssigneeId,
-                cancellationToken);
-            if (!string.IsNullOrWhiteSpace(specialistUserId))
-                userIds.Add(specialistUserId);
-        }
+        // Shared queues (ruling 2026-11-02): the sub-role that takes the next step hears it — the
+        // appraiser's hand-over goes to study (the report draft), an inspection or a survey goes
+        // to coordination (the formal receipt).
+        var audience = CaseSpecialistAudience.OnPartySubmitted(
+            task.Kind,
+            await _repo.IsTransactionReceivedAsync(task.PropertyId, cancellationToken));
+        foreach (var id in await _recipients.ResolveCaseSpecialistUserIdsAsync(audience, cancellationToken))
+            userIds.Add(id);
 
         var supervisorUserIds = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
             "section-supervisor",

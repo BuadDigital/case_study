@@ -10,8 +10,8 @@ namespace RealEstateEval.CaseStudy.Application.Abstractions;
 /// </summary>
 public interface IWorkOrderPropertyRepository
 {
-    /// <summary>Next yearly transaction draft number TMP-{YY}-{seq}, or the reason it could not be issued.</summary>
-    Task<(string? Number, string? Error)> AllocateTransactionDraftNumberAsync(
+    /// <summary>Next yearly deed number PR-{YY}-{seq} («رقم المعاملة»), or the reason it could not be issued.</summary>
+    Task<(string? Number, string? Error)> AllocateDeedReferenceAsync(
         DateTime nowUtc,
         CancellationToken cancellationToken);
 

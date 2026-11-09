@@ -1,20 +1,30 @@
 namespace RealEstateEval.Domain;
 
 /// <summary>
-/// Numbering Workshop + the transaction decisions of 2026-10-19/20: uniform pattern
-/// {prefix}-{YY}-{sequence 5}, yearly sequence, Latin only — never an Arabic prefix. The
-/// transaction (the property) is the one root: a temporary TMP number at intake, the official PR
-/// number at the first approval of either report, and the two report numbers derived from that
-/// root (PRC / PRV) so anyone reading one number knows the others. This class is the only seam of
-/// the formula; the counters keep the full year, only the printed form is shortened.
+/// Numbering Workshop + the decisions of 2026-10-19/20 and 2026-11-08: uniform pattern
+/// {prefix}-{YY}-{sequence 5}, yearly sequence, Latin only — never an Arabic prefix. Every deed
+/// («المعاملة») gets its official PR number at the first full save of its initial data; a linked
+/// property («العقار المرتبط») carries its root deed's number plus <see cref="LinkedSuffix"/>; the two
+/// report numbers are derived from the property number (PRC / PRV) so anyone reading one number knows
+/// the others. The temporary TMP number is retired (old rows keep it as history). This class is the
+/// only seam of the formula; the counters keep the full year, only the printed form is shortened.
 /// </summary>
 public static class ReferenceNumbering
 {
-    /// <summary>Temporary transaction number, given at intake and never printed on a document.</summary>
+    /// <summary>
+    /// The retired temporary number (TMP-{YY}-{seq}, 2026-10-20 → 2026-11-08). Nothing draws it any more;
+    /// rows from that period keep it as their history.
+    /// </summary>
     public const string TransactionDraft = "TMP";
 
-    /// <summary>The transaction's official reference (the property) — drawn at the first approval.</summary>
+    /// <summary>A deed's official number (رقم المعاملة) — drawn at the first full save of its initial data.</summary>
     public const string Property = "PR";
+
+    /// <summary>The fixed suffix of a linked property's number: PR-26-00123-L (no deed count, no kind letter).</summary>
+    public const string LinkedSuffix = "-L";
+
+    /// <summary>A comparable property in the valuation bank: CMP-{YY}-{seq}.</summary>
+    public const string Comparable = "CMP";
 
     /// <summary>Case-study report: PR root with the C suffix on the prefix.</summary>
     public const string CaseStudyReport = "PRC";
@@ -75,4 +85,61 @@ public static class ReferenceNumbering
     /// <summary>A later version of an approved document: PRV-26-00123/2. Version 1 is the bare number.</summary>
     public static string WithVersion(string number, int version) =>
         version > 1 ? $"{number}/{version}" : number;
+
+    /// <summary>A linked property's number from its root deed's number: PR-26-00123 → PR-26-00123-L.</summary>
+    /// <remarks>
+    /// How it works: trims the root and appends <see cref="LinkedSuffix"/>.
+    /// Edge cases: a root that already ends with the suffix is returned as is, so the suffix never doubles.
+    /// </remarks>
+    public static string Linked(string root)
+    {
+        var trimmed = (root ?? "").Trim();
+        return IsLinked(trimmed) ? trimmed : trimmed + LinkedSuffix;
+    }
+
+    /// <summary>Whether a number is a linked property's number (ends with <see cref="LinkedSuffix"/>).</summary>
+    public static bool IsLinked(string? reference) =>
+        (reference ?? "").Trim().EndsWith(LinkedSuffix, StringComparison.Ordinal);
+
+    /// <summary>The root deed number inside a property number: PR-26-00123-L → PR-26-00123; a single deed's number as is.</summary>
+    /// <remarks>Edge cases: blank → null.</remarks>
+    public static string? RootOf(string? reference)
+    {
+        var trimmed = (reference ?? "").Trim();
+        if (trimmed.Length == 0) return null;
+        return IsLinked(trimmed) ? trimmed[..^LinkedSuffix.Length] : trimmed;
+    }
+
+    /// <summary>
+    /// Orders numbers of one prefix by year, then sequence — the smallest is the root of a linked property.
+    /// </summary>
+    /// <remarks>
+    /// How it works: splits {prefix}-{year}-{sequence}; a two-digit year counts as 20YY so the old
+    /// four-digit form (PR-2026-00012) and the short one (PR-26-00012) sort together; then compares the
+    /// sequence numerically. Edge cases: a number that does not parse sorts after every parsed one and
+    /// falls back to ordinal text order, so the result is stable and never throws.
+    /// </remarks>
+    public static readonly IComparer<string> Order = Comparer<string>.Create(CompareNumbers);
+
+    private static int CompareNumbers(string? a, string? b)
+    {
+        var pa = Parse(a);
+        var pb = Parse(b);
+        if (pa is not null && pb is not null)
+        {
+            var byYear = pa.Value.Year.CompareTo(pb.Value.Year);
+            return byYear != 0 ? byYear : pa.Value.Sequence.CompareTo(pb.Value.Sequence);
+        }
+        if (pa is not null) return -1;
+        if (pb is not null) return 1;
+        return string.CompareOrdinal(a, b);
+    }
+
+    private static (int Year, int Sequence)? Parse(string? number)
+    {
+        var parts = (RootOf(number) ?? "").Split('-');
+        if (parts.Length != 3) return null;
+        if (!int.TryParse(parts[1], out var year) || !int.TryParse(parts[2], out var sequence)) return null;
+        return (year < 100 ? 2000 + year : year, sequence);
+    }
 }

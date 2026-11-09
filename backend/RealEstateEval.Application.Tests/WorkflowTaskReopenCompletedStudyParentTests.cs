@@ -26,7 +26,7 @@ public class WorkflowTaskReopenCompletedStudyParentTests
         var (result, errors) = await tasks.ReopenCompletedAsync(
             ParentId,
             new ReopenCompletedWorkflowTaskRequest { Reason = "سبب كافٍ لإعادة الفتح" },
-            "section-supervisor",
+            TestStaff.Of("section-supervisor"),
             "المشرف",
             "supervisor-1");
 
@@ -49,7 +49,7 @@ public class WorkflowTaskReopenCompletedStudyParentTests
         var (result, errors) = await tasks.ReopenCompletedAsync(
             InspectionId,
             new ReopenCompletedWorkflowTaskRequest { Reason = "سبب كافٍ لإعادة الفتح" },
-            "section-supervisor",
+            TestStaff.Of("section-supervisor"),
             "المشرف",
             "supervisor-1");
 
@@ -73,7 +73,7 @@ public class WorkflowTaskReopenCompletedStudyParentTests
         var (result, errors) = await tasks.ReopenCompletedAsync(
             appraisalId,
             new ReopenCompletedWorkflowTaskRequest { Reason = "سبب كافٍ لإعادة الفتح" },
-            "section-supervisor",
+            TestStaff.Of("section-supervisor"),
             "المشرف",
             "supervisor-1");
 
@@ -93,7 +93,7 @@ public class WorkflowTaskReopenCompletedStudyParentTests
         var (_, errors) = await tasks.ReopenCompletedAsync(
             ParentId,
             new ReopenCompletedWorkflowTaskRequest { Reason = "سبب كافٍ لإعادة الفتح" },
-            "field-inspector",
+            TestStaff.Of("field-inspector"),
             "معاين");
 
         Assert.NotNull(errors);

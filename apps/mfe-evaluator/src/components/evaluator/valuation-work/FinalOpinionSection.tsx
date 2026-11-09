@@ -451,12 +451,16 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                 ) : null}
                 {additions.length > 0 ? (
                   <>
-                    <OpinionInvoiceRow
-                      label="قيمة العقار بعد خصم التصفية"
-                      note="قبل التقريب"
-                      value={fmt(propertyAfterDiscount)}
-                      strong
-                    />
+                    {/* Only when a liquidation discount was taken (basis «قيمة التصفية», % > 0) — on
+                        any other basis there is nothing «after the discount» (A→Z #23, 2026-11-04). */}
+                    {isLiquidation && forcedCut > 0 ? (
+                      <OpinionInvoiceRow
+                        label="قيمة العقار بعد خصم التصفية"
+                        note="قبل التقريب"
+                        value={fmt(propertyAfterDiscount)}
+                        strong
+                      />
+                    ) : null}
                     {additions.map((a) => (
                       <OpinionInvoiceRow
                         key={a.attachmentId}

@@ -15,7 +15,7 @@ public static class TransactionCancellationRules
 
     public const int MaxNoteLength = 2000;
 
-    public const string ForbiddenRequestAr = "طلب إلغاء المعاملة للأخصائي والمشرف فقط";
+    public const string ForbiddenRequestAr = "طلب إلغاء المعاملة لأخصائي التنسيق والمشرف فقط";
     public const string ForbiddenDecideAr = "اعتماد إلغاء المعاملة وإعادة تفعيلها للمشرف فقط";
     public const string RequestNotFoundAr = "طلب الإلغاء غير موجود";
     public const string PropertyNotFoundAr = "العقار غير موجود";
@@ -116,7 +116,7 @@ public static class TransactionCancellationRules
         PoNumber = deed.WorkOrder?.PoNumber ?? "",
         DeedNumber = deed.DeedNumber,
         TransactionId = deed.TransactionId,
-        TransactionNumber = deed.Transaction?.DisplayNumber ?? "",
+        TransactionNumber = deed.ReferenceNumber ?? deed.Transaction?.DisplayNumber ?? "",
         BlockedReason = blockedReason,
     };
 

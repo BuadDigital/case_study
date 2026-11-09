@@ -55,6 +55,27 @@ public class LoginOtpServiceTests
     }
 
     [Fact]
+    public async Task Hint_names_the_active_account_and_nothing_else()
+    {
+        await using var provider = await CreateProviderAsync();
+        var otp = provider.GetRequiredService<ILoginOtpService>();
+
+        var hint = await otp.HintAsync("512345678");
+
+        Assert.NotNull(hint);
+        Assert.Equal("Test User", hint.DisplayName);
+        Assert.Equal("Tester", hint.JobTitle);
+        Assert.Null(await otp.HintAsync("0599999999"));
+        Assert.Null(await otp.HintAsync("12"));
+
+        var identity = provider.GetRequiredService<IdentityDbContext>();
+        var profile = await identity.UserProfiles.SingleAsync();
+        profile.Status = UserStatus.Disabled;
+        await identity.SaveChangesAsync();
+        Assert.Null(await otp.HintAsync(Mobile));
+    }
+
+    [Fact]
     public async Task A_second_request_inside_the_cooldown_is_throttled()
     {
         await using var provider = await CreateProviderAsync();

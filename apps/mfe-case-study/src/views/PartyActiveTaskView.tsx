@@ -21,12 +21,10 @@ import {
 import type { PageId } from "@platform/types";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks";
-import type { PartyAppraisalExtensions } from "../lib/party-appraisal-extensions";
+import type { PartyAppraisalExtensions } from "@platform/app-shared/party-appraisal/party-appraisal-extensions";
 import type { PartyEngineeringSurveyExtensions } from "../lib/party-engineering-survey-extensions";
-import {
-  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
-} from "../lib/case-study-field-inspection-events";
 import { fieldInspectionTaskStatusBadge, filterFieldInspectionListedTasks } from "../lib/app-data/field-inspection-work-queue";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 function queueConfig(
   def: PartyTaskPageDef,

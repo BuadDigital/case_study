@@ -20,6 +20,7 @@
  * Pure: no React, no I/O.
  */
 import type { ValuationIssuanceGatesDto } from "@platform/api-client";
+import { HANDOVER_GATES_READ_EVENT } from "@platform/app-shared/events/app-events";
 
 export type HandOverBlockerOwner =
   | "appraiser"
@@ -141,12 +142,6 @@ export function handOverRefusalMessage(blockers: HandOverBlocker[]): string | nu
       .join("؛ ")
   );
 }
-
-/**
- * Fired with the gates every fresh hand-over check read, so the «المراجعة النهائية» list shows what
- * the refusal just said (not the gates the screen loaded earlier).
- */
-export const HANDOVER_GATES_READ_EVENT = "evaluator:handover-gates-read";
 
 export type HandOverGatesReadDetail = {
   valuationRequestId: string;

@@ -24,7 +24,7 @@ export function transactionDeedLabel(deed: Pick<TransactionDeedDto, "deedNumber"
 }
 
 /**
- * The «صكوك المعاملة» select in the property page header.
+ * The «صكوك العقار» select in the property page header (the deeds of a linked property).
  *
  * How it works: a transaction with several deeds shows one page per deed
  * under one header; this switcher jumps between them. Each option is the deed's label and its
@@ -57,12 +57,12 @@ export function TransactionDeedSwitcher({
       )}
       htmlFor={id}
     >
-      <span className="font-semibold">صكوك المعاملة</span>
+      <span className="font-semibold">صكوك العقار</span>
       <select
         id={id}
         className="max-w-[260px] cursor-pointer border-0 bg-transparent text-[11.5px] font-bold tabular-nums text-heading outline-none"
         value={currentPropertyId}
-        aria-label="التنقل بين صكوك المعاملة"
+        aria-label="التنقل بين صكوك العقار"
         onChange={(e) => {
           const next = listed.find((d) => d.propertyId === e.target.value);
           if (!next || next.propertyId === currentPropertyId) return;

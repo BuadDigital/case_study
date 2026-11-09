@@ -31,10 +31,31 @@ public class TransactionStateEnfazTests
     {
         UserId = "specialist-1",
         DisplayName = "أخصائي الدراسة",
-        PrototypeRole = "case-specialist",
+        PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
     };
 
     // ------------------------------------------------------------ handover
+
+    /// <summary>Omar 2026-11-08: «تم الرفع» waits for «تجهيز المعاملة للرفع», which stamps the deed once.</summary>
+    [Fact]
+    public async Task The_upload_waits_for_the_ready_stamp_which_is_set_once()
+    {
+        await using var rig = Arrange(readyForUpload: false);
+
+        var (_, refused) = await rig.Service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "review-1");
+        Assert.Equal(TransactionStateService.NotReadyForUploadAr, refused);
+
+        var (ready, readyError) = await rig.Service.MarkReadyForUploadAsync(WorkOrderId, PropertyId, "review-1");
+        Assert.Null(readyError);
+        Assert.False(string.IsNullOrWhiteSpace(ready!.ReadyForUploadAtUtc));
+        var stamp = (await rig.Property()).ReadyForUploadAtUtc;
+        await rig.Service.MarkReadyForUploadAsync(WorkOrderId, PropertyId, "review-2");
+        Assert.Equal(stamp, (await rig.Property()).ReadyForUploadAtUtc);
+
+        var (uploaded, uploadError) = await rig.Service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "review-1");
+        Assert.Null(uploadError);
+        Assert.NotNull(uploaded);
+    }
 
     [Fact]
     public async Task The_handover_names_the_missing_study_report()
@@ -61,9 +82,12 @@ public class TransactionStateEnfazTests
         Assert.Contains("شهادة الإيداع", error);
     }
 
-    /// <summary>A deed never goes to Enfaz under a temporary number.</summary>
+    /// <summary>
+    /// A deed never goes to Enfaz without its number: an old deed (TMP row, no number of its own) is
+    /// numbered at the handover, and the number is locked.
+    /// </summary>
     [Fact]
-    public async Task The_handover_fixes_the_official_reference_when_it_is_still_temporary()
+    public async Task The_handover_numbers_an_old_deed_and_locks_the_number()
     {
         await using var rig = Arrange(studyIssued: true);
         var transaction = Transaction.CreateDraft("TMP-26-00009", DateTime.UtcNow);
@@ -84,6 +108,8 @@ public class TransactionStateEnfazTests
         var confirmed = await rig.Db.Transactions.AsNoTracking().SingleAsync(t => t.Id == transaction.Id);
         Assert.StartsWith("PR-", confirmed.ReferenceNumber);
         Assert.NotNull(confirmed.ConfirmedAtUtc);
+        var deed = await rig.Db.WorkOrderProperties.AsNoTracking().SingleAsync(p => p.Id == PropertyId);
+        Assert.Equal(confirmed.ReferenceNumber, deed.ReferenceNumber);
     }
 
     [Fact]
@@ -232,10 +258,10 @@ public class TransactionStateEnfazTests
 
     // ------------------------------------------------------------ return: gates
 
+    // Omar 2026-11-05: any specialist reopens, and the supervisor and the CDO too.
     [Theory]
-    [InlineData("section-supervisor")]
     [InlineData("general-manager")]
-    [InlineData("cdo")]
+    [InlineData("financial-officer")]
     [InlineData(null)]
     public async Task Only_the_case_specialist_takes_the_transaction_back(string? role)
     {
@@ -291,7 +317,8 @@ public class TransactionStateEnfazTests
     [Fact]
     public async Task A_transaction_that_is_not_handed_over_has_nothing_to_take_back()
     {
-        await using var rig = Arrange(handedOver: false);
+        // Neither uploaded nor deposited (the valuation request is still open).
+        await using var rig = Arrange(handedOver: false, valuationOpen: true);
 
         var (result, errors) = await rig.Service.ReturnFromEnfazAsync(
             WorkOrderId,
@@ -453,10 +480,77 @@ public class TransactionStateEnfazTests
             new ReturnFromEnfazRequest { Reason = Reason, ReopenValuation = true },
             Specialist);
 
+        // The return cleared «جاهزة للرفع» (Omar 2026-11-08): the package is checked again first.
+        await rig.Service.MarkReadyForUploadAsync(WorkOrderId, PropertyId, "review-1");
         var (again, error) = await rig.Service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "specialist-1");
 
         Assert.Null(error);
         Assert.NotNull(again!.EnfazHandoverAtUtc);
+    }
+
+    // ------------------------------------------------------------ «إعادة فتح المعاملة» (Omar 2026-11-05)
+
+    private static readonly CaseStudyReportActor Coordinator = new()
+    {
+        UserId = "coordinator-1",
+        DisplayName = "المنسق",
+        PrototypeRole = "case-specialist",
+        SubRoles = [CaseSpecialistSubRoles.Coordination],
+    };
+
+    [Fact]
+    public async Task An_internal_reopening_of_a_deposited_transaction_ends_at_the_next_upload()
+    {
+        await using var rig = Arrange(handedOver: false, withTransaction: true);
+
+        var (opened, errors) = await rig.Service.ReturnFromEnfazAsync(
+            WorkOrderId,
+            PropertyId,
+            new ReturnFromEnfazRequest { Reason = Reason, ReopenStudy = true, Source = "internal" },
+            Coordinator);
+
+        Assert.Null(errors);
+        Assert.Equal(TransactionReopeningStatuses.Open, opened!.Reopening!.Status);
+        Assert.Equal("internal", opened.Reopening.Source);
+        Assert.False(opened.CanReopen);
+        // Any specialist reopens: the coordinator's study reopen runs as a study holder.
+        Assert.True(Assert.Single(rig.Reports.Calls).Actor!.Staff.HoldsStudy);
+
+        var (_, again) = await rig.Service.ReturnFromEnfazAsync(
+            WorkOrderId, PropertyId, new ReturnFromEnfazRequest { Reason = Reason, ReopenStudy = true }, Coordinator);
+        Assert.Equal(TransactionStateService.ReopeningActiveAr, again!["_"]);
+
+        var (uploaded, uploadError) = await rig.Service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "review-1");
+        Assert.Null(uploadError);
+        Assert.Null(uploaded!.Reopening);
+        Assert.Equal(TransactionReopeningStatuses.Closed, (await rig.Db.TransactionReopenings.SingleAsync()).Status);
+    }
+
+    [Fact]
+    public async Task An_enfaz_reopening_closes_at_the_upload_like_an_internal_one()
+    {
+        await using var rig = Arrange(handedOver: true, withTransaction: true);
+
+        var (_, missingReference) = await rig.Service.ReturnFromEnfazAsync(
+            WorkOrderId, PropertyId,
+            new ReturnFromEnfazRequest { Reason = Reason, ReopenValuation = true, Source = "enfaz" },
+            Specialist);
+        Assert.Equal(TransactionStateService.EnfazReferenceRequiredAr, missingReference!["enfazReference"]);
+
+        var (opened, errors) = await rig.Service.ReturnFromEnfazAsync(
+            WorkOrderId, PropertyId,
+            new ReturnFromEnfazRequest { Reason = Reason, ReopenValuation = true, Source = "enfaz", EnfazReference = "ENF-77" },
+            Specialist);
+        Assert.Null(errors);
+        Assert.Equal("ENF-77", opened!.Reopening!.EnfazReference);
+
+        // Omar 2026-11-08: the reply to Enfaz is outside the system — the re-upload ends the reopening.
+        // The return cleared «جاهزة للرفع» (Omar 2026-11-08): the package is checked again first.
+        await rig.Service.MarkReadyForUploadAsync(WorkOrderId, PropertyId, "review-1");
+        await rig.Service.RecordEnfazHandoverAsync(WorkOrderId, PropertyId, "review-1");
+        var closed = await rig.Service.GetStateAsync(WorkOrderId, PropertyId);
+        Assert.Null(closed!.Reopening);
+        Assert.Empty(await rig.Service.ListActiveReopeningsAsync());
     }
 
     // ------------------------------------------------------------ «جاهز للفوترة»
@@ -554,7 +648,9 @@ public class TransactionStateEnfazTests
         bool valuationOpen = false,
         bool handedOver = false,
         string? finalReportStatus = null,
-        bool billingReady = false)
+        bool billingReady = false,
+        bool withTransaction = false,
+        bool readyForUpload = true)
     {
         var contexts = TestDatabases.Create("enfaz-return");
         var db = contexts.CaseStudy;
@@ -584,7 +680,16 @@ public class TransactionStateEnfazTests
             EnfazHandoverByUserId = handedOver ? "specialist-0" : null,
             BillingReadyAtUtc = handedOver && billingReady ? now : null,
             BillingReadyByUserId = handedOver && billingReady ? "accountant-0" : null,
+            // Omar 2026-11-08: the upload follows «تجهيز المعاملة للرفع»; most tests start past it.
+            ReadyForUploadAtUtc = readyForUpload ? now : null,
+            ReadyForUploadByUserId = readyForUpload ? "review-0" : null,
         });
+        if (withTransaction)
+        {
+            var transaction = Transaction.CreateDraft("TMP-26-00077", now);
+            db.Transactions.Add(transaction);
+            db.WorkOrderProperties.Local.Single(p => p.Id == PropertyId).TransactionId = transaction.Id;
+        }
         db.WorkflowTasks.AddRange(
             WorkflowTask.Create(
                 WorkflowTaskKind.CaseStudyProperty, Po, now, title: "دراسة",
@@ -704,6 +809,10 @@ public class TransactionStateEnfazTests
         public Task<(CaseStudyReportDto? Result, Dictionary<string, string>? Errors)> IssueAsync(
             Guid taskId, CaseStudyReportDto report, CaseStudyReportActor? actor = null,
             CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<(CaseStudyReportDto? Result, Dictionary<string, string>? Errors)> ApproveStudyAsync(
+            Guid taskId, CaseStudyReportActor actor, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
     }
 

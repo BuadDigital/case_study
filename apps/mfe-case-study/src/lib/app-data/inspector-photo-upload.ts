@@ -16,13 +16,13 @@ import {
   listServiceAmenityPhotoSlots,
   type InspectorPhotoAttachment,
   type InspectorWorkspaceDraft,
-} from "./inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { burnInspectorPhotoStamp } from "./inspector-photo-stamp";
 import {
   buildEvidenceStampLines,
   processEvidencePhoto,
   type EvidencePhotoExif,
-} from "./process-evidence-photo";
+} from "@platform/app-shared/media/process-evidence-photo";
 import { parsePlacedMapPin } from "@platform/app-shared/media/photo-location";
 import {
   blobToDataUrl,

@@ -185,6 +185,21 @@ public sealed class CaseStudyTransactionNumbersDto
     public string ValuationReportNumber { get; set; } = "";
 }
 
+/// <summary>
+/// Moves a deed's transaction between the study and review (Omar 2026-11-05). State: study | handed | approved.
+/// </summary>
+public sealed class SetCaseStudyTransactionReviewStateRequest
+{
+    public string State { get; set; } = "";
+    public string? UserId { get; set; }
+}
+
+/// <summary>The transaction's review state after the move: study | handed | approved.</summary>
+public sealed class CaseStudyTransactionReviewStateDto
+{
+    public string State { get; set; } = "";
+}
+
 public sealed class CaseStudyWorkOrderIdDto
 {
     public Guid? Id { get; set; }

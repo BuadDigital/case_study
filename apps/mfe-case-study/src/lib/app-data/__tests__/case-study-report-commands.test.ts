@@ -9,7 +9,7 @@ vi.mock("@platform/api-client", () => ({
   saveCaseStudyReport: vi.fn(),
   savePartyCaseStudyReport: vi.fn(),
 }));
-vi.mock("../../work-orders-api-config", () => ({
+vi.mock("@platform/app-shared/app-data/work-orders-api-config", () => ({
   apiErrorMessage: (kind: string) => `api:${kind}`,
   resolveApiError: (
     kind: string,
@@ -18,8 +18,6 @@ vi.mock("../../work-orders-api-config", () => ({
     message?: string,
   ) => message ?? errors?._ ?? Object.values(errors ?? {})[0] ?? fallback ?? kind,
   workOrdersApiConfig: () => ({ token: "t" }),
-}));
-vi.mock("@platform/app-shared/app-data/work-orders-api-config", () => ({
   notifyWorkOrdersChanged: vi.fn(),
 }));
 vi.mock("../tasks-model", () => ({ notifyTasksChanged: vi.fn() }));
@@ -34,7 +32,7 @@ import {
 import {
   caseStudyReportDraftToDto,
   emptyCaseStudyReportDraft,
-} from "../case-study-report-model";
+} from "@platform/app-shared/app-data/case-study-report-model";
 
 describe("issueCaseStudyReportDraft", () => {
   beforeEach(() => {

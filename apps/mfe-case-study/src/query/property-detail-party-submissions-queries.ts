@@ -3,15 +3,17 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-evaluator-events";
-import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-engineering-survey-events";
-import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../lib/case-study-field-inspection-events";
 import {
   loadPropertyDetailPartySubmissions,
   type PropertyDetailPartySubmissionsMap,
 } from "../lib/app-data/property-detail-party-submissions";
 import type { WorkflowTask } from "../lib/app-data/tasks";
-import { TASKS_CHANGED_EVENT } from "./case-study-queries";
+import {
+  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
+  EVALUATOR_SUBMISSION_CHANGED_EVENT,
+  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+  TASKS_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const STALE_MS = 60_000;
 const GC_MS = 10 * 60_000;

@@ -146,8 +146,8 @@ export {
 } from "./components/PoNumber";
 export {
   TransactionNumberBadge,
-  isTemporaryTransactionNumber,
-  TEMPORARY_TRANSACTION_PREFIX,
+  isLinkedPropertyNumber,
+  LINKED_PROPERTY_SUFFIX,
 } from "./components/TransactionNumberBadge";
 export {
   Table,

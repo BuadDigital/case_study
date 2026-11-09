@@ -39,7 +39,7 @@ public class PartyTaskSubmissionAcceptTests
             {
                 UserId = "specialist-1",
                 DisplayName = "أخصائي",
-                PrototypeRole = "case-specialist",
+                PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             });
 
         Assert.Null(errors);
@@ -71,7 +71,7 @@ public class PartyTaskSubmissionAcceptTests
         {
             UserId = "specialist-1",
             DisplayName = "أخصائي",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         };
 
         var (offSurvey, offSurveyErrors) = await service.AcceptAsync(
@@ -110,7 +110,7 @@ public class PartyTaskSubmissionAcceptTests
         {
             UserId = "specialist-1",
             DisplayName = "أخصائي",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         };
         var (first, _) = await service.AcceptAsync(TaskId, actor);
         var (second, _) = await service.AcceptAsync(TaskId, actor);
@@ -135,7 +135,7 @@ public class PartyTaskSubmissionAcceptTests
     }
 
     [Fact]
-    public async Task Accept_field_inspection_sets_AcceptedAtUtc_without_fee_ledger()
+    public async Task Accept_field_inspection_sets_AcceptedAtUtc_and_never_fails_on_the_fee()
     {
         var bundle = CreateDb();
         var db = bundle.CaseStudy;
@@ -148,7 +148,7 @@ public class PartyTaskSubmissionAcceptTests
             {
                 UserId = "specialist-1",
                 DisplayName = "أخصائي",
-                PrototypeRole = "case-specialist",
+                PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             });
 
         Assert.Null(errors);
@@ -161,12 +161,14 @@ public class PartyTaskSubmissionAcceptTests
         Assert.Equal("specialist-1", entity.AcceptedByUserId);
         Assert.Equal("أخصائي", entity.AcceptedByName);
 
+        // Omar 2026-11-08: the acceptance asks for the inspector's fee line; with no pricing table seeded
+        // here nothing is priced — and the acceptance still stands (the fee call is best effort).
         var fin = TestInspectorFeeServiceFactory.ShareFinancial(db);
         Assert.False(await fin.InspectorFeeLedgers.AnyAsync(l => l.WorkflowTaskId == TaskId));
     }
 
     [Fact]
-    public async Task Accept_field_inspection_requires_the_specialist_components_first()
+    public async Task Accept_field_inspection_no_longer_waits_for_the_specialist_components()
     {
         var bundle = CreateDb();
         var db = bundle.CaseStudy;
@@ -184,18 +186,11 @@ public class PartyTaskSubmissionAcceptTests
         {
             UserId = "specialist-1",
             DisplayName = "أخصائي",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         };
 
-        // Nothing written yet: only the report text is reported (the table is not a condition).
-        var (_, noText) = await service.AcceptAsync(TaskId, actor);
-        Assert.Equal(SpecialistComponentsRules.TextRequired, noText!["componentsText"]);
-        Assert.Single(noText);
-
-        var property = db.WorkOrderProperties.Single(p => p.Id == PropertyId);
-        property.SpecialistComponentsText = "فيلا من دورين";
-        db.SaveChanges();
-        // The text alone clears the gate even though the table is still empty.
+        // Omar 2026-11-08: coordination accepts the inspector's package; «مكونات العقار» is the study's
+        // and gates the study report's issue instead — nothing written yet still accepts.
         var (result, errors) = await service.AcceptAsync(TaskId, actor);
         Assert.Null(errors);
         Assert.NotNull(result);
@@ -217,6 +212,7 @@ public class PartyTaskSubmissionAcceptTests
             PropertyType = inspectedType,
             InspectedPropertyType = inspectedType,
             SpecialistComponentsText = "وصف المكونات",
+            SpecialistFinishingLevel = "medium",
         });
         db.SaveChanges();
         var service = CreateService(db, bundle.Failures, bundle.Ops);
@@ -227,7 +223,7 @@ public class PartyTaskSubmissionAcceptTests
             {
                 UserId = "specialist-1",
                 DisplayName = "أخصائي",
-                PrototypeRole = "case-specialist",
+                PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             });
     }
 
@@ -300,6 +296,7 @@ public class PartyTaskSubmissionAcceptTests
             WestBoundary = "ممر",
             WestBoundaryLengthM = "25.00",
             SpecialistComponentsText = "فيلا من دورين",
+            SpecialistFinishingLevel = "medium",
             HasStructuresToValue = HasStructuresToValueValues.Yes,
         });
         db.BuildingInventoryLines.Add(new BuildingInventoryLine
@@ -320,7 +317,7 @@ public class PartyTaskSubmissionAcceptTests
             {
                 UserId = "specialist-1",
                 DisplayName = "أخصائي",
-                PrototypeRole = "case-specialist",
+                PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             });
 
         Assert.Null(errors);

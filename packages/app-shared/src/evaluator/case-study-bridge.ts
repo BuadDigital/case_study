@@ -14,11 +14,11 @@ import type {
   PropertyDetailDocumentEntry,
   PropertyDetailDocumentSection,
 } from "../app-data/property-detail-document-types";
+import type { InspectorWorkspaceDraft } from "../app-data/inspector-workspace-data";
 import type {
-  InspectorWorkspaceDraft,
   PoIntakeRecord,
   PoPropertyIntake,
-} from "./case-study-types";
+} from "../app-data/po-intake-property-model";
 import type { WorkflowTask } from "../workflow/task-types";
 
 type EvaluatorCaseStudyBridge = {

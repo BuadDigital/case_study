@@ -12,6 +12,11 @@ public class PermissionsDto
     public string? JobTitle { get; init; }
     public IReadOnlyList<string> Pages { get; init; } = [];
     public IReadOnlyList<string> Capabilities { get; init; } = [];
+    /// <summary>
+    /// Case-specialist sub-roles (coordination | study | review, see CaseSpecialistSubRoles); empty
+    /// for every other role.
+    /// </summary>
+    public IReadOnlyList<string> SubRoles { get; init; } = [];
 }
 
 public class MeDto

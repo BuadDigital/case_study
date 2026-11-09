@@ -20,6 +20,15 @@ public interface IOperationsTaskVisitFees
         CancellationToken cancellationToken);
 
     /// <summary>
+    /// The agreed fee of a task that is not a court visit (Omar 2026-11-05: any task, to any party,
+    /// may be free or carry a fee agreed on the task). Cooperators only; the amount must be positive.
+    /// </summary>
+    Task<(decimal? Fee, string? Error)> ResolveAgreedTaskFeeAsync(
+        string assigneeId,
+        decimal requestedAmount,
+        CancellationToken cancellationToken);
+
+    /// <summary>
     /// Fee to charge on complete. Employees and already-charged visits come back unresolved
     /// with no error; a cooperator without a resolvable amount comes back as an error so the
     /// visit is never completed silently unpaid.

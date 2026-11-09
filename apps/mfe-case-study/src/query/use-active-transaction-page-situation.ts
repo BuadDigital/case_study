@@ -33,6 +33,15 @@ import {
   useWorkflowTasksQuery,
 } from "./case-study-queries";
 import { useInspectorFeesQuery } from "./inspector-fees-queries";
+import {
+  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
+  EVALUATOR_RECALL_CHANGED_EVENT,
+  EVALUATOR_RECALL_HYDRATED_EVENT,
+  EVALUATOR_SUBMISSION_CHANGED_EVENT,
+  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+  PARTY_TASK_RECALL_CHANGED_EVENT,
+  PARTY_TASK_RECALL_HYDRATED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 function feesTaskKindForRole(role: RoleId): string | undefined {
   if (role === "field-inspector") return "field-inspection";
@@ -168,13 +177,13 @@ export function useActiveTransactionPageSituation(
   useEffect(() => {
     if (!needsPartyPrefetch || !pageId) return;
     const events = [
-      "evaluator-submission-changed",
-      "evaluator-recall-changed",
-      "evaluator-recall-hydrated",
-      "party-task-recall-changed",
-      "party-task-recall-hydrated",
-      "field-inspection-submission-changed",
-      "engineering-survey-submission-changed",
+      EVALUATOR_SUBMISSION_CHANGED_EVENT,
+      EVALUATOR_RECALL_CHANGED_EVENT,
+      EVALUATOR_RECALL_HYDRATED_EVENT,
+      PARTY_TASK_RECALL_CHANGED_EVENT,
+      PARTY_TASK_RECALL_HYDRATED_EVENT,
+      FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+      ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
     ];
     const handler = () => setPartySubmissionGen((n) => n + 1);
     for (const ev of events) window.addEventListener(ev, handler);

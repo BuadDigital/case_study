@@ -1,5 +1,5 @@
 import type { PoRow } from "@platform/app-shared/app-data/constants";
-import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 import type { PropertyListItem } from "@platform/app-shared/app-data/work-orders-read";
 
 type PoListSearchMode = "all" | "po" | "deed" | "text";

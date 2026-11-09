@@ -2,7 +2,7 @@ import {
   ensureOpenValuationRequestByProperty,
   type ValuationRequestLiteDto,
 } from "@platform/api-client";
-import { apiConfig } from "./api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 
 function openFailureMessage(
   kind: "auth" | "network" | "server" | "validation" | "not_found" | "conflict",

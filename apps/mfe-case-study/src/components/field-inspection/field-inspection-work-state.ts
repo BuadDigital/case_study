@@ -12,7 +12,7 @@ import {
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
   type isLandInspectionContext,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 

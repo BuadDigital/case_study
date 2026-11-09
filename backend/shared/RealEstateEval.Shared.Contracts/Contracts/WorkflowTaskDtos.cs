@@ -77,6 +77,12 @@ public class WorkflowTaskDto
     public string? AppraisalPackageStatus { get; set; }
 
  /// <summary>
+ /// Property-appraisal / case-study parent: review accepted the appraiser's value — the latest appraisal
+ /// package is accepted (Omar 2026-11-08). False when not accepted or no package; null for other kinds.
+ /// </summary>
+    public bool? AppraisalValueAccepted { get; set; }
+
+ /// <summary>
  /// Property-appraisal: sibling engineering-survey workflow task is completed.
  /// Populated on list so the appraiser's parties rail reports the survey without
  /// seeing its task row (party visibility hides it).
@@ -96,6 +102,13 @@ public class WorkflowTaskDto
  /// Prefer specialist-accepted inspection when several completed siblings exist.
  /// </summary>
     public string? FieldInspectionTaskId { get; set; }
+
+    /// <summary>
+    /// Property-appraisal: id of the completed sibling engineering-survey task (the appraiser's list
+    /// hides the office's row). The valuation report reads the office's boundaries and survey report
+    /// from it — without the id the appraiser's report fell back to the inspector's (2026-11-04).
+    /// </summary>
+    public string? EngineeringSurveyTaskId { get; set; }
 
  /// <summary>
  /// The task's property has a failure that is neither resolved nor suspended. Display only —
@@ -129,6 +142,54 @@ public class WorkflowTaskDto
 
     /// <summary>The property's transaction id, joined like the five columns above.</summary>
     public Guid? TransactionId { get; set; }
+
+    /// <summary>
+    /// Coordination formally received the transaction (ruling 2026-11-02): it left the coordination
+    /// queue for the shared «دراسة العقار» queue. False for a deed without a transaction.
+    /// </summary>
+    public bool TransactionReceived { get; set; }
+
+    /// <summary>
+    /// The transaction waits for a delivery from a party outside the system (Omar 2026-11-08,
+    /// «بانتظار طرف خارجي») — it cannot be sent to the study until it arrives or is dropped.
+    /// </summary>
+    public bool AwaitingExternalParty { get; set; }
+
+    /// <summary>
+    /// Review pressed «تجهيز المعاملة للرفع» on the deed (Omar 2026-11-08) — it sits in the upload queue.
+    /// </summary>
+    public bool ReadyForUpload { get; set; }
+
+    /// <summary>
+    /// Where the transaction stands with review (Omar 2026-11-08): «study» (with the study), «handed»
+    /// (the study sent to review), «approved» (review approved the study — the data is locked).
+    /// </summary>
+    public string? ReviewState { get; set; }
+
+    /// <summary>«يعمل عليها الآن»: the last specialist who opened or saved the transaction (information only).</summary>
+    public string? WorkingByUserId { get; set; }
+
+    public string? WorkingByName { get; set; }
+
+    public string? WorkingAtUtc { get; set; }
+
+    /// <summary>
+    /// «وقت الإجراء» (Omar 2026-11-08): when the deed's latest business milestone happened (ISO, UTC) —
+    /// the step that put the transaction where it waits now. Null when the deed has no milestone yet.
+    /// </summary>
+    public string? LastStepAtUtc { get; set; }
+
+    /// <summary>That milestone's timeline key (e.g. <c>case-study-report:{task}:reopened:…</c>).</summary>
+    public string? LastStepKey { get; set; }
+
+    /// <summary>That milestone's detail line («الاسم — السبب»), as the timeline shows it.</summary>
+    public string? LastStepDetail { get; set; }
+
+    /// <summary>
+    /// Field-inspection / engineering-survey rows only: coordination accepted the party's package
+    /// (A→Z 2026-11-09). Null on every other kind.
+    /// </summary>
+    public bool? PackageAccepted { get; set; }
 
     /// <summary>
     /// Phase 4: the deed whose case-study parent carries the transaction's one study. Null for a

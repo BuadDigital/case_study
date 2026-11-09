@@ -26,6 +26,15 @@ public interface IPartyTaskSubmissionRepository
     /// <summary>Untracked task snapshot, or null when the task does not exist.</summary>
     Task<WorkflowTask?> GetTaskAsync(Guid taskId, CancellationToken cancellationToken);
 
+    /// <summary>Whether the deed's transaction was formally received (no property / no transaction → false).</summary>
+    Task<bool> IsTransactionReceivedAsync(Guid? propertyId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Clears the receipt of the deed's transaction (tracked; saved with the next SaveChanges) — the study
+    /// returned the inspection after the send (Omar 2026-11-08). Returns whether it changed.
+    /// </summary>
+    Task<bool> ClearTransactionReceiptAsync(Guid? propertyId, DateTime nowUtc, CancellationToken cancellationToken);
+
     Task<IReadOnlyList<PartyTaskFacts>> ListTaskFactsAsync(
         IReadOnlyCollection<Guid> taskIds,
         CancellationToken cancellationToken);

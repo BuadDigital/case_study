@@ -4,7 +4,7 @@
  */
 
 import type { ComponentType } from "react";
-import type { PoPropertyIntake } from "../app-data/po-intake-data";
+import type { PoPropertyIntake } from "../app-data/po-intake-property-model";
 import type { WorkflowTask } from "../workflow/task-types";
 
 /** Read-only valuation report as the appraiser sees it, embedded in the property page. */
@@ -14,9 +14,19 @@ export type EvaluatorValuationReportPreviewProps = {
   property: PoPropertyIntake;
 };
 
-/** The case specialist's workspace for the valuation-report draft (read-only unless `canEdit`). */
+/**
+ * The case specialist's workspace for the valuation-report draft: `canEdit` prepares, sends and
+ * withdraws it (the study sub-role); `canDeposit` records the deposit and opens a new version
+ * (the review sub-role). Read-only when both are false.
+ */
 export type EvaluatorReportDraftPanelProps = EvaluatorValuationReportPreviewProps & {
   canEdit: boolean;
+  canDeposit?: boolean;
+  /**
+   * Review (Omar 2026-11-05): edits the draft handed to it, sends it to the appraiser (approving it and the
+   * study report) or returns it to the study, and pulls a sent draft back.
+   */
+  canReview?: boolean;
 };
 
 type EvaluatorQueueStatusGroup =

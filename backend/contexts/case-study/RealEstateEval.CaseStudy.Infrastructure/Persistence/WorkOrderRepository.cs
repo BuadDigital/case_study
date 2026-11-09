@@ -9,13 +9,13 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 public sealed class WorkOrderRepository(CaseStudyDbContext db) : IWorkOrderRepository
 {
-    public Task<(string? Number, string? Error)> AllocateTransactionDraftNumberAsync(
+    public Task<(string? Number, string? Error)> AllocateDeedReferenceAsync(
         DateTime nowUtc,
         CancellationToken cancellationToken) =>
         ReferenceSequenceAllocator.AllocateYearlyAsync(
             db,
             DatabaseSchemas.CaseStudy,
-            ReferenceNumbering.TransactionDraft,
+            ReferenceNumbering.Property,
             nowUtc,
             cancellationToken);
 

@@ -163,7 +163,7 @@ describe("resolvePageChrome", () => {
     });
     expect(chrome.title).toBe("فوترة الأتعاب");
     expect(chrome.breadcrumbSegments.map((s) => s.label)).toEqual([
-      "المعاملات النشطة",
+      "قوائم المراحل",
       "فوترة الأتعاب",
     ]);
     expect(resolvePageChrome({ ...base, currentPage: "party-fees", role: "cdo" }).title).toBe(

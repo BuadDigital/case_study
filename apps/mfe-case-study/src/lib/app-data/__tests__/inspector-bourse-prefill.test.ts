@@ -5,7 +5,7 @@ import {
   bourseSourceNotes,
   fillEmptyFeaturesFromBourse,
 } from "../inspector-bourse-prefill";
-import { createInspectorWorkspaceDraft } from "../inspector-workspace-data";
+import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 
 const property = { classification: "مبنى مفرد", propertyType: "فيلا", deedStatus: "فعال" };
 

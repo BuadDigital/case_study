@@ -6,7 +6,7 @@
 import { getEvaluatorCaseStudyBridge } from "@platform/app-shared/evaluator/case-study-bridge";
 import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
-import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
 
 export function fetchInspectorWorkspace(taskId: string) {

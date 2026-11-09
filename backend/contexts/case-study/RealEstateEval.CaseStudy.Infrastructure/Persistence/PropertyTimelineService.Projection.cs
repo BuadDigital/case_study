@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Domain;
@@ -41,6 +42,24 @@ public sealed partial class PropertyTimelineService
                 || key.EndsWith(":blocked", StringComparison.Ordinal)))
         || (key.StartsWith("party:", StringComparison.Ordinal)
             && key.EndsWith(":assigned", StringComparison.Ordinal));
+
+    /// <summary>
+    /// The SQL twin of <see cref="IsLegacyTechnicalKey"/>: true for a row that IS a business milestone.
+    ///
+    /// How it works: the same keys as <see cref="IsLegacyTechnicalKey"/>, written with the plain
+    /// <c>StartsWith</c> / <c>EndsWith</c> overloads EF translates to <c>LIKE</c>, so a query can take the
+    /// latest milestone of each deed in the database (the «وقت الإجراء» clock of «أعمالي», Omar 2026-11-08).
+    /// Edge cases: keep it in step with <see cref="IsLegacyTechnicalKey"/> — a test pins the two together.
+    /// </summary>
+    internal static readonly Expression<Func<PropertyTimelineEntry, bool>> IsMilestoneRow = e =>
+        !(e.EventKey == "due"
+          || (e.EventKey.StartsWith("task:")
+              && (e.EventKey.EndsWith(":created")
+                  || e.EventKey.EndsWith(":bourse-complete")
+                  || e.EventKey.EndsWith(":case-study")
+                  || e.EventKey.EndsWith(":specialist-assigned")
+                  || e.EventKey.EndsWith(":blocked")))
+          || (e.EventKey.StartsWith("party:") && e.EventKey.EndsWith(":assigned")));
 
     private static bool IsDistributionKey(string key) =>
         key.StartsWith("task:", StringComparison.Ordinal)

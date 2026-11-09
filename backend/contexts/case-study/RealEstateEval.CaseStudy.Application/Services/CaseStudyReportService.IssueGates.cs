@@ -27,29 +27,21 @@ public partial class CaseStudyReportService
     }
 
     /// <summary>
-    /// The deed's corrected type needs a survey and no live survey task hangs off its study (the
-    /// specialist has not added the office yet). See <see cref="Rules.SurveyRequirementRules.SurveyMissingAfterTypeChange"/>.
-    /// </summary>
-    private async Task<bool> SurveyMissingAfterTypeChangeAsync(
-        WorkflowTask parent,
-        CancellationToken cancellationToken)
-    {
-        if (parent.PropertyId is not Guid pid || pid == Guid.Empty) return false;
-        var property = await _db.GetPropertyForUpdateAsync(pid, cancellationToken);
-        if (property is null) return false;
-        var children = await _db.ListChildTasksAsync(parent.Id, cancellationToken);
-        var hasLiveSurvey = children.Any(c =>
-            c.Kind == WorkflowTaskKind.EngineeringSurvey && c.Status != WorkflowTaskStatus.Cancelled);
-        return Rules.SurveyRequirementRules.SurveyMissingAfterTypeChange(property, hasLiveSurvey);
-    }
-
-    /// <summary>
     /// The field inspector of this study said the deed does not match nature — «مطابق» then needs the
     /// specialist's reason. Only when the deed-match field is in play (a matched outcome).
     /// </summary>
     private async Task<bool> InspectorSaidNotMatchedAsync(Guid studyTaskId, CancellationToken cancellationToken) =>
         Rules.InspectorDeedNatureMatchRules.InspectorSaidNotMatched(
             await _db.GetInspectionPayloadJsonAsync(studyTaskId, cancellationToken));
+
+    /// <summary>
+    /// The engineering office of this study submitted «الصك غير مطابق للطبيعة» — «مطابق» then needs the
+    /// specialist's reason too (A→Z 2026-11-02 #20). How it works: reads the office's submitted survey payload.
+    /// Edge cases: no survey task, or a survey not yet submitted, is false.
+    /// </summary>
+    private async Task<bool> OfficeSaidNotMatchedAsync(Guid studyTaskId, CancellationToken cancellationToken) =>
+        Rules.InspectorDeedNatureMatchRules.EngineeringOfficeSaidNotMatched(
+            await _db.GetSubmittedEngineeringSurveyPayloadJsonAsync(studyTaskId, cancellationToken));
 
     private async Task<bool> HasActiveFailureAsync(
         WorkflowTask task,

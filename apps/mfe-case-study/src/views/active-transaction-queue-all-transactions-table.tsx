@@ -38,9 +38,12 @@ import {
 const AllTransactionsRow = memo(function AllTransactionsRow({
   ctx,
   meta,
+  showWaiting,
 }: {
   ctx: QueueRowContext;
   meta: AllTransactionsRowMeta;
+  /** «بانتظار» column — staff's «المعاملات النشطة»; party roles have no such column. */
+  showWaiting: boolean;
 }) {
   const active = ctx.selectedId === meta.task.id;
   const moreItems = ctx.resolveRowMoreItems(meta.task, meta.propertyId);
@@ -83,6 +86,11 @@ const AllTransactionsRow = memo(function AllTransactionsRow({
           style={allTransactionsPhaseStyle(meta.task)}
         />
       </Td>
+      {showWaiting ? (
+        <Td className="whitespace-nowrap text-[12.5px] font-semibold text-info-text">
+          {meta.waitingOn ?? "—"}
+        </Td>
+      ) : null}
       <QueueRowMoreCell items={moreItems} />
     </Tr>
   );
@@ -172,6 +180,7 @@ function PoGroupHeaderRow({
 
 export function AllTransactionsQueueTable({
   ctx,
+  showWaiting = false,
   filteredMeta,
   groupByPo,
   poGroups,
@@ -180,6 +189,7 @@ export function AllTransactionsQueueTable({
   onOpenPoProperties,
 }: {
   ctx: QueueRowContext;
+  showWaiting?: boolean;
   filteredMeta: AllTransactionsRowMeta[];
   groupByPo: boolean;
   poGroups: { po: string; rows: AllTransactionsRowMeta[] }[];
@@ -197,14 +207,15 @@ export function AllTransactionsQueueTable({
           <Th>المدينة</Th>
           <Th>الحي</Th>
           <Th>المرحلة</Th>
+          {showWaiting ? <Th>بانتظار</Th> : null}
           <ThAction aria-label="المزيد" />
         </Tr>
       </THead>
       <TBody>
         {ctx.showSkeleton ? (
-          <SkeletonTableRows rows={6} cols={ALL_TRANSACTIONS_SKELETON_COLS} />
+          <SkeletonTableRows rows={6} cols={ALL_TRANSACTIONS_SKELETON_COLS + (showWaiting ? 1 : 0)} />
         ) : filteredMeta.length === 0 ? (
-          <TableEmptyRow colSpan={ALL_TRANSACTIONS_SKELETON_COLS}>
+          <TableEmptyRow colSpan={ALL_TRANSACTIONS_SKELETON_COLS + (showWaiting ? 1 : 0)}>
             لا توجد معاملات مطابقة.
           </TableEmptyRow>
         ) : groupByPo ? (
@@ -226,6 +237,7 @@ export function AllTransactionsQueueTable({
                         key={meta.task.id}
                         ctx={ctx}
                         meta={meta}
+                        showWaiting={showWaiting}
                       />
                     ))
                   : null}
@@ -234,7 +246,7 @@ export function AllTransactionsQueueTable({
           })
         ) : (
           filteredMeta.map((meta) => (
-            <AllTransactionsRow key={meta.task.id} ctx={ctx} meta={meta} />
+            <AllTransactionsRow key={meta.task.id} ctx={ctx} meta={meta} showWaiting={showWaiting} />
           ))
         )}
       </TBody>

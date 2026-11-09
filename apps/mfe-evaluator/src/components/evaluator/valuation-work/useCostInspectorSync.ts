@@ -35,9 +35,8 @@ import {
   type CostSeedInventoryLine,
 } from "./lib/cost-approach-state";
 import { apiConfig } from "./lib/shell-utils";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
-/** Same event string as case-study `FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT`. */
-const FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT = "field-inspection-submission-changed";
 const REFETCH_MIN_GAP_MS = 20_000;
 
 export function useCostInspectorSync({

@@ -2,6 +2,7 @@ using System.Text.Json;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Application.Rules;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Operations.Application.Services;
 
@@ -11,7 +12,7 @@ public sealed partial class OperationsTaskCommands
         Guid id,
         AddOperationsTaskCommentRequest request,
         string actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         string? actorName,
         CancellationToken cancellationToken = default)
     {
@@ -20,7 +21,7 @@ public sealed partial class OperationsTaskCommands
 
         var files = OperationsTaskCommandRules.NormalizeCommentFiles(request.Files);
 
-        if (!OperationsTaskLifecycleRules.IsManager(actorRole)
+        if (!OperationsTaskLifecycleRules.IsManager(actorStaff)
             && entity.AssigneeId != actorAssigneeId.Trim())
         {
             return (null, "التعليق متاح للمنفّذ المكلّف أو المشرف فقط");
@@ -30,7 +31,7 @@ public sealed partial class OperationsTaskCommands
         if (text.Length == 0 && files.Count == 0)
             return (null, "أضف تعليقاً أو مرفقاً");
 
-        var who = OperationsTaskCommandRules.CommentAuthor(actorRole, entity.AssigneeId, actorAssigneeId);
+        var who = OperationsTaskCommandRules.CommentAuthor(actorStaff, entity.AssigneeId, actorAssigneeId);
 
         var comments = OperationsTaskSerialization.DeserializeComments(entity.CommentsJson).ToList();
         comments.Add(new OperationsTaskCommentDto
