@@ -10,9 +10,9 @@ import {
   getPartyTaskRecall,
   mapPartyTaskRecallDto,
   replacePartyTaskRecallCache,
-  PARTY_TASK_RECALL_HYDRATED_EVENT,
   type PartyTaskRecallRequest,
 } from "./party-task-recall-model";
+import { PARTY_TASK_RECALL_HYDRATED_EVENT } from "../events/app-events";
 
 let recallsHydrated = false;
 let hydratePromise: Promise<void> | null = null;

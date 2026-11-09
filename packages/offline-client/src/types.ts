@@ -116,6 +116,8 @@ export const OFFLINE_CHANNEL = "ejada-offline";
 export const OFFLINE_PENDING_EVENT = "ejada-offline-pending-changed";
 export const OFFLINE_SYNC_EVENT = "ejada-offline-sync-changed";
 export const OFFLINE_LEASE_EVENT = "ejada-offline-lease-changed";
+/** A user's offline data was wiped (logout, lease expiry); nothing in the apps listens today. */
+export const OFFLINE_PURGED_EVENT = "ejada-offline-purged";
 /** Live forms rewrite `local:` photo ids from this map after an upload lands. */
 export const OFFLINE_ATTACHMENT_MAP_EVENT = "ejada-offline-attachment-map";
 export const OFFLINE_DB_NAME = "ejada-offline-v1";

@@ -45,6 +45,7 @@ import {
   deedOptions,
   initialCreateOperationsTaskForm,
   letterPreviewRows,
+  allowsAgreedTaskFeeFor,
   needsVisitFeeFor,
   poOptionsForType,
   resolveAssigneeSelection,
@@ -123,16 +124,31 @@ function CreateOperationsTaskForm({
     [staffUsers, assigneeId],
   );
   const needsVisitFee = needsVisitFeeFor(type, assigneeId, assigneeUser);
+  const allowsAgreedTaskFee = allowsAgreedTaskFeeFor(
+    type,
+    assigneeId,
+    assigneeUser,
+  );
 
-  const poOptions = useMemo(() => poOptionsForType(poRecords, type), [poRecords, type]);
+  const poOptions = useMemo(
+    () => poOptionsForType(poRecords, type),
+    [poRecords, type],
+  );
   const selectedPo = useMemo(
     () => selectedPoRecord(poOptions, poNumber),
     [poOptions, poNumber],
   );
   const deeds = useMemo(() => deedOptions(selectedPo), [selectedPo]);
-  const multiDeedOptions = useMemo(() => allDeedOptions(poOptions), [poOptions]);
+  const multiDeedOptions = useMemo(
+    () => allDeedOptions(poOptions),
+    [poOptions],
+  );
   const letterPreview = useMemo(
-    () => letterPreviewRows({ type, scope, selectedDeeds, poNumber, deed }, poOptions),
+    () =>
+      letterPreviewRows(
+        { type, scope, selectedDeeds, poNumber, deed },
+        poOptions,
+      ),
     [type, scope, selectedDeeds, poNumber, deed, poOptions],
   );
 
@@ -143,7 +159,8 @@ function CreateOperationsTaskForm({
 
   useEffect(() => {
     if (!needsVisitFee) {
-      dispatch({ type: "set-visit-fee", value: "" });
+      // A task that is not a court visit keeps its typed agreed fee; anything else starts empty.
+      if (!allowsAgreedTaskFee) dispatch({ type: "set-visit-fee", value: "" });
       return;
     }
 
@@ -167,12 +184,13 @@ function CreateOperationsTaskForm({
     return () => {
       cancelled = true;
     };
-  }, [needsVisitFee, assigneeId]);
+  }, [needsVisitFee, allowsAgreedTaskFee, assigneeId]);
 
   const handleSubmit = async () => {
     const submission = buildCreateOperationsTaskSubmission(form, {
       poOptions,
       needsVisitFee,
+      allowsAgreedTaskFee,
       prefillTitle: prefill?.title,
     });
     if (!submission.ok) {
@@ -203,7 +221,12 @@ function CreateOperationsTaskForm({
       look="ops-html"
       footer={
         <div className="flex w-full justify-end gap-2.5">
-          <button type="button" className={opsBtnGhost} onClick={onClose} disabled={busy}>
+          <button
+            type="button"
+            className={opsBtnGhost}
+            onClick={onClose}
+            disabled={busy}
+          >
             إلغاء
           </button>
           <button
@@ -213,20 +236,22 @@ function CreateOperationsTaskForm({
             aria-busy={busy || undefined}
             onClick={() => void handleSubmit()}
           >
-            {busy ? <Spinner /> : (
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="M20 6 9 17l-5-5" />
-            </svg>
+            {busy ? (
+              <Spinner />
+            ) : (
+              <svg
+                width="15"
+                height="15"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
             )}
             <span>{busy ? "جاري الإنشاء…" : "إنشاء المهمة"}</span>
           </button>
@@ -254,6 +279,7 @@ function CreateOperationsTaskForm({
           form={form}
           dispatch={dispatch}
           needsVisitFee={needsVisitFee}
+          allowsAgreedTaskFee={allowsAgreedTaskFee}
         />
         <CreateTaskDescriptionField form={form} dispatch={dispatch} />
         <CreateTaskLinkScopeFields
@@ -265,7 +291,9 @@ function CreateOperationsTaskForm({
           multiDeedOptions={multiDeedOptions}
         />
         <CreateTaskScheduleFields form={form} dispatch={dispatch} />
-        {type === "court_visit" ? <CreateTaskLetterPreview rows={letterPreview} /> : null}
+        {type === "court_visit" ? (
+          <CreateTaskLetterPreview rows={letterPreview} />
+        ) : null}
       </div>
     </AppModal>
   );

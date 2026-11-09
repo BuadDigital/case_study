@@ -135,6 +135,8 @@ public static class WorkOrderValidator
  /// <summary>Real Estate Exchange stage — Real Estate Exchange query.</summary>
     public const string BourseAreaRequiredAr = "مساحة الأرض مطلوبة لإتمام البورصة";
     public const string BourseAreaInvalidAr = "مساحة الأرض يجب أن تكون رقماً أكبر من صفر";
+    /// <summary>«القيود» left unanswered — the client shows the same text (property-bourse-validation.ts).</summary>
+    public const string BourseRestrictionsRequiredAr = "حدّد القيود: توجد أو لا توجد";
 
     /// <summary>Null when the bourse land area is a positive number; otherwise the Arabic message.</summary>
     /// <remarks>
@@ -152,9 +154,19 @@ public static class WorkOrderValidator
         return LocaleNumber.TryParsePositive(area, out _) ? null : BourseAreaInvalidAr;
     }
 
+    /// <summary>The bourse step's field errors (the client twin is property-bourse-validation.ts).</summary>
+    /// <remarks>
+    /// How it works: city, district and a positive land area always; a registered title stops there; otherwise
+    /// the bourse deed image, «القيود» (yes / no, with its types and «أخرى» reason) and the boundaries availability.
+    /// Edge cases: «القيود» became required A→Z 2026-11-02 #64 (it was optional and stayed null). A bourse
+    /// completed before that is re-validated on every full property save, so that path passes
+    /// <paramref name="requireRestrictionsAnswer"/> = false — an old empty answer must not block editing the
+    /// initial data; a value that is set is still checked.
+    /// </remarks>
     public static Dictionary<string, string> ValidatePropertyBourse(
         UpdatePropertyBourseRequest dto,
-        bool compactRegisteredTitle = false)
+        bool compactRegisteredTitle = false,
+        bool requireRestrictionsAnswer = true)
     {
         var errors = new Dictionary<string, string>();
 
@@ -173,7 +185,14 @@ public static class WorkOrderValidator
         if (string.IsNullOrWhiteSpace(dto.BourseDeedImageFileName))
             errors["bourseDeedImageFileName"] = "صورة الصك من البورصة مطلوبة";
 
-        if (!string.IsNullOrWhiteSpace(dto.RestrictionsPresent))
+        // «القيود» is required like the other bourse fields (A→Z 2026-11-02 #64): an empty answer left
+        // restrictionsPresent null, so nobody could tell later whether the deed is mortgaged or was never asked.
+        if (string.IsNullOrWhiteSpace(dto.RestrictionsPresent))
+        {
+            if (requireRestrictionsAnswer)
+                errors["restrictionsPresent"] = BourseRestrictionsRequiredAr;
+        }
+        else
         {
             var r = dto.RestrictionsPresent.Trim().ToLowerInvariant();
             if (r is not "yes" and not "no")

@@ -23,6 +23,7 @@ export function SystemUploadView() {
       emptyLine: "لا توجد عقارات جاهزة للرفع.",
       emptyHint:
         "تظهر هنا فقط العقارات التي صدر تقرير دراسة حالتها وأُودع تقرير تقييمها. اضغط الصف لفتح تبويب حزمة الرفع/إنفاذ.",
+      tableHint: "اضغط الصف لفتح تبويب «الرفع على إنفاذ» في تفاصيل العقار.",
       panelId: "system-upload-panel",
       getBasePath: systemUploadPath,
       getTaskPath: caseStudyWorkspacePath,
@@ -37,12 +38,13 @@ export function SystemUploadView() {
       queueSort: "distributed-newest-first",
       filterListed: (mine, _poByNumber, options) =>
         filterTasksForSystemUpload(mine, options?.allTasks),
-      buildRowMoreItems: ({ task, propertyId, router, viewerRole }) =>
+      buildRowMoreItems: ({ task, propertyId, router, viewerRole, viewerAccess }) =>
         buildCaseStudyQueueRowMoreItems({
           task,
           propertyId,
           router,
           viewerRole,
+          viewerAccess,
         }),
     }),
     [],

@@ -97,6 +97,7 @@ if (lan) {
     "  LAN login calls the API on port 5160 (not proxied). Firewall must allow 3000 + 5160:",
   );
   console.log("    apps/shell/scripts/open-firewall.ps1  (Run as Administrator, once)");
+  console.log("  Team access on/off: apps/shell/scripts/lan-team-on.bat / lan-team-off.bat");
   if (!lan.startsWith("192.168.")) {
     console.log("");
     console.log(

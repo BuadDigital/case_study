@@ -150,11 +150,12 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                         || p.District.Contains(search)
                         || p.PropertyType.Contains(search)
                         || p.Classification.Contains(search)
-                        // The transaction's number (official PR or draft TMP) finds its deeds' tasks.
+                        // «رقم المعاملة» (the deed's number) or the property's number (PR-…-L)
+                        // finds the deed's tasks.
+                        || (p.ReferenceNumber != null && p.ReferenceNumber.Contains(search))
                         || _caseStudy.Transactions.Any(t =>
                             t.Id == p.TransactionId
-                            && ((t.ReferenceNumber != null && t.ReferenceNumber.Contains(search))
-                                || t.DraftNumber.Contains(search))))));
+                            && t.ReferenceNumber != null && t.ReferenceNumber.Contains(search)))));
         }
 
         return SortTasks(rows, query);
@@ -245,6 +246,10 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
             .Select(t => new
             {
                 Task = t,
+                // A field party's package accepted by coordination (A→Z 2026-11-09): «أعمالي» tells a
+                // delivered package awaiting acceptance from an accepted one.
+                PackageAccepted = (t.Kind == WorkflowTaskKind.FieldInspection || t.Kind == WorkflowTaskKind.EngineeringSurvey)
+                    && _caseStudy.PartyTaskSubmissions.Any(s => s.WorkflowTaskId == t.Id && s.AcceptedAtUtc != null),
                 Property = _caseStudy.WorkOrderProperties
                     .Where(p => p.Id == t.PropertyId)
                     .Select(p => new
@@ -257,12 +262,39 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                         p.Classification,
                         // A correlated lookup, not the navigation: a required navigation joins
                         // inner and would drop a deed whose transaction row is missing.
-                        TransactionNumber = _caseStudy.Transactions
+                        // «رقم المعاملة» = the deed's own number; an old row without one shows its
+                        // property's number.
+                        TransactionNumber = p.ReferenceNumber ?? _caseStudy.Transactions
                             .Where(t => t.Id == p.TransactionId)
-                            .Select(t => t.ReferenceNumber ?? t.DraftNumber)
+                            .Select(t => t.ReferenceNumber)
                             .FirstOrDefault(),
                         p.TransactionId,
+                        // A deed without a transaction row (older data) counts as received, as the
+                        // finish-study gate reads it.
+                        TransactionReceived = !_caseStudy.Transactions.Any(t => t.Id == p.TransactionId)
+                            || _caseStudy.Transactions.Any(t => t.Id == p.TransactionId && t.ReceivedAtUtc != null),
+                        AwaitingExternalParty = _caseStudy.TransactionExternalReceipts.Any(r =>
+                            r.TransactionId == p.TransactionId
+                            && r.Status == TransactionExternalReceiptStatuses.Pending),
+                        Marker = _caseStudy.TransactionWorkMarkers
+                            .Where(m => m.TransactionId == p.TransactionId)
+                            .Select(m => new { m.UserId, m.DisplayName, m.AtUtc })
+                            .FirstOrDefault(),
                         HandedOverToEnfaz = p.EnfazHandoverAtUtc != null,
+                        // «وقت الإجراء» (Omar 2026-11-08): the deed's latest business milestone — the
+                        // step that put the transaction on its current desk.
+                        // Its key and detail too (A→Z 2026-11-09): a row says why work came back
+                        // («أُعيدت للدراسة», «أعادها المقيّم») with the reason the milestone carries.
+                        LastStep = _caseStudy.PropertyTimelineEntries
+                            .Where(e => e.PropertyId == p.Id)
+                            .Where(PropertyTimelineService.IsMilestoneRow)
+                            .OrderByDescending(e => e.OccurredAtUtc)
+                            .ThenByDescending(e => e.RecordedAtUtc)
+                            .Select(e => new { e.OccurredAtUtc, e.EventKey, e.Detail })
+                            .FirstOrDefault(),
+                        ReadyForUpload = p.ReadyForUploadAtUtc != null,
+                        ReviewApproved = _caseStudy.Transactions.Any(t => t.Id == p.TransactionId && t.ReviewApprovedAtUtc != null),
+                        HandedToReview = _caseStudy.Transactions.Any(t => t.Id == p.TransactionId && t.HandedToReviewAtUtc != null),
                     })
                     .FirstOrDefault(),
                 ParentDistributionJson = t.ParentTaskId == null
@@ -286,6 +318,8 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
             .Select(row =>
             {
                 var dto = WorkflowTaskMapper.ToDto(row.Task);
+                if (row.Task.Kind is WorkflowTaskKind.FieldInspection or WorkflowTaskKind.EngineeringSurvey)
+                    dto.PackageAccepted = row.PackageAccepted;
                 dto.Distribution = WorkflowTaskDistributionRules.CoalesceDistribution(
                     dto.Distribution,
                     WorkflowTaskMapper.DeserializeDistribution(row.ParentDistributionJson));
@@ -302,6 +336,24 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                 dto.TransactionNumber = row.Property.TransactionNumber;
                 dto.TransactionId = row.Property.TransactionId == Guid.Empty ? null : row.Property.TransactionId;
                 dto.PropertyHandedOverToEnfaz = row.Property.HandedOverToEnfaz;
+                dto.TransactionReceived = row.Property.TransactionReceived;
+                dto.AwaitingExternalParty = row.Property.AwaitingExternalParty;
+                dto.ReadyForUpload = row.Property.ReadyForUpload;
+                if (row.Property.LastStep is { } lastStep)
+                {
+                    dto.LastStepAtUtc = DateTime.SpecifyKind(lastStep.OccurredAtUtc, DateTimeKind.Utc).ToString("o");
+                    dto.LastStepKey = lastStep.EventKey;
+                    dto.LastStepDetail = lastStep.Detail;
+                }
+                dto.ReviewState = row.Property.ReviewApproved
+                    ? TransactionReviewStates.Approved
+                    : row.Property.HandedToReview ? TransactionReviewStates.Handed : TransactionReviewStates.Study;
+                if (row.Property.Marker is { } marker)
+                {
+                    dto.WorkingByUserId = marker.UserId;
+                    dto.WorkingByName = marker.DisplayName;
+                    dto.WorkingAtUtc = marker.AtUtc.ToString("o");
+                }
                 if (row.Task.PropertyId is Guid propertyId
                     && holderByProperty.TryGetValue(propertyId, out var holder)
                     && holder != propertyId)
@@ -468,6 +520,7 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
 
         var surveyAssigned = new HashSet<(string Parent, string Prop)>();
         var surveyCompleted = new HashSet<(string Parent, string Prop)>();
+        var completedSurveyIdByKey = new Dictionary<(string Parent, string Prop), string>();
         if (familyParentIds.Count > 0)
         {
             var surveyRows = await _caseStudy.WorkflowTasks.AsNoTracking()
@@ -480,6 +533,7 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                     && propertyIds.Contains(t.PropertyId.Value))
                 .Select(t => new
                 {
+                    t.Id,
                     ParentId = t.ParentTaskId!.Value,
                     PropertyId = t.PropertyId!.Value,
                     t.Status,
@@ -491,7 +545,10 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                 var key = (Parent: row.ParentId.ToString(), Prop: row.PropertyId.ToString());
                 surveyAssigned.Add(key);
                 if (row.Status == WorkflowTaskStatus.Completed)
+                {
                     surveyCompleted.Add(key);
+                    completedSurveyIdByKey[key] = row.Id.ToString();
+                }
             }
         }
 
@@ -505,6 +562,7 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
         // The appraiser's package status (draft / submitted / reopened) per family property: the latest
         // non-cancelled appraisal task's submission — two queries, no payload read.
         var appraisalPackageByKey = new Dictionary<(string Parent, string Prop), string>();
+        var appraisalAcceptedKeys = new HashSet<(string Parent, string Prop)>();
         if (targets.Any(t => t.Kind is WorkflowTaskKindValues.PropertyAppraisal
                 or WorkflowTaskKindValues.CaseStudyProperty))
         {
@@ -532,12 +590,15 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
             {
                 var statusByTask = await _caseStudy.PartyTaskSubmissions.AsNoTracking()
                     .Where(s => appraisalIds.Contains(s.WorkflowTaskId))
-                    .Select(s => new { s.WorkflowTaskId, s.Status })
-                    .ToDictionaryAsync(s => s.WorkflowTaskId, s => s.Status, cancellationToken);
+                    .Select(s => new { s.WorkflowTaskId, s.Status, Accepted = s.AcceptedAtUtc != null })
+                    .ToDictionaryAsync(s => s.WorkflowTaskId, cancellationToken);
                 foreach (var (appraisalKey, appraisalId) in latestAppraisalByKey)
                 {
-                    if (statusByTask.TryGetValue(appraisalId, out var packageStatus))
-                        appraisalPackageByKey[appraisalKey] = packageStatus;
+                    if (!statusByTask.TryGetValue(appraisalId, out var package)) continue;
+                    appraisalPackageByKey[appraisalKey] = package.Status;
+                    // Review's «قبول القيمة» (Omar 2026-11-08): an accepted package still handed over.
+                    if (package.Accepted && package.Status == PartyTaskSubmissionStatus.Submitted)
+                        appraisalAcceptedKeys.Add(appraisalKey);
                 }
             }
         }
@@ -551,6 +612,7 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
                 target.StudyReportIssued = issuedParentIds.Contains(key.Item1);
                 if (appraisalPackageByKey.TryGetValue(key, out var appraisalPackage))
                     target.AppraisalPackageStatus = appraisalPackage;
+                target.AppraisalValueAccepted = appraisalAcceptedKeys.Contains(key);
             }
             target.FieldInspectionCompleted = completed.Contains(key);
             var preferredForTarget = target.Kind == WorkflowTaskKindValues.PropertyAppraisal
@@ -565,6 +627,8 @@ public sealed partial class WorkflowTaskQueryService : IWorkflowTaskQuery
             {
                 target.EngineeringSurveyAssigned = surveyAssigned.Contains(key);
                 target.EngineeringSurveyCompleted = surveyCompleted.Contains(key);
+                if (completedSurveyIdByKey.TryGetValue(key, out var surveyTaskId))
+                    target.EngineeringSurveyTaskId = surveyTaskId;
             }
         }
     }

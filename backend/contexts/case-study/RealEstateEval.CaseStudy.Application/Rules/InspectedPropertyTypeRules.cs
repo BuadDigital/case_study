@@ -119,4 +119,13 @@ public sealed record InspectedTypeChange(
     string PreviousType,
     string NewType,
     bool SurveyRequiredBefore,
-    bool SurveyRequiredAfter);
+    bool SurveyRequiredAfter)
+{
+    /// <summary>
+    /// The new type is not the bourse type — the survey ask follows
+    /// <see cref="SurveyRequirementRules.SurveyMissingAfterTypeChange"/>, which only asks for a changed type.
+    /// Edge cases: an inspector who goes back to the bourse type is not asked for an office (the note
+    /// would not show either). Defaults to true for callers that do not know the bourse type.
+    /// </summary>
+    public bool DiffersFromBourseType { get; init; } = true;
+}

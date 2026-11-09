@@ -3,6 +3,7 @@ using Microsoft.IdentityModel.Tokens;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Authorization;
+using RealEstateEval.Domain;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -35,7 +36,8 @@ public class JwtTokenService : IJwtTokenService
         string? distributionAssigneeId = null,
         IEnumerable<string>? pages = null,
         string? department = null,
-        string? jobTitle = null)
+        string? jobTitle = null,
+        IEnumerable<string>? subRoles = null)
     {
         var issuer = _configuration["Jwt:Issuer"] ?? throw new InvalidOperationException("Jwt:Issuer missing");
         var audience = _configuration["Jwt:Audience"] ?? throw new InvalidOperationException("Jwt:Audience missing");
@@ -68,6 +70,11 @@ public class JwtTokenService : IJwtTokenService
             claims.Add(new Claim("jobTitle", jobTitle.Trim()));
         if (pages is not null)
             claims.AddRange(pages.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => new Claim("page", p)));
+        // One claim per case-specialist sub-role, like the page claims (ruling 2026-11-02).
+        if (subRoles is not null)
+            claims.AddRange(subRoles
+                .Where(CaseSpecialistSubRoles.IsKnown)
+                .Select(s => new Claim(CaseSpecialistSubRoles.ClaimType, s.Trim().ToLowerInvariant())));
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(signingKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

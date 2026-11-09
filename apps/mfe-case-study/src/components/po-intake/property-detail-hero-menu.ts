@@ -3,6 +3,10 @@ import type { RowMoreMenuItem } from "@platform/ui-kit";
 export const CASE_STUDY_OPEN_PROGRESS_MESSAGE = "جاري فتح دراسة العقار…";
 
 type PropertyDetailHeroMenuInput = {
+  /** The transaction's work page (input and actions); null when the viewer may not open it. */
+  workPageHref?: string | null;
+  /** The coordinator's page (intake and the parties' follow-up, Omar 2026-11-08); null when not offered. */
+  coordinationPageHref?: string | null;
   hideOpenCaseStudy: boolean;
   /** Full case-study workspace, preferred when the viewer can open it. */
   caseStudyWorkspaceHref: string | null;
@@ -10,21 +14,38 @@ type PropertyDetailHeroMenuInput = {
   reportTabHref: string | null;
   caseStudyBusy?: boolean;
   onNavigate: (href: string) => void;
-  onOpenFailure?: () => void;
-  /** «التعذّر النهائي عن المعاملة» — the section supervisor only, while the transaction is not final. */
-  onFinalFailure?: () => void;
-  /** «إلغاء المعاملة» — the specialist's request or the supervisor's direct cancel; absent when not allowed. */
-  onCancelTransaction?: () => void;
-  /** The supervisor cancels at once («إلغاء المعاملة»); the specialist asks («طلب إلغاء المعاملة»). */
-  cancelDecides?: boolean;
+  /**
+   * The general actions (failure, final failure, cancellation) from `useTransactionGeneralActions` —
+   * the same items every row's ⋮ menu shows (2026-11-05).
+   */
+  generalItems?: RowMoreMenuItem[];
 };
 
 export function buildPropertyDetailHeroMenuItems(
   input: PropertyDetailHeroMenuInput,
 ): RowMoreMenuItem[] {
   const items: RowMoreMenuItem[] = [];
-  const caseStudyHref =
-    input.caseStudyWorkspaceHref ?? input.reportTabHref;
+  const caseStudyHref = input.caseStudyWorkspaceHref ?? input.reportTabHref;
+  const workPageHref = input.workPageHref;
+
+  const coordinationPageHref = input.coordinationPageHref;
+  if (coordinationPageHref) {
+    items.push({
+      id: "coordination-page",
+      label: "صفحة المنسق",
+      disabled: Boolean(input.caseStudyBusy),
+      onClick: () => input.onNavigate(coordinationPageHref),
+    });
+  }
+
+  if (workPageHref) {
+    items.push({
+      id: "work-page",
+      label: "صفحة العمل",
+      disabled: Boolean(input.caseStudyBusy),
+      onClick: () => input.onNavigate(workPageHref),
+    });
+  }
 
   if (!input.hideOpenCaseStudy && caseStudyHref) {
     items.push({
@@ -36,35 +57,7 @@ export function buildPropertyDetailHeroMenuItems(
     });
   }
 
-  if (input.onOpenFailure) {
-    items.push({
-      id: "failure",
-      label: "تسجيل تعذّر",
-      danger: true,
-      disabled: Boolean(input.caseStudyBusy),
-      onClick: input.onOpenFailure,
-    });
-  }
-
-  if (input.onFinalFailure) {
-    items.push({
-      id: "final-failure",
-      label: "التعذّر النهائي عن المعاملة",
-      danger: true,
-      disabled: Boolean(input.caseStudyBusy),
-      onClick: input.onFinalFailure,
-    });
-  }
-
-  if (input.onCancelTransaction) {
-    items.push({
-      id: "cancel-transaction",
-      label: input.cancelDecides ? "إلغاء المعاملة" : "طلب إلغاء المعاملة",
-      danger: true,
-      disabled: Boolean(input.caseStudyBusy),
-      onClick: input.onCancelTransaction,
-    });
-  }
+  items.push(...(input.generalItems ?? []));
 
   return items;
 }

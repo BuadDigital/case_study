@@ -107,7 +107,7 @@ public class OperationsTaskCommandRulesTests
     [InlineData("field-inspector", "a1", "a2", "creator")]
     public void CommentAuthor_ManagersAreCreatorOtherwiseAssigneeMatch(
         string role, string entityAssignee, string actor, string expected) =>
-        Assert.Equal(expected, OperationsTaskCommandRules.CommentAuthor(role, entityAssignee, actor));
+        Assert.Equal(expected, OperationsTaskCommandRules.CommentAuthor(TestStaff.Of(role), entityAssignee, actor));
 
     [Fact]
     public void CommentText_PrefixesActorNameOnlyForNonEmptyText()

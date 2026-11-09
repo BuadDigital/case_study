@@ -16,7 +16,7 @@ import {
   photoTileFlagBadge,
   photoTileFlagTone,
 } from "../property-detail-inspection-state";
-import type { InspectorPhotoAttachment } from "../../../lib/app-data/inspector-workspace-data";
+import type { InspectorPhotoAttachment } from "@platform/app-shared/app-data/inspector-workspace-data";
 
 describe("formatAcceptedDate", () => {
   it("formats the day part of an ISO stamp", () => {

@@ -7,6 +7,7 @@ import {
   type ValuationReportDraftDto,
 } from "@platform/api-client";
 import { putReportDraftStates } from "@platform/app-shared/workflow/report-draft-state";
+import { patchReportDraftStatesCache } from "@platform/app-shared/workflow/use-report-draft-states";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
 
 /** The queues' status labels read the same state from a shared cache; keep it as fresh as this page's own read. */
@@ -47,7 +48,16 @@ export function useReportDraftByProperty(propertyId: string | null | undefined, 
   });
 }
 
-/** Writes the fresh draft DTO into the cache so every mounted reader updates at once. */
+/**
+ * Writes the fresh draft DTO into the cache so every mounted reader updates at once.
+ *
+ * How it works: sets the draft query, the shared state the queues and the parties rail read, and the
+ * cached batch rows of that shared state (`patchReportDraftStatesCache`).
+ *
+ * Edge cases: fixed A→Z 2026-11-02 #88 — the batch rows were left at the old status, and a reader that
+ * mounted again put them back into the shared state, so after «اعتماد التقرير» the screen still said
+ * «بانتظار اعتماد المقيّم» until a reload.
+ */
 export function useSetReportDraft(propertyId: string | null | undefined) {
   const queryClient = useQueryClient();
   const id = (propertyId ?? "").trim();
@@ -55,6 +65,7 @@ export function useSetReportDraft(propertyId: string | null | undefined) {
     () => (dto: ValuationReportDraftDto) => {
       queryClient.setQueryData(reportDraftKey(id), dto);
       shareState(id, dto);
+      patchReportDraftStatesCache(queryClient, { propertyId: id, status: dto.status, reportStage: dto.reportStage });
     },
     [queryClient, id],
   );

@@ -5,7 +5,7 @@ import { opsEmptyHint } from "@platform/ui-kit";
 import {
   formatPropertyTypeLine,
   type PoPropertyIntake,
-} from "@platform/app-shared/app-data/po-intake-data";
+} from "@platform/app-shared/app-data/po-intake-property-model";
 import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
 import { ValCard } from "./EvaluatorHtmlPrimitives";
 import { TransactionDocumentRow } from "./EvaluatorPropertyTab";

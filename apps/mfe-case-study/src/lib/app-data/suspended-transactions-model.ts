@@ -1,7 +1,5 @@
 import { getPropertyFailureFromCache } from "@failures/mfe/lib/failures-api";
-
-export const SUSPENDED_TRANSACTIONS_CHANGED_EVENT =
-  "suspended-transactions-changed";
+import { SUSPENDED_TRANSACTIONS_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 export type SuspendedTransaction = {
   id: string;

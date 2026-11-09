@@ -7,6 +7,10 @@ import {
 import { failureRecordTitle } from "./failures-labels";
 import type { FailuresTab } from "./failures-list-page";
 import { isPartyScopedFailuresRole } from "./failures-party-raiser-scope";
+import {
+  holdsSubRole,
+  type StaffAccess,
+} from "@platform/app-shared/app-data/case-specialist-sub-roles";
 
 /**
  * Pure decisions behind the failures queue screen (`FailuresView` and its
@@ -16,6 +20,15 @@ import { isPartyScopedFailuresRole } from "./failures-party-raiser-scope";
 
 export function isCaseEditor(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "case-specialist";
+}
+
+/**
+ * Who follows a failure up from the queue (escalate, suspend, resolve…): the CDO and the
+ * coordination sub-role of the case specialist (ruling 2026-11-02 — failures are always
+ * coordination's). Mirrors `PoRoleMatrixRules.CanFollowUpFailure` for the specialist.
+ */
+export function canFollowUpFailures(access: StaffAccess): boolean {
+  return isSuperAdmin(access.role) || holdsSubRole(access, "coordination");
 }
 
 export function isSupervisor(role: RoleId): boolean {

@@ -4,6 +4,7 @@ using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
@@ -21,12 +22,12 @@ public sealed partial class WorkflowTaskDistributionCommands
     public async Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> AddEngineeringSurveyAsync(
         Guid id,
         AddEngineeringSurveyRequest request,
-        string actorRole,
+        StaffActor actor,
         string? actorName,
         string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
-        if (!WorkflowTaskLifecycleRules.CanRedistributeParties(actorRole))
+        if (!WorkflowTaskLifecycleRules.CanRedistributeParties(actor))
             return (null, Error("إضافة الرفع المساحي صلاحية أخصائي دراسة الحالة أو مشرف القسم أو مسؤول التحول الرقمي"));
 
         var parent = await _caseStudy.GetTaskForUpdateAsync(id, cancellationToken);
@@ -93,7 +94,8 @@ public sealed partial class WorkflowTaskDistributionCommands
                 poNumber = parent.PoNumber,
                 propertyId,
                 actorName,
-                actorRole,
+                actorRole = actor.Role ?? "",
+                actorSubRoles = actor.SubRoles ?? Array.Empty<string>(),
             }), cancellationToken);
 
         return (WorkflowTaskMapper.ToDto(child), null);

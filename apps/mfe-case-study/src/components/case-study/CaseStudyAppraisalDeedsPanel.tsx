@@ -3,7 +3,10 @@
 import { useMemo, useState } from "react";
 import { InlineLoadingSkeleton, Note, cn } from "@platform/ui-kit";
 import type { TransactionDeedDto, TransactionDetailDto } from "@platform/api-client";
-import { CaseStudyAppraisalPanel } from "./CaseStudyAppraisalPanel";
+import {
+  CaseStudyAppraisalPanel,
+  type AppraisalReviewStage,
+} from "./CaseStudyAppraisalPanel";
 import { transactionDeedLabel } from "../po-intake/TransactionDeedSwitcher";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
@@ -12,8 +15,7 @@ import { usePoRecordQuery } from "../../query/case-study-queries";
 /**
  * The case-study «inspector inputs» step for a transaction: one inspection review per deed.
  *
- * How it works (phase 4 — one study per transaction, but every deed was
- * inspected on its own):
+ * How it works (phase 4 — one study per transaction, but every deed was inspected on its own):
  * - Reads `transaction.deeds` and drops removed deeds.
  * - Fewer than two live deeds → renders the plain `CaseStudyAppraisalPanel` for `property`.
  * - Otherwise renders a pill per deed (label from `transactionDeedLabel`) and, under it, the
@@ -30,6 +32,7 @@ export function CaseStudyAppraisalDeedsPanel({
   caseStudyTask,
   documentsEnabled,
   transaction,
+  stage,
 }: {
   property: PoPropertyIntake;
   poNumber: string;
@@ -37,6 +40,8 @@ export function CaseStudyAppraisalDeedsPanel({
   caseStudyTask: WorkflowTask;
   documentsEnabled: boolean;
   transaction: TransactionDetailDto | null | undefined;
+  /** Which page's share of the review (Omar 2026-11-08) — see `CaseStudyAppraisalPanel`. */
+  stage?: AppraisalReviewStage;
 }) {
   const deeds = useMemo(
     () => (transaction?.deeds ?? []).filter((d) => !d.isRemoved),
@@ -54,6 +59,7 @@ export function CaseStudyAppraisalDeedsPanel({
         tasks={tasks}
         caseStudyTask={caseStudyTask}
         documentsEnabled={documentsEnabled}
+        stage={stage}
       />
     );
   }
@@ -94,6 +100,7 @@ export function CaseStudyAppraisalDeedsPanel({
               tasks={tasks}
               caseStudyTask={caseStudyTask}
               documentsEnabled={documentsEnabled}
+              stage={stage}
             />
           );
         }
@@ -103,6 +110,7 @@ export function CaseStudyAppraisalDeedsPanel({
             deed={d}
             tasks={tasks}
             documentsEnabled={documentsEnabled}
+            stage={stage}
           />
         );
       })}
@@ -126,9 +134,11 @@ function SiblingDeedAppraisal({
   deed,
   tasks,
   documentsEnabled,
+  stage,
 }: {
   deed: TransactionDeedDto;
   tasks: WorkflowTask[];
+  stage?: AppraisalReviewStage;
   documentsEnabled: boolean;
 }) {
   const { data: record, isPending, isError } = usePoRecordQuery(deed.poNumber);
@@ -169,6 +179,7 @@ function SiblingDeedAppraisal({
       tasks={tasks}
       caseStudyTask={siblingTask}
       documentsEnabled={documentsEnabled}
+      stage={stage}
     />
   );
 }

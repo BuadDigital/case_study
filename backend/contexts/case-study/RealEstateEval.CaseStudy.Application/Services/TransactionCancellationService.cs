@@ -73,7 +73,7 @@ public sealed partial class TransactionCancellationService(
         TransactionCancellationActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanRequestTransactionCancel(actor.Role))
+        if (!PoRoleMatrixRules.CanRequestTransactionCancel(actor.Staff))
             return (null, TransactionCancellationRules.ForbiddenRequestAr);
         var validation = TransactionCancellationRules.ValidateRequest(request);
         if (validation is not null) return (null, validation);
@@ -107,6 +107,14 @@ public sealed partial class TransactionCancellationService(
         if (PoRoleMatrixRules.CanDecideTransactionCancel(actor.Role))
             return await ApproveCoreAsync(entity, null, actor, cancellationToken);
 
+        // The pending request is part of the deed's story (A→Z 2026-11-04: only the approval was there).
+        await RecordRequestTimelineAsync(
+            entity,
+            $"transaction-cancel-requested:{entity.Id:N}",
+            "طلب إلغاء المعاملة",
+            $"{TransactionCancellationRules.ReasonLine(entity)} — طلبه {actor.Name}",
+            now,
+            cancellationToken);
         await NotifySupervisorsOfRequestAsync(entity, deeds, cancellationToken);
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
@@ -151,6 +159,15 @@ public sealed partial class TransactionCancellationService(
             return (null, TransactionCancellationRules.NotPendingAr);
 
         await repo.SaveChangesAsync(cancellationToken);
+        await RecordRequestTimelineAsync(
+            entity,
+            $"transaction-cancel-rejected:{entity.Id:N}",
+            "رُفض طلب إلغاء المعاملة",
+            string.IsNullOrWhiteSpace(entity.DecisionNote)
+                ? $"رفضه {actor.Name} — يستمر العمل على المعاملة"
+                : $"{entity.DecisionNote} — رفضه {actor.Name}",
+            _time.UtcNow(),
+            cancellationToken);
         await AppendAuditAsync(actor, "case-study.transaction-cancellation.rejected", entity, cancellationToken);
         await NotifyRequesterAsync(
             entity,

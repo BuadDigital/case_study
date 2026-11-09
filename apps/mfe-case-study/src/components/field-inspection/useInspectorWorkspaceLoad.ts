@@ -6,7 +6,7 @@ import {
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import { getOrCreateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { newerInspectorDraft } from "./field-inspection-work-state";
 

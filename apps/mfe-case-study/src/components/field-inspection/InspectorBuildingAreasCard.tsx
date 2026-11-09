@@ -13,7 +13,7 @@
 import { cn, FormRow, Input } from "@platform/ui-kit";
 import { RegField } from "@platform/app-shared/registration/FormFields";
 import { InsDualCalendarDateField } from "../po-intake/PropertyDetailInspectionParts";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import { InspectionLimitsSection } from "./InspectionLimitsSection";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";

@@ -4,7 +4,6 @@
  * save label, and the small property/distribution helpers the commands reuse.
  * No React, no I/O.
  */
-import type { RoleId } from "@platform/types";
 import { ROLES } from "@platform/app-shared/app-data/constants";
 import {
   DEED_STATUS_ACTIVE,
@@ -14,7 +13,7 @@ import {
   type BourseDeedVitality,
   type PoPropertyIntake,
 } from "../lib/app-data/po-intake-data";
-import { canEditProperty as canEditPropertyRole } from "../lib/app-data/po-roles";
+import { canAdvanceIntake, type StaffAccess } from "../lib/app-data/po-roles";
 import { taskDisplayPropertyLabel } from "../lib/app-data/tasks-model";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 
@@ -65,6 +64,22 @@ export function activeTaskWorkStep(steps: TaskWorkSteps): TaskWorkStep | null {
 /** The `deedStatus` the bourse save records for the specialist's «حالة الصك» pick. */
 export function bourseDeedStatus(vitality: BourseDeedVitality | null): string {
   return vitality === "inactive" ? DEED_STATUS_INACTIVE : DEED_STATUS_ACTIVE;
+}
+
+/**
+ * The «حالة الصك» pick a stored `deedStatus` stands for — the inverse of `bourseDeedStatus`.
+ *
+ * How it works: «فعال» → active, «غير فعال» → inactive (trimmed), anything else → null (not chosen).
+ *
+ * Edge cases: added A→Z 2026-11-02 #67 — the pick lived only in screen state, so a bourse saved with a
+ * validation error and reopened came back with every field (autosaved) except «حالة الصك». The views now
+ * fall back to the autosaved `deedStatus` while the specialist has not picked again.
+ */
+export function deedVitalityFromStatus(status: string | null | undefined): BourseDeedVitality | null {
+  const value = (status ?? "").trim();
+  if (value === DEED_STATUS_ACTIVE) return "active";
+  if (value === DEED_STATUS_INACTIVE) return "inactive";
+  return null;
 }
 
 /** An inactive deed no longer forces a تعذّر: the bourse save is the same either way. */
@@ -192,19 +207,20 @@ export function canWorkTaskStep(
   return flags.isSpecialist && (!writesProperty || flags.canEditProperty);
 }
 
-export function taskWorkRoleFlags(role: RoleId): {
+export function taskWorkRoleFlags(access: StaffAccess): {
   isSupervisor: boolean;
   isSpecialist: boolean;
-  /** Infath / bourse writes — mirrors `PoRoleMatrixRules.CanEditProperty`. */
+  /** Infath / bourse writes — the coordination sub-role; mirrors `PoRoleMatrixRules.CanAdvanceIntake`. */
   canEditProperty: boolean;
   /** Name stamped on a raised failure. */
   failureSpecialist: string;
 } {
+  const { role } = access;
   return {
     // The supervisor, the general manager and the CDO resolve an obstruction (hand the task back to the specialist).
     isSupervisor: role === "section-supervisor" || role === "cdo" || role === "general-manager",
     isSpecialist: role === "case-specialist" || role === "cdo",
-    canEditProperty: canEditPropertyRole(role),
+    canEditProperty: canAdvanceIntake(access),
     failureSpecialist: ROLES[role]?.name ?? "أخصائي",
   };
 }

@@ -19,6 +19,11 @@ export type DeedNatureMatchProposal = {
   inspectorMismatchNotes: string;
   /** Context shown to the specialist — never a proposal. */
   infoLinesAr: string[];
+  /**
+   * The engineering office's submitted verdict is «الصك غير مطابق للطبيعة» — «مطابق» then needs the
+   * specialist's reason, as against the inspector (A→Z 2026-11-02 #20). Never a proposal.
+   */
+  engineeringSaidNotMatched: boolean;
 };
 
 const SIDE_LABELS: Record<InspectorBoundaryKey, string> = {
@@ -72,6 +77,8 @@ export function proposeDeedNatureMatch(input: {
   engineeringDeedMatchesNature: "yes" | "no" | null;
 }): DeedNatureMatchProposal {
   const infoLinesAr: string[] = [];
+  const engineeringSaidNotMatched =
+    input.engineeringAssigned && input.engineeringDeedMatchesNature === "no";
   if (input.hasPriorSurvey) {
     infoLinesAr.push("رفع مساحي سابق لنفس الصك — للعلم فقط، وليس مطابقة لهذه المعاملة.");
   }
@@ -93,6 +100,7 @@ export function proposeDeedNatureMatch(input: {
       sourceLabelAr: "المطابقة مسؤولية المعاين — بانتظار رفعه.",
       inspectorMismatchNotes: "",
       infoLinesAr,
+      engineeringSaidNotMatched,
     };
   }
 
@@ -106,6 +114,7 @@ export function proposeDeedNatureMatch(input: {
       sourceLabelAr: "المعاين: حدود الصك غير مطابقة للطبيعة.",
       inspectorMismatchNotes: notes,
       infoLinesAr,
+      engineeringSaidNotMatched,
     };
   }
   if (verdict === "yes") {
@@ -116,6 +125,7 @@ export function proposeDeedNatureMatch(input: {
       sourceLabelAr: "المعاين: حدود الصك مطابقة للطبيعة.",
       inspectorMismatchNotes: "",
       infoLinesAr,
+      engineeringSaidNotMatched,
     };
   }
   return {
@@ -125,5 +135,6 @@ export function proposeDeedNatureMatch(input: {
     sourceLabelAr: "لم يحدد المعاين صراحةً",
     inspectorMismatchNotes: "",
     infoLinesAr,
+    engineeringSaidNotMatched,
   };
 }

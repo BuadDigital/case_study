@@ -7,6 +7,7 @@ const api = vi.hoisted(() => ({
   approveReportDraft: vi.fn(),
   ensureReportNumber: vi.fn(),
   withdrawReportDraftApproval: vi.fn(),
+  returnReportDraftToReviewer: vi.fn(),
   registerDepositCertificate: vi.fn(),
   downloadFinalReport: vi.fn(),
   generateFinalReport: vi.fn(),
@@ -88,6 +89,20 @@ describe("ReportDraftApprovalBar", () => {
     expect(api.approveReportDraft).toHaveBeenCalledWith({ token: "t" }, "vr-1", { reportDate: today, html: "<p>report</p>" });
   });
 
+  // Omar 2026-11-08: he never edits the draft — he returns it to review with a reason.
+  it("returns the draft to review with a required reason", async () => {
+    vi.spyOn(window, "prompt").mockReturnValue("صحّح وصف الموقع");
+    api.returnReportDraftToReviewer.mockResolvedValue({ ok: true, data: draft({ status: "preparing" }) });
+    renderBar(draft());
+
+    fireEvent.click(screen.getByRole("button", { name: "إرجاع للمراجع" }));
+
+    await waitFor(() =>
+      expect(api.returnReportDraftToReviewer).toHaveBeenCalledWith({ token: "t" }, "vr-1", "صحّح وصف الموقع"),
+    );
+    await waitFor(() => expect(toast.showToast).toHaveBeenCalledWith("أُعيدت المسودة للمراجع", "success"));
+  });
+
   it("a refused approval lists every blocker in a panel that stays (round 2)", async () => {
     api.ensureReportNumber.mockResolvedValue({ ok: true, data: { valuationRequestId: "vr-1", reportNumber: "PRV-2026-00007" } });
     api.approveReportDraft.mockResolvedValue({
@@ -156,7 +171,7 @@ describe("ReportDraftApprovalBar", () => {
     it("says the specialist deposits the report and asks him for no code or certificate", () => {
       renderBar(approved());
 
-      expect(screen.getByTestId("report-awaiting-deposit").textContent).toContain("يودعه الأخصائي في «قيمة»");
+      expect(screen.getByTestId("report-awaiting-deposit").textContent).toContain("يودعه المراجع في «قيمة»");
       expect(screen.queryByPlaceholderText("رمز الإيداع")).toBeNull();
       expect(document.querySelector('input[type="file"]')).toBeNull();
       expect(screen.queryByRole("button", { name: /تسجيل رمز الإيداع/ })).toBeNull();

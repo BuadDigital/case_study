@@ -8,6 +8,10 @@ import {
   submittedInspectorAssetIsLand,
   type InspectorWorkspaceStatus,
 } from "./inspector-workspace-data";
+import {
+  VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
+  VALUATION_SPECIALIST_FINISHING_REQUIRED_EVENT,
+} from "../events/app-events";
 
 export type SpecialistFinishingLevel =
   | ""
@@ -15,13 +19,6 @@ export type SpecialistFinishingLevel =
   | "medium"
   | "ordinary"
   | "none";
-
-export const VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT =
-  "ejadah-valuation-specialist-finishing-changed";
-
-/** Fired when confirm is blocked because finishing was left empty. */
-export const VALUATION_SPECIALIST_FINISHING_REQUIRED_EVENT =
-  "ejadah-valuation-specialist-finishing-required";
 
 export const SPECIALIST_FINISHING_REQUIRED_MESSAGE =
   "اختر مستوى تشطيبات البناء قبل تأكيد مدخلات المعاين.";

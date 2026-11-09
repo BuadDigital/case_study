@@ -9,13 +9,13 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 public sealed class WorkOrderPropertyRepository(CaseStudyDbContext db) : IWorkOrderPropertyRepository
 {
-    public Task<(string? Number, string? Error)> AllocateTransactionDraftNumberAsync(
+    public Task<(string? Number, string? Error)> AllocateDeedReferenceAsync(
         DateTime nowUtc,
         CancellationToken cancellationToken) =>
         ReferenceSequenceAllocator.AllocateYearlyAsync(
             db,
             DatabaseSchemas.CaseStudy,
-            ReferenceNumbering.TransactionDraft,
+            ReferenceNumbering.Property,
             nowUtc,
             cancellationToken);
 
@@ -52,9 +52,14 @@ public sealed class WorkOrderPropertyRepository(CaseStudyDbContext db) : IWorkOr
     public Task<WorkOrderProperty> GetSavedPropertyWithContactsAsync(
         Guid propertyId,
         CancellationToken cancellationToken) =>
+        // The transaction (with its deeds) rides along so the saved answer carries the property number,
+        // link kind and deed count, like every other read of a deed; identity resolution because the
+        // transaction → deeds → transaction include is a cycle a plain no-tracking query refuses.
         db.WorkOrderProperties
-            .AsNoTracking()
+            .AsNoTrackingWithIdentityResolution()
             .Include(p => p.Contacts)
+            .Include(p => p.Transaction)
+            .ThenInclude(t => t!.Properties)
             .FirstAsync(p => p.Id == propertyId, cancellationToken);
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>

@@ -128,6 +128,18 @@ public sealed class CaseStudyValuationPropertyContextDto
     /// </summary>
     public bool? StudyReportIssued { get; set; }
 
+    /// <summary>
+    /// Review approved the study (Omar 2026-11-08) — the draft goes to the appraiser only after it. Null
+    /// when the answering case-study host predates the field (read as «unknown», not blocking).
+    /// </summary>
+    public bool? StudyApprovedByReview { get; set; }
+
+    /// <summary>
+    /// Review accepted the value the appraiser handed over (his package's acceptance stamp) — the
+    /// draft goes to the appraiser only after it. Null as above.
+    /// </summary>
+    public bool? ValueAcceptedByReview { get; set; }
+
     public string? ClientNameAr { get; set; }
     public string? ClientNameEn { get; set; }
     public IReadOnlyList<string> ReportUserClientNamesAr { get; set; } = [];

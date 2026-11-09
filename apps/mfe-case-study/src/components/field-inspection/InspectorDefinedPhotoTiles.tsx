@@ -7,7 +7,7 @@
  */
 import { useRef } from "react";
 import { cn, useToast } from "@platform/ui-kit";
-import type { InspectorSlotPhoto } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorSlotPhoto } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   INSPECTOR_PHOTO_ACCEPT,
   filterInspectorPhotoFiles,

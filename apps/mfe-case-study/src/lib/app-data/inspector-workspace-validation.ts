@@ -28,6 +28,7 @@ import {
   inspectorDescriptionMissing,
   listInspectorPhotoValidationIssues,
   findInspectorPhotoNotUploaded,
+  inspectorFreePhotoShortfall,
   INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE,
   MOVABLES_FEATURE_KEY,
   MOVABLES_PHOTOS_SLOT_ID,
@@ -42,7 +43,7 @@ import {
   visibleInspectorFeatureFields,
   type InspectorComponentPhotoKey,
   type InspectorWorkspaceDraft,
-} from "./inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 
 /** Mirrors FieldInspectionSubmissionValidator — text or components photo, at least one. */
 const PROPERTY_DESCRIPTION_REQUIRED =
@@ -298,6 +299,11 @@ export function validateInspectorWorkspace(
      * Opt-in — only the inspector's own submit demands it, never the specialist's accept path.
      */
     requireLandStructures?: boolean;
+    /**
+     * At least 10 exterior and 20 interior photos (no interior floor on land). Opt-in — only the
+     * inspector's own submit demands it, never the specialist's accept path.
+     */
+    requirePhotoMinimums?: boolean;
   },
 ): InspectorWorkspaceFieldErrors {
   const errors: InspectorWorkspaceFieldErrors = {};
@@ -486,6 +492,11 @@ export function validateInspectorWorkspace(
       const slotId = firstIncompleteServiceAmenitySlotId(submission);
       if (slotId) errors.missingDefinedPhotoSlotId = slotId;
     }
+  }
+
+  if (options?.requirePhotoMinimums) {
+    const shortfall = inspectorFreePhotoShortfall(submission.freePhotos, isLand);
+    if (shortfall) errors.freePhotos ||= shortfall;
   }
 
   routePhotoNotUploadedError(errors, submission);
@@ -680,9 +691,62 @@ export function pickInspectorErrorsForWizardStep(
   return picked;
 }
 
+/**
+ * The two step layouts of the inspection form: «desktop» = `InspectorWorkspaceWizard` (features in
+ * step 1, description / services in step 2), «mobile» = `FieldInspectionWorkBody` (features,
+ * components and boundaries in step 2; description, service photos and observations in step 3).
+ */
+export type InspectorStepLayout = "desktop" | "mobile";
+
+/**
+ * Which step of the phone body (`FieldInspectionWorkBody`) holds a form control.
+ *
+ * How it works: step 1 = the location card, the access card and «تصوير العقار»; step 3 = the
+ * description, the service/amenity photos, the observations and the pledges; everything else
+ * (features, components, land structures, inventory, boundaries, services) is step 2.
+ */
+function phoneStepForErrorTarget(targetId: string): InspectorWizardStepId {
+  if (
+    targetId === "ins-date" ||
+    targetId === "ins-time" ||
+    targetId === "ins-map-section" ||
+    targetId === "ins-property-photos" ||
+    targetId.startsWith("ins-access") ||
+    targetId.startsWith("ins-street") ||
+    targetId === "ins-main-street"
+  ) {
+    return 1;
+  }
+  if (
+    targetId === "ins-desc" ||
+    targetId === "ins-defined-photos" ||
+    targetId.startsWith("ins-defined-slot-") ||
+    targetId === "ins-observations" ||
+    targetId.startsWith("ins-observation-") ||
+    targetId === "ins-client-declaration" ||
+    targetId === "ins-confirm"
+  ) {
+    return 3;
+  }
+  return 2;
+}
+
+/**
+ * Which step to open so the control with DOM id `targetId` is on screen.
+ *
+ * How it works: the desktop wizard and the phone body place the cards in different steps, so the
+ * caller names its layout; the desktop map is the original one below, the phone map is
+ * `phoneStepForErrorTarget`.
+ *
+ * Edge cases: fixed 2026-11-04 — the phone used the desktop map, so a missing property feature
+ * opened phone step 1 (the features are in step 2) and a missing description or service photo
+ * opened step 2 (they are in step 3). The layout defaults to the desktop for existing callers.
+ */
 export function inspectorWizardStepForErrorTarget(
   targetId: string,
+  layout: InspectorStepLayout = "desktop",
 ): InspectorWizardStepId {
+  if (layout === "mobile") return phoneStepForErrorTarget(targetId);
   const featureKeyMatch = targetId.match(/^ins-feature(?:-photo)?-(.+)$/);
   if (featureKeyMatch && isWizardStep2FeatureKey(featureKeyMatch[1])) {
     return 2;

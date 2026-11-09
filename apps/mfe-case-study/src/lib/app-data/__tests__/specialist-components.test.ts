@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { BuildingInventoryLineDto } from "@platform/api-client";
 import {
   SPECIALIST_COMPONENTS_TEXT_REQUIRED,
+  componentLineAcceptsBuildRatio,
   componentLineForItem,
   componentLineForTypedName,
   componentLinesIssue,
@@ -130,6 +131,32 @@ describe("specialist components", () => {
     // not a unit: stays an extra; renaming a unit area to something else makes it an extra again
     expect(componentLineForTypedName(emptyComponentLine(0), "مكتبة").structureKind).toBe("other");
     expect(componentLineForTypedName(typed, "مظلة سيارات").structureKind).toBe("other");
+  });
+
+  it("matches a catalog name typed without «ال» and gives a floor-like name its area kind (A→Z #30/#34/#52/#90)", () => {
+    // «سور» is «السور»: its unit turns to «م.ط»
+    expect(componentLineForTypedName(emptyComponentLine(0), "سور")).toMatchObject({ itemKey: "fence", unit: "lm" });
+    expect(componentLineForTypedName(emptyComponentLine(0), "ملحق علوي")).toMatchObject({
+      itemKey: "upper_annex",
+      structureKind: "annex",
+    });
+    for (const name of ["الدور الثاني", "الميزانين", "طابق ثالث"]) {
+      const typed = componentLineForTypedName(emptyComponentLine(0), name);
+      expect(typed, name).toMatchObject({ itemKey: "custom", structureKind: "floor" });
+      // the inventory shows «نسبة البناء» for it, like a catalog floor (#65)
+      expect(componentLineAcceptsBuildRatio({ ...typed, unit: "sqm" }), name).toBe(true);
+    }
+    expect(componentLineAcceptsBuildRatio(componentLineForTypedName(emptyComponentLine(0), "غرفة حارس"))).toBe(false);
+  });
+
+  it("counts a saved custom «other» floor line by its name in the Infath areas", () => {
+    const areas = infathBuildingAreasFromComponents([
+      line("ground_floor", "300"),
+      { ...line("custom", "520"), structureKind: "other", label: "الدور الثاني" },
+      { ...line("custom", "90"), structureKind: "other", label: "ملحق علوي" },
+    ]);
+    expect(areas.builtArea).toBe("820");
+    expect(areas.annexTotal).toBe("90");
   });
 
   it("derives the Infath building areas, repeating the first floor", () => {

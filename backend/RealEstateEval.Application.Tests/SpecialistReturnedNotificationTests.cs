@@ -43,7 +43,7 @@ public sealed class SpecialistReturnedNotificationTests
             notifications.Sent,
             n => n.Request.SourceEvent?.StartsWith($"case-study-returned:{TaskId}", StringComparison.Ordinal) == true);
         Assert.Equal(SpecialistUserId, returned.UserId);
-        Assert.Equal("معاملة أُعيدت إليك", returned.Request.Title);
+        Assert.Equal("عادت معاملة بعد معالجة التعذّر", returned.Request.Title);
         Assert.Equal($"/case-study/{TaskId}", returned.Request.Href);
     }
 

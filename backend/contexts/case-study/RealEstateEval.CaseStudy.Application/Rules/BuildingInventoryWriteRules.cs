@@ -35,17 +35,21 @@ public static class BuildingInventoryWriteRules
     public const string PackageSubmitted = "المعاينة أُرسلت — لا يمكن تعديل الحصر";
 
     /// <summary>
-    /// Pure decision from the role, the caller's identities and the property's field-inspection
-    /// tasks (cancelled ones already left out by the repository).
+    /// Pure decision from the role (with the specialist's sub-roles), the caller's identities and the
+    /// property's field-inspection tasks (cancelled ones already left out by the repository). Staff
+    /// access is the technical acceptance's (<see cref="PoRoleMatrixRules.CanAcceptPartyWork"/>): a
+    /// specialist without the study sub-role neither writes nor falls through to the inspector path.
     /// </summary>
     public static BuildingInventoryWriteAccess Resolve(
-        string? prototypeRole,
+        StaffActor actor,
         string? actorUserId,
         string? actorDistributionAssigneeId,
         IReadOnlyCollection<FieldInspectionWriteFacts> inspectionTasks)
     {
-        if (PoRoleMatrixRules.CanManagePartySubmissions(prototypeRole))
+        if (PoRoleMatrixRules.CanAcceptPartyWork(actor))
             return BuildingInventoryWriteAccess.Staff;
+
+        var prototypeRole = actor.Role;
 
         if (!string.Equals(prototypeRole?.Trim(), FieldInspectorRole, StringComparison.OrdinalIgnoreCase))
             return BuildingInventoryWriteAccess.Denied;

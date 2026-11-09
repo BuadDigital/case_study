@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatPropertyTypeLine } from "../po-intake-property-model";
+import { formatPropertyTypeLine } from "@platform/app-shared/app-data/po-intake-property-model";
 
 describe("formatPropertyTypeLine", () => {
   it("shows the type alone before the inspection", () => {

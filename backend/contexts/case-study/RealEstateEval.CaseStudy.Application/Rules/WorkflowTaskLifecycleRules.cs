@@ -1,5 +1,6 @@
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Rules;
 
@@ -20,12 +21,12 @@ public static partial class WorkflowTaskLifecycleRules
         SectionSupervisorOrAboveRoles.Contains((actorRole ?? "").Trim());
 
     /// <summary>
-    /// Redistributing the parties of a case-study transaction: the CDO, the section supervisor
-    /// and the case specialist who runs the file.
+    /// Redistributing the parties of a case-study transaction (and adding the engineering survey):
+    /// the CDO, the general manager, the section supervisor and the coordination sub-role, which
+    /// owns every change of an assigned party (ruling 2026-11-02).
     /// </summary>
-    public static bool CanRedistributeParties(string? actorRole) =>
-        IsSectionSupervisorOrAbove(actorRole)
-        || string.Equals((actorRole ?? "").Trim(), StaffRoleIds.CaseSpecialist, StringComparison.OrdinalIgnoreCase);
+    public static bool CanRedistributeParties(StaffActor actor) =>
+        IsSectionSupervisorOrAbove(actor.Role) || actor.HoldsCoordination;
 
     public static string NormalizeReason(string? reason) => (reason ?? "").Trim();
 

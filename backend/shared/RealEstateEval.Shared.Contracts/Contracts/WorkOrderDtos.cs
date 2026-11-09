@@ -23,6 +23,13 @@ public class PropertyPhotoMarksDto
     /// false on picks saved before the board, which print sorted by section.
     /// </summary>
     public bool ReportOrdered { get; set; }
+    /// <summary>
+    /// Every inspector photo's class (Omar 2026-11-08), by attachment id: exterior (meters included),
+    /// interior (movables included), surroundings (related to the property, not of it — kept inside the
+    /// system), document (made a property document). The Enfaz exterior / interior photo files are built
+    /// from it; a photo with no entry takes the class its name suggests. Separate from the report's picks.
+    /// </summary>
+    public Dictionary<string, string> PhotoClasses { get; set; } = [];
 }
 
 public class PropertyContactDto
@@ -38,10 +45,16 @@ public class WorkOrderPropertyDto
     public Guid? Id { get; set; }
     /// <summary>The transaction (المعاملة) this deed belongs to — server-owned, never written by the client.</summary>
     public Guid? TransactionId { get; set; }
-    /// <summary>Transaction draft number TMP-{YY}-{seq} — shown until the official reference exists.</summary>
-    public string? TransactionDraftNumber { get; set; }
-    /// <summary>Transaction official reference PR-{YY}-{seq} (two-digit year) — null until the first report approval.</summary>
+    /// <summary>
+    /// «رقم المعاملة» — this deed's own number PR-{YY}-{seq}, drawn at the first full save of its initial
+    /// data; null while the slot waits for it. Server-owned, never written by the client.
+    /// </summary>
     public string? ReferenceNumber { get; set; }
+    /// <summary>
+    /// The property's number: the deed's own for a single deed, «رقم العقار المرتبط» PR-{YY}-{seq}-L for a
+    /// linked property; null until a deed is numbered.
+    /// </summary>
+    public string? TransactionReferenceNumber { get; set; }
     /// <summary>How the transaction's deeds are linked (one_building | contract); null for a single deed.</summary>
     public string? TransactionLinkKind { get; set; }
     /// <summary>Deeds in the transaction (1 for an ordinary property).</summary>

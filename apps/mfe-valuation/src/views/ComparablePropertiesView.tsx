@@ -35,10 +35,10 @@ import {
   opsLetterHead,
   opsLetterSub,
   opsLetterTitle,
-  opsPpBadge,
+  opsCountBadge as opsPpBadge,
   opsTfLbl,
   opsToolbar,
-} from "../lib/comparables-ops-tw";
+} from "@platform/ui-kit";
 import { BANK_ICON } from "./ComparablesOpsIcon";
 import { AddComparableForm } from "./AddComparableForm";
 import { TagEditorRow } from "./TagEditorRow";

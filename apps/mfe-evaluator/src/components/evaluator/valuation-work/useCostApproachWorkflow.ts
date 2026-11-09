@@ -37,6 +37,7 @@ import {
   costLineTotals,
   costLinesFromInventory,
   keepCostLineInputs,
+  plotSeedNeedsSave,
   costRepullMessage,
   costSaveRequest,
   inspectorAgeYearsForCostField,
@@ -60,7 +61,7 @@ type CostApproachWorkflowArgs = {
   buildingOnly: boolean;
   /** The apartment's land is a share of the building plot (plot + share required). */
   isApartment?: boolean;
-  /** The plot box before one is saved (`buildingPlotAreaSeed`) — a draft, never auto-saved. */
+  /** The plot box before one is saved (`buildingPlotAreaSeed`); a saved approach saves it (`plotSeedNeedsSave`). */
   plotAreaSeed?: string;
   costBasisKey: string;
   /** The appraiser's package is submitted: the numbers are closed (server-locked). */
@@ -182,6 +183,20 @@ export function useCostApproachWorkflow({
       cancelled = true;
     };
   }, [hydrateKey, savedActualAge, inspectionTaskId]);
+
+  // A saved cost approach without a plot area: the box shows the deed area, so it is saved like an
+  // edit (once per load) — the land is valued on what the appraiser sees. The seed may arrive after
+  // the hydration, so the box is filled here too when it is still empty.
+  const plotSeedSavedForKey = useRef<number | null>(null);
+  const plotSeedDue = plotSeedNeedsSave({ cost, plotAreaSeed, locked });
+  useEffect(() => {
+    if (!plotSeedDue || plotSeedSavedForKey.current === hydrateKey) return;
+    plotSeedSavedForKey.current = hydrateKey;
+    setFields((prev) =>
+      prev.buildingPlotArea.trim() ? prev : { ...prev, buildingPlotArea: plotAreaSeed },
+    );
+    markEdited();
+  }, [plotSeedDue, hydrateKey, plotAreaSeed, markEdited]);
 
   const setActualAge = useCallback(
     (age: string) => setField("actualAge", age),

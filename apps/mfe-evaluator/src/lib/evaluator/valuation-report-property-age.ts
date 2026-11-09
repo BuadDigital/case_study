@@ -5,22 +5,45 @@
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Report-only property age: years since building-license issue date, minus 2.
- * Does not write back to the inspector workspace — print/preview cells only.
+ * Report-only property age: the inspector's age, else years since building-license issue date,
+ * minus 2; and the report's date display (yyyy/mm/dd). Does not write back to the inspector
+ * workspace — print/preview cells only.
  */
 
+import { pad2, ymd } from "@platform/app-shared/format/date";
 import {
+  formatHijriDate,
   hijriToGregorian,
   isValidGregorianDate,
+  isValidHijriDate,
 } from "@platform/app-shared/format/hijri";
-import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 
 const LICENSE_AGE_OFFSET_YEARS = 2;
 
-/** Parse inspector license date (Hijri or Gregorian) to a local noon Date. */
-export function parseLicenseDateForAge(
+/** One calendar day as typed, with the calendar it belongs to. */
+export type ReportCalendarDay = {
+  kind: "gregorian" | "hijri";
+  year: number;
+  month: number;
+  day: number;
+};
+
+/**
+ * Reads a typed date (licence, deed, subdivision minutes) into its calendar day.
+ *
+ * How it works: Arabic digits become Latin; «هـ» / «h:» marks Hijri, «م» / «g:» Gregorian; the
+ * digits are read as yyyy-mm-dd, yyyy/mm/dd or dd/mm/yyyy (the day comes first when the year is
+ * last, as the inspector's date field stores it: «10/05/2015 م»). An unmarked year between 1300
+ * and 1599 is Hijri.
+ *
+ * Edge cases: a day that does not exist in its calendar (30/02/2020, 30 Sha'ban 1445) and a
+ * triplet whose year cannot be told (01/02/03) give null. Split out of parseLicenseDateForAge
+ * (2026-11-04) so the report can print these dates as yyyy/mm/dd without converting them.
+ */
+export function parseReportCalendarDay(
   raw: string | null | undefined,
-): Date | null {
+): ReportCalendarDay | null {
   const trimmed = toLatinDigits((raw ?? "").trim());
   if (!trimmed) return null;
 
@@ -71,13 +94,44 @@ export function parseLicenseDateForAge(
     hijriMarked || (!gregorianMarked && year >= 1300 && year < 1600);
 
   if (isHijri) {
-    const g = hijriToGregorian(year, month, day);
+    return isValidHijriDate(year, month, day) ? { kind: "hijri", year, month, day } : null;
+  }
+  return isValidGregorianDate(year, month, day) ? { kind: "gregorian", year, month, day } : null;
+}
+
+/** Parse inspector license date (Hijri or Gregorian) to a local noon Date. */
+export function parseLicenseDateForAge(
+  raw: string | null | undefined,
+): Date | null {
+  const parsed = parseReportCalendarDay(raw);
+  if (!parsed) return null;
+  if (parsed.kind === "hijri") {
+    const g = hijriToGregorian(parsed.year, parsed.month, parsed.day);
     if (!g) return null;
     return new Date(g.year, g.month - 1, g.day, 12, 0, 0, 0);
   }
+  return new Date(parsed.year, parsed.month - 1, parsed.day, 12, 0, 0, 0);
+}
 
-  if (!isValidGregorianDate(year, month, day)) return null;
-  return new Date(year, month - 1, day, 12, 0, 0, 0);
+/**
+ * A typed date as the report prints every date: yyyy/mm/dd.
+ *
+ * How it works: a plain ISO date goes through the shared `ymd`; any other typed date is read by
+ * parseReportCalendarDay — a Gregorian day prints «2015/05/10», a Hijri day keeps its calendar and
+ * prints «1441/03/15 هـ» (the shared formatHijriDate, year first).
+ *
+ * Edge cases: blank → ""; text that is not a date (a note, a half-typed value) prints as typed.
+ * Fixed 2026-11-04: the deed date printed «2025-03-15», the subdivision minutes «2024-06-10» and
+ * the licence «10/05/2015 م» beside report dates printed as 2026/11/02.
+ */
+export function formatReportCalendarDate(raw: string | null | undefined): string {
+  const text = (raw ?? "").trim();
+  if (!text) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return ymd(text);
+  const parsed = parseReportCalendarDay(text);
+  if (!parsed) return text;
+  if (parsed.kind === "hijri") return formatHijriDate(parsed, { order: "ymd" });
+  return `${parsed.year}/${pad2(parsed.month)}/${pad2(parsed.day)}`;
 }
 
 function completedFullYears(from: Date, to: Date): number {
@@ -140,8 +194,34 @@ export function formatArabicMonths(months: number): string {
   return arabicCount(months, { one: "شهر واحد", two: "شهران", few: "أشهر", many: "شهراً" });
 }
 
-/** Same wording for a free-text age: whole numbers are reworded, anything else is kept. */
+/**
+ * Same wording for a free-text age: whole numbers are reworded, anything else is kept.
+ *
+ * How it works: Arabic digits are read as Latin first, so «١٢» prints «12 سنة» like «12».
+ * Edge cases: blank stays blank; «12.5» or «حوالي 10» print as typed. Arabic digits used to
+ * print untouched (2026-11-04).
+ */
 export function formatReportAgeText(raw: string): string {
-  const text = raw.trim();
-  return /^\d+$/.test(text) ? formatReportPropertyAgeYears(Number(text)) : text;
+  const text = toLatinDigits(raw.trim());
+  return /^\d+$/.test(text) ? formatReportPropertyAgeYears(Number(text)) : raw.trim();
+}
+
+/**
+ * «عمر البناء» / «عمر العقار» in section 7: the age the inspector entered on site — the same figure
+ * the cost approach takes as the effective age — else the age worked out from the building licence.
+ *
+ * How it works: the inspector's `propertyAgeYears` through formatReportAgeText; when it is blank,
+ * reportPropertyAgeYearsFromLicense (years since the licence − 2).
+ * Edge cases: neither known → "". Fixed 2026-11-04: the cell used only the licence and printed
+ * «—» (no licence date) or a wrong figure (9 for an inspector's 12).
+ */
+export function reportBuildingAgeLabel(
+  inspectorAgeYears: string | null | undefined,
+  licenseDateRaw: string | null | undefined,
+  now: Date = new Date(),
+): string {
+  const typed = (inspectorAgeYears ?? "").trim();
+  if (typed) return formatReportAgeText(typed);
+  const fromLicense = reportPropertyAgeYearsFromLicense(licenseDateRaw, now);
+  return fromLicense == null ? "" : formatReportPropertyAgeYears(fromLicense);
 }

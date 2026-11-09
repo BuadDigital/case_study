@@ -23,7 +23,7 @@ namespace RealEstateEval.Application.Tests;
 /// </summary>
 public class TransactionCancellationTests
 {
-    private static readonly TransactionCancellationActor Specialist = new("u-spec", "أسامة", "case-specialist");
+    private static readonly TransactionCancellationActor Specialist = new("u-spec", "أسامة", "case-specialist", CaseSpecialistSubRoles.All);
     private static readonly TransactionCancellationActor Supervisor = new("u-sup", "سليمان", "section-supervisor");
     private static readonly TransactionCancellationActor Appraiser = new("u-app", "عبدالله", "real-estate-appraiser");
 
@@ -132,6 +132,11 @@ public class TransactionCancellationTests
         Assert.Null(rejectError);
         Assert.Equal(TransactionCancellationStatuses.Rejected, rejected!.Status);
         Assert.False((await rig.Deed(rig.DeedA)).IsCancelled);
+        // A→Z 2026-11-04: the request and its rejection are on every deed's timeline.
+        var titles = await rig.Db.PropertyTimelineEntries.AsNoTracking()
+            .Where(e => e.PropertyId == rig.DeedB).Select(e => e.Title).ToListAsync();
+        Assert.Contains("طلب إلغاء المعاملة", titles);
+        Assert.Contains("رُفض طلب إلغاء المعاملة", titles);
 
         // A deed on Enfaz keeps its whole transaction live.
         var deedB = await rig.Db.WorkOrderProperties.SingleAsync(p => p.Id == rig.DeedB);

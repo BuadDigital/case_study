@@ -190,6 +190,19 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             .ToListAsync(cancellationToken);
         var deedNatureMatchOutcome = latestReport?.DeedNatureMatchOutcome;
         var studyReportIssued = latestReport?.Status == CaseStudyReportStatuses.Issued;
+        // Omar 2026-11-08: review approves the study, then accepts the appraiser's value, before the draft
+        // goes to the appraiser for his final approval. A deed with no transaction reads as not approved.
+        var studyApprovedByReview = transaction?.IsReviewApproved == true;
+        var valueAcceptedByReview = await caseStudy.WorkflowTasks.AsNoTracking()
+            .Where(t => t.Kind == WorkflowTaskKind.PropertyAppraisal
+                && t.Status != WorkflowTaskStatus.Cancelled
+                && (t.PropertyId == propertyId || t.PropertyId == studyPropertyId))
+            .OrderByDescending(t => t.CreatedAtUtc)
+            .Select(t => caseStudy.PartyTaskSubmissions.Any(s =>
+                s.WorkflowTaskId == t.Id
+                && s.Status == PartyTaskSubmissionStatus.Submitted
+                && s.AcceptedAtUtc != null))
+            .FirstOrDefaultAsync(cancellationToken);
 
         string? clientNameAr = null;
         string? clientNameEn = null;
@@ -316,6 +329,8 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             StudyHolderPropertyId = transaction is null ? null : (TransactionStudyRules.Holder(transaction)?.Id ?? studyPropertyId),
             TransactionDeeds = transactionDeeds,
             StudyReportIssued = studyReportIssued,
+            StudyApprovedByReview = studyApprovedByReview,
+            ValueAcceptedByReview = valueAcceptedByReview,
             ClientNameAr = clientNameAr,
             ClientNameEn = clientNameEn,
             ReportUserClientNamesAr = reportUserNames,
@@ -483,7 +498,6 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             {
                 t.Id,
                 t.ReferenceNumber,
-                t.DraftNumber,
                 DeedIds = t.Properties.Where(d => !d.IsRemoved).Select(d => d.Id).ToList(),
             })
             .ToDictionaryAsync(t => t.Id, cancellationToken);
@@ -514,9 +528,11 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
                 snapshot.CaseSpecialistName = specialist;
             if (transactions.TryGetValue(p.TransactionId, out var t))
             {
-                snapshot.TransactionNumber = string.IsNullOrWhiteSpace(t.ReferenceNumber)
-                    ? t.DraftNumber
-                    : t.ReferenceNumber;
+                // «رقم المعاملة» on a failure is the deed's own number; an old row without one shows
+                // its property's.
+                snapshot.TransactionNumber = string.IsNullOrWhiteSpace(p.ReferenceNumber)
+                    ? t.ReferenceNumber
+                    : p.ReferenceNumber;
                 snapshot.TransactionDeedCount = Math.Max(1, t.DeedIds.Count);
                 snapshot.TransactionPropertyIds = t.DeedIds;
             }

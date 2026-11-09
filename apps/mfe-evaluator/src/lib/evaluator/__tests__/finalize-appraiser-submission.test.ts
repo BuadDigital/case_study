@@ -34,6 +34,14 @@ vi.mock("@platform/app-shared/app-data/party-task-recall-model", () => ({
   clearPartyTaskRecall: (...a: unknown[]) => clearRecall(...a),
 }));
 
+const getRecon = vi.fn();
+const config = vi.fn();
+vi.mock("@platform/app-shared/auth/api-config", () => ({ apiConfig: () => config() }));
+vi.mock("@platform/api-client", async (original) => ({
+  ...(await original<typeof import("@platform/api-client")>()),
+  getValuationReconciliation: (...a: unknown[]) => getRecon(...a),
+}));
+
 import { finalizeAppraiserSubmission } from "../finalize-appraiser-submission";
 
 const draftSubmission = {
@@ -69,6 +77,20 @@ beforeEach(() => {
 });
 
 describe("finalizeAppraiserSubmission", () => {
+  // A→Z 2026-11-04: Enfaz «أساس القيمة» showed the assignment default («قيمة التصفية») for market-value
+  // valuations — the package now carries the basis the appraiser reconciled on.
+  it("saves the reconciled value basis with the package before submitting", async () => {
+    config.mockReturnValue({ token: "t" });
+    getRecon.mockResolvedValue({ ok: true, data: { basisOfValueLabelAr: "القيمة السوقية" } });
+
+    await finalizeAppraiserSubmission("a1", "key");
+
+    expect(getRecon).toHaveBeenCalledWith({ token: "t" }, "vr1");
+    expect(saveSubmission).toHaveBeenCalledWith(expect.objectContaining({ valueBasis: "القيمة السوقية" }));
+    config.mockReset();
+    getRecon.mockReset();
+  });
+
   it("does nothing with side effects while the study report is not issued", async () => {
     readGate.mockResolvedValue({ ready: false, reason: "لم يصدر" });
 

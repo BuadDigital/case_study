@@ -203,7 +203,7 @@ public class PartyTaskSubmissionStudyReportGateTests
         var rows = await tasks.ListAsync(new PermissionsDto
         {
             UserId = "staff",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         });
 
         Assert.True(rows.Single(r => r.Id == AppraisalA.ToString()).StudyReportIssued);
@@ -222,7 +222,7 @@ public class PartyTaskSubmissionStudyReportGateTests
         await rig.Service.SubmitAsync(AppraisalA, Appraiser);
         var tasks = TestInspectorFeeServiceFactory.CreateWorkflow(rig.Contexts.CaseStudy);
 
-        var rows = await tasks.ListAsync(new PermissionsDto { UserId = "staff", PrototypeRole = "case-specialist" });
+        var rows = await tasks.ListAsync(new PermissionsDto { UserId = "staff", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All });
 
         Assert.Equal("submitted", rows.Single(r => r.Id == AppraisalA.ToString()).AppraisalPackageStatus);
         Assert.Equal("submitted", rows.Single(r => r.Id == ParentA.ToString()).AppraisalPackageStatus);
@@ -244,7 +244,7 @@ public class PartyTaskSubmissionStudyReportGateTests
         var (result, errors) = await rig.Service.ReopenAsync(
             AppraisalA,
             new ReopenPartyTaskSubmissionRequest { ReturnNote = "تصحيح بعد الإصدار" },
-            new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist" });
+            new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All });
 
         Assert.Null(result);
         Assert.Equal(PartyTaskSubmissionService.AppraisalFinalIssuedReopenForbiddenAr, errors!["_"]);
@@ -265,7 +265,7 @@ public class PartyTaskSubmissionStudyReportGateTests
         var (result, errors) = await rig.Service.ReopenAsync(
             AppraisalA,
             new ReopenPartyTaskSubmissionRequest { ReturnNote = "تصحيح قبل الإيداع" },
-            new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist" });
+            new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All });
 
         Assert.Null(errors);
         Assert.Equal(PartyTaskSubmissionStatus.Reopened, result!.Status);
@@ -281,7 +281,7 @@ public class PartyTaskSubmissionStudyReportGateTests
         var (result, errors) = await rig.Service.ReopenAsync(
             AppraisalA,
             new ReopenPartyTaskSubmissionRequest { ReturnNote = "تصحيح" },
-            new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist" });
+            new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All });
 
         Assert.Null(result);
         Assert.Equal(PartyTaskSubmissionService.AppraisalReportApprovedReopenForbiddenAr, errors!["_"]);
@@ -304,7 +304,7 @@ public class PartyTaskSubmissionStudyReportGateTests
         var (result, errors) = await rig.Service.ReopenForNewVersionAsync(
             AppraisalA,
             new ReopenForNewVersionRequest { Reason = "تغيّرت المقارنات بعد صفقة مسجلة" },
-            new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist" });
+            new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All });
 
         Assert.Null(errors);
         Assert.Equal(PartyTaskSubmissionStatus.Reopened, result!.Status);
@@ -335,7 +335,7 @@ public class PartyTaskSubmissionStudyReportGateTests
     {
         await using var rig = Arrange(reportStatusA: "issued");
         await rig.Service.SubmitAsync(AppraisalA, Appraiser);
-        var specialist = new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist" };
+        var specialist = new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All };
 
         // A partial state from an interrupted first attempt: the package is already returned but the task is completed.
         var package = await rig.Contexts.CaseStudy.PartyTaskSubmissions.SingleAsync(s => s.WorkflowTaskId == AppraisalA);
@@ -363,7 +363,7 @@ public class PartyTaskSubmissionStudyReportGateTests
         var (result, errors) = await rig.Service.SaveDraftAsync(
             AppraisalA,
             new SavePartyTaskSubmissionRequest { Payload = JsonDocument.Parse("{\"evaluatorPrice\":\"1\"}").RootElement.Clone() },
-            new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist" });
+            new PartySubmissionActor { UserId = "s", DisplayName = "أخصائي", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All });
 
         Assert.Null(result);
         Assert.NotNull(errors);

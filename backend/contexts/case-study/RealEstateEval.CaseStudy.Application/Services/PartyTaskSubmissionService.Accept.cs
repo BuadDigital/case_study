@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
@@ -53,8 +54,11 @@ public partial class PartyTaskSubmissionService
         if (!PartyTaskSubmissionRules.IsPartySubmissionKind(task.Kind))
             return (null, Error("قبول المخرجات غير متاح لهذا النوع من المهام"));
 
-        if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanAcceptPartyWork(actor.Staff))
             return (null, Error("ليس لديك صلاحية قبول مخرجات الطرف"));
+        // Omar 2026-11-08: accepting the appraiser's value is review's decision, before the draft goes to him.
+        if (task.Kind == WorkflowTaskKind.PropertyAppraisal && !PoRoleMatrixRules.CanReviewTransaction(actor.Staff))
+            return (null, Error(ValueReviewRoleDeniedAr));
 
         var entity = await _repo.GetSubmissionAsync(taskId, track: true, cancellationToken);
         if (entity is null || entity.Status != PartyTaskSubmissionStatus.Submitted)
@@ -68,19 +72,9 @@ public partial class PartyTaskSubmissionService
         var actorUserId = PartyTaskSubmissionRules.AcceptActorUserId(actor);
         var alreadyAccepted = entity.AcceptedAtUtc is not null;
 
-        // The specialist writes «مكونات العقار» (the report text) from the inspector's
-        // description before accepting the inspection. The inventory table is not a condition.
-        if (!alreadyAccepted
-            && task.Kind == WorkflowTaskKind.FieldInspection
-            && task.PropertyId is Guid gatePropertyId)
-        {
-            var gateProperty = await _repo.GetPropertyWithInventoryAsync(gatePropertyId, cancellationToken);
-            var missing = gateProperty is null
-                ? []
-                : SpecialistComponentsRules.MissingForAcceptance(gateProperty);
-            if (missing.Count > 0)
-                return (null, missing);
-        }
+        // Omar 2026-11-08: acceptance is coordination's (the coordinator receives the party's work on
+        // his page), so «مكونات العقار» — the study's text — is no longer its condition; it gates the
+        // issue of the study report instead (CaseStudyReportService.Issue).
 
         InspectorFeeRowDto? accruedFee = null;
         if (task.Kind == WorkflowTaskKind.EngineeringSurvey)
@@ -133,6 +127,21 @@ public partial class PartyTaskSubmissionService
                     cancellationToken);
             }
             await _repo.SaveChangesAsync(cancellationToken);
+
+            // Omar 2026-11-08: the inspector's fee accrues when the coordinator receives his work, as the
+            // office's does — no longer only when the study is issued (that path stays, idempotent, as
+            // the repair of a missed call). Best effort: the acceptance stands if Financial is down.
+            if (task.Kind == WorkflowTaskKind.FieldInspection)
+            {
+                try
+                {
+                    await _inspectorFees.EnsureLedgersForTasksAsync([task], cancellationToken);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _logger?.LogWarning(ex, "Inspector fee not accrued on the acceptance of task {TaskId}", taskId);
+                }
+            }
         }
 
         if (task.PropertyId is Guid propertyId)
@@ -158,7 +167,11 @@ public partial class PartyTaskSubmissionService
                 await _timeline.RecordAsync(
                     task.PoNumber,
                     propertyId,
-                    $"party:{taskId}:fee-accrued:{acceptedStamp}",
+                    // Keyed by the fee row: a re-acceptance after a survey return keeps the same single
+                    // ledger row, so the timeline keeps one fee row too (A→Z 2026-11-04 #14 logged it twice).
+                    string.IsNullOrWhiteSpace(accruedFee.Id)
+                        ? $"party:{taskId}:fee-accrued:{acceptedStamp}"
+                        : $"party:{taskId}:fee-accrued:{accruedFee.Id}",
                     "احتساب أتعاب الرفع المساحي",
                     // The timeline shows the full fee and the pending proposal until it is decided.
                     accruedFee.ProposedDiscountSar is > 0m

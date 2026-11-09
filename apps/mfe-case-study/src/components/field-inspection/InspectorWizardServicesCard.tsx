@@ -2,21 +2,29 @@
 
 /**
  * Wizard step 2 card of `InspectorWorkspaceWizard` - surrounding services and
- * amenities chips plus the defined-photo slots they unlock.
+ * amenities chips plus the defined-photo slots they unlock, and the «عدادات الخدمات» card when
+ * electricity or water is among the services (shared fields: `InspectorServiceMeterFields`).
  */
 
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
 import {
+  INSPECTOR_AMENITY_OPTIONS,
   INSPECTOR_SERVICE_OPTIONS,
   inspectorAmenityLabel,
   isSpecialistProofService,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { InsCard, ChipRow } from "../po-intake/PropertyDetailInspectionParts";
 import { INS_LABEL_CLASS } from "./FieldInspectionWorkParts";
 import { InspectorDefinedPhotosSection } from "./InspectorDefinedPhotosSection";
 import { withoutSpecialistProofSlots } from "./SpecialistServiceProofPhotoFields";
-import { DESIGN_AMENITIES } from "./inspector-wizard-state";
+import { InspectorServiceMeterFields } from "./InspectorServicesCards";
+
+/** True for one of the listed amenity chips; other stored amenities are kept as they are. */
+function isListedAmenity(value: string): boolean {
+  return (INSPECTOR_AMENITY_OPTIONS as readonly string[]).includes(value);
+}
+import { inspectorServiceMeters } from "./field-inspection-work-state";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
@@ -78,23 +86,17 @@ export function InspectorWizardServicesCard({
           <span className={INS_LABEL_CLASS}>
             المرافق المحيطة
           </span>
+          {/* The phone's eight amenities (2026-11-04: the desktop had six — no «مرفق أمني» / «مقر حكومي»). */}
           <ChipRow
             selectedOnly={!editable}
-            items={[...DESIGN_AMENITIES]}
+            items={[...INSPECTOR_AMENITY_OPTIONS]}
             labelOf={inspectorAmenityLabel}
-            selected={draft.amenities.filter((a) =>
-              (DESIGN_AMENITIES as readonly string[]).includes(a),
-            )}
+            selected={draft.amenities.filter(isListedAmenity)}
             onToggle={
               editable
                 ? (item) => {
-                    const extras = draft.amenities.filter(
-                      (a) =>
-                        !(DESIGN_AMENITIES as readonly string[]).includes(a),
-                    );
-                    const current = draft.amenities.filter((a) =>
-                      (DESIGN_AMENITIES as readonly string[]).includes(a),
-                    );
+                    const extras = draft.amenities.filter((a) => !isListedAmenity(a));
+                    const current = draft.amenities.filter(isListedAmenity);
                     const next = current.includes(item)
                       ? current.filter((a) => a !== item)
                       : [...current, item];
@@ -124,6 +126,12 @@ export function InspectorWizardServicesCard({
             />
           </div>
       </InsCard>
+      {/* A→Z 2026-11-02 #31: the meters card existed on the phone only — the same fields here. */}
+      {inspectorServiceMeters(draft.services).any ? (
+        <InsCard title="عدادات الخدمات">
+          <InspectorServiceMeterFields draft={draft} disabled={!editable} onPatch={onPatch} />
+        </InsCard>
+      ) : null}
     </>
   );
 }

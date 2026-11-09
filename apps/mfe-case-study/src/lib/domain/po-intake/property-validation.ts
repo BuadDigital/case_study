@@ -7,7 +7,7 @@ import {
   ACCESS_CONTACT_NATIONAL_ID_INVALID,
   isValidSaudiNationalId,
   normalizeSaudiNationalId,
-} from "../../app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { FieldErrors } from "@platform/app-shared/domain/form/field-errors";
 
 export const PHONE_MIN_DIGITS = 10;

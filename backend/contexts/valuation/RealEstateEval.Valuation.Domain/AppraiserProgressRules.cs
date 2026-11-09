@@ -57,7 +57,8 @@ public static class AppraiserProgressRules
         if (reportStage == ReportIssuanceStages.DepositIssued || draftStatus == ReportDraftStatuses.Approved)
             return Approved;
         if (draftStatus == ReportDraftStatuses.Sent) return DraftSent;
-        if (draftStatus == ReportDraftStatuses.Preparing) return HandedOver;
+        // In review the appraiser sees what he sees while the study prepares (Omar 2026-11-05).
+        if (draftStatus is ReportDraftStatuses.Preparing or ReportDraftStatuses.InReview) return HandedOver;
         return work;
     }
 }

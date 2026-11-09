@@ -2,6 +2,7 @@ using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
@@ -25,6 +26,11 @@ public partial class WorkOrderService
                 WorkflowTaskKind.PropertyAppraisal,
             ],
             cancellationToken);
+        // The specialist is no longer named on the task: coordination hears it (ruling 2026-11-02).
+        recipients = recipients
+            .Concat(await _recipients.ResolveCaseSpecialistUserIdsAsync(CaseSpecialistAudience.Operations, cancellationToken))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
         if (recipients.Count == 0) return;
 
         var cancelled = lifecycleStatus == WorkOrderLifecycleStatus.Cancelled;

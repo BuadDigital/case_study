@@ -5,7 +5,7 @@ import {
 import {
   requireWorkOrdersApiConfig,
   unwrapApiResult,
-} from "./work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 
 export async function loadFieldInspectionWorkspaces(): Promise<
   FieldInspectionWorkspaceListItemDto[]

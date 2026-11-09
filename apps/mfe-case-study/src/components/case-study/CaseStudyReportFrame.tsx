@@ -2,7 +2,7 @@
 
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from "react";
 import type { CaseStudyReportModel } from "../../lib/app-data/case-study-report-document-model";
-import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
+import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-render";
 
 export type CaseStudyReportFrameHandle = {
   /** Prints the report page itself, after its sheets have been laid out. */

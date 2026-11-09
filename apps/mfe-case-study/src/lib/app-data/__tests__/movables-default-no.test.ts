@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { withMovablesDefaultNo } from "../inspector-workspace-commands";
-import { createInspectorWorkspaceDraft } from "../inspector-workspace-data";
+import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 
 const base = () =>
   createInspectorWorkspaceDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });

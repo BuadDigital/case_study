@@ -26,7 +26,7 @@ import {
   assignmentSpecialistByPo,
   failureBusyKey,
   failuresKpiStats,
-  isCaseEditor,
+  canFollowUpFailures,
   isResolveDraftComplete,
   isSupervisor,
   patchResolveDraftMap,
@@ -52,8 +52,9 @@ export function useFailuresViewWorkflow() {
   const searchParams = useSearchParams();
   const highlightId = searchParams.get("highlight")?.trim() || null;
   const { showToast } = useToast();
-  const { role } = useAppAccess();
-  const caseEditor = isCaseEditor(role);
+  const { role, access } = useAppAccess();
+  // A case specialist acts on failures only with the coordination sub-role (follow-up is coordination's).
+  const caseEditor = canFollowUpFailures(access);
   const supervisor = isSupervisor(role);
   // Server-paged rows (pagination contract); `kpiItems` is the whole set the KPI band still needs.
   const {

@@ -17,6 +17,11 @@ public class UserProfile
     public string? AvatarUrl { get; set; }
  /// <summary>employee | contractor; only meaningful for field-inspector.</summary>
     public string? InspectorType { get; set; }
+ /// <summary>
+ /// Case-specialist sub-role flags (coordination = 1, study = 2, review = 4; see
+ /// CaseSpecialistSubRoles). 1–7 for a case specialist, 0 for every other role.
+ /// </summary>
+    public int CaseSpecialistSubRoles { get; set; }
     public bool HasCompensation { get; set; }
     public decimal? FeeValueSar { get; set; }
     public string? Iban { get; set; }

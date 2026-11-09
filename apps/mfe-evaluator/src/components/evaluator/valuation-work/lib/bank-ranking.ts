@@ -9,7 +9,7 @@ import { listComparableProperties,suggestComparablePropertiesByProximity,
   type ValuationComparableSelectionDto,
 } from "@platform/api-client";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
-import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 import { normalizeArabicSearchText } from "@platform/app-shared/domain/courts/circuit-search";
 import {
   coordsFromLocationMapUrl,
@@ -17,7 +17,9 @@ import {
   parseLatLng,
 } from "@platform/app-shared/domain/geo";
 
-const BANK_CANDIDATE_POOL = 40;
+// Wide enough that the subject's kind is in the pool: with 40, an apartment amid many nearby land
+// deals got lands only (A→Z #43), and the type filter below had nothing to show.
+const BANK_CANDIDATE_POOL = 120;
 export const BANK_DISPLAY_LIMIT = 6;
 export const BANK_SEARCH_DISPLAY_LIMIT = 24;
 /** Maximum distance from subject when coordinates are known. */
@@ -49,6 +51,23 @@ export function isVacantLandComparable(type: string | null | undefined): boolean
   if (!t) return false;
   if (/فيلا|شقة|مبنى|دور|villa|apartment|building/i.test(t)) return false;
   return /أرض|ارض|فضاء|land/i.test(t);
+}
+
+/** The bank table's type filter: the subject's kind (default) or every type («كل الأنواع»). */
+export type BankTypeFilter = "subject" | "all";
+
+/**
+ * Do two property type names name the same type («شقة» / «شقة سكنية», «فيلا» / «فيلا دوبلكس»)?
+ *
+ * How it works: both are normalized (`normalizeArabicSearchText`: hamza, taa marbuta, spacing) and
+ * one must contain the other.
+ *
+ * Edge cases: an empty type never matches.
+ */
+function sameComparableType(a: string | null | undefined, b: string | null | undefined): boolean {
+  const na = normalizeArabicSearchText(a ?? "");
+  const nb = normalizeArabicSearchText(b ?? "");
+  return Boolean(na && nb) && (na.includes(nb) || nb.includes(na));
 }
 
 /** Interactive-form spec: ratio = larger ÷ smaller (≥ 1); ≥ 2 means multiplier method and is highlighted red. */
@@ -479,9 +498,17 @@ export type BankDisplayRow = {
  * for it) always show, whatever the radius, the city or the limit. The nearest others fill the rest.
  * With `preferLand`, land comparables fill it first.
  *
+ * With `subjectKind`, the type filter (`typeFilter`, default «subject») keeps only comparables of the
+ * subject's kind (land ↔ buildings); «all» keeps every type. Either way the subject's own type
+ * (`subjectType`, e.g. «شقة») fills the free rows first, then its kind, then the rest.
+ *
  * Edge cases: an own row the appraiser un-adopted stays, so it can be adopted again; only adopted rows
  * used to be kept, and an un-adopted one farther than the radius disappeared with no way back but
  * search. `preferLand` orders and never filters, so a building comparable can still fill a free row.
+ * The property's own rows are never filtered by type. Fixed 2026-11-04 (A→Z #43/#60): the bank had
+ * no type filter — an apartment's market bank showed six lands (even with «الكل») and a land's showed
+ * villas; «الكل» counted as all types though it only widened the radius. «beyond» counts only
+ * comparables the type filter keeps.
  */
 export function buildBankDisplayRows(opts: {
   selectionItems: ValuationComparableSelectionDto[];
@@ -495,6 +522,12 @@ export function buildBankDisplayRows(opts: {
   radiusKm?: number | null;
   /** The subject is valued as land: land comparables take the free rows before buildings. */
   preferLand?: boolean;
+  /** What the subject is compared as — enables the type filter and the type ordering. */
+  subjectKind?: "land" | "building" | null;
+  /** The subject's own type («شقة», «فيلا») — its comparables come first. */
+  subjectType?: string | null;
+  /** «subject» (default) keeps the subject's kind only; «all» keeps every type. */
+  typeFilter?: BankTypeFilter;
 }): { rows: BankDisplayRow[]; distances: Record<string, number>; beyond: BankBeyond } {
   const limit = opts.limit ?? BANK_DISPLAY_LIMIT;
   const nearbyOnly = opts.nearbyOnly !== false;
@@ -518,7 +551,7 @@ export function buildBankDisplayRows(opts: {
     }
   }
 
-  const ranked: RankedItem[] = [...compById.values()].map((comparable) => {
+  const allRanked: RankedItem[] = [...compById.values()].map((comparable) => {
     let distanceKm: number | null = null;
     if (
       opts.subjectCoords &&
@@ -531,6 +564,14 @@ export function buildBankDisplayRows(opts: {
     }
     return { comparable, distanceKm };
   });
+
+  const kindOf = (row: RankedItem): "land" | "building" =>
+    isVacantLandComparable(row.comparable.comparablePropertyType) ? "land" : "building";
+  const subjectKind = opts.subjectKind ?? null;
+  const filterByKind = subjectKind != null && (opts.typeFilter ?? "subject") === "subject";
+  const ranked = filterByKind
+    ? allRanked.filter((row) => itemByCompId.has(row.comparable.id) || kindOf(row) === subjectKind)
+    : allRanked;
 
   const radiusKm = opts.radiusKm === undefined ? NEARBY_RADIUS_KM : opts.radiusKm;
   const eligible = nearbyOnly
@@ -576,13 +617,21 @@ export function buildBankDisplayRows(opts: {
   };
   const isOwn = (row: RankedItem) => itemByCompId.has(row.comparable.id);
   const ownRows = ranked.filter(isOwn);
-  const isLand = (row: RankedItem) => isVacantLandComparable(row.comparable.comparablePropertyType);
+  const isLand = (row: RankedItem) => kindOf(row) === "land";
   const nearest = eligible.filter((row) => !isOwn(row)).sort(byNearest);
-  const others = (
-    opts.preferLand
-      ? [...nearest.filter(isLand), ...nearest.filter((row) => !isLand(row))]
-      : nearest
-  ).slice(0, Math.max(0, limit - ownRows.length));
+  // 0 = the subject's own type, 1 = its kind, 2 = the rest (stable sort keeps the nearest first).
+  const typeRank = (row: RankedItem): number => {
+    if (subjectKind == null) return opts.preferLand && !isLand(row) ? 1 : 0;
+    if (kindOf(row) !== subjectKind) return 2;
+    return subjectKind === "building" &&
+      opts.subjectType?.trim() &&
+      !sameComparableType(row.comparable.comparablePropertyType, opts.subjectType)
+      ? 1
+      : 0;
+  };
+  const others = [...nearest]
+    .sort((a, b) => typeRank(a) - typeRank(b))
+    .slice(0, Math.max(0, limit - ownRows.length));
   const ordered = [...ownRows, ...others].sort(byNearest);
 
   const distances: Record<string, number> = {};

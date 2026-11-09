@@ -2,6 +2,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Infrastructure.Services;
 
@@ -78,20 +79,20 @@ public class WorkflowTaskService : IWorkflowTaskService
     public Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> AddEngineeringSurveyAsync(
         Guid id,
         AddEngineeringSurveyRequest request,
-        string actorRole,
+        StaffActor actor,
         string? actorName,
         string? actorUserId = null,
         CancellationToken cancellationToken = default) =>
-        _distribution.AddEngineeringSurveyAsync(id, request, actorRole, actorName, actorUserId, cancellationToken);
+        _distribution.AddEngineeringSurveyAsync(id, request, actor, actorName, actorUserId, cancellationToken);
 
     public Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(
         Guid id,
         RedistributePartiesRequest request,
-        string actorRole,
+        StaffActor actor,
         string? actorName,
         string? actorUserId = null,
         CancellationToken cancellationToken = default) =>
-        _distribution.RedistributePartiesAsync(id, request, actorRole, actorName, actorUserId, cancellationToken);
+        _distribution.RedistributePartiesAsync(id, request, actor, actorName, actorUserId, cancellationToken);
 
     public Task<WorkflowTaskDto?> AdvanceAfterEnfathAsync(
         Guid id,
@@ -149,9 +150,9 @@ public class WorkflowTaskService : IWorkflowTaskService
     public Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> ReopenCompletedAsync(
         Guid id,
         ReopenCompletedWorkflowTaskRequest request,
-        string actorRole,
+        StaffActor actor,
         string? actorName,
         string? actorUserId = null,
         CancellationToken cancellationToken = default) =>
-        _lifecycle.ReopenCompletedAsync(id, request, actorRole, actorName, actorUserId, cancellationToken);
+        _lifecycle.ReopenCompletedAsync(id, request, actor, actorName, actorUserId, cancellationToken);
 }

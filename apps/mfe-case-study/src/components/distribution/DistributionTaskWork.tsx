@@ -36,6 +36,7 @@ import {
 import { usePoRecordQuery } from "../../query/case-study-queries";
 import { Button, InlineLoadingSkeleton, Note, useToast } from "@platform/ui-kit";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { holdsSubRole } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 
 const LOADING_TEXT = "text-xs text-text-3";
 
@@ -48,7 +49,7 @@ export function DistributionTaskWork({
   onRefresh: () => void;
   onClose: () => void;
 }) {
-  const { role } = useAppAccess();
+  const { role, access } = useAppAccess();
   const { runWithActionToast, showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult?.users]);
@@ -69,7 +70,8 @@ export function DistributionTaskWork({
   const { data: failures = [] } = useFailuresQuery();
   const loading = poRecordLoading && !poRecord;
 
-  const isSpecialist = role === "case-specialist" || role === "cdo";
+  // Distribution is the coordination sub-role's (ruling 2026-11-02); the CDO keeps it.
+  const isSpecialist = holdsSubRole(access, "coordination") || role === "cdo";
   const failureRaisedByRole =
     role === "section-supervisor"
       ? FAILURE_RAISER_SUPERVISOR
@@ -268,7 +270,7 @@ export function DistributionTaskWork({
         showFooter={false}
       >
         <p className="w-full py-4 text-center text-xs text-text-3">
-          هذه المهمة مخصصة لأخصائي دراسة الحالة.
+          هذه المهمة مخصصة لأخصائي التنسيق.
         </p>
       </TaskWorkChrome>
     );

@@ -40,7 +40,6 @@ import {
 import { useTransactionQuery } from "../../query/use-transaction-query";
 import { caseStudyReportDeeds } from "../../lib/app-data/case-study-report-document-model";
 import {
-  PartyRoleDetailPanel,
   PropertyDetailAppraisalTab,
   PropertyDetailCaseStudyReport,
   PropertyDetailEnfathUpload,
@@ -48,20 +47,25 @@ import {
   PropertyDetailGovernmentReviewsTab,
   PropertyDetailInspectionTab,
   PropertyDetailLinkedTab,
-  PropertyDetailPartyPackageReview,
   PropertyDetailPhotosTab,
   PropertyDetailPropertyKeys,
+  SurveyPackageReviewSection,
 } from "./PropertyDetailTabChunks";
 import { usePoPropertyDetailTabsWorkflow } from "./usePoPropertyDetailTabsWorkflow";
 import { usePropertyPhotoMarks } from "./usePropertyPhotoMarks";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
 import { reportPhotoLimit } from "@platform/app-shared/app-data/property-detail-document-types";
 import { propertyIsLand } from "@platform/app-shared/app-data/po-intake-property-model";
-import { canEditProperty, canHandOverToEnfaz } from "../../lib/app-data/po-roles";
+import { canEditPropertyData, canHandOverToEnfaz } from "../../lib/app-data/po-roles";
+import { PropertyChangeLogSection } from "./PropertyChangeLogSection";
+import { PropertyDetailReceiptCard } from "./PropertyDetailReceiptCard";
 import { PropertyDetailEnfazHandoverCard } from "./PropertyDetailEnfazHandoverCard";
 import { PropertyFailureSurveyFreezeLift } from "./PropertyFailureSurveyFreezeLift";
-import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "../../lib/app-data/inspector-workspace-data";
-import { ENG_DISCOUNT_REASONS } from "@platform/app-shared/fees/party-fee-meta";
+import { CASE_STUDY_SPECIALIST_FEATURE_KEYS } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { partyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
+
+/** The inspector's party page — its role picks the case-study questions shown in the inspection tab. */
+const INSPECTION_CASE_STUDY_DEF = partyTaskPageDef("active-inspection") ?? undefined;
 
 export type PoPropertyDetailInspectorWorkspace = {
   /** Active field-inspection task for this property (desktop HTML inspect-desktop). */
@@ -90,6 +94,7 @@ export function PoPropertyDetailTabs({
 }) {
   const {
     role,
+    access,
     router,
     visibleTabs,
     showCaseStudySideRail,
@@ -363,46 +368,15 @@ export function PoPropertyDetailTabs({
 
           {visitedTabs.has("survey") ? (
             <Activity mode={tabMode("survey")}>
-            {surveyCard ? (
-              <>
-                <PropertyDetailPartyPackageReview
-                  taskId={surveyTask?.id}
-                  submissionStatus={
-                    partySubmissionsQuery.data?.survey?.packageStatus ?? "draft"
-                  }
-                  acceptedAtUtc={
-                    partySubmissionsQuery.data?.survey?.acceptedAtUtc
-                  }
-                  acceptedByName={
-                    partySubmissionsQuery.data?.survey?.acceptedByName
-                  }
-                  acceptLabel="قبول المخرجات"
-                  returnPlaceholder="صف ما يجب تصحيحه في الرفع المساحي…"
-                  acceptSuccessToast="تم قبول مخرجات الرفع المساحي"
-                  returnSuccessToast="أُعيد الرفع المساحي للتصحيح"
-                  hint="قبول المخرجات يستحق أتعاب المكتب من جدول التسعير ويرسلها للمالية مباشرة، ويُظهر البيانات المعتمدة في حزمة إنفاذ. «قبول مع اقتراح حسم» يرفع الأتعاب لمشرف القسم ليقرر الحسم أولاً."
-                  // Acceptance is done here, inside the transaction. The specialist may accept as
-                  // is (fee straight to finance) or with a proposed discount for the supervisor.
-                  discountProposal={{
-                    subjectLabel: `أتعاب ${surveyTask?.assigneeName?.trim() || "المكتب الهندسي"}`,
-                    reasons: ENG_DISCOUNT_REASONS,
-                  }}
-                  onChanged={() => {
-                    void partySubmissionsQuery.refetch();
-                  }}
-                />
-                <PartyRoleDetailPanel
-                  card={surveyCard}
-                  submission={partySubmissionsQuery.data?.survey ?? null}
-                  loading={partiesLoading}
-                />
-              </>
-            ) : (
-              <EmptyState
-                title="لم يُعيَّن طرف لهذا الدور"
-                sub="سيظهر هنا الطرف وبيانات عمله بعد التعيين."
-              />
-            )}
+            <SurveyPackageReviewSection
+              surveyTask={surveyTask}
+              surveyCard={surveyCard}
+              submission={partySubmissionsQuery.data?.survey}
+              loading={partiesLoading}
+              onChanged={() => {
+                void partySubmissionsQuery.refetch();
+              }}
+            />
             </Activity>
           ) : null}
 
@@ -424,13 +398,16 @@ export function PoPropertyDetailTabs({
               /* Case staff review the inspector's package like the case-study workspace: a
                  submitted (not yet accepted) inspection stays editable, only acceptance locks it. */
               serviceProofFromTransactionPhotos={
-                !workspaceForced && canEditProperty(role)
+                !workspaceForced && canEditPropertyData(role)
               }
               includeRetiredFeatureKeys={
-                !workspaceForced && canEditProperty(role)
+                !workspaceForced && canEditPropertyData(role)
                   ? CASE_STUDY_SPECIALIST_FEATURE_KEYS
                   : undefined
               }
+              /* «أسئلة دراسة الحالة — المعاين» like the wizard's step 3 (the flat page showed none
+                 until 2026-11-04); read-only for anyone but the inspector editing. */
+              caseStudyDef={INSPECTION_CASE_STUDY_DEF}
               onEditModeChange={(edit) => {
                 if (workspaceForced && !edit) {
                   inspectorWorkspace?.onCancel?.();
@@ -593,13 +570,22 @@ export function PoPropertyDetailTabs({
 
         {showCaseStudySideRail ? (
           <div className="sticky top-0 flex flex-col gap-3">
-            {canHandOverToEnfaz(role) ? (
+            {/* View only (Omar 2026-11-08): the send to the study is on the coordinator's page. */}
+            <PropertyDetailReceiptCard
+              propertyId={property.id}
+              inCaseStudyPhase={task?.phase === "case-study"}
+              withAction={false}
+            />
+            {canHandOverToEnfaz(access) ? (
               <PropertyDetailEnfazHandoverCard
                 workOrderId={record.id}
                 propertyId={property.id}
               />
             ) : null}
             <PropertyTransactionTimeline record={record} property={property} />
+            {canEditPropertyData(role) || role === "section-supervisor" || role === "general-manager" ? (
+              <PropertyChangeLogSection propertyId={property.id} />
+            ) : null}
           </div>
         ) : null}
       </div>

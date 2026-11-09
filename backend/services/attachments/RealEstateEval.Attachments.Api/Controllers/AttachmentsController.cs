@@ -145,8 +145,8 @@ public class AttachmentsController : ControllerBase
         CancellationToken ct)
     {
         var actor = await _permissions.GetForUserIdAsync(ActorClaims.Id(User), ct);
-        if (!PoRoleMatrixRules.CanReviewValuedDocuments(actor?.PrototypeRole))
-            return this.ForbiddenProblem("اعتماد المستندات ذات القيمة متاح لأخصائي دراسة الحالة");
+        if (!PoRoleMatrixRules.CanReviewValuedDocuments(StaffActor.From(actor)))
+            return this.ForbiddenProblem("اعتماد المستندات ذات القيمة متاح لأخصائي دراسة العقار");
 
         var (meta, error) = await _attachments.ReviewValueDocumentAsync(id, request, actor, ct);
         if (error is not null) return this.BadRequestProblem(error);

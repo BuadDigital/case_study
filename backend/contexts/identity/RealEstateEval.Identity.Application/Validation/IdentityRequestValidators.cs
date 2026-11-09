@@ -2,6 +2,7 @@ using FluentValidation;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Validation;
 using RealEstateEval.Domain;
+using RealEstateEval.Identity.Application.Rules;
 
 namespace RealEstateEval.Identity.Application.Validation;
 
@@ -70,6 +71,10 @@ public sealed class CreateStaffUserRequestValidator : AbstractValidator<CreateSt
                            && value.Trim().ToLowerInvariant() is "employee" or "contractor")
             .When(x => x.RoleId == "field-inspector")
             .OverridePropertyName("inspectorType");
+        RuleForEach(x => x.CaseSpecialistSubRoles)
+            .Must(CaseSpecialistSubRoles.IsKnown)
+            .WithMessage(StaffProfileRules.SubRolesUnknownAr)
+            .OverridePropertyName("caseSpecialistSubRoles");
         RuleFor(x => x.FeeValueSar).GreaterThanOrEqualTo(0)
             .When(x => x.FeeValueSar.HasValue)
             .OverridePropertyName("feeValueSar");
@@ -126,6 +131,10 @@ public sealed class UpdateStaffUserRequestValidator : AbstractValidator<UpdateSt
                            || value.Trim().ToLowerInvariant() is "employee" or "contractor")
             .When(x => x.InspectorType is not null)
             .OverridePropertyName("inspectorType");
+        RuleForEach(x => x.CaseSpecialistSubRoles)
+            .Must(CaseSpecialistSubRoles.IsKnown)
+            .WithMessage(StaffProfileRules.SubRolesUnknownAr)
+            .OverridePropertyName("caseSpecialistSubRoles");
         RuleFor(x => x.FeeValueSar!).GreaterThanOrEqualTo(0)
             .When(x => x.FeeValueSar.HasValue)
             .OverridePropertyName("feeValueSar");

@@ -92,6 +92,6 @@ public sealed class TransactionCancellationsController(
             : await permissions.GetForUserIdAsync(userId, ct);
         var name = ActorClaims.DisplayName(User);
         if (string.IsNullOrWhiteSpace(name)) name = perms?.DisplayName ?? "";
-        return new TransactionCancellationActor(userId, name, perms?.PrototypeRole);
+        return new TransactionCancellationActor(userId, name, perms?.PrototypeRole, perms?.SubRoles);
     }
 }

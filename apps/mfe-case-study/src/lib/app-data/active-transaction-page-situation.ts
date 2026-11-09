@@ -1,4 +1,8 @@
-import { filterTasksForCaseStudy, filterTasksForSystemUpload } from "@platform/app-shared/app-data/active-transactions";
+import {
+  filterTasksForCaseStudy,
+  filterTasksForReceipt,
+  filterTasksForSystemUpload,
+} from "@platform/app-shared/app-data/active-transactions";
 import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
 import { filterTasksForPartyKind } from "@platform/app-shared/app-data/party-task-pages";
 import type { PageId } from "@platform/types";
@@ -58,9 +62,17 @@ export type PageSituationValues = Record<string, number | undefined>;
 const SUB_ASSIGNED = "المسندة إليك";
 const SUB_TODAY = "اليوم";
 
+/**
+ * KPI cards of the case specialist's stage queues.
+ *
+ * How it works: open / arrived today / done today / overdue for the page's stage.
+ * Edge cases / fixed 2026-11-05: the open card said «المسندة إليك», but these queues are shared by
+ * every specialist holding the sub-role — nothing in them is assigned to one person — so it now
+ * says «مشتركة لدورك». Party queues (really assigned) keep «المسندة إليك».
+ */
 function workflowCards(openLabel: string): PageSituationCardDef[] {
   return [
-    { key: "open", label: openLabel, sub: SUB_ASSIGNED, tone: "blue" },
+    { key: "open", label: openLabel, sub: "مشتركة لدورك", tone: "blue" },
     { key: "arrivedToday", label: "وردت اليوم", sub: "معاملات جديدة", tone: "warn" },
     { key: "doneToday", label: "أنجزت اليوم", sub: "من عملك", tone: "green" },
     { key: "overdue", label: "متأخرة عن المهلة", sub: "تحتاج إجراء", tone: "red" },
@@ -135,6 +147,7 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
       { key: "obstructed", label: "تعذّر", sub: "قيد المعالجة", tone: "red" },
     ],
     "active-distribution": workflowCards("بانتظار التوزيع"),
+    "active-receipt": workflowCards("بانتظار الاستلام"),
     "active-case-study": workflowCards("دراسات مفتوحة"),
     "system-upload": [
       {
@@ -515,6 +528,8 @@ function filterTasksForPage(
       return filterTasksForPrimaryData(tasks, poByNumber);
     case "active-distribution":
       return filterTasksForDistribution(tasks, poByNumber);
+    case "active-receipt":
+      return filterTasksForReceipt(tasks);
     case "active-case-study":
       return filterTasksForCaseStudy(tasks);
     case "system-upload":

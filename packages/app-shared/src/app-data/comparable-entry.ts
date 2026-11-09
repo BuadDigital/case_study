@@ -3,7 +3,7 @@ import type {
   UpsertComparablePropertyRequest,
 } from "@platform/api-client";
 import { isPositiveLocaleNumber, parseLocaleNumber } from "@platform/app-shared/format/number";
-import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 import { parseLatLng, type LatLng } from "@platform/app-shared/domain/geo";
 
 export const COMPARABLE_SOURCE_OPTIONS = [

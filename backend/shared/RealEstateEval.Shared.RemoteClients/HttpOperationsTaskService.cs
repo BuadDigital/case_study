@@ -4,6 +4,7 @@ using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Operations.Application.Abstractions;
 using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Infrastructure.Services;
 
@@ -24,10 +25,10 @@ public sealed class HttpOperationsTaskService(
         string? status,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default)
     {
-        _ = (actorUserId, actorAssigneeId, actorRole);
+        _ = (actorUserId, actorAssigneeId, actorStaff);
         var qs = new List<string>();
         if (!string.IsNullOrWhiteSpace(assigneeId))
             qs.Add($"assigneeId={Uri.EscapeDataString(assigneeId.Trim())}");
@@ -45,10 +46,10 @@ public sealed class HttpOperationsTaskService(
         OperationsTaskListQuery query,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default)
     {
-        _ = (actorUserId, actorAssigneeId, actorRole);
+        _ = (actorUserId, actorAssigneeId, actorStaff);
         return await GetAsync<List<OperationsTaskDto>>(
             "/api/operations-tasks" + BuildQueryString(query, paged: false),
             cancellationToken);
@@ -58,10 +59,10 @@ public sealed class HttpOperationsTaskService(
         OperationsTaskListQuery query,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default)
     {
-        _ = (actorUserId, actorAssigneeId, actorRole);
+        _ = (actorUserId, actorAssigneeId, actorStaff);
         return GetAsync<PagedResultDto<OperationsTaskDto>>(
             "/api/operations-tasks" + BuildQueryString(query, paged: true),
             cancellationToken);
@@ -124,15 +125,30 @@ public sealed class HttpOperationsTaskService(
         PatchOperationsTaskRequest request,
         string actorAssigneeId,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
-        _ = (actorAssigneeId, actorName, actorRole, actorUserId);
+        _ = (actorAssigneeId, actorName, actorStaff, actorUserId);
         return SendForServiceResultAsync(
             HttpMethod.Patch,
             $"/api/operations-tasks/{id:D}",
             request,
+            cancellationToken);
+    }
+
+    public Task<(OperationsTaskDto? Result, string? Error)> AcceptOutputsAsync(
+        Guid id,
+        string actorUserId,
+        string? actorName,
+        StaffActor actorStaff,
+        CancellationToken cancellationToken = default)
+    {
+        _ = (actorUserId, actorName, actorStaff);
+        return SendForServiceResultAsync(
+            HttpMethod.Post,
+            $"/api/operations-tasks/{id:D}/accept-outputs",
+            new { },
             cancellationToken);
     }
 
@@ -141,10 +157,10 @@ public sealed class HttpOperationsTaskService(
         ReassignOperationsTaskRequest request,
         string actorAssigneeId,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default)
     {
-        _ = (actorAssigneeId, actorName, actorRole);
+        _ = (actorAssigneeId, actorName, actorStaff);
         return SendForServiceResultAsync(
             HttpMethod.Post,
             $"/api/operations-tasks/{id:D}/reassign",
@@ -156,10 +172,10 @@ public sealed class HttpOperationsTaskService(
         Guid id,
         bool auto,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default)
     {
-        _ = (actorName, actorRole);
+        _ = (actorName, actorStaff);
         return SendForServiceResultAsync(
             HttpMethod.Post,
             $"/api/operations-tasks/{id:D}/remind",
@@ -198,11 +214,11 @@ public sealed class HttpOperationsTaskService(
         Guid id,
         AddOperationsTaskCommentRequest request,
         string actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         string? actorName,
         CancellationToken cancellationToken = default)
     {
-        _ = (actorAssigneeId, actorRole, actorName);
+        _ = (actorAssigneeId, actorStaff, actorName);
         return SendForServiceResultAsync(
             HttpMethod.Post,
             $"/api/operations-tasks/{id:D}/comments",

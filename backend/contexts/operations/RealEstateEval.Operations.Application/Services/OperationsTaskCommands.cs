@@ -5,6 +5,7 @@ using RealEstateEval.Operations.Application.Abstractions;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Application.Rules;
 using RealEstateEval.Operations.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Operations.Application.Services;
 
@@ -91,9 +92,14 @@ public sealed partial class OperationsTaskCommands : IOperationsTaskCommands
             agreedVisitFee = visitFee;
             visitFeePricingTableId = visitTableId;
         }
-        else if (request.VisitFeeAmountSar is not null)
+        else if (request.VisitFeeAmountSar is { } agreedAmount)
         {
-            return (null, "مبلغ أتعاب الزيارة يخص مهام زيارة المحكمة فقط.");
+            // Any other task may carry a fee agreed on it (2026-11-05); no amount = a free task.
+            var (taskFee, taskFeeError) =
+                await _visitFees.ResolveAgreedTaskFeeAsync(assigneeId, agreedAmount, cancellationToken);
+            if (taskFeeError is not null)
+                return (null, taskFeeError);
+            agreedVisitFee = taskFee;
         }
 
         var resolvedCreatorName = await _notifier.ResolveActorDisplayNameAsync(
@@ -151,14 +157,14 @@ public sealed partial class OperationsTaskCommands : IOperationsTaskCommands
         PatchOperationsTaskRequest request,
         string actorAssigneeId,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         string actorUserId,
         CancellationToken cancellationToken = default)
     {
         var entity = await _repo.FindAsync(id, cancellationToken);
         if (entity is null) return (null, "المهمة غير موجودة");
 
-        var isManager = OperationsTaskLifecycleRules.IsManager(actorRole);
+        var isManager = OperationsTaskLifecycleRules.IsManager(actorStaff);
         var actor = actorAssigneeId.Trim();
         var isAssignee = actor.Length > 0
             && string.Equals(entity.AssigneeId, actor, StringComparison.OrdinalIgnoreCase);
@@ -202,7 +208,7 @@ public sealed partial class OperationsTaskCommands : IOperationsTaskCommands
                 return (null, "الحالة غير مدعومة");
 
             var error = OperationsTaskLifecycleRules.ValidateStatusTransition(
-                entity, next, actorAssigneeId, actorRole, actorName, request.PauseReason);
+                entity, next, actorAssigneeId, actorStaff, actorName, request.PauseReason);
             if (error is not null) return (null, error);
 
             var pauseReason = request.PauseReason?.Trim();
@@ -227,6 +233,15 @@ public sealed partial class OperationsTaskCommands : IOperationsTaskCommands
                 OperationsTaskCourtVisitRules.AppendResultComments(comments, normalized!, now);
                 entity.RecordCourtVisitResult(JsonSerializer.Serialize(normalized, jsonOpts), now);
                 changed = true;
+            }
+
+            // A task other than a court visit charges the fee agreed on it, when it has one.
+            if (next == OperationsTaskStatus.Completed
+                && !entity.IsCourtVisit
+                && entity.Status != OperationsTaskStatus.Completed
+                && entity.AgreedVisitFeeSar is > 0m)
+            {
+                courtVisitFee = new ResolvedPartyFee(entity.AgreedVisitFeeSar, entity.VisitFeePricingTableId);
             }
 
             if (next == OperationsTaskStatus.Completed)
@@ -319,7 +334,7 @@ public sealed partial class OperationsTaskCommands : IOperationsTaskCommands
         entity.ReplaceComments(JsonSerializer.Serialize(comments, jsonOpts), now);
 
         await _repo.SaveChangesAsync(cancellationToken);
-        if (becameCompletedCourtVisit && courtVisitFee.IsResolved)
+        if (becameCompleted && courtVisitFee.IsResolved)
             await _visitFees.AddCourtVisitFeeChargeAsync(entity, courtVisitFee, cancellationToken);
 
         if (becameReceiptConfirmed)
@@ -359,10 +374,10 @@ public sealed partial class OperationsTaskCommands : IOperationsTaskCommands
         ReassignOperationsTaskRequest request,
         string actorAssigneeId,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default)
     {
-        if (!OperationsTaskLifecycleRules.IsManager(actorRole))
+        if (!OperationsTaskLifecycleRules.IsManager(actorStaff))
             return (null, "هذا الإجراء للمنشئ أو المشرف فقط");
 
         var entity = await _repo.FindAsync(id, cancellationToken);
@@ -403,6 +418,43 @@ public sealed partial class OperationsTaskCommands : IOperationsTaskCommands
         await _repo.SaveChangesAsync(cancellationToken);
 
         await _notifier.NotifyAssigneeAsync(entity, cancellationToken);
+        return (await _query.MapAsync(entity, cancellationToken), null);
+    }
+
+    public const string AcceptOutputsForbiddenAr = "قبول مخرجات المهمة لمنشئها، أو للمشرف والتنسيق في غيابه";
+    public const string AcceptOutputsNotCompletedAr = "تُقبل المخرجات بعد إغلاق المنفّذ للمهمة";
+
+    /// <summary>The creator accepts what a completed task delivered (see the interface).</summary>
+    /// <remarks>
+    /// How it works: the creator, or a task manager (supervisor / CDO / coordination) when he is absent;
+    /// the task must be completed; stamps the acceptance once and adds a thread line naming who accepted.
+    /// Edge cases: a repeated acceptance returns the task unchanged; unknown task → «المهمة غير موجودة».
+    /// </remarks>
+    public async Task<(OperationsTaskDto? Result, string? Error)> AcceptOutputsAsync(
+        Guid id,
+        string actorUserId,
+        string? actorName,
+        StaffActor actorStaff,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await _repo.FindAsync(id, cancellationToken);
+        if (entity is null) return (null, "المهمة غير موجودة");
+        var isCreator = !string.IsNullOrWhiteSpace(actorUserId)
+            && string.Equals(entity.CreatedBy?.Trim(), actorUserId.Trim(), StringComparison.Ordinal);
+        if (!isCreator && !OperationsTaskLifecycleRules.IsManager(actorStaff))
+            return (null, AcceptOutputsForbiddenAr);
+        if (entity.Status != OperationsTaskStatus.Completed)
+            return (null, AcceptOutputsNotCompletedAr);
+
+        var now = _time.GetUtcNow().UtcDateTime;
+        if (entity.AcceptOutputs(actorUserId, actorName, now))
+        {
+            var comments = OperationsTaskSerialization.DeserializeComments(entity.CommentsJson).ToList();
+            comments.Add(OperationsTaskCommandRules.SystemComment(
+                $"قُبلت مخرجات المهمة — {(string.IsNullOrWhiteSpace(actorName) ? "المنشئ" : actorName.Trim())}", now));
+            entity.ReplaceComments(JsonSerializer.Serialize(comments, OperationsTaskSerialization.JsonOpts), now);
+            await _repo.SaveChangesAsync(cancellationToken);
+        }
         return (await _query.MapAsync(entity, cancellationToken), null);
     }
 

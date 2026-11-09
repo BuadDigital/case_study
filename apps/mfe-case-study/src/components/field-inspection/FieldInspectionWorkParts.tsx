@@ -78,7 +78,7 @@ import {
   type InspectorComponentPhotoKey,
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { finalizeInspectorWorkspace } from "../../lib/app-data/finalize-field-inspection-submission";
 import {
   getOrCreateInspectorWorkspace,

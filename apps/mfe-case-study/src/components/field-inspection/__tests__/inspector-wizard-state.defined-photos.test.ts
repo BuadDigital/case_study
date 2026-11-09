@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   serviceAmenityPhotoSlotId,
   type InspectorSlotPhoto,
-} from "../../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   DEFINED_PHOTOS_EMPTY_TEXT,
   definedPhotosIntroText,

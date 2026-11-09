@@ -1,3 +1,8 @@
+import {
+  PARTY_TASK_RECALL_CHANGED_EVENT,
+  PARTY_TASK_RECALL_REQUESTED_EVENT,
+} from "../events/app-events";
+
 export type PartyTaskRecallStatus = "pending" | "approved" | "rejected";
 
 export type PartyTaskRecallResult =
@@ -26,11 +31,6 @@ type PartyTaskRecallRow = {
   requestedAtUtc: string;
   resolvedAtUtc: string | null;
 };
-
-export const PARTY_TASK_RECALL_CHANGED_EVENT = "party-task-recall-changed";
-export const PARTY_TASK_RECALL_HYDRATED_EVENT = "party-task-recall-hydrated";
-
-export const PARTY_TASK_RECALL_REQUESTED_EVENT = "party-task-recall-requested";
 
 /**
  * Process-wide recall cache. Both the hydrators (reads) and the request/approve

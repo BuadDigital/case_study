@@ -25,7 +25,7 @@ import {
 import {
   ACCESS_CONTACT_NATIONAL_ID_LABEL,
   normalizeSaudiNationalId,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 
 function ContactPhoneField({
   id,

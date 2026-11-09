@@ -35,6 +35,7 @@ import {
   syncStatusLabel,
   type FieldSyncHeartbeatMeta,
 } from "@/components/offline-sync-state";
+import { APP_TOAST_EVENT } from "@platform/app-shared/events/app-events";
 
 async function reportFieldSyncHeartbeat(
   items: OfflineOutboxItem[],
@@ -130,7 +131,7 @@ export function useOfflineSyncCoordinator(): OfflineSyncCoordinatorState {
           if (!lease) return;
           for (const message of offlineLeaseToasts(lease)) {
             window.dispatchEvent(
-              new CustomEvent("ejada-toast", { detail: { message } }),
+              new CustomEvent(APP_TOAST_EVENT, { detail: { message } }),
             );
           }
           if (lease.locked) setLocked(true);

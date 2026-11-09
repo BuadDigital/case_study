@@ -4,7 +4,7 @@ import {
   cn,
   opsEmptyHint,
 } from "@platform/ui-kit";
-import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
 import {
   downloadPropertyDetailDocument,
@@ -165,12 +165,12 @@ export function EvaluatorPropertyTab({
 }) {
   return (
     <div>
-      {/* The report number is no longer reserved at distribution — the note
-          says it is fixed at report approval, from the transaction's official PR reference. */}
+      {/* The report number is no longer reserved at distribution — the note says it is fixed at
+          report approval, from the transaction number (or the linked property's PR-…-L number). */}
       <EngInfo>
         تُستخدم هذه البيانات لتسجيل أمر عمل تقييم عقاري. أكمل التقييم في
         التبويبات التالية؛ التقرير يُولَّد من النظام عند الاعتماد ويُصدَر PDF.
-        رقم التقرير يُثبَّت عند اعتماد التقرير من رقم المعاملة.
+        رقم التقرير يُثبَّت عند اعتماد التقرير من رقم المعاملة (أو رقم العقار المرتبط).
       </EngInfo>
 
       <EngSection>بيانات الصك</EngSection>

@@ -11,13 +11,15 @@ export { FavoriteTransactionsView } from "./views/FavoriteTransactionsView";
 export { ActiveDistributionView } from "./views/ActiveDistributionView";
 export { ActiveCaseStudyView } from "./views/ActiveCaseStudyView";
 export { SystemUploadView } from "./views/SystemUploadView";
+export { ActiveReceiptView } from "./views/ActiveReceiptView";
+export { MyWorkView } from "./views/MyWorkView";
 export { OperationsTasksView } from "./views/OperationsTasksView";
 export { PartyActiveTaskView } from "./views/PartyActiveTaskView";
 export { PartyActiveTaskWorkPage } from "./views/PartyActiveTaskWorkPage";
 export type {
   PartyAppraisalExtensions,
   PartyEvaluatorWorkHostRef,
-} from "./lib/party-appraisal-extensions";
+} from "@platform/app-shared/party-appraisal/party-appraisal-extensions";
 export type {
   PartyEngineeringSurveyExtensions,
   PartyEngineeringSurveyWorkHostRef,
@@ -38,7 +40,18 @@ export { PoPropertyFailureRoute } from "./views/po-routes/PoPropertyFailureRoute
 
 export * from "@platform/app-shared/domain/po-routes";
 export * from "./lib/my-task-routes";
-export * from "./lib/work-orders-api-config";
+export {
+  apiErrorMessage,
+  firstApiFieldError,
+  mutationFromApiResult,
+  notifyWorkOrdersChanged,
+  notifyWorkOrderPropertyChanged,
+  requireWorkOrdersApiConfig,
+  resolveApiError,
+  unwrapApiResult,
+  workOrdersApiConfig,
+  type MutationResult,
+} from "@platform/app-shared/app-data/work-orders-api-config";
 export * from "./lib/app-data/po-intake-data";
 export * from "./lib/app-data/po-intake-model";
 export * from "./lib/app-data/po-intake-reads";
@@ -54,7 +67,21 @@ export * from "./lib/app-data/active-transactions-situation";
 export * from "./lib/app-data/case-study-report-data";
 export * from "@platform/app-shared/domain/case-study/question-catalog";
 export * from "./query/case-study-question-catalog-queries";
-export * from "./lib/app-data/case-study-report-model";
+export {
+  type CaseStudyReportAnswer,
+  type SaveCaseStudyReportDraftResult,
+  type CaseStudyReportStatus,
+  type CaseStudyMeterType,
+  type CaseStudyAnswerProvenanceEntry,
+  type CaseStudyReportDraft,
+  CASE_STUDY_ANSWER_NOTES_KEY,
+  caseStudyReportDtoToDraft,
+  caseStudyReportDraftToDto,
+  emptyCaseStudyReportDraft,
+  mergeCaseStudyAnswersPayload,
+  splitCaseStudyAnswersPayload,
+  notifyPartyCaseStudyReportChanged,
+} from "@platform/app-shared/app-data/case-study-report-model";
 export * from "./lib/app-data/case-study-report-reads";
 export * from "./lib/app-data/case-study-report-commands";
 export * from "./lib/app-data/case-study-tracks";

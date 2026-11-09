@@ -18,7 +18,7 @@ import {
   isCommercialShopInspectionContext,
   isLandInspectionContext,
   visibleInspectorFeatureFields,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { emptyProperty } from "../../lib/app-data/po-intake-data";
 import { FieldInspectionWorkHostRef } from "./FieldInspectionWorkParts";
@@ -78,7 +78,6 @@ export function FieldInspectionWorkBody({
   const workflow = useFieldInspectionWorkflow({ task, hostRef });
   const {
     activeStep,
-    boundariesUnavailable,
     cancelPendingMapMove,
     confirmPendingMapMove,
     draft,
@@ -95,7 +94,6 @@ export function FieldInspectionWorkBody({
     saveDraft,
     scrollToErrorTarget,
     setActiveStep,
-    showToast,
     workLocked,
   } = workflow;
   const stepPanelRef = useRef<HTMLDivElement>(null);
@@ -205,6 +203,7 @@ export function FieldInspectionWorkBody({
           <InspectorAccessPhotosCards
             {...workflow}
             draft={draft}
+            isLand={isLandInspection}
             layout={layout}
             mobile={mobile}
           />
@@ -238,7 +237,8 @@ export function FieldInspectionWorkBody({
 
           <InspectorInventoryCard activeStep={activeStep} draft={draft} fieldErrors={fieldErrors} layout={layout} mobile={mobile} persist={persist} poNumber={task.poNumber} propertyId={propertyId} taskId={task.id} workLocked={workLocked} />
 
-          {!boundariesUnavailable && property ? (
+          {/* Shown even when the bourse says «الحدود غير متوفرة» — the inspector supplies them (Omar 2026-11-04). */}
+          {property ? (
             <InspectorBoundariesCard
               {...workflow}
               draft={draft}
@@ -285,7 +285,6 @@ export function FieldInspectionWorkBody({
             photoStamp={photoStamp}
             property={property}
             role={role}
-            showToast={showToast}
           />
 
           <InspectorComparablesAndQuestionsCards

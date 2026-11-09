@@ -45,7 +45,7 @@ import type {
 import type {
   PartyAppraisalExtensions,
   PartyEvaluatorWorkHostRef,
-} from "../lib/party-appraisal-extensions";
+} from "@platform/app-shared/party-appraisal/party-appraisal-extensions";
 import type {
   PartyEngineeringSurveyExtensions,
   PartyEngineeringSurveyWorkHostRef,
@@ -518,8 +518,10 @@ export function PartyActiveTaskWork({
       property?.propertyType?.trim() ||
       property?.classification?.trim() ||
       "—";
+    // The appraiser's list hides the office's row — the server sends the completed survey's id.
     const surveyTaskId =
-      findSiblingSurveyTask(task, allWorkflowTasks)?.id ?? null;
+      findSiblingSurveyTask(task, allWorkflowTasks)?.id ??
+      (task.engineeringSurveyTaskId?.trim() || null);
     const inspectionTaskId =
       task.fieldInspectionTaskId?.trim() ||
       findSiblingInspectionTask(task, allWorkflowTasks)?.id ||

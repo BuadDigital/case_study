@@ -21,6 +21,11 @@
 //  • section 20 landValueRows come from costLandReportRows.
 //  • Comparable transaction dates print as yyyy/mm/dd; the membership expiry date goes through
 //          displayLicenseDate.
+// A→Z run 2026-11-02 fixes (2026-11-04)
+//  • Purpose from the work order's saved key (#16/#28); office boundaries typed in the deed fields
+//         print (#17); «مشاع — حق منفعة…» (#50); «أرض فقط» scope row (#71); facade direction fills
+//         «الواجهات» (#68); land keeps its services (#2); flat / showroom counts in section 10 (#54);
+//         inspector age in «عمر البناء» (#29); deed / minutes / licence dates as yyyy/mm/dd (#8/#35).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -32,15 +37,13 @@ import {
   VALUE_BASIS_OPTIONS,
   VALUE_PREMISE_OPTIONS,
   VALUATION_PURPOSE_OPTIONS,
-  basisOfValueKeyForAssignment,
   basisOfValueLabelArForAssignment,
   defaultPremiseKeyForBasis,
-  valuationPurposeKeyForAssignment,
+  resolveAssignmentValuationKeys,
   valuationPurposeLabelArForAssignment,
-  valuePremiseKeyForAssignment,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
-import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
-import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
+import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-assignment";
 import { boundariesMarkedUnavailable } from "@platform/app-shared/app-data/po-intake-identifiers";
 import {
   OTHER_ATTACHMENTS_KEY,
@@ -59,8 +62,9 @@ import {
 import {
   formatArabicYears,
   formatReportAgeText,
+  formatReportCalendarDate,
   formatReportPropertyAgeYears,
-  reportPropertyAgeYearsFromLicense,
+  reportBuildingAgeLabel,
 } from "./valuation-report-property-age";
 import {
   applyIvsDateToStandards,
@@ -109,7 +113,7 @@ import {
   existsIf,
   type SheetTableRow,
 } from "./valuation-report-sheet-facts";
-import { escHtml } from "./html-escape";
+import { escHtml } from "@platform/app-shared/lib/html-escape";
 import type { ValuationReportSlotAttachment } from "./valuation-report-print-attachments";
 import {
   applyReportDateToken,
@@ -165,30 +169,56 @@ function slashReportDate(iso: string | null | undefined): string {
   return m ? `${m[1]}/${m[2]}/${m[3]}` : t;
 }
 
+/**
+ * The work order's purpose, basis and premise keys.
+ *
+ * How it works: the keys the specialist saved on the work order (intake / header edit) through
+ * the shared resolveAssignmentValuationKeys — each blank key falls back to the assignment type's
+ * default, and a premise that does not fit the basis is replaced by the basis default.
+ *
+ * Edge cases: no assignment type → only the saved keys (blank when none). Fixed 2026-11-04: the
+ * saved keys were ignored, so a work order for «تصفية التركات» or «البيع» printed the assignment
+ * type's default «البيع بالمزاد العلني لغرض التصفية».
+ */
 export function assignmentValuationFromPo(
   record?: Pick<
     PoIntakeRecord,
-    "assignmentType" | "reportUserClientIds" | "clientId"
+    | "assignmentType"
+    | "reportUserClientIds"
+    | "clientId"
+    | "valuationPurposeKey"
+    | "basisOfValueKey"
+    | "valuePremiseKey"
   > | null,
 ): { purposeKey: string; valueBasisKey: string; premiseKey: string } {
-  const type = record?.assignmentType?.trim() ?? "";
-  if (!type) {
-    return { purposeKey: "", valueBasisKey: "", premiseKey: "" };
-  }
   const sub = subClientIdFromReportUsers(record?.reportUserClientIds);
-  const purposeKey = valuationPurposeKeyForAssignment(type, sub);
-  const valueBasisKey = basisOfValueKeyForAssignment(type, sub);
+  const keys = resolveAssignmentValuationKeys(
+    record?.assignmentType,
+    {
+      purposeKey: record?.valuationPurposeKey,
+      basisKey: record?.basisOfValueKey,
+      premiseKey: record?.valuePremiseKey,
+    },
+    sub,
+  );
   return {
-    purposeKey,
-    valueBasisKey,
-    premiseKey: valuePremiseKeyForAssignment(type, sub),
+    purposeKey: keys.purposeKey,
+    valueBasisKey: keys.basisKey,
+    premiseKey: keys.premiseKey,
   };
 }
 
 /**
- * Purpose, basis and premise the report prints: the appraiser's saved choices
- * (reconciliation basis/premise, approach-settings purpose); the work order's defaults only
- * when nothing was chosen.
+ * Purpose, basis and premise the report prints.
+ *
+ * How it works: basis / premise — the appraiser's reconciliation choices, else the work order's.
+ * Purpose — the work order's saved purpose first (the specialist sets it at intake; the approach
+ * settings have no purpose picker and always save the assignment default), then the approach
+ * settings' purpose, then the assignment default.
+ *
+ * Edge cases: a work order without a saved purpose keeps the approach-settings purpose. Fixed
+ * 2026-11-04 (A→Z #16/#28): the report printed «البيع بالمزاد العلني لغرض التصفية» for work orders
+ * saved as «تصفية التركات» / «البيع».
  */
 export function resolveReportValuationKeys(input: {
   record?: Parameters<typeof assignmentValuationFromPo>[0];
@@ -204,8 +234,9 @@ export function resolveReportValuationKeys(input: {
     savedPremise ||
     (valueBasisKey === po.valueBasisKey ? po.premiseKey : "") ||
     (valueBasisKey ? defaultPremiseKeyForBasis(valueBasisKey) : "");
+  const workOrderPurpose = (input.record?.valuationPurposeKey ?? "").trim();
   return {
-    purposeKey: (input.purposeKey ?? "").trim() || po.purposeKey,
+    purposeKey: workOrderPurpose || (input.purposeKey ?? "").trim() || po.purposeKey,
     valueBasisKey,
     premiseKey,
   };
@@ -232,19 +263,31 @@ function ownershipTypeDisplay(value: string | null | undefined): string {
 /**
  * «نوع الملكية»: what the appraiser recorded for this valuation ( — e.g. a building on
  * leased land, with the remaining lease years), else the deed's ownership (owner count).
+ *
+ * How it works: freehold (or nothing recorded) prints the deed's ownership type (تامة / مشاع);
+ * a partial interest prints its label and the remaining years; on a deed with several owners the
+ * interest follows «مشاع — », e.g. «مشاع — حق منفعة، المدة المتبقية 20 سنة».
+ *
+ * Edge cases: «مرهون» is never printed here (ruling 2026-10-06: the type comes from the owners
+ * count only). Fixed 2026-11-04 (A→Z #50): a usufruct on a shared deed dropped «مشاع».
  */
 function ownershipCell(
   recorded: { key?: string | null; labelAr?: string | null; remainingLeaseYears?: number | null } | null | undefined,
   deedOwnership: string | null | undefined,
 ): string {
   const key = (recorded?.key ?? "").trim().toLowerCase();
+  const deed = ownershipTypeDisplay(deedOwnership);
   // «ملكية تامة» (freehold) prints the deed's own ownership type (تامة / مشاع).
-  if (!key || key === "freehold") return ownershipTypeDisplay(deedOwnership);
+  if (!key || key === "freehold") return deed;
   const label = (recorded?.labelAr ?? "").trim() || ownershipTypeDisplay(key);
   const years = recorded?.remainingLeaseYears;
-  return years != null && Number.isFinite(years) && years > 0
-    ? `${label} — المدة المتبقية ${formatArabicYears(years)}`
-    : label;
+  const hasYears = years != null && Number.isFinite(years) && years > 0;
+  if (deed === OWNERSHIP_LABELS.shared) {
+    return hasYears
+      ? `${deed} — ${label}، المدة المتبقية ${formatArabicYears(years)}`
+      : `${deed} — ${label}`;
+  }
+  return hasYears ? `${label} — المدة المتبقية ${formatArabicYears(years)}` : label;
 }
 
 /** The interest key as the report wording needs it: a usufruct right or leased land. */
@@ -293,13 +336,133 @@ function withUnavailableBoundaries<T extends { bound: string; len: string }>(
 
 const BOUNDARIES_UNAVAILABLE = "غير متوفرة";
 
-function pickLength(
-  survey: string | null | undefined,
-  property: string | null | undefined,
+type BoundarySide = "north" | "east" | "south" | "west";
+
+/** Section 08 sides in print order, with the survey / bourse fields of each. */
+const BOUNDARY_SIDES: ReadonlyArray<{
+  side: BoundarySide;
+  name: string;
+  survey: {
+    bound: keyof ValuationReportSurveyBounds;
+    len: keyof ValuationReportSurveyBounds;
+    natureBound: keyof ValuationReportSurveyBounds;
+    natureLen: keyof ValuationReportSurveyBounds;
+  };
+  property: {
+    bound: "northBoundary" | "eastBoundary" | "southBoundary" | "westBoundary";
+    len: "northBoundaryLengthM" | "eastBoundaryLengthM" | "southBoundaryLengthM" | "westBoundaryLengthM";
+  };
+}> = [
+  {
+    side: "north",
+    name: "الشمالية",
+    survey: {
+      bound: "northBoundary",
+      len: "northBoundaryLengthM",
+      natureBound: "natureNorthBoundary",
+      natureLen: "natureNorthBoundaryLengthM",
+    },
+    property: { bound: "northBoundary", len: "northBoundaryLengthM" },
+  },
+  {
+    side: "east",
+    name: "الشرقية",
+    survey: {
+      bound: "eastBoundary",
+      len: "eastBoundaryLengthM",
+      natureBound: "natureEastBoundary",
+      natureLen: "natureEastBoundaryLengthM",
+    },
+    property: { bound: "eastBoundary", len: "eastBoundaryLengthM" },
+  },
+  {
+    side: "south",
+    name: "الجنوبية",
+    survey: {
+      bound: "southBoundary",
+      len: "southBoundaryLengthM",
+      natureBound: "natureSouthBoundary",
+      natureLen: "natureSouthBoundaryLengthM",
+    },
+    property: { bound: "southBoundary", len: "southBoundaryLengthM" },
+  },
+  {
+    side: "west",
+    name: "الغربية",
+    survey: {
+      bound: "westBoundary",
+      len: "westBoundaryLengthM",
+      natureBound: "natureWestBoundary",
+      natureLen: "natureWestBoundaryLengthM",
+    },
+    property: { bound: "westBoundary", len: "westBoundaryLengthM" },
+  },
+];
+
+/**
+ * One side of section 08: its boundary and length.
+ *
+ * How it works: the engineering office's survey first — when it found the deed does not match
+ * the site, its «على الطبيعة» value, else the value it entered for the deed — then the bourse
+ * (intake) value. Same order the Enfaz panel follows (office first, bourse after).
+ *
+ * Edge cases: a value is taken per field, so an office length beside a bourse boundary still
+ * prints. Fixed 2026-11-04 (A→Z #17): an office that said «غير مطابق» but typed the four
+ * boundaries in the deed fields printed «غير متوفرة» everywhere, because only its «على الطبيعة»
+ * fields were read. The inspector's boundaries reach the report only through the property, once
+ * the specialist accepts the inspection (Omar 2026-11-04: the specialist approves, then the
+ * appraiser sees them) — never straight from the inspector's package.
+ */
+function boundarySide(
+  survey: ValuationReportSurveyBounds | null | undefined,
+  property: PoPropertyIntake | null | undefined,
+  side: (typeof BOUNDARY_SIDES)[number],
+): { bound: string; len: string } {
+  const nature = surveyUsesNature(survey);
+  const fromSurvey = (deedKey: keyof ValuationReportSurveyBounds, natureKey: keyof ValuationReportSurveyBounds) =>
+    firstFilled(nature ? (survey?.[natureKey] as string | undefined) : "", survey?.[deedKey] as string | undefined);
+  return {
+    bound: firstFilled(
+      fromSurvey(side.survey.bound, side.survey.natureBound),
+      property?.[side.property.bound],
+    ),
+    len: firstFilled(
+      fromSurvey(side.survey.len, side.survey.natureLen),
+      property?.[side.property.len],
+    ),
+  };
+}
+
+/** A facade direction word («شمالية غربية») names these sides. */
+const FACADE_DIRECTION_WORDS: Record<BoundarySide, RegExp> = {
+  north: /شمال/,
+  east: /شرق/,
+  south: /جنوب/,
+  west: /غرب/,
+};
+
+/**
+ * The «الواجهات» cell of one side in section 08.
+ *
+ * How it works: the facade finish type of that side (sideFacadeType) when someone recorded it;
+ * otherwise the inspector's «الواجهة» answer (e.g. «شمالية غربية») decides — a side it names prints
+ * «واجهة», any other side «لا يوجد».
+ *
+ * Edge cases: an apartment records no facade, so nothing is derived for it (the column is removed
+ * when printing); no facade answer and no type → "" (marked missing). Fixed 2026-11-04 (A→Z #68):
+ * the inspector's facade answer never reached the column, so all four sides printed red.
+ */
+function sideFacadeCell(
+  inspector: InspectorWorkspaceDraft | null | undefined,
+  property: PoPropertyIntake | null | undefined,
+  side: BoundarySide,
+  isApartment: boolean,
 ): string {
-  const s = (survey ?? "").trim();
-  if (s) return s;
-  return (property ?? "").trim();
+  const type = sideFacadeType(inspector, property, side);
+  if (type || isApartment) return type;
+  const direction = (inspector?.featureValues?.facade ?? "").trim();
+  if (!direction) return "";
+  return FACADE_DIRECTION_WORDS[side].test(direction) ? "واجهة" : "لا يوجد";
 }
 
 /**
@@ -600,6 +763,10 @@ export type ValuationReportLiveFill = {
   buildDescRows: Array<{ key: string; values: string[] }>;
   /** The specialist listed at least one component — section 10 prints even on land. */
   componentsListed: boolean;
+  /**
+   * Section 14. Buildings: availability, meter count and numbers per template row. Land: one
+   * availability value per service (no meters), «سفلتة» and «إنارة» included.
+   */
   serviceRows: Array<{ key: string; values: string[] }>;
   comparableRows: Array<{ key: string; values: string[] }>;
   /** Section 20 —: plot, rate after adjustments, (discount), share, land value — in that order. */
@@ -823,7 +990,9 @@ export function buildValuationReportLiveFill(input: {
       : "";
   const linkedDeedDates =
     linkedDeeds.length > 1
-      ? linkedDeeds.map((d) => transactionDeedDateOf(d) || "—").join(" ، ")
+      ? linkedDeeds
+          .map((d) => formatReportCalendarDate(transactionDeedDateOf(d)) || "—")
+          .join(" ، ")
       : "";
   const choices = draft.reportChoices ?? emptyReportChoices();
   const keys = resolveReportValuationKeys({
@@ -879,11 +1048,10 @@ export function buildValuationReportLiveFill(input: {
   const isLand = isLandInspectionContext(assetContext);
   const isApartment = isApartmentInspectionContext(assetContext);
   const licenseDateRaw = (inspector?.buildLicenseDate ?? "").trim();
-  const licenseDate =
-    slashReportDate(licenseDateRaw) || licenseDateRaw;
-  const reportAgeYears = reportPropertyAgeYearsFromLicense(licenseDateRaw);
-  const reportAgeLabel =
-    reportAgeYears == null ? "" : formatReportPropertyAgeYears(reportAgeYears);
+  // Every typed date prints yyyy/mm/dd like the rest of the report (A→Z #8/#35).
+  const licenseDate = formatReportCalendarDate(licenseDateRaw);
+  // The inspector's age (the cost approach's effective age), else the licence's (A→Z #29/#45).
+  const reportAgeLabel = reportBuildingAgeLabel(inspector?.propertyAgeYears, licenseDateRaw);
   const subjectCoords = subjectCoordsForReport(inspector);
   const coordsLabel = subjectCoords
     ? formatSubjectCoordsLabel(subjectCoords.lat, subjectCoords.lng)
@@ -936,19 +1104,24 @@ export function buildValuationReportLiveFill(input: {
     "رقم المخطط": dash(property?.planNumber),
     "رقم البلك": dash(property?.blockNumber),
     "رقم القطعة": dash(property?.plotNumber),
-    // What the inspector found on site; the classification («مبنى مفرد») is not a use.
+    // What the inspector found on site; the classification («مبنى مفرد») is not a use. The
+    // property keeps the usage from the inspector's submit on, but like every inspector field it
+    // prints only once the specialist accepted the inspection (ruling 2026-11-05) — the appraiser
+    // gets the package only then, so no package means not yet.
     "استخدام العقار": dash(
-      property?.inspectedUsage || propertyUsageValue(inspector?.featureValues?.propertyUsage),
+      inspector
+        ? property?.inspectedUsage || propertyUsageValue(inspector.featureValues?.propertyUsage)
+        : "",
     ),
     "إحداثيات الموقع": dash(coordsLabel),
     "رقم الصك": dash(linkedDeedLabels || property?.deedNumber),
-    "تاريخ الصك": dash(linkedDeedDates || property?.deedDate),
+    "تاريخ الصك": dash(linkedDeedDates || formatReportCalendarDate(property?.deedDate)),
     "رقم رخصة البناء": dash(inspector?.buildLicenseNumber),
     "تاريخ رخصة البناء": dash(licenseDate),
     ...(isLand
       ? {}
       : {
-          // Report-only: years since license issue − 2 (not the inspector age field).
+          // The inspector's age first; years since licence issue − 2 only when it is blank.
           "عمر البناء": dash(reportAgeLabel),
           "عمر العقار": dash(reportAgeLabel),
         }),
@@ -1101,7 +1274,7 @@ export function buildValuationReportLiveFill(input: {
   cells["طريق سريع"] = dash(surroundings["طريق سريع"]);
 
   cells["محضر التجزئة"] = dash(
-    [property?.partitionMinutesNumber, property?.partitionMinutesDate]
+    [property?.partitionMinutesNumber, formatReportCalendarDate(property?.partitionMinutesDate)]
       .map((x) => (x ?? "").trim())
       .filter(Boolean)
       .join(" · "),
@@ -1159,12 +1332,18 @@ export function buildValuationReportLiveFill(input: {
     input.cost ? formatMoneyCell(input.cost.costOpinionWithLand) : "",
   );
   if (!isLand) {
+    // «العمر والإهلاك» prints the age the depreciation was computed with: the appraiser's saved
+    // cost age, else the inspector's (before the cost approach is saved). Fixed 2026-11-04
+    // (PO-072172): the row showed the inspector's «أكبر من 24 عام» beside a physical
+    // obsolescence of 66.67% computed from 30 ÷ 45, so the printed figures did not add up.
     cells["العمر الفعلي"] = dash(
-      inspector?.propertyAgeYears
-        ? formatReportAgeText(inspector.propertyAgeYears)
-        : input.cost?.actualAgeYears != null
-          ? formatReportPropertyAgeYears(input.cost.actualAgeYears)
-          : "",
+      input.cost?.isSaved && input.cost.actualAgeYears != null
+        ? formatReportPropertyAgeYears(input.cost.actualAgeYears)
+        : inspector?.propertyAgeYears
+          ? formatReportAgeText(inspector.propertyAgeYears)
+          : input.cost?.actualAgeYears != null
+            ? formatReportPropertyAgeYears(input.cost.actualAgeYears)
+            : "",
     );
   }
   cells["العمر الاقتصادي"] = dash(
@@ -1348,6 +1527,8 @@ export function buildValuationReportLiveFill(input: {
     scopeRows: buildScopeRows({
       retrospective: input.retrospective,
       buildingOnly: input.costScopeKey === "building_only",
+      // A vacant land is land anyway — the statement is for a built property valued as land.
+      landOnly: input.costScopeKey === "land_only" && !isLand,
       ownership: cells["نوع الملكية"] ?? "",
     }),
     basisDefinition: resolveBasisDefinition(
@@ -1374,72 +1555,14 @@ export function buildValuationReportLiveFill(input: {
       ),
     ],
     boundariesSource: input.survey ? "survey" : "intake",
-    boundaries: withUnavailableBoundaries(property, [
-      {
-        name: "الشمالية",
-        bound: pickLength(
-          surveyUsesNature(input.survey)
-            ? input.survey?.natureNorthBoundary
-            : input.survey?.northBoundary,
-          property?.northBoundary,
-        ),
-        len: pickLength(
-          surveyUsesNature(input.survey)
-            ? input.survey?.natureNorthBoundaryLengthM
-            : input.survey?.northBoundaryLengthM,
-          property?.northBoundaryLengthM,
-        ),
-        face: sideFacadeType(inspector, property, "north"),
-      },
-      {
-        name: "الشرقية",
-        bound: pickLength(
-          surveyUsesNature(input.survey)
-            ? input.survey?.natureEastBoundary
-            : input.survey?.eastBoundary,
-          property?.eastBoundary,
-        ),
-        len: pickLength(
-          surveyUsesNature(input.survey)
-            ? input.survey?.natureEastBoundaryLengthM
-            : input.survey?.eastBoundaryLengthM,
-          property?.eastBoundaryLengthM,
-        ),
-        face: sideFacadeType(inspector, property, "east"),
-      },
-      {
-        name: "الجنوبية",
-        bound: pickLength(
-          surveyUsesNature(input.survey)
-            ? input.survey?.natureSouthBoundary
-            : input.survey?.southBoundary,
-          property?.southBoundary,
-        ),
-        len: pickLength(
-          surveyUsesNature(input.survey)
-            ? input.survey?.natureSouthBoundaryLengthM
-            : input.survey?.southBoundaryLengthM,
-          property?.southBoundaryLengthM,
-        ),
-        face: sideFacadeType(inspector, property, "south"),
-      },
-      {
-        name: "الغربية",
-        bound: pickLength(
-          surveyUsesNature(input.survey)
-            ? input.survey?.natureWestBoundary
-            : input.survey?.westBoundary,
-          property?.westBoundary,
-        ),
-        len: pickLength(
-          surveyUsesNature(input.survey)
-            ? input.survey?.natureWestBoundaryLengthM
-            : input.survey?.westBoundaryLengthM,
-          property?.westBoundaryLengthM,
-        ),
-        face: sideFacadeType(inspector, property, "west"),
-      },
-    ]),
+    boundaries: withUnavailableBoundaries(
+      property,
+      BOUNDARY_SIDES.map((side) => ({
+        name: side.name,
+        ...boundarySide(input.survey, property, side),
+        face: sideFacadeCell(inspector, property, side.side, isApartment),
+      })),
+    ),
     componentsListed: (input.inventoryLines ?? []).length > 0,
     // Section 10 «مكونات العقار»: description + area per listed component, then the built-up total.
     // (section 09 «تفاصيل المساحات» was dropped from the report.)
@@ -1450,7 +1573,7 @@ export function buildValuationReportLiveFill(input: {
       })),
       { key: "مجموع مسطحات البناء", values: ["", dashSheet(areas.builtUpTotal)] },
     ],
-    serviceRows: [
+    serviceRows: isLand ? landServiceRows(inspector) : [
       {
         key: "كهرباء",
         values: [
@@ -1572,8 +1695,10 @@ export function buildValuationReportLiveFill(input: {
       label: a.labelAr,
       value: formatMoneyCell(a.value),
     })),
+    // Only when a liquidation discount was taken — on another basis nothing is «after the
+    // discount» (A→Z #23).
     propertyValueAfterLiquidation:
-      additions.length > 0 && input.recon?.propertyValueAfterLiquidation != null
+      additions.length > 0 && liqOn && input.recon?.propertyValueAfterLiquidation != null
         ? formatMoneyCell(input.recon.propertyValueAfterLiquidation)
         : "",
     isLiquidation,
@@ -1783,10 +1908,48 @@ export function buildFinalValueRows(input: {
   return rows;
 }
 
-/** Section 2 statements: retrospective rationale; the building-only scope (land not valued). */
+/** Section 14 on land: the printed service name and the inspector's option behind it. */
+const LAND_SERVICES: ReadonlyArray<[string, string]> = [
+  ["كهرباء", "كهرباء"],
+  ["ماء", "ماء"],
+  ["صرف صحي", "صرف صحي"],
+  ["هاتف / ألياف بصرية", "هاتف / اتصالات"],
+];
+
+/**
+ * Section 14 rows for vacant land: one availability value per service, no meters.
+ *
+ * How it works: the template's four service rows print «متوفر» / «غير متوفر» by the shared presentChip
+ * rule. «سفلتة» and «إنارة» have no row in the report and get none (Omar 2026-11-04: the report keeps
+ * its own places, no fields are added to it).
+ *
+ * Edge cases: nothing picked → every row «—» and the section is dropped when printing. Added
+ * 2026-11-04 (A→Z #2): section 14 was removed for land, so the services never printed.
+ */
+function landServiceRows(
+  inspector: InspectorWorkspaceDraft | null | undefined,
+): Array<{ key: string; values: string[] }> {
+  return LAND_SERVICES.map(([key, option]) => ({
+    key,
+    values: [presentChip(inspector?.services, option)],
+  }));
+}
+
+/**
+ * Section 2 statements: retrospective rationale; what a partial scope covers.
+ *
+ * How it works: one row for the retrospective date and its rationale; «مباني فقط» adds that the
+ * value covers the buildings only (naming a leased-land / usufruct interest); «أرض فقط» on a built
+ * property adds that the value covers the land only, without the buildings on it.
+ *
+ * Edge cases: added 2026-11-04 (A→Z #71) — a villa valued «أرض فقط» printed no scope statement,
+ * so the land value read as the villa's value.
+ */
 function buildScopeRows(input: {
   retrospective?: { date: string; dateEnd?: string | null; rationale: string } | null;
   buildingOnly: boolean;
+  /** «أرض فقط» on a property with buildings — the buildings are left out of the value. */
+  landOnly?: boolean;
   /** «نوع الملكية» as printed — a leased-land / usufruct right is named in the scope. */
   ownership: string;
 }): Array<{ label: string; value: string }> {
@@ -1806,6 +1969,12 @@ function buildScopeRows(input: {
     rows.push({
       label: "نطاق التقييم",
       value: `يقتصر التقييم على المباني والتحسينات القائمة${ownership}، ولا تشمل القيمة الأرض.`,
+    });
+  }
+  if (input.landOnly) {
+    rows.push({
+      label: "نطاق التقييم",
+      value: "يقتصر التقييم على الأرض دون المباني والإنشاءات القائمة عليها، ولا تشمل القيمة المباني.",
     });
   }
   return rows;
@@ -1828,12 +1997,20 @@ function buildAgeNotes(
     // The note names the interest the appraiser recorded: a usufruct right is not a lease.
     const usufruct = interest === "usufruct";
     const term = usufruct ? "مدة حق المنفعة" : "مدة الإيجار";
+    // The life is the actual age plus the remaining term — the building cannot outlast the right.
+    // Fixed 2026-11-04 (A→Z #08): «عمر 26 سنة لأنه لا يتجاوز مدة الإيجار المتبقية (12 سنة)» read as
+    // if 26 were within 12; the sentence now says how 26 is made.
+    const actualAge = cost.actualAgeYears;
+    const made =
+      actualAge != null && actualAge > 0
+        ? `وهو العمر الفعلي (${formatArabicYears(actualAge)}) مضافاً إليه ${term} المتبقية (${formatArabicYears(lease)})`
+        : `وهو ${term} المتبقية (${formatArabicYears(lease)})`;
     rows.push({
       label: `تحديد العمر ب${term}`,
       value:
         `${usufruct ? "المباني مقيّمة بموجب حق منفعة" : "المباني مقامة على أرض مستأجرة"}: ` +
-        `حُسب الإهلاك على عمر ${formatArabicYears(life ?? lease)} ` +
-        `لأنه لا يتجاوز ${term} المتبقية (${formatArabicYears(lease)}).`,
+        `حُسب الإهلاك على عمر ${formatArabicYears(life ?? lease)}، ${made}، ` +
+        `لأن العمر المتبقي للمباني لا يتجاوز ${term}.`,
     });
   }
   return rows;

@@ -134,7 +134,11 @@ public sealed class ComparablePropertyService(
         var now = _time.UtcNow();
         var id = Guid.NewGuid();
         var entity = MapToEntity(new ComparableProperty { Id = id }, request);
-        entity.ReferenceCode = BuildReferenceCode(id);
+        // CMP-{YY}-{seq} from the bank's yearly counter (ruling 2026-11-08), not letters of the id.
+        var (code, codeError) = await repo.AllocateReferenceCodeAsync(now, cancellationToken);
+        if (codeError is not null || string.IsNullOrWhiteSpace(code))
+            return (null, new Dictionary<string, string> { ["_"] = codeError ?? "تعذّر تخصيص رقم العقار المقارن." });
+        entity.ReferenceCode = code;
         entity.EnteredByUserId = string.IsNullOrWhiteSpace(enteredByUserId)
             ? null
             : enteredByUserId.Trim();
@@ -445,9 +449,6 @@ public sealed class ComparablePropertyService(
             entity.Id, entity.District, AnomalyPeerSample, cancellationToken);
         return ComparablePropertyRules.PricePerSqmAnomalyNote(entity.PricePerSqm, peers);
     }
-
-    private static string BuildReferenceCode(Guid id) =>
-        $"CMP-{id.ToString("N")[..8].ToUpperInvariant()}";
 
     private static string? Normalize(string? value) => Texts.NullIfBlank(value);
 

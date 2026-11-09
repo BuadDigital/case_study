@@ -195,15 +195,17 @@ public partial class WorkOrderService : IWorkOrderService
         {
             propDto.Id = null;
             var mappedProperty = _properties.MapPropertyEnfath(propDto, workOrder.Id, forInsert: true);
-            // Every deed opens its own draft transaction (TMP- number); the
-            // official PR reference comes at the first report approval, never at intake.
+            // Every deed opens its own transaction; a deed entered here passed the full initial-data
+            // check above, so this is its first full save and it takes its PR number now (ruling 2026-11-08).
             var now = _time.UtcNow();
-            var (draftNumber, referenceError) =
-                await _db.AllocateTransactionDraftNumberAsync(now, cancellationToken);
-            if (referenceError is not null)
-                return (null, new Dictionary<string, string> { ["_"] = referenceError });
-            mappedProperty.Transaction = Transaction.CreateDraft(draftNumber!, now);
+            var (deedNumber, referenceError) =
+                await _db.AllocateDeedReferenceAsync(now, cancellationToken);
+            if (referenceError is not null || string.IsNullOrWhiteSpace(deedNumber))
+                return (null, new Dictionary<string, string> { ["_"] = referenceError ?? "تعذّر تخصيص رقم المعاملة." });
+            mappedProperty.Transaction = Transaction.Create(now);
             mappedProperty.TransactionId = mappedProperty.Transaction.Id;
+            mappedProperty.Transaction.Properties.Add(mappedProperty);
+            mappedProperty.AssignReferenceNumber(deedNumber, now);
             workOrder.Properties.Add(mappedProperty);
         }
 
@@ -302,12 +304,25 @@ public partial class WorkOrderService : IWorkOrderService
         return await _query.WithResolvedSpecialistAsync(WorkOrderMapper.ToDto(entity), cancellationToken);
     }
 
+    public const string NumberedWorkOrderDeleteAr = "أمر العمل فيه معاملات مرقّمة — ألغِه بدل حذفه";
+
+    /// <summary>Deletes a work order and everything keyed to its PO — only while none of its deeds is numbered.</summary>
+    /// <remarks>
+    /// How it works: loads the order; refuses when any deed (removed ones included) has its PR number;
+    /// otherwise runs the cascade delete.
+    /// Edge cases: a number is official from the first full save of the initial data (ruling 2026-11-08),
+    /// so an order past that point is cancelled («أمر عمل ملغى»), never erased — the number stays explained
+    /// by its record. An order whose slots were only opened (no number yet) can still be deleted.
+    /// </remarks>
     public async Task<(bool Ok, string? Error)> DeleteAsync(
         string poNumber,
         CancellationToken cancellationToken)
     {
         var entity = await _loader.LoadAsync(poNumber, cancellationToken);
         if (entity is null) return (false, "أمر العمل غير موجود");
+        // A numbered deed's number must stay with its record (ruling 2026-11-08): cancel the order instead.
+        if (entity.Properties.Any(p => !string.IsNullOrWhiteSpace(p.ReferenceNumber)))
+            return (false, NumberedWorkOrderDeleteAr);
 
         var n = IWorkOrderLoader.NormalizePo(poNumber);
         await _db.DeleteWorkOrderCascadeAsync(entity, n, cancellationToken);
@@ -346,8 +361,10 @@ public partial class WorkOrderService : IWorkOrderService
         WorkOrderPropertyDto property,
         CancellationToken cancellationToken,
         bool softDraft = false,
-        string? actorName = null) =>
-        _properties.UpdatePropertyAsync(poNumber, propertyId, property, cancellationToken, softDraft, actorName);
+        string? actorName = null,
+        PartySubmissionActor? changeActor = null) =>
+        _properties.UpdatePropertyAsync(
+            poNumber, propertyId, property, cancellationToken, softDraft, actorName, changeActor);
 
 
     public Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateSpecialistReportExtrasAsync(
@@ -368,8 +385,9 @@ public partial class WorkOrderService : IWorkOrderService
         Guid propertyId,
         UpdatePropertyBourseRequest request,
         CancellationToken cancellationToken,
-        string? actorName = null) =>
-        _properties.CompleteBourseDataAsync(poNumber, propertyId, request, cancellationToken, actorName);
+        string? actorName = null,
+        PartySubmissionActor? changeActor = null) =>
+        _properties.CompleteBourseDataAsync(poNumber, propertyId, request, cancellationToken, actorName, changeActor);
 
     public Task<(bool Ok, string? Error)> DeletePropertyAsync(
         string poNumber,

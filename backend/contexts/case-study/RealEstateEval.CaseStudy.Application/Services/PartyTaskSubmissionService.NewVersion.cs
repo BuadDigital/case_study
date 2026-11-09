@@ -19,7 +19,7 @@ public partial class PartyTaskSubmissionService
         PartySubmissionActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanReopenValuationReport(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanReopenValuationReport(actor.Staff))
             return (null, Error(NewVersionForbiddenAr));
 
         var task = await _repo.GetTaskAsync(taskId, cancellationToken);

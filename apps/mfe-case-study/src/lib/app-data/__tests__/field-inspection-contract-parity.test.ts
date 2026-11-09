@@ -11,7 +11,7 @@ import {
   isCommercialShopInspectionContext,
   INSPECTOR_PHOTOS_NOT_UPLOADED_MESSAGE,
   mapPinPatchForActor,
-} from "../inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   inspectorMustDecideDeedMatch,
   validateInspectorWorkspace,
@@ -207,6 +207,49 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(validateInspectorWorkspace(draft).boundaries).toBeUndefined();
   });
 
+  describe("requirePhotoMinimums (10 exterior, 20 interior — inspector submit, opt-in)", () => {
+    const require = { requirePhotoMinimums: true } as const;
+    const photos = (category: string, count: number, from = 1) =>
+      Array.from({ length: count }, (_, i) => ({
+        id: from + i,
+        category,
+        approved: true,
+        fileName: `p${from + i}.jpg`,
+        mimeType: "image/jpeg",
+        attachmentId: `att-${from + i}`,
+      }));
+
+    it("does nothing without the option — the specialist's accept path is unchanged", () => {
+      expect(validateInspectorWorkspace(completeDraft()).freePhotos).toBeUndefined();
+    });
+
+    it("names each bucket short of its floor", () => {
+      const draft = completeDraft();
+      draft.freePhotos = [...photos("exterior:facade", 3), ...photos("interior:other", 19, 100)];
+      expect(validateInspectorWorkspace(draft, require).freePhotos).toBe(
+        "أكمل صور العقار (الحد الأدنى): صور خارجية 3 من 10، صور داخلية 19 من 20",
+      );
+      expect(inspectorWizardStepForErrorTarget(
+        firstInspectorWorkspaceErrorTarget(validateInspectorWorkspace(draft, require))!,
+      )).toBe(1);
+    });
+
+    it("passes at 10 exterior and 20 interior, an unbucketed photo counting for neither", () => {
+      const draft = completeDraft();
+      draft.freePhotos = [...photos("exterior", 10), ...photos("interior:service", 20, 100)];
+      expect(validateInspectorWorkspace(draft, require).freePhotos).toBeUndefined();
+      draft.freePhotos = [...photos("exterior", 9), ...photos("", 1, 50), ...photos("interior", 20, 100)];
+      expect(validateInspectorWorkspace(draft, require).freePhotos).toContain("صور خارجية 9 من 10");
+    });
+
+    it("asks land for exterior photos only", () => {
+      const land = completeDraft();
+      land.featureValues.assetSubject = "أرض";
+      land.freePhotos = photos("exterior", 10);
+      expect(validateInspectorWorkspace(land, require).freePhotos).toBeUndefined();
+    });
+  });
+
   describe("requireLandStructures (inspector submit gate, opt-in)", () => {
     const require = { requireLandStructures: true } as const;
 
@@ -394,6 +437,57 @@ describe("Field inspection frontend/backend rule parity", () => {
     expect(inspectorWizardStepForErrorTarget("ins-boundary-south")).toBe(2);
     expect(inspectorWizardStepForErrorTarget("ins-confirm")).toBe(3);
     expect(inspectorWizardStepForErrorTarget("ins-observation-obs-1")).toBe(3);
+  });
+
+  /** 2026-11-04: the phone body has its own step order; it used the desktop's. */
+  it("maps error targets to the phone step that really holds the field", () => {
+    const phone = (id: string) => inspectorWizardStepForErrorTarget(id, "mobile");
+    // Step 1: location, access, «تصوير العقار».
+    expect(phone("ins-map-section")).toBe(1);
+    expect(phone("ins-date")).toBe(1);
+    expect(phone("ins-access-phone")).toBe(1);
+    expect(phone("ins-access-name")).toBe(1);
+    expect(phone("ins-property-photos")).toBe(1);
+    // Step 2: «خصائص العقار» (the desktop has them in step 1), components, boundaries.
+    expect(phone("ins-features-section")).toBe(2);
+    expect(phone("ins-feature-facade")).toBe(2);
+    expect(phone("ins-feature-photo-facade")).toBe(2);
+    expect(phone("ins-movablesDescription")).toBe(2);
+    expect(phone("ins-component-photo-showroom")).toBe(2);
+    expect(phone("ins-land-structures")).toBe(2);
+    expect(phone("ins-deed-match")).toBe(2);
+    expect(phone("ins-boundary-south")).toBe(2);
+    // Step 3: description and service photos (desktop step 2), observations, pledge.
+    expect(phone("ins-desc")).toBe(3);
+    expect(phone("ins-defined-photos")).toBe(3);
+    expect(phone("ins-defined-slot-service:مياه")).toBe(3);
+    expect(phone("ins-observation-obs-1")).toBe(3);
+    expect(phone("ins-confirm")).toBe(3);
+    // The desktop keeps its own order.
+    expect(inspectorWizardStepForErrorTarget("ins-feature-facade", "desktop")).toBe(1);
+    expect(inspectorWizardStepForErrorTarget("ins-desc", "desktop")).toBe(2);
+  });
+
+  it("sends a missing feature to phone step 2 and a missing description to phone step 3", () => {
+    const featureTarget = firstInspectorWorkspaceErrorTarget({
+      emptyFeatureKeys: ["facade"],
+      features: "اختر قيمة",
+    });
+    expect(featureTarget).toBe("ins-feature-facade");
+    expect(inspectorWizardStepForErrorTarget(featureTarget!, "mobile")).toBe(2);
+    expect(inspectorWizardStepForErrorTarget(featureTarget!)).toBe(1);
+
+    const descriptionTarget = firstInspectorWorkspaceErrorTarget({
+      propertyDescription: "أدخل وصف العقار",
+    });
+    expect(descriptionTarget).toBe("ins-desc");
+    expect(inspectorWizardStepForErrorTarget(descriptionTarget!, "mobile")).toBe(3);
+
+    const servicePhotoTarget = firstInspectorWorkspaceErrorTarget({
+      definedPhotos: "صورة الخدمة",
+      missingDefinedPhotoSlotId: "service:كهرباء",
+    });
+    expect(inspectorWizardStepForErrorTarget(servicePhotoTarget!, "mobile")).toBe(3);
   });
 
   it("keeps تشجير / خزانات / سور / تكييف photos optional", () => {

@@ -21,7 +21,7 @@ import {
   getValuationIssuanceGates,
   getValuationReconciliation,
 } from "@platform/api-client";
-import { apiConfig } from "./api-config";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   studyReportGateForSubmission,
   type InspectionGateState,

@@ -27,7 +27,7 @@ public partial class PartyTaskSubmissionService
         PartySubmissionActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanDecideAppraisalRecall(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanDecideAppraisalRecall(actor.Staff))
             return (null, Error(RecallReopenForbiddenAr));
 
         var task = await _repo.GetTaskAsync(taskId, cancellationToken);

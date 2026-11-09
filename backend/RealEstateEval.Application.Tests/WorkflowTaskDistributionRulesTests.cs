@@ -33,11 +33,13 @@ public class WorkflowTaskDistributionRulesTests
     // ---- confirm defaults + assignee checks ----
 
     [Fact]
-    public void Confirm_defaults_force_specialist_and_valuation_and_drop_the_office_without_a_survey()
+    public void Confirm_defaults_force_valuation_drop_the_named_specialist_and_the_office_without_a_survey()
     {
         var withSurvey = WorkflowTaskDistributionRules.ApplyConfirmDefaults(Draft(), propertyRequiresSurvey: true);
         Assert.True(withSurvey.ValuationDepartment);
-        Assert.True(withSurvey.CaseSpecialist);
+        // Ruling 2026-11-02: specialist stages are shared queues — nobody is named at distribution.
+        Assert.False(withSurvey.CaseSpecialist);
+        Assert.Equal("", withSurvey.CaseSpecialistId);
         Assert.True(withSurvey.EngineeringOffice);
         Assert.Equal("eo-1", withSurvey.EngineeringOfficeId);
 
@@ -47,14 +49,13 @@ public class WorkflowTaskDistributionRulesTests
     }
 
     [Fact]
-    public void Missing_assignees_are_reported_specialist_first()
+    public void Missing_assignees_are_reported_inspector_first_and_no_specialist_is_asked()
     {
         Assert.Null(WorkflowTaskDistributionRules.ConfirmAssigneeError(Draft()));
 
         var noSpecialist = Draft();
         noSpecialist.CaseSpecialistId = " ";
-        noSpecialist.InspectorId = "";
-        Assert.Equal("اختر أخصائي دراسة الحالة.", WorkflowTaskDistributionRules.ConfirmAssigneeError(noSpecialist));
+        Assert.Null(WorkflowTaskDistributionRules.ConfirmAssigneeError(noSpecialist));
 
         var noInspector = Draft();
         noInspector.InspectorId = "";
@@ -84,16 +85,6 @@ public class WorkflowTaskDistributionRulesTests
     }
 
     // ---- names + labels ----
-
-    [Fact]
-    public void Specialist_name_falls_back_from_kind_key_to_role_key_to_default()
-    {
-        Assert.Equal("أحمد", WorkflowTaskDistributionRules.ResolveSpecialistName(
-            new() { [WorkflowTaskKindValues.CaseStudyProperty] = " أحمد ", [StaffRoleIds.CaseSpecialist] = "خالد" }));
-        Assert.Equal("خالد", WorkflowTaskDistributionRules.ResolveSpecialistName(
-            new() { [WorkflowTaskKindValues.CaseStudyProperty] = "  ", [StaffRoleIds.CaseSpecialist] = "خالد" }));
-        Assert.Equal("أخصائي دراسة حالة", WorkflowTaskDistributionRules.ResolveSpecialistName(new()));
-    }
 
     [Fact]
     public void Titles_and_ref_label_quote_the_deed_when_present()
@@ -168,18 +159,6 @@ public class WorkflowTaskDistributionRulesTests
         var id = Guid.NewGuid();
         Assert.Equal($"{prefix}{id}", WorkflowTaskDistributionRules.TaskHref(kind, id));
         Assert.Equal("/operations-tasks", WorkflowTaskDistributionRules.TaskHref(WorkflowTaskKind.CaseStudyProperty, id));
-    }
-
-    [Fact]
-    public void Specialist_request_deep_links_the_case_study()
-    {
-        var parent = Parent();
-        var request = WorkflowTaskDistributionRules.CaseSpecialistAssignedRequest(parent, "D-1");
-
-        Assert.Equal("معاملة دراسة حالة بانتظارك", request.Title);
-        Assert.Equal("أُسندت إليك دراسة حالة العقار على D-1.", request.Body);
-        Assert.Equal($"/case-study/{parent.Id}", request.Href);
-        Assert.Equal($"distribution-assigned-specialist:{parent.Id}", request.SourceEvent);
     }
 
     [Fact]

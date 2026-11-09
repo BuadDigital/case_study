@@ -269,7 +269,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
             await _repo.SaveChangesAsync(cancellationToken);
             await RecordUsageNameAsync(correctedUsage, actor, cancellationToken);
-            await AlertAppraiserInspectorDataChangedAsync(task, payloadBeforeSave, entity.PayloadJson, cancellationToken);
+            await AlertAppraiserInspectorDataChangedAsync(
+            task, payloadBeforeSave, entity.PayloadJson, entity.AcceptedAtUtc is not null, cancellationToken);
             return (await ToDtoAsync(entity, cancellationToken), null);
         }
 
@@ -290,7 +291,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             await SyncFieldInspectionWorkspaceAsync(entity, cancellationToken);
 
         await _repo.SaveChangesAsync(cancellationToken);
-        await AlertAppraiserInspectorDataChangedAsync(task, payloadBeforeSave, entity.PayloadJson, cancellationToken);
+        await AlertAppraiserInspectorDataChangedAsync(
+            task, payloadBeforeSave, entity.PayloadJson, entity.AcceptedAtUtc is not null, cancellationToken);
 
         // Staff corrections see the current source data; only the inspector's own save
         // (often an offline one replayed later) can be based on an older download.
@@ -345,6 +347,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
             return (null, validationErrors);
 
         var now = _time.UtcNow();
+        // A package returned for correction is resubmitted — the timeline says so (A→Z 2026-11-02 #59).
+        var afterCorrection = entity.Status == PartyTaskSubmissionStatus.Reopened;
         entity.Submit(now, actor?.UserId, actor?.DisplayName, task.AssigneeName);
         if (task.Kind == WorkflowTaskKind.PropertyAppraisal)
         {
@@ -404,7 +408,7 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
                 task.PoNumber,
                 propertyId,
                 $"party:{taskId}:submitted:{now.Ticks}",
-                WorkflowTaskKindLabels.SubmittedTitleAr(entity.Kind),
+                WorkflowTaskKindLabels.SubmittedTitleAr(entity.Kind, afterCorrection),
                 PartyTaskSubmissionRules.SubmittedActorLabel(entity, task),
                 "done",
                 now,
@@ -428,6 +432,9 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         return (await ToDtoAsync(entity, cancellationToken), null);
     }
 
+    /// <summary>Accepting or returning the appraiser's value is review's (Omar 2026-11-08).</summary>
+    public const string ValueReviewRoleDeniedAr = "قبول القيمة أو إرجاعها للمقيّم للمراجع (المراجعة والاعتماد والرفع)";
+
     public async Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> ReopenAsync(
         Guid taskId,
         ReopenPartyTaskSubmissionRequest request,
@@ -441,8 +448,12 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
         if (!PartyTaskSubmissionRules.IsPartySubmissionKind(task.Kind))
             return (null, Error("إعادة الفتح غير مدعومة لهذا النوع"));
 
-        if (actor is not null && !PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+        if (actor is not null && !PoRoleMatrixRules.CanAcceptPartyWork(actor.Staff))
             return (null, Error("ليس لديك صلاحية إعادة فتح إرسال الطرف"));
+        // Omar 2026-11-08: returning the appraiser's value to him is review's decision.
+        if (actor is not null && task.Kind == WorkflowTaskKind.PropertyAppraisal
+            && !PoRoleMatrixRules.CanReviewTransaction(actor.Staff))
+            return (null, Error(ValueReviewRoleDeniedAr));
 
         // After the final issuance the valuation is closed: a plain reopen would leave a closed
         // request behind an open package. That change is a new version (n+1) by the specialist.

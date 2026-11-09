@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
-import { emptyProperty } from "../po-intake-property-model";
+import { emptyProperty } from "@platform/app-shared/app-data/po-intake-property-model";
 import {
   buildSiteLocationAckLetter,
   canPrintSiteLocationAck,

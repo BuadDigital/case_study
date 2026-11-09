@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useId, useRef } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "../lib/cn";
 import {
   ModalBody,
@@ -64,6 +65,15 @@ export function AppModal({
   useSheetDialog(open, onClose, panelRef);
 
   if (!open) return null;
+
+  /*
+    Rendered at <body>: opened from inside a sticky/scrolling container (the property page's side
+    rail) the overlay was trapped in that container's stacking context, so the page's tab bar (z-10)
+    painted over the dialog and took its clicks — «إعادة من إنفاذ» once closed without doing anything
+    (A→Z 2026-11-04). Server render keeps it in place.
+  */
+  const atBody = (node: ReactNode) =>
+    typeof document === "undefined" ? node : createPortal(node, document.body);
 
   /*
     Wrapper must own width: overlay is flex; without w-full the card
@@ -155,7 +165,7 @@ export function AppModal({
 
   /* ops-html (create task): HTML-matching overlay — blur + top-aligned appear */
   if (opsHtml) {
-    return (
+    return atBody(
       <>
         <style>{`@keyframes opsModalIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}`}</style>
         <div
@@ -169,7 +179,7 @@ export function AppModal({
     );
   }
 
-  return (
+  return atBody(
     <ModalOverlay
       onClick={onClose}
       role="presentation"

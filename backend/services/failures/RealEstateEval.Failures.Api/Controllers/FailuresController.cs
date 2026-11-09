@@ -117,6 +117,9 @@ public class FailuresController : ControllerBase
         Guid id,
         CancellationToken cancellationToken)
     {
+        var followUpDenied = await DenyFollowUpAsync(cancellationToken);
+        if (followUpDenied is not null) return followUpDenied;
+
         var dto = await _failures.UpgradeToInternalAsync(id, cancellationToken);
         if (dto is null) return this.BadRequestProblem("لا يمكن ترقية هذا التعذّر");
         return Ok(dto);
@@ -135,6 +138,9 @@ public class FailuresController : ControllerBase
         [FromBody] FailureNoteRequest request,
         CancellationToken cancellationToken)
     {
+        var followUpDenied = await DenyFollowUpAsync(cancellationToken);
+        if (followUpDenied is not null) return followUpDenied;
+
         var dto = await _failures.SubmitForReviewAsync(id, request.Note, cancellationToken);
         if (dto is null) return this.BadRequestProblem("لا يمكن إرسال هذا التعذّر للمراجعة");
         return Ok(dto);
@@ -147,6 +153,9 @@ public class FailuresController : ControllerBase
         [FromBody] FailureNoteRequest request,
         CancellationToken cancellationToken)
     {
+        var followUpDenied = await DenyFollowUpAsync(cancellationToken);
+        if (followUpDenied is not null) return followUpDenied;
+
         var dto = await _failures.SuspendAsync(id, request.Note, ActorClaims.Id(User), cancellationToken);
         if (dto is null) return this.BadRequestProblem("لا يمكن تعليق هذا التعذّر");
         return Ok(dto);
@@ -175,6 +184,9 @@ public class FailuresController : ControllerBase
         [FromBody] FailureNoteRequest request,
         CancellationToken cancellationToken)
     {
+        var followUpDenied = await DenyFollowUpAsync(cancellationToken);
+        if (followUpDenied is not null) return followUpDenied;
+
         var dto = await _failures.ApproveAsync(
             id,
             request.Note,
@@ -217,6 +229,9 @@ public class FailuresController : ControllerBase
         [FromBody] FailureNoteRequest request,
         CancellationToken cancellationToken)
     {
+        var followUpDenied = await DenyFollowUpAsync(cancellationToken);
+        if (followUpDenied is not null) return followUpDenied;
+
         var dto = await _failures.ReturnAsync(
             id,
             request.Note,
@@ -228,7 +243,7 @@ public class FailuresController : ControllerBase
 
     /// <summary>
     /// Lifts the engineering-survey freeze every active failure of the property puts on the survey
-    /// work; the failures themselves stay active. Any case specialist, by role (403 otherwise).
+    /// work; the failures themselves stay active. The coordination sub-role (403 otherwise).
     /// Idempotent — answers <c>{ lifted: n }</c> with the failures this call lifted.
     /// </summary>
     [HttpPost("by-property/lift-survey-freeze")]
@@ -238,13 +253,13 @@ public class FailuresController : ControllerBase
         CancellationToken cancellationToken)
     {
         var actor = await ActorAsync(cancellationToken);
-        if (!PoRoleMatrixRules.CanLiftSurveyFreeze(actor?.PrototypeRole))
+        if (!PoRoleMatrixRules.CanLiftSurveyFreeze(StaffActor.From(actor)))
             return this.ForbiddenProblem(FailureRecordRules.LiftSurveyFreezeRoleDeniedAr);
 
         var (result, errors) = await _failures.LiftSurveyFreezeAsync(
             request ?? new LiftSurveyFreezeRequest(),
             ActorClaims.Id(User),
-            actor?.PrototypeRole,
+            StaffActor.From(actor),
             cancellationToken);
         if (errors is not null) return this.FieldErrorsProblem(errors);
         return Ok(result);
@@ -259,6 +274,18 @@ public class FailuresController : ControllerBase
         await _failures.DeleteForPoAsync(poNumber, cancellationToken);
         return NoContent();
     }
+
+    /// <summary>
+    /// 403 for a case specialist without the coordination sub-role on a follow-up action
+    /// (<see cref="PoRoleMatrixRules.CanFollowUpFailure"/>). Resolve is left to the capability: the
+    /// case-study service resolves system failures with the acting user's token, whatever his sub-role.
+    /// </summary>
+    private async Task<ActionResult?> DenyFollowUpAsync(CancellationToken cancellationToken) =>
+        PoRoleMatrixRules.CanFollowUpFailure(StaffActor.From(await ActorAsync(cancellationToken)))
+            ? null
+            : this.ForbiddenProblem(FollowUpDeniedAr);
+
+    private const string FollowUpDeniedAr = "متابعة التعذّر لأخصائي التنسيق";
 
     private async Task<PermissionsDto?> ActorAsync(CancellationToken cancellationToken)
     {

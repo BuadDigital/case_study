@@ -7,11 +7,14 @@
  */
 import { clearInspectorPhotoDataUrl } from "../../lib/app-data/inspector-photo-upload";
 import {
-  isShopHiddenInspectorComponentKey,
   parseInspectorCount,
-  type InspectorComponentPhotoKey,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
+import {
+  INSPECTOR_ANNEX_COUNT_FIELDS,
+  annexAnswerPatch,
+  inspectorComponentCountFields,
+} from "./inspector-wizard-state";
 import {
   InsBadge,
   InspectorCard,
@@ -39,6 +42,18 @@ import type { RoleId } from "@platform/types";
 import type { updateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
 import { componentPhotoPatch } from "../../lib/app-data/inspector-workspace-model";
 
+/**
+ * The phone's «مكونات العقار» card: every component count, the proof photo of a showroom / well,
+ * and «هل يوجد ملحق؟» with the annex counts.
+ *
+ * How it works: the counts come from `inspectorComponentCountFields(isShopInspection)` and the
+ * annex counts from `INSPECTOR_ANNEX_COUNT_FIELDS` — the same lists the desktop wizard renders;
+ * an annex answer is saved through `annexAnswerPatch` («لا» empties the counts).
+ *
+ * Edge cases: a count dropping to zero clears its proof photo. A commercial shop hides the
+ * shop-hidden counts and the annex question. Changed 2026-11-04: the list moved to
+ * `inspector-wizard-state.ts` so the desktop can no longer miss a count the phone has.
+ */
 export function InspectorComponentsSection({
   activeStep,
   cardLayout,
@@ -79,74 +94,9 @@ export function InspectorComponentsSection({
     subtitle={mobile ? "الغرف والمرافق" : undefined}
   >
     <FormRow className={cn("grid-cols-1", !mobile && "sm:grid-cols-2 lg:grid-cols-3")}>
-      {(
-        [
-          ["roomCount", "عدد الغرف", null],
-          ["hallCount", "عدد الصالات", null],
-          ["unitCount", "عدد الشقق", null],
-          ["bathroomCount", "عدد دورات المياه", null],
-          [
-            "showroomCount",
-            "عدد المعارض",
-            {
-              photoKey: "showroom" as InspectorComponentPhotoKey,
-              photoLabel: "إرفاق صورة للمعرض التجاري",
-            },
-          ],
-          [
-            "wellCount",
-            "عدد الآبار",
-            {
-              photoKey: "well" as InspectorComponentPhotoKey,
-              photoLabel: "إرفاق صورة البئر",
-            },
-          ],
-          ["towerCount", "عدد الأبراج", null],
-          ["jacuzziCount", "جاكوزي", null],
-          ["diningCount", "غرف الطعام", null],
-          ["majlisCount", "المجالس", null],
-          ["maidRoomCount", "غرف الخدم", null],
-          ["guardRoomCount", "غرفة حارس", null],
-          ["parkingCount", "مواقف", null],
-          ["storeCount", "مستودع", null],
-          ["playgroundCount", "ملاعب أطفال", null],
-          ["propertyAgeYears", "عمر العقار (سنوات)", null],
-        ] as const
-      )
-        .filter(([key]) => !(mobile && key === "propertyAgeYears"))
-        .filter(
-          ([key]) =>
-            !(
-              isShopInspection &&
-              isShopHiddenInspectorComponentKey(key)
-            ),
-        )
-        .map(([key, label, photoMeta]) => {
-        if (key === "propertyAgeYears") {
-          return (
-            <div key={key}>
-              <div className="mb-1 flex flex-wrap items-center gap-2">
-                <label
-                  htmlFor="ins-propertyAgeYears"
-                  className="text-[11px] font-semibold text-text-2"
-                >
-                  {label}
-                </label>
-                <InsBadge label="مشترك" tone="purple" />
-              </div>
-              <Input
-                id="ins-propertyAgeYears"
-                type="number"
-                value={draft.propertyAgeYears}
-                onChange={(e) =>
-                  persist({ propertyAgeYears: e.target.value })
-                }
-                className="text-xs"
-              />
-            </div>
-          );
-        }
-
+      {/* One count list for both devices — `inspectorComponentCountFields` (shop filter included). */}
+      {inspectorComponentCountFields(isShopInspection).map(({ key, label, photo }) => {
+        const photoMeta = photo ? { photoKey: photo.key, photoLabel: photo.label } : null;
         const value = draft[key];
         const count = photoMeta ? parseInspectorCount(value) : 0;
         const attachment = photoMeta
@@ -221,6 +171,26 @@ export function InspectorComponentsSection({
           </div>
         );
       })}
+      {!mobile ? (
+        <div>
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <label
+              htmlFor="ins-propertyAgeYears"
+              className="text-[11px] font-semibold text-text-2"
+            >
+              عمر العقار (سنوات)
+            </label>
+            <InsBadge label="مشترك" tone="purple" />
+          </div>
+          <Input
+            id="ins-propertyAgeYears"
+            type="number"
+            value={draft.propertyAgeYears}
+            onChange={(e) => persist({ propertyAgeYears: e.target.value })}
+            className="text-xs"
+          />
+        </div>
+      ) : null}
       {!isShopInspection ? (
       <>
       <div className={cn(mobile && "mt-4")}>
@@ -232,12 +202,7 @@ export function InspectorComponentsSection({
               value={draft.hasAnnex}
               disabled={locked}
               onChange={(next) =>
-                persist({
-                  hasAnnex: next as InspectorWorkspaceDraft["hasAnnex"],
-                  ...(next === "لا"
-                    ? { annexUpperCount: "", annexGroundCount: "" }
-                    : {}),
-                })
+                persist(annexAnswerPatch(next as InspectorWorkspaceDraft["hasAnnex"]))
               }
             />
           </>
@@ -252,16 +217,9 @@ export function InspectorComponentsSection({
             <Select
               id="ins-has-annex"
               value={draft.hasAnnex}
-              onChange={(e) => {
-                const next = e.target
-                  .value as InspectorWorkspaceDraft["hasAnnex"];
-                persist({
-                  hasAnnex: next,
-                  ...(next === "لا"
-                    ? { annexUpperCount: "", annexGroundCount: "" }
-                    : {}),
-                });
-              }}
+              onChange={(e) =>
+                persist(annexAnswerPatch(e.target.value as InspectorWorkspaceDraft["hasAnnex"]))
+              }
               className={cn(formControlClassName, "text-xs")}
             >
               <option value="">— اختر —</option>
@@ -271,47 +229,29 @@ export function InspectorComponentsSection({
           </>
         )}
       </div>
-      {draft.hasAnnex === "نعم" ? (
-        <>
-          {mobile ? (
-            <>
-              <div className="mt-4">
+      {draft.hasAnnex === "نعم"
+        ? INSPECTOR_ANNEX_COUNT_FIELDS.map(({ key, label }) =>
+            mobile ? (
+              <div key={key} className="mt-4">
                 <MobileCountStepper
-                  label="ملحق علوي (عدد)"
-                  value={draft.annexUpperCount}
+                  label={label}
+                  value={draft[key]}
                   disabled={locked}
-                  onChange={(next) => persist({ annexUpperCount: next })}
+                  onChange={(next) => persist({ [key]: next })}
                 />
               </div>
-              <div className="mt-4">
-                <MobileCountStepper
-                  label="ملحق أرضي (عدد)"
-                  value={draft.annexGroundCount}
-                  disabled={locked}
-                  onChange={(next) => persist({ annexGroundCount: next })}
-                />
-              </div>
-            </>
-          ) : (
-            <>
+            ) : (
               <RegField
-                id="ins-annexUpperCount"
-                label="ملحق علوي (عدد)"
+                key={key}
+                id={`ins-${key}`}
+                label={label}
                 type="number"
-                value={draft.annexUpperCount}
-                onChange={(v) => persist({ annexUpperCount: v })}
+                value={draft[key]}
+                onChange={(v) => persist({ [key]: v })}
               />
-              <RegField
-                id="ins-annexGroundCount"
-                label="ملحق أرضي (عدد)"
-                type="number"
-                value={draft.annexGroundCount}
-                onChange={(v) => persist({ annexGroundCount: v })}
-              />
-            </>
-          )}
-        </>
-      ) : null}
+            ),
+          )
+        : null}
       </>
       ) : null}
     </FormRow>

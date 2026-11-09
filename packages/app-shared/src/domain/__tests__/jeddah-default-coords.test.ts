@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { shouldUseJeddahDefaultCoords } from "../jeddah-default-coords";
+import {
+  isJeddahPlaceholderPin,
+  jeddahPlaceholderPinError,
+  shouldUseJeddahDefaultCoords,
+} from "../jeddah-default-coords";
 
 describe("shouldUseJeddahDefaultCoords", () => {
   it.each([
@@ -16,5 +20,24 @@ describe("shouldUseJeddahDefaultCoords", () => {
     ["٢١٫٤٨١", "٣٩٫١٨٦٥", false],
   ])("(%j, %j) → %s", (lat, lng, expected) => {
     expect(shouldUseJeddahDefaultCoords(lat, lng)).toBe(expected);
+  });
+});
+
+describe("jeddahPlaceholderPinError (A→Z 2026-11-02 #42)", () => {
+  it("refuses the untouched Jeddah placeholder for a property outside Jeddah", () => {
+    expect(jeddahPlaceholderPinError("21.481000", "39.186500", "الرياض")).toContain("الرياض");
+    expect(jeddahPlaceholderPinError("21.48100", "39.18650", "")).toBeTruthy();
+  });
+
+  it("lets a Jeddah property, or a moved pin, be pinned", () => {
+    expect(jeddahPlaceholderPinError("21.481000", "39.186500", "جدة")).toBeNull();
+    expect(jeddahPlaceholderPinError("21.481000", "39.186500", " جده ")).toBeNull();
+    expect(jeddahPlaceholderPinError("24.71360", "46.67530", "الرياض")).toBeNull();
+    expect(jeddahPlaceholderPinError("", "", "الرياض")).toBeNull();
+  });
+
+  it("recognises the placeholder in any digit system", () => {
+    expect(isJeddahPlaceholderPin("٢١٫٤٨١", "٣٩٫١٨٦٥")).toBe(true);
+    expect(isJeddahPlaceholderPin("21.4812", "39.1865")).toBe(false);
   });
 });

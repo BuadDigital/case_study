@@ -8,7 +8,7 @@ vi.mock("../../../lib/app-data/inspector-workspace-commands", () => ({
   updateInspectorWorkspace: (...args: unknown[]) => updateInspectorWorkspace(...args),
 }));
 
-import { createInspectorWorkspaceDraft } from "../../../lib/app-data/inspector-workspace-data";
+import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { sendInspectorSubmission } from "../inspector-submit-send";
 
 const draft = createInspectorWorkspaceDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });

@@ -6,7 +6,7 @@ import {
   hijriToGregorianIso,
   isValidGregorianDate,
 } from "@platform/app-shared/format/hijri";
-import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 
 export type DualCalendarKind = "gregorian" | "hijri";
 

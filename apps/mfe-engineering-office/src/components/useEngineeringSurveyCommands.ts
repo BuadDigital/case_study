@@ -9,7 +9,7 @@
 import { useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { activeSurveyEntryPath } from "@case-study/mfe/lib/my-task-routes";
-import { emptyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-model";
+import { emptyCaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import { loadPartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-reads";
 import { savePartyCaseStudyReportDraft } from "@case-study/mfe/lib/app-data/case-study-report-commands";
 import {

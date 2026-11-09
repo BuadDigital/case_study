@@ -2,11 +2,13 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TransactionStateDto } from "@platform/api-client";
-import { PARTY_CASE_STUDY_REPORT_CHANGED_EVENT } from "@platform/app-shared/app-data/case-study-report-model";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { loadTransactionState } from "../lib/app-data/enfaz-handover-commands";
-import { WORK_ORDERS_CHANGED_EVENT } from "../lib/work-orders-api-config";
-import { TASKS_CHANGED_EVENT } from "./case-study-queries";
+import {
+  PARTY_CASE_STUDY_REPORT_CHANGED_EVENT,
+  TASKS_CHANGED_EVENT,
+  WORK_ORDERS_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const STALE_MS = 30_000;
 const GC_MS = 10 * 60_000;

@@ -56,6 +56,9 @@ internal static class StaffUserRules
                  && request.InspectorType?.Trim().ToLowerInvariant()
                      is not ("employee" or "contractor"))
             errors["inspectorType"] = "نوع المعاين مطلوب.";
+        else if (request.RoleId.Trim() == StaffRoleIds.CaseSpecialist
+                 && StaffProfileRules.SubRolesError(request.CaseSpecialistSubRoles) is { } subRolesError)
+            errors["caseSpecialistSubRoles"] = subRolesError;
         if (request.FeeValueSar is < 0)
             errors["feeValueSar"] = "قيمة الأتعاب لا يمكن أن تكون سالبة.";
         if (request.HasCompensation == true && request.FeeValueSar is null)

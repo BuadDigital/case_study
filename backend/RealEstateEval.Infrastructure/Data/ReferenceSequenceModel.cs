@@ -17,6 +17,7 @@ public static class ReferenceSequenceModel
         DatabaseSchemas.Operations => "OperationsReferenceSequences",
         DatabaseSchemas.Identity => "IdentityReferenceSequences",
         DatabaseSchemas.Financial => "FinancialReferenceSequences",
+        DatabaseSchemas.Valuation => "ValuationReferenceSequences",
         _ => throw new InvalidOperationException(
             $"لا جدول عدّادات مرجعية معرّفاً للمخطط '{schema}'."),
     };

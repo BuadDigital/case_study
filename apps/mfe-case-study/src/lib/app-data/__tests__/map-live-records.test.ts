@@ -12,8 +12,8 @@ import {
   resolveLivePropertyCoords,
   valuationsByPropertyId,
 } from "../map-live-records";
-import type { PoIntakeRecord } from "../po-intake-property-model";
-import { emptyProperty } from "../po-intake-property-model";
+import type { PoIntakeRecord } from "@platform/app-shared/app-data/po-intake-property-model";
+import { emptyProperty } from "@platform/app-shared/app-data/po-intake-property-model";
 import type { WorkflowTask } from "../tasks";
 import type { FailureRecord, FailureStatus } from "@platform/app-shared/failures/failures-types";
 

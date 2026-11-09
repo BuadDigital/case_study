@@ -12,7 +12,7 @@ public class BuildingInventoryWriteRulesTests
         string userId = "u-1",
         string? distributionId = null,
         params FieldInspectionWriteFacts[] tasks) =>
-        BuildingInventoryWriteRules.Resolve(role, userId, distributionId, tasks);
+        BuildingInventoryWriteRules.Resolve(TestStaff.Of(role), userId, distributionId, tasks);
 
     [Fact]
     public void The_assigned_inspector_writes_the_table_on_a_draft()

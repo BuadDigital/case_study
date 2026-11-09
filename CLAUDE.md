@@ -17,7 +17,7 @@ not quite right, extend it with a prop or parameter instead of copying it.
 | Icons | `packages/ui-kit/src/icons`, `OpsIcon`, `UploadFileIcon` |
 | File pick / drag-and-drop | `useFileDropZone`, `PDF_OR_IMAGE_ACCEPT` / `isPdfOrImageFile` |
 | Dialog focus, Escape, scroll lock | `useSheetDialog` |
-| Numbers, dates, Arabic digits | `packages/app-shared/src/format`, `packages/app-shared/src/lib/arabic-digits.ts`, `parseLocaleNumber` |
+| Numbers, dates, Arabic digits | `packages/app-shared/src/format`, `packages/ui-kit/src/lib/arabic-digits.ts`, `parseLocaleNumber` |
 | Coordinates and map links | `packages/app-shared/src/domain/geo.ts` (`parseLatLng`, `coordsFromLocationMapUrl`, `haversineKm`) |
 | Arabic text matching | `normalizeArabicSearchText` (`packages/app-shared/src/domain/courts/circuit-search.ts`), `deedsMatch` (`apps/mfe-case-study/src/lib/app-data/deed-number.ts`) |
 | API calls | `packages/api-client` — one module per area; reuse its response helpers |

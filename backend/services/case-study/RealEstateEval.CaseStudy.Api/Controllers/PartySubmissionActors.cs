@@ -23,6 +23,7 @@ internal static class PartySubmissionActors
             DisplayName = ActorClaims.DisplayName(user),
             PrototypeRole = perms?.PrototypeRole,
             DistributionAssigneeId = perms?.DistributionAssigneeId,
+            SubRoles = perms?.SubRoles ?? [],
         };
     }
 }

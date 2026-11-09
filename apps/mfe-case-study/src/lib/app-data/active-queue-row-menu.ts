@@ -15,12 +15,13 @@ import {
 } from "./tasks";
 import {
   canDeleteTransaction,
-  canEditProperty,
+  canEditPropertyData,
   canRaisePropertyFailure,
   canRedistributeParties,
   canRevertTaskPhase,
 } from "./po-roles";
 import type { RoleId } from "@platform/types";
+import type { StaffAccess } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 import type { PoIntakeRecord } from "./po-intake-data";
 import { findPropertyForTask } from "./my-task-row";
 
@@ -43,6 +44,8 @@ type ActiveQueueRowMoreOptions = {
   allowDeleteTransaction?: boolean;
   /** Viewer role — delete is supervisor / admin only. */
   viewerRole?: RoleId;
+  /** Viewer role + case-specialist sub-roles — the phase revert is coordination's. */
+  viewerAccess?: StaffAccess;
   /**
    * Override of the in-app confirm (beige AppModal); the shared `confirmAction` is used when omitted.
    */
@@ -92,8 +95,8 @@ function appendPhaseRevertItems(
   options: ActiveQueueRowMoreOptions,
 ): void {
   if (!options.allowPhaseRevert) return;
-  // The server refuses the revert to anyone but the case specialist, the CDO and the section supervisor.
-  if (!options.viewerRole || !canRevertTaskPhase(options.viewerRole)) return;
+  // The server refuses the revert to anyone but the coordination sub-role, the CDO and the section supervisor.
+  if (!options.viewerAccess || !canRevertTaskPhase(options.viewerAccess)) return;
   const phase = options.task.phase;
 
   if (phase === "distribution") {
@@ -275,7 +278,7 @@ function appendPropertyLinkItems(
     label: "تفاصيل العقار",
     onClick: () => options.router.push(poPropertyPath(po, propertyId)),
   });
-  if (options.viewerRole && canEditProperty(options.viewerRole)) {
+  if (options.viewerRole && canEditPropertyData(options.viewerRole)) {
     items.push({
       id: "property-edit",
       label: "تعديل العقار",
@@ -300,6 +303,7 @@ export function buildCaseStudyQueueRowMoreItems(options: {
   propertyId?: string;
   router: { push: (href: string) => void };
   viewerRole?: RoleId;
+  viewerAccess?: StaffAccess;
   /** Opens the «Edit party assignment» modal for this row (case-study phase only). */
   onRedistributeParties?: () => void;
 }): RowMoreMenuItem[] {
@@ -311,8 +315,8 @@ export function buildCaseStudyQueueRowMoreItems(options: {
     options.task.kind === "case-study-property" &&
     options.task.phase === "case-study" &&
     options.onRedistributeParties &&
-    options.viewerRole &&
-    canRedistributeParties(options.viewerRole)
+    options.viewerAccess &&
+    canRedistributeParties(options.viewerAccess)
   ) {
     items.push({
       id: "redistribute-parties",

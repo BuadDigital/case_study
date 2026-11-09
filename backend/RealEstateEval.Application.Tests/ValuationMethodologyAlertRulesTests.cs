@@ -528,6 +528,50 @@ public class ValuationMethodologyAlertRulesTests
         Assert.False(inRange.Single(c => c.Number == 14).Triggered);
     }
 
+    /// <summary>A→Z #77 (2026-11-04): alert 23 covers the cost approach's land comparables.</summary>
+    [Fact]
+    public void Alert_23_blocks_a_cost_land_comparable_dated_after_the_valuation_date()
+    {
+        var input = EmptyInput() with
+        {
+            MarketApproachRelevant = false,
+            AdoptedComparables = [],
+            CostApproachEnabled = true,
+            AdoptedCostLandComparables =
+            [
+                new("أرض", false, 0m, TransactionDate: new DateOnly(2026, 11, 2), ReferenceCode: "CMP-D1117064"),
+            ],
+            ComparableDateCutoff = new DateOnly(2026, 9, 15),
+            Today = new DateOnly(2026, 11, 4),
+        };
+
+        var m23 = ValuationMethodologyAlertRules.Evaluate(input).Single(c => c.Number == 23);
+        Assert.True(m23.Triggered);
+        Assert.True(m23.BlocksIssuance);
+        Assert.Contains("CMP-D1117064", m23.DetailAr);
+
+        // Off when the cost approach is off.
+        Assert.False(ValuationMethodologyAlertRules.Evaluate(input with { CostApproachEnabled = false })
+            .Single(c => c.Number == 23).Triggered);
+    }
+
+    /// <summary>A→Z #78 (2026-11-04): an extra that adds nothing needs no rationale yet.</summary>
+    [Fact]
+    public void Alert_8_skips_an_unpriced_extra()
+    {
+        var unpriced = EmptyInput() with
+        {
+            CostLines = [new ValuationMethodologyAlertCostLineInput("other", "بند خاص", 1m, 0m, null, true, "custom")],
+        };
+        Assert.False(ValuationMethodologyAlertRules.Evaluate(unpriced).Single(c => c.Number == 8).Triggered);
+
+        var priced = EmptyInput() with
+        {
+            CostLines = [new ValuationMethodologyAlertCostLineInput("other", "بند خاص", 1m, 5000m, null, true, "custom")],
+        };
+        Assert.True(ValuationMethodologyAlertRules.Evaluate(priced).Single(c => c.Number == 8).Triggered);
+    }
+
     private static ValuationMethodologyAlertInput EmptyInput() =>
         new(
             HasStructuresToValue: false,

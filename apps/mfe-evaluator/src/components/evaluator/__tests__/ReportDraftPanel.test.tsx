@@ -8,6 +8,7 @@ const api = vi.hoisted(() => ({
   getReportDraftByProperty: vi.fn(),
   saveReportDraftChoices: vi.fn(),
   sendReportDraft: vi.fn(),
+  getValuationIssuanceGates: vi.fn(),
   withdrawReportDraft: vi.fn(),
   reopenReportIssuance: vi.fn(),
   registerDepositCertificate: vi.fn(),
@@ -58,7 +59,12 @@ function draft(overrides: Partial<ValuationReportDraftDto> = {}): ValuationRepor
   };
 }
 
-function renderPanel(d: ValuationReportDraftDto | null, canEdit = true) {
+function renderPanel(
+  d: ValuationReportDraftDto | null,
+  canEdit = true,
+  canDeposit = canEdit,
+  canReview = canDeposit,
+) {
   api.getReportDraftByProperty.mockResolvedValue(d ? { ok: true, data: d } : { ok: false, kind: "not_found" });
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const props = {
@@ -66,6 +72,9 @@ function renderPanel(d: ValuationReportDraftDto | null, canEdit = true) {
     allTasks: [],
     property: { id: PROPERTY },
     canEdit,
+    // The deposit and the new version are the review sub-role's; by default the specialist holds every sub-role.
+    canDeposit,
+    canReview,
   } as unknown as EvaluatorReportDraftPanelProps;
   return render(
     <QueryClientProvider client={client}>
@@ -77,6 +86,7 @@ function renderPanel(d: ValuationReportDraftDto | null, canEdit = true) {
 beforeEach(() => {
   Object.values(api).forEach((fn) => fn.mockReset());
   toast.showToast.mockReset();
+  api.getValuationIssuanceGates.mockResolvedValue({ ok: false, kind: "not_found" });
 });
 
 afterEach(() => {
@@ -98,11 +108,12 @@ describe("ReportDraftPanel (the specialist's side)", () => {
     expect(screen.queryByTestId("attachments-editor")).toBeNull();
   });
 
-  it("sends only after he confirms the valuation matches the property study", async () => {
+  // Omar 2026-11-08: review issues the draft once it approved the study and accepted the value.
+  it("lets review issue the draft only after the conformity confirmation", async () => {
     api.sendReportDraft.mockResolvedValue({ ok: true, data: draft({ status: "sent" }) });
     renderPanel(draft());
 
-    const send = await screen.findByRole("button", { name: "إرسال المسودة للمقيّم" });
+    const send = await screen.findByRole("button", { name: "إصدار المسودة للمقيّم" });
     expect((send as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.click(screen.getByLabelText("أؤكد أن التقييم مطابق لدراسة العقار"));
@@ -111,7 +122,38 @@ describe("ReportDraftPanel (the specialist's side)", () => {
 
     await waitFor(() => expect(api.sendReportDraft).toHaveBeenCalledTimes(1));
     expect(api.sendReportDraft).toHaveBeenCalledWith({ token: "t" }, "vr-1", { conformityConfirmed: true, note: undefined });
-    await waitFor(() => expect(toast.showToast).toHaveBeenCalledWith("أُرسلت مسودة التقرير للمقيّم", "success"));
+    await waitFor(() =>
+      expect(toast.showToast).toHaveBeenCalledWith("أُصدرت مسودة التقرير للمقيّم لاعتمادها النهائي", "success"),
+    );
+  });
+
+  it("holds the issue until review approved the study and accepted the value", async () => {
+    api.getValuationIssuanceGates.mockResolvedValue({
+      ok: true,
+      data: { gates: [], studyApprovedByReview: false, valueAcceptedByReview: true },
+    });
+    renderPanel(draft());
+
+    expect(await screen.findByText("✗ لم تُعتمد الدراسة بعد — من قسم «تقرير دراسة الحالة»")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("أؤكد أن التقييم مطابق لدراسة العقار"));
+    const send = screen.getByRole("button", { name: "إصدار المسودة للمقيّم" });
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("lets the study edit the report choices but never issue the draft", async () => {
+    renderPanel(draft(), true, false, false);
+
+    expect(await screen.findByTestId("report-draft-review-issues")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "إصدار المسودة للمقيّم" })).toBeNull();
+    expect(screen.queryByLabelText("أؤكد أن التقييم مطابق لدراسة العقار")).toBeNull();
+  });
+
+  it("shows the appraiser's return note to review", async () => {
+    renderPanel(draft({ reviewNote: "صحّح وصف الموقع" }));
+
+    expect((await screen.findByTestId("report-draft-review-note")).textContent).toBe(
+      "أعادها المقيّم للمراجع: صحّح وصف الموقع",
+    );
   });
 
   it("is read-only for everyone who may not prepare it", async () => {
@@ -120,7 +162,7 @@ describe("ReportDraftPanel (the specialist's side)", () => {
     expect(await screen.findByTestId("attachments-editor")).toBeTruthy();
     // ESG is the appraiser's own — the specialist's panel never offers it.
     expect(screen.queryByText("العوامل البيئية والاجتماعية والحوكمة (ESG)")).toBeNull();
-    expect(screen.queryByRole("button", { name: "إرسال المسودة للمقيّم" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "إصدار المسودة للمقيّم" })).toBeNull();
   });
 
   it("pulls a sent draft back with a note for the appraiser", async () => {
@@ -128,7 +170,7 @@ describe("ReportDraftPanel (the specialist's side)", () => {
     api.withdrawReportDraft.mockResolvedValue({ ok: true, data: draft({ status: "preparing" }) });
     renderPanel(draft({ status: "sent", canPrepare: false }));
 
-    fireEvent.click(await screen.findByRole("button", { name: "سحب المسودة" }));
+    fireEvent.click(await screen.findByRole("button", { name: "سحب المسودة من المقيّم" }));
 
     await waitFor(() => expect(api.withdrawReportDraft).toHaveBeenCalledWith({ token: "t" }, "vr-1", "راجع الأرقام"));
   });
@@ -138,6 +180,12 @@ describe("ReportDraftPanel (the specialist's side)", () => {
       draft({ status: "approved", canPrepare: false, reportStage: "deposit_issued", reportDate: "2026-10-05" });
     const pdf = () =>
       new File([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])], "certificate.pdf", { type: "application/pdf" });
+
+    it("is not offered to a specialist without the review sub-role (ruling 2026-11-02)", async () => {
+      renderPanel(approved(), true, false);
+      await screen.findAllByText(/اعتمدها المقيّم/);
+      expect(screen.queryByRole("button", { name: /تسجيل رمز الإيداع/ })).toBeNull();
+    });
 
     it("asks him for the code first, then the certificate", async () => {
       renderPanel(approved());

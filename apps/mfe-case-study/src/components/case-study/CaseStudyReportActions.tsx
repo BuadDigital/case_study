@@ -8,8 +8,8 @@ import {
   type CaseStudyReportFrameHandle,
 } from "./CaseStudyReportFrame";
 import { CaseStudyReportPreviewModal } from "./CaseStudyReportPreviewModal";
-import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
-import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
+import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-render";
+import { openHtmlDocumentInNewTab } from "@platform/app-shared/media/open-html-document";
 import type { CaseStudyReportModel } from "../../lib/app-data/case-study-report-document-model";
 
 type Props = {

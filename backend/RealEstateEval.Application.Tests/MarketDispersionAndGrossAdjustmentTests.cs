@@ -366,13 +366,18 @@ public class MarketDispersionAndGrossAdjustmentTests
     [Fact]
     public void M8_counts_a_custom_floor_as_a_building_area_not_an_extra()
     {
-        ValuationMethodologyAlertInput WithLine(string kind) => AlertInput([], hasStructures: true) with
-        {
-            CostLines = [new ValuationMethodologyAlertCostLineInput(kind, "المستودع الرئيسي", 1000m, 1500m, null, true, "custom")],
-        };
+        ValuationMethodologyAlertInput WithLine(string kind, string label = "المستودع الرئيسي") =>
+            AlertInput([], hasStructures: true) with
+            {
+                CostLines = [new ValuationMethodologyAlertCostLineInput(kind, label, 1000m, 1500m, null, true, "custom")],
+            };
 
         Assert.False(Alert(ValuationMethodologyAlertRules.Evaluate(WithLine("floor")), 8).Triggered);
-        Assert.True(Alert(ValuationMethodologyAlertRules.Evaluate(WithLine("other")), 8).Triggered);
+        // 2026-11-04 (A→Z #52/#90): a building area saved as «other» counts by its name too.
+        Assert.False(Alert(ValuationMethodologyAlertRules.Evaluate(WithLine("other")), 8).Triggered);
+        Assert.False(Alert(ValuationMethodologyAlertRules.Evaluate(WithLine("other", "الدور الثاني")), 8).Triggered);
+        Assert.False(Alert(ValuationMethodologyAlertRules.Evaluate(WithLine("other", "الميزانين")), 8).Triggered);
+        Assert.True(Alert(ValuationMethodologyAlertRules.Evaluate(WithLine("other", "مظلة سيارات")), 8).Triggered);
     }
 
     [Fact]

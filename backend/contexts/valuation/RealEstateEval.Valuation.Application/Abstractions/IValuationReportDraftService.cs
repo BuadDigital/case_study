@@ -38,7 +38,14 @@ public interface IValuationReportDraftService
         ReportDraftActor actor,
         CancellationToken cancellationToken = default);
 
-    /// <summary>The specialist pulls a sent draft back to preparing (idempotent).</summary>
+    /// <summary>The assigned appraiser returns the sent draft to review with a reason (Omar 2026-11-08).</summary>
+    Task<(ValuationReportDraftDto? Result, Dictionary<string, string>? Errors)> ReturnToReviewerAsync(
+        Guid valuationRequestId,
+        ReturnReportDraftToStudyRequest request,
+        ReportDraftActor actor,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Review pulls a sent draft back from the appraiser to preparing (Omar 2026-11-08).</summary>
     Task<(ValuationReportDraftDto? Result, Dictionary<string, string>? Errors)> WithdrawAsync(
         Guid valuationRequestId,
         WithdrawReportDraftRequest request,

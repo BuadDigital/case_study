@@ -13,7 +13,7 @@ import {
   CASE_STUDY_REPORT_STEPS,
   type CaseStudyReportAnswer,
 } from "../../lib/app-data/case-study-report-data";
-import type { CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
+import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import { loadPartyCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
 import {
   saveCaseStudyReportDraft,

@@ -9,9 +9,9 @@ import {
   type EngineeringSurveySubmission,
   type EngineeringSurveySubmissionStatus,
 } from "./engineering-survey-data";
-
-export const ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT =
-  "engineering-survey-submission-changed";
+import {
+  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 export function notifyChanged(): void {
   dispatchPartySubmissionChanged(ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT);

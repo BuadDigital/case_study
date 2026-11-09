@@ -38,7 +38,7 @@ public sealed partial class ValuationReportDraftService
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanRecordValuationDeposit(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanRecordValuationDeposit(actor.Staff))
             return (null, Forbidden(DepositForbiddenAr));
         var vr = await db.ValuationRequests.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
@@ -123,7 +123,7 @@ public sealed partial class ValuationReportDraftService
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanReopenValuationReport(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanReopenValuationReport(actor.Staff))
             return (null, Forbidden(ReopenForbiddenAr));
 
         var reopened = await issuance.ReopenAfterDepositAsync(valuationRequestId, request, actor.UserId, cancellationToken);
@@ -138,7 +138,7 @@ public sealed partial class ValuationReportDraftService
         ReportDraftActor actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanReopenValuationReport(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanReopenValuationReport(actor.Staff))
             return (null, Forbidden(ReopenForbiddenAr));
 
         // The property's request that holds the current deposit copy (the closed one after the final issuance).
@@ -167,6 +167,8 @@ public sealed partial class ValuationReportDraftService
             .Select(x => (Guid?)x.PropertyId)
             .FirstOrDefaultAsync(cancellationToken);
         if (propertyId is not { } property) return;
+        // The new version is prepared by the study again (Omar 2026-11-05): the transaction leaves review.
+        await MoveTransactionAsync(property, ReviewStateStudy, actor, cancellationToken);
         await RecordTimelineAsync(
             property,
             po => ValuationTimelineTexts.NewVersion(

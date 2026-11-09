@@ -55,17 +55,21 @@ public static class CaseStudyModel
             e.HasIndex(x => x.ClientId);
         });
 
-        // The transaction row holds the TMP draft and PR official numbers (both
-        // unique), the merge link kind and reason, the study-holder deed and, once folded, the receiving transaction.
+        // The transaction row holds the property number (unique; a single deed's own PR number or a
+        // linked property's PR-…-L) and an old row's retired TMP draft number, the merge link kind and reason, the study-holder deed and, once folded, the receiving transaction.
         builder.Entity<Transaction>(e =>
         {
             MapTable(e, "Transactions", DatabaseSchemas.CaseStudy, ownsMigrations);
             e.UseOptimisticConcurrency();
-            e.Property(x => x.DraftNumber).HasMaxLength(32).IsRequired();
+            e.Property(x => x.DraftNumber).HasMaxLength(32);
             e.Property(x => x.ReferenceNumber).HasMaxLength(32);
             e.Property(x => x.LinkKind).HasMaxLength(32);
             e.Property(x => x.LinkReason).HasMaxLength(2000);
             e.Property(x => x.MergedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.ReceivedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.ReceivedByName).HasMaxLength(256);
+            e.Property(x => x.HandedToReviewByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.ReviewApprovedByUserId).HasMaxLength(ColumnLengths.UserId);
             e.HasIndex(x => x.StudyHolderPropertyId);
             e.HasIndex(x => x.DraftNumber).IsUnique();
             e.HasIndex(x => x.ReferenceNumber).IsUnique();
@@ -78,6 +82,60 @@ public static class CaseStudyModel
                 .WithMany()
                 .HasForeignKey(x => x.MergedIntoTransactionId)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        builder.Entity<TransactionWorkMarker>(e =>
+        {
+            MapTable(e, "TransactionWorkMarkers", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.HasKey(x => x.TransactionId);
+            e.Property(x => x.UserId).HasMaxLength(ColumnLengths.UserId).IsRequired();
+            e.Property(x => x.DisplayName).HasMaxLength(256).IsRequired();
+            e.HasOne<Transaction>()
+                .WithOne()
+                .HasForeignKey<TransactionWorkMarker>(x => x.TransactionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // «إعادة فتح المعاملة» (Omar 2026-11-05): one row per reopening, at most one active per transaction.
+        builder.Entity<TransactionReopening>(e =>
+        {
+            MapTable(e, "TransactionReopenings", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.Property(x => x.Source).HasMaxLength(16).IsRequired();
+            e.Property(x => x.EnfazReference).HasMaxLength(200);
+            e.Property(x => x.Reason).HasMaxLength(2000).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.OpenedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.OpenedByName).HasMaxLength(256);
+            e.Property(x => x.ClosedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.ClosedByName).HasMaxLength(256);
+            e.HasIndex(x => new { x.TransactionId, x.Status });
+            e.HasIndex(x => x.Status);
+            e.HasAllowedValues("TransactionReopenings", nameof(TransactionReopening.Source), TransactionReopeningSources.All);
+            e.HasAllowedValues("TransactionReopenings", nameof(TransactionReopening.Status), TransactionReopeningStatuses.All);
+            e.HasOne<Transaction>()
+                .WithMany()
+                .HasForeignKey(x => x.TransactionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // «إضافة استلام من طرف خارجي» (Omar 2026-11-08): what the transaction waits for from outside the system.
+        builder.Entity<TransactionExternalReceipt>(e =>
+        {
+            MapTable(e, "TransactionExternalReceipts", DatabaseSchemas.CaseStudy, ownsMigrations);
+            e.Property(x => x.PartyName).HasMaxLength(200).IsRequired();
+            e.Property(x => x.Awaited).HasMaxLength(500).IsRequired();
+            e.Property(x => x.Status).HasMaxLength(16).IsRequired();
+            e.Property(x => x.CreatedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.CreatedByName).HasMaxLength(256);
+            e.Property(x => x.ReceivedByUserId).HasMaxLength(ColumnLengths.UserId);
+            e.Property(x => x.ReceivedByName).HasMaxLength(256);
+            e.Property(x => x.Note).HasMaxLength(1000);
+            e.HasIndex(x => new { x.TransactionId, x.Status });
+            e.HasAllowedValues("TransactionExternalReceipts", nameof(TransactionExternalReceipt.Status), TransactionExternalReceiptStatuses.All);
+            e.HasOne<Transaction>()
+                .WithMany()
+                .HasForeignKey(x => x.TransactionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         builder.Entity<Client>(e =>
@@ -97,12 +155,15 @@ public static class CaseStudyModel
  // Edited from intake, bourse, inspection and specialist screens; a stale save must 409
  // rather than silently overwrite another user's answers.
             e.UseOptimisticConcurrency();
-            // Every deed belongs to one transaction; the reference number moved from the deed to it.
+            // Every deed belongs to one transaction (the property); the deed carries its own number
+            // («رقم المعاملة», unique, drawn at the first full save of its initial data).
             e.HasOne(x => x.Transaction)
                 .WithMany(t => t.Properties)
                 .HasForeignKey(x => x.TransactionId)
                 .OnDelete(DeleteBehavior.Restrict);
             e.HasIndex(x => x.TransactionId);
+            e.Property(x => x.ReferenceNumber).HasMaxLength(32);
+            e.HasIndex(x => x.ReferenceNumber).IsUnique();
             e.Property(x => x.DeedNumber).HasMaxLength(128);
             e.Property(x => x.DeedKind)
                 .HasConversion<int>();
@@ -119,6 +180,7 @@ public static class CaseStudyModel
             e.Property(x => x.EnfazHandoverByUserId).HasMaxLength(128);
             e.HasIndex(x => x.EnfazHandoverAtUtc);
             e.Property(x => x.BillingReadyByUserId).HasMaxLength(128);
+            e.Property(x => x.ReadyForUploadByUserId).HasMaxLength(128);
             // «إلغاء المعاملة»: the stamp is what queues and the PO status test; the status before is kept for reactivation.
             e.HasIndex(x => x.CancelledAtUtc);
             e.Property(x => x.PreCancelDeedStatus).HasMaxLength(64);

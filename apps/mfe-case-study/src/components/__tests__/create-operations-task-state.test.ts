@@ -181,6 +181,16 @@ describe("createOperationsTaskReducer", () => {
 describe("buildCreateOperationsTaskSubmission", () => {
   const opts = { poOptions: records, needsVisitFee: false };
 
+  it("sends the optional agreed fee of a non-court task, and leaves it out when empty (2026-11-05)", () => {
+    const agreed = { ...opts, allowsAgreedTaskFee: true };
+    const general = form({ type: "general", visitFeeAmountSar: "250" });
+    const sent = buildCreateOperationsTaskSubmission(general, agreed);
+    expect(sent.ok && sent.body.visitFeeAmountSar).toBe(250);
+    const free = buildCreateOperationsTaskSubmission(form({ type: "general" }), agreed);
+    expect(free.ok && free.body.visitFeeAmountSar).toBeUndefined();
+    expect(buildCreateOperationsTaskSubmission(form({ type: "general", visitFeeAmountSar: "0" }), agreed).ok).toBe(false);
+  });
+
   it("reports the first missing field top to bottom", () => {
     expect(buildCreateOperationsTaskSubmission(form({ assigneeId: "" }), opts)).toEqual({ ok: false, error: "المنفّذ مطلوب" });
     expect(buildCreateOperationsTaskSubmission(form({ visitFeeAmountSar: "0" }), { ...opts, needsVisitFee: true })).toEqual({

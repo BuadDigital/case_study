@@ -45,7 +45,7 @@ import {
 } from "@platform/app-shared/app-data/property-detail-document-types";
 import { propertyIsLand } from "@platform/app-shared/app-data/po-intake-property-model";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
-import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import type { EvaluatorSubmission } from "../../lib/evaluator/evaluator-window-data";
 import {
   resolveReportValuationKeys,
@@ -244,12 +244,28 @@ type OwnershipInterestFields = {
 };
 
 /**
- * What sections 2/7 print from the appraiser's saved choices: purpose (approach
- * settings) and basis / premise (reconciliation) with their org-list labels, the retrospective
+ * What sections 2/7 print from the saved choices: purpose (the work order's, else the approach
+ * settings') and basis / premise (reconciliation) with their org-list labels, the retrospective
  * date and rationale, and the interest valued when it is not the deed's full ownership.
+ *
+ * How it works: the keys come from resolveReportValuationKeys; each label is the org list's name
+ * for the resolved key. Edge cases: the approach settings' own purpose label is used only when the
+ * resolved purpose is that same key — fixed 2026-11-04 (A→Z #16/#28), when the settings' default
+ * «البيع بالمزاد العلني لغرض التصفية» printed instead of the work order's purpose.
  */
 export function reportValuationChoices(input: {
-  record: Pick<PoIntakeRecord, "assignmentType" | "reportUserClientIds" | "clientId"> | null | undefined;
+  record:
+    | Pick<
+        PoIntakeRecord,
+        | "assignmentType"
+        | "reportUserClientIds"
+        | "clientId"
+        | "valuationPurposeKey"
+        | "basisOfValueKey"
+        | "valuePremiseKey"
+      >
+    | null
+    | undefined;
   recon: ValuationReconciliationDto | null;
   settings: ValuationApproachSettingsDto | null;
   lists: Record<string, ValuationListRow[]> | null | undefined;
@@ -271,7 +287,10 @@ export function reportValuationChoices(input: {
   const interest = (s ?? {}) as OwnershipInterestFields;
   return {
     purposeKey,
-    purposeLabel: find("purposes", keys.purposeKey)?.name || s?.valuationPurposeLabelAr || undefined,
+    purposeLabel:
+      find("purposes", keys.purposeKey)?.name ||
+      (keys.purposeKey === purposeKey ? s?.valuationPurposeLabelAr : undefined) ||
+      undefined,
     basisLabel: basis?.name,
     premiseLabel: find("premises", keys.premiseKey)?.name,
     basisDefinition: (basis?.cells[0] ?? "").trim(),

@@ -1,11 +1,11 @@
 import { copyPriorInspection, listPriorInspections, type PriorInspectionOption } from "@platform/api-client";
-import { mapPinPatchForActor } from "./inspector-workspace-data";
+import { mapPinPatchForActor } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   payloadToDraft,
   type InspectorWorkspacePatch,
   type InspectorWorkspacePatchInput,
 } from "./inspector-workspace-model";
-import { workOrdersApiConfig } from "../work-orders-api-config";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 
 /** Earlier inspections of this deed the inspector may copy; none on any failure (the button then hides). */
 export async function loadPriorInspections(taskId: string): Promise<PriorInspectionOption[]> {

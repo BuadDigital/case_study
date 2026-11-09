@@ -21,6 +21,7 @@ internal static class ReportDraftActors
             DisplayName = permissionsDto?.DisplayName,
             PrototypeRole = permissionsDto?.PrototypeRole,
             DistributionAssigneeId = permissionsDto?.DistributionAssigneeId,
+            SubRoles = permissionsDto?.SubRoles ?? [],
         };
     }
 }

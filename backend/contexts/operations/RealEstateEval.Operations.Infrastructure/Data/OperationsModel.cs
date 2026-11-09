@@ -217,6 +217,8 @@ public static class OperationsModel
             e.Property(x => x.OriginalAssigneeName).HasMaxLength(256);
             e.Property(x => x.CreditAssigneeId).HasMaxLength(128);
             e.Property(x => x.CreditAssigneeName).HasMaxLength(256);
+            e.Property(x => x.OutputsAcceptedByUserId).HasMaxLength(128);
+            e.Property(x => x.OutputsAcceptedByName).HasMaxLength(256);
             e.HasIndex(x => x.DisplayId).IsUnique();
             e.HasIndex(x => x.AssigneeId);
             e.HasIndex(x => x.Status);

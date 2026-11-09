@@ -3,7 +3,7 @@ import type { WorkflowTask } from "./tasks";
 import {
   inspectorWorkspaceStatusLabel,
   isInspectorWorkspaceLocked,
-} from "./inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 
 function workspaceHasDraftProgress(
   workspace: FieldInspectionWorkspaceListItemDto,

@@ -50,7 +50,28 @@ function taskMatchesCaseStudy(task: WorkflowTask): boolean {
   if (task.kind !== "case-study-property") return false;
   // Phase 4: one study per transaction — a deed folded into another deed's study is not a row.
   if (isFoldedCaseStudyTask(task)) return false;
-  return task.phase === "case-study" || task.phase === "done";
+  // Ruling 2026-11-02: a transaction joins the study queue at coordination's formal receipt.
+  if (task.phase === "case-study") return task.transactionReceived === true;
+  return task.phase === "done";
+}
+
+/**
+ * Coordination's «الاستلام من الأطراف» queue (ruling 2026-11-02): distributed transactions not yet
+ * formally received — the parties are still working, or delivered and waiting for the receipt.
+ *
+ * How it works: case-study tasks in the case-study phase whose transaction is not received; folded
+ * deeds are left out like in the study queue (the holder deed's row stands for the transaction).
+ * Edge cases: a returned inspection after the receipt does not bring the row back — the receipt is
+ * never cleared, the study follows the inspector up.
+ */
+export function filterTasksForReceipt(tasks: WorkflowTask[]): WorkflowTask[] {
+  return tasks.filter(
+    (t) =>
+      t.kind === "case-study-property" &&
+      !isFoldedCaseStudyTask(t) &&
+      t.phase === "case-study" &&
+      t.transactionReceived !== true,
+  );
 }
 
 export function filterTasksForCaseStudy(
@@ -60,17 +81,15 @@ export function filterTasksForCaseStudy(
 }
 
 /**
- * Properties ready for the Enfaz upload: the case-study report is issued AND the valuation report
- * is deposited. The study is issued before the valuation, so the study alone is not enough.
- * Every deed of a transaction is uploaded to Enfaz on its own, so folded deeds stay listed here.
- * A deed already handed over leaves the list (it used to stay, so the count only ever grew).
+ * Deeds whose study report is issued AND whose valuation report is deposited, not yet uploaded to
+ * Enfaz. Every deed of a transaction is uploaded on its own, so folded deeds stay listed.
  *
  * @param allTasks Every task the screen loaded — the appraisal tasks are not the viewer's own
  *   (the specialist's `mine` holds only case-study tasks). Defaults to `tasks`.
  */
-export function filterTasksForSystemUpload(
-  tasks: WorkflowTask[],
-  allTasks: readonly WorkflowTask[] = tasks,
+function filterDepositedNotUploaded(
+  tasks: readonly WorkflowTask[],
+  allTasks: readonly WorkflowTask[],
 ): WorkflowTask[] {
   const appraisals = allTasks.filter((t) => t.kind === "property-appraisal");
   return tasks.filter(
@@ -80,6 +99,28 @@ export function filterTasksForSystemUpload(
       t.propertyHandedOverToEnfaz !== true &&
       isValuationDepositedForTask(t, appraisals),
   );
+}
+
+/**
+ * The upload queue: deposited deeds review prepared with «تجهيز المعاملة للرفع» (Omar 2026-11-08 — the
+ * package was checked; nothing enters the queue incomplete). A deed already handed over leaves it.
+ *
+ * Edge cases / changed 2026-11-08: a deposited deed not prepared yet is not listed — it waits in
+ * `filterTasksForUploadPrep` (review's «تجهيز» step).
+ */
+export function filterTasksForSystemUpload(
+  tasks: WorkflowTask[],
+  allTasks: readonly WorkflowTask[] = tasks,
+): WorkflowTask[] {
+  return filterDepositedNotUploaded(tasks, allTasks).filter((t) => t.readyForUpload === true);
+}
+
+/** Deposited deeds waiting for review's «تجهيز المعاملة للرفع» (Omar 2026-11-08). */
+export function filterTasksForUploadPrep(
+  tasks: WorkflowTask[],
+  allTasks: readonly WorkflowTask[] = tasks,
+): WorkflowTask[] {
+  return filterDepositedNotUploaded(tasks, allTasks).filter((t) => t.readyForUpload !== true);
 }
 
 /** Party fee billing — under Active Transactions for party roles and supervisor. */
@@ -108,11 +149,25 @@ export const ACTIVE_TRANSACTIONS_NAV: ActiveTransactionNavItem[] = [
   ENGINEERING_FEES_ACTIVE_NAV_ITEM,
 ];
 
+const CASE_STUDY_STAGE_PAGE_IDS = new Set<PageId>(
+  CASE_STUDY_ACTIVE_TRANSACTIONS_NAV.map((item) => item.id),
+);
+
+/**
+ * The «قوائم المراحل» dropdown rows a role sees.
+ *
+ * How it works: the pages the role holds; «فوترة الأتعاب» only for the roles that keep it here.
+ * Edge cases / changed 2026-11-05 (Omar): a role that has «أعمالي» no longer gets the six case-study
+ * stage queues here — «أعمالي» lists the same rows with the same ⋮ menu, and «المعاملات النشطة»
+ * follows them. The pages stay reachable (the rows open them); the party queues and fees stay.
+ */
 export function activeTransactionNavForRole(
   rolePages: PageId[],
   role?: RoleId,
 ): ActiveTransactionNavItem[] {
+  const hasMyWork = rolePages.includes("my-work");
   return ACTIVE_TRANSACTIONS_NAV.filter((item) => {
+    if (hasMyWork && CASE_STUDY_STAGE_PAGE_IDS.has(item.id)) return false;
     if (item.id === "party-fees") {
       return (
         isPartyFeesUnderActiveTransactions(role) &&
@@ -123,7 +178,8 @@ export function activeTransactionNavForRole(
   });
 }
 
-export const ACTIVE_TRANSACTIONS_GROUP = "المعاملات النشطة";
+/** Interim name (2026-11-05): «المعاملات النشطة» is now the follow-up page of every live transaction; this dropdown of stage queues goes away in phase 6. */
+export const ACTIVE_TRANSACTIONS_GROUP = "قوائم العمل";
 
 export const ACTIVE_TRANSACTIONS_GROUP_ICON =
   "M22 12h-4l-3 9L9 3l-3 9H2";

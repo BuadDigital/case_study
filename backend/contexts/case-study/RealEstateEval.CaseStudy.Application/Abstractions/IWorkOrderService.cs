@@ -75,7 +75,8 @@ public interface IWorkOrderService
         WorkOrderPropertyDto property,
         CancellationToken cancellationToken,
         bool softDraft = false,
-        string? actorName = null);
+        string? actorName = null,
+        PartySubmissionActor? changeActor = null);
 
     Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdateSpecialistReportExtrasAsync(
         string poNumber,
@@ -88,7 +89,8 @@ public interface IWorkOrderService
         Guid propertyId,
         UpdatePropertyBourseRequest request,
         CancellationToken cancellationToken,
-        string? actorName = null);
+        string? actorName = null,
+        PartySubmissionActor? changeActor = null);
     Task<(bool Ok, string? Error)> DeletePropertyAsync(
         string poNumber,
         Guid propertyId,

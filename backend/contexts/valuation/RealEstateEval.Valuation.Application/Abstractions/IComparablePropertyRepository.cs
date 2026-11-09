@@ -46,6 +46,11 @@ public sealed record ComparableCoordinate(decimal Latitude, decimal Longitude);
 /// </summary>
 public interface IComparablePropertyRepository
 {
+    /// <summary>Next yearly comparable code CMP-{YY}-{seq}, or the reason it could not be issued.</summary>
+    Task<(string? Code, string? Error)> AllocateReferenceCodeAsync(
+        DateTime nowUtc,
+        CancellationToken cancellationToken);
+
     /// <summary>Untracked page of the bank, newest transaction first.</summary>
     Task<IReadOnlyList<ComparableProperty>> ListAsync(
         ComparableBankFilter filter,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { CaseStudyReportDraft } from "../case-study-report-model";
+import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 
 function markSpecialistPartyReviewOnAnswer(
   draft: CaseStudyReportDraft,

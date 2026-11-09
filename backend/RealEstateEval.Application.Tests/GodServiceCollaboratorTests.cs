@@ -30,18 +30,18 @@ public class GodServiceCollaboratorTests
         var entity = OperationsTaskInStatus(from);
 
         var error = OperationsTaskLifecycleRules.ValidateStatusTransition(
-            entity, to, actorAssignee, role);
+            entity, to, actorAssignee, TestStaff.Of(role));
         Assert.Equal(expectedError, error);
     }
 
     [Fact]
     public void Operations_manager_roles_match_legacy()
     {
-        Assert.True(OperationsTaskLifecycleRules.IsManager("case-specialist"));
-        Assert.True(OperationsTaskLifecycleRules.IsManager("section-supervisor"));
-        Assert.True(OperationsTaskLifecycleRules.IsManager("CDO"));
-        Assert.True(OperationsTaskLifecycleRules.IsManager("real-estate-appraiser"));
-        Assert.False(OperationsTaskLifecycleRules.IsManager("field-inspector"));
+        Assert.True(OperationsTaskLifecycleRules.IsManager(TestStaff.Of("case-specialist")));
+        Assert.True(OperationsTaskLifecycleRules.IsManager(TestStaff.Of("section-supervisor")));
+        Assert.True(OperationsTaskLifecycleRules.IsManager(TestStaff.Of("CDO")));
+        Assert.True(OperationsTaskLifecycleRules.IsManager(TestStaff.Of("real-estate-appraiser")));
+        Assert.False(OperationsTaskLifecycleRules.IsManager(TestStaff.Of("field-inspector")));
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public class GodServiceCollaboratorTests
                 entity,
                 OperationsTaskStatus.Paused,
                 "a1",
-                "government-reviewer",
+                TestStaff.Of("government-reviewer"),
                 pauseReason: "ظرف طارئ"));
 
         Assert.Null(
@@ -63,7 +63,7 @@ public class GodServiceCollaboratorTests
                 entity,
                 OperationsTaskStatus.Paused,
                 "a1",
-                "government-reviewer",
+                TestStaff.Of("government-reviewer"),
                 pauseReason: "تعذر نشط — بانتظار حل الأخصائي/المشرف"));
     }
 
@@ -81,14 +81,14 @@ public class GodServiceCollaboratorTests
                 entity,
                 OperationsTaskStatus.Created,
                 "a1",
-                "government-reviewer"));
+                TestStaff.Of("government-reviewer")));
 
         Assert.Null(
             OperationsTaskLifecycleRules.ValidateStatusTransition(
                 entity,
                 OperationsTaskStatus.Created,
                 "other",
-                "case-specialist"));
+                TestStaff.Of("case-specialist")));
 
         Assert.Equal(
             "هذا الإجراء للمنفّذ المكلّف أو المشرف فقط",
@@ -96,7 +96,7 @@ public class GodServiceCollaboratorTests
                 entity,
                 OperationsTaskStatus.Created,
                 "other",
-                "field-inspector"));
+                TestStaff.Of("field-inspector")));
     }
 
     [Fact]

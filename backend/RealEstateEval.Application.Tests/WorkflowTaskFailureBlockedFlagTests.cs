@@ -40,7 +40,7 @@ public class WorkflowTaskFailureBlockedFlagTests
             bundle.CaseStudy, null, new FailureLookup(bundle.Failures));
         var rows = await query.ListAsync(
             WorkflowTaskListQuery.Empty,
-            new PermissionsDto { PrototypeRole = "case-specialist", UserId = "u1" });
+            new PermissionsDto { PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All, UserId = "u1" });
 
         Assert.Equal(expected, rows.Single(r => r.PropertyId == BlockedProperty.ToString())
             .PropertyFailureBlocked);

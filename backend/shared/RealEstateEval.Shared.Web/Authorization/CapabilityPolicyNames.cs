@@ -102,6 +102,12 @@ public static class CapabilityPolicyNames
     public const string ManagePartyFeePricing = "Capability:manage-party-fee-pricing";
 
     /// <summary>
+    /// Edit a property's data after intake: case staff and the appraiser (ruling 2026-11-02). The
+    /// door only — <c>PoRoleMatrixRules.CanEditPropertyData</c> decides by role behind it.
+    /// </summary>
+    public const string EditPropertyData = "Capability:edit-property-data";
+
+    /// <summary>
     /// Case-study workspace reads (work orders, forms, party submissions, workflow queue).
     /// Case staff manage the file; field parties see their assigned slice (service-layer filter).
     /// </summary>

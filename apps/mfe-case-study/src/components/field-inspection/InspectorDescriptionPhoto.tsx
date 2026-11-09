@@ -10,7 +10,7 @@ import { cn } from "@platform/ui-kit";
 import {
   PROPERTY_DESCRIPTION_PHOTO_KEY,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   clearInspectorPhotoDataUrl,
   uploadInspectorPhotoFromFile,

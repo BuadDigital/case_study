@@ -15,6 +15,9 @@ import {
   OFFLINE_CHANNEL,
   OFFLINE_DB_NAME,
   OFFLINE_DB_VERSION,
+  OFFLINE_LEASE_EVENT,
+  OFFLINE_PENDING_EVENT,
+  OFFLINE_PURGED_EVENT,
   type OfflineBlobRecord,
   type OfflineDraftRecord,
   type OfflineLease,
@@ -634,7 +637,7 @@ export async function publishPendingCount(userId: string): Promise<number> {
   } catch {
     /* ignore */
   }
-  broadcastOffline("ejada-offline-pending-changed", { count, userId });
+  broadcastOffline(OFFLINE_PENDING_EVENT, { count, userId });
   return count;
 }
 
@@ -691,7 +694,7 @@ export async function getOfflineLease(
 
 export async function setOfflineLease(lease: OfflineLease): Promise<void> {
   await setMeta(`lease:${lease.userId}`, lease);
-  broadcastOffline("ejada-offline-lease-changed", lease);
+  broadcastOffline(OFFLINE_LEASE_EVENT, lease);
 }
 
 export async function requestPersistentStorage(): Promise<boolean> {
@@ -742,8 +745,8 @@ export async function purgeOfflineData(
   } catch {
     /* ignore */
   }
-  broadcastOffline("ejada-offline-purged", { userId, reason });
-  broadcastOffline("ejada-offline-pending-changed", { count: 0, userId });
+  broadcastOffline(OFFLINE_PURGED_EVENT, { userId, reason });
+  broadcastOffline(OFFLINE_PENDING_EVENT, { count: 0, userId });
 }
 
 async function forceCloseOfflineDb(): Promise<void> {

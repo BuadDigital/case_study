@@ -133,10 +133,11 @@ public static class ValuationComparableListBuilder
                     basis,
                     EffectiveCompValues(x.Row, comps[x.Row.ComparablePropertyId]).Area))
                 .ToList(),
-            // Round 2: a market comparable dealt after the valuation date (hard alert 23) gets no automatic weight.
+            // Round 2: a comparable dealt after the valuation date (hard alert 23) gets no automatic
+            // weight — in the market table and, since 2026-11-04 (A→Z #77), in the cost approach's
+            // land table too (it used to enter the land rate at full weight).
             adoptedMarkets
-                .Select(x => ComparableSelectionContexts.Normalize(selectionContext) == ComparableSelectionContexts.Market
-                    && hardComparableDateCutoff is { } cutoff
+                .Select(x => hardComparableDateCutoff is { } cutoff
                     && comps[x.Row.ComparablePropertyId].TransactionDate > cutoff)
                 .ToList());
 

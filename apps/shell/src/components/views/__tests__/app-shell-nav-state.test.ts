@@ -129,6 +129,30 @@ describe("planSidebarNav", () => {
     expect(plan.trailing).toEqual([]);
   });
 
+  it("keeps the rows after suspended transactions above the finance group", () => {
+    const plan = planSidebarNav(
+      [
+        { label: null, items: [nav("dashboard")] },
+        {
+          label: "A",
+          items: [nav("po", "A"), nav("suspended-transactions", "A"), nav("location-pending", "A")],
+        },
+        { label: "B", items: [nav("valuation-requests", "B")] },
+      ],
+      {
+        activeTx: { anchor: "po", atNavStart: false, anchorId: "po" },
+        showActiveTx: false,
+        showFinancial: true,
+        showGeneral: false,
+      },
+    );
+    expect(plan.runs[1].rows.map((row) => [row.item.id, row.after])).toEqual([
+      ["po", []],
+      ["suspended-transactions", []],
+      ["location-pending", ["finance"]],
+    ]);
+  });
+
   it("renders active-tx before the first run for party roles and never twice", () => {
     const plan = planSidebarNav(runs, {
       activeTx: { anchor: null, atNavStart: true, anchorId: null },

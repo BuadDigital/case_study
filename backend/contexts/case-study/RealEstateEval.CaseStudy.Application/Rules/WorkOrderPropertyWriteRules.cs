@@ -44,6 +44,31 @@ public static class WorkOrderPropertyWriteRules
         return null;
     }
 
+    public const string ReviewApprovedLockAr =
+        "اعتمد المراجع الدراسة — لا تعديل على بيانات المعاملة إلا بإرجاعها للدراسة (المراجع) أو بإعادة فتحها.";
+
+    public const string HandedToReviewLockAr =
+        "المعاملة عند المراجع — التعديل له وحده حتى يعتمدها أو يُرجعها للدراسة.";
+
+    /// <summary>
+    /// The review lock on a transaction's data (Omar 2026-11-05): with the study every specialist
+    /// edits; once handed to review only review (and the supervisor / CDO) edits; once review approved no one edits
+    /// without a reopen.
+    /// </summary>
+    /// <remarks>
+    /// How it works: returns the Arabic refusal, or null when the actor may write. A deed with no
+    /// transaction yet is with the study.
+    /// Edge cases: the CDO is held by the approval lock too — the reopen is the only way back.
+    /// </remarks>
+    public static string? ReviewLockError(Transaction? transaction, StaffActor actor)
+    {
+        // Omar 2026-11-08: the lock is the same for everyone — open while the study is with the study or
+        // sent to review, locked once review approved the study (a return to the study opens it again).
+        _ = actor;
+        if (transaction is null) return null;
+        return transaction.IsReviewApproved ? ReviewApprovedLockAr : null;
+    }
+
     /// <summary>Two validators over the same payload; first message per field wins.</summary>
     public static Dictionary<string, string> MergeErrors(
         IEnumerable<KeyValuePair<string, string>> first,
@@ -305,6 +330,66 @@ public static class WorkOrderPropertyWriteRules
             dto.SouthBoundary, dto.SouthBoundaryLengthM, dto.SouthBoundaryType, dto.SouthFacadeFinishing,
             dto.EastBoundary, dto.EastBoundaryLengthM, dto.EastBoundaryType, dto.EastFacadeFinishing,
             dto.WestBoundary, dto.WestBoundaryLengthM, dto.WestBoundaryType, dto.WestFacadeFinishing);
+    }
+
+    /// <summary>
+    /// Keeps a completed bourse when a field autosave arrives with its fields blank.
+    ///
+    /// How it works: only for a property whose bourse is completed — every bourse field the
+    /// autosave sends blank takes the stored value instead (city, district, type, area, deed
+    /// status, restrictions, boundaries, owners…), so the draft can still change a value but can
+    /// no longer erase one. Clearing a field stays possible through the explicit save, which
+    /// validates the bourse in full.
+    ///
+    /// Edge cases: a property before its bourse is untouched (its fields are being typed). Fixed
+    /// 2026-11-04 (audit of the production copy): PO-175824 kept «البورصة مكتملة» while its city,
+    /// district, type and area were empty — an initial-data panel opened before the bourse was
+    /// completed autosaved its stale copy hours later and blanked them, so the valuation report
+    /// printed no location.
+    /// </summary>
+    public static void KeepCompletedBourseOnDraft(WorkOrderProperty entity, WorkOrderPropertyDto dto)
+    {
+        if (!entity.BourseDataCompleted) return;
+
+        static string? Keep(string? incoming, string? stored) =>
+            string.IsNullOrWhiteSpace(incoming) && !string.IsNullOrWhiteSpace(stored) ? stored : incoming;
+
+        dto.City = Keep(dto.City, entity.City) ?? "";
+        dto.Region = Keep(dto.Region, entity.Region);
+        dto.RegionId ??= entity.RegionId;
+        dto.CityId ??= entity.CityId;
+        dto.District = Keep(dto.District, entity.District) ?? "";
+        dto.Classification = Keep(dto.Classification, entity.Classification) ?? "";
+        dto.PropertyType = Keep(dto.PropertyType, entity.PropertyType) ?? "";
+        dto.Area = Keep(dto.Area, entity.Area);
+        dto.DeedStatus = Keep(dto.DeedStatus, entity.DeedStatus);
+        dto.BourseDeedImageFileName = Keep(dto.BourseDeedImageFileName, entity.BourseDeedImageFileName);
+        dto.RestrictionsPresent = Keep(dto.RestrictionsPresent, entity.RestrictionsPresent);
+        dto.RestrictionType = Keep(dto.RestrictionType, entity.RestrictionType);
+        dto.RestrictionOtherReason = Keep(dto.RestrictionOtherReason, entity.RestrictionOtherReason);
+        dto.BoundariesAvailability = Keep(dto.BoundariesAvailability, entity.BoundariesAvailability);
+        dto.BoundariesExternalDocName = Keep(dto.BoundariesExternalDocName, entity.BoundariesExternalDocName);
+        dto.NorthBoundary = Keep(dto.NorthBoundary, entity.NorthBoundary);
+        dto.NorthBoundaryLengthM = Keep(dto.NorthBoundaryLengthM, entity.NorthBoundaryLengthM);
+        dto.NorthBoundaryType = Keep(dto.NorthBoundaryType, entity.NorthBoundaryType);
+        dto.NorthFacadeFinishing = Keep(dto.NorthFacadeFinishing, entity.NorthFacadeFinishing);
+        dto.SouthBoundary = Keep(dto.SouthBoundary, entity.SouthBoundary);
+        dto.SouthBoundaryLengthM = Keep(dto.SouthBoundaryLengthM, entity.SouthBoundaryLengthM);
+        dto.SouthBoundaryType = Keep(dto.SouthBoundaryType, entity.SouthBoundaryType);
+        dto.SouthFacadeFinishing = Keep(dto.SouthFacadeFinishing, entity.SouthFacadeFinishing);
+        dto.EastBoundary = Keep(dto.EastBoundary, entity.EastBoundary);
+        dto.EastBoundaryLengthM = Keep(dto.EastBoundaryLengthM, entity.EastBoundaryLengthM);
+        dto.EastBoundaryType = Keep(dto.EastBoundaryType, entity.EastBoundaryType);
+        dto.EastFacadeFinishing = Keep(dto.EastFacadeFinishing, entity.EastFacadeFinishing);
+        dto.WestBoundary = Keep(dto.WestBoundary, entity.WestBoundary);
+        dto.WestBoundaryLengthM = Keep(dto.WestBoundaryLengthM, entity.WestBoundaryLengthM);
+        dto.WestBoundaryType = Keep(dto.WestBoundaryType, entity.WestBoundaryType);
+        dto.WestFacadeFinishing = Keep(dto.WestFacadeFinishing, entity.WestFacadeFinishing);
+        // No named owner in the draft → the stored owners stay.
+        if (dto.Owners is null || dto.Owners.All(o => string.IsNullOrWhiteSpace(o.Name)))
+            dto.Owners = OwnershipTypeRules.ParseOwners(entity.DeedOwnersJson)
+                .Select(o => new DeedOwnerDto { Name = o.Name })
+                .ToList();
     }
 
     /// <summary>

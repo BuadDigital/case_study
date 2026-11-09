@@ -25,6 +25,8 @@ public class UserListItemDto
     public string? NationalId { get; init; }
     public string? AvatarUrl { get; init; }
     public string? InspectorType { get; init; }
+    /// <summary>Case-specialist sub-roles (coordination | study | review); empty for other roles.</summary>
+    public IReadOnlyList<string> CaseSpecialistSubRoles { get; init; } = [];
     public bool HasCompensation { get; init; }
     public decimal? FeeValueSar { get; init; }
     public string? Iban { get; init; }
@@ -56,6 +58,11 @@ public sealed class CreateStaffUserRequest
     public required string RoleId { get; init; }
     public string? Department { get; init; }
     public string? InspectorType { get; init; }
+    /// <summary>
+    /// Case-specialist sub-roles (coordination | study | review). Absent = all three; ignored for
+    /// other roles.
+    /// </summary>
+    public IReadOnlyList<string>? CaseSpecialistSubRoles { get; init; }
     public bool? HasCompensation { get; init; }
     public decimal? FeeValueSar { get; init; }
     public string? Iban { get; init; }
@@ -81,6 +88,11 @@ public sealed class UpdateStaffUserRequest
     public string? NationalId { get; init; }
     public string? AvatarUrl { get; init; }
     public string? InspectorType { get; init; }
+    /// <summary>
+    /// Case-specialist sub-roles (coordination | study | review). Absent keeps the stored set (or
+    /// all three when the account becomes a case specialist); ignored for other roles.
+    /// </summary>
+    public IReadOnlyList<string>? CaseSpecialistSubRoles { get; init; }
     public bool? HasCompensation { get; init; }
     public decimal? FeeValueSar { get; init; }
     public string? Iban { get; init; }

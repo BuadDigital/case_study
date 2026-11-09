@@ -43,8 +43,8 @@ export function PropertyDetailGovernmentReviewsTab({
   poNumber: string;
   property: PoPropertyIntake;
 }) {
-  const { role } = useAppAccess();
-  const canCreate = canManageOperationsTasks(role);
+  const { role, access } = useAppAccess();
+  const canCreate = canManageOperationsTasks(access);
   const deedNumber = property.deedNumber.trim();
   const deedDisplay = formatPropertyDeedDisplay(property) || deedNumber;
 

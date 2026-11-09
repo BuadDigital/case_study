@@ -25,7 +25,7 @@ public class CaseStudyReportBatchReadTests
     private static readonly CaseStudyReportActor Staff = new()
     {
         UserId = "staff",
-        PrototypeRole = "case-specialist",
+        PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
     };
 
     /// <summary>Assigned to ChildA1 only.</summary>

@@ -22,10 +22,10 @@ import {
   partyCaseStudyAnswersFromBatch,
 } from "../lib/app-data/case-study-party-progress";
 import type { CaseStudyReportDraftsByParent } from "../lib/app-data/case-study-report-reads";
-import { PARTY_CASE_STUDY_REPORT_CHANGED_EVENT } from "../lib/app-data/case-study-report-model";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 import { useCaseStudyReportBatchQuery } from "../query/case-study-queries";
 import type { PartyProgressByTask } from "./active-transaction-queue-tables-state";
+import { PARTY_CASE_STUDY_REPORT_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 type InfoRolesMatrix = Parameters<typeof computePartyCaseStudyProgress>[0];
 

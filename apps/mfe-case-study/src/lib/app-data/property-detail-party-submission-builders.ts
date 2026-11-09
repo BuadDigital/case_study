@@ -13,7 +13,7 @@ import {
 import {
   type CaseStudyReportDraft,
   type CaseStudyReportStatus,
-} from "./case-study-report-model";
+} from "@platform/app-shared/app-data/case-study-report-model";
 import { childTasksForCaseStudyParent } from "./case-study-party-answers";
 import {
   FAILURE_OBSTRUCTED_LABEL,
@@ -28,7 +28,7 @@ import {
   inspectorWorkspaceStatusLabel,
   isMovablesPresent,
   isOccupied,
-} from "./inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { InspectorWorkspaceSnapshot } from "./inspector-workspace-model";
 import type { PropertyDetailPartyRoleKey } from "./property-detail-parties";
 import {

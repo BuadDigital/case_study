@@ -38,9 +38,9 @@ import {
   type PartyDataSectionDef,
   type PartyFieldDef,
 } from "../../lib/app-data/property-party-fields";
-import type { InspectorObservation } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorObservation } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
-import { resolveApiError, workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { resolveApiError, workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { InsDualCalendarDateField } from "./PropertyDetailInspectionDateField";
 

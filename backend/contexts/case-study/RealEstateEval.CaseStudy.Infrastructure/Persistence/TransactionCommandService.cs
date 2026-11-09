@@ -19,14 +19,18 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 /// and to each deed's timeline. The study stays on the holder deed's task (phase 4) and the moved
 /// deeds' valuation requests fold into the holder's (phase 5).
 /// </summary>
-public sealed class TransactionCommandService : ITransactionCommands
+public sealed partial class TransactionCommandService : ITransactionCommands
 {
-    public const string RoleDeniedAr = "دمج المعاملات وفكّها لأخصائي دراسة الحالة";
+    public const string RoleDeniedAr = "دمج المعاملات وفكّها لأخصائي التنسيق أو دراسة العقار";
     public const string NotFoundAr = "المعاملة غير موجودة";
+
+    /// <summary>The refusal of a merge by the wrong stage owner (coordination before the receipt, study after).</summary>
+    public static string StageDeniedAr(bool received) => received
+        ? "أُرسلت المعاملة للدراسة — دمج الصكوك الآن لأخصائي دراسة العقار"
+        : "المعاملة في مرحلة التنسيق — دمج الصكوك الآن لأخصائي التنسيق";
     private const int MaxSearchHits = 20;
 
     private readonly CaseStudyDbContext _db;
-    private readonly ITransactionRepository _transactions;
     private readonly ITransactionQuery _query;
     private readonly IWorkOrderVisibilityFilter _visibility;
     private readonly IPropertyTimelineService _timeline;
@@ -34,11 +38,13 @@ public sealed class TransactionCommandService : ITransactionCommands
     private readonly IAuditLogAppend? _auditLog;
     private readonly IValuationRequestFolding? _valuationFolding;
     private readonly ILogger<TransactionCommandService>? _logger;
+    private readonly INotificationService? _notifications;
+    private readonly INotificationRecipientResolver? _recipients;
+    private readonly ILinkedOperationsTaskLookup? _linkedTasks;
     private readonly TimeProvider _time;
 
     public TransactionCommandService(
         CaseStudyDbContext db,
-        ITransactionRepository transactions,
         ITransactionQuery query,
         IWorkOrderVisibilityFilter visibility,
         IPropertyTimelineService timeline,
@@ -46,10 +52,15 @@ public sealed class TransactionCommandService : ITransactionCommands
         IAuditLogAppend? auditLog = null,
         TimeProvider? time = null,
         IValuationRequestFolding? valuationFolding = null,
-        ILogger<TransactionCommandService>? logger = null)
+        ILogger<TransactionCommandService>? logger = null,
+        INotificationService? notifications = null,
+        INotificationRecipientResolver? recipients = null,
+        ILinkedOperationsTaskLookup? linkedTasks = null)
     {
+        _linkedTasks = linkedTasks;
+        _notifications = notifications;
+        _recipients = recipients;
         _db = db;
-        _transactions = transactions;
         _query = query;
         _visibility = visibility;
         _timeline = timeline;
@@ -83,7 +94,7 @@ public sealed class TransactionCommandService : ITransactionCommands
         PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanIssueCaseStudyReport(actor?.PrototypeRole))
+        if (!PoRoleMatrixRules.CanMergeTransactions(StaffActor.From(actor)))
             return (null, RoleDeniedAr);
 
         var reason = (request.Reason ?? "").Trim();
@@ -95,6 +106,8 @@ public sealed class TransactionCommandService : ITransactionCommands
 
         var target = await LoadTrackedAsync(targetTransactionId, cancellationToken);
         if (target is null) return (null, NotFoundAr);
+        if (!PoRoleMatrixRules.CanMergeAtStage(StaffActor.From(actor), target.IsReceived))
+            return (null, StageDeniedAr(target.IsReceived));
         if (TransactionMergeRules.ValidateTarget(target, target.Properties) is { } targetError)
             return (null, targetError);
 
@@ -131,9 +144,18 @@ public sealed class TransactionCommandService : ITransactionCommands
                 return (null, $"{DeedLabel(deed)}: {blocked}");
         }
 
+        // The property number is built from the deeds' numbers: every live deed must have one (it gets
+        // it at the first full save of its initial data, which the bourse stage above already implies).
+        foreach (var deed in target.Properties.Concat(allMoving).Where(p => !p.IsRemoved).DistinctBy(p => p.Id))
+        {
+            if (string.IsNullOrWhiteSpace(deed.ReferenceNumber))
+                return (null, $"{DeedLabel(deed)}: {TransactionMergeRules.DeedNotNumberedAr}");
+        }
+
         var now = _time.UtcNow();
         var actorId = ActorId(actor);
         var moved = new List<WorkOrderProperty>();
+        var sourceNumbers = sources.Select(s => new { s.Id, s.ReferenceNumber, s.DraftNumber }).ToList();
         // Each source hands all its deeds to the target and stays behind as a closed row pointing at it.
         foreach (var source in sources)
         {
@@ -145,6 +167,8 @@ public sealed class TransactionCommandService : ITransactionCommands
                 moved.Add(deed);
             }
             source.Properties.Clear();
+            // The number lives on the deeds; the closed row keeps no property number of its own.
+            source.ReferenceNumber = null;
             source.MergedIntoTransactionId = target.Id;
             source.MergedAtUtc = now;
             source.MergedByUserId = actorId;
@@ -161,6 +185,8 @@ public sealed class TransactionCommandService : ITransactionCommands
             Properties = target.Properties.Where(p => !moved.Any(m => m.Id == p.Id)).ToList(),
         })?.Id;
         target.UpdatedAtUtc = now;
+        // Linked property number: the smallest deed number now (or the root it already had) + «-L».
+        target.RefreshReference(now);
         await _db.SaveChangesAsync(cancellationToken);
 
         var targetLabel = target.DisplayNumber;
@@ -171,7 +197,7 @@ public sealed class TransactionCommandService : ITransactionCommands
                 deed.WorkOrder!.PoNumber,
                 deed.Id,
                 $"transaction:{target.Id}:merged-in:{now:O}",
-                $"ضُم الصك إلى المعاملة {targetLabel}",
+                $"ضُم الصك إلى العقار المرتبط {targetLabel}",
                 string.IsNullOrWhiteSpace(actorName) ? reason : $"{actorName} — {reason}",
                 PropertyTimelineTones.Done,
                 now,
@@ -183,7 +209,7 @@ public sealed class TransactionCommandService : ITransactionCommands
                 deed.WorkOrder!.PoNumber,
                 deed.Id,
                 $"transaction:{target.Id}:merged:{now:O}",
-                $"ضُمّت إلى المعاملة صكوك أخرى ({moved.Count}) — {TransactionLinkKinds.LabelAr(linkKind)}",
+                $"ضُمّت صكوك أخرى ({moved.Count}) — العقار المرتبط {targetLabel} — {TransactionLinkKinds.LabelAr(linkKind)}",
                 string.IsNullOrWhiteSpace(actorName) ? reason : $"{actorName} — {reason}",
                 PropertyTimelineTones.Done,
                 now,
@@ -192,8 +218,9 @@ public sealed class TransactionCommandService : ITransactionCommands
 
         await AuditAsync(actorId, "TRANSACTION_MERGED", target.Id, new
         {
-            sources = sources.Select(s => new { s.Id, s.DraftNumber }).ToList(),
-            deeds = moved.Select(d => d.Id).ToList(),
+            sources = sourceNumbers,
+            deeds = moved.Select(d => new { d.Id, d.ReferenceNumber }).ToList(),
+            propertyNumber = target.ReferenceNumber,
             linkKind,
             reason,
         }, cancellationToken);
@@ -254,18 +281,19 @@ public sealed class TransactionCommandService : ITransactionCommands
     }
 
     /// <summary>
-    /// Takes one deed back out into a new draft (TMP) transaction of its own — allowed only before the
-    /// official PR number, with a reason.
+    /// Takes one deed back out as a single property of its own, under its own number — allowed only
+    /// before the first report is approved, with a reason (ruling 2026-11-08).
     /// </summary>
     /// <remarks>
     /// How it works: 1) role and reason (5+ chars); 2) loads the transaction tracked and runs
-    /// ValidateUnmerge with the live deed count; 3) draws a fresh TMP number and moves the deed to the
-    /// new transaction; 4) drops link kind and reason when fewer than two live deeds remain; saves;
-    /// 5) writes the deed's timeline entry and a TRANSACTION_DEED_UNMERGED audit row; 6) unfolds the
-    /// deed's valuation request; returns the remaining transaction's detail.
-    /// Edge cases: once the PR number exists nothing comes out; taking out the holder deed leaves its
+    /// ValidateUnmerge with the live deed count; 3) moves the deed to a new transaction, whose number is
+    /// the deed's own (nothing is drawn); 4) drops link kind and reason when fewer than two live deeds
+    /// remain and recomputes the property number (the root leaving → the smallest left + «-L»; one deed
+    /// left → its own number); saves; 5) writes the deed's timeline entry and a TRANSACTION_DEED_UNMERGED
+    /// audit row; 6) unfolds the deed's valuation request; returns the remaining transaction's detail.
+    /// Edge cases: once the number is locked nothing comes out; taking out the holder deed leaves its
     /// StudyHolderPropertyId pointing at a deed no longer here, and TransactionStudyRules.Holder then
-    /// falls back to the first live deed; a TMP counter error aborts before any move.
+    /// falls back to the first live deed.
     /// </remarks>
     public async Task<(TransactionDetailDto? Result, string? Error)> UnmergeDeedAsync(
         Guid transactionId,
@@ -273,21 +301,23 @@ public sealed class TransactionCommandService : ITransactionCommands
         PermissionsDto? actor,
         CancellationToken cancellationToken = default)
     {
-        if (!PoRoleMatrixRules.CanIssueCaseStudyReport(actor?.PrototypeRole))
+        if (!PoRoleMatrixRules.CanMergeTransactions(StaffActor.From(actor)))
             return (null, RoleDeniedAr);
         var reason = (request.Reason ?? "").Trim();
         if (TransactionMergeRules.ValidateReason(reason) is { } reasonError) return (null, reasonError);
 
         var transaction = await LoadTrackedAsync(transactionId, cancellationToken);
         if (transaction is null) return (null, NotFoundAr);
+        if (!PoRoleMatrixRules.CanMergeAtStage(StaffActor.From(actor), transaction.IsReceived))
+            return (null, StageDeniedAr(transaction.IsReceived));
         var deed = transaction.Properties.FirstOrDefault(p => p.Id == request.PropertyId);
         var liveCount = transaction.Properties.Count(p => !p.IsRemoved);
         if (TransactionMergeRules.ValidateUnmerge(transaction, deed, liveCount) is { } error)
             return (null, error);
 
         var now = _time.UtcNow();
-        var (fresh, draftError) = await NewDraftAsync(now, cancellationToken);
-        if (draftError is not null || fresh is null) return (null, draftError ?? "تعذّر فتح معاملة جديدة");
+        var fresh = Transaction.Create(now);
+        var previousNumber = transaction.DisplayNumber;
 
         transaction.Properties.Remove(deed!);
         deed!.TransactionId = fresh.Id;
@@ -300,6 +330,8 @@ public sealed class TransactionCommandService : ITransactionCommands
             transaction.LinkReason = null;
         }
         transaction.UpdatedAtUtc = now;
+        fresh.RefreshReference(now);
+        transaction.RefreshReference(now);
         _db.Transactions.Add(fresh);
         await _db.SaveChangesAsync(cancellationToken);
 
@@ -311,7 +343,7 @@ public sealed class TransactionCommandService : ITransactionCommands
                 deed.WorkOrder.PoNumber,
                 deed.Id,
                 $"transaction:{fresh.Id}:unmerged:{now:O}",
-                $"أُخرج الصك من المعاملة {transaction.DisplayNumber} إلى معاملة جديدة {fresh.DraftNumber}",
+                $"أُخرج الصك من العقار المرتبط {previousNumber} — عاد عقارًا مستقلًا برقم معاملته {fresh.DisplayNumber}",
                 string.IsNullOrWhiteSpace(actorName) ? reason : $"{actorName} — {reason}",
                 PropertyTimelineTones.Warn,
                 now,
@@ -322,7 +354,9 @@ public sealed class TransactionCommandService : ITransactionCommands
         {
             propertyId = deed.Id,
             newTransactionId = fresh.Id,
-            newDraftNumber = fresh.DraftNumber,
+            deedNumber = fresh.ReferenceNumber,
+            previousPropertyNumber = previousNumber,
+            propertyNumber = transaction.ReferenceNumber,
             reason,
         }, cancellationToken);
 
@@ -332,13 +366,14 @@ public sealed class TransactionCommandService : ITransactionCommands
     }
 
     /// <summary>
-    /// Merge dialog search (three characters at least) over deed, registry and PO numbers in the POs
-    /// the actor may see; every hit carries its transaction and why it cannot join, if it cannot.
+    /// Merge dialog search (three characters at least) over deed, transaction (رقم المعاملة), registry
+    /// and PO numbers in the POs the actor may see; every hit carries its transaction and why it cannot
+    /// join, if it cannot.
     /// </summary>
     /// <remarks>
     /// How it works: 1) trims the text, under three characters returns nothing; 2) resolves the POs the
-    /// actor may see; 3) matches live deeds by deed, registry or PO number, newest work order first, at
-    /// most 20; 4) counts each hit's live deeds per transaction; 5) maps each hit with its transaction
+    /// actor may see; 3) matches live deeds by deed, transaction, registry or PO number, newest work
+    /// order first, at most 20; 4) counts each hit's live deeds per transaction; 5) maps each hit with its transaction
     /// number and TransactionMergeRules.BlockedReason against the target.
     /// Edge cases: a null visibility set means the actor sees every PO; blocked deeds are still listed
     /// (with the reason) so the specialist sees why a deed cannot join.
@@ -358,6 +393,7 @@ public sealed class TransactionCommandService : ITransactionCommands
             .Include(p => p.Transaction)
             .Where(p => !p.IsRemoved && p.WorkOrder != null)
             .Where(p => p.DeedNumber.Contains(q)
+                || (p.ReferenceNumber != null && p.ReferenceNumber.Contains(q))
                 || (p.RealEstateRegNumber != null && p.RealEstateRegNumber.Contains(q))
                 || p.WorkOrder!.PoNumber.Contains(q))
             .Where(p => visiblePos == null || visiblePos.Contains(p.WorkOrder!.PoNumber))
@@ -383,7 +419,8 @@ public sealed class TransactionCommandService : ITransactionCommands
             District = p.District,
             OwnerName = p.OwnerName,
             TransactionId = p.TransactionId,
-            TransactionNumber = p.Transaction?.DisplayNumber ?? "",
+            // «رقم المعاملة» is the deed's own number; an old row without one shows its property's.
+            TransactionNumber = p.ReferenceNumber ?? p.Transaction?.DisplayNumber ?? "",
             TransactionDeedCount = deedCounts.GetValueOrDefault(p.TransactionId, 1),
             BlockedReasonAr = TransactionMergeRules.BlockedReason(p, p.Transaction, targetTransactionId),
         }).ToList();
@@ -394,13 +431,6 @@ public sealed class TransactionCommandService : ITransactionCommands
             .Include(t => t.Properties)
             .ThenInclude(p => p.WorkOrder)
             .FirstOrDefaultAsync(t => t.Id == id, cancellationToken);
-
-    private async Task<(Transaction? Transaction, string? Error)> NewDraftAsync(DateTime now, CancellationToken cancellationToken)
-    {
-        var (number, error) = await _transactions.AllocateDraftNumberAsync(now, cancellationToken);
-        if (error is not null || string.IsNullOrWhiteSpace(number)) return (null, error);
-        return (Transaction.CreateDraft(number, now), null);
-    }
 
     private async Task AuditAsync(string actorId, string action, Guid transactionId, object after, CancellationToken cancellationToken)
     {

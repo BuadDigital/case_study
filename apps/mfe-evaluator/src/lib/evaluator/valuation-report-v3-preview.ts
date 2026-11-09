@@ -9,8 +9,8 @@ import {
 } from "./valuation-report-live-fill";
 const V3_TEMPLATE_URL = "/ejadah/valuation-report-v3.html";
 
-export { escHtml } from "./html-escape";
-import { escHtml } from "./html-escape";
+export { escHtml } from "@platform/app-shared/lib/html-escape";
+import { escHtml } from "@platform/app-shared/lib/html-escape";
 import { PRINT_FONT_FACE_CSS } from "./valuation-report-print-assets";
 import { paginatePropertyPhotoPages } from "./valuation-report-photo-pages";
 import { mergeGlossarySections } from "./valuation-report-glossary-merge";

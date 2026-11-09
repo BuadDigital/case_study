@@ -3,7 +3,7 @@
 import { cn } from "@platform/ui-kit";
 import {
   MOVABLES_DESCRIPTION_KEY,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { EDIT_CONTROL_CLASS } from "./FieldInspectionWorkParts";
 import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { inspectorInvalidControlClass } from "../../lib/app-data/inspector-workspace-validation";

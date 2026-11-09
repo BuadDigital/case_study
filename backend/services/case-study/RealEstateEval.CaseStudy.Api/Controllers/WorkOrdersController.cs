@@ -293,11 +293,11 @@ public class WorkOrdersController : ControllerBase
         CancellationToken cancellationToken,
         [FromQuery] bool draft = false)
     {
-        // Registering a property's initial data is the case specialist's, not the PO receiver's.
+        // Registering a property's initial data is the coordination sub-role's.
         var forbidden = await ForbidUnlessAsync(
-            PoRoleMatrixRules.CanEditProperty,
+            PoRoleMatrixRules.CanAdvanceIntake,
             cancellationToken,
-            "تسجيل البيانات الأولية للعقار متاح لأخصائي دراسة الحالة فقط");
+            "تسجيل البيانات الأولية للعقار متاح لأخصائي التنسيق فقط");
         if (forbidden is not null) return forbidden;
 
         var (result, errors) = await _workOrders.AddPropertyAsync(
@@ -320,7 +320,7 @@ public class WorkOrdersController : ControllerBase
         [FromBody] UpdatePropertyBourseRequest request,
         CancellationToken cancellationToken)
     {
-        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanAdvanceIntake, cancellationToken);
         if (forbidden is not null) return forbidden;
 
         var (result, errors) = await _workOrders.CompleteBourseDataAsync(
@@ -328,7 +328,8 @@ public class WorkOrdersController : ControllerBase
             propertyId,
             request,
             cancellationToken,
-            ActorClaims.DisplayName(User));
+            ActorClaims.DisplayName(User),
+            await PartySubmissionActors.ResolveAsync(User, _permissions, cancellationToken));
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
@@ -336,7 +337,7 @@ public class WorkOrdersController : ControllerBase
     }
 
     [HttpPut("{poNumber}/properties/{propertyId:guid}")]
-    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    [Authorize(Policy = CapabilityPolicyNames.EditPropertyData)]
     public async Task<ActionResult<WorkOrderPropertyDto>> UpdateProperty(
         string poNumber,
         Guid propertyId,
@@ -344,7 +345,7 @@ public class WorkOrdersController : ControllerBase
         CancellationToken cancellationToken,
         [FromQuery] bool draft = false)
     {
-        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditProperty, cancellationToken);
+        var forbidden = await ForbidUnlessAsync(PoRoleMatrixRules.CanEditPropertyData, cancellationToken);
         if (forbidden is not null) return forbidden;
 
         var (result, errors) = await _workOrders.UpdatePropertyAsync(
@@ -353,7 +354,8 @@ public class WorkOrdersController : ControllerBase
             property,
             cancellationToken,
             softDraft: draft,
-            actorName: ActorClaims.DisplayName(User));
+            actorName: ActorClaims.DisplayName(User),
+            changeActor: await PartySubmissionActors.ResolveAsync(User, _permissions, cancellationToken));
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);
         if (result is null) return NotFound();
@@ -375,7 +377,7 @@ public class WorkOrdersController : ControllerBase
         if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
         var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
         var canWrite =
-            PoRoleMatrixRules.CanEditProperty(perms?.PrototypeRole)
+            PoRoleMatrixRules.CanEditPropertyData(StaffActor.From(perms))
             || DocumentaryWorkflowRules.RoleCanSetLocationMapUrl(perms?.PrototypeRole)
             || string.Equals(perms?.PrototypeRole, "real-estate-appraiser", StringComparison.OrdinalIgnoreCase)
             || string.Equals(perms?.PrototypeRole, "report-preparer", StringComparison.OrdinalIgnoreCase);
@@ -392,6 +394,7 @@ public class WorkOrdersController : ControllerBase
                 UserId = userId,
                 DisplayName = ActorClaims.DisplayName(User),
                 PrototypeRole = perms?.PrototypeRole,
+                SubRoles = perms?.SubRoles ?? [],
             });
         if (errors is { Count: > 0 })
             return this.FieldErrorsProblem(errors);
@@ -472,7 +475,7 @@ public class WorkOrdersController : ControllerBase
         var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
         var role = perms?.PrototypeRole;
         var canNotify =
-            PoRoleMatrixRules.CanEditProperty(role)
+            PoRoleMatrixRules.CanEditPropertyData(StaffActor.From(perms))
             || string.Equals(role, "real-estate-appraiser", StringComparison.OrdinalIgnoreCase)
             || string.Equals(role, "report-preparer", StringComparison.OrdinalIgnoreCase)
             || string.Equals(role, "section-supervisor", StringComparison.OrdinalIgnoreCase)
@@ -500,6 +503,20 @@ public class WorkOrdersController : ControllerBase
         if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
         var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
         if (!allow(perms?.PrototypeRole))
+            return this.ForbiddenProblem(forbiddenMessage ?? "ليس لديك صلاحية لهذا الإجراء");
+        return null;
+    }
+
+ /// <summary>The same gate for rules that read the case specialist's sub-roles.</summary>
+    private async Task<ActionResult?> ForbidUnlessAsync(
+        Func<StaffActor, bool> allow,
+        CancellationToken cancellationToken,
+        string? forbiddenMessage = null)
+    {
+        var userId = ActorClaims.Id(User);
+        if (string.IsNullOrWhiteSpace(userId) || userId == "unknown") return Forbid();
+        var perms = await _permissions.GetForUserIdAsync(userId, cancellationToken);
+        if (!allow(StaffActor.From(perms)))
             return this.ForbiddenProblem(forbiddenMessage ?? "ليس لديك صلاحية لهذا الإجراء");
         return null;
     }

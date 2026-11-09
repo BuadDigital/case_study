@@ -14,6 +14,7 @@ vi.mock("../tasks", () => ({
 }));
 
 import { buildActiveQueueRowMoreItems } from "../active-queue-row-menu";
+import { staffAccessOf } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 
 function menuIds(phase: string, viewerRole?: RoleId) {
   return buildActiveQueueRowMoreItems({
@@ -27,6 +28,7 @@ function menuIds(phase: string, viewerRole?: RoleId) {
     router: { push: () => undefined },
     allowPhaseRevert: true,
     viewerRole,
+    viewerAccess: viewerRole ? staffAccessOf(viewerRole) : undefined,
   }).map((item) => item.id);
 }
 
@@ -57,6 +59,7 @@ describe("active queue row menu — register failure", () => {
         openTask: () => undefined,
         router: { push: () => undefined },
         viewerRole,
+        viewerAccess: viewerRole ? staffAccessOf(viewerRole) : undefined,
       }).map((item) => item.id);
 
     expect(ids("enfath", "case-specialist")).toContain("register-failure");

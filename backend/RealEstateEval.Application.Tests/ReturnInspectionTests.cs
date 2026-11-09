@@ -37,7 +37,7 @@ public sealed class ReturnInspectionTests
     {
         UserId = "user-actor",
         DisplayName = "الأخصائي",
-        PrototypeRole = "case-specialist",
+        PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
     };
 
     private static ReturnInspectionRequest Request(
@@ -171,7 +171,8 @@ public sealed class ReturnInspectionTests
 
         Assert.Null(errors);
         Assert.Equal("reopened", result!.Inspection.Status);
-        Assert.Equal(Note, result.Inspection.ReturnNote);
+        // The inspector reads the ticked parts before the reason (A→Z 2026-11-04).
+        Assert.Equal($"يحتاج تصحيحاً: المساحات · الحدود ومطابقة الصك — {Note}", result.Inspection.ReturnNote);
         Assert.False(result.StudyReport.Issued);
         Assert.False(result.StudyReport.Reopened);
         Assert.Equal(
@@ -330,6 +331,29 @@ public sealed class ReturnInspectionTests
         Assert.Null(stored.AcceptedAtUtc);
         Assert.Null(stored.AcceptedByName);
         Assert.Equal("reopened", stored.Status);
+    }
+
+    /// <summary>
+    /// Omar 2026-11-08: a return after the send to the study puts the transaction back in the coordinator's
+    /// follow-up (the receipt is cleared); with the study issued and kept, it stays where it is.
+    /// </summary>
+    [Theory]
+    [InlineData(false, null, false)]
+    [InlineData(true, "keep", true)]
+    public async Task A_return_after_the_send_goes_back_to_coordination(bool studyIssued, string? decision, bool stillReceived)
+    {
+        await using var rig = Arrange(studyIssued: studyIssued);
+        var transaction = Transaction.CreateDraft("TMP-26-00901", DateTime.UtcNow);
+        transaction.MarkReceived("user-coord", "منسق", DateTime.UtcNow);
+        rig.Db.Transactions.Add(transaction);
+        rig.Db.WorkOrderProperties.Single(p => p.Id == PropertyId).TransactionId = transaction.Id;
+        await rig.Db.SaveChangesAsync();
+
+        var (_, errors) = await rig.Service.ReturnInspectionAsync(InspectionId, Request(study: decision), Specialist);
+
+        Assert.Null(errors);
+        var stored = await rig.Db.Transactions.AsNoTracking().SingleAsync(t => t.Id == transaction.Id);
+        Assert.Equal(stillReceived, stored.IsReceived);
     }
 
     // -------------------------------------------------------------------- idempotency

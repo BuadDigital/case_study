@@ -79,6 +79,8 @@ public sealed partial class ValuationIssuanceGateService(
         var uninspectedUnitCount = 0;
         string? inspectionRestrictionReason = null;
         var remoteInspectionApproved = false;
+        bool? studyApprovedByReview = null;
+        bool? valueAcceptedByReview = null;
 
         var propertyGuid = vr.PropertyId;
         if (propertyGuid != Guid.Empty)
@@ -103,6 +105,8 @@ public sealed partial class ValuationIssuanceGateService(
                 remoteInspectionApproved = context.RemoteInspectionApprovedAtUtc is not null;
                 matchOutcome = context.DeedNatureMatchOutcome ?? "";
                 studyReportIssued = context.StudyReportIssued;
+                studyApprovedByReview = context.StudyApprovedByReview;
+                valueAcceptedByReview = context.ValueAcceptedByReview;
             }
         }
 
@@ -255,6 +259,13 @@ public sealed partial class ValuationIssuanceGateService(
                 .Where(i => i.IsAdopted)
                 .Select(i => ValuationIssuanceGateInputRules.ToAlertComparable(i, market?.AdjustmentBasis))
                 .ToList(),
+            // Alert 23 also covers the land comparables inside the cost approach (A→Z #77).
+            AdoptedCostLandComparables: costLandRelevant
+                ? (landWithinCost?.Items ?? [])
+                    .Where(i => i.IsAdopted)
+                    .Select(i => ValuationIssuanceGateInputRules.ToAlertComparable(i, landWithinCost?.AdjustmentBasis))
+                    .ToList()
+                : null,
             UseRestrictionDiscountPct: cost?.UseRestrictionDiscountPct ?? 0m,
             UseRestrictionRationale: cost?.UseRestrictionRationale,
             DeveloperProfitPct: cost?.IndirectItems
@@ -304,6 +315,8 @@ public sealed partial class ValuationIssuanceGateService(
         {
             ValuationRequestId = vr.Id,
             PropertyId = propertyId,
+            StudyApprovedByReview = studyApprovedByReview,
+            ValueAcceptedByReview = valueAcceptedByReview,
             AllowsIssuance = ValuationIssuanceGateRules.AllowsIssuance(checks)
                 && !ValuationMethodologyAlertRules.HasBlockingAlerts(alerts),
             Gates = checks.Select(c => new ValuationIssuanceGateItemDto

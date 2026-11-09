@@ -2,10 +2,9 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { useAuthSession } from "@platform/app-shared/auth/use-auth-session";
+import { FAVORITE_PROPERTIES_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 const STORAGE_PREFIX = "ejada.favorite-properties.v1";
-const FAVORITE_PROPERTIES_CHANGED_EVENT =
-  "favorite-properties-changed";
 
 type FavoritePropertyRef = {
   poNumber: string;

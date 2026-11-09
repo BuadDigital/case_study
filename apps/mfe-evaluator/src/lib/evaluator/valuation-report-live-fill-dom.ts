@@ -18,7 +18,7 @@
 /**
  * DOM helpers for filling the valuation report template — imported only by applyValuationReportLiveFill.
  */
-import { escHtml } from "./html-escape";
+import { escHtml } from "@platform/app-shared/lib/html-escape";
 import type { ValuationReportSlotAttachment } from "./valuation-report-print-attachments";
 import {
   dash,
@@ -743,6 +743,46 @@ export function fillKeyedInSection(
       next.textContent = value;
     }
   });
+}
+
+/**
+ * Section 14 for vacant land: «الخدمة | التوفر», one row per service, no meter columns.
+ *
+ * How it works: keeps the template's first two header cells (drops «عدد العدادات» / «أرقام
+ * العدادات»), then writes one `td.k` + `td.v` row per entry of `rows` in their order — the template's
+ * own service rows only.
+ *
+ * Edge cases: a template without a header row gets a fresh one. Added 2026-11-04 (A→Z #2): land
+ * used to lose the whole section, so the services the inspector picked never printed.
+ */
+export function rebuildLandServicesSheet(
+  sec: Element,
+  rows: Array<{ key: string; values: string[] }>,
+) {
+  const table = sec.querySelector("table");
+  if (!table) return;
+  const doc = table.ownerDocument;
+  const header = doc.createElement("tr");
+  const oldHeads = [...(table.querySelector("tr")?.querySelectorAll("th") ?? [])];
+  for (const [i, fallback] of ["الخدمة", "التوفر"].entries()) {
+    const th = doc.createElement("th");
+    th.textContent = (oldHeads[i]?.textContent ?? "").trim() || fallback;
+    if (i === 0) th.setAttribute("style", "width:30%");
+    header.appendChild(th);
+  }
+  const body = rows.map((row) => {
+    const tr = doc.createElement("tr");
+    const k = doc.createElement("td");
+    k.className = "k";
+    k.textContent = row.key;
+    const v = doc.createElement("td");
+    v.className = "v";
+    v.setAttribute("style", "text-align:center");
+    v.textContent = row.values[0] ?? "—";
+    tr.append(k, v);
+    return tr;
+  });
+  (table.querySelector("tbody") ?? table).replaceChildren(header, ...body);
 }
 
 /**

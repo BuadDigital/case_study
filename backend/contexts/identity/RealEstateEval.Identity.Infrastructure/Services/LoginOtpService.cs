@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using RealEstateEval.Application;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Domain;
 using RealEstateEval.Identity.Application.Abstractions;
 using RealEstateEval.Identity.Application.Rules;
@@ -144,6 +145,44 @@ public sealed class LoginOtpService(
         return session is null
             ? OtpVerifyOutcome.Invalid()
             : new OtpVerifyOutcome(OtpVerifyStatus.Ok, session);
+    }
+
+    /// <summary>
+    /// Name and job title for the login screen's line under the number.
+    /// How it works: the same normalisation and active-account rule as <see cref="RequestAsync"/>,
+    /// then the profile's job title. Edge cases: a malformed, unknown or disabled mobile answers
+    /// null; the gateway's strict auth budget (<c>/api/auth/login-hint</c>) caps how fast anyone
+    /// can try numbers.
+    /// </summary>
+    public async Task<LoginHintDto?> HintAsync(
+        string mobile,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = SaudiMobiles.Normalize(mobile);
+        if (normalized is null)
+            return null;
+
+        var user = await userManager.Users
+            .AsNoTracking()
+            .Where(u => u.PhoneNumber == normalized)
+            .Select(u => new { u.Id, u.DisplayName })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (user is null || string.IsNullOrWhiteSpace(user.DisplayName))
+            return null;
+
+        var profile = await db.UserProfiles
+            .AsNoTracking()
+            .Where(p => p.UserId == user.Id && p.Status == UserStatus.Active)
+            .Select(p => new { p.JobTitle })
+            .FirstOrDefaultAsync(cancellationToken);
+        if (profile is null)
+            return null;
+
+        return new LoginHintDto
+        {
+            DisplayName = user.DisplayName.Trim(),
+            JobTitle = string.IsNullOrWhiteSpace(profile.JobTitle) ? null : profile.JobTitle.Trim(),
+        };
     }
 
     private bool DevLoginEnabled() => configuration.GetValue("Auth:EnableDevLogin", false);

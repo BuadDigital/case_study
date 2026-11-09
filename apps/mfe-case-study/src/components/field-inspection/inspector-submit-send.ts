@@ -10,7 +10,7 @@ import type { useToast } from "@platform/ui-kit";
 import {
   ensureInspectorOriginalMapOnSubmit,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   saveInspectorWorkspaceDraft,
   updateInspectorWorkspace,
@@ -22,6 +22,7 @@ import {
   scheduleInspectorErrorScroll,
   type InspectorWorkspaceFieldErrors,
 } from "../../lib/app-data/inspector-workspace-validation";
+import { inspectorSubmitStamp } from "../../lib/app-data/inspector-submit-gate";
 import type { InspectorStepId } from "./InspectorStepNav";
 import type { FieldInspectionWorkHostRef } from "./FieldInspectionWorkParts";
 import { newerInspectorDraft } from "./field-inspection-work-state";
@@ -39,7 +40,8 @@ type SubmitResult = Awaited<ReturnType<typeof finalizeInspectorWorkspace>>;
  *
  * Edge cases: a host with a sending dialog (it sets `onSubmitStarted`) says the result itself, so no success
  * toast is shown for it; failures always toast the reason and also close the dialog. A refusal that carries field
- * errors jumps to the step holding the first one. An `execute` that was skipped (a send is already running) or
+ * errors jumps to the phone step holding the first one. The key / declaration patch is the shared
+ * `inspectorSubmitStamp` (the desktop submit stamps the same fields). An `execute` that was skipped (a send is already running) or
  * returned nothing counts as a failure so the dialog never stays open. Returns `true` only when the inspection
  * was sent or queued.
  */
@@ -70,13 +72,10 @@ export async function sendInspectorSubmission(input: {
     // The original map pin is stamped on the draft as it is when the queued PUT runs.
     const saved = await saveInspectorWorkspaceDraft(draft, ensureInspectorOriginalMapOnSubmit);
     input.setDraft((prev) => newerInspectorDraft(prev, saved));
-    const patched = await updateInspectorWorkspace(taskId, {
-      vacantLand: draft.vacantLand,
-      keyAvailable: input.keyAvailable,
-      clientDeclarationSigned: draft.clientDeclarationSigned,
-      declarationPhoneSatisfied:
-        draft.declarationPhoneSatisfied || (draft.clientDeclarationSigned && input.hasPhone),
-    });
+    const patched = await updateInspectorWorkspace(
+      taskId,
+      inspectorSubmitStamp(draft, { keyAvailable: input.keyAvailable, hasPhone: input.hasPhone }),
+    );
     if (patched) input.setDraft((prev) => newerInspectorDraft(prev, patched));
     const outcome = await input.execute();
 
@@ -105,7 +104,8 @@ export async function sendInspectorSubmission(input: {
       const nextErrors = result.errors as InspectorWorkspaceFieldErrors;
       input.setFieldErrors(nextErrors);
       const targetId = firstInspectorWorkspaceErrorTarget(nextErrors);
-      if (targetId) input.setActiveStep(inspectorWizardStepForErrorTarget(targetId));
+      // The phone body's step order (its only caller) — fixed 2026-11-04, it used the desktop's.
+      if (targetId) input.setActiveStep(inspectorWizardStepForErrorTarget(targetId, "mobile"));
       scheduleInspectorErrorScroll(nextErrors);
     }
     fail(result.message);

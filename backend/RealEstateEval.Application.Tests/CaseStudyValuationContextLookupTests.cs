@@ -250,7 +250,8 @@ public class CaseStudyValuationContextLookupTests
     {
         await using var cs = CreateDb();
         Seed(cs);
-        var transaction = Transaction.CreateDraft("TMP-26-00007", DateTime.UtcNow);
+        var transaction = Transaction.Create(DateTime.UtcNow);
+        transaction.ReferenceNumber = "PR-26-00007-L";
         transaction.LinkKind = TransactionLinkKinds.OneBuilding;
         transaction.StudyHolderPropertyId = PropertyId;
         cs.Transactions.Add(transaction);
@@ -276,7 +277,8 @@ public class CaseStudyValuationContextLookupTests
         Assert.NotNull(context);
         Assert.True(context.IsLinkedProperty);
         Assert.Equal(transaction.Id, context.TransactionId);
-        Assert.Equal("TMP-26-00007", context.TransactionNumber);
+        // Valuation reads the property's number — the linked one for a linked property.
+        Assert.Equal("PR-26-00007-L", context.TransactionNumber);
         Assert.Equal(TransactionLinkKinds.OneBuilding, context.TransactionLinkKind);
         Assert.Equal(PropertyId, context.StudyHolderPropertyId);
         Assert.Equal(new[] { "D-100", "REG-7" }, context.TransactionDeeds.Select(d => d.Label()).ToArray());

@@ -10,6 +10,9 @@ import {
   withMovablesBoard,
   withReportBoard,
   suggestedReportSection,
+  suggestedPhotoClass,
+  photoClassOf,
+  withPhotoClass,
   togglePropertyPhotoMark,
   type PropertyDetailDocumentEntry,
   type PropertyPhotoMarks,
@@ -253,5 +256,27 @@ describe("the movables board (2026-11-03)", () => {
     const next = togglePropertyPhotoMark(marks({ report: ["inside", "outside"] }), "inside", "movables");
     expect(next.report).toEqual(["outside"]);
     expect(next.movables).toEqual(["inside"]);
+  });
+});
+
+// Omar 2026-11-08: the class each inspector photo carries into the Enfaz photo files.
+describe("the class of an inspector photo", () => {
+  it("files the meters with the exterior and the movables with the interior", () => {
+    expect(suggestedPhotoClass(meter, null)).toBe("exterior");
+    expect(suggestedPhotoClass(water, null)).toBe("exterior");
+    expect(suggestedPhotoClass(photo("sofa", "صورة توثيقية — منقولات"), null)).toBe("interior");
+    expect(suggestedPhotoClass(inside, null)).toBe("interior");
+    expect(suggestedPhotoClass(facade, null)).toBe("exterior");
+    expect(suggestedPhotoClass(inside, marks({ movables: ["inside"] }))).toBe("interior");
+    expect(suggestedPhotoClass(outside, marks({ electricity: ["outside"] }))).toBe("exterior");
+  });
+
+  it("never suggests surroundings or a document — those are a person's choice, and it wins", () => {
+    for (const p of [meter, water, road, school, facade, outside, inside, other, proof]) {
+      expect(["exterior", "interior"]).toContain(suggestedPhotoClass(p, null));
+    }
+    const chosen = withPhotoClass(EMPTY_PROPERTY_PHOTO_MARKS, road, "surroundings");
+    expect(photoClassOf(road, chosen)).toBe("surroundings");
+    expect(photoClassOf(meter, chosen)).toBe("exterior");
   });
 });

@@ -1,5 +1,6 @@
 using RealEstateEval.Application.Authorization;
 using RealEstateEval.Identity.Infrastructure.Permissions;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -58,13 +59,14 @@ public class PlatformPermissionCatalogTests
         var specialistCaps = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         PlatformPermissionCatalog.ApplyPrototypeRole(
             "case-specialist", specialistPages, specialistCaps);
+        // A specialist holding all three sub-roles (the launch state) has the pre-split pages.
+        PlatformPermissionCatalog.ApplyCaseSpecialistSubRoles(CaseSpecialistSubRoles.All, specialistPages);
 
         Assert.Equal(
             supervisorCaps.OrderBy(c => c, StringComparer.OrdinalIgnoreCase),
             specialistCaps.OrderBy(c => c, StringComparer.OrdinalIgnoreCase));
         Assert.Contains("all-transactions", specialistPages);
-        Assert.DoesNotContain("all-transactions", supervisorPages);
-        specialistPages.Remove("all-transactions");
+        Assert.Contains("all-transactions", supervisorPages);
         Assert.DoesNotContain("party-fees", specialistPages);
         Assert.DoesNotContain("fee-pricing", specialistPages);
         supervisorPages.Remove("party-fees");
@@ -74,6 +76,37 @@ public class PlatformPermissionCatalogTests
             specialistPages.OrderBy(p => p, StringComparer.OrdinalIgnoreCase));
         Assert.DoesNotContain("financial", specialistPages);
         Assert.DoesNotContain("manage-financial", specialistCaps);
+    }
+
+    /// <summary>
+    /// Ruling 2026-11-02: the queue pages follow the held sub-roles — coordination the intake,
+    /// bourse, distribution, operations, keys and failure follow-up pages; study the case-study
+    /// queue; review the Enfaz upload queue. The common pages stay for everyone.
+    /// </summary>
+    [Theory]
+    [InlineData("coordination", "active-primary-data", true)]
+    [InlineData("coordination", "active-distribution", true)]
+    [InlineData("coordination", "keys", true)]
+    [InlineData("coordination", "suspended-transactions", true)]
+    [InlineData("coordination", "active-case-study", false)]
+    [InlineData("coordination", "system-upload", false)]
+    [InlineData("study", "active-case-study", true)]
+    [InlineData("study", "bourse-inquiry", false)]
+    [InlineData("study", "system-upload", false)]
+    [InlineData("review", "system-upload", true)]
+    [InlineData("review", "active-case-study", false)]
+    [InlineData("review", "operations-tasks", false)]
+    public void Case_specialist_queue_pages_follow_the_sub_role(string subRole, string page, bool expected)
+    {
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("case-specialist", pages, capabilities);
+        PlatformPermissionCatalog.ApplyCaseSpecialistSubRoles([subRole], pages);
+
+        Assert.Equal(expected, pages.Contains(page));
+        Assert.Contains("po", pages);
+        Assert.Contains("all-transactions", pages);
+        Assert.Contains("failures", pages);
     }
 
     [Theory]
@@ -91,10 +124,7 @@ public class PlatformPermissionCatalogTests
     [InlineData("section-supervisor", "party-fees")]
     [InlineData("case-specialist", "property-map")]
     [InlineData("case-specialist", "all-transactions")]
-    [InlineData("case-specialist", "dashboard")]
     [InlineData("financial-officer", "financial")]
-    [InlineData("financial-officer", "dashboard")]
-    [InlineData("field-inspector", "dashboard")]
     public void Prototype_role_grants_expected_page(string role, string page)
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -123,9 +153,7 @@ public class PlatformPermissionCatalogTests
     }
 
     [Theory]
-    [InlineData("section-supervisor")]
     [InlineData("government-reviewer")]
-    [InlineData("general-manager")]
     [InlineData("real-estate-appraiser")]
     [InlineData("field-inspector")]
     [InlineData("engineering-office")]
@@ -148,6 +176,19 @@ public class PlatformPermissionCatalogTests
     }
 
     [Fact]
+    public void Supervisor_and_general_manager_follow_active_transactions()
+    {
+        // «المعاملات النشطة» (2026-11-05): the follow-up page of every live transaction.
+        foreach (var role in new[] { "section-supervisor", "general-manager" })
+        {
+            var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            PlatformPermissionCatalog.ApplyPrototypeRole(role, pages, capabilities);
+            Assert.Contains("all-transactions", pages);
+        }
+    }
+
+    [Fact]
     public void Case_specialist_includes_all_transactions()
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -157,7 +198,6 @@ public class PlatformPermissionCatalogTests
     }
 
     [Theory]
-    [InlineData("field-inspector")]
     [InlineData("section-supervisor")]
     [InlineData("general-manager")]
     [InlineData("government-reviewer")]
@@ -165,13 +205,18 @@ public class PlatformPermissionCatalogTests
     [InlineData("real-estate-appraiser")]
     [InlineData("engineering-office")]
     [InlineData("financial-officer")]
-    [InlineData("cdo")]
-    public void Every_prototype_role_includes_dashboard(string role)
+    [InlineData("field-inspector")]
+    public void Only_the_cdo_has_the_dashboard(string role)
     {
+        // Omar 2026-11-09: «لوحة التحكم» for the system owner (CDO / المدير التنفيذي) only.
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         PlatformPermissionCatalog.ApplyPrototypeRole(role, pages, capabilities);
-        Assert.Contains("dashboard", pages);
+        Assert.DoesNotContain("dashboard", pages);
+
+        var cdoPages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("cdo", cdoPages, capabilities);
+        Assert.Contains("dashboard", cdoPages);
     }
 
 

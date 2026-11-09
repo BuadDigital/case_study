@@ -9,7 +9,7 @@
 import { useRef, useState } from "react";
 import { cn, useToast } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { allocateInspectorPhotoId } from "../../lib/app-data/inspector-photo-id";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 import {

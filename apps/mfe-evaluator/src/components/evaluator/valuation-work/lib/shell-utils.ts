@@ -1,4 +1,4 @@
-export { apiConfig } from "../../../../lib/evaluator/api-config";
+export { apiConfig } from "@platform/app-shared/auth/api-config";
 
 // Shared number formatter moved to the shared package — re-export so existing imports keep working.
 export { fmt } from "@platform/app-shared/format/number";

@@ -1,10 +1,15 @@
 "use client";
 
 import type { PartyAppraisalExtensions } from "@platform/app-shared/party-appraisal/party-appraisal-extensions";
-import type { PoIntakeRecord } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoIntakeRecord } from "@platform/app-shared/app-data/po-intake-property-model";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
 import { propertyAppraisalWorkspacePath } from "@platform/app-shared/domain/po-routes";
 import dynamic from "next/dynamic";
+import {
+  EVALUATOR_SUBMISSION_CHANGED_EVENT,
+  PARTY_TASK_RECALL_CHANGED_EVENT,
+  PARTY_TASK_RECALL_HYDRATED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const AppraiserUploadTab = dynamic(() =>
     import("../components/evaluator/AppraiserUploadTab").then(
@@ -18,10 +23,8 @@ import {
   canAppraiserOpenTask,
   filterAppraiserListedTasks,
 } from "../lib/evaluator/evaluator-queue";
-import { PARTY_TASK_RECALL_CHANGED_EVENT, PARTY_TASK_RECALL_HYDRATED_EVENT } from "@platform/app-shared/app-data/party-task-recall-model";
 import { hydratePartyTaskRecalls } from "@platform/app-shared/app-data/party-task-recall-reads";
 import {
-  EVALUATOR_SUBMISSION_CHANGED_EVENT,
   isEvaluatorFormLocked,
   loadEvaluatorSubmission,
 } from "../lib/evaluator/evaluator-submission-model";

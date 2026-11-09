@@ -15,13 +15,13 @@ import {
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
-  NOTIFICATIONS_CHANGED_EVENT,
   notificationStorageKey,
   pushNotification,
   setNotificationStorageUser,
   type AppNotification,
 } from "./notification-store";
 import { useValidAuthSession } from "../auth/use-auth-session";
+import { NOTIFICATIONS_CHANGED_EVENT } from "../events/app-events";
 
 type NotificationContextValue = {
   items: AppNotification[];

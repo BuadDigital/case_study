@@ -7,7 +7,7 @@
  */
 import type { PoPropertyIntake } from "./po-intake-data";
 import { updatePropertyInPo } from "./po-intake-commands";
-import { notifyWorkOrderPropertyChanged } from "../work-orders-api-config";
+import { notifyWorkOrderPropertyChanged } from "@platform/app-shared/app-data/work-orders-api-config";
 
 const SAVE_DEBOUNCE_MS = 400;
 

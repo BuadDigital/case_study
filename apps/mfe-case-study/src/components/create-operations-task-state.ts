@@ -23,7 +23,12 @@ import {
 export const TASK_TYPES = ["general", "court_visit"] as const;
 
 /** Unified link scope for court visit and general task (includes general). */
-export const LINK_SCOPES = ["work_order", "transaction", "multi", "general"] as const;
+export const LINK_SCOPES = [
+  "work_order",
+  "transaction",
+  "multi",
+  "general",
+] as const;
 
 export const PRIORITY_OFFSET_MS: Record<string, number> = {
   high: 4 * 3_600_000,
@@ -77,7 +82,9 @@ export function createTaskPrefillKey(
   ]);
 }
 
-export function buildLetterRowsForPo(record: PoIntakeRecord): OperationsTaskLetterRowDto[] {
+export function buildLetterRowsForPo(
+  record: PoIntakeRecord,
+): OperationsTaskLetterRowDto[] {
   return record.properties
     .filter((p) => !p.isRemoved && p.court.trim())
     .map((p) => ({
@@ -119,7 +126,9 @@ export function buildLetterRowsForDeed(
   );
 }
 
-export function allDeedOptions(records: PoIntakeRecord[]): { deed: string; po: string }[] {
+export function allDeedOptions(
+  records: PoIntakeRecord[],
+): { deed: string; po: string }[] {
   const out: { deed: string; po: string }[] = [];
   const seen = new Set<string>();
   for (const record of records) {
@@ -149,18 +158,26 @@ export function assigneesForType(
   return assigneesForOperationsTaskType(type, staffUsers);
 }
 
-export function prefillType(prefill: CreateOperationsTaskPrefill | null | undefined): string {
+export function prefillType(
+  prefill: CreateOperationsTaskPrefill | null | undefined,
+): string {
   const raw = prefill?.type?.trim() || "general";
   return (TASK_TYPES as readonly string[]).includes(raw) ? raw : "general";
 }
 
-export function defaultDueFields(now = Date.now()): { date: string; time: string } {
+export function defaultDueFields(now = Date.now()): {
+  date: string;
+  time: string;
+} {
   const due = new Date(now + PRIORITY_OFFSET_MS.medium);
   return { date: toLocalDateValue(due), time: toLocalTimeValue(due) };
 }
 
 /** court_visit only lists work orders on a court path. */
-export function poOptionsForType(poRecords: PoIntakeRecord[], type: string): PoIntakeRecord[] {
+export function poOptionsForType(
+  poRecords: PoIntakeRecord[],
+  type: string,
+): PoIntakeRecord[] {
   if (type === "court_visit") {
     return poRecords.filter((r) => showsCourtFields(r.assignmentType));
   }
@@ -189,7 +206,29 @@ export function needsVisitFeeFor(
   assigneeId: string,
   assigneeUser: Pick<StaffUser, "type"> | undefined,
 ): boolean {
-  return type === "court_visit" && Boolean(assigneeId) && assigneeUser?.type !== "internal";
+  return (
+    type === "court_visit" &&
+    Boolean(assigneeId) &&
+    assigneeUser?.type !== "internal"
+  );
+}
+
+/**
+ * Any other task may carry a fee agreed on it (2026-11-05) — optional, and only for a cooperator.
+ *
+ * How it works: not a court visit, an assignee picked, and that assignee not an internal employee.
+ * Edge cases: an empty amount means a free task; the server refuses an employee's fee anyway.
+ */
+export function allowsAgreedTaskFeeFor(
+  type: string,
+  assigneeId: string,
+  assigneeUser: Pick<StaffUser, "type"> | undefined,
+): boolean {
+  return (
+    type !== "court_visit" &&
+    Boolean(assigneeId) &&
+    assigneeUser?.type !== "internal"
+  );
 }
 
 /**
@@ -271,7 +310,11 @@ export function createOperationsTaskReducer(
   switch (action.type) {
     case "set-type":
       // HTML `tfType`: the title follows the type — there is no title field.
-      return { ...state, type: action.value, title: DEFAULT_TITLES[action.value] ?? "مهمة" };
+      return {
+        ...state,
+        type: action.value,
+        title: DEFAULT_TITLES[action.value] ?? "مهمة",
+      };
     case "set-scope":
       return { ...state, scope: action.value };
     case "set-description":
@@ -279,7 +322,8 @@ export function createOperationsTaskReducer(
     case "set-priority": {
       // Priority proposes the due moment: now + offset, clearing any day chip.
       const due = new Date(
-        action.now + (PRIORITY_OFFSET_MS[action.value] ?? PRIORITY_OFFSET_MS.medium),
+        action.now +
+          (PRIORITY_OFFSET_MS[action.value] ?? PRIORITY_OFFSET_MS.medium),
       );
       return {
         ...state,
@@ -311,7 +355,10 @@ export function createOperationsTaskReducer(
           : [...state.selectedDeeds, action.value],
       };
     case "set-assignee":
-      if (state.assigneeId === action.id && state.assigneeName === action.name) {
+      if (
+        state.assigneeId === action.id &&
+        state.assigneeName === action.name
+      ) {
         return state;
       }
       return { ...state, assigneeId: action.id, assigneeName: action.name };
@@ -323,14 +370,21 @@ export function createOperationsTaskReducer(
 
 /** Rows shown in the delegation-letter preview while the form is being filled. */
 export function letterPreviewRows(
-  form: Pick<CreateOperationsTaskForm, "type" | "scope" | "selectedDeeds" | "poNumber" | "deed">,
+  form: Pick<
+    CreateOperationsTaskForm,
+    "type" | "scope" | "selectedDeeds" | "poNumber" | "deed"
+  >,
   poOptions: PoIntakeRecord[],
 ): OperationsTaskLetterRowDto[] {
   if (form.type !== "court_visit") return [];
   if (form.scope === "multi" && form.selectedDeeds.length > 0) {
     return buildLetterRowsForDeeds(poOptions, form.selectedDeeds);
   }
-  if (form.scope === "transaction" && form.poNumber.trim() && form.deed.trim()) {
+  if (
+    form.scope === "transaction" &&
+    form.poNumber.trim() &&
+    form.deed.trim()
+  ) {
     return buildLetterRowsForDeed(poOptions, form.poNumber, form.deed);
   }
   const selectedPo = selectedPoRecord(poOptions, form.poNumber);
@@ -359,10 +413,13 @@ export function buildCreateOperationsTaskSubmission(
   {
     poOptions,
     needsVisitFee,
+    allowsAgreedTaskFee,
     prefillTitle,
   }: {
     poOptions: PoIntakeRecord[];
     needsVisitFee: boolean;
+    /** The optional agreed fee of a task that is not a court visit. */
+    allowsAgreedTaskFee?: boolean;
     prefillTitle?: string | null;
   },
 ): CreateOperationsTaskSubmission {
@@ -387,6 +444,14 @@ export function buildCreateOperationsTaskSubmission(
       return invalid("مبلغ أتعاب الزيارة مطلوب للمتعاون");
     }
     parsedVisitFee = amount;
+  } else if (allowsAgreedTaskFee && form.visitFeeAmountSar.trim()) {
+    const amount = parseLocaleNumber(form.visitFeeAmountSar.trim());
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return invalid(
+        "مبلغ أتعاب المهمة يجب أن يكون أكبر من صفر، أو اتركه فارغًا لمهمة بلا أتعاب",
+      );
+    }
+    parsedVisitFee = amount;
   }
 
   const selectedPo = selectedPoRecord(poOptions, poNumber);
@@ -403,7 +468,8 @@ export function buildCreateOperationsTaskSubmission(
         return invalid("نوع الإسناد لا يتطلب محاكم");
       }
       letterRows = buildLetterRowsForPo(selectedPo);
-      if (letterRows.length === 0) return invalid("لا توجد عقارات بمحكمة مسجّلة");
+      if (letterRows.length === 0)
+        return invalid("لا توجد عقارات بمحكمة مسجّلة");
       deedsPayload = letterRows.map((r) => r.deed);
     } else {
       deedsPayload = deedOptions(selectedPo);
@@ -426,12 +492,13 @@ export function buildCreateOperationsTaskSubmission(
     if (selectedDeeds.length < 2) return invalid("اختر صكّين فأكثر");
     deedsPayload = selectedDeeds;
     const firstPo =
-      allDeedOptions(poOptions).find((d) => selectedDeeds.includes(d.deed))?.po ||
-      poNumber.trim();
+      allDeedOptions(poOptions).find((d) => selectedDeeds.includes(d.deed))
+        ?.po || poNumber.trim();
     poPayload = firstPo || undefined;
     if (type === "court_visit") {
       letterRows = buildLetterRowsForDeeds(poOptions, selectedDeeds);
-      if (letterRows.length < 2) return invalid("الصكوك المحددة يجب أن تحمل محكمة مسجّلة");
+      if (letterRows.length < 2)
+        return invalid("الصكوك المحددة يجب أن تحمل محكمة مسجّلة");
     }
   }
 

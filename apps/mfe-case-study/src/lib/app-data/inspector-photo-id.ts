@@ -1,7 +1,7 @@
 import {
   nextInspectorPhotoId,
   type InspectorWorkspaceDraft,
-} from "./inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 
 /** Highest id handed out per task in this session — uploads in flight are not in the draft yet. */
 const allocated = new Map<string, number>();

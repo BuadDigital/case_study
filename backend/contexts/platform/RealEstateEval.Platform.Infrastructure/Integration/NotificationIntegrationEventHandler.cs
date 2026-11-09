@@ -7,6 +7,7 @@ using RealEstateEval.Domain;
 using RealEstateEval.Infrastructure.Integration;
 using RealEstateEval.Infrastructure.Notifications;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Platform.Infrastructure.Integration;
 
@@ -140,13 +141,20 @@ public sealed class NotificationIntegrationEventHandler
         if (!Guid.TryParse(payload.PropertyId, out var propertyId))
             return;
 
-        var recipientIds = await _recipients.ResolveAssigneeUserIdsForPropertyAsync(
-            propertyId,
-            [
-                WorkflowTaskKind.PropertyAppraisal,
-                WorkflowTaskKind.CaseStudyProperty,
-            ],
-            cancellationToken);
+        // The final issuance concerns the appraiser and the review sub-role, which deposited it and
+        // uploads the transaction to Enfaz (ruling 2026-11-02; no specialist is named any more).
+        var recipientIds = (await _recipients.ResolveAssigneeUserIdsForPropertyAsync(
+                propertyId,
+                [
+                    WorkflowTaskKind.PropertyAppraisal,
+                    WorkflowTaskKind.CaseStudyProperty,
+                ],
+                cancellationToken))
+            .Concat(await _recipients.ResolveCaseSpecialistUserIdsAsync(
+                CaseSpecialistAudience.DraftApproval,
+                cancellationToken))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
 
         if (recipientIds.Count == 0)
         {
@@ -231,13 +239,18 @@ public sealed class NotificationIntegrationEventHandler
         if (string.IsNullOrWhiteSpace(payload.Title))
             return;
 
+        // A case-specialist sub-role audience is a broadcast to that sub-role's holders (ruling
+        // 2026-11-02); the legacy «case-specialist» audience (events staged before the split) also
+        // reaches the study sub-role, since its named specialist may no longer exist.
+        var subRole = ValuationNoticeAudiences.SubRoleOf(payload.Audience)
+            ?? (payload.Audience == ValuationNoticeAudiences.CaseSpecialist ? CaseSpecialistSubRoles.Study : null);
         WorkflowTaskKind[] kinds = payload.Audience switch
         {
             ValuationNoticeAudiences.CaseSpecialist => [WorkflowTaskKind.CaseStudyProperty],
             ValuationNoticeAudiences.Appraiser => [WorkflowTaskKind.PropertyAppraisal],
             _ => [],
         };
-        if (kinds.Length == 0)
+        if (kinds.Length == 0 && subRole is null)
         {
             _logger.LogWarning(
                 "ValuationWorkflowNotice: unknown audience {Audience} for property {PropertyId}",
@@ -246,10 +259,16 @@ public sealed class NotificationIntegrationEventHandler
             return;
         }
 
-        var recipientIds = await _recipients.ResolveAssigneeUserIdsForPropertyAsync(
-            propertyId,
-            kinds,
-            cancellationToken);
+        var recipientIds = kinds.Length == 0
+            ? []
+            : (await _recipients.ResolveAssigneeUserIdsForPropertyAsync(propertyId, kinds, cancellationToken)).ToList();
+        if (subRole is not null)
+        {
+            recipientIds = recipientIds
+                .Concat(await _recipients.ResolveCaseSpecialistUserIdsAsync(subRole, cancellationToken))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+        }
         if (recipientIds.Count == 0)
         {
             _logger.LogInformation(

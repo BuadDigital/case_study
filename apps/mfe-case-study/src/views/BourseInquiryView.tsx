@@ -81,8 +81,8 @@ import { caseStudyTaskForProperty } from "../lib/app-data/tasks";
 import { useRouter } from "next/navigation";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
-import { canEditProperty } from "../lib/app-data/po-roles";
-import { bourseDeedStatus, DEED_VITALITY_REQUIRED_ERROR } from "./my-task-work-state";
+import { canAdvanceIntake } from "../lib/app-data/po-roles";
+import { bourseDeedStatus, DEED_VITALITY_REQUIRED_ERROR, deedVitalityFromStatus } from "./my-task-work-state";
 import { useConfirmActionDialog } from "../components/ConfirmActionDialog";
 import { useFailureRaiseModal } from "../hooks/useFailureRaiseModal";
 
@@ -90,7 +90,7 @@ const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;
 
 export function BourseInquiryView() {
-  const { role } = useAppAccess();
+  const { role, access } = useAppAccess();
   const router = useRouter();
   const queryClient = useQueryClient();
   const { confirm, dialog: confirmDialog } = useConfirmActionDialog();
@@ -110,9 +110,11 @@ export function BourseInquiryView() {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [deedVitality, setDeedVitality] = useState<BourseDeedVitality | null>(
+  const [pickedDeedVitality, setDeedVitality] = useState<BourseDeedVitality | null>(
     null,
   );
+  // The pick, else the autosaved «حالة الصك» (A→Z 2026-11-02 #67: it was lost on reopening the bourse).
+  const deedVitality = pickedDeedVitality ?? deedVitalityFromStatus(property.deedStatus);
   const [failureModalOpen, setFailureModalOpen] = useState(false);
   const [, startOpenItem] = useTransition();
   const [openingItemKey, setOpeningItemKey] = useState<string | null>(null);
@@ -374,6 +376,7 @@ export function BourseInquiryView() {
             showToast,
             allowDeleteTransaction: true,
             viewerRole: role,
+            viewerAccess: access,
             confirmAction: confirm,
             onRegisterFailure: registerFailureFor(item),
           })
@@ -391,7 +394,7 @@ export function BourseInquiryView() {
             },
           ];
     },
-    [workflowTasks, openItem, router, refresh, showToast, role, confirm, registerFailureFor],
+    [workflowTasks, openItem, router, refresh, showToast, role, access, confirm, registerFailureFor],
   );
 
   const mobileCardItems = useMemo((): ActiveQueueMobileCardItem[] => {
@@ -575,8 +578,8 @@ export function BourseInquiryView() {
 
               <div className="shrink-0 border-t border-border bg-surface px-4 py-4 shadow-[0_-4px_16px_rgba(15,52,96,0.08)]">
                 <div className="flex flex-wrap items-center gap-2">
-                  {/* The bourse write is the case specialist's alone (server-enforced). */}
-                  {canEditProperty(role) ? (
+                  {/* The bourse write is the coordination sub-role's (server-enforced). */}
+                  {canAdvanceIntake(access) ? (
                     <Button
                       type="button"
                       variant="primary"

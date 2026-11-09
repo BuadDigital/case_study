@@ -6,7 +6,7 @@ import {
   type WorkflowTaskListQuery,
 } from "@platform/api-client";
 import { getAuthSession } from "@platform/auth-client";
-import { apiErrorMessage, workOrdersApiConfig } from "../work-orders-api-config";
+import { apiErrorMessage, workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import { isBrowserOffline } from "@platform/app-shared/offline/offline-write";
 import { readPrefetchedWorkflowTasks } from "@platform/app-shared/offline/prefetch-read";
 import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";

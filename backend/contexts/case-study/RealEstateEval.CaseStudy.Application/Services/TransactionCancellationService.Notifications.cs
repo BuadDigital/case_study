@@ -4,6 +4,7 @@ using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.Domain;
 using RealEstateEval.Shared.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
@@ -31,6 +32,17 @@ public sealed partial class TransactionCancellationService
         CancellationToken cancellationToken)
     {
         var userIds = new HashSet<string>(StringComparer.Ordinal);
+        // The specialist is no longer named on the task: coordination hears it (ruling 2026-11-02).
+        try
+        {
+            userIds.UnionWith(await recipients.ResolveCaseSpecialistUserIdsAsync(
+                CaseSpecialistAudience.Operations,
+                cancellationToken));
+        }
+        catch
+        {
+            // Best effort, like the per-deed lookups below.
+        }
         foreach (var deed in deeds)
         {
             try
@@ -121,6 +133,31 @@ public sealed partial class TransactionCancellationService
         });
 
     /// <summary>One timeline line on every deed; best effort, keyed so a retry writes it once.</summary>
+    /// <summary>
+    /// A timeline row on every deed a request covers (request and rejection — the approval and the
+    /// reactivation write their own with the deeds they change).
+    ///
+    /// How it works: loads the request's deeds by their ids (removed deeds skipped) and records through
+    /// <see cref="RecordTimelineAsync"/>; best effort like every timeline write here.
+    ///
+    /// Edge cases: added 2026-11-04 (A→Z run) — a request and its rejection left no trace on the deed's
+    /// timeline, only a banner while pending.
+    /// </summary>
+    private async Task RecordRequestTimelineAsync(
+        TransactionCancellation request,
+        string eventKey,
+        string title,
+        string detail,
+        DateTime at,
+        CancellationToken cancellationToken)
+    {
+        var deedIds = TransactionCancellationRules.ParseDeedIds(request.DeedIdsJson).ToList();
+        var deeds = (await repo.ListDeedsByIdsAsync(deedIds, cancellationToken))
+            .Where(d => !d.IsRemoved)
+            .ToList();
+        await RecordTimelineAsync(deeds, eventKey, title, detail, PropertyTimelineTones.Active, at, cancellationToken);
+    }
+
     private async Task RecordTimelineAsync(
         IReadOnlyList<WorkOrderProperty> deeds,
         string eventKey,

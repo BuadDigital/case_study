@@ -1,9 +1,9 @@
+import type { AppNotification } from "./notification-store";
 import {
   ENGINEERING_SURVEY_ACCEPTED_EVENT,
   ENGINEERING_SURVEY_RETURNED_EVENT,
   ENGINEERING_SURVEY_SUBMITTED_EVENT,
-} from "../app-data/party-workflow-events";
-import type { AppNotification } from "./notification-store";
+} from "../events/app-events";
 
 const ENGINEERING_OFFICE_ROLE = "engineering-office";
 

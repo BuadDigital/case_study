@@ -82,6 +82,30 @@ public sealed class OperationsTaskVisitFeeHelper : ICourtVisitFeeBackfill, IOper
     }
 
  /// <summary>
+ /// The agreed fee of a task that is not a court visit.
+ /// </summary>
+ /// <remarks>
+ /// How it works: the assignee's contract decides — an employee takes no task fee (incentives go
+ /// through the flat table), a cooperator takes the amount typed on the task.
+ /// Edge cases: a zero or negative amount is refused; there is no pricing-table default for these
+ /// tasks, so no amount means a free task (the caller does not call this then).
+ /// Added 2026-11-05: the fee field was limited to court visits although tasks were designed for
+ /// any party with a fee agreed on the task.
+ /// </remarks>
+    public async Task<(decimal? Fee, string? Error)> ResolveAgreedTaskFeeAsync(
+        string assigneeId,
+        decimal requestedAmount,
+        CancellationToken cancellationToken)
+    {
+        if (requestedAmount <= 0m)
+            return (null, "مبلغ أتعاب المهمة يجب أن يكون أكبر من صفر.");
+        var payeeType = await ResolveReviewerTypeAsync(assigneeId, cancellationToken);
+        if (!CourtVisitFeeRules.RequiresVisitFee(payeeType))
+            return (null, "المكلَّف موظف — لا أتعاب على المهمة، والحوافز عبر جدول flat.");
+        return (requestedAmount, null);
+    }
+
+ /// <summary>
  /// Resolves the fee to charge on complete. Employees and already-charged visits return
  /// unresolved with no error. Cooperators require a positive amount (stamped on create, or
  /// recovered from the active table if the stamp is missing) — never complete silently unpaid.

@@ -58,3 +58,31 @@ export async function listAuditLog(
   if (!response.ok) throw new Error(`audit-log ${response.status}`);
   return response.json() as Promise<AuditLogPageDto>;
 }
+
+/**
+ * «سجل تعديلات البيانات» of one property — the field change log of every save of property data
+ * (ruling 2026-11-02). Each item's `before` maps field → old value; `after.fields` maps field → new
+ * value, beside `actorName`, `actorRole`, `actorSubRoles` and `autosave`. Newest first.
+ */
+export async function listPropertyChangeLog(
+  config: AuditLogApiConfig,
+  propertyId: string,
+  page = 1,
+  limit = 50,
+): Promise<AuditLogPageDto> {
+  const base = config.baseUrl ?? getApiBase();
+  const query = new URLSearchParams({ page: String(page), limit: String(limit) });
+  const response = await fetch(
+    `${base}/api/audit-log/property-changes/${encodeURIComponent(propertyId)}?${query}`,
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.token}`,
+      },
+    },
+  );
+  if (response.status === 401) throw new ApiAuthError();
+  if (response.status === 403) throw new Error("property-change-log forbidden");
+  if (!response.ok) throw new Error(`property-change-log ${response.status}`);
+  return response.json() as Promise<AuditLogPageDto>;
+}

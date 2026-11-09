@@ -10,7 +10,7 @@
  * inspection's submit). The hard gate is the specialist's acceptance; here an empty table
  * only gets a soft, non-blocking warning.
  */
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { inspectorInventoryVisible } from "../../lib/app-data/building-inventory-editor-state";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import { inspectedAssetIsLand } from "../../lib/app-data/specialist-components";

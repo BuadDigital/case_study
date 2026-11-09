@@ -9,6 +9,7 @@ import {
   patchOperationsTask,
   reassignOperationsTask,
   remindOperationsTask,
+  acceptOperationsTaskOutputs,
   createIdempotencyKey,
 } from "@platform/api-client";
 import {
@@ -27,7 +28,7 @@ import {
 import {
   resolveApiError,
   workOrdersApiConfig,
-} from "../work-orders-api-config";
+} from "@platform/app-shared/app-data/work-orders-api-config";
 import {
   notifyOperationsTasksChanged,
   offlineTaskStub,
@@ -173,6 +174,23 @@ export async function reassignOperationsTaskRecord(
       error:
         result.message ??
         resolveApiError(result.kind, undefined, "تعذّر إعادة التوجيه"),
+    };
+  }
+  notifyOperationsTasksChanged();
+  return { ok: true, task: result.data };
+}
+
+/** «قبول المخرجات» — the creator accepts what a completed task delivered (Omar 2026-11-05). */
+export async function acceptOperationsTaskOutputsRecord(
+  id: string,
+): Promise<{ ok: true; task: OperationsTask } | { ok: false; error: string }> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: "يلزم تسجيل الدخول" };
+  const result = await acceptOperationsTaskOutputs(config, id);
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: result.message ?? resolveApiError(result.kind, undefined, "تعذّر قبول المخرجات"),
     };
   }
   notifyOperationsTasksChanged();

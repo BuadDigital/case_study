@@ -25,6 +25,7 @@ import {
 } from "../../lib/app-data/po-intake-data";
 import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
 import { caseStudyTaskForProperty } from "../../lib/app-data/tasks";
+import { transactionNumberOf } from "../../lib/app-data/transaction-number";
 import {
   usePropertyListItemsQuery,
   useWorkflowTasksQuery,
@@ -36,6 +37,7 @@ import { useFavoriteProperties } from "../../lib/app-data/favorite-properties";
 import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
 import { useTransactionQuery } from "../../query/use-transaction-query";
 import { TransactionDeedSwitcher } from "./TransactionDeedSwitcher";
+import { estimateCaseStudyCompletion } from "../../lib/app-data/case-study-completion";
 
 /** Deed number, or the real-estate registry number when the property is identified by one. */
 function deedTitle(
@@ -154,54 +156,6 @@ function CompletionRing({
   );
 }
 
-/**
- * Case Study.html completion ring stages:
- * ST = primary data, documents, inspection, survey, reviews, keys, valuation, case study, Infath
- * weight: 1 done · 0.5 in progress · 0 not started
- */
-
-function estimateCaseStudyCompletion(args: {
-  property: PoPropertyIntake;
-  hasCaseStudyTask: boolean;
-  caseStudyDone: boolean;
-  hasInspection: boolean;
-  inspectionDone: boolean;
-  hasSurvey: boolean;
-  surveyDone: boolean;
-  hasAppraisal: boolean;
-  appraisalDone: boolean;
-  hasGov: boolean;
-  govDone: boolean;
-  hasKeysHint: boolean;
-  enfathDone: boolean;
-}): { pct: number; done: number; total: number } {
-  const stage = (has: boolean, done: boolean, partialWhenHas = true) => {
-    if (done) return 1;
-    if (has && partialWhenHas) return 0.5;
-    return 0;
-  };
-
-  const stages: number[] = [
-    1, // Primary data — always complete in the display
-    args.property.deedNumber.trim() ? 1 : 0.5, // Property documents
-    stage(args.hasInspection, args.inspectionDone), // Property inspection
-    stage(args.hasSurvey, args.surveyDone), // Survey report
-    stage(args.hasGov, args.govDone, false), // Reviews: 1 or 0 like HTML
-    args.hasKeysHint ? 1 : 0, // Property keys
-    stage(args.hasAppraisal, args.appraisalDone, false), // Property valuation
-    stage(args.hasCaseStudyTask, args.caseStudyDone), // Property case study
-    args.enfathDone ? 1 : 0, // Upload to Infath
-  ];
-  const total = stages.length;
-  const sum = stages.reduce((a, b) => a + b, 0);
-  const done = stages.filter((s) => s === 1).length;
-  return {
-    pct: Math.round((sum / total) * 100),
-    done,
-    total,
-  };
-}
-
 export function PropertyDetailHero({
   record,
   property,
@@ -229,18 +183,14 @@ export function PropertyDetailHero({
   const { isFavorite, toggleFavorite } = useFavoriteProperties();
   // The page is the transaction's; its deeds (when several) sit in the switcher.
   const { data: transaction } = useTransactionQuery(property.id);
-  // The transaction's number (official PR-…, else TMP-…), falling back to this deed's own
-  // reference or draft number while the transaction is still loading.
-  const transactionNumber =
-    transaction?.displayNumber?.trim() ||
-    property.referenceNumber?.trim() ||
-    property.transactionDraftNumber?.trim() ||
-    "";
-  const transactionConfirmed = Boolean(
-    transaction?.referenceNumber?.trim() || property.referenceNumber?.trim(),
-  );
+  // «رقم المعاملة» is this deed's own number; a linked property also shows «رقم العقار المرتبط»
+  // (PR-…-L) from its transaction, falling back to the deed's copy while the transaction loads.
+  const transactionNumber = transactionNumberOf(property) ?? "";
   const transactionDeeds = transaction?.deeds ?? [];
   const multiDeed = (transaction?.deedCount ?? property.transactionDeedCount ?? 1) > 1;
+  const linkedPropertyNumber = multiDeed
+    ? transaction?.displayNumber?.trim() || property.transactionReferenceNumber?.trim() || ""
+    : "";
   const titleDeed = deedTitle(property);
   const favorite = isFavorite(record.poNumber, property.id);
   const locationLine = formatPropertyLocation(property);
@@ -288,12 +238,10 @@ export function PropertyDetailHero({
       surveyDone: doneish(survey?.status),
       hasAppraisal: Boolean(appraisal),
       appraisalDone: doneish(appraisal?.status),
-      hasGov: false,
-      govDone: false,
       hasKeysHint: Boolean(property.requestNumber.trim()),
-      enfathDone: false,
+      enfathDone: handedOverToEnfaz,
     });
-  }, [record.poNumber, property, tasks]);
+  }, [record.poNumber, property, tasks, handedOverToEnfaz]);
 
   return (
     <>
@@ -413,21 +361,23 @@ export function PropertyDetailHero({
             {transactionNumber ? (
               <div className={cn("text-start", compact && "hidden")}>
                 <div className="text-[10.5px] text-text-3">رقم المعاملة</div>
-                <div
-                  className="text-[15px] font-bold tabular-nums text-heading"
-                  // The TMP- prefix says the number is temporary; no badge.
-                  title={
-                    transactionConfirmed
-                      ? "الرقم المرجعي الرسمي للمعاملة"
-                      : "رقم مؤقت — يُثبَّت الرقم الرسمي PR عند اعتماد أول تقرير"
-                  }
-                >
+                <div className="text-[15px] font-bold tabular-nums text-heading" title="رقم المعاملة — رقم هذا الصك">
                   <bdi dir="ltr" className={ltrValueClass}>
                     {transactionNumber}
                   </bdi>
                 </div>
-                {/* Several deeds: the link kind (one building / contract) and the deed count under the number. */}
-                {multiDeed && transaction ? (
+              </div>
+            ) : null}
+            {linkedPropertyNumber ? (
+              <div className={cn("text-start", compact && "hidden")}>
+                <div className="text-[10.5px] text-text-3">رقم العقار المرتبط</div>
+                <div className="text-[15px] font-bold tabular-nums text-heading" title="رقم العقار المرتبط — تحمله تقاريره">
+                  <bdi dir="ltr" className={ltrValueClass}>
+                    {linkedPropertyNumber}
+                  </bdi>
+                </div>
+                {/* The link kind (one building / contract) and the deed count under the number. */}
+                {transaction ? (
                   <div className="mt-0.5 text-[10.5px] text-text-2">
                     {transaction.linkKindLabelAr || "عدة صكوك"} · {transaction.deedCount} صكوك
                   </div>

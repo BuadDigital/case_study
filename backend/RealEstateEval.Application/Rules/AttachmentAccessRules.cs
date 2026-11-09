@@ -56,7 +56,7 @@ public static class AttachmentAccessRules
         if (!PropertyDocumentTypes.IsValued(documentTypeKey))
             return AllowsDelete(uploadedByUserId, actor);
         if (actor is null) return false;
-        return PoRoleMatrixRules.CanReviewValuedDocuments(actor.PrototypeRole)
+        return PoRoleMatrixRules.CanReviewValuedDocuments(StaffActor.From(actor))
             || (AllowsValuedDocument(actor) && IsUploader(uploadedByUserId, actor));
     }
 

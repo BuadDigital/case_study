@@ -12,11 +12,80 @@ import {
   INSPECTOR_SERVICE_OPTIONS,
   inspectorAmenityLabel,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
 import { MobileChips, MobileFieldLabel } from "./InspectMobileControls";
 import { inspectorServiceMeters } from "./field-inspection-work-state";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
+import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
+
+/**
+ * The «عدادات الخدمات» fields: count and numbers of the electricity and water meters the inspector found.
+ *
+ * How it works: shows the electricity pair when «كهرباء» is among the services and the water pair when «ماء»
+ * is; renders nothing when neither is. Read-only when `disabled`.
+ *
+ * Edge cases: shared by the phone body (`InspectorServicesCards`) and the desktop wizard
+ * (`InspectorWizardServicesCard`) since A→Z 2026-11-02 #31 — the desktop had no meter fields at all, so the
+ * valuation report always printed the meters «—».
+ */
+export function InspectorServiceMeterFields({
+  draft,
+  disabled = false,
+  onPatch,
+}: {
+  draft: InspectorWorkspaceDraft;
+  disabled?: boolean;
+  onPatch: (patch: InspectorWorkspacePatchInput) => void;
+}) {
+  const meters = inspectorServiceMeters(draft.services);
+  if (!meters.any) return null;
+  const change = (patch: InspectorWorkspacePatchInput) => {
+    if (!disabled) onPatch(patch);
+  };
+  return (
+    <FormRow className="grid-cols-1 sm:grid-cols-2">
+      {meters.electricity ? (
+        <>
+          <RegField
+            id="ins-elec-meter-count"
+            label="عدد عدادات الكهرباء"
+            type="number"
+            readOnly={disabled}
+            value={draft.electricityMeterCount}
+            onChange={(v) => change({ electricityMeterCount: v })}
+          />
+          <RegField
+            id="ins-elec-meter-nos"
+            label="أرقام عدادات الكهرباء"
+            readOnly={disabled}
+            value={draft.electricityMeterNumbers}
+            onChange={(v) => change({ electricityMeterNumbers: v })}
+          />
+        </>
+      ) : null}
+      {meters.water ? (
+        <>
+          <RegField
+            id="ins-water-meter-count"
+            label="عدد عدادات الماء"
+            type="number"
+            readOnly={disabled}
+            value={draft.waterMeterCount}
+            onChange={(v) => change({ waterMeterCount: v })}
+          />
+          <RegField
+            id="ins-water-meter-nos"
+            label="أرقام عدادات الماء"
+            readOnly={disabled}
+            value={draft.waterMeterNumbers}
+            onChange={(v) => change({ waterMeterNumbers: v })}
+          />
+        </>
+      ) : null}
+    </FormRow>
+  );
+}
 
 export function InspectorServicesCards({
   activeStep,
@@ -93,42 +162,7 @@ export function InspectorServicesCards({
           icon="ti-hash"
           layout={layout}
         >
-          <FormRow className="grid-cols-1 sm:grid-cols-2">
-            {meters.electricity ? (
-              <>
-                <RegField
-                  id="ins-elec-meter-count"
-                  label="عدد عدادات الكهرباء"
-                  type="number"
-                  value={draft.electricityMeterCount}
-                  onChange={(v) => persist({ electricityMeterCount: v })}
-                />
-                <RegField
-                  id="ins-elec-meter-nos"
-                  label="أرقام عدادات الكهرباء"
-                  value={draft.electricityMeterNumbers}
-                  onChange={(v) => persist({ electricityMeterNumbers: v })}
-                />
-              </>
-            ) : null}
-            {meters.water ? (
-              <>
-                <RegField
-                  id="ins-water-meter-count"
-                  label="عدد عدادات الماء"
-                  type="number"
-                  value={draft.waterMeterCount}
-                  onChange={(v) => persist({ waterMeterCount: v })}
-                />
-                <RegField
-                  id="ins-water-meter-nos"
-                  label="أرقام عدادات الماء"
-                  value={draft.waterMeterNumbers}
-                  onChange={(v) => persist({ waterMeterNumbers: v })}
-                />
-              </>
-            ) : null}
-          </FormRow>
+          <InspectorServiceMeterFields draft={draft} disabled={locked} onPatch={persist} />
         </InspectorCard>
       ) : null}
     </>

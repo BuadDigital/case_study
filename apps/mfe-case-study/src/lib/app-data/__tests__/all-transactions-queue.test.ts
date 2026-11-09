@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildAllTransactionsQueueRowMeta,
   buildAllTransactionsRowMoreItems,
   collapseAllTransactionsToLatestPhase,
   formatAllTransactionsDeedWithPhase,
   type AllTransactionsQueueRowMeta,
 } from "../all-transactions-queue";
 import type { WorkflowTask } from "../tasks";
+import { staffAccessOf } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 
 function task(
   partial: Partial<WorkflowTask> &
@@ -41,6 +43,7 @@ function row(
     propertyId: "prop-1",
     transactionNumber: null,
     transactionDeedCount: 1,
+    waitingOn: null,
     ...overrides,
   };
 }
@@ -161,6 +164,7 @@ describe("buildAllTransactionsRowMoreItems reopen", () => {
       openTask: () => {},
       router: { push: () => {} },
       viewerRole,
+      viewerAccess: viewerRole ? staffAccessOf(viewerRole) : undefined,
       onReopenCompleted: () => {},
     }).map((item) => item.id);
 
@@ -183,3 +187,21 @@ describe("buildAllTransactionsRowMoreItems reopen", () => {
   });
 });
 
+describe("buildAllTransactionsQueueRowMeta — «المعاملات النشطة»", () => {
+  const live = task({ id: "live", kind: "case-study-property", phase: "bourse", status: "open", propertyId: "p-live" });
+  const done = task({ id: "done", kind: "case-study-property", phase: "done", status: "completed", propertyId: "p-done" });
+  const now = new Date("2026-11-05T09:00:00Z");
+
+  it("replaces the phase with the stage and «بانتظار», and drops what is no longer live", () => {
+    const rows = buildAllTransactionsQueueRowMeta([live, done], new Map(), now, (t) =>
+      t.id === "live" ? { stage: "استعلام البورصة", waitingOn: "التنسيق" } : null,
+    );
+    expect(rows.map((r) => [r.task.id, r.phaseLabel, r.waitingOn])).toEqual([["live", "استعلام البورصة", "التنسيق"]]);
+  });
+
+  it("keeps every row and no «بانتظار» without a progress reader (party roles)", () => {
+    const rows = buildAllTransactionsQueueRowMeta([live, done], new Map(), now);
+    expect(rows).toHaveLength(2);
+    expect(rows.every((r) => r.waitingOn === null)).toBe(true);
+  });
+});

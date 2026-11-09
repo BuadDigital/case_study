@@ -28,7 +28,7 @@ export type InspectorBoundaryMatch = {
 };
 
 import { jeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
-import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 
 export type InspectorPhotoAttachment = {
   fileName: string;
@@ -1100,6 +1100,37 @@ export function inspectorFreePhotoNeedsKind(
   const parent = inspectorFreePhotoParentKey(category);
   if (!parent) return !category?.trim();
   return parseInspectorFreePhotoCategory(category) === null;
+}
+
+/**
+ * The fewest photos the inspector sends in each bucket: 10 outside, 20 inside (Omar, 2026-11-03).
+ *
+ * How it works: counts the photos filed under «صور خارجية» / «صور داخلية» (any kind, whoever added
+ * them) against the floor. Edge cases: land has no inside, so its floor there is zero; photos still
+ * waiting for a bucket count for neither.
+ */
+export const INSPECTOR_MIN_EXTERIOR_PHOTOS = 10;
+export const INSPECTOR_MIN_INTERIOR_PHOTOS = 20;
+
+export function inspectorFreePhotoMinimum(parent: string, isLand: boolean): number {
+  if (parent === INSPECTOR_FREE_PHOTO_CATEGORY_EXTERIOR) return INSPECTOR_MIN_EXTERIOR_PHOTOS;
+  if (parent === INSPECTOR_FREE_PHOTO_CATEGORY_INTERIOR) return isLand ? 0 : INSPECTOR_MIN_INTERIOR_PHOTOS;
+  return 0;
+}
+
+/** «أكمل صور العقار: الخارجية 3 من 10 …» — null once every bucket holds its floor. */
+export function inspectorFreePhotoShortfall(
+  photos: readonly Pick<InspectorFreePhoto, "category">[],
+  isLand: boolean,
+): string | null {
+  const short = INSPECTOR_FREE_PHOTO_PARENTS.flatMap((parent) => {
+    const minimum = inspectorFreePhotoMinimum(parent.key, isLand);
+    const count = photos.filter(
+      (photo) => inspectorFreePhotoParentKey(photo.category) === parent.key,
+    ).length;
+    return count < minimum ? [`${parent.label} ${count} من ${minimum}`] : [];
+  });
+  return short.length > 0 ? `أكمل صور العقار (الحد الأدنى): ${short.join("، ")}` : null;
 }
 
 export type InspectorComponentPhotoKey = "showroom" | "well" | "buildLicense";

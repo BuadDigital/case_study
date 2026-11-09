@@ -6,7 +6,7 @@ import { useSyncExternalStore } from "react";
  * client cache that a batch read fills (`useReportDraftStates`).
  */
 export type ReportDraftState = {
-  status: "none" | "preparing" | "sent" | "approved";
+  status: "none" | "preparing" | "in_review" | "sent" | "approved";
   reportStage: "draft" | "deposit_issued" | "final_issued";
   /** The appraiser's progress ladder 0–100 as the server computed it; absent when the state came from a single draft read. */
   progressPct?: number;

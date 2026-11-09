@@ -10,9 +10,10 @@
 import { cn, formControlClassName, Select, Textarea } from "@platform/ui-kit";
 import { RegField, RegTextarea } from "@platform/app-shared/registration/FormFields";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
-import { PartyCaseStudyReportTab } from "../case-study/PartyCaseStudyReportTab";
+import { InspectorCaseStudyChips } from "./InspectorCaseStudyChips";
+import { InspectorValuedDocumentsField } from "./InspectorValuedDocumentsField";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
 import { MobileFieldLabel, mobileControlClassName } from "./InspectMobileControls";
@@ -183,6 +184,19 @@ export function InspectorDefinedPhotosCard({
   );
 }
 
+/**
+ * The phone's last step-3 cards: «العقارات المقارنة», «مستندات ذات قيمة» and the inspector's
+ * case-study questions.
+ *
+ * How it works: the comparables capture and the questions render the same components as the
+ * desktop wizard (`FieldComparableCaptureSection`, `InspectorCaseStudyChips`); the valued-document
+ * upload shows only while the inspection is still editable, as on the desktop.
+ *
+ * Edge cases: fixed 2026-11-04 — the questions used `PartyCaseStudyReportTab`, which looks the
+ * parent case-study task up in the task list; an inspector only sees their own tasks, so a freshly
+ * distributed property always read «لم يُعثَر على معاملة دراسة الحالة الأم». The chips need only the
+ * parent's id (`parentTaskId`). The phone also had no «مستندات ذات قيمة» upload.
+ */
 export function InspectorComparablesAndQuestionsCards({
   activeStep,
   def,
@@ -227,6 +241,17 @@ export function InspectorComparablesAndQuestionsCards({
           disabled={workLocked}
         />
       </InspectorCard>
+      {!locked ? (
+        <InspectorCard
+          title="مستندات ذات قيمة"
+          hidden={activeStep !== 3}
+          icon="ti-file-certificate"
+          layout={layout}
+          subtitle={mobile ? "مستند يحمل قيمة من الموقع" : undefined}
+        >
+          <InspectorValuedDocumentsField poNumber={task.poNumber} propertyId={propertyId} />
+        </InspectorCard>
+      ) : null}
       <InspectorCard
         title="أسئلة دراسة الحالة — المعاين"
         hidden={activeStep !== 3}
@@ -235,7 +260,7 @@ export function InspectorComparablesAndQuestionsCards({
         step={5}
         subtitle={mobile ? "أسئلة الطرف" : undefined}
       >
-        <PartyCaseStudyReportTab def={def} childTask={task} forceReadOnly={locked} />
+        <InspectorCaseStudyChips def={def} childTask={task} forceReadOnly={locked} />
       </InspectorCard>
     </>
   );

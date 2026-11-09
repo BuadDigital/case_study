@@ -4,6 +4,10 @@ import type {
   NotificationEntityType,
   NotificationTone,
 } from "@platform/api-client/notifications";
+import {
+  NOTIFICATIONS_CHANGED_EVENT,
+  NOTIFICATION_PUSHED_EVENT,
+} from "../events/app-events";
 
 export type { NotificationCategory, NotificationEntityType };
 
@@ -33,11 +37,6 @@ const STORAGE_VERSION = 1;
 const MAX_ITEMS = 50;
 const DEDUPE_WINDOW_MS = 30_000;
 let activeUserId: string | null = null;
-
-export const NOTIFICATIONS_CHANGED_EVENT = "ree-notifications-changed";
-export const NOTIFICATION_PUSHED_EVENT = "ree-notification-pushed";
-/** Toast only — does not sync to server (e.g. inbox pull from API). */
-export const NOTIFICATION_TOAST_EVENT = "ree-notification-toast";
 
 export function notificationStorageKey(userId: string | null = activeUserId): string {
   return `${STORAGE_PREFIX}${encodeURIComponent(userId?.trim() || "anonymous")}`;

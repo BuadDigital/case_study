@@ -57,7 +57,7 @@ public class AttachmentReadAuthorizationTests
         var meta = await service.GetMetaAsync(id, new PermissionsDto
         {
             UserId = "staff",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         });
 
         Assert.NotNull(meta);
@@ -133,7 +133,7 @@ public class AttachmentReadAuthorizationTests
         // The specialist sees every valued document of the property, not only their own.
         var all = await service.ListOwnValuedDocumentsAsync(
             scopeKey,
-            new PermissionsDto { UserId = "specialist-1", PrototypeRole = "case-specialist" });
+            new PermissionsDto { UserId = "specialist-1", PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All });
         Assert.Equal(3, all.Count);
 
         // The uploader may open their own file (the «معاينة» button) — and nobody else outside the trio.

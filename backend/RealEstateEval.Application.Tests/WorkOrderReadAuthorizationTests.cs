@@ -61,7 +61,7 @@ public class WorkOrderReadAuthorizationTests
         var rows = await service.ListAsync(new PermissionsDto
         {
             UserId = "staff",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             Capabilities = ["manage-work-orders"],
         });
 

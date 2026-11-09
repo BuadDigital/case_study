@@ -64,7 +64,7 @@ public partial class PartyTaskSubmissionService
         if (task is null) return (null, null);
         if (task.Kind != WorkflowTaskKind.FieldInspection)
             return (null, Error(ReturnInspectionKindAr));
-        if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanAcceptPartyWork(actor.Staff))
             return (null, Error(ReturnInspectionRoleDeniedAr));
 
         var groups = InspectorDataGroupRules.Resolve(sections, out var unknown);
@@ -113,7 +113,7 @@ public partial class PartyTaskSubmissionService
         var task = await _repo.GetTaskAsync(inspectionTaskId, cancellationToken);
         if (task is null) return (null, Error("المهمة غير موجودة"));
         if (task.Kind != WorkflowTaskKind.FieldInspection) return (null, Error(ReturnInspectionKindAr));
-        if (!PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+        if (!PoRoleMatrixRules.CanAcceptPartyWork(actor.Staff))
             return (null, Error(ReturnInspectionRoleDeniedAr));
 
         var returnNote = request.ReturnNote?.Trim() ?? "";
@@ -134,11 +134,15 @@ public partial class PartyTaskSubmissionService
             return (null, Error(HandedOverToEnfazAr));
         }
 
+        // What the inspector reads on his «معادة للتصحيح» banner: the parts the specialist ticked, then
+        // the reason (A→Z 2026-11-04 — he saw only the reason, not «المساحات · العمر»).
+        var inspectorNote = InspectorReturnNote(groups, returnNote);
         var actorUserId = actor.UserId?.Trim() ?? "";
         var replay = inspection.Status == PartyTaskSubmissionStatus.Reopened
             && actorUserId.Length > 0
             && string.Equals(inspection.ReopenedByUserId, actorUserId, StringComparison.Ordinal)
-            && string.Equals(inspection.ReturnNote, returnNote, StringComparison.Ordinal);
+            && (string.Equals(inspection.ReturnNote, inspectorNote, StringComparison.Ordinal)
+                || string.Equals(inspection.ReturnNote, returnNote, StringComparison.Ordinal));
         if (!replay && inspection.Status != PartyTaskSubmissionStatus.Submitted)
             return (null, Error("لا يوجد إرسال مُكتمل لإعادته"));
         var wasAccepted = inspection.AcceptedAtUtc is not null;
@@ -151,7 +155,7 @@ public partial class PartyTaskSubmissionService
         var reopenStudy = studyIssued && decision == StudyReportReopen;
         if (reopenStudy)
         {
-            if (!PoRoleMatrixRules.CanReopenCaseStudyReport(actor.PrototypeRole))
+            if (!PoRoleMatrixRules.CanReopenCaseStudyReport(actor.Staff))
                 return (null, Error(CaseStudyReportService.ReopenRoleDeniedAr));
             if (_reports is null)
                 return (null, Error("خدمة تقرير دراسة الحالة غير متاحة"));
@@ -186,6 +190,7 @@ public partial class PartyTaskSubmissionService
                     DisplayName = actor.DisplayName,
                     PrototypeRole = actor.PrototypeRole,
                     DistributionAssigneeId = actor.DistributionAssigneeId,
+                    SubRoles = actor.SubRoles,
                 },
                 cancellationToken);
             if (reopenErrors is not null) return (null, reopenErrors);
@@ -201,9 +206,9 @@ public partial class PartyTaskSubmissionService
 
         if (!replay)
         {
-            var returnError = tracked.ReturnForCorrection(returnNote, now, actor.UserId, actor.DisplayName);
+            var returnError = tracked.ReturnForCorrection(inspectorNote, now, actor.UserId, actor.DisplayName);
             if (returnError is not null) return (null, Error(returnError));
-            tracked.PayloadJson = PartyTaskSubmissionPayloadRules.SetPayloadReopened(tracked.PayloadJson, returnNote, now);
+            tracked.PayloadJson = PartyTaskSubmissionPayloadRules.SetPayloadReopened(tracked.PayloadJson, inspectorNote, now);
             await SyncFieldInspectionWorkspaceAsync(tracked, cancellationToken);
             taskIdsToReopen.Add(inspectionTaskId);
         }
@@ -230,9 +235,14 @@ public partial class PartyTaskSubmissionService
             finalOutcomes.Add(Outcome(party, outcome));
         }
 
+        // Omar 2026-11-08: a return before the study is issued (or with the study reopened) sends the
+        // transaction back to the coordinator's follow-up — he receives the corrected work and sends it again.
+        var backToCoordination = !replay && (!studyIssued || studyReopened);
         await _repo.ExecuteInTransactionAsync(
             async ct =>
             {
+                if (backToCoordination)
+                    await _repo.ClearTransactionReceiptAsync(task.PropertyId, now, ct);
                 await _repo.SaveChangesAsync(ct);
                 foreach (var id in taskIdsToReopen)
                 {
@@ -352,4 +362,15 @@ public partial class PartyTaskSubmissionService
         affected = parties.Where(p => ids.Contains(p.Task.Id)).ToList();
         return true;
     }
+
+    /// <summary>
+    /// The return note the inspector sees: «يحتاج تصحيحاً: المساحات · العمر — السبب», or the reason alone
+    /// when no part was ticked.
+    /// </summary>
+    internal static string InspectorReturnNote(
+        IReadOnlyList<InspectorDataGroupRules.Group> groups,
+        string reason) =>
+        groups.Count == 0
+            ? reason
+            : $"يحتاج تصحيحاً: {string.Join(" · ", groups.Select(g => g.LabelAr))} — {reason}";
 }

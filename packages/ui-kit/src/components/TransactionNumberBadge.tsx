@@ -2,46 +2,44 @@
 
 import { cn } from "../lib/cn";
 
-/** Temporary transaction numbers carry the TMP prefix. */
-export const TEMPORARY_TRANSACTION_PREFIX = "TMP-";
+/** The fixed suffix of a linked property's number: PR-26-00123-L (ruling 2026-11-08). */
+export const LINKED_PROPERTY_SUFFIX = "-L";
 
 /**
- * Whether a transaction number is still the temporary one.
+ * Whether a number is a linked property's number («رقم العقار المرتبط»).
  *
- * How it works: trims the value and checks the `TMP-` prefix (TMP replaced the
- * old `D` prefix, and a migration renamed the existing drafts and their counter, so no `D-`
- * number is left to recognise). Blank / null is not temporary.
+ * How it works: trims the value and checks the `-L` suffix. Edge cases: blank / null is not linked;
+ * a deed's own number (PR-26-00123) never ends with the suffix.
  */
-export function isTemporaryTransactionNumber(value: string | null | undefined): boolean {
-  return (value ?? "").trim().startsWith(TEMPORARY_TRANSACTION_PREFIX);
+export function isLinkedPropertyNumber(value: string | null | undefined): boolean {
+  return (value ?? "").trim().endsWith(LINKED_PROPERTY_SUFFIX);
 }
 
 /**
- * The transaction number (المعاملة) beside a deed: PR-… once the official reference exists,
- * else the TMP- temporary number — the prefix itself says so, no badge. Renders nothing when
- * there is no number at all.
+ * The number beside a deed: «رقم المعاملة» (the deed's own PR-…), or «رقم العقار المرتبط» (PR-…-L)
+ * where a screen shows the linked property. Renders nothing when there is no number yet (the slot is
+ * still waiting for its initial data).
  *
- * How it works: trims `number`, prints it left-to-right with
- * tabular digits, and adds «N صكوك» when `deedCount` is more than one. The tooltip says
- * «رقم مؤقت — يُثبَّت الرقم الرسمي PR عند اعتماد أول تقرير» for a TMP- number, else «رقم المعاملة».
+ * How it works: trims `number`, prints it left-to-right with tabular digits, and adds «N صكوك» when
+ * `deedCount` is more than one. The tooltip names which number it is from the `-L` suffix.
  *
- * Edge cases: the official PR is drawn once at the first approved report and never reused, so
- * a number shown as PR here stays PR even after a reopen; a missing `deedCount` counts as one.
+ * Edge cases: every deed is numbered at the first full save of its initial data and the number never
+ * changes, so there is no temporary state to flag (the TMP number was retired 2026-11-08); a missing
+ * `deedCount` counts as one.
  */
 export function TransactionNumberBadge({
   number,
   deedCount,
   className,
 }: {
-  /** PR-… or TMP-…; empty / null hides the badge. */
+  /** PR-… (a deed) or PR-…-L (a linked property); empty / null hides the badge. */
   number: string | null | undefined;
-  /** Deeds in the transaction; more than one adds «N صكوك». */
+  /** Deeds in the property; more than one adds «N صكوك». */
   deedCount?: number | null;
   className?: string;
 }) {
   const value = (number ?? "").trim();
   if (!value) return null;
-  const temporary = isTemporaryTransactionNumber(value);
   const multi = (deedCount ?? 1) > 1;
   return (
     <span
@@ -49,11 +47,7 @@ export function TransactionNumberBadge({
         "inline-flex max-w-full items-center gap-1 text-[10.5px] font-semibold text-text-3 no-underline",
         className,
       )}
-      title={
-        temporary
-          ? "رقم مؤقت — يُثبَّت الرقم الرسمي PR عند اعتماد أول تقرير"
-          : "رقم المعاملة"
-      }
+      title={isLinkedPropertyNumber(value) ? "رقم العقار المرتبط" : "رقم المعاملة"}
     >
       <bdi dir="ltr" className="inline [direction:ltr] [unicode-bidi:isolate] tabular-nums">
         {value}

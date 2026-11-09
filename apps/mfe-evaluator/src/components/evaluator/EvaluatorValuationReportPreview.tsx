@@ -67,7 +67,9 @@ export function EvaluatorValuationReportPreview({
     appraisalTask.fieldInspectionTaskId?.trim() ||
     findSiblingInspectionTask(appraisalTask, allTasks)?.id ||
     null;
-  const surveyTaskId = findSiblingSurveyTask(appraisalTask, allTasks)?.id ?? null;
+  const surveyTaskId =
+    findSiblingSurveyTask(appraisalTask, allTasks)?.id ??
+    (appraisalTask.engineeringSurveyTaskId?.trim() || null);
 
   return (
     <EvaluatorValuationReportOutputTab

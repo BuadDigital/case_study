@@ -49,6 +49,14 @@ public interface ICaseStudyReportRepository
         Guid parentTaskId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The engineering office's SUBMITTED survey payload under the case-study parent (a live survey child);
+    /// null when there is none or the office has not submitted (a draft verdict is not his word yet).
+    /// </summary>
+    Task<string?> GetSubmittedEngineeringSurveyPayloadJsonAsync(
+        Guid parentTaskId,
+        CancellationToken cancellationToken);
+
     /// <summary>Untracked child (party) tasks of the case-study parent, any status.</summary>
     Task<IReadOnlyList<WorkflowTask>> ListChildTasksAsync(
         Guid parentTaskId,
@@ -75,6 +83,12 @@ public interface ICaseStudyReportRepository
     /// parent when the deed shares a transaction with others, else the task itself.
     /// </summary>
     Task<Guid> ResolveStudyTaskIdAsync(Guid taskId, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Whether coordination formally received the deed's transaction (ruling 2026-11-02). A task with
+    /// no property, or a deed with no transaction (older rows), counts as received.
+    /// </summary>
+    Task<bool> IsTransactionReceivedAsync(Guid? propertyId, CancellationToken cancellationToken);
 
     /// <summary>
     /// Every live case-study parent task of the transaction the holder task belongs to (the holder

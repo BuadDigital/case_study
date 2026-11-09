@@ -1,4 +1,4 @@
-import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 
 /**
  * Normalize deed / real-estate registration numbers for prior-lookup matching.

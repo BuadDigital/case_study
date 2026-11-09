@@ -37,7 +37,7 @@ import {
   scheduleScrollToFormField,
 } from "@platform/app-shared/form-ux";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
-import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import { esgGroupsMissingImpactDescription } from "@platform/app-shared/app-data/valuation-report-specialist-esg";
 import {
   emptyReportChoices,

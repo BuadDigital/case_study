@@ -7,6 +7,7 @@ using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Application.Abstractions;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Application.Rules;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Services;
 
@@ -129,15 +130,6 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
                 now));
         }
 
-        if (distribution.CaseSpecialist)
-        {
-            parent.Assign(
-                distribution.CaseSpecialistId,
-                WorkflowTaskDistributionRules.ResolveSpecialistName(names),
-                StaffRoleIds.CaseSpecialist,
-                now);
-        }
-
         parent.ConfirmDistribution(
             WorkflowTaskDistributionRules.ConfirmedParentTitle(deed, parent.PoNumber),
             WorkflowTaskMapper.SerializeDistribution(distribution),
@@ -153,14 +145,12 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
                     parent,
                     propertyId,
                     children,
-                    distribution.CaseSpecialist,
+                    caseSpecialistAssigned: false,
                     now),
                 cancellationToken);
         }
 
         await NotifyDistributionAssignedAsync(parent, children, deed, cancellationToken);
-        if (distribution.CaseSpecialist)
-            await NotifyCaseSpecialistAssignedAsync(parent, deed, cancellationToken);
         await NotifyCdoDistributionConfirmedAsync(parent, children, deed, cancellationToken);
 
         await _valuationDispatch.TryCreateWhenAppraisalSpawnedAsync(parent.Id, cancellationToken);
@@ -189,12 +179,12 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
     public async Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(
         Guid id,
         RedistributePartiesRequest request,
-        string actorRole,
+        StaffActor actor,
         string? actorName,
         string? actorUserId = null,
         CancellationToken cancellationToken = default)
     {
-        if (!WorkflowTaskLifecycleRules.CanRedistributeParties(actorRole))
+        if (!WorkflowTaskLifecycleRules.CanRedistributeParties(actor))
             return (null, Error("إعادة إسناد الأطراف صلاحية أخصائي دراسة الحالة أو مشرف القسم أو مسؤول التحول الرقمي"));
 
         var parent = await _caseStudy.GetTaskForUpdateAsync(id, cancellationToken);
@@ -231,26 +221,8 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
         foreach (var c in children)
             before[c.Kind.ToString()] = new { id = c.AssigneeId, name = c.AssigneeName, status = c.Status.ToString() };
 
-        if (distribution.CaseSpecialist)
-        {
-            var newAssigneeId = WorkflowTaskDistributionRules.NormalizeAssigneeId(distribution.CaseSpecialistId);
-            if (!string.Equals(parent.AssigneeId, newAssigneeId, StringComparison.Ordinal))
-            {
-                var specialistName = WorkflowTaskDistributionRules.ResolveSpecialistName(names);
-                parent.Assign(newAssigneeId, specialistName, StaffRoleIds.CaseSpecialist, now);
-                if (parent.PropertyId is Guid propertyId)
-                {
-                    timelineEvents.Add(new PropertyTimelineRecordRequest(
-                        parent.PoNumber,
-                        propertyId,
-                        $"task:{parent.Id}:specialist-redistributed:{now.Ticks}",
-                        "إعادة إسناد — أخصائي دراسة الحالة",
-                        WorkflowTaskDistributionRules.RedistributionDetail(actorName, specialistName, reason),
-                        PropertyTimelineTones.Active,
-                        now));
-                }
-            }
-        }
+        // The specialist seat is no longer named (shared queues, ruling 2026-11-02): only the parties
+        // are redistributed; a legacy specialist id in the body is ignored.
 
         foreach (var spec in WorkflowTaskDistributionRules.PartyChildren(distribution))
         {
@@ -312,7 +284,8 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
                 poNumber = parent.PoNumber,
                 propertyId = parent.PropertyId,
                 actorName,
-                actorRole,
+                actorRole = actor.Role ?? "",
+                actorSubRoles = actor.SubRoles ?? Array.Empty<string>(),
                 reason,
                 movedTasks = changed.Select(c => c.Kind.ToString()).ToArray(),
             }), cancellationToken);
@@ -325,13 +298,6 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
             var deed = await ParentDeedAsync(parent, cancellationToken);
             await NotifyDistributionAssignedAsync(parent, changed, deed, cancellationToken);
             await NotifyAssignmentReplacedAsync(parent, replaced, deed, reason, cancellationToken);
-        }
-
-        if (distribution.CaseSpecialist &&
-            !string.IsNullOrWhiteSpace(parent.AssigneeId))
-        {
-            var deed = await ParentDeedAsync(parent, cancellationToken);
-            await NotifyCaseSpecialistAssignedAsync(parent, deed, cancellationToken);
         }
 
         return (WorkflowTaskMapper.ToDto(parent), null);

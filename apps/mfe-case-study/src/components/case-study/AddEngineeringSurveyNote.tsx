@@ -42,7 +42,7 @@ export function AddEngineeringSurveyNote({
     <Note tone="warn" className="mb-3">
       <p className="mb-2 text-sm">
         غيّر المعاين نوع العقار إلى «{newType}» — النوع الجديد يحتاج رفعاً مساحياً ولم يُوزَّع مكتب هندسي.
-        أضف المكتب؛ لا يُصدر تقرير دراسة الحالة قبل ذلك.
+        أضف المكتب إن رأيت ذلك؛ الإضافة لا تمنع إصدار تقرير دراسة الحالة.
       </p>
       <div className="flex flex-wrap items-end gap-2">
         <div className="min-w-[220px] flex-1">

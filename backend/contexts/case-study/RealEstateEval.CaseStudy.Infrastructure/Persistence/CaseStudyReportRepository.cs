@@ -72,6 +72,24 @@ public sealed class CaseStudyReportRepository(CaseStudyDbContext db) : ICaseStud
             .Join(db.PartyTaskSubmissions.AsNoTracking(), t => t.Id, s => s.WorkflowTaskId, (_, s) => s.PayloadJson)
             .FirstOrDefaultAsync(cancellationToken);
 
+    /// <summary>
+    /// The live survey child's submitted package payload (A→Z 2026-11-02 #20: the office's «غير مطابق» also
+    /// asks the specialist for a reason). How it works: the parent's non-cancelled engineering-survey child
+    /// joined to its submission in status «submitted». Edge cases: a draft or returned package reads as none.
+    /// </summary>
+    public Task<string?> GetSubmittedEngineeringSurveyPayloadJsonAsync(
+        Guid parentTaskId,
+        CancellationToken cancellationToken) =>
+        db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.ParentTaskId == parentTaskId
+                && t.Kind == WorkflowTaskKind.EngineeringSurvey
+                && t.Status != WorkflowTaskStatus.Cancelled)
+            .Join(db.PartyTaskSubmissions.AsNoTracking(), t => t.Id, s => s.WorkflowTaskId, (_, s) => s)
+            .Where(s => s.Status == PartyTaskSubmissionStatus.Submitted)
+            .Select(s => s.PayloadJson)
+            .FirstOrDefaultAsync(cancellationToken);
+
     public async Task<IReadOnlyList<WorkflowTask>> ListChildTasksAsync(
         Guid parentTaskId,
         CancellationToken cancellationToken) =>
@@ -101,6 +119,16 @@ public sealed class CaseStudyReportRepository(CaseStudyDbContext db) : ICaseStud
 
     public Task<Guid> ResolveStudyTaskIdAsync(Guid taskId, CancellationToken cancellationToken) =>
         StudyHolder.HolderTaskAsync(db, taskId, cancellationToken);
+
+    public async Task<bool> IsTransactionReceivedAsync(Guid? propertyId, CancellationToken cancellationToken)
+    {
+        if (propertyId is not Guid id) return true;
+        var receivedAt = await db.WorkOrderProperties.AsNoTracking()
+            .Where(p => p.Id == id && p.Transaction != null)
+            .Select(p => new { p.Transaction!.ReceivedAtUtc })
+            .FirstOrDefaultAsync(cancellationToken);
+        return receivedAt is null || receivedAt.ReceivedAtUtc is not null;
+    }
 
     /// <summary>Phase 4: one case-study parent task per live deed of the holder task's transaction.</summary>
     /// <remarks>

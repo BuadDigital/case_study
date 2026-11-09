@@ -22,6 +22,7 @@ import {
   taskWorkSaveLabel,
   taskWorkTitles,
 } from "../my-task-work-state";
+import { staffAccessOf } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 
 function task(overrides: Record<string, unknown> = {}): WorkflowTask {
   return {
@@ -139,45 +140,45 @@ describe("canWorkTaskStep", () => {
   const distribution = resolveTaskWorkSteps("distribution");
 
   it("lets the case specialist and the CDO write the Infath and bourse steps, nobody else", () => {
-    const specialist = taskWorkRoleFlags("case-specialist");
-    const cdo = taskWorkRoleFlags("cdo");
+    const specialist = taskWorkRoleFlags(staffAccessOf("case-specialist"));
+    const cdo = taskWorkRoleFlags(staffAccessOf("cdo"));
     expect(canWorkTaskStep(enfath, specialist)).toBe(true);
     expect(canWorkTaskStep(bourse, specialist)).toBe(true);
     expect(canWorkTaskStep(enfath, cdo)).toBe(true);
     expect(canWorkTaskStep(bourse, cdo)).toBe(true);
-    expect(canWorkTaskStep(enfath, taskWorkRoleFlags("section-supervisor"))).toBe(false);
+    expect(canWorkTaskStep(enfath, taskWorkRoleFlags(staffAccessOf("section-supervisor")))).toBe(false);
   });
 
   it("keeps the distribution step's audience unchanged", () => {
-    expect(canWorkTaskStep(distribution, taskWorkRoleFlags("cdo"))).toBe(true);
-    expect(canWorkTaskStep(distribution, taskWorkRoleFlags("case-specialist"))).toBe(true);
-    expect(canWorkTaskStep(distribution, taskWorkRoleFlags("section-supervisor"))).toBe(false);
+    expect(canWorkTaskStep(distribution, taskWorkRoleFlags(staffAccessOf("cdo")))).toBe(true);
+    expect(canWorkTaskStep(distribution, taskWorkRoleFlags(staffAccessOf("case-specialist")))).toBe(true);
+    expect(canWorkTaskStep(distribution, taskWorkRoleFlags(staffAccessOf("section-supervisor")))).toBe(false);
   });
 });
 
 describe("taskWorkRoleFlags", () => {
   it("cdo is both supervisor and specialist and writes a property; each other role is one or neither", () => {
-    expect(taskWorkRoleFlags("cdo")).toMatchObject({
+    expect(taskWorkRoleFlags(staffAccessOf("cdo"))).toMatchObject({
       isSupervisor: true,
       isSpecialist: true,
       canEditProperty: true,
     });
-    expect(taskWorkRoleFlags("general-manager").isSupervisor).toBe(true);
-    expect(taskWorkRoleFlags("case-specialist").canEditProperty).toBe(true);
-    expect(taskWorkRoleFlags("section-supervisor").canEditProperty).toBe(false);
-    expect(taskWorkRoleFlags("section-supervisor")).toMatchObject({
+    expect(taskWorkRoleFlags(staffAccessOf("general-manager")).isSupervisor).toBe(true);
+    expect(taskWorkRoleFlags(staffAccessOf("case-specialist")).canEditProperty).toBe(true);
+    expect(taskWorkRoleFlags(staffAccessOf("section-supervisor")).canEditProperty).toBe(false);
+    expect(taskWorkRoleFlags(staffAccessOf("section-supervisor"))).toMatchObject({
       isSupervisor: true,
       isSpecialist: false,
     });
-    expect(taskWorkRoleFlags("case-specialist")).toMatchObject({
+    expect(taskWorkRoleFlags(staffAccessOf("case-specialist"))).toMatchObject({
       isSupervisor: false,
       isSpecialist: true,
     });
-    expect(taskWorkRoleFlags("field-inspector")).toMatchObject({
+    expect(taskWorkRoleFlags(staffAccessOf("field-inspector"))).toMatchObject({
       isSupervisor: false,
       isSpecialist: false,
     });
-    expect(taskWorkRoleFlags("case-specialist").failureSpecialist).not.toBe("");
+    expect(taskWorkRoleFlags(staffAccessOf("case-specialist")).failureSpecialist).not.toBe("");
   });
 });
 

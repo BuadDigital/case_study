@@ -173,6 +173,18 @@ public static class PartyTaskSubmissionPayloadRules
         }
     }
 
+    /// <summary>The inspector's declaration that the inspection data is correct (field-inspection payload).</summary>
+    public const string InspectionConfirmedKey = "inspectionConfirmed";
+
+    /// <summary>The payload of a package returned for correction.</summary>
+    /// <remarks>
+    /// How it works: marks the payload «reopened» with the return note, clears the submit stamp, and clears
+    /// the inspector's declaration «أقر بأن بيانات المعاينة صحيحة» (<c>inspectionConfirmed</c>) when the package
+    /// carries one.
+    /// Edge cases: fixed A→Z 2026-11-02 #58 — the declaration stayed ticked after a return, so the inspector
+    /// resubmitted without confirming the corrected data. A package without the key (survey, appraisal) gets
+    /// none added. Unreadable JSON is returned unchanged.
+    /// </remarks>
     public static string SetPayloadReopened(string payloadJson, string returnNote, DateTime now)
     {
         try
@@ -182,6 +194,7 @@ public static class PartyTaskSubmissionPayloadRules
             mutable["returnNote"] = returnNote;
             mutable["submittedAtUtc"] = null;
             mutable["updatedAtUtc"] = now.ToString("O");
+            if (mutable.ContainsKey(InspectionConfirmedKey)) mutable[InspectionConfirmedKey] = false;
             return JsonSerializer.Serialize(mutable, JsonOpts);
         }
         catch

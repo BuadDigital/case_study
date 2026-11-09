@@ -55,6 +55,7 @@ export function FavoriteTransactionsView() {
           openTask: ctx.openTask,
           router: ctx.router,
           viewerRole: ctx.viewerRole,
+          viewerAccess: ctx.viewerAccess,
         });
         const propertyId = ctx.propertyId ?? ctx.task.propertyId;
         if (propertyId) {

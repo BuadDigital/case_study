@@ -11,7 +11,7 @@ import {
   OTHER_ATTACHMENTS_KEY,
   OTHER_ATTACHMENTS_LABEL,
   inspectorAmenityLabel,
-} from "./inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
 import { formatArDateTime } from "@platform/app-shared/format/date";
 

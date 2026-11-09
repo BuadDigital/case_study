@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyCaseStudyReportDraft } from "../case-study-report-model";
+import { emptyCaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import {
   buildCaseStudyReportModel,
   caseStudyReportDeeds,

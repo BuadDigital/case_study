@@ -24,13 +24,27 @@ import {
 } from "./infath-upload-types";
 import { INFATH_FIELD_LABELS as L } from "./infath-field-labels";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
-import type { BuildingInventoryLineDto } from "@platform/api-client";
-import { infathBuildingAreasFromComponents, inspectedAssetIsLand } from "./specialist-components";
+import {
+  linkedPropertyDeeds,
+  transactionDeedLabelOf,
+  type BuildingInventoryLineDto,
+  type TransactionDetailDto,
+  type ValuationApproachSettingsDto,
+  type ValuationCostApproachDto,
+  type ValuationReconciliationDto,
+} from "@platform/api-client";
+import { infathBuildingAreasFromComponents } from "./specialist-components";
 import {
   isApartmentInspectionContext,
+  isLandInspectionContext,
   propertyUsageValue,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
-import { fmt } from "@platform/app-shared/format/number";
+import {
+  orderPropertyPhotos,
+  photoClassOf,
+  type PropertyPhotoMarks,
+} from "@platform/app-shared/app-data/property-detail-document-types";
+import { fmt, fmtMax } from "@platform/app-shared/format/number";
 import { PropertyKeysStatuses } from "@platform/api-client";
 import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
@@ -47,6 +61,8 @@ export type InfathOpsContext = {
   depositCode?: string | null;
   /** Deposit-certificate attachment name. */
   depositCertificateName?: string | null;
+  /** The approved report's date (yyyy-MM-dd) — «تاريخ إصدار التقرير» is that, not the hand-over day. */
+  reportDate?: string | null;
 };
 
 function partyField(
@@ -124,8 +140,25 @@ function auto(
   return txt(id, label, value, role, "auto");
 }
 
-/** Building-only fields of «بيانات الأصل» — they have no answer on bare land. */
+/**
+ * Fields that have no answer on bare land: the building fields of «بيانات الأصل», the rows the inspector's land
+ * screen never asks (`LAND_HIDDEN_INSPECTOR_FEATURE_KEYS`: facade, occupancy, landscaping…), the wells count
+ * (components are not listed for land), the building areas of «الحدود والأطوال», the buildings value and the
+ * interior photos.
+ * Edge cases: added 2026-11-04 — facade, wells, landscaping, occupancy, floors and the basement / annex /
+ * buildings totals read «— غير مُدخل —» on land, as if the inspector had skipped them.
+ */
 const BUILDING_ONLY_FIELD_IDS = new Set([
+  "facade",
+  "wells",
+  "landscaping",
+  "occupancy",
+  "floors",
+  "basement-total",
+  "annex-total",
+  "buildings-total",
+  "build-value",
+  "int-photo",
   "built-area",
   "build-license",
   "build-license-date",
@@ -147,6 +180,10 @@ const BUILDING_ONLY_FIELD_IDS = new Set([
 ]);
 
 export const INFATH_NOT_APPLICABLE_LAND = "لا ينطبق — أرض";
+/** Buildings value of a property valued «أرض فقط». */
+export const INFATH_NOT_APPLICABLE_LAND_ONLY_SCOPE = "لا ينطبق — التقييم للأرض فقط";
+/** Land value of a property valued «مباني فقط». */
+export const INFATH_NOT_APPLICABLE_BUILDING_ONLY_SCOPE = "لا ينطبق — التقييم للمباني فقط";
 
 /**
  * On bare land (asset «أرض», no listed components) the empty building fields read «لا ينطبق — أرض».
@@ -259,6 +296,74 @@ function hasFile(doc: PropertyDetailDocumentEntry | null | undefined): boolean {
   return Boolean(doc?.attachmentId?.trim() || doc?.dataUrl);
 }
 
+/** The inspector's photos Enfaz takes as «صور الأصل من الخارج» and «… من الداخل». */
+export type InfathPhotoBundles = {
+  exterior: PropertyDetailDocumentEntry[];
+  interior: PropertyDetailDocumentEntry[];
+};
+
+/**
+ * Splits the inspector's photos into Enfaz's exterior and interior bundles.
+ *
+ * How it works: takes the inspector photos of the documents list (`inspection-photo` images with a file), in the
+ * photos tab's order, and files each by its class (`photoClassOf`: the coordinator's / study's choice, else the
+ * suggested one) — Omar 2026-11-08: the exterior file carries the meters, the interior one the movables.
+ *
+ * Edge cases: a photo classed «محيط العقار» (kept inside the system) or «مستند» (made a property document) goes to
+ * neither bundle; a photo whose file is missing is skipped. Fixed 2026-11-08: the meters, services and documentary
+ * shots were the report's section 3 and fell out of both files. Added 2026-11-04 — the «صور الأصل» rows read
+ * «غير مُدخل» while the property had photos.
+ */
+export function infathPhotoBundles(
+  sections: PropertyDetailDocumentSection[],
+  marks?: PropertyPhotoMarks | null,
+): InfathPhotoBundles {
+  const photos = orderPropertyPhotos(
+    sections
+      .flatMap((section) => section.documents)
+      .filter(
+        (doc) =>
+          doc.kind === "image" &&
+          doc.documentTypeKey === "inspection-photo" &&
+          (hasFile(doc) || Boolean(doc.inspectionPhoto?.attachment.attachmentId?.trim())),
+      ),
+    marks,
+  );
+  return {
+    exterior: photos.filter((photo) => photoClassOf(photo, marks) === "exterior"),
+    interior: photos.filter((photo) => photoClassOf(photo, marks) === "interior"),
+  };
+}
+
+/**
+ * One «صور الأصل» attachment row: ready when the bundle has photos (its PDF is printed on download), else missing —
+ * or `not-needed` with `notNeededNote` (interior photos of bare land).
+ */
+function photoBundleRow(
+  id: string,
+  name: string,
+  infathTarget: string,
+  photos: PropertyDetailDocumentEntry[],
+  deedNumber: string,
+  notNeededNote = "",
+): InfathUploadAttachment {
+  if (photos.length > 0) {
+    const fileName = deedNumber.trim() ? `${name} - ${deedNumber.trim()}.pdf` : `${name}.pdf`;
+    return {
+      id,
+      name,
+      infathTarget,
+      status: "ready",
+      document: { id, name, fileName, source: "المعاين الميداني", kind: "pdf" },
+      photos,
+    };
+  }
+  if (notNeededNote) {
+    return { id, name, infathTarget, status: "not-needed", statusNote: notNeededNote, document: null };
+  }
+  return { id, name, infathTarget, status: "missing", document: null };
+}
+
 /**
  * The «مرفقات الرفع» rows: which file each Enfaz slot takes and whether it can be downloaded now.
  *
@@ -275,12 +380,16 @@ function hasFile(doc: PropertyDetailDocumentEntry | null | undefined): boolean {
  * - The deposit certificate row had no file at all, so its button never worked; it now takes the stored
  *   certificate.
  * - No survey task → «لا يوجد رفع مساحي» instead of «عند الحاجة»; a survey task without its report → «غير متوفر».
+ * - 2026-11-04: the exterior / interior photo bundles are rows too (as Enfaz's form lists them), ready when the
+ *   inspector took such photos; bare land has no interior photos («لا ينطبق — أرض»).
  */
 function buildAttachments(
   sections: PropertyDetailDocumentSection[],
   keysReceived: boolean,
   sources: InfathAttachmentSources,
   deedNumber: string,
+  photos: InfathPhotoBundles,
+  bareLand: boolean,
 ): InfathUploadAttachment[] {
   const appraisal = sources.finalReport ?? null;
   const survey = findDoc(
@@ -336,6 +445,15 @@ function buildAttachments(
       document: appraisal,
     },
     surveyRow,
+    photoBundleRow(
+      "interior-photos",
+      "صور الأصل من الداخل",
+      "صورة الأصل من الداخل",
+      photos.interior,
+      deedNumber,
+      bareLand ? INFATH_NOT_APPLICABLE_LAND : "",
+    ),
+    photoBundleRow("exterior-photos", "صور الأصل من الخارج", "صورة الأصل من الخارج", photos.exterior, deedNumber),
     {
       id: "deed",
       name: "صك ملكية الأصل",
@@ -415,7 +533,205 @@ export type InfathReportContext = {
   valuationDate?: string;
   /** The approaches the appraiser switched on (e.g. «أسلوب السوق و أسلوب التكلفة»), as the report lists them. */
   approachesUsed?: string;
+  /** The valuation's own results for «تقدير القيمة» (see infathValuationFigures); absent = the package's figures. */
+  valuation?: InfathValuationFigures | null;
 };
+
+/** What Enfaz's «تقدير القيمة» takes, from the valuation's results (not the appraiser's package). */
+export type InfathValuationFigures = {
+  /** «إجمالي قيمة العقار»: the concluded value — before the forced-sale discount when one applies. */
+  totalValue: number;
+  /** «نسبة خصم البيع القسري» in %, only when the value basis applies the discount. */
+  forcedDiscountPct: number | null;
+  /** «قيمة البيع القسري»: the final value after that discount; null without one. */
+  forcedSaleValue: number | null;
+  /** «قيمة الأرض»; null when the valuation does not split it (market approach only). */
+  landValue: number | null;
+  /** «قيمة المباني»; null when the valuation does not split it. */
+  buildingsValue: number | null;
+  /** Shown instead of a land value the valuation's scope has none of («مباني فقط»); "" otherwise. */
+  landNote: string;
+  /** Shown instead of a buildings value the scope has none of (bare land, «أرض فقط»); "" otherwise. */
+  buildingsNote: string;
+};
+
+function positiveAmount(n: number | null | undefined): number | null {
+  return n != null && Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Enfaz's «تقدير القيمة» from the valuation's reconciliation, cost approach and settings.
+ *
+ * How it works:
+ * - total = the final value (القيمة النهائية); when the basis applies the liquidation discount, the total is the
+ *   value before it (plus any «مستند ذو قيمة» additions) and the final value is «قيمة البيع القسري» — so Enfaz's
+ *   «الإجمالي × (1 − الخصم)» gives the final value back.
+ * - bare land or the «أرض فقط» scope: land = total, buildings «لا ينطبق»;
+ *   «مباني فقط»: buildings = total, land «لا ينطبق».
+ * - land with buildings: land and buildings come from the cost approach (land value, buildings after
+ *   depreciation) when it is switched on; market approach alone → both null (the split is not known).
+ *
+ * Edge cases: no reconciliation or no positive final value → null (the sheet then falls back to the package).
+ * A land estimate still incomplete gives no land value. Fixed 2026-11-04: the sheet summed the package's
+ * land + buildings, which the new valuation screens leave at «0», so every figure read 0 next to a final value
+ * of 2,227,000.
+ */
+export function infathValuationFigures(input: {
+  settings?: Pick<
+    ValuationApproachSettingsDto,
+    "costApproachEnabled" | "costScopeKey" | "isLandPropertyType" | "hasStructuresToValue"
+  > | null;
+  recon?: Pick<
+    ValuationReconciliationDto,
+    | "finalOpinionValue"
+    | "finalOpinionBeforeLiquidation"
+    | "additionsTotal"
+    | "liquidationDiscountApplied"
+    | "liquidationDiscountPct"
+  > | null;
+  cost?: Pick<
+    ValuationCostApproachDto,
+    "landValueFromMarket" | "landEstimateComplete" | "buildingsValueAfterDepreciation"
+  > | null;
+}): InfathValuationFigures | null {
+  const recon = input.recon ?? null;
+  const finalValue = positiveAmount(recon?.finalOpinionValue);
+  if (!recon || finalValue == null) return null;
+  const pct = positiveAmount(recon.liquidationDiscountPct);
+  const discounted = Boolean(recon.liquidationDiscountApplied) && pct != null;
+  const before = positiveAmount(recon.finalOpinionBeforeLiquidation);
+  const totalValue =
+    discounted && before != null ? before + Math.max(0, recon.additionsTotal ?? 0) : finalValue;
+  const forced = {
+    totalValue,
+    forcedDiscountPct: discounted ? pct : null,
+    forcedSaleValue: discounted ? finalValue : null,
+  };
+  const settings = input.settings ?? null;
+  const scope = settings?.costScopeKey?.trim() ?? "";
+  const bareLand = Boolean(settings?.isLandPropertyType) && !settings?.hasStructuresToValue;
+  if (bareLand || scope === "land_only") {
+    return {
+      ...forced,
+      landValue: totalValue,
+      buildingsValue: null,
+      landNote: "",
+      buildingsNote: bareLand ? INFATH_NOT_APPLICABLE_LAND : INFATH_NOT_APPLICABLE_LAND_ONLY_SCOPE,
+    };
+  }
+  if (scope === "building_only") {
+    return {
+      ...forced,
+      landValue: null,
+      buildingsValue: totalValue,
+      landNote: INFATH_NOT_APPLICABLE_BUILDING_ONLY_SCOPE,
+      buildingsNote: "",
+    };
+  }
+  const cost = settings?.costApproachEnabled ? (input.cost ?? null) : null;
+  return {
+    ...forced,
+    landValue:
+      cost && cost.landEstimateComplete !== false ? positiveAmount(cost.landValueFromMarket) : null,
+    buildingsValue: cost ? positiveAmount(cost.buildingsValueAfterDepreciation) : null,
+    landNote: "",
+    buildingsNote: "",
+  };
+}
+
+type InfathEstimateCell = { value: string; state: InfathFieldState };
+
+/** The «تقدير القيمة» rows as the sheet prints them. */
+type InfathValueEstimate = {
+  land: InfathEstimateCell;
+  buildings: InfathEstimateCell;
+  total: string;
+  forcedDiscount: string;
+  forcedSale: string;
+};
+
+/**
+ * The «تقدير القيمة» rows: from the valuation's results when they were read, else from the appraiser's package.
+ *
+ * How it works:
+ * - With `figures` (see infathValuationFigures): every row comes from them; a value the scope has none of shows its
+ *   note («لا ينطبق — …»).
+ * - Without: the package's land and buildings when above 0, the total = «سعر التقييم» (the final value), else
+ *   land + buildings; the forced-sale value = total × (1 − the package's discount).
+ * - Land and buildings that do not add up to the total (the cost approach's split under a weighted final value)
+ *   are marked «un» so the specialist checks them before Enfaz sums them.
+ *
+ * Edge cases and how they were fixed (2026-11-04): the package's land and buildings are «0» by default and were
+ * summed into a total of 0 even when the final value was 2,227,000; a «0» now reads as not entered and the total
+ * is never 0 while a final value exists. Bare land without figures takes the total as its land value. A discount
+ * left in the package after the basis changed is ignored once the figures say the basis has none.
+ */
+function infathValueEstimate(input: {
+  figures: InfathValuationFigures | null;
+  appraisalPrice: string;
+  landValue: string;
+  buildingValue: string;
+  forcedDiscount: string;
+  bareLand: boolean;
+}): InfathValueEstimate {
+  const { figures } = input;
+  const packageAmount = (raw: string) => positiveAmount(parseNumber(raw));
+  const packageLand = packageAmount(input.landValue);
+  const packageBuildings = packageAmount(input.buildingValue);
+  const total =
+    figures?.totalValue ??
+    packageAmount(input.appraisalPrice) ??
+    (packageLand != null || packageBuildings != null ? (packageLand ?? 0) + (packageBuildings ?? 0) : null);
+  const land = figures
+    ? figures.landValue
+    : (packageLand ?? (input.bareLand ? total : null));
+  const buildings = figures ? figures.buildingsValue : packageBuildings;
+  const splitDiffers =
+    total != null && (land != null || buildings != null) && Math.abs((land ?? 0) + (buildings ?? 0) - total) > 1;
+  const cell = (amount: number | null, note: string): InfathEstimateCell =>
+    amount != null
+      ? { value: formatMoney(amount), state: splitDiffers ? "un" : "" }
+      : { value: note, state: note ? "" : "ms" };
+
+  let forcedDiscount: string;
+  let forcedSale: string;
+  if (figures) {
+    forcedDiscount = figures.forcedDiscountPct != null ? `${fmtMax(figures.forcedDiscountPct, 2)}%` : "";
+    forcedSale = figures.forcedSaleValue != null ? formatMoney(figures.forcedSaleValue) : "";
+  } else {
+    forcedDiscount = input.forcedDiscount.trim();
+    const pct = forcedDiscount ? parseNumber(forcedDiscount.replace("%", "")) : null;
+    forcedSale = total != null && pct != null ? formatMoney(Math.round(total * (1 - pct / 100))) : "";
+  }
+
+  return {
+    land: cell(land, figures?.landNote ?? ""),
+    buildings: cell(buildings, figures?.buildingsNote ?? ""),
+    total: total != null ? formatMoney(total) : "",
+    forcedDiscount,
+    forcedSale,
+  };
+}
+
+/**
+ * The other deeds of this deed's transaction, as «أرقام صكوك الأصول المرتبطة» lists them.
+ *
+ * How it works: the live deeds of a transaction with two or more (`linkedPropertyDeeds`), minus this deed, by their
+ * label (registry number for a registry deed, else the deed number).
+ *
+ * Edge cases: `undefined` (not loaded yet) → null, so the sheet does not claim «لا» early; no transaction (older
+ * rows) or a single live deed → [] («لا»). Added 2026-11-04 — «الأصول المرتبطة» read «غير مُدخل» for a one-deed
+ * transaction.
+ */
+export function infathLinkedDeedLabels(
+  transaction: Pick<TransactionDetailDto, "deeds"> | null | undefined,
+  propertyId: string,
+): string[] | null {
+  if (transaction === undefined) return null;
+  return linkedPropertyDeeds(transaction)
+    .filter((deed) => deed.propertyId !== propertyId)
+    .map(transactionDeedLabelOf);
+}
 
 /**
  * «الأسلوب المستخدم» for Enfaz — every approach the valuation used, joined as the report's
@@ -447,6 +763,11 @@ export function buildInfathUploadModel(input: {
   reportContext?: InfathReportContext | null;
   /** Upload files that are not in the documents list (case-study report, certificate, keys proof, survey task). */
   attachmentSources?: InfathAttachmentSources | null;
+  /**
+   * The other deeds of this deed's transaction (see infathLinkedDeedLabels): [] = a one-deed transaction,
+   * null / absent = not known yet.
+   */
+  linkedDeedLabels?: string[] | null;
 }): InfathUploadModel {
   const { record, property, parties, documentSections } = input;
   const ops = input.opsContext ?? null;
@@ -484,19 +805,31 @@ export function buildInfathUploadModel(input: {
     : "";
   const visitDateForReport = inspectionDate || visitDate;
   const appraisalPrice = partyField(appraisal, "سعر التقييم");
-  const landValue = partyField(appraisal, L.landValue);
-  const buildingValue = partyField(appraisal, L.buildingValue);
+  const packageLandValue = partyField(appraisal, L.landValue);
+  const packageBuildingValue = partyField(appraisal, L.buildingValue);
   // Only once the valuation feeds Enfaz — the approaches are switched on long before it is final.
   const valuationMethod =
     (appraisal ? context?.approachesUsed?.trim() : "") || partyField(appraisal, L.valuationMethod);
   const valueBasis = partyField(appraisal, L.valueBasis);
   const forcedDiscountRaw = partyField(appraisal, L.forcedDiscount);
-  const reportIssueDate = partyField(appraisal, L.reportIssueDate);
+  // The approved report's date wins; the appraiser's package keeps the day he handed it over
+  // (A→Z 2026-11-04: the two differ whenever the approval falls on a later day).
+  const approvedReportDate = ops?.reportDate?.trim() ?? "";
+  const reportIssueDate = approvedReportDate
+    ? formatDateAr(approvedReportDate)
+    : partyField(appraisal, L.reportIssueDate);
   const zoneStatus = partyField(inspection, L.zoneStatus);
   // The use the inspector recorded. Neither the type nor the classification stands in for it, and an
   // old inspection still holding a classification reads as missing.
   const inspectedUsage = propertyUsageValue(partyField(inspection, L.propertyUsage));
-  const linkedAssetsAnswer = partyField(specialist, L.linkedAssets);
+  // The specialist's own answer wins; else the transaction says it: other live deeds → «نعم», none → «لا».
+  const linkedDeedLabels = input.linkedDeedLabels ?? null;
+  const linkedAssetsAnswer =
+    partyField(specialist, L.linkedAssets) ||
+    (linkedDeedLabels == null ? "" : linkedDeedLabels.length > 0 ? "نعم" : "لا");
+  const linkedDeedNumbers =
+    partyField(specialist, L.linkedDeedNumbers) ||
+    (linkedDeedLabels == null ? "" : linkedDeedLabels.length > 0 ? linkedDeedLabels.join("، ") : "لا يوجد");
   const workerName =
     partyField(appraisal, "المشارك في إعداد التقرير") ||
     partyField(appraisal, "المقيم العقاري") ||
@@ -531,17 +864,36 @@ export function buildInfathUploadModel(input: {
     ? `${property.area.trim()} م²`
     : partyField(inspection, "المساحة الفعلية");
 
-  const forcedDiscountPct = forcedDiscountRaw.trim()
-    ? parseNumber(forcedDiscountRaw.replace("%", ""))
-    : null;
-  const totalValue =
-    parseNumber(landValue) != null && parseNumber(buildingValue) != null
-      ? (parseNumber(landValue) ?? 0) + (parseNumber(buildingValue) ?? 0)
-      : parseNumber(appraisalPrice);
-  const forcedSale =
-    totalValue != null && forcedDiscountPct != null
-      ? formatMoney(Math.round(totalValue * (1 - forcedDiscountPct / 100)))
-      : "";
+  // Bare land: the inspector's asset (else the bourse type) is land and the specialist listed no components.
+  const bareLand =
+    isLandInspectionContext({
+      assetSubject: partyField(inspection, L.assetSubject),
+      classification: property.classification,
+      propertyType: property.propertyType,
+    }) && (input.componentLines ?? []).length === 0;
+
+  const estimate = infathValueEstimate({
+    figures: appraisal ? (context?.valuation ?? null) : null,
+    appraisalPrice,
+    landValue: packageLandValue,
+    buildingValue: packageBuildingValue,
+    forcedDiscount: forcedDiscountRaw,
+    bareLand,
+  });
+
+  const attachments = buildAttachments(
+    documentSections,
+    keysReceived,
+    input.attachmentSources ?? {},
+    property.deedNumber,
+    infathPhotoBundles(documentSections, property.photoMarks),
+    bareLand,
+  );
+  // A file field names the attachment row's PDF once that row is ready, so the field downloads through the row.
+  const readyAttachmentFile = (id: string): string => {
+    const row = attachments.find((a) => a.id === id);
+    return row?.status === "ready" ? (row.document?.fileName ?? "") : "";
+  };
 
   const deedAreaNum = parseNumber(property.area);
   const siteAreaNum = parseNumber(partyField(inspection, "المساحة الفعلية"));
@@ -618,6 +970,9 @@ export function buildInfathUploadModel(input: {
         ),
         sel("facade", L.facade, partyField(inspection, L.facade), "MA", partyField(inspection, L.facade) ? "" : "un"),
         txt("street-width", L.streetWidth, partyField(inspection, L.streetWidth), "MA", "text", partyField(inspection, L.streetWidth) ? "" : "ms"),
+        // «مساحة البناء» = the floors of the specialist's components table (never the land area); the annexes and
+        // basements join it only in «إجمالي مساحة المباني» (section 4). A villa of 180 + 180 m² floors and a 60 m²
+        // annex on a 360 m² plot reads 360 here and 420 there (A→Z #86, 2026-11-04: not a bug).
         txt("built-area", L.builtArea, areaField(componentAreas.builtArea, L.builtArea), "MA", "text", areaField(componentAreas.builtArea, L.builtArea) ? "" : "ms"),
         txt("build-license", L.buildLicenseNumber, partyField(inspection, L.buildLicenseNumber), "MA"),
         txt("build-license-date", L.buildLicenseDate, partyField(inspection, L.buildLicenseDate), "MA"),
@@ -749,7 +1104,8 @@ export function buildInfathUploadModel(input: {
         area("access", L.accessRoute, partyRemark(inspection, L.accessRoute) || partyField(inspection, "إمكانية الوصول"), "MA"),
         area("asset-notes", L.assetNotes, partyRemark(inspection, L.assetNotes) || partyRemark(inspection, "ملاحظات عامة"), "MA"),
       ],
-      badge: "مصدر الأصيل غير محسوم",
+      // «الأصيل» (the principal source) read as a typo; the open question is which party is this section's source.
+      badge: "مصدر البيانات غير محسوم",
     },
     {
       id: "boundaries",
@@ -824,7 +1180,7 @@ export function buildInfathUploadModel(input: {
           "SP",
           linkedAssetsAnswer ? "" : "ms",
         ),
-        txt("linked-deeds", L.linkedDeedNumbers, partyField(specialist, L.linkedDeedNumbers), "SY", "auto"),
+        txt("linked-deeds", L.linkedDeedNumbers, linkedDeedNumbers, "SY", "auto"),
       ],
       areas: [
         area("linked-notes", L.linkedAssetsNotes, partyRemark(specialist, L.linkedAssetsNotes), "SP"),
@@ -835,22 +1191,18 @@ export function buildInfathUploadModel(input: {
       num: "6",
       title: "تقدير القيمة",
       fields: [
-        txt("land-value", L.landValue, landValue, "EV", "text", landValue ? "" : "ms"),
-        txt("build-value", L.buildingValue, buildingValue, "EV", "text", buildingValue ? "" : "ms"),
-        auto(
-          "total-value",
-          L.totalValue,
-          totalValue != null ? formatMoney(totalValue) : "",
-        ),
+        txt("land-value", L.landValue, estimate.land.value, "EV", "text", estimate.land.state),
+        txt("build-value", L.buildingValue, estimate.buildings.value, "EV", "text", estimate.buildings.state),
+        auto("total-value", L.totalValue, estimate.total),
         txt(
           "forced-pct",
           L.forcedDiscount,
-          forcedDiscountRaw,
+          estimate.forcedDiscount,
           "EV",
           "text",
-          forcedDiscountRaw ? "" : "ms",
+          estimate.forcedDiscount ? "" : "ms",
         ),
-        auto("forced-value", L.forcedSaleValue, forcedSale),
+        auto("forced-value", L.forcedSaleValue, estimate.forcedSale),
       ],
       areas: [],
     },
@@ -860,13 +1212,25 @@ export function buildInfathUploadModel(input: {
       title: "صور الأصل",
       fields: [
         txt("site-text", L.siteLocation, coords || formatPropertyLocation(property), "MA"),
-        file("ext-photo", L.exteriorPhotos, partyField(inspection, L.exteriorPhotos), "MA"),
-        file("int-photo", L.interiorPhotos, partyField(inspection, L.interiorPhotos), "MA"),
+        // The same readiness as the «مرفقات الرفع» rows (fixed 2026-11-04: these read «غير مُدخل» beside a
+        // deed row that said «جاهز»).
+        file(
+          "ext-photo",
+          L.exteriorPhotos,
+          readyAttachmentFile("exterior-photos") || partyField(inspection, L.exteriorPhotos),
+          "MA",
+        ),
+        file(
+          "int-photo",
+          L.interiorPhotos,
+          readyAttachmentFile("interior-photos") || partyField(inspection, L.interiorPhotos),
+          "MA",
+        ),
         file("plan-photo", L.planPhoto, partyField(appraisal, L.planPhoto), "EN"),
         file(
           "deed-photo",
           L.deedPhoto,
-          property.realEstateRegFileName?.trim() ?? "",
+          readyAttachmentFile("deed") || (property.realEstateRegFileName?.trim() ?? ""),
           "BR",
         ),
       ],
@@ -994,15 +1358,6 @@ export function buildInfathUploadModel(input: {
     },
   ];
 
-  const attachments = buildAttachments(
-    documentSections,
-    keysReceived,
-    input.attachmentSources ?? {},
-    property.deedNumber,
-  );
-  const bareLand =
-    inspectedAssetIsLand(partyField(inspection, L.assetSubject) || property.classification) &&
-    (input.componentLines ?? []).length === 0;
   if (bareLand) markBuildingFieldsNotApplicable(sections);
   // An apartment records no facade (see isApartmentInspectionContext) — the empty row is «لا ينطبق», not missing.
   if (

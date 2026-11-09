@@ -81,14 +81,20 @@ function mapGate(
 /**
  * Key status derived from the key envelope only — the shared gate query, so the workflow's submit
  * and this tab read one answer, and an action here refreshes both.
+ *
+ * How it works: reads the gate for the task's property; `status` says whether the answer is known.
+ *
+ * Edge cases: `task` may be null and `options.enabled` false (the desktop inspection tab, which also
+ * serves the specialist) — the query then does not run and the status stays «loading».
  */
 export function useInspectorKeyAvailability(
-  task: WorkflowTask,
+  task: Pick<WorkflowTask, "propertyId" | "poNumber"> | null,
+  options?: { enabled?: boolean },
 ): InspectorKeyAvailability {
   const { data, isError, isPaused, refetch } = usePropertyKeyGateQuery({
-    propertyId: task.propertyId,
-    poNumber: task.poNumber,
-    enabled: Boolean(task.propertyId),
+    propertyId: task?.propertyId,
+    poNumber: task?.poNumber,
+    enabled: Boolean(task?.propertyId) && options?.enabled !== false,
   });
   const status = inspectorKeyGateStatus({
     data,

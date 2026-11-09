@@ -9,17 +9,7 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Persistence;
 
 public sealed class TransactionRepository(CaseStudyDbContext db) : ITransactionRepository
 {
-    public Task<(string? Number, string? Error)> AllocateDraftNumberAsync(
-        DateTime nowUtc,
-        CancellationToken cancellationToken) =>
-        ReferenceSequenceAllocator.AllocateYearlyAsync(
-            db,
-            DatabaseSchemas.CaseStudy,
-            ReferenceNumbering.TransactionDraft,
-            nowUtc,
-            cancellationToken);
-
-    // The official number draws from the property (PR) sequence; PRC / PRV reuse its root.
+    // A deed's number draws from the PR sequence; PRC / PRV reuse the property number's root.
     public Task<(string? Reference, string? Error)> AllocateOfficialReferenceAsync(
         DateTime nowUtc,
         CancellationToken cancellationToken) =>

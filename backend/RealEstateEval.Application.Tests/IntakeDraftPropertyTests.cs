@@ -56,11 +56,64 @@ public class IntakeDraftPropertyTests
         Assert.Equal(order.Id, row.WorkOrderId);
         Assert.Equal("", row.DeedNumber);
         Assert.False(row.BourseDataCompleted);
-        // A draft transaction (D- number) opens with the deed; no official PR yet.
+        // The transaction opens with the deed, but an opened slot has no number yet (ruling 2026-11-08):
+        // no TMP any more, and PR only at the first full save of the initial data.
         var transaction = bundle.CaseStudy.Transactions.Single(t => t.Id == row.TransactionId);
-        Assert.StartsWith("TMP-", transaction.DraftNumber);
+        Assert.Null(transaction.DraftNumber);
         Assert.Null(transaction.ReferenceNumber);
+        Assert.Null(row.ReferenceNumber);
     }
+
+    // The full save of an existing slot (UpdatePropertyAsync) rewrites contacts with ExecuteDelete, which the
+    // in-memory provider cannot run; the insert-on-save path below goes through the same NumberDeedAsync
+    // step, and "a second save never re-draws" is covered by TransactionReferenceRulesTests.
+    [Fact]
+    public async Task A_full_save_of_the_initial_data_numbers_the_deed()
+    {
+        var (bundle, _, _) = Seed();
+        var service = TestWorkOrderServiceFactory.Create(bundle, failures: TestBoundedContexts.CreateFailureService(bundle));
+
+        var (saved, errors) = await service.AddPropertyAsync(Po, FullInitialData(), CancellationToken.None);
+
+        Assert.Null(errors);
+        Assert.StartsWith("PR-", saved!.ReferenceNumber);
+        // A single deed: the property number is the deed's own.
+        Assert.Equal(saved.ReferenceNumber, saved.TransactionReferenceNumber);
+        var transaction = bundle.CaseStudy.Transactions.Single(t => t.Id == saved.TransactionId);
+        Assert.Equal(saved.ReferenceNumber, transaction.ReferenceNumber);
+        Assert.Null(transaction.ConfirmedAtUtc);
+    }
+
+    [Fact]
+    public async Task A_work_order_with_a_numbered_deed_is_cancelled_not_deleted()
+    {
+        var (bundle, _, _) = Seed();
+        var service = TestWorkOrderServiceFactory.Create(bundle, failures: TestBoundedContexts.CreateFailureService(bundle));
+
+        var (saved, _) = await service.AddPropertyAsync(Po, FullInitialData(), CancellationToken.None);
+        Assert.NotNull(saved!.ReferenceNumber);
+
+        var (ok, error) = await service.DeleteAsync(Po, CancellationToken.None);
+        Assert.False(ok);
+        Assert.Equal(RealEstateEval.CaseStudy.Application.Services.WorkOrderService.NumberedWorkOrderDeleteAr, error);
+        Assert.True(bundle.CaseStudy.WorkOrders.Any(w => w.PoNumber == Po));
+    }
+
+    private static WorkOrderPropertyDto FullInitialData() => new()
+    {
+        IdentifierType = PropertyIdentifierTypeLabels.Deed,
+        DeedNumber = "987650000001",
+        RequestNumber = "T-1",
+        AssignmentMandateNumber = "M-1",
+        AssignmentMandateDate = "2026-01-01",
+        DeedDate = "2026-01-01",
+        OwnerName = "Owner",
+        Court = "محكمة التنفيذ",
+        Circuit = "1",
+        DelegationLetterFileNames = ["letter.pdf"],
+        AssignmentDocFileNames = ["decree.pdf"],
+        Contacts = [new PropertyContactDto { Phone = "0501234567", Role = "ضابط" }],
+    };
 
     [Fact]
     public async Task The_slot_is_linked_to_its_draft_and_stays_in_the_enfath_phase()

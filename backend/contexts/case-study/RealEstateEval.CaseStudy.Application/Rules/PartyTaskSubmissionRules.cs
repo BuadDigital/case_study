@@ -35,7 +35,7 @@ public static class PartyTaskSubmissionRules
         actor is not null
         && IsPartySubmissionKind(task.Kind)
         && task.Kind != WorkflowTaskKind.PropertyAppraisal
-        && PoRoleMatrixRules.CanCorrectFieldInspectionSubmission(actor.PrototypeRole);
+        && PoRoleMatrixRules.CanCorrectFieldInspectionSubmission(actor.Staff);
 
     /// <summary>
     /// Survey / appraisal drafts belong to their party — the party's next autosave would overwrite a

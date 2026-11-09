@@ -11,11 +11,13 @@ import {
   filterEngineeringSurveyListedTasks,
 } from "../lib/engineering-survey-queue";
 import {
-  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   loadEngineeringSurveySubmission,
 } from "../lib/engineering-survey-submission-model";
 import { prefetchEngineeringSurveySubmissions } from "../lib/engineering-survey-submission-reads";
 import type { EngineeringSurveyWindowHostRefObject } from "../lib/engineering-survey-window-host";
+import {
+  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 /** Footer from Case Study.html `renderEngOrders` — prerequisites to start the survey. */
 const ENG_SURVEY_TABLE_HINT =

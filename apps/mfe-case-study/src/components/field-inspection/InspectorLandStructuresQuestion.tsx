@@ -8,7 +8,7 @@
  * asset is land; the element id `ins-land-structures` is the validation scroll target.
  */
 import { cn } from "@platform/ui-kit";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { MobileFieldLabel, MobilePills } from "./InspectMobileControls";
 
 const LAND_STRUCTURES_QUESTION =

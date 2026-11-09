@@ -7,7 +7,7 @@
  * «المعاين: مطابق / غير مطابق / لم يحدد» instead of the pills.
  */
 import { cn } from "@platform/ui-kit";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { MobileFieldLabel, MobilePills } from "./InspectMobileControls";
 import {
   deedVerdictHeadline,

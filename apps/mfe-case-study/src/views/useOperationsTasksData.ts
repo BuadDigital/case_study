@@ -74,7 +74,7 @@ export function useOperationsTasksData() {
   const prefillScope = searchParams.get("scope")?.trim() || undefined;
   const prefillDeed = searchParams.get("deed")?.trim() || undefined;
 
-  const { role, viewerUserId, viewerDisplayName } = useAppAccess();
+  const { role, access, viewerUserId, viewerDisplayName } = useAppAccess();
   const { data: staffResult, isPending: staffPending } = useStaffUsersQuery();
   const { data: distResult, isPending: distPending } =
     useDistributionAssigneesQuery();
@@ -91,9 +91,9 @@ export function useOperationsTasksData() {
   const staffLoading = staffPending || distPending;
   const { data: poRecords = [] } = usePoRecordsQuery();
 
-  const canCreate = canManageOperationsTasks(role);
-  const canRemind = canRemindOperationsTasks(role);
-  const useIndependentQueue = operationsTasksUseAssigneeScope(role);
+  const canCreate = canManageOperationsTasks(access);
+  const canRemind = canRemindOperationsTasks(access);
+  const useIndependentQueue = operationsTasksUseAssigneeScope(access);
 
   /** Viewer account for executor queues (assignee-scoped), fallback to role prototype seed. */
   const partyAccount = useMemo(

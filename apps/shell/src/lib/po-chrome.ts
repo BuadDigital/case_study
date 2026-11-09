@@ -3,6 +3,7 @@ import {
   PO_PROPERTY_SEGMENT,
   poListPath,
   poPropertiesPath,
+  poPropertyPath,
 } from "@platform/app-shared/domain/po-routes";
 import { formatPoDisplay } from "@case-study/mfe/lib/app-data/po-intake-data";
 import type { BreadcrumbSegment } from "./breadcrumb";
@@ -106,6 +107,19 @@ export function resolvePoChrome(pathname: string): PoChrome | null {
         { label: "تعديل عقار", current: true },
       ],
       title: "تعديل العقار",
+    };
+  }
+
+  // The work page and the coordinator's page (Omar 2026-11-08) — one trail, their own name.
+  const workPageTitle = parts[4] === "work" ? "صفحة العمل" : parts[4] === "coordination" ? "صفحة المنسق" : null;
+  if (workPageTitle) {
+    return {
+      segments: [
+        ...buildPoPropertyDetailSegments(poNumber).slice(0, 2),
+        { label: "العقار", href: poPropertyPath(poNumber, propertyId) },
+        { label: workPageTitle, current: true },
+      ],
+      title: workPageTitle,
     };
   }
 

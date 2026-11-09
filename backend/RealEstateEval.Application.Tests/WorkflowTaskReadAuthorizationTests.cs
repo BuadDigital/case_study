@@ -71,7 +71,7 @@ public class WorkflowTaskReadAuthorizationTests
         var rows = await service.ListAsync(new PermissionsDto
         {
             UserId = "staff-user",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         });
 
         Assert.Equal(4, rows.Count);
@@ -292,7 +292,7 @@ public class WorkflowTaskReadAuthorizationTests
         var rows = await service.ListAsync(new PermissionsDto
         {
             UserId = "cs-user",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             DistributionAssigneeId = "cs-1",
         });
 
@@ -359,12 +359,49 @@ public class WorkflowTaskReadAuthorizationTests
         var specialistRows = await service.ListAsync(new PermissionsDto
         {
             UserId = "cs-user",
-            PrototypeRole = "case-specialist",
+            PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
             DistributionAssigneeId = "cs-1",
         });
         var parent = Assert.Single(specialistRows, row => row.Kind == "case-study-property");
         Assert.True(parent.EngineeringSurveyAssigned);
         Assert.False(parent.EngineeringSurveyCompleted);
+    }
+
+    /// <summary>A→Z 2026-11-04: the appraiser's report needs the office's package, whose row his list hides.</summary>
+    [Fact]
+    public async Task List_gives_the_appraiser_the_completed_sibling_survey_id()
+    {
+        await using var db = CreateDb();
+        var parentId = Guid.NewGuid();
+        var propertyId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        var survey = WorkflowTask.Create(
+            WorkflowTaskKind.EngineeringSurvey, "PO-survey-id", now, title: "survey",
+            phase: WorkflowTaskPhase.Done, assigneeRole: "engineering-office", assigneeName: "office",
+            assigneeId: "office-1", parentTaskId: parentId, propertyId: propertyId);
+        survey.Complete(now);
+        db.WorkflowTasks.AddRange(
+            WorkflowTask.Create(
+                WorkflowTaskKind.CaseStudyProperty, "PO-survey-id", now, title: "parent",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "case-specialist", assigneeName: "cs",
+                assigneeId: "cs-1", id: parentId, propertyId: propertyId),
+            survey,
+            WorkflowTask.Create(
+                WorkflowTaskKind.PropertyAppraisal, "PO-survey-id", now, title: "appraisal",
+                phase: WorkflowTaskPhase.Done, assigneeRole: "real-estate-appraiser", assigneeName: "val",
+                assigneeId: "val-1", parentTaskId: parentId, propertyId: propertyId));
+        await db.SaveChangesAsync();
+
+        var rows = await TestInspectorFeeServiceFactory.CreateWorkflow(db).ListAsync(new PermissionsDto
+        {
+            UserId = "val-user",
+            PrototypeRole = "real-estate-appraiser",
+            DistributionAssigneeId = "val-1",
+        });
+
+        var appraisal = Assert.Single(rows);
+        Assert.True(appraisal.EngineeringSurveyCompleted);
+        Assert.Equal(survey.Id.ToString(), appraisal.EngineeringSurveyTaskId);
     }
 
     [Fact]

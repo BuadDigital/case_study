@@ -1,10 +1,16 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { createInspectorWorkspaceDraft } from "../../../lib/app-data/inspector-workspace-data";
+import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { InspectorLocationCard } from "../InspectorLocationCard";
 
+const toast = vi.hoisted(() => vi.fn());
+
 vi.mock("../InspectorCopyPriorButton", () => ({ InspectorCopyPriorButton: () => null }));
+vi.mock("@platform/ui-kit", async (original) => ({
+  ...(await original<typeof import("@platform/ui-kit")>()),
+  useToast: () => ({ showToast: toast }),
+}));
 
 vi.mock("../FieldInspectionWorkParts", async (original) => ({
   ...(await original<typeof import("../FieldInspectionWorkParts")>()),
@@ -13,6 +19,7 @@ vi.mock("../FieldInspectionWorkParts", async (original) => ({
 
 function renderCard(over: Partial<ComponentProps<typeof InspectorLocationCard>> = {}) {
   const persist = vi.fn();
+  const requestMapMove = vi.fn(() => "saved" as const);
   const draft = {
     ...createInspectorWorkspaceDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" }),
     mapLatitude: "21.5",
@@ -22,7 +29,6 @@ function renderCard(over: Partial<ComponentProps<typeof InspectorLocationCard>> 
     <InspectorLocationCard
       {...({
         activeStep: 1,
-        captureDeviceGps: vi.fn(),
         draft,
         fieldErrors: {},
         layout: "mobile",
@@ -32,7 +38,7 @@ function renderCard(over: Partial<ComponentProps<typeof InspectorLocationCard>> 
         mapPinned: false,
         mobile: true,
         persist,
-        requestMapMove: vi.fn(),
+        requestMapMove,
         saveState: {},
         setMapPinned: vi.fn(),
         showToast: vi.fn(),
@@ -41,7 +47,7 @@ function renderCard(over: Partial<ComponentProps<typeof InspectorLocationCard>> 
       } as unknown as ComponentProps<typeof InspectorLocationCard>)}
     />,
   );
-  return { persist };
+  return { persist, requestMapMove };
 }
 
 /** 2026-11-01: on the phone the inspector could only place the point by GPS or the map. */
@@ -67,5 +73,21 @@ describe("the inspector's phone location card", () => {
   it("closes the box once the point is pinned or the inspection is locked", () => {
     renderCard({ mapPinned: true });
     expect(screen.queryByLabelText("الإحداثيات")).toBeNull();
+  });
+
+  /** 2026-11-04: the GPS button is the shared `InspectorGpsButton` (the desktop wizard shows it too). */
+  it("hands the device position to the map-move handler and confirms a saved point", () => {
+    const getCurrentPosition = vi.fn((ok: PositionCallback) =>
+      ok({ coords: { latitude: 24.7136, longitude: 46.6753 } } as GeolocationPosition),
+    );
+    vi.stubGlobal("navigator", { ...navigator, geolocation: { getCurrentPosition } });
+    try {
+      const { requestMapMove } = renderCard();
+      fireEvent.click(screen.getByRole("button", { name: /تحديد موقعي الحالي/ }));
+      expect(requestMapMove).toHaveBeenCalledWith(24.7136, 46.6753);
+      expect(toast).toHaveBeenCalledWith("تم التقاط موقعك الحالي", "success");
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

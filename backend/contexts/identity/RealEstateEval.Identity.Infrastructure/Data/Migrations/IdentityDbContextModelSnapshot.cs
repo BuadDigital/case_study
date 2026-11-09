@@ -419,6 +419,9 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                         .HasMaxLength(2048)
                         .HasColumnType("character varying(2048)");
 
+                    b.Property<int>("CaseSpecialistSubRoles")
+                        .HasColumnType("integer");
+
                     b.Property<string>("City")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
@@ -520,6 +523,8 @@ namespace RealEstateEval.Identity.Infrastructure.Data.Contexts.Identity.Migratio
                     b.ToTable("UserProfiles", "identity", t =>
                         {
                             t.HasCheckConstraint("CK_UserProfiles_ActiveRequiresRoleAndCity", "\"Status\" <> 0 OR (\"RoleId\" IS NOT NULL AND \"City\" IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_UserProfiles_CaseSpecialistSubRoles", "(\"RoleId\" = 'case-specialist' AND \"CaseSpecialistSubRoles\" BETWEEN 1 AND 7) OR (\"RoleId\" IS DISTINCT FROM 'case-specialist' AND \"CaseSpecialistSubRoles\" = 0)");
 
                             t.HasCheckConstraint("CK_UserProfiles_FeeValueSar", "\"FeeValueSar\" IS NULL OR \"FeeValueSar\" >= 0");
 

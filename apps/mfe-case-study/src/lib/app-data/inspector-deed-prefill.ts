@@ -5,7 +5,7 @@ import {
   shouldUseJeddahDefaultCoords,
 } from "@platform/app-shared/domain/jeddah-default-coords";
 import type { PoPropertyIntake } from "./po-intake-data";
-import type { InspectorWorkspaceDraft } from "./inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { fillEmptyFeaturesFromBourse } from "./inspector-bourse-prefill";
 
 /**

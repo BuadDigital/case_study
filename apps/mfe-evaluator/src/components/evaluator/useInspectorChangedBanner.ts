@@ -26,9 +26,8 @@ import {
   mergeInspectorDataMeta,
   type InspectorChangedBannerState,
 } from "../../lib/evaluator/inspector-data-changes";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
-/** Same event string as case-study `FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT`. */
-export const FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT = "field-inspection-submission-changed";
 const REFRESH_MIN_GAP_MS = 20_000;
 
 export function useInspectorChangedBanner({

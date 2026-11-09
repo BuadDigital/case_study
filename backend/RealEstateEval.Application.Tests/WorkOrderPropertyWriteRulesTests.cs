@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
@@ -411,5 +412,101 @@ public class WorkOrderPropertyWriteRulesTests
         Assert.False(PropertyFileNameList.HasAny(null));
         Assert.True(PropertyFileNameList.HasAny("x.pdf"));
         Assert.Null(PropertyFileNameList.Serialize([" ", ""]));
+    }
+
+    // ---- soft autosave against a completed bourse (PO-175824, 2026-11-04) ----
+
+    private static WorkOrderProperty CompletedBourse() => new()
+    {
+        Id = Guid.NewGuid(),
+        BourseDataCompleted = true,
+        City = "الطائف",
+        District = "المعترض",
+        PropertyType = "فيلا",
+        Area = "600",
+        NorthBoundary = "شارع",
+        DeedOwnersJson = OwnershipTypeRules.SerializeOwners([new DeedOwner("مالك أول"), new DeedOwner("مالك ثان")]),
+    };
+
+    [Fact]
+    public void A_stale_autosave_does_not_blank_a_completed_bourse()
+    {
+        var entity = CompletedBourse();
+        var stale = new WorkOrderPropertyDto { DeedNumber = "1", Owners = [] };
+
+        WorkOrderPropertyWriteRules.KeepCompletedBourseOnDraft(entity, stale);
+        WorkOrderPropertyWriteRules.ApplyPropertyEnfath(entity, stale);
+        WorkOrderPropertyWriteRules.ApplyPropertyBourseDraft(entity, stale);
+
+        Assert.Equal("الطائف", entity.City);
+        Assert.Equal("المعترض", entity.District);
+        Assert.Equal("فيلا", entity.PropertyType);
+        Assert.Equal("600", entity.Area);
+        Assert.Equal("شارع", entity.NorthBoundary);
+        Assert.Equal(2, OwnershipTypeRules.ParseOwners(entity.DeedOwnersJson).Count);
+    }
+
+    [Fact]
+    public void An_autosave_still_changes_a_completed_bourse_value()
+    {
+        var entity = CompletedBourse();
+        var edit = new WorkOrderPropertyDto { DeedNumber = "1", City = "مكة المكرمة", District = "العزيزية" };
+
+        WorkOrderPropertyWriteRules.KeepCompletedBourseOnDraft(entity, edit);
+        WorkOrderPropertyWriteRules.ApplyPropertyBourseDraft(entity, edit);
+
+        Assert.Equal("مكة المكرمة", entity.City);
+        Assert.Equal("العزيزية", entity.District);
+        Assert.Equal("فيلا", entity.PropertyType);
+    }
+
+    [Fact]
+    public void Before_the_bourse_an_autosave_writes_what_it_sends()
+    {
+        var entity = CompletedBourse();
+        entity.BourseDataCompleted = false;
+        var draft = new WorkOrderPropertyDto { DeedNumber = "1" };
+
+        WorkOrderPropertyWriteRules.KeepCompletedBourseOnDraft(entity, draft);
+        WorkOrderPropertyWriteRules.ApplyPropertyBourseDraft(entity, draft);
+
+        Assert.Equal("", entity.City);
+    }
+
+    // ---- review lock (Omar 2026-11-05) ----
+
+    private static readonly StaffActor Study = new("case-specialist", [CaseSpecialistSubRoles.Study]);
+    private static readonly StaffActor Review = new("case-specialist", [CaseSpecialistSubRoles.Review]);
+    private static readonly StaffActor Supervisor = new("section-supervisor", null);
+
+    [Fact]
+    public void Every_specialist_writes_until_review_approves_the_study_then_no_one()
+    {
+        var now = new DateTime(2026, 11, 5, 9, 0, 0, DateTimeKind.Utc);
+        var transaction = Transaction.CreateDraft("TMP-26-00001", now);
+
+        Assert.Null(WorkOrderPropertyWriteRules.ReviewLockError(null, Study));
+        Assert.Null(WorkOrderPropertyWriteRules.ReviewLockError(transaction, Study));
+
+        Assert.True(transaction.SetReviewState(TransactionReviewState.Handed, "u-study", now));
+        Assert.False(transaction.SetReviewState(TransactionReviewState.Handed, "u-other", now.AddMinutes(1)));
+        Assert.Equal("u-study", transaction.HandedToReviewByUserId);
+        // Omar 2026-11-08: sending the study to review locks nothing — the lock is the same for everyone.
+        Assert.Null(WorkOrderPropertyWriteRules.ReviewLockError(transaction, Study));
+        Assert.Null(WorkOrderPropertyWriteRules.ReviewLockError(transaction, Review));
+        Assert.Null(WorkOrderPropertyWriteRules.ReviewLockError(transaction, Supervisor));
+
+        Assert.True(transaction.SetReviewState(TransactionReviewState.Approved, "u-review", now));
+        Assert.Equal(TransactionReviewStates.Approved, TransactionReviewStates.Of(transaction));
+        Assert.Equal(WorkOrderPropertyWriteRules.ReviewApprovedLockAr, WorkOrderPropertyWriteRules.ReviewLockError(transaction, Review));
+        Assert.Equal(WorkOrderPropertyWriteRules.ReviewApprovedLockAr, WorkOrderPropertyWriteRules.ReviewLockError(transaction, Study));
+
+        // Back to review (the appraiser's draft pulled back) clears the approval only; back to the study clears both.
+        Assert.True(transaction.SetReviewState(TransactionReviewState.Handed, "u-review", now));
+        Assert.Null(transaction.ReviewApprovedAtUtc);
+        Assert.NotNull(transaction.HandedToReviewAtUtc);
+        Assert.True(transaction.SetReviewState(TransactionReviewState.Study, "u-review", now));
+        Assert.Equal(TransactionReviewStates.Study, TransactionReviewStates.Of(transaction));
+        Assert.Null(TransactionReviewStates.Parse("bogus"));
     }
 }

@@ -128,8 +128,7 @@ public partial class FailureService
             cancellationToken);
         if (task is null) return;
 
-        await NotifyHoldSpecialistAsync(
-            task.AssigneeId,
+        await NotifyCoordinationAsync(
             FailureRules.CaseStudyBlockedNotification(task.TaskId, reason),
             cancellationToken);
     }
@@ -144,8 +143,7 @@ public partial class FailureService
             cancellationToken);
         if (task is null) return;
 
-        await NotifyHoldSpecialistAsync(
-            task.AssigneeId,
+        await NotifyCoordinationAsync(
             FailureRules.CaseStudyUnblockedNotification(task.TaskId),
             cancellationToken);
     }

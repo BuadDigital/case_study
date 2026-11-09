@@ -26,7 +26,7 @@ import {
   type ComparableEntryFieldErrors,
   type ComparableKind,
   type ComparableSubjectPin,
-} from "../../lib/comparable-entry";
+} from "@platform/app-shared/app-data/comparable-entry";
 import { parseCoordinatePair, parseLatLng } from "@platform/app-shared/domain/geo";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 

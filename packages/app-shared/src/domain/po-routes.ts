@@ -38,6 +38,36 @@ export function poPropertyInspectionInputPath(
   return `${poPropertyPath(poNumber, propertyId)}?tab=inspection&inspect=edit`;
 }
 
+/**
+ * The transaction's work page (plan 2026-11-05) — `#work-{section}` opens and scrolls to a section.
+ */
+export function poPropertyWorkPath(poNumber: string, propertyId: string, section?: string): string {
+  const base = `${poPropertyPath(poNumber, propertyId)}/work`;
+  return section ? `${base}#work-${section}` : base;
+}
+
+/**
+ * The coordinator's page of a transaction (Omar 2026-11-08): the intake (primary data, bourse,
+ * distribution) and the parties' follow-up, closed by «إرسال المعاملة للدراسة» — the work page's
+ * design, a page of its own. `#work-{section}` opens and scrolls to a section.
+ */
+export function poPropertyCoordinationPath(
+  poNumber: string,
+  propertyId: string,
+  section?: string,
+): string {
+  const base = `${poPropertyPath(poNumber, propertyId)}/coordination`;
+  return section ? `${base}#work-${section}` : base;
+}
+
+/**
+ * The coordinator's page of a deed's task that may have no property yet (a work order of several
+ * deeds arrives as empty slots). The route creates the slot's property draft first, then opens it.
+ */
+export function poTaskCoordinationPath(poNumber: string, taskId: string): string {
+  return `/po/${encodeURIComponent(poNumber.trim())}/task/${encodeURIComponent(taskId)}/coordination`;
+}
+
 export function poPropertyEditPath(poNumber: string, propertyId: string): string {
   return `${poPropertyPath(poNumber, propertyId)}/edit`;
 }

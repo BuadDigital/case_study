@@ -15,7 +15,6 @@ export type {
   WorkflowTaskStatus,
 } from "./tasks-model";
 export {
-  TASKS_CHANGED_EVENT,
   TASKS_STORAGE_KEY,
   notifyTasksChanged,
 } from "./tasks-model";

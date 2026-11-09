@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
 import { Card, Note, cn } from "@platform/ui-kit";
-import { getCaseSpecialists, getEngineeringOffices, getFieldInspectors, getValuators } from "../../lib/app-data/distribution-parties";
+import { getEngineeringOffices, getFieldInspectors, getValuators } from "../../lib/app-data/distribution-parties";
 import { buildAssigneeOpenLoadMap } from "../../lib/app-data/distribution-load";
 import { assigneeLoadOptions } from "../../lib/app-data/distribution-assignee-options";
 import type { TaskDistributionDraft } from "../../lib/app-data/tasks";
@@ -100,11 +100,6 @@ export function DistributionPartiesForm({
     () => getEngineeringOffices(staffUsers),
     [staffUsers],
   );
-  /** Regular specialist only — supervisor is excluded from the distribution list */
-  const caseSpecialists = useMemo(
-    () => getCaseSpecialists(staffUsers),
-    [staffUsers],
-  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -114,27 +109,8 @@ export function DistributionPartiesForm({
         </Note>
       ) : null}
 
-      <PartyBlock
-        readOnly={readOnly}
-        required
-        enabled
-        title="أخصائي دراسة الحالة"
-        onEnabledChange={() => undefined}
-      >
-        <RegSelect
-          id="dist_case_specialist"
-          label="الأخصائي"
-          required
-          disabled={readOnly}
-          options={assigneeLoadOptions(caseSpecialists, loadByAssignee)}
-          value={distribution.caseSpecialistId}
-          placeholder="اختر أخصائي دراسة الحالة…"
-          onChange={(v) =>
-            onPatch({ caseSpecialist: true, caseSpecialistId: v })
-          }
-        />
-      </PartyBlock>
-
+      {/* No case specialist is picked here (ruling 2026-11-02): after the formal receipt the
+          transaction lands in the shared «دراسة العقار» queue. */}
       <PartyBlock
         readOnly={readOnly}
         required

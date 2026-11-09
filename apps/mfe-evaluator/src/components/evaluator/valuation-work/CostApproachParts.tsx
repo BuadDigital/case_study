@@ -36,7 +36,7 @@ import {
   costLandMultiplierLabel,
   costLandMultiplierSqm,
 } from "../../../lib/evaluator/cost-land-figures";
-import { costNum, costNumericInput } from "./lib/cost-approach-state";
+import { costNum, costNumericInput, leaseCapWording } from "./lib/cost-approach-state";
 import type {
   CostApproachAlert,
   CostApproachDerived,
@@ -368,16 +368,28 @@ const AGE_ROWS: {
   },
 ];
 
-/** Age and depreciation inputs, with live results underneath (form spec). */
+/**
+ * Age and depreciation inputs, with live results underneath (form spec).
+ *
+ * How it works: when the remaining term caps the life used for depreciation, a note under the age
+ * rows says so, worded by the interest valued (`leaseCapWording`).
+ *
+ * Edge cases: fixed 2026-11-04 (A→Z #69): a usufruct right («حق منفعة») was told «مدة الإيجار
+ * المتبقية»; it now reads «مدة حق المنفعة المتبقية».
+ */
 export function CostAgeCard({
   fields,
   setField,
   derived,
+  ownershipInterestKey = null,
 }: {
   fields: CostApproachFields;
   setField: FieldSetter;
   derived: CostApproachDerived;
+  /** The interest valued (freehold / usufruct / leased_land) — words the lease-cap note. */
+  ownershipInterestKey?: string | null;
 }) {
+  const leaseCap = leaseCapWording(ownershipInterestKey);
   const { fieldErrors } = useValuationWorkErrors();
   return (
     <Card id="cost-age" className="mb-0">
@@ -427,9 +439,9 @@ export function CostAgeCard({
               data-testid="cost-lease-cap-note"
               className="rounded-[7px] bg-surface-2 px-2.5 py-1.5 text-[11.5px] text-gold-d"
             >
-              مبنى على أرض مستأجرة: العمر المعتمد للإهلاك{" "}
+              {leaseCap.subject}: العمر المعتمد للإهلاك{" "}
               <span dir="ltr">{fmt(derived.effectiveLifeLocal, 1)}</span> سنة — العمر المتبقي
-              لا يتجاوز مدة الإيجار المتبقية
+              لا يتجاوز {leaseCap.term}
             </div>
           ) : null}
           <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5">

@@ -338,7 +338,7 @@ public class WorkOrderListCountsTests
     private static PermissionsDto Staff() => new()
     {
         UserId = "staff-1",
-        PrototypeRole = "case-specialist",
+        PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
         Capabilities = ["manage-work-orders"],
     };
 

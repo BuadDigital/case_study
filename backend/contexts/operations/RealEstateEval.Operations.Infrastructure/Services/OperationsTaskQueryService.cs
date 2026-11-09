@@ -41,7 +41,7 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
         string? status,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default) =>
         ListAsync(
             new OperationsTaskListQuery
@@ -52,18 +52,18 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
             },
             actorUserId,
             actorAssigneeId,
-            actorRole,
+            actorStaff,
             cancellationToken);
 
     public async Task<IReadOnlyList<OperationsTaskDto>> ListAsync(
         OperationsTaskListQuery query,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default)
     {
         var (_, take, _, _) = NpgsqlConfiguration.ResolveListPaging(null, null, _dbOptions);
-        var rows = FilteredTasks(query, actorUserId, actorAssigneeId, actorRole);
+        var rows = FilteredTasks(query, actorUserId, actorAssigneeId, actorStaff);
         if (rows is null) return [];
 
         return await MapRowsAsync(
@@ -79,7 +79,7 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
         OperationsTaskListQuery query,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default)
     {
         var (skip, take, resolvedPage, _) = NpgsqlConfiguration.ResolveListPaging(
@@ -87,7 +87,7 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
             query.PageSize,
             _dbOptions);
 
-        var rows = FilteredTasks(query, actorUserId, actorAssigneeId, actorRole);
+        var rows = FilteredTasks(query, actorUserId, actorAssigneeId, actorStaff);
         if (rows is null)
         {
             return new PagedResultDto<OperationsTaskDto>
@@ -122,7 +122,7 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
         OperationsTaskListQuery query,
         string actorUserId,
         string? actorAssigneeId,
-        string actorRole)
+        StaffActor actorStaff)
     {
         var rows = _ops.OperationsTasks.AsNoTracking();
 
@@ -198,7 +198,7 @@ public sealed class OperationsTaskQueryService : IOperationsTaskQuery
             }
         }
 
-        if (!OperationsTaskLifecycleRules.IsManager(actorRole))
+        if (!OperationsTaskLifecycleRules.IsManager(actorStaff))
         {
  // Executor queue is independent: only tasks assigned to the actor
  // (or rare cases they themselves created). Do not pull other

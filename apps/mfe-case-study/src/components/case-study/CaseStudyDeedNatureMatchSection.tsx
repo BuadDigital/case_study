@@ -11,13 +11,15 @@ import {
 } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
-  DEED_MATCH_OVERRIDE_REASON_MESSAGE,
   DEED_MATCH_OVERRIDE_REASON_MIN,
   DEED_NATURE_MATCH_OPTIONS,
   DeedNatureMatchOutcomes,
+  deedMatchDissentLabel,
+  deedMatchOverrideReasonMessage,
   deedNatureMatchRequiresNotes,
+  type DeedMatchDissent,
 } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
-import type { CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
+import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 
 /**
  * Specialist review of deed↔nature match. Only the field inspector proposes;
@@ -44,7 +46,7 @@ export function CaseStudyDeedNatureMatchSection({
   suggestedOutcome,
   infoLinesAr,
   onAdoptSuggestion,
-  inspectorSaidNotMatched = false,
+  dissent = null,
 }: {
   draft: Pick<CaseStudyReportDraft, "deedNatureMatchOutcome" | "deedNatureMatchNotes">;
   disabled?: boolean;
@@ -56,10 +58,15 @@ export function CaseStudyDeedNatureMatchSection({
   /** Prior-survey / engineering-office context — shown, never proposed. */
   infoLinesAr?: readonly string[];
   onAdoptSuggestion?: () => void;
-  /** The inspector said «غير مطابق» — «مطابق» then needs the specialist's reason (2026-10-29). */
-  inspectorSaidNotMatched?: boolean;
+  /**
+   * Who said «غير مطابق» — the inspector (2026-10-29) or, since A→Z 2026-11-02 #20, the engineering office:
+   * «مطابق» then needs the specialist's reason, and the labels name whoever it goes against.
+   */
+  dissent?: DeedMatchDissent | null;
 }) {
   const outcome = draft.deedNatureMatchOutcome ?? "";
+  const inspectorSaidNotMatched = dissent !== null;
+  const dissentLabel = deedMatchDissentLabel(dissent);
   // An outcome that needs text — «فروق» / «مرشح تعذّر», or «مطابق» against the inspector — is not saved on
   // click: its notes are written first and saved with it (a click alone is refused by the server and rolled
   // back), and they start empty — the reason of one outcome never becomes the notes of another.
@@ -193,7 +200,7 @@ export function CaseStudyDeedNatureMatchSection({
         {pending ? (
           <FormGroup>
             <Label htmlFor="deed-match-pending-notes" className="text-[11px] text-text-2">
-              {pendingIsOverride ? "سبب اعتماد «مطابق» خلافاً لرأي المعاين" : "ملاحظات الفروق / التعذّر"}{" "}
+              {pendingIsOverride ? `سبب اعتماد «مطابق» خلافاً لرأي ${dissentLabel}` : "ملاحظات الفروق / التعذّر"}{" "}
               <span className="text-danger-text">*</span>
             </Label>
             <Textarea
@@ -205,12 +212,12 @@ export function CaseStudyDeedNatureMatchSection({
               className={cn(pendingShort && pending.notes.length > 0 && invalidControlClass)}
               placeholder={
                 pendingIsOverride
-                  ? "لماذا تعتبر الصك مطابقاً للطبيعة رغم رأي المعاين؟"
+                  ? `لماذا تعتبر الصك مطابقاً للطبيعة رغم رأي ${dissentLabel}؟`
                   : "صف الفرق أو سبب ترشيح التعذّر…"
               }
             />
             {pendingIsOverride && pendingShort ? (
-              <p className="mb-0 mt-1 text-[11px] text-text-3">{DEED_MATCH_OVERRIDE_REASON_MESSAGE}</p>
+              <p className="mb-0 mt-1 text-[11px] text-text-3">{deedMatchOverrideReasonMessage(dissent)}</p>
             ) : null}
             <div className="mt-2 flex gap-2">
               <Button
@@ -233,7 +240,7 @@ export function CaseStudyDeedNatureMatchSection({
           </FormGroup>
         ) : savedOverrideReason ? (
           <p className="m-0 rounded-lg border border-border bg-surface-2 px-3 py-2 text-[11.5px] leading-relaxed text-text-2">
-            سبب اعتماد «مطابق» خلافاً لرأي المعاين: {savedOverrideReason}
+            سبب اعتماد «مطابق» خلافاً لرأي {dissentLabel}: {savedOverrideReason}
           </p>
         ) : null}
 

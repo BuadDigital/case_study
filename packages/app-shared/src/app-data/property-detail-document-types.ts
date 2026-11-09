@@ -62,7 +62,26 @@ export type PropertyPhotoMarks = {
    * Absent on picks saved before the board, which still print sorted by section.
    */
   reportOrdered?: boolean;
+  /**
+   * Every inspector photo's class (Omar 2026-11-08), by attachment id — the Enfaz photo files are built
+   * from it; none = the suggested class. Separate from the report's picks.
+   */
+  photoClasses?: Record<string, PropertyPhotoClass>;
 };
+
+/**
+ * What an inspector photo is (Omar 2026-11-08): exterior (the meters included), interior (the
+ * movables included), the property's surroundings (related, not of it — kept inside the system,
+ * never sent to Enfaz), or a document (made a property document, out of the photo files).
+ */
+export type PropertyPhotoClass = "exterior" | "interior" | "surroundings" | "document";
+
+export const PROPERTY_PHOTO_CLASSES: readonly { key: PropertyPhotoClass; label: string }[] = [
+  { key: "exterior", label: "خارجية" },
+  { key: "interior", label: "داخلية" },
+  { key: "surroundings", label: "محيط العقار" },
+  { key: "document", label: "مستند" },
+];
 
 export type PropertyPhotoRole = "main" | "electricity" | "water" | "movables";
 export type PropertyPhotoMark = PropertyPhotoRole | "report";
@@ -136,6 +155,45 @@ export function photoMarkId(entry: PropertyDetailDocumentEntry): string {
     entry.attachmentId?.trim() ||
     ""
   );
+}
+
+/**
+ * The class a photo's name and marks suggest before anyone classifies it.
+ *
+ * How it works: movables (marked or named) → interior; the main photo and the meters (marked, or a
+ * service shot such as «خدمة: كهرباء») → exterior — Omar 2026-11-08: the exterior file carries the
+ * meters, the interior one the movables; otherwise the inspection category (`suggestedReportSection`):
+ * inside → interior, anything else → exterior.
+ * Edge cases: nothing is suggested as surroundings or a document — those are always someone's choice.
+ */
+export function suggestedPhotoClass(
+  entry: PropertyDetailDocumentEntry,
+  marks: PropertyPhotoMarks | null | undefined,
+): PropertyPhotoClass {
+  const role = propertyPhotoRole(entry, marks);
+  const text = `${entry.name} ${entry.fileName}`;
+  if (role === "movables" || MOVABLES_PHOTO_RE.test(text)) return "interior";
+  if (role === "main" || role === "electricity" || role === "water") return "exterior";
+  return suggestedReportSection(entry) === 2 ? "interior" : "exterior";
+}
+
+/** A photo's class: the stored one, else the suggested one. */
+export function photoClassOf(
+  entry: PropertyDetailDocumentEntry,
+  marks: PropertyPhotoMarks | null | undefined,
+): PropertyPhotoClass {
+  return marks?.photoClasses?.[photoMarkId(entry)] ?? suggestedPhotoClass(entry, marks);
+}
+
+/** The marks with one photo's class set (the stored map keeps only explicit choices). */
+export function withPhotoClass(
+  marks: PropertyPhotoMarks,
+  entry: PropertyDetailDocumentEntry,
+  value: PropertyPhotoClass,
+): PropertyPhotoMarks {
+  const id = photoMarkId(entry);
+  if (!id) return marks;
+  return { ...marks, photoClasses: { ...(marks.photoClasses ?? {}), [id]: value } };
 }
 
 export function propertyPhotoRole(

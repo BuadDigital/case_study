@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@platform/ui-kit";
-import type { InspectorPhotoAttachment } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorPhotoAttachment } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { useInspectorPhotoDataUrl } from "./useInspectorPhotoDataUrl";
 
 export function InspectorStampedPhotoThumb({

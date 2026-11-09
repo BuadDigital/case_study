@@ -94,6 +94,23 @@ public class AuthController : ControllerBase
         };
     }
 
+    /// <summary>
+    /// Name and job title under the number on the login screen; 204 when the mobile has no
+    /// active account. Throttled with the login endpoints (gateway auth budget).
+    /// </summary>
+    [HttpPost("login-hint")]
+    [AllowAnonymous]
+    public async Task<ActionResult<LoginHintDto>> LoginHint(
+        [FromBody] OtpRequestRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+            return ValidationProblem(ModelState);
+
+        var hint = await _otp.HintAsync(request.Mobile, cancellationToken);
+        return hint is null ? NoContent() : Ok(hint);
+    }
+
     /// <summary>Mobile login, step 2: the code for a session. One message for every failure.</summary>
     [HttpPost("otp/verify")]
     [AllowAnonymous]

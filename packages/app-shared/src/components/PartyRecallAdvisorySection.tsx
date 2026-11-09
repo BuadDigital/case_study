@@ -3,8 +3,6 @@
 import { useEffect, useState } from "react";
 import { AppModal, Button, Label, Textarea, useToast } from "@platform/ui-kit";
 import {
-  PARTY_TASK_RECALL_CHANGED_EVENT,
-  PARTY_TASK_RECALL_HYDRATED_EVENT,
   getPartyTaskRecall,
   partyTaskRecallStatusLabel,
 } from "@platform/app-shared/app-data/party-task-recall-model";
@@ -14,6 +12,10 @@ import {
 } from "@platform/app-shared/app-data/party-task-recall-commands";
 import { hydratePartyTaskRecallForTask } from "@platform/app-shared/app-data/party-task-recall-reads";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
+import {
+  PARTY_TASK_RECALL_CHANGED_EVENT,
+  PARTY_TASK_RECALL_HYDRATED_EVENT,
+} from "../events/app-events";
 
 const noteWarnClass =
   "mb-3 rounded-[var(--radius-DEFAULT)] border border-amber border-e-[3px] border-e-amber bg-amber-light px-3.5 py-2.5 text-xs leading-relaxed text-amber-text";

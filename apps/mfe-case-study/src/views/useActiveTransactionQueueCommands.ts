@@ -25,7 +25,6 @@ import { buildCopyPriorTargetOptions } from "../lib/app-data/po-intake-model";
 import { findPropertyForTask } from "../lib/app-data/my-task-row";
 import { skipsBourseForIdentifier } from "../lib/app-data/po-intake-data";
 import {
-  TASKS_CHANGED_EVENT,
   type WorkflowTask,
 } from "../lib/app-data/tasks";
 import {
@@ -45,6 +44,8 @@ import {
 import type { ActiveTransactionQueueData } from "./useActiveTransactionQueueData";
 import { useConfirmActionDialog } from "../components/ConfirmActionDialog";
 import { useFailureRaiseModal } from "../hooks/useFailureRaiseModal";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { TASKS_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 export function useActiveTransactionQueueCommands({
   config,
@@ -55,6 +56,7 @@ export function useActiveTransactionQueueCommands({
   queueApiRef?: MutableRefObject<ActiveQueueApi | null>;
   data: ActiveTransactionQueueData;
 }) {
+  const { access } = useAppAccess();
   const {
     selectedId,
     role,
@@ -321,6 +323,7 @@ export function useActiveTransactionQueueCommands({
         showToast,
         poByNumber,
         viewerRole: role,
+        viewerAccess: access,
       };
       if (config.buildRowMoreItems) {
         return config.buildRowMoreItems(ctx);
@@ -336,6 +339,7 @@ export function useActiveTransactionQueueCommands({
           : undefined,
         allowDeleteTransaction: Boolean(config.allowDeleteTransaction),
         viewerRole: role,
+        viewerAccess: access,
         confirmAction: confirm,
         onRegisterFailure: openFailureRaise,
       });
@@ -348,6 +352,7 @@ export function useActiveTransactionQueueCommands({
       showToast,
       poByNumber,
       role,
+      access,
       confirm,
       openFailureRaise,
     ],
@@ -442,10 +447,28 @@ export function useActiveTransactionQueueCommands({
     [router, markTaskRowSeen],
   );
 
+  /**
+   * A row click on the case-study-layout queues (receipt, case study, system upload).
+   *
+   * How it works: these queues open the property page. When the queue's own target is that same
+   * property page (with a tab, e.g. system upload's `?tab=enfath-upload`), that target is used;
+   * otherwise the property page opens on its basic tab.
+   * Edge cases / fixed: system upload used to land on the basic tab and ignore its upload tab, so
+   * the reviewer had to look for the upload package; a row with no property id opens the task as before.
+   */
   const handleDistributionRowClick = useCallback(
     (task: WorkflowTask, propertyId: string | undefined) => {
       markTaskRowSeen(task);
       if (showPartyColumns && propertyId) {
+        const target = resolveTaskFullPagePath(task);
+        const propertyPage = poPropertyDetailPath(task.poNumber, propertyId);
+        if (target?.startsWith(`${propertyPage}?`)) {
+          setOpeningTaskId(task.id);
+          startOpenTask(() => {
+            router.push(target);
+          });
+          return;
+        }
         openPropertyDetailFromQueue(task, propertyId);
         return;
       }
@@ -456,6 +479,8 @@ export function useActiveTransactionQueueCommands({
       handleRowClick,
       markTaskRowSeen,
       openPropertyDetailFromQueue,
+      resolveTaskFullPagePath,
+      router,
     ],
   );
 

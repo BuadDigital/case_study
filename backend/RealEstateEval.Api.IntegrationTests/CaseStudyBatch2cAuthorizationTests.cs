@@ -101,6 +101,13 @@ public sealed class RecordingTransactionState : ITransactionStateService
             NextHandoverError is null ? (State(), null) : (null, NextHandoverError));
     }
 
+    public Task<(TransactionStateDto? Result, string? Error)> MarkReadyForUploadAsync(
+        Guid workOrderId, Guid propertyId, string? actorUserId, CancellationToken cancellationToken = default)
+    {
+        Calls.Add("ready");
+        return Task.FromResult<(TransactionStateDto?, string?)>((State(), null));
+    }
+
     public Task<(TransactionStateDto? Result, string? Error)> MarkBillingReadyAsync(
         Guid workOrderId, Guid propertyId, string? markedByUserId, CancellationToken cancellationToken = default)
     {
@@ -120,6 +127,10 @@ public sealed class RecordingTransactionState : ITransactionStateService
             NextReturnErrors is null ? (State(), null) : (null, NextReturnErrors));
     }
 
+
+    public Task<IReadOnlyList<TransactionReopeningDto>> ListActiveReopeningsAsync(
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<TransactionReopeningDto>>([]);
 
     private static TransactionStateDto State() =>
         new() { OverallStatus = "in_progress", OverallStatusLabelAr = "قيد العمل" };
@@ -225,10 +236,10 @@ public class CaseStudyBatch2cAuthorizationTests : IClassFixture<CaseStudyBatch2c
         Assert.Equal(["return:case-specialist:True:False:ظهر خطأ في المساحة"], _factory.State.Calls);
     }
 
+    // Omar 2026-11-05: any specialist reopens the transaction, and the supervisor and the CDO too.
     [Theory]
-    [InlineData("section-supervisor")]
     [InlineData("general-manager")]
-    [InlineData("cdo")]
+    [InlineData("financial-officer")]
     [InlineData(null)]
     public async Task Nobody_else_takes_it_back(string? role)
     {

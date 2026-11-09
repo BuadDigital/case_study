@@ -41,7 +41,9 @@ public class ValuationReportIssuanceStateDto
 /// </summary>
 public class ReopenReportIssuanceRequest
 {
-    [Required, MaxLength(1024)]
+    // Arabic messages: the generic «الحقل «reason» مطلوب» leaked the property name (A→Z 2026-11-04 #21).
+    [Required(ErrorMessage = "سبب فتح نسخة جديدة من التقرير مطلوب")]
+    [MaxLength(1024, ErrorMessage = "سبب فتح النسخة الجديدة طويل جدًا — الحد الأقصى 1024 حرفاً")]
     public string Reason { get; init; } = "";
 }
 

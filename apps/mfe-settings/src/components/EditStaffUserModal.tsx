@@ -39,6 +39,7 @@ import {
   ModalTitle,
   Note,
 } from "@platform/ui-kit";
+import { CASE_SPECIALIST_SUB_ROLES } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 
 function initialForm(user: StaffUser): StaffFormState {
   return {
@@ -49,6 +50,13 @@ function initialForm(user: StaffUser): StaffFormState {
     department: user.department ?? "",
     nationalId: user.nationalId ?? "",
     inspectorType: user.inspectorType ?? "",
+    // A specialist whose list came back empty (older server) is shown holding all three.
+    caseSpecialistSubRoles: (() => {
+      const held = CASE_SPECIALIST_SUB_ROLES.filter((s) =>
+        (user.caseSpecialistSubRoles ?? []).includes(s),
+      );
+      return held.length > 0 ? held : [...CASE_SPECIALIST_SUB_ROLES];
+    })(),
     hasCompensation: user.hasCompensation ?? false,
     feeValueSar:
       user.feeValueSar === null || user.feeValueSar === undefined
@@ -75,6 +83,9 @@ function validate(form: StaffFormState): FieldErrors {
       : undefined,
     form.roleId === "field-inspector" && !form.inspectorType
       ? { inspectorType: "نوع المعاين مطلوب." }
+      : undefined,
+    form.roleId === "case-specialist" && form.caseSpecialistSubRoles.length === 0
+      ? { caseSpecialistSubRoles: "اختر دوراً فرعياً واحداً على الأقل للأخصائي." }
       : undefined,
     isSectionSupervisorRole(form.roleId) &&
       !SUPERVISOR_DEPARTMENT_OPTIONS.some((o) => o.value === form.department)
@@ -133,6 +144,11 @@ function buildPatch(
 
   if (form.inspectorType !== original.inspectorType)
     patch.inspectorType = form.inspectorType;
+  if (
+    form.roleId === "case-specialist" &&
+    form.caseSpecialistSubRoles.join(",") !== original.caseSpecialistSubRoles.join(",")
+  )
+    patch.caseSpecialistSubRoles = form.caseSpecialistSubRoles;
   if (form.hasCompensation !== original.hasCompensation)
     patch.hasCompensation = form.hasCompensation;
   if (form.hasCompensation && form.feeValueSar !== original.feeValueSar)

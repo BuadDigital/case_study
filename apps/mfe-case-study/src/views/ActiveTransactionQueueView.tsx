@@ -373,6 +373,7 @@ export function ActiveTransactionQueueView({
                   {isAllTransactionsTable ? (
                     <AllTransactionsQueueTable
                       ctx={rowCtx}
+                      showWaiting={!config.partyAssignee}
                       filteredMeta={filteredAllTxMeta}
                       groupByPo={groupByPo}
                       poGroups={allTxPoGroups}

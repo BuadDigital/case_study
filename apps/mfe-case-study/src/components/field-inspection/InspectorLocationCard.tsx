@@ -12,7 +12,7 @@ import { JEDDAH_DEFAULT_LAT, JEDDAH_DEFAULT_LNG } from "@platform/app-shared/dom
 import {
   mapPinPatchForActor,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   EDIT_CONTROL_CLASS,
   InsBadge,
@@ -21,6 +21,7 @@ import {
 } from "./FieldInspectionWorkParts";
 import { InspectorCoordsInput } from "./InspectorCoordsInput";
 import { InspectorCopyPriorButton } from "./InspectorCopyPriorButton";
+import { InspectorGpsButton, InspectorMapUndoButton } from "./InspectorMapActionButtons";
 import { InspectorSaveChip } from "./InspectorSaveChip";
 import {
   canPinInspectorMap,
@@ -31,7 +32,6 @@ import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
 
 export function InspectorLocationCard({
   activeStep,
-  captureDeviceGps,
   draft,
   fieldErrors,
   layout,
@@ -49,7 +49,6 @@ export function InspectorLocationCard({
 }: Pick<
   FieldInspectionWorkflow,
   | "activeStep"
-  | "captureDeviceGps"
   | "fieldErrors"
   | "locked"
   | "mapBackup"
@@ -105,18 +104,12 @@ export function InspectorLocationCard({
           </span>
         </div>
       )}
-      <button
-        type="button"
+      <InspectorGpsButton
         disabled={locked}
-        className={cn(
-          "mb-2.5 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-[1.5px] border-heading bg-[color-mix(in_srgb,var(--heading)_8%,transparent)] font-inherit text-[14px] font-bold text-heading",
-          !mobile && "min-h-10 text-[13px]",
-        )}
-        onClick={captureDeviceGps}
-      >
-        <i className="ti ti-current-location text-base" aria-hidden />
-        تحديد موقعي الحالي
-      </button>
+        mobile={mobile}
+        className="mb-2.5"
+        onCoords={requestMapMove}
+      />
       {!mobile ? (
         <div className="mb-2.5 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="min-w-0">
@@ -255,8 +248,8 @@ export function InspectorLocationCard({
                 mobile ? "min-h-12 text-[14px]" : "min-h-11 text-[13px]",
               )}
               onClick={() => {
-                setMapPinned(true);
-                showToast("تم تثبيت الموقع", "success");
+                // Refused (with its own message) while the pin is still on the Jeddah placeholder.
+                if (setMapPinned(true)) showToast("تم تثبيت الموقع", "success");
               }}
             >
               <i className="ti ti-pin text-base" aria-hidden />
@@ -278,16 +271,7 @@ export function InspectorLocationCard({
               </button>
             </div>
           ) : null}
-          {mapBackup ? (
-            <button
-              type="button"
-              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface font-inherit text-[13px] font-bold text-heading"
-              onClick={undoMapMove}
-            >
-              <i className="ti ti-arrow-back-up text-base" aria-hidden />
-              رجوع للموقع السابق
-            </button>
-          ) : null}
+          {mapBackup ? <InspectorMapUndoButton onUndo={undoMapMove} /> : null}
         </div>
       ) : null}
       {mobile && !phoneCoordsBox ? (

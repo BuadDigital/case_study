@@ -24,6 +24,9 @@ public static class PropertyPhotoMarksRules
     public const int LastReportSection = 3;
 
     private const int IdMaxLength = 64;
+
+    /// <summary>The photo classes (Omar 2026-11-08) — see <see cref="PropertyPhotoMarksDto.PhotoClasses"/>.</summary>
+    public static readonly IReadOnlyList<string> PhotoClassValues = ["exterior", "interior", "surroundings", "document"];
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     /// <summary>
@@ -52,7 +55,8 @@ public static class PropertyPhotoMarksRules
             && clean.Electricity.Count == 0
             && clean.Water.Count == 0
             && clean.Movables.Count == 0
-            && clean.Report.Count == 0;
+            && clean.Report.Count == 0
+            && clean.PhotoClasses.Count == 0;
         return empty ? null : JsonSerializer.Serialize(clean, Json);
     }
 
@@ -80,6 +84,8 @@ public static class PropertyPhotoMarksRules
             errors["movables"] = $"قسم صور المنقولات يطبع {MovablesPhotoLimit} صور كحد أقصى";
         if ((marks.ReportSections ?? []).Values.Any(n => n is < FirstReportSection or > LastReportSection))
             errors["reportSections"] = "قسم الصورة في التقرير: 1 خارجية أو 2 داخلية أو 3 أخرى";
+        if ((marks.PhotoClasses ?? []).Values.Any(v => !PhotoClassValues.Contains((v ?? "").Trim())))
+            errors["photoClasses"] = "تصنيف الصورة: خارجية أو داخلية أو محيط العقار أو مستند";
         return errors;
     }
 
@@ -93,7 +99,16 @@ public static class PropertyPhotoMarksRules
         ReportSections = CleanSections(marks?.ReportSections, CleanIds(marks?.Report)),
         // An order needs photos to order.
         ReportOrdered = marks?.ReportOrdered == true && CleanIds(marks.Report).Count > 0,
+        PhotoClasses = CleanClasses(marks?.PhotoClasses),
     };
+
+    /// <summary>Known classes on non-blank ids (trimmed, the first of a repeated id kept).</summary>
+    private static Dictionary<string, string> CleanClasses(Dictionary<string, string>? classes) =>
+        (classes ?? [])
+            .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && pair.Key.Trim().Length <= IdMaxLength)
+            .Where(pair => PhotoClassValues.Contains((pair.Value ?? "").Trim()))
+            .GroupBy(pair => pair.Key.Trim(), StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.First().Value.Trim(), StringComparer.Ordinal);
 
     private static Dictionary<string, int> CleanSections(
         Dictionary<string, int>? sections,

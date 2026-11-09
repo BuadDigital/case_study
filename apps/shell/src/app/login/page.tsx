@@ -10,7 +10,12 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
-import { requestLoginOtp, verifyLoginOtp } from "./login-otp-api";
+import {
+  fetchLoginHint,
+  requestLoginOtp,
+  verifyLoginOtp,
+  type LoginHint,
+} from "./login-otp-api";
 import {
   setAuthSession,
   type AuthSession,
@@ -62,6 +67,19 @@ export default function LoginPage() {
   const otpConfirmingRef = useRef(false);
   const mobileDigits = identifier.replace(NON_DIGIT_RE, "");
   const credsReady = mobileDigits.length >= 9;
+  const [hint, setHint] = useState<{ digits: string; user: LoginHint } | null>(null);
+  // Shown only while the typed number is still the one it was looked up for.
+  const knownUser = hint?.digits === mobileDigits ? hint.user : null;
+
+  // Look the owner up once the number is complete; a newer keystroke cancels the old lookup.
+  useEffect(() => {
+    if (mobileDigits.length !== 9) return;
+    const controller = new AbortController();
+    void fetchLoginHint(mobileDigits, controller.signal).then((user) => {
+      if (!controller.signal.aborted) setHint(user ? { digits: mobileDigits, user } : null);
+    });
+    return () => controller.abort();
+  }, [mobileDigits]);
   const otpValue = otp.join("");
 
   useEffect(() => {
@@ -362,6 +380,12 @@ export default function LoginPage() {
                       )}
                     />
                   </div>
+                  {knownUser ? (
+                    <p className="mt-2 text-[12.5px] text-text-2">
+                      <span className="font-bold text-text">{knownUser.displayName}</span>
+                      {knownUser.jobTitle ? <> · {knownUser.jobTitle}</> : null}
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="-mt-1 mb-[22px] flex items-center justify-between gap-3">

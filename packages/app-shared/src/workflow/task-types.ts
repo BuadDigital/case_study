@@ -1,8 +1,8 @@
 import type { RoleId } from "@platform/types";
+import { TASKS_CHANGED_EVENT } from "../events/app-events";
 
 /** @deprecated Tasks persist in PostgreSQL — kept for storage-event compatibility. */
 export const TASKS_STORAGE_KEY = "evalWorkflowTasks";
-export const TASKS_CHANGED_EVENT = "eval-workflow-tasks-changed";
 
 /** Phases of the case-study property task (specialist workflow). */
 export type CaseStudyTaskPhase =
@@ -85,8 +85,12 @@ export type WorkflowTask = {
    * the final issuance of the valuation report. Absent when there is no appraisal package yet.
    */
   appraisalPackageStatus?: AppraisalPackageStatus;
+  /** Review accepted the appraiser's value — «قبول القيمة» (Omar 2026-11-08). */
+  appraisalValueAccepted?: boolean;
   /** Completed sibling field-inspection task id (server). */
   fieldInspectionTaskId?: string;
+  /** Completed sibling engineering-survey task id (server, on property-appraisal). */
+  engineeringSurveyTaskId?: string;
   /** Server flag on property-appraisal: sibling engineering-survey completed. */
   engineeringSurveyCompleted?: boolean;
   /** Server flag on property-appraisal: a sibling engineering-survey task exists. */
@@ -107,6 +111,31 @@ export type WorkflowTask = {
   transactionNumber?: string;
   /** The property's transaction id, joined server-side. */
   transactionId?: string;
+  /**
+   * Coordination formally received the transaction (ruling 2026-11-02): it left «الاستلام من
+   * الأطراف» for the shared «دراسة حالة العقارات» queue.
+   */
+  transactionReceived?: boolean;
+  /** «بانتظار طرف خارجي» (Omar 2026-11-08): it cannot be sent to the study until that delivery arrives. */
+  awaitingExternalParty?: boolean;
+  /** «تجهيز المعاملة للرفع» done (Omar 2026-11-08): only a ready deed is in the upload queue. */
+  readyForUpload?: boolean;
+  /**
+   * Where the transaction stands with review (Omar 2026-11-08): with the study, sent to review
+   * («handed»), or approved by review (the study data is locked for everyone).
+   */
+  reviewState?: "study" | "handed" | "approved";
+  /** «يعمل عليها الآن»: the last specialist who opened or saved the transaction (information only). */
+  workingByUserId?: string;
+  workingByName?: string;
+  workingAtUtc?: string;
+  /** «وقت الإجراء» (Omar 2026-11-08): the deed's latest business milestone (ISO, UTC) — when it reached its current desk. */
+  lastStepAtUtc?: string;
+  /** That milestone's timeline key and detail line («الاسم — السبب») — A→Z 2026-11-09. */
+  lastStepKey?: string;
+  lastStepDetail?: string;
+  /** Field-inspection / engineering-survey rows: coordination accepted the package (A→Z 2026-11-09). */
+  packageAccepted?: boolean;
   /**
    * Phase 4: set when another deed of the same transaction holds the one study — this
    * case-study row is folded into it and hidden from the study queues.

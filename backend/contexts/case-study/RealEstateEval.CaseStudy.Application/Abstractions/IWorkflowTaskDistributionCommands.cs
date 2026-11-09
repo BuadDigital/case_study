@@ -1,4 +1,5 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
@@ -23,7 +24,7 @@ public interface IWorkflowTaskDistributionCommands
     Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> AddEngineeringSurveyAsync(
         Guid id,
         AddEngineeringSurveyRequest request,
-        string actorRole,
+        StaffActor actor,
         string? actorName,
         string? actorUserId = null,
         CancellationToken cancellationToken = default);
@@ -32,7 +33,7 @@ public interface IWorkflowTaskDistributionCommands
     Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(
         Guid id,
         RedistributePartiesRequest request,
-        string actorRole,
+        StaffActor actor,
         string? actorName,
         string? actorUserId = null,
         CancellationToken cancellationToken = default);

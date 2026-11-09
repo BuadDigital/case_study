@@ -1,4 +1,4 @@
-import { toLatinDigits } from "../lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 
 // toLocaleString creates Intl.NumberFormat on every call — screens call fmt for
 // dozens of cells each render, so we keep one formatter per fraction-digit count.

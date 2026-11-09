@@ -12,8 +12,7 @@ import {
   type EvaluatorSubmission,
   type EvaluatorSubmissionStatus,
 } from "./evaluator-window-data";
-
-export const EVALUATOR_SUBMISSION_CHANGED_EVENT = "evaluator-submission-changed";
+import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 export type EvaluatorReportMetadata = {
   fileName: string;
@@ -67,11 +66,13 @@ export function dtoToSubmission(
       undefined,
       normalizeReportChoices(payload.reportChoices),
     ),
-    valueBasis: assignmentType
-      ? basisOfValueLabelArForAssignment(assignmentType)
-      : typeof payload.valueBasis === "string" && payload.valueBasis.trim()
+    // The basis saved at submit (the appraiser's reconciliation) wins over the assignment default.
+    valueBasis:
+      typeof payload.valueBasis === "string" && payload.valueBasis.trim()
         ? payload.valueBasis
-        : base.valueBasis,
+        : assignmentType
+          ? basisOfValueLabelArForAssignment(assignmentType)
+          : base.valueBasis,
     appraiserAddress:
       typeof payload.appraiserAddress === "string" &&
       payload.appraiserAddress.trim()

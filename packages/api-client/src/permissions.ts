@@ -22,6 +22,8 @@ export type PermissionsDto = {
   jobTitle?: string | null;
   pages: string[];
   capabilities: string[];
+  /** Case-specialist sub-roles (coordination | study | review); empty or absent for other roles. */
+  subRoles?: string[];
 };
 
 export async function fetchPermissions(config: PermissionsApiConfig): Promise<PermissionsDto> {

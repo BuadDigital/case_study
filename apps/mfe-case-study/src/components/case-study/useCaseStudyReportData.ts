@@ -15,7 +15,6 @@ import { caseStudyAnswerKey, type CaseStudyQuestionSection } from "../../lib/app
 import {
   canPartyAnswerQuestion,
   canSpecialistApproveQuestion,
-  CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
   emptyCaseStudyInfoRolesConfig,
   isCaseStudyQuestionVisibleToSpecialist,
   isPartyQuestionVisible,
@@ -37,11 +36,9 @@ import {
 } from "@settings/mfe/query/settings-queries";
 import {
   emptyCaseStudyReportDraft,
-  PARTY_CASE_STUDY_REPORT_CHANGED_EVENT,
   type CaseStudyReportDraft,
-} from "../../lib/app-data/case-study-report-model";
+} from "@platform/app-shared/app-data/case-study-report-model";
 import {
-  CASE_STUDY_DEED_MATCH_CHANGED_EVENT,
   type CaseStudyDeedMatchChangedDetail,
 } from "@platform/app-shared/app-data/case-study-report-model";
 import {
@@ -60,13 +57,19 @@ import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { useCaseStudyQuestionCatalogQuery } from "../../query/case-study-question-catalog-queries";
 import { DEFAULT_CASE_STUDY_QUESTION_CATALOG } from "@platform/app-shared/domain/case-study/question-catalog";
-import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "../../lib/case-study-evaluator-events";
 import {
   buildSeed,
   caseStudyAnswerSummary,
   FORM_STEP_SECTIONS,
   hydrateCaseStudyReportDraft,
+  withDeedMatchEvent,
 } from "./case-study-report-state";
+import {
+  CASE_STUDY_DEED_MATCH_CHANGED_EVENT,
+  CASE_STUDY_INFO_ROLES_CHANGED_EVENT,
+  EVALUATOR_SUBMISSION_CHANGED_EVENT,
+  PARTY_CASE_STUDY_REPORT_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 /** Stable fallback — avoid calling emptyCaseStudyInfoRolesConfig() per render (infinite effect loop). */
 const DEFAULT_INFO_ROLES_CONFIG = emptyCaseStudyInfoRolesConfig();
@@ -171,6 +174,8 @@ export function useCaseStudyReportData({
   // Same flag as state, so the form can show it is briefly busy instead of silently ignoring input.
   const [resyncing, setResyncing] = useState(false);
   const mirrorSkippedRef = useRef(false);
+  /** The last deed-match save heard from «مدخلات المعاين», numbered so a load can tell it arrived meanwhile. */
+  const deedMatchEventRef = useRef<{ seq: number; detail: CaseStudyDeedMatchChangedDetail } | null>(null);
 
   useEffect(() => {
     if (isParty || !hydrated || !infoRolesReady) return;
@@ -282,7 +287,8 @@ export function useCaseStudyReportData({
   }, [isParty, partyAnswersByKey]);
 
   // «مطابقة الصك على الطبيعة» saved from «مدخلات المعاين»: take its outcome and notes into this copy so
-  // the issue button reads the new choice without a reload.
+  // the issue button reads the new choice without a reload. The last one is also kept (with a sequence
+  // number) for a draft re-read that was already on its way — see the load effect below.
   useWindowEvents(
     isParty
       ? {}
@@ -290,15 +296,8 @@ export function useCaseStudyReportData({
           [CASE_STUDY_DEED_MATCH_CHANGED_EVENT]: (event: Event) => {
             const detail = (event as CustomEvent<CaseStudyDeedMatchChangedDetail>).detail;
             if (!detail) return;
-            setDraft((current) =>
-              current.taskId && detail.taskId && current.taskId !== detail.taskId
-                ? current
-                : {
-                    ...current,
-                    deedNatureMatchOutcome: detail.deedNatureMatchOutcome,
-                    deedNatureMatchNotes: detail.deedNatureMatchNotes,
-                  },
-            );
+            deedMatchEventRef.current = { seq: (deedMatchEventRef.current?.seq ?? 0) + 1, detail };
+            setDraft((current) => withDeedMatchEvent(current, detail));
           },
         },
   );
@@ -377,6 +376,7 @@ export function useCaseStudyReportData({
       if (mirrorSkippedRef.current) setPartyRevision((n) => n + 1);
     };
     setLoadError(null);
+    const deedMatchSeqAtStart = deedMatchEventRef.current?.seq ?? 0;
     (async () => {
       try {
         const [parentDraft, stored] = await Promise.all([
@@ -395,7 +395,14 @@ export function useCaseStudyReportData({
         });
         hydratedForRef.current = loadKey;
         setParentFormSubmitted(hydratedDraft.parentSubmitted);
-        setDraft(hydratedDraft.draft);
+        // A→Z 2026-11-02 #63: a deed-match save that landed while this read was in flight (the tab shown
+        // right after «حفظ فروق») is newer than the read — keep it, or the issue button stays blocked.
+        const lateDeedMatch = deedMatchEventRef.current;
+        setDraft(
+          !isParty && lateDeedMatch && lateDeedMatch.seq !== deedMatchSeqAtStart
+            ? withDeedMatchEvent(hydratedDraft.draft, lateDeedMatch.detail)
+            : hydratedDraft.draft,
+        );
         setHydrated(true);
         endResync();
       } catch (error) {
@@ -499,6 +506,8 @@ export function useCaseStudyReportData({
     formFieldErrors,
     setFormFieldErrors,
     property,
+    // The workflow tasks (the issue's survey gate reads them).
+    workflowTasks,
     // Party contributions.
     partyAnswersByKey,
     partyContribCount,

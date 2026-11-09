@@ -15,6 +15,7 @@ import { Button, promptAction, useToast } from "@platform/ui-kit";
 import {
   approveReportDraft,
   ensureReportNumber,
+  returnReportDraftToReviewer,
   withdrawReportDraftApproval,
   type ValuationReportDraftDto,
 } from "@platform/api-client";
@@ -25,7 +26,7 @@ import { useSetReportDraft } from "./useReportDraft";
 import { apiConfig } from "./valuation-work/lib/shell-utils";
 
 /** Which action is in flight — each button spins on its own, the others stay disabled. */
-type BusyAction = "approve" | "withdraw" | null;
+type BusyAction = "approve" | "withdraw" | "return" | null;
 
 /** The report date is the approval date: today's date on the appraiser's device (the server checks it). */
 function todayIso(): string {
@@ -33,11 +34,11 @@ function todayIso(): string {
 }
 
 /**
- * The appraiser's side of the report draft the specialist sent: he approves it (the printed report as he
- * sees it is kept, and the report date is fixed), and can take his approval back until the deposit is
- * recorded. The specialist then deposits the report in Qeema and records its code and certificate
- * (`ReportDepositStep`); the bar only says so, then offers the final report. Nothing shows while the
- * specialist prepares.
+ * The appraiser's side of the report draft review issued (Omar 2026-11-08): he gives it his final approval
+ * (the printed report as he sees it is kept, and the report date is fixed) or returns it to review with a
+ * reason — he never edits it himself; he can take his approval back until the deposit is recorded. Review
+ * then deposits the report in Qeema and records its code and certificate (`ReportDepositStep`); the bar
+ * only says so, then offers the final report. Nothing shows while review prepares it.
  */
 export function ReportDraftApprovalBar({
   propertyId,
@@ -103,7 +104,7 @@ export function ReportDraftApprovalBar({
     // A double-click opens the confirm once and its second click never dismisses it.
     const confirmed = await confirmIgnoringDoubleClick({
       title: "اعتماد تقرير التقييم",
-      message: "يُثبَّت تاريخ اليوم تاريخاً للتقرير ويُجمَّد، ثم يودعه الأخصائي في «قيمة» ويسجّل رمز الإيداع.",
+      message: "يُثبَّت تاريخ اليوم تاريخاً للتقرير ويُجمَّد فلا يُعدَّل بعده، ثم يودعه المراجع في «قيمة» ويسجّل رمز الإيداع.",
       confirmLabel: "اعتماد التقرير",
     });
     if (!confirmed) return;
@@ -138,12 +139,39 @@ export function ReportDraftApprovalBar({
     }
   }
 
+  /** «إرجاع للمراجع» — a reason is required; the draft goes back to review to correct and issue again. */
+  async function returnToReviewer() {
+    const config = apiConfig();
+    if (!config || anyBusy) return;
+    const reason = await promptAction({
+      title: "إرجاع المسودة للمراجع",
+      message: "يصحّح المراجع المسودة ثم يُصدرها لك من جديد. لا تُعدَّل المسودة من عندك.",
+      label: "سبب الإرجاع",
+      required: true,
+      minLength: 3,
+      confirmLabel: "إرجاع للمراجع",
+    });
+    if (reason === null) return;
+    setBusy("return");
+    try {
+      const res = await returnReportDraftToReviewer(config, draft.valuationRequestId, reason.trim());
+      if (!res.ok) {
+        refuse("تعذّر إرجاع المسودة للمراجع", res);
+        return;
+      }
+      setDraft(res.data);
+      showToast("أُعيدت المسودة للمراجع", "success");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function withdrawApproval() {
     const config = apiConfig();
     if (!config || anyBusy) return;
     const note = await promptAction({
       title: "سحب الاعتماد",
-      label: "ملاحظة للأخصائي عن سبب سحب الاعتماد (اختياري)",
+      label: "ملاحظة للمراجع عن سبب سحب الاعتماد (اختياري)",
       confirmLabel: "سحب الاعتماد",
     });
     if (note === null) return;
@@ -171,10 +199,11 @@ export function ReportDraftApprovalBar({
       {draft.status === "sent" ? (
         <>
           <p className="m-0 text-[12.5px] font-semibold text-heading">
-            أرسل الأخصائي مسودة تقرير التقييم — راجع التقرير أدناه ثم اعتمده.
+            أصدر المراجع مسودة تقرير التقييم — راجع التقرير أدناه ثم اعتمده اعتمادًا نهائيًا، أو أرجعه للمراجع مع
+            السبب.
           </p>
           {draft.specialistNote ? (
-            <p className="m-0 text-[12px] text-text-2">ملاحظة الأخصائي: {draft.specialistNote}</p>
+            <p className="m-0 text-[12px] text-text-2">ملاحظة المراجع: {draft.specialistNote}</p>
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-[12px] font-semibold text-text-2">تاريخ التقرير: تاريخ الاعتماد (اليوم)</span>
@@ -191,6 +220,16 @@ export function ReportDraftApprovalBar({
             >
               {busy === "approve" ? "جاري الاعتماد…" : "اعتماد التقرير"}
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              loading={busy === "return"}
+              disabled={anyBusy}
+              onClick={() => void returnToReviewer()}
+            >
+              {busy === "return" ? "جاري الإرجاع…" : "إرجاع للمراجع"}
+            </Button>
           </div>
           <PhaseNote phase={busy === "approve" ? phase : null} hint="قد يستغرق نحو دقيقة، لا تغلق الصفحة" />
         </>
@@ -206,7 +245,7 @@ export function ReportDraftApprovalBar({
       ) : (
         <div className="flex flex-col gap-2" data-testid="report-awaiting-deposit">
           <p className="m-0 text-[12.5px] font-semibold text-heading">
-            اعتُمد التقرير — تاريخ التقرير {draft.reportDate ?? "—"}. يودعه الأخصائي في «قيمة» ويسجّل رمز الإيداع
+            اعتُمد التقرير — تاريخ التقرير {draft.reportDate ?? "—"}. يودعه المراجع في «قيمة» ويسجّل رمز الإيداع
             والشهادة، فيصدر التقرير النهائي.
           </p>
           <div>

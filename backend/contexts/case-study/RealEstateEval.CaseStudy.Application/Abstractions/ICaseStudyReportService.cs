@@ -40,6 +40,12 @@ public interface ICaseStudyReportService
         CaseStudyReportActor? actor = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Review approves the study sent to it — the transaction's data locks (Omar 2026-11-08).</summary>
+    Task<(CaseStudyReportDto? Result, Dictionary<string, string>? Errors)> ApproveStudyAsync(
+        Guid taskId,
+        CaseStudyReportActor actor,
+        CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Reopens an issued report (case specialist only, when an actor is given): report issued → draft,
     /// parent task completed → open in the case-study phase, the Enfaz handover stamp cleared when

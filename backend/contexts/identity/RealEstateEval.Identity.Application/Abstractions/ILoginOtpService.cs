@@ -16,6 +16,12 @@ public interface ILoginOtpService
 
     /// <summary>Checks the code and, when it matches, starts a session for its owner.</summary>
     Task<OtpVerifyOutcome> VerifyAsync(string mobile, string code, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Name and job title of the active account on this mobile, shown under the number on the
+    /// login screen (owner's ruling 2026-11-05); null for an unknown or inactive mobile.
+    /// </summary>
+    Task<LoginHintDto?> HintAsync(string mobile, CancellationToken cancellationToken = default);
 }
 
 public enum OtpRequestStatus

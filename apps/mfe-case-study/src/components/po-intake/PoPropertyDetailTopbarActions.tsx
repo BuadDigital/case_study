@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   Button,
   cn,
@@ -13,26 +20,20 @@ import {
 } from "@platform/ui-kit";
 import type { RoleId } from "@platform/types";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
-import { ROLES } from "@platform/app-shared/app-data/constants";
+import { FAILURE_RAISER_LABEL_BY_KIND } from "@failures/mfe/lib/failure-party-roles";
 import {
-  FAILURE_RAISER_LABEL_BY_KIND,
-  FAILURE_RAISER_SPECIALIST,
-  FAILURE_RAISER_SUPERVISOR,
-} from "@failures/mfe/lib/failure-party-roles";
-import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
-import {
-  canDecideTransactionCancel,
-  canEditProperty,
+  canEditPropertyData,
   canRaisePropertyFailure,
-  canRecordFinalFailure,
-  canRequestTransactionCancel,
+  canReopenTransaction,
 } from "../../lib/app-data/po-roles";
-import { FinalFailureDialog } from "@failures/mfe/components/failures/FinalFailureDialog";
 import {
   poPropertyDetailPath,
   poPropertyEditPath,
   poPropertyPath,
+  poPropertyCoordinationPath,
+  poPropertyWorkPath,
 } from "@platform/app-shared/domain/po-routes";
+import { canAccessPathname } from "@platform/app-shared/app-data/page-access";
 import {
   activeSurveyWorkspacePath,
   caseStudyWorkspacePath,
@@ -46,13 +47,18 @@ import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-part
 import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access";
 import { canManageOperationsTasks } from "../../lib/app-data/operations-task-roles";
 import { formatPropertyDeedDisplay } from "../../lib/app-data/po-intake-data";
-import { transactionNumberOf } from "../../lib/app-data/transaction-number";
-import { usePoRecordQuery, useWorkflowTasksQuery } from "../../query/case-study-queries";
+import {
+  usePoRecordQuery,
+  useWorkflowTasksQuery,
+} from "../../query/case-study-queries";
 import { useTransactionCancellationQuery } from "../../query/use-transaction-cancellation-query";
-import { FailureRaiseModal } from "../failures/FailureRaiseModal";
-import { TransactionCancelDialog } from "./TransactionCancelDialog";
+import { useTransactionStateQuery } from "../../query/use-transaction-state-query";
+import { useTransactionGeneralActions } from "./useTransactionGeneralActions";
 import { isAllowedPropertyTab } from "./po-property-detail-tabs-state";
-import { buildPropertyDetailHeroMenuItems, CASE_STUDY_OPEN_PROGRESS_MESSAGE } from "./property-detail-hero-menu";
+import {
+  buildPropertyDetailHeroMenuItems,
+  CASE_STUDY_OPEN_PROGRESS_MESSAGE,
+} from "./property-detail-hero-menu";
 
 const shellBtn = (variant: "default" | "primary" = "default") =>
   cn(
@@ -91,18 +97,21 @@ export function PoPropertyDetailTopbarActions({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showProgressToast, dismissToast } = useToast();
-  const { role } = useAppAccess();
-  const showEdit = canEditProperty(role);
+  const { role, access, rolePages } = useAppAccess();
+  const showEdit = canEditPropertyData(role);
   const showFailure = canRaisePropertyFailure(role);
-  const canCreateOps = canManageOperationsTasks(role);
+  const canCreateOps = canManageOperationsTasks(access);
   const { data: record } = usePoRecordQuery(poNumber);
   const { data: tasks = [] } = useWorkflowTasksQuery();
   const isHero = variant === "hero";
   const btn = shellBtn;
-  const [failureModalOpen, setFailureModalOpen] = useState(false);
-  const [finalFailureOpen, setFinalFailureOpen] = useState(false);
-  const [cancelOpen, setCancelOpen] = useState(false);
+  const { itemsFor: generalItemsFor, dialogs: generalDialogs } =
+    useTransactionGeneralActions();
   const { data: cancellation } = useTransactionCancellationQuery(propertyId);
+  // «إعادة فتح المعاملة» (Omar 2026-11-05) shows once the server says the transaction may reopen.
+  const { data: transactionState } = useTransactionStateQuery(record?.id ?? "", propertyId, {
+    enabled: Boolean(record?.id) && canReopenTransaction(access),
+  });
   const [openingCaseStudy, setOpeningCaseStudy] = useState(false);
   const [navPending, startTransition] = useTransition();
   const caseStudyToastIdRef = useRef<string | null>(null);
@@ -136,55 +145,12 @@ export function PoPropertyDetailTopbarActions({
     );
   }, [partyFailureRaiser, property, poNumber, role, tasks]);
 
-  // A cancelled transaction takes no new failure, final failure or cancellation — only the
-  // supervisor's reactivation (on the page banner) brings it back.
-  const isCancelled = Boolean(property?.cancelledAtUtc);
-
-  const canOpenFailureModal = Boolean(
-    (showFailure || holdsPartyTask) &&
-      property &&
-      !property.isRemoved &&
-      !isCancelled &&
-      !getPropertyFailure(poNumber.trim(), property.id),
-  );
-
-  // The open failure of this deed, if any — a final one hides the action; any other is finalized
-  // by it (so the dialog does not ask for a problem type). Read from the failures cache, so a
-  // deed whose final failure was just recorded loses the item as soon as the cache refreshes;
-  // a sibling deed without a failure is caught by the server, which makes the dialog ask then.
-  const openFailure = property ? getPropertyFailure(poNumber.trim(), property.id) : null;
-  const canOpenFinalFailure = Boolean(
-    canRecordFinalFailure(role) &&
-      property &&
-      !property.isRemoved &&
-      !isCancelled &&
-      openFailure?.status !== "approved",
-  );
-
-  // «إلغاء المعاملة»: not on Enfaz, not final-failed, not already requested; the server re-checks.
-  const canOpenCancel = Boolean(
-    canRequestTransactionCancel(role) &&
-      property &&
-      !property.isRemoved &&
-      !isCancelled &&
-      !cancellation?.pending &&
-      openFailure?.status !== "approved",
-  );
-  const cancelDecides = canDecideTransactionCancel(role);
-
-  const failureRaisedByRole =
-    partyFailureRaiser ??
-    (role === "section-supervisor"
-      ? FAILURE_RAISER_SUPERVISOR
-      : FAILURE_RAISER_SPECIALIST);
-  const failureSpecialist = ROLES[role]?.name ?? "أخصائي";
-
   const partyActions = useMemo((): PartyAction[] => {
     if (!property) return [];
-    const children = task
-      ? childTasksForCaseStudyParent(task.id, tasks)
-      : [];
-    const visibleTaskIds = new Set(tasksForRole(role, tasks).map((item) => item.id));
+    const children = task ? childTasksForCaseStudyParent(task.id, tasks) : [];
+    const visibleTaskIds = new Set(
+      tasksForRole(role, tasks).map((item) => item.id),
+    );
     const oversees =
       role === "section-supervisor" ||
       role === "general-manager" ||
@@ -193,8 +159,7 @@ export function PoPropertyDetailTopbarActions({
     const findChild = (kind: string) =>
       children.find(
         (child) =>
-          child.kind === kind &&
-          (oversees || visibleTaskIds.has(child.id)),
+          child.kind === kind && (oversees || visibleTaskIds.has(child.id)),
       );
 
     const inspection = findChild("field-inspection");
@@ -202,29 +167,27 @@ export function PoPropertyDetailTopbarActions({
     const appraisal = findChild("property-appraisal");
 
     if (!isHero) {
-      return [inspection, survey, appraisal]
-        .filter(Boolean)
-        .map((child) => {
-          if (child!.kind === "field-inspection") {
-            return {
-              id: child!.id,
-              label: "معاينة",
-              href: `${poPropertyPath(poNumber, propertyId)}?tab=inspection&inspect=edit`,
-            };
-          }
-          if (child!.kind === "engineering-survey") {
-            return {
-              id: child!.id,
-              label: "رفع مساحي",
-              href: activeSurveyWorkspacePath(child!.id),
-            };
-          }
+      return [inspection, survey, appraisal].filter(Boolean).map((child) => {
+        if (child!.kind === "field-inspection") {
           return {
             id: child!.id,
-            label: "رفع تقييم",
-            href: propertyAppraisalWorkspacePath(child!.id),
+            label: "معاينة",
+            href: `${poPropertyPath(poNumber, propertyId)}?tab=inspection&inspect=edit`,
           };
-        });
+        }
+        if (child!.kind === "engineering-survey") {
+          return {
+            id: child!.id,
+            label: "رفع مساحي",
+            href: activeSurveyWorkspacePath(child!.id),
+          };
+        }
+        return {
+          id: child!.id,
+          label: "رفع تقييم",
+          href: propertyAppraisalWorkspacePath(child!.id),
+        };
+      });
     }
 
     return [
@@ -305,6 +268,19 @@ export function PoPropertyDetailTopbarActions({
     if (!isHero) return [];
     return buildPropertyDetailHeroMenuItems({
       // Party viewers raise a failure from here; the tab bar already has دراسة العقار.
+      // The work page, for the staff who may open it (the same rule as the route).
+      workPageHref: canAccessPathname(
+        poPropertyWorkPath(poNumber, propertyId),
+        rolePages,
+      )
+        ? poPropertyWorkPath(poNumber, propertyId)
+        : null,
+      coordinationPageHref: canAccessPathname(
+        poPropertyCoordinationPath(poNumber, propertyId),
+        rolePages,
+      )
+        ? poPropertyCoordinationPath(poNumber, propertyId)
+        : null,
       hideOpenCaseStudy: hideOpenCaseStudy || Boolean(partyFailureRaiser),
       caseStudyWorkspaceHref:
         showCaseStudyLink && task ? caseStudyWorkspacePath(task.id) : null,
@@ -313,19 +289,27 @@ export function PoPropertyDetailTopbarActions({
         : null,
       caseStudyBusy: showCaseStudyFeedback,
       onNavigate: openCaseStudy,
-      onOpenFailure: canOpenFailureModal
-        ? () => setFailureModalOpen(true)
-        : undefined,
-      onFinalFailure: canOpenFinalFailure
-        ? () => setFinalFailureOpen(true)
-        : undefined,
-      onCancelTransaction: canOpenCancel ? () => setCancelOpen(true) : undefined,
-      cancelDecides,
+      // Failure, final failure, cancellation: the same items and rules as every row's ⋮ menu.
+      generalItems: property
+        ? generalItemsFor({
+            poNumber,
+            property,
+            canRaiseFailure: showFailure || holdsPartyTask,
+            cancellationPending: Boolean(cancellation?.pending),
+            busy: showCaseStudyFeedback,
+            workOrderId: record?.id,
+            reopenable: transactionState?.canReopen === true,
+          })
+        : [],
     });
   }, [
-    canOpenCancel,
-    cancelDecides,
-    canOpenFinalFailure,
+    generalItemsFor,
+    property,
+    showFailure,
+    holdsPartyTask,
+    cancellation?.pending,
+    record?.id,
+    transactionState?.canReopen,
     isHero,
     hideOpenCaseStudy,
     partyFailureRaiser,
@@ -335,57 +319,11 @@ export function PoPropertyDetailTopbarActions({
     poNumber,
     propertyId,
     showCaseStudyFeedback,
-    canOpenFailureModal,
     openCaseStudy,
+    rolePages,
   ]);
 
   if (!record || !property) return null;
-
-  const failureModal = canOpenFailureModal ? (
-    <FailureRaiseModal
-      open={failureModalOpen}
-      onClose={() => setFailureModalOpen(false)}
-      poNumber={poNumber}
-      propertyId={property.id}
-      deedNumber={
-        formatPropertyDeedDisplay(property) || property.deedNumber.trim()
-      }
-      specialist={failureSpecialist}
-      raisedByRole={failureRaisedByRole}
-      onSubmitted={() => setFailureModalOpen(false)}
-    />
-  ) : null;
-
-  // The title names the transaction (PR-… or TMP-…) when the deed has one, else the deed itself;
-  // mounted only while open, so its fields start empty every time.
-  const finalFailureDialog =
-    finalFailureOpen && canOpenFinalFailure ? (
-      <FinalFailureDialog
-        open
-        onClose={() => setFinalFailureOpen(false)}
-        poNumber={poNumber}
-        propertyId={property.id}
-        deedLabel={
-          transactionNumberOf(property) ??
-          (formatPropertyDeedDisplay(property) || property.deedNumber.trim())
-        }
-        deedCount={property.transactionDeedCount}
-        askProblemType={!openFailure}
-      />
-    ) : null;
-
-  const cancelDialog =
-    cancelOpen && canOpenCancel ? (
-      <TransactionCancelDialog
-        scope={{ propertyId: property.id }}
-        label={
-          transactionNumberOf(property) ??
-          (formatPropertyDeedDisplay(property) || property.deedNumber.trim())
-        }
-        decides={cancelDecides}
-        onClose={() => setCancelOpen(false)}
-      />
-    ) : null;
 
   if (isHero) {
     if (heroMenuItems.length === 0) return null;
@@ -397,9 +335,7 @@ export function PoPropertyDetailTopbarActions({
           ariaLabel="إجراءات العقار"
           buttonClassName="border-border-md bg-surface text-text-2"
         />
-        {failureModal}
-        {finalFailureDialog}
-        {cancelDialog}
+        {generalDialogs}
       </>
     );
   }
@@ -438,7 +374,7 @@ export function PoPropertyDetailTopbarActions({
         ) : null,
       )}
       {needsBourse ? (
-        <Link href="/bourse-inquiry" className={btn()}>
+        <Link href={poPropertyCoordinationPath(poNumber, propertyId, "bourse")} className={btn()}>
           <span className="sm:hidden">البورصة</span>
           <span className="max-sm:hidden">استعلام البورصة</span>
         </Link>
@@ -466,7 +402,7 @@ export function PoPropertyDetailTopbarActions({
           إنشاء مهمة
         </Link>
       ) : null}
-      {failureModal}
+      {generalDialogs}
     </div>
   );
 }

@@ -8,13 +8,17 @@
  * The table uses the appraiser's direct-cost catalog so its lines drop straight into
  * «بنود التكلفة المباشرة»; see `SpecialistComponentsRules` on the server.
  */
-import { toLatinDigits } from "@platform/app-shared/lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 import type { BuildingInventoryDto, BuildingInventoryLineDto } from "@platform/api-client";
 import { textLooksLikeVacantLand } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import {
   COST_GROUP1_KEYS,
   COST_ITEM_OPTIONS,
+  areaKindForItemName,
+  costGroupOf,
+  costItemForTypedName,
+  effectiveStructureKind,
   structureKindForCostItem,
 } from "@platform/app-shared/domain/cost-items";
 
@@ -57,57 +61,40 @@ export function componentLineForItem(
   };
 }
 
-/** Ignores spacing / alef-hamza variants when matching typed names. */
-const normTypedName = (v: string) =>
-  v.replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/\s+/g, " ").trim();
-
-/** Catalog item whose Arabic name the specialist typed (ignores spacing / alef-hamza variants). */
-function catalogItemForTypedName(text: string) {
-  const typed = normTypedName(text);
-  if (!typed) return undefined;
-  return COST_ITEM_OPTIONS.find((o) => o.key !== "custom" && normTypedName(o.label) === typed);
-}
-
 /**
- * A unit's or a building's own floor area: «مساحة المحل», «المكتب», «معرض», «المستودع»,
- * «هنجر»… (optionally after «مساحة»).
- */
-const UNIT_AREA_NAME =
-  /^(مساحه |مساحة )?(ال)?(محل|مكتب|معرض|وحده|وحدة|شقه|شقة|مستودع|هنجر|ورشه|ورشة|مصنع)( |$)/;
-
-function typedNameIsUnitArea(text: string | null | undefined): boolean {
-  return UNIT_AREA_NAME.test(normTypedName(text ?? ""));
-}
-
-/**
- * The specialist types the item name instead of picking it: an exact catalog name keeps the
- * catalog behaviour (unit, floor/annex kind, built-up ratio, repeated floors — what Infath areas
+ * The specialist (or the inspector) types the item name instead of picking it: a catalog name keeps
+ * the catalog behaviour (unit, floor/annex kind, built-up ratio, repeated floors — what Infath areas
  * and the appraiser's cost table key on); anything else is a custom item that keeps its unit.
  *
- * How it works: a custom item is an extra («تكاليف وتجهيزات إضافية»), except a unit's own area
- * («مساحة المحل», «المكتب»…) which is a floor line — judged on the whole name each keystroke.
+ * How it works: the catalog match ignores «ال», hamza forms and spacing (`costItemForTypedName`), so
+ * «سور» is «السور» (unit «م.ط») and «ملحق علوي» is «الملحق العلوي». A custom item is an extra
+ * («تكاليف وتجهيزات إضافية»), except a name that is a building area (`areaKindForItemName`: a floor
+ * «الدور الثاني» / «الميزانين» / «مساحة المحل», an annex, a basement) which takes that kind — judged
+ * on the whole name each keystroke.
  *
- * Fixed 2026-10-28: the kind was fixed at the first keystroke, so a shop's «مساحة المحل» reached
- * the cost table as an add-on with a double-counting alert instead of the building area.
+ * Edge cases: fixed 2026-10-28: the kind was fixed at the first keystroke, so a shop's «مساحة المحل»
+ * reached the cost table as an add-on with a double-counting alert instead of the building area.
+ * Fixed 2026-11-04 (A→Z #30/#34/#52/#90): only exact catalog spellings and unit names counted —
+ * «سور» stayed «م²», and «ملحق علوي», «الدور الثاني», «الميزانين» became extras outside the floor areas.
  */
 export function componentLineForTypedName(
   line: BuildingInventoryLineDto,
   text: string,
 ): BuildingInventoryLineDto {
-  const match = catalogItemForTypedName(text);
+  const match = costItemForTypedName(text);
   if (match) {
     return match.key === line.itemKey
       ? { ...line, label: text }
       : { ...componentLineForItem(line, match.key), label: text };
   }
   const keptKind =
-    line.itemKey === "custom" && !typedNameIsUnitArea(line.label)
+    line.itemKey === "custom" && !areaKindForItemName(line.label)
       ? line.structureKind
       : structureKindForCostItem("custom");
   return {
     ...line,
     itemKey: "custom",
-    structureKind: typedNameIsUnitArea(text) ? "floor" : keptKind,
+    structureKind: areaKindForItemName(text) ?? keptKind,
     label: text,
     buildRatioPct: null,
     repeatedFloorCount: null,
@@ -154,8 +141,17 @@ export function nonNegativeDecimalInput(raw: string): string {
   return dot === -1 ? latin : latin.slice(0, dot + 1) + latin.slice(dot + 1).replace(/\./g, "");
 }
 
+/**
+ * Does the inventory line show the «نسبة البناء» cell — is it an m² line of the floor areas?
+ *
+ * How it works: same grouping as the appraiser's cost table (`costGroupOf`): catalog floor items
+ * and custom lines that name a floor / annex / basement; the unit must be m².
+ *
+ * Edge cases: fixed 2026-11-04 (A→Z #65): only catalog keys counted, so «الدور الثاني» had no ratio
+ * cell in the inventory while the cost table could treat it as a floor.
+ */
 export function componentLineAcceptsBuildRatio(line: BuildingInventoryLineDto): boolean {
-  return Boolean(line.itemKey && COST_GROUP1_KEYS.has(line.itemKey)) && (line.unit || "sqm") === "sqm";
+  return Boolean(line.itemKey) && costGroupOf(line) === "area" && (line.unit || "sqm") === "sqm";
 }
 
 /** Row-level problems the save button reports before calling the server. */
@@ -191,7 +187,8 @@ export function inspectionHasStructures(declaration: {
 }
 
 /**
- * Mirrors `SpecialistComponentsRules.MissingForAcceptance` — null when the specialist may accept.
+ * Mirrors `SpecialistComponentsRules.MissingBeforeStudyIssue` (the server checks it when the study is issued
+ * since 2026-11-08) — null when complete. The details page still asks for it before its own acceptance.
  * Only the report text is required; an empty «جدول الحصر» never blocks acceptance.
  */
 export function specialistComponentsMissing(
@@ -224,11 +221,12 @@ export function infathBuildingAreasFromComponents(lines: BuildingInventoryLineDt
   const sqm = lines.filter(
     (l) => (l.unit || "sqm") === "sqm" && l.itemKey !== "repeated_floors",
   );
+  // A custom «other» line named «الدور الثاني» / «ملحق علوي» counts by its name (2026-11-04, #30).
   const sum = (kind: string) =>
-    sqm.filter((l) => l.structureKind === kind).reduce((a, l) => a + num(l.areaSqm), 0);
+    sqm.filter((l) => effectiveStructureKind(l) === kind).reduce((a, l) => a + num(l.areaSqm), 0);
   const firstFloor = sqm.find((l) => l.itemKey === "first_floor");
   let built = sum("floor");
-  let floors = sqm.filter((l) => l.structureKind === "floor").length;
+  let floors = sqm.filter((l) => effectiveStructureKind(l) === "floor").length;
   // «الأدوار المتكررة» repeat the first floor's area (same rule as the appraiser's cost table).
   for (const line of lines.filter((l) => l.itemKey === "repeated_floors")) {
     const count = Math.max(0, line.repeatedFloorCount ?? 0);

@@ -20,7 +20,6 @@ import {
 } from "../lib/app-data/assignment-doc-attachments";
 import { prefetchInspectorPhoto } from "../lib/app-data/inspector-photo-upload";
 import {
-  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
   loadInspectorWorkspace,
 } from "../lib/app-data/inspector-workspace-model";
 import { fetchInspectorWorkspace } from "../lib/app-data/inspector-workspace-reads";
@@ -30,6 +29,7 @@ import {
   pickInspectorPrimaryPhoto,
   type PropertyDetailDocumentEntry,
 } from "../lib/app-data/property-detail-documents";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 export function usePropertyPrimaryPhoto(input: {
   property: PoPropertyIntake;

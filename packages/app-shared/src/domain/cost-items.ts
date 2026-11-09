@@ -1,3 +1,5 @@
+import { stripArabicAl } from "./courts/circuit-search";
+
 /**
  * Direct-cost item catalog («بنود التكلفة المباشرة»). Shared by the appraiser's cost table
  * and the case specialist's «جدول المكونات» — the specialist lists the items, the appraiser
@@ -43,21 +45,109 @@ export const COST_GROUP1_KEYS = new Set([
   "shared_portion",
 ]);
 
+/** Leading words of a building-area name, by inventory kind (compared without «ال» and hamza forms). */
+const AREA_NAME_FIRST_WORDS: Record<"floor" | "annex" | "basement", readonly string[]> = {
+  floor: [
+    "دور", "ادوار", "طابق", "طوابق", "ميزانين", "ميزانيين", "مزانين",
+    "ارضي", "علوي", "اول", "ثاني", "ثالث", "رابع", "خامس", "سادس", "سابع", "ثامن", "تاسع", "عاشر",
+    // a unit's or a building's own floor area: «مساحة المحل», «المكتب», «معرض», «المستودع»…
+    "محل", "مكتب", "معرض", "وحده", "شقه", "مستودع", "هنجر", "ورشه", "مصنع",
+  ],
+  annex: ["ملحق", "ملاحق", "سطح"],
+  basement: ["قبو", "بدروم", "سرداب"],
+};
+
+/** Words that may come before the area name: «مسطح الدور الثاني», «مساحة المحل». */
+const AREA_NAME_PREFIXES = new Set(["مسطح", "مسطحات", "مساحه"]);
+
+/**
+ * The inventory kind a typed item name means when it names a building area: a floor
+ * («الدور الثاني», «طابق ثالث», «الميزانين», «مساحة المحل»), an annex («ملحق علوي», «ملحق السطح»)
+ * or a basement («البدروم»); null for anything else («غرفة حارس», «مظلة سيارات», «المسبح»).
+ *
+ * How it works: the name is normalized with `stripArabicAl` (Arabic digits, hamza / taa marbuta /
+ * alef maqsura forms and every word's «ال» dropped); after an optional «مسطح / مساحة» its first
+ * word is looked up in `AREA_NAME_FIRST_WORDS`.
+ *
+ * Edge cases: whole-word match only — «دورة مياه», «مكتبة» and «عزل السطح» are not areas. Fixed
+ * 2026-11-04 (A→Z #30/#52/#65/#90): names outside the catalog («ملحق علوي» without «ال»,
+ * «الدور الثاني», «الميزانين») fell into «تكاليف وتجهيزات إضافية», demanded a rationale and dropped
+ * out of «مجموع مسطحات البناء». Mirrors `CostLineItemKeys.AreaKindForName` on the server.
+ */
+export function areaKindForItemName(
+  name: string | null | undefined,
+): "floor" | "annex" | "basement" | null {
+  const words = stripArabicAl(name ?? "").split(" ").filter(Boolean);
+  const first = words[0] && AREA_NAME_PREFIXES.has(words[0]) ? words[1] : words[0];
+  if (!first) return null;
+  for (const kind of ["floor", "annex", "basement"] as const) {
+    if (AREA_NAME_FIRST_WORDS[kind].includes(first)) return kind;
+  }
+  return null;
+}
+
+/**
+ * Catalog item whose Arabic name was typed instead of picked: «سور», «ملحق علوي», «دور ارضي»
+ * mean «السور», «الملحق العلوي», «الدور الأرضي».
+ *
+ * How it works: both names are compared after `stripArabicAl` (no «ال», no hamza / spacing
+ * variants); «بند مخصص» never matches.
+ *
+ * Edge cases: fixed 2026-11-04 (A→Z #30/#34): only the exact catalog spelling matched, so «سور»
+ * kept «م²» instead of «م.ط» and «ملحق علوي» became a custom extra.
+ */
+export function costItemForTypedName(text: string | null | undefined) {
+  const typed = stripArabicAl(text ?? "");
+  if (!typed) return undefined;
+  return COST_ITEM_OPTIONS.find((o) => o.key !== "custom" && stripArabicAl(o.label) === typed);
+}
+
+/**
+ * The inventory kind a line really has: a custom line saved as «other» (or with no kind) whose
+ * name is a building area counts as that floor / annex / basement.
+ *
+ * How it works: catalog items and lines with an explicit floor / annex / basement / fence kind
+ * keep their kind; a custom «other» line takes `areaKindForItemName(label)` when it names an area.
+ *
+ * Edge cases: lines saved before 2026-11-04 («الدور الثاني», «ملحق علوي», «الميزانين» stored as
+ * custom «other») are read right without re-saving the inventory.
+ */
+export function effectiveStructureKind(line: {
+  itemKey?: string | null;
+  structureKind?: string | null;
+  label?: string | null;
+}): string {
+  const kind = (line.structureKind ?? "").trim().toLowerCase();
+  const key = (line.itemKey ?? "").trim() || "custom";
+  if (key !== "custom" || (kind && kind !== "other")) return kind || "other";
+  return areaKindForItemName(line.label) ?? "other";
+}
+
+const AREA_STRUCTURE_KINDS = new Set(["floor", "annex", "basement"]);
+
 /**
  * Which group of the cost table a line sits in: «مسطحات المبنى والأدوار» (area) or «تكاليف
  * وتجهيزات إضافية» (extra).
  *
  * How it works: a catalog item is in the area group when its key is in COST_GROUP1_KEYS; a custom
- * line follows its structure kind (a floor is an area line, anything else an extra).
+ * line is an area line when its effective kind (`effectiveStructureKind`: its saved kind, or what
+ * its name says) is a floor, an annex or a basement — anything else is an extra.
  *
  * Edge cases: moved here from the appraiser's cost screen so the printed report lists the lines in
- * the same two groups, in the same order, as the screen.
+ * the same two groups, in the same order, as the screen. Fixed 2026-11-04 (A→Z #30/#52/#65/#90):
+ * a custom line counted only with kind «floor», so «الدور الثاني» / «ملحق علوي» / «الميزانين»
+ * (saved as «other») and custom annexes / basements went to the extras and demanded a rationale.
+ * Mirrors `CostLineItemKeys.IsAreaGroup` on the server.
  */
-export function costGroupOf(line: { itemKey: string; structureKind: string }): "area" | "extra" {
+export function costGroupOf(line: {
+  itemKey?: string | null;
+  structureKind?: string | null;
+  label?: string | null;
+}): "area" | "extra" {
   if (line.itemKey === "custom") {
-    return line.structureKind === "floor" ? "area" : "extra";
+    return AREA_STRUCTURE_KINDS.has(effectiveStructureKind(line)) ? "area" : "extra";
   }
-  return COST_GROUP1_KEYS.has(line.itemKey) ? "area" : "extra";
+  return COST_GROUP1_KEYS.has(line.itemKey ?? "") ? "area" : "extra";
 }
 
 export function costItemLabel(key: string | null | undefined): string {

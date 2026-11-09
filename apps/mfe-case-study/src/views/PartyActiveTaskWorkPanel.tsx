@@ -6,7 +6,7 @@ import { PartyActiveTaskWork } from "./PartyActiveTaskWork";
 import { PartyReassignmentNotice } from "./PartyReassignmentNotice";
 import type { PartyActiveTaskWorkHostRef } from "../lib/party-active-task-work-host";
 import { refreshPartyTaskWorkQueries } from "../lib/party-task-work-refresh";
-import type { PartyAppraisalExtensions } from "../lib/party-appraisal-extensions";
+import type { PartyAppraisalExtensions } from "@platform/app-shared/party-appraisal/party-appraisal-extensions";
 import type { PartyEngineeringSurveyExtensions } from "../lib/party-engineering-survey-extensions";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
 import type { WorkflowTask } from "../lib/app-data/tasks";

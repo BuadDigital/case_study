@@ -30,6 +30,18 @@ export function bourseAreaError(area: string | null | undefined): string | null 
   return isPositiveLocaleNumber(area) ? null : "مساحة الأرض يجب أن تكون رقماً أكبر من صفر";
 }
 
+/** «القيود» left unanswered — same text as the server (WorkOrderValidator.BourseRestrictionsRequiredAr). */
+export const BOURSE_RESTRICTIONS_REQUIRED_MESSAGE = "حدّد القيود: توجد أو لا توجد";
+
+/**
+ * The bourse step's field errors — twin of the server's WorkOrderValidator.ValidatePropertyBourse.
+ *
+ * How it works: city, district and the land area always; a registered title stops there; otherwise the
+ * bourse deed image, «القيود» (yes/no, with its types and «أخرى» reason) and the boundaries availability.
+ *
+ * Edge cases: fixed A→Z 2026-11-02 #64 — «القيود» was optional, so a bourse closed with restrictionsPresent
+ * empty and nobody knew later whether the deed is mortgaged or was never asked; it is now required.
+ */
 export function validatePropertyBourseFields(
   p: PoPropertyIntake,
 ): FieldErrors {
@@ -53,7 +65,9 @@ export function validatePropertyBourseFields(
   }
 
   const restrictions = p.restrictionsPresent.trim().toLowerCase();
-  if (restrictions && !RESTRICTIONS_VALUES.has(restrictions)) {
+  if (!restrictions) {
+    errors.restrictionsPresent = BOURSE_RESTRICTIONS_REQUIRED_MESSAGE;
+  } else if (!RESTRICTIONS_VALUES.has(restrictions)) {
     errors.restrictionsPresent = "قيمة القيود غير صالحة";
   }
 

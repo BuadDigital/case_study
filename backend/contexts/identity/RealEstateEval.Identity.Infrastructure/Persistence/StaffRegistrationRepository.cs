@@ -252,6 +252,7 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
         NationalId = row.NationalId,
         AvatarUrl = row.AvatarUrl,
         InspectorType = row.InspectorType,
+        CaseSpecialistSubRoles = row.CaseSpecialistSubRoles,
         HasCompensation = row.HasCompensation,
         FeeValueSar = row.FeeValueSar,
         Iban = row.Iban,
@@ -282,6 +283,7 @@ public sealed class StaffRegistrationRepository : IStaffRegistrationRepository
         row.NationalId = profile.NationalId;
         row.AvatarUrl = profile.AvatarUrl;
         row.InspectorType = profile.InspectorType;
+        row.CaseSpecialistSubRoles = profile.CaseSpecialistSubRoles;
         row.HasCompensation = profile.HasCompensation;
         row.FeeValueSar = profile.FeeValueSar;
         row.Iban = profile.Iban;

@@ -21,16 +21,18 @@ public sealed record PartyChildSpec(
 public static class WorkflowTaskDistributionRules
 {
     /// <summary>
-    /// Inspector + appraiser + specialist are always on the case-study path. ValuationDepartment
-    /// remains a stored picker / permissions flag, not a spawn gate; the engineering office only
-    /// stays when the property needs a survey.
+    /// Inspector + appraiser are always on the case-study path. ValuationDepartment remains a stored
+    /// picker / permissions flag, not a spawn gate; the engineering office only stays when the
+    /// property needs a survey. No case specialist is named any more (ruling 2026-11-02): every
+    /// specialist stage is a shared queue of its sub-role, so a sent specialist seat is dropped.
     /// </summary>
     public static TaskDistributionDraftDto ApplyConfirmDefaults(
         TaskDistributionDraftDto distribution,
         bool propertyRequiresSurvey)
     {
         distribution.ValuationDepartment = true;
-        distribution.CaseSpecialist = true;
+        distribution.CaseSpecialist = false;
+        distribution.CaseSpecialistId = "";
         if (!propertyRequiresSurvey)
         {
             distribution.EngineeringOffice = false;
@@ -42,8 +44,6 @@ public static class WorkflowTaskDistributionRules
     /// <summary>First missing mandatory assignee, in the order the screen asks for them.</summary>
     public static string? ConfirmAssigneeError(TaskDistributionDraftDto distribution)
     {
-        if (string.IsNullOrWhiteSpace(distribution.CaseSpecialistId))
-            return "اختر أخصائي دراسة الحالة.";
         if (string.IsNullOrWhiteSpace(distribution.InspectorId))
             return "اختر المعاين الميداني.";
         if (string.IsNullOrWhiteSpace(distribution.ValuatorId))
@@ -65,16 +65,6 @@ public static class WorkflowTaskDistributionRules
         new(distribution.EngineeringOffice, WorkflowTaskKind.EngineeringSurvey, StaffRoleIds.EngineeringOffice,
             distribution.EngineeringOfficeId, "مكتب هندسي"),
     ];
-
-    /// <summary>The shell keys the specialist's name by the parent kind or by the role id.</summary>
-    public static string ResolveSpecialistName(Dictionary<string, string> names) =>
-        names.TryGetValue(WorkflowTaskKindValues.CaseStudyProperty, out var named) &&
-        !string.IsNullOrWhiteSpace(named)
-            ? named.Trim()
-            : names.TryGetValue(StaffRoleIds.CaseSpecialist, out var named2) &&
-              !string.IsNullOrWhiteSpace(named2)
-                ? named2.Trim()
-                : "أخصائي دراسة حالة";
 
     public static string ConfirmedParentTitle(string deed, string po) =>
         $"دراسة حالة — {(string.IsNullOrEmpty(deed) ? po : deed)}";
@@ -158,21 +148,7 @@ public static class WorkflowTaskDistributionRules
         };
     }
 
-    public static CreateUserNotificationRequest CaseSpecialistAssignedRequest(WorkflowTask parent, string refLabel)
-    {
-        var id = Uri.EscapeDataString(parent.Id.ToString());
-        return new CreateUserNotificationRequest
-        {
-            Title = "معاملة دراسة حالة بانتظارك",
-            Body = $"أُسندت إليك دراسة حالة العقار على {refLabel}.",
-            Tone = "info",
-            Href = $"/case-study/{id}",
-            Category = "workflow",
-            EntityType = "task",
-            EntityId = parent.Id.ToString(),
-            SourceEvent = $"distribution-assigned-specialist:{parent.Id}",
-        };
-    }
+
 
     /// <summary>
     /// Redistribution overwrites the child's assignee, so the party who held it keeps the work

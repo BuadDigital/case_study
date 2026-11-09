@@ -5,30 +5,49 @@ import {
   type PrototypeModulesApiConfig,
 } from "@platform/api-client";
 import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
+import { printKeyForDocumentType } from "@platform/app-shared/app-data/valuation-print-attachment-keys";
 import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { pdfBlobToFirstPageDataUrl } from "@platform/app-shared/media/pdf-first-page-preview";
 import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
 
-/** Mirrors backend `AttachmentPrintRules` for client-side report fill. */
+/**
+ * Mirrors backend `AttachmentPrintRules.TypeKeyFor` for client-side report fill: the stored
+ * registry type decides first, the upload scope only for rows without one.
+ *
+ * Edge cases + what was fixed (2026-11-02): an assignment («قرار الإسناد») or delegation
+ * («تفويض») letter is never the deed. Their scopes used to map to "deed", and the deed slot
+ * takes the oldest row, so a delegation letter uploaded before the deed printed in «صك الملكية».
+ */
+export function attachmentTypeKeyFor(
+  scope: string | null | undefined,
+  documentTypeKey: string | null | undefined,
+): string | null {
+  const type = (documentTypeKey ?? "").trim().toLowerCase();
+  if (!type) return attachmentTypeKeyFromScope(scope);
+  if (type === "inspection-photo") return "photo";
+  if (type === "site-letter") return "site-map";
+  return printKeyForDocumentType(type);
+}
+
+/** Scope-only routing for uploads with no stored document type (backend legacy routing). */
 export function attachmentTypeKeyFromScope(scope: string | null | undefined): string | null {
   const s = (scope ?? "").trim().toLowerCase();
   if (!s) return null;
   if (
-    s === "property-decree" ||
     s === "property-deed-ownership" ||
     s === "property-registry" ||
-    s === "property-delegation" ||
     s === "property-bourse-deed"
   ) {
     return "deed";
   }
+  if (s === "property-decree" || s === "property-delegation") return null;
   if (s === "engineering-survey-report" || s === "property-boundaries") {
     return "survey";
   }
   if (s === "field-inspection-photo") return "photo";
   if (s === "engineering-site-letter") return "site-map";
   if (s.includes("photo")) return "photo";
-  if (s.includes("deed") || s.includes("decree") || s.includes("registry")) {
+  if (s.includes("deed") || s.includes("registry")) {
     return "deed";
   }
   if (s.includes("survey") || s.includes("boundar")) return "survey";
@@ -100,7 +119,7 @@ function classifyRows(
   const siteMaps: FileAttachmentMetaDto[] = [];
 
   for (const row of ordered) {
-    const typeKey = attachmentTypeKeyFromScope(row.scope);
+    const typeKey = attachmentTypeKeyFor(row.scope, row.documentTypeKey);
     if (!typeKey) continue;
     if (typeKey === "photo" || typeKey === "photos" || typeKey === "property-photo") {
       if (photos.length < budget) photos.push(row);

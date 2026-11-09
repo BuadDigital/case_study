@@ -46,6 +46,7 @@ export const CostApproachSection = memo(function CostApproachSection({
   isApartmentProperty,
   deedArea,
   costBasisKey,
+  ownershipInterestKey = null,
   saving,
   locked = false,
   onSavingChange,
@@ -63,6 +64,8 @@ export const CostApproachSection = memo(function CostApproachSection({
   /** The deed area — seeds the plot box when the deed is the land itself. */
   deedArea?: string | null;
   costBasisKey: string;
+  /** The interest valued (freehold / usufruct / leased_land) — words the age card's lease-cap note. */
+  ownershipInterestKey?: string | null;
   saving: boolean;
   locked?: boolean;
   onSavingChange: (saving: boolean) => void;
@@ -165,7 +168,12 @@ export const CostApproachSection = memo(function CostApproachSection({
           directTotal={totals.directTotal}
           derived={derived}
         />
-        <CostAgeCard derived={derived} fields={fields} setField={setField} />
+        <CostAgeCard
+          derived={derived}
+          fields={fields}
+          setField={setField}
+          ownershipInterestKey={ownershipInterestKey}
+        />
       </div>
 
       <CostResultsCard

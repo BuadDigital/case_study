@@ -1,9 +1,6 @@
 import { notifyTasksChanged } from "@case-study/mfe/lib/app-data/tasks";
 import {
   dispatchWorkflowSubmitted,
-  ENGINEERING_SURVEY_ACCEPTED_EVENT,
-  ENGINEERING_SURVEY_RETURNED_EVENT,
-  ENGINEERING_SURVEY_SUBMITTED_EVENT,
 } from "@platform/app-shared/app-data/party-workflow-events";
 import {
   getCachedPartySubmission,
@@ -90,6 +87,11 @@ export async function getOrCreateEngineeringSurveyDraft(input: {
 }
 
 export { awaitEngineeringSurveyDraftWrites } from "./engineering-survey-draft-write-queue";
+import {
+  ENGINEERING_SURVEY_ACCEPTED_EVENT,
+  ENGINEERING_SURVEY_RETURNED_EVENT,
+  ENGINEERING_SURVEY_SUBMITTED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 /** Serialised per task — see engineering-survey-draft-write-queue.ts. */
 export function updateEngineeringSurveyDraft(

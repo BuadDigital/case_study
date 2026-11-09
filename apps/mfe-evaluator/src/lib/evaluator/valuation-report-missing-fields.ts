@@ -117,7 +117,7 @@ const KEYED_FIELDS: Record<string, Record<string, FieldOrigin>> = {
     "تاريخ الصك": INTAKE,
     "رقم رخصة البناء": INSPECTOR,
     "تاريخ رخصة البناء": INSPECTOR,
-    // عمر البناء / عمر العقار — مشتقّان في التقرير من تاريخ الرخصة (لا يُعلَّمان كحقل إدخال).
+    // عمر البناء / عمر العقار — عمر المعاين، وإلا من تاريخ الرخصة (لا يُعلَّمان كحقل إدخال).
     "حالة البناء": INSPECTOR,
     "حالة الإشغال": INSPECTOR,
   },
@@ -133,7 +133,9 @@ const KEYED_FIELDS: Record<string, Record<string, FieldOrigin>> = {
   "20": {
     "سعر المتر المستورد من طريقة المقارنة": COST,
     "سعر متر الأرض من مقارنات الأراضي الفضاء": COST,
-    "مساحة الأرض (م²)": INTAKE,
+    // The plot the cost approach multiplies — saved on «طريقة المقاول» (2026-11-04: it was blamed
+    // on the intake, so a click asked the specialist for an area the deed already had).
+    "مساحة الأرض (م²)": COST,
     "قيمة الأرض": COST,
   },
   "23": {

@@ -27,12 +27,11 @@ import {
   type CaseStudyQuestionSection,
 } from "../../lib/app-data/case-study-report-data";
 import {
-  PARTY_CASE_STUDY_REPORT_CHANGED_EVENT,
   type CaseStudyReportDraft,
-} from "../../lib/app-data/case-study-report-model";
+} from "@platform/app-shared/app-data/case-study-report-model";
 import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
-import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
-import { openHtmlDocumentInNewTab } from "../../lib/open-html-document";
+import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-render";
+import { openHtmlDocumentInNewTab } from "@platform/app-shared/media/open-html-document";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import { isGuidPropertyId } from "../../lib/app-data/po-intake-model";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
@@ -40,6 +39,7 @@ import { caseStudyWorkspacePath } from "../../lib/my-task-routes";
 import { canOpenCaseStudyWorkspace } from "../../lib/app-data/viewer-task-access";
 import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import { EmptyState, InfoBox } from "./PropertyDetailFields";
+import { PARTY_CASE_STUDY_REPORT_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 const SECTION_AR_NUMS: Record<CaseStudyQuestionSection, string> = {
   deed: "1",
   survey: "2",

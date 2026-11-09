@@ -2,7 +2,7 @@ import type {
   DelegationAgentInfo,
   InternalDelegationLetter,
 } from "./internal-delegation-letters";
-import { openHtmlDocumentInNewTab } from "../open-html-document";
+import { openHtmlDocumentInNewTab } from "@platform/app-shared/media/open-html-document";
 import { caseStudyProviderName } from "./case-study-report-data";
 import {
   ensureOrganizationSettingsLoaded,

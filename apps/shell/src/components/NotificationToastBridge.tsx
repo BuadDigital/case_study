@@ -4,11 +4,13 @@ import { useEffect } from "react";
 import { useOptionalToast, type ToastTone } from "@platform/ui-kit";
 import { useAuth } from "@platform/app-shared/hooks/useAuth";
 import {
-  NOTIFICATION_PUSHED_EVENT,
-  NOTIFICATION_TOAST_EVENT,
   type AppNotification,
 } from "@platform/app-shared/notifications/notification-store";
 import { shouldShowNotificationToast } from "@platform/app-shared/notifications/role-notification-policy";
+import {
+  NOTIFICATION_PUSHED_EVENT,
+  NOTIFICATION_TOAST_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 function toastToneForNotification(
   tone: AppNotification["tone"],

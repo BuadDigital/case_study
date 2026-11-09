@@ -48,7 +48,7 @@ describe("withGovernedDocumentsSection", () => {
     expect(next).toBe(sections);
   });
 });
-import { createInspectorWorkspaceDraft } from "../inspector-workspace-data";
+import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 
 describe("inspectorFeaturePhotoLabel", () => {
   it("maps known feature keys to Arabic", () => {

@@ -7,7 +7,6 @@ import { createKeyedWriteQueue } from "@platform/app-shared/lib/keyed-write-queu
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
   dispatchWorkflowSubmitted,
-  EVALUATOR_SUBMITTED_EVENT,
 } from "@platform/app-shared/app-data/party-workflow-events";
 import { loadPartyCaseStudyReportDraft } from "../../lib/case-study-bridge";
 import { mergeEvaluatorChecklistFromCaseStudy } from "./evaluator-checklist-case-study-sync";
@@ -23,6 +22,7 @@ import {
   type EvaluatorPlanImageMetadata,
   type EvaluatorReportMetadata,
 } from "./evaluator-submission-model";
+import { EVALUATOR_SUBMITTED_EVENT } from "@platform/app-shared/events/app-events";
 
 /**
  * Every evaluator draft write reads the cached submission, folds its change in

@@ -17,7 +17,7 @@ import {
 import {
   pdfBlobToFirstPageDataUrl,
   pdfFileToFirstPageDataUrl,
-} from "./pdf-first-page-preview";
+} from "@platform/app-shared/media/pdf-first-page-preview";
 import {
   prepareEvidencePhotoUpload,
   type EvidencePhotoMetadata,

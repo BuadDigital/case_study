@@ -71,8 +71,40 @@ export const DEED_MATCH_OVERRIDE_REASON_MIN = 10;
 
 export const DEED_MATCH_OVERRIDE_REASON_MESSAGE = `سبب اعتماد «مطابق» خلافاً لرأي المعاين مطلوب (${DEED_MATCH_OVERRIDE_REASON_MIN} أحرف على الأقل)`;
 
+/** Who said «غير مطابق» that «مطابق» now goes against (A→Z 2026-11-02 #20: the engineering office too). */
+export type DeedMatchDissent = "inspector" | "office" | "both";
+
 /**
- * «مطابق» chosen while the inspector said «غير مطابق» (2026-10-29 ruling): the reason, kept in the
+ * Who said «غير مطابق», as the reason's label names them — or null when nobody did.
+ *
+ * How it works: the inspector's «غير مطابق» and the engineering office's submitted «الصك غير مطابق للطبيعة»
+ * combine into one of «المعاين», «المكتب الهندسي», «المعاين والمكتب الهندسي».
+ *
+ * Edge cases: added A→Z 2026-11-02 #20 — «مطابق» against the office alone used to need no reason.
+ */
+export function deedMatchDissent(inspectorSaidNo: boolean, officeSaidNo: boolean): DeedMatchDissent | null {
+  if (inspectorSaidNo && officeSaidNo) return "both";
+  if (inspectorSaidNo) return "inspector";
+  return officeSaidNo ? "office" : null;
+}
+
+/** The party (or parties) a dissent names, for the reason's label and message. */
+export function deedMatchDissentLabel(dissent: DeedMatchDissent | null | undefined): string {
+  if (dissent === "office") return "المكتب الهندسي";
+  if (dissent === "both") return "المعاين والمكتب الهندسي";
+  return "المعاين";
+}
+
+/** The «reason required» message against whoever said «غير مطابق» — twin of the server's two messages. */
+export function deedMatchOverrideReasonMessage(dissent: DeedMatchDissent | null | undefined): string {
+  return dissent === "office"
+    ? `سبب اعتماد «مطابق» خلافاً لرأي المكتب الهندسي مطلوب (${DEED_MATCH_OVERRIDE_REASON_MIN} أحرف على الأقل)`
+    : DEED_MATCH_OVERRIDE_REASON_MESSAGE;
+}
+
+/**
+ * «مطابق» chosen while the inspector — or, since A→Z 2026-11-02 #20, the engineering office (pass true for
+ * either) — said «غير مطابق» (2026-10-29 ruling): the reason, kept in the
  * match notes, must be at least DEED_MATCH_OVERRIDE_REASON_MIN characters. Twin of the server's
  * CaseStudyReportDeedNatureMatchRules.ValidateForSave(inspectorSaidNotMatched).
  */

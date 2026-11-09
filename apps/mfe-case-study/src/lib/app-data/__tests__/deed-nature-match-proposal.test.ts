@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
-import { createInspectorWorkspaceDraft } from "../inspector-workspace-data";
+import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   inspectorBoundariesIndicateMismatch,
   inspectorMismatchNotesText,

@@ -22,7 +22,7 @@ public partial class CaseStudyReportService
     private const int MaxReopenReasonLength = 1000;
 
     public const string IssueRoleDeniedAr =
-        "ليس لديك صلاحية إصدار تقرير دراسة الحالة — الإصدار لأخصائي دراسة الحالة";
+        "ليس لديك صلاحية إرسال الدراسة للمراجع والمقيّم — الإرسال لدارس العقار";
 
     public const string ReopenRoleDeniedAr =
         "ليس لديك صلاحية إعادة فتح تقرير دراسة الحالة — الإعادة لأخصائي دراسة الحالة";
@@ -50,13 +50,16 @@ public partial class CaseStudyReportService
     /// clean tracker, then answers «تم تحديث النموذج من جلسة أخرى».
     /// Edge cases: an ordinary single-deed property resolves to its own task, unchanged.
     /// </remarks>
+    public const string NotReceivedAr =
+        "لم تُرسَل المعاملة للدراسة بعد — يرسلها أخصائي التنسيق قبل إنهاء الدراسة.";
+
     public async Task<(CaseStudyReportDto? Result, Dictionary<string, string>? Errors)> IssueAsync(
         Guid taskId,
         CaseStudyReportDto report,
         CaseStudyReportActor? actor = null,
         CancellationToken cancellationToken = default)
     {
-        if (actor is not null && !PoRoleMatrixRules.CanIssueCaseStudyReport(actor.PrototypeRole))
+        if (actor is not null && !PoRoleMatrixRules.CanFinishStudy(actor.Staff))
             return (null, Fail(IssueRoleDeniedAr));
 
         // Phase 4: the transaction's one study is issued from the holder deed's task, whichever deed asked.
@@ -118,6 +121,10 @@ public partial class CaseStudyReportService
         if (alreadyIssued && task.Status == WorkflowTaskStatus.Completed)
             return (ToDto(existing!), null);
 
+        // Ruling 2026-11-02: the study starts after coordination's formal receipt of the parties' work.
+        if (!alreadyIssued && !await _db.IsTransactionReceivedAsync(task.PropertyId, cancellationToken))
+            return (null, Fail(NotReceivedAr));
+
         var propertyId = ResolvePropertyId(report, existing, task);
 
         // Phase 4: every live deed of the transaction completes with the one study (the holder first).
@@ -134,12 +141,8 @@ public partial class CaseStudyReportService
             }
         }
 
-        // Gate 1b — the inspector's corrected type needs a survey nobody was given (2026-10-29).
-        foreach (var parent in parents)
-        {
-            if (await SurveyMissingAfterTypeChangeAsync(parent, cancellationToken))
-                return (null, Fail(PartyTaskSubmissionService.SurveyNeededAfterTypeChangeAr));
-        }
+        // A survey the inspector's corrected type needs never blocks the issue (Omar 2026-11-04): the
+        // «إضافة رفع مساحي» note on «مدخلات المعاين» reminds the specialist; the choice is theirs.
 
         // Re-entry after a half-applied legacy issue: the report is issued but the parent is still
         // open (or its party forms were never locked). Finish the job; nothing else changes.
@@ -159,6 +162,19 @@ public partial class CaseStudyReportService
             return (ToDto(existing!), null);
         }
 
+        // «مكونات العقار» is the study's (Omar 2026-11-08): every deed of the transaction carries its text
+        // before the study is issued — it was the inspection's acceptance condition while the study
+        // accepted the inspection; the acceptance is coordination's now.
+        foreach (var parent in parents)
+        {
+            var deedId = parent.Id == task.Id ? propertyId : parent.PropertyId;
+            if (deedId is not Guid componentsPropertyId) continue;
+            var deed = await _db.GetPropertyForUpdateAsync(componentsPropertyId, cancellationToken);
+            if (deed is null) continue;
+            var missingComponents = SpecialistComponentsRules.MissingBeforeStudyIssue(deed);
+            if (missingComponents.Count > 0) return (null, missingComponents);
+        }
+
         // A traditional deed's report needs the specialist's deed ↔ nature outcome before it is
         // issued (the issue locks the field, and the valuation gate needs it); the field's own validity
         // (a known token; notes when فروق / تعذّر) is checked as on every save.
@@ -166,7 +182,8 @@ public partial class CaseStudyReportService
             report.DeedNatureMatchOutcome,
             report.DeedNatureMatchNotes,
             await TransactionDeedKindsAsync(parents, task, propertyId, cancellationToken),
-            await InspectorSaidNotMatchedAsync(task.Id, cancellationToken));
+            await InspectorSaidNotMatchedAsync(task.Id, cancellationToken),
+            await OfficeSaidNotMatchedAsync(task.Id, cancellationToken));
         if (matchErrors is not null) return (null, matchErrors);
 
         // Gate 2 — 100% of the questions the matrix asks, from the answers in THIS request.
@@ -269,10 +286,80 @@ public partial class CaseStudyReportService
             },
             cancellationToken);
 
+        // Omar 2026-11-08: issuing is the study's «إرسال الدراسة للمراجع» — the transaction waits for review
+        // to approve the study (the data stays open to every specialist until then).
+        await MoveReviewStateAsync(propertyId, TransactionReviewStates.Handed, actor, now, cancellationToken);
+
         await NotifyAppraiserStudyReportIssuedAsync(entity!, propertyId, cancellationToken);
         await NotifyAppraiserOnMatchOutcomeAsync(taskId, entity!, previousMatchOutcome, cancellationToken);
 
         return (ToDto(entity!), null);
+    }
+
+    public const string ApproveStudyRoleDeniedAr = "اعتماد الدراسة للمراجع (المراجعة والاعتماد والرفع)";
+    public const string ApproveStudyNotSentAr = "لم يُرسل دارس العقار الدراسة للمراجع بعد";
+
+    /// <summary>
+    /// Review approves the study sent to it (Omar 2026-11-08) — from then on the transaction's data is locked
+    /// for everyone until review returns the study (a reopen with a reason) or the transaction is reopened.
+    /// </summary>
+    /// <remarks>
+    /// How it works: review only; the transaction's one study (from whichever deed) must be issued; the
+    /// transaction moves to «approved»; a timeline row on the deed and an audit row.
+    /// Edge cases: approving again keeps the first stamp and answers the current report; no transaction
+    /// service wired (tests) → nothing to stamp, the report is answered as is.
+    /// </remarks>
+    public async Task<(CaseStudyReportDto? Result, Dictionary<string, string>? Errors)> ApproveStudyAsync(
+        Guid taskId,
+        CaseStudyReportActor actor,
+        CancellationToken cancellationToken = default)
+    {
+        if (!PoRoleMatrixRules.CanReviewTransaction(actor.Staff))
+            return (null, Fail(ApproveStudyRoleDeniedAr));
+        taskId = await _db.ResolveStudyTaskIdAsync(taskId, cancellationToken);
+        var task = await _db.GetTaskAsync(taskId, cancellationToken);
+        if (task is null) return (null, null);
+        var report = await _db.GetFormAsync(taskId, party: false, track: false, cancellationToken);
+        if (report is null || !IsIssuedStatus(report.Status)) return (null, Fail(ApproveStudyNotSentAr));
+
+        var propertyId = report.PropertyId ?? task.PropertyId;
+        var now = _time.UtcNow();
+        var moveError = await MoveReviewStateAsync(propertyId, TransactionReviewStates.Approved, actor, now, cancellationToken);
+        if (moveError is not null) return (null, Fail(moveError));
+
+        if (_timeline is not null && propertyId is Guid timelineId)
+        {
+            await _timeline.RecordAsync(
+                task.PoNumber,
+                timelineId,
+                $"case-study-report:{taskId}:approved:{now:O}",
+                "اعتماد المراجع للدراسة",
+                string.IsNullOrWhiteSpace(actor.DisplayName) ? null : actor.DisplayName.Trim(),
+                PropertyTimelineTones.Done,
+                now,
+                cancellationToken);
+        }
+        await AuditAsync(
+            actor,
+            "case-study.report.study-approved",
+            report,
+            before: new { reviewState = TransactionReviewStates.Handed },
+            after: new { reviewState = TransactionReviewStates.Approved, taskId, propertyId },
+            cancellationToken);
+        return (ToDto(report), null);
+    }
+
+    /// <summary>Moves the transaction's review state; returns the Arabic error, or null (no service → null).</summary>
+    private async Task<string?> MoveReviewStateAsync(
+        Guid? propertyId,
+        string state,
+        CaseStudyReportActor? actor,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        if (_transactions is null || propertyId is not Guid id) return null;
+        var (_, error) = await _transactions.SetReviewStateAsync(id, state, actor?.UserId, now, cancellationToken);
+        return error;
     }
 
     // -------------------------------------------------------------- helpers

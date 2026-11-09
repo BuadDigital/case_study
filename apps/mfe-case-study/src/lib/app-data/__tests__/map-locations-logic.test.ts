@@ -9,6 +9,7 @@ import {
   isReportExpired,
   nearbyOf,
   partitionProperties,
+  spreadSameSpot,
   isFailureRecord,
   pricePerSqm,
   propertyCard,
@@ -432,5 +433,23 @@ describe("map-locations-logic", () => {
     const a = { lat: 24.7136, lng: 46.6753 };
     expect(haversineKm(a, a)).toBe(0);
     expect(haversineKm(a, { lat: 21.5433, lng: 39.1728 })).toBeGreaterThan(800);
+  });
+});
+
+describe("spreadSameSpot (Omar 2026-11-09)", () => {
+  const at = (id: string, lat: number, lng: number) => ({ id, coords: { lat, lng } });
+
+  it("keeps a lone point where it is and parts the points sharing one spot", () => {
+    const drawn = spreadSameSpot([at("a", 24.8, 46.6), at("b", 24.8, 46.6), at("c", 24.81, 46.6)]);
+    expect(drawn.get("c")).toEqual({ lat: 24.81, lng: 46.6 });
+    const a = drawn.get("a")!;
+    const b = drawn.get("b")!;
+    expect(a).not.toEqual(b);
+    // About 20 m from the spot each.
+    for (const p of [a, b]) {
+      const metres = Math.hypot((p.lat - 24.8) * 111_320, (p.lng - 46.6) * 111_320 * Math.cos((24.8 * Math.PI) / 180));
+      expect(metres).toBeGreaterThan(19);
+      expect(metres).toBeLessThan(21);
+    }
   });
 });

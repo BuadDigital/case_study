@@ -5,11 +5,11 @@ import {
   formatPropertyDeedDisplay,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
-import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "../../lib/app-data/inspector-workspace-model";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
 import { getOrCreateInspectorWorkspace } from "../../lib/app-data/inspector-workspace-commands";
-import type { InspectorWorkspaceDraft } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
+import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 /**
  * Loads the inspection draft for `PropertyDetailInspectionTab`: the editable

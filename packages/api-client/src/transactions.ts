@@ -9,16 +9,18 @@ import type { ApiErr, ApiOk, PropertyTimelineEventDto, WorkOrdersApiConfig } fro
  */
 export type TransactionDto = {
   id: string;
-  /** TMP-{YY}-{seq}; shown until the official reference exists. */
-  draftNumber: string;
-  /** PR-{YY}-{seq}; null until the first report approval. */
+  /**
+   * The property's number (ruling 2026-11-08): a single deed's own PR-{YY}-{seq}, a linked property's
+   * PR-{YY}-{seq}-L («رقم العقار المرتبط»); null until a deed is numbered.
+   */
   referenceNumber?: string | null;
-  /** The number people see: the official reference once confirmed, else the draft number. */
+  /** The number people see: `referenceNumber`, or "" while none exists. */
   displayNumber: string;
+  /** When the number was locked — the first approved report (or the Enfaz handover); null before. */
   confirmedAtUtc?: string | null;
-  /** PRC-… when confirmed. */
+  /** PRC-… derived from the property number. */
   caseStudyReportNumber?: string | null;
-  /** PRV-… when confirmed. */
+  /** PRV-… derived from the property number. */
   valuationReportNumber?: string | null;
   /** one_building | contract; null for a single deed. */
   linkKind?: string | null;
@@ -31,6 +33,8 @@ export type TransactionDto = {
 export type TransactionDeedDto = {
   propertyId: string;
   poNumber: string;
+  /** «رقم المعاملة» — the deed's own PR number; null while it waits for its initial data. */
+  referenceNumber?: string | null;
   identifierType?: string;
   deedNumber: string;
   deedDate?: string | null;
@@ -100,6 +104,13 @@ export type TransactionDetailDto = TransactionDto & {
   studyHolderPropertyId?: string | null;
   /** Phase 4: that parent task — the study workspace route — when it exists. */
   studyHolderTaskId?: string | null;
+  /** Coordination's formal receipt (ruling 2026-11-02); null while not received. */
+  receivedAtUtc?: string | null;
+  receivedByName?: string | null;
+  /** «يعمل عليها الآن»: the last specialist who opened or saved it (information only). */
+  workingByUserId?: string | null;
+  workingByName?: string | null;
+  workingAtUtc?: string | null;
 };
 
 /** A transaction timeline event also says which deed it belongs to. */
@@ -268,13 +279,150 @@ export async function mergeTransactions(
 }
 
 /**
- * Take one deed out of the transaction into a new draft transaction (only before the official number).
+ * «إرسال المعاملة للدراسة»: coordination receives the deed's transaction from the parties (ruling 2026-11-02).
  *
- * How it works: POST `/api/transactions/{id}/unmerge-deed` with the deed and the reason; the
- * server gives the deed a fresh TMP transaction (and its own valuation request back) and returns
- * the remaining transaction's detail.
+ * How it works: POST `/api/transactions/by-property/{propertyId}/receive`; a 400 carries the reasons
+ * (an undelivered party, the wrong stage, already received) as the problem message.
+ */
+export async function receiveTransaction(
+  config: WorkOrdersApiConfig,
+  propertyId: string,
+): Promise<ApiOk<{ received: boolean; receivedAtUtc?: string | null; receivedByName?: string | null }> | CommandErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const id = encodeURIComponent(propertyId.trim());
+  try {
+    const res = await fetch(`${base}/api/transactions/by-property/${id}/receive`, {
+      method: "POST",
+      headers: authHeaders(config.token, { json: true }),
+    });
+    return await readCommand(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** One delivery awaited from a party outside the system (Omar 2026-11-08). */
+export type TransactionExternalReceiptDto = {
+  id: string;
+  partyName: string;
+  awaited: string;
+  status: "pending" | "received" | "cancelled";
+  createdAtUtc: string;
+  createdByName?: string | null;
+  receivedAtUtc?: string | null;
+  receivedByName?: string | null;
+  note?: string | null;
+};
+
+/**
+ * The deliveries the deed's transaction awaits from outside the system — GET
+ * `/api/transactions/by-property/{propertyId}/external-receipts`. A deed without a transaction → `not_found`.
+ */
+export async function listTransactionExternalReceipts(
+  config: WorkOrdersApiConfig,
+  propertyId: string,
+): Promise<ApiOk<TransactionExternalReceiptDto[]> | ApiErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const id = encodeURIComponent(propertyId.trim());
+  try {
+    const res = await fetch(`${base}/api/transactions/by-property/${id}/external-receipts`, {
+      headers: authHeaders(config.token),
+    });
+    return await readJson<TransactionExternalReceiptDto[]>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** «إضافة استلام من طرف خارجي» — POST; a 400 carries the refusal (role, already sent, blanks). */
+export async function addTransactionExternalReceipt(
+  config: WorkOrdersApiConfig,
+  propertyId: string,
+  body: { partyName: string; awaited: string },
+): Promise<ApiOk<TransactionExternalReceiptDto> | CommandErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const id = encodeURIComponent(propertyId.trim());
+  try {
+    const res = await fetch(`${base}/api/transactions/by-property/${id}/external-receipts`, {
+      method: "POST",
+      headers: authHeaders(config.token, { json: true }),
+      body: JSON.stringify(body),
+    });
+    return await readCommand<TransactionExternalReceiptDto>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** The external delivery arrived (`received`) or is no longer awaited (`cancel`), with an optional word. */
+export async function closeTransactionExternalReceipt(
+  config: WorkOrdersApiConfig,
+  receiptId: string,
+  outcome: "received" | "cancel",
+  note?: string,
+): Promise<ApiOk<TransactionExternalReceiptDto> | CommandErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const id = encodeURIComponent(receiptId.trim());
+  try {
+    const res = await fetch(`${base}/api/transactions/external-receipts/${id}/${outcome}`, {
+      method: "POST",
+      headers: authHeaders(config.token, { json: true }),
+      body: JSON.stringify({ note: note?.trim() || null }),
+    });
+    return await readCommand<TransactionExternalReceiptDto>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/** Change how a multi-deed transaction is linked — the stage owner (PATCH `/api/transactions/{id}/link-kind`). */
+export async function changeTransactionLinkKind(
+  config: WorkOrdersApiConfig,
+  transactionId: string,
+  body: { linkKind: TransactionLinkKind; reason: string },
+): Promise<ApiOk<TransactionDetailDto> | CommandErr> {
+  const base = config.baseUrl ?? getApiBase();
+  const id = encodeURIComponent(transactionId.trim());
+  try {
+    const res = await fetch(`${base}/api/transactions/${id}/link-kind`, {
+      method: "PATCH",
+      headers: authHeaders(config.token, { json: true }),
+      body: JSON.stringify(body),
+    });
+    return await readCommand<TransactionDetailDto>(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/**
+ * «يعمل عليها الآن» heartbeat (POST `/api/transactions/{id}/working`). Fire-and-forget: failures are
+ * swallowed — the marker is information only.
+ */
+export async function markTransactionWorking(
+  config: WorkOrdersApiConfig,
+  transactionId: string,
+): Promise<void> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    await fetch(`${base}/api/transactions/${encodeURIComponent(transactionId.trim())}/working`, {
+      method: "POST",
+      headers: authHeaders(config.token, { json: true }),
+    });
+  } catch {
+    // Information only.
+  }
+}
+
+/**
+ * Take one deed out of a linked property — it becomes a single property under its own number (only
+ * before the first report is approved).
  *
- * Edge cases: once the official PR reference exists the server refuses, with its Arabic
+ * How it works: POST `/api/transactions/{id}/unmerge-deed` with the deed and the reason; the server
+ * moves the deed to its own transaction (and gives it its own valuation request back), recomputes the
+ * linked number, and returns the remaining property's detail.
+ *
+ * Edge cases: once a report is approved (`confirmedAtUtc` set) the server refuses, with its Arabic
  * message.
  */
 export async function unmergeTransactionDeed(

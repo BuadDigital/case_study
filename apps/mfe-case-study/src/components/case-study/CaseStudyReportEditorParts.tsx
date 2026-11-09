@@ -17,7 +17,6 @@ import {
  * progress rings, the party matrix banner and the specialist closing cards.
  * All state stays in the form workflow.
  */
-
 export function RemarksBlock({
   label,
   value,
@@ -131,34 +130,47 @@ export function DeedMatchIssueHint({
 }
 
 /**
- * Status line of an issued report with the specialist's reopen action. Rendered outside the
- * read-only wrapper (`pointer-events-none`) so the button stays clickable.
+ * Status line of a sent study with its actions (Omar 2026-11-08). Rendered outside the read-only
+ * wrapper (`pointer-events-none`) so the buttons stay clickable.
+ *
+ * How it works: «عند المراجع» until review approves it — review approves («اعتماد الدراسة») or returns it
+ * («إرجاع للدراسة»), the study takes it back («استرجاع الدراسة»); once approved only review returns it.
+ * Edge cases: `onApprove` absent → no approve button (not review, or approved already).
  */
 export function CaseStudyIssuedBar({
-  canReopen,
+  approved,
+  reopenLabel,
   onReopen,
+  onApprove,
+  approving = false,
 }: {
-  canReopen: boolean;
+  approved: boolean;
+  /** The reopen button's label, or null when the viewer may not reopen now. */
+  reopenLabel: string | null;
   onReopen: () => void;
+  onApprove?: () => void;
+  approving?: boolean;
 }) {
   return (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2.5 rounded-[10px] border border-border bg-surface-2/50 px-3.5 py-2.5">
-      <span className="inline-flex items-center gap-2 text-[12.5px] text-text-2">
-        حالة التقرير
-        <Badge tone="success" dot>
-          صادر
+      <span className="inline-flex items-center gap-2 text-[12.5px] text-text-2" data-testid="case-study-review-state">
+        حالة الدراسة
+        <Badge tone={approved ? "success" : "info"} dot>
+          {approved ? "اعتمدها المراجع" : "عند المراجع"}
         </Badge>
       </span>
-      {canReopen ? (
-        <Button
-          variant="dangerOutline"
-          size="sm"
-          showActionToast={false}
-          onClick={onReopen}
-        >
-          إعادة فتح التقرير
-        </Button>
-      ) : null}
+      <span className="inline-flex flex-wrap gap-2">
+        {reopenLabel ? (
+          <Button variant="dangerOutline" size="sm" showActionToast={false} disabled={approving} onClick={onReopen}>
+            {reopenLabel}
+          </Button>
+        ) : null}
+        {onApprove ? (
+          <Button variant="primary" size="sm" showActionToast={false} loading={approving} onClick={onApprove}>
+            اعتماد الدراسة
+          </Button>
+        ) : null}
+      </span>
     </div>
   );
 }

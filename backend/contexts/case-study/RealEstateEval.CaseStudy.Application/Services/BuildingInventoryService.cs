@@ -35,12 +35,12 @@ public class BuildingInventoryService(IBuildingInventoryRepository db,
         CancellationToken cancellationToken)
     {
         // Staff never needs the task facts, so skip the query for them.
-        if (PoRoleMatrixRules.CanManagePartySubmissions(actor.PrototypeRole))
+        if (PoRoleMatrixRules.CanAcceptPartyWork(actor.Staff))
             return BuildingInventoryWriteAccess.Staff;
 
         var facts = await db.GetFieldInspectionWriteFactsAsync(poNumber, propertyId, cancellationToken);
         return BuildingInventoryWriteRules.Resolve(
-            actor.PrototypeRole, actor.UserId, actor.DistributionAssigneeId, facts);
+            actor.Staff, actor.UserId, actor.DistributionAssigneeId, facts);
     }
 
     public async Task<bool> CanReadAsync(

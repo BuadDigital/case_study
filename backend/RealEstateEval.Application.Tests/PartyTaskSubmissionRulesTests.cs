@@ -18,7 +18,14 @@ public class PartyTaskSubmissionRulesTests
         WorkflowTask.Create(kind, "PO-3", Now, assigneeName: assigneeName, assigneeId: assigneeId, propertyId: Guid.NewGuid());
 
     private static PartySubmissionActor Actor(string role, string userId = "u-1", string? distributionId = null) =>
-        new() { UserId = userId, DisplayName = "الاسم", PrototypeRole = role, DistributionAssigneeId = distributionId };
+        new()
+        {
+            UserId = userId,
+            DisplayName = "الاسم",
+            PrototypeRole = role,
+            DistributionAssigneeId = distributionId,
+            SubRoles = role == "case-specialist" ? CaseSpecialistSubRoles.All : [],
+        };
 
     private static JsonElement Root(string json) => JsonDocument.Parse(json).RootElement.Clone();
 

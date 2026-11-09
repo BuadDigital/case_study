@@ -1,6 +1,6 @@
 "use client";
 
-import type { InspectorPhotoAttachment } from "../../lib/app-data/inspector-workspace-data";
+import type { InspectorPhotoAttachment } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   clearInspectorPhotoDataUrl,
   uploadInspectorPhotoFromFile,

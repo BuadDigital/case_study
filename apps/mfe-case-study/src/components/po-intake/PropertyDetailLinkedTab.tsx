@@ -35,11 +35,11 @@ import { useTransactionQuery } from "../../query/use-transaction-query";
 import { transactionDeedLabel } from "./TransactionDeedSwitcher";
 import { formatPoDisplay } from "../../lib/app-data/po-intake-data";
 import { TransactionMergeDialog, invalidateTransactionViews } from "./TransactionMergeDialog";
-import { isCaseStudySpecialist } from "../../lib/app-data/po-roles";
+import { canMergeAtStage } from "../../lib/app-data/po-roles";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, promptAction, useToast } from "@platform/ui-kit";
-import { unmergeTransactionDeed } from "@platform/api-client";
-import { workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { changeTransactionLinkKind, unmergeTransactionDeed } from "@platform/api-client";
+import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
 import { formatArDateTime } from "@platform/app-shared/format/date";
 
 type LinkedSamePo = {
@@ -109,8 +109,8 @@ export function PropertyDetailLinkedTab({
   /** The study task whose declared linked deeds are listed — a party passes its own task's parent. */
   caseStudyTaskId: string | null;
 }) {
-  const { role } = useAppAccess();
-  const canCreateOps = canManageOperationsTasks(role);
+  const { access } = useAppAccess();
+  const canCreateOps = canManageOperationsTasks(access);
   const { data: opsTasks = [] } = useOperationsTasksQuery({ live: true });
   const poNumber = record.poNumber.trim();
   const deedNumber = property.deedNumber.trim();
@@ -141,8 +141,10 @@ export function PropertyDetailLinkedTab({
     () => (transaction?.deeds ?? []).filter((d) => d.propertyId !== property.id && !d.isRemoved),
     [transaction, property.id],
   );
-  // Only the case specialist merges deeds into a transaction or takes one back out.
-  const canMerge = isCaseStudySpecialist(role);
+  // The stage owner merges deeds or takes one back out: coordination before the formal receipt,
+  // study after it (ruling 2026-11-02).
+  const canMerge = canMergeAtStage(access, Boolean(transaction?.receivedAtUtc));
+  const [changingKind, setChangingKind] = useState(false);
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   const [mergeOpen, setMergeOpen] = useState(false);
@@ -163,8 +165,8 @@ export function PropertyDetailLinkedTab({
     const config = workOrdersApiConfig();
     if (!config || !transaction || unmergingId) return;
     const reason = await promptAction({
-      title: `إخراج الصك ${label} من المعاملة`,
-      message: "يفتح للصك معاملة مسودة جديدة بمعاينته. المبرر إلزامي ويُسجَّل في التدقيق.",
+      title: `إخراج الصك ${label} من العقار المرتبط`,
+      message: "يعود الصك عقارًا مستقلًا برقم معاملته ومعاينته. المبرر إلزامي ويُسجَّل في التدقيق.",
       label: "مبرر الإخراج",
       confirmLabel: "إخراج",
       minLength: 5,
@@ -178,9 +180,40 @@ export function PropertyDetailLinkedTab({
         return;
       }
       invalidateTransactionViews(queryClient, transaction.deeds.map((d) => d.poNumber));
-      showToast(`أُخرج الصك ${label} إلى معاملة جديدة`, "success");
+      showToast(`أُخرج الصك ${label} — عاد عقارًا مستقلًا برقم معاملته`, "success");
     } finally {
       setUnmergingId(null);
+    }
+  }
+
+  /**
+   * Switches the link kind to the other one («مبنى واحد» ↔ «أعيان بعقد») with a required reason —
+   * the study may correct coordination's choice. Server refusals come back as toasts.
+   */
+  async function changeLinkKind() {
+    const config = workOrdersApiConfig();
+    if (!config || !transaction || changingKind) return;
+    const next = transaction.linkKind === "contract" ? "one_building" : "contract";
+    const nextLabel = next === "contract" ? "أعيان بعقد" : "مبنى واحد";
+    const reason = await promptAction({
+      title: `تغيير نوع الربط إلى «${nextLabel}»`,
+      message: "يغيّر طريقة تقييم العقار المرتبط. المبرر إلزامي ويُسجَّل في السجل الزمني والتدقيق.",
+      label: "مبرر التغيير",
+      confirmLabel: "تغيير",
+      minLength: 5,
+    });
+    if (reason === null) return;
+    setChangingKind(true);
+    try {
+      const res = await changeTransactionLinkKind(config, transaction.id, { linkKind: next, reason });
+      if (!res.ok) {
+        showToast(res.message ?? "تعذّر تغيير نوع الربط", "error");
+        return;
+      }
+      invalidateTransactionViews(queryClient, transaction.deeds.map((d) => d.poNumber));
+      showToast(`نوع الربط الآن «${nextLabel}»`, "success");
+    } finally {
+      setChangingKind(false);
     }
   }
 
@@ -332,7 +365,7 @@ export function PropertyDetailLinkedTab({
           <EmptyState
             icon="🔗"
             title="لا توجد عقارات مرتبطة"
-            sub="يظهر هنا: صكوك هذه المعاملة، وعقارات أخرى على نفس أمر العمل، أو نفس الصك في أوامر عمل سابقة، أو أصول مرتبطة صرّح بها الأخصائي في دراسة الحالة، والمهام التشغيلية."
+            sub="يظهر هنا: صكوك هذا العقار، وعقارات أخرى على نفس أمر العمل، أو نفس الصك في أوامر عمل سابقة، أو أصول مرتبطة صرّح بها الأخصائي في دراسة الحالة، والمهام التشغيلية."
           />
         )}
         {record.expectedPropertyCount > record.properties.filter((p) => !p.isRemoved).length ? (
@@ -355,7 +388,7 @@ export function PropertyDetailLinkedTab({
       </SectionHeader>
       {lookupError ? <InfoBox icon="⚠">{lookupError}</InfoBox> : null}
       <InfoBox icon="ℹ">
-        الارتباطات تشمل صكوك هذه المعاملة، وعقارات نفس أمر العمل، وتسجيلات
+        الارتباطات تشمل صكوك هذا العقار، وعقارات نفس أمر العمل، وتسجيلات
         سابقة لنفس الصك (كل الدراسات)، والأصول المرتبطة المصرّح بها في دراسة
         الحالة، والمهام التشغيلية المرتبطة.
       </InfoBox>
@@ -364,27 +397,45 @@ export function PropertyDetailLinkedTab({
         <div className="mt-3">
           <h4 className="mb-2 flex flex-wrap items-center justify-between gap-2 text-[12px] font-semibold text-text">
             <span>
-              صكوك هذه المعاملة ({transactionDeeds.length + 1})
+              {transactionDeeds.length > 0
+                ? `صكوك العقار المرتبط (${transactionDeeds.length + 1})`
+                : "صكوك العقار"}
               <span className="ms-2 text-[11px] font-normal text-text-3">
                 <bdi dir="ltr">{transaction.displayNumber}</bdi>
                 {transaction.linkKindLabelAr ? ` · ${transaction.linkKindLabelAr}` : ""}
               </span>
             </span>
             {canMerge ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="default"
-                disabled={Boolean(unmergingId)}
-                onClick={() => setMergeOpen(true)}
-              >
-                دمج صكوك في المعاملة
-              </Button>
+              <span className="flex flex-wrap gap-2">
+                {/* Fixed once the first report is approved (the number is locked then). */}
+                {transactionDeeds.length > 0 && !transaction.confirmedAtUtc ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="default"
+                    loading={changingKind}
+                    disabled={Boolean(unmergingId) || changingKind}
+                    showActionToast={false}
+                    onClick={() => void changeLinkKind()}
+                  >
+                    تغيير نوع الربط
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="default"
+                  disabled={Boolean(unmergingId)}
+                  onClick={() => setMergeOpen(true)}
+                >
+                  دمج صكوك في العقار
+                </Button>
+              </span>
             ) : null}
           </h4>
           {transactionDeeds.length === 0 ? (
             <p className="m-0 text-[12px] text-text-3">
-              المعاملة بصك واحد. يمكن ضم صكوك أخرى تمثل العقار نفسه متى اكتمل استعلام البورصة لها.
+              العقار بصك واحد. يمكن ضم صكوك أخرى تمثل العقار نفسه متى اكتمل استعلام البورصة لها، فيصير عقارًا مرتبطًا برقم ينتهي بـ ‎-L‎.
             </p>
           ) : (
             <ul className="m-0 flex list-none flex-col gap-2 p-0">
@@ -400,7 +451,12 @@ export function PropertyDetailLinkedTab({
                         <span className="text-[13px] font-semibold text-primary-light">
                           <bdi dir="ltr">{label}</bdi>
                         </span>
-                        <DetailBadge tone="blue">صك في المعاملة</DetailBadge>
+                        {deed.referenceNumber ? (
+                          <span className="text-[11px] font-semibold tabular-nums text-text-3" title="رقم المعاملة">
+                            <bdi dir="ltr">{deed.referenceNumber}</bdi>
+                          </span>
+                        ) : null}
+                        <DetailBadge tone="blue">صك في العقار المرتبط</DetailBadge>
                         {deed.deedKindLabelAr ? (
                           <DetailBadge tone="gray">{deed.deedKindLabelAr}</DetailBadge>
                         ) : null}
@@ -412,7 +468,7 @@ export function PropertyDetailLinkedTab({
                           : ""}
                       </span>
                     </Link>
-                    {canMerge && !transaction.referenceNumber ? (
+                    {canMerge && !transaction.confirmedAtUtc ? (
                       <Button
                         type="button"
                         size="sm"
@@ -421,7 +477,7 @@ export function PropertyDetailLinkedTab({
                         loading={unmergingId === deed.propertyId}
                         disabled={Boolean(unmergingId)}
                         showActionToast={false}
-                        title="إخراج الصك إلى معاملة مسودة جديدة — قبل تثبيت الرقم الرسمي فقط"
+                        title="إخراج الصك ليعود عقارًا مستقلًا برقم معاملته — قبل اعتماد أول تقرير فقط"
                         onClick={() => void unmerge(deed.propertyId, label)}
                       >
                         إخراج

@@ -18,8 +18,13 @@ import {
   buildCaseStudyReportModel,
   type CaseStudyReportDeeds,
 } from "../../lib/app-data/case-study-report-document-model";
-import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-html";
-import type { CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
+import { buildCaseStudyReportPrintHtml } from "../../lib/app-data/case-study-report-render";
+import { officialLetterFontsHtml } from "../../lib/app-data/official-letter-layout";
+import { buildPropertyPhotosPrintHtml } from "../../lib/app-data/property-photos-pdf";
+import { downloadAttachmentBlobOnce } from "@platform/app-shared/app-data/attachment-blob-cache";
+import { photoMarkId } from "@platform/app-shared/app-data/property-detail-document-types";
+import { blobToDataUrl } from "@platform/app-shared/media/file-encoding";
+import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import { loadCaseStudyReportDraft } from "../../lib/app-data/case-study-report-reads";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
@@ -150,4 +155,44 @@ export async function renderCaseStudyReportPdf(input: {
     ok: false,
     message: res.message?.trim() || "تعذّر إنشاء ملف تقرير دراسة الحالة — حاول مرة أخرى.",
   };
+}
+
+/**
+ * Prints one Enfaz photo bundle («صور الأصل من الخارج/الداخل») to a single PDF.
+ *
+ * How it works: each photo's stored file is downloaded (the bytes already in this browser are used when there
+ * is no stored id), turned into a data URL and placed on a captioned A4 page with the report font inlined; the
+ * server renderer (`/api/print-pdf`) prints it like the case-study report.
+ *
+ * Edge cases: a photo that cannot be downloaded is left out; none at all → a refusal saying so. A page too large
+ * for the renderer comes back with the server's Arabic reason. Added 2026-11-04 with the photo-bundle rows.
+ */
+export async function renderInfathPhotosPdf(input: {
+  photos: PropertyDetailDocumentEntry[];
+  title: string;
+}): Promise<CaseStudyReportPdfResult> {
+  const config = apiConfig();
+  const filesConfig = prototypeModulesApiConfig();
+  if (!config || !filesConfig) return { ok: false, message: "انتهت الجلسة — سجّل الدخول من جديد." };
+  const loaded = await Promise.all(
+    input.photos.map(async (photo): Promise<PropertyDetailDocumentEntry | null> => {
+      const id = photoMarkId(photo);
+      if (id) {
+        const res = await downloadAttachmentBlobOnce(filesConfig, id);
+        if (res.ok) return { ...photo, dataUrl: await blobToDataUrl(res.data) };
+      }
+      return photo.dataUrl?.startsWith("data:image") ? photo : null;
+    }),
+  );
+  const photos = loaded.filter((photo): photo is PropertyDetailDocumentEntry => photo !== null);
+  if (photos.length === 0) {
+    return { ok: false, message: `تعذّر تحميل صور «${input.title}» — حاول مرة أخرى.` };
+  }
+  const html = await inlinePrintHtmlAssets(
+    buildPropertyPhotosPrintHtml(photos, input.title, officialLetterFontsHtml()),
+    { token: config.token, apiBase: config.baseUrl || undefined, inlineStylesheets: true },
+  );
+  const res = await renderPrintPdf(config, html);
+  if (res.ok) return { ok: true, blob: res.data };
+  return { ok: false, message: res.message?.trim() || `تعذّر إنشاء ملف «${input.title}» — حاول مرة أخرى.` };
 }

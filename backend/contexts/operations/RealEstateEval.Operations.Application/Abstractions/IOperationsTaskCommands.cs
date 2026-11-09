@@ -1,5 +1,6 @@
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Operations.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Operations.Application.Abstractions;
 
@@ -16,8 +17,19 @@ public interface IOperationsTaskCommands
         PatchOperationsTaskRequest request,
         string actorAssigneeId,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         string actorUserId,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The creator accepts what a completed task delivered (Omar 2026-11-05); in his absence the section
+    /// supervisor, the CDO or coordination (the task managers).
+    /// </summary>
+    Task<(OperationsTaskDto? Result, string? Error)> AcceptOutputsAsync(
+        Guid id,
+        string actorUserId,
+        string? actorName,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default);
 
     Task<(OperationsTaskDto? Result, string? Error)> ReassignAsync(
@@ -25,14 +37,14 @@ public interface IOperationsTaskCommands
         ReassignOperationsTaskRequest request,
         string actorAssigneeId,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default);
 
     Task<(OperationsTaskDto? Result, string? Error)> RemindAsync(
         Guid id,
         bool auto,
         string? actorName,
-        string actorRole,
+        StaffActor actorStaff,
         CancellationToken cancellationToken = default);
 
     /// <summary>Scheduler entry: auto-remind active tasks whose next work-hours checkpoint has passed.</summary>
@@ -45,7 +57,7 @@ public interface IOperationsTaskCommands
         Guid id,
         AddOperationsTaskCommentRequest request,
         string actorAssigneeId,
-        string actorRole,
+        StaffActor actorStaff,
         string? actorName,
         CancellationToken cancellationToken = default);
 }

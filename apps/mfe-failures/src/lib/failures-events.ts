@@ -1,6 +1,6 @@
-/** Failures persist via `/api/failures`. */
+import { FAILURES_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
-export const FAILURES_CHANGED_EVENT = "failures-changed";
+/** Failures persist via `/api/failures`. */
 
 export function notifyFailuresChanged(): void {
   if (typeof window !== "undefined") {

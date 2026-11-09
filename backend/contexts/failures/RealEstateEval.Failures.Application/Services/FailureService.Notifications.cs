@@ -1,25 +1,26 @@
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Failures.Application.Services;
 
 /// <summary>
-/// Notification fan-out: review-stage notices go to every case-study specialist on the work
-/// order; hold notices go to the one specialist whose task was blocked or unblocked.
+/// Notification fan-out: the case specialist's failure notices go to the coordination sub-role,
+/// which follows every failure (ruling 2026-11-02); party notices go to the party's assignee.
 /// </summary>
 public partial class FailureService
 {
     /// <summary>
-    /// Notifies every case-study assignee on the work order. Silently skips when the order has
-    /// no such assignee.
+    /// Notifies every active case specialist holding the coordination sub-role (the work order no
+    /// longer names its specialist). How it works: one sub-role broadcast; the work order is kept
+    /// for the callers' wording only. Edge cases: nobody holding the sub-role → silently skipped.
     /// </summary>
     private async Task NotifyPoSpecialistsAsync(
         string poNumber,
         CreateUserNotificationRequest notification,
         CancellationToken cancellationToken)
     {
-        var recipientIds = await _recipients.ResolveAssigneeUserIdsForPoAsync(
-            poNumber,
-            [CaseStudyPropertyKind],
+        var recipientIds = await _recipients.ResolveCaseSpecialistUserIdsAsync(
+            CaseSpecialistAudience.Operations,
             cancellationToken);
 
         if (recipientIds.Count == 0) return;
@@ -28,6 +29,21 @@ public partial class FailureService
             recipientIds,
             notification,
             cancellationToken);
+    }
+
+    /// <summary>
+    /// A hold blocked or unblocked the case-study task: coordination hears it (the task itself names
+    /// nobody any more). Edge cases: nobody holding the sub-role → silently skipped.
+    /// </summary>
+    private async Task NotifyCoordinationAsync(
+        CreateUserNotificationRequest notification,
+        CancellationToken cancellationToken)
+    {
+        var recipientIds = await _recipients.ResolveCaseSpecialistUserIdsAsync(
+            CaseSpecialistAudience.Operations,
+            cancellationToken);
+        if (recipientIds.Count == 0) return;
+        await _notifications.CreateForUsersAsync(recipientIds, notification, cancellationToken);
     }
 
     private async Task NotifyHoldSpecialistAsync(

@@ -33,9 +33,18 @@ function isDashboardHome(rolePages: readonly PageId[]): boolean {
   return rolePages.every((page) => page === "dashboard");
 }
 
-/** First permitted page in sidebar order — post-login and access-denied redirect. */
+/**
+ * First permitted page in sidebar order — post-login, the site's entry («/») and access-denied redirect.
+ *
+ * How it works: the super-admin home (the CDO) is the dashboard; then (Omar 2026-11-09) whoever holds
+ * «أعمالي» — case specialists, the section supervisor, the general manager — lands on it; then the
+ * party work queues, the PO list, the operations hub, and the sidebar order.
+ * Edge cases / changed 2026-11-09: the general manager used to land on the PO list.
+ */
 export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   if (isDashboardHome(rolePages)) return "dashboard";
+
+  if (rolePages.includes("my-work")) return "my-work";
 
   // Appraiser / inspector / engineering office → their primary work queue.
   for (const pageId of PARTY_WORK_QUEUE_PAGES) {
@@ -52,10 +61,11 @@ export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   }
 
   // Remaining independent executors (e.g. government reviewer) without a
-  // dedicated queue — land on the operations-tasks hub.
+  // dedicated queue — land on the operations-tasks hub. A case specialist holding
+  // any case-study queue (any sub-role) is not one of them: he lands on «أعمالي» (first NAV page).
   if (
     rolePages.includes("operations-tasks") &&
-    !rolePages.includes("active-case-study")
+    !holdsCaseStudyQueue(rolePages)
   ) {
     return "operations-tasks";
   }
@@ -65,7 +75,9 @@ export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
     if (rolePages.includes(pageId)) return pageId;
   }
   if (rolePages.includes("financial")) return "financial";
-  return rolePages.find((page) => page !== "dashboard") ?? rolePages[0] ?? "dashboard";
+  // No page at all → the profile (open to everyone); «dashboard» would bounce back here forever now
+  // that only the CDO holds it (Omar 2026-11-09).
+  return rolePages.find((page) => page !== "dashboard") ?? rolePages[0] ?? "profile";
 }
 
 export function defaultLandingPath(rolePages: readonly PageId[]): string {
@@ -91,6 +103,7 @@ export function pageIdFromPathname(pathname: string): PageId | null {
     case "property-inspection":
       return "property-inspection";
     case "login":
+    case "start": // the site's entry: it sends the user to his landing page itself
       return null;
     case "audit-log":
       return "audit-log";
@@ -120,14 +133,17 @@ function isPoPropertyDetailPath(pathname: string): boolean {
   );
 }
 
-/** Property edit — `/po/{po}/property/{id}/edit`. */
+/**
+ * Property edit — `/po/{po}/property/{id}/edit` — the work page `…/work` and the coordinator's page
+ * `…/coordination` (Omar 2026-11-08) — the same staff.
+ */
 function isPoPropertyEditPath(pathname: string): boolean {
   const parts = pathname.split("/").filter(Boolean);
   return (
     parts.length === 5 &&
     parts[0] === "po" &&
     parts[2] === "property" &&
-    parts[4] === "edit"
+    (parts[4] === "edit" || parts[4] === "work" || parts[4] === "coordination")
   );
 }
 
@@ -153,9 +169,29 @@ const PROPERTY_EDIT_WITHOUT_PO_LIST: readonly PageId[] = [
   "active-primary-data",
   "bourse-inquiry",
   "active-distribution",
+  "active-receipt",
   "active-case-study",
   "system-upload",
 ];
+
+/**
+ * True when the role holds at least one case-study specialist queue — i.e. a case specialist of any
+ * sub-role, the section supervisor or the CDO.
+ *
+ * How it works: any page of `PROPERTY_EDIT_WITHOUT_PO_LIST` counts.
+ * Edge cases / fixed: a coordination-only specialist (no `active-case-study`) used to fall into the
+ * government reviewer's operations-tasks landing, and coordination- or review-only specialists were
+ * silently sent away from `/case-study/{task}` links (the deposit lives there for review).
+ */
+function holdsCaseStudyQueue(rolePages: readonly PageId[]): boolean {
+  return PROPERTY_EDIT_WITHOUT_PO_LIST.some((id) => rolePages.includes(id));
+}
+
+/** Case-study workspace — `/case-study/{taskId}`. */
+function isCaseStudyWorkspacePath(pathname: string): boolean {
+  const parts = pathname.split("/").filter(Boolean);
+  return parts.length === 2 && parts[0] === "case-study";
+}
 
 export function canAccessPage(
   pageId: PageId,
@@ -184,6 +220,9 @@ export function canAccessPathname(
     isPoPropertyEditPath(pathname) &&
     PROPERTY_EDIT_WITHOUT_PO_LIST.some((id) => rolePages.includes(id))
   ) {
+    return true;
+  }
+  if (isCaseStudyWorkspacePath(pathname) && holdsCaseStudyQueue(rolePages)) {
     return true;
   }
   const pageId = pageIdFromPathname(pathname);

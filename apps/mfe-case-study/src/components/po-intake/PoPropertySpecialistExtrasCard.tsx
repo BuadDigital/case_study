@@ -8,7 +8,6 @@ import {
 } from "@platform/api-client";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import {
-  VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
   normalizeSpecialistFinishingLevel,
   specialistFinishingLevelLabel,
   type SpecialistFinishingLevel,
@@ -24,7 +23,10 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { partyProvenanceLines } from "../../lib/app-data/property-party-fields";
-import { resolveApiError, workOrdersApiConfig } from "../../lib/work-orders-api-config";
+import { resolveApiError, workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-api-config";
+import {
+  VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const FINISHING_KEY = "finishing";
 const LEVELS: readonly SpecialistFinishingLevel[] = [

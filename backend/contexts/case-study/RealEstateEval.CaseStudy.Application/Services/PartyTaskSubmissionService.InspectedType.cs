@@ -10,9 +10,6 @@ namespace RealEstateEval.CaseStudy.Application.Services;
 public sealed partial class PartyTaskSubmissionService
 {
     /// <summary>The study issue refusal while the corrected type needs a survey nobody was given.</summary>
-    public const string SurveyNeededAfterTypeChangeAr =
-        "يلزم رفع مساحي بعد تغيير نوع العقار ميدانياً — أضف المكتب الهندسي";
-
     /// <summary>
     /// The inspector corrected the bourse type on site (2026-10-29 ruling).
     /// How it works: records the change on the property timeline (the «الجدول الزمني» card and the
@@ -20,7 +17,8 @@ public sealed partial class PartyTaskSubmissionService
     /// new type — a survey it needs that nobody was given is asked of the case specialist (he adds the
     /// office), and a survey it no longer needs is withdrawn at once, the office not told.
     /// Edge cases: a survey already completed stays — done work and its fee are not undone. No reason
-    /// and no specialist approval are asked for the change itself.
+    /// and no specialist approval are asked for the change itself. The ask matches the «إضافة رفع مساحي»
+    /// note (A→Z 2026-11-02 #74); neither blocks issuing the study (Omar 2026-11-04).
     /// </summary>
     private async Task OnInspectedTypeChangedAsync(
         WorkflowTask inspectionTask,
@@ -61,7 +59,9 @@ public sealed partial class PartyTaskSubmissionService
 
         var survey = await FindSiblingAsync(inspectionTask, WorkflowTaskKind.EngineeringSurvey, cancellationToken);
         var surveyLive = survey is not null && survey.Status != WorkflowTaskStatus.Cancelled;
-        if (change.SurveyRequiredAfter && !surveyLive)
+        // Same rule as the «إضافة رفع مساحي» note (SurveyRequirementRules.SurveyMissingAfterTypeChange): asked
+        // only while the type differs from the bourse type, so the timeline and the note agree.
+        if (change.SurveyRequiredAfter && change.DiffersFromBourseType && !surveyLive)
             await AskSpecialistForSurveyAsync(inspectionTask, propertyId, change, now, cancellationToken);
         else if (!change.SurveyRequiredAfter && survey is not null && !survey.IsTerminal)
             await WithdrawSurveyAsync(inspectionTask, survey, propertyId, change, actor, now, cancellationToken);

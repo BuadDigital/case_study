@@ -24,6 +24,7 @@ public class StaffProfileRulesTests
         {
             UserId = "u-1",
             RoleId = roleId,
+            CaseSpecialistSubRoles = roleId == "case-specialist" ? CaseSpecialistSubRoles.AllFlags : 0,
             JobTitle = "أخصائي دراسة حالة",
             Department = SupervisingDepartments.CaseStudy,
             City = "الرياض",

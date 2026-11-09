@@ -3,7 +3,12 @@
 import { createElement } from "react";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { PartyRecallAdvisorySection } from "@platform/app-shared/components/PartyRecallAdvisorySection";
-import { canDecideAppraisalRecall, canPrepareReportDraft } from "../../lib/app-data/po-roles";
+import {
+  canDecideAppraisalRecall,
+  canPrepareReportDraft,
+  canRecordValuationDeposit,
+  canReviewTransaction,
+} from "../../lib/app-data/po-roles";
 import { EmptyState } from "./PropertyDetailFields";
 import { ReturnedForCorrectionNote } from "../ui/ReturnedForCorrectionNote";
 import { PropertyDetailPartyPackageReview } from "./PropertyDetailPartyPackageReview";
@@ -40,7 +45,8 @@ export function PropertyDetailAppraisalTab({
    */
   showReportDraft?: boolean;
 }) {
-  const { role } = useAppAccess();
+  const { access } = useAppAccess();
+  const isReview = canReviewTransaction(access);
   if (!appraisalCard) {
     return (
       <EmptyState
@@ -64,28 +70,35 @@ export function PropertyDetailAppraisalTab({
           taskId={appraisalTask.id}
           partyLabel="المقيّم العقاري"
           refreshKey={0}
-          canDecide={canDecideAppraisalRecall(role)}
+          canDecide={canDecideAppraisalRecall(access)}
           onResolved={onReviewChanged}
         />
       ) : null}
+      {/* Omar 2026-11-08: review accepts the appraiser's value or returns it to him with a reason;
+          the others see the acceptance only. */}
       <PropertyDetailPartyPackageReview
         taskId={appraisalTask?.id}
         submissionStatus={submission?.packageStatus ?? "draft"}
         acceptedAtUtc={submission?.acceptedAtUtc}
         acceptedByName={submission?.acceptedByName}
-        hideAccept
-        acceptedLabel="معتمد"
-        returnLabel="إعادة للتصحيح"
-        returnAfterAcceptLabel="إلغاء الاعتماد وإعادة للتصحيح"
+        disabled={!isReview}
+        acceptLabel="قبول القيمة"
+        acceptedLabel="قُبلت القيمة"
+        acceptSuccessToast="قُبلت القيمة — تُصدر المسودة للمقيّم بعد اعتماد الدراسة"
+        returnLabel="إرجاع للمقيّم"
+        returnAfterAcceptLabel="إلغاء القبول وإرجاع للمقيّم"
         returnPlaceholder="صف ما يجب تصحيحه في تقييم المقيّم…"
         returnSuccessToast="أُعيد التقييم للمقيّم للتصحيح"
-        hint={
-          showReportDraft
-            ? "يسلّم المقيّم تقييمه فتُعدّ مسودة التقرير أدناه وتُرسلها له لاعتمادها؛ وتُعيد التقييم للمقيّم إن لزم تصحيح أرقامه."
-            : "تُعيد التقييم للمقيّم إن لزم تصحيح أرقامه؛ ومسودة التقرير تُعدّ من تبويب «مدخلات التقييم» في شاشة دراسة الحالة."
-        }
+        hint="يسلّم المقيّم القيمة فيراجعها المراجع: يقبلها، أو يُرجعها للمقيّم مع السبب. وبعد قبولها واعتماد الدراسة يُصدر المراجع مسودة التقرير للمقيّم."
         onChanged={onReviewChanged}
       />
+      {!isReview && submission?.packageStatus === "submitted" ? (
+        <p className="mb-3 mt-0 text-[12px] text-text-2" data-testid="appraisal-value-state">
+          {submission.acceptedAtUtc
+            ? `قبل المراجع القيمة${submission.acceptedByName?.trim() ? ` — ${submission.acceptedByName.trim()}` : ""}.`
+            : "سلّم المقيّم القيمة — بانتظار مراجعة المراجع."}
+        </p>
+      ) : null}
       {submission?.packageStatus === "reopened" && returnRemark?.trim() ? (
         <ReturnedForCorrectionNote note={returnRemark} className="mb-3" />
       ) : null}
@@ -95,7 +108,10 @@ export function PropertyDetailAppraisalTab({
             appraisalTask,
             allTasks: tasks,
             property,
-            canEdit: canPrepareReportDraft(role),
+            // The report's data is every specialist's (Omar 2026-11-08); its decisions are review's.
+            canEdit: canPrepareReportDraft(access) || access.role === "case-specialist",
+            canDeposit: canRecordValuationDeposit(access),
+            canReview: isReview,
           })
         : null}
       {appraisalTask && ValuationReport ? (

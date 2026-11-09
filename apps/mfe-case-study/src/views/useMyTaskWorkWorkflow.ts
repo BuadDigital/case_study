@@ -42,6 +42,7 @@ import {
   canWorkTaskStep,
   DEED_VITALITY_REQUIRED_ERROR,
   DISTRIBUTION_SAVE_ERROR,
+  deedVitalityFromStatus,
   newPropertyDraftKey,
   resolveTaskWorkScreen,
   resolveTaskWorkSteps,
@@ -81,7 +82,7 @@ export function useMyTaskWorkWorkflow({
   onEnfathSaved,
 }: CaseStudyTaskWorkProps) {
   const router = useRouter();
-  const { role } = useAppAccess();
+  const { role, access } = useAppAccess();
   const { showToast } = useToast();
   const { data: staffResult } = useStaffUsersQuery();
   const staffUsers = staffResult?.users ?? [];
@@ -91,9 +92,11 @@ export function useMyTaskWorkWorkflow({
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-  const [deedVitality, setDeedVitality] = useState<BourseDeedVitality | null>(
+  const [pickedDeedVitality, setDeedVitality] = useState<BourseDeedVitality | null>(
     null,
   );
+  // The pick, else the autosaved «حالة الصك» (A→Z 2026-11-02 #67: it was lost on reopening the bourse).
+  const deedVitality = pickedDeedVitality ?? deedVitalityFromStatus(property.deedStatus);
   const [hasPriorSurvey, setHasPriorSurvey] = useState(false);
   const [distribution, setDistribution] = useState<TaskDistributionDraft>(
     () => migrateDistribution(task.distribution),
@@ -137,7 +140,7 @@ export function useMyTaskWorkWorkflow({
 
   const effectivePhase = phaseOverride ?? task.phase;
 
-  const roleFlags = taskWorkRoleFlags(role);
+  const roleFlags = taskWorkRoleFlags(access);
   const { isSupervisor, isSpecialist, failureSpecialist } = roleFlags;
   const failureRaisedByRole =
     role === "section-supervisor"

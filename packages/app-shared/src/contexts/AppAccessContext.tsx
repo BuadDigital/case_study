@@ -1,8 +1,13 @@
 "use client";
 
 import { createContext, use, useEffect, useMemo } from "react";
-import type { PageId, RoleId } from "@platform/types";
+import type { CaseSpecialistSubRole, PageId, RoleId } from "@platform/types";
 import { ROLES } from "@platform/app-shared/app-data/constants";
+import {
+  filterPagesBySubRoles,
+  subRolesFromPermissions,
+  type StaffAccess,
+} from "@platform/app-shared/app-data/case-specialist-sub-roles";
 import {
   pagesFromPermissions,
   roleSeesAllTransactionsPage,
@@ -17,6 +22,10 @@ const PLACEHOLDER_ROLE: RoleId = "field-inspector";
 
 type Ctx = {
   role: RoleId;
+  /** Case-specialist sub-roles (coordination / study / review); empty for other roles. */
+  subRoles: readonly CaseSpecialistSubRole[];
+  /** Role + sub-roles, the argument of the sub-role helpers in po-roles.ts. */
+  access: StaffAccess;
   authReady: boolean;
   /** Permissions request failed or the role is unknown — no GM fallback. */
   permissionsFailed: boolean;
@@ -65,6 +74,12 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
     (hasSession && isError) || (isSuccess && resolvedRole == null);
 
   const role = resolvedRole ?? PLACEHOLDER_ROLE;
+  const rawSubRoles = permissions?.subRoles;
+  const subRoles = useMemo(
+    () => (permissionsFailed ? [] : subRolesFromPermissions(resolvedRole, rawSubRoles)),
+    [permissionsFailed, resolvedRole, rawSubRoles],
+  );
+  const access = useMemo<StaffAccess>(() => ({ role, subRoles }), [role, subRoles]);
 
   // Keep helpers in sync during the same render as permissions — do not wait for
   // useEffect or queryFn may run with a stale empty capability list.
@@ -92,7 +107,12 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
     if (!permissionsResolved || permissionsFailed || resolvedRole == null) {
       return [];
     }
-    const baseline = ROLES[resolvedRole].pages.filter((page) => {
+    // A specialist's baseline keeps only the queue pages of the sub-roles he holds.
+    const baseline = filterPagesBySubRoles(
+      resolvedRole,
+      subRoles,
+      ROLES[resolvedRole].pages,
+    ).filter((page) => {
       // "All transactions" — hidden from every role (mirrors pagesFromPermissions)
       if (page === "all-transactions" && !roleSeesAllTransactionsPage(resolvedRole)) {
         return false;
@@ -106,7 +126,7 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
       return [...new Set<PageId>([...fromApi, ...baseline])];
     }
     return baseline;
-  }, [permissionsResolved, permissionsFailed, permissions, resolvedRole]);
+  }, [permissionsResolved, permissionsFailed, permissions, resolvedRole, subRoles]);
 
   const authReady = hasSession && permissionsResolved;
 
@@ -126,6 +146,8 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<Ctx>(
     () => ({
       role,
+      subRoles,
+      access,
       authReady,
       permissionsFailed,
       retryPermissions: () => {
@@ -142,6 +164,8 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       role,
+      subRoles,
+      access,
       authReady,
       permissionsFailed,
       refetch,

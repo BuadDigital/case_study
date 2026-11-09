@@ -65,7 +65,7 @@ public class OperationsTaskDeedSearchTests
             new OperationsTaskListQuery { Page = 1, PageSize = 10, Q = "310107029844" },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
 
         Assert.Equal(1, page.TotalCount);
         Assert.Equal("T-DEED-A", page.Items.Single().DisplayId);
@@ -81,7 +81,7 @@ public class OperationsTaskDeedSearchTests
             new OperationsTaskListQuery { Page = 1, PageSize = 10, Q = "029844" },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
 
         Assert.Equal(1, page.TotalCount);
         Assert.Equal("T-DEED-A", page.Items.Single().DisplayId);
@@ -98,7 +98,7 @@ public class OperationsTaskDeedSearchTests
             new OperationsTaskListQuery { Page = 1, PageSize = 10, Q = "550002" },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
 
         Assert.Equal(1, page.TotalCount);
         Assert.Equal("T-DEED-B", page.Items.Single().DisplayId);
@@ -115,7 +115,7 @@ public class OperationsTaskDeedSearchTests
             new OperationsTaskListQuery { Page = 1, PageSize = 10, Q = "زيارة" },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
 
         Assert.Equal(1, page.TotalCount);
         Assert.Equal("T-PLAIN", page.Items.Single().DisplayId);
@@ -131,7 +131,7 @@ public class OperationsTaskDeedSearchTests
             new OperationsTaskListQuery { Page = 1, PageSize = 10, Q = "000000000" },
             "manager-1",
             null,
-            Manager);
+            TestStaff.Of(Manager));
 
         Assert.Equal(0, page.TotalCount);
         Assert.Empty(page.Items);

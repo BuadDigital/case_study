@@ -18,7 +18,7 @@ import {
   type OrganizationSettingsDto,
 } from "@platform/api-client";
 import { loadSpecialistFinishingLevel } from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
-import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import { openHtmlDocumentInNewTab } from "@platform/app-shared/media/open-html-document";
 import { usePoRecordQuery } from "../../lib/case-study-bridge";
 import { useLinkedPropertyDeeds } from "../../query/transaction-query";

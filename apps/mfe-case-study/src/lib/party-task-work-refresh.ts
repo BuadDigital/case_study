@@ -1,9 +1,11 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import type { PageId } from "@platform/types";
-import { ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT } from "./case-study-engineering-survey-events";
-import { EVALUATOR_SUBMISSION_CHANGED_EVENT } from "./case-study-evaluator-events";
-import { FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT } from "./case-study-field-inspection-events";
+import {
+  ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
+  EVALUATOR_SUBMISSION_CHANGED_EVENT,
+  FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
+} from "@platform/app-shared/events/app-events";
 
 const PARTY_PAGE_SUBMISSION_EVENTS: Partial<Record<PageId, string>> = {
   "property-inspection": FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,

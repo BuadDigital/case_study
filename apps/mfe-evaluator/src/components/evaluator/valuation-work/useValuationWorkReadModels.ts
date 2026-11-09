@@ -21,6 +21,7 @@ import {
   isVacantLandComparable,
   parseSubjectAreaSqm,
   resolveSubjectCoordsForBank,
+  type BankTypeFilter,
 } from "./lib/bank-ranking";
 import { buildFactorRows } from "./lib/market-save-mappers";
 import { apiConfig } from "./lib/shell-utils";
@@ -50,6 +51,7 @@ export function useValuationWorkReadModels({
   applyBankResult,
   bankSearch,
   bankRadiusKm,
+  bankTypeFilter = "subject",
   marketKind,
 }: {
   hints: SubjectHints;
@@ -62,6 +64,8 @@ export function useValuationWorkReadModels({
   bankSearch: string;
   /** The radius the appraiser picked for the bank table; `null` = all. */
   bankRadiusKm: number | null;
+  /** The market bank's type filter: the subject's kind (default) or every type. */
+  bankTypeFilter?: BankTypeFilter;
   /** What the market table compares the subject as; land puts land comparables first. */
   marketKind: MarketSubjectKind;
   subjectArea: string;
@@ -145,13 +149,18 @@ export function useValuationWorkReadModels({
         limit: searching ? BANK_SEARCH_DISPLAY_LIMIT : BANK_DISPLAY_LIMIT,
         nearbyOnly: !searching,
         radiusKm: bankRadiusKm,
-        preferLand: marketKind === "land",
+        // Land is compared with land, anything built with buildings (its own type first).
+        subjectKind: marketKind === "land" ? "land" : "building",
+        subjectType: property?.propertyType ?? null,
+        typeFilter: bankTypeFilter,
       }),
     [
       selection?.items,
       candidates,
       bankRadiusKm,
+      bankTypeFilter,
       marketKind,
+      property?.propertyType,
       subjectCity,
       subjectCoordsForBank,
       subjectArea,

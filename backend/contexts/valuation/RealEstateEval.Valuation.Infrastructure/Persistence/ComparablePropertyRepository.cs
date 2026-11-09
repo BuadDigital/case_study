@@ -5,6 +5,8 @@
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using Microsoft.EntityFrameworkCore;
+using RealEstateEval.Domain;
+using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Domain;
@@ -183,6 +185,17 @@ public sealed class ComparablePropertyRepository(ValuationDbContext db)
             .Where(r => requestIds.Contains(r.Id))
             .ToListAsync(cancellationToken);
     }
+
+    // The comparables bank draws from the valuation context's own counter table.
+    public Task<(string? Code, string? Error)> AllocateReferenceCodeAsync(
+        DateTime nowUtc,
+        CancellationToken cancellationToken) =>
+        ReferenceSequenceAllocator.AllocateYearlyAsync(
+            db,
+            DatabaseSchemas.Valuation,
+            ReferenceNumbering.Comparable,
+            nowUtc,
+            cancellationToken);
 
     public Task AddAsync(ComparableProperty entity, CancellationToken cancellationToken)
     {

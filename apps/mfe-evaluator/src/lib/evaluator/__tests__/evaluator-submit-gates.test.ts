@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { HANDOVER_GATES_READ_EVENT } from "@platform/app-shared/events/app-events";
 
 const getOpen = vi.fn();
 const getGates = vi.fn();
@@ -12,7 +13,7 @@ vi.mock("@platform/api-client", () => ({
   getPartyTaskSubmission: (...a: unknown[]) => getSubmission(...a),
   getValuationReconciliation: (...a: unknown[]) => getRecon(...a),
 }));
-vi.mock("../api-config", () => ({ apiConfig: () => apiConfigMock() }));
+vi.mock("@platform/app-shared/auth/api-config", () => ({ apiConfig: () => apiConfigMock() }));
 
 import { STUDY_REPORT_NOT_ISSUED_MESSAGE } from "../evaluator-inspection-gate";
 import {
@@ -23,7 +24,6 @@ import {
   readFreshStudyReportGate,
   readHandOverPriceFromServer,
 } from "../evaluator-submit-gates";
-import { HANDOVER_GATES_READ_EVENT } from "../handover-blockers";
 
 beforeEach(() => {
   getOpen.mockReset();

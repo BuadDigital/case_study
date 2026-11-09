@@ -23,9 +23,10 @@ public static class CaseStudyReportDeedNatureMatchRules
         string? outcome,
         string? notes,
         IEnumerable<DeedKind> transactionDeedKinds,
-        bool inspectorSaidNotMatched = false)
+        bool inspectorSaidNotMatched = false,
+        bool officeSaidNotMatched = false)
     {
-        var saveErrors = ValidateForSave(outcome, notes, inspectorSaidNotMatched);
+        var saveErrors = ValidateForSave(outcome, notes, inspectorSaidNotMatched, officeSaidNotMatched);
         if (saveErrors is not null) return saveErrors;
 
         if (transactionDeedKinds.Any(DeedKindRules.RequiresDeedNatureMatchGate)
@@ -46,11 +47,25 @@ public static class CaseStudyReportDeedNatureMatchRules
     public static readonly string OverrideReasonRequiredAr =
         $"سبب اعتماد «مطابق» خلافاً لرأي المعاين مطلوب ({JustificationRules.RequiredMinLength} أحرف على الأقل)";
 
+    /// <summary>«مطابق» chosen against the engineering office's «الصك غير مطابق للطبيعة» (A→Z 2026-11-02 #20).</summary>
+    public static readonly string OfficeOverrideReasonRequiredAr =
+        $"سبب اعتماد «مطابق» خلافاً لرأي المكتب الهندسي مطلوب ({JustificationRules.RequiredMinLength} أحرف على الأقل)";
+
+    /// <summary>The save rules of the match field.</summary>
+    /// <remarks>
+    /// How it works: an unknown token is refused; «فروق» / «مرشح تعذّر» need notes; «مطابق» against a party's
+    /// «غير مطابق» needs a reason of <see cref="JustificationRules.RequiredMinLength"/> characters in the notes.
+    /// Edge cases: fixed A→Z 2026-11-02 #20 — the reason was asked only against the inspector, so «مطابق» passed
+    /// silently against the engineering office's «غير مطابق»; the office now counts the same. When both said
+    /// «غير مطابق» the inspector's message is shown (one reason covers both).
+    /// </remarks>
     /// <param name="inspectorSaidNotMatched">The field inspector's verdict was «غير مطابق».</param>
+    /// <param name="officeSaidNotMatched">The engineering office's submitted survey said «غير مطابق».</param>
     public static Dictionary<string, string>? ValidateForSave(
         string? outcome,
         string? notes,
-        bool inspectorSaidNotMatched = false)
+        bool inspectorSaidNotMatched = false,
+        bool officeSaidNotMatched = false)
     {
         var matchOutcome = (outcome ?? "").Trim().ToLowerInvariant();
         // IsKnown includes Unset — draft-friendly; matched is for submit / valuation.
@@ -72,11 +87,14 @@ public static class CaseStudyReportDeedNatureMatchRules
         }
 
         // The specialist may decide «مطابق» against the inspector, but says why (in the same notes).
-        if (inspectorSaidNotMatched
+        if ((inspectorSaidNotMatched || officeSaidNotMatched)
             && matchOutcome == DeedNatureMatchOutcomes.Matched
             && !JustificationRules.MeetsRequiredMinimum(notes))
         {
-            return new Dictionary<string, string> { ["deedNatureMatchNotes"] = OverrideReasonRequiredAr };
+            return new Dictionary<string, string>
+            {
+                ["deedNatureMatchNotes"] = inspectorSaidNotMatched ? OverrideReasonRequiredAr : OfficeOverrideReasonRequiredAr,
+            };
         }
 
         return null;

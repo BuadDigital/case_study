@@ -85,6 +85,35 @@ public static class InspectorDeedNatureMatchRules
         }
     }
 
+    /// <summary>
+    /// The engineering office's survey package says «الصك غير مطابق للطبيعة».
+    /// How it works: reads <c>deedMatchesNature</c> of the survey payload — <c>"no"</c> or the boolean
+    /// <c>false</c> (the survey form has stored both shapes; the frontend loader reads both too).
+    /// Edge cases: added A→Z 2026-11-02 #20 — «مطابق» against the office asks for the same reason as against the
+    /// inspector. No package, unreadable JSON, an empty or «yes» verdict → false.
+    /// </summary>
+    public static bool EngineeringOfficeSaidNotMatched(string? payloadJson)
+    {
+        if (string.IsNullOrWhiteSpace(payloadJson)) return false;
+        try
+        {
+            using var doc = JsonDocument.Parse(payloadJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object
+                || !doc.RootElement.TryGetProperty(VerdictKey, out var value))
+            {
+                return false;
+            }
+
+            return value.ValueKind == JsonValueKind.False
+                || (value.ValueKind == JsonValueKind.String
+                    && string.Equals(value.GetString()?.Trim(), "no", StringComparison.OrdinalIgnoreCase));
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>True = «yes» (matches), false = «no», null = not chosen (empty, missing or unknown).</summary>
     private static bool? ReadVerdict(JsonElement root)
     {

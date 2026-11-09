@@ -6,7 +6,7 @@ export type CircuitSearchItem = {
   circuitName?: string | null;
 };
 
-import { toLatinDigits } from "../../lib/arabic-digits";
+import { toLatinDigits } from "@platform/ui-kit";
 export { toLatinDigits };
 
 export function normalizeArabicSearchText(value: string): string {

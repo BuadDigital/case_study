@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Valuation.Application.Contracts;
 
@@ -23,8 +24,14 @@ public class ValuationReportDraftDto
     /// <summary>PRV-… once the report was approved (or its number confirmed on the way to approval); null before.</summary>
     public string? ReportNumber { get; init; }
 
-    /// <summary>none | preparing | sent | approved.</summary>
+    /// <summary>none | preparing | in_review | sent | approved.</summary>
     public string Status { get; init; } = "none";
+
+    /// <summary>When the study handed the draft to review (null while it prepares).</summary>
+    public string? SubmittedForReviewAtUtc { get; init; }
+
+    /// <summary>Review's latest reason for returning the draft to the study.</summary>
+    public string? ReviewNote { get; init; }
 
     /// <summary>Report cycle (1 until a deposited report is reopened as a new version).</summary>
     public int Version { get; init; } = 1;
@@ -66,7 +73,7 @@ public class ReportDraftStateDto
 {
     public Guid PropertyId { get; init; }
 
-    /// <summary>none | preparing | sent | approved.</summary>
+    /// <summary>none | preparing | in_review | sent | approved.</summary>
     public string Status { get; init; } = "none";
 
     /// <summary>draft | deposit_issued | final_issued.</summary>
@@ -98,6 +105,13 @@ public class SendReportDraftRequest
 }
 
 /// <summary>A note travelling with a withdrawal (the specialist pulling a sent draft, the appraiser his approval).</summary>
+/// <summary>Review returns the draft to the study — the reason is required.</summary>
+public class ReturnReportDraftToStudyRequest
+{
+    [MaxLength(2000)]
+    public string? Reason { get; init; }
+}
+
 public class WithdrawReportDraftRequest
 {
     [MaxLength(2000)]
@@ -123,4 +137,8 @@ public class ReportDraftActor
     public string? DisplayName { get; init; }
     public string? PrototypeRole { get; init; }
     public string? DistributionAssigneeId { get; init; }
+    /// <summary>Case-specialist sub-roles from the caller's token (empty for other roles).</summary>
+    public IReadOnlyList<string> SubRoles { get; init; } = [];
+    /// <summary>The role plus sub-roles, as the role rules take them.</summary>
+    public StaffActor Staff => new(PrototypeRole, SubRoles);
 }

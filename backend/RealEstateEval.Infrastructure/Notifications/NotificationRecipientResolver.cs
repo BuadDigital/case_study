@@ -70,6 +70,11 @@ public sealed class NotificationRecipientResolver : INotificationRecipientResolv
         CancellationToken cancellationToken = default) =>
         _identity.ResolveUserIdsWithPrototypeRoleAsync(prototypeRole, cancellationToken);
 
+    public Task<IReadOnlyList<string>> ResolveCaseSpecialistUserIdsAsync(
+        string subRole,
+        CancellationToken cancellationToken = default) =>
+        _identity.ResolveCaseSpecialistUserIdsAsync(subRole, cancellationToken);
+
     private async Task<IReadOnlyList<string>> MapAssigneesToUserIdsAsync(
         IReadOnlyList<string> assigneeIds,
         CancellationToken cancellationToken)

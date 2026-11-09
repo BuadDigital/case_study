@@ -110,7 +110,7 @@ public sealed partial class EvaluatorRecallsService : IEvaluatorRecallsService
 
         await NotifyAsync(
             existing.PropertyId,
-            ValuationNoticeAudiences.CaseSpecialist,
+            ValuationNoticeAudiences.CaseSpecialistStudy,
             title: "طلب استرجاع تقرير التقييم",
             summary: "طلب المقيّم استرجاع تقرير التقييم للتعديل",
             note: existing.Reason,

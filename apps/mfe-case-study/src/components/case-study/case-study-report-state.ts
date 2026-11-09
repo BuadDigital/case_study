@@ -1,10 +1,13 @@
 import { caseStudyAnswerKey, type CaseStudyReportAnswer, type CaseStudyQuestionSection } from "../../lib/app-data/case-study-report-data";
-import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "../../lib/app-data/case-study-report-model";
+import { emptyCaseStudyReportDraft, type CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
 import { caseStudyQuestionTargetId } from "../../lib/app-data/case-study-report-ux";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
-import { propertyDeedKindIsRegisteredTitle } from "@platform/app-shared/app-data/po-intake-identifiers";
+import {
+  propertyDeedKindIsRegisteredTitle,
+} from "@platform/app-shared/app-data/po-intake-identifiers";
 import { isDeedNatureMatchChosen } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
+import type { CaseStudyDeedMatchChangedDetail } from "@platform/app-shared/app-data/case-study-report-model";
 
 export const FORM_STEP_SECTIONS: CaseStudyQuestionSection[] = [
   "deed",
@@ -72,6 +75,30 @@ export function hydrateCaseStudyReportDraft(args: {
       requestDate: seed.requestDate ?? base.requestDate,
       currentStep: stored ? normalizeFormStep(stored.currentStep) : 0,
     },
+  };
+}
+
+/**
+ * The draft with the deed ↔ nature outcome and notes a «مدخلات المعاين» save announced.
+ *
+ * How it works: copies the event's outcome and notes onto the draft when the event is for this draft's
+ * task (task ids compared without case); another task's event leaves the draft as it is.
+ *
+ * Edge cases: fixed A→Z 2026-11-02 #63 — also applied over a draft re-read that left before the save
+ * committed, so the issue button no longer keeps the old «اختر نتيجة المطابقة» block until a refresh. A
+ * missing task id on either side is taken as a match (as before).
+ */
+export function withDeedMatchEvent(
+  draft: CaseStudyReportDraft,
+  detail: CaseStudyDeedMatchChangedDetail,
+): CaseStudyReportDraft {
+  const mine = (draft.taskId ?? "").trim().toLowerCase();
+  const theirs = (detail.taskId ?? "").trim().toLowerCase();
+  if (mine && theirs && mine !== theirs) return draft;
+  return {
+    ...draft,
+    deedNatureMatchOutcome: detail.deedNatureMatchOutcome,
+    deedNatureMatchNotes: detail.deedNatureMatchNotes,
   };
 }
 

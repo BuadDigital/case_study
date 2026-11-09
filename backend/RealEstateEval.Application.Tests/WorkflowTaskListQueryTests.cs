@@ -204,7 +204,7 @@ public class WorkflowTaskListQueryTests
     private static PermissionsDto Staff() => new()
     {
         UserId = "staff-1",
-        PrototypeRole = "case-specialist",
+        PrototypeRole = "case-specialist", SubRoles = CaseSpecialistSubRoles.All,
     };
 
     private static PermissionsDto Party() => new()

@@ -52,11 +52,11 @@ public static class WorkOrderMapper
             SuggestedDeedKind = DeedKindLabels.ToApiValue(
                 DeedKindLabels.SuggestFromIdentifier(p.IdentifierType)),
             DeedNumber = p.DeedNumber,
-            // The numbers now live on the transaction above the deed (draft TMP,
-            // official PR); the deed count lets the screens show «N صكوك» for a merged transaction.
+            // «رقم المعاملة» is the deed's own number; the property number (PR-…-L when linked) sits
+            // on the transaction above it, and the deed count lets the screens show «N صكوك».
             TransactionId = p.TransactionId == Guid.Empty ? null : p.TransactionId,
-            TransactionDraftNumber = p.Transaction?.DraftNumber,
-            ReferenceNumber = p.Transaction?.ReferenceNumber,
+            ReferenceNumber = p.ReferenceNumber,
+            TransactionReferenceNumber = p.Transaction?.ReferenceNumber,
             TransactionLinkKind = p.Transaction?.LinkKind,
             TransactionDeedCount = Math.Max(1, p.Transaction?.Properties.Count(d => !d.IsRemoved) ?? 1),
             RequestNumber = p.RequestNumber,
@@ -210,8 +210,8 @@ public static class WorkOrderMapper
         flags is not null && flags.TryGetValue(propertyId, out var value) && value;
 
     /// <summary>
-    /// <paramref name="transactionNumber"/> lets a caller that already resolved the transaction pass its
-    /// display number (PR once confirmed, else TMP); otherwise it is read from the loaded transaction.
+    /// <paramref name="transactionNumber"/> lets a caller that already resolved the number pass it;
+    /// otherwise «رقم المعاملة» is the deed's own number, else (an old row) its property's.
     /// </summary>
     public static PendingBoursePropertyDto ToPendingBourse(WorkOrderProperty p, string? transactionNumber = null)
     {
@@ -228,7 +228,7 @@ public static class WorkOrderMapper
             ReceivedFromEnfathAt = p.WorkOrder.ReceivedFromEnfathAt.ToString("yyyy-MM-dd"),
             DueDateAt = p.WorkOrder.DueDateAt.ToString("yyyy-MM-dd"),
             CreatedAtUtc = p.WorkOrder.CreatedAtUtc.ToString("O"),
-            TransactionNumber = transactionNumber ?? p.Transaction?.DisplayNumber,
+            TransactionNumber = transactionNumber ?? p.ReferenceNumber ?? p.Transaction?.ReferenceNumber,
         };
     }
 

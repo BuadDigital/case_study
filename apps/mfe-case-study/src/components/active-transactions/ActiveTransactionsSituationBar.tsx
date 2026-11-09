@@ -268,8 +268,28 @@ export function ActiveTransactionsSituationBar({
 }) {
   const situation = useActiveTransactionPageSituation(pageId);
   if (!situation) return null;
+  return <SituationBar cards={situation.cards} values={situation.values} />;
+}
 
-  const { cards, values } = situation;
+/**
+ * The KPI strip of a work page: a connected band on desktop, 2×2 stat cards on phones.
+ *
+ * How it works: one cell per card; the value comes from `values[card.key]` («—» while undefined).
+ * Edge cases: a red card whose value is zero turns neutral (no work is good news, not an alert).
+ * Extracted 2026-11-05 from `ActiveTransactionsSituationBar` so «أعمالي» shows its own cards with
+ * the same strip instead of a copy.
+ */
+export function SituationBar({
+  cards,
+  values,
+  flush = false,
+}: {
+  cards: readonly PageSituationCardDef[];
+  values: Record<string, number | undefined>;
+  /** No bottom margin — for a page whose shell already spaces its blocks with `gap` («أعمالي»). */
+  flush?: boolean;
+}) {
+  const below = flush ? "mb-0 " : "mb-3 ";
 
   /* Zero overdue is good news, not an alert — neutralize red when the value is zero. */
   const effectiveCards = cards.map((card) =>
@@ -326,11 +346,11 @@ export function ActiveTransactionsSituationBar({
   return (
     <>
       {/* Desktop / tablet: keep connected KPI band (web squares). */}
-      <KpiBand className="mb-3 hidden lg:flex">{desktopCells}</KpiBand>
+      <KpiBand className={`${below}hidden lg:flex`}>{desktopCells}</KpiBand>
 
       {/* Mobile: HTML inspector separate stat cards (2×2). */}
       {/* An odd last card spans the row instead of leaving half of it empty. */}
-      <div className="mb-3 grid min-w-0 max-w-full grid-cols-2 gap-2.5 lg:hidden [&>*:last-child:nth-child(odd)]:col-span-2">
+      <div className={`${below}grid min-w-0 max-w-full grid-cols-2 gap-2.5 lg:hidden [&>*:last-child:nth-child(odd)]:col-span-2`}>
         {effectiveCards.map((card, index) => (
           <MobileSituationStatCard
             key={card.key}

@@ -17,7 +17,6 @@ import {
   Textarea,
 } from "@platform/ui-kit";
 import {
-  getCaseSpecialists,
   getEngineeringOffices,
   getFieldInspectors,
   getValuators,
@@ -34,7 +33,6 @@ import { useWorkflowTasksQuery } from "../../query/case-study-queries";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 
 type RedistributeRoleKey =
-  | "caseSpecialist"
   | "inspector"
   | "valuator"
   | "engineeringOffice";
@@ -50,7 +48,7 @@ type RoleOption = {
 };
 
 const PARTY_TASK_KIND: Record<
-  Exclude<RedistributeRoleKey, "caseSpecialist">,
+  RedistributeRoleKey,
   WorkflowTask["kind"]
 > = {
   inspector: "field-inspection",
@@ -61,7 +59,7 @@ const PARTY_TASK_KIND: Record<
 /** Only an open party task can be handed to someone else — the server refuses the rest. */
 function partyLockReason(
   children: WorkflowTask[],
-  key: Exclude<RedistributeRoleKey, "caseSpecialist">,
+  key: RedistributeRoleKey,
   label: string,
 ): string | null {
   const child = children.find((t) => t.kind === PARTY_TASK_KIND[key]);
@@ -143,16 +141,7 @@ export function RedistributePartiesModal({
   const roleOptions = useMemo((): RoleOption[] => {
     if (!distribution) return [];
     const roles: RoleOption[] = [];
-    if (distribution.caseSpecialist || distribution.caseSpecialistId) {
-      roles.push({
-        key: "caseSpecialist",
-        label: "أخصائي دراسة الحالة",
-        people: getCaseSpecialists(staffUsers),
-        currentId: distribution.caseSpecialistId,
-        apply: (id) => ({ caseSpecialist: true, caseSpecialistId: id }),
-        lockedReason: null,
-      });
-    }
+    // No specialist seat: the specialist stages are shared queues (ruling 2026-11-02).
     roles.push({
       key: "inspector",
       label: "المعاين الميداني",

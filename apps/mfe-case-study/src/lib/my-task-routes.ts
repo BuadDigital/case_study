@@ -20,6 +20,10 @@ export function distributionTaskPath(taskId: string): string {
   return `/active-distribution?task=${encodeURIComponent(taskId)}`;
 }
 
+export function activeReceiptPath(): string {
+  return "/active-receipt";
+}
+
 export function activeCaseStudyPath(): string {
   return "/active-case-study";
 }

@@ -1,6 +1,7 @@
 using RealEstateEval.Domain;
 using RealEstateEval.Operations.Application.Contracts;
 using RealEstateEval.Operations.Domain;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.Operations.Application.Rules;
 
@@ -77,8 +78,8 @@ public static class OperationsTaskCommandRules
             .ToList();
 
     /// <summary>"creator" for manager roles, "assignee" when the actor is the task's assignee, else "creator".</summary>
-    public static string CommentAuthor(string actorRole, string entityAssigneeId, string actorAssigneeId) =>
-        actorRole is "case-specialist" or "section-supervisor" or "cdo" or "general-manager"
+    public static string CommentAuthor(StaffActor actorStaff, string entityAssigneeId, string actorAssigneeId) =>
+        actorStaff.NormalizedRole is "case-specialist" or "section-supervisor" or "cdo" or "general-manager"
             ? "creator"
             : entityAssigneeId == actorAssigneeId.Trim()
                 ? "assignee"

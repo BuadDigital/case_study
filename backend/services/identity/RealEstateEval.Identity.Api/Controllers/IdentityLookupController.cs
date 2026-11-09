@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using RealEstateEval.Application.Abstractions;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Web.Authorization;
+using RealEstateEval.Domain;
 
 namespace RealEstateEval.Identity.Api.Controllers;
 
@@ -84,9 +85,14 @@ public sealed class IdentityLookupController(IIdentityDirectory directory) : Con
     [Authorize(Policy = CapabilityPolicyNames.ReadIdentityDirectory)]
     public async Task<ActionResult<IdentityUserIdsDto>> UserIdsByRole(
         [FromQuery] string role,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        [FromQuery] string? subRole = null)
     {
-        var userIds = await directory.ResolveUserIdsWithPrototypeRoleAsync(role ?? "", cancellationToken);
+        // subRole narrows the case specialists to one sub-role's holders (ruling 2026-11-02).
+        var userIds = !string.IsNullOrWhiteSpace(subRole)
+            && string.Equals(role?.Trim(), StaffRoleIds.CaseSpecialist, StringComparison.OrdinalIgnoreCase)
+            ? await directory.ResolveCaseSpecialistUserIdsAsync(subRole, cancellationToken)
+            : await directory.ResolveUserIdsWithPrototypeRoleAsync(role ?? "", cancellationToken);
         return Ok(new IdentityUserIdsDto { UserIds = userIds });
     }
 

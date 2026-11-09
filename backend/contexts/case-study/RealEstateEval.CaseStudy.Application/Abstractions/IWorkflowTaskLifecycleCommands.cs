@@ -1,5 +1,6 @@
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.Application.Contracts;
+using RealEstateEval.Application.Rules;
 
 namespace RealEstateEval.CaseStudy.Application.Abstractions;
 
@@ -49,7 +50,7 @@ public interface IWorkflowTaskLifecycleCommands
     Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> ReopenCompletedAsync(
         Guid id,
         ReopenCompletedWorkflowTaskRequest request,
-        string actorRole,
+        StaffActor actor,
         string? actorName,
         string? actorUserId = null,
         CancellationToken cancellationToken = default);

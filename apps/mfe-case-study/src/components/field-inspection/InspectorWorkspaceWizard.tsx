@@ -10,9 +10,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button, cn, useSwapAnimation, useToast } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import { ValuedDocumentUploadButton } from "@platform/app-shared/components/ValuedDocumentUploadButton";
-import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
-import { canReviewValuedDocuments } from "../../lib/app-data/po-roles";
 import { DetailBadge } from "../po-intake/PropertyDetailFields";
 import { type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
@@ -24,7 +21,7 @@ import {
   visibleInspectorFeatureFields,
   type InspectorMapActor,
   type InspectorWorkspaceDraft,
-} from "../../lib/app-data/inspector-workspace-data";
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import { InspectorStepNav, type InspectorStepId } from "./InspectorStepNav";
 import { FieldComparableCaptureSection } from "./FieldComparableCaptureSection";
 import { InsCard, InsEditTextarea } from "../po-intake/PropertyDetailInspectionParts";
@@ -39,6 +36,14 @@ import { InspectorWizardComponentsCards } from "./InspectorWizardComponentsCards
 import { InspectorBoundaryMatchTable } from "./InspectorBoundaryMatchTable";
 import { InspectorWizardServicesCard } from "./InspectorWizardServicesCard";
 import { InspectorFieldObservationsCard } from "./InspectorFieldObservationsCard";
+import { InspectionLimitsSection } from "./InspectionLimitsSection";
+import { InspectorValuedDocumentsField } from "./InspectorValuedDocumentsField";
+import {
+  InspectorClientDeclarationField,
+  InspectorKeyStatusNotes,
+} from "./InspectorSubmitPrerequisites";
+import type { InspectorKeyAvailability } from "./InspectorKeyStatusTab";
+import type { InspectorMapMoveOutcome } from "./InspectorMapActionButtons";
 import { COMPONENT_BOOL_KEYS } from "./inspector-wizard-state";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import {
@@ -57,6 +62,19 @@ import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 
+/**
+ * The desktop inspection form (the inspector's `/active-inspection` page in three steps, and the
+ * property page's inspection tab `flat`, all steps at once — also the specialist's review).
+ *
+ * How it works: step 1 = `InspectorWizardLocationStep`; step 2 = description, land structures,
+ * components, «حدود المعاينة», «جدول الحصر», boundaries and services; step 3 = comparables,
+ * «مستندات ذات قيمة», observations, the key notes and the client declaration (inspector only), and
+ * the inspector's case-study questions. Validation errors open the step holding the first one
+ * (desktop step order of `inspectorWizardStepForErrorTarget`).
+ *
+ * Edge cases: brought level with the phone 2026-11-04 — «حدود المعاينة», the key notes, the client
+ * declaration, GPS / undo on the map, the full component counts and amenities were phone-only.
+ */
 export function InspectorWorkspaceWizard({
   property,
   draft,
@@ -90,6 +108,10 @@ export function InspectorWorkspaceWizard({
   hideSubmitFooter = false,
   /** Case specialist: «مكونات العقار» (report text + table) replaces the editable description. */
   specialistComponents,
+  keyAvailability,
+  onRegisterKeyFailure,
+  canUndoMapMove = false,
+  onUndoMapMove,
 }: {
   property: PoPropertyIntake;
   draft: InspectorWorkspaceDraft;
@@ -108,7 +130,7 @@ export function InspectorWorkspaceWizard({
   onPatch: (patch: InspectorWorkspacePatchInput) => void;
   onSubmit: () => void;
   onCancel: () => void;
-  onMapMove: (lat: number, lng: number) => void;
+  onMapMove: (lat: number, lng: number) => InspectorMapMoveOutcome | void;
   mapPinned: boolean;
   onPin: () => void;
   onUnpin: () => void;
@@ -122,8 +144,14 @@ export function InspectorWorkspaceWizard({
   flat?: boolean;
   hideSubmitFooter?: boolean;
   specialistComponents?: ReactNode;
+  /** The inspector's key-envelope answer (key notes in step 3); absent for the specialist. */
+  keyAvailability?: Pick<InspectorKeyAvailability, "keyAvailable" | "status" | "retry">;
+  /** «تسجيل تعذّر المفتاح» under the «المفتاح غير مُسلَّم» note. */
+  onRegisterKeyFailure?: () => void;
+  /** A confirmed pin move can be undone («رجوع للموقع السابق»). */
+  canUndoMapMove?: boolean;
+  onUndoMapMove?: () => void;
 }) {
-  const { role } = useAppAccess();
   const [activeStep, setActiveStep] = useState<InspectorStepId>(1);
   const editable = !locked;
   const showStep = (step: InspectorStepId) => flat || activeStep === step;
@@ -198,6 +226,7 @@ export function InspectorWorkspaceWizard({
         propertyType: property.propertyType,
         requireDeedMatch: inspectorMustDecideDeedMatch(property),
         requireLandStructures: true,
+        requirePhotoMinimums: true,
       });
       const stepErrors = pickInspectorErrorsForWizardStep(all, activeStep);
       delete stepErrors.inspectionConfirmed;
@@ -245,6 +274,7 @@ export function InspectorWorkspaceWizard({
               fieldErrors={fieldErrors}
               featureFields={featureFields}
               serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
+              isLand={isLand}
               onPatch={onPatch}
               onMapMove={onMapMove}
               mapPinned={mapPinned}
@@ -259,6 +289,8 @@ export function InspectorWorkspaceWizard({
               engineeringMapPin={engineeringMapPin}
               transactionDocuments={transactionDocuments}
               transactionDocumentsLoading={transactionDocumentsLoading}
+              canUndoMapMove={canUndoMapMove}
+              onUndoMapMove={onUndoMapMove}
             />
 
             {editable && !flat ? (
@@ -317,6 +349,18 @@ export function InspectorWorkspaceWizard({
               onPatch={onPatch}
             />
 
+            {/* «حدود المعاينة» — the phone's step-2 card (scope, uninspected units, restriction).
+                The inspector's to fill (the save needs party-work rights); the review reads it. */}
+            {property.id ? (
+              <InsCard title="حدود المعاينة">
+                <InspectionLimitsSection
+                  poNumber={inspectionTask.poNumber}
+                  propertyId={property.id}
+                  disabled={!editable || serviceProofFromTransactionPhotos}
+                />
+              </InsCard>
+            ) : null}
+
             {/* Same «جدول الحصر» the phone shell shows — the inspector fills it on either device.
                 Hidden for the case specialist, whose own section already carries the table. */}
             {!specialistComponents &&
@@ -342,6 +386,8 @@ export function InspectorWorkspaceWizard({
               draft={draft}
               editable={editable}
               mismatchNoteInvalidKey={fieldErrors.missingBoundaryKey}
+              deedMatchError={fieldErrors.deedMatchesNature}
+              boundariesError={fieldErrors.boundaries}
               onPatch={onPatch}
             />
 
@@ -375,17 +421,10 @@ export function InspectorWorkspaceWizard({
 
             {editable ? (
               <InsCard title="مستندات ذات قيمة">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <p className="m-0 min-w-0 flex-1 basis-64 text-[11.5px] leading-relaxed text-text-3">
-                    مستند يحمل قيمة وجدته في الموقع (مثل تقييم للآلات أو المنقولات) — يراجعه أخصائي
-                    دراسة الحالة ويقرر المقيّم أثره.
-                  </p>
-                  <ValuedDocumentUploadButton
-                    poNumber={inspectionTask.poNumber}
-                    propertyId={property.id}
-                    canReview={canReviewValuedDocuments(role)}
-                  />
-                </div>
+                <InspectorValuedDocumentsField
+                  poNumber={inspectionTask.poNumber}
+                  propertyId={property.id}
+                />
               </InsCard>
             ) : null}
 
@@ -420,6 +459,25 @@ export function InspectorWorkspaceWizard({
               missingObservationId={fieldErrors.missingObservationId}
               onPatch={onPatch}
             />
+
+            {/* The phone's key notes and client declaration — the inspector's own, never the review. */}
+            {!serviceProofFromTransactionPhotos ? (
+              <InsCard title="المفتاح وإقرار العميل">
+                {keyAvailability ? (
+                  <InspectorKeyStatusNotes
+                    keyAvailability={keyAvailability}
+                    isLand={isLand}
+                    onRegisterFailure={editable ? onRegisterKeyFailure : undefined}
+                  />
+                ) : null}
+                <InspectorClientDeclarationField
+                  draft={draft}
+                  contacts={property.contacts}
+                  disabled={!editable}
+                  onPatch={onPatch}
+                />
+              </InsCard>
+            ) : null}
 
             {caseStudyDef ? (
               <InsCard title="أسئلة دراسة الحالة — المعاين">

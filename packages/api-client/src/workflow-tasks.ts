@@ -51,8 +51,12 @@ export type WorkflowTaskDto = {
   studyReportIssued?: boolean | null;
   /** Property-appraisal / case-study-property: draft | submitted | reopened (server); null without a package. */
   appraisalPackageStatus?: string | null;
+  /** Review accepted the appraiser's value (Omar 2026-11-08). */
+  appraisalValueAccepted?: boolean | null;
   /** Completed sibling field-inspection task id (server; for loading facts without list visibility). */
   fieldInspectionTaskId?: string | null;
+  /** Property-appraisal: completed sibling engineering-survey task id (server; the appraiser's list hides that row). */
+  engineeringSurveyTaskId?: string | null;
   /** Property-appraisal: sibling engineering-survey completed (server). */
   engineeringSurveyCompleted?: boolean | null;
   /** Property-appraisal: sibling engineering-survey task exists and is not cancelled. */
@@ -73,6 +77,25 @@ export type WorkflowTaskDto = {
   transactionNumber?: string | null;
   /** The property's transaction id, joined server-side. */
   transactionId?: string | null;
+  /** Coordination formally received the transaction (ruling 2026-11-02). */
+  transactionReceived?: boolean;
+  /** Omar 2026-11-08: a delivery from a party outside the system is still awaited. */
+  awaitingExternalParty?: boolean;
+  /** Omar 2026-11-08: review pressed «تجهيز المعاملة للرفع» — the deed sits in the upload queue. */
+  readyForUpload?: boolean;
+  /** Omar 2026-11-08: study (with the study) | handed (sent to review) | approved (review approved it). */
+  reviewState?: string | null;
+  /** «يعمل عليها الآن»: the last specialist who opened or saved the transaction. */
+  workingByUserId?: string | null;
+  workingByName?: string | null;
+  workingAtUtc?: string | null;
+  /** «وقت الإجراء» (Omar 2026-11-08): the deed's latest business milestone (ISO, UTC). */
+  lastStepAtUtc?: string | null;
+  /** That milestone's timeline key and detail line («الاسم — السبب») — A→Z 2026-11-09. */
+  lastStepKey?: string | null;
+  lastStepDetail?: string | null;
+  /** Field-inspection / engineering-survey rows: coordination accepted the package (A→Z 2026-11-09). */
+  packageAccepted?: boolean | null;
   /**
    * Phase 4: the deed whose case-study parent carries the transaction's one study, when it is
    * another deed than this task's. A case-study row with this set is folded into that study.

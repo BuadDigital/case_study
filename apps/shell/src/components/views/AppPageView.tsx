@@ -48,6 +48,14 @@ const SystemUploadView = dynamic(
   () => import("@case-study/mfe").then((m) => m.SystemUploadView),
   { ssr: false, loading: MfeLoading },
 );
+const ActiveReceiptView = dynamic(
+  () => import("@case-study/mfe").then((m) => m.ActiveReceiptView),
+  { ssr: false, loading: MfeLoading },
+);
+const MyWorkView = dynamic(
+  () => import("@case-study/mfe").then((m) => m.MyWorkView),
+  { ssr: false, loading: MfeLoading },
+);
 const BourseInquiryView = dynamic(
   () => import("@case-study/mfe").then((m) => m.BourseInquiryView),
   { ssr: false, loading: MfeLoading },
@@ -155,12 +163,14 @@ const PartyActiveTaskViewHost = dynamic(
 
 const VIEWS: Partial<Record<PageId, ComponentType>> = {
   dashboard: DashboardView,
+  "my-work": MyWorkView,
   "active-primary-data": MyTasksView,
   "all-transactions": AllAssignedTransactionsView,
   "property-map": PropertyMapView,
   favorites: FavoriteTransactionsView,
   "bourse-inquiry": BourseInquiryView,
   "active-distribution": ActiveDistributionView,
+  "active-receipt": ActiveReceiptView,
   "active-case-study": ActiveCaseStudyView,
   "system-upload": SystemUploadView,
   keys: KeysView,
@@ -193,12 +203,14 @@ export const PAGE_CHUNK_PRELOAD: Partial<
   Record<PageId, () => Promise<unknown>>
 > = {
   dashboard: () => import("@dashboard/mfe"),
+  "my-work": () => import("@case-study/mfe"),
   "active-primary-data": () => import("@case-study/mfe"),
   "all-transactions": () => import("@case-study/mfe"),
   "property-map": () => import("@case-study/mfe"),
   favorites: () => import("@case-study/mfe"),
   "bourse-inquiry": () => import("@case-study/mfe"),
   "active-distribution": () => import("@case-study/mfe"),
+  "active-receipt": () => import("@case-study/mfe"),
   "active-case-study": () => import("@case-study/mfe"),
   "system-upload": () => import("@case-study/mfe"),
   keys: () => import("@keys/mfe"),

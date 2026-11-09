@@ -271,22 +271,78 @@ public static class CostLineItemKeys
         return IsKnown(v) ? v : Custom;
     }
 
- /// <summary>
- /// Group 1 (building floor areas) — a defined area item, or a custom line whose structure
- /// kind is a floor (as in the interactive form). Everything else is group 2 (additions).
- /// </summary>
-    public static bool IsAreaGroup(string? itemKey, string? structureKind)
+    /// <summary>
+    /// Group 1 (building floor areas) — a defined area item, or a custom line that is a floor,
+    /// an annex or a basement: by its structure kind, or — saved as «other» / no kind — by its name
+    /// (<see cref="AreaKindForName"/>). Everything else is group 2 (additions).
+    /// How it works: mirrors `costGroupOf` in packages/app-shared/src/domain/cost-items.ts.
+    /// Edge cases: fixed 2026-11-04 (A→Z #30/#52/#65/#90): only a custom line of kind «floor»
+    /// counted, so «الدور الثاني», «ملحق علوي» and «الميزانين» (saved as «other») fell into the
+    /// additions, needed a rationale and dropped out of the building floor areas; a custom annex or
+    /// basement did too. A fence stays an addition whatever its name.
+    /// </summary>
+    public static bool IsAreaGroup(string? itemKey, string? structureKind, string? label = null)
     {
         var key = Normalize(itemKey);
-        if (key == Custom)
+        if (key != Custom) return Group1.Contains(key);
+        var kind = (structureKind ?? "").Trim().ToLowerInvariant();
+        if (kind is BuildingStructureKinds.Floor or BuildingStructureKinds.Annex or BuildingStructureKinds.Basement)
+            return true;
+        return (kind.Length == 0 || kind == BuildingStructureKinds.Other) && AreaKindForName(label) is not null;
+    }
+
+    private static readonly string[] FloorNameWords =
+    [
+        "دور", "ادوار", "طابق", "طوابق", "ميزانين", "ميزانيين", "مزانين",
+        "ارضي", "علوي", "اول", "ثاني", "ثالث", "رابع", "خامس", "سادس", "سابع", "ثامن", "تاسع", "عاشر",
+        "محل", "مكتب", "معرض", "وحده", "شقه", "مستودع", "هنجر", "ورشه", "مصنع",
+    ];
+
+    private static readonly string[] AnnexNameWords = ["ملحق", "ملاحق", "سطح"];
+    private static readonly string[] BasementNameWords = ["قبو", "بدروم", "سرداب"];
+    private static readonly string[] AreaNamePrefixes = ["مسطح", "مسطحات", "مساحه"];
+
+    /// <summary>
+    /// The inventory kind (floor / annex / basement) an item name means when it names a building
+    /// area — «الدور الثاني», «طابق ثالث», «الميزانين», «مساحة المحل», «ملحق علوي», «البدروم» — else null
+    /// («غرفة حارس», «المسبح», «دورة مياه»).
+    /// How it works: hamza / taa marbuta / alef maqsura forms and diacritics are folded, every
+    /// word's «ال» is dropped, and the first word (after an optional «مسطح / مساحة») is looked up.
+    /// Mirrors `areaKindForItemName` in packages/app-shared/src/domain/cost-items.ts.
+    /// Edge cases: whole-word match only, so «دورة مياه», «مكتبة» and «عزل السطح» are not areas.
+    /// </summary>
+    public static string? AreaKindForName(string? name)
+    {
+        var words = FoldArabicName(name)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(w => w.StartsWith("ال", StringComparison.Ordinal) && w.Length > 2 ? w[2..] : w)
+            .ToArray();
+        if (words.Length == 0) return null;
+        var first = AreaNamePrefixes.Contains(words[0]) ? words.ElementAtOrDefault(1) : words[0];
+        if (first is null) return null;
+        if (FloorNameWords.Contains(first)) return BuildingStructureKinds.Floor;
+        if (AnnexNameWords.Contains(first)) return BuildingStructureKinds.Annex;
+        if (BasementNameWords.Contains(first)) return BuildingStructureKinds.Basement;
+        return null;
+    }
+
+    /// <summary>Folds hamza / taa marbuta / alef maqsura forms and drops diacritics; whitespace → one space.</summary>
+    private static string FoldArabicName(string? value)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var ch in (value ?? "").Trim())
         {
-            return string.Equals(
-                (structureKind ?? "").Trim(),
-                BuildingStructureKinds.Floor,
-                StringComparison.OrdinalIgnoreCase);
+            if (ch is >= '\u064B' and <= '\u065F' or '\u0670') continue;
+            sb.Append(ch switch
+            {
+                'أ' or 'إ' or 'آ' or 'ٱ' => 'ا',
+                'ة' => 'ه',
+                'ى' => 'ي',
+                _ => char.IsWhiteSpace(ch) ? ' ' : ch,
+            });
         }
 
-        return Group1.Contains(key);
+        return sb.ToString();
     }
 
     public static string LabelAr(string? value) => Normalize(value) switch
@@ -439,12 +495,14 @@ public static class CostApproachRules
             2,
             MidpointRounding.AwayFromZero);
 
- /// <summary>
- /// The build-ratio input exists only on m² lines of the area group (group 1); on any other
- /// line a stored ratio (e.g. seeded from inventory onto an «other» line) is ignored.
- /// </summary>
-    public static bool BuildRatioApplies(string? itemKey, string? structureKind, string? unit) =>
-        CostLineItemKeys.IsAreaGroup(itemKey, structureKind)
+    /// <summary>
+    /// The build-ratio input exists only on m² lines of the area group (group 1); on any other
+    /// line a stored ratio (e.g. seeded from inventory onto an «other» line) is ignored.
+    /// How it works: <see cref="CostLineItemKeys.IsAreaGroup"/> with the line's label, so a custom
+    /// «الدور الثاني» takes its ratio like a catalog floor (2026-11-04, A→Z #65).
+    /// </summary>
+    public static bool BuildRatioApplies(string? itemKey, string? structureKind, string? unit, string? label = null) =>
+        CostLineItemKeys.IsAreaGroup(itemKey, structureKind, label)
         && CostLineUnits.Normalize(unit) == CostLineUnits.Sqm;
 
  /// <summary>
@@ -456,10 +514,11 @@ public static class CostApproachRules
         string? unit,
         decimal? buildRatioPct,
         string? itemKey,
-        string? structureKind)
+        string? structureKind,
+        string? label = null)
     {
         var q = Math.Max(0m, quantity);
-        if (!BuildRatioApplies(itemKey, structureKind, unit)) return q;
+        if (!BuildRatioApplies(itemKey, structureKind, unit, label)) return q;
         if (buildRatioPct is not { } bp) return q;
         var pct = Math.Clamp(bp, 0m, 100m);
         return Math.Round(q * pct / 100m, 2, MidpointRounding.AwayFromZero);

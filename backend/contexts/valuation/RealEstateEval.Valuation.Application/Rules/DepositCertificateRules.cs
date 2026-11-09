@@ -86,8 +86,26 @@ public static partial class DepositCertificateRules
         // A PDF starts with «%PDF-»; the declared type / extension alone prove nothing.
         var isPdf = bytes.Length >= 5 && Encoding.ASCII.GetString(bytes, 0, 5) == "%PDF-";
         if (!isPdf) return NotPdfAr;
+        // A file with no cross-reference table / stream and no end marker cannot be merged into the final
+        // report: the deposit was accepted and the final PDF then stayed «جاري التجهيز» for ever
+        // (A→Z 2026-11-04). Refused here with a reason instead.
+        if (!LooksComplete(bytes)) return DamagedPdfAr;
 
         return PageCount(bytes) > 1 ? OnePageAr : null;
+    }
+
+    public const string DamagedPdfAr =
+        "ملف شهادة الإيداع تالف أو غير مكتمل ولا يمكن دمجه في التقرير النهائي — حمّل الشهادة من «قيمة» مرة أخرى وأرفقها.";
+
+    /// <summary>
+    /// True when the PDF carries what a reader needs to open it: an «%%EOF» end marker and a cross-reference
+    /// («xref» table or «/XRef» stream). Bytes only — no parsing.
+    /// </summary>
+    public static bool LooksComplete(byte[] bytes)
+    {
+        var text = Encoding.Latin1.GetString(bytes);
+        return text.Contains("%%EOF", StringComparison.Ordinal)
+            && (text.Contains("xref", StringComparison.Ordinal) || text.Contains("/XRef", StringComparison.Ordinal));
     }
 
     /// <summary>
