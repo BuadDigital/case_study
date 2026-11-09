@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { cn } from "@platform/ui-kit";
+import { cn, FormRow, formControlClassName, useWorkDensity } from "@platform/ui-kit";
 import { rememberPropertyPoNumber } from "@platform/app-shared/storage/specialist-report-extras-sync";
 import { INSPECTOR_LOCKED_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
+import { InsReadField } from "./PropertyDetailInspectionParts";
 import {
   SPECIALIST_FINISHING_REQUIRED_MESSAGE,
   loadSpecialistFinishingLevel,
@@ -36,6 +37,9 @@ export function SpecialistValuationReportFinishingEditor({
     loadSpecialistFinishingLevel(propertyId),
   );
   const [invalid, setInvalid] = useState(false);
+  // The work page's layout (`work` density) (Omar 2026-11-09): one field in the four-column row, the ui-kit control
+  // when editable and the page's read-only style when locked — not a full-width hand-made select.
+  const work = useWorkDensity();
 
   // Another property means another saved level — read it before this paint.
   const [levelForProperty, setLevelForProperty] = useState(propertyId);
@@ -90,6 +94,44 @@ export function SpecialistValuationReportFinishingEditor({
         المستوى المختار يُظلَّل في التقرير. أوصاف الفاخر/المتوسط/العادي من إعدادات
         المنشأة.
       </p>
+      {work ? (
+        <FormRow>
+          {readOnly ? (
+            <InsReadField
+              id="specialist-finishing-level"
+              label="المستوى"
+              value={OPTIONS.find((o) => o.value === level && o.value)?.label ?? ""}
+            />
+          ) : (
+            <label className="block min-w-0">
+              <span className="mb-1 block text-[11px] font-semibold text-text-2">المستوى</span>
+              <select
+                id="specialist-finishing-level"
+                className={cn(
+                  formControlClassName,
+                  invalid &&
+                    "border-danger shadow-[0_0_0_3px_color-mix(in_srgb,var(--red)_14%,transparent)]",
+                )}
+                value={level}
+                aria-invalid={invalid || undefined}
+                aria-required
+                onChange={(e) => {
+                  const next = e.target.value as SpecialistFinishingLevel;
+                  setLevel(next);
+                  setInvalid(false);
+                  saveSpecialistFinishingLevel(propertyId, next);
+                }}
+              >
+                {OPTIONS.map((opt) => (
+                  <option key={opt.value || "empty"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </FormRow>
+      ) : (
       <select
         className={cn(
           readOnly
@@ -117,6 +159,7 @@ export function SpecialistValuationReportFinishingEditor({
           </option>
         ))}
       </select>
+      )}
       {invalid && !readOnly ? (
         <p className="m-0 mt-2 text-[11.5px] font-semibold text-danger" role="alert">
           {SPECIALIST_FINISHING_REQUIRED_MESSAGE}

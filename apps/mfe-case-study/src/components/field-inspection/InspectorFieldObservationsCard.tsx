@@ -23,10 +23,10 @@ import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import {
   InsCard,
-  EDIT_CONTROL_CLASS,
 } from "../po-intake/PropertyDetailInspectionParts";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
+import { useInsControlClass } from "../po-intake/PropertyDetailInspectionFields";
 
 export function InspectorFieldObservationsCard({
   deedNumber,
@@ -45,6 +45,8 @@ export function InspectorFieldObservationsCard({
   missingObservationId?: string;
   onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
+  // The work page's layout (`work` density) (Omar 2026-11-09): the page's one control height; unchanged elsewhere.
+  const insCtl = useInsControlClass();
   const photoStamp = inspectorPhotoStampText(draft);
 
   return (
@@ -119,7 +121,7 @@ export function InspectorFieldObservationsCard({
               </Select>
               <input
                 className={cn(
-                  EDIT_CONTROL_CLASS,
+                  insCtl,
                   "h-full min-h-9",
                   missingObservationId === obs.id && invalidControlClass,
                 )}

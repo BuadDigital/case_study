@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { cn } from "@platform/ui-kit";
+import { cn, useWorkDensity, WORK_FORM_GRID_CLASS } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   contactRoleSelectOptions,
@@ -24,12 +24,12 @@ import {
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import type { InspectorWorkspaceFieldErrors } from "../../lib/app-data/inspector-workspace-validation";
 import {
-  EDIT_CONTROL_CLASS,
   INS_LABEL_CLASS,
   INS_WIZARD_PIN_BUTTON_CLASS,
 } from "./FieldInspectionWorkParts";
 import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorSiteLocationAckButton } from "./InspectorSiteLocationAckButton";
+import { useInsControlClass } from "../po-intake/PropertyDetailInspectionFields";
 
 const NEW_CONTACT_VALUE = "__new__";
 
@@ -84,6 +84,9 @@ export function InspectorAccessContactFields({
   ackTitle?: string;
   layout?: "desktop" | "mobile";
 }) {
+  // The work page's layout (`work` density) (Omar 2026-11-09): the page's one control height; unchanged elsewhere.
+  const insCtl = useInsControlClass();
+  const work = useWorkDensity();
   const [addedContacts, setAddedContacts] = useState<PoContact[]>([]);
   const didPrefill = useRef(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -235,7 +238,7 @@ export function InspectorAccessContactFields({
         <p className="m-0 mb-2 text-[12px] font-bold text-heading">
           {ACCESS_ROUTE_DESCRIPTION_LABEL}
         </p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className={work ? WORK_FORM_GRID_CLASS : "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4"}>
           <InsReadField id="ins-access-name" label={ACCESS_CONTACT_NAME_LABEL} value={draft.accessContactName} />
           <InsReadField
             id="ins-access-national-id"
@@ -252,7 +255,7 @@ export function InspectorAccessContactFields({
 
   const controlClass = (invalid?: boolean) =>
     cn(
-      EDIT_CONTROL_CLASS,
+      insCtl,
       layout === "desktop" && "h-[38px]",
       layout === "mobile" && "h-12",
       invalid && invalidControlClass,

@@ -18,6 +18,7 @@ import {
   Badge,
   Button,
   cn,
+  FormDensityProvider,
   OpsIcon,
   opsContentPanel,
   type BadgeTone,
@@ -448,7 +449,9 @@ export function WorkSectionsLayout<Id extends string>({
             mounted={state.mounted.has(s.id)}
             onToggle={() => state.toggle(s.id)}
           >
-            {body(s.id)}
+            {/* Omar 2026-11-09 (approved after a trial behind ?layout=new): every section's fields
+                in four columns with one look — `FormDensityProvider value="work"`. */}
+            <FormDensityProvider value="work">{body(s.id)}</FormDensityProvider>
           </WorkSection>
         ))}
         {footer}

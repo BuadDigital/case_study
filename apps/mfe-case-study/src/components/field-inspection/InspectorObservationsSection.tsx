@@ -12,6 +12,7 @@ import {
   cn,
   formControlClassName,
   opsInsetPanel,
+  ICON_PATHS,
 } from "@platform/ui-kit";
 import { InspectorPhotoFilePicker } from "./InspectorPhotoFilePicker";
 import { InspectorStampedPhotoThumb } from "./InspectorStampedPhotoThumb";
@@ -361,7 +362,7 @@ export function InspectorObservationsSection({
         }
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" aria-hidden>
-          <path d="M12 5v14M5 12h14" />
+          <path d={ICON_PATHS.plus} />
         </svg>
         إضافة ملاحظة موثّقة بالصورة
       </button>

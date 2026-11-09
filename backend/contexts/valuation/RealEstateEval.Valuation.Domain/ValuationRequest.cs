@@ -87,7 +87,8 @@ public class ValuationRequest
 
  /// <summary>
  /// Anything other than <see cref="ValuationRequestStatus.Done"/> or <see cref="ValuationRequestStatus.Merged"/>
- /// counts as open and holds the property, including an impediment. The partial unique index on
+ /// counts as open and holds the property, including an old impediment (status Failed, recorded by the
+ /// retired «طلبات التقييم» page). The partial unique index on
  /// ValuationRequests encodes the same rule.
  /// </summary>
     public bool IsOpen => Status is not (ValuationRequestStatus.Done or ValuationRequestStatus.Merged);
@@ -143,22 +144,6 @@ public class ValuationRequest
         Status = ValuationRequestStatus.Progress;
         UpdatedAtUtc = nowUtc;
     }
-
- /// <summary>
- /// An impediment (unable/blocked) keeps the request open — the property stays held until the
- /// impediment is resolved and a report is submitted.
- /// </summary>
-    public ValuationRequestTransition RecordImpediment(DateTime nowUtc)
-    {
-        if (Status == ValuationRequestStatus.Done)
-            return ValuationRequestTransition.AlreadySubmitted;
-        if (Status == ValuationRequestStatus.Failed)
-            return ValuationRequestTransition.AlreadyImpeded;
-
-        Status = ValuationRequestStatus.Failed;
-        UpdatedAtUtc = nowUtc;
-        return ValuationRequestTransition.Applied;
-    }
 }
 
 // ValuationRequestStatus stays in the global Domain (shared by Case Study dispatch, Reporting, EF converters).
@@ -168,5 +153,4 @@ public enum ValuationRequestTransition
 {
     Applied = 0,
     AlreadySubmitted = 1,
-    AlreadyImpeded = 2,
 }

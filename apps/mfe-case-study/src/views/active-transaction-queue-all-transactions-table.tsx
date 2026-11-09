@@ -101,6 +101,7 @@ function PoGroupHeaderRow({
   count,
   open,
   groupIndex,
+  colSpan,
   onToggleCollapsed,
   onOpenPoProperties,
 }: {
@@ -108,6 +109,8 @@ function PoGroupHeaderRow({
   count: number;
   open: boolean;
   groupIndex: number;
+  /** The table's full column count — the header row spans it all, «بانتظار» included (Omar 2026-11-09: it left a white strip). */
+  colSpan: number;
   onToggleCollapsed: (po: string) => void;
   onOpenPoProperties: (po: string) => void;
 }) {
@@ -120,7 +123,7 @@ function PoGroupHeaderRow({
       }}
       onClick={() => onOpenPoProperties(po)}
     >
-      <Td colSpan={ALL_TRANSACTIONS_SKELETON_COLS}>
+      <Td colSpan={colSpan}>
         <div className="flex items-center gap-2.5">
           <button
             type="button"
@@ -197,6 +200,7 @@ export function AllTransactionsQueueTable({
   onToggleCollapsed: (po: string) => void;
   onOpenPoProperties: (po: string) => void;
 }) {
+  const colCount = ALL_TRANSACTIONS_SKELETON_COLS + (showWaiting ? 1 : 0);
   return (
     <Table className="w-full lg:min-w-[720px]" pending={ctx.queuePending}>
       <THead>
@@ -213,9 +217,9 @@ export function AllTransactionsQueueTable({
       </THead>
       <TBody>
         {ctx.showSkeleton ? (
-          <SkeletonTableRows rows={6} cols={ALL_TRANSACTIONS_SKELETON_COLS + (showWaiting ? 1 : 0)} />
+          <SkeletonTableRows rows={6} cols={colCount} />
         ) : filteredMeta.length === 0 ? (
-          <TableEmptyRow colSpan={ALL_TRANSACTIONS_SKELETON_COLS + (showWaiting ? 1 : 0)}>
+          <TableEmptyRow colSpan={colCount}>
             لا توجد معاملات مطابقة.
           </TableEmptyRow>
         ) : groupByPo ? (
@@ -228,6 +232,7 @@ export function AllTransactionsQueueTable({
                   count={rows.length}
                   open={open}
                   groupIndex={groupIndex}
+                  colSpan={colCount}
                   onToggleCollapsed={onToggleCollapsed}
                   onOpenPoProperties={onOpenPoProperties}
                 />

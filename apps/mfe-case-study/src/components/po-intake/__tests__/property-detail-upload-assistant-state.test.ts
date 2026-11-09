@@ -9,6 +9,7 @@ import {
   copyToastPreview,
   courtVisitOpsFields,
   documentHasFile,
+  enfathPackageLine,
   fieldCopyKey,
   findInfathDocumentByName,
   infathFieldAction,
@@ -196,5 +197,28 @@ describe("ops context inputs", () => {
     expect(appraisalFieldValue(fields, "رمز إيداع التقرير")).toBe("DEP-1");
     expect(appraisalFieldValue(fields, "غير موجود")).toBeUndefined();
     expect(appraisalFieldValue(undefined, "x")).toBeUndefined();
+  });
+});
+
+describe("enfathPackageLine", () => {
+  it("counts needed rows only, names the gap and the fields to copy", () => {
+    expect(
+      enfathPackageLine({
+        attachments: [
+          { status: "ready" },
+          { status: "ready" },
+          { status: "missing" },
+          { status: "conditional" },
+          { status: "not-needed" },
+        ],
+        copyableTotal: 42,
+      }),
+    ).toBe("المرفقات: 2 من 4 جاهزة (2 ناقصة) · حقول للنسخ إلى إنفاذ: 42");
+  });
+
+  it("drops the gap when every needed file is ready", () => {
+    expect(enfathPackageLine({ attachments: [{ status: "ready" }], copyableTotal: 3 })).toBe(
+      "المرفقات: 1 من 1 جاهزة · حقول للنسخ إلى إنفاذ: 3",
+    );
   });
 });

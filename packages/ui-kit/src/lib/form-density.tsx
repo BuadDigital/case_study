@@ -7,8 +7,10 @@ import { cn } from "./cn";
  * How tightly `FormRow` lays fields out. `comfortable` is the two-column default;
  * `compact` adds up to six columns on wide screens — for long edit forms
  * (e.g. «تعديل العقار») where two 780px-wide fields per line feel oversized.
+ * `work` (Omar 2026-11-09, the work page's layout) caps at four columns and also tells the
+ * page's field primitives to share one look (one control height, one read-only style).
  */
-export type FormDensity = "comfortable" | "compact";
+export type FormDensity = "comfortable" | "compact" | "work";
 
 const FormDensityContext = createContext<FormDensity>("comfortable");
 
@@ -28,6 +30,18 @@ export function useFormFlow(): boolean {
 /** Column ladder shared by compact form grids: 2 → 3 → 4 → 6 as the screen widens. */
 export const COMPACT_FORM_GRID_CLASS =
   "grid grid-cols-1 gap-x-3 gap-y-2.5 min-[561px]:grid-cols-2 min-[1024px]:grid-cols-3 min-[1280px]:grid-cols-4 min-[1536px]:grid-cols-6";
+
+/**
+ * Column ladder of the `work` density: 1 → 2 → 3 → 4, never more (Omar 2026-11-09: «4 حقول في الصف
+ * على الأقل» — six read as a table, not a form).
+ */
+export const WORK_FORM_GRID_CLASS =
+  "grid grid-cols-1 gap-x-4 gap-y-3 min-[561px]:grid-cols-2 min-[1024px]:grid-cols-3 min-[1280px]:grid-cols-4";
+
+/** True inside `FormDensityProvider value="work"` — the work page's layout. */
+export function useWorkDensity(): boolean {
+  return useContext(FormDensityContext) === "work";
+}
 
 /**
  * Stacks its sections as a column by default. Inside `FormDensityProvider value="compact"`

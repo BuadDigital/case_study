@@ -7,7 +7,13 @@
  * the field empty instead of a name nobody can open.
  */
 
-import { COMPACT_FORM_GRID_CLASS, cn, useFormDensity, useToast } from "@platform/ui-kit";
+import {
+  COMPACT_FORM_GRID_CLASS,
+  WORK_FORM_GRID_CLASS,
+  cn,
+  useFormDensity,
+  useToast,
+} from "@platform/ui-kit";
 import {
   cacheAssignmentDoc,
   cacheDeedOwnershipDoc,
@@ -44,11 +50,26 @@ export function PoPropertyEnfathDocumentFields({
   showAssignmentDoc: boolean;
 }) {
   const { showToast } = useToast();
-  const compact = useFormDensity() === "compact";
+  const density = useFormDensity();
+  const compact = density === "compact";
+  // The work page's layout (`work` density) (Omar 2026-11-09): the document tiles sit four to a row.
+  const work = density === "work";
   const upload = usePropertyDocUpload();
 
   return (
-    <div className={cn(compact ? cn(COMPACT_FORM_GRID_CLASS, "items-start") : "contents")}>
+    <div
+      className={cn(
+        compact
+          ? cn(COMPACT_FORM_GRID_CLASS, "items-start")
+          : work
+            ? cn(WORK_FORM_GRID_CLASS, "mt-1 items-start")
+            : "contents",
+      )}
+    >
+      {work ? (
+        // The documents under their own title, like the form's other groups (Omar 2026-11-09).
+        <h4 className="col-span-full m-0 text-[13px] font-bold text-heading">المستندات</h4>
+      ) : null}
       {showDelegationDoc ? (
         <PropertyFileUploadField
           id={`delegation_${property.id}`}
@@ -201,7 +222,7 @@ export function PoPropertyEnfathDocumentFields({
       ) : null}
 
       {showOtherDocs ? (
-        <div className="col-span-full">
+        <div className={work ? "min-w-0" : "col-span-full"}>
           <PoPropertyUnlistedDocumentField
             property={property}
             onPatch={onPatch}

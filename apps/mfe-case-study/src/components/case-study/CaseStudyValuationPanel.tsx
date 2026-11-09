@@ -1,7 +1,9 @@
 "use client";
 
 import { Suspense, useMemo } from "react";
-import { InlineLoadingSkeleton } from "@platform/ui-kit";
+import { InlineLoadingSkeleton, useWorkDensity } from "@platform/ui-kit";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { canReviewTransaction } from "../../lib/app-data/po-roles";
 import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { resolveAssigneeDisplayName } from "@platform/app-shared/fees/party-fee-meta";
 import { PropertyDetailAppraisalTab } from "./lazy-workspace-panels";
@@ -30,6 +32,9 @@ export function CaseStudyValuationPanel({
   caseStudyTask: WorkflowTask;
 }) {
   const { data: staffResult } = useStaffUsersQuery();
+  const { access } = useAppAccess();
+  // The work page's layout (`work` density) (Omar 2026-11-09): the study reads the report's state; review works it.
+  const studyCompact = useWorkDensity() && !canReviewTransaction(access);
   const staffUsers = useMemo(() => staffResult?.users ?? [], [staffResult]);
 
   const appraisalTask = useMemo(() => {
@@ -83,13 +88,14 @@ export function CaseStudyValuationPanel({
       <div className="mb-3 flex flex-wrap items-center gap-2.5">
         <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
         <h3 className="m-0 text-[14px] font-extrabold text-heading">
-          تقرير التقييم — مراجعة الأخصائي
+          {studyCompact ? "تقرير التقييم" : "تقرير التقييم — مراجعة الأخصائي"}
         </h3>
         <span className="min-w-[1rem] flex-1 border-t border-border" aria-hidden />
       </div>
       <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
-        يصل التقرير هنا بعد إرسال المقيّم. اعتمد التقرير لإتمام مسار التقييم، أو
-        أعده للتصحيح. الاعتماد لا يقفل المعاملة نهائيًا — يمكن إعادة فتحها لاحقًا.
+        {studyCompact
+          ? "يعمل على التقرير المقيّم والمراجع — هنا حالته، ومعاينته للقراءة."
+          : "يصل التقرير هنا بعد إرسال المقيّم. اعتمد التقرير لإتمام مسار التقييم، أو أعده للتصحيح. الاعتماد لا يقفل المعاملة نهائيًا — يمكن إعادة فتحها لاحقًا."}
       </p>
       <Suspense fallback={<InlineLoadingSkeleton className="my-2" />}>
         <PropertyDetailAppraisalTab

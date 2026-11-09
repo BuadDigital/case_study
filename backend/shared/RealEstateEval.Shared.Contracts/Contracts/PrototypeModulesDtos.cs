@@ -120,12 +120,6 @@ public class SaveValuationRequestRequest
     public string Date { get; init; } = "";
 }
 
-public class ValuationImpedimentRequest
-{
-    [Required, MaxLength(2000)]
-    public string Reason { get; init; } = "";
-}
-
 // Attachment DTOs moved to RealEstateEval.Attachments.Application.
 
 public sealed class UserLabelDto

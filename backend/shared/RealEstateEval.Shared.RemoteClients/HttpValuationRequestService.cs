@@ -114,12 +114,6 @@ public sealed class HttpValuationRequestService(
         CancellationToken cancellationToken = default) =>
         throw new InvalidOperationException("Submit valuation reports on the Valuation API.");
 
-    public Task<(ValuationRequestDto? Result, string? Error)> RecordImpedimentAsync(
-        Guid id,
-        ValuationImpedimentRequest request,
-        CancellationToken cancellationToken = default) =>
-        throw new InvalidOperationException("Record valuation impediments on the Valuation API.");
-
     private static string MapConflict(string error) =>
         error.Contains("open", StringComparison.OrdinalIgnoreCase)
             ? "valuation_already_open"

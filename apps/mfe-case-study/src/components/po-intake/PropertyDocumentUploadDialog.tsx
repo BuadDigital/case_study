@@ -190,7 +190,7 @@ export function PropertyDocumentUploadDialog({
             </p>
             <div>
               <Label className="mb-1 text-[11px]" htmlFor="property-document-label">
-                اسم المستند *
+                اسم المستند (اختياري)
               </Label>
               <Input
                 id="property-document-label"

@@ -56,6 +56,7 @@ import { PoPropertyRouteGate } from "./PoPropertyRouteGate";
 import { CoordinationIntakeBanner, IntakeScope } from "./CoordinationIntake";
 import { useCoordinationSections, useSurveyTask } from "./useCoordinationSections";
 import { WorkSectionsLayout, useWorkSections } from "./WorkSectionsFrame";
+import { WorkPhotosSection } from "./WorkPhotosSection";
 import { WorkUploadSection } from "./WorkUploadSection";
 
 const EMPTY_TASKS: WorkflowTask[] = [];
@@ -112,6 +113,20 @@ function WorkPageBody({
     ready: tasksQuery.isFetched,
   });
   const { openSection } = state;
+  // Omar 2026-11-09: once coordination accepted the inspection, section 4
+  // no longer repeats the inspector's cards — section 7 «المطابقة والمكوّنات» shows them.
+  const inspectionAccepted = useMemo(
+    () =>
+      Boolean(studyTask) &&
+      tasks.some(
+        (t) =>
+          t.parentTaskId === studyTask?.id &&
+          t.kind === "field-inspection" &&
+          t.status !== "cancelled" &&
+          t.packageAccepted === true,
+      ),
+    [studyTask, tasks],
+  );
   const coordination = useCoordinationSections({
     record,
     property,
@@ -147,6 +162,18 @@ function WorkPageBody({
   );
 
   const body = (id: WorkSectionId): ReactNode => {
+    if (id === "inspector" && inspectionAccepted) {
+      return (
+        <div className="flex flex-wrap items-center gap-3 pt-3">
+          <span className="flex-1 text-[12.5px] text-text-2">
+            قُبلت مخرجات المعاين — تفاصيلها في قسم «المطابقة والمكوّنات».
+          </span>
+          <Button type="button" size="sm" variant="outline" onClick={() => openSection("inspection", true)}>
+            عرض المخرجات
+          </Button>
+        </div>
+      );
+    }
     if (COORDINATION_IDS.has(id)) return coordination.body(id as CoordinationSectionId);
     if (atCoordination) {
       return (
@@ -184,6 +211,16 @@ function WorkPageBody({
           </div>
         ) : (
           noTask
+        );
+      case "photos":
+        return (
+          <WorkPhotosSection
+            record={record}
+            property={property}
+            task={task}
+            studyTask={studyTask}
+            tasks={tasks}
+          />
         );
       case "valuation":
         return studyTask ? (

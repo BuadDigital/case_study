@@ -22,6 +22,7 @@ import {
   reverseGeocodeLocation,
   Spinner,
   useToast,
+  ICON_PATHS,
 } from "@platform/ui-kit";
 import {
   opsBtnPrimary,
@@ -50,7 +51,6 @@ import {
   comparableAreaLabel,
   comparableKindFromType,
 } from "@platform/app-shared/app-data/comparable-entry";
-import { PLUS_ICON } from "./ComparablesOpsIcon";
 
 export function AddComparableForm({
   onCreated,
@@ -176,7 +176,7 @@ export function AddComparableForm({
       <div className={opsLetterHead}>
         <div className="flex items-center gap-[11px]">
           <span className={opsIconBoxGold}>
-            <OpsIcon path={PLUS_ICON} />
+            <OpsIcon path={ICON_PATHS.plus} />
           </span>
           <div>
             <div className={opsLetterTitle}>إضافة مقارن</div>

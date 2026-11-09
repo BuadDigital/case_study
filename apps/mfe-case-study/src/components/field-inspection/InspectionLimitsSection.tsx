@@ -4,13 +4,16 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Button,
   FormGroup,
+  FormRow,
   Input,
   Label,
   Note,
   cn,
   GentleBusy,
   useToast,
+  useWorkDensity,
 } from "@platform/ui-kit";
+import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import {
   getInspectionLimits,
   saveInspectionLimits,
@@ -41,6 +44,7 @@ export function InspectionLimitsSection({
   mobile?: boolean;
 }) {
   const { showToast } = useToast();
+  const work = useWorkDensity();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [scope, setScope] = useState<string>("");
@@ -111,6 +115,33 @@ export function InspectionLimitsSection({
   if (!propertyId) return null;
 
   const limited = scope !== "" && scope !== "full";
+
+  // The work page's layout (`work` density) (Omar 2026-11-09): a locked section reads like the page's other locked
+  // fields — three values in the four-column row, not greyed-out inputs.
+  if (work && disabled && !loading) {
+    return (
+      <div className="mt-3">
+        <FormRow>
+          <InsReadField
+            label="نطاق المعاينة"
+            value={SCOPE_OPTIONS.find((o) => o.value === scope)?.label ?? ""}
+          />
+          <InsReadField
+            label="وحدات لم تُعايَن"
+            value={units.map((u) => `${u.count} — ${u.reason}`).join("، ")}
+          />
+          <InsReadField label="سبب تقييد المعاينة" value={reason} />
+        </FormRow>
+        {reservation ? (
+          <Note className="mt-3">
+            <span className="text-[11px]">
+              نص التحفّظ المركّب (يدخل الافتراضات الخاصة آلياً): {reservation}
+            </span>
+          </Note>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className="mt-3 space-y-3 rounded-lg border border-border bg-surface-2/40 p-3">

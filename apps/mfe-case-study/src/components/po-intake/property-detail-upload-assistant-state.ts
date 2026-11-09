@@ -244,3 +244,22 @@ export function appraisalFieldValue(
   return fields?.find((f) => f.label === label)?.value;
 }
 
+/**
+ * The package in one line, for the work page's assistant row (Omar 2026-11-09).
+ *
+ * How it works: counts the attachment rows this transaction needs (every row but «not-needed»), how many
+ * have a file now, and the fields there are to copy.
+ * Edge cases: missing rows are named by count only — their names are listed in the prep check and in
+ * the assistant itself.
+ */
+export function enfathPackageLine(model: {
+  attachments: readonly Pick<InfathUploadAttachment, "status">[];
+  copyableTotal: number;
+}): string {
+  const needed = model.attachments.filter((a) => a.status !== "not-needed");
+  const ready = readyAttachments(needed).length;
+  const missing = needed.length - ready;
+  const files = `المرفقات: ${ready} من ${needed.length} جاهزة`;
+  const gaps = missing > 0 ? ` (${missing} ناقصة)` : "";
+  return `${files}${gaps} · حقول للنسخ إلى إنفاذ: ${model.copyableTotal}`;
+}

@@ -70,6 +70,8 @@ export type CachedAssignmentDoc = {
   mimeType: string;
   dataUrl?: string;
   attachmentId?: string;
+  /** The name its uploader gave an unlisted («غير معرّف») document — shown above the file name (Omar 2026-11-09). */
+  customLabel?: string;
 };
 
 /** `fileName` is the name the server stored — the form keeps that one, not the local file's. */
@@ -317,6 +319,8 @@ async function writeCachedDoc(
       };
     }
     payload.attachmentId = upload.data.id;
+    const givenLabel = options?.unlisted?.customDocumentLabel?.trim();
+    if (givenLabel) payload.customLabel = givenLabel;
     // The server stores a cleaned-up name («.az.pdf» → «az.pdf»); the property keeps whatever name the cache
     // holds and later matches its documents by that name, so the cache must carry the stored one.
     const storedName = upload.data.fileName?.trim();
@@ -505,7 +509,7 @@ async function hydrateOneMeta(
   kind: PropertyDocKind,
   poNumber: string,
   propertyId: string,
-  meta: { id: string; fileName: string; contentType: string },
+  meta: { id: string; fileName: string; contentType: string; customDocumentLabel?: string | null },
   generationAtStart: number,
 ): Promise<void> {
   const key = cacheKey(kind, poNumber, propertyId);
@@ -527,6 +531,7 @@ async function hydrateOneMeta(
     fileName: meta.fileName,
     mimeType: meta.contentType,
     attachmentId: meta.id,
+    customLabel: meta.customDocumentLabel?.trim() || undefined,
   };
 
   let blob: Blob | null = blobResult.ok ? blobResult.data : null;
@@ -706,6 +711,7 @@ export async function primePropertyDocMetadata(
         fileName: meta.fileName,
         mimeType: meta.contentType,
         attachmentId: meta.id,
+        customLabel: meta.customDocumentLabel?.trim() || undefined,
       });
     }
   }
@@ -950,6 +956,7 @@ async function clonePropertyDocKind(
         fileName: upload.data.fileName || meta.fileName,
         mimeType: upload.data.contentType || meta.contentType,
         attachmentId: upload.data.id,
+        customLabel: meta.customDocumentLabel?.trim() || undefined,
       });
       return upload.data.fileName || meta.fileName;
     }),

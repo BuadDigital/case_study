@@ -14,7 +14,6 @@ import {
   type InspectorWorkspaceDraft,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
-  EDIT_CONTROL_CLASS,
   InsBadge,
   InspectorCard,
   MobileInspectMap,
@@ -29,6 +28,7 @@ import {
 } from "./field-inspection-work-state";
 import { inspectorWizardCoordsValue } from "./inspector-wizard-state";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
+import { useInsControlClass } from "../po-intake/PropertyDetailInspectionFields";
 
 export function InspectorLocationCard({
   activeStep,
@@ -65,6 +65,8 @@ export function InspectorLocationCard({
   layout: "desktop" | "mobile";
   mobile: boolean;
 }) {
+  // The work page's layout (`work` density) (Omar 2026-11-09): the page's one control height; unchanged elsewhere.
+  const insCtl = useInsControlClass();
   const [coordsOutside, setCoordsOutside] = useState(false);
   // Phone: the inspector types the numbers when GPS or the map cannot place the point.
   const phoneCoordsBox = mobile && !locked && !mapPinned;
@@ -119,7 +121,7 @@ export function InspectorLocationCard({
             <Input
               id="ins-lat"
               dir="ltr"
-              className={EDIT_CONTROL_CLASS}
+              className={insCtl}
               disabled={locked}
               value={draft.mapLatitude}
               placeholder={JEDDAH_DEFAULT_LAT}
@@ -142,7 +144,7 @@ export function InspectorLocationCard({
             <Input
               id="ins-lng"
               dir="ltr"
-              className={EDIT_CONTROL_CLASS}
+              className={insCtl}
               disabled={locked}
               value={draft.mapLongitude}
               placeholder={JEDDAH_DEFAULT_LNG}

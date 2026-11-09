@@ -8,7 +8,7 @@
 
 import type { PoRow } from "@platform/app-shared/app-data/constants";
 import { poListStatusMeta } from "@platform/app-shared/app-data/po-list-status";
-import { cn, StatusPill } from "@platform/ui-kit";
+import { cn, StatusPill, ICON_PATHS } from "@platform/ui-kit";
 import { HoverPortalCard } from "../components/ui/HoverPortalCard";
 import {
   poStatusStyle,
@@ -121,7 +121,7 @@ export function PlusIcon() {
       strokeWidth="2"
       aria-hidden
     >
-      <path d="M12 5v14M5 12h14" />
+      <path d={ICON_PATHS.plus} />
     </svg>
   );
 }

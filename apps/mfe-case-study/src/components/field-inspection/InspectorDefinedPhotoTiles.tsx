@@ -6,7 +6,7 @@
  * zone; the slot state (done / «غير متوفر» / first photo) arrives as props.
  */
 import { useRef } from "react";
-import { cn, useToast } from "@platform/ui-kit";
+import { cn, useToast, ICON_PATHS } from "@platform/ui-kit";
 import type { InspectorSlotPhoto } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   INSPECTOR_PHOTO_ACCEPT,
@@ -76,7 +76,7 @@ export function MobilePhotoTile({
           </svg>
         ) : (
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="var(--gold-d,#a4906f)" strokeWidth="1.8" aria-hidden>
-            <path d="M12 5v14M5 12h14" />
+            <path d={ICON_PATHS.plus} />
           </svg>
         )}
         <span className="text-center text-[11px] leading-tight text-text-2">

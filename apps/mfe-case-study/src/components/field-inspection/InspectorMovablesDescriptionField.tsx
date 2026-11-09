@@ -4,9 +4,9 @@ import { cn } from "@platform/ui-kit";
 import {
   MOVABLES_DESCRIPTION_KEY,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
-import { EDIT_CONTROL_CLASS } from "./FieldInspectionWorkParts";
 import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { inspectorInvalidControlClass } from "../../lib/app-data/inspector-workspace-validation";
+import { useInsControlClass } from "../po-intake/PropertyDetailInspectionFields";
 
 /** Field Inspection Workspace.dc.html — single-line input beside «يوجد منقولات». */
 export function InspectorMovablesDescriptionField({
@@ -20,6 +20,8 @@ export function InspectorMovablesDescriptionField({
   invalid?: boolean;
   onChange: (next: string) => void;
 }) {
+  // The work page's layout (`work` density) (Omar 2026-11-09): the page's one control height; unchanged elsewhere.
+  const insCtl = useInsControlClass();
   if (disabled) return <InsReadField label="وصف المنقولات" value={value} multiline />;
   return (
     <input
@@ -32,7 +34,7 @@ export function InspectorMovablesDescriptionField({
       onChange={(e) => onChange(e.target.value)}
       placeholder="صف المنقولات الموجودة…"
       className={cn(
-        EDIT_CONTROL_CLASS,
+        insCtl,
         "min-w-[240px] flex-1",
         invalid && inspectorInvalidControlClass,
       )}

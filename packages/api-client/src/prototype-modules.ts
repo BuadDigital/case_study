@@ -159,38 +159,11 @@ async function fetchValuationRequestList(
   }
 }
 
-export async function listValuationRequests(
-  config: PrototypeModulesApiConfig,
-): Promise<PrototypeModulesResult<ValuationRequestDto[]>> {
-  return fetchValuationRequestList(config, "/api/valuation-requests");
-}
-
 /** Case-staff readable overlay for the property map (not the operator queue). */
 export async function listValuationRequestMapOverlay(
   config: PrototypeModulesApiConfig,
 ): Promise<PrototypeModulesResult<ValuationRequestDto[]>> {
   return fetchValuationRequestList(config, "/api/valuation-requests/map-overlay");
-}
-
-export async function submitValuationImpediment(
-  config: PrototypeModulesApiConfig,
-  id: string,
-  reason: string,
-): Promise<PrototypeModulesResult<ValuationRequestDto>> {
-  const base = config.baseUrl ?? getApiBase();
-  try {
-    const res = await fetch(`${base}/api/valuation-requests/${id}/impediment`, {
-      method: "POST",
-      headers: authHeaders(config.token),
-      body: JSON.stringify({ reason }),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (res.status === 404) return { ok: false, kind: "not_found" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: await parseJson<ValuationRequestDto>(res) };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
 }
 
 export type KeyEnvelopeLinkedPropertyDto = {

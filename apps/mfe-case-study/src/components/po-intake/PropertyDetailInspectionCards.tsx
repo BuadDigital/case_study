@@ -2,7 +2,7 @@
 
 /** Inspection-tab card chrome — shared badge, section card, chip row. */
 
-import { cn } from "@platform/ui-kit";
+import { cn, useWorkDensity } from "@platform/ui-kit";
 import { arabicStepLabel } from "../field-inspection/FieldInspectionWorkParts";
 
 export function SharedBadge() {
@@ -29,11 +29,14 @@ export function InsCard({
   /** Belongs to a wizard step that is not the active one. */
   hidden?: boolean;
 }) {
+  // The work page's layout (`work` density) (Omar 2026-11-09): one card title style — the wizard's step numbers
+  // mean nothing outside the inspector's wizard, and only some cards carried one.
+  const work = useWorkDensity();
   if (hidden) return null;
   return (
     <section className="mb-3 rounded-[12px] border border-border bg-surface px-4 py-3.5 shadow-none">
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        {step != null ? (
+        {step != null && !work ? (
           <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-[color-mix(in_srgb,var(--heading)_18%,var(--ink))] text-[14px] font-extrabold text-gold-2">
             {arabicStepLabel(step)}
           </span>

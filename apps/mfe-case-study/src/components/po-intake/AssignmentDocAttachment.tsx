@@ -41,6 +41,8 @@ export function AssignmentDocAttachment({
 
   docKind = "decree",
 
+  quiet = false,
+
 }: {
 
   poNumber: string;
@@ -52,6 +54,10 @@ export function AssignmentDocAttachment({
   variant?: "inline" | "detail" | "thumb" | "card" | "panel";
 
   docKind?: PropertyDocKind;
+
+  /** No hint lines under the file name (the work page's document cards, Omar 2026-11-09). */
+
+  quiet?: boolean;
 
 }) {
 
@@ -145,6 +151,8 @@ export function AssignmentDocAttachment({
 
     dataUrl: cached?.dataUrl,
 
+    customLabel: cached?.customLabel,
+
   };
 
 
@@ -191,13 +199,19 @@ export function AssignmentDocAttachment({
 
       >
 
+        {doc.customLabel ? (
+
+          <span className="break-words text-[11.5px] font-bold text-heading">{doc.customLabel}</span>
+
+        ) : null}
+
         <span className="break-all text-[11px] text-text-2" title={doc.fileName}>
 
           {doc.fileName}
 
         </span>
 
-        {hasVisualPreview ? (
+        {!quiet && hasVisualPreview ? (
 
           <span className="text-[10px] text-text-3">
 
@@ -211,7 +225,7 @@ export function AssignmentDocAttachment({
 
         ) : null}
 
-        {!doc.dataUrl && isImageMime(doc.mimeType) ? (
+        {!quiet && !doc.dataUrl && isImageMime(doc.mimeType) ? (
 
           <span className="text-[10px] text-text-3">
 
@@ -221,7 +235,7 @@ export function AssignmentDocAttachment({
 
         ) : null}
 
-        {!doc.dataUrl && isPdf ? (
+        {!quiet && !doc.dataUrl && isPdf ? (
 
           <span className="text-[10px] text-text-3">
 
@@ -231,7 +245,7 @@ export function AssignmentDocAttachment({
 
         ) : null}
 
-        {!doc.dataUrl && !isImageMime(doc.mimeType) && !isPdf ? (
+        {!quiet && !doc.dataUrl && !isImageMime(doc.mimeType) && !isPdf ? (
 
           <span className="text-[10px] text-text-3">
 

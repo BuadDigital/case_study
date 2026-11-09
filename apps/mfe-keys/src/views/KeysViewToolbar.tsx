@@ -9,6 +9,7 @@ import {
   cn,
   opsBtnGhost,
   opsChip,
+  ICON_PATHS,
 } from "@platform/ui-kit";
 import { preloadRegisterKeyEnvelopeModal } from "./KeysViewModals";
 import type { StatusFilter } from "./keys-view-state";
@@ -26,7 +27,7 @@ function PlusIcon() {
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d="M12 5v14M5 12h14" />
+      <path d={ICON_PATHS.plus} />
     </svg>
   );
 }

@@ -1,6 +1,8 @@
 "use client";
 
-import { createElement } from "react";
+import { createElement, useState } from "react";
+import { AppModal, Button, OpsIcon, useWorkDensity } from "@platform/ui-kit";
+import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { PartyRecallAdvisorySection } from "@platform/app-shared/components/PartyRecallAdvisorySection";
 import {
@@ -17,6 +19,21 @@ import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import type { PropertyDetailPartyCard } from "../../lib/app-data/property-detail-parties";
 import type { PropertyDetailPartySubmission } from "../../lib/app-data/property-detail-party-submissions";
+
+/** The draft's state as the study reads it (the work page's layout, Omar 2026-11-09). */
+function draftStateLine(propertyId: string): string {
+  const draft = getReportDraftState(propertyId);
+  if (!draft || draft.status === "none" || draft.status === "preparing")
+    return "لم يُصدر المراجع مسودة التقرير بعد.";
+  if (draft.reportStage !== "draft") return "أُودع التقرير وصدرت نسخته النهائية.";
+  if (draft.status === "approved") return "اعتمد المقيّم مسودة التقرير.";
+  if (draft.status === "sent") return "المسودة لدى المقيّم لاعتمادها.";
+  return "المسودة لدى المراجع.";
+}
+
+/** «معاينة التقرير» eye (lucide «eye» path). */
+const EYE_PATH =
+  "M2.06 12.35a1 1 0 0 1 0-.7 10.75 10.75 0 0 1 19.88 0 1 1 0 0 1 0 .7 10.75 10.75 0 0 1-19.88 0M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6";
 
 /**
  * Property-detail appraisal tab — package return bar, the specialist's report-draft workspace, and the
@@ -47,6 +64,10 @@ export function PropertyDetailAppraisalTab({
 }) {
   const { access } = useAppAccess();
   const isReview = canReviewTransaction(access);
+  // The work page's layout (`work` density) (Omar 2026-11-09): for the study the report is a result, not an input —
+  // a status line and «معاينة التقرير» replace the draft workspace and the full report on the page.
+  const studyCompact = useWorkDensity() && !isReview;
+  const [previewOpen, setPreviewOpen] = useState(false);
   if (!appraisalCard) {
     return (
       <EmptyState
@@ -102,8 +123,35 @@ export function PropertyDetailAppraisalTab({
       {submission?.packageStatus === "reopened" && returnRemark?.trim() ? (
         <ReturnedForCorrectionNote note={returnRemark} className="mb-3" />
       ) : null}
+      {studyCompact ? (
+        <div
+          className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface-2/50 px-3.5 py-2.5"
+          data-testid="study-report-compact"
+        >
+          <span className="flex-1 text-[12.5px] text-text">{draftStateLine(property.id)}</span>
+          {appraisalTask && ValuationReport ? (
+            <Button type="button" size="sm" variant="outline" onClick={() => setPreviewOpen(true)}>
+              <span className="inline-flex items-center gap-1.5">
+                <OpsIcon path={EYE_PATH} size={15} />
+                معاينة التقرير
+              </span>
+            </Button>
+          ) : null}
+          <AppModal
+            open={previewOpen}
+            onClose={() => setPreviewOpen(false)}
+            title="معاينة تقرير التقييم"
+            subtitle="للقراءة — يعمل عليه المقيّم والمراجع"
+            maxWidthPx={1180}
+          >
+            {previewOpen && appraisalTask && ValuationReport
+              ? createElement(ValuationReport, { appraisalTask, allTasks: tasks, property })
+              : null}
+          </AppModal>
+        </div>
+      ) : null}
       {/* The evaluator bridge registers module-level components (stable identity), not ones created per render. */}
-      {showReportDraft && appraisalTask && ReportDraftPanel
+      {!studyCompact && showReportDraft && appraisalTask && ReportDraftPanel
         ? createElement(ReportDraftPanel, {
             appraisalTask,
             allTasks: tasks,
@@ -114,7 +162,7 @@ export function PropertyDetailAppraisalTab({
             canReview: isReview,
           })
         : null}
-      {appraisalTask && ValuationReport ? (
+      {studyCompact ? null : appraisalTask && ValuationReport ? (
         createElement(ValuationReport, {
           appraisalTask,
           allTasks: tasks,

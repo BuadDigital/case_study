@@ -2,14 +2,11 @@
   "name": "@valuation/mfe",
   "version": "0.1.0",
   "private": true,
-  "description": "Valuation microfrontend — طلبات التقييم (/valuation-requests)",
+  "description": "Valuation microfrontend — بنك المقارنات (/comparable-properties)",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts",
-    "./query/valuation-queries": "./src/query/valuation-queries.ts",
-    "./lib/*": "./src/lib/*",
-    "./views/*": "./src/views/*",
-    "./components/*": "./src/components/*"
+    "./views/*": "./src/views/*"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

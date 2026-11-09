@@ -20,7 +20,6 @@ import {
   priorPoNotice,
   resolveAttachPo,
   resolvePriorExclusion,
-  stageNoteText,
   type PoPropertyPatch,
 } from "./po-property-deed-form-state";
 
@@ -38,7 +37,6 @@ type Props = {
   excludePoNumber?: string;
   /** Which fields this client relationship requires — e.g. Nabr skips قرار الإسناد و اسم المالك. */
   fieldPolicy?: ClientFieldPolicy;
-  showStageNote?: boolean;
   /** The property has no server id yet (its draft could not be created): no file can be stored. */
   uploadsDisabled?: boolean;
 };
@@ -52,7 +50,6 @@ export function PoPropertyEnfathForm({
   poNumber,
   excludePoNumber,
   fieldPolicy,
-  showStageNote = true,
   uploadsDisabled = false,
 }: Props) {
   const attachPo = uploadsDisabled ? "" : resolveAttachPo(poNumber, excludePoNumber);
@@ -101,12 +98,6 @@ export function PoPropertyEnfathForm({
 
   return (
     <>
-      {showStageNote ? (
-        <Note tone="info" className="mb-3">
-          {stageNoteText()}
-        </Note>
-      ) : null}
-
       {priorNotice ? (
         <Note tone="success" className="mb-3">
           <strong>صك متكرر</strong> — وُجدت بيانات في أمر العمل «{priorNotice}».

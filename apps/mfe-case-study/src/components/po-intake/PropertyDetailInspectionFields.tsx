@@ -3,7 +3,12 @@
 /** Inspection-tab field primitives — label/value, edit input, select, textarea, grid. */
 
 import { createContext, useContext, type ReactNode } from "react";
-import { cn } from "@platform/ui-kit";
+import {
+  cn,
+  formControlClassName,
+  useWorkDensity,
+  WORK_FORM_GRID_CLASS,
+} from "@platform/ui-kit";
 import { inspectorInvalidControlClass } from "../../lib/app-data/inspector-workspace-validation";
 import { EDIT_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
 
@@ -11,6 +16,20 @@ const InsFieldsGridCenteredContext = createContext(false);
 
 export function useInsFieldsGridCentered() {
   return useContext(InsFieldsGridCenteredContext);
+}
+
+/**
+ * The edit control's chrome: the inspector's own (`EDIT_CONTROL_CLASS`), or — on the work page's new
+ * layout (`FormDensityProvider value="work"`, Omar 2026-11-09) — the ui-kit control every other
+ * form of the page uses (38px, 13px), so the page shows one control height.
+ * Edge cases: a textarea keeps its auto height and resize handle.
+ */
+export function useInsControlClass(kind: "input" | "textarea" = "input"): string {
+  const work = useWorkDensity();
+  if (!work) return EDIT_CONTROL_CLASS;
+  return kind === "textarea"
+    ? cn(formControlClassName, "h-auto min-h-[62px] py-2 leading-relaxed")
+    : formControlClassName;
 }
 
 export function insFieldLabelRowClass(centered: boolean) {
@@ -82,9 +101,13 @@ export function InsReadField({
   className?: string;
 }) {
   const gridCentered = useInsFieldsGridCentered();
+  const work = useWorkDensity();
   const trimmed = value?.trim() ?? "";
   return (
-    <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
+    <div
+      className={cn("min-w-0", multiline && work && "col-span-full", className)}
+      id={id ? `${id}-wrap` : undefined}
+    >
       <div className={insFieldLabelRowClass(gridCentered)}>
         <span className={insFieldLabelClass(gridCentered)}>{label}</span>
         {badge}
@@ -155,6 +178,7 @@ export function InsEditField({
   disabled?: boolean;
 }) {
   const gridCentered = useInsFieldsGridCentered();
+  const controlClass = useInsControlClass();
   const inputCenterClass =
     ltr || gridCentered ? "text-center [direction:ltr] [unicode-bidi:isolate]" : undefined;
 
@@ -184,7 +208,7 @@ export function InsEditField({
         inputMode={inputMode}
         aria-invalid={invalid || undefined}
         className={cn(
-          EDIT_CONTROL_CLASS,
+          controlClass,
           inputCenterClass,
           invalid && inspectorInvalidControlClass,
         )}
@@ -220,6 +244,7 @@ export function InsEditSelect({
   placeholder?: string;
   className?: string;
 }) {
+  const controlClass = useInsControlClass();
   return (
     <div className={cn("min-w-0", className)}>
       <div className="mb-1 flex flex-wrap items-center gap-1.5">
@@ -228,7 +253,7 @@ export function InsEditSelect({
       </div>
       <select
         id={id}
-        className={EDIT_CONTROL_CLASS}
+        className={controlClass}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       >
@@ -268,11 +293,16 @@ export function InsEditTextarea({
   placeholder?: string;
   hint?: string;
 }) {
+  const controlClass = useInsControlClass("textarea");
+  const work = useWorkDensity();
   if (disabled) {
     return <InsReadField id={id} label={label} value={value} multiline className={className} />;
   }
   return (
-    <div className={cn("min-w-0", className)} id={id ? `${id}-wrap` : undefined}>
+    <div
+      className={cn("min-w-0", work && "col-span-full", className)}
+      id={id ? `${id}-wrap` : undefined}
+    >
       <div className="mb-1 flex flex-wrap items-center gap-1.5">
         <span
           className={cn(
@@ -297,7 +327,7 @@ export function InsEditTextarea({
             .filter(Boolean)
             .join(" ") || undefined
         }
-        className={cn(EDIT_CONTROL_CLASS, "resize-y", invalid && inspectorInvalidControlClass)}
+        className={cn(controlClass, "resize-y", invalid && inspectorInvalidControlClass)}
         value={value}
         aria-invalid={invalid || undefined}
         onChange={(e) => onChange(e.target.value)}
@@ -311,6 +341,14 @@ export function InsEditTextarea({
   );
 }
 
+/**
+ * The inspection cards' field grid.
+ *
+ * How it works: `auto-fit` columns of at least `min` px — or, on the work page's layout
+ * (Omar 2026-11-09), the shared 1 → 2 → 3 → 4 ladder (`WORK_FORM_GRID_CLASS`), so every card of the
+ * page lines its fields up in the same four columns instead of 2 to 7 depending on its field count.
+ * Edge cases: the inspector's own screens never sit in that density, so they keep `auto-fit`.
+ */
 export function InsFieldsGrid({
   min = 150,
   centered = false,
@@ -320,16 +358,21 @@ export function InsFieldsGrid({
   centered?: boolean;
   children: ReactNode;
 }) {
+  const work = useWorkDensity();
   return (
     <InsFieldsGridCenteredContext.Provider value={centered}>
-      <div
-        className="grid gap-3"
-        style={{
-          gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`,
-        }}
-      >
-        {children}
-      </div>
+      {work ? (
+        <div className={WORK_FORM_GRID_CLASS}>{children}</div>
+      ) : (
+        <div
+          className="grid gap-3"
+          style={{
+            gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`,
+          }}
+        >
+          {children}
+        </div>
+      )}
     </InsFieldsGridCenteredContext.Provider>
   );
 }

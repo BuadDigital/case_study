@@ -137,7 +137,7 @@ describe("planSidebarNav", () => {
           label: "A",
           items: [nav("po", "A"), nav("suspended-transactions", "A"), nav("location-pending", "A")],
         },
-        { label: "B", items: [nav("valuation-requests", "B")] },
+        { label: "B", items: [nav("comparable-properties", "B")] },
       ],
       {
         activeTx: { anchor: "po", atNavStart: false, anchorId: "po" },

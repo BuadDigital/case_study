@@ -20,6 +20,7 @@ import {
   Note,
   Textarea,
   useToast,
+  useWorkDensity,
 } from "@platform/ui-kit";
 import { SPECIALIST_COMPONENTS_TABLE_HINT } from "../../lib/app-data/specialist-components";
 import { SpecialistComponentsTable } from "./SpecialistComponentsTable";
@@ -40,6 +41,7 @@ export function SpecialistComponentsSection({
   inspectorReference?: ReactNode;
   onSaved?: () => void;
 }) {
+  const work = useWorkDensity(); // the work page's layout: one label size (Omar 2026-11-09)
   const { showToast } = useToast();
   const editor = useBuildingInventoryEditor({
     actor: "specialist",
@@ -86,7 +88,10 @@ export function SpecialistComponentsSection({
             <InsReadField label="مكونات العقار (تُطبع في التقرير)" value={text} multiline />
           ) : (
             <FormGroup>
-              <Label htmlFor={`components-text-${propertyId}`} className="text-[12px] font-semibold">
+              <Label
+                htmlFor={`components-text-${propertyId}`}
+                className={work ? "text-[11px] font-semibold text-text-2" : "text-[12px] font-semibold"}
+              >
                 مكونات العقار (تُطبع في التقرير)
               </Label>
               <p className="m-0 mb-1.5 text-[11px] text-text-3">

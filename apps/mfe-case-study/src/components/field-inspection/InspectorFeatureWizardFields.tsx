@@ -5,7 +5,8 @@
  * (replaces the dense photo table while editing in wizard mode).
  */
 
-import { cn } from "@platform/ui-kit";
+import { Fragment } from "react";
+import { cn, useWorkDensity, WORK_FORM_GRID_CLASS, ICON_PATHS } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import {
   inspectorFeatureOffersPhoto,
@@ -30,6 +31,7 @@ import {
 import { featurePhotoPatch } from "../../lib/app-data/inspector-workspace-model";
 import type { InspectorWorkspacePatchInput } from "../../lib/app-data/inspector-workspace-model";
 import { wholeCountInput } from "../../lib/app-data/specialist-components";
+import { useInsControlClass } from "../po-intake/PropertyDetailInspectionFields";
 
 const INS_LABEL_CENTERED_CLASS = cn(INS_LABEL_CLASS, "w-full text-center");
 const INS_GRID_SELECT_CLASS = cn(EDIT_CONTROL_CLASS, "text-center");
@@ -99,6 +101,14 @@ export function InspectorFeatureWizardFields({
   showPropertyAge?: boolean;
   onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
+  // The work page's layout (`work` density) (Omar 2026-11-09): the shared four-column ladder instead of auto-fit,
+  // and the page's one control height.
+  const work = useWorkDensity();
+  const insCtl = useInsControlClass();
+  const gridSelectClass = work ? cn(insCtl, "text-center") : INS_GRID_SELECT_CLASS;
+  const gridNumericClass = work
+    ? cn(insCtl, "text-center tabular-nums [direction:ltr] [unicode-bidi:isolate]")
+    : INS_GRID_NUMERIC_CLASS;
   const readOnlyKeys = new Set(readOnlyFeatureKeys);
   const selectFields = fields.filter(
     (f) => f.options.length > 3 && !f.options.includes("نعم"),
@@ -186,7 +196,10 @@ export function InspectorFeatureWizardFields({
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3">
+      {/* The work page: the select and choice fields flow in ONE four-column grid, so a short group does
+          not leave a half-empty row before the next one starts. Other pages: `contents` — no box. */}
+      <div className={work ? WORK_FORM_GRID_CLASS : "contents"}>
+      <div className={work ? "contents" : "grid grid-cols-[repeat(auto-fit,minmax(190px,1fr))] gap-3"}>
         {selectFields.map((field) => {
           const { fieldDisabled, rawVal, valueMissing, needsPhoto, photoMissing } =
             featureFieldState(field);
@@ -209,7 +222,7 @@ export function InspectorFeatureWizardFields({
                     value={rawVal}
                     invalid={valueMissing}
                     controlClassName={cn(
-                      INS_GRID_SELECT_CLASS,
+                      gridSelectClass,
                       valueMissing && invalidControlClass,
                     )}
                     onChange={(next) => setFeature(field.key, next)}
@@ -224,7 +237,7 @@ export function InspectorFeatureWizardFields({
                     id={`ins-feature-select-${field.key}`}
                     aria-invalid={valueMissing || undefined}
                     className={cn(
-                      INS_GRID_SELECT_CLASS,
+                      gridSelectClass,
                       (valueMissing || photoMissing) && invalidControlClass,
                     )}
                     value={rawVal}
@@ -272,7 +285,7 @@ export function InspectorFeatureWizardFields({
                 عمر العقار (سنوات)
               </span>
               <input
-                className={INS_GRID_NUMERIC_CLASS}
+                className={gridNumericClass}
                 inputMode="numeric"
                 value={draft.propertyAgeYears}
                 onChange={(e) => onPatch({ propertyAgeYears: wholeCountInput(e.target.value) })}
@@ -283,13 +296,29 @@ export function InspectorFeatureWizardFields({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3">
+      <div className={work ? "contents" : "grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3"}>
         {choiceFields.map((field) => {
           const { fieldDisabled, rawVal, valueMissing, needsPhoto, photoMissing } =
             featureFieldState(field);
+          const occupancyDescription =
+            field.key === OCCUPANCY_STATE_KEY && rawVal === "مشغول" ? (
+              <InspectorOccupancyDescriptionField
+                value={draft.featureValues[OCCUPANCY_DESCRIPTION_KEY] ?? ""}
+                disabled={disabled}
+                invalid={Boolean(occupancyDescriptionError)}
+                onChange={(v) =>
+                  onPatch({
+                    featureValues: {
+                      ...draft.featureValues,
+                      [OCCUPANCY_DESCRIPTION_KEY]: v,
+                    },
+                  })
+                }
+              />
+            ) : null;
           return (
+            <Fragment key={field.key}>
             <div
-              key={field.key}
               id={`ins-feature-${field.key}`}
               className={cn(valueMissing && invalidControlClass, valueMissing && "rounded-md p-1")}
             >
@@ -325,24 +354,14 @@ export function InspectorFeatureWizardFields({
                   {featurePhotoCell(field.key, fieldDisabled)}
                 </div>
               ) : null}
-              {field.key === OCCUPANCY_STATE_KEY && rawVal === "مشغول" ? (
-                <InspectorOccupancyDescriptionField
-                  value={draft.featureValues[OCCUPANCY_DESCRIPTION_KEY] ?? ""}
-                  disabled={disabled}
-                  invalid={Boolean(occupancyDescriptionError)}
-                  onChange={(v) =>
-                    onPatch({
-                      featureValues: {
-                        ...draft.featureValues,
-                        [OCCUPANCY_DESCRIPTION_KEY]: v,
-                      },
-                    })
-                  }
-                />
-              ) : null}
+              {/* Other pages: the reason sits under its field; the work page: its own cell in the grid. */}
+              {work ? null : occupancyDescription}
             </div>
+            {work && occupancyDescription ? <div>{occupancyDescription}</div> : null}
+            </Fragment>
           );
         })}
+      </div>
       </div>
 
       {boolFields.length > 0 ? (
@@ -377,7 +396,7 @@ export function InspectorFeatureWizardFields({
                         className="size-3"
                         aria-hidden
                       >
-                        <path d={on ? "M20 6 9 17l-5-5" : "M12 5v14M5 12h14"} />
+                        <path d={on ? "M20 6 9 17l-5-5" : ICON_PATHS.plus} />
                       </svg>
                       {field.label}
                     </button>

@@ -19,6 +19,7 @@ export type WorkSectionId =
   | CoordinationSectionId
   | "inspection"
   | "study"
+  | "photos"
   | "valuation"
   | "upload";
 
@@ -43,6 +44,8 @@ export const WORK_SECTIONS: readonly WorkSectionDef[] = [
     step: 4,
   },
   { id: "study", title: "تقرير دراسة الحالة", group: "st", step: 4 },
+  // Omar 2026-11-09: the report's photo board moved here from the details page's photos tab.
+  { id: "photos", title: "صور التقرير", group: "st", step: 4 },
   {
     id: "valuation",
     title: "التقييم ومسودة التقرير والإيداع",
