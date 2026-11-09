@@ -12,7 +12,6 @@ import {
   requestNumberMatchesDeed,
   resolveAttachPo,
   resolvePriorExclusion,
-  stageNoteText,
   withoutFileName,
 } from "../po-property-deed-form-state";
 import type { PoPropertyIntake } from "../../../lib/app-data/po-intake-data";
@@ -100,11 +99,6 @@ describe("texts and keys", () => {
     expect(derivedIdentifierType("")).toBe("deed");
     expect(derivedIdentifierType("  ")).toBe("deed");
     expect(derivedIdentifierType("9")).toBe("real_estate_reg");
-  });
-
-  it("words the stage note around the deed or registry number", () => {
-    expect(stageNoteText()).toContain("يلزم رقم الصك");
-    expect(stageNoteText()).not.toContain("تجاوز");
   });
 
   it("marks the contacts section required or optional", () => {

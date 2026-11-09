@@ -50,14 +50,25 @@ public class PropertyDocumentUploadRulesTests
     }
 
     [Theory]
-    [InlineData(null, Reason)]
-    [InlineData("م", Reason)]
-    [InlineData("", Reason)]
-    [InlineData("   ", Reason)]
-    public void Unlisted_document_needs_a_name(string? label, string? reason)
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Unlisted_document_name_is_optional(string? label)
     {
         var result = PropertyDocumentUploadRules.Resolve(
-            Governed, ScopeKey, PropertyDocumentTypes.UnlistedKey, label, reason);
+            Governed, ScopeKey, PropertyDocumentTypes.UnlistedKey, label, Reason);
+
+        Assert.Null(result.Error);
+        Assert.Equal(PropertyDocumentTypes.UnlistedKey, result.TypeKey);
+        Assert.Null(result.CustomLabel);
+    }
+
+    [Fact]
+    public void Unlisted_document_name_too_long_is_refused()
+    {
+        var result = PropertyDocumentUploadRules.Resolve(
+            Governed, ScopeKey, PropertyDocumentTypes.UnlistedKey,
+            new string('م', PropertyDocumentUploadRules.CustomLabelMaxLength + 1), Reason);
 
         Assert.NotNull(result.Error);
     }
@@ -88,9 +99,9 @@ public class PropertyDocumentUploadRulesTests
     }
 
     [Fact]
-    public void Other_documents_field_is_unlisted_and_needs_a_name()
+    public void Other_documents_field_is_unlisted_and_its_name_is_optional()
     {
-        Assert.NotNull(PropertyDocumentUploadRules.Resolve("property-other", ScopeKey, null, null, null).Error);
+        Assert.Null(PropertyDocumentUploadRules.Resolve("property-other", ScopeKey, null, null, null).Error);
 
         var ok = PropertyDocumentUploadRules.Resolve("property-other", ScopeKey, null, "محضر لجنة", null);
         Assert.Null(ok.Error);

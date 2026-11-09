@@ -12,6 +12,7 @@ import { failureStatusLabel } from "@failures/mfe/lib/failures-labels";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
 import {
   Button,
+  Note,
   Tab,
   TabBar,
   TabPanel,
@@ -25,7 +26,8 @@ import { PropertyDetailSurveyNotesTab } from "./PropertyDetailSurveyNotesTab";
 import { PropertyTransactionTimeline } from "./PropertyTransactionTimeline";
 import { PropertyDetailMobileGlance } from "./PropertyDetailMobileGlance";
 import { formatDateAr, type PoIntakeRecord, type PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import { poPropertyFailurePath } from "@platform/app-shared/domain/po-routes";
+import Link from "next/link";
+import { poPropertyFailurePath, poPropertyWorkPath } from "@platform/app-shared/domain/po-routes";
 import { formatTimelineDate } from "../../lib/app-data/property-detail-timeline";
 import type { WorkflowTask } from "../../lib/app-data/tasks";
 import { propertyTabHasNewDot } from "../../lib/app-data/property-detail-local-ui";
@@ -52,10 +54,6 @@ import {
   SurveyPackageReviewSection,
 } from "./PropertyDetailTabChunks";
 import { usePoPropertyDetailTabsWorkflow } from "./usePoPropertyDetailTabsWorkflow";
-import { usePropertyPhotoMarks } from "./usePropertyPhotoMarks";
-import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
-import { reportPhotoLimit } from "@platform/app-shared/app-data/property-detail-document-types";
-import { propertyIsLand } from "@platform/app-shared/app-data/po-intake-property-model";
 import { canEditPropertyData, canHandOverToEnfaz } from "../../lib/app-data/po-roles";
 import { PropertyChangeLogSection } from "./PropertyChangeLogSection";
 import { PropertyDetailReceiptCard } from "./PropertyDetailReceiptCard";
@@ -151,17 +149,6 @@ export function PoPropertyDetailTabs({
   const studyTask =
     (holderTaskId ? tasks.find((t) => t.id === holderTaskId) : undefined) ?? task ?? null;
   const reportDeeds = useMemo(() => caseStudyReportDeeds(transaction?.deeds), [transaction]);
-  const { data: valuationLists } = useValuationListsQuery();
-  const reportLimit = reportPhotoLimit(valuationLists, propertyIsLand(property));
-  const photoMarks = usePropertyPhotoMarks({
-    poNumber,
-    propertyId: property.id,
-    stored: property.photoMarks,
-    studyTaskId: studyTask?.id ?? null,
-    inspectionTaskId: inspectionTask?.id ?? null,
-    enabled: visitedTabs.has("photos"),
-    reportLimit,
-  });
   const tabGroups: { label: string | null; tabs: readonly PropertyDetailTab[] }[] =
     deedCount > 1
       ? groupPropertyDetailTabs(visibleTabs).map((g) => ({
@@ -463,12 +450,22 @@ export function PoPropertyDetailTabs({
 
           {visitedTabs.has("photos") ? (
             <Activity mode={tabMode("photos")}>
+              {/* Omar 2026-11-09: the report's photo board moved to the work page's «صور التقرير»; the
+                  details page shows the photos and their marks only. */}
+              <Note tone="info" className="mb-3">
+                ترتيب صور التقرير وصور المنقولات في{" "}
+                <Link
+                  href={poPropertyWorkPath(poNumber, property.id, "photos")}
+                  className="font-bold text-primary underline-offset-2 hover:underline"
+                >
+                  صفحة العمل — «صور التقرير»
+                </Link>
+                .
+              </Note>
               <PropertyDetailPhotosTab
                 photos={propertyPhotos}
-                marks={photoMarks.marks}
-                reportLimit={reportLimit}
-                movablesPresent={photoMarks.movablesPresent}
-                onChangeMarks={photoMarks.canEdit ? photoMarks.change : undefined}
+                marks={property.photoMarks}
+                showReportBoard={false}
               />
             </Activity>
           ) : null}

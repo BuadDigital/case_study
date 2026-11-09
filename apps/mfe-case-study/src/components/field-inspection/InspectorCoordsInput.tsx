@@ -5,7 +5,8 @@ import { cn } from "@platform/ui-kit";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 import { parseCoordinatePair } from "@platform/app-shared/domain/geo";
 import { shouldUseJeddahDefaultCoords } from "@platform/app-shared/domain/jeddah-default-coords";
-import { EDIT_CONTROL_CLASS, INS_LABEL_CLASS } from "./FieldInspectionWorkParts";
+import { INS_LABEL_CLASS } from "./FieldInspectionWorkParts";
+import { useInsControlClass } from "../po-intake/PropertyDetailInspectionFields";
 
 /**
  * The typed «lat, lng» box of the property location — the inspector's phone screen and the wizard.
@@ -32,6 +33,8 @@ export function InspectorCoordsInput({
   onCoords: (lat: string, lng: string) => void;
   onOutsideChange?: (outside: boolean) => void;
 }) {
+  // The work page's layout (`work` density) (Omar 2026-11-09): the page's one control height; unchanged elsewhere.
+  const insCtl = useInsControlClass();
   const [text, setText] = useState(value);
   const [editing, setEditing] = useState(false);
   const [outside, setOutside] = useState(false);
@@ -48,7 +51,7 @@ export function InspectorCoordsInput({
       </label>
       <input
         id="ins-map-coords"
-        className={cn(EDIT_CONTROL_CLASS, "tabular-nums", (invalid || outside) && invalidControlClass)}
+        className={cn(insCtl, "tabular-nums", (invalid || outside) && invalidControlClass)}
         dir="ltr"
         placeholder="21.523339, 39.187743"
         value={editing ? text : value}

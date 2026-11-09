@@ -5,7 +5,7 @@
  * conditional «عدادات الخدمات» meter fields. Lifted out of
  * `FieldInspectionWorkBody` — same markup, state stays with the workflow hook.
  */
-import { FormRow } from "@platform/ui-kit";
+import { FormRow, useWorkDensity } from "@platform/ui-kit";
 import { RegField } from "@platform/app-shared/registration/FormFields";
 import {
   INSPECTOR_AMENITY_OPTIONS,
@@ -14,6 +14,7 @@ import {
   type InspectorWorkspaceDraft,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { InsBadge, InspectorCard } from "./FieldInspectionWorkParts";
+import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { MobileChips, MobileFieldLabel } from "./InspectMobileControls";
 import { inspectorServiceMeters } from "./field-inspection-work-state";
 import type { FieldInspectionWorkflow } from "./useFieldInspectionWorkflow";
@@ -39,12 +40,33 @@ export function InspectorServiceMeterFields({
   onPatch: (patch: InspectorWorkspacePatchInput) => void;
 }) {
   const meters = inspectorServiceMeters(draft.services);
+  // The work page's layout (`work` density) (Omar 2026-11-09): the page's one read-only style (no grey boxes) and its
+  // four-column row; the inspector's own screens keep the two boxed columns.
+  const work = useWorkDensity();
   if (!meters.any) return null;
+  if (work && disabled) {
+    return (
+      <FormRow>
+        {meters.electricity ? (
+          <>
+            <InsReadField id="ins-elec-meter-count" label="عدد عدادات الكهرباء" value={draft.electricityMeterCount} ltr />
+            <InsReadField id="ins-elec-meter-nos" label="أرقام عدادات الكهرباء" value={draft.electricityMeterNumbers} ltr />
+          </>
+        ) : null}
+        {meters.water ? (
+          <>
+            <InsReadField id="ins-water-meter-count" label="عدد عدادات الماء" value={draft.waterMeterCount} ltr />
+            <InsReadField id="ins-water-meter-nos" label="أرقام عدادات الماء" value={draft.waterMeterNumbers} ltr />
+          </>
+        ) : null}
+      </FormRow>
+    );
+  }
   const change = (patch: InspectorWorkspacePatchInput) => {
     if (!disabled) onPatch(patch);
   };
   return (
-    <FormRow className="grid-cols-1 sm:grid-cols-2">
+    <FormRow className={work ? undefined : "grid-cols-1 sm:grid-cols-2"}>
       {meters.electricity ? (
         <>
           <RegField

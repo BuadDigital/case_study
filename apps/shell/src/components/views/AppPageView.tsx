@@ -84,10 +84,6 @@ const FailureTypesView = dynamic(
   () => import("@failures/mfe").then((m) => m.FailureTypesView),
   { ssr: false, loading: MfeLoading },
 );
-const ValuationRequestsView = dynamic(
-  () => import("@valuation/mfe").then((m) => m.ValuationRequestsView),
-  { ssr: false, loading: MfeLoading },
-);
 const ComparablePropertiesView = dynamic(
   () => import("@valuation/mfe").then((m) => m.ComparablePropertiesView),
   { ssr: false, loading: MfeLoading },
@@ -177,7 +173,6 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   "field-sync-board": FieldSyncSupervisorView,
   failures: FailuresView,
   "suspended-transactions": SuspendedTransactionsView,
-  "valuation-requests": ValuationRequestsView,
   "comparable-properties": ComparablePropertiesView,
   "operations-tasks": OperationsTasksView,
   "system-fields-catalog": SystemFieldsCatalogView,
@@ -217,7 +212,6 @@ export const PAGE_CHUNK_PRELOAD: Partial<
   "field-sync-board": () => import("@case-study/mfe"),
   failures: () => import("@failures/mfe"),
   "suspended-transactions": () => import("@case-study/mfe"),
-  "valuation-requests": () => import("@valuation/mfe"),
   "comparable-properties": () => import("@valuation/mfe"),
   "operations-tasks": () => import("@case-study/mfe"),
   "system-fields-catalog": () => import("@settings/mfe"),

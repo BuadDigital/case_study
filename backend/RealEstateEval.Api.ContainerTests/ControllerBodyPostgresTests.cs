@@ -785,13 +785,13 @@ public sealed class ControllerBodyPostgresTests : IAsyncLifetime
         using var created = JsonDocument.Parse(await create.Content.ReadAsStringAsync());
         var valuationRequestId = created.RootElement.GetProperty("id").GetGuid();
 
-        // A written factor justification needs at least 10 characters (Arabic 400).
+        // Rationales are optional since 2026-11-02 (a9ed117f): a short one saves like any other text
+        // (the unit twin is AdjustmentFactorRationaleTests); the full one below then replaces it.
         using var shortRationale = AuthorizedPut(
             $"/api/valuation-requests/{valuationRequestId:D}/adjustment-factor-rationale",
             new { selectionContext = "market", factorKey = "financing", rationaleAr = "قصير" });
         var shortSaved = await client.SendAsync(shortRationale);
-        Assert.Equal(HttpStatusCode.BadRequest, shortSaved.StatusCode);
-        Assert.Contains("يجب ألا يقل عن 10 أحرف", await shortSaved.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.OK, shortSaved.StatusCode);
 
         // One rationale per factor — persisted and returned in the comparables payload.
         using var saveRationale = AuthorizedPut(

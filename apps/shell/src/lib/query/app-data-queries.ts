@@ -124,7 +124,6 @@ export function prefetchPrototypePage(
     case "property-appraisal":
     case "active-survey":
     case "party-fees":
-    case "valuation-requests":
       prefetchActiveTransactionsSituation();
       break;
     case "bourse-inquiry":

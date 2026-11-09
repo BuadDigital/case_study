@@ -24,6 +24,7 @@ import {
   PageShell,
   useSwapAnimation,
   useToast,
+  ICON_PATHS,
 } from "@platform/ui-kit";
 import {
   opsBtnGhost,
@@ -39,7 +40,6 @@ import {
   opsTfLbl,
   opsToolbar,
 } from "@platform/ui-kit";
-import { BANK_ICON } from "./ComparablesOpsIcon";
 import { AddComparableForm } from "./AddComparableForm";
 import { TagEditorRow } from "./TagEditorRow";
 import {
@@ -250,7 +250,7 @@ export function ComparablePropertiesView() {
         <div className={opsLetterHead}>
           <div className="flex items-center gap-[11px]">
             <span className={opsIconBoxGold}>
-              <OpsIcon path={BANK_ICON} />
+              <OpsIcon path={ICON_PATHS.grid} />
             </span>
             <div>
               <div className={opsLetterTitle}>سجل المقارنات</div>

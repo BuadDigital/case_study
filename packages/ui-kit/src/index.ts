@@ -114,9 +114,11 @@ export { FormGroup, type FormGroupProps } from "./components/FormGroup";
 export { FormRow, type FormRowProps } from "./components/FormRow";
 export {
   COMPACT_FORM_GRID_CLASS,
+  WORK_FORM_GRID_CLASS,
   FormDensityProvider,
   FormFlowGrid,
   useFormDensity,
+  useWorkDensity,
   type FormDensity,
 } from "./lib/form-density";
 export { Card, CardBody, CardHeader } from "./components/Card";
@@ -138,6 +140,7 @@ export {
 } from "./components/OpsPanelParts";
 export { YesNoToggle } from "./components/YesNoToggle";
 export { UploadFileIcon } from "./components/UploadFileIcon";
+export { FileStack, type FileStackProps } from "./components/FileStack";
 export {
   PoNumber,
   formatPoDisplay,
@@ -332,3 +335,4 @@ export {
   KpiClockIcon,
 } from "./icons/kpi-icons";
 export { ShowAllEye, useShowAllEyeBlink } from "./icons/show-all-eye";
+export { ICON_PATHS } from "./icons/icon-paths";

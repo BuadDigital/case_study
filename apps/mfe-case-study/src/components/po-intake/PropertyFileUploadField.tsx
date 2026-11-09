@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 import {
   Button,
+  FileStack,
   Label,
   UploadFileIcon,
   cn,
@@ -15,6 +16,7 @@ import {
   type PropertyDocKind,
 } from "../../lib/app-data/assignment-doc-attachments";
 import { AssignmentDocAttachment } from "./AssignmentDocAttachment";
+import { CachedDocName } from "./CachedDocName";
 
 // What the attachments service actually stores (it reads the bytes, not the extension):
 // PDF and JPG/PNG/GIF/WebP images. HEIC is refused here instead of after a failed upload.
@@ -46,6 +48,7 @@ export function PropertyFileUploadField({
   onRemove,
   onTooManyFiles,
   uploading,
+  cardExtra,
 }: {
   id: string;
   label: ReactNode;
@@ -69,6 +72,8 @@ export function PropertyFileUploadField({
   onTooManyFiles?: () => void;
   /** The file is on its way to the server; the picker waits and says so. */
   uploading?: boolean;
+  /** Work-page card only: fields shown above the picker (the unlisted document's name and reason). */
+  cardExtra?: ReactNode;
 }) {
   const names = multiple
     ? (fileNames ?? []).map((n) => n.trim()).filter(Boolean)
@@ -83,8 +88,12 @@ export function PropertyFileUploadField({
     : hasFiles;
   const showPicker = !atCapacity;
 
-  // Compact forms (تعديل العقار) show uploads as small square tiles instead of full-width bars.
-  const tile = useFormDensity() === "compact";
+  // Compact forms (تعديل العقار) show uploads as small square tiles instead of full-width bars; the
+  // work page (Omar 2026-11-09: «مربع خطاب التكليف ماخذ مساحة كبيرة … make it beautiful») shows one
+  // uniform document card per document in its four-column grid.
+  const density = useFormDensity();
+  const tile = density === "compact";
+  const card = density === "work";
   const [unsupported, setUnsupported] = useState<string | null>(null);
   const shownError = error ?? unsupported ?? undefined;
 
@@ -128,7 +137,7 @@ export function PropertyFileUploadField({
   // Only the full-width bar stops its click, key and drag events at the zone.
   const { dragOver, inputRef, openPicker, zoneProps } = useFileDropZone({
     onFiles: applyFiles,
-    isolate: tile ? "none" : "all",
+    isolate: tile || card ? "none" : "all",
   });
 
   const pickerTitle = hasFiles && !multiple
@@ -139,6 +148,145 @@ export function PropertyFileUploadField({
 
   // Scroll/focus targets this visible root — not the sr-only file input (that hid the pulse).
   const fileInputId = `${id}-input`;
+
+  if (card) {
+    const title = typeof label === "string" ? label : undefined;
+    return (
+      <div
+        id={id}
+        className={cn(
+          "flex min-w-0 flex-col gap-2 rounded-[12px] border bg-surface p-3",
+          shownError ? "border-danger" : "border-border",
+        )}
+      >
+        <div className="flex min-h-7 items-center gap-2">
+          <Label
+            htmlFor={fileInputId}
+            className="m-0 min-w-0 flex-1 truncate text-[12px] font-bold text-heading"
+            title={title}
+          >
+            {label}
+          </Label>
+          {hasFiles && !multiple ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-[11px] text-primary"
+              onClick={openPicker}
+            >
+              استبدال
+            </Button>
+          ) : null}
+        </div>
+
+        {/* Omar 2026-11-09 («instead of the scrolling i want like bag»): from two files the rows fold
+            into one closed stack (count + newest file), opened in place at full height — no inner scroll. */}
+        <FileStack
+          names={names}
+          collapseFrom={multiple ? 2 : Number.POSITIVE_INFINITY}
+          newestLabel={
+            showPreview && names.length > 0 ? (
+              <CachedDocName
+                kind={docKind!}
+                poNumber={attachPo!}
+                propertyId={propertyId!}
+                fileName={names[names.length - 1]!}
+              />
+            ) : undefined
+          }
+        >
+        {names.map((name) => (
+          <div
+            key={name}
+            className="flex items-center gap-2 rounded-[10px] bg-surface-2 p-2"
+          >
+            <div className="min-w-0 flex-1">
+              {showPreview ? (
+                <AssignmentDocAttachment
+                  key={`${docKind}-${attachPo}-${propertyId}-${name}`}
+                  poNumber={attachPo!}
+                  propertyId={propertyId!}
+                  fileName={name}
+                  docKind={docKind}
+                  variant="card"
+                  quiet
+                />
+              ) : (
+                <p className="m-0 truncate text-[11.5px] font-medium text-text" title={name}>
+                  {name}
+                </p>
+              )}
+            </div>
+            <Button
+              type="button"
+              variant="dangerOutline"
+              size="sm"
+              className="h-7 w-7 shrink-0 self-start px-0"
+              aria-label="مسح الملف"
+              title="مسح الملف"
+              onClick={() => (multiple && onRemove ? onRemove(name) : handleClearAll())}
+            >
+              <i className="ti ti-trash text-[14px]" aria-hidden />
+            </Button>
+          </div>
+        ))}
+        </FileStack>
+
+        {cardExtra}
+
+        {showPicker ? (
+          <div
+            role="button"
+            tabIndex={0}
+            aria-label={`${title ?? "مرفق"} — اختر ملفاً أو اسحبه هنا`}
+            className={cn(
+              "flex min-h-[64px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-[10px] border-2 border-dashed px-3 py-2 text-center transition-[border-color,background]",
+              uploading && "pointer-events-none opacity-60",
+              dragOver
+                ? "border-primary bg-[color-mix(in_srgb,var(--primary)_8%,transparent)]"
+                : shownError
+                  ? "border-danger bg-danger-bg/30"
+                  : "border-border-md bg-surface-2 hover:border-primary/50 hover:bg-[color-mix(in_srgb,var(--primary)_4%,transparent)]",
+            )}
+            {...zoneProps}
+          >
+            <UploadFileIcon size={18} className="shrink-0 text-primary" aria-hidden />
+            <span className="text-[12px] font-bold text-heading">
+              {uploading
+                ? "جارٍ الرفع…"
+                : dragOver
+                  ? "أفلِت الملف هنا"
+                  : hasFiles && multiple
+                    ? "إضافة ملف"
+                    : "ارفع المستند"}
+            </span>
+            <span className="text-[10.5px] text-text-3">PDF أو صورة</span>
+          </div>
+        ) : null}
+
+        <input
+          ref={inputRef}
+          id={fileInputId}
+          type="file"
+          accept={ACCEPT}
+          multiple={multiple}
+          className="sr-only"
+          onChange={(e) => {
+            applyFiles(e.target.files);
+            e.target.value = "";
+          }}
+          onClick={(e) => e.stopPropagation()}
+        />
+
+        {shownError ? (
+          <p className="m-0 text-[10.5px] text-danger-text" role="alert">
+            {shownError}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   if (tile) {
     return (

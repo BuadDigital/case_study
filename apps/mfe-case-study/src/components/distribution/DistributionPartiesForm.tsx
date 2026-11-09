@@ -3,7 +3,8 @@
 import { useMemo } from "react";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
-import { Card, Note, cn } from "@platform/ui-kit";
+import { Card, FormRow, Note, cn, useWorkDensity } from "@platform/ui-kit";
+import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
 import { getEngineeringOffices, getFieldInspectors, getValuators } from "../../lib/app-data/distribution-parties";
 import { buildAssigneeOpenLoadMap } from "../../lib/app-data/distribution-load";
 import { assigneeLoadOptions } from "../../lib/app-data/distribution-assignee-options";
@@ -100,6 +101,30 @@ export function DistributionPartiesForm({
     () => getEngineeringOffices(staffUsers),
     [staffUsers],
   );
+  const work = useWorkDensity();
+
+  // The work page's layout (`work` density) (Omar 2026-11-09): a confirmed distribution reads like the page's other
+  // locked fields — who was assigned, in the four-column row — not as disabled pickers in cards.
+  if (work && readOnly) {
+    const nameOf = (list: { id: string; name: string }[], id: string) =>
+      list.find((a) => a.id === id)?.name ?? (id ? id : "");
+    return (
+      <FormRow>
+        <InsReadField label="المعاين الميداني" value={nameOf(fieldInspectors, distribution.inspectorId)} />
+        <InsReadField label="المقيّم العقاري" value={nameOf(valuators, distribution.valuatorId)} />
+        {showEngineering ? (
+          <InsReadField
+            label="المكتب الهندسي"
+            value={
+              distribution.engineeringOffice
+                ? nameOf(engineeringOffices, distribution.engineeringOfficeId)
+                : "لا يوجد"
+            }
+          />
+        ) : null}
+      </FormRow>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">

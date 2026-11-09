@@ -13,7 +13,7 @@ import {
   type UpsertClientRequest,
 } from "@platform/api-client";
 import { Can, useCapability } from "@platform/app-shared/components/Can";
-import { Badge, cn, confirmAction, EmptyState, MobileRecordCard, MobileRecordList, ModalBody, ModalCard, ModalClose, ModalFooter, ModalHeader, ModalOverlay, ModalTitle, OpsIcon, PageLoadingHint, PageShell, Table, TBody, Td, TdLtr, Th, THead, Tr, useToast } from "@platform/ui-kit";
+import { Badge, cn, confirmAction, EmptyState, MobileRecordCard, MobileRecordList, ModalBody, ModalCard, ModalClose, ModalFooter, ModalHeader, ModalOverlay, ModalTitle, OpsIcon, PageLoadingHint, PageShell, Table, TBody, Td, TdLtr, Th, THead, Tr, useToast, ICON_PATHS } from "@platform/ui-kit";
 import { apiConfig } from "@platform/app-shared/auth/api-config";
 import {
   opsBtnGhost,
@@ -39,7 +39,6 @@ type Draft = UpsertClientRequest & { id?: string };
 
 const USERS_ICON =
   "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75";
-const PLUS_ICON = "M12 5v14M5 12h14";
 
 
 function emptyDraft(): Draft {
@@ -266,7 +265,7 @@ export function ClientsView() {
                 className={opsBtnPrimary}
                 onClick={() => setModal(emptyDraft())}
               >
-                <OpsIcon path={PLUS_ICON} size={16} />
+                <OpsIcon path={ICON_PATHS.plus} size={16} />
                 إضافة عميل
               </button>
             </Can>

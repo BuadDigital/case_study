@@ -144,10 +144,10 @@ public static class PropertyDocumentUploadRules
         if (type.Key != PropertyDocumentTypes.UnlistedKey)
             return new ResolvedDocumentType(null, type.Key, null, null);
 
+        // The name is optional (Omar 2026-11-09): an unnamed unlisted document is listed under its
+        // file name; only a name too long is refused.
         var label = customLabel?.Trim() ?? "";
         var reason = customReason?.Trim() ?? "";
-        if (label.Length < CustomLabelMinLength)
-            return ResolvedDocumentType.Reject("اكتب اسم المستند غير المعرّف");
         if (label.Length > CustomLabelMaxLength)
             return ResolvedDocumentType.Reject("اسم المستند أطول من المسموح");
         if (reason.Length > CustomReasonMaxLength)
@@ -156,7 +156,7 @@ public static class PropertyDocumentUploadRules
         return new ResolvedDocumentType(
             null,
             PropertyDocumentTypes.UnlistedKey,
-            label,
+            label.Length == 0 ? null : label,
             reason.Length == 0 ? null : reason);
     }
 }

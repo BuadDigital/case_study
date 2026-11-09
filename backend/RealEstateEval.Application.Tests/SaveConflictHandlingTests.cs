@@ -44,7 +44,7 @@ public class SaveConflictHandlingTests
         await db.SaveChangesAsync();
 
  // What the caller staged before handing the context to a service.
-        Assert.Equal(ValuationRequestTransition.Applied, stored.RecordImpediment(DateTime.UtcNow));
+        Assert.Equal(ValuationRequestTransition.Applied, stored.SubmitReport(DateTime.UtcNow));
         var callerRow = Row("VR-501", Guid.NewGuid());
         db.ValuationRequests.Add(callerRow);
 
@@ -57,7 +57,7 @@ public class SaveConflictHandlingTests
 
         Assert.Equal(EntityState.Added, db.Entry(callerRow).State);
         Assert.Equal(EntityState.Modified, db.Entry(stored).State);
-        Assert.Equal(ValuationRequestStatus.Failed, stored.Status);
+        Assert.Equal(ValuationRequestStatus.Done, stored.Status);
         Assert.Same(stored, refreshed);
         Assert.DoesNotContain(
             db.ChangeTracker.Entries<ValuationRequest>(),

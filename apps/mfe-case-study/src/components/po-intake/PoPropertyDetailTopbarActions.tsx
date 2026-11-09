@@ -17,6 +17,7 @@ import {
   useDeferredVisible,
   useToast,
   type RowMoreMenuItem,
+  ICON_PATHS,
 } from "@platform/ui-kit";
 import type { RoleId } from "@platform/types";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -397,7 +398,7 @@ export function PoPropertyDetailTopbarActions({
             strokeLinecap="round"
             aria-hidden
           >
-            <path d="M12 5v14M5 12h14" />
+            <path d={ICON_PATHS.plus} />
           </svg>
           إنشاء مهمة
         </Link>

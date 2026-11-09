@@ -57,7 +57,6 @@ export const appDataKeys = {
   keyEnvelopeFees: () => [...appDataKeys.all, "key-envelope-fees"] as const,
   propertyCourtAccess: () =>
     [...appDataKeys.all, "property-court-access"] as const,
-  valuationRequests: () => [...appDataKeys.all, "valuation-requests"] as const,
   suspendedTransactions: () =>
     [...appDataKeys.all, "suspended-transactions"] as const,
   caseStudyInfoRoles: () =>

@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { Input, Label, Select, Textarea, cn } from "@platform/ui-kit";
+import { Input, Label, Select, Textarea, cn, useWorkDensity } from "@platform/ui-kit";
 import { invalidControlClass } from "../form-ux";
 
 function FieldWrap({
@@ -21,9 +21,15 @@ function FieldWrap({
   children: React.ReactNode;
 }) {
   const hintId = hint && fieldId ? `${fieldId}-hint` : undefined;
+  // The work page's layout (`work` density) (Omar 2026-11-09): the page's one label size (11px, as the inspection
+  // cards' `InsReadField`), so a form card and a read card line up.
+  const work = useWorkDensity();
   return (
     <div className={className}>
-      <Label htmlFor={fieldId} className="mb-1.5 text-[12px] font-semibold text-text-2">
+      <Label
+        htmlFor={fieldId}
+        className={work ? "mb-1 text-[11px] font-semibold text-text-2" : "mb-1.5 text-[12px] font-semibold text-text-2"}
+      >
         {label}
         {required ? <span className="text-danger-text"> *</span> : null}
       </Label>

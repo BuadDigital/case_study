@@ -232,37 +232,6 @@ public sealed class ValuationRequestService : IValuationRequestService
         return (ToDto(row), null);
     }
 
-    public async Task<(ValuationRequestDto? Result, string? Error)> RecordImpedimentAsync(
-        Guid id,
-        ValuationImpedimentRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var row = await _db.ValuationRequests.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-        if (row is null) return (null, "not_found");
- // The reason is checked before the transition so a missing reason leaves the row untouched.
-        if (string.IsNullOrWhiteSpace(request.Reason) && row.Status == ValuationRequestStatus.Progress)
-            return (null, "reason_required");
-
-        // An impediment is a valuation write too: closed once the package is handed over or deposited.
-        if (_freeze is not null && row.Status != ValuationRequestStatus.Done)
-        {
-            var frozenMessage = await _freeze.GetFrozenMessageAsync(row.Id, row.PropertyId, cancellationToken);
-            if (frozenMessage is not null)
-                return (null, $"{ValuationReportFreezeRules.LockedErrorPrefix}{frozenMessage}");
-        }
-
-        switch (row.RecordImpediment(_time.UtcNow()))
-        {
-            case ValuationRequestTransition.AlreadySubmitted:
-                return (null, "already_submitted");
-            case ValuationRequestTransition.AlreadyImpeded:
-                return (null, "already_impeded");
-        }
-
-        await _db.SaveChangesAsync(cancellationToken);
-        return (ToDto(row), null);
-    }
-
  /// <summary>
  /// Business errors for the unique indexes this insert can violate; anything else stays
  /// an exception so it is not silently swallowed.

@@ -8,7 +8,7 @@
  */
 
 import { type RefObject } from "react";
-import { StatusPill, cn } from "@platform/ui-kit";
+import { StatusPill, cn, ICON_PATHS } from "@platform/ui-kit";
 import { pad2 } from "@platform/app-shared/format/date";
 import { useTickingNow } from "@platform/app-shared/hooks/use-ticking-now";
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
@@ -200,7 +200,7 @@ export function PlusIcon() {
       strokeLinejoin="round"
       aria-hidden
     >
-      <path d="M12 5v14M5 12h14" />
+      <path d={ICON_PATHS.plus} />
     </svg>
   );
 }

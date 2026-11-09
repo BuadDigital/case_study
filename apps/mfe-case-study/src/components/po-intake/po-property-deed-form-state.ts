@@ -89,10 +89,6 @@ export function derivedIdentifierType(realEstateRegNumber: string): PropertyIden
   return realEstateRegNumber.trim().length > 0 ? "real_estate_reg" : "deed";
 }
 
-export function stageNoteText(): string {
-  return "بيانات مرحلة إنفاذ — يلزم رقم الصك أو التسجيل العيني (أو كلاهما)؛ بيانات البورصة تُكمّل لاحقاً من «استعلام البورصة».";
-}
-
 export function contactsSectionTitle(contactsRequired: boolean): string {
   return contactsRequired ? "ضباط الاتصال *" : "ضباط الاتصال (اختياري)";
 }

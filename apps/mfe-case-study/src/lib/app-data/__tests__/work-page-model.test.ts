@@ -48,6 +48,7 @@ describe("workPageStep", () => {
       linked: "done",
       inspection: "current",
       study: "current",
+      photos: "current",
       valuation: "todo",
       upload: "todo",
     });

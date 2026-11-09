@@ -855,9 +855,5 @@ public class TransactionStateEnfazTests
         public Task<(ValuationRequestDto? Result, string? Error)> SubmitReportAsync(
             Guid id, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
-
-        public Task<(ValuationRequestDto? Result, string? Error)> RecordImpedimentAsync(
-            Guid id, ValuationImpedimentRequest request, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException();
     }
 }

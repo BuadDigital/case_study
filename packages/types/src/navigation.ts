@@ -15,7 +15,6 @@ export type PageId =
   | "keys"
   | "failures"
   | "suspended-transactions"
-  | "valuation-requests"
   | "comparable-properties"
   | "property-inspection"
   | "active-inspection"

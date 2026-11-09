@@ -18,7 +18,6 @@ import {
   type DualCalendarKind,
 } from "../../lib/app-data/dual-calendar-date";
 import { DualCalendarPickerPanel } from "../field-inspection/DualCalendarPickerPanel";
-import { EDIT_CONTROL_CLASS } from "../field-inspection/FieldInspectionWorkParts";
 import {
   InsReadField,
   insFieldLabelClass,
@@ -30,6 +29,7 @@ import {
   CALENDAR_PANEL_WIDTH,
   dualCalendarPanelPlacement,
 } from "./property-detail-inspection-state";
+import { useInsControlClass } from "./PropertyDetailInspectionFields";
 
 function InsCalendarIcon({ className }: { className?: string }) {
   return (
@@ -98,6 +98,8 @@ export function InsDualCalendarDateField({
   disabled?: boolean;
   className?: string;
 }) {
+  // The work page's layout (`work` density) (Omar 2026-11-09): the page's one control height; unchanged elsewhere.
+  const insCtl = useInsControlClass();
   const gridCentered = useInsFieldsGridCentered();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -190,7 +192,7 @@ export function InsDualCalendarDateField({
           inputMode="numeric"
           autoComplete="off"
           className={cn(
-            EDIT_CONTROL_CLASS,
+            insCtl,
             "pe-10 text-left [unicode-bidi:isolate]",
             gridCentered && "text-center",
           )}

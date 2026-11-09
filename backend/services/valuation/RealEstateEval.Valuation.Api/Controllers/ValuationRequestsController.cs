@@ -33,15 +33,19 @@ public class ValuationRequestsController : ControllerBase
         _issuanceGates = issuanceGates;
     }
 
+    /// <summary>
+    /// The full list — read by the reporting service for the dashboard (<c>ReportingUpstreamClient</c>).
+    /// Its operator page «طلبات التقييم» and the impediment route were retired on 2026-11-09 (the
+    /// transaction's stage is in «المعاملات النشطة», a failure goes through «تسجيل تعذّر»); this route
+    /// stays for the dashboard.
+    /// </summary>
     [HttpGet]
     [Authorize(Policy = CapabilityPolicyNames.ReadValuationQueue)]
     public async Task<ActionResult<IReadOnlyList<ValuationRequestDto>>> List(CancellationToken ct)
         => Ok(await _service.ListAsync(ct));
 
     /// <summary>
-    /// Map card facts — same payload as the operator queue, readable by case staff
-    /// (<see cref="CapabilityPolicyNames.ReadValuationReport"/>). The queue page stays
-    /// on <see cref="CapabilityPolicyNames.ReadValuationQueue"/>.
+    /// Map card facts, readable by case staff (<see cref="CapabilityPolicyNames.ReadValuationReport"/>).
     /// </summary>
     [HttpGet("map-overlay")]
     [Authorize(Policy = CapabilityPolicyNames.ReadValuationReport)]
@@ -133,25 +137,5 @@ public class ValuationRequestsController : ControllerBase
     {
         var dto = await _issuanceGates.EvaluateAsync(id, ct);
         return dto is null ? NotFound() : Ok(dto);
-    }
-
-    [HttpPost("{id:guid}/impediment")]
-    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
-    public async Task<ActionResult<ValuationRequestDto>> RecordImpediment(
-        Guid id,
-        [FromBody] ValuationImpedimentRequest request,
-        CancellationToken ct)
-    {
-        var (result, error) = await _service.RecordImpedimentAsync(id, request, ct);
-        return error switch
-        {
-            "not_found" => this.NotFoundProblem("طلب التقييم غير موجود."),
-            "already_submitted" => this.BadRequestProblem("report already submitted"),
-            "already_impeded" => this.BadRequestProblem("impediment already recorded"),
-            "reason_required" => this.BadRequestProblem("reason is required"),
-            not null when error.StartsWith(ValuationReportFreezeRules.LockedErrorPrefix, StringComparison.Ordinal) =>
-                this.ConflictProblem(error[ValuationReportFreezeRules.LockedErrorPrefix.Length..]),
-            _ => Ok(result),
-        };
     }
 }

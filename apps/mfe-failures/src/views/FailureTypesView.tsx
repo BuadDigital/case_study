@@ -27,6 +27,7 @@ import {
   opsTfActions,
   opsTfLbl,
   opsTfNote,
+  ICON_PATHS,
 } from "@platform/ui-kit";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
@@ -45,7 +46,6 @@ function canManageFailureTypes(role: RoleId): boolean {
 
 const FOLDER_ICON =
   "M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z";
-const PLUS_ICON = "M12 5v14M5 12h14";
 
 export function FailureTypesView() {
   const queryClient = useQueryClient();
@@ -164,7 +164,7 @@ export function FailureTypesView() {
           <div className={opsLetterHead}>
             <div className="flex items-center gap-[11px]">
               <span className={opsIconBoxGold}>
-                <OpsIcon path={PLUS_ICON} />
+                <OpsIcon path={ICON_PATHS.plus} />
               </span>
               <div>
                 <div className={opsLetterTitle}>إضافة نوع تعذّر</div>

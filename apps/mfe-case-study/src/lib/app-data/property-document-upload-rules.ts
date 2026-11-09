@@ -19,9 +19,9 @@ export function validateUnlistedDocumentFields(
   label: string,
   reason: string,
 ): string | null {
+  // The name is optional (Omar 2026-11-09); an unnamed document is listed under its file name.
   const name = label.trim();
   const why = reason.trim();
-  if (name.length < UNLISTED_LABEL_MIN_LENGTH) return "اكتب اسم المستند غير المعرّف";
   if (name.length > UNLISTED_LABEL_MAX_LENGTH) return "اسم المستند أطول من المسموح";
   if (why.length > UNLISTED_REASON_MAX_LENGTH) return "سبب رفع المستند أطول من المسموح";
   return null;

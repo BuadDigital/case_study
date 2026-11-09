@@ -211,7 +211,8 @@ public sealed class NotificationIntegrationEventHandler
             Title = "طلب تقييم جديد",
             Body = $"طُلِب تقييم عقاري لأمر العمل {po}.",
             Tone = "info",
-            Href = "/valuation-requests",
+            // The appraiser's own queue — «طلبات التقييم» was the admin's page and is retired (2026-11-09).
+            Href = "/property-appraisal",
             Category = "workflow",
             EntityType = "property",
             EntityId = payload.PropertyId,

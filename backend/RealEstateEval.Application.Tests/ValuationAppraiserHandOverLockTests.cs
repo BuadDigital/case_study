@@ -132,29 +132,6 @@ public class ValuationAppraiserHandOverLockTests
         Assert.NotNull(saved);
     }
 
-    [Fact]
-    public async Task Recording_an_impediment_is_a_valuation_write_too()
-    {
-        await using var contexts = TestDatabases.Create("lock-impediment");
-        var (requestId, propertyId) = NewRequest(contexts.Valuation, "VR-L7");
-        SeedAppraisal(contexts.CaseStudy, propertyId, PartyTaskSubmissionStatus.Submitted);
-        await contexts.Valuation.SaveChangesAsync();
-        var service = new ValuationRequestService(
-            contexts.Valuation,
-            new ValuationOutboxPublisher(contexts.Valuation, NullLogger<ValuationOutboxPublisher>.Instance),
-            new StubPoNumberLookup(),
-            freeze: new ValuationReportFreezeGate(contexts.Valuation, new CaseStudyLookup(contexts.CaseStudy)));
-
-        var (result, error) = await service.RecordImpedimentAsync(
-            requestId, new ValuationImpedimentRequest { Reason = "تعذّر الوصول" });
-
-        Assert.Null(result);
-        Assert.Equal(
-            $"{ValuationReportFreezeRules.LockedErrorPrefix}{ValuationReportFreezeRules.AppraiserSubmittedMessageAr}",
-            error);
-        Assert.Equal(ValuationRequestStatus.Progress, (await contexts.Valuation.ValuationRequests.SingleAsync()).Status);
-    }
-
     // ---- the lookup ----
 
     [Fact]

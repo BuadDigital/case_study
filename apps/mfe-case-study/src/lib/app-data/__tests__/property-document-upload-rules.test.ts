@@ -7,8 +7,10 @@ import {
 import { governedEntryFromMeta } from "../governed-property-documents-reads";
 
 describe("validateUnlistedDocumentFields", () => {
-  it("needs a name; reason is optional", () => {
-    expect(validateUnlistedDocumentFields("", "سبب")).not.toBeNull();
+  it("name and reason are both optional; only an over-long name is refused", () => {
+    expect(validateUnlistedDocumentFields("", "")).toBeNull();
+    expect(validateUnlistedDocumentFields("", "سبب")).toBeNull();
+    expect(validateUnlistedDocumentFields("م".repeat(129), "")).not.toBeNull();
     expect(validateUnlistedDocumentFields("محضر لجنة", "")).toBeNull();
     expect(validateUnlistedDocumentFields("محضر لجنة", "قصير")).toBeNull();
     expect(validateUnlistedDocumentFields("محضر لجنة", "طلبه العميل للمعاملة")).toBeNull();

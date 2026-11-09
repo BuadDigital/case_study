@@ -62,7 +62,6 @@ export function MyTaskWorkEnfathStep({
           poNumber={task.poNumber}
           excludePoNumber={task.poNumber}
           uploadsDisabled={uploadsDisabled}
-          showStageNote={layout !== "panel"}
         />
       </div>
     </RegistrationFormCard>

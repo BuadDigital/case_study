@@ -1,5 +1,6 @@
 import type { NavItem, PageId, RoleDef, RoleId } from "@platform/types";
 import type { PropertyListRowStatus } from "@platform/api-client";
+import { ICON_PATHS } from "@platform/ui-kit";
 import { ACTIVE_TRANSACTIONS_NAV } from "./active-transactions";
 import { SYSTEM_FIELDS_NAV } from "@platform/app-shared/app-data/system-fields-nav";
 import { SYSTEM_FIELDS_CATALOG_NAV_ITEM } from "@platform/app-shared/app-data/system-fields-catalog-nav";
@@ -39,7 +40,6 @@ export const ROLES: Record<RoleId, RoleDef> = {
       "keys",
       "failures",
       "suspended-transactions",
-      "valuation-requests",
       "comparable-properties",
       "financial",
       "courts",
@@ -247,14 +247,8 @@ export const NAV: NavItem[] = [
   {
     id: "comparable-properties",
     label: "بنك المقارنات",
-    icon: "M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z",
+    icon: ICON_PATHS.grid,
     grp: "أدوات",
-  },
-  {
-    id: "valuation-requests",
-    label: "طلبات التقييم",
-    icon: "M9 11l3 3L22 4",
-    grp: "الإدارة",
   },
   {
     id: "location-pending",
@@ -306,7 +300,6 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "field-sync-board": "ظروف بانتظار المزامنة",
   failures: "التعذّرات",
   "suspended-transactions": "المعاملات المعلّقة",
-  "valuation-requests": "طلبات التقييم",
   "comparable-properties": "بنك المقارنات",
   "property-inspection": "معاينة العقار (يتيم)",
   "active-inspection": "معاينة العقار",
@@ -351,7 +344,6 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "field-sync-board": "ظروف بانتظار المزامنة",
   failures: "التعذّرات",
   "suspended-transactions": "المعاملات المعلّقة",
-  "valuation-requests": "طلبات التقييم",
   "comparable-properties": "بنك المقارنات",
   "property-inspection": "معاينة العقار",
   "active-inspection": "معاينة العقار",
@@ -405,20 +397,6 @@ export type PoRow = {
   team?: string[];
   /** ISO-8601 — used to show newest POs first in the list. */
   createdAtUtc?: string;
-};
-
-export type VrRow = {
-  /** API record id (GUID) */
-  recordId: string;
-  /** Display id shown in tables (e.g. VR-441) */
-  id: string;
-  propId: string;
-  area: string;
-  type: string;
-  appraiser: string;
-  /** `merged` (phase 5): the deed's valuation continues on the holder deed's request. */
-  status: "done" | "progress" | "fail" | "merged";
-  date: string;
 };
 
 export type PropertyWorkflowStage = PropertyListRowStatus;

@@ -9,9 +9,7 @@ import type { LocalTextFields } from "./EngineeringSurveyWorkParts";
 
 type EngineeringSurveyFieldErrorKey = keyof EngineeringSurveyFieldErrors;
 
-export type SurveyAttachmentField =
-  | "surveyReportFileName"
-  | "siteLetterFileName";
+export type SurveyAttachmentField = | "surveyReportFileName" | "siteLetterFileName";
 
 type SurveyAttachmentTarget = {
   docField: "surveyReport" | "siteLetter";

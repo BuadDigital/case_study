@@ -100,6 +100,7 @@
     "YesNoToggle": "src/components/YesNoToggle.tsx",
     "OpsIcon": "src/components/OpsIcon.tsx",
     "UploadFileIcon": "src/components/UploadFileIcon.tsx",
+    "FileStack": "src/components/FileStack.tsx",
     "ColorStatusPill": "src/badges.tsx",
     "OpsSectionTitle": "src/components/OpsPanelParts.tsx",
     "OpsInfoNote": "src/components/OpsPanelParts.tsx",

@@ -13,6 +13,8 @@ import {
   cn,
   formControlClassName,
   formControlErrorClassName,
+  useWorkDensity,
+  WORK_FORM_GRID_CLASS,
 } from "@platform/ui-kit";
 import {
   CONTACT_PHONE_TOO_LONG,
@@ -38,6 +40,7 @@ function ContactPhoneField({
   error?: string;
   onChange: (value: string) => void;
 }) {
+  const work = useWorkDensity();
   const phones = splitContactPhones(value);
   const [draft, setDraft] = useState("");
   const [full, setFull] = useState(false);
@@ -72,7 +75,7 @@ function ContactPhoneField({
   }
 
   return (
-    <div className="w-full sm:col-span-2">
+    <div className={work ? "w-full" : "w-full sm:col-span-2"}>
       <Label className="mb-1 text-[11px]" htmlFor={id}>
         رقم الجوال <span className="text-danger-text">*</span>
       </Label>
@@ -147,6 +150,8 @@ export function PoContactEditor({
   errors: Record<string, string>;
   onChange: (contacts: PoContact[]) => void;
 }) {
+  // The work page (Omar 2026-11-09): a contact's four fields on one row of the page's four columns.
+  const work = useWorkDensity();
   function patch(index: number, key: keyof PoContact, value: string) {
     onChange(
       contacts.map((c, i) => (i === index ? { ...c, [key]: value } : c)),
@@ -182,7 +187,7 @@ export function PoContactEditor({
               </Button>
             ) : null}
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className={work ? WORK_FORM_GRID_CLASS : "grid grid-cols-1 gap-3 sm:grid-cols-2"}>
             <RegField
               id={`po_contact_name_${i}`}
               label="الاسم"

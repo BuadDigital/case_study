@@ -43,11 +43,17 @@ export function CaseStudyDeedsTable({ deeds }: { deeds: CaseStudyReportDeeds }) 
           {deeds.rows.map((d, i) => (
             <tr key={d.propertyId}>
               <td className="border-b border-border px-2 py-1.5 text-center text-xs text-text-3">{i + 1}</td>
-              <td className="border-b border-border px-3 py-1.5 text-xs font-semibold text-heading" dir="ltr">
-                {d.label}
+              {/* The cell stays right-aligned under its heading; only the value runs left-to-right
+                  (Omar 2026-11-09: dir="ltr" on the cell pushed the values to the left edge). */}
+              <td className="border-b border-border px-3 py-1.5 text-right text-xs font-semibold text-heading">
+                <span dir="ltr">{d.label}</span>
               </td>
-              <td className="border-b border-border px-3 py-1.5 text-xs text-text-2" dir="ltr">{d.poNumber}</td>
-              <td className="border-b border-border px-3 py-1.5 text-xs text-text" dir="ltr">{d.area}</td>
+              <td className="border-b border-border px-3 py-1.5 text-right text-xs text-text-2">
+                <span dir="ltr">{d.poNumber}</span>
+              </td>
+              <td className="border-b border-border px-3 py-1.5 text-right text-xs text-text">
+                <span dir="ltr">{d.area}</span>
+              </td>
             </tr>
           ))}
         </tbody>

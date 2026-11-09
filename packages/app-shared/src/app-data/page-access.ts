@@ -51,15 +51,6 @@ export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
     if (rolePages.includes(pageId)) return pageId;
   }
 
-  // Valuation director (valuation-requests + case-study suite) → PO list.
-  if (
-    rolePages.includes("po") &&
-    rolePages.includes("valuation-requests") &&
-    rolePages.includes("active-case-study")
-  ) {
-    return "po";
-  }
-
   // Remaining independent executors (e.g. government reviewer) without a
   // dedicated queue — land on the operations-tasks hub. A case specialist holding
   // any case-study queue (any sub-role) is not one of them: he lands on «أعمالي» (first NAV page).
