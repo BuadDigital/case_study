@@ -553,6 +553,126 @@ public class ValuationReportDraftServiceTests
         Assert.Empty(rig.Commands.ReviewStates);
     }
 
+    // ---- 2026-11-10 grey areas ----
+
+    /// <summary>Review's withdraw and the appraiser's return clear the same stamps (each keeps its own note).</summary>
+    [Fact]
+    public void Both_ways_back_to_preparing_clear_the_conformity_and_hand_over_stamps()
+    {
+        var now = new DateTime(2026, 11, 10, 9, 0, 0, DateTimeKind.Utc);
+        ValuationReportDraft SentDraft()
+        {
+            var d = ValuationReportDraft.Start(Guid.NewGuid(), 1, now);
+            Assert.Null(d.Send(conformityConfirmed: true, "جاهزة", "u-review", now));
+            Assert.NotNull(d.ConformityConfirmedAtUtc);
+            Assert.NotNull(d.SubmittedForReviewAtUtc);
+            return d;
+        }
+
+        var returned = SentDraft();
+        Assert.Null(returned.ReturnToReviewer("صحّح وصف الموقع", now.AddMinutes(1)));
+        var withdrawn = SentDraft();
+        Assert.Null(withdrawn.Withdraw("تعديل", now.AddMinutes(1)));
+
+        foreach (var d in new[] { returned, withdrawn })
+        {
+            Assert.Equal(ReportDraftStatuses.Preparing, d.Status);
+            Assert.Null(d.ConformityConfirmedAtUtc);
+            Assert.Null(d.ConformityConfirmedByUserId);
+            Assert.Null(d.SubmittedForReviewAtUtc);
+            Assert.Null(d.SubmittedForReviewByUserId);
+            Assert.Null(d.SentAtUtc);
+        }
+        Assert.Equal("صحّح وصف الموقع", returned.ReviewNote);
+        Assert.Equal("تعديل", withdrawn.SpecialistNote);
+    }
+
+    [Fact]
+    public void A_legacy_draft_in_review_is_not_sent_without_the_conformity_tick()
+    {
+        var now = new DateTime(2026, 11, 10, 9, 0, 0, DateTimeKind.Utc);
+        var draft = ValuationReportDraft.Start(Guid.NewGuid(), 1, now);
+        draft.Status = ReportDraftStatuses.InReview;
+        draft.ConformityConfirmedAtUtc = now.AddDays(-1);
+
+        Assert.Equal(ValuationReportDraft.ConformityRequiredAr, draft.Send(false, null, "u-review", now));
+        Assert.Equal(ReportDraftStatuses.InReview, draft.Status);
+
+        Assert.Null(draft.Send(true, null, "u-review", now));
+        Assert.Equal(ReportDraftStatuses.Sent, draft.Status);
+        Assert.Equal(now, draft.ConformityConfirmedAtUtc);
+        Assert.Equal("u-review", draft.ConformityConfirmedByUserId);
+    }
+
+    [Fact]
+    public async Task An_unknown_review_state_refuses_the_issue_to_the_appraiser()
+    {
+        var gates = new ReviewGates { StudyApproved = null };
+        await using var rig = Arrange(PartyTaskSubmissionStatus.Submitted, sendGates: gates);
+
+        var (sent, errors) = await rig.Service.SendAsync(
+            rig.RequestId, new SendReportDraftRequest { ConformityConfirmed = true }, ReviewOnly);
+
+        Assert.Null(sent);
+        Assert.Equal(ValuationIssuanceGateRules.CaseStudyStateUnavailableAr, errors![ReportDraftSendRules.ReviewErrorKey]);
+    }
+
+    [Fact]
+    public void A_study_report_gate_failed_for_an_unreadable_case_study_says_so()
+    {
+        static ValuationIssuanceGatesDto Gates(bool? issued) => new()
+        {
+            Gates =
+            [
+                new ValuationIssuanceGateItemDto
+                {
+                    Code = ValuationIssuanceGateCodes.StudyReportIssued,
+                    LabelAr = "تقرير دراسة الحالة صادر",
+                    Passed = false,
+                    IsHard = true,
+                    DetailAr = ValuationIssuanceGateRules.StudyReportIssued(issued).DetailAr,
+                },
+            ],
+        };
+
+        Assert.Equal(
+            ValuationIssuanceGateRules.CaseStudyStateUnavailableAr,
+            ReportDraftSendRules.StudyReportNotIssuedError(Gates(null))![ReportDraftSendRules.StudyReportErrorKey]);
+        Assert.Equal(
+            ReportDraftSendRules.StudyReportNotIssuedAr,
+            ReportDraftSendRules.StudyReportNotIssuedError(Gates(false))![ReportDraftSendRules.StudyReportErrorKey]);
+    }
+
+    /// <summary>Optimistic concurrency on the autosaved choices: the stamp the screen loaded, else 409.</summary>
+    [Fact]
+    public async Task Saving_choices_over_a_newer_draft_is_refused_and_sequential_saves_pass()
+    {
+        await using var rig = Arrange(PartyTaskSubmissionStatus.Submitted);
+        SaveReportDraftChoicesRequest Save(string? token) =>
+            new() { Choices = Choices(PrintChoices), ExpectedUpdatedAtUtc = token };
+
+        // The screen loaded no draft yet ("") — the first save starts it.
+        var (first, firstErrors) = await rig.Service.SaveChoicesAsync(rig.RequestId, Save(""), Specialist);
+        Assert.Null(firstErrors);
+
+        // Sequential autosaves carry the stamp of the previous answer.
+        var (second, secondErrors) = await rig.Service.SaveChoicesAsync(rig.RequestId, Save(first!.UpdatedAtUtc), Specialist);
+        Assert.Null(secondErrors);
+
+        // A second screen that also loaded «no draft», or the first stamp, is now behind.
+        var (_, sawNone) = await rig.Service.SaveChoicesAsync(rig.RequestId, Save(""), StudyOnly);
+        Assert.Equal(ValuationReportDraft.StaleChoicesAr, sawNone![ReportDraftErrorKeys.Conflict]);
+        var draftRow = await rig.Contexts.Valuation.ValuationReportDrafts.SingleAsync();
+        draftRow.UpdatedAtUtc = draftRow.UpdatedAtUtc.AddSeconds(5);
+        await rig.Contexts.Valuation.SaveChangesAsync();
+        var (_, stale) = await rig.Service.SaveChoicesAsync(rig.RequestId, Save(second!.UpdatedAtUtc), Specialist);
+        Assert.Equal(ValuationReportDraft.StaleChoicesAr, stale![ReportDraftErrorKeys.Conflict]);
+
+        // An older screen without the token is not checked.
+        var (_, noToken) = await rig.Service.SaveChoicesAsync(rig.RequestId, Save(null), Specialist);
+        Assert.Null(noToken);
+    }
+
     private static Rig Arrange(
         string packageStatus,
         ValuationTimelineWriter? timeline = null,
@@ -579,7 +699,7 @@ public class ValuationReportDraftServiceTests
         var lookup = new CaseStudyLookup(contexts.CaseStudy);
         var events = new ValuationOutboxPublisher(contexts.Valuation, NullLogger<ValuationOutboxPublisher>.Instance);
         var issuance = new ValuationReportIssuanceService(
-            contexts.Valuation, new StubGates(), new StubDocuments(), events: events, caseStudy: lookup);
+            contexts.Valuation, new StubGates(), new FakeAttachmentFileStore(), events: events, caseStudy: lookup);
         var commands = new FakeCaseStudyCommands();
         return new Rig(
             contexts, requestId,
@@ -618,21 +738,6 @@ public class ValuationReportDraftServiceTests
                 ValuationRequestId = valuationRequestId,
                 AllowsIssuance = true,
                 BlockingReasonsAr = [],
-            });
-    }
-
-    private sealed class StubDocuments : IValuationReportDocumentService
-    {
-        public Task<ValuationReportDocumentDto?> GetPreviewAsync(
-            Guid valuationRequestId,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<ValuationReportDocumentDto?>(new ValuationReportDocumentDto
-            {
-                ValuationRequestId = valuationRequestId,
-                DisplayId = "VR-TEST",
-                ReportDateDisplay = "2026/10/05",
-                FinalOpinionDisplay = "1,000,000 ريال",
-                Sections = [],
             });
     }
 }

@@ -9,6 +9,9 @@
 //  • Re-pulling the inventory keeps unit costs already priced (keepCostLineInputs) and the toast
 //           says which lines kept theirs (costRepullMessage).
 //  • A refused save on leaving the screen is toasted «لم تُحفظ تعديلات أسلوب التكلفة: …».
+// Grey areas (2026-11-10)
+//  • Ages  A late inspector-age read fills «العمر الفعلي» only while it is still empty and untouched.
+//  • Two tabs  The save carries the loaded stamp (costLoadedStamp); a stale save (409) is toasted once.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -45,6 +48,7 @@ import {
   type CostApproachFields,
 } from "./lib/cost-approach-state";
 import { apiConfig } from "./lib/shell-utils";
+import { costLoadedStamp } from "./lib/cost-autosave";
 import { useCostAutosave } from "./useCostAutosave";
 import { useCostInspectorSync } from "./useCostInspectorSync";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
@@ -101,9 +105,12 @@ export function useCostApproachWorkflow({
   /** Bumps on every appraiser edit — what the autosave saves (seeds and hydration never bump it). */
   const [editVersion, setEditVersion] = useState(0);
   const markEdited = useCallback(() => setEditVersion((v) => v + 1), []);
+  /** The appraiser typed (or applied) an actual age since the last full load — the inspector read keeps off. */
+  const actualAgeTouched = useRef(false);
 
   const setField = useCallback(
     <K extends keyof CostApproachFields>(key: K, value: CostApproachFields[K]) => {
+      if (key === "actualAge") actualAgeTouched.current = true;
       setFields((prev) => ({ ...prev, [key]: value }));
       markEdited();
     },
@@ -145,6 +152,8 @@ export function useCostApproachWorkflow({
   useEffect(() => {
     if (hydratedKeyRef.current === hydrateKey) return;
     hydratedKeyRef.current = hydrateKey;
+    // A full load reseeds the drafts — what was typed before is gone, so the age is untouched again.
+    actualAgeTouched.current = false;
     // An empty cost table starts from the case specialist's «جدول المكونات» (draft only —
     // nothing is saved until the appraiser saves; later edits are never overwritten).
     const seedFromComponents = () => {
@@ -169,6 +178,8 @@ export function useCostApproachWorkflow({
   // Fixed 2026-10-28: the read lived in the effect above, whose cleanup cancelled it on any new
   // `cost` object or a late inspection id while its once-per-load guard skipped the retry, so the
   // 10-year default stayed (and «سحب من حصر المباني» saved it).
+  // Fixed 2026-11-10: a late answer overwrote an age the appraiser had already typed — it now fills
+  // the box only while it is still empty and untouched (no 10-year default sits there any more).
   const savedActualAge = cost?.actualAgeYears;
   useEffect(() => {
     const taskId = inspectionTaskId?.trim();
@@ -177,7 +188,10 @@ export function useCostApproachWorkflow({
     void fetchInspectorWorkspace(taskId).then((workspace) => {
       if (cancelled) return;
       const age = inspectorAgeYearsForCostField(workspace?.propertyAgeYears);
-      if (age) setFields((prev) => ({ ...prev, actualAge: age }));
+      if (!age) return;
+      setFields((prev) =>
+        actualAgeTouched.current || prev.actualAge.trim() ? prev : { ...prev, actualAge: age },
+      );
     });
     return () => {
       cancelled = true;
@@ -240,6 +254,7 @@ export function useCostApproachWorkflow({
     editVersion,
     hydrateKey,
     buildRequest: () => costSaveRequest(fields, costDraft),
+    loadedUpdatedAtUtc: costLoadedStamp(cost),
     onSavingChange,
     onSaved: (dto, editedSinceSend) => {
       clearSaveErrors();
@@ -251,6 +266,8 @@ export function useCostApproachWorkflow({
     onManualSaved: () => showToast("تم حفظ أسلوب التكلفة", "success"),
     onManualFailure: (failure) => reportSaveFailure(failure, "تعذّر حفظ التكلفة"),
     onLeaveFailure: (message) => showToast(`لم تُحفظ تعديلات أسلوب التكلفة: ${message}`, "error"),
+    // Another tab saved newer inputs: say it once — the status line keeps the reason.
+    onConflict: (message) => showToast(message, "error"),
   });
 
   // Live local calcs per interactive-form rules (server recalculates on save).

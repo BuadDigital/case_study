@@ -605,12 +605,6 @@ export function buildFromEvaluator(
       ltr: true,
     });
   }
-  if (submission.reportFileName?.trim()) {
-    fields.push({
-      label: "تقرير التقييم",
-      value: submission.reportFileName.trim(),
-    });
-  }
   if (submission.submittedAtUtc) {
     fields.push({
       label: "تاريخ الإرسال",
@@ -676,14 +670,6 @@ export function buildFromEvaluator(
       value: bits.join(" · "),
     });
   }
-  const signedName = submission.reportFileName?.trim() || "";
-  if (signedName) {
-    fields.push({
-      label: INFATH_FIELD_LABELS.signedAppraisal,
-      value: signedName,
-    });
-  }
-
   const remarks: PropertyDetailPartySubmission["remarks"] = [];
   // «Property notes (optional)» in the valuation window
   if (notes) {
@@ -730,7 +716,6 @@ export function buildFromEvaluator(
     submission.status !== "draft" ||
     Boolean(price) ||
     remarks.length > 0 ||
-    Boolean(submission.reportFileName?.trim()) ||
     Boolean(submission.reportNo?.trim()) ||
     answers.length > 0;
 

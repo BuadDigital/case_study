@@ -568,6 +568,24 @@ public static class PropertyCategoryRules
         _ => "غير محدد",
     };
 
+    /// <summary>
+    /// What: the property TYPE names something built (a villa, a building, a shop, a warehouse, a
+    /// floor…) — not vacant land. Used by alert 11 (built comparables against vacant land).
+    /// How it works: the type's category decides (<see cref="Categorize"/> without the usage):
+    /// any category but land is built. An unclassifiable type is built when it names a building word
+    /// at all («مبنى»، «دور»، «مبنى متعدد الاستخدامات»).
+    /// Edge cases: the usage is ignored on purpose — a plot's usage «سكني» or «تجاري» is its zoning,
+    /// not a building. Blank = not built. Fixed 2026-11-10: alert 11 had its own word list
+    /// (مبنى/فيلا/شقة/دور only), so an «عمارة», «محل تجاري» or «مستودع» compared with vacant land
+    /// never raised it.
+    /// </summary>
+    public static bool IsBuiltType(string? propertyType)
+    {
+        var category = Categorize(propertyType);
+        if (category is not null) return category != Land;
+        return HasAny(Normalize(propertyType), BuiltWords);
+    }
+
     /// <summary>Both sides classified and different.</summary>
     public static bool Mismatch(string? subjectCategory, string? comparableCategory) =>
         subjectCategory is not null

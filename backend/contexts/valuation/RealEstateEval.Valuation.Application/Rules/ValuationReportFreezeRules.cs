@@ -16,7 +16,10 @@ public static class ValuationReportFreezeRules
     /// <summary>Error-code prefix for a write refused by the freeze gate; the rest is the Arabic reason.</summary>
     public const string LockedErrorPrefix = "report_locked:";
 
-    /// <summary>Fail-closed wording when the hand-over state cannot be read from Case Study.</summary>
+    /// <summary>
+    /// Fail-closed wording when the hand-over state cannot be read from Case Study (failed call or an empty
+    /// answer). 2026-11-10: the same words as the issuance gates' case-study refusal — one message.
+    /// </summary>
     public const string PackageStateUnavailableMessageAr =
-        "تعذّر التحقق من حالة تسليم التقييم — أعد المحاولة بعد قليل";
+        RealEstateEval.Valuation.Domain.ValuationIssuanceGateRules.CaseStudyStateUnavailableAr;
 }

@@ -40,8 +40,11 @@ public interface ICaseStudyLookup
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Appraisal package state of a property (latest non-cancelled appraisal task). Null = unknown
-    /// (an older Case Study host without the endpoint) — callers treat it as "not locked".
+    /// Appraisal package state of a property (latest non-cancelled appraisal task). A property with no
+    /// appraisal task answers <c>PackageStatus = "none"</c> (legacy — passes). Null = the case-study
+    /// service could not be reached or answered nothing: since 2026-11-10 every caller refuses the write
+    /// («تعذّر التحقق من حالة دراسة الحالة — حاول مرة أخرى»). The default below returns null, so an
+    /// implementation that does not override it locks every valuation write.
     /// </summary>
     Task<CaseStudyAppraisalPackageStateDto?> GetAppraisalPackageStateAsync(
         Guid propertyId,

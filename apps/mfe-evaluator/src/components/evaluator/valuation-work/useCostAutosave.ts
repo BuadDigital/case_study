@@ -7,6 +7,9 @@
 //  • The refresh-warning flag is no longer cleared by effect cleanup (an <Activity>-hidden screen
 //          runs cleanups with edits still unsaved); it goes down on a real save or window unmount.
 //  • New "leave" save mode: a refused save on leaving the screen calls onLeaveFailure (toast).
+// Grey areas (2026-11-10)
+//  • Two tabs  Every save carries expectedUpdatedAtUtc (the stamp loaded, then the one each own save
+//              returned); a 409 (another tab saved newer inputs) is reported, once per load, via onConflict.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -24,6 +27,7 @@ import {
   COST_SAVE_IDLE,
   costAutosaveFailureMessage,
   costHasUnsavedEdits,
+  newerCostSaveStamp,
   type CostSaveState,
 } from "./lib/cost-autosave";
 import { apiConfig } from "./lib/shell-utils";
@@ -43,6 +47,12 @@ type CostSaveFailure = Extract<
  * flight runs after it. Leaving the screen (or the window) with unsaved edits sends them; a refresh
  * with edits still pending warns first. Edits are counted by `editVersion` (user edits only —
  * hydration and the silent seeds never bump it, so they are not saved on their own).
+ *
+ * Two tabs (2026-11-10): each save sends `expectedUpdatedAtUtc` — the stamp loaded with the last full
+ * load (`loadedUpdatedAtUtc`, taken on each new `hydrateKey`, never on silent reloads that may carry
+ * another tab's save) and then the stamp each own save returned, so the screen's sequential saves never
+ * conflict with each other. A 409 keeps the drafts; the status line carries the reason and, for an
+ * automatic save, `onConflict` is called once per load (a manual / leave save reports it as before).
  */
 export function useCostAutosave({
   valuationRequestId,
@@ -50,17 +60,21 @@ export function useCostAutosave({
   editVersion,
   hydrateKey,
   buildRequest,
+  loadedUpdatedAtUtc,
   onSavingChange,
   onSaved,
   onManualSaved,
   onManualFailure,
   onLeaveFailure,
+  onConflict,
 }: {
   valuationRequestId: string | null;
   locked: boolean;
   editVersion: number;
   hydrateKey: number;
   buildRequest: () => SaveValuationCostApproachRequest;
+  /** The loaded cost's stamp (`costLoadedStamp`) — undefined = unknown, the save is not checked. */
+  loadedUpdatedAtUtc?: string;
   onSavingChange: (saving: boolean) => void;
   /** `editedSinceSend`: the drafts moved on while the save was in flight — keep them. */
   onSaved: (dto: ValuationCostApproachDto, editedSinceSend: boolean) => void;
@@ -68,6 +82,8 @@ export function useCostAutosave({
   onManualFailure: (failure: CostSaveFailure) => void;
   /** The save sent on leaving the screen was refused — nobody sees the status line any more. */
   onLeaveFailure?: (message: string) => void;
+  /** An automatic save was refused as stale (409) — once per load. */
+  onConflict?: (message: string) => void;
 }) {
   const [savedVersion, setSavedVersion] = useState(0);
   const [saveState, setSaveState] = useState<CostSaveState & { version?: number }>(COST_SAVE_IDLE);
@@ -89,9 +105,20 @@ export function useCostAutosave({
     onManualSaved,
     onManualFailure,
     onLeaveFailure,
+    onConflict,
   });
   const inFlight = useRef(false);
   const queued = useRef<SaveMode | null>(null);
+
+  // The concurrency stamp sent with the next save: the loaded one on each full load (the later of the
+  // two when a reload raced the screen's own save), then whatever each own save returned.
+  const stampRef = useRef<string | undefined>(loadedUpdatedAtUtc);
+  const loadedStampRef = useLatestRef(loadedUpdatedAtUtc);
+  const conflictNotified = useRef(false);
+  useEffect(() => {
+    stampRef.current = newerCostSaveStamp(stampRef.current, loadedStampRef.current);
+    conflictNotified.current = false;
+  }, [hydrateKey, loadedStampRef]);
 
   const run = useCallback(
     async (asked: SaveMode): Promise<void> => {
@@ -114,9 +141,17 @@ export function useCostAutosave({
         const cb = callbacksRef.current;
         setSaveState({ status: "saving" });
         cb.onSavingChange(true);
-        const res = await saveValuationCostApproach(config, valuationRequestId, buildRequestRef.current());
+        const request = buildRequestRef.current();
+        const stamp = stampRef.current;
+        const res = await saveValuationCostApproach(
+          config,
+          valuationRequestId,
+          stamp === undefined ? request : { ...request, expectedUpdatedAtUtc: stamp },
+        );
         cb.onSavingChange(false);
         if (res.ok) {
+          // The next save is built on this one — never a conflict with the screen's own saves.
+          if (typeof res.data.updatedAtUtc === "string") stampRef.current = res.data.updatedAtUtc;
           setSavedVersion((v) => Math.max(v, sent));
           // Cleared here, not by the effect: a screen hidden by <Activity> runs no effects, and
           // its leave-save must still take the refresh warning down.
@@ -129,6 +164,10 @@ export function useCostAutosave({
           setSaveState({ status: "error", message, version: sent });
           if (mode === "manual") cb.onManualFailure(res);
           if (mode === "leave") cb.onLeaveFailure?.(message);
+          if (mode === "auto" && res.kind === "conflict" && !conflictNotified.current) {
+            conflictNotified.current = true;
+            cb.onConflict?.(message);
+          }
         }
         mode = queued.current;
         queued.current = null;

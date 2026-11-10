@@ -141,6 +141,12 @@ public class ValuationReportDraftsController(
         return Ok(new PropertyFinalReportStatusDto { FinalReportStatus = status ?? FinalReportStatusWire.None });
     }
 
+    /// <summary>Runs a draft use case as the caller and maps its answer to HTTP.</summary>
+    /// <remarks>
+    /// How it works: the Forbidden key → 403; the Conflict key → 409 with the Arabic message (2026-11-10: a
+    /// newer draft than the screen loaded — «حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة»); any other
+    /// error → field-errors problem; no result → 404.
+    /// </remarks>
     private async Task<ActionResult<ValuationReportDraftDto>> RunAsync(
         Func<ReportDraftActor, Task<(ValuationReportDraftDto? Result, Dictionary<string, string>? Errors)>> action,
         CancellationToken ct)
@@ -151,6 +157,8 @@ public class ValuationReportDraftsController(
         {
             if (errors.TryGetValue(ReportDraftErrorKeys.Forbidden, out var forbidden))
                 return this.ForbiddenProblem(forbidden);
+            if (errors.TryGetValue(ReportDraftErrorKeys.Conflict, out var conflict))
+                return this.ConflictProblem(conflict);
             return this.FieldErrorsProblem(errors);
         }
 

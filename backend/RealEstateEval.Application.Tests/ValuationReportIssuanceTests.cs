@@ -24,7 +24,7 @@ public class ValuationReportIssuanceTests
         var service = new ValuationReportIssuanceService(
             db,
             new StubGates(allows: false, reasons: ["مقارنات ناقصة"]),
-            new StubDocuments());
+            new FakeAttachmentFileStore());
 
         var (result, errors) = await service.IssueDepositAsync(id, "user-1");
         Assert.Null(result);
@@ -41,7 +41,7 @@ public class ValuationReportIssuanceTests
         await db.SaveChangesAsync();
 
         var service = new ValuationReportIssuanceService(
-            db, new StubGates(allows: true), new StubDocuments());
+            db, new StubGates(allows: true), new FakeAttachmentFileStore());
 
         // Phase 1: deposit copy — freeze.
         var (deposit, depositErrors) = await service.IssueDepositAsync(id, "user-1");
@@ -70,9 +70,11 @@ public class ValuationReportIssuanceTests
         Assert.Equal(ReportIssuanceStages.FinalIssued, final!.Stage);
         Assert.Equal("QYM-2026-001234", final.DepositCode);
 
-        // Code is filled into its field inside the frozen snapshot for the final copy.
+        // The certificate is kept in the attachments service; the copy holds only its reference.
+        // No server-side report snapshot is built any more (DocumentJson stays an empty object).
         var row = db.ValuationReportIssuances.Single();
-        Assert.Contains("report.deposit_code", row.DocumentJson);
+        Assert.NotNull(row.CertificateAttachmentId);
+        Assert.Equal(ValuationReportIssuance.NoDocumentJson, row.DocumentJson);
 
         // Professional step complete — request becomes completed.
         var vr = db.ValuationRequests.Single(x => x.Id == id);
@@ -88,7 +90,7 @@ public class ValuationReportIssuanceTests
         await db.SaveChangesAsync();
 
         var service = new ValuationReportIssuanceService(
-            db, new StubGates(allows: true), new StubDocuments());
+            db, new StubGates(allows: true), new FakeAttachmentFileStore());
 
         var (_, errors) = await service.RegisterCertificateAsync(
             id, new RegisterDepositCertificateRequest { DepositCode = "X-1" }, "user-1");
@@ -104,7 +106,7 @@ public class ValuationReportIssuanceTests
         await db.SaveChangesAsync();
 
         var service = new ValuationReportIssuanceService(
-            db, new StubGates(allows: true), new StubDocuments());
+            db, new StubGates(allows: true), new FakeAttachmentFileStore());
 
         var (deposit, _) = await service.IssueDepositAsync(id, "user-1");
         Assert.Equal(1, deposit!.Version);
@@ -161,7 +163,7 @@ public class ValuationReportIssuanceTests
         var service = new ValuationReportIssuanceService(
             db,
             new StubGates(allows: true),
-            new StubDocuments(),
+            new FakeAttachmentFileStore(),
             events: new ValuationOutboxPublisher(db, NullLogger<ValuationOutboxPublisher>.Instance));
         await service.IssueDepositAsync(id, "user-1");
         await service.RegisterCertificateAsync(id, Certificate("QYM-10"), "appraiser-1");
@@ -190,7 +192,7 @@ public class ValuationReportIssuanceTests
         await db.SaveChangesAsync();
 
         var service = new ValuationReportIssuanceService(
-            db, new StubGates(allows: true), new StubDocuments());
+            db, new StubGates(allows: true), new FakeAttachmentFileStore());
 
         var (_, errors) = await service.ReopenAfterDepositAsync(
             id, new ReopenReportIssuanceRequest { Reason = "سبب جوهري بطول كافٍ" }, "supervisor-1");
@@ -218,7 +220,7 @@ public class ValuationReportIssuanceTests
         var first = NewRequest(db, "VR-910");
         var second = NewRequest(db, "VR-911");
         await db.SaveChangesAsync();
-        var service = new ValuationReportIssuanceService(db, new StubGates(allows: true), new StubDocuments());
+        var service = new ValuationReportIssuanceService(db, new StubGates(allows: true), new FakeAttachmentFileStore());
         await service.IssueDepositAsync(first, "user-1");
         await service.IssueDepositAsync(second, "user-1");
 
@@ -240,6 +242,39 @@ public class ValuationReportIssuanceTests
         Assert.Null(own);
     }
 
+    /// <summary>
+    /// A copy recorded before the comparison key existed holds only its stored code. It still blocks the same
+    /// code typed with or without inner spaces (fixed 2026-11-10: «AB 123» on file let «AB123» through).
+    /// </summary>
+    [Theory]
+    [InlineData("AB 123", "ab123")]
+    [InlineData("AB123", "ab 123")]
+    [InlineData(" qym 2026 7 ", "QYM-2026-7")]
+    public async Task A_legacy_code_without_a_key_blocks_the_same_code_whatever_its_spaces(string onFile, string typed)
+    {
+        await using var contexts = TestDatabases.Create("issuance-legacy-code");
+        var db = contexts.Valuation;
+        var legacy = NewRequest(db, "VR-915");
+        var second = NewRequest(db, "VR-916");
+        await db.SaveChangesAsync();
+        var service = new ValuationReportIssuanceService(db, new StubGates(allows: true), new FakeAttachmentFileStore());
+        await service.IssueDepositAsync(legacy, "user-1");
+        await service.IssueDepositAsync(second, "user-1");
+
+        // An older row: the code as it was typed, no comparison key.
+        var legacyRow = db.ValuationReportIssuances.Single(x => x.ValuationRequestId == legacy);
+        legacyRow.DepositCode = onFile;
+        legacyRow.DepositCodeKey = null;
+        await db.SaveChangesAsync();
+
+        var (_, duplicate) = await service.RegisterCertificateAsync(second, Certificate(typed), "app-2");
+
+        if (ValuationReportIssuance.DepositCodeKeyOf(onFile) == ValuationReportIssuance.DepositCodeKeyOf(typed))
+            Assert.Equal(DepositCertificateRules.DuplicateCodeAr, duplicate!["depositCode"]);
+        else
+            Assert.Null(duplicate);
+    }
+
     [Fact]
     public async Task Correcting_the_code_never_moves_the_final_issue_moment()
     {
@@ -249,7 +284,7 @@ public class ValuationReportIssuanceTests
         await db.SaveChangesAsync();
         var clock = new SteppingClock(new DateTimeOffset(2026, 10, 25, 9, 0, 0, TimeSpan.Zero));
         var service = new ValuationReportIssuanceService(
-            db, new StubGates(allows: true), new StubDocuments(), clock);
+            db, new StubGates(allows: true), new FakeAttachmentFileStore(), clock);
         await service.IssueDepositAsync(id, "user-1");
 
         var (final, _) = await service.RegisterCertificateAsync(id, Certificate("QYM-1"), "app-1");
@@ -271,7 +306,7 @@ public class ValuationReportIssuanceTests
         var id = NewRequest(db, "VR-913");
         var other = NewRequest(db, "VR-914");
         await db.SaveChangesAsync();
-        var service = new ValuationReportIssuanceService(db, new StubGates(allows: true), new StubDocuments());
+        var service = new ValuationReportIssuanceService(db, new StubGates(allows: true), new FakeAttachmentFileStore());
         await service.IssueDepositAsync(id, "user-1");
         await service.RegisterCertificateAsync(id, Certificate("QYM-V1"), "app-1");
         await service.ReopenAfterDepositAsync(
@@ -349,35 +384,6 @@ public class ValuationReportIssuanceTests
                 ValuationRequestId = valuationRequestId,
                 AllowsIssuance = allows,
                 BlockingReasonsAr = reasons ?? [],
-            });
-    }
-
-    private sealed class StubDocuments : IValuationReportDocumentService
-    {
-        public Task<ValuationReportDocumentDto?> GetPreviewAsync(
-            Guid valuationRequestId,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<ValuationReportDocumentDto?>(new ValuationReportDocumentDto
-            {
-                ValuationRequestId = valuationRequestId,
-                DisplayId = "VR-TEST",
-                ReportDateDisplay = "2026/08/28",
-                FinalOpinionDisplay = "1,000,000 ريال",
-                Sections =
-                [
-                    new ValuationReportSectionDto
-                    {
-                        Number = 30,
-                        Key = "closing",
-                        TitleAr = "الخاتمة",
-                        BodyKind = "fields",
-                        Included = true,
-                        Fields = new Dictionary<string, string?>
-                        {
-                            ["report.deposit_code"] = null,
-                        },
-                    },
-                ],
             });
     }
 }

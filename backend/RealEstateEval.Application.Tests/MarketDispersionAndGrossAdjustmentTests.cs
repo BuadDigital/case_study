@@ -519,12 +519,13 @@ public class MarketDispersionAndGrossAdjustmentTests
     }
 
     [Fact]
-    public void Severity_table_counts_7_hard_12_rationale_5_ack()
+    public void Severity_table_counts_8_hard_12_rationale_4_ack()
     {
+        // m2 moved from acknowledgement to hard on 2026-11-10 (blank building ages).
         int[] numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 21, 22, 23, 24, 25];
-        Assert.Equal(7, numbers.Count(ValuationMethodologyAlertSeverity.IsHard));
+        Assert.Equal(8, numbers.Count(ValuationMethodologyAlertSeverity.IsHard));
         Assert.Equal(12, numbers.Count(ValuationMethodologyAlertSeverity.RequiresRationale));
-        Assert.Equal(5, numbers.Count(ValuationMethodologyAlertSeverity.RequiresAcknowledgement));
+        Assert.Equal(4, numbers.Count(ValuationMethodologyAlertSeverity.RequiresAcknowledgement));
         var checks = ValuationMethodologyAlertRules.Evaluate(AlertInput([]));
         Assert.Equal(numbers, checks.Select(c => c.Number).ToArray());
     }

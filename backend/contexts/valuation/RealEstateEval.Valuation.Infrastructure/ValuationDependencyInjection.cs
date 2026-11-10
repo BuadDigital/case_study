@@ -74,26 +74,19 @@ public static class ValuationDependencyInjection
         services.AddScoped<IValuationValueDocumentService, ValuationValueDocumentService>();
         services.AddScoped<IValuationValuedDocumentLookup, ValuationValuedDocumentLookup>();
         services.AddScoped<IValuationIssuanceGateService, ValuationIssuanceGateService>();
-        services.AddScoped<IValuationReportDocumentService, ValuationReportDocumentService>();
         // two-phase issuance + deposit certificate.
         services.AddScoped<IValuationReportIssuanceService, ValuationReportIssuanceService>();
         // Only the assigned appraiser writes a valuation (report draft + every valuation-work write).
         services.AddScoped<IAssignedAppraiserCheck, AssignedAppraiserCheck>();
         // The report draft: the specialist prepares, the appraiser approves (freezes the deposit copy).
         services.AddScoped<IValuationReportDraftService, ValuationReportDraftService>();
-        // Report PDF links: browser-rendered HTML → Gotenberg (Chromium) → stored PDF behind a signed key.
+        // The final report PDF: browser-rendered HTML → Gotenberg (Chromium), merged with the deposit certificate.
         services.Configure<PdfRendererOptions>(configuration.GetSection("PdfRenderer"));
-        services.Configure<ReportPdfLinkOptions>(configuration.GetSection("ReportPdfLinks"));
         services.AddHttpClient<IHtmlPdfRenderer, GotenbergHtmlPdfRenderer>(client =>
             client.Timeout = TimeSpan.FromSeconds(180));
         services.AddHttpClient<IPdfMerger, GotenbergPdfMerger>(client =>
             client.Timeout = TimeSpan.FromSeconds(180));
         services.AddScoped<IValuationFinalReportService, ValuationFinalReportService>();
-        services.AddSingleton<IReportLinkSigner, ReportLinkSigner>();
-        services.AddScoped<IValuationReportPdfService, ValuationReportPdfService>();
-        services.AddScoped<IValuationRequestLookup, ValuationRequestLookup>();
-        services.AddScoped<IValuationPrintableAttachmentLookup, ValuationPrintableAttachmentLookup>();
-        services.AddScoped<IValuationReportFieldInjectionService, ValuationReportFieldInjectionService>();
         services.AddScoped<IPriorValuationBankFeeder, PriorValuationBankFeeder>();
         return services;
     }

@@ -30,6 +30,8 @@ public static class ValuationIssuanceGateCodes
     public const string ValueDocuments = "value_documents";
     /// <summary>The specialist issued the case-study report the appraisal is built on.</summary>
     public const string StudyReportIssued = "study_report_issued";
+    /// <summary>Cost approach on: every building line has its actual and economic age (2026-11-10).</summary>
+    public const string CostDepreciationComplete = "cost_depreciation_complete";
 }
 
 public readonly record struct ValuationIssuanceGateCheck(
@@ -144,20 +146,57 @@ public static class ValuationIssuanceGateRules
     }
 
     /// <summary>
+    /// The one refusal for a case-study state Valuation could not learn (Case Study unreachable, or it
+    /// answered nothing) — never read as «passed» nor as «not locked» (2026-11-10).
+    /// </summary>
+    public const string CaseStudyStateUnavailableAr = "تعذّر التحقق من حالة دراسة الحالة — حاول مرة أخرى";
+
+    public const string StudyReportNotIssuedAr = "لم يُصدر الأخصائي تقرير دراسة الحالة بعد — لا يصدر التقييم قبله";
+
+    /// <summary>
     /// A valuation is built on the specialist's case-study report, so it cannot be issued before that
     /// report is. A defensive mirror of the appraiser's submit gate (hard, no bypass).
-    /// <paramref name="studyReportIssued"/> null = the case-study side did not say (older host during a
-    /// rolling deploy) — not a block; false = no issued report.
     /// </summary>
-    public static ValuationIssuanceGateCheck StudyReportIssued(bool? studyReportIssued)
+    /// <remarks>
+    /// How it works: true passes; false blocks («لم يُصدر»); null blocks with
+    /// <see cref="CaseStudyStateUnavailableAr"/> — unless <paramref name="linkedToCaseStudy"/> is false
+    /// (a legacy valuation with no case-study property at all), which passes.
+    /// Edge cases + fixed 2026-11-10: null used to pass («older host»), so an unreachable Case Study let the
+    /// report issue without its study. Case Study always answers the field now, so null means «not known».
+    /// </remarks>
+    public static ValuationIssuanceGateCheck StudyReportIssued(bool? studyReportIssued, bool linkedToCaseStudy = true)
     {
-        var ok = studyReportIssued != false;
+        var unknown = linkedToCaseStudy && studyReportIssued is null;
+        var ok = !linkedToCaseStudy || studyReportIssued == true;
         return new ValuationIssuanceGateCheck(
             ValuationIssuanceGateCodes.StudyReportIssued,
             "تقرير دراسة الحالة صادر",
             ok,
             IsHard: true,
-            DetailAr: ok ? null : "لم يُصدر الأخصائي تقرير دراسة الحالة بعد — لا يصدر التقييم قبله");
+            DetailAr: ok ? null : unknown ? CaseStudyStateUnavailableAr : StudyReportNotIssuedAr);
+    }
+
+    public const string CostDepreciationIncompleteAr = "أدخل العمر الفعلي والعمر الاقتصادي للمباني في أسلوب التكلفة";
+
+    /// <summary>
+    /// With the cost approach on, the buildings' depreciation needs both ages: a blank age left the
+    /// building undepreciated (valued as new) and the report printed it so (2026-11-10).
+    /// </summary>
+    /// <remarks>
+    /// How it works: passes when the approach is off or the depreciation is complete; completeness itself
+    /// is <c>CostDepreciationRules.IsIncomplete</c> (cost domain), evaluated by the caller.
+    /// </remarks>
+    public static ValuationIssuanceGateCheck CostDepreciationComplete(
+        bool costApproachEnabled,
+        bool depreciationIncomplete)
+    {
+        var ok = !costApproachEnabled || !depreciationIncomplete;
+        return new ValuationIssuanceGateCheck(
+            ValuationIssuanceGateCodes.CostDepreciationComplete,
+            "أعمار المباني في أسلوب التكلفة",
+            ok,
+            IsHard: true,
+            DetailAr: ok ? null : CostDepreciationIncompleteAr);
     }
 
     public static ValuationIssuanceGateCheck MinAdoptedComparables(int adoptedCount) =>
@@ -221,6 +260,16 @@ public static class ValuationIssuanceGateRules
     public static ValuationIssuanceGateCheck ComparableWeights(bool weightsSumTo100, int adoptedCount) =>
         ComparableWeights("market", "أوزان مقارنات أسلوب السوق = 100٪", true, weightsSumTo100, adoptedCount);
 
+    public const string ReconciliationNotSavedAr = "لم يُحفظ ترجيح الأساليب مع مبرر اختيارها / الرأي النهائي";
+
+    /// <summary>
+    /// The reconciliation must be saved (a stored row with the methods rationale) and its shares sum to 100%.
+    /// </summary>
+    /// <remarks>
+    /// Edge cases + fixed 2026-11-10: the caller used to count «saved» from the computed projection (a
+    /// final value > 0), which a never-saved request has (100% market by default) — the caller now passes
+    /// true only for a stored row with a non-empty methods rationale.
+    /// </remarks>
     public static ValuationIssuanceGateCheck ReconciliationWeights(
         bool hasReconciliation,
         bool weightsSumTo100) =>
@@ -230,7 +279,7 @@ public static class ValuationIssuanceGateRules
             hasReconciliation && weightsSumTo100,
             IsHard: true,
             DetailAr: !hasReconciliation
-                ? "لم يُحفظ ترجيح الأساليب / الرأي النهائي"
+                ? ReconciliationNotSavedAr
                 : (!weightsSumTo100 ? "مجموع نسب المشاركة ≠ 100٪" : null));
 
     public static ValuationIssuanceGateCheck FinalOpinion(decimal finalOpinionValue) =>

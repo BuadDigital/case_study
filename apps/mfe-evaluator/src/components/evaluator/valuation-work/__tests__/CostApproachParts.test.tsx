@@ -29,3 +29,23 @@ describe("cost rationale boxes (round 2 — 20px/55px wide at 1440px)", () => {
     for (const box of boxes) expect(box.className).toContain("lg:basis-full");
   });
 });
+
+describe("age hint (2026-11-10 — no invented 10 / 40 years)", () => {
+  it("asks for both ages while either is empty", () => {
+    const { unmount } = render(
+      <CostAgeCard fields={{ ...EMPTY_COST_FIELDS, actualAge: "12" }} setField={() => {}} derived={derived} />,
+    );
+    expect(screen.getByTestId("cost-ages-missing-hint").textContent).toBe(
+      "أدخل العمر الفعلي والعمر الاقتصادي لحساب الإهلاك",
+    );
+    unmount();
+    render(
+      <CostAgeCard
+        fields={{ ...EMPTY_COST_FIELDS, actualAge: "12", economicAge: "40" }}
+        setField={() => {}}
+        derived={derived}
+      />,
+    );
+    expect(screen.queryByTestId("cost-ages-missing-hint")).toBeNull();
+  });
+});

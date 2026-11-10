@@ -38,7 +38,10 @@ vi.mock("../../../lib/evaluator/evaluator-submission-reads", () => ({
   fetchEvaluatorSubmission: async () => null,
 }));
 vi.mock("../ValuationReportAttachmentsEditor", () => ({
-  ValuationReportAttachmentsEditor: () => <div data-testid="attachments-editor" />,
+  // A click stands for one edit of the print attachments (the autosave then runs).
+  ValuationReportAttachmentsEditor: ({ onChange }: { onChange: (patch: Record<string, unknown>) => void }) => (
+    <button type="button" data-testid="attachments-editor" onClick={() => onChange({ printAttachmentKeys: ["deed"] })} />
+  ),
 }));
 
 import { ReportDraftPanel } from "../ReportDraftPanel";
@@ -93,6 +96,14 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+/** Review approved the study and accepted the value (Case Study answered both). */
+function reviewDone() {
+  api.getValuationIssuanceGates.mockResolvedValue({
+    ok: true,
+    data: { gates: [], studyApprovedByReview: true, valueAcceptedByReview: true },
+  });
+}
+
 describe("ReportDraftPanel (the specialist's side)", () => {
   it("shows nothing when the property has no valuation request", async () => {
     const { container } = renderPanel(null);
@@ -110,6 +121,7 @@ describe("ReportDraftPanel (the specialist's side)", () => {
 
   // Omar 2026-11-08: review issues the draft once it approved the study and accepted the value.
   it("lets review issue the draft only after the conformity confirmation", async () => {
+    reviewDone();
     api.sendReportDraft.mockResolvedValue({ ok: true, data: draft({ status: "sent" }) });
     renderPanel(draft());
 
@@ -138,6 +150,82 @@ describe("ReportDraftPanel (the specialist's side)", () => {
     fireEvent.click(screen.getByLabelText("أؤكد أن التقييم مطابق لدراسة العقار"));
     const send = screen.getByRole("button", { name: "إصدار المسودة للمقيّم" });
     expect((send as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  // 2026-11-10: an unknown review state (Case Study not read) no longer counts as passed.
+  it("holds the issue with the reason when the study / value review state is unknown", async () => {
+    api.getValuationIssuanceGates.mockResolvedValue({
+      ok: true,
+      data: { gates: [], studyApprovedByReview: null, valueAcceptedByReview: true },
+    });
+    renderPanel(draft());
+
+    expect((await screen.findByRole("alert")).textContent).toContain("تعذّر التحقق من حالة دراسة الحالة — حاول مرة أخرى");
+    fireEvent.click(screen.getByLabelText("أؤكد أن التقييم مطابق لدراسة العقار"));
+    expect((screen.getByRole("button", { name: "إصدار المسودة للمقيّم" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("holds the issue when the gates could not be loaded", async () => {
+    renderPanel(draft());
+
+    expect((await screen.findByTestId("report-draft-readiness")).textContent).toContain("تعذّر التحقق من حالة دراسة الحالة");
+    fireEvent.click(screen.getByLabelText("أؤكد أن التقييم مطابق لدراسة العقار"));
+    expect((screen.getByRole("button", { name: "إصدار المسودة للمقيّم" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  // 2026-11-10: a legacy draft «in review» needs the tick too — it is never sent as confirmed by itself.
+  it("needs the conformity tick for a legacy draft in review", async () => {
+    reviewDone();
+    api.sendReportDraft.mockResolvedValue({ ok: true, data: draft({ status: "sent" }) });
+    renderPanel(draft({ status: "in_review", canPrepare: false }));
+
+    const send = await screen.findByRole("button", { name: "إصدار المسودة للمقيّم" });
+    await waitFor(() => expect(screen.getByText("✓ اعتمدتَ الدراسة")).toBeTruthy());
+    expect((send as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(screen.getByLabelText("أؤكد أن التقييم مطابق لدراسة العقار"));
+    await waitFor(() => expect((send as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(send);
+    await waitFor(() =>
+      expect(api.sendReportDraft).toHaveBeenCalledWith({ token: "t" }, "vr-1", { conformityConfirmed: true, note: undefined }),
+    );
+  });
+
+  // 2026-11-10: optimistic concurrency on the autosaved report choices.
+  it("saves the choices with the loaded draft stamp and moves it on after each save", async () => {
+    api.saveReportDraftChoices
+      .mockResolvedValueOnce({ ok: true, data: draft({ updatedAtUtc: "2026-10-05T09:01:00Z" }) })
+      .mockResolvedValueOnce({ ok: true, data: draft({ updatedAtUtc: "2026-10-05T09:02:00Z" }) });
+    renderPanel(draft());
+    const editor = await screen.findByTestId("attachments-editor");
+
+    fireEvent.click(editor);
+    await waitFor(() => expect(api.saveReportDraftChoices).toHaveBeenCalledTimes(1), { timeout: 3000 });
+    expect(api.saveReportDraftChoices.mock.calls[0]![3]).toBe("2026-10-05T09:00:00Z");
+
+    fireEvent.click(editor);
+    await waitFor(() => expect(api.saveReportDraftChoices).toHaveBeenCalledTimes(2), { timeout: 3000 });
+    expect(api.saveReportDraftChoices.mock.calls[1]![3]).toBe("2026-10-05T09:01:00Z");
+  });
+
+  it("stops autosaving and asks for a reload when someone saved a newer draft", async () => {
+    api.saveReportDraftChoices.mockResolvedValue({
+      ok: false,
+      kind: "conflict",
+      message: "حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة",
+    });
+    renderPanel(draft());
+    const editor = await screen.findByTestId("attachments-editor");
+
+    fireEvent.click(editor);
+    expect((await screen.findByTestId("report-draft-conflict", {}, { timeout: 3000 })).textContent).toBe(
+      "حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة",
+    );
+    expect(toast.showToast).toHaveBeenCalledWith("حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة", "error");
+
+    fireEvent.click(editor);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(api.saveReportDraftChoices).toHaveBeenCalledTimes(1);
   });
 
   it("lets the study edit the report choices but never issue the draft", async () => {

@@ -31,8 +31,4 @@ public static class DemoComparableBank
 
     public static IReadOnlyList<Guid> Exclude(IEnumerable<Guid> comparableIds) =>
         comparableIds.Where(id => !Contains(id)).Distinct().ToList();
-
-    public static bool IsUnchosenDemoSelection(ValuationComparableSelection row) =>
-        Contains(row.ComparablePropertyId)
-        && string.IsNullOrWhiteSpace(row.SelectedByUserId);
 }

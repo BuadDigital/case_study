@@ -1126,6 +1126,21 @@
       "note": "Links a valuation request to chosen comparables for the market approach."
     },
     {
+      "table": "ValuationDismissedLinkedComparables",
+      "schema": "valuation",
+      "dbSet": "ValuationDismissedLinkedComparables",
+      "entity": "ValuationDismissedLinkedComparable",
+      "owner": "valuation",
+      "status": "approved",
+      "ownershipModel": "single-owner",
+      "contexts": [
+        "ValuationDbContext"
+      ],
+      "transactionGroup": "valuation.requests",
+      "decision": null,
+      "note": "Property-linked comparables the appraiser removed from a valuation — the linked-comparable import skips them (2026-11-10)."
+    },
+    {
       "table": "ValuationComparableAdjustmentLines",
       "schema": "valuation",
       "dbSet": "ValuationComparableAdjustmentLines",

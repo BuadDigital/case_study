@@ -45,13 +45,17 @@ describe("الغرض من التقييم comes from the work order (#16/#28)", (
     expect(fill.cells["الغرض من التقييم"]).toBe("تصفية التركات");
   });
 
-  it("keeps the approach-settings purpose when the work order saved none", () => {
+  it("falls back to the assignment default when the work order saved no purpose (ruling 2026-11-10)", () => {
     const fill = buildValuationReportLiveFill({
       draft: draft(),
       record: record(),
       purposeKey: "financing",
     });
-    expect(fill.cells["الغرض من التقييم"]).toBe("التمويل والرهن العقاري");
+    expect(fill.cells["الغرض من التقييم"]).toBe("البيع بالمزاد العلني لغرض التصفية");
+    // Without an assignment type the settings' purpose is the last fallback.
+    expect(
+      resolveReportValuationKeys({ record: record({ assignmentType: "" }), purposeKey: "financing" }).purposeKey,
+    ).toBe("financing");
   });
 
   it("uses the work order's basis when the reconciliation saved none", () => {

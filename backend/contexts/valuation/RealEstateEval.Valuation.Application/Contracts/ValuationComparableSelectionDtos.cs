@@ -275,6 +275,11 @@ public class ValuationCostApproachDto
     public decimal AppliedObsolescencePct { get; init; }
     /// <summary>Total obsolescence above <c>CostApproachRules.HighObsolescenceAlertPct</c> (90%).</summary>
     public bool ObsolescenceNeedsAlert { get; init; }
+    /// <summary>
+    /// 2026-11-10: included floor lines with a blank actual age or economic life — the depreciation
+    /// (counted as 0٪) is not computed yet (<c>CostDepreciationRules.IsIncomplete</c>).
+    /// </summary>
+    public bool DepreciationIncomplete { get; init; }
  /// <summary> — computed.</summary>
     public decimal DepreciationValue { get; init; }
  /// <summary> — computed.</summary>
@@ -290,6 +295,11 @@ public class ValuationCostApproachDto
     public decimal BuildingAreaSqm { get; init; }
     public string? AnalysisNotes { get; init; }
     public IReadOnlyList<ValuationCostLineDto> Lines { get; init; } = [];
+    /// <summary>
+    /// 2026-11-10: the stored row's last save (ISO 8601 UTC); null before the first save. The screen
+    /// sends it back as <see cref="SaveValuationCostApproachRequest.ExpectedUpdatedAtUtc"/>.
+    /// </summary>
+    public string? UpdatedAtUtc { get; init; }
 }
 
 public class ValuationIndirectCostItemDto
@@ -401,6 +411,14 @@ public class SaveValuationCostApproachRequest
     public decimal ExternalObsolescencePct { get; init; }
     [MaxLength(2000)]
     public string? ExternalObsolescenceRationale { get; init; }
+
+    /// <summary>
+    /// 2026-11-10 optimistic concurrency: the <see cref="ValuationCostApproachDto.UpdatedAtUtc"/> the
+    /// screen loaded (or got back from its own last save). Absent/null = older client, no check; empty =
+    /// it loaded a never-saved approach. A different stored stamp is refused with 409.
+    /// </summary>
+    [MaxLength(64, ErrorMessage = "ختم آخر حفظ لأسلوب التكلفة غير صالح — أعد تحميل الصفحة.")]
+    public string? ExpectedUpdatedAtUtc { get; init; }
 }
 
 public class ValuationReconciliationMethodDto
@@ -453,14 +471,25 @@ public class ValuationReconciliationDto
     public decimal PropertyValueAfterLiquidation { get; init; }
     public IReadOnlyList<ValuationValueDocumentAdditionDto> Additions { get; init; } = [];
     public decimal AdditionsTotal { get; init; }
- /// <summary>Final opinion before liquidation discount (same as final when not applied).</summary>
+    /// <summary>
+    /// The final total without the liquidation discount: weighted + document additions, rounded once
+    /// — equal to <see cref="FinalOpinionValue"/> when no discount applies. (Before 2026-11-10 it
+    /// left the additions out.)
+    /// </summary>
     public decimal FinalOpinionBeforeLiquidation { get; init; }
     public string MethodsRationale { get; init; } = "";
+    /// <summary>
+    /// The resolved basis (ruling 2026-11-10): the work order's, else the appraiser's saved one
+    /// (legacy), else the assignment default — AssignmentValuationDefaults.ResolveBasisAndPremise.
+    /// </summary>
     public string BasisOfValueKey { get; init; } = "market";
     public string? BasisOfValueLabelAr { get; init; }
+    /// <summary>The resolved premise, always compatible with <see cref="BasisOfValueKey"/>.</summary>
     public string? ValuePremiseKey { get; init; }
     public string? ValuePremiseLabelAr { get; init; }
+    /// <summary>The stored discount on the liquidation basis; 0 on any other basis.</summary>
     public decimal LiquidationDiscountPct { get; init; }
+    /// <summary>The discount rationale on the liquidation basis; null on any other basis.</summary>
     public string? LiquidationDiscountRationale { get; init; }
     public bool LiquidationDiscountApplied { get; init; }
  /// <summary>soft-alert overrides (rationale / ack).</summary>
@@ -514,7 +543,7 @@ public class SaveValuationReconciliationRequest
     [MaxLength(32)]
     public string? ValuePremiseKey { get; init; }
 
- /// <summary>Applied only when basis = liquidation and premise is set.</summary>
+    /// <summary>Applied only when the resolved basis (work order first) is liquidation.</summary>
     public decimal LiquidationDiscountPct { get; init; }
 
     [MaxLength(2000, ErrorMessage = "مبرر خصم التصفية طويل جدًا — الحد الأقصى 2000 حرف.")]

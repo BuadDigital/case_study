@@ -77,6 +77,7 @@ public class PriorValuationBankApartmentAreaTests
                 ? Task.FromResult<ValuationReconciliationDto?>(new ValuationReconciliationDto
                 {
                     FinalOpinionValue = 970_000m,
+                    FinalOpinionBeforeLiquidation = 970_000m,
                     BasisOfValueKey = BasisOfValueKeys.Market,
                 })
                 : null);

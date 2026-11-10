@@ -47,8 +47,43 @@ public class ValuationIssuanceGateRulesTests
         Assert.Null(issued.DetailAr);
         Assert.True(ValuationIssuanceGateRules.AllowsIssuance([issued]));
 
-        // «Unknown» (an older case-study host during a rolling deploy) is not a block.
-        Assert.True(ValuationIssuanceGateRules.StudyReportIssued(null).Passed);
+        // 2026-11-10: «unknown» (Case Study unreachable / empty answer) blocks with «تعذّر التحقق»; only a
+        // valuation with no case-study property at all (legacy) passes.
+        var unknown = ValuationIssuanceGateRules.StudyReportIssued(null);
+        Assert.False(unknown.Passed);
+        Assert.Equal(ValuationIssuanceGateRules.CaseStudyStateUnavailableAr, unknown.DetailAr);
+        Assert.True(ValuationIssuanceGateRules.StudyReportIssued(null, linkedToCaseStudy: false).Passed);
+    }
+
+    [Fact]
+    public void Cost_depreciation_gate_blocks_only_an_enabled_cost_approach_with_a_missing_age()
+    {
+        var blocked = ValuationIssuanceGateRules.CostDepreciationComplete(costApproachEnabled: true, depreciationIncomplete: true);
+        Assert.Equal(ValuationIssuanceGateCodes.CostDepreciationComplete, blocked.Code);
+        Assert.True(blocked.IsHard);
+        Assert.False(blocked.Passed);
+        Assert.Equal("أدخل العمر الفعلي والعمر الاقتصادي للمباني في أسلوب التكلفة", blocked.DetailAr);
+
+        Assert.True(ValuationIssuanceGateRules.CostDepreciationComplete(true, false).Passed);
+        Assert.True(ValuationIssuanceGateRules.CostDepreciationComplete(false, true).Passed);
+    }
+
+    [Fact]
+    public void Reconciliation_gate_names_the_missing_saved_rationale()
+    {
+        var unsaved = ValuationIssuanceGateRules.ReconciliationWeights(hasReconciliation: false, weightsSumTo100: true);
+        Assert.False(unsaved.Passed);
+        Assert.Equal(ValuationIssuanceGateRules.ReconciliationNotSavedAr, unsaved.DetailAr);
+    }
+
+    [Fact]
+    public void Participant_with_an_unreadable_date_is_named_and_blocks()
+    {
+        var check = ValuationIssuanceGateRules.ParticipantCredentials(
+            [new ValuationIssuanceGateRules.RosterParticipantCredentials("سالم", "N/A", "2027-06-01")],
+            Today);
+        Assert.False(check.Passed);
+        Assert.Contains("سالم: " + ValuerCredentialRules.LicenseDateUnreadableAr, check.DetailAr);
     }
 
     [Fact]

@@ -12,6 +12,9 @@
 //  • B    Use-restriction, life-extension basis and functional / external obsolescence rationales are at
 //         least 10 characters once written.
 //  • An unknown line structureKind is refused instead of being stored as-is.
+// Grey areas (2026-11-10)
+//  • Repeated floors inherit area and unit cost from the INCLUDED first floor only (IncludedFirstFloor).
+//  • IsStaleSave / ConflictKey / StaleSaveMessageAr — two tabs no longer overwrite each other (409).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using System.Globalization;
@@ -50,11 +53,7 @@ public static class ValuationCostApproachRequestRules
         Dictionary<string, string> errors)
     {
         var lines = request.Lines ?? [];
-        var firstFloorArea = FirstFloorArea(lines);
-        var firstFloorUnitCost = lines
-            .Where(l => CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.FirstFloor)
-            .Select(l => l.UnitCostSar)
-            .FirstOrDefault();
+        var (firstFloorArea, firstFloorUnitCost) = IncludedFirstFloor(lines);
         var direct = 0m;
         for (var i = 0; i < lines.Count; i++)
         {
@@ -84,12 +83,62 @@ public static class ValuationCostApproachRequestRules
         }
     }
 
-    /// <summary>The first-floor area the repeated-floors quantity derives from (first such line).</summary>
+    /// <summary>
+    /// The first-floor area the repeated-floors quantity derives from — the INCLUDED «الدور الأول»
+    /// only (<see cref="RepeatedFloorRules.IncludedFirstFloor"/>); 0 when it is excluded or missing.
+    /// Fixed 2026-11-10: an excluded first floor still gave its area.
+    /// </summary>
     public static decimal FirstFloorArea(IReadOnlyList<SaveValuationCostLineRequest> lines) =>
-        lines
-            .Where(l => CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.FirstFloor)
-            .Select(l => l.AreaSqm)
-            .FirstOrDefault();
+        IncludedFirstFloor(lines).AreaSqm;
+
+    /// <summary>
+    /// The area and unit cost the repeated floors inherit from the request's included first floor —
+    /// one rule for the save, the amount ceiling and the read (<see cref="RepeatedFloorRules.IncludedFirstFloor"/>).
+    /// </summary>
+    public static (decimal AreaSqm, decimal UnitCostSar) IncludedFirstFloor(
+        IReadOnlyList<SaveValuationCostLineRequest> lines) =>
+        RepeatedFloorRules.IncludedFirstFloor(
+            lines.Select(l => (l.ItemKey, l.IsIncluded, l.AreaSqm, l.UnitCostSar)));
+
+    // ─── optimistic concurrency (2026-11-10) ───
+
+    /// <summary>Marker key in the error map: the refusal is a stale save (the controller answers 409 and drops the key).</summary>
+    public const string ConflictKey = "_conflict";
+
+    /// <summary>Why a stale save is refused — another tab or user saved newer cost inputs.</summary>
+    public const string StaleSaveMessageAr = "حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة";
+
+    /// <summary>
+    /// What: whether a cost save was built on an older copy than the stored one (two tabs overwriting
+    /// each other).
+    /// How it works: <paramref name="expectedUpdatedAtUtc"/> is the <c>UpdatedAtUtc</c> the screen loaded
+    /// (or got back from its own last save). Null = an older client that sends nothing → no check. Empty =
+    /// the screen loaded a never-saved approach → stale once a row exists. Otherwise the stored stamp must
+    /// match within a millisecond (the database keeps microseconds, .NET ticks — never a false conflict).
+    /// Edge cases: an unreadable stamp is not refused (tolerant, like an older client); a stored row that
+    /// is gone while a stamp is expected is not a conflict (the save recreates it).
+    /// </summary>
+    public static bool IsStaleSave(string? expectedUpdatedAtUtc, DateTime? storedUpdatedAtUtc)
+    {
+        if (expectedUpdatedAtUtc is null) return false;
+        if (string.IsNullOrWhiteSpace(expectedUpdatedAtUtc)) return storedUpdatedAtUtc is not null;
+        if (storedUpdatedAtUtc is not { } stored) return false;
+        if (!DateTime.TryParse(
+                expectedUpdatedAtUtc.Trim(),
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
+                out var expected))
+            return false;
+        var storedUtc = stored.Kind == DateTimeKind.Local ? stored.ToUniversalTime() : stored;
+        return Math.Abs((storedUtc - expected).Ticks) >= TimeSpan.TicksPerMillisecond;
+    }
+
+    /// <summary>The stamp the cost DTO hands the screen — round-trip ISO 8601 UTC; null before the first save.</summary>
+    public static string? ConcurrencyStamp(DateTime? updatedAtUtc) =>
+        updatedAtUtc is { } at
+            ? (at.Kind == DateTimeKind.Local ? at.ToUniversalTime() : DateTime.SpecifyKind(at, DateTimeKind.Utc))
+                .ToString("o", CultureInfo.InvariantCulture)
+            : null;
 
     /// <summary>
     /// Request positions whose id is set but not one of this valuation's stored lines — the

@@ -50,6 +50,8 @@ export type MatrixBasisView = {
   subjectAreaLabel: string;
   opinionRaw: number | null;
   opinionFinal: number | null;
+  /** The line under the value: the rounded market value (market table) or why the land stays raw. */
+  roundingNote: string;
   areaMethod: string;
   areaFactor: number;
 };
@@ -77,8 +79,9 @@ export function matrixBasisView(
         ? selection.subjectAreaSqm
         : null) ??
       0;
+    // The unrounded value: the per-m² readout must not move with the 10,000 rounding.
     const opinion =
-      selection.marketOpinionValue ?? selection.weightedPricePerSqm ?? 0;
+      selection.marketOpinionValueRaw ?? selection.marketOpinionValue ?? selection.weightedPricePerSqm ?? 0;
     pricePerSqmDisplay = area > 0 && opinion > 0 ? opinion / area : null;
   }
   return {
@@ -95,6 +98,7 @@ export function matrixBasisView(
     subjectAreaLabel,
     opinionRaw: selection.marketOpinionValueRaw ?? selection.marketOpinionValue,
     opinionFinal: selection.marketOpinionValue,
+    roundingNote: matrixRoundingNote(selection),
     // No area adjustment on the whole-property basis (the server sends 0).
     areaMethod: !isUnit
       ? "لا تسوية مساحة — المقارنة على قيمة العقار كاملة"
@@ -103,6 +107,37 @@ export function matrixBasisView(
         : "طريقة الأمثال — آلية",
     areaFactor: selection.areaFactorPct ?? 5,
   };
+}
+
+/**
+ * «لأقرب 10,000 ر.س» for the request's rounding exponent (`valueRoundDecimals`, 10^n); 0 → «لأقرب ريال».
+ * A missing setting reads as the server default (4).
+ */
+export function roundStepLabel(valueRoundDecimals: number | null | undefined): string {
+  const d = Math.min(6, Math.max(0, Math.trunc(valueRoundDecimals ?? 4)));
+  return d === 0 ? "لأقرب ريال" : `لأقرب ${fmt(10 ** d)} ر.س`;
+}
+
+/**
+ * What: the line under the matrix value.
+ * How it works: the market table shows the server's rounded `marketOpinionValue` — the figure the
+ * reconciliation and the report read — beside the unrounded one above it. The land table inside the
+ * cost approach is never rounded (the cost approach reads its rate), so it says so.
+ * Edge cases and what was fixed (2026-11-10): the server never applied the rounding setting and this
+ * line promised «التقريب مرة واحدة بعد الترجيح النهائي»; the market value is rounded now, so the screen
+ * shows the same rounded figure. When both figures are equal (already round, or a deposited request that
+ * keeps its unrounded value) the line just says the value enters the reconciliation as it is.
+ */
+export function matrixRoundingNote(selection: ValuationComparableSelectionListDto): string {
+  if (selection.selectionContext === LAND_WITHIN_COST) {
+    return "بلا تقريب هنا — قيمة الأرض مُدخل في أسلوب التكلفة";
+  }
+  const raw = selection.marketOpinionValueRaw ?? selection.marketOpinionValue;
+  const rounded = selection.marketOpinionValue;
+  if (rounded == null || raw == null || rounded === raw) {
+    return "هذه القيمة تدخل الترجيح كما هي";
+  }
+  return `بعد التقريب (${roundStepLabel(selection.valueRoundDecimals)}): ${fmt(rounded)} ر.س — القيمة التي تدخل الترجيح`;
 }
 
 function matrixOutputFormula(

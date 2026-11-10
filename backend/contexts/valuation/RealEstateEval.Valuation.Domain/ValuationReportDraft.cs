@@ -97,6 +97,29 @@ public class ValuationReportDraft
     public bool IsSent => Status == ReportDraftStatuses.Sent;
     public bool IsApproved => Status == ReportDraftStatuses.Approved;
 
+    public const string StaleChoicesAr = "حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة";
+
+    /// <summary>
+    /// Optimistic concurrency for the report choices: whether the caller's loaded copy is older than this
+    /// draft (no schema change — the token is <see cref="UpdatedAtUtc"/>).
+    /// </summary>
+    /// <remarks>
+    /// How it works: <paramref name="expectedUpdatedAtUtc"/> null = the caller sent no token → never stale.
+    /// <paramref name="callerSawNoDraft"/> (token "") = the caller loaded no draft → stale when one already
+    /// existed (<paramref name="isNewDraft"/> false). Otherwise stale when this draft was just started (the
+    /// caller's draft is gone) or the stamps differ. Compared at microsecond precision — the database keeps
+    /// microseconds, .NET ticks are 100 ns.
+    /// Edge cases: fixed 2026-11-10 — two specialists autosaving the whole choices object silently replaced
+    /// each other (last writer wins).
+    /// </remarks>
+    public bool IsStaleFor(DateTime? expectedUpdatedAtUtc, bool callerSawNoDraft, bool isNewDraft)
+    {
+        if (callerSawNoDraft) return !isNewDraft;
+        if (expectedUpdatedAtUtc is not { } expected) return false;
+        if (isNewDraft) return true;
+        return UpdatedAtUtc.Ticks / 10 != expected.Ticks / 10;
+    }
+
     /// <summary>
     /// The report choices are saved while the study prepares, or while review holds the draft (review alone
     /// edits it then — the caller checks who).
@@ -113,20 +136,23 @@ public class ValuationReportDraft
     }
 
     /// <summary>
-    /// Review issues the draft to the appraiser (Omar 2026-11-08) from preparing with the conformity
-    /// confirmation; a legacy draft still «in review» (2026-11-05 flow) keeps the study's confirmation.
+    /// Review issues the draft to the appraiser (Omar 2026-11-08) with the conformity confirmation ticked now.
     /// </summary>
+    /// <remarks>
+    /// How it works: a sent draft is a no-op; only preparing / legacy in-review drafts go; the tick is
+    /// required and stamped with the sender.
+    /// Edge cases + fixed 2026-11-10: a legacy draft still «in review» (2026-11-05 flow) used to go out on the
+    /// study's old confirmation (and the screen sent the tick for it automatically) — it now needs the tick
+    /// like any other.
+    /// </remarks>
     public string? Send(bool conformityConfirmed, string? note, string? byUserId, DateTime nowUtc)
     {
         if (IsSent) return null;
         if (!IsPreparing && !IsInReview) return NotPreparingAr;
-        if (IsPreparing && !conformityConfirmed) return ConformityRequiredAr;
+        if (!conformityConfirmed) return ConformityRequiredAr;
 
-        if (IsPreparing || ConformityConfirmedAtUtc is null)
-        {
-            ConformityConfirmedAtUtc = nowUtc;
-            ConformityConfirmedByUserId = Clean(byUserId);
-        }
+        ConformityConfirmedAtUtc = nowUtc;
+        ConformityConfirmedByUserId = Clean(byUserId);
         SubmittedForReviewAtUtc ??= nowUtc;
         SubmittedForReviewByUserId ??= Clean(byUserId);
         SpecialistNote = Clean(note) ?? SpecialistNote;
@@ -137,13 +163,28 @@ public class ValuationReportDraft
         return null;
     }
 
-    /// <summary>The draft goes back to the study (idempotent), with an optional note: from review, or from the appraiser.</summary>
+    /// <summary>The draft goes back to preparing (idempotent) with review's optional note to the appraiser.</summary>
+    /// <remarks>How it works: writes the specialist note, then <see cref="BackToPreparing"/>.</remarks>
     public string? Withdraw(string? note, DateTime nowUtc)
     {
         if (IsPreparing) return null;
         if (IsApproved) return ApprovedCannotBeWithdrawnAr;
 
         SpecialistNote = Clean(note);
+        BackToPreparing(nowUtc);
+        return null;
+    }
+
+    /// <summary>
+    /// The one way back to preparing (review's withdraw, the appraiser's return): clears the sent, the
+    /// hand-over and the conformity stamps so a «preparing» draft never shows them.
+    /// </summary>
+    /// <remarks>
+    /// Edge cases + fixed 2026-11-10: the appraiser's return used to keep the conformity and hand-over
+    /// stamps (still shown on a «preparing» draft); both ways now clear the same stamps.
+    /// </remarks>
+    private void BackToPreparing(DateTime nowUtc)
+    {
         SentAtUtc = null;
         SentByUserId = null;
         SubmittedForReviewAtUtc = null;
@@ -152,7 +193,6 @@ public class ValuationReportDraft
         ConformityConfirmedByUserId = null;
         Status = ReportDraftStatuses.Preparing;
         UpdatedAtUtc = nowUtc;
-        return null;
     }
 
     public const string ReturnToReviewReasonRequiredAr = "اكتب سبب الإرجاع للمراجع";
@@ -161,17 +201,17 @@ public class ValuationReportDraft
     /// The appraiser returns the draft to review with a reason (Omar 2026-11-08) — he never edits it himself;
     /// review corrects and issues it to him again.
     /// </summary>
-    /// <remarks>How it works: only a sent draft; back to preparing with the reason as the review note.</remarks>
+    /// <remarks>
+    /// How it works: only a sent draft; the reason becomes the review note, then <see cref="BackToPreparing"/>
+    /// (2026-11-10: clears the conformity and hand-over stamps too, like review's withdraw).
+    /// </remarks>
     public string? ReturnToReviewer(string? reason, DateTime nowUtc)
     {
         if (!IsSent) return NotSentAr;
         var note = reason?.Trim() ?? "";
         if (note.Length < 3) return ReturnToReviewReasonRequiredAr;
-        Status = ReportDraftStatuses.Preparing;
-        SentAtUtc = null;
-        SentByUserId = null;
         ReviewNote = note.Length > 1000 ? note[..1000] : note;
-        UpdatedAtUtc = nowUtc;
+        BackToPreparing(nowUtc);
         return null;
     }
 

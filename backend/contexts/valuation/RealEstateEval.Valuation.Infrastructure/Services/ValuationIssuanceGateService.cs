@@ -16,6 +16,11 @@
 // 2026-11-02 (colleague review, item 10)
 //  • The AdjustmentRationales gates are gone: adjustment-factor and weight rationales are optional
 //         notes (the percentages are estimates) — they no longer hold issue or hand-over.
+// 2026-11-10 (grey areas)
+//  • New gate cost_depreciation_complete: cost approach on + a building age missing blocks.
+//  • «Reconciliation saved» = a stored row with a methods rationale (not a computed final value).
+//  • Participants: firm license date first (the documented FirstFilled rule).
+//  • Case-study state unknown (unreachable / empty answer) refuses; no case-study property (legacy) passes.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using Microsoft.EntityFrameworkCore;
@@ -83,11 +88,12 @@ public sealed partial class ValuationIssuanceGateService(
         bool? valueAcceptedByReview = null;
 
         var propertyGuid = vr.PropertyId;
-        if (propertyGuid != Guid.Empty)
+        // 2026-11-10: a valuation with no case-study property at all (legacy) passes the case-study gates;
+        // one that has a property but whose state could not be read is refused («تعذّر التحقق»), never passed.
+        var linkedToCaseStudy = propertyGuid != Guid.Empty;
+        if (linkedToCaseStudy)
         {
-            var context = await caseStudy.GetValuationPropertyContextAsync(
-                propertyGuid,
-                cancellationToken);
+            var context = await ReadPropertyContextAsync(propertyGuid, cancellationToken);
             if (context is not null)
             {
                 deedKind = context.DeedKindValue();
@@ -124,8 +130,12 @@ public sealed partial class ValuationIssuanceGateService(
             cancellationToken);
         var cost = await costApproach.GetAsync(valuationRequestId, cancellationToken);
         var recon = await reconciliation.GetAsync(valuationRequestId, cancellationToken);
-        var hasReconSaved = !string.IsNullOrWhiteSpace(recon?.MethodsRationale)
-            || (recon?.FinalOpinionValue ?? 0m) > 0m;
+        // 2026-11-10: «saved» = a stored reconciliation row with its methods rationale. The projection above
+        // computes a final value (100% market by default) even when nothing was ever saved.
+        var hasReconSaved = await valuation.ValuationReconciliations.AsNoTracking()
+            .AnyAsync(
+                x => x.ValuationRequestId == valuationRequestId && x.MethodsRationale.Trim() != "",
+                cancellationToken);
 
         var costUsed = (cost?.CostOpinionWithLand ?? 0m) > 0m
             || (cost?.Lines.Count ?? 0) > 0;
@@ -151,6 +161,8 @@ public sealed partial class ValuationIssuanceGateService(
         // "Building only" scope: land section hidden — its gates do not apply.
         var costLandRelevant = costApproachEnabled
             && !CostScopeKeys.IsBuildingOnly(settings.CostScopeKey);
+        var costDepreciationIncomplete = costApproachEnabled
+            && await CostDepreciationIncompleteAsync(valuationRequestId, cancellationToken);
 
         var checks = new List<ValuationIssuanceGateCheck>
         {
@@ -166,16 +178,19 @@ public sealed partial class ValuationIssuanceGateService(
                         eval.Name,
                         assigneeId,
                         vr.Appraiser)
+                    // The documented rule (ValuerCredentialRules.FirstFilled): the firm's practice-license
+                    // date first, the person's own date only when the firm's is empty (2026-11-10: was
+                    // personal first, so a stale personal date overrode the firm's).
                     .Select(v => new ValuationIssuanceGateRules.RosterParticipantCredentials(
                         v.NameAr,
                         ValuerCredentialRules.FirstFilled(
-                            v.LicenseExpiresAt,
-                            firmLicenseExpiresAt),
+                            firmLicenseExpiresAt,
+                            v.LicenseExpiresAt),
                         v.MembershipExpiresAt))
                     .ToList(),
                 today),
             ValuationIssuanceGateRules.DeedNatureMatch(deedKind, matchOutcome),
-            ValuationIssuanceGateRules.StudyReportIssued(studyReportIssued),
+            ValuationIssuanceGateRules.StudyReportIssued(studyReportIssued, linkedToCaseStudy),
             ValuationIssuanceGateRules.MinAdoptedComparablesForApproach(
                 "market",
                 "مقارنات أسلوب السوق",
@@ -189,6 +204,9 @@ public sealed partial class ValuationIssuanceGateService(
             ValuationIssuanceGateRules.CostLandEstimateComplete(
                 costLandRelevant,
                 cost?.LandEstimateComplete == true),
+            ValuationIssuanceGateRules.CostDepreciationComplete(
+                costApproachEnabled,
+                costDepreciationIncomplete),
             ValuationIssuanceGateRules.ComparableWeights(
                 "market",
                 "أوزان مقارنات أسلوب السوق = 100٪",
@@ -351,5 +369,43 @@ public sealed partial class ValuationIssuanceGateService(
             MethodologyAlertsNoteAr =
                 "تنبيهات منهجية (24): 7 حاجبة · 12 بمبرر نصي إلزامي · 5 بإقرار.",
         };
+    }
+
+    /// <summary>The case-study facts of the property, or null when Case Study could not be read.</summary>
+    /// <remarks>
+    /// How it works: one remote read; a failed call (outage, 5xx) comes back as null like an empty answer.
+    /// Edge cases + fixed 2026-11-10: a failure used to throw out of the whole evaluation (the draft send
+    /// answered 500); now the case-study gates and the review state read as «unknown», which refuses with
+    /// «تعذّر التحقق من حالة دراسة الحالة». Cancellation still propagates.
+    /// </remarks>
+    private async Task<CaseStudyValuationPropertyContextDto?> ReadPropertyContextAsync(
+        Guid propertyId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await caseStudy.GetValuationPropertyContextAsync(propertyId, cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Whether the saved cost approach still lacks a building age its depreciation needs.</summary>
+    /// <remarks>
+    /// How it works: loads the stored cost header with its lines and asks the cost domain rule
+    /// <see cref="CostDepreciationRules.IsIncomplete(ValuationCostApproach?)"/> (included floor-area lines
+    /// with a blank actual or economic age). Edge cases: no saved cost approach → false (nothing to
+    /// depreciate yet; the land / final-value gates hold the issue then).
+    /// </remarks>
+    private async Task<bool> CostDepreciationIncompleteAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken)
+    {
+        var costRow = await valuation.ValuationCostApproaches.AsNoTracking()
+            .Include(x => x.Lines)
+            .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
+        return CostDepreciationRules.IsIncomplete(costRow);
     }
 }

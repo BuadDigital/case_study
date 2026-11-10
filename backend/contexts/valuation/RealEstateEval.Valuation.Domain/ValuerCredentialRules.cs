@@ -22,6 +22,10 @@ public static class ValuerCredentialRules
         return false;
     }
 
+    /// <summary>
+    /// True only for a readable date before today. An unreadable value is NOT expired here — the
+    /// issuance gate (<see cref="AllowsIssuance"/>) refuses it separately as «غير مقروء».
+    /// </summary>
     public static bool IsExpired(string? expiresAt, DateOnly today) =>
         TryParseDate(expiresAt, out var d) && d < today;
 
@@ -52,7 +56,19 @@ public static class ValuerCredentialRules
         return null;
     }
 
- /// <summary>Hard gate: both credentials must be present and not expired.</summary>
+    public const string LicenseDateUnreadableAr =
+        "تاريخ انتهاء ترخيص المزاولة غير مقروء — أدخله تاريخاً صحيحاً (yyyy-MM-dd)";
+
+    public const string MembershipDateUnreadableAr =
+        "تاريخ انتهاء / سريان العضوية غير مقروء — أدخله تاريخاً صحيحاً (yyyy-MM-dd)";
+
+    /// <summary>Hard gate: both credentials must be present, readable dates and not expired.</summary>
+    /// <remarks>
+    /// How it works: blank → «غير مُدخل»; a value that is not a date → «غير مقروء»; a past date → expired.
+    /// Edge cases + fixed 2026-11-10: an unreadable value («N/A», «-», free text) used to pass because
+    /// <see cref="IsExpired"/> is false when the date cannot be parsed — now it blocks like a blank one.
+    /// The participant gate prefixes the reason with the participant's name.
+    /// </remarks>
     public static bool AllowsIssuance(
         string? licenseExpiresAt,
         string? membershipExpiresAt,
@@ -68,6 +84,18 @@ public static class ValuerCredentialRules
         if (string.IsNullOrWhiteSpace(membershipExpiresAt))
         {
             blockReason = "تاريخ انتهاء / سريان العضوية غير مُدخل";
+            return false;
+        }
+
+        if (!TryParseDate(licenseExpiresAt, out _))
+        {
+            blockReason = LicenseDateUnreadableAr;
+            return false;
+        }
+
+        if (!TryParseDate(membershipExpiresAt, out _))
+        {
+            blockReason = MembershipDateUnreadableAr;
             return false;
         }
 

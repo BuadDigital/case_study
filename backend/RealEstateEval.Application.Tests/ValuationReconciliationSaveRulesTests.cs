@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application.Abstractions;
+using RealEstateEval.Application.Contracts;
 using RealEstateEval.Infrastructure.Services;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;
@@ -66,8 +67,9 @@ public class ValuationReconciliationSaveRulesTests
 
         Assert.Contains("خصم التصفية", onMarket!["liquidationDiscountPct"]);
         Assert.Contains("خصم التصفية", noRationale!["liquidationDiscountRationale"]);
-        // Round 2: the range message names the premise's discount (an unset premise on liquidation is «قسري»).
-        Assert.Equal("نسبة خصم البيع القسري يجب أن تكون بين 0 و 90", outOfRange!["liquidationDiscountPct"]);
+        // The range message names the premise's discount; an unset premise on liquidation takes the
+        // read path's default «التصفية المنظمة» (2026-11-10 — it used to be guessed «قسري»).
+        Assert.Equal("نسبة خصم التصفية المنظمة يجب أن تكون بين 0 و 90", outOfRange!["liquidationDiscountPct"]);
         Assert.DoesNotContain("معامل", noRationale["liquidationDiscountRationale"]);
     }
 
@@ -241,6 +243,203 @@ public class ValuationReconciliationSaveRulesTests
         Assert.Empty(merged);
     }
 
+    // ---- grey areas 2026-11-10: one owner of the basis, the rationale, the list snapshot ----
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task A_full_save_without_the_methods_rationale_is_refused_in_arabic(string rationale)
+    {
+        await using var rig = Arrange($"recon-rationale-{rationale.Length}");
+
+        var (result, errors) = await rig.Service.SaveAsync(rig.RequestId, WithRationale(Request("market", 0m), rationale));
+
+        Assert.Null(result);
+        Assert.Equal("مبرر استخدام طرق التقييم والرأي النهائي مطلوب", errors!["methodsRationale"]);
+        Assert.False(await rig.Contexts.Valuation.ValuationReconciliations.AnyAsync());
+    }
+
+    [Fact]
+    public async Task The_work_order_basis_wins_over_the_basis_the_client_sends()
+    {
+        await using var rig = Arrange("recon-wo-wins", workOrderBasis: "market");
+
+        var (result, errors) = await rig.Service.SaveAsync(rig.RequestId, Request("liquidation", 0m));
+
+        Assert.Null(errors);
+        Assert.Equal(BasisOfValueKeys.Market, result!.BasisOfValueKey);
+        Assert.Equal(ValuePremiseKeys.CurrentUse, result.ValuePremiseKey);
+        var stored = rig.Contexts.Valuation.ValuationReconciliations.Single();
+        Assert.Equal(BasisOfValueKeys.Market, stored.BasisOfValueKey);
+    }
+
+    [Fact]
+    public async Task A_discount_sent_against_a_work_order_market_basis_is_refused()
+    {
+        await using var rig = Arrange("recon-wo-discount", workOrderBasis: "market");
+
+        var (_, errors) = await rig.Service.SaveAsync(
+            rig.RequestId, Request("liquidation", 10m, "بيع بالمزاد خلال مدة تسويق قصيرة"));
+
+        Assert.Equal(ReconciliationLiquidationMessages.OnlyForLiquidationAr, errors!["liquidationDiscountPct"]);
+    }
+
+    [Fact]
+    public async Task A_saved_liquidation_row_reads_as_the_work_orders_market_basis_without_the_discount()
+    {
+        // The live case: work order «القيمة السوقية», reconciliation saved as liquidation 10% → the
+        // screen showed 950,000 while the server and report showed «قيمة التصفية» 855,000.
+        await using var rig = Arrange("recon-wo-read", workOrderBasis: "market");
+        rig.Contexts.Valuation.ValuationReconciliations.Add(new ValuationReconciliation
+        {
+            Id = Guid.NewGuid(),
+            ValuationRequestId = rig.RequestId,
+            MethodsRationale = "مبرر الترجيح",
+            BasisOfValueKey = BasisOfValueKeys.Liquidation,
+            ValuePremiseKey = ValuePremiseKeys.Forced,
+            LiquidationDiscountPct = 10m,
+            LiquidationDiscountRationale = "بيع بالمزاد خلال مدة قصيرة",
+        });
+        await rig.Contexts.Valuation.SaveChangesAsync();
+
+        var result = await rig.Service.GetAsync(rig.RequestId);
+
+        Assert.Equal(BasisOfValueKeys.Market, result!.BasisOfValueKey);
+        Assert.Equal(ValuePremiseKeys.CurrentUse, result.ValuePremiseKey);
+        Assert.Equal(0m, result.LiquidationDiscountPct);
+        Assert.Null(result.LiquidationDiscountRationale);
+        Assert.False(result.LiquidationDiscountApplied);
+        Assert.Equal(result.FinalOpinionBeforeLiquidation, result.FinalOpinionValue);
+    }
+
+    [Fact]
+    public async Task A_blank_premise_on_liquidation_saves_as_orderly_like_the_read_path()
+    {
+        await using var rig = Arrange("recon-blank-premise");
+
+        var (result, errors) = await rig.Service.SaveAsync(
+            rig.RequestId, Request("liquidation", 10m, "بيع بالمزاد خلال مدة تسويق قصيرة"));
+
+        Assert.Null(errors);
+        Assert.Equal(ValuePremiseKeys.Orderly, result!.ValuePremiseKey);
+        Assert.Equal(ValuePremiseKeys.Orderly, rig.Contexts.Valuation.ValuationReconciliations.Single().ValuePremiseKey);
+    }
+
+    [Fact]
+    public async Task The_read_refreshes_the_stored_snapshot_the_request_list_reads()
+    {
+        await using var rig = Arrange("recon-list-snapshot", workOrderBasis: "market");
+        var reconId = Guid.NewGuid();
+        rig.Contexts.Valuation.ValuationReconciliations.Add(new ValuationReconciliation
+        {
+            Id = reconId,
+            ValuationRequestId = rig.RequestId,
+            MethodsRationale = "مبرر الترجيح",
+            BasisOfValueKey = BasisOfValueKeys.Liquidation,
+            ValuePremiseKey = ValuePremiseKeys.Orderly,
+            LiquidationDiscountPct = 10m,
+            Methods =
+            [
+                new ValuationReconciliationMethodLine
+                {
+                    Id = Guid.NewGuid(),
+                    ReconciliationId = reconId,
+                    ApproachKind = ValuationApproachKinds.Market,
+                    ApproachValue = 950_000m,
+                    WeightPct = 100m,
+                    IsIncluded = true,
+                },
+            ],
+        });
+        await rig.Contexts.Valuation.SaveChangesAsync();
+        // Before the refresh the list read the stale snapshot as liquidation 10%: 855,000.
+        Assert.Equal(855_000m, ReconciliationRules.FinalFromSnapshot(
+            rig.Contexts.Valuation.ValuationReconciliations.Include(x => x.Methods).Single(), 0m));
+        rig.Contexts.Valuation.ChangeTracker.Clear();
+
+        await rig.Service.RefreshListSnapshotAsync(rig.RequestId, Projection(rig.RequestId, 1_026_000m));
+
+        rig.Contexts.Valuation.ChangeTracker.Clear();
+        var stored = rig.Contexts.Valuation.ValuationReconciliations.Include(x => x.Methods).Single();
+        Assert.Equal(1_026_000m, stored.Methods.Single().ApproachValue);
+        Assert.Equal(BasisOfValueKeys.Market, stored.BasisOfValueKey);
+        Assert.Equal(ValuePremiseKeys.CurrentUse, stored.ValuePremiseKey);
+        // The list's value from the snapshot now equals the projection.
+        Assert.Equal(1_026_000m, ReconciliationRules.FinalFromSnapshot(stored, 0m));
+        // The appraiser's own inputs are left alone.
+        Assert.Equal(10m, stored.LiquidationDiscountPct);
+        Assert.Equal(100m, stored.Methods.Single().WeightPct);
+    }
+
+    [Fact]
+    public async Task The_snapshot_of_a_frozen_report_is_never_refreshed()
+    {
+        await using var rig = Arrange("recon-list-frozen");
+        var reconId = Guid.NewGuid();
+        rig.Contexts.Valuation.ValuationReconciliations.Add(new ValuationReconciliation
+        {
+            Id = reconId,
+            ValuationRequestId = rig.RequestId,
+            MethodsRationale = "مبرر الترجيح",
+            BasisOfValueKey = BasisOfValueKeys.Market,
+            ValuePremiseKey = ValuePremiseKeys.CurrentUse,
+            Methods =
+            [
+                new ValuationReconciliationMethodLine
+                {
+                    Id = Guid.NewGuid(),
+                    ReconciliationId = reconId,
+                    ApproachKind = ValuationApproachKinds.Market,
+                    ApproachValue = 950_000m,
+                    WeightPct = 100m,
+                    IsIncluded = true,
+                },
+            ],
+        });
+        rig.Contexts.Valuation.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(
+            rig.RequestId, "staff", DateTime.UtcNow));
+        await rig.Contexts.Valuation.SaveChangesAsync();
+        rig.Contexts.Valuation.ChangeTracker.Clear();
+
+        await rig.Service.RefreshListSnapshotAsync(rig.RequestId, Projection(rig.RequestId, 1_026_000m));
+
+        rig.Contexts.Valuation.ChangeTracker.Clear();
+        var stored = rig.Contexts.Valuation.ValuationReconciliations.Include(x => x.Methods).Single();
+        Assert.Equal(950_000m, stored.Methods.Single().ApproachValue);
+    }
+
+    /// <summary>A live projection: one market row at the given value, work-order market basis.</summary>
+    private static ValuationReconciliationDto Projection(Guid requestId, decimal marketValue) => new()
+    {
+        ValuationRequestId = requestId,
+        PropertyId = Guid.NewGuid().ToString("D"),
+        Methods =
+        [
+            new ValuationReconciliationMethodDto
+            {
+                ApproachKind = ValuationApproachKinds.Market,
+                LabelAr = "أسلوب السوق",
+                ApproachValue = marketValue,
+                WeightPct = 100m,
+                IsIncluded = true,
+            },
+        ],
+        FinalOpinionValue = marketValue,
+        BasisOfValueKey = BasisOfValueKeys.Market,
+        ValuePremiseKey = ValuePremiseKeys.CurrentUse,
+    };
+
+    private static SaveValuationReconciliationRequest WithRationale(SaveValuationReconciliationRequest r, string rationale) => new()
+    {
+        MethodologyAlertOverrides = r.MethodologyAlertOverrides,
+        Methods = r.Methods,
+        MethodsRationale = rationale,
+        BasisOfValueKey = r.BasisOfValueKey,
+        ValuePremiseKey = r.ValuePremiseKey,
+        LiquidationDiscountPct = r.LiquidationDiscountPct,
+        LiquidationDiscountRationale = r.LiquidationDiscountRationale,
+    };
+
     // ---- arrangement ----
 
     private static SaveValuationReconciliationRequest Request(
@@ -268,7 +467,8 @@ public class ValuationReconciliationSaveRulesTests
         LiquidationDiscountRationale = r.LiquidationDiscountRationale,
     };
 
-    private static Rig Arrange(string name)
+    /// <param name="workOrderBasis">The work order's basis the Case Study lookup answers (null = none, legacy).</param>
+    private static Rig Arrange(string name, string? workOrderBasis = null)
     {
         var contexts = TestDatabases.Create(name);
         var id = Guid.NewGuid();
@@ -279,7 +479,9 @@ public class ValuationReconciliationSaveRulesTests
         var service = new ValuationReconciliationService(
             new ValuationReconciliationRepository(contexts.Valuation),
             new ValuationReportFreezeGate(contexts.Valuation),
-            NullAnswers.Create<ICaseStudyLookup>(),
+            workOrderBasis is null
+                ? NullAnswers.Create<ICaseStudyLookup>()
+                : WorkOrderAnswers.Create(workOrderBasis),
             new AuditLogWriter(),
             audit,
             NullAnswers.Create<IValuationComparableSelectionService>(),
@@ -298,6 +500,25 @@ public class ValuationReconciliationSaveRulesTests
         public Guid RequestId { get; } = requestId;
         public RecordingAuditLogAppend Audit { get; } = audit;
         public ValueTask DisposeAsync() => Contexts.DisposeAsync();
+    }
+
+    /// <summary>Case Study answering a work order with the given basis (no premise); everything else «nothing there».</summary>
+    private class WorkOrderAnswers : NullAnswers
+    {
+        private string _basis = "";
+
+        public static ICaseStudyLookup Create(string basis)
+        {
+            var proxy = DispatchProxy.Create<ICaseStudyLookup, WorkOrderAnswers>();
+            ((WorkOrderAnswers)(object)proxy)._basis = basis;
+            return proxy;
+        }
+
+        protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) =>
+            targetMethod!.Name == nameof(ICaseStudyLookup.GetValuationPropertyContextAsync)
+                ? Task.FromResult<CaseStudyValuationPropertyContextDto?>(
+                    new CaseStudyValuationPropertyContextDto { BasisOfValueKey = _basis })
+                : base.Invoke(targetMethod, args);
     }
 
     /// <summary>Every async read answers «nothing there» (null / empty) — the save rules under test need no lookups.</summary>

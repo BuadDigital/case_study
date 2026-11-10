@@ -11,6 +11,10 @@
 //          unknown code is refused.
 //  • B    Rationale alerts (6, 10, 12) and overrides clear only with at least 10 characters.
 //  • m23 names «نهاية فترة التقييم» when the cutoff is the end of a retrospective period.
+// Grey areas (2026-11-10)
+//  • m2 is HARD: included building lines with a blank actual age / economic life (or extended life ≤ 0).
+//  • m11 classifies through PropertyCategoryRules.IsBuiltType (عمارة، محل، مستودع… now count).
+//  • m7/m9 read the cost line's item key; the label only for a legacy row without a key.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Domain;
@@ -19,7 +23,7 @@ namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Methodology alerts — 24 (package v2 decisions 16 + 24 + +, then ////):
-/// 7 hard / 12 require text rationale / 5 require acknowledgement.
+/// 8 hard / 12 require text rationale / 4 require acknowledgement (m2 hard since 2026-11-10).
 /// m18/m21 evaluate only once inspection-scope data is captured (inspection boundaries).
 /// </summary>
 public static class ValuationMethodologyAlertCodes
@@ -121,9 +125,10 @@ public sealed record ValuationMethodologyAlertResolution(
 public static class ValuationMethodologyAlertSeverity
 {
  /// <summary>
- /// Hard gates (7): 4, 5, 11, 15, 16 + 21 + 23 (comparable after the valuation date).
+ /// Hard gates (8): 2 (building ages missing / extended life ≤ 0 — hard since 2026-11-10),
+ /// 4, 5, 11, 15, 16 + 21 + 23 (comparable after the valuation date).
  /// </summary>
-    public static bool IsHard(int number) => number is 4 or 5 or 11 or 15 or 16 or 21 or 23;
+    public static bool IsHard(int number) => number is 2 or 4 or 5 or 11 or 15 or 16 or 21 or 23;
 
  /// <summary>
  /// Warning with text rationale (12): 6, 8, 9, 10, 12, 17 + 18 + 19
@@ -132,9 +137,9 @@ public static class ValuationMethodologyAlertSeverity
     public static bool RequiresRationale(int number) =>
         number is 3 or 6 or 8 or 9 or 10 or 12 or 17 or 18 or 19 or 22 or 24 or 25;
 
- /// <summary>Warning with acknowledgement (5): 1, 2, 7, 13, 14.</summary>
+ /// <summary>Warning with acknowledgement (4): 1, 7, 13, 14 (2 left on 2026-11-10 — it is hard now).</summary>
     public static bool RequiresAcknowledgement(int number) =>
-        number is 1 or 2 or 7 or 13 or 14;
+        number is 1 or 7 or 13 or 14;
 
     public static string KindFor(int number) =>
         IsHard(number) ? ValuationMethodologyAlertSeverityKinds.Hard
@@ -255,6 +260,12 @@ public static class ValuationMethodologyAlertRules
         // Cost data only counts while the cost approach is on (stale lines/ages are ignored).
         var costOn = input.CostApproachEnabled;
         var lines = costOn ? input.CostLines.Where(l => l.IsIncluded).ToList() : [];
+        // Alert 2 (hard): included building lines while the actual age or the economic life is blank —
+        // the same rule the cost screen and the gates ask (CostDepreciationRules.IsIncomplete).
+        var agesBlank = costOn && CostDepreciationRules.IsIncomplete(
+            input.ActualAgeYears,
+            input.EconomicAgeYears,
+            lines.Select(l => ((string?)l.ItemKey, (string?)l.StructureKind, (string?)l.Label, l.IsIncluded)));
         var comps = input.AdoptedComparables;
         var resolutions = (input.Resolutions ?? [])
             .Where(r => !string.IsNullOrWhiteSpace(r.Code))
@@ -297,10 +308,15 @@ public static class ValuationMethodologyAlertRules
                 "جدول التكلفة فارغ",
                 resolutions),
 
-            Eval(2, ValuationMethodologyAlertCodes.ExtendedLifeZero, "العمر الممتد صفر",
-                costOn && (input.ActualAgeYears is not null || input.EconomicAgeYears is not null),
-                () => (input.ExtendedLifeYears ?? 0m) <= 0m,
-                "العمر الممتد (الاقتصادي + التمديد) ≤ 0",
+            // Hard since 2026-11-10 (Fix 5): included building lines with a blank actual age or a blank
+            // economic life — or an extended life ≤ 0 — leave the depreciation uncomputable. It used to
+            // run only once an age was typed and an acknowledgement cleared it, so a cost approach with
+            // no ages priced its buildings as new and still issued.
+            Eval(2, ValuationMethodologyAlertCodes.ExtendedLifeZero,
+                "عمر المبنى الفعلي والعمر الاقتصادي مطلوبان لحساب الإهلاك",
+                costOn && (input.ActualAgeYears is not null || input.EconomicAgeYears is not null || agesBlank),
+                () => agesBlank || (input.ExtendedLifeYears ?? 0m) <= 0m,
+                BuildingAgesDetail(agesBlank),
                 resolutions),
 
             Eval(3, ValuationMethodologyAlertCodes.EffectiveAgeExceedsLife,
@@ -371,8 +387,8 @@ public static class ValuationMethodologyAlertRules
             Eval(11, ValuationMethodologyAlertCodes.NonVacantLandComps,
                 "مقارنات غير أرض فضاء",
                 input.MarketApproachRelevant && !input.HasStructuresToValue && comps.Count > 0,
-                () => comps.Any(c => LooksBuiltUp(c.ComparablePropertyType)),
-                "للأرض الفضاء: مقارن يبدو بمبانٍ — خطر احتساب المبنى مرتين",
+                () => comps.Any(c => PropertyCategoryRules.IsBuiltType(c.ComparablePropertyType)),
+                BuiltComparablesDetail(comps),
                 resolutions),
 
             Eval(12, ValuationMethodologyAlertCodes.ObsolescenceNoRationale,
@@ -636,9 +652,18 @@ public static class ValuationMethodologyAlertRules
         return $"العقار محل التقييم «{PropertyCategoryRules.LabelAr(subjectCategory)}» والمقارن: {string.Join("، ", list)} — برّر صلاحية المقارن أو استبعده";
     }
 
+    /// <summary>
+    /// What: the line is «الأدوار المتكررة» (alerts 7 and 9).
+    /// How it works: a line that carries an item key is judged by the key only
+    /// (<see cref="CostLineItemKeys.RepeatedFloors"/>, the same key the cost approach derives the
+    /// quantity from); the label is read only for a legacy row saved without any key.
+    /// Edge cases and what was fixed (2026-11-10): a «custom» line named «دور متكرر» used to count by
+    /// its label although the cost approach never derives it; and a key typed «Custom» / with spaces
+    /// skipped the key check because it was compared before normalising.
+    /// </summary>
     private static bool LooksLikeRepeatedFloor(ValuationMethodologyAlertCostLineInput l)
     {
-        if (CostLineItemKeys.IsKnown(l.ItemKey) && l.ItemKey != CostLineItemKeys.Custom)
+        if (!string.IsNullOrWhiteSpace(l.ItemKey))
             return CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.RepeatedFloors;
         var label = l.Label ?? "";
         return label.Contains("متكرر", StringComparison.Ordinal)
@@ -646,9 +671,17 @@ public static class ValuationMethodologyAlertRules
                || label.Contains("typical", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// What: the line is «الدور الأول» — the area and price source of the repeated floors (alerts 7, 9).
+    /// How it works: by item key (<see cref="CostLineItemKeys.FirstFloor"/>) whenever the line has one,
+    /// matching <see cref="RepeatedFloorRules.IncludedFirstFloor"/>; «دور» + «أول/اول» in the label only for a
+    /// legacy row without a key.
+    /// Edge cases: fixed 2026-11-10 — a custom line named «الدور الأول» counted as the first floor here
+    /// while the cost approach (key only) gave the repeated floors no area, so alert 7 stayed silent.
+    /// </summary>
     private static bool LooksLikeFirstFloor(ValuationMethodologyAlertCostLineInput l)
     {
-        if (CostLineItemKeys.IsKnown(l.ItemKey) && l.ItemKey != CostLineItemKeys.Custom)
+        if (!string.IsNullOrWhiteSpace(l.ItemKey))
             return CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.FirstFloor;
         if (LooksLikeRepeatedFloor(l)) return false;
         var label = l.Label ?? "";
@@ -713,20 +746,30 @@ public static class ValuationMethodologyAlertRules
             && string.IsNullOrWhiteSpace(l.Rationale));
     }
 
-    private static bool LooksBuiltUp(string? propertyType)
+    /// <summary>
+    /// What: alert 11's detail — the adopted comparables whose type names something built.
+    /// How it works: <see cref="PropertyCategoryRules.IsBuiltType"/> — the one classifier the
+    /// market approach uses — so «عمارة», «محل تجاري», «مستودع»… count, not only villa/apartment.
+    /// Edge cases: names each comparable by its reference code (or «المقارن n»).
+    /// </summary>
+    private static string BuiltComparablesDetail(IReadOnlyList<ValuationMethodologyAlertComparableInput> comps)
     {
-        var t = (propertyType ?? "").Trim();
-        if (t.Length == 0) return false;
-        if (t.Contains("أرض", StringComparison.Ordinal) || t.Contains("ارض", StringComparison.Ordinal)
-            || t.Contains("land", StringComparison.OrdinalIgnoreCase)
-            || t.Contains("فضاء", StringComparison.Ordinal))
-            return false;
-        return t.Contains("مبنى", StringComparison.Ordinal)
-               || t.Contains("فيلا", StringComparison.Ordinal)
-               || t.Contains("شقة", StringComparison.Ordinal)
-               || t.Contains("دور", StringComparison.Ordinal)
-               || t.Contains("building", StringComparison.OrdinalIgnoreCase)
-               || t.Contains("villa", StringComparison.OrdinalIgnoreCase)
-               || t.Contains("apartment", StringComparison.OrdinalIgnoreCase);
+        var built = comps
+            .Select((c, i) => (c, i))
+            .Where(x => PropertyCategoryRules.IsBuiltType(x.c.ComparablePropertyType))
+            .Select(x => $"{RefOf(x.c.ReferenceCode, x.i)} ({x.c.ComparablePropertyType.Trim()})")
+            .ToList();
+        const string text = "للأرض الفضاء: مقارن مبني — خطر احتساب المبنى مرتين";
+        return built.Count > 0 ? $"{text}: {string.Join("، ", built)}" : text;
     }
+
+    /// <summary>
+    /// What: alert 2's detail — why depreciation cannot be computed.
+    /// How it works: blank ages over priced building lines say so with the cost screen's own message
+    /// (<see cref="CostDepreciationRules.IncompleteMessageAr"/>); otherwise the extended life is ≤ 0.
+    /// </summary>
+    private static string BuildingAgesDetail(bool agesBlank) =>
+        agesBlank
+            ? $"{CostDepreciationRules.IncompleteMessageAr} — بنود المباني مُدرجة والعمر الفعلي أو الاقتصادي فارغ؛ لا يُتجاوز هذا التنبيه بإقرار"
+            : "العمر الممتد (الاقتصادي + التمديد) ≤ 0 — لا يُحسب الإهلاك؛ أدخل العمر الاقتصادي";
 }

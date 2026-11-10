@@ -301,7 +301,10 @@ public sealed class ValuationRequestService : IValuationRequestService
             reconByRequest.TryGetValue(id, out var recon);
             DateTime? issueAt = issueByRequest.TryGetValue(id, out var at) ? at : null;
             overlays[id] = new RequestMapOverlay(
-                FinalOpinionFrom(recon, additionsByRequest.GetValueOrDefault(id)),
+                // Same rules as the reconciliation read, over the stored snapshot that read keeps
+                // current (RefreshListSnapshotAsync) — one batched query for the whole list, no
+                // per-row calls to Case Study, market or cost (Fix 4, 2026-11-10).
+                ReconciliationRules.FinalFromSnapshot(recon, additionsByRequest.GetValueOrDefault(id)),
                 issueAt);
         }
 
@@ -312,25 +315,6 @@ public sealed class ValuationRequestService : IValuationRequestService
         IReadOnlyDictionary<Guid, RequestMapOverlay> overlays,
         Guid id) =>
         overlays.TryGetValue(id, out var overlay) ? overlay : default;
-
-    private static decimal? FinalOpinionFrom(ValuationReconciliation? recon, decimal additionsTotal)
-    {
-        if (recon is null) return null;
-        var included = recon.Methods
-            .Where(m => m.IsIncluded)
-            .Select(m => (m.ApproachValue, m.WeightPct, true))
-            .ToList();
-        if (included.Count == 0) return null;
-        var weighted = ReconciliationRules.WeightedValue(included);
-        var (_, _, final, _) = ReconciliationRules.FinalTotal(
-            weighted,
-            recon.FinalRoundDecimals,
-            recon.BasisOfValueKey,
-            recon.ValuePremiseKey,
-            recon.LiquidationDiscountPct,
-            additionsTotal);
-        return final > 0m ? final : null;
-    }
 
     private static ValuationRequestDto ToDto(
         ValuationRequest row,

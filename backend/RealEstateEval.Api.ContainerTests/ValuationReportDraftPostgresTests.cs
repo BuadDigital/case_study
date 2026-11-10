@@ -53,8 +53,8 @@ public sealed class ValuationReportDraftPostgresTests : IAsyncLifetime
             draft.ReportDate = "2026-10-05";
             db.ValuationReportDrafts.Add(draft);
 
-            var issuance = ValuationReportIssuance.IssueDeposit(request.Id, "{}", "u-app", Now);
-            Assert.Null(issuance.RegisterCertificate("QYM-1", "certificate.pdf", "application/pdf", certificateId, null, "u-app", Now));
+            var issuance = ValuationReportIssuance.IssueDeposit(request.Id, "u-app", Now);
+            Assert.Null(issuance.RegisterCertificate("QYM-1", "certificate.pdf", "application/pdf", certificateId, "u-app", Now));
             Assert.Null(issuance.IssueFinal(Now));
             issuance.SetFinalPdf(finalPdfId, "QYM-1", Now);
             db.ValuationReportIssuances.Add(issuance);
@@ -114,7 +114,7 @@ public sealed class ValuationReportDraftPostgresTests : IAsyncLifetime
         {
             db.ValuationRequests.Add(request);
             db.ValuationReportDrafts.Add(ValuationReportDraft.Start(request.Id, 1, Now));
-            db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(request.Id, "{}", "u-app", Now));
+            db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(request.Id, "u-app", Now));
             await db.SaveChangesAsync();
         }
 
@@ -147,7 +147,7 @@ public sealed class ValuationReportDraftPostgresTests : IAsyncLifetime
             var approved = ValuationReportDraft.Start(deposited.Id, 1, Now);
             approved.Status = ReportDraftStatuses.Approved;
             db.ValuationReportDrafts.Add(approved);
-            db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(deposited.Id, "{}", "u-app", Now));
+            db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(deposited.Id, "u-app", Now));
             await db.SaveChangesAsync();
         }
 

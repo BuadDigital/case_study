@@ -163,7 +163,7 @@ public class WorkOrderValidatorTests
     }
 
     [Fact]
-    public void ValidatePropertyEnfath_requires_court_for_execution()
+    public void ValidatePropertyEnfath_requires_court_but_not_circuit_for_execution()
     {
         var dto = ValidDeedProperty();
         dto.Court = null;
@@ -177,7 +177,8 @@ public class WorkOrderValidatorTests
             (_, _) => false);
 
         Assert.Equal("المحكمة مطلوبة", errors["court"]);
-        Assert.Equal("الدائرة مطلوبة", errors["circuit"]);
+        // The circuit is optional (Omar 2026-11-10).
+        Assert.False(errors.ContainsKey("circuit"));
     }
     [Fact]
     public void ValidateHeader_returns_no_errors_for_valid_request()

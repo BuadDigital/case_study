@@ -17,8 +17,6 @@ function parseEvaluatorPayload(
     status: String(raw.status ?? dto.status ?? "draft"),
     evaluatorPrice: String(raw.evaluatorPrice ?? ""),
     evaluatorNotes: String(raw.evaluatorNotes ?? ""),
-    reportFileName:
-      typeof raw.reportFileName === "string" ? raw.reportFileName : null,
     reportNo: typeof raw.reportNo === "string" ? raw.reportNo : "",
     submittedAtUtc:
       typeof raw.submittedAtUtc === "string"

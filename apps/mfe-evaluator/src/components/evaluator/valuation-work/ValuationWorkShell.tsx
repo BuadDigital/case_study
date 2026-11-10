@@ -8,6 +8,8 @@
 //  • A    The land table inside the cost approach uses the whole plot area (landPlotSqm), never an
 //         apartment's floor area, and an apartment shows apartmentLandHint; deedArea goes to the cost
 //         section.
+// Grey areas (2026-11-10)
+//  • The apartment test is the shared textLooksLikeApartment («شقه», Apartment, flat count too).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -20,6 +22,7 @@ import {
   useState,
 } from "react";
 import { InlineLoadingSkeleton, cn } from "@platform/ui-kit";
+import { textLooksLikeApartment } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { apartmentLandHint } from "../../../lib/evaluator/cost-land-figures";
 import {
   retrospectiveDraftFromSettings,
@@ -39,7 +42,7 @@ import {
 } from "../../../lib/evaluator/inspector-data-changes";
 import { ComparablesBankTable } from "./ComparablesBankTable";
 import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
-import { fmtChainValue } from "./lib/adjustments-matrix-state";
+import { fmtChainValue, roundStepLabel } from "./lib/adjustments-matrix-state";
 import { fmt } from "./lib/shell-utils";
 import { marketSubjectAreaLabel } from "./lib/market-subject";
 import {
@@ -173,7 +176,9 @@ export function ValuationWorkShell({
     reload,
     bankSubjectCoords,
   } = data;
-  const isApartment = (approachSettings?.propertyType ?? "").includes("شقة");
+  // One apartment test app-wide (2026-11-10): «شقه» / «شقق» / Apartment / flat are units too, so the
+  // deed area is never seeded as the building plot for them (was `.includes("شقة")` only).
+  const isApartment = textLooksLikeApartment(approachSettings?.propertyType);
   // The land table's own area — the whole plot, never the apartment's floor area.
   const landPlotSqm = landSelection?.subjectAreaSqm ?? cost?.landAreaSqm ?? 0;
 
@@ -300,7 +305,11 @@ export function ValuationWorkShell({
 
     const marketIsUnit = (selection?.adjustmentBasis ?? "price_per_sqm") === "price_per_sqm";
     const marketAdopted = visibleAdoptedMarket.length;
-    const marketValue = selection?.marketOpinionValueRaw ?? selection?.marketOpinionValue ?? 0;
+    // 2026-11-10: the rounded market value — the figure the reconciliation and the report read
+    // (the matrix below shows the unrounded one beside it).
+    const marketValue = selection?.marketOpinionValue ?? 0;
+    const marketRounded =
+      selection?.marketOpinionValueRaw != null && selection.marketOpinionValueRaw !== marketValue;
     const marketReady = marketAdopted > 0 && marketValue > 0;
 
     return (
@@ -336,9 +345,10 @@ export function ValuationWorkShell({
               : []),
           ]}
           resultLabel={
-            marketIsUnit
-              ? `سعر المتر × ${marketSubjectAreaLabel(marketKind)} =`
-              : "قيمة العقار بعد التسوية ="
+            (marketIsUnit
+              ? `سعر المتر × ${marketSubjectAreaLabel(marketKind)}`
+              : "قيمة العقار بعد التسوية") +
+            (marketRounded ? ` — ${roundStepLabel(selection?.valueRoundDecimals)} =` : " =")
           }
           result={marketReady ? fmt(marketValue) : "غير مكتمل — يلزم اعتماد مقارن"}
           resultTone={marketReady ? "heading" : "danger"}

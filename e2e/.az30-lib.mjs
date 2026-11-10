@@ -11,7 +11,11 @@ export const BASE = "http://localhost:3000";
 export const PHONES = {
   sliman: "500000001", osama: "500000004", ahmed: "500000008", abdullah: "500000007",
   eman: "500000010", jeddah_survey: "500000011", assaf: "500000012",
+  // Case-specialist sub-roles (2026-11): osama = review, hamrani = study, nafei = coordination.
+  hamrani: "500000013", nafei: "500000015",
 };
+/** A step osama (review only) is refused is retried as the study, then the coordination specialist. */
+const SPECIALIST_FALLBACK = ["hamrani", "nafei"];
 export const today = new Date().toLocaleDateString("en-CA");
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 /** A real one-page certificate PDF (the tiny hand-made PDF is accepted at deposit but never merges into the final report). */
@@ -84,6 +88,13 @@ export function makeRun(OUT) {
       try { json = text ? JSON.parse(text) : null; } catch { json = text; }
       const short = (typeof json === "string" ? json : JSON.stringify(json) ?? "").slice(0, 700);
       S.steps.push({ at: new Date().toISOString(), user, method, path, status: r.status, ...(r.ok ? {} : { body: short }) });
+      const subRoleRefusal = r.status === 403 || (r.status === 400 && /لأخصائي (ال)?(تنسيق|دراسة|مراجعة)|متاح لأخصائي|للمراجع|لدارس/.test(short));
+      if (subRoleRefusal && user === "osama" && !allow.includes(r.status)) {
+        for (const other of SPECIALIST_FALLBACK) {
+          const res = await call(other, method, path, body, { allow: [...allow, 400, 403], quiet: true, raw: wantRaw, headers });
+          if (!(res && (res.__status === 403 || res.__status === 400))) { log(`  ↳ ${other} did it (${method} ${path})`); return res; }
+        }
+      }
       if (!r.ok && !allow.includes(r.status)) {
         log(`  ✗ ${user} ${method} ${path} → ${r.status} ${short}`);
         const err = new Error(`${user} ${method} ${path} → ${r.status} ${short}`);
@@ -747,6 +758,9 @@ export async function enfazTab(R, label = "enfaz-tab") {
 export async function sendDraft(R, X, note) {
   // The specialist's print choices (attachments printed with the report) — saved while preparing.
   await R.call("osama", "PUT", `/api/valuation-requests/${R.S.vr}/report-draft/choices`, { choices: { printAttachmentKeys: R.S.survey ? ["deed", "survey"] : ["deed"] } }, { allow: [400, 409] });
+  // Review flow (2026-11-08): review approves the study and accepts the value before issuing the draft.
+  await R.call("osama", "POST", `/api/case-study-reports/${R.S.parent}/approve-study`, {}, { allow: [400, 409] });
+  await R.call("osama", "POST", `/api/party-task-submissions/${R.S.appraisal}/accept`, {}, { allow: [400, 409] });
   return R.call("osama", "POST", `/api/valuation-requests/${R.S.vr}/report-draft/send`, { conformityConfirmed: true, note: note ?? `راجعت التقييم مع دراسة العقار — ${X.tag}` });
 }
 
@@ -787,6 +801,8 @@ export async function finalPdf(R, X, label = "final") {
 }
 
 export async function handover(R, { allow = [] } = {}) {
+  // Review flow (2026-11-08): «تجهيز المعاملة للرفع» stamps the deed before the handover.
+  await R.call("osama", "POST", `/api/work-orders/${R.S.workOrderId}/properties/${R.S.propertyId}/transaction-state/ready-for-upload`, undefined, { allow: [400, 409] });
   return R.call("osama", "POST", `/api/work-orders/${R.S.workOrderId}/properties/${R.S.propertyId}/transaction-state/enfaz-handover`, undefined, { allow });
 }
 

@@ -71,10 +71,13 @@ describe("costFieldsFromDto actual age", () => {
     );
   });
 
-  it("seeds the ages, and zero indirect costs and financing, when the cost row is empty", () => {
+  it("leaves the ages empty (no invented 10 / 40 years) and seeds zero indirect costs and financing", () => {
     const fields = costFieldsFromDto(cost());
-    expect(fields.actualAge).toBe("10");
-    expect(fields.economicAge).toBe("40");
+    // 2026-11-10: blank, sent as null — never a starter age nobody chose.
+    expect(fields.actualAge).toBe("");
+    expect(fields.economicAge).toBe("");
+    expect(EMPTY_COST_FIELDS.actualAge).toBe("");
+    expect(EMPTY_COST_FIELDS.economicAge).toBe("");
     expect(fields.financingRate).toBe("0");
     expect(fields.financingMonths).toBe("0");
     expect(fields.indirectDraft.design_supervision?.pct).toBe("0");
@@ -181,6 +184,7 @@ describe("buildCostNarrative", () => {
           ...EMPTY_COST_FIELDS.indirectDraft,
           contingency: { pct: "3", rationale: "نقص معلومات التنفيذ" },
         },
+        actualAge: "10",
         actualAgeRationale: "من المعاينة",
       },
       [

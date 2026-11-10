@@ -157,6 +157,25 @@ public static class ValuationModel
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // A property-linked comparable the appraiser removed from this valuation — the linked-comparable
+        // import skips it, so the removal sticks (2026-11-10). One row per request + comparable.
+        builder.Entity<ValuationDismissedLinkedComparable>(e =>
+        {
+            e.ToTable("ValuationDismissedLinkedComparables", DatabaseSchemas.Valuation);
+            e.HasIndex(x => new { x.ValuationRequestId, x.ComparablePropertyId })
+                .IsUnique()
+                .HasDatabaseName("IX_ValuationDismissedLinkedComparables_Request_Comp");
+            e.HasIndex(x => x.ComparablePropertyId);
+            e.HasOne<ValuationRequest>()
+                .WithMany()
+                .HasForeignKey(x => x.ValuationRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasOne<ComparableProperty>()
+                .WithMany()
+                .HasForeignKey(x => x.ComparablePropertyId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         builder.Entity<ValuationComparableAdjustmentLine>(e =>
         {
             e.ToTable("ValuationComparableAdjustmentLines", DatabaseSchemas.Valuation);
@@ -266,6 +285,7 @@ public static class ValuationModel
             e.Property(x => x.AreaFactorPct).HasPrecision(9, 4);
             e.Property(x => x.AnnualMarketRatePct).HasPrecision(9, 4);
             e.Property(x => x.ValueRoundDecimals);
+            e.Property(x => x.MarketValueUnrounded).HasDefaultValue(false);
             e.Property(x => x.AnalysisNotes).HasMaxLength(4000);
             e.Property(x => x.SubjectSpecJson).HasColumnType("jsonb");
             e.HasNonNegative("ValuationMarketApproaches", "SubjectAreaSqm");

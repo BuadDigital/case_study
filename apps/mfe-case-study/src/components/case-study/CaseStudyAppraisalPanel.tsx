@@ -19,7 +19,6 @@ import {
   CASE_STUDY_SPECIALIST_FEATURE_KEYS,
   isInspectorWorkspaceAccepted,
   submittedInspectorAssetIsLand,
-  SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL,
   SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS,
   type InspectorWorkspaceStatus,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
@@ -298,16 +297,10 @@ export function CaseStudyAppraisalPanel({
         />
       ) : null}
       <section className="mb-6">
-        <div className="mb-3 flex flex-wrap items-center gap-2.5">
-          <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
-          <h3 className="m-0 text-[14px] font-extrabold text-heading">
-            {" "}
-            معاينة العقار — مراجعة الاخصائي{" "}
-          </h3>
-          <span
-            className="min-w-[1rem] flex-1 border-t border-border"
-            aria-hidden
-          />
+        {/* Omar 2026-11-10: the «معاينة العقار — مراجعة الاخصائي» title and its explanation are gone —
+            only the state badge and «إعادة للتصحيح» stay, at the row's end. */}
+        {currentInspectionAccepted || canReturnToInspector ? (
+        <div className="mb-3 flex flex-wrap items-center justify-end gap-2.5">
           {currentInspectionAccepted ? (
             <span className="rounded-lg border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg px-3 py-1.5 text-[11.5px] font-semibold text-heading">
               مؤكَّدة — القسم مقفل
@@ -325,13 +318,7 @@ export function CaseStudyAppraisalPanel({
             </button>
           ) : null}
         </div>
-        <p className="mb-3 text-[11.5px] leading-relaxed text-text-3">
-          أنت مشرف على ما كتبه المعاين: راجع وعدّل إن لزم. «
-          {SPECIALIST_ACCEPT_INSPECTOR_INPUTS_LABEL}» يقفل هذا القسم ويفتح
-          الحزمة للمقيّم، أما «مطابقة الصك على الطبيعة» أعلاه فتبقى قابلة
-          للتعديل حتى إصدار تقرير دراسة الحالة. «إعادة للتصحيح» ترجع المهمة
-          للمعاين للتعديل من جديد.
-        </p>
+        ) : null}
 
         {inspectionTask ? (
           <ReturnInspectionDialog

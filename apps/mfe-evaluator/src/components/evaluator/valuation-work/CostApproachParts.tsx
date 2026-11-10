@@ -12,6 +12,9 @@
 //  • Indirect and age rationale inputs take their own full row on desktop (COST_RATIONALE_FULL_ROW)
 //          instead of being squeezed to 20–55px; they get aria-labels.
 //  • B    Plot area, share, use-restriction and age rationale boxes show the server's field errors.
+// Grey areas (2026-11-10)
+//  • Ages  A hint «أدخل العمر الفعلي والعمر الاقتصادي لحساب الإهلاك» under the age rows while either is empty
+//          (no 10 / 40-year starter values any more).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -22,7 +25,7 @@ import {
   scheduleScrollToFirstFormField,
 } from "@platform/app-shared/form-ux";
 import { fmtMax } from "@platform/app-shared/format/number";
-import { cn } from "@platform/ui-kit";
+import { Note, cn } from "@platform/ui-kit";
 
 import {
   Card,
@@ -36,7 +39,12 @@ import {
   costLandMultiplierLabel,
   costLandMultiplierSqm,
 } from "../../../lib/evaluator/cost-land-figures";
-import { costNum, costNumericInput, leaseCapWording } from "./lib/cost-approach-state";
+import {
+  COST_AGES_MISSING_HINT,
+  costNum,
+  costNumericInput,
+  leaseCapWording,
+} from "./lib/cost-approach-state";
 import type {
   CostApproachAlert,
   CostApproachDerived,
@@ -375,7 +383,8 @@ const AGE_ROWS: {
  * rows says so, worded by the interest valued (`leaseCapWording`).
  *
  * Edge cases: fixed 2026-11-04 (A→Z #69): a usufruct right («حق منفعة») was told «مدة الإيجار
- * المتبقية»; it now reads «مدة حق المنفعة المتبقية».
+ * المتبقية»; it now reads «مدة حق المنفعة المتبقية». 2026-11-10: the ages start empty (no invented
+ * 10 / 40 years) — while either box is empty a hint under the rows asks for both.
  */
 export function CostAgeCard({
   fields,
@@ -434,6 +443,11 @@ export function CostAgeCard({
               />
             </div>
           ))}
+          {!fields.actualAge.trim() || !fields.economicAge.trim() ? (
+            <Note tone="warn" className="mb-0" data-testid="cost-ages-missing-hint">
+              {COST_AGES_MISSING_HINT}
+            </Note>
+          ) : null}
           {derived.effectiveLifeLocal < derived.extLifeLocal ? (
             <div
               data-testid="cost-lease-cap-note"

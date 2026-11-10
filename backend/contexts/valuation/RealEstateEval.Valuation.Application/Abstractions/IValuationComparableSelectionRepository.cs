@@ -23,12 +23,6 @@ public interface IValuationComparableSelectionRepository
     /// <summary>Untracked valuation request, or <c>null</c> when it does not exist.</summary>
     Task<ValuationRequest?> GetRequestAsync(Guid valuationRequestId, CancellationToken cancellationToken);
 
-    /// <summary>
-    /// Drops demo-bank rows the valuer never adopted (no <c>SelectedByUserId</c>).
-    /// Opening a valuation must not keep TRX-24-0912 / OFR-25-0206 planted on the matrix.
-    /// </summary>
-    Task DetachUnchosenDemoSelectionsAsync(Guid valuationRequestId, CancellationToken cancellationToken);
-
     /// <summary>Untracked selections of one context with their adjustment lines, in sort order.</summary>
     Task<IReadOnlyList<ValuationComparableSelection>> ListSelectionsAsync(
         Guid valuationRequestId,
@@ -152,6 +146,33 @@ public interface IValuationComparableSelectionRepository
     /// <summary>Comparables pinned to the property during field work, oldest link first.</summary>
     Task<IReadOnlyList<Guid>> ListPropertyLinkedComparableIdsAsync(
         Guid propertyId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Property-linked comparables the appraiser removed from this valuation — the linked-comparable
+    /// import leaves them out (2026-11-10).
+    /// </summary>
+    Task<IReadOnlySet<Guid>> ListDismissedLinkedComparableIdsAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Stages a dismissal row for each comparable that has none yet (idempotent); saved with the
+    /// caller's next save.
+    /// </summary>
+    Task DismissLinkedComparablesAsync(
+        Guid valuationRequestId,
+        IReadOnlyCollection<Guid> comparableIds,
+        DateTime dismissedAtUtc,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Stages the removal of the dismissal rows of these comparables — the appraiser added them back
+    /// from the bank. No-op when none exist.
+    /// </summary>
+    Task ClearDismissedLinkedComparablesAsync(
+        Guid valuationRequestId,
+        IReadOnlyCollection<Guid> comparableIds,
         CancellationToken cancellationToken);
 
     Task SaveChangesAsync(CancellationToken cancellationToken);

@@ -14,12 +14,13 @@ public class ValuationMethodologyAlertRulesTests
     }
 
     [Fact]
-    public void Hard_alerts_are_4_5_11_15_16_21_23()
+    public void Hard_alerts_are_2_4_5_11_15_16_21_23()
     {
-        foreach (var n in new[] { 4, 5, 11, 15, 16, 21, 23 })
+        // m2 (building ages missing) is hard since 2026-11-10 — an acknowledgement no longer clears it.
+        foreach (var n in new[] { 2, 4, 5, 11, 15, 16, 21, 23 })
             Assert.True(ValuationMethodologyAlertSeverity.IsHard(n));
         // m3 (age beyond the extended life) now needs a rationale instead of blocking.
-        foreach (var n in new[] { 1, 2, 3, 6, 7, 8, 9, 10, 12, 13, 14, 17, 18, 19, 22, 24, 25 })
+        foreach (var n in new[] { 1, 3, 6, 7, 8, 9, 10, 12, 13, 14, 17, 18, 19, 22, 24, 25 })
             Assert.False(ValuationMethodologyAlertSeverity.IsHard(n));
         Assert.True(ValuationMethodologyAlertSeverity.RequiresRationale(3));
     }
@@ -570,6 +571,118 @@ public class ValuationMethodologyAlertRulesTests
             CostLines = [new ValuationMethodologyAlertCostLineInput("other", "بند خاص", 1m, 5000m, null, true, "custom")],
         };
         Assert.True(ValuationMethodologyAlertRules.Evaluate(priced).Single(c => c.Number == 8).Triggered);
+    }
+
+    // ─── Grey areas 2026-11-10 ───
+
+    /// <summary>Fix 5: blank building ages block issuance and an acknowledgement does not clear it.</summary>
+    [Theory]
+    [InlineData(null, 40)]
+    [InlineData(10, null)]
+    [InlineData(null, null)]
+    public void Blank_building_ages_raise_a_hard_m2_that_an_acknowledgement_cannot_clear(
+        int? actual, int? economic)
+    {
+        var input = EmptyInput() with
+        {
+            HasStructuresToValue = true,
+            CostApproachRelevant = true,
+            CostLines =
+            [
+                new(BuildingStructureKinds.Floor, "الدور الأرضي", 300m, 1800m, null, true, CostLineItemKeys.GroundFloor),
+            ],
+            ActualAgeYears = actual,
+            EconomicAgeYears = economic,
+            ExtendedLifeYears = economic,
+            Resolutions = [new(ValuationMethodologyAlertCodes.ExtendedLifeZero, Acknowledged: true)],
+        };
+
+        var m2 = ValuationMethodologyAlertRules.Evaluate(input).Single(c => c.Number == 2);
+        Assert.True(m2.Triggered);
+        Assert.True(m2.IsHard);
+        Assert.Equal(ValuationMethodologyAlertSeverityKinds.Hard, m2.SeverityKind);
+        Assert.True(m2.BlocksIssuance);
+        Assert.Equal("عمر المبنى الفعلي والعمر الاقتصادي مطلوبان لحساب الإهلاك", m2.LabelAr);
+        Assert.Contains(CostDepreciationRules.IncompleteMessageAr, m2.DetailAr);
+    }
+
+    [Fact]
+    public void Ages_entered_or_additions_only_or_an_excluded_floor_leave_m2_silent()
+    {
+        var withAges = EmptyInput() with
+        {
+            CostLines = [new(BuildingStructureKinds.Floor, "الدور الأرضي", 300m, 1800m, null, true, CostLineItemKeys.GroundFloor)],
+            ActualAgeYears = 0m,
+            EconomicAgeYears = 40m,
+            ExtendedLifeYears = 40m,
+        };
+        Assert.False(ValuationMethodologyAlertRules.Evaluate(withAges).Single(c => c.Number == 2).Triggered);
+
+        var fenceOnly = EmptyInput() with
+        {
+            CostLines = [new(BuildingStructureKinds.Fence, "السور", 120m, 300m, null, true, CostLineItemKeys.Fence)],
+        };
+        Assert.False(ValuationMethodologyAlertRules.Evaluate(fenceOnly).Single(c => c.Number == 2).Triggered);
+
+        var excludedFloor = EmptyInput() with
+        {
+            CostLines = [new(BuildingStructureKinds.Floor, "الدور الأرضي", 300m, 1800m, null, false, CostLineItemKeys.GroundFloor)],
+        };
+        Assert.False(ValuationMethodologyAlertRules.Evaluate(excludedFloor).Single(c => c.Number == 2).Triggered);
+
+        // The cost approach switched off: stale lines never block.
+        var off = withAges with { CostApproachEnabled = false, ActualAgeYears = null, EconomicAgeYears = null };
+        Assert.False(ValuationMethodologyAlertRules.Evaluate(off).Single(c => c.Number == 2).Triggered);
+    }
+
+    /// <summary>Fix 9: any built comparable against vacant land raises the hard m11.</summary>
+    [Theory]
+    [InlineData("عمارة سكنية", true)]
+    [InlineData("محل تجاري", true)]
+    [InlineData("مستودع", true)]
+    [InlineData("معرض", true)]
+    [InlineData("مبنى", true)]
+    [InlineData("أرض", false)]
+    [InlineData("أرض فضاء", false)]
+    [InlineData("أرض تجارية", false)]
+    public void Vacant_land_m11_fires_for_every_built_comparable_type(string type, bool fires)
+    {
+        var m11 = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            HasStructuresToValue = false,
+            AdoptedComparables = [new(type, false, 0m, ReferenceCode: "CMP-26-7")],
+        }).Single(c => c.Number == 11);
+
+        Assert.Equal(fires, m11.Triggered);
+        if (fires) Assert.Contains("CMP-26-7", m11.DetailAr);
+    }
+
+    /// <summary>m7/m9: the item key decides; a «custom» line named like a floor is not one.</summary>
+    [Fact]
+    public void Repeated_floors_alerts_read_the_item_key_before_the_label()
+    {
+        // A custom line named «الدور الأول» is not the first floor the cost approach derives from.
+        var customNamedFirst = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            CostLines =
+            [
+                new(BuildingStructureKinds.Floor, "الدور الأول", 400m, 1500m, null, true, CostLineItemKeys.Custom),
+                new(BuildingStructureKinds.Floor, "", 800m, 0m, null, true, CostLineItemKeys.RepeatedFloors),
+            ],
+        });
+        Assert.True(customNamedFirst.Single(c => c.Number == 7).Triggered);
+
+        // Keyed first floor with an unrelated label still counts; a key in another case too.
+        var keyed = ValuationMethodologyAlertRules.Evaluate(EmptyInput() with
+        {
+            CostLines =
+            [
+                new(BuildingStructureKinds.Floor, "مسطح الطابق", 400m, 1500m, null, true, " First_Floor "),
+                new(BuildingStructureKinds.Floor, "", 800m, 1700m, null, true, CostLineItemKeys.RepeatedFloors),
+            ],
+        });
+        Assert.False(keyed.Single(c => c.Number == 7).Triggered);
+        Assert.True(keyed.Single(c => c.Number == 9).Triggered);
     }
 
     private static ValuationMethodologyAlertInput EmptyInput() =>

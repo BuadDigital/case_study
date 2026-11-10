@@ -8,6 +8,12 @@
 //         alert codes are refused.
 //  • The full save merges alert dispositions (MergeAlertOverrides) instead of replacing them — one
 //         not resent is kept; a code sent with neither acknowledgement nor rationale clears it.
+// Grey areas (2026-11-10, owner's ruling)
+//  • The save stores the RESOLVED basis/premise (work order first; the request's keys only when the
+//         work order has none); a blank premise defaults like the read path (orderly), not «forced».
+//  • A blank methods rationale is refused on the full save (MethodsRationaleRequiredAr).
+//  • RefreshListSnapshotAsync keeps the stored approach values + keys equal to the live projection,
+//         so the request list (ValuationRequestService) shows the same final value.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Application;
@@ -133,53 +139,56 @@ public sealed partial class ValuationReconciliationService(
         // Deed/nature match (traditional deed) is enforced at issuance only — the appraiser may
         // reconcile and save before the specialist settles the match.
 
-        // "Blocking happens at adoption only — partial input is kept as draft":
-        // Rationales and weight totals are enforced by issuance gates and alerts, not by save.
+        // "Blocking happens at adoption only — partial input is kept as draft": weight totals are
+        // enforced by issuance gates and alerts. The methods rationale is the one exception — a
+        // full save without it is refused (the alert-overrides save stays tolerant).
         var methods = NormalizeSoleMethod((request.Methods ?? []).ToList());
         var errors = new Dictionary<string, string>();
+
+        if (string.IsNullOrWhiteSpace(request.MethodsRationale))
+            errors["methodsRationale"] = MethodsRationaleRequiredAr;
 
         if (request.FinalRoundDecimals is < 0 or > 6)
             errors["finalRoundDecimals"] = "أسّ التقريب يجب أن يكون بين 0 و 6 (تقريب لأقرب 10^ن ر.س)";
 
-        var basisKey = string.IsNullOrWhiteSpace(request.BasisOfValueKey)
-            ? BasisOfValueKeys.Market
+        var requestBasis = string.IsNullOrWhiteSpace(request.BasisOfValueKey)
+            ? null
             : request.BasisOfValueKey.Trim().ToLowerInvariant();
-        if (!BasisOfValueKeys.IsKnown(basisKey))
+        if (requestBasis is not null && !BasisOfValueKeys.IsKnown(requestBasis))
             errors["basisOfValueKey"] = "أساس القيمة غير معروف";
 
-        var premiseKey = string.IsNullOrWhiteSpace(request.ValuePremiseKey)
+        var requestPremise = string.IsNullOrWhiteSpace(request.ValuePremiseKey)
             ? null
             : request.ValuePremiseKey.Trim().ToLowerInvariant();
-        if (premiseKey is not null && !ValuePremiseKeys.IsKnown(premiseKey))
+        if (requestPremise is not null && !ValuePremiseKeys.IsKnown(requestPremise))
             errors["valuePremiseKey"] = "فرضية القيمة غير معروفة";
-        else if (premiseKey is not null && !ValuePremiseKeys.IsCompatible(basisKey, premiseKey))
+        else if (requestPremise is not null
+                 && !ValuePremiseKeys.IsCompatible(requestBasis ?? BasisOfValueKeys.Market, requestPremise))
             errors["valuePremiseKey"] = "فرضية القيمة غير متوافقة مع أساس القيمة المختار";
 
-        // Interactive model spec: discount follows the "liquidation value" basis directly;
-        // an unset premise is auto-filled with "forced sale".
-        if (string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal)
-            && premiseKey is null)
-        {
-            premiseKey = ValuePremiseKeys.Forced;
-        }
+        // The work order owns the basis and premise (ruling 2026-11-10): the request's keys count
+        // only when the work order has none (legacy), and a blank premise takes the same default
+        // as the read path (orderly on liquidation) — never the old «forced» guess.
+        var workOrder = await ResolveWorkOrderValuationAsync(vr, cancellationToken);
+        var (basisKey, premiseKey) = AssignmentValuationDefaults.ResolveBasisAndPremise(
+            workOrder.AssignmentType,
+            workOrder.BasisOfValueKey,
+            workOrder.ValuePremiseKey,
+            requestBasis,
+            requestPremise);
+        var liquidationBasis = string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal);
 
         // Same ceiling as the screen (90٪); the message names the premise's discount.
         if (request.LiquidationDiscountPct is < 0m or > ReconciliationLiquidationMessages.MaxDiscountPct)
             errors["liquidationDiscountPct"] = ReconciliationLiquidationMessages.RangeMessageAr(premiseKey);
 
-        if (request.LiquidationDiscountPct > 0m
-            && !string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal))
-        {
+        if (request.LiquidationDiscountPct > 0m && !liquidationBasis)
             errors["liquidationDiscountPct"] = ReconciliationLiquidationMessages.OnlyForLiquidationAr;
-        }
 
         // 0 is a valid discount on every other basis; on «قيمة التصفية» it is refused here, at
         // save time — not discovered later at the hand-over.
-        if (request.LiquidationDiscountPct == 0m
-            && string.Equals(basisKey, BasisOfValueKeys.Liquidation, StringComparison.Ordinal))
-        {
+        if (request.LiquidationDiscountPct == 0m && liquidationBasis)
             errors["liquidationDiscountPct"] = ReconciliationLiquidationMessages.RequiredForLiquidationAr;
-        }
 
         if (request.LiquidationDiscountPct > 0m
             && string.IsNullOrWhiteSpace(request.LiquidationDiscountRationale))
@@ -325,6 +334,9 @@ public sealed partial class ValuationReconciliationService(
 
         return (await GetAsync(valuationRequestId, cancellationToken), null);
     }
+
+    /// <summary>The full save's refusal of a blank «مبرر استخدام طرق التقييم والرأي النهائي».</summary>
+    public const string MethodsRationaleRequiredAr = "مبرر استخدام طرق التقييم والرأي النهائي مطلوب";
 
     private static List<SaveValuationReconciliationMethodRequest> NormalizeSoleMethod(
         List<SaveValuationReconciliationMethodRequest> methods)

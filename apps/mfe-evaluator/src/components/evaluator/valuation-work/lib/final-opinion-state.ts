@@ -9,6 +9,11 @@
 //  • Discount ceiling 90٪ like the server (LIQUIDATION_DISCOUNT_MAX_PCT); the range message is named
 //           after the premise («التصفية المنظمة» / «البيع القسري») — liquidationDiscountRangeMessage.
 //  • B    A written liquidation discount rationale must be at least 10 characters.
+// Grey areas (2026-11-10, owner's ruling)
+//  • workOrderPremiseKey removed — the basis and premise come from the one shared order
+//         (lib/evaluator/valuation-basis.ts), the same as the server and the printed report.
+//  • looksLikeAutoFinalOpinion removed — the appraiser's stored rationale is never blanked on screen
+//         (the report prints it as stored, so the screen shows it as stored too).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -23,7 +28,6 @@ import type {
 } from "@platform/api-client";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
 import { roundHalfAwayFromZero } from "@platform/app-shared/format/money";
-import { valuePremiseKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 
 import { rationaleMinimumError } from "./rationale-minimum";
 import { fmt } from "./shell-utils";
@@ -308,24 +312,6 @@ export function appendAnalysesToRationale(current: string, analyses: string): st
   return current.trim() ? `${current.trimEnd()}\n\n${text}` : text;
 }
 
-/** PO selection wins; saved recon is fallback; assignment type is last resort. */
-export function workOrderPremiseKey({
-  poPremise,
-  reconPremise,
-  assignmentType,
-}: {
-  poPremise?: string | null;
-  reconPremise?: string | null;
-  assignmentType?: string;
-}): string {
-  const fromPo = poPremise?.trim();
-  if (fromPo) return fromPo;
-  const fromRecon = reconPremise?.trim();
-  if (fromRecon) return fromRecon;
-  if (!assignmentType?.trim()) return "";
-  return valuePremiseKeyForAssignment(assignmentType);
-}
-
 export type AlertOverrideRecord = Record<
   string,
   { overrideRationale: string; acknowledged: boolean }
@@ -379,6 +365,8 @@ export function alertOverridesForCodes(
 /**
  * Problem 19: the final-opinion drafts differ from the saved reconciliation (this screen saves on
  * «حفظ» only) — the window warns before a refresh would drop them.
+ * The stored rationale is compared as stored (trimmed). Fixed 2026-11-10: text that looked like
+ * the old auto-filler was compared as blank, matching the screen that blanked it.
  */
 export function finalOpinionDraftDiffers(input: {
   recon: {
@@ -398,8 +386,7 @@ export function finalOpinionDraftDiffers(input: {
   if (!recon) {
     return Boolean(input.methodsRationale.trim() || input.liquidationDiscountRationale.trim());
   }
-  const storedRationale = recon.methodsRationale ?? "";
-  const savedRationale = looksLikeAutoFinalOpinion(storedRationale) ? "" : storedRationale.trim();
+  const savedRationale = (recon.methodsRationale ?? "").trim();
   if (input.methodsRationale.trim() !== savedRationale) return true;
   if ((Number.parseInt(input.finalRoundDecimals, 10) || 0) !== (recon.finalRoundDecimals ?? 0)) return true;
   const pct = input.liquidationDiscountPct.trim() ? parseLocaleNumber(input.liquidationDiscountPct) : 0;
@@ -409,16 +396,6 @@ export function finalOpinionDraftDiffers(input: {
     const saved = recon.methods.find((r) => r.approachKind === m.approachKind);
     return !saved || saved.weightPct !== m.weightPct || saved.isIncluded !== m.isIncluded;
   });
-}
-
-/** True when stored prose matches the former auto-generated opinion template. */
-export function looksLikeAutoFinalOpinion(text: string): boolean {
-  const t = text.trim();
-  if (!t) return false;
-  return (
-    (t.includes("الرأي النهائي في قيمة العقار:") || t.includes(FINAL_TOTAL_OPINION_PREFIX)) &&
-    (t.includes("اعتُمد أسلوب") || t.includes("اعتُمد ") || t.includes("مؤشر "))
-  );
 }
 
 /** Sole method → 100% included; otherwise inclusion follows a positive weight. */

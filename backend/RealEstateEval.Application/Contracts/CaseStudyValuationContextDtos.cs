@@ -126,13 +126,13 @@ public sealed class CaseStudyValuationPropertyContextDto
     /// The latest non-party case-study report of the property is issued — a defensive mirror of the
     /// appraiser's submit gate, enforced again at valuation issuance. False when there is no report;
     /// null only when the case-study host that answered predates the field (rolling deploy), which the
-    /// gate reads as «unknown» and does not block.
+    /// gate reads as «unknown» and, since 2026-11-10, blocks (could not verify).
     /// </summary>
     public bool? StudyReportIssued { get; set; }
 
     /// <summary>
     /// Review approved the study (Omar 2026-11-08) — the draft goes to the appraiser only after it. Null
-    /// when the answering case-study host predates the field (read as «unknown», not blocking).
+    /// when the answering case-study host predates the field (read as «unknown», which blocks since 2026-11-10).
     /// </summary>
     public bool? StudyApprovedByReview { get; set; }
 

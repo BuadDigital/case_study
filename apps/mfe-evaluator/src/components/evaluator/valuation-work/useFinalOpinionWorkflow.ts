@@ -8,6 +8,11 @@
 //  • The refresh-warning flag is no longer cleared by effect cleanup (an <Activity>-hidden screen
 //          runs cleanups with drafts still unsaved); it goes down when a save matches or the window unmounts.
 //  • Passes the value premise to the discount check so the message names it.
+// Grey areas (2026-11-10, owner's ruling)
+//  • Basis AND premise through resolveValuationBasisKeys (work order → saved → assignment default),
+//         the same order as the server and the printed report.
+//  • The stored methods rationale is shown as stored — never blanked as «old auto-filler».
+//  • The blank-rationale message is the server's own (the server now refuses it too).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -23,10 +28,7 @@ import {
 } from "@platform/api-client";
 import { useToast } from "@platform/ui-kit";
 import { useValuationListsQuery } from "@platform/app-shared/query/valuation-lists-query";
-import {
-  VALUE_BASIS_OPTIONS,
-  basisOfValueKeyForAssignment,
-} from "@platform/app-shared/app-data/assignment-valuation-defaults";
+import { VALUE_BASIS_OPTIONS } from "@platform/app-shared/app-data/assignment-valuation-defaults";
 
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
 import {
@@ -34,17 +36,15 @@ import {
   finalOpinionComputed,
   finalOpinionDraftDiffers,
   liquidationDiscountSaveErrors,
-  looksLikeAutoFinalOpinion,
   mergeReconMethods,
   reconciliationSaveRequest,
-  workOrderPremiseKey,
 } from "./lib/final-opinion-state";
 import { apiConfig } from "./lib/shell-utils";
 import { setSectionUnsaved } from "../../../lib/evaluator/unsaved-edits";
+import { resolveValuationBasisKeys } from "../../../lib/evaluator/valuation-basis";
 
-/** Same requirement the server states, phrased for a field we scroll to. */
-const METHODS_RATIONALE_REQUIRED =
-  "مبرر استخدام طرق التقييم مطلوب — اكتب مبرر الرأي النهائي في هذا الحقل.";
+/** The server's own refusal (ValuationReconciliationService.MethodsRationaleRequiredAr). */
+const METHODS_RATIONALE_REQUIRED = "مبرر استخدام طرق التقييم والرأي النهائي مطلوب";
 
 type FinalOpinionWorkflowArgs = {
   valuationRequestId: string | null;
@@ -87,19 +87,19 @@ export function useFinalOpinionWorkflow({
     basis: string | null;
     premise: string | null;
   }>({ basis: null, premise: null });
-  const basisOfValueKey = useMemo(() => {
-    const fromPo =
-      poKeys.basis?.trim() || recon?.basisOfValueKey?.trim() || "";
-    if (fromPo) return fromPo;
-    return assignmentType?.trim()
-      ? basisOfValueKeyForAssignment(assignmentType)
-      : "market";
-  }, [assignmentType, poKeys.basis, recon?.basisOfValueKey]);
-  const valuePremiseKey = workOrderPremiseKey({
-    poPremise: poKeys.premise,
-    reconPremise: recon?.valuePremiseKey,
-    assignmentType,
-  });
+  // One owner of the basis (ruling 2026-11-10): the work order's keys, else the reconciliation's
+  // (already resolved by the server the same way), else the assignment default — the same order
+  // as the server projection and the printed report. Nothing known at all → «market».
+  const { basisKey: resolvedBasis, premiseKey: valuePremiseKey } = useMemo(
+    () =>
+      resolveValuationBasisKeys({
+        assignmentType,
+        workOrder: { basisKey: poKeys.basis, premiseKey: poKeys.premise },
+        saved: { basisKey: recon?.basisOfValueKey, premiseKey: recon?.valuePremiseKey },
+      }),
+    [assignmentType, poKeys.basis, poKeys.premise, recon?.basisOfValueKey, recon?.valuePremiseKey],
+  );
+  const basisOfValueKey = resolvedBasis || "market";
   const [liquidationDiscountPct, setLiquidationDiscountPct] = useState("0");
   const [liquidationDiscountRationale, setLiquidationDiscountRationale] =
     useState("");
@@ -162,9 +162,8 @@ export function useFinalOpinionWorkflow({
       setLiquidationDiscountRationale("");
     } else {
       setReconMethods(recon.methods);
-      const stored = recon.methodsRationale ?? "";
-      // Drop leftover auto-generated filler — the appraiser writes this field.
-      setMethodsRationale(looksLikeAutoFinalOpinion(stored) ? "" : stored);
+      // Shown as stored — the report prints the same text (never blanked as «auto-filler»).
+      setMethodsRationale(recon.methodsRationale ?? "");
       setFinalRoundDecimals(String(recon.finalRoundDecimals ?? 0));
       setLiquidationDiscountPct(String(recon.liquidationDiscountPct ?? 0));
       setLiquidationDiscountRationale(recon.liquidationDiscountRationale ?? "");
@@ -218,7 +217,7 @@ export function useFinalOpinionWorkflow({
   async function saveReconciliation() {
     const config = apiConfig();
     if (!config || !valuationRequestId) return;
-    // The server rejects an empty rationale too; checking here marks the field
+    // The server rejects an empty rationale too (same message); checking here marks the field
     // without spending a round trip on it.
     if (!methodsRationale.trim()) {
       reportFieldError("methodsRationale", METHODS_RATIONALE_REQUIRED);
@@ -258,10 +257,7 @@ export function useFinalOpinionWorkflow({
     }
     clearSaveErrors();
     setReconMethods(res.data.methods);
-    const savedRationale = res.data.methodsRationale ?? "";
-    setMethodsRationale(
-      looksLikeAutoFinalOpinion(savedRationale) ? "" : savedRationale,
-    );
+    setMethodsRationale(res.data.methodsRationale ?? "");
     setFinalRoundDecimals(String(res.data.finalRoundDecimals ?? 0));
     setLiquidationDiscountPct(String(res.data.liquidationDiscountPct ?? 0));
     setLiquidationDiscountRationale(res.data.liquidationDiscountRationale ?? "");

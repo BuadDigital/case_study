@@ -129,9 +129,10 @@ public sealed class ValuationFinalReportService(
         return gz is { Length: > 0 } ? ReportDraftSnapshot.Decompress(gz) : null;
     }
 
-    private async Task<byte[]?> CertificateBytesAsync(ValuationReportIssuance row, CancellationToken ct)
-    {
-        if (row.CertificateAttachmentId is { } id) return await files.ReadAsync(id, ct);
-        return row.CertificateContent is { Length: > 0 } legacy ? legacy : null;
-    }
+    /// <summary>
+    /// The deposit certificate's bytes from the attachments service; null when the copy has none.
+    /// Fixed 2026-11-10: the read of retired inline bytes (<c>CertificateContent</c>) is gone — no row holds any.
+    /// </summary>
+    private async Task<byte[]?> CertificateBytesAsync(ValuationReportIssuance row, CancellationToken ct) =>
+        row.CertificateAttachmentId is { } id ? await files.ReadAsync(id, ct) : null;
 }

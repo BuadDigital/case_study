@@ -33,7 +33,6 @@ export type EvaluatorSubmissionSnapshot = {
   status: string;
   evaluatorPrice: string;
   evaluatorNotes: string;
-  reportFileName: string | null;
   reportNo?: string;
   submittedAtUtc: string | null;
   checklist: EvaluatorChecklist;

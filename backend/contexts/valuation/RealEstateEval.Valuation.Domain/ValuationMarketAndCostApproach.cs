@@ -13,6 +13,9 @@
 //         table compares with the plot (LandTableSubjectAreaSqm) and multiplies by the share
 //         (LandTableValueAreaSqm).
 //  • MaxBuildingPlotAreaSqm and MaxAmountSar (1e12) — a cost line or total cannot overflow numeric(18,2).
+// Grey areas (2026-11-10)
+//  • CostDepreciationRules.IsIncomplete — included floor lines with a blank actual age or economic life.
+//  • RepeatedFloorRules.IncludedFirstFloor — repeated floors inherit from the INCLUDED first floor only.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Domain;
@@ -36,6 +39,13 @@ public class ValuationMarketApproach
     public decimal AnnualMarketRatePct { get; set; } = MarketApproachRules.DefaultAnnualMarketRatePct;
     /// <summary>Frozen — market-value rounding exponent (10^n). Default 4 → nearest 10,000.</summary>
     public int ValueRoundDecimals { get; set; } = MarketApproachRules.DefaultValueRoundDecimals;
+    /// <summary>
+    /// True for a request already deposited (or done) when the market rounding was switched on
+    /// (migration <c>MarketValueUnroundedFlag</c>, 2026-11-10): its market value stays the unrounded figure
+    /// it was handed over with. Every other request — new deposits included — rounds by
+    /// <see cref="ValueRoundDecimals"/>, so a deposit never changes the value afterwards.
+    /// </summary>
+    public bool MarketValueUnrounded { get; set; }
     public string? AnalysisNotes { get; set; }
  /// <summary>JSON — subject descriptions per difference factor (subjSpec in the interactive model).</summary>
     public string? SubjectSpecJson { get; set; }
@@ -397,16 +407,45 @@ public static class RepeatedFloorRules
 
     /// <summary>
     /// Why an included repeated-floors line cannot be priced, or null when it can: the count
-    /// must be at least one and «الدور الأول» must carry an area — the save refuses the line
-    /// instead of silently pricing it at zero.
+    /// must be at least one and an included «الدور الأول» must carry an area — the save refuses
+    /// the line instead of silently pricing it at zero.
+    /// Edge cases (2026-11-10): <paramref name="firstFloorAreaSqm"/> is the INCLUDED first floor's
+    /// (<see cref="IncludedFirstFloor"/>), so an excluded first floor reads as missing and the message
+    /// says to include it.
     /// </summary>
     public static string? MissingInputMessage(int? repeatedCount, decimal firstFloorAreaSqm)
     {
         if (repeatedCount is not > 0)
             return "أدخل عدد الأدوار المتكررة (دور واحد على الأقل) — بدونه تُحسب كمية البند صفرًا";
         if (firstFloorAreaSqm <= 0m)
-            return "كمية الأدوار المتكررة تُشتقّ من مسطح «الدور الأول» — أضف بند الدور الأول بمسطحه";
+            return "كمية الأدوار المتكررة تُشتقّ من مسطح «الدور الأول» المدرج في التكلفة — أدرج بند الدور الأول بمسطحه أو استبعد بند الأدوار المتكررة";
         return null;
+    }
+
+    /// <summary>
+    /// What: the area and unit cost «الأدوار المتكررة» inherit — those of the first INCLUDED
+    /// «الدور الأول» line; (0, 0) when there is none.
+    /// How it works: the first line, in the order given, whose key normalizes to first_floor and
+    /// that is included. The area is the line's own typed area (before its build ratio) — the
+    /// repeated-floors line applies its OWN build ratio on top, as the save, the specialist's
+    /// components table and the Infath sheet always did; applying the first floor's ratio too would
+    /// count it twice.
+    /// Edge cases: fixed 2026-11-10 — the save and the read took the first first_floor line whether or
+    /// not it was ticked, so an excluded first floor still priced the repeated floors. Now an excluded
+    /// or missing first floor gives nothing: the repeated line keeps its own unit cost, its area is 0
+    /// and the save names the missing input (<see cref="MissingInputMessage"/>).
+    /// Mirrors `includedFirstFloorLine` in the evaluator's cost-line-math.ts.
+    /// </summary>
+    public static (decimal AreaSqm, decimal UnitCostSar) IncludedFirstFloor(
+        IEnumerable<(string? ItemKey, bool IsIncluded, decimal AreaSqm, decimal UnitCostSar)> lines)
+    {
+        foreach (var line in lines)
+        {
+            if (line.IsIncluded && CostLineItemKeys.Normalize(line.ItemKey) == CostLineItemKeys.FirstFloor)
+                return (line.AreaSqm, line.UnitCostSar);
+        }
+
+        return (0m, 0m);
     }
 }
 
@@ -730,4 +769,45 @@ public static class CostApproachRules
         var cap = Math.Max(0m, actualAgeYears ?? 0m) + lease;
         return Math.Min(extendedLifeYears, cap);
     }
+}
+
+/// <summary>
+/// Whether the cost approach's depreciation can be computed at all. The save stays tolerant (an
+/// autosave never fails on a blank age; <see cref="CostApproachRules.PhysicalObsolescencePct"/> then
+/// gives null and the total silently counts 0٪), so the gates and the methodology alerts ask here
+/// instead of trusting a 0٪ that nobody entered.
+/// </summary>
+public static class CostDepreciationRules
+{
+    /// <summary>The message the cost screen, the alert and the gate show while the ages are blank.</summary>
+    public const string IncompleteMessageAr = "أدخل العمر الفعلي والعمر الاقتصادي لحساب الإهلاك";
+
+    /// <summary>
+    /// What: true when the cost approach prices buildings — at least one included line in the
+    /// building floor-areas group (floors, annexes, basements; <see cref="CostLineItemKeys.IsAreaGroup"/>)
+    /// — while the actual age or the economic life is blank.
+    /// How it works: blank = null (the screen sends an empty box as null, never 0). A 0 actual age is a
+    /// real answer (a new building); a 0 economic life is refused by the save, so it never reaches here.
+    /// Edge cases (2026-11-10): the screen used to seed 10 / 40 years that nobody chose and the first
+    /// autosave stored them; without them a blank age silently meant no depreciation. Additions only
+    /// (fence, pool…) or excluded floors do not need the ages; a land-only approach has no lines.
+    /// </summary>
+    public static bool IsIncomplete(
+        decimal? actualAgeYears,
+        decimal? economicAgeYears,
+        IEnumerable<(string? ItemKey, string? StructureKind, string? Label, bool IsIncluded)> lines)
+    {
+        if (actualAgeYears is not null && economicAgeYears is not null) return false;
+        return lines.Any(l => l.IsIncluded && CostLineItemKeys.IsAreaGroup(l.ItemKey, l.StructureKind, l.Label));
+    }
+
+    /// <summary>
+    /// The same rule over the stored cost approach and its lines. A never-saved approach (null) has no lines — false.
+    /// </summary>
+    public static bool IsIncomplete(ValuationCostApproach? costApproach) =>
+        costApproach is not null
+        && IsIncomplete(
+            costApproach.ActualAgeYears,
+            costApproach.EconomicAgeYears,
+            costApproach.Lines.Select(l => ((string?)l.ItemKey, (string?)l.StructureKind, (string?)l.Label, l.IsIncluded)));
 }

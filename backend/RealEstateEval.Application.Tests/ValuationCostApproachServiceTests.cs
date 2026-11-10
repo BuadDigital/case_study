@@ -287,13 +287,158 @@ public class ValuationCostApproachServiceTests
         Assert.True(CostApproachRules.ObsolescenceNeedsAlert(90.01m));
     }
 
+    // ─── grey areas 2026-11-10 ───
+
+    [Fact]
+    public void Repeated_floors_inherit_from_the_included_first_floor_only()
+    {
+        // An excluded first floor lends nothing; the first INCLUDED one does.
+        Assert.Equal((0m, 0m), RepeatedFloorRules.IncludedFirstFloor(
+            [(CostLineItemKeys.FirstFloor, false, 600m, 2000m)]));
+        Assert.Equal((450m, 1800m), RepeatedFloorRules.IncludedFirstFloor(
+        [
+            (CostLineItemKeys.FirstFloor, false, 600m, 2000m),
+            (CostLineItemKeys.FirstFloor, true, 450m, 1800m),
+        ]));
+        Assert.Equal(0m, ValuationCostApproachRequestRules.FirstFloorArea(
+            [Line(itemKey: CostLineItemKeys.FirstFloor, area: 600m, included: false)]));
+    }
+
+    [Fact]
+    public async Task An_excluded_first_floor_does_not_price_the_repeated_floors()
+    {
+        await using var contexts = TestDatabases.Create("cost-repeated-excluded");
+        var (service, requestId) = await NewServiceAsync(contexts.Valuation);
+
+        // The save names the missing input on the repeated line instead of pricing from an excluded floor.
+        var (_, errors) = await service.SaveAsync(requestId, Request([
+                Line(itemKey: CostLineItemKeys.FirstFloor, area: 600m, unitCost: 2000m, included: false),
+                Line(itemKey: CostLineItemKeys.RepeatedFloors, area: 0m, unitCost: 0m, repeatedCount: 2),
+            ]));
+        Assert.NotNull(errors);
+        Assert.Contains("المدرج", errors["lines[1].repeatedFloorCount"]);
+
+        // A stored row (legacy) read back: the repeated line keeps its own (zero) unit cost.
+        var costId = Guid.NewGuid();
+        contexts.Valuation.ValuationCostApproaches.Add(new ValuationCostApproach
+        {
+            Id = costId,
+            ValuationRequestId = requestId,
+            UpdatedAtUtc = DateTime.UtcNow,
+            Lines =
+            [
+                new ValuationCostLine { Id = Guid.NewGuid(), CostApproachId = costId, ItemKey = CostLineItemKeys.FirstFloor, AreaSqm = 600m, UnitCostSar = 2000m, IsIncluded = false, SortOrder = 0 },
+                new ValuationCostLine { Id = Guid.NewGuid(), CostApproachId = costId, ItemKey = CostLineItemKeys.RepeatedFloors, AreaSqm = 600m, RepeatedFloorCount = 1, UnitCostSar = 0m, IsIncluded = true, SortOrder = 1 },
+            ],
+        });
+        await contexts.Valuation.SaveChangesAsync();
+
+        var dto = await service.GetAsync(requestId);
+        var repeated = dto!.Lines.Single(l => l.ItemKey == CostLineItemKeys.RepeatedFloors);
+        Assert.False(repeated.UnitCostInherited);
+        Assert.Equal(0m, repeated.EffectiveUnitCostSar);
+        Assert.Equal(0m, dto.DirectCostTotal);
+    }
+
+    [Fact]
+    public void Depreciation_is_incomplete_only_for_included_floor_lines_with_a_blank_age()
+    {
+        (string?, string?, string?, bool)[] floor = [(CostLineItemKeys.GroundFloor, "floor", "الدور الأرضي", true)];
+        Assert.True(CostDepreciationRules.IsIncomplete(null, 40m, floor));
+        Assert.True(CostDepreciationRules.IsIncomplete(10m, null, floor));
+        Assert.False(CostDepreciationRules.IsIncomplete(10m, 40m, floor));
+        // A new building (actual age 0) is a real answer.
+        Assert.False(CostDepreciationRules.IsIncomplete(0m, 40m, floor));
+        // Additions only, or an excluded floor, need no ages.
+        Assert.False(CostDepreciationRules.IsIncomplete(null, null, [(CostLineItemKeys.Fence, "fence", "السور", true)]));
+        Assert.False(CostDepreciationRules.IsIncomplete(null, null, [(CostLineItemKeys.GroundFloor, "floor", "الدور الأرضي", false)]));
+        // A custom line named like a floor counts as a floor.
+        Assert.True(CostDepreciationRules.IsIncomplete(null, null, [(CostLineItemKeys.Custom, "other", "الدور الثاني", true)]));
+        Assert.False(CostDepreciationRules.IsIncomplete((ValuationCostApproach?)null));
+    }
+
+    [Fact]
+    public async Task A_blank_age_saves_and_reports_the_depreciation_incomplete()
+    {
+        await using var contexts = TestDatabases.Create("cost-age-blank");
+        var (service, requestId) = await NewServiceAsync(contexts.Valuation);
+
+        var (blank, errors) = await service.SaveAsync(requestId, Request());
+        Assert.Null(errors);
+        Assert.True(blank!.DepreciationIncomplete);
+        Assert.Null(blank.ActualAgeYears);
+        Assert.Null(blank.EconomicAgeYears);
+
+        var (filled, _) = await service.SaveAsync(requestId, new SaveValuationCostApproachRequest
+        {
+            Lines = Request().Lines,
+            ActualAgeYears = 10m,
+            EconomicAgeYears = 40m,
+        });
+        Assert.False(filled!.DepreciationIncomplete);
+    }
+
+    [Fact]
+    public void Stale_save_check_skips_older_clients_and_tolerates_database_precision()
+    {
+        var stored = new DateTime(2026, 11, 10, 8, 0, 0, DateTimeKind.Utc).AddTicks(1234567);
+        Assert.False(ValuationCostApproachRequestRules.IsStaleSave(null, stored));
+        Assert.True(ValuationCostApproachRequestRules.IsStaleSave("", stored));
+        Assert.False(ValuationCostApproachRequestRules.IsStaleSave("", null));
+        Assert.False(ValuationCostApproachRequestRules.IsStaleSave(
+            ValuationCostApproachRequestRules.ConcurrencyStamp(stored), stored));
+        // The database keeps microseconds — the stamp the screen holds may carry one more digit.
+        Assert.False(ValuationCostApproachRequestRules.IsStaleSave(
+            ValuationCostApproachRequestRules.ConcurrencyStamp(stored.AddTicks(7)), stored));
+        Assert.True(ValuationCostApproachRequestRules.IsStaleSave(
+            ValuationCostApproachRequestRules.ConcurrencyStamp(stored.AddSeconds(-1)), stored));
+        Assert.False(ValuationCostApproachRequestRules.IsStaleSave("not a date", stored));
+    }
+
+    [Fact]
+    public async Task A_save_built_on_an_older_copy_is_refused_as_a_conflict()
+    {
+        await using var contexts = TestDatabases.Create("cost-concurrency");
+        var (service, requestId) = await NewServiceAsync(contexts.Valuation, time: new SteppingClock());
+
+        // Tab A and tab B both load the never-saved approach; A saves first.
+        var (first, firstErrors) = await service.SaveAsync(requestId, Request(expectedUpdatedAtUtc: ""));
+        Assert.Null(firstErrors);
+        Assert.NotNull(first!.UpdatedAtUtc);
+
+        var (_, staleB) = await service.SaveAsync(requestId, Request(expectedUpdatedAtUtc: ""));
+        Assert.NotNull(staleB);
+        Assert.True(staleB.ContainsKey(ValuationCostApproachRequestRules.ConflictKey));
+        Assert.Equal(ValuationCostApproachRequestRules.StaleSaveMessageAr, staleB["_"]);
+
+        // A's next autosave carries the stamp of its own last save — never a conflict.
+        var (second, secondErrors) = await service.SaveAsync(requestId, Request(expectedUpdatedAtUtc: first.UpdatedAtUtc));
+        Assert.Null(secondErrors);
+        Assert.NotEqual(first.UpdatedAtUtc, second!.UpdatedAtUtc);
+
+        // The older stamp is now stale; an older client that sends none is not checked.
+        var (_, stale) = await service.SaveAsync(requestId, Request(expectedUpdatedAtUtc: first.UpdatedAtUtc));
+        Assert.True(stale!.ContainsKey(ValuationCostApproachRequestRules.ConflictKey));
+        var (_, legacy) = await service.SaveAsync(requestId, Request());
+        Assert.Null(legacy);
+    }
+
+    /// <summary>Each read is one second later — consecutive saves get distinct stamps.</summary>
+    private sealed class SteppingClock : TimeProvider
+    {
+        private DateTimeOffset _now = new(2026, 11, 10, 8, 0, 0, TimeSpan.Zero);
+        public override DateTimeOffset GetUtcNow() => _now = _now.AddSeconds(1);
+    }
+
     // ─── helpers ───
 
     private static SaveValuationCostApproachRequest Request(
-        IReadOnlyList<SaveValuationCostLineRequest>? lines = null) => new()
+        IReadOnlyList<SaveValuationCostLineRequest>? lines = null,
+        string? expectedUpdatedAtUtc = null) => new()
     {
         Lines = lines ?? [Line(itemKey: CostLineItemKeys.GroundFloor, area: 200m, unitCost: 1500m)],
         RefreshLandFromLandComps = true,
+        ExpectedUpdatedAtUtc = expectedUpdatedAtUtc,
     };
 
     private static SaveValuationCostLineRequest Line(
@@ -301,7 +446,8 @@ public class ValuationCostApproachServiceTests
         string itemKey = CostLineItemKeys.Custom,
         decimal area = 100m,
         decimal unitCost = 1000m,
-        int? repeatedCount = null) => new()
+        int? repeatedCount = null,
+        bool included = true) => new()
     {
         Id = id,
         StructureKind = BuildingStructureKinds.Floor,
@@ -311,6 +457,7 @@ public class ValuationCostApproachServiceTests
         Unit = CostLineUnits.Sqm,
         UnitCostSar = unitCost,
         RepeatedFloorCount = repeatedCount,
+        IsIncluded = included,
     };
 
     private static ValuationComparableSelectionDto Adopted(decimal adjustedTotal, decimal area, decimal weight) => new()
@@ -327,7 +474,8 @@ public class ValuationCostApproachServiceTests
 
     private static async Task<(ValuationCostApproachService Service, Guid RequestId)> NewServiceAsync(
         ValuationDbContext db,
-        LandTable? land = null)
+        LandTable? land = null,
+        TimeProvider? time = null)
     {
         var id = Guid.NewGuid();
         db.ValuationRequests.Add(ValuationRequest.Create(
@@ -337,7 +485,8 @@ public class ValuationCostApproachServiceTests
             new ValuationCostApproachRepository(db),
             new ValuationReportFreezeGate(db),
             NullProxy<ICaseStudyLookup>.Create(),
-            SelectionsProxy.Create(land ?? new LandTable()));
+            SelectionsProxy.Create(land ?? new LandTable()),
+            time);
         return (service, id);
     }
 

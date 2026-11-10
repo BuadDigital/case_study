@@ -4,6 +4,8 @@
 //            appraiser.
 //  • Alerts  New PUT alert-overrides: saves the alert dispositions only, leaving the rest of the
 //            reconciliation as saved (SaveAlertOverridesAsync).
+// Grey areas (2026-11-10)
+//  • GET refreshes the stored snapshot the request list reads (RefreshListSnapshotAsync).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using Microsoft.AspNetCore.Authorization;
@@ -35,7 +37,11 @@ public class ValuationReconciliationController : ControllerBase
         CancellationToken ct)
     {
         var dto = await _reconciliation.GetAsync(valuationRequestId, ct);
-        return dto is null ? NotFound() : Ok(dto);
+        if (dto is null) return NotFound();
+        // Fix 4 (2026-11-10): the request list reads the stored snapshot; keep it equal to what
+        // this read shows (best-effort, skipped on a frozen report).
+        await _reconciliation.RefreshListSnapshotAsync(valuationRequestId, dto, ct);
+        return Ok(dto);
     }
 
     [HttpPut]

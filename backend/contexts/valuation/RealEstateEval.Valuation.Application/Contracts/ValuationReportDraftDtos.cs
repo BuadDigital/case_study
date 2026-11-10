@@ -92,6 +92,14 @@ public class SaveReportDraftChoicesRequest
     /// <summary>A JSON object with allow-listed keys only (the print attachments, their order and slots).</summary>
     [Required]
     public JsonElement Choices { get; init; }
+
+    /// <summary>
+    /// Optimistic concurrency (2026-11-10): the draft's <c>UpdatedAtUtc</c> as the screen loaded it (""
+    /// when it loaded no draft yet). A newer draft on the server answers 409 «حفظ مستخدم آخر تعديلات أحدث».
+    /// Absent (an older screen) or unreadable = no check.
+    /// </summary>
+    [MaxLength(64, ErrorMessage = "نسخة المسودة المرسلة غير صالحة — أعد تحميل الصفحة")]
+    public string? ExpectedUpdatedAtUtc { get; init; }
 }
 
 /// <summary>The specialist sends the draft to the appraiser, confirming it matches the property study.</summary>

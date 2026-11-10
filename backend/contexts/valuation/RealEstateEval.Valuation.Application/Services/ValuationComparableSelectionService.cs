@@ -13,6 +13,12 @@
 //  • The hard alert 23 cutoff date is passed to the list builder, so later-dated comparables get
 //         automatic weight 0 (ValuationDatesAsync).
 //  • An unknown selectionContext is refused on every write.
+// Grey areas (2026-11-10)
+//  • A removed property-linked comparable stays removed (ValuationDismissedLinkedComparable rows; a
+//         re-add from the bank clears them); a comparable linked later still imports.
+//  • The read-time import and the demo clean-up ask the full write lock (hand-over / review included).
+//  • The market value is rounded by ValueRoundDecimals, except on a request deposited / done before the
+//         rounding (MarketValueUnrounded flag); a later deposit keeps the rounded value.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Application;
@@ -61,8 +67,10 @@ public sealed partial class ValuationComparableSelectionService(
         var context = ComparableSelectionContexts.Normalize(selectionContext);
         if (context == ComparableSelectionContexts.Market)
         {
-            await ImportPropertyLinkedComparablesAsync(request, cancellationToken);
-            await repo.DetachUnchosenDemoSelectionsAsync(valuationRequestId, cancellationToken);
+            // The full write lock (deposit + hand-over/review) is asked once, and only when this read
+            // would write something — it reaches the case-study service.
+            var mayWrite = new ReadWriteLock(freeze, request);
+            await ImportPropertyLinkedComparablesAsync(request, mayWrite, cancellationToken);
         }
 
         var rows = await repo.ListSelectionsAsync(valuationRequestId, context, cancellationToken);
@@ -76,7 +84,44 @@ public sealed partial class ValuationComparableSelectionService(
             valuationRequestId, context, cancellationToken);
         return ValuationComparableListBuilder.BuildList(
             request, rows, comps, valuationDate, header, context, factorRationales, cutoff,
-            await CostLandAreasAsync(valuationRequestId, context, cancellationToken));
+            await CostLandAreasAsync(valuationRequestId, context, cancellationToken),
+            roundOpinionValue: context == ComparableSelectionContexts.Market
+                && !await HandedOverValueIsFixedAsync(request, header, cancellationToken));
+    }
+
+    /// <summary>
+    /// What: true when the request's market value was handed over unrounded — deposited (or done) before
+    /// the market rounding was switched on — so it keeps that figure.
+    /// How it works: the market header's <see cref="ValuationMarketApproach.MarketValueUnrounded"/> flag,
+    /// set by the migration for the requests deposited or done at that time. A request with no header yet
+    /// falls back to the deposit layer (<see cref="IValuationReportFreezeGate.IsFrozenAsync"/>) and Done.
+    /// Edge cases: fixed 2026-11-10 (same day) — the exemption used to follow the deposit itself, so a
+    /// NEW request reconciled with the rounded value (3,203,000 in its deposited report) flipped to the
+    /// unrounded one (3,200,000) the moment it was deposited, and the Enfaz assistant uploaded that.
+    /// </summary>
+    private async Task<bool> HandedOverValueIsFixedAsync(
+        ValuationRequest request,
+        ValuationMarketApproach? header,
+        CancellationToken cancellationToken) =>
+        header is not null
+            ? header.MarketValueUnrounded
+            : request.Status == ValuationRequestStatus.Done
+              || await freeze.IsFrozenAsync(request.Id, cancellationToken);
+
+    /// <summary>
+    /// What: the full valuation write lock (deposit + hand-over/review), asked at most once per read.
+    /// How it works: <see cref="ValuationReportFreezeGateExtensions.GetWriteBlockedMessageAsync"/> — the
+    /// same check every edit uses — memoised, so the import and the demo clean-up share one answer.
+    /// Edge cases (2026-11-10): the read-time writes used to ask only <c>IsFrozenAsync</c>, so a request
+    /// handed over for review still got new adopted comparables and moved its value under the reviewer.
+    /// </summary>
+    private sealed class ReadWriteLock(IValuationReportFreezeGate freeze, ValuationRequest request)
+    {
+        private bool? _open;
+
+        public async Task<bool> IsOpenAsync(CancellationToken cancellationToken) =>
+            _open ??= await freeze.GetWriteBlockedMessageAsync(
+                request, "طلب التقييم مكتمل — لا يمكن تعديل المقارنات", cancellationToken) is null;
     }
 
     /// <summary>
@@ -155,6 +200,16 @@ public sealed partial class ValuationComparableSelectionService(
                 .Where(x => !keptIds.Contains(x.ComparablePropertyId)
                     || !ReferenceEquals(existingByComparable[x.ComparablePropertyId], x))
                 .ToList(),
+            cancellationToken);
+        // A linked comparable dropped from the list stays dropped (the import skips it); one added back
+        // from the bank is no longer dismissed.
+        await DismissLinkedAsync(
+            vr,
+            existingByComparable.Keys.Where(id => !keptIds.Contains(id)).ToList(),
+            cancellationToken);
+        await repo.ClearDismissedLinkedComparablesAsync(
+            valuationRequestId,
+            keptIds.Where(id => !existingByComparable.ContainsKey(id)).ToList(),
             cancellationToken);
 
         var now = _time.UtcNow();
@@ -245,6 +300,9 @@ public sealed partial class ValuationComparableSelectionService(
             await repo.AddAdjustmentLinesAsync(
                 MarketApproachRules.CreateStandardMarketLines(selectionId).ToList(),
                 cancellationToken);
+            // Adopted back from the bank: a dismissed linked comparable is the appraiser's again.
+            await repo.ClearDismissedLinkedComparablesAsync(
+                valuationRequestId, [comparablePropertyId], cancellationToken);
         }
         else
         {
@@ -283,8 +341,32 @@ public sealed partial class ValuationComparableSelectionService(
         if (row is null) return (false, "المقارن غير مختار");
 
         await repo.RemoveSelectionAsync(row, cancellationToken);
+        await DismissLinkedAsync(vr, [comparablePropertyId], cancellationToken);
         await repo.SaveChangesAsync(cancellationToken);
         return (true, null);
+    }
+
+    /// <summary>
+    /// What: records that the appraiser removed these comparables from this valuation, for the ones
+    /// linked to the subject property, so the linked-comparable import does not bring them back.
+    /// How it works: keeps only ids in the property's links and stages one dismissal row each (saved
+    /// with the caller's save). A comparable entered from the bank (not linked) needs no row — the
+    /// import never adds it.
+    /// Edge cases and what was fixed (2026-11-10): the import ran on every market read and re-added any
+    /// linked comparable without a selection row, so «حذف» lasted until the next refresh (seen live).
+    /// A comparable linked to the property later has no row and still arrives.
+    /// </summary>
+    private async Task DismissLinkedAsync(
+        ValuationRequest vr,
+        IReadOnlyCollection<Guid> removedComparableIds,
+        CancellationToken cancellationToken)
+    {
+        if (removedComparableIds.Count == 0 || vr.PropertyId == Guid.Empty) return;
+        var linked = (await repo.ListPropertyLinkedComparableIdsAsync(vr.PropertyId, cancellationToken))
+            .ToHashSet();
+        var dismissed = removedComparableIds.Where(linked.Contains).ToList();
+        if (dismissed.Count == 0) return;
+        await repo.DismissLinkedComparablesAsync(vr.Id, dismissed, _time.UtcNow(), cancellationToken);
     }
 
     public async Task<(ValuationComparableSelectionDto? Result, Dictionary<string, string>? Errors)>
@@ -386,11 +468,16 @@ public sealed partial class ValuationComparableSelectionService(
     /// <see cref="LinkedComparableRules"/>.
     /// Edge cases: the type alone used to decide, so a villa valued as «أرض فقط» sent its land comparable
     /// to the land table, which that scope never shows: adopted, invisible, and absent from the value.
-    /// Such a row now enters the market table on the next read. A frozen valuation takes nothing here,
-    /// because a new adopted row would move a value already handed over.
+    /// Such a row now enters the market table on the next read. A valuation whose writes are blocked takes
+    /// nothing here, because a new adopted row would move a value already handed over.
+    /// Fixed 2026-11-10: (1) a comparable the appraiser removed came back on the next read — removals of
+    /// linked comparables are now recorded per request (<see cref="DismissLinkedAsync"/>) and skipped here,
+    /// while a comparable linked later still arrives; (2) only the deposit freeze was asked, so a request
+    /// handed over for review still received new adopted rows — the full write lock is asked now.
     /// </summary>
     private async Task<bool> ImportPropertyLinkedComparablesAsync(
         ValuationRequest request,
+        ReadWriteLock mayWrite,
         CancellationToken cancellationToken)
     {
         var propertyId = request.PropertyId;
@@ -399,6 +486,9 @@ public sealed partial class ValuationComparableSelectionService(
 
         var links = await repo.ListPropertyLinkedComparableIdsAsync(propertyId, cancellationToken);
         if (links.Count == 0) return false;
+        var dismissed = await repo.ListDismissedLinkedComparableIdsAsync(request.Id, cancellationToken);
+        links = links.Where(id => !dismissed.Contains(id)).ToList();
+        if (links.Count == 0) return true;
 
         var existing = (await repo.FindSelectionsAsync(
                 request.Id, ComparableSelectionContexts.Market, cancellationToken))
@@ -419,7 +509,6 @@ public sealed partial class ValuationComparableSelectionService(
             .Exclude(links.Where(id => !existing.Contains(id)))
             .ToList();
         if (candidates.Count == 0) return true;
-        if (await freeze.IsFrozenAsync(request.Id, cancellationToken)) return true;
 
         var settings = await repo.GetApproachSettingsAsync(request.Id, cancellationToken);
         var landTableShown = LinkedComparableRules.LandTableIsShown(
@@ -453,6 +542,9 @@ public sealed partial class ValuationComparableSelectionService(
             if (toLandTable && existingLand.Contains(comparableId)) continue;
             var adoptInMarket = !toLandTable
                 && (!isLandComp || LinkedComparableRules.AdoptLandInMarket(settings?.CostScopeKey));
+            // Asked only when a row is really about to be added (a land comparable already in the land
+            // table adds nothing), and once per read: blocked → nothing is imported.
+            if (!await mayWrite.IsOpenAsync(cancellationToken)) return true;
             landAdoptedInMarket |= isLandComp && adoptInMarket;
             var selectionId = Guid.NewGuid();
             await repo.AddSelectionAsync(

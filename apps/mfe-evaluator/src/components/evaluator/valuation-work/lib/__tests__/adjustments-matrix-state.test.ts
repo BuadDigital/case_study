@@ -9,6 +9,7 @@ import {
   fmtChainValue,
   grossAdjustmentPct,
   matrixBasisView,
+  roundStepLabel,
 } from "../adjustments-matrix-state";
 import { pctClass } from "../../AdjustmentsMatrixCells.styles";
 import { weightsSumTo100 } from "../weights";
@@ -72,6 +73,40 @@ describe("matrixBasisView", () => {
 
   it("keeps «قيمة الأرض قبل التقريب» for the land table inside the cost approach", () => {
     expect(matrixBasisView(list("land_within_cost"), [], "180").outputLabel).toBe("قيمة الأرض قبل التقريب");
+  });
+
+  // 2026-11-10: the server rounds the market value by the request setting; the matrix shows it.
+  it("shows the rounded market value the reconciliation reads under the unrounded one", () => {
+    const rounded = {
+      ...list("market"),
+      marketOpinionValueRaw: 804_559,
+      marketOpinionValue: 800_000,
+      valueRoundDecimals: 4,
+    } as ValuationComparableSelectionListDto;
+    const view = matrixBasisView(rounded, [], "180");
+    expect(view.opinionRaw).toBe(804_559);
+    expect(view.opinionFinal).toBe(800_000);
+    expect(view.roundingNote).toContain("لأقرب 10,000 ر.س");
+    expect(view.roundingNote).toContain("800,000");
+  });
+
+  it("never rounds the land table inside the cost approach", () => {
+    expect(matrixBasisView(list("land_within_cost"), [], "180").roundingNote).toContain("بلا تقريب");
+  });
+
+  it("reads the per-m² figure on the whole basis from the unrounded value", () => {
+    const whole = {
+      ...list("market", "whole_property"),
+      marketOpinionValueRaw: 1_800_000,
+      marketOpinionValue: 1_810_000,
+    } as ValuationComparableSelectionListDto;
+    expect(matrixBasisView(whole, [], "180").pricePerSqmDisplay).toBe(10_000);
+  });
+
+  it("names the rounding step (0 → nearest riyal)", () => {
+    expect(roundStepLabel(0)).toBe("لأقرب ريال");
+    expect(roundStepLabel(3)).toBe("لأقرب 1,000 ر.س");
+    expect(roundStepLabel(undefined)).toBe("لأقرب 10,000 ر.س");
   });
 
   it("says no area adjustment is applied on the whole-property basis (D7)", () => {

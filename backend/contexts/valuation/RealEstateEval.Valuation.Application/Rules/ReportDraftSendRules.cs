@@ -52,12 +52,22 @@ public static class ReportDraftSendRules
     /// The handover refusal while the study report is not issued (Omar 2026-11-05: review receives the
     /// study report and the valuation draft in one batch). Null when the gate passes or there are no gates.
     /// </summary>
+    /// <remarks>
+    /// Edge cases + fixed 2026-11-10: when the gate failed because Case Study could not be read, the
+    /// refusal says so («تعذّر التحقق … حاول مرة أخرى») instead of «أصدر تقرير دراسة الحالة».
+    /// </remarks>
     public static Dictionary<string, string>? StudyReportNotIssuedError(ValuationIssuanceGatesDto? gates)
     {
         var gate = gates?.Gates.FirstOrDefault(g =>
             !g.Passed
             && string.Equals(g.Code, ValuationIssuanceGateCodes.StudyReportIssued, StringComparison.OrdinalIgnoreCase));
-        return gate is null ? null : new Dictionary<string, string> { [StudyReportErrorKey] = StudyReportNotIssuedAr };
+        if (gate is null) return null;
+        var unknown = string.Equals(
+            gate.DetailAr, ValuationIssuanceGateRules.CaseStudyStateUnavailableAr, StringComparison.Ordinal);
+        return new Dictionary<string, string>
+        {
+            [StudyReportErrorKey] = unknown ? ValuationIssuanceGateRules.CaseStudyStateUnavailableAr : StudyReportNotIssuedAr,
+        };
     }
 
     public const string ReviewErrorKey = "review";
@@ -68,12 +78,21 @@ public static class ReportDraftSendRules
     /// The send refusal while review has not approved the study or accepted the appraiser's value (Omar
     /// 2026-11-08: review approves the study, accepts the value, then issues the draft to the appraiser).
     /// </summary>
-    /// <remarks>Edge cases: an unknown answer (null — an older Case Study host, or no gates) does not block.</remarks>
+    /// <remarks>
+    /// How it works: false → the matching refusal; null → «تعذّر التحقق من حالة دراسة الحالة — حاول مرة أخرى».
+    /// Edge cases + fixed 2026-11-10: an unknown answer used to pass (the draft could reach the appraiser
+    /// while Case Study was down). Case Study always answers both fields, so null now means it could not be
+    /// read. Only a missing gate evaluation altogether (no gate service — tests) does not block; a legacy
+    /// valuation without a case-study property never reaches the send (its package is never «submitted»).
+    /// </remarks>
     public static Dictionary<string, string>? ReviewNotDoneError(ValuationIssuanceGatesDto? gates)
     {
-        if (gates?.StudyApprovedByReview == false)
+        if (gates is null) return null;
+        if (gates.StudyApprovedByReview is null || gates.ValueAcceptedByReview is null)
+            return new Dictionary<string, string> { [ReviewErrorKey] = ValuationIssuanceGateRules.CaseStudyStateUnavailableAr };
+        if (gates.StudyApprovedByReview == false)
             return new Dictionary<string, string> { [ReviewErrorKey] = StudyNotApprovedAr };
-        if (gates?.ValueAcceptedByReview == false)
+        if (gates.ValueAcceptedByReview == false)
             return new Dictionary<string, string> { [ReviewErrorKey] = ValueNotAcceptedAr };
         return null;
     }

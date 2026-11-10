@@ -100,9 +100,22 @@ public class ValueDocumentUseRulesTests
             additionsTotal: 12_345.4m);
 
         Assert.True(applied);
-        Assert.Equal(1_235_000m, before);
+        // «Before the discount» is the same total without the discount: 1,234,567 + 12,345.4 → 1,247,000.
+        Assert.Equal(1_247_000m, before);
         Assert.Equal(987_653.6m, afterDiscount);
         Assert.Equal(1_000_000m, final);
+    }
+
+    [Fact]
+    public void Without_a_discount_the_value_before_liquidation_equals_the_final_with_additions()
+    {
+        // 2026-11-10: «before liquidation» used to leave the document additions out (1,235,000 here).
+        var (before, _, final, applied) = ReconciliationRules.FinalTotal(
+            1_234_567m, 3, BasisOfValueKeys.Market, ValuePremiseKeys.CurrentUse, 0m, 12_345.4m);
+
+        Assert.False(applied);
+        Assert.Equal(1_247_000m, final);
+        Assert.Equal(final, before);
     }
 
     [Fact]

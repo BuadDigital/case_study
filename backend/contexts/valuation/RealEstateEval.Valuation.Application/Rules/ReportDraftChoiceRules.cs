@@ -66,4 +66,7 @@ public static class ReportDraftErrorKeys
 {
     /// <summary>The caller's role / assignment does not allow the action (the controller answers 403).</summary>
     public const string Forbidden = "_forbidden";
+
+    /// <summary>Someone saved a newer draft than the caller loaded (the controller answers 409).</summary>
+    public const string Conflict = "_conflict";
 }
