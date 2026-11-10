@@ -17,7 +17,12 @@ import { isInspectorWorkspaceAccepted } from "@platform/app-shared/app-data/insp
 import { loadEngineeringSurveySubmissionSnapshot } from "../../lib/app-data/property-detail-party-submission-loaders";
 import { findPriorDeedFull } from "../../lib/app-data/po-intake-reads";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import { proposeDeedNatureMatch, type DeedNatureMatchProposal } from "../../lib/app-data/deed-nature-match-proposal";
+import {
+  deedMatchSideRows,
+  proposeDeedNatureMatch,
+  type DeedMatchSideRow,
+  type DeedNatureMatchProposal,
+} from "../../lib/app-data/deed-nature-match-proposal";
 
 /**
  * Notes that go with an adopted suggestion: «matched» clears them; «differences» carries the
@@ -56,6 +61,7 @@ export function CaseStudyDeedNatureMatchReview({
   const { showToast } = useToast();
   const [draft, setDraft] = useState<CaseStudyReportDraft | null>(null);
   const [proposal, setProposal] = useState<DeedNatureMatchProposal | null>(null);
+  const [sides, setSides] = useState<DeedMatchSideRow[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const savingLock = useRef(false);
@@ -81,6 +87,7 @@ export function CaseStudyDeedNatureMatchReview({
           form ?? emptyCaseStudyReportDraft(caseStudyTaskId, { propertyId: property.id, poNumber });
         setDraft(nextDraft);
         const inspectorSubmitted = inspector?.status === "submitted" || isInspectorWorkspaceAccepted(inspector);
+        setSides(inspectorSubmitted ? deedMatchSideRows(inspector, property) : []);
         const engineeringSubmitted = survey?.status === "submitted" || Boolean(survey?.acceptedAtUtc?.trim());
         setProposal(
           proposeDeedNatureMatch({
@@ -189,6 +196,7 @@ export function CaseStudyDeedNatureMatchReview({
         sourceLabelAr={proposal?.sourceLabelAr}
         suggestedOutcome={proposal?.suggested}
         infoLinesAr={proposal?.infoLinesAr}
+        sides={sides}
         dissent={deedMatchDissent(
           proposal?.source === "inspector" &&
             !proposal.waiting &&

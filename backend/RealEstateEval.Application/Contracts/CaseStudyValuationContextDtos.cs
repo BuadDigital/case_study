@@ -40,6 +40,8 @@ public sealed class CaseStudyValuationPropertyContextDto
     public string? DeedDate { get; set; }
     public string? OwnerName { get; set; }
     public string? DeedOwnersJson { get; set; }
+    /// <summary>The staff's «مشاع» tick — the report's ownership type (Omar 2026-11-10).</summary>
+    public bool IsSharedOwnership { get; set; }
     public string? RestrictionsPresent { get; set; }
     public string? RestrictionType { get; set; }
     public string? RestrictionOtherReason { get; set; }
@@ -185,6 +187,7 @@ public sealed class CaseStudyValuationPropertyContextDto
         DeedDate = DeedDate,
         OwnerName = OwnerName,
         DeedOwnersJson = DeedOwnersJson,
+        IsSharedOwnership = IsSharedOwnership,
         RestrictionsPresent = RestrictionsPresent,
         RestrictionType = RestrictionType,
         RestrictionOtherReason = RestrictionOtherReason,

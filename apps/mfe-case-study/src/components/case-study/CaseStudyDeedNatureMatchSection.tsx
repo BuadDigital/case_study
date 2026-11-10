@@ -20,6 +20,54 @@ import {
   type DeedMatchDissent,
 } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import type { CaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
+import type { DeedMatchSideRow } from "../../lib/app-data/deed-nature-match-proposal";
+
+/**
+ * Each side of the deed beside the inspector's finding there (Omar 2026-11-10: the specialist decides
+ * from what he sees here — the deed's boundary and length, the inspector's «مطابق / غير مطابق» and note).
+ */
+function DeedMatchSidesTable({ sides }: { sides: readonly DeedMatchSideRow[] }) {
+  const th = "border-b border-border bg-surface-2 px-3 py-1.5 text-right text-[11px] font-bold text-text-2";
+  const td = "border-b border-border px-3 py-1.5 text-right align-top text-[12px] text-text";
+  return (
+    <table className="w-full border-collapse overflow-hidden rounded-[10px] border border-border">
+      <thead>
+        <tr>
+          <th className={cn(th, "w-28")}>الحد</th>
+          <th className={th}>حسب الصك</th>
+          <th className={cn(th, "w-24")}>الطول</th>
+          <th className={cn(th, "w-28")}>المعاين على الطبيعة</th>
+          <th className={th}>ملاحظة المعاين</th>
+        </tr>
+      </thead>
+      <tbody>
+        {sides.map((s) => (
+          <tr key={s.side}>
+            <td className={cn(td, "font-semibold text-heading")}>{s.label}</td>
+            <td className={td}>{s.deedDesc}</td>
+            <td className={td}>
+              <span dir="ltr">{s.deedLength}</span>
+            </td>
+            <td
+              className={cn(
+                td,
+                "font-semibold",
+                s.matches === true
+                  ? "text-success-text"
+                  : s.matches === false
+                    ? "text-red-text"
+                    : "text-text-3",
+              )}
+            >
+              {s.matches === true ? "مطابق" : s.matches === false ? "غير مطابق" : "لم يحدد"}
+            </td>
+            <td className={cn(td, "text-text-2")}>{s.note || "—"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
 
 /**
  * Specialist review of deed↔nature match. Only the field inspector proposes;
@@ -47,6 +95,7 @@ export function CaseStudyDeedNatureMatchSection({
   infoLinesAr,
   onAdoptSuggestion,
   dissent = null,
+  sides = [],
 }: {
   draft: Pick<CaseStudyReportDraft, "deedNatureMatchOutcome" | "deedNatureMatchNotes">;
   disabled?: boolean;
@@ -58,6 +107,8 @@ export function CaseStudyDeedNatureMatchSection({
   /** Prior-survey / engineering-office context — shown, never proposed. */
   infoLinesAr?: readonly string[];
   onAdoptSuggestion?: () => void;
+  /** The four sides: the deed beside the inspector's finding (empty until the inspection is in). */
+  sides?: readonly DeedMatchSideRow[];
   /**
    * Who said «غير مطابق» — the inspector (2026-10-29) or, since A→Z 2026-11-02 #20, the engineering office:
    * «مطابق» then needs the specialist's reason, and the labels name whoever it goes against.
@@ -111,6 +162,8 @@ export function CaseStudyDeedNatureMatchSection({
             {sourceLabelAr}
           </p>
         ) : null}
+
+        {sides.length > 0 ? <DeedMatchSidesTable sides={sides} /> : null}
 
         {infoLinesAr && infoLinesAr.length > 0 ? (
           <ul className="m-0 grid list-none gap-1 p-0 text-[11.5px] leading-relaxed text-text-3">

@@ -1,5 +1,6 @@
 using RealEstateEval.Domain;
 using Xunit;
+using RealEstateEval.CaseStudy.Application.Mapping;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.Valuation.Domain;
 
@@ -8,21 +9,21 @@ namespace RealEstateEval.Application.Tests;
 public class PropertyOwnershipRulesTests
 {
     [Fact]
-    public void One_owner_is_absolute_and_several_owners_are_shared()
+    public void The_staff_tick_decides_shared_whatever_the_owners_count()
     {
-        Assert.Equal(OwnershipTypes.Absolute, OwnershipTypeRules.FromOwners([new DeedOwner("أ")]));
-        Assert.Equal(
-            OwnershipTypes.Shared,
-            OwnershipTypeRules.FromOwners([new DeedOwner("أ"), new DeedOwner("ب")]));
-    }
+        Assert.Equal(OwnershipTypes.Shared, OwnershipTypeRules.FromSharedFlag(true));
+        Assert.Equal(OwnershipTypes.Absolute, OwnershipTypeRules.FromSharedFlag(false));
 
-    [Fact]
-    public void No_owners_yet_counts_as_absolute_and_blank_names_are_not_owners()
-    {
-        Assert.Equal(OwnershipTypes.Absolute, OwnershipTypeRules.FromOwners([]));
-        Assert.Equal(
-            OwnershipTypes.Absolute,
-            OwnershipTypeRules.FromOwners([new DeedOwner("أ"), new DeedOwner("  ")]));
+        // Two owners without the tick stay «ملكية تامة» (Omar 2026-11-10); one owner with it is «مشاع».
+        var twoOwners = new WorkOrderProperty
+        {
+            Id = Guid.NewGuid(),
+            DeedOwnersJson = OwnershipTypeRules.SerializeOwners([new DeedOwner("أ"), new DeedOwner("ب")]),
+        };
+        Assert.Equal(OwnershipTypes.Absolute, WorkOrderMapper.ToPropertyDto(twoOwners).OwnershipType);
+        var ticked = new WorkOrderProperty { Id = Guid.NewGuid(), OwnerName = "أ", IsSharedOwnership = true };
+        Assert.Equal(OwnershipTypes.Shared, WorkOrderMapper.ToPropertyDto(ticked).OwnershipType);
+        Assert.True(WorkOrderMapper.ToPropertyDto(ticked).IsSharedOwnership);
     }
 
     [Fact]
@@ -37,7 +38,7 @@ public class PropertyOwnershipRulesTests
 
         // A row saved before shares were removed still reads: the share is simply ignored.
         var legacy = OwnershipTypeRules.ParseOwners("""[{"name":"أ","sharePct":60},{"name":"ب","sharePct":40}]""");
-        Assert.Equal(OwnershipTypes.Shared, OwnershipTypeRules.FromOwners(legacy));
+        Assert.Equal(["أ", "ب"], legacy.Select(o => o.Name));
         Assert.Empty(OwnershipTypeRules.ParseOwners("not json"));
     }
 

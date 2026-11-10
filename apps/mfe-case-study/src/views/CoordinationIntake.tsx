@@ -236,15 +236,16 @@ export function CoordinationIntakeBody({
   if (scope.mode === "editor") {
     if (step === "distribution") return <>{fallback}</>;
     const { editor } = scope;
+    // Omar 2026-11-10: the form alone — no card header, no save button; the fields autosave.
     return (
       <div className="flex flex-col gap-3 pt-3">
         {editor.formError ? <Note tone="warn">{editor.formError}</Note> : null}
         {editor.loading ? (
           <p className="m-0 text-[12px] text-text-3">جارٍ التحميل…</p>
         ) : step === "enfath" ? (
-          <PropertyIntakeEnfathCard editor={editor} />
+          <PropertyIntakeEnfathCard editor={editor} bare />
         ) : (
-          <PropertyIntakeBourseCard editor={editor} />
+          <PropertyIntakeBourseCard editor={editor} bare />
         )}
       </div>
     );

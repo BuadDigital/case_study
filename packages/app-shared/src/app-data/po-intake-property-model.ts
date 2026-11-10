@@ -227,7 +227,9 @@ export type PoPropertyIntake = {
   suggestedDeedKind: string;
  /** JSON array [{name}] (flat-draft representation). */
   ownersJson: string;
-  /** Ownership type derived by the API from the owners count ("" until loaded). */
+  /** «مشاع» — the staff tick it beside the owner name (Omar 2026-11-10); unticked = «ملكية تامة». */
+  isSharedOwnership: boolean;
+  /** The server's ownership type from the tick, as last loaded ("" until loaded). */
   ownershipType: string;
   restrictionsPresent: string;
   restrictionType: string;
@@ -367,6 +369,7 @@ export function emptyProperty(): PoPropertyIntake {
     deedKind: "",
     suggestedDeedKind: "",
     ownersJson: "",
+    isSharedOwnership: false,
     ownershipType: "",
     restrictionsPresent: "",
     restrictionType: "",
@@ -424,18 +427,10 @@ export function emptyProperty(): PoPropertyIntake {
  * Edge cases: a dash without spaces stays inside the name; a broken list falls back to the field.
  */
 export function propertyOwnerNames(
-  property: Pick<PoPropertyIntake, "ownerName" | "ownersJson">,
+  property: Pick<PoPropertyIntake, "ownerName">,
 ): string[] {
-  let listed: string[] = [];
-  try {
-    const parsed: unknown = JSON.parse(property.ownersJson.trim() || "[]");
-    if (Array.isArray(parsed)) {
-      listed = parsed.map((o: { name?: unknown }) => String(o?.name ?? "").trim()).filter(Boolean);
-    }
-  } catch {
-    listed = [];
-  }
-  if (listed.length > 0) return listed;
+  // Since 2026-11-10 «اسم المالك» is the only owner field (the bourse owners list was removed), so the
+  // names are read from it alone — a stored list could be older than an edited owner name.
   return property.ownerName
     .split(/\s+-\s+|[،,]/)
     .map((name) => name.trim())

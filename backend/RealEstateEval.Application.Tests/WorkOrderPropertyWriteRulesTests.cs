@@ -361,7 +361,48 @@ public class WorkOrderPropertyWriteRulesTests
         Assert.Equal(
             ["سالم", "نورة"],
             OwnershipTypeRules.ParseOwners(entity.DeedOwnersJson).Select(o => o.Name));
-        Assert.Equal(OwnershipTypes.Shared, WorkOrderMapper.ToPropertyDto(entity).OwnershipType);
+        // The owners count no longer decides «مشاع» — the staff's tick does (Omar 2026-11-10).
+        Assert.Equal(OwnershipTypes.Absolute, WorkOrderMapper.ToPropertyDto(entity).OwnershipType);
+    }
+
+    [Fact]
+    public void An_autosave_without_an_owners_list_keeps_the_owner_name_typed_in_the_initial_data()
+    {
+        var entity = new WorkOrderProperty
+        {
+            Id = Guid.NewGuid(),
+            BourseDataCompleted = true,
+            OwnerName = "مالك أول، مالك ثان",
+            DeedOwnersJson = OwnershipTypeRules.SerializeOwners([new DeedOwner("مالك أول"), new DeedOwner("مالك ثان")]),
+        };
+        var draft = new WorkOrderPropertyDto { DeedNumber = "123", OwnerName = "البنك الأهلي السعودي" };
+
+        WorkOrderPropertyWriteRules.KeepCompletedBourseOnDraft(entity, draft);
+        WorkOrderPropertyWriteRules.ApplyPropertyEnfath(entity, draft);
+        WorkOrderPropertyWriteRules.ApplyPropertyBourseDraft(entity, draft);
+
+        Assert.Equal("البنك الأهلي السعودي", entity.OwnerName);
+    }
+
+    [Fact]
+    public void The_shared_tick_is_saved_with_the_primary_data_and_kept_when_not_sent()
+    {
+        var entity = new WorkOrderProperty { Id = Guid.NewGuid() };
+        WorkOrderPropertyWriteRules.ApplyPropertyEnfath(
+            entity,
+            new WorkOrderPropertyDto { DeedNumber = "123", OwnerName = "أ", IsSharedOwnership = true });
+        Assert.True(entity.IsSharedOwnership);
+
+        // An older client that does not send the field leaves the tick alone.
+        WorkOrderPropertyWriteRules.ApplyPropertyEnfath(
+            entity,
+            new WorkOrderPropertyDto { DeedNumber = "123", OwnerName = "أ" });
+        Assert.True(entity.IsSharedOwnership);
+
+        WorkOrderPropertyWriteRules.ApplyPropertyEnfath(
+            entity,
+            new WorkOrderPropertyDto { DeedNumber = "123", OwnerName = "أ", IsSharedOwnership = false });
+        Assert.False(entity.IsSharedOwnership);
     }
 
     [Fact]

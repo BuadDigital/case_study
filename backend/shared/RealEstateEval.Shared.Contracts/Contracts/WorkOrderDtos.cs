@@ -74,9 +74,14 @@ public class WorkOrderPropertyDto
     public string? DeedKindLabelAr { get; set; }
  /// <summary>Suggestion from the identifier type (real-estate registration → registered title).</summary>
     public string? SuggestedDeedKind { get; set; }
- /// <summary>The deed owners (name only) — their count decides the ownership type.</summary>
+ /// <summary>The deed owners (name only).</summary>
     public List<DeedOwnerDto> Owners { get; set; } = [];
- /// <summary>Ownership Type derived from the owners count: absolute (one owner) or shared (several).</summary>
+ /// <summary>
+ /// The staff's «مشاع» tick (Omar 2026-11-10). On write, null keeps the stored value (a client that
+ /// predates the field).
+ /// </summary>
+    public bool? IsSharedOwnership { get; set; }
+ /// <summary>Ownership Type from the «مشاع» tick: shared when ticked, absolute otherwise (read only).</summary>
     public string? OwnershipType { get; set; }
     public string? OwnershipTypeLabelAr { get; set; }
     public string? RestrictionsPresent { get; set; }

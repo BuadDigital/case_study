@@ -313,17 +313,37 @@ export function IntakeSectionHeader({
   );
 }
 
-/** The Enfaz (deed) card of the intake editor. `disabled` blocks its save (another save running). */
+/**
+ * The Enfaz (deed) card of the intake editor. `disabled` blocks its save (another save running).
+ * `bare` (the two frame pages, Omar 2026-11-10): the form alone — no card header, no save button; the
+ * fields autosave to the server as they change.
+ */
 export function PropertyIntakeEnfathCard({
   editor,
   disabled = false,
+  bare = false,
 }: {
   editor: PropertyIntakeEditor;
   disabled?: boolean;
+  bare?: boolean;
 }) {
   const { property, record } = editor;
   if (!property || !record) return null;
   const deed = formatPropertyDeedDisplay(property);
+  if (bare) {
+    return (
+      <PoPropertyEnfathForm
+        property={property}
+        assignmentType={record.assignmentType}
+        fieldErrors={editor.fieldErrors}
+        onPatch={editor.patchProperty}
+        onReplaceProperty={editor.replaceProperty}
+        poNumber={editor.poNumber}
+        excludePoNumber={editor.poNumber}
+        fieldPolicy={clientFieldPolicyFor(record)}
+      />
+    );
+  }
   return (
     <Card>
       <IntakeSectionHeader
@@ -351,16 +371,32 @@ export function PropertyIntakeEnfathCard({
   );
 }
 
-/** The bourse (location, area, owners, boundaries) card of the intake editor. */
+/**
+ * The bourse (location, area, owners, boundaries) card of the intake editor. `bare` (the two frame
+ * pages): the form alone, autosaved — no card header, no save button.
+ */
 export function PropertyIntakeBourseCard({
   editor,
   disabled = false,
+  bare = false,
 }: {
   editor: PropertyIntakeEditor;
   disabled?: boolean;
+  bare?: boolean;
 }) {
   const { property } = editor;
   if (!property) return null;
+  if (bare) {
+    return (
+      <PoPropertyBourseForm
+        property={property}
+        fieldErrors={editor.fieldErrors}
+        onPatch={editor.patchProperty}
+        poNumber={editor.poNumber}
+        showIntroNote={false}
+      />
+    );
+  }
   return (
     <Card>
       <IntakeSectionHeader

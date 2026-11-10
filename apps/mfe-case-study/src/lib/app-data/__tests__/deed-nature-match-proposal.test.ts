@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { DeedNatureMatchOutcomes } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { createInspectorWorkspaceDraft } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
+  deedMatchSideRows,
   inspectorBoundariesIndicateMismatch,
   inspectorMismatchNotesText,
   proposeDeedNatureMatch,
@@ -148,5 +149,39 @@ describe("inspectorMismatchNotesText", () => {
       }),
     ).toBe("الحد الشرقي: فرق");
     expect(inspectorMismatchNotesText(null)).toBe("");
+  });
+});
+
+describe("deedMatchSideRows (Omar 2026-11-10)", () => {
+  const property = {
+    northBoundary: "شارع عرض 15م",
+    northBoundaryLengthM: "20",
+    southBoundary: "",
+    southBoundaryLengthM: "",
+    eastBoundary: "جار",
+    eastBoundaryLengthM: "30",
+    westBoundary: "ممر",
+    westBoundaryLengthM: "30",
+  };
+
+  it("shows no table before the inspection", () => {
+    expect(deedMatchSideRows(null, property)).toEqual([]);
+  });
+
+  it("puts each deed side beside the inspector's finding and note", () => {
+    const draft = inspectorDraft();
+    draft.boundaryMatches = {
+      ...draft.boundaryMatches,
+      north: { ...draft.boundaryMatches.north, matches: true },
+      east: { ...draft.boundaryMatches.east, matches: false, mismatchNote: "الطول 28 م" },
+      south: { ...draft.boundaryMatches.south, deedDesc: "قطعة 12", deedLength: "20" },
+    };
+    const rows = deedMatchSideRows(draft, property);
+    expect(rows.map((r) => r.label)).toEqual(["الحد الشمالي", "الحد الجنوبي", "الحد الشرقي", "الحد الغربي"]);
+    expect(rows[0]).toMatchObject({ deedDesc: "شارع عرض 15م", deedLength: "20 م", matches: true, note: "" });
+    // The inspector's own transcription wins over the empty deed side.
+    expect(rows[1]).toMatchObject({ deedDesc: "قطعة 12", deedLength: "20 م", matches: null });
+    expect(rows[2]).toMatchObject({ matches: false, note: "الطول 28 م" });
+    expect(rows[3]).toMatchObject({ deedDesc: "ممر", matches: null });
   });
 });
