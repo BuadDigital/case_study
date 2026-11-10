@@ -61,7 +61,7 @@ describe("markReportMissingFields — keyed cells", () => {
     const valuationDate = fields.find((f) => f.label === "تاريخ التقييم");
     expect(valuationDate?.tab).toBe("basic");
     expect(dom.getElementById(valuationDate!.targetId)?.getAttribute("title")).toBe(
-      "ناقص — اضغط للانتقال إلى «البيانات الأساسية»",
+      "ناقص — اضغط للانتقال إلى «أساليب وطرق التقييم»",
     );
   });
 

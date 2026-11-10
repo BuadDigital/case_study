@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { WorkflowTask } from "../tasks";
-import { WORK_SECTIONS, reviewLockOf, workPageStep, workSectionStatus } from "../work-page-model";
+import { workSectionStatus } from "@platform/ui-kit";
+import { WORK_SECTIONS, reviewLockOf, workPageStep } from "../work-page-model";
 
 function task(over: Partial<WorkflowTask>): WorkflowTask {
   return {

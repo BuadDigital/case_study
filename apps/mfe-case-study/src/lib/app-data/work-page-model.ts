@@ -23,8 +23,6 @@ export type WorkSectionId =
   | "valuation"
   | "upload";
 
-export type WorkSectionStatus = "done" | "current" | "todo";
-
 export type WorkSectionDef = {
   id: WorkSectionId;
   title: string;
@@ -122,11 +120,4 @@ export function workPageStep(
 /** The first step of the study — the earlier ones are coordination's (shown on both pages). */
 export const WORK_PAGE_FIRST_STEP = 4;
 
-/** A section's status against the transaction's step (any frame page's section). */
-export function workSectionStatus(
-  section: Pick<WorkSectionDef, "step">,
-  step: number,
-): WorkSectionStatus {
-  if (section.step < step) return "done";
-  return section.step === step ? "current" : "todo";
-}
+// A section's status against the step: `workSectionStatus` — with the frame, in `@platform/ui-kit`.

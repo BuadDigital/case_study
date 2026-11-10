@@ -41,7 +41,7 @@ export const REPORT_FIELD_SOURCES: Record<ReportFieldSource, { label: string }> 
 };
 
 const REPORT_APPRAISER_TAB_LABELS: Record<ReportAppraiserTab, string> = {
-  basic: "البيانات الأساسية",
+  basic: "أساليب وطرق التقييم",
   market: "طريقة المقارنة",
   cost: "طريقة المقاول",
   final: "رأي القيمة النهائي",

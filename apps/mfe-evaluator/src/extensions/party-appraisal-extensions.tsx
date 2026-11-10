@@ -24,9 +24,7 @@ import {
   filterAppraiserListedTasks,
 } from "../lib/evaluator/evaluator-queue";
 import { hydratePartyTaskRecalls } from "@platform/app-shared/app-data/party-task-recall-reads";
-import {
-  isEvaluatorFormLocked,
-  loadEvaluatorSubmission,
+import { isEvaluatorFormLocked, loadEvaluatorSubmission,
 } from "../lib/evaluator/evaluator-submission-model";
 import { prefetchEvaluatorSubmissions } from "../lib/evaluator/evaluator-submission-reads";
 import type { EvaluatorWindowHostRefObject } from "../lib/evaluator/evaluator-window-host";
@@ -66,11 +64,9 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
         void prefetchEvaluatorSubmissions(listed.map((t) => t.id));
         return listed;
       },
-      buildRowMoreItems: (ctx: Parameters<typeof buildAppraiserQueueRowMoreItems>[0]) =>
-        buildAppraiserQueueRowMoreItems(ctx),
+      buildRowMoreItems: (ctx: Parameters<typeof buildAppraiserQueueRowMoreItems>[0]) => buildAppraiserQueueRowMoreItems(ctx),
       canOpenTask: (task: WorkflowTask) => canAppraiserOpenTask(task.id, task.status),
-      getTaskStatusBadge: (task: WorkflowTask) =>
-        appraiserTaskStatusBadge(task.id, task.status),
+      getTaskStatusBadge: (task: WorkflowTask) => appraiserTaskStatusBadge(task.id, task.status),
       refreshOnWindowEvents: [
         PARTY_TASK_RECALL_CHANGED_EVENT,
         PARTY_TASK_RECALL_HYDRATED_EVENT,
@@ -87,6 +83,8 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
     deedLabel,
     onBack,
     embeddedInPropertyChrome,
+    studySummary,
+    pageActions,
   }) {
     return (
       <AppraiserUploadTab
@@ -97,6 +95,8 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
         deedLabel={deedLabel}
         onBack={onBack}
         embeddedInPropertyChrome={embeddedInPropertyChrome}
+        studySummary={studySummary}
+        pageActions={pageActions}
       />
     );
   },

@@ -1,8 +1,10 @@
 "use client";
 
 /**
- * The frame shared by the transaction's two working pages (Omar 2026-11-08: «التصميم واحد، لكنهما
- * صفحتان مختلفتان») — the coordinator's page and the work page: numbered sections on a rail, each a
+ * The frame shared by the transaction's working pages (Omar 2026-11-08: «التصميم واحد، لكنهما
+ * صفحتان مختلفتان») — the coordinator's page, the work page and, since 2026-11-10, the appraiser's
+ * page (which lives in another app, hence the frame's place in the design system): numbered sections
+ * on a rail, each a
  * collapsible panel whose body mounts the first time it opens and stays mounted (hidden when collapsed)
  * so a half-filled form survives a collapse; the current step's sections open, and when the step moves
  * the new current sections open and scroll into view, so the page flows section to section.
@@ -13,20 +15,23 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useRouter } from "next/navigation";
-import {
-  Badge,
-  Button,
-  cn,
-  FormDensityProvider,
-  OpsIcon,
-  opsContentPanel,
-  type BadgeTone,
-} from "@platform/ui-kit";
-import {
-  workSectionStatus,
-  type WorkSectionStatus,
-} from "../lib/app-data/work-page-model";
+import { cn } from "../lib/cn";
+import { FormDensityProvider, WORK_FORM_GRID_CLASS } from "../lib/form-density";
+import { opsContentPanel } from "../lib/ops-chrome";
+import { Badge, type BadgeTone } from "./Badge";
+import { OpsIcon } from "./OpsIcon";
+import { Skeleton } from "./Skeleton";
+
+export type WorkSectionStatus = "done" | "current" | "todo";
+
+/** A section's status against the page's step (any frame page's section). */
+export function workSectionStatus(
+  section: { step: number },
+  step: number,
+): WorkSectionStatus {
+  if (section.step < step) return "done";
+  return section.step === step ? "current" : "todo";
+}
 
 /** One section of a frame page: where it sits in the flow and how it is labelled. */
 export type FrameSectionDef<Id extends string = string> = {
@@ -36,6 +41,8 @@ export type FrameSectionDef<Id extends string = string> = {
   step: number;
   /** The sub-role badge (work page); none on the coordinator's page, where every section is coordination's. */
   group?: "co" | "st" | "rv";
+  /** A short label beside the title (the appraiser's page: the approach a method belongs to). */
+  tag?: string;
 };
 
 const GROUP_LABEL = {
@@ -116,6 +123,7 @@ function WorkSection({
         {def.group ? (
           <Badge tone={GROUP_TONE[def.group]}>{GROUP_LABEL[def.group]}</Badge>
         ) : null}
+        {def.tag ? <Badge tone="primary">{def.tag}</Badge> : null}
         <Badge tone={STATUS_TONE[status]}>{STATUS_TEXT[status]}</Badge>
         <span className="flex-1" />
         <span
@@ -134,34 +142,6 @@ function WorkSection({
         </div>
       ) : null}
     </section>
-  );
-}
-
-/** A step worked elsewhere: what it is, and the button that opens it. */
-export function StepLink({
-  line,
-  label,
-  href,
-}: {
-  line: string;
-  label: string;
-  href: string | null;
-}) {
-  const router = useRouter();
-  return (
-    <div className="flex flex-wrap items-center gap-3 pt-3">
-      <span className="flex-1 text-[12.5px] text-text-2">{line}</span>
-      {href ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          onClick={() => router.push(href)}
-        >
-          {label}
-        </Button>
-      ) : null}
-    </div>
   );
 }
 
@@ -187,15 +167,19 @@ export type WorkSectionsState<Id extends string> = {
  * moves later, the new current sections open and the first scrolls into view. A `#work-…` link on
  * the page opens and scrolls to its section.
  * Edge cases: a step with no section of its own (the flow is past this page) opens nothing new.
+ * `keepMounted` (2026-11-10, the appraiser's page) names sections whose bodies mount from the first
+ * paint whether open or not — forms another section's action must be able to read or scroll to.
  */
 export function useWorkSections<Id extends string>({
   sections,
   step,
   ready,
+  keepMounted,
 }: {
   sections: readonly FrameSectionDef<Id>[];
   step: number;
   ready: boolean;
+  keepMounted?: readonly Id[];
 }): WorkSectionsState<Id> {
   const known = (id: string): id is Id => sections.some((s) => s.id === id);
   const currentIds = () =>
@@ -207,7 +191,9 @@ export function useWorkSections<Id extends string>({
     if (known(hash)) initial.add(hash);
     return initial;
   });
-  const [mounted, setMounted] = useState<ReadonlySet<Id>>(open);
+  const [mounted, setMounted] = useState<ReadonlySet<Id>>(
+    () => new Set([...open, ...(keepMounted ?? [])]),
+  );
   const openSection = useCallback((id: Id, scroll: boolean) => {
     setOpen((prev) => new Set(prev).add(id));
     setMounted((prev) => (prev.has(id) ? prev : new Set(prev).add(id)));
@@ -455,6 +441,79 @@ export function WorkSectionsLayout<Id extends string>({
           </WorkSection>
         ))}
         {footer}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A section's body while its data loads: label + control placeholders in the work grid
+ * (one to four a row), so the section keeps its shape when the fields arrive.
+ */
+export function WorkSectionFieldsSkeleton({
+  fields = 8,
+  label = "جاري التحميل",
+}: {
+  fields?: number;
+  label?: string;
+}) {
+  return (
+    <div className={cn(WORK_FORM_GRID_CLASS, "pt-3.5")} aria-busy="true" aria-label={label}>
+      {Array.from({ length: fields }, (_, i) => (
+        <div key={i} className="min-w-0">
+          <Skeleton className="h-2.5 w-24" />
+          <Skeleton className="mt-2 h-[38px] w-full rounded-lg" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The frame while the page's data loads (2026-11-10): the rail and the section panels in their
+ * places, the first panel open on field placeholders.
+ *
+ * How it works: the same grid, panel and header sizes as `WorkSectionsLayout`, with pulse bars
+ * for the rows and the titles — so the page does not jump when the real sections replace it.
+ * Edge cases: the number of sections is not known yet (it depends on the loaded data), so the
+ * page passes its usual count in `rows`.
+ */
+export function WorkSectionsSkeleton({
+  rows = 4,
+  label = "جاري تحميل أقسام الصفحة",
+}: {
+  rows?: number;
+  label?: string;
+}) {
+  const items = Array.from({ length: rows }, (_, i) => i);
+  return (
+    <div
+      className="grid min-w-0 grid-cols-1 items-start gap-3.5 lg:grid-cols-[230px_minmax(0,1fr)]"
+      aria-busy="true"
+      aria-label={label}
+    >
+      <div className={cn(opsContentPanel, "flex flex-col gap-2.5 p-3")}>
+        {items.map((i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Skeleton className="size-5 shrink-0 rounded-md" />
+            <Skeleton className="h-3 flex-1" />
+          </div>
+        ))}
+      </div>
+      <div className="flex min-w-0 flex-col gap-3">
+        {items.map((i) => (
+          <div key={i} className={cn(opsContentPanel, "p-0")}>
+            <div className="flex items-center gap-2.5 px-4 py-3">
+              <Skeleton className="size-7 shrink-0 rounded-lg" />
+              <Skeleton className="h-4 w-48" />
+            </div>
+            {i === 0 ? (
+              <div className="border-t border-border px-4 pb-4">
+                <WorkSectionFieldsSkeleton label={label} />
+              </div>
+            ) : null}
+          </div>
+        ))}
       </div>
     </div>
   );

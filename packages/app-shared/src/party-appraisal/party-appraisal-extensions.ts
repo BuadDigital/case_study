@@ -48,6 +48,10 @@ export type PartyAppraisalExtensions = {
     onBack?: () => void;
     /** Same property chrome as the case-study specialist (hero; without the timeline column). */
     embeddedInPropertyChrome?: boolean;
+    /** The study's share of the appraiser's summary section (its outcome, remarks and links). */
+    studySummary?: ReactNode;
+    /** Page-level buttons of the hosting app, shown beside «تقرير التقييم» (the property's details). */
+    pageActions?: ReactNode;
   }) => ReactNode;
   isEvaluatorLocked: (taskId: string, saving: boolean) => boolean;
 };

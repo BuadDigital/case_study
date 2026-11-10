@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import type {
   EvaluatorReportChoices,
@@ -54,4 +55,18 @@ export type ValuationWorkShellProps = {
   onNavAvailabilityChange?: (nav: ValuationWorkNavAvailability) => void;
   onRetrospectiveDraftChange?: (draft: EvaluatorRetrospectiveDraft) => void;
   onSpecialistDraftChange?: (draft: EvaluatorSpecialistDraft) => void;
+  /**
+   * Sections layout (the appraiser's page): given every screen as its own node, returns the page.
+   * When set, the shell shows no screen itself — the page's sections frame does.
+   */
+  renderSections?: (parts: ValuationWorkScreenParts) => ReactNode;
+};
+
+/** What the shell hands the appraiser's page in the sections layout. */
+export type ValuationWorkScreenParts = {
+  /** The deed-match notice, the load error and the loading skeleton — shown above the sections. */
+  lead: ReactNode;
+  screens: Record<ValuationWorkScreenId, ReactNode>;
+  /** The screen the valuation stands at; null while loading or once the package is locked. */
+  current: ValuationWorkScreenId | null;
 };

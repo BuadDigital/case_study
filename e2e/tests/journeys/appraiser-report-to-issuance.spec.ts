@@ -19,8 +19,8 @@
  *             here: they need a complete valuation — see the unit / container
  *             tests and e2e/README.md.
  *
- * Note: the evaluator screen switches are `role="tab"` buttons inside
- * `aria-label="أقسام نافذة التقييم"` — not plain buttons.
+ * Note: since 2026-11-10 the evaluator screens are numbered sections with a rail
+ * (`navigation` named «أقسام التقييم»), not tabs — a rail row opens its section.
  */
 import { test, expect } from "@playwright/test";
 import { loginAs, RELEASE_USERS } from "../../fixtures/auth";
@@ -69,14 +69,12 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
       waitUntil: "commit",
     });
 
-    await expect(
-      page.getByText("أساليب وطرق التقييم المستخدمة").first(),
-    ).toBeVisible({ timeout: 120_000 });
-
-    const tabs = page.getByRole("tablist", { name: "أقسام نافذة التقييم" });
-    await expect(tabs.getByRole("tab", { name: "البيانات الأساسية" })).toBeVisible();
-    // The market/cost screens are gated on a saved settings draft.
-    await expect(tabs.getByRole("tab", { name: "طريقة المقارنة" })).toHaveCount(0);
+    const rail = page.getByRole("navigation", { name: "أقسام التقييم" });
+    await expect(rail.getByRole("button", { name: /أساليب وطرق التقييم/ })).toBeVisible({
+      timeout: 120_000,
+    });
+    // The market/cost sections are gated on a saved settings draft.
+    await expect(rail.getByRole("button", { name: /طريقة المقارنة/ })).toHaveCount(0);
 
     // Both approaches start unchecked on a fresh request — the first save is
     // refused client-side ("يلزم تفعيل أسلوب واحد على الأقل") until one is picked.
@@ -113,21 +111,21 @@ test.describe("Appraiser: valuation draft → specialist report panel", () => {
       timeout: 30_000,
     });
 
-    // Saving the draft is what unlocks the remaining valuation screens.
-    await expect(tabs.getByRole("tab", { name: "طريقة المقارنة" })).toBeVisible({
+    // Saving the draft is what unlocks the remaining valuation sections.
+    await expect(rail.getByRole("button", { name: /طريقة المقارنة/ })).toBeVisible({
       timeout: 60_000,
     });
-    await expect(tabs.getByRole("tab", { name: "طريقة المقاول" })).toBeVisible();
+    await expect(rail.getByRole("button", { name: /طريقة المقاول/ })).toBeVisible();
 
-    await tabs.getByRole("tab", { name: "رأي القيمة النهائي" }).click();
+    await rail.getByRole("button", { name: /رأي القيمة النهائي/ }).click();
     await expect(page.getByText("الرأي النهائي للقيمة").first()).toBeVisible({
       timeout: 60_000,
     });
 
     // Issuance no longer lives on this screen: the gates card moved off the
     // final-opinion screen and the cycle is part of «المراجعة النهائية».
-    await tabs.getByRole("tab", { name: "المراجعة النهائية" }).click();
-    // The tab's own hint («الافتراضات الخاصة وإرسال التقييم») is a hidden phone-only copy — match the card heading.
+    await rail.getByRole("button", { name: /المراجعة النهائية/ }).click();
+    // Match the card heading inside the section.
     await expect(page.getByRole("heading", { name: "الافتراضات الخاصة", exact: true })).toBeVisible({
       timeout: 60_000,
     });

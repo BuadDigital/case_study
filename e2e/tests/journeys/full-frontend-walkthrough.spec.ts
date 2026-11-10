@@ -464,11 +464,11 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
     await page.goto(`/property-appraisal/${parties.propertyAppraisal.id}`, {
       waitUntil: "commit",
     });
-    await expect(
-      page.getByText("أساليب وطرق التقييم المستخدمة").first(),
-    ).toBeVisible({ timeout: 120_000 });
-
-    const tabs = page.getByRole("tablist", { name: "أقسام نافذة التقييم" });
+    // Since 2026-11-10 the evaluator screens are numbered sections with a rail, not tabs.
+    const rail = page.getByRole("navigation", { name: "أقسام التقييم" });
+    await expect(rail.getByRole("button", { name: /أساليب وطرق التقييم/ })).toBeVisible({
+      timeout: 120_000,
+    });
     // Both approaches start unchecked on a fresh request — the first save is
     // refused client-side ("يلزم تفعيل أسلوب واحد على الأقل") until one is picked.
     // The settings fetch re-hydrates these toggles when it lands, discarding a
@@ -499,19 +499,26 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
       timeout: 30_000,
     });
 
-    for (const [tabName, slug] of [
+    for (const [sectionName, slug] of [
       ["طريقة المقارنة", "appraiser-market"],
       ["طريقة المقاول", "appraiser-cost"],
       ["رأي القيمة النهائي", "appraiser-final-opinion"],
       ["المراجعة النهائية", "appraiser-final-review"],
-      ["تقرير التقييم", "appraiser-report"],
     ] as const) {
-      const tab = tabs.getByRole("tab", { name: tabName });
-      await expect(tab).toBeVisible({ timeout: 60_000 });
-      await tab.click();
+      const row = rail.getByRole("button", { name: new RegExp(sectionName) });
+      await expect(row).toBeVisible({ timeout: 60_000 });
+      await row.click();
       await page.waitForTimeout(1_500);
       await shot(page, slug);
     }
+    // The report is read in a window.
+    await page
+      .getByTestId("evaluator-report-line")
+      .getByRole("button", { name: "تقرير التقييم" })
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible({ timeout: 60_000 });
+    await page.waitForTimeout(1_500);
+    await shot(page, "appraiser-report");
   });
 
   test("7 · specialist reads the property's valuation tab", async ({ page }) => {

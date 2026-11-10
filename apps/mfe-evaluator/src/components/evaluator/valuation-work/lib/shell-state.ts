@@ -120,7 +120,7 @@ export function buildNavItems({
   adoptedMarketCount: number;
 }): ValuationWorkNavItem[] {
   return [
-    { id: "basic", label: "البيانات الأساسية", show: true },
+    { id: "basic", label: "أساليب وطرق التقييم", show: true },
     {
       id: "market",
       label: "طريقة المقارنة",
@@ -140,6 +140,29 @@ export function resolveEffectiveScreen(
 ): ValuationWorkScreenId {
   const visible = navItems.filter((n) => n.show).map((n) => n.id);
   return visible.includes(screen) ? screen : (visible[0] ?? "basic");
+}
+
+/**
+ * The screen the valuation stands at — the «current step» on the appraiser's page.
+ *
+ * How it works: the approaches until «بدء التقييم» saved them; then each enabled approach's screen
+ * in order until it has a result (market: an adopted comparable and a value; cost: lines, and the
+ * land estimate unless the scope is the buildings alone); then the final opinion until it has a
+ * value; then the review.
+ * Edge cases: an approach that is off is skipped; both off (not savable) falls to the final opinion.
+ */
+export function currentWorkScreen(input: {
+  settingsSaved: boolean;
+  marketEnabled: boolean;
+  marketDone: boolean;
+  costEnabled: boolean;
+  costDone: boolean;
+  finalDone: boolean;
+}): ValuationWorkScreenId {
+  if (!input.settingsSaved) return "basic";
+  if (input.marketEnabled && !input.marketDone) return "market";
+  if (input.costEnabled && !input.costDone) return "cost";
+  return input.finalDone ? "review" : "final";
 }
 
 /** A fresh adjustment line at 0% — restored sequential items and added factors share it. */

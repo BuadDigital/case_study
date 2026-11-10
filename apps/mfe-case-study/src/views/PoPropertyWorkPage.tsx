@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Note, PageShell } from "@platform/ui-kit";
+import { Button, Note, PageShell, WorkSectionsLayout, useWorkSections } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { CASE_STUDY_WORKSPACE_OPEN_APPRAISAL_EVENT } from "@platform/app-shared/events/app-events";
 import {
@@ -55,7 +55,6 @@ import { useTransactionQuery } from "../query/use-transaction-query";
 import { PoPropertyRouteGate } from "./PoPropertyRouteGate";
 import { CoordinationIntakeBanner, IntakeScope } from "./CoordinationIntake";
 import { useCoordinationSections, useSurveyTask } from "./useCoordinationSections";
-import { WorkSectionsLayout, useWorkSections } from "./WorkSectionsFrame";
 import { WorkPhotosSection } from "./WorkPhotosSection";
 import { WorkUploadSection } from "./WorkUploadSection";
 

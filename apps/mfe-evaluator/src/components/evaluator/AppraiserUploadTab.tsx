@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { PanelSkeleton } from "@platform/ui-kit";
 import type { PartyTaskPageDef } from "@platform/app-shared/app-data/party-task-pages";
@@ -32,6 +32,8 @@ export function AppraiserUploadTab({
   deedLabel,
   onBack,
   embeddedInPropertyChrome,
+  studySummary,
+  pageActions,
 }: {
   def: PartyTaskPageDef;
   childTask: WorkflowTask;
@@ -40,6 +42,10 @@ export function AppraiserUploadTab({
   deedLabel?: string;
   onBack?: () => void;
   embeddedInPropertyChrome?: boolean;
+  /** The study's share of the summary section — passed through to the window. */
+  studySummary?: ReactNode;
+  /** The hosting app's page buttons — passed through to the window. */
+  pageActions?: ReactNode;
 }) {
   const router = useRouter();
   const { data: tasks } = useWorkflowTasksQuery();
@@ -64,6 +70,8 @@ export function AppraiserUploadTab({
       deedLabel={deedLabel}
       onBack={onBack}
       embeddedInPropertyChrome={embeddedInPropertyChrome}
+      studySummary={studySummary}
+      pageActions={pageActions}
     />
   );
 }
