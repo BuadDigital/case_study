@@ -23,7 +23,7 @@ export type SpecialistAnswersMap = Record<string, CaseStudyReportAnswer | null>;
  * The study's deed questions the bourse inquiry already answered.
  *
  * How it works: «هل الصك فعال» (deed_0) from the recorded deed status, «هل الصك مشاع» (deed_9)
- * from the ownership type the server derives from the owners count, «هل العقار موقوف» (deed_6)
+ * from the ownership type (the staff's «مشاع» tick since 2026-11-10), «هل العقار موقوف» (deed_6)
  * from the restrictions answer (موقوف ticked → yes; restrictions answered without it → no).
  *
  * Edge cases: an unrecorded value gives no answer. Added 2026-10-28 — the study asked these with

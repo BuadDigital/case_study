@@ -134,7 +134,7 @@ export function PoPropertyEnfathForm({
 
       {view.showExtended ? (
       <div id="po_contacts_section" className="mt-5">
-        <InfathSection title={contactsSectionTitle(view.contactsRequired)}>
+        <InfathSection title={contactsSectionTitle(view.contactsRequired)} hideTitle>
         {fieldErrors._contacts ? (
           <Note tone="warn" className="mb-3">
             {fieldErrors._contacts}

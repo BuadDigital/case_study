@@ -13,6 +13,7 @@ import {
   cn,
   formControlClassName,
   formControlErrorClassName,
+  ICON_PATHS,
   useWorkDensity,
   WORK_FORM_GRID_CLASS,
 } from "@platform/ui-kit";
@@ -169,11 +170,9 @@ export function PoContactEditor({
 
   return (
     <div className="flex flex-col gap-3">
+      {/* Omar 2026-11-10: no box around a contact — a line only between two contacts — and a bare «+». */}
       {contacts.map((c, i) => (
-        <div
-          key={i}
-          className="rounded-[var(--radius-DEFAULT)] border border-border bg-surface p-3"
-        >
+        <div key={i} className={cn(i > 0 && "border-t border-border pt-3")}>
           <div className="mb-2.5 flex items-center justify-between text-xs font-semibold text-text-2">
             <span>ضابط اتصال {contacts.length > 1 ? i + 1 : ""}</span>
             {contacts.length > 1 ? (
@@ -187,7 +186,10 @@ export function PoContactEditor({
               </Button>
             ) : null}
           </div>
-          <div className={work ? WORK_FORM_GRID_CLASS : "grid grid-cols-1 gap-3 sm:grid-cols-2"}>
+          {/* The «+» sits beside the last contact's fields; the other rows keep an empty slot of the
+              same width so the columns line up. */}
+          <div className="flex items-start gap-2">
+          <div className={cn("min-w-0 flex-1", work ? WORK_FORM_GRID_CLASS : "grid grid-cols-1 gap-3 sm:grid-cols-2")}>
             <RegField
               id={`po_contact_name_${i}`}
               label="الاسم"
@@ -222,11 +224,39 @@ export function PoContactEditor({
               onChange={(v) => patch(i, "phone", v)}
             />
           </div>
+          {/* Omar 2026-11-10: the «+» is an input's size (38px, the field radius) and sits under an
+              invisible copy of the field label, so it lines up with the boxes at either density. */}
+          <div className="flex shrink-0 flex-col">
+            <Label
+              aria-hidden
+              className={cn(
+                "invisible select-none",
+                work ? "mb-1 text-[11px] font-semibold" : "mb-1.5 text-[12px] font-semibold",
+              )}
+            >
+              +
+            </Label>
+            {i === contacts.length - 1 ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="default"
+                className="!h-[38px] !w-[38px] !rounded-[9px]"
+                title="إضافة ضابط اتصال"
+                aria-label="إضافة ضابط اتصال"
+                onClick={addContact}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" aria-hidden>
+                  <path d={ICON_PATHS.plus} />
+                </svg>
+              </Button>
+            ) : (
+              <span className="w-[38px]" aria-hidden />
+            )}
+          </div>
+          </div>
         </div>
       ))}
-      <Button type="button" size="sm" onClick={addContact}>
-        + إضافة ضابط اتصال
-      </Button>
     </div>
   );
 }

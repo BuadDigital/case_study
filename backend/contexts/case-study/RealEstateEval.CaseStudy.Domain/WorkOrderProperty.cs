@@ -55,8 +55,13 @@ public class WorkOrderProperty : ITrackUpdatedAt
  /// <summary>Real-estate registration date — registered-title path (yyyy-MM-dd).</summary>
     public string? RealEstateRegDate { get; set; }
     public string? OwnerName { get; set; }
- /// <summary>JSON array of {name} — the owners from the deed transcription (their count decides the ownership type).</summary>
+ /// <summary>JSON array of {name} — the owners from the deed transcription.</summary>
     public string? DeedOwnersJson { get; set; }
+ /// <summary>
+ /// «مشاع» — ticked by the staff on the initial data (Omar 2026-11-10: the staff know whether a deed is
+ /// shared; the owners count no longer decides it). Unticked = «ملكية تامة».
+ /// </summary>
+    public bool IsSharedOwnership { get; set; }
  /// <summary>yes / no — property restrictions (bourse stage).</summary>
     public string? RestrictionsPresent { get; set; }
  /// <summary>mortgaged / seized / suspended / other — comma-separated when multiple.</summary>

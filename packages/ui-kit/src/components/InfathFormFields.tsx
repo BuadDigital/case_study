@@ -200,6 +200,9 @@ export function InfathTextAreaField({
 
 export type InfathSectionProps = {
   title: string;
+  /** Keep the title for screen readers only — the fields speak for themselves (Omar 2026-11-10, the
+   *  initial-data form). @default false */
+  hideTitle?: boolean;
   children: ReactNode;
   className?: string;
 };
@@ -207,6 +210,7 @@ export type InfathSectionProps = {
 /** Titled group wrapper for a cluster of `InfathTextField`/`InfathSelectField`/`InfathTextAreaField`. */
 export function InfathSection({
   title,
+  hideTitle = false,
   children,
   className,
 }: InfathSectionProps) {
@@ -217,7 +221,7 @@ export function InfathSection({
         className={cn(
           "m-0 text-[13px] font-bold text-heading",
           // In a flowing grid the title would break the row — keep it for screen readers only.
-          flows ? "sr-only" : "mb-3",
+          flows || hideTitle ? "sr-only" : "mb-3",
         )}
       >
         {title}

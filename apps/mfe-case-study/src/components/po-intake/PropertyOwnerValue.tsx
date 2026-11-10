@@ -8,26 +8,30 @@ import {
 } from "@platform/app-shared/app-data/po-intake-property-model";
 
 /**
- * «اسم المالك» in the property header: one owner by name; several as «مشاع» with an ⓘ that lists them
- * (a long list used to run off the header).
+ * «اسم المالك» in the property header: «مشاع» when the staff ticked it, else the owner's name; an ⓘ
+ * lists the names when there are several (a long list used to run off the header).
  *
- * How it works: the count from `propertyOwnerNames` decides, the same rule as the ownership type —
- * there is no manual choice. Edge cases: no owner renders nothing, so the caller hides the cell.
+ * How it works: the «مشاع» tick decides (Omar 2026-11-10 — the owners count no longer does); a deed
+ * not ticked with several names shows their count with the same ⓘ.
+ * Edge cases: no owner and no tick renders nothing, so the caller hides the cell; a ticked deed with
+ * no names yet shows «مشاع» alone.
  */
 export function PropertyOwnerValue({
   property,
 }: {
-  property: Pick<PoPropertyIntake, "ownerName" | "ownersJson">;
+  property: Pick<PoPropertyIntake, "ownerName" | "isSharedOwnership">;
 }) {
   const [open, setOpen] = useState(false);
   const names = propertyOwnerNames(property);
-  if (names.length === 0) return null;
-  if (names.length === 1) return <>{names[0]}</>;
+  const shared = property.isSharedOwnership === true;
+  if (!shared && names.length === 0) return null;
+  if (!shared && names.length === 1) return <>{names[0]}</>;
+  if (names.length === 0) return <>مشاع</>;
 
   return (
     <>
       <span className="inline-flex items-center gap-1">
-        مشاع
+        {shared ? "مشاع" : `${names.length} ملاك`}
         <button
           type="button"
           aria-label="أسماء الملاك"

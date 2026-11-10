@@ -93,6 +93,7 @@ export function dtoToProperty(
     deedKind: dto.deedKind ?? "",
     suggestedDeedKind: dto.suggestedDeedKind ?? "",
     ownersJson: dto.owners?.length ? JSON.stringify(dto.owners) : "",
+    isSharedOwnership: dto.isSharedOwnership === true,
     ownershipType: dto.ownershipType ?? "",
     restrictionsPresent: dto.restrictionsPresent ?? "",
     restrictionType: dto.restrictionType ?? "",
@@ -230,6 +231,7 @@ export function propertyToEnfathDto(
       ) || undefined,
     realEstateRegDate: prop.realEstateRegDate.trim() || undefined,
     ownerName: prop.ownerName || undefined,
+    isSharedOwnership: prop.isSharedOwnership === true,
     deedKind: prop.deedKind || undefined,
     city: prop.city.trim() || undefined,
     region: prop.region.trim() || undefined,
@@ -268,11 +270,16 @@ export function propertyToEnfathDto(
   };
 }
 
-/** Owners, restrictions and the four boundaries — sent the same way by the
- *  full-property payload and the bourse save. */
-function ownersRestrictionsBoundaries(prop: PoPropertyIntake) {
+/**
+ * Restrictions and the four boundaries — sent the same way by the full-property payload and the
+ * bourse save.
+ *
+ * Edge cases and what was fixed: the owners list is no longer sent (Omar 2026-11-10 removed «الملاك —
+ * تفريغ الصك»): «اسم المالك» in the initial data is the one owner field, and a list sent here used
+ * to overwrite it with the joined names.
+ */
+function restrictionsBoundaries(prop: PoPropertyIntake) {
   return {
-    owners: parseOwnersDraft(prop.ownersJson),
     restrictionsPresent: prop.restrictionsPresent || undefined,
     restrictionType: prop.restrictionType || undefined,
     restrictionOtherReason: prop.restrictionOtherReason || undefined,
@@ -309,7 +316,7 @@ function ownersRestrictionsBoundaries(prop: PoPropertyIntake) {
 export function propertyToDto(prop: PoPropertyIntake): WorkOrderPropertyDto {
   return {
     ...propertyToEnfathDto(prop),
-    ...ownersRestrictionsBoundaries(prop),
+    ...restrictionsBoundaries(prop),
     planNumber: prop.planNumber || undefined,
     planName: prop.planName || undefined,
     plotNumber: prop.plotNumber || undefined,
@@ -341,27 +348,8 @@ export function propertyToBourseRequest(
     area: prop.area || undefined,
     deedStatus: prop.deedStatus || undefined,
     bourseDeedImageFileName: prop.bourseDeedImageFileName || undefined,
-    ...ownersRestrictionsBoundaries(prop),
+    ...restrictionsBoundaries(prop),
   };
-}
-
-
-/** parse the flat-draft owners JSON into API rows (invalid JSON → undefined). */
-export function parseOwnersDraft(
-  ownersJson: string,
-): { name: string }[] | undefined {
-  const raw = ownersJson.trim();
-  if (!raw) return undefined;
-  try {
-    const parsed = JSON.parse(raw) as { name?: string }[];
-    if (!Array.isArray(parsed)) return undefined;
-    const rows = parsed
-      .map((o) => ({ name: String(o?.name ?? "").trim() }))
-      .filter((o) => o.name !== "");
-    return rows.length > 0 ? rows : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export function isGuidPropertyId(value: string | undefined | null): value is string {

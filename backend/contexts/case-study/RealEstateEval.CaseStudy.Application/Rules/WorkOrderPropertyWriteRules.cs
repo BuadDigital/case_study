@@ -272,6 +272,8 @@ public static class WorkOrderPropertyWriteRules
         entity.RealEstateRegNumber = dto.RealEstateRegNumber?.Trim();
         entity.RealEstateRegDate = dto.RealEstateRegDate?.Trim();
         entity.OwnerName = dto.OwnerName?.Trim();
+        // The «مشاع» tick beside the owner name; a client that does not send it keeps the stored one.
+        if (dto.IsSharedOwnership is bool isShared) entity.IsSharedOwnership = isShared;
         entity.AssignmentDocFileName = PropertyFileNameList.Serialize(dto.AssignmentDocFileNames);
         entity.DelegationLetterFileName = PropertyFileNameList.Serialize(dto.DelegationLetterFileNames);
         entity.OtherDocumentFileNames = PropertyFileNameList.Serialize(dto.OtherDocumentFileNames);
@@ -385,11 +387,6 @@ public static class WorkOrderPropertyWriteRules
         dto.WestBoundaryLengthM = Keep(dto.WestBoundaryLengthM, entity.WestBoundaryLengthM);
         dto.WestBoundaryType = Keep(dto.WestBoundaryType, entity.WestBoundaryType);
         dto.WestFacadeFinishing = Keep(dto.WestFacadeFinishing, entity.WestFacadeFinishing);
-        // No named owner in the draft → the stored owners stay.
-        if (dto.Owners is null || dto.Owners.All(o => string.IsNullOrWhiteSpace(o.Name)))
-            dto.Owners = OwnershipTypeRules.ParseOwners(entity.DeedOwnersJson)
-                .Select(o => new DeedOwnerDto { Name = o.Name })
-                .ToList();
     }
 
     /// <summary>
@@ -404,10 +401,13 @@ public static class WorkOrderPropertyWriteRules
 
     /// <summary>
     /// The transcribed owners, blank names dropped; every named owner becomes the owner name,
-    /// joined with «، ». Null leaves the stored owners as they are.
+    /// joined with «، ». No named owner leaves the stored owners and the owner name as they are.
     ///
     /// Edge cases: fixed 2026-10-28 — only the first owner was kept, so a مشاع deed's report and
-    /// Enfaz package named one of its co-owners.
+    /// Enfaz package named one of its co-owners. 2026-11-10: the screens no longer send a list (Omar
+    /// removed «الملاك — تفريغ الصك»; «اسم المالك» is the owner field), so an empty list must not wipe
+    /// or rewrite anything — the autosave used to refill it from the stored list and overwrite the
+    /// owner name typed in the initial data.
     /// </summary>
     private static void ApplyOwners(WorkOrderProperty entity, IEnumerable<DeedOwnerDto>? owners)
     {
@@ -417,9 +417,9 @@ public static class WorkOrderPropertyWriteRules
             .Select(o => new DeedOwner(o.Name?.Trim() ?? ""))
             .Where(o => !string.IsNullOrWhiteSpace(o.Name))
             .ToList();
+        if (named.Count == 0) return;
         entity.DeedOwnersJson = OwnershipTypeRules.SerializeOwners(named);
-        if (named.Count > 0)
-            entity.OwnerName = string.Join("، ", named.Select(o => o.Name));
+        entity.OwnerName = string.Join("، ", named.Select(o => o.Name));
     }
 
     /// <summary>

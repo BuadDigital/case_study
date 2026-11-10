@@ -252,6 +252,7 @@ public sealed class CaseStudyLookup(CaseStudyDbContext caseStudy) : ICaseStudyLo
             DeedDate = property.DeedDate,
             OwnerName = property.OwnerName,
             DeedOwnersJson = property.DeedOwnersJson,
+            IsSharedOwnership = property.IsSharedOwnership,
             RestrictionsPresent = property.RestrictionsPresent,
             RestrictionType = property.RestrictionType,
             RestrictionOtherReason = property.RestrictionOtherReason,

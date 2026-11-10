@@ -6,7 +6,7 @@ namespace RealEstateEval.CaseStudy.Domain;
 /// <summary>One deed owner from the structured transcription (the owners list).</summary>
 public sealed record DeedOwner(string Name);
 
-/// <summary>Ownership Type values — who owns the property: one owner (absolute) or several (shared).</summary>
+/// <summary>Ownership Type values — «ملكية تامة» (absolute) or «مشاع» (shared).</summary>
 public static class OwnershipTypes
 {
     public const string Absolute = "absolute";
@@ -25,19 +25,24 @@ public static class OwnershipTypes
 }
 
 /// <summary>
-/// Ownership Type is derived from the owners list alone (supersedes the
-/// earlier four-value rule): one owner → absolute, more than one owner → shared. A mortgage is a
-/// restriction on the deed (see RestrictionType), not an ownership type; shares are not modelled.
+/// The ownership type and the stored owners list.
 /// </summary>
+/// <remarks>
+/// How it works: the type is the staff's «مشاع» tick on the property (<see cref="WorkOrderProperty.IsSharedOwnership"/>)
+/// — ticked → shared, else absolute. A mortgage is a restriction on the deed (RestrictionType), not an
+/// ownership type; shares are not modelled.
+/// Edge cases and what was fixed: until 2026-11-10 the type was derived from the owners count (several
+/// owners → shared); Omar ruled the staff decide it, since a deed with several owners is not always
+/// shared and they know which. Migration <c>SharedOwnershipFlag</c> ticked the deeds the old rule called
+/// shared, so nothing changed for them.
+/// </remarks>
 public static class OwnershipTypeRules
 {
     private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.Web;
 
-    /// <summary>More than one named owner → shared; otherwise absolute (no owners yet counts as absolute).</summary>
-    public static string FromOwners(IReadOnlyList<DeedOwner> owners) =>
-        owners.Count(o => !string.IsNullOrWhiteSpace(o.Name)) > 1
-            ? OwnershipTypes.Shared
-            : OwnershipTypes.Absolute;
+    /// <summary>The «مشاع» tick → shared; otherwise absolute.</summary>
+    public static string FromSharedFlag(bool isShared) =>
+        isShared ? OwnershipTypes.Shared : OwnershipTypes.Absolute;
 
     /// <summary>Reads the stored owners JSON; a legacy <c>sharePct</c> key is ignored.</summary>
     public static IReadOnlyList<DeedOwner> ParseOwners(string? json)

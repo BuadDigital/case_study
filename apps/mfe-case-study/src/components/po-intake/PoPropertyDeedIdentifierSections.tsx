@@ -111,10 +111,9 @@ export function PoPropertyEnfathDeedSections({
 }) {
   return (
     <FormFlowGrid>
-    <InfathSection title="معرّف العقار">
-      <p className="col-span-full mb-2.5 mt-0 text-[11.5px] leading-relaxed text-text-3">
-        أدخل رقم الصك أو رقم التسجيل العيني — أحدهما إلزامي.
-      </p>
+    {/* Omar 2026-11-10: the group titles and the identifier hint are gone from the form — the field
+        labels say enough; the titles stay for screen readers. */}
+    <InfathSection title="معرّف العقار" hideTitle>
       <FormRow>
       <RegField
         id="deed_number"
@@ -155,7 +154,7 @@ export function PoPropertyEnfathDeedSections({
       </FormRow>
     </InfathSection>
 
-    <InfathSection title="التكليف">
+    <InfathSection title="التكليف" hideTitle>
       <FormRow>
       <RegField
         id="assignment_mandate_number"
@@ -187,7 +186,7 @@ export function PoPropertyEnfathDeedSections({
       </FormRow>
     </InfathSection>
 
-    <InfathSection title="بيانات المخطط والموقع">
+    <InfathSection title="بيانات المخطط والموقع" hideTitle>
       <FormRow>
         <RegField
           id="plan_number"
@@ -248,17 +247,34 @@ export function PoPropertyEnfathDeedSections({
     </InfathSection>
 
     {fieldPolicy.requiresOwnerName || showCourt ? (
-    <InfathSection title="المالك والمحكمة">
+    <InfathSection title="المالك والمحكمة" hideTitle>
       <FormRow>
       {fieldPolicy.requiresOwnerName ? (
-        <RegField
-          id="owner_name"
-          label="اسم المالك"
-          required
-          value={property.ownerName}
-          error={fieldErrors.ownerName}
-          onChange={(v) => onPatch("ownerName", v)}
-        />
+        <div className="min-w-0">
+          <RegField
+            id="owner_name"
+            label="اسم المالك"
+            required
+            value={property.ownerName}
+            error={fieldErrors.ownerName}
+            onChange={(v) => onPatch("ownerName", v)}
+          />
+          {/* Omar 2026-11-10: the staff know whether the deed is shared — one tick decides «مشاع»;
+              the owners count no longer does. */}
+          <label
+            htmlFor="is_shared_ownership"
+            className="mt-1.5 flex w-fit cursor-pointer items-center gap-1.5 text-[11.5px] font-semibold text-text-2"
+          >
+            <input
+              id="is_shared_ownership"
+              type="checkbox"
+              className="size-3.5 accent-[var(--color-primary)]"
+              checked={property.isSharedOwnership === true}
+              onChange={(e) => onPatch("isSharedOwnership", e.target.checked)}
+            />
+            مشاع
+          </label>
+        </div>
       ) : null}
       {showCourt ? (
         <CourtCircuitSelects

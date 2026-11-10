@@ -1351,6 +1351,11 @@ namespace RealEstateEval.CaseStudy.Infrastructure.Data.Contexts.CaseStudy.Migrat
                     b.Property<bool>("IsRemoved")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("IsSharedOwnership")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("LocationMapUrl")
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");

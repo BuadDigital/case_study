@@ -41,7 +41,7 @@ public static class WorkOrderMapper
     public static WorkOrderPropertyDto ToPropertyDto(WorkOrderProperty p)
     {
         var owners = OwnershipTypeRules.ParseOwners(p.DeedOwnersJson);
-        var ownershipType = OwnershipTypeRules.FromOwners(owners);
+        var ownershipType = OwnershipTypeRules.FromSharedFlag(p.IsSharedOwnership);
 
         return new WorkOrderPropertyDto
         {
@@ -70,6 +70,7 @@ public static class WorkOrderMapper
             Owners = owners
                 .Select(o => new DeedOwnerDto { Name = o.Name })
                 .ToList(),
+            IsSharedOwnership = p.IsSharedOwnership,
             OwnershipType = ownershipType,
             OwnershipTypeLabelAr = OwnershipTypes.LabelAr(ownershipType),
             RestrictionsPresent = p.RestrictionsPresent,

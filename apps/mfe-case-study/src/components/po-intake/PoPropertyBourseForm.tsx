@@ -29,7 +29,6 @@ import {
   propertyTypesForClassification,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { PoPropertyBoundariesEntrySection } from "./PoPropertyBoundariesEntrySection";
-import { PoPropertyOwnersSection } from "./PoPropertyOwnersSection";
 import { PropertyFileUploadField } from "./PropertyFileUploadField";
 import { usePropertyDocUpload } from "./use-property-doc-upload";
 import { RegionCitySelects } from "./RegionCitySelects";
@@ -151,7 +150,7 @@ export function PoPropertyBourseForm({
         </Note>
       ) : null}
 
-      <InfathSection title="الموقع والمساحة" className="mt-3">
+      <InfathSection title="الموقع والمساحة" hideTitle className="mt-3">
         <FormRow>
           <RegionCitySelects
             property={property}
@@ -216,7 +215,9 @@ export function PoPropertyBourseForm({
 
       {!compactRegisteredTitle ? (
         <>
-          <InfathSection title="صورة الصك" className="mt-3">
+          {/* Omar 2026-11-10: the deed image, «هل توجد قيود؟» and «نوع القيد» side by side on one row. */}
+          <div className="mt-3 grid grid-cols-1 items-start gap-3 lg:grid-cols-3">
+          <InfathSection title="صورة الصك" hideTitle>
           <PropertyFileUploadField
             id={`bourse_deed_image_${property.id}`}
             label={<>صورة الصك من البورصة *</>}
@@ -248,11 +249,11 @@ export function PoPropertyBourseForm({
           />
           </InfathSection>
 
-          <InfathSection title="القيود على العقار" className="mt-3">
+          <InfathSection title="القيود على العقار" hideTitle className="contents">
           <div
             id="restrictions_present"
             className={cn(
-              "w-full rounded-lg p-1",
+              "w-full min-w-0 rounded-lg p-1",
               fieldErrors.restrictionsPresent &&
                 "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
             )}
@@ -283,11 +284,12 @@ export function PoPropertyBourseForm({
                 {fieldErrors.restrictionsPresent}
               </p>
             ) : null}
+          </div>
             {property.restrictionsPresent === "yes" ? (
               <div
                 id="restriction_type"
                 className={cn(
-                  "mt-3 space-y-3 rounded-lg p-1",
+                  "min-w-0 space-y-3 rounded-lg p-1",
                   fieldErrors.restrictionType &&
                     "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
                 )}
@@ -346,12 +348,11 @@ export function PoPropertyBourseForm({
                 ) : null}
               </div>
             ) : null}
-          </div>
           </InfathSection>
+          </div>
 
-          <PoPropertyOwnersSection property={property} onPatch={onPatch} />
 
-          <InfathSection title="توفر الحدود" className="mt-3">
+          <InfathSection title="توفر الحدود" hideTitle className="mt-3">
           <div
             id="boundaries_availability"
             className={cn(

@@ -54,7 +54,9 @@ export type WorkOrderPropertyDto = {
   suggestedDeedKind?: string;
  /** The deed owners (names). */
   owners?: DeedOwnerDto[];
-  /** Derived by the server from the owners count: absolute (one owner) | shared (several). */
+  /** The staff's «مشاع» tick (Omar 2026-11-10); omitted on write = keep the stored one. */
+  isSharedOwnership?: boolean;
+  /** From the «مشاع» tick: shared when ticked, absolute otherwise (read only). */
   ownershipType?: string;
   ownershipTypeLabelAr?: string;
   restrictionsPresent?: string;

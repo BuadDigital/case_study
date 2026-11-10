@@ -4,6 +4,7 @@ import {
   type InspectorBoundaryKey,
   type InspectorWorkspaceDraft,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 
 export type DeedNatureMatchProposal = {
   /** Only the field inspector proposes; the prior survey / engineering office are info lines. */
@@ -46,6 +47,64 @@ export function inspectorBoundariesIndicateMismatch(
     if (row.matches === false) return true;
   }
   return false;
+}
+
+/** One side of the deed as the specialist compares it: what the deed says, and what the inspector found. */
+export type DeedMatchSideRow = {
+  side: InspectorBoundaryKey;
+  label: string;
+  /** The boundary as written in the deed («—» when unknown). */
+  deedDesc: string;
+  /** The deed's length for this side, «12 م» or «—». */
+  deedLength: string;
+  /** The inspector's finding on site: true مطابق، false غير مطابق، null not answered. */
+  matches: boolean | null;
+  /** The inspector's note on a non-matching side. */
+  note: string;
+};
+
+type DeedSideField =
+  | "northBoundary" | "northBoundaryLengthM"
+  | "southBoundary" | "southBoundaryLengthM"
+  | "eastBoundary" | "eastBoundaryLengthM"
+  | "westBoundary" | "westBoundaryLengthM";
+
+const PROPERTY_SIDE_FIELDS: Record<InspectorBoundaryKey, { desc: DeedSideField; len: DeedSideField }> = {
+  north: { desc: "northBoundary", len: "northBoundaryLengthM" },
+  south: { desc: "southBoundary", len: "southBoundaryLengthM" },
+  east: { desc: "eastBoundary", len: "eastBoundaryLengthM" },
+  west: { desc: "westBoundary", len: "westBoundaryLengthM" },
+};
+
+/**
+ * The four sides for the «مطابقة الصك على الطبيعة» card (Omar 2026-11-10: «how do they know?» — the
+ * specialist sees on the card what each side of the deed says and what the inspector found there).
+ *
+ * How it works: the deed side is the inspector's own transcription when he wrote one, else the
+ * property's (the same rule as the inspector's table, `resolvedBoundaryDeedField`); the finding and
+ * note are the inspector's per-side answers.
+ * Edge cases: no inspection yet → an empty list (the card shows no table); a side with nothing in the
+ * deed and no answer still shows, with «—», so a missing side is visible.
+ */
+export function deedMatchSideRows(
+  inspector: Pick<InspectorWorkspaceDraft, "boundaryMatches"> | null | undefined,
+  property: Pick<PoPropertyIntake, DeedSideField>,
+): DeedMatchSideRow[] {
+  if (!inspector) return [];
+  return SIDE_ORDER.map((side) => {
+    const row = inspector.boundaryMatches?.[side];
+    const fields = PROPERTY_SIDE_FIELDS[side];
+    const desc = row?.deedDesc?.trim() || (property[fields.desc] ?? "").trim();
+    const length = row?.deedLength?.trim() || (property[fields.len] ?? "").trim();
+    return {
+      side,
+      label: SIDE_LABELS[side],
+      deedDesc: desc || "—",
+      deedLength: length ? `${length} م` : "—",
+      matches: row?.matches ?? null,
+      note: row?.matches === false ? (row.mismatchNote ?? "").trim() : "",
+    };
+  });
 }
 
 /** «الحد الشمالي: …» per non-matching side with a note, one per line. */
