@@ -385,17 +385,16 @@ public class ValuationFinalReportTests
         var clock = new FixedClock(new DateTimeOffset(2026, 10, 5, 9, 0, 0, TimeSpan.Zero));
         var lookup = new CaseStudyLookup(contexts.CaseStudy);
         var events = new ValuationOutboxPublisher(contexts.Valuation, NullLogger<ValuationOutboxPublisher>.Instance);
-        var files = new FakeFileStore();
+        var files = new FakeAttachmentFileStore();
         var issuance = new ValuationReportIssuanceService(
             contexts.Valuation,
             new StubGates(),
-            new StubDocuments(),
+            files,
             time: clock,
             audit: new AuditLogWriter(),
             auditLog: new RecordingAuditLogAppend(),
             events: events,
-            caseStudy: lookup,
-            files: files);
+            caseStudy: lookup);
         var renderer = new FakeRenderer();
         var merger = new FakeMerger();
         var finalReports = new ValuationFinalReportService(contexts.Valuation, renderer, merger, files, clock);
@@ -415,7 +414,7 @@ public class ValuationFinalReportTests
         Guid propertyId,
         ValuationReportDraftService service,
         ValuationFinalReportService finalReports,
-        FakeFileStore files,
+        FakeAttachmentFileStore files,
         FakeRenderer renderer,
         FakeMerger merger) : IAsyncDisposable
     {
@@ -424,40 +423,10 @@ public class ValuationFinalReportTests
         public Guid PropertyId { get; } = propertyId;
         public ValuationReportDraftService Service { get; } = service;
         public ValuationFinalReportService FinalReports { get; } = finalReports;
-        public FakeFileStore Files { get; } = files;
+        public FakeAttachmentFileStore Files { get; } = files;
         public FakeRenderer Renderer { get; } = renderer;
         public FakeMerger Merger { get; } = merger;
         public ValueTask DisposeAsync() => Contexts.DisposeAsync();
-    }
-
-    private sealed record StoredFile(Guid Id, string Scope, string ScopeKey, string FileName, byte[] Content);
-
-    private sealed class FakeFileStore : IAttachmentFileStore
-    {
-        public List<StoredFile> Stored { get; } = [];
-        public List<Guid> Deleted { get; } = [];
-        public string? FailWith { get; set; }
-        public Action<string>? OnStore { get; set; }
-
-        public Task<(Guid? Id, string? Error)> StoreAsync(
-            string scope, string scopeKey, string fileName, string contentType, byte[] content,
-            CancellationToken cancellationToken = default)
-        {
-            if (FailWith is not null) return Task.FromResult<(Guid?, string?)>((null, FailWith));
-            var id = Guid.NewGuid();
-            Stored.Add(new StoredFile(id, scope, scopeKey, fileName, content));
-            OnStore?.Invoke(scope);
-            return Task.FromResult<(Guid?, string?)>((id, null));
-        }
-
-        public Task<byte[]?> ReadAsync(Guid id, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Stored.FirstOrDefault(f => f.Id == id && !Deleted.Contains(id))?.Content);
-
-        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
-        {
-            Deleted.Add(id);
-            return Task.CompletedTask;
-        }
     }
 
     private sealed class FakeRenderer : IHtmlPdfRenderer
@@ -495,20 +464,6 @@ public class ValuationFinalReportTests
             Task.FromResult<ValuationIssuanceGatesDto?>(new ValuationIssuanceGatesDto
             {
                 ValuationRequestId = valuationRequestId, AllowsIssuance = true, BlockingReasonsAr = [],
-            });
-    }
-
-    private sealed class StubDocuments : IValuationReportDocumentService
-    {
-        public Task<ValuationReportDocumentDto?> GetPreviewAsync(
-            Guid valuationRequestId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ValuationReportDocumentDto?>(new ValuationReportDocumentDto
-            {
-                ValuationRequestId = valuationRequestId,
-                DisplayId = "VR-TEST",
-                ReportDateDisplay = "2026/10/05",
-                FinalOpinionDisplay = "1,000,000 ريال",
-                Sections = [],
             });
     }
 }

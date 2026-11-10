@@ -91,7 +91,7 @@ public sealed class PriorValuationBankFeeder(
         }
 
         var market = await selections.ListAsync(valuationRequestId, cancellationToken);
-        var finalValue = recon?.FinalOpinionValue ?? 0m;
+        var finalValue = PriorValuationBankRules.BankValue(recon);
         var propertyType = string.IsNullOrWhiteSpace(facts.EffectivePropertyType())
             ? vr.PropertyType ?? ""
             : facts.EffectivePropertyType();
@@ -259,6 +259,24 @@ public static class PriorValuationBankRules
         && CostScopeKeys.Normalize(costScopeKey) is CostScopeKeys.LandAndBuilding or CostScopeKeys.LandOnly
         && (costScopeKey ?? "").Trim().Length > 0
         && ValuationDateModes.Normalize(valuationDateMode) != ValuationDateModes.Retrospective;
+
+    /// <summary>
+    /// The value a prior valuation enters the bank with: the property's own value — the reconciled
+    /// value before any liquidation discount, less the «مستند ذو قيمة» additions.
+    /// How it works: <see cref="ValuationReconciliationDto.FinalOpinionBeforeLiquidation"/> (which since
+    /// 2026-11-10 includes the additions, so it equals the final value when no discount applies) minus
+    /// <see cref="ValuationReconciliationDto.AdditionsTotal"/>; 0 when there is no reconciliation (the row is
+    /// then not fed).
+    /// Edge cases and what was fixed (2026-11-10): the feeder read FinalOpinionValue, which includes the
+    /// value-document additions (a lease contract, machinery…) — those are not part of the land or the
+    /// building, so the bank rate per m² came out inflated. The discount never applies here anyway:
+    /// <see cref="Qualifies"/> admits the market basis only, and the discount follows the liquidation basis.
+    /// Never negative.
+    /// </summary>
+    public static decimal BankValue(ValuationReconciliationDto? recon) =>
+        recon is null
+            ? 0m
+            : Math.Max(0m, recon.FinalOpinionBeforeLiquidation - Math.Max(0m, recon.AdditionsTotal));
 
     /// <summary>
     /// The area the bank row carries (its rate = final value ÷ this area). An apartment's own (deed) area —

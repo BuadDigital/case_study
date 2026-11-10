@@ -25,9 +25,16 @@ public static class ValuationReportFreeze
     /// <summary>
     /// The deposit layer first (local), then the hand-over lock: the appraisal package of the
     /// request's property being submitted closes every valuation write until it is returned.
-    /// A null/404 answer is an older Case Study host and counts as "not locked"; a failed read
-    /// fails closed so a lock can never be skipped by an outage.
     /// </summary>
+    /// <remarks>
+    /// How it works: «none» (the property has no appraisal task — a legacy valuation) and any package not
+    /// submitted are open; «submitted» locks. A failed read or an empty answer refuses with
+    /// <see cref="ValuationReportFreezeRules.PackageStateUnavailableMessageAr"/> («تعذّر التحقق من حالة
+    /// دراسة الحالة — حاول مرة أخرى»), so a lock can never be skipped by an outage.
+    /// Edge cases + fixed 2026-11-10: an empty answer (null / 404) used to count as «not locked» while the
+    /// draft writes refused it and the deposit step passed it — the three now agree: refuse. No lookup wired
+    /// (tests) or no property still means only the deposit layer applies.
+    /// </remarks>
     public static async Task<string?> GetFrozenMessageAsync(
         ValuationDbContext db,
         ICaseStudyLookup? caseStudy,
@@ -50,7 +57,9 @@ public static class ValuationReportFreeze
             return ValuationReportFreezeRules.PackageStateUnavailableMessageAr;
         }
 
-        return string.Equals(state?.PackageStatus, PartyTaskSubmissionStatus.Submitted, StringComparison.Ordinal)
+        if (state is null)
+            return ValuationReportFreezeRules.PackageStateUnavailableMessageAr;
+        return string.Equals(state.PackageStatus, PartyTaskSubmissionStatus.Submitted, StringComparison.Ordinal)
             ? ValuationReportFreezeRules.AppraiserSubmittedMessageAr
             : null;
     }

@@ -252,7 +252,6 @@ export function CourtCircuitSelects({
         <RegSearchSelect
           id={circuitId}
           label="الدائرة"
-          required
           options={circuitOptions}
           value={selectedCircuitId}
           error={fieldErrors.circuit}

@@ -97,7 +97,12 @@ public class ValuationSettingsAndPriorBankFeedTests
     {
         var id = NewRequest(db, Guid.NewGuid());
         await db.SaveChangesAsync();
-        var lookup = Proxy.Of<ICaseStudyLookup>((_, _) => null);
+        // Case Study answers «no appraisal package» (open); an empty answer would now refuse the save
+        // («تعذّر التحقق من حالة دراسة الحالة», 2026-11-10).
+        var lookup = Proxy.Of<ICaseStudyLookup>((method, _) =>
+            method.Name == nameof(ICaseStudyLookup.GetAppraisalPackageStateAsync)
+                ? Task.FromResult<CaseStudyAppraisalPackageStateDto?>(new CaseStudyAppraisalPackageStateDto())
+                : null);
         var organization = Proxy.Of<IOrganizationSettingsService>((method, _) =>
             method.Name == nameof(IOrganizationSettingsService.GetInternalAsync)
                 ? Task.FromResult(new OrganizationSettingsDto())
@@ -220,6 +225,18 @@ public class ValuationSettingsAndPriorBankFeedTests
     }
 
     [Fact]
+    public void The_bank_value_is_the_property_value_before_value_document_additions()
+    {
+        Assert.Equal(1_000_000m, PriorValuationBankRules.BankValue(new ValuationReconciliationDto
+        {
+            FinalOpinionBeforeLiquidation = 1_300_000m,
+            AdditionsTotal = 300_000m,
+            FinalOpinionValue = 1_300_000m,
+        }));
+        Assert.Equal(0m, PriorValuationBankRules.BankValue(null));
+    }
+
+    [Fact]
     public async Task A_bank_row_another_valuation_adopted_is_never_rewritten()
     {
         await using var contexts = TestDatabases.Create("prior-bank-adopted");
@@ -257,7 +274,11 @@ public class ValuationSettingsAndPriorBankFeedTests
         Assert.Equal(1_000_000m, db.ComparableProperties.Single(c => c.Id == rowId).Price);
     }
 
-    private static PriorValuationBankFeeder Feeder(ValuationDbContext db, Func<decimal> final, Func<string> basis)
+    private static PriorValuationBankFeeder Feeder(
+        ValuationDbContext db,
+        Func<decimal> final,
+        Func<string> basis,
+        decimal additions = 250_000m)
     {
         var lookup = Proxy.Of<ICaseStudyLookup>((method, _) =>
             method.Name == nameof(ICaseStudyLookup.GetValuationPropertyContextAsync)
@@ -274,7 +295,11 @@ public class ValuationSettingsAndPriorBankFeedTests
             method.Name == nameof(IValuationReconciliationService.GetAsync)
                 ? Task.FromResult<ValuationReconciliationDto?>(new ValuationReconciliationDto
                 {
-                    FinalOpinionValue = final(),
+                    // The bank reads the property's own value; a «مستند ذو قيمة» addition (here 250,000)
+                    // is in the final value only and must never reach the bank row.
+                    FinalOpinionBeforeLiquidation = final() + additions,
+                    AdditionsTotal = additions,
+                    FinalOpinionValue = final() + additions,
                     BasisOfValueKey = basis(),
                 })
                 : null);

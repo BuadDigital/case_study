@@ -58,6 +58,23 @@ const STATUS_LABEL: Record<string, string> = {
   approved: "اعتمدها المقيّم",
 };
 
+/** The server's 409 wording for a draft someone else saved after this screen loaded it (2026-11-10). */
+const STALE_DRAFT_MESSAGE = "حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة";
+
+/** The server's wording when Case Study's state could not be verified (2026-11-10). */
+const CASE_STUDY_STATE_UNKNOWN_MESSAGE = "تعذّر التحقق من حالة دراسة الحالة — حاول مرة أخرى";
+
+/**
+ * Whether review's two decisions are unknown: the gates did not load, or Case Study's answer lacks either.
+ * Edge cases: Case Study always answers both, so a missing one means it could not be read — the issue is
+ * held with that reason instead of counting as passed (fixed 2026-11-10).
+ */
+function reviewStateIsUnknown(
+  gates: { studyApprovedByReview?: boolean | null; valueAcceptedByReview?: boolean | null } | null | undefined,
+): boolean {
+  return gates == null || gates.studyApprovedByReview == null || gates.valueAcceptedByReview == null;
+}
+
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso);
@@ -118,9 +135,13 @@ export function ReportDraftPanel({
     return () => window.removeEventListener(TASKS_CHANGED_EVENT, onChange);
   }, [editable, requestId, refetchGates]);
   const missingDocuments = missingSpecialistDocuments(sendGatesQuery.data);
-  // Review's two decisions before it issues the draft (unknown → not blocking; the server judges).
-  const studyApproved = sendGatesQuery.data?.studyApprovedByReview !== false;
-  const valueAccepted = sendGatesQuery.data?.valueAcceptedByReview !== false;
+  // Review's two decisions before it issues the draft. Fixed 2026-11-10: an unknown answer (Case Study not
+  // read, or the gates did not load) used to count as passed and enabled the issue — it now holds it, with
+  // the reason shown. While the gates load nothing is claimed either way.
+  const gatesLoading = sendGatesQuery.isPending;
+  const reviewStateUnknown = !gatesLoading && reviewStateIsUnknown(sendGatesQuery.data);
+  const studyApproved = sendGatesQuery.data?.studyApprovedByReview === true;
+  const valueAccepted = sendGatesQuery.data?.valueAcceptedByReview === true;
 
   // ---- the specialist's working copy of his choices ----
   const [choices, setChoices] = useState<SpecialistReportChoices | null>(null);
@@ -131,6 +152,11 @@ export function ReportDraftPanel({
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const seededRef = useRef(false);
   const dirtyRef = useRef(false);
+  // Optimistic concurrency (2026-11-10): the draft's updatedAtUtc this screen's choices are based on — set
+  // at seeding, moved on by each of its own successful saves so sequential autosaves never conflict.
+  const draftTokenRef = useRef<string | null>(null);
+  // Someone else saved a newer draft: autosave stops and the reload message stays up.
+  const [conflict, setConflict] = useState(false);
   // The same fact for rendering (a ref cannot be read while rendering): an edit waits for the debounced save.
   const [pendingSave, setPendingSave] = useState(false);
 
@@ -138,6 +164,8 @@ export function ReportDraftPanel({
   useEffect(() => {
     if (seededRef.current || !draft || submissionQuery.isPending) return;
     seededRef.current = true;
+    draftTokenRef.current = draft.updatedAtUtc ?? "";
+    setConflict(false);
     const appraiserChoices = normalizeReportChoices(
       (submissionQuery.data as { reportChoices?: unknown } | null | undefined)?.reportChoices,
     );
@@ -156,17 +184,25 @@ export function ReportDraftPanel({
     setChoices((prev) => (prev ? { ...prev, ...patch } : prev));
   }, []);
 
+  /**
+   * Saves the whole choices object with the draft token this screen holds.
+   * How it works: PUT with `draftTokenRef`; on success the token moves to the saved draft's stamp.
+   * Edge cases (2026-11-10): a 409 means another specialist saved a newer draft — nothing is overwritten,
+   * autosave stops and «حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة» stays shown (was: last writer won).
+   */
   const persist = useCallback(
     async (next: SpecialistReportChoices): Promise<ValuationReportDraftDto | null> => {
       const config = apiConfig();
       if (!config || !draft) return null;
       setSaveState("saving");
-      const res = await saveReportDraftChoices(config, draft.valuationRequestId, next);
+      const res = await saveReportDraftChoices(config, draft.valuationRequestId, next, draftTokenRef.current);
       if (!res.ok) {
         setSaveState("error");
-        showToast(res.message ?? "تعذّر حفظ خيارات التقرير", "error");
+        if (res.kind === "conflict") setConflict(true);
+        showToast(res.message ?? (res.kind === "conflict" ? STALE_DRAFT_MESSAGE : "تعذّر حفظ خيارات التقرير"), "error");
         return null;
       }
+      draftTokenRef.current = res.data.updatedAtUtc;
       dirtyRef.current = false;
       setPendingSave(false);
       setSaveState("saved");
@@ -176,12 +212,12 @@ export function ReportDraftPanel({
     [draft, setDraft, showToast],
   );
 
-  // Debounced autosave while he edits.
+  // Debounced autosave while he edits (never over a newer draft someone else saved).
   useEffect(() => {
-    if (!editable || !choices || !dirtyRef.current) return;
+    if (!editable || !choices || !dirtyRef.current || conflict) return;
     const timer = setTimeout(() => void persist(choices), AUTOSAVE_MS);
     return () => clearTimeout(timer);
-  }, [choices, editable, persist]);
+  }, [choices, conflict, editable, persist]);
 
   // ---- print attachment rows (property documents → report attachments) ----
   const { data: valuationLists } = useValuationListsQuery();
@@ -231,7 +267,11 @@ export function ReportDraftPanel({
   );
 
   // ---- actions ----
-  /** Review issues the draft to the appraiser for his final approval (Omar 2026-11-08). */
+  /**
+   * Review issues the draft to the appraiser for his final approval (Omar 2026-11-08).
+   * Edge cases (2026-11-10): the conformity confirmation is sent only when review actually ticked it — a
+   * legacy draft «in review» used to be sent as confirmed automatically.
+   */
   const send = useCallback(async () => {
     const config = apiConfig();
     if (!config || !draft || !choices) return;
@@ -240,7 +280,7 @@ export function ReportDraftPanel({
       // The server keeps what was last saved; flush a pending edit before sending.
       if (dirtyRef.current && !(await persist(choices))) return;
       const res = await sendReportDraft(config, draft.valuationRequestId, {
-        conformityConfirmed: conformity || inReview,
+        conformityConfirmed: conformity,
         note: note.trim() || undefined,
       });
       if (!res.ok) {
@@ -249,13 +289,14 @@ export function ReportDraftPanel({
         void sendGatesQuery.refetch();
         return;
       }
+      draftTokenRef.current = res.data.updatedAtUtc;
       setDraft(res.data);
       notifyTasksChanged();
       showToast("أُصدرت مسودة التقرير للمقيّم لاعتمادها النهائي", "success");
     } finally {
       setBusy(null);
     }
-  }, [choices, conformity, draft, inReview, note, persist, sendGatesQuery, setDraft, showToast]);
+  }, [choices, conformity, draft, note, persist, sendGatesQuery, setDraft, showToast]);
 
   /** Review pulls a sent draft back from the appraiser to correct it. */
   const withdraw = useCallback(async () => {
@@ -419,6 +460,12 @@ export function ReportDraftPanel({
             )}
           </div>
 
+          {conflict ? (
+            <p role="alert" className="m-0 text-[12px] font-semibold text-danger-text" data-testid="report-draft-conflict">
+              {STALE_DRAFT_MESSAGE}
+            </p>
+          ) : null}
+
           {editable && !canReview ? (
             <p className="m-0 border-t border-border pt-3 text-[12px] text-text-3" data-testid="report-draft-review-issues">
               {saveState === "saving" ? "جاري الحفظ… · " : saveState === "saved" ? "تم الحفظ · " : ""}
@@ -428,26 +475,34 @@ export function ReportDraftPanel({
 
           {editable && canReview ? (
             <div className="flex flex-col gap-2 border-t border-border pt-3">
-              <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[12px] font-semibold" data-testid="report-draft-readiness">
-                <li className={studyApproved ? "text-success-text" : "text-amber-text"}>
-                  {studyApproved ? "✓ اعتمدتَ الدراسة" : "✗ لم تُعتمد الدراسة بعد — من قسم «تقرير دراسة الحالة»"}
-                </li>
-                <li className={valueAccepted ? "text-success-text" : "text-amber-text"}>
-                  {valueAccepted ? "✓ قبلتَ القيمة" : "✗ لم تُقبل القيمة بعد — «قبول القيمة» أعلاه"}
-                </li>
-              </ul>
-              {inReview ? null : (
-                <label className="flex items-start gap-2 text-[12.5px] font-semibold text-text-2">
-                  <input
-                    type="checkbox"
-                    className="mt-0.5 size-4 shrink-0 accent-[var(--ink)]"
-                    checked={conformity}
-                    disabled={anyBusy}
-                    onChange={(e) => setConformity(e.target.checked)}
-                  />
-                  <span>أؤكد أن التقييم مطابق لدراسة العقار</span>
-                </label>
+              {gatesLoading ? (
+                <p className="m-0 text-[12px] text-text-3" data-testid="report-draft-readiness">
+                  جاري التحقق من اعتماد الدراسة وقبول القيمة…
+                </p>
+              ) : reviewStateUnknown ? (
+                <p role="alert" className="m-0 text-[12px] font-semibold text-danger-text" data-testid="report-draft-readiness">
+                  ✗ {CASE_STUDY_STATE_UNKNOWN_MESSAGE}
+                </p>
+              ) : (
+                <ul className="m-0 flex list-none flex-wrap gap-x-4 gap-y-1 p-0 text-[12px] font-semibold" data-testid="report-draft-readiness">
+                  <li className={studyApproved ? "text-success-text" : "text-amber-text"}>
+                    {studyApproved ? "✓ اعتمدتَ الدراسة" : "✗ لم تُعتمد الدراسة بعد — من قسم «تقرير دراسة الحالة»"}
+                  </li>
+                  <li className={valueAccepted ? "text-success-text" : "text-amber-text"}>
+                    {valueAccepted ? "✓ قبلتَ القيمة" : "✗ لم تُقبل القيمة بعد — «قبول القيمة» أعلاه"}
+                  </li>
+                </ul>
               )}
+              <label className="flex items-start gap-2 text-[12.5px] font-semibold text-text-2">
+                <input
+                  type="checkbox"
+                  className="mt-0.5 size-4 shrink-0 accent-[var(--ink)]"
+                  checked={conformity}
+                  disabled={anyBusy}
+                  onChange={(e) => setConformity(e.target.checked)}
+                />
+                <span>أؤكد أن التقييم مطابق لدراسة العقار</span>
+              </label>
               <textarea
                 className={cn(opsFldControl, "min-h-[64px] font-medium")}
                 placeholder="ملاحظة للمقيّم (اختياري)"
@@ -481,7 +536,8 @@ export function ReportDraftPanel({
                   loading={busy === "send"}
                   disabled={
                     anyBusy ||
-                    (!inReview && !conformity) ||
+                    conflict ||
+                    !conformity ||
                     missingDocuments != null ||
                     !studyApproved ||
                     !valueAccepted

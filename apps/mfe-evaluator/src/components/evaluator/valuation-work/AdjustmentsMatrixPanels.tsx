@@ -6,6 +6,9 @@
 //  • A    The formula line under the value comes from basisView.outputFormula — for an apartment's land it
 //         shows «سعر المتر بعد التسوية × حصة الشقة» with the area adjustment on the whole building plot.
 //  • Alert titles and bodies go through KeepCodesTogether so CMP-… codes never break across lines.
+// Grey areas (2026-11-10)
+//  • The line under the value shows the rounded market value (basisView.roundingNote) instead of
+//    «بلا تقريب هنا — التقريب مرة واحدة بعد الترجيح النهائي».
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -68,8 +71,10 @@ export function MatrixOutputsPanel({
         <div className="mt-[7px] text-[11.5px] font-normal text-text-3" data-testid="matrix-output-formula">
           {outputFormula}
         </div>
-        <div className="mt-[5px] text-[11.5px] font-normal text-text-3">
-          بلا تقريب هنا — التقريب مرة واحدة بعد الترجيح النهائي
+        {/* 2026-11-10: the market value is rounded by the request's setting — the rounded figure shown
+            here is the one the reconciliation reads (matrixRoundingNote). */}
+        <div className="mt-[5px] text-[11.5px] font-bold text-gold-d" data-testid="matrix-rounding-note">
+          {basisView.roundingNote}
         </div>
       </div>
     </div>

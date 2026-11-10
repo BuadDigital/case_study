@@ -166,6 +166,7 @@ public class MarketBuildingWholePropertyTests
                 ? Task.FromResult<ValuationReconciliationDto?>(new ValuationReconciliationDto
                 {
                     FinalOpinionValue = 3_372_000m,
+                    FinalOpinionBeforeLiquidation = 3_372_000m,
                     BasisOfValueKey = BasisOfValueKeys.Market,
                 })
                 : null);

@@ -72,7 +72,8 @@ type Result<T> =
   | { ok: true; data: T }
   | {
       ok: false;
-      kind: "auth" | "forbidden" | "network" | "server" | "validation" | "not_found";
+      /** `conflict` (409): someone saved a newer draft than this screen loaded — reload (2026-11-10). */
+      kind: "auth" | "forbidden" | "network" | "server" | "validation" | "not_found" | "conflict";
       message?: string;
       errors?: Record<string, string>;
     };
@@ -95,7 +96,7 @@ async function readResult(res: Response): Promise<Result<ValuationReportDraftDto
     );
     return {
       ok: false,
-      kind: res.status === 403 ? "forbidden" : "validation",
+      kind: res.status === 403 ? "forbidden" : res.status === 409 ? "conflict" : "validation",
       message:
         Object.values(errors)[0] ??
         payload?.detail ??
@@ -145,13 +146,22 @@ export async function getReportDraftByProperty(
   }
 }
 
-/** The specialist saves his report choices — only while the draft is being prepared. */
+/**
+ * The specialist saves his report choices — only while the draft is being prepared.
+ *
+ * How it works: PUT `/choices` with the whole choices object and, when given, the draft's `updatedAtUtc`
+ * as this screen loaded it (`expectedUpdatedAtUtc`; "" = it loaded no draft yet).
+ * Edge cases (2026-11-10): a newer draft on the server answers 409 → `kind: "conflict"` with
+ * «حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة»; a null/undefined token skips the check.
+ */
 export function saveReportDraftChoices(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
   choices: Record<string, unknown>,
+  expectedUpdatedAtUtc?: string | null,
 ): Promise<Result<ValuationReportDraftDto>> {
-  return send(config, valuationRequestId, "/choices", "PUT", { choices });
+  const body = expectedUpdatedAtUtc == null ? { choices } : { choices, expectedUpdatedAtUtc };
+  return send(config, valuationRequestId, "/choices", "PUT", body);
 }
 
 /**

@@ -141,7 +141,7 @@ public sealed class EvaluatorRecallDecideTests
             Guid.NewGuid(), "VR-1", PropertyId, "جدة", "فيلا", "مقيّم", "2026-09-01", DateTime.UtcNow);
         db.ValuationRequests.Add(request);
         db.ValuationReportIssuances.Add(
-            ValuationReportIssuance.IssueDeposit(request.Id, "{}", "u1", DateTime.UtcNow));
+            ValuationReportIssuance.IssueDeposit(request.Id, "u1", DateTime.UtcNow));
         await db.SaveChangesAsync();
 
         var (result, errors) = await service.DecideAsync(TaskKey, Approve());
@@ -162,7 +162,7 @@ public sealed class EvaluatorRecallDecideTests
         var request = ValuationRequest.Create(
             Guid.NewGuid(), "VR-2", PropertyId, "جدة", "فيلا", "مقيّم", "2026-09-01", DateTime.UtcNow);
         db.ValuationRequests.Add(request);
-        var old = ValuationReportIssuance.IssueDeposit(request.Id, "{}", "u1", DateTime.UtcNow);
+        var old = ValuationReportIssuance.IssueDeposit(request.Id, "u1", DateTime.UtcNow);
         old.Supersede("u1", "إعادة فتح لخطأ في المساحة", DateTime.UtcNow);
         db.ValuationReportIssuances.Add(old);
         await db.SaveChangesAsync();

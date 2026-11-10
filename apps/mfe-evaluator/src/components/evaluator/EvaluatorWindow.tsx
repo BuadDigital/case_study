@@ -6,6 +6,11 @@
 //         the restored tab.
 //  • P19  useUnsavedEditsGuard warns before a refresh / close loses an unblurred field, a pending autosave or
 //         an unsaved section.
+// Grey areas (2026-11-10)
+//  • syncFinalOpinion always writes the current discount («0» when none) and skips a write that
+//         changes nothing (finalOpinionDraftPatch).
+//  • The legacy land + building sum is no longer written as the price on load when the property has a
+//         valuation request — the reconciliation's final value is the price (legacyLandBuildingPrice).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -18,7 +23,7 @@ import {
   useSwapAnimation,
   useToast,
 } from "@platform/ui-kit";
-import { parseLocaleNumber } from "@platform/app-shared/format/number";
+import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { Activity, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { WorkflowTask } from "@platform/app-shared/workflow/task-types";
@@ -60,7 +65,6 @@ import {
   appraiserNeedsSurvey,
   appraiserSurveyDone,
 } from "../../lib/evaluator/evaluator-readiness";
-import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
 import { ValTabBar } from "./EvaluatorHtmlPrimitives";
 import {
   ValuationWorkShell,
@@ -84,7 +88,16 @@ import {
   refreshEvaluatorReportOutputOnOpen,
   scheduleInvalidateEvaluatorReportOutput,
 } from "../../lib/evaluator/evaluator-report-output-cache";
-import { linkedPropertyDeeds, transactionDeedLabelOf } from "@platform/api-client";
+import {
+  getOpenValuationRequestByProperty,
+  linkedPropertyDeeds,
+  transactionDeedLabelOf,
+} from "@platform/api-client";
+import { apiConfig } from "@platform/app-shared/auth/api-config";
+import {
+  finalOpinionDraftPatch,
+  legacyLandBuildingPrice,
+} from "../../lib/evaluator/evaluator-final-opinion-sync";
 import { useTransactionByPropertyQuery } from "../../query/transaction-query";
 import { transactionLandArea } from "../../lib/evaluator/transaction-land-area";
 import { EvaluatorLinkedDeedsCard } from "./EvaluatorLinkedDeedsCard";
@@ -277,28 +290,15 @@ export function EvaluatorWindow({
         setStudyReportIssuedFromServer(
           typeof cachedFlag === "boolean" ? cachedFlag : null,
         );
-        const summed = computePropertyTotal(
-          loaded.landValue,
-          loaded.buildingValue,
-        );
-        const currentTotal = parseLocaleNumber(loaded.evaluatorPrice || "0");
-        const reconciled =
-          summed > 0 &&
-          (!Number.isFinite(currentTotal) || currentTotal === 0)
-            ? {
-                ...loaded,
-                evaluatorPrice: String(summed),
-              }
-            : loaded;
-        setDraft(reconciled);
-        if (reconciled !== loaded) {
-          void updateEvaluatorDraft(task.id, {
-            evaluatorPrice: reconciled.evaluatorPrice,
-          }).catch(() => {
-            /* best-effort; UI already shows the sum */
-          });
-        }
+        setDraft(loaded);
         setDraftLoading(false);
+        // Legacy packages priced by hand (land + building, no price yet): the sum stands in for
+        // the price ONLY when the property has no valuation request — with one, the
+        // reconciliation's final value is the price (syncFinalOpinion). The lookup runs only when
+        // there is a sum to write.
+        if (legacyLandBuildingPrice(loaded, false) != null) {
+          void fillLegacyPrice(loaded);
+        }
       }
     })
       .catch((err: unknown) => {
@@ -312,6 +312,24 @@ export function EvaluatorWindow({
             : "تعذّر تحميل مسودة التقييم — تحقق من الاتصال وحاول مجدداً.",
         );
       });
+    /**
+     * Writes the legacy land + building sum as the price after confirming the property has no
+     * open valuation request. A failed lookup counts as «has one» (nothing is written).
+     */
+    async function fillLegacyPrice(loaded: Parameters<typeof legacyLandBuildingPrice>[0]) {
+      const config = apiConfig();
+      const propertyId = (task.propertyId ?? "").trim();
+      const open = config && propertyId
+        ? await getOpenValuationRequestByProperty(config, propertyId)
+        : null;
+      const hasRequest = open?.ok ? open.data != null : null;
+      const price = legacyLandBuildingPrice(loaded, hasRequest);
+      if (cancelled || price == null) return;
+      setDraft((prev) => ({ ...prev, evaluatorPrice: price }));
+      void updateEvaluatorDraft(task.id, { evaluatorPrice: price }).catch(() => {
+        /* best-effort; UI already shows the sum */
+      });
+    }
     return () => {
       cancelled = true;
     };
@@ -436,6 +454,12 @@ export function EvaluatorWindow({
     [scheduleAutosave],
   );
 
+  /**
+   * The reconciliation's final value and discount into the package (price + «خصم التصفية»).
+   * Always writes the current discount — «0» when it does not apply — so a basis switch never
+   * leaves a stale %; a load that changes nothing writes nothing (finalOpinionDraftPatch).
+   */
+  const draftRef = useLatestRef(draft);
   const syncFinalOpinion = useCallback(
     (
       value: number,
@@ -444,17 +468,10 @@ export function EvaluatorWindow({
         liquidationDiscountApplied: boolean;
       },
     ) => {
-      if (!Number.isFinite(value) || value <= 0) return;
-      onDraftPatch({
-        evaluatorPrice: String(Math.round(value)),
-        ...(extras?.liquidationDiscountApplied
-          ? {
-              forcedSaleDiscountPct: String(extras.liquidationDiscountPct ?? 0),
-            }
-          : {}),
-      });
+      const patch = finalOpinionDraftPatch(value, extras, draftRef.current);
+      if (patch) onDraftPatch(patch);
     },
-    [onDraftPatch],
+    [draftRef, onDraftPatch],
   );
 
   const onReportChoicesPatch = useCallback(

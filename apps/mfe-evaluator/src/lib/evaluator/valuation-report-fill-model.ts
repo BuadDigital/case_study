@@ -26,6 +26,9 @@
 //         print (#17); «مشاع — حق منفعة…» (#50); «أرض فقط» scope row (#71); facade direction fills
 //         «الواجهات» (#68); land keeps its services (#2); flat / showroom counts in section 10 (#54);
 //         inspector age in «عمر البناء» (#29); deed / minutes / licence dates as yyyy/mm/dd (#8/#35).
+// Grey areas (2026-11-10, owner's ruling)
+//  • resolveReportValuationKeys: the work order owns the basis/premise (valuation-basis.ts, same order
+//         as the screen and the server); purpose = work order → assignment default → settings.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -38,10 +41,9 @@ import {
   VALUE_PREMISE_OPTIONS,
   VALUATION_PURPOSE_OPTIONS,
   basisOfValueLabelArForAssignment,
-  defaultPremiseKeyForBasis,
-  resolveAssignmentValuationKeys,
   valuationPurposeLabelArForAssignment,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
+import { resolveValuationBasisKeys, resolveValuationPurposeKey } from "./valuation-basis";
 import type { PoIntakeRecord, PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import { subClientIdFromReportUsers } from "@platform/app-shared/app-data/po-intake-assignment";
 import { boundariesMarkedUnavailable } from "@platform/app-shared/app-data/po-intake-identifiers";
@@ -169,75 +171,53 @@ function slashReportDate(iso: string | null | undefined): string {
   return m ? `${m[1]}/${m[2]}/${m[3]}` : t;
 }
 
-/**
- * The work order's purpose, basis and premise keys.
- *
- * How it works: the keys the specialist saved on the work order (intake / header edit) through
- * the shared resolveAssignmentValuationKeys — each blank key falls back to the assignment type's
- * default, and a premise that does not fit the basis is replaced by the basis default.
- *
- * Edge cases: no assignment type → only the saved keys (blank when none). Fixed 2026-11-04: the
- * saved keys were ignored, so a work order for «تصفية التركات» or «البيع» printed the assignment
- * type's default «البيع بالمزاد العلني لغرض التصفية».
- */
-export function assignmentValuationFromPo(
-  record?: Pick<
-    PoIntakeRecord,
-    | "assignmentType"
-    | "reportUserClientIds"
-    | "clientId"
-    | "valuationPurposeKey"
-    | "basisOfValueKey"
-    | "valuePremiseKey"
-  > | null,
-): { purposeKey: string; valueBasisKey: string; premiseKey: string } {
-  const sub = subClientIdFromReportUsers(record?.reportUserClientIds);
-  const keys = resolveAssignmentValuationKeys(
-    record?.assignmentType,
-    {
-      purposeKey: record?.valuationPurposeKey,
-      basisKey: record?.basisOfValueKey,
-      premiseKey: record?.valuePremiseKey,
-    },
-    sub,
-  );
-  return {
-    purposeKey: keys.purposeKey,
-    valueBasisKey: keys.basisKey,
-    premiseKey: keys.premiseKey,
-  };
-}
+/** The work order fields the report's purpose / basis / premise come from. */
+type ReportValuationRecord = Pick<
+  PoIntakeRecord,
+  | "assignmentType"
+  | "reportUserClientIds"
+  | "clientId"
+  | "valuationPurposeKey"
+  | "basisOfValueKey"
+  | "valuePremiseKey"
+>;
 
 /**
- * Purpose, basis and premise the report prints.
+ * Purpose, basis and premise the report prints — the same order as the final-opinion screen and
+ * the server (valuation-basis.ts / AssignmentValuationDefaults).
  *
- * How it works: basis / premise — the appraiser's reconciliation choices, else the work order's.
- * Purpose — the work order's saved purpose first (the specialist sets it at intake; the approach
- * settings have no purpose picker and always save the assignment default), then the approach
- * settings' purpose, then the assignment default.
+ * How it works: basis / premise — the work order's keys first (the one owner of the basis, ruling
+ * 2026-11-10), then the reconciliation's (legacy work orders without a basis), then the assignment
+ * default; a premise must fit the basis, else the basis default. Purpose — the work order's key,
+ * then the assignment default, then the approach settings' key (only without an assignment type).
  *
- * Edge cases: a work order without a saved purpose keeps the approach-settings purpose. Fixed
- * 2026-11-04 (A→Z #16/#28): the report printed «البيع بالمزاد العلني لغرض التصفية» for work orders
- * saved as «تصفية التركات» / «البيع».
+ * Edge cases: nothing known → blank keys. Fixed 2026-11-10: the reconciliation's saved basis came
+ * first here while the screen read the work order first — the same valuation printed «قيمة
+ * التصفية» 855,000 against 950,000 on screen. The approach-settings purpose no longer outranks the
+ * assignment default (the settings always save that default anyway).
  */
 export function resolveReportValuationKeys(input: {
-  record?: Parameters<typeof assignmentValuationFromPo>[0];
+  record?: ReportValuationRecord | null;
   recon?: Pick<ValuationReconciliationDto, "basisOfValueKey" | "valuePremiseKey"> | null;
-  /** The appraiser's saved valuation purpose (approach settings), else the report choices. */
+  /** The approach settings' saved valuation purpose — last fallback only. */
   purposeKey?: string | null;
 }): { purposeKey: string; valueBasisKey: string; premiseKey: string } {
-  const po = assignmentValuationFromPo(input.record);
-  const savedBasis = (input.recon?.basisOfValueKey ?? "").trim().toLowerCase();
-  const valueBasisKey = savedBasis || po.valueBasisKey;
-  const savedPremise = (input.recon?.valuePremiseKey ?? "").trim().toLowerCase();
-  const premiseKey =
-    savedPremise ||
-    (valueBasisKey === po.valueBasisKey ? po.premiseKey : "") ||
-    (valueBasisKey ? defaultPremiseKeyForBasis(valueBasisKey) : "");
-  const workOrderPurpose = (input.record?.valuationPurposeKey ?? "").trim();
+  const record = input.record;
+  const subClientId = subClientIdFromReportUsers(record?.reportUserClientIds);
+  const { basisKey, premiseKey } = resolveValuationBasisKeys({
+    assignmentType: record?.assignmentType,
+    subClientId,
+    workOrder: { basisKey: record?.basisOfValueKey, premiseKey: record?.valuePremiseKey },
+    saved: { basisKey: input.recon?.basisOfValueKey, premiseKey: input.recon?.valuePremiseKey },
+  });
   return {
-    purposeKey: workOrderPurpose || (input.purposeKey ?? "").trim() || po.purposeKey,
-    valueBasisKey,
+    purposeKey: resolveValuationPurposeKey({
+      assignmentType: record?.assignmentType,
+      subClientId,
+      workOrderPurposeKey: record?.valuationPurposeKey,
+      settingsPurposeKey: input.purposeKey,
+    }),
+    valueBasisKey: basisKey,
     premiseKey,
   };
 }

@@ -9,23 +9,21 @@
       ]
     },
     "ارض": {
-      "count": 6,
+      "count": 5,
       "reason": "parser input — must keep accepting the old spelling",
       "where": [
         "apps/mfe-case-study/src/lib/app-data/inspector-bourse-prefill.ts",
         "packages/app-shared/src/app-data/inspector-workspace-data.ts",
         "backend/contexts/case-study/RealEstateEval.CaseStudy.Application/Rules/InspectedPropertyTypeRules.cs",
         "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationApproachSettings.cs",
-        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationMethodologyAlertRules.cs",
         "backend/RealEstateEval.Application/Rules/FieldInspectionSubmissionValidator.cs"
       ]
     },
     "ارضى": {
-      "count": 2,
+      "count": 1,
       "reason": "lookup key matched against the printed report template",
       "where": [
-        "apps/mfe-evaluator/src/lib/evaluator/valuation-report-sheet-facts.ts",
-        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationReportFieldCostLineFlattenRules.cs"
+        "apps/mfe-evaluator/src/lib/evaluator/valuation-report-sheet-facts.ts"
       ]
     },
     "اسم العامل على التقرير": {
@@ -33,13 +31,6 @@
       "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
       "where": [
         "packages/app-shared/src/app-data/property-fields-catalog.ts"
-      ]
-    },
-    "إسم المالك": {
-      "count": 1,
-      "reason": "المقياس field-mapping label",
-      "where": [
-        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationReportFieldCatalog.cs"
       ]
     },
     "اسم مستخدم تقرير التقييم": {
@@ -70,13 +61,6 @@
       "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
       "where": [
         "packages/app-shared/src/app-data/property-fields-catalog.ts"
-      ]
-    },
-    "العمر الإفتراضي": {
-      "count": 1,
-      "reason": "المقياس field-mapping label",
-      "where": [
-        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationReportFieldCatalog.cs"
       ]
     },
     "الغاء": {
@@ -128,13 +112,6 @@
       "reason": "left on purpose in the 2026-10-08 pass (stored, compared or external) — review before changing",
       "where": [
         "packages/app-shared/src/app-data/property-fields-catalog.ts"
-      ]
-    },
-    "غرض التقييم": {
-      "count": 1,
-      "reason": "المقياس field-mapping label",
-      "where": [
-        "backend/contexts/valuation/RealEstateEval.Valuation.Domain/ValuationReportFieldCatalog.cs"
       ]
     },
     "م2": {

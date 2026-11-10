@@ -14,6 +14,9 @@
 //         rate by the apartment's share (CostLandAreas; AreaAdjustmentSubjectAreaSqm removed).
 //  • A market comparable dated after the valuation date (hard alert 23) gets automatic weight 0.
 //  • A    The list DTO reports ApartmentLandShareSqm for the land table.
+// Grey areas (2026-11-10)
+//  • MarketOpinionValue is rounded by ValueRoundDecimals on the market table (RoundedOpinion);
+//         MarketOpinionValueRaw and the land table inside the cost approach stay raw.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Application;
@@ -75,7 +78,8 @@ public static class ValuationComparableListBuilder
         string selectionContext,
         IReadOnlyList<ValuationAdjustmentFactorRationale> factorRationales,
         DateOnly? hardComparableDateCutoff = null,
-        CostLandAreas? costLand = null)
+        CostLandAreas? costLand = null,
+        bool roundOpinionValue = true)
     {
         var adoptedRows = rows.Where(r => r.IsAdopted).ToList();
         // The land table compares each land comparable with the whole building plot saved on
@@ -196,14 +200,13 @@ public static class ValuationComparableListBuilder
         var roundDecimals = header?.ValueRoundDecimals
             ?? MarketApproachRules.DefaultValueRoundDecimals;
  // : whole-property basis yields the opinion directly — "without multiplying by area".
-        // Cost logic section 3: approach output is raw without rounding — round once after reconciliation.
         // On the land table the rate multiplies the apartment's share, not the whole plot.
         var opinionRaw = basis == MarketAdjustmentBasisKeys.WholeProperty
             ? weighted
             : valueArea is > 0m
                 ? MarketOpinionRules.ComputeOpinionValue(weighted, valueArea.Value)
                 : 0m;
-        var opinion = opinionRaw;
+        var opinion = RoundedOpinion(opinionRaw, roundDecimals, isLandTable, roundOpinionValue);
 
         return new ValuationComparableSelectionListDto
         {
@@ -239,6 +242,25 @@ public static class ValuationComparableListBuilder
                 .ToList(),
             Items = items,
         };
+    }
+
+    /// <summary>
+    /// What: the market approach's value as the reconciliation, the report and the screen read it —
+    /// the raw value rounded by the request's «تقريب القيمة» setting (ValueRoundDecimals: 4 → nearest
+    /// 10,000, 0 → nearest riyal).
+    /// How it works: <see cref="MarketOpinionRules.RoundMarketValue"/> on the market table only. The land
+    /// table inside the cost approach stays raw (the cost approach reads its unit rate, and its land value
+    /// is an input, not an approach value). <c>MarketOpinionValueRaw</c> always keeps the unrounded figure.
+    /// Edge cases and what was fixed (2026-11-10): the rounding setting existed but nothing called it, so
+    /// the market value went to the reconciliation unrounded. A request already frozen (deposited / done)
+    /// passes <paramref name="round"/> = false and keeps the figure it was handed over with. A small value
+    /// that would round to 0 (under half the rounding step) keeps its raw figure instead of vanishing.
+    /// </summary>
+    public static decimal RoundedOpinion(decimal raw, int decimals, bool isLandTable, bool round)
+    {
+        if (!round || isLandTable || raw <= 0m) return raw;
+        var rounded = MarketOpinionRules.RoundMarketValue(raw, decimals);
+        return rounded > 0m ? rounded : raw;
     }
 
     /// <summary>

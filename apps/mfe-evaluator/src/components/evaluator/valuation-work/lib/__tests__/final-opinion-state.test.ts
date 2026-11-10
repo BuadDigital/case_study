@@ -4,13 +4,13 @@ import {
   analysesForRationale,
   appendAnalysesToRationale,
   finalOpinionComputed,
+  finalOpinionDraftDiffers,
   forcedSaleDiscountOpinionLine,
-  looksLikeAutoFinalOpinion,
   normalizeReconMethodsForSave,
   reconciliationSaveRequest,
   syncDiscountLineInOpinion,
-  workOrderPremiseKey,
 } from "../final-opinion-state";
+import { resolveValuationBasisKeys } from "../../../../../lib/evaluator/valuation-basis";
 
 function method(
   partial: Partial<ValuationReconciliationMethodDto>,
@@ -151,42 +151,72 @@ describe("reconciliationSaveRequest", () => {
   });
 });
 
-describe("workOrderPremiseKey", () => {
-  it("reads the work-order selection ahead of a saved reconciliation", () => {
+describe("resolveValuationBasisKeys — one owner of the basis (ruling 2026-11-10)", () => {
+  it("reads the work order's basis and premise ahead of a saved reconciliation", () => {
     expect(
-      workOrderPremiseKey({
-        poPremise: "hau",
-        reconPremise: "current",
+      resolveValuationBasisKeys({
         assignmentType: "تنفيذ",
+        workOrder: { basisKey: "market", premiseKey: "hau" },
+        saved: { basisKey: "liquidation", premiseKey: "forced" },
       }),
-    ).toBe("hau");
+    ).toEqual({ basisKey: "market", premiseKey: "hau" });
+  });
+
+  it("takes the saved keys only when the work order has no basis (legacy)", () => {
+    expect(
+      resolveValuationBasisKeys({
+        assignmentType: "قطاع خاص",
+        workOrder: { basisKey: " ", premiseKey: null },
+        saved: { basisKey: "liquidation", premiseKey: "forced" },
+      }),
+    ).toEqual({ basisKey: "liquidation", premiseKey: "forced" });
   });
 
   it("falls back to the assignment default when nothing is stored", () => {
-    expect(workOrderPremiseKey({ assignmentType: "قطاع خاص" })).toBe("current");
-    expect(workOrderPremiseKey({ assignmentType: "تنفيذ" })).toBe("orderly");
+    expect(resolveValuationBasisKeys({ assignmentType: "قطاع خاص" })).toEqual({
+      basisKey: "market",
+      premiseKey: "current",
+    });
+    expect(resolveValuationBasisKeys({ assignmentType: "تنفيذ" })).toEqual({
+      basisKey: "liquidation",
+      premiseKey: "orderly",
+    });
+    expect(resolveValuationBasisKeys({})).toEqual({ basisKey: "", premiseKey: "" });
+  });
+
+  it("never pairs a basis with an incompatible premise — the basis default instead", () => {
+    // A blank work-order premise on liquidation is orderly, like the server (no «forced» guess).
+    expect(
+      resolveValuationBasisKeys({ assignmentType: "قطاع خاص", workOrder: { basisKey: "liquidation" } }),
+    ).toEqual({ basisKey: "liquidation", premiseKey: "orderly" });
+    expect(
+      resolveValuationBasisKeys({
+        assignmentType: "تنفيذ",
+        workOrder: { basisKey: "market" },
+        saved: { premiseKey: "forced" },
+      }).premiseKey,
+    ).toBe("current");
   });
 });
 
-describe("looksLikeAutoFinalOpinion", () => {
-  it("detects the former auto template", () => {
-    expect(
-      looksLikeAutoFinalOpinion(
-        [
-          "اعتُمد أسلوب السوق وحده، وقُدّرت القيمة بطريقة المقارنات.",
-          "مؤشر أسلوب المقارنة (السوق): 6,437,500 ر.س بوزن ١٠٠٪.",
-          "أساس القيمة المستخدم: قيمة التصفية.",
-          "الرأي النهائي في قيمة العقار: 5,793,800 ر.س.",
-        ].join("\n"),
-      ),
-    ).toBe(true);
-  });
+describe("the stored methods rationale is shown as stored (2026-11-10)", () => {
+  const generatedLooking = [
+    "اعتُمد أسلوب السوق وحده، وقُدّرت القيمة بطريقة المقارنات.",
+    "مؤشر أسلوب المقارنة (السوق): 6,437,500 ر.س بوزن ١٠٠٪.",
+    "الرأي النهائي في قيمة العقار: 5,793,800 ر.س.",
+  ].join("\n");
 
-  it("leaves blank or free-form notes alone", () => {
-    expect(looksLikeAutoFinalOpinion("")).toBe(false);
-    expect(looksLikeAutoFinalOpinion("بناءً على ظروف السوق المحلي.")).toBe(
-      false,
-    );
+  it("text that resembles the old auto-filler is the saved rationale, not a blank draft", () => {
+    const recon = { methodsRationale: generatedLooking, methods: [] };
+    const drafts = {
+      recon,
+      finalRoundDecimals: "0",
+      liquidationDiscountPct: "0",
+      liquidationDiscountRationale: "",
+      reconMethods: [],
+    };
+    expect(finalOpinionDraftDiffers({ ...drafts, methodsRationale: generatedLooking })).toBe(false);
+    expect(finalOpinionDraftDiffers({ ...drafts, methodsRationale: "" })).toBe(true);
   });
 });
 
@@ -252,7 +282,6 @@ describe("finalOpinionComputed — «مستند ذو قيمة»", () => {
     expect(result.finalLocal).toBe(1_000_000);
     expect(result.opinionAuto).toContain("«تقرير تقييم الآلات»");
     expect(result.opinionAuto).toContain("القيمة النهائية الإجمالية:");
-    expect(looksLikeAutoFinalOpinion(result.opinionAuto)).toBe(true);
   });
 
   it("treats a document indicator as complete", () => {

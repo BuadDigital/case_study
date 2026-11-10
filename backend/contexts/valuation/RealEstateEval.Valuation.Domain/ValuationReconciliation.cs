@@ -240,6 +240,9 @@ public static class ReconciliationRules
     /// document additions are added to it as they are (no weighting, no discount), and the
     /// total is rounded once. With no additions this equals
     /// <see cref="FinalOpinionWithOptionalDiscount"/>.
+    /// BeforeRounded is the same total without the discount — RoundFinal(weighted + additions) —
+    /// so with no discount it equals Final. Fixed 2026-11-10: it left the additions out
+    /// (RoundFinal(weighted)), so «before liquidation» was below the final value with no discount.
     /// </summary>
     public static (decimal BeforeRounded, decimal PropertyValueAfterLiquidation, decimal Final, bool Applied) FinalTotal(
         decimal weightedValue,
@@ -253,11 +256,49 @@ public static class ReconciliationRules
         var after = apply
             ? ApplyLiquidationDiscount(weightedValue, discountPct)
             : weightedValue;
+        var additions = Math.Max(0m, additionsTotal);
         return (
-            RoundFinal(weightedValue, decimals),
+            RoundFinal(weightedValue + additions, decimals),
             after,
-            RoundFinal(after + Math.Max(0m, additionsTotal), decimals),
+            RoundFinal(after + additions, decimals),
             apply);
+    }
+
+    /// <summary>
+    /// The final value from a stored reconciliation snapshot — what the request list shows.
+    ///
+    /// How it works: the included stored rows (approach value × weight) go through the same
+    /// <see cref="WeightedValue"/> and <see cref="FinalTotal"/> as the live projection, with the
+    /// stored (resolved) basis, premise and discount; the discount applies only on liquidation.
+    /// The stored rows are kept equal to the live projection by the reconciliation read
+    /// (RefreshListSnapshotAsync), so list and screen agree.
+    ///
+    /// Edge cases: no row or no included method → null; a non-positive total → null. A sole row
+    /// counts at 100% like the projection (EffectiveParticipation). Fixed 2026-11-10: the list
+    /// used to show a stale snapshot (855,000 against a live 1,026,000).
+    /// </summary>
+    public static decimal? FinalFromSnapshot(ValuationReconciliation? recon, decimal additionsTotal)
+    {
+        if (recon is null) return null;
+        var rows = recon.Methods.ToList();
+        var included = rows
+            .Select(m =>
+            {
+                var (weight, isIncluded) = EffectiveParticipation(
+                    rows.Count, m.WeightPct, m.IsIncluded, m.ApproachValue, 0m);
+                return (m.ApproachValue, weight, isIncluded);
+            })
+            .Where(m => m.isIncluded)
+            .ToList();
+        if (included.Count == 0) return null;
+        var (_, _, final, _) = FinalTotal(
+            WeightedValue(included),
+            recon.FinalRoundDecimals,
+            recon.BasisOfValueKey,
+            recon.ValuePremiseKey,
+            recon.LiquidationDiscountPct,
+            additionsTotal);
+        return final > 0m ? final : null;
     }
 
     /// <summary>

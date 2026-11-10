@@ -108,13 +108,10 @@ public static class WorkOrderValidator
             errors["assignmentMandateDate"] = "تاريخ التكليف لا يكون في المستقبل";
         if (policy.RequiresOwnerName && string.IsNullOrWhiteSpace(dto.OwnerName))
             errors["ownerName"] = "اسم المالك مطلوب";
-        if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType))
-        {
-            if (string.IsNullOrWhiteSpace(dto.Court))
-                errors["court"] = "المحكمة مطلوبة";
-            if (string.IsNullOrWhiteSpace(dto.Circuit))
-                errors["circuit"] = "الدائرة مطلوبة";
-        }
+        // The circuit is optional since 2026-11-10 (Omar) — only the court is required where it applies.
+        if (AssignmentTypeRules.RequiresCourtAndCircuit(assignmentType)
+            && string.IsNullOrWhiteSpace(dto.Court))
+            errors["court"] = "المحكمة مطلوبة";
 
         if (!string.IsNullOrWhiteSpace(dto.DeedNumber) &&
             deedExistsInPo(dto.DeedNumber.Trim(), excludePropertyId))

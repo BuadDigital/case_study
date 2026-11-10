@@ -13,13 +13,12 @@ namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// two-phase issuance + deposit certificate (Sulaiman wording):
-/// 1) When gates pass, the full report is frozen and a "deposit copy" is generated (PDF with deposit-code
-///    field empty) — uploaded manually to Qiama.
+/// 1) When gates pass, the report is frozen (the approved report draft is the deposit copy) —
+///    uploaded manually to Qiama.
 /// 2) Qiama platform issues a "deposit certificate" with its own code.
-/// 3) Staff uploads the certificate and enters its code in the existing field (report.deposit_code).
-/// 4) "Final copy": the frozen report literally + the deposit-certificate page as an attachment
-///    + the code in page metadata. Only the code and certificate are outside the freeze scope.
-/// Both copies are kept on the transaction file: deposited (matches the platform) and final (circulated).
+/// 3) Staff uploads the certificate and enters its code.
+/// 4) "Final copy": the frozen report with the code + the deposit-certificate page, generated as one PDF
+///    (<see cref="FinalPdfAttachmentId"/>). Only the code and certificate are outside the freeze scope.
 /// </summary>
 public class ValuationReportIssuance
 {
@@ -30,8 +29,14 @@ public class ValuationReportIssuance
     public DateTime DepositIssuedAtUtc { get; set; }
     public string? DepositIssuedByUserId { get; set; }
 
- /// <summary>Frozen snapshot of the full report (ValuationReportDocumentDto) — source for both copies.</summary>
-    public string DocumentJson { get; set; } = "";
+ /// <summary>
+ /// Retired: older rows hold a server-built report snapshot that nothing reads. New copies store an
+ /// empty JSON object (<see cref="NoDocumentJson"/>); the column stays mapped so the schema does not change.
+ /// </summary>
+    public string DocumentJson { get; set; } = NoDocumentJson;
+
+ /// <summary>What a new copy stores in the retired, required <see cref="DocumentJson"/> column.</summary>
+    public const string NoDocumentJson = "{}";
 
  /// <summary>Deposit-certificate code from Qiama — outside freeze scope. Stored (and printed) in Latin digits.</summary>
     public string? DepositCode { get; set; }
@@ -47,7 +52,10 @@ public class ValuationReportIssuance
     public string? CertificateContentType { get; set; }
  /// <summary>The certificate in the attachments service — stored on the transaction file and appended as a page in the final copy.</summary>
     public Guid? CertificateAttachmentId { get; set; }
- /// <summary>Legacy: certificates recorded before they moved to the attachments service live here.</summary>
+ /// <summary>
+ /// Retired inline certificate bytes — every certificate lives in the attachments service and no row holds
+ /// bytes here. Kept mapped only so the schema does not change; nothing reads or writes it.
+ /// </summary>
     public byte[]? CertificateContent { get; set; }
     public DateTime? CertificateUploadedAtUtc { get; set; }
     public string? CertificateUploadedByUserId { get; set; }
@@ -61,8 +69,8 @@ public class ValuationReportIssuance
     public string? FinalPdfDepositCode { get; set; }
     public DateTime? FinalPdfGeneratedAtUtc { get; set; }
 
- /// <summary>The certificate is on record (attachments service, or legacy inline bytes).</summary>
-    public bool HasCertificate => CertificateAttachmentId is not null || CertificateContent is { Length: > 0 };
+ /// <summary>The certificate is on record in the attachments service.</summary>
+    public bool HasCertificate => CertificateAttachmentId is not null;
 
  /// <summary>The final PDF exists and carries the current deposit code.</summary>
     public bool FinalPdfIsCurrent =>
@@ -116,7 +124,6 @@ public class ValuationReportIssuance
  /// <summary>Freeze and issue deposit copy — one current copy per request (cycle N+1).</summary>
     public static ValuationReportIssuance IssueDeposit(
         Guid valuationRequestId,
-        string documentJson,
         string? issuedByUserId,
         DateTime nowUtc,
         int version = 1) => new()
@@ -125,7 +132,7 @@ public class ValuationReportIssuance
             ValuationRequestId = valuationRequestId,
             DepositIssuedAtUtc = nowUtc,
             DepositIssuedByUserId = issuedByUserId,
-            DocumentJson = documentJson,
+            DocumentJson = NoDocumentJson,
             Version = version,
         };
 
@@ -138,7 +145,6 @@ public class ValuationReportIssuance
         string? certificateFileName,
         string? certificateContentType,
         Guid? certificateAttachmentId,
-        byte[]? legacyCertificateContent,
         string? uploadedByUserId,
         DateTime nowUtc)
     {
@@ -149,12 +155,11 @@ public class ValuationReportIssuance
         DepositCode = code;
         DepositCodeKey = DepositCodeKeyOf(code);
         // A code-only correction keeps the certificate (and its name) already on the copy.
-        if (certificateAttachmentId is not null || legacyCertificateContent is not null)
+        if (certificateAttachmentId is not null)
         {
             CertificateFileName = certificateFileName?.Trim();
             CertificateContentType = certificateContentType?.Trim();
             CertificateAttachmentId = certificateAttachmentId;
-            CertificateContent = legacyCertificateContent;
         }
         CertificateUploadedAtUtc = nowUtc;
         CertificateUploadedByUserId = uploadedByUserId;

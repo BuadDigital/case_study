@@ -106,41 +106,6 @@ public static class ComparableBankSeed
         await EnsureBankRowsAsync(db, now, cancellationToken);
     }
 
-    /// <summary>
-    /// Drops demo-bank selections the valuer never adopted, and clears the fake
-    /// field-comparable pin so they do not re-import onto a valuation.
-    /// </summary>
-    public static async Task DetachUnchosenFromValuationAsync(
-        ValuationDbContext db,
-        Guid valuationRequestId,
-        CancellationToken cancellationToken = default)
-    {
-        var seedIds = DemoComparableBank.Ids;
-        var rows = await db.ValuationComparableSelections
-            .Where(s =>
-                s.ValuationRequestId == valuationRequestId
-                && seedIds.Contains(s.ComparablePropertyId))
-            .ToListAsync(cancellationToken);
-
-        var unchosen = rows.Where(DemoComparableBank.IsUnchosenDemoSelection).ToList();
-        if (unchosen.Count > 0)
-            db.ValuationComparableSelections.RemoveRange(unchosen);
-
-        var pinned = await db.ComparableProperties
-            .Where(c =>
-                seedIds.Contains(c.Id)
-                && c.SourceWorkOrderNumber == "SEED-FIELD")
-            .ToListAsync(cancellationToken);
-        foreach (var comp in pinned)
-        {
-            comp.SourceWorkOrderNumber = null;
-            comp.SourcePropertyId = null;
-        }
-
-        if (unchosen.Count > 0 || pinned.Count > 0)
-            await db.SaveChangesAsync(cancellationToken);
-    }
-
     private static async Task EnsureBankRowsAsync(
         ValuationDbContext db,
         DateTime now,

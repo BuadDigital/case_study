@@ -33,6 +33,17 @@ public interface IValuationReconciliationService
         string? actorId = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Fix 4 (2026-11-10): writes the live projection's approach values and resolved basis/premise
+    /// onto the stored reconciliation rows, so the request list — which reads the stored snapshot in
+    /// one batched query — shows the same final value. Best-effort; never touches a frozen report.
+    /// The default no-op keeps test doubles compiling.
+    /// </summary>
+    Task RefreshListSnapshotAsync(
+        Guid valuationRequestId,
+        ValuationReconciliationDto projection,
+        CancellationToken cancellationToken = default) => Task.CompletedTask;
+
     /// <summary>Approaches the system values itself on this request (settings) — market / cost.</summary>
     Task<IReadOnlyList<string>> GetEnabledApproachKindsAsync(
         Guid valuationRequestId,

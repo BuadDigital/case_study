@@ -133,7 +133,6 @@ public class ValuationRequestServiceTests
         });
         db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(
             requestId,
-            "{}",
             "staff",
             new DateTime(2026, 9, 10, 8, 0, 0, DateTimeKind.Utc)));
         await db.SaveChangesAsync();
@@ -159,6 +158,52 @@ public class ValuationRequestServiceTests
         var open = Assert.Single(listed, x => x.DisplayId == "VR-521");
         Assert.Null(open.FinalOpinionValue);
         Assert.Null(open.IssueDate);
+    }
+
+    [Fact]
+    public async Task List_final_value_drops_a_leftover_discount_once_the_basis_is_not_liquidation()
+    {
+        // Fix 4 (2026-11-10): the list reads the stored snapshot through the projection's rules — a 10%
+        // discount left on a market-basis row never applies, and the additions join once.
+        await using var db = CreateDb();
+        var requestId = Guid.Parse("a1000001-0000-4000-8000-000000000105");
+        var reconId = Guid.Parse("a1000001-0000-4000-8000-000000000106");
+        db.ValuationRequests.Add(ValuationRequest.Create(
+            requestId,
+            "VR-530",
+            Guid.Parse("dddddddd-dddd-4ddd-8ddd-dddddddddddd"),
+            "جدة",
+            "فيلا",
+            "مقيم",
+            "2026-09-01",
+            DateTime.UtcNow));
+        db.ValuationReconciliations.Add(new ValuationReconciliation
+        {
+            Id = reconId,
+            ValuationRequestId = requestId,
+            MethodsRationale = "سوق",
+            BasisOfValueKey = BasisOfValueKeys.Market,
+            ValuePremiseKey = ValuePremiseKeys.CurrentUse,
+            LiquidationDiscountPct = 10m,
+            UpdatedAtUtc = DateTime.UtcNow,
+            Methods =
+            [
+                new ValuationReconciliationMethodLine
+                {
+                    Id = Guid.Parse("a1000001-0000-4000-8000-000000000107"),
+                    ReconciliationId = reconId,
+                    ApproachKind = ValuationApproachKinds.Market,
+                    ApproachValue = 950_000m,
+                    WeightPct = 100m,
+                    IsIncluded = true,
+                },
+            ],
+        });
+        await db.SaveChangesAsync();
+
+        var row = Assert.Single(await CreateService(db).ListAsync(), x => x.DisplayId == "VR-530");
+
+        Assert.Equal(950_000m, row.FinalOpinionValue);
     }
 
     // ------------------------------------------------------------ phase 5: one valuation per transaction
@@ -243,7 +288,7 @@ public class ValuationRequestServiceTests
 
     private static ValuationReportIssuance FinalCopy(Guid requestId, int version, DateTime issuedAt, bool pdfReady)
     {
-        var issuance = ValuationReportIssuance.IssueDeposit(requestId, "{}", "u-1", issuedAt, version);
+        var issuance = ValuationReportIssuance.IssueDeposit(requestId, "u-1", issuedAt, version);
         issuance.DepositCode = "DEP-1";
         issuance.FinalIssuedAtUtc = issuedAt;
         if (pdfReady) issuance.SetFinalPdf(Guid.NewGuid(), "DEP-1", issuedAt);
@@ -272,7 +317,7 @@ public class ValuationRequestServiceTests
 
         // The new cycle's deposit copy is the one the status follows.
         db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(
-            request, "{}", "u-1", new DateTime(2026, 10, 5, 9, 0, 0, DateTimeKind.Utc), version: 2));
+            request, "u-1", new DateTime(2026, 10, 5, 9, 0, 0, DateTimeKind.Utc), version: 2));
         await db.SaveChangesAsync();
         Assert.Equal(FinalReportStatuses.None, await service.GetFinalReportStatusByPropertyAsync(key));
     }

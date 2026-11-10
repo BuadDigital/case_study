@@ -29,12 +29,6 @@ public sealed class ValuationComparableSelectionRepository(ValuationDbContext db
         db.ValuationRequests.AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == valuationRequestId, cancellationToken);
 
-    public Task DetachUnchosenDemoSelectionsAsync(
-        Guid valuationRequestId,
-        CancellationToken cancellationToken) =>
-        ComparableBankSeed.DetachUnchosenFromValuationAsync(
-            db, valuationRequestId, cancellationToken);
-
     public async Task<IReadOnlyList<ValuationComparableSelection>> ListSelectionsAsync(
         Guid valuationRequestId,
         string selectionContext,
@@ -261,6 +255,64 @@ public sealed class ValuationComparableSelectionRepository(ValuationDbContext db
             .OrderBy(x => x.LinkedAtUtc)
             .Select(x => x.ComparablePropertyId)
             .ToListAsync(cancellationToken);
+
+    // Dismissed property-linked comparables (2026-11-10): read through Set<> — the table is mapped in
+    // ValuationModel; a removal of a linked comparable writes one row, a re-add from the bank deletes it.
+    public async Task<IReadOnlySet<Guid>> ListDismissedLinkedComparableIdsAsync(
+        Guid valuationRequestId,
+        CancellationToken cancellationToken) =>
+        (await db.Set<ValuationDismissedLinkedComparable>().AsNoTracking()
+            .Where(x => x.ValuationRequestId == valuationRequestId)
+            .Select(x => x.ComparablePropertyId)
+            .ToListAsync(cancellationToken))
+        .ToHashSet();
+
+    /// <summary>
+    /// Adds a dismissal row per comparable not already dismissed (in the database or staged in this
+    /// unit of work), so a double removal or a replace that drops the same id twice stays one row.
+    /// </summary>
+    public async Task DismissLinkedComparablesAsync(
+        Guid valuationRequestId,
+        IReadOnlyCollection<Guid> comparableIds,
+        DateTime dismissedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        if (comparableIds.Count == 0) return;
+        var ids = comparableIds.Distinct().ToList();
+        var set = db.Set<ValuationDismissedLinkedComparable>();
+        var known = (await set
+                .Where(x => x.ValuationRequestId == valuationRequestId && ids.Contains(x.ComparablePropertyId))
+                .Select(x => x.ComparablePropertyId)
+                .ToListAsync(cancellationToken))
+            .Concat(set.Local
+                .Where(x => x.ValuationRequestId == valuationRequestId)
+                .Select(x => x.ComparablePropertyId))
+            .ToHashSet();
+        foreach (var id in ids.Where(id => !known.Contains(id)))
+        {
+            set.Add(new ValuationDismissedLinkedComparable
+            {
+                Id = Guid.NewGuid(),
+                ValuationRequestId = valuationRequestId,
+                ComparablePropertyId = id,
+                DismissedAtUtc = dismissedAtUtc,
+            });
+        }
+    }
+
+    public async Task ClearDismissedLinkedComparablesAsync(
+        Guid valuationRequestId,
+        IReadOnlyCollection<Guid> comparableIds,
+        CancellationToken cancellationToken)
+    {
+        if (comparableIds.Count == 0) return;
+        var ids = comparableIds.Distinct().ToList();
+        var set = db.Set<ValuationDismissedLinkedComparable>();
+        var rows = await set
+            .Where(x => x.ValuationRequestId == valuationRequestId && ids.Contains(x.ComparablePropertyId))
+            .ToListAsync(cancellationToken);
+        if (rows.Count > 0) set.RemoveRange(rows);
+    }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         db.SaveChangesAsync(cancellationToken);

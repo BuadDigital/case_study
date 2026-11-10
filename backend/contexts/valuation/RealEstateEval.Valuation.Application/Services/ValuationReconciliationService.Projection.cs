@@ -1,9 +1,12 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
-//  • The appraiser's saved basis and premise win; the work order only seeds them.
+//  • (superseded 2026-11-10) The appraiser's saved basis and premise won; the work order only seeded them.
 // Hotfix (9acb4f54)
 //  • A row that only an alert acknowledgement created (no methods rationale = no full save) never
 //         outranks the work order's basis and premise.
+// Grey areas (2026-11-10, owner's ruling)
+//  • The work order owns the basis and premise (ResolveBasisAndPremise); the appraiser's saved keys
+//         count only when the work order has none. The discount is 0 on any basis but liquidation.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Application;
@@ -103,19 +106,15 @@ public sealed partial class ValuationReconciliationService
         var weightSum = methodDtos.Where(m => m.IsIncluded).Sum(m => m.WeightPct);
         var weighted = ReconciliationRules.WeightedValue(includedMethods);
         var decimals = entity?.FinalRoundDecimals ?? 0;
-        // The appraiser's saved basis and premise win; the work order only seeds them. A row
-        // only an alert acknowledgement created (no full save — that requires the methods rationale)
-        // holds no choice of the appraiser, so it never outranks the work order.
-        var appraiserSaved = !string.IsNullOrWhiteSpace(entity?.MethodsRationale);
-        var basis = FirstValuationKey(
-            appraiserSaved ? entity!.BasisOfValueKey : null,
-            workOrderBasisKey,
-            AssignmentValuationDefaults.BasisOfValueKey(assignmentType));
-        var premise = FirstValuationKey(
-            appraiserSaved ? entity!.ValuePremiseKey : null,
-            workOrderPremiseKey,
-            AssignmentValuationDefaults.PremiseKey(assignmentType));
-        var discountPct = entity?.LiquidationDiscountPct ?? 0m;
+        // One owner (ruling 2026-11-10): the work order's basis and premise always win; the
+        // appraiser's saved keys count only when the work order has none (legacy), and only from a
+        // full save — a row an alert acknowledgement created (no methods rationale) holds no choice.
+        var (basis, premise) = ResolveBasisAndPremise(
+            entity, assignmentType, workOrderBasisKey, workOrderPremiseKey);
+        // The discount exists only on the liquidation basis: 0 (and no rationale) on any other, in
+        // the value, the screen, the report and the hand-over alike.
+        var isLiquidation = string.Equals(basis, BasisOfValueKeys.Liquidation, StringComparison.Ordinal);
+        var discountPct = isLiquidation ? entity?.LiquidationDiscountPct ?? 0m : 0m;
         var additions = valueDocumentUses
             .Where(ValueDocumentUseRules.IsAddition)
             .Select(u => new ValuationValueDocumentAdditionDto
@@ -160,10 +159,69 @@ public sealed partial class ValuationReconciliationService
                 ? null
                 : ValuePremiseKeys.LabelAr(premise),
             LiquidationDiscountPct = discountPct,
-            LiquidationDiscountRationale = entity?.LiquidationDiscountRationale,
+            LiquidationDiscountRationale = isLiquidation ? entity?.LiquidationDiscountRationale : null,
             LiquidationDiscountApplied = applied,
             MethodologyAlertOverrides = ParseAlertOverrides(entity?.MethodologyAlertOverridesJson),
         };
+    }
+
+    /// <summary>
+    /// Keeps the stored reconciliation snapshot equal to the live projection (Fix 4, 2026-11-10).
+    ///
+    /// How it works: for each stored method row whose kind the projection shows, the stored
+    /// ApproachValue takes the live one; the stored basis/premise take the resolved keys. Only when
+    /// something differs, and only when the report is not frozen, are the changes saved. The request
+    /// list then computes its final value from these rows with the same rules
+    /// (<see cref="ReconciliationRules.FinalFromSnapshot"/>) — one batched query, no per-row calls
+    /// to Case Study, market or cost.
+    ///
+    /// Edge cases: no stored row → nothing to refresh (the list shows no value until a save); a row
+    /// for an approach the projection no longer shows (disabled since) is left as saved; weights,
+    /// inclusion, rationale and the discount are never changed here. A failed write (e.g. a
+    /// concurrent save bumped the row version) is ignored — the read must not fail and the next read
+    /// refreshes again. Deposited/frozen reports are never touched.
+    /// </summary>
+    public async Task RefreshListSnapshotAsync(
+        Guid valuationRequestId,
+        ValuationReconciliationDto projection,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await repo.FindWithMethodsAsync(valuationRequestId, cancellationToken);
+        if (entity is null) return;
+
+        var changed = false;
+        foreach (var row in entity.Methods)
+        {
+            var live = projection.Methods.FirstOrDefault(m =>
+                string.Equals(m.ApproachKind, row.ApproachKind, StringComparison.OrdinalIgnoreCase));
+            if (live is null || row.ApproachValue == live.ApproachValue) continue;
+            row.ApproachValue = live.ApproachValue;
+            changed = true;
+        }
+        if (!string.Equals(entity.BasisOfValueKey, projection.BasisOfValueKey, StringComparison.Ordinal))
+        {
+            entity.BasisOfValueKey = projection.BasisOfValueKey;
+            changed = true;
+        }
+        if (!string.Equals(entity.ValuePremiseKey, projection.ValuePremiseKey, StringComparison.Ordinal))
+        {
+            entity.ValuePremiseKey = projection.ValuePremiseKey;
+            changed = true;
+        }
+        if (!changed) return;
+
+        var vr = await repo.GetRequestAsync(valuationRequestId, cancellationToken);
+        if (vr is null) return;
+        if (await freeze.GetWriteBlockedMessageAsync(vr, "طلب التقييم مكتمل", cancellationToken) is not null)
+            return;
+        try
+        {
+            await repo.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Best-effort cache refresh: a concurrent save wins; the next read refreshes again.
+        }
     }
 
     private static readonly System.Text.Json.JsonSerializerOptions AlertOverridesJsonOptions = new()
@@ -194,14 +252,26 @@ public sealed partial class ValuationReconciliationService
             .ToList();
     }
 
-    private static string FirstValuationKey(params string?[] keys)
+    /// <summary>
+    /// The basis and premise of this valuation through the one shared order
+    /// (<see cref="AssignmentValuationDefaults.ResolveBasisAndPremise"/>).
+    /// How it works: the saved keys are offered as the legacy fallback only after a full save
+    /// (methods rationale written). Edge cases: no row / acknowledgement-only row → work order, then
+    /// the assignment default. Fixed 2026-11-10: the appraiser's saved basis outranked the work order.
+    /// </summary>
+    internal static (string Basis, string Premise) ResolveBasisAndPremise(
+        ValuationReconciliation? entity,
+        AssignmentType assignmentType,
+        string? workOrderBasisKey,
+        string? workOrderPremiseKey)
     {
-        foreach (var key in keys)
-        {
-            var trimmed = key?.Trim();
-            if (!string.IsNullOrEmpty(trimmed)) return trimmed;
-        }
-        return "";
+        var appraiserSaved = !string.IsNullOrWhiteSpace(entity?.MethodsRationale);
+        return AssignmentValuationDefaults.ResolveBasisAndPremise(
+            assignmentType,
+            workOrderBasisKey,
+            workOrderPremiseKey,
+            appraiserSaved ? entity!.BasisOfValueKey : null,
+            appraiserSaved ? entity!.ValuePremiseKey : null);
     }
 
     private static IReadOnlyList<ValuationMethodologyAlertOverrideDto> ParseAlertOverrides(string? json)

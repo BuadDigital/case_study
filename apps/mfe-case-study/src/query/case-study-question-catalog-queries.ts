@@ -3,10 +3,7 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import {
-  DEFAULT_CASE_STUDY_QUESTION_CATALOG,
-  loadCaseStudyQuestionCatalog,
-} from "@platform/app-shared/domain/case-study/question-catalog";
+import { DEFAULT_CASE_STUDY_QUESTION_CATALOG, loadCaseStudyQuestionCatalog } from "@platform/app-shared/domain/case-study/question-catalog";
 import { CASE_STUDY_QUESTION_CATALOG_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
 const STALE_MS = 60_000;

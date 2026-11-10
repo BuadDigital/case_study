@@ -113,6 +113,12 @@ public sealed partial class ValuationReportDraftService(
         if (draft!.IsInReview ? !mayReview : !mayPrepare)
             return (null, Forbidden(draft.IsInReview ? InReviewEditForbiddenAr : PrepareForbiddenAr));
 
+        // 2026-11-10: a newer draft than the screen loaded is not overwritten (409, reload).
+        var (expected, sawNoDraft) = ParseDraftToken(request.ExpectedUpdatedAtUtc);
+        var isNewDraft = db.Entry(draft).State == EntityState.Added;
+        if (draft.IsStaleFor(expected, sawNoDraft, isNewDraft))
+            return (null, new Dictionary<string, string> { [ReportDraftErrorKeys.Conflict] = ValuationReportDraft.StaleChoicesAr });
+
         var saveError = draft.SaveChoices(json!, _time.GetUtcNow().UtcDateTime);
         if (saveError is not null) return (null, Error(saveError));
 
@@ -266,6 +272,25 @@ public sealed partial class ValuationReportDraftService(
             .Select(x => (int?)x.Version)
             .MaxAsync(cancellationToken) ?? 0;
         return Math.Max(issued, drafted) + 1;
+    }
+
+    /// <summary>The screen's concurrency token: (stamp, caller saw no draft).</summary>
+    /// <remarks>
+    /// How it works: null → (null, false) = no check; blank → (null, true) = the screen loaded no draft;
+    /// an ISO-8601 stamp (round-trip «o», as <see cref="ToDto"/> writes it) → (stamp, false).
+    /// Edge cases: an unreadable value counts as absent (no check) rather than refusing every save.
+    /// </remarks>
+    private static (DateTime? Expected, bool SawNoDraft) ParseDraftToken(string? token)
+    {
+        if (token is null) return (null, false);
+        if (string.IsNullOrWhiteSpace(token)) return (null, true);
+        return DateTime.TryParse(
+            token.Trim(),
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.RoundtripKind,
+            out var stamp)
+            ? (stamp, false)
+            : (null, false);
     }
 
     private static Dictionary<string, string> Error(string message) => new() { ["_"] = message };

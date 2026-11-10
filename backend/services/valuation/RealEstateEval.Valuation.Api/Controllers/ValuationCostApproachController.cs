@@ -2,6 +2,8 @@
 // Round 1 (5b554f4e)
 //  • Access  GET uses ReadValuationReport (the case specialist can read it); PUT is limited to the assigned
 //            appraiser ([RequireAssignedAppraiser]).
+// Grey areas (2026-11-10)
+//  • A stale save (another tab saved since this copy loaded) answers 409 Conflict.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +14,7 @@ using RealEstateEval.Shared.Web;
 using RealEstateEval.Shared.Web.Authorization;
 using RealEstateEval.Valuation.Application.Contracts;
 using RealEstateEval.Valuation.Application.Abstractions;
+using RealEstateEval.Valuation.Application.Rules;
 
 namespace RealEstateEval.Valuation.Api.Controllers;
 
@@ -44,8 +47,11 @@ public class ValuationCostApproachController : ControllerBase
         CancellationToken ct)
     {
         var (result, errors) = await _cost.SaveAsync(valuationRequestId, request, ct);
-        if (errors is not null)
-            return this.FieldErrorsProblem(errors);
-        return Ok(result);
+        if (errors is null) return Ok(result);
+        // 2026-11-10: a save built on an older copy (another tab saved since) answers 409 with
+        // «حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة»; the marker key itself is dropped.
+        if (errors.Remove(ValuationCostApproachRequestRules.ConflictKey))
+            return this.FieldErrorsProblem(errors, StatusCodes.Status409Conflict, "Conflict");
+        return this.FieldErrorsProblem(errors);
     }
 }

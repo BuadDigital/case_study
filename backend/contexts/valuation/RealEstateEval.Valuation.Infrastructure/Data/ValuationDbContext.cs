@@ -23,6 +23,9 @@ public sealed class ValuationDbContext(DbContextOptions<ValuationDbContext> opti
     public DbSet<PropertyComparableLink> PropertyComparableLinks => Set<PropertyComparableLink>();
     public DbSet<ValuationComparableSelection> ValuationComparableSelections =>
         Set<ValuationComparableSelection>();
+    // Property-linked comparables the appraiser removed — the import on the market read skips them (2026-11-10).
+    public DbSet<ValuationDismissedLinkedComparable> ValuationDismissedLinkedComparables =>
+        Set<ValuationDismissedLinkedComparable>();
     public DbSet<ValuationReportIssuance> ValuationReportIssuances =>
         Set<ValuationReportIssuance>();
     public DbSet<ValuationReportDraft> ValuationReportDrafts => Set<ValuationReportDraft>();

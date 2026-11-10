@@ -141,7 +141,7 @@ public class ValuationDepositAndNewVersionTests
         Assert.Equal("certificate.pdf", corrected.CertificateFileName);
         Assert.Equal(1, corrected.Version);
         var row = await rig.Contexts.Valuation.ValuationReportIssuances.SingleAsync();
-        Assert.Equal(TestPdf.OnePage, row.CertificateContent);
+        Assert.Equal(TestPdf.OnePage, await rig.Files.ReadAsync(row.CertificateAttachmentId!.Value));
         var entry = Assert.Single(rig.Audit.Entries, e => e.Action == "valuation.report-issuance.code-corrected");
         Assert.Contains("QYM-WRONG", entry.BeforeJson);
         Assert.Contains("QYM-RIGHT", entry.AfterJson);
@@ -333,10 +333,11 @@ public class ValuationDepositAndNewVersionTests
         var events = new ValuationOutboxPublisher(contexts.Valuation, NullLogger<ValuationOutboxPublisher>.Instance);
         var caseStudy = new RecordingCaseStudy();
         var audit = new RecordingAuditLogAppend();
+        var files = new FakeAttachmentFileStore();
         var issuance = new ValuationReportIssuanceService(
             contexts.Valuation,
             new StubGates(),
-            new StubDocuments(),
+            files,
             audit: new AuditLogWriter(),
             auditLog: audit,
             events: events,
@@ -345,7 +346,7 @@ public class ValuationDepositAndNewVersionTests
         var service = new ValuationReportDraftService(
             contexts.Valuation, issuance, lookup, events, new FixedClock(new DateTimeOffset(2026, 10, 5, 9, 0, 0, TimeSpan.Zero)),
             caseStudyCommands: new FakeCaseStudyCommands());
-        return new Rig(contexts, requestId, propertyId, taskId, service, issuance, caseStudy, audit);
+        return new Rig(contexts, requestId, propertyId, taskId, service, issuance, caseStudy, audit, files);
     }
 
     private sealed class FixedClock(DateTimeOffset now) : TimeProvider
@@ -361,7 +362,8 @@ public class ValuationDepositAndNewVersionTests
         ValuationReportDraftService service,
         ValuationReportIssuanceService issuance,
         RecordingCaseStudy caseStudy,
-        RecordingAuditLogAppend audit) : IAsyncDisposable
+        RecordingAuditLogAppend audit,
+        FakeAttachmentFileStore files) : IAsyncDisposable
     {
         public TestDatabases.ContextSet Contexts { get; } = contexts;
         public Guid RequestId { get; } = requestId;
@@ -371,6 +373,7 @@ public class ValuationDepositAndNewVersionTests
         public ValuationReportIssuanceService Issuance { get; } = issuance;
         public RecordingCaseStudy CaseStudy { get; } = caseStudy;
         public RecordingAuditLogAppend Audit { get; } = audit;
+        public FakeAttachmentFileStore Files { get; } = files;
         public ValueTask DisposeAsync() => Contexts.DisposeAsync();
     }
 
@@ -400,20 +403,6 @@ public class ValuationDepositAndNewVersionTests
             Task.FromResult<ValuationIssuanceGatesDto?>(new ValuationIssuanceGatesDto
             {
                 ValuationRequestId = valuationRequestId, AllowsIssuance = true, BlockingReasonsAr = [],
-            });
-    }
-
-    private sealed class StubDocuments : IValuationReportDocumentService
-    {
-        public Task<ValuationReportDocumentDto?> GetPreviewAsync(
-            Guid valuationRequestId, CancellationToken cancellationToken = default) =>
-            Task.FromResult<ValuationReportDocumentDto?>(new ValuationReportDocumentDto
-            {
-                ValuationRequestId = valuationRequestId,
-                DisplayId = "VR-TEST",
-                ReportDateDisplay = "2026/10/05",
-                FinalOpinionDisplay = "1,000,000 ريال",
-                Sections = [],
             });
     }
 }

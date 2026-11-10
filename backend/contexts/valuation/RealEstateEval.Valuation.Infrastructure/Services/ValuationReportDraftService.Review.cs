@@ -233,7 +233,8 @@ public sealed partial class ValuationReportDraftService
         try
         {
             var state = await caseStudy.GetAppraisalPackageStateAsync(propertyId, cancellationToken);
-            // A null answer is an older Case Study host without the endpoint: unknown, not «none».
+            // An empty answer is «could not verify» — unknown, not «none» (the freeze gate and the deposit step
+            // read it the same way since 2026-11-10; only «none» means no appraisal package at all).
             return state?.PackageStatus ?? PackageStatusUnknown;
         }
         catch (Exception ex) when (ex is not OperationCanceledException)

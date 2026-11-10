@@ -18,7 +18,13 @@ public sealed partial class ValuationReportIssuanceService
     /// <summary>
     /// The code (compared case/space-insensitively, Latin digits) is held by another current report, or by
     /// any earlier version of this request — a new version gets its own certificate from the platform.
-    /// Rows recorded before the comparison key existed are matched on their stored code.
+    /// How it works: rows with a comparison key match on it; rows recorded before the key existed are
+    /// matched on their stored code with spaces removed and upper-cased — the same shape as the key
+    /// (<see cref="ValuationReportIssuance.DepositCodeKeyOf"/>), written so EF translates it to SQL.
+    /// Edge case: a legacy code stored with Arabic digits or tabs is still missed (the SQL side cannot
+    /// convert them); the local copy of production held no legacy rows on 2026-11-10.
+    /// Fixed 2026-11-10: the legacy branch kept inner spaces while the key drops them, so «AB 123»
+    /// on file did not block «AB123».
     /// </summary>
     private async Task<bool> DepositCodeTakenAsync(
         ValuationReportIssuance row,
@@ -26,13 +32,14 @@ public sealed partial class ValuationReportIssuanceService
         CancellationToken cancellationToken)
     {
         var key = ValuationReportIssuance.DepositCodeKeyOf(depositCode);
-        var legacy = ValuationReportIssuance.NormalizeDepositCode(depositCode).ToUpperInvariant();
         return await db.ValuationReportIssuances.AsNoTracking()
             .Where(x => x.Id != row.Id)
             .Where(x => x.SupersededAtUtc == null || x.ValuationRequestId == row.ValuationRequestId)
             .AnyAsync(
                 x => x.DepositCodeKey == key
-                     || (x.DepositCodeKey == null && x.DepositCode != null && x.DepositCode.Trim().ToUpper() == legacy),
+                     || (x.DepositCodeKey == null
+                         && x.DepositCode != null
+                         && x.DepositCode.Replace(" ", "").ToUpper() == key),
                 cancellationToken);
     }
 

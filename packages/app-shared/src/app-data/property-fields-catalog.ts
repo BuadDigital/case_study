@@ -251,7 +251,6 @@ const engineeringChecklistNoteFields: PropertyFieldCatalogEntry[] = [
 const evaluatorCoreFields: PropertyFieldCatalogEntry[] = [
   { key: "evaluatorPrice", label: "سعر التقييم" },
   { key: "evaluatorNotes", label: "ملاحظات المقيّم" },
-  { key: "reportFileName", label: "تقرير التقييم (مولَّد)" },
 ];
 
 const evaluatorChecklistFields: PropertyFieldCatalogEntry[] = [

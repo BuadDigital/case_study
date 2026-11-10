@@ -19,6 +19,10 @@
 //  • B    New alert when a required cost rationale (use restriction, life extension, functional /
 //         external obsolescence) is written but under 10 characters.
 //  • The lease cap comment now covers any usufruct / leased-land interest, whatever the scope.
+// Grey areas (2026-11-10)
+//  • Ages  No invented 10 / 40 years: actual age and economic life start empty (the inspector's age
+//          still seeds the actual age); costDepreciationIncomplete + COST_AGES_MISSING_HINT name them.
+//  • Floors  Repeated floors inherit from the INCLUDED first floor only (includedFirstFloorLine).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -43,6 +47,7 @@ import {
   buildRatioApplies,
   costGroupOf,
   costLineComputed,
+  includedFirstFloorLine,
 } from "./cost-line-math";
 
 /** Per-item indirect draft: percentages stay strings so typing is lossless. */
@@ -125,8 +130,11 @@ export const HIGH_OBSOLESCENCE_ALERT_PCT = 90;
 // prototype's starter values (3٪ × 5, 15٪ profit, 5٪ over 18 months) were left in reports unexamined.
 const DEFAULT_FINANCING_RATE = "0";
 const DEFAULT_FINANCING_MONTHS = "0";
-const DEFAULT_ACTUAL_AGE_YEARS = "10";
-const DEFAULT_ECONOMIC_AGE_YEARS = "40";
+// No starter ages (2026-11-10, Omar): the screen seeded 10 / 40 years that nobody chose and the first
+// autosave stored them. Both start empty (sent as null); the inspector's age still seeds the actual age.
+
+/** The hint beside the age boxes while either is empty (same words as the server rule's message). */
+export const COST_AGES_MISSING_HINT = "أدخل العمر الفعلي والعمر الاقتصادي لحساب الإهلاك";
 
 function defaultIndirectDraft(): IndirectDraft {
   const draft: IndirectDraft = {};
@@ -147,9 +155,9 @@ export const EMPTY_COST_FIELDS: CostApproachFields = {
   indirectDraft: defaultIndirectDraft(),
   financingRate: DEFAULT_FINANCING_RATE,
   financingMonths: DEFAULT_FINANCING_MONTHS,
-  actualAge: DEFAULT_ACTUAL_AGE_YEARS,
+  actualAge: "",
   actualAgeRationale: "",
-  economicAge: DEFAULT_ECONOMIC_AGE_YEARS,
+  economicAge: "",
   economicAgeRationale: "",
   lifeExtension: "0",
   lifeExtensionBasis: "",
@@ -207,7 +215,11 @@ export function plotSeedNeedsSave(input: {
   );
 }
 
-/** Server DTO to editable drafts — one full-load reseed, no partial merges. */
+/**
+ * Server DTO to editable drafts — one full-load reseed, no partial merges.
+ * Ages (2026-11-10): the saved value, else the inspector's age for the actual age, else empty — never
+ * an invented default (was 10 / 40 years before the first save).
+ */
 export function costFieldsFromDto(
   cost: ValuationCostApproachDto,
   inspectorAgeYears?: string | null,
@@ -256,15 +268,10 @@ export function costFieldsFromDto(
     actualAge:
       cost.actualAgeYears != null
         ? String(cost.actualAgeYears)
-        : inspectorAgeYearsForCostField(inspectorAgeYears) ||
-          (saved ? "" : DEFAULT_ACTUAL_AGE_YEARS),
+        : inspectorAgeYearsForCostField(inspectorAgeYears),
     actualAgeRationale: cost.actualAgeRationale ?? "",
     economicAge:
-      cost.economicAgeYears != null
-        ? String(cost.economicAgeYears)
-        : saved
-          ? ""
-          : DEFAULT_ECONOMIC_AGE_YEARS,
+      cost.economicAgeYears != null ? String(cost.economicAgeYears) : "",
     economicAgeRationale: cost.economicAgeRationale ?? "",
     lifeExtension: String(cost.lifeExtensionYears ?? 0),
     lifeExtensionBasis: cost.lifeExtensionBasis ?? "",
@@ -551,13 +558,13 @@ type CostLineTotals = {
 
 /**
  * One pass over the draft instead of map + three reduces: the first-floor row
- * is resolved once and handed to every line (rerender-memo).
+ * is resolved once and handed to every line (rerender-memo). It is the INCLUDED first floor
+ * (`includedFirstFloorLine`, 2026-11-10) — an excluded one lends the repeated floors nothing.
  */
 export function costLineTotals(
   costDraft: ValuationCostLineDto[],
 ): CostLineTotals {
-  const firstFloorLine =
-    costDraft.find((l) => l.itemKey === "first_floor") ?? null;
+  const firstFloorLine = includedFirstFloorLine(costDraft);
   const computedLines = costDraft.map((l) =>
     costLineComputed(l, costDraft, firstFloorLine),
   );
@@ -699,6 +706,22 @@ function costItemLabel(line: ValuationCostLineDto): string {
   );
 }
 
+/**
+ * What: whether the depreciation cannot be computed yet — included building floor lines (the
+ * floor-areas group) while the actual age or the economic life box is empty.
+ * How it works: mirrors the server's CostDepreciationRules.IsIncomplete (and the DTO's
+ * depreciationIncomplete) on the live drafts, so the screen says it before the save round trip.
+ * Edge cases (2026-11-10): additions only (fence, pool) or excluded floors need no ages; a typed 0
+ * actual age (a new building) is an answer, not a blank.
+ */
+export function costDepreciationIncomplete(
+  fields: Pick<CostApproachFields, "actualAge" | "economicAge">,
+  costDraft: readonly ValuationCostLineDto[],
+): boolean {
+  if (fields.actualAge.trim() && fields.economicAge.trim()) return false;
+  return costDraft.some((l) => l.isIncluded !== false && costGroupOf(l) === "area");
+}
+
 /** Cost-approach alerts — the interactive-form trigger table, in order. */
 export function buildCostAlerts(
   fields: CostApproachFields,
@@ -726,7 +749,18 @@ export function buildCostAlerts(
       body: "يلزم بند واحد على الأقل في جدول التكلفة.",
       targetId: "cost-lines",
     });
-  if (extLifeLocal <= 0)
+  const agesIncomplete = costDepreciationIncomplete(fields, costDraft);
+  const agesBlank = !fields.actualAge.trim() || !fields.economicAge.trim();
+  if (agesIncomplete)
+    alerts.push({
+      kind: "error",
+      title: "العمر الفعلي أو العمر الاقتصادي فارغ",
+      body: `${COST_AGES_MISSING_HINT} — الإهلاك لا يُحسب صفرًا دون إدخالهما.`,
+      targetId: !fields.actualAge.trim() ? "cost-actualAge" : "cost-economicAge",
+      fallbackTargetId: "cost-age",
+    });
+  // A blank box is named above (or needs nothing: no floors); the life checks read typed ages only.
+  if (!agesBlank && extLifeLocal <= 0)
     alerts.push({
       kind: "error",
       title: "العمر الممتد صفر",
@@ -734,7 +768,7 @@ export function buildCostAlerts(
       targetId: "cost-economicAge",
       fallbackTargetId: "cost-age",
     });
-  else if (actualLocal > extLifeLocal)
+  else if (!agesBlank && actualLocal > extLifeLocal)
     alerts.push({
       kind: "error",
       title: "العمر الفعلي يتجاوز العمر الممتد",
@@ -772,14 +806,15 @@ export function buildCostAlerts(
       targetId: `cost-line-${repeatedNoCount}-repeatedFloorCount`,
       fallbackTargetId: "cost-lines",
     });
+  // 2026-11-10: the INCLUDED first floor only — an excluded one lends nothing (the save refuses it too).
   if (
-    costDraft.some((l) => l.itemKey === "repeated_floors") &&
-    !costDraft.some((l) => l.itemKey === "first_floor" && l.areaSqm > 0)
+    costDraft.some((l) => l.itemKey === "repeated_floors" && l.isIncluded !== false) &&
+    !((totals.firstFloorLine?.areaSqm ?? 0) > 0)
   )
     alerts.push({
       kind: "error",
-      title: "بند الأدوار المتكررة بلا «الدور الأول»",
-      body: "كمية المتكررة تُشتقّ من مسطح الدور الأول — أعد إدراجه أو احذف بند المتكررة.",
+      title: "بند الأدوار المتكررة بلا «الدور الأول» مدرج",
+      body: "كمية المتكررة وتكلفتها تُشتقّان من «الدور الأول» المدرج — أدرجه بمسطحه أو استبعد بند المتكررة.",
       targetId: "cost-lines",
     });
   if (costNum(fields.lifeExtension) > 0 && !fields.lifeExtensionBasis.trim())
@@ -809,8 +844,9 @@ export function buildCostAlerts(
     }
     if (
       l.itemKey === "repeated_floors" &&
+      totals.firstFloorLine != null &&
       l.unitCostSar > 0 &&
-      l.unitCostSar !== (totals.firstFloorLine?.unitCostSar ?? 0) &&
+      l.unitCostSar !== totals.firstFloorLine.unitCostSar &&
       !l.rationale.trim()
     ) {
       alerts.push({

@@ -11,6 +11,9 @@
 //         buildingPlotAreaSqm (cost DTO and save request).
 //  • Other failed responses go through serverFailure: a 503 (an unreachable service) now carries the
 //         server's Arabic message instead of a bare «server» failure.
+// Grey areas (2026-11-10)
+//  • Cost DTO: updatedAtUtc + depreciationIncomplete; save request: expectedUpdatedAtUtc; a 409 is a
+//    "conflict" failure carrying the server's Arabic reason.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 import { authHeaders, getApiBase } from "./api-base";
@@ -211,6 +214,11 @@ export type ValuationCostApproachDto = {
   appliedObsolescencePct?: number;
   /** Total obsolescence above 90%. */
   obsolescenceNeedsAlert?: boolean;
+  /**
+   * 2026-11-10: included floor lines with a blank actual age or economic life — the depreciation
+   * (counted as 0٪) is not computed yet (server rule CostDepreciationRules.IsIncomplete).
+   */
+  depreciationIncomplete?: boolean;
   depreciationValue: number;
   buildingsValueAfterDepreciation: number;
   /** Method index by scope: land_and_building = land + buildings; building_only = buildings after depreciation. */
@@ -222,6 +230,8 @@ export type ValuationCostApproachDto = {
   buildingAreaSqm?: number;
   analysisNotes?: string | null;
   lines: ValuationCostLineDto[];
+  /** 2026-11-10: the stored row's last save (ISO UTC); null before the first save — sent back as `expectedUpdatedAtUtc`. */
+  updatedAtUtc?: string | null;
 };
 
 type ValuationIndirectCostItemDto = {
@@ -286,6 +296,11 @@ export type SaveValuationCostApproachRequest = {
   functionalObsolescenceRationale?: string | null;
   externalObsolescencePct?: number;
   externalObsolescenceRationale?: string | null;
+  /**
+   * 2026-11-10 optimistic concurrency: the `updatedAtUtc` this screen loaded (or got back from its own
+   * last save); "" = it loaded a never-saved approach. Omitted = no check. A newer stored save → 409.
+   */
+  expectedUpdatedAtUtc?: string | null;
 };
 
 export type ValuationReconciliationMethodDto = {
@@ -866,6 +881,13 @@ export async function getValuationCostApproach(
   }
 }
 
+/** The cost save's 409 reason when the server sends none (same wording as the server's). */
+const COST_STALE_SAVE_MESSAGE = "حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة";
+
+/**
+ * Saves the cost approach (PUT). Failures: 401 auth, 409 conflict (a stale copy — 2026-11-10),
+ * 400 validation with the field errors, anything else via `serverFailure`.
+ */
 export async function saveValuationCostApproach(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,
@@ -882,6 +904,22 @@ export async function saveValuationCostApproach(
       },
     );
     if (res.status === 401) return { ok: false, kind: "auth" };
+    // 2026-11-10: another tab / user saved newer cost inputs since this copy loaded — refused, not
+    // overwritten; the server's Arabic reason is kept («حفظ مستخدم آخر تعديلات أحدث — أعد تحميل الصفحة»).
+    if (res.status === 409) {
+      const payload = (await res.json().catch(() => null)) as {
+        detail?: string;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "conflict",
+        message:
+          payload?.detail?.trim() ||
+          payload?.message?.trim() ||
+          COST_STALE_SAVE_MESSAGE,
+      };
+    }
     if (res.status === 400) {
       const payload = (await res.json().catch(() => null)) as {
         errors?: Record<string, string>;

@@ -127,42 +127,45 @@ public class PartyTaskSubmissionAggregateTests
     public void Report_issuance_final_requires_a_registered_code()
     {
         var row = ValuationReportIssuance.IssueDeposit(
-            Guid.NewGuid(), "{}", "u1", Now);
+            Guid.NewGuid(), "u1", Now);
         Assert.Equal(ReportIssuanceStages.DepositIssued, RowStage(row));
 
         Assert.NotNull(row.IssueFinal(Now));
 
-        Assert.Equal("رمز الإيداع مطلوب", row.RegisterCertificate("  ", null, null, null, null, "u2", Now));
-        Assert.Null(row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", null, null, "u2", Now));
+        Assert.Equal("رمز الإيداع مطلوب", row.RegisterCertificate("  ", null, null, null, "u2", Now));
+        Assert.Null(row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", null, "u2", Now));
         Assert.NotNull(row.IssueFinal(Now)); // a code without the certificate is not enough
 
-        Assert.Null(row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", Guid.NewGuid(), null, "u2", Now));
+        Assert.Null(row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", Guid.NewGuid(), "u2", Now));
         Assert.True(row.HasCertificate);
         Assert.Null(row.IssueFinal(Now));
         Assert.Equal(ReportIssuanceStages.FinalIssued, RowStage(row));
     }
 
+    /// <summary>Retired 2026-11-10: inline certificate bytes no longer count — only the attachments service holds certificates.</summary>
     [Fact]
-    public void Report_issuance_accepts_a_legacy_inline_certificate()
+    public void Report_issuance_ignores_retired_inline_certificate_bytes()
     {
-        var row = ValuationReportIssuance.IssueDeposit(Guid.NewGuid(), "{}", "u1", Now);
-        Assert.Null(row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", null, [7], "u2", Now));
-        Assert.True(row.HasCertificate);
-        Assert.Null(row.IssueFinal(Now));
+        var row = ValuationReportIssuance.IssueDeposit(Guid.NewGuid(), "u1", Now);
+        row.CertificateContent = [7];
+        Assert.Null(row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", null, "u2", Now));
+        Assert.False(row.HasCertificate);
+        Assert.NotNull(row.IssueFinal(Now));
+        Assert.Equal(ValuationReportIssuance.NoDocumentJson, row.DocumentJson);
     }
 
     [Fact]
     public void Report_issuance_final_pdf_is_current_only_for_the_code_it_printed()
     {
-        var row = ValuationReportIssuance.IssueDeposit(Guid.NewGuid(), "{}", "u1", Now);
-        row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", Guid.NewGuid(), null, "u2", Now);
+        var row = ValuationReportIssuance.IssueDeposit(Guid.NewGuid(), "u1", Now);
+        row.RegisterCertificate("QYM-1", "c.pdf", "application/pdf", Guid.NewGuid(), "u2", Now);
         Assert.False(row.FinalPdfIsCurrent);
 
         row.SetFinalPdf(Guid.NewGuid(), "QYM-1", Now);
         Assert.True(row.FinalPdfIsCurrent);
 
         // A code correction after the final issuance makes the stored PDF stale.
-        row.RegisterCertificate("QYM-2", null, null, null, null, "u2", Now);
+        row.RegisterCertificate("QYM-2", null, null, null, "u2", Now);
         Assert.False(row.FinalPdfIsCurrent);
     }
 

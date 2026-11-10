@@ -1,10 +1,10 @@
 namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
-/// A rendered PDF of the valuation report HTML (the v3 template the appraiser sees on screen),
-/// kept so the report can be opened from a plain <c>…/{reportNumber}.pdf?k=…</c> link
-/// in the browser's PDF viewer or shared without a session (signed, expiring key).
-/// Immutable once stored; new copies are no longer rendered — the rows only back links already shared.
+/// A rendered PDF of the valuation report HTML, once served from signed <c>…/{reportNumber}.pdf?k=…</c>
+/// links. The links and their endpoint were removed on 2026-11-10 (the table held no rows); the entity
+/// stays only so the EF model, and with it the <c>ValuationReportPdfs</c> table, does not change.
+/// Nothing reads or writes it.
 /// </summary>
 public class ValuationReportPdf
 {
@@ -32,45 +32,11 @@ public class ValuationReportPdf
     private ValuationReportPdf()
     {
     }
-
-    public static ValuationReportPdf Create(
-        Guid valuationRequestId,
-        string reportNumber,
-        string fileName,
-        byte[] content,
-        string sha256,
-        string renderer,
-        string? createdByUserId,
-        DateTime nowUtc)
-    {
-        ArgumentNullException.ThrowIfNull(content);
-        if (content.Length == 0)
-            throw new ArgumentException("PDF content is empty.", nameof(content));
-        if (string.IsNullOrWhiteSpace(fileName) || !fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("File name must end with .pdf.", nameof(fileName));
-
-        return new ValuationReportPdf
-        {
-            Id = Guid.NewGuid(),
-            ValuationRequestId = valuationRequestId,
-            ReportNumber = (reportNumber ?? "").Trim(),
-            FileName = fileName.Trim(),
-            Content = content,
-            SizeBytes = content.LongLength,
-            Sha256 = (sha256 ?? "").Trim().ToLowerInvariant(),
-            Renderer = (renderer ?? "").Trim(),
-            CreatedByUserId = string.IsNullOrWhiteSpace(createdByUserId) ? null : createdByUserId.Trim(),
-            CreatedAtUtc = nowUtc,
-        };
-    }
 }
 
-/// <summary>Pure rules for report PDF links and report HTML size.</summary>
+/// <summary>Pure rules for the report HTML sent for PDF rendering.</summary>
 public static class ValuationReportPdfRules
 {
- /// <summary>Default link lifetime when <c>ReportPdfLinks:LifetimeDays</c> is not configured.</summary>
-    public const int DefaultLinkLifetimeDays = 90;
-
  /// <summary>Upper bound for the posted HTML (the browser embeds photos as data URLs).</summary>
     public const int MaxHtmlBytes = 64 * 1024 * 1024;
 }

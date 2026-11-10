@@ -51,6 +51,16 @@ public class ValuerCredentialRulesTests
         Assert.False(ValuerCredentialRules.AllowsIssuance("2027-01-01", "", Today, out _));
     }
 
+    /// <summary>2026-11-10: «N/A» or any text that is not a date used to count as valid.</summary>
+    [Theory]
+    [InlineData("N/A", "2027-06-01", ValuerCredentialRules.LicenseDateUnreadableAr)]
+    [InlineData("2027-01-01", "غير محدد", ValuerCredentialRules.MembershipDateUnreadableAr)]
+    public void Blocks_when_a_date_cannot_be_read(string license, string membership, string expected)
+    {
+        Assert.False(ValuerCredentialRules.AllowsIssuance(license, membership, Today, out var reason));
+        Assert.Equal(expected, reason);
+    }
+
     [Theory]
     [InlineData("2026-09-01", true)]
     [InlineData("2026-12-20", false)]

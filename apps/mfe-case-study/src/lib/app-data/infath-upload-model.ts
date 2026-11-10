@@ -600,8 +600,10 @@ export function infathValuationFigures(input: {
   const pct = positiveAmount(recon.liquidationDiscountPct);
   const discounted = Boolean(recon.liquidationDiscountApplied) && pct != null;
   const before = positiveAmount(recon.finalOpinionBeforeLiquidation);
-  const totalValue =
-    discounted && before != null ? before + Math.max(0, recon.additionsTotal ?? 0) : finalValue;
+  // The value before the forced-sale discount. Since 2026-11-10 the server's «before liquidation» already
+  // includes the «مستند ذو قيمة» additions (it equals the final value when no discount applies), so the
+  // additions are no longer added here — adding them again counted them twice.
+  const totalValue = discounted && before != null ? before : finalValue;
   const forced = {
     totalValue,
     forcedDiscountPct: discounted ? pct : null,

@@ -7,8 +7,6 @@
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Domain;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Abstractions;
@@ -24,14 +22,16 @@ using RealEstateEval.Attachments.Application.Abstractions;
 namespace RealEstateEval.Valuation.Infrastructure.Services;
 
 /// <summary>
-/// two-phase issuance + deposit certificate. The frozen snapshot (DocumentJson) is the source
-/// for both copies: deposit copy is generated at freeze with empty code field; final copy is the same
-/// snapshot literally + code in the field and metadata + attached certificate page.
+/// two-phase issuance + deposit certificate. The deposit freezes the report; the certificate and its
+/// code are registered afterwards and the final copy (report + code + certificate page) is generated
+/// by <see cref="ValuationFinalReportService"/>.
+/// Fixed 2026-11-10: the deposit no longer builds a server-side report snapshot (DocumentJson — nothing
+/// read it), and the certificate always goes to the attachments service (no inline-bytes fallback).
 /// </summary>
 public sealed partial class ValuationReportIssuanceService(
     ValuationDbContext db,
     IValuationIssuanceGateService gates,
-    IValuationReportDocumentService documents,
+    IAttachmentFileStore files,
     TimeProvider? time = null,
     ILogger<ValuationReportIssuanceService>? logger = null,
     IAuditLogWriter? audit = null,
@@ -39,13 +39,10 @@ public sealed partial class ValuationReportIssuanceService(
     IValuationEventPublisher? events = null,
     IPriorValuationBankFeeder? bankFeeder = null,
     ICaseStudyLookup? caseStudy = null,
-    ICaseStudyRecallCommands? caseStudyCommands = null,
-    IAttachmentFileStore? files = null)
+    ICaseStudyRecallCommands? caseStudyCommands = null)
     : IValuationReportIssuanceService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
-
-    private static readonly JsonSerializerOptions SnapshotJson = JsonDefaults.CamelCase;
 
     public async Task<ValuationReportIssuanceStateDto?> GetStateAsync(
         Guid valuationRequestId,
@@ -139,20 +136,15 @@ public sealed partial class ValuationReportIssuanceService(
             });
         }
 
-        var document = await documents.GetPreviewAsync(valuationRequestId, cancellationToken);
-        if (document is null)
-            return (null, new Dictionary<string, string> { ["_"] = "تعذّر بناء لقطة التقرير" });
-
         // Cycle number = max prior cycle + 1 (superseded count — numbers are not reused).
         var priorVersion = await db.ValuationReportIssuances.AsNoTracking()
             .Where(x => x.ValuationRequestId == valuationRequestId)
             .Select(x => (int?)x.Version)
             .MaxAsync(cancellationToken) ?? 0;
 
-        // B2: freeze transition on the aggregate — service prepares snapshot and generator only.
+        // B2: freeze transition on the aggregate.
         var row = ValuationReportIssuance.IssueDeposit(
             valuationRequestId,
-            JsonSerializer.Serialize(document, SnapshotJson),
             issuedByUserId,
             _time.UtcNow(),
             priorVersion + 1);
@@ -206,29 +198,21 @@ public sealed partial class ValuationReportIssuanceService(
         // The certificate goes to the attachments service; the copy keeps only its reference.
         var replacedCertificate = row.CertificateAttachmentId;
         Guid? certificateId = null;
-        byte[]? inlineCertificate = null;
         if (certificate is not null)
         {
-            if (files is null)
-            {
-                inlineCertificate = certificate;
-            }
-            else
-            {
-                var (id, storeError) = await files.StoreAsync(
-                    ReportFileScopes.DepositCertificate,
-                    ReportFileScopes.Key(requestPropertyId, "deposit", row.Version),
-                    ReportFileScopes.PdfFileName(request.CertificateFileName, "deposit-certificate"),
-                    "application/pdf",
-                    certificate,
-                    cancellationToken);
-                if (id is null)
-                    return (null, new Dictionary<string, string>
-                    {
-                        ["certificateContentBase64"] = storeError ?? "تعذّر حفظ شهادة الإيداع — حاول مرة أخرى",
-                    });
-                certificateId = id;
-            }
+            var (id, storeError) = await files.StoreAsync(
+                ReportFileScopes.DepositCertificate,
+                ReportFileScopes.Key(requestPropertyId, "deposit", row.Version),
+                ReportFileScopes.PdfFileName(request.CertificateFileName, "deposit-certificate"),
+                "application/pdf",
+                certificate,
+                cancellationToken);
+            if (id is null)
+                return (null, new Dictionary<string, string>
+                {
+                    ["certificateContentBase64"] = storeError ?? "تعذّر حفظ شهادة الإيداع — حاول مرة أخرى",
+                });
+            certificateId = id;
         }
 
         // B2: certificate/code transitions on the aggregate — corrective re-registration is allowed.
@@ -237,7 +221,6 @@ public sealed partial class ValuationReportIssuanceService(
             request.CertificateFileName,
             request.CertificateContentType,
             certificateId,
-            inlineCertificate,
             uploadedByUserId,
             _time.UtcNow());
         if (certError is not null)
@@ -272,7 +255,7 @@ public sealed partial class ValuationReportIssuanceService(
         var conflict = await SaveRegistrationAsync(cancellationToken);
         if (conflict is not null)
         {
-            if (files is not null && certificateId is { } orphan)
+            if (certificateId is { } orphan)
                 await files.DeleteAsync(orphan, cancellationToken);
             return (null, conflict);
         }
@@ -293,7 +276,7 @@ public sealed partial class ValuationReportIssuanceService(
         }
 
         // The certificate this one replaced is no longer referenced.
-        if (files is not null && replacedCertificate is { } oldId && oldId != certificateId && certificateId is not null)
+        if (replacedCertificate is { } oldId && oldId != certificateId && certificateId is not null)
             await files.DeleteAsync(oldId, cancellationToken);
 
         if (closedNow && bankFeeder is not null)
@@ -321,8 +304,8 @@ public sealed partial class ValuationReportIssuanceService(
 
     /// <summary>
     /// The deposit steps belong to a package the appraiser has handed over: the appraiser submits
-    /// to the case specialist first. No appraisal package at all (legacy) or an older Case Study
-    /// host does not block; a failed read fails closed.
+    /// to the case specialist first. No appraisal package at all (legacy, «none») does not block; a failed
+    /// read or an empty answer fails closed («تعذّر التحقق من حالة دراسة الحالة — حاول مرة أخرى»).
     /// </summary>
     private async Task<string?> HandOverRequiredErrorAsync(
         Guid propertyId,
@@ -341,7 +324,11 @@ public sealed partial class ValuationReportIssuanceService(
             return ValuationReportFreezeRules.PackageStateUnavailableMessageAr;
         }
 
-        if (state is null || state.PackageStatus == RealEstateEval.Application.Contracts.AppraisalPackageStates.None)
+        // 2026-11-10: an empty answer is «could not verify» (refused, like the freeze gate and the draft
+        // writes); only «none» — no appraisal package at all (legacy) — passes.
+        if (state is null)
+            return ValuationReportFreezeRules.PackageStateUnavailableMessageAr;
+        if (state.PackageStatus == RealEstateEval.Application.Contracts.AppraisalPackageStates.None)
             return null;
         return state.PackageStatus == PartyTaskSubmissionStatus.Submitted
             ? null

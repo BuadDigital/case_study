@@ -3,10 +3,7 @@ import {
   prefetchTaskAttachment,
 } from "@platform/app-shared/app-data/task-attachments-api";
 import { getCachedPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
-import {
-  loadEvaluatorSubmission,
-  type EvaluatorReportMetadata,
-} from "./evaluator-submission-model";
+import type { EvaluatorReportMetadata } from "./evaluator-submission-model";
 
 const EVALUATOR_REPORT_SCOPE = "evaluator-report";
 
@@ -39,10 +36,7 @@ export function getCachedEvaluatorReport(
     };
   }
 
-  const sub = loadEvaluatorSubmission(taskId);
-  if (sub?.reportFileName) {
-    return { fileName: sub.reportFileName, mimeType: "application/pdf" };
-  }
+  // 2026-11-10: the old fallback to the submission's reportFileName is gone — nothing ever wrote it.
   return null;
 }
 

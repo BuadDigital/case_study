@@ -69,12 +69,11 @@ const sec25Rows = (dom: Document) =>
     [...tr.querySelectorAll("td")].map((td) => td.textContent),
   );
 
-describe("D1 — §2 prints the appraiser's saved basis / premise / purpose", () => {
-  it("the reconciliation's market basis wins over the execution work order's liquidation default (r8b)", () => {
+describe("D1 — §2 prints the resolved basis / premise / purpose", () => {
+  it("legacy: a work order with no basis takes the reconciliation's market basis over the execution default (r8b)", () => {
     const fill = buildValuationReportLiveFill({
       draft: draft(),
-      record: executionPo() as never,
-      purposeKey: "estate_liquidation",
+      record: { ...executionPo(), valuationPurposeKey: "estate_liquidation" } as never,
       recon: recon({
         basisOfValueKey: "market",
         valuePremiseKey: "hau",
@@ -107,6 +106,28 @@ describe("D1 — §2 prints the appraiser's saved basis / premise / purpose", ()
     expect(dom.querySelector('[data-sec="2"]')?.textContent).not.toContain("قيمة التصفية");
   });
 
+  it("the work order's basis wins over a liquidation reconciliation — no discount printed (ruling 2026-11-10)", () => {
+    // The live case: work order «القيمة السوقية», reconciliation saved as liquidation 10% → the
+    // screen showed 950,000 while the report printed «قيمة التصفية» 855,000.
+    const fill = buildValuationReportLiveFill({
+      draft: draft(),
+      record: { ...executionPo(), basisOfValueKey: "market" } as never,
+      recon: recon({
+        basisOfValueKey: "liquidation",
+        valuePremiseKey: "forced",
+        weightedValue: 950_000,
+        finalOpinionValue: 950_000,
+        liquidationDiscountPct: 10,
+        liquidationDiscountRationale: "بيع بالمزاد خلال مدة قصيرة",
+      }),
+    });
+    expect(fill.cells["أساس القيمة"]).toBe("القيمة السوقية");
+    expect(fill.cells["فرضية القيمة"]).toBe("الاستخدام الحالي");
+    expect(fill.isLiquidation).toBe(false);
+    expect(fill.liquidationDiscountOn).toBe(false);
+    expect(fill.cells["نسبة خصم التصفية المنظمة"] ?? "—").toBe("—");
+  });
+
   it("the work order's defaults only when nothing was saved", () => {
     expect(resolveReportValuationKeys({ record: executionPo() as never })).toEqual({
       purposeKey: "auction_liquidation",
@@ -119,7 +140,7 @@ describe("D1 — §2 prints the appraiser's saved basis / premise / purpose", ()
     ).toMatchObject({ valueBasisKey: "market", premiseKey: "current" });
   });
 
-  it("the output tab reads purpose from approach settings and labels from the org lists", () => {
+  it("the output tab takes labels from the org lists; the settings' purpose does not outrank the assignment default", () => {
     const choices = reportValuationChoices({
       record: executionPo() as never,
       recon: recon({ basisOfValueKey: "market", valuePremiseKey: "hau" }),
@@ -140,7 +161,8 @@ describe("D1 — §2 prints the appraiser's saved basis / premise / purpose", ()
       },
     });
     expect(choices.purposeKey).toBe("litigation");
-    expect(choices.purposeLabel).toBe("التقاضي وفض النزاعات");
+    // 2026-11-10: purpose = work order → assignment default; the settings only without an assignment type.
+    expect(choices.purposeLabel).toBeUndefined();
     expect(choices.basisLabel).toBe("القيمة السوقية (قائمة)");
     expect(choices.basisDefinition).toBe("تعريف");
     expect(choices.retrospective).toEqual({

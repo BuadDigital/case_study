@@ -288,8 +288,6 @@ export type EvaluatorSubmission = {
   evaluatorPrice: string;
   evaluatorNotes: string;
   checklist: EvaluatorChecklistAnswers;
-  /** Snapshot file name of the generated valuation report (not an upload). */
-  reportFileName: string | null;
   /** Enfaz upload fields — appraiser. */
   appraisalDate: string;
   valuationMethod: string;
@@ -473,7 +471,6 @@ export function createEvaluatorDraft(input: {
     evaluatorPrice: "",
     evaluatorNotes: "",
     checklist: emptyChecklist(),
-    reportFileName: null,
     appraisalDate: "",
     valuationMethod: "طريقة البيوع المقارنة",
     valueBasis: basisOfValueLabelArForAssignment(assignmentType),

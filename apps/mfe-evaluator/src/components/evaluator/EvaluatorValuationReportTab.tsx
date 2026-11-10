@@ -2,6 +2,10 @@
 // Round 2 (1b19bedc)
 //  • GET /api/clients is requested only when canManageWorkOrders — an appraiser got a 403 on every
 //          load. Without it the report users fall back to the work order's own client name.
+// Grey areas (2026-11-10, owner's ruling)
+//  • The draft's purpose / basis / premise keys and the «أساس القيمة» label are seeded from the work
+//         order (valuation-basis.ts) once the work order is loaded — no longer reset to the
+//         assignment-type defaults on every load; nothing is written on a read-only package.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -54,15 +58,16 @@ import type {
   EvaluatorReportChoices,
   EvaluatorSubmission,
 } from "../../lib/evaluator/evaluator-window-data";
+import { emptyReportChoices } from "../../lib/evaluator/evaluator-window-data";
 import {
-  emptyReportChoices,
-  seedReportChoicesFromAssignment,
-} from "../../lib/evaluator/evaluator-window-data";
-import {
-  basisOfValueLabelArForAssignment,
-  valuationPurposeLabelArForAssignment,
-  valuePremiseLabelArForAssignment,
+  VALUE_BASIS_OPTIONS,
+  VALUE_PREMISE_OPTIONS,
+  VALUATION_PURPOSE_OPTIONS,
 } from "@platform/app-shared/app-data/assignment-valuation-defaults";
+import {
+  resolveValuationBasisKeys,
+  resolveValuationPurposeKey,
+} from "../../lib/evaluator/valuation-basis";
 import { formatValuationReportUsers } from "../../lib/evaluator/valuation-report-users";
 import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
 import { InspectorDataSyncNote } from "./InspectorDataSyncNote";
@@ -244,30 +249,21 @@ export function EvaluatorValuationReportTab({
   const premises = useMemo(() => enabledList(lists?.lists, "premises"), [lists]);
   const methods = useMemo(() => enabledList(lists?.lists, "methods"), [lists]);
 
-  const assignmentTypeResolved =
-    assignmentType ?? record?.assignmentType ?? null;
-  const assignmentSubClientId = record
-    ? subClientIdFromReportUsers(record.reportUserClientIds)
-    : undefined;
+  // The work order's purpose / basis / premise, resolved in the one shared order (ruling
+  // 2026-11-10) — null until the work order is loaded, so nothing is seeded from a guess.
+  const workOrderKeys = useWorkOrderValuationKeys(record, assignmentType);
+  const labelOf = (options: { value: string; label: string }[], key: string | undefined) =>
+    (key && options.find((o) => o.value === key)?.label) || "";
   const valueBasisDisplay =
-    draft.valueBasis ||
-    bases.find((b) => b.key === choices.valueBasisKey)?.name ||
-    basisOfValueLabelArForAssignment(
-      assignmentTypeResolved,
-      assignmentSubClientId,
-    );
+    bases.find((b) => b.key === (workOrderKeys?.valueBasisKey ?? choices.valueBasisKey))?.name ||
+    labelOf(VALUE_BASIS_OPTIONS, workOrderKeys?.valueBasisKey) ||
+    draft.valueBasis;
   const valuePremiseDisplay =
-    premises.find((p) => p.key === choices.premiseKey)?.name ||
-    valuePremiseLabelArForAssignment(
-      assignmentTypeResolved,
-      assignmentSubClientId,
-    );
+    premises.find((p) => p.key === (workOrderKeys?.premiseKey ?? choices.premiseKey))?.name ||
+    labelOf(VALUE_PREMISE_OPTIONS, workOrderKeys?.premiseKey ?? choices.premiseKey);
   const valuationPurposeDisplay =
-    purposes.find((p) => p.key === choices.purposeKey)?.name ||
-    valuationPurposeLabelArForAssignment(
-      assignmentTypeResolved,
-      assignmentSubClientId,
-    );
+    purposes.find((p) => p.key === (workOrderKeys?.purposeKey ?? choices.purposeKey))?.name ||
+    labelOf(VALUATION_PURPOSE_OPTIONS, workOrderKeys?.purposeKey ?? choices.purposeKey);
   const reportUsersDisplay = formatValuationReportUsers(record, clients);
 
   const patch = useCallback(
@@ -330,48 +326,40 @@ export function EvaluatorValuationReportTab({
     [draft.buildingValue, draft.landValue, onDraftPatch],
   );
 
-  const recordAssignmentType = record?.assignmentType;
-  const reportSubClientId = record
-    ? subClientIdFromReportUsers(record.reportUserClientIds)
-    : undefined;
-
+  /**
+   * Keeps the draft's purpose / basis / premise keys and its «أساس القيمة» label (sent with the
+   * hand-over) equal to the work order's.
+   *
+   * How it works: once the work order is loaded, the resolved keys (valuation-basis.ts — the same
+   * order as the screen, the server and the report) are written only when the draft differs; the
+   * label is the fixed option label, so a later org-list load does not cause a second write.
+   *
+   * Edge cases: no work order yet, no resolvable basis, or a read-only package → nothing is
+   * written. Fixed 2026-11-10: every load reset these to the assignment-type defaults, whatever
+   * the work order said.
+   */
   useEffect(() => {
-    const type = (assignmentType ?? recordAssignmentType ?? "").trim();
-    if (!type) return;
+    if (disabled || !workOrderKeys?.valueBasisKey) return;
     const current = choicesRef.current;
-    const seeded = seedReportChoicesFromAssignment(
-      type,
-      reportSubClientId,
-      current,
-    );
-    const expectedBasis = basisOfValueLabelArForAssignment(
-      type,
-      reportSubClientId,
-    );
+    const expectedBasis =
+      VALUE_BASIS_OPTIONS.find((o) => o.value === workOrderKeys.valueBasisKey)?.label ?? "";
     if (
-      seeded.purposeKey === current.purposeKey &&
-      seeded.valueBasisKey === current.valueBasisKey &&
-      seeded.premiseKey === current.premiseKey &&
+      workOrderKeys.purposeKey === current.purposeKey &&
+      workOrderKeys.valueBasisKey === current.valueBasisKey &&
+      workOrderKeys.premiseKey === current.premiseKey &&
       (draft.valueBasis || "") === expectedBasis
     ) {
       return;
     }
     patchRef.current(
       {
-        purposeKey: seeded.purposeKey,
-        valueBasisKey: seeded.valueBasisKey,
-        premiseKey: seeded.premiseKey,
+        purposeKey: workOrderKeys.purposeKey,
+        valueBasisKey: workOrderKeys.valueBasisKey,
+        premiseKey: workOrderKeys.premiseKey,
       },
       { valueBasis: expectedBasis },
     );
-  }, [
-    assignmentType,
-    choicesRef,
-    patchRef,
-    recordAssignmentType,
-    reportSubClientId,
-    draft.valueBasis,
-  ]);
+  }, [choicesRef, disabled, draft.valueBasis, patchRef, workOrderKeys]);
 
   // Seed report method keys from lists when empty — approaches are chosen in ValuationWorkShell.
   useEffect(() => {
@@ -506,4 +494,44 @@ export function EvaluatorValuationReportTab({
       ) : null}
     </div>
   );
+}
+
+/**
+ * The work order's purpose / basis / premise keys for the report draft.
+ * How it works: resolveValuationBasisKeys / resolveValuationPurposeKey over the work order's saved
+ * keys (no reconciliation here — the work order owns them), memoised on the record.
+ * Edge cases: no record yet → null (callers wait instead of seeding assignment defaults).
+ */
+function useWorkOrderValuationKeys(
+  record:
+    | {
+        assignmentType?: string | null;
+        reportUserClientIds?: string[] | null;
+        valuationPurposeKey?: string | null;
+        basisOfValueKey?: string | null;
+        valuePremiseKey?: string | null;
+      }
+    | null
+    | undefined,
+  assignmentType: string | null | undefined,
+): { purposeKey: string; valueBasisKey: string; premiseKey: string } | null {
+  return useMemo(() => {
+    if (!record) return null;
+    const type = assignmentType ?? record.assignmentType ?? null;
+    const subClientId = subClientIdFromReportUsers(record.reportUserClientIds ?? undefined);
+    const { basisKey, premiseKey } = resolveValuationBasisKeys({
+      assignmentType: type,
+      subClientId,
+      workOrder: { basisKey: record.basisOfValueKey, premiseKey: record.valuePremiseKey },
+    });
+    return {
+      purposeKey: resolveValuationPurposeKey({
+        assignmentType: type,
+        subClientId,
+        workOrderPurposeKey: record.valuationPurposeKey,
+      }),
+      valueBasisKey: basisKey,
+      premiseKey,
+    };
+  }, [assignmentType, record]);
 }

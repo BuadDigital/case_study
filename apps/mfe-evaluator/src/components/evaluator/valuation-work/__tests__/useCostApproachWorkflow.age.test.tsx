@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const bridge = vi.hoisted(() => ({ fetchInspectorWorkspace: vi.fn() }));
@@ -62,6 +62,23 @@ describe("«العمر الفعلي» before the cost approach is saved", () => 
     const view = render({ inspectionTaskId: "insp-1", cost: null });
     view.rerender({ inspectionTaskId: "insp-1", cost: { actualAgeYears: null, lines: [] } });
     await waitFor(() => expect(view.result.current.fields.actualAge).toBe("9"));
+  });
+
+  it("never overwrites an age the appraiser typed before the inspector's answer arrived (2026-11-10)", async () => {
+    let answer: (v: { propertyAgeYears: string }) => void = () => {};
+    bridge.fetchInspectorWorkspace.mockReturnValueOnce(new Promise((r) => (answer = r)));
+    const view = render({ inspectionTaskId: "insp-1", cost: null });
+    act(() => view.result.current.setField("actualAge", "22"));
+    await act(async () => answer({ propertyAgeYears: "9" }));
+    expect(view.result.current.fields.actualAge).toBe("22");
+  });
+
+  it("starts both ages empty without a saved cost or an inspector age (no 10 / 40 defaults)", async () => {
+    bridge.fetchInspectorWorkspace.mockResolvedValue({ propertyAgeYears: "" });
+    const view = render({ inspectionTaskId: "insp-1", cost: null });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(view.result.current.fields.actualAge).toBe("");
+    expect(view.result.current.fields.economicAge).toBe("");
   });
 
   it("never replaces an age the appraiser saved", async () => {

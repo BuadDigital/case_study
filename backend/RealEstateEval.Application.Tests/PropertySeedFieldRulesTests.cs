@@ -1,6 +1,5 @@
 using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Domain;
-using RealEstateEval.Valuation.Domain;
 
 namespace RealEstateEval.Application.Tests;
 
@@ -23,12 +22,5 @@ public class PropertySeedFieldRulesTests
     {
         Assert.Equal("فاخر", PropertyFinishingTypes.LabelAr(PropertyFinishingTypes.Luxury));
         Assert.Equal("خرساني", PropertyFinishingStructures.LabelAr(PropertyFinishingStructures.Concrete));
-    }
-
-    [Fact]
-    public void Plan_and_block_catalog_fields_are_platform()
-    {
-        Assert.Equal(ValuationReportFieldSourceKind.Platform, ValuationReportFieldCatalog.Find("property_plan_name")!.SourceKind);
-        Assert.Equal(ValuationReportFieldSourceKind.Platform, ValuationReportFieldCatalog.Find("property_block_number")!.SourceKind);
     }
 }

@@ -62,7 +62,8 @@ export function validatePropertyEnfathFields(
     "assignmentMandateNumber",
     "assignmentMandateDate",
     ...(fieldPolicy.requiresOwnerName ? (["ownerName"] as const) : []),
-    ...(needCourt ? (["court", "circuit"] as const) : []),
+    // Omar 2026-11-10: the circuit is optional — the court stays required where it applies.
+    ...(needCourt ? (["court"] as const) : []),
     ...(needRequest ? (["requestNumber"] as const) : []),
   ];
 

@@ -7,7 +7,6 @@ function priceOf(evaluatorPrice: string): string | undefined {
     status: "submitted",
     evaluatorPrice,
     evaluatorNotes: "",
-    reportFileName: null,
     submittedAtUtc: null,
     checklist: {},
   } as unknown as EvaluatorSubmissionSnapshot;

@@ -126,11 +126,11 @@ describe("#67 — «حالة الصك» comes back from the autosaved deed statu
   });
 });
 
-describe("#32 — the court path needs the court and circuit", () => {
-  it("returns a field error for each on «تنفيذ»", () => {
+describe("#32 — the court path needs the court (the circuit is optional since 2026-11-10)", () => {
+  it("returns a field error for the court only on «تنفيذ»", () => {
     const errors = validatePropertyEnfathFields({ ...emptyProperty(), court: "", circuit: "" }, "تنفيذ");
     expect(errors.court).toBeTruthy();
-    expect(errors.circuit).toBeTruthy();
+    expect(errors.circuit).toBeUndefined();
   });
 });
 

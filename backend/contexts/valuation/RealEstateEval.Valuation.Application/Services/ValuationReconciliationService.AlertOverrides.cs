@@ -46,19 +46,20 @@ public sealed partial class ValuationReconciliationService
         var entity = await repo.FindWithMethodsAsync(valuationRequestId, cancellationToken);
         if (entity is null)
         {
-            // The saved basis wins over the work order, so a row created by an acknowledgement
-            // starts from the work order's basis and premise — never the class default «market».
+            // A row created by an acknowledgement stores the resolved basis and premise (work
+            // order → assignment default) — never the class default «market» — so the request list,
+            // which reads the stored keys, agrees with the projection.
             var workOrder = await ResolveWorkOrderValuationAsync(vr, cancellationToken);
+            var (basis, premise) = AssignmentValuationDefaults.ResolveBasisAndPremise(
+                workOrder.AssignmentType,
+                workOrder.BasisOfValueKey,
+                workOrder.ValuePremiseKey);
             entity = new ValuationReconciliation
             {
                 Id = Guid.NewGuid(),
                 ValuationRequestId = valuationRequestId,
-                BasisOfValueKey = FirstValuationKey(
-                    workOrder.BasisOfValueKey,
-                    AssignmentValuationDefaults.BasisOfValueKey(workOrder.AssignmentType)),
-                ValuePremiseKey = TrimOrNull(FirstValuationKey(
-                    workOrder.ValuePremiseKey,
-                    AssignmentValuationDefaults.PremiseKey(workOrder.AssignmentType))),
+                BasisOfValueKey = basis,
+                ValuePremiseKey = premise,
             };
             await repo.AddAsync(entity, cancellationToken);
         }

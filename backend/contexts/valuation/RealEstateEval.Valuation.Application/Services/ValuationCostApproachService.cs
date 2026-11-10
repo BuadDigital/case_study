@@ -13,6 +13,10 @@
 //  • A    BuildingPlotAreaSqm is saved; the land snapshot is refreshed after the plot and share are stored,
 //         value = discounted rate × (share ?? plot) (RefreshLandSnapshotAsync).
 //  • The lease cap no longer depends on the cost scope (CostLeaseTerms.RemainingLeaseYears(settings)).
+// Grey areas (2026-11-10)
+//  • Stale saves (another tab saved since this one loaded) are refused: ExpectedUpdatedAtUtc → 409.
+//  • Repeated floors inherit the unit cost of the INCLUDED first floor only.
+//  • DTO: DepreciationIncomplete (CostDepreciationRules.IsIncomplete) and UpdatedAtUtc.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Application;
@@ -147,6 +151,17 @@ public sealed class ValuationCostApproachService(
 
         var entity = await repo.FindWithItemsAsync(valuationRequestId, cancellationToken);
 
+        // 2026-11-10: two tabs overwrote each other — a save built on an older copy than the stored
+        // one is refused (409 via ConflictKey); an older client that sends no stamp is not checked.
+        if (ValuationCostApproachRequestRules.IsStaleSave(request.ExpectedUpdatedAtUtc, entity?.UpdatedAtUtc))
+        {
+            return (null, new Dictionary<string, string>
+            {
+                ["_"] = ValuationCostApproachRequestRules.StaleSaveMessageAr,
+                [ValuationCostApproachRequestRules.ConflictKey] = "1",
+            });
+        }
+
         // A line id that is not one of this valuation's lines must not belong to another
         // valuation — inserting it would collide with that row (was a 500).
         var unknownIds = ValuationCostApproachRequestRules.UnknownLineIds(
@@ -186,7 +201,8 @@ public sealed class ValuationCostApproachService(
         var linesById = entity.Lines.ToDictionary(l => l.Id);
         var keepLines = new HashSet<Guid>();
 
-        // repeated-floors quantity derives from the first-floor area × count.
+        // repeated-floors quantity derives from the INCLUDED first-floor area × count (2026-11-10:
+        // an excluded first floor gives nothing — the validation above already named it).
         var firstFloorArea = ValuationCostApproachRequestRules.FirstFloorArea(lines);
 
         for (var i = 0; i < lines.Count; i++)
@@ -352,11 +368,11 @@ public sealed class ValuationCostApproachService(
     {
         var orderedLines = (entity?.Lines ?? []).OrderBy(l => l.SortOrder).ToList();
 
-        // Interactive model spec: repeating-floor line inherits "first floor" m² rate when left empty.
-        var firstFloorUnitCost = orderedLines
-            .Where(l => CostLineItemKeys.Normalize(l.ItemKey) == CostLineItemKeys.FirstFloor)
-            .Select(l => l.UnitCostSar)
-            .FirstOrDefault();
+        // Interactive model spec: repeating-floor line inherits "first floor" m² rate when left empty —
+        // from the INCLUDED first floor only (2026-11-10: an excluded one still lent its rate).
+        var firstFloorUnitCost = RepeatedFloorRules.IncludedFirstFloor(
+                orderedLines.Select(l => ((string?)l.ItemKey, l.IsIncluded, l.AreaSqm, l.UnitCostSar)))
+            .UnitCostSar;
 
         var computed = orderedLines
             .Select(l =>
@@ -493,6 +509,8 @@ public sealed class ValuationCostApproachService(
             TotalObsolescencePct = totalObsolescence,
             AppliedObsolescencePct = CostApproachRules.AppliedObsolescencePct(totalObsolescence),
             ObsolescenceNeedsAlert = CostApproachRules.ObsolescenceNeedsAlert(totalObsolescence),
+            // 2026-11-10: a blank age no longer passes as 0٪ depreciation unnoticed.
+            DepreciationIncomplete = CostDepreciationRules.IsIncomplete(entity),
             DepreciationValue = depreciation,
             BuildingsValueAfterDepreciation = buildingsAfterDep,
             CostOpinionBuildingsOnly = buildingsAfterDep,
@@ -505,6 +523,8 @@ public sealed class ValuationCostApproachService(
             BuildingAreaSqm = buildingArea,
             AnalysisNotes = entity?.AnalysisNotes,
             Lines = lines,
+            // 2026-11-10 optimistic concurrency: the screen sends it back with its next save.
+            UpdatedAtUtc = ValuationCostApproachRequestRules.ConcurrencyStamp(entity?.UpdatedAtUtc),
         };
     }
 }

@@ -861,6 +861,32 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         });
                 });
 
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationDismissedLinkedComparable", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ComparablePropertyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("DismissedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ValuationRequestId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComparablePropertyId");
+
+                    b.HasIndex("ValuationRequestId", "ComparablePropertyId")
+                        .IsUnique()
+                        .HasDatabaseName("IX_ValuationDismissedLinkedComparables_Request_Comp");
+
+                    b.ToTable("ValuationDismissedLinkedComparables", "valuation");
+                });
+
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIndirectCostItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -915,6 +941,11 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.Property<decimal>("AreaFactorPct")
                         .HasPrecision(9, 4)
                         .HasColumnType("numeric(9,4)");
+
+                    b.Property<bool>("MarketValueUnrounded")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<decimal?>("SubjectAreaSqm")
                         .HasPrecision(18, 2)
@@ -1483,6 +1514,21 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                         .IsRequired();
 
                     b.Navigation("CostApproach");
+                });
+
+            modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationDismissedLinkedComparable", b =>
+                {
+                    b.HasOne("RealEstateEval.Valuation.Domain.ComparableProperty", null)
+                        .WithMany()
+                        .HasForeignKey("ComparablePropertyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("RealEstateEval.Valuation.Domain.ValuationRequest", null)
+                        .WithMany()
+                        .HasForeignKey("ValuationRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RealEstateEval.Valuation.Domain.ValuationIndirectCostItem", b =>

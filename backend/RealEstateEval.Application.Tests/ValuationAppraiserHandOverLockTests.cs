@@ -44,15 +44,37 @@ public class ValuationAppraiserHandOverLockTests
         Assert.Equal(locked ? ValuationReportFreezeRules.AppraiserSubmittedMessageAr : null, message);
     }
 
+    /// <summary>2026-11-10: an empty answer is «could not verify» — refused, like the draft writes and deposit.</summary>
     [Fact]
-    public async Task An_unknown_state_from_an_older_case_study_host_does_not_lock()
+    public async Task An_empty_answer_from_case_study_refuses_the_write()
     {
         await using var contexts = TestDatabases.Create("lock-gate-unknown");
         var (requestId, propertyId) = NewRequest(contexts.Valuation, "VR-L2");
         await contexts.Valuation.SaveChangesAsync();
         var gate = new ValuationReportFreezeGate(contexts.Valuation, LookupProxy.Create(() => null));
 
-        Assert.Null(await gate.GetFrozenMessageAsync(requestId, propertyId));
+        Assert.Equal(
+            ValuationIssuanceGateRules.CaseStudyStateUnavailableAr,
+            await gate.GetFrozenMessageAsync(requestId, propertyId));
+    }
+
+    [Fact]
+    public async Task The_deposit_step_refuses_an_empty_case_study_answer_and_passes_a_legacy_property()
+    {
+        await using var contexts = TestDatabases.Create("lock-handover-unknown");
+        var (requestId, propertyId) = NewRequest(contexts.Valuation, "VR-L14");
+        await contexts.Valuation.SaveChangesAsync();
+
+        var unknown = IssuanceService(contexts.Valuation, LookupProxy.Create(() => null), propertyId);
+        var (_, errors) = await unknown.IssueDepositAsync(requestId, "user-1");
+        Assert.Equal(ValuationIssuanceGateRules.CaseStudyStateUnavailableAr, errors!["_"]);
+        Assert.Empty(contexts.Valuation.ValuationReportIssuances);
+
+        // «none»: the property has no appraisal package at all (legacy) — the deposit step does not block.
+        var legacy = IssuanceService(contexts.Valuation, LookupReturning(AppraisalPackageStates.None), propertyId);
+        var (deposit, legacyErrors) = await legacy.IssueDepositAsync(requestId, "user-1");
+        Assert.Null(legacyErrors);
+        Assert.Equal(ReportIssuanceStages.DepositIssued, deposit!.Stage);
     }
 
     [Fact]
@@ -68,6 +90,8 @@ public class ValuationAppraiserHandOverLockTests
         Assert.Equal(
             ValuationReportFreezeRules.PackageStateUnavailableMessageAr,
             await gate.GetFrozenMessageAsync(requestId, propertyId));
+        // One wording for every «could not verify Case Study» refusal (2026-11-10).
+        Assert.Equal(ValuationIssuanceGateRules.CaseStudyStateUnavailableAr, ValuationReportFreezeRules.PackageStateUnavailableMessageAr);
     }
 
     [Fact]
@@ -86,7 +110,7 @@ public class ValuationAppraiserHandOverLockTests
         await using var contexts = TestDatabases.Create("lock-gate-deposit");
         var (requestId, propertyId) = NewRequest(contexts.Valuation, "VR-L5");
         contexts.Valuation.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(
-            requestId, "{}", "staff", DateTime.UtcNow));
+            requestId, "staff", DateTime.UtcNow));
         await contexts.Valuation.SaveChangesAsync();
         var gate = new ValuationReportFreezeGate(
             contexts.Valuation,
@@ -255,7 +279,7 @@ public class ValuationAppraiserHandOverLockTests
         var draft = await service.GetOpenByPropertyAsync(propertyId.ToString("D"));
         Assert.Equal(ValuationReportStageWire.Draft, draft!.ReportStage);
 
-        db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(requestId, "{}", "u", DateTime.UtcNow));
+        db.ValuationReportIssuances.Add(ValuationReportIssuance.IssueDeposit(requestId, "u", DateTime.UtcNow));
         await db.SaveChangesAsync();
         var frozen = await service.GetOpenByPropertyAsync(propertyId.ToString("D"));
         Assert.Equal(ValuationReportStageWire.DepositIssued, frozen!.ReportStage);
@@ -336,7 +360,7 @@ public class ValuationAppraiserHandOverLockTests
         new(
             db,
             new StubGates(),
-            new StubDocuments(),
+            new FakeAttachmentFileStore(),
             events: new ValuationOutboxPublisher(db, NullLogger<ValuationOutboxPublisher>.Instance),
             caseStudy: caseStudy);
 
@@ -378,21 +402,6 @@ public class ValuationAppraiserHandOverLockTests
                 ValuationRequestId = valuationRequestId,
                 AllowsIssuance = true,
                 BlockingReasonsAr = [],
-            });
-    }
-
-    private sealed class StubDocuments : IValuationReportDocumentService
-    {
-        public Task<ValuationReportDocumentDto?> GetPreviewAsync(
-            Guid valuationRequestId,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult<ValuationReportDocumentDto?>(new ValuationReportDocumentDto
-            {
-                ValuationRequestId = valuationRequestId,
-                DisplayId = "VR-TEST",
-                ReportDateDisplay = "2026/10/05",
-                FinalOpinionDisplay = "1,000,000 ريال",
-                Sections = [],
             });
     }
 
