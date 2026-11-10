@@ -30,8 +30,6 @@ import {
   MyTaskWorkEnfathStep,
 } from "./MyTaskWorkSteps";
 import {
-  activeTaskWorkStep,
-  BOURSE_SAVE_ACTION,
   canRaiseFailure,
   DISTRIBUTION_CONFIRM_ACTION,
   removedPropertyNote,
@@ -42,18 +40,6 @@ import {
 } from "./useMyTaskWorkWorkflow";
 
 export type IntakeStep = "enfath" | "bourse" | "distribution";
-
-const STEP_ORDER: Record<IntakeStep, number> = {
-  enfath: 0,
-  bourse: 1,
-  distribution: 2,
-};
-
-const SAVE_LABEL: Record<IntakeStep, string> = {
-  enfath: "حفظ وإكمال البيانات الأولية",
-  bourse: BOURSE_SAVE_ACTION,
-  distribution: DISTRIBUTION_CONFIRM_ACTION,
-};
 
 type IntakeScopeValue =
   | { mode: "steps"; workflow: MyTaskWorkflow }
@@ -203,7 +189,7 @@ export function CoordinationIntakeBanner() {
       return (
         <Note tone="info" className="mb-3">
           {workflow.isSpecialist
-            ? "البيانات يعدّلها كل أخصائي وتُحفظ تلقائيًا — «حفظ وإكمال» الخطوة لأخصائي التنسيق."
+            ? "البيانات يعدّلها كل أخصائي وتُحفظ تلقائيًا — «تأكيد التوزيع وإرسال المهام» لأخصائي التنسيق."
             : "إدخال المعاملة لأخصائي التنسيق — تظهر لك البيانات بعد إدخالها في «تفاصيل العقار»."}
         </Note>
       );
@@ -215,20 +201,20 @@ export function CoordinationIntakeBanner() {
 /**
  * One intake section's body.
  *
- * How it works: in intake, the steps up to the current one show their forms (an earlier step stays
- * editable — the same draft and autosave); the current one ends with its save-and-advance button,
- * the form's error and, from the bourse on, «تسجيل تعذّر»; a later step shows `notYet`. Past intake,
- * the primary data and the bourse are the in-place editor cards; anything else is `fallback`.
+ * How it works (Omar 2026-11-10 — one submit for the intake): in intake the three sections' forms are
+ * all open and autosaved, in any order; only «التوزيع على الأطراف» ends with a button, «تأكيد التوزيع
+ * وإرسال المهام», which checks the three and only then writes them and sends the transaction to the
+ * parties (`submitIntake`), with the form's error and, from the bourse on, «تسجيل تعذّر». Past intake,
+ * the primary data and the bourse are the in-place editor forms; anything else is `fallback`.
  * Edge cases: a stopped / removed / not-allowed transaction shows only the banner's explanation;
- * the distribution past intake is the page's own read-only view (`fallback`).
+ * the distribution past intake is the page's own read-only view (`fallback`). Until 2026-11-10 each
+ * section had its own save-and-advance and a later one waited for it (`notYet`).
  */
 export function CoordinationIntakeBody({
   step,
-  notYet,
   fallback,
 }: {
   step: IntakeStep;
-  notYet: string;
   fallback: ReactNode;
 }) {
   const scope = useContext(IntakeScopeContext);
@@ -262,18 +248,13 @@ export function CoordinationIntakeBody({
   if (workflow.screen !== "work" && !sharedView) {
     return <p className="m-0 pt-3 text-[12.5px] text-text-3">انظر الملاحظة أعلى الصفحة.</p>;
   }
-  const active = activeTaskWorkStep(workflow.steps);
-  const current = active ? STEP_ORDER[active] : 3;
-  if (STEP_ORDER[step] > current) {
-    return <p className="m-0 pt-3 text-[12.5px] text-text-3">{notYet}</p>;
-  }
-  const isCurrent = active === step;
+  const submits = step === "distribution";
   return (
     <div className="flex flex-col gap-3 pt-3">
       {step === "enfath" ? <MyTaskWorkEnfathStep {...workflow} /> : null}
       {step === "bourse" ? <MyTaskWorkBourseStep {...workflow} /> : null}
       {step === "distribution" ? <MyTaskWorkDistributionStep {...workflow} /> : null}
-      {isCurrent ? (
+      {submits ? (
         <>
           {workflow.formError ? (
             <Note tone="warn" role="alert">
@@ -288,10 +269,10 @@ export function CoordinationIntakeBody({
                 size="sm"
                 loading={workflow.submitBusy}
                 disabled={workflow.submitBusy}
-                onClick={workflow.handlePrimarySave}
-                data-testid={`coordination-intake-save-${step}`}
+                onClick={() => void workflow.submitIntake()}
+                data-testid="coordination-intake-submit"
               >
-                {SAVE_LABEL[step]}
+                {DISTRIBUTION_CONFIRM_ACTION}
               </Button>
             ) : null}
             {canRaiseFailure(workflow.task, workflow.steps) ? (
@@ -307,6 +288,9 @@ export function CoordinationIntakeBody({
               </Button>
             ) : null}
           </div>
+          <p className="m-0 text-[11.5px] text-text-3">
+            يفحص البيانات الأولية والبورصة والتوزيع معًا، ثم يرسل المعاملة للأطراف.
+          </p>
         </>
       ) : null}
     </div>

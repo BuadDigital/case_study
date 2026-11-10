@@ -135,7 +135,6 @@ export function useCoordinationSections({
         return (
           <CoordinationIntakeBody
             step="enfath"
-            notYet=""
             fallback={
               <StepLink line="بيانات الأمر والصك في «تفاصيل العقار»." label="عرض التفاصيل" href={detailHref("basic")} />
             }
@@ -145,7 +144,6 @@ export function useCoordinationSections({
         return (
           <CoordinationIntakeBody
             step="bourse"
-            notYet="يبدأ بعد إكمال البيانات الأولية."
             fallback={
               <StepLink line="بيانات البورصة والملاك في «تفاصيل العقار»." label="عرض التفاصيل" href={detailHref("basic")} />
             }
@@ -153,7 +151,7 @@ export function useCoordinationSections({
         );
       case "distribution": {
         if (intakeActive) {
-          return <CoordinationIntakeBody step="distribution" notYet="يبدأ بعد استعلام البورصة." fallback={null} />;
+          return <CoordinationIntakeBody step="distribution" fallback={null} />;
         }
         if (!task) return notYet("لا توجد مهمة دراسة حالة لهذا الصك بعد.");
         // Past the distribution: who was assigned, read-only; changing a party is «تعديل إسناد الأطراف».

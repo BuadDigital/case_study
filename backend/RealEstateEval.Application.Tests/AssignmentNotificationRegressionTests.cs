@@ -374,6 +374,33 @@ public sealed class AssignmentNotificationRegressionTests
         Assert.Equal(confirmed, db.WorkflowTasks.Single(t => t.Id == parentId).DistributionJson);
     }
 
+    [Theory]
+    [InlineData(WorkflowTaskPhase.Enfath)]
+    [InlineData(WorkflowTaskPhase.Bourse)]
+    [InlineData(WorkflowTaskPhase.Distribution)]
+    public async Task The_distribution_draft_saves_while_the_intake_is_still_being_entered(WorkflowTaskPhase phase)
+    {
+        // One submit for the whole intake (Omar 2026-11-10): the parties are picked before the initial
+        // data and the bourse are written, so the draft must save in those phases too.
+        var bundle = CreateDb();
+        var db = bundle.CaseStudy;
+        var parentId = Guid.NewGuid();
+        db.WorkflowTasks.Add(WorkflowTask.Create(
+            WorkflowTaskKind.CaseStudyProperty,
+            "PO-EARLY-PATCH",
+            DateTime.UtcNow,
+            phase: phase,
+            id: parentId));
+        await db.SaveChangesAsync();
+
+        var result = await CreateWorkflowService(db).PatchDistributionAsync(
+            parentId,
+            new TaskDistributionDraftDto { ValuationDepartment = true, InspectorId = "fi-ahmed" });
+
+        Assert.NotNull(result);
+        Assert.Equal("fi-ahmed", result!.Distribution?.InspectorId);
+    }
+
     private static void SeedAssigneeProfile(
         IdentityDbContext db,
         string userId,

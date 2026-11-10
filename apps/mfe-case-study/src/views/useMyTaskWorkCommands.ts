@@ -30,6 +30,7 @@ import { scheduleScrollToFirstPoPropertyError } from "../lib/domain/po-intake/po
 import {
   formatPropertyDeedDisplay,
   propertyHasRegisteredTitle,
+  propertySkipsBourse,
   type AssignmentType,
   type BourseDeedVitality,
   type ClientFieldPolicy,
@@ -101,6 +102,11 @@ type MyTaskWorkCommandsInput = {
 };
 
 type EnfathSaveErrors = { errors: FieldErrors; message: string };
+
+/** The intake step a task phase stands for (null past the intake). */
+function phaseStep(phase: WorkflowTask["phase"]): "enfath" | "bourse" | "distribution" | null {
+  return phase === "enfath" || phase === "bourse" || phase === "distribution" ? phase : null;
+}
 
 /** Field validation first, then the duplicate-deed check against the PO. */
 async function findEnfathSaveErrors(
@@ -210,6 +216,95 @@ export function useMyTaskWorkCommands({
     return true;
   }
 
+  /**
+   * Writes the initial data and moves the slot on (the server numbers the deed on this save).
+   * Throws, with the error on the form, when the server refuses. Returns the task's new phase.
+   */
+  async function persistEnfath(): Promise<WorkflowTask["phase"]> {
+    if (propertyId) {
+      await flushPropertyFieldAutosave(task.poNumber, propertyId);
+    }
+    const persisted = persistedEnfathProperty(property);
+    // The property normally exists already (created when the slot was opened); the insert
+    // path remains only for a slot whose draft could not be created at the time.
+    const result = propertyId
+      ? await updatePropertyInPo(task.poNumber, propertyId, persisted)
+      : await addPropertyToPo(task.poNumber, persisted, {
+          assignToTaskId: task.id,
+        });
+    if (!result.ok) throw failure(result.error, result.errors);
+    if (!propertyId) {
+      // Now has a real server id — drop the local-only pre-save draft.
+      cancelPropertyFieldAutosave(task.poNumber, newPropertyDraftKey(task.id));
+    }
+    const updatedTask = await advanceTaskAfterEnfath(
+      task.id,
+      savedEnfathProperty(property, result.data),
+    );
+    if (!updatedTask.ok) throw failure(updatedTask.error);
+    setPhaseOverride(updatedTask.task.phase);
+    return updatedTask.task.phase;
+  }
+
+  /** Completes the bourse and moves the slot to distribution. Throws on a refusal. */
+  async function persistBourse(): Promise<WorkflowTask["phase"]> {
+    if (!propertyId) throw failure(NO_LINKED_PROPERTY_ERROR);
+    await flushPropertyFieldAutosave(task.poNumber, propertyId);
+    pendingBourseComplete.current = {
+      poNumber: task.poNumber,
+      propertyId,
+      property: propertyHasRegisteredTitle(property)
+        ? property
+        : { ...property, deedStatus: bourseDeedStatus(deedVitality) },
+    };
+    const outcome = await executeBourseComplete();
+    if (outcome.status === "skipped") {
+      throw new Error("duplicate-submit");
+    }
+    const result = outcome.value;
+    if (!result.ok) throw failure(result.error, result.errors);
+    const advancedTask = await advanceTaskAfterBourse(task.id, result.data);
+    if (!advancedTask.ok) throw failure(advancedTask.error);
+    setPhaseOverride(advancedTask.task.phase);
+    return advancedTask.task.phase;
+  }
+
+  /** Confirms the distribution: the party tasks are created. Throws on a refusal. */
+  async function persistDistribution(): Promise<void> {
+    const outcome = await executeConfirmDistribution();
+    if (outcome.status === "skipped") return;
+    const result = outcome.value;
+    if (!result.parent) {
+      throw failure(result.error ?? CONFIRM_DISTRIBUTION_ERROR);
+    }
+    setPhaseOverride(result.parent.phase);
+    void queryClient.invalidateQueries({
+      queryKey: appDataKeys.workflowTasks(),
+    });
+  }
+
+  /** The bourse's own checks (the «حالة الصك» pick, then its fields); null when it passes. */
+  function bourseInvalid(): EnfathSaveErrors | null {
+    if (!propertyHasRegisteredTitle(property) && !deedVitality) {
+      return {
+        errors: { deedVitality: DEED_VITALITY_REQUIRED_ERROR },
+        message: DEED_VITALITY_REQUIRED_ERROR,
+      };
+    }
+    const errors = validatePropertyBourseFields(property);
+    return hasFieldErrors(errors)
+      ? { errors, message: firstBourseValidationMessage(errors) }
+      : null;
+  }
+
+  function distributionInvalid(): string | null {
+    return distributionValidationError(
+      distribution,
+      showEngineering,
+      distributionValidationContext(property, task.poNumber),
+    );
+  }
+
   async function saveEnfath() {
     setFormError(null);
     if (linkedPropertyRemoved) {
@@ -218,34 +313,10 @@ export function useMyTaskWorkCommands({
     }
     if (await rejectIfEnfathInvalid()) return;
 
-    if (propertyId) {
-      await flushPropertyFieldAutosave(task.poNumber, propertyId);
-    }
-
-    const persisted = persistedEnfathProperty(property);
-
     await runWithActionToast(ENFATH_SAVE_ACTION, async () => {
       setSaving(true);
       try {
-        // The property normally exists already (created when the slot was opened); the insert
-        // path remains only for a slot whose draft could not be created at the time.
-        const result = propertyId
-          ? await updatePropertyInPo(task.poNumber, propertyId, persisted)
-          : await addPropertyToPo(task.poNumber, persisted, {
-              assignToTaskId: task.id,
-            });
-        if (!result.ok) throw failure(result.error, result.errors);
-        if (!propertyId) {
-          // Now has a real server id — drop the local-only pre-save draft.
-          cancelPropertyFieldAutosave(task.poNumber, newPropertyDraftKey(task.id));
-        }
-
-        const updatedTask = await advanceTaskAfterEnfath(
-          task.id,
-          savedEnfathProperty(property, result.data),
-        );
-        if (!updatedTask.ok) throw failure(updatedTask.error);
-        setPhaseOverride(updatedTask.task.phase);
+        await persistEnfath();
         if (onEnfathSaved) {
           await onEnfathSaved(task.id, {
             identifierType: property.identifierType,
@@ -267,49 +338,22 @@ export function useMyTaskWorkCommands({
       setFormError(REMOVED_PROPERTY_SAVE_ERROR);
       return;
     }
-    const compactRegisteredTitle = propertyHasRegisteredTitle(property);
-    if (!compactRegisteredTitle && !deedVitality) {
-      const errors = { deedVitality: DEED_VITALITY_REQUIRED_ERROR };
-      setFieldErrors(errors);
-      setFormError(DEED_VITALITY_REQUIRED_ERROR);
-      scheduleScrollToFirstPoPropertyError(errors, property);
+    const invalid = bourseInvalid();
+    if (invalid) {
+      setFieldErrors(invalid.errors);
+      setFormError(invalid.message);
+      scheduleScrollToFirstPoPropertyError(invalid.errors, property);
       return;
     }
-    const errors = validatePropertyBourseFields(property);
-    if (hasFieldErrors(errors)) {
-      setFieldErrors(errors);
-      setFormError(firstBourseValidationMessage(errors));
-      scheduleScrollToFirstPoPropertyError(errors, property);
-      return;
-    }
-
     if (!propertyId) {
       setFormError(NO_LINKED_PROPERTY_ERROR);
       return;
     }
 
-    await flushPropertyFieldAutosave(task.poNumber, propertyId);
-
     await runWithActionToast(BOURSE_SAVE_ACTION, async () => {
       setSaving(true);
       try {
-        pendingBourseComplete.current = {
-          poNumber: task.poNumber,
-          propertyId,
-          property: compactRegisteredTitle
-            ? property
-            : { ...property, deedStatus: bourseDeedStatus(deedVitality) },
-        };
-        const outcome = await executeBourseComplete();
-        if (outcome.status === "skipped") {
-          throw new Error("duplicate-submit");
-        }
-        const result = outcome.value;
-        if (!result.ok) throw failure(result.error, result.errors);
-
-        const advancedTask = await advanceTaskAfterBourse(task.id, result.data);
-        if (!advancedTask.ok) throw failure(advancedTask.error);
-        setPhaseOverride(advancedTask.task.phase);
+        await persistBourse();
         onRefresh();
       } finally {
         setSaving(false);
@@ -321,11 +365,7 @@ export function useMyTaskWorkCommands({
 
   async function confirmDistribution() {
     setFormError(null);
-    const validation = distributionValidationError(
-      distribution,
-      showEngineering,
-      distributionValidationContext(property, task.poNumber),
-    );
+    const validation = distributionInvalid();
     if (validation) {
       setFormError(validation);
       return;
@@ -334,18 +374,59 @@ export function useMyTaskWorkCommands({
     await runWithActionToast(DISTRIBUTION_CONFIRM_ACTION, async () => {
       setSaving(true);
       try {
-        const outcome = await executeConfirmDistribution();
-        if (outcome.status === "skipped") return;
+        await persistDistribution();
+        onRefresh();
+      } finally {
+        setSaving(false);
+      }
+    }).catch(() => {
+      /* error toast already shown by runWithActionToast */
+    });
+  }
 
-        const result = outcome.value;
-        if (!result.parent) {
-          throw failure(result.error ?? CONFIRM_DISTRIBUTION_ERROR);
-        }
+  /**
+   * One submit for the whole intake (Omar 2026-11-10): the initial data, the bourse and the
+   * distribution are filled freely and autosaved; this button checks all three and only then sends
+   * the transaction to the parties.
+   *
+   * How it works: every check runs first — the initial data (fields + a deed number already in the
+   * order), the bourse (unless the deed skips it), the distribution — so nothing is written while
+   * anything is missing; the first failing section opens (`#work-<section>`) and its first field
+   * scrolls into view. Then the steps the task has not passed yet are written in order — initial data
+   * (the deed gets its reference number), bourse, distribution — each by the same command its old
+   * per-step button used, so the server's checks and stamps are unchanged.
+   * Edge cases: a refusal midway stops there with the server's message; the steps already written
+   * stay written and the next click resumes from the task's phase. A removed property or a slot with
+   * no property cannot be submitted.
+   */
+  async function submitIntake() {
+    setFormError(null);
+    if (linkedPropertyRemoved) {
+      setFormError(REMOVED_PROPERTY_SAVE_ERROR);
+      return;
+    }
+    const stop = (section: "intake" | "bourse" | "distribution", invalid: EnfathSaveErrors) => {
+      setFieldErrors(invalid.errors);
+      setFormError(invalid.message);
+      if (typeof window !== "undefined") window.location.hash = `work-${section}`;
+      scheduleScrollToFirstPoPropertyError(invalid.errors, property, 250);
+    };
+    const enfath = await findEnfathSaveErrors(property, assignmentType, task, propertyId, fieldPolicy);
+    if (enfath) return stop("intake", enfath);
+    if (!propertySkipsBourse(property)) {
+      const bourse = bourseInvalid();
+      if (bourse) return stop("bourse", bourse);
+    }
+    const distributionError = distributionInvalid();
+    if (distributionError) return stop("distribution", { errors: {}, message: distributionError });
 
-        setPhaseOverride(result.parent.phase);
-        void queryClient.invalidateQueries({
-          queryKey: appDataKeys.workflowTasks(),
-        });
+    await runWithActionToast(DISTRIBUTION_CONFIRM_ACTION, async () => {
+      setSaving(true);
+      try {
+        let phase = activeTaskWorkStep(steps);
+        if (phase === "enfath") phase = phaseStep(await persistEnfath());
+        if (phase === "bourse") phase = phaseStep(await persistBourse());
+        if (phase === "distribution") await persistDistribution();
         onRefresh();
       } finally {
         setSaving(false);
@@ -393,6 +474,7 @@ export function useMyTaskWorkCommands({
   return {
     bourseCompleting,
     confirmingDistribution,
+    submitIntake,
     saveEnfath,
     saveBourse,
     confirmDistribution,
