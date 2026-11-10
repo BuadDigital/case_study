@@ -60,6 +60,8 @@ export function PoIntakeModal({
             variant="primary"
             loading={form.saving}
             disabled={form.saving}
+            // The list says «تم تسجيل أمر العمل» once the window closes — no second, generic toast.
+            showActionToast={false}
             onClick={() => void form.save()}
           >
             حفظ أمر العمل

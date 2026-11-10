@@ -19,7 +19,6 @@ import { canSeeBillingStatuses } from "@platform/app-shared/app-data/role-access
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import type { ActiveQueueMobileCardItem } from "@platform/app-shared/components/ActiveQueueMobileCards";
-import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { formatPoDisplay } from "../lib/app-data/po-intake-data";
 import {
   deletePoRecord,
@@ -401,9 +400,14 @@ export function usePoListWorkflow() {
     handleDeletePo,
     /** Row hover: both screens a row opens read this PO's record — fetch it before the click. */
     warmPo: (poNumber: string) => prefetchPoRecord(queryClient, poNumber),
-    onIntakeComplete: (poNumber: string) => {
+    /**
+     * After «حفظ أمر العمل» (Omar 2026-11-10): the window closes and the list stays — no jump to the
+     * order's page; one toast says it is recorded and the list refreshes to show the new order.
+     */
+    onIntakeComplete: () => {
       setIntakeOpen(false);
-      router.push(poPropertiesPath(poNumber));
+      showToast("تم تسجيل أمر العمل", "success");
+      void queryClient.invalidateQueries({ queryKey: appDataKeys.all });
     },
   };
 }

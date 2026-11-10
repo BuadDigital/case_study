@@ -126,7 +126,7 @@ export function PoListView() {
         <PoIntakeModal
           open={intakeOpen}
           onClose={() => setIntakeOpen(false)}
-          onComplete={(record) => onIntakeComplete(record.poNumber)}
+          onComplete={() => onIntakeComplete()}
         />
       ) : null}
 
