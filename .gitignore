@@ -94,3 +94,6 @@ docs/architecture/*
 
 # Claude Code local settings and skills — per-developer, not shared.
 .claude/
+
+# Local working spreadsheets (customer data) — never committed.
+/Excel Sheet/

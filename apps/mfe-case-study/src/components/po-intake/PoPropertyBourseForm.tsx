@@ -215,40 +215,47 @@ export function PoPropertyBourseForm({
 
       {!compactRegisteredTitle ? (
         <>
-          {/* Omar 2026-11-10: the deed image, «هل توجد قيود؟» and «نوع القيد» side by side on one row. */}
+          {/* Omar 2026-11-10: «مصدر الحدود», «هل توجد قيود؟» and «نوع القيد» side by side on one row; the
+              boundaries' notes and table under it, and the deed image from the bourse under the table. */}
           <div className="mt-3 grid grid-cols-1 items-start gap-3 lg:grid-cols-3">
-          <InfathSection title="صورة الصك" hideTitle>
-          <PropertyFileUploadField
-            id={`bourse_deed_image_${property.id}`}
-            label={<>صورة الصك من البورصة *</>}
-            fileName={property.bourseDeedImageFileName}
-            error={fieldErrors.bourseDeedImageFileName}
-            attachPo={attachPo || undefined}
-            propertyId={property.id}
-            docKind="bourse-deed"
-            uploading={upload.isUploading("bourse-deed")}
-            onUpload={(file) => {
-              if (!attachPo) {
-                onPatch("bourseDeedImageFileName", file.name);
-                return;
-              }
-              void upload.run(
-                "bourse-deed",
-                file,
-                () => cacheBourseDeedImageDoc(attachPo, property.id, file),
-                (name) => onPatch("bourseDeedImageFileName", name),
-                "تعذّر حفظ صورة الصك من البورصة — حاول مرة أخرى",
-              );
-            }}
-            onClear={() => {
-              onPatch("bourseDeedImageFileName", "");
-              if (attachPo) {
-                clearCachedPropertyDoc("bourse-deed", attachPo, property.id);
-              }
-            }}
-          />
+          <InfathSection title="توفر الحدود" hideTitle>
+          <div
+            id="boundaries_availability"
+            className={cn(
+              "w-full min-w-0 rounded-lg p-1",
+              fieldErrors.boundariesAvailability &&
+                "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
+            )}
+          >
+            <Label className="mb-1 text-[11px]">مصدر الحدود</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {BOUNDARIES_AVAILABILITY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  className={pillClass(
+                    property.boundariesAvailability === opt.value,
+                  )}
+                  onClick={() => {
+                    onPatch("boundariesAvailability", opt.value);
+                    if (opt.value === "no") {
+                      onPatch("boundariesExternalDocName", "");
+                      const cleared = clearPropertyBoundaryFields();
+                      (
+                        Object.entries(cleared) as [
+                          keyof PoPropertyIntake,
+                          string,
+                        ][]
+                      ).forEach(([key, value]) => onPatch(key, value));
+                    }
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           </InfathSection>
-
           <InfathSection title="القيود على العقار" hideTitle className="contents">
           <div
             id="restrictions_present"
@@ -351,43 +358,7 @@ export function PoPropertyBourseForm({
           </InfathSection>
           </div>
 
-
-          <InfathSection title="توفر الحدود" hideTitle className="mt-3">
-          <div
-            id="boundaries_availability"
-            className={cn(
-              "w-full rounded-lg p-1",
-              fieldErrors.boundariesAvailability &&
-                "border border-danger bg-danger-bg/40 ring-2 ring-[color-mix(in_srgb,var(--danger)_28%,transparent)]",
-            )}
-          >
-            <Label className="mb-1 text-[11px]">مصدر الحدود</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {BOUNDARIES_AVAILABILITY_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  className={pillClass(
-                    property.boundariesAvailability === opt.value,
-                  )}
-                  onClick={() => {
-                    onPatch("boundariesAvailability", opt.value);
-                    if (opt.value === "no") {
-                      onPatch("boundariesExternalDocName", "");
-                      const cleared = clearPropertyBoundaryFields();
-                      (
-                        Object.entries(cleared) as [
-                          keyof PoPropertyIntake,
-                          string,
-                        ][]
-                      ).forEach(([key, value]) => onPatch(key, value));
-                    }
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
+          <div className="px-1">
             {boundariesMarkedUnavailable(property.boundariesAvailability) ? (
               <Note tone="default" className="mt-3 border border-border bg-surface-2">
                 الحدود <strong>غير متوفرة</strong> — لا يُطلب إدخال تفاصيل الحدود
@@ -442,6 +413,38 @@ export function PoPropertyBourseForm({
               />
             ) : null}
           </div>
+
+
+          <InfathSection title="صورة الصك" hideTitle className="mt-3 block lg:w-1/3">
+          <PropertyFileUploadField
+            id={`bourse_deed_image_${property.id}`}
+            label={<>صورة الصك من البورصة *</>}
+            fileName={property.bourseDeedImageFileName}
+            error={fieldErrors.bourseDeedImageFileName}
+            attachPo={attachPo || undefined}
+            propertyId={property.id}
+            docKind="bourse-deed"
+            uploading={upload.isUploading("bourse-deed")}
+            onUpload={(file) => {
+              if (!attachPo) {
+                onPatch("bourseDeedImageFileName", file.name);
+                return;
+              }
+              void upload.run(
+                "bourse-deed",
+                file,
+                () => cacheBourseDeedImageDoc(attachPo, property.id, file),
+                (name) => onPatch("bourseDeedImageFileName", name),
+                "تعذّر حفظ صورة الصك من البورصة — حاول مرة أخرى",
+              );
+            }}
+            onClear={() => {
+              onPatch("bourseDeedImageFileName", "");
+              if (attachPo) {
+                clearCachedPropertyDoc("bourse-deed", attachPo, property.id);
+              }
+            }}
+          />
           </InfathSection>
         </>
       ) : null}

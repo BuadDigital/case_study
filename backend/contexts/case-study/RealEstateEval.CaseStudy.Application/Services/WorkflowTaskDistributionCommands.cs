@@ -61,8 +61,10 @@ public sealed partial class WorkflowTaskDistributionCommands : IWorkflowTaskDist
 
         // The draft is only editable before «تأكيد التوزيع». A late autosave from the screen used to land
         // after the confirm and wipe the confirmed parties (inspector and appraiser read «لم يُعيَّن»,
-        // 2026-10-28); changing parties afterwards goes through RedistributePartiesAsync.
-        if (entity.Phase != WorkflowTaskPhase.Distribution)
+        // 2026-10-28); changing parties afterwards goes through RedistributePartiesAsync. Since
+        // 2026-11-10 (Omar: one submit for the whole intake) the parties are chosen while the initial
+        // data and the bourse are still being entered, so the draft saves in those phases too.
+        if (entity.Phase is not (WorkflowTaskPhase.Enfath or WorkflowTaskPhase.Bourse or WorkflowTaskPhase.Distribution))
             return WorkflowTaskMapper.ToDto(entity);
 
         var normalized = WorkflowTaskPhaseRules.NormalizeDistribution(distribution);
