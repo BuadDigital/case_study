@@ -6,11 +6,8 @@ import { ToastRootProvider } from "@/providers/ToastRootProvider";
 import "@platform/ui-kit/document-reports.css";
 // Tabler icon font: the MFEs use `ti ti-*` classes (field inspection, photo pickers, modals).
 import "@tabler/icons-webfont/dist/tabler-icons.min.css";
-// Tajawal ships with the app (arabic + latin): no Google download at start, so no Arial stand-in.
-import "@fontsource/tajawal/400.css";
-import "@fontsource/tajawal/500.css";
-import "@fontsource/tajawal/700.css";
-import "@fontsource/tajawal/800.css";
+// Tajawal ships with the app and is never replaced by a stand-in font while it loads — see the sheet.
+import "./fonts/tajawal.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

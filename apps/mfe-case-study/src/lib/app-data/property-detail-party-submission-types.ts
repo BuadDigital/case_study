@@ -81,6 +81,8 @@ export type EngineeringSurveySubmissionSnapshot = {
   checklist: EngineeringSurveyChecklistRow[];
   returnNote?: string;
   onSiteAreaSqm: string;
+  /** The area by nature — recorded when the survey found the deed does not match nature. */
+  natureOnSiteAreaSqm?: string;
   northBoundary: string;
   northBoundaryLengthM: string;
   southBoundary: string;

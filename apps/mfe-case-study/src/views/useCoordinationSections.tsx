@@ -38,7 +38,7 @@ import { migrateDistribution, type WorkflowTask } from "../lib/app-data/tasks";
 import type { ReviewLock } from "../lib/app-data/work-page-model";
 import { usePropertyDetailPartySubmissionsQuery } from "../query/property-detail-party-submissions-queries";
 import { CoordinationIntakeBody } from "./CoordinationIntake";
-import { StepLink } from "./WorkSectionsFrame";
+import { StepLink } from "./StepLink";
 
 /** The transaction's engineering-survey task, if one was distributed (its section shows only then). */
 export function useSurveyTask(

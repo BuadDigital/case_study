@@ -189,6 +189,17 @@ public class PlatformPermissionCatalogTests
     }
 
     [Fact]
+    public void Appraiser_has_my_work_and_keeps_the_valuation_page()
+    {
+        // Omar 2026-11-10: the appraiser works from «أعمالي» like the specialists; his full list stays.
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("real-estate-appraiser", pages, capabilities);
+        Assert.Contains("my-work", pages);
+        Assert.Contains("property-appraisal", pages);
+    }
+
+    [Fact]
     public void Case_specialist_includes_all_transactions()
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

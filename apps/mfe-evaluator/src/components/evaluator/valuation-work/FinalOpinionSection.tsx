@@ -213,7 +213,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
             />
           ) : null}
           {desktop !== false ? (
-          <Card id="final-recon" className="mb-6 max-lg:hidden">
+          <Card framed id="final-recon" className="mb-6 max-lg:hidden">
             <Table className="min-w-[900px]">
               <THead>
                 <Tr hoverable={false}>
@@ -301,6 +301,7 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
       ) : null}
 
       <Card
+        framed
         id="final-inf-total"
         className={cn(
           "relative overflow-hidden",

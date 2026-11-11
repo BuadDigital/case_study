@@ -12,11 +12,15 @@ import {
   filterTasksForCaseStudy,
   filterTasksForReceipt,
 } from "@platform/app-shared/app-data/active-transactions";
-import { isFoldedCaseStudyTask } from "@platform/app-shared/workflow/task-types";
+import { isFoldedAppraisalTask, isFoldedCaseStudyTask } from "@platform/app-shared/workflow/task-types";
 import { isValuationDepositedForTask } from "@platform/app-shared/workflow/task-done";
-import type { ReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
+import {
+  appraisalStageLabel,
+  type ReportDraftState,
+} from "@platform/app-shared/workflow/report-draft-state";
 import {
   poPropertyCoordinationPath,
+  propertyAppraisalWorkspacePath,
   poPropertyWorkPath,
   poTaskCoordinationPath,
 } from "@platform/app-shared/domain/po-routes";
@@ -37,8 +41,11 @@ const INTAKE_PROGRESS = {
   distribution: "البيانات الأولية ✓ · البورصة ✓ · التوزيع ←",
 } as const;
 
-/** The case specialist's sub-role a row belongs to: coordination, study, review. */
-export type MyWorkGroup = "co" | "st" | "rv";
+/** The case specialist's sub-role a row or a work-page section belongs to: coordination, study, review. */
+export type CaseSpecialistGroup = "co" | "st" | "rv";
+
+/** The group a row belongs to: a case specialist's sub-role, or the appraiser's own work («ap», Omar 2026-11-10). */
+export type MyWorkGroup = CaseSpecialistGroup | "ap";
 
 export type MyWorkStage =
   | "intake"
@@ -46,7 +53,13 @@ export type MyWorkStage =
   | "study"
   | "review"
   | "deposit"
-  | "upload";
+  | "upload"
+  // The appraiser's three (Omar 2026-11-10): a valuation to do, one returned, a draft to approve.
+  | "valuation"
+  | "correction"
+  | "approval"
+  // A valuation he handed over: nothing waits for him — a lookup chip, never part of «الكل» (Omar 2026-11-11).
+  | "handed";
 
 export type MyWorkDue = "late" | "soon" | "ok" | "none";
 
@@ -126,6 +139,16 @@ export const MY_WORK_GROUPS: readonly {
       { key: "upload", label: "التجهيز والرفع على إنفاذ" },
     ],
   },
+  {
+    key: "ap",
+    label: "التقييم",
+    stages: [
+      { key: "valuation", label: "التقييم" },
+      { key: "correction", label: "معادة للتصحيح" },
+      { key: "approval", label: "مسودة بانتظار اعتمادك" },
+      { key: "handed", label: "المسلَّمة" },
+    ],
+  },
 ];
 
 const STAGE_LABEL = new Map<MyWorkStage, string>(
@@ -158,7 +181,69 @@ export function myWorkGroupsForPages(pages: readonly string[]): MyWorkGroup[] {
     groups.push("co");
   if (has(["active-case-study"])) groups.push("st");
   if (has(["system-upload"])) groups.push("rv");
+  // The appraiser's own work (Omar 2026-11-10): whoever holds his queue page.
+  if (has(["property-appraisal"])) groups.push("ap");
   return groups;
+}
+
+/** Where the appraiser's task stands — his «أعمالي» row. */
+export type AppraiserStep = {
+  stage: "valuation" | "correction" | "approval" | "handed";
+  action: string;
+  reason: string;
+};
+
+/**
+ * What an appraisal task needs from the appraiser now (Omar 2026-11-10): to value the property, to
+ * correct a valuation returned to him, or to approve the report draft review issued.
+ *
+ * How it works, in this order:
+ * - the package was reopened → «تصحيح التقييم» (correction);
+ * - the package was handed over: a draft waiting for HIS approval is his («اعتماد مسودة
+ *   التقرير»); anything else (a draft being prepared, an approved report waiting for the deposit, an
+ *   issued one) waits for others — the «handed» lookup row (2026-11-11), which says where it stands
+ *   and is not counted as work waiting for him;
+ * - otherwise it is his valuation: «بدء التقييم» until the server's progress ladder says it started
+ *   (`progressPct` above 0), then «متابعة التقييم»; the line says whether the study has been issued,
+ *   since only the hand-over waits for it (the form is open from the start).
+ * Edge cases: a handed-over package with no draft state yet reads «بانتظار المراجعة»; no draft state
+ * loaded yet reads as not started (the ladder arrives with the batch read);
+ * a returned package whose draft state is missing is still a correction.
+ */
+export function appraiserStep(
+  task: Pick<WorkflowTask, "appraisalPackageStatus" | "studyReportIssued">,
+  draft: ReportDraftState | undefined,
+): AppraiserStep {
+  if (task.appraisalPackageStatus === "reopened") {
+    return {
+      stage: "correction",
+      action: "تصحيح التقييم",
+      reason: "أُعيد إليك التقييم للتصحيح — عدّله ثم سلّمه من جديد",
+    };
+  }
+  if (task.appraisalPackageStatus === "submitted") {
+    const label = appraisalStageLabel(draft);
+    return label?.group === "draft_sent"
+      ? {
+          stage: "approval",
+          action: "اعتماد مسودة التقرير",
+          reason: "أصدرت المراجعة مسودة التقرير — اقرأها ثم اعتمدها أو أعدها",
+        }
+      : {
+          stage: "handed",
+          action: "تم التسليم",
+          reason: label ? label.label : "سُلِّم التقييم — بانتظار المراجعة",
+        };
+  }
+  const started = (draft?.progressPct ?? 0) > 0;
+  const study = task.studyReportIssued === true ? "الدراسة صدرت" : "الدراسة لم تصدر بعد";
+  return started
+    ? {
+        stage: "valuation",
+        action: "متابعة التقييم",
+        reason: `قيد التقييم — ${study}${task.studyReportIssued === true ? " — جاهز للتسليم" : ""}`,
+      }
+    : { stage: "valuation", action: "بدء التقييم", reason: `تقييم جديد — ${study}` };
 }
 
 /** The study row's usual line: the transaction came from coordination. */
@@ -586,6 +671,9 @@ export type BuildMyWorkInput = {
  *   part of it; the study no longer prepares or hands over the draft — Omar 2026-11-08).
  * - review: ONE row per sent transaction while review has something to do (Omar 2026-11-08) — the
  *   verbs of `reviewPipeline` and its line «الدراسة ✓ · القيمة ← · …» as the reason.
+ * - appraiser (Omar 2026-11-10): his valuations to start or continue, those returned to him and the
+ *   report drafts waiting for his approval (`appraiserStep`), each opening his page; plus, since
+ *   2026-11-11, the ones he handed over (stage «handed»), listed after the rest and under their own chip.
  * Rows sort late first, then soon, then by age (oldest first).
  *
  * Edge cases / changed 2026-11-05: what waits for someone else is no longer listed here — Omar's
@@ -759,6 +847,29 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
     }
   }
 
+  // The appraiser's own work (Omar 2026-11-10): one row per valuation he owes a step on; a deed folded
+  // into another's valuation has none (the holder deed's task carries it), and what waits for someone
+  // else is not listed.
+  if (groups.includes("ap")) {
+    for (const t of mineList) {
+      if (t.kind !== "property-appraisal" || !open(t) || isFoldedAppraisalTask(t)) continue;
+      const step = appraiserStep(t, t.propertyId ? input.draftState(t.propertyId) : undefined);
+      const row = fromTask(
+        t,
+        "ap",
+        step.stage,
+        step.action,
+        step.reason,
+        // A draft to approve opens the report window straight away (`?report=1`).
+        step.stage === "approval"
+          ? `${propertyAppraisalWorkspacePath(t.id)}?report=1`
+          : propertyAppraisalWorkspacePath(t.id),
+      );
+      // A handed-over row asks nothing of him: no late / soon tone, and it sorts after what does.
+      items.push(step.stage === "handed" ? { ...row, due: "none" } : row);
+    }
+  }
+
   // Omar 2026-11-08: no «الرد على إنفاذ» row — a reopening ends at the re-upload; it only marks the rows.
   const reopenings = input.reopenings ?? [];
   const reopeningByProperty = new Map(reopenings.map((r) => [r.propertyId, r]));
@@ -775,8 +886,12 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
   }
 
   const rank: Record<MyWorkDue, number> = { late: 0, soon: 1, ok: 2, none: 3 };
+  const lookup = (i: MyWorkItem) => (i.stage === "handed" ? 1 : 0);
   items.sort(
-    (a, b) => rank[a.due] - rank[b.due] || a.arrivedIso.localeCompare(b.arrivedIso),
+    (a, b) =>
+      lookup(a) - lookup(b) ||
+      rank[a.due] - rank[b.due] ||
+      a.arrivedIso.localeCompare(b.arrivedIso),
   );
   return { items };
 }

@@ -11,7 +11,7 @@ import {
   COORDINATION_SECTIONS,
   type CoordinationSectionId,
 } from "./coordination-page-model";
-import type { MyWorkGroup } from "./my-work-model";
+import type { CaseSpecialistGroup } from "./my-work-model";
 import { isValuationDepositedForTask } from "@platform/app-shared/workflow/task-done";
 import type { WorkflowTask } from "./tasks";
 
@@ -23,13 +23,11 @@ export type WorkSectionId =
   | "valuation"
   | "upload";
 
-export type WorkSectionStatus = "done" | "current" | "todo";
-
 export type WorkSectionDef = {
   id: WorkSectionId;
   title: string;
   /** The sub-role that owns the section's decision. */
-  group: MyWorkGroup;
+  group: CaseSpecialistGroup;
   /** Where the section sits in the flow — sections sharing a step are worked together. */
   step: number;
 };
@@ -122,11 +120,4 @@ export function workPageStep(
 /** The first step of the study — the earlier ones are coordination's (shown on both pages). */
 export const WORK_PAGE_FIRST_STEP = 4;
 
-/** A section's status against the transaction's step (any frame page's section). */
-export function workSectionStatus(
-  section: Pick<WorkSectionDef, "step">,
-  step: number,
-): WorkSectionStatus {
-  if (section.step < step) return "done";
-  return section.step === step ? "current" : "todo";
-}
+// A section's status against the step: `workSectionStatus` — with the frame, in `@platform/ui-kit`.

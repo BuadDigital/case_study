@@ -2,20 +2,14 @@
 
 import { createContext, use, useEffect, useMemo } from "react";
 import type { CaseSpecialistSubRole, PageId, RoleId } from "@platform/types";
-import { ROLES } from "@platform/app-shared/app-data/constants";
 import {
-  filterPagesBySubRoles,
   subRolesFromPermissions,
   type StaffAccess,
 } from "@platform/app-shared/app-data/case-specialist-sub-roles";
-import {
-  pagesFromPermissions,
-  roleSeesAllTransactionsPage,
-} from "@platform/app-shared/app-data/permissions-pages";
 import { setRuntimeCapabilities } from "@platform/app-shared/app-data/runtime-access";
 import { usePermissionsQuery } from "@platform/app-shared/query/permissions-queries";
 import { useUsableAuthSession } from "../auth/use-auth-session";
-import { roleFromPermissions } from "./app-access-role";
+import { roleFromPermissions, rolePagesFromPermissions } from "./app-access-role";
 
 /** Least-privilege placeholder while access is unresolved or refused — never GM. */
 const PLACEHOLDER_ROLE: RoleId = "field-inspector";
@@ -107,26 +101,9 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
     if (!permissionsResolved || permissionsFailed || resolvedRole == null) {
       return [];
     }
-    // A specialist's baseline keeps only the queue pages of the sub-roles he holds.
-    const baseline = filterPagesBySubRoles(
-      resolvedRole,
-      subRoles,
-      ROLES[resolvedRole].pages,
-    ).filter((page) => {
-      // "All transactions" — hidden from every role (mirrors pagesFromPermissions)
-      if (page === "all-transactions" && !roleSeesAllTransactionsPage(resolvedRole)) {
-        return false;
-      }
-      return true;
-    });
-    if (permissions?.pages?.length) {
-      const fromApi = pagesFromPermissions(permissions.pages, {
-        prototypeRole: permissions.prototypeRole,
-      });
-      return [...new Set<PageId>([...fromApi, ...baseline])];
-    }
-    return baseline;
-  }, [permissionsResolved, permissionsFailed, permissions, resolvedRole, subRoles]);
+    // The same rule the login lands by (`rolePagesFromPermissions`).
+    return rolePagesFromPermissions(permissions);
+  }, [permissionsResolved, permissionsFailed, permissions, resolvedRole]);
 
   const authReady = hasSession && permissionsResolved;
 

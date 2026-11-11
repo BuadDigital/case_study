@@ -10,7 +10,7 @@
  */
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Note, PageShell } from "@platform/ui-kit";
+import { Button, Note, PageShell, WorkSectionsLayout, useWorkSections } from "@platform/ui-kit";
 import {
   poPropertyDetailPath,
   poPropertyWorkPath,
@@ -34,7 +34,7 @@ import { useTransactionQuery } from "../query/use-transaction-query";
 import { CoordinationIntakeBanner, IntakeScope } from "./CoordinationIntake";
 import { PoPropertyRouteGate } from "./PoPropertyRouteGate";
 import { useCoordinationSections, useSurveyTask } from "./useCoordinationSections";
-import { StepLink, WorkSectionsLayout, useWorkSections } from "./WorkSectionsFrame";
+import { StepLink } from "./StepLink";
 
 const EMPTY_TASKS: WorkflowTask[] = [];
 

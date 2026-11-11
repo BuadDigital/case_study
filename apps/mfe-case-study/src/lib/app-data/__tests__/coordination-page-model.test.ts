@@ -6,7 +6,7 @@ import {
   FOLLOW_UP_STEP,
   coordinationStep,
 } from "../coordination-page-model";
-import { workSectionStatus } from "../work-page-model";
+import { workSectionStatus } from "@platform/ui-kit";
 
 function task(over: Partial<WorkflowTask>): WorkflowTask {
   return {

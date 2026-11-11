@@ -579,7 +579,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
       ) : null}
 
       {desktop !== false ? (
-      <Card className="mb-6 max-lg:hidden">
+      <Card framed className="mb-6 max-lg:hidden">
         <Table className="min-w-[1180px]" wrapClassName="rounded-xl">
           <THead>
             <Tr hoverable={false}>

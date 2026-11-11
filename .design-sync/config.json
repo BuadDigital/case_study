@@ -107,7 +107,8 @@
     "OpsReadField": "src/components/OpsPanelParts.tsx",
     "MobileRecordCard": "src/components/MobileRecordCard.tsx",
     "MobileRecordList": "src/components/MobileRecordCard.tsx",
-    "MobileSectionPicker": "src/components/MobileSectionPicker.tsx"
+    "MobileSectionPicker": "src/components/MobileSectionPicker.tsx",
+    "WorkSectionsLayout": "src/components/WorkSectionsFrame.tsx"
   },
   "overrides": {
     "RowMoreMenu": {

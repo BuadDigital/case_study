@@ -3,6 +3,7 @@ import type { ReportDraftState } from "@platform/app-shared/workflow/report-draf
 import type { WorkflowTask } from "../tasks";
 import type { PoIntakeRecord } from "../po-intake-data";
 import {
+  appraiserStep,
   buildMyWork,
   formatActionClock,
   myWorkDue,
@@ -54,6 +55,10 @@ describe("myWorkGroupsForPages", () => {
     expect(myWorkGroupsForPages(["active-case-study"])).toEqual(["st"]);
     expect(myWorkGroupsForPages(["system-upload"])).toEqual(["rv"]);
     expect(myWorkGroupsForPages(["po", "favorites"])).toEqual([]);
+  });
+
+  it("gives the appraiser his own group, from his queue page (Omar 2026-11-10)", () => {
+    expect(myWorkGroupsForPages(["my-work", "po", "property-appraisal"])).toEqual(["ap"]);
   });
 });
 
@@ -471,6 +476,128 @@ describe("buildMyWork — reopenings", () => {
       input({ groups: ["st"], mine: [study], allTasks: [study], reopenings: [reopening("open")] }),
     );
     expect(items.map((i) => [i.reopened, i.reason])).toEqual([[true, "سبب الإعادة: ملاحظة إنفاذ على القيمة"]]);
+  });
+});
+
+/** An appraisal task, as the appraiser's own list holds it. */
+function appraisal(over: Partial<WorkflowTask> = {}): WorkflowTask {
+  return task({
+    id: "a1",
+    kind: "property-appraisal",
+    assigneeRole: "real-estate-appraiser",
+    studyReportIssued: false,
+    ...over,
+  });
+}
+
+const draft = (over: Partial<ReportDraftState>): ReportDraftState => ({
+  status: "none",
+  reportStage: "draft",
+  progressPct: 0,
+  ...over,
+});
+
+describe("appraiserStep — what the appraiser owes (Omar 2026-11-10)", () => {
+  it("starts a new valuation, saying whether the study has been issued", () => {
+    expect(appraiserStep(appraisal(), draft({}))).toMatchObject({
+      stage: "valuation",
+      action: "بدء التقييم",
+      reason: "تقييم جديد — الدراسة لم تصدر بعد",
+    });
+    expect(appraiserStep(appraisal({ studyReportIssued: true }), undefined)).toMatchObject({
+      stage: "valuation",
+      action: "بدء التقييم",
+      reason: "تقييم جديد — الدراسة صدرت",
+    });
+  });
+
+  it("continues a started valuation, ready to hand over once the study is issued", () => {
+    expect(appraiserStep(appraisal(), draft({ progressPct: 30 }))).toMatchObject({
+      action: "متابعة التقييم",
+      reason: "قيد التقييم — الدراسة لم تصدر بعد",
+    });
+    expect(
+      appraiserStep(appraisal({ studyReportIssued: true }), draft({ progressPct: 65 }))?.reason,
+    ).toBe("قيد التقييم — الدراسة صدرت — جاهز للتسليم");
+  });
+
+  it("returns a reopened package as a correction, whatever the draft says", () => {
+    expect(appraiserStep(appraisal({ appraisalPackageStatus: "reopened" }), undefined)).toMatchObject({
+      stage: "correction",
+      action: "تصحيح التقييم",
+    });
+  });
+
+  it("makes a handed-over valuation his only while a draft waits for his approval", () => {
+    const handed = appraisal({ appraisalPackageStatus: "submitted" });
+    expect(appraiserStep(handed, draft({ status: "sent" }))).toMatchObject({
+      stage: "approval",
+      action: "اعتماد مسودة التقرير",
+    });
+    // What waits for someone else is a lookup row, not his work: no draft yet, one being prepared, an approved one.
+    expect(appraiserStep(handed, undefined)).toMatchObject({
+      stage: "handed",
+      reason: "سُلِّم التقييم — بانتظار المراجعة",
+    });
+    expect(appraiserStep(handed, draft({ status: "preparing" })).stage).toBe("handed");
+    expect(appraiserStep(handed, draft({ status: "approved", reportStage: "deposit_issued" }))).toMatchObject({
+      stage: "handed",
+      reason: "معتمد — بانتظار رمز الإيداع",
+    });
+    expect(appraiserStep(handed, draft({ status: "approved", reportStage: "final_issued" }))).toMatchObject({
+      stage: "handed",
+      reason: "صدر التقرير النهائي",
+    });
+  });
+});
+
+describe("buildMyWork — the appraiser's rows (Omar 2026-11-10)", () => {
+  const rows = (tasks: WorkflowTask[], states: Record<string, ReportDraftState> = {}) =>
+    buildMyWork(
+      input({
+        groups: ["ap"],
+        mine: tasks,
+        allTasks: tasks,
+        draftState: (id) => states[id],
+      }),
+    ).items;
+
+  it("makes one row per valuation, opening his page", () => {
+    const [row] = rows([appraisal({ id: "a9" })]);
+    expect(row).toMatchObject({ group: "ap", stage: "valuation", action: "بدء التقييم", href: "/property-appraisal/a9" });
+  });
+
+  it("opens a draft waiting for approval on the report window", () => {
+    const t = appraisal({ id: "a9", appraisalPackageStatus: "submitted" });
+    const [row] = rows([t], { p1: draft({ status: "sent" }) });
+    expect(row).toMatchObject({ stage: "approval", href: "/property-appraisal/a9?report=1" });
+  });
+
+  it("lists a handed-over valuation under its own stage, neutral and after the work waiting for him", () => {
+    const handed = appraisal({ id: "h1", propertyId: "p2", appraisalPackageStatus: "submitted" });
+    const mine = appraisal({ id: "m1", propertyId: "p1" });
+    const out = rows([handed, mine]);
+    expect(out.map((r) => [r.taskId, r.stage, r.due])).toEqual([
+      ["m1", "valuation", expect.any(String)],
+      ["h1", "handed", "none"],
+    ]);
+    expect(out[1]).toMatchObject({ action: "تم التسليم", href: "/property-appraisal/h1" });
+  });
+
+  it("leaves out cancelled, completed and folded valuations and other kinds of task", () => {
+    expect(
+      rows([
+        appraisal({ id: "c", status: "cancelled" }),
+        appraisal({ id: "d", status: "completed" }),
+        appraisal({ id: "f", transactionStudyHolderPropertyId: "other-deed" }),
+        task({ id: "s" }),
+      ]),
+    ).toEqual([]);
+  });
+
+  it("adds nothing for someone without the appraiser's group", () => {
+    const t = appraisal();
+    expect(buildMyWork(input({ groups: ["st"], mine: [t], allTasks: [t] })).items).toEqual([]);
   });
 });
 

@@ -156,7 +156,7 @@ export function CostApproachLinesTable({
       />
     ) : null}
     {desktop !== false ? (
-    <Card id="cost-lines" className="mb-6 min-w-0 !overflow-visible max-lg:hidden">
+    <Card framed id="cost-lines" className="mb-6 min-w-0 !overflow-visible max-lg:hidden">
       <Table
         className="min-w-[1160px] table-fixed"
         wrapClassName={COST_LINES_TABLE_WRAP_CLASS}

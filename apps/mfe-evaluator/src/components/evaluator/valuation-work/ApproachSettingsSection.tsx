@@ -19,7 +19,13 @@ import {
   type ValuationApproachSettingsDto,
 } from "@platform/api-client";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
-import { cn, AppModal, Button, useToast } from "@platform/ui-kit";
+import {
+  cn,
+  AppModal,
+  Button,
+  useToast,
+  useWorkDensity,
+} from "@platform/ui-kit";
 import type { EvaluatorRetrospectiveDraft } from "../../../lib/evaluator/evaluator-validation";
 
 import { valuationPurposeKeyForAssignment } from "@platform/app-shared/app-data/assignment-valuation-defaults";
@@ -57,6 +63,9 @@ import {
  * Rehydrates from the server payload via hydrateKey — bumps on full load and every settings save
  * (so an old draft cannot overwrite what was saved from the cost screen).
  */
+/** Work density (the appraiser's page): two blocks of the form side by side, one under the other on a narrow screen. */
+const WORK_PAIR_CLASS = "grid grid-cols-2 items-start gap-x-6 max-lg:grid-cols-1";
+
 export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   valuationRequestId,
   assignmentType,
@@ -101,6 +110,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     fieldErrors.valuationPurposeKey ||
     fieldErrors.valuationPurposeNote ||
     "";
+  const work = useWorkDensity();
   const [asMarketEnabled, setAsMarketEnabled] = useState(false);
   const [asCostEnabled, setAsCostEnabled] = useState(false);
   const [asCostBasis, setAsCostBasis] = useState("replacement");
@@ -344,7 +354,12 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     <>
       <Card>
         <CardPad>
-          <CardTitle>أساليب وطرق التقييم المستخدمة</CardTitle>
+          {/* The appraiser's page (work density): the section's header carries the title, and the
+              form reads two blocks to a row — scope beside the interest valued, the cost basis
+              beside the valuation date. */}
+          {work ? null : <CardTitle>أساليب وطرق التقييم المستخدمة</CardTitle>}
+          <div className={work ? WORK_PAIR_CLASS : undefined}>
+          <div>
           <FieldLabel>نطاق التقييم</FieldLabel>
           <div
             id="as-scope"
@@ -389,6 +404,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                   ? "تُقيَّم المباني وحدها دون تقدير الأرض — بأسلوب التكلفة، أو بأسلوب السوق للعقار ككل (كالشقة)."
                   : "تُقيَّم الأرض مع المكونات المحصورة."}
           </p>
+          </div>
           <OwnershipInterestFields
             saving={saving}
             fieldErrors={fieldErrors}
@@ -397,6 +413,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             leaseYearsText={asLeaseYears}
             onLeaseYearsTextChange={setAsLeaseYears}
           />
+          </div>
           <div
             id="as-approaches"
             className={cn(
@@ -495,6 +512,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             </p>
           ) : null}
 
+          <div className={work ? WORK_PAIR_CLASS : undefined}>
           {asCostEnabled && costAllowed ? (
             <div className="mb-4 border-t border-border pt-4">
               <p className="mb-3.5 mt-0 text-[10.5px] text-text-3">
@@ -547,6 +565,7 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
             retroRationale={asRetroRationale}
             onRetroRationaleChange={setAsRetroRationale}
           />
+          </div>
 
           <div className="mt-6">
             <PrimaryBtn disabled={saving} onClick={requestSave}>
@@ -555,19 +574,19 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
           </div>
           {settingsSaved ? (
             <p className="mb-0 mt-3 text-[11.5px] text-text-3">
-              حدّد الأسلوب ليظهر تبويب طريقته فوراً. احفظ ليثبت الاختيار في
-              التقرير. إلغاء أسلوب يخفي تبويبه دون حذف العمل.
+              حدّد الأسلوب ليظهر قسم طريقته فوراً. احفظ ليثبت الاختيار في
+              التقرير. إلغاء أسلوب يخفي قسمه دون حذف العمل.
             </p>
           ) : (
             <p className="mt-3 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
-              حدّد أسلوب السوق أو التكلفة ليظهر تبويب العمل، ثم ابدأ التقييم.
+              حدّد أسلوب السوق أو التكلفة ليظهر قسم العمل، ثم ابدأ التقييم.
             </p>
           )}
         </CardPad>
       </Card>
       <AppModal
         open={confirmDisableOpen}
-        title="إخفاء تبويب أسلوب"
+        title="إخفاء قسم أسلوب"
         onClose={() => setConfirmDisableOpen(false)}
         footer={
           <>

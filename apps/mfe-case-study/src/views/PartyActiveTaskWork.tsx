@@ -61,6 +61,7 @@ import {
 } from "@platform/ui-kit";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
+import { AppraiserPageActions, AppraiserStudySummary } from "./AppraiserPageParts";
 
 const LOADING_TEXT = "text-xs text-text-3";
 const TAB_CONTENT = "min-w-0 flex-1 overflow-y-auto px-4 py-4 sm:p-5";
@@ -542,6 +543,14 @@ export function PartyActiveTaskWork({
         deedLabel={deedLabel}
         onBack={exit}
         embeddedInPropertyChrome={layout === "page" && Boolean(record && property)}
+        studySummary={
+          property ? <AppraiserStudySummary property={property} task={task} /> : undefined
+        }
+        pageActions={
+          property ? (
+            <AppraiserPageActions poNumber={task.poNumber} propertyId={property.id} />
+          ) : undefined
+        }
         propertySummary={{
           deedNumber: deedLabel,
           poNumber: formatPoDisplay(task.poNumber),
@@ -561,14 +570,18 @@ export function PartyActiveTaskWork({
     );
 
     if (layout === "page" && record && property && propertyIndex >= 0) {
+      // Omar 2026-11-10: the appraiser's page takes the work page's frame — the hero, then the
+      // numbered sections with their rail (EvaluatorWindow). The page scrolls on the
+      // shell's own scroller, so nothing here is a scroll container (`overflow-clip`), or the rail
+      // would not stay in view; the timeline column stays on the property's details page.
       return (
         <div
           id="view-property-appraisal-workspace"
-          className="flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg"
+          className="flex min-h-0 w-full flex-1 flex-col overflow-clip bg-bg [zoom:0.85]"
         >
           <PageShell
             variant="canvas"
-            className="gap-0 overflow-x-hidden overflow-y-auto bg-bg px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
+            className="gap-0 bg-bg px-[30px] py-[26px] max-sm:px-4 max-sm:py-4"
           >
             <PropertyDetailHero
               record={record}
@@ -576,16 +589,8 @@ export function PartyActiveTaskWork({
               propertyIndex={propertyIndex + 1}
               hideOpenCaseStudy
             />
-            <div className="grid min-h-0 flex-1 grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1fr)_250px]">
-              <div className={opsContentPanel}>
-                {submitDialog}
-                {appraisalWork}
-              </div>
-              <PropertyTransactionTimeline
-                record={record}
-                property={property}
-              />
-            </div>
+            {submitDialog}
+            {appraisalWork}
           </PageShell>
         </div>
       );

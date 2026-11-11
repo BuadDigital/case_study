@@ -48,11 +48,11 @@ import {
 } from "@platform/app-shared/app-data/property-detail-document-types";
 import { collectFieldInspectionDocumentsFromSubmission } from "../../lib/case-study-bridge";
 import {
-  Spinner,
   cn,
   opsChip,
   opsFldControl,
   opsTfLbl,
+  WorkSectionFieldsSkeleton,
 } from "@platform/ui-kit";
 import type {
   EvaluatorReportChoices,
@@ -383,13 +383,10 @@ export function EvaluatorValuationReportTab({
     patchRef,
   ]);
 
+  // The summary section's own placeholder (2026-11-10) — was a spinner reading «جاري تحميل تقرير
+  // التقييم…» from the days this was the report tab.
   if (loading) {
-    return (
-      <div className="flex items-center justify-center gap-2 py-16 text-text-3">
-        <Spinner />
-        <span className="text-[13px]">جاري تحميل تقرير التقييم…</span>
-      </div>
-    );
+    return <WorkSectionFieldsSkeleton fields={4} label="جاري تحميل ملخص العقار" />;
   }
 
   const noteClassName = "mb-2 text-[11px] leading-relaxed text-text-3";

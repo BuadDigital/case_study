@@ -25,7 +25,7 @@ import {
   scheduleScrollToFirstFormField,
 } from "@platform/app-shared/form-ux";
 import { fmtMax } from "@platform/app-shared/format/number";
-import { Note, cn } from "@platform/ui-kit";
+import { Note, WORK_FORM_GRID_CLASS, cn, useWorkDensity } from "@platform/ui-kit";
 
 import {
   Card,
@@ -105,11 +105,13 @@ export function CostLandValueCard({
   isApartmentProperty: boolean;
 }) {
   const { fieldErrors } = useValuationWorkErrors();
+  // The sections frame (Omar 2026-11-10): four fields to a row, each control the width of its cell.
+  const work = useWorkDensity();
   return (
     <Card>
-      <div className="px-[22px] py-3.5">
+      <div className={work ? undefined : "px-[22px] py-3.5"}>
         <div className="mb-3 text-[13px] font-extrabold text-heading">قيمة الأرض</div>
-        <div className="flex flex-wrap items-end gap-[18px]">
+        <div className={work ? WORK_FORM_GRID_CLASS : "flex flex-wrap items-end gap-[18px]"}>
           <label className="flex flex-col gap-1.5">
             <FieldLabel>
               {isApartmentProperty ? "مساحة أرض العمارة كاملة (م²)" : "مساحة قطعة الأرض (م²)"}
@@ -126,7 +128,7 @@ export function CostLandValueCard({
               }
               className={cn(
                 htmlNumInput,
-                "w-[110px] p-2",
+                work ? "w-full p-2" : "w-[110px] p-2",
                 fieldErrors.buildingPlotAreaSqm && invalidControlClass,
               )}
             />
@@ -147,10 +149,16 @@ export function CostLandValueCard({
               onChange={(e) =>
                 setField("useRestrictionPct", costNumericInput(e.target.value))
               }
-              className={cn(htmlNumInput, "w-[90px] p-2")}
+              className={cn(htmlNumInput, work ? "w-full p-2" : "w-[90px] p-2")}
             />
           </label>
-          <label className="flex min-w-[220px] flex-1 flex-col gap-1.5 max-lg:min-w-full">
+          <label
+            className={cn(
+              "flex min-w-[220px] flex-1 flex-col gap-1.5 max-lg:min-w-full",
+              // Last in the grid, across the rest of the row: the four figures fill the rows above it.
+              work && "order-last min-w-0 min-[561px]:col-span-2 min-[1024px]:col-span-3",
+            )}
+          >
             <FieldLabel>مبرر التقييد</FieldLabel>
             <input
               id="cost-useRestrictionRationale"
@@ -178,7 +186,7 @@ export function CostLandValueCard({
                 }
                 className={cn(
                   htmlNumInput,
-                  "w-[110px] p-2",
+                  work ? "w-full p-2" : "w-[110px] p-2",
                   fieldErrors.apartmentLandShareSqm && invalidControlClass,
                 )}
               />
@@ -231,10 +239,11 @@ export function CostIndirectCard({
   derived: CostApproachDerived;
 }) {
   const { financingPctLocal, indirectSumLocal, totalCostLocal } = derived;
+  const work = useWorkDensity();
   const finPct = formatPct2(financingPctLocal);
   return (
     <Card id="cost-indirect" className="mb-0">
-      <div className="px-[22px] pb-5 pt-[18px]">
+      <div className={work ? undefined : "px-[22px] pb-5 pt-[18px]"}>
         <div className="mb-[14px] text-[14.5px] font-extrabold text-heading">
           التكاليف غير المباشرة
         </div>
@@ -400,9 +409,10 @@ export function CostAgeCard({
 }) {
   const leaseCap = leaseCapWording(ownershipInterestKey);
   const { fieldErrors } = useValuationWorkErrors();
+  const work = useWorkDensity();
   return (
     <Card id="cost-age" className="mb-0">
-      <div className="px-[22px] pb-5 pt-[18px]">
+      <div className={work ? undefined : "px-[22px] pb-5 pt-[18px]"}>
         <div className="mb-[14px] text-[14.5px] font-extrabold text-heading">
           العمر والإهلاك
         </div>
@@ -518,7 +528,7 @@ export function CostResultsCard({
   const { totalCostLocal, netValueLocal, costValueLocal, landComplete } = derived;
   const perSqm = (value: number) => (buildAreaLocal > 0 ? fmtMax(value / buildAreaLocal) : "—");
   return (
-    <Card className="mb-6">
+    <Card framed className="mb-6">
       {/* Phones stack the two figures. */}
       <div className="flex items-stretch max-lg:flex-col">
         <div className="flex-1 border-border px-[22px] py-[18px] max-lg:border-b max-lg:px-4 lg:border-e">

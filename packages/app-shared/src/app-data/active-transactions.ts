@@ -153,6 +153,9 @@ const CASE_STUDY_STAGE_PAGE_IDS = new Set<PageId>(
   CASE_STUDY_ACTIVE_TRANSACTIONS_NAV.map((item) => item.id),
 );
 
+/** Queues «أعمالي» replaces: the case-study stage queues and the appraiser's «تقييم العقار». */
+const REPLACED_BY_MY_WORK = new Set<PageId>([...CASE_STUDY_STAGE_PAGE_IDS, "property-appraisal"]);
+
 /**
  * The «قوائم المراحل» dropdown rows a role sees.
  *
@@ -160,6 +163,9 @@ const CASE_STUDY_STAGE_PAGE_IDS = new Set<PageId>(
  * Edge cases / changed 2026-11-05 (Omar): a role that has «أعمالي» no longer gets the six case-study
  * stage queues here — «أعمالي» lists the same rows with the same ⋮ menu, and «المعاملات النشطة»
  * follows them. The pages stay reachable (the rows open them); the party queues and fees stay.
+ * Changed 2026-11-11 (Omar): the appraiser's queue «تقييم العقار» goes the same way — his «أعمالي»
+ * lists his valuations with the same rows, so the two entries said the same thing; his handed-over
+ * valuations are one chip of «أعمالي». The page stays reachable (the rows open its work page).
  */
 export function activeTransactionNavForRole(
   rolePages: PageId[],
@@ -167,7 +173,7 @@ export function activeTransactionNavForRole(
 ): ActiveTransactionNavItem[] {
   const hasMyWork = rolePages.includes("my-work");
   return ACTIVE_TRANSACTIONS_NAV.filter((item) => {
-    if (hasMyWork && CASE_STUDY_STAGE_PAGE_IDS.has(item.id)) return false;
+    if (hasMyWork && REPLACED_BY_MY_WORK.has(item.id)) return false;
     if (item.id === "party-fees") {
       return (
         isPartyFeesUnderActiveTransactions(role) &&

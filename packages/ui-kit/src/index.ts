@@ -208,6 +208,18 @@ export {
   type MobileSectionPickerProps,
 } from "./components/MobileSectionPicker";
 export {
+  WorkSectionFieldsSkeleton,
+  WorkSectionsLayout,
+  WorkSectionsSkeleton,
+  sectionDomId,
+  sectionsOpenAtStep,
+  useWorkSections,
+  workSectionStatus,
+  type FrameSectionDef,
+  type WorkSectionStatus,
+  type WorkSectionsState,
+} from "./components/WorkSectionsFrame";
+export {
   MobileRecordCard,
   MobileRecordList,
   type MobileRecordCardProps,
