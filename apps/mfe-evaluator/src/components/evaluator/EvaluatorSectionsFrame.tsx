@@ -26,6 +26,9 @@ export type EvaluatorSectionFocus = { screen: ValuationWorkScreenId };
  * remembered screen after a refresh: the section opens and scrolls into view. Opening a section
  * by hand reports it through `onPick`, so the window remembers it for the next refresh.
  *
+ * A handed-over valuation (past every section) opens on the summary, so the page never opens with
+ * every section folded.
+ *
  * Edge cases: a focus that arrives before the step is known waits — the frame replaces its open
  * set once when the step arrives and would close the section again; a focus on a screen whose
  * approach is off is ignored.
@@ -55,6 +58,8 @@ export function EvaluatorSectionsFrame({
     step,
     ready,
     keepMounted: EVALUATOR_KEEP_MOUNTED,
+    // A valuation already handed over is past every section: open the summary rather than none.
+    fallbackOpen: "summary",
   });
 
   const { openSection } = state;

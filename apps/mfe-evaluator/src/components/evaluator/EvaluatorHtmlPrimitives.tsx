@@ -7,10 +7,16 @@ import {
   OpsSectionTitle,
   cn,
   opsWorkCard,
+  useWorkDensity,
+  WORK_FORM_GRID_CLASS,
   type OpsInfoNoteVariant,
 } from "@platform/ui-kit";
 
-/** Field-inspection `InsCard` language — aligns evaluator input sections with the rest of the app. */
+/**
+ * Field-inspection `InsCard` language — aligns evaluator input sections with the rest of the app.
+ * Inside the sections frame (`work` density, Omar 2026-11-10) the section is already the panel, so
+ * the card is flat: its title and fields with a thin rule above, no frame of its own.
+ */
 export function ValCard({
   title,
   badge,
@@ -20,8 +26,15 @@ export function ValCard({
   badge?: ReactNode;
   children: ReactNode;
 }) {
+  const work = useWorkDensity();
   return (
-    <section className={cn(opsWorkCard, "mb-3.5")}>
+    <section
+      className={cn(
+        work
+          ? "mb-4 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-border [&:not(:first-child)]:pt-4"
+          : cn(opsWorkCard, "mb-3.5"),
+      )}
+    >
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <span className="h-[15px] w-[3px] rounded-full bg-gold" aria-hidden />
         <h4 className="m-0 text-[13px] font-bold text-heading">{title}</h4>
@@ -40,6 +53,8 @@ export function ValFieldsGrid({
   children: ReactNode;
   min?: number;
 }) {
+  // The sections frame: four fields to a row at most, whatever the `min` of the standalone screens.
+  if (useWorkDensity()) return <div className={WORK_FORM_GRID_CLASS}>{children}</div>;
   return (
     <div
       className="grid gap-3"

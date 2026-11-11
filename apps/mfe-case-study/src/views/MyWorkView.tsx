@@ -46,6 +46,7 @@ import type { PageSituationCardDef } from "../lib/app-data/active-transaction-pa
 import { filterActionablePendingBourseItems } from "../lib/app-data/pending-bourse-queue";
 import { tasksForRole, type WorkflowTask } from "../lib/app-data/tasks";
 import { seesAllCaseStudyWorkflowTasks } from "../lib/app-data/viewer-task-access";
+import { isFoldedAppraisalTask } from "@platform/app-shared/workflow/task-types";
 import {
   MY_WORK_GROUPS,
   buildMyWork,
@@ -151,8 +152,10 @@ function MyWorkDates({
  * How it works: subscribes to the shared one-second clock (`useTickingNow`) here, in the leaf, so
  * only the clock cells re-render each second, not the page.
  */
-function ActionClock({ arrivedIso }: { arrivedIso: string }) {
+function ActionClock({ arrivedIso, stopped }: { arrivedIso: string; stopped?: boolean }) {
   const nowMs = useTickingNow();
+  // A handed-over row asks nothing of the viewer (Omar 2026-11-11): no clock runs against him.
+  if (stopped) return <span className="text-[13px] text-text-3">—</span>;
   return (
     <span className="text-[13px] font-semibold tabular-nums text-heading">
       {formatActionClock(arrivedIso, nowMs)}
@@ -171,9 +174,9 @@ export function MyWorkView() {
   const poQuery = usePoRecordsQuery();
   const bourseQuery = usePendingBourseItemsQuery();
   const failuresQuery = useFailuresQuery();
-  const reopenings = useActiveReopeningsQuery();
-
   const groups = useMemo(() => myWorkGroupsForPages(rolePages), [rolePages]);
+  // The reopenings list is the specialists' read: the appraiser's page does not ask for it.
+  const reopenings = useActiveReopeningsQuery(groups.some((g) => g !== "ap"));
   const tasks = tasksQuery.data ?? EMPTY_TASKS;
   const mine = useMemo(
     () =>
@@ -182,21 +185,29 @@ export function MyWorkView() {
   );
 
   // The draft / deposit stages read the valuation draft states (they live in the valuation service).
+  // The appraiser's own valuations too (Omar 2026-11-10): the draft state says whether a valuation
+  // started and whether a draft waits for his approval.
+  const asAppraiser = groups.includes("ap");
   const draftPropertyIds = useMemo(
     () =>
       mine
         .filter(
           (t) =>
-            t.kind === "case-study-property" &&
-            t.studyReportIssued &&
-            !t.propertyHandedOverToEnfaz,
+            (t.kind === "case-study-property" &&
+              t.studyReportIssued &&
+              !t.propertyHandedOverToEnfaz) ||
+            (asAppraiser &&
+              t.kind === "property-appraisal" &&
+              t.status !== "cancelled" &&
+              t.status !== "completed" &&
+              !isFoldedAppraisalTask(t)),
         )
         .map((t) => t.propertyId),
-    [mine],
+    [mine, asAppraiser],
   );
   const draftVersion = useReportDraftStates(
     draftPropertyIds,
-    groups.includes("st") || groups.includes("rv"),
+    groups.includes("st") || groups.includes("rv") || asAppraiser,
   );
 
   const poByNumber = useMemo(
@@ -238,7 +249,8 @@ export function MyWorkView() {
     const q = search.trim().toLowerCase();
     return work.items.filter(
       (i) =>
-        (!stage || i.stage === stage) &&
+        // «الكل» is what waits for him: the handed-over lookup rows show under their own chip only.
+        (stage ? i.stage === stage : i.stage !== "handed") &&
         (!q ||
           [
             i.deedNumber,
@@ -256,13 +268,14 @@ export function MyWorkView() {
 
   const pending = tasksQuery.isPending || poQuery.isPending;
   const failed = [tasksQuery, poQuery].filter(queryLoadFailed);
+  const waiting = useMemo(() => work.items.filter((i) => i.stage !== "handed"), [work.items]);
   const values =
     pending || failed.length
       ? {}
       : {
-          open: work.items.length,
-          late: work.items.filter((i) => i.due === "late").length,
-          soon: work.items.filter((i) => i.due === "soon").length,
+          open: waiting.length,
+          late: waiting.filter((i) => i.due === "late").length,
+          soon: waiting.filter((i) => i.due === "soon").length,
         };
 
   const countOf = (s: MyWorkStage) =>
@@ -300,7 +313,7 @@ export function MyWorkView() {
                 {
                   key: "all",
                   label: "الكل — ما ينتظرني",
-                  count: work.items.length,
+                  count: waiting.length,
                 },
               ]}
               active={stage === null ? "all" : null}
@@ -361,10 +374,14 @@ export function MyWorkView() {
             <div className="text-sm font-bold text-text-2">
               {search.trim()
                 ? "لا نتائج مطابقة للبحث"
-                : `لا شيء ينتظرك ${stage ? "في هذه المرحلة" : "الآن"}`}
+                : stage === "handed"
+                  ? "لا توجد تقييمات مسلَّمة"
+                  : `لا شيء ينتظرك ${stage ? "في هذه المرحلة" : "الآن"}`}
             </div>
             <div className="mt-1 text-[13px] text-text-3">
-              تظهر هنا كل خطوة تصل إلى أدوارك، ويختفي الصف بعد تنفيذها.
+              {stage === "handed"
+                ? "تظهر هنا التقييمات التي سلّمتها ريثما تصدر مسودة التقرير أو يُودَع."
+                : "تظهر هنا كل خطوة تصل إلى أدوارك، ويختفي الصف بعد تنفيذها."}
             </div>
           </div>
         ) : (
@@ -416,7 +433,7 @@ export function MyWorkView() {
                     },
                     {
                       label: "وقت الإجراء",
-                      value: <ActionClock arrivedIso={item.arrivedIso} />,
+                      value: <ActionClock arrivedIso={item.arrivedIso} stopped={item.stage === "handed"} />,
                     },
                   ]}
                 />
@@ -529,7 +546,7 @@ export function MyWorkView() {
                         <MyWorkDates item={item} />
                       </Td>
                       <Td className="whitespace-nowrap text-center">
-                        <ActionClock arrivedIso={item.arrivedIso} />
+                        <ActionClock arrivedIso={item.arrivedIso} stopped={item.stage === "handed"} />
                       </Td>
                       <QueueRowMoreCell items={itemsFor(item)} />
                     </Tr>

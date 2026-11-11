@@ -145,6 +145,20 @@ function WorkSection({
   );
 }
 
+/**
+ * The sections a page opens with at a step: those of the step, else `fallbackOpen` when the step has
+ * none of its own (the flow is past this page — a handed-over valuation), else none.
+ */
+export function sectionsOpenAtStep<Id extends string>(
+  sections: readonly FrameSectionDef<Id>[],
+  step: number,
+  fallbackOpen?: Id,
+): Id[] {
+  const current = sections.filter((s) => s.step === step).map((s) => s.id);
+  if (current.length > 0 || fallbackOpen === undefined) return current;
+  return sections.some((s) => s.id === fallbackOpen) ? [fallbackOpen] : [];
+}
+
 export type WorkSectionsState<Id extends string> = {
   open: ReadonlySet<Id>;
   mounted: ReadonlySet<Id>;
@@ -166,7 +180,10 @@ export type WorkSectionsState<Id extends string> = {
  * replaced by the real current sections plus the named one, which scrolls into view. When the step
  * moves later, the new current sections open and the first scrolls into view. A `#work-…` link on
  * the page opens and scrolls to its section.
- * Edge cases: a step with no section of its own (the flow is past this page) opens nothing new.
+ * Edge cases: a step with no section of its own (the flow is past this page) opens nothing new —
+ * except at the first paint and when `ready` arrives, where `fallbackOpen` (2026-11-10: the
+ * appraiser's summary, for a valuation already handed over) opens instead, so the page never opens
+ * with every section folded.
  * `keepMounted` (2026-11-10, the appraiser's page) names sections whose bodies mount from the first
  * paint whether open or not — forms another section's action must be able to read or scroll to.
  */
@@ -175,19 +192,23 @@ export function useWorkSections<Id extends string>({
   step,
   ready,
   keepMounted,
+  fallbackOpen,
 }: {
   sections: readonly FrameSectionDef<Id>[];
   step: number;
   ready: boolean;
   keepMounted?: readonly Id[];
+  /** The section to open when the step has none of its own — at first load only. */
+  fallbackOpen?: Id;
 }): WorkSectionsState<Id> {
   const known = (id: string): id is Id => sections.some((s) => s.id === id);
   const currentIds = () =>
     sections.filter((s) => s.step === step).map((s) => s.id);
+  const startIds = () => sectionsOpenAtStep(sections, step, fallbackOpen);
 
   const [open, setOpen] = useState<ReadonlySet<Id>>(() => {
     const hash = hashSection();
-    const initial = new Set(currentIds());
+    const initial = new Set(startIds());
     if (known(hash)) initial.add(hash);
     return initial;
   });
@@ -213,7 +234,7 @@ export function useWorkSections<Id extends string>({
     setOpenedForStep(true);
     setSeenStep(step);
     const hash = hashSection();
-    const current = currentIds();
+    const current = startIds();
     const next = new Set<Id>(known(hash) ? [...current, hash] : current);
     setOpen(next);
     setMounted((prev) => new Set([...prev, ...next]));
@@ -452,7 +473,7 @@ export function WorkSectionsLayout<Id extends string>({
  */
 export function WorkSectionFieldsSkeleton({
   fields = 8,
-  label = "جاري التحميل",
+  label = "جاري التحميل…",
 }: {
   fields?: number;
   label?: string;

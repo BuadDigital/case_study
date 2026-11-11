@@ -212,6 +212,7 @@ export {
   WorkSectionsLayout,
   WorkSectionsSkeleton,
   sectionDomId,
+  sectionsOpenAtStep,
   useWorkSections,
   workSectionStatus,
   type FrameSectionDef,

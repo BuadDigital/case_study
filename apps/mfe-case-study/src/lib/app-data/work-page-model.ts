@@ -11,7 +11,7 @@ import {
   COORDINATION_SECTIONS,
   type CoordinationSectionId,
 } from "./coordination-page-model";
-import type { MyWorkGroup } from "./my-work-model";
+import type { CaseSpecialistGroup } from "./my-work-model";
 import { isValuationDepositedForTask } from "@platform/app-shared/workflow/task-done";
 import type { WorkflowTask } from "./tasks";
 
@@ -27,7 +27,7 @@ export type WorkSectionDef = {
   id: WorkSectionId;
   title: string;
   /** The sub-role that owns the section's decision. */
-  group: MyWorkGroup;
+  group: CaseSpecialistGroup;
   /** Where the section sits in the flow — sections sharing a step are worked together. */
   step: number;
 };

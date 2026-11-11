@@ -112,6 +112,8 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--info-bg)",
     tc: "var(--info)",
     pages: [
+      // Omar 2026-11-10: the appraiser enters his transactions from «أعمالي» like the specialists.
+      "my-work",
       "po",
       "property-map",
       "favorites",

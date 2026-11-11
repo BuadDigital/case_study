@@ -104,6 +104,7 @@ export async function loadEngineeringSurveySubmissionSnapshot(
         ? payload.returnNote
         : result.data.returnNote,
     onSiteAreaSqm: String(payload.onSiteAreaSqm ?? ""),
+    natureOnSiteAreaSqm: String(payload.natureOnSiteAreaSqm ?? ""),
     northBoundary: String(payload.northBoundary ?? ""),
     northBoundaryLengthM: String(payload.northBoundaryLengthM ?? ""),
     southBoundary: String(payload.southBoundary ?? ""),

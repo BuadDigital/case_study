@@ -73,7 +73,8 @@ public static class PlatformPermissionCatalog
         ],
         ["real-estate-appraiser"] =
         [
-            "po", "property-map", "favorites", "operations-tasks", "property-appraisal",
+            // «أعمالي» (Omar 2026-11-10): the appraiser enters his transactions from it, as the specialists do.
+            "my-work", "po", "property-map", "favorites", "operations-tasks", "property-appraisal",
             "comparable-properties",
             "failures", "suspended-transactions",
         ],

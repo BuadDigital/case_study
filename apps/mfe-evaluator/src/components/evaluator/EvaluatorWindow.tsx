@@ -421,6 +421,23 @@ export function EvaluatorWindow({
     setReportOpen(true);
   }, [queryClient, reportOutputInput]);
 
+  // «أعمالي»'s «اعتماد مسودة التقرير» row opens this page with `?report=1`: open the report window,
+  // then drop the flag from the address so a reload does not open it again.
+  // How it works: the opening runs in an animation frame (not inside the effect body), and the flag
+  // is dropped only when it ran — a frame cancelled by a re-render (or React's dev double run) leaves
+  // the flag for the next run. Edge cases: no flag → nothing is scheduled.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (new URLSearchParams(window.location.search).get("report") !== "1") return;
+    const frame = window.requestAnimationFrame(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("report");
+      window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+      openReport();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [openReport]);
+
   /** Hover / focus on the report button: fetch its code and data before the click. */
   const onReportIntent = useCallback(() => {
     preloadValuationReportOutputTab();

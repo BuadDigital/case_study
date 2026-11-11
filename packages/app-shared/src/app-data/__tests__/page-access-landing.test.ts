@@ -18,10 +18,11 @@ describe("defaultLandingPage", () => {
     expect(defaultLandingPath(ROLES["section-supervisor"].pages)).toBe("/my-work");
   });
 
-  it("lands appraiser on property-appraisal", () => {
-    expect(defaultLandingPage(ROLES["real-estate-appraiser"].pages)).toBe(
-      "property-appraisal",
-    );
+  // Omar 2026-11-10: the appraiser enters his transactions from «أعمالي» like the specialists;
+  // his full list «تقييم العقار» stays in the menu.
+  it("lands appraiser on «أعمالي», keeping property-appraisal in his pages", () => {
+    expect(defaultLandingPage(ROLES["real-estate-appraiser"].pages)).toBe("my-work");
+    expect(ROLES["real-estate-appraiser"].pages).toContain("property-appraisal");
   });
 
   it("lands field inspector on active-inspection", () => {

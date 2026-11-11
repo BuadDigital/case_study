@@ -10,6 +10,15 @@ describe("activeTransactionNavForRole", () => {
     expect(ids).toEqual(["party-fees"]);
   });
 
+  it("drops the appraiser's «تقييم العقار» once he has «أعمالي», and keeps it without", () => {
+    expect(
+      activeTransactionNavForRole(["my-work", "po", "property-appraisal"], "real-estate-appraiser"),
+    ).toEqual([]);
+    expect(
+      activeTransactionNavForRole(["po", "property-appraisal"], "real-estate-appraiser").map((i) => i.id),
+    ).toEqual(["property-appraisal"]);
+  });
+
   it("keeps the stage queues for a role without «أعمالي» and the party queues for everyone", () => {
     expect(activeTransactionNavForRole(["active-receipt"], "case-specialist").map((i) => i.id)).toEqual([
       "active-receipt",
