@@ -60,6 +60,7 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
+import { PropertyPartiesRailCard } from "../components/po-intake/PropertyPartiesStatus";
 import { PropertyTransactionTimeline } from "../components/po-intake/PropertyTransactionTimeline";
 import { AppraiserPageActions, AppraiserStudySummary } from "./AppraiserPageParts";
 
@@ -551,6 +552,16 @@ export function PartyActiveTaskWork({
             <AppraiserPageActions poNumber={task.poNumber} propertyId={property.id} />
           ) : undefined
         }
+        railAside={
+          property ? (
+            <PropertyPartiesRailCard
+              poNumber={task.poNumber}
+              propertyId={property.id}
+              district={property.district}
+              city={property.city}
+            />
+          ) : undefined
+        }
         propertySummary={{
           deedNumber: deedLabel,
           poNumber: formatPoDisplay(task.poNumber),
@@ -573,7 +584,8 @@ export function PartyActiveTaskWork({
       // Omar 2026-11-10: the appraiser's page takes the work page's frame — the hero, then the
       // numbered sections with their rail (EvaluatorWindow). The page scrolls on the
       // shell's own scroller, so nothing here is a scroll container (`overflow-clip`), or the rail
-      // would not stay in view; the timeline column stays on the property's details page.
+      // would not stay in view; the timeline column stays on the property's details page — only
+      // «حالة الأطراف» comes along, under the rail (`railAside`, roles without names).
       return (
         <div
           id="view-property-appraisal-workspace"

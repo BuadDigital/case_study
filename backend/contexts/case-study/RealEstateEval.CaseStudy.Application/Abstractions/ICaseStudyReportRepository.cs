@@ -57,6 +57,15 @@ public interface ICaseStudyReportRepository
         Guid parentTaskId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// The engineering-survey tasks under the given case-study parents with where their package
+    /// stands (submitted, accepted) — what the issue asks before it opens the valuation
+    /// (<see cref="Rules.EngineeringSurveySettlementRules"/>). Any status; no deed label is read.
+    /// </summary>
+    Task<IReadOnlyList<Rules.ReceiptPartyFacts>> ListEngineeringSurveyFactsAsync(
+        IReadOnlyCollection<Guid> parentTaskIds,
+        CancellationToken cancellationToken);
+
     /// <summary>Untracked child (party) tasks of the case-study parent, any status.</summary>
     Task<IReadOnlyList<WorkflowTask>> ListChildTasksAsync(
         Guid parentTaskId,

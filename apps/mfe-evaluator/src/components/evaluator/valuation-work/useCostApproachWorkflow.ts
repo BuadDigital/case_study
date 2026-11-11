@@ -38,10 +38,13 @@ import {
   costApproachDerived,
   costFieldsFromDto,
   costLineTotals,
+  COST_INVENTORY_AWAITS_STUDY,
   costLinesFromInventory,
+  costLinesReviewed,
   keepCostLineInputs,
   plotSeedNeedsSave,
   costRepullMessage,
+  unpricedCostLines,
   costSaveRequest,
   inspectorAgeYearsForCostField,
   reorderCostLines,
@@ -70,6 +73,11 @@ type CostApproachWorkflowArgs = {
   costBasisKey: string;
   /** The appraiser's package is submitted: the numbers are closed (server-locked). */
   locked?: boolean;
+  /**
+   * The case specialist issued the study, so «جدول حصر المباني» is the approved one. Until then
+   * nothing comes down from it and «سحب من حصر المباني» is closed (ruling 2026-11-11).
+   */
+  inventoryApproved?: boolean;
   onSavingChange: (saving: boolean) => void;
   onCostSaved: (dto: ValuationCostApproachDto) => void;
 };
@@ -93,6 +101,7 @@ export function useCostApproachWorkflow({
   plotAreaSeed = "",
   costBasisKey,
   locked = false,
+  inventoryApproved = true,
   onSavingChange,
   onCostSaved,
 }: CostApproachWorkflowArgs) {
@@ -105,6 +114,13 @@ export function useCostApproachWorkflow({
   /** Bumps on every appraiser edit — what the autosave saves (seeds and hydration never bump it). */
   const [editVersion, setEditVersion] = useState(0);
   const markEdited = useCallback(() => setEditVersion((v) => v + 1), []);
+  /**
+   * The appraiser reviewed, priced and saved «بنود التكلفة المباشرة» — the tables after it are shown
+   * (`costLinesReviewed` on a load; «حفظ بنود التكلفة» during the session, and it stays).
+   */
+  const [linesReviewed, setLinesReviewed] = useState(false);
+  /** The manual save in flight is «حفظ بنود التكلفة» — its success opens the next tables. */
+  const confirmingLines = useRef(false);
   /** The appraiser typed (or applied) an actual age since the last full load — the inspector read keeps off. */
   const actualAgeTouched = useRef(false);
 
@@ -141,6 +157,7 @@ export function useCostApproachWorkflow({
   const [hydratedKey, setHydratedKey] = useState<number | null>(null);
   if (hydratedKey !== hydrateKey) {
     setHydratedKey(hydrateKey);
+    setLinesReviewed(costLinesReviewed(cost));
     if (!cost) {
       setCostDraft([]);
     } else {
@@ -148,30 +165,39 @@ export function useCostApproachWorkflow({
       setFields(costFieldsFromDto(cost, undefined, plotAreaSeed));
     }
   }
-  const hydratedKeyRef = useRef<number | null>(null);
+  const hydratedKeyRef = useRef<string | null>(null);
   useEffect(() => {
-    if (hydratedKeyRef.current === hydrateKey) return;
-    hydratedKeyRef.current = hydrateKey;
+    // Once per load — and once more when the study is issued while the screen is open.
+    const seedKey = `${hydrateKey}:${inventoryApproved}`;
+    if (hydratedKeyRef.current === seedKey) return;
+    hydratedKeyRef.current = seedKey;
     // A full load reseeds the drafts — what was typed before is gone, so the age is untouched again.
     actualAgeTouched.current = false;
-    // An empty cost table starts from the case specialist's «جدول المكونات» (draft only —
-    // nothing is saved until the appraiser saves; later edits are never overwritten).
+    // An empty cost table takes the lines of «جدول حصر المباني» once the case specialist approved it
+    // (the study is issued) — a draft the appraiser reviews, prices and edits freely, then saves with
+    // «حفظ بنود التكلفة»; his copy never writes back to the inventory. A failed read says so instead of
+    // leaving an empty table with no reason.
     const seedFromComponents = () => {
       const config = apiConfig();
-      if (!config || !poNumber || !propertyId) return () => {};
+      if (!inventoryApproved || !config || !poNumber || !propertyId) return () => {};
       let stop = false;
       void getBuildingInventory(config, poNumber, propertyId).then((inv) => {
-        if (stop || !inv.ok || inv.data.lines.length === 0) return;
+        if (stop) return;
+        if (!inv.ok) {
+          showToast("تعذّر تحميل حصر المباني — اضغط «سحب من حصر المباني» لإعادة المحاولة", "error");
+          return;
+        }
+        if (inv.data.lines.length === 0) return;
         const seeded = costLinesFromInventory(inv.data.lines);
         setCostDraft((prev) => (prev.length > 0 ? prev : seeded));
-        showToast(`نزلت ${seeded.length} بنود من جدول المكونات — أدخل سعر المتر`, "info");
+        showToast(`نزلت ${seeded.length} بنود من حصر المباني — راجعها وأدخل سعر المتر ثم احفظها`, "info");
       });
       return () => {
         stop = true;
       };
     };
     return !cost || cost.lines.length === 0 ? seedFromComponents() : () => {};
-  }, [hydrateKey, cost, poNumber, propertyId, showToast]);
+  }, [hydrateKey, cost, poNumber, propertyId, showToast, inventoryApproved]);
 
   // «العمر الفعلي» starts from the inspector's age until the appraiser saves one — also when the
   // cost approach was never saved (no `cost` yet).
@@ -230,6 +256,10 @@ export function useCostApproachWorkflow({
   });
 
   const seedCostFromInventory = useCallback(async () => {
+    if (!inventoryApproved) {
+      showToast(COST_INVENTORY_AWAITS_STUDY, "error");
+      return;
+    }
     const config = apiConfig();
     if (!config || !valuationRequestId || !poNumber) {
       showToast("يلزم رقم أمر العمل لسحب حصر المباني", "error");
@@ -246,7 +276,7 @@ export function useCostApproachWorkflow({
     setCostDraft((prev) => keepCostLineInputs(seeded, prev));
     markEdited();
     showToast(costRepullMessage(keepCostLineInputs(seeded, costDraft)), "info");
-  }, [costDraft, markEdited, poNumber, propertyId, showToast, valuationRequestId]);
+  }, [costDraft, inventoryApproved, markEdited, poNumber, propertyId, showToast, valuationRequestId]);
 
   const { saveState, saveNow: saveCost } = useCostAutosave({
     valuationRequestId,
@@ -263,12 +293,46 @@ export function useCostApproachWorkflow({
       // Silent reload — no loading-skeleton flash after save (used to be a full reload).
       onCostSaved(dto);
     },
-    onManualSaved: () => showToast("تم حفظ أسلوب التكلفة", "success"),
-    onManualFailure: (failure) => reportSaveFailure(failure, "تعذّر حفظ التكلفة"),
+    onManualSaved: () => {
+      if (confirmingLines.current) {
+        confirmingLines.current = false;
+        setLinesReviewed(true);
+        showToast("تم حفظ بنود التكلفة — فُتحت التكاليف غير المباشرة والعمر والإهلاك", "success");
+        return;
+      }
+      showToast("تم حفظ أسلوب التكلفة", "success");
+    },
+    onManualFailure: (failure) => {
+      confirmingLines.current = false;
+      reportSaveFailure(failure, "تعذّر حفظ التكلفة");
+    },
     onLeaveFailure: (message) => showToast(`لم تُحفظ تعديلات أسلوب التكلفة: ${message}`, "error"),
     // Another tab saved newer inputs: say it once — the status line keeps the reason.
     onConflict: (message) => showToast(message, "error"),
   });
+
+  /**
+   * «حفظ بنود التكلفة»: the appraiser's review of the direct-cost table — saved only when every
+   * included line is priced, and its success shows the tables after it.
+   */
+  const saveCostLines = useCallback(async () => {
+    const included = costDraft.filter((l) => l.isIncluded !== false);
+    if (included.length === 0) {
+      showToast("لا يوجد بند مشمول في بنود التكلفة المباشرة — أضف بنداً أو اسحب من حصر المباني", "error");
+      return;
+    }
+    const unpriced = unpricedCostLines(costDraft);
+    if (unpriced.length > 0) {
+      const first = unpriced[0]!.label?.trim() || "بند بلا اسم";
+      showToast(
+        `سعّر كل البنود المشمولة قبل الحفظ — ${unpriced.length} بند بلا كمية أو سعر (أولها «${first}»)`,
+        "error",
+      );
+      return;
+    }
+    confirmingLines.current = true;
+    await saveCost();
+  }, [costDraft, saveCost, showToast]);
 
   // Live local calcs per interactive-form rules (server recalculates on save).
   const totals = useMemo(() => costLineTotals(costDraft), [costDraft]);
@@ -384,6 +448,9 @@ export function useCostApproachWorkflow({
     moveCostLine,
     seedCostFromInventory,
     saveCost,
+    saveCostLines,
+    linesReviewed,
+    inventoryApproved,
     saveState,
     ...inspectorSync,
     // The inventory-drift buttons are the appraiser's edits too — the autosave sends them.

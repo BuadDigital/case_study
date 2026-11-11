@@ -278,7 +278,8 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
                 propertyId,
                 deedNumber: property?.deedNumber?.trim() || "",
                 problemTypeId: "unknown-location",
-                severity: "internal",
+                // The office raises «تعذّر محتمل» only (2026-11-11) — the case specialist confirms it.
+                severity: "suspected",
                 raisedByRole:
                   FAILURE_RAISER_LABEL_BY_KIND["engineering-survey"] ??
                   "المكتب الهندسي",
@@ -289,7 +290,7 @@ export function useEngineeringSurveyCommands(data: EngineeringSurveyData) {
               `pin-mismatch:${propertyId}`,
             );
             showToast(
-              "اختلاف موقع العقار عن معاينة الميدان — سُجّل تعذّر داخلي للمراجعة.",
+              "اختلاف موقع العقار عن معاينة الميدان — سُجّل تعذّر محتمل للمراجعة.",
               "error",
             );
           } catch {

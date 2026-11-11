@@ -290,7 +290,7 @@ export function PoPropertyDetailTopbarActions({
         : null,
       caseStudyBusy: showCaseStudyFeedback,
       onNavigate: openCaseStudy,
-      // Failure, final failure, cancellation: the same items and rules as every row's ⋮ menu.
+      // Failure, cancellation, reopen: the same items and rules as every row's ⋮ menu.
       generalItems: property
         ? generalItemsFor({
             poNumber,

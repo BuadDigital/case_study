@@ -406,7 +406,7 @@ const infathWorkerLicenseFields: PropertyFieldCatalogEntry[] = [
 const failuresFields: PropertyFieldCatalogEntry[] = [
   { key: "failureTitle", label: "عنوان التعذّر" },
   { key: "problemTypeId", label: "نوع المشكلة" },
-  { key: "failureSeverity", label: "نوع التعذّر (احتمالي / داخلي)" },
+  { key: "failureSeverity", label: "نوع التعذّر (محتمل / داخلي)" },
   { key: "failureStatus", label: "حالة التعذّر" },
   { key: "raisedByRole", label: "مصدر التعذّر" },
   { key: "internalNote", label: "وصف داخلي / ملاحظة التعذّر" },

@@ -23,7 +23,9 @@ import {
   nextSubjectSpecs,
   savedLines,
   withAdoptionFlag,
+  landCopyState,
   withFactorIncluded,
+  withoutComparable,
 } from "../market-commands-state";
 import { LAND_WITHIN_COST, MARKET_CONTEXT, SEED_MARKET_ANALYSIS_NOTES } from "../shell-state";
 
@@ -153,6 +155,62 @@ describe("withAdoptionFlag", () => {
 
   it("never drives the count below zero", () => {
     expect(withAdoptionFlag(list([item("a", [])], 0), "comp-a", false).adoptedCount).toBe(0);
+  });
+});
+
+// Ruling 2026-11-11: the land valuation by comparable sales is copied between the two tables.
+describe("landCopyState", () => {
+  const into = (over: Partial<Parameters<typeof landCopyState>[0]>) =>
+    landCopyState({
+      target: "market",
+      marketKind: "land",
+      targetRowCount: 0,
+      sourceAdoptedCount: 3,
+      sourceAdoptedLandCount: 3,
+      ...over,
+    });
+
+  it("copies into an empty market table that values land, by itself", () => {
+    expect(into({})).toEqual({ available: true, automatic: true, sourceCount: 3 });
+  });
+
+  it("is offered, never automatic, once the target holds comparables", () => {
+    expect(into({ targetRowCount: 2 })).toMatchObject({ available: true, automatic: false });
+  });
+
+  it("does not concern a market table that values a building", () => {
+    expect(into({ marketKind: "building" })).toMatchObject({ available: false, automatic: false });
+    expect(into({ marketKind: "unit" }).available).toBe(false);
+  });
+
+  it("has nothing to offer when the other table adopted nothing", () => {
+    expect(into({ sourceAdoptedCount: 0, sourceAdoptedLandCount: 0 }).available).toBe(false);
+  });
+
+  it("takes only the land of the market table into the land table", () => {
+    expect(into({ target: "land", marketKind: "building", sourceAdoptedCount: 4, sourceAdoptedLandCount: 2 })).toEqual({
+      available: true,
+      // A table valuing a villa by villas is not a land valuation — offered, not automatic.
+      automatic: false,
+      sourceCount: 2,
+    });
+    expect(into({ target: "land", sourceAdoptedCount: 2, sourceAdoptedLandCount: 2 }).automatic).toBe(true);
+    expect(into({ target: "land", sourceAdoptedCount: 2, sourceAdoptedLandCount: 0 }).available).toBe(false);
+  });
+});
+
+describe("withoutComparable", () => {
+  it("drops the removed comparable and keeps the adopted ones counted", () => {
+    const prev = list([item("a", []), item("b", [], { isAdopted: false })], 1);
+    const next = withoutComparable(prev, "comp-b");
+    expect(next.items.map((i) => i.comparablePropertyId)).toEqual(["comp-a"]);
+    expect(next.adoptedCount).toBe(1);
+    expect(prev.items).toHaveLength(2);
+  });
+
+  it("leaves the list as it is for a comparable it does not hold", () => {
+    const prev = list([item("a", [])], 1);
+    expect(withoutComparable(prev, "comp-x").items).toHaveLength(1);
   });
 });
 

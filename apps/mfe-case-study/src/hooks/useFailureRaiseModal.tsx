@@ -18,6 +18,8 @@ type FailureRaiseTarget = {
   deedNumber?: string;
   /** When opening from a party queue row, prefer that party's raiser label. */
   taskKind?: WorkflowTaskKind;
+  /** Deeds in the deed's transaction — spelled out in the final failure's warning when known. */
+  deedCount?: number;
 };
 
 const PARTY_FAILURE_RAISER_BY_ROLE: Partial<Record<RoleId, string>> = {
@@ -41,7 +43,8 @@ function raisedByRoleFor(
 
 /**
  * Shared «تسجيل تعذر» modal host — queues and property lists open this
- * instead of navigating to `/po/.../failure`.
+ * instead of navigating to `/po/.../failure`. The window offers the degrees the
+ * viewer may record (possible, internal, final — see `FailureRaiseModal`).
  */
 export function useFailureRaiseModal(options?: {
   onSubmitted?: () => void;
@@ -61,6 +64,7 @@ export function useFailureRaiseModal(options?: {
       propertyId,
       deedNumber: next.deedNumber?.trim() || "",
       taskKind: next.taskKind,
+      deedCount: next.deedCount,
     });
   }, []);
 
@@ -79,6 +83,7 @@ export function useFailureRaiseModal(options?: {
       poNumber={target.poNumber}
       propertyId={target.propertyId}
       deedNumber={target.deedNumber ?? ""}
+      deedCount={target.deedCount}
       specialist={specialist}
       raisedByRole={raisedByRole}
       onSubmitted={() => {

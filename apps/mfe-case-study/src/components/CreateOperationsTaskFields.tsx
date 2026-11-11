@@ -22,6 +22,7 @@ import {
   opsTfSegRow,
 } from "../lib/app-data/ops-tasks-tw";
 import {
+  ENGINEERING_SURVEY_TASK_TYPE,
   TASK_TYPES,
   type CreateOperationsTaskAction,
   type CreateOperationsTaskForm,
@@ -121,9 +122,12 @@ export function PhoneChoice({
 export function CreateTaskTypeField({
   form,
   dispatch,
+  types = TASK_TYPES,
 }: {
   form: Pick<CreateOperationsTaskForm, "type">;
   dispatch: CreateTaskDispatch;
+  /** The types this viewer may create (`taskTypesFor`). */
+  types?: readonly string[];
 }) {
   const { type } = form;
   return (
@@ -134,7 +138,7 @@ export function CreateTaskTypeField({
         value={type}
         onChange={(e) => dispatch({ type: "set-type", value: e.target.value })}
       >
-        {TASK_TYPES.map((t) => (
+        {types.map((t) => (
           <option key={t} value={t}>
             {OPERATIONS_TASK_TYPE_LABELS[t]}
           </option>
@@ -147,6 +151,10 @@ export function CreateTaskTypeField({
       ) : type === "court_visit" ? (
         <span className={HINT}>
           زيارة محكمة — تُسند للمراجع الحكومي فقط (مع أتعاب الزيارة للمتعاون).
+        </span>
+      ) : type === ENGINEERING_SURVEY_TASK_TYPE ? (
+        <span className={HINT}>
+          إسناد مكتب هندسي لمعاملة بعد توزيعها — يستلمها المكتب في صفحته كمهمة رفع مساحي.
         </span>
       ) : null}
     </div>
@@ -184,9 +192,10 @@ export function CreateTaskAssigneeField({
   staffLoadError: string | null;
 }) {
   const { type, assigneeId } = form;
+  const survey = type === ENGINEERING_SURVEY_TASK_TYPE;
   return (
     <div className={opsFld}>
-      <label className={opsTfLblInFld}>مُسندة إلى *</label>
+      <label className={opsTfLblInFld}>{survey ? "المكتب الهندسي *" : "مُسندة إلى *"}</label>
       <select
         className={opsFldControl}
         value={staffLoading ? "" : assigneeId}
@@ -204,7 +213,7 @@ export function CreateTaskAssigneeField({
           <option value="">جاري تحميل المنفّذين…</option>
         ) : (
           <>
-            <option value="">اختر المنفّذ…</option>
+            <option value="">{survey ? "اختر المكتب الهندسي…" : "اختر المنفّذ…"}</option>
             {assigneeGroups.length > 1 ? (
               assigneeGroups.map((g) => (
                 <optgroup key={g.key} label={g.label}>
@@ -316,6 +325,35 @@ export function CreateTaskVisitFeeFields({
   );
 }
 
+/** A full-width free-text field of the form. */
+function TextAreaField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  hint,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  hint?: string;
+}) {
+  return (
+    <div className={opsFldFull}>
+      <label className={opsTfLblInFld}>{label}</label>
+      <textarea
+        className={opsFldTextarea}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={2}
+        placeholder={placeholder}
+      />
+      {hint ? <span className={HINT}>{hint}</span> : null}
+    </div>
+  );
+}
+
 export function CreateTaskDescriptionField({
   form,
   dispatch,
@@ -324,17 +362,33 @@ export function CreateTaskDescriptionField({
   dispatch: CreateTaskDispatch;
 }) {
   return (
-    <div className={opsFldFull}>
-      <label className={opsTfLblInFld}>الوصف</label>
-      <textarea
-        className={opsFldTextarea}
-        value={form.description}
-        onChange={(e) =>
-          dispatch({ type: "set-description", value: e.target.value })
-        }
-        rows={2}
-        placeholder="تفاصيل إضافية للمنفّذ (اختياري)"
-      />
-    </div>
+    <TextAreaField
+      label="الوصف"
+      value={form.description}
+      onChange={(value) => dispatch({ type: "set-description", value })}
+      placeholder="تفاصيل إضافية للمنفّذ (اختياري)"
+    />
+  );
+}
+
+/**
+ * «رفع مساحي» for a property the survey rule asks no survey for (Omar 2026-11-11): the office is
+ * added by exception, and whoever asks says why — the reason goes on the timeline and the audit log.
+ */
+export function CreateTaskSurveyReasonField({
+  form,
+  dispatch,
+}: {
+  form: Pick<CreateOperationsTaskForm, "surveyExceptionReason">;
+  dispatch: CreateTaskDispatch;
+}) {
+  return (
+    <TextAreaField
+      label="سبب طلب الرفع المساحي *"
+      value={form.surveyExceptionReason}
+      onChange={(value) => dispatch({ type: "set-survey-reason", value })}
+      placeholder="مثال: اختلاف في الحدود على الطبيعة عن الصك"
+      hint="يُسجَّل السبب ومن طلبه في الجدول الزمني للعقار وسجل التدقيق."
+    />
   );
 }

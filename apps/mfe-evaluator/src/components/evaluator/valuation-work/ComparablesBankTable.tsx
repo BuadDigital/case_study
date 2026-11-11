@@ -7,17 +7,20 @@
 
 "use client";
 
-import { memo, useEffect, useRef, useState, type ReactNode } from "react";
-import type { ValuationComparableSelectionDto } from "@platform/api-client";
+import { memo, useRef, useState } from "react";
+import type {
+  ComparablePropertyDto,
+  ValuationComparableSelectionDto,
+} from "@platform/api-client";
 import { createComparableProperty } from "@platform/api-client";
 import { useCommandMutation } from "@platform/app-shared";
 import { UnsavedChangesDialog } from "@platform/app-shared/registration/UnsavedChangesDialog";
-import { ComparablePropertyEntryFields } from "../ComparablePropertyEntryFieldsSlot";
 import {
   comparableDraftToUpsert,
   emptyComparableEntryDraft,
   firstComparableEntryError,
   firstComparableEntryErrorTarget,
+  sourceCardLine,
   validateComparableEntry,
   type ComparableEntryDraft,
   type ComparableEntryFieldErrors,
@@ -38,22 +41,21 @@ import {
   TableEmptyRow,
   TBody,
   Td,
+  TdAction,
   TdLtr,
   Th,
+  ThAction,
   THead,
   Tr,
   useToast,
 } from "@platform/ui-kit";
 import { Card } from "./atoms";
 import { ComparablesBankMoneyCells, ComparablesBankMoneyReadOnly } from "./ComparablesBankMoneyCells";
+import { ComparableEntryWithBank } from "./ComparableEntryWithBank";
 import {
   areaRatio,
   areaRatioValue,
-  BANK_RADIUS_OPTIONS_KM,
-  NEARBY_RADIUS_KM,
-  sourceCardLine,
-  type BankBeyond,
-  type BankTypeFilter,
+  isVacantLandComparable,
   type BankDisplayRow,
 } from "./lib/bank-ranking";
 import { apiConfig, fmt } from "./lib/shell-utils";
@@ -61,113 +63,14 @@ import { apiConfig, fmt } from "./lib/shell-utils";
 type ComparablesBankRow = BankDisplayRow;
 
 /**
- * Nearby bank table — search and price/area drafts stay local so typing does
- * not re-render the valuation shell. «إضافة مقارن» writes to the shared bank.
+ * Empty table: say why and what to do next — never a dead end. A transaction with no comparables
+ * yet points at «إضافة مقارن», the one window for a new comparable or one from the bank.
  */
-function radiusLabel(radiusKm: number | null): string {
-  return radiusKm == null ? "كل المقارنات المتاحة" : `ضمن ${radiusKm} كم`;
-}
-
-/**
- * One pressable chip of the bank's radius / type filters.
- *
- * How it works: a button with `aria-pressed`; the pressed chip is gold.
- *
- * Edge cases: shared by the radius and the type chips (2026-11-04) so both look and behave alike.
- */
-function BankFilterChip({
-  pressed,
-  onClick,
-  children,
-}: {
-  pressed: boolean;
-  onClick: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-pressed={pressed}
-      onClick={onClick}
-      className={cn(
-        "rounded-full border px-2.5 py-1 text-[11.5px] font-bold transition-colors max-lg:min-h-11 max-lg:px-3.5 max-lg:text-[12.5px]",
-        pressed
-          ? "border-gold bg-gold-soft text-gold-d"
-          : "border-border-md bg-surface text-text-2 hover:border-gold",
-      )}
-    >
-      {children}
-    </button>
-  );
-}
-
-/** The smallest radius choice that reaches `nearestKm`; `null` (all) when none does. */
-function radiusReaching(nearestKm: number): number | null {
-  for (const option of BANK_RADIUS_OPTIONS_KM) {
-    if (option != null && option >= nearestKm) return option;
-  }
-  return null;
-}
-
-/**
- * Empty table: say why and what to do next — never a dead end. A search with no hit offers to
- * clear it; an empty radius says how many comparables lie farther (and how far the nearest is)
- * with a one-click widen; an empty bank points at «إضافة مقارن».
- */
-function BankEmptyState({
-  searching,
-  radiusKm,
-  beyond,
-  onClearSearch,
-  onWiden,
-  onAdd,
-}: {
-  searching: boolean;
-  radiusKm: number | null;
-  beyond?: BankBeyond;
-  onClearSearch: () => void;
-  onWiden?: (radiusKm: number | null) => void;
-  onAdd: () => void;
-}) {
-  if (searching) {
-    return (
-      <div className="grid justify-items-center gap-2.5">
-        <span>لا توجد نتائج مطابقة — جرّب كلمة أخرى (حي، نوع العقار أو رقم مرجعي).</span>
-        <Button type="button" size="sm" onClick={onClearSearch}>
-          مسح البحث
-        </Button>
-      </div>
-    );
-  }
-
-  const nearest = beyond?.nearestKm ?? null;
-  if (beyond && beyond.count > 0 && nearest != null && onWiden) {
-    const target = radiusReaching(nearest);
-    return (
-      <div className="grid justify-items-center gap-2.5">
-        <span className="font-semibold text-text-2">
-          لا توجد مقارنات {radiusLabel(radiusKm)} من موقع العقار.
-        </span>
-        <span>
-          يوجد {beyond.count} {beyond.count === 1 ? "مقارن أبعد" : "مقارنات أبعد"}، وأقربها على{" "}
-          {nearest.toFixed(1)} كم.
-        </span>
-        <div className="flex flex-wrap justify-center gap-2">
-          <Button type="button" size="sm" variant="primary" onClick={() => onWiden(target)}>
-            {target == null ? "اعرض الكل" : `وسّع النطاق إلى ${target} كم`}
-          </Button>
-          <Button type="button" size="sm" onClick={onAdd}>
-            إضافة مقارن
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
+function BankEmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div className="grid justify-items-center gap-2.5">
-      <span className="font-semibold text-text-2">لا توجد مقارنات في البنك لهذا الموقع بعد.</span>
-      <span>أضف مقارناً (مدينة + إحداثيات) ليظهر هنا ويمكنك اعتماده.</span>
+      <span className="font-semibold text-text-2">لا مقارنات لهذه المعاملة بعد.</span>
+      <span>أضف مقارناً جديداً، أو اختر مقارناً من البنك.</span>
       <Button type="button" size="sm" variant="primary" onClick={onAdd}>
         إضافة مقارن
       </Button>
@@ -210,18 +113,25 @@ type ComparableBankSeed = {
   longitude?: string;
 };
 
+/**
+ * A transaction's comparables table: its own comparables (entered for the property or chosen for
+ * it) — the system suggests none (ruling 2026-11-11).
+ *
+ * How it works: price/area drafts stay local so typing does not re-render the valuation shell.
+ * «إضافة مقارن» is the one window for a comparable (Omar 2026-11-11, it replaced the separate
+ * «خريطة المقارنات»): its map shows the bank — search by reference code or district, filter, adopt
+ * or un-adopt a pressed pin, several in a row — and a spot pinned on it opens the fields of a
+ * new comparable, which is written to the shared bank.
+ */
 export const ComparablesBankTable = memo(function ComparablesBankTable({
   rows,
   subjectSqm,
   distanceKm,
-  radiusKm = NEARBY_RADIUS_KM,
-  onRadiusChange,
-  typeFilter = "subject",
-  onTypeFilterChange,
-  subjectKindLabel,
-  beyond,
+  landOnly = false,
   onAdopt,
-  onSearch,
+  onRemove,
+  onCopyLandValuation,
+  copyLandSource,
   onSaveOverride,
   seed,
   sourceWorkOrderNumber,
@@ -231,26 +141,22 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   rows: ComparablesBankRow[];
   subjectSqm: number | null;
   distanceKm: Record<string, number>;
-  /** The radius around the property the table shows (3 km by default); `null` = all. */
-  radiusKm?: number | null;
-  /** Radius chips are shown only when this is given. */
-  onRadiusChange?: (radiusKm: number | null) => void;
-  /**
-   * Type filter chips (A→Z #43/#60, 2026-11-04): the subject's kind (`subjectKindLabel`, default)
-   * or «كل الأنواع». Shown only when `onTypeFilterChange` is given (the market bank).
-   */
-  typeFilter?: BankTypeFilter;
-  onTypeFilterChange?: (filter: BankTypeFilter) => void;
-  /** The subject's kind as the chip names it: «أراضٍ», «مبانٍ»… */
-  subjectKindLabel?: string;
-  /** What the chosen radius leaves out — drives the empty-state message. */
-  beyond?: BankBeyond;
+  /** The cost approach's land table: only a land comparable can be chosen. */
+  landOnly?: boolean;
   /** Resolves once the save (and the reload it triggers) settles — the checkbox reverts to
    * `rows` truth then. Adopting a comparable for the first time has no server round trip to
    * flip early on, so the checkbox owns its own optimistic draft meanwhile (rerender-defer-reads). */
   onAdopt: (comparableId: string, adopted: boolean) => Promise<void>;
-  /** Market context only — when absent, show a vacant-land badge instead of the search field. */
-  onSearch?: (q: string) => void;
+  /** Takes a comparable that is not adopted out of this transaction's table. */
+  onRemove: (comparableId: string) => Promise<void>;
+  /**
+   * «انسخ طريقة المبيعات المشابهة للأرض»: copies the land valuation of the other table into this
+   * one (`replace` once the appraiser confirmed replacing what it holds). Absent = nothing to copy
+   * here, and the button is not shown.
+   */
+  onCopyLandValuation?: (replace: boolean) => Promise<boolean>;
+  /** Where the copy comes from, for the button's hint and the confirmation. */
+  copyLandSource?: { label: string; count: number };
   /** Returns true on successful save — the cell draft is cleared then. */
   onSaveOverride: (
     item: ValuationComparableSelectionDto,
@@ -264,7 +170,18 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
 }) {
   const { showToast } = useToast();
   const desktop = useViewportDesktop();
-  const [q, setQ] = useState("");
+  const [copyConfirmOpen, setCopyConfirmOpen] = useState(false);
+  const [copying, setCopying] = useState(false);
+  async function copyLandValuation(replace: boolean) {
+    if (!onCopyLandValuation || copying) return;
+    setCopying(true);
+    try {
+      await onCopyLandValuation(replace);
+    } finally {
+      setCopying(false);
+      setCopyConfirmOpen(false);
+    }
+  }
   // Optimistic checkbox draft, keyed by comparable id — cleared once onAdopt settles and
   // `rows` (server truth) catches up. Only a brand-new adoption lacks an earlier optimistic
   // flip upstream, so without this the checkbox visibly waits on the full save + reload.
@@ -296,19 +213,20 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
       return res.data;
     },
   );
-  const onSearchRef = useLatestRef(onSearch);
   const onCreatedRef = useLatestRef(onCreated);
-  const firstSearch = useRef(true);
 
-  // Soft refresh when bank search query changes (no full-screen blank).
-  useEffect(() => {
-    if (firstSearch.current) {
-      firstSearch.current = false;
-      return;
-    }
-    const t = window.setTimeout(() => onSearchRef.current?.(q), 280);
-    return () => window.clearTimeout(t);
-  }, [onSearchRef, q]);
+  // Rows being removed, so «حذف» cannot be pressed twice.
+  const [removing, setRemoving] = useState<ReadonlySet<string>>(new Set());
+  function removeRow(compId: string) {
+    setRemoving((prev) => new Set(prev).add(compId));
+    void onRemove(compId).finally(() => {
+      setRemoving((prev) => {
+        const copy = new Set(prev);
+        copy.delete(compId);
+        return copy;
+      });
+    });
+  }
 
   function toggleAdopt(compId: string, next: boolean) {
     setPendingAdopt((prev) => new Map(prev).set(compId, next));
@@ -319,6 +237,17 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
         return copy;
       });
     });
+  }
+
+  /** A bank comparable pressed on the entry map is adopted, or un-adopted, without leaving the
+   * window — so several can be chosen in a row. */
+  function adoptFromMap(comp: ComparablePropertyDto, next: boolean) {
+    if (saving) return;
+    if (next && landOnly && !isVacantLandComparable(comp.comparablePropertyType)) {
+      showToast("هذا الجدول للأراضي فقط — المقارن المختار ليس أرضاً", "error");
+      return;
+    }
+    toggleAdopt(comp.id, next);
   }
 
   function openForm() {
@@ -373,8 +302,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
       setLocationConfirmed(false);
       setFormOpen(false);
       setDiscardOpen(false);
-      if (q.trim()) onSearchRef.current?.(q);
-      else onCreatedRef.current?.();
+      onCreatedRef.current?.();
     } catch (error) {
       showToast(
         error instanceof Error ? error.message : "تعذّر حفظ المقارن",
@@ -391,36 +319,8 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
             بنك المقارنات
           </h2>
           <span className="hidden text-[11.5px] text-text-3 md:inline">
-            {q.trim()
-              ? "نتائج البحث في البنك — الأقرب أولاً"
-              : `${radiusLabel(radiusKm)} من موقع العقار — الأقرب أولاً`}
+            مقارنات هذه المعاملة — المُدخلة لها أو المختارة من البنك
           </span>
-          {onRadiusChange && !q.trim() ? (
-            <div className="flex flex-wrap items-center gap-1" role="group" aria-label="نطاق البحث حول العقار">
-              {BANK_RADIUS_OPTIONS_KM.map((option) => (
-                <BankFilterChip
-                  key={option ?? "all"}
-                  pressed={option === radiusKm}
-                  onClick={() => onRadiusChange(option)}
-                >
-                  {option == null ? "الكل" : `${option} كم`}
-                </BankFilterChip>
-              ))}
-            </div>
-          ) : null}
-          {onTypeFilterChange && subjectKindLabel && !q.trim() ? (
-            <div className="flex flex-wrap items-center gap-1" role="group" aria-label="نوع المقارنات">
-              {(["subject", "all"] as const).map((option) => (
-                <BankFilterChip
-                  key={option}
-                  pressed={option === typeFilter}
-                  onClick={() => onTypeFilterChange(option)}
-                >
-                  {option === "subject" ? subjectKindLabel : "كل الأنواع"}
-                </BankFilterChip>
-              ))}
-            </div>
-          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2 max-lg:w-full max-lg:[&>*]:flex-1">
           <Button
@@ -433,52 +333,100 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
           >
             إضافة مقارن
           </Button>
-          {onSearch ? (
-            <input
-              placeholder="بحث حي / نوع / رقم مرجعي"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              className="min-w-0 rounded-lg border max-lg:min-h-11 max-lg:basis-full max-lg:text-[16px] lg:w-[248px] border-border-md bg-surface px-3.5 py-2 text-[13px] font-medium text-text outline-none transition-[border-color,box-shadow] placeholder:text-text-3 focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_22%,transparent)]"
-            />
-          ) : (
-            <span className="text-[12px] text-text-3">
-              أراضٍ فضاء فقط — لا استيراد من أسلوب السوق
-            </span>
-          )}
+          {onCopyLandValuation ? (
+            <Button
+              type="button"
+              size="sm"
+              showActionToast={false}
+              loading={copying}
+              disabled={copying || saving}
+              title={
+                copyLandSource
+                  ? `ينسخ ${copyLandSource.count} مقارن معتمد من ${copyLandSource.label} بتسوياته وأوزانه ومبرراته`
+                  : undefined
+              }
+              // A table that already holds comparables is replaced only after the appraiser confirms.
+              onClick={() => (rows.length > 0 ? setCopyConfirmOpen(true) : void copyLandValuation(false))}
+            >
+              انسخ طريقة المبيعات المشابهة للأرض
+            </Button>
+          ) : null}
         </div>
       </div>
       <AppModal
-        open={formOpen}
-        title="إضافة مقارن"
-        subtitle="الدبوس الذهبي موقع العقار موضوع التقييم. ثبّت موقع المقارن ثم اختر أرضاً أو مبنى."
-        wide
-        maxWidthPx={720}
-        look="ops-html"
-        onClose={requestClose}
+        open={copyConfirmOpen}
+        title="انسخ طريقة المبيعات المشابهة للأرض"
+        onClose={() => (copying ? undefined : setCopyConfirmOpen(false))}
         footer={
           <>
-            <Button type="button" onClick={requestClose} disabled={saving}>
+            <Button type="button" disabled={copying} onClick={() => setCopyConfirmOpen(false)}>
               إلغاء
             </Button>
             <Button
               type="button"
               variant="primary"
-              loading={saving}
-              disabled={saving}
+              loading={copying}
+              disabled={copying}
               showActionToast={false}
-              onClick={() => void saveComparable()}
+              onClick={() => void copyLandValuation(true)}
             >
-              حفظ في البنك
+              استبدال ونسخ
             </Button>
           </>
         }
       >
-        <ComparablePropertyEntryFields
+        <p className="m-0 text-[13px] leading-6 text-text-2">
+          هذا الجدول فيه {rows.length} مقارن. النسخ يستبدلها بمقارنات{" "}
+          {copyLandSource?.label ?? "الجدول الآخر"} المعتمدة ({copyLandSource?.count ?? 0}) بتسوياتها
+          وأوزانها ومبرراتها، وتُحذف مقارنات هذا الجدول الحالية وتسوياتها. بعد النسخ يبقى الجدولان
+          مستقلين وتعدّل هذا بحرية.
+        </p>
+      </AppModal>
+      <AppModal
+        open={formOpen}
+        title="إضافة مقارن"
+        wide
+        maxWidthPx={860}
+        look="ops-html"
+        onClose={requestClose}
+        footer={
+          // «حفظ في البنك» belongs to a new comparable: it appears once its location is pinned.
+          // Until then the window only chooses from the bank, and closes with «تم».
+          locationConfirmed ? (
+            <>
+              <Button type="button" onClick={requestClose} disabled={saving}>
+                إلغاء
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                loading={saving}
+                disabled={saving}
+                showActionToast={false}
+                onClick={() => void saveComparable()}
+              >
+                حفظ في البنك
+              </Button>
+            </>
+          ) : (
+            <Button type="button" variant="primary" showActionToast={false} onClick={requestClose}>
+              تم
+            </Button>
+          )
+        }
+      >
+        <ComparableEntryWithBank
           key={formKey}
           draft={draft}
-          disabled={saving}
+          saving={saving}
           fieldErrors={fieldErrors}
           subjectPin={parseLatLng(seed?.latitude, seed?.longitude)}
+          propertyId={sourcePropertyId}
+          subjectSqm={subjectSqm}
+          landOnly={landOnly}
+          rows={rows}
+          pendingAdopt={pendingAdopt}
+          onToggleAdopt={adoptFromMap}
           onChange={(next) => {
             setDraft(next);
             setFieldErrors({});
@@ -497,16 +445,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
         <MobileRecordList
           className="mb-6 lg:hidden"
           isEmpty={rows.length === 0}
-          empty={
-            <BankEmptyState
-              searching={q.trim().length > 0}
-              radiusKm={radiusKm}
-              beyond={beyond}
-              onClearSearch={() => setQ("")}
-              onWiden={onRadiusChange}
-              onAdd={openForm}
-            />
-          }
+          empty={<BankEmptyState onAdd={openForm} />}
         >
           {rows.map((row) => {
             const pending = pendingAdopt.get(row.comp.id);
@@ -547,6 +486,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                   { label: "المصدر", value: sourceCardLine(comp), wide: true },
                 ]}
                 actions={
+                  <>
                   <label
                     className={cn(
                       "flex cursor-pointer items-center gap-2.5 rounded-[10px] border px-3 text-[13px] font-bold",
@@ -561,6 +501,18 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                     />
                     {adopted ? "معتمد في التقييم" : "اعتماد المقارن"}
                   </label>
+                  {adopted ? null : (
+                    <Button
+                      type="button"
+                      variant="dangerOutline"
+                      showActionToast={false}
+                      disabled={pending !== undefined || removing.has(comp.id)}
+                      onClick={() => removeRow(comp.id)}
+                    >
+                      حذف من المعاملة
+                    </Button>
+                  )}
+                  </>
                 }
               >
                 {row.item ? (
@@ -597,6 +549,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
               <Th className="w-[72px] text-center">المسافة</Th>
               <Th className="min-w-[84px]">الحي</Th>
               <Th className="min-w-[120px]">المصدر</Th>
+              <ThAction aria-label="حذف" />
             </Tr>
           </THead>
           <TBody>
@@ -664,19 +617,27 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                     {sourceCardLine(row.comp)}
                   </span>
                 </Td>
+                <TdAction>
+                  {adopted ? null : (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="dangerOutline"
+                      showActionToast={false}
+                      title="حذف المقارن من مقارنات هذه المعاملة — يبقى في بنك المقارنات"
+                      disabled={pending !== undefined || removing.has(row.comp.id)}
+                      onClick={() => removeRow(row.comp.id)}
+                    >
+                      حذف
+                    </Button>
+                  )}
+                </TdAction>
               </Tr>
               );
             })}
             {rows.length === 0 ? (
-              <TableEmptyRow colSpan={12}>
-                <BankEmptyState
-                  searching={q.trim().length > 0}
-                  radiusKm={radiusKm}
-                  beyond={beyond}
-                  onClearSearch={() => setQ("")}
-                  onWiden={onRadiusChange}
-                  onAdd={openForm}
-                />
+              <TableEmptyRow colSpan={13}>
+                <BankEmptyState onAdd={openForm} />
               </TableEmptyRow>
             ) : null}
           </TBody>

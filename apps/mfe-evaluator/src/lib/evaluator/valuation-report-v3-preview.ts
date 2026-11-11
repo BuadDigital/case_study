@@ -25,6 +25,12 @@ type ValuationReportV3Meta = {
   live?: ValuationReportLiveFill | null;
   /** Red missing-field marks (appraiser's report tab). False for read-only embeds. Default true. */
   markMissingFields?: boolean;
+  /**
+   * The report is not approved yet (Omar 2026-11-11): its signatures and the firm's stamp are left
+   * out and every page is marked «مسودة — غير معتمدة», on screen and in print, for every role.
+   * Absent / false → signed and unmarked, as before.
+   */
+  unsigned?: boolean;
 };
 
 function pageOrigin(): string {
@@ -390,6 +396,47 @@ function applySignatures(
   }
 }
 
+/**
+ * Empties the signature and stamp cells of a report that is not approved yet.
+ *
+ * How it works: runs after everything that paints them (the brand identity and the live fill both
+ * do) — every value cell of a «التوقيع» or «ختم المنشأة» row is emptied, and any signature or stamp
+ * image left elsewhere is removed. The rows and their labels stay, so the page keeps its layout
+ * and the boxes read as «not signed yet».
+ * Edge cases: a template without those rows is left untouched.
+ */
+function clearStampAndSignatures(dom: Document) {
+  for (const row of dom.querySelectorAll("tr")) {
+    for (const label of ["التوقيع", "ختم المنشأة"]) {
+      for (const cell of valueCellsAfterLabel(row, label)) cell.replaceChildren();
+    }
+  }
+  dom
+    .querySelectorAll(
+      'img.org-stamp, img.org-signature, img.org-signature-roster, img[alt="ختم المنشأة"], img[alt="التوقيع"]',
+    )
+    .forEach((img) => img.remove());
+}
+
+/** The words across every page of a report that is not approved yet. */
+export const DRAFT_MARK_TEXT = "مسودة — غير معتمدة";
+
+/**
+ * «مسودة — غير معتمدة» across every page of an unapproved report (Omar 2026-11-11): without its
+ * signatures and stamp a printed copy could pass for an incomplete report rather than a draft.
+ *
+ * How it works: a faint diagonal line of text drawn by each page's `::after` (the template's pages
+ * are `position:relative` and use no pseudo-element of their own), so it also lands on the sheets
+ * the print pagination creates. It sits over the content without taking clicks or changing layout.
+ */
+function draftMarkCss(prefix: string): string {
+  return (
+    `${prefix} .page.pg::after{content:"${DRAFT_MARK_TEXT}";position:absolute;inset:0;z-index:3;` +
+    `display:flex;align-items:center;justify-content:center;transform:rotate(-28deg);` +
+    `font-size:52px;font-weight:800;white-space:nowrap;color:rgba(16,43,78,.12);pointer-events:none}`
+  );
+}
+
 function stampBoxCss(prefix: string, widthCm: number, heightCm: number): string {
   return (
     `${prefix} img.org-stamp,${prefix} img[alt="ختم المنشأة"]{` +
@@ -711,6 +758,7 @@ export function prepareValuationReportV3Html(
 
   if (mode === "screen") {
     applyStampAndSignatures(dom, branding, valuers, origin);
+    if (meta.unsigned) clearStampAndSignatures(dom);
     const stampW = mm(branding.stampWidthCm, BRAND_IDENTITY_DEFAULTS.stampWidthCm!);
     const stampH = mm(branding.stampHeightCm, BRAND_IDENTITY_DEFAULTS.stampHeightCm!);
     const sigH = mm(
@@ -721,10 +769,11 @@ export function prepareValuationReportV3Html(
     const pages = [...dom.querySelectorAll("section.page.pg")]
       .map((p) => p.outerHTML)
       .join("\n");
-    return `<style>${screenCss}\n${SCREEN_CHROME}\n${stampBoxCss(".val-rpt-screen", stampW, stampH)}\n${signatureBoxCss(".val-rpt-screen", sigH)}</style><div class="val-rpt-screen" dir="rtl">${pages}</div>`;
+    return `<style>${screenCss}\n${SCREEN_CHROME}\n${stampBoxCss(".val-rpt-screen", stampW, stampH)}\n${signatureBoxCss(".val-rpt-screen", sigH)}${meta.unsigned ? `\n${draftMarkCss(".val-rpt-screen")}` : ""}</style><div class="val-rpt-screen" dir="rtl">${pages}</div>`;
   }
 
   const brandCss = applyBrandIdentity(dom, branding, valuers, origin);
+  if (meta.unsigned) clearStampAndSignatures(dom);
   const printCss = authored.replace(/doc-page/g, ".val-rpt-v3");
   const metaTemplate = markPrintFlow(dom);
   const pages = [...dom.querySelectorAll("section.page.pg")]
@@ -737,7 +786,7 @@ export function prepareValuationReportV3Html(
   return `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="utf-8"/>
 ${base}
 <title>تقرير التقييم</title>
-<style>${printCss}\n${brandCss}\n${PRINT_CHROME}</style></head>
+<style>${printCss}\n${brandCss}\n${PRINT_CHROME}${meta.unsigned ? `\n${draftMarkCss(".val-rpt-v3")}` : ""}</style></head>
 <body class="val-rpt-v3">${pages}
 ${metaTemplate}
 <script>${valuationReportPaginateScript()}</script></body></html>`;

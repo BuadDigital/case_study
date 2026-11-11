@@ -97,6 +97,51 @@ export function withAdoptionFlag(
   };
 }
 
+/** The two tables that hold a land valuation by comparable sales. */
+export type LandCopyTarget = "market" | "land";
+
+/**
+ * Whether the land valuation by comparable sales can be copied into a table from the other one,
+ * and whether that should happen by itself (ruling 2026-11-11).
+ *
+ * How it works: the copy only concerns land. Into the market table it applies when that table
+ * compares land (`marketKind` land) and the land table of the cost approach has adopted comparables;
+ * into the land table when the market table has adopted land comparables. It happens by itself only
+ * when the target holds no comparable at all — and, into the land table, only when everything
+ * adopted in the market table is land (a table valuing a villa by villas is not a land valuation).
+ *
+ * Edge cases: `sourceLandCount` 0 → nothing to copy; a hidden target (its approach off) is the
+ * caller's check.
+ */
+export function landCopyState(input: {
+  target: LandCopyTarget;
+  marketKind: string;
+  targetRowCount: number;
+  sourceAdoptedCount: number;
+  sourceAdoptedLandCount: number;
+}): { available: boolean; automatic: boolean; sourceCount: number } {
+  const sourceCount =
+    input.target === "market" ? input.sourceAdoptedCount : input.sourceAdoptedLandCount;
+  const available =
+    sourceCount > 0 && (input.target === "land" || input.marketKind === "land");
+  const pureLandSource =
+    input.target === "market" || input.sourceAdoptedLandCount === input.sourceAdoptedCount;
+  return {
+    available,
+    automatic: available && input.targetRowCount === 0 && pureLandSource,
+    sourceCount,
+  };
+}
+
+/** The selection without one comparable — the optimistic view of a removal. */
+export function withoutComparable(
+  prev: ValuationComparableSelectionListDto,
+  comparablePropertyId: string,
+): ValuationComparableSelectionListDto {
+  const items = prev.items.filter((i) => i.comparablePropertyId !== comparablePropertyId);
+  return { ...prev, items, adoptedCount: items.filter((i) => i.isAdopted).length };
+}
+
 /** Optimistic ✓ flip of one factor across every adopted comparable of a selection. */
 export function withFactorIncluded(
   prev: ValuationComparableSelectionListDto,

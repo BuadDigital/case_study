@@ -58,6 +58,9 @@ export type MyWorkStage =
   | "valuation"
   | "correction"
   | "approval"
+  // A valuation whose study is not issued yet (Omar 2026-11-11): he may enter and prepare a draft, but
+  // nothing is due from him — a grey «إعداد مسبق» row under its own chip, after the work that is due.
+  | "prework"
   // A valuation he handed over: nothing waits for him — a lookup chip, never part of «الكل» (Omar 2026-11-11).
   | "handed";
 
@@ -146,6 +149,7 @@ export const MY_WORK_GROUPS: readonly {
       { key: "valuation", label: "التقييم" },
       { key: "correction", label: "معادة للتصحيح" },
       { key: "approval", label: "مسودة بانتظار اعتمادك" },
+      { key: "prework", label: "بانتظار الدراسة" },
       { key: "handed", label: "المسلَّمة" },
     ],
   },
@@ -186,9 +190,35 @@ export function myWorkGroupsForPages(pages: readonly string[]): MyWorkGroup[] {
   return groups;
 }
 
+/** The stages that ask nothing of the viewer: advance work («بانتظار الدراسة») and the handed-over lookups. */
+const NOT_DUE_STAGES: ReadonlySet<MyWorkStage> = new Set<MyWorkStage>(["prework", "handed"]);
+
+/**
+ * The chip «أعمالي» opens on (Omar 2026-11-11): the stage that holds actions for the viewer's role,
+ * instead of «الكل».
+ *
+ * How it works: walks the viewer's stage chips in their order (the groups he holds, each group's
+ * stages as the transaction moves) and returns the first one with a row due from him — the
+ * appraiser opens on «التقييم»; once his valuations are done and a draft waits for his approval,
+ * on «مسودة بانتظار اعتمادك».
+ * Edge cases: nothing due from him → his first chip, even when it lists no rows; rows that ask
+ * nothing of him («بانتظار الدراسة», «المسلَّمة») never draw the selection; a viewer with no group →
+ * null (no chips).
+ */
+export function defaultMyWorkStage(
+  groups: readonly MyWorkGroup[],
+  items: readonly Pick<MyWorkItem, "stage">[],
+): MyWorkStage | null {
+  const stages = MY_WORK_GROUPS.filter((g) => groups.includes(g.key)).flatMap((g) =>
+    g.stages.map((s) => s.key),
+  );
+  const due = new Set(items.map((i) => i.stage).filter((s) => !NOT_DUE_STAGES.has(s)));
+  return stages.find((s) => due.has(s)) ?? stages[0] ?? null;
+}
+
 /** Where the appraiser's task stands — his «أعمالي» row. */
 export type AppraiserStep = {
-  stage: "valuation" | "correction" | "approval" | "handed";
+  stage: "valuation" | "correction" | "approval" | "prework" | "handed";
   action: string;
   reason: string;
 };
@@ -203,9 +233,11 @@ export type AppraiserStep = {
  *   التقرير»); anything else (a draft being prepared, an approved report waiting for the deposit, an
  *   issued one) waits for others — the «handed» lookup row (2026-11-11), which says where it stands
  *   and is not counted as work waiting for him;
- * - otherwise it is his valuation: «بدء التقييم» until the server's progress ladder says it started
- *   (`progressPct` above 0), then «متابعة التقييم»; the line says whether the study has been issued,
- *   since only the hand-over waits for it (the form is open from the start).
+ * - otherwise it is his valuation. Once the study is issued it is due from him: «بدء التقييم» until
+ *   the server's progress ladder says it started (`progressPct` above 0), then «متابعة التقييم».
+ *   Before that it is advance work only («إعداد مسبق», stage `prework`, 2026-11-11): the form is open
+ *   from the start, but the hand-over waits for the study — the row says so and is told apart from
+ *   what is due (it used to carry the same tag and chip, the difference only in the small line).
  * Edge cases: a handed-over package with no draft state yet reads «بانتظار المراجعة»; no draft state
  * loaded yet reads as not started (the ladder arrives with the batch read);
  * a returned package whose draft state is missing is still a correction.
@@ -236,14 +268,22 @@ export function appraiserStep(
         };
   }
   const started = (draft?.progressPct ?? 0) > 0;
-  const study = task.studyReportIssued === true ? "الدراسة صدرت" : "الدراسة لم تصدر بعد";
+  if (task.studyReportIssued !== true) {
+    return {
+      stage: "prework",
+      action: "إعداد مسبق",
+      reason: started
+        ? "مسودة قيد الإعداد — الدراسة لم تصدر بعد، والتسليم بعد صدورها"
+        : "يمكن بدء التقييم كمسودة — الدراسة لم تصدر بعد، والتسليم بعد صدورها",
+    };
+  }
   return started
     ? {
         stage: "valuation",
         action: "متابعة التقييم",
-        reason: `قيد التقييم — ${study}${task.studyReportIssued === true ? " — جاهز للتسليم" : ""}`,
+        reason: "قيد التقييم — الدراسة صدرت — جاهز للتسليم",
       }
-    : { stage: "valuation", action: "بدء التقييم", reason: `تقييم جديد — ${study}` };
+    : { stage: "valuation", action: "بدء التقييم", reason: "تقييم جديد — الدراسة صدرت" };
 }
 
 /** The study row's usual line: the transaction came from coordination. */
@@ -886,7 +926,8 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
   }
 
   const rank: Record<MyWorkDue, number> = { late: 0, soon: 1, ok: 2, none: 3 };
-  const lookup = (i: MyWorkItem) => (i.stage === "handed" ? 1 : 0);
+  // What is due first, then the advance work (study not issued), then the handed-over lookups.
+  const lookup = (i: MyWorkItem) => (i.stage === "handed" ? 2 : i.stage === "prework" ? 1 : 0);
   items.sort(
     (a, b) =>
       lookup(a) - lookup(b) ||

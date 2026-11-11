@@ -1,6 +1,7 @@
 export {
   invalidControlClass,
   invalidPulseRingClass,
+  guidePulseRingClass,
 } from "./invalid-styles";
 export {
   scheduleScrollToFirstFormField,

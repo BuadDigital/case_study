@@ -9,6 +9,7 @@ import {
   patchWorkflowTaskDistribution,
   redistributeWorkflowTaskParties,
   addWorkflowTaskEngineeringSurvey,
+  skipWorkflowTaskEngineeringSurvey,
   reopenCompletedWorkflowTask,
   revertWorkflowTaskPhase,
   syncWorkflowTasks,
@@ -339,27 +340,52 @@ export async function redistributeTaskParties(
 }
 
 /**
- * «إضافة رفع مساحي» after distribution — the inspector's corrected type needs a survey nobody was given.
- * The server refuses when the property needs no survey or one is already live.
+ * «إضافة رفع مساحي» after distribution — called from «مهمة جديدة», type «رفع مساحي» (Omar 2026-11-11).
+ * The server refuses when a survey is already live, and — for a property the survey rule asks no
+ * survey for — when `exceptionReason` is missing.
  */
 export async function addEngineeringSurveyToTask(
   parentTaskId: string,
   office: { id: string; name: string },
+  exceptionReason?: string,
 ): Promise<RedistributePartiesResult> {
   const config = workOrdersApiConfig();
   if (!config) return { ok: false, error: apiErrorMessage("auth") };
-  const result = await addWorkflowTaskEngineeringSurvey(config, parentTaskId, {
-    assigneeId: office.id,
-    assigneeName: office.name,
-  });
+  return surveyCommandResult(
+    await addWorkflowTaskEngineeringSurvey(config, parentTaskId, {
+      assigneeId: office.id,
+      assigneeName: office.name,
+      ...(exceptionReason?.trim() ? { exceptionReason: exceptionReason.trim() } : {}),
+    }),
+    "تعذّر إضافة الرفع المساحي",
+  );
+}
+
+/**
+ * «تجاوز المكتب الهندسي» (Omar 2026-11-11) — the study goes on without the office: its open task is
+ * cancelled and earns no fee. The server refuses once the office delivered, or without a reason.
+ */
+export async function skipEngineeringSurveyOfTask(
+  parentTaskId: string,
+  reason: string,
+): Promise<RedistributePartiesResult> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  return surveyCommandResult(
+    await skipWorkflowTaskEngineeringSurvey(config, parentTaskId, { reason }),
+    "تعذّر تجاوز المكتب الهندسي",
+  );
+}
+
+/** A survey command's answer as the screens read it; a success refreshes the task lists. */
+function surveyCommandResult(
+  result: Awaited<ReturnType<typeof addWorkflowTaskEngineeringSurvey>>,
+  fallback: string,
+): RedistributePartiesResult {
   if (!result.ok) {
     return {
       ok: false,
-      error: resolveApiError(
-        result.kind,
-        "errors" in result ? result.errors : undefined,
-        "تعذّر إضافة الرفع المساحي",
-      ),
+      error: resolveApiError(result.kind, "errors" in result ? result.errors : undefined, fallback),
     };
   }
   notifyTasksChanged();

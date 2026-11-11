@@ -78,7 +78,8 @@ try {
 
   // search should hit only the bank endpoint, not the full reload set
   apiRequests.length = 0;
-  const search = page.getByPlaceholder("بحث حي / نوع / رقم مرجعي");
+  await page.getByRole("button", { name: "خريطة المقارنات" }).first().click();
+  const search = page.getByPlaceholder("ابحث بالرقم المرجعي أو الحي");
   await search.fill("الرياض");
   await page.waitForTimeout(1200);
   const searchCalls = apiRequests.filter((u) => u.includes("comparable-properties"));
@@ -90,7 +91,7 @@ try {
     searchCalls.length >= 1 && heavyCalls.length === 0,
     `bank:${searchCalls.length} heavy:${heavyCalls.length}`,
   );
-  await search.fill("");
+  await page.getByRole("button", { name: "تم", exact: true }).click();
   await page.waitForTimeout(800);
 
   // type a rationale in the matrix and blur (save path)

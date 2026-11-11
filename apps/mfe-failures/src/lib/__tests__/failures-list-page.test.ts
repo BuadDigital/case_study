@@ -63,7 +63,7 @@ describe("failuresTabStatuses", () => {
 
 describe("failureListStatusLabel", () => {
   it("folds the severity into the stage", () => {
-    expect(failureListStatusLabel("internal", "suspected")).toBe("احتمال تعذّر");
+    expect(failureListStatusLabel("internal", "suspected")).toBe("تعذّر محتمل");
     expect(failureListStatusLabel("internal", "internal")).toBe("تعذّر داخلي");
     expect(failureListStatusLabel("returned", "internal")).toBe("مُعاد");
     expect(failureListStatusLabel("review", "internal")).toBe("قيد المراجعة");

@@ -13,6 +13,13 @@ public static class SurveyRequirementRules
 {
     public const string UnitInsideBuildingClassification = "وحدة داخل مبنى";
 
+    /// <summary>
+    /// Asked of whoever adds the engineering office to a property this rule asks no survey for
+    /// (Omar 2026-11-11: the exception is allowed after the distribution, with its reason on record).
+    /// </summary>
+    public const string ExceptionReasonRequiredAr =
+        "العقار لا يحتاج رفعاً مساحياً بحسب القاعدة — اذكر سبب طلب الرفع المساحي لإسناد المكتب استثناءً";
+
     public static bool ClassificationRequiresSurvey(string? classification) =>
         !string.Equals(
             classification?.Trim(),
@@ -57,8 +64,9 @@ public static class SurveyRequirementRules
 
     /// <summary>
     /// The inspector's corrected type needs a survey and no survey task is live — the timeline says «بانتظار
-    /// إضافة المكتب الهندسي» and the «إضافة رفع مساحي» note asks the specialist; it never blocks issuing the
-    /// study (Omar 2026-11-04).
+    /// إضافة المكتب الهندسي» and the specialist is notified; it never blocks issuing the study (Omar
+    /// 2026-11-04). The office is added from «مهمة جديدة», type «رفع مساحي» (Omar 2026-11-11), which is
+    /// offered whenever the property needs a survey and none is live — not only after a type change.
     /// How it works: the inspector changed the type (<see cref="InspectorChangedType"/>), the property under
     /// that type needs a survey (<see cref="PropertyRequiresSurvey"/>), and no survey task is live.
     /// Edge cases: fixed A→Z 2026-11-02 #74 — this used to skip a property whose bourse type already needed a

@@ -213,14 +213,17 @@ export const INITIAL_PO_LIST_QUERY: PoListQueryState = {
 };
 
 /**
- * Where the screen opens. The case specialist lands on the orders that still need work, nearest
- * due date first; everyone else keeps the full list, newest first.
+ * Where the screen opens: on «جميع الحالات» for everyone. The case specialist reads the nearest
+ * due date first; everyone else the newest order first.
+ *
+ * Edge cases (ruling 2026-11-11): the case specialist used to open on «النشطة», so a handed-over
+ * or closed order was not in the list until the filter was changed by hand. «النشطة» is still one
+ * choice of the filter.
  */
 export function initialPoListQuery(role: RoleId): PoListQueryState {
   if (!isCaseStudySpecialist(role)) return INITIAL_PO_LIST_QUERY;
   return {
     ...INITIAL_PO_LIST_QUERY,
-    statusFilter: "active",
     sortKey: "due",
     sortDir: "asc",
   };

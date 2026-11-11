@@ -19,16 +19,12 @@ export function canReceivePo(access: StaffAccess): boolean {
   return access.role === "section-supervisor" || holdsSubRole(access, "coordination");
 }
 
-/**
- * «التعذّر النهائي عن المعاملة» — the section supervisor (and the CDO); mirrors `FailureRecordRules.CanRecordFinalFailure`.
- *
- * How it works: a plain role match that shows the ⋮ menu item. Edge cases: not `isSuperAdmin` —
- * that also admits any role holding `manage-system-config`, which the server would refuse with
- * 403; the general manager is view-only on failures and is left out on both sides.
- */
-export function canRecordFinalFailure(role: RoleId): boolean {
-  return role === "cdo" || role === "section-supervisor";
-}
+// «تعذّر نهائي» and «تعذّر داخلي» — the case specialist, the section supervisor and the CDO
+// (Omar 2026-11-11); the rule lives with the failure degrees.
+export {
+  canRaiseInternalFailure,
+  canRecordFinalFailure,
+} from "@failures/mfe/lib/failure-degrees";
 
 /**
  * Approve / reject a «إلغاء المعاملة» request and reactivate a cancelled transaction — the section
@@ -230,6 +226,20 @@ export function canUploadValuedDocuments(role: RoleId): boolean {
 /** Approve / reject a «مستند ذو قيمة» — the study sub-role; mirrors `PoRoleMatrixRules.CanReviewValuedDocuments`. */
 export function canReviewValuedDocuments(access: StaffAccess): boolean {
   return isSuperAdmin(access.role) || holdsSubRole(access, "study");
+}
+
+/**
+ * «تجاوز المكتب الهندسي» (Omar 2026-11-11) — the study sub-role decides whether the engineering office
+ * is needed before the study reaches the appraiser; section-supervisor+ may too. Mirrors
+ * `EngineeringSurveySettlementRules.CanSkip`.
+ */
+export function canSkipEngineeringSurvey(access: StaffAccess): boolean {
+  return (
+    isSuperAdmin(access.role) ||
+    access.role === "section-supervisor" ||
+    access.role === "general-manager" ||
+    holdsSubRole(access, "study")
+  );
 }
 
 /**

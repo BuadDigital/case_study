@@ -78,7 +78,7 @@ export function AllAssignedTransactionsView() {
   const { showToast } = useToast();
   const [reopenTask, setReopenTask] = useState<WorkflowTask | null>(null);
   const [reopenDeedLabel, setReopenDeedLabel] = useState("");
-  // «المعاملات النشطة» rows offer the general actions too (failure, final failure, cancellation).
+  // «المعاملات النشطة» rows offer the general actions too (reopen, failure, cancellation).
   const { itemsFor: generalItemsFor, dialogs: generalDialogs } =
     useTransactionGeneralActions();
 

@@ -88,7 +88,7 @@ public partial class FailureService
                         request,
                         FinalFailureDeedPo(deed, anchor, request),
                         deed),
-                    FailureRecordRules.SupervisorRaiserRole,
+                    FailureRecordRules.FinalFailureRaisedBy(request),
                     deed.CaseSpecialistName?.Trim() ?? "",
                     now);
                 await _failures.AddAsync(failure, cancellationToken);

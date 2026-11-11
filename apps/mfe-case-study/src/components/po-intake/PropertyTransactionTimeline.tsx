@@ -1,30 +1,19 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
 import { useQueryClient } from "@tanstack/react-query";
-import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
-import {
-  cn,
-  opsPanelCard,
-} from "@platform/ui-kit";
-import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
+import { cn } from "@platform/ui-kit";
 import { PropertyTimelineTones } from "@platform/api-client";
 import {
   formatTimelineDate,
   type PropertyTimelineEvent,
   type PropertyTimelineTone,
 } from "../../lib/app-data/property-detail-timeline";
-import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
-import { useReportDraftStates } from "@platform/app-shared/workflow/use-report-draft-states";
-import { buildPropertyDetailTimelinePartyRows } from "../../lib/app-data/property-detail-parties";
 import { formatDateAr } from "../../lib/app-data/po-intake-data";
 import type { PoIntakeRecord, PoPropertyIntake } from "../../lib/app-data/po-intake-data";
-import { caseStudyFamilyTaskForProperty } from "../../lib/app-data/tasks";
-import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
 import { usePropertyOrTransactionTimeline } from "../../query/use-transaction-query";
-import { useWorkflowTasksQuery } from "../../query/case-study-queries";
-import { DetailBadge, ltrValueClass } from "./PropertyDetailFields";
+import { ltrValueClass } from "./PropertyDetailFields";
+import { PartyStatusRows, SideCard, usePropertyPartyRows } from "./PropertyPartiesStatus";
 import {
   FAILURES_CHANGED_EVENT,
   FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
@@ -39,30 +28,6 @@ function toneToDotClass(tone: PropertyTimelineTone): string {
   if (tone === PropertyTimelineTones.Active) return "bg-[#8c7857]";
   if (tone === PropertyTimelineTones.Warn) return "bg-danger";
   return "bg-[#8c7857]";
-}
-
-function badgeToneFromClass(
-  badgeClass: string,
-): "teal" | "amber" | "red" | "gray" {
-  if (badgeClass.includes("teal")) return "teal";
-  if (badgeClass.includes("amber")) return "amber";
-  if (badgeClass.includes("red")) return "red";
-  return "gray";
-}
-
-/**
- * Ring fill = completion only.
- * "In progress" is status, not 50% work done — empty ring until completed.
- */
-function partyRingProgress(badgeClass: string): number {
-  if (badgeClass.includes("teal")) return 1;
-  return 0;
-}
-
-function partyRingColor(badgeClass: string): string {
-  if (badgeClass.includes("teal")) return "#3f8f5f";
-  if (badgeClass.includes("amber")) return "#a4906f";
-  return "#a4a6ad";
 }
 
 function ClockIcon() {
@@ -82,61 +47,6 @@ function ClockIcon() {
   );
 }
 
-function SideCard({
-  title,
-  icon,
-  children,
-}: {
-  title: string;
-  icon?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <div className={cn(opsPanelCard, "px-4 py-3.5")}>
-      <div className="mb-3 flex items-center gap-1.5 text-[12.5px] font-bold text-heading">
-        {icon}
-        {title}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function PartyRing({ progress, color }: { progress: number; color: string }) {
-  const r = 9;
-  const c = 2 * Math.PI * r;
-  return (
-    <span className="relative h-6 w-6 shrink-0" aria-hidden>
-      <svg
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        className="-rotate-90"
-      >
-        <circle
-          cx="12"
-          cy="12"
-          r={r}
-          fill="none"
-          stroke="var(--border, #ece8df)"
-          strokeWidth="3"
-        />
-        <circle
-          cx="12"
-          cy="12"
-          r={r}
-          fill="none"
-          stroke={color}
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray={c.toFixed(1)}
-          strokeDashoffset={(c * (1 - progress)).toFixed(1)}
-        />
-      </svg>
-    </span>
-  );
-}
-
 export function PropertyTransactionTimeline({
   record,
   property,
@@ -144,15 +54,11 @@ export function PropertyTransactionTimeline({
   record: PoIntakeRecord;
   property: PoPropertyIntake;
 }) {
-  const { data: tasks = [] } = useWorkflowTasksQuery();
-  const { data: staffResult } = useStaffUsersQuery();
-  const staffUsers = staffResult?.users ?? [];
   const poNumber = record.poNumber.trim();
   // A transaction with several deeds has one timeline for all of them.
   const { query: timelineQuery, invalidationKey } = usePropertyOrTransactionTimeline(poNumber, property);
   const queryClient = useQueryClient();
 
-  const [inspectionRevision, setInspectionRevision] = useState(0);
   const invalidateTimeline = () => {
     void queryClient.invalidateQueries({ queryKey: invalidationKey });
   };
@@ -160,89 +66,11 @@ export function PropertyTransactionTimeline({
     [TASKS_CHANGED_EVENT]: invalidateTimeline,
     [WORK_ORDERS_CHANGED_EVENT]: invalidateTimeline,
     [FAILURES_CHANGED_EVENT]: invalidateTimeline,
-    [FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT]: () => {
-      invalidateTimeline();
-      setInspectionRevision((n) => n + 1);
-    },
+    [FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT]: invalidateTimeline,
   });
 
-  const task = useMemo(
-    () => caseStudyFamilyTaskForProperty(poNumber, property.id, tasks),
-    [poNumber, property.id, tasks],
-  );
-
-  const inspectionTaskId = useMemo(() => {
-    const onProperty = tasks.filter(
-      (row) =>
-        row.propertyId === property.id && row.poNumber.trim() === poNumber,
-    );
-    const inspection = onProperty.find(
-      (row) => row.kind === "field-inspection" && row.status !== "cancelled",
-    );
-    if (inspection) return inspection.id;
-    return (
-      onProperty.find((row) => row.fieldInspectionTaskId?.trim())
-        ?.fieldInspectionTaskId?.trim() || null
-    );
-  }, [tasks, property.id, poNumber]);
-
-  const [inspectionSubmitted, setInspectionSubmitted] = useState(false);
-  // No inspection task: not submitted — reset during render, before the effect would run.
-  const submittedTaskId = inspectionTaskId?.trim() ?? "";
-  const [submittedFor, setSubmittedFor] = useState(submittedTaskId);
-  if (submittedFor !== submittedTaskId) {
-    setSubmittedFor(submittedTaskId);
-    if (!submittedTaskId) setInspectionSubmitted(false);
-  }
-  useEffect(() => {
-    const taskId = inspectionTaskId?.trim();
-    if (!taskId) return;
-    let cancelled = false;
-    void loadInspectorWorkspaceSnapshot(taskId).then((draft) => {
-      if (cancelled) return;
-      setInspectionSubmitted(
-        draft?.status === "submitted" ||
-          Boolean(draft?.acceptedAtUtc?.trim()),
-      );
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [inspectionTaskId, inspectionRevision]);
-
-  const appraisalPackageSubmitted = useMemo(
-    () =>
-      tasks.some(
-        (row) =>
-          row.kind === "property-appraisal" &&
-          row.propertyId === property.id &&
-          row.poNumber.trim() === poNumber &&
-          row.appraisalPackageStatus === "submitted",
-      ),
-    [tasks, property.id, poNumber],
-  );
-  // Where the report draft stands (valuation service) — only worth asking once the package is handed over.
-  const draftStateVersion = useReportDraftStates(
-    [property.id],
-    appraisalPackageSubmitted,
-  );
-
-  const partyRows = useMemo(
-    () =>
-      buildPropertyDetailTimelinePartyRows({
-        task: task ?? null,
-        allTasks: tasks,
-        staffUsers,
-        inspectionSubmitted,
-        appraisal: {
-          packageSubmitted: appraisalPackageSubmitted,
-          draft: getReportDraftState(property.id),
-        },
-      }),
-    // draftStateVersion: the draft state is read from the shared cache.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [task, tasks, staffUsers, inspectionSubmitted, appraisalPackageSubmitted, property.id, draftStateVersion],
-  );
+  // «حالة الأطراف» — the same rows the frame pages show under their rail, here with the names.
+  const partyRows = usePropertyPartyRows(poNumber, property.id);
 
   const displayEvents = timelineQuery.data ?? EMPTY_EVENTS;
 
@@ -252,30 +80,7 @@ export function PropertyTransactionTimeline({
       aria-label="الجدول الزمني للمعاملة"
     >
       <SideCard title="حالة الأطراف">
-        <div className="grid gap-[9px]">
-          {partyRows.map((row) => (
-            <div key={row.key} className="flex min-w-0 items-center gap-2">
-              <PartyRing
-                progress={partyRingProgress(row.badgeClass)}
-                color={partyRingColor(row.badgeClass)}
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[11.5px] font-semibold text-heading">
-                  {row.label}
-                </span>
-                <span className="block truncate text-[10px] text-text-2">
-                  {row.role}
-                </span>
-              </span>
-              <DetailBadge
-                tone={badgeToneFromClass(row.badgeClass)}
-                className="px-1.5 py-px text-[10px]"
-              >
-                {row.badge}
-              </DetailBadge>
-            </div>
-          ))}
-        </div>
+        <PartyStatusRows rows={partyRows} />
       </SideCard>
 
       <SideCard title="مواعيد مهمة">

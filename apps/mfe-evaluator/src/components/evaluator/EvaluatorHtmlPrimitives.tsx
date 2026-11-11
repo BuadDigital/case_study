@@ -13,16 +13,28 @@ import {
 } from "@platform/ui-kit";
 
 /**
+ * The gap between a section's header rule and its first content on the appraiser's page.
+ *
+ * How it works: the sections frame gives a section's body no top padding of its own, so the
+ * sections that open on plain content (the summary, the approaches, the review) take it here —
+ * one value for the three.
+ */
+export const WORK_SECTION_TOP_GAP = "pt-5";
+
+/**
  * Field-inspection `InsCard` language — aligns evaluator input sections with the rest of the app.
  * Inside the sections frame (`work` density, Omar 2026-11-10) the section is already the panel, so
- * the card is flat: its title and fields with a thin rule above, no frame of its own.
+ * the card is flat: its title and fields with a thin rule above, no frame of its own; the last
+ * card of a section has no bottom margin (the section's bottom padding is the gap under it).
+ * Edge cases: a card with neither `title` nor `badge` has no header row — its content starts the
+ * card (the summary's documents card, whose section header already names it).
  */
 export function ValCard({
   title,
   badge,
   children,
 }: {
-  title: string;
+  title?: string;
   badge?: ReactNode;
   children: ReactNode;
 }) {
@@ -31,16 +43,23 @@ export function ValCard({
     <section
       className={cn(
         work
-          ? "mb-4 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-border [&:not(:first-child)]:pt-4"
+          ? // The last card: no bottom margin of its own, nor of its last line.
+            "mb-4 last:mb-0 last:[&>*:last-child]:mb-0 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-border [&:not(:first-child)]:pt-4"
           : cn(opsWorkCard, "mb-3.5"),
       )}
     >
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <span className="h-[15px] w-[3px] rounded-full bg-gold" aria-hidden />
-        <h4 className="m-0 text-[13px] font-bold text-heading">{title}</h4>
-        <span className="flex-1" />
-        {badge}
-      </div>
+      {title || badge ? (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {title ? (
+            <>
+              <span className="h-[15px] w-[3px] rounded-full bg-gold" aria-hidden />
+              <h4 className="m-0 text-[13px] font-bold text-heading">{title}</h4>
+            </>
+          ) : null}
+          <span className="flex-1" />
+          {badge}
+        </div>
+      ) : null}
       {children}
     </section>
   );

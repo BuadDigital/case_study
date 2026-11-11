@@ -4,10 +4,7 @@ import {
   INSPECTOR_FEATURE_FIELDS,
   patchInspectorFeatureValues,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
-import {
-  propertyRequiresSurvey,
-  surveyMissingAfterTypeChange,
-} from "@platform/app-shared/app-data/po-intake-identifiers";
+import { propertyRequiresSurvey } from "@platform/app-shared/app-data/po-intake-identifiers";
 import { deedMatchOverrideReasonMissing } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { propertyDocumentAppliesToType } from "@platform/app-shared/domain/property-documents/property-document-types";
 import { formatPropertyTypeLine } from "@platform/app-shared/app-data/po-intake-property-model";
@@ -42,12 +39,10 @@ describe("the survey follows the corrected type", () => {
     identifierType: "deed" as const,
   };
 
-  it("needs a survey once a unit turns out to be a villa, until one is added", () => {
+  it("needs a survey once a unit turns out to be a villa", () => {
     expect(propertyRequiresSurvey(unit)).toBe(false);
     const villa = { ...unit, inspectedPropertyType: "فيلا" };
     expect(propertyRequiresSurvey(villa)).toBe(true);
-    expect(surveyMissingAfterTypeChange(villa, false)).toBe(true);
-    expect(surveyMissingAfterTypeChange(villa, true)).toBe(false);
   });
 });
 

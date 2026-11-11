@@ -10,7 +10,9 @@ import {
 
 const thClass =
   "border-b border-border bg-surface-2 px-2.5 py-2 text-[11px] font-bold text-text-2";
-const tdClass = "border-b border-border px-2.5 py-2.5 align-top text-[12.5px]";
+// Rows are as tall as their content (Omar 2026-11-11: «ارتفاع الصفوف كبير»): the cells centre on the
+// row, and a group with no impact shows its sentence as a line of text, not an empty-looking box.
+const tdClass = "border-b border-border px-2.5 py-2.5 align-middle text-[12.5px] [tr:last-child>&]:border-b-0";
 const inputClass =
   "w-full rounded-[var(--radius)] border border-border-md bg-surface px-2.5 py-2 text-[12.5px] text-text outline-none focus:border-ink disabled:cursor-not-allowed disabled:opacity-60";
 
@@ -73,7 +75,14 @@ function EsgImpactToggle({
   );
 }
 
-/** «وصف الأثر» textarea + its error — table cell and phone card. */
+/**
+ * «وصف الأثر» — table cell and phone card.
+ *
+ * How it works: with no impact the group's standard sentence is shown as plain muted text (it is
+ * what the report prints, and nothing can be typed there), so the row is one line tall; ticking
+ * «يوجد تأثير» swaps it for a two-line box to describe the impact, with its error under it.
+ * Edge cases: a no-impact group that carries its own saved sentence shows that one.
+ */
 function EsgNotesField({
   group,
   noneNotes,
@@ -85,25 +94,26 @@ function EsgNotesField({
   const displayNotes = group.none
     ? group.notes.trim() || noneNotes
     : group.notes;
+  if (group.none) {
+    return (
+      <p className={cn("m-0 leading-relaxed text-text-3", touch ? "text-[13px]" : "text-[12.5px]")}>
+        {displayNotes}
+      </p>
+    );
+  }
   return (
     <>
       <textarea
         aria-label={touch ? "وصف الأثر" : undefined}
         className={cn(
           inputClass,
-          "min-h-[72px] resize-y",
+          "min-h-[52px] resize-y",
           touch && "text-[16px]",
-          group.none && "text-text-2",
           invalid && invalidControlClass,
         )}
-        rows={3}
-        disabled={disabled || group.none}
-        readOnly={group.none}
-        placeholder={
-          group.none
-            ? noneNotes
-            : "وصف الأثر عند وجود تأثير على القيمة التقديرية"
-        }
+        rows={2}
+        disabled={disabled}
+        placeholder="وصف الأثر عند وجود تأثير على القيمة التقديرية"
         value={displayNotes}
         onChange={(e) =>
           onChange({ none: false, selected: [], notes: e.target.value })
@@ -121,10 +131,10 @@ function EsgNotesField({
 function EsgEditorRow(props: EsgEditorRowProps) {
   return (
     <tr>
-      <td className={cn(tdClass, "text-start font-semibold text-text-2")}>
+      <td className={cn(tdClass, "text-start font-semibold text-heading")}>
         {props.label}
       </td>
-      <td className={cn(tdClass, "align-middle text-center")}>
+      <td className={cn(tdClass, "text-center")}>
         <EsgImpactToggle {...props} />
       </td>
       <td className={cn(tdClass, "text-start")}>

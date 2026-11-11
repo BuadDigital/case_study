@@ -305,7 +305,9 @@ public static class ValuationMethodologyAlertRules
             Eval(1, ValuationMethodologyAlertCodes.NoCostLine, "لا يوجد بند تكلفة",
                 input.CostApproachRelevant,
                 () => lines.Count == 0,
-                "جدول التكلفة فارغ",
+                NoCostLineDetail(
+                    hasExcludedLines: costOn && input.CostLines.Count > 0,
+                    inventoryHasLines: input.HasStructuresToValue),
                 resolutions),
 
             // Hard since 2026-11-10 (Fix 5): included building lines with a blank actual age or a blank
@@ -768,6 +770,37 @@ public static class ValuationMethodologyAlertRules
     /// How it works: blank ages over priced building lines say so with the cost screen's own message
     /// (<see cref="CostDepreciationRules.IncompleteMessageAr"/>); otherwise the extended life is ≤ 0.
     /// </summary>
+    /// <summary>The detail of alert 1 while «جدول حصر المباني» lists nothing to value.</summary>
+    public const string NoCostLineInventoryEmptyAr =
+        "جدول التكلفة فارغ لأن جدول حصر المباني غير معبّأ — يعبّئه المعاين ويعدّله أخصائي دراسة الحالة؛ بعد استكماله اضغط «سحب من حصر المباني»، أو أضف البنود يدوياً";
+
+    /// <summary>
+    /// The detail of alert 1 while «جدول حصر المباني» has lines and no cost line is saved yet: the
+    /// lines come down into the cost table as a draft the appraiser reviews, prices and saves — so
+    /// this means he has not saved them yet (or deleted them all).
+    /// </summary>
+    public const string NoCostLineInventoryNotPulledAr =
+        "لم تُحفظ بنود التكلفة بعد مع أن جدول حصر المباني معبّأ — راجع «بنود التكلفة المباشرة» في طريقة المقاول وسعّرها ثم اضغط «حفظ بنود التكلفة»";
+
+    /// <summary>The detail of alert 1 while the cost table has lines and every one is left out.</summary>
+    public const string NoCostLineAllExcludedAr =
+        "كل بنود جدول التكلفة مستبعدة من الحساب — أدرج بنداً واحداً على الأقل";
+
+    /// <summary>
+    /// What: the line under alert 1's title — why no cost line counts, and where to go.
+    /// How it works: the cost table's lines come down from the inspector's «جدول حصر المباني»
+    /// (<paramref name="inventoryHasLines"/>: it lists components that are valued), so an empty cost
+    /// table points at the inventory first — not filled, or filled and not pulled.
+    /// Edge cases (2026-11-11): the detail read «جدول التكلفة فارغ» only, which did not tell the
+    /// appraiser that the problem lies in filling the inventory table. A table whose lines are all
+    /// excluded says that instead of «فارغ». Wording only: when the alert fires, its tier and what
+    /// clears it are unchanged.
+    /// </summary>
+    private static string NoCostLineDetail(bool hasExcludedLines, bool inventoryHasLines) =>
+        hasExcludedLines ? NoCostLineAllExcludedAr
+        : inventoryHasLines ? NoCostLineInventoryNotPulledAr
+        : NoCostLineInventoryEmptyAr;
+
     private static string BuildingAgesDetail(bool agesBlank) =>
         agesBlank
             ? $"{CostDepreciationRules.IncompleteMessageAr} — بنود المباني مُدرجة والعمر الفعلي أو الاقتصادي فارغ؛ لا يُتجاوز هذا التنبيه بإقرار"

@@ -50,6 +50,7 @@ const ACTION_AR: Record<string, string> = {
   "case-study.workflow-task.reopened": "إعادة فتح مهمة",
   "case-study.workflow-task.parties-redistributed": "تعديل إسناد الأطراف",
   "case-study.workflow-task.engineering-survey-added": "إضافة رفع مساحي بعد التوزيع",
+  "case-study.workflow-task.engineering-survey-skipped": "تجاوز المكتب الهندسي",
   "case-study.property.inspected-type-changed": "تغيير نوع العقار ميدانياً",
   "case-study.engineering-survey.withdrawn": "سحب الرفع المساحي بعد تغيير النوع",
   "case-study.inspection.copied-from-prior": "نسخ بيانات من معاينة سابقة",
@@ -154,7 +155,7 @@ const STATUS_AR: Record<string, string> = {
 /** Failure severity, worded the way the failures screen words it. */
 const SEVERITY_AR: Record<string, string> = {
   internal: "تعذّر داخلي",
-  suspected: "احتمال تعذّر",
+  suspected: "تعذّر محتمل",
 };
 
 const ORG_SECTION_AR: { label: string; keys: string[] }[] = [

@@ -35,6 +35,7 @@ export function FailuresViewExpandedActions({
     failureActionPermissions(f, {
       caseEditor: wf.caseEditor,
       supervisor: wf.supervisor,
+      confirmer: wf.confirmer,
     });
   const draft = resolveDraftFor(wf.resolveDraft, f.id);
   const displayTitle = failureRecordTitle(f);

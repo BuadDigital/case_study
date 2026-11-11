@@ -86,12 +86,22 @@ public class FailuresController : ControllerBase
         return this.OkOrEmpty(dto);
     }
 
+    /// <summary>
+    /// Raise a failure. How it works: the severity is settled by the caller's role before the service
+    /// runs (<c>FailureRecordRules.RaiseSeverityFor</c>) — «تعذّر داخلي» from the case specialist, the
+    /// supervisor or the CDO, «تعذّر محتمل» from anyone else whatever the body asked for.
+    /// Edge cases: the role comes from the caller's permissions, not the body's <c>raisedByRole</c> label.
+    /// </summary>
     [HttpPost]
     [Authorize(Policy = CapabilityPolicyNames.RaiseFailures)]
     public async Task<ActionResult<FailureRecordDto>> Create(
         [FromBody] CreateFailureRequest request,
         CancellationToken cancellationToken)
     {
+        request.Severity = FailureRecordRules.RaiseSeverityFor(
+            (await ActorAsync(cancellationToken))?.PrototypeRole,
+            request.Severity);
+
         var (result, errors) = await _failures.CreateAsync(
             request,
             ActorClaims.Id(User),
@@ -111,15 +121,18 @@ public class FailuresController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// «تأكيد تعذّر داخلي» — a possible failure becomes internal and stops the work.
+    /// How it works: the <c>manage-failures</c> capability alone — any case specialist, whatever his
+    /// sub-role (Omar 2026-11-11: a possible failure goes to the case specialist to confirm).
+    /// Edge cases: until then it was a follow-up action, refused to a specialist without coordination.
+    /// </summary>
     [HttpPost("{id:guid}/upgrade")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> Upgrade(
         Guid id,
         CancellationToken cancellationToken)
     {
-        var followUpDenied = await DenyFollowUpAsync(cancellationToken);
-        if (followUpDenied is not null) return followUpDenied;
-
         var dto = await _failures.UpgradeToInternalAsync(id, cancellationToken);
         if (dto is null) return this.BadRequestProblem("لا يمكن ترقية هذا التعذّر");
         return Ok(dto);
@@ -197,12 +210,13 @@ public class FailuresController : ControllerBase
     }
 
     /// <summary>
-    /// «التعذر النهائي عن المعاملة» — the section supervisor (or the CDO) only: every live deed of
-    /// the transaction turns final, the parties told only when <c>notifyParties</c> is set.
+    /// «التعذر النهائي عن المعاملة» — the case specialist, the section supervisor or the CDO: every
+    /// live deed of the transaction turns final, the parties told only when <c>notifyParties</c> is set.
     /// How it works: the role comes from the caller's permissions, not the token, and is checked
-    /// with <c>FailureRecordRules.CanRecordFinalFailure</c> before the service runs.
-    /// Edge cases: a specialist passes the <c>manage-failures</c> policy but gets 403 here; field
-    /// errors (reason, problem type, already final) come back as a 400 keyed by field.
+    /// with <c>FailureRecordRules.CanRecordFinalFailure</c> before the service runs; the same role
+    /// names who filed it (<c>FinalFailureRaiserRole</c>), overwriting whatever the body carried.
+    /// Edge cases: the general manager passes the <c>manage-failures</c> policy but gets 403 here;
+    /// field errors (reason, problem type, already final) come back as a 400 keyed by field.
     /// </summary>
     [HttpPost("final")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
@@ -212,7 +226,8 @@ public class FailuresController : ControllerBase
     {
         var role = (await ActorAsync(cancellationToken))?.PrototypeRole;
         if (!FailureRecordRules.CanRecordFinalFailure(role))
-            return this.ForbiddenProblem("التعذّر النهائي عن المعاملة للمشرف فقط");
+            return this.ForbiddenProblem(FailureRecordRules.FinalFailureRoleDeniedAr);
+        request.RaisedByRole = FailureRecordRules.FinalFailureRaiserRole(role);
 
         var (result, errors) = await _failures.RecordFinalFailureAsync(
             request,
@@ -279,6 +294,7 @@ public class FailuresController : ControllerBase
     /// 403 for a case specialist without the coordination sub-role on a follow-up action
     /// (<see cref="PoRoleMatrixRules.CanFollowUpFailure"/>). Resolve is left to the capability: the
     /// case-study service resolves system failures with the acting user's token, whatever his sub-role.
+    /// So is «تأكيد تعذّر داخلي» (upgrade), which any case specialist takes.
     /// </summary>
     private async Task<ActionResult?> DenyFollowUpAsync(CancellationToken cancellationToken) =>
         PoRoleMatrixRules.CanFollowUpFailure(StaffActor.From(await ActorAsync(cancellationToken)))

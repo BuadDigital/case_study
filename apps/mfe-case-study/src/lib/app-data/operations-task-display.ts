@@ -11,12 +11,19 @@ import { openInternalDelegationLetter } from "./internal-delegation-letter-html"
 import type { DelegationAgentInfo } from "./internal-delegation-letters";
 import { formatArDateTime } from "@platform/app-shared/format/date";
 
+/**
+ * «رفع مساحي» in «مهمة جديدة» (Omar 2026-11-11). Not an operations-task type of the server: it adds
+ * the engineering office's own survey task.
+ */
+export const ENGINEERING_SURVEY_TASK_TYPE = "engineering_survey";
+
 export const OPERATIONS_TASK_TYPE_LABELS: Record<string, string> = {
   court_visit: "زيارة محكمة",
   reshoot: "إعادة تصوير",
   field_visit: "زيارة ميدانية",
   inquiry: "استفسار",
   general: "مهمة عامة",
+  [ENGINEERING_SURVEY_TASK_TYPE]: "رفع مساحي",
 };
 
 /** SVG path inner markup — matches Case Study.html TASK_TYPES.ico */

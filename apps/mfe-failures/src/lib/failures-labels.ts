@@ -52,7 +52,7 @@ export function failureActorLabel(raw: string | null | undefined): string {
 
 /**
  * The queue's «الحالة» cell — the failure's stage, the severity folded in: a failure not yet
- * escalated reads «احتمال تعذّر» or «تعذّر داخلي», the supervisor's approval reads «تعذّر نهائي».
+ * escalated reads «تعذّر محتمل» or «تعذّر داخلي», the supervisor's approval reads «تعذّر نهائي».
  *
  * How it works: `internal` splits on the severity; every other status maps to one word.
  *
@@ -66,7 +66,7 @@ export function failureListStatusLabel(
   severity?: FailureRecord["severity"],
 ): string {
   if (status === "internal") {
-    return severity === "suspected" ? "احتمال تعذّر" : "تعذّر داخلي";
+    return severity === "suspected" ? "تعذّر محتمل" : "تعذّر داخلي";
   }
   if (status === "returned") return "مُعاد";
   if (status === "review") return "قيد المراجعة";
@@ -102,7 +102,7 @@ export function failureListStatusColor(
 export function failureSeverityLabel(
   severity: FailureRecord["severity"],
 ): string {
-  if (severity === "suspected") return "احتمال تعذّر";
+  if (severity === "suspected") return "تعذّر محتمل";
   return "تعذّر داخلي";
 }
 

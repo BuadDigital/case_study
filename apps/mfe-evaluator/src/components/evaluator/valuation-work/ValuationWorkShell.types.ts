@@ -27,6 +27,11 @@ export type ValuationWorkShellProps = {
    * from the city name (central Riyadh for a city it did not know, e.g. الخرج).
    */
   inspectionTaskId?: string | null;
+  /**
+   * The case specialist's study report is not issued yet: the building inventory is not approved,
+   * so the cost table takes nothing from it (default false — approved).
+   */
+  studyReportPending?: boolean;
   onFinalOpinionChange?: FinalOpinionChangeHandler;
   property?: ValuationWorkPropertyHint;
   /** Full intake row when available (final-review screen). */

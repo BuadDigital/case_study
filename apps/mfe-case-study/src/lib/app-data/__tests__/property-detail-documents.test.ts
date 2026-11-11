@@ -5,6 +5,7 @@ import type {
 } from "@platform/app-shared/app-data/property-detail-document-types";
 import {
   collectFieldInspectionDocumentsFromSubmission,
+  deedDocumentEntry,
   inspectorFeaturePhotoLabel,
   isPropertyDetailDocumentAvailable,
   pickInspectorPrimaryPhoto,
@@ -178,3 +179,34 @@ describe("primaryPhotoCandidatesFromSubmission", () => {
   });
 });
 
+/** Omar 2026-11-11: «مطالعة الصك» in the page header opens the property's deed. */
+describe("deedDocumentEntry", () => {
+  const doc = (id: string, documentTypeKey: string): PropertyDetailDocumentEntry => ({
+    id,
+    name: id,
+    fileName: `${id}.pdf`,
+    source: "إدخال أمر العمل",
+    kind: "pdf",
+    documentTypeKey,
+  });
+  const section = (...documents: PropertyDetailDocumentEntry[]): PropertyDetailDocumentSection => ({
+    id: "intake",
+    title: "مستندات الإدخال",
+    documents,
+  });
+
+  it("prefers the ownership document, then the registry extract, then the bourse image", () => {
+    const letter = doc("letter", "assignment-letter");
+    const bourse = doc("bourse", "bourse-deed");
+    const registry = doc("registry", "real-estate-registry");
+    const deed = doc("deed", "deed");
+    expect(deedDocumentEntry([section(letter, bourse), section(registry, deed)])?.id).toBe("deed");
+    expect(deedDocumentEntry([section(letter, bourse, registry)])?.id).toBe("registry");
+    expect(deedDocumentEntry([section(letter, bourse)])?.id).toBe("bourse");
+  });
+
+  it("finds none on a property with no deed file", () => {
+    expect(deedDocumentEntry([section(doc("letter", "assignment-letter"))])).toBeNull();
+    expect(deedDocumentEntry([])).toBeNull();
+  });
+});

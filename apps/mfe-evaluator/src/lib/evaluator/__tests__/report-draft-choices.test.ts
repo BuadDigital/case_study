@@ -5,6 +5,7 @@ import {
   pickSpecialistChoices,
   depositCodeForPrint,
   reportDateForPrint,
+  reportIsApproved,
   SPECIALIST_REPORT_CHOICE_KEYS,
   versionedReportNo,
 } from "../report-draft-choices";
@@ -79,5 +80,19 @@ describe("report draft choices", () => {
     expect(depositCodeForPrint({ depositCode: "  QYM-1 " })).toBe("QYM-1");
     expect(depositCodeForPrint({ depositCode: null })).toBe("");
     expect(depositCodeForPrint(null)).toBe("");
+  });
+});
+
+describe("reportIsApproved — when the report carries its signatures and stamp (Omar 2026-11-11)", () => {
+  it("is a draft until the appraiser approves it", () => {
+    expect(reportIsApproved(null)).toBe(false);
+    expect(reportIsApproved({ status: "preparing", reportStage: "draft" })).toBe(false);
+    expect(reportIsApproved({ status: "sent", reportStage: "draft" })).toBe(false);
+  });
+
+  it("is approved from the appraiser's approval on — the deposit copy and the final issue too", () => {
+    expect(reportIsApproved({ status: "approved", reportStage: "draft" })).toBe(true);
+    expect(reportIsApproved({ status: "approved", reportStage: "deposit_issued" })).toBe(true);
+    expect(reportIsApproved({ status: "approved", reportStage: "final_issued" })).toBe(true);
   });
 });

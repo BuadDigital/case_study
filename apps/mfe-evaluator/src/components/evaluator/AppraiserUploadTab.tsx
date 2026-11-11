@@ -34,6 +34,7 @@ export function AppraiserUploadTab({
   embeddedInPropertyChrome,
   studySummary,
   pageActions,
+  railAside,
 }: {
   def: PartyTaskPageDef;
   childTask: WorkflowTask;
@@ -46,6 +47,8 @@ export function AppraiserUploadTab({
   studySummary?: ReactNode;
   /** The hosting app's page buttons — passed through to the window. */
   pageActions?: ReactNode;
+  /** The hosting app's cards under the sections rail — passed through to the window. */
+  railAside?: ReactNode;
 }) {
   const router = useRouter();
   const { data: tasks } = useWorkflowTasksQuery();
@@ -72,6 +75,7 @@ export function AppraiserUploadTab({
       embeddedInPropertyChrome={embeddedInPropertyChrome}
       studySummary={studySummary}
       pageActions={pageActions}
+      railAside={railAside}
     />
   );
 }

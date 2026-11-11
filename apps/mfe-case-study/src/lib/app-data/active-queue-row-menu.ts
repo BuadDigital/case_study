@@ -1,6 +1,7 @@
 import type { RowMoreMenuItem, ToastTone } from "@platform/ui-kit";
 import { confirmAction, promptAction } from "@platform/ui-kit";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
+import { failureDegreesFor } from "@failures/mfe/lib/failure-degrees";
 import { activeSurveyEntryPath } from "../my-task-routes";
 import {
   poPropertyEditPath,
@@ -139,9 +140,12 @@ export function buildActiveQueueRowMoreItems(
 ): RowMoreMenuItem[] {
   const po = options.task.poNumber.trim();
   const propertyId = options.propertyId?.trim();
-  const failureExists = propertyId
-    ? Boolean(getPropertyFailure(po, propertyId))
-    : false;
+  const openFailure = propertyId ? getPropertyFailure(po, propertyId) : null;
+  // «تسجيل تعذّر» has nothing to offer when the deed already carries an open failure — unless the
+  // viewer records the final one (the case specialist, the supervisor, the CDO).
+  const noFailureDegree = options.viewerRole
+    ? failureDegreesFor(options.viewerRole, openFailure ? openFailure.status : null).length === 0
+    : Boolean(openFailure);
 
   const items: RowMoreMenuItem[] = [
     {
@@ -241,7 +245,7 @@ export function buildActiveQueueRowMoreItems(
       id: "register-failure",
       label: "تسجيل تعذّر",
       danger: true,
-      disabled: failureExists,
+      disabled: noFailureDegree,
       onClick: () => {
         if (options.onRegisterFailure) {
           options.onRegisterFailure({

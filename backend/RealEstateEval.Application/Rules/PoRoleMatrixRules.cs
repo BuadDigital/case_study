@@ -122,10 +122,11 @@ public static class PoRoleMatrixRules
         IsSuperAdmin(actor.Role) || actor.NormalizedRole is "section-supervisor" || actor.HoldsCoordination;
 
     /// <summary>
-    /// Follow a failure up (upgrade, escalate, suspend, resolve, approve, return) — coordination
-    /// always, whatever stage the transaction is in (ruling 2026-11-02). Only the case specialist is
-    /// narrowed: other roles keep what their capability gives them. Raising a failure stays open to
-    /// whoever finds it.
+    /// Follow a failure up (escalate, suspend, approve, return) — coordination always, whatever stage
+    /// the transaction is in (ruling 2026-11-02). Only the case specialist is narrowed: other roles
+    /// keep what their capability gives them. Raising a failure stays open to whoever finds it, and
+    /// confirming a possible one («تأكيد تعذّر داخلي») or resolving it is any case specialist's
+    /// (Omar 2026-11-11) — those two routes do not ask this rule.
     /// </summary>
     public static bool CanFollowUpFailure(StaffActor actor) => !actor.IsCaseSpecialist || actor.HoldsCoordination;
 

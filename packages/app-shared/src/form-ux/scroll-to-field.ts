@@ -11,6 +11,8 @@ export type ScrollToFormFieldOptions = {
   retries?: number;
   /** Delay between retries. Default 50ms. */
   retryMs?: number;
+  /** The ring pulsed on the target. Default: the invalid (danger) ring; `guidePulseRingClass` for guidance. */
+  pulseClass?: string;
 };
 
 /** Smooth scrolling is async — re-measure after it settles. */
@@ -66,7 +68,7 @@ export function scrollToFormField(
     target.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
-  const pulseTokens = invalidPulseRingClass.split(/\s+/).filter(Boolean);
+  const pulseTokens = (options?.pulseClass ?? invalidPulseRingClass).split(/\s+/).filter(Boolean);
   target.classList.add(...pulseTokens);
   window.setTimeout(() => {
     target.classList.remove(...pulseTokens);

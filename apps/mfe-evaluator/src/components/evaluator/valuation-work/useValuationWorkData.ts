@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import { useQueryClient } from "@tanstack/react-query";
+import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { ensureOrganizationSettingsLoaded } from "@platform/app-shared/organization/organization-settings-cache";
 import {
   ensureOpenValuationRequestByProperty,
@@ -27,7 +28,6 @@ import {
   getValuationReconciliation,
   getValuationIssuanceGates,
   getBuildingInventory,
-  type ComparablePropertyDto,
   type ValuationComparableSelectionListDto,
   type ValuationApproachSettingsDto,
   type ValuationCostApproachDto,
@@ -38,7 +38,7 @@ import { useToast } from "@platform/ui-kit";
 import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import { fetchInspectorWorkspace } from "../../../lib/case-study-bridge";
 import { scheduleInvalidateEvaluatorReportOutput } from "../../../lib/evaluator/evaluator-report-output-cache";
-import { fetchBankCandidates, NEARBY_RADIUS_KM, type BankTypeFilter } from "./lib/bank-ranking";
+import { resolveSubjectCoordsForBank } from "./lib/bank-ranking";
 import { apiConfig } from "./lib/shell-utils";
 import {
   LAND_WITHIN_COST,
@@ -114,16 +114,9 @@ export function useValuationWorkData({
     useState<ValuationComparableSelectionListDto | null>(null);
   const [landSelection, setLandSelection] =
     useState<ValuationComparableSelectionListDto | null>(null);
-  const [candidates, setCandidates] = useState<ComparablePropertyDto[]>([]);
+  // The subject's location (inspector's pin, else the intake map link) — the distance column and
+  // the «إضافة مقارن» map read it.
   const [bankSubjectCoords, setBankSubjectCoords] = useState<SubjectCoords | null>(null);
-  const [bankSearch, setBankSearch] = useState("");
-  // A reload (after adopting, saving…) keeps the bank on the appraiser's search: it used to come back
-  // unfiltered while the box still showed the text, so the next row clicked was a different comparable.
-  const bankSearchRef = useLatestRef(bankSearch);
-  // How far around the property the bank tables look (3 km by default); `null` = all.
-  const [bankRadiusKm, setBankRadiusKm] = useState<number | null>(NEARBY_RADIUS_KM);
-  // The market bank's type filter: the subject's kind by default, «كل الأنواع» on demand (A→Z #43/#60).
-  const [bankTypeFilter, setBankTypeFilter] = useState<BankTypeFilter>("subject");
   const [subjectArea, setSubjectArea] = useState("");
   const [adjustmentBasis, setAdjustmentBasis] = useState("price_per_sqm");
   const [analysisNotes, setAnalysisNotes] = useState("");
@@ -181,13 +174,12 @@ export function useValuationWorkData({
   }
 
   const resolveBankFetchOpts = useCallback(
-    async (search?: string) => {
+    async () => {
       const inspectorTaskId = inspectionTaskId?.trim() || "";
       const inspector = inspectorTaskId
         ? await fetchInspectorWorkspace(inspectorTaskId)
         : null;
       return buildBankFetchOptions({
-        search,
         propertyId,
         subjectArea,
         pin: inspectorPinOf(inspector),
@@ -216,19 +208,6 @@ export function useValuationWorkData({
       subjectArea,
     ],
   );
-  const applyBankResult = useCallback(
-    (
-      rows: ComparablePropertyDto[],
-      subjectCoords: SubjectCoords | null,
-      search = "",
-    ) => {
-      setCandidates(rows);
-      setBankSubjectCoords(subjectCoords);
-      setBankSearch(search.trim());
-    },
-    [],
-  );
-
   /** Everything the open-request failure clears — sections reseed their drafts via the hydrate keys. */
   function resetForOpenFailure(kind: string) {
     setLoading(false);
@@ -298,13 +277,9 @@ export function useValuationWorkData({
     // Apply each response as it arrives — adoption flag does not wait on the slowest call (issuance gates).
     const selP = listValuationComparableSelections(config, requestId, MARKET_CONTEXT);
     const landP = listValuationComparableSelections(config, requestId, LAND_WITHIN_COST);
-    // Display bank: within 3 km of subject (district coords when known), nearest first — up to 6 rows.
-    // Text search is a separate call inside the bank table (searchBank) — not routed here.
-    const bankP = derivedOnly
-      ? null
-      : resolveBankFetchOpts(bankSearchRef.current).then((bankOpts) =>
-          fetchBankCandidates(config, bankOpts),
-        );
+    // The tables show the transaction's own comparables (they come with the selections above); the
+    // bank is not asked here. Only the subject's location is resolved.
+    const subjectP = derivedOnly ? null : resolveBankFetchOpts();
     const costP = getValuationCostApproach(config, requestId);
     const reconP = getValuationReconciliation(config, requestId);
     const gatesP = getValuationIssuanceGates(config, requestId);
@@ -318,10 +293,9 @@ export function useValuationWorkData({
 
     // Side batches: a failure leaves the previous rows; the main batches below surface errors.
     void landP.then((r) => live() && setLandSelection(r.ok ? r.data : null), ignoreSideFailure);
-    if (bankP) {
-      void bankP.then((bankRes) => {
-        if (!bankRes.ok || !live()) return;
-        applyBankResult(bankRes.data, bankRes.subjectCoords, bankSearchRef.current);
+    if (subjectP) {
+      void subjectP.then((subject) => {
+        if (live()) setBankSubjectCoords(resolveSubjectCoordsForBank(subject));
       }, ignoreSideFailure);
     }
     void gatesP.then((r) => live() && setGates(r.ok ? r.data : null), ignoreSideFailure);
@@ -426,7 +400,6 @@ export function useValuationWorkData({
     // Field-level inputs on purpose — see `resolveBankFetchOpts` above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-    applyBankResult,
     propertyId,
     poNumber,
     builtUpSqm,
@@ -446,6 +419,14 @@ export function useValuationWorkData({
     reloadSeq,
     ],
   );
+
+  // The figures card under «حالة الأطراف» (Omar 2026-11-11) reads the valuation's values from the
+  // server: whenever a reload or a section's save brings new ones here, it reads them again at once.
+  useEffect(() => {
+    void queryClient.invalidateQueries({
+      queryKey: appDataKeys.propertyValuationFigures(propertyId.trim()),
+    });
+  }, [queryClient, propertyId, cost, recon, selection, landSelection]);
 
   const reload = useCallback(
     (opts?: ReloadOptions) =>
@@ -539,18 +520,10 @@ export function useValuationWorkData({
     valuationRequestId,
     selection,
     landSelection,
-    candidates,
     bankSubjectCoords,
-    bankSearch,
-    bankRadiusKm,
-    bankTypeFilter,
-    marketKind,
     subjectArea,
     analysisNotes,
     cost,
-    reload,
-    resolveBankFetchOpts,
-    applyBankResult,
   });
 
   return {
@@ -583,10 +556,6 @@ export function useValuationWorkData({
     officialValuationDate,
     reload,
     bankSubjectCoords,
-    bankRadiusKm,
-    setBankRadiusKm,
-    bankTypeFilter,
-    setBankTypeFilter,
     ...sectionSaves,
     settingsSaved,
     marketEnabled,

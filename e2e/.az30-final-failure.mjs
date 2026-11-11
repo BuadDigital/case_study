@@ -23,7 +23,8 @@ try {
   const p = S.props[0];
   const f = await R.call("ahmed", "POST", "/api/failures", { poNumber: S.po, propertyId: p.id, deedNumber: p.deed, problemTypeId: "unknown-location", severity: "internal", raisedByRole: "المعاين", title: "عدم معرفة موقع العقار", internalNote: "لم يُعثر على العقار في الموقع المحدد — 31", specialist: "أسامة الصالحي" });
   await R.call("osama", "POST", `/api/failures/${f.id}/submit`, { note: "تعذّر الوصول للموقع بعد ثلاث زيارات" });
-  await refused("specialist declares a final failure", "osama", "POST", "/api/failures/final", { poNumber: S.po, propertyId: p.id, problemTypeId: "unknown-location", title: "عدم معرفة موقع العقار", reason: "x", notifyParties: true });
+  // Since 2026-11-11 the case specialist records the final failure too; a party still may not.
+  await refused("inspector declares a final failure", "ahmed", "POST", "/api/failures/final", { poNumber: S.po, propertyId: p.id, problemTypeId: "unknown-location", title: "عدم معرفة موقع العقار", reason: "x", notifyParties: true });
   await refused("final failure without a reason", "sliman", "POST", "/api/failures/final", { poNumber: S.po, propertyId: p.id, problemTypeId: "unknown-location", title: "عدم معرفة موقع العقار", reason: "", notifyParties: true });
   const fin = await R.call("sliman", "POST", "/api/failures/final", { poNumber: S.po, propertyId: p.id, problemTypeId: "unknown-location", title: "عدم معرفة موقع العقار", reason: "تعذّر نهائي: الموقع غير معروف بعد ثلاث زيارات وإفادة المالك — 31", notifyParties: true });
   R.log(`  final failure → ${JSON.stringify(fin).slice(0, 200)}`);

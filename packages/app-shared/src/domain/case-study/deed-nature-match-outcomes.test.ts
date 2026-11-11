@@ -31,7 +31,7 @@ describe("deed-nature-match-outcomes", () => {
     expect(isDeedNatureMatchChosen("mismatch")).toBe(false);
   });
 
-  it("requires notes for فروق / مرشح تعذر only", () => {
+  it("requires notes for فروق / تعذّر محتمل only", () => {
     expect(deedNatureMatchRequiresNotes(DeedNatureMatchOutcomes.Matched)).toBe(
       false,
     );

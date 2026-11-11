@@ -85,6 +85,7 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
     embeddedInPropertyChrome,
     studySummary,
     pageActions,
+    railAside,
   }) {
     return (
       <AppraiserUploadTab
@@ -97,6 +98,7 @@ export const partyAppraisalExtensions: PartyAppraisalExtensions = {
         embeddedInPropertyChrome={embeddedInPropertyChrome}
         studySummary={studySummary}
         pageActions={pageActions}
+        railAside={railAside}
       />
     );
   },

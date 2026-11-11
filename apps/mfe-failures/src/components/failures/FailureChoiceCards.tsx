@@ -15,7 +15,8 @@ export type FailureChoice<T extends string> = { value: T; label: string; hint: s
  *
  * Edge cases: the cards are 44px tall at least, for phones. It was written inline in the raise
  * fields first; the final-failure dialog needed the same control, so it moved here rather than
- * being copied.
+ * being copied. Three options (the three degrees) sit in three columns from `sm` up and stack on
+ * a phone, where three columns would squeeze the hints.
  */
 export function FailureChoiceCards<T extends string>({
   id,
@@ -37,7 +38,14 @@ export function FailureChoiceCards<T extends string>({
       <span id={`${id}_label`} className={labelClassName}>
         {label}
       </span>
-      <div role="radiogroup" aria-labelledby={`${id}_label`} className="grid grid-cols-2 gap-2">
+      <div
+        role="radiogroup"
+        aria-labelledby={`${id}_label`}
+        className={cn(
+          "grid gap-2",
+          options.length === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2",
+        )}
+      >
         {options.map((option) => {
           const on = value === option.value;
           return (

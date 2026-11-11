@@ -144,7 +144,7 @@ export function PoPropertiesPage({
   const { openFailureRaise, failureRaiseModal } = useFailureRaiseModal({
     onSubmitted: bumpMenu,
   });
-  // Each deed row also offers the general actions (final failure, cancellation) every ⋮ menu shares.
+  // Each deed row also offers the general actions (failure, cancellation) every ⋮ menu shares.
   const { itemsFor: generalItemsFor, dialogs: generalDialogs } =
     useTransactionGeneralActions({ onChanged: bumpMenu });
 

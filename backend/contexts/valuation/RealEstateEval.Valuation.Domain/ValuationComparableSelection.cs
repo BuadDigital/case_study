@@ -11,7 +11,7 @@ public class ValuationComparableSelection : ITrackUpdatedAt
     public Guid Id { get; set; }
     public Guid ValuationRequestId { get; set; }
     public Guid ComparablePropertyId { get; set; }
-    /// <summary>market | land_within_cost — two independent tables with no import between them.</summary>
+    /// <summary>market | land_within_cost — two independent tables (a copy between them is a snapshot).</summary>
     public string SelectionContext { get; set; } = ComparableSelectionContexts.Market;
     public int SortOrder { get; set; }
  /// <summary>Adopted into the comps table.</summary>

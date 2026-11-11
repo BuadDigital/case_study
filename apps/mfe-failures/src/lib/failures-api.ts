@@ -270,7 +270,7 @@ export type FinalFailureInput = {
  * failures cache (which also fires the work-order and task change events).
  *
  * Edge cases: the toast message prefers the server's field message (reason, then type, then
- * property), then a 403's own text («للمشرف فقط»), then the generic error by kind.
+ * property), then a 403's own text («لأخصائي دراسة الحالة والمشرف»), then the generic error by kind.
  */
 export async function recordFinalFailureAsync(
   input: FinalFailureInput,

@@ -116,10 +116,11 @@ describe("cost alerts carry the control they are about", () => {
     ).toMatchObject({ targetId: "cost-land-bank" });
   });
 
-  it("points an empty cost table at the table", () => {
-    expect(find(alertsFor({}, []), "لا يوجد بند تكلفة")).toMatchObject({
-      targetId: "cost-lines",
-    });
+  it("points an empty cost table at the table, and names the inventory it is filled from", () => {
+    const alert = find(alertsFor({}, []), "لا يوجد بند تكلفة");
+    expect(alert).toMatchObject({ targetId: "cost-lines" });
+    expect(alert?.body).toContain("جدول حصر المباني");
+    expect(alert?.body).toContain("سحب من حصر المباني");
   });
 
   it("leaves «لا تنبيهات» without a target", () => {

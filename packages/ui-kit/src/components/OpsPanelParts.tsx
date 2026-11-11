@@ -54,24 +54,36 @@ export function OpsInfoNote({
   );
 }
 
-/** Read-only label/value box; `children` wins over `value`, and an empty field shows «—». */
+/**
+ * Read-only label/value box; `children` wins over `value`, and an empty field shows «—». `dense`
+ * drops the box for a compact grid of many fields.
+ */
 export function OpsReadField({
   label,
   value,
   ltr,
+  dense = false,
   children,
 }: {
   label: string;
   value?: ReactNode;
   ltr?: boolean;
+  /**
+   * No box and tighter type — for many fields read at a glance in a small space; the caller lays
+   * them out in a grid of narrow columns.
+   */
+  dense?: boolean;
   children?: ReactNode;
 }) {
   return (
-    <div className={opsFieldBox}>
-      <div className="mb-[3px] text-[10.5px] text-text-3">{label}</div>
+    <div className={dense ? "min-w-0" : opsFieldBox}>
+      <div className={cn("text-text-3", dense ? "text-[10px] leading-4" : "mb-[3px] text-[10.5px]")}>
+        {label}
+      </div>
       <div
         className={cn(
-          "text-[12.5px] font-semibold text-text",
+          "font-semibold text-text",
+          dense ? "break-words text-[12px] leading-[1.45]" : "text-[12.5px]",
           ltr && "text-end [direction:ltr]",
         )}
       >

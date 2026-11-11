@@ -250,19 +250,27 @@ export function engineeringOfficeAvailable(
   return true;
 }
 
+/**
+ * Why the survey rule asks no survey for this property, or null when it asks for one — said at the
+ * distribution (the office is not offered) and when the office is added later by exception.
+ */
+export function surveyNotRequiredReason(property: PoPropertyIntake): string | null {
+  if (propertyRequiresSurvey(property)) return null;
+  if (propertyHasRegisteredTitle(property)) {
+    return "المعاملة لها سجل عيني ولا تتطلب رفعاً مساحياً.";
+  }
+  if (propertyHasApprovedOrganizationalPlan(property)) {
+    return "العقار ضمن مخطط تنظيمي معتمد ولا يتطلب رفعاً مساحياً.";
+  }
+  return "تصنيف «وحدة داخل مبنى» لا يتطلب رفعاً مساحياً.";
+}
+
 export function engineeringOfficeUnavailableReason(
   property: PoPropertyIntake,
   hasPriorSurvey: boolean,
 ): string | null {
-  if (!propertyRequiresSurvey(property)) {
-    if (propertyHasRegisteredTitle(property)) {
-      return "المكتب الهندسي غير متاح: المعاملة لها سجل عيني ولا تتطلب رفعاً مساحياً.";
-    }
-    if (propertyHasApprovedOrganizationalPlan(property)) {
-      return "المكتب الهندسي غير متاح: العقار ضمن مخطط تنظيمي معتمد ولا يتطلب رفعاً مساحياً.";
-    }
-    return "المكتب الهندسي غير متاح: تصنيف «وحدة داخل مبنى» لا يتطلب رفعاً مساحياً.";
-  }
+  const notRequired = surveyNotRequiredReason(property);
+  if (notRequired) return `المكتب الهندسي غير متاح: ${notRequired}`;
   if (hasPriorSurvey) {
     return "يوجد رفع مساحي سابق لنفس الصك — لا حاجة لمكتب هندسي.";
   }

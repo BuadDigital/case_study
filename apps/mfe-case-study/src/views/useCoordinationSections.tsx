@@ -20,6 +20,7 @@ import { ExternalReceiptsSection } from "../components/coordination/ExternalRece
 import { LinkedTasksSection } from "../components/coordination/LinkedTasksSection";
 import { DistributionPartiesForm } from "../components/distribution/DistributionPartiesForm";
 import { RedistributePartiesHost } from "../components/distribution/RedistributePartiesHost";
+import { SkipEngineeringSurveyNote } from "../components/case-study/SkipEngineeringSurveyNote";
 import { SurveyPackageReviewSection } from "../components/po-intake/SurveyPackageReviewSection";
 import { childTasksForCaseStudyParent } from "../lib/app-data/case-study-party-answers";
 import {
@@ -32,6 +33,7 @@ import {
   canEditPropertyData,
   canFormallyReceive,
   canRedistributeParties,
+  canSkipEngineeringSurvey,
 } from "../lib/app-data/po-roles";
 import { buildPropertyDetailPartyCards } from "../lib/app-data/property-detail-parties";
 import { migrateDistribution, type WorkflowTask } from "../lib/app-data/tasks";
@@ -40,7 +42,11 @@ import { usePropertyDetailPartySubmissionsQuery } from "../query/property-detail
 import { CoordinationIntakeBody } from "./CoordinationIntake";
 import { StepLink } from "./StepLink";
 
-/** The transaction's engineering-survey task, if one was distributed (its section shows only then). */
+/**
+ * The transaction's live engineering-survey task, if one was distributed (its section shows only then).
+ * Edge cases: a cancelled one — the study skipped the office («تجاوز المكتب الهندسي», 2026-11-11), or the
+ * survey was withdrawn — is not the transaction's survey: the section leaves, or shows the one added after.
+ */
 export function useSurveyTask(
   studyTask: WorkflowTask | null,
   tasks: readonly WorkflowTask[],
@@ -48,7 +54,9 @@ export function useSurveyTask(
   return useMemo(
     () =>
       studyTask
-        ? childTasksForCaseStudyParent(studyTask.id, [...tasks]).find((t) => t.kind === "engineering-survey")
+        ? childTasksForCaseStudyParent(studyTask.id, [...tasks]).find(
+            (t) => t.kind === "engineering-survey" && t.status !== "cancelled",
+          )
         : undefined,
     [studyTask, tasks],
   );
@@ -191,6 +199,16 @@ export function useCoordinationSections({
         if (step < FOLLOW_UP_STEP) return notYet("يبدأ بعد التوزيع.");
         return (
           <div className="pt-3">
+            {/* The study settles the office before the study reaches the appraiser (Omar 2026-11-11):
+                while its work is not delivered and the report not issued, the study may skip it. */}
+            {studyTask &&
+            surveyTask &&
+            surveyTask.status !== "completed" &&
+            studyTask.phase === "case-study" &&
+            studyTask.studyReportIssued !== true &&
+            canSkipEngineeringSurvey(access) ? (
+              <SkipEngineeringSurveyNote caseStudyTaskId={studyTask.id} />
+            ) : null}
             <SurveyPackageReviewSection
               surveyTask={surveyTask}
               surveyCard={surveyCard}

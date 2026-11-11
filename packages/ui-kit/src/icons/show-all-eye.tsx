@@ -6,8 +6,14 @@ import { cn } from "../lib/cn";
 const BLINK_MS = 420;
 
 /**
- * Show-all toggle eye — open lid + pupil when revealing extras; soft blink on open.
- * Closed state uses a lid line (not a slash) to keep the blink motion readable.
+ * Show / hide toggle eye: the eye while everything shows, the same eye with a diagonal line across
+ * it while something is hidden — the usual «hidden» symbol (Omar 2026-11-11; the closed state used to
+ * squash the eye into a lid line, which did not read as «hidden»).
+ *
+ * How it works: the eye (outline and pupil) is always drawn; the slash is one stroke drawn in over
+ * it when `open` is false and drawn out when it is true; `blink` closes the lids once on the way
+ * back to «showing».
+ * Edge cases: reduced motion → the slash appears and leaves without the draw.
  */
 export function ShowAllEye({
   open,
@@ -27,8 +33,7 @@ export function ShowAllEye({
     >
       <span
         className={cn(
-          "inline-grid size-[15px] origin-center transition-transform duration-[320ms] ease-[cubic-bezier(0.34,1.2,0.64,1)] motion-reduce:transition-none [&>*]:[grid-area:1/1]",
-          open ? "scale-y-100" : "scale-y-[0.08]",
+          "inline-grid size-[15px] origin-center [&>*]:[grid-area:1/1]",
           blink &&
             "animate-[show-all-eye-blink_0.42s_ease] motion-reduce:animate-none",
         )}
@@ -47,12 +52,7 @@ export function ShowAllEye({
         >
           <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
         </svg>
-        <span
-          className={cn(
-            "inline-grid size-[15px] origin-center transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none",
-            open ? "scale-100 opacity-100" : "scale-[0.2] opacity-0",
-          )}
-        >
+        <span className="inline-grid size-[15px]">
           <svg
             className="overflow-visible"
             width="15"
@@ -81,14 +81,16 @@ export function ShowAllEye({
         strokeLinejoin="round"
         aria-hidden
       >
+        {/* The slash: corner to corner (≈ 25 units long), drawn in while hidden. */}
         <path
+          data-eye-slash=""
           className={cn(
-            "[stroke-dasharray:18] transition-[opacity,stroke-dashoffset] duration-[180ms] ease-out motion-reduce:transition-none",
+            "[stroke-dasharray:26] transition-[opacity,stroke-dashoffset] duration-[220ms] ease-out motion-reduce:transition-none",
             open
-              ? "opacity-0 [stroke-dashoffset:18]"
+              ? "opacity-0 [stroke-dashoffset:26]"
               : "opacity-100 [stroke-dashoffset:0]",
           )}
-          d="M3 12h18"
+          d="M3 3l18 18"
         />
       </svg>
     </span>

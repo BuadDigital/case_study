@@ -198,6 +198,8 @@ function MethodologyAlertRow({
   const needsAck = a.severityKind === "require_ack";
   return (
     <div
+      // Where «جاهزية تسليم التقييم» lands for this alert (`blockerTargetIds`).
+      id={`methodology-alert-${a.code}`}
       className={cn(
         "mb-2 flex flex-col gap-1.5 rounded-[9px] border px-3 py-2.5",
         a.blocksIssuance
