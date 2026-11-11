@@ -249,6 +249,23 @@ public class AddEngineeringSurveyRequest
 
     [MaxLength(256)]
     public string? AssigneeName { get; set; }
+
+    /// <summary>
+    /// Why a survey is asked for a property the survey rule does not ask one for (Omar 2026-11-11) —
+    /// required then, recorded on the timeline and in the audit log; ignored when the rule asks for one.
+    /// </summary>
+    [MaxLength(500)]
+    public string? ExceptionReason { get; set; }
+}
+
+/// <summary>
+/// «تجاوز المكتب الهندسي» (Omar 2026-11-11): the study drops the engineering office before issuing the
+/// study report — the office's open task is cancelled and earns no fee.
+/// </summary>
+public class SkipEngineeringSurveyRequest
+{
+    [MaxLength(500)]
+    public string? Reason { get; set; }
 }
 
 public class AdvanceTaskAfterEnfathRequest

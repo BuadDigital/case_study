@@ -16,9 +16,11 @@ public sealed partial class PartyTaskSubmissionService
     /// «السجل والتدقيق» tab read it) and in the system audit log; then follows the survey rule of the
     /// new type — a survey it needs that nobody was given is asked of the case specialist (he adds the
     /// office), and a survey it no longer needs is withdrawn at once, the office not told.
-    /// Edge cases: a survey already completed stays — done work and its fee are not undone. No reason
-    /// and no specialist approval are asked for the change itself. The ask matches the «إضافة رفع مساحي»
-    /// note (A→Z 2026-11-02 #74); neither blocks issuing the study (Omar 2026-11-04).
+    /// Edge cases: a survey already completed stays — done work and its fee are not undone. A survey
+    /// added by exception to a property the rule never asked one for stays too (2026-11-11). No reason
+    /// and no specialist approval are asked for the change itself. The ask never blocks issuing the
+    /// study (Omar 2026-11-04); the office is added from «مهمة جديدة», type «رفع مساحي» (Omar 2026-11-11 —
+    /// the note that sat in the inspector's section is gone).
     /// </summary>
     private async Task OnInspectedTypeChangedAsync(
         WorkflowTask inspectionTask,
@@ -59,11 +61,11 @@ public sealed partial class PartyTaskSubmissionService
 
         var survey = await FindSiblingAsync(inspectionTask, WorkflowTaskKind.EngineeringSurvey, cancellationToken);
         var surveyLive = survey is not null && survey.Status != WorkflowTaskStatus.Cancelled;
-        // Same rule as the «إضافة رفع مساحي» note (SurveyRequirementRules.SurveyMissingAfterTypeChange): asked
-        // only while the type differs from the bourse type, so the timeline and the note agree.
+        // SurveyRequirementRules.SurveyMissingAfterTypeChange: asked only while the type differs from the
+        // bourse type. Adding the office itself («مهمة جديدة» → «رفع مساحي») does not wait for a change.
         if (change.SurveyRequiredAfter && change.DiffersFromBourseType && !surveyLive)
             await AskSpecialistForSurveyAsync(inspectionTask, propertyId, change, now, cancellationToken);
-        else if (!change.SurveyRequiredAfter && survey is not null && !survey.IsTerminal)
+        else if (change.WithdrawsSurvey && survey is not null && !survey.IsTerminal)
             await WithdrawSurveyAsync(inspectionTask, survey, propertyId, change, actor, now, cancellationToken);
     }
 
@@ -93,15 +95,19 @@ public sealed partial class PartyTaskSubmissionService
         if (string.IsNullOrWhiteSpace(userId)) return;
 
         var refLabel = inspectionTask.PoNumber?.Trim();
+        // The office is added from «مهمة جديدة», type «رفع مساحي» (Omar 2026-11-11) — the link opens
+        // that form on the work order; without a work-order number it opens the transaction.
         await _notifications.CreateForUsersAsync(
             [userId],
             new CreateUserNotificationRequest
             {
                 Title = "يلزم رفع مساحي",
                 Body = $"غيّر المعاين نوع العقار إلى «{change.NewType}»{(string.IsNullOrEmpty(refLabel) ? "" : $" على {refLabel}")} — "
-                    + "النوع الجديد يحتاج رفعاً مساحياً. أضف المكتب الهندسي من مساحة العمل.",
+                    + "النوع الجديد يحتاج رفعاً مساحياً. أضف المكتب الهندسي من «المهام»: مهمة جديدة، النوع «رفع مساحي».",
                 Tone = "warn",
-                Href = $"/case-study/{Uri.EscapeDataString(parentId.ToString())}",
+                Href = string.IsNullOrEmpty(refLabel)
+                    ? $"/case-study/{Uri.EscapeDataString(parentId.ToString())}"
+                    : $"/operations-tasks?create=1&type=engineering_survey&po={Uri.EscapeDataString(refLabel)}",
                 Category = "workflow",
                 EntityType = "task",
                 EntityId = parentId.ToString(),

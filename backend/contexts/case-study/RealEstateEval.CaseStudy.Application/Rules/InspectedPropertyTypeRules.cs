@@ -128,4 +128,13 @@ public sealed record InspectedTypeChange(
     /// would not show either). Defaults to true for callers that do not know the bourse type.
     /// </summary>
     public bool DiffersFromBourseType { get; init; } = true;
+
+    /// <summary>
+    /// The change itself took the survey need away — the open survey is withdrawn.
+    /// How it works: the property needed a survey under the previous type and needs none under the new.
+    /// Edge cases: a property that needed none before either keeps its survey — that one was added by
+    /// exception with a reason (Omar 2026-11-11), and a type change is not what would end it. Until
+    /// then any change on such a property withdrew the survey.
+    /// </summary>
+    public bool WithdrawsSurvey => SurveyRequiredBefore && !SurveyRequiredAfter;
 }

@@ -6,16 +6,16 @@
  */
 import type { RowMoreMenuItem } from "@platform/ui-kit";
 import type { StaffAccess } from "@platform/app-shared/app-data/case-specialist-sub-roles";
+import { failureDegreesFor } from "@failures/mfe/lib/failure-degrees";
 import {
   canDecideTransactionCancel,
-  canRecordFinalFailure,
   canReopenTransaction,
   canRequestTransactionCancel,
 } from "./po-roles";
 
 export type TransactionGeneralRules = {
+  /** «تسجيل تعذّر» — the one window with the degrees the viewer may record on this deed. */
   failure: boolean;
-  finalFailure: boolean;
   cancel: boolean;
   /** The supervisor cancels at once; the specialist asks. */
   cancelDecides: boolean;
@@ -27,11 +27,14 @@ export type TransactionGeneralRules = {
  * Which general actions the viewer may start on a deed.
  *
  * How it works: a removed or cancelled deed takes none (only the supervisor's reactivation, on the
- * page banner, brings it back). Otherwise: a failure when the viewer may raise one and the deed has
- * no open failure; the final failure for the supervisor / CDO unless one is already approved; the
- * cancellation for coordination (a request) or the supervisor (at once) unless one is pending or
- * the deed is final-failed. The server re-checks every one.
+ * page banner, brings it back). Otherwise: «تسجيل تعذّر» when the viewer may raise a failure and
+ * the window has a degree to offer him on this deed (`failureDegreesFor`: any degree of his role
+ * while the deed has no open failure, the final one alone — the case specialist's, the supervisor's
+ * and the CDO's — while it has one, none once the failure is final); the cancellation for
+ * coordination (a request) or the supervisor (at once) unless one is pending or the deed is
+ * final-failed. The server re-checks every one.
  * Edge cases: `cancellationPending` unknown (a list row) reads as false — the server refuses a second request.
+ * Until 2026-11-11 the final failure was its own item, «التعذّر النهائي عن المعاملة», for the supervisor alone.
  */
 export function transactionGeneralRules(input: {
   access: StaffAccess;
@@ -52,15 +55,15 @@ export function transactionGeneralRules(input: {
   if (!live)
     return {
       failure: false,
-      finalFailure: false,
       cancel: false,
       cancelDecides,
       reopen: false,
     };
   const finalApproved = input.openFailureStatus === "approved";
   return {
-    failure: input.canRaiseFailure && input.openFailureStatus === null,
-    finalFailure: canRecordFinalFailure(input.access.role) && !finalApproved,
+    failure:
+      input.canRaiseFailure &&
+      failureDegreesFor(input.access.role, input.openFailureStatus).length > 0,
     cancel:
       canRequestTransactionCancel(input.access) &&
       !input.cancellationPending &&
@@ -71,7 +74,7 @@ export function transactionGeneralRules(input: {
 }
 
 /**
- * The general items, in their fixed order: reopen, failure, final failure, cancellation.
+ * The general items, in their fixed order: reopen, failure, cancellation.
  *
  * How it works: an item shows only when its rule allows it and the host gave its handler.
  * Edge cases: `busy` disables them all while the menu's host is navigating.
@@ -80,7 +83,6 @@ export function buildTransactionGeneralItems(
   rules: TransactionGeneralRules,
   handlers: {
     onFailure?: () => void;
-    onFinalFailure?: () => void;
     onCancel?: () => void;
     onReopen?: () => void;
   },
@@ -104,15 +106,6 @@ export function buildTransactionGeneralItems(
       onClick: handlers.onFailure,
     });
   }
-  if (rules.finalFailure && handlers.onFinalFailure) {
-    items.push({
-      id: "final-failure",
-      label: "التعذّر النهائي عن المعاملة",
-      danger: true,
-      disabled: busy,
-      onClick: handlers.onFinalFailure,
-    });
-  }
   if (rules.cancel && handlers.onCancel) {
     items.push({
       id: "cancel-transaction",
@@ -124,6 +117,13 @@ export function buildTransactionGeneralItems(
   }
   return items;
 }
+
+/** The ids `buildTransactionGeneralItems` gives its items — a menu holding one already has the general actions. */
+export const GENERAL_ITEM_IDS: ReadonlySet<string> = new Set([
+  "reopen-transaction",
+  "failure",
+  "cancel-transaction",
+]);
 
 /** Stage-menu ids that already raise a failure — the general «تسجيل تعذّر» is not added twice. */
 const STAGE_FAILURE_IDS = new Set([

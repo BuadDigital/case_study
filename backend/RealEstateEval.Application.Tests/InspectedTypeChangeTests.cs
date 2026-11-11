@@ -42,6 +42,17 @@ public class InspectedTypeChangeTests
         Assert.True(change.SurveyRequiredAfter);
     }
 
+    // Omar 2026-11-11: a survey added by exception to a property the rule asks none for is not
+    // withdrawn by a later type change — only a change that itself takes the need away withdraws.
+    [Fact]
+    public void A_type_change_withdraws_the_survey_only_when_it_is_what_removed_the_need()
+    {
+        Assert.True(InspectedPropertyTypeRules.ChangeOf("فيلا", "شقة سكنية", true, false)!.WithdrawsSurvey);
+        Assert.False(InspectedPropertyTypeRules.ChangeOf("أرض سكنية", "أرض", false, false)!.WithdrawsSurvey);
+        Assert.False(InspectedPropertyTypeRules.ChangeOf("شقة سكنية", "فيلا", false, true)!.WithdrawsSurvey);
+        Assert.False(InspectedPropertyTypeRules.ChangeOf("أرض سكنية", "فيلا", true, true)!.WithdrawsSurvey);
+    }
+
     [Fact]
     public void The_survey_rule_reads_the_inspectors_classification()
     {

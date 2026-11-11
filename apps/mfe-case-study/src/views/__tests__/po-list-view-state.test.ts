@@ -42,10 +42,11 @@ function poRow(id: string, over: Partial<PoRow> = {}): PoRow {
 }
 
 describe("initialPoListQuery", () => {
-  it("opens the case specialist on the active orders, nearest due date first", () => {
+  // Ruling 2026-11-11: the status filter opens on «جميع الحالات» for every role.
+  it("opens the case specialist on every status, nearest due date first", () => {
     expect(initialPoListQuery("case-specialist")).toEqual({
       ...INITIAL_PO_LIST_QUERY,
-      statusFilter: "active",
+      statusFilter: "",
       sortKey: "due",
       sortDir: "asc",
     });

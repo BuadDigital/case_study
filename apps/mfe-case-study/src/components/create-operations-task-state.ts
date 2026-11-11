@@ -11,16 +11,34 @@ import type {
 import type { StaffUser } from "@platform/app-shared/app-data/constants";
 import { pad2 } from "@platform/app-shared/format/date";
 import { parseLocaleNumber } from "@platform/app-shared/format/number";
-import type { DistributionAssignee } from "../lib/app-data/distribution-parties";
+import {
+  getEngineeringOffices,
+  type DistributionAssignee,
+} from "../lib/app-data/distribution-parties";
 import { assigneesForOperationsTaskType } from "../lib/app-data/operations-task-assignees";
-import { OPERATIONS_TASK_TYPE_LABELS } from "../lib/app-data/operations-task-display";
+import {
+  ENGINEERING_SURVEY_TASK_TYPE,
+  OPERATIONS_TASK_TYPE_LABELS,
+} from "../lib/app-data/operations-task-display";
 import {
   formatPropertyDeedDisplay,
   showsCourtFields,
   type PoIntakeRecord,
 } from "../lib/app-data/po-intake-data";
 
-export const TASK_TYPES = ["general", "court_visit"] as const;
+/**
+ * «رفع مساحي» in «مهمة جديدة» (Omar 2026-11-11) — the one place the engineering office is added after
+ * the distribution. It is not an operations task: it adds the office's own survey task to the
+ * transaction (see `create-engineering-survey-task`), so the form asks for the office and the deed only.
+ */
+export { ENGINEERING_SURVEY_TASK_TYPE };
+
+export const TASK_TYPES = ["general", "court_visit", ENGINEERING_SURVEY_TASK_TYPE] as const;
+
+/** The types the viewer may create: «رفع مساحي» only for who may add the office (`canRedistributeParties`). */
+export function taskTypesFor(canAddSurvey: boolean): readonly string[] {
+  return canAddSurvey ? TASK_TYPES : TASK_TYPES.filter((t) => t !== ENGINEERING_SURVEY_TASK_TYPE);
+}
 
 /** Unified link scope for court visit and general task (includes general). */
 export const LINK_SCOPES = [
@@ -39,6 +57,7 @@ export const PRIORITY_OFFSET_MS: Record<string, number> = {
 const DEFAULT_TITLES: Record<string, string> = {
   court_visit: "زيارة محكمة",
   general: "مهمة عامة",
+  [ENGINEERING_SURVEY_TASK_TYPE]: "رفع مساحي",
 };
 
 export const DUE_CHIPS = [
@@ -155,14 +174,18 @@ export function assigneesForType(
   type: string,
   staffUsers: StaffUser[],
 ): DistributionAssignee[] {
+  // The survey goes to an engineering office only — the same list the distribution offers.
+  if (type === ENGINEERING_SURVEY_TASK_TYPE) return getEngineeringOffices(staffUsers);
   return assigneesForOperationsTaskType(type, staffUsers);
 }
 
+/** The type a prefill asks for, when the viewer may create it; anything else is a general task. */
 export function prefillType(
   prefill: CreateOperationsTaskPrefill | null | undefined,
+  allowedTypes: readonly string[] = TASK_TYPES,
 ): string {
   const raw = prefill?.type?.trim() || "general";
-  return (TASK_TYPES as readonly string[]).includes(raw) ? raw : "general";
+  return allowedTypes.includes(raw) ? raw : "general";
 }
 
 export function defaultDueFields(now = Date.now()): {
@@ -234,15 +257,19 @@ export function allowsAgreedTaskFeeFor(
 /**
  * Keep a still-valid assignee; otherwise fall back to the first one (or clear
  * when none qualify). `null` = leave the selection untouched.
+ * `pickFirst: false` (the survey's office) never chooses for the user: an assignee that no longer
+ * qualifies is cleared and the field waits for a choice.
  */
 export function resolveAssigneeSelection(
   assignees: DistributionAssignee[],
   assigneeId: string,
   staffLoading: boolean,
+  pickFirst = true,
 ): { id: string; name: string } | null {
   if (staffLoading) return null;
   if (assignees.length === 0) return { id: "", name: "" };
   if (assignees.some((a) => a.id === assigneeId)) return null;
+  if (!pickFirst) return assigneeId ? { id: "", name: "" } : null;
   const first = assignees[0]!;
   return { id: first.id, name: first.name };
 }
@@ -262,18 +289,23 @@ export type CreateOperationsTaskForm = {
   dueDate: string;
   dueTime: string;
   dueChip: DueChip | null;
+  /** «رفع مساحي» on a property the survey rule asks no survey for: why it is wanted. */
+  surveyExceptionReason: string;
 };
 
 export function initialCreateOperationsTaskForm(
   prefill: CreateOperationsTaskPrefill | null | undefined,
   now = Date.now(),
+  allowedTypes: readonly string[] = TASK_TYPES,
 ): CreateOperationsTaskForm {
   const due = defaultDueFields(now);
-  const type = prefillType(prefill);
+  const type = prefillType(prefill, allowedTypes);
   const deed = prefill?.deed?.trim() || "";
   return {
     type,
-    scope: prefill?.scope?.trim() || "work_order",
+    // The survey is always on one deed.
+    scope:
+      type === ENGINEERING_SURVEY_TASK_TYPE ? "transaction" : prefill?.scope?.trim() || "work_order",
     title: prefill?.title?.trim() || DEFAULT_TITLES[type] || "مهمة",
     description: "",
     priority: "medium",
@@ -286,6 +318,7 @@ export function initialCreateOperationsTaskForm(
     dueDate: due.date,
     dueTime: due.time,
     dueChip: null,
+    surveyExceptionReason: "",
   };
 }
 
@@ -301,7 +334,8 @@ export type CreateOperationsTaskAction =
   | { type: "set-deed"; value: string }
   | { type: "toggle-deed"; value: string }
   | { type: "set-assignee"; id: string; name: string }
-  | { type: "set-visit-fee"; value: string };
+  | { type: "set-visit-fee"; value: string }
+  | { type: "set-survey-reason"; value: string };
 
 export function createOperationsTaskReducer(
   state: CreateOperationsTaskForm,
@@ -310,10 +344,14 @@ export function createOperationsTaskReducer(
   switch (action.type) {
     case "set-type":
       // HTML `tfType`: the title follows the type — there is no title field.
+      // «رفع مساحي» is on one deed and its office is chosen, never carried over from another type.
       return {
         ...state,
         type: action.value,
         title: DEFAULT_TITLES[action.value] ?? "مهمة",
+        ...(action.value === ENGINEERING_SURVEY_TASK_TYPE
+          ? { scope: "transaction", assigneeId: "", assigneeName: "" }
+          : {}),
       };
     case "set-scope":
       return { ...state, scope: action.value };
@@ -365,6 +403,8 @@ export function createOperationsTaskReducer(
     case "set-visit-fee":
       if (state.visitFeeAmountSar === action.value) return state;
       return { ...state, visitFeeAmountSar: action.value };
+    case "set-survey-reason":
+      return { ...state, surveyExceptionReason: action.value };
   }
 }
 

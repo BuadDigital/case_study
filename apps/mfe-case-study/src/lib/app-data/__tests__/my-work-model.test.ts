@@ -5,12 +5,14 @@ import type { PoIntakeRecord } from "../po-intake-data";
 import {
   appraiserStep,
   buildMyWork,
+  defaultMyWorkStage,
   formatActionClock,
   myWorkDue,
   returnedLine,
   myWorkGroupsForPages,
   transactionProgress,
   type BuildMyWorkInput,
+  type MyWorkStage,
 } from "../my-work-model";
 
 const NOW = new Date("2026-11-05T09:00:00+03:00");
@@ -59,6 +61,39 @@ describe("myWorkGroupsForPages", () => {
 
   it("gives the appraiser his own group, from his queue page (Omar 2026-11-10)", () => {
     expect(myWorkGroupsForPages(["my-work", "po", "property-appraisal"])).toEqual(["ap"]);
+  });
+});
+
+describe("defaultMyWorkStage — the chip «أعمالي» opens on (Omar 2026-11-11)", () => {
+  const rows = (...stages: MyWorkStage[]) => stages.map((stage) => ({ stage }));
+
+  it("the appraiser opens on «التقييم» while a valuation is due", () => {
+    expect(defaultMyWorkStage(["ap"], rows("approval", "valuation", "prework"))).toBe("valuation");
+  });
+
+  it("moves to the next stage with an action once the valuations are done", () => {
+    expect(defaultMyWorkStage(["ap"], rows("approval", "prework", "handed"))).toBe("approval");
+    expect(defaultMyWorkStage(["ap"], rows("correction", "approval"))).toBe("correction");
+  });
+
+  it("falls back to the role's first chip when nothing is due — even with no rows", () => {
+    expect(defaultMyWorkStage(["ap"], [])).toBe("valuation");
+    // Advance work and handed-over lookups ask nothing of him: they do not draw the selection.
+    expect(defaultMyWorkStage(["ap"], rows("prework", "handed"))).toBe("valuation");
+    expect(defaultMyWorkStage(["co"], [])).toBe("intake");
+    expect(defaultMyWorkStage(["rv"], [])).toBe("review");
+  });
+
+  it("follows the chips' order for the specialists, across the groups a viewer holds", () => {
+    expect(defaultMyWorkStage(["co"], rows("follow"))).toBe("follow");
+    expect(defaultMyWorkStage(["rv"], rows("upload", "deposit"))).toBe("deposit");
+    expect(defaultMyWorkStage(["co", "st", "rv"], rows("upload", "study"))).toBe("study");
+    // Rows of a group the viewer does not hold are not his chips.
+    expect(defaultMyWorkStage(["rv"], rows("study"))).toBe("review");
+  });
+
+  it("no group → no chip", () => {
+    expect(defaultMyWorkStage([], rows("study"))).toBeNull();
   });
 });
 
@@ -498,27 +533,31 @@ const draft = (over: Partial<ReportDraftState>): ReportDraftState => ({
 });
 
 describe("appraiserStep — what the appraiser owes (Omar 2026-11-10)", () => {
-  it("starts a new valuation, saying whether the study has been issued", () => {
-    expect(appraiserStep(appraisal(), draft({}))).toMatchObject({
-      stage: "valuation",
-      action: "بدء التقييم",
-      reason: "تقييم جديد — الدراسة لم تصدر بعد",
-    });
+  it("owes a valuation once the study is issued: to start it, then to finish and hand it over", () => {
     expect(appraiserStep(appraisal({ studyReportIssued: true }), undefined)).toMatchObject({
       stage: "valuation",
       action: "بدء التقييم",
       reason: "تقييم جديد — الدراسة صدرت",
     });
+    expect(appraiserStep(appraisal({ studyReportIssued: true }), draft({ progressPct: 65 }))).toMatchObject({
+      stage: "valuation",
+      action: "متابعة التقييم",
+      reason: "قيد التقييم — الدراسة صدرت — جاهز للتسليم",
+    });
   });
 
-  it("continues a started valuation, ready to hand over once the study is issued", () => {
-    expect(appraiserStep(appraisal(), draft({ progressPct: 30 }))).toMatchObject({
-      action: "متابعة التقييم",
-      reason: "قيد التقييم — الدراسة لم تصدر بعد",
+  // 2026-11-11: it carried the same tag and chip as a due valuation — only the small line differed.
+  it("tells advance work apart while the study is not issued: enterable, nothing due", () => {
+    expect(appraiserStep(appraisal(), draft({}))).toMatchObject({
+      stage: "prework",
+      action: "إعداد مسبق",
+      reason: "يمكن بدء التقييم كمسودة — الدراسة لم تصدر بعد، والتسليم بعد صدورها",
     });
-    expect(
-      appraiserStep(appraisal({ studyReportIssued: true }), draft({ progressPct: 65 }))?.reason,
-    ).toBe("قيد التقييم — الدراسة صدرت — جاهز للتسليم");
+    expect(appraiserStep(appraisal(), draft({ progressPct: 30 }))).toMatchObject({
+      stage: "prework",
+      action: "إعداد مسبق",
+      reason: "مسودة قيد الإعداد — الدراسة لم تصدر بعد، والتسليم بعد صدورها",
+    });
   });
 
   it("returns a reopened package as a correction, whatever the draft says", () => {
@@ -563,8 +602,22 @@ describe("buildMyWork — the appraiser's rows (Omar 2026-11-10)", () => {
     ).items;
 
   it("makes one row per valuation, opening his page", () => {
-    const [row] = rows([appraisal({ id: "a9" })]);
+    const [row] = rows([appraisal({ id: "a9", studyReportIssued: true })]);
     expect(row).toMatchObject({ group: "ap", stage: "valuation", action: "بدء التقييم", href: "/property-appraisal/a9" });
+  });
+
+  it("lists what is due first, then the advance work, then what he handed over", () => {
+    const out = rows([
+      appraisal({ id: "h1", propertyId: "p3", appraisalPackageStatus: "submitted" }),
+      appraisal({ id: "w1", propertyId: "p2" }),
+      appraisal({ id: "d1", propertyId: "p1", studyReportIssued: true }),
+    ]);
+    expect(out.map((r) => [r.taskId, r.stage])).toEqual([
+      ["d1", "valuation"],
+      ["w1", "prework"],
+      ["h1", "handed"],
+    ]);
+    expect(out[1]).toMatchObject({ action: "إعداد مسبق", href: "/property-appraisal/w1" });
   });
 
   it("opens a draft waiting for approval on the report window", () => {
@@ -575,7 +628,7 @@ describe("buildMyWork — the appraiser's rows (Omar 2026-11-10)", () => {
 
   it("lists a handed-over valuation under its own stage, neutral and after the work waiting for him", () => {
     const handed = appraisal({ id: "h1", propertyId: "p2", appraisalPackageStatus: "submitted" });
-    const mine = appraisal({ id: "m1", propertyId: "p1" });
+    const mine = appraisal({ id: "m1", propertyId: "p1", studyReportIssued: true });
     const out = rows([handed, mine]);
     expect(out.map((r) => [r.taskId, r.stage, r.due])).toEqual([
       ["m1", "valuation", expect.any(String)],

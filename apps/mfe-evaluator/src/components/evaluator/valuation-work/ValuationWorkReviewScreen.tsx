@@ -22,7 +22,7 @@ import type {
 import type { EvaluatorSpecialistDraft } from "../../../lib/evaluator/evaluator-validation";
 import { PrimaryBtn } from "./atoms";
 import { HandOverBlockersPanel } from "./HandOverBlockersPanel";
-import type { ValuationWorkScreenId } from "./lib/shell-state";
+import type { ValuationWorkNavAvailability, ValuationWorkScreenId } from "./lib/shell-state";
 
 const EvaluatorFinalReviewTab = lazy(() =>
   import("../EvaluatorFinalReviewTab").then((m) => ({
@@ -49,6 +49,8 @@ export function ValuationWorkReviewScreen({
   onSpecialistDraftChange,
   gates = null,
   onGoToScreen,
+  nav,
+  valuationStarted = true,
 }: {
   draft?: EvaluatorSubmission;
   propertyId: string;
@@ -76,6 +78,10 @@ export function ValuationWorkReviewScreen({
   /** Issuance gates from the shell — the hand-over blockers list. */
   gates?: ValuationIssuanceGatesDto | null;
   onGoToScreen?: (screen: ValuationWorkScreenId) => void;
+  /** Which approach sections are on the page — passed to the hand-over blockers list. */
+  nav?: ValuationWorkNavAvailability;
+  /** «بدء التقييم» succeeded — passed to the hand-over blockers list. */
+  valuationStarted?: boolean;
 }) {
   const reviewDraft =
     draft ??
@@ -106,6 +112,8 @@ export function ValuationWorkReviewScreen({
           gates={gates}
           valuationRequestId={valuationRequestId}
           onGoToScreen={onGoToScreen}
+          nav={nav}
+          started={valuationStarted}
         />
       ) : null}
       {showSubmit ? (

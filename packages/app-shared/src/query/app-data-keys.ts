@@ -23,6 +23,12 @@ export const appDataKeys = {
   /** One server page of Enfaz-ready work orders — pagination-contract. */
   enfazReadyPosPage: (query: Record<string, unknown>) =>
     [...appDataKeys.all, "enfaz-billing", "ready-summary", "page", query] as const,
+  /** The valuation's land / buildings / property values of one property (the figures card). */
+  propertyValuationFigures: (propertyId: string) =>
+    [...appDataKeys.all, "property-valuation-figures", propertyId] as const,
+  /** The mean land rate of the bank's comparables in a district, by use. */
+  districtLandRates: (city: string, district: string) =>
+    [...appDataKeys.all, "district-land-rates", city, district] as const,
   workOrderDtos: () => [...appDataKeys.all, "work-order-dtos"] as const,
   poRecords: () => [...appDataKeys.all, "po-records"] as const,
   propertyListItems: () => [...appDataKeys.all, "property-list-items"] as const,

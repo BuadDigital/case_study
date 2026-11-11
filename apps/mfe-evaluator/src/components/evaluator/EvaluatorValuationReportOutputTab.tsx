@@ -54,6 +54,7 @@ import {
   overlayFromDraft,
   depositCodeForPrint,
   reportDateForPrint,
+  reportIsApproved,
   versionedReportNo,
 } from "../../lib/evaluator/report-draft-choices";
 import type { ReportAppraiserTab } from "../../lib/evaluator/valuation-report-missing-fields";
@@ -232,6 +233,8 @@ export function EvaluatorValuationReportOutputTab({
       loaded: Awaited<ReturnType<typeof ensureOrganizationSettingsLoaded>>,
       reportDateOverride?: string,
       reportNoOverride?: string,
+      /** The copy being built IS the approval (the appraiser is approving now): it is signed. */
+      approving = false,
     ) => {
       const ev = loaded?.evaluator ?? {};
       const company = loaded?.company ?? {};
@@ -250,6 +253,9 @@ export function EvaluatorValuationReportOutputTab({
         reportDate: reportDateOverride?.trim() || reportDateForPrint(draft, reportDraft),
         // The deposit code is the one recorded with the deposit copy (the issuance is the only source).
         depositCode: depositCodeForPrint(reportDraft),
+        // Signatures and the stamp only on an approved report (Omar 2026-11-11) — a draft, shown or
+        // printed, carries neither.
+        unsigned: !approving && !reportIsApproved(reportDraft),
         live: buildValuationReportLiveFill({
           draft: effectiveDraft,
           // Unsaved settings follow the server defaults (same DTO), so the report and the
@@ -428,8 +434,9 @@ export function EvaluatorValuationReportOutputTab({
       reportDateOverride?: string,
       onPhase?: (phase: string) => void,
       reportNoOverride?: string,
+      approving = false,
     ) => {
-      const baseMeta = buildReportMeta(loaded, reportDateOverride, reportNoOverride);
+      const baseMeta = buildReportMeta(loaded, reportDateOverride, reportNoOverride, approving);
       let live = baseMeta.live;
       if (live) {
         onPhase?.("تجهيز خرائط التقرير…");
@@ -623,7 +630,8 @@ export function EvaluatorValuationReportOutputTab({
             onPhase("تحميل بيانات المنشأة…");
             const loaded = await ensureOrganizationSettingsLoaded({ force: true });
             if (loaded) setOrg(loaded);
-            const { html } = await preparePrintHtml(loaded, reportDate, onPhase, reportNumber);
+            // The approved copy: built at the appraiser's approval, so it carries the signatures and the stamp.
+            const { html } = await preparePrintHtml(loaded, reportDate, onPhase, reportNumber, true);
             // The approved copy is kept and later rendered by the server (no network): letterhead, fonts and
             // photos must travel inside it, exactly as the browser prints them.
             const config = apiConfig();

@@ -414,3 +414,44 @@ a{color:#102b4e}a:hover{color:#a4906f}
     }
   });
 });
+
+describe("valuation report v3 — an unapproved report is not signed (Omar 2026-11-11)", () => {
+  const signedMeta = {
+    branding: {
+      ...BRAND_IDENTITY_DEFAULTS,
+      stampUrl: "/case-study/custom-stamp.svg",
+      signatureUrl: "/case-study/custom-sign.png",
+    },
+    valuers: [
+      {
+        id: "v1",
+        nameAr: "خالد التجريبي",
+        role: "valuer" as const,
+        isActive: true,
+        signatureUrl: "/case-study/khalid-sign.png",
+      },
+    ],
+  };
+
+  it.each(["print", "screen"] as const)("leaves the signatures and the stamp out of the %s copy", (mode) => {
+    const html = prepareValuationReportV3Html(SAMPLE, { ...signedMeta, unsigned: true }, mode);
+
+    expect(html).not.toMatch(/khalid-sign\.png/);
+    expect(html).not.toMatch(/custom-sign\.png/);
+    expect(html).not.toMatch(/<img[^>]*custom-stamp\.svg/);
+    expect(html).not.toMatch(/<img[^>]*alt="(التوقيع|ختم المنشأة)"/);
+    // The boxes themselves stay, so the page keeps its layout.
+    expect(html).toContain("ختم المنشأة");
+    expect(html).toContain("التوقيع");
+    // …and every page says what the copy is.
+    expect(html).toContain('.page.pg::after{content:"مسودة — غير معتمدة"');
+  });
+
+  it.each(["print", "screen"] as const)("signs the %s copy once the report is approved", (mode) => {
+    const html = prepareValuationReportV3Html(SAMPLE, signedMeta, mode);
+
+    expect(html).toMatch(/khalid-sign\.png/);
+    expect(html).toMatch(/<img[^>]*custom-stamp\.svg/);
+    expect(html).not.toContain("مسودة — غير معتمدة");
+  });
+});

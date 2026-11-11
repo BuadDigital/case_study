@@ -310,6 +310,26 @@ public class WorkflowTasksController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>«تجاوز المكتب الهندسي» — the study drops the office before issuing the study report.</summary>
+    [HttpPost("{id:guid}/engineering-survey/skip")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<WorkflowTaskDto>> SkipEngineeringSurvey(
+        Guid id,
+        [FromBody] SkipEngineeringSurveyRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (result, errors) = await _tasks.SkipEngineeringSurveyAsync(
+            id,
+            request,
+            await ActorStaffAsync(cancellationToken),
+            ActorName(),
+            ActorId(),
+            cancellationToken);
+        if (errors is not null) return this.FieldErrorsProblem(errors);
+        if (result is null) return this.NotFoundProblem("المهمة غير موجودة.");
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/redistribute")]
     [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
     public async Task<ActionResult<WorkflowTaskDto>> Redistribute(

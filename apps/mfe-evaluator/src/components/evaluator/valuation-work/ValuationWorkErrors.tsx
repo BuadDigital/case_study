@@ -48,7 +48,7 @@ const ValuationWorkErrorsContext = createContext<ValuationWorkErrorsApi | null>(
 );
 
 /** Scroll lands after the screen switch paints — same budget as the send flow. */
-const SCROLL_DELAY_MS = 120;
+export const SCROLL_DELAY_MS = 120;
 const SCROLL_RETRIES = 24;
 
 export function ValuationWorkErrorsProvider({

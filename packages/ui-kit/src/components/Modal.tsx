@@ -34,7 +34,7 @@ export function ModalCard({
   return (
     <div
       className={cn(
-        "flex max-h-[90vh] w-full flex-col overflow-hidden rounded-[var(--radius-lg)] border border-border bg-surface shadow-modal",
+        "flex max-h-[90vh] w-full flex-col overflow-hidden rounded-[var(--radius-modal)] border border-border bg-surface shadow-modal",
         wide ? "max-w-[720px]" : "max-w-[420px]",
         "max-lg:max-h-[min(92dvh,100%)] max-lg:max-w-none max-lg:rounded-b-none max-lg:rounded-t-[16px] max-lg:border-x-0 max-lg:border-b-0",
         className,

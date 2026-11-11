@@ -27,6 +27,7 @@ import {
   failureBusyKey,
   failuresKpiStats,
   canFollowUpFailures,
+  isCaseEditor,
   isResolveDraftComplete,
   isSupervisor,
   patchResolveDraftMap,
@@ -55,6 +56,8 @@ export function useFailuresViewWorkflow() {
   const { role, access } = useAppAccess();
   // A case specialist acts on failures only with the coordination sub-role (follow-up is coordination's).
   const caseEditor = canFollowUpFailures(access);
+  // Any case specialist confirms or resolves a possible failure (2026-11-11).
+  const confirmer = isCaseEditor(role);
   const supervisor = isSupervisor(role);
   // Server-paged rows (pagination contract); `kpiItems` is the whole set the KPI band still needs.
   const {
@@ -310,6 +313,7 @@ export function useFailuresViewWorkflow() {
   return {
     role,
     caseEditor,
+    confirmer,
     supervisor,
     highlightId,
     isDesktopViewport,

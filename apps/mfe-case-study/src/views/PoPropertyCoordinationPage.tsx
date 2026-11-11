@@ -17,6 +17,7 @@ import {
 } from "@platform/app-shared/domain/po-routes";
 import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
+import { PropertyPartiesRailCard } from "../components/po-intake/PropertyPartiesStatus";
 import { PropertyDetailReceiptCard } from "../components/po-intake/PropertyDetailReceiptCard";
 import { TransactionCancellationBanner } from "../components/po-intake/TransactionCancellationBanner";
 import {
@@ -150,6 +151,14 @@ function CoordinationPageBody({
             railLabel="أقسام صفحة المنسق"
             body={body}
             footer={footer}
+            railAside={
+              <PropertyPartiesRailCard
+                poNumber={record.poNumber}
+                propertyId={property.id}
+                district={property.district}
+                city={property.city}
+              />
+            }
           />
         </IntakeScope>
       </PageShell>

@@ -593,6 +593,47 @@ export function costLineTotals(
   };
 }
 
+/** Shown while the study is not issued: the inventory is not the approved one yet, so nothing is pulled. */
+export const COST_INVENTORY_AWAITS_STUDY =
+  "بانتظار اعتماد دارس العقار — يُسحب حصر المباني بعد صدور تقرير دراسة الحالة.";
+
+/**
+ * The included lines of the cost table that are not priced yet — no total, because the quantity or
+ * the unit cost is missing.
+ *
+ * How it works: the line's own computed total (`costLineTotals`), so a repeated floor that takes the
+ * first floor's rate, and a built-up ratio, count as they do in the table.
+ * Edge cases: an excluded line is never asked for a price.
+ */
+export function unpricedCostLines(costDraft: ValuationCostLineDto[]): ValuationCostLineDto[] {
+  const { computedLines } = costLineTotals(costDraft);
+  return costDraft.filter((l, i) => l.isIncluded !== false && !(computedLines[i]!.total > 0));
+}
+
+/**
+ * Whether the appraiser has reviewed and saved «بنود التكلفة المباشرة» — what opens the tables after
+ * it (indirect costs, age and depreciation; ruling 2026-11-11).
+ *
+ * How it works, on a load: the saved table has included lines and every one carries a total. A
+ * valuation already worked past the lines (an economic life or an indirect rate is saved — both are
+ * entered only in the tables this opens) counts as reviewed too, so adding an unpriced line later
+ * never closes them again.
+ * Edge cases: never saved, or saved with no included line → not reviewed. During a session the
+ * screen keeps its own flag once «حفظ بنود التكلفة» succeeds.
+ */
+export function costLinesReviewed(
+  cost: Pick<
+    ValuationCostApproachDto,
+    "isSaved" | "lines" | "economicAgeYears" | "indirectItems"
+  > | null | undefined,
+): boolean {
+  if (!cost?.isSaved) return false;
+  const included = (cost.lines ?? []).filter((l) => l.isIncluded !== false);
+  if (included.length === 0) return false;
+  if (included.every((l) => (l.lineTotal ?? 0) > 0)) return true;
+  return cost.economicAgeYears != null || (cost.indirectItems ?? []).some((i) => (i.pct ?? 0) > 0);
+}
+
 export type CostApproachDerived = {
   financingPctLocal: number;
   indirectSumLocal: number;
@@ -742,11 +783,13 @@ export function buildCostAlerts(
     developerProfitPct,
     landComplete,
   } = derived;
+  // An empty table points at where its lines come from (2026-11-11): the body read «يلزم بند واحد
+  // على الأقل» only, which did not say that the inventory table is what has to be filled.
   if (costDraft.length === 0)
     alerts.push({
       kind: "error",
       title: "لا يوجد بند تكلفة",
-      body: "يلزم بند واحد على الأقل في جدول التكلفة.",
+      body: "جدول التكلفة فارغ. بنوده تنزل من جدول حصر المباني (يعبّئه المعاين ويعدّله أخصائي دراسة الحالة): إن لم يكن معبّأً فيلزم استكماله، ثم اضغط «سحب من حصر المباني» — أو أضف البنود يدوياً.",
       targetId: "cost-lines",
     });
   const agesIncomplete = costDepreciationIncomplete(fields, costDraft);

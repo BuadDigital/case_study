@@ -22,7 +22,7 @@ export const LAYERS = {
     family: "property" as const,
     defaultOn: false,
   },
-  /** Properties with an open failure (مرشح تعذّر / متعذّر) — their own layer, out of active/archive. */
+  /** Properties with an open failure (تعذّر محتمل / متعذّر) — their own layer, out of active/archive. */
   failures: {
     key: "failures",
     label: "التعذّرات",
@@ -42,7 +42,7 @@ export type LayerKey = keyof typeof LAYERS;
 export const WORKFLOW_STATUS = {
   in_progress: { key: "in_progress", label: "قيد العمل" },
   issued: { key: "issued", label: "صادر" },
-  infeasible_candidate: { key: "infeasible_candidate", label: "مرشح تعذّر" },
+  infeasible_candidate: { key: "infeasible_candidate", label: "تعذّر محتمل" },
   infeasible: { key: "infeasible", label: "متعذّر" },
 } as const;
 

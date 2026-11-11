@@ -47,9 +47,12 @@ describe("HandOverBlockersPanel (D2)", () => {
     );
 
     expect(screen.getByRole("alert").textContent).toContain("(3)");
-    expect(screen.getByText("1) الرأي النهائي غير محسوب أو صفر")).toBeTruthy();
-    expect(screen.getByText("2) انتهت عضوية المقيّم")).toBeTruthy();
-    expect(screen.getByText("3) تشتّت المقارنات")).toBeTruthy();
+    // In order, each under its number.
+    expect(screen.getAllByRole("listitem").slice(0, 3).map((li) => li.textContent)).toEqual([
+      expect.stringMatching(/^1الرأي النهائي غير محسوب أو صفر/),
+      expect.stringMatching(/^2انتهت عضوية المقيّم/),
+      expect.stringMatching(/^3تشتّت المقارنات/),
+    ]);
     expect(screen.getAllByText(/يعالجها: المقيّم/)).toHaveLength(2);
     expect(screen.getByText(/يعالجها: إدارة المنشأة/)).toBeTruthy();
     // The specialist's later work is shown apart and does not count as a blocker.
@@ -72,7 +75,51 @@ describe("HandOverBlockersPanel (D2)", () => {
       }),
     );
 
-    expect(screen.getByText("1) مجموع نسب المشاركة ≠ 100٪")).toBeTruthy();
+    expect(screen.getByText("مجموع نسب المشاركة ≠ 100٪")).toBeTruthy();
+  });
+
+  it("leads to «أساليب وطرق التقييم» while the blocker's own section is not on the page", () => {
+    const onGoToScreen = vi.fn();
+    render(
+      <HandOverBlockersPanel
+        valuationRequestId="vr-1"
+        onGoToScreen={onGoToScreen}
+        nav={{ market: false, cost: true }}
+        gates={gates([
+          { code: "min_adopted_comparables_market", detailAr: "يلزم مقارن معتمد" },
+          { code: "cost_depreciation_complete", detailAr: "أدخل العمر الفعلي والعمر الاقتصادي" },
+          { code: "final_opinion", detailAr: "صفر" },
+        ])}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "انتقل إلى «أساليب وطرق التقييم»" }));
+    fireEvent.click(screen.getByRole("button", { name: "انتقل إلى «طريقة المقاول»" }));
+    fireEvent.click(screen.getByRole("button", { name: "انتقل إلى «رأي القيمة النهائي»" }));
+    expect(onGoToScreen.mock.calls).toEqual([["basic"], ["cost"], ["final"]]);
+  });
+
+  it("before «بدء التقييم» every blocker of his leads to «أساليب وطرق التقييم»", () => {
+    const onGoToScreen = vi.fn();
+    render(
+      <HandOverBlockersPanel
+        valuationRequestId="vr-1"
+        onGoToScreen={onGoToScreen}
+        nav={{ market: true, cost: true }}
+        started={false}
+        gates={gates([
+          { code: "min_adopted_comparables_market", detailAr: "يلزم مقارن معتمد" },
+          { code: "final_opinion", detailAr: "صفر" },
+          { code: "study_report_issued", detailAr: "لم يُصدر الأخصائي تقرير دراسة الحالة" },
+        ])}
+      />,
+    );
+
+    // His two lead to the start; the specialist's has no link.
+    const links = screen.getAllByRole("button", { name: "انتقل إلى «أساليب وطرق التقييم»" });
+    expect(links).toHaveLength(2);
+    links.forEach((link) => fireEvent.click(link));
+    expect(onGoToScreen.mock.calls).toEqual([["basic"], ["basic"]]);
   });
 
   it("ignores a read for another valuation request", () => {

@@ -53,7 +53,7 @@ public static class CaseStudyReportDeedNatureMatchRules
 
     /// <summary>The save rules of the match field.</summary>
     /// <remarks>
-    /// How it works: an unknown token is refused; «فروق» / «مرشح تعذّر» need notes; «مطابق» against a party's
+    /// How it works: an unknown token is refused; «فروق» / «تعذّر محتمل» need notes; «مطابق» against a party's
     /// «غير مطابق» needs a reason of <see cref="JustificationRules.RequiredMinLength"/> characters in the notes.
     /// Edge cases: fixed A→Z 2026-11-02 #20 — the reason was asked only against the inspector, so «مطابق» passed
     /// silently against the engineering office's «غير مطابق»; the office now counts the same. When both said
@@ -82,7 +82,7 @@ public static class CaseStudyReportDeedNatureMatchRules
         {
             return new Dictionary<string, string>
             {
-                ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «مرشح تعذّر»",
+                ["deedNatureMatchNotes"] = "ملاحظات المطابقة إلزامية عند «فروق» أو «تعذّر محتمل»",
             };
         }
 

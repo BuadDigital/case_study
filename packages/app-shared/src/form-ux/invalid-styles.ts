@@ -13,3 +13,11 @@ export const invalidControlClass =
  */
 export const invalidPulseRingClass =
   "outline outline-2 outline-offset-2 outline-[var(--danger)] ring-2 ring-[color-mix(in_srgb,var(--danger)_35%,transparent)]";
+
+/**
+ * The same brief pulse in gold — for a place the user is led to that is not an error yet (the
+ * appraiser's hand-over readiness list, Omar 2026-11-11: guidance instead of red). Pass it as
+ * `scrollToFormField`'s `pulseClass`.
+ */
+export const guidePulseRingClass =
+  "outline outline-2 outline-offset-2 outline-[var(--gold)] ring-2 ring-[color-mix(in_srgb,var(--gold)_35%,transparent)]";

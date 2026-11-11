@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RealEstateEval.CaseStudy.Application.Abstractions;
+using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
 using RealEstateEval.CaseStudy.Infrastructure.Data.Contexts;
 using RealEstateEval.Domain;
@@ -89,6 +90,37 @@ public sealed class CaseStudyReportRepository(CaseStudyDbContext db) : ICaseStud
             .Where(s => s.Status == PartyTaskSubmissionStatus.Submitted)
             .Select(s => s.PayloadJson)
             .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<ReceiptPartyFacts>> ListEngineeringSurveyFactsAsync(
+        IReadOnlyCollection<Guid> parentTaskIds,
+        CancellationToken cancellationToken)
+    {
+        var surveys = await db.WorkflowTasks
+            .AsNoTracking()
+            .Where(t => t.ParentTaskId != null
+                && parentTaskIds.Contains(t.ParentTaskId.Value)
+                && t.Kind == WorkflowTaskKind.EngineeringSurvey)
+            .Select(t => new { t.Id, t.Status })
+            .ToListAsync(cancellationToken);
+        var surveyIds = surveys.Select(s => s.Id).ToList();
+        var packages = await db.PartyTaskSubmissions
+            .AsNoTracking()
+            .Where(s => surveyIds.Contains(s.WorkflowTaskId))
+            .Select(s => new { s.WorkflowTaskId, s.Status, Accepted = s.AcceptedAtUtc != null })
+            .ToListAsync(cancellationToken);
+        return surveys
+            .Select(survey =>
+            {
+                var package = packages.FirstOrDefault(p => p.WorkflowTaskId == survey.Id);
+                return new ReceiptPartyFacts(
+                    "",
+                    WorkflowTaskKind.EngineeringSurvey,
+                    survey.Status,
+                    package?.Status,
+                    package?.Accepted ?? false);
+            })
+            .ToList();
+    }
 
     public async Task<IReadOnlyList<WorkflowTask>> ListChildTasksAsync(
         Guid parentTaskId,

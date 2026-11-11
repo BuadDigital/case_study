@@ -8,6 +8,8 @@
  */
 import type { MutableRefObject } from "react";
 import {
+  Fragment,
+  createElement,
   useCallback,
   useEffect,
   useMemo,
@@ -44,6 +46,12 @@ import {
 import type { ActiveTransactionQueueData } from "./useActiveTransactionQueueData";
 import { useConfirmActionDialog } from "../components/ConfirmActionDialog";
 import { useFailureRaiseModal } from "../hooks/useFailureRaiseModal";
+import { useTransactionGeneralActions } from "../components/po-intake/useTransactionGeneralActions";
+import {
+  GENERAL_ITEM_IDS,
+  withTransactionGeneralItems,
+} from "../lib/app-data/transaction-general-actions";
+import { isPartyWorkflowRole } from "@platform/app-shared/app-data/party-task-pages";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { TASKS_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
 
@@ -123,9 +131,13 @@ export function useActiveTransactionQueueCommands({
     config.allowPhaseRevert,
   ]);
 
-  const { openFailureRaise, failureRaiseModal } = useFailureRaiseModal({
+  const { openFailureRaise, failureRaiseModal: stageFailureModal } = useFailureRaiseModal({
     onSubmitted: refreshWork,
   });
+  const { itemsFor: generalItemsFor, dialogs: generalDialogs } =
+    useTransactionGeneralActions({ onChanged: refreshWork });
+  // One node for the host to mount: the stage menu's failure window and the general actions' dialogs.
+  const failureRaiseModal = createElement(Fragment, null, stageFailureModal, generalDialogs);
 
   const syncQueue = useCallback(async () => {
     // Independent keys in parallel; invalidating workflowTasks refetches on its own —
@@ -325,24 +337,37 @@ export function useActiveTransactionQueueCommands({
         viewerRole: role,
         viewerAccess: access,
       };
-      if (config.buildRowMoreItems) {
-        return config.buildRowMoreItems(ctx);
+      const stageItems = config.buildRowMoreItems
+        ? config.buildRowMoreItems(ctx)
+        : buildActiveQueueRowMoreItems({
+            ...ctx,
+            allowPhaseRevert: Boolean(config.allowPhaseRevert),
+            skipsBourse: property
+              ? skipsBourseForIdentifier(property.identifierType)
+              : false,
+            onCopyFromPrior: config.allowCopyFromPrior
+              ? openCopyFromPrior
+              : undefined,
+            allowDeleteTransaction: Boolean(config.allowDeleteTransaction),
+            viewerRole: role,
+            viewerAccess: access,
+            confirmAction: confirm,
+            onRegisterFailure: openFailureRaise,
+          });
+      // Every staff queue row ends with the general actions — «تسجيل تعذّر» first of all (Omar
+      // 2026-11-11). Party roles keep their own menu, and a host that already appended them
+      // («المعاملات النشطة») is left as it is.
+      if (
+        !property ||
+        isPartyWorkflowRole(role) ||
+        stageItems.some((item) => GENERAL_ITEM_IDS.has(item.id))
+      ) {
+        return stageItems;
       }
-      return buildActiveQueueRowMoreItems({
-        ...ctx,
-        allowPhaseRevert: Boolean(config.allowPhaseRevert),
-        skipsBourse: property
-          ? skipsBourseForIdentifier(property.identifierType)
-          : false,
-        onCopyFromPrior: config.allowCopyFromPrior
-          ? openCopyFromPrior
-          : undefined,
-        allowDeleteTransaction: Boolean(config.allowDeleteTransaction),
-        viewerRole: role,
-        viewerAccess: access,
-        confirmAction: confirm,
-        onRegisterFailure: openFailureRaise,
-      });
+      return withTransactionGeneralItems(
+        stageItems,
+        generalItemsFor({ poNumber: task.poNumber, property, workOrderId: record?.id }),
+      );
     },
     [
       config,
@@ -355,6 +380,7 @@ export function useActiveTransactionQueueCommands({
       access,
       confirm,
       openFailureRaise,
+      generalItemsFor,
     ],
   );
 

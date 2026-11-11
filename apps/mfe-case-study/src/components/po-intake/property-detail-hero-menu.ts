@@ -15,7 +15,7 @@ type PropertyDetailHeroMenuInput = {
   caseStudyBusy?: boolean;
   onNavigate: (href: string) => void;
   /**
-   * The general actions (failure, final failure, cancellation) from `useTransactionGeneralActions` —
+   * The general actions (reopen, failure, cancellation) from `useTransactionGeneralActions` —
    * the same items every row's ⋮ menu shows (2026-11-05).
    */
   generalItems?: RowMoreMenuItem[];

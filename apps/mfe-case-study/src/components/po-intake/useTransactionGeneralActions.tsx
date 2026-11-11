@@ -4,7 +4,6 @@ import { useCallback, useState, type ReactNode } from "react";
 import type { RowMoreMenuItem } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { getPropertyFailure } from "@failures/mfe/lib/failures-repository";
-import { FinalFailureDialog } from "@failures/mfe/components/failures/FinalFailureDialog";
 import { useFailureRaiseModal } from "../../hooks/useFailureRaiseModal";
 import {
   canDecideTransactionCancel,
@@ -38,21 +37,22 @@ export type TransactionGeneralTarget = {
 };
 
 type OpenDialog = {
-  kind: "final" | "cancel" | "reopen";
+  kind: "cancel" | "reopen";
   poNumber: string;
   property: PoPropertyIntake;
   workOrderId?: string;
 };
 
 /**
- * The general ⋮ actions of any deed — reopen, failure, final failure, cancellation — with their dialogs.
+ * The general ⋮ actions of any deed — reopen, failure, cancellation — with their dialogs.
  *
  * How it works: `itemsFor` reads the rules (`transactionGeneralRules`, the failures cache for the
  * open failure) and returns the items; a click opens the matching dialog for that deed, mounted once
- * by the host through `dialogs`. The failure form is `useFailureRaiseModal`'s (its «raised by» label
- * follows the viewer's role).
- * Edge cases: the dialogs mount only while open, so their fields start empty each time; the final
- * failure dialog asks for the problem type only when the deed has no open failure to finalize.
+ * by the host through `dialogs`. «تسجيل تعذّر» opens `useFailureRaiseModal`'s window — the three
+ * degrees by the viewer's permission, the final failure among them (its «raised by» label follows
+ * the viewer's role).
+ * Edge cases: the dialogs mount only while open, so their fields start empty each time. Until
+ * 2026-11-11 the final failure had its own item and dialog here, for the supervisor alone.
  * Extracted 2026-11-05 from the property page's corner menu so list rows offer the same actions.
  */
 export function useTransactionGeneralActions(options?: {
@@ -91,9 +91,8 @@ export function useTransactionGeneralActions(options?: {
               deedNumber:
                 formatPropertyDeedDisplay(property) ||
                 property.deedNumber.trim(),
+              deedCount: property.transactionDeedCount,
             }),
-          onFinalFailure: () =>
-            setOpen({ kind: "final", poNumber: po, property }),
           onCancel: () => setOpen({ kind: "cancel", poNumber: po, property }),
           onReopen: () => setOpen({ kind: "reopen", poNumber: po, property, workOrderId: target.workOrderId }),
         },
@@ -113,18 +112,6 @@ export function useTransactionGeneralActions(options?: {
   const dialogs = (
     <>
       {failureRaiseModal}
-      {open?.kind === "final" ? (
-        <FinalFailureDialog
-          open
-          onClose={close}
-          poNumber={open.poNumber}
-          propertyId={open.property.id}
-          deedLabel={label}
-          deedCount={open.property.transactionDeedCount}
-          askProblemType={!getPropertyFailure(open.poNumber, open.property.id)}
-          onDone={options?.onChanged}
-        />
-      ) : null}
       {open?.kind === "reopen" && open.workOrderId ? (
         <TransactionReopenDialog
           workOrderId={open.workOrderId}

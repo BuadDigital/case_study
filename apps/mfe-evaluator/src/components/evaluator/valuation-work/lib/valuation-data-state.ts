@@ -20,13 +20,13 @@ import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-p
 import {
   filterSelectionNearSubject,
   parseSubjectAreaSqm,
-  type fetchBankCandidates,
+  type BankSubjectOptions,
 } from "./bank-ranking";
 import { parseDecimal, type ValuationWorkPropertyHint } from "./shell-state";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
 
 export type SubjectCoords = { lat: number; lng: number };
-export type BankFetchOptions = Parameters<typeof fetchBankCandidates>[1];
+export type BankFetchOptions = BankSubjectOptions;
 
 export type SubjectHints = {
   districtHint?: string;

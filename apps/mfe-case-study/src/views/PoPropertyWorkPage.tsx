@@ -9,7 +9,7 @@
  * every detail and edit the data at the same level. The coordinator's page shows coordination's share
  * only and closes with «إرسال المعاملة للدراسة». The property details page stays the reference.
  */
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Note, PageShell, WorkSectionsLayout, useWorkSections } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
@@ -19,19 +19,30 @@ import {
   poPropertyDetailPath,
 } from "@platform/app-shared/domain/po-routes";
 import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
+import { reopenPartySubmission } from "@platform/app-shared/app-data/party-submission-api";
+import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import { useReportDraftStates } from "@platform/app-shared/workflow/use-report-draft-states";
 import { CaseStudyReportEditor } from "../components/case-study/CaseStudyReportEditor";
 import { CaseStudyAppraisalDeedsPanel } from "../components/case-study/CaseStudyAppraisalDeedsPanel";
 import { CaseStudyValuationPanel } from "../components/case-study/CaseStudyValuationPanel";
+import { ReviewCorrectionDialog } from "../components/case-study/ReviewCorrectionDialog";
+import { reopenCaseStudyReportDraft } from "../lib/app-data/case-study-report-commands";
+import { reviewCorrectionOptions } from "../lib/app-data/review-correction-model";
 import { PropertyDetailHero } from "../components/po-intake/PropertyDetailHero";
+import { PropertyPartiesRailCard } from "../components/po-intake/PropertyPartiesStatus";
 import { TransactionCancellationBanner } from "../components/po-intake/TransactionCancellationBanner";
 import { caseStudyReportDeeds } from "../lib/app-data/case-study-report-document-model";
-import { transactionProgress } from "../lib/app-data/my-work-model";
+import {
+  myWorkGroupsForPages,
+  transactionProgress,
+  type CaseSpecialistGroup,
+} from "../lib/app-data/my-work-model";
 import type {
   PoIntakeRecord,
   PoPropertyIntake,
 } from "../lib/app-data/po-intake-data";
 import {
+  canFormallyReceive,
   canReviewTransaction,
   canHandOverToEnfaz,
 } from "../lib/app-data/po-roles";
@@ -71,7 +82,13 @@ function WorkPageBody({
   index: number;
 }) {
   const router = useRouter();
-  const { access } = useAppAccess();
+  const { access, rolePages } = useAppAccess();
+  // The viewer's own sub-roles: their sections are marked on the page and stay when the rail's eye
+  // hides the rest (the appraiser's group is not a section's).
+  const mineGroups = useMemo(
+    () => myWorkGroupsForPages(rolePages).filter((g): g is CaseSpecialistGroup => g !== "ap"),
+    [rolePages],
+  );
   const tasksQuery = useWorkflowTasksQuery();
   const tasks = tasksQuery.data ?? EMPTY_TASKS;
   const { data: transaction } = useTransactionQuery(property.id);
@@ -106,10 +123,42 @@ function WorkPageBody({
     () => WORK_SECTIONS.filter((s) => s.id !== "survey" || Boolean(surveyTask)),
     [surveyTask],
   );
+
+  // «طلب تصحيح» (Omar 2026-11-11): review's one window for sending work back — the study to the
+  // study, the valuation to the appraiser — with who each return touches. `correctionRound` remounts
+  // the two sections after a return, so they read the reopened state from the server.
+  const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [correctionRound, setCorrectionRound] = useState(0);
+  const appraisalTask = useMemo(
+    () =>
+      studyTask
+        ? tasks.find(
+            (t) =>
+              t.kind === "property-appraisal" &&
+              t.parentTaskId === studyTask.id &&
+              t.status !== "cancelled",
+          )
+        : undefined,
+    [studyTask, tasks],
+  );
+  const correctionOptions = useMemo(() => {
+    void draftVersion;
+    return reviewCorrectionOptions({
+      studyIssued: studyTask?.studyReportIssued === true,
+      hasAppraisal: Boolean(appraisalTask),
+      valuationHandedOver:
+        (appraisalTask?.appraisalPackageStatus ?? studyTask?.appraisalPackageStatus) === "submitted",
+      reviewLock,
+      draft: getReportDraftState(property.id),
+    });
+  }, [studyTask, appraisalTask, reviewLock, draftVersion, property.id]);
+  const mayRequestCorrection =
+    canReviewTransaction(access) && Boolean(studyTask) && studyTask?.studyReportIssued === true;
   const state = useWorkSections<WorkSectionId>({
     sections,
     step,
     ready: tasksQuery.isFetched,
+    mineGroups,
   });
   const { openSection } = state;
   // Omar 2026-11-09: once coordination accepted the inspection, section 4
@@ -199,6 +248,7 @@ function WorkPageBody({
         return studyTask ? (
           <div className="pt-3">
             <CaseStudyReportEditor
+              key={`study-${correctionRound}`}
               taskId={studyTask.id}
               task={studyTask}
               property={property}
@@ -224,6 +274,7 @@ function WorkPageBody({
       case "valuation":
         return studyTask ? (
           <CaseStudyValuationPanel
+            key={`valuation-${correctionRound}`}
             property={property}
             tasks={tasks}
             caseStudyTask={studyTask}
@@ -277,14 +328,17 @@ function WorkPageBody({
             </span>
           ) : null}
           <span className="flex-1" />
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={() => router.push(coordinationHref)}
-          >
-            صفحة المنسق
-          </Button>
+          {mayRequestCorrection ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="dangerOutline"
+              data-testid="work-request-correction"
+              onClick={() => setCorrectionOpen(true)}
+            >
+              طلب تصحيح
+            </Button>
+          ) : null}
           <Button
             type="button"
             size="sm"
@@ -295,9 +349,28 @@ function WorkPageBody({
           </Button>
         </div>
 
+        {/* The link to the coordinator's page (Omar 2026-11-11): it used to be a button for everyone,
+            always. Its page has one thing this page lacks — «إرسال المعاملة للدراسة» — so the link shows
+            only while the transaction is still with coordination, and only to someone who may send it. */}
         {atCoordination && tasksQuery.isFetched ? (
-          <Note tone="info" className="mb-3" data-testid="work-at-coordination">
-            المعاملة لدى التنسيق — لم تُرسل للدراسة بعد. أقسامها أدناه، و«إرسال المعاملة للدراسة» في «صفحة المنسق».
+          <Note
+            tone="info"
+            className="mb-3 flex flex-wrap items-center gap-3"
+            data-testid="work-at-coordination"
+          >
+            <span className="min-w-[240px] flex-1">
+              المعاملة لدى التنسيق — لم تُرسل للدراسة بعد. أقسامها أدناه، و«إرسال المعاملة للدراسة» في «صفحة المنسق».
+            </span>
+            {canFormallyReceive(access) ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => router.push(coordinationHref)}
+              >
+                فتح صفحة المنسق
+              </Button>
+            ) : null}
           </Note>
         ) : null}
 
@@ -326,10 +399,41 @@ function WorkPageBody({
             state={state}
             railLabel="أقسام المعاملة"
             body={body}
+            railAside={
+              <PropertyPartiesRailCard
+                poNumber={record.poNumber}
+                propertyId={property.id}
+                district={property.district}
+                city={property.city}
+              />
+            }
           />
         </IntakeScope>
       </PageShell>
       {coordination.redistributeHost}
+      {correctionOpen && studyTask ? (
+        <ReviewCorrectionDialog
+          options={correctionOptions}
+          deedLabel={property.deedNumber}
+          enfazHandedOver={studyTask.propertyHandedOverToEnfaz === true}
+          onClose={() => setCorrectionOpen(false)}
+          onReturnStudy={async (reason, clearEnfazHandover) => {
+            const result = await reopenCaseStudyReportDraft(studyTask.id, reason, clearEnfazHandover);
+            if (!result.ok) return result;
+            setCorrectionRound((n) => n + 1);
+            return { ok: true };
+          }}
+          onReturnValuation={async (reason) => {
+            if (!appraisalTask) return { ok: false, error: "لم يُعيَّن مقيّم لهذه المعاملة." };
+            const result = await reopenPartySubmission(appraisalTask.id, reason);
+            if (!result.ok) return { ok: false, error: result.error };
+            // The task lists carry the package's state; the valuation section rereads its package on this.
+            notifyTasksChanged();
+            setCorrectionRound((n) => n + 1);
+            return { ok: true };
+          }}
+        />
+      ) : null}
     </div>
   );
 }

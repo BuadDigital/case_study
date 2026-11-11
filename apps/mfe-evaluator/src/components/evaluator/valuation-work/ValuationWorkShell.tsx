@@ -35,7 +35,7 @@ import {
   GhostBtn,
 } from "./atoms";
 import { ApproachSettingsSection } from "./ApproachSettingsSection";
-import { EngInfo } from "../EvaluatorHtmlPrimitives";
+import { EngInfo, WORK_SECTION_TOP_GAP } from "../EvaluatorHtmlPrimitives";
 import {
   ASSET_TYPE_CHANGED_MESSAGE,
   assetTypeChangedNeedsReview,
@@ -109,6 +109,7 @@ export function ValuationWorkShell({
   onRetrospectiveDraftChange,
   onSpecialistDraftChange,
   renderSections,
+  studyReportPending = false,
 }: ValuationWorkShellProps) {
   const [internalScreen, setInternalScreen] =
     useState<ValuationWorkScreenId>("basic");
@@ -167,16 +168,9 @@ export function ValuationWorkShell({
     narrativeDirty,
     bankRows,
     bankDistanceKm,
-    bankBeyond,
     landBankRows,
     landBankDistanceKm,
-    landBankBeyond,
-    bankRadiusKm,
-    setBankRadiusKm,
-    bankTypeFilter,
-    setBankTypeFilter,
     subjectAreaNum,
-    onSearchBank,
     reload,
     bankSubjectCoords,
   } = data;
@@ -189,6 +183,11 @@ export function ValuationWorkShell({
   const {
     onAdoptMarket,
     onAdoptLand,
+    onRemoveMarket,
+    onRemoveLand,
+    onCopyLandIntoMarket,
+    onCopyLandIntoLandTable,
+    landCopySourceCounts,
     onSaveBankOverride,
     dispatchMarketMatrix,
     dispatchLandMatrix,
@@ -358,24 +357,23 @@ export function ValuationWorkShell({
           resultTone={marketReady ? "heading" : "danger"}
         />
 
-        <ComparablesBankTable
-          rows={bankRows}
-          subjectSqm={subjectAreaNum}
-          distanceKm={bankDistanceKm}
-          radiusKm={bankRadiusKm}
-          onRadiusChange={setBankRadiusKm}
-          typeFilter={bankTypeFilter}
-          onTypeFilterChange={setBankTypeFilter}
-          subjectKindLabel={marketKind === "land" ? "أراضٍ" : marketKind === "unit" ? "مبانٍ — الشقق أولاً" : "مبانٍ"}
-          beyond={bankBeyond}
-          onAdopt={onAdoptMarket}
-          onSearch={onSearchBank}
-          onSaveOverride={onSaveBankOverride}
-          seed={comparableSeed}
-          sourceWorkOrderNumber={poNumber}
-          sourcePropertyId={propertyId}
-          onCreated={onBankCreated}
-        />
+        {/* `mx-bank`: where «جاهزية تسليم التقييم» lands for a missing adopted comparable. */}
+        <div id="mx-bank">
+          <ComparablesBankTable
+            rows={bankRows}
+            subjectSqm={subjectAreaNum}
+            distanceKm={bankDistanceKm}
+            onAdopt={onAdoptMarket}
+            onRemove={onRemoveMarket}
+            onCopyLandValuation={onCopyLandIntoMarket}
+            copyLandSource={{ label: "تقدير الأرض في أسلوب التكلفة", count: landCopySourceCounts.market }}
+            onSaveOverride={onSaveBankOverride}
+            seed={comparableSeed}
+            sourceWorkOrderNumber={poNumber}
+            sourcePropertyId={propertyId}
+            onCreated={onBankCreated}
+          />
+        </div>
 
         {selection ? (
           <Suspense fallback={<InlineLoadingSkeleton />}>
@@ -493,10 +491,11 @@ export function ValuationWorkShell({
           rows={landBankRows}
           subjectSqm={landPlotSqm || (isApartment ? null : subjectAreaNum)}
           distanceKm={landBankDistanceKm}
-          radiusKm={bankRadiusKm}
-          onRadiusChange={setBankRadiusKm}
-          beyond={landBankBeyond}
+          landOnly
           onAdopt={onAdoptLand}
+          onRemove={onRemoveLand}
+          onCopyLandValuation={onCopyLandIntoLandTable}
+          copyLandSource={{ label: "أسلوب السوق", count: landCopySourceCounts.land }}
           onSaveOverride={onSaveBankOverride}
           seed={comparableSeed}
           sourceWorkOrderNumber={poNumber}
@@ -533,7 +532,6 @@ export function ValuationWorkShell({
             ناقصاً الإهلاك. يُغيَّر النطاق من «أساليب وطرق التقييم».
           </div>
         )}
-        {gates ? alertsPanel("cost") : null}
       </>
     );
   }
@@ -559,6 +557,8 @@ export function ValuationWorkShell({
         onSubmit={onSubmit}
         gates={gates}
         onGoToScreen={setScreen}
+        nav={{ market: marketTab, cost: costTab }}
+        valuationStarted={settingsSaved}
       />
     );
   }
@@ -635,8 +635,13 @@ export function ValuationWorkShell({
             ownershipInterestKey={approachSettings?.ownershipInterestKey ?? null}
             saving={saving}
             locked={adjustmentsLocked}
+            inventoryApproved={!studyReportPending}
             onSavingChange={setSaving}
             onCostSaved={onCostSaved}
+            // After the cost tables, not before them, and only once the direct costs are saved
+            // (2026-11-11): the appraiser read «لا يوجد بند تكلفة» before reaching — or saving —
+            // the table it speaks about.
+            alerts={gates ? alertsPanel("cost") : null}
           />
         </Suspense>
       ) : null}
@@ -697,7 +702,11 @@ export function ValuationWorkShell({
               basic: (
                 <>
                   {loading ? <WorkSectionFieldsSkeleton label={SCREEN_LOADING_LABEL} /> : null}
-                  <div hidden={loading}>{basicNode}</div>
+                  {/* The section's body has no top padding of its own; the shared gap keeps the
+                      first labels off the header's rule. */}
+                  <div hidden={loading} className={WORK_SECTION_TOP_GAP}>
+                    {basicNode}
+                  </div>
                 </>
               ),
               market: loading ? <WorkSectionFieldsSkeleton label={SCREEN_LOADING_LABEL} /> : renderMarket(),
@@ -707,7 +716,12 @@ export function ValuationWorkShell({
               ) : (
                 (finalNode ?? notStartedCard("رأي القيمة النهائي"))
               ),
-              review: loading ? <WorkSectionFieldsSkeleton label={SCREEN_LOADING_LABEL} /> : renderReview(),
+              review: loading ? (
+                <WorkSectionFieldsSkeleton label={SCREEN_LOADING_LABEL} />
+              ) : (
+                // The shared top gap (its first heading sat on the header's rule).
+                <div className={WORK_SECTION_TOP_GAP}>{renderReview()}</div>
+              ),
             },
             current:
               loading || disabled

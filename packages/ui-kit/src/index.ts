@@ -76,6 +76,13 @@ export { ListPager, listPagerWindow, type ListPagerProps } from "./components/Li
 export { ErrorBoundary } from "./components/ErrorBoundary";
 export { Spinner } from "./components/Spinner";
 export { GoogleMapPin } from "./components/GoogleMapPin";
+export {
+  MapControlButton,
+  MapControlGroup,
+  MapControlIcon,
+  MapControlStack,
+  type MapControlIconName,
+} from "./components/MapControls";
 export type {
   GoogleMapContextPin,
   GoogleMapLocationDetail,
@@ -212,7 +219,6 @@ export {
   WorkSectionsLayout,
   WorkSectionsSkeleton,
   sectionDomId,
-  sectionsOpenAtStep,
   useWorkSections,
   workSectionStatus,
   type FrameSectionDef,

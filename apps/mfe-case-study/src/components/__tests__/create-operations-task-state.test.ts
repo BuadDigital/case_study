@@ -6,6 +6,8 @@ import {
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
 import {
+  ENGINEERING_SURVEY_TASK_TYPE,
+  taskTypesFor,
   allDeedOptions,
   buildCreateOperationsTaskSubmission,
   buildLetterRowsForDeed,
@@ -139,6 +141,26 @@ describe("prefill, due fields and assignee selection", () => {
     expect(resolveAssigneeSelection([], "zz", false)).toEqual({ id: "", name: "" });
     expect(resolveAssigneeSelection([], "zz", true)).toBeNull();
   });
+
+  // Omar 2026-11-11: the engineering office is added from «مهمة جديدة», type «رفع مساحي».
+  it("offers «رفع مساحي» only to who may add the office, and a prefill for it falls back otherwise", () => {
+    expect(taskTypesFor(true)).toContain(ENGINEERING_SURVEY_TASK_TYPE);
+    expect(taskTypesFor(false)).toEqual(["general", "court_visit"]);
+    const prefill = { type: ENGINEERING_SURVEY_TASK_TYPE, poNumber: "PO-1" };
+    expect(prefillType(prefill)).toBe(ENGINEERING_SURVEY_TASK_TYPE);
+    expect(prefillType(prefill, taskTypesFor(false))).toBe("general");
+    expect(initialCreateOperationsTaskForm(prefill, NOW, taskTypesFor(false)).type).toBe("general");
+  });
+
+  it("puts the survey on one deed and never picks its office for the user", () => {
+    expect(
+      initialCreateOperationsTaskForm({ type: ENGINEERING_SURVEY_TASK_TYPE, scope: "work_order" }, NOW),
+    ).toMatchObject({ type: ENGINEERING_SURVEY_TASK_TYPE, scope: "transaction", title: "رفع مساحي" });
+    const offices = [{ id: "o1", name: "مكتب جدة" }];
+    expect(resolveAssigneeSelection(offices, "", false, false)).toBeNull();
+    expect(resolveAssigneeSelection(offices, "rev-1", false, false)).toEqual({ id: "", name: "" });
+    expect(resolveAssigneeSelection(offices, "o1", false, false)).toBeNull();
+  });
 });
 
 describe("createOperationsTaskReducer", () => {
@@ -149,6 +171,13 @@ describe("createOperationsTaskReducer", () => {
       type: "court_visit",
       title: "زيارة محكمة",
     });
+    // «رفع مساحي»: one deed, and the assignee of the other type is not carried over as its office.
+    expect(
+      createOperationsTaskReducer(
+        { ...initial, scope: "multi", assigneeId: "rev-1", assigneeName: "فراس" },
+        { type: "set-type", value: ENGINEERING_SURVEY_TASK_TYPE },
+      ),
+    ).toMatchObject({ scope: "transaction", assigneeId: "", assigneeName: "", title: "رفع مساحي" });
     const withDeeds = { ...initial, deed: "111", selectedDeeds: ["111"] };
     expect(createOperationsTaskReducer(withDeeds, { type: "set-po", value: "PO-2" })).toMatchObject({
       poNumber: "PO-2",
@@ -175,6 +204,14 @@ describe("createOperationsTaskReducer", () => {
     expect(createOperationsTaskReducer(initial, { type: "set-assignee", id: "", name: "" })).toBe(initial);
     expect(createOperationsTaskReducer(initial, { type: "set-visit-fee", value: "" })).toBe(initial);
     expect(createOperationsTaskReducer(initial, { type: "set-visit-fee", value: "350" }).visitFeeAmountSar).toBe("350");
+  });
+
+  it("keeps the reason of a survey asked for outside the survey rule", () => {
+    expect(initial.surveyExceptionReason).toBe("");
+    expect(
+      createOperationsTaskReducer(initial, { type: "set-survey-reason", value: "اختلاف في الحدود" })
+        .surveyExceptionReason,
+    ).toBe("اختلاف في الحدود");
   });
 });
 

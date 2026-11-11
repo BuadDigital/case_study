@@ -32,7 +32,7 @@ import type { WorkflowTask } from "../lib/app-data/tasks";
  * (`buildActiveQueueRowMoreItems`: failure, phase revert for bourse / distribution, delete,
  * property links); every other row gets the case-study queues' menu (`buildCaseStudyQueueRowMoreItems`:
  * property links, and «تعديل إسناد الأطراف» on study rows); then the general actions every ⋮ menu
- * shares (`useTransactionGeneralActions`: failure, final failure, cancellation). The modals are
+ * shares (`useTransactionGeneralActions`: reopen, failure, cancellation). The modals are
  * returned as `modals` for the page to mount once.
  * Edge cases: a bourse item whose deed has no case-study task loaded only links to the property; a
  * row with neither task nor property has no menu. A change refreshes the tasks, PO records and bourse
@@ -134,7 +134,7 @@ export function useMyWorkRowMenu({
     ],
   );
 
-  // The stage's items, then the general ones (failure, final failure, cancellation) every ⋮ menu shares.
+  // The stage's items, then the general ones (reopen, failure, cancellation) every ⋮ menu shares.
   const itemsFor = useCallback(
     (item: MyWorkItem): RowMoreMenuItem[] => {
       const record = poByNumber.get(item.poNumber.trim());

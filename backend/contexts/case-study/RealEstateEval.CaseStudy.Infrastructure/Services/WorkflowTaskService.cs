@@ -85,6 +85,15 @@ public class WorkflowTaskService : IWorkflowTaskService
         CancellationToken cancellationToken = default) =>
         _distribution.AddEngineeringSurveyAsync(id, request, actor, actorName, actorUserId, cancellationToken);
 
+    public Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> SkipEngineeringSurveyAsync(
+        Guid id,
+        SkipEngineeringSurveyRequest request,
+        StaffActor actor,
+        string? actorName,
+        string? actorUserId = null,
+        CancellationToken cancellationToken = default) =>
+        _distribution.SkipEngineeringSurveyAsync(id, request, actor, actorName, actorUserId, cancellationToken);
+
     public Task<(WorkflowTaskDto? Result, IReadOnlyDictionary<string, string>? Errors)> RedistributePartiesAsync(
         Guid id,
         RedistributePartiesRequest request,

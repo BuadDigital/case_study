@@ -72,10 +72,15 @@ public class FinalFailureRequest
     public string? ProblemTypeId { get; set; }
     /// <summary>The problem type's label, stored as the new failure's title.</summary>
     public string? Title { get; set; }
-    /// <summary>The supervisor's reason — stored as the final note on every deed.</summary>
+    /// <summary>The reason — stored as the final note on every deed.</summary>
     public string Reason { get; set; } = "";
     /// <summary>Notify the parties holding tasks on the deeds; false stops them silently.</summary>
     public bool NotifyParties { get; set; }
+    /// <summary>
+    /// Who records it («الأخصائي» / «المشرف») — set by the failures controller from the caller's
+    /// role, never trusted from the client; blank reads as «المشرف».
+    /// </summary>
+    public string? RaisedByRole { get; set; }
 }
 
 public class FailureNoteRequest

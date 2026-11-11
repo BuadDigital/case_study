@@ -50,6 +50,7 @@ import { isFoldedAppraisalTask } from "@platform/app-shared/workflow/task-types"
 import {
   MY_WORK_GROUPS,
   buildMyWork,
+  defaultMyWorkStage,
   formatActionClock,
   myWorkGroupsForPages,
   type MyWorkDue,
@@ -95,14 +96,16 @@ function DueBadge({ item }: { item: Pick<MyWorkItem, "due" | "dueText"> }) {
  * tag per row (Omar: «اكتفي بمعادة للتعديل»). The line under it still says where the work stands.
  * Named «معادة للدراسة» by Omar 2026-11-08 (after «معاد فتحها» and «معادة للتعديل»), knowing a
  * reopening may also touch the valuation or the upload.
+ * The step due is the brand's solid navy; advance work («إعداد مسبق», the appraiser's valuation whose
+ * study is not issued — 2026-11-11) keeps navy's light wash: it can be entered, but nothing is due yet.
  */
-function ActionTag({ item }: { item: Pick<MyWorkItem, "action" | "reopened"> }) {
+function ActionTag({ item }: { item: Pick<MyWorkItem, "action" | "reopened" | "stage"> }) {
   return item.reopened ? (
     <Badge tone="warning" className="whitespace-nowrap">
       معادة للدراسة
     </Badge>
   ) : (
-    <Badge tone="primary" className="whitespace-nowrap">
+    <Badge tone="primary" filled={item.stage !== "prework"} className="whitespace-nowrap">
       {item.action}
     </Badge>
   );
@@ -167,7 +170,9 @@ export function MyWorkView() {
   const router = useRouter();
   const { role, rolePages } = useAppAccess();
   const nowMs = useTickingMinute();
-  const [stage, setStage] = useState<MyWorkStage | null>(null);
+  // The chip picked by hand: a stage, «الكل» ("all"), or null while none was picked — the page then
+  // follows the role's own stage (`defaultMyWorkStage`, Omar 2026-11-11).
+  const [picked, setPicked] = useState<MyWorkStage | "all" | null>(null);
   const [search, setSearch] = useState("");
 
   const tasksQuery = useWorkflowTasksQuery();
@@ -244,6 +249,29 @@ export function MyWorkView() {
     nowMs,
   ]);
 
+  const visibleGroups = useMemo(
+    () => MY_WORK_GROUPS.filter((g) => groups.includes(g.key)),
+    [groups],
+  );
+  // Omar 2026-11-08: with a single stage (the study alone) «الكل» and that stage list the same rows —
+  // the chips filter nothing, so only the search is shown.
+  const showStageChips =
+    visibleGroups.reduce((n, g) => n + g.stages.length, 0) > 1;
+  // The chip in force (null = «الكل»). Until one is picked by hand it is the first stage with an
+  // action due from the viewer, so it moves on as a stage empties and the next one fills (the
+  // appraiser: «التقييم», then «مسودة بانتظار اعتمادك»); with nothing due, his first chip.
+  const defaultStage = useMemo(
+    () => defaultMyWorkStage(groups, work.items),
+    [groups, work.items],
+  );
+  const stage: MyWorkStage | null = !showStageChips
+    ? null
+    : picked === null
+      ? defaultStage
+      : picked === "all"
+        ? null
+        : picked;
+
   // The stage chip, then the search box (deed, PO, transaction number, place, type or action).
   const listed = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -282,11 +310,6 @@ export function MyWorkView() {
     work.items.filter((i) => i.stage === s).length;
   const lateOf = (s: MyWorkStage) =>
     work.items.some((i) => i.stage === s && i.due === "late");
-  const visibleGroups = MY_WORK_GROUPS.filter((g) => groups.includes(g.key));
-  // Omar 2026-11-08: with a single stage (the study alone) «الكل» and that stage list the same rows —
-  // the chips filter nothing, so only the search is shown.
-  const showStageChips =
-    visibleGroups.reduce((n, g) => n + g.stages.length, 0) > 1;
   const open = (href: string) => router.push(href);
 
   return (
@@ -317,7 +340,7 @@ export function MyWorkView() {
                 },
               ]}
               active={stage === null ? "all" : null}
-              onChange={() => setStage(null)}
+              onChange={() => setPicked("all")}
             />
           ) : null}
           {(showStageChips ? visibleGroups : []).map((g, i) => (
@@ -333,9 +356,8 @@ export function MyWorkView() {
                   danger: lateOf(s.key),
                 }))}
                 active={stage}
-                onChange={(key) =>
-                  setStage((key as MyWorkStage | null) ?? null)
-                }
+                // A second click on the active chip clears it: back to «الكل».
+                onChange={(key) => setPicked((key as MyWorkStage | null) ?? "all")}
               />
             </div>
           ))}
@@ -376,12 +398,16 @@ export function MyWorkView() {
                 ? "لا نتائج مطابقة للبحث"
                 : stage === "handed"
                   ? "لا توجد تقييمات مسلَّمة"
-                  : `لا شيء ينتظرك ${stage ? "في هذه المرحلة" : "الآن"}`}
+                  : stage === "prework"
+                    ? "لا توجد تقييمات بانتظار الدراسة"
+                    : `لا شيء ينتظرك ${stage ? "في هذه المرحلة" : "الآن"}`}
             </div>
             <div className="mt-1 text-[13px] text-text-3">
               {stage === "handed"
                 ? "تظهر هنا التقييمات التي سلّمتها ريثما تصدر مسودة التقرير أو يُودَع."
-                : "تظهر هنا كل خطوة تصل إلى أدوارك، ويختفي الصف بعد تنفيذها."}
+                : stage === "prework"
+                  ? "تظهر هنا التقييمات التي لم تصدر دراستها بعد: يمكن إعدادها كمسودة، وتنتقل إلى «التقييم» عند صدور الدراسة."
+                  : "تظهر هنا كل خطوة تصل إلى أدوارك، ويختفي الصف بعد تنفيذها."}
             </div>
           </div>
         ) : (

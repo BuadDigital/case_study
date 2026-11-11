@@ -9,7 +9,7 @@
 
 "use client";
 
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import type { ValuationCostApproachDto } from "@platform/api-client";
 
 import { GhostBtn, PrimaryBtn } from "./atoms";
@@ -25,7 +25,7 @@ import {
 } from "./CostApproachParts";
 import { useCostApproachWorkflow } from "./useCostApproachWorkflow";
 import { costSaveStatusText } from "./lib/cost-autosave";
-import { buildingPlotAreaSeed } from "./lib/cost-approach-state";
+import { buildingPlotAreaSeed, COST_INVENTORY_AWAITS_STUDY } from "./lib/cost-approach-state";
 
 /**
  * Cost-approach section — composes the land, lines, indirect, age, results,
@@ -49,8 +49,10 @@ export const CostApproachSection = memo(function CostApproachSection({
   ownershipInterestKey = null,
   saving,
   locked = false,
+  inventoryApproved = true,
   onSavingChange,
   onCostSaved,
+  alerts = null,
 }: {
   valuationRequestId: string | null;
   poNumber?: string;
@@ -68,8 +70,16 @@ export const CostApproachSection = memo(function CostApproachSection({
   ownershipInterestKey?: string | null;
   saving: boolean;
   locked?: boolean;
+  /** The study is issued — the inventory is the approved one and may be pulled. */
+  inventoryApproved?: boolean;
   onSavingChange: (saving: boolean) => void;
   onCostSaved: (dto: ValuationCostApproachDto) => void;
+  /**
+   * The methodology alerts of the cost approach, shown at the end — and, like the tables after the
+   * direct costs, only once those are reviewed and saved: until then the alerts speak about tables
+   * the appraiser has not reached, and the review box says what is asked of him.
+   */
+  alerts?: ReactNode;
 }) {
   const workflow = useCostApproachWorkflow({
     valuationRequestId,
@@ -84,6 +94,7 @@ export const CostApproachSection = memo(function CostApproachSection({
     plotAreaSeed: buildingPlotAreaSeed(deedArea, isApartmentProperty),
     costBasisKey,
     locked,
+    inventoryApproved,
     onSavingChange,
     onCostSaved,
   });
@@ -96,6 +107,8 @@ export const CostApproachSection = memo(function CostApproachSection({
     costAlerts,
     seedCostFromInventory,
     saveCost,
+    saveCostLines,
+    linesReviewed,
     saveState,
     drift,
     addNewInventoryLines,
@@ -129,11 +142,19 @@ export const CostApproachSection = memo(function CostApproachSection({
           <span className="text-xs text-text-3">
             أضف البند من صف «اختر البند» في نهاية كل مجموعة
           </span>
-          <GhostBtn disabled={saving || locked} onClick={() => void seedCostFromInventory()}>
+          <GhostBtn
+            disabled={saving || locked || !workflow.inventoryApproved}
+            onClick={() => void seedCostFromInventory()}
+          >
             سحب من حصر المباني
           </GhostBtn>
         </div>
       </div>
+      {workflow.inventoryApproved ? null : (
+        <p className="mb-3 mt-0 text-[11.5px] font-semibold text-gold-d" data-testid="cost-inventory-awaits-study">
+          {COST_INVENTORY_AWAITS_STUDY}
+        </p>
+      )}
 
       <CostInventoryDriftBanner
         drift={drift}
@@ -144,6 +165,30 @@ export const CostApproachSection = memo(function CostApproachSection({
 
       <CostApproachLinesTable workflow={workflow} saving={saving} />
 
+      {/* The tables after the direct costs open once the appraiser reviewed, priced and saved them
+          (ruling 2026-11-11); they stay open afterwards. */}
+      {linesReviewed ? null : (
+        <div
+          data-testid="cost-lines-review"
+          className="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2.5 rounded-[10px] border border-border-md bg-gold-soft px-4 py-3"
+        >
+          <PrimaryBtn disabled={saving || locked} onClick={() => void saveCostLines()}>
+            حفظ بنود التكلفة
+          </PrimaryBtn>
+          <p className="m-0 min-w-[14rem] flex-1 text-[11.5px] leading-relaxed text-text-2">
+            راجع بنود التكلفة المباشرة وعدّلها بما تراه، وسعّر كل بند مشمول، ثم احفظها — بعدها تُفتح
+            التكاليف غير المباشرة والعمر والإهلاك.
+          </p>
+          {!locked && costSaveStatusText(saveState) ? (
+            <p className="m-0 basis-full text-[11.5px] text-text-3" role="status">
+              {costSaveStatusText(saveState)}
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      {linesReviewed ? (
+        <>
       {ageNotice ? (
         <EvaluatorActionNotice
           testId="cost-inspector-age-notice"
@@ -184,6 +229,8 @@ export const CostApproachSection = memo(function CostApproachSection({
 
       <CostAlertsCard alerts={costAlerts} />
 
+      {alerts}
+
       <div className="flex flex-wrap items-center gap-3">
         <PrimaryBtn disabled={saving || locked} onClick={() => void saveCost()}>
           حفظ أسلوب التكلفة
@@ -202,6 +249,8 @@ export const CostApproachSection = memo(function CostApproachSection({
           </p>
         ) : null}
       </div>
+        </>
+      ) : null}
     </>
   );
 });

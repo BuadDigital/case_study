@@ -303,6 +303,20 @@ export function comparableDealLabel(row: Pick<ComparablePropertyDto, "transactio
   return `عرض ${price}`;
 }
 
+/** Where a bank comparable came from, on one line: channel · freshness · prior deal · work order. */
+export function sourceCardLine(comp: Pick<ComparablePropertyDto, "sourceCard">): string {
+  const card = comp.sourceCard;
+  if (!card) return "";
+  return [
+    card.intakeChannelLabelAr,
+    card.freshnessLabelAr,
+    card.fromPriorDeal ? "من معاملات سابقة" : null,
+    card.sourceWorkOrderNumber ? `أمر ${card.sourceWorkOrderNumber}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
 export function computedPricePerSqm(price: string, area: string): string {
   const p = parseLocaleNumber(price);
   const a = parseLocaleNumber(area);

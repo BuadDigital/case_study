@@ -37,6 +37,7 @@ import { useFavoriteProperties } from "../../lib/app-data/favorite-properties";
 import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
 import { useTransactionQuery } from "../../query/use-transaction-query";
 import { TransactionDeedSwitcher } from "./TransactionDeedSwitcher";
+import { PropertyDeedPreviewButton } from "./PropertyDeedPreviewButton";
 import { estimateCaseStudyCompletion } from "../../lib/app-data/case-study-completion";
 
 /** Deed number, or the real-estate registry number when the property is identified by one. */
@@ -349,6 +350,12 @@ export function PropertyDetailHero({
               >
                 {propertyUiStatusLabel(uiStatus)}
               </span>
+              {/* «مطالعة الصك» (Omar 2026-11-11): the deed opens in a window on the same page. */}
+              <PropertyDeedPreviewButton
+                poNumber={record.poNumber}
+                property={property}
+                compact={compact}
+              />
             </div>
           </div>
 

@@ -38,6 +38,12 @@ export type BadgeProps = HTMLAttributes<HTMLSpanElement> & {
    * @default false
    */
   inTable?: boolean;
+  /**
+   * The tone's solid colour instead of its light wash, at the pill's normal size (no fixed width) —
+   * for the one tag of a row that must stand out, e.g. the step due in «أعمالي» in the brand's navy.
+   * @default false
+   */
+  filled?: boolean;
 };
 
 /**
@@ -50,6 +56,7 @@ export function Badge({
   tone = "default",
   dot = false,
   inTable = false,
+  filled = false,
   children,
   ...props
 }: BadgeProps) {
@@ -60,7 +67,7 @@ export function Badge({
         inTable
           ? "inline-flex h-[26px] w-[108px] items-center justify-center rounded-md text-[12px] font-medium whitespace-nowrap"
           : "inline-flex items-center gap-1.5 rounded-md px-[11px] py-[3px] text-xs font-bold whitespace-nowrap",
-        inTable ? toneFilledClasses[tone] : toneClasses[tone],
+        inTable || filled ? toneFilledClasses[tone] : toneClasses[tone],
         className,
       )}
       {...props}

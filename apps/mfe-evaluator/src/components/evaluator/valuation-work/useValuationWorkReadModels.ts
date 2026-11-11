@@ -2,85 +2,46 @@
 
 /**
  * Memoised projections `ValuationWorkShell` renders from: the adopted sets,
- * their factor rows and auto narrative, the two bank display tables, and the
- * bank text search. Distant comparables are left adopted — they may be flagged
+ * their factor rows and auto narrative, and the two comparables tables (the
+ * transaction's own rows). Distant comparables are left adopted — they may be flagged
  * in the bank table by distance, never written back as un-adopted.
  */
-import { useCallback, useMemo, useRef } from "react";
-import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
+import { useMemo } from "react";
 import {
-  type ComparablePropertyDto,
   type ValuationComparableSelectionListDto,
   type ValuationCostApproachDto,
 } from "@platform/api-client";
 import {
-  BANK_DISPLAY_LIMIT,
-  BANK_SEARCH_DISPLAY_LIMIT,
   buildBankDisplayRows,
-  fetchBankCandidates,
-  isVacantLandComparable,
   parseSubjectAreaSqm,
   resolveSubjectCoordsForBank,
-  type BankTypeFilter,
 } from "./lib/bank-ranking";
 import { buildFactorRows } from "./lib/market-save-mappers";
-import { apiConfig } from "./lib/shell-utils";
 import {
   buildAutoNarrative,
   isSeedMarketAnalysisNotes,
   parseDecimal,
 } from "./lib/shell-state";
-import {
-  type BankFetchOptions,
-  type SubjectCoords,
-  type SubjectHints,
-  subjectIdentity,
-} from "./lib/valuation-data-state";
-import type { MarketSubjectKind } from "./lib/market-subject";
+import { type SubjectCoords, type SubjectHints } from "./lib/valuation-data-state";
 
 export function useValuationWorkReadModels({
   hints,
   selection,
   landSelection,
-  candidates,
   bankSubjectCoords,
   subjectArea,
   analysisNotes,
   cost,
-  resolveBankFetchOpts,
-  applyBankResult,
-  bankSearch,
-  bankRadiusKm,
-  bankTypeFilter = "subject",
-  marketKind,
 }: {
   hints: SubjectHints;
   loading: boolean;
   valuationRequestId: string | null;
   selection: ValuationComparableSelectionListDto | null;
   landSelection: ValuationComparableSelectionListDto | null;
-  candidates: ComparablePropertyDto[];
   bankSubjectCoords: SubjectCoords | null;
-  bankSearch: string;
-  /** The radius the appraiser picked for the bank table; `null` = all. */
-  bankRadiusKm: number | null;
-  /** The market bank's type filter: the subject's kind (default) or every type. */
-  bankTypeFilter?: BankTypeFilter;
-  /** What the market table compares the subject as; land puts land comparables first. */
-  marketKind: MarketSubjectKind;
   subjectArea: string;
   analysisNotes: string;
   cost: ValuationCostApproachDto | null;
-  reload: (opts?: {
-    silent?: boolean;
-    scope?: "full" | "derived";
-  }) => Promise<void>;
-  resolveBankFetchOpts: (search?: string) => Promise<BankFetchOptions>;
-  applyBankResult: (
-    rows: ComparablePropertyDto[],
-    subjectCoords: SubjectCoords | null,
-    search?: string,
-  ) => void;
 }) {
   const { property, intakeProperty } = hints;
   const adoptedMarket = useMemo(
@@ -97,7 +58,6 @@ export function useValuationWorkReadModels({
     [selection],
   );
 
-  const { city: subjectCity } = subjectIdentity(hints);
   const subjectCoordsForBank = useMemo(
     () =>
       bankSubjectCoords ??
@@ -133,99 +93,27 @@ export function useValuationWorkReadModels({
     !isSeedMarketAnalysisNotes(analysisNotes) &&
     analysisNotes.trim() !== autoNarrative.trim();
 
-  const searching = bankSearch.length > 0;
-  const {
-    rows: bankRows,
-    distances: bankDistanceKm,
-    beyond: bankBeyond,
-  } = useMemo(
+  const { rows: bankRows, distances: bankDistanceKm } = useMemo(
     () =>
       buildBankDisplayRows({
         selectionItems: selection?.items ?? [],
-        candidates,
-        subjectCity: subjectCity || undefined,
         subjectCoords: subjectCoordsForBank,
         subjectSqm: parseSubjectAreaSqm(subjectArea, property?.area),
-        limit: searching ? BANK_SEARCH_DISPLAY_LIMIT : BANK_DISPLAY_LIMIT,
-        nearbyOnly: !searching,
-        radiusKm: bankRadiusKm,
-        // Land is compared with land, anything built with buildings (its own type first).
-        subjectKind: marketKind === "land" ? "land" : "building",
-        subjectType: property?.propertyType ?? null,
-        typeFilter: bankTypeFilter,
       }),
-    [
-      selection?.items,
-      candidates,
-      bankRadiusKm,
-      bankTypeFilter,
-      marketKind,
-      property?.propertyType,
-      subjectCity,
-      subjectCoordsForBank,
-      subjectArea,
-      property?.area,
-      searching,
-    ],
+    [selection?.items, subjectCoordsForBank, subjectArea, property?.area],
   );
 
-  const landCandidates = useMemo(
-    () =>
-      candidates.filter((c) => isVacantLandComparable(c.comparablePropertyType)),
-    [candidates],
-  );
-  const {
-    rows: landBankRows,
-    distances: landBankDistanceKm,
-    beyond: landBankBeyond,
-  } = useMemo(
+  const { rows: landBankRows, distances: landBankDistanceKm } = useMemo(
     () =>
       buildBankDisplayRows({
         selectionItems: landSelection?.items ?? [],
-        candidates: landCandidates,
-        subjectCity: subjectCity || undefined,
         subjectCoords: subjectCoordsForBank,
         subjectSqm: cost?.landAreaSqm ?? parseSubjectAreaSqm(subjectArea, property?.area),
-        limit: searching ? BANK_SEARCH_DISPLAY_LIMIT : BANK_DISPLAY_LIMIT,
-        nearbyOnly: !searching,
-        radiusKm: bankRadiusKm,
       }),
-    [
-      bankRadiusKm,
-      landSelection?.items,
-      landCandidates,
-      subjectCity,
-      subjectCoordsForBank,
-      cost?.landAreaSqm,
-      subjectArea,
-      property?.area,
-      searching,
-    ],
+    [landSelection?.items, subjectCoordsForBank, cost?.landAreaSqm, subjectArea, property?.area],
   );
 
   const subjectAreaNum = parseDecimal(subjectArea) || null;
-
-  const subjectAreaRef = useLatestRef(subjectArea);
-  const searchGen = useRef(0);
-  /** Bank search — fetches bank candidates only instead of a full screen reload (7 calls). */
-  const onSearchBank = useCallback(
-    (search: string) => {
-      void (async () => {
-        const gen = ++searchGen.current;
-        const config = apiConfig();
-        if (!config) return;
-        const bankOpts = await resolveBankFetchOpts(search);
-        bankOpts.subjectSqm = parseSubjectAreaSqm(
-          subjectAreaRef.current,
-          property?.area,
-        );
-        const res = await fetchBankCandidates(config, bankOpts);
-        if (!res.ok || gen !== searchGen.current) return;
-        applyBankResult(res.data, res.subjectCoords, search);
-      })();
-    },
-    [resolveBankFetchOpts, property?.area, applyBankResult, subjectAreaRef],
-  );
 
   return {
     adoptedLand,
@@ -238,11 +126,8 @@ export function useValuationWorkReadModels({
     narrativeDirty,
     bankRows,
     bankDistanceKm,
-    bankBeyond,
     landBankRows,
     landBankDistanceKm,
-    landBankBeyond,
     subjectAreaNum,
-    onSearchBank,
   };
 }

@@ -1,7 +1,7 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
 //  • Split  New file — the «تاريخ التقييم» block (issue date or retrospective date / period) moved here
-//           out of ApproachSettingsSection (ValuationDateFields).
+//           out of ApproachSettingsSection.
 //  • The retrospective block adds «مبرر التقييم بأثر رجعي» (required, at least 10 characters,
 //         printed in the report scope).
 //  • New OwnershipInterestFields: «نوع الملكية المقيَّمة» (ملكية تامة / حق منفعة / أرض مستأجرة) and,
@@ -9,6 +9,11 @@
 // Round 2 (1b19bedc)
 //  • Date inputs take max = today (the server refuses a future retrospective date) and are
 //           disabled while the settings save.
+// Layout (2026-11-11)
+//  • The card reads in the order of the decision: what is valued (scope · interest · date, three
+//           columns), then by which approach. So the date is two chips in that row
+//           (ValuationDateModeField) and the retrospective inputs open under the row, full width
+//           (RetrospectiveFields); the interest's select fills its column.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -25,40 +30,24 @@ import {
 
 type FieldErrors = Record<string, string>;
 
+/** Label of one field of the «what is valued» row — the three columns line up on it. */
+export const SETTINGS_FIELD_LABEL = "mb-2 block text-[11.5px] font-medium text-text-2";
+/** The one-line explanation under a field of that row. */
+export const SETTINGS_FIELD_HINT = "mb-0 mt-1.5 text-[10.5px] leading-relaxed text-text-3";
+/**
+ * Columns that follow the width of the card, not of the window: as many columns of at least `min`
+ * as fit, one under the other when a single one does not. The appraiser page keeps a rail beside
+ * the card, so a window breakpoint put three cramped columns in a 530px card.
+ */
+export const SETTINGS_ROW_3 = "grid items-start gap-x-6 gap-y-4 grid-cols-[repeat(auto-fit,minmax(min(300px,100%),1fr))]";
+export const SETTINGS_ROW_2 = "grid items-start gap-x-6 gap-y-3 grid-cols-[repeat(auto-fit,minmax(min(320px,100%),1fr))]";
+/** Label of an input inside a sub-block (lease years, retrospective dates and rationale). */
+const SUB_FIELD_LABEL = "mb-1.5 block text-[11px] font-semibold text-text-2";
+
 function FieldError({ message }: { message?: string }) {
   return message ? (
     <p className="mb-0 mt-1.5 text-[11px] text-danger-text">{message}</p>
   ) : null;
-}
-
-function ModeButton({
-  active,
-  disabled,
-  onClick,
-  title,
-  hint,
-}: {
-  active: boolean;
-  disabled: boolean;
-  onClick: () => void;
-  title: string;
-  hint: string;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        "rounded-[var(--radius)] border px-3.5 py-3 text-start transition-[background,border-color] duration-150",
-        active ? "border-gold bg-gold-soft" : "border-border-md bg-surface",
-        disabled ? "cursor-not-allowed opacity-55" : "cursor-pointer",
-      )}
-    >
-      <div className="text-[12.5px] font-bold text-heading">{title}</div>
-      <div className="mt-1 text-[10.5px] leading-relaxed text-text-3">{hint}</div>
-    </button>
-  );
 }
 
 function DateInput({
@@ -81,7 +70,7 @@ function DateInput({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-[11px] font-semibold text-text-2">
+      <label htmlFor={id} className={SUB_FIELD_LABEL}>
         {label}
       </label>
       <input
@@ -100,12 +89,65 @@ function DateInput({
   );
 }
 
-/** «تاريخ التقييم»: issue date or retrospective (a date or a period) with its rationale. */
-export function ValuationDateFields({
+/**
+ * «تاريخ التقييم»: the value as of the report's issue date, or of an earlier date / period.
+ *
+ * How it works: two chips, like the scope beside it; the line under them says what the choice
+ * means. Choosing «أثر رجعي» opens `RetrospectiveFields` under the row.
+ */
+export function ValuationDateModeField({
   saving,
-  fieldErrors,
+  invalid,
   dateMode,
   onDateModeChange,
+}: {
+  saving: boolean;
+  invalid: boolean;
+  dateMode: string;
+  onDateModeChange: (mode: string) => void;
+}) {
+  const retrospective = dateMode === "retrospective";
+  return (
+    <div>
+      <span className={SETTINGS_FIELD_LABEL}>تاريخ التقييم</span>
+      <div
+        id="as-valuation-date"
+        className={cn("flex flex-wrap gap-2 rounded-[10px]", invalid && invalidControlClass)}
+      >
+        <ToggleChip
+          active={!retrospective}
+          disabled={saving}
+          onClick={() => onDateModeChange("issue")}
+        >
+          تاريخ إصدار القيمة
+        </ToggleChip>
+        <ToggleChip
+          active={retrospective}
+          disabled={saving}
+          onClick={() => onDateModeChange("retrospective")}
+        >
+          أثر رجعي
+        </ToggleChip>
+      </div>
+      <p className={SETTINGS_FIELD_HINT}>
+        {retrospective
+          ? "قيمة في تاريخ أو فترة سابقة — أدخل التاريخ ومبرره أدناه."
+          : "القيمة كما في تاريخ إصدار التقرير — لا يلزم إدخال تاريخ إضافي."}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * The retrospective valuation's inputs: one date or a period, and the rationale printed in the
+ * report scope.
+ *
+ * How it works: a full-width block under the «what is valued» row — the date(s) on one side, the
+ * rationale on the other (one under the other on a narrow screen).
+ */
+export function RetrospectiveFields({
+  saving,
+  fieldErrors,
   retroKind,
   onRetroKindChange,
   retroDate,
@@ -117,8 +159,6 @@ export function ValuationDateFields({
 }: {
   saving: boolean;
   fieldErrors: FieldErrors;
-  dateMode: string;
-  onDateModeChange: (mode: string) => void;
   retroKind: "single" | "range";
   onRetroKindChange: (kind: "single" | "range") => void;
   retroDate: string;
@@ -128,130 +168,106 @@ export function ValuationDateFields({
   retroRationale: string;
   onRetroRationaleChange: (value: string) => void;
 }) {
-  const retrospective = dateMode === "retrospective";
   const rationaleError = fieldErrors.retrospectiveRationale;
   return (
-    <div className="mb-4 border-t border-border pt-4">
-      <FieldLabel>تاريخ التقييم</FieldLabel>
-      <div
-        id="as-valuation-date"
-        className={cn(
-          "my-2 mb-1.5 grid grid-cols-2 gap-2.5 max-sm:grid-cols-1 rounded-[10px]",
-          fieldErrors.valuationDateMode && invalidControlClass,
+    <div
+      className={cn(
+        SETTINGS_ROW_2,
+        "mb-4 rounded-[var(--radius)] border border-border bg-surface-2 px-3.5 py-3.5",
+      )}
+    >
+      <div>
+        <FieldLabel>صيغة الأثر الرجعي</FieldLabel>
+        <div className="my-2 mb-1.5 flex flex-wrap gap-2">
+          <ToggleChip
+            active={retroKind === "single"}
+            disabled={saving}
+            onClick={() => {
+              onRetroKindChange("single");
+              onRetroDateEndChange("");
+            }}
+          >
+            تاريخ محدد
+          </ToggleChip>
+          <ToggleChip
+            active={retroKind === "range"}
+            disabled={saving}
+            onClick={() => onRetroKindChange("range")}
+          >
+            فترة بين تاريخين
+          </ToggleChip>
+        </div>
+
+        {retroKind === "single" ? (
+          <div className="mt-2.5 max-w-[14rem]">
+            <DateInput
+              id="as-retro-date"
+              label="تاريخ الأثر الرجعي"
+              value={retroDate}
+              invalid={Boolean(fieldErrors.retrospective_date || fieldErrors.retrospectiveDate)}
+              disabled={saving}
+              onChange={onRetroDateChange}
+            />
+          </div>
+        ) : (
+          <div className="mt-2.5 grid grid-cols-2 gap-2.5 max-sm:grid-cols-1">
+            <DateInput
+              id="as-retro-date-from"
+              label="من تاريخ"
+              value={retroDate}
+              invalid={Boolean(
+                fieldErrors.retrospective_date_from || fieldErrors.retrospectiveDate,
+              )}
+              disabled={saving}
+              onChange={onRetroDateChange}
+            />
+            <DateInput
+              id="as-retro-date-to"
+              label="إلى تاريخ"
+              value={retroDateEnd}
+              min={retroDate || undefined}
+              invalid={Boolean(
+                fieldErrors.retrospective_date_to || fieldErrors.retrospectiveDateEnd,
+              )}
+              disabled={saving}
+              onChange={onRetroDateEndChange}
+            />
+          </div>
         )}
-      >
-        <ModeButton
-          active={!retrospective}
-          disabled={saving}
-          onClick={() => onDateModeChange("issue")}
-          title="تاريخ إصدار القيمة"
-          hint="القيمة كما في تاريخ إصدار التقرير"
-        />
-        <ModeButton
-          active={retrospective}
-          disabled={saving}
-          onClick={() => onDateModeChange("retrospective")}
-          title="أثر رجعي"
-          hint="قيمة في تاريخ أو فترة سابقة"
-        />
       </div>
 
-      {retrospective ? (
-        <div className="mt-3 rounded-[var(--radius)] border border-border bg-surface-2 px-3.5 py-3.5">
-          <FieldLabel>صيغة الأثر الرجعي</FieldLabel>
-          <div className="my-2 mb-1.5 flex flex-wrap gap-2">
-            <ToggleChip
-              active={retroKind === "single"}
-              disabled={saving}
-              onClick={() => {
-                onRetroKindChange("single");
-                onRetroDateEndChange("");
-              }}
-            >
-              تاريخ محدد
-            </ToggleChip>
-            <ToggleChip
-              active={retroKind === "range"}
-              disabled={saving}
-              onClick={() => onRetroKindChange("range")}
-            >
-              فترة بين تاريخين
-            </ToggleChip>
-          </div>
-
-          {retroKind === "single" ? (
-            <div className="mt-2.5 max-w-[14rem]">
-              <DateInput
-                id="as-retro-date"
-                label="تاريخ الأثر الرجعي"
-                value={retroDate}
-                invalid={Boolean(fieldErrors.retrospective_date || fieldErrors.retrospectiveDate)}
-                disabled={saving}
-                onChange={onRetroDateChange}
-              />
-            </div>
-          ) : (
-            <div className="mt-2.5 grid grid-cols-2 gap-2.5 max-sm:grid-cols-1">
-              <DateInput
-                id="as-retro-date-from"
-                label="من تاريخ"
-                value={retroDate}
-                invalid={Boolean(
-                  fieldErrors.retrospective_date_from || fieldErrors.retrospectiveDate,
-                )}
-                disabled={saving}
-                onChange={onRetroDateChange}
-              />
-              <DateInput
-                id="as-retro-date-to"
-                label="إلى تاريخ"
-                value={retroDateEnd}
-                min={retroDate || undefined}
-                invalid={Boolean(
-                  fieldErrors.retrospective_date_to || fieldErrors.retrospectiveDateEnd,
-                )}
-                disabled={saving}
-                onChange={onRetroDateEndChange}
-              />
-            </div>
-          )}
-
-          <div className="mt-3">
-            <label
-              htmlFor="as-retro-rationale"
-              className="mb-1.5 block text-[11px] font-semibold text-text-2"
-            >
-              مبرر التقييم بأثر رجعي
-            </label>
-            <Textarea
-              id="as-retro-rationale"
-              value={retroRationale}
-              disabled={saving}
-              rows={2}
-              hasError={Boolean(rationaleError)}
-              aria-invalid={rationaleError ? true : undefined}
-              placeholder="سبب تقدير القيمة في تاريخ سابق (يُطبع في نطاق التقرير)"
-              onChange={(e) => onRetroRationaleChange(e.target.value)}
-            />
-            {rationaleError ? (
-              <FieldError message={rationaleError} />
-            ) : (
-              <p className="mb-0 mt-1 text-[10.5px] text-text-3">
-                إلزامي — {RETROSPECTIVE_RATIONALE_MIN_LENGTH} أحرف على الأقل.
-              </p>
-            )}
-          </div>
-        </div>
-      ) : (
-        <p className="mb-0 mt-2 text-[10.5px] text-text-3">
-          لا يلزم إدخال تاريخ إضافي — يُعتمد تاريخ إصدار القيمة.
-        </p>
-      )}
+      <div>
+        <label htmlFor="as-retro-rationale" className={SUB_FIELD_LABEL}>
+          مبرر التقييم بأثر رجعي
+        </label>
+        <Textarea
+          id="as-retro-rationale"
+          value={retroRationale}
+          disabled={saving}
+          rows={3}
+          hasError={Boolean(rationaleError)}
+          aria-invalid={rationaleError ? true : undefined}
+          placeholder="سبب تقدير القيمة في تاريخ سابق (يُطبع في نطاق التقرير)"
+          onChange={(e) => onRetroRationaleChange(e.target.value)}
+        />
+        {rationaleError ? (
+          <FieldError message={rationaleError} />
+        ) : (
+          <p className="mb-0 mt-1 text-[10.5px] text-text-3">
+            إلزامي — {RETROSPECTIVE_RATIONALE_MIN_LENGTH} أحرف على الأقل.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
 
-/** «نوع الملكية المقيَّمة»: freehold, usufruct or leased land with the remaining lease years. */
+/**
+ * «نوع الملكية المقيَّمة»: freehold, usufruct or leased land with the remaining lease years.
+ *
+ * How it works: the select fills its column of the «what is valued» row; for a leasehold the
+ * remaining years appear under it.
+ */
 export function OwnershipInterestFields({
   saving,
   fieldErrors,
@@ -270,35 +286,27 @@ export function OwnershipInterestFields({
   const leasehold = isLeaseholdInterest(ownershipKey);
   const leaseError = fieldErrors.remainingLeaseYears;
   return (
-    <div className="mb-4 grid grid-cols-2 gap-2.5 max-sm:grid-cols-1">
-      <div>
-        <label
-          htmlFor="as-ownership-interest"
-          className="mb-1.5 block text-[11px] font-semibold text-text-2"
-        >
-          نوع الملكية المقيَّمة
-        </label>
-        <Select
-          id="as-ownership-interest"
-          value={ownershipKey}
-          disabled={saving}
-          hasError={Boolean(fieldErrors.ownershipInterestKey)}
-          onChange={(e) => onOwnershipKeyChange(e.target.value)}
-        >
-          {OWNERSHIP_INTEREST_OPTIONS.map((o) => (
-            <option key={o.key} value={o.key}>
-              {o.labelAr}
-            </option>
-          ))}
-        </Select>
-        <FieldError message={fieldErrors.ownershipInterestKey} />
-      </div>
+    <div>
+      <label htmlFor="as-ownership-interest" className={SETTINGS_FIELD_LABEL}>
+        نوع الملكية المقيَّمة
+      </label>
+      <Select
+        id="as-ownership-interest"
+        value={ownershipKey}
+        disabled={saving}
+        hasError={Boolean(fieldErrors.ownershipInterestKey)}
+        onChange={(e) => onOwnershipKeyChange(e.target.value)}
+      >
+        {OWNERSHIP_INTEREST_OPTIONS.map((o) => (
+          <option key={o.key} value={o.key}>
+            {o.labelAr}
+          </option>
+        ))}
+      </Select>
+      <FieldError message={fieldErrors.ownershipInterestKey} />
       {leasehold ? (
-        <div>
-          <label
-            htmlFor="as-remaining-lease-years"
-            className="mb-1.5 block text-[11px] font-semibold text-text-2"
-          >
+        <div className="mt-2.5">
+          <label htmlFor="as-remaining-lease-years" className={SUB_FIELD_LABEL}>
             المدة المتبقية (سنة)
           </label>
           <input

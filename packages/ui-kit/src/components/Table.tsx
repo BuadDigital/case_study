@@ -276,8 +276,11 @@ export function TableEmptyRow({
         className="!py-10 text-center text-[13px] text-text-3"
       >
         {/* A wide table (min-w) on a phone centred the message off-screen — a blank box.
-            Cap it to the visible width from the row's start edge and keep it there on scroll. */}
-        <div className="sticky start-0 w-[calc(100vw-3rem)] max-w-full">
+            Cap it to the visible width from the row's start edge and keep it there on scroll.
+            From `lg` up the message takes the cell's own width: beside the sidebar the viewport
+            width is wider than the table's frame, so the fixed width stretched every empty table
+            past its frame and gave it a sideways scrollbar that hid its last columns (2026-11-11). */}
+        <div className="sticky start-0 w-[calc(100vw-3rem)] max-w-full lg:w-auto">
           <GentleLoadingCopy>{children}</GentleLoadingCopy>
         </div>
       </Td>

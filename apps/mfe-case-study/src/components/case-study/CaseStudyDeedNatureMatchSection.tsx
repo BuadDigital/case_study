@@ -81,7 +81,7 @@ const OUTCOME_HINTS: Record<string, string> = {
   differences:
     "توجد فروق بين الصك والطبيعة — يلزم توضيحها أدناه، ويُوقف مسار التقييم حتى تُعالَج (مسار تعذّر).",
   impediment:
-    "المطابقة غير ممكنة أو الحالة مرشحة لتعذّر — يلزم التوضيح، ويُوقف التقييم ودراسة الحالة (مسار تعذّر).",
+    "المطابقة غير ممكنة أو الحالة تعذّر محتمل — يلزم التوضيح، ويُوقف التقييم ودراسة الحالة (مسار تعذّر).",
 };
 
 export function CaseStudyDeedNatureMatchSection({
@@ -118,7 +118,7 @@ export function CaseStudyDeedNatureMatchSection({
   const outcome = draft.deedNatureMatchOutcome ?? "";
   const inspectorSaidNotMatched = dissent !== null;
   const dissentLabel = deedMatchDissentLabel(dissent);
-  // An outcome that needs text — «فروق» / «مرشح تعذّر», or «مطابق» against the inspector — is not saved on
+  // An outcome that needs text — «فروق» / «تعذّر محتمل», or «مطابق» against the inspector — is not saved on
   // click: its notes are written first and saved with it (a click alone is refused by the server and rolled
   // back), and they start empty — the reason of one outcome never becomes the notes of another.
   const [pending, setPending] = useState<{ value: string; notes: string } | null>(null);
@@ -307,7 +307,7 @@ export function CaseStudyDeedNatureMatchSection({
               <span className="text-danger-text">*</span>
             </Label>
             <p className="mb-1.5 mt-0 text-[11px] text-text-3">
-              إلزامية عند «فروق» أو «مرشح تعذّر» — بدونها لا يُقبل إصدار تقرير دراسة الحالة.
+              إلزامية عند «فروق» أو «تعذّر محتمل» — بدونها لا يُقبل إصدار تقرير دراسة الحالة.
             </p>
             <Textarea
               id="deed-nature-match-notes"

@@ -522,6 +522,27 @@ function sectionIdForSource(source: string): string {
   return "other";
 }
 
+/** The document types that are the property's deed, the one to read first. */
+const DEED_DOCUMENT_TYPE_KEYS = ["deed", "real-estate-registry", "bourse-deed"] as const;
+
+/**
+ * The property's deed among its documents, for «مطالعة الصك» in the page header (Omar 2026-11-11).
+ *
+ * How it works: the ownership document uploaded at intake; else the real-estate registry extract
+ * (a property identified by its registry number); else the deed image from the bourse inquiry.
+ * Edge cases: none of them on the property → null.
+ */
+export function deedDocumentEntry(
+  sections: readonly PropertyDetailDocumentSection[],
+): PropertyDetailDocumentEntry | null {
+  const documents = sections.flatMap((section) => section.documents);
+  for (const key of DEED_DOCUMENT_TYPE_KEYS) {
+    const found = documents.find((entry) => entry.documentTypeKey === key);
+    if (found) return found;
+  }
+  return null;
+}
+
 export function collectPropertyDetailDocumentSections(input: {
   property: PoPropertyIntake;
   showDecree: boolean;

@@ -295,15 +295,16 @@ export async function redistributeWorkflowTaskParties(
   }
 }
 
-/** «إضافة رفع مساحي» — the engineering office joins after distribution (the corrected type needs it). */
-export async function addWorkflowTaskEngineeringSurvey(
+/** POST to a case-study task's engineering-survey route — the add and the skip share the call. */
+async function postEngineeringSurvey(
   config: WorkOrdersApiConfig,
   parentTaskId: string,
-  body: { assigneeId: string; assigneeName?: string },
+  route: "" | "/skip",
+  body: unknown,
 ): Promise<ApiOk<WorkflowTaskDto> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
   try {
-    const res = await fetch(`${base}/api/workflow-tasks/${parentTaskId}/engineering-survey`, {
+    const res = await fetch(`${base}/api/workflow-tasks/${parentTaskId}/engineering-survey${route}`, {
       method: "POST",
       headers: authHeaders(config.token),
       body: JSON.stringify(body),
@@ -312,6 +313,30 @@ export async function addWorkflowTaskEngineeringSurvey(
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+/**
+ * «إضافة رفع مساحي» — the engineering office joins after distribution. `exceptionReason` is required
+ * when the survey rule asks no survey for the property (2026-11-11); the server ignores it otherwise.
+ */
+export function addWorkflowTaskEngineeringSurvey(
+  config: WorkOrdersApiConfig,
+  parentTaskId: string,
+  body: { assigneeId: string; assigneeName?: string; exceptionReason?: string },
+): Promise<ApiOk<WorkflowTaskDto> | ApiErr> {
+  return postEngineeringSurvey(config, parentTaskId, "", body);
+}
+
+/**
+ * «تجاوز المكتب الهندسي» (Omar 2026-11-11) — the study drops the office before issuing the study
+ * report: its open task is cancelled and earns no fee. Answers the case-study task.
+ */
+export function skipWorkflowTaskEngineeringSurvey(
+  config: WorkOrdersApiConfig,
+  parentTaskId: string,
+  body: { reason: string },
+): Promise<ApiOk<WorkflowTaskDto> | ApiErr> {
+  return postEngineeringSurvey(config, parentTaskId, "/skip", body);
 }
 
 export async function advanceWorkflowTaskAfterEnfath(

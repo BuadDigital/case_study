@@ -660,6 +660,95 @@ export async function setValuationComparableAdopted(
   }
 }
 
+export type CopyValuationComparableTableResult = {
+  /** The target table after the copy. */
+  target: ValuationComparableSelectionListDto;
+  copiedCount: number;
+  /** Built comparables left out of a copy into the land table. */
+  skippedBuiltCount: number;
+};
+
+/**
+ * Copies the land valuation by comparable sales (adopted comparables, adjustments, weights,
+ * rationales, overrides) from one table of the valuation to the other — a snapshot.
+ *
+ * Edge cases: a target that already holds comparables is refused with `errors.replace` until
+ * `replace` is sent; a source with nothing adopted is refused.
+ */
+export async function copyValuationComparableTable(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  body: { fromContext: string; toContext: string; replace?: boolean },
+): Promise<Result<CopyValuationComparableTableResult>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(
+      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/copy`,
+      {
+        method: "POST",
+        headers: authHeaders(config.token, { accept: true }),
+        body: JSON.stringify({ ...body, replace: body.replace === true }),
+      },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 403) {
+      return { ok: false, kind: "auth", message: "ليست لديك صلاحية تعديل المقارنات" };
+    }
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        errors?: Record<string, string | string[]>;
+        message?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: firstValidationMessage(payload?.errors) ?? payload?.message ?? "تعذّر نسخ المقارنات",
+        errors: payload?.errors as Record<string, string> | undefined,
+      };
+    }
+    if (!res.ok) return await serverFailure(res);
+    return { ok: true, data: await parseJson<CopyValuationComparableTableResult>(res) };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
+/**
+ * Takes a comparable out of a valuation's table (market, or the land table of the cost approach).
+ * The bank record stays; a property-linked comparable removed here is not imported again.
+ */
+export async function removeValuationComparable(
+  config: ValuationSelectionsApiConfig,
+  valuationRequestId: string,
+  comparablePropertyId: string,
+  selectionContext: string = "market",
+): Promise<Result<null>> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const qs = new URLSearchParams({ selectionContext });
+    const res = await fetch(
+      `${base}/api/valuation-requests/${valuationRequestId}/comparable-selections/${comparablePropertyId}?${qs}`,
+      { method: "DELETE", headers: authHeaders(config.token, { accept: true }) },
+    );
+    if (res.status === 401) return { ok: false, kind: "auth" };
+    if (res.status === 400) {
+      const payload = (await res.json().catch(() => null)) as {
+        message?: string;
+        detail?: string;
+      } | null;
+      return {
+        ok: false,
+        kind: "validation",
+        message: payload?.message ?? payload?.detail ?? "تعذّر حذف المقارن",
+      };
+    }
+    if (!res.ok) return await serverFailure(res);
+    return { ok: true, data: null };
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function saveValuationComparableMarket(
   config: ValuationSelectionsApiConfig,
   valuationRequestId: string,

@@ -4,7 +4,7 @@
  *
  * Draft saves allow Unset (empty). Traditional deeds: downstream work
  * (valuation calc and the case-study report) requires `matched`.
- * Registered title skips the gate. فروق / مرشح تعذر is an impediment path,
+ * Registered title skips the gate. فروق / تعذّر محتمل is an impediment path,
  * not a report.
  */
 
@@ -18,7 +18,7 @@ export const DeedNatureMatchOutcomes = {
 export const DEED_NATURE_MATCH_OPTIONS = [
   { value: DeedNatureMatchOutcomes.Matched, label: "مطابق" },
   { value: DeedNatureMatchOutcomes.Differences, label: "فروق" },
-  { value: DeedNatureMatchOutcomes.Impediment, label: "مرشح تعذّر" },
+  { value: DeedNatureMatchOutcomes.Impediment, label: "تعذّر محتمل" },
 ] as const;
 
 export function normalizeDeedNatureMatchOutcome(

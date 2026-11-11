@@ -29,23 +29,62 @@ public static class FailureRecordRules
             ? new Dictionary<string, string> { ["reason"] = "سبب التعذّر مطلوب" }
             : null;
 
-    /// <summary>The final failure is the section supervisor's call (the CDO keeps every power).</summary>
+    /// <summary>
+    /// The final failure is recorded by the case specialist (any sub-role), the section supervisor
+    /// and the CDO (Omar 2026-11-11: «دارس الحالة يمكنه تسجيل التعذر النهائي والتعذر الداخلي»).
+    /// </summary>
     /// <remarks>
     /// How it works: a case-insensitive match of the caller's prototype role against
-    /// <c>section-supervisor</c> and <c>cdo</c>; the failures controller checks it before
-    /// <c>POST /api/failures/final</c>, the frontend mirrors it in <c>canRecordFinalFailure</c>.
+    /// <c>case-specialist</c>, <c>section-supervisor</c> and <c>cdo</c>; the failures controller
+    /// checks it before <c>POST /api/failures/final</c>, the frontend mirrors it in
+    /// <c>canRecordFinalFailure</c> (<c>failure-degrees.ts</c>).
     ///
-    /// Edge cases: the capability policy alone (<c>manage-failures</c>) also admits the case
-    /// specialist, so without this check a specialist could finalize — only the supervisor may.
-    /// The general manager is left out on purpose (view-only on failures).
-    /// A missing role is refused.
+    /// Edge cases: until 2026-11-11 only the supervisor and the CDO passed — the specialist had to
+    /// escalate and wait for «اعتماد التعذّر». The general manager is left out on purpose
+    /// (view-only on failures); the parties never pass. A missing role is refused.
     /// </remarks>
     public static bool CanRecordFinalFailure(string? prototypeRole) =>
-        string.Equals(prototypeRole, StaffRoleIds.SectionSupervisor, StringComparison.OrdinalIgnoreCase)
+        string.Equals(prototypeRole, StaffRoleIds.CaseSpecialist, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(prototypeRole, StaffRoleIds.SectionSupervisor, StringComparison.OrdinalIgnoreCase)
         || string.Equals(prototypeRole, StaffRoleIds.Cdo, StringComparison.OrdinalIgnoreCase);
+
+    public const string FinalFailureRoleDeniedAr =
+        "التعذّر النهائي عن المعاملة لأخصائي دراسة الحالة والمشرف";
+
+    /// <summary>
+    /// «تعذّر داخلي» — the failure that stops the work on the deed at once — is raised by the same
+    /// roles that record the final one; everyone else raises «تعذّر محتمل» (Omar 2026-11-11).
+    /// </summary>
+    public static bool CanRaiseInternalFailure(string? prototypeRole) =>
+        CanRecordFinalFailure(prototypeRole);
+
+    /// <summary>The severity a raise is recorded with, given who raises it.</summary>
+    /// <remarks>
+    /// How it works: the requested severity for a role that may raise «تعذّر داخلي»; «تعذّر محتمل»
+    /// for any other role, whatever it asked for — the work goes on until a case specialist
+    /// confirms the failure («تأكيد تعذّر داخلي») or records the final one.
+    ///
+    /// Edge cases: the request is lowered, not refused, so a raise queued offline by an inspector's
+    /// older screen (which sent <c>internal</c>) is still recorded. Only the public raise route
+    /// applies it — failures the system files itself (key mismatch, eviction hold, bourse
+    /// obstruction) do not pass through here and stay internal.
+    /// </remarks>
+    public static string RaiseSeverityFor(string? prototypeRole, string? requested) =>
+        CanRaiseInternalFailure(prototypeRole)
+            ? requested ?? PropertyFailureSeverity.Internal
+            : PropertyFailureSeverity.Suspected;
 
     /// <summary>The raiser label of a failure the supervisor files with the final failure.</summary>
     public const string SupervisorRaiserRole = "المشرف";
+
+    /// <summary>The raiser label of a failure the case specialist files with the final failure.</summary>
+    public const string SpecialistRaiserRole = "الأخصائي";
+
+    /// <summary>The raiser label a final failure is filed under: «الأخصائي» for the case specialist, «المشرف» otherwise.</summary>
+    public static string FinalFailureRaiserRole(string? prototypeRole) =>
+        string.Equals(prototypeRole, StaffRoleIds.CaseSpecialist, StringComparison.OrdinalIgnoreCase)
+            ? SpecialistRaiserRole
+            : SupervisorRaiserRole;
 
     /// <summary>Field errors of a final-failure request: the deed must parse and the reason is required.</summary>
     /// <remarks>
@@ -71,8 +110,9 @@ public static class FailureRecordRules
 
     /// <summary>The failure filed on a deed that had none when the final failure lands on it.</summary>
     /// <remarks>
-    /// How it works: an internal failure on the deed with the supervisor's chosen problem type and
-    /// its label as the title, raised by «المشرف», with the reason as its note — the service then
+    /// How it works: an internal failure on the deed with the chosen problem type and its label as
+    /// the title, raised by whoever records the final failure (<see cref="FinalFailureRequest.RaisedByRole"/>,
+    /// «المشرف» when the request names nobody), with the reason as its note — the service then
     /// finalizes it at once, so it never shows as an open failure.
     ///
     /// Edge cases: a blank title falls back to the problem-type id (<c>FailureRules.ResolveTitle</c>);
@@ -90,9 +130,13 @@ public static class FailureRecordRules
             ProblemTypeId = request.ProblemTypeId?.Trim() ?? "",
             Title = request.Title?.Trim(),
             Severity = PropertyFailureSeverity.Internal,
-            RaisedByRole = SupervisorRaiserRole,
+            RaisedByRole = FinalFailureRaisedBy(request),
             InternalNote = request.Reason.Trim(),
         };
+
+    /// <summary>The raiser label of a final-failure request — «المشرف» when the request carries none.</summary>
+    public static string FinalFailureRaisedBy(FinalFailureRequest request) =>
+        string.IsNullOrWhiteSpace(request.RaisedByRole) ? SupervisorRaiserRole : request.RaisedByRole.Trim();
 
     /// <summary>The notice a party holding a task on the deed receives (when the supervisor asks for it).</summary>
     /// <remarks>

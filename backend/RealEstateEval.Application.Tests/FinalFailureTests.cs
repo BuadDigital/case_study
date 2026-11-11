@@ -132,14 +132,65 @@ public sealed class FinalFailureTests
         Assert.True(errors!.ContainsKey("propertyId"));
     }
 
+    [Fact]
+    public async Task A_final_failure_filed_by_the_case_specialist_is_raised_under_his_label()
+    {
+        await using var rig = Arrange();
+
+        var (result, errors) = await rig.Service.RecordFinalFailureAsync(new FinalFailureRequest
+        {
+            PoNumber = Po,
+            PropertyId = rig.DeedA.ToString("D"),
+            ProblemTypeId = "court-hold",
+            Reason = Reason,
+            RaisedByRole = FailureRecordRules.FinalFailureRaiserRole("case-specialist"),
+        });
+
+        Assert.Null(errors);
+        Assert.All(result!, f => Assert.Equal(FailureRecordRules.SpecialistRaiserRole, f.RaisedByRole));
+    }
+
+    /// <summary>Omar 2026-11-11: the case specialist records the final failure too; the parties and the general manager never do.</summary>
     [Theory]
     [InlineData("section-supervisor", true)]
     [InlineData("cdo", true)]
-    [InlineData("case-specialist", false)]
+    [InlineData("case-specialist", true)]
+    [InlineData("Case-Specialist", true)]
     [InlineData("general-manager", false)]
+    [InlineData("field-inspector", false)]
+    [InlineData("engineering-office", false)]
+    [InlineData("real-estate-appraiser", false)]
     [InlineData(null, false)]
-    public void Only_the_supervisor_records_the_final_failure(string? role, bool allowed) =>
+    public void The_case_specialist_and_the_supervisor_record_the_final_failure(string? role, bool allowed) =>
         Assert.Equal(allowed, FailureRecordRules.CanRecordFinalFailure(role));
+
+    /// <summary>
+    /// Omar 2026-11-11: «تعذّر داخلي» is the case specialist's and the supervisor's; every other role's
+    /// raise is recorded «تعذّر محتمل», whatever it asked for.
+    /// </summary>
+    [Theory]
+    [InlineData("case-specialist", "internal", "internal")]
+    [InlineData("case-specialist", "suspected", "suspected")]
+    [InlineData("section-supervisor", "internal", "internal")]
+    [InlineData("cdo", "internal", "internal")]
+    [InlineData("field-inspector", "internal", "suspected")]
+    [InlineData("engineering-office", "internal", "suspected")]
+    [InlineData("real-estate-appraiser", "internal", "suspected")]
+    [InlineData("real-estate-appraiser", "suspected", "suspected")]
+    [InlineData("general-manager", "internal", "suspected")]
+    [InlineData(null, "internal", "suspected")]
+    public void A_raise_is_recorded_with_the_severity_its_role_may_file(
+        string? role, string requested, string expected) =>
+        Assert.Equal(
+            expected,
+            FailureRules.NormalizeSeverity(FailureRecordRules.RaiseSeverityFor(role, requested)));
+
+    [Theory]
+    [InlineData("case-specialist", FailureRecordRules.SpecialistRaiserRole)]
+    [InlineData("section-supervisor", FailureRecordRules.SupervisorRaiserRole)]
+    [InlineData("cdo", FailureRecordRules.SupervisorRaiserRole)]
+    public void The_final_failure_names_who_filed_it(string role, string expected) =>
+        Assert.Equal(expected, FailureRecordRules.FinalFailureRaiserRole(role));
 
     /// <summary>
     /// One transaction of two live deeds (and a removed third) on one work order; deed A carries

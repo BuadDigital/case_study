@@ -44,6 +44,7 @@ export function CreateTaskLinkScopeFields({
   selectedPo,
   deeds,
   multiDeedOptions,
+  scopeLocked = false,
 }: {
   form: Pick<CreateOperationsTaskForm, "scope" | "poNumber" | "deed" | "selectedDeeds">;
   dispatch: CreateTaskDispatch;
@@ -51,21 +52,25 @@ export function CreateTaskLinkScopeFields({
   selectedPo: PoIntakeRecord | undefined;
   deeds: string[];
   multiDeedOptions: { deed: string; po: string }[];
+  /** The type fixes the scope («رفع مساحي» is always one deed) — the scope choice is not shown. */
+  scopeLocked?: boolean;
 }) {
   const { scope, poNumber, deed, selectedDeeds } = form;
   return (
     <>
-      <div className={opsFldFull}>
-        <label className={opsTfLblInFld}>نطاق الربط *</label>
-        <SegRow
-          value={scope}
-          onChange={(id) => dispatch({ type: "set-scope", value: id })}
-          options={LINK_SCOPES.map((s) => ({
-            id: s,
-            label: OPERATIONS_TASK_SCOPE_LABELS[s] ?? s,
-          }))}
-        />
-      </div>
+      {scopeLocked ? null : (
+        <div className={opsFldFull}>
+          <label className={opsTfLblInFld}>نطاق الربط *</label>
+          <SegRow
+            value={scope}
+            onChange={(id) => dispatch({ type: "set-scope", value: id })}
+            options={LINK_SCOPES.map((s) => ({
+              id: s,
+              label: OPERATIONS_TASK_SCOPE_LABELS[s] ?? s,
+            }))}
+          />
+        </div>
+      )}
 
       {scope !== "general" && scope !== "multi" ? (
         <div className={opsFldFull}>

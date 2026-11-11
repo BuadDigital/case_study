@@ -203,6 +203,27 @@ describe("failureActionPermissions", () => {
       }).canSpecialistAct,
     ).toBe(false);
   });
+
+  // Omar 2026-11-11: a possible failure goes to the case specialist — any sub-role — to confirm or resolve.
+  it("lets a specialist without coordination act on a possible failure only", () => {
+    const study = { caseEditor: false, supervisor: false, confirmer: true };
+    expect(
+      failureActionPermissions(failure("a", { status: "internal", severity: "suspected" }), study),
+    ).toEqual({
+      active: true,
+      canSpecialistAct: true,
+      canSupervisorAct: false,
+      canResolve: true,
+    });
+    expect(
+      failureActionPermissions(failure("a", { status: "internal", severity: "internal" }), study)
+        .canSpecialistAct,
+    ).toBe(false);
+    expect(
+      failureActionPermissions(failure("a", { status: "review", severity: "suspected" }), study)
+        .canSpecialistAct,
+    ).toBe(false);
+  });
 });
 
 describe("failureMetaRows", () => {

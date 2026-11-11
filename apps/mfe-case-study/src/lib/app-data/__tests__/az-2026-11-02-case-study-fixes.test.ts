@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptyProperty } from "@platform/app-shared/app-data/po-intake-property-model";
 import {
-  surveyMissingAfterTypeChange,
-} from "@platform/app-shared/app-data/po-intake-identifiers";
-import {
   deedMatchDissent,
   deedMatchDissentLabel,
   deedMatchOverrideReasonMessage,
@@ -24,30 +21,8 @@ import { deedVitalityFromStatus } from "../../../views/my-task-work-state";
 
 /** Fixes from the local A→Z run of 2026-11-02 (test-results/az-2026-11-02/findings.md). */
 
-const landChangedToRestHouse = {
-  ...emptyProperty(),
-  id: "p1",
-  classification: "أرض",
-  propertyType: "أرض سكنية",
-  inspectedPropertyType: "استراحة",
-};
-
-describe("#74/#75 — a corrected type that needs a survey asks for the office (it never blocks the study)", () => {
-  it("asks even when the bourse type already needed a survey", () => {
-    expect(surveyMissingAfterTypeChange(landChangedToRestHouse, false)).toBe(true);
-    expect(surveyMissingAfterTypeChange(landChangedToRestHouse, true)).toBe(false);
-  });
-
-  it("asks nothing without a type change or without a survey need", () => {
-    expect(
-      surveyMissingAfterTypeChange({ ...landChangedToRestHouse, inspectedPropertyType: "أرض سكنية" }, false),
-    ).toBe(false);
-    expect(surveyMissingAfterTypeChange({ ...landChangedToRestHouse, inspectedPropertyType: "" }, false)).toBe(false);
-    expect(
-      surveyMissingAfterTypeChange({ ...landChangedToRestHouse, planNumber: "12", plotNumber: "3" }, false),
-    ).toBe(false);
-  });
-});
+// #74/#75 (the «إضافة رفع مساحي» note in the inspector's section) — the note is gone (Omar 2026-11-11):
+// the office is added from «مهمة جديدة», whatever the type; see create-engineering-survey-task.test.ts.
 
 describe("#63 — a deed-match save reaches the report editor's copy", () => {
   it("takes the outcome and notes for the same task, case-insensitively", () => {

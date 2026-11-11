@@ -141,8 +141,15 @@ public partial class CaseStudyReportService
             }
         }
 
-        // A survey the inspector's corrected type needs never blocks the issue (Omar 2026-11-04): the
-        // «إضافة رفع مساحي» note on «مدخلات المعاين» reminds the specialist; the choice is theirs.
+        // The engineering office is settled before the valuation opens to the appraiser (Omar
+        // 2026-11-11, replacing the 2026-11-04 ruling that a survey never blocks the issue): its outputs
+        // delivered and accepted, or the office skipped by the study («تجاوز المكتب الهندسي»).
+        if (!alreadyIssued)
+        {
+            var surveyBlock = EngineeringSurveySettlementRules.BlocksIssueAr(
+                await _db.ListEngineeringSurveyFactsAsync(parents.Select(p => p.Id).ToList(), cancellationToken));
+            if (surveyBlock is not null) return (null, Fail(surveyBlock));
+        }
 
         // Re-entry after a half-applied legacy issue: the report is issued but the parent is still
         // open (or its party forms were never locked). Finish the job; nothing else changes.

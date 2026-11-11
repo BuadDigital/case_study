@@ -10,7 +10,9 @@ import {
   type ReportDraftState,
 } from "@platform/app-shared/workflow/report-draft-state";
 import { assigneeLabel, getCaseSpecialists } from "./distribution-parties";
+import type { CaseSpecialistGroup } from "./my-work-model";
 import { migrateDistribution, type WorkflowTask } from "./tasks";
+import { WORK_SECTIONS, workPageStep } from "./work-page-model";
 
 export type PropertyDetailPartyRoleKey =
   | "specialist"
@@ -184,11 +186,92 @@ function timelineSpecialistRow(input: {
   };
 }
 
+/** The case specialist's three sub-roles, as «حالة الأطراف» names them (Omar 2026-11-11). */
+const SPECIALIST_SUB_ROLES: readonly { key: string; group: CaseSpecialistGroup; role: string }[] = [
+  { key: "coordination", group: "co", role: "تنسيق الدراسة" },
+  { key: "study", group: "st", role: "دراسة العقار" },
+  { key: "review", group: "rv", role: "المراجعة والرفع" },
+];
+
+/** The rows under the sections rail, in the order the transaction moves (Omar 2026-11-11). */
+const RAIL_ROW_ORDER = ["coordination", "inspection", "survey", "study", "appraisal", "review"] as const;
+
+/**
+ * Where each of the case specialist's sub-roles stands at a step of the work page.
+ *
+ * How it works: a sub-role owns the work page's sections of its group (`WORK_SECTIONS`) — the step
+ * before its first section → not started; within its sections → in progress; past its last → done.
+ * So the card under the rail reads the transaction exactly as the rail above it does.
+ */
+export function specialistSubRoleStates(
+  step: number,
+): Record<CaseSpecialistGroup, CaseStudyTrackState> {
+  const stateOf = (group: CaseSpecialistGroup): CaseStudyTrackState => {
+    const steps = WORK_SECTIONS.filter((s) => s.group === group).map((s) => s.step);
+    if (step > Math.max(...steps)) return "done";
+    return step < Math.min(...steps) ? "new" : "progress";
+  };
+  return { co: stateOf("co"), st: stateOf("st"), rv: stateOf("rv") };
+}
+
+/**
+ * «حالة الأطراف» with the case specialist as his three sub-roles (Omar 2026-11-11): coordination,
+ * the study, review and upload — roles only, no names (they are shown under the sections rail).
+ *
+ * How it works: the deed's case-study task — the holder deed's when another deed holds the one
+ * study (`studyHolderTaskId`) — gives the work page's step (`workPageStep`), and the step gives
+ * each sub-role's state (`specialistSubRoleStates`).
+ * Edge cases: no task at all → nothing started. A party (the appraiser) cannot see the case-study
+ * task: his own task says only whether the study report is issued — issued → coordination and the
+ * study done, review in progress; not issued → coordination and the study both read «قيد التنفيذ»
+ * (his list does not say whether the transaction was sent to the study yet), review not started.
+ */
+function specialistSubRoleRows(input: {
+  task: WorkflowTask | null;
+  allTasks: WorkflowTask[];
+  studyHolderTaskId?: string;
+  draft?: ReportDraftState;
+}): PropertyDetailPartyStatusRow[] {
+  const { task, allTasks } = input;
+  const holderId = input.studyHolderTaskId?.trim();
+  const parent =
+    (holderId
+      ? allTasks.find((t) => t.id === holderId && t.kind === "case-study-property")
+      : undefined) ??
+    (task?.kind === "case-study-property"
+      ? task
+      : task
+        ? allTasks.find(
+            (t) => t.id === caseStudyFamilyParentId(task) && t.kind === "case-study-property",
+          )
+        : undefined);
+
+  let states: Record<CaseSpecialistGroup, CaseStudyTrackState>;
+  if (parent) states = specialistSubRoleStates(workPageStep(parent, allTasks, () => input.draft));
+  else if (!task) states = { co: "new", st: "new", rv: "new" };
+  else if (task.studyReportIssued === true) states = { co: "done", st: "done", rv: "progress" };
+  else states = { co: "progress", st: "progress", rv: "new" };
+
+  return SPECIALIST_SUB_ROLES.map((def) => ({
+    key: def.key,
+    label: def.role,
+    role: def.role,
+    ...timelineBadgeForParty(true, states[def.group]),
+  }));
+}
+
 /** Timeline sidebar party rows — assignee names with status badges. */
 export function buildPropertyDetailTimelinePartyRows(input: {
   task: WorkflowTask | null;
   allTasks: WorkflowTask[];
   staffUsers?: StaffUser[];
+  /**
+   * The sections rail's card: the case specialist as his three sub-roles (`specialistSubRoleRows`)
+   * instead of one named row.
+   */
+  specialistSubRoles?: boolean;
+  /** With `specialistSubRoles`: the task that holds the transaction's one study, when another deed's. */
+  studyHolderTaskId?: string;
   /**
    * Inspector package was submitted. The workflow task row can still be open
    * in the list the rail has, so completion has to come from the package too.
@@ -232,5 +315,18 @@ export function buildPropertyDetailTimelinePartyRows(input: {
     };
   });
 
-  return [timelineSpecialistRow(input), ...workParties];
+  if (!input.specialistSubRoles) return [timelineSpecialistRow(input), ...workParties];
+
+  // Under the rail the rows follow the transaction's course (Omar 2026-11-11): coordination, the two
+  // field parties it follows up, the study, the appraiser, then review and upload.
+  const rows = [
+    ...specialistSubRoleRows({
+      task,
+      allTasks,
+      studyHolderTaskId: input.studyHolderTaskId,
+      draft: input.appraisal?.draft,
+    }),
+    ...workParties,
+  ];
+  return RAIL_ROW_ORDER.flatMap((key) => rows.filter((r) => r.key === key));
 }

@@ -79,6 +79,19 @@ export function reportDateForPrint(
 }
 
 /**
+ * Whether the report carries its signatures and the firm's stamp (Omar 2026-11-11): only once it is
+ * approved — the appraiser's final approval of the draft, and everything after it (the deposit
+ * copy, the final issue). Before that it is a draft for every role, on screen and in print.
+ * Edge cases: no draft at all (the report cycle has not started) → not approved; a new version
+ * opened after a deposit starts as a draft again.
+ */
+export function reportIsApproved(
+  draft: Pick<ValuationReportDraftDto, "status" | "reportStage"> | null | undefined,
+): boolean {
+  return Boolean(draft) && (draft!.status === "approved" || draft!.reportStage !== "draft");
+}
+
+/**
  * The report number printed on the report: a new version (n+1) keeps the number and adds «/n».
  *
  * How it works: trims `reportNo`; when it is set and `version` is above 1 returns

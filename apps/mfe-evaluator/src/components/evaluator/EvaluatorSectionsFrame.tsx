@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
 import { WorkSectionsLayout, useWorkSections } from "@platform/ui-kit";
+import { WORK_SECTION_TOP_GAP } from "./EvaluatorHtmlPrimitives";
 import type { ValuationWorkScreenParts } from "./valuation-work/ValuationWorkShell.types";
 import type { ValuationWorkScreenId } from "./valuation-work/lib/shell-state";
 import {
@@ -20,18 +21,15 @@ export type EvaluatorSectionFocus = { screen: ValuationWorkScreenId };
  *
  * How it works: the sections are the summary plus the screens of the approaches in use; the step
  * comes from the screen the valuation stands at (`parts.current`), so the rail marks what is done,
- * current and still ahead, and the current section opens by itself. The summary, the approaches
+ * current and still ahead; the page opens with every section folded, like every page on the
+ * frame (Omar 2026-11-11). The summary, the approaches
  * and the review stay mounted from the first paint (`EVALUATOR_KEEP_MOUNTED`). `focus` is how the
  * window sends the appraiser to a screen — a refused hand-over, a field error, «انتقل إلى …» or a
  * remembered screen after a refresh: the section opens and scrolls into view. Opening a section
  * by hand reports it through `onPick`, so the window remembers it for the next refresh.
  *
- * A handed-over valuation (past every section) opens on the summary, so the page never opens with
- * every section folded.
- *
- * Edge cases: a focus that arrives before the step is known waits — the frame replaces its open
- * set once when the step arrives and would close the section again; a focus on a screen whose
- * approach is off is ignored.
+ * Edge cases: a focus that arrives before the step is known waits for it; a focus on a screen
+ * whose approach is off is ignored.
  */
 export function EvaluatorSectionsFrame({
   parts,
@@ -41,6 +39,7 @@ export function EvaluatorSectionsFrame({
   onPick,
   summary,
   footer,
+  railAside,
 }: {
   parts: ValuationWorkScreenParts;
   navAvail: { market: boolean; cost: boolean };
@@ -49,6 +48,8 @@ export function EvaluatorSectionsFrame({
   onPick: (screen: ValuationWorkScreenId) => void;
   summary: ReactNode;
   footer?: ReactNode;
+  /** The hosting app's cards under the rail (the parties' status). */
+  railAside?: ReactNode;
 }) {
   const sections = useMemo(() => evaluatorSections(navAvail), [navAvail]);
   const ready = parts.current !== null || locked;
@@ -58,8 +59,6 @@ export function EvaluatorSectionsFrame({
     step,
     ready,
     keepMounted: EVALUATOR_KEEP_MOUNTED,
-    // A valuation already handed over is past every section: open the summary rather than none.
-    fallbackOpen: "summary",
   });
 
   const { openSection } = state;
@@ -95,8 +94,13 @@ export function EvaluatorSectionsFrame({
         step={step}
         state={reporting}
         railLabel="أقسام التقييم"
-        body={(id) => (id === "summary" ? summary : parts.screens[id])}
+        // A section's body has no top padding of its own: the summary takes the shared gap, so
+        // its first line does not sit on the header's rule.
+        body={(id) =>
+          id === "summary" ? <div className={WORK_SECTION_TOP_GAP}>{summary}</div> : parts.screens[id]
+        }
         footer={footer}
+        railAside={railAside}
       />
     </>
   );

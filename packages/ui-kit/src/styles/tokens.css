@@ -71,7 +71,8 @@
   --page-body-y-sm: 1.25rem; /* Vertical page-body padding, desktop breakpoint */
   --panel-header-y: 0.875rem; /* Vertical padding inside panel/card headers */
   --radius: 9px; /* Default control radius — buttons, fields, badges */
-  --radius-lg: 14px; /* Card/panel/modal radius */
+  --radius-lg: 14px; /* Card/panel radius */
+  --radius-modal: 10px; /* Pop-up window (ModalCard) radius — a lighter curve than cards (Omar 2026-11-11) */
   --radius-sm: 6px; /* Small-piece radius */
 
   /* ── Legacy app aliases (prototype.css + registration.css) — resolve to a canonical token above; write the canonical name in new work ── */

@@ -19,7 +19,9 @@ const CardFrameContext = createContext(true);
  *
  * How it works: on the appraiser's page (the sections frame, `work` density — Omar 2026-11-10) the
  * section is already the panel, so a block is flat — no frame of its own, a thin rule above every
- * block but the first — instead of a card inside a card. `framed` keeps the frame for a block that
+ * block but the first — instead of a card inside a card. The last block has no bottom margin: the
+ * section's own bottom padding is the gap under it (the margin on top of it left a wide empty band
+ * under «حفظ الأساليب» and under the last block of the market and final sections). `framed` keeps the frame for a block that
  * holds a table or a two-pane figure: those read as their own object. Anywhere else (the
  * standalone screens) every block is a framed card, as before.
  * Edge cases: `className` is added in both looks, so spacing and `!overflow-*` overrides still apply.
@@ -43,7 +45,7 @@ export function Card({
         <div
           id={id}
           className={cn(
-            "mb-5 min-w-0 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-border [&:not(:first-child)]:pt-4",
+            "mb-5 min-w-0 last:mb-0 [&:not(:first-child)]:border-t [&:not(:first-child)]:border-border [&:not(:first-child)]:pt-4",
             className,
           )}
         >

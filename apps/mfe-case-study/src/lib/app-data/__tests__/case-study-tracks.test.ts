@@ -6,7 +6,10 @@ import {
   buildCaseStudyPartyAssignees,
   caseStudyFamilyParentId,
 } from "../case-study-tracks";
-import { buildPropertyDetailTimelinePartyRows } from "../property-detail-parties";
+import {
+  buildPropertyDetailTimelinePartyRows,
+  specialistSubRoleStates,
+} from "../property-detail-parties";
 import { caseStudyFamilyTaskForProperty } from "../tasks-reads";
 
 const staff: StaffUser[] = [
@@ -571,6 +574,118 @@ describe("buildPropertyDetailTimelinePartyRows", () => {
         staffUsers: staff,
       });
       expect(rows[0]).toMatchObject({ key: "specialist", label: "لم يُعيَّن" });
+    });
+  });
+});
+
+describe("«حالة الأطراف» under the sections rail — the specialist's three sub-roles (Omar 2026-11-11)", () => {
+  const subRoles = (parent: WorkflowTask | null, all: WorkflowTask[] = parent ? [parent] : []) =>
+    buildPropertyDetailTimelinePartyRows({
+      task: parent,
+      allTasks: all,
+      staffUsers: staff,
+      specialistSubRoles: true,
+    });
+  const badges = (rows: ReturnType<typeof subRoles>) =>
+    Object.fromEntries(rows.map((r) => [r.key, r.badge]));
+
+  it("lists the roles in the order the transaction moves — no specialist row", () => {
+    const rows = subRoles(task({ id: "parent-1", kind: "case-study-property", phase: "enfath" }));
+    expect(rows.map((r) => r.role)).toEqual([
+      "تنسيق الدراسة",
+      "المعاين",
+      "المكتب الهندسي",
+      "دراسة العقار",
+      "المقيّم",
+      "المراجعة والرفع",
+    ]);
+    expect(rows.some((r) => r.key === "specialist")).toBe(false);
+  });
+
+  it("follows the work page's step: each sub-role not started, in progress, then done", () => {
+    expect(specialistSubRoleStates(0)).toEqual({ co: "progress", st: "new", rv: "new" });
+    expect(specialistSubRoleStates(3)).toEqual({ co: "progress", st: "new", rv: "new" });
+    expect(specialistSubRoleStates(4)).toEqual({ co: "done", st: "progress", rv: "new" });
+    expect(specialistSubRoleStates(5)).toEqual({ co: "done", st: "done", rv: "progress" });
+    expect(specialistSubRoleStates(6)).toEqual({ co: "done", st: "done", rv: "progress" });
+    expect(specialistSubRoleStates(7)).toEqual({ co: "done", st: "done", rv: "done" });
+  });
+
+  it("reads the stage from the case-study task", () => {
+    const parent = (over: Partial<WorkflowTask>) =>
+      task({ id: "parent-1", kind: "case-study-property", ...over });
+
+    // Distributed, not sent to the study yet: coordination's.
+    expect(badges(subRoles(parent({ transactionReceived: false })))).toMatchObject({
+      coordination: "قيد التنفيذ",
+      study: "لم يبدأ",
+      review: "لم يبدأ",
+    });
+    // Sent to the study, report not issued: the study's.
+    expect(badges(subRoles(parent({ transactionReceived: true })))).toMatchObject({
+      coordination: "مكتمل",
+      study: "قيد التنفيذ",
+      review: "لم يبدأ",
+    });
+    // Report issued: review's, until the hand-over to Enfaz.
+    expect(
+      badges(subRoles(parent({ transactionReceived: true, studyReportIssued: true }))),
+    ).toMatchObject({ coordination: "مكتمل", study: "مكتمل", review: "قيد التنفيذ" });
+    expect(
+      badges(
+        subRoles(
+          parent({
+            transactionReceived: true,
+            studyReportIssued: true,
+            propertyHandedOverToEnfaz: true,
+          }),
+        ),
+      ),
+    ).toMatchObject({ coordination: "مكتمل", study: "مكتمل", review: "مكتمل" });
+  });
+
+  it("reads the holder deed's task when another deed holds the one study", () => {
+    const own = task({ id: "own", kind: "case-study-property", transactionReceived: false });
+    const holder = task({
+      id: "holder",
+      kind: "case-study-property",
+      propertyId: "prop-2",
+      transactionReceived: true,
+    });
+    const rows = buildPropertyDetailTimelinePartyRows({
+      task: own,
+      allTasks: [own, holder],
+      staffUsers: staff,
+      specialistSubRoles: true,
+      studyHolderTaskId: "holder",
+    });
+    expect(badges(rows)).toMatchObject({ coordination: "مكتمل", study: "قيد التنفيذ" });
+  });
+
+  it("for a party who cannot see the case-study task, reads what his own task says", () => {
+    const appraisal = (over: Partial<WorkflowTask>) =>
+      task({ id: "val-1", kind: "property-appraisal", parentTaskId: "parent-1", ...over });
+
+    const issued = appraisal({ studyReportIssued: true });
+    expect(badges(subRoles(issued))).toMatchObject({
+      coordination: "مكتمل",
+      study: "مكتمل",
+      review: "قيد التنفيذ",
+    });
+    // Not issued: his list does not say whether the transaction was sent to the study yet.
+    const notIssued = appraisal({});
+    expect(badges(subRoles(notIssued))).toMatchObject({
+      coordination: "قيد التنفيذ",
+      study: "قيد التنفيذ",
+      review: "لم يبدأ",
+    });
+  });
+
+  it("without a task nothing has started", () => {
+    expect(badges(subRoles(null))).toMatchObject({
+      coordination: "لم يبدأ",
+      study: "لم يبدأ",
+      review: "لم يبدأ",
     });
   });
 });

@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button, cn, useToast } from "@platform/ui-kit";
 import { useCommandMutation } from "@platform/app-shared";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
+import { defaultRaiseSeverity, failureReasonRequired } from "../../lib/failure-degrees";
 import type { FailureSeverity } from "@platform/app-shared/failures/failures-types";
 import {
   activeFailureForProperty,
@@ -47,7 +49,13 @@ const sectionClassName =
   "mb-2.5 mt-0 border-b border-border pb-[7px] text-[13px] font-bold text-heading";
 
 /**
- * System-wide failure raise surface — failure type from catalog + log.
+ * System-wide failure raise surface — degree, failure type from catalog, reason + log.
+ *
+ * How it works: the degree offered follows the viewer's role (`FailureRaiseFields`): the parties
+ * raise «تعذّر محتمل» only, the case specialist and the supervisor also «تعذّر داخلي», which
+ * needs a written reason before «رفع التعذّر» is allowed. The final failure is not recorded here —
+ * it is in the «تسجيل تعذّر» window of the ⋮ menus.
+ * Edge cases: the form resets to the role's default degree after a raise.
  */
 export function FailureRaisePanel({
   poNumber,
@@ -78,9 +86,14 @@ export function FailureRaisePanel({
   const { showToast } = useToast();
   const { data: failures = [] } = useFailuresQuery();
   const { data: catalog } = useFailureTypesQuery();
+  const { role } = useAppAccess();
   const [problemTypeId, setProblemTypeId] = useState(initialProblemTypeId);
-  const [severity, setSeverity] = useState<FailureSeverity>("internal");
+  // The degree the viewer's role may raise: internal for the case specialist and the supervisor,
+  // possible for the parties — who are offered nothing else (2026-11-11).
+  const [severity, setSeverity] = useState<FailureSeverity>(() => defaultRaiseSeverity(role));
+  const [reason, setReason] = useState("");
   const [invalid, setInvalid] = useState(false);
+  const reasonMissing = failureReasonRequired(severity) && !reason.trim();
 
   const { run: runCreateFailure, loading: saving } = useCommandMutation(
     useCallback(
@@ -155,12 +168,13 @@ export function FailureRaisePanel({
         ? catalog.problemTypes
         : FAILURE_PROBLEM_TYPES,
       severity,
+      reason,
     );
     if (!payload) {
       setInvalid(true);
       return;
     }
-    if (openFailureForCreate || saving) return;
+    if (openFailureForCreate || saving || reasonMissing) return;
 
     setInvalid(false);
     try {
@@ -182,7 +196,8 @@ export function FailureRaisePanel({
         }),
       ]);
       setProblemTypeId("");
-      setSeverity("internal");
+      setSeverity(defaultRaiseSeverity(role));
+      setReason("");
       showToast("تم رفع التعذّر — سيظهر لأخصائي دراسة الحالة.", "success");
       onSubmitted?.();
     } catch {
@@ -275,6 +290,8 @@ export function FailureRaisePanel({
                 idPrefix={`raise-${propertyId}`}
                 severity={severity}
                 onSeverityChange={setSeverity}
+                reason={reason}
+                onReasonChange={setReason}
                 problemTypeId={problemTypeId}
                 onProblemTypeChange={(v) => {
                   setProblemTypeId(v);
@@ -289,7 +306,7 @@ export function FailureRaisePanel({
                   variant="primary"
                   size="sm"
                   loading={saving}
-                  disabled={saving || !problemTypeId}
+                  disabled={saving || !problemTypeId || reasonMissing}
                   showActionToast={false}
                   className="!px-[18px] !py-[7px] !text-xs"
                   onClick={() => void handleSubmit()}

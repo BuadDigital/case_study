@@ -386,7 +386,7 @@ describe("map-locations-logic", () => {
   it("builds a property card with workflow label", () => {
     const card = propertyCard(FIXTURE_PROPERTIES.find((r) => r.id === "T-0104")!);
     expect(card.family).toBe("property");
-    expect(card.workflowStatus.label).toBe("مرشح تعذّر");
+    expect(card.workflowStatus.label).toBe("تعذّر محتمل");
     expect(card.active).toBe(true);
     expect(card.title).toContain("القيروان");
   });

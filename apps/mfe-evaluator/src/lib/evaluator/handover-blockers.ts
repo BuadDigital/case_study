@@ -72,9 +72,35 @@ function ownerOf(code: string): HandOverBlockerOwner {
 function screenOfGate(code: string): HandOverBlockerScreen {
   const c = code.trim().toLowerCase();
   if (c.endsWith("_land_within_cost") || c === "cost_land_estimate_complete") return "cost";
+  // The buildings' ages (2026-11-10 gate) are entered on the cost screen — it had no link (2026-11-11).
+  if (c === "cost_depreciation_complete") return "cost";
   if (c.endsWith("_market")) return "market";
   if (c === "reconciliation_weights" || c === "final_opinion") return "final";
   return null;
+}
+
+/**
+ * The place a blocker is fixed at, on its screen (Omar 2026-11-11: «يوجّهه على المكان») — the ids
+ * of the control to land on, most exact first, then the block that holds it.
+ *
+ * How it works: a methodology alert lands on its own row in the screen's alerts panel (its
+ * rationale box when it asks for one); a gate lands on the table or field its text is about — the
+ * comparables bank, the adjustments table, the land estimate, the buildings' ages, the
+ * reconciliation table.
+ * Edge cases: a blocker that is not the appraiser's, or one with no place of its own, has none —
+ * its link then only opens the screen.
+ */
+export function blockerTargetIds(b: Pick<HandOverBlocker, "code" | "owner" | "alertNumber">): string[] {
+  if (b.owner !== "appraiser") return [];
+  if (b.alertNumber != null) return [`alert-override-${b.code}`, `methodology-alert-${b.code}`];
+  const c = b.code.trim().toLowerCase();
+  if (c === "cost_depreciation_complete") return ["cost-ages-missing-hint", "cost-age"];
+  if (c.endsWith("_land_within_cost") || c === "cost_land_estimate_complete") return ["cost-land-bank"];
+  if (c.startsWith("comparable_weights")) return ["mx-adjustments", "mx-bank"];
+  if (c.endsWith("_market")) return ["mx-bank"];
+  // The reconciliation table is the wide screen's; on a phone the rationale box under it is the place.
+  if (c === "reconciliation_weights" || c === "final_opinion") return ["final-recon", "final-methods-rationale"];
+  return [];
 }
 
 function textOf(detail: string | null | undefined, label: string): string {

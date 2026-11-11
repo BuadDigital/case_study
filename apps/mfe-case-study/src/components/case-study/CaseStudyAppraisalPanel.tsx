@@ -8,8 +8,6 @@ import { SpecialistValuationReportInputs } from "../po-intake/SpecialistValuatio
 import { ReturnInspectionDialog } from "../po-intake/ReturnInspectionDialog";
 import { returnInspectionSuccessMessage } from "../../lib/app-data/return-inspection-state";
 import { CaseStudyDeedNatureMatchReview } from "./CaseStudyDeedNatureMatchReview";
-import { AddEngineeringSurveyNote } from "./AddEngineeringSurveyNote";
-import { surveyMissingAfterTypeChange } from "@platform/app-shared/app-data/po-intake-identifiers";
 import { PropertyDetailInspectionTab } from "../po-intake/PropertyDetailInspectionTab";
 import { EmptyState } from "../po-intake/PropertyDetailFields";
 import { findPropertyForTask } from "../../lib/app-data/my-task-row";
@@ -53,8 +51,9 @@ function relatedTaskId(
 
 /**
  * Which page's share of the inspection review is shown (Omar 2026-11-08):
- * - "follow" — the coordinator's page: the inspector's package to read, correct, return or accept
- *   (and add the office a new type needs); no deed match, no components, no report inputs.
+ * - "follow" — the coordinator's page: the inspector's package to read, correct, return or accept;
+ *   no deed match, no components, no report inputs. The engineering office is no longer added from
+ *   here (Omar 2026-11-11): «مهمة جديدة» in «المهام», type «رفع مساحي».
  * - "study" — the work page: the deed ↔ nature match, «مكونات العقار» and the report inputs, the
  *   accepted package read-only (the study may still return it to the inspector).
  * - none — every part, as the property details page and the study workspace always showed.
@@ -251,27 +250,6 @@ export function CaseStudyAppraisalPanel({
     [propertyDocumentSections],
   );
 
-  /**
-   * The type the inspector set: the server's (stamped on submit, kept through acceptance and a return),
-   * else the submitted package's. A→Z 2026-11-02 #75: the «إضافة رفع مساحي» note read the package only while
-   * it was «submitted», so it vanished once the specialist accepted the inspector's inputs, leaving nowhere
-   * to add the office while the timeline still waited for it.
-   */
-  const inspectedTypeForSurvey =
-    property.inspectedPropertyType?.trim() ||
-    (currentInspectionPackageStatus === "submitted"
-      ? currentInspectionAssetSubject.trim()
-      : "");
-  const surveyMissing = surveyMissingAfterTypeChange(
-    { ...property, inspectedPropertyType: inspectedTypeForSurvey },
-    tasks.some(
-      (t) =>
-        t.kind === "engineering-survey" &&
-        t.propertyId === property.id &&
-        t.status !== "cancelled",
-    ),
-  );
-
   /** Also after the inspection is accepted: the return withdraws the acceptance. */
   const canReturnToInspector =
     mayAccept &&
@@ -341,15 +319,6 @@ export function CaseStudyAppraisalPanel({
             النوع المبدئي: {property.propertyType || "—"} · النوع المعتمد
             ميدانياً: {currentInspectionAssetSubject.trim()}
           </div>
-        ) : null}
-
-        {/* Whatever the inspection status — until the office is added (the study cannot be issued before). */}
-        {surveyMissing && caseStudyTask.status !== "completed" ? (
-          <AddEngineeringSurveyNote
-            caseStudyTaskId={caseStudyTask.id}
-            newType={inspectedTypeForSurvey}
-            staffUsers={staffUsers}
-          />
         ) : null}
 
         {/* Omar 2026-11-08: the inspector's photos are classed in his section (the Enfaz photo files are

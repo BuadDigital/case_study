@@ -24,7 +24,6 @@ function PartyBlock({
   title: string;
   onEnabledChange: (checked: boolean) => void;
   readOnly?: boolean;
-  /** Always-on party — no opt-out checkbox. */
   required?: boolean;
   hint?: string;
   children: React.ReactNode;

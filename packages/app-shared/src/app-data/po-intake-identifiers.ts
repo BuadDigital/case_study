@@ -170,31 +170,6 @@ export function propertyRequiresSurvey(property: {
   );
 }
 
-/**
- * The inspector's corrected type needs a survey and no survey task is live — the «إضافة رفع مساحي» note
- * asks the specialist to add the engineering office. It never blocks issuing the study (Omar 2026-11-04).
- * Twin of the server's SurveyRequirementRules.SurveyMissingAfterTypeChange.
- *
- * How it works: the inspector's type is set and differs from the bourse type, the property under it needs
- * a survey (`propertyRequiresSurvey`), and no survey task is live.
- *
- * Edge cases: fixed A→Z 2026-11-02 #74 — a property whose bourse type already needed a survey was skipped
- * («left to the distribution»), while the submit still told the specialist to add the office. No type
- * change, or the bourse type picked again, asks nothing.
- */
-export function surveyMissingAfterTypeChange(
-  property: Parameters<typeof propertyRequiresSurvey>[0] & { propertyType?: string | null },
-  hasLiveSurveyTask: boolean,
-): boolean {
-  const inspected = (property.inspectedPropertyType ?? "").trim();
-  return (
-    !hasLiveSurveyTask &&
-    inspected.length > 0 &&
-    inspected !== (property.propertyType ?? "").trim() &&
-    propertyRequiresSurvey(property)
-  );
-}
-
 export type PropertyIdentifierType = "deed" | "real_estate_reg" | "bourse_inquiry";
 
 export const BOURSE_INQUIRY_IDENTIFIER_STATUS = "قيد الدراسة";

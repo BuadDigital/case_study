@@ -7,6 +7,11 @@
 // Round 2 (1b19bedc)
 //  • The approach toggles are reported to the nav only after the saved settings load (draftReady) —
 //          the all-off defaults hid every approach tab and a refresh fell back to «البيانات الأساسية».
+// Layout (2026-11-11)
+//  • The card reads in the order of the decision: «what is valued» — scope · interest · date in
+//          three columns — then «by which approach» — market and cost side by side, the cost
+//          basis inside the cost card it belongs to — then the save. One sentence about the land
+//          comparables instead of three; the unavailable income approach is one grey line.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -39,7 +44,15 @@ import {
 } from "./atoms";
 
 import { apiConfig } from "./lib/shell-utils";
-import { OwnershipInterestFields, ValuationDateFields } from "./ApproachSettingsFields";
+import {
+  OwnershipInterestFields,
+  RetrospectiveFields,
+  SETTINGS_FIELD_HINT,
+  SETTINGS_FIELD_LABEL,
+  SETTINGS_ROW_2,
+  SETTINGS_ROW_3,
+  ValuationDateModeField,
+} from "./ApproachSettingsFields";
 import {
   approachSettingsDraftError,
   approachSettingsDraftRequestFields,
@@ -60,11 +73,13 @@ import {
 /**
  * Basics screen — owns valuation settings drafts (approaches, scope, basis,
  * valuation date) locally: writes here do not re-render the valuation shell.
+ * Reads top to bottom in the order of the decision: what is valued (scope, interest, date),
+ * by which approach (the cost basis inside the cost card), then the save.
  * Rehydrates from the server payload via hydrateKey — bumps on full load and every settings save
  * (so an old draft cannot overwrite what was saved from the cost screen).
  */
-/** Work density (the appraiser's page): two blocks of the form side by side, one under the other on a narrow screen. */
-const WORK_PAIR_CLASS = "grid grid-cols-2 items-start gap-x-6 max-lg:grid-cols-1";
+/** One approach's card: the tick, its name and what the approach does. */
+const APPROACH_CARD_HEAD = "flex items-start gap-2.5 px-3.5 py-[13px]";
 
 export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   valuationRequestId,
@@ -318,6 +333,10 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   const buildingsAllowed = settings?.costApproachAllowed ?? true;
   const costAllowed = buildingsAllowed && asCostScope !== "land_only";
   const nextCostEnabled = asCostEnabled && costAllowed;
+  /** The cost card is ticked and applies — its basis opens inside it. */
+  const costOn = nextCostEnabled;
+  // The card names the cost by the basis chosen under it («الإحلال» stood there even on «إعادة الإنتاج»).
+  const costBasisWord = asCostBasis === "reproduction" ? "تكلفة إعادة الإنتاج" : "تكلفة الإحلال";
 
   function chooseScope(next: "land_only" | "building_only" | "land_and_building") {
     setAsCostScope(next);
@@ -354,234 +373,235 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     <>
       <Card>
         <CardPad>
-          {/* The appraiser's page (work density): the section's header carries the title, and the
-              form reads two blocks to a row — scope beside the interest valued, the cost basis
-              beside the valuation date. */}
+          {/* The appraiser's page (work density): the section's header carries the title. */}
           {work ? null : <CardTitle>أساليب وطرق التقييم المستخدمة</CardTitle>}
-          <div className={work ? WORK_PAIR_CLASS : undefined}>
-          <div>
-          <FieldLabel>نطاق التقييم</FieldLabel>
-          <div
-            id="as-scope"
-            className={cn(
-              "my-2 mb-1.5 flex flex-wrap gap-2 rounded-[10px]",
-              fieldErrors.costScopeKey && invalidControlClass,
-            )}
-          >
-            <ToggleChip
-              active={asCostScope === "land_only"}
-              disabled={saving}
-              onClick={() => chooseScope("land_only")}
-            >
-              أرض فقط
-            </ToggleChip>
-            <ToggleChip
-              active={asCostScope === "building_only"}
-              disabled={saving || !buildingsAllowed}
-              onClick={() => chooseScope("building_only")}
-            >
-              مباني فقط
-            </ToggleChip>
-            <ToggleChip
-              active={asCostScope === "land_and_building"}
-              disabled={saving || !buildingsAllowed}
-              onClick={() => chooseScope("land_and_building")}
-            >
-              أرض مع المباني
-            </ToggleChip>
-          </div>
-          {fieldErrors.costScopeKey ? (
-            <p className="mb-0 mt-1.5 text-[11px] text-danger-text">
-              {fieldErrors.costScopeKey}
-            </p>
-          ) : null}
-          <p className="mb-4 mt-0 text-[10.5px] text-text-3">
-            {!buildingsAllowed
-              ? "لا توجد مكونات محصورة لدى الأخصائي — التقييم أرض فقط."
-              : asCostScope === "land_only"
-                ? "مكونات العقار تُطبع في التقرير ولا تدخل في القيمة (مثل مبانٍ هالكة)."
-                : asCostScope === "building_only"
-                  ? "تُقيَّم المباني وحدها دون تقدير الأرض — بأسلوب التكلفة، أو بأسلوب السوق للعقار ككل (كالشقة)."
-                  : "تُقيَّم الأرض مع المكونات المحصورة."}
-          </p>
-          </div>
-          <OwnershipInterestFields
-            saving={saving}
-            fieldErrors={fieldErrors}
-            ownershipKey={asOwnership}
-            onOwnershipKeyChange={setAsOwnership}
-            leaseYearsText={asLeaseYears}
-            onLeaseYearsTextChange={setAsLeaseYears}
-          />
-          </div>
-          <div
-            id="as-approaches"
-            className={cn(
-              // Phones: one approach card per line, not three ~100px columns.
-              "mb-4 grid grid-cols-3 gap-3 rounded-[10px] max-lg:grid-cols-1",
-              approachesError && invalidControlClass,
-            )}
-          >
-            <label
-              className={cn(
-                "flex cursor-pointer items-start gap-2.5 rounded-[10px] border px-3.5 py-[13px]",
-                asMarketEnabled
-                  ? "border-gold bg-gold-soft"
-                  : "border-border-md bg-surface",
-              )}
-            >
-              <input
-                type="checkbox"
-                checked={asMarketEnabled}
-                disabled={saving}
-                onChange={(e) => setAsMarketEnabled(e.target.checked)}
-                className="mt-0.5 size-[17px] accent-[var(--ink)]"
-              />
-              <div>
-                <div className="text-[12.5px] font-bold text-heading">
-                  أسلوب السوق
-                </div>
-                <div className="mt-[3px] text-[11px] font-normal text-text-3">
-                  طريقة المقارنة — يقارن العقار كوحدة غير مجزّأة بصفقات مشابهة
-                </div>
-              </div>
-            </label>
-            <label
-              className={cn(
-                "flex items-start gap-2.5 rounded-[10px] border px-3.5 py-[13px]",
-                asCostEnabled && costAllowed
-                  ? "border-gold bg-gold-soft"
-                  : "border-border-md bg-surface",
-                costAllowed
-                  ? "cursor-pointer"
-                  : "cursor-not-allowed opacity-55",
-              )}
-            >
-              <input
-                type="checkbox"
-                checked={asCostEnabled && costAllowed}
-                disabled={saving || !costAllowed}
-                onChange={(e) => setAsCostEnabled(e.target.checked)}
-                className="mt-0.5 size-[17px] accent-[var(--ink)]"
-              />
-              <div>
-                <div className="text-[12.5px] font-bold text-heading">
-                  أسلوب التكلفة
-                </div>
-                <div className="mt-[3px] text-[11px] font-normal text-text-3">
-                  {!costAllowed
-                    ? isLandKind && !buildingsAllowed
-                      ? "لا ينطبق: أرض بلا مكونات محصورة"
-                      : "لا ينطبق: نطاق التقييم «أرض فقط»"
-                    : asCostScope === "building_only"
-                      ? "تكلفة الإحلال ناقصاً الإهلاك — دون تقدير الأرض بالمقارنات"
-                      : "أسلوب مركّب: قيمة الأرض بالمقارنات + تكلفة الإحلال ناقصاً الإهلاك"}
-                </div>
-              </div>
-            </label>
-            {/* Not available yet: shown greyed so the appraiser sees the third approach exists. */}
-            <label
-              title="قيد الإنشاء — غير متاح بعد"
-              className="flex cursor-not-allowed items-start gap-2.5 rounded-[10px] border border-border-md bg-surface px-3.5 py-[13px] opacity-55"
-            >
-              <input
-                type="checkbox"
-                checked={false}
-                disabled
-                className="mt-0.5 size-[17px]"
-              />
-              <div>
-                <div className="text-[12.5px] font-bold text-heading">
-                  أسلوب الدخل
-                </div>
-                <div className="mt-[3px] text-[11px] font-normal text-text-3">
-                  قيد الإنشاء — غير متاح بعد
-                </div>
-              </div>
-            </label>
-          </div>
 
-          {approachesError ? (
-            <p className="mb-3 mt-[-8px] text-[11px] text-danger-text">
-              {approachesError}
-            </p>
-          ) : null}
-          {asCostEnabled && costAllowed && asCostScope !== "building_only" ? (
-            <p className="mb-3 text-[11.5px] text-gold-d">
-              طريقة المقاول تستلزم تقييم أرض المبنى بطريقة المقارنة.
-            </p>
-          ) : null}
-
-          <div className={work ? WORK_PAIR_CLASS : undefined}>
-          {asCostEnabled && costAllowed ? (
-            <div className="mb-4 border-t border-border pt-4">
-              <p className="mb-3.5 mt-0 text-[10.5px] text-text-3">
-                {asCostScope === "building_only"
-                  ? "«مباني فقط» لا يستلزم مقارنات أرض. إن بقي أسلوب السوق مفعّلاً فستلزم مقارناته للعقار ككل — عطّله إن كان التقييم بالتكلفة وحدها."
-                  : "«أرض مع المباني» يستلزم تقدير الأرض بالمقارنات داخل أسلوب التكلفة."}
-              </p>
-              <FieldLabel>طريقة تقدير التكلفة</FieldLabel>
+          {/* 1 — what is valued: scope · interest · date, one column each. */}
+          <div className={cn(SETTINGS_ROW_3, "mb-4")}>
+            <div>
+              <span className={SETTINGS_FIELD_LABEL}>نطاق التقييم</span>
               <div
-                id="as-cost-basis"
+                id="as-scope"
                 className={cn(
-                  "my-2 mb-1.5 flex flex-wrap gap-2 rounded-[10px]",
-                  fieldErrors.costBasisKey && invalidControlClass,
+                  "flex flex-wrap gap-2 rounded-[10px]",
+                  fieldErrors.costScopeKey && invalidControlClass,
                 )}
               >
                 <ToggleChip
-                  active={asCostBasis === "replacement"}
+                  active={asCostScope === "land_only"}
                   disabled={saving}
-                  onClick={() => setAsCostBasis("replacement")}
+                  onClick={() => chooseScope("land_only")}
                 >
-                  الإحلال
+                  أرض فقط
                 </ToggleChip>
                 <ToggleChip
-                  active={asCostBasis === "reproduction"}
-                  disabled={saving}
-                  onClick={() => setAsCostBasis("reproduction")}
+                  active={asCostScope === "building_only"}
+                  disabled={saving || !buildingsAllowed}
+                  onClick={() => chooseScope("building_only")}
                 >
-                  إعادة الإنتاج
+                  مباني فقط
+                </ToggleChip>
+                <ToggleChip
+                  active={asCostScope === "land_and_building"}
+                  disabled={saving || !buildingsAllowed}
+                  onClick={() => chooseScope("land_and_building")}
+                >
+                  أرض مع المباني
                 </ToggleChip>
               </div>
-              <p className="mb-3.5 mt-0 text-[10.5px] text-text-3">
-                {asCostBasis === "reproduction"
-                  ? "تكلفة إنتاج نسخة طبق الأصل بالمواد والتصميم نفسيهما — تُستخدم للمباني التراثية والخاصة."
-                  : "تكلفة إنشاء بديل بمنفعة مكافئة بمواد وطرق اليوم."}
+              {fieldErrors.costScopeKey ? (
+                <p className="mb-0 mt-1.5 text-[11px] text-danger-text">
+                  {fieldErrors.costScopeKey}
+                </p>
+              ) : null}
+              <p className={SETTINGS_FIELD_HINT}>
+                {!buildingsAllowed
+                  ? "لا توجد مكونات محصورة لدى الأخصائي — التقييم أرض فقط."
+                  : asCostScope === "land_only"
+                    ? "مكونات العقار تُطبع في التقرير ولا تدخل في القيمة (مثل مبانٍ هالكة)."
+                    : asCostScope === "building_only"
+                      ? "تُقيَّم المباني وحدها دون تقدير الأرض — بأسلوب التكلفة، أو بأسلوب السوق للعقار ككل (كالشقة)."
+                      : "تُقيَّم الأرض مع المكونات المحصورة."}
               </p>
             </div>
+            <OwnershipInterestFields
+              saving={saving}
+              fieldErrors={fieldErrors}
+              ownershipKey={asOwnership}
+              onOwnershipKeyChange={setAsOwnership}
+              leaseYearsText={asLeaseYears}
+              onLeaseYearsTextChange={setAsLeaseYears}
+            />
+            <ValuationDateModeField
+              saving={saving}
+              invalid={Boolean(fieldErrors.valuationDateMode)}
+              dateMode={asDateMode}
+              onDateModeChange={setAsDateMode}
+            />
+          </div>
+          {asDateMode === "retrospective" ? (
+            <RetrospectiveFields
+              saving={saving}
+              fieldErrors={fieldErrors}
+              retroKind={asRetroKind}
+              onRetroKindChange={setAsRetroKind}
+              retroDate={asRetroDate}
+              onRetroDateChange={setAsRetroDate}
+              retroDateEnd={asRetroDateEnd}
+              onRetroDateEndChange={setAsRetroDateEnd}
+              retroRationale={asRetroRationale}
+              onRetroRationaleChange={setAsRetroRationale}
+            />
           ) : null}
 
-          <ValuationDateFields
-            saving={saving}
-            fieldErrors={fieldErrors}
-            dateMode={asDateMode}
-            onDateModeChange={setAsDateMode}
-            retroKind={asRetroKind}
-            onRetroKindChange={setAsRetroKind}
-            retroDate={asRetroDate}
-            onRetroDateChange={setAsRetroDate}
-            retroDateEnd={asRetroDateEnd}
-            onRetroDateEndChange={setAsRetroDateEnd}
-            retroRationale={asRetroRationale}
-            onRetroRationaleChange={setAsRetroRationale}
-          />
+          {/* 2 — by which approach: market and cost side by side; the cost basis lives in the cost card. */}
+          <div className="border-t border-border pt-4">
+            <span className={SETTINGS_FIELD_LABEL}>أساليب التقييم</span>
+            <div
+              id="as-approaches"
+              className={cn(
+                // A narrow card (a phone, or the page with its rail): one approach card per line.
+                SETTINGS_ROW_2,
+                "rounded-[10px] !gap-3",
+                approachesError && invalidControlClass,
+              )}
+            >
+              <label
+                className={cn(
+                  APPROACH_CARD_HEAD,
+                  "cursor-pointer rounded-[10px] border",
+                  asMarketEnabled
+                    ? "border-gold bg-gold-soft"
+                    : "border-border-md bg-surface",
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={asMarketEnabled}
+                  disabled={saving}
+                  onChange={(e) => setAsMarketEnabled(e.target.checked)}
+                  className="mt-0.5 size-[17px] accent-[var(--ink)]"
+                />
+                <div>
+                  <div className="text-[12.5px] font-bold text-heading">
+                    أسلوب السوق
+                  </div>
+                  <div className="mt-[3px] text-[11px] font-normal text-text-3">
+                    طريقة المقارنة — يقارن العقار كوحدة غير مجزّأة بصفقات مشابهة
+                  </div>
+                </div>
+              </label>
+
+              {/* The tick and its text are the label; the basis below is outside it, so pressing
+                  a basis chip or its hint never flips the tick. */}
+              <div
+                className={cn(
+                  "overflow-hidden rounded-[10px] border",
+                  costOn ? "border-gold" : "border-border-md",
+                  !costAllowed && "opacity-55",
+                )}
+              >
+                <label
+                  className={cn(
+                    APPROACH_CARD_HEAD,
+                    costOn ? "bg-gold-soft" : "bg-surface",
+                    costAllowed ? "cursor-pointer" : "cursor-not-allowed",
+                  )}
+                >
+                  <input
+                    type="checkbox"
+                    checked={costOn}
+                    disabled={saving || !costAllowed}
+                    onChange={(e) => setAsCostEnabled(e.target.checked)}
+                    className="mt-0.5 size-[17px] accent-[var(--ink)]"
+                  />
+                  <div>
+                    <div className="text-[12.5px] font-bold text-heading">
+                      أسلوب التكلفة
+                    </div>
+                    <div className="mt-[3px] text-[11px] font-normal text-text-3">
+                      {!costAllowed
+                        ? isLandKind && !buildingsAllowed
+                          ? "لا ينطبق: أرض بلا مكونات محصورة"
+                          : "لا ينطبق: نطاق التقييم «أرض فقط»"
+                        : asCostScope === "building_only"
+                          ? `${costBasisWord} ناقصاً الإهلاك — دون تقدير الأرض بالمقارنات`
+                          : `أسلوب مركّب: قيمة الأرض بمقارنات أراضٍ تُعتمد داخل قسمه + ${costBasisWord} ناقصاً الإهلاك`}
+                    </div>
+                  </div>
+                </label>
+                {costOn ? (
+                  <div className="border-t border-border bg-surface px-3.5 pb-3 pt-2.5">
+                    <FieldLabel>طريقة تقدير التكلفة</FieldLabel>
+                    <div
+                      id="as-cost-basis"
+                      className={cn(
+                        "mt-2 flex flex-wrap gap-2 rounded-[10px]",
+                        fieldErrors.costBasisKey && invalidControlClass,
+                      )}
+                    >
+                      <ToggleChip
+                        active={asCostBasis === "replacement"}
+                        disabled={saving}
+                        onClick={() => setAsCostBasis("replacement")}
+                      >
+                        الإحلال
+                      </ToggleChip>
+                      <ToggleChip
+                        active={asCostBasis === "reproduction"}
+                        disabled={saving}
+                        onClick={() => setAsCostBasis("reproduction")}
+                      >
+                        إعادة الإنتاج
+                      </ToggleChip>
+                    </div>
+                    <p className={SETTINGS_FIELD_HINT}>
+                      {asCostBasis === "reproduction"
+                        ? "تكلفة إنتاج نسخة طبق الأصل بالمواد والتصميم نفسيهما — تُستخدم للمباني التراثية والخاصة."
+                        : "تكلفة إنشاء بديل بمنفعة مكافئة بمواد وطرق اليوم."}
+                    </p>
+                    {asCostScope === "building_only" && asMarketEnabled ? (
+                      <p className="mb-0 mt-1.5 text-[10.5px] leading-relaxed text-gold-d">
+                        أسلوب السوق مفعّل، فتلزم مقارناته للعقار ككل — عطّله إن كان التقييم
+                        بالتكلفة وحدها.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Not available yet: one grey line, so the appraiser sees the third approach exists. */}
+            <label
+              title="قيد الإنشاء — غير متاح بعد"
+              className="mt-2.5 flex w-fit cursor-not-allowed items-center gap-2 text-[11.5px] opacity-55"
+            >
+              <input type="checkbox" checked={false} disabled className="size-[15px]" />
+              <span className="font-bold text-heading">أسلوب الدخل</span>
+              <span className="text-text-3">قيد الإنشاء — غير متاح بعد</span>
+            </label>
+
+            {approachesError ? (
+              <p className="mb-0 mt-2 text-[11px] text-danger-text">{approachesError}</p>
+            ) : null}
           </div>
 
-          <div className="mt-6">
+          {/* 3 — save, with what saving does beside it. */}
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2.5">
             <PrimaryBtn disabled={saving} onClick={requestSave}>
               {settingsSaved ? "حفظ الأساليب" : "بدء التقييم"}
             </PrimaryBtn>
+            {settingsSaved ? (
+              <p className="m-0 min-w-[14rem] flex-1 text-[11.5px] leading-relaxed text-text-3">
+                حدّد الأسلوب ليظهر قسم طريقته فوراً. احفظ ليثبت الاختيار في
+                التقرير. إلغاء أسلوب يخفي قسمه دون حذف العمل.
+              </p>
+            ) : (
+              <p className="m-0 min-w-[14rem] flex-1 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
+                حدّد أسلوب السوق أو التكلفة ليظهر قسم العمل، ثم ابدأ التقييم.
+              </p>
+            )}
           </div>
-          {settingsSaved ? (
-            <p className="mb-0 mt-3 text-[11.5px] text-text-3">
-              حدّد الأسلوب ليظهر قسم طريقته فوراً. احفظ ليثبت الاختيار في
-              التقرير. إلغاء أسلوب يخفي قسمه دون حذف العمل.
-            </p>
-          ) : (
-            <p className="mt-3 rounded-[var(--radius)] bg-[var(--amber-light)] px-2.5 py-2 text-[11.5px] text-[var(--amber-text)]">
-              حدّد أسلوب السوق أو التكلفة ليظهر قسم العمل، ثم ابدأ التقييم.
-            </p>
-          )}
         </CardPad>
       </Card>
       <AppModal

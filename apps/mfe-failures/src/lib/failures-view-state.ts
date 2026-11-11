@@ -200,13 +200,25 @@ type FailureActionPermissions = {
   canResolve: boolean;
 };
 
+/**
+ * What the viewer may do with one failure in the queue.
+ *
+ * How it works: the follow-up (`caseEditor`: coordination and the CDO) acts on an internal or a
+ * returned failure — confirm a possible one, escalate, resolve; the supervisor acts on an escalated
+ * one. `confirmer` (any case specialist) acts on a possible failure only: «تأكيد تعذّر داخلي» and
+ * «تم الحل» (Omar 2026-11-11 — a possible failure goes to the case specialist to confirm).
+ * Edge cases: the escalation stays coordination's — a possible failure never shows it, so a
+ * specialist without coordination is offered nothing once the failure is confirmed.
+ */
 export function failureActionPermissions(
   f: FailureRecord,
-  viewer: { caseEditor: boolean; supervisor: boolean },
+  viewer: { caseEditor: boolean; supervisor: boolean; confirmer?: boolean },
 ): FailureActionPermissions {
   const active = isActiveFailureStatus(f.status);
+  const followsUp =
+    viewer.caseEditor || (Boolean(viewer.confirmer) && f.severity === "suspected");
   const canSpecialistAct =
-    viewer.caseEditor &&
+    followsUp &&
     active &&
     (f.status === "internal" || f.status === "returned");
   const canSupervisorAct = viewer.supervisor && active && f.status === "review";

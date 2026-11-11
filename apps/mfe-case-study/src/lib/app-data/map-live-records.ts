@@ -190,7 +190,7 @@ function openFailureFor(
 
 /**
  * «متعذّر»: removed, or its failure was approved / suspended the transaction.
- * «مرشح تعذّر»: a failure still in draft, review or returned to the specialist, or an inactive deed.
+ * «تعذّر محتمل»: a failure still in draft, review or returned to the specialist, or an inactive deed.
  */
 function workflowForProperty(
   property: PoPropertyIntake,

@@ -52,6 +52,8 @@ export type PartyAppraisalExtensions = {
     studySummary?: ReactNode;
     /** Page-level buttons of the hosting app, shown beside «تقرير التقييم» (the property's details). */
     pageActions?: ReactNode;
+    /** The hosting app's cards under the sections rail (the parties' status). */
+    railAside?: ReactNode;
   }) => ReactNode;
   isEvaluatorLocked: (taskId: string, saving: boolean) => boolean;
 };

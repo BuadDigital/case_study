@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   HANDOVER_REFUSED_PREFIX,
+  blockerTargetIds,
   classifyHandOverBlockers,
   handOverRefusalMessage,
 } from "../handover-blockers";
@@ -125,5 +126,55 @@ describe("classifyHandOverBlockers — round 2", () => {
       ["min_adopted_comparables_land_within_cost", "appraiser", true, "cost"],
     ]);
     expect(handOverRefusalMessage(blockers)).toContain("(مقارنات أسلوب السوق) — يعالجها: المقيّم");
+  });
+});
+
+describe("blockerTargetIds — where each blocker is fixed (Omar 2026-11-11)", () => {
+  const targetsOf = (gates: ReturnType<typeof gate>[], alerts: ReturnType<typeof alert>[] = []) =>
+    Object.fromEntries(
+      classifyHandOverBlockers({ gates, methodologyAlerts: alerts }).map((b) => [b.code, blockerTargetIds(b)]),
+    );
+
+  it("lands a gate on the table or field its text is about", () => {
+    expect(
+      targetsOf([
+        gate("min_adopted_comparables_market", "يلزم مقارن معتمد"),
+        gate("comparable_weights_market", "≠ 100٪"),
+        gate("min_adopted_comparables_land_within_cost", "يلزم مقارن أرض"),
+        gate("cost_land_estimate_complete", "قيمة الأرض غير مكتملة"),
+        gate("cost_depreciation_complete", "أدخل العمر الفعلي والعمر الاقتصادي"),
+        gate("reconciliation_weights", "لم يُحفظ ترجيح الأساليب"),
+        gate("final_opinion", "صفر"),
+      ]),
+    ).toEqual({
+      min_adopted_comparables_market: ["mx-bank"],
+      comparable_weights_market: ["mx-adjustments", "mx-bank"],
+      min_adopted_comparables_land_within_cost: ["cost-land-bank"],
+      cost_land_estimate_complete: ["cost-land-bank"],
+      cost_depreciation_complete: ["cost-ages-missing-hint", "cost-age"],
+      reconciliation_weights: ["final-recon", "final-methods-rationale"],
+      final_opinion: ["final-recon", "final-methods-rationale"],
+    });
+  });
+
+  it("the buildings' ages gate is on the cost screen", () => {
+    const [ages] = classifyHandOverBlockers({
+      gates: [gate("cost_depreciation_complete", "أدخل العمر الفعلي")],
+      methodologyAlerts: [],
+    });
+    expect(ages).toMatchObject({ owner: "appraiser", screen: "cost" });
+  });
+
+  it("lands an alert on its own row in the alerts panel, its rationale box first", () => {
+    expect(targetsOf([], [alert(13, true)])).toEqual({
+      m13: ["alert-override-m13", "methodology-alert-m13"],
+    });
+  });
+
+  it("has no place for what someone else fixes", () => {
+    expect(targetsOf([gate("study_report_issued", null), gate("credentials", null)])).toEqual({
+      study_report_issued: [],
+      credentials: [],
+    });
   });
 });

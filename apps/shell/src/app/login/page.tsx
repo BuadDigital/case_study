@@ -72,7 +72,9 @@ export default function LoginPage() {
   const knownUser = hint?.digits === mobileDigits ? hint.user : null;
 
   // Look the owner up once the number is complete; a newer keystroke cancels the old lookup.
+  // Local development only: production must not say who owns a number before sign-in.
   useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
     if (mobileDigits.length !== 9) return;
     const controller = new AbortController();
     void fetchLoginHint(mobileDigits, controller.signal).then((user) => {

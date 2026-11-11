@@ -7,6 +7,7 @@ import {
   GoogleMapPin,
   Input,
   Label,
+  OpsInfoNote,
   Select,
   cn,
   reverseGeocodeLocation,
@@ -27,10 +28,41 @@ import {
   type ComparableKind,
   type ComparableSubjectPin,
 } from "@platform/app-shared/app-data/comparable-entry";
-import { parseCoordinatePair, parseLatLng } from "@platform/app-shared/domain/geo";
+import type { ComparableBankBrowse } from "@platform/app-shared/evaluator/comparable-entry-fields-slot";
+import {
+  haversineMeters,
+  parseCoordinatePair,
+  parseLatLng,
+} from "@platform/app-shared/domain/geo";
+import {
+  ExistingComparableCard,
+  useNearbyBankComparables,
+} from "@platform/app-shared/comparables/NearbyBankComparables";
+import {
+  ADOPTED_COMPARABLE_PIN_COLOR,
+  bankComparableMapPin,
+  distanceLabelAr,
+  mergeNearbyBankComparables,
+  nearestBankComparable,
+  subjectPropertyMapPin,
+} from "@platform/app-shared/comparables/nearby-bank-comparables";
 import { invalidControlClass } from "@platform/app-shared/form-ux";
 
-const FIELD_LABEL = "mb-1.5 text-[12px] font-semibold text-text-2";
+const FIELD_LABEL = "mb-1 text-[11.5px] font-semibold text-text-2";
+
+/**
+ * How wide «وصف العقار» is in the four-column form: it takes what is left of the last row, so no
+ * field is left alone on a row.
+ *
+ * How it works: `usedInLastRow` is how many columns the fields before it fill in their last row.
+ * Edge cases: a full last row, or one column left (too narrow for free text), gives it a row of
+ * its own. Narrower forms always give it the full row.
+ */
+function descriptionSpanClass(usedInLastRow: number): string {
+  if (usedInLastRow === 1) return "col-span-full @[620px]:col-span-3";
+  if (usedInLastRow === 2) return "col-span-full @[620px]:col-span-2";
+  return "col-span-full";
+}
 
 function Field({
   label,
@@ -78,7 +110,7 @@ function KindChip({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        "min-h-11 min-w-0 flex-1 rounded-[9px] border px-3 text-[13px] font-bold",
+        "min-h-11 min-w-0 flex-1 rounded-[9px] border px-3 text-[13px] font-bold @[620px]:min-h-[38px]",
         on
           ? "border-ink bg-ink text-white"
           : "border-border-md bg-surface text-heading",
@@ -99,6 +131,7 @@ export function ComparablePropertyEntryFields({
   fieldErrors,
   onChange,
   onLocationConfirmedChange,
+  bankBrowse,
 }: {
   draft: ComparableEntryDraft;
   disabled?: boolean;
@@ -109,6 +142,13 @@ export function ComparablePropertyEntryFields({
   fieldErrors?: ComparableEntryFieldErrors;
   onChange: (next: ComparableEntryDraft) => void;
   onLocationConfirmedChange?: (confirmed: boolean) => void;
+  /**
+   * The host browses the bank on this map: its search and filters sit above the map, its
+   * comparables are the ones drawn (green when chosen for the transaction), and the pressed
+   * pin's details carry the host's action. Without it the map shows the comparables around the
+   * subject, to look at only.
+   */
+  bankBrowse?: ComparableBankBrowse;
 }) {
   const { showToast } = useToast();
   const [mapPinned, setMapPinned] = useState(false);
@@ -128,19 +168,39 @@ export function ComparablePropertyEntryFields({
   const fieldsLocked = Boolean(disabled || !mapPinned);
   const mapInteractive = !disabled && !mapPinned;
   const placeLine = comparablePlaceLine(draft);
+  // Comparables already in the bank, drawn on the map so the same one is not entered twice.
+  const bankNearby = useNearbyBankComparables(
+    showCoordinates !== false ? (subjectPin ?? null) : null,
+    showCoordinates !== false ? comparablePin : null,
+  );
+  // What the map draws: the host's comparables when it browses the bank, else the nearby ones.
+  const drawnBank = bankBrowse?.comparables ?? bankNearby;
+  const adoptedIds = bankBrowse?.adoptedIds;
+  const [shownBankId, setShownBankId] = useState<string | null>(null);
+  // A search with one hit opens its details by itself, once per hit.
+  const autoOpenId = bankBrowse?.autoOpenId ?? null;
+  const [prevAutoOpenId, setPrevAutoOpenId] = useState<string | null>(null);
+  if (prevAutoOpenId !== autoOpenId) {
+    setPrevAutoOpenId(autoOpenId);
+    if (autoOpenId) setShownBankId(autoOpenId);
+  }
+  // The nearby ones stay known too: the same-spot warning below may name one the host's
+  // search left out.
+  const shownBank =
+    mergeNearbyBankComparables(drawnBank, bankNearby).find((c) => c.id === shownBankId) ?? null;
+  const shownBankPin = shownBank ? parseLatLng(shownBank.latitude, shownBank.longitude) : null;
+  const shownAction = shownBank && bankBrowse && !disabled ? bankBrowse.action(shownBank) : null;
+  const sameSpot = nearestBankComparable(bankNearby, comparablePin);
   const contextPins = useMemo(
-    () =>
-      subjectPin
-        ? [
-            {
-              lat: subjectPin.lat,
-              lng: subjectPin.lng,
-              title: "العقار موضوع التقييم",
-              label: "ع",
-            },
-          ]
-        : [],
-    [subjectPin],
+    () => [
+      ...(subjectPin ? [subjectPropertyMapPin(subjectPin)] : []),
+      ...drawnBank
+        .filter((c) => parseLatLng(c.latitude, c.longitude) != null)
+        .map((c) =>
+          bankComparableMapPin(c, adoptedIds?.has(c.id) ? ADOPTED_COMPARABLE_PIN_COLOR : undefined),
+        ),
+    ],
+    [subjectPin, drawnBank, adoptedIds],
   );
 
   // Clearing the coordinates drops the pin and any place lookup with it.
@@ -227,22 +287,35 @@ export function ComparablePropertyEntryFields({
     showToast("تم الرجوع إلى موقع العقار", "success");
   }
 
+  // Omar 2026-11-11: the entry fields appear only once the comparable's location is chosen and
+  // pinned. A form without a map has no location step, so its fields show at once.
+  const fieldsShown = mapPinned || showCoordinates === false;
+  // Fields between «نوع المقارن» and «وصف العقار»; المدينة and الحي fill the first row beside
+  // «نوع المقارن» when the location is pinned, otherwise two of these fields do.
+  const fieldCount =
+    10 + (draft.kind === "building" ? 1 : 0) + (draft.transactionKind === "offer" ? 1 : 0);
+  const descriptionSpan = descriptionSpanClass((fieldCount + (mapPinned ? 0 : 2)) % 4);
   const areaLabel = `${comparableAreaLabel(draft.kind)} (م²)`;
   const priceLabel =
     draft.kind === "land" ? "سعر الأرض (ر.س.)" : "السعر (ر.س.)";
 
+  /*
+    Omar 2026-11-11: the form was too tall — four fields a row where the window is wide enough (the
+    «إضافة مقارن» window), two in a mid-width panel, one on a phone. The columns follow the form's
+    own width, not the screen's, because the same form sits in a window and in the inspector's page.
+  */
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="@container">
+    <div className="grid gap-x-3 gap-y-2.5 @[440px]:grid-cols-2 @[620px]:grid-cols-4">
       {showCoordinates !== false ? (
-        <div className="sm:col-span-2" id="cmp-location">
-          <Label className={FIELD_LABEL}>موقع المقارن على الخريطة</Label>
-          <p className="mb-1.5 mt-0 text-[11.5px] leading-relaxed text-text-3">
-            الدبوس الأزرق = العقار موضوع التقييم. حدّد موقع المقارن ثم ثبّته قبل
-            تعبئة الحقول.
-          </p>
+        <div className="col-span-full" id="cmp-location">
+          {/* No heading or legend above the map (Omar 2026-11-11): the map and its pins say it. */}
+          {bankBrowse?.toolbar}
           <div
             className={cn(
-              "relative mt-0.5 h-[240px] overflow-hidden rounded-[10px] border sm:h-[280px]",
+              "relative h-[240px] overflow-hidden rounded-lg border",
+              // A map the bank is browsed on gets more room than one a pin is only placed on.
+              bankBrowse ? "sm:h-[340px]" : "sm:h-[280px]",
               fieldErrors?.location || fieldErrors?.district
                 ? "border-danger"
                 : "border-border",
@@ -255,21 +328,14 @@ export function ComparablePropertyEntryFields({
               interactive={mapInteractive}
               disabled={!mapInteractive}
               mapTypeControl
+              quietPlaces
               resolvePlace={!disabled}
               initialCenter={subjectPin}
               viewCenter={subjectPin}
               viewEpoch={viewEpoch}
               contextPins={contextPins}
-              pinLabel={
-                [
-                  draft.kind === "land"
-                    ? "أرض"
-                    : draft.comparablePropertyType || "موقع المقارن",
-                  draft.district || null,
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              }
+              // Omar 2026-11-11: the note over the spot being chosen says what it is for.
+              pinLabel="أضف مقارن جديد"
               onCoordsChange={
                 mapInteractive
                   ? (lat, lng) => {
@@ -285,117 +351,139 @@ export function ComparablePropertyEntryFields({
                   : undefined
               }
               onLocationDetail={disabled ? undefined : applyLocationDetail}
+              onContextPinClick={setShownBankId}
+              freePan={Boolean(bankBrowse)}
+              fitPinsKey={bankBrowse?.fitPinsKey}
+              onCenterChange={bankBrowse?.onCenterChange}
             />
           </div>
-          {mapInteractive ? (
-            <div className="mt-2.5">
-              <Label className={FIELD_LABEL}>أو أدخل الإحداثيات</Label>
-              <Input
-                id="cmp-coords"
-                dir="ltr"
-                inputMode="decimal"
-                value={coordsText}
-                placeholder="24.713600, 46.675300"
-                className={cn(coordsError && invalidControlClass)}
-                onChange={(e) => {
-                  setCoordsText(e.target.value);
-                  setCoordsError(null);
-                }}
-                onPaste={(e) => {
-                  const pasted = e.clipboardData.getData("text");
-                  if (applyTypedCoords(pasted, { reportInvalid: false })) {
-                    e.preventDefault();
-                  }
-                }}
-                onBlur={() => applyTypedCoords(coordsText)}
-                onKeyDown={(e) => {
-                  if (e.key !== "Enter") return;
-                  e.preventDefault();
-                  applyTypedCoords(coordsText);
-                }}
-              />
-              {coordsError ? (
-                <p className="mb-0 mt-1 text-[11px] font-semibold text-danger-text" role="alert">
-                  {coordsError}
-                </p>
-              ) : (
-                <p className="mb-0 mt-1 text-[11.5px] text-text-3">
-                  الصق الإحداثيات (خط العرض ثم خط الطول) وسيُوضع الدبوس تلقائياً.
-                </p>
-              )}
-            </div>
+          {sameSpot && sameSpot.comparable.id !== shownBankId ? (
+            <OpsInfoNote variant="amber" className="mt-2.5">
+              <div role="status" className="flex flex-wrap items-center justify-between gap-2">
+                <span>
+                  يوجد مقارن مسجّل{" "}
+                  <bdi dir="ltr" className="whitespace-nowrap font-bold">
+                    {sameSpot.comparable.referenceCode}
+                  </bdi>{" "}
+                  على بُعد {distanceLabelAr(sameSpot.meters)} من هذا الموقع — تأكد أنه ليس
+                  المقارن نفسه قبل إدخاله.
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => setShownBankId(sameSpot.comparable.id)}
+                >
+                  عرض تفاصيله
+                </Button>
+              </div>
+            </OpsInfoNote>
           ) : null}
+          {shownBank ? (
+            <ExistingComparableCard
+              comparable={shownBank}
+              metersFromSubject={
+                subjectPin && shownBankPin ? haversineMeters(subjectPin, shownBankPin) : null
+              }
+              onUse={shownAction?.run}
+              useLabel={shownAction?.label}
+              useBusy={shownAction?.busy}
+              onClose={() => setShownBankId(null)}
+            />
+          ) : null}
+          {/* The location tools in one row: typed coordinates, pinning, back to the subject. */}
           {!disabled ? (
-            <div className="mt-2.5 flex flex-col gap-2">
-              {comparablePin && !mapPinned ? (
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="primary"
-                    className="min-w-0 flex-1"
-                    onClick={() => {
-                      setMapPinned(true);
-                      showToast("تم تثبيت موقع المقارن", "success");
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {mapInteractive ? (
+                <>
+                  <Label
+                    htmlFor="cmp-coords"
+                    className="mb-0 shrink-0 text-[11.5px] font-semibold text-text-2"
+                  >
+                    الإحداثيات
+                  </Label>
+                  <Input
+                    id="cmp-coords"
+                    dir="ltr"
+                    inputMode="decimal"
+                    value={coordsText}
+                    placeholder="24.713600, 46.675300"
+                    className={cn("min-w-[170px] flex-1", coordsError && invalidControlClass)}
+                    onChange={(e) => {
+                      setCoordsText(e.target.value);
+                      setCoordsError(null);
                     }}
-                  >
-                    تثبيت الموقع
-                  </Button>
-                  <Button
-                    type="button"
-                    className="min-w-0 flex-1"
-                    disabled={!subjectPin}
-                    onClick={restoreSubjectView}
-                  >
-                    الرجوع إلى الموقع
-                  </Button>
-                </div>
+                    onPaste={(e) => {
+                      const pasted = e.clipboardData.getData("text");
+                      if (applyTypedCoords(pasted, { reportInvalid: false })) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onBlur={() => applyTypedCoords(coordsText)}
+                    onKeyDown={(e) => {
+                      if (e.key !== "Enter") return;
+                      e.preventDefault();
+                      applyTypedCoords(coordsText);
+                    }}
+                  />
+                </>
+              ) : null}
+              {comparablePin && !mapPinned ? (
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="max-sm:min-w-0 max-sm:flex-1"
+                  onClick={() => {
+                    setMapPinned(true);
+                    showToast("تم تثبيت موقع المقارن", "success");
+                  }}
+                >
+                  تثبيت الموقع
+                </Button>
               ) : null}
               {mapPinned ? (
-                <div className="flex gap-2">
-                  <div className="flex min-h-11 flex-1 items-center justify-center gap-2 rounded-[9px] border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-[13px] font-bold text-heading">
+                <>
+                  <div className="flex min-h-[38px] flex-1 items-center justify-center rounded-[9px] border border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg px-3 text-[12.5px] font-bold text-heading">
                     موقع المقارن مثبت
                   </div>
-                  <Button
-                    type="button"
-                    disabled={!subjectPin}
-                    onClick={restoreSubjectView}
-                  >
-                    الرجوع إلى الموقع
-                  </Button>
                   <Button type="button" onClick={() => setMapPinned(false)}>
                     تعديل
                   </Button>
-                </div>
+                </>
               ) : null}
-              {!comparablePin ? (
-                <Button
-                  type="button"
-                  className="w-full"
-                  disabled={!subjectPin}
-                  onClick={restoreSubjectView}
-                >
-                  الرجوع إلى موقع العقار
-                </Button>
-              ) : null}
+              <Button
+                type="button"
+                className="max-sm:min-w-0 max-sm:flex-1"
+                disabled={!subjectPin}
+                onClick={restoreSubjectView}
+              >
+                الرجوع إلى موقع العقار
+              </Button>
             </div>
           ) : null}
-          <p className="mb-0 mt-1.5 text-center text-[11.5px] text-text-3">
-            {mapPinned && comparablePin
-              ? `الموقع مثبت — ${comparablePin.lat.toFixed(6)}، ${comparablePin.lng.toFixed(6)}`
-              : comparablePin
-                ? `اضغط تثبيت بعد وضع الدبوس — ${comparablePin.lat.toFixed(6)}، ${comparablePin.lng.toFixed(6)}`
-                : "اضغط على الخريطة لتحديد موقع المقارن"}
-          </p>
-          <p className="mb-0 mt-1 text-center text-[11.5px] font-semibold text-heading">
-            {placeLine ||
-              (placeLookup === "loading"
-                ? "جاري تحديد الحي…"
+          {coordsError ? (
+            <p className="mb-0 mt-1 text-[11px] font-semibold text-danger-text" role="alert">
+              {coordsError}
+            </p>
+          ) : null}
+          <div className="mt-1.5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 text-[11.5px]">
+            <span className="text-text-3">
+              {mapPinned && comparablePin
+                ? `الموقع مثبت — ${comparablePin.lat.toFixed(6)}، ${comparablePin.lng.toFixed(6)}`
                 : comparablePin
-                  ? "تعذّر استخراج الحي تلقائياً — أدخله يدوياً بعد التثبيت"
-                  : "المدينة والحي يُستخرجان من موقع الدبوس، ويمكن تعديلهما يدوياً")}
-          </p>
+                  ? `اضغط تثبيت بعد وضع الدبوس — ${comparablePin.lat.toFixed(6)}، ${comparablePin.lng.toFixed(6)}`
+                  : "اضغط على الخريطة لتحديد موقع المقارن"}
+            </span>
+            {placeLine || comparablePin ? (
+              <span className="font-semibold text-heading">
+                {placeLine ||
+                  (placeLookup === "loading"
+                    ? "جاري تحديد الحي…"
+                    : "تعذّر استخراج الحي تلقائياً — أدخله يدوياً بعد التثبيت")}
+              </span>
+            ) : null}
+          </div>
           {fieldErrors?.location ? (
-            <p className="mb-0 mt-1.5 text-center text-[11px] font-semibold text-danger-text" role="alert">
+            <p className="mb-0 mt-1 text-[11px] font-semibold text-danger-text" role="alert">
               {fieldErrors.location}
             </p>
           ) : null}
@@ -426,14 +514,16 @@ export function ComparablePropertyEntryFields({
         </>
       ) : null}
 
-      <div className="sm:col-span-2" id="cmp-kind">
+      {fieldsShown ? (
+        <>
+      <div className="col-span-full @[620px]:col-span-2" id="cmp-kind">
         <Label className={FIELD_LABEL}>
           نوع المقارن
           <span className="text-danger"> *</span>
         </Label>
         <div
           className={cn(
-            "flex gap-2 rounded-[10px]",
+            "flex gap-2 rounded-[9px]",
             fieldErrors?.kind && "ring-2 ring-danger/40",
           )}
         >
@@ -451,25 +541,25 @@ export function ComparablePropertyEntryFields({
           />
         </div>
         {fieldErrors?.kind ? (
-          <p className="mb-0 mt-1.5 text-[11px] font-semibold text-danger-text" role="alert">
+          <p className="mb-0 mt-1 text-[11px] font-semibold text-danger-text" role="alert">
             {fieldErrors.kind}
           </p>
-        ) : fieldsLocked ? (
-          <p className="mb-0 mt-1.5 text-[11.5px] text-text-3">
+        ) : !mapPinned ? (
+          <p className="mb-0 mt-1 text-[11px] leading-snug text-text-3">
             ثبّت موقع المقارن أولاً لتعبئة البيانات.
           </p>
         ) : draft.kind === "building" ? (
-          <p className="mb-0 mt-1.5 text-[11.5px] text-text-3">
+          <p className="mb-0 mt-1 text-[11px] leading-snug text-text-3">
             السعر يشمل الأرض ضمن المبنى — لا تُفصل قيمة الأرض. للمقارنة مبنى
             بمبنى (أسلوب السوق).
           </p>
         ) : draft.kind === "land" ? (
-          <p className="mb-0 mt-1.5 text-[11.5px] text-text-3">
+          <p className="mb-0 mt-1 text-[11px] leading-snug text-text-3">
             لتقييم الأرض بأسلوب السوق أو لمكوّن الأرض في أسلوب التكلفة، حتى إذا
             كان موضوع التقييم فيلا.
           </p>
         ) : (
-          <p className="mb-0 mt-1.5 text-[11.5px] text-text-3">
+          <p className="mb-0 mt-1 text-[11px] leading-snug text-text-3">
             اختر أرضاً أو مبنى.
           </p>
         )}
@@ -600,11 +690,11 @@ export function ComparablePropertyEntryFields({
             patch("advertiserPhone", formatContactNumbersInput(e.target.value))
           }
         />
-        <p className="mb-0 mt-1 text-[11px] text-text-3">
-          {draft.advertiserPhone.trim()
-            ? `${contactNumbers(draft.advertiserPhone).length} رقم — كل 10 أرقام رقم مستقل`
-            : "كل 10 أرقام تُحتسب رقم تواصل مستقلاً"}
-        </p>
+        {draft.advertiserPhone.trim() ? (
+          <p className="mb-0 mt-1 text-[11px] leading-snug text-text-3">
+            {contactNumbers(draft.advertiserPhone).length} رقم — كل 10 أرقام رقم مستقل
+          </p>
+        ) : null}
       </Field>
       <Field label="رقم المخطط">
         <Input
@@ -621,7 +711,7 @@ export function ComparablePropertyEntryFields({
         />
       </Field>
       {showDescription !== false ? (
-        <Field label="وصف العقار" className="sm:col-span-2">
+        <Field label="وصف العقار" className={descriptionSpan}>
           <Input
             value={draft.description}
             disabled={fieldsLocked}
@@ -629,6 +719,9 @@ export function ComparablePropertyEntryFields({
           />
         </Field>
       ) : null}
+        </>
+      ) : null}
+    </div>
     </div>
   );
 }

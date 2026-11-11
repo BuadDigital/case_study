@@ -2,7 +2,9 @@ namespace RealEstateEval.Valuation.Domain;
 
 /// <summary>
 /// Comparable-table context — valuation-approaches-logic section 5 and section 7.
-/// Two independent tables: market approach vs vacant-land estimate within cost. No import between them.
+/// Two independent tables: market approach vs vacant-land estimate within cost. Nothing flows between
+/// them by itself; the appraiser may copy the land valuation from one to the other (a snapshot —
+/// <c>ValuationComparableSelectionService.CopyTableAsync</c>, ruling 2026-11-11).
 /// </summary>
 public static class ComparableSelectionContexts
 {

@@ -177,6 +177,26 @@ public class ValuationMethodologyAlertRulesTests
         Assert.False(acked.Single(c => c.Number == 1).BlocksIssuance);
     }
 
+    // 2026-11-11: the alert names the inventory table — an empty cost table means the inspector's
+    // «جدول حصر المباني» was not filled, or was filled and never pulled.
+    [Fact]
+    public void No_cost_line_m1_says_where_the_problem_lies()
+    {
+        string? Detail(ValuationMethodologyAlertInput input) =>
+            ValuationMethodologyAlertRules.Evaluate(input).Single(c => c.Number == 1).DetailAr;
+
+        var costOn = EmptyInput() with { CostApproachRelevant = true, CostLines = [] };
+
+        Assert.Equal(
+            ValuationMethodologyAlertRules.NoCostLineInventoryEmptyAr,
+            Detail(costOn with { HasStructuresToValue = false }));
+        Assert.Equal(
+            ValuationMethodologyAlertRules.NoCostLineInventoryNotPulledAr,
+            Detail(costOn with { HasStructuresToValue = true }));
+        Assert.Contains("جدول حصر المباني", ValuationMethodologyAlertRules.NoCostLineInventoryEmptyAr);
+        Assert.Contains("جدول حصر المباني", ValuationMethodologyAlertRules.NoCostLineInventoryNotPulledAr);
+    }
+
     [Fact]
     public void No_cost_line_m1_is_silent_when_the_cost_approach_is_off()
     {

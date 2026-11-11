@@ -149,6 +149,39 @@ describe("ApproachSettingsSection — round 2: retrospective dates", () => {
   });
 });
 
+describe("ApproachSettingsSection — layout 2026-11-11: each choice sits with what it depends on", () => {
+  it("opens the cost basis inside the cost card once it is ticked, and names the cost by it", () => {
+    renderSection(settings());
+    const costTick = () => screen.getByRole("checkbox", { name: /أسلوب التكلفة/ });
+    expect(screen.queryByText("طريقة تقدير التكلفة")).toBeNull();
+
+    fireEvent.click(costTick());
+    expect(screen.getByText("طريقة تقدير التكلفة")).toBeTruthy();
+    expect(screen.getByText(/تكلفة الإحلال ناقصاً الإهلاك/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "إعادة الإنتاج" }));
+    expect(screen.getByText(/تكلفة إعادة الإنتاج ناقصاً الإهلاك/)).toBeTruthy();
+    // Pressing a basis chip never flips the tick it sits under.
+    expect(costTick()).toHaveProperty("checked", true);
+  });
+
+  it("opens the retrospective inputs only on «أثر رجعي»", () => {
+    renderSection(settings());
+    expect(screen.queryByLabelText("تاريخ الأثر الرجعي")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "أثر رجعي" }));
+    expect(screen.getByLabelText("تاريخ الأثر الرجعي")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "تاريخ إصدار القيمة" }));
+    expect(screen.queryByLabelText("تاريخ الأثر الرجعي")).toBeNull();
+  });
+
+  it("says once that the market approach still needs its comparables on «مباني فقط»", () => {
+    renderSection(settings({ costApproachEnabled: true, costScopeKey: "building_only" }));
+    expect(screen.getByText(/عطّله إن كان التقييم\s+بالتكلفة وحدها/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("checkbox", { name: /أسلوب السوق/ }));
+    expect(screen.queryByText(/عطّله إن كان التقييم/)).toBeNull();
+  });
+});
+
 describe("ApproachSettingsSection — interest, rationale and the unavailable income approach", () => {
   it("sends the ownership interest and lease years instead of hard-coded values, income always off", async () => {
     renderSection(settings());

@@ -29,7 +29,7 @@ export function FailuresViewKpiBand({
           iconClass="bg-[var(--gold-soft)] text-[var(--gold-d)]"
           label="عند الأخصائي"
           value={value(stats.withSpecialist)}
-          sub="احتمال · داخلي · مُعاد"
+          sub="محتمل · داخلي · مُعاد"
           dot
         />
         <KpiCell
@@ -55,7 +55,7 @@ export function FailuresViewKpiBand({
           {
             key: "with-specialist",
             label: "عند الأخصائي",
-            sub: "احتمال · داخلي · مُعاد",
+            sub: "محتمل · داخلي · مُعاد",
             value: value(stats.withSpecialist),
             icon: <KpiAlertIcon />,
             iconClass: "bg-[var(--gold-soft)] text-[var(--gold-d)]",

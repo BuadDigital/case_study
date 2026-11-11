@@ -48,7 +48,7 @@ export function EvaluatorBasicDocumentsCard({
   const typeLine = formatPropertyTypeLine(property);
 
   return (
-    <ValCard title="الوثائق ونوع العقار">
+    <ValCard>
       <div className="mb-3">
         <div className="mb-[3px] text-[10.5px] text-text-3">نوع العقار</div>
         <p className="m-0 text-[13px] font-bold text-heading">

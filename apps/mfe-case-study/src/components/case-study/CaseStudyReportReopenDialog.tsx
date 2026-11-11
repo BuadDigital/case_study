@@ -52,6 +52,73 @@ export function CaseStudyReportReopenDialog({
   );
 }
 
+/** The reason of a reopen / return — shared with review's «طلب تصحيح» window. */
+export function ReopenReasonField({
+  label,
+  value,
+  error,
+  onChange,
+  placeholder = "مثال: ظهرت ملاحظة جديدة من المعاين تستدعي تعديل الإجابات",
+}: {
+  label: string;
+  value: string;
+  error: string | null;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <Label htmlFor="cs-reopen-reason" className="mb-1.5 text-[11px] font-semibold text-text-2">
+        {label}
+      </Label>
+      <Textarea
+        id="cs-reopen-reason"
+        rows={3}
+        value={value}
+        placeholder={placeholder}
+        aria-invalid={error ? true : undefined}
+        className={cn("rounded-[10px] border-border-md bg-surface", error && invalidControlClass)}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      {error ? (
+        <Note tone="danger" className="mt-2">
+          {error}
+        </Note>
+      ) : null}
+    </div>
+  );
+}
+
+/** «إلغاء تسليم إنفاذ» — the confirmation a study handed over to Enfaz needs before it reopens. */
+export function EnfazClearConfirm({
+  checked,
+  error,
+  onChange,
+}: {
+  checked: boolean;
+  error: string | null;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-[10px] border border-border bg-surface-2/50 px-3 py-2.5">
+      <label className="flex cursor-pointer items-start gap-2 text-[12.5px] font-semibold text-heading">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span>إلغاء تسليم إنفاذ</span>
+      </label>
+      <p className="m-0 text-[11.5px] leading-relaxed text-text-2">
+        سُلّمت هذه المعاملة إلى إنفاذ. لا يُعاد فتح التقرير إلا بإلغاء ختم التسليم،
+        وسيُسجَّل ذلك في سجل التدقيق.
+      </p>
+      {error ? <Note tone="danger">{error}</Note> : null}
+    </div>
+  );
+}
+
 function ReopenForm({
   onClose,
   onReopen,
@@ -140,55 +207,25 @@ function ReopenForm({
       }
     >
       <div className="flex flex-col gap-3">
-        <div>
-          <Label
-            htmlFor="cs-reopen-reason"
-            className="mb-1.5 text-[11px] font-semibold text-text-2"
-          >
-            {returnByReview ? "سبب الإرجاع (10 أحرف على الأقل)" : "سبب الاسترجاع (10 أحرف على الأقل)"}
-          </Label>
-          <Textarea
-            id="cs-reopen-reason"
-            rows={3}
-            value={reason}
-            placeholder="مثال: ظهرت ملاحظة جديدة من المعاين تستدعي تعديل الإجابات"
-            aria-invalid={reasonError ? true : undefined}
-            className={cn(
-              "rounded-[10px] border-border-md bg-surface",
-              reasonError && invalidControlClass,
-            )}
-            onChange={(e) => {
-              setReason(e.target.value);
-              if (reasonError) setReasonError(null);
-            }}
-          />
-          {reasonError ? (
-            <Note tone="danger" className="mt-2">
-              {reasonError}
-            </Note>
-          ) : null}
-        </div>
+        <ReopenReasonField
+          label={returnByReview ? "سبب الإرجاع (10 أحرف على الأقل)" : "سبب الاسترجاع (10 أحرف على الأقل)"}
+          value={reason}
+          error={reasonError}
+          onChange={(value) => {
+            setReason(value);
+            if (reasonError) setReasonError(null);
+          }}
+        />
 
         {enfazPrompted ? (
-          <div className="flex flex-col gap-2 rounded-[10px] border border-border bg-surface-2/50 px-3 py-2.5">
-            <label className="flex cursor-pointer items-start gap-2 text-[12.5px] font-semibold text-heading">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={enfazConfirmed}
-                onChange={(e) => {
-                  setEnfazConfirmed(e.target.checked);
-                  if (enfazError) setEnfazError(null);
-                }}
-              />
-              <span>إلغاء تسليم إنفاذ</span>
-            </label>
-            <p className="m-0 text-[11.5px] leading-relaxed text-text-2">
-              سُلّمت هذه المعاملة إلى إنفاذ. لا يُعاد فتح التقرير إلا بإلغاء ختم التسليم،
-              وسيُسجَّل ذلك في سجل التدقيق.
-            </p>
-            {enfazError ? <Note tone="danger">{enfazError}</Note> : null}
-          </div>
+          <EnfazClearConfirm
+            checked={enfazConfirmed}
+            error={enfazError}
+            onChange={(checked) => {
+              setEnfazConfirmed(checked);
+              if (enfazError) setEnfazError(null);
+            }}
+          />
         ) : null}
 
         {serverError ? <Note tone="warn">{serverError}</Note> : null}

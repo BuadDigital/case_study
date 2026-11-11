@@ -91,7 +91,6 @@ describe("transaction general actions (2026-11-05)", () => {
   const live = { isRemoved: false, cancelledAtUtc: "" };
   const handlers = {
     onFailure: vi.fn(),
-    onFinalFailure: vi.fn(),
     onCancel: vi.fn(),
     onReopen: vi.fn(),
   };
@@ -112,7 +111,7 @@ describe("transaction general actions (2026-11-05)", () => {
     ).not.toContain("إعادة فتح المعاملة");
   });
 
-  it("gives coordination a failure and the cancellation request, not the final failure", () => {
+  it("gives coordination the one failure item and the cancellation request", () => {
     const rules = transactionGeneralRules({
       access: staffAccessOf("case-specialist", ["coordination"]),
       canRaiseFailure: true,
@@ -122,17 +121,34 @@ describe("transaction general actions (2026-11-05)", () => {
     expect(labels(rules)).toEqual(["تسجيل تعذّر", "طلب إلغاء المعاملة"]);
   });
 
-  it("gives the supervisor the final failure and the direct cancellation", () => {
+  // Omar 2026-11-11: one «تسجيل تعذّر» item — the window holds the degrees, the final one among them.
+  it("keeps «تسجيل تعذّر» on a deed with an open failure for whoever records the final one", () => {
+    const withOpenFailure = (access: ReturnType<typeof staffAccessOf>) =>
+      labels(
+        transactionGeneralRules({
+          access,
+          canRaiseFailure: true,
+          property: live,
+          openFailureStatus: "review",
+        }),
+      );
+    expect(withOpenFailure(staffAccessOf("section-supervisor"))).toEqual([
+      "تسجيل تعذّر",
+      "إلغاء المعاملة",
+    ]);
+    expect(withOpenFailure(staffAccessOf("case-specialist", ["study"]))).toEqual(["تسجيل تعذّر"]);
+    // The appraiser raises a possible failure only — nothing to record on a deed that has one open.
+    expect(withOpenFailure(staffAccessOf("real-estate-appraiser"))).toEqual([]);
+  });
+
+  it("offers no failure once the deed is final-failed", () => {
     const rules = transactionGeneralRules({
       access: staffAccessOf("section-supervisor"),
       canRaiseFailure: true,
       property: live,
-      openFailureStatus: "review",
+      openFailureStatus: "approved",
     });
-    expect(labels(rules)).toEqual([
-      "التعذّر النهائي عن المعاملة",
-      "إلغاء المعاملة",
-    ]);
+    expect(labels(rules)).toEqual([]);
   });
 
   it("offers nothing on a cancelled or removed deed, and no cancellation once one is pending", () => {
@@ -162,7 +178,7 @@ describe("transaction general actions (2026-11-05)", () => {
           cancellationPending: true,
         }),
       ),
-    ).toEqual(["تسجيل تعذّر", "التعذّر النهائي عن المعاملة"]);
+    ).toEqual(["تسجيل تعذّر"]);
   });
 
   it("keeps a stage menu's own failure item and drops the general one", () => {

@@ -3,7 +3,7 @@
 /**
  * Operations-tasks screen — composition only. Workflow lives in
  * `useOperationsTasksWorkflow`; each region (`OperationsTasksKpiBand`,
- * `OperationsTasksFiltersBar`, `OperationsTasksTable`,
+ * `OperationsTasksFiltersBar`, `OperationsTasksAddedSurveys`, `OperationsTasksTable`,
  * `OperationsTasksMobileCards`, `OperationsTasksDetailPanel`,
  * `OperationsTasksModals`) renders one slice of the returned bag.
  */
@@ -22,6 +22,7 @@ import {
   TasksSectionNote,
 } from "../components/tasks/TasksHtmlPrimitives";
 import { useOperationsTasksWorkflow } from "./useOperationsTasksWorkflow";
+import { OperationsTasksAddedSurveys } from "./OperationsTasksAddedSurveys";
 import { OperationsTasksKpiBand } from "./OperationsTasksKpiBand";
 import {
   OperationsTasksBulkBar,
@@ -107,6 +108,8 @@ export function OperationsTasksView() {
         <OperationsTasksBulkBar {...workflow} />
 
         {error ? <Note tone="danger">{error}</Note> : null}
+
+        <OperationsTasksAddedSurveys />
 
         <OperationalPanel className="min-h-0 flex-1 overflow-hidden !rounded-[12px] p-0 max-lg:border-0 max-lg:bg-transparent max-lg:!rounded-none max-lg:shadow-none">
           {listLoadFailed ? (

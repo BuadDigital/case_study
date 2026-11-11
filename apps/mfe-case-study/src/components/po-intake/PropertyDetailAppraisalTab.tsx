@@ -64,9 +64,14 @@ export function PropertyDetailAppraisalTab({
 }) {
   const { access } = useAppAccess();
   const isReview = canReviewTransaction(access);
-  // The work page's layout (`work` density) (Omar 2026-11-09): for the study the report is a result, not an input —
-  // a status line and «معاينة التقرير» replace the draft workspace and the full report on the page.
-  const studyCompact = useWorkDensity() && !isReview;
+  // The work page's layout (`work` density): the report itself is read in a window — «معاينة التقرير» —
+  // for the study since 2026-11-09 and for review too since 2026-11-11 (Omar: as the appraiser reads
+  // it). For the study the report is a result, not an input: a status line stands in for the draft
+  // workspace as well. Review keeps its draft workspace on the page — that is what it works on; only the
+  // long read-only report under it moved to the window. Anywhere else (the property's details page) the
+  // report stays on the page.
+  const reportInWindow = useWorkDensity();
+  const studyCompact = reportInWindow && !isReview;
   const [previewOpen, setPreviewOpen] = useState(false);
   if (!appraisalCard) {
     return (
@@ -123,12 +128,18 @@ export function PropertyDetailAppraisalTab({
       {submission?.packageStatus === "reopened" && returnRemark?.trim() ? (
         <ReturnedForCorrectionNote note={returnRemark} className="mb-3" />
       ) : null}
-      {studyCompact ? (
+      {reportInWindow ? (
         <div
-          className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface-2/50 px-3.5 py-2.5"
-          data-testid="study-report-compact"
+          className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border border-border bg-surface-2/50 px-3.5 py-2.5"
+          data-testid={studyCompact ? "study-report-compact" : "review-report-preview"}
         >
-          <span className="flex-1 text-[12.5px] text-text">{draftStateLine(property.id)}</span>
+          <span className="flex-1 text-[12.5px] text-text">
+            {studyCompact
+              ? draftStateLine(property.id)
+              : appraisalTask && ValuationReport
+                ? "تقرير التقييم كما أعدّه المقيّم — افتحه للقراءة قبل قبول القيمة وإصدار المسودة."
+                : "تقرير التقييم غير متاح بعد — يظهر بعد فتح مهمة التقييم للعقار."}
+          </span>
           {appraisalTask && ValuationReport ? (
             <Button type="button" size="sm" variant="outline" onClick={() => setPreviewOpen(true)}>
               <span className="inline-flex items-center gap-1.5">
@@ -141,7 +152,11 @@ export function PropertyDetailAppraisalTab({
             open={previewOpen}
             onClose={() => setPreviewOpen(false)}
             title="معاينة تقرير التقييم"
-            subtitle="للقراءة — يعمل عليه المقيّم والمراجع"
+            subtitle={
+              studyCompact
+                ? "للقراءة — يعمل عليه المقيّم والمراجع"
+                : "للقراءة — قراراتك في الصفحة: قبول القيمة، إصدار المسودة، الإيداع"
+            }
             maxWidthPx={1180}
           >
             {previewOpen && appraisalTask && ValuationReport
@@ -162,7 +177,7 @@ export function PropertyDetailAppraisalTab({
             canReview: isReview,
           })
         : null}
-      {studyCompact ? null : appraisalTask && ValuationReport ? (
+      {reportInWindow ? null : appraisalTask && ValuationReport ? (
         createElement(ValuationReport, {
           appraisalTask,
           allTasks: tasks,

@@ -35,6 +35,7 @@ import {
   CardPad,
   PrimaryBtn,
 } from "./atoms";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { fmt } from "./lib/shell-utils";
 import { useFinalOpinionWorkflow } from "./useFinalOpinionWorkflow";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
@@ -329,7 +330,9 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                       label="قيمة الأرض"
                       note={
                         cost?.landEstimateComplete
-                          ? `${fmt(cost?.landUnitRateAfterDiscount)} ر.س/م² × ${fmt(
+                          ? // The rate and the area print with their fractions, so the two multiply to
+                            // the value beside them (2,620.81 × 300 read «2,621 × 300 = 786,243»).
+                            `${fmtMax(cost?.landUnitRateAfterDiscount)} ر.س/م² × ${fmtMax(
                               cost?.apartmentLandShareSqm || cost?.landAreaSqm,
                             )} م²`
                           : "بانتظار المقارنات"
@@ -342,7 +345,11 @@ export const FinalOpinionSection = memo(function FinalOpinionSection({
                     />
                     <OpinionInvoiceRow
                       label="+ قيمة المباني بعد الإهلاك"
-                      note="تكلفة الإحلال − الإهلاك"
+                      note={
+                        cost?.buildingAreaSqm
+                          ? `مسطحات البناء ${fmtMax(cost.buildingAreaSqm)} م² — تكلفة الإحلال − الإهلاك`
+                          : "تكلفة الإحلال − الإهلاك"
+                      }
                       value={fmt(cost?.buildingsValueAfterDepreciation)}
                     />
                   </>

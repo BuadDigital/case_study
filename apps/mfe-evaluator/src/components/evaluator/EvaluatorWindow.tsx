@@ -118,6 +118,7 @@ export function EvaluatorWindow({
   embeddedInPropertyChrome = false,
   studySummary,
   pageActions,
+  railAside,
 }: {
   task: WorkflowTask;
   tasks: WorkflowTask[];
@@ -131,6 +132,8 @@ export function EvaluatorWindow({
   studySummary?: ReactNode;
   /** The hosting app's page buttons, shown beside «تقرير التقييم». */
   pageActions?: ReactNode;
+  /** The hosting app's cards under the sections rail (the parties' status). */
+  railAside?: ReactNode;
 }) {
   const { showToast } = useToast();
   const assignedAppraiserName = useAssignedAppraiserName(task);
@@ -160,10 +163,10 @@ export function EvaluatorWindow({
     const initial = initialEvaluatorTab(task.id, initialTab);
     return initial === "output" ? "basic" : initial;
   });
-  // The screen to open and scroll to — a remembered one on load, then every «go to» request.
-  const [focus, setFocus] = useState<EvaluatorSectionFocus | null>(() =>
-    isWorkScreen(activeTab) && activeTab !== "basic" ? { screen: activeTab } : null,
-  );
+  // The screen to open and scroll to — every «go to» request. Nothing on load (Omar 2026-11-11:
+  // the page opens with every section folded, for every role); it used to open the remembered
+  // screen, which a refresh or a second visit in the same browser tab brought back unfolded.
+  const [focus, setFocus] = useState<EvaluatorSectionFocus | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const queryClient = useQueryClient();
   const [navAvail, setNavAvail] = useState<ValuationWorkNavAvailability>({
@@ -210,7 +213,9 @@ export function EvaluatorWindow({
     setReportOpen(false);
   }, []);
 
-  useEvaluatorTabMemory({ taskId: task.id, activeTab, setActiveTab: goToTab, navAvail });
+  // A remembered approach screen is restored as the remembered one only — its section is not
+  // opened (the page stays folded at entry), so the plain setter, not `goToTab`.
+  useEvaluatorTabMemory({ taskId: task.id, activeTab, setActiveTab, navAvail });
 
   const visibleTabs = useMemo(
     () => visibleEvaluatorTabs(navAvail),
@@ -685,6 +690,7 @@ export function EvaluatorWindow({
           <ValuationWorkShell
             propertyId={property.id}
             inspectionTaskId={propertySummary?.inspectionTaskId ?? null}
+            studyReportPending={studyReportPending}
             poNumber={draft.poNumber}
             assignmentType={task.assignmentType ?? undefined}
             districtHint={property.district}
@@ -722,6 +728,7 @@ export function EvaluatorWindow({
                   focus={focus}
                   onPick={onSectionPick}
                   summary={summarySection}
+                  railAside={railAside}
                   footer={
                     <EvaluatorWindowSubmitBar
                       visible={!formDisabled}
