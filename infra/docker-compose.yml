@@ -13,7 +13,7 @@ x-app-healthcheck: &app-healthcheck
 
 services:
   postgres:
-    image: postgres:17.5-alpine
+    image: postgres:17.11-alpine
     container_name: ree-postgres
     environment:
       POSTGRES_USER: postgres
@@ -47,7 +47,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7.4.2-alpine
+    image: redis:7.4.12-alpine
     container_name: ree-redis
     ports:
       - "6379:6379"

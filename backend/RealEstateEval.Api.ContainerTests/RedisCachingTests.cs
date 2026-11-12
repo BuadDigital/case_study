@@ -21,7 +21,7 @@ public class RedisCachingTests : IAsyncLifetime
         if (!DockerEnvironment.IsAvailable)
             return;
 
-        _container = new RedisBuilder("redis:7-alpine").Build();
+        _container = new RedisBuilder("redis:7.4.12-alpine").Build();
         await _container.StartAsync();
     }
 

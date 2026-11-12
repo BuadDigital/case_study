@@ -4,7 +4,7 @@ namespace RealEstateEval.Architecture.Tests;
 
 public class PostgresVersionParityTests
 {
-    private const string Image = "postgres:17.5-alpine";
+    private const string Image = "postgres:17.11-alpine";
 
     [Fact]
     public void Testcontainers_and_deployment_use_the_same_postgresql_image()
