@@ -200,6 +200,17 @@ public class PlatformPermissionCatalogTests
     }
 
     [Fact]
+    public void Field_inspector_has_my_work_and_keeps_the_inspection_page()
+    {
+        // Omar 2026-11-12: the inspector works from «أعمالي» on a desktop; his queue stays (the phone's entry).
+        var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var capabilities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        PlatformPermissionCatalog.ApplyPrototypeRole("field-inspector", pages, capabilities);
+        Assert.Contains("my-work", pages);
+        Assert.Contains("active-inspection", pages);
+    }
+
+    [Fact]
     public void Case_specialist_includes_all_transactions()
     {
         var pages = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

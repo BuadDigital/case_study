@@ -3,7 +3,8 @@
  * specialist (osama) accepts the package.
  *
  * UI-driven:  the /active-inspection queue (search + open the task), the whole
- *             three-step inspector wizard — step 1 «الموقع والتصوير» (GPS pin,
+ *             inspector's page on the work page's frame (three numbered sections,
+ *             folded at entry) — section 1 «الموقع والتصوير» (GPS pin,
  *             «خصائص العقار», access-contact block), step 2 «بيانات العقار»
  *             (description, component pills with a proof photo uploaded through
  *             the real file input, the deed-boundaries verdict), step 3 the
@@ -106,6 +107,8 @@ test.describe("Field inspector: submit → specialist accept", () => {
     );
     const ws = workspace(page);
     await expect(ws).toBeVisible({ timeout: 60_000 });
+    // The page opens with every section folded; «حفظ ومتابعة» opens the next one.
+    await ws.locator("#work-ins-step-1 > button").click();
 
     // ── 2. step 1 «الموقع والتصوير» — pin, features, access contact (UI) ──
     const coords = ws.locator('input[placeholder="21.523339, 39.187743"]');

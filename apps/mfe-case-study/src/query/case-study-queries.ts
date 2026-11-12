@@ -183,10 +183,11 @@ export function useWorkflowTasksPageQuery(
   });
 }
 
-export function usePropertyListItemsQuery() {
+export function usePropertyListItemsQuery(enabled = true) {
   return useQuery({
     queryKey: appDataKeys.propertyListItems(),
     queryFn: loadPropertyListItems,
+    enabled,
     ...queryDefaults,
   });
 }

@@ -131,6 +131,9 @@ export const ROLES: Record<RoleId, RoleDef> = {
     bg: "var(--info-bg)",
     tc: "var(--info)",
     pages: [
+      // Omar 2026-11-12: the inspector enters his inspections from «أعمالي» like the specialists
+      // and the appraiser — on a desktop only (`pagesForViewport`); his phone keeps the queue.
+      "my-work",
       "po",
       "favorites",
       "operations-tasks",
@@ -191,6 +194,14 @@ export const NAV: NavItem[] = [
     icon: "M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z",
     grp: null,
   },
+  // «المفضلة» right under «أعمالي» (Omar 2026-11-12): the rows starred in «أعمالي» are listed
+  // there, so the two sit together instead of the list hiding under «أدوات».
+  {
+    id: "favorites",
+    label: "المفضلة",
+    icon: "m12 2.8 2.84 5.75 6.35.92-4.6 4.48 1.09 6.33L12 17.3l-5.68 2.98 1.09-6.33-4.6-4.48 6.35-.92L12 2.8Z",
+    grp: null,
+  },
   { id: "dashboard", label: "لوحة التحكم", icon: "M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z", grp: null },
   {
     id: "po",
@@ -238,12 +249,6 @@ export const NAV: NavItem[] = [
     id: "property-map",
     label: "خريطة العقارات",
     icon: "M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-3.659 1.83a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.382V6.618a1 1 0 0 1 .553-.894l3.659-1.83a2 2 0 0 1 1.788 0zM12 19V5",
-    grp: "أدوات",
-  },
-  {
-    id: "favorites",
-    label: "المفضلة",
-    icon: "m12 2.8 2.84 5.75 6.35.92-4.6 4.48 1.09 6.33L12 17.3l-5.68 2.98 1.09-6.33-4.6-4.48 6.35-.92L12 2.8Z",
     grp: "أدوات",
   },
   {

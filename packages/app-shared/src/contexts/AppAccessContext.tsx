@@ -9,6 +9,7 @@ import {
 import { setRuntimeCapabilities } from "@platform/app-shared/app-data/runtime-access";
 import { usePermissionsQuery } from "@platform/app-shared/query/permissions-queries";
 import { useUsableAuthSession } from "../auth/use-auth-session";
+import { useViewportDesktop } from "../hooks/use-viewport-desktop";
 import { roleFromPermissions, rolePagesFromPermissions } from "./app-access-role";
 
 /** Least-privilege placeholder while access is unresolved or refused — never GM. */
@@ -97,15 +98,19 @@ export function AppAccessProvider({ children }: { children: React.ReactNode }) {
       ? EMPTY_CAPABILITIES
       : (permissions?.capabilities ?? EMPTY_CAPABILITIES);
 
+  // The screen decides one thing: the field inspector holds «أعمالي» on a desktop only.
+  const desktop = useViewportDesktop();
   const rolePages = useMemo(() => {
     if (!permissionsResolved || permissionsFailed || resolvedRole == null) {
       return [];
     }
     // The same rule the login lands by (`rolePagesFromPermissions`).
-    return rolePagesFromPermissions(permissions);
-  }, [permissionsResolved, permissionsFailed, permissions, resolvedRole]);
+    return rolePagesFromPermissions(permissions, desktop !== false);
+  }, [permissionsResolved, permissionsFailed, permissions, resolvedRole, desktop]);
 
-  const authReady = hasSession && permissionsResolved;
+  // Not ready until the screen is known (the first client paint): the landing page and the page
+  // gate redirect by `rolePages`, and a phone must never be sent to a desktop-only page meanwhile.
+  const authReady = hasSession && permissionsResolved && desktop !== null;
 
   const viewerUserId = session?.user.id ?? null;
   const viewerDisplayName =

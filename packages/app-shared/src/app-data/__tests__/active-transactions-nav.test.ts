@@ -24,7 +24,25 @@ describe("activeTransactionNavForRole", () => {
       "active-receipt",
     ]);
     expect(
-      activeTransactionNavForRole(["my-work", "active-inspection"], "cdo").map((i) => i.id),
-    ).toEqual(["active-inspection"]);
+      activeTransactionNavForRole(["my-work", "active-survey"], "cdo").map((i) => i.id),
+    ).toEqual(["active-survey"]);
+  });
+
+  // Omar 2026-11-12: the inspector's sidebar like the specialists' and the appraiser's.
+  it("drops the inspector's «معاينة العقار» once he has «أعمالي», and keeps his fees", () => {
+    expect(
+      activeTransactionNavForRole(
+        ["my-work", "po", "active-inspection", "party-fees"],
+        "field-inspector",
+      ).map((i) => i.id),
+    ).toEqual(["party-fees"]);
+  });
+
+  it("keeps «معاينة العقار» for the inspector on a phone, where he does not hold «أعمالي»", () => {
+    expect(
+      activeTransactionNavForRole(["po", "active-inspection", "party-fees"], "field-inspector").map(
+        (i) => i.id,
+      ),
+    ).toEqual(["active-inspection", "party-fees"]);
   });
 });

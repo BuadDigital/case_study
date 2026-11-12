@@ -36,6 +36,8 @@ export type SidebarNavModel = {
   activeTransactionItems: ActiveTransactionNavItem[];
   activeTxBadges: Partial<Record<PageId, number>>;
   failuresNavBadge: number | undefined;
+  /** How many transactions «المفضلة» holds. */
+  favoritesNavBadge: number | undefined;
   settingsNavTree: SettingsNavTreeNode[];
   /** `searchParams.toString()` — settings leaf activity depends on the query. */
   search: string;
@@ -168,7 +170,11 @@ export function AppShellSidebar({
                     active={isNavRowActive(item.id, nav.currentPage, nav.inPoSection)}
                     onPrefetch={nav.prefetchPage}
                     badgeCount={
-                      item.id === "failures" ? nav.failuresNavBadge : undefined
+                      item.id === "failures"
+                        ? nav.failuresNavBadge
+                        : item.id === "favorites"
+                          ? nav.favoritesNavBadge
+                          : undefined
                     }
                     rail={desktopRail}
                   />,

@@ -67,3 +67,36 @@ describe("rolePagesFromPermissions — the pages the app and the login both go b
     );
   });
 });
+
+describe("pagesForViewport — «أعمالي» is the inspector's on a desktop only (Omar 2026-11-12)", () => {
+  const inspector = {
+    prototypeRole: "field-inspector",
+    identityRoles: [],
+    pages: ["my-work", "po", "favorites", "operations-tasks", "active-inspection", "party-fees", "failures"],
+  };
+
+  it("gives the inspector «أعمالي» on a desktop and lands him there", () => {
+    const pages = rolePagesFromPermissions(inspector, true);
+    expect(pages).toContain("my-work");
+    expect(defaultLandingPath(pages)).toBe("/my-work");
+  });
+
+  it("drops «أعمالي» on a phone — he lands on his queue, as the PWA always did", () => {
+    const pages = rolePagesFromPermissions(inspector, false);
+    expect(pages).not.toContain("my-work");
+    expect(pages).toContain("active-inspection");
+    expect(defaultLandingPath(pages)).toBe("/active-inspection");
+  });
+
+  it("does the same before the server grants the page (the app's own baseline)", () => {
+    const older = { ...inspector, pages: inspector.pages.filter((page) => page !== "my-work") };
+    expect(defaultLandingPath(rolePagesFromPermissions(older, true))).toBe("/my-work");
+    expect(defaultLandingPath(rolePagesFromPermissions(older, false))).toBe("/active-inspection");
+  });
+
+  it("leaves every other role's pages alone on a phone", () => {
+    const appraiser = { prototypeRole: "real-estate-appraiser", identityRoles: [], pages: ["po", "property-appraisal"] };
+    expect(rolePagesFromPermissions(appraiser, false)).toEqual(rolePagesFromPermissions(appraiser, true));
+    expect(rolePagesFromPermissions(appraiser, false)).toContain("my-work");
+  });
+});

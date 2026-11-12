@@ -55,7 +55,6 @@ import {
   Note,
   PageShell,
   PanelSkeleton,
-  opsContentPanel,
   useSwapAnimation,
   useToast,
 } from "@platform/ui-kit";
@@ -300,34 +299,40 @@ export function PartyActiveTaskWork({
           }
           steps
           caseStudyDef={def}
+          railAside={
+            // «حالة الأطراف» as on the other frame pages, without the valuation's figures.
+            <PropertyPartiesRailCard
+              poNumber={task.poNumber}
+              propertyId={surveyProperty.id}
+              figures={false}
+            />
+          }
         />
       ) : (
         <InlineLoadingSkeleton className={LOADING_TEXT} />
       );
 
+    // Omar 2026-11-12: the inspector's desktop page takes the work page's frame, like the
+    // specialists' and the appraiser's — the hero, then the numbered sections with their rail
+    // (`InspectorWorkspaceWizard`) and «حالة الأطراف» under it; the timeline column stays on the
+    // property's details page, as on the appraiser's page. The phone shell below is untouched.
     const desktopStandalone =
       record && surveyProperty && surveyPropertyIndex >= 0 ? (
         <div
           id="view-active-inspection-workspace"
           className="flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-bg"
         >
-          {/* Own scrollport — #content is overflow-hidden for this route; PageShell canvas uses h-fit. */}
-          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-[30px] py-[26px] max-sm:px-4 max-sm:py-4">
-            <PropertyDetailHero
-              record={record}
-              property={surveyProperty}
-              propertyIndex={surveyPropertyIndex + 1}
-              hideOpenCaseStudy
-              stickyCompact
-            />
-            <div className="mt-3.5 grid grid-cols-1 items-start gap-3.5 pb-8 lg:grid-cols-[minmax(0,1fr)_252px]">
-              <div className={opsContentPanel}>
-                {inspectionForm}
-              </div>
-              <PropertyTransactionTimeline
+          {/* Own scrollport — #content is overflow-hidden for this route (the phone shell fills
+              it). The rail floats against this scroller, so nothing between the two may scroll. */}
+          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+            <div className="px-[30px] py-[26px] [zoom:0.85] max-sm:px-4 max-sm:py-4">
+              <PropertyDetailHero
                 record={record}
                 property={surveyProperty}
+                propertyIndex={surveyPropertyIndex + 1}
+                hideOpenCaseStudy
               />
+              {inspectionForm}
             </div>
           </div>
         </div>

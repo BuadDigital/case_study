@@ -153,8 +153,15 @@ const CASE_STUDY_STAGE_PAGE_IDS = new Set<PageId>(
   CASE_STUDY_ACTIVE_TRANSACTIONS_NAV.map((item) => item.id),
 );
 
-/** Queues «أعمالي» replaces: the case-study stage queues and the appraiser's «تقييم العقار». */
-const REPLACED_BY_MY_WORK = new Set<PageId>([...CASE_STUDY_STAGE_PAGE_IDS, "property-appraisal"]);
+/**
+ * Queues «أعمالي» replaces: the case-study stage queues, the appraiser's «تقييم العقار» and the
+ * field inspector's «معاينة العقار».
+ */
+const REPLACED_BY_MY_WORK = new Set<PageId>([
+  ...CASE_STUDY_STAGE_PAGE_IDS,
+  "property-appraisal",
+  "active-inspection",
+]);
 
 /**
  * The «قوائم المراحل» dropdown rows a role sees.
@@ -166,6 +173,9 @@ const REPLACED_BY_MY_WORK = new Set<PageId>([...CASE_STUDY_STAGE_PAGE_IDS, "prop
  * Changed 2026-11-11 (Omar): the appraiser's queue «تقييم العقار» goes the same way — his «أعمالي»
  * lists his valuations with the same rows, so the two entries said the same thing; his handed-over
  * valuations are one chip of «أعمالي». The page stays reachable (the rows open its work page).
+ * Changed 2026-11-12 (Omar): the field inspector's queue «معاينة العقار» too — his «أعمالي» lists
+ * his inspections, the ones returned to him and the ones he sent. On a phone he does not hold
+ * «أعمالي» (`pagesForViewport`), so his queue stays in the sidebar there: the PWA is as it was.
  */
 export function activeTransactionNavForRole(
   rolePages: PageId[],

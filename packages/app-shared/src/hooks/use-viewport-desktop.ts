@@ -19,6 +19,11 @@ function getServerSnapshot(): boolean | null {
   return null;
 }
 
+/** The screen right now, outside React (the login's landing page): desktop unless a phone-width window says otherwise. */
+export function isDesktopViewportNow(): boolean {
+  return typeof window === "undefined" ? true : window.matchMedia(QUERY).matches;
+}
+
 /**
  * true = desktop, false = mobile, null = unknown (SSR/hydration — keep both trees
  * with CSS classes as before). Mobile and desktop trees used to always mount together:

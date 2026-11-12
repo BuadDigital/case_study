@@ -59,6 +59,8 @@ export function EvaluatorSectionsFrame({
     step,
     ready,
     keepMounted: EVALUATOR_KEEP_MOUNTED,
+    // The appraiser's own page: the sections he stands at carry the frame's tint.
+    ownsPage: true,
   });
 
   const { openSection } = state;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sectionOwnership, workSectionStatus } from "../WorkSectionsFrame";
+import { sectionOwnership, sectionsToActOn, workSectionStatus } from "../WorkSectionsFrame";
 
 const sections = [
   { id: "summary", title: "ملخص", step: 1 },
@@ -50,5 +50,46 @@ describe("sectionOwnership — whose sections a shared page holds (the rail's ey
 describe("workSectionStatus", () => {
   it("marks every section done once the step is past them all", () => {
     expect(sections.map((s) => workSectionStatus(s, 6))).toEqual(["done", "done", "done", "done"]);
+  });
+});
+
+describe("sectionsToActOn — the tinted cards: the viewer's own and current (Omar 2026-11-12)", () => {
+  const shared = [
+    { id: "intake", title: "البيانات الأولية", step: 0, group: "co" },
+    { id: "study", title: "تقرير دراسة الحالة", step: 4, group: "st" },
+    { id: "photos", title: "صور التقرير", step: 4, group: "st" },
+    { id: "upload", title: "الرفع على إنفاذ", step: 6, group: "rv" },
+  ] as const;
+
+  it("lists the viewer's own sections while they are the current step", () => {
+    expect(sectionsToActOn(shared, 4, { mineGroups: ["st"] })).toEqual(["study", "photos"]);
+  });
+
+  it("leaves a finished section white, though it is the viewer's", () => {
+    expect(sectionsToActOn(shared, 6, { mineGroups: ["st"] })).toEqual([]);
+  });
+
+  it("leaves the viewer's section white while it waits on an earlier step", () => {
+    expect(sectionsToActOn(shared, 0, { mineGroups: ["st"] })).toEqual([]);
+  });
+
+  it("leaves another sub-role's current section white", () => {
+    expect(sectionsToActOn(shared, 4, { mineGroups: ["co", "rv"] })).toEqual([]);
+    expect(sectionsToActOn(shared, 4, {})).toEqual([]);
+  });
+
+  it("gives a viewer who holds every sub-role the current sections, whoever's they are", () => {
+    const all = { mineGroups: ["co", "st", "rv"] } as const;
+    expect(sectionsToActOn(shared, 0, all)).toEqual(["intake"]);
+    expect(sectionsToActOn(shared, 6, all)).toEqual(["upload"]);
+  });
+
+  it("on a page without sub-roles, lists the current sections only when the page is the viewer's", () => {
+    expect(sectionsToActOn(sections, 1, { ownsPage: true })).toEqual(["summary", "basic"]);
+    expect(sectionsToActOn(sections, 1, { ownsPage: false })).toEqual([]);
+    // A sub-role says nothing about a section that has none.
+    expect(sectionsToActOn(sections, 1, { mineGroups: ["co"] })).toEqual([]);
+    // Past every section (a sent inspection, a handed-over valuation): nothing left to act on.
+    expect(sectionsToActOn(sections, 6, { ownsPage: true })).toEqual([]);
   });
 });

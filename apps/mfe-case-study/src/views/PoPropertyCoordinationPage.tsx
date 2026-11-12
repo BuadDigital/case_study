@@ -26,7 +26,8 @@ import {
   coordinationStep,
   type CoordinationSectionId,
 } from "../lib/app-data/coordination-page-model";
-import { transactionProgress } from "../lib/app-data/my-work-model";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { myWorkGroupsForPages, transactionProgress } from "../lib/app-data/my-work-model";
 import type { PoIntakeRecord, PoPropertyIntake } from "../lib/app-data/po-intake-data";
 import { caseStudyTaskForProperty, type WorkflowTask } from "../lib/app-data/tasks";
 import { reviewLockOf } from "../lib/app-data/work-page-model";
@@ -49,6 +50,10 @@ function CoordinationPageBody({
   index: number;
 }) {
   const router = useRouter();
+  const { rolePages } = useAppAccess();
+  // Every section here is coordination's: they are the viewer's own when he holds that sub-role,
+  // and then the current ones carry the frame's tint.
+  const isCoordinator = useMemo(() => myWorkGroupsForPages(rolePages).includes("co"), [rolePages]);
   const tasksQuery = useWorkflowTasksQuery();
   const tasks = tasksQuery.data ?? EMPTY_TASKS;
   const { data: transaction } = useTransactionQuery(property.id);
@@ -73,6 +78,7 @@ function CoordinationPageBody({
     sections,
     step,
     ready: tasksQuery.isFetched,
+    ownsPage: isCoordinator,
   });
   const { body, redistributeHost, mayEditData, refreshIntake, intakeActive, sent } = useCoordinationSections({
     record,

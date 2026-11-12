@@ -33,9 +33,9 @@ import { PropertyPartiesRailCard } from "../components/po-intake/PropertyParties
 import { TransactionCancellationBanner } from "../components/po-intake/TransactionCancellationBanner";
 import { caseStudyReportDeeds } from "../lib/app-data/case-study-report-document-model";
 import {
+  isCaseSpecialistGroup,
   myWorkGroupsForPages,
   transactionProgress,
-  type CaseSpecialistGroup,
 } from "../lib/app-data/my-work-model";
 import type {
   PoIntakeRecord,
@@ -86,7 +86,7 @@ function WorkPageBody({
   // The viewer's own sub-roles: their sections are marked on the page and stay when the rail's eye
   // hides the rest (the appraiser's group is not a section's).
   const mineGroups = useMemo(
-    () => myWorkGroupsForPages(rolePages).filter((g): g is CaseSpecialistGroup => g !== "ap"),
+    () => myWorkGroupsForPages(rolePages).filter(isCaseSpecialistGroup),
     [rolePages],
   );
   const tasksQuery = useWorkflowTasksQuery();

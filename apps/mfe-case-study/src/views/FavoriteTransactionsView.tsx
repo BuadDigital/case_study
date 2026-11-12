@@ -13,6 +13,7 @@ import {
   favoritePropertyKey,
   useFavoriteProperties,
 } from "../lib/app-data/favorite-properties";
+import { useMyWorkPinnedProperties } from "../lib/app-data/my-work-pins";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 import {
   favoritesPath,
@@ -27,6 +28,8 @@ import {
 export function FavoriteTransactionsView() {
   const { role } = useAppAccess();
   const { favoriteKeys, toggleFavorite } = useFavoriteProperties();
+  // The transactions starred in «أعمالي» are listed here too while their pin lasts (Omar 2026-11-12).
+  const { pinnedPropertyKeys, unpin } = useMyWorkPinnedProperties();
 
   const isPartyRole = isPartyWorkflowRole(role);
 
@@ -38,7 +41,7 @@ export function FavoriteTransactionsView() {
       tableLayout: "all-transactions",
       emptyLine: "لا توجد معاملات في المفضلة.",
       emptyHint:
-        "افتح تفاصيل أي عقار واضغط النجمة بجانب رقم الصك لإضافته هنا.",
+        "اضغط النجمة في بداية صف المعاملة في «أعمالي»، أو بجانب رقم الصك في تفاصيل العقار، لإضافتها هنا.",
       panelId: "favorite-transactions-panel",
       tableHint: "اضغط الصف للفتح أو الإغلاق.",
       partyAssignee: isPartyRole,
@@ -62,7 +65,13 @@ export function FavoriteTransactionsView() {
           items.push({
             id: "remove-favorite",
             label: "إزالة من المفضلة",
-            onClick: () => toggleFavorite(ctx.task.poNumber, propertyId),
+            // Both stars are taken off: the header's lasting favourite and the pin of «أعمالي».
+            onClick: () => {
+              if (favoriteKeys.has(favoritePropertyKey(ctx.task.poNumber, propertyId))) {
+                toggleFavorite(ctx.task.poNumber, propertyId);
+              }
+              unpin(ctx.task.poNumber, propertyId);
+            },
           });
         }
         return items;
@@ -86,12 +95,11 @@ export function FavoriteTransactionsView() {
           const propertyId =
             findPropertyForTask(record, task)?.id ?? task.propertyId;
           if (!propertyId) return false;
-          return favoriteKeys.has(
-            favoritePropertyKey(task.poNumber, propertyId),
-          );
+          const key = favoritePropertyKey(task.poNumber, propertyId);
+          return favoriteKeys.has(key) || pinnedPropertyKeys.has(key);
         }),
     };
-  }, [favoriteKeys, isPartyRole, role, toggleFavorite]);
+  }, [favoriteKeys, pinnedPropertyKeys, unpin, isPartyRole, role, toggleFavorite]);
 
   return (
     <ActiveTransactionQueueView

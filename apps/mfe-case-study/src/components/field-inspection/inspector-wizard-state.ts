@@ -3,7 +3,8 @@
  * siblings. No React, no writes — every export is a function of the draft plus
  * the property, so the wizard keeps JSX and event wiring only.
  */
-import { cn, type GoogleMapContextPin } from "@platform/ui-kit";
+import { cn, type FrameSectionDef, type GoogleMapContextPin } from "@platform/ui-kit";
+import { INSPECTOR_STEPS, type InspectorStepId } from "./InspectorStepNav";
 import {
   activeMapDiffersFromInspectorOriginal,
   hasInspectorOriginalMapPin,
@@ -21,6 +22,49 @@ import {
   type ServiceAmenityPhotoSlotDef,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import { parseLatLng } from "@platform/app-shared/domain/geo";
+
+/** A section of the inspector's page on the work page's frame — one per wizard step. */
+export type InspectorSectionId = `ins-step-${InspectorStepId}`;
+
+export function inspectorSectionId(step: InspectorStepId): InspectorSectionId {
+  return `ins-step-${step}`;
+}
+
+/**
+ * The inspector's page as the frame's numbered sections (Omar 2026-11-12: the inspector's screen
+ * takes the frame of the specialists' and the appraiser's work pages; the phone shell keeps its own).
+ * The three sections are the wizard's three steps, under the same titles the phone shows.
+ */
+export const INSPECTOR_FRAME_SECTIONS: readonly FrameSectionDef<InspectorSectionId>[] =
+  INSPECTOR_STEPS.map((step) => ({
+    id: inspectorSectionId(step.id),
+    title: step.title,
+    step: step.id,
+  }));
+
+/** Past every section: a sent inspection reads «مكتمل» on all three. */
+const INSPECTION_SENT_STEP = INSPECTOR_STEPS.length + 1;
+
+/**
+ * The frame's step for the inspector's page.
+ * How it works: the step the inspector has reached; a locked (sent, read-only) inspection is past
+ * every section.
+ */
+export function inspectorFrameStep(reached: InspectorStepId, locked: boolean): number {
+  return locked ? INSPECTION_SENT_STEP : reached;
+}
+
+/**
+ * The step the page opens at: the first one that still has a required field missing.
+ * How it works: `hasBlockingErrors` answers for one step; steps before the answer read «مكتمل».
+ * Edge cases: nothing missing anywhere → the last step, where the inspection is sent from.
+ */
+export function firstInspectorStepToComplete(
+  hasBlockingErrors: (step: InspectorStepId) => boolean,
+): InspectorStepId {
+  if (hasBlockingErrors(1)) return 1;
+  return hasBlockingErrors(2) ? 2 : 3;
+}
 
 /** Draft fields that hold one «مكونات العقار» count. */
 export type InspectorComponentCountKey =

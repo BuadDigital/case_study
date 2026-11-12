@@ -36,6 +36,7 @@ import { derivePropertyUiStatus } from "../../lib/app-data/property-detail-ui-st
 import { useFavoriteProperties } from "../../lib/app-data/favorite-properties";
 import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
 import { useTransactionQuery } from "../../query/use-transaction-query";
+import { FavoriteStar } from "../ui/FavoriteStar";
 import { TransactionDeedSwitcher } from "./TransactionDeedSwitcher";
 import { PropertyDeedPreviewButton } from "./PropertyDeedPreviewButton";
 import { estimateCaseStudyCompletion } from "../../lib/app-data/case-study-completion";
@@ -287,17 +288,7 @@ export function PropertyDetailHero({
                 title={favorite ? "إزالة من المفضلة" : "إضافة إلى المفضلة"}
                 onClick={() => toggleFavorite(record.poNumber, property.id)}
               >
-                <svg
-                  width="19"
-                  height="19"
-                  viewBox="0 0 24 24"
-                  fill={favorite ? "var(--gold)" : "none"}
-                  stroke="var(--gold)"
-                  strokeWidth="1.6"
-                  aria-hidden
-                >
-                  <path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5L2.6 9.8l6.5-.9z" />
-                </svg>
+                <FavoriteStar on={favorite} />
               </button>
               <h1
                 className={cn(

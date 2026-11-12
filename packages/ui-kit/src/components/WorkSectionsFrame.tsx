@@ -72,6 +72,29 @@ export function sectionOwnership<Id extends string>(
   return mine.length > 0 && others.length > 0 ? { mine, others } : { mine: [], others: [] };
 }
 
+/**
+ * The sections the viewer must work on now — the only cards that carry the tint (Omar 2026-11-12:
+ * «البطاقات التي يجب العمل عليها حاليا ملونة… المكتمل يعود للون الأبيض، الذي لا يخصني باللون
+ * الأبيض، الذي يخصني وله إجراء يعتمد على السابق أبيض», for every role on every frame page).
+ *
+ * How it works: a section is listed when it is the viewer's own and its status is «الإجراء
+ * الحالي». A section with a sub-role is his when he holds that sub-role (`mineGroups`); a section
+ * without one is his when the page itself is his role's (`ownsPage` — the coordinator's page for a
+ * coordinator, the appraiser's and the inspector's pages).
+ * Edge cases: a viewer who holds every sub-role (the supervisor) gets every current section; a
+ * finished section and one still waiting on an earlier step are never listed, whoever owns them.
+ */
+export function sectionsToActOn<Id extends string>(
+  sections: readonly FrameSectionDef<Id>[],
+  step: number,
+  owner: { mineGroups?: readonly FrameSectionGroup[]; ownsPage?: boolean },
+): Id[] {
+  return sections
+    .filter((s) => workSectionStatus(s, step) === "current")
+    .filter((s) => (s.group ? Boolean(owner.mineGroups?.includes(s.group)) : owner.ownsPage === true))
+    .map((s) => s.id);
+}
+
 const GROUP_LABEL = {
   co: "التنسيق",
   st: "دراسة العقار",
@@ -113,14 +136,16 @@ const SECTION_PANEL_CLASS = cn(opsContentPanel, "p-0 !pb-0");
 
 /**
  * TRIAL (Omar 2026-11-11: «لون خفيف لا يؤذي العين… على الأقل بطاقات الدور — خطوة قابلة للتراجع»):
- * the HEADER of the viewer's own cards carries a very light wash of the brand navy — the rest of the
- * card stays white like the other sub-roles' («طبّق على هيدر البطاقة والباقي أبيض») — so his cards
- * are told apart at a glance. An open card's header keeps the open band, a shade deeper.
+ * the HEADER of the cards the viewer must work on now (`sectionsToActOn` — his own and current;
+ * until 2026-11-12 every card of his sub-role, finished or waiting too) carries a very light wash
+ * of the brand navy — the rest of the card stays white like every other card («طبّق على هيدر
+ * البطاقة والباقي أبيض») — so his work is told apart at a glance. An open card's header keeps the
+ * open band, a shade deeper.
  * To undo the trial, set this to "" — nothing else depends on it.
  * Other washes tried on paper: beige (`var(--row-hover)`) sinks into the page's cream; grey
  * (`var(--surface-2)`) is too close to white to notice.
  */
-const MINE_TINT_CLASS =
+const ACT_NOW_TINT_CLASS =
   "bg-[color-mix(in_srgb,var(--ink)_3.5%,var(--surface))] hover:bg-[color-mix(in_srgb,var(--ink)_5%,var(--surface))]";
 
 const STATUS_WORDS: readonly string[] = Object.values(STATUS_TEXT);
@@ -185,6 +210,8 @@ function HeaderRule() {
  * - the current step: its status word «الإجراء الحالي» in amber (and its rows on the rail);
  * - `mine` (a section of the viewer's own sub-role, on a page shared by several): its sub-role
  *   word is bold in the heading colour; the others' are grey.
+ * - `actNow` (his own and current — `sectionsToActOn`): the folded card's header carries the tint;
+ *   every other folded card is white.
  * Tried 2026-11-11 at Omar's request: every card keeps the page's own edge — the border and corners
  * of the other cards on the page — so the current step's gold outline and glow, the open card's
  * firmer border and the ink bar of `mine` are gone; and the sub-role, the tag and the status are
@@ -202,6 +229,7 @@ function WorkSection({
   open,
   mounted,
   mine = false,
+  actNow = false,
   hidden = false,
   titles,
   onToggle,
@@ -216,6 +244,8 @@ function WorkSection({
   mounted: boolean;
   /** The section belongs to the viewer's own sub-role (marked only where it tells cards apart). */
   mine?: boolean;
+  /** The viewer must work on this section now: his own and current (the tinted header). */
+  actNow?: boolean;
   /** Another sub-role's section while the rail's eye hides them. */
   hidden?: boolean;
   onToggle: () => void;
@@ -228,6 +258,7 @@ function WorkSection({
       aria-labelledby={`${sectionDomId(def.id)}-title`}
       data-open={open ? "" : undefined}
       data-mine={mine ? "" : undefined}
+      data-act-now={actNow ? "" : undefined}
       className={cn(SECTION_PANEL_CLASS, "scroll-mt-4")}
     >
       <button
@@ -239,8 +270,8 @@ function WorkSection({
           // A pale wash of the brand ink: clear against the white card, light enough for the badges on it.
           open
             ? "bg-[color-mix(in_srgb,var(--ink)_5%,var(--surface))]"
-            : mine && MINE_TINT_CLASS
-              ? MINE_TINT_CLASS
+            : actNow && ACT_NOW_TINT_CLASS
+              ? ACT_NOW_TINT_CLASS
               : "bg-transparent hover:bg-row-hover",
         )}
       >
@@ -324,6 +355,8 @@ export type WorkSectionsState<Id extends string> = {
   toggle: (id: Id) => void;
   /** The viewer's own sections (marked as his); empty when the mark would tell nothing apart. */
   mine: ReadonlySet<Id>;
+  /** The sections the viewer must work on now — his own and current (`sectionsToActOn`); tinted. */
+  actNow: ReadonlySet<Id>;
   /** The sections the rail's eye is hiding now — the other sub-roles'; empty while every section shows. */
   hidden: ReadonlySet<Id>;
   /** The page holds the viewer's sections and other sub-roles': the rail shows its eye. */
@@ -362,11 +395,18 @@ export function useWorkSections<Id extends string>({
   ready,
   keepMounted,
   mineGroups,
+  ownsPage,
 }: {
   sections: readonly FrameSectionDef<Id>[];
   step: number;
   ready: boolean;
   keepMounted?: readonly Id[];
+  /**
+   * The page is the viewer's own role's page, so its sections without a sub-role are his (the
+   * coordinator's page for a coordinator, the appraiser's and the inspector's pages): the current
+   * ones carry the tint — see `sectionsToActOn`.
+   */
+  ownsPage?: boolean;
   /**
    * The sub-roles the viewer holds (work page): their sections are marked as his and the rail's eye
    * can hide the rest. Only when it tells sections apart — see `sectionOwnership`.
@@ -381,6 +421,10 @@ export function useWorkSections<Id extends string>({
     const { mine, others } = sectionOwnership(sections, mineGroups);
     return { mine: new Set(mine), others: new Set(others) };
   }, [sections, mineGroups]);
+  const actNow = useMemo(
+    () => new Set(sectionsToActOn(sections, step, { mineGroups, ownsPage })),
+    [sections, step, mineGroups, ownsPage],
+  );
   const [othersHidden, setOthersHidden] = useState(false);
   const hidden: ReadonlySet<Id> = othersHidden ? owned.others : NO_SECTIONS;
 
@@ -520,6 +564,7 @@ export function useWorkSections<Id extends string>({
     setAllOpen,
     toggle,
     mine: owned.mine,
+    actNow,
     hidden,
     canHideOthers: owned.others.size > 0,
     setOthersHidden: hideOthers,
@@ -708,6 +753,7 @@ export function WorkSectionsLayout<Id extends string>({
             open={state.open.has(s.id)}
             mounted={state.mounted.has(s.id)}
             mine={state.mine.has(s.id)}
+            actNow={state.actNow.has(s.id)}
             hidden={state.hidden.has(s.id)}
             titles={shownTitles}
             onToggle={() => state.toggle(s.id)}

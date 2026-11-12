@@ -8,7 +8,7 @@ export type InspectorStepId = 1 | 2 | 3;
  * Field-inspection wizard steps (Field Inspection Workspace design).
  * Each card reveals its own group of sections; the rest render nothing.
  */
-const INSPECTOR_STEPS: {
+export const INSPECTOR_STEPS: {
   id: InspectorStepId;
   title: string;
   /** Phone segmented-control label (≤14 chars so the three fit side by side). */

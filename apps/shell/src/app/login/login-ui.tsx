@@ -2,6 +2,7 @@ import { fetchPermissions } from "@platform/api-client";
 import { defaultLandingPath } from "@platform/app-shared/app-data/page-access";
 import { pagesFromPermissions } from "@platform/app-shared/app-data/permissions-pages";
 import { rolePagesFromPermissions } from "@platform/app-shared/contexts/app-access-role";
+import { isDesktopViewportNow } from "@platform/app-shared/hooks/use-viewport-desktop";
 
 export const fieldInput =
   "w-full rounded-[11px] border border-[#ddd8cc] bg-surface-2 px-[15px] py-[13px] text-[15px] text-text outline-none transition-[border-color,box-shadow,background] duration-150 placeholder:tracking-[0.02em] placeholder:text-text-3 focus:border-gold focus:bg-surface focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--gold)_16%,transparent)]";
@@ -45,7 +46,7 @@ export async function resolvePostLoginPath(token: string): Promise<string> {
     const permissions = await fetchPermissions({ token });
     // The pages the app itself will show (server + the role's baseline), so the login lands where
     // «/» would; an unknown role falls back to the server's pages alone, as before.
-    const pages = rolePagesFromPermissions(permissions);
+    const pages = rolePagesFromPermissions(permissions, isDesktopViewportNow());
     return defaultLandingPath(
       pages.length > 0
         ? pages
