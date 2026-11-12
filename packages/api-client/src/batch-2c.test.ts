@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { liftSurveyFreeze } from "./failures";
+import { liftSurveyFreeze, revertFinalFailure } from "./failures";
 import { decideEvaluatorRecallApi } from "./prototype-modules";
 import { getReturnImpact, returnInspectionPackage } from "./party-task-submissions";
 import { patchWorkflowTask } from "./workflow-tasks";
@@ -214,6 +214,29 @@ describe("survey freeze lift", () => {
     expect(
       await liftSurveyFreeze(config, { poNumber: "PO-1", propertyId: "p1", reason: "x" }),
     ).toMatchObject({ ok: false, kind: "forbidden", message: "للأخصائي وحده" });
+  });
+});
+
+describe("return from the final failure", () => {
+  it("posts the reason and answers the closed failures", async () => {
+    const fetchMock = stubFetch(200, [{ id: "f1", status: "resolved" }]);
+    const request = { poNumber: "PO-1", propertyId: "p1", reason: "رجعت في إنفاذ" };
+    const result = await revertFinalFailure(config, request);
+    const [url, init] = lastCall(fetchMock);
+    expect(url).toBe("http://api/api/failures/final/revert");
+    expect(JSON.parse(String(init.body))).toEqual(request);
+    expect(result).toMatchObject({ ok: true, data: [{ id: "f1", status: "resolved" }] });
+  });
+
+  it("keeps the field error of a transaction that is not final", async () => {
+    stubFetch(400, { errors: { propertyId: "المعاملة ليست متعذّرة نهائياً" } });
+    expect(
+      await revertFinalFailure(config, { poNumber: "PO-1", propertyId: "p1", reason: "x" }),
+    ).toMatchObject({
+      ok: false,
+      kind: "validation",
+      errors: { propertyId: "المعاملة ليست متعذّرة نهائياً" },
+    });
   });
 });
 

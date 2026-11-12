@@ -242,6 +242,17 @@ public static class FailureRules
             Reason = ApprovedBlockReason(failure),
         };
 
+    /// <summary>The reopen request of a deed whose final failure was taken back.</summary>
+    public static ReopenCaseStudyTasksAfterFailureRequest ReopenTasksRequest(
+        PropertyFailure failure,
+        bool keepCaseStudyTaskBlocked) =>
+        new()
+        {
+            PoNumber = failure.PoNumber,
+            PropertyId = failure.PropertyId.ToString("D"),
+            KeepCaseStudyTaskBlocked = keepCaseStudyTaskBlocked,
+        };
+
     public static SetCaseStudyDeedStatusRequest DeedStatusRequest(
         PropertyFailure failure,
         string deedStatus) =>
@@ -282,6 +293,7 @@ public static class FailureRules
     public const string ApprovedTitleAr = "اعتماد التعذّر";
     public const string ReturnedTitleAr = "إرجاع التعذّر للتصحيح";
     public const string ResolvedTitleAr = "حل التعذّر";
+    public const string FinalRevertedTitleAr = "الرجوع من التعذّر النهائي";
 
     /// <summary>A later stage of a failure; the key carries the time so every pass through a stage shows.</summary>
     public static PropertyTimelineRecordRequest StageTimelineEntry(

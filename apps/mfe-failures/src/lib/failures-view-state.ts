@@ -31,6 +31,18 @@ export function canFollowUpFailures(access: StaffAccess): boolean {
   return isSuperAdmin(access.role) || holdsSubRole(access, "coordination");
 }
 
+/**
+ * «الرجوع من التعذّر النهائي» — the coordination sub-role only (Omar 2026-11-12): it is the one in
+ * touch with Enfaz. Mirrors `PoRoleMatrixRules.CanRevertFinalFailure`.
+ *
+ * How it works: the sub-role alone. Edge cases: not `canFollowUpFailures` — that also admits the
+ * CDO, whom the server refuses here with 403; the supervisor records the final failure but does
+ * not take it back.
+ */
+export function canRevertFinalFailure(access: StaffAccess): boolean {
+  return holdsSubRole(access, "coordination");
+}
+
 export function isSupervisor(role: RoleId): boolean {
   return isSuperAdmin(role) || role === "section-supervisor";
 }
@@ -198,6 +210,8 @@ type FailureActionPermissions = {
   canSpecialistAct: boolean;
   canSupervisorAct: boolean;
   canResolve: boolean;
+  /** «رجوع من التعذّر النهائي» — coordination, on a final failure only. */
+  canRevertFinal: boolean;
 };
 
 /**
@@ -207,12 +221,20 @@ type FailureActionPermissions = {
  * returned failure — confirm a possible one, escalate, resolve; the supervisor acts on an escalated
  * one. `confirmer` (any case specialist) acts on a possible failure only: «تأكيد تعذّر داخلي» and
  * «تم الحل» (Omar 2026-11-11 — a possible failure goes to the case specialist to confirm).
+ * `coordinator` (the coordination sub-role, `canRevertFinalFailure`) takes a final failure back
+ * (Omar 2026-11-12).
  * Edge cases: the escalation stays coordination's — a possible failure never shows it, so a
- * specialist without coordination is offered nothing once the failure is confirmed.
+ * specialist without coordination is offered nothing once the failure is confirmed. A final
+ * failure offers the way back and nothing else; until 2026-11-12 it offered nothing at all.
  */
 export function failureActionPermissions(
   f: FailureRecord,
-  viewer: { caseEditor: boolean; supervisor: boolean; confirmer?: boolean },
+  viewer: {
+    caseEditor: boolean;
+    supervisor: boolean;
+    confirmer?: boolean;
+    coordinator?: boolean;
+  },
 ): FailureActionPermissions {
   const active = isActiveFailureStatus(f.status);
   const followsUp =
@@ -224,7 +246,8 @@ export function failureActionPermissions(
   const canSupervisorAct = viewer.supervisor && active && f.status === "review";
   // `status !== "approved"` is implied by canSpecialistAct; kept for parity with the screen's rule.
   const canResolve = canSpecialistAct && (f.status as string) !== "approved";
-  return { active, canSpecialistAct, canSupervisorAct, canResolve };
+  const canRevertFinal = Boolean(viewer.coordinator) && f.status === "approved";
+  return { active, canSpecialistAct, canSupervisorAct, canResolve, canRevertFinal };
 }
 
 type FailureMetaRow = { label: string; value: string };
@@ -277,7 +300,8 @@ type FailureAction =
   | "approve"
   | "return"
   | "suspend"
-  | "resolve";
+  | "resolve"
+  | "revert-final";
 
 /** `failureId:action` — the key that shows a spinner on that one button. */
 export function failureBusyKey(id: string, action: FailureAction): string {

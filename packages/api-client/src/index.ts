@@ -283,6 +283,8 @@ export {
   type LiftSurveyFreezeRequest,
   recordFinalFailure,
   type FinalFailureRequest,
+  revertFinalFailure,
+  type RevertFinalFailureRequest,
   resolveFailure,
   returnFailure,
   submitFailureForReview,

@@ -32,6 +32,14 @@ public interface ICaseStudyFailureCommands
         BlockCaseStudyTasksForFailureRequest request,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Reopens the tasks of the property that a final failure stopped (the failure was taken back):
+    /// the case-study task returns to the phase it left, the parties' tasks to open. No-op when unmatched.
+    /// </summary>
+    Task ReopenPropertyTasksAfterFailureAsync(
+        ReopenCaseStudyTasksAfterFailureRequest request,
+        CancellationToken cancellationToken = default);
+
     /// <summary>Blocks the open case-study task for an access hold. Null when no eligible task.</summary>
     Task<CaseStudyHoldTaskResultDto?> BlockTaskForHoldAsync(
         CaseStudyHoldTaskRequest request,

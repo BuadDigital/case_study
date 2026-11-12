@@ -44,6 +44,7 @@ const ACTION_AR: Record<string, string> = {
   "failure.resolved": "حل التعذّر",
   "failure.approved": "اعتماد حل التعذّر",
   "failure.returned": "إرجاع التعذّر لمن رفعه",
+  "failure.final-reverted": "الرجوع من التعذّر النهائي",
   "case-study.party-submission.submitted": "تسليم العمل للمراجعة",
   "case-study.party-submission.accepted": "اعتماد العمل بعد المراجعة",
   "case-study.workflow-task.distribution-confirmed": "توزيع المهام على الأطراف",
@@ -439,6 +440,7 @@ export function auditDetailSummary(
     case "failure.suspended":
     case "failure.resolved":
     case "failure.approved":
+    case "failure.final-reverted":
     case "failure.returned": {
       const actionWord = ACTION_AR[key] ?? "تحديث تعذّر";
       return joinParts([

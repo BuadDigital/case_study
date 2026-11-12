@@ -356,6 +356,74 @@ public sealed class CaseStudyFailureCommands : ICaseStudyFailureCommands
         await _caseStudy.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>The reverse of <see cref="BlockPropertyTasksForFailureAsync"/>: the final failure was taken back.</summary>
+    /// <remarks>
+    /// How it works: 1) the case-study task that sits in the obstruction phase resumes through
+    /// <see cref="ResolveObstructionAsync"/> (back to the phase it left, bourse reset when it resumes
+    /// there, handed back to the specialist); 2) every other task of the deed still «متوقفة» —
+    /// inspection, survey, appraisal, and a case-study task the final failure stopped without an
+    /// escalation — becomes open with its stop reason cleared, phase untouched; one save.
+    ///
+    /// Edge cases: <c>KeepCaseStudyTaskBlocked</c> (the deed still carries another open hold, e.g. an
+    /// eviction record) skips the case-study task in both steps — only the parties' tasks reopen.
+    /// Completed and cancelled tasks are not touched (only «متوقفة» ones are loaded). The block did
+    /// not remember each task's status before it, so a task somebody had stopped by hand before the
+    /// final failure reopens with the rest. An unmatched property is a no-op.
+    /// </remarks>
+    public async Task ReopenPropertyTasksAfterFailureAsync(
+        ReopenCaseStudyTasksAfterFailureRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var propertyGuid = await ResolvePropertyGuidAsync(
+            request.PoNumber,
+            request.PropertyId.Trim(),
+            cancellationToken);
+        if (!propertyGuid.HasValue) return;
+
+        if (!request.KeepCaseStudyTaskBlocked)
+        {
+            await ResolveObstructionAsync(
+                new ResolveCaseStudyObstructionRequest
+                {
+                    PoNumber = request.PoNumber,
+                    PropertyId = request.PropertyId,
+                },
+                cancellationToken);
+        }
+
+        var po = request.PoNumber.Trim();
+        var stopped = await _caseStudy.WorkflowTasks
+            .Where(t =>
+                t.PoNumber == po &&
+                t.PropertyId == propertyGuid &&
+                t.Status == WorkflowTaskStatus.Blocked &&
+                t.Phase != WorkflowTaskPhase.Obstruction)
+            .ToListAsync(cancellationToken);
+
+        var nowUtc = _time.UtcNow();
+        foreach (var task in stopped)
+        {
+            if (request.KeepCaseStudyTaskBlocked && task.Kind == CaseStudyPropertyKind) continue;
+            task.ApplyShellPatch(
+                phase: null,
+                status: WorkflowTaskStatus.Open,
+                title: null,
+                assigneeRole: null,
+                assigneeName: null,
+                assigneeId: null,
+                assigneeIdProvided: false,
+                propertyId: null,
+                propertyIdProvided: false,
+                obstructionReason: null,
+                obstructionReasonProvided: true,
+                obstructionPriorPhase: null,
+                obstructionPriorPhaseProvided: false,
+                distributionJson: null,
+                nowUtc: nowUtc);
+        }
+        await _caseStudy.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<CaseStudyHoldTaskResultDto?> BlockTaskForHoldAsync(
         CaseStudyHoldTaskRequest request,
         CancellationToken cancellationToken = default)

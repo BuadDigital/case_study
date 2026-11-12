@@ -16,6 +16,7 @@ import type {
   FailureStatus,
 } from "@platform/app-shared/failures/failures-types";
 import { failureStatusErrorToast } from "../lib/failure-status-toast";
+import { revertFinalFailureAsync } from "../lib/failures-api";
 import {
   resolveFailure,
   returnFailure,
@@ -27,6 +28,7 @@ import {
   failureBusyKey,
   failuresKpiStats,
   canFollowUpFailures,
+  canRevertFinalFailure,
   isCaseEditor,
   isResolveDraftComplete,
   isSupervisor,
@@ -59,6 +61,8 @@ export function useFailuresViewWorkflow() {
   // Any case specialist confirms or resolves a possible failure (2026-11-11).
   const confirmer = isCaseEditor(role);
   const supervisor = isSupervisor(role);
+  // Coordination alone takes a final failure back — it is the one in touch with Enfaz (2026-11-12).
+  const coordinator = canRevertFinalFailure(access);
   // Server-paged rows (pagination contract); `kpiItems` is the whole set the KPI band still needs.
   const {
     rows,
@@ -94,6 +98,9 @@ export function useFailuresViewWorkflow() {
   /** «تصعيد إلى المشرف» form per failure: open flag and the explanation being typed. */
   const [escalateOpen, setEscalateOpen] = useState<Record<string, boolean>>({});
   const [escalateNote, setEscalateNote] = useState<Record<string, string>>({});
+  /** «رجوع من التعذّر النهائي» form per failure: open flag and the reason being typed. */
+  const [revertOpen, setRevertOpen] = useState<Record<string, boolean>>({});
+  const [revertNote, setRevertNote] = useState<Record<string, string>>({});
   /**
    * «اعتماد التعذّر» opens the final-failure dialog on this failure. How it works: the id is kept,
    * the record read from the visible rows. Edge cases: if the row leaves the page (refetch, tab
@@ -293,6 +300,47 @@ export function useFailuresViewWorkflow() {
     );
   }
 
+  /**
+   * «تأكيد الرجوع من التعذّر النهائي» — Enfaz took the transaction back.
+   *
+   * How it works: posts the typed reason for the row's deed; the server takes every deed of the
+   * transaction back and reopens their tasks. On success the form closes and the failures, the
+   * tasks and the property lists are refetched — the row leaves «التعذّرات» with the refetch.
+   *
+   * Edge cases: a blank reason does nothing (the confirm button is disabled for it too). Not
+   * optimistic like the single-row actions: sibling deeds change with it, so the screen waits for
+   * the server. A refusal toasts the server's own text and keeps the form open.
+   */
+  function handleRevertFinal(id: string) {
+    const reason = (revertNote[id] ?? "").trim();
+    const failure = rows.find((f) => f.id === id);
+    if (!reason || !failure) return;
+    void runBusy(failureBusyKey(id, "revert-final"), async () => {
+      const result = await revertFinalFailureAsync({
+        poNumber: failure.poNumber,
+        propertyId: failure.propertyId,
+        reason,
+      });
+      if (!result.ok) {
+        showToast(result.error, "error");
+        return;
+      }
+      setRevertOpen((o) => ({ ...o, [id]: false }));
+      showToast("رجعت المعاملة من التعذّر النهائي واستؤنف العمل عليها", "success");
+      void queryClient.invalidateQueries({ queryKey: appDataKeys.poListRows() });
+      void queryClient.invalidateQueries({ queryKey: appDataKeys.poRecords() });
+      refresh();
+    });
+  }
+
+  function toggleRevert(id: string) {
+    setRevertOpen((o) => ({ ...o, [id]: !o[id] }));
+  }
+
+  function setRevertNoteFor(id: string, value: string) {
+    setRevertNote((n) => ({ ...n, [id]: value }));
+  }
+
   function toggleResolve(id: string) {
     setResolveOpen((o) => ({ ...o, [id]: !o[id] }));
     setEscalateOpen((o) => ({ ...o, [id]: false }));
@@ -315,6 +363,7 @@ export function useFailuresViewWorkflow() {
     caseEditor,
     confirmer,
     supervisor,
+    coordinator,
     highlightId,
     isDesktopViewport,
     rows,
@@ -342,6 +391,11 @@ export function useFailuresViewWorkflow() {
     escalateNote,
     toggleEscalate,
     setEscalateNoteFor,
+    revertOpen,
+    revertNote,
+    toggleRevert,
+    setRevertNoteFor,
+    handleRevertFinal,
     busyKey,
     handleSubmit,
     handleUpgrade,

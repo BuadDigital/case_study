@@ -23,13 +23,18 @@ const NOTIFY_OPTIONS: FailureChoice<FinalFailureNotify>[] = [
   { value: "silent", label: "تغيير الحالة دون إخطار", hint: "تتوقف مهام الأطراف دون إشعار" },
 ];
 
-/** The warning above a final failure: every deed of the transaction stops, with no way back from the screen. */
+/**
+ * The warning above a final failure: every deed of the transaction stops. The only way back is
+ * coordination's «رجوع من التعذّر النهائي» on the failures page (2026-11-12) — until then the text
+ * said there was none.
+ */
 export function FinalFailureWarning({ deedCount = 1 }: { deedCount?: number }) {
+  const wayBack = "لا يرجع عنه إلا أخصائي التنسيق من صفحة التعذّرات.";
   return (
     <Note tone="warn" className="mb-3">
       {deedCount > 1
-        ? `تتحوّل صكوك المعاملة كلها (${deedCount}) إلى «تعذّر» وتتوقف مهامها. لا يمكن التراجع من الشاشة.`
-        : "تتحوّل المعاملة إلى «تعذّر» وتتوقف مهامها. لا يمكن التراجع من الشاشة."}
+        ? `تتحوّل صكوك المعاملة كلها (${deedCount}) إلى «تعذّر» وتتوقف مهامها. ${wayBack}`
+        : `تتحوّل المعاملة إلى «تعذّر» وتتوقف مهامها. ${wayBack}`}
     </Note>
   );
 }

@@ -130,6 +130,18 @@ describe("batch 2C audit codes", () => {
   });
 });
 
+describe("return from the final failure", () => {
+  it("labels the action and names the work order and the status change", () => {
+    expect(auditActionLabel("failure.final-reverted")).toBe("الرجوع من التعذّر النهائي");
+    const summary = auditDetailSummary(
+      "failure.final-reverted",
+      { status: "approved" },
+      { status: "resolved", poNumber: "PO-9", reason: "رجعت في إنفاذ" },
+    );
+    expect(summary).toContain("الرجوع من التعذّر النهائي — أمر العمل PO-9");
+  });
+});
+
 describe("auditActorLabel", () => {
   it("prefers API actorDisplayName over truncated ids", () => {
     expect(

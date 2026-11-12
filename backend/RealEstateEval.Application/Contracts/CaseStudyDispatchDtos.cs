@@ -252,6 +252,16 @@ public sealed class BlockCaseStudyTasksForFailureRequest
     public string Reason { get; set; } = "";
 }
 
+/// <summary>Failures→Case Study: reopen the property's tasks a final failure stopped, after it was taken back.</summary>
+public sealed class ReopenCaseStudyTasksAfterFailureRequest
+{
+    public string PoNumber { get; set; } = "";
+    /// <summary>Failure PropertyId — a Guid string OR a deed number.</summary>
+    public string PropertyId { get; set; } = "";
+    /// <summary>The deed still carries another open hold: the parties' tasks reopen, the case-study task stays stopped.</summary>
+    public bool KeepCaseStudyTaskBlocked { get; set; }
+}
+
 /// <summary>Failures→Case Study: block/unblock the case-study task for an access hold.</summary>
 public sealed class CaseStudyHoldTaskRequest
 {
