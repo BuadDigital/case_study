@@ -4,7 +4,7 @@ import {
   EMPTY_PROPERTY_PHOTO_MARKS,
   type PropertyDetailDocumentEntry,
 } from "@platform/app-shared/app-data/property-detail-document-types";
-import { buildDisplayGroups, PropertyDetailPhotosTab } from "../PropertyDetailPhotosTab";
+import { buildDisplayGroups, PropertyDetailPhotosTab, staffAddedPhotoLine } from "../PropertyDetailPhotosTab";
 
 vi.mock("@platform/ui-kit", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@platform/ui-kit")>()),
@@ -186,5 +186,64 @@ describe("the movables section", () => {
       { ...EMPTY_PROPERTY_PHOTO_MARKS, movables: ["back"] },
     );
     expect(titles(groups)).toContainEqual(["صور المنقولات", ["back", "sofa"]]);
+  });
+});
+
+// Omar 2026-11-12: the study adds its own photos; they are never shown as the inspector's.
+describe("photos the case staff added", () => {
+  const staff: PropertyDetailDocumentEntry = {
+    ...photo("extra", "صورة أضافها الأخصائي"),
+    source: "الأخصائي",
+    addedByStaff: { freePhotoId: 7, name: "عمر الحمراني", atUtc: "2026-11-12T09:00:00.000Z" },
+  };
+  const withStaff = [...photos, staff];
+
+  it("form their own group, ahead of the inspector's groups", () => {
+    const groups = titles(buildDisplayGroups(withStaff));
+    expect(groups[0]).toEqual(["صورة العقار الرئيسية", ["front"]]);
+    expect(groups[1]).toEqual(["صور أضافها الأخصائي", ["extra"]]);
+  });
+
+  it("carry the «من الأخصائي» mark, with who and when", () => {
+    render(<PropertyDetailPhotosTab photos={withStaff} marks={EMPTY_PROPERTY_PHOTO_MARKS} />);
+    const mark = screen.getByText("من الأخصائي");
+    expect(mark.getAttribute("title")).toBe(staffAddedPhotoLine(staff.addedByStaff!));
+    expect(screen.queryByRole("button", { name: "حذف صورة أضافها الأخصائي" })).toBeNull();
+  });
+
+  it("are removed only where the host allows it, and only they", () => {
+    const onRemove = vi.fn();
+    render(
+      <PropertyDetailPhotosTab photos={withStaff} marks={EMPTY_PROPERTY_PHOTO_MARKS} onRemoveStaffPhoto={onRemove} />,
+    );
+    const buttons = screen.getAllByRole("button", { name: "حذف صورة أضافها الأخصائي" });
+    expect(buttons).toHaveLength(1);
+    fireEvent.click(buttons[0]!);
+    expect(onRemove).toHaveBeenCalledWith(expect.objectContaining({ id: "extra" }));
+  });
+
+  it("show the host's action at the head", () => {
+    render(
+      <PropertyDetailPhotosTab
+        photos={photos}
+        marks={EMPTY_PROPERTY_PHOTO_MARKS}
+        headAction={<button type="button">إضافة صور</button>}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "إضافة صور" })).toBeTruthy();
+    expect(screen.queryByText("تنزيل الصور PDF")).toBeNull();
+  });
+});
+
+describe("staffAddedPhotoLine", () => {
+  it("names who added the photo and the day", () => {
+    expect(staffAddedPhotoLine({ name: "عمر الحمراني", atUtc: "2026-11-12T09:00:00.000Z" })).toBe(
+      "أضافها عمر الحمراني · 12/11/2026",
+    );
+  });
+
+  it("falls back when the name or the date is missing", () => {
+    expect(staffAddedPhotoLine({ name: "", atUtc: "" })).toBe("أضافها الأخصائي");
+    expect(staffAddedPhotoLine({ name: "عمر", atUtc: "not a date" })).toBe("أضافها عمر");
   });
 });

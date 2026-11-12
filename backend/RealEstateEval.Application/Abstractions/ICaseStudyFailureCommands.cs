@@ -10,35 +10,25 @@ namespace RealEstateEval.Application.Abstractions;
 public interface ICaseStudyFailureCommands
 {
     /// <summary>Sets DeedStatus on the property the failure identifies (Guid or deed number). No-op when unmatched.</summary>
-    Task SetFailureDeedStatusAsync(
-        SetCaseStudyDeedStatusRequest request,
-        CancellationToken cancellationToken = default);
+    Task SetFailureDeedStatusAsync(SetCaseStudyDeedStatusRequest request,CancellationToken cancellationToken = default);
 
     /// <summary>Moves the open case-study task into obstruction (supervisor shell patch). No-op when no task.</summary>
-    Task EscalateObstructionAsync(
-        EscalateCaseStudyObstructionRequest request,
-        CancellationToken cancellationToken = default);
+    Task EscalateObstructionAsync(EscalateCaseStudyObstructionRequest request,CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Resumes the open case-study task from obstruction; when the resume phase is bourse,
     /// also resets the property's bourse completion. No-op when no resumable task.
     /// </summary>
-    Task ResolveObstructionAsync(
-        ResolveCaseStudyObstructionRequest request,
-        CancellationToken cancellationToken = default);
+    Task ResolveObstructionAsync(ResolveCaseStudyObstructionRequest request,CancellationToken cancellationToken = default);
 
     /// <summary>Blocks every non-completed task of the property (approved failure). No-op when unmatched.</summary>
-    Task BlockPropertyTasksForFailureAsync(
-        BlockCaseStudyTasksForFailureRequest request,
-        CancellationToken cancellationToken = default);
+    Task BlockPropertyTasksForFailureAsync(BlockCaseStudyTasksForFailureRequest request,CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Reopens the tasks of the property that a final failure stopped (the failure was taken back):
     /// the case-study task returns to the phase it left, the parties' tasks to open. No-op when unmatched.
     /// </summary>
-    Task ReopenPropertyTasksAfterFailureAsync(
-        ReopenCaseStudyTasksAfterFailureRequest request,
-        CancellationToken cancellationToken = default);
+    Task ReopenPropertyTasksAfterFailureAsync(ReopenCaseStudyTasksAfterFailureRequest request,CancellationToken cancellationToken = default);
 
     /// <summary>Blocks the open case-study task for an access hold. Null when no eligible task.</summary>
     Task<CaseStudyHoldTaskResultDto?> BlockTaskForHoldAsync(

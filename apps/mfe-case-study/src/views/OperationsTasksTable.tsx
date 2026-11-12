@@ -13,6 +13,8 @@ import {
   Tr,
 } from "@platform/ui-kit";
 import { OperationsTaskRow } from "./OperationsTaskRow";
+import { AddedSurveyTableRow } from "./OperationsTasksAddedSurveyRows";
+import type { AddedSurveyRow } from "./operations-tasks-added-surveys";
 import {
   emptyQueueMessage,
   toggleVisibleActiveSelection,
@@ -36,7 +38,11 @@ type OperationsTasksTableProps = Pick<
   | "toggleTaskSelected"
   | "useIndependentQueue"
   | "visibleTasks"
->;
+> & {
+  /** Surveys added after the distribution — listed ahead of the operations tasks (Omar 2026-11-12). */
+  surveyRows?: AddedSurveyRow[];
+  onOpenSurvey?: (href: string) => void;
+};
 
 export function OperationsTasksTable({
   allVisibleActiveChecked,
@@ -54,6 +60,8 @@ export function OperationsTasksTable({
   toggleTaskSelected,
   useIndependentQueue,
   visibleTasks,
+  surveyRows = [],
+  onOpenSurvey,
 }: OperationsTasksTableProps) {
   // Desktop table — after hydration mount only one tree (rendering).
   if (isDesktopViewport === false) return null;
@@ -90,10 +98,20 @@ export function OperationsTasksTable({
           </Tr>
         </THead>
         <TBody>
+          {surveyRows.map((row) => (
+            <AddedSurveyTableRow
+              key={`survey:${row.task.id}`}
+              row={row}
+              onOpen={(href) => onOpenSurvey?.(href)}
+            />
+          ))}
           {visibleTasks.length === 0 ? (
-            <TableEmptyRow colSpan={7}>
-              {emptyQueueMessage(useIndependentQueue)}
-            </TableEmptyRow>
+            // «لا توجد مهام» only when the table is really empty — a survey row is a row.
+            surveyRows.length > 0 ? null : (
+              <TableEmptyRow colSpan={7}>
+                {emptyQueueMessage(useIndependentQueue)}
+              </TableEmptyRow>
+            )
           ) : (
             visibleTasks.map((task) => (
               <OperationsTaskRow

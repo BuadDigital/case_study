@@ -33,9 +33,7 @@ public interface ICaseStudyCommands
     /// Edge cases: PR is drawn once and never reused — a later call (reopen, retry) returns the same
     /// numbers; on failure Result is null and Error carries the Arabic reason.
     /// </remarks>
-    Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(
-        Guid propertyId,
-        CancellationToken cancellationToken = default);
+    Task<(CaseStudyTransactionNumbersDto? Result, string? Error)> ConfirmTransactionReferenceAsync(Guid propertyId,CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Moves the deed's transaction between the study and review (Omar 2026-11-05): «handed» when the

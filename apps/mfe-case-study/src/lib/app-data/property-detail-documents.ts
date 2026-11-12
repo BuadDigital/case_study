@@ -23,6 +23,7 @@ import {
   isMovablesPresent,
   includeInspectorPhotoForReaders,
   inspectorFreePhotoCategoryMeta,
+  inspectorFreePhotoUploader,
   listServiceAmenityPhotoSlots,
   type InspectorPhotoAttachment,
   type InspectorWorkspaceDraft,
@@ -332,6 +333,10 @@ function collectFieldInspectionDocuments(
   return collectFieldInspectionDocumentsFromSubmission(submission);
 }
 
+/** How a photo added by the case staff reads in the lists: its name and its source. */
+export const STAFF_ADDED_PHOTO_NAME = "صورة أضافها الأخصائي";
+export const STAFF_ADDED_PHOTO_SOURCE = "الأخصائي";
+
 export function collectFieldInspectionDocumentsFromSubmission(
   submission: InspectorWorkspaceDraft,
 ): PropertyDetailDocumentEntry[] {
@@ -409,14 +414,25 @@ export function collectFieldInspectionDocumentsFromSubmission(
         attachmentId: photo.attachmentId,
         sizeBytes: photo.sizeBytes,
       };
+      // A photo the case staff added is never shown as the inspector's (Omar 2026-11-12).
+      const byStaff = inspectorFreePhotoUploader(photo) === "specialist";
       pushEntry(docs, {
         id: `inspection-free-${photo.id}`,
         documentTypeKey: "inspection-photo",
-        name: freePhotoCategoryLabel(photo.category),
+        name: byStaff ? STAFF_ADDED_PHOTO_NAME : freePhotoCategoryLabel(photo.category),
         fileName: photo.fileName,
-        source,
+        source: byStaff ? STAFF_ADDED_PHOTO_SOURCE : source,
         kind: fileKind(photo.fileName, photo.mimeType),
         ...inspectionPhotoFields(taskId, photoRef, attachment),
+        ...(byStaff
+          ? {
+              addedByStaff: {
+                freePhotoId: photo.id,
+                name: photo.uploadedByName?.trim() ?? "",
+                atUtc: photo.uploadedAtUtc?.trim() ?? "",
+              },
+            }
+          : {}),
       });
     });
 
@@ -519,6 +535,8 @@ function sectionIdForSource(source: string): string {
   if (source === "المكتب الهندسي") return "engineering";
   if (source === "المقيّم العقاري") return "appraisal";
   if (source === "المعاين الميداني") return "inspection";
+  // Added by the case staff to the inspection's photos — listed with them.
+  if (source === STAFF_ADDED_PHOTO_SOURCE) return "inspection";
   return "other";
 }
 

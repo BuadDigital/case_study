@@ -25,6 +25,8 @@ import {
   toggleSelectedId,
 } from "./operations-tasks-view-state";
 import type { OperationsTasksWorkflow } from "./OperationsTasksViewShared";
+import { addedSurveyMobileItems } from "./OperationsTasksAddedSurveyRows";
+import type { AddedSurveyRow } from "./operations-tasks-added-surveys";
 
 type OperationsTasksMobileCardsProps = Pick<
   OperationsTasksWorkflow,
@@ -37,7 +39,11 @@ type OperationsTasksMobileCardsProps = Pick<
   | "setSelectedIds"
   | "useIndependentQueue"
   | "visibleTasks"
->;
+> & {
+  /** Surveys added after the distribution — the first cards (Omar 2026-11-12). */
+  surveyRows?: AddedSurveyRow[];
+  onOpenSurvey?: (href: string) => void;
+};
 
 export function OperationsTasksMobileCards({
   isDesktopViewport,
@@ -49,10 +55,13 @@ export function OperationsTasksMobileCards({
   setSelectedIds,
   useIndependentQueue,
   visibleTasks,
+  surveyRows,
+  onOpenSurvey,
 }: OperationsTasksMobileCardsProps) {
   const items = useMemo((): ActiveQueueMobileCardItem[] => {
     if (isDesktopViewport === true) return [];
-    return visibleTasks.map((task) => {
+    const surveys = addedSurveyMobileItems(surveyRows ?? [], (href) => onOpenSurvey?.(href));
+    const taskCards = visibleTasks.map((task) => {
       const cd = taskCountdown(task.dueAt, task.status, now);
       const active = isActiveOperationsTask(task);
       const statusColor =
@@ -96,8 +105,11 @@ export function OperationsTasksMobileCards({
         ) : undefined,
       };
     });
+    return [...surveys, ...taskCards];
   }, [
     isDesktopViewport,
+    surveyRows,
+    onOpenSurvey,
     visibleTasks,
     now,
     rowMenu,

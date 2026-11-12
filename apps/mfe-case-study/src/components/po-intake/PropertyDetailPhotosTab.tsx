@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Spinner, cn, useToast } from "@platform/ui-kit";
+import { useMemo, useState, type ReactNode } from "react";
+import { cn, useToast } from "@platform/ui-kit";
 import {
   ELECTRICITY_PHOTO_RE,
   EXTERIOR_PHOTO_RE,
@@ -27,7 +27,6 @@ import {
   pickInspectorPrimaryPhoto,
   type PropertyDetailDocumentEntry,
 } from "../../lib/app-data/property-detail-documents";
-import { openPropertyPhotosPdfPrint } from "../../lib/app-data/property-photos-pdf";
 import {
   PhotoPlaceholderIcon,
   PropertyReportPhotoBoard,
@@ -68,6 +67,12 @@ const HTML_PHOTO_GROUPS: {
     title: "صورة العقار الرئيسية",
     source: "المعاين",
     match: (p, { primaryId }) => p.id === primaryId,
+  },
+  {
+    // Before the inspector's groups, so what the specialist just added is where he looks first.
+    title: "صور أضافها الأخصائي",
+    source: "الأخصائي",
+    match: (p) => Boolean(p.addedByStaff),
   },
   {
     title: "صور العقار الخارجية",
@@ -217,18 +222,31 @@ function PhotoMarks({
   );
 }
 
+/** «أضافها فلان · 12/11/2026» — the line a staff-added photo shows on hover; the parts known only. */
+export function staffAddedPhotoLine(added: { name: string; atUtc: string }): string {
+  const at = added.atUtc ? new Date(added.atUtc) : null;
+  const date =
+    at && !Number.isNaN(at.getTime())
+      ? `${String(at.getDate()).padStart(2, "0")}/${String(at.getMonth() + 1).padStart(2, "0")}/${at.getFullYear()}`
+      : "";
+  return [added.name ? `أضافها ${added.name}` : "أضافها الأخصائي", date].filter(Boolean).join(" · ");
+}
+
 function PhotoTile({
   photo,
   gallery,
   marks,
   board,
   actions,
+  onRemoveStaffPhoto,
 }: {
   photo: PropertyDetailDocumentEntry;
   gallery: PropertyDetailDocumentEntry[];
   marks: PropertyPhotoMarks | null | undefined;
   board: PhotoBoardState | undefined;
   actions?: PhotoBoardActions;
+  /** Present for who may remove the photos the staff added. */
+  onRemoveStaffPhoto?: (photo: PropertyDetailDocumentEntry) => void;
 }) {
   const dataUrl = usePhotoDataUrl(photo);
   const id = photoMarkId(photo);
@@ -270,6 +288,28 @@ function PhotoTile({
         )}
       </button>
       <PhotoMarks photo={photo} marks={marks} board={board} actions={actions} />
+      {photo.addedByStaff ? (
+        // Never read as the inspector's: the mark is on the photo itself, with who and when on hover.
+        <div className="absolute end-1 top-1 flex items-center gap-1">
+          <span
+            className={cn(GLASS_CHIP, "px-2 py-0.5 text-[10.5px] font-bold")}
+            title={staffAddedPhotoLine(photo.addedByStaff)}
+          >
+            من الأخصائي
+          </span>
+          {onRemoveStaffPhoto ? (
+            <button
+              type="button"
+              title="حذف الصورة"
+              aria-label="حذف صورة أضافها الأخصائي"
+              onClick={() => onRemoveStaffPhoto(photo)}
+              className={cn(GLASS_BUTTON, "size-6 bg-black/55 text-[13px] text-white hover:bg-danger")}
+            >
+              <i className="ti ti-trash" aria-hidden />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -326,19 +366,23 @@ export function buildDisplayGroups(
  * photo's icon puts it in the next free slot, or in the tapped one; dragging mostly reorders the
  * chosen photos. Slot 1 is the property's main photo, and the report prints the board as it
  * stands. Edge cases: a full board refuses another photo and says why; without `onChangeMarks` the
- * boards are read-only.
+ * boards are read-only. «تنزيل الصور PDF» (a print window of every photo) was removed on 2026-11-12
+ * at Omar's word; the tab's head keeps the photo count, and beside it the host's own action
+ * (`headAction` — the work page's «إضافة صور»). Photos the case staff added (2026-11-12) form their
+ * own group ahead of the inspector's, each marked «من الأخصائي», chosen for the boards like any other
+ * and removed only through `onRemoveStaffPhoto`.
  */
 export function PropertyDetailPhotosTab({
   photos,
-  title = "صور العقار",
   marks,
   reportLimit = 24,
   movablesPresent = false,
   showReportBoard = true,
   onChangeMarks,
+  headAction,
+  onRemoveStaffPhoto,
 }: {
   photos: PropertyDetailDocumentEntry[];
-  title?: string;
   /** How many photos the report prints («صفحات الصور» in the settings). */
   reportLimit?: number;
   /** The inspector answered «يوجد منقولات: نعم»: the movables board and report section open. */
@@ -352,9 +396,12 @@ export function PropertyDetailPhotosTab({
     photos: readonly PropertyDetailDocumentEntry[],
     update: (marks: PropertyPhotoMarks) => PropertyPhotoMarks,
   ) => void;
+  /** Shown at the head, beside the photo count. */
+  headAction?: ReactNode;
+  /** Removes a photo the case staff added; absent = nobody may here. */
+  onRemoveStaffPhoto?: (photo: PropertyDetailDocumentEntry) => void;
 }) {
   const { showToast } = useToast();
-  const [busy, setBusy] = useState(false);
   const [selection, setSelection] = useState<PhotoBoardSelection>(null);
   const groups = useMemo(() => buildDisplayGroups(photos, marks), [photos, marks]);
   const ordered = useMemo(() => groups.flatMap((group) => group.items), [groups]);
@@ -367,7 +414,6 @@ export function PropertyDetailPhotosTab({
   const movablesIds = useMemo(() => movablesBoardIds(photos, marks), [photos, marks]);
   const showMovables = movablesPresent || movablesIds.length > 0;
 
-  const downloadable = ordered.filter((p) => p.dataUrl);
   const changeMarks: PhotoMarksChange | undefined = onChangeMarks
     ? (update) => onChangeMarks(photos, update)
     : undefined;
@@ -460,41 +506,7 @@ export function PropertyDetailPhotosTab({
             ? `إجمالي ${photos.length} صورة`
             : "لا توجد صور مرفوعة بعد"}
         </div>
-        <button
-          type="button"
-          disabled={busy || downloadable.length === 0}
-          aria-busy={busy || undefined}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-border-md bg-surface px-3.5 py-1.5 text-[11.5px] font-bold text-text-2 disabled:opacity-50"
-          onClick={() => {
-            setBusy(true);
-            showToast("يجري تجهيز ملف PDF بصور العقار للتنزيل…", "info");
-            const ok = openPropertyPhotosPdfPrint(downloadable, title);
-            if (!ok) {
-              showToast(
-                "تعذّر فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.",
-                "error",
-              );
-            }
-            window.setTimeout(() => setBusy(false), 800);
-          }}
-        >
-          {busy ? (
-            <Spinner />
-          ) : (
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
-          </svg>
-          )}
-          {busy ? "جاري التجهيز…" : "تنزيل الصور PDF"}
-        </button>
+        {headAction}
       </div>
 
       {boards ? (
@@ -539,7 +551,9 @@ export function PropertyDetailPhotosTab({
       ) : (
         <>
           {boards ? (
-            <div className="mb-2 text-[13px] font-bold text-heading">صور المعاين</div>
+            <div className="mb-2 text-[13px] font-bold text-heading">
+              {photos.some((p) => p.addedByStaff) ? "صور المعاين والأخصائي" : "صور المعاين"}
+            </div>
           ) : null}
           {groups.map((group) => (
             <div key={`${group.source}-${group.title}`} className="mb-4">
@@ -559,6 +573,7 @@ export function PropertyDetailPhotosTab({
                     marks={marks}
                     board={boards ? boardStates.get(photo.id) : undefined}
                     actions={actions}
+                    onRemoveStaffPhoto={onRemoveStaffPhoto}
                   />
                 ))}
               </div>

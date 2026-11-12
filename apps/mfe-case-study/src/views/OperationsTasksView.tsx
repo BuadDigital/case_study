@@ -3,12 +3,13 @@
 /**
  * Operations-tasks screen — composition only. Workflow lives in
  * `useOperationsTasksWorkflow`; each region (`OperationsTasksKpiBand`,
- * `OperationsTasksFiltersBar`, `OperationsTasksAddedSurveys`, `OperationsTasksTable`,
+ * `OperationsTasksFiltersBar`, `OperationsTasksTable`,
  * `OperationsTasksMobileCards`, `OperationsTasksDetailPanel`,
  * `OperationsTasksModals`) renders one slice of the returned bag.
  */
 
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   Note,
   OperationalPanel,
@@ -22,7 +23,7 @@ import {
   TasksSectionNote,
 } from "../components/tasks/TasksHtmlPrimitives";
 import { useOperationsTasksWorkflow } from "./useOperationsTasksWorkflow";
-import { OperationsTasksAddedSurveys } from "./OperationsTasksAddedSurveys";
+import { useAddedSurveyRows } from "./OperationsTasksAddedSurveyRows";
 import { OperationsTasksKpiBand } from "./OperationsTasksKpiBand";
 import {
   OperationsTasksBulkBar,
@@ -40,6 +41,10 @@ import {
 
 export function OperationsTasksView() {
   const workflow = useOperationsTasksWorkflow();
+  // Surveys added after the distribution are rows of the table (Omar 2026-11-12), under its filters.
+  const router = useRouter();
+  const surveyRows = useAddedSurveyRows(workflow);
+  const openSurvey = useCallback((href: string) => router.push(href), [router]);
   const {
     canCreate,
     createOpen,
@@ -103,13 +108,12 @@ export function OperationsTasksView() {
         <OperationsTasksFiltersBar
           {...workflow}
           onPreloadCreate={preloadCreateOperationsTaskModal}
+          extraRows={surveyRows.length}
         />
 
         <OperationsTasksBulkBar {...workflow} />
 
         {error ? <Note tone="danger">{error}</Note> : null}
-
-        <OperationsTasksAddedSurveys />
 
         <OperationalPanel className="min-h-0 flex-1 overflow-hidden !rounded-[12px] p-0 max-lg:border-0 max-lg:bg-transparent max-lg:!rounded-none max-lg:shadow-none">
           {listLoadFailed ? (
@@ -121,8 +125,8 @@ export function OperationsTasksView() {
             />
           ) : (
             <div ref={listSwapRef}>
-              <OperationsTasksTable {...workflow} />
-              <OperationsTasksMobileCards {...workflow} />
+              <OperationsTasksTable {...workflow} surveyRows={surveyRows} onOpenSurvey={openSurvey} />
+              <OperationsTasksMobileCards {...workflow} surveyRows={surveyRows} onOpenSurvey={openSurvey} />
             </div>
           )}
           <TasksSectionNote>{TASKS_LIST_FOOTER}</TasksSectionNote>

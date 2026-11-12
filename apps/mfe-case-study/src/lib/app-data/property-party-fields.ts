@@ -101,7 +101,11 @@ const readonly = (key: string, label: string): PartyFieldDef => ({
   input: "readonly",
 });
 
-/** The inspector owns the property type — the server rejects a staff change to it. */
+/**
+ * The property type is not edited in place: the inspector sets it, and case staff change it with a
+ * reason through «تعديل النوع والاستخدام» (`InspectedTypeCorrection`) — the server rejects a change
+ * that arrives with the review's autosave.
+ */
 const INSPECTOR_OWNED_FEATURE_KEYS = new Set(["assetSubject"]);
 
 /** Last yes/no of the «ملحقات» run (سور/مسبح/مصعد/تكييف/خزانات/تشجير) — «ملحقات أخرى» sits right after it. */

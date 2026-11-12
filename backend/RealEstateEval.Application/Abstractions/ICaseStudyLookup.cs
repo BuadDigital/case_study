@@ -8,8 +8,7 @@ namespace RealEstateEval.Application.Abstractions;
 /// </summary>
 public interface ICaseStudyLookup
 {
-    Task<IReadOnlyList<Guid>> ListCompletedCaseStudyPropertyIdsAsync(
-        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Guid>> ListCompletedCaseStudyPropertyIdsAsync( CancellationToken cancellationToken = default);
 
     Task<IReadOnlyDictionary<Guid, WorkflowTaskKind>> GetWorkflowTaskKindsAsync(
         IReadOnlyList<Guid> taskIds,

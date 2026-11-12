@@ -160,6 +160,10 @@ function readFreePhotos(value: unknown): InspectorFreePhoto[] {
         typeof obj.sizeBytes === "number" ? obj.sizeBytes : undefined,
     };
     if (uploadedBy) photo.uploadedBy = uploadedBy;
+    const uploadedByName = readString(obj.uploadedByName);
+    const uploadedAtUtc = readString(obj.uploadedAtUtc);
+    if (uploadedByName) photo.uploadedByName = uploadedByName;
+    if (uploadedAtUtc) photo.uploadedAtUtc = uploadedAtUtc;
     if (attachmentId) photo.attachmentId = attachmentId;
     out.push(photo);
   }

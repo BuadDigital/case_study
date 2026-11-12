@@ -51,6 +51,8 @@ type OperationsTasksFiltersBarProps = Pick<
 > & {
   /** Warm the create-modal chunk on hover/focus of the create button. */
   onPreloadCreate: () => void;
+  /** Rows the table lists beside the operations tasks (added surveys) — part of the result count. */
+  extraRows?: number;
 };
 
 export function OperationsTasksFiltersBar({
@@ -70,6 +72,7 @@ export function OperationsTasksFiltersBar({
   toggleShowAll,
   visibleTasks,
   onPreloadCreate,
+  extraRows = 0,
 }: OperationsTasksFiltersBarProps) {
   return (
     <div className={opsToolbar}>
@@ -124,7 +127,7 @@ export function OperationsTasksFiltersBar({
             <span>{showAll ? "النشطة فقط" : "إظهار جميع المهام"}</span>
           </button>
           <span className={opsListCount} aria-live="polite">
-            {visibleTasks.length}
+            {visibleTasks.length + extraRows}
             <span>نتيجة</span>
           </span>
         </div>

@@ -119,6 +119,29 @@ const DUE_TEXT_CLASS: Record<MyWorkDue, string> = {
   none: "text-heading",
 };
 
+/**
+ * The width of each column of the «أعمالي» table, in the header's order: transaction number, deed,
+ * city / district, work order, action, dates, clock, ⋮ (Omar 2026-11-12: the same widths on every chip).
+ *
+ * How it works: the table's layout is fixed, so these — not the rows — decide the widths. The shares
+ * are of the table's width; the action column (`null`) takes what is left, and ⋮ keeps its button's
+ * 56px. Edge case: at the table's least width (990px) every share still holds its usual value on one
+ * line — a longer one wraps inside its cell (`MY_WORK_LONG_VALUE`).
+ */
+const MY_WORK_COLUMN_WIDTHS: readonly (string | number | null)[] = [
+  "10.5%",
+  "14%",
+  "14%",
+  "16%",
+  null,
+  "13.5%",
+  "10%",
+  56,
+];
+
+/** A value kept whole while it fits its fixed column, broken onto a second line when it is longer. */
+const MY_WORK_LONG_VALUE = "max-w-full [overflow-wrap:anywhere]";
+
 /** An empty cell's «—», muted like every empty cell of the system's tables. */
 function Muted() {
   return <span className="text-[13px] text-text-3">—</span>;
@@ -136,13 +159,19 @@ function MyWorkDates({
   return (
     <div className="flex flex-col items-center gap-0.5 text-[13px] tabular-nums">
       {/* bdi: «DD/MM/YYYY» must not be reordered by the RTL row (as `TdLtr` in «أوامر العمل»). */}
-      <span className="text-text-2">
+      <span className="whitespace-nowrap text-text-2">
         <bdi dir="ltr">{item.receivedIso ? formatDateAr(item.receivedIso) : "—"}</bdi>
       </span>
-      <span className={cn("font-semibold", DUE_TEXT_CLASS[item.due])}>
-        <bdi dir="ltr">{item.dueIso ? formatDateAr(item.dueIso) : "—"}</bdi>
+      {/* The date and its state each stay whole; in a narrow column the state drops under the date. */}
+      <span className={cn("text-center font-semibold", DUE_TEXT_CLASS[item.due])}>
+        <bdi dir="ltr" className="whitespace-nowrap">
+          {item.dueIso ? formatDateAr(item.dueIso) : "—"}
+        </bdi>
         {item.due === "late" || item.due === "soon" ? (
-          <span className="ms-1.5 text-[12px] font-medium">{item.dueText}</span>
+          <>
+            {" "}
+            <span className="ms-1 whitespace-nowrap text-[12px] font-medium">{item.dueText}</span>
+          </>
         ) : null}
       </span>
     </div>
@@ -466,14 +495,19 @@ export function MyWorkView() {
               ))}
             </MobileRecordList>
             <TableFrame className="max-lg:hidden">
-              <Table>
+              {/* One set of column widths for every chip (Omar 2026-11-12): the widths used to follow
+                  the content, so the columns moved each time a chip changed the rows. The layout is
+                  fixed now and `MY_WORK_COLUMN_WIDTHS` shares the width out the same way whatever the
+                  rows hold; below 990px the table scrolls sideways instead of squeezing a column. */}
+              <Table className="min-w-[990px] table-fixed">
+                <colgroup>
+                  {MY_WORK_COLUMN_WIDTHS.map((width, i) => (
+                    <col key={i} style={width === null ? undefined : { width }} />
+                  ))}
+                </colgroup>
                 <THead>
                   <Tr hoverable={false}>
-                    {/* Widths follow the content (Omar 2026-11-08): no fixed widths — the table shares
-                        its free width out in proportion to each column's widest line (values are kept
-                        on one line, the PO description capped at 220px, so that line is the real
-                        content). Only ⋮ shrinks to its button. The two long headers break onto two
-                        lines so they are no wider than their values. */}
+                    {/* The two long headers break onto two lines so they fit their columns. */}
                     <Th>رقم المعاملة</Th>
                     <Th className="text-center">
                       رقم الصك /<br />
@@ -487,7 +521,7 @@ export function MyWorkView() {
                       الاستحقاق
                     </Th>
                     <Th className="text-center">وقت الإجراء</Th>
-                    <Th className="w-px">
+                    <Th>
                       <span className="sr-only">المزيد</span>
                     </Th>
                   </Tr>
@@ -503,19 +537,28 @@ export function MyWorkView() {
                     >
                       {/* Type scale (as «أوامر العمل»): the row's key, the transaction number, 13.5px
                           bold gold; the action a tag (Badge); values 13px; lines under them 12px text-2;
-                          «—» muted. Every column but the transaction number is centred (Omar 2026-11-08). */}
-                      <Td className="whitespace-nowrap">
+                          «—» muted. Every column but the transaction number is centred (Omar 2026-11-08).
+                          The columns are fixed (2026-11-12), so a value longer than its column goes
+                          onto a second line (`MY_WORK_LONG_VALUE`) instead of running into the next
+                          column: a number stays whole while it fits, a place breaks between words. */}
+                      <Td>
                         {item.transactionNumber ? (
-                          <bdi dir="ltr" className="text-[13.5px] font-bold tabular-nums text-primary">
+                          <bdi
+                            dir="ltr"
+                            className={cn(MY_WORK_LONG_VALUE, "text-[13.5px] font-bold tabular-nums text-primary")}
+                          >
                             {item.transactionNumber}
                           </bdi>
                         ) : (
                           <Muted />
                         )}
                       </Td>
-                      <Td className="whitespace-nowrap text-center">
+                      <Td className="text-center">
                         {item.deedNumber && item.deedNumber !== "—" ? (
-                          <bdi dir="ltr" className="text-[13px] font-semibold tabular-nums text-heading">
+                          <bdi
+                            dir="ltr"
+                            className={cn(MY_WORK_LONG_VALUE, "text-[13px] font-semibold tabular-nums text-heading")}
+                          >
                             {item.deedNumber}
                           </bdi>
                         ) : (
@@ -523,25 +566,27 @@ export function MyWorkView() {
                         )}
                       </Td>
                       <Td className="text-center">
-                        <div className="flex flex-col items-center gap-0.5">
+                        <div className="flex min-w-0 flex-col items-center gap-0.5">
                           {item.place && item.place !== "—" ? (
-                            <span className="whitespace-nowrap text-[13px] text-text">{item.place}</span>
+                            <span className={cn(MY_WORK_LONG_VALUE, "text-[13px] text-text")}>{item.place}</span>
                           ) : (
                             <Muted />
                           )}
                           {item.propertyType ? (
-                            <span className="whitespace-nowrap text-[12px] text-text-2">{item.propertyType}</span>
+                            <span className={cn(MY_WORK_LONG_VALUE, "text-[12px] text-text-2")}>
+                              {item.propertyType}
+                            </span>
                           ) : null}
                         </div>
                       </Td>
                       <Td className="text-center">
                         <div className="flex min-w-0 flex-col items-center gap-0.5">
-                          <bdi dir="ltr" className="whitespace-nowrap text-[13px] tabular-nums text-text">
+                          <bdi dir="ltr" className={cn(MY_WORK_LONG_VALUE, "text-[13px] tabular-nums text-text")}>
                             {item.poNumber}
                           </bdi>
                           {item.poDescription ? (
                             <span
-                              className="line-clamp-2 w-max max-w-[220px] text-[12px] text-text-2"
+                              className={cn(MY_WORK_LONG_VALUE, "line-clamp-2 text-[12px] text-text-2")}
                               title={item.poDescription}
                             >
                               {item.poDescription}
@@ -568,7 +613,7 @@ export function MyWorkView() {
                           </span>
                         </div>
                       </Td>
-                      <Td className="whitespace-nowrap text-center">
+                      <Td className="text-center">
                         <MyWorkDates item={item} />
                       </Td>
                       <Td className="whitespace-nowrap text-center">

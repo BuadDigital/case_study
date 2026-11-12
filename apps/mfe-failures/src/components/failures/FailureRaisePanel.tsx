@@ -93,7 +93,7 @@ export function FailureRaisePanel({
   const [severity, setSeverity] = useState<FailureSeverity>(() => defaultRaiseSeverity(role));
   const [reason, setReason] = useState("");
   const [invalid, setInvalid] = useState(false);
-  const reasonMissing = failureReasonRequired(severity) && !reason.trim();
+  const reasonMissing = failureReasonRequired(severity, problemTypeId) && !reason.trim();
 
   const { run: runCreateFailure, loading: saving } = useCommandMutation(
     useCallback(

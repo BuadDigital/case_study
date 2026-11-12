@@ -11,6 +11,7 @@ import { isSuperAdmin } from "@platform/app-shared/app-data/role-access";
  * 4. access — field-inspector only
  * 5. contents — field-inspector + case-specialist
  * 6. parties — field-inspector + engineering-office
+ * 7. other («أخرى», Omar 2026-11-12) — all roles
  */
 const ALL_ROLES: "all" = "all";
 
@@ -23,6 +24,7 @@ const CATEGORY_AUDIENCE: Record<string, CategoryAudience> = {
   access: ["field-inspector"],
   contents: ["field-inspector", "case-specialist"],
   parties: ["field-inspector", "engineering-office"],
+  other: ALL_ROLES,
 };
 
 function roleSeesAllFailureCategories(role: RoleId): boolean {

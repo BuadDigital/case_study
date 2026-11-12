@@ -2,12 +2,14 @@ import {
   getPartyTaskSubmission,
   listPartyTaskSubmissions,
   acceptPartyTaskSubmission,
+  correctInspectedType,
   getReturnImpact,
   reopenPartyTaskSubmission,
   returnInspectionPackage,
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
   type AcceptPartyTaskSubmissionRequest,
+  type CorrectInspectedTypeRequest,
   type PartyTaskSubmissionDto,
   type ReturnImpactDto,
   type ReturnInspectionRequest,
@@ -291,6 +293,18 @@ export type ReturnInspectionMutationResult =
   | { ok: true; data: ReturnInspectionResultDto }
   | { ok: false; error: string; errors?: Record<string, string> };
 
+/** A refused write as a dialog reads it: the message to show plus the server's field errors. */
+function writeRefusal(
+  result: { kind: string; errors?: Record<string, string>; message?: string },
+  fallback: string,
+): { ok: false; error: string; errors?: Record<string, string> } {
+  return {
+    ok: false,
+    error: resolveApiError(result.kind, result.errors, fallback, result.message),
+    errors: result.errors,
+  };
+}
+
 /**
  * Return the inspection with the picked parties in one server transaction.
  * Refreshes the caches the plain reopen refreshed: the inspection itself, and every
@@ -309,18 +323,7 @@ export async function returnInspectionWithImpact(
     request,
     idempotencyKey,
   );
-  if (!result.ok) {
-    return {
-      ok: false,
-      error: resolveApiError(
-        result.kind,
-        result.errors,
-        "تعذّر إعادة المعاينة للمعاين",
-        result.message,
-      ),
-      errors: result.errors,
-    };
-  }
+  if (!result.ok) return writeRefusal(result, "تعذّر إعادة المعاينة للمعاين");
   setCachedPartySubmission(result.data.inspection, inspectionTaskId);
   for (const party of result.data.parties) {
     if (party.outcome === "reopened") setCachedPartySubmission(null, party.taskId);
@@ -344,6 +347,29 @@ export async function acceptPartySubmission(
   const mapped = mutationFromApiResult(result, "تعذّر قبول مخرجات المهمة");
   if (mapped.ok) setCachedPartySubmission(mapped.data, taskId);
   return mapped;
+}
+
+/**
+ * Case staff's correction of a submitted inspection's property type / usage (Omar 2026-11-12).
+ *
+ * How it works: posts the correction and keeps the returned package as the cached copy; a refusal
+ * comes back with the server's field errors (`propertyType`, `propertyUsage`, `reason`) so the
+ * dialog can point at the field.
+ * Edge cases: no session → the sign-in message, nothing sent.
+ */
+export async function correctInspectedTypeOfSubmission(
+  taskId: string,
+  body: CorrectInspectedTypeRequest,
+): Promise<
+  | { ok: true; data: PartyTaskSubmissionDto }
+  | { ok: false; error: string; errors?: Record<string, string> }
+> {
+  const config = workOrdersApiConfig();
+  if (!config) return { ok: false, error: apiErrorMessage("auth") };
+  const result = await correctInspectedType(config, taskId, body);
+  if (!result.ok) return writeRefusal(result, "تعذّر تعديل نوع العقار");
+  setCachedPartySubmission(result.data, taskId);
+  return { ok: true, data: result.data };
 }
 
 export function payloadFromDto<T extends Record<string, unknown>>(

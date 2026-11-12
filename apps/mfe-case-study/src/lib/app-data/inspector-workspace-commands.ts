@@ -5,6 +5,7 @@ import {
 import {
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
+  type CorrectInspectedTypeRequest,
   type ReturnInspectionRequest,
 } from "@platform/api-client";
 import { createKeyedWriteQueue } from "@platform/app-shared/lib/keyed-write-queue";
@@ -16,6 +17,7 @@ import {
 } from "@platform/app-shared/offline/offline-write";
 import {
   acceptPartySubmission,
+  correctInspectedTypeOfSubmission,
   returnInspectionWithImpact,
   type PartyWorkMutationResult,
   type ReturnInspectionMutationResult,
@@ -500,6 +502,43 @@ export async function returnInspectorWorkspace(
   writeCache(payloadToDraft(returned.data.inspection));
   notifyChanged();
   return returned;
+}
+
+/**
+ * Case staff change the property type (with a reason) and / or «استخدام العقار» of a submitted
+ * inspection (Omar 2026-11-12: the study specialist changes the type too).
+ *
+ * How it works: a pending debounced save of the review is sent first, then the correction runs on the
+ * task's write queue, behind every PUT in flight; the returned package replaces the cached draft and
+ * the screens showing the inspection reload.
+ * Edge cases: without the flush, a save still waiting would carry the old type after the change and
+ * the server would refuse it (the autosave never changes the type). A read-only page (the study, after
+ * the acceptance) has nothing pending, so nothing extra is sent.
+ */
+export async function correctInspectedTypeOfWorkspace(
+  taskId: string,
+  body: CorrectInspectedTypeRequest,
+): Promise<
+  | { ok: true; data: InspectorWorkspaceDraft }
+  | { ok: false; error: string; errors?: Record<string, string> }
+> {
+  if (saveDebounceTimers.has(taskId)) {
+    try {
+      await flushInspectorWorkspaceSave(taskId);
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "تعذّر حفظ التعديلات السابقة",
+      };
+    }
+  }
+  return inspectorWriteQueue.enqueue(taskId, async () => {
+    const corrected = await correctInspectedTypeOfSubmission(taskId, body);
+    if (!corrected.ok) return corrected;
+    const next = payloadToDraft(corrected.data);
+    writeCache(next);
+    return { ok: true as const, data: next };
+  });
 }
 
 /** Specialist acceptance — stamps AcceptedAtUtc so data may feed Infath. */

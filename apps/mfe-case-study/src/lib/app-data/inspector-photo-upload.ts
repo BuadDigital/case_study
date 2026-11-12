@@ -224,12 +224,19 @@ type UploadInspectorPhotoOptions = {
   stampText?: string;
   deedNumber?: string | null;
   draft?: InspectorWorkspaceDraft | null;
+  /**
+   * Burn no stamp on the photo. The stamp says «taken at the property, at the inspection» (deed,
+   * coordinates, date) and falls back to the inspection's own pin and date — true of the inspector's
+   * photos only, so a photo the case staff add from the office goes up without it (2026-11-12).
+   */
+  noStamp?: boolean;
 };
 
 function stampFromContext(
   options: UploadInspectorPhotoOptions | undefined,
   exif: EvidencePhotoExif,
 ): string {
+  if (options?.noStamp) return "";
   if (options?.draft) {
     const draft = options.draft;
     return buildEvidenceStampLines({

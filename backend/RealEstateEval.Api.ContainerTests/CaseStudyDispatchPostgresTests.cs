@@ -42,9 +42,7 @@ public sealed class CaseStudyDispatchPostgresTests : IAsyncLifetime
         _taskId = Guid.NewGuid();
         var workOrderId = Guid.NewGuid();
 
-        await using var cs = (CaseStudyDbContext)BoundedContextStreamMigrator.CreateStreamContext(
-            typeof(CaseStudyDbContext),
-            _connectionString);
+        await using var cs = (CaseStudyDbContext)BoundedContextStreamMigrator.CreateStreamContext( typeof(CaseStudyDbContext),_connectionString);
         cs.WorkOrders.Add(new WorkOrder
         {
             Id = workOrderId,

@@ -1,9 +1,4 @@
-/** PO intake — property boundary fields, geo/map helpers, description line. */
-
-import {
-  effectiveClassificationOf,
-  effectivePropertyTypeOf,
-} from "@platform/app-shared/app-data/po-intake-property-model";
+/** PO intake — property boundary fields, geo/map helpers. */
 
 export {
   PROPERTY_BOUNDARY_ROWS,
@@ -45,39 +40,4 @@ export function formatGeoDms(lat: number, lng: number): string {
 /** Decimal coords for display / clipboard (HTML coord-copy). */
 export function formatGeoDec(lat: number, lng: number): string {
   return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-}
-
-/** Short property description under the main photo (HTML property description). */
-export function buildPropertyDescriptionLine(
-  property: {
-    propertyType: string;
-    classification: string;
-    inspectedPropertyType?: string;
-    effectivePropertyType?: string;
-    area: string;
-    district: string;
-    bourseDataCompleted: boolean;
-  },
-  inspectorDescription?: string,
-): string {
-  const fromInspector = inspectorDescription?.trim();
-  if (fromInspector) return fromInspector;
-  if (!property.bourseDataCompleted) {
-    return "يُحدَّث وصف العقار بعد اكتمال استعلام البورصة وتقرير المعاين.";
-  }
-  // The inspector's corrected type and its classification once he changed it (2026-10-29).
-  const parts = [
-    effectivePropertyTypeOf(property),
-    effectiveClassificationOf(property),
-  ].filter(Boolean);
-  const head = parts.join(" ");
-  const area = property.area.trim()
-    ? `مساحة الأرض ${property.area.trim()} م²`
-    : "";
-  const district = property.district.trim()
-    ? `بحي ${property.district.trim()}`
-    : "";
-  const body = [head, area, district].filter(Boolean).join("، ");
-  if (!body) return "يُحدَّث الوصف التفصيلي من تقرير المعاين.";
-  return `${body}. يُحدَّث الوصف التفصيلي من تقرير المعاين.`;
 }

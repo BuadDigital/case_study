@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  buildPropertyDescriptionLine,
-  type PoPropertyIntake,
-} from "../../lib/app-data/po-intake-data";
+import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
   openPropertyDetailDocumentPreview,
   type PropertyDetailDocumentEntry,
@@ -22,6 +19,14 @@ type PropertyGlanceFact = {
 
 /**
  * Case Study.html basic-tab media strip: main photo + description | map + coords.
+ *
+ * How it works: «وصف العقار» is the text the caller hands in — the inspector's own description once
+ * the specialist accepted it (or one the case-study staff wrote), or the appraiser page's «بانتظار
+ * تأكيد الأخصائي» line; the work order's facts (basis of value, premise, purpose, report users) follow.
+ * Edge cases / changed 2026-11-12 (Omar): the system no longer composes a description from the type,
+ * the deed area and the district («أرض أرض، مساحة الأرض 123 م²، بحي …. يُحدَّث الوصف التفصيلي من
+ * تقرير المعاين») — with no description the «وصف العقار» lines are left out, and with no fact either
+ * the whole box is.
  */
 export function PropertyDetailMediaGlance({
   property,
@@ -66,10 +71,7 @@ export function PropertyDetailMediaGlance({
   const heroUrl = primaryPhoto?.dataUrl || fetchedUrl;
 
   const hasPhoto = Boolean(heroUrl);
-  const description = property
-    ? buildPropertyDescriptionLine(property, inspectorDescription)
-    : inspectorDescription?.trim() ||
-      "يُحدَّث الوصف التفصيلي من تقرير المعاين.";
+  const description = inspectorDescription?.trim() ?? "";
 
   const assignmentFacts: PropertyGlanceFact[] = [
     valueBasisLabel?.trim()
@@ -86,16 +88,22 @@ export function PropertyDetailMediaGlance({
       : null,
   ].filter((f): f is PropertyGlanceFact => Boolean(f));
 
+  const hasDescriptionBox = Boolean(description) || assignmentFacts.length > 0;
   const descriptionBlock = (
     <>
-      <div className="mb-[3px] text-[10.5px] text-text-2">وصف العقار</div>
-      <p className="m-0 text-xs font-semibold leading-[1.7] text-pretty text-text">
-        {description}
-      </p>
-      {assignmentFacts.map((fact) => (
+      {description ? (
+        <>
+          <div className="mb-[3px] text-[10.5px] text-text-2">وصف العقار</div>
+          <p className="m-0 text-xs font-semibold leading-[1.7] text-pretty text-text">
+            {description}
+          </p>
+        </>
+      ) : null}
+      {assignmentFacts.map((fact, i) => (
         <div
           key={fact.label}
-          className="mt-2.5 border-t border-border/60 pt-2.5"
+          // The rule parts a fact from what stands above it; the first line of the box has none.
+          className={cn(description || i > 0 ? "mt-2.5 border-t border-border/60 pt-2.5" : null)}
         >
           <div className="mb-[3px] text-[10.5px] text-text-2">{fact.label}</div>
           <p className="m-0 text-xs font-semibold leading-[1.7] text-pretty text-text">
@@ -152,7 +160,7 @@ export function PropertyDetailMediaGlance({
             </div>
           )}
         </button>
-        {showCoordinates ? (
+        {showCoordinates && hasDescriptionBox ? (
           <div className={cn("mt-2 flex-1 px-3 py-2", goldSoft)}>
             {descriptionBlock}
           </div>
@@ -165,7 +173,7 @@ export function PropertyDetailMediaGlance({
         longitude={longitude}
         showCoordinates={showCoordinates}
       />
-      {!showCoordinates ? (
+      {!showCoordinates && hasDescriptionBox ? (
         <div className={cn("sm:col-span-2 px-3 py-2", goldSoft)}>
           {descriptionBlock}
         </div>
@@ -174,7 +182,6 @@ export function PropertyDetailMediaGlance({
         <div className="sm:col-span-2 mt-1">
           <PropertyDetailPhotosTab
             photos={photos}
-            title="صور المعاينة"
             marks={property?.photoMarks}
             showReportBoard={false}
           />

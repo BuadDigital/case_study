@@ -21,6 +21,13 @@ public sealed class PartyTaskSubmissionRepository(CaseStudyDbContext db) : IPart
             .AnyAsync(p => p.Id == id && p.Transaction != null && p.Transaction.ReceivedAtUtc != null, cancellationToken);
     }
 
+    public async Task<bool> IsTransactionReviewApprovedAsync(Guid? propertyId, CancellationToken cancellationToken)
+    {
+        if (propertyId is not Guid id) return false;
+        return await db.WorkOrderProperties.AsNoTracking()
+            .AnyAsync(p => p.Id == id && p.Transaction != null && p.Transaction.ReviewApprovedAtUtc != null, cancellationToken);
+    }
+
     public async Task<bool> ClearTransactionReceiptAsync(Guid? propertyId, DateTime nowUtc, CancellationToken cancellationToken)
     {
         if (propertyId is not Guid id) return false;
