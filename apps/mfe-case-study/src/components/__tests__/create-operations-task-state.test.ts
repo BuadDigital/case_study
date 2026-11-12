@@ -13,6 +13,7 @@ import {
   buildLetterRowsForDeed,
   buildLetterRowsForPo,
   createOperationsTaskReducer,
+  createTaskLinkLocked,
   createTaskPrefillKey,
   deedOptions,
   defaultDueFields,
@@ -296,5 +297,41 @@ describe("buildCreateOperationsTaskSubmission", () => {
   it("parses the local due inputs, defaulting the time to noon", () => {
     expect(parseDueAt("2026-09-05", "08:15")).toEqual(new Date(2026, 8, 5, 8, 15));
     expect(parseDueAt("2026-09-05", "")).toEqual(new Date(2026, 8, 5, 12, 0));
+  });
+});
+
+// Omar 2026-11-12: «إنشاء مهمة مرتبطة» on the coordinator's page opens the form on its own deed.
+describe("a task whose link is fixed on a deed", () => {
+  const locked = { type: "general", poNumber: " PO-7 ", deed: " 3100 / الرياض ", linkLocked: true };
+
+  it("is locked only when the work order and the deed are both named", () => {
+    expect(createTaskLinkLocked(locked)).toBe(true);
+    expect(createTaskLinkLocked({ ...locked, deed: " " })).toBe(false);
+    expect(createTaskLinkLocked({ ...locked, poNumber: "" })).toBe(false);
+    expect(createTaskLinkLocked({ ...locked, linkLocked: false })).toBe(false);
+    expect(createTaskLinkLocked(null)).toBe(false);
+  });
+
+  it("starts on that deed, whatever scope the prefill names", () => {
+    const form = initialCreateOperationsTaskForm({ ...locked, scope: "work_order" }, NOW);
+    expect(form).toMatchObject({
+      type: "general",
+      scope: "transaction",
+      poNumber: "PO-7",
+      deed: "3100 / الرياض",
+      selectedDeeds: ["3100 / الرياض"],
+    });
+  });
+
+  it("keeps the deed when the type changes, the survey included", () => {
+    const start = initialCreateOperationsTaskForm(locked, NOW);
+    for (const type of ["court_visit", ENGINEERING_SURVEY_TASK_TYPE, "general"]) {
+      const next = createOperationsTaskReducer(start, { type: "set-type", value: type });
+      expect(next).toMatchObject({ scope: "transaction", poNumber: "PO-7", deed: "3100 / الرياض" });
+    }
+  });
+
+  it("remounts the form when the lock changes", () => {
+    expect(createTaskPrefillKey(locked)).not.toBe(createTaskPrefillKey({ ...locked, linkLocked: false }));
   });
 });

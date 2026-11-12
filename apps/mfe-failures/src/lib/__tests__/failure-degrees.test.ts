@@ -56,4 +56,12 @@ describe("failure degrees by role (Omar 2026-11-11)", () => {
     expect(failureReasonRequired("internal")).toBe(true);
     expect(failureReasonRequired("final")).toBe(true);
   });
+
+  // Omar 2026-11-12: «أخرى» says nothing by its name, so its reason is written at every degree.
+  it("requires a reason for the type «أخرى» even when the failure is only possible", () => {
+    expect(failureReasonRequired("suspected", "other")).toBe(true);
+    expect(failureReasonRequired("suspected", "deed-suspended")).toBe(false);
+    expect(failureReasonRequired("suspected", "")).toBe(false);
+    expect(failureReasonRequired("internal", "other")).toBe(true);
+  });
 });

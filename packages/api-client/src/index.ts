@@ -226,6 +226,7 @@ export {
 
 export {
   acceptPartyTaskSubmission,
+  correctInspectedType,
   getPartyTaskSubmission,
   getReturnImpact,
   isPersistedPartyTaskSubmission,
@@ -235,6 +236,7 @@ export {
   savePartyTaskSubmission,
   submitPartyTaskSubmission,
   type AcceptPartyTaskSubmissionRequest,
+  type CorrectInspectedTypeRequest,
   type PartyFieldProvenanceEntry,
   type PartyTaskSubmissionDto,
   type ReopenPartyTaskSubmissionRequest,

@@ -53,6 +53,7 @@ import {
   assigneesForType,
   buildCreateOperationsTaskSubmission,
   createOperationsTaskReducer,
+  createTaskLinkLocked,
   createTaskPrefillKey,
   deedOptions,
   initialCreateOperationsTaskForm,
@@ -125,6 +126,8 @@ function CreateOperationsTaskForm({
   const [error, setError] = useState<string | null>(null);
   const { type, scope, poNumber, deed, selectedDeeds, assigneeId } = form;
   const isSurvey = type === ENGINEERING_SURVEY_TASK_TYPE;
+  // Opened from a deed's page: the link is that deed, shown and not chosen (Omar 2026-11-12).
+  const linkLocked = createTaskLinkLocked(prefill);
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
 
   const assignees = useMemo(
@@ -363,6 +366,7 @@ function CreateOperationsTaskForm({
               deeds={deeds}
               multiDeedOptions={multiDeedOptions}
               scopeLocked
+              linkLocked={linkLocked}
             />
             {surveyBlocked && surveyTarget && !surveyTarget.ok ? (
               <div className={opsFldFull}>
@@ -402,6 +406,7 @@ function CreateOperationsTaskForm({
               selectedPo={selectedPo}
               deeds={deeds}
               multiDeedOptions={multiDeedOptions}
+              linkLocked={linkLocked}
             />
             <CreateTaskScheduleFields form={form} dispatch={dispatch} />
             {type === "court_visit" ? (

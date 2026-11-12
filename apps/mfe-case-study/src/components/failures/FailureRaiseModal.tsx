@@ -109,7 +109,7 @@ function FailureRaiseForm({
     degrees.length > 0 &&
     !saving &&
     (!needsType || problemTypeId.length > 0) &&
-    (!failureReasonRequired(degree) || reason.trim().length > 0);
+    (!failureReasonRequired(degree, problemTypeId) || reason.trim().length > 0);
 
   function requestClose() {
     if (saving) return;

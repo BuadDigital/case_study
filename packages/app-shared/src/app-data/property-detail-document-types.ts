@@ -21,6 +21,11 @@ export type PropertyDetailDocumentEntry = {
     photoRef: string;
     attachment: InspectorPhotoAttachment;
   };
+  /**
+   * A photo the case staff added to the inspection's photos (Omar 2026-11-12) — not the inspector's:
+   * who added it and when, and its id among the inspection's free photos (to remove it).
+   */
+  addedByStaff?: { freePhotoId: number; name: string; atUtc: string };
   /** Governed registry key (`property-document-types.ts`) the row belongs to. */
   documentTypeKey?: string;
   /** The form names this file but the attachments service holds no copy of it. */

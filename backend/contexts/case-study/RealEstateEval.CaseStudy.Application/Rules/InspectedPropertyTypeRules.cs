@@ -91,6 +91,143 @@ public static class InspectedPropertyTypeRules
         return root.ToJsonString();
     }
 
+    /// <summary>A staff change of the type states why, in at least this many characters.</summary>
+    public const int StaffChangeReasonMinLength = 10;
+
+    public const string StaffChangeReasonRequiredAr =
+        "اذكر سبب تعديل نوع العقار (10 أحرف على الأقل)";
+
+    public const string StaffChangeTypeInvalidAr = "اختر نوع العقار من القائمة";
+
+    /// <summary>The reason a staff change of the type must carry (Omar 2026-11-12), trimmed; null when too short.</summary>
+    public static string? StaffChangeReason(string? reason)
+    {
+        var trimmed = (reason ?? "").Trim();
+        return trimmed.Length >= StaffChangeReasonMinLength ? trimmed : null;
+    }
+
+    /// <summary>
+    /// Writes case staff's corrected type and / or usage into a submitted inspection payload (Omar
+    /// 2026-11-12: the study specialist changes the type too, not only the inspector).
+    /// </summary>
+    /// <remarks>
+    /// How it works: a non-blank type becomes <c>featureValues.assetSubject</c> and sets <c>vacantLand</c>
+    /// from it; a non-blank usage becomes <c>featureValues.propertyUsage</c>. A blank value leaves its
+    /// field as it is.
+    /// Edge cases: unlike the inspector's own submit (<see cref="NormalizePayloadForSubmission"/>), a
+    /// change to land does NOT empty the building-only answers — the screens and the reports hide them
+    /// by the type, and they show again if the type goes back. A payload with no <c>featureValues</c>
+    /// gets one.
+    /// </remarks>
+    public static string ApplyStaffCorrection(string payloadJson, string? propertyType, string? propertyUsage)
+    {
+        var root = JsonNode.Parse(payloadJson)?.AsObject()
+            ?? throw new JsonException("Inspection payload must be a JSON object.");
+        if (root["featureValues"] is not JsonObject values)
+        {
+            values = new JsonObject();
+            root["featureValues"] = values;
+        }
+
+        if (!string.IsNullOrWhiteSpace(propertyType))
+        {
+            values["assetSubject"] = propertyType.Trim();
+            root["vacantLand"] = IsLand(propertyType);
+        }
+        if (!string.IsNullOrWhiteSpace(propertyUsage))
+            values["propertyUsage"] = propertyUsage.Trim();
+
+        return root.ToJsonString();
+    }
+
+    /// <summary>An apartment records no facade (2026-10-20) — the one answer its type hides.</summary>
+    private static bool IsApartment(string? propertyType)
+    {
+        var value = (propertyType ?? "").Trim();
+        return !IsLand(value)
+            && (value.Contains("شقة", StringComparison.Ordinal)
+                || value.Contains("شقه", StringComparison.Ordinal)
+                || value.Contains("شقق", StringComparison.Ordinal));
+    }
+
+    /// <summary>The feature answers the type does not record: the building-only ones on land, the facade on an apartment.</summary>
+    private static IReadOnlyList<string> HiddenFeatureKeysFor(string? propertyType) =>
+        IsLand(propertyType) ? [.. LandHiddenFeatureKeys, "propertyCondition"]
+        : IsApartment(propertyType) ? ["facade"]
+        : [];
+
+    /// <summary>
+    /// Keeps the inspector's answers the current type hides when case staff save a correction of a
+    /// submitted package.
+    /// </summary>
+    /// <remarks>
+    /// How it works: the screens never show (and so never send back) the answers the type hides, so
+    /// every staff save would blank them. For each hidden answer the incoming payload leaves blank
+    /// while the stored payload has it, the stored value and its proof photo are put back.
+    /// Edge cases: a type that hides nothing, or a payload that is not a JSON object, returns the
+    /// incoming payload untouched (same string). Needed since 2026-11-12: staff may change a villa to
+    /// land and back, and the inspector's building answers must still be there. The inspector's own
+    /// saves never pass through here — his form stays the judge of his package.
+    /// </remarks>
+    public static string KeepHiddenValuesOnStaffCorrection(string storedPayloadJson, string incomingPayloadJson)
+    {
+        JsonObject? stored;
+        JsonObject? incoming;
+        try
+        {
+            stored = JsonNode.Parse(storedPayloadJson) as JsonObject;
+            incoming = JsonNode.Parse(incomingPayloadJson) as JsonObject;
+        }
+        catch (JsonException)
+        {
+            return incomingPayloadJson;
+        }
+        if (stored is null || incoming is null) return incomingPayloadJson;
+
+        var hidden = HiddenFeatureKeysFor(
+            (incoming["featureValues"] as JsonObject)?["assetSubject"] is JsonValue subject
+            && subject.TryGetValue<string>(out var type)
+                ? type
+                : null);
+        if (hidden.Count == 0) return incomingPayloadJson;
+
+        var kept = KeepStoredEntries(stored, incoming, "featureValues", hidden)
+            | KeepStoredEntries(stored, incoming, "featurePhotoAttachments", hidden);
+        return kept ? incoming.ToJsonString() : incomingPayloadJson;
+    }
+
+    /// <summary>
+    /// Copies the stored entries of one payload section into the incoming one where the incoming entry
+    /// is missing, null or a blank string. Returns whether anything was copied.
+    /// </summary>
+    private static bool KeepStoredEntries(
+        JsonObject stored,
+        JsonObject incoming,
+        string section,
+        IReadOnlyList<string> keys)
+    {
+        if (stored[section] is not JsonObject storedSection) return false;
+        var kept = false;
+        foreach (var key in keys)
+        {
+            var storedValue = storedSection[key];
+            if (IsBlankNode(storedValue)) continue;
+            if (incoming[section] is not JsonObject incomingSection)
+            {
+                incomingSection = new JsonObject();
+                incoming[section] = incomingSection;
+            }
+            if (!IsBlankNode(incomingSection[key])) continue;
+            incomingSection[key] = storedValue!.DeepClone();
+            kept = true;
+        }
+        return kept;
+    }
+
+    private static bool IsBlankNode(JsonNode? node) =>
+        node is null
+        || (node is JsonValue value && value.TryGetValue<string>(out var text) && string.IsNullOrWhiteSpace(text));
+
     public static string Effective(string? initial, string? inspected) =>
         string.IsNullOrWhiteSpace(inspected)
             ? (initial ?? "").Trim()

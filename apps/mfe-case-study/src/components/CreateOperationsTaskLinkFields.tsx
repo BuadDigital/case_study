@@ -45,6 +45,7 @@ export function CreateTaskLinkScopeFields({
   deeds,
   multiDeedOptions,
   scopeLocked = false,
+  linkLocked = false,
 }: {
   form: Pick<CreateOperationsTaskForm, "scope" | "poNumber" | "deed" | "selectedDeeds">;
   dispatch: CreateTaskDispatch;
@@ -54,8 +55,23 @@ export function CreateTaskLinkScopeFields({
   multiDeedOptions: { deed: string; po: string }[];
   /** The type fixes the scope («رفع مساحي» is always one deed) — the scope choice is not shown. */
   scopeLocked?: boolean;
+  /**
+   * The link is fixed on the form's work order and deed (the task was opened from that deed's page):
+   * one read-only line instead of the scope, work-order and deed choices.
+   */
+  linkLocked?: boolean;
 }) {
   const { scope, poNumber, deed, selectedDeeds } = form;
+  if (linkLocked) {
+    return (
+      <div className={opsFldFull} data-testid="create-task-locked-link">
+        <span className={opsTfLblInFld}>مرتبطة بـ</span>
+        <div className={opsTfNote}>
+          أمر العمل <span dir="ltr">{poNumber}</span> · الصك <span dir="ltr">{deed}</span>
+        </div>
+      </div>
+    );
+  }
   return (
     <>
       {scopeLocked ? null : (

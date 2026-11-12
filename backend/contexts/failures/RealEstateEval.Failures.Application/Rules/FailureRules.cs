@@ -61,8 +61,19 @@ public static class FailureRules
             errors["propertyId"] = "معرّف العقار غير صالح";
         if (string.IsNullOrWhiteSpace(request.Specialist))
             errors["specialist"] = "اسم الأخصائي مطلوب";
+        // «أخرى» (Omar 2026-11-12) names nothing by itself: its reason is written at every degree.
+        if (IsOtherProblemType(request.ProblemTypeId) && string.IsNullOrWhiteSpace(request.InternalNote))
+            errors["internalNote"] = OtherReasonRequiredAr;
         return errors;
     }
+
+    /// <summary>The catalog's «أخرى» — a failure none of the listed types names.</summary>
+    public const string OtherProblemTypeId = "other";
+
+    public const string OtherReasonRequiredAr = "اكتب سبب التعذّر عند اختيار «أخرى»";
+
+    public static bool IsOtherProblemType(string? problemTypeId) =>
+        string.Equals(problemTypeId?.Trim(), OtherProblemTypeId, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Only "suspected" is taken from the caller; anything else is an internal failure.</summary>
     public static string NormalizeSeverity(string severity) =>

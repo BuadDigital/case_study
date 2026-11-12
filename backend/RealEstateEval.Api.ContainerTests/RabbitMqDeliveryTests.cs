@@ -27,7 +27,7 @@ public class RabbitMqDeliveryTests : IAsyncLifetime
         if (!DockerEnvironment.IsAvailable)
             return;
 
-        _container = new RabbitMqBuilder("rabbitmq:3.13-alpine")
+        _container = new RabbitMqBuilder("rabbitmq:3.13.7-management-alpine")
             .WithUsername("container-tests")
             .WithPassword("container-tests-password")
             .Build();

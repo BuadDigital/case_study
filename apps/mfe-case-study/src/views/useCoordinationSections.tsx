@@ -18,6 +18,7 @@ import { useStaffUsersQuery } from "@settings/mfe/query/settings-queries";
 import { CaseStudyAppraisalDeedsPanel } from "../components/case-study/CaseStudyAppraisalDeedsPanel";
 import { ExternalReceiptsSection } from "../components/coordination/ExternalReceiptsSection";
 import { LinkedTasksSection } from "../components/coordination/LinkedTasksSection";
+import { addedSurveysOfProperty } from "./operations-tasks-added-surveys";
 import { DistributionPartiesForm } from "../components/distribution/DistributionPartiesForm";
 import { RedistributePartiesHost } from "../components/distribution/RedistributePartiesHost";
 import { SkipEngineeringSurveyNote } from "../components/case-study/SkipEngineeringSurveyNote";
@@ -28,7 +29,11 @@ import {
   type CoordinationSectionId,
 } from "../lib/app-data/coordination-page-model";
 import { canManageOperationsTasks } from "../lib/app-data/operations-task-roles";
-import type { PoIntakeRecord, PoPropertyIntake } from "../lib/app-data/po-intake-data";
+import {
+  formatPropertyDeedDisplay,
+  type PoIntakeRecord,
+  type PoPropertyIntake,
+} from "../lib/app-data/po-intake-data";
 import {
   canEditPropertyData,
   canFormallyReceive,
@@ -131,6 +136,8 @@ export function useCoordinationSections({
       void queryClient.invalidateQueries({ queryKey });
     }
   }, [queryClient, record.poNumber]);
+  // «المهام المرتبطة» lists the office's survey added after the distribution too (Omar 2026-11-12).
+  const addedSurveys = useMemo(() => addedSurveysOfProperty(tasks, property.id), [tasks, property.id]);
   const intakeActive = step <= 2 && task?.status !== "cancelled";
   const sent = task?.transactionReceived === true;
 
@@ -225,6 +232,8 @@ export function useCoordinationSections({
           <LinkedTasksSection
             poNumber={record.poNumber}
             deedNumber={property.deedNumber}
+            deedLabel={formatPropertyDeedDisplay(property) || property.deedNumber}
+            addedSurveys={addedSurveys}
             canCreate={canManageOperationsTasks(access)}
           />
         );

@@ -140,6 +140,25 @@ public class PartyTaskSubmissionsController : ControllerBase
     }
 
     /// <summary>
+    /// Case staff correct the property type (with a reason) and / or «استخدام العقار» of a submitted
+    /// inspection — also after its acceptance, until review approves the study.
+    /// </summary>
+    [HttpPost("{taskId:guid}/inspected-type")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageWorkOrders)]
+    public async Task<ActionResult<PartyTaskSubmissionDto>> CorrectInspectedType(
+        Guid taskId,
+        [FromBody] CorrectInspectedTypeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var (result, errors) = await _submissions.CorrectInspectedTypeAsync(
+            taskId,
+            request,
+            await ResolveActorAsync(cancellationToken),
+            cancellationToken);
+        return ToActionResult(result, errors);
+    }
+
+    /// <summary>
     /// Specialist accepts a party package. The body is optional: an engineering-survey acceptance
     /// may carry a proposed discount (amount + reason) that sends the fee to the supervisor first.
     /// </summary>

@@ -6,7 +6,10 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@platform/ui-kit";
-import { hasInspectorOriginalMapPin } from "@platform/app-shared/app-data/inspector-workspace-data";
+import {
+  approvedInspectorPropertyDescription,
+  hasInspectorOriginalMapPin,
+} from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
   boundariesAvailabilityLabel,
   boundariesMarkedUnavailable,
@@ -114,11 +117,18 @@ export function PropertyDetailBasicTab({
     longitude: string;
   } | null>(null);
 
-  // No inspection task: no pin — cleared during render, before the effect would run.
+  // «وصف العقار» (Omar 2026-11-12): the inspector's own description once the specialist accepted the
+  // inspection (or one the case-study staff wrote) — the text the appraiser reads and the report
+  // prints. Empty until then: the strip shows no description, the system composes none.
+  const [inspectorDescription, setInspectorDescription] = useState("");
+
+  // No inspection task: no pin and no description — cleared during render, before the effect would run.
   const pinTaskId = inspectionTaskId?.trim() ?? "";
   const [pinFor, setPinFor] = useState(pinTaskId);
   if (pinFor !== pinTaskId) {
     setPinFor(pinTaskId);
+    // Another deed's description never shows while this deed's inspection loads.
+    setInspectorDescription("");
     if (!pinTaskId) setInspectorMapPin(null);
   }
 
@@ -128,6 +138,7 @@ export function PropertyDetailBasicTab({
     let cancelled = false;
     void loadInspectorWorkspaceSnapshot(taskId).then((draft) => {
       if (cancelled) return;
+      setInspectorDescription(approvedInspectorPropertyDescription(draft));
       if (!draft || !hasInspectorOriginalMapPin(draft)) {
         setInspectorMapPin(null);
         return;
@@ -174,6 +185,7 @@ export function PropertyDetailBasicTab({
       <PropertyDetailMediaGlance
         property={property}
         primaryPhoto={primaryPhoto}
+        inspectorDescription={inspectorDescription}
         latitude={inspectorMapPin?.latitude}
         longitude={inspectorMapPin?.longitude}
       />

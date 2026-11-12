@@ -1,4 +1,7 @@
-/** Seed catalog from docs/_failures_review_doc.html — six categories, eleven problem types. */
+/**
+ * Seed catalog from docs/_failures_review_doc.html — six categories, eleven problem types — plus
+ * «أخرى» (Omar 2026-11-12) for a failure none of them names.
+ */
 
 export type FailureTypeCategory = {
   id: string;
@@ -14,6 +17,13 @@ export type FailureProblemType = {
   order: number;
 };
 
+/**
+ * «أخرى» — the type (and its category) for a failure the list does not name. Its written reason is
+ * required at every degree (`failureReasonRequired`, and `FailureRules.ValidateCreate` on the
+ * server), since the type alone says nothing.
+ */
+export const OTHER_FAILURE_TYPE_ID = "other";
+
 export const FAILURE_TYPE_CATEGORIES: FailureTypeCategory[] = [
   { id: "deed-documents", label: "مشاكل الصك والوثائق", order: 1 },
   { id: "location", label: "مشاكل تحديد الموقع والحدود", order: 2 },
@@ -21,6 +31,7 @@ export const FAILURE_TYPE_CATEGORIES: FailureTypeCategory[] = [
   { id: "access", label: "مشاكل الدخول والتمكين", order: 4 },
   { id: "contents", label: "مشاكل محتوى العقار", order: 5 },
   { id: "parties", label: "مشاكل الأطراف والتعاون", order: 6 },
+  { id: OTHER_FAILURE_TYPE_ID, label: "أخرى", order: 7 },
 ];
 
 export const FAILURE_PROBLEM_TYPES: FailureProblemType[] = [
@@ -98,6 +109,13 @@ export const FAILURE_PROBLEM_TYPES: FailureProblemType[] = [
     label: "رفض توقيع إقرار صحة الموقع",
     description: "من أحد أطراف التنفيذ أو من ينوبهم",
     order: 11,
+  },
+  {
+    id: OTHER_FAILURE_TYPE_ID,
+    categoryId: OTHER_FAILURE_TYPE_ID,
+    label: "أخرى",
+    description: "تعذّر لا تذكره القائمة — اكتب سببه",
+    order: 12,
   },
 ];
 

@@ -21,16 +21,12 @@ import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { useShowAllEyeBlink } from "@platform/ui-kit";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
-import type { StaffUser } from "@platform/app-shared/app-data/constants";
-import {
-  useStaffUsersQuery,
-  useDistributionAssigneesQuery,
-} from "@settings/mfe/query/settings-queries";
 import { useDebouncedValue } from "@platform/app-shared/hooks/use-debounced-value";
 import { useTickingMinute } from "@platform/app-shared/hooks/use-ticking-now";
 import { useViewportDesktop } from "@platform/app-shared/hooks/use-viewport-desktop";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import { usePoRecordsQuery } from "../query/case-study-queries";
+import { useOperationsTaskStaff } from "../query/use-operations-task-staff";
 import { loadOperationsTasks } from "../lib/app-data/operations-tasks-reads";
 import {
   useOperationsTasksFilteredQuery,
@@ -75,20 +71,7 @@ export function useOperationsTasksData() {
   const prefillDeed = searchParams.get("deed")?.trim() || undefined;
 
   const { role, access, viewerUserId, viewerDisplayName } = useAppAccess();
-  const { data: staffResult, isPending: staffPending } = useStaffUsersQuery();
-  const { data: distResult, isPending: distPending } =
-    useDistributionAssigneesQuery();
-  const staffUsers = useMemo(() => {
-    const byId = new Map<string, StaffUser>();
-    for (const u of staffResult?.users ?? []) byId.set(u.id, u);
-    for (const u of distResult?.users ?? []) {
-      if (!byId.has(u.id)) byId.set(u.id, u);
-    }
-    return [...byId.values()];
-  }, [staffResult?.users, distResult?.users]);
-  const staffLoadError =
-    staffResult?.loadError ?? distResult?.loadError ?? null;
-  const staffLoading = staffPending || distPending;
+  const { staffUsers, staffLoadError, staffLoading } = useOperationsTaskStaff();
   const { data: poRecords = [] } = usePoRecordsQuery();
 
   const canCreate = canManageOperationsTasks(access);

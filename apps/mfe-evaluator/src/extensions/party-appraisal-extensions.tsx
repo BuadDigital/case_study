@@ -29,7 +29,6 @@ import { isEvaluatorFormLocked, loadEvaluatorSubmission,
 import { prefetchEvaluatorSubmissions } from "../lib/evaluator/evaluator-submission-reads";
 import type { EvaluatorWindowHostRefObject } from "../lib/evaluator/evaluator-window-host";
 
-/** Footer from Case Study.html `renderValOrders`. */
 const APPRAISER_TABLE_HINT = "راقب تقدم الأطراف من هنا. حساب القيمة يُفعَّل بعد اكتمال معاينة العقار — الأخصائي يعتمد تقرير التقييم لاحقاً داخل دراسة الحالة (أو يعيده للتصحيح).";
 
 export const partyAppraisalExtensions: PartyAppraisalExtensions = {

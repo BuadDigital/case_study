@@ -99,7 +99,6 @@ export {
   approximatePropertyMapSearchUrl,
   formatGeoDms,
   formatGeoDec,
-  buildPropertyDescriptionLine,
 } from "./po-intake-boundaries";
 
 export {

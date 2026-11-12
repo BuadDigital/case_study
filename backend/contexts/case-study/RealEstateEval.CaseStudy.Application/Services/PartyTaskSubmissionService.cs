@@ -225,12 +225,19 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
                     correctedType,
                     StringComparison.Ordinal))
             {
+                // The type never changes through the autosave: staff change it with a reason through
+                // CorrectInspectedTypeAsync (Omar 2026-11-12), the inspector by a return.
                 return (null, new Dictionary<string, string>
                 {
                     ["assetSubject"] =
-                        "نوع العقار الميداني يملكه المعاين؛ أعد المهمة للتصحيح",
+                        "نوع العقار يُعدَّل من «تعديل النوع والاستخدام» مع ذكر السبب، أو بإعادة المعاينة للمعاين",
                 });
             }
+
+            // The screens never send the answers the type hides (building rows on land, an apartment's
+            // facade): the inspector's stored ones stay, so a type changed back shows them again.
+            payloadJson = InspectedPropertyTypeRules.KeepHiddenValuesOnStaffCorrection(
+                entity.PayloadJson, payloadJson);
 
             // Keep package submitted while case staff corrects fields (map pin, etc.).
             payloadJson = PartyTaskSubmissionPayloadRules.SetPayloadStatus(
@@ -269,6 +276,8 @@ public partial class PartyTaskSubmissionService : IPartyTaskSubmissionService
 
             await _repo.SaveChangesAsync(cancellationToken);
             await RecordUsageNameAsync(correctedUsage, actor, cancellationToken);
+            // Photos the staff added to (or took back from) the sent inspection show on the timeline.
+            await RecordStaffPhotoChangeAsync(task, payloadBeforeSave, entity.PayloadJson, actor, now, cancellationToken);
             await AlertAppraiserInspectorDataChangedAsync(
             task, payloadBeforeSave, entity.PayloadJson, entity.AcceptedAtUtc is not null, cancellationToken);
             return (await ToDtoAsync(entity, cancellationToken), null);

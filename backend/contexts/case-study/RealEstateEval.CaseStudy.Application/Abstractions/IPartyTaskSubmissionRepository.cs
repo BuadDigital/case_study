@@ -30,6 +30,12 @@ public interface IPartyTaskSubmissionRepository
     Task<bool> IsTransactionReceivedAsync(Guid? propertyId, CancellationToken cancellationToken);
 
     /// <summary>
+    /// Whether review approved the study of the deed's transaction — the lock on the transaction's data
+    /// (<c>WorkOrderPropertyWriteRules.ReviewLockError</c>). No property / no transaction → false.
+    /// </summary>
+    Task<bool> IsTransactionReviewApprovedAsync(Guid? propertyId, CancellationToken cancellationToken);
+
+    /// <summary>
     /// Clears the receipt of the deed's transaction (tracked; saved with the next SaveChanges) — the study
     /// returned the inspection after the send (Omar 2026-11-08). Returns whether it changed.
     /// </summary>

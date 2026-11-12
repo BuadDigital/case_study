@@ -1,5 +1,6 @@
 import type { RoleId } from "@platform/types";
 import type { FailureSeverity } from "@platform/app-shared/failures/failures-types";
+import { OTHER_FAILURE_TYPE_ID } from "./failure-types-data";
 
 /**
  * The three degrees of a failure, in their ladder order (Omar 2026-11-11):
@@ -66,7 +67,13 @@ export function failureDegreesFor(
   return [...raiseSeveritiesForRole(role), ...final];
 }
 
-/** A reason is required for «تعذّر داخلي» and «تعذّر نهائي»; a possible failure may go without one. */
-export function failureReasonRequired(degree: FailureDegree): boolean {
-  return degree !== "suspected";
+/**
+ * Whether the raise must carry a written reason.
+ *
+ * How it works: «تعذّر داخلي» and «تعذّر نهائي» always need one; a possible failure may go without —
+ * unless its type is «أخرى» (Omar 2026-11-12), whose name says nothing about what happened.
+ * Edge cases: no type chosen yet → the degree alone decides.
+ */
+export function failureReasonRequired(degree: FailureDegree, problemTypeId = ""): boolean {
+  return degree !== "suspected" || problemTypeId === OTHER_FAILURE_TYPE_ID;
 }

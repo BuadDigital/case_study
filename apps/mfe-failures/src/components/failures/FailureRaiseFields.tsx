@@ -34,8 +34,8 @@ const labelClassName =
  * supervisor, possible only for everyone else); a host that also records the final failure passes
  * the three. Several degrees are option cards (`FailureChoiceCards`); a single one is a line of
  * text, there being nothing to choose. The dropdown groups the role's problem types under their
- * categories. The reason carries its required mark for «تعذّر داخلي» and «تعذّر نهائي»
- * (`failureReasonRequired`).
+ * categories. The reason carries its required mark for «تعذّر داخلي» and «تعذّر نهائي», and for the
+ * type «أخرى» at any degree (`failureReasonRequired`).
  *
  * Edge cases: every raise used to be recorded internal — the server accepted «تعذّر محتمل» but
  * no screen let anyone choose it; since 2026-11-11 the parties (inspector, engineering office,
@@ -168,7 +168,7 @@ export function FailureRaiseFields<D extends FailureDegree = FailureSeverity>({
           <FailureReasonField
             id={`${idPrefix}_reason`}
             label="سبب التعذّر"
-            required={failureReasonRequired(degree)}
+            required={failureReasonRequired(degree, problemTypeId)}
             value={reason}
             onChange={onReasonChange}
             error={reasonError}

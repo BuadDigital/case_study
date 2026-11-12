@@ -78,7 +78,25 @@ export type CreateOperationsTaskPrefill = {
   poNumber?: string;
   deed?: string;
   title?: string;
+  /**
+   * The task is created from a deed's own page (the coordinator's «إنشاء مهمة مرتبطة», Omar
+   * 2026-11-12): the link is that work order and that deed, shown as a line and not offered as a choice.
+   */
+  linkLocked?: boolean;
 };
+
+/**
+ * Whether the form's link is fixed on the prefill's deed.
+ *
+ * How it works: asked for by `linkLocked`, and only with both the work order and the deed named.
+ * Edge cases: a lock with no deed or no work order is ignored — the form then offers its usual choice
+ * instead of a link nobody can complete.
+ */
+export function createTaskLinkLocked(
+  prefill: CreateOperationsTaskPrefill | null | undefined,
+): boolean {
+  return Boolean(prefill?.linkLocked && prefill.poNumber?.trim() && prefill.deed?.trim());
+}
 
 export function toLocalDateValue(d: Date): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -98,6 +116,7 @@ export function createTaskPrefillKey(
     prefill?.poNumber,
     prefill?.deed,
     prefill?.title,
+    prefill?.linkLocked,
   ]);
 }
 
@@ -303,9 +322,11 @@ export function initialCreateOperationsTaskForm(
   const deed = prefill?.deed?.trim() || "";
   return {
     type,
-    // The survey is always on one deed.
+    // The survey is always on one deed, and so is a task whose link is fixed on a deed.
     scope:
-      type === ENGINEERING_SURVEY_TASK_TYPE ? "transaction" : prefill?.scope?.trim() || "work_order",
+      type === ENGINEERING_SURVEY_TASK_TYPE || createTaskLinkLocked(prefill)
+        ? "transaction"
+        : prefill?.scope?.trim() || "work_order",
     title: prefill?.title?.trim() || DEFAULT_TITLES[type] || "مهمة",
     description: "",
     priority: "medium",

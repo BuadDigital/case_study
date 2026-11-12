@@ -8,6 +8,9 @@ import { SpecialistValuationReportInputs } from "../po-intake/SpecialistValuatio
 import { ReturnInspectionDialog } from "../po-intake/ReturnInspectionDialog";
 import { returnInspectionSuccessMessage } from "../../lib/app-data/return-inspection-state";
 import { CaseStudyDeedNatureMatchReview } from "./CaseStudyDeedNatureMatchReview";
+import { InspectedTypeCorrection } from "./InspectedTypeCorrection";
+import { reviewLockOf } from "../../lib/app-data/work-page-model";
+import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
 import { PropertyDetailInspectionTab } from "../po-intake/PropertyDetailInspectionTab";
 import { EmptyState } from "../po-intake/PropertyDetailFields";
 import { findPropertyForTask } from "../../lib/app-data/my-task-row";
@@ -93,6 +96,7 @@ export function CaseStudyAppraisalPanel({
   const [inspectionPackageStatus, setInspectionPackageStatus] =
     useState<InspectorWorkspaceStatus | null>(null);
   const [inspectionAssetSubject, setInspectionAssetSubject] = useState("");
+  const [inspectionUsage, setInspectionUsage] = useState("");
   const [inspectionSnapshotLoaded, setInspectionSnapshotLoaded] =
     useState(false);
   const [inspectionSnapshotTaskId, setInspectionSnapshotTaskId] = useState<
@@ -153,6 +157,7 @@ export function CaseStudyAppraisalPanel({
           setInspectionSnapshotTaskId(inspectionTask.id);
           setInspectionPackageStatus(draft?.status ?? null);
           setInspectionAssetSubject(draft?.featureValues.assetSubject ?? "");
+          setInspectionUsage(draft?.featureValues.propertyUsage ?? "");
           setInspectionSnapshotLoaded(true);
           setInspectionAccepted(isInspectorWorkspaceAccepted(draft));
         })
@@ -161,6 +166,7 @@ export function CaseStudyAppraisalPanel({
           setInspectionSnapshotTaskId(inspectionTask.id);
           setInspectionPackageStatus(null);
           setInspectionAssetSubject("");
+          setInspectionUsage("");
           setInspectionSnapshotLoaded(false);
           setInspectionAccepted(false);
           showToast(
@@ -328,14 +334,23 @@ export function CaseStudyAppraisalPanel({
           />
         ) : null}
 
-        {currentInspectionPackageStatus === "submitted" &&
-        currentInspectionAssetSubject.trim() &&
-        currentInspectionAssetSubject.trim() !==
-          property.propertyType?.trim() ? (
-          <div className="mb-3 rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2 text-sm text-amber-text">
-            النوع المبدئي: {property.propertyType || "—"} · النوع المعتمد
-            ميدانياً: {currentInspectionAssetSubject.trim()}
-          </div>
+        {/* Omar 2026-11-12: the type and the usage the inspection states, with their correction for
+            case staff — on every page of the review, also after the acceptance (the study), until
+            review approves the study. */}
+        {inspectionTask && currentInspectionPackageStatus === "submitted" ? (
+          <InspectedTypeCorrection
+            inspectionTaskId={inspectionTask.id}
+            currentType={currentInspectionAssetSubject}
+            currentUsage={inspectionSnapshotIsCurrent ? inspectionUsage : ""}
+            bourseType={property.propertyType ?? ""}
+            // The lock of every other property field: review approved the study, or the report
+            // is approved / deposited (the server also refuses a transaction delivered to Enfaz).
+            canCorrect={
+              mayAccept &&
+              reviewLockOf(caseStudyTask, getReportDraftState(property.id)) === null
+            }
+            onCorrected={() => setInspectionReloadKey((n) => n + 1)}
+          />
         ) : null}
 
         {/* Omar 2026-11-08: the inspector's photos are classed in his section (the Enfaz photo files are

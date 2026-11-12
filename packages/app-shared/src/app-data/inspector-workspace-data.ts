@@ -73,6 +73,12 @@ export type InspectorFreePhoto = {
   mimeType: string;
   /** Who added this general property photo — defaults to inspector for legacy rows. */
   uploadedBy?: InspectorFreePhotoUploader;
+  /**
+   * The case-staff member who added it and when (ISO) — set on photos added from the work page's
+   * «صور التقرير» (Omar 2026-11-12), so a photo that is not the inspector's always says whose it is.
+   */
+  uploadedByName?: string;
+  uploadedAtUtc?: string;
   attachmentId?: string;
   sizeBytes?: number;
   locationFlag?: string | null;

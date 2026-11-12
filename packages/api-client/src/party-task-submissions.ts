@@ -382,6 +382,38 @@ export async function acceptPartyTaskSubmission(
   }
 }
 
+/**
+ * Case staff's correction of a submitted inspection's property type and / or «استخدام العقار».
+ * A field left out is not changed; a new type needs `reason` (10 characters or more).
+ */
+export type CorrectInspectedTypeRequest = {
+  propertyType?: string;
+  propertyUsage?: string;
+  reason?: string;
+};
+
+/** POST `.../inspected-type` — field errors come back under `propertyType`, `propertyUsage`, `reason`. */
+export async function correctInspectedType(
+  config: WorkOrdersApiConfig,
+  taskId: string,
+  body: CorrectInspectedTypeRequest,
+): Promise<
+  | ApiOk<PartyTaskSubmissionDto>
+  | (ApiErr & { errors?: Record<string, string> })
+> {
+  const base = config.baseUrl ?? getApiBase();
+  try {
+    const res = await fetch(`${base}/api/party-task-submissions/${taskId}/inspected-type`, {
+      method: "POST",
+      headers: authHeaders(config.token),
+      body: JSON.stringify(body),
+    });
+    return await readSubmissionWrite(res);
+  } catch {
+    return { ok: false, kind: "network" };
+  }
+}
+
 export async function listPartyTaskSubmissions(
   config: WorkOrdersApiConfig,
   workflowTaskIds: string[],

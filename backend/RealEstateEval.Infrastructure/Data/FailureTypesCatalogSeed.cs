@@ -15,7 +15,8 @@ public static class FailureTypesCatalogSeed
             { "id": "ownership", "label": "مشاكل الملكية والحدود المساحية", "order": 3 },
             { "id": "access", "label": "مشاكل الدخول والتمكين", "order": 4 },
             { "id": "contents", "label": "مشاكل محتوى العقار", "order": 5 },
-            { "id": "parties", "label": "مشاكل الأطراف والتعاون", "order": 6 }
+            { "id": "parties", "label": "مشاكل الأطراف والتعاون", "order": 6 },
+            { "id": "other", "label": "أخرى", "order": 7 }
           ],
           "problemTypes": [
             { "id": "deed-suspended", "categoryId": "deed-documents", "label": "الصك موقوف", "order": 1 },
@@ -28,7 +29,8 @@ public static class FailureTypesCatalogSeed
             { "id": "access-denied", "categoryId": "access", "label": "عدم تمكين دخول العقار", "description": "رفض دخول أو سكان بدون محظر تمكين أو عقد إيجار", "order": 8 },
             { "id": "movables-present", "categoryId": "contents", "label": "وجود منقولات في العقار", "description": "منقولات ذات قيمة أو مركبات", "order": 9 },
             { "id": "party-uncooperative", "categoryId": "parties", "label": "عدم تعاون أحد أطراف التنفيذ", "description": "عدم الرد، المماطلة، أو التهرب", "order": 10 },
-            { "id": "location-declaration-refused", "categoryId": "parties", "label": "رفض توقيع إقرار صحة الموقع", "description": "من أحد أطراف التنفيذ أو من ينوبهم", "order": 11 }
+            { "id": "location-declaration-refused", "categoryId": "parties", "label": "رفض توقيع إقرار صحة الموقع", "description": "من أحد أطراف التنفيذ أو من ينوبهم", "order": 11 },
+            { "id": "other", "categoryId": "other", "label": "أخرى", "description": "تعذّر لا تذكره القائمة — اكتب سببه", "order": 12 }
           ]
         }
         """;

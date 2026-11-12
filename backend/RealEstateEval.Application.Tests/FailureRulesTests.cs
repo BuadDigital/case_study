@@ -78,6 +78,30 @@ public class FailureRulesTests
         }));
     }
 
+    // Omar 2026-11-12: «أخرى» says nothing by its name, so the raise must say what happened.
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Create_of_the_other_type_requires_a_written_reason(string? note)
+    {
+        CreateFailureRequest Request(string typeId, string? internalNote) => new()
+        {
+            PoNumber = "PO-1",
+            PropertyId = Guid.NewGuid().ToString(),
+            Specialist = "سالم",
+            ProblemTypeId = typeId,
+            InternalNote = internalNote,
+        };
+
+        Assert.Equal(
+            FailureRules.OtherReasonRequiredAr,
+            FailureRules.ValidateCreate(Request(" Other ", note))["internalNote"]);
+        Assert.Empty(FailureRules.ValidateCreate(Request("other", "الحارس منع التصوير")));
+        // Every other type may still go without a reason.
+        Assert.Empty(FailureRules.ValidateCreate(Request("deed-suspended", note)));
+    }
+
     [Theory]
     [InlineData("suspected", PropertyFailureSeverity.Suspected)]
     [InlineData("  SUSPECTED ", PropertyFailureSeverity.Suspected)]

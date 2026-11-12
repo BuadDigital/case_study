@@ -111,6 +111,17 @@ public class SavePartyTaskSubmissionRequest
     public JsonElement Payload { get; set; }
 }
 
+/// <summary>
+/// Case staff correct the property type and / or «استخدام العقار» of a submitted inspection (Omar
+/// 2026-11-12). A field left null or blank is not changed; a new type needs <see cref="Reason"/>.
+/// </summary>
+public class CorrectInspectedTypeRequest
+{
+    public string? PropertyType { get; set; }
+    public string? PropertyUsage { get; set; }
+    public string? Reason { get; set; }
+}
+
 public class ReopenPartyTaskSubmissionRequest
 {
     public string ReturnNote { get; set; } = "";

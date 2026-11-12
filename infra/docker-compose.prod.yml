@@ -64,7 +64,7 @@ x-logging: &default-logging
 
 services:
   postgres:
-    image: postgres:17.5-alpine
+    image: postgres:17.11-alpine
     container_name: ree-prod-postgres
     restart: always
     logging: *default-logging
@@ -99,7 +99,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7.4.2-alpine
+    image: redis:7.4.12-alpine
     container_name: ree-prod-redis
     restart: always
     logging: *default-logging

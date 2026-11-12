@@ -78,6 +78,17 @@ public interface IPartyTaskSubmissionService
         AcceptPartyTaskSubmissionRequest? request = null);
 
  /// <summary>
+ /// Case staff correct the property type and / or «استخدام العقار» of a submitted inspection (Omar
+ /// 2026-11-12) — also after its acceptance, until review approves the study. A new type needs a
+ /// reason and follows the same survey rule as the inspector's own change.
+ /// </summary>
+    Task<(PartyTaskSubmissionDto? Result, Dictionary<string, string>? Errors)> CorrectInspectedTypeAsync(
+        Guid taskId,
+        CorrectInspectedTypeRequest request,
+        PartySubmissionActor actor,
+        CancellationToken cancellationToken = default);
+
+ /// <summary>
  /// Approved appraiser recall: reopens the appraisal package for the deciding specialist.
  /// Idempotent — a package that is not submitted is a no-op (valuation retries safely).
  /// </summary>

@@ -71,4 +71,10 @@ describe("failure category role visibility — full matrix", () => {
       expect(canRoleSeeFailureCategory(role, "parties")).toBe(false);
     },
   );
+
+  it("offers «أخرى» to every role", () => {
+    const roles: RoleId[] = [...DEED_OWNERSHIP_ONLY, "field-inspector", "engineering-office", "case-specialist"];
+    for (const role of roles) expect(canRoleSeeFailureCategory(role, "other")).toBe(true);
+    expect(ALL_CATEGORY_IDS).toContain("other");
+  });
 });
