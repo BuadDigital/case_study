@@ -6,9 +6,6 @@ namespace RealEstateEval.Valuation.Application.Services;
 
 public sealed partial class ValuationComparableSelectionService
 {
-    public const string OneLandTableCopyAr =
-        "أرض العقار لها جدول واحد في أسلوب السوق وأسلوب التكلفة — لا شيء يُنسخ";
-
     private readonly Dictionary<Guid, bool> _landValuedOnce = [];
 
     /// <summary>
@@ -17,7 +14,8 @@ public sealed partial class ValuationComparableSelectionService
     /// قمت بتقييمها لوحدها أو كجزء من طريقة التكلفة، التسويات واحدة — الأرض هي الأرض وقيمتها ثابتة»):
     /// when the subject is valued as land, the market table IS that valuation, and «تقدير قيمة الأرض
     /// فضاءً» inside the cost approach is the same rows — the same comparables, adjustments, weights
-    /// and factor rationales. Nothing is copied and the two can never differ.
+    /// and factor rationales. Nothing is copied and the two can never differ (the copy between the
+    /// two tables, 2026-11-11, was removed the next day: «الغي»).
     ///
     /// How it works: for such a subject the land_within_cost context answers with the market table,
     /// on every read and every write. So the cost approach, the reconciliation, the hand-over checks

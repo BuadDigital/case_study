@@ -23,7 +23,6 @@ import {
   nextSubjectSpecs,
   savedLines,
   withAdoptionFlag,
-  landCopyState,
   withFactorIncluded,
   withoutComparable,
 } from "../market-commands-state";
@@ -155,66 +154,6 @@ describe("withAdoptionFlag", () => {
 
   it("never drives the count below zero", () => {
     expect(withAdoptionFlag(list([item("a", [])], 0), "comp-a", false).adoptedCount).toBe(0);
-  });
-});
-
-// Ruling 2026-11-11: the land valuation by comparable sales is copied between the two tables.
-describe("landCopyState", () => {
-  const into = (over: Partial<Parameters<typeof landCopyState>[0]>) =>
-    landCopyState({
-      target: "market",
-      marketKind: "land",
-      targetRowCount: 0,
-      sourceAdoptedCount: 3,
-      sourceAdoptedLandCount: 3,
-      ...over,
-    });
-
-  it("copies into an empty market table that values land, by itself", () => {
-    expect(into({})).toEqual({ available: true, automatic: true, sourceCount: 3 });
-  });
-
-  it("is offered, never automatic, once the target holds comparables", () => {
-    expect(into({ targetRowCount: 2 })).toMatchObject({ available: true, automatic: false });
-  });
-
-  it("does not concern a market table that values a building", () => {
-    expect(into({ marketKind: "building" })).toMatchObject({ available: false, automatic: false });
-    expect(into({ marketKind: "unit" }).available).toBe(false);
-  });
-
-  it("has nothing to offer when the other table adopted nothing", () => {
-    expect(into({ sourceAdoptedCount: 0, sourceAdoptedLandCount: 0 }).available).toBe(false);
-  });
-
-  it("copies nothing between a building's table and the land table (Omar 2026-11-12)", () => {
-    // A market table valuing a villa: its adjustments are against a building — not offered, even
-    // for the lands adopted in it.
-    for (const marketKind of ["building", "unit"]) {
-      expect(
-        into({ target: "land", marketKind, sourceAdoptedCount: 4, sourceAdoptedLandCount: 2 }),
-      ).toMatchObject({ available: false, automatic: false });
-    }
-  });
-
-  it("copies nothing when the land has one table for both approaches (Omar 2026-11-12)", () => {
-    // The two lists are the same rows: a copy would write the table onto itself.
-    expect(into({ oneLandTable: true })).toMatchObject({ available: false, automatic: false });
-    expect(into({ target: "land", oneLandTable: true })).toMatchObject({
-      available: false,
-      automatic: false,
-    });
-  });
-
-  it("takes only the land of a land-valuing market table into the land table", () => {
-    expect(into({ target: "land", sourceAdoptedCount: 4, sourceAdoptedLandCount: 2 })).toEqual({
-      available: true,
-      // Built comparables among the adopted ones: offered, not automatic.
-      automatic: false,
-      sourceCount: 2,
-    });
-    expect(into({ target: "land", sourceAdoptedCount: 2, sourceAdoptedLandCount: 2 }).automatic).toBe(true);
-    expect(into({ target: "land", sourceAdoptedCount: 2, sourceAdoptedLandCount: 0 }).available).toBe(false);
   });
 });
 

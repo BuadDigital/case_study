@@ -575,30 +575,6 @@ public class ReplaceValuationComparableSelectionsRequest
     public IReadOnlyList<ValuationComparableSelectionItemRequest> Items { get; init; } = [];
 }
 
-/// <summary>Copy the land valuation by comparable sales from one table of the valuation to the other.</summary>
-public class CopyValuationComparableTableRequest
-{
-    /// <summary>market | land_within_cost — the table copied from.</summary>
-    public string? FromContext { get; init; }
-
-    /// <summary>market | land_within_cost — the table copied into.</summary>
-    public string? ToContext { get; init; }
-
-    /// <summary>The target already holds comparables and the appraiser confirmed replacing them.</summary>
-    public bool Replace { get; init; }
-}
-
-public class CopyValuationComparableTableResultDto
-{
-    /// <summary>The target table after the copy.</summary>
-    public ValuationComparableSelectionListDto Target { get; init; } = null!;
-
-    public int CopiedCount { get; init; }
-
-    /// <summary>Built comparables left out of a copy into the land table.</summary>
-    public int SkippedBuiltCount { get; init; }
-}
-
 public class SaveValuationComparableAdjustmentLineRequest
 {
     public Guid? Id { get; init; }

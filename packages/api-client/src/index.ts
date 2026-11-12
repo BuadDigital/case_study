@@ -680,8 +680,6 @@ export {
   listValuationComparableSelections,
   setValuationComparableAdopted,
   removeValuationComparable,
-  copyValuationComparableTable,
-  type CopyValuationComparableTableResult,
   saveValuationComparableMarket,
   saveAdjustmentFactorRationale,
   type ValuationAdjustmentFactorRationaleDto,

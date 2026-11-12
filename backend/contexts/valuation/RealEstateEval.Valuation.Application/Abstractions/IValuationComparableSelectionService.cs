@@ -31,16 +31,6 @@ public interface IValuationComparableSelectionService
         CancellationToken cancellationToken = default,
         string? selectionContext = null);
 
-    /// <summary>
-    /// Copies the land valuation by comparable sales (adopted comparables, adjustments, weights,
-    /// rationales, overrides) from one table of the valuation to the other.
-    /// </summary>
-    Task<(CopyValuationComparableTableResultDto? Result, Dictionary<string, string>? Errors)> CopyTableAsync(
-        Guid valuationRequestId,
-        CopyValuationComparableTableRequest request,
-        string selectedByUserId,
-        CancellationToken cancellationToken = default);
-
     Task<(bool Ok, string? Error)> RemoveAsync(
         Guid valuationRequestId,
         Guid comparablePropertyId,
