@@ -19,6 +19,9 @@
 //  • The read-time import and the demo clean-up ask the full write lock (hand-over / review included).
 //  • The market value is rounded by ValueRoundDecimals, except on a request deposited / done before the
 //         rounding (MarketValueUnrounded flag); a later deposit keeps the rounded value.
+// One land table (2026-11-12)
+//  • A subject valued as land has one table: land_within_cost reads and writes the market table's
+//         rows (TableOfAsync, ValuationComparableSelectionService.OneLandTable.cs).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Application;
@@ -43,7 +46,8 @@ public sealed partial class ValuationComparableSelectionService(
     IValuationComparableSelectionRepository repo,
     IValuationReportFreezeGate freeze,
     IOrganizationSettingsService organizationSettings,
-    TimeProvider? time = null)
+    TimeProvider? time = null,
+    ICaseStudyLookup? caseStudy = null)
     : IValuationComparableSelectionService
 {
     private readonly TimeProvider _time = time ?? TimeProvider.System;
@@ -73,7 +77,9 @@ public sealed partial class ValuationComparableSelectionService(
             await ImportPropertyLinkedComparablesAsync(request, mayWrite, cancellationToken);
         }
 
-        var rows = await repo.ListSelectionsAsync(valuationRequestId, context, cancellationToken);
+        // The land of a subject valued as land is the market table's rows (TableOfAsync).
+        var table = await TableOfAsync(request, context, cancellationToken);
+        var rows = await repo.ListSelectionsAsync(valuationRequestId, table, cancellationToken);
 
         var compIds = rows.Select(r => r.ComparablePropertyId).Distinct().ToList();
         var comps = await repo.GetComparablesAsync(compIds, cancellationToken);
@@ -81,12 +87,13 @@ public sealed partial class ValuationComparableSelectionService(
         var (valuationDate, cutoff) = await ValuationDatesAsync(valuationRequestId, cancellationToken);
         var header = await repo.GetMarketApproachAsync(valuationRequestId, cancellationToken);
         var factorRationales = await repo.ListFactorRationalesAsync(
-            valuationRequestId, context, cancellationToken);
+            valuationRequestId, table, cancellationToken);
         return ValuationComparableListBuilder.BuildList(
             request, rows, comps, valuationDate, header, context, factorRationales, cutoff,
             await CostLandAreasAsync(valuationRequestId, context, cancellationToken),
             roundOpinionValue: context == ComparableSelectionContexts.Market
-                && !await HandedOverValueIsFixedAsync(request, header, cancellationToken));
+                && !await HandedOverValueIsFixedAsync(request, header, cancellationToken),
+            landSharedWithMarket: table != context);
     }
 
     /// <summary>
@@ -186,7 +193,7 @@ public sealed partial class ValuationComparableSelectionService(
             ids, activeComps.ToHashSet());
         if (errors.Count > 0) return (null, errors);
 
-        var context = ComparableSelectionContexts.Normalize(request.SelectionContext);
+        var context = await TableOfAsync(vr, request.SelectionContext, cancellationToken);
         var existing = await repo.FindSelectionsAsync(
             valuationRequestId, context, cancellationToken);
         // A comparable that stays in the list keeps its row — saved adjustments, manual weight
@@ -252,7 +259,12 @@ public sealed partial class ValuationComparableSelectionService(
 
         await EnsureMarketApproachHeaderAsync(valuationRequestId, cancellationToken);
         await repo.SaveChangesAsync(cancellationToken);
-        return (await ListAsync(valuationRequestId, context, cancellationToken), null);
+        return (
+            await ListAsync(
+                valuationRequestId,
+                ComparableSelectionContexts.Normalize(request.SelectionContext),
+                cancellationToken),
+            null);
     }
 
     public async Task<(ValuationComparableSelectionDto? Result, string? Error)> SetAdoptedAsync(
@@ -271,7 +283,7 @@ public sealed partial class ValuationComparableSelectionService(
         if (ValuationComparableSelectionRequestRules.SelectionContextError(selectionContext) is { } contextError)
             return (null, contextError);
 
-        var context = ComparableSelectionContexts.Normalize(selectionContext);
+        var context = await TableOfAsync(vr, selectionContext, cancellationToken);
         var row = await repo.FindSelectionByComparableAsync(
             valuationRequestId, comparablePropertyId, context, includeLines: true, cancellationToken);
 
@@ -335,7 +347,7 @@ public sealed partial class ValuationComparableSelectionService(
         if (ValuationComparableSelectionRequestRules.SelectionContextError(selectionContext) is { } contextError)
             return (false, contextError);
 
-        var context = ComparableSelectionContexts.Normalize(selectionContext);
+        var context = await TableOfAsync(vr, selectionContext, cancellationToken);
         var row = await repo.FindSelectionByComparableAsync(
             valuationRequestId, comparablePropertyId, context, includeLines: false, cancellationToken);
         if (row is null) return (false, "المقارن غير مختار");

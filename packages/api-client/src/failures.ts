@@ -218,6 +218,31 @@ export async function recordFinalFailure(
   return postFailureAction<FailureRecordDto[]>(config, "/api/failures/final", request);
 }
 
+export type RevertFinalFailureRequest = {
+  poNumber: string;
+  propertyId: string;
+  /** Why the transaction came back — required. */
+  reason: string;
+};
+
+/**
+ * «الرجوع من التعذّر النهائي» — Enfaz took the transaction back: every live deed of the transaction
+ * leaves the final failure and its tasks reopen; answers the closed failures.
+ *
+ * How it works: `POST /api/failures/final/revert` with the request as JSON.
+ * Edge cases: a 400 carries `reason` when blank and `propertyId` when the transaction is not
+ * final; a 403 carries the server's text — only the coordination sub-role may do it.
+ */
+export async function revertFinalFailure(
+  config: FailuresApiConfig,
+  request: RevertFinalFailureRequest,
+): Promise<
+  | ApiOk<FailureRecordDto[]>
+  | (ApiErr & { errors?: Record<string, string> })
+> {
+  return postFailureAction<FailureRecordDto[]>(config, "/api/failures/final/revert", request);
+}
+
 export async function createFailure(
   config: FailuresApiConfig,
   request: CreateFailureRequest,

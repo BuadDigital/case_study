@@ -186,7 +186,7 @@ export function InspectorWizardLocationStep({
               onOutsideChange={setCoordsOutside}
               onCoords={(lat, lng) => onPatch(mapPinPatchForActor(draft, lat, lng, mapActor))}
             />
-          ) : (
+          ) : editable ? (
             <InsReadField
               id="ins-map-coords"
               label="الإحداثيات"
@@ -194,7 +194,7 @@ export function InspectorWizardLocationStep({
               ltr
               className="min-w-[240px] flex-1"
             />
-          )}
+          ) : null}
           {editable && !mapPinned ? (
             <button
               type="button"
@@ -262,6 +262,11 @@ export function InspectorWizardLocationStep({
         ) : null}
         <div className="mt-3">
           <InsFieldsGrid min={150}>
+            {/* Read view (Omar 2026-11-12): the coordinates sit with the date and the time on one
+                row, instead of a row of their own above them. */}
+            {editable ? null : (
+              <InsReadField id="ins-map-coords" label="الإحداثيات" value={coordsValue} ltr />
+            )}
             <InsEditField
               id="ins-date"
               label="تاريخ المعاينة"

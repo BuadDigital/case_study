@@ -79,7 +79,8 @@ public static class ValuationComparableListBuilder
         IReadOnlyList<ValuationAdjustmentFactorRationale> factorRationales,
         DateOnly? hardComparableDateCutoff = null,
         CostLandAreas? costLand = null,
-        bool roundOpinionValue = true)
+        bool roundOpinionValue = true,
+        bool landSharedWithMarket = false)
     {
         var adoptedRows = rows.Where(r => r.IsAdopted).ToList();
         // The land table compares each land comparable with the whole building plot saved on
@@ -97,7 +98,15 @@ public static class ValuationComparableListBuilder
         var valueArea = isLandTable
             ? CostApproachRules.LandTableValueAreaSqm(subjectArea, costLand?.ApartmentShareSqm)
             : subjectArea;
-        var subjectAreaForSuggestion = subjectArea ?? 0m;
+        // One land table (2026-11-12): what the two approaches share is the comparison itself — the
+        // same rows must give the same adjustments, adjusted amounts and weights in both. So the land
+        // view of a shared table compares exactly as the market table does: against the market
+        // header's area and on its basis. The plot the cost approach holds only multiplies the
+        // result (valueArea) — that approach's own next step, like the market value's rounding.
+        // Caught the same day: the land view compared against the cost approach's plot and always
+        // per m², so the area adjustment — and the rate — could differ from the market table's.
+        var comparesAsMarket = !isLandTable || landSharedWithMarket;
+        var subjectAreaForSuggestion = (comparesAsMarket ? header?.SubjectAreaSqm : subjectArea) ?? 0m;
         var areaFactor = header?.AreaFactorPct > 0
             ? header.AreaFactorPct
             : AreaAdjustmentRules.DefaultAreaFactorPct;
@@ -111,7 +120,7 @@ public static class ValuationComparableListBuilder
                 .Select(r => EffectiveCompValues(r, comps[r.ComparablePropertyId]).Area));
         var basis = EffectiveBasis(
             header?.AdjustmentBasis ?? MarketAdjustmentBasisKeys.DefaultFor(request.PropertyType, null),
-            selectionContext);
+            comparesAsMarket ? ComparableSelectionContexts.Market : selectionContext);
 
         // Automatic weights from the GROSS adjustment (sequential + difference, absolute),
         // with no automatic weight for a comparable whose adjusted rate is an outlier against the
@@ -201,10 +210,19 @@ public static class ValuationComparableListBuilder
             ?? MarketApproachRules.DefaultValueRoundDecimals;
  // : whole-property basis yields the opinion directly — "without multiplying by area".
         // On the land table the rate multiplies the apartment's share, not the whole plot.
-        var opinionRaw = basis == MarketAdjustmentBasisKeys.WholeProperty
+        // The land table's value is always a rate per m² × its area, also when a shared table is
+        // compared on whole prices: the rate is then the one the cost approach reads.
+        var wholeBasis = basis == MarketAdjustmentBasisKeys.WholeProperty;
+        var landRate = isLandTable && wholeBasis
+            ? CostApproachRules.LandUnitRateFromAdoptedComps(
+                items.Where(i => i.IsAdopted && i.Market is not null)
+                    .Select(i => (i.Market!.PricePerSqmAfterDifference, i.EffectiveAreaSqm, i.Market.EffectiveWeightPct)),
+                basis)
+            : weighted;
+        var opinionRaw = wholeBasis && !isLandTable
             ? weighted
             : valueArea is > 0m
-                ? MarketOpinionRules.ComputeOpinionValue(weighted, valueArea.Value)
+                ? MarketOpinionRules.ComputeOpinionValue(landRate, valueArea.Value)
                 : 0m;
         var opinion = RoundedOpinion(opinionRaw, roundDecimals, isLandTable, roundOpinionValue);
 
@@ -213,6 +231,7 @@ public static class ValuationComparableListBuilder
             ValuationRequestId = request.Id,
             PropertyId = request.PropertyId.ToString("D"),
             SelectionContext = ComparableSelectionContexts.Normalize(selectionContext),
+            LandSharedWithMarket = landSharedWithMarket,
             AdoptedCount = adoptedRows.Count,
             MeetsMinimumAdoptedGate = ValuationComparableSelectionRules.MeetsMinimumAdopted(
                 rows.Select(r => r.IsAdopted)),
@@ -235,7 +254,8 @@ public static class ValuationComparableListBuilder
             FactorRationales = factorRationales
                 .Select(r => new ValuationAdjustmentFactorRationaleDto
                 {
-                    SelectionContext = r.SelectionContext,
+                    // The table asked for: a land table read from the market rows says «land».
+                    SelectionContext = ComparableSelectionContexts.Normalize(selectionContext),
                     FactorKey = r.FactorKey,
                     RationaleAr = r.RationaleAr,
                 })
@@ -265,7 +285,8 @@ public static class ValuationComparableListBuilder
 
     /// <summary>
     /// The land table inside the cost approach is always per m², whatever basis the market
-    /// table uses (the header is shared by both tables).
+    /// table uses (the header is shared by both tables). A land table that IS the market table
+    /// (a subject valued as land, 2026-11-12) is asked as the market context and keeps its basis.
     /// </summary>
     public static string EffectiveBasis(string? headerBasis, string? selectionContext) =>
         ComparableSelectionContexts.Normalize(selectionContext) == ComparableSelectionContexts.LandWithinCost

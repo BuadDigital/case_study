@@ -92,6 +92,11 @@ public class ValuationComparableSelectionListDto
     public string PropertyId { get; init; } = "";
     /// <summary>market | land_within_cost</summary>
     public string SelectionContext { get; init; } = "market";
+    /// <summary>
+    /// Land table only: true when the subject is valued as land, so this table is the market
+    /// table's own rows — one valuation of the land for both approaches (2026-11-12).
+    /// </summary>
+    public bool LandSharedWithMarket { get; init; }
     public int AdoptedCount { get; init; }
  /// <summary>helper — true when ≥1 adopted (issuance gate wired later).</summary>
     public bool MeetsMinimumAdoptedGate { get; init; }

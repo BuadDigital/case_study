@@ -9,6 +9,7 @@ import {
   recordFinalFailure as apiRecordFinalFailure,
   resolveFailure as apiResolveFailure,
   returnFailure as apiReturnFailure,
+  revertFinalFailure as apiRevertFinalFailure,
   submitFailureForReview as apiSubmitFailureForReview,
   suspendFailure as apiSuspendFailure,
   upgradeFailureToInternal as apiUpgradeFailureToInternal,
@@ -274,12 +275,20 @@ export type FinalFailureInput = {
  */
 export async function recordFinalFailureAsync(
   input: FinalFailureInput,
-): Promise<
+): Promise<FinalFailureListResult> {
+  return finalFailureListResult(await apiRecordFinalFailure(requireFailuresApi(), input));
+}
+
+export type FinalFailureListResult =
   | { ok: true; data: FailureRecord[] }
-  | { ok: false; error: string; errors?: Record<string, string> }
-> {
-  const config = requireFailuresApi();
-  const result = await apiRecordFinalFailure(config, input);
+  | { ok: false; error: string; errors?: Record<string, string> };
+
+/** The answer of a whole-transaction failure action (the final failure and its way back). */
+function finalFailureListResult(
+  result:
+    | { ok: true; data: FailureRecordDto[] }
+    | (FailureApiErr & { message?: string }),
+): FinalFailureListResult {
   if (!result.ok) {
     const message =
       result.errors?.reason ||
@@ -290,6 +299,23 @@ export async function recordFinalFailureAsync(
     return { ok: false, error: message, errors: result.errors };
   }
   return { ok: true, data: result.data.map((dto) => applyMutation(mapDto(dto))) };
+}
+
+/**
+ * «الرجوع من التعذّر النهائي» — every deed of the transaction leaves the final failure; the closed
+ * records land in the cache.
+ *
+ * How it works: posts through the api-client and reads the answer like the final failure itself
+ * (`finalFailureListResult`), which also fires the work-order and task change events.
+ * Edge cases: a refusal carries the server's own text — «اكتب سبب الرجوع», «المعاملة ليست متعذّرة
+ * نهائياً», or the 403 «لأخصائي التنسيق».
+ */
+export async function revertFinalFailureAsync(input: {
+  poNumber: string;
+  propertyId: string;
+  reason: string;
+}): Promise<FinalFailureListResult> {
+  return finalFailureListResult(await apiRevertFinalFailure(requireFailuresApi(), input));
 }
 
 export async function approveFailureAsync(

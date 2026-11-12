@@ -250,6 +250,17 @@ public sealed class HttpFailureService(
             : (result, null);
     }
 
+    // The upstream re-derives the actor and judges the role from the bearer header.
+    public Task<(IReadOnlyList<FailureRecordDto>? Result, Dictionary<string, string>? Errors)> RevertFinalFailureAsync(
+        RevertFinalFailureRequest request,
+        string? actorUserId,
+        StaffActor actor,
+        CancellationToken cancellationToken = default) =>
+        PostForResultAsync<IReadOnlyList<FailureRecordDto>>(
+            "/api/failures/final/revert",
+            request,
+            cancellationToken);
+
     public Task<FailureRecordDto?> ReturnAsync(
         Guid id,
         string finalNote,

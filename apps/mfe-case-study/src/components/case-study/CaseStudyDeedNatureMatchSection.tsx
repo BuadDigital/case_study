@@ -5,7 +5,6 @@ import {
   Button,
   FormGroup,
   Label,
-  Note,
   Textarea,
   cn,
 } from "@platform/ui-kit";
@@ -25,18 +24,26 @@ import type { DeedMatchSideRow } from "../../lib/app-data/deed-nature-match-prop
 /**
  * Each side of the deed beside the inspector's finding there (Omar 2026-11-10: the specialist decides
  * from what he sees here — the deed's boundary and length, the inspector's «مطابق / غير مطابق» and note).
+ * Since 2026-11-12 it also carries each side's facade type, so the read-only «الحدود والأطوال»
+ * table under it is not repeated; the column shows only when some side has a facade (an apartment
+ * records none). The table spans its card like every table (a narrower one, tried 2026-11-12, left
+ * an empty band beside it); the short columns keep a fixed width and their headers stay on one
+ * line, so the deed's wording and the inspector's note share the rest.
  */
 function DeedMatchSidesTable({ sides }: { sides: readonly DeedMatchSideRow[] }) {
-  const th = "border-b border-border bg-surface-2 px-3 py-1.5 text-right text-[11px] font-bold text-text-2";
+  const th =
+    "whitespace-nowrap border-b border-border bg-surface-2 px-3 py-1.5 text-right text-[11px] font-bold text-text-2";
   const td = "border-b border-border px-3 py-1.5 text-right align-top text-[12px] text-text";
+  const showFacade = sides.some((s) => s.facade);
   return (
-    <table className="w-full border-collapse overflow-hidden rounded-[10px] border border-border">
+    <table className="w-full border-collapse overflow-hidden rounded-lg border border-border">
       <thead>
         <tr>
           <th className={cn(th, "w-28")}>الحد</th>
+          {showFacade ? <th className={cn(th, "w-28")}>نوع الواجهة</th> : null}
           <th className={th}>حسب الصك</th>
           <th className={cn(th, "w-24")}>الطول</th>
-          <th className={cn(th, "w-28")}>المعاين على الطبيعة</th>
+          <th className={cn(th, "w-40")}>المعاين على الطبيعة</th>
           <th className={th}>ملاحظة المعاين</th>
         </tr>
       </thead>
@@ -44,6 +51,7 @@ function DeedMatchSidesTable({ sides }: { sides: readonly DeedMatchSideRow[] }) 
         {sides.map((s) => (
           <tr key={s.side}>
             <td className={cn(td, "font-semibold text-heading")}>{s.label}</td>
+            {showFacade ? <td className={td}>{s.facade || "—"}</td> : null}
             <td className={td}>{s.deedDesc}</td>
             <td className={td}>
               <span dir="ltr">{s.deedLength}</span>
@@ -152,11 +160,6 @@ export function CaseStudyDeedNatureMatchSection({
       </header>
 
       <div className="grid gap-3.5 px-4 py-3.5">
-        <Note tone="info">
-          المعاين يقترح، وأنت تختار نتيجة المراجعة. الاختيار يُحفظ مباشرة ويحدد هل
-          يستمر التقييم ودراسة الحالة أو يتحول لمسار تعذّر.
-        </Note>
-
         {sourceLabelAr ? (
           <p className="m-0 text-[12px] leading-relaxed text-text-2">
             {sourceLabelAr}
@@ -185,13 +188,11 @@ export function CaseStudyDeedNatureMatchSection({
         ) : null}
 
         <FormGroup>
-          <Label className="mb-1 text-[11px] font-semibold text-text-2">
+          {/* Omar 2026-11-12: no explanation bars here — each choice says what it does in its
+              tooltip, and only a choice that stops the valuation is spelled out under them. */}
+          <Label className="mb-1.5 text-[11px] font-semibold text-text-2">
             نتيجة مراجعة الأخصائي
           </Label>
-          <p className="mb-2 mt-0 text-[11px] leading-relaxed text-text-3">
-            اختر نتيجة واحدة — ليست اعتمادًا نهائيًا للمعاملة، لكنها تؤثر فورًا على
-            المسار المسموح بعده.
-          </p>
           <div
             className="flex flex-wrap gap-2"
             role="radiogroup"
@@ -235,14 +236,9 @@ export function CaseStudyDeedNatureMatchSection({
               );
             })}
           </div>
-          {outcomeHint ? (
+          {outcomeHint && outcome !== "matched" ? (
             <p
-              className={cn(
-                "mb-0 mt-2 rounded-lg border px-3 py-2 text-[11.5px] leading-relaxed",
-                outcome === "matched"
-                  ? "border-[color-mix(in_srgb,var(--heading)_35%,var(--border))] bg-success-bg text-heading"
-                  : "border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg text-amber-text",
-              )}
+              className="mb-0 mt-2 rounded-lg border border-[color-mix(in_srgb,var(--amber)_40%,var(--border))] bg-warning-bg px-3 py-2 text-[11.5px] leading-relaxed text-amber-text"
               role="status"
             >
               {outcomeHint}

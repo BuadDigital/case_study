@@ -35,9 +35,11 @@ const MAP_BROWSE_RADIUS_KM = 10;
  *
  * How it works: without search text the pins are the bank's comparables around the subject and
  * around wherever the map rests; with search text (reference code, district) they are the hits,
- * anywhere. The type and usage lists narrow the pins. Pressing a pin shows its details with
- * «اعتماد المقارن» / «إلغاء الاعتماد»; the window stays open to adopt several. Pinning a spot on
- * the map opens the fields of a new comparable.
+ * anywhere. The type and usage lists narrow the pins. Pressing a pin shows its details with one
+ * action, by where the comparable stands (Omar 2026-11-12: adding is apart from adopting):
+ * «إضافة للمعاملة» for a bank comparable — it joins the table, not adopted; «اعتماد المقارن» for
+ * one already in the table; «إلغاء الاعتماد» for an adopted one. The window stays open to do
+ * several. Pinning a spot on the map opens the fields of a new comparable.
  *
  * Edge cases: the table's own comparables always show (green when adopted), whatever the filters
  * or the search. A comparable with no coordinates has no pin — a search that finds only such ones
@@ -54,6 +56,7 @@ export function ComparableEntryWithBank({
   rows,
   pendingAdopt,
   onToggleAdopt,
+  onAdd,
   onChange,
   onLocationConfirmedChange,
 }: {
@@ -69,6 +72,8 @@ export function ComparableEntryWithBank({
   /** Adoptions being saved, by comparable id. */
   pendingAdopt: ReadonlyMap<string, boolean>;
   onToggleAdopt: (comparable: ComparablePropertyDto, adopted: boolean) => void;
+  /** Add a bank comparable to the transaction's table, not adopted. */
+  onAdd: (comparable: ComparablePropertyDto) => void;
   onChange: (next: ComparableEntryDraft) => void;
   onLocationConfirmedChange: (confirmed: boolean) => void;
 }) {
@@ -198,15 +203,20 @@ export function ComparableEntryWithBank({
     ),
     comparables: shown,
     adoptedIds,
+    listedIds: ownIds,
     // Frame the pins once per search; the nearby ones open on the subject, as the map does.
     fitPinsKey: searchHits && found.onMap > 0 ? `search:${search}` : undefined,
     autoOpenId: searchHits?.length === 1 ? searchHits[0].id : null,
     onCenterChange: (lat, lng) => setCenter({ lat, lng }),
     action: (comparable) => {
+      const busy = pendingAdopt.has(comparable.id);
+      if (!ownIds.has(comparable.id)) {
+        return { label: "إضافة للمعاملة", busy, run: () => onAdd(comparable) };
+      }
       const adopted = adoptedIds.has(comparable.id);
       return {
         label: adopted ? "إلغاء الاعتماد" : "اعتماد المقارن",
-        busy: pendingAdopt.has(comparable.id),
+        busy,
         run: () => onToggleAdopt(comparable, !adopted),
       };
     },

@@ -46,7 +46,9 @@ public sealed partial class ValuationComparableSelectionService
         if (ValuationComparableSelectionRequestRules.SelectionContextError(request.SelectionContext) is { } contextError)
             return (null, new Dictionary<string, string> { ["selectionContext"] = contextError });
 
-        var context = ComparableSelectionContexts.Normalize(request.SelectionContext);
+        // What the caller asked for is what it gets back; the row lives in the table that holds the land.
+        var asked = ComparableSelectionContexts.Normalize(request.SelectionContext);
+        var context = await TableOfAsync(vr, asked, cancellationToken);
         var factorKey = request.FactorKey.Trim();
         if (factorKey.Length == 0)
             return (null, new Dictionary<string, string> { ["factorKey"] = "مفتاح العامل مطلوب" });
@@ -67,7 +69,7 @@ public sealed partial class ValuationComparableSelectionService
 
             return (new ValuationAdjustmentFactorRationaleDto
             {
-                SelectionContext = context,
+                SelectionContext = asked,
                 FactorKey = factorKey,
                 RationaleAr = "",
             }, null);
@@ -92,7 +94,7 @@ public sealed partial class ValuationComparableSelectionService
 
         return (new ValuationAdjustmentFactorRationaleDto
         {
-            SelectionContext = context,
+            SelectionContext = asked,
             FactorKey = factorKey,
             RationaleAr = rationale,
         }, null);

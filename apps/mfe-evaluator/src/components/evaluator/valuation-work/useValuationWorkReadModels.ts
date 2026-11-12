@@ -48,7 +48,11 @@ export function useValuationWorkReadModels({
     () => selection?.items.filter((i) => i.isAdopted) ?? [],
     [selection],
   );
-  /** Cost-approach land table (land_within_cost) — data and adjustments independent of market approach. */
+  /**
+   * Cost-approach land table (land_within_cost). For a built subject its data and adjustments are
+   * independent of the market approach; for a subject valued as land the server answers with the
+   * market table's own rows (`landSharedWithMarket`, 2026-11-12) — same ids, same adjustments.
+   */
   const adoptedLand = useMemo(
     () => landSelection?.items.filter((i) => i.isAdopted) ?? [],
     [landSelection],

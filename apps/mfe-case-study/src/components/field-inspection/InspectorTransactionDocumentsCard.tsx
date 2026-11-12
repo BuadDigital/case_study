@@ -7,7 +7,7 @@
  */
 
 import type { PropertyDetailDocumentEntry } from "@platform/app-shared/app-data/property-detail-document-types";
-import { InlineLoadingSkeleton } from "@platform/ui-kit";
+import { InlineLoadingSkeleton, useWorkDensity } from "@platform/ui-kit";
 import { DocumentFileLine } from "../po-intake/PropertyDocumentChecklistParts";
 import { InsCard } from "../po-intake/PropertyDetailInspectionParts";
 import { InspectorCard } from "./FieldInspectionWorkParts";
@@ -37,12 +37,17 @@ export function InspectorTransactionDocumentsCard({
   /** Mobile only: belongs to a wizard step that is not the active one. */
   hidden?: boolean;
 }) {
+  // The note speaks to the inspector on site; the work pages' layout (a reviewer reading the
+  // inspection, Omar 2026-11-12) shows the documents without it.
+  const work = useWorkDensity();
   const body = (
     <>
-      <p className="m-0 mb-2 text-[11.5px] leading-relaxed text-text-3">
-        للاطلاع أثناء المعاينة: الصك وخطاب التكليف وبقية مستندات العقار كما رُفعت في البيانات
-        الأولية والبورصة والمكتب الهندسي. التعديل من شاشاتها.
-      </p>
+      {work ? null : (
+        <p className="m-0 mb-2 text-[11.5px] leading-relaxed text-text-3">
+          للاطلاع أثناء المعاينة: الصك وخطاب التكليف وبقية مستندات العقار كما رُفعت في البيانات
+          الأولية والبورصة والمكتب الهندسي. التعديل من شاشاتها.
+        </p>
+      )}
       <InspectorTransactionDocumentsList documents={documents} loading={loading} />
     </>
   );

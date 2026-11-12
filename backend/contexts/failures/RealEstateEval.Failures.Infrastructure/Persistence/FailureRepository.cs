@@ -210,6 +210,24 @@ public sealed class FailureRepository(FailuresDbContext failures) : IFailureRepo
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>The final failures of a transaction's deeds, oldest first, tracked for the return.</summary>
+    /// <remarks>
+    /// How it works: one query by deed id and status <c>approved</c>. Edge cases: no ids answers an
+    /// empty list without a query; the work order is not part of the filter — a deed id is unique
+    /// across work orders, and linked deeds of one transaction may sit on two of them.
+    /// </remarks>
+    public async Task<IReadOnlyList<PropertyFailure>> FindApprovedForPropertiesAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken)
+    {
+        if (propertyIds.Count == 0) return [];
+        var ids = propertyIds.ToList();
+        return await failures.PropertyFailures
+            .Where(f => ids.Contains(f.PropertyId) && f.Status == PropertyFailureStatus.Approved)
+            .OrderBy(f => f.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+    }
+
     public Task<bool> HasUnresolvedAsync(
         string poNumber,
         Guid propertyId,

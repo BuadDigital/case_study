@@ -47,8 +47,12 @@ public class ValuationComparableSelection : ITrackUpdatedAt
 /// <summary>Selection / adoption helpers — adjustments logic: at least one adopted comparable is required.</summary>
 public static class ValuationComparableSelectionRules
 {
-    /// <summary>Adjustments logic section 4: error when zero adopted — at least one is required.</summary>
-    public const int MinimumAdoptedForMarketApproach = 1;
+    /// <summary>
+    /// The adjustments need two adopted comparables at least (Omar 2026-11-12: «تتطلب عملية التسوية
+    /// مقارنين كحد أدنى» — it was one). The same floor holds for the market table and for the land
+    /// table of the cost approach, which runs the same adjustments.
+    /// </summary>
+    public const int MinimumAdoptedForMarketApproach = 2;
 
     public static bool MeetsMinimumAdopted(IEnumerable<ValuationComparableSelection> rows) =>
         rows.Count(r => r.IsAdopted) >= MinimumAdoptedForMarketApproach;

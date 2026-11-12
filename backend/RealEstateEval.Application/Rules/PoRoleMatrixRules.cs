@@ -115,6 +115,18 @@ public static class PoRoleMatrixRules
     public static bool CanLiftSurveyFreeze(StaffActor actor) => actor.HoldsCoordination;
 
     /// <summary>
+    /// «الرجوع من التعذّر النهائي» — coordination only (Omar 2026-11-12): it is the one that talks to Enfaz
+    /// and hears from the liquidation centre that a transaction came back from its failure.
+    /// </summary>
+    /// <remarks>
+    /// How it works: the coordination sub-role of the case specialist; the failures controller checks it
+    /// before <c>POST /api/failures/final/revert</c>, the screen mirrors it in <c>canRevertFinalFailure</c>.
+    /// Edge cases: the section supervisor, the general manager and the CDO are refused, like the
+    /// survey-freeze lift — recording the final failure is theirs too, taking it back is not.
+    /// </remarks>
+    public static bool CanRevertFinalFailure(StaffActor actor) => actor.HoldsCoordination;
+
+    /// <summary>
     /// «إرسال المعاملة للدراسة» — coordination confirms every party delivered and moves the transaction to
     /// the study queue (ruling 2026-11-02); the section supervisor and the CDO may too.
     /// </summary>

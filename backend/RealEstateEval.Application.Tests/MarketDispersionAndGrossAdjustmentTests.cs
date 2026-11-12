@@ -440,7 +440,7 @@ public class MarketDispersionAndGrossAdjustmentTests
     }
 
     [Fact]
-    public void M24_flags_the_r8a_villa_and_land_comparables_of_a_showroom()
+    public void M24_flags_land_against_built_only()
     {
         var comps = new[]
         {
@@ -453,10 +453,24 @@ public class MarketDispersionAndGrossAdjustmentTests
             comps, hasStructures: true, subjectType: "معرض")), 24);
         Assert.True(m24.Triggered);
         Assert.Equal(ValuationMethodologyAlertSeverityKinds.RequireRationale, m24.SeverityKind);
-        Assert.Contains("«تجاري»", m24.DetailAr);
-        Assert.Contains("CMP-V (فيلا — سكني مبني)", m24.DetailAr);
+        // Omar 2026-11-12: the classes are general — land or built. The land comparable of a
+        // showroom is a mismatch; the villa is the appraiser's choice of comparable, not one.
+        Assert.Contains("«مبنى»", m24.DetailAr);
         Assert.Contains("CMP-L (أرض — أرض)", m24.DetailAr);
+        Assert.DoesNotContain("CMP-V", m24.DetailAr);
         Assert.DoesNotContain("CMP-S1", m24.DetailAr);
+
+        // Built against built is never a mismatch, whatever the use.
+        var built = Alert(ValuationMethodologyAlertRules.Evaluate(AlertInput(
+            [AlertComp("فيلا", 4_500m, "CMP-1", usage: "سكني"), AlertComp("مستودع", 3_000m, "CMP-2")],
+            hasStructures: true, subjectType: "معرض")), 24);
+        Assert.False(built.Triggered);
+
+        // Land against land, however the land is worded.
+        var lands = Alert(ValuationMethodologyAlertRules.Evaluate(AlertInput(
+            [AlertComp("أرض", 2_500m, "CMP-1", usage: "تجاري"), AlertComp("أرض سكنية", 2_400m, "CMP-2")],
+            hasStructures: true, subjectType: "أرض تجارية")), 24);
+        Assert.False(lands.Triggered);
 
         // A villa compared with an apartment is the same category.
         var same = Alert(ValuationMethodologyAlertRules.Evaluate(AlertInput(

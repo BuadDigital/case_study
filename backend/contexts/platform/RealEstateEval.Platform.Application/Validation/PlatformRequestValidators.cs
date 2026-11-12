@@ -73,7 +73,8 @@ public sealed class SaveOrganizationSettingsRequestValidator
         RuleFor(x => x.Sla!.PrivateSectorBusinessDays).InclusiveBetween(1, 60)
             .When(x => x.Sla is not null)
             .OverridePropertyName("sla.privateSectorBusinessDays");
-        RuleFor(x => x.Valuation!.MaxAdoptedComparables).InclusiveBetween(1, 3)
+        // Up to five adopted comparables a table (Omar 2026-11-12; the ceiling was three).
+        RuleFor(x => x.Valuation!.MaxAdoptedComparables).InclusiveBetween(1, 5)
             .When(x => x.Valuation is not null)
             .OverridePropertyName("valuation.maxAdoptedComparables");
         RuleFor(x => x.Valuation!.AreaFactorPct).InclusiveBetween(0.1m, 50m)

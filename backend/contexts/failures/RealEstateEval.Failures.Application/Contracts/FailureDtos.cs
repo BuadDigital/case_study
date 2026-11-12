@@ -83,6 +83,18 @@ public class FinalFailureRequest
     public string? RaisedByRole { get; set; }
 }
 
+/// <summary>
+/// «الرجوع من التعذّر النهائي» — Enfaz took the transaction back. Lands on every live deed of the
+/// deed's transaction, like the final failure it undoes.
+/// </summary>
+public class RevertFinalFailureRequest
+{
+    public string PoNumber { get; set; } = "";
+    public string PropertyId { get; set; } = "";
+    /// <summary>Why it came back — stored as the resolution reason on every deed.</summary>
+    public string Reason { get; set; } = "";
+}
+
 public class FailureNoteRequest
 {
     public string Note { get; set; } = "";

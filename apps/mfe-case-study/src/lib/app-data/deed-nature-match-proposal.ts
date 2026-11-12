@@ -57,6 +57,8 @@ export type DeedMatchSideRow = {
   deedDesc: string;
   /** The deed's length for this side, «12 م» or «—». */
   deedLength: string;
+  /** The side's facade type as the inspector recorded it, else the property's; "" when none. */
+  facade: string;
   /** The inspector's finding on site: true مطابق، false غير مطابق، null not answered. */
   matches: boolean | null;
   /** The inspector's note on a non-matching side. */
@@ -69,11 +71,17 @@ type DeedSideField =
   | "eastBoundary" | "eastBoundaryLengthM"
   | "westBoundary" | "westBoundaryLengthM";
 
-const PROPERTY_SIDE_FIELDS: Record<InspectorBoundaryKey, { desc: DeedSideField; len: DeedSideField }> = {
-  north: { desc: "northBoundary", len: "northBoundaryLengthM" },
-  south: { desc: "southBoundary", len: "southBoundaryLengthM" },
-  east: { desc: "eastBoundary", len: "eastBoundaryLengthM" },
-  west: { desc: "westBoundary", len: "westBoundaryLengthM" },
+type DeedSideFacadeField =
+  | "northFacadeFinishing" | "southFacadeFinishing" | "eastFacadeFinishing" | "westFacadeFinishing";
+
+const PROPERTY_SIDE_FIELDS: Record<
+  InspectorBoundaryKey,
+  { desc: DeedSideField; len: DeedSideField; facade: DeedSideFacadeField }
+> = {
+  north: { desc: "northBoundary", len: "northBoundaryLengthM", facade: "northFacadeFinishing" },
+  south: { desc: "southBoundary", len: "southBoundaryLengthM", facade: "southFacadeFinishing" },
+  east: { desc: "eastBoundary", len: "eastBoundaryLengthM", facade: "eastFacadeFinishing" },
+  west: { desc: "westBoundary", len: "westBoundaryLengthM", facade: "westFacadeFinishing" },
 };
 
 /**
@@ -84,11 +92,13 @@ const PROPERTY_SIDE_FIELDS: Record<InspectorBoundaryKey, { desc: DeedSideField; 
  * property's (the same rule as the inspector's table, `resolvedBoundaryDeedField`); the finding and
  * note are the inspector's per-side answers.
  * Edge cases: no inspection yet → an empty list (the card shows no table); a side with nothing in the
- * deed and no answer still shows, with «—», so a missing side is visible.
+ * deed and no answer still shows, with «—», so a missing side is visible. The facade (Omar
+ * 2026-11-12: one table instead of this one and «الحدود والأطوال» below it) follows the same
+ * rule; a property record without facades gives "".
  */
 export function deedMatchSideRows(
   inspector: Pick<InspectorWorkspaceDraft, "boundaryMatches"> | null | undefined,
-  property: Pick<PoPropertyIntake, DeedSideField>,
+  property: Pick<PoPropertyIntake, DeedSideField> & Partial<Pick<PoPropertyIntake, DeedSideFacadeField>>,
 ): DeedMatchSideRow[] {
   if (!inspector) return [];
   return SIDE_ORDER.map((side) => {
@@ -101,6 +111,7 @@ export function deedMatchSideRows(
       label: SIDE_LABELS[side],
       deedDesc: desc || "—",
       deedLength: length ? `${length} م` : "—",
+      facade: row?.facade?.trim() || (property[fields.facade] ?? "").trim(),
       matches: row?.matches ?? null,
       note: row?.matches === false ? (row.mismatchNote ?? "").trim() : "",
     };

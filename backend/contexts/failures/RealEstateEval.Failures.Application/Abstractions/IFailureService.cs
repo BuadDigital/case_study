@@ -118,6 +118,19 @@ public interface IFailureService
         string? actorUserId = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// «الرجوع من التعذّر النهائي»: closes the final failure on every live deed of the deed's
+    /// transaction and reopens the stopped tasks. The coordination sub-role only —
+    /// <paramref name="actor"/> is judged by <c>PoRoleMatrixRules.CanRevertFinalFailure</c> (error key
+    /// <c>_</c> when denied; the API answers 403 before it gets here). Field errors: <c>propertyId</c>
+    /// (unknown deed, or a transaction that is not final), <c>reason</c> (required).
+    /// </summary>
+    Task<(IReadOnlyList<FailureRecordDto>? Result, Dictionary<string, string>? Errors)> RevertFinalFailureAsync(
+        RevertFinalFailureRequest request,
+        string? actorUserId,
+        StaffActor actor,
+        CancellationToken cancellationToken = default);
+
     Task<FailureRecordDto?> ReturnAsync(
         Guid id,
         string finalNote,

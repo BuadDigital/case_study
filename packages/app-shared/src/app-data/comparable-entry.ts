@@ -56,6 +56,15 @@ export function comparableKindFromType(
 }
 
 /**
+ * A comparable's type as the screens show it (Omar 2026-11-12: «اجعل التصنيف عام — أرض بأرض»):
+ * every land reads «أرض», however its record words it («أرض سكنية»، «أرض تجارية» from older
+ * records) — the use has its own field. Any other type shows as recorded.
+ */
+export function comparableTypeLabel(type: string | null | undefined): string {
+  return comparableKindFromType(type) === "land" ? LAND_COMPARABLE_TYPE : (type ?? "").trim();
+}
+
+/**
  * How a comparable's area is named (2026-10-29): a land comparable by its land, a building by its
  * floor area — a building's price includes its land, which is not measured separately.
  */

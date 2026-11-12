@@ -18,7 +18,7 @@ public sealed partial class ValuationReportDraftService
 
         var requests = await db.ValuationRequests.AsNoTracking()
             .Where(x => ids.Contains(x.PropertyId))
-            .Select(x => new { x.Id, x.PropertyId, x.UpdatedAtUtc })
+            .Select(x => new { x.Id, x.PropertyId, x.UpdatedAtUtc, x.PropertyType })
             .ToListAsync(cancellationToken);
         var latest = requests
             .GroupBy(x => x.PropertyId)
@@ -76,7 +76,12 @@ public sealed partial class ValuationReportDraftService
                 marketEnabled: setting?.MarketApproachEnabled ?? true,
                 marketAdopted: Adopted(ComparableSelectionContexts.Market),
                 costEnabled: setting?.CostApproachEnabled ?? true,
-                landAdopted: Adopted(ComparableSelectionContexts.LandWithinCost),
+                // A land's comparables are the market table's (one land table, 2026-11-12). The bar
+                // goes by the request's type alone — the exact rule also reads the inventory.
+                landAdopted: Adopted(ComparableSelectionContexts.LandWithinCost)
+                    + (ValuationApproachSettingsRules.IsLandPropertyType(vr.PropertyType)
+                        ? Adopted(ComparableSelectionContexts.Market)
+                        : 0),
                 costSaved: costSaved.Contains(vr.Id),
                 opinionSaved: opinionSaved.Contains(vr.Id));
             return new ReportDraftStateDto

@@ -10,6 +10,7 @@ import { workOrdersApiConfig } from "@platform/app-shared/app-data/work-orders-a
 import {
   COMPARABLE_SOURCE_OPTIONS,
   comparableDealLabel,
+  comparableTypeLabel,
   sourceCardLine,
 } from "@platform/app-shared/app-data/comparable-entry";
 import type { LatLng } from "@platform/app-shared/domain/geo";
@@ -140,7 +141,11 @@ export function ExistingComparableCard({
         is, its numbers, where it is, where the information came from.
       */}
       <div className="grid grid-cols-[repeat(auto-fill,minmax(124px,1fr))] gap-x-4 gap-y-2 rounded-md border border-border bg-surface px-3 py-2.5">
-        <OpsReadField dense label="نوع العقار" value={comparable.comparablePropertyType} />
+        <OpsReadField
+          dense
+          label="نوع العقار"
+          value={comparableTypeLabel(comparable.comparablePropertyType)}
+        />
         <OpsReadField dense label="الاستخدام" value={comparable.usage || undefined} />
         <OpsReadField dense label="نوع العملية" value={comparableDealLabel(comparable)} />
         <OpsReadField dense label="تاريخ العملية" value={ymd(comparable.transactionDate)} ltr />

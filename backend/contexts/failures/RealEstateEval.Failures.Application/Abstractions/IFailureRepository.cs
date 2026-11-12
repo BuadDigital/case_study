@@ -77,6 +77,11 @@ public interface IFailureRepository
         Guid propertyId,
         CancellationToken cancellationToken);
 
+    /// <summary>Tracked final (approved) failures of the given deeds — the return from a final failure.</summary>
+    Task<IReadOnlyList<PropertyFailure>> FindApprovedForPropertiesAsync(
+        IReadOnlyCollection<Guid> propertyIds,
+        CancellationToken cancellationToken);
+
     /// <summary>Whether the property already carries an unresolved failure of any kind.</summary>
     Task<bool> HasUnresolvedAsync(
         string poNumber,

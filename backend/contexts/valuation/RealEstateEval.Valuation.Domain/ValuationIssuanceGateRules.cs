@@ -202,17 +202,17 @@ public static class ValuationIssuanceGateRules
     public static ValuationIssuanceGateCheck MinAdoptedComparables(int adoptedCount) =>
         new(
             ValuationIssuanceGateCodes.MinAdoptedComparables,
-            "مقارن معتمد واحد على الأقل",
+            "مقارنان معتمدان على الأقل",
             adoptedCount >= ValuationComparableSelectionRules.MinimumAdoptedForMarketApproach,
             IsHard: true,
             DetailAr: adoptedCount < ValuationComparableSelectionRules.MinimumAdoptedForMarketApproach
-                ? "يلزم مقارن معتمد واحد على الأقل (منطق-التسويات)"
+                ? "يلزم مقارنان معتمدان على الأقل (منطق-التسويات)"
                 : null);
 
     /// <summary>
     /// Approach-aware comps gate: market → market comps; cost → land_within_cost comps.
     /// Skipped (pass) when the approach is off.
-    /// Adjustments logic: at least one.
+    /// Adjustments logic: at least two (2026-11-12; it was one).
     /// </summary>
     public static ValuationIssuanceGateCheck MinAdoptedComparablesForApproach(
         string codeSuffix,
@@ -227,7 +227,7 @@ public static class ValuationIssuanceGateRules
             IsHard: true,
             DetailAr: approachEnabled
                 && adoptedCount < ValuationComparableSelectionRules.MinimumAdoptedForMarketApproach
-                ? $"يلزم مقارن معتمد واحد على الأقل ({labelAr})"
+                ? $"يلزم مقارنان معتمدان على الأقل ({labelAr})"
                 : null);
 
     public static ValuationIssuanceGateCheck CostLandEstimateComplete(

@@ -124,10 +124,11 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
   } = model;
   const { isUnit, areaMethod, areaFactor, subjectAreaLabel } = basisView;
 
-  if (adopted.length === 0) {
+  // Omar 2026-11-12: the adjustments need two adopted comparables at least (one used to open them).
+  if (adopted.length < 2) {
     return (
       <div className={cn(opsPanelCard, "mb-6 px-[22px] py-[18px] text-[13px] text-text-3")}>
-        اعتمد مقارناً واحداً على الأقل لفتح جدول التسويات.
+        اعتمد مقارنين على الأقل لفتح جدول التسويات.
       </div>
     );
   }

@@ -592,6 +592,34 @@ public static class PropertyCategoryRules
         && comparableCategory is not null
         && !string.Equals(subjectCategory, comparableCategory, StringComparison.Ordinal);
 
+    /// <summary>The general class of anything that is not land: «مبنى».</summary>
+    public const string Built = "built";
+
+    /// <summary>
+    /// What: the general class of a property type — land or built — the one the type-mismatch
+    /// alert compares by (Omar 2026-11-12: «اجعل التصنيف عام، لا تضيّق واسع — أرض بأرض»). The
+    /// four categories above read too fine for it: a villa against an apartment building or a
+    /// showroom is the appraiser's choice of comparable, not a mismatch.
+    /// How it works: land when the type names land and nothing built; built when it has any
+    /// other category or names a building word; the usage decides only when the type says nothing.
+    /// Edge cases: «أرض»، «أرض سكنية»، «أرض تجارية» are all land; a blank or unreadable type
+    /// with no usage is null and is never reported.
+    /// </summary>
+    public static string? GeneralClass(string? propertyType, string? usage = null)
+    {
+        var category = Categorize(propertyType, usage);
+        if (category == Land) return Land;
+        if (category is not null) return Built;
+        return HasAny(Normalize(propertyType), BuiltWords) ? Built : null;
+    }
+
+    public static string GeneralClassLabelAr(string? generalClass) => generalClass switch
+    {
+        Land => "أرض",
+        Built => "مبنى",
+        _ => "غير محدد",
+    };
+
     private static string? FromText(string? text, bool landAllowed = true)
     {
         var t = Normalize(text);

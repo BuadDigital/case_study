@@ -184,6 +184,29 @@ public class PropertyFailure
         return true;
     }
 
+ /// <summary>
+ /// «الرجوع من التعذّر النهائي» — Enfaz took the transaction back from its failure, so the final
+ /// failure is closed and the work goes on. The only way out of <c>approved</c>.
+ /// </summary>
+ /// <remarks>
+ /// How it works: from <c>approved</c> only, the status becomes <c>resolved</c> and the reason is
+ /// stored trimmed in <see cref="ResolutionReason"/>; the final note stays, so the record still
+ /// reads why it was final. Returns false and changes nothing from any other status.
+ ///
+ /// Edge cases: <see cref="TryResolve"/> and <see cref="TrySystemResolve"/> keep refusing an
+ /// approved failure — a final failure never closes by the ordinary «تم الحل» or by a system hold,
+ /// only through here. A second call on the same failure is false (already resolved).
+ /// </remarks>
+    public bool TryRevertFinal(string reason, DateTime nowUtc)
+    {
+        if (Status != PropertyFailureStatus.Approved)
+            return false;
+        Status = PropertyFailureStatus.Resolved;
+        ResolutionReason = reason.Trim();
+        UpdatedAtUtc = nowUtc;
+        return true;
+    }
+
     public bool TryReturn(string finalNote, DateTime nowUtc)
     {
         if (Status != PropertyFailureStatus.Review)

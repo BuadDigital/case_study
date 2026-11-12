@@ -143,6 +143,14 @@ public sealed class HttpCaseStudyFailureCommands(
             request,
             cancellationToken);
 
+    public Task ReopenPropertyTasksAfterFailureAsync(
+        ReopenCaseStudyTasksAfterFailureRequest request,
+        CancellationToken cancellationToken = default) =>
+        PostCommandAsync(
+            "/api/case-study-dispatch/case-study-tasks/reopen-after-final-failure",
+            request,
+            cancellationToken);
+
     public async Task<CaseStudyHoldTaskResultDto?> BlockTaskForHoldAsync(
         CaseStudyHoldTaskRequest request,
         CancellationToken cancellationToken = default)

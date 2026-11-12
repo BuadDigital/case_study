@@ -44,6 +44,7 @@ export function CaseStudyDeedNatureMatchReview({
   inspectionTaskId,
   engineeringAssigned = false,
   readOnly = false,
+  readOnlyOnceDecided = false,
 }: {
   caseStudyTaskId: string;
   property: PoPropertyIntake;
@@ -52,11 +53,18 @@ export function CaseStudyDeedNatureMatchReview({
   inspectionTaskId: string | null;
   engineeringAssigned?: boolean;
   /**
-   * Locked by the caller once the case-study task is completed. Accepting the
-   * inspector package does NOT lock this section: it stays editable until the
-   * report is issued (the `draft.status === "issued"` lock below).
+   * Locked by the caller once the case-study task is completed. On the work page accepting
+   * the inspector package does NOT lock this section: it stays editable until the report is
+   * issued (the `draft.status === "issued"` lock below).
    */
   readOnly?: boolean;
+  /**
+   * The study workspace's read-only page (Omar 2026-11-12), once the inspector's inputs are
+   * confirmed: the outcome is read, not changed. An outcome never chosen stays open — the
+   * study report cannot be issued without it, and the only other way back would be to undo
+   * the confirmation and return the package to the inspector.
+   */
+  readOnlyOnceDecided?: boolean;
 }) {
   const { showToast } = useToast();
   const [draft, setDraft] = useState<CaseStudyReportDraft | null>(null);
@@ -120,7 +128,9 @@ export function CaseStudyDeedNatureMatchReview({
   ]);
 
   const locked =
-    readOnly || draft?.status === "issued";
+    readOnly ||
+    draft?.status === "issued" ||
+    (readOnlyOnceDecided && Boolean(draft?.deedNatureMatchOutcome));
 
   const persist = useCallback(
     async (patch: Partial<CaseStudyReportDraft>) => {

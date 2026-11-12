@@ -140,6 +140,7 @@ export function PropertyDetailInspectionTab({
   submitFooterAfter,
   submitSuccessToast,
   specialistComponents: componentsMode = "with-review",
+  boundariesShownAbove = false,
 }: {
   property: PoPropertyIntake;
   inspectionTask: WorkflowTask | null;
@@ -171,6 +172,8 @@ export function PropertyDetailInspectionTab({
    * whatever the acceptance (Omar 2026-11-08: acceptance is coordination's, the components the study's).
    */
   specialistComponents?: "with-review" | "hidden" | { locked: boolean };
+  /** The host shows the four sides above this tab — see the wizard's prop of the same name. */
+  boundariesShownAbove?: boolean;
 }) {
   const { showToast } = useToast();
   const { role } = useAppAccess();
@@ -633,6 +636,7 @@ export function PropertyDetailInspectionTab({
           fieldErrors={fieldErrors}
           flat={!steps}
           hideSubmitFooter={Boolean(submitFooterAfter)}
+          boundariesShownAbove={boundariesShownAbove}
           onPatch={(patch) => patchDraft(patch)}
           onSubmit={() => void handleSaveAndSubmit()}
           onCancel={() => void handleCancelEdit()}

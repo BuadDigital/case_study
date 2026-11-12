@@ -353,6 +353,25 @@ public sealed class CaseStudyDispatchController(ICaseStudyLookup lookup) : Contr
         return NoContent();
     }
 
+    /// <summary>
+    /// Failures calls this when a final failure is taken back («الرجوع من التعذّر النهائي»): the deed's
+    /// stopped tasks reopen. How it works: hands the request to
+    /// <c>ICaseStudyFailureCommands.ReopenPropertyTasksAfterFailureAsync</c>. Edge cases: a missing
+    /// work order or property is a 400; an unmatched property is a silent no-op, like the block.
+    /// </summary>
+    [HttpPost("case-study-tasks/reopen-after-final-failure")]
+    public async Task<IActionResult> ReopenTasksAfterFinalFailure(
+        [FromBody] ReopenCaseStudyTasksAfterFailureRequest request,
+        [FromServices] ICaseStudyFailureCommands commands,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.PoNumber) || string.IsNullOrWhiteSpace(request.PropertyId))
+            return this.BadRequestProblem("poNumber and propertyId are required");
+
+        await commands.ReopenPropertyTasksAfterFailureAsync(request, cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("case-study-tasks/block-for-hold")]
     public async Task<ActionResult<CaseStudyHoldTaskResultDto>> BlockTaskForHold(
         [FromBody] CaseStudyHoldTaskRequest request,

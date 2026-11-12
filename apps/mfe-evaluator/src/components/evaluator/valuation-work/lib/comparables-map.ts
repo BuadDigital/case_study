@@ -1,4 +1,5 @@
 import type { ComparablePropertyDto } from "@platform/api-client";
+import { comparableTypeLabel } from "@platform/app-shared/app-data/comparable-entry";
 
 /**
  * The comparables the «إضافة مقارن» map may draw: the table's own ones, then the bank's (nearby, or a
@@ -22,7 +23,11 @@ export function mapPickerPool(opts: {
   return [...byId.values()];
 }
 
-/** The property types and the usages present among `comparables`, for the map's two filter lists. */
+/**
+ * The property types and the usages present among `comparables`, for the map's two filter lists.
+ * Types are the general ones the screens show (`comparableTypeLabel`): every land is «أرض», so
+ * «أرض» and «أرض سكنية» are one choice (Omar 2026-11-12).
+ */
 export function comparableFilterOptions(comparables: readonly ComparablePropertyDto[]): {
   types: string[];
   usages: string[];
@@ -32,7 +37,7 @@ export function comparableFilterOptions(comparables: readonly ComparableProperty
       a.localeCompare(b, "ar"),
     );
   return {
-    types: distinct(comparables.map((c) => c.comparablePropertyType)),
+    types: distinct(comparables.map((c) => comparableTypeLabel(c.comparablePropertyType))),
     usages: distinct(comparables.map((c) => c.usage)),
   };
 }
@@ -52,7 +57,7 @@ export function filterMapComparables(
   return comparables.filter(
     (c) =>
       filters.alwaysIds?.has(c.id) ||
-      ((!type || (c.comparablePropertyType ?? "").trim() === type) &&
+      ((!type || comparableTypeLabel(c.comparablePropertyType) === type) &&
         (!usage || (c.usage ?? "").trim() === usage)),
   );
 }

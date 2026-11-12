@@ -50,6 +50,7 @@ public sealed class CaseSpecialistSubRolesTests
         { Coordination, a => PoRoleMatrixRules.CanRequestTransactionCancel(a) },
         { Coordination, a => PoRoleMatrixRules.CanManageOperationsTasks(a) },
         { Coordination, a => PoRoleMatrixRules.CanLiftSurveyFreeze(a) },
+        { Coordination, a => PoRoleMatrixRules.CanRevertFinalFailure(a) },
         { Coordination, a => PoRoleMatrixRules.CanFollowUpFailure(a) },
         { Study, a => PoRoleMatrixRules.CanFinishStudy(a) },
         { Study, a => PoRoleMatrixRules.CanDecideAppraisalRecall(a) },

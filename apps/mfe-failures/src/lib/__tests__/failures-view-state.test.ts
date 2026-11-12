@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { FailureRecord } from "@platform/app-shared/failures/failures-types";
+import { staffAccessOf } from "@platform/app-shared/app-data/case-specialist-sub-roles";
 import {
   EMPTY_RESOLVE_DRAFT,
   FAILURES_DEFAULT_EMPTY_LINE,
   assignmentSpecialistByPo,
+  canRevertFinalFailure,
   failureActionPermissions,
   failureBusyKey,
   failureSpecialistName,
@@ -169,12 +171,14 @@ describe("failureActionPermissions", () => {
       canSpecialistAct: true,
       canSupervisorAct: false,
       canResolve: true,
+      canRevertFinal: false,
     });
     expect(failureActionPermissions(failure("a", { status: "review" }), viewerBoth)).toEqual({
       active: true,
       canSpecialistAct: false,
       canSupervisorAct: true,
       canResolve: false,
+      canRevertFinal: false,
     });
   });
 
@@ -186,6 +190,7 @@ describe("failureActionPermissions", () => {
       canSpecialistAct: false,
       canSupervisorAct: false,
       canResolve: false,
+      canRevertFinal: false,
     });
     // Approved stays active but is neither a specialist nor a supervisor step.
     expect(
@@ -195,6 +200,7 @@ describe("failureActionPermissions", () => {
       canSpecialistAct: false,
       canSupervisorAct: false,
       canResolve: false,
+      canRevertFinal: false,
     });
     expect(
       failureActionPermissions(failure("a", { status: "returned" }), {
@@ -214,6 +220,7 @@ describe("failureActionPermissions", () => {
       canSpecialistAct: true,
       canSupervisorAct: false,
       canResolve: true,
+      canRevertFinal: false,
     });
     expect(
       failureActionPermissions(failure("a", { status: "internal", severity: "internal" }), study)
@@ -223,6 +230,40 @@ describe("failureActionPermissions", () => {
       failureActionPermissions(failure("a", { status: "review", severity: "suspected" }), study)
         .canSpecialistAct,
     ).toBe(false);
+  });
+});
+
+// Omar 2026-11-12: coordination takes a final failure back when Enfaz returns the transaction.
+describe("return from the final failure", () => {
+  const coordination = { caseEditor: true, supervisor: false, coordinator: true };
+
+  it("is offered to coordination on a final failure only", () => {
+    expect(
+      failureActionPermissions(failure("a", { status: "approved" }), coordination),
+    ).toEqual({
+      active: true,
+      canSpecialistAct: false,
+      canSupervisorAct: false,
+      canResolve: false,
+      canRevertFinal: true,
+    });
+    for (const status of ["internal", "review", "returned", "resolved", "suspended"] as const) {
+      expect(
+        failureActionPermissions(failure("a", { status }), coordination).canRevertFinal,
+      ).toBe(false);
+    }
+  });
+
+  it("is not offered to the supervisor, the CDO or another sub-role", () => {
+    const final = failure("a", { status: "approved" });
+    expect(
+      failureActionPermissions(final, { caseEditor: true, supervisor: true }).canRevertFinal,
+    ).toBe(false);
+    expect(canRevertFinalFailure(staffAccessOf("case-specialist", ["coordination"]))).toBe(true);
+    expect(canRevertFinalFailure(staffAccessOf("case-specialist", ["study"]))).toBe(false);
+    expect(canRevertFinalFailure(staffAccessOf("case-specialist", ["review"]))).toBe(false);
+    expect(canRevertFinalFailure(staffAccessOf("section-supervisor"))).toBe(false);
+    expect(canRevertFinalFailure(staffAccessOf("cdo"))).toBe(false);
   });
 });
 

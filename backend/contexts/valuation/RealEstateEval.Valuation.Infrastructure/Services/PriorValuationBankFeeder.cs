@@ -21,6 +21,7 @@ using RealEstateEval.Infrastructure.Data;
 using RealEstateEval.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Application.Abstractions;
 using RealEstateEval.Valuation.Application.Contracts;
+using RealEstateEval.Valuation.Application.Rules;
 using RealEstateEval.Valuation.Infrastructure.Data.Contexts;
 using RealEstateEval.Valuation.Domain;
 
@@ -96,8 +97,7 @@ public sealed class PriorValuationBankFeeder(
             ? vr.PropertyType ?? ""
             : facts.EffectivePropertyType();
         var subjectIsLand = CostScopeKeys.IsLandOnly(scope)
-            || (ValuationApproachSettingsRules.IsLandPropertyType(propertyType)
-                && !PriorValuationBankRules.HasFloorArea(facts.BuildingInventoryLines));
+            || SubjectLandRules.IsValuedAsLand(propertyType, facts.BuildingInventoryLines);
         var write = new BankRowWriter(this, valuation, clock, vr, facts, lat, lon, valuationRequestId);
 
         if (subjectIsLand)
@@ -299,18 +299,9 @@ public static class PriorValuationBankRules
         return subjectIsLand ? deed ?? 0m : 0m;
     }
 
-    /// <summary>
-    /// The specialist's inventory lists a floor area (a floor, an annex or a basement with an area) —
-    /// a building stands on the land, not only a fence or a room's fittings.
-    /// How it works: the cost table's own grouping (<see cref="CostLineItemKeys.IsAreaGroup"/>), so a
-    /// catalog floor item, a floor / annex / basement kind, or a custom «other» line named as one
-    /// («الدور الثاني», «ملحق علوي» — A→Z #30/#52, 2026-11-04) counts.
-    /// Edge cases: a line without an area never counts.
-    /// </summary>
+    /// <summary>The inventory lists a floor area — <see cref="SubjectLandRules.HasFloorArea"/>.</summary>
     public static bool HasFloorArea(IEnumerable<CaseStudyBuildingInventoryLineDto>? lines) =>
-        (lines ?? []).Any(l =>
-            CostLineItemKeys.IsAreaGroup(l.ItemKey, l.StructureKind, l.Label)
-            && LocaleNumber.TryParsePositive(l.AreaSqm, out _));
+        SubjectLandRules.HasFloorArea(lines);
 
     /// <summary>A unit valued on its own — its land is a share of the building plot.</summary>
     public static bool IsApartment(string? propertyType)

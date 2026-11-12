@@ -237,6 +237,34 @@ public class FailuresController : ControllerBase
         return Ok(result);
     }
 
+    /// <summary>
+    /// «الرجوع من التعذّر النهائي» — Enfaz took the transaction back from its failure: every live deed
+    /// of the transaction leaves the final failure and its tasks reopen. The coordination sub-role
+    /// (403 otherwise), which is the one in touch with Enfaz (Omar 2026-11-12).
+    /// How it works: the role comes from the caller's permissions and is checked with
+    /// <c>PoRoleMatrixRules.CanRevertFinalFailure</c> before the service runs.
+    /// Edge cases: field errors (reason, a transaction that is not final) come back as a 400 keyed by
+    /// field; the supervisor and the CDO pass the <c>manage-failures</c> policy but get 403 here.
+    /// </summary>
+    [HttpPost("final/revert")]
+    [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
+    public async Task<ActionResult<IReadOnlyList<FailureRecordDto>>> RevertFinal(
+        [FromBody] RevertFinalFailureRequest request,
+        CancellationToken cancellationToken)
+    {
+        var actor = StaffActor.From(await ActorAsync(cancellationToken));
+        if (!PoRoleMatrixRules.CanRevertFinalFailure(actor))
+            return this.ForbiddenProblem(FailureRecordRules.RevertFinalFailureRoleDeniedAr);
+
+        var (result, errors) = await _failures.RevertFinalFailureAsync(
+            request ?? new RevertFinalFailureRequest(),
+            ActorClaims.Id(User),
+            actor,
+            cancellationToken);
+        if (errors is not null) return this.FieldErrorsProblem(errors);
+        return Ok(result);
+    }
+
     [HttpPost("{id:guid}/return")]
     [Authorize(Policy = CapabilityPolicyNames.ManageFailures)]
     public async Task<ActionResult<FailureRecordDto>> Return(

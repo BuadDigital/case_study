@@ -104,26 +104,35 @@ export type LandCopyTarget = "market" | "land";
  * Whether the land valuation by comparable sales can be copied into a table from the other one,
  * and whether that should happen by itself (ruling 2026-11-11).
  *
- * How it works: the copy only concerns land. Into the market table it applies when that table
- * compares land (`marketKind` land) and the land table of the cost approach has adopted comparables;
- * into the land table when the market table has adopted land comparables. It happens by itself only
- * when the target holds no comparable at all — and, into the land table, only when everything
- * adopted in the market table is land (a table valuing a villa by villas is not a land valuation).
+ * How it works: the copy only concerns land, and only when BOTH tables value land (Omar 2026-11-12:
+ * «إذا اختلف نوع العقار في التسويات — أرض أو مبنى — فلا حاجة لنسخ التسويات»): the adjustments of a
+ * table that compares a building are measured against a building and say nothing about the land.
+ * So in either direction the market table must compare land (`marketKind` land); then into the
+ * market table when the land table of the cost approach has adopted comparables, and into the land
+ * table when the market table has adopted land comparables. It happens by itself only when the
+ * target holds no comparable at all — and, into the land table, only when everything adopted in
+ * the market table is land.
  *
  * Edge cases: `sourceLandCount` 0 → nothing to copy; a hidden target (its approach off) is the
- * caller's check.
+ * caller's check. Until 2026-11-12 a market table valuing a villa still offered its adopted lands
+ * to the land table, adjustments and all.
+ * `oneLandTable` (Omar 2026-11-12: «الأرض هي الأرض وقيمتها ثابتة»): the subject is valued as
+ * land, so the server keeps one table for both approaches — the two lists are the same rows and
+ * nothing is copied, in either direction. What is left to copy is a built subject valued under
+ * «أرض فقط»: its land table from before the scope changed, into the market table.
  */
 export function landCopyState(input: {
   target: LandCopyTarget;
   marketKind: string;
+  /** The land table is the market table's own rows (`landSharedWithMarket`). */
+  oneLandTable?: boolean;
   targetRowCount: number;
   sourceAdoptedCount: number;
   sourceAdoptedLandCount: number;
 }): { available: boolean; automatic: boolean; sourceCount: number } {
   const sourceCount =
     input.target === "market" ? input.sourceAdoptedCount : input.sourceAdoptedLandCount;
-  const available =
-    sourceCount > 0 && (input.target === "land" || input.marketKind === "land");
+  const available = sourceCount > 0 && input.marketKind === "land" && !input.oneLandTable;
   const pureLandSource =
     input.target === "market" || input.sourceAdoptedLandCount === input.sourceAdoptedCount;
   return {

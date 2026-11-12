@@ -31,11 +31,12 @@ export function FailuresViewExpandedActions({
   failure: FailureRecord;
   wf: FailuresViewWorkflow;
 }) {
-  const { canSpecialistAct, canSupervisorAct, canResolve } =
+  const { canSpecialistAct, canSupervisorAct, canResolve, canRevertFinal } =
     failureActionPermissions(f, {
       caseEditor: wf.caseEditor,
       supervisor: wf.supervisor,
       confirmer: wf.confirmer,
+      coordinator: wf.coordinator,
     });
   const draft = resolveDraftFor(wf.resolveDraft, f.id);
   const displayTitle = failureRecordTitle(f);
@@ -69,7 +70,7 @@ export function FailuresViewExpandedActions({
         ) : null}
       </div>
 
-      {f.propertyId || canSpecialistAct || canSupervisorAct ? (
+      {f.propertyId || canSpecialistAct || canSupervisorAct || canRevertFinal ? (
         <div className="mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/80 pt-3">
           {f.propertyId ? (
             <Link
@@ -124,6 +125,20 @@ export function FailuresViewExpandedActions({
                 </Button>
               ) : null}
             </>
+          ) : null}
+
+          {canRevertFinal ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="default"
+              className={actionBtn}
+              disabled={busy}
+              showActionToast={false}
+              onClick={() => wf.toggleRevert(f.id)}
+            >
+              {wf.revertOpen[f.id] ? "إلغاء الرجوع" : "رجوع من التعذّر النهائي"}
+            </Button>
           ) : null}
 
           {canSupervisorAct ? (
@@ -193,36 +208,38 @@ export function FailuresViewExpandedActions({
           while it is blank (the escalation used to be one click with no text). A possible
           failure never gets it: its button is «تأكيد تعذّر داخلي» instead. */}
       {wf.escalateOpen[f.id] && canSpecialistAct && f.severity !== "suspected" ? (
-        <div className="mt-3 space-y-2.5 border-t border-border/80 pt-3">
-          <div>
-            <label
-              className="mb-1.5 block text-[11px] font-semibold text-heading"
-              htmlFor={`escalate_note_${f.id}`}
-            >
-              سبب التصعيد *
-            </label>
-            <textarea
-              id={`escalate_note_${f.id}`}
-              className={failuresFieldTextareaClass}
-              rows={3}
-              placeholder="اشرح للمشرف ما الذي حاولته ولماذا لم يُحل التعذّر…"
-              value={wf.escalateNote[f.id] ?? ""}
-              onChange={(e) => wf.setEscalateNoteFor(f.id, e.target.value)}
-            />
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant="default"
-            className={actionBtn}
-            loading={wf.busyKey === failureBusyKey(f.id, "submit")}
-            disabled={!(wf.escalateNote[f.id] ?? "").trim() || busy}
-            showActionToast={false}
-            onClick={() => wf.handleSubmit(f.id)}
-          >
-            تأكيد التصعيد إلى المشرف
-          </Button>
-        </div>
+        <ReasonConfirmForm
+          id={`escalate_note_${f.id}`}
+          label="سبب التصعيد"
+          placeholder="اشرح للمشرف ما الذي حاولته ولماذا لم يُحل التعذّر…"
+          value={wf.escalateNote[f.id] ?? ""}
+          onChange={(value) => wf.setEscalateNoteFor(f.id, value)}
+          confirmLabel="تأكيد التصعيد إلى المشرف"
+          loading={wf.busyKey === failureBusyKey(f.id, "submit")}
+          busy={busy}
+          onConfirm={() => wf.handleSubmit(f.id)}
+        />
+      ) : null}
+
+      {/* «رجوع من التعذّر النهائي» form: Enfaz took the transaction back. The reason is required;
+          every deed of the transaction comes back with this one. */}
+      {wf.revertOpen[f.id] && canRevertFinal ? (
+        <ReasonConfirmForm
+          id={`revert_final_note_${f.id}`}
+          label="سبب الرجوع من التعذّر النهائي"
+          placeholder="مثال: اتصال مركز التصفية — رجعت المعاملة من التعذّر في منصة إنفاذ"
+          hint={
+            (f.transactionDeedCount ?? 1) > 1
+              ? `ترجع صكوك المعاملة كلها (${f.transactionDeedCount}) من التعذّر وتُفتح مهامها المتوقفة، ويُخطر أصحابها.`
+              : "ترجع المعاملة من التعذّر وتُفتح مهامها المتوقفة، ويُخطر أصحابها."
+          }
+          value={wf.revertNote[f.id] ?? ""}
+          onChange={(value) => wf.setRevertNoteFor(f.id, value)}
+          confirmLabel="تأكيد الرجوع واستئناف المعاملة"
+          loading={wf.busyKey === failureBusyKey(f.id, "revert-final")}
+          busy={busy}
+          onConfirm={() => wf.handleRevertFinal(f.id)}
+        />
       ) : null}
 
       {wf.resolveOpen[f.id] && canResolve && !canSupervisorAct ? (
@@ -235,6 +252,70 @@ export function FailuresViewExpandedActions({
           onSubmit={() => wf.handleResolve(f.id)}
         />
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * A required explanation with its confirm button — «تصعيد إلى المشرف» and «رجوع من التعذّر النهائي».
+ *
+ * How it works: controlled textarea; the confirm button stays off while the text is blank or any
+ * action of the failure is in flight. Edge cases: `hint` is the line above the field saying what
+ * the confirm does; the escalation has none.
+ */
+function ReasonConfirmForm({
+  id,
+  label,
+  placeholder,
+  hint,
+  value,
+  onChange,
+  confirmLabel,
+  loading,
+  busy,
+  onConfirm,
+}: {
+  id: string;
+  label: string;
+  placeholder: string;
+  hint?: string;
+  value: string;
+  onChange: (value: string) => void;
+  confirmLabel: string;
+  /** This form's own request is in flight. */
+  loading: boolean;
+  /** Any action of this failure is in flight. */
+  busy: boolean;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="mt-3 space-y-2.5 border-t border-border/80 pt-3">
+      {hint ? <p className="m-0 text-[12px] leading-relaxed text-text-2">{hint}</p> : null}
+      <div>
+        <label className="mb-1.5 block text-[11px] font-semibold text-heading" htmlFor={id}>
+          {label} *
+        </label>
+        <textarea
+          id={id}
+          className={failuresFieldTextareaClass}
+          rows={3}
+          placeholder={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+        />
+      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="default"
+        className={failuresActionButtonClass}
+        loading={loading}
+        disabled={!value.trim() || busy}
+        showActionToast={false}
+        onClick={onConfirm}
+      >
+        {confirmLabel}
+      </Button>
     </div>
   );
 }

@@ -152,12 +152,76 @@ public static class FailureRecordRules
             Title = "تعذّر نهائي عن المعاملة",
             Body = $"توقّف العمل على الصك {failure.DeedNumber} في أمر العمل {failure.PoNumber}: {failure.FinalNote}",
             Tone = "warn",
-            Href = $"/po/{Uri.EscapeDataString(failure.PoNumber)}/property/{failure.PropertyId:D}",
+            Href = PropertyHref(failure),
             Category = NotificationContract.Categories.Failures,
             EntityType = NotificationContract.EntityTypes.Failure,
             EntityId = failure.Id.ToString(),
             SourceEvent = $"failure-final-party:{failure.Id}",
         };
+
+    public const string RevertFinalFailureRoleDeniedAr = "الرجوع من التعذّر النهائي لأخصائي التنسيق";
+
+    public const string NotFinalFailureAr = "المعاملة ليست متعذّرة نهائياً";
+
+    /// <summary>Field errors of a return from the final failure: the deed must parse and the reason is required.</summary>
+    /// <remarks>
+    /// How it works: checks the request alone, before any lookup — <c>propertyId</c> a non-empty Guid,
+    /// <c>reason</c> non-blank and at most 4000 characters once trimmed (the
+    /// <c>ResolutionReason</c> column width). Null when both hold.
+    /// Edge cases: whether the transaction is final at all is the service's answer (it needs the lookup).
+    /// </remarks>
+    public static Dictionary<string, string>? ValidateRevertFinalFailure(RevertFinalFailureRequest request)
+    {
+        var errors = new Dictionary<string, string>();
+        if (!FailureRules.TryParsePropertyId(request.PropertyId, out _))
+            errors["propertyId"] = "العقار غير موجود";
+        if (string.IsNullOrWhiteSpace(request.Reason))
+            errors["reason"] = "اكتب سبب الرجوع من التعذّر النهائي";
+        else if (request.Reason.Trim().Length > 4000)
+            errors["reason"] = "السبب أطول من المسموح";
+        return errors.Count > 0 ? errors : null;
+    }
+
+    /// <summary>The notice coordination and the section supervisor receive when a final failure is taken back.</summary>
+    /// <remarks>
+    /// How it works: names the work order and the reason and links to the property page — the
+    /// failure itself has left the queue's tabs. Edge cases: <c>SourceEvent</c> is keyed on the
+    /// failure id, so a retried call does not notify twice.
+    /// </remarks>
+    public static CreateUserNotificationRequest FinalRevertedNotification(PropertyFailure failure) =>
+        new()
+        {
+            Title = "رجوع المعاملة من التعذّر النهائي",
+            Body = $"رجعت المعاملة من التعذّر النهائي في أمر العمل {failure.PoNumber} واستؤنف العمل عليها: {failure.ResolutionReason}",
+            Tone = "success",
+            Href = PropertyHref(failure),
+            Category = NotificationContract.Categories.Failures,
+            EntityType = NotificationContract.EntityTypes.Failure,
+            EntityId = failure.Id.ToString(),
+            SourceEvent = $"failure-final-reverted:{failure.Id}",
+        };
+
+    /// <summary>The notice a party holding a task on the deed receives: its task is open again.</summary>
+    /// <remarks>
+    /// How it works: the mirror of <see cref="FinalFailurePartyNotification"/> — the deed, its work
+    /// order and the reason, linked to the property page. Edge cases: sent whether or not the party
+    /// was told of the stop — its task reopened either way; one notice per deed.
+    /// </remarks>
+    public static CreateUserNotificationRequest FinalRevertedPartyNotification(PropertyFailure failure) =>
+        new()
+        {
+            Title = "رجوع المعاملة من التعذّر النهائي",
+            Body = $"استؤنف العمل على الصك {failure.DeedNumber} في أمر العمل {failure.PoNumber}: {failure.ResolutionReason}",
+            Tone = "success",
+            Href = PropertyHref(failure),
+            Category = NotificationContract.Categories.Failures,
+            EntityType = NotificationContract.EntityTypes.Failure,
+            EntityId = failure.Id.ToString(),
+            SourceEvent = $"failure-final-reverted-party:{failure.Id}",
+        };
+
+    private static string PropertyHref(PropertyFailure failure) =>
+        $"/po/{Uri.EscapeDataString(failure.PoNumber)}/property/{failure.PropertyId:D}";
 
     /// <summary>The shortest reason (trimmed) a survey-freeze lift is recorded with.</summary>
     public const int MinSurveyFreezeLiftReasonLength = 10;

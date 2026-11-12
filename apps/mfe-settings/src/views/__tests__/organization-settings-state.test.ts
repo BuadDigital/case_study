@@ -41,7 +41,7 @@ describe("emptySettings / save payload", () => {
     expect(s.company).toEqual(ORG_COMPANY_DEFAULTS);
     expect(s.branding).toEqual(BRAND_IDENTITY_DEFAULTS);
     expect(s.sla).toEqual({ defaultBusinessDays: 4, privateSectorBusinessDays: 10 });
-    expect(s.valuation.maxAdoptedComparables).toBe(3);
+    expect(s.valuation.maxAdoptedComparables).toBe(5);
     expect(Number.isNaN(new Date(s.updatedAtUtc).getTime())).toBe(false);
   });
 
