@@ -14,8 +14,9 @@ public class ValuationComparableSelectionRulesTests
     }
 
     [Fact]
-    public void MeetsMinimumAdopted_requires_one_adopted_per_logic_doc()
+    public void MeetsMinimumAdopted_requires_two_adopted()
     {
+        // Omar 2026-11-12: the adjustments need two comparables at least (one used to do).
         var rows = new[]
         {
             new ValuationComparableSelection { IsAdopted = false },
@@ -24,13 +25,17 @@ public class ValuationComparableSelectionRulesTests
         Assert.False(ValuationComparableSelectionRules.MeetsMinimumAdopted(rows));
 
         rows[1].IsAdopted = true;
+        Assert.False(ValuationComparableSelectionRules.MeetsMinimumAdopted(rows));
+
+        rows[0].IsAdopted = true;
         Assert.True(ValuationComparableSelectionRules.MeetsMinimumAdopted(rows));
     }
 
     [Theory]
     [InlineData(new[] { false, false }, false)]
-    [InlineData(new[] { true }, true)]
-    [InlineData(new[] { false, true, false }, true)]
+    [InlineData(new[] { true }, false)]
+    [InlineData(new[] { false, true, false }, false)]
+    [InlineData(new[] { true, false, true }, true)]
     [InlineData(new[] { true, true }, true)]
     public void MeetsMinimumAdopted_flags(bool[] flags, bool expected)
     {

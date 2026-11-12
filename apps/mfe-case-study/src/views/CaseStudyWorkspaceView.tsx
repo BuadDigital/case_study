@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { Activity, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Button,
+  FormDensityProvider,
   Note,
   PageShell,
   PanelSkeleton,
@@ -288,14 +289,18 @@ export function CaseStudyWorkspaceView({
               {visitedTabs.has("appraisal") ? (
                 <Activity mode={workspaceTab === "appraisal" ? "visible" : "hidden"}>
                   {/* Phase 4: one study covers the transaction, so the appraisal tab lists every deed. */}
-                  <CaseStudyAppraisalDeedsPanel
-                    property={property}
-                    poNumber={record.poNumber}
-                    tasks={tasks ?? []}
-                    caseStudyTask={task}
-                    documentsEnabled={propertyMediaVisited}
-                    transaction={transaction}
-                  />
+                  {/* Omar 2026-11-12: «مدخلات المعاين» takes the work page's look — fields four a
+                      row, one card title style — instead of two fields stretched across the screen. */}
+                  <FormDensityProvider value="work">
+                    <CaseStudyAppraisalDeedsPanel
+                      property={property}
+                      poNumber={record.poNumber}
+                      tasks={tasks ?? []}
+                      caseStudyTask={task}
+                      documentsEnabled={propertyMediaVisited}
+                      transaction={transaction}
+                    />
+                  </FormDensityProvider>
                 </Activity>
               ) : null}
               {visitedTabs.has("valuation") ? (

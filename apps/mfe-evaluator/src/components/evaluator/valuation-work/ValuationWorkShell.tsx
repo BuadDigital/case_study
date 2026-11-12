@@ -44,6 +44,7 @@ import { ComparablesBankTable } from "./ComparablesBankTable";
 import { MethodologyAlertsPanel } from "./MethodologyAlertsPanel";
 import { fmtChainValue, roundStepLabel } from "./lib/adjustments-matrix-state";
 import { fmt } from "./lib/shell-utils";
+import { fmtMax } from "@platform/app-shared/format/number";
 import { marketSubjectAreaLabel } from "./lib/market-subject";
 import {
   buildNavItems,
@@ -436,6 +437,10 @@ export function ValuationWorkShell({
     }
 
     const landComplete = !!cost?.landEstimateComplete;
+    // Omar 2026-11-12 («الأرض هي الأرض وقيمتها ثابتة»): a subject valued as land has one table —
+    // the market approach's. With that approach on, the land is read here and edited there.
+    const oneLandTable = landSelection?.landSharedWithMarket === true;
+    const landFromMarket = oneLandTable && marketTab;
 
     return (
       <>
@@ -475,9 +480,22 @@ export function ValuationWorkShell({
               تقدير قيمة الأرض فضاءً
             </div>
             <div className="mt-0.5 text-[11.5px] font-normal text-gold-d">
-              مكوّن داخل أسلوب التكلفة — ناتجه قيمة الأرض ولا يدخل الترجيح بين
-              الأساليب. مقارناته أراضٍ خام مستقلة عن مقارنات أسلوب السوق.
+              {landFromMarket
+                ? "أرض العقار قُيّمت في أسلوب السوق — مقارناتها وتسوياتها وأوزانها واحدة في الأسلوبين، وتُعدَّل من أسلوب السوق."
+                : oneLandTable
+                  ? "مكوّن داخل أسلوب التكلفة — ناتجه قيمة الأرض ولا يدخل الترجيح بين الأساليب. مقارناته وتسوياته هي نفسها في أسلوب السوق."
+                  : "مكوّن داخل أسلوب التكلفة — ناتجه قيمة الأرض ولا يدخل الترجيح بين الأساليب. مقارناته أراضٍ خام مستقلة عن مقارنات أسلوب السوق."}
             </div>
+            {landFromMarket ? (
+              <div data-testid="cost-land-from-market" className="mt-2 flex flex-wrap items-center gap-3">
+                <span className="text-[12px] font-bold text-heading">
+                  {visibleAdoptedLand.length > 0
+                    ? `سعر متر الأرض بعد التسويات: ${fmtMax(cost?.landUnitRateFromMarket)} ر.س. — المقارنات المعتمدة: ${visibleAdoptedLand.length}`
+                    : "لا مقارنات معتمدة في أسلوب السوق بعد"}
+                </span>
+                <GhostBtn onClick={() => setScreen("market")}>الانتقال إلى أسلوب السوق</GhostBtn>
+              </div>
+            ) : null}
             {/* The land comparables are adjusted against the whole plot. */}
             {isApartment ? (
               <div data-testid="apartment-plot-hint" className="mt-1 text-[11.5px] font-bold text-heading">
@@ -487,6 +505,8 @@ export function ValuationWorkShell({
           </div>
         </div>
 
+        {landFromMarket ? null : (
+        <>
         <ComparablesBankTable
           rows={landBankRows}
           subjectSqm={landPlotSqm || (isApartment ? null : subjectAreaNum)}
@@ -511,7 +531,11 @@ export function ValuationWorkShell({
               locked={adjustmentsLocked}
               saving={saving}
               subjectArea={landPlotSqm ? String(landPlotSqm) : isApartment ? "" : subjectArea}
-              idealArea={landPlotSqm ? String(landPlotSqm) : isApartment ? "" : subjectArea}
+              // One land table: the area row shows the area the shared comparison was made against —
+              // the market table's — while the value below stays rate × the cost approach's plot.
+              idealArea={
+                oneLandTable ? subjectArea : landPlotSqm ? String(landPlotSqm) : isApartment ? "" : subjectArea
+              }
               city={property?.city}
               district={property?.district ?? districtHint}
               valuationDate={officialValuationDate ?? undefined}
@@ -524,6 +548,8 @@ export function ValuationWorkShell({
             />
           </Suspense>
         ) : null}
+        </>
+        )}
 
         </>
         ) : (

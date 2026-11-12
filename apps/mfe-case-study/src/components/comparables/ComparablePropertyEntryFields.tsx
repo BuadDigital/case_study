@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
   Button,
@@ -40,6 +40,7 @@ import {
 } from "@platform/app-shared/comparables/NearbyBankComparables";
 import {
   ADOPTED_COMPARABLE_PIN_COLOR,
+  LISTED_COMPARABLE_PIN_COLOR,
   bankComparableMapPin,
   distanceLabelAr,
   mergeNearbyBankComparables,
@@ -62,6 +63,17 @@ function descriptionSpanClass(usedInLastRow: number): string {
   if (usedInLastRow === 1) return "col-span-full @[620px]:col-span-3";
   if (usedInLastRow === 2) return "col-span-full @[620px]:col-span-2";
   return "col-span-full";
+}
+
+/**
+ * True when a press landed on an element's scrollbar, not on its content: the pointer is
+ * outside the element's content box (its border and scrollbars lie between the two).
+ */
+function pressIsOnScrollbar(event: PointerEvent, target: Element): boolean {
+  const box = target.getBoundingClientRect();
+  const x = event.clientX - box.left - target.clientLeft;
+  const y = event.clientY - box.top - target.clientTop;
+  return x < 0 || y < 0 || x > target.clientWidth || y > target.clientHeight;
 }
 
 function Field({
@@ -152,7 +164,6 @@ export function ComparablePropertyEntryFields({
 }) {
   const { showToast } = useToast();
   const [mapPinned, setMapPinned] = useState(false);
-  const [viewEpoch, setViewEpoch] = useState(0);
   const [placeLookup, setPlaceLookup] = useState<"idle" | "loading" | "done">(
     "idle",
   );
@@ -176,6 +187,7 @@ export function ComparablePropertyEntryFields({
   // What the map draws: the host's comparables when it browses the bank, else the nearby ones.
   const drawnBank = bankBrowse?.comparables ?? bankNearby;
   const adoptedIds = bankBrowse?.adoptedIds;
+  const listedIds = bankBrowse?.listedIds;
   const [shownBankId, setShownBankId] = useState<string | null>(null);
   // A search with one hit opens its details by itself, once per hit.
   const autoOpenId = bankBrowse?.autoOpenId ?? null;
@@ -189,6 +201,25 @@ export function ComparablePropertyEntryFields({
   const shownBank =
     mergeNearbyBankComparables(drawnBank, bankNearby).find((c) => c.id === shownBankId) ?? null;
   const shownBankPin = shownBank ? parseLatLng(shownBank.latitude, shownBank.longitude) : null;
+  // The pressed comparable's details go away when the user presses anywhere else (Omar
+  // 2026-11-12: «شريحة العقار السابق لم تختفي») — an empty spot of the map (`onBackgroundClick`)
+  // or anything outside the map and the details themselves. A press on a scrollbar is not a
+  // press elsewhere: the details may need scrolling to be read.
+  const mapBoxRef = useRef<HTMLDivElement>(null);
+  const bankCardRef = useRef<HTMLDivElement>(null);
+  const shownBankKey = shownBank?.id ?? null;
+  useEffect(() => {
+    if (!shownBankKey) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (mapBoxRef.current?.contains(target) || bankCardRef.current?.contains(target)) return;
+      if (pressIsOnScrollbar(event, target)) return;
+      setShownBankId(null);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [shownBankKey]);
   const shownAction = shownBank && bankBrowse && !disabled ? bankBrowse.action(shownBank) : null;
   const sameSpot = nearestBankComparable(bankNearby, comparablePin);
   const contextPins = useMemo(
@@ -197,10 +228,18 @@ export function ComparablePropertyEntryFields({
       ...drawnBank
         .filter((c) => parseLatLng(c.latitude, c.longitude) != null)
         .map((c) =>
-          bankComparableMapPin(c, adoptedIds?.has(c.id) ? ADOPTED_COMPARABLE_PIN_COLOR : undefined),
+          // Green: adopted. Blue: in the transaction's table, not adopted. Orange: the bank's.
+          bankComparableMapPin(
+            c,
+            adoptedIds?.has(c.id)
+              ? ADOPTED_COMPARABLE_PIN_COLOR
+              : listedIds?.has(c.id)
+                ? LISTED_COMPARABLE_PIN_COLOR
+                : undefined,
+          ),
         ),
     ],
-    [subjectPin, drawnBank, adoptedIds],
+    [subjectPin, drawnBank, adoptedIds, listedIds],
   );
 
   // Clearing the coordinates drops the pin and any place lookup with it.
@@ -281,12 +320,6 @@ export function ComparablePropertyEntryFields({
     return true;
   }
 
-  function restoreSubjectView() {
-    if (!subjectPin) return;
-    setViewEpoch((n) => n + 1);
-    showToast("تم الرجوع إلى موقع العقار", "success");
-  }
-
   // Omar 2026-11-11: the entry fields appear only once the comparable's location is chosen and
   // pinned. A form without a map has no location step, so its fields show at once.
   const fieldsShown = mapPinned || showCoordinates === false;
@@ -312,6 +345,7 @@ export function ComparablePropertyEntryFields({
           {/* No heading or legend above the map (Omar 2026-11-11): the map and its pins say it. */}
           {bankBrowse?.toolbar}
           <div
+            ref={mapBoxRef}
             className={cn(
               "relative h-[240px] overflow-hidden rounded-lg border",
               // A map the bank is browsed on gets more room than one a pin is only placed on.
@@ -331,8 +365,10 @@ export function ComparablePropertyEntryFields({
               quietPlaces
               resolvePlace={!disabled}
               initialCenter={subjectPin}
-              viewCenter={subjectPin}
-              viewEpoch={viewEpoch}
+              // Omar 2026-11-12: «الرجوع إلى موقع العقار» is one of the map's own controls (the
+              // house), not a button under the map.
+              homeCenter={subjectPin}
+              homeLabel="الرجوع إلى موقع العقار"
               contextPins={contextPins}
               // Omar 2026-11-11: the note over the spot being chosen says what it is for.
               pinLabel="أضف مقارن جديد"
@@ -352,6 +388,7 @@ export function ComparablePropertyEntryFields({
               }
               onLocationDetail={disabled ? undefined : applyLocationDetail}
               onContextPinClick={setShownBankId}
+              onBackgroundClick={() => setShownBankId(null)}
               freePan={Boolean(bankBrowse)}
               fitPinsKey={bankBrowse?.fitPinsKey}
               onCenterChange={bankBrowse?.onCenterChange}
@@ -379,6 +416,7 @@ export function ComparablePropertyEntryFields({
             </OpsInfoNote>
           ) : null}
           {shownBank ? (
+            <div ref={bankCardRef}>
             <ExistingComparableCard
               comparable={shownBank}
               metersFromSubject={
@@ -389,11 +427,15 @@ export function ComparablePropertyEntryFields({
               useBusy={shownAction?.busy}
               onClose={() => setShownBankId(null)}
             />
+            </div>
           ) : null}
-          {/* The location tools in one row: typed coordinates, pinning, back to the subject. */}
-          {!disabled ? (
+          {/* The location tools in one row: typed coordinates and pinning.
+              Omar 2026-11-12: they appear only once a spot is chosen on the map — until then
+              there is no row. The field shows the chosen spot's coordinates, to correct by
+              typing or pasting. */}
+          {!disabled && (comparablePin || mapPinned) ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              {mapInteractive ? (
+              {mapInteractive && comparablePin ? (
                 <>
                   <Label
                     htmlFor="cmp-coords"
@@ -405,7 +447,10 @@ export function ComparablePropertyEntryFields({
                     id="cmp-coords"
                     dir="ltr"
                     inputMode="decimal"
-                    value={coordsText}
+                    value={
+                      coordsText ||
+                      `${comparablePin.lat.toFixed(6)}, ${comparablePin.lng.toFixed(6)}`
+                    }
                     placeholder="24.713600, 46.675300"
                     className={cn("min-w-[170px] flex-1", coordsError && invalidControlClass)}
                     onChange={(e) => {
@@ -450,14 +495,6 @@ export function ComparablePropertyEntryFields({
                   </Button>
                 </>
               ) : null}
-              <Button
-                type="button"
-                className="max-sm:min-w-0 max-sm:flex-1"
-                disabled={!subjectPin}
-                onClick={restoreSubjectView}
-              >
-                الرجوع إلى موقع العقار
-              </Button>
             </div>
           ) : null}
           {coordsError ? (
@@ -470,7 +507,7 @@ export function ComparablePropertyEntryFields({
               {mapPinned && comparablePin
                 ? `الموقع مثبت — ${comparablePin.lat.toFixed(6)}، ${comparablePin.lng.toFixed(6)}`
                 : comparablePin
-                  ? `اضغط تثبيت بعد وضع الدبوس — ${comparablePin.lat.toFixed(6)}، ${comparablePin.lng.toFixed(6)}`
+                  ? "اضغط «تثبيت الموقع» بعد وضع الدبوس"
                   : "اضغط على الخريطة لتحديد موقع المقارن"}
             </span>
             {placeLine || comparablePin ? (

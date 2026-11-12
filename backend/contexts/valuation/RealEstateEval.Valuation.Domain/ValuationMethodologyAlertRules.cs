@@ -289,12 +289,13 @@ public static class ValuationMethodologyAlertRules
                 .Where(x => x.TransactionDate is { } d && d > dateCutoff)
                 .ToList()
             : [];
-        var subjectCategory = PropertyCategoryRules.Categorize(input.SubjectPropertyType);
+        // The general class — land or built (2026-11-12): only land against built is a mismatch.
+        var subjectCategory = PropertyCategoryRules.GeneralClass(input.SubjectPropertyType);
         var mismatched = comps
             .Select((c, i) => (
                 Ref: RefOf(c.ReferenceCode, i),
                 Type: c.ComparablePropertyType,
-                Category: PropertyCategoryRules.Categorize(c.ComparablePropertyType, c.Usage)))
+                Category: PropertyCategoryRules.GeneralClass(c.ComparablePropertyType, c.Usage)))
             .Where(x => PropertyCategoryRules.Mismatch(subjectCategory, x.Category))
             .ToList();
 
@@ -495,7 +496,7 @@ public static class ValuationMethodologyAlertRules
                 AfterValuationDateDetail(afterCutoff, input.ComparableDateCutoff, input.ComparableDateCutoffIsPeriodEnd),
                 resolutions),
 
-            // Category mismatch (vacant-land subjects keep the hard m11 instead).
+            // General-class mismatch — land against built (vacant-land subjects keep the hard m11 instead).
             Eval(24, ValuationMethodologyAlertCodes.PropertyTypeMismatch,
                 "نوع المقارن يخالف نوع العقار محل التقييم",
                 input.MarketApproachRelevant
@@ -650,8 +651,8 @@ public static class ValuationMethodologyAlertRules
         string? subjectCategory,
         IReadOnlyList<(string Ref, string Type, string? Category)> mismatched)
     {
-        var list = mismatched.Select(x => $"{x.Ref} ({x.Type} — {PropertyCategoryRules.LabelAr(x.Category)})");
-        return $"العقار محل التقييم «{PropertyCategoryRules.LabelAr(subjectCategory)}» والمقارن: {string.Join("، ", list)} — برّر صلاحية المقارن أو استبعده";
+        var list = mismatched.Select(x => $"{x.Ref} ({x.Type} — {PropertyCategoryRules.GeneralClassLabelAr(x.Category)})");
+        return $"العقار محل التقييم «{PropertyCategoryRules.GeneralClassLabelAr(subjectCategory)}» والمقارن: {string.Join("، ", list)} — برّر صلاحية المقارن أو استبعده";
     }
 
     /// <summary>

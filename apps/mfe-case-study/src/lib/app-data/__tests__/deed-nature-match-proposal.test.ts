@@ -184,4 +184,14 @@ describe("deedMatchSideRows (Omar 2026-11-10)", () => {
     expect(rows[2]).toMatchObject({ matches: false, note: "الطول 28 م" });
     expect(rows[3]).toMatchObject({ deedDesc: "ممر", matches: null });
   });
+
+  it("carries each side's facade — the inspector's, else the property's (Omar 2026-11-12)", () => {
+    const draft = inspectorDraft();
+    draft.boundaryMatches = {
+      ...draft.boundaryMatches,
+      north: { ...draft.boundaryMatches.north, facade: "رخام" },
+    };
+    const rows = deedMatchSideRows(draft, { ...property, eastFacadeFinishing: "طوب" });
+    expect(rows.map((r) => r.facade)).toEqual(["رخام", "", "طوب", ""]);
+  });
 });

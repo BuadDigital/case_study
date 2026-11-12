@@ -106,6 +106,7 @@ export function InspectorWorkspaceWizard({
   flat = false,
   /** Hide inline submit footer — parent renders it after extra sections. */
   hideSubmitFooter = false,
+  boundariesShownAbove = false,
   /** Case specialist: «مكونات العقار» (report text + table) replaces the editable description. */
   specialistComponents,
   keyAvailability,
@@ -143,6 +144,11 @@ export function InspectorWorkspaceWizard({
   engineeringMapPin?: { lat: number; lng: number } | null;
   flat?: boolean;
   hideSubmitFooter?: boolean;
+  /**
+   * The host already shows the four sides (the specialist's «مطابقة الصك على الطبيعة» card): the
+   * read-only «الحدود والأطوال» table is not repeated. While the sides can be edited it shows.
+   */
+  boundariesShownAbove?: boolean;
   specialistComponents?: ReactNode;
   /** The inspector's key-envelope answer (key notes in step 3); absent for the specialist. */
   keyAvailability?: Pick<InspectorKeyAvailability, "keyAvailable" | "status" | "retry">;
@@ -155,6 +161,24 @@ export function InspectorWorkspaceWizard({
   const [activeStep, setActiveStep] = useState<InspectorStepId>(1);
   const editable = !locked;
   const showStep = (step: InspectorStepId) => flat || activeStep === step;
+  // Omar 2026-11-12: a read view (a locked review, a page that only shows the inspection) gives
+  // no card to a section with nothing in it — the empty ones are named in one line at the end.
+  // Only where every section is on one page (`flat`); the inspector's own steps keep their cards.
+  const collapseEmpty = flat && !editable;
+  const emptySections = collapseEmpty
+    ? [
+        draft.services.length === 0 && draft.amenities.length === 0
+          ? "الخدمات والمرافق المحيطة"
+          : null,
+        serviceProofFromTransactionPhotos &&
+        !draft.districtProsCons?.trim() &&
+        !draft.assetNotes?.trim()
+          ? "الوصف والملاحظات"
+          : null,
+        draft.observations.length === 0 ? "الملاحظات الميدانية" : null,
+      ].filter((title): title is string => title !== null)
+    : [];
+  const isEmptySection = (title: string) => emptySections.includes(title);
   const stepPanelRef = useRef<HTMLDivElement>(null);
   useSwapAnimation(stepPanelRef, flat ? 0 : activeStep);
   const initialAssetSubject =
@@ -381,24 +405,28 @@ export function InspectorWorkspaceWizard({
               </InsCard>
             ) : null}
 
-            <InspectorBoundaryMatchTable
-              property={property}
-              draft={draft}
-              editable={editable}
-              mismatchNoteInvalidKey={fieldErrors.missingBoundaryKey}
-              deedMatchError={fieldErrors.deedMatchesNature}
-              boundariesError={fieldErrors.boundaries}
-              onPatch={onPatch}
-            />
+            {boundariesShownAbove && !editable ? null : (
+              <InspectorBoundaryMatchTable
+                property={property}
+                draft={draft}
+                editable={editable}
+                mismatchNoteInvalidKey={fieldErrors.missingBoundaryKey}
+                deedMatchError={fieldErrors.deedMatchesNature}
+                boundariesError={fieldErrors.boundaries}
+                onPatch={onPatch}
+              />
+            )}
 
-            <InspectorWizardServicesCard
-              draft={draft}
-              editable={editable}
-              fieldErrors={fieldErrors}
-              serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
-              transactionPhotos={transactionPhotos}
-              onPatch={onPatch}
-            />
+            {isEmptySection("الخدمات والمرافق المحيطة") ? null : (
+              <InspectorWizardServicesCard
+                draft={draft}
+                editable={editable}
+                fieldErrors={fieldErrors}
+                serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
+                transactionPhotos={transactionPhotos}
+                onPatch={onPatch}
+              />
+            )}
 
             {editable && !flat ? <StepContinue onContinue={advance} /> : null}
           </>
@@ -428,7 +456,7 @@ export function InspectorWorkspaceWizard({
               </InsCard>
             ) : null}
 
-            {serviceProofFromTransactionPhotos ? (
+            {serviceProofFromTransactionPhotos && !isEmptySection("الوصف والملاحظات") ? (
               <InsCard
                 title="الوصف والملاحظات"
                 badge={<DetailBadge tone="gray">نص حر</DetailBadge>}
@@ -450,15 +478,26 @@ export function InspectorWorkspaceWizard({
               </InsCard>
             ) : null}
 
-            <InspectorFieldObservationsCard
-              deedNumber={property.deedNumber}
-              draft={draft}
-              editable={editable}
-              serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
-              transactionPhotos={transactionPhotos}
-              missingObservationId={fieldErrors.missingObservationId}
-              onPatch={onPatch}
-            />
+            {isEmptySection("الملاحظات الميدانية") ? null : (
+              <InspectorFieldObservationsCard
+                deedNumber={property.deedNumber}
+                draft={draft}
+                editable={editable}
+                serviceProofFromTransactionPhotos={serviceProofFromTransactionPhotos}
+                transactionPhotos={transactionPhotos}
+                missingObservationId={fieldErrors.missingObservationId}
+                onPatch={onPatch}
+              />
+            )}
+
+            {emptySections.length > 0 ? (
+              <p
+                className="mb-3 mt-0 rounded-lg border border-dashed border-border px-3 py-2 text-[11.5px] text-text-3"
+                data-testid="ins-empty-sections"
+              >
+                لا شيء مسجّل في: {emptySections.join("، ")}.
+              </p>
+            ) : null}
 
             {/* The phone's key notes and client declaration — the inspector's own, never the review. */}
             {!serviceProofFromTransactionPhotos ? (

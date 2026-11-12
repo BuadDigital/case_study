@@ -25,6 +25,8 @@ export type ComparableBankBrowse = {
   comparables: readonly ComparablePropertyDto[];
   /** Chosen for this transaction — drawn green. */
   adoptedIds: ReadonlySet<string>;
+  /** In the transaction's table (adopted or not) — the ones not adopted are drawn blue. */
+  listedIds?: ReadonlySet<string>;
   /** Frame the drawn pins once per key (a new search). */
   fitPinsKey?: string;
   /** A comparable whose details open by themselves (a search with one hit). */

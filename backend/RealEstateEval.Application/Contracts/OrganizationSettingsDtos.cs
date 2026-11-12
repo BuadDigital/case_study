@@ -140,7 +140,7 @@ public sealed class OrganizationSlaSettingsDto
 public sealed class OrganizationValuationSettingsDto
 {
  /// <summary>Max comparables that can be adopted per valuation (1–3: the report template prints three); the evaluator reads it.</summary>
-    public int MaxAdoptedComparables { get; init; } = 3;
+    public int MaxAdoptedComparables { get; init; } = 5;
 
  /// <summary>Area normalization factor % per instance/multiplier (logic-normalizations, default 5).</summary>
     public decimal AreaFactorPct { get; init; } = 5m;

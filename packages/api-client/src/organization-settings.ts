@@ -570,7 +570,7 @@ function normalizeSettings(raw: Record<string, unknown>): OrganizationSettingsDt
     },
     valuation: {
       maxAdoptedComparables: Number(
-        valuation.maxAdoptedComparables ?? valuation.MaxAdoptedComparables ?? 3,
+        valuation.maxAdoptedComparables ?? valuation.MaxAdoptedComparables ?? 5,
       ),
       areaFactorPct: Number(
         valuation.areaFactorPct ?? valuation.AreaFactorPct ?? 5,

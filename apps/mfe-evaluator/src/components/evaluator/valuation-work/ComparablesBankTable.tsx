@@ -17,6 +17,7 @@ import { useCommandMutation } from "@platform/app-shared";
 import { UnsavedChangesDialog } from "@platform/app-shared/registration/UnsavedChangesDialog";
 import {
   comparableDraftToUpsert,
+  comparableTypeLabel,
   emptyComparableEntryDraft,
   firstComparableEntryError,
   firstComparableEntryErrorTarget,
@@ -61,6 +62,14 @@ import {
 import { apiConfig, fmt } from "./lib/shell-utils";
 
 type ComparablesBankRow = BankDisplayRow;
+
+/**
+ * How many comparables a transaction's table holds (Omar 2026-11-12: up to eight are added, up to
+ * five of them adopted — the organisation's «الحد الأقصى للمقارنات المعتمدة» — and the adjustments
+ * need two at least).
+ */
+const MAX_TRANSACTION_COMPARABLES = 8;
+const TABLE_FULL_AR = `في المعاملة ${MAX_TRANSACTION_COMPARABLES} مقارنات وهو الحد الأقصى — احذف مقارناً غير معتمد قبل إضافة آخر`;
 
 /**
  * Empty table: say why and what to do next — never a dead end. A transaction with no comparables
@@ -239,8 +248,8 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
     });
   }
 
-  /** A bank comparable pressed on the entry map is adopted, or un-adopted, without leaving the
-   * window — so several can be chosen in a row. */
+  /** A comparable of this table pressed on the entry map is adopted, or un-adopted, without
+   * leaving the window. */
   function adoptFromMap(comp: ComparablePropertyDto, next: boolean) {
     if (saving) return;
     if (next && landOnly && !isVacantLandComparable(comp.comparablePropertyType)) {
@@ -248,6 +257,29 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
       return;
     }
     toggleAdopt(comp.id, next);
+  }
+
+  /**
+   * A bank comparable pressed on the entry map joins this transaction's table, not adopted
+   * (Omar 2026-11-12: adding is apart from adopting — it used to adopt at once, so nothing could
+   * be added past the adopted ceiling).
+   *
+   * How it works: the server links a comparable that is not in the table when its adoption is
+   * set — here to «not adopted»; the appraiser adopts it from the table or from the map.
+   * Edge cases: a full table (eight) refuses and says how to make room; the land table takes
+   * lands only.
+   */
+  function addFromMap(comp: ComparablePropertyDto) {
+    if (saving) return;
+    if (landOnly && !isVacantLandComparable(comp.comparablePropertyType)) {
+      showToast("هذا الجدول للأراضي فقط — المقارن المختار ليس أرضاً", "error");
+      return;
+    }
+    if (rows.length >= MAX_TRANSACTION_COMPARABLES) {
+      showToast(TABLE_FULL_AR, "error");
+      return;
+    }
+    toggleAdopt(comp.id, false);
   }
 
   function openForm() {
@@ -281,6 +313,11 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   }
 
   async function saveComparable() {
+    // A new comparable is entered for this property and joins its table: the same ceiling.
+    if (rows.length >= MAX_TRANSACTION_COMPARABLES) {
+      showToast(TABLE_FULL_AR, "error");
+      return;
+    }
     const errors = validateComparableEntry(draft, locationConfirmed);
     setFieldErrors(errors);
     const message = firstComparableEntryError(errors);
@@ -427,6 +464,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
           rows={rows}
           pendingAdopt={pendingAdopt}
           onToggleAdopt={adoptFromMap}
+          onAdd={addFromMap}
           onChange={(next) => {
             setDraft(next);
             setFieldErrors({});
@@ -458,7 +496,9 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                 tone={adopted ? "gold" : undefined}
                 className={cn(adopted && "bg-gold-soft")}
                 title={<bdi dir="ltr" className="whitespace-nowrap text-gold-d">{comp.referenceCode}</bdi>}
-                subtitle={[comp.comparablePropertyType, comp.district].filter(Boolean).join(" · ")}
+                subtitle={[comparableTypeLabel(comp.comparablePropertyType), comp.district]
+                  .filter(Boolean)
+                  .join(" · ")}
                 status={
                   <span className="inline-flex items-center rounded-md border border-border-md bg-surface-2 px-2.5 py-[3px] text-[11.5px] font-medium text-text-2">
                     {comp.transactionKindLabelAr}
@@ -577,7 +617,7 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
                 </TdLtr>
                 <Td className="text-center">
                   <span className="text-[13px] text-text">
-                    {row.comp.comparablePropertyType}
+                    {comparableTypeLabel(row.comp.comparablePropertyType)}
                   </span>
                 </Td>
                 <Td className="text-center">

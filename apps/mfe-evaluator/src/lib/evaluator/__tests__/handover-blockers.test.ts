@@ -115,8 +115,8 @@ describe("classifyHandOverBlockers — round 2", () => {
   it("a table gate is the appraiser's, on the table's screen", () => {
     const blockers = classifyHandOverBlockers({
       gates: [
-        gate("min_adopted_comparables_market", "يلزم مقارن معتمد واحد على الأقل (مقارنات أسلوب السوق)"),
-        gate("min_adopted_comparables_land_within_cost", "يلزم مقارن معتمد واحد على الأقل (مقارنات الأرض ضمن التكلفة)"),
+        gate("min_adopted_comparables_market", "يلزم مقارنان معتمدان على الأقل (مقارنات أسلوب السوق)"),
+        gate("min_adopted_comparables_land_within_cost", "يلزم مقارنان معتمدان على الأقل (مقارنات الأرض ضمن التكلفة)"),
       ],
       methodologyAlerts: [],
     });

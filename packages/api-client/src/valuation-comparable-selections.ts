@@ -84,6 +84,11 @@ export type ValuationComparableSelectionListDto = {
   propertyId: string;
   /** market | land_within_cost */
   selectionContext?: string;
+  /**
+   * Land table only: the subject is valued as land, so this table is the market table's own
+   * rows — one valuation of the land for both approaches (2026-11-12).
+   */
+  landSharedWithMarket?: boolean;
   adoptedCount: number;
   meetsMinimumAdoptedGate: boolean;
   weightsSumTo100: boolean;

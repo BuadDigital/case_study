@@ -57,6 +57,12 @@ function relatedTaskId(
  * - "study" — the work page: the deed ↔ nature match, «مكونات العقار» and the report inputs, the
  *   accepted package read-only (the study may still return it to the inspector).
  * - none — every part, as the property details page and the study workspace always showed.
+ *   It is two pages (Omar 2026-11-12: «صفحة للقراءة فقط، وصفحة إذا جات مدخلات المعاين»): while
+ *   the inspector's package is submitted and waits for its confirmation, the review as it always
+ *   was — correct, choose the deed-match outcome and the finishing level, confirm or return;
+ *   at every other time (not submitted yet, returned to the inspector, confirmed) the same
+ *   content read-only, the deed-match outcome and the finishing level included. The confirmed
+ *   page keeps «إلغاء الاعتماد وإعادة للتصحيح», the way back to the review.
  */
 export type AppraisalReviewStage = "follow" | "study";
 
@@ -259,7 +265,13 @@ export function CaseStudyAppraisalPanel({
 
   const studyClosed =
     caseStudyTask.status === "completed" || Boolean(caseStudyTask.studyReportIssued);
-  const reviewEditable = mayAccept && stage !== "study";
+  // The study workspace (no stage) is read-only unless the inspector's inputs have arrived and
+  // wait for the review — see `AppraisalReviewStage`. The coordinator's page and the work page
+  // keep their own rules.
+  const awaitingReview =
+    currentInspectionPackageStatus === "submitted" && !currentInspectionAccepted;
+  const readOnlyPage = !stage && !awaitingReview;
+  const reviewEditable = mayAccept && stage !== "study" && !readOnlyPage;
 
   return (
     <div className="pt-5">
@@ -271,7 +283,12 @@ export function CaseStudyAppraisalPanel({
           surveyTaskId={surveyTaskId}
           inspectionTaskId={inspectionTaskId}
           engineeringAssigned={engineeringAssigned}
-          readOnly={!mayAccept || caseStudyTask.status === "completed"}
+          readOnly={
+            !mayAccept ||
+            caseStudyTask.status === "completed" ||
+            (readOnlyPage && !currentInspectionAccepted)
+          }
+          readOnlyOnceDecided={readOnlyPage && currentInspectionAccepted}
         />
       ) : null}
       <section className="mb-6">
@@ -352,10 +369,16 @@ export function CaseStudyAppraisalPanel({
                 ? "hidden"
                 : stage === "study"
                   ? { locked: !mayAccept || studyClosed }
-                  : "with-review"
+                  : // The read-only page locks «مكونات العقار» too — also before the package arrives,
+                    // when the review's own lock (set by the confirmation) is not on yet.
+                    readOnlyPage
+                    ? { locked: true }
+                    : "with-review"
             }
             includeRetiredFeatureKeys={CASE_STUDY_SPECIALIST_FEATURE_KEYS}
             serviceProofFromTransactionPhotos
+            // «مطابقة الصك على الطبيعة» above already lists the four sides (not on the follow-up page).
+            boundariesShownAbove={stage !== "follow"}
             transactionPhotos={transactionPhotos}
             submitSuccessToast={SPECIALIST_ACCEPT_INSPECTOR_INPUTS_SUCCESS}
             submitFooterAfter={
@@ -363,6 +386,7 @@ export function CaseStudyAppraisalPanel({
                 <SpecialistValuationReportInputs
                   propertyId={property.id}
                   poNumber={poNumber}
+                  readOnly={readOnlyPage}
                 />
               ) : (
                 <></>

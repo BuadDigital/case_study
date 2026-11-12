@@ -62,7 +62,7 @@ export function emptySettings(): OrganizationSettingsDto {
     branding: { ...BRAND_IDENTITY_DEFAULTS },
     sla: { defaultBusinessDays: 4, privateSectorBusinessDays: 10 },
     valuation: {
-      maxAdoptedComparables: 3,
+      maxAdoptedComparables: 5,
       areaFactorPct: 5,
       annualMarketRatePct: 4,
       marketValueRoundDecimals: 4,

@@ -13,7 +13,9 @@ namespace RealEstateEval.Application.Tests;
 /// <summary>
 /// Ruling 2026-11-11: the land valuation by comparable sales is the same work in the market approach
 /// and inside the cost approach, so the appraiser copies it from one table to the other instead of
-/// entering it twice — a snapshot, each table edited freely afterwards.
+/// entering it twice — a snapshot, each table edited freely afterwards. Since 2026-11-12 this is for
+/// built subjects only (the seed is a villa): a subject valued as land has one table for both
+/// (<see cref="OneLandTableTests"/>).
 /// </summary>
 public sealed class CopyLandComparablesTableTests
 {
@@ -173,7 +175,7 @@ public sealed class CopyLandComparablesTableTests
         Assert.True(unknown!.ContainsKey("fromContext"));
     }
 
-    private sealed record Seed(
+    internal sealed record Seed(
         ValuationDbContext Db,
         ValuationComparableSelectionService Selections,
         Guid RequestId,
@@ -185,10 +187,12 @@ public sealed class CopyLandComparablesTableTests
         {
             var (_, error) = await Selections.SetAdoptedAsync(RequestId, comparableId, adopted, User, default, context);
             Assert.Null(error);
-            return Db.ValuationComparableSelections.Single(s =>
-                s.ValuationRequestId == RequestId
-                && s.SelectionContext == context
-                && s.ComparablePropertyId == comparableId);
+            // A land's row lives in the market table whichever table it was adopted through.
+            var rows = Db.ValuationComparableSelections
+                .Where(s => s.ValuationRequestId == RequestId && s.ComparablePropertyId == comparableId)
+                .ToList();
+            return rows.SingleOrDefault(s => s.SelectionContext == context)
+                ?? rows.Single(s => s.SelectionContext == Market);
         }
 
         /// <summary>Writes what the appraiser tunes on one row: a location adjustment, a manual weight, a price override.</summary>
@@ -207,11 +211,18 @@ public sealed class CopyLandComparablesTableTests
         }
     }
 
-    private static async Task<Seed> SeedAsync(ValuationDbContext db)
+    /// <summary>
+    /// A valuation with the cost approach on (land and buildings), two land comparables and a villa
+    /// in the bank. <paramref name="caseStudy"/> answers for the property's inventory and inspected type.
+    /// </summary>
+    internal static async Task<Seed> SeedAsync(
+        ValuationDbContext db,
+        string propertyType = "فيلا",
+        ICaseStudyLookup? caseStudy = null)
     {
         var id = Guid.NewGuid();
         db.ValuationRequests.Add(ValuationRequest.Create(
-            id, "VR-950", Guid.NewGuid(), "النرجس", "فيلا", "مقيم", "2026-11-01", DateTime.UtcNow));
+            id, "VR-950", Guid.NewGuid(), "النرجس", propertyType, "مقيم", "2026-11-01", DateTime.UtcNow));
         db.ValuationApproachSettings.Add(new ValuationApproachSettings
         {
             Id = Guid.NewGuid(),
@@ -252,7 +263,8 @@ public sealed class CopyLandComparablesTableTests
             ValuationSettingsAndPriorBankFeedTests.Proxy.Of<IOrganizationSettingsService>((method, _) =>
                 method.ReturnType == typeof(Task<OrganizationSettingsDto>)
                     ? Task.FromResult(new OrganizationSettingsDto())
-                    : null));
+                    : null),
+            caseStudy: caseStudy);
         return new Seed(db, selections, id, landA, landB, villa);
     }
 }

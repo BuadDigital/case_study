@@ -61,7 +61,7 @@ export function useComparablesCommands(
     // Per-table cap from organization settings (وقت التنفيذ ← الحد الأقصى للمقارنات المعتمدة).
     if (isAdopted) {
       const maxAdopted =
-        getCachedOrganizationSettings()?.valuation.maxAdoptedComparables ?? 3;
+        getCachedOrganizationSettings()?.valuation.maxAdoptedComparables ?? 5;
       const adoptedNow =
         context === MARKET_CONTEXT
           ? visibleAdoptedMarket.length
@@ -182,9 +182,12 @@ export function useComparablesCommands(
     costEnabled && (approachSettings?.costScopeKey ?? "land_and_building") !== "building_only";
   const landIn = (items: readonly ValuationComparableSelectionDto[]) =>
     items.filter((i) => isVacantLandComparable(i.comparable.comparablePropertyType)).length;
+  // A subject valued as land has one table for both approaches: the lists are the same rows.
+  const oneLandTable = landSelection?.landSharedWithMarket === true;
   const copyIntoMarket = landCopyState({
     target: "market",
     marketKind,
+    oneLandTable,
     targetRowCount: selection?.items.length ?? 0,
     sourceAdoptedCount: visibleAdoptedLand.length,
     sourceAdoptedLandCount: landIn(visibleAdoptedLand),
@@ -192,6 +195,7 @@ export function useComparablesCommands(
   const copyIntoLand = landCopyState({
     target: "land",
     marketKind,
+    oneLandTable,
     targetRowCount: landSelection?.items.length ?? 0,
     sourceAdoptedCount: visibleAdoptedMarket.length,
     sourceAdoptedLandCount: landIn(visibleAdoptedMarket),

@@ -99,7 +99,7 @@ export function OrganizationSlaForm({
             className={opsFldControl}
             type="number"
             min={1}
-            max={3}
+            max={5}
             dir="ltr"
             value={String(valuation.maxAdoptedComparables)}
             disabled={!canEdit}

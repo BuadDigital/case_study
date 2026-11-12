@@ -2,6 +2,7 @@ import type { ComparablePropertyDto } from "@platform/api-client";
 import {
   comparableAreaLabel,
   comparableKindFromType,
+  comparableTypeLabel,
 } from "@platform/app-shared/app-data/comparable-entry";
 import { haversineMeters, parseLatLng, type LatLng } from "@platform/app-shared/domain/geo";
 import { fmtMax } from "@platform/app-shared/format/number";
@@ -11,6 +12,8 @@ import type { GoogleMapContextPin } from "@platform/ui-kit";
 export const BANK_COMPARABLE_PIN_COLOR = "#d9822b";
 /** A bank comparable chosen for the transaction at hand. */
 export const ADOPTED_COMPARABLE_PIN_COLOR = "#1f9d55";
+/** A comparable added to the transaction's table and not adopted yet. */
+export const LISTED_COMPARABLE_PIN_COLOR = "#378add";
 const SUBJECT_PIN_COLOR = "#12284C";
 
 /**
@@ -56,9 +59,11 @@ export function bankComparableMapPin(
     id: comparable.id,
     lat: comparable.latitude,
     lng: comparable.longitude,
-    title: [comparable.referenceCode, type, district].filter(Boolean).join(" · "),
+    title: [comparable.referenceCode, comparableTypeLabel(type), district]
+      .filter(Boolean)
+      .join(" · "),
     details: [
-      type,
+      comparableTypeLabel(type),
       usage ? `الاستخدام: ${usage}` : "",
       district ? `الحي: ${district}` : "",
       Number.isFinite(comparable.areaSqm) ? `${areaLabel}: ${fmtMax(comparable.areaSqm)} م²` : "",

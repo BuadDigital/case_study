@@ -25,6 +25,7 @@ export type MapControlIconName =
   | "zoom-in"
   | "zoom-out"
   | "recenter"
+  | "home"
   | "light"
   | "streets"
   | "satellite"
@@ -38,6 +39,13 @@ const ICONS: Record<MapControlIconName, ReactNode> = {
     <>
       <circle cx="12" cy="12" r="3" />
       <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+    </>
+  ),
+  // A house — back to the property the map is about.
+  home: (
+    <>
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <path d="M9 22V12h6v10" />
     </>
   ),
   light: (

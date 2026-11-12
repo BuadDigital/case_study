@@ -307,11 +307,17 @@ export function FieldComparableCaptureSection({
               );
             })}
           </MobileRecordList>
+          {/* Omar 2026-11-12: no sideways scrollbar — the fourteen columns fit the card's width:
+              headers and cells wrap (a long word may break) and the side padding is halved,
+              instead of every column keeping its text on one line. */}
           <Table wrapClassName="max-lg:hidden">
             <THead>
               <Tr>
                 {cols.map((col) => (
-                  <Th key={col.id} className="whitespace-nowrap text-[11px]">
+                  <Th
+                    key={col.id}
+                    className="whitespace-normal px-2 align-bottom text-[11px] leading-snug [overflow-wrap:anywhere]"
+                  >
                     {col.name}
                   </Th>
                 ))}
@@ -331,7 +337,10 @@ export function FieldComparableCaptureSection({
                 tableRows.map(({ key, row, description }) => (
                   <Tr key={key}>
                     {cols.map((col) => (
-                      <Td key={col.id} className="whitespace-nowrap text-[11.5px] align-top">
+                      <Td
+                        key={col.id}
+                        className="whitespace-normal px-2 align-top text-[11.5px] [overflow-wrap:anywhere]"
+                      >
                         {cellValue(col.key, row, description)}
                       </Td>
                     ))}

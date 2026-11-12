@@ -151,8 +151,11 @@ export function GoogleMapPin({
   onContextPinClick,
   fitPinsKey,
   onCenterChange,
+  onBackgroundClick,
   freePan = false,
   quietPlaces = false,
+  homeCenter,
+  homeLabel,
   offlineHint,
 }: {
   lat?: number | null;
@@ -186,6 +189,8 @@ export function GoogleMapPin({
   fitPinsKey?: string;
   /** The map came to rest on a new centre (after a pan or a zoom). */
   onCenterChange?: (lat: number, lng: number) => void;
+  /** An empty spot of the map was pressed — not a pin (the host drops what a pin opened). */
+  onBackgroundClick?: () => void;
   /** Scroll and drag move the map directly even when it is not picking (a map to browse). */
   freePan?: boolean;
   /**
@@ -193,6 +198,13 @@ export function GoogleMapPin({
    * that stay show their name only, and pressing a place opens nothing.
    */
   quietPlaces?: boolean;
+  /**
+   * The point the map is about (the subject property): the recenter control becomes a house
+   * that brings the view back to it — wherever the map was moved and whatever pin is placed —
+   * named `homeLabel`. Without it the control recentres on the placed pin or the opening point.
+   */
+  homeCenter?: { lat: number; lng: number } | null;
+  homeLabel?: string;
   /**
    * Shown instead of the map while the device is offline (Google Maps needs the
    * network) — e.g. point the user to a GPS capture that works without it. The map
@@ -215,6 +227,7 @@ export function GoogleMapPin({
   const onLocationDetailRef = useRef(onLocationDetail);
   const onContextPinClickRef = useRef(onContextPinClick);
   const onCenterChangeRef = useRef(onCenterChange);
+  const onBackgroundClickRef = useRef(onBackgroundClick);
   const fittedKeyRef = useRef<string | null>(null);
   const resolvePlaceRef = useRef(resolvePlace);
   const pinLabelRef = useRef(pinLabel);
@@ -226,6 +239,7 @@ export function GoogleMapPin({
     onLocationDetailRef.current = onLocationDetail;
     onContextPinClickRef.current = onContextPinClick;
     onCenterChangeRef.current = onCenterChange;
+    onBackgroundClickRef.current = onBackgroundClick;
     resolvePlaceRef.current = resolvePlace;
     pinLabelRef.current = pinLabel;
     coordsRef.current = { lat, lng };
@@ -309,6 +323,7 @@ export function GoogleMapPin({
         map.addListener("click", (event: google.maps.MapMouseEvent) => {
           // An empty spot was pressed: the note of whatever pin was pressed goes away.
           hideNote();
+          onBackgroundClickRef.current?.();
           if (!pickingRef.current) return;
           const pos = event.latLng;
           if (!pos) return;
@@ -393,6 +408,19 @@ export function GoogleMapPin({
   useEffect(() => {
     markerRef.current?.setDraggable(picking);
   }, [picking]);
+
+  // A press anywhere outside the map drops the pressed pin's note too (Omar 2026-11-12: it
+  // stayed up after the user had moved on to the rest of the window).
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && wrapRef.current?.contains(target)) return;
+      noteRef.current?.hide();
+      noteOwnerRef.current = null;
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, []);
 
   useEffect(() => {
     const onChange = () => setFullscreen(document.fullscreenElement === wrapRef.current);
@@ -548,7 +576,9 @@ export function GoogleMapPin({
     mapRef.current?.setMapTypeId(next);
   };
   // Back to the pin being placed, or to the point the map opened on.
-  const recenterOn = parsePin(lat, lng) ?? parsePin(initialCenter?.lat, initialCenter?.lng);
+  const home = parsePin(homeCenter?.lat, homeCenter?.lng);
+  const recenterOn =
+    home ?? parsePin(lat, lng) ?? parsePin(initialCenter?.lat, initialCenter?.lng);
   const recenter = () => {
     const map = mapRef.current;
     if (!map || !recenterOn) return;
@@ -594,7 +624,11 @@ export function GoogleMapPin({
           ) : null}
           <MapControlGroup>
             {recenterOn ? (
-              <MapControlButton label="إعادة توسيط الخريطة" icon="recenter" onClick={recenter} />
+              <MapControlButton
+                label={home ? (homeLabel ?? "الرجوع إلى موقع العقار") : "إعادة توسيط الخريطة"}
+                icon={home ? "home" : "recenter"}
+                onClick={recenter}
+              />
             ) : null}
             <MapControlButton
               label={fullscreen ? "الخروج من ملء الشاشة" : "ملء الشاشة"}

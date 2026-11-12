@@ -34,6 +34,12 @@ describe("what the «إضافة مقارن» map draws", () => {
     expect([...options.usages].sort()).toEqual(["تجاري", "سكني"].sort());
   });
 
+  it("reads every land as «أرض» — one type to choose and to filter by (Omar 2026-11-12)", () => {
+    const lands = [comp("a", "أرض", "سكني"), comp("b", "أرض سكنية"), comp("c", "أرض تجارية"), comp("v", "فيلا")];
+    expect([...comparableFilterOptions(lands).types].sort()).toEqual(["أرض", "فيلا"].sort());
+    expect(filterMapComparables(lands, { type: "أرض" }).map((c) => c.id)).toEqual(["a", "b", "c"]);
+  });
+
   it("filters by type and by usage together", () => {
     const ids = (filters: Parameters<typeof filterMapComparables>[1]) =>
       filterMapComparables(BANK, filters).map((c) => c.id);

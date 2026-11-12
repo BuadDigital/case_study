@@ -38,6 +38,9 @@ public sealed partial class ValuationComparableSelectionService
     /// - A source with no adopted comparable copies nothing and is refused — never an emptied target.
     /// - Un-adopted rows of the source are not copied: they carry no part of the valuation.
     /// - Refused while the valuation's writes are closed (handed over / deposited), like every edit.
+    /// - Refused for a subject valued as land (2026-11-12): its land has one table for the market and
+    ///   the cost approach (<see cref="TableOfAsync"/>), so the copy is left to built subjects — a
+    ///   land comparable adopted in a villa's market table can still be taken to its land table.
     /// </summary>
     public async Task<(CopyValuationComparableTableResultDto? Result, Dictionary<string, string>? Errors)>
         CopyTableAsync(
@@ -64,6 +67,9 @@ public sealed partial class ValuationComparableSelectionService
         var to = ComparableSelectionContexts.Normalize(request.ToContext);
         if (from == to)
             return (null, new Dictionary<string, string> { ["toContext"] = "الجدول المصدر والهدف واحد" });
+        // A subject valued as land has one table for both (2026-11-12): there is nothing to copy.
+        if (await LandIsValuedOnceAsync(vr, cancellationToken))
+            return (null, new Dictionary<string, string> { ["_"] = OneLandTableCopyAr });
 
         var adopted = (await repo.ListSelectionsAsync(valuationRequestId, from, cancellationToken))
             .Where(s => s.IsAdopted)
