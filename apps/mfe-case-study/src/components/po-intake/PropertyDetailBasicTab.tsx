@@ -5,7 +5,6 @@
  */
 
 import { useEffect, useState } from "react";
-import { cn } from "@platform/ui-kit";
 import {
   approvedInspectorPropertyDescription,
   hasInspectorOriginalMapPin,
@@ -28,6 +27,7 @@ import {
 import { isValidContactEntry } from "../../lib/domain/po-intake/property-validation";
 import type { PropertyDetailDocumentEntry } from "../../lib/app-data/property-detail-documents";
 import { loadInspectorWorkspaceSnapshot } from "../../lib/app-data/inspector-workspace-reads";
+import { PropertyBoundariesTable } from "./PropertyBoundariesTable";
 import { PropertyDetailMediaGlance } from "./PropertyDetailMediaGlance";
 import {
   DetailBadge,
@@ -37,68 +37,6 @@ import {
   ltrValueClass,
   SectionHeader,
 } from "./PropertyDetailFields";
-
-function BoundariesTable({
-  property,
-}: {
-  property: PoPropertyIntake;
-}) {
-  const rows = PROPERTY_BOUNDARY_ROWS.map((row) => ({
-    label: row.label,
-    desc: property[row.descKey].trim(),
-    len: property[row.lenKey].trim(),
-  }));
-
-  return (
-    <div className="overflow-hidden rounded border border-border">
-      <table className="w-full border-collapse text-xs">
-        <thead>
-          <tr>
-            <th className="border-b border-border bg-surface-2 px-3 py-2 text-start text-[11px] font-bold text-text-2">
-              الحد
-            </th>
-            <th className="border-b border-border bg-surface-2 px-3 py-2 text-center text-[11px] font-bold text-text-2">
-              وصف الحد
-            </th>
-            <th className="border-b border-border bg-surface-2 px-3 py-2 text-center text-[11px] font-bold text-text-2">
-              طول الضلع
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={row.label}>
-              <td
-                className={cn(
-                  "px-3 py-2 font-semibold text-heading",
-                  i < rows.length - 1 && "border-b border-border",
-                )}
-              >
-                {row.label}
-              </td>
-              <td
-                className={cn(
-                  "px-3 py-2 text-center text-text",
-                  i < rows.length - 1 && "border-b border-border",
-                )}
-              >
-                {row.desc || "—"}
-              </td>
-              <td
-                className={cn(
-                  "px-3 py-2 text-center tabular-nums text-text [direction:ltr]",
-                  i < rows.length - 1 && "border-b border-border",
-                )}
-              >
-                {row.len ? `${row.len} م` : "—"}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
 
 export function PropertyDetailBasicTab({
   record,
@@ -273,7 +211,13 @@ export function PropertyDetailBasicTab({
         </InfoBox>
       ) : hasBoundaryRows ? (
         <>
-          <BoundariesTable property={property} />
+          <PropertyBoundariesTable
+            rows={PROPERTY_BOUNDARY_ROWS.map((row) => ({
+              label: row.label,
+              desc: property[row.descKey].trim(),
+              len: property[row.lenKey].trim(),
+            }))}
+          />
           <p className="mt-1.5 mb-0 text-[10.5px] text-text-3">
             «بطول» = طول ضلع العقار على ذلك الحد. المصدر: البورصة العقارية /
             الصك.

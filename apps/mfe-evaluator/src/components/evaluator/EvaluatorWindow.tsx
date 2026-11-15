@@ -596,27 +596,19 @@ export function EvaluatorWindow({
       : deedLabel;
   const workScreen: ValuationWorkScreenId = isWorkScreen(activeTab) ? activeTab : "basic";
 
-  // The summary section: what «البيانات الأساسية» showed of the property (deeds, documents and type,
-  // main photo, description, map, the work order's scope) and then the study's share from the
-  // case-study app. EvaluatorValuationReportTab also keeps the draft's purpose / basis / premise
-  // equal to the work order's, which is why this section stays mounted.
+  // The summary section (ordered 2026-11-15, Omar): the linked deeds, the main photo and the map as
+  // they were, the description, the study's groups from the case-study app (drawn inside the media
+  // strip), the work order's scope, the photos, and last the transaction's documents — the property
+  // type left the section, the page's header names it. EvaluatorValuationReportTab also keeps the
+  // draft's purpose / basis / premise equal to the work order's, which is why this section stays mounted.
   const summarySection = (
     <>
       {property ? (
-        <>
-          <EvaluatorLinkedDeedsCard
-            deeds={linkedDeeds}
-            linkKindLabel={transaction?.linkKindLabelAr}
-            transactionNumber={transaction?.displayNumber}
-          />
-          <EvaluatorBasicDocumentsCard
-            property={property}
-            poNumber={draft.poNumber}
-            surveyTaskId={summary.surveyTaskId ?? null}
-            inspectionTaskId={summary.inspectionTaskId ?? null}
-            appraisalTaskId={task.id}
-          />
-        </>
+        <EvaluatorLinkedDeedsCard
+          deeds={linkedDeeds}
+          linkKindLabel={transaction?.linkKindLabelAr}
+          transactionNumber={transaction?.displayNumber}
+        />
       ) : null}
       <EvaluatorValuationReportTab
         draft={draft}
@@ -630,8 +622,17 @@ export function EvaluatorWindow({
         onChange={onReportChoicesChange}
         onDraftPatch={onDraftPatch}
         showPropertyMedia
+        studySummary={studySummary}
       />
-      {studySummary}
+      {property ? (
+        <EvaluatorBasicDocumentsCard
+          property={property}
+          poNumber={draft.poNumber}
+          surveyTaskId={summary.surveyTaskId ?? null}
+          inspectionTaskId={summary.inspectionTaskId ?? null}
+          appraisalTaskId={task.id}
+        />
+      ) : null}
     </>
   );
 

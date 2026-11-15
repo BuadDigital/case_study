@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { appraiserAreaFacts, areaText, restrictionFacts } from "../appraiser-summary-model";
+import type { InspectorBoundaryMatch } from "@platform/app-shared/app-data/inspector-workspace-data";
+import { emptyProperty } from "@platform/app-shared/app-data/po-intake-property-model";
+import {
+  appraiserAlerts,
+  appraiserAreaFacts,
+  appraiserBoundaryRows,
+  appraiserBuildingFacts,
+  appraiserLocationFacts,
+  appraiserViolationsText,
+  areaText,
+  restrictionFacts,
+} from "../appraiser-summary-model";
 
 const noInspector = null;
 const inspector = (over: Partial<NonNullable<Parameters<typeof appraiserAreaFacts>[0]["inspector"]>> = {}) => ({
@@ -156,5 +167,198 @@ describe("restrictionFacts", () => {
 
   it("reads restrictions with no recognised type as «توجد قيود»", () => {
     expect(restrictionFacts(props("yes", ""))).toEqual({ text: "توجد قيود", flags: [] });
+  });
+});
+
+// Omar 2026-11-15: the summary gathers what the appraiser starts from — the four sides, the
+// location, the building and a line of what needs his attention.
+const side = (over: Partial<InspectorBoundaryMatch> = {}): InspectorBoundaryMatch => ({
+  matches: null,
+  mismatchNote: "",
+  facade: "",
+  deedDesc: "",
+  deedLength: "",
+  ...over,
+});
+const sides = (over: Partial<Record<"north" | "south" | "east" | "west", InspectorBoundaryMatch>> = {}) => ({
+  north: side(),
+  south: side(),
+  east: side(),
+  west: side(),
+  ...over,
+});
+const fullInspector = (over: Record<string, unknown> = {}) =>
+  ({
+    boundaryMatches: sides(),
+    streetName: "",
+    mainStreetName: "",
+    streetWidthM: "",
+    services: [],
+    amenities: [],
+    electricityMeterCount: "",
+    waterMeterCount: "",
+    vacantLand: false,
+    featureValues: {},
+    buildingFloors: "",
+    propertyAgeYears: "",
+    buildLicenseNumber: "",
+    buildLicenseDate: "",
+    unitCount: "",
+    roomCount: "",
+    hallCount: "",
+    bathroomCount: "",
+    hasAnnex: "",
+    annexUpperCount: "",
+    annexGroundCount: "",
+    hasViolations: "",
+    violationsCount: "",
+    violationsDescription: "",
+    ...over,
+  }) as NonNullable<Parameters<typeof appraiserLocationFacts>[1]>;
+const valueOf = (facts: { label: string; value: string }[] | null, label: string) =>
+  facts?.find((fact) => fact.label === label)?.value;
+
+describe("appraiserBoundaryRows", () => {
+  const property = { ...emptyProperty(), northBoundary: "شارع عرض 15م", northBoundaryLengthM: "25", northFacadeFinishing: "حجر" };
+
+  it("reads the property's own sides while there is no inspection", () => {
+    const rows = appraiserBoundaryRows(property, null);
+    expect(rows.map((row) => row.label)).toEqual(["الحد الشمالي", "الحد الجنوبي", "الحد الشرقي", "الحد الغربي"]);
+    expect(rows[0]).toEqual({ label: "الحد الشمالي", desc: "شارع عرض 15م", len: "25", facade: "حجر", match: "", note: "" });
+    expect(rows[1].desc).toBe("");
+  });
+
+  it("puts the inspector's boundary, length and facade first, and falls back side by side", () => {
+    const rows = appraiserBoundaryRows(property, {
+      boundaryMatches: sides({
+        north: side({ matches: true, deedDesc: "شارع عرض 20م", deedLength: "24.5" }),
+        east: side({ matches: false, mismatchNote: "السور يتجاوز الحد", facade: "دهان" }),
+      }),
+    });
+    expect(rows[0]).toMatchObject({ desc: "شارع عرض 20م", len: "24.5", facade: "حجر", match: "مطابق", note: "" });
+    expect(rows[2]).toMatchObject({ facade: "دهان", match: "غير مطابق", note: "السور يتجاوز الحد" });
+  });
+
+  it("keeps a note only for a side that does not match, and no verdict for a side not judged", () => {
+    const rows = appraiserBoundaryRows(property, {
+      boundaryMatches: sides({ south: side({ matches: true, mismatchNote: "ملاحظة قديمة" }) }),
+    });
+    expect(rows[1]).toMatchObject({ match: "مطابق", note: "" });
+    expect(rows[3].match).toBe("");
+  });
+});
+
+describe("appraiserLocationFacts", () => {
+  it("reads the plan, plot and block from the property and the rest from the inspector", () => {
+    const facts = appraiserLocationFacts(
+      { planNumber: " 2917 ", plotNumber: "145", blockNumber: "" },
+      fullInspector({ streetName: "الأمير سلطان", streetWidthM: "20", services: ["كهرباء", "ماء"], waterMeterCount: "1" }),
+    );
+    expect(valueOf(facts, "رقم المخطط")).toBe("2917");
+    expect(valueOf(facts, "رقم البلك")).toBe("");
+    expect(valueOf(facts, "اسم الشارع (المعاين)")).toBe("الأمير سلطان");
+    expect(valueOf(facts, "عرض الشارع (المعاين)")).toBe("20 م");
+    expect(valueOf(facts, "الخدمات (المعاين)")).toBe("كهرباء، ماء");
+    expect(valueOf(facts, "عدادات الماء")).toBe("1");
+  });
+
+  it("leaves the inspector's fields empty before the inspection, and a width that is not a number as typed", () => {
+    const none = appraiserLocationFacts({ planNumber: "1", plotNumber: "2", blockNumber: "3" }, null);
+    expect(valueOf(none, "عرض الشارع (المعاين)")).toBe("");
+    expect(valueOf(none, "الخدمات (المعاين)")).toBe("");
+    const typed = appraiserLocationFacts({ planNumber: "", plotNumber: "", blockNumber: "" }, fullInspector({ streetWidthM: "بين 15 و20" }));
+    expect(valueOf(typed, "عرض الشارع (المعاين)")).toBe("بين 15 و20");
+  });
+});
+
+describe("appraiserBuildingFacts", () => {
+  const villa = { propertyType: "فيلا", inspectedPropertyType: "", effectivePropertyType: "" };
+  const land = { propertyType: "أرض", inspectedPropertyType: "", effectivePropertyType: "" };
+
+  it("has no building for land — by the property's type before the inspection, by the inspector after it", () => {
+    expect(appraiserBuildingFacts(land, null, "")).toBeNull();
+    expect(appraiserBuildingFacts(villa, fullInspector({ vacantLand: true }), "")).toBeNull();
+    expect(appraiserBuildingFacts(land, fullInspector({ featureValues: { assetSubject: "فيلا" } }), "")).not.toBeNull();
+  });
+
+  it("always shows the floors, the age, the licence and the finishing, and the rest only when filled", () => {
+    const before = appraiserBuildingFacts(villa, null, "");
+    expect(before?.map((fact) => fact.label)).toEqual([
+      "عدد الأدوار",
+      "عمر العقار (سنوات)",
+      "رقم رخصة البناء",
+      "تاريخ رخصة البناء",
+      "التشطيب (الأخصائي)",
+    ]);
+    const after = appraiserBuildingFacts(
+      villa,
+      fullInspector({
+        buildingFloors: "2",
+        propertyAgeYears: "8",
+        roomCount: "7",
+        bathroomCount: "6",
+        featureValues: { hasElevator: "لا", hasPool: "نعم" },
+        hasAnnex: "نعم",
+        annexUpperCount: "1",
+        annexGroundCount: "2",
+      }),
+      "تشطيب متوسط",
+    );
+    expect(valueOf(after, "عدد الأدوار")).toBe("2");
+    expect(valueOf(after, "التشطيب (الأخصائي)")).toBe("تشطيب متوسط");
+    expect(valueOf(after, "عدد الغرف")).toBe("7");
+    expect(valueOf(after, "المصعد")).toBe("لا يوجد");
+    expect(valueOf(after, "المسبح")).toBe("يوجد");
+    expect(valueOf(after, "الملاحق")).toBe("علوي 1، أرضي 2");
+    expect(valueOf(after, "عدد الصالات")).toBeUndefined();
+  });
+
+  it("gives a shop no rooms or halls, and annexes without a count read «يوجد»", () => {
+    const shop = appraiserBuildingFacts(
+      villa,
+      fullInspector({ featureValues: { assetSubject: "محل تجاري" }, roomCount: "3", hallCount: "1", bathroomCount: "1", hasAnnex: "نعم" }),
+      "",
+    );
+    expect(valueOf(shop, "عدد الغرف")).toBeUndefined();
+    expect(valueOf(shop, "عدد الصالات")).toBeUndefined();
+    expect(valueOf(shop, "دورات المياه")).toBe("1");
+    expect(valueOf(shop, "الملاحق")).toBe("يوجد");
+  });
+});
+
+describe("appraiserViolationsText", () => {
+  it("says «لا توجد», names what the inspector saw, and stays empty while he did not answer", () => {
+    expect(appraiserViolationsText(null)).toBe("");
+    expect(appraiserViolationsText(fullInspector())).toBe("");
+    expect(appraiserViolationsText(fullInspector({ hasViolations: "لا" }))).toBe("لا توجد");
+    expect(appraiserViolationsText(fullInspector({ hasViolations: "نعم" }))).toBe("توجد مخالفات");
+    expect(
+      appraiserViolationsText(fullInspector({ hasViolations: "نعم", violationsCount: "2", violationsDescription: "ملحق بلا رخصة" })),
+    ).toBe("2 — ملحق بلا رخصة");
+  });
+});
+
+describe("appraiserAlerts", () => {
+  const none = { text: "لا توجد قيود", flags: [] };
+
+  it("draws nothing when the deed is clean, the areas agree and the study says «مطابق» or nothing yet", () => {
+    expect(appraiserAlerts({ restrictions: none, gapLine: null, deedNatureMatchOutcome: "matched" })).toEqual([]);
+    expect(appraiserAlerts({ restrictions: none, gapLine: null, deedNatureMatchOutcome: "" })).toEqual([]);
+    expect(appraiserAlerts({ restrictions: none, gapLine: null, deedNatureMatchOutcome: undefined })).toEqual([]);
+  });
+
+  it("lists the restrictions first (a mortgage red), then the area gap, then the study's outcome", () => {
+    expect(
+      appraiserAlerts({
+        restrictions: restrictionFacts({ restrictionsPresent: "yes", restrictionType: "seized,mortgaged", restrictionOtherReason: "" }),
+        gapLine: "مساحة الرفع المساحي تزيد عن مساحة الصك بـ 12.5 م².",
+        deedNatureMatchOutcome: "Differences",
+      }),
+    ).toEqual([
+      { label: "قيد على الصك: مرهون", tone: "danger" },
+      { label: "قيد على الصك: محجوز", tone: "warning" },
+      { label: "مساحة الرفع المساحي تزيد عن مساحة الصك بـ 12.5 م²", tone: "warning" },
+      { label: "مطابقة الصك على الطبيعة: فروق", tone: "warning" },
+    ]);
   });
 });

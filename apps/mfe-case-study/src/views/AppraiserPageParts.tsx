@@ -6,14 +6,31 @@
  * the link to the property's details and the study's part of the summary section. The valuation
  * sections themselves are the evaluator app's (`EvaluatorWindow`).
  */
-import type { ReactNode } from "react";
+import { useReducer } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Badge, Button, Note, WORK_FORM_GRID_CLASS } from "@platform/ui-kit";
+import {
+  loadSpecialistFinishingLevel,
+  specialistFinishingLevelLabel,
+} from "@platform/app-shared/app-data/valuation-report-specialist-finishing";
 import { DEED_NATURE_MATCH_OPTIONS } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { poPropertyDetailPath } from "@platform/app-shared/domain/po-routes";
+import { VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT } from "@platform/app-shared/events/app-events";
+import { useWindowEvents } from "@platform/app-shared/hooks/useWindowEvents";
+import { PropertyBoundariesTable } from "../components/po-intake/PropertyBoundariesTable";
 import { InsReadField } from "../components/po-intake/PropertyDetailInspectionFields";
-import { appraiserAreaFacts, restrictionFacts } from "../lib/app-data/appraiser-summary-model";
+import { SummaryGroup } from "../components/po-intake/SummaryGroup";
+import {
+  appraiserAlerts,
+  appraiserAreaFacts,
+  appraiserBoundaryRows,
+  appraiserBuildingFacts,
+  appraiserLocationFacts,
+  appraiserViolationsText,
+  restrictionFacts,
+  type SummaryFact,
+} from "../lib/app-data/appraiser-summary-model";
 import { loadInspectorWorkspaceSnapshot } from "../lib/app-data/inspector-workspace-reads";
 import { loadEngineeringSurveySubmissionSnapshot } from "../lib/app-data/property-detail-party-submission-loaders";
 import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
@@ -52,44 +69,42 @@ const REMARKS: readonly {
   { key: "occupancyRemarks", label: "ملاحظات الإشغال" },
 ];
 
-/** A group of the summary: its gold bar and title, then its fields, as the work page's groups read. */
-function SummaryGroup({
-  title,
-  testId,
-  children,
-}: {
-  title: string;
-  testId?: string;
-  children: ReactNode;
-}) {
+/** A group's facts as locked fields, four to a row; a long value takes its own row. */
+function FactsGrid({ facts }: { facts: SummaryFact[] }) {
   return (
-    <div className="mt-4" data-testid={testId}>
-      <div className="mb-3 flex items-center gap-2.5">
-        <span className="h-[17px] w-[3px] rounded-full bg-gold" aria-hidden />
-        <h3 className="m-0 text-[14px] font-extrabold text-heading">{title}</h3>
-        <span className="flex-1 border-t border-border" aria-hidden />
-      </div>
-      {children}
+    <div className={WORK_FORM_GRID_CLASS}>
+      {facts.map((fact) => (
+        <InsReadField
+          key={fact.label}
+          label={fact.label}
+          value={fact.value}
+          multiline={fact.value.length > 40}
+        />
+      ))}
     </div>
   );
 }
 
 /**
- * The summary's three groups the appraiser reads before he values — the areas, the deed's legal
- * standing, and the study's results — as locked fields, four to a row.
+ * What the appraiser reads before he values, under the photo and the map (Omar 2026-11-15): a line
+ * of what needs his attention, then the location and its services, the four sides, the areas, the
+ * building, the deed's legal standing, and the study's results — as locked fields, four to a row.
+ * The page's header already names the property (its type, district, deed and owner), so none of
+ * that is repeated here; the deed's land area alone is, beside the survey's it is compared with.
  *
  * How it works: the study task is known by id only — the appraiser's task list holds his own
  * tasks, not the study's — so the id comes from the transaction (`studyHolderTaskId`, the deed
  * that holds the one study of a linked property) or else the appraisal task's parent; the
- * report is read with the batch query the lists use, which the appraiser may read. The areas add
- * the engineering office's survey and the inspector's measurements, read by the ids the server
- * stamps on his task once those packages are delivered (`engineeringSurveyTaskId`,
- * `fieldInspectionTaskId`); the legal standing adds the restrictions of the bourse stage, a
- * mortgage flagged in red.
+ * report is read with the batch query the lists use, which the appraiser may read. The engineering
+ * office's survey and the inspector's package are read by the ids the server stamps on his task
+ * once they are delivered (`engineeringSurveyTaskId`, `fieldInspectionTaskId`); the finishing
+ * level is the case specialist's. The restrictions, the area gap and a study outcome other than
+ * «مطابق» are gathered in the «يستدعي الانتباه» line and so are not flagged again in their groups.
  * Edge cases: study report not issued yet → a note says the valuation can be drafted meanwhile; no
  * report readable → the property's own fields alone; a survey or an inspection not delivered
- * (or one the appraiser may not read) leaves its fields «—»; an empty remark is left out; the
- * building licence's area is not recorded anywhere in the system, so it is not shown.
+ * (or one the appraiser may not read) leaves its fields «—»; land has no «وصف المبنى» group; an
+ * empty remark is left out; the number of facades is not recorded anywhere in the system — the
+ * appraiser reads the streets off the four sides; nor is the building licence's area.
  */
 export function AppraiserStudySummary({
   property,
@@ -131,9 +146,41 @@ export function AppraiserStudySummary({
     inspector: inspector ?? null,
   });
   const restrictions = restrictionFacts(property);
+  const alerts = appraiserAlerts({
+    restrictions,
+    gapLine: areas.gapLine,
+    deedNatureMatchOutcome: report?.deedNatureMatchOutcome,
+  });
+  // The specialist's finishing level lives in the synced report extras; re-read when it changes.
+  const [, refreshFinishing] = useReducer((n: number) => n + 1, 0);
+  useWindowEvents({ [VALUATION_SPECIALIST_FINISHING_CHANGED_EVENT]: refreshFinishing });
+  const building = appraiserBuildingFacts(
+    property,
+    inspector ?? null,
+    specialistFinishingLevelLabel(loadSpecialistFinishingLevel(property.id)),
+  );
 
   return (
     <div data-testid="appraiser-study-summary">
+      {alerts.length > 0 ? (
+        <div className="mt-4 flex flex-wrap items-center gap-2" data-testid="appraiser-alerts">
+          <span className="text-[13px] font-extrabold text-heading">يستدعي الانتباه:</span>
+          {alerts.map((alert) => (
+            <Badge key={alert.label} tone={alert.tone}>
+              {alert.label}
+            </Badge>
+          ))}
+        </div>
+      ) : null}
+
+      <SummaryGroup title="الموقع والخدمات" testId="appraiser-location">
+        <FactsGrid facts={appraiserLocationFacts(property, inspector ?? null)} />
+      </SummaryGroup>
+
+      <SummaryGroup title="الحدود والأطوال" testId="appraiser-boundaries">
+        <PropertyBoundariesTable rows={appraiserBoundaryRows(property, inspector ?? null)} showInspection />
+      </SummaryGroup>
+
       <SummaryGroup title="المساحات" testId="appraiser-areas">
         <div className={WORK_FORM_GRID_CLASS}>
           <InsReadField label="مساحة الأرض (الصك)" value={areas.deed} ltr />
@@ -148,33 +195,23 @@ export function AppraiserStudySummary({
             <InsReadField label="إجمالي المباني (المعاين)" value={areas.buildingsTotal} ltr />
           ) : null}
         </div>
-        {areas.gapLine ? (
-          <Note tone="warn" className="mb-0 mt-3">
-            {areas.gapLine}
-          </Note>
-        ) : null}
       </SummaryGroup>
 
+      {building ? (
+        <SummaryGroup title="وصف المبنى" testId="appraiser-building">
+          <FactsGrid facts={building} />
+        </SummaryGroup>
+      ) : null}
+
       <SummaryGroup title="الوضع النظامي" testId="appraiser-legal">
-        <div className={WORK_FORM_GRID_CLASS}>
-          <InsReadField label="الملكية" value={property.isSharedOwnership ? "مشاع" : "غير مشاع"} />
-          <InsReadField
-            label="القيود على الصك"
-            value={restrictions.text}
-            multiline={restrictions.text.length > 40}
-            badge={
-              restrictions.flags.length > 0 ? (
-                <span className="flex flex-wrap gap-1">
-                  {restrictions.flags.map((f) => (
-                    <Badge key={f.label} tone={f.tone}>
-                      {f.label}
-                    </Badge>
-                  ))}
-                </span>
-              ) : undefined
-            }
-          />
-        </div>
+        <FactsGrid
+          facts={[
+            { label: "الملكية", value: property.isSharedOwnership ? "مشاع" : "ملكية تامة" },
+            { label: "حالة الصك", value: property.deedStatus.trim() },
+            { label: "القيود على الصك", value: restrictions.text },
+            { label: "المخالفات الظاهرة (المعاين)", value: appraiserViolationsText(inspector ?? null) },
+          ]}
+        />
       </SummaryGroup>
 
       <SummaryGroup title="نتائج دراسة الحالة">

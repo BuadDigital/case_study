@@ -5,7 +5,7 @@
  * Mirrors `../keys/key-envelope-fees-slot`.
  */
 
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 import type { PoPropertyIntake } from "../app-data/po-intake-property-model";
 import type { PropertyDetailDocumentEntry } from "../app-data/property-detail-document-types";
 
@@ -21,6 +21,10 @@ export type PropertyDetailMediaGlanceProps = {
   valuationPurposeLabel?: string | null;
   reportUsersLabel?: string | null;
   photos?: PropertyDetailDocumentEntry[] | null;
+  /** The work order's facts as the «أساس التكليف» group of fields (the appraiser's summary). */
+  factsAsGroup?: boolean;
+  /** Drawn between the description and the work order's facts — the appraiser's study groups. */
+  beforeFacts?: ReactNode;
 };
 
 let panel: ComponentType<PropertyDetailMediaGlanceProps> | null = null;
