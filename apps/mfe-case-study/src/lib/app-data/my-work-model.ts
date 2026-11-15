@@ -718,10 +718,28 @@ function followUpWaitingOn(
   return task.awaitingExternalParty ? [...pending, "طرف خارجي"] : pending;
 }
 
+/**
+ * The party a live transaction waits for, as «المعاملات النشطة»'s cards count it (Omar 2026-11-15):
+ * coordination, inspector, engineering office, property study, appraiser, review (review and upload
+ * are one role).
+ */
+export type TransactionParty = "co" | "fi" | "es" | "st" | "ap" | "rv";
+
+/** The field party's card, by the name `undeliveredFieldParties` gives it. */
+const PARTY_KEY_BY_NAME: Readonly<Record<string, TransactionParty>> = {
+  [PARTY_NAME["field-inspection"]!]: "fi",
+  [PARTY_NAME["engineering-survey"]!]: "es",
+};
+
 /** Where a live transaction stands and who it waits for. */
 export type TransactionProgress = {
   stage: string;
   waitingOn: string;
+  /**
+   * `waitingOn` as cards: one key per party, two when it waits for two at once (inspector and office,
+   * review and appraiser). Empty when it waits for no card's party: a failure, or an outside party alone.
+   */
+  parties: readonly TransactionParty[];
 };
 
 /**
@@ -747,37 +765,51 @@ export function transactionProgress(
   ) {
     return null;
   }
+  const coordination = ["co"] as const;
   switch (task.phase) {
     case "enfath":
-      return { stage: "البيانات الأولية", waitingOn: "التنسيق" };
+      return { stage: "البيانات الأولية", waitingOn: "التنسيق", parties: coordination };
     case "bourse":
-      return { stage: "استعلام البورصة", waitingOn: "التنسيق" };
+      return { stage: "استعلام البورصة", waitingOn: "التنسيق", parties: coordination };
     case "distribution":
-      return { stage: "التوزيع", waitingOn: "التنسيق" };
+      return { stage: "التوزيع", waitingOn: "التنسيق", parties: coordination };
     case "obstruction":
-      return { stage: "تعذّر", waitingOn: "معالجة التعذّر" };
+      return { stage: "تعذّر", waitingOn: "معالجة التعذّر", parties: [] };
     default:
       break;
   }
   if (task.phase === "case-study" && task.transactionReceived !== true) {
     const pending = followUpWaitingOn(task, allTasks);
-    if (pending === null) return { stage: "التوزيع", waitingOn: "التنسيق" };
+    if (pending === null) return { stage: "التوزيع", waitingOn: "التنسيق", parties: coordination };
     return pending.length > 0
-      ? { stage: "متابعة الأطراف", waitingOn: pending.join(" و") }
-      : { stage: "متابعة الأطراف", waitingOn: "التنسيق" };
+      ? {
+          stage: "متابعة الأطراف",
+          waitingOn: pending.join(" و"),
+          // «طرف خارجي» has no card of its own.
+          parties: pending.flatMap((name) => PARTY_KEY_BY_NAME[name] ?? []),
+        }
+      : { stage: "متابعة الأطراف", waitingOn: "التنسيق", parties: coordination };
   }
   if (!task.studyReportIssued) {
     return task.status === "completed"
       ? null
-      : { stage: "دراسة العقار", waitingOn: "دارس العقار" };
+      : { stage: "دراسة العقار", waitingOn: "دارس العقار", parties: ["st"] };
   }
   const pipeline = reviewPipeline(task, allTasks, draftState);
   const first = pipeline?.steps.find((s) => s.state !== "done");
-  if (!pipeline || !first) return { stage: "التقييم", waitingOn: "المقيّم" };
-  const parties = [...(pipeline.actions.length > 0 ? ["المراجع"] : []), ...pipeline.waitingOn];
+  if (!pipeline || !first) return { stage: "التقييم", waitingOn: "المقيّم", parties: ["ap"] };
+  const reviewActs = pipeline.actions.length > 0;
+  const appraiserActs = pipeline.waitingOn.length > 0;
+  const parties = [...(reviewActs ? ["المراجع"] : []), ...pipeline.waitingOn];
   return {
     stage: REVIEW_PROGRESS_STAGE[first.key][first.state] ?? REVIEW_STEP_LABEL[first.key],
     waitingOn: parties.join(" و") || "المراجع",
+    parties:
+      reviewActs || !appraiserActs
+        ? appraiserActs
+          ? ["rv", "ap"]
+          : ["rv"]
+        : ["ap"],
   };
 }
 

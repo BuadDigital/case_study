@@ -49,6 +49,7 @@ import {
 } from "../lib/app-data/active-queue-list-filters";
 import {
   buildAllTransactionsQueueRowMeta,
+  closedTransactionProgress,
   filterAllTransactionsQueueRows,
 } from "../lib/app-data/all-transactions-queue";
 import { useFieldInspectionWorkspacesQuery } from "../query/field-inspection-workspaces-queries";
@@ -326,7 +327,10 @@ export function useActiveTransactionQueueData({
     // The row may stand on a party task (its latest stage) — progress is read on its case-study parent.
     const progressOf = (task: WorkflowTask) => {
       const parent = task.kind === "case-study-property" ? task : byId.get(task.parentTaskId ?? "");
-      return parent ? transactionProgress(parent, all, getReportDraftState) : null;
+      // «جميع العقارات» (Omar 2026-11-15): the uploaded and the cancelled stay listed, as closed rows.
+      return parent
+        ? (transactionProgress(parent, all, getReportDraftState) ?? closedTransactionProgress(parent))
+        : null;
     };
     return buildAllTransactionsQueueRowMeta(listed, poByNumber, now, progressOf);
   }, [isAllTransactionsTable, tracksProgress, listed, poByNumber, now, tasks, draftStateVersion]);

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildAllTransactionsQueueRowMeta,
+  closedTransactionProgress,
+  countAllTransactionsByParty,
   buildAllTransactionsRowMoreItems,
   collapseAllTransactionsToLatestPhase,
   formatAllTransactionsDeedWithPhase,
@@ -44,6 +46,8 @@ function row(
     transactionNumber: null,
     transactionDeedCount: 1,
     waitingOn: null,
+    waitingParties: [],
+    closed: false,
     ...overrides,
   };
 }
@@ -192,11 +196,46 @@ describe("buildAllTransactionsQueueRowMeta — «المعاملات النشطة
   const done = task({ id: "done", kind: "case-study-property", phase: "done", status: "completed", propertyId: "p-done" });
   const now = new Date("2026-11-05T09:00:00Z");
 
-  it("replaces the phase with the stage and «بانتظار», and drops what is no longer live", () => {
+  it("replaces the phase with «تحت الدراسة» and «بانتظار», and drops what it cannot place", () => {
     const rows = buildAllTransactionsQueueRowMeta([live, done], new Map(), now, (t) =>
-      t.id === "live" ? { stage: "استعلام البورصة", waitingOn: "التنسيق" } : null,
+      t.id === "live" ? { stage: "استعلام البورصة", waitingOn: "التنسيق", parties: ["co"] } : null,
     );
-    expect(rows.map((r) => [r.task.id, r.phaseLabel, r.waitingOn])).toEqual([["live", "استعلام البورصة", "التنسيق"]]);
+    expect(rows.map((r) => [r.task.id, r.phaseLabel, r.waitingOn, r.waitingParties])).toEqual([
+      // A live transaction reads «تحت الدراسة» whatever its step (Omar 2026-11-15).
+      ["live", "تحت الدراسة", "التنسيق", ["co"]],
+    ]);
+  });
+
+  // Omar 2026-11-15: «جميع العقارات» lists the uploaded and the cancelled too, as closed rows.
+  it("keeps a closed transaction as a closed row with no one to wait for", () => {
+    const rows = buildAllTransactionsQueueRowMeta([live, done], new Map(), now, (t) =>
+      t.id === "done" ? closedTransactionProgress(t) : null,
+    );
+    expect(rows.map((r) => [r.task.id, r.phaseLabel, r.waitingOn, r.waitingParties, r.closed])).toEqual([
+      ["done", "مكتملة", null, [], true],
+    ]);
+  });
+
+  it("names a closed transaction by how it ended, and leaves a live one to transactionProgress", () => {
+    expect(closedTransactionProgress(task({ id: "c", kind: "case-study-property", phase: "case-study", status: "cancelled" }))?.stage).toBe("ملغاة");
+    expect(
+      closedTransactionProgress(task({ id: "u", kind: "case-study-property", phase: "done", status: "open", propertyHandedOverToEnfaz: true }))
+        ?.stage,
+    ).toBe("مكتملة");
+    expect(closedTransactionProgress(task({ id: "o", kind: "case-study-property", phase: "case-study", status: "open" }))).toBeNull();
+    expect(closedTransactionProgress(task({ id: "f", kind: "field-inspection", phase: "case-study", status: "cancelled" }))).toBeNull();
+  });
+
+  // Omar 2026-11-15: a transaction waiting for two parties counts on both cards; no total card.
+  it("counts each party's transactions, a two-party one on both cards", () => {
+    expect(
+      countAllTransactionsByParty([
+        { waitingParties: ["co"] },
+        { waitingParties: ["fi", "es"] },
+        { waitingParties: ["rv", "ap"] },
+        { waitingParties: [] },
+      ]),
+    ).toEqual({ co: 1, fi: 1, es: 1, st: 0, ap: 1, rv: 1 });
   });
 
   it("keeps every row and no «بانتظار» without a progress reader (party roles)", () => {

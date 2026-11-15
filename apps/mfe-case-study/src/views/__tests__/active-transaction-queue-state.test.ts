@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   APPRAISAL_STATUS_FILTERS,
-  collapseAllPoGroups,
   copyPriorTargetKey,
   filterAllTxMetaToListed,
   queueLoadErrorMessage,
@@ -47,19 +46,6 @@ describe("queueLoadErrorMessage", () => {
     expect(queueLoadErrorMessage("not-an-error", undefined)).toBe(
       "تعذّر تحميل قائمة المعاملات",
     );
-  });
-});
-
-describe("collapseAllPoGroups", () => {
-  it("marks every PO collapsed once, however many rows share it", () => {
-    expect(
-      collapseAllPoGroups([
-        { poNumber: "PO-1" },
-        { poNumber: "PO-2" },
-        { poNumber: "PO-1" },
-      ]),
-    ).toEqual({ "PO-1": true, "PO-2": true });
-    expect(collapseAllPoGroups([])).toEqual({});
   });
 });
 

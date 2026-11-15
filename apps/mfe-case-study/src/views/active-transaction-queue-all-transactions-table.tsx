@@ -1,260 +1,271 @@
 "use client";
 
 /**
- * "All transactions" branch of the active-transaction queue: flat rows or,
- * when grouped, a collapsible header row per work order that opens the PO's
- * properties page. Rows are memoized against the screen's `ctx` and meta.
+ * «جميع العقارات»'s table (Omar 2026-11-15): one row per property, in the look of the «أعمالي» table
+ * — the transaction number first, then the deed, the place, the work order, the state, the dates
+ * and ⋮ (Omar 2026-11-15: the state alone, no «بانتظار» line — the cards above say where it stands). No pin star, no action clock (when a transaction reached its party is
+ * not kept). The whole row opens the property; on phones the rows are «أعمالي»'s record cards.
+ * A page to look at, not to act from (Omar 2026-11-15): the stage is plain text, not «أعمالي»'s
+ * action tag, and no deadline is coloured or called late. The transaction number, the row's key,
+ * starts at the right with its name; every other column is centred under its name, as «أعمالي».
  */
-import { Fragment, memo } from "react";
+import { memo } from "react";
 import {
   cn,
+  GentleBusy,
+  MobileRecordCard,
+  MobileRecordList,
+  RowMoreMenu,
   SkeletonTableRows,
-  StatusPill,
   Table,
   TableEmptyRow,
   TBody,
   Td,
   Th,
-  ThAction,
   THead,
   Tr,
-  TransactionNumberBadge,
 } from "@platform/ui-kit";
-import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
-import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
-import { PROPERTY_IDENTIFIER_COLUMN_LABEL } from "../lib/app-data/po-intake-data";
-import { allTransactionsPhaseStyle } from "../lib/app-data/all-transactions-queue";
 import type { AllTransactionsRowMeta } from "./active-transaction-queue-state";
 import {
   ALL_TRANSACTIONS_SKELETON_COLS,
   type QueueRowContext,
 } from "./active-transaction-queue-tables-state";
-import {
-  queueRowClassName,
-  QueueRowMoreCell,
-  rowAttentionTrailing,
-} from "./active-transaction-queue-row-parts";
+import { queueRowClassName, QueueRowMoreCell } from "./active-transaction-queue-row-parts";
+import { MY_WORK_LONG_VALUE, Muted, MyWorkDates } from "./my-work-table-parts";
+
+/**
+ * Column widths in the header's order: transaction number, deed, city / district, work order, state,
+ * dates, ⋮ (Omar 2026-11-15: in proportion to what each column holds).
+ *
+ * How it works: each share is the column's longest value (or its header, when longer) plus its
+ * padding, with the room left over shared out evenly, measured on the live list at 1280px; the work
+ * order (`null`) takes the rest. Fixed layout, as «أعمالي».
+ * Edge cases: at the table's least width (900px) every value still fits on one line; a longer place
+ * or work-order description wraps inside its cell.
+ */
+const COLUMN_WIDTHS: readonly (string | number | null)[] = [
+  "13%",
+  "14%",
+  "18.5%",
+  null,
+  "13%",
+  "14%",
+  56,
+];
+
+/** The dates as «أعمالي» lays them out, uncoloured: nothing here is due from the viewer. */
+function plainDates(meta: Pick<AllTransactionsRowMeta, "receivedIso" | "dueIso">) {
+  return { receivedIso: meta.receivedIso, dueIso: meta.dueIso, due: "ok" as const, dueText: "" };
+}
+
+function placeOf(meta: Pick<AllTransactionsRowMeta, "city" | "district">): string {
+  return [meta.city, meta.district].filter((v) => v && v !== "—").join(" · ");
+}
+
+/** The stage as plain text; a closed one (uploaded, cancelled) in the muted colour. */
+function StageText({ meta }: { meta: Pick<AllTransactionsRowMeta, "phaseLabel" | "closed"> }) {
+  return (
+    <span
+      className={cn(
+        "text-[13px] font-semibold",
+        meta.closed ? "text-text-2" : "text-heading",
+      )}
+    >
+      {meta.phaseLabel}
+    </span>
+  );
+}
 
 const AllTransactionsRow = memo(function AllTransactionsRow({
   ctx,
   meta,
-  showWaiting,
 }: {
   ctx: QueueRowContext;
   meta: AllTransactionsRowMeta;
-  /** «بانتظار» column — staff's «المعاملات النشطة»; party roles have no such column. */
-  showWaiting: boolean;
 }) {
-  const active = ctx.selectedId === meta.task.id;
   const moreItems = ctx.resolveRowMoreItems(meta.task, meta.propertyId);
+  const place = placeOf(meta);
   return (
     <Tr
-      hoverable={false}
-      className={queueRowClassName({
-        active,
-        opening: ctx.isTaskOpening(meta.task.id),
-      })}
+      className={cn(
+        "cursor-pointer",
+        queueRowClassName({ active: false, opening: ctx.isTaskOpening(meta.task.id) }),
+      )}
       onClick={() => ctx.handleRowClick(meta.task.id)}
     >
-      <Td className="whitespace-nowrap">
-        <InteractiveDeedCell
-          label={meta.deedCell}
-          loading={ctx.isTaskOpening(meta.task.id)}
-          trailing={rowAttentionTrailing(ctx, meta.task)}
-          // Linked properties (2026-10-19): the deed cell also shows its transaction number, with the deed count when it has several.
-          subtitle={
-            <TransactionNumberBadge
-              number={meta.transactionNumber}
-              deedCount={meta.transactionDeedCount}
-            />
-          }
-        />
-      </Td>
       <Td>
-        <PoNumber
-          value={meta.poNumber}
-          link
-          className="!text-[12.5px] !font-semibold text-text-2"
-        />
+        {meta.transactionNumber ? (
+          <div className="flex min-w-0 flex-col gap-0.5">
+            <bdi
+              dir="ltr"
+              className={cn(MY_WORK_LONG_VALUE, "text-[13.5px] font-bold tabular-nums text-primary")}
+            >
+              {meta.transactionNumber}
+            </bdi>
+            {meta.transactionDeedCount > 1 ? (
+              <span className="text-[12px] text-text-2">{meta.transactionDeedCount} صكوك</span>
+            ) : null}
+          </div>
+        ) : (
+          <Muted />
+        )}
       </Td>
-      <Td className="text-text-2">{meta.assignmentType}</Td>
-      <Td className="text-text-2">{meta.city}</Td>
-      <Td className="text-text-2">{meta.district}</Td>
-      <Td>
-        <StatusPill
-          label={meta.phaseLabel}
-          style={allTransactionsPhaseStyle(meta.task)}
-        />
+      <Td className="text-center">
+        {meta.deed && meta.deed !== "—" ? (
+          <bdi
+            dir="ltr"
+            className={cn(MY_WORK_LONG_VALUE, "text-[13px] font-semibold tabular-nums text-heading")}
+          >
+            {meta.deed}
+          </bdi>
+        ) : (
+          <Muted />
+        )}
       </Td>
-      {showWaiting ? (
-        <Td className="whitespace-nowrap text-[12.5px] font-semibold text-info-text">
-          {meta.waitingOn ?? "—"}
-        </Td>
-      ) : null}
+      <Td className="text-center">
+        <div className="flex min-w-0 flex-col items-center gap-0.5">
+          {place ? (
+            <span className={cn(MY_WORK_LONG_VALUE, "text-[13px] text-text")}>{place}</span>
+          ) : (
+            <Muted />
+          )}
+          {meta.propertyType ? (
+            <span className={cn(MY_WORK_LONG_VALUE, "text-[12px] text-text-2")}>
+              {meta.propertyType}
+            </span>
+          ) : null}
+        </div>
+      </Td>
+      <Td className="text-center">
+        <div className="flex min-w-0 flex-col items-center gap-0.5">
+          <bdi dir="ltr" className={cn(MY_WORK_LONG_VALUE, "text-[13px] tabular-nums text-text")}>
+            {meta.poNumber}
+          </bdi>
+          {meta.poDescription ? (
+            <span
+              className={cn(MY_WORK_LONG_VALUE, "line-clamp-2 text-[12px] text-text-2")}
+              title={meta.poDescription}
+            >
+              {meta.poDescription}
+            </span>
+          ) : null}
+        </div>
+      </Td>
+      <Td className="text-center">
+        <StageText meta={meta} />
+      </Td>
+      <Td className="text-center">
+        <MyWorkDates item={plainDates(meta)} />
+      </Td>
       <QueueRowMoreCell items={moreItems} />
     </Tr>
   );
 });
 
-function PoGroupHeaderRow({
-  po,
-  count,
-  open,
-  groupIndex,
-  colSpan,
-  onToggleCollapsed,
-  onOpenPoProperties,
-}: {
-  po: string;
-  count: number;
-  open: boolean;
-  groupIndex: number;
-  /** The table's full column count — the header row spans it all, «بانتظار» included (Omar 2026-11-09: it left a white strip). */
-  colSpan: number;
-  onToggleCollapsed: (po: string) => void;
-  onOpenPoProperties: (po: string) => void;
-}) {
-  return (
-    <Tr
-      hoverable={false}
-      className="cursor-pointer bg-surface-2 animate-[atq-group-row-in_0.28s_ease-out_both] motion-reduce:animate-none"
-      style={{
-        animationDelay: `${Math.min(groupIndex, 8) * 35}ms`,
-      }}
-      onClick={() => onOpenPoProperties(po)}
-    >
-      <Td colSpan={colSpan}>
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            className="grid place-items-center rounded-md p-0.5 text-text-3 hover:bg-surface"
-            title={open ? "طي" : "فتح"}
-            aria-label={open ? "طي المجموعة" : "فتح المجموعة"}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleCollapsed(po);
-            }}
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={cn(
-                "transition-transform duration-150",
-                !open && "-rotate-90",
-              )}
-              aria-hidden
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </button>
-          <span dir="ltr" className="text-[13px] font-extrabold text-heading">
-            {po}
-          </span>
-          <span className="rounded-full bg-gold-soft px-2.5 py-0.5 text-[11.5px] font-bold text-gold-d">
-            {count} معاملة
-          </span>
-          <span className="ms-auto inline-flex items-center gap-1 text-[12px] font-bold text-gold-d">
-            دخول أمر العمل
-            <svg
-              width="15"
-              height="15"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="m15 18-6-6 6-6" />
-            </svg>
-          </span>
-        </div>
-      </Td>
-    </Tr>
-  );
-}
-
 export function AllTransactionsQueueTable({
   ctx,
-  showWaiting = false,
   filteredMeta,
-  groupByPo,
-  poGroups,
-  collapsedPo,
-  onToggleCollapsed,
-  onOpenPoProperties,
 }: {
   ctx: QueueRowContext;
-  showWaiting?: boolean;
   filteredMeta: AllTransactionsRowMeta[];
-  groupByPo: boolean;
-  poGroups: { po: string; rows: AllTransactionsRowMeta[] }[];
-  collapsedPo: Record<string, boolean>;
-  onToggleCollapsed: (po: string) => void;
-  onOpenPoProperties: (po: string) => void;
 }) {
-  const colCount = ALL_TRANSACTIONS_SKELETON_COLS + (showWaiting ? 1 : 0);
   return (
-    <Table className="w-full lg:min-w-[720px]" pending={ctx.queuePending}>
+    <Table className="min-w-[900px] table-fixed" pending={ctx.queuePending}>
+      <colgroup>
+        {COLUMN_WIDTHS.map((width, i) => (
+          <col key={i} style={width === null ? undefined : { width }} />
+        ))}
+      </colgroup>
       <THead>
         <Tr hoverable={false}>
-          <Th>{PROPERTY_IDENTIFIER_COLUMN_LABEL}</Th>
-          <Th>أمر العمل</Th>
-          <Th>نوع الإسناد</Th>
-          <Th>المدينة</Th>
-          <Th>الحي</Th>
-          <Th>المرحلة</Th>
-          {showWaiting ? <Th>بانتظار</Th> : null}
-          <ThAction aria-label="المزيد" />
+          <Th>رقم المعاملة</Th>
+          <Th className="text-center">
+            رقم الصك /<br />
+            التسجيل العيني
+          </Th>
+          <Th className="text-center">المدينة / الحي</Th>
+          <Th className="text-center">أمر العمل</Th>
+          <Th className="text-center">الحالة</Th>
+          <Th className="text-center">
+            تاريخ الاستلام /<br />
+            الاستحقاق
+          </Th>
+          <Th>
+            <span className="sr-only">المزيد</span>
+          </Th>
         </Tr>
       </THead>
       <TBody>
         {ctx.showSkeleton ? (
-          <SkeletonTableRows rows={6} cols={colCount} />
+          <SkeletonTableRows rows={6} cols={ALL_TRANSACTIONS_SKELETON_COLS} />
         ) : filteredMeta.length === 0 ? (
-          <TableEmptyRow colSpan={colCount}>
-            لا توجد معاملات مطابقة.
+          <TableEmptyRow colSpan={ALL_TRANSACTIONS_SKELETON_COLS}>
+            لا توجد عقارات مطابقة.
           </TableEmptyRow>
-        ) : groupByPo ? (
-          poGroups.map(({ po, rows }, groupIndex) => {
-            const open = !collapsedPo[po];
-            return (
-              <Fragment key={po}>
-                <PoGroupHeaderRow
-                  po={po}
-                  count={rows.length}
-                  open={open}
-                  groupIndex={groupIndex}
-                  colSpan={colCount}
-                  onToggleCollapsed={onToggleCollapsed}
-                  onOpenPoProperties={onOpenPoProperties}
-                />
-                {open
-                  ? rows.map((meta) => (
-                      <AllTransactionsRow
-                        key={meta.task.id}
-                        ctx={ctx}
-                        meta={meta}
-                        showWaiting={showWaiting}
-                      />
-                    ))
-                  : null}
-              </Fragment>
-            );
-          })
         ) : (
           filteredMeta.map((meta) => (
-            <AllTransactionsRow key={meta.task.id} ctx={ctx} meta={meta} showWaiting={showWaiting} />
+            <AllTransactionsRow
+              key={meta.task.id}
+              ctx={ctx}
+              meta={meta}
+            />
           ))
         )}
       </TBody>
     </Table>
+  );
+}
+
+/** The phone's rows: «أعمالي»'s record cards — the state as the title. */
+export function AllTransactionsMobileList({
+  ctx,
+  filteredMeta,
+}: {
+  ctx: QueueRowContext;
+  filteredMeta: AllTransactionsRowMeta[];
+}) {
+  if (ctx.showSkeleton) {
+    return (
+      <div className="px-5 py-12 text-center">
+        <GentleBusy>جاري التحميل…</GentleBusy>
+      </div>
+    );
+  }
+  if (filteredMeta.length === 0) {
+    return <p className="py-8 text-center text-sm text-text-3">لا توجد عقارات مطابقة.</p>;
+  }
+  return (
+    <MobileRecordList>
+      {filteredMeta.map((meta) => {
+        return (
+          <MobileRecordCard
+            key={meta.task.id}
+            title={meta.phaseLabel}
+            onOpen={() => ctx.handleRowClick(meta.task.id)}
+            actions={<RowMoreMenu items={ctx.resolveRowMoreItems(meta.task, meta.propertyId)} />}
+            fields={[
+              { label: "رقم المعاملة", value: meta.transactionNumber || "—", ltr: true },
+              { label: "رقم الصك / التسجيل العيني", value: meta.deed || "—", ltr: true },
+              { label: "المدينة / الحي", value: placeOf(meta) || "—" },
+              {
+                label: "أمر العمل",
+                value: (
+                  <span className="flex flex-col">
+                    <bdi dir="ltr">{meta.poNumber}</bdi>
+                    {meta.poDescription ? (
+                      <span className="text-[11px] text-text-2">{meta.poDescription}</span>
+                    ) : null}
+                  </span>
+                ),
+              },
+              {
+                label: "تاريخ الاستلام / الاستحقاق",
+                value: <MyWorkDates item={plainDates(meta)} />,
+              },
+            ]}
+          />
+        );
+      })}
+    </MobileRecordList>
   );
 }

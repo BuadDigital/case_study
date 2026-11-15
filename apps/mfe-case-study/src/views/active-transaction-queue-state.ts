@@ -27,10 +27,7 @@ import {
   buildPrimaryQueueRowMeta,
   uniqueSortedLabels,
 } from "../lib/app-data/active-queue-list-filters";
-import {
-  buildAllTransactionsQueueRowMeta,
-  uniqueSortedPoOrder,
-} from "../lib/app-data/all-transactions-queue";
+import { buildAllTransactionsQueueRowMeta } from "../lib/app-data/all-transactions-queue";
 import { appraiserQueueStatusGroup } from "../lib/evaluator-bridge";
 import { transactionNumberOf } from "../lib/app-data/transaction-number";
 import type { StaffAccess } from "@platform/app-shared/app-data/case-specialist-sub-roles";
@@ -568,32 +565,6 @@ export function filterAppraisalRowMeta({
     }
     return true;
   });
-}
-
-export function buildAllTxPoGroups(
-  rows: AllTransactionsRowMeta[],
-): { po: string; rows: AllTransactionsRowMeta[] }[] {
-  const byPo = new Map<string, AllTransactionsRowMeta[]>();
-  for (const row of rows) {
-    const list = byPo.get(row.poNumber) ?? [];
-    list.push(row);
-    byPo.set(row.poNumber, list);
-  }
-  return uniqueSortedPoOrder(rows.map((r) => r.poNumber)).map((po) => ({
-    po,
-    rows: byPo.get(po) ?? [],
-  }));
-}
-
-/** Every PO group starts collapsed when grouping is switched on. */
-export function collapseAllPoGroups(
-  rows: readonly { poNumber: string }[],
-): Record<string, boolean> {
-  const collapsed: Record<string, boolean> = {};
-  for (const row of rows) {
-    collapsed[row.poNumber] = true;
-  }
-  return collapsed;
 }
 
 /** The all-transactions meta rows narrowed to the tasks the filters kept. */

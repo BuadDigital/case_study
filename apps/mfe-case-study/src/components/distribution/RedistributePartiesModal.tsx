@@ -71,17 +71,28 @@ function partyLockReason(
 
 /**
  * Reassign parties via role → person cascade (one role at a time).
- * Does not toggle party participation on/off.
+ * Does not toggle party participation on/off — except the engineering office, which «جميع العقارات»'s
+ * «تعديل الأطراف» may drop (Omar 2026-11-15) through the existing «تجاوز المكتب الهندسي» when
+ * `onSkipOffice` is given.
  */
 export function RedistributePartiesModal({
   open,
   task,
   onClose,
   onConfirm,
+  mayReassign = true,
+  onSkipOffice,
 }: {
   open: boolean;
   task: WorkflowTask | null;
   onClose: () => void;
+  /** false: the viewer may only drop the office (the study sub-role) — the person pickers are read-only. */
+  mayReassign?: boolean;
+  /**
+   * Drops the open engineering office («تجاوز المكتب الهندسي») with the reason; throws when refused.
+   * Absent: the office can only be handed to another office.
+   */
+  onSkipOffice?: (reason: string) => Promise<void>;
   /** `staffUsers` is the loaded directory — the caller resolves the new assignee's display name from it. */
   onConfirm: (
     distribution: TaskDistributionDraft,
@@ -109,8 +120,15 @@ export function RedistributePartiesModal({
   const [reason, setReason] = useState("");
   const [reasonError, setReasonError] = useState(false);
   const [personError, setPersonError] = useState(false);
+  // The office's choice: hand it to another office, or drop it (the transaction does not need it).
+  const [dropOffice, setDropOffice] = useState(false);
 
-  const { run: runRedistribute, loading: busy } = useCommandMutation(
+  const { run: runSkipOffice, loading: skipping } = useCommandMutation(
+    async (args: { reason: string }) => {
+      await onSkipOffice?.(args.reason);
+    },
+  );
+  const { run: runRedistribute, loading: redistributing } = useCommandMutation(
     async (
       args: { distribution: TaskDistributionDraft; reason: string },
       idempotencyKey: string,
@@ -130,6 +148,7 @@ export function RedistributePartiesModal({
       setReason("");
       setReasonError(false);
       setPersonError(false);
+      setDropOffice(false);
     }
   }
 
@@ -175,6 +194,14 @@ export function RedistributePartiesModal({
     () => roleOptions.find((r) => r.key === selectedRole) ?? null,
     [roleOptions, selectedRole],
   );
+  const busy = redistributing || skipping;
+  // Dropping is offered for an open office only, before the study report is issued (the server's rule).
+  const canDropOffice =
+    Boolean(onSkipOffice) &&
+    activeRole?.key === "engineeringOffice" &&
+    !activeRole.lockedReason &&
+    !task?.studyReportIssued;
+  const dropping = canDropOffice && dropOffice;
 
   if (!open || !task || !distribution) return null;
 
@@ -198,6 +225,17 @@ export function RedistributePartiesModal({
       return;
     }
     if (activeRole.lockedReason) return;
+    if (dropping) {
+      try {
+        const outcome = await runSkipOffice({ reason: trimmed });
+        if (outcome.status === "skipped") return;
+        onClose();
+      } catch {
+        // Parent already toasted.
+      }
+      return;
+    }
+    if (!mayReassign) return;
     try {
       const outcome = await runRedistribute({
         distribution,
@@ -214,7 +252,7 @@ export function RedistributePartiesModal({
     <ModalOverlay onClick={onClose}>
       <ModalCard onClick={(e) => e.stopPropagation()}>
         <ModalHeader>
-          <ModalTitle>تعديل إسناد الأطراف</ModalTitle>
+          <ModalTitle>{onSkipOffice ? "تعديل الأطراف" : "تعديل إسناد الأطراف"}</ModalTitle>
           <ModalClose onClick={onClose} aria-label="إغلاق">
             ×
           </ModalClose>
@@ -226,8 +264,15 @@ export function RedistributePartiesModal({
           <Note tone="warn" className="mb-3">
             إعادة إسناد الأطراف صلاحية <strong>أخصائي دراسة الحالة ومشرف القسم
             ومسؤول التحول الرقمي</strong> — يُعدَّل المكلَّف على مهام الأطراف
-            المفتوحة فقط، ولا يضيف أو يحذف أطرافاً، ويُقيَّد من قام بالتعديل وسببه في
-            سجل التدقيق وجدول العقار الزمني.
+            المفتوحة فقط، {onSkipOffice ? (
+              <>
+                ويمكن إلغاء المكتب الهندسي ما دام لم يسلّم عمله إن لم تحتجه المعاملة (صلاحية
+                دارس العقار ومشرف القسم)،
+              </>
+            ) : (
+              "ولا يضيف أو يحذف أطرافاً،"
+            )}{" "}
+            ويُقيَّد من قام بالتعديل وسببه في سجل التدقيق وجدول العقار الزمني.
           </Note>
 
           {!hasAnyParty ? (
@@ -252,21 +297,48 @@ export function RedistributePartiesModal({
                 onChange={(v) => {
                   setSelectedRole(v as RedistributeRoleKey | "");
                   setPersonError(false);
+                  setDropOffice(false);
                 }}
               />
+              {canDropOffice ? (
+                <div role="radiogroup" aria-label="المكتب الهندسي" className="flex flex-col gap-1.5 text-[13px]">
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="redist_office"
+                      checked={!dropOffice}
+                      onChange={() => setDropOffice(false)}
+                    />
+                    إسناده إلى مكتب آخر
+                  </label>
+                  <label className="flex cursor-pointer items-center gap-2">
+                    <input
+                      type="radio"
+                      name="redist_office"
+                      checked={dropOffice}
+                      onChange={() => setDropOffice(true)}
+                    />
+                    لا تحتاج المعاملة إلى مكتب هندسي — ألغِ مهمته
+                  </label>
+                </div>
+              ) : null}
               {activeRole?.lockedReason ? (
                 <Note tone="warn" className="text-[11.5px]">
                   {activeRole.lockedReason}
                 </Note>
               ) : null}
-              {activeRole ? (
+              {dropping ? (
+                <Note tone="warn" className="text-[11.5px]">
+                  تُلغى مهمة المكتب ويُبلَّغ بالسبب، ولا تُحتسب له أتعاب. يمكن إعادته لاحقًا بـ«إضافة رفع مساحي».
+                </Note>
+              ) : activeRole ? (
                 <RegSelect
                   id="redist_person"
                   label="المسؤول"
                   required
                   options={assigneeLoadOptions(activeRole.people, loadByAssignee)}
                   value={activeRole.currentId}
-                  disabled={Boolean(activeRole.lockedReason)}
+                  disabled={Boolean(activeRole.lockedReason) || !mayReassign}
                   placeholder={`اختر ${activeRole.label}…`}
                   onChange={(v) => {
                     patch(activeRole.apply(v));
@@ -286,6 +358,11 @@ export function RedistributePartiesModal({
                   اختر الدور أولاً لعرض الأشخاص المتاحين له.
                 </Note>
               )}
+              {activeRole && !activeRole.lockedReason && !dropping && !mayReassign ? (
+                <Note tone="default" className="border border-border bg-surface-2 text-[11px]">
+                  إعادة الإسناد صلاحية التنسيق ومشرف القسم.
+                </Note>
+              ) : null}
               {personError && !selectedRole ? (
                 <p className="m-0 text-xs text-danger">اختر الدور ثم المسؤول.</p>
               ) : null}
@@ -293,7 +370,8 @@ export function RedistributePartiesModal({
           )}
 
           <label className="mb-1 mt-3 block text-xs text-text-2">
-            سبب إعادة الإسناد <span className="text-danger">*</span>
+            {dropping ? "سبب إلغاء المكتب (يُبلَّغ به المكتب)" : "سبب إعادة الإسناد"}{" "}
+            <span className="text-danger">*</span>
           </label>
           <Textarea
             className="text-sm"
@@ -307,7 +385,9 @@ export function RedistributePartiesModal({
             }}
           />
           {reasonError ? (
-            <p className="mt-2 text-xs text-danger">سبب إعادة الإسناد إلزامي.</p>
+            <p className="mt-2 text-xs text-danger">
+              {dropping ? "سبب الإلغاء إلزامي." : "سبب إعادة الإسناد إلزامي."}
+            </p>
           ) : null}
         </ModalBody>
         <ModalFooter>
@@ -318,11 +398,16 @@ export function RedistributePartiesModal({
             type="button"
             size="sm"
             variant="primary"
-            disabled={busy || !hasAnyParty || Boolean(activeRole?.lockedReason)}
+            disabled={
+              busy ||
+              !hasAnyParty ||
+              Boolean(activeRole?.lockedReason) ||
+              (!dropping && !mayReassign)
+            }
             loading={busy}
             onClick={() => void submit()}
           >
-            حفظ الإسناد الجديد
+            {dropping ? "إلغاء المكتب الهندسي" : "حفظ الإسناد الجديد"}
           </Button>
         </ModalFooter>
       </ModalCard>

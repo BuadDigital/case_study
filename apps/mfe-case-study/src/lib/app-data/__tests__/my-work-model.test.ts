@@ -178,6 +178,7 @@ describe("buildMyWork — coordination", () => {
     expect(transactionProgress(parent, all, () => undefined)).toEqual({
       stage: "متابعة الأطراف",
       waitingOn: "المكتب الهندسي",
+      parties: ["es"],
     });
   });
 
@@ -196,6 +197,7 @@ describe("buildMyWork — coordination", () => {
     expect(transactionProgress(parent, all, () => undefined)).toEqual({
       stage: "متابعة الأطراف",
       waitingOn: "التنسيق",
+      parties: ["co"],
     });
   });
 
@@ -279,6 +281,8 @@ describe("buildMyWork — review's single row", () => {
     expect(transactionProgress(issued, all, () => undefined)).toEqual({
       stage: "مراجعة الدراسة",
       waitingOn: "المراجع والمقيّم",
+      // Counted on both cards of «المعاملات النشطة» (Omar 2026-11-15).
+      parties: ["rv", "ap"],
     });
   });
 
@@ -304,6 +308,7 @@ describe("buildMyWork — review's single row", () => {
     expect(transactionProgress(issued, all, sent)).toEqual({
       stage: "اعتماد المسودة",
       waitingOn: "المقيّم",
+      parties: ["ap"],
     });
   });
 
@@ -484,7 +489,25 @@ describe("transactionProgress", () => {
     ).toEqual({
       stage: "دراسة العقار",
       waitingOn: "دارس العقار",
+      parties: ["st"],
     });
+  });
+
+  // Omar 2026-11-15: the cards of «المعاملات النشطة» — one per party, both when it waits for two.
+  it("gives the parties it waits for as the page's cards", () => {
+    const parent = task({ id: "cs", phase: "case-study", propertyId: "p1" });
+    const party = (kind: "field-inspection" | "engineering-survey") =>
+      task({ id: kind, kind, parentTaskId: "cs", status: "open", propertyId: "p1" });
+    expect(
+      transactionProgress(parent, [parent, party("field-inspection"), party("engineering-survey")], () => undefined)
+        ?.parties,
+    ).toEqual(["fi", "es"]);
+    expect(
+      transactionProgress(task({ ...parent, awaitingExternalParty: true }), [parent, party("field-inspection")], () => undefined)
+        ?.parties,
+    ).toEqual(["fi"]);
+    expect(transactionProgress(task({ phase: "enfath" }), [], () => undefined)?.parties).toEqual(["co"]);
+    expect(transactionProgress(task({ phase: "obstruction" }), [], () => undefined)?.parties).toEqual([]);
   });
 });
 
