@@ -95,7 +95,8 @@ const AllTransactionsRow = memo(function AllTransactionsRow({
     >
       <Td>
         {meta.transactionNumber ? (
-          <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex min-w-0 flex-col items-start gap-0.5">
+            {/* items-start: the LTR number shrinks to its text and starts at the right, under the name. */}
             <bdi
               dir="ltr"
               className={cn(MY_WORK_LONG_VALUE, "text-[13.5px] font-bold tabular-nums text-primary")}
