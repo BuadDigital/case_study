@@ -13,6 +13,7 @@ import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import {
   canManageWorkOrders,
   canReadCaseStudyWorkspace,
+  getRuntimeCapabilities,
 } from "@platform/app-shared/app-data/runtime-access";
 import {
   loadPoListCounts,
@@ -94,10 +95,38 @@ export function useWorkflowTasksQuery(options?: { live?: boolean }) {
   });
 }
 
+/**
+ * The query key of every work order with details. The hook and the shell's prefetches must use this
+ * same key: the prefetch used `appDataKeys.poRecords()` without the capabilities, so the hook never
+ * found it and the whole list (all work orders + the task sync) was fetched twice on every page
+ * open (fixed 2026-11-15).
+ */
+export function poRecordsQueryKey(capabilities: readonly string[] = getRuntimeCapabilities()) {
+  return [...appDataKeys.poRecords(), capabilities.join(",")] as const;
+}
+
+/**
+ * The work order as the page has just loaded it — reused when fetched within RECENT_PO_RECORD_MS,
+ * else fetched once and shared with usePoRecordQuery (concurrent callers wait on one request).
+ *
+ * How it works: `fetchQuery` on the record's own key with a short stale window. Edge cases: the
+ * window is short on purpose — an editor opened later still gets a fresh copy, not a minute-old one.
+ */
+export function fetchRecentPoRecord(queryClient: QueryClient, poNumber: string) {
+  return queryClient.fetchQuery({
+    queryKey: appDataKeys.poRecord(poNumber),
+    queryFn: () => getPoRecord(poNumber),
+    staleTime: RECENT_PO_RECORD_MS,
+  });
+}
+
+/** How old a just-loaded work order may be and still be reused by the property editor. */
+const RECENT_PO_RECORD_MS = 5_000;
+
 export function usePoRecordsQuery() {
   const { authReady, capabilities } = useAppAccess();
   return useQuery({
-    queryKey: [...appDataKeys.poRecords(), capabilities.join(",")],
+    queryKey: poRecordsQueryKey(capabilities),
     queryFn: loadPoRecordsWithTaskSync,
     enabled: authReady && canReadCaseStudyWorkspace(capabilities),
     ...queryDefaults,

@@ -1,4 +1,5 @@
 import { authHeaders, getApiBase } from "./api-base";
+import { shareInFlight } from "./in-flight";
 import { mergeHeaderRecords } from "./idempotency-key";
 import { repositoryFetch as fetch } from "./write-repository";
 import { parseFieldErrorsFromResponse } from "./field-errors";
@@ -868,10 +869,20 @@ export async function listAttachments(
 ): Promise<PrototypeModulesResult<FileAttachmentMetaDto[]>> {
   const base = config.baseUrl ?? getApiBase();
   const qs = new URLSearchParams({ scope, scopeKey });
+  const url = `${base}/api/attachments?${qs}`;
+  // Two panels mounting together asked for the same list — they share one request (2026-11-15).
+  return copyList(
+    await shareInFlight(`${config.token ?? ""}|${url}`, () => readAttachmentList(url, config.token)),
+  );
+}
+
+/** One attachment-list GET, parsed. */
+async function readAttachmentList(
+  url: string,
+  token: string | null | undefined,
+): Promise<PrototypeModulesResult<FileAttachmentMetaDto[]>> {
   try {
-    const res = await fetch(`${base}/api/attachments?${qs}`, {
-      headers: authHeaders(config.token),
-    });
+    const res = await fetch(url, { headers: authHeaders(token) });
     if (res.status === 401) return { ok: false, kind: "auth" };
     if (!res.ok) return { ok: false, kind: "server" };
     const data = await parseJson<FileAttachmentMetaDto[]>(res);
@@ -879,6 +890,11 @@ export async function listAttachments(
   } catch {
     return { ok: false, kind: "network" };
   }
+}
+
+/** Each caller of a shared read gets its own array, so one caller's sort or push cannot reach another. */
+function copyList<T>(result: PrototypeModulesResult<T[]>): PrototypeModulesResult<T[]> {
+  return result.ok ? { ok: true, data: [...result.data] } : result;
 }
 
 /** Property library uploads routed onto valuation-report print sections. */
@@ -890,17 +906,11 @@ export async function listAttachmentsForProperty(
   const id = propertyId.trim();
   if (!id) return { ok: true, data: [] };
   const qs = new URLSearchParams({ propertyId: id });
-  try {
-    const res = await fetch(`${base}/api/attachments/for-property?${qs}`, {
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    const data = await parseJson<FileAttachmentMetaDto[]>(res);
-    return { ok: true, data: Array.isArray(data) ? data : [] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  const url = `${base}/api/attachments/for-property?${qs}`;
+  // The documents panel and the documents prefetch asked for it together — one request (2026-11-15).
+  return copyList(
+    await shareInFlight(`${config.token ?? ""}|${url}`, () => readAttachmentList(url, config.token)),
+  );
 }
 
 export async function uploadAttachment(

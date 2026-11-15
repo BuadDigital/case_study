@@ -11,12 +11,6 @@ import {
   PARTY_TASK_RECALL_HYDRATED_EVENT,
 } from "@platform/app-shared/events/app-events";
 
-const AppraiserUploadTab = dynamic(() =>
-    import("../components/evaluator/AppraiserUploadTab").then(
-      (m) => m.AppraiserUploadTab,
-    ),
-  { ssr: false },
-);
 import { buildAppraiserQueueRowMoreItems } from "../lib/evaluator/appraiser-queue-row-menu";
 import {
   appraiserTaskStatusBadge,
@@ -28,6 +22,8 @@ import { isEvaluatorFormLocked, loadEvaluatorSubmission,
 } from "../lib/evaluator/evaluator-submission-model";
 import { prefetchEvaluatorSubmissions } from "../lib/evaluator/evaluator-submission-reads";
 import type { EvaluatorWindowHostRefObject } from "../lib/evaluator/evaluator-window-host";
+
+const AppraiserUploadTab = dynamic(() => import("../components/evaluator/AppraiserUploadTab").then( (m) => m.AppraiserUploadTab,),{ ssr: false },);
 
 const APPRAISER_TABLE_HINT = "راقب تقدم الأطراف من هنا. حساب القيمة يُفعَّل بعد اكتمال معاينة العقار — الأخصائي يعتمد تقرير التقييم لاحقاً داخل دراسة الحالة (أو يعيده للتصحيح).";
 

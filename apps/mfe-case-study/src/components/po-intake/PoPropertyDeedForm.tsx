@@ -39,6 +39,8 @@ type Props = {
   fieldPolicy?: ClientFieldPolicy;
   /** The property has no server id yet (its draft could not be created): no file can be stored. */
   uploadsDisabled?: boolean;
+  /** Distributed deed (Omar 2026-11-15): the deed / registry number and date and the map link are read-only. */
+  distributionLocked?: boolean;
 };
 
 export function PoPropertyEnfathForm({
@@ -51,6 +53,7 @@ export function PoPropertyEnfathForm({
   excludePoNumber,
   fieldPolicy,
   uploadsDisabled = false,
+  distributionLocked = false,
 }: Props) {
   const attachPo = uploadsDisabled ? "" : resolveAttachPo(poNumber, excludePoNumber);
   const { priorExcludePo, priorExcludePropertyId } = resolvePriorExclusion({
@@ -118,6 +121,7 @@ export function PoPropertyEnfathForm({
         onDeedNumberChange={patchDeedNumber}
         onRealEstateRegNumberChange={patchRealEstateRegNumber}
         fieldPolicy={fieldPolicy}
+        distributionLocked={distributionLocked}
       />
 
       <PoPropertyEnfathDocumentFields

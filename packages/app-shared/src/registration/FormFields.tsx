@@ -111,7 +111,8 @@ export function RegField({
         maxLength={maxLength}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy || undefined}
-        className={cn(error && invalidControlClass)}
+        // A read-only field looks it (2026-11-15: the distribution-locked deed fields).
+        className={cn(readOnly && "cursor-not-allowed bg-surface-2 text-text-2", error && invalidControlClass)}
       />
     </FieldWrap>
   );

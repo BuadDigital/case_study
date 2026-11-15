@@ -8,10 +8,7 @@ import {
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
-import {
-  deedExistsInPo,
-  findPropertyInRecord,
-} from "../../lib/app-data/po-intake-reads";
+import { deedExistsInPo } from "../../lib/app-data/po-intake-reads";
 import { updatePropertyInPo } from "../../lib/app-data/po-intake-commands";
 import {
   cancelPropertyFieldAutosave,
@@ -37,6 +34,13 @@ import {
   useToast,
 } from "@platform/ui-kit";
 import { PoPropertyBourseForm } from "./PoPropertyBourseForm";
+import {
+  DISTRIBUTION_LOCKED_KEYS,
+  isPropertyDistributed,
+  keepDistributionLockedFields,
+} from "../../lib/app-data/property-distribution-lock";
+import { fetchRecentPoRecord, useWorkflowTasksQuery } from "../../query/case-study-queries";
+import { useQueryClient } from "@tanstack/react-query";
 import { PoPropertyEnfathForm } from "./PoPropertyDeedForm";
 import {
   firstBourseValidationMessage,
@@ -115,9 +119,16 @@ export function usePropertyIntakeEditor({
     if (local) setProperty(local);
   }
 
+  const queryClient = useQueryClient();
   useEffect(() => {
     let cancelled = false;
-    void findPropertyInRecord(poNumber, propertyId)
+    // The work order the page gate has just loaded is reused (2026-11-15: the editor fetched it again,
+    // twice in development) — fetchRecentPoRecord shares one request and a copy at most seconds old.
+    void fetchRecentPoRecord(queryClient, poNumber)
+      .then((record) => {
+        const property = record?.properties.find((p) => p.id === propertyId);
+        return record && property ? { record, property } : null;
+      })
       .then((found) => {
         if (cancelled) return;
         const stillLocal = peekPropertyFieldAutosave(
@@ -149,10 +160,19 @@ export function usePropertyIntakeEditor({
       cancelled = true;
       void flushPropertyFieldAutosave(poNumber, propertyId);
     };
-  }, [poNumber, propertyId, showToast]);
+  }, [poNumber, propertyId, showToast, queryClient]);
+
+  // The distribution lock (Omar 2026-11-15): once the deed is distributed, the fields the parties work
+  // from are greyed out in the forms and their patches are dropped here; the server refuses them too.
+  const tasksQuery = useWorkflowTasksQuery();
+  const distributionLocked = isPropertyDistributed(poNumber, propertyId, tasksQuery.data ?? []);
+  // The form waits for the task list too, so it is drawn once in its final state — before this the
+  // fields showed editable for half a second, then turned grey with the lock lines (2026-11-15).
+  const tasksLoading = tasksQuery.isLoading;
 
   const patchProperty = useCallback(
     <K extends keyof PoPropertyIntake>(key: K, value: PoPropertyIntake[K]) => {
+      if (distributionLocked && DISTRIBUTION_LOCKED_KEYS.has(key)) return;
       setProperty((p) => {
         if (!p) return p;
         const next = { ...p, [key]: value };
@@ -166,16 +186,18 @@ export function usePropertyIntakeEditor({
         return next;
       });
     },
-    [poNumber, propertyId],
+    [poNumber, propertyId, distributionLocked],
   );
 
   const replaceProperty = useCallback(
-    (next: PoPropertyIntake) => {
+    (incoming: PoPropertyIntake) => {
+      const next =
+        distributionLocked && property ? keepDistributionLockedFields(property, incoming) : incoming;
       setProperty(next);
       setFieldErrors({});
       queuePropertyFieldAutosave(poNumber, propertyId, next);
     },
-    [poNumber, propertyId],
+    [poNumber, propertyId, distributionLocked, property],
   );
 
   /** Each card validates only its own fields; the API still receives the whole property. */
@@ -256,7 +278,7 @@ export function usePropertyIntakeEditor({
 
   return {
     poNumber,
-    loading,
+    loading: loading || tasksLoading,
     record,
     property,
     fieldErrors,
@@ -267,6 +289,8 @@ export function usePropertyIntakeEditor({
     replaceProperty,
     saveSection,
     dirtyCount,
+    /** The deed is distributed: the locked fields are read-only (DISTRIBUTION_LOCKED_KEYS). */
+    distributionLocked,
   };
 }
 
@@ -341,6 +365,7 @@ export function PropertyIntakeEnfathCard({
         poNumber={editor.poNumber}
         excludePoNumber={editor.poNumber}
         fieldPolicy={clientFieldPolicyFor(record)}
+        distributionLocked={editor.distributionLocked}
       />
     );
   }
@@ -365,6 +390,7 @@ export function PropertyIntakeEnfathCard({
           poNumber={editor.poNumber}
           excludePoNumber={editor.poNumber}
           fieldPolicy={clientFieldPolicyFor(record)}
+          distributionLocked={editor.distributionLocked}
         />
       </CardBody>
     </Card>
@@ -394,6 +420,7 @@ export function PropertyIntakeBourseCard({
         onPatch={editor.patchProperty}
         poNumber={editor.poNumber}
         showIntroNote={false}
+        distributionLocked={editor.distributionLocked}
       />
     );
   }
@@ -414,6 +441,7 @@ export function PropertyIntakeBourseCard({
           onPatch={editor.patchProperty}
           poNumber={editor.poNumber}
           showIntroNote={false}
+          distributionLocked={editor.distributionLocked}
         />
         {!property.bourseDataCompleted && !hasBourseDetailFields(property) ? (
           <Note tone="info" className="mt-3">

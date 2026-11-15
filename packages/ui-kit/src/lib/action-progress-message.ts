@@ -235,12 +235,23 @@ export function labelFromActionElement(element: HTMLElement): string {
   return (element.textContent ?? "").replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Whether a pressed button gets the app-wide «جاري …» progress toast.
+ *
+ * How it works: opt-outs first (data-no-action-toast, tab lists, menus, toggles), then known
+ * non-actions by label, then the button's look and label decide.
+ *
+ * Edge cases: a toggle (`aria-pressed` — a choice pill such as «موضحة في الصك», a filter chip) only
+ * picks a value, it never runs anything: its selected look is `bg-primary`, which read as a primary
+ * action and flashed «جاري التنفيذ…» (fixed 2026-11-15).
+ */
 export function shouldShowGlobalActionToast(
   element: HTMLElement,
   label: string,
 ): boolean {
   if (element.closest("[data-no-action-toast]")) return false;
   if (element.hasAttribute("data-no-action-toast")) return false;
+  if (element.hasAttribute("aria-pressed")) return false;
   if (element.closest('[role="tablist"]')) return false;
   if (element.closest('nav[aria-label]')) return false;
   if (element.closest('[role="menu"], [role="menuitem"]')) return false;

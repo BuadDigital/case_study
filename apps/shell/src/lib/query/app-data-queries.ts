@@ -6,7 +6,11 @@ import { loadPendingBourseItems } from "@case-study/mfe/lib/app-data/po-intake-r
 import { loadPoListRows, loadPropertyListItems } from "@platform/app-shared/app-data/work-orders-read";
 import { loadFailuresQuery } from "@failures/mfe/lib/failures-repository";
 import { loadCaseStudyInfoRolesConfig } from "@settings/mfe/lib/app-data/case-study-info-roles-reads";
-import { loadPoRecordsWithTaskSync, loadWorkflowTasksForQuery } from "@case-study/mfe/query/case-study-queries";
+import {
+  loadPoRecordsWithTaskSync,
+  loadWorkflowTasksForQuery,
+  poRecordsQueryKey,
+} from "@case-study/mfe/query/case-study-queries";
 import { loadSuspendedTransactions } from "@case-study/mfe/lib/app-data/suspended-transactions-reads";
 import { loadFailureTypesCatalog } from "@failures/mfe/lib/failure-types-reads";
 import { loadReportingDashboard } from "@dashboard/mfe/lib/dashboard-reporting-api";
@@ -50,7 +54,8 @@ export function prefetchPrototypePage(
   const prefetchTasksAndPos = () => {
     if (!readsWorkOrders) return;
     void queryClient.prefetchQuery({
-      queryKey: appDataKeys.poRecords(),
+      // The hook's own key (with the capabilities) — another key was fetched twice (2026-11-15).
+      queryKey: poRecordsQueryKey(),
       queryFn: loadPoRecordsWithTaskSync,
       ...opts,
     });
@@ -208,7 +213,7 @@ export function prefetchCorePrototypeData(
   if (readsWorkOrders) {
     void queryClient.prefetchQuery({ queryKey: appDataKeys.poListRows(), queryFn: loadPoListRows, ...opts });
     void queryClient.prefetchQuery({ queryKey: appDataKeys.propertyListItems(), queryFn: loadPropertyListItems, ...opts });
-    void queryClient.prefetchQuery({ queryKey: appDataKeys.poRecords(), queryFn: loadPoRecordsWithTaskSync, ...opts });
+    void queryClient.prefetchQuery({ queryKey: poRecordsQueryKey(), queryFn: loadPoRecordsWithTaskSync, ...opts });
     void queryClient.prefetchQuery({ queryKey: appDataKeys.workflowTasks(), queryFn: () => loadWorkflowTasksForQuery(), ...opts });
   }
   void queryClient.prefetchQuery({ queryKey: appDataKeys.failures(), queryFn: loadFailuresQuery, ...opts });

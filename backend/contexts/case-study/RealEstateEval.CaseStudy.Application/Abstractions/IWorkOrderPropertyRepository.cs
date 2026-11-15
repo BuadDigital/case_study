@@ -34,6 +34,12 @@ public interface IWorkOrderPropertyRepository
         Guid propertyId,
         CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Whether the deed's distribution to the parties is confirmed — its case-study task is in case
+    /// study or past it (obstruction, done). Drives <c>PropertyDistributionLockRules</c>.
+    /// </summary>
+    Task<bool> IsDistributedAsync(Guid propertyId, CancellationToken cancellationToken);
+
     /// <summary>Throws <see cref="PersistenceConcurrencyException"/> when the write lost a race.</summary>
     Task SaveChangesAsync(CancellationToken cancellationToken);
 

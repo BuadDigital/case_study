@@ -3,6 +3,7 @@
 /** Enfath form — deed / real-estate-registration sections (identifier, mandate, plan, owner/court). */
 
 import { RegField } from "@platform/app-shared/registration/FormFields";
+import { DISTRIBUTION_LOCKED_HINT } from "../../lib/app-data/property-distribution-lock";
 import { FormFlowGrid, FormRow, InfathSection, Input } from "@platform/ui-kit";
 import { CourtCircuitSelects } from "./CourtCircuitSelects";
 import {
@@ -100,6 +101,7 @@ export function PoPropertyEnfathDeedSections({
   onDeedNumberChange,
   onRealEstateRegNumberChange,
   fieldPolicy = DEFAULT_CLIENT_FIELD_POLICY,
+  distributionLocked = false,
 }: EnfathSectionProps & {
   showCourt: boolean;
   showRequestNumber: boolean;
@@ -108,7 +110,10 @@ export function PoPropertyEnfathDeedSections({
   onDeedNumberChange: (value: string) => void;
   onRealEstateRegNumberChange: (value: string) => void;
   fieldPolicy?: ClientFieldPolicy;
+  /** Distributed deed (Omar 2026-11-15): the identifier fields and the map link are read-only. */
+  distributionLocked?: boolean;
 }) {
+  const lockHint = distributionLocked ? DISTRIBUTION_LOCKED_HINT : undefined;
   return (
     <FormFlowGrid>
     {/* Omar 2026-11-10: the group titles and the identifier hint are gone from the form — the field
@@ -122,13 +127,16 @@ export function PoPropertyEnfathDeedSections({
         inputMode="numeric"
         value={property.deedNumber}
         error={fieldErrors.deedNumber}
+        hint={lockHint}
+        readOnly={distributionLocked}
         onChange={onDeedNumberChange}
       />
       <RegField
         id="deed_date"
         label="تاريخ الصك"
         type="date"
-        hint="اختياري"
+        hint={lockHint ?? "اختياري"}
+        readOnly={distributionLocked}
         value={property.deedDate}
         error={fieldErrors.deedDate}
         onChange={(v) => onPatch("deedDate", v)}
@@ -140,6 +148,8 @@ export function PoPropertyEnfathDeedSections({
         inputMode="numeric"
         value={property.realEstateRegNumber}
         error={fieldErrors.realEstateRegNumber}
+        hint={lockHint}
+        readOnly={distributionLocked}
         onChange={onRealEstateRegNumberChange}
       />
       <RegField
@@ -149,6 +159,8 @@ export function PoPropertyEnfathDeedSections({
         type="date"
         value={property.realEstateRegDate}
         error={fieldErrors.realEstateRegDate}
+        hint={lockHint}
+        readOnly={distributionLocked}
         onChange={(v) => onPatch("realEstateRegDate", v)}
       />
       </FormRow>
@@ -238,7 +250,8 @@ export function PoPropertyEnfathDeedSections({
           id="location_map_url"
           label="رابط موقع الخريطة"
           dir="ltr"
-          hint="مطلوب للمناطق العشوائية (بدون مخطط وقطعة)."
+          hint={lockHint ?? "مطلوب للمناطق العشوائية (بدون مخطط وقطعة)."}
+          readOnly={distributionLocked}
           value={property.locationMapUrl}
           error={fieldErrors.locationMapUrl}
           onChange={(v) => onPatch("locationMapUrl", v)}

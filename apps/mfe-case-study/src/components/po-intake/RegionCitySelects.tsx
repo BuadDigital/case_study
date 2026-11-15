@@ -55,6 +55,31 @@ function cityOptionLabel(city: SelectableCityDto, showEn: boolean): string {
   return base;
 }
 
+/** Option value of a district known only by its stored name (the server keeps no district id). */
+export const STORED_DISTRICT_PREFIX = "stored-name:";
+
+/**
+ * The district value the field shows. The server stores the district's NAME only (no id), so a
+ * reloaded property has a name and an empty id.
+ *
+ * How it works: the id when the field holds one; else the city's loaded district with that name;
+ * else the name itself as its own option (STORED_DISTRICT_PREFIX + name).
+ * Edge cases: no name and no id → empty. Fixed 2026-11-15 — a saved district («اراضي بدر») showed an
+ * empty field after every reload, because its option was only added when an id was present.
+ */
+export function shownDistrictValue(
+  districtId: string,
+  storedName: string,
+  districts: readonly Pick<SelectableDistrictDto, "id" | "nameAr">[],
+): string {
+  if (districtId) return districtId;
+  if (!storedName) return "";
+  return (
+    districts.find((d) => d.nameAr.trim() === storedName)?.id ??
+    `${STORED_DISTRICT_PREFIX}${storedName}`
+  );
+}
+
 export function RegionCitySelects({
   property,
   fieldErrors,
@@ -122,6 +147,7 @@ export function RegionCitySelects({
 
   const selectedCityId = property.cityId?.trim() ?? "";
   const selectedDistrictId = property.districtId?.trim() ?? "";
+  const storedDistrictName = property.district.trim();
 
   const loadCities = (regionId: string, query: string) => {
     const config = apiConfig();
@@ -219,23 +245,25 @@ export function RegionCitySelects({
     return options;
   }, [cities, selectedCityId, property.city, nameCounts]);
 
+  const districtValue = shownDistrictValue(selectedDistrictId, storedDistrictName, districts);
+
   const districtOptions = useMemo(() => {
     const options = districts.map((d) => ({
       value: d.id,
       label: d.nameAr,
     }));
     if (
-      selectedDistrictId &&
-      !options.some((o) => o.value === selectedDistrictId) &&
-      property.district.trim()
+      districtValue &&
+      !options.some((o) => o.value === districtValue) &&
+      storedDistrictName
     ) {
       options.unshift({
-        value: selectedDistrictId,
-        label: property.district.trim(),
+        value: districtValue,
+        label: storedDistrictName,
       });
     }
     return options;
-  }, [districts, selectedDistrictId, property.district]);
+  }, [districts, districtValue, storedDistrictName]);
 
   const regionOptions = useMemo(
     () => regions.map((r) => ({ value: r.id, label: r.nameAr })),
@@ -245,7 +273,7 @@ export function RegionCitySelects({
   const selectedCityStatus =
     cities.find((c) => c.id === selectedCityId)?.status ?? "";
   const selectedDistrictStatus =
-    districts.find((d) => d.id === selectedDistrictId)?.status ?? "";
+    districts.find((d) => d.id === districtValue)?.status ?? "";
 
   const applyCity = (city: SelectableCityDto) => {
     onPatch("cityId", city.id);
@@ -413,7 +441,7 @@ export function RegionCitySelects({
           label="الحي"
           required={required}
           options={districtOptions}
-          value={selectedDistrictId}
+          value={districtValue}
           error={fieldErrors.district}
           disabled={!selectedCityId}
           serverFiltered
@@ -448,6 +476,8 @@ export function RegionCitySelects({
               applyDistrict(selected);
               return;
             }
+            // Re-picking the stored name keeps what is saved.
+            if (value.startsWith(STORED_DISTRICT_PREFIX)) return;
             onPatch("districtId", value);
           }}
         />
