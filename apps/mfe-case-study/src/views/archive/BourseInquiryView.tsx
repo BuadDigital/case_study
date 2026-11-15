@@ -36,7 +36,7 @@ import {
   FAILURE_RAISER_SUPERVISOR,
 } from "@failures/mfe/lib/failure-party-roles";
 import { FailureRaiseModal } from "@case-study/mfe/components/failures/FailureRaiseModal";
-import type { BourseDeedVitality } from "../lib/app-data/po-intake-data";
+import type { BourseDeedVitality } from "../../lib/app-data/po-intake-data";
 import { PoNumber } from "@case-study/mfe/components/ui/PoNumber";
 import {
   emptyProperty,
@@ -46,20 +46,20 @@ import {
   PROPERTY_IDENTIFIER_COLUMN_LABEL,
   propertyHasRegisteredTitle,
   type PoPropertyIntake,
-} from "../lib/app-data/po-intake-data";
-import { findPropertyInRecord } from "../lib/app-data/po-intake-reads";
-import { completePropertyBourse } from "../lib/app-data/po-intake-commands";
+} from "../../lib/app-data/po-intake-data";
+import { findPropertyInRecord } from "../../lib/app-data/po-intake-reads";
+import { completePropertyBourse } from "../../lib/app-data/po-intake-commands";
 import {
   flushPropertyFieldAutosave,
   peekPropertyFieldAutosave,
   queuePropertyFieldAutosave,
-} from "../lib/app-data/property-field-autosave";
+} from "../../lib/app-data/property-field-autosave";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
 import {
   usePendingBourseItemsQuery,
   useWorkflowTasksQuery,
-} from "../query/case-study-queries";
+} from "../../query/case-study-queries";
 import { RegistrationFormCard } from "@platform/app-shared/registration/RegistrationFormCard";
 import {
   hasFieldErrors,
@@ -69,22 +69,22 @@ import { PoPropertyBourseForm } from "@case-study/mfe/components/po-intake/PoPro
 import {
   firstBourseValidationMessage,
   validatePropertyBourseFields,
-} from "../lib/domain/po-intake/property-bourse-validation";
-import { scheduleScrollToFirstPoPropertyError } from "../lib/domain/po-intake/po-field-error-targets";
+} from "../../lib/domain/po-intake/property-bourse-validation";
+import { scheduleScrollToFirstPoPropertyError } from "../../lib/domain/po-intake/po-field-error-targets";
 import type { PendingBoursePropertyDto } from "@platform/api-client";
-import { filterActionablePendingBourseItems } from "../lib/app-data/pending-bourse-queue";
-import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
+import { filterActionablePendingBourseItems } from "../../lib/app-data/pending-bourse-queue";
+import { ActiveTransactionPageLayout } from "../../components/active-transactions/ActiveTransactionPageLayout";
 import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import type { ActiveQueueMobileCardItem } from "@platform/app-shared/components/ActiveQueueMobileCards";
-import { buildBourseQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
-import { caseStudyTaskForProperty } from "../lib/app-data/tasks";
+import { buildBourseQueueRowMoreItems } from "../../lib/app-data/active-queue-row-menu";
+import { caseStudyTaskForProperty } from "../../lib/app-data/tasks";
 import { useRouter } from "next/navigation";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
-import { InteractiveDeedCell } from "../components/ui/InteractiveDeedCell";
-import { canAdvanceIntake } from "../lib/app-data/po-roles";
-import { bourseDeedStatus, DEED_VITALITY_REQUIRED_ERROR, deedVitalityFromStatus } from "./my-task-work-state";
-import { useConfirmActionDialog } from "../components/ConfirmActionDialog";
-import { useFailureRaiseModal } from "../hooks/useFailureRaiseModal";
+import { InteractiveDeedCell } from "../../components/ui/InteractiveDeedCell";
+import { canAdvanceIntake } from "../../lib/app-data/po-roles";
+import { bourseDeedStatus, DEED_VITALITY_REQUIRED_ERROR, deedVitalityFromStatus } from "../my-task-work-state";
+import { useConfirmActionDialog } from "../../components/ConfirmActionDialog";
+import { useFailureRaiseModal } from "../../hooks/useFailureRaiseModal";
 
 const ROW = queueTableRowClassName;
 const ROW_ACTIVE = queueTableRowActiveClassName;

@@ -6,9 +6,9 @@ import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
-} from "./ActiveTransactionQueueView";
-import { buildCaseStudyQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
-import { activeReceiptPath, caseStudyWorkspacePath } from "../lib/my-task-routes";
+} from "../ActiveTransactionQueueView";
+import { buildCaseStudyQueueRowMoreItems } from "../../lib/app-data/active-queue-row-menu";
+import { activeReceiptPath, caseStudyWorkspacePath } from "../../lib/my-task-routes";
 
 /**
  * «الاستلام من الأطراف» — coordination's queue (ruling 2026-11-02): distributed transactions whose

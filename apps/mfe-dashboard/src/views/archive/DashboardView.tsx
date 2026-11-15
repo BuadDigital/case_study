@@ -10,26 +10,26 @@ import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { canReadCaseStudyWorkspace } from "@platform/app-shared/app-data/runtime-access";
 import { cn, QueryErrorState, ReportPageBody } from "@platform/ui-kit";
-import { DashActionQueue } from "../components/dashboard/DashActionQueue";
-import { DashActivityFeed } from "../components/dashboard/DashActivityFeed";
-import { DashCompletionCard } from "../components/dashboard/DashCompletionCard";
-import { DashDueSoonOrders } from "../components/dashboard/DashDueSoonOrders";
-import { DashDwellSlaCard } from "../components/dashboard/DashDwellSlaCard";
-import { DashKpiCards } from "../components/dashboard/DashKpiCards";
-import { DashTrendCard } from "../components/dashboard/DashTrendCard";
+import { DashActionQueue } from "../../components/dashboard/DashActionQueue";
+import { DashActivityFeed } from "../../components/dashboard/DashActivityFeed";
+import { DashCompletionCard } from "../../components/dashboard/DashCompletionCard";
+import { DashDueSoonOrders } from "../../components/dashboard/DashDueSoonOrders";
+import { DashDwellSlaCard } from "../../components/dashboard/DashDwellSlaCard";
+import { DashKpiCards } from "../../components/dashboard/DashKpiCards";
+import { DashTrendCard } from "../../components/dashboard/DashTrendCard";
 import {
   activePoOrders,
   buildCompletion,
   buildDashKpis,
   isOpsTaskActive,
-} from "../lib/dashboard-metrics";
-import { dashGrid } from "../lib/dashboard-tw";
+} from "../../lib/dashboard-metrics";
+import { dashGrid } from "../../lib/dashboard-tw";
 import {
   useDashboardOpenFailuresCountQuery,
   useDashboardOpsTasksQuery,
   usePoListRowsQuery,
   useReportingDashboardQuery,
-} from "../query/dashboard-queries";
+} from "../../query/dashboard-queries";
 
 const EMPTY_PO_ROWS: PoRow[] = [];
 const EMPTY_COMPLETION_TREND: ReportingCompletionYearDto[] = [];

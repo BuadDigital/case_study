@@ -4,11 +4,11 @@ import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
 } from "@case-study/mfe/views/ActiveTransactionQueueView";
-import { DistributionTaskWork } from "../components/distribution/DistributionTaskWork";
+import { DistributionTaskWork } from "../../components/distribution/DistributionTaskWork";
 import {
   activeDistributionPath,
   distributionTaskPath,
-} from "../lib/my-task-routes";
+} from "../../lib/my-task-routes";
 import { filterTasksForDistribution } from "@case-study/mfe/lib/app-data/transaction-filters";
 import {
   FAILURES_CHANGED_EVENT,
