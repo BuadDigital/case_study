@@ -181,32 +181,6 @@ public class ValuationApproachSettingsRulesTests
     }
 
     [Fact]
-    public void A_leasehold_interest_needs_its_remaining_lease_years()
-    {
-        Dictionary<string, string> Check(string? key, decimal? years) =>
-            ValuationApproachSettingsRules.Validate(
-                true, true, false, null, null, "مستودع",
-                valuationPurposeKey: ValuationPurposeKeys.JudicialExecution,
-                ownershipInterestKey: key,
-                remainingLeaseYears: years);
-
-        Assert.Empty(Check(null, null));
-        Assert.Empty(Check(OwnershipInterestKeys.Freehold, null));
-        Assert.Contains("ownershipInterestKey", Check("waqf", 5).Keys);
-        Assert.Contains("remainingLeaseYears", Check(OwnershipInterestKeys.LeasedLand, null).Keys);
-        Assert.Contains("remainingLeaseYears", Check(OwnershipInterestKeys.Usufruct, 0).Keys);
-        Assert.Contains("remainingLeaseYears", Check(OwnershipInterestKeys.Usufruct, 1000).Keys);
-        Assert.Empty(Check(OwnershipInterestKeys.LeasedLand, 4));
-        Assert.Empty(Check(" Usufruct ", 15.5m));
-
-        Assert.Equal("حق منفعة", OwnershipInterestKeys.LabelAr(OwnershipInterestKeys.Usufruct));
-        Assert.Equal("أرض مستأجرة", OwnershipInterestKeys.LabelAr(OwnershipInterestKeys.LeasedLand));
-        Assert.Equal("ملكية تامة", OwnershipInterestKeys.LabelAr(null));
-        Assert.True(OwnershipInterestKeys.IsLeasehold(OwnershipInterestKeys.LeasedLand));
-        Assert.False(OwnershipInterestKeys.IsLeasehold("unknown"));
-    }
-
-    [Fact]
     public void Assumptions_json_round_trips_frozen_texts()
     {
         var json = ValuationApproachSettingsRules.SerializeAssumptions(

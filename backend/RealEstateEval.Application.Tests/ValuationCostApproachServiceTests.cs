@@ -199,23 +199,14 @@ public class ValuationCostApproachServiceTests
         Assert.Equal(600_000m, dto.LandValueFromMarket);
     }
 
+    /// <summary>
+    /// 2026-11-15: the ownership-interest list (and its lease years) is gone, so physical depreciation is
+    /// measured against the full extended life — economic 40 + extension 0, actual 15 → 37.5٪.
+    /// </summary>
     [Fact]
-    public void Lease_cap_applies_to_any_leasehold_interest_with_a_term()
+    public async Task Depreciation_is_measured_against_the_full_extended_life()
     {
-        Assert.Equal(10m, CostLeaseTerms.ForInterest(isLeasehold: true, remainingLeaseYears: 10m));
-        Assert.Null(CostLeaseTerms.ForInterest(isLeasehold: false, remainingLeaseYears: 10m));
-        Assert.Null(CostLeaseTerms.ForInterest(isLeasehold: true, remainingLeaseYears: null));
-        // Economic life 40, actual 15 → remaining 25 capped at 10 lease years → life 25.
-        Assert.Equal(25m, CostApproachRules.LifeCappedByLease(40m, 15m, 10m));
-        Assert.Equal(40m, CostApproachRules.LifeCappedByLease(40m, 15m, null));
-        Assert.Equal(40m, CostApproachRules.LifeCappedByLease(40m, 15m, 50m));
-        Assert.Equal(60m, CostApproachRules.PhysicalObsolescencePct(15m, 25m));
-    }
-
-    [Fact]
-    public async Task Building_only_on_leased_land_measures_depreciation_against_the_lease()
-    {
-        await using var contexts = TestDatabases.Create("cost-lease");
+        await using var contexts = TestDatabases.Create("cost-life");
         var (service, requestId) = await NewServiceAsync(contexts.Valuation);
         contexts.Valuation.ValuationApproachSettings.Add(new ValuationApproachSettings
         {
@@ -223,61 +214,19 @@ public class ValuationCostApproachServiceTests
             ValuationRequestId = requestId,
             CostApproachEnabled = true,
             CostScopeKey = CostScopeKeys.BuildingOnly,
-            OwnershipInterestKey = OwnershipInterestKeys.LeasedLand,
-            RemainingLeaseYears = 10m,
-        });
-        await contexts.Valuation.SaveChangesAsync();
-        var request = Request();
-        var (saved, errors) = await service.SaveAsync(requestId, new SaveValuationCostApproachRequest
-        {
-            Lines = request.Lines,
-            ActualAgeYears = 15m,
-            EconomicAgeYears = 40m,
-        });
-
-        Assert.Null(errors);
-        Assert.Equal(10m, saved!.RemainingLeaseYears);
-        Assert.True(saved.LifeCappedByLease);
-        Assert.Equal(40m, saved.ExtendedLifeYears);
-        Assert.Equal(25m, saved.EffectiveLifeYears);
-        Assert.Equal(60m, saved.PhysicalObsolescencePct);
-
-        // Freehold: the same inputs keep the full life.
-        Assert.Null(CostLeaseTerms.RemainingLeaseYears(
-            new ValuationApproachSettings { OwnershipInterestKey = OwnershipInterestKeys.Freehold, RemainingLeaseYears = 10m }));
-        // Round 2: the cap holds whatever the scope — land with buildings included.
-        Assert.Equal(10m, CostLeaseTerms.RemainingLeaseYears(
-            new ValuationApproachSettings { OwnershipInterestKey = OwnershipInterestKeys.LeasedLand, RemainingLeaseYears = 10m, CostScopeKey = CostScopeKeys.LandAndBuilding }));
-    }
-
-    [Theory]
-    [InlineData("usufruct", 2)]
-    [InlineData("leased_land", 4)]
-    public async Task A_usufruct_or_leased_land_with_its_land_valued_too_is_depreciated_over_the_lease(
-        string interest, int leaseYears)
-    {
-        await using var contexts = TestDatabases.Create("cost-lease-scope");
-        var (service, requestId) = await NewServiceAsync(contexts.Valuation);
-        contexts.Valuation.ValuationApproachSettings.Add(new ValuationApproachSettings
-        {
-            Id = Guid.NewGuid(),
-            ValuationRequestId = requestId,
-            CostApproachEnabled = true,
-            CostScopeKey = CostScopeKeys.LandAndBuilding,
-            OwnershipInterestKey = interest,
-            RemainingLeaseYears = leaseYears,
         });
         await contexts.Valuation.SaveChangesAsync();
         var (saved, errors) = await service.SaveAsync(requestId, new SaveValuationCostApproachRequest
         {
             Lines = Request().Lines,
-            ActualAgeYears = 10m,
+            ActualAgeYears = 15m,
             EconomicAgeYears = 40m,
         });
 
         Assert.Null(errors);
-        Assert.True(saved!.LifeCappedByLease);
-        Assert.Equal(10m + leaseYears, saved.EffectiveLifeYears);
+        Assert.Equal(40m, saved!.ExtendedLifeYears);
+        Assert.Equal(40m, saved.EffectiveLifeYears);
+        Assert.Equal(37.5m, saved.PhysicalObsolescencePct);
     }
 
     [Fact]

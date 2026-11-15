@@ -51,9 +51,9 @@ public class ValuationSettingsAndPriorBankFeedTests
     }
 
     [Fact]
-    public async Task The_income_approach_is_refused_and_a_leasehold_interest_is_saved()
+    public async Task The_income_approach_is_refused()
     {
-        await using var contexts = TestDatabases.Create("settings-income-lease");
+        await using var contexts = TestDatabases.Create("settings-income");
         var (service, id) = await ArrangeSettingsAsync(contexts.Valuation);
 
         // The income approach is not available yet — enabling it is a field error.
@@ -61,35 +61,9 @@ public class ValuationSettingsAndPriorBankFeedTests
         Assert.Null(refused);
         Assert.Equal("أسلوب الدخل قيد الإنشاء — مؤجَّل رسمياً", incomeErrors!["incomeApproachEnabled"]);
 
-        var (_, missingYears) = await service.SaveAsync(id, Request() with
-        {
-            OwnershipInterestKey = OwnershipInterestKeys.LeasedLand,
-        });
-        Assert.Contains("remainingLeaseYears", missingYears!.Keys);
-
-        var (saved, errors) = await service.SaveAsync(id, Request() with
-        {
-            OwnershipInterestKey = OwnershipInterestKeys.LeasedLand,
-            RemainingLeaseYears = 4,
-        });
+        var (saved, errors) = await service.SaveAsync(id, Request());
         Assert.Null(errors);
         Assert.False(saved!.IncomeApproachEnabled);
-        Assert.Equal(OwnershipInterestKeys.LeasedLand, saved.OwnershipInterestKey);
-        Assert.Equal("أرض مستأجرة", saved.OwnershipInterestLabelAr);
-        Assert.Equal(4m, saved.RemainingLeaseYears);
-
-        // An older screen that does not know the field keeps the stored interest.
-        var (kept, _) = await service.SaveAsync(id, Request());
-        Assert.Equal(OwnershipInterestKeys.LeasedLand, kept!.OwnershipInterestKey);
-        Assert.Equal(4m, kept.RemainingLeaseYears);
-
-        // Back to full ownership drops the lease term.
-        var (freehold, _) = await service.SaveAsync(id, Request() with
-        {
-            OwnershipInterestKey = OwnershipInterestKeys.Freehold,
-            RemainingLeaseYears = 4,
-        });
-        Assert.Null(freehold!.RemainingLeaseYears);
     }
 
     private static async Task<(ValuationApproachSettingsService Service, Guid Id)> ArrangeSettingsAsync(
@@ -128,8 +102,6 @@ public class ValuationSettingsAndPriorBankFeedTests
         public string? ValuationDateMode { get; init; }
         public string? RetrospectiveDate { get; init; }
         public string? RetrospectiveRationale { get; init; }
-        public string? OwnershipInterestKey { get; init; }
-        public decimal? RemainingLeaseYears { get; init; }
 
         public static implicit operator SaveValuationApproachSettingsRequest(SettingsRequest r) => new()
         {
@@ -141,8 +113,6 @@ public class ValuationSettingsAndPriorBankFeedTests
             ValuationDateMode = r.ValuationDateMode,
             RetrospectiveDate = r.RetrospectiveDate,
             RetrospectiveRationale = r.RetrospectiveRationale,
-            OwnershipInterestKey = r.OwnershipInterestKey,
-            RemainingLeaseYears = r.RemainingLeaseYears,
         };
     }
 

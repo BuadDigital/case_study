@@ -46,7 +46,6 @@ export const CostApproachSection = memo(function CostApproachSection({
   isApartmentProperty,
   deedArea,
   costBasisKey,
-  ownershipInterestKey = null,
   saving,
   locked = false,
   inventoryApproved = true,
@@ -66,8 +65,6 @@ export const CostApproachSection = memo(function CostApproachSection({
   /** The deed area — seeds the plot box when the deed is the land itself. */
   deedArea?: string | null;
   costBasisKey: string;
-  /** The interest valued (freehold / usufruct / leased_land) — words the age card's lease-cap note. */
-  ownershipInterestKey?: string | null;
   saving: boolean;
   locked?: boolean;
   /** The study is issued — the inventory is the approved one and may be pulled. */
@@ -217,7 +214,6 @@ export const CostApproachSection = memo(function CostApproachSection({
           derived={derived}
           fields={fields}
           setField={setField}
-          ownershipInterestKey={ownershipInterestKey}
         />
       </div>
 

@@ -8,6 +8,8 @@
 // Round 2 (1b19bedc)
 //  • A    BuildingPlotAreaSqm (18,2, nullable, non-negative) on the cost approach — the building plot the
 //         cost land table compares with.
+// 2026-11-15 (Omar): OwnershipInterestKey and RemainingLeaseYears are dropped from the approach settings
+//         with the «نوع الملكية المقيَّمة» list (migration RemoveOwnershipInterest).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using Microsoft.EntityFrameworkCore;
@@ -316,12 +318,6 @@ public static class ValuationModel
             e.Property(x => x.ExternalSpecialistDetails).HasMaxLength(2000);
             e.Property(x => x.ValuationDateMode).HasMaxLength(16).IsRequired();
             e.Property(x => x.RetrospectiveRationale).HasMaxLength(2000);
-            // The interest valued (freehold / usufruct / leased land) and its remaining lease term.
-            e.Property(x => x.OwnershipInterestKey)
-                .HasMaxLength(16)
-                .IsRequired()
-                .HasDefaultValue(OwnershipInterestKeys.Freehold);
-            e.Property(x => x.RemainingLeaseYears).HasPrecision(6, 2);
             e.Property(x => x.SelectedAssumptionsJson).HasColumnType("jsonb");
             e.HasIndex(x => x.ValuationRequestId).IsUnique();
             e.HasOne(x => x.ValuationRequest)

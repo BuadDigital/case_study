@@ -35,9 +35,6 @@ function settings(overrides: Partial<ValuationApproachSettingsDto> = {}): Valuat
     marketApproachEnabled: true,
     costApproachEnabled: false,
     incomeApproachEnabled: false,
-    ownershipInterestKey: "freehold",
-    ownershipInterestLabelAr: "ملكية تامة",
-    remainingLeaseYears: null,
     costBasisKey: "replacement",
     costBasisLabelAr: "الإحلال",
     costScopeKey: "land_and_building",
@@ -182,33 +179,16 @@ describe("ApproachSettingsSection — layout 2026-11-11: each choice sits with w
   });
 });
 
-describe("ApproachSettingsSection — interest, rationale and the unavailable income approach", () => {
-  it("sends the ownership interest and lease years instead of hard-coded values, income always off", async () => {
+describe("ApproachSettingsSection — rationale and the unavailable income approach", () => {
+  it("has no «نوع الملكية المقيَّمة» list (2026-11-15) and always sends income off", async () => {
     renderSection(settings());
-    fireEvent.change(screen.getByLabelText("نوع الملكية المقيَّمة"), {
-      target: { value: "leased_land" },
-    });
-    fireEvent.change(screen.getByLabelText("المدة المتبقية (سنة)"), {
-      target: { value: "٢٠" },
-    });
+    expect(screen.queryByLabelText("نوع الملكية المقيَّمة")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "حفظ الأساليب" }));
     await waitFor(() => expect(api.saveValuationApproachSettings).toHaveBeenCalled());
-    expect(api.saveValuationApproachSettings.mock.calls[0][2]).toMatchObject({
-      incomeApproachEnabled: false,
-      ownershipInterestKey: "leased_land",
-      remainingLeaseYears: 20,
-      retrospectiveRationale: null,
-    });
-  });
-
-  it("refuses a leasehold save without the remaining lease years", async () => {
-    renderSection(settings());
-    fireEvent.change(screen.getByLabelText("نوع الملكية المقيَّمة"), {
-      target: { value: "usufruct" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "حفظ الأساليب" }));
-    await waitFor(() => expect(toast.showToast).toHaveBeenCalled());
-    expect(api.saveValuationApproachSettings).not.toHaveBeenCalled();
+    const body = api.saveValuationApproachSettings.mock.calls[0][2];
+    expect(body).toMatchObject({ incomeApproachEnabled: false, retrospectiveRationale: null });
+    expect(body).not.toHaveProperty("ownershipInterestKey");
+    expect(body).not.toHaveProperty("remainingLeaseYears");
   });
 
   it("requires and sends the retrospective rationale", async () => {
@@ -231,14 +211,12 @@ describe("ApproachSettingsSection — interest, rationale and the unavailable in
     });
   });
 
-  it("hydrates the saved rationale and interest, but never a saved income flag", () => {
+  it("hydrates the saved rationale, but never a saved income flag", () => {
     renderSection(
       settings({
         valuationDateMode: "retrospective",
         retrospectiveDate: "2026-01-15",
         retrospectiveRationale: "مبرر محفوظ سابقاً",
-        ownershipInterestKey: "usufruct",
-        remainingLeaseYears: 12,
         incomeApproachEnabled: true,
       }),
     );
@@ -246,8 +224,6 @@ describe("ApproachSettingsSection — interest, rationale and the unavailable in
       "value",
       "مبرر محفوظ سابقاً",
     );
-    expect(screen.getByLabelText("نوع الملكية المقيَّمة")).toHaveProperty("value", "usufruct");
-    expect(screen.getByLabelText("المدة المتبقية (سنة)")).toHaveProperty("value", "12");
     expect(screen.getByRole("checkbox", { name: /أسلوب الدخل/ })).toHaveProperty("checked", false);
   });
 

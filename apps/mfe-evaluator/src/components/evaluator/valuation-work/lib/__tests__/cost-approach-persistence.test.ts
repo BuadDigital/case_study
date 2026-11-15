@@ -209,19 +209,9 @@ describe("D12 — depreciation capped at 100%, alert above 90%", () => {
   });
 });
 
-describe("D11 — building-only on leased land caps the life at the lease", () => {
-  it("measures physical depreciation against actual age + remaining lease", () => {
-    const derived = costApproachDerived(
-      { ...EMPTY_COST_FIELDS, actualAge: "15", economicAge: "40" },
-      0,
-      cost({ remainingLeaseYears: 10 }),
-      true,
-    );
-    expect(derived.effectiveLifeLocal).toBe(25);
-    expect(derived.physicalLocal).toBeCloseTo(60);
-  });
-
-  it("leaves the life alone without a lease term", () => {
+// 2026-11-15: no lease cap any more (the «نوع الملكية المقيَّمة» list is gone).
+describe("the life used for depreciation", () => {
+  it("is the extended economic life", () => {
     const derived = costApproachDerived(
       { ...EMPTY_COST_FIELDS, actualAge: "15", economicAge: "40" },
       0,
@@ -229,6 +219,7 @@ describe("D11 — building-only on leased land caps the life at the lease", () =
       true,
     );
     expect(derived.effectiveLifeLocal).toBe(40);
+    expect(derived.physicalLocal).toBeCloseTo(37.5);
   });
 });
 

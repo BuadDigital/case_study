@@ -2,6 +2,7 @@
 // Round 1 (5b554f4e)
 //  • The assumptions save re-sends the saved ownership interest (ownershipInterestKey) and remaining
 //         lease years — this save owns only the assumptions and the specialist clause.
+//         (2026-11-15: both fields are gone with the «نوع الملكية المقيَّمة» list.)
 //  • It re-sends the saved retrospective rationale instead of null.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
@@ -335,11 +336,9 @@ export function EvaluatorFinalReviewTab({
       {
         marketApproachEnabled: currentSettings.marketApproachEnabled,
         costApproachEnabled: currentSettings.costApproachEnabled,
-        // Re-send the saved interest / rationale as they are — this save only owns the assumptions and
-        // the specialist clause. The income approach is not available, so it is always off.
+        // Re-send the saved settings as they are — this save only owns the assumptions and the
+        // specialist clause. The income approach is not available, so it is always off.
         incomeApproachEnabled: false,
-        ownershipInterestKey: currentSettings.ownershipInterestKey ?? null,
-        remainingLeaseYears: currentSettings.remainingLeaseYears ?? null,
         costBasisKey: currentSettings.costBasisKey,
         costScopeKey: currentSettings.costScopeKey,
         costMeasurementUnitKey: currentSettings.costMeasurementUnitKey,

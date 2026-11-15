@@ -1,7 +1,7 @@
 // ── Valuation fixes · 2026-10-25/26 ──────────────────────────────────────────────────────────
 // Round 1 (5b554f4e)
 //  • Server errors for ownershipInterestKey and remainingLeaseYears point at their boxes on the
-//         basics screen.
+//         basics screen. (Removed 2026-11-15 with the «نوع الملكية المقيَّمة» list.)
 //  • retrospectiveRationale points at «مبرر التقييم بأثر رجعي».
 // Round 2 (1b19bedc)
 //  • Bounds  The matrix header's bounds (area factor, annual market rate, rounding) and the cost totals
@@ -58,13 +58,6 @@ type ResolvedValuationWorkError = {
 export const VALUATION_WORK_ERROR_TARGETS: readonly ValuationWorkErrorTarget[] = [
   /* ─── البيانات الأساسية — إعدادات الأساليب ─── */
   { key: "costScopeKey", targetId: "as-scope", screen: "basic" },
-  { key: "ownershipInterestKey", targetId: "as-ownership-interest", screen: "basic" },
-  {
-    key: "remainingLeaseYears",
-    targetId: "as-remaining-lease-years",
-    fallbackTargetId: "as-ownership-interest",
-    screen: "basic",
-  },
   { key: "appliedApproaches", targetId: "as-approaches", screen: "basic" },
   { key: "costApproachEnabled", targetId: "as-approaches", screen: "basic" },
   { key: "incomeApproachEnabled", targetId: "as-approaches", screen: "basic" },

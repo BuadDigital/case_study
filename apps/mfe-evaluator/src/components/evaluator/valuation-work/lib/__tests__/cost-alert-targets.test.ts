@@ -5,7 +5,6 @@ import {
   costApproachDerived,
   costLineTotals,
   EMPTY_COST_FIELDS,
-  leaseCapWording,
   type CostApproachFields,
 } from "../cost-approach-state";
 
@@ -148,10 +147,3 @@ describe("extra-line rationale alert (A→Z #52/#78)", () => {
   });
 });
 
-describe("leaseCapWording (A→Z #69)", () => {
-  it("names the usufruct right, and the lease otherwise", () => {
-    expect(leaseCapWording("usufruct").term).toBe("مدة حق المنفعة المتبقية");
-    expect(leaseCapWording("leased_land").term).toBe("مدة الإيجار المتبقية");
-    expect(leaseCapWording(null).term).toBe("مدة الإيجار المتبقية");
-  });
-});

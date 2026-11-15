@@ -150,9 +150,6 @@ describe("D1 — §2 prints the resolved basis / premise / purpose", () => {
         valuationDateMode: "retrospective",
         retrospectiveDate: "2026-02-10",
         retrospectiveRationale: "تاريخ إبرام عقد البيع محل النزاع",
-        ownershipInterestKey: "leased_land",
-        ownershipInterestLabelAr: "أرض مستأجرة",
-        remainingLeaseYears: 4,
       } as never,
       lists: {
         valueBases: [{ key: "market", name: "القيمة السوقية (قائمة)", isEnabled: true, cells: ["تعريف"] }],
@@ -170,7 +167,6 @@ describe("D1 — §2 prints the resolved basis / premise / purpose", () => {
       dateEnd: "",
       rationale: "تاريخ إبرام عقد البيع محل النزاع",
     });
-    expect(choices.ownership).toEqual({ key: "leased_land", labelAr: "أرض مستأجرة", remainingLeaseYears: 4 });
   });
 });
 
@@ -420,35 +416,24 @@ describe("§2 scope statements — D9 retrospective rationale, building-only sco
     expect(fill.scopeRows[0]?.value).toContain("2026/01/01 — 2026/03/31");
   });
 
-  it("a building on leased land: ownership with remaining years, and the scope says the land is not valued", () => {
+  it("«مباني فقط» says the land is not valued; «نوع الملكية» is the initial data's type", () => {
     const fill = buildValuationReportLiveFill({
       draft: draft(),
       costScopeKey: "building_only",
-      property: { ownershipType: "absolute" } as never,
-      ownership: { key: "leased_land", labelAr: "أرض مستأجرة", remainingLeaseYears: 4 },
+      property: { ownershipType: "shared" } as never,
     });
-    expect(fill.cells["نوع الملكية"]).toBe("أرض مستأجرة — المدة المتبقية 4 سنوات");
+    expect(fill.cells["نوع الملكية"]).toBe("مشاع");
     expect(fill.scopeRows).toEqual([
       {
         label: "نطاق التقييم",
-        value: "يقتصر التقييم على المباني والتحسينات القائمة (أرض مستأجرة — المدة المتبقية 4 سنوات)، ولا تشمل القيمة الأرض.",
+        value: "يقتصر التقييم على المباني والتحسينات القائمة، ولا تشمل القيمة الأرض.",
       },
     ]);
   });
-
-  it("full ownership keeps the deed's own ownership type", () => {
-    const fill = buildValuationReportLiveFill({
-      draft: draft(),
-      property: { ownershipType: "shared" } as never,
-      ownership: { key: "freehold", labelAr: "ملكية تامة" },
-    });
-    expect(fill.cells["نوع الملكية"]).toBe("مشاع");
-    expect(fill.scopeRows).toEqual([]);
-  });
 });
 
-describe("§23 — age rationales and the lease cap (cost handoff)", () => {
-  it("prints both rationales and the lease cap under the ages row", () => {
+describe("§23 — age rationales (cost handoff)", () => {
+  it("prints both rationales under the ages row", () => {
     const fill = buildValuationReportLiveFill({
       draft: draft(),
       costApproachEnabled: true,
@@ -457,21 +442,13 @@ describe("§23 — age rationales and the lease cap (cost handoff)", () => {
         economicAgeYears: 30,
         actualAgeRationale: "رخصة البناء 1429هـ",
         economicAgeRationale: "هيكل حديدي — دليل الهيئة",
-        remainingLeaseYears: 4,
-        lifeCappedByLease: true,
-        effectiveLifeYears: 22,
         lines: [],
       } as never,
     });
     expect(fill.ageNotes.map((n) => n.label)).toEqual([
       "مبرر العمر الفعلي",
       "مبرر العمر الاقتصادي",
-      "تحديد العمر بمدة الإيجار",
     ]);
-    expect(fill.ageNotes[2]?.value).toContain("مدة الإيجار المتبقية (4 سنوات)");
-    expect(fill.ageNotes[2]?.value).toContain("عمر 22 سنة");
-    // A→Z 2026-11-04 #08: the sentence says how the life is made (actual age + remaining term).
-    expect(fill.ageNotes[2]?.value).toContain("العمر الفعلي (18 سنة) مضافاً إليه مدة الإيجار المتبقية");
     const dom = new DOMParser().parseFromString(
       `<section data-sec="23"><table>
         <tr><td class="k">العمر الفعلي</td><td class="v num">—</td><td class="k">العمر الاقتصادي</td><td class="v num">—</td></tr>
@@ -486,36 +463,17 @@ describe("§23 — age rationales and the lease cap (cost handoff)", () => {
       "العمر الفعلي",
       "مبرر العمر الفعلي",
       "مبرر العمر الاقتصادي",
-      "تحديد العمر بمدة الإيجار",
       "التقادم المادي",
     ]);
   });
 
-  it("a usufruct right is named as such in the cap note — not «أرض مستأجرة» (round 2)", () => {
-    const fill = buildValuationReportLiveFill({
-      draft: draft(),
-      ownership: { key: "usufruct", labelAr: "حق منفعة", remainingLeaseYears: 2 },
-      cost: { remainingLeaseYears: 2, lifeCappedByLease: true, effectiveLifeYears: 2, lines: [] } as never,
-    });
-    expect(fill.ageNotes[0]?.label).toBe("تحديد العمر بمدة حق المنفعة");
-    expect(fill.ageNotes[0]?.value).not.toContain("مستأجرة");
-    expect(fill.ageNotes[0]?.value).toContain("(سنتان)");
-    expect(fill.cells["نوع الملكية"]).toBe("حق منفعة — المدة المتبقية سنتان");
-  });
-
-  it("deed full ownership prints «ملكية تامة»; one remaining year «سنة واحدة»", () => {
+  it("deed full ownership prints «ملكية تامة»", () => {
     expect(
       buildValuationReportLiveFill({ draft: draft(), property: { ownershipType: "absolute" } as never }).cells["نوع الملكية"],
     ).toBe("ملكية تامة");
-    expect(
-      buildValuationReportLiveFill({
-        draft: draft(),
-        ownership: { key: "leased_land", labelAr: "أرض مستأجرة", remainingLeaseYears: 1 },
-      }).cells["نوع الملكية"],
-    ).toBe("أرض مستأجرة — المدة المتبقية سنة واحدة");
   });
 
-  it("no notes when nothing was written and the life is not capped", () => {
+  it("no notes when nothing was written", () => {
     const fill = buildValuationReportLiveFill({ draft: draft(), cost: { lines: [] } as never });
     expect(fill.ageNotes).toEqual([]);
   });

@@ -4,6 +4,7 @@
 //         rationales, also on the save request.
 //  • Cost DTO: remainingLeaseYears / lifeCappedByLease / effectiveLifeYears; settings DTO and save
 //         request: ownershipInterestKey (+ label) and remainingLeaseYears.
+//         2026-11-15: all removed with the «نوع الملكية المقيَّمة» list (effectiveLifeYears stays).
 //  • Cost DTO: appliedObsolescencePct (capped at 100%) and obsolescenceNeedsAlert (> 90%).
 //  • Wording The garbled reconciliation 400 message is now «بيانات الترجيح غير صالحة».
 // Round 2 (1b19bedc)
@@ -229,10 +230,7 @@ export type ValuationCostApproachDto = {
   externalObsolescencePct: number;
   externalObsolescenceRationale?: string | null;
   extendedLifeYears: number;
-  /** Remaining lease years capping the life (building-only on leased land); null otherwise. */
-  remainingLeaseYears?: number | null;
-  lifeCappedByLease?: boolean;
-  /** Life physical depreciation is measured against (lease-capped when applies). */
+  /** Life physical depreciation is measured against — the extended life (no lease cap since 2026-11-15). */
   effectiveLifeYears?: number;
   physicalObsolescencePct?: number | null;
   /** Unclamped total (alerts read it). */
@@ -456,12 +454,6 @@ export type ValuationApproachSettingsDto = {
   costApproachEnabled: boolean;
   /** Deferred — shown as under construction and cannot be enabled. */
   incomeApproachEnabled: boolean;
-  /** Freehold (default) | usufruct («حق منفعة») | leased_land («أرض مستأجرة»). */
-  ownershipInterestKey?: string;
-  /** «ملكية تامة» / «حق منفعة» / «أرض مستأجرة». */
-  ownershipInterestLabelAr?: string;
-  /** Years left on the usufruct / land lease — set for a leasehold interest only. */
-  remainingLeaseYears?: number | null;
   /** replacement | reproduction. */
   costBasisKey: string;
   costBasisLabelAr: string;
@@ -517,10 +509,6 @@ export type SaveValuationApproachSettingsRequest = {
   retrospectiveDateEnd?: string | null;
   /** Required (≥ 10 characters) when valuationDateMode is retrospective; null keeps the stored one. */
   retrospectiveRationale?: string | null;
-  /** Freehold | usufruct | leased_land — null keeps the stored interest. */
-  ownershipInterestKey?: string | null;
-  /** Required (> 0, ≤ 999) for usufruct / leased_land; ignored for freehold. */
-  remainingLeaseYears?: number | null;
   selectedAssumptions?: string[] | null;
 };
 

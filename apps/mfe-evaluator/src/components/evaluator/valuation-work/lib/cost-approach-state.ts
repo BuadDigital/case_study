@@ -677,13 +677,9 @@ export function costApproachDerived(
   const economicLocal = costNum(fields.economicAge);
   const extLifeLocal = economicLocal + costNum(fields.lifeExtension);
   const actualLocal = costNum(fields.actualAge);
-  // A usufruct / leased-land interest — the life cannot outlast the lease, whatever the
-  // scope (the server sends the term only when it applies).
-  const leaseYears = cost?.remainingLeaseYears;
-  const effectiveLifeLocal =
-    leaseYears != null && leaseYears >= 0
-      ? Math.min(extLifeLocal, Math.max(0, actualLocal) + leaseYears)
-      : extLifeLocal;
+  // 2026-11-15: no lease cap any more (the «نوع الملكية المقيَّمة» list is gone) — the life is
+  // the extended economic life, as on the server.
+  const effectiveLifeLocal = extLifeLocal;
   const physicalLocal =
     effectiveLifeLocal > 0 && fields.actualAge.trim()
       ? (actualLocal / effectiveLifeLocal) * 100
@@ -719,24 +715,6 @@ export function costApproachDerived(
     ),
     landComplete,
   };
-}
-
-/**
- * Wording of the cost screen's lease-cap note («العمر المتبقي لا يتجاوز …») for the interest valued.
- *
- * How it works: «usufruct» (حق منفعة) names the usufruct right and its remaining term; anything
- * else (leased land, or no key yet) keeps the leased-land wording.
- *
- * Edge cases: fixed 2026-11-04 (A→Z #69): a usufruct right was told «مدة الإيجار المتبقية»; the
- * printed report already words it by the interest.
- */
-export function leaseCapWording(ownershipInterestKey: string | null | undefined): {
-  subject: string;
-  term: string;
-} {
-  return (ownershipInterestKey ?? "").trim().toLowerCase() === "usufruct"
-    ? { subject: "مبانٍ مقيّمة بحق منفعة", term: "مدة حق المنفعة المتبقية" }
-    : { subject: "مبنى على أرض مستأجرة", term: "مدة الإيجار المتبقية" };
 }
 
 function costItemLabel(line: ValuationCostLineDto): string {

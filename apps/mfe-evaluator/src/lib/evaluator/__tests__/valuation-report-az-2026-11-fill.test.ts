@@ -163,17 +163,17 @@ describe("«استخدام العقار» waits for the accepted inspection", ()
   });
 });
 
-describe("نوع الملكية on a shared deed (#50)", () => {
-  it("names the shared ownership before the usufruct right", () => {
+// 2026-11-15: «نوع الملكية» is the initial data's type only (the «مشاع» tick) — no appraiser interest.
+describe("نوع الملكية from the initial data", () => {
+  it("prints «مشاع» for a shared deed", () => {
     const fill = buildValuationReportLiveFill({
       draft: draft(),
       property: { ownershipType: "shared", city: "", deedNumber: "" } as never,
-      ownership: { key: "usufruct", labelAr: "حق منفعة", remainingLeaseYears: 20 },
     });
-    expect(fill.cells["نوع الملكية"]).toBe("مشاع — حق منفعة، المدة المتبقية 20 سنة");
+    expect(fill.cells["نوع الملكية"]).toBe("مشاع");
   });
 
-  it("keeps the single-owner wording and never prints a mortgage", () => {
+  it("prints «ملكية تامة» otherwise and never a mortgage", () => {
     const fill = buildValuationReportLiveFill({
       draft: draft(),
       property: {
@@ -183,9 +183,8 @@ describe("نوع الملكية on a shared deed (#50)", () => {
         city: "",
         deedNumber: "",
       } as never,
-      ownership: { key: "usufruct", labelAr: "حق منفعة", remainingLeaseYears: 20 },
     });
-    expect(fill.cells["نوع الملكية"]).toBe("حق منفعة — المدة المتبقية 20 سنة");
+    expect(fill.cells["نوع الملكية"]).toBe("ملكية تامة");
     expect(fill.cells["نوع الملكية"]).not.toContain("مرهون");
   });
 });

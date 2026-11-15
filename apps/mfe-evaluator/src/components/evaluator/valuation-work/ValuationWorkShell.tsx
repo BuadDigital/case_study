@@ -651,7 +651,6 @@ export function ValuationWorkShell({
             isApartmentProperty={isApartment}
             deedArea={property?.area}
             costBasisKey={approachSettings?.costBasisKey || "replacement"}
-            ownershipInterestKey={approachSettings?.ownershipInterestKey ?? null}
             saving={saving}
             locked={adjustmentsLocked}
             inventoryApproved={!studyReportPending}

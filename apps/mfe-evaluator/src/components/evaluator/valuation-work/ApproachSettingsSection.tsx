@@ -12,6 +12,9 @@
 //          three columns — then «by which approach» — market and cost side by side, the cost
 //          basis inside the cost card it belongs to — then the save. One sentence about the land
 //          comparables instead of three; the unavailable income approach is one grey line.
+// 2026-11-15 (Omar)
+//  • «نوع الملكية المقيَّمة» is removed from the card — the ownership type comes from the initial data
+//          (the «مشاع» tick beside the owner name). The «what is valued» row is scope · date, two columns.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -45,18 +48,15 @@ import {
 
 import { apiConfig } from "./lib/shell-utils";
 import {
-  OwnershipInterestFields,
   RetrospectiveFields,
   SETTINGS_FIELD_HINT,
   SETTINGS_FIELD_LABEL,
   SETTINGS_ROW_2,
-  SETTINGS_ROW_3,
   ValuationDateModeField,
 } from "./ApproachSettingsFields";
 import {
   approachSettingsDraftError,
   approachSettingsDraftRequestFields,
-  normalizeOwnershipInterestKey,
   type ApproachSettingsDraft,
 } from "./lib/approach-settings-form";
 import { useValuationWorkErrors } from "./ValuationWorkErrors";
@@ -73,7 +73,7 @@ import {
 /**
  * Basics screen — owns valuation settings drafts (approaches, scope, basis,
  * valuation date) locally: writes here do not re-render the valuation shell.
- * Reads top to bottom in the order of the decision: what is valued (scope, interest, date),
+ * Reads top to bottom in the order of the decision: what is valued (scope, date),
  * by which approach (the cost basis inside the cost card), then the save.
  * Rehydrates from the server payload via hydrateKey — bumps on full load and every settings save
  * (so an old draft cannot overwrite what was saved from the cost screen).
@@ -141,8 +141,6 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
   const [asRetroDate, setAsRetroDate] = useState("");
   const [asRetroDateEnd, setAsRetroDateEnd] = useState("");
   const [asRetroRationale, setAsRetroRationale] = useState("");
-  const [asOwnership, setAsOwnership] = useState("freehold");
-  const [asLeaseYears, setAsLeaseYears] = useState("");
   const [asAssumptions, setAsAssumptions] = useState<string[]>([]);
   const [confirmDisableOpen, setConfirmDisableOpen] = useState(false);
   /**
@@ -174,10 +172,6 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     setAsRetroDateEnd(settings.retrospectiveDateEnd ?? "");
     setAsRetroKind(settings.retrospectiveDateEnd?.trim() ? "range" : "single");
     setAsRetroRationale(settings.retrospectiveRationale ?? "");
-    setAsOwnership(normalizeOwnershipInterestKey(settings.ownershipInterestKey));
-    setAsLeaseYears(
-      settings.remainingLeaseYears != null ? String(settings.remainingLeaseYears) : "",
-    );
     const loadedAssumptions = settings.selectedAssumptions ?? [];
     const library = settings.assumptionLibrary ?? [];
     // When no saved selection exists: all special-assumption items are selected by default.
@@ -232,8 +226,6 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
     retroDate: asRetroDate,
     retroDateEnd: asRetroDateEnd,
     retroRationale: asRetroRationale,
-    ownershipKey: asOwnership,
-    leaseYearsText: asLeaseYears,
   };
 
   async function saveApproachSettings() {
@@ -376,8 +368,8 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
           {/* The appraiser's page (work density): the section's header carries the title. */}
           {work ? null : <CardTitle>أساليب وطرق التقييم المستخدمة</CardTitle>}
 
-          {/* 1 — what is valued: scope · interest · date, one column each. */}
-          <div className={cn(SETTINGS_ROW_3, "mb-4")}>
+          {/* 1 — what is valued: scope · date, one column each. */}
+          <div className={cn(SETTINGS_ROW_2, "mb-4")}>
             <div>
               <span className={SETTINGS_FIELD_LABEL}>نطاق التقييم</span>
               <div
@@ -424,14 +416,6 @@ export const ApproachSettingsSection = memo(function ApproachSettingsSection({
                       : "تُقيَّم الأرض مع المكونات المحصورة."}
               </p>
             </div>
-            <OwnershipInterestFields
-              saving={saving}
-              fieldErrors={fieldErrors}
-              ownershipKey={asOwnership}
-              onOwnershipKeyChange={setAsOwnership}
-              leaseYearsText={asLeaseYears}
-              onLeaseYearsTextChange={setAsLeaseYears}
-            />
             <ValuationDateModeField
               saving={saving}
               invalid={Boolean(fieldErrors.valuationDateMode)}
