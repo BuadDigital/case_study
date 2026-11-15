@@ -87,9 +87,7 @@ export function validatePropertyEnfathFields(
 
   validateDeedOrRealEstateReg(p, errors);
 
-  if (fieldPolicy.requiresAssignmentDoc && p.assignmentDocFileNames.length === 0) {
-    errors.assignmentDocFileNames = "قرار الإسناد مطلوب";
-  }
+  // «قرار الإسناد» is optional (2026-11-15): some assignments come without it.
 
   return errors;
 }

@@ -77,10 +77,7 @@ public static class WorkOrderValidator
  // Order number ≠ Deed number changed from blocking restriction to warning check — literal match
  // It is a coincidence and not conclusive evidence of error; The alert is on the interface and the input confirms and proceeds.
 
-        if (policy.RequiresAssignmentDoc && dto.AssignmentDocFileNames.All(string.IsNullOrWhiteSpace))
-        {
-            errors["assignmentDocFileNames"] = "قرار الإسناد مطلوب";
-        }
+        // «قرار الإسناد» is optional (2026-11-15): some assignments come without it, and the work goes on.
 
         ValidateContacts(dto, AssignmentTypeRules.RequiresContacts(assignmentType), errors);
 

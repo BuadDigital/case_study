@@ -18,7 +18,7 @@ public class WorkOrderValidatorTests
     [Fact]
     public void ClientFieldPolicyForClient_relaxes_for_report_user_not_just_primary_client()
     {
-        var relaxed = new ClientFieldPolicy(RequiresAssignmentDoc: false, RequiresOwnerName: false);
+        var relaxed = new ClientFieldPolicy(ShowsAssignmentDoc: false, RequiresOwnerName: false);
 
         // Normal case: client is Infath, Nabr is the sub-client / report user.
         Assert.Equal(relaxed, SeedClientIds.ClientFieldPolicyForClient(
@@ -288,8 +288,9 @@ public class WorkOrderValidatorTests
         Assert.DoesNotContain(errors, e => e.Key == "poNumber");
     }
 
+    /// <summary>2026-11-15: «قرار الإسناد» is optional — some assignments come without it.</summary>
     [Fact]
-    public void ValidatePropertyEnfath_requires_assignment_doc()
+    public void ValidatePropertyEnfath_does_not_require_the_assignment_doc()
     {
         var dto = ValidDeedProperty();
         dto.AssignmentDocFileNames = [];
@@ -300,7 +301,7 @@ public class WorkOrderValidatorTests
             null,
             (_, _) => false);
 
-        Assert.Equal("قرار الإسناد مطلوب", errors["assignmentDocFileNames"]);
+        Assert.DoesNotContain(errors, e => e.Key == "assignmentDocFileNames");
     }
 
     [Fact]
@@ -315,7 +316,7 @@ public class WorkOrderValidatorTests
             AssignmentType.Execution,
             null,
             (_, _) => false,
-            fieldPolicy: new ClientFieldPolicy(RequiresAssignmentDoc: false, RequiresOwnerName: false));
+            fieldPolicy: new ClientFieldPolicy(ShowsAssignmentDoc: false, RequiresOwnerName: false));
 
         Assert.DoesNotContain(errors, e => e.Key == "assignmentDocFileNames");
         Assert.DoesNotContain(errors, e => e.Key == "ownerName");

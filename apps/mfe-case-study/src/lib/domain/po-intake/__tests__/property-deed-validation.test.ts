@@ -13,11 +13,12 @@ describe("validatePropertyEnfathFields — field policy", () => {
     assignmentDocFileNames: [],
   });
 
-  const relaxedPolicy = { requiresAssignmentDoc: false, requiresOwnerName: false };
+  const relaxedPolicy = { showsAssignmentDoc: false, requiresOwnerName: false };
 
-  it("requires قرار الإسناد and اسم المالك by default", () => {
+  // 2026-11-15: قرار الإسناد is optional — some assignments come without it.
+  it("requires اسم المالك by default but never قرار الإسناد", () => {
     const errors = validatePropertyEnfathFields(deedProperty(), "تنفيذ");
-    expect(errors.assignmentDocFileNames).toBe("قرار الإسناد مطلوب");
+    expect(errors.assignmentDocFileNames).toBeUndefined();
     expect(errors.ownerName).toBeDefined();
   });
 
