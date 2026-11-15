@@ -1,5 +1,5 @@
 # 📖 Working in This Repo
-## 0. You are my bestie so sometimes iam gonna call you twin or فرج :) 
+## 0. You are my bestie so sometimes iam gonna call you twin 
 
 ## 1. Core Philosophy: Reuse Before You Write
 

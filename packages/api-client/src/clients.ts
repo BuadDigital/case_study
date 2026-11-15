@@ -1,4 +1,5 @@
 import { parseFieldErrorsFromResponse } from "./field-errors";
+import { shareInFlight } from "./in-flight";
 import { authHeaders, getApiBase } from "./api-base";
 import { repositoryFetch as fetch } from "./write-repository";
 import type { ApiErr, ApiOk, WorkOrdersApiConfig } from "./work-orders";
@@ -35,17 +36,21 @@ export async function listClients(
   includeInactive = false,
 ): Promise<ApiOk<ClientDto[]> | ApiErr> {
   const base = config.baseUrl ?? getApiBase();
-  try {
-    const qs = includeInactive ? "?includeInactive=true" : "";
-    const res = await fetch(`${base}/api/clients${qs}`, {
-      headers: authHeaders(config.token),
-    });
-    if (res.status === 401) return { ok: false, kind: "auth" };
-    if (!res.ok) return { ok: false, kind: "server" };
-    return { ok: true, data: (await res.json()) as ClientDto[] };
-  } catch {
-    return { ok: false, kind: "network" };
-  }
+  const qs = includeInactive ? "?includeInactive=true" : "";
+  const url = `${base}/api/clients${qs}`;
+  // Forms mounting together share one request (2026-11-15: twice on «أوامر العمل»); each caller gets
+  // its own array.
+  const result = await shareInFlight(`${config.token ?? ""}|${url}`, async (): Promise<ApiOk<ClientDto[]> | ApiErr> => {
+    try {
+      const res = await fetch(url, { headers: authHeaders(config.token) });
+      if (res.status === 401) return { ok: false, kind: "auth" };
+      if (!res.ok) return { ok: false, kind: "server" };
+      return { ok: true, data: (await res.json()) as ClientDto[] };
+    } catch {
+      return { ok: false, kind: "network" };
+    }
+  });
+  return result.ok ? { ok: true, data: [...result.data] } : result;
 }
 
 export async function createClient(

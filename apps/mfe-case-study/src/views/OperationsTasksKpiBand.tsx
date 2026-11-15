@@ -50,7 +50,7 @@ export function OperationsTasksKpiBand({ kpis }: { kpis: OperationsTaskKpis }) {
         />
       </KpiBand>
 
-      {/* Mobile: property-inspection-style 2×2 stat cards */}
+      {/* Mobile: inspector-style 2×2 stat cards */}
       <MobileKpiStatCards
         className="mb-0"
         items={[

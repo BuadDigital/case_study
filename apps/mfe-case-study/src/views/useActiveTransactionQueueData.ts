@@ -15,6 +15,7 @@ import {
   useState,
 } from "react";
 import { useSearchParams } from "next/navigation";
+import { listPagerWindow } from "@platform/ui-kit";
 import { useReportDraftStates } from "@platform/app-shared/workflow/use-report-draft-states";
 import { getReportDraftState } from "@platform/app-shared/workflow/report-draft-state";
 import { transactionProgress } from "../lib/app-data/my-work-model";
@@ -27,11 +28,7 @@ import {
   useCaseStudyInfoRolesQuery,
   useStaffUsersQuery,
 } from "@settings/mfe/query/settings-queries";
-import {
-  getCachedPartySubmission,
-  partySubmissionTaskIdsKey,
-  prefetchPartySubmissionsForTasks,
-} from "@platform/app-shared/app-data/party-submission-api";
+import { partySubmissionTaskIdsKey } from "@platform/app-shared/app-data/party-submission-api";
 import {
   usePoRecordsQuery,
   useWorkflowTasksFilteredQuery,
@@ -96,7 +93,6 @@ export function useActiveTransactionQueueData({
   const infoRolesMatrix = infoRolesData?.matrix ?? DEFAULT_INFO_ROLES.matrix;
   const staffUsers = staffResult?.users ?? EMPTY_STAFF_USERS;
   const needsInspectionWorkspaces = Boolean(config.getTaskStatusBadge);
-  const needsPartySubmissions = Boolean(config.getTaskStatusBadge);
   const { data: inspectionWorkspaces = EMPTY_INSPECTION_WORKSPACES } =
     useFieldInspectionWorkspacesQuery(needsInspectionWorkspaces);
   const inspectionWorkspaceByTaskId = useMemo(() => {
@@ -124,7 +120,6 @@ export function useActiveTransactionQueueData({
   const [typeFilter, setTypeFilter] = useState("");
   const [page, setPage] = useState(1);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [submissionCacheGen, setSubmissionCacheGen] = useState(0);
 
   const flags = useMemo(() => resolveQueueLayoutFlags(config), [config]);
   const {
@@ -222,12 +217,11 @@ export function useActiveTransactionQueueData({
     void refetchTasks();
   }, [refetchPoRecords, refetchTasks]);
 
-  /** Party-submission badges read a cache — bump to re-resolve them after a refresh. */
-  const refreshPartySubmissions = useCallback(() => {
-    if (needsPartySubmissions) {
-      setSubmissionCacheGen((n) => n + 1);
-    }
-  }, [needsPartySubmissions]);
+  /**
+   * Kept for the commands that call it after a refresh. The badges no longer read party submissions
+   * (2026-11-15), so there is nothing to re-resolve.
+   */
+  const refreshPartySubmissions = useCallback(() => {}, []);
 
   const poByNumber = useMemo(() => buildPoByNumber(poRecords), [poRecords]);
 
@@ -288,35 +282,17 @@ export function useActiveTransactionQueueData({
     return listed.find((t) => t.id === selectedId) ?? null;
   }, [selectedId, listed]);
 
+  // The badges come from the task itself (and the inspection workspace) — no party submission is read.
+  // 2026-11-15: every listed task's full submission was downloaded here for a badge that ignored it —
+  // 4 MB per open of «جميع العقارات», and again on every task-list refresh.
   const resolveTaskBadge = useCallback(
     (task: WorkflowTask) =>
       resolveQueueTaskStatusBadge(task, {
         getTaskStatusBadge: config.getTaskStatusBadge,
         inspectionWorkspace: inspectionWorkspaceByTaskId.get(task.id),
-        partySubmission: getCachedPartySubmission(task.id),
       }),
-    // `getCachedPartySubmission` reads a cache; the counter is its invalidation key.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [config, inspectionWorkspaceByTaskId, submissionCacheGen],
+    [config, inspectionWorkspaceByTaskId],
   );
-
-  useEffect(() => {
-    if (!needsPartySubmissions || listedTaskIdsKey.length === 0) return;
-    const ids = listedTaskIdsKey.split("\0");
-    void prefetchPartySubmissionsForTasks(ids)
-      .then(() => {
-        setSubmissionCacheGen((n) => n + 1);
-      })
-      .catch((err: unknown) => {
-        console.warn(
-          "Party submission prefetch failed:",
-          err instanceof Error ? err.message : err,
-        );
-      });
-    // Re-run on every fresh `tasks` fetch (live poll or a server-pushed
-    // workflow notification), not just when the id set changes — a returned/
-    // reopened submission on an already-listed task needs a fresh badge too.
-  }, [listedTaskIdsKey, needsPartySubmissions, tasks]);
 
   const allTransactionsRowMeta = useMemo(() => {
     if (!isAllTransactionsTable) return [];
@@ -430,6 +406,29 @@ export function useActiveTransactionQueueData({
     return filterAllTxMetaToListed(allTransactionsRowMeta, filteredListed);
   }, [isAllTransactionsTable, filteredListed, allTransactionsRowMeta]);
 
+  // «جميع العقارات» pages in the browser — its rows are filtered here, not by the server — 25 a page,
+  // like «أعمالي» (Omar 2026-11-15). A new search or filter starts again at page 1; a page past the
+  // end (rows gone) is pulled back by listPagerWindow.
+  const allTxFilterKey = `${deferredSearch}|${statusFilter}|${typeFilter}|${showCompleted}`;
+  const [allTxPagedFor, setAllTxPagedFor] = useState(allTxFilterKey);
+  if (isAllTransactionsTable && allTxPagedFor !== allTxFilterKey) {
+    setAllTxPagedFor(allTxFilterKey);
+    setPage(1);
+  }
+  const allTxWindow = listPagerWindow({
+    page,
+    pageSize: QUEUE_PAGE_SIZE,
+    totalCount: filteredAllTxMeta.length,
+  });
+  const allTxPageMeta = useMemo(
+    () =>
+      filteredAllTxMeta.slice(
+        (allTxWindow.safePage - 1) * QUEUE_PAGE_SIZE,
+        allTxWindow.safePage * QUEUE_PAGE_SIZE,
+      ),
+    [filteredAllTxMeta, allTxWindow.safePage],
+  );
+
   const partyProgressByTask = useQueuePartyProgress({
     enabled: showPartyColumns,
     listed,
@@ -509,6 +508,8 @@ export function useActiveTransactionQueueData({
     filteredListed,
     filteredPrimaryMeta,
     filteredAllTxMeta,
+    allTxPageMeta,
+    allTxWindow,
     partyProgressByTask,
     primaryHasLocation,
     assignmentTypes,

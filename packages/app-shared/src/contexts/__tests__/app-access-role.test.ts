@@ -41,6 +41,17 @@ describe("rolePagesFromPermissions — the pages the app and the login both go b
     ).toBe("/my-work");
   });
 
+  // 2026-11-15: «لوحة التحكم» is hidden from everyone — the system owner lands on «أعمالي».
+  it("hides the dashboard from the system owner too, whatever the server grants", () => {
+    const pages = rolePagesFromPermissions({
+      prototypeRole: "cdo",
+      identityRoles: ["CDO"],
+      pages: ["dashboard", "my-work", "po", "users"],
+    });
+    expect(pages).not.toContain("dashboard");
+    expect(defaultLandingPath(pages)).toBe("/my-work");
+  });
+
   it("trims a case specialist's baseline to the sub-roles he holds", () => {
     const pages = rolePagesFromPermissions({
       prototypeRole: "case-specialist",

@@ -13,6 +13,7 @@ import {
   Badge,
   FilterChips,
   GentleBusy,
+  ListPager,
   MobileRecordCard,
   MobileRecordList,
   OperationalToolbarSearch,
@@ -28,6 +29,7 @@ import {
   Th,
   Tr,
   cn,
+  listPagerWindow,
   opsLetterCard,
   useToast,
   type BadgeTone,
@@ -66,7 +68,7 @@ import {
   type MyWorkItem,
   type MyWorkStage,
 } from "../lib/app-data/my-work-model";
-import { buildPoByNumber } from "./active-transaction-queue-state";
+import { QUEUE_PAGE_SIZE, buildPoByNumber } from "./active-transaction-queue-state";
 import { FavoriteStar } from "../components/ui/FavoriteStar";
 import { MY_WORK_PIN_LIMIT, pinnedFirst, useMyWorkPins } from "../lib/app-data/my-work-pins";
 import { QueueRowMoreCell } from "./active-transaction-queue-row-parts";
@@ -353,6 +355,18 @@ export function MyWorkView() {
     return pinnedFirst(rows, pinnedKeys);
   }, [work.items, stage, search, pinnedKeys]);
 
+  // Pages of QUEUE_PAGE_SIZE rows, as the other queues (Omar 2026-11-15). A new chip or search starts
+  // again at page 1; a page past the end (rows sent on) is pulled back by listPagerWindow.
+  const [page, setPage] = useState(1);
+  const filterKey = `${stage ?? "all"}|${search}`;
+  const [pagedFor, setPagedFor] = useState(filterKey);
+  if (pagedFor !== filterKey) {
+    setPagedFor(filterKey);
+    setPage(1);
+  }
+  const pageWindow = listPagerWindow({ page, pageSize: QUEUE_PAGE_SIZE, totalCount: listed.length });
+  const shown = listed.slice((pageWindow.safePage - 1) * QUEUE_PAGE_SIZE, pageWindow.safePage * QUEUE_PAGE_SIZE);
+
   const pending = tasksQuery.isPending || poQuery.isPending;
   const failed = [tasksQuery, poQuery].filter(queryLoadFailed);
   const waiting = useMemo(() => work.items.filter((i) => !isMyWorkLookupStage(i.stage)), [work.items]);
@@ -501,7 +515,7 @@ export function MyWorkView() {
         ) : (
           <>
             <MobileRecordList className="lg:hidden">
-              {listed.map((item) => (
+              {shown.map((item) => (
                 <MobileRecordCard
                   key={item.key}
                   tone={
@@ -594,7 +608,7 @@ export function MyWorkView() {
                   </Tr>
                 </THead>
                 <TBody>
-                  {listed.map((item) => (
+                  {shown.map((item) => (
                     // The whole row opens the step (Omar 2026-11-08: no «افتح» button); the action's
                     // name is the row's keyboard target.
                     <Tr
@@ -695,6 +709,15 @@ export function MyWorkView() {
                 </TBody>
               </Table>
             </TableFrame>
+            {pageWindow.totalPages > 1 ? (
+              <ListPager
+                page={pageWindow.safePage}
+                pageSize={QUEUE_PAGE_SIZE}
+                totalCount={listed.length}
+                onPageChange={setPage}
+                unit="معاملة"
+              />
+            ) : null}
           </>
         )}
       </section>

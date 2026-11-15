@@ -240,14 +240,21 @@ export function ServerNotificationBridge() {
 
     void pull(false);
 
-    // SSE is the primary live channel. A short visible-tab poll covers:
-    // outbox/Rabbit lag, silent SSE drops, and RabbitMQ-disabled local runs
-    // (backend comment: "clients retain polling fallback").
+    // SSE is the primary live channel. The visible-tab poll is the fallback: every 12s while the
+    // stream is down, and only a slow safety pull (2 min) while it is open — it still covers outbox /
+    // Rabbit lag and RabbitMQ-disabled local runs. 2026-11-15: it pulled every 12s even with the stream
+    // open — 8 requests a minute per user on every page.
     const POLL_FALLBACK_MS = 12_000;
+    const POLL_WHILE_STREAM_OPEN_MS = 120_000;
+    let streamOpen = false;
+    let streamOpenedBefore = false;
+    let lastPullAt = Date.now();
     const pollTimer = window.setInterval(() => {
-      if (visibleRef.current) {
-        void pull(true);
-      }
+      if (!visibleRef.current) return;
+      const due = streamOpen ? POLL_WHILE_STREAM_OPEN_MS : POLL_FALLBACK_MS;
+      if (Date.now() - lastPullAt < due) return;
+      lastPullAt = Date.now();
+      void pull(true);
     }, POLL_FALLBACK_MS);
 
     pullOnVisibleRef.current = () => void pull(true);
@@ -264,10 +271,21 @@ export function ServerNotificationBridge() {
           { token: authToken },
           handleServerDto,
           streamAbort.signal,
+          () => {
+            // A reopened stream missed whatever came while it was down — catch up once.
+            if (streamOpenedBefore) {
+              lastPullAt = Date.now();
+              void pull(true);
+            }
+            streamOpenedBefore = true;
+            streamOpen = true;
+          },
         );
+        streamOpen = false;
         // Clean close (deploy/restart) — reset backoff and reconnect.
         retryAttempt = 0;
       } catch (err) {
+        streamOpen = false;
         if (cancelled || streamAbort.signal.aborted || stopSync) return;
         if (err instanceof ApiAuthError) {
           // fetch-based SSE supports Bearer; on 401 rotate access token and retry.

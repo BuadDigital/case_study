@@ -151,6 +151,8 @@ export function AssignmentDocAttachment({
 
     dataUrl: cached?.dataUrl,
 
+    attachmentId: cached?.attachmentId,
+
     customLabel: cached?.customLabel,
 
   };
@@ -225,7 +227,10 @@ export function AssignmentDocAttachment({
 
         ) : null}
 
-        {!quiet && !doc.dataUrl && isImageMime(doc.mimeType) ? (
+        {!quiet && !doc.dataUrl && doc.attachmentId ? (
+          <span className="text-[10px] text-text-3">اضغط للعرض</span>
+        ) : null}
+        {!quiet && !doc.dataUrl && !doc.attachmentId && isImageMime(doc.mimeType) ? (
 
           <span className="text-[10px] text-text-3">
 
@@ -235,7 +240,7 @@ export function AssignmentDocAttachment({
 
         ) : null}
 
-        {!quiet && !doc.dataUrl && isPdf ? (
+        {!quiet && !doc.dataUrl && !doc.attachmentId && isPdf ? (
 
           <span className="text-[10px] text-text-3">
 
@@ -245,7 +250,7 @@ export function AssignmentDocAttachment({
 
         ) : null}
 
-        {!quiet && !doc.dataUrl && !isImageMime(doc.mimeType) && !isPdf ? (
+        {!quiet && !doc.dataUrl && !doc.attachmentId && !isImageMime(doc.mimeType) && !isPdf ? (
 
           <span className="text-[10px] text-text-3">
 
@@ -379,29 +384,36 @@ function AttachmentPreview({
     );
 
   }
-
-
-
+  // No preview image yet: a tile that opens the file by its id — the preview window downloads it
+  // once (2026-11-15: files are no longer downloaded just to draw a thumbnail).
+  const tileClass = cn(
+    "flex h-12 w-12 items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 text-[11px] font-bold text-text-3",
+    isPdf && "bg-danger-bg text-danger-text",
+  );
+  if (doc.attachmentId) {
+    return (
+      <button
+        type="button"
+        className={cn(tileClass, "cursor-pointer hover:border-primary")}
+        onClick={() =>
+          requestDocumentPreview({
+            fileName: doc.fileName,
+            title: doc.fileName,
+            kind: isPdf ? "pdf" : isImageMime(doc.mimeType) ? "image" : "file",
+            attachmentId: doc.attachmentId,
+          })
+        }
+        title={`عرض ${doc.fileName}`}
+        aria-label={`عرض المرفق: ${doc.fileName}`}
+      >
+        {isPdf ? "مستند" : isImageMime(doc.mimeType) ? "صورة" : "ملف"}
+      </button>
+    );
+  }
   return (
-
-    <div
-
-      className={cn(
-
-        "flex h-12 w-12 items-center justify-center rounded-[var(--radius-DEFAULT)] border border-border bg-surface-2 text-[11px] font-bold text-text-3",
-
-        isPdf && "bg-danger-bg text-danger-text",
-
-      )}
-
-      aria-hidden
-
-    >
-
+    <div className={tileClass} aria-hidden>
       {isPdf ? "مستند" : "ملف"}
-
     </div>
-
   );
 
 }

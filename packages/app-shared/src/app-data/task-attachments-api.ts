@@ -59,6 +59,15 @@ export function getCachedTaskAttachment(
   return previewCache.get(cacheKey(scope, taskId)) ?? null;
 }
 
+/**
+ * Lists a task's attachment into the cache — name, type and attachment id, no file bytes.
+ *
+ * How it works: one list request; the file downloads only when it is needed — the preview window
+ * fetches it by id, and `ensureTaskAttachmentPreview` downloads it for callers that need the bytes.
+ * Edge cases: a preview already holding bytes (uploaded here, or opened before) is kept. Changed
+ * 2026-11-15 — it used to download the survey report and the valuation report PDFs in full on every
+ * property page, only to list them.
+ */
 export function prefetchTaskAttachment(
   scope: string,
   taskId: string,
@@ -75,12 +84,16 @@ export function prefetchTaskAttachment(
     if (!listed.ok || listed.data.length === 0) return null;
 
     const meta = listed.data[0]!;
-    return hydrateAttachmentPreview({
+    const existing = previewCache.get(key);
+    if (existing?.dataUrl && existing.attachmentId === meta.id) return existing;
+    const listedPreview: TaskAttachmentPreview = {
       fileName: meta.fileName,
       mimeType: meta.contentType,
       attachmentId: meta.id,
       sizeBytes: meta.sizeBytes,
-    }, scope, taskId);
+    };
+    previewCache.set(key, listedPreview);
+    return listedPreview;
   })();
   inFlightPrefetch.set(key, run);
   void run.finally(() => {
@@ -107,7 +120,12 @@ export async function ensureTaskAttachmentPreview(
   }
 
   if (scope && taskId) {
-    return prefetchTaskAttachment(scope, taskId);
+    // The list holds no bytes any more: download them now, for the caller that needs them.
+    const listed = await prefetchTaskAttachment(scope, taskId);
+    if (listed && !listed.dataUrl && listed.attachmentId) {
+      return hydrateAttachmentPreview(listed, scope, taskId);
+    }
+    return listed;
   }
 
   return null;

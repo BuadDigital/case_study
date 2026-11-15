@@ -64,21 +64,6 @@ export function activeInspectionWorkspacePath(taskId: string): string {
   return `/active-inspection/${encodeURIComponent(taskId)}`;
 }
 
-/** Full-page workspace for the field inspector (property inspection — orphan screen). */
-function propertyInspectionWorkspacePath(taskId: string): string {
-  return `/property-inspection/${encodeURIComponent(taskId)}`;
-}
-
-/** Resolve full-page inspection workspace from party task page id. */
-export function fieldInspectionWorkspacePath(
-  pageId: PageId,
-  taskId: string,
-): string {
-  return pageId === "property-inspection"
-    ? propertyInspectionWorkspacePath(taskId)
-    : activeInspectionWorkspacePath(taskId);
-}
-
 export function operationsTaskPath(taskId: string): string {
   return `/operations-tasks?task=${encodeURIComponent(taskId)}`;
 }

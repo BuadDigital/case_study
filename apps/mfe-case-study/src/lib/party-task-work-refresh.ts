@@ -8,7 +8,6 @@ import {
 } from "@platform/app-shared/events/app-events";
 
 const PARTY_PAGE_SUBMISSION_EVENTS: Partial<Record<PageId, string>> = {
-  "property-inspection": FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
   "active-inspection": FIELD_INSPECTION_SUBMISSION_CHANGED_EVENT,
   "active-survey": ENGINEERING_SURVEY_SUBMISSION_CHANGED_EVENT,
   "property-appraisal": EVALUATOR_SUBMISSION_CHANGED_EVENT,
@@ -22,7 +21,7 @@ export function refreshPartyTaskWorkQueries(
   void queryClient.invalidateQueries({
     queryKey: appDataKeys.workflowTasks(),
   });
-  if (pageId === "property-inspection" || pageId === "active-inspection") {
+  if (pageId === "active-inspection") {
     void queryClient.invalidateQueries({
       queryKey: appDataKeys.fieldInspectionWorkspaces(),
     });

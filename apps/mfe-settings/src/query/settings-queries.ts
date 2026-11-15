@@ -34,17 +34,20 @@ export function useStaffUsersQuery() {
   // authReady means capabilities are resolved, so the assignee gate is final —
   // finance has neither list and must not ask (the API answers 403).
   const canListAssignees = canListDistributionAssignees(capabilities);
+  // Without «manage-users» the staff list IS the distribution assignees list: share that query's key
+  // and loader, so a page using both hooks asks the server once (2026-11-15: twice on «المهام»).
+  const assigneesOnly = !canManageUsers && canListAssignees;
   return useQuery({
-    queryKey: [
-      ...appDataKeys.staffUsers(),
-      userId,
-      canManageUsers ? "manage" : canListAssignees ? "assignees" : "none",
-    ],
-    queryFn: () =>
-      fetchStaffUsers({
-        canManageUsers,
-        canListDistributionAssignees: canListAssignees,
-      }),
+    queryKey: assigneesOnly
+      ? [...appDataKeys.distributionAssignees(), userId]
+      : [...appDataKeys.staffUsers(), userId, canManageUsers ? "manage" : "none"],
+    queryFn: assigneesOnly
+      ? fetchDistributionAssignees
+      : () =>
+          fetchStaffUsers({
+            canManageUsers,
+            canListDistributionAssignees: canListAssignees,
+          }),
     enabled: authReady,
     ...queryDefaults,
   });

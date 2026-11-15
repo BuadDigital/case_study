@@ -7,16 +7,16 @@ import { PanelSkeleton } from "@platform/ui-kit";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
-} from "./ActiveTransactionQueueView";
-import { buildCaseStudyQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
-import type { WorkflowTask } from "../lib/app-data/tasks";
-import { RedistributePartiesHost } from "../components/distribution/RedistributePartiesHost";
+} from "../ActiveTransactionQueueView";
+import { buildCaseStudyQueueRowMoreItems } from "../../lib/app-data/active-queue-row-menu";
+import type { WorkflowTask } from "../../lib/app-data/tasks";
+import { RedistributePartiesHost } from "../../components/distribution/RedistributePartiesHost";
 import {
   activeCaseStudyPath,
   caseStudyTaskPath,
   caseStudyWorkspacePath,
   decodeTaskParam,
-} from "../lib/my-task-routes";
+} from "../../lib/my-task-routes";
 
 export function ActiveCaseStudyView() {
   const router = useRouter();

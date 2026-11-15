@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
 import Link from "next/link";
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { poPropertyRequestDeedsPath } from "@platform/app-shared/domain/po-routes";
@@ -26,14 +26,7 @@ import {
   type PoIntakeRecord,
   type PoPropertyIntake,
 } from "../../lib/app-data/po-intake-data";
-import { childTasksForCaseStudyParent } from "../../lib/app-data/case-study-party-answers";
-import { caseStudyTaskForProperty } from "../../lib/app-data/tasks";
 import { transactionNumberOf } from "../../lib/app-data/transaction-number";
-import {
-  usePropertyListItemsQuery,
-  useWorkflowTasksQuery,
-} from "../../query/case-study-queries";
-import { PropertyListRowStatuses } from "@platform/api-client";
 import { useFavoriteProperties } from "../../lib/app-data/favorite-properties";
 import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
 import { useTransactionQuery } from "../../query/use-transaction-query";
@@ -41,7 +34,6 @@ import { FavoriteStar } from "../ui/FavoriteStar";
 import { TransactionDeedSwitcher } from "./TransactionDeedSwitcher";
 import { PropertyDeedPreviewButton } from "./PropertyDeedPreviewButton";
 import { PropertyOutputReportButtons } from "./PropertyOutputReportButtons";
-import { estimateCaseStudyCompletion } from "../../lib/app-data/case-study-completion";
 
 /** Deed number, or the real-estate registry number when the property is identified by one. */
 function deedTitle(
@@ -109,57 +101,6 @@ function StripCell({
   );
 }
 
-/** Field Inspection Workspace / Case Study.html completion donut. */
-function CompletionRing({
-  pct,
-  done,
-  total,
-  compact = false,
-}: {
-  pct: number;
-  done: number;
-  total: number;
-  compact?: boolean;
-}) {
-  const clamped = Math.max(0, Math.min(100, Math.round(pct)));
-  const size = compact ? 32 : 46;
-  const hole = compact ? 20 : 34;
-  return (
-    <div
-      className="flex flex-col items-center"
-      role="img"
-      aria-label={`اكتمال الدراسة ${clamped}٪ — ${done} من ${total} مراحل مكتملة`}
-      title={`اكتمال دراسة حالة العقار — ${done} من ${total} مرحلة مكتملة`}
-    >
-      <div
-        className="grid place-items-center rounded-full"
-        style={{
-          width: size,
-          height: size,
-          background: `conic-gradient(var(--gold, #a4906f) ${clamped}%, var(--surface-2, #f1ece2) 0)`,
-        }}
-      >
-        <div
-          className="grid place-items-center rounded-full bg-surface"
-          style={{ width: hole, height: hole }}
-        >
-          <span className="text-[11px] font-extrabold tabular-nums text-heading [direction:ltr]">
-            {clamped}%
-          </span>
-        </div>
-      </div>
-      <span
-        className={cn(
-          "mt-1 whitespace-nowrap text-[9.5px] text-text-3",
-          compact && "hidden",
-        )}
-      >
-        اكتمال الدراسة
-      </span>
-    </div>
-  );
-}
-
 export function PropertyDetailHero({
   record,
   property,
@@ -178,12 +119,6 @@ export function PropertyDetailHero({
   const heroRef = useRef<HTMLElement>(null);
   const compact = useStickyCompact(heroRef, stickyCompact);
   const { role } = useAppAccess();
-  const { data: tasks = [] } = useWorkflowTasksQuery();
-  // The handover stamp reaches the browser as the server's property-row status.
-  const { data: propertyItems } = usePropertyListItemsQuery();
-  const serverRowStatus =
-    propertyItems?.find((item) => item.propertyId === property.id)?.row.status ?? null;
-  const handedOverToEnfaz = serverRowStatus === PropertyListRowStatuses.Done;
   const { isFavorite, toggleFavorite } = useFavoriteProperties();
   // The page is the transaction's; its deeds (when several) sit in the switcher.
   const { data: transaction } = useTransactionQuery(property.id);
@@ -201,38 +136,6 @@ export function PropertyDetailHero({
   const courtLine = [property.court, property.circuit]
     .filter(Boolean)
     .join(" / ");
-
-  const completion = useMemo(() => {
-    const parent = caseStudyTaskForProperty(
-      record.poNumber.trim(),
-      property.id,
-      tasks,
-    );
-    const children = parent
-      ? childTasksForCaseStudyParent(parent.id, tasks)
-      : [];
-    const inspection = children.find((t) => t.kind === "field-inspection");
-    const survey = children.find((t) => t.kind === "engineering-survey");
-    const appraisal = children.find((t) => t.kind === "property-appraisal");
-    const doneish = (status: string | undefined) => status === "completed";
-    // A party does not see the case-study task or the other tracks: a ring computed from its own
-    // task alone read 22% after the final report — it is not shown then.
-    if (!parent) return null;
-
-    return estimateCaseStudyCompletion({
-      property,
-      hasCaseStudyTask: Boolean(parent),
-      caseStudyDone: doneish(parent?.status),
-      hasInspection: Boolean(inspection),
-      inspectionDone: doneish(inspection?.status),
-      hasSurvey: Boolean(survey),
-      surveyDone: doneish(survey?.status),
-      hasAppraisal: Boolean(appraisal),
-      appraisalDone: doneish(appraisal?.status),
-      hasKeysHint: Boolean(property.requestNumber.trim()),
-      enfathDone: handedOverToEnfaz,
-    });
-  }, [record.poNumber, property, tasks, handedOverToEnfaz]);
 
   return (
     <>
@@ -398,14 +301,6 @@ export function PropertyDetailHero({
                   )}
                 </div>
               </div>
-            ) : null}
-            {completion ? (
-              <CompletionRing
-                pct={completion.pct}
-                done={completion.done}
-                total={completion.total}
-                compact={compact}
-              />
             ) : null}
             {/* The transaction's outputs (Omar 2026-11-15), read in a window like the deed. */}
             <PropertyOutputReportButtons record={record} property={property} compact={compact} />

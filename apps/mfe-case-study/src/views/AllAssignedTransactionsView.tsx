@@ -145,7 +145,8 @@ export function AllAssignedTransactionsView() {
         ? "تظهر هنا المعاملات المسندة إليك — صف واحد لكل صك مع آخر مرحلة وصل إليها."
         : "تظهر هنا كل العقارات — صف واحد لكل صك: أين وصل ومن ينتظر، والمرفوعة على إنفاذ والملغاة بمرحلتها.",
       panelId: "all-assigned-transactions-panel",
-      tableHint: "اضغط الصف لفتح العقار.",
+      // No hint line under the table (Omar 2026-11-15).
+      tableHint: null,
       partyAssignee: isPartyRole,
       assigneeRole: isPartyRole ? role : undefined,
       getBasePath: allTransactionsPath,

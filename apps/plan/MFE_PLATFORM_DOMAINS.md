@@ -26,7 +26,7 @@ Dashboard was placed in case-study for convenience; it is **not** a case-study t
 
 | Asset (today in `@case-study/mfe`) | Target |
 |-----------------------------------|--------|
-| `views/DashboardView.tsx` | `@dashboard/mfe` |
+| `views/archive/DashboardView.tsx` | `@dashboard/mfe` |
 | `components/dashboard/TeamCurrentLoadCard.tsx` | `@dashboard/mfe` |
 | `hooks/use-has-mounted.ts` | `@dashboard/mfe` (or `@platform/app-shared` if reused elsewhere) |
 
@@ -66,7 +66,7 @@ Only `/survey` moves to `@survey/mfe`. The active transaction queue remains in c
 /po/*
 /active-primary-data, /bourse-inquiry, /active-distribution, /active-case-study
 /case-study/[taskId]
-  Party queues: property-inspection, property-appraisal,
+  Party queues: active-inspection, property-appraisal,
               active-survey, government-review
 ```
 

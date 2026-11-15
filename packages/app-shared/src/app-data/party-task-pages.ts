@@ -47,28 +47,6 @@ const PARTY_TASK_PAGES_MAP = {
     icon: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z",
     useFieldForm: true,
   },
-  /** Legacy list route — removed from sidebar; prefer active-inspection. */
-  "property-inspection": {
-    pageId: "property-inspection",
-    kind: "field-inspection",
-    roleId: "field-inspector",
-    pageTitle: "معاينة العقار",
-    emptyLine: "لا توجد معاينات ميدانية بانتظار التنفيذ.",
-    emptyHint:
-      "تظهر هنا بعد تأكيد التوزيع عند اختيار المعاين الميداني.",
-    tableHint:
-      "اضغط الصف لفتح نموذج المعاينة — اضغط نفس الصف مرة أخرى للإغلاق.",
-    breadcrumbTitle: "معاينة العقار",
-    workTitle: "معاينة العقار",
-    workIntro:
-      "وصلت هذه المهمة بعد تأكيد التوزيع — أكمل نموذج المعاينة الميدانية.",
-    saveLabel: "حفظ وإرسال المعاينة",
-    completeTitle: "تم إرسال المعاينة",
-    completeMessage: "اكتملت معاينة هذا العقار وتم إرسال النموذج.",
-    assigneeSubtitle: "معاين ميداني",
-    icon: "M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z",
-    useFieldForm: true,
-  },
   "property-appraisal": {
     pageId: "property-appraisal",
     kind: "property-appraisal",
@@ -143,13 +121,8 @@ export function isPartyWorkflowRole(role: RoleId): boolean {
   return PARTY_WORKFLOW_ROLE_IDS.includes(role);
 }
 
-/**
- * Sidebar — Active Transactions for distributed party roles.
- * Legacy property-inspection list stays under Orphan Screens (CDO only).
- */
-export const PARTY_ACTIVE_TRANSACTIONS_NAV = PARTY_TASK_PAGE_IDS.filter(
-  (pageId) => pageId !== "property-inspection",
-).map((pageId) => {
+/** Sidebar — Active Transactions for distributed party roles. */
+export const PARTY_ACTIVE_TRANSACTIONS_NAV = PARTY_TASK_PAGE_IDS.map((pageId) => {
   const def = PARTY_TASK_PAGES[pageId];
   return {
     id: def.pageId,

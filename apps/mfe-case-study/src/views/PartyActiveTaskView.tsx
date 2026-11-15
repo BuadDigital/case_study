@@ -16,7 +16,7 @@ import {
   partyTaskPath,
   partyTaskTaskPath,
   propertyAppraisalWorkspacePath,
-  fieldInspectionWorkspacePath,
+  activeInspectionWorkspacePath,
 } from "../lib/my-task-routes";
 import type { PageId } from "@platform/types";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
@@ -71,8 +71,7 @@ function queueConfig(
       emptyHint:
         "بعد إرسال المعاينة تختفي من قائمة العمل — فعّل «إظهار المكتملة» لعرضها للقراءة فقط.",
       tableHint: "اضغط الصف لفتح نموذج المعاينة في صفحة مستقلة.",
-      fullPageTaskPath: (taskId) =>
-        fieldInspectionWorkspacePath(def.pageId, taskId),
+      fullPageTaskPath: (taskId) => activeInspectionWorkspacePath(taskId),
       statusColumnLabel: "الحالة",
       filterListed: (
         mine: WorkflowTask[],
@@ -135,9 +134,9 @@ function PartyActiveTaskViewBody({
       return;
     }
     if (def?.kind === "field-inspection") {
-      router.replace(fieldInspectionWorkspacePath(def.pageId, taskId));
+      router.replace(activeInspectionWorkspacePath(taskId));
     }
-  }, [def?.kind, def?.pageId, legacyTask, router]);
+  }, [def?.kind, legacyTask, router]);
 
   if (def?.kind === "engineering-survey" && legacyTask) {
     return <PanelSkeleton className="p-4" />;

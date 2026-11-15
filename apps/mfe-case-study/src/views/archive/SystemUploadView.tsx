@@ -5,12 +5,12 @@ import { filterTasksForSystemUpload } from "@platform/app-shared/app-data/active
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
-} from "./ActiveTransactionQueueView";
-import { buildCaseStudyQueueRowMoreItems } from "../lib/app-data/active-queue-row-menu";
+} from "../ActiveTransactionQueueView";
+import { buildCaseStudyQueueRowMoreItems } from "../../lib/app-data/active-queue-row-menu";
 import {
   caseStudyWorkspacePath,
   systemUploadPath,
-} from "../lib/my-task-routes";
+} from "../../lib/my-task-routes";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 
 export function SystemUploadView() {

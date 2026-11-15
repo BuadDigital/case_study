@@ -12,13 +12,13 @@ import {
   distributionTaskPath,
   myTasksPath,
   primaryDataTaskPath,
-} from "../lib/my-task-routes";
+} from "../../lib/my-task-routes";
 import { filterTasksForPrimaryData } from "@case-study/mfe/lib/app-data/transaction-filters";
-import { nextPrimaryDataTaskId } from "../lib/app-data/my-task-row";
+import { nextPrimaryDataTaskId } from "../../lib/app-data/my-task-row";
 import {
   skipsBourseForIdentifier,
   type PropertyIdentifierType,
-} from "../lib/app-data/po-intake-data";
+} from "../../lib/app-data/po-intake-data";
 
 const PRIMARY_DATA_QUEUE: ActiveTransactionQueueConfig = {
   pageId: "active-primary-data",

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "../lib/cn";
+import { opsPanelCard } from "../lib/ops-chrome";
 import { Button } from "./Button";
 
 /**
@@ -31,6 +32,19 @@ export function listPagerWindow(input: {
   };
 }
 
+/** «السابق» / «التالي»: a labelled button; 44px tall on a phone, like the page box. */
+const PAGER_STEP_BUTTON =
+  "h-8 gap-1 px-3 text-[12.5px] font-semibold disabled:opacity-40 max-lg:h-11 max-lg:px-4";
+
+/** A drawn chevron — fixed on screen, unlike ‹ › which Arabic text mirrors. */
+function Chevron({ direction }: { direction: "left" | "right" }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className="size-4 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <path d={direction === "right" ? "M9 6l6 6-6 6" : "M15 6l-6 6 6 6"} />
+    </svg>
+  );
+}
+
 export type ListPagerProps = {
   page: number;
   totalCount: number;
@@ -55,10 +69,10 @@ export type ListPagerProps = {
 };
 
 /**
- * The shared list pager: total + range («2,480 معاملة · 1–25»), a
- * type-to-jump «صفحة [ N ] من M» field, and previous/next — no numbered
- * page-number strip (docs/new-look decision, option B). The markup the PO
- * list renders and the finance journeys assert against.
+ * The shared list pager: the range and total («عرض 1–25 من 2,480 معاملة»), a
+ * type-to-jump «صفحة [ N ] من M» field, and «السابق» / «التالي» — no numbered
+ * page-number strip (docs/new-look decision, option B). The finance journeys
+ * assert against its button names «الصفحة السابقة» / «الصفحة التالية».
  */
 export function ListPager({
   page,
@@ -109,70 +123,83 @@ export function ListPager({
   }
 
   return (
-    <div
+    // A bar in the table frame's own look (2026-11-15): the count on one side, the page controls on
+    // the other — «السابق» / «التالي» with drawn chevrons (the ‹ › characters flip in Arabic text and
+    // pointed the wrong way), and the type-to-jump page box between them.
+    <nav
+      aria-label="التنقل بين الصفحات"
       className={cn(
-        "flex shrink-0 items-center justify-between gap-3 py-3",
+        opsPanelCard,
+        "mt-3 flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2.5 px-4 py-2.5",
         className,
       )}
     >
-      <span className="text-[13px] text-text-3">
+      <span className="text-[12.5px] text-text-3">
         {waiting ? (
           "—"
         ) : (
           <>
-            <b className="font-medium text-heading tabular-nums">
+            عرض{" "}
+            {/* LTR, so «1–25» does not read «25–1» inside the Arabic line. */}
+            <bdi dir="ltr" className="font-bold text-heading tabular-nums">
+              {start}–{end}
+            </bdi>{" "}
+            من{" "}
+            <b className="font-bold text-heading tabular-nums">
               {totalCount.toLocaleString("en-US")}
             </b>{" "}
-            {unit} · <span className="tabular-nums">{start}–{end}</span>
+            {unit}
           </>
         )}
       </span>
-      <div className="flex items-center gap-1.5">
-        <span className="text-[13px] text-text-3">صفحة</span>
-        <input
-          type="text"
-          inputMode="numeric"
-          aria-label="رقم الصفحة"
-          className="h-[30px] w-11 max-lg:h-11 rounded-[9px] border border-border-md bg-surface text-center text-[13px] text-text tabular-nums outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-55"
-          value={pageDraft}
-          disabled={waiting}
-          onChange={(e) => setPageDraft(e.target.value.replace(/\D/g, ""))}
-          onBlur={commitPageDraft}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              commitPageDraft();
-            }
-          }}
-        />
-        <span className="text-[13px] text-text-3 tabular-nums">
-          من {win.totalPages.toLocaleString("en-US")}
-        </span>
+      <div className="flex items-center gap-2 max-lg:w-full max-lg:justify-between">
         <Button
           type="button"
           size="sm"
           variant="default"
-          className="h-[30px] w-[30px] p-0 disabled:opacity-40 max-lg:h-11 max-lg:w-11"
+          className={PAGER_STEP_BUTTON}
           disabled={win.safePage <= 1}
           onClick={() => onPageChange(win.safePage - 1)}
           aria-label="الصفحة السابقة"
           showActionToast={false}
         >
-          ‹
+          <Chevron direction="right" />
+          السابق
         </Button>
+        <span className="flex items-center gap-1.5 text-[12.5px] text-text-3">
+          صفحة
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label="رقم الصفحة"
+            className="h-8 w-11 rounded-[9px] border border-border-md bg-surface text-center text-[13px] font-semibold text-heading tabular-nums outline-none transition-[border-color,box-shadow] focus:border-gold focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--gold)_20%,transparent)] disabled:cursor-not-allowed disabled:opacity-55 max-lg:h-11"
+            value={pageDraft}
+            disabled={waiting}
+            onChange={(e) => setPageDraft(e.target.value.replace(/\D/g, ""))}
+            onBlur={commitPageDraft}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commitPageDraft();
+              }
+            }}
+          />
+          <span className="tabular-nums">من {win.totalPages.toLocaleString("en-US")}</span>
+        </span>
         <Button
           type="button"
           size="sm"
           variant="default"
-          className="h-[30px] w-[30px] p-0 disabled:opacity-40 max-lg:h-11 max-lg:w-11"
+          className={PAGER_STEP_BUTTON}
           disabled={win.safePage >= win.totalPages}
           onClick={() => onPageChange(win.safePage + 1)}
           aria-label="الصفحة التالية"
           showActionToast={false}
         >
-          ›
+          التالي
+          <Chevron direction="left" />
         </Button>
       </div>
-    </div>
+    </nav>
   );
 }

@@ -211,6 +211,8 @@ export async function subscribeNotificationStream(
   config: NotificationsApiConfig,
   onNotification: (dto: UserNotificationDto) => void,
   signal: AbortSignal,
+  /** Called once the stream is open — the caller can stop its fallback polling (2026-11-15). */
+  onOpen?: () => void,
 ): Promise<void> {
   const res = await fetch(`${baseUrl(config)}/api/notifications/stream`, {
     headers: {
@@ -221,6 +223,7 @@ export async function subscribeNotificationStream(
   });
   if (res.status === 401) throw new ApiAuthError();
   if (!res.ok || !res.body) throw new Error(`notifications stream ${res.status}`);
+  onOpen?.();
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();

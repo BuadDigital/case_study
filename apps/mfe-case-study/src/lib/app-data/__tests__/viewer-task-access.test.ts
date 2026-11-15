@@ -35,7 +35,7 @@ describe("resolveQueueTasksForViewer", () => {
     const listed = resolveQueueTasksForViewer({
       role: "section-supervisor",
       tasks: [enfathTask],
-      pageId: "property-inspection",
+      pageId: "active-inspection",
       partyAssignee: true,
       assigneeRole: "field-inspector",
     });

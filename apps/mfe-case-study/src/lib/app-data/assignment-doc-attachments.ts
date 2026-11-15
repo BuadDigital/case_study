@@ -609,11 +609,22 @@ async function hydrateKindFromApi(
     ? listed.data.filter((m) => m.fileName === expected)
     : listed.data;
 
-  await Promise.all(
-    metas.map((meta) =>
-      hydrateOneMeta(kind, poNumber, propertyId, meta, generationAtStart),
-    ),
-  );
+  // Names, types and ids only — the file itself downloads when it is opened (the preview window
+  // fetches it by id, once). 2026-11-15: every chip downloaded its whole file to draw a thumbnail —
+  // 25 MB on one coordination page open.
+  for (const meta of metas) {
+    if (getCachedPropertyDocMatching(kind, poNumber, propertyId, meta.fileName)) continue;
+    upsertCachedDoc(
+      key,
+      {
+        fileName: meta.fileName,
+        mimeType: meta.contentType,
+        attachmentId: meta.id,
+        customLabel: meta.customDocumentLabel?.trim() || undefined,
+      },
+      generationAtStart,
+    );
+  }
 }
 
 type PropertyDocMetasByKind = Map<PropertyDocKind, FileAttachmentMetaDto[]>;
@@ -748,38 +759,18 @@ export async function hydrateCachedPropertyDocPreview(
   }
 }
 
-async function hydrateAllKindsFromApi(
-  poNumber: string,
-  propertyId: string,
-): Promise<void> {
-  const generationAtStart = new Map<PropertyDocKind, number>(
-    PROPERTY_DOC_PREFETCH_KINDS.map((kind) => [
-      kind,
-      writeGeneration.get(cacheKey(kind, poNumber, propertyId)) ?? 0,
-    ]),
-  );
-
-  const byKind = await fetchPropertyDocMetas(poNumber, propertyId);
-  if (!byKind || byKind.size === 0) return;
-
-  await Promise.all(
-    [...byKind].map(async ([kind, metas]) => {
-      const generation = generationAtStart.get(kind) ?? 0;
-      if (!isCurrentGeneration(cacheKey(kind, poNumber, propertyId), generation)) {
-        return;
-      }
-      await Promise.all(
-        metas.map((meta) =>
-          hydrateOneMeta(kind, poNumber, propertyId, meta, generation),
-        ),
-      );
-    }),
-  );
-}
-
 /** The documents effect re-runs as task ids resolve — share the run, not the requests. */
 const inFlightPropertyPrefetch = new Map<string, Promise<void>>();
 
+/**
+ * Lists a property's documents into the cache — names, types and attachment ids, no file bytes.
+ *
+ * How it works: one `for-property` request for every kind (or one scope request for `options.kind`);
+ * the file downloads only when someone opens it (the preview window by attachment id, cached once).
+ * Edge cases: a document uploaded in this browser keeps the preview built from the local file.
+ * Changed 2026-11-15 — it used to download every file in full to draw thumbnails (25 MB per visit
+ * to the coordination page); `hydrateCachedPropertyDocPreview` still downloads one chosen photo.
+ */
 export function prefetchPropertyDocAttachments(
   poNumber: string,
   propertyId: string,
@@ -798,7 +789,7 @@ export function prefetchPropertyDocAttachments(
   const pending = inFlightPropertyPrefetch.get(key);
   if (pending) return pending;
 
-  const run = hydrateAllKindsFromApi(poNumber, propertyId);
+  const run = primePropertyDocMetadata(poNumber, propertyId);
   inFlightPropertyPrefetch.set(key, run);
   void run.finally(() => {
     if (inFlightPropertyPrefetch.get(key) === run) {

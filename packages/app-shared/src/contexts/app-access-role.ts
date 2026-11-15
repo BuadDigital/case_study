@@ -43,6 +43,12 @@ export function pagesForViewport(
   return pages.filter((page) => page !== "my-work");
 }
 
+/**
+ * Pages hidden from every role (Omar 2026-11-15: «لوحة التحكم» is hidden from everyone, the system
+ * owner included). The page and its grant stay in place; emptying this set brings it back.
+ */
+const HIDDEN_PAGES: ReadonlySet<PageId> = new Set<PageId>(["dashboard"]);
+
 /** The part of `/api/permissions` a user's pages are worked out from. */
 export type RolePagesSource = {
   pages?: readonly string[] | null;
@@ -70,7 +76,11 @@ export function rolePagesFromPermissions(
 ): PageId[] {
   const role = roleFromPermissions(permissions?.prototypeRole, permissions?.identityRoles);
   if (role == null) return [];
-  return pagesForViewport(role, pagesBeforeViewport(role, permissions), desktop);
+  // Hidden pages leave here, the one exit the app and the login share: no sidebar row, no route,
+  // no landing on them — the system owner lands on «أعمالي» like the rest.
+  return pagesForViewport(role, pagesBeforeViewport(role, permissions), desktop).filter(
+    (page) => !HIDDEN_PAGES.has(page),
+  );
 }
 
 function pagesBeforeViewport(role: RoleId, permissions: RolePagesSource | null | undefined): PageId[] {

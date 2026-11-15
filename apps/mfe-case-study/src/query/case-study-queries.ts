@@ -92,6 +92,8 @@ export function useWorkflowTasksQuery(options?: { live?: boolean }) {
     enabled: authReady && canReadCaseStudyWorkspace(capabilities),
     ...queryDefaults,
     refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
+    // A live queue catches up when its tab comes back into view (the safety poll is now 5 min).
+    refetchOnWindowFocus: live,
   });
 }
 
@@ -194,6 +196,8 @@ export function useWorkflowTasksFilteredQuery(
     ...queryDefaults,
     placeholderData: keepPreviousData,
     refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
+    // A live queue catches up when its tab comes back into view (the safety poll is now 5 min).
+    refetchOnWindowFocus: live,
   });
 }
 
@@ -209,6 +213,8 @@ export function useWorkflowTasksPageQuery(
     enabled: options?.enabled ?? true,
     ...listPageDefaults,
     refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
+    // A live queue catches up when its tab comes back into view (the safety poll is now 5 min).
+    refetchOnWindowFocus: live,
   });
 }
 
@@ -251,6 +257,8 @@ export function useCaseStudyReportBatchQuery(
     // Rows keep their last progress while the next id set loads.
     placeholderData: keepPreviousData,
     refetchInterval: live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
+    // A live queue catches up when its tab comes back into view (the safety poll is now 5 min).
+    refetchOnWindowFocus: live,
   });
 }
 

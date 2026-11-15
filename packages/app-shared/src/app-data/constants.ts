@@ -8,7 +8,10 @@ import { SYSTEM_SETTINGS_PRIMARY_PAGE_IDS } from "./system-settings-nav";
 
 export type { NavItem, PageId, RoleDef, RoleId };
 
-/** «لوحة التحكم» is the CDO's only (Omar 2026-11-09) — no other role lists "dashboard". */
+/**
+ * «لوحة التحكم» is the CDO's only (Omar 2026-11-09) — no other role lists "dashboard". Since
+ * 2026-11-15 it is hidden from him too (`HIDDEN_PAGES` in contexts/app-access-role.ts).
+ */
 export const ROLES: Record<RoleId, RoleDef> = {
   cdo: {
     name: "مسؤول النظام",
@@ -309,7 +312,6 @@ export const PAGE_TITLES: Record<PageId, string> = {
   failures: "التعذّرات",
   "suspended-transactions": "المعاملات المعلّقة",
   "comparable-properties": "بنك المقارنات",
-  "property-inspection": "معاينة العقار (يتيم)",
   "active-inspection": "معاينة العقار",
   "operations-tasks": "المهام",
   "property-appraisal": "تقييم العقار",
@@ -353,7 +355,6 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   failures: "التعذّرات",
   "suspended-transactions": "المعاملات المعلّقة",
   "comparable-properties": "بنك المقارنات",
-  "property-inspection": "معاينة العقار",
   "active-inspection": "معاينة العقار",
   "operations-tasks": "المهام",
   "property-appraisal": "تقييم العقار",
