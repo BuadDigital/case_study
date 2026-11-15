@@ -17,63 +17,63 @@ internal sealed record StaffRoleDefaults(
     public static StaffRoleDefaults For(string roleId) =>
         roleId switch
         {
-            "cdo" => new(
+            StaffRoleIds.Cdo => new(
                 "cdo",
                 "دوام كامل",
                 "الإدارة التنفيذية",
                 null,
                 ContractType.Internal,
                 [OrgRoles.Cdo]),
-            "general-manager" => new(
+            StaffRoleIds.GeneralManager => new(
                 "مدير",
                 "دوام كامل",
                 "إدارة التقييم العقاري",
                 null,
                 ContractType.Internal,
                 ["Editor"]),
-            "section-supervisor" => new(
+            StaffRoleIds.SectionSupervisor => new(
                 "مشرف",
                 "دوام كامل",
                 SupervisingDepartments.CaseStudy,
                 "قسم دراسة الحالة",
                 ContractType.Internal,
                 ["Supervisor"]),
-            "case-specialist" => new(
+            StaffRoleIds.CaseSpecialist => new(
                 "محرر",
                 "دوام كامل",
                 SupervisingDepartments.CaseStudy,
                 "قسم دراسة الحالة",
                 ContractType.Internal,
                 ["Editor"]),
-            "government-reviewer" => new(
+            StaffRoleIds.GovernmentReviewer => new(
                 "محرر",
                 "دوام كامل",
                 SupervisingDepartments.CaseStudy,
                 "قسم دراسة الحالة",
                 ContractType.Internal,
                 ["Editor"]),
-            "real-estate-appraiser" => new(
+            StaffRoleIds.RealEstateAppraiser => new(
                 "محرر",
                 "دوام كامل",
                 SupervisingDepartments.Valuation,
                 "قسم تقييم الأفراد",
                 ContractType.Internal,
                 ["Editor"]),
-            "field-inspector" => new(
+            StaffRoleIds.FieldInspector => new(
                 "محرر",
                 "دوام كامل",
                 SupervisingDepartments.Valuation,
                 "قسم تقييم الأفراد",
                 ContractType.Internal,
                 ["Editor"]),
-            "financial-officer" => new(
+            StaffRoleIds.FinancialOfficer => new(
                 "محرر",
                 "دوام كامل",
                 SupervisingDepartments.Finance,
                 "قسم المحاسبة",
                 ContractType.Internal,
                 ["Editor"]),
-            "engineering-office" => new(
+            StaffRoleIds.EngineeringOffice => new(
                 "مقدم خدمة",
                 "متعاقد",
                 SupervisingDepartments.External,

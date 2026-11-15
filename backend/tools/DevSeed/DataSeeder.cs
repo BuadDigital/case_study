@@ -741,7 +741,7 @@ public static class DataSeeder
         var specialists = await db.UserProfiles
             .Where(p =>
                 p.Status == UserStatus.Active
-                && p.RoleId == "case-specialist"
+                && p.RoleId == StaffRoleIds.CaseSpecialist
                 && (p.DistributionAssigneeId == null || p.DistributionAssigneeId == ""))
             .ToListAsync(cancellationToken);
         foreach (var profile in specialists)
@@ -750,7 +750,7 @@ public static class DataSeeder
             if (user is null) continue;
             var userName = user.UserName ?? user.Email ?? profile.UserId;
             profile.DistributionAssigneeId =
-                BuildSeedDistributionAssigneeId("case-specialist", userName);
+                BuildSeedDistributionAssigneeId(StaffRoleIds.CaseSpecialist, userName);
         }
 
         await db.SaveChangesAsync(cancellationToken);
@@ -760,11 +760,11 @@ public static class DataSeeder
     {
         var prefix = roleId switch
         {
-            "case-specialist" => "cs",
-            "field-inspector" => "fi",
-            "real-estate-appraiser" => "val",
-            "government-reviewer" => "gov",
-            "engineering-office" => "eo",
+            StaffRoleIds.CaseSpecialist => "cs",
+            StaffRoleIds.FieldInspector => "fi",
+            StaffRoleIds.RealEstateAppraiser => "val",
+            StaffRoleIds.GovernmentReviewer => "gov",
+            StaffRoleIds.EngineeringOffice => "eo",
             _ => "usr",
         };
         var slug = Regex.Replace(userName.ToLowerInvariant(), @"[^a-z0-9]+", "-").Trim('-');
@@ -788,8 +788,8 @@ public static class DataSeeder
             return mapped.Trim();
         if (!string.IsNullOrWhiteSpace(existing))
             return existing.Trim();
-        if (string.Equals(roleId, "case-specialist", StringComparison.OrdinalIgnoreCase))
-            return BuildSeedDistributionAssigneeId("case-specialist", userName);
+        if (string.Equals(roleId, StaffRoleIds.CaseSpecialist, StringComparison.OrdinalIgnoreCase))
+            return BuildSeedDistributionAssigneeId(StaffRoleIds.CaseSpecialist, userName);
         return null;
     }
 
@@ -844,7 +844,7 @@ public static class DataSeeder
  // Cooperator fee rates on the active field-inspector pricing table.
         var fiTable = await financial.PartyFeePricingTables
             .FirstOrDefaultAsync(
-                t => t.Category == "field-inspector"
+                t => t.Category == PartyFeePricingCategories.FieldInspector
                     && t.IsActive
                     && t.PricingKind != PartyFeePricingKinds.Flat,
                 cancellationToken);
@@ -861,7 +861,7 @@ public static class DataSeeder
         const string flatName = "حوافز المعاينين الموظفين";
         var flatTable = await financial.PartyFeePricingTables
             .FirstOrDefaultAsync(
-                t => t.Category == "field-inspector"
+                t => t.Category == PartyFeePricingCategories.FieldInspector
                     && t.PricingKind == PartyFeePricingKinds.Flat
                     && t.FlatAmountSar > 0m,
                 cancellationToken);
@@ -870,7 +870,7 @@ public static class DataSeeder
             flatTable = new PartyFeePricingTable
             {
                 Id = Guid.NewGuid(),
-                Category = "field-inspector",
+                Category = PartyFeePricingCategories.FieldInspector,
                 Name = flatName,
                 PricingKind = PartyFeePricingKinds.Flat,
                 ManagedBy = PartyFeePricingManagers.Supervisor,
@@ -901,7 +901,7 @@ public static class DataSeeder
         {
             var existing = await financial.PartyFeePricingAssignments
                 .FirstOrDefaultAsync(
-                    a => a.Category == "field-inspector" && a.AssigneeId == assigneeId,
+                    a => a.Category == PartyFeePricingCategories.FieldInspector && a.AssigneeId == assigneeId,
                     cancellationToken);
             if (existing is null)
             {
@@ -909,7 +909,7 @@ public static class DataSeeder
                 {
                     Id = Guid.NewGuid(),
                     TableId = flatTable.Id,
-                    Category = "field-inspector",
+                    Category = PartyFeePricingCategories.FieldInspector,
                     AssigneeId = assigneeId,
                     UpdatedAtUtc = DateTime.UtcNow,
                 });
@@ -933,7 +933,7 @@ public static class DataSeeder
         if (fiTable is not null)
         {
             var hasAhmed = await financial.PartyFeePricingAssignments.AnyAsync(
-                a => a.Category == "field-inspector" && a.AssigneeId == "fi-ahmed",
+                a => a.Category == PartyFeePricingCategories.FieldInspector && a.AssigneeId == "fi-ahmed",
                 cancellationToken);
             if (!hasAhmed)
             {
@@ -941,7 +941,7 @@ public static class DataSeeder
                 {
                     Id = Guid.NewGuid(),
                     TableId = fiTable.Id,
-                    Category = "field-inspector",
+                    Category = PartyFeePricingCategories.FieldInspector,
                     AssigneeId = "fi-ahmed",
                     UpdatedAtUtc = DateTime.UtcNow,
                 });
@@ -1571,7 +1571,7 @@ public static class DataSeeder
 
                 ContractType = ContractType.ServiceProvider,
 
-                RoleId = "engineering-office",
+                RoleId = StaffRoleIds.EngineeringOffice,
 
                 JobTitle = "مقدم خدمة — جهة",
 
@@ -1618,7 +1618,7 @@ public static class DataSeeder
 
             profile.ContractType = ContractType.ServiceProvider;
 
-            profile.RoleId = "engineering-office";
+            profile.RoleId = StaffRoleIds.EngineeringOffice;
             profile.CaseSpecialistSubRoles = 0;
 
             profile.JobTitle = "مقدم خدمة — جهة";

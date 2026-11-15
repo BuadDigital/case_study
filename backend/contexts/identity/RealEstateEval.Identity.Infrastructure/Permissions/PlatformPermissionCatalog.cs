@@ -49,15 +49,15 @@ public static class PlatformPermissionCatalog
     /// </remarks>
     private static readonly Dictionary<string, string[]> PrototypeRolePages = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["cdo"] = AllPages.ToArray(),
-        ["general-manager"] =
+        [StaffRoleIds.Cdo] = AllPages.ToArray(),
+        [StaffRoleIds.GeneralManager] =
         [
             "my-work", "all-transactions", "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution", "active-receipt",
             "active-case-study", "system-upload", "operations-tasks", "keys", "failures", "suspended-transactions",
             "comparable-properties",
             "financial", "courts", "failure-types", "case-study-info-roles",
         ],
-        ["section-supervisor"] =
+        [StaffRoleIds.SectionSupervisor] =
         [
             "my-work", "all-transactions", "po", "property-map", "favorites", "active-primary-data", "bourse-inquiry", "active-distribution", "active-receipt",
             "active-case-study", "system-upload", "operations-tasks", "keys", "field-sync-board", "failures", "suspended-transactions", "failure-types",
@@ -67,32 +67,32 @@ public static class PlatformPermissionCatalog
  // The pages every case specialist sees whatever sub-roles he holds; the queue pages come from
  // the sub-roles (CaseSpecialistSubRolePages). No fees or pricing: party outputs are accepted
  // inside the transaction, and fee money is the supervisor's decision.
-        ["case-specialist"] =
+        [StaffRoleIds.CaseSpecialist] =
         [
             "my-work", "po", "all-transactions", "property-map", "favorites", "failures",
         ],
-        ["real-estate-appraiser"] =
+        [StaffRoleIds.RealEstateAppraiser] =
         [
             // «أعمالي» (Omar 2026-11-10): the appraiser enters his transactions from it, as the specialists do.
             "my-work", "po", "property-map", "favorites", "operations-tasks", "property-appraisal",
             "comparable-properties",
             "failures", "suspended-transactions",
         ],
-        ["field-inspector"] =
+        [StaffRoleIds.FieldInspector] =
         [
             // «أعمالي» (Omar 2026-11-12): the inspector enters his inspections from it on a desktop, as
             // the specialists and the appraiser do; his phone keeps the inspection queue (the app decides).
             "my-work", "po", "favorites", "operations-tasks", "active-inspection", "party-fees", "failures",
         ],
-        ["government-reviewer"] =
+        [StaffRoleIds.GovernmentReviewer] =
         [
             "po", "favorites", "operations-tasks", "party-fees", "keys", "failures",
         ],
-        ["engineering-office"] =
+        [StaffRoleIds.EngineeringOffice] =
         [
             "po", "operations-tasks", "favorites", "active-survey", "party-fees", "failures",
         ],
-        ["financial-officer"] =
+        [StaffRoleIds.FinancialOfficer] =
         [
             "financial",
         ],
@@ -105,34 +105,34 @@ public static class PlatformPermissionCatalog
 
     private static readonly Dictionary<string, string[]> PrototypeRoleCapabilities = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["cdo"] = AllCapabilities.ToArray(),
-        ["general-manager"] =
+        [StaffRoleIds.Cdo] = AllCapabilities.ToArray(),
+        [StaffRoleIds.GeneralManager] =
         [
             "manage-valuation-requests", "manage-failures", "manage-work-orders",
             "submit-party-work", "manage-attachments", "manage-financial", "manage-operations",
         ],
-        ["section-supervisor"] =
+        [StaffRoleIds.SectionSupervisor] =
         [
             "manage-failures", "manage-work-orders", "submit-party-work",
             "manage-attachments", "manage-operations", "courts.manage",
         ],
  // Match admin capabilities without manage-financial
-        ["case-specialist"] =
+        [StaffRoleIds.CaseSpecialist] =
         [
             "manage-failures", "manage-work-orders", "submit-party-work",
             "manage-attachments", "manage-operations", "courts.manage",
         ],
-        ["real-estate-appraiser"] =
+        [StaffRoleIds.RealEstateAppraiser] =
         [
             "submit-valuation-report", "submit-party-work", "manage-attachments",
         ],
-        ["field-inspector"] = ["submit-party-work", "manage-attachments"],
-        ["government-reviewer"] =
+        [StaffRoleIds.FieldInspector] = ["submit-party-work", "manage-attachments"],
+        [StaffRoleIds.GovernmentReviewer] =
         [
             "submit-party-work", "manage-attachments", "manage-operations",
         ],
-        ["engineering-office"] = ["submit-party-work", "manage-attachments"],
-        ["financial-officer"] = ["manage-financial", "manage-attachments"],
+        [StaffRoleIds.EngineeringOffice] = ["submit-party-work", "manage-attachments"],
+        [StaffRoleIds.FinancialOfficer] = ["manage-financial", "manage-attachments"],
     };
 
     public static void ApplyIdentityRole(string role, ISet<string> pages, ISet<string> capabilities)

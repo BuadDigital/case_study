@@ -52,7 +52,7 @@ internal static class StaffUserRules
             errors["roleId"] = "الدور مطلوب.";
         else if (!StaffRoleCatalog.IsCreatableStaffRoleId(request.RoleId))
             errors["roleId"] = "الدور المحدد غير مدعوم.";
-        else if (request.RoleId.Trim() == "field-inspector"
+        else if (request.RoleId.Trim() == StaffRoleIds.FieldInspector
                  && request.InspectorType?.Trim().ToLowerInvariant()
                      is not ("employee" or "contractor"))
             errors["inspectorType"] = "نوع المعاين مطلوب.";
@@ -87,14 +87,14 @@ internal static class StaffUserRules
     {
         var prefix = roleId switch
         {
-            "cdo" => "cdo",
-            "general-manager" => "gm",
-            "section-supervisor" => "ss",
-            "case-specialist" => "cs",
-            "government-reviewer" => "gov",
-            "real-estate-appraiser" => "val",
-            "field-inspector" => "fi",
-            "financial-officer" => "fo",
+            StaffRoleIds.Cdo => "cdo",
+            StaffRoleIds.GeneralManager => "gm",
+            StaffRoleIds.SectionSupervisor => "ss",
+            StaffRoleIds.CaseSpecialist => "cs",
+            StaffRoleIds.GovernmentReviewer => "gov",
+            StaffRoleIds.RealEstateAppraiser => "val",
+            StaffRoleIds.FieldInspector => "fi",
+            StaffRoleIds.FinancialOfficer => "fo",
             _ => "usr",
         };
 

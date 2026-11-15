@@ -1,3 +1,4 @@
+using RealEstateEval.Domain;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Shared.Contracts;
 
@@ -10,7 +11,7 @@ namespace RealEstateEval.CaseStudy.Application.Rules;
 public static class EnfazHandoverNotificationRules
 {
     /// <summary>The role that bills Enfaz: every user holding it hears about a new handover.</summary>
-    public const string RecipientRole = "financial-officer";
+    public const string RecipientRole = StaffRoleIds.FinancialOfficer;
 
     private const string EligibleTabHref = "/financial?area=revenue&stage=eligible";
 
