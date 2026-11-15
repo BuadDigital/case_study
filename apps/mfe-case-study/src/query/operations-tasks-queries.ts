@@ -29,6 +29,8 @@ export function useOperationsTasksQuery(options?: {
     queryFn: () => loadOperationsTasks({ assigneeId, createdBy, status }),
     staleTime: STALE_MS,
     refetchInterval: options?.live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
+    // A live queue catches up when its tab comes back into view (the safety poll is now 5 min).
+    refetchOnWindowFocus: options?.live === true,
   });
 }
 
@@ -47,6 +49,8 @@ export function useOperationsTasksFilteredQuery(
     staleTime: STALE_MS,
     placeholderData: keepPreviousData,
     refetchInterval: options?.live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
+    // A live queue catches up when its tab comes back into view (the safety poll is now 5 min).
+    refetchOnWindowFocus: options?.live === true,
   });
 }
 
@@ -62,6 +66,8 @@ function useOperationsTasksPageQuery(
     staleTime: STALE_MS,
     placeholderData: keepPreviousData,
     refetchInterval: options?.live ? LIVE_QUEUE_POLL_INTERVAL_MS : false,
+    // A live queue catches up when its tab comes back into view (the safety poll is now 5 min).
+    refetchOnWindowFocus: options?.live === true,
   });
 }
 

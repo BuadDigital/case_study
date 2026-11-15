@@ -55,13 +55,6 @@ export function resolveMyTasksChrome(
     };
   }
 
-  if (page === "property-inspection" && parts[1]) {
-    return {
-      breadcrumb: "مساحة العمل",
-      title: "معاينة العقار",
-    };
-  }
-
   if (page === "operations-tasks" && taskId) {
     const id = decodeTaskParam(taskId);
     const title = options?.opsTaskTitle?.trim() || id;

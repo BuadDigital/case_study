@@ -421,14 +421,14 @@ Route table source: `backend/gateway/RealEstateEval.Gateway/appsettings.json`. V
 
 ## Screens
 
-Pages are served by `apps/shell/src/app/(app)/[page]/page.tsx`; ids are `PageId` in `packages/types/src/navigation.ts`. Workspaces with their own routes: `/po/*`, `/case-study/*`, `/property-inspection/*`, `/active-inspection/*`, `/active-survey/*`, `/property-appraisal/*`.
+Pages are served by `apps/shell/src/app/(app)/[page]/page.tsx`; ids are `PageId` in `packages/types/src/navigation.ts`. Workspaces with their own routes: `/po/*`, `/case-study/*`, `/active-inspection/*`, `/active-survey/*`, `/property-appraisal/*`.
 
 | Group                  | Pages                                                                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | General                | `my-work` أعمالي (everyone's start page), `dashboard` لوحة التحكم, `favorites` المفضلة, `profile` البروفايل             |
 | Case study             | `po` أوامر العمل, `all-transactions`, `property-map`, `operations-tasks` المهام, `keys` محفظة المفاتيح, `field-sync-board` ظروف معلّقة, `failures` إدارة التعذرات, `suspended-transactions`, `location-pending` مراجعة المسميات, `bourse-inquiry`, `clients` سجل العملاء |
 | Active transactions    | `active-primary-data`, `active-distribution`, `active-receipt` الاستلام من الأطراف, `active-case-study`, `system-upload`, `party-fees` فوترة الأتعاب |
-| Field and survey       | `active-inspection` / `property-inspection` معاينة العقار, `active-survey` الرفع المساحي                                 |
+| Field and survey       | `active-inspection` معاينة العقار, `active-survey` الرفع المساحي                                 |
 | Valuation              | `property-appraisal` تقييم العقار (opened from «أعمالي»), `comparable-properties` بنك المقارنات                          |
 | Finance                | `financial` المالية والفوترة, `fee-pricing` التسعيرة                                                                    |
 | Settings               | `users`, `courts`, `failure-types`, `case-study-info-roles`, `system-fields-catalog`, `organization-settings`, `attachment-print-dictionary`, `audit-log`, `admin-panel` |

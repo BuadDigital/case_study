@@ -164,7 +164,6 @@ export const PAGE_SITUATION_CARDS: Partial<Record<PageId, PageSituationCardDef[]
       },
       // Only two cards: «doneToday» / «overdue» had no metric behind them (always 0, label «—»).
     ],
-    "property-inspection": partyCards("مكتملة"),
     "active-inspection": partyCards("مكتملة"),
     "property-appraisal": appraisalCards(),
     "active-survey": [
@@ -536,7 +535,6 @@ function filterTasksForPage(
       return filterTasksForSystemUpload(tasks, allTasks);
     case "bourse-inquiry":
       return filterTasksForBourseInquiry(tasks, poByNumber);
-    case "property-inspection":
     case "active-inspection":
       return filterTasksForPartyKind(tasks, "field-inspection");
     case "property-appraisal":
@@ -647,10 +645,7 @@ export function computePageSituationValues(
     };
   }
 
-  if (
-    pageId === "property-inspection" ||
-    pageId === "active-inspection"
-  ) {
+  if (pageId === "active-inspection") {
     return computePartySubmissionSituation(scoped, {
       inspectionWorkspaces: input.inspectionWorkspaces,
     });

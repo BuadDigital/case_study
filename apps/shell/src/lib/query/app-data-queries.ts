@@ -124,7 +124,6 @@ export function prefetchPrototypePage(
     case "active-receipt":
     case "active-case-study":
     case "system-upload":
-    case "property-inspection":
     case "active-inspection":
     case "property-appraisal":
     case "active-survey":

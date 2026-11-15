@@ -28,6 +28,22 @@ import {
 } from "./tasks-model";
 import { filterCachedWorkflowTasks } from "./workflow-task-list-query";
 
+/**
+ * The tasks of one work order only — the server filters by PO.
+ *
+ * How it works: `GET /api/workflow-tasks?poNumber=` (all pages of that PO). Edge cases: a blank PO
+ * reads nothing. Added 2026-11-15: the intake actions (bourse completion, slot sync) loaded the whole
+ * task list — every task of every work order, about 3.4 MB — to find this PO's few tasks.
+ */
+export async function loadWorkflowTasksForPo(poNumber: string): Promise<WorkflowTask[]> {
+  const config = workOrdersApiConfig();
+  const po = poNumber.trim();
+  if (!config || !po) return [];
+  const result = await listWorkflowTasks(config, { poNumber: po });
+  if (!result.ok) return [];
+  return result.data.map(dtoToTask);
+}
+
 export async function loadWorkflowTasks(): Promise<WorkflowTask[]> {
   const config = workOrdersApiConfig();
   if (!config) return [];

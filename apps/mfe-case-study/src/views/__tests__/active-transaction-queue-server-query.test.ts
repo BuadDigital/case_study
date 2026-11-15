@@ -68,7 +68,7 @@ describe("resolveQueueServerAssigneeRole", () => {
     expect(
       resolveQueueServerAssigneeRole({
         role: "section-supervisor",
-        pageId: "property-inspection",
+        pageId: "active-inspection",
         partyAssignee: true,
         assigneeRole: "field-inspector",
       }),
@@ -79,7 +79,7 @@ describe("resolveQueueServerAssigneeRole", () => {
     expect(
       resolveQueueServerAssigneeRole({
         role: "cdo",
-        pageId: "property-inspection",
+        pageId: "active-inspection",
         partyAssignee: true,
         assigneeRole: "field-inspector",
       }),

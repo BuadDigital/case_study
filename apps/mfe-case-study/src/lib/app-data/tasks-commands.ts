@@ -41,6 +41,7 @@ import {
 import {
   caseStudyTaskForProperty,
   loadWorkflowTasks,
+  loadWorkflowTasksForPo,
   loadWorkflowTasksForQuery,
   poCaseTasks,
 } from "./tasks-reads";
@@ -50,7 +51,8 @@ export async function syncTaskSlotsForPo(
 ): Promise<SyncTaskSlotsResult> {
   const sync = await syncTasksFromPoRecords();
   if (!sync.ok) return { ok: false, error: sync.error };
-  const list = await loadWorkflowTasks();
+  // This PO's tasks only — not the whole list (2026-11-15).
+  const list = await loadWorkflowTasksForPo(poNumber);
   return {
     ok: true,
     tasks: poCaseTasks(list, poNumber.trim()),
@@ -239,7 +241,7 @@ export async function advanceTaskAfterBourseForProperty(
   property: PoPropertyIntake,
   tasks?: WorkflowTask[],
 ): Promise<AdvanceTaskResult | null> {
-  const list = tasks ?? (await loadWorkflowTasks());
+  const list = tasks ?? (await loadWorkflowTasksForPo(poNumber));
   const task = caseStudyTaskForProperty(poNumber, propertyId, list);
   if (!task) return null;
   return advanceTaskAfterBourse(task.id, property);

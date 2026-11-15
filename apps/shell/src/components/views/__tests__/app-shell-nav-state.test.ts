@@ -211,13 +211,11 @@ describe("resolveShellRoute", () => {
   });
 
   it("locks content scroll and hides the topbar on field inspection workspaces", () => {
-    for (const path of ["/active-inspection/t1", "/property-inspection/t1"]) {
-      const route = resolveShellRoute(path);
-      expect(route.onFieldInspectionWorkspace).toBe(true);
-      expect(route.fieldInspectionTaskId).toBe("t1");
-      expect(route.contentScrollLocked).toBe(true);
-      expect(route.hideShellTopbar).toBe(true);
-    }
+    const route = resolveShellRoute("/active-inspection/t1");
+    expect(route.onFieldInspectionWorkspace).toBe(true);
+    expect(route.fieldInspectionTaskId).toBe("t1");
+    expect(route.contentScrollLocked).toBe(true);
+    expect(route.hideShellTopbar).toBe(true);
     expect(resolveShellRoute("/active-inspection").onFieldInspectionWorkspace).toBe(false);
   });
 

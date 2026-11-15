@@ -274,7 +274,6 @@ export const MODULE_PAGES: { id: string; title: string }[] = [
   { id: "failures", title: "إدارة التعذّرات" },
   { id: "suspended-transactions", title: "المعاملات المعلّقة" },
   { id: "valuation-requests", title: "طلبات التقييم" },
-  { id: "property-inspection", title: "معاينة العقار (يتيم)" },
   { id: "active-inspection", title: "معاينة العقار" },
   { id: "operations-tasks", title: "المهام" },
   { id: "property-appraisal", title: "تقييم العقار" },

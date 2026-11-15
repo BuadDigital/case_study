@@ -25,8 +25,9 @@ const DISTRICT_BANK_TAKE = 1000;
  * How often the figures are read again while the page is on screen: the appraiser may be working
  * on another screen (the specialist's pages). On the appraiser's own page every save refreshes
  * them at once — the valuation screen invalidates `appDataKeys.propertyValuationFigures`.
+ * 2026-11-15: 2 minutes (was 30s — five reads every 30s per open page).
  */
-const FIGURES_REFRESH_MS = 30_000;
+const FIGURES_REFRESH_MS = 120_000;
 
 /**
  * The valuation's land, buildings and property values for a property, as saved so far.

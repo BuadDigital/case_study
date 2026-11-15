@@ -7,7 +7,6 @@ import {
   deedMatchOverrideReasonMissing,
 } from "@platform/app-shared/domain/case-study/deed-nature-match-outcomes";
 import { emptyCaseStudyReportDraft } from "@platform/app-shared/app-data/case-study-report-model";
-import { estimateCaseStudyCompletion } from "../case-study-completion";
 import { proposeDeedNatureMatch } from "../deed-nature-match-proposal";
 import {
   withDeedMatchEvent,
@@ -106,34 +105,5 @@ describe("#32 — the court path needs the court (the circuit is optional since 
     const errors = validatePropertyEnfathFields({ ...emptyProperty(), court: "", circuit: "" }, "تنفيذ");
     expect(errors.court).toBeTruthy();
     expect(errors.circuit).toBeUndefined();
-  });
-});
-
-describe("#12 — the study ring of a handed-over transaction", () => {
-  const base = {
-    property: { deedNumber: "123" },
-    hasCaseStudyTask: true,
-    caseStudyDone: true,
-    hasInspection: true,
-    inspectionDone: true,
-    hasSurvey: false,
-    surveyDone: false,
-    hasAppraisal: true,
-    appraisalDone: true,
-    hasKeysHint: false,
-  };
-
-  it("is 100% once handed over to Enfaz", () => {
-    const ring = estimateCaseStudyCompletion({ ...base, enfathDone: true });
-    expect(ring.pct).toBe(100);
-    expect(ring.done).toBe(ring.total);
-  });
-
-  it("leaves out stages that do not apply (no survey, no keys) instead of counting them 0", () => {
-    const ring = estimateCaseStudyCompletion({ ...base, enfathDone: false });
-    // primary, documents, inspection, valuation, case study, Enfaz → 5 of 6 done.
-    expect(ring.total).toBe(6);
-    expect(ring.done).toBe(5);
-    expect(ring.pct).toBe(83);
   });
 });

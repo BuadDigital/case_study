@@ -6,9 +6,9 @@ import {
   deleteTasksForPo,
   deleteTasksForProperty,
   linkNewPropertyToTaskSlot,
-  loadWorkflowTasks,
   syncTaskSlotsForPo,
 } from "./tasks";
+import { loadWorkflowTasksForPo } from "./tasks-reads";
 import type { PriorDeedRegistrationDto } from "@platform/api-client";
 import { notifyTasksChanged } from "@platform/app-shared/workflow/task-types";
 import {
@@ -267,7 +267,8 @@ export async function completePropertyBourse(
       propertyToBourseRequest(property),
       idempotencyKey,
     ),
-    loadWorkflowTasks(),
+    // This PO's tasks only — the whole list was loaded here before (2026-11-15).
+    loadWorkflowTasksForPo(poNumber),
   ]);
   if (!result.ok) {
     return {

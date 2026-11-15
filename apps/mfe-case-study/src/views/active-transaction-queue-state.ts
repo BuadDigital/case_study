@@ -60,8 +60,8 @@ export type ActiveTransactionQueueConfig = {
   panelId: string;
   /** Column set for the queue table (default: primary-data). */
   tableLayout?: ActiveTransactionQueueTableLayout;
-  /** Hint under the queue table; defaults to distribution wording. */
-  tableHint?: string;
+  /** Hint under the queue table; defaults to distribution wording; `null` shows no hint line. */
+  tableHint?: string | null;
   /** Filter by prototype assignee id from transaction distribution. */
   partyAssignee?: boolean;
   /** Page id for queue context (e.g. party pages). */
@@ -351,9 +351,7 @@ export function resolveQueueLayoutFlags(
   const isPropertyAppraisalTable = config.tableLayout === "property-appraisal";
   const isFieldInspectionTable = config.tableLayout === "field-inspection";
   return {
-    isPropertyInspectionQueue:
-      config.pageId === "property-inspection" ||
-      config.pageId === "active-inspection",
+    isPropertyInspectionQueue: config.pageId === "active-inspection",
     isDistributionTable:
       config.tableLayout === "distribution" ||
       config.tableLayout === "case-study",

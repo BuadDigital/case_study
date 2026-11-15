@@ -93,8 +93,6 @@ export function pageIdFromPathname(pathname: string): PageId | null {
       return "active-inspection";
     case "property-appraisal":
       return "property-appraisal";
-    case "property-inspection":
-      return "property-inspection";
     case "login":
     case "start": // the site's entry: it sends the user to his landing page itself
       return null;
@@ -142,7 +140,6 @@ function isPoPropertyEditPath(pathname: string): boolean {
 
 /** Party / queue roles that may open property detail without PO list access. */
   const PROPERTY_DETAIL_WITHOUT_PO_LIST: readonly PageId[] = [
-  "property-inspection",
   "active-inspection",
   "property-appraisal",
   "active-survey",

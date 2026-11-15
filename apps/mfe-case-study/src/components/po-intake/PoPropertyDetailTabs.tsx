@@ -222,7 +222,7 @@ export function PoPropertyDetailTabs({
                   onClick={() => {
                     selectTab(t.id);
                     if (workspaceForced) return;
-                    /* Tab is view-only — input mode opens from the property-inspection button. */
+                    /* Tab is view-only — input mode opens from the inspection button. */
                     if (t.id === "inspection" && inspectEdit) {
                       setInspectEdit(false);
                       replaceInspectQuery(null);

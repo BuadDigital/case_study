@@ -223,12 +223,8 @@ export function resolveShellRoute(pathname: string | null | undefined): ShellRou
     pathParts[0] === "active-survey" && pathParts.length >= 2;
   const onPropertyAppraisalWorkspace =
     pathParts[0] === "property-appraisal" && pathParts.length >= 2;
-  const onActiveInspectionWorkspace =
-    pathParts[0] === "active-inspection" && pathParts.length >= 2;
-  const onPropertyInspectionWorkspace =
-    pathParts[0] === "property-inspection" && pathParts.length >= 2;
   const onFieldInspectionWorkspace =
-    onActiveInspectionWorkspace || onPropertyInspectionWorkspace;
+    pathParts[0] === "active-inspection" && pathParts.length >= 2;
   return {
     pathParts,
     currentPage,

@@ -6,6 +6,7 @@ import {
   Button,
   cn,
   EmptyState,
+  ListPager,
   Note,
   OperationalPanel,
   PageShellHeader,
@@ -49,6 +50,7 @@ import type {
   ActiveQueueApi,
   ActiveTransactionQueueConfig,
 } from "./active-transaction-queue-state";
+import { QUEUE_PAGE_SIZE } from "./active-transaction-queue-state";
 import {
   EMPTY_TASKS,
   useActiveTransactionQueueWorkflow,
@@ -201,6 +203,8 @@ export function ActiveTransactionQueueView({
     filteredPrimaryMeta,
     allTransactionsRowMeta,
     filteredAllTxMeta,
+    allTxPageMeta,
+    allTxWindow,
     poByNumber,
     partyProgressByTask,
     primaryHasLocation,
@@ -277,6 +281,18 @@ export function ActiveTransactionQueueView({
     [resolveTaskBadge, poByNumber],
   );
 
+  // «جميع العقارات»: the shared pager under its rows, once there is more than one page (2026-11-15).
+  const allTxPager =
+    isAllTransactionsTable && allTxWindow.totalPages > 1 ? (
+      <ListPager
+        page={allTxWindow.safePage}
+        pageSize={QUEUE_PAGE_SIZE}
+        totalCount={filteredAllTxMeta.length}
+        onPageChange={setPage}
+        unit="عقار"
+      />
+    ) : null;
+
   const queueToolbar = queueShowsRows ? (
     <QueueFiltersToolbar
       queueReady={queueShowsRows}
@@ -351,8 +367,9 @@ export function ActiveTransactionQueueView({
                 <div ref={mobileSwapRef} className="pb-3 lg:hidden max-lg:px-0">
                   <AllTransactionsMobileList
                     ctx={rowCtx}
-                    filteredMeta={filteredAllTxMeta}
+                    filteredMeta={allTxPageMeta}
                   />
+                  {allTxPager}
                 </div>
               ) : isPropertyInspectionQueue ? (
                 <div ref={mobileSwapRef} className="pb-3 lg:hidden max-lg:px-0">
@@ -413,7 +430,7 @@ export function ActiveTransactionQueueView({
                   {isAllTransactionsTable ? (
                     <AllTransactionsQueueTable
                       ctx={rowCtx}
-                      filteredMeta={filteredAllTxMeta}
+                      filteredMeta={allTxPageMeta}
                     />
                   ) : isDistributionTable ? (
                     <DistributionQueueTable
@@ -455,6 +472,7 @@ export function ActiveTransactionQueueView({
                     />
                   )}
                 </div>
+                {config.tableHint === null ? null : (
                 <QueueTableHint
                   className={cn(
                     (config.pageId === "all-transactions" ||
@@ -470,6 +488,7 @@ export function ActiveTransactionQueueView({
                         ? "اضغط الصف لفتح دراسة الحالة."
                         : "اضغط الصف للفتح أو الإغلاق.")}
                 </QueueTableHint>
+                )}
                 {paged && pagination ? (
                   <QueuePager
                     pagination={pagination}
@@ -478,6 +497,9 @@ export function ActiveTransactionQueueView({
                   />
                 ) : null}
               </TableFrame>
+              )}
+              {isDesktopViewport === false ? null : (
+                <div className="max-lg:hidden">{allTxPager}</div>
               )}
             </>
           )}

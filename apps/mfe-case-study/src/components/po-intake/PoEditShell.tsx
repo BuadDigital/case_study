@@ -37,7 +37,7 @@ export function PoEditShell({
   showFooter?: boolean;
   /** Fills the content-area height — single scroll inside the form. */
   fillViewport?: boolean;
-  /** document = scroll the full page (suited to /property-inspection/[taskId]). */
+  /** document = scroll the full page (suited to /active-inspection/[taskId]). */
   scrollMode?: "viewport" | "document";
   children: ReactNode;
 }) {
