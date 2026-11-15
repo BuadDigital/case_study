@@ -6,7 +6,7 @@ namespace RealEstateEval.CaseStudy.Domain;
 /// <summary>One deed owner from the structured transcription (the owners list).</summary>
 public sealed record DeedOwner(string Name);
 
-/// <summary>Ownership Type values — «ملكية تامة» (absolute) or «مشاع» (shared).</summary>
+/// <summary>Ownership Type values — «ملكية مطلقة» (absolute) or «مشاع» (shared).</summary>
 public static class OwnershipTypes
 {
     public const string Absolute = "absolute";
@@ -17,8 +17,8 @@ public static class OwnershipTypes
 
     public static string LabelAr(string? value) => (value ?? "").Trim().ToLowerInvariant() switch
     {
-        // One wording everywhere (round 2): «ملكية تامة» / «حق منفعة» / «أرض مستأجرة».
-        Absolute => "ملكية تامة",
+        // One wording everywhere: «ملكية مطلقة» (Omar 2026-11-15 — round 2's «ملكية تامة» is withdrawn).
+        Absolute => "ملكية مطلقة",
         Shared => "مشاع",
         _ => "",
     };

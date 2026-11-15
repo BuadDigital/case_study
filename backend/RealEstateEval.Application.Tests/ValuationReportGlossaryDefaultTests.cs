@@ -33,12 +33,13 @@ public class ValuationReportGlossaryDefaultTests
     }
 
     [Fact]
-    public void The_glossary_says_ownership_tamma_and_the_round_1_text_is_upgraded()
+    public void The_glossary_says_ownership_mutlaqa_and_the_round_2_text_is_upgraded()
     {
-        Assert.Contains("ملكية تامة: ", ValuationReportSettingsDefaults.Glossary);
-        Assert.DoesNotContain("ملكية مطلقة", ValuationReportSettingsDefaults.Glossary);
-        var roundOne = ValuationReportSettingsDefaults.Glossary.Replace("ملكية تامة: ", "ملكية مطلقة: ");
-        Assert.Equal(ValuationReportSettingsDefaults.Glossary, ValuationReportSettingsDefaults.UpgradeGlossary(roundOne));
+        // Omar 2026-11-15: «ملكية مطلقة» across the system; round 2's «ملكية تامة» moves to it.
+        Assert.Contains("ملكية مطلقة: ", ValuationReportSettingsDefaults.Glossary);
+        Assert.DoesNotContain("ملكية تامة", ValuationReportSettingsDefaults.Glossary);
+        var roundTwo = ValuationReportSettingsDefaults.Glossary.Replace("ملكية مطلقة: ", "ملكية تامة: ");
+        Assert.Equal(ValuationReportSettingsDefaults.Glossary, ValuationReportSettingsDefaults.UpgradeGlossary(roundTwo));
     }
 
     [Fact]

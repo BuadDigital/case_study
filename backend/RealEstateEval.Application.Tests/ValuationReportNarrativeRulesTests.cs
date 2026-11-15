@@ -48,7 +48,7 @@ public class ValuationReportNarrativeRulesTests
     [Fact]
     public void The_ownership_label_comes_from_the_initial_data_type()
     {
-        Assert.Equal("ملكية تامة", RealEstateEval.CaseStudy.Domain.OwnershipTypes.LabelAr("absolute"));
+        Assert.Equal("ملكية مطلقة", RealEstateEval.CaseStudy.Domain.OwnershipTypes.LabelAr("absolute"));
     }
 
     [Fact]

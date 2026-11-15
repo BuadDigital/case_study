@@ -65,16 +65,17 @@ public class ValuationGlossaryListTests
     }
 
     [Fact]
-    public async Task The_freehold_term_is_ownership_tamma_and_a_stored_round_1_seed_moves_to_it()
+    public async Task The_freehold_term_is_ownership_mutlaqa_and_a_stored_round_2_seed_moves_to_it()
     {
+        // Omar 2026-11-15: «ملكية مطلقة» across the system; round 2's «ملكية تامة» moves to it.
         var fresh = await GlossaryAsync(null);
-        Assert.Equal("ملكية تامة", fresh.Single(r => r.Key == "freehold").Name);
+        Assert.Equal("ملكية مطلقة", fresh.Single(r => r.Key == "freehold").Name);
 
-        var roundOne = fresh.Select(r => r.Key == "freehold" ? Copy(r, name: "ملكية مطلقة") : r).ToList();
-        var rows = await GlossaryAsync(roundOne);
+        var roundTwo = fresh.Select(r => r.Key == "freehold" ? Copy(r, name: "ملكية تامة") : r).ToList();
+        var rows = await GlossaryAsync(roundTwo);
 
-        Assert.Equal("ملكية تامة", rows.Single(r => r.Key == "freehold").Name);
-        Assert.DoesNotContain(rows, r => r.Name.Contains("مطلقة", StringComparison.Ordinal));
+        Assert.Equal("ملكية مطلقة", rows.Single(r => r.Key == "freehold").Name);
+        Assert.DoesNotContain(rows, r => r.Name.Contains("ملكية تامة", StringComparison.Ordinal));
     }
 
     [Fact]

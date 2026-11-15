@@ -2,6 +2,8 @@
 // Round 2 (1b19bedc)
 //  • Wording Glossary term «ملكية مطلقة» → «ملكية تامة»; a stored glossary with the old term is upgraded
 //            (GlossaryWithPreviousFreeholdTerm).
+// 2026-11-15 (Omar): back to «ملكية مطلقة» across the system; a stored glossary still equal to the
+//            round-2 default («ملكية تامة») is upgraded to it the same way.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 namespace RealEstateEval.Valuation.Domain;
@@ -166,7 +168,7 @@ public static class ValuationReportSettingsDefaults
         + "تاريخ التقييم: التاريخ الذي يسري فيه التحليل والرأي الخاص بعملية التقييم.\n"
         + "تاريخ إصدار الرأي: هو تاريخ الوصول للقيمة من قبل المقيم، بغض النظر عن تاريخ التقييم المطلوب.\n"
         + "تاريخ التقرير: هو تاريخ اعتماد تاريخ التقييم بالصيغة النهائية.\n"
-        + "ملكية تامة: حق تام في ملكية العقار أو الأرض.\n"
+        + "ملكية مطلقة: حق تام في ملكية العقار أو الأرض.\n"
         + "تاريخ قرار التقدير: تاريخ اعتماد الجهة صاحبة المشروع لمحضر لجنة التقدير (تقرير اللجنة النهائي).\n"
         + "الاستخدام الحالي: يُقصد بالاستخدام الحالي هو الطريقة الحالية لاستخدام الأصل، أو الالتزام، أو مجموعة الأصول، أو الالتزامات. وقد يكون الاستخدام الحالي، ولكن ليس بالضرورة، أعلى وأفضل استخدام.\n"
         + "الاستخدام الأعلى والأفضل: يجب أن يكون أعلى وأفضل استخدام ممكنًا من الناحية المادية (حيثما ينطبق ذلك) ومجديًا وقابلًا للتطبيق من الناحية المالية ومسموحًا به قانونًا ويؤدي إلى تحقيق أعلى قيمة. إذا كان أعلى وأفضل استخدام مختلف عن الاستخدام الحالي، فإنّ تكاليف تحويل الأصل إلى أعلى وأفضل استخدام يؤثر على القيمة.\n"
@@ -207,9 +209,12 @@ public static class ValuationReportSettingsDefaults
             ? Glossary
             : stored;
 
-    /// <summary>Round 2: the reference glossary as first shipped, with «ملكية مطلقة» — upgraded to «ملكية تامة».</summary>
+    /// <summary>
+    /// The reference glossary as round 2 shipped it, with «ملكية تامة» — upgraded to «ملكية مطلقة»
+    /// (Omar 2026-11-15: one term across the system, «ملكية مطلقة»).
+    /// </summary>
     private static readonly string GlossaryWithPreviousFreeholdTerm =
-        Glossary.Replace("ملكية تامة: حق تام", "ملكية مطلقة: حق تام", StringComparison.Ordinal);
+        Glossary.Replace("ملكية مطلقة: حق تام", "ملكية تامة: حق تام", StringComparison.Ordinal);
 
     private static bool SameText(string? a, string b) =>
         string.Equals(
