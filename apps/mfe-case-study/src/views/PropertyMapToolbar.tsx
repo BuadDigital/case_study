@@ -38,6 +38,7 @@ export function PropertyMapToolbar({
     openLayerPanel,
     partitioned,
     filteredComparables,
+    filteredReports,
     query,
     setQuery,
     city,
@@ -77,14 +78,17 @@ export function PropertyMapToolbar({
                   ? partitioned.archive.length
                   : chip.key === "failures"
                     ? partitioned.failures.length
-                    : filteredComparables.filter((c) => c.coords).length
+                    : chip.key === "reports"
+                      ? filteredReports.length
+                      : filteredComparables.filter((c) => c.coords).length
             }
             color={chip.color}
             diamond={chip.diamond}
+            hollow={chip.hollow}
             alert={chip.alert}
             menuOpen={layerPanel === chip.key}
             onClick={() => toggleLayer(chip.key)}
-            onMenu={() => openLayerPanel(chip.key)}
+            onMenu={chip.noMenu ? undefined : () => openLayerPanel(chip.key)}
           />
         ))}
       </div>

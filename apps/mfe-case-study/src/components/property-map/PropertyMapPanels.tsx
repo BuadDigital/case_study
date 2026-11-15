@@ -1,6 +1,6 @@
 "use client";
 
-import { fmtSar } from "@platform/app-shared/format/number";
+import { fmtCompactCount, fmtSar } from "@platform/app-shared/format/number";
 import type { ReactNode } from "react";
 import { Button, cn, opsFloatPanel } from "@platform/ui-kit";
 
@@ -21,6 +21,7 @@ export function LayerPill({
   count,
   color,
   diamond,
+  hollow,
   alert,
   menuOpen,
   onClick,
@@ -31,11 +32,14 @@ export function LayerPill({
   count: number;
   color: string;
   diamond?: boolean;
+  /** Ring dot (no fill) — the imported valuation reports. */
+  hollow?: boolean;
   /** The «التعذّرات» look: warning triangle, red fill when on and red outline when off. */
   alert?: boolean;
   menuOpen: boolean;
   onClick: () => void;
-  onMenu: () => void;
+  /** Leave out for a layer without the «pick items» panel. */
+  onMenu?: () => void;
 }) {
   return (
     <button
@@ -61,7 +65,8 @@ export function LayerPill({
         <span
           className="inline-block size-[7px] shrink-0"
           style={{
-            background: active ? "#c8b591" : color,
+            background: hollow ? "transparent" : active ? "#c8b591" : color,
+            border: hollow ? `2px solid ${active ? "#c8b591" : color}` : undefined,
             borderRadius: diamond ? 2 : 99,
             transform: diamond ? "rotate(45deg)" : undefined,
           }}
@@ -79,10 +84,11 @@ export function LayerPill({
               ? "bg-gold/25 text-gold"
               : "bg-gold-soft text-gold-d",
         )}
+        title={count.toLocaleString("en-US")}
       >
-        {count}
+        {fmtCompactCount(count)}
       </span>
-      {active ? (
+      {active && onMenu ? (
         <span
           role="presentation"
           title="اختيار عناصر بعينها"
@@ -265,11 +271,14 @@ export function LegendDot({
   label,
   diamond,
   ring,
+  hollow,
 }: {
   color: string;
   label: string;
   diamond?: boolean;
   ring?: boolean;
+  /** Ring in the layer color with a see-through middle. */
+  hollow?: boolean;
 }) {
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -278,7 +287,9 @@ export function LegendDot({
         style={{
           width: diamond ? 10 : ring ? 12 : 11,
           height: diamond ? 10 : ring ? 12 : 11,
-          background: color,
+          background: hollow ? "transparent" : color,
+          borderColor: hollow ? color : undefined,
+          borderWidth: hollow ? 3 : undefined,
           borderRadius: diamond ? 2 : 99,
           transform: diamond ? "rotate(45deg)" : undefined,
           boxShadow: ring ? "0 0 0 2px rgba(164,144,111,.6)" : undefined,
@@ -296,6 +307,7 @@ export function DetailCard({
   rows,
   nearby,
   photo,
+  highlight,
   onNearby,
   onClose,
   actionLabel,
@@ -304,6 +316,8 @@ export function DetailCard({
   familyLabel: string;
   title: string;
   tags: ReactNode;
+  /** One value shown large under the title (an imported report's final value). */
+  highlight?: { label: string; value: string } | null;
   rows: [string, string][];
   nearby: { item: MapComparableRecord; distanceKm: number }[];
   photo?: ReactNode;
@@ -335,6 +349,12 @@ export function DetailCard({
             <div className="mt-1.5 flex flex-wrap gap-1.5">{tags}</div>
           </div>
         </div>
+        {highlight ? (
+          <div className="mt-3 flex items-baseline justify-between gap-2 rounded-[10px] border border-border bg-surface px-3 py-2.5">
+            <span className="text-[12px] text-text-3">{highlight.label}</span>
+            <span className="text-[19px] font-extrabold text-heading">{highlight.value}</span>
+          </div>
+        ) : null}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-1.5">
         {rows.map(([k, v]) => (

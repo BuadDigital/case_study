@@ -8,7 +8,9 @@ import { queryLoadFailed } from "@platform/app-shared/query/query-load-state";
 import { useEscapeKey } from "@platform/app-shared/hooks/use-escape-key";
 import { poPropertyPath } from "@platform/app-shared/domain/po-routes";
 import {
+  getValuationReport,
   listComparableProperties,
+  listValuationReportMapPoints,
   listValuationRequestMapOverlay,
 } from "@platform/api-client";
 import { prototypeModulesApiConfig } from "@platform/app-shared/app-data/modules-api-config";
@@ -29,6 +31,7 @@ import {
   distinctValues,
   filterComparables,
   filterProperties,
+  filterReports,
   groupForMap,
   nearbyOf,
   partitionProperties,
@@ -36,6 +39,7 @@ import {
   type LayerKey,
   type MapComparableRecord,
   type MapPropertyRecord,
+  type MapReportRecord,
   type PropertyKindCat,
   type PropertyUsageCat,
 } from "../lib/app-data/map-locations-logic";
@@ -107,6 +111,30 @@ export function usePropertyMapWorkflow() {
     archive: false,
     failures: true,
     comparables: false,
+    reports: false,
+  });
+  // The imported reports layer can hold hundreds of thousands of points: load it only once switched on.
+  const { data: liveReports = [] } = useQuery({
+    queryKey: ["property-map", "valuation-reports"],
+    enabled: layers.reports,
+    queryFn: async () => {
+      const config = prototypeModulesApiConfig();
+      if (!config) return [] as MapReportRecord[];
+      const res = await listValuationReportMapPoints(config);
+      if (!res.ok) return [] as MapReportRecord[];
+      return res.data.map(
+        (p): MapReportRecord => ({
+          id: `${p.source}:${p.reportNumber}`,
+          source: p.source,
+          reportNumber: p.reportNumber,
+          propertyType: p.propertyType,
+          usage: p.usage,
+          valuationDate: p.valuationDate ?? null,
+          coords: { lat: p.latitude, lng: p.longitude },
+        }),
+      );
+    },
+    staleTime: 5 * 60_000,
   });
   const [query, setQuery] = useState("");
   const [city, setCity] = useState("");
@@ -174,6 +202,14 @@ export function usePropertyMapWorkflow() {
     () => filterComparables(liveComparables, criteria),
     [criteria, liveComparables],
   );
+  const filteredReports = useMemo(
+    () => filterReports(liveReports, criteria),
+    [criteria, liveReports],
+  );
+  const shownReports = useMemo(
+    () => (layers.reports ? filteredReports : []),
+    [layers.reports, filteredReports],
+  );
 
   const partitioned = useMemo(
     () => partitionProperties(filteredProperties),
@@ -235,8 +271,8 @@ export function usePropertyMapWorkflow() {
     [shownPropertyRecords, shownComparables],
   );
   const markers = useMemo(
-    () => buildMapMarkers(grouped, shownComparables),
-    [grouped, shownComparables],
+    () => buildMapMarkers(grouped, shownComparables, shownReports),
+    [grouped, shownComparables, shownReports],
   );
 
   const cities = distinctValues([...liveProperties, ...liveComparables], "city");
@@ -302,6 +338,14 @@ export function usePropertyMapWorkflow() {
       const rec = liveComparables.find((r) => r.id === id.slice(2));
       if (rec) {
         setSelection({ kind: "comparable", record: rec });
+        flyTo(rec.coords);
+      }
+      return;
+    }
+    if (id.startsWith("r:")) {
+      const rec = liveReports.find((r) => r.id === id.slice(2));
+      if (rec) {
+        setSelection({ kind: "report", record: rec });
         flyTo(rec.coords);
       }
       return;
@@ -387,6 +431,19 @@ export function usePropertyMapWorkflow() {
     selectComparable(record);
   }
 
+  const selectedReport = selection?.kind === "report" ? selection.record : null;
+  const { data: reportDetail = null } = useQuery({
+    queryKey: ["property-map", "valuation-report", selectedReport?.id],
+    enabled: !!selectedReport,
+    queryFn: async () => {
+      const config = prototypeModulesApiConfig();
+      if (!config || !selectedReport) return null;
+      const res = await getValuationReport(config, selectedReport.source, selectedReport.reportNumber);
+      return res.ok ? res.data : null;
+    },
+    staleTime: 5 * 60_000,
+  });
+
   /** Nearby comparables shown inside a property card — 2 km, top 5. */
   const nearby =
     selection?.kind === "property" && selection.record.coords
@@ -466,6 +523,9 @@ export function usePropertyMapWorkflow() {
     filteredComparables,
     comparableChoices,
     shownComparables,
+    filteredReports,
+    shownReports,
+    reportDetail,
     pickerNodes,
     markers,
     stats,

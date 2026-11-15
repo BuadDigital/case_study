@@ -88,6 +88,10 @@ const ComparablePropertiesView = dynamic(
   () => import("@valuation/mfe").then((m) => m.ComparablePropertiesView),
   { ssr: false, loading: MfeLoading },
 );
+const ValuationReportImportsView = dynamic(
+  () => import("@valuation/mfe").then((m) => m.ValuationReportImportsView),
+  { ssr: false, loading: MfeLoading },
+);
 const FinancialView = dynamic(
   () => import("@financial/mfe").then((m) => m.FinancialView),
   { ssr: false, loading: MfeLoading },
@@ -174,6 +178,7 @@ const VIEWS: Partial<Record<PageId, ComponentType>> = {
   failures: FailuresView,
   "suspended-transactions": SuspendedTransactionsView,
   "comparable-properties": ComparablePropertiesView,
+  "valuation-report-imports": ValuationReportImportsView,
   "operations-tasks": OperationsTasksView,
   "system-fields-catalog": SystemFieldsCatalogView,
   financial: FinancialView,
@@ -213,6 +218,7 @@ export const PAGE_CHUNK_PRELOAD: Partial<
   failures: () => import("@failures/mfe"),
   "suspended-transactions": () => import("@case-study/mfe"),
   "comparable-properties": () => import("@valuation/mfe"),
+  "valuation-report-imports": () => import("@valuation/mfe"),
   "operations-tasks": () => import("@case-study/mfe"),
   "system-fields-catalog": () => import("@settings/mfe"),
   financial: () => import("@financial/mfe"),
