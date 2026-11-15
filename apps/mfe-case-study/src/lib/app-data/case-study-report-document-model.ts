@@ -184,7 +184,7 @@ function resolveRequestDateIso(
  * approval names all its deeds, not only the deed the workspace was opened on.
  */
 function buildCaseStudyReportApproval(
-  task: WorkflowTask,
+  task: Pick<WorkflowTask, "poNumber">,
   property: PoPropertyIntake | null,
   poRecord: Pick<
     PoIntakeRecord,
@@ -258,7 +258,7 @@ function meterExtras(draft: CaseStudyReportDraft): string[] {
 export function buildCaseStudyReportModel(
   draft: CaseStudyReportDraft,
   property: PoPropertyIntake | null,
-  task: WorkflowTask,
+  task: Pick<WorkflowTask, "poNumber">,
   poRecord: Pick<
     PoIntakeRecord,
     | "assignmentSpecialist"

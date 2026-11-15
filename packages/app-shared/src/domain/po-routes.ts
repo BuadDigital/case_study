@@ -68,6 +68,11 @@ export function poTaskCoordinationPath(poNumber: string, taskId: string): string
   return `/po/${encodeURIComponent(poNumber.trim())}/task/${encodeURIComponent(taskId)}/coordination`;
 }
 
+/** The deeds that share this deed's request number («رقم الطلب») — a page of its own (Omar 2026-11-15). */
+export function poPropertyRequestDeedsPath(poNumber: string, propertyId: string): string {
+  return `${poPropertyPath(poNumber, propertyId)}/request`;
+}
+
 export function poPropertyEditPath(poNumber: string, propertyId: string): string {
   return `${poPropertyPath(poNumber, propertyId)}/edit`;
 }

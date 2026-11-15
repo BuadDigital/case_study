@@ -8,6 +8,7 @@ import { PoPropertyWorkPage } from "@case-study/mfe/views/PoPropertyWorkPage";
 import { PoPropertyFailureRoute } from "@case-study/mfe/views/po-routes/PoPropertyFailureRoute";
 import { PoTaskCoordinationRoute } from "@case-study/mfe/views/po-routes/PoTaskCoordinationRoute";
 import { PoPropertyCoordinationPage } from "@case-study/mfe/views/PoPropertyCoordinationPage";
+import { PoRequestDeedsPage } from "@case-study/mfe/views/PoRequestDeedsPage";
 import { PO_PROPERTY_SEGMENT, decodePoParam } from "@platform/app-shared/domain/po-routes";
 
 function normalizeSegments(value: string | string[] | undefined): string[] {
@@ -18,13 +19,15 @@ function normalizeSegments(value: string | string[] | undefined): string[] {
 
 /**
  * The pages under one deed — `/po/{po}/property/{id}/{page}`: edit, the work page, the coordinator's
- * page (Omar 2026-11-08) and the failure page. One table so a new page is one line.
+ * page (Omar 2026-11-08), the failure page and the deeds of its request number (2026-11-15). One
+ * table so a new page is one line.
  */
 const PROPERTY_PAGES: Record<string, ComponentType<{ poNumber: string; propertyId: string }>> = {
   edit: PoPropertyEditRoute,
   work: PoPropertyWorkPage,
   coordination: PoPropertyCoordinationPage,
   failure: PoPropertyFailureRoute,
+  request: PoRequestDeedsPage,
 };
 
 export default async function PoNestedRoutePage({

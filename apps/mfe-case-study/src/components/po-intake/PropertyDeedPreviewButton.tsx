@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo } from "react";
-import { cn, OpsIcon } from "@platform/ui-kit";
 import {
   deedDocumentEntry,
   openPropertyDetailDocumentPreview,
 } from "../../lib/app-data/property-detail-documents";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import { usePropertyDetailDocuments } from "../../query/property-detail-documents-query";
+import { HeroIconButton } from "./HeroIconButton";
 
 /** A page with lines — the deed's document. */
 const DOCUMENT_ICON_PATH =
@@ -46,20 +46,13 @@ export function PropertyDeedPreviewButton({
   const ready = Boolean(deed && (deed.dataUrl || deed.attachmentId));
   const label = !deed ? "لم تُرفق صورة الصك" : ready ? "مطالعة الصك" : "جاري تحميل الصك…";
   return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      disabled={!ready}
-      data-testid="hero-deed-preview"
+    <HeroIconButton
+      iconPath={DOCUMENT_ICON_PATH}
+      label={label}
+      ready={ready}
+      compact={compact}
+      testId="hero-deed-preview"
       onClick={() => deed && openPropertyDetailDocumentPreview(deed)}
-      className={cn(
-        "grid shrink-0 place-items-center rounded-md border border-border bg-surface p-0 text-heading transition-colors",
-        compact ? "size-6" : "size-[30px]",
-        ready ? "cursor-pointer hover:bg-row-hover" : "cursor-not-allowed text-text-3 opacity-60",
-      )}
-    >
-      <OpsIcon path={DOCUMENT_ICON_PATH} size={compact ? 13 : 16} />
-    </button>
+    />
   );
 }

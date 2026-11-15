@@ -27,6 +27,15 @@ export {
 } from "@failures/mfe/lib/failure-degrees";
 
 /**
+ * The external parties (Omar 2026-11-15: «مثل المعاين والمكتب الهندسي») — they work on their own
+ * package and never read the transaction's outputs or its other deeds. The government reviewer
+ * is counted with them (my reading). The appraiser is not.
+ */
+export function isExternalPartyRole(role: RoleId): boolean {
+  return role === "field-inspector" || role === "engineering-office" || role === "government-reviewer";
+}
+
+/**
  * Approve / reject a «إلغاء المعاملة» request and reactivate a cancelled transaction — the section
  * supervisor and the CDO. Mirrors `PoRoleMatrixRules.CanDecideTransactionCancel`.
  */

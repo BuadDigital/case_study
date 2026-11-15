@@ -2,6 +2,10 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useRef } from "react";
+import Link from "next/link";
+import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
+import { poPropertyRequestDeedsPath } from "@platform/app-shared/domain/po-routes";
+import { isExternalPartyRole } from "../../lib/app-data/po-roles";
 import {
   cn,
   opsPanelCard,
@@ -36,6 +40,7 @@ import { useTransactionQuery } from "../../query/use-transaction-query";
 import { FavoriteStar } from "../ui/FavoriteStar";
 import { TransactionDeedSwitcher } from "./TransactionDeedSwitcher";
 import { PropertyDeedPreviewButton } from "./PropertyDeedPreviewButton";
+import { PropertyOutputReportButtons } from "./PropertyOutputReportButtons";
 import { estimateCaseStudyCompletion } from "../../lib/app-data/case-study-completion";
 
 /** Deed number, or the real-estate registry number when the property is identified by one. */
@@ -172,6 +177,7 @@ export function PropertyDetailHero({
 }) {
   const heroRef = useRef<HTMLElement>(null);
   const compact = useStickyCompact(heroRef, stickyCompact);
+  const { role } = useAppAccess();
   const { data: tasks = [] } = useWorkflowTasksQuery();
   // The handover stamp reaches the browser as the server's property-row status.
   const { data: propertyItems } = usePropertyListItemsQuery();
@@ -373,9 +379,23 @@ export function PropertyDetailHero({
                       : "text-[15px] text-heading",
                   )}
                 >
-                  <bdi dir="ltr" className={ltrValueClass}>
-                    {property.requestNumber.trim()}
-                  </bdi>
+                  {/* Omar 2026-11-15: the number opens every deed carrying it, a page of its own. */}
+                  {isExternalPartyRole(role) ? (
+                    <bdi dir="ltr" className={ltrValueClass}>
+                      {property.requestNumber.trim()}
+                    </bdi>
+                  ) : (
+                    <Link
+                      href={poPropertyRequestDeedsPath(record.poNumber, property.id)}
+                      title="عرض كل الصكوك بنفس رقم الطلب"
+                      data-testid="hero-request-number"
+                      className="text-inherit underline decoration-dotted underline-offset-4 hover:text-gold-d"
+                    >
+                      <bdi dir="ltr" className={ltrValueClass}>
+                        {property.requestNumber.trim()}
+                      </bdi>
+                    </Link>
+                  )}
                 </div>
               </div>
             ) : null}
@@ -387,6 +407,8 @@ export function PropertyDetailHero({
                 compact={compact}
               />
             ) : null}
+            {/* The transaction's outputs (Omar 2026-11-15), read in a window like the deed. */}
+            <PropertyOutputReportButtons record={record} property={property} compact={compact} />
             <PoPropertyDetailTopbarActions
               poNumber={record.poNumber}
               propertyId={property.id}
