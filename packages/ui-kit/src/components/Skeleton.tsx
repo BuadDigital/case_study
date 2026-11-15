@@ -104,7 +104,9 @@ export function PanelSkeleton({ className }: { className?: string }) {
       )}
       aria-busy
     >
-      <GentleBusy>
+      {/* One wait passes through several of these (route → work order → page): handoff keeps the card
+          on screen between them instead of a gap and a second card (2026-11-15). */}
+      <GentleBusy handoff>
         <LoadingBox />
       </GentleBusy>
     </div>

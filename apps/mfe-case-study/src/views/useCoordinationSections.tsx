@@ -172,20 +172,26 @@ export function useCoordinationSections({
         // Past the distribution: who was assigned, read-only; changing a party is «تعديل إسناد الأطراف».
         const distribution = migrateDistribution(task.distribution);
         return (
-          <div className="flex flex-col gap-3 pt-3">
+          <div className="pt-3">
             <DistributionPartiesForm
               distribution={distribution}
               onPatch={() => undefined}
               showEngineering={Boolean(distribution.engineeringOffice)}
               readOnly
+              // The form places it: beside the parties, at the row's end (Omar 2026-11-15).
+              action={
+                task.phase === "case-study" && canRedistributeParties(access) ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="max-sm:w-full"
+                    onClick={() => setRedistributeTask(task)}
+                  >
+                    تعديل إسناد الأطراف
+                  </Button>
+                ) : undefined
+              }
             />
-            {task.phase === "case-study" && canRedistributeParties(access) ? (
-              <div>
-                <Button type="button" size="sm" variant="outline" onClick={() => setRedistributeTask(task)}>
-                  تعديل إسناد الأطراف
-                </Button>
-              </div>
-            ) : null}
           </div>
         );
       }

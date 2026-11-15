@@ -166,6 +166,7 @@ export function AdjustmentsMatrixPhone({
     confirmDelete,
     setConfirmDelete,
     saveRationale,
+    renameHandler,
     lineOf,
     linePct,
     justValue,
@@ -417,6 +418,7 @@ export function AdjustmentsMatrixPhone({
                 onDelete={() =>
                   void dispatch({ type: "remove-factor", factorKey })
                 }
+                onRenameLabel={renameHandler(factorKey)}
               />
               {subject}
               <JustCell

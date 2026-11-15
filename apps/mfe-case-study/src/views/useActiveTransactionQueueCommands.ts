@@ -35,7 +35,6 @@ import {
 } from "../lib/app-data/row-attention-model";
 import { useRowAttentionSeenMap } from "../lib/app-data/use-row-attention-seen-map";
 import {
-  collapseAllPoGroups,
   copyPriorTargetKey,
   queueSelectionIsStale,
   resolveQueueTaskFullPagePath,
@@ -97,10 +96,6 @@ export function useActiveTransactionQueueCommands({
     setPanelForSelection(selectedId);
     setPanelOpen(Boolean(selectedId));
   }
-  const [groupByPo, setGroupByPo] = useState(false);
-  const [groupGatherAnim, setGroupGatherAnim] = useState(false);
-  const groupGatherTimerRef = useRef<number | null>(null);
-  const [collapsedPo, setCollapsedPo] = useState<Record<string, boolean>>({});
   const advancingRef = useRef(false);
   const [, bump] = useState(0);
   const [copyModalOpen, setCopyModalOpen] = useState(false);
@@ -407,32 +402,6 @@ export function useActiveTransactionQueueCommands({
     refreshWork();
   }, [queryClient, copyPoNumber, refreshWork]);
 
-  const toggleGroupByPo = useCallback(() => {
-    setGroupByPo((prev) => {
-      const next = !prev;
-      if (next) {
-        setCollapsedPo(collapseAllPoGroups(allTransactionsRowMeta));
-        if (groupGatherTimerRef.current != null) {
-          window.clearTimeout(groupGatherTimerRef.current);
-        }
-        setGroupGatherAnim(true);
-        groupGatherTimerRef.current = window.setTimeout(() => {
-          setGroupGatherAnim(false);
-          groupGatherTimerRef.current = null;
-        }, 520);
-      }
-      return next;
-    });
-  }, [allTransactionsRowMeta]);
-
-  useEffect(() => {
-    return () => {
-      if (groupGatherTimerRef.current != null) {
-        window.clearTimeout(groupGatherTimerRef.current);
-      }
-    };
-  }, []);
-
   useEffect(() => {
     if (!queueApiRef) return;
     queueApiRef.current = {
@@ -522,11 +491,6 @@ export function useActiveTransactionQueueCommands({
     resolveRowMoreItems,
     handleDistributionRowClick,
     openPropertyDetailFromQueue,
-    groupByPo,
-    groupGatherAnim,
-    toggleGroupByPo,
-    collapsedPo,
-    setCollapsedPo,
     copyModalOpen,
     setCopyModalOpen,
     copyPoNumber,

@@ -173,7 +173,7 @@ describe("نوع الملكية from the initial data", () => {
     expect(fill.cells["نوع الملكية"]).toBe("مشاع");
   });
 
-  it("prints «ملكية تامة» otherwise and never a mortgage", () => {
+  it("prints «ملكية مطلقة» otherwise and never a mortgage", () => {
     const fill = buildValuationReportLiveFill({
       draft: draft(),
       property: {
@@ -184,7 +184,7 @@ describe("نوع الملكية from the initial data", () => {
         deedNumber: "",
       } as never,
     });
-    expect(fill.cells["نوع الملكية"]).toBe("ملكية تامة");
+    expect(fill.cells["نوع الملكية"]).toBe("ملكية مطلقة");
     expect(fill.cells["نوع الملكية"]).not.toContain("مرهون");
   });
 });

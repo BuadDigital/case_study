@@ -13,7 +13,6 @@ import { useCallback, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { QueueRowContext } from "./active-transaction-queue-tables-state";
 import {
-  buildAllTxPoGroups,
   type ActiveQueueApi,
   type ActiveTransactionQueueConfig,
 } from "./active-transaction-queue-state";
@@ -74,6 +73,7 @@ export function useActiveTransactionQueueWorkflow({
     resolveTaskBadge,
     filteredListed,
     filteredPrimaryMeta,
+    allTransactionsRowMeta,
     filteredAllTxMeta,
     partyProgressByTask,
     primaryHasLocation,
@@ -101,11 +101,6 @@ export function useActiveTransactionQueueWorkflow({
     resolveRowMoreItems,
     handleDistributionRowClick,
     openPropertyDetailFromQueue,
-    groupByPo,
-    groupGatherAnim,
-    toggleGroupByPo,
-    collapsedPo,
-    setCollapsedPo,
     copyModalOpen,
     setCopyModalOpen,
     copyPoNumber,
@@ -159,11 +154,6 @@ export function useActiveTransactionQueueWorkflow({
     setRowsSwapKey(rowsFilterKey);
   }
 
-  const allTxPoGroups = useMemo(() => {
-    if (!isAllTransactionsTable || !groupByPo) return [];
-    return buildAllTxPoGroups(filteredAllTxMeta);
-  }, [isAllTransactionsTable, groupByPo, filteredAllTxMeta]);
-
   /* A fresh literal object each render broke row memoization despite stable handlers —
      the screen re-renders on search keystrokes, minute ticks, and every bump (rerender-memo). */
   const rowCtx: QueueRowContext = useMemo(
@@ -190,11 +180,11 @@ export function useActiveTransactionQueueWorkflow({
   const mobileQueueCardItems = useMemo(() => {
     // Mobile tree does not mount on desktop — no need to build its elements.
     if (isDesktopViewport === true) return [];
-    if (isPropertyInspectionQueue) return [];
+    // «جميع العقارات» draws its own phone cards (`AllTransactionsMobileList`).
+    if (isPropertyInspectionQueue || isAllTransactionsTable) return [];
     return buildQueueMobileCardItems({
       flags,
       disableRowOpen: Boolean(config.disableRowOpen),
-      filteredAllTxMeta,
       filteredListed,
       filteredPrimaryMeta,
       poByNumber,
@@ -208,8 +198,8 @@ export function useActiveTransactionQueueWorkflow({
   }, [
     isDesktopViewport,
     isPropertyInspectionQueue,
+    isAllTransactionsTable,
     flags,
-    filteredAllTxMeta,
     filteredListed,
     filteredPrimaryMeta,
     poByNumber,
@@ -247,8 +237,8 @@ export function useActiveTransactionQueueWorkflow({
     listed,
     filteredListed,
     filteredPrimaryMeta,
+    allTransactionsRowMeta,
     filteredAllTxMeta,
-    allTxPoGroups,
     poByNumber,
     partyProgressByTask,
     primaryHasLocation,
@@ -262,11 +252,6 @@ export function useActiveTransactionQueueWorkflow({
     setTypeFilter,
     showCompleted,
     setShowCompleted,
-    groupByPo,
-    groupGatherAnim,
-    toggleGroupByPo,
-    collapsedPo,
-    setCollapsedPo,
     isPropertyInspectionQueue,
     isDistributionTable,
     isAllTransactionsTable,

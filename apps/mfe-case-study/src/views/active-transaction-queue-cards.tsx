@@ -18,10 +18,8 @@ import { queueCardMeta, queueCardTimer, queueCardTitle } from "../lib/app-data/q
 import { formatPoDisplay } from "../lib/app-data/po-intake-data";
 import type { PoIntakeRecord } from "../lib/app-data/po-intake-data";
 import type { WorkflowTask } from "../lib/app-data/tasks";
-import { allTransactionsPhaseStyle } from "../lib/app-data/all-transactions-queue";
 import { transactionNumberOf } from "../lib/app-data/transaction-number";
 import type {
-  AllTransactionsRowMeta,
   PrimaryRowMeta,
   QueueLayoutFlags,
 } from "./active-transaction-queue-state";
@@ -29,7 +27,6 @@ import type {
 type QueueMobileCardArgs = {
   flags: QueueLayoutFlags;
   disableRowOpen: boolean;
-  filteredAllTxMeta: AllTransactionsRowMeta[];
   filteredListed: WorkflowTask[];
   filteredPrimaryMeta: PrimaryRowMeta[];
   poByNumber: Map<string, PoIntakeRecord>;
@@ -52,7 +49,6 @@ type QueueMobileCardArgs = {
 export function buildQueueMobileCardItems({
   flags,
   disableRowOpen,
-  filteredAllTxMeta,
   filteredListed,
   filteredPrimaryMeta,
   poByNumber,
@@ -63,38 +59,6 @@ export function buildQueueMobileCardItems({
   handleDistributionRowClick,
   isTaskOpening,
 }: QueueMobileCardArgs): ActiveQueueMobileCardItem[] {
-  if (flags.isAllTransactionsTable) {
-    return filteredAllTxMeta.map((meta) => {
-      const metaLines = [
-        { text: formatPoDisplay(meta.poNumber), kind: "po" as const },
-        // Linked properties (2026-10-19): every phone card (all three branches here) shows the
-        // deed's transaction number beside the work order.
-        meta.transactionNumber
-          ? { text: meta.transactionNumber, kind: "po" as const }
-          : null,
-        meta.city !== "—" ? { text: meta.city, kind: "place" as const } : null,
-        meta.district !== "—"
-          ? { text: meta.district, kind: "place" as const }
-          : null,
-        meta.assignmentType !== "—"
-          ? { text: meta.assignmentType, kind: "type" as const }
-          : null,
-      ].filter((v): v is NonNullable<typeof v> => Boolean(v));
-      const done = meta.phaseLabel === "مكتمل";
-      return {
-        id: meta.task.id,
-        title: meta.deedCell,
-        meta: metaLines,
-        statusLabel: meta.phaseLabel,
-        statusStyle: allTransactionsPhaseStyle(meta.task),
-        tone: done ? "done" : "pending",
-        moreItems: resolveRowMoreItems(meta.task, meta.propertyId),
-        onOpen: () => handleRowClick(meta.task.id),
-        loading: isTaskOpening(meta.task.id),
-      };
-    });
-  }
-
   if (flags.isDistributionTable) {
     return filteredListed.map((task) => {
       const record = poByNumber.get(task.poNumber.trim());

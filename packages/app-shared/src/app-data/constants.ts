@@ -211,7 +211,8 @@ export const NAV: NavItem[] = [
   },
   {
     id: "all-transactions",
-    label: "المعاملات النشطة",
+    // «جميع العقارات» (Omar 2026-11-15) — was «المعاملات النشطة»; every property, the closed too.
+    label: "جميع العقارات",
     icon: "M4 6h16M4 12h16M4 18h10",
     grp: "المعاملات",
   },
@@ -299,7 +300,7 @@ export const PAGE_TITLES: Record<PageId, string> = {
   "active-case-study": "دراسة حالة العقارات",
   "system-upload": "الرفع على النظام",
   po: "أوامر العمل (PO)",
-  "all-transactions": "المعاملات النشطة",
+  "all-transactions": "جميع العقارات",
   "property-map": "خريطة العقارات",
   favorites: "المفضلة",
   "bourse-inquiry": "استعلام بورصة",
@@ -343,7 +344,7 @@ export const PAGE_BREADCRUMB: Record<PageId, string> = {
   "active-case-study": "قوائم المراحل / دراسة حالة العقارات",
   "system-upload": "قوائم المراحل / الرفع على النظام",
   po: "أوامر العمل (PO)",
-  "all-transactions": "المعاملات النشطة",
+  "all-transactions": "جميع العقارات",
   "property-map": "خريطة العقارات",
   favorites: "المفضلة",
   "bourse-inquiry": "قوائم المراحل / استعلام بورصة",

@@ -76,4 +76,23 @@ describe("global action toast — filter chips are not actions", () => {
       row.remove();
     }
   });
+
+  // 2026-11-15: the selected «موضحة في الصك» pill (bg-primary) flashed «جاري التنفيذ…».
+  it("shows no progress toast for a toggle button (aria-pressed), even styled as primary", () => {
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = "border-primary bg-primary text-white";
+    pill.setAttribute("aria-pressed", "true");
+    pill.textContent = "موضحة في الصك";
+    document.body.appendChild(pill);
+    const show = vi.fn(() => "progress-1");
+    const unbind = bindGlobalActionToast(show, () => {}, vi.fn(), () => false);
+    try {
+      pill.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      expect(show).not.toHaveBeenCalled();
+    } finally {
+      unbind();
+      pill.remove();
+    }
+  });
 });

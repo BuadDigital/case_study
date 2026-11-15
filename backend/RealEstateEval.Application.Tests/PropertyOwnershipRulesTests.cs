@@ -14,7 +14,7 @@ public class PropertyOwnershipRulesTests
         Assert.Equal(OwnershipTypes.Shared, OwnershipTypeRules.FromSharedFlag(true));
         Assert.Equal(OwnershipTypes.Absolute, OwnershipTypeRules.FromSharedFlag(false));
 
-        // Two owners without the tick stay «ملكية تامة» (Omar 2026-11-10); one owner with it is «مشاع».
+        // Two owners without the tick stay «ملكية مطلقة» (Omar 2026-11-10); one owner with it is «مشاع».
         var twoOwners = new WorkOrderProperty
         {
             Id = Guid.NewGuid(),

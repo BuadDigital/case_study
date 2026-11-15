@@ -1,7 +1,7 @@
 "use client";
 
 import type { MutableRefObject, ReactNode } from "react";
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import {
   Button,
   cn,
@@ -19,14 +19,23 @@ import {
   RemainingTimeCell,
   TickingRemainingTimeCell,
 } from "@case-study/mfe/components/ui/RemainingTimeCell";
-import { poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { useOnlineStatus } from "@platform/app-shared/hooks/useOnlineStatus";
 import { isOfflineFieldSession } from "@platform/app-shared/offline/offline-access-cache";
 import { ActiveQueueMobileCards } from "@platform/app-shared/components/ActiveQueueMobileCards";
 import { InspectorMobileQueue } from "../components/field-inspection/InspectorMobileQueue";
 import type { WorkflowTask } from "../lib/app-data/tasks";
 import { ActiveTransactionPageLayout } from "../components/active-transactions/ActiveTransactionPageLayout";
-import { AllTransactionsQueueTable } from "./active-transaction-queue-all-transactions-table";
+import { SituationBar } from "../components/active-transactions/ActiveTransactionsSituationBar";
+import type { PageSituationCardDef } from "../lib/app-data/active-transaction-page-situation";
+import {
+  countAllTransactionsByParty,
+  type AllTransactionsQueueRowMeta,
+} from "../lib/app-data/all-transactions-queue";
+import type { TransactionParty } from "../lib/app-data/my-work-model";
+import {
+  AllTransactionsMobileList,
+  AllTransactionsQueueTable,
+} from "./active-transaction-queue-all-transactions-table";
 import { DistributionQueueTable } from "./active-transaction-queue-distribution-table";
 import { EngineeringSurveyQueueTable } from "./active-transaction-queue-engineering-survey-table";
 import { PrimaryQueueTable } from "./active-transaction-queue-primary-table";
@@ -63,6 +72,40 @@ type PanelRenderProps = {
  * is the actor's total for the filters and the search; the range reports the
  * rows that survived the client-side rules the contract keeps.
  */
+/**
+ * «المعاملات النشطة»'s cards (Omar 2026-11-15): how many live transactions wait at each party, at the
+ * top of the page as «أعمالي» shows its cards. Review and upload are one role, one card.
+ */
+const PARTY_CARDS: (PageSituationCardDef & { key: TransactionParty })[] = [
+  { key: "co", label: "التنسيق", sub: "إدخال وتوزيع واستلام", tone: "blue", icon: "clipboard" },
+  { key: "fi", label: "المعاينة", sub: "بانتظار المعاين", tone: "blue", icon: "key" },
+  { key: "es", label: "المكتب الهندسي", sub: "بانتظار المكتب", tone: "blue", icon: "building" },
+  { key: "st", label: "الدراسة", sub: "عند دارس العقار", tone: "blue", icon: "clipboard" },
+  { key: "ap", label: "التقييم", sub: "عند المقيّم", tone: "blue", icon: "currency" },
+  { key: "rv", label: "الرفع", sub: "المراجعة والإيداع والرفع", tone: "blue", icon: "check" },
+];
+
+/**
+ * The party cards over the staff's «المعاملات النشطة».
+ *
+ * How it works: counts every live row, whatever the search or filters, so the cards keep the whole
+ * picture; «—» while the list loads.
+ * Edge cases: a transaction waiting for two parties counts on both cards (`countAllTransactionsByParty`).
+ */
+function AllTransactionsPartyCards({
+  rows,
+  ready,
+}: {
+  rows: readonly AllTransactionsQueueRowMeta[];
+  ready: boolean;
+}) {
+  const values = useMemo(
+    () => (ready ? countAllTransactionsByParty(rows) : {}),
+    [rows, ready],
+  );
+  return <SituationBar cards={PARTY_CARDS} values={values} />;
+}
+
 const OFFLINE_EMPTY_LINE = "لا توجد مهام محفوظة على الجهاز بعد.";
 const OFFLINE_EMPTY_HINT = "تُحمَّل مهامك إلى الجهاز تلقائياً عند توفر الشبكة.";
 
@@ -135,7 +178,6 @@ export function ActiveTransactionQueueView({
   queueApiRef?: MutableRefObject<ActiveQueueApi | null>;
 }) {
   const {
-    router,
     tasks,
     staffUsers,
     paged,
@@ -157,8 +199,8 @@ export function ActiveTransactionQueueView({
     listed,
     filteredListed,
     filteredPrimaryMeta,
+    allTransactionsRowMeta,
     filteredAllTxMeta,
-    allTxPoGroups,
     poByNumber,
     partyProgressByTask,
     primaryHasLocation,
@@ -172,11 +214,6 @@ export function ActiveTransactionQueueView({
     setTypeFilter,
     showCompleted,
     setShowCompleted,
-    groupByPo,
-    groupGatherAnim,
-    toggleGroupByPo,
-    collapsedPo,
-    setCollapsedPo,
     isPropertyInspectionQueue,
     isDistributionTable,
     isAllTransactionsTable,
@@ -246,7 +283,6 @@ export function ActiveTransactionQueueView({
       isPartyQueueToggleTable={isPartyQueueToggleTable}
       isPropertyAppraisalTable={isPropertyAppraisalTable}
       isDistributionTable={isDistributionTable}
-      isAllTransactionsTable={isAllTransactionsTable}
       search={search}
       onSearchChange={setSearch}
       statusFilter={statusFilter}
@@ -258,9 +294,6 @@ export function ActiveTransactionQueueView({
       showCompleted={showCompleted}
       onToggleShowCompleted={() => setShowCompleted((v) => !v)}
       onShowCompletedIntent={prefetchShowCompletedToggle}
-      groupByPo={groupByPo}
-      groupGatherAnim={groupGatherAnim}
-      onToggleGroupByPo={toggleGroupByPo}
       filteredCount={filteredListed.length}
     />
   ) : null;
@@ -314,7 +347,14 @@ export function ActiveTransactionQueueView({
           ) : (
             <>
               {queueToolbar}
-              {isDesktopViewport === true ? null : isPropertyInspectionQueue ? (
+              {isDesktopViewport === true ? null : isAllTransactionsTable ? (
+                <div ref={mobileSwapRef} className="pb-3 lg:hidden max-lg:px-0">
+                  <AllTransactionsMobileList
+                    ctx={rowCtx}
+                    filteredMeta={filteredAllTxMeta}
+                  />
+                </div>
+              ) : isPropertyInspectionQueue ? (
                 <div ref={mobileSwapRef} className="pb-3 lg:hidden max-lg:px-0">
                   <InspectorMobileQueue
                     tasks={filteredListed}
@@ -373,17 +413,7 @@ export function ActiveTransactionQueueView({
                   {isAllTransactionsTable ? (
                     <AllTransactionsQueueTable
                       ctx={rowCtx}
-                      showWaiting={!config.partyAssignee}
                       filteredMeta={filteredAllTxMeta}
-                      groupByPo={groupByPo}
-                      poGroups={allTxPoGroups}
-                      collapsedPo={collapsedPo}
-                      onToggleCollapsed={(po) =>
-                        setCollapsedPo((prev) => ({ ...prev, [po]: !prev[po] }))
-                      }
-                      onOpenPoProperties={(po) =>
-                        router.push(poPropertiesPath(po))
-                      }
                     />
                   ) : isDistributionTable ? (
                     <DistributionQueueTable
@@ -487,6 +517,14 @@ export function ActiveTransactionQueueView({
         pageId={config.pageId ?? "active-primary-data"}
         hasRail={hasRail}
         panelOpen={panelOpen}
+        aboveSituation={
+          isAllTransactionsTable && !config.partyAssignee ? (
+            <AllTransactionsPartyCards
+              rows={allTransactionsRowMeta}
+              ready={queueReady && !queueLoadError}
+            />
+          ) : undefined
+        }
         queuePanel={queuePanel}
         sidePanel={sidePanel}
       />

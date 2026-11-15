@@ -19,6 +19,7 @@ import {
 import { canReopenCaseStudyReport } from "./po-roles";
 import { poPropertyDetailPath, poPropertiesPath } from "@platform/app-shared/domain/po-routes";
 import { transactionNumberOf } from "./transaction-number";
+import type { TransactionProgress, TransactionParty } from "./my-work-model";
 
 /** Short phase labels matching Case Study.html `renderAllTransactions`. */
 export function allTransactionsPhaseLabel(task: WorkflowTask): string {
@@ -92,6 +93,17 @@ export type AllTransactionsQueueRowMeta = {
   transactionDeedCount: number;
   /** «بانتظار» — who the live transaction waits for (`transactionProgress`); null when not resolved. */
   waitingOn: string | null;
+  /** `waitingOn` as the page's party cards (`TransactionProgress.parties`); empty when not resolved. */
+  waitingParties: readonly TransactionParty[];
+  /** The deed's property type, under the place (as «أعمالي»). */
+  propertyType?: string;
+  /** The work order's description, under its number. */
+  poDescription?: string;
+  /** The work order's receipt from Enfaz and its deadline. */
+  receivedIso?: string;
+  dueIso?: string;
+  /** Uploaded to Enfaz or cancelled (`closedTransactionProgress`): no deadline runs against it. */
+  closed: boolean;
 };
 
 /**
@@ -230,8 +242,8 @@ export function collapseAllTransactionsToLatestPhase(
  * The «المعاملات النشطة» rows: one per property at its latest stage.
  *
  * How it works: builds a row per task, collapses them per property (`collapseAllTransactionsToLatestPhase`),
- * then — when `progressOf` is given (staff) — replaces the coarse phase with where the transaction
- * stands and who it waits for, and drops what is no longer live.
+ * then — when `progressOf` is given (staff) — replaces the coarse phase with the transaction's state
+ * («قيد الدراسة», or how a closed one ended) and who it waits for, and drops what it cannot place.
  * Edge cases / changed 2026-11-05 (Omar: «المعاملات النشطة» replaces the hidden «جميع المعاملات»):
  * without `progressOf` (party roles, their own tasks) the rows keep the phase label and every status.
  */
@@ -239,7 +251,7 @@ export function buildAllTransactionsQueueRowMeta(
   tasks: WorkflowTask[],
   poByNumber: Map<string, PoIntakeRecord>,
   now: Date,
-  progressOf?: (task: WorkflowTask) => { stage: string; waitingOn: string } | null,
+  progressOf?: (task: WorkflowTask) => (TransactionProgress & { closed?: boolean }) | null,
 ): AllTransactionsQueueRowMeta[] {
   const rows = tasks.map((task) => {
     const record = poByNumber.get(task.poNumber.trim());
@@ -261,6 +273,12 @@ export function buildAllTransactionsQueueRowMeta(
         transactionNumberOf(property) ?? task.transactionNumber ?? null,
       transactionDeedCount: property?.transactionDeedCount ?? 1,
       waitingOn: null,
+      waitingParties: [],
+      propertyType: task.propertyType,
+      poDescription: record?.workOrderDescription?.trim() || undefined,
+      receivedIso: record?.receivedFromEnfathAt || undefined,
+      dueIso: record?.dueDateAt || undefined,
+      closed: false,
     };
   });
   const collapsed = collapseAllTransactionsToLatestPhase(rows);
@@ -269,9 +287,51 @@ export function buildAllTransactionsQueueRowMeta(
   for (const row of collapsed) {
     const progress = progressOf(row.task);
     if (!progress) continue;
-    live.push({ ...row, phaseLabel: progress.stage, waitingOn: progress.waitingOn });
+    live.push({
+      ...row,
+      // «جميع العقارات» is a page to look at (Omar 2026-11-15: two states are enough, «قيد الدراسة» and «مكتملة»): a live
+      // transaction reads «قيد الدراسة» whatever its step; the cards above say where it stands.
+      phaseLabel: progress.closed === true ? progress.stage : "قيد الدراسة",
+      waitingOn: progress.waitingOn || null,
+      waitingParties: progress.parties,
+      closed: progress.closed === true,
+    });
   }
   return live;
+}
+
+/**
+ * How many live transactions wait for each party — the cards above «المعاملات النشطة» (Omar 2026-11-15).
+ *
+ * How it works: counts each row once under every party in its `waitingParties`.
+ * Edge cases: a transaction waiting for two parties at once (inspector and office, review and
+ * appraiser) is counted under both, so the cards may add up to more than the rows (Omar: no total
+ * card); a failure or an outside party alone is under none.
+ */
+/**
+ * Where a transaction that is no longer live stands, for «جميع العقارات» (Omar 2026-11-15: every
+ * property, the uploaded and the cancelled too) — `transactionProgress` gives null for these.
+ *
+ * How it works: on the deed's case-study task — cancelled → «ملغاة»; uploaded to Enfaz or completed →
+ * «مكتملة»; it waits for no one and counts on no card.
+ * Edge cases: a live task → null (read `transactionProgress` instead); not a case-study task → null.
+ */
+export function closedTransactionProgress(
+  task: WorkflowTask,
+): (TransactionProgress & { closed: true }) | null {
+  if (task.kind !== "case-study-property") return null;
+  const done = { waitingOn: "", parties: [], closed: true } as const;
+  if (task.status === "cancelled") return { stage: "ملغاة", ...done };
+  if (task.propertyHandedOverToEnfaz || task.status === "completed") return { stage: "مكتملة", ...done };
+  return null;
+}
+
+export function countAllTransactionsByParty(
+  rows: readonly Pick<AllTransactionsQueueRowMeta, "waitingParties">[],
+): Record<TransactionParty, number> {
+  const counts: Record<TransactionParty, number> = { co: 0, fi: 0, es: 0, st: 0, ap: 0, rv: 0 };
+  for (const row of rows) for (const party of row.waitingParties) counts[party] += 1;
+  return counts;
 }
 
 export function filterAllTransactionsQueueRows(
@@ -308,18 +368,6 @@ export function filterAllTransactionsQueueRows(
       return hay.includes(q);
     })
     .map((row) => row.task);
-}
-
-export function uniqueSortedPoOrder(poNumbers: string[]): string[] {
-  const seen = new Set<string>();
-  const order: string[] = [];
-  for (const po of poNumbers) {
-    const key = po.trim();
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    order.push(key);
-  }
-  return order;
 }
 
 /** Section-supervisor and above may reopen a completed transaction. */

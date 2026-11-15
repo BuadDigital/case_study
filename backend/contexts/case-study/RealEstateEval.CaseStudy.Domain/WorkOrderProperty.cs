@@ -59,7 +59,7 @@ public class WorkOrderProperty : ITrackUpdatedAt
     public string? DeedOwnersJson { get; set; }
  /// <summary>
  /// «مشاع» — ticked by the staff on the initial data (Omar 2026-11-10: the staff know whether a deed is
- /// shared; the owners count no longer decides it). Unticked = «ملكية تامة».
+ /// shared; the owners count no longer decides it). Unticked = «ملكية مطلقة».
  /// </summary>
     public bool IsSharedOwnership { get; set; }
  /// <summary>yes / no — property restrictions (bourse stage).</summary>

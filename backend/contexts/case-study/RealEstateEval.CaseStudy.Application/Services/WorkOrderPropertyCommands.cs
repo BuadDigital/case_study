@@ -141,6 +141,27 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
         return error is null ? null : new Dictionary<string, string> { ["_"] = error };
     }
 
+    /// <summary>
+    /// The distribution lock (Omar 2026-11-15): once the deed is distributed to the parties, the fields
+    /// they work from — deed / registry number and date, area, boundaries, map link, type and
+    /// classification — cannot change. Returns the field errors, or null when the save may go on.
+    /// </summary>
+    /// <remarks>
+    /// How it works: maps the property as the save would leave it and diffs it against the copy taken
+    /// before the edit (<see cref="PropertyDistributionLockRules.Errors"/>); only when a locked field
+    /// changed does it ask whether the deed is distributed, so ordinary saves cost no extra query.
+    /// Edge cases: nothing is saved on a refusal — the tracked changes die with the request.
+    /// </remarks>
+    private async Task<Dictionary<string, string>?> DistributionLocked(
+        WorkOrderPropertyDto before,
+        WorkOrderProperty edited,
+        CancellationToken cancellationToken)
+    {
+        var errors = PropertyDistributionLockRules.Errors(before, WorkOrderMapper.ToPropertyDto(edited));
+        if (errors.Count == 0) return null;
+        return await _db.IsDistributedAsync(edited.Id, cancellationToken) ? errors : null;
+    }
+
     public async Task<(WorkOrderPropertyDto? Result, Dictionary<string, string>? Errors)> UpdatePropertyAsync(
         string poNumber,
         Guid propertyId,
@@ -233,6 +254,9 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             if (await NumberDeedAsync(existing, _time.UtcNow(), cancellationToken) is { } numberError)
                 return (null, numberError);
         }
+
+        if (await DistributionLocked(beforeEdit, existing, cancellationToken) is { } distributionLocked)
+            return (null, distributionLocked);
 
  // Never mix contact DELETE/INSERT with property UPDATE in one SaveChanges —
  // EF/Npgsql rewrites collection replaces into DELETE+UPDATE and throws
@@ -407,6 +431,8 @@ public sealed class WorkOrderPropertyCommands : IWorkOrderPropertyCommands
             bourseNow,
             actorName);
         if (applyErrors is not null) return (null, applyErrors);
+        if (await DistributionLocked(beforeBourse, existing, cancellationToken) is { } distributionLocked)
+            return (null, distributionLocked);
 
         await _db.SaveChangesAsync(cancellationToken);
         // The first completion is the bourse's own entry (its timeline row says so); a re-save edits it.

@@ -206,7 +206,7 @@ export function AppraiserStudySummary({
       <SummaryGroup title="الوضع النظامي" testId="appraiser-legal">
         <FactsGrid
           facts={[
-            { label: "الملكية", value: property.isSharedOwnership ? "مشاع" : "ملكية تامة" },
+            { label: "الملكية", value: property.isSharedOwnership ? "مشاع" : "ملكية مطلقة" },
             { label: "حالة الصك", value: property.deedStatus.trim() },
             { label: "القيود على الصك", value: restrictions.text },
             { label: "المخالفات الظاهرة (المعاين)", value: appraiserViolationsText(inspector ?? null) },

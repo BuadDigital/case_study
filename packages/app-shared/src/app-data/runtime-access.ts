@@ -5,6 +5,11 @@ export function setRuntimeCapabilities(capabilities: readonly string[]): void {
   runtimeCapabilities = capabilities;
 }
 
+/** The capabilities last synced from GET /api/permissions (empty before sign-in). */
+export function getRuntimeCapabilities(): readonly string[] {
+  return runtimeCapabilities;
+}
+
 export function hasRuntimeCapability(capability: string): boolean {
   return runtimeCapabilities.includes(capability);
 }

@@ -49,13 +49,10 @@ import {
   PpTitle,
   assignmentTypeTone,
   deedStatusStyle,
-  propertyWorkflowStatusStyle,
 } from "../components/po-intake/PoPropertiesHtmlPrimitives";
 import {
   assignmentCompositeTag,
   formatDateAr,
-  formatPropertyLocation,
-  formatPropertyTypeLine,
   hasBourseDetailFields,
   isPastDue,
   isDueSoon,
@@ -63,7 +60,6 @@ import {
 } from "../lib/app-data/po-intake-data";
 import {
   poHeaderEditPath,
-  poPropertyPath,
   poListPath,
 } from "@platform/app-shared/domain/po-routes";
 import { buildCopyPriorTargetOptions } from "../lib/app-data/po-intake-model";
@@ -90,14 +86,8 @@ import {
 import { useAppAccess } from "@platform/app-shared/contexts/AppAccessContext";
 import { appDataKeys } from "@platform/app-shared/query/app-data-keys";
 import type { PropertyWorkflowStage } from "@platform/app-shared/app-data/constants";
-import { PropertyListRowStatuses } from "@platform/api-client";
 import type { PoPropertyIntake } from "../lib/app-data/po-intake-data";
-
-function deedLabel(property: PoPropertyIntake): string {
-  return (
-    property.deedNumber.trim() || property.realEstateRegNumber.trim() || "—"
-  );
-}
+import { poPropertyRowView } from "../components/po-intake/po-property-row-view";
 
 /** DD/MM/YYYY plus HH:mm when present in ISO or a separate time field. */
 function formatDateTimeAr(iso: string, separateTime?: string): string {
@@ -284,51 +274,8 @@ export function PoPropertiesPage({
   const typeTone = assignmentTypeTone(record.assignmentType);
 
   /** Per-property display values shared by the desktop table and the phone cards. */
-  const rowView = (prop: PoPropertyIntake) => {
-    const serverStatus =
-      statusByPropertyId.get(prop.id) ?? PropertyListRowStatuses.New;
-    const boursePending = !prop.bourseDataCompleted && !prop.isRemoved;
-    // A slot the specialist opened but has not saved yet (:
-    // the property exists on the server from the first second).
-    const intakePending =
-      boursePending &&
-      !prop.deedNumber.trim() &&
-      !prop.realEstateRegNumber.trim();
-    const locRaw = formatPropertyLocation(prop);
-    const location =
-      locRaw === "بانتظار البورصة" ? "بانتظار البورصة" : locRaw || "—";
-    const typeLine = formatPropertyTypeLine(prop);
-    const typeDisplay =
-      boursePending && !hasBourseDetailFields(prop) ? "—" : typeLine || "—";
-    const detailHref = poPropertyPath(poNumber, prop.id);
-    const label = deedLabel(prop);
-    const workflowStyle = prop.isRemoved
-      ? propertyWorkflowStatusStyle("removed")
-      : intakePending
-        ? {
-            label: "بانتظار البيانات الأولية",
-            base: "#7a7a7a",
-            fg: "#5f5f5f",
-          }
-        : boursePending
-          ? {
-              label: "بانتظار البورصة",
-              base: "#a67c1a",
-              fg: "#8a6a18",
-            }
-          : propertyWorkflowStatusStyle(serverStatus);
-    const deedSt = prop.deedStatus.trim();
-
-    return {
-      boursePending,
-      location,
-      typeDisplay,
-      detailHref,
-      label,
-      workflowStyle,
-      deedSt,
-    };
-  };
+  const rowView = (prop: PoPropertyIntake) =>
+    poPropertyRowView(prop, poNumber, statusByPropertyId.get(prop.id));
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-bg px-4 py-5 max-lg:px-3 sm:px-[30px] sm:py-[26px]">

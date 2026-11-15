@@ -260,11 +260,11 @@ internal static class ValuationListsSeed
     }
 
     /// <summary>The professional glossary as printed in the reference report: 42 terms, in its order.</summary>
-    /// <summary>Round 2: one ownership term everywhere — «ملكية تامة» (was «ملكية مطلقة»).</summary>
-    internal const string FreeholdTermAr = "ملكية تامة";
+    /// <summary>One ownership term everywhere — «ملكية مطلقة» (Omar 2026-11-15; round 2 had made it «ملكية تامة»).</summary>
+    internal const string FreeholdTermAr = "ملكية مطلقة";
 
-    /// <summary>The freehold term the round-1 seed used — a stored list still carrying it is upgraded.</summary>
-    private const string PreviousFreeholdTermAr = "ملكية مطلقة";
+    /// <summary>The freehold term the round-2 seed used — a stored list still carrying it is upgraded.</summary>
+    private const string PreviousFreeholdTermAr = "ملكية تامة";
 
     private static List<ValuationListItemDto> Glossary() => Glossary(FreeholdTermAr);
 

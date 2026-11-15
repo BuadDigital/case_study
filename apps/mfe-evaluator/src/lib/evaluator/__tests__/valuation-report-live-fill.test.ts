@@ -68,7 +68,7 @@ describe("valuation report live fill from intake", () => {
     expect(fill.cells["أساس القيمة"]).toBe("القيمة السوقية");
     expect(fill.cells["الغرض من التقييم"]).toBe("البيع");
     expect(fill.cells["فرضية القيمة"]).toBe("الاستخدام الحالي");
-    expect(fill.cells["نوع الملكية"]).toBe("ملكية تامة");
+    expect(fill.cells["نوع الملكية"]).toBe("ملكية مطلقة");
     expect(fill.cells["اسم مستخدم تقرير التقييم"]).toContain("نبر");
     expect(fill.cells["نسبة خصم التصفية المنظمة"]).toBe("—");
   });

@@ -10,7 +10,6 @@ import {
   useToast,
   whenIdle,
 } from "@platform/ui-kit";
-import { CaseStudyTaskWork } from "./MyTaskWorkView";
 import {
   ActiveTransactionQueueView,
   type ActiveTransactionQueueConfig,
@@ -35,7 +34,16 @@ import {
   buildAllTransactionsRowMoreItems,
   canReopenCompletedTransaction,
 } from "../lib/app-data/all-transactions-queue";
-import { canReopenCaseStudyReport } from "../lib/app-data/po-roles";
+import {
+  canRedistributeParties,
+  canReopenCaseStudyReport,
+  canSkipEngineeringSurvey,
+} from "../lib/app-data/po-roles";
+import { RedistributePartiesHost } from "../components/distribution/RedistributePartiesHost";
+import {
+  poPropertyDetailPath,
+  poTaskCoordinationPath,
+} from "@platform/app-shared/domain/po-routes";
 import { reopenCaseStudyReportDraft } from "../lib/app-data/case-study-report-commands";
 import { caseStudyReopenSuccessMessage } from "../lib/app-data/case-study-report-issue-errors";
 import {
@@ -69,6 +77,18 @@ function assignedListedTasks(tasks: WorkflowTask[]): WorkflowTask[] {
   return tasks.filter((task) => !isTaskOnSuspendedProperty(task));
 }
 
+/**
+ * Where a «جميع العقارات» row opens (Omar 2026-11-15, as «أعمالي»: the row goes to a page, no side
+ * panel): the property's page; a deed with no property yet opens its coordination page, which
+ * creates the property first.
+ */
+function propertyPageOf(task: WorkflowTask): string {
+  const po = task.poNumber.trim();
+  return task.propertyId
+    ? poPropertyDetailPath(po, task.propertyId)
+    : poTaskCoordinationPath(po, task.parentTaskId ?? task.id);
+}
+
 export function AllAssignedTransactionsView() {
   const { role, access, viewerDisplayName } = useAppAccess();
   const router = useRouter();
@@ -78,6 +98,8 @@ export function AllAssignedTransactionsView() {
   const { showToast } = useToast();
   const [reopenTask, setReopenTask] = useState<WorkflowTask | null>(null);
   const [reopenDeedLabel, setReopenDeedLabel] = useState("");
+  // «تعديل الأطراف» (Omar 2026-11-15): the deed's case-study task whose parties are being edited.
+  const [partiesTask, setPartiesTask] = useState<WorkflowTask | null>(null);
   // «المعاملات النشطة» rows offer the general actions too (reopen, failure, cancellation).
   const { itemsFor: generalItemsFor, dialogs: generalDialogs } =
     useTransactionGeneralActions();
@@ -85,6 +107,8 @@ export function AllAssignedTransactionsView() {
   const isPartyRole = isPartyWorkflowRole(role);
 
   const mayReopenReport = canReopenCaseStudyReport(access);
+  const mayReassignParties = canRedistributeParties(access);
+  const mayDropOffice = canSkipEngineeringSurvey(access);
   const mayReopenCompleted = canReopenCompletedTransaction(role);
   useEffect(() => {
     if (!mayReopenReport && !mayReopenCompleted) return;
@@ -113,22 +137,22 @@ export function AllAssignedTransactionsView() {
   const config = useMemo((): ActiveTransactionQueueConfig => {
     return {
       pageId: "all-transactions",
-      pageTitle: "المعاملات النشطة",
+      pageTitle: "جميع العقارات",
       hidePageTitle: true,
       tableLayout: "all-transactions",
-      emptyLine: "لا توجد معاملات مطابقة.",
+      emptyLine: "لا توجد عقارات.",
       emptyHint: isPartyRole
         ? "تظهر هنا المعاملات المسندة إليك — صف واحد لكل صك مع آخر مرحلة وصل إليها."
-        : "تظهر هنا كل معاملة حية — صف واحد لكل صك: أين وصلت ومن تنتظر. المرفوعة على إنفاذ والملغاة لا تظهر؛ ابحث عنها من الشريط العلوي.",
+        : "تظهر هنا كل العقارات — صف واحد لكل صك: أين وصل ومن ينتظر، والمرفوعة على إنفاذ والملغاة بمرحلتها.",
       panelId: "all-assigned-transactions-panel",
-      tableHint: "اضغط الصف للفتح أو الإغلاق.",
+      tableHint: "اضغط الصف لفتح العقار.",
       partyAssignee: isPartyRole,
       assigneeRole: isPartyRole ? role : undefined,
       getBasePath: allTransactionsPath,
       getTaskPath: allTransactionsTaskPath,
       queueSort: "distributed-newest-first",
       includeAllStatuses: true,
-      statusColumnLabel: "المرحلة",
+      statusColumnLabel: "الحالة",
       buildRowMoreItems: (ctx) => {
         const propId = ctx.propertyId ?? ctx.task.propertyId;
         const property = propId
@@ -148,6 +172,27 @@ export function AllAssignedTransactionsView() {
             setReopenTask(ctx.task);
           },
         });
+        // «تعديل الأطراف» (Omar 2026-11-15): the parties working on the deed — hand one that has not
+        // delivered to someone else, or drop an office the transaction does not need. Offered on the
+        // deed's case-study task once distributed (the server's rule), to whoever may do either.
+        const parent =
+          ctx.task.kind === "case-study-property"
+            ? ctx.task
+            : tasks?.find((t) => t.id === ctx.task.parentTaskId);
+        if (
+          !isPartyRole &&
+          parent?.kind === "case-study-property" &&
+          parent.phase === "case-study" &&
+          parent.status !== "cancelled" &&
+          parent.status !== "completed" &&
+          (mayReassignParties || mayDropOffice)
+        ) {
+          stageItems.push({
+            id: "edit-parties",
+            label: "تعديل الأطراف",
+            onClick: () => setPartiesTask(parent),
+          });
+        }
         // Party roles keep their own menu; the staff get the general actions after it.
         return property && !isPartyRole
           ? withTransactionGeneralItems(
@@ -168,8 +213,8 @@ export function AllAssignedTransactionsView() {
                 : "b-prog";
         return { label, className };
       },
-      // Party workspaces for latest-stage party tasks; case-study stays panel.
-      resolveFullPageTaskPath: partyTaskWorkspacePath,
+      // Party roles open their workspace; the staff open the property's page.
+      resolveFullPageTaskPath: isPartyRole ? partyTaskWorkspacePath : propertyPageOf,
       refreshOnWindowEvents: isPartyRole
         ? PARTY_QUEUE_REFRESH_EVENTS
         : undefined,
@@ -181,7 +226,15 @@ export function AllAssignedTransactionsView() {
           viewerDisplayName,
         ),
     };
-  }, [isPartyRole, role, viewerDisplayName, generalItemsFor]);
+  }, [
+    isPartyRole,
+    role,
+    viewerDisplayName,
+    generalItemsFor,
+    tasks,
+    mayReassignParties,
+    mayDropOffice,
+  ]);
 
   if (redirectingPartyTask) {
     return <PanelSkeleton className="p-4" />;
@@ -189,23 +242,14 @@ export function AllAssignedTransactionsView() {
 
   return (
     <>
-      <ActiveTransactionQueueView
-        config={config}
-        renderPanel={
-          isPartyRole
-            ? undefined
-            : ({ task, onRefresh, onClose }) => (
-                <CaseStudyTaskWork
-                  key={task.id}
-                  task={task}
-                  onRefresh={onRefresh}
-                  layout="panel"
-                  onClose={onClose}
-                />
-              )
-        }
-      />
+      <ActiveTransactionQueueView config={config} />
       {generalDialogs}
+      <RedistributePartiesHost
+        task={partiesTask}
+        onClose={() => setPartiesTask(null)}
+        mayReassign={mayReassignParties}
+        allowDropOffice={mayDropOffice}
+      />
       <Suspense fallback={null}>
         {reopenTask !== null && reopenTask.kind === "case-study-property" ? (
           // A case-study parent reopens through its issued report (the server refuses the generic reopen).

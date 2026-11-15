@@ -7,6 +7,7 @@ import type {
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
 
+import { isCustomFactorKey } from "./lib/factor-registry";
 import { autoAreaPct } from "./lib/market-save-mappers";
 import type { MatrixDispatch } from "./lib/matrix-actions";
 import {
@@ -45,6 +46,15 @@ export function useAdjustmentsMatrixModel({
 
   const saveRationale = (factorKey: string, text: string) =>
     dispatch({ type: "save-rationale", factorKey, text });
+
+  /**
+   * The name input of an added custom factor («عامل مخصص») — `undefined` for every other row, so
+   * a catalogue factor's name stays plain text.
+   */
+  const renameHandler = (factorKey: string) =>
+    isCustomFactorKey(factorKey)
+      ? (labelAr: string) => void dispatch({ type: "rename-factor", factorKey, labelAr })
+      : undefined;
 
   // js-index-maps: line index per (comparable, factor) instead of find() in every cell each render.
   const linesByItem = useMemo(() => {
@@ -91,6 +101,7 @@ export function useAdjustmentsMatrixModel({
     confirmDelete,
     setConfirmDelete,
     saveRationale,
+    renameHandler,
     lineOf,
     linePct,
     justValue,

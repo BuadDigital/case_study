@@ -467,10 +467,10 @@ describe("§23 — age rationales (cost handoff)", () => {
     ]);
   });
 
-  it("deed full ownership prints «ملكية تامة»", () => {
+  it("deed full ownership prints «ملكية مطلقة»", () => {
     expect(
       buildValuationReportLiveFill({ draft: draft(), property: { ownershipType: "absolute" } as never }).cells["نوع الملكية"],
-    ).toBe("ملكية تامة");
+    ).toBe("ملكية مطلقة");
   });
 
   it("no notes when nothing was written", () => {

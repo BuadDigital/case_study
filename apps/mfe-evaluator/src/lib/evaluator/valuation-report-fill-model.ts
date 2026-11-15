@@ -21,6 +21,8 @@
 //  • section 20 landValueRows come from costLandReportRows.
 //  • Comparable transaction dates print as yyyy/mm/dd; the membership expiry date goes through
 //          displayLicenseDate.
+// 2026-11-15 (Omar)
+//  • Back to «ملكية مطلقة» across the system — round 2's «ملكية تامة» is withdrawn.
 // A→Z run 2026-11-02 fixes (2026-11-04)
 //  • Purpose from the work order's saved key (#16/#28); office boundaries typed in the deed fields
 //         print (#17); «مشاع — حق منفعة…» (#50); «أرض فقط» scope row (#71); facade direction fills
@@ -146,8 +148,8 @@ import { parseEvaluatorAmount } from "./value-estimation";
 import { costLandReportRows, type CostLandReportRow } from "./cost-land-figures";
 
 const OWNERSHIP_LABELS: Record<string, string> = {
-  // One wording everywhere (approach settings, report, case study): «ملكية تامة».
-  absolute: "ملكية تامة",
+  // One wording everywhere (report, case study, glossary): «ملكية مطلقة» (Omar 2026-11-15).
+  absolute: "ملكية مطلقة",
   shared: "مشاع",
 };
 
@@ -242,7 +244,7 @@ function ownershipTypeDisplay(value: string | null | undefined): string {
 
 /*
  * «نوع الملكية» prints the initial data's ownership type only (ownershipTypeDisplay of the
- * property's ownershipType: «ملكية تامة» / «مشاع» from the tick beside the owner name).
+ * property's ownershipType: «ملكية مطلقة» / «مشاع» from the tick beside the owner name).
  * 2026-11-15 (Omar): the appraiser's «نوع الملكية المقيَّمة» list (حق منفعة / أرض مستأجرة with lease
  * years) is removed — with it went the «مشاع — حق منفعة …» cell, the reworded full-ownership
  * assumption and the lease-capped age note.

@@ -12,12 +12,15 @@ export function GentleBusy({
   pending = true,
   children,
   fallback = null,
+  handoff = false,
 }: {
   pending?: boolean;
   children: ReactNode;
   fallback?: ReactNode;
+  /** A page-level loader: shows at once when another page loader has just left (no 300ms gap). */
+  handoff?: boolean;
 }): ReactNode {
-  const show = useDeferredVisible(pending);
+  const show = useDeferredVisible(pending, undefined, handoff);
   if (!pending) return children;
   if (!show) return fallback;
   return children;

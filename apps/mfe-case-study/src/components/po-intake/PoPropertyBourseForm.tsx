@@ -36,6 +36,7 @@ import { RegField, RegSelect } from "@platform/app-shared/registration/FormField
 import type { FieldErrors } from "@platform/app-shared/registration/registration-utils";
 import { cn, FormRow, InfathSection, Label, Note, useToast } from "@platform/ui-kit";
 import { useEffect, useMemo } from "react";
+import { DISTRIBUTION_LOCKED_HINT } from "../../lib/app-data/property-distribution-lock";
 
 type Props = {
   property: PoPropertyIntake;
@@ -50,6 +51,11 @@ type Props = {
   showDeedVitalityFlow?: boolean;
   deedVitality?: BourseDeedVitality | null;
   onDeedVitalityChange?: (value: BourseDeedVitality) => void;
+  /**
+   * Distributed deed (Omar 2026-11-15): the area, the classification and type, and the boundaries are
+   * read-only — the parties work from them. The city, district, deed status and restrictions stay open.
+   */
+  distributionLocked?: boolean;
 };
 
 const pillClass = (selected: boolean) =>
@@ -66,7 +72,9 @@ export function PoPropertyBourseForm({
   showDeedVitalityFlow = false,
   deedVitality = null,
   onDeedVitalityChange,
+  distributionLocked = false,
 }: Props) {
+  const lockHint = distributionLocked ? DISTRIBUTION_LOCKED_HINT : undefined;
   const { showToast } = useToast();
   const upload = usePropertyDocUpload();
   const attachPo = poNumber?.trim() || "";
@@ -113,6 +121,7 @@ export function PoPropertyBourseForm({
           <div className="flex flex-wrap gap-1.5">
             <button
               type="button"
+              aria-pressed={deedVitality === "active"}
               className={pillClass(deedVitality === "active")}
               onClick={() => {
                 onDeedVitalityChange?.("active");
@@ -123,6 +132,7 @@ export function PoPropertyBourseForm({
             </button>
             <button
               type="button"
+              aria-pressed={deedVitality === "inactive"}
               className={pillClass(deedVitality === "inactive")}
               onClick={() => {
                 onDeedVitalityChange?.("inactive");
@@ -164,6 +174,8 @@ export function PoPropertyBourseForm({
             inputMode="decimal"
             value={property.area}
             error={fieldErrors.area}
+            hint={lockHint}
+            readOnly={distributionLocked}
             onChange={(v) => onPatch("area", v)}
             placeholder="مثال: 900"
           />
@@ -173,6 +185,8 @@ export function PoPropertyBourseForm({
             options={[...PROPERTY_CLASSIFICATIONS]}
             value={classificationValue}
             error={fieldErrors.classification}
+            hint={lockHint}
+            disabled={distributionLocked}
             placeholder="اختر التصنيف"
             onChange={(v) => {
               onPatch("classification", v);
@@ -195,7 +209,8 @@ export function PoPropertyBourseForm({
                 : ""
             }
             error={fieldErrors.propertyType}
-            disabled={!classificationValue}
+            hint={lockHint}
+            disabled={distributionLocked || !classificationValue}
             placeholder={
               classificationValue ? "اختر النوع" : "اختر التصنيف أولاً"
             }
@@ -219,6 +234,8 @@ export function PoPropertyBourseForm({
               boundaries' notes and table under it, and the deed image from the bourse under the table. */}
           <div className="mt-3 grid grid-cols-1 items-start gap-3 lg:grid-cols-3">
           <InfathSection title="توفر الحدود" hideTitle>
+          {/* The distribution lock greys out the boundaries (source, document, table) at once. */}
+          <fieldset disabled={distributionLocked} className="m-0 min-w-0 border-0 p-0">
           <div
             id="boundaries_availability"
             className={cn(
@@ -233,6 +250,7 @@ export function PoPropertyBourseForm({
                 <button
                   key={opt.value}
                   type="button"
+                  aria-pressed={property.boundariesAvailability === opt.value}
                   className={pillClass(
                     property.boundariesAvailability === opt.value,
                   )}
@@ -254,7 +272,9 @@ export function PoPropertyBourseForm({
                 </button>
               ))}
             </div>
+            {lockHint ? <p className="mt-1 text-[10px] text-text-3">{lockHint}</p> : null}
           </div>
+          </fieldset>
           </InfathSection>
           <InfathSection title="القيود على العقار" hideTitle className="contents">
           <div
@@ -273,6 +293,7 @@ export function PoPropertyBourseForm({
                 <button
                   key={opt.value}
                   type="button"
+                  aria-pressed={property.restrictionsPresent === opt.value}
                   className={pillClass(property.restrictionsPresent === opt.value)}
                   onClick={() => {
                     onPatch("restrictionsPresent", opt.value);
@@ -315,6 +336,7 @@ export function PoPropertyBourseForm({
                         <button
                           key={opt.value}
                           type="button"
+                          aria-pressed={selected}
                           className={pillClass(selected)}
                           onClick={() => {
                             const next = toggleRestrictionType(
@@ -358,7 +380,7 @@ export function PoPropertyBourseForm({
           </InfathSection>
           </div>
 
-          <div className="px-1">
+          <fieldset disabled={distributionLocked} className="m-0 min-w-0 border-0 px-1 py-0">
             {boundariesMarkedUnavailable(property.boundariesAvailability) ? (
               <Note tone="default" className="mt-3 border border-border bg-surface-2">
                 الحدود <strong>غير متوفرة</strong> — لا يُطلب إدخال تفاصيل الحدود
@@ -412,7 +434,7 @@ export function PoPropertyBourseForm({
                 onPatch={onPatch}
               />
             ) : null}
-          </div>
+          </fieldset>
 
 
           <InfathSection title="صورة الصك" hideTitle className="mt-3 block lg:w-1/3">

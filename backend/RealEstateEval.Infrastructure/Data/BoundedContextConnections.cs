@@ -24,7 +24,6 @@ public static class BoundedContextConnections
         public const string Financial = "Financial";
         public const string CaseStudy = "CaseStudy";
         public const string Messaging = "Messaging";
-
         public static readonly string[] All =
         [
             Attachments,

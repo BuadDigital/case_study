@@ -1,5 +1,4 @@
 ﻿namespace RealEstateEval.Application.Contracts;
-
 public class AttachmentPrintTypeDto
 {
     public required string Id { get; init; }

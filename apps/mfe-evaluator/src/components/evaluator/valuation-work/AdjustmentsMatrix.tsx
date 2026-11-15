@@ -116,6 +116,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
     confirmDelete,
     setConfirmDelete,
     saveRationale,
+    renameHandler,
     lineOf,
     linePct,
     justValue,
@@ -550,6 +551,7 @@ export const AdjustmentsMatrix = memo(function AdjustmentsMatrix({
                     onDelete={() =>
                       void dispatch({ type: "remove-factor", factorKey })
                     }
+                    onRenameLabel={renameHandler(factorKey)}
                   />
                   {subjEditable ? (
                     <td className={tdSubjClass}>

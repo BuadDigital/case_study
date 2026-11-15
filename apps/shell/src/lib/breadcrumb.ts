@@ -35,6 +35,7 @@ const BREADCRUMB_LABEL_HREF: Record<string, string> = {
   المفاتيح: "/keys",
   التعذّرات: "/failures",
   "المعاملات النشطة": "/all-transactions",
+  "جميع العقارات": "/all-transactions",
   أعمالي: "/my-work",
   "إدارة المفاتيح": "/keys",
   "إدارة التعذرات": "/failures",

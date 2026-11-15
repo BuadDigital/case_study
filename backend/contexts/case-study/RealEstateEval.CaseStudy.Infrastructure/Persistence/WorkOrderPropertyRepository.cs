@@ -62,6 +62,20 @@ public sealed class WorkOrderPropertyRepository(CaseStudyDbContext db) : IWorkOr
             .ThenInclude(t => t!.Properties)
             .FirstAsync(p => p.Id == propertyId, cancellationToken);
 
+    /// <summary>
+    /// The deed's case-study task has passed the distribution (case study, obstruction or done).
+    /// How it works: one EXISTS over the deed's case-study-property tasks. Edge cases: a deed with no
+    /// task yet, or one still in Enfaz / bourse / distribution, is not distributed.
+    /// </summary>
+    public Task<bool> IsDistributedAsync(Guid propertyId, CancellationToken cancellationToken) =>
+        db.WorkflowTasks.AsNoTracking().AnyAsync(
+            t => t.PropertyId == propertyId
+                && t.Kind == WorkflowTaskKind.CaseStudyProperty
+                && (t.Phase == WorkflowTaskPhase.CaseStudy
+                    || t.Phase == WorkflowTaskPhase.Obstruction
+                    || t.Phase == WorkflowTaskPhase.Done),
+            cancellationToken);
+
     public Task SaveChangesAsync(CancellationToken cancellationToken) =>
         EfConcurrency.SaveAsync(db, cancellationToken);
 

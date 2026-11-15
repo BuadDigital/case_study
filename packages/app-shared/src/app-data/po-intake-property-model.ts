@@ -227,7 +227,7 @@ export type PoPropertyIntake = {
   suggestedDeedKind: string;
  /** JSON array [{name}] (flat-draft representation). */
   ownersJson: string;
-  /** «مشاع» — the staff tick it beside the owner name (Omar 2026-11-10); unticked = «ملكية تامة». */
+  /** «مشاع» — the staff tick it beside the owner name (Omar 2026-11-10); unticked = «ملكية مطلقة». */
   isSharedOwnership: boolean;
   /** The server's ownership type from the tick, as last loaded ("" until loaded). */
   ownershipType: string;
