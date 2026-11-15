@@ -11,6 +11,7 @@ import type { PageId } from "@platform/types";
 import { ROLES } from "@platform/app-shared/app-data/constants";
 import { initialsFromDisplayName } from "@platform/app-shared/lib/display-name-initials";
 import { activeTransactionNavForRole } from "@platform/app-shared/app-data/active-transactions";
+import { useFavoriteTransactionsCount } from "@case-study/mfe/lib/app-data/my-work-pins";
 import { settingsNavTreeForRole } from "@platform/app-shared/app-data/system-settings-nav";
 import { AppBreadcrumb } from "@/components/views/AppBreadcrumb";
 import { NotificationCenter } from "@/components/NotificationCenter";
@@ -98,6 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   const failuresNavBadge = useFailuresNavBadge();
+  const favoritesNavBadge = useFavoriteTransactionsCount();
   const financeNavBadges = useFinanceNavBadges();
   const activeTxBadges = useActiveTransactionNavBadges().badges;
   const financeArea = parseFinanceNavArea(searchParams.get("area"));
@@ -171,6 +173,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     activeTransactionItems,
     activeTxBadges,
     failuresNavBadge,
+    favoritesNavBadge,
     settingsNavTree,
     search: searchParams.toString(),
     financeArea,

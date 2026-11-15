@@ -8,6 +8,11 @@ public static class MarketAdjustmentFactorKeys
     public const string TransactionType = "transaction_type";
  // area (treated with difference factors: sum-then-apply)
     public const string Area = "area";
+    /// <summary>
+    /// A built subject's second area line (Omar 2026-11-15): the land its building stands on, apart from
+    /// <see cref="Area"/>, which is then the building's own area. Computed by the server like the area line.
+    /// </summary>
+    public const string LandArea = "land_area";
  // difference factors
     public const string IdealArea = "ideal_area";
     public const string Location = "location";
@@ -43,6 +48,7 @@ public static class MarketAdjustmentFactorKeys
         Market => "تسوية ظروف السوق",
         TransactionType => "تسوية نوع المقارن",
         Area => "تسوية المساحة",
+        LandArea => "تسوية مساحة الأرض",
         IdealArea => "المساحة المثالية",
         Location => "الموقع",
         Attraction => "عامل الجذب للموقع",
@@ -73,13 +79,16 @@ public static class MarketAdjustmentFactorKeys
     /// <see cref="Custom"/> keep the label sent by the client.
     /// </summary>
     public static bool HasFixedStandardLabel(string? key) =>
-        key is Area or IdealArea or Location or Attraction or Access
+        key is Area or LandArea or IdealArea or Location or Attraction or Access
             or StreetCount or StreetLengths or PlotShape or Topography
             or Zoning or Services or Restrictions or Development
             || IsSequential(key);
 
+    /// <summary>The area lines: their percent is computed by the server, never typed.</summary>
+    public static bool IsComputedArea(string? key) => key is Area or LandArea;
+
     public static bool IsDifferenceFactor(string? key) =>
-        key is Area or IdealArea or Location or Attraction or Access
+        key is Area or LandArea or IdealArea or Location or Attraction or Access
             or StreetCount or StreetLengths or PlotShape or Topography
             or Zoning or Services or Restrictions or Development or Custom
         || IsExtraCatalogKey(key);

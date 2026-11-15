@@ -316,7 +316,7 @@ public sealed class OperationsTaskNotifier
     {
  // Notify active government-reviewers by role (court visits), not legacy GR workflow assignees.
         var userIds = await _identity.ResolveUserIdsWithPrototypeRoleAsync(
-            "government-reviewer",
+            StaffRoleIds.GovernmentReviewer,
             cancellationToken);
         if (userIds.Count == 0) return;
 

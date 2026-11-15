@@ -236,6 +236,8 @@ test.describe("Full frontend walkthrough: intake → inspection → survey → v
 
     const ws = workspace(page);
     await expect(ws).toBeVisible({ timeout: 60_000 });
+    // The page opens with every section folded; «حفظ ومتابعة» opens the next one.
+    await ws.locator("#work-ins-step-1 > button").click();
     const coords = ws.locator('input[placeholder="21.523339, 39.187743"]');
     await expect(coords).toBeVisible({ timeout: 30_000 });
     await coords.fill("24.7136, 46.6753");

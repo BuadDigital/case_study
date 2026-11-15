@@ -238,6 +238,47 @@ function AreaFactorInput({
 
 
 /** Text field with a local draft — commits on blur only when changed (comp/subject description). */
+/** What the land row of a built subject's table says about itself, in both layouts. */
+export const LAND_AREA_ROW = {
+  label: "مساحة الأرض",
+  tip: "فرق مساحة أرض العقار عن مساحة أرض المقارن، مقيساً بطريقة المضاعف أو الأمثال بمعامله الخاص. المقارن القائم على أرض أصغر تُرفع قيمته، والأكبر تُخفض.",
+  offNote: "غير محتسب في المجموع",
+} as const;
+
+/**
+ * A land area typed in the land row: the subject's, or one comparable's for this valuation.
+ * How it works: saved on blur / Enter / Tab; an emptied box sends "" — the caller reads that as
+ * «go back to the figure on record» (the deed's, or the bank's).
+ */
+export function LandAreaInput({
+  value,
+  locked,
+  placeholder,
+  touch,
+  onCommit,
+}: TouchProps & {
+  value: number | null | undefined;
+  locked: boolean;
+  placeholder: string;
+  onCommit: (raw: string) => void;
+}) {
+  return (
+    <span className="mt-1 inline-flex items-center justify-center gap-1">
+      <InlineDraftInput
+        disabled={locked}
+        placeholder={placeholder}
+        value={value != null && value > 0 ? String(value) : ""}
+        onCommit={onCommit}
+        className={cn(
+          "rounded-[7px] border border-dashed border-border-md bg-surface px-2 text-center font-bold text-gold-d [direction:ltr]",
+          touch ? "min-h-11 w-32 text-[16px]" : "w-[92px] py-1 text-[12px]",
+        )}
+      />
+      <span className="text-[10.5px] text-text-3">م²</span>
+    </span>
+  );
+}
+
 export function InlineDraftInput({
   value,
   disabled,

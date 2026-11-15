@@ -28,6 +28,7 @@ import { fmt } from "./lib/shell-utils";
 import {
   AUTO_AREA_KEY,
   CUSTOM_FACTOR_LABEL,
+  LAND_AREA_KEY,
   factorDescriptor,
   factorHasSpecCell,
   factorMeta,
@@ -52,6 +53,8 @@ import {
   AddFactorControls,
   InlineDraftInput,
   LabelCell,
+  LAND_AREA_ROW,
+  LandAreaInput,
 } from "./AdjustmentsMatrixFactorCells";
 import type { useAdjustmentsMatrixModel } from "./useAdjustmentsMatrixModel";
 
@@ -171,8 +174,22 @@ export function AdjustmentsMatrixPhone({
     differenceKeys,
     addableFactors,
   } = model;
-  const { isUnit, areaMethod, areaFactor, subjectAreaLabel } = basisView;
+  const {
+    isUnit,
+    areaMethod,
+    areaFactor,
+    subjectAreaLabel,
+    twoAreas,
+    areaRowLabel,
+    landAreaMethod,
+    landAreaFactor,
+    subjectLandArea,
+    subjectLandAreaNote,
+  } = basisView;
   const first = adopted[0]!;
+  // A built subject's two area rows each carry a ✓ — one of them may be left out, never both.
+  const areaIncluded = lineIsIncluded(lineOf(first, AUTO_AREA_KEY), AUTO_AREA_KEY);
+  const landIncluded = lineIsIncluded(lineOf(first, LAND_AREA_KEY), LAND_AREA_KEY);
 
   const factorHead = (factorKey: string) => ({
     desc: factorDescriptor(factorKey),
@@ -271,14 +288,18 @@ export function AdjustmentsMatrixPhone({
         <div className={factorBlockClass}>
           <LabelCell
             touch
-            label={factorMeta(AUTO_AREA_KEY).label}
+            label={areaRowLabel}
             hint={areaMethod}
             tip={factorMeta(AUTO_AREA_KEY).tip}
             locked={locked}
-            areaFactor={isUnit ? areaFactor : undefined}
+            areaFactor={isUnit || twoAreas ? areaFactor : undefined}
             onAreaFactorChange={(value) =>
               dispatch({ type: "area-factor-change", value })
             }
+            removable={twoAreas}
+            included={twoAreas ? areaIncluded : undefined}
+            onToggle={twoAreas ? () => toggle(AUTO_AREA_KEY) : undefined}
+            offNote={twoAreas && !areaIncluded ? LAND_AREA_ROW.offNote : undefined}
           />
           <SubjectLine label={`${subjectAreaLabel} — العقار محل التقييم`}>
             <bdi dir="ltr">{fmt(parseLocaleNumber(subjectArea) || null)}</bdi>{" "}
@@ -293,6 +314,44 @@ export function AdjustmentsMatrixPhone({
             onCommit={saveRationale}
           />
         </div>
+
+        {/* The land's area — a built subject's second area row, with its own factor and method */}
+        {twoAreas ? (
+          <div className={factorBlockClass}>
+            <LabelCell
+              touch
+              label={LAND_AREA_ROW.label}
+              hint={landAreaMethod}
+              tip={LAND_AREA_ROW.tip}
+              locked={locked}
+              areaFactor={landAreaFactor}
+              onAreaFactorChange={(value) =>
+                dispatch({ type: "area-factor-change", value, line: "land" })
+              }
+              removable
+              included={landIncluded}
+              onToggle={() => toggle(LAND_AREA_KEY)}
+              offNote={landIncluded ? undefined : LAND_AREA_ROW.offNote}
+            />
+            <SubjectLine label={`${subjectLandAreaNote} — العقار محل التقييم`}>
+              <LandAreaInput
+                touch
+                value={subjectLandArea}
+                locked={locked}
+                placeholder="مساحة الأرض"
+                onCommit={(raw) => void dispatch({ type: "save-subject-land-area", raw })}
+              />
+            </SubjectLine>
+            <JustCell
+              touch
+              className="mt-2"
+              factorKey={LAND_AREA_KEY}
+              value={justValue(LAND_AREA_KEY)}
+              locked={locked}
+              onCommit={saveRationale}
+            />
+          </div>
+        ) : null}
 
         {differenceKeys.map((factorKey) => {
           const { desc, meta, included } = factorHead(factorKey);
@@ -412,6 +471,7 @@ export function AdjustmentsMatrixPhone({
       <MobileRecordList>
         {adopted.map((item) => {
           const areaAdj = item.market?.suggestedAreaAdjustmentPct ?? 0;
+          const landAdj = item.market?.suggestedLandAreaAdjustmentPct ?? 0;
           const sum = item.market?.sumDifferencePct ?? 0;
           // The server's ±40٪ rule (MarketApproachRules.LargeAdjustmentThresholdPct).
           const over = item.market?.exceedsLargeAdjustmentThreshold === true;
@@ -488,11 +548,31 @@ export function AdjustmentsMatrixPhone({
                 />
 
                 <PhoneTotal
-                  label={factorMeta(AUTO_AREA_KEY).label}
+                  label={areaRowLabel}
                   value={pct(areaAdj)}
-                  valueClassName={pctClass(areaAdj)}
-                  note={areaMethod}
+                  valueClassName={twoAreas && !areaIncluded ? "text-text-3" : pctClass(areaAdj)}
+                  note={twoAreas && !areaIncluded ? LAND_AREA_ROW.offNote : areaMethod}
                 />
+
+                {twoAreas ? (
+                  <>
+                    <PhoneTotal
+                      label={LAND_AREA_ROW.label}
+                      value={pct(landAdj)}
+                      valueClassName={landIncluded ? pctClass(landAdj) : "text-text-3"}
+                      note={landIncluded ? landAreaMethod : LAND_AREA_ROW.offNote}
+                    />
+                    <PhoneField label="مساحة أرض المقارن (م²)">
+                      <LandAreaInput
+                        touch
+                        value={item.effectiveLandAreaSqm}
+                        locked={locked}
+                        placeholder="أرض المقارن"
+                        onCommit={(raw) => void dispatch({ type: "save-land-area", item, raw })}
+                      />
+                    </PhoneField>
+                  </>
+                ) : null}
 
                 {differenceKeys.map((factorKey) => {
                   const { desc, meta, included } = factorHead(factorKey);

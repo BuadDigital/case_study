@@ -29,6 +29,11 @@ export type ComparableEntryDraft = {
   listingNumber: string;
   advertiserPhone: string;
   areaSqm: string;
+  /**
+   * The land a BUILT comparable stands on (2026-11-15) — optional; `areaSqm` is then its building's
+   * area. Feeds the land-area adjustment of a built subject. Not asked for a land comparable.
+   */
+  landAreaSqm?: string;
   transactionDate: string;
   price: string;
   city: string;
@@ -173,6 +178,7 @@ export type ComparableEntryFieldErrors = Partial<
     | "district"
     | "price"
     | "areaSqm"
+    | "landAreaSqm"
     | "transactionDate"
     | "priceDescription"
     | "source"
@@ -190,6 +196,7 @@ const COMPARABLE_ENTRY_ERROR_ORDER: {
   { key: "district", targetId: "cmp-district" },
   { key: "price", targetId: "cmp-price" },
   { key: "areaSqm", targetId: "cmp-area" },
+  { key: "landAreaSqm", targetId: "cmp-land-area" },
   { key: "transactionDate", targetId: "cmp-date" },
   { key: "priceDescription", targetId: "cmp-price-description" },
   { key: "source", targetId: "cmp-source" },
@@ -220,6 +227,15 @@ export function validateComparableEntry(
 
   if (!isPositiveLocaleNumber(draft.areaSqm)) {
     errors.areaSqm = "أدخل مساحة أكبر من صفر";
+  }
+
+  // The land under a building is optional; when typed it must be a real area.
+  if (
+    draft.kind === "building" &&
+    (draft.landAreaSqm ?? "").trim() &&
+    !isPositiveLocaleNumber(draft.landAreaSqm ?? "")
+  ) {
+    errors.landAreaSqm = "أدخل مساحة أرض أكبر من صفر، أو اترك الحقل فارغاً";
   }
 
   if (!hasIsoDate(draft.transactionDate)) {
@@ -293,6 +309,10 @@ export function comparableDraftToUpsert(
     latitude: coords?.lat ?? 0,
     longitude: coords?.lng ?? 0,
     areaSqm: parseLocaleNumber(draft.areaSqm) || 0,
+    landAreaSqm:
+      draft.kind === "building" && isPositiveLocaleNumber(draft.landAreaSqm ?? "")
+        ? parseLocaleNumber(draft.landAreaSqm ?? "")
+        : null,
     transactionDate: draft.transactionDate,
     price: parseLocaleNumber(draft.price) || 0,
     city: draft.city.trim() || null,

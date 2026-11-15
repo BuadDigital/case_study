@@ -32,7 +32,7 @@ import {
 } from "./transaction-filters";
 import { isTaskOnSuspendedProperty } from "./suspended-transactions-model";
 import { resolveRemainingTime } from "./my-task-row";
-import { caseStudyWorkspacePath } from "../my-task-routes";
+import { caseStudyWorkspacePath, activeInspectionWorkspacePath } from "../my-task-routes";
 
 /** Where the intake of a deed stands — the «إدخال المعاملة» row's line (Omar 2026-11-08). */
 const INTAKE_PROGRESS = {
@@ -44,8 +44,18 @@ const INTAKE_PROGRESS = {
 /** The case specialist's sub-role a row or a work-page section belongs to: coordination, study, review. */
 export type CaseSpecialistGroup = "co" | "st" | "rv";
 
-/** The group a row belongs to: a case specialist's sub-role, or the appraiser's own work («ap», Omar 2026-11-10). */
-export type MyWorkGroup = CaseSpecialistGroup | "ap";
+/**
+ * The group a row belongs to: a case specialist's sub-role, the appraiser's own work («ap», Omar
+ * 2026-11-10) or the field inspector's («fi», Omar 2026-11-12).
+ */
+export type MyWorkGroup = CaseSpecialistGroup | "ap" | "fi";
+
+const CASE_SPECIALIST_GROUPS: readonly MyWorkGroup[] = ["co", "st", "rv"];
+
+/** A case specialist's sub-role, as against a party's own group (the appraiser's, the inspector's). */
+export function isCaseSpecialistGroup(group: MyWorkGroup): group is CaseSpecialistGroup {
+  return CASE_SPECIALIST_GROUPS.includes(group);
+}
 
 export type MyWorkStage =
   | "intake"
@@ -62,7 +72,12 @@ export type MyWorkStage =
   // nothing is due from him — a grey «إعداد مسبق» row under its own chip, after the work that is due.
   | "prework"
   // A valuation he handed over: nothing waits for him — a lookup chip, never part of «الكل» (Omar 2026-11-11).
-  | "handed";
+  | "handed"
+  // The field inspector's three (Omar 2026-11-12): an inspection to do, one returned to him, and
+  // the ones he sent — a lookup chip like the appraiser's «المسلَّمة».
+  | "inspection"
+  | "inspection-correction"
+  | "inspection-sent";
 
 export type MyWorkDue = "late" | "soon" | "ok" | "none";
 
@@ -153,6 +168,15 @@ export const MY_WORK_GROUPS: readonly {
       { key: "handed", label: "المسلَّمة" },
     ],
   },
+  {
+    key: "fi",
+    label: "المعاينة",
+    stages: [
+      { key: "inspection", label: "المعاينة" },
+      { key: "inspection-correction", label: "معادة للتصحيح" },
+      { key: "inspection-sent", label: "المرسلة" },
+    ],
+  },
 ];
 
 const STAGE_LABEL = new Map<MyWorkStage, string>(
@@ -187,11 +211,24 @@ export function myWorkGroupsForPages(pages: readonly string[]): MyWorkGroup[] {
   if (has(["system-upload"])) groups.push("rv");
   // The appraiser's own work (Omar 2026-11-10): whoever holds his queue page.
   if (has(["property-appraisal"])) groups.push("ap");
+  // The field inspector's own work (Omar 2026-11-12): whoever holds his queue page.
+  if (has(["active-inspection"])) groups.push("fi");
   return groups;
 }
 
-/** The stages that ask nothing of the viewer: advance work («بانتظار الدراسة») and the handed-over lookups. */
-const NOT_DUE_STAGES: ReadonlySet<MyWorkStage> = new Set<MyWorkStage>(["prework", "handed"]);
+/** The lookup chips: work the viewer already handed on — the appraiser's «المسلَّمة», the inspector's «المرسلة». */
+const LOOKUP_STAGES: ReadonlySet<MyWorkStage> = new Set<MyWorkStage>(["handed", "inspection-sent"]);
+
+/**
+ * A lookup stage asks nothing of the viewer: its rows are not part of «الكل — ما ينتظرني», carry no
+ * late tone and no running clock, and show under their own chip only.
+ */
+export function isMyWorkLookupStage(stage: MyWorkStage): boolean {
+  return LOOKUP_STAGES.has(stage);
+}
+
+/** The stages that ask nothing of the viewer: advance work («بانتظار الدراسة») and the lookups. */
+const NOT_DUE_STAGES: ReadonlySet<MyWorkStage> = new Set<MyWorkStage>(["prework", ...LOOKUP_STAGES]);
 
 /**
  * The chip «أعمالي» opens on (Omar 2026-11-11): the stage that holds actions for the viewer's role,
@@ -284,6 +321,66 @@ export function appraiserStep(
         reason: "قيد التقييم — الدراسة صدرت — جاهز للتسليم",
       }
     : { stage: "valuation", action: "بدء التقييم", reason: "تقييم جديد — الدراسة صدرت" };
+}
+
+/** What «أعمالي» reads of an inspection's package: its status, and whether anything was entered. */
+export type InspectionPackageState = {
+  status?: string | null;
+  /** The inspector entered something (a date, a photo, an observation, an attachment). */
+  started: boolean;
+};
+
+/**
+ * The line under a row's action, in the two words everyone reads the same way (Omar 2026-11-12:
+ * «سهّل الإيضاح، اجعله عام»): new, or being worked on. Today «جديدة» means nothing was entered yet.
+ */
+const NEW_LINE = "جديدة";
+const IN_PROGRESS_LINE = "جاري العمل";
+
+/** Where the inspector's task stands — his «أعمالي» row. */
+export type InspectorStep = {
+  stage: "inspection" | "inspection-correction" | "inspection-sent";
+  action: string;
+  reason: string;
+};
+
+/**
+ * What an inspection task needs from the field inspector now (Omar 2026-11-12, as `appraiserStep`
+ * for the appraiser): to inspect the property, to correct an inspection returned to him, or
+ * nothing — he sent it.
+ *
+ * How it works, in the order his queue's status badge reads (`fieldInspectionTaskStatusBadge`):
+ * - the task is completed, or its package is submitted → the «inspection-sent» lookup row, which
+ *   says whether coordination accepted it and is not counted as work waiting for him;
+ * - the package was reopened → «تصحيح المعاينة» (correction);
+ * - otherwise it is his inspection: «بدء المعاينة» until he entered something, then «متابعة المعاينة».
+ * Edge cases: no package loaded yet (the list is still arriving, or he never opened the form)
+ * reads as a new inspection.
+ */
+export function inspectorStep(
+  task: Pick<WorkflowTask, "status" | "packageAccepted">,
+  pkg: InspectionPackageState | undefined,
+): InspectorStep {
+  if (task.status === "completed" || pkg?.status === "submitted") {
+    return {
+      stage: "inspection-sent",
+      action: "تم الإرسال",
+      reason:
+        task.packageAccepted === true
+          ? "قبل التنسيق مخرجات المعاينة"
+          : "أُرسلت المعاينة — بانتظار قبول التنسيق",
+    };
+  }
+  if (pkg?.status === "reopened") {
+    return {
+      stage: "inspection-correction",
+      action: "تصحيح المعاينة",
+      reason: "أُعيدت إليك المعاينة للتصحيح — عدّلها ثم أرسلها من جديد",
+    };
+  }
+  return pkg?.started
+    ? { stage: "inspection", action: "متابعة المعاينة", reason: IN_PROGRESS_LINE }
+    : { stage: "inspection", action: "بدء المعاينة", reason: NEW_LINE };
 }
 
 /** The study row's usual line: the transaction came from coordination. */
@@ -694,6 +791,13 @@ export type BuildMyWorkInput = {
   /** Bourse items already filtered to the actionable ones (`filterActionablePendingBourseItems`). */
   pendingBourse: readonly PendingBoursePropertyDto[];
   draftState: (propertyId: string) => ReportDraftState | undefined;
+  /** The inspector's packages by inspection task id (his rows only); absent for the other groups. */
+  inspectionPackage?: (taskId: string) => InspectionPackageState | undefined;
+  /**
+   * The property's transaction is over in the system — uploaded to Enfaz («مكتمل») or cancelled.
+   * Unknown (the list not loaded, a property it does not hold) reads as not over.
+   */
+  transactionFinished?: (propertyId: string) => boolean;
   /** Reopenings not closed yet (Omar 2026-11-05): the reopened chip on the transaction's rows. */
   reopenings?: readonly MyWorkReopening[];
   now: Date;
@@ -714,6 +818,12 @@ export type BuildMyWorkInput = {
  * - appraiser (Omar 2026-11-10): his valuations to start or continue, those returned to him and the
  *   report drafts waiting for his approval (`appraiserStep`), each opening his page; plus, since
  *   2026-11-11, the ones he handed over (stage «handed»), listed after the rest and under their own chip.
+ * - field inspector (Omar 2026-11-12): his inspections to start or continue and those returned to
+ *   him (`inspectorStep`), each opening his page; plus the ones he sent (stage «inspection-sent»),
+ *   under their own chip, newest first — a list he looks things up in, not a queue. A sent
+ *   inspection stays there only while its transaction is still live in the system (Omar: «حتى لا
+ *   تتراكم جميع المعاملات التي أرسلها المعاين»): once the transaction is uploaded to Enfaz or
+ *   cancelled (`transactionFinished`) the row goes — nothing can come back to him from it.
  * Rows sort late first, then soon, then by age (oldest first).
  *
  * Edge cases / changed 2026-11-05: what waits for someone else is no longer listed here — Omar's
@@ -910,6 +1020,26 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
     }
   }
 
+  // The field inspector's own work (Omar 2026-11-12): one row per inspection of his — what he owes
+  // (to inspect, to correct) and what he sent; a cancelled inspection has none.
+  if (groups.includes("fi")) {
+    for (const t of mineList) {
+      if (t.kind !== "field-inspection" || t.status === "cancelled") continue;
+      const step = inspectorStep(t, input.inspectionPackage?.(t.id));
+      // Sent, and the transaction is over: not listed — «المرسلة» is what is still in the works.
+      if (
+        step.stage === "inspection-sent" &&
+        t.propertyId &&
+        input.transactionFinished?.(t.propertyId) === true
+      ) {
+        continue;
+      }
+      const row = fromTask(t, "fi", step.stage, step.action, step.reason, activeInspectionWorkspacePath(t.id));
+      // A sent row asks nothing of him: no late / soon tone, and it sorts after what does.
+      items.push(isMyWorkLookupStage(step.stage) ? { ...row, due: "none" } : row);
+    }
+  }
+
   // Omar 2026-11-08: no «الرد على إنفاذ» row — a reopening ends at the re-upload; it only marks the rows.
   const reopenings = input.reopenings ?? [];
   const reopeningByProperty = new Map(reopenings.map((r) => [r.propertyId, r]));
@@ -926,13 +1056,16 @@ export function buildMyWork(input: BuildMyWorkInput): { items: MyWorkItem[] } {
   }
 
   const rank: Record<MyWorkDue, number> = { late: 0, soon: 1, ok: 2, none: 3 };
-  // What is due first, then the advance work (study not issued), then the handed-over lookups.
-  const lookup = (i: MyWorkItem) => (i.stage === "handed" ? 2 : i.stage === "prework" ? 1 : 0);
+  // What is due first, then the advance work (study not issued), then the lookups.
+  const lookup = (i: MyWorkItem) => (isMyWorkLookupStage(i.stage) ? 2 : i.stage === "prework" ? 1 : 0);
   items.sort(
     (a, b) =>
       lookup(a) - lookup(b) ||
       rank[a.due] - rank[b.due] ||
-      a.arrivedIso.localeCompare(b.arrivedIso),
+      // The sent inspections are a history he looks things up in: the latest first.
+      (a.stage === "inspection-sent" && b.stage === "inspection-sent"
+        ? b.arrivedIso.localeCompare(a.arrivedIso)
+        : a.arrivedIso.localeCompare(b.arrivedIso)),
   );
   return { items };
 }

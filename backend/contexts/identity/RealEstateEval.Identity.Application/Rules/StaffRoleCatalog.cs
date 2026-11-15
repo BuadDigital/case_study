@@ -1,3 +1,5 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.Identity.Application.Rules;
 
 /// <summary>
@@ -15,30 +17,30 @@ public static class StaffRoleCatalog
     private static readonly Dictionary<string, string> ExactJobTitleToRoleId =
         new(StringComparer.Ordinal)
         {
-            ["مسؤول التحول الرقمي (CDO)"] = "cdo",
-            ["المدير التنفيذي"] = "cdo",
-            ["مدير إدارة التقييم العقاري"] = "general-manager",
-            ["مشرف قسم دراسة الحالة"] = "section-supervisor",
-            ["أخصائي دراسة حالة"] = "case-specialist",
-            ["مراجع حكومي"] = "government-reviewer",
-            ["مقيم عقاري"] = "real-estate-appraiser",
-            ["معاين ميداني"] = "field-inspector",
-            ["موظف الشؤون المالية"] = "financial-officer",
-            ["مقدم خدمة — جهة"] = "engineering-office",
+            ["مسؤول التحول الرقمي (CDO)"] = StaffRoleIds.Cdo,
+            ["المدير التنفيذي"] = StaffRoleIds.Cdo,
+            ["مدير إدارة التقييم العقاري"] = StaffRoleIds.GeneralManager,
+            ["مشرف قسم دراسة الحالة"] = StaffRoleIds.SectionSupervisor,
+            ["أخصائي دراسة حالة"] = StaffRoleIds.CaseSpecialist,
+            ["مراجع حكومي"] = StaffRoleIds.GovernmentReviewer,
+            ["مقيم عقاري"] = StaffRoleIds.RealEstateAppraiser,
+            ["معاين ميداني"] = StaffRoleIds.FieldInspector,
+            ["موظف الشؤون المالية"] = StaffRoleIds.FinancialOfficer,
+            ["مقدم خدمة — جهة"] = StaffRoleIds.EngineeringOffice,
         };
 
  /// <summary>Prototype roles the CDO can assign when creating staff.</summary>
     public static readonly IReadOnlyList<string> CreatableStaffRoleIds =
     [
-        "cdo",
-        "general-manager",
-        "section-supervisor",
-        "case-specialist",
-        "government-reviewer",
-        "real-estate-appraiser",
-        "field-inspector",
-        "financial-officer",
-        "engineering-office",
+        StaffRoleIds.Cdo,
+        StaffRoleIds.GeneralManager,
+        StaffRoleIds.SectionSupervisor,
+        StaffRoleIds.CaseSpecialist,
+        StaffRoleIds.GovernmentReviewer,
+        StaffRoleIds.RealEstateAppraiser,
+        StaffRoleIds.FieldInspector,
+        StaffRoleIds.FinancialOfficer,
+        StaffRoleIds.EngineeringOffice,
     ];
 
     public static bool IsCreatableStaffRoleId(string? roleId) =>

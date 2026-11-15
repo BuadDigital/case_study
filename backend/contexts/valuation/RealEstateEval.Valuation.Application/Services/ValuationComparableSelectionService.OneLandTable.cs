@@ -6,10 +6,7 @@ namespace RealEstateEval.Valuation.Application.Services;
 
 public sealed partial class ValuationComparableSelectionService
 {
-    public const string OneLandTableCopyAr =
-        "أرض العقار لها جدول واحد في أسلوب السوق وأسلوب التكلفة — لا شيء يُنسخ";
-
-    private readonly Dictionary<Guid, bool> _landValuedOnce = [];
+    private readonly Dictionary<Guid, (bool ValuedAsLand, decimal? DeedLandAreaSqm)> _subjectFacts = [];
 
     /// <summary>
     /// What: the table a request for <paramref name="selectionContext"/> really reads and writes.
@@ -17,7 +14,8 @@ public sealed partial class ValuationComparableSelectionService
     /// قمت بتقييمها لوحدها أو كجزء من طريقة التكلفة، التسويات واحدة — الأرض هي الأرض وقيمتها ثابتة»):
     /// when the subject is valued as land, the market table IS that valuation, and «تقدير قيمة الأرض
     /// فضاءً» inside the cost approach is the same rows — the same comparables, adjustments, weights
-    /// and factor rationales. Nothing is copied and the two can never differ.
+    /// and factor rationales. Nothing is copied and the two can never differ (the copy between the
+    /// two tables, 2026-11-11, was removed the next day: «الغي»).
     ///
     /// How it works: for such a subject the land_within_cost context answers with the market table,
     /// on every read and every write. So the cost approach, the reconciliation, the hand-over checks
@@ -53,16 +51,30 @@ public sealed partial class ValuationComparableSelectionService
     /// inspection settled and the specialist's inventory. Asked from the case-study service once per
     /// request and valuation; when it cannot answer, the request's own type decides.
     /// </summary>
-    private async Task<bool> LandIsValuedOnceAsync(ValuationRequest request, CancellationToken cancellationToken)
+    private async Task<bool> LandIsValuedOnceAsync(ValuationRequest request, CancellationToken cancellationToken) =>
+        (await SubjectFactsAsync(request, cancellationToken)).ValuedAsLand;
+
+    /// <summary>
+    /// The land a built subject stands on, from its deed — the default of its land-area line
+    /// (<see cref="SubjectLandRules.DeedLandAreaOfBuiltSubject"/>); null for a subject valued as land.
+    /// </summary>
+    private async Task<decimal?> DeedLandAreaOfBuiltSubjectAsync(
+        ValuationRequest request, CancellationToken cancellationToken) =>
+        (await SubjectFactsAsync(request, cancellationToken)).DeedLandAreaSqm;
+
+    private async Task<(bool ValuedAsLand, decimal? DeedLandAreaSqm)> SubjectFactsAsync(
+        ValuationRequest request, CancellationToken cancellationToken)
     {
-        if (_landValuedOnce.TryGetValue(request.Id, out var known)) return known;
+        if (_subjectFacts.TryGetValue(request.Id, out var known)) return known;
         var facts = caseStudy is null || request.PropertyId == Guid.Empty
             ? null
             : await caseStudy.GetValuationPropertyContextAsync(request.PropertyId, cancellationToken);
         var type = string.IsNullOrWhiteSpace(facts?.EffectivePropertyType())
             ? request.PropertyType
             : facts.EffectivePropertyType();
-        return _landValuedOnce[request.Id] =
-            SubjectLandRules.IsValuedAsLand(type, facts?.BuildingInventoryLines);
+        var valuedAsLand = SubjectLandRules.IsValuedAsLand(type, facts?.BuildingInventoryLines);
+        return _subjectFacts[request.Id] = (
+            valuedAsLand,
+            valuedAsLand ? null : SubjectLandRules.DeedLandAreaOfBuiltSubject(type, facts?.Area ?? request.Area));
     }
 }

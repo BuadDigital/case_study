@@ -49,6 +49,7 @@ public static class ComparablePropertyMapping
             Latitude = row.Latitude,
             Longitude = row.Longitude,
             AreaSqm = row.AreaSqm,
+            LandAreaSqm = row.LandAreaSqm,
             TransactionDate = row.TransactionDate.ToString("yyyy-MM-dd"),
             Price = row.Price,
             PricePerSqm = row.PricePerSqm,

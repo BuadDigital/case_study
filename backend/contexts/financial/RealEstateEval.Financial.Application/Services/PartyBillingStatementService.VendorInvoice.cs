@@ -1,3 +1,4 @@
+using RealEstateEval.Domain;
 using RealEstateEval.Application;
 using RealEstateEval.Application.Contracts;
 using RealEstateEval.Application.Notifications;
@@ -47,12 +48,12 @@ public partial class PartyBillingStatementService
         await _db.SaveChangesAsync(cancellationToken);
 
         var supervisors = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
-            "financial-officer",
+            StaffRoleIds.FinancialOfficer,
             cancellationToken);
         if (supervisors.Count == 0)
         {
             supervisors = await _recipients.ResolveUserIdsWithPrototypeRoleAsync(
-                "section-supervisor",
+                StaffRoleIds.SectionSupervisor,
                 cancellationToken);
         }
         if (supervisors.Count > 0)

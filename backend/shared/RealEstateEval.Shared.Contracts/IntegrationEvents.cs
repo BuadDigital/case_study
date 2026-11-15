@@ -24,7 +24,6 @@ public static class ValuationNoticeAudiences
     public const string CaseSpecialist = "case-specialist";
 
     // Ruling 2026-11-02 — every case-specialist stage is a shared queue of its sub-role.
-    public const string CaseSpecialistCoordination = "case-specialist:coordination";
     public const string CaseSpecialistStudy = "case-specialist:study";
     public const string CaseSpecialistReview = "case-specialist:review";
 

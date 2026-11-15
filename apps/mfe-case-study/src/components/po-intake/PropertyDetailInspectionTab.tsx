@@ -7,6 +7,7 @@ import {
   AppModal,
   Button,
   InlineLoadingSkeleton,
+  WorkSectionsSkeleton,
   useToast,
 } from "@platform/ui-kit";
 import { useIdempotentAction } from "@platform/app-shared";
@@ -141,7 +142,10 @@ export function PropertyDetailInspectionTab({
   submitSuccessToast,
   specialistComponents: componentsMode = "with-review",
   boundariesShownAbove = false,
+  railAside,
 }: {
+  /** With `steps`: the host's cards under the sections rail (the parties' status). */
+  railAside?: ReactNode;
   property: PoPropertyIntake;
   inspectionTask: WorkflowTask | null;
   /** Sibling engineering-survey task — specialist location choice. */
@@ -153,7 +157,7 @@ export function PropertyDetailInspectionTab({
   /** Keep input mode (inspector workspace). Cancel exits via onEditModeChange(false). */
   lockEditMode?: boolean;
   onSubmitted?: () => void;
-  /** Render the 3-step wizard (inspector workspace). */
+  /** The inspector's own page: the three steps as numbered sections on the work page's frame. */
   steps?: boolean;
   /** Enables case-study questions card when provided. */
   caseStudyDef?: PartyTaskPageDef;
@@ -596,10 +600,13 @@ export function PropertyDetailInspectionTab({
     );
   }
 
-  if (loading) return <InlineLoadingSkeleton />;
+  if (loading) {
+    return steps ? <WorkSectionsSkeleton rows={3} label="جاري تحميل المعاينة" /> : <InlineLoadingSkeleton />;
+  }
 
   return (
-    <div id="pdInspection" className="pt-5">
+    // On the frame the host's hero sits right above the sections, as on the other frame pages.
+    <div id="pdInspection" className={steps ? undefined : "pt-5"}>
       {formError ? (
         <div
           className="mb-3 rounded-lg border border-danger border-e-[3px] border-e-danger bg-danger-bg px-3.5 py-2.5 text-xs leading-relaxed text-danger-text"
@@ -635,6 +642,7 @@ export function PropertyDetailInspectionTab({
           saving={submitBusy}
           fieldErrors={fieldErrors}
           flat={!steps}
+          railAside={railAside}
           hideSubmitFooter={Boolean(submitFooterAfter)}
           boundariesShownAbove={boundariesShownAbove}
           onPatch={(patch) => patchDraft(patch)}

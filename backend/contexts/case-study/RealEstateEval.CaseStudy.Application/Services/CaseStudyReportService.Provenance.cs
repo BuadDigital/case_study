@@ -1,3 +1,4 @@
+using RealEstateEval.Domain;
 using RealEstateEval.CaseStudy.Application.Contracts;
 using RealEstateEval.CaseStudy.Application.Rules;
 using RealEstateEval.CaseStudy.Domain;
@@ -77,10 +78,10 @@ public partial class CaseStudyReportService
     private static string? PartyIdForAssigneeRole(string? assigneeRole) =>
         (assigneeRole?.Trim().ToLowerInvariant()) switch
         {
-            "field-inspector" => "insp",
-            "engineering-office" => "eng",
-            "real-estate-appraiser" => "val",
-            "government-reviewer" => "gov",
+            StaffRoleIds.FieldInspector => "insp",
+            StaffRoleIds.EngineeringOffice => "eng",
+            StaffRoleIds.RealEstateAppraiser => "val",
+            StaffRoleIds.GovernmentReviewer => "gov",
             _ => null,
         };
 }

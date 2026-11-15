@@ -1,3 +1,5 @@
+using RealEstateEval.Domain;
+
 namespace RealEstateEval.Application.Rules;
 
 /// <summary>
@@ -6,28 +8,25 @@ namespace RealEstateEval.Application.Rules;
 /// </summary>
 public static class PoRoleMatrixRules
 {
-    public static bool IsSuperAdmin(string? prototypeRole) =>
-        string.Equals(prototypeRole?.Trim(), "cdo", StringComparison.OrdinalIgnoreCase);
+    public static bool IsSuperAdmin(string? prototypeRole) =>  string.Equals(prototypeRole?.Trim(), StaffRoleIds.Cdo, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Receive a work order from Enfaz — the section supervisor and the coordination sub-role of the
     /// case specialist (not the CDO).
     /// </summary>
-    public static bool CanReceivePo(StaffActor actor) =>
-        actor.NormalizedRole is "section-supervisor" || actor.HoldsCoordination;
+    public static bool CanReceivePo(StaffActor actor) => actor.NormalizedRole is StaffRoleIds.SectionSupervisor || actor.HoldsCoordination;
 
     public static bool CanEditPoHeader(string? prototypeRole)
     {
         var role = Normalize(prototypeRole);
-        return IsSuperAdmin(role) || role is "section-supervisor";
+        return IsSuperAdmin(role) || role is StaffRoleIds.SectionSupervisor;
     }
 
     /// <summary>
     /// The assignment specialist's name is provisional when the work order is received and is
     /// confirmed later — the case specialist corrects it, beside the header editors.
     /// </summary>
-    public static bool CanEditAssignmentSpecialist(StaffActor actor) =>
-        CanEditPoHeader(actor.Role) || actor.HoldsCoordination;
+    public static bool CanEditAssignmentSpecialist(StaffActor actor) => CanEditPoHeader(actor.Role) || actor.HoldsCoordination;
 
     /// <summary>
     /// Register a property's initial data (Enfaz stage) and the bourse inquiry, link a property to
@@ -43,14 +42,14 @@ public static class PoRoleMatrixRules
     /// engineering office never do.
     /// </summary>
     public static bool CanEditPropertyData(StaffActor actor) =>
-        IsSuperAdmin(actor.Role) || actor.IsCaseSpecialist || actor.NormalizedRole is "real-estate-appraiser";
+        IsSuperAdmin(actor.Role) || actor.IsCaseSpecialist || actor.NormalizedRole is StaffRoleIds.RealEstateAppraiser;
 
     /// <summary>
     /// Send a case-study task one phase back (distribution → bourse → Enfaz) — the coordination
     /// sub-role and the CDO, who own those stages' data, and the section supervisor.
     /// </summary>
     public static bool CanRevertTaskPhase(StaffActor actor) =>
-        IsSuperAdmin(actor.Role) || actor.NormalizedRole is "section-supervisor" || actor.HoldsCoordination;
+        IsSuperAdmin(actor.Role) || actor.NormalizedRole is StaffRoleIds.SectionSupervisor || actor.HoldsCoordination;
 
     /// <summary>
     /// Confirm a transaction's distribution to the inspector, the appraiser and the engineering
@@ -58,7 +57,7 @@ public static class PoRoleMatrixRules
     /// </summary>
     public static bool CanDistribute(StaffActor actor) =>
         IsSuperAdmin(actor.Role)
-        || actor.NormalizedRole is "section-supervisor" or "general-manager"
+        || actor.NormalizedRole is StaffRoleIds.SectionSupervisor or StaffRoleIds.GeneralManager
         || actor.HoldsCoordination;
 
     /// <summary>
@@ -73,9 +72,9 @@ public static class PoRoleMatrixRules
 
         var role = actor.NormalizedRole;
         // The lifecycle (suspend, resolve an obstruction) is coordination's (ruling 2026-11-02).
-        if (role is "section-supervisor" || actor.HoldsCoordination) return true;
+        if (role is StaffRoleIds.SectionSupervisor || actor.HoldsCoordination) return true;
 
-        if (!(IsSuperAdmin(role) || role is "general-manager")) return false;
+        if (!(IsSuperAdmin(role) || role is StaffRoleIds.GeneralManager)) return false;
 
         var normalizedStatus = status?.Trim().ToLowerInvariant();
         // Suspend: status blocked, no phase change.
@@ -131,7 +130,7 @@ public static class PoRoleMatrixRules
     /// the study queue (ruling 2026-11-02); the section supervisor and the CDO may too.
     /// </summary>
     public static bool CanFormallyReceive(StaffActor actor) =>
-        IsSuperAdmin(actor.Role) || actor.NormalizedRole is "section-supervisor" || actor.HoldsCoordination;
+        IsSuperAdmin(actor.Role) || actor.NormalizedRole is StaffRoleIds.SectionSupervisor || actor.HoldsCoordination;
 
     /// <summary>
     /// Follow a failure up (escalate, suspend, approve, return) — coordination always, whatever stage
@@ -168,7 +167,7 @@ public static class PoRoleMatrixRules
     /// because a capability only «reaches the door» and several roles share it.
     /// </remarks>
     public static bool CanMarkBillingReady(string? prototypeRole) =>
-        Normalize(prototypeRole) is "financial-officer";
+        Normalize(prototypeRole) is StaffRoleIds.FinancialOfficer;
 
     /// <summary>
     /// The valuation-report draft is prepared, sent and withdrawn by the study sub-role (the
@@ -205,7 +204,7 @@ public static class PoRoleMatrixRules
     public static bool CanDeletePo(string? prototypeRole)
     {
         var role = Normalize(prototypeRole);
-        return IsSuperAdmin(role) || role is "section-supervisor";
+        return IsSuperAdmin(role) || role is StaffRoleIds.SectionSupervisor;
     }
 
     public static bool CanDeleteProperty(string? prototypeRole) => CanDeletePo(prototypeRole);
@@ -231,7 +230,7 @@ public static class PoRoleMatrixRules
     {
         var role = Normalize(prototypeRole);
         return IsSuperAdmin(role)
-            || role is "case-specialist" or "section-supervisor" or "general-manager";
+            || role is StaffRoleIds.CaseSpecialist or StaffRoleIds.SectionSupervisor or StaffRoleIds.GeneralManager;
     }
 
  /// <summary>
@@ -242,7 +241,7 @@ public static class PoRoleMatrixRules
     {
         var role = Normalize(prototypeRole);
         // The appraiser edits property data and documents too (ruling 2026-11-02).
-        return IsSuperAdmin(role) || role is "case-specialist" or "section-supervisor" or "real-estate-appraiser";
+        return IsSuperAdmin(role) || role is StaffRoleIds.CaseSpecialist or StaffRoleIds.SectionSupervisor or StaffRoleIds.RealEstateAppraiser;
     }
 
     /// <summary>
@@ -253,8 +252,8 @@ public static class PoRoleMatrixRules
     {
         var role = Normalize(prototypeRole);
         return IsSuperAdmin(role)
-            || role is "case-specialist" or "real-estate-appraiser" or "section-supervisor"
-                or "general-manager" or "field-inspector" or "engineering-office";
+            || role is StaffRoleIds.CaseSpecialist or StaffRoleIds.RealEstateAppraiser or StaffRoleIds.SectionSupervisor
+                or StaffRoleIds.GeneralManager or StaffRoleIds.FieldInspector or StaffRoleIds.EngineeringOffice;
     }
 
     /// <summary>
@@ -264,14 +263,14 @@ public static class PoRoleMatrixRules
     public static bool CanSeeValuedDocuments(string? prototypeRole)
     {
         var role = Normalize(prototypeRole);
-        return IsSuperAdmin(role) || role is "case-specialist" or "real-estate-appraiser";
+        return IsSuperAdmin(role) || role is StaffRoleIds.CaseSpecialist or StaffRoleIds.RealEstateAppraiser;
     }
 
     /// <summary>Decide what a «مستند ذو قيمة» does to the valuation — the appraiser (and the CDO).</summary>
     public static bool CanDecideValueDocumentEffect(string? prototypeRole)
     {
         var role = Normalize(prototypeRole);
-        return IsSuperAdmin(role) || role is "real-estate-appraiser";
+        return IsSuperAdmin(role) || role is StaffRoleIds.RealEstateAppraiser;
     }
 
     /// <summary>
@@ -284,7 +283,7 @@ public static class PoRoleMatrixRules
     /// </summary>
     public static bool CanAcceptPartyWork(StaffActor actor) =>
         IsSuperAdmin(actor.Role)
-        || actor.NormalizedRole is "section-supervisor" or "general-manager"
+        || actor.NormalizedRole is StaffRoleIds.SectionSupervisor or StaffRoleIds.GeneralManager
         || actor.IsCaseSpecialist;
 
     /// <summary>
@@ -299,14 +298,14 @@ public static class PoRoleMatrixRules
     /// supervisor and the CDO (the study and coordination wait for a return).
     /// </summary>
     public static bool CanEditWhileInReview(StaffActor actor) =>
-        IsSuperAdmin(actor.Role) || actor.NormalizedRole is "section-supervisor" || actor.HoldsReview;
+        IsSuperAdmin(actor.Role) || actor.NormalizedRole is StaffRoleIds.SectionSupervisor || actor.HoldsReview;
 
     /// <summary>
     /// «إعادة فتح المعاملة» after review approved it (Omar 2026-11-05): any case specialist, whatever his
     /// sub-role, the section supervisor and the CDO — with a reason.
     /// </summary>
     public static bool CanReopenTransaction(StaffActor actor) =>
-        IsSuperAdmin(actor.Role) || actor.NormalizedRole is "section-supervisor" || actor.IsCaseSpecialist;
+        IsSuperAdmin(actor.Role) || actor.NormalizedRole is StaffRoleIds.SectionSupervisor || actor.IsCaseSpecialist;
 
     /// <summary>Approve / reject a «مستند ذو قيمة» — the study sub-role (and the CDO).</summary>
     public static bool CanReviewValuedDocuments(StaffActor actor) =>
@@ -318,7 +317,7 @@ public static class PoRoleMatrixRules
  /// </summary>
     public static bool CanManageOperationsTasks(StaffActor actor) =>
         IsSuperAdmin(actor.Role)
-        || actor.NormalizedRole is "section-supervisor" or "general-manager" or "real-estate-appraiser"
+        || actor.NormalizedRole is StaffRoleIds.SectionSupervisor or StaffRoleIds.GeneralManager or StaffRoleIds.RealEstateAppraiser
         || actor.HoldsCoordination;
 
  /// <summary>
@@ -331,7 +330,7 @@ public static class PoRoleMatrixRules
         string? actorDistributionAssigneeId)
     {
         if (IsSuperAdmin(prototypeRole)
-            || string.Equals(Normalize(prototypeRole), "section-supervisor", StringComparison.Ordinal))
+            || string.Equals(Normalize(prototypeRole), StaffRoleIds.SectionSupervisor, StringComparison.Ordinal))
         {
             return true;
         }

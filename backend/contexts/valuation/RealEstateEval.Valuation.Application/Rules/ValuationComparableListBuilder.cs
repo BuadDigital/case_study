@@ -35,6 +35,23 @@ namespace RealEstateEval.Valuation.Application.Rules;
 public static class ValuationComparableListBuilder
 {
     /// <summary>
+    /// What one area line of the table is computed from: the subject's area on that line, the
+    /// method the table chose for it, its factor, and whether the amount it adjusts is a whole
+    /// value (a smaller comparable is then raised) or a price per m² of that same area (lowered).
+    /// <c>Applies</c> false = the line gives 0 (a whole-property table that has no area lines).
+    /// </summary>
+    public readonly record struct AreaLineInputs(
+        bool Applies,
+        decimal SubjectAreaSqm,
+        string Method,
+        decimal FactorPct,
+        bool OnWholeValue);
+
+    /// <summary>A built comparable's land area for this valuation: the override, else the bank's; null when neither.</summary>
+    public static decimal? EffectiveLandAreaSqm(ValuationComparableSelection row, ComparableProperty comp) =>
+        row.LandAreaOverrideSqm ?? comp.LandAreaSqm;
+
+    /// <summary>
     /// The default difference factors this selection is still missing (area + the four standard
     /// ones); catalog factors are added from the UI when needed. Returned rather than attached:
     /// adding through the navigation with a pre-generated id is treated by EF as an update of a
@@ -80,7 +97,9 @@ public static class ValuationComparableListBuilder
         DateOnly? hardComparableDateCutoff = null,
         CostLandAreas? costLand = null,
         bool roundOpinionValue = true,
-        bool landSharedWithMarket = false)
+        bool landSharedWithMarket = false,
+        bool subjectIsBuilt = false,
+        decimal? deedLandAreaSqm = null)
     {
         var adoptedRows = rows.Where(r => r.IsAdopted).ToList();
         // The land table compares each land comparable with the whole building plot saved on
@@ -122,6 +141,39 @@ public static class ValuationComparableListBuilder
             header?.AdjustmentBasis ?? MarketAdjustmentBasisKeys.DefaultFor(request.PropertyType, null),
             comparesAsMarket ? ComparableSelectionContexts.Market : selectionContext);
 
+        // A built subject's market table carries two area lines (Omar 2026-11-15): the building's
+        // area and the land's, each with its own areas, factor and method — on the whole-property
+        // comparison too, where there was no area adjustment before. Only on a header created since
+        // then (TwoAreaAdjustments), so a valuation already worked on keeps its figures; the land
+        // table inside the cost approach compares lands and keeps its single line.
+        var twoAreas = !isLandTable && subjectIsBuilt && header?.TwoAreaAdjustments == true;
+        var onWholeValue = basis == MarketAdjustmentBasisKeys.WholeProperty;
+        var areaLine = new AreaLineInputs(
+            Applies: twoAreas || !onWholeValue,
+            SubjectAreaSqm: subjectAreaForSuggestion,
+            Method: areaMethod,
+            FactorPct: areaFactor,
+            OnWholeValue: onWholeValue);
+        var landAreaFactor = header?.LandAreaFactorPct > 0
+            ? header.LandAreaFactorPct
+            : AreaAdjustmentRules.DefaultAreaFactorPct;
+        // The subject's land: the figure the appraiser typed, else the deed's.
+        var subjectLandArea = twoAreas ? header?.SubjectLandAreaSqm ?? deedLandAreaSqm ?? 0m : 0m;
+        // The land under a building is never the metre the price is counted by, so its line always
+        // adjusts a value: a comparable on a smaller plot is raised, also on the per-m² basis.
+        AreaLineInputs? landLine = twoAreas
+            ? new AreaLineInputs(
+                Applies: true,
+                SubjectAreaSqm: subjectLandArea,
+                Method: AreaAdjustmentRules.ChooseMethod(
+                    subjectLandArea,
+                    adoptedRows
+                        .Where(r => comps.ContainsKey(r.ComparablePropertyId))
+                        .Select(r => EffectiveLandAreaSqm(r, comps[r.ComparablePropertyId]) ?? 0m)),
+                FactorPct: landAreaFactor,
+                OnWholeValue: true)
+            : null;
+
         // Automatic weights from the GROSS adjustment (sequential + difference, absolute),
         // with no automatic weight for a comparable whose adjusted rate is an outlier against the
         // median. Manual override still replaces one row only; sum ≠ 100% stays an alert.
@@ -133,9 +185,8 @@ public static class ValuationComparableListBuilder
                 valuationDate,
                 null,
                 basis,
-                subjectAreaForSuggestion,
-                areaMethod,
-                areaFactor,
+                areaLine,
+                landLine,
                 marketRate)))
             .ToList();
         var suggested = MarketApproachRules.SuggestWeights(
@@ -176,9 +227,8 @@ public static class ValuationComparableListBuilder
                 valuationDate,
                 suggestedForRow,
                 basis,
-                subjectAreaForSuggestion,
-                areaMethod,
-                areaFactor,
+                areaLine,
+                landLine,
                 marketRate);
             var eff = EffectiveCompValues(row, comp);
             items.Add(new ValuationComparableSelectionDto
@@ -194,9 +244,11 @@ public static class ValuationComparableListBuilder
                 Market = market,
                 PriceOverrideSar = row.PriceOverrideSar,
                 AreaOverrideSqm = row.AreaOverrideSqm,
+                LandAreaOverrideSqm = row.LandAreaOverrideSqm,
                 EffectivePriceSar = eff.Total,
                 EffectiveAreaSqm = eff.Area,
                 EffectivePricePerSqm = eff.Unit,
+                EffectiveLandAreaSqm = EffectiveLandAreaSqm(row, comp),
             });
 
             if (row.IsAdopted)
@@ -247,6 +299,10 @@ public static class ValuationComparableListBuilder
             MarketOpinionValueRaw = opinionRaw,
             MarketOpinionValue = opinion,
             AreaFactorPct = areaFactor,
+            TwoAreaAdjustments = twoAreas,
+            SubjectLandAreaSqm = twoAreas && subjectLandArea > 0m ? subjectLandArea : null,
+            SubjectLandAreaIsManual = twoAreas && header?.SubjectLandAreaSqm is not null,
+            LandAreaFactorPct = landAreaFactor,
             AnnualMarketRatePct = marketRate,
             ValueRoundDecimals = roundDecimals,
             AnalysisNotes = header?.AnalysisNotes,
@@ -361,18 +417,49 @@ public static class ValuationComparableListBuilder
         DateOnly valuationDate,
         decimal? suggestedWeightPct,
         string adjustmentBasis,
-        decimal subjectAreaSqm,
-        string areaMethod,
-        decimal areaFactorPct,
+        AreaLineInputs area,
+        AreaLineInputs? land,
         decimal annualMarketRatePct)
     {
         var ordered = row.AdjustmentLines.OrderBy(l => l.SortOrder).ToList();
+        // The land line of a built subject is there for every comparable, switched on, also for one
+        // saved before the line existed: it is shown right after the area line and becomes a stored
+        // row at the comparable's next save. The tracked collection is left alone.
+        if (land is not null && ordered.All(l => l.FactorKey != MarketAdjustmentFactorKeys.LandArea))
+        {
+            var after = ordered.FindIndex(l => l.FactorKey == MarketAdjustmentFactorKeys.Area);
+            ordered.Insert(after >= 0 ? after + 1 : ordered.Count, new ValuationComparableAdjustmentLine
+            {
+                Id = Guid.Empty,
+                SelectionId = row.Id,
+                FactorKey = MarketAdjustmentFactorKeys.LandArea,
+                LabelAr = MarketAdjustmentFactorKeys.DefaultLabelAr(MarketAdjustmentFactorKeys.LandArea),
+                IsIncluded = true,
+                SortOrder = after >= 0
+                    ? ordered[after].SortOrder
+                    : ordered.Count == 0 ? 10 : ordered.Max(l => l.SortOrder) + 1,
+            });
+        }
+
         var eff = EffectiveCompValues(row, comp);
-        // On the whole-property basis the deal totals are compared as they are — a 5٪-per-
-        // multiple area adjustment on a total price is not a size correction, so none is applied.
-        var areaAdj = adjustmentBasis == MarketAdjustmentBasisKeys.WholeProperty
-            ? 0m
-            : AreaAdjustmentRules.SuggestPct(areaMethod, subjectAreaSqm, eff.Area, areaFactorPct);
+        // A table without area lines (a whole-property comparison of a subject that is not built, or
+        // of a valuation begun before the two lines) compares the deal totals as they are.
+        var areaAdj = area.Applies
+            ? AreaAdjustmentRules.SuggestPct(
+                area.Method, area.SubjectAreaSqm, eff.Area, area.FactorPct, area.OnWholeValue)
+            : 0m;
+        // The land line: 0 until both land areas are known — the comparable's is entered in the bank
+        // or on this valuation.
+        var landAdj = land is { } landLine
+            ? AreaAdjustmentRules.SuggestPct(
+                landLine.Method,
+                landLine.SubjectAreaSqm,
+                EffectiveLandAreaSqm(row, comp) ?? 0m,
+                landLine.FactorPct,
+                landLine.OnWholeValue)
+            : 0m;
+        decimal Computed(string factorKey) =>
+            factorKey == MarketAdjustmentFactorKeys.LandArea ? landAdj : areaAdj;
         var dealAgeMonths = MarketApproachRules.DealAgeMonths(comp.TransactionDate, valuationDate);
         var suggestedMarket = MarketApproachRules.SuggestMarketConditionsPct(
             dealAgeMonths, annualMarketRatePct);
@@ -392,7 +479,7 @@ public static class ValuationComparableListBuilder
         var differencePct = ordered
             .Where(l => l.IsIncluded && MarketAdjustmentFactorKeys.IsDifferenceFactor(l.FactorKey))
             .Select(l =>
-                l.FactorKey == MarketAdjustmentFactorKeys.Area ? areaAdj : l.Percent)
+                MarketAdjustmentFactorKeys.IsComputedArea(l.FactorKey) ? Computed(l.FactorKey) : l.Percent)
             .ToList();
 
  // : the chain runs on the whole deal price or the unit rate per the basis (after compEdit overrides).
@@ -415,8 +502,8 @@ public static class ValuationComparableListBuilder
             AdjustmentLines = ordered
                 .Select(l =>
                 {
-                    var pct = l.FactorKey == MarketAdjustmentFactorKeys.Area
-                        ? areaAdj
+                    var pct = MarketAdjustmentFactorKeys.IsComputedArea(l.FactorKey)
+                        ? Computed(l.FactorKey)
                         : MarketAdjustmentFactorKeys.IsSequential(l.FactorKey)
                             ? MarketApproachRules.EffectiveSequentialPercent(
                                 l.FactorKey,
@@ -457,8 +544,10 @@ public static class ValuationComparableListBuilder
             WeightIsManual = row.WeightIsManual,
             WeightPct = row.WeightPct,
             WeightOverrideRationale = row.WeightOverrideRationale,
-            AreaAdjustmentMethod = AreaAdjustmentMethods.Normalize(areaMethod),
+            AreaAdjustmentMethod = AreaAdjustmentMethods.Normalize(area.Method),
             SuggestedAreaAdjustmentPct = areaAdj,
+            LandAreaAdjustmentMethod = land is { } l2 ? AreaAdjustmentMethods.Normalize(l2.Method) : "",
+            SuggestedLandAreaAdjustmentPct = landAdj,
         };
     }
 }

@@ -5,7 +5,7 @@ import {
   isInspectorWorkspaceLocked,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 
-function workspaceHasDraftProgress(
+export function workspaceHasDraftProgress(
   workspace: FieldInspectionWorkspaceListItemDto,
 ): boolean {
   return (

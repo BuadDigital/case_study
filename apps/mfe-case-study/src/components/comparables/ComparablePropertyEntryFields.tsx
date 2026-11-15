@@ -144,6 +144,7 @@ export function ComparablePropertyEntryFields({
   onChange,
   onLocationConfirmedChange,
   bankBrowse,
+  landAreaField = false,
 }: {
   draft: ComparableEntryDraft;
   disabled?: boolean;
@@ -161,6 +162,8 @@ export function ComparablePropertyEntryFields({
    * subject, to look at only.
    */
   bankBrowse?: ComparableBankBrowse;
+  /** Ask for the land a built comparable stands on (optional) — off in the inspector's capture form. */
+  landAreaField?: boolean;
 }) {
   const { showToast } = useToast();
   const [mapPinned, setMapPinned] = useState(false);
@@ -325,8 +328,14 @@ export function ComparablePropertyEntryFields({
   const fieldsShown = mapPinned || showCoordinates === false;
   // Fields between «نوع المقارن» and «وصف العقار»; المدينة and الحي fill the first row beside
   // «نوع المقارن» when the location is pinned, otherwise two of these fields do.
+  // The land a built comparable stands on (2026-11-15) — asked where the host wants it (the
+  // appraiser's «إضافة مقارن»); the inspector's capture form stays as it is.
+  const landAreaShown = landAreaField && draft.kind === "building";
   const fieldCount =
-    10 + (draft.kind === "building" ? 1 : 0) + (draft.transactionKind === "offer" ? 1 : 0);
+    10 +
+    (draft.kind === "building" ? 1 : 0) +
+    (landAreaShown ? 1 : 0) +
+    (draft.transactionKind === "offer" ? 1 : 0);
   const descriptionSpan = descriptionSpanClass((fieldCount + (mapPinned ? 0 : 2)) % 4);
   const areaLabel = `${comparableAreaLabel(draft.kind)} (م²)`;
   const priceLabel =
@@ -624,6 +633,19 @@ export function ComparablePropertyEntryFields({
           onChange={(e) => patch("areaSqm", e.target.value)}
         />
       </Field>
+      {landAreaShown ? (
+        <Field label="مساحة الأرض (م²) — اختياري" error={fieldErrors?.landAreaSqm}>
+          <Input
+            id="cmp-land-area"
+            inputMode="decimal"
+            dir="ltr"
+            value={draft.landAreaSqm ?? ""}
+            disabled={fieldsLocked}
+            className={cn(fieldErrors?.landAreaSqm && invalidControlClass)}
+            onChange={(e) => patch("landAreaSqm", e.target.value)}
+          />
+        </Field>
+      ) : null}
       <Field label="تاريخ العملية" required error={fieldErrors?.transactionDate}>
         <Input
           id="cmp-date"

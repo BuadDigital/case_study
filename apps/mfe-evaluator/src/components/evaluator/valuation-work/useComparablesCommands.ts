@@ -6,23 +6,19 @@
  * per-valuation price/area override. Handlers are exposed through stable
  * refs so the bank table memo survives shell re-renders.
  */
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { useLatestRef } from "@platform/app-shared/hooks/use-latest-ref";
 import {
-  copyValuationComparableTable,
   removeValuationComparable,
   setValuationComparableAdopted,
   type ValuationComparableSelectionDto,
 } from "@platform/api-client";
 import {
   bankOverridePatch,
-  landCopyState,
   savedLines,
   withAdoptionFlag,
   withoutComparable,
-  type LandCopyTarget,
 } from "./lib/market-commands-state";
-import { isVacantLandComparable } from "./lib/bank-ranking";
 import { LAND_WITHIN_COST, MARKET_CONTEXT } from "./lib/shell-state";
 import { getCachedOrganizationSettings } from "@platform/app-shared/organization/organization-settings-cache";
 import type { ComparableMarketSaver } from "./useComparableMarketSaver";
@@ -41,13 +37,6 @@ export function useComparablesCommands(
     visibleAdoptedMarket,
     visibleAdoptedLand,
     reload,
-    loading,
-    valuationRequestId,
-    marketKind,
-    marketEnabled,
-    costEnabled,
-    adjustmentsLocked,
-    approachSettings,
   } = data;
   const { writeContext, saveOne } = saver;
 
@@ -138,86 +127,6 @@ export function useComparablesCommands(
     await reload({ silent: true, scope: "derived" });
   }
 
-  /**
-   * Copies the land valuation by comparable sales into `target` from the other table — «انسخ طريقة
-   * المبيعات المشابهة للأرض» (ruling 2026-11-11): the adopted comparables with their adjustments,
-   * weights, rationales and overrides; a snapshot the appraiser then edits freely.
-   *
-   * How it works: `replace` is sent only after the table's own confirmation (it already holds
-   * comparables). `quiet` is the automatic copy — it says what it did, and stays silent when the
-   * server has nothing to copy.
-   * Returns true when the copy was made.
-   */
-  async function copyLandValuation(
-    target: LandCopyTarget,
-    opts: { replace?: boolean; quiet?: boolean } = {},
-  ): Promise<boolean> {
-    const ctx = writeContext();
-    if (!ctx) return false;
-    const toMarket = target === "market";
-    const res = await copyValuationComparableTable(ctx.config, ctx.valuationRequestId, {
-      fromContext: toMarket ? LAND_WITHIN_COST : MARKET_CONTEXT,
-      toContext: toMarket ? MARKET_CONTEXT : LAND_WITHIN_COST,
-      replace: opts.replace === true,
-    });
-    if (!res.ok) {
-      if (!opts.quiet) showToast(res.message ?? "تعذّر نسخ المقارنات", "error");
-      return false;
-    }
-    const { copiedCount, skippedBuiltCount } = res.data;
-    const from = toMarket ? "تقدير الأرض في أسلوب التكلفة" : "أسلوب السوق";
-    const skipped =
-      skippedBuiltCount > 0 ? ` (تُرك ${skippedBuiltCount} مقارن مبني — الجدول للأراضي فقط)` : "";
-    showToast(
-      `نُسخت طريقة المبيعات المشابهة للأرض من ${from}: ${copiedCount} مقارن بتسوياته وأوزانه${skipped} — راجعها`,
-      "success",
-    );
-    await reload({ silent: true, scope: "full" });
-    return true;
-  }
-
-  // The same land valuation is not entered twice: when a table that values land opens empty and the
-  // other one holds the work, it is copied by itself — once per valuation and direction.
-  const landTableShown =
-    costEnabled && (approachSettings?.costScopeKey ?? "land_and_building") !== "building_only";
-  const landIn = (items: readonly ValuationComparableSelectionDto[]) =>
-    items.filter((i) => isVacantLandComparable(i.comparable.comparablePropertyType)).length;
-  // A subject valued as land has one table for both approaches: the lists are the same rows.
-  const oneLandTable = landSelection?.landSharedWithMarket === true;
-  const copyIntoMarket = landCopyState({
-    target: "market",
-    marketKind,
-    oneLandTable,
-    targetRowCount: selection?.items.length ?? 0,
-    sourceAdoptedCount: visibleAdoptedLand.length,
-    sourceAdoptedLandCount: landIn(visibleAdoptedLand),
-  });
-  const copyIntoLand = landCopyState({
-    target: "land",
-    marketKind,
-    oneLandTable,
-    targetRowCount: landSelection?.items.length ?? 0,
-    sourceAdoptedCount: visibleAdoptedMarket.length,
-    sourceAdoptedLandCount: landIn(visibleAdoptedMarket),
-  });
-  const autoTarget: LandCopyTarget | null =
-    loading || adjustmentsLocked || !selection || !landSelection
-      ? null
-      : marketEnabled && copyIntoMarket.automatic
-        ? "market"
-        : landTableShown && copyIntoLand.automatic
-          ? "land"
-          : null;
-  const autoCopied = useRef(new Set<string>());
-  const copyLandValuationRef = useLatestRef(copyLandValuation);
-  useEffect(() => {
-    if (!autoTarget || !valuationRequestId) return;
-    const key = `${valuationRequestId}:${autoTarget}`;
-    if (autoCopied.current.has(key)) return;
-    autoCopied.current.add(key);
-    void copyLandValuationRef.current(autoTarget, { quiet: true });
-  }, [autoTarget, valuationRequestId, copyLandValuationRef]);
-
   /** compEdit: save price/area override for this valuation only — does not touch the shared bank.
    * Returns true on success — the bank table clears its local draft then. Lines and the
    * other override come from the comparable's freshest copy, so a matrix edit saved just
@@ -242,14 +151,6 @@ export function useComparablesCommands(
      Function declarations above are hoisted, so references here are valid. ─── */
   const adoptRef = useLatestRef(adopt);
   const saveBankOverrideRef = useLatestRef(saveBankOverride);
-  const onCopyLandIntoMarket = useCallback(
-    (replace: boolean) => copyLandValuationRef.current("market", { replace }),
-    [copyLandValuationRef],
-  );
-  const onCopyLandIntoLandTable = useCallback(
-    (replace: boolean) => copyLandValuationRef.current("land", { replace }),
-    [copyLandValuationRef],
-  );
   const removeRef = useLatestRef(remove);
   const onRemoveMarket = useCallback(
     (comparableId: string) => removeRef.current(comparableId, MARKET_CONTEXT),
@@ -284,9 +185,5 @@ export function useComparablesCommands(
     onRemoveMarket,
     onRemoveLand,
     onSaveBankOverride,
-    // Offered only where there is something to copy (and, for the market table, when it values land).
-    onCopyLandIntoMarket: marketEnabled && copyIntoMarket.available ? onCopyLandIntoMarket : undefined,
-    onCopyLandIntoLandTable: copyIntoLand.available ? onCopyLandIntoLandTable : undefined,
-    landCopySourceCounts: { market: copyIntoMarket.sourceCount, land: copyIntoLand.sourceCount },
   };
 }

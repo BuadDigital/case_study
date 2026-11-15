@@ -59,24 +59,6 @@ public class ValuationComparableSelectionsController : ControllerBase
         return Ok(result);
     }
 
-    [HttpPost("copy")]
-    [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
-    [RequireAssignedAppraiser]
-    public async Task<ActionResult<CopyValuationComparableTableResultDto>> CopyTable(
-        Guid valuationRequestId,
-        [FromBody] CopyValuationComparableTableRequest request,
-        CancellationToken ct)
-    {
-        var (result, errors) = await _selections.CopyTableAsync(
-            valuationRequestId,
-            request,
-            ActorClaims.Id(User),
-            ct);
-        if (errors is not null)
-            return this.FieldErrorsProblem(errors);
-        return Ok(result);
-    }
-
     [HttpPut("{selectionId:guid}/market")]
     [Authorize(Policy = CapabilityPolicyNames.SubmitValuationReport)]
     [RequireAssignedAppraiser]

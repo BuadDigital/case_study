@@ -186,9 +186,6 @@ export function ValuationWorkShell({
     onAdoptLand,
     onRemoveMarket,
     onRemoveLand,
-    onCopyLandIntoMarket,
-    onCopyLandIntoLandTable,
-    landCopySourceCounts,
     onSaveBankOverride,
     dispatchMarketMatrix,
     dispatchLandMatrix,
@@ -366,8 +363,6 @@ export function ValuationWorkShell({
             distanceKm={bankDistanceKm}
             onAdopt={onAdoptMarket}
             onRemove={onRemoveMarket}
-            onCopyLandValuation={onCopyLandIntoMarket}
-            copyLandSource={{ label: "تقدير الأرض في أسلوب التكلفة", count: landCopySourceCounts.market }}
             onSaveOverride={onSaveBankOverride}
             seed={comparableSeed}
             sourceWorkOrderNumber={poNumber}
@@ -514,8 +509,6 @@ export function ValuationWorkShell({
           landOnly
           onAdopt={onAdoptLand}
           onRemove={onRemoveLand}
-          onCopyLandValuation={onCopyLandIntoLandTable}
-          copyLandSource={{ label: "أسلوب السوق", count: landCopySourceCounts.land }}
           onSaveOverride={onSaveBankOverride}
           seed={comparableSeed}
           sourceWorkOrderNumber={poNumber}

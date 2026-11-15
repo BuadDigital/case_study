@@ -47,11 +47,11 @@ public static class SupervisingDepartments
  /// <summary>Department derived solely from a product role. Supervisors must choose explicitly.</summary>
     public static string? DeriveForRole(string? roleId) => roleId switch
     {
-        "case-specialist" or "government-reviewer" => CaseStudy,
-        "real-estate-appraiser" or "field-inspector" => Valuation,
-        "financial-officer" => Finance,
-        "engineering-office" => External,
-        "section-supervisor" => null,
+        "case-specialist" or StaffRoleIds.GovernmentReviewer => CaseStudy,
+        "real-estate-appraiser" or StaffRoleIds.FieldInspector => Valuation,
+        StaffRoleIds.FinancialOfficer => Finance,
+        StaffRoleIds.EngineeringOffice => External,
+        StaffRoleIds.SectionSupervisor => null,
         _ => null,
     };
 
@@ -80,7 +80,7 @@ public static class SupervisingDepartments
         string? requestedDepartment,
         string? fallbackSection = null)
     {
-        if (roleId == "section-supervisor")
+        if (roleId == StaffRoleIds.SectionSupervisor)
         {
             var selected = NormalizeProfileValue(requestedDepartment)
                 ?? NormalizeProfileValue(fallbackSection);

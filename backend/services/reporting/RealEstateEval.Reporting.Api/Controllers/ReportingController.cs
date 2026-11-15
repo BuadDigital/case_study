@@ -19,10 +19,10 @@ public class ReportingController : ControllerBase
 
     private static readonly (string RoleId, string RoleLabel, int MaxLoad, int SortOrder)[] TeamLoadRoles =
     [
-        ("case-specialist", "دراسة حالة العقارات", SpecialistCapacity, 0),
-        ("government-reviewer", "مراجع حكومي", 15, 1),
-        ("field-inspector", "معاين ميداني", 12, 2),
-        ("engineering-office", "مكتب هندسي", 10, 3),
+        (StaffRoleIds.CaseSpecialist, "دراسة حالة العقارات", SpecialistCapacity, 0),
+        (StaffRoleIds.GovernmentReviewer, "مراجع حكومي", 15, 1),
+        (StaffRoleIds.FieldInspector, "معاين ميداني", 12, 2),
+        (StaffRoleIds.EngineeringOffice, "مكتب هندسي", 10, 3),
     ];
 
     private static readonly Dictionary<string, (string RoleLabel, int MaxLoad, int SortOrder)> TeamLoadRoleMap =
@@ -298,13 +298,13 @@ public class ReportingController : ControllerBase
     private static bool MatchesTeamLoadTask(WorkflowTaskDto task, string roleId) =>
         task.AssigneeRole == roleId && roleId switch
         {
-            "case-specialist" =>
+            StaffRoleIds.CaseSpecialist =>
                 task.Kind == WorkflowTaskKindValues.CaseStudyProperty
                 && task.Phase == WorkflowTaskPhaseValues.CaseStudy,
  // Legacy only: government-review children are no longer spawned.
-            "government-reviewer" => task.Kind == WorkflowTaskKindValues.GovernmentReview,
-            "field-inspector" => task.Kind == WorkflowTaskKindValues.FieldInspection,
-            "engineering-office" => task.Kind == WorkflowTaskKindValues.EngineeringSurvey,
+            StaffRoleIds.GovernmentReviewer => task.Kind == WorkflowTaskKindValues.GovernmentReview,
+            StaffRoleIds.FieldInspector => task.Kind == WorkflowTaskKindValues.FieldInspection,
+            StaffRoleIds.EngineeringOffice => task.Kind == WorkflowTaskKindValues.EngineeringSurvey,
             _ => false,
         };
 

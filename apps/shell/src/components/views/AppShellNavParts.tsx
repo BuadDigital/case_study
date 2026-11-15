@@ -90,6 +90,7 @@ function ActiveTransactionNavRow({
   active,
   onPrefetch,
   rail = false,
+  topLevel = false,
   href,
 }: {
   id: PageId;
@@ -100,17 +101,19 @@ function ActiveTransactionNavRow({
   active: boolean;
   onPrefetch: (page: PageId) => void;
   rail?: boolean;
+  /** Drawn as a plain sidebar row, not as a row of the group's dropdown (a group of one). */
+  topLevel?: boolean;
   href?: string;
 }) {
   const cls = navItemClasses({
     active,
-    sub: !rail,
+    sub: !rail && !topLevel,
     locked: !available,
     rail,
   });
   const inner = (
     <>
-      <NavIcon d={icon} size={rail ? 16 : 12} />
+      <NavIcon d={icon} size={rail || topLevel ? 16 : 12} />
       <span className={navLabelClasses(rail)}>{label}</span>
       {badgeCount != null && badgeCount > 0 ? (
         <span className="ms-auto inline-flex shrink-0 items-center gap-1.5">
@@ -331,6 +334,26 @@ export function ActiveTransactionsNavDropdown({
   const childActive = (tx: ActiveTransactionNavItem) =>
     currentPage === tx.id ||
     (tx.id === "active-case-study" && onCaseStudyWorkspace);
+
+  // A group of one is no group (Omar 2026-11-12: once «أعمالي» took the place of the inspector's
+  // queue, «فوترة الأتعاب» sat alone under «قوائم العمل»): the lone page is a plain sidebar row,
+  // with no heading to open. Two pages or more keep the dropdown.
+  const lone = items.length === 1 ? items[0] : undefined;
+  if (lone) {
+    return (
+      <ActiveTransactionNavRow
+        id={lone.id}
+        label={lone.label}
+        icon={lone.icon}
+        available={lone.available}
+        badgeCount={badges[lone.id]}
+        active={childActive(lone)}
+        onPrefetch={onPrefetch}
+        rail={rail}
+        topLevel
+      />
+    );
+  }
 
   const renderRows = () =>
     items.map((tx) => (

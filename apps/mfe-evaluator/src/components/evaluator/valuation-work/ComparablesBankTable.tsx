@@ -139,8 +139,6 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   landOnly = false,
   onAdopt,
   onRemove,
-  onCopyLandValuation,
-  copyLandSource,
   onSaveOverride,
   seed,
   sourceWorkOrderNumber,
@@ -158,14 +156,6 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
   onAdopt: (comparableId: string, adopted: boolean) => Promise<void>;
   /** Takes a comparable that is not adopted out of this transaction's table. */
   onRemove: (comparableId: string) => Promise<void>;
-  /**
-   * «انسخ طريقة المبيعات المشابهة للأرض»: copies the land valuation of the other table into this
-   * one (`replace` once the appraiser confirmed replacing what it holds). Absent = nothing to copy
-   * here, and the button is not shown.
-   */
-  onCopyLandValuation?: (replace: boolean) => Promise<boolean>;
-  /** Where the copy comes from, for the button's hint and the confirmation. */
-  copyLandSource?: { label: string; count: number };
   /** Returns true on successful save — the cell draft is cleared then. */
   onSaveOverride: (
     item: ValuationComparableSelectionDto,
@@ -179,18 +169,6 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
 }) {
   const { showToast } = useToast();
   const desktop = useViewportDesktop();
-  const [copyConfirmOpen, setCopyConfirmOpen] = useState(false);
-  const [copying, setCopying] = useState(false);
-  async function copyLandValuation(replace: boolean) {
-    if (!onCopyLandValuation || copying) return;
-    setCopying(true);
-    try {
-      await onCopyLandValuation(replace);
-    } finally {
-      setCopying(false);
-      setCopyConfirmOpen(false);
-    }
-  }
   // Optimistic checkbox draft, keyed by comparable id — cleared once onAdopt settles and
   // `rows` (server truth) catches up. Only a brand-new adoption lacks an earlier optimistic
   // flip upstream, so without this the checkbox visibly waits on the full save + reload.
@@ -370,55 +348,8 @@ export const ComparablesBankTable = memo(function ComparablesBankTable({
           >
             إضافة مقارن
           </Button>
-          {onCopyLandValuation ? (
-            <Button
-              type="button"
-              size="sm"
-              showActionToast={false}
-              loading={copying}
-              disabled={copying || saving}
-              title={
-                copyLandSource
-                  ? `ينسخ ${copyLandSource.count} مقارن معتمد من ${copyLandSource.label} بتسوياته وأوزانه ومبرراته`
-                  : undefined
-              }
-              // A table that already holds comparables is replaced only after the appraiser confirms.
-              onClick={() => (rows.length > 0 ? setCopyConfirmOpen(true) : void copyLandValuation(false))}
-            >
-              انسخ طريقة المبيعات المشابهة للأرض
-            </Button>
-          ) : null}
         </div>
       </div>
-      <AppModal
-        open={copyConfirmOpen}
-        title="انسخ طريقة المبيعات المشابهة للأرض"
-        onClose={() => (copying ? undefined : setCopyConfirmOpen(false))}
-        footer={
-          <>
-            <Button type="button" disabled={copying} onClick={() => setCopyConfirmOpen(false)}>
-              إلغاء
-            </Button>
-            <Button
-              type="button"
-              variant="primary"
-              loading={copying}
-              disabled={copying}
-              showActionToast={false}
-              onClick={() => void copyLandValuation(true)}
-            >
-              استبدال ونسخ
-            </Button>
-          </>
-        }
-      >
-        <p className="m-0 text-[13px] leading-6 text-text-2">
-          هذا الجدول فيه {rows.length} مقارن. النسخ يستبدلها بمقارنات{" "}
-          {copyLandSource?.label ?? "الجدول الآخر"} المعتمدة ({copyLandSource?.count ?? 0}) بتسوياتها
-          وأوزانها ومبرراتها، وتُحذف مقارنات هذا الجدول الحالية وتسوياتها. بعد النسخ يبقى الجدولان
-          مستقلين وتعدّل هذا بحرية.
-        </p>
-      </AppModal>
       <AppModal
         open={formOpen}
         title="إضافة مقارن"

@@ -62,7 +62,9 @@ export function defaultLandingPage(rolePages: readonly PageId[]): PageId {
   }
 
   for (const pageId of NAV_PAGE_ORDER) {
-    if (pageId === "dashboard") continue;
+    // «المفضلة» sits near the top of the menu (2026-11-12) but is a list to look things up in,
+    // never where a role starts.
+    if (pageId === "dashboard" || pageId === "favorites") continue;
     if (rolePages.includes(pageId)) return pageId;
   }
   if (rolePages.includes("financial")) return "financial";

@@ -16,6 +16,7 @@ import {
   marketApproachBody,
   nextSubjectSpecs,
 } from "./lib/market-commands-state";
+import type { AreaLine } from "./lib/matrix-actions";
 import { parseDecimal } from "./lib/shell-state";
 import { perSqmBlockedMessage } from "./lib/market-subject";
 import type { ComparableMarketSaver } from "./useComparableMarketSaver";
@@ -110,13 +111,30 @@ export function useMarketApproachCommands(
     });
   }
 
-  async function saveAreaFactorPct(raw: string) {
+  /** The factor of one area row — the building's (and a land's single row) or a built subject's land row. */
+  async function saveAreaFactorPct(raw: string, line: AreaLine = "area") {
     if (!writeContext({ requireUnlocked: true })) return;
     const pct = parseDecimal(raw);
     if (!Number.isFinite(pct)) return;
-    await saveApproach({ areaFactorPct: pct }, "تعذّر حفظ معامل المساحة", {
-      requireUnlocked: true,
-    });
+    await saveApproach(
+      line === "land" ? { landAreaFactorPct: pct } : { areaFactorPct: pct },
+      line === "land" ? "تعذّر حفظ معامل مساحة الأرض" : "تعذّر حفظ معامل المساحة",
+      { requireUnlocked: true },
+    );
+  }
+
+  /**
+   * The subject's land area for the land row of a built subject's table.
+   * How it works: a positive figure is saved as the appraiser's; blank or zero sends 0, which
+   * clears it on the server, so the row goes back to the deed's area.
+   */
+  async function saveSubjectLandArea(raw: string): Promise<boolean> {
+    const parsed = parseDecimal(raw);
+    return saveApproach(
+      { subjectLandAreaSqm: Number.isFinite(parsed) && parsed > 0 ? parsed : 0 },
+      "تعذّر حفظ مساحة أرض العقار",
+      { requireUnlocked: true },
+    );
   }
 
   return {
@@ -125,5 +143,6 @@ export function useMarketApproachCommands(
     saveSubjectSpec,
     changeAdjustmentBasis,
     saveAreaFactorPct,
+    saveSubjectLandArea,
   };
 }

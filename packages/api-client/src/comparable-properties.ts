@@ -32,6 +32,8 @@ export type ComparablePropertyDto = {
   latitude: number;
   longitude: number;
   areaSqm: number;
+  /** A built comparable's land area (m²); null for land and when not entered. */
+  landAreaSqm?: number | null;
   transactionDate: string;
   price: number;
   pricePerSqm: number;
@@ -86,6 +88,8 @@ export type UpsertComparablePropertyRequest = {
   latitude: number;
   longitude: number;
   areaSqm: number;
+  /** A built comparable's land area (m²) — optional; the server drops it for a land comparable. */
+  landAreaSqm?: number | null;
   transactionDate: string;
   price: number;
   city?: string | null;
