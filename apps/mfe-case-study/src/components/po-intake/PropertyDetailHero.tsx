@@ -18,7 +18,6 @@ import {
   formatPropertyTypeLine,
   identifierTypeLabel,
   PROPERTY_TYPE_USAGE_LABEL,
-  propertyUiStatusLabel,
   showsCourtFields,
   type PoIntakeRecord,
   type PoPropertyIntake,
@@ -31,8 +30,6 @@ import {
   useWorkflowTasksQuery,
 } from "../../query/case-study-queries";
 import { PropertyListRowStatuses } from "@platform/api-client";
-import { useFailuresQuery } from "@failures/mfe/query/failures-queries";
-import { derivePropertyUiStatus } from "../../lib/app-data/property-detail-ui-status";
 import { useFavoriteProperties } from "../../lib/app-data/favorite-properties";
 import { PoPropertyDetailTopbarActions } from "./PoPropertyDetailTopbarActions";
 import { useTransactionQuery } from "../../query/use-transaction-query";
@@ -176,7 +173,6 @@ export function PropertyDetailHero({
   const heroRef = useRef<HTMLElement>(null);
   const compact = useStickyCompact(heroRef, stickyCompact);
   const { data: tasks = [] } = useWorkflowTasksQuery();
-  const { data: failures = [] } = useFailuresQuery();
   // The handover stamp reaches the browser as the server's property-row status.
   const { data: propertyItems } = usePropertyListItemsQuery();
   const serverRowStatus =
@@ -199,19 +195,6 @@ export function PropertyDetailHero({
   const courtLine = [property.court, property.circuit]
     .filter(Boolean)
     .join(" / ");
-
-  const uiStatus = useMemo(
-    () =>
-      derivePropertyUiStatus({
-        poNumber: record.poNumber.trim(),
-        property,
-        tasks,
-        failures,
-        handedOverToEnfaz,
-        serverRowStatus,
-      }),
-    [record.poNumber, property, tasks, failures, handedOverToEnfaz, serverRowStatus],
-  );
 
   const completion = useMemo(() => {
     const parent = caseStudyTaskForProperty(
@@ -307,7 +290,8 @@ export function PropertyDetailHero({
                   compact={compact}
                 />
               ) : null}
-              {/* HTML badge colors: deed=gold, assignment=teal, work=amber */}
+              {/* HTML badge colors: deed=gold, assignment=teal. The work-status badge («قيد العمل» /
+                  «جاهز للرفع» / «مكتمل») was removed 2026-11-15 (Omar: not wanted here). */}
               <span
                 className={cn(
                   "rounded-md font-bold whitespace-nowrap",
@@ -329,17 +313,6 @@ export function PropertyDetailHero({
                 )}
               >
                 {assignmentCompositeTag(record.assignmentType)}
-              </span>
-              <span
-                className={cn(
-                  "rounded-md font-bold whitespace-nowrap",
-                  compact
-                    ? "px-2 py-0.5 text-[10px]"
-                    : "px-[11px] py-1 text-[11.5px]",
-                  "bg-[var(--amber-light,#f7ecd8)] text-[var(--amber-text,#8a6116)]",
-                )}
-              >
-                {propertyUiStatusLabel(uiStatus)}
               </span>
               {/* «مطالعة الصك» (Omar 2026-11-11): the deed opens in a window on the same page. */}
               <PropertyDeedPreviewButton
