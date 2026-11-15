@@ -196,13 +196,13 @@ describe("buildAllTransactionsQueueRowMeta — «المعاملات النشطة
   const done = task({ id: "done", kind: "case-study-property", phase: "done", status: "completed", propertyId: "p-done" });
   const now = new Date("2026-11-05T09:00:00Z");
 
-  it("replaces the phase with «تحت الدراسة» and «بانتظار», and drops what it cannot place", () => {
+  it("replaces the phase with «قيد الدراسة» and «بانتظار», and drops what it cannot place", () => {
     const rows = buildAllTransactionsQueueRowMeta([live, done], new Map(), now, (t) =>
       t.id === "live" ? { stage: "استعلام البورصة", waitingOn: "التنسيق", parties: ["co"] } : null,
     );
     expect(rows.map((r) => [r.task.id, r.phaseLabel, r.waitingOn, r.waitingParties])).toEqual([
-      // A live transaction reads «تحت الدراسة» whatever its step (Omar 2026-11-15).
-      ["live", "تحت الدراسة", "التنسيق", ["co"]],
+      // A live transaction reads «قيد الدراسة» whatever its step (Omar 2026-11-15).
+      ["live", "قيد الدراسة", "التنسيق", ["co"]],
     ]);
   });
 

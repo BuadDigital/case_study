@@ -243,7 +243,7 @@ export function collapseAllTransactionsToLatestPhase(
  *
  * How it works: builds a row per task, collapses them per property (`collapseAllTransactionsToLatestPhase`),
  * then — when `progressOf` is given (staff) — replaces the coarse phase with the transaction's state
- * («تحت الدراسة», or how a closed one ended) and who it waits for, and drops what it cannot place.
+ * («قيد الدراسة», or how a closed one ended) and who it waits for, and drops what it cannot place.
  * Edge cases / changed 2026-11-05 (Omar: «المعاملات النشطة» replaces the hidden «جميع المعاملات»):
  * without `progressOf` (party roles, their own tasks) the rows keep the phase label and every status.
  */
@@ -289,9 +289,9 @@ export function buildAllTransactionsQueueRowMeta(
     if (!progress) continue;
     live.push({
       ...row,
-      // «جميع العقارات» is a page to look at (Omar 2026-11-15: «يكفي تحت الدراسة، مكتملة»): a live
-      // transaction reads «تحت الدراسة» whatever its step; «بانتظار» still says where it stands.
-      phaseLabel: progress.closed === true ? progress.stage : "تحت الدراسة",
+      // «جميع العقارات» is a page to look at (Omar 2026-11-15: two states are enough, «قيد الدراسة» and «مكتملة»): a live
+      // transaction reads «قيد الدراسة» whatever its step; the cards above say where it stands.
+      phaseLabel: progress.closed === true ? progress.stage : "قيد الدراسة",
       waitingOn: progress.waitingOn || null,
       waitingParties: progress.parties,
       closed: progress.closed === true,
