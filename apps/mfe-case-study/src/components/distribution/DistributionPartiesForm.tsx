@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 import { RegSelect } from "@platform/app-shared/registration/FormFields";
 import { useDistributionAssigneesQuery } from "@settings/mfe/query/settings-queries";
-import { Card, FormRow, Note, cn, useWorkDensity } from "@platform/ui-kit";
-import { InsReadField } from "../po-intake/PropertyDetailInspectionParts";
+import { initialsFromDisplayName } from "@platform/app-shared/lib/display-name-initials";
+import { Card, Note, cn, useWorkDensity } from "@platform/ui-kit";
 import { getEngineeringOffices, getFieldInspectors, getValuators } from "../../lib/app-data/distribution-parties";
 import { buildAssigneeOpenLoadMap } from "../../lib/app-data/distribution-load";
 import { assigneeLoadOptions } from "../../lib/app-data/distribution-assignee-options";
@@ -68,12 +68,56 @@ function PartyBlock({
   );
 }
 
+/**
+ * One assigned party of a confirmed distribution: the person's initials in a round mark, the seat
+ * above the name (Omar 2026-11-15: «حسّن شكله»).
+ *
+ * How it works: the initials come from the shared `initialsFromDisplayName`; the tile keeps a least
+ * width so two or three sit side by side and a long name is cut with «…» (the full name is the title).
+ * Edge cases: a seat nobody holds shows `empty` in muted type and «—» in the mark.
+ */
+function AssignedPartyTile({ seat, name, empty = "لم يُعيَّن" }: { seat: string; name: string; empty?: string }) {
+  const assigned = name.trim() !== "";
+  return (
+    <li className="flex min-w-[200px] max-w-full flex-1 items-center gap-3 rounded-xl border border-border bg-surface-2 px-3.5 py-2.5 sm:max-w-[300px]">
+      <span
+        aria-hidden
+        className={cn(
+          "flex size-10 shrink-0 items-center justify-center rounded-full border text-[13px] font-bold",
+          assigned
+            ? "border-border/80 bg-[color-mix(in_srgb,var(--gold)_16%,var(--surface))] text-gold-d"
+            : "border-dashed border-border-md bg-surface text-text-3",
+        )}
+      >
+        {assigned ? initialsFromDisplayName(name) : "—"}
+      </span>
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-[11.5px] leading-4 text-text-3">{seat}</span>
+        <span
+          className={cn(
+            "truncate text-[14px] leading-5",
+            assigned ? "font-bold text-heading" : "font-medium text-text-3",
+          )}
+          title={assigned ? name : undefined}
+        >
+          {assigned ? name : empty}
+        </span>
+      </span>
+    </li>
+  );
+}
+
 type Props = {
   distribution: TaskDistributionDraft;
   onPatch: (patch: Partial<TaskDistributionDraft>) => void;
   showEngineering: boolean;
   engineeringHint?: string | null;
   readOnly?: boolean;
+  /**
+   * The read-only view's own action («تعديل إسناد الأطراف»): beside the parties on the work page's
+   * layout (Omar 2026-11-15: at the side, not under them), under the form elsewhere.
+   */
+  action?: React.ReactNode;
 };
 
 export function DistributionPartiesForm({
@@ -82,6 +126,7 @@ export function DistributionPartiesForm({
   showEngineering,
   engineeringHint,
   readOnly = false,
+  action,
 }: Props) {
   const { data: staffResult } = useDistributionAssigneesQuery();
   const { data: workflowTasks = [] } = useWorkflowTasksQuery();
@@ -102,26 +147,31 @@ export function DistributionPartiesForm({
   );
   const work = useWorkDensity();
 
-  // The work page's layout (`work` density) (Omar 2026-11-09): a confirmed distribution reads like the page's other
-  // locked fields — who was assigned, in the four-column row — not as disabled pickers in cards.
+  // The work page's layout (`work` density): a confirmed distribution reads as who was assigned, not
+  // as disabled pickers in cards (Omar 2026-11-09) — one tile per party, with the section's action at
+  // the row's end (2026-11-15). On a phone the tiles stack and the action takes its own line.
   if (work && readOnly) {
     const nameOf = (list: { id: string; name: string }[], id: string) =>
       list.find((a) => a.id === id)?.name ?? (id ? id : "");
     return (
-      <FormRow>
-        <InsReadField label="المعاين الميداني" value={nameOf(fieldInspectors, distribution.inspectorId)} />
-        <InsReadField label="المقيّم العقاري" value={nameOf(valuators, distribution.valuatorId)} />
-        {showEngineering ? (
-          <InsReadField
-            label="المكتب الهندسي"
-            value={
-              distribution.engineeringOffice
-                ? nameOf(engineeringOffices, distribution.engineeringOfficeId)
-                : "لا يوجد"
-            }
-          />
-        ) : null}
-      </FormRow>
+      <div className="flex flex-wrap items-center gap-3">
+        <ul className="m-0 flex min-w-0 flex-1 list-none flex-wrap gap-3 p-0">
+          <AssignedPartyTile seat="المعاين الميداني" name={nameOf(fieldInspectors, distribution.inspectorId)} />
+          <AssignedPartyTile seat="المقيّم العقاري" name={nameOf(valuators, distribution.valuatorId)} />
+          {showEngineering ? (
+            <AssignedPartyTile
+              seat="المكتب الهندسي"
+              name={
+                distribution.engineeringOffice
+                  ? nameOf(engineeringOffices, distribution.engineeringOfficeId)
+                  : ""
+              }
+              empty="لا يوجد"
+            />
+          ) : null}
+        </ul>
+        {action ? <div className="shrink-0 max-sm:w-full">{action}</div> : null}
+      </div>
     );
   }
 
@@ -201,6 +251,7 @@ export function DistributionPartiesForm({
           {engineeringHint}
         </Note>
       ) : null}
+      {readOnly && action ? <div>{action}</div> : null}
     </div>
   );
 }
