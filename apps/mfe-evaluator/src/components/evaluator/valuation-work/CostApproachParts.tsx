@@ -15,6 +15,8 @@
 // Grey areas (2026-11-10)
 //  • Ages  A hint «أدخل العمر الفعلي والعمر الاقتصادي لحساب الإهلاك» under the age rows while either is empty
 //          (no 10 / 40-year starter values any more).
+// 2026-11-15 (Omar)
+//  • The lease-cap note leaves the age card with the «نوع الملكية المقيَّمة» list (no lease years any more).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 "use client";
@@ -43,7 +45,6 @@ import {
   COST_AGES_MISSING_HINT,
   costNum,
   costNumericInput,
-  leaseCapWording,
 } from "./lib/cost-approach-state";
 import type {
   CostApproachAlert,
@@ -388,26 +389,21 @@ const AGE_ROWS: {
 /**
  * Age and depreciation inputs, with live results underneath (form spec).
  *
- * How it works: when the remaining term caps the life used for depreciation, a note under the age
- * rows says so, worded by the interest valued (`leaseCapWording`).
+ * How it works: the age rows, then the physical, total and applied depreciation computed live.
  *
- * Edge cases: fixed 2026-11-04 (A→Z #69): a usufruct right («حق منفعة») was told «مدة الإيجار
- * المتبقية»; it now reads «مدة حق المنفعة المتبقية». 2026-11-10: the ages start empty (no invented
- * 10 / 40 years) — while either box is empty a hint under the rows asks for both.
+ * Edge cases: 2026-11-10: the ages start empty (no invented 10 / 40 years) — while either box is
+ * empty a hint under the rows asks for both. 2026-11-15: the lease-cap note is gone with the
+ * «نوع الملكية المقيَّمة» list (the life is never capped by a lease any more).
  */
 export function CostAgeCard({
   fields,
   setField,
   derived,
-  ownershipInterestKey = null,
 }: {
   fields: CostApproachFields;
   setField: FieldSetter;
   derived: CostApproachDerived;
-  /** The interest valued (freehold / usufruct / leased_land) — words the lease-cap note. */
-  ownershipInterestKey?: string | null;
 }) {
-  const leaseCap = leaseCapWording(ownershipInterestKey);
   const { fieldErrors } = useValuationWorkErrors();
   const work = useWorkDensity();
   return (
@@ -457,16 +453,6 @@ export function CostAgeCard({
             <Note tone="warn" className="mb-0" data-testid="cost-ages-missing-hint">
               {COST_AGES_MISSING_HINT}
             </Note>
-          ) : null}
-          {derived.effectiveLifeLocal < derived.extLifeLocal ? (
-            <div
-              data-testid="cost-lease-cap-note"
-              className="rounded-[7px] bg-surface-2 px-2.5 py-1.5 text-[11.5px] text-gold-d"
-            >
-              {leaseCap.subject}: العمر المعتمد للإهلاك{" "}
-              <span dir="ltr">{fmt(derived.effectiveLifeLocal, 1)}</span> سنة — العمر المتبقي
-              لا يتجاوز {leaseCap.term}
-            </div>
           ) : null}
           <div className="flex items-center justify-between gap-3 border-t border-border pt-2.5">
             <span className="text-[12.5px] font-medium text-text-2">

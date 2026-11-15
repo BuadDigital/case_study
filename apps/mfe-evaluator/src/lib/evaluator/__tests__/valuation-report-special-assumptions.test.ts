@@ -112,21 +112,12 @@ describe("§29 special assumption live fill", () => {
     expect(dom.querySelector('[data-sec="29"]')).toBeNull();
   });
 
-  it("the full-ownership clause follows the interest valued (usufruct / leased land)", () => {
+  it("prints the full-ownership clause as picked (no interest list since 2026-11-15)", () => {
     const clause =
       "يفترض أن العقار مطلق الملكية وليس عليه أي نزاعات ملكية أو ورثة او قيود على البيع والتملك.";
     const draft = createEvaluatorDraft({ taskId: "t1", propertyId: "p1", poNumber: "PO-1" });
-    const bullets = (key: string) =>
-      buildValuationReportLiveFill({
-        draft,
-        selectedSpecialAssumptions: [clause],
-        ownership: { key },
-      }).specialAssumptionBullets?.[0] ?? "";
-    expect(bullets("freehold")).toBe(clause);
-    expect(bullets("usufruct")).not.toContain("مطلق الملكية");
-    expect(bullets("usufruct")).toContain("حق المنفعة");
-    expect(bullets("leased_land")).not.toContain("مطلق الملكية");
-    expect(bullets("leased_land")).toContain("إيجار الأرض");
+    const fill = buildValuationReportLiveFill({ draft, selectedSpecialAssumptions: [clause] });
+    expect(fill.specialAssumptionBullets?.[0]).toBe(clause);
   });
 
   it("omits the no-specialist clause when a specialist is used", () => {

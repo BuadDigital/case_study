@@ -1,14 +1,17 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { PoPropertyIntake } from "../../lib/app-data/po-intake-data";
 import {
   openPropertyDetailDocumentPreview,
   type PropertyDetailDocumentEntry,
 } from "../../lib/app-data/property-detail-documents";
-import { cn } from "@platform/ui-kit";
+import { cn, WORK_FORM_GRID_CLASS } from "@platform/ui-kit";
 import { useInspectorPhotoDataUrl } from "../field-inspection/useInspectorPhotoDataUrl";
+import { InsReadField } from "./PropertyDetailInspectionFields";
 import { PropertyLocationMapGlance } from "./PropertyLocationMapGlance";
 import { PropertyDetailPhotosTab } from "./PropertyDetailPhotosTab";
+import { SummaryGroup } from "./SummaryGroup";
 
 const goldSoft = "rounded border border-border bg-surface-2";
 
@@ -27,6 +30,10 @@ type PropertyGlanceFact = {
  * the deed area and the district («أرض أرض، مساحة الأرض 123 م²، بحي …. يُحدَّث الوصف التفصيلي من
  * تقرير المعاين») — with no description the «وصف العقار» lines are left out, and with no fact either
  * the whole box is.
+ * The appraiser's summary (Omar 2026-11-15) keeps the photo and the map as they are and orders the
+ * rest its own way: with `factsAsGroup` the box holds the description alone and the work order's
+ * facts follow as the «أساس التكليف» group of locked fields, after whatever `beforeFacts` hands in
+ * (the study's groups) and before the photos.
  */
 export function PropertyDetailMediaGlance({
   property,
@@ -40,6 +47,8 @@ export function PropertyDetailMediaGlance({
   valuationPurposeLabel,
   reportUsersLabel,
   photos,
+  factsAsGroup = false,
+  beforeFacts,
 }: {
   property?: PoPropertyIntake | null;
   primaryPhoto?: PropertyDetailDocumentEntry | null;
@@ -60,6 +69,10 @@ export function PropertyDetailMediaGlance({
    * Omit on the property overview — that page has its own photos tab.
    */
   photos?: PropertyDetailDocumentEntry[] | null;
+  /** The work order's facts as the «أساس التكليف» group of fields, not lines of the description box. */
+  factsAsGroup?: boolean;
+  /** Drawn between the description and the work order's facts — the appraiser's study groups. */
+  beforeFacts?: ReactNode;
 }) {
   const handle = primaryPhoto?.inspectionPhoto;
   const fetchedUrl = useInspectorPhotoDataUrl(
@@ -88,7 +101,8 @@ export function PropertyDetailMediaGlance({
       : null,
   ].filter((f): f is PropertyGlanceFact => Boolean(f));
 
-  const hasDescriptionBox = Boolean(description) || assignmentFacts.length > 0;
+  const boxFacts = factsAsGroup ? [] : assignmentFacts;
+  const hasDescriptionBox = Boolean(description) || boxFacts.length > 0;
   const descriptionBlock = (
     <>
       {description ? (
@@ -99,7 +113,7 @@ export function PropertyDetailMediaGlance({
           </p>
         </>
       ) : null}
-      {assignmentFacts.map((fact, i) => (
+      {boxFacts.map((fact, i) => (
         <div
           key={fact.label}
           // The rule parts a fact from what stands above it; the first line of the box has none.
@@ -176,6 +190,18 @@ export function PropertyDetailMediaGlance({
       {!showCoordinates && hasDescriptionBox ? (
         <div className={cn("sm:col-span-2 px-3 py-2", goldSoft)}>
           {descriptionBlock}
+        </div>
+      ) : null}
+      {beforeFacts ? <div className="min-w-0 sm:col-span-2">{beforeFacts}</div> : null}
+      {factsAsGroup && assignmentFacts.length > 0 ? (
+        <div className="min-w-0 sm:col-span-2">
+          <SummaryGroup title="أساس التكليف" testId="appraiser-assignment">
+            <div className={WORK_FORM_GRID_CLASS}>
+              {assignmentFacts.map((fact) => (
+                <InsReadField key={fact.label} label={fact.label} value={fact.value} />
+              ))}
+            </div>
+          </SummaryGroup>
         </div>
       ) : null}
       {photos ? (

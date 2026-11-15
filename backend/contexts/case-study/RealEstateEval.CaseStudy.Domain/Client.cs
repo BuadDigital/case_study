@@ -19,16 +19,16 @@ public class Client
 }
 
 /// <summary>
-/// Which per-client field requirements a work order carries. Infath's default is
-/// "require everything" — a named client (currently only Nabr) can override
-/// individual fields. Not Enfath-specific: any future client exception (Enfath
+/// Which per-client fields a work order carries. Infath's default is "ask for everything" — a
+/// named client (currently only Nabr) can override individual fields. «قرار الإسناد» is only
+/// shown, never required (2026-11-15: some assignments come without it); «اسم المالك» is required. Not Enfath-specific: any future client exception (Enfath
 /// field or otherwise) is added here, in this one struct, instead of an IsXClient
 /// check re-implemented in every validator that cares about "is this field
 /// required". Mirrors the frontend's ClientFieldPolicy in po-intake-assignment.ts.
 /// </summary>
-public readonly record struct ClientFieldPolicy(bool RequiresAssignmentDoc, bool RequiresOwnerName)
+public readonly record struct ClientFieldPolicy(bool ShowsAssignmentDoc, bool RequiresOwnerName)
 {
-    public static readonly ClientFieldPolicy Default = new(RequiresAssignmentDoc: true, RequiresOwnerName: true);
+    public static readonly ClientFieldPolicy Default = new(ShowsAssignmentDoc: true, RequiresOwnerName: true);
 }
 
 /// <summary>Known seed ids — Infath assignment center and Nabr Real Estate.</summary>
@@ -44,7 +44,7 @@ public static class SeedClientIds
         Guid.Parse("a1000001-0000-4000-8000-000000000002");
 
     private readonly record struct ClientFieldPolicyOverride(
-        bool? RequiresAssignmentDoc = null,
+        bool? ShowsAssignmentDoc = null,
         bool? RequiresOwnerName = null);
 
     /// <summary>
@@ -54,7 +54,7 @@ public static class SeedClientIds
     /// </summary>
     private static readonly Dictionary<Guid, ClientFieldPolicyOverride> ClientFieldPolicyOverrides = new()
     {
-        [NabrRealEstate] = new ClientFieldPolicyOverride(RequiresAssignmentDoc: false, RequiresOwnerName: false),
+        [NabrRealEstate] = new ClientFieldPolicyOverride(ShowsAssignmentDoc: false, RequiresOwnerName: false),
     };
 
     /// <summary>
@@ -73,7 +73,7 @@ public static class SeedClientIds
             if (!ClientFieldPolicyOverrides.TryGetValue(id, out var o)) continue;
             policy = policy with
             {
-                RequiresAssignmentDoc = o.RequiresAssignmentDoc ?? policy.RequiresAssignmentDoc,
+                ShowsAssignmentDoc = o.ShowsAssignmentDoc ?? policy.ShowsAssignmentDoc,
                 RequiresOwnerName = o.RequiresOwnerName ?? policy.RequiresOwnerName,
             };
         }

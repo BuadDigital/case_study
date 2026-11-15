@@ -8,6 +8,7 @@
 //         total ÷ its own area, then weighted (LandUnitRateFromAdoptedComps).
 //  • Applied obsolescence capped at 100% (buildings value floors at 0); alert above 90%.
 //  • LifeCappedByLease — the life used for depreciation is at most actual age + remaining lease.
+//         Removed 2026-11-15 with the «نوع الملكية المقيَّمة» list (no lease years are entered any more).
 // Round 2 (1b19bedc)
 //  • A    BuildingPlotAreaSqm on the cost approach and CostLandAreas (plot + apartment share); the land
 //         table compares with the plot (LandTableSubjectAreaSqm) and multiplies by the share
@@ -765,22 +766,6 @@ public static class CostApproachRules
     /// <summary>Buildings value after depreciation (buildings without land) — floors at zero.</summary>
     public static decimal BuildingsAfterDepreciation(decimal totalCostWithIndirect, decimal depreciationValue) =>
         Math.Max(0m, Math.Round(totalCostWithIndirect - depreciationValue, 2, MidpointRounding.AwayFromZero));
-
-    /// <summary>
-    /// A building valued alone on leased land cannot outlive the lease — its remaining
-    /// economic life (life − actual age) is capped at the remaining lease years, i.e. the life
-    /// used for physical depreciation is at most actual age + remaining lease. Null lease years
-    /// (not leased, or not entered) leave the life unchanged.
-    /// </summary>
-    public static decimal LifeCappedByLease(
-        decimal extendedLifeYears,
-        decimal? actualAgeYears,
-        decimal? remainingLeaseYears)
-    {
-        if (remainingLeaseYears is not { } lease || lease < 0m) return extendedLifeYears;
-        var cap = Math.Max(0m, actualAgeYears ?? 0m) + lease;
-        return Math.Min(extendedLifeYears, cap);
-    }
 }
 
 /// <summary>

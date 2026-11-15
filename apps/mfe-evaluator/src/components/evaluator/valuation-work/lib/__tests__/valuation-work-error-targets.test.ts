@@ -71,17 +71,10 @@ describe("firstValuationWorkError", () => {
     expect(first).toMatchObject({ screen: "basic", targetId: "as-retro-date" });
   });
 
-  it("points the settings D9/D11 errors at the rationale and lease-years fields", () => {
+  it("points the settings D9 error at the rationale field", () => {
     expect(
       firstValuationWorkError({ retrospectiveRationale: "مبرر التقييم بأثر رجعي إلزامي" }),
     ).toMatchObject({ screen: "basic", targetId: "as-retro-rationale" });
-    expect(
-      firstValuationWorkError({ remainingLeaseYears: "المدة المتبقية إلزامية" }),
-    ).toMatchObject({
-      screen: "basic",
-      targetId: "as-remaining-lease-years",
-      fallbackTargetId: "as-ownership-interest",
-    });
   });
 
   it("has no target for a key the registry does not know", () => {

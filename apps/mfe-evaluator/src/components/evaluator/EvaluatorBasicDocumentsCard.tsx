@@ -2,17 +2,15 @@
 
 import { useMemo } from "react";
 import { opsEmptyHint } from "@platform/ui-kit";
-import {
-  formatPropertyTypeLine,
-  type PoPropertyIntake,
-} from "@platform/app-shared/app-data/po-intake-property-model";
+import type { PoPropertyIntake } from "@platform/app-shared/app-data/po-intake-property-model";
 import { usePropertyDetailDocuments } from "../../lib/case-study-bridge";
 import { ValCard } from "./EvaluatorHtmlPrimitives";
 import { TransactionDocumentRow } from "./EvaluatorPropertyTab";
 
 /**
- * «البيانات الأساسية» opens with what the appraiser reads first: the property type and the
- * transaction documents. Inspection photos are left out — they have their own strip further down.
+ * «مستندات المعاملة» — the last block of the appraiser's summary (2026-11-15: it opened the section,
+ * with the property type the page's header already names). Inspection photos are left out — they
+ * have their own strip above.
  */
 export function EvaluatorBasicDocumentsCard({
   property,
@@ -45,16 +43,9 @@ export function EvaluatorBasicDocumentsCard({
         ),
     [sections],
   );
-  const typeLine = formatPropertyTypeLine(property);
 
   return (
-    <ValCard>
-      <div className="mb-3">
-        <div className="mb-[3px] text-[10.5px] text-text-3">نوع العقار</div>
-        <p className="m-0 text-[13px] font-bold text-heading">
-          {typeLine || "—"}
-        </p>
-      </div>
+    <ValCard title="مستندات المعاملة">
       {docs.length === 0 ? (
         <p className={opsEmptyHint}>لا توجد مستندات مرفوعة بعد لهذه المعاملة.</p>
       ) : (

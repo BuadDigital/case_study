@@ -500,17 +500,6 @@ namespace RealEstateEval.Valuation.Infrastructure.Data.Contexts.Valuation.Migrat
                     b.Property<bool>("MarketApproachEnabled")
                         .HasColumnType("boolean");
 
-                    b.Property<string>("OwnershipInterestKey")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasDefaultValue("freehold");
-
-                    b.Property<decimal?>("RemainingLeaseYears")
-                        .HasPrecision(6, 2)
-                        .HasColumnType("numeric(6,2)");
-
                     b.Property<DateOnly?>("RetrospectiveDate")
                         .HasColumnType("date");
 

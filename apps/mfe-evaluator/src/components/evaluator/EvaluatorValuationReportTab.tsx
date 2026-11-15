@@ -10,7 +10,7 @@
 
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   getApiBase,
@@ -49,7 +49,6 @@ import {
 import { collectFieldInspectionDocumentsFromSubmission } from "../../lib/case-study-bridge";
 import {
   cn,
-  opsChip,
   opsFldControl,
   opsTfLbl,
   WorkSectionFieldsSkeleton,
@@ -69,7 +68,6 @@ import {
   resolveValuationPurposeKey,
 } from "../../lib/evaluator/valuation-basis";
 import { formatValuationReportUsers } from "../../lib/evaluator/valuation-report-users";
-import { inspectionFactChips } from "./EvaluatorInspectionFactsSection";
 import { InspectorDataSyncNote } from "./InspectorDataSyncNote";
 import { computePropertyTotal } from "../../lib/evaluator/value-estimation";
 import { ValCard, ValFieldsGrid } from "./EvaluatorHtmlPrimitives";
@@ -163,6 +161,7 @@ export function EvaluatorValuationReportTab({
   showSubmit = false,
   /** Photo + map strip — only on «البيانات الأساسية». */
   showPropertyMedia = true,
+  studySummary,
 }: {
   draft: EvaluatorSubmission;
   disabled?: boolean;
@@ -184,6 +183,12 @@ export function EvaluatorValuationReportTab({
   submitting?: boolean;
   showSubmit?: boolean;
   showPropertyMedia?: boolean;
+  /**
+   * The case-study app's groups of the summary (areas, boundaries, legal standing, study results) —
+   * drawn inside the media strip, after the description and before the work order's facts and the
+   * photos (Omar 2026-11-15). Without the strip they follow the tab's own content.
+   */
+  studySummary?: ReactNode;
 }) {
   const [specialistFinishing, setSpecialistFinishing] =
     useState<SpecialistFinishingLevel>(() =>
@@ -390,7 +395,6 @@ export function EvaluatorValuationReportTab({
   }
 
   const noteClassName = "mb-2 text-[11px] leading-relaxed text-text-3";
-  const inspectionChips = inspectionFactChips(inspector);
   const incomeOn = approachUsed(choices.incomeMethodKey);
 
   return (
@@ -417,18 +421,13 @@ export function EvaluatorValuationReportTab({
             valuationPurposeLabel={valuationPurposeDisplay}
             reportUsersLabel={reportUsersDisplay}
             photos={loading ? undefined : inspectorPhotos}
+            factsAsGroup
+            beforeFacts={studySummary}
           />
-          {inspectionChips.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {inspectionChips.map((chip) => (
-                <span key={chip} className={opsChip}>
-                  {chip}
-                </span>
-              ))}
-            </div>
-          ) : null}
         </div>
-      ) : null}
+      ) : (
+        studySummary
+      )}
 
       {incomeOn ? (
         <>

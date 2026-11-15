@@ -17,6 +17,9 @@
 //  • Stale saves (another tab saved since this one loaded) are refused: ExpectedUpdatedAtUtc → 409.
 //  • Repeated floors inherit the unit cost of the INCLUDED first floor only.
 //  • DTO: DepreciationIncomplete (CostDepreciationRules.IsIncomplete) and UpdatedAtUtc.
+// 2026-11-15 (Omar)
+//  • The lease cap is removed with the «نوع الملكية المقيَّمة» list: depreciation uses the extended
+//         economic life; RemainingLeaseYears and LifeCappedByLease leave the DTO.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Application;
@@ -56,7 +59,7 @@ public sealed class ValuationCostApproachService(
         var scopeKey = CostScopeKeys.Normalize(settings?.CostScopeKey);
         var land = await ReadLandAsync(vr, entity, scopeKey, cancellationToken);
 
-        return ToDto(vr, entity, scopeKey, land, CostLeaseTerms.RemainingLeaseYears(settings));
+        return ToDto(vr, entity, scopeKey, land);
     }
 
     /// <summary>The land inputs one read uses: unit rate (SAR/m²), land area and whether comps are adopted.</summary>
@@ -363,8 +366,7 @@ public sealed class ValuationCostApproachService(
         ValuationRequest vr,
         ValuationCostApproach? entity,
         string costScopeKey,
-        CostLandInputs landInputs,
-        decimal? remainingLeaseYears)
+        CostLandInputs landInputs)
     {
         var orderedLines = (entity?.Lines ?? []).OrderBy(l => l.SortOrder).ToList();
 
@@ -457,9 +459,9 @@ public sealed class ValuationCostApproachService(
  // chain (–)
         var extendedLife = CostApproachRules.ExtendedLifeYears(
             entity?.EconomicAgeYears, entity?.LifeExtensionYears ?? 0m);
-        // building-only on leased land — the remaining life cannot outlast the lease.
-        var effectiveLife = CostApproachRules.LifeCappedByLease(
-            extendedLife, entity?.ActualAgeYears, remainingLeaseYears);
+        // 2026-11-15: no lease cap any more (the ownership-interest list is gone) — the life used is
+        // the extended economic life.
+        var effectiveLife = extendedLife;
         var physicalPct = CostApproachRules.PhysicalObsolescencePct(
             entity?.ActualAgeYears, effectiveLife);
         var totalObsolescence = CostApproachRules.TotalObsolescencePct(
@@ -502,8 +504,6 @@ public sealed class ValuationCostApproachService(
             ExternalObsolescencePct = entity?.ExternalObsolescencePct ?? 0m,
             ExternalObsolescenceRationale = entity?.ExternalObsolescenceRationale,
             ExtendedLifeYears = extendedLife,
-            RemainingLeaseYears = remainingLeaseYears,
-            LifeCappedByLease = effectiveLife < extendedLife,
             EffectiveLifeYears = effectiveLife,
             PhysicalObsolescencePct = physicalPct,
             TotalObsolescencePct = totalObsolescence,

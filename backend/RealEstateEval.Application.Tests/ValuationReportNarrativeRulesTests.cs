@@ -20,11 +20,9 @@ public class ValuationReportNarrativeRulesTests
     private const string FullOwnershipAssumption =
         "يفترض أن العقار مطلق الملكية وليس عليه أي نزاعات ملكية أو ورثة";
 
-    [Theory]
-    [InlineData("freehold", "أن العقار مطلق الملكية")]
-    [InlineData("usufruct", "أن حق المنفعة محل التقييم قائم وساري المفعول طوال مدته المتبقية")]
-    [InlineData("leased_land", "أن عقد إيجار الأرض المقامة عليها المباني قائم وساري المفعول")]
-    public void The_full_ownership_assumption_follows_the_interest_valued(string interest, string expected)
+    /// <summary>2026-11-15: no interest list any more — the picked assumption prints as written.</summary>
+    [Fact]
+    public void The_full_ownership_assumption_prints_as_picked()
     {
         var text = ValuationReportNarrativeRules.SpecialAssumptionsBody(
             hasStructures: true,
@@ -32,11 +30,9 @@ public class ValuationReportNarrativeRulesTests
             basisLabelAr: null,
             premiseLabelAr: null,
             restrictionsLine: null,
-            selectedAssumptions: [FullOwnershipAssumption],
-            ownershipInterestKey: interest);
+            selectedAssumptions: [FullOwnershipAssumption]);
 
-        Assert.Contains(expected, text);
-        if (interest != "freehold") Assert.DoesNotContain("مطلق الملكية", text);
+        Assert.Contains(FullOwnershipAssumption, text);
     }
 
     [Theory]
@@ -50,13 +46,8 @@ public class ValuationReportNarrativeRulesTests
         Assert.Equal(expected, ValuationReportDisplayRules.FormatYears((decimal)years));
 
     [Fact]
-    public void The_ownership_cell_follows_the_interest_key()
+    public void The_ownership_label_comes_from_the_initial_data_type()
     {
-        Assert.Equal("ملكية تامة", OwnershipInterestKeys.ReportCell("freehold", null, "ملكية تامة"));
-        Assert.Equal("مشاع", OwnershipInterestKeys.ReportCell(null, 5m, "مشاع"));
-        Assert.Equal("حق منفعة — المدة المتبقية 4 سنوات", OwnershipInterestKeys.ReportCell("usufruct", 4m, "ملكية تامة"));
-        Assert.Equal("أرض مستأجرة — المدة المتبقية سنتان", OwnershipInterestKeys.ReportCell("leased_land", 2m, null));
-        Assert.Equal("أرض مستأجرة", OwnershipInterestKeys.ReportCell("leased_land", null, null));
         Assert.Equal("ملكية تامة", RealEstateEval.CaseStudy.Domain.OwnershipTypes.LabelAr("absolute"));
     }
 

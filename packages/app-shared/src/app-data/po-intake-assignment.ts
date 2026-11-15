@@ -82,22 +82,23 @@ export function isNabrClient(clientId: string): boolean {
 }
 
 /**
- * Which per-client field requirements a work order carries. Infath's default is
- * "require everything" — a named client (currently only Nabr) can override
- * individual fields. Not Enfath-specific: any future client exception (Enfath
+ * Which per-client fields a work order carries. Infath's default is "ask for
+ * everything" — a named client (currently only Nabr) can override individual
+ * fields. «قرار الإسناد» is only shown, never required (2026-11-15: some
+ * assignments come without it); «اسم المالك» is required. Not Enfath-specific: any future client exception (Enfath
  * field or otherwise) is added here, in this one object, instead of a new
  * isXClient check re-implemented in every screen and validator that cares
  * about "is this field required".
  */
 export type ClientFieldPolicy = {
-  /** قرار الإسناد upload (إنفاذ stage). */
-  requiresAssignmentDoc: boolean;
+  /** قرار الإسناد upload is shown (إنفاذ stage) — optional whenever shown. */
+  showsAssignmentDoc: boolean;
   /** اسم المالك (إنفاذ stage). */
   requiresOwnerName: boolean;
 };
 
 export const DEFAULT_CLIENT_FIELD_POLICY: ClientFieldPolicy = {
-  requiresAssignmentDoc: true,
+  showsAssignmentDoc: true,
   requiresOwnerName: true,
 };
 
@@ -108,7 +109,7 @@ export const DEFAULT_CLIENT_FIELD_POLICY: ClientFieldPolicy = {
  */
 const CLIENT_FIELD_POLICY_OVERRIDES: Record<string, Partial<ClientFieldPolicy>> = {
   [NABR_SEED_CLIENT_ID]: {
-    requiresAssignmentDoc: false,
+    showsAssignmentDoc: false,
     requiresOwnerName: false,
   },
 };

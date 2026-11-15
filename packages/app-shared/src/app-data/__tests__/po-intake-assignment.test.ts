@@ -12,7 +12,7 @@ describe("clientFieldPolicyFor", () => {
         clientId: INFATH_SEED_CLIENT_ID,
         reportUserClientIds: [],
       }),
-    ).toEqual({ requiresAssignmentDoc: true, requiresOwnerName: true });
+    ).toEqual({ showsAssignmentDoc: true, requiresOwnerName: true });
   });
 
   it("relaxes قرار الإسناد و اسم المالك when Nabr is the sub-client (report user) — the normal case", () => {
@@ -21,13 +21,13 @@ describe("clientFieldPolicyFor", () => {
         clientId: INFATH_SEED_CLIENT_ID,
         reportUserClientIds: [NABR_SEED_CLIENT_ID],
       }),
-    ).toEqual({ requiresAssignmentDoc: false, requiresOwnerName: false });
+    ).toEqual({ showsAssignmentDoc: false, requiresOwnerName: false });
   });
 
   it("relaxes the same fields when Nabr is set directly as the primary client — the legacy case", () => {
     expect(
       clientFieldPolicyFor({ clientId: NABR_SEED_CLIENT_ID, reportUserClientIds: [] }),
-    ).toEqual({ requiresAssignmentDoc: false, requiresOwnerName: false });
+    ).toEqual({ showsAssignmentDoc: false, requiresOwnerName: false });
   });
 
   it("stays at the default when neither the client nor the report users are Nabr", () => {
@@ -36,9 +36,9 @@ describe("clientFieldPolicyFor", () => {
         clientId: INFATH_SEED_CLIENT_ID,
         reportUserClientIds: ["some-other-client-id"],
       }),
-    ).toEqual({ requiresAssignmentDoc: true, requiresOwnerName: true });
+    ).toEqual({ showsAssignmentDoc: true, requiresOwnerName: true });
     expect(
       clientFieldPolicyFor({ clientId: INFATH_SEED_CLIENT_ID, reportUserClientIds: undefined }),
-    ).toEqual({ requiresAssignmentDoc: true, requiresOwnerName: true });
+    ).toEqual({ showsAssignmentDoc: true, requiresOwnerName: true });
   });
 });

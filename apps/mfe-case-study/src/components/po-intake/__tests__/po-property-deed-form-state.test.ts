@@ -39,7 +39,7 @@ describe("enfathFormVisibility", () => {
   it("hides قرار الإسناد when the field policy doesn't require it (e.g. Nabr)", () => {
     const v = enfathFormVisibility({
       ...base,
-      fieldPolicy: { requiresAssignmentDoc: false, requiresOwnerName: false },
+      fieldPolicy: { showsAssignmentDoc: false, requiresOwnerName: false },
     });
     expect(v.showExtended).toBe(true);
     expect(v.showAssignmentDoc).toBe(false);

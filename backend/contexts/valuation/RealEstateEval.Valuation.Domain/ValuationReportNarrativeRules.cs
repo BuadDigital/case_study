@@ -2,6 +2,8 @@
 // Round 2 (1b19bedc)
 //  • The assumptions text takes the ownership interest key and rewords the full-ownership assumption
 //          for a usufruct / leased land (OwnershipInterestKeys.AssumptionForInterest).
+// 2026-11-15 (Omar): that rewording is removed with the «نوع الملكية المقيَّمة» list — the selected
+//          assumptions print as the appraiser picked them.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Domain;
@@ -49,9 +51,7 @@ public static class ValuationReportNarrativeRules
  // Items selected from the valuation-report tab settings library + valuer free-text additions.
         IReadOnlyList<string>? selectedAssumptions = null,
  // Retrospective line when selected (date + rationale).
-        string? retrospectiveLine = null,
- // Interest valued — rewords the library's full-ownership assumption for a usufruct / leased land.
-        string? ownershipInterestKey = null)
+        string? retrospectiveLine = null)
     {
         var bits = new List<string>
         {
@@ -96,7 +96,6 @@ public static class ValuationReportNarrativeRules
             if (externalSpecialistUsed
                 && ValuationApproachSettingsRules.IsNoExternalSpecialistAssumption(t))
                 continue;
-            t = OwnershipInterestKeys.AssumptionForInterest(t, ownershipInterestKey);
             bits.Add(t.EndsWith('.') || t.EndsWith('؟') ? t : t + ".");
         }
 

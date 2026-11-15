@@ -3,6 +3,7 @@
 //  • Cost Cost DTO: IsSaved (stored zeros are the appraiser's — no starter defaults) and the actual /
 //         economic age rationales (ActualAgeRationale, EconomicAgeRationale) on the DTO and the save request.
 //  • Cost DTO: RemainingLeaseYears, LifeCappedByLease and EffectiveLifeYears (life capped by the lease).
+//         2026-11-15: RemainingLeaseYears and LifeCappedByLease removed with the ownership-interest list.
 //  • Cost DTO: AppliedObsolescencePct (total capped at 100%) and ObsolescenceNeedsAlert (above 90%).
 //  • Split ValuationApproachSettingsDto and SaveValuationApproachSettingsRequest made partial ( fields
 //          live in ValuationApproachSettingsDtos.cs).
@@ -292,13 +293,9 @@ public class ValuationCostApproachDto
     public string? FunctionalObsolescenceRationale { get; init; }
     public decimal ExternalObsolescencePct { get; init; }
     public string? ExternalObsolescenceRationale { get; init; }
- /// <summary>Economic age + extension — computed (before any lease cap).</summary>
+ /// <summary>Economic age + extension — computed.</summary>
     public decimal ExtendedLifeYears { get; init; }
-    /// <summary>Remaining lease years read from the approach settings (null = not leased land).</summary>
-    public decimal? RemainingLeaseYears { get; init; }
-    /// <summary>True when building-only on leased land shortened the life to actual age + lease.</summary>
-    public bool LifeCappedByLease { get; init; }
-    /// <summary>The life physical depreciation is measured against (extended life, lease-capped when applies).</summary>
+    /// <summary>The life physical depreciation is measured against — the extended life (no lease cap since 2026-11-15).</summary>
     public decimal EffectiveLifeYears { get; init; }
  /// <summary> — computed, unclamped.</summary>
     public decimal? PhysicalObsolescencePct { get; init; }

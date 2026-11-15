@@ -23,12 +23,18 @@ export type FilterChipsProps = {
  * (`h-8 rounded-full`) with a live count badge. The active chip fills navy
  * (`bg-ink text-on-ink`); clicking the active chip again clears it. Pair
  * with `FilterTag` for filters applied from a side sheet.
+ *
+ * How it works: each chip is a plain button that only changes which rows the page shows.
+ * Edge cases: the row carries `data-no-action-toast` — a chip is a filter, never an action, so the
+ * app-wide click toast must not read its label. Without it a chip named «المراجعة والاعتماد» hit
+ * the «اعتماد» keyword and flashed «جاري الاعتماد…» on every click (fixed 2026-11-15).
  */
 export function FilterChips({ options, active, onChange, className }: FilterChipsProps) {
   return (
     <div
       role="group"
       aria-label="تصفية سريعة"
+      data-no-action-toast=""
       className={cn("flex flex-wrap items-center gap-1.5", className)}
     >
       {options.map((opt) => {

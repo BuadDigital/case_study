@@ -62,7 +62,7 @@ export function enfathFormVisibility(input: {
     showDelegationDoc: true,
     showRegistryDoc: hasRealEstateReg,
     showOtherDocs: true,
-    showAssignmentDoc: fieldPolicy.requiresAssignmentDoc,
+    showAssignmentDoc: fieldPolicy.showsAssignmentDoc,
   };
 }
 

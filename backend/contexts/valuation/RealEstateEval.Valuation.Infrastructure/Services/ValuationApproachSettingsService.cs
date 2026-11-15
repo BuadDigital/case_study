@@ -4,8 +4,8 @@
 //         (CurrentReportDateAsync), with the rationale.
 //  • A field the client does not send (JSON null) keeps the stored value — screens that do not send them
 //         no longer wipe the retrospective rationale or the interest valued and its lease years.
-//  • Saves OwnershipInterestKey (normalised) and RemainingLeaseYears (leasehold only); the DTO returns
-//         the key, its Arabic label and the lease years.
+// 2026-11-15 (Omar): the appraiser's «نوع الملكية المقيَّمة» list is removed — the ownership type comes
+//         from the initial data only (the «مشاع» tick beside the owner name), so nothing here saves it.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using Microsoft.EntityFrameworkCore;
@@ -114,10 +114,8 @@ public sealed class ValuationApproachSettingsService(
         var row = await db.ValuationApproachSettings
             .FirstOrDefaultAsync(x => x.ValuationRequestId == valuationRequestId, cancellationToken);
         // A client that does not send a field (JSON null) keeps the stored value: the final-review
-        // assumptions save and older screens neither wipe the rationale nor reset the interest valued.
+        // assumptions save and older screens do not wipe the rationale.
         var retroRationale = request.RetrospectiveRationale ?? row?.RetrospectiveRationale;
-        var interestKey = request.OwnershipInterestKey ?? row?.OwnershipInterestKey;
-        var leaseYears = request.OwnershipInterestKey is null ? row?.RemainingLeaseYears : request.RemainingLeaseYears;
 
         var errors = ValuationApproachSettingsRules.Validate(
             request.MarketApproachEnabled,
@@ -138,9 +136,7 @@ public sealed class ValuationApproachSettingsService(
             retrospectiveDateEnd: retroDateEnd,
             retrospectiveRationale: retroRationale,
             today: RiyadhClock.Today(_time),
-            reportDate: await CurrentReportDateAsync(valuationRequestId, cancellationToken),
-            ownershipInterestKey: interestKey,
-            remainingLeaseYears: leaseYears);
+            reportDate: await CurrentReportDateAsync(valuationRequestId, cancellationToken));
         if (errors.Count > 0) return (null, errors);
 
         if (row is null)
@@ -157,9 +153,6 @@ public sealed class ValuationApproachSettingsService(
         row.CostApproachEnabled = request.CostApproachEnabled;
         // The income approach is not available yet (Validate refuses it) — it is always stored off.
         row.IncomeApproachEnabled = false;
-        var interest = OwnershipInterestKeys.Normalize(interestKey);
-        row.OwnershipInterestKey = interest;
-        row.RemainingLeaseYears = OwnershipInterestKeys.IsLeasehold(interest) ? leaseYears : null;
         row.CostBasisKey = CostBasisKeys.Normalize(request.CostBasisKey);
         row.CostScopeKey = CostScopeKeys.Normalize(request.CostScopeKey);
         row.CostMeasurementUnitKey = CostMeasurementUnitKeys.Normalize(request.CostMeasurementUnitKey);
@@ -256,11 +249,6 @@ public sealed class ValuationApproachSettingsService(
                 && effective.CostApproachEnabled
                 && CostScopeKeys.IncludesBuildings(effective.CostScopeKey),
             IncomeApproachEnabled = effective.IncomeApproachEnabled,
-            OwnershipInterestKey = OwnershipInterestKeys.Normalize(effective.OwnershipInterestKey),
-            OwnershipInterestLabelAr = OwnershipInterestKeys.LabelAr(effective.OwnershipInterestKey),
-            RemainingLeaseYears = OwnershipInterestKeys.IsLeasehold(effective.OwnershipInterestKey)
-                ? effective.RemainingLeaseYears
-                : null,
             CostBasisKey = effective.CostBasisKey,
             CostBasisLabelAr = CostBasisKeys.LabelAr(effective.CostBasisKey),
             CostScopeKey = CostScopeKeys.Normalize(effective.CostScopeKey),

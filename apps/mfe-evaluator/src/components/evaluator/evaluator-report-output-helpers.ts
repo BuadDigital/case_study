@@ -236,17 +236,11 @@ export function effectiveValuationDate(input: {
 
 type ValuationListRow = { key: string; name: string; isEnabled: boolean; cells: string[] };
 
-/** Fields of the approach settings (read structurally — older servers omit them). */
-type OwnershipInterestFields = {
-  ownershipInterestKey?: string | null;
-  ownershipInterestLabelAr?: string | null;
-  remainingLeaseYears?: number | null;
-};
-
 /**
  * What sections 2/7 print from the saved choices: purpose (the work order's, else the approach
- * settings') and basis / premise (reconciliation) with their org-list labels, the retrospective
- * date and rationale, and the interest valued when it is not the deed's full ownership.
+ * settings') and basis / premise (reconciliation) with their org-list labels, and the retrospective
+ * date and rationale. (2026-11-15: the appraiser's interest valued is gone — «نوع الملكية» is the
+ * initial data's.)
  *
  * How it works: the keys come from resolveReportValuationKeys; each label is the org list's name
  * for the resolved key. Edge cases: the approach settings' own purpose label is used only when the
@@ -284,7 +278,6 @@ export function reportValuationChoices(input: {
           rationale: (s.retrospectiveRationale ?? "").trim(),
         }
       : null;
-  const interest = (s ?? {}) as OwnershipInterestFields;
   return {
     purposeKey,
     purposeLabel:
@@ -295,13 +288,6 @@ export function reportValuationChoices(input: {
     premiseLabel: find("premises", keys.premiseKey)?.name,
     basisDefinition: (basis?.cells[0] ?? "").trim(),
     retrospective,
-    ownership: interest.ownershipInterestKey
-      ? {
-          key: interest.ownershipInterestKey,
-          labelAr: interest.ownershipInterestLabelAr ?? null,
-          remainingLeaseYears: interest.remainingLeaseYears ?? null,
-        }
-      : null,
   };
 }
 

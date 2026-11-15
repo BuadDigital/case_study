@@ -29,6 +29,10 @@
 // Grey areas (2026-11-10, owner's ruling)
 //  • resolveReportValuationKeys: the work order owns the basis/premise (valuation-basis.ts, same order
 //         as the screen and the server); purpose = work order → assignment default → settings.
+// 2026-11-15 (Omar)
+//  • «نوع الملكية» is the initial data's type only (تامة / مشاع): ownershipCell, the reworded
+//         full-ownership assumption (assumptionsForInterest) and the lease note in section 23 are
+//         removed with the appraiser's «نوع الملكية المقيَّمة» list.
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -62,7 +66,6 @@ import {
   isLandInspectionContext,
 } from "@platform/app-shared/app-data/inspector-workspace-data";
 import {
-  formatArabicYears,
   formatReportAgeText,
   formatReportCalendarDate,
   formatReportPropertyAgeYears,
@@ -146,9 +149,6 @@ const OWNERSHIP_LABELS: Record<string, string> = {
   // One wording everywhere (approach settings, report, case study): «ملكية تامة».
   absolute: "ملكية تامة",
   shared: "مشاع",
-  // The interest valued when it is not the deed's full ownership (approach settings).
-  usufruct: "حق منفعة",
-  leased_land: "أرض مستأجرة",
 };
 
 /** Template sample numbers wiped before live data is written. */
@@ -240,62 +240,13 @@ function ownershipTypeDisplay(value: string | null | undefined): string {
   return OWNERSHIP_LABELS[t] ?? t;
 }
 
-/**
- * «نوع الملكية»: what the appraiser recorded for this valuation ( — e.g. a building on
- * leased land, with the remaining lease years), else the deed's ownership (owner count).
- *
- * How it works: freehold (or nothing recorded) prints the deed's ownership type (تامة / مشاع);
- * a partial interest prints its label and the remaining years; on a deed with several owners the
- * interest follows «مشاع — », e.g. «مشاع — حق منفعة، المدة المتبقية 20 سنة».
- *
- * Edge cases: «مرهون» is never printed here (ruling 2026-10-06: the type comes from the owners
- * count only). Fixed 2026-11-04 (A→Z #50): a usufruct on a shared deed dropped «مشاع».
+/*
+ * «نوع الملكية» prints the initial data's ownership type only (ownershipTypeDisplay of the
+ * property's ownershipType: «ملكية تامة» / «مشاع» from the tick beside the owner name).
+ * 2026-11-15 (Omar): the appraiser's «نوع الملكية المقيَّمة» list (حق منفعة / أرض مستأجرة with lease
+ * years) is removed — with it went the «مشاع — حق منفعة …» cell, the reworded full-ownership
+ * assumption and the lease-capped age note.
  */
-function ownershipCell(
-  recorded: { key?: string | null; labelAr?: string | null; remainingLeaseYears?: number | null } | null | undefined,
-  deedOwnership: string | null | undefined,
-): string {
-  const key = (recorded?.key ?? "").trim().toLowerCase();
-  const deed = ownershipTypeDisplay(deedOwnership);
-  // «ملكية تامة» (freehold) prints the deed's own ownership type (تامة / مشاع).
-  if (!key || key === "freehold") return deed;
-  const label = (recorded?.labelAr ?? "").trim() || ownershipTypeDisplay(key);
-  const years = recorded?.remainingLeaseYears;
-  const hasYears = years != null && Number.isFinite(years) && years > 0;
-  if (deed === OWNERSHIP_LABELS.shared) {
-    return hasYears
-      ? `${deed} — ${label}، المدة المتبقية ${formatArabicYears(years)}`
-      : `${deed} — ${label}`;
-  }
-  return hasYears ? `${label} — المدة المتبقية ${formatArabicYears(years)}` : label;
-}
-
-/** The interest key as the report wording needs it: a usufruct right or leased land. */
-function partialInterestKey(
-  recorded: { key?: string | null } | null | undefined,
-): "usufruct" | "leased_land" | null {
-  const key = (recorded?.key ?? "").trim().toLowerCase();
-  return key === "usufruct" || key === "leased_land" ? key : null;
-}
-
-const FULL_OWNERSHIP_ASSUMPTION = /أن العقار مطلق الملكية/;
-
-/**
- * The org library's «يفترض أن العقار مطلق الملكية …» clause states the interest valued — for a
- * usufruct right or a building on leased land it is reworded to that interest.
- */
-function assumptionsForInterest(
-  bullets: string[] | null,
-  recorded: { key?: string | null } | null | undefined,
-): string[] | null {
-  const interest = partialInterestKey(recorded);
-  if (!bullets || !interest) return bullets;
-  const phrase =
-    interest === "usufruct"
-      ? "أن حق المنفعة محل التقييم قائم وساري المفعول طوال مدته المتبقية"
-      : "أن عقد إيجار الأرض المقامة عليها المباني قائم وساري المفعول طوال مدته المتبقية";
-  return bullets.map((b) => b.replace(FULL_OWNERSHIP_ASSUMPTION, phrase));
-}
 
 /**
  * Section 08 when the bourse recorded «الحدود غير متوفرة»: a side nobody could describe prints
@@ -909,8 +860,6 @@ export function buildValuationReportLiveFill(input: {
   premiseLabel?: string | null;
   /** Retrospective valuation: its date (yyyy-MM-dd) and the appraiser's rationale. */
   retrospective?: { date: string; dateEnd?: string | null; rationale: string } | null;
-  /** Ownership the appraiser recorded (key or Arabic label, remaining lease years). */
-  ownership?: { key?: string | null; labelAr?: string | null; remainingLeaseYears?: number | null } | null;
   basisDefinition?: string | null;
   certifiedName?: string | null;
   certifiedLicense?: string | null;
@@ -1064,7 +1013,7 @@ export function buildValuationReportLiveFill(input: {
     ),
     "حالة العقار": dash(inspector?.featureValues?.propertyCondition),
     "حالة الصك": dash(property?.deedStatus),
-    "نوع الملكية": dash(ownershipCell(input.ownership, property?.ownershipType)),
+    "نوع الملكية": dash(ownershipTypeDisplay(property?.ownershipType)),
     "هل يوجد منقولات": dash(inspector?.featureValues?.movables),
     "وصف المنقولات": inspector?.featureValues?.movables === "نعم"
         ? dash(inspector?.featureValues?.movablesDescription)
@@ -1503,13 +1452,12 @@ export function buildValuationReportLiveFill(input: {
         : (used.market ? 1 : 0) + (used.cost ? 1 : 0) + docIndicators.length,
     scopeBasis: basis,
     scopeClient: client,
-    ageNotes: isLand ? [] : buildAgeNotes(input.cost, partialInterestKey(input.ownership)),
+    ageNotes: isLand ? [] : buildAgeNotes(input.cost),
     scopeRows: buildScopeRows({
       retrospective: input.retrospective,
       buildingOnly: input.costScopeKey === "building_only",
       // A vacant land is land anyway — the statement is for a built property valued as land.
       landOnly: input.costScopeKey === "land_only" && !isLand,
-      ownership: cells["نوع الملكية"] ?? "",
     }),
     basisDefinition: resolveBasisDefinition(
       keys.valueBasisKey,
@@ -1700,16 +1648,13 @@ export function buildValuationReportLiveFill(input: {
     comparablesMapPins: mapPins,
     searchScopeNotes: (draft.searchScopeNotes ?? "").trim(),
     researchScopeBullets: linesFromOrgText(input.researchScopeText),
-    specialAssumptionBullets: assumptionsForInterest(
-      resolveSpecialAssumptionBullets({
-        selected: input.selectedSpecialAssumptions,
-        library: input.specialAssumptionLibrary,
-        toggles: choices.specialAssumptionOn,
-        dropNoSpecialistClause: Boolean(input.externalSpecialistUsed),
-        externalSpecialistDetails: input.externalSpecialistDetails,
-      }),
-      input.ownership,
-    ),
+    specialAssumptionBullets: resolveSpecialAssumptionBullets({
+      selected: input.selectedSpecialAssumptions,
+      library: input.specialAssumptionLibrary,
+      toggles: choices.specialAssumptionOn,
+      dropNoSpecialistClause: Boolean(input.externalSpecialistUsed),
+      externalSpecialistDetails: input.externalSpecialistDetails,
+    }),
     ivsPairs: pairsFromOrgLines(input.ivsStandardsText),
     glossaryPairs: pairsFromOrgLines(input.glossaryText),
     keyInputsBullets: linesFromOrgText(input.keyInputsText),
@@ -1930,8 +1875,6 @@ function buildScopeRows(input: {
   buildingOnly: boolean;
   /** «أرض فقط» on a property with buildings — the buildings are left out of the value. */
   landOnly?: boolean;
-  /** «نوع الملكية» as printed — a leased-land / usufruct right is named in the scope. */
-  ownership: string;
 }): Array<{ label: string; value: string }> {
   const rows: Array<{ label: string; value: string }> = [];
   const retroDate = retrospectiveDateLabel(input.retrospective);
@@ -1945,10 +1888,9 @@ function buildScopeRows(input: {
     });
   }
   if (input.buildingOnly) {
-    const ownership = /منفعة|مستأجر|حكر|إيجار/.test(input.ownership) ? ` (${input.ownership})` : "";
     rows.push({
       label: "نطاق التقييم",
-      value: `يقتصر التقييم على المباني والتحسينات القائمة${ownership}، ولا تشمل القيمة الأرض.`,
+      value: "يقتصر التقييم على المباني والتحسينات القائمة، ولا تشمل القيمة الأرض.",
     });
   }
   if (input.landOnly) {
@@ -1960,10 +1902,12 @@ function buildScopeRows(input: {
   return rows;
 }
 
-/** Section 23 — age rationales and the lease cap, as the appraiser saved them on the cost screen. */
+/**
+ * Section 23 — the age rationales, as the appraiser saved them on the cost screen.
+ * Edge cases: 2026-11-15 the lease-cap note is gone with the «نوع الملكية المقيَّمة» list.
+ */
 function buildAgeNotes(
   cost: ValuationCostApproachDto | null | undefined,
-  interest: "usufruct" | "leased_land" | null,
 ): Array<{ label: string; value: string }> {
   if (!cost) return [];
   const rows: Array<{ label: string; value: string }> = [];
@@ -1971,27 +1915,5 @@ function buildAgeNotes(
   if (actual) rows.push({ label: "مبرر العمر الفعلي", value: actual });
   const economic = (cost.economicAgeRationale ?? "").trim();
   if (economic) rows.push({ label: "مبرر العمر الاقتصادي", value: economic });
-  const lease = cost.remainingLeaseYears;
-  if (cost.lifeCappedByLease && lease != null && lease > 0) {
-    const life = cost.effectiveLifeYears;
-    // The note names the interest the appraiser recorded: a usufruct right is not a lease.
-    const usufruct = interest === "usufruct";
-    const term = usufruct ? "مدة حق المنفعة" : "مدة الإيجار";
-    // The life is the actual age plus the remaining term — the building cannot outlast the right.
-    // Fixed 2026-11-04 (A→Z #08): «عمر 26 سنة لأنه لا يتجاوز مدة الإيجار المتبقية (12 سنة)» read as
-    // if 26 were within 12; the sentence now says how 26 is made.
-    const actualAge = cost.actualAgeYears;
-    const made =
-      actualAge != null && actualAge > 0
-        ? `وهو العمر الفعلي (${formatArabicYears(actualAge)}) مضافاً إليه ${term} المتبقية (${formatArabicYears(lease)})`
-        : `وهو ${term} المتبقية (${formatArabicYears(lease)})`;
-    rows.push({
-      label: `تحديد العمر ب${term}`,
-      value:
-        `${usufruct ? "المباني مقيّمة بموجب حق منفعة" : "المباني مقامة على أرض مستأجرة"}: ` +
-        `حُسب الإهلاك على عمر ${formatArabicYears(life ?? lease)}، ${made}، ` +
-        `لأن العمر المتبقي للمباني لا يتجاوز ${term}.`,
-    });
-  }
   return rows;
 }

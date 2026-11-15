@@ -8,6 +8,10 @@
 //  • AssumptionForInterest rewords «أن العقار مطلق الملكية» for a usufruct / leased land; ReportCell
 //          prints the interest with its remaining term («حق منفعة — المدة المتبقية 4 سنوات»).
 //  • An unknown valuationDateMode is refused instead of being read as «تاريخ إصدار القيمة».
+// 2026-11-15 (Omar)
+//  • The appraiser's «نوع الملكية المقيَّمة» list (freehold / usufruct / leased land) and its lease years
+//          are removed — OwnershipInterestKey, RemainingLeaseYears and OwnershipInterestKeys are gone. The
+//          ownership type is the initial data's (the «مشاع» tick beside the owner name).
 // ──────────────────────────────────────────────────────────────────────────────────────────────
 
 using RealEstateEval.Domain;
@@ -35,15 +39,6 @@ public class ValuationApproachSettings
  /// so it is always false.
  /// </summary>
     public bool IncomeApproachEnabled { get; set; }
-
- /// <summary>
- /// The interest valued — see <see cref="OwnershipInterestKeys"/>: full ownership as the deed states it
- /// (default), a usufruct right, or a building on leased land.
- /// </summary>
-    public string OwnershipInterestKey { get; set; } = OwnershipInterestKeys.Freehold;
-
- /// <summary>Years left on the usufruct / land lease — required for those interests, empty otherwise.</summary>
-    public decimal? RemainingLeaseYears { get; set; }
 
  /// <summary>Cost basis — see <see cref="CostBasisKeys"/>. Meaningful when cost is enabled.</summary>
     public string CostBasisKey { get; set; } = CostBasisKeys.Replacement;
@@ -88,78 +83,6 @@ public class ValuationApproachSettings
     public DateTime UpdatedAtUtc { get; set; }
 
     public ValuationRequest? ValuationRequest { get; set; }
-}
-
-/// <summary>
-/// The interest being valued. «ملكية تامة» prints the deed's own ownership type; «حق منفعة» and
-/// «أرض مستأجرة» are leasehold interests that carry the remaining lease term (for buildings on leased land
-/// the remaining economic life is capped at it).
-/// </summary>
-public static class OwnershipInterestKeys
-{
-    public const string Freehold = "freehold";
-    public const string Usufruct = "usufruct";
-    public const string LeasedLand = "leased_land";
-
-    public static readonly string[] All = [Freehold, Usufruct, LeasedLand];
-
-    /// <summary>Upper bound on the remaining lease term (years).</summary>
-    public const decimal MaxRemainingLeaseYears = 999m;
-
-    public static bool IsKnown(string? value) =>
-        All.Contains((value ?? "").Trim().ToLowerInvariant(), StringComparer.Ordinal);
-
-    /// <summary>Blank or unknown → freehold.</summary>
-    public static string Normalize(string? value)
-    {
-        var v = (value ?? "").Trim().ToLowerInvariant();
-        return IsKnown(v) ? v : Freehold;
-    }
-
-    /// <summary>A usufruct right or leased land — the remaining lease term applies.</summary>
-    public static bool IsLeasehold(string? value) => Normalize(value) != Freehold;
-
-    public static string LabelAr(string? value) => Normalize(value) switch
-    {
-        Usufruct => "حق منفعة",
-        LeasedLand => "أرض مستأجرة",
-        _ => "ملكية تامة",
-    };
-
-    private const string FullOwnershipAssumptionPhrase = "أن العقار مطلق الملكية";
-
-    /// <summary>
-    /// The library's «يفترض أن العقار مطلق الملكية …» states the interest valued — for a usufruct
-    /// right or buildings on leased land it is reworded to that interest (the same wording the
-    /// screen's report uses). Any other text, or a freehold valuation, is returned unchanged.
-    /// </summary>
-    public static string AssumptionForInterest(string assumption, string? ownershipInterestKey) =>
-        Normalize(ownershipInterestKey) switch
-        {
-            Usufruct => assumption.Replace(
-                FullOwnershipAssumptionPhrase,
-                "أن حق المنفعة محل التقييم قائم وساري المفعول طوال مدته المتبقية",
-                StringComparison.Ordinal),
-            LeasedLand => assumption.Replace(
-                FullOwnershipAssumptionPhrase,
-                "أن عقد إيجار الأرض المقامة عليها المباني قائم وساري المفعول طوال مدته المتبقية",
-                StringComparison.Ordinal),
-            _ => assumption,
-        };
-
-    /// <summary>
-    /// «نوع الملكية» in the report: freehold prints the deed's own type; a usufruct right or leased land
-    /// prints that interest with the remaining term («حق منفعة — المدة المتبقية 4 سنوات»).
-    /// </summary>
-    public static string? ReportCell(string? ownershipInterestKey, decimal? remainingLeaseYears, string? deedOwnershipLabelAr)
-    {
-        if (!IsLeasehold(ownershipInterestKey))
-            return string.IsNullOrWhiteSpace(deedOwnershipLabelAr) ? null : deedOwnershipLabelAr;
-        var label = LabelAr(ownershipInterestKey);
-        return remainingLeaseYears is > 0m
-            ? $"{label} — المدة المتبقية {ValuationReportDisplayRules.FormatYears(remainingLeaseYears.Value)}"
-            : label;
-    }
 }
 
 /// <summary>Cost basis: replacement or reproduction (B-2 section 9 field).</summary>
@@ -406,9 +329,7 @@ public static class ValuationApproachSettingsRules
         DateOnly? retrospectiveDateEnd = null,
         string? retrospectiveRationale = null,
         DateOnly? today = null,
-        DateOnly? reportDate = null,
-        string? ownershipInterestKey = null,
-        decimal? remainingLeaseYears = null)
+        DateOnly? reportDate = null)
     {
         var errors = new Dictionary<string, string>();
 
@@ -460,21 +381,6 @@ public static class ValuationApproachSettingsRules
         // The income approach is not available yet — enabling it is refused.
         if (incomeEnabled)
             errors["incomeApproachEnabled"] = "أسلوب الدخل قيد الإنشاء — مؤجَّل رسمياً";
-
-        // A usufruct / leased-land interest carries its remaining lease term.
-        if (ownershipInterestKey is not null && ownershipInterestKey.Trim().Length > 0
-            && !OwnershipInterestKeys.IsKnown(ownershipInterestKey))
-        {
-            errors["ownershipInterestKey"] = "نوع الملكية غير معروف (ملكية تامة / حق منفعة / أرض مستأجرة)";
-        }
-        else if (OwnershipInterestKeys.IsLeasehold(ownershipInterestKey))
-        {
-            if (remainingLeaseYears is not { } years || years <= 0m)
-                errors["remainingLeaseYears"] = "المدة المتبقية من حق المنفعة / عقد إيجار الأرض (بالسنوات) إلزامية";
-            else if (years > OwnershipInterestKeys.MaxRemainingLeaseYears)
-                errors["remainingLeaseYears"] =
-                    $"المدة المتبقية لا تتجاوز {OwnershipInterestKeys.MaxRemainingLeaseYears:0} سنة";
-        }
 
         if (costScopeKey is not null && !CostScopeKeys.IsKnown(costScopeKey))
             errors["costScopeKey"] = "نطاق التقييم غير معروف (أرض فقط / مباني فقط / أرض مع المباني)";

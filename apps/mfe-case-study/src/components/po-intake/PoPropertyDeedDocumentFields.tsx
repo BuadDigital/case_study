@@ -151,7 +151,7 @@ export function PoPropertyEnfathDocumentFields({
       {showAssignmentDoc ? (
         <PropertyFileUploadField
           id={`assignment_doc_${property.id}`}
-          label={<>قرار الإسناد *</>}
+          label={<>قرار الإسناد (اختياري)</>}
           fileNames={property.assignmentDocFileNames}
           error={fieldErrors.assignmentDocFileNames}
           attachPo={attachPo}
