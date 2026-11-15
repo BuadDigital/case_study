@@ -63,6 +63,10 @@ public class ValuationComparableMarketDto
     public string AreaAdjustmentMethod { get; init; } = "multiplier";
  /// <summary>Computed area adjustment (multiples/multiplier) — applied automatically to the area row.</summary>
     public decimal SuggestedAreaAdjustmentPct { get; init; }
+ /// <summary>The land-area line's own method (a built subject, 2026-11-15); empty when the table has no such line.</summary>
+    public string LandAreaAdjustmentMethod { get; init; } = "";
+ /// <summary>Computed land-area adjustment — applied automatically to the land-area row; 0 when an area is missing.</summary>
+    public decimal SuggestedLandAreaAdjustmentPct { get; init; }
 }
 
 public class ValuationComparableSelectionDto
@@ -80,10 +84,14 @@ public class ValuationComparableSelectionDto
  /// <summary>compEdit: this valuation's price/area overrides for the comparable — does not touch the shared bank.</summary>
     public decimal? PriceOverrideSar { get; init; }
     public decimal? AreaOverrideSqm { get; init; }
+ /// <summary>This valuation's override of a built comparable's land area; null = the bank's.</summary>
+    public decimal? LandAreaOverrideSqm { get; init; }
  /// <summary>Effective values after overrides: total price, area, unit price = total ÷ area.</summary>
     public decimal EffectivePriceSar { get; init; }
     public decimal EffectiveAreaSqm { get; init; }
     public decimal EffectivePricePerSqm { get; init; }
+ /// <summary>A built comparable's land area after the override; null when neither the bank nor the valuation has one.</summary>
+    public decimal? EffectiveLandAreaSqm { get; init; }
 }
 
 public class ValuationComparableSelectionListDto
@@ -120,6 +128,20 @@ public class ValuationComparableSelectionListDto
     public decimal MarketOpinionValue { get; init; }
     /// <summary>Frozen area adjustment factor % for this valuation.</summary>
     public decimal AreaFactorPct { get; init; } = 5m;
+    /// <summary>
+    /// The table carries two area lines — the building's («area») and the land's («land_area») —
+    /// each with its own areas, factor and method (a built subject's market table, 2026-11-15).
+    /// </summary>
+    public bool TwoAreaAdjustments { get; init; }
+    /// <summary>
+    /// The subject's land area the land-area line compares with: the appraiser's figure, else the
+    /// deed's; null when neither is known or the table has one area line.
+    /// </summary>
+    public decimal? SubjectLandAreaSqm { get; init; }
+    /// <summary>True when <see cref="SubjectLandAreaSqm"/> was typed by the appraiser (false = read from the deed).</summary>
+    public bool SubjectLandAreaIsManual { get; init; }
+    /// <summary>Frozen factor % of the land-area line.</summary>
+    public decimal LandAreaFactorPct { get; init; } = 5m;
     /// <summary>Frozen annual market rate % for mkt suggestion.</summary>
     public decimal AnnualMarketRatePct { get; init; } = 4m;
     /// <summary>Frozen market-value rounding exponent (10^n).</summary>
@@ -164,6 +186,12 @@ public class SaveValuationMarketApproachRequest
 
     /// <summary>Optional freeze override; null keeps existing / seeds from org.</summary>
     public decimal? AreaFactorPct { get; init; }
+
+    /// <summary>The subject's land area for the land-area line (a built subject); null keeps the stored one, 0 clears it.</summary>
+    public decimal? SubjectLandAreaSqm { get; init; }
+
+    /// <summary>Optional override of the land-area line's factor; null keeps existing.</summary>
+    public decimal? LandAreaFactorPct { get; init; }
 
     public decimal? AnnualMarketRatePct { get; init; }
 
@@ -713,6 +741,9 @@ public class SaveValuationComparableMarketRequest
 
  /// <summary>compEdit: override comparable area (m²) — null clears the override.</summary>
     public decimal? AreaOverrideSqm { get; init; }
+
+ /// <summary>compEdit: override a built comparable's land area (m²) for this valuation only; null = bank value.</summary>
+    public decimal? LandAreaOverrideSqm { get; init; }
 
  /// <summary>When set with WeightIsManual, overrides suggestion.</summary>
     public decimal? WeightPct { get; init; }

@@ -33,7 +33,9 @@ import {
 import { runMatrixAction, type MatrixDispatch } from "./lib/matrix-actions";
 import { LAND_WITHIN_COST, MARKET_CONTEXT, parseDecimal } from "./lib/shell-state";
 import {
+  BOTH_AREA_LINES_OFF_MESSAGE,
   RESET_WEIGHTS_PATCH,
+  bankOverridePatch,
   isFactorIncluded,
   itemsMissingFactor,
   linesWithCellPercent,
@@ -46,6 +48,7 @@ import {
   manualWeightPatch,
   savedLines,
   withFactorIncluded,
+  wouldSwitchOffBothAreaLines,
 } from "./lib/market-commands-state";
 import type { ComparableMarketSaver } from "./useComparableMarketSaver";
 import type { useMarketApproachCommands } from "./useMarketApproachCommands";
@@ -59,7 +62,7 @@ export function useAdjustmentsMatrixCommands(
   saver: ComparableMarketSaver,
   approach: MarketApproachCommands,
 ) {
-  const { showToast, setSelection, setLandSelection, setSaving, reload } = data;
+  const { showToast, selection, setSelection, setLandSelection, setSaving, reload } = data;
   const { reportSaveFailure } = useValuationWorkErrors();
   const {
     writeContext,
@@ -245,6 +248,17 @@ export function useAdjustmentsMatrixCommands(
     if (!ctx) return;
     const context = contextOfItem(_item);
     const items = adoptedFor(context);
+    // A built subject keeps one of its two area rows at least — said here, not after a refused save.
+    if (
+      wouldSwitchOffBothAreaLines(
+        items,
+        factorKey,
+        context === MARKET_CONTEXT && selection?.twoAreaAdjustments === true,
+      )
+    ) {
+      showToast(BOTH_AREA_LINES_OFF_MESSAGE, "error");
+      return;
+    }
     const nextIncluded = !isFactorIncluded(items, factorKey);
     // Optimistic ✓ flag flip — save runs in parallel; silent reload reconciles.
     const setter = context === LAND_WITHIN_COST ? setLandSelection : setSelection;
@@ -257,6 +271,26 @@ export function useAdjustmentsMatrixCommands(
       errorMessage: "تعذّر تحديث البند",
       trackSaving: false,
     });
+  }
+
+  /**
+   * A built comparable's land area for this valuation only — the bank keeps its own.
+   * How it works: the comparable's stored lines go back unchanged with the new land area; a blank
+   * or non-positive entry clears the override, so the bank's figure is used again.
+   */
+  async function saveComparableLandArea(
+    item: ValuationComparableSelectionDto,
+    raw: string,
+  ): Promise<boolean> {
+    const ctx = unlocked();
+    if (!ctx) return false;
+    return saveOne(
+      ctx,
+      item,
+      savedLines,
+      "تعذّر حفظ مساحة أرض المقارن",
+      (fresh) => bankOverridePatch(fresh, "land", raw),
+    );
   }
 
   async function addDifferenceFactor(
@@ -324,6 +358,8 @@ export function useAdjustmentsMatrixCommands(
     changeAdjustmentBasis: approach.changeAdjustmentBasis,
     resetWeights,
     saveAreaFactorPct: approach.saveAreaFactorPct,
+    saveComparableLandArea,
+    saveSubjectLandArea: approach.saveSubjectLandArea,
     addDifferenceFactor,
     renameDifferenceFactor,
     removeDifferenceFactor,

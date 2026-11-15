@@ -6,14 +6,29 @@ import type {
 import { createClientId } from "@platform/app-shared/lib/create-client-id";
 import {
   AUTO_AREA_KEY,
+  AUTO_AREA_KEYS,
   FACTOR_REGISTRY,
+  LAND_AREA_KEY,
   SEQUENTIAL_SET,
   factorIncludedByDefault,
 } from "./factor-registry";
 
 // Derived from the factor registry — add a factor there once and it flows here automatically.
 export const SEQUENTIAL_KEYS = SEQUENTIAL_SET;
-export const AUTO_AREA_KEYS = new Set([AUTO_AREA_KEY]);
+export { AUTO_AREA_KEYS };
+
+/**
+ * The server's computed percent of an area line — the building's or the land's — or null for any
+ * other factor. An area line is saved with this figure, never with a typed one.
+ */
+export function autoAreaPct(
+  item: ValuationComparableSelectionDto,
+  factorKey: string,
+): number | null {
+  if (factorKey === AUTO_AREA_KEY) return item.market?.suggestedAreaAdjustmentPct ?? null;
+  if (factorKey === LAND_AREA_KEY) return item.market?.suggestedLandAreaAdjustmentPct ?? null;
+  return null;
+}
 
 export const STANDARD_FACTORS: { factorKey: string; labelAr: string }[] =
   Object.entries(FACTOR_REGISTRY).map(([factorKey, d]) => ({
@@ -57,8 +72,7 @@ export function linePercent(
 ): number {
   const line = item.market?.adjustmentLines?.find((l) => l.factorKey === factorKey);
   if (line) return line.percent;
-  if (factorKey === "area") return item.market?.suggestedAreaAdjustmentPct ?? 0;
-  return 0;
+  return autoAreaPct(item, factorKey) ?? 0;
 }
 
 export function ensureLinesForSave(
@@ -75,7 +89,7 @@ export function ensureLinesForSave(
         id: createClientId("adj"),
         factorKey: f.factorKey,
         labelAr: f.labelAr,
-        percent: f.factorKey === "area" ? (item.market?.suggestedAreaAdjustmentPct ?? 0) : 0,
+        percent: autoAreaPct(item, f.factorKey) ?? 0,
         rationale: "",
         isIncluded: factorIncludedByDefault(f.factorKey),
         sortOrder: byKey.size,
@@ -84,10 +98,7 @@ export function ensureLinesForSave(
   }
   const target = byKey.get(factorKey);
   if (target) {
-    target.percent =
-      factorKey === "area"
-        ? (item.market?.suggestedAreaAdjustmentPct ?? percent)
-        : percent;
+    target.percent = autoAreaPct(item, factorKey) ?? percent;
     target.isIncluded = true;
     // An explicit entry clears the “suggested” state for this item.
     target.isSuggestedValue = false;
@@ -110,12 +121,11 @@ export function lineForSave(
     id: null,
     factorKey: l.factorKey,
     labelAr: l.labelAr,
-    percent:
-      l.factorKey === "area"
-        ? (item.market?.suggestedAreaAdjustmentPct ?? l.percent)
-        : l.isSuggestedValue
-          ? 0
-          : l.percent,
+    percent: AUTO_AREA_KEYS.has(l.factorKey)
+      ? (autoAreaPct(item, l.factorKey) ?? l.percent)
+      : l.isSuggestedValue
+        ? 0
+        : l.percent,
     rationale: l.rationale,
     descriptionAr: l.descriptionAr ?? null,
     isIncluded: l.isIncluded,
@@ -137,6 +147,8 @@ export function marketSaveBody(
     areaAdjustmentMethod: item.market?.areaAdjustmentMethod ?? null,
     priceOverrideSar: item.priceOverrideSar ?? null,
     areaOverrideSqm: item.areaOverrideSqm ?? null,
+    // Sent on every save: the server clears an override that is not sent.
+    landAreaOverrideSqm: item.landAreaOverrideSqm ?? null,
     ...extra,
   };
 }

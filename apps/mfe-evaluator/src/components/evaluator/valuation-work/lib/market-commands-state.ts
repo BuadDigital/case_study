@@ -10,7 +10,12 @@ import type {
   ValuationComparableSelectionDto,
   ValuationComparableSelectionListDto,
 } from "@platform/api-client";
-import { factorIncludedByDefault } from "./factor-registry";
+import {
+  AUTO_AREA_KEY,
+  AUTO_AREA_KEYS,
+  LAND_AREA_KEY,
+  factorIncludedByDefault,
+} from "./factor-registry";
 import {
   ensureLinesForSave,
   lineForSave,
@@ -143,21 +148,47 @@ export function isFactorIncluded(
     : factorIncludedByDefault(factorKey);
 }
 
-/** compEdit: parse a price/area override — blank or non-positive clears it. */
+/** The comparable figures an appraiser may override for one valuation: its price, its area, its land area. */
+export type BankOverrideField = "price" | "area" | "land";
+
+/** compEdit: parse a price / area / land-area override — blank or non-positive clears it. */
 export function bankOverridePatch(
   item: ValuationComparableSelectionDto,
-  field: "price" | "area",
+  field: BankOverrideField,
   raw: string,
 ): Pick<
   SaveValuationComparableMarketRequest,
-  "priceOverrideSar" | "areaOverrideSqm"
+  "priceOverrideSar" | "areaOverrideSqm" | "landAreaOverrideSqm"
 > {
   const parsed = parseDecimal(raw);
   const value = Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   return {
     priceOverrideSar: field === "price" ? value : item.priceOverrideSar ?? null,
     areaOverrideSqm: field === "area" ? value : item.areaOverrideSqm ?? null,
+    landAreaOverrideSqm: field === "land" ? value : item.landAreaOverrideSqm ?? null,
   };
+}
+
+/** The message both ends give when the last area line of a built subject is switched off. */
+export const BOTH_AREA_LINES_OFF_MESSAGE =
+  "تسوية المساحة: أبقِ بند مساحة الأرض أو بند مساحة المباني — أحدهما على الأقل";
+
+/**
+ * Switching `factorKey` off would leave a built subject's table with no area line at all
+ * (Omar 2026-11-15: «اختيار واحد منهم على الأقل»).
+ * How it works: only the two area lines are asked; the other one must be switched on.
+ * Edge cases: a table with one area line (land, or a valuation begun before the two lines) is
+ * never refused — its single line has no toggle.
+ */
+export function wouldSwitchOffBothAreaLines(
+  items: ValuationComparableSelectionDto[],
+  factorKey: string,
+  twoAreaLines: boolean,
+): boolean {
+  if (!twoAreaLines || !AUTO_AREA_KEYS.has(factorKey)) return false;
+  if (!isFactorIncluded(items, factorKey)) return false;
+  const other = factorKey === AUTO_AREA_KEY ? LAND_AREA_KEY : AUTO_AREA_KEY;
+  return !isFactorIncluded(items, other);
 }
 
 /** The comparable's stored lines, prepared for save unchanged. */

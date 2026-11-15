@@ -21,7 +21,7 @@ import type {
 import { fmt, fmtMax, parseLocaleNumber } from "@platform/app-shared/format/number";
 
 import {
-  AUTO_AREA_KEY,
+  AUTO_AREA_KEYS,
   FACTOR_REGISTRY,
   SEQUENTIAL_KEYS,
   SEQUENTIAL_SET,
@@ -54,7 +54,25 @@ export type MatrixBasisView = {
   roundingNote: string;
   areaMethod: string;
   areaFactor: number;
+  /**
+   * A built subject's table (2026-11-15): two area rows — the building's and the land's — each
+   * with its own factor and method, and a ✓ to leave one of them out.
+   */
+  twoAreas: boolean;
+  /** The first area row's name: «المساحة», or the building's / the apartment's on a two-row table. */
+  areaRowLabel: string;
+  landAreaMethod: string;
+  landAreaFactor: number;
+  /** The subject's land area the land row compares with (typed, else the deed's); null when unknown. */
+  subjectLandArea: number | null;
+  /** Under the subject's land area: where the figure came from. */
+  subjectLandAreaNote: string;
 };
+
+/** «طريقة المضاعف — آلية» / «طريقة الأمثال — آلية», as the server chose it for one area row. */
+function areaMethodLabel(method: string | null | undefined): string {
+  return method === "multiplier" ? "طريقة المضاعف — آلية" : "طريقة الأمثال — آلية";
+}
 
 /** Comparison-basis readouts shown in the matrix header and output strip. */
 export function matrixBasisView(
@@ -68,6 +86,11 @@ export function matrixBasisView(
   const subjectAreaLabel = marketSubjectAreaLabel(kind);
   const basis = selection.adjustmentBasis || "price_per_sqm";
   const isUnit = basis !== "whole_property";
+  const twoAreas = selection.twoAreaAdjustments === true;
+  const subjectLandArea =
+    selection.subjectLandAreaSqm != null && selection.subjectLandAreaSqm > 0
+      ? selection.subjectLandAreaSqm
+      : null;
   /** When basis is property value: weightedPricePerSqm holds the total — per-sqm = total ÷ area. */
   let pricePerSqmDisplay: number | null = selection.weightedPricePerSqm ?? null;
   if (!isUnit) {
@@ -99,13 +122,24 @@ export function matrixBasisView(
     opinionRaw: selection.marketOpinionValueRaw ?? selection.marketOpinionValue,
     opinionFinal: selection.marketOpinionValue,
     roundingNote: matrixRoundingNote(selection),
-    // No area adjustment on the whole-property basis (the server sends 0).
-    areaMethod: !isUnit
-      ? "لا تسوية مساحة — المقارنة على قيمة العقار كاملة"
-      : adopted[0]?.market?.areaAdjustmentMethod === "multiplier"
-        ? "طريقة المضاعف — آلية"
-        : "طريقة الأمثال — آلية",
+    // A table with one area row has no area adjustment on the whole-property basis (the server
+    // sends 0); a built subject's two rows apply on either basis.
+    areaMethod:
+      !isUnit && !twoAreas
+        ? "لا تسوية مساحة — المقارنة على قيمة العقار كاملة"
+        : areaMethodLabel(adopted[0]?.market?.areaAdjustmentMethod),
     areaFactor: selection.areaFactorPct ?? 5,
+    twoAreas,
+    areaRowLabel: !twoAreas ? "المساحة" : kind === "unit" ? "مساحة الشقة" : "مساحة المباني",
+    landAreaMethod: areaMethodLabel(adopted[0]?.market?.landAreaAdjustmentMethod),
+    landAreaFactor: selection.landAreaFactorPct ?? 5,
+    subjectLandArea,
+    subjectLandAreaNote:
+      subjectLandArea == null
+        ? "أدخل مساحة الأرض"
+        : selection.subjectLandAreaIsManual
+          ? "مساحة الأرض — مُدخلة"
+          : "مساحة الأرض — من الصك",
   };
 }
 
@@ -190,8 +224,9 @@ export function matrixFactorRows(
       (k) =>
         !factorDescriptor(k)?.alwaysPresent && !factorKeysFromData.includes(k),
     ),
+    // The area rows (the building's, and a built subject's land) are drawn on their own.
     differenceKeys: factorKeysFromData.filter(
-      (k) => !SEQUENTIAL_SET.has(k) && k !== AUTO_AREA_KEY,
+      (k) => !SEQUENTIAL_SET.has(k) && !AUTO_AREA_KEYS.has(k),
     ),
   };
 }
@@ -202,7 +237,7 @@ export function addableFactorOptions(
 ): { factorKey: string; labelAr: string }[] {
   const out: { factorKey: string; labelAr: string }[] = [];
   for (const [factorKey, d] of Object.entries(FACTOR_REGISTRY)) {
-    if (d.sequential || factorKey === AUTO_AREA_KEY) continue;
+    if (d.sequential || AUTO_AREA_KEYS.has(factorKey)) continue;
     out.push({ factorKey, labelAr: d.label });
   }
   return out.filter((f) => !differenceKeys.includes(f.factorKey));

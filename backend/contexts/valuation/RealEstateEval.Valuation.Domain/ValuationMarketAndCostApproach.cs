@@ -35,6 +35,18 @@ public class ValuationMarketApproach
     public string AdjustmentBasis { get; set; } = MarketAdjustmentBasisKeys.PricePerSqm;
     /// <summary>Frozen methodology coeff — area (%). Changing org defaults must not rewrite past valuations.</summary>
     public decimal AreaFactorPct { get; set; } = AreaAdjustmentRules.DefaultAreaFactorPct;
+    /// <summary>
+    /// A built subject's market table carries two area lines (2026-11-15): the building's area
+    /// (<see cref="SubjectAreaSqm"/>, <see cref="AreaFactorPct"/>) and the land's
+    /// (<see cref="SubjectLandAreaSqm"/>, <see cref="LandAreaFactorPct"/>). True on a header created
+    /// since then; a header that existed before keeps the earlier rule (no area adjustment on a
+    /// whole-property comparison), so a valuation already worked on or handed over does not change.
+    /// </summary>
+    public bool TwoAreaAdjustments { get; set; }
+    /// <summary>The subject's land area (m²) the land-area line compares with — a built subject only.</summary>
+    public decimal? SubjectLandAreaSqm { get; set; }
+    /// <summary>Frozen methodology coeff — the land-area line's own factor (%).</summary>
+    public decimal LandAreaFactorPct { get; set; } = AreaAdjustmentRules.DefaultAreaFactorPct;
     /// <summary>Frozen methodology coeff — annual market rate (%) for market-conditions suggestion.</summary>
     public decimal AnnualMarketRatePct { get; set; } = MarketApproachRules.DefaultAnnualMarketRatePct;
     /// <summary>Frozen — market-value rounding exponent (10^n). Default 4 → nearest 10,000.</summary>

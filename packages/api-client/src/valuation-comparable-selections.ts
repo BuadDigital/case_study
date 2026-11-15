@@ -58,6 +58,10 @@ export type ValuationComparableMarketDto = {
   areaAdjustmentMethod: string;
  /** Auto area adjustment % (amthal / multiplier). */
   suggestedAreaAdjustmentPct: number;
+  /** The land-area line's own method (a built subject, 2026-11-15); "" when the table has no such line. */
+  landAreaAdjustmentMethod?: string;
+  /** Auto land-area adjustment %; 0 while an area is missing. */
+  suggestedLandAreaAdjustmentPct?: number;
 };
 
 export type ValuationComparableSelectionDto = {
@@ -73,10 +77,14 @@ export type ValuationComparableSelectionDto = {
   /** compEdit: this valuation's price/area overrides for the comparable — does not touch the shared bank. */
   priceOverrideSar?: number | null;
   areaOverrideSqm?: number | null;
+  /** This valuation's override of a built comparable's land area; null = the bank's. */
+  landAreaOverrideSqm?: number | null;
   /** Effective values after overrides. */
   effectivePriceSar?: number;
   effectiveAreaSqm?: number;
   effectivePricePerSqm?: number;
+  /** A built comparable's land area after the override; null when neither the bank nor the valuation has one. */
+  effectiveLandAreaSqm?: number | null;
 };
 
 export type ValuationComparableSelectionListDto = {
@@ -106,6 +114,17 @@ export type ValuationComparableSelectionListDto = {
   marketOpinionValue: number;
   /** Frozen area factor % for this valuation. */
   areaFactorPct?: number;
+  /**
+   * The table carries two area lines — the building's («area») and the land's («land_area») — each
+   * with its own areas, factor and method (a built subject's market table, 2026-11-15).
+   */
+  twoAreaAdjustments?: boolean;
+  /** The subject's land area the land line compares with: typed by the appraiser, else the deed's. */
+  subjectLandAreaSqm?: number | null;
+  /** True when `subjectLandAreaSqm` was typed by the appraiser. */
+  subjectLandAreaIsManual?: boolean;
+  /** Frozen factor % of the land-area line. */
+  landAreaFactorPct?: number;
   /** Frozen annual market rate % for mkt suggestion. */
   annualMarketRatePct?: number;
   /** Frozen market-value rounding exponent (10^n). */
@@ -130,6 +149,9 @@ export type SaveValuationMarketApproachRequest = {
  /** price_per_sqm (default) | whole_property. */
   adjustmentBasis?: string | null;
   areaFactorPct?: number | null;
+  /** The subject's land area for the land line; not sent keeps the stored one, 0 goes back to the deed's. */
+  subjectLandAreaSqm?: number | null;
+  landAreaFactorPct?: number | null;
   annualMarketRatePct?: number | null;
   valueRoundDecimals?: number | null;
   analysisNotes?: string | null;
@@ -406,6 +428,8 @@ export type SaveValuationComparableMarketRequest = {
   priceOverrideSar?: number | null;
   /** compEdit: override comparable area (m²) — null clears the override. */
   areaOverrideSqm?: number | null;
+  /** compEdit: override a built comparable's land area (m²) — null clears the override. */
+  landAreaOverrideSqm?: number | null;
   weightPct?: number | null;
   weightIsManual?: boolean;
   /** 3 — required when weightIsManual. */

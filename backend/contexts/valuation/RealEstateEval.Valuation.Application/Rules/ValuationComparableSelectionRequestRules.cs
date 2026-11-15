@@ -91,7 +91,13 @@ public static class ValuationComparableSelectionRequestRules
     /// Edge cases: 2026-11-02 — the adjustment-factor and manual-weight rationales are optional notes
     /// of any length (the percentages are estimates); they are neither checked here nor at issuance.
     /// </summary>
-    public static Dictionary<string, string> ValidateMarketSave(SaveValuationComparableMarketRequest request)
+    /// <param name="twoAreaLines">
+    /// The table carries the two area lines of a built subject (2026-11-15): the appraiser may leave
+    /// one of them out and keep the other, never both («اختيار واحد منهم على الأقل»).
+    /// </param>
+    public static Dictionary<string, string> ValidateMarketSave(
+        SaveValuationComparableMarketRequest request,
+        bool twoAreaLines = false)
     {
         var lines = request.AdjustmentLines ?? [];
         var errors = new Dictionary<string, string>();
@@ -115,12 +121,12 @@ public static class ValuationComparableSelectionRequestRules
         }
 
         // The difference factors add up before they apply: at −100٪ or below the comparable's price
-        // turns zero or negative (two −90٪ factors gave a negative price). The area line is computed by
-        // the server and is not part of this sum.
+        // turns zero or negative (two −90٪ factors gave a negative price). The area lines are computed by
+        // the server and are not part of this sum.
         var differenceSum = lines
             .Where(l => l.IsIncluded
                 && MarketAdjustmentFactorKeys.IsDifferenceFactor(l.FactorKey?.Trim() ?? "")
-                && (l.FactorKey?.Trim() ?? "") != MarketAdjustmentFactorKeys.Area)
+                && !MarketAdjustmentFactorKeys.IsComputedArea(l.FactorKey?.Trim()))
             .Sum(l => l.Percent);
         if (differenceSum <= -100m)
             errors["adjustmentLines"] = "مجموع تسويات الفروقات للمقارن يجب أن يكون أكبر من -100٪ — وإلا صار سعره صفراً أو سالباً";
@@ -143,6 +149,14 @@ public static class ValuationComparableSelectionRequestRules
         else if (request.AreaOverrideSqm > MarketApproachRules.MaxSubjectAreaSqm)
             errors["areaOverrideSqm"] = "مساحة المقارن تتجاوز الحد المعقول (10,000,000 م²)";
 
+        if (request.LandAreaOverrideSqm is <= 0m)
+            errors["landAreaOverrideSqm"] = "مساحة أرض المقارن يجب أن تكون أكبر من صفر";
+        else if (request.LandAreaOverrideSqm > MarketApproachRules.MaxSubjectAreaSqm)
+            errors["landAreaOverrideSqm"] = "مساحة أرض المقارن تتجاوز الحد المعقول (10,000,000 م²)";
+
+        if (twoAreaLines && BothAreaLinesLeftOut(lines))
+            errors["areaAdjustments"] = BothAreaLinesLeftOutAr;
+
         if (request.AreaAdjustmentMethod is not null
             && !AreaAdjustmentMethods.IsKnown(request.AreaAdjustmentMethod))
         {
@@ -150,6 +164,23 @@ public static class ValuationComparableSelectionRequestRules
         }
 
         return errors;
+    }
+
+    public const string BothAreaLinesLeftOutAr =
+        "تسوية المساحة: أبقِ بند مساحة الأرض أو بند مساحة المباني — أحدهما على الأقل";
+
+    /// <summary>
+    /// Both area lines of a built subject are switched off on this comparable.
+    /// How it works: the building's line counts as off when it is absent or excluded; the land's
+    /// line only when it is sent and excluded — a comparable saved before the land line existed
+    /// has none, and the server adds it switched on.
+    /// </summary>
+    public static bool BothAreaLinesLeftOut(
+        IReadOnlyList<SaveValuationComparableAdjustmentLineRequest> lines)
+    {
+        var area = lines.FirstOrDefault(l => l.FactorKey?.Trim() == MarketAdjustmentFactorKeys.Area);
+        var land = lines.FirstOrDefault(l => l.FactorKey?.Trim() == MarketAdjustmentFactorKeys.LandArea);
+        return area is not { IsIncluded: true } && land is { IsIncluded: false };
     }
 
     /// <summary>
@@ -207,6 +238,7 @@ public static class ValuationComparableSelectionRequestRules
             : null;
         row.PriceOverrideSar = request.PriceOverrideSar;
         row.AreaOverrideSqm = request.AreaOverrideSqm;
+        row.LandAreaOverrideSqm = request.LandAreaOverrideSqm;
         if (request.AreaAdjustmentMethod is not null)
             row.AreaAdjustmentMethod = AreaAdjustmentMethods.Normalize(request.AreaAdjustmentMethod);
 
@@ -232,6 +264,12 @@ public static class ValuationComparableSelectionRequestRules
             errors["adjustmentBasis"] = "أساس التسويات غير معروف";
         if (request.AreaFactorPct is < MarketApproachRules.MinAreaFactorPct or > MarketApproachRules.MaxAreaFactorPct)
             errors["areaFactorPct"] = "معامل المساحة يجب أن يكون بين 0.1 و 50";
+        if (request.SubjectLandAreaSqm is < 0m)
+            errors["subjectLandAreaSqm"] = "مساحة الأرض يجب أن تكون ≥ 0";
+        else if (request.SubjectLandAreaSqm > MarketApproachRules.MaxSubjectAreaSqm)
+            errors["subjectLandAreaSqm"] = "مساحة الأرض تتجاوز الحد المعقول (10,000,000 م²)";
+        if (request.LandAreaFactorPct is < MarketApproachRules.MinAreaFactorPct or > MarketApproachRules.MaxAreaFactorPct)
+            errors["landAreaFactorPct"] = "معامل مساحة الأرض يجب أن يكون بين 0.1 و 50";
         if (request.AnnualMarketRatePct is < 0m or > MarketApproachRules.MaxAnnualMarketRatePct)
             errors["annualMarketRatePct"] = "معدل تغير السوق السنوي يجب أن يكون بين 0 و 50";
         if (request.ValueRoundDecimals is < 0 or > MarketApproachRules.MaxValueRoundDecimals)
@@ -258,6 +296,12 @@ public static class ValuationComparableSelectionRequestRules
             AreaFactorPct = org.AreaFactorPct > 0
                 ? org.AreaFactorPct
                 : AreaAdjustmentRules.DefaultAreaFactorPct,
+            // A header created from 2026-11-15 on gives a built subject its two area lines; the land
+            // line opens on the same factor and is then the appraiser's to change on its own.
+            TwoAreaAdjustments = true,
+            LandAreaFactorPct = org.AreaFactorPct > 0
+                ? org.AreaFactorPct
+                : AreaAdjustmentRules.DefaultAreaFactorPct,
             AnnualMarketRatePct = org.AnnualMarketRatePct >= 0
                 ? org.AnnualMarketRatePct
                 : MarketApproachRules.DefaultAnnualMarketRatePct,
@@ -279,6 +323,11 @@ public static class ValuationComparableSelectionRequestRules
             header.AdjustmentBasis = MarketAdjustmentBasisKeys.Normalize(request.AdjustmentBasis);
         if (request.AreaFactorPct is >= 0.1m and <= 50m)
             header.AreaFactorPct = request.AreaFactorPct.Value;
+        // Not sent keeps the stored land area (older callers save the header without it); 0 clears it.
+        if (request.SubjectLandAreaSqm is { } landArea)
+            header.SubjectLandAreaSqm = landArea > 0m ? landArea : null;
+        if (request.LandAreaFactorPct is >= 0.1m and <= 50m)
+            header.LandAreaFactorPct = request.LandAreaFactorPct.Value;
         if (request.AnnualMarketRatePct is >= 0m and <= 50m)
             header.AnnualMarketRatePct = request.AnnualMarketRatePct.Value;
         if (request.ValueRoundDecimals is >= 0 and <= 6)

@@ -8,6 +8,7 @@ import {
   JUSTIFICATION_TOO_SHORT_MESSAGE,
   RESET_WEIGHTS_PATCH,
   bankOverridePatch,
+  wouldSwitchOffBothAreaLines,
   contextOfSelection,
   isFactorIncluded,
   isJustificationTooShort,
@@ -196,7 +197,25 @@ describe("bankOverridePatch", () => {
     expect(bankOverridePatch(it1, "area", "300,5")).toEqual({
       priceOverrideSar: 900000,
       areaOverrideSqm: 300.5,
+      landAreaOverrideSqm: null,
     });
+  });
+
+  // 2026-11-15: a built comparable's land area is a third figure the valuation may override.
+  it("sets a comparable's land area and keeps its price and area overrides", () => {
+    const it1 = item("a", [], { priceOverrideSar: 900000, areaOverrideSqm: 250 });
+    expect(bankOverridePatch(it1, "land", "600")).toEqual({
+      priceOverrideSar: 900000,
+      areaOverrideSqm: 250,
+      landAreaOverrideSqm: 600,
+    });
+  });
+
+  it("keeps the land area when another figure is edited, and clears it on a blank entry", () => {
+    const it1 = item("a", [], { landAreaOverrideSqm: 600 });
+    expect(bankOverridePatch(it1, "price", "950000").landAreaOverrideSqm).toBe(600);
+    expect(bankOverridePatch(it1, "land", "").landAreaOverrideSqm).toBeNull();
+    expect(bankOverridePatch(it1, "land", "0").landAreaOverrideSqm).toBeNull();
   });
 
   it("clears the field on blank or non-positive input", () => {
@@ -204,6 +223,7 @@ describe("bankOverridePatch", () => {
     expect(bankOverridePatch(it1, "price", "")).toEqual({
       priceOverrideSar: null,
       areaOverrideSqm: null,
+      landAreaOverrideSqm: null,
     });
     expect(bankOverridePatch(it1, "price", "-5").priceOverrideSar).toBeNull();
   });
@@ -361,5 +381,36 @@ describe("weight patches", () => {
       weightPct: null,
       weightOverrideRationale: null,
     });
+  });
+});
+
+describe("wouldSwitchOffBothAreaLines — a built subject keeps one area line at least (Omar 2026-11-15)", () => {
+  const both = [item("a", [line("area", 2), line("land_area", -5)])];
+  const landOff = [item("a", [line("area", 2), line("land_area", -5, { isIncluded: false })])];
+  const areaOff = [item("a", [line("area", 2, { isIncluded: false }), line("land_area", -5)])];
+
+  it("lets either line be switched off while the other is on", () => {
+    expect(wouldSwitchOffBothAreaLines(both, "area", true)).toBe(false);
+    expect(wouldSwitchOffBothAreaLines(both, "land_area", true)).toBe(false);
+  });
+
+  it("refuses to switch off the last one", () => {
+    expect(wouldSwitchOffBothAreaLines(landOff, "area", true)).toBe(true);
+    expect(wouldSwitchOffBothAreaLines(areaOff, "land_area", true)).toBe(true);
+  });
+
+  it("never refuses switching a line back on", () => {
+    expect(wouldSwitchOffBothAreaLines(landOff, "land_area", true)).toBe(false);
+    expect(wouldSwitchOffBothAreaLines(areaOff, "area", true)).toBe(false);
+  });
+
+  it("asks nothing of other factors or of a table with one area line", () => {
+    expect(wouldSwitchOffBothAreaLines(landOff, "location", true)).toBe(false);
+    expect(wouldSwitchOffBothAreaLines(landOff, "area", false)).toBe(false);
+  });
+
+  it("reads a land line that was never saved as switched on", () => {
+    // A comparable saved before the land line existed: the server adds it switched on.
+    expect(wouldSwitchOffBothAreaLines([item("a", [line("area", 2)])], "area", true)).toBe(false);
   });
 });

@@ -31,6 +31,14 @@ type FactorDescriptor = {
 };
 
 export const AUTO_AREA_KEY = "area";
+/**
+ * A built subject's second area line (2026-11-15): the land its building stands on. Like
+ * `AUTO_AREA_KEY` its percent is computed by the server; it is not in the registry below, so it is
+ * never offered as a factor to add and never imposed on a table that does not carry it.
+ */
+export const LAND_AREA_KEY = "land_area";
+/** The area lines: computed, never typed. */
+export const AUTO_AREA_KEYS: ReadonlySet<string> = new Set([AUTO_AREA_KEY, LAND_AREA_KEY]);
 
 /** Minted custom difference factors — key max 32, extra-catalog charset. */
 const CUSTOM_FACTOR_PREFIX = "c_";
