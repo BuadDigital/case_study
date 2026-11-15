@@ -52,3 +52,28 @@ describe("global action toast — no success after a refusal", () => {
     expect(success).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * 2026-11-15: clicking the «المراجعة والاعتماد» filter chip in «أعمالي» flashed «جاري الاعتماد…» —
+ * the chip's label hit the «اعتماد» keyword. A filter chip row opts out of the click toast.
+ */
+describe("global action toast — filter chips are not actions", () => {
+  it("shows no progress toast for a chip inside a no-toast row", () => {
+    const row = document.createElement("div");
+    row.setAttribute("data-no-action-toast", "");
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.textContent = "المراجعة والاعتماد 3";
+    row.appendChild(chip);
+    document.body.appendChild(row);
+    const show = vi.fn(() => "progress-1");
+    const unbind = bindGlobalActionToast(show, () => {}, vi.fn(), () => false);
+    try {
+      chip.dispatchEvent(new Event("pointerdown", { bubbles: true }));
+      expect(show).not.toHaveBeenCalled();
+    } finally {
+      unbind();
+      row.remove();
+    }
+  });
+});
